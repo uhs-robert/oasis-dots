@@ -5,7 +5,6 @@
 .import "Ps1Sprites.js" as Ps1
 .import "OasisVectors.js" as Oasis
 .import "GoldeneyeVectors.js" as Goldeneye
-.import "GoldeneyeGadgetVectors.js" as GoldeneyeGadgets
 .import "MetroidVectors.js" as Metroid
 .import "Ff7Vectors.js" as Ff7
 .import "CrtVectors.js" as Crt
@@ -24,7 +23,6 @@ var sets = {
     "ps1": Ps1.sprites,
     "oasis": Oasis.vectors,
     "goldeneye": Goldeneye.vectors,
-    "goldeneye_gadgets": GoldeneyeGadgets.vectors,
     "metroid": Metroid.vectors,
     "ff7": Ff7.vectors,
     "crt": Crt.vectors,
