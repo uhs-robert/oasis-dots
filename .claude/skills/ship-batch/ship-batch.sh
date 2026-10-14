@@ -16,6 +16,17 @@ die() {
 # Commands below that can leave a daemon behind run with fd 9 closed so it cannot hold the lock after this run.
 take_lock "$repo" || die "another ship-batch is running in this repository; wait for it to finish"
 before=$(select_base "$repo")
+# Each branch passes its own scoped check right before it merges. A branch with no local worktree was checked when
+# its PR was opened (check-before-pr.sh), so it is only reported.
+for pr in "$@"; do
+  branch=$(cd "$repo" && gh pr view "$pr" --json headRefName -q .headRefName) || die "cannot read PR $pr"
+  worktree=$(git -C "$repo" worktree list --porcelain | awk -v ref="branch refs/heads/$branch" '/^worktree /{w = substr($0, 10)} $0 == ref {print w; exit}')
+  if [[ -z $worktree ]]; then
+    echo "ship-batch: no local worktree for $branch (PR $pr); relying on the check run when it was opened"
+    continue
+  fi
+  (cd "$worktree" && lib/check.sh --changed "$(git merge-base HEAD origin/main)") 9>&- || die "the check fails on $branch (PR $pr); nothing was merged"
+done
 # The owner already said to merge, so a Codex review still running is waited out rather than failing the batch.
 (($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --wait-review "$@") 9>&- || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only
@@ -28,7 +39,7 @@ if ! base_is_ancestor "$repo" "$before" "$after"; then
   echo "ship-batch: ${before:0:12} is not an ancestor of main; running the full check"
   before=$(git -C "$repo" hash-object -t tree /dev/null)
 fi
-# Inductive, like the Stop hook's last_ok: a full pass of `before` plus a scoped pass over everything changed since
+# Inductive: a full pass of `before` plus a scoped pass over everything changed since
 # vouches for `after`. A `before` not recorded as passed (check-passed.sh also ignores a worktree's no-repos pass,
 # which skipped this checkout's repos/ symlinks) or CHECK_FULL=1 falls back to the full check.
 if [[ $before != "$after" ]]; then

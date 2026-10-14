@@ -139,6 +139,21 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# One check at a time on this machine, waiting for any already running: several sessions checking at once overload
+# the CPU until the bar freezes, and the timing-sensitive voxcmd steps then fail for no reason. A check that a step
+# starts itself (CHECK_LOCK_HELD inherited) is already covered. Steps run with fd 7 closed, so a daemon a test leaves
+# behind cannot hold the lock after this run.
+if [ -z "$plan_only" ] && [ -z "${CHECK_LOCK_HELD:-}" ] && command -v flock >/dev/null; then
+  lock_file=${XDG_RUNTIME_DIR:-/tmp}/dotfiles-check.lock
+  exec 7>>"$lock_file"
+  if ! flock -n 7; then
+    echo "check: waiting for the check already running ($(cat "$lock_file.owner" 2>/dev/null || echo 'owner unknown'))" >&2
+    flock 7
+  fi
+  printf 'pid %s in %s\n' "$$" "$repo_dir" >"$lock_file.owner"
+  export CHECK_LOCK_HELD=1
+fi
+
 logs=$(mktemp -d) || exit 1
 trap 'rm -rf "$logs"' EXIT
 trap 'exit 1' INT TERM
@@ -278,17 +293,17 @@ fi
 
 export CHECK_LOGS="$logs" CHECK_JOBS="$jobs"
 if [ "$jobs" -le 1 ]; then
-  for name in $voxcmd_run $other_run; do sh "$self" --run-step "$name"; done
+  for name in $voxcmd_run $other_run; do sh "$self" --run-step "$name" 7>&-; done
 else
   lane_pid=''
   pool=$jobs
   if [ -n "$voxcmd_run" ]; then
     pool=$((jobs - 1))
-    (for name in $voxcmd_run; do sh "$self" --run-step "$name"; done) &
+    (for name in $voxcmd_run; do sh "$self" --run-step "$name" 7>&-; done) &
     lane_pid=$!
   fi
   # shellcheck disable=SC2086 # step names have no spaces
-  [ -z "$other_run" ] || printf '%s\n' $other_run | xargs -P "$pool" -I{} sh "$self" --run-step {}
+  [ -z "$other_run" ] || printf '%s\n' $other_run | xargs -P "$pool" -I{} sh "$self" --run-step {} 7>&-
   [ -z "$lane_pid" ] || wait "$lane_pid"
 fi
 
