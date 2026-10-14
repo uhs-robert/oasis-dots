@@ -5,15 +5,17 @@
 
 name="Type"
 confirm=0
-silent_actions=(type_mode stop_typing)
+silent_actions=(type_mode type_start stop_typing)
 
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=mode-phrases.sh
 source "$voxcmd_share_dir/mode-phrases.sh"
 type_exit_object='(the )?(typing|typing mode|type mode|dictation|dictation mode)'
 type_exit_phrase=$(mode_exit_phrase "$type_exit_object")
-# "start typing" is a search placeholder somewhere, so entering needs the word "mode".
+# "start typing" is not in mode_actions: inside click mode it stays a click target (a search box may be labelled
+# "Start typing"), and only "cortana start typing" switches from there.
 verbs=(
   "type_mode   ((start|enter|begin) )?(type|typing|dictation) mode"
+  "type_start  (start|begin) typing"
   "stop_typing $type_exit_phrase|(im )?done (typing|with $type_exit_object)"
 )
 
@@ -24,6 +26,7 @@ examples=(
 
 declare -A actions=(
   [type_mode]='session_begin type "$file" "Type mode"'
+  [type_start]='session_begin type "$file" "Type mode"'
   [stop_typing]='session_leave type done || true'
 )
 

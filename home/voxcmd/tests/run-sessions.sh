@@ -750,6 +750,14 @@ check "'stop rapid mode' in click mode leaves both" "session_gone && no_clicks &
 sess_phrase="click mode"
 sess_run "cortana tap alpha" "done"
 check "a 'cortana ...' that is no mode command is routed as a command in click mode too" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log') == 'tap alpha' ]] && no_clicks"
+# "start typing" is a click target in click mode, a search box may carry that label; only the wake word switches.
+sess_run "start typing" "done"
+check "plain 'start typing' in click mode stays a click turn, not a switch to type mode" "session_gone && ! toast_has 'Type mode' && [[ \$(record_starts) == 2 ]]"
+sess_start "cortana start typing" HOLD
+hold_in 'type click' 2
+check "'cortana start typing' in click mode switches to type mode, clicking nothing" "mode_is 'type click' && no_clicks"
+sess_voxcmd_env end-session
+sess_wait
 sess_start "rapid mode" HOLD
 hold_in 'rapid click' 2
 check "'rapid mode' in click mode opens rapid mode over it, clicking nothing" "mode_is 'rapid click' && no_clicks"

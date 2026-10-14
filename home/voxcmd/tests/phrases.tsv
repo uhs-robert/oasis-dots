@@ -185,7 +185,9 @@ typing mode	Type/type_mode	Type's own verb
 dictation mode	Type/type_mode	Type's own verb
 start typing mode	Type/type_mode	Type's own verb
 enter typing mode	Type/type_mode	Type's own verb
-start typing	none	stays a search placeholder: type mode needs the word mode
+start typing	Type/type_start	outside click mode; inside it, a click target
+begin typing	Type/type_start	the same as start typing
+cortana start typing	Type/type_start	the wake word is stripped outside a session
 stop typing	Type/stop_typing	the exit forms are Type's own, ahead of Media and System
 done typing	Type/stop_typing	the exit forms are Type's own, ahead of Media and System
 leave typing mode	Type/stop_typing	the exit forms are Type's own, ahead of Media and System
