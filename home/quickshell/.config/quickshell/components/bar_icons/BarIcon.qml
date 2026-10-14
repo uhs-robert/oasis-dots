@@ -11,6 +11,8 @@ Item {
 
     property string name: ""
     property string variant: ""
+    // Drawn when the active set has nothing for `variant`, so a state only some sets tell apart still shows the plain icon in the others.
+    property string fallback_variant: ""
     property string glyph: ""
     property color tint: Theme.theme_primary
     // The sprite's second colour: the style's lightest shade when it defines shades, else a lighter step of the tint.
@@ -20,9 +22,9 @@ Item {
     // For an icon whose variant flips often (volume, wifi, battery): the slot is as large as the icon's biggest sprite, so neighbours stay put.
     property bool fixed_slot: false
 
-    readonly property var rows: IconSets.sprite(Style.bar_icon_set, root.name, root.variant)
-    readonly property var vector: IconSets.vector(Style.bar_icon_set, root.name, root.variant)
-    readonly property var text_entry: IconSets.text(Style.bar_icon_set, root.name, root.variant)
+    readonly property var rows: IconSets.sprite(Style.bar_icon_set, root.name, root.variant, root.fallback_variant)
+    readonly property var vector: IconSets.vector(Style.bar_icon_set, root.name, root.variant, root.fallback_variant)
+    readonly property var text_entry: IconSets.text(Style.bar_icon_set, root.name, root.variant, root.fallback_variant)
     // Whether the set draws this icon (sprite, vector or text) rather than the Nerd Font glyph, which keeps a side bearing a drawn icon lacks.
     readonly property bool drawn: !!root.rows || !!root.vector || !!root.text_entry
     // A ~9-row sprite spans the glyph's height at a whole pixel size, so it stays crisp.

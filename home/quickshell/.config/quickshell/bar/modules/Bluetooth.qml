@@ -45,7 +45,8 @@ BarModule {
 
         BarIcon {
             name: "bluetooth"
-            variant: root.blocked ? "blocked" : "on"
+            variant: root.blocked ? "blocked" : !root.has_adapter || !root.adapter.enabled ? "off" : root.any_connected ? "connected" : "on"
+            fallback_variant: "on"
             glyph: root.glyph
             tint: root.glyph_color
         }

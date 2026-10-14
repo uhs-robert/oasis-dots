@@ -26,7 +26,8 @@ BarModule {
         id: glyph
         anchors.verticalCenter: parent.verticalCenter
         name: "voxtype"
-        variant: VoxtypeState.state === "stopped" ? "stopped" : "idle"
+        variant: VoxtypeState.state === "stopped" ? "stopped" : VoxtypeState.recording ? "recording" : VoxtypeState.transcribing ? "transcribing" : "idle"
+        fallback_variant: "idle"
         glyph: VoxtypeState.state === "stopped" ? root.glyphs.stopped : root.glyphs.idle
         tint: root.glyph_color
 

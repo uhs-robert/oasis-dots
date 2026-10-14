@@ -2,12 +2,16 @@
 
 // The Terminal icon set: colour emoji, drawn in Noto Color Emoji, keyed by icon name, then by variant like OasisVectors.js. Each entry is { "text": "..." }.
 // Emoji cannot show a signal level, so every wifi level but wifi_0 shares one glyph.
-// There is no Bluetooth emoji, so headphones stand in for it. The tray chevron has to rotate, so it is not here and keeps its Nerd Font glyph. The clock keeps its bracket_tag meeting marker, so there is no meeting icon.
+// There is no Bluetooth emoji, so a dot and headphones stand in for it. Emoji ignore the bar's tint, so each state the modules show only by tint has its own sign: a blue dot is on with nothing connected, headphones are connected, 📴 is off, 🚫 is rfkill-blocked.
+// Voxtype recording is a speaking head, not 🔴, which already means screen recording.
+// The tray chevron has to rotate, so it is not here and keeps its Nerd Font glyph. The clock keeps its bracket_tag meeting marker, so there is no meeting icon.
 // Every emoji is a single code point (plus VS16 where the base is text-presented), never a ZWJ sequence, so each draws as one glyph.
 var icons = {
     "bluetooth": {
-        "on": {"text": "🎧"},
-        "blocked": {"text": "📴"}
+        "on": {"text": "🔵"},
+        "connected": {"text": "🎧"},
+        "off": {"text": "📴"},
+        "blocked": {"text": "🚫"}
     },
     "notifications": {
         "normal": {"text": "🔔"},
@@ -56,6 +60,8 @@ var icons = {
     },
     "voxtype": {
         "idle": {"text": "🎙️"},
+        "recording": {"text": "🗣️"},
+        "transcribing": {"text": "⏳"},
         "stopped": {"text": "🤐"}
     }
 };
