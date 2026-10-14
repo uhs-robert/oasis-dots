@@ -329,7 +329,11 @@ voxtype)
         wait_for_watcher_to_see_recording 0
         if [ "${turn#GATED }" != "$turn" ]; then
           turn=${turn#GATED }
-          until [ -e "$SANDBOX_DIR/voxtype-release" ]; do sleep 0.02; done
+          # A recording cancelled (or a sandbox removed) before the release would never be written anyway; stop waiting.
+          until [ -e "$SANDBOX_DIR/voxtype-release" ]; do
+            [ -d "$SANDBOX_DIR" ] && [ "$(cat "$state_file" 2>/dev/null)" = recording ] || exit 0
+            sleep 0.02
+          done
         fi
         sleep "${SANDBOX_VOXTYPE_SPEAK_SECS:-0.4}"
         if [ "$(cat "$state_file")" = recording ]; then
