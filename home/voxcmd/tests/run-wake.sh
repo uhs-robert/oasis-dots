@@ -129,6 +129,14 @@ check "a command substitution is not a value" none "$(value_of VOXCMD_DUCK_MEDIA
 check "a word is not a value" 2.5 "$(chunk_pause_of)"
 check "nothing in the file ran" 0 "$([ -e "$SANDBOX_DIR/ran" ] && echo 1 || echo 0)"
 
+# A number outside Settings' limits falls back to the default, as a bad word does.
+printf 'VOXCMD_DUCK_MEDIA_VOLUME=150\nVOXCMD_TYPE_CHUNK_PAUSE_SECS=0\n' >"$voice_env"
+check "ducking above 100 is not a value" none "$(value_of VOXCMD_DUCK_MEDIA_VOLUME)"
+check "a zero chunk pause is not a value" 2.5 "$(chunk_pause_of)"
+printf 'VOXCMD_DUCK_MEDIA_VOLUME=30.5\nVOXCMD_TYPE_CHUNK_PAUSE_SECS=45\n' >"$voice_env"
+check "fractional ducking is not a value" none "$(value_of VOXCMD_DUCK_MEDIA_VOLUME)"
+check "a chunk pause past Whisper's window is not a value" 2.5 "$(chunk_pause_of)"
+
 # voxtype-daemon with a voxtype that prints its arguments.
 voxtype_dir="$SANDBOX_DIR/voxtype-bin"
 mkdir -p "$voxtype_dir"
