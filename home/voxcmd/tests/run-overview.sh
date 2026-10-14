@@ -78,11 +78,18 @@ ov_run() {
   rm -f "$session_json" "$root/confirm-no"
   [ -z "${ov_confirm_no:-}" ] || touch "$root/confirm-no"
   echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
-  cp "$fixtures_dir/overview.json" "$overview_json"
+  if [ -n "${ov_late_file:-}" ]; then
+    rm -f "$overview_json"
+    # As the bar writes it: a moment after the overview is open.
+    (wait_for_line '^qs-ipc call overview open' "$log" 20 && sleep 0.4 && cp "$fixtures_dir/overview.json" "$overview_json") &
+  else
+    cp "$fixtures_dir/overview.json" "$overview_json"
+  fi
   echo "$ov_state" >"$overview_state"
   env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$ov_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$ov_config" \
     VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0 "$ov_voxcmd" "$@" >/dev/null 2>&1
   ov_wait
+  wait
 }
 acts() { grep '^qs-ipc call overview act' "$log" | sed -e 's/^qs-ipc call overview act //' -e 's/ *$//'; }
 session_gone() { [[ ! -e $session_json ]]; }
@@ -157,6 +164,14 @@ ov_state=closed
 ov_run -- "open overview"
 check "open overview does too" "grep -q '^qs-ipc call overview open' '$log'"
 check "a session that hears nothing ends and leaves the overview open" "session_gone && ! grep -q '^qs-ipc call overview close' '$log'"
+
+# The bar writes overview.json after the overview is open, so the first listen sees a stale or missing snapshot.
+ov_state=closed
+ov_late_file=1
+ov_run "done" -- "show workspaces"
+ov_late_file=
+check "the session survives its first listen while the snapshot is still being written" "! grep -q 'screen is gone\|its screen closed' '$debug_log' '$log' && grep -q '^qs-ipc call overview close' '$log'"
+check "and its first turn was heard by the overview session" "grep -q 'listen: recording started' '$debug_log' && grep -q 'Overview ended done' '$log'"
 
 # The owner opened it by key: the first phrase heard goes to it and the session attaches.
 ov_state=open
