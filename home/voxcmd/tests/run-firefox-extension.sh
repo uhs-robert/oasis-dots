@@ -4,6 +4,9 @@
 # The firefox-tab side (live tabs, activation, fallback) is in run.sh's "firefox live" section.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source-path=SCRIPTDIR source=../../../lib/check-lock.sh
+. "$here/../../../lib/check-lock.sh"
+check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 status=0
 PYTHONDONTWRITEBYTECODE=1 python3 -I "$here/firefox-host-test" || status=1
 if command -v node >/dev/null 2>&1; then

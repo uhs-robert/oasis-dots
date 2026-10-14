@@ -11,6 +11,9 @@
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 package=$(cd "$here/.." && pwd)
+# shellcheck source-path=SCRIPTDIR source=../../../lib/check-lock.sh
+. "$here/../../../lib/check-lock.sh"
+check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 [ -z "${SANDBOX_DIR:-}" ] || [ -z "${SANDBOX_TESSERACT_TSV+set}" ] || unset SANDBOX_TESSERACT_TSV
 if [ -z "${SANDBOX_DIR:-}" ]; then
   # The session and sequence tests mostly wait on their watchers and waits, so they run beside these, each in a sandbox of
