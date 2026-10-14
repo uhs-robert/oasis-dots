@@ -26,6 +26,12 @@
           },
           {
             "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-before-commit.sh",
+            "timeout": 150,
+            "statusMessage": "Linting the files in the commit"
+          },
+          {
+            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-before-pr.sh",
             "timeout": 900,
             "statusMessage": "Checking the branch before opening the PR"

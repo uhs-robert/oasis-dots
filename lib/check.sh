@@ -6,10 +6,14 @@ set -u
 #
 #   lib/check.sh                  every step
 #   lib/check.sh --changed <base> only the steps the files changed since <base> can affect
-#   lib/check.sh --plan [--changed <base>] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
+#   lib/check.sh --paths-from <file|-> like --changed, but the changed paths are the lines of the file (or stdin), relative to the
+#                                 repository root, instead of `git diff <base>`: a commit's staged paths, say
+#   lib/check.sh --plan [--changed <base>|--paths-from <file|->] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
 #
 # CHECK_FULL=1 makes --changed run everything anyway. CHECK_JOBS sets how many steps run at once (default min(cores/2, 4)); 1 runs them
-# one after another with live output.
+# one after another with live output. CHECK_SKIP_STEPS="step ..." drops those steps whatever the scope says (the summary line lists
+# them). CHECK_NO_LOCK=1 skips the machine-wide lock, for a cheap check that must never wait behind a long one (the commit hook).
+# CHECK_LOCK_WAIT_SECS (default 1200) is how long to wait for the lock before giving up.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(dirname -- "$script_dir")
 self=$script_dir/check.sh
@@ -118,8 +122,8 @@ if [ "${1:-}" = --run-step ]; then
   exit 0
 fi
 
-usage='usage: lib/check.sh [--plan] [--changed <base>]'
-changed_base='' plan_only=''
+usage='usage: lib/check.sh [--plan] [--changed <base> | --paths-from <file|->]'
+changed_base='' plan_only='' paths_from=''
 while [ $# -gt 0 ]; do
   case $1 in
   --plan) plan_only=1 ;;
@@ -129,6 +133,14 @@ while [ $# -gt 0 ]; do
       exit 2
     }
     changed_base=$2
+    shift
+    ;;
+  --paths-from)
+    [ $# -ge 2 ] || {
+      echo "$usage" >&2
+      exit 2
+    }
+    paths_from=$2
     shift
     ;;
   *)
@@ -142,13 +154,18 @@ done
 # One check at a time on this machine, waiting for any already running: several sessions checking at once overload
 # the CPU until the bar freezes, and the timing-sensitive voxcmd steps then fail for no reason. A check that a step
 # starts itself (CHECK_LOCK_HELD inherited) is already covered. Steps run with fd 7 closed, so a daemon a test leaves
-# behind cannot hold the lock after this run.
-if [ -z "$plan_only" ] && [ -z "${CHECK_LOCK_HELD:-}" ] && command -v flock >/dev/null; then
+# behind cannot hold the lock after this run. The wait is capped so a stuck holder cannot hang its callers for good.
+if [ -z "$plan_only" ] && [ -z "${CHECK_LOCK_HELD:-}" ] && [ -z "${CHECK_NO_LOCK:-}" ] && command -v flock >/dev/null; then
   lock_file=${XDG_RUNTIME_DIR:-/tmp}/dotfiles-check.lock
+  lock_wait=${CHECK_LOCK_WAIT_SECS:-1200}
   exec 7>>"$lock_file"
   if ! flock -n 7; then
-    echo "check: waiting for the check already running ($(cat "$lock_file.owner" 2>/dev/null || echo 'owner unknown'))" >&2
-    flock 7
+    holder=$(cat "$lock_file.owner" 2>/dev/null || echo 'owner unknown')
+    echo "check: waiting up to ${lock_wait}s for the check already running ($holder)" >&2
+    flock -w "$lock_wait" 7 || {
+      echo "check: gave up after ${lock_wait}s; the lock is still held by the check running ($holder)" >&2
+      exit 1
+    }
   fi
   printf 'pid %s in %s\n' "$$" "$repo_dir" >"$lock_file.owner"
   export CHECK_LOCK_HELD=1
@@ -194,7 +211,14 @@ scope_changed_files() {
   done
 }
 
-if [ -n "$changed_base" ] && [ -z "${CHECK_FULL:-}" ] && git rev-parse --verify -q "$changed_base^{commit}" >/dev/null &&
+if [ -n "$paths_from" ] && [ -z "${CHECK_FULL:-}" ]; then
+  # A path list is trusted as given (no untracked files added); a listed path that is gone counts as deleted.
+  if [ "$paths_from" = - ]; then cat >"$logs/changed.raw"; else cat -- "$paths_from" >"$logs/changed.raw" || exit 1; fi
+  grep . "$logs/changed.raw" | sort -u >"$logs/changed"
+  while IFS= read -r path; do [ -e "$path" ] || [ -L "$path" ] || printf '%s\n' "$path"; done <"$logs/changed" >"$logs/deleted"
+  scope_changed_files <"$logs/changed"
+  scope_label="scoped to $(wc -l <"$logs/changed" | tr -d ' ') listed files"
+elif [ -n "$changed_base" ] && [ -z "${CHECK_FULL:-}" ] && git rev-parse --verify -q "$changed_base^{commit}" >/dev/null &&
   { git diff --name-only --no-renames "$changed_base" -- && git ls-files -o --exclude-standard; } >"$logs/changed.raw" 2>/dev/null; then
   sort -u "$logs/changed.raw" >"$logs/changed"
   git diff --name-only --no-renames --diff-filter=D "$changed_base" -- >"$logs/deleted" 2>/dev/null
@@ -264,8 +288,14 @@ in_scope() {
   esac
 }
 
-ran='' skipped_by_scope='' voxcmd_run='' other_run=''
+ran='' skipped_by_scope='' skipped_by_request='' voxcmd_run='' other_run=''
 for name in $voxcmd_steps $other_steps; do
+  case " ${CHECK_SKIP_STEPS:-} " in
+  *" $name "*)
+    skipped_by_request="$skipped_by_request $name"
+    continue
+    ;;
+  esac
   in_scope "$name" || {
     skipped_by_scope="$skipped_by_scope $name"
     continue
@@ -284,7 +314,7 @@ for name in $voxcmd_steps $other_steps; do
   esac
 done
 [ ! -s "$logs/skips" ] || sort -u "$logs/skips"
-echo "check: $scope_label; ran:$ran; skipped by scope:${skipped_by_scope:- none}"
+echo "check: $scope_label; ran:$ran; skipped by scope:${skipped_by_scope:- none}${skipped_by_request:+; skipped by request:$skipped_by_request}"
 
 if [ -n "$plan_only" ]; then
   for group in plain sourcing agent; do sed "s|^|shellcheck $group: |" "$logs/$group.list"; done
