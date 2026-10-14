@@ -18,7 +18,8 @@ deny() {
 
 # Under the hook's own 900s limit, which also covers waiting for another session's check to finish.
 check_limit=870
-out=$(timeout "$check_limit" lib/check.sh --changed "$base" 2>&1)
+# The lock wait gives up before the hook does, so a long wait is reported as one, naming who holds the lock.
+out=$(CHECK_LOCK_WAIT_SECS=$((check_limit - 60)) timeout "$check_limit" lib/check.sh --changed "$base" 2>&1)
 status=$?
 ((status == 0)) && exit 0
 ((status == 124)) && deny "'lib/check.sh --changed $base' did not finish within ${check_limit}s (it may have waited for another session's check). Rerun it, then open the PR once it passes."
