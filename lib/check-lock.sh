@@ -11,7 +11,8 @@
 # check_lock_take <owner>: holds a free slot on fd 7 for the rest of the calling shell. It waits at most
 # CHECK_LOCK_WAIT_SECS (default 1200) for one to free, then returns 1 naming the holders. It returns 0 at once when
 # CHECK_LOCK_HELD is set (an ancestor holds a slot), CHECK_NO_LOCK is set, or flock is missing. The slot files stay in the
-# real runtime dir inside the voxcmd sandbox, whose XDG_RUNTIME_DIR is its own.
+# real runtime dir inside the voxcmd sandbox, whose XDG_RUNTIME_DIR is its own. A suite run directly takes a slot too, and
+# one under a check or another suite skips it; a sandboxed one-off such as `sandbox.sh voxcmd --dry-run` takes none.
 #
 # check_lock_gate <owner> <script> [args...]: for a suite's entry. It lowers the priority, and when no slot is held here,
 # takes one, runs <script> again as a child with fd 7 closed, and exits with the child's status. The child finds
