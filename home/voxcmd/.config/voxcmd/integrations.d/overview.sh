@@ -58,7 +58,7 @@ examples=(
 declare -A actions=(
   [overview_open]='overview_open'
   [overview_close]='overview_close'
-  [overview_numbers]='overview_attach'
+  [overview_numbers]='overview_numbers'
   [act]='overview_act "$id"'
 )
 
@@ -100,6 +100,12 @@ session_ended() {
 
 overview_attach() {
   session_begin overview "$file" "Overview"
+}
+
+# "Show numbers" means something only while the overview is up; closed, the phrase is left unmatched.
+overview_numbers() {
+  overview_is_open || return 0
+  overview_attach
 }
 
 overview_open() {
@@ -191,11 +197,14 @@ overview_window_id() {
 }
 
 # Prints the reference of workspace number $1 ("3", or "sp:<name>" in special mode), or fails. A number the overview does
-# not list is still a workspace to move to (Hyprland makes it) while regular workspaces are shown.
+# not list is still a workspace to move to (Hyprland makes it) while regular workspaces are shown. Spaces and percent signs
+# are percent-encoded because act splits its arguments on spaces; the overview decodes them.
 overview_workspace_ref() {
   local id
   id=$(jq -r --argjson n "$1" 'first(.items[] | select(.kind == "workspace" and .n == $n) | .id) // (if .special then empty else ($n | tostring) end)' "$overview_file" 2>/dev/null)
-  [ -n "$id" ] && echo "$id"
+  [ -n "$id" ] || return 1
+  id="${id//%/%25}"
+  echo "${id// /%20}"
 }
 
 # Prints the name of the monitor the words ("left", "top right", "monitor two") name, or an "error:" line.

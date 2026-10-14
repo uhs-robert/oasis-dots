@@ -83,7 +83,7 @@ ov_run() {
     # As the bar writes it: a moment after the overview is open.
     (wait_for_line '^qs-ipc call overview open' "$log" 20 && sleep 0.4 && cp "$fixtures_dir/overview.json" "$overview_json") &
   else
-    cp "$fixtures_dir/overview.json" "$overview_json"
+    cp "${ov_fixture:-$fixtures_dir/overview.json}" "$overview_json"
   fi
   echo "$ov_state" >"$overview_state"
   env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$ov_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$ov_config" \
@@ -179,6 +179,24 @@ ov_state=closed
 ov_run -- "open overview"
 check "open overview does too" "grep -q '^qs-ipc call overview open' '$log'"
 check "a session that hears nothing ends and leaves the overview open" "session_gone && ! grep -q '^qs-ipc call overview close' '$log'"
+
+# "Show numbers" attaches a session only while the overview is up; closed, it is left unmatched.
+ov_state=closed
+ov_run -- "show numbers"
+check "show numbers with the overview closed starts no session" "! grep -q 'session: overview begins' '$debug_log' && [[ -z \$(acts) ]]"
+ov_state=open
+ov_run -- "show numbers"
+check "show numbers with the overview open attaches the session" "grep -q 'session: overview begins' '$debug_log'"
+
+# A special workspace's name may hold spaces, which act's argument split would cut: references travel percent-encoded.
+special_fixture=$root/overview-special.json
+jq -c '.special = true | .items |= map(select(.kind == "workspace")) | .items[0].id = "sp:project scratch" | .items[1].id = "sp:50%"' "$fixtures_dir/overview.json" >"$special_fixture"
+ov_fixture=$special_fixture
+ov_run -- "go to workspace 1"
+check "a spaced special workspace is one argument" "[[ \$(acts) == 'workspace sp:project%20scratch' ]]"
+ov_run -- "swap workspaces 1 and 2"
+check "a swap carries both references encoded" "[[ \$(acts) == 'swap_workspaces sp:project%20scratch sp:50%25' ]]"
+ov_fixture=
 
 # The bar writes overview.json after the overview is open, so the first listen sees a stale or missing snapshot.
 ov_state=closed
