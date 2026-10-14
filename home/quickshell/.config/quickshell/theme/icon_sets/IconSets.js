@@ -2,7 +2,7 @@
 .import "GameboySprites.js" as Gameboy
 .import "NesSprites.js" as Nes
 .import "SnesSprites.js" as Snes
-.import "Ps1Sprites.js" as Ps1
+.import "Ps1Vectors.js" as Ps1
 .import "OasisVectors.js" as Oasis
 .import "GoldeneyeVectors.js" as Goldeneye
 .import "MetroidVectors.js" as Metroid
@@ -20,7 +20,7 @@ var sets = {
     "gameboy": Gameboy.sprites,
     "nes": Nes.sprites,
     "snes": Snes.sprites,
-    "ps1": Ps1.sprites,
+    "ps1": Ps1.vectors,
     "oasis": Oasis.vectors,
     "goldeneye": Goldeneye.vectors,
     "metroid": Metroid.vectors,
