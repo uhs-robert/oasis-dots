@@ -12,8 +12,9 @@ set -u
 #
 # CHECK_FULL=1 makes --changed run everything anyway. CHECK_JOBS sets how many steps run at once (default min(cores/2, 4)); 1 runs them
 # one after another with live output. CHECK_SKIP_STEPS="step ..." drops those steps whatever the scope says (the summary line lists
-# them). CHECK_NO_LOCK=1 skips the machine-wide lock, for a cheap check that must never wait behind a long one (the commit hook).
-# CHECK_LOCK_WAIT_SECS (default 1200) is how long to wait for the lock before giving up.
+# them). Everything runs at nice 19 in the idle IO class, and the voxcmd suites each hold one of CHECK_HEAVY_SLOTS
+# machine-wide slots (lib/check-lock.sh), waiting at most CHECK_LOCK_WAIT_SECS (default 1200) for one; CHECK_NO_LOCK=1 runs
+# them without a slot, for a check that must never wait (the commit hook).
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(dirname -- "$script_dir")
 self=$script_dir/check.sh
@@ -151,15 +152,9 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# One check at a time on this machine, waiting for any already running: several sessions checking at once overload
-# the CPU until the bar freezes, and the timing-sensitive voxcmd steps then fail for no reason. The lock is shared with
-# the voxcmd suites (lib/check-lock.sh). Steps run with fd 7 closed, so a daemon a test leaves behind cannot hold the
-# lock after this run.
-if [ -z "$plan_only" ]; then
-  # shellcheck source-path=SCRIPTDIR source=check-lock.sh
-  . "$script_dir/check-lock.sh"
-  check_lock_take "$repo_dir" || exit 1
-fi
+# shellcheck source-path=SCRIPTDIR source=check-lock.sh
+. "$script_dir/check-lock.sh"
+[ -n "$plan_only" ] || check_lower_priority
 
 logs=$(mktemp -d) || exit 1
 trap 'rm -rf "$logs"' EXIT

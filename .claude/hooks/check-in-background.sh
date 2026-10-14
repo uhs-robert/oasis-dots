@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse(Bash): a command that runs the check, a voxcmd suite or ship-batch always runs in the background. Each may
-# wait up to CHECK_LOCK_WAIT_SECS for the machine-wide lock, longer than a foreground call lives, and a killed wait tells
+# wait up to CHECK_LOCK_WAIT_SECS for a heavy-step slot, longer than a foreground call lives, and a killed wait tells
 # the agent nothing; in the background it waits as long as the lock needs and the agent is notified when it ends.
 # Only the input changes: no permission decision is returned, so the call still goes through the normal permission flow.
 set -u
