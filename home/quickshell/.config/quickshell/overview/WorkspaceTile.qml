@@ -57,9 +57,11 @@ Item {
         if (root.is_new) return "+ " + name;
         return root.show_numbers && /^\d+$/.test(name) ? "WS " + name : name;
     }
-    // Game Boy's caret and crust are the same shade, so its selected chip takes the inverse selection pair instead.
-    readonly property color chip_fill: Qt.colorEqual(Style.caret_color, Theme.bg_crust) ? Style.selection_bg : Style.caret_color
-    readonly property color chip_text: Qt.colorEqual(Style.caret_color, Theme.bg_crust) ? Style.selection_fg : Theme.bg_crust
+    // Game Boy's caret is the crust shade (Color) or a tint of it (Original), so the selected chip's dark text would
+    // vanish on its fill; below this lightness gap it takes the style's inverse selection pair instead.
+    readonly property bool chip_low_contrast: Math.abs(Style.caret_color.hslLightness - Theme.bg_crust.hslLightness) < 0.3
+    readonly property color chip_fill: root.chip_low_contrast ? Style.selection_bg : Style.caret_color
+    readonly property color chip_text: root.chip_low_contrast ? Style.selection_fg : Theme.bg_crust
     readonly property real label_px: Math.max(9, Math.min(Style.fs(-3), root.height * 0.16))
 
     signal window_clicked(string address)
