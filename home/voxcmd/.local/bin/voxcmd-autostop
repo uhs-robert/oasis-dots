@@ -311,7 +311,8 @@ def die_with_parent():
 
 def start_pw_record():
     return subprocess.Popen(
-        ["pw-record", "--rate", str(SAMPLE_RATE), "--channels", "1", "--format", "s16", "--raw", "-"],
+        # The tag lets voxcmd-wake's mic check tell this recording from another app's (VOICE_STREAM_TAG there).
+        ["pw-record", "-P", '{ voxcmd.tag = "autostop" }', "--rate", str(SAMPLE_RATE), "--channels", "1", "--format", "s16", "--raw", "-"],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
