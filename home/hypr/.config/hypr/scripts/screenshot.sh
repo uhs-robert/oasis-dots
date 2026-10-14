@@ -169,6 +169,12 @@ qs_pick() {
   [[ "$("$SCRIPT_DIR/qs-ipc" call screenshot pick "$1" "$2" 2>/dev/null)" == ok ]]
 }
 
+# Scroll capture runs only in the bar's overlay; there is no standalone fallback.
+need_bar() {
+  notify-send "$1 needs the bar" "Quickshell did not answer"
+  exit 1
+}
+
 # Copy the colour of one pixel at "x,y 1x1" as lowercase hex, like hyprpicker -a.
 handle_pixel_at() {
   need grim
@@ -304,6 +310,8 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   echo "  f, --focused          Screenshot focused window"
   echo "  t, --text             OCR text from region"
   echo "  p, --pixel            Pick pixel color"
+  echo "  --scroll-text         Scroll capture, OCR text from it (needs the bar)"
+  echo "  --scroll-image        Scroll capture, as an image (needs the bar)"
   echo "  --record-region       Record region"
   echo "  --record-window       Record window"
   echo "  --record-screen       Record screen"
@@ -395,6 +403,9 @@ p | --pixel)
   wl-copy "$COLOR"
   echo "Picked Color" "$COLOR"
   ;;
+
+--scroll-text) qs_select false scroll_text || need_bar "Scroll text" ;;
+--scroll-image) qs_select false scroll_image || need_bar "Scroll capture" ;;
 
 --record-region) qs_select false record || {
   need slurp

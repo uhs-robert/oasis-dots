@@ -1485,4 +1485,26 @@ rm -f "$firefox_config/integrations.d/firefox.sh"
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" --dry-run "go to inbox mailbox" 2>&1)
 check "without firefox.sh, Apps still focuses the window by its title" "grep -q 'Apps (apps.sh) action=focus' <<<\"\$out\""
 
+section "screenshot menu by voice"
+# Each phrase runs for real and must hand screenshot.sh the flag of the menu row it names.
+screenshot_config=$root/screenshot-config
+mkdir -p "$screenshot_config/integrations.d" "$screenshot_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/screenshot.sh" "$screenshot_config/integrations.d/"
+screenshot_flags=(
+  "screenshot region|--region"
+  "take a frozen screenshot|--freeze"
+  "screenshot the screen|--screen"
+  "screenshot a window|--window"
+  "screenshot this window|--focused"
+  "grab text from a region|--text"
+  "pick a color|--pixel"
+  "scroll text|--scroll-text"
+  "scrolling screenshot|--scroll-image"
+)
+for entry in "${screenshot_flags[@]}"; do
+  : >"$log"
+  VOXCMD_CONFIG_DIR=$screenshot_config "$voxcmd" "${entry%|*}" >/dev/null 2>&1
+  check "'${entry%|*}' runs screenshot.sh ${entry#*|}" "[[ \$(grep -c 'screenshot.sh' '$log') == 1 ]] && grep -Eq 'screenshot.sh ${entry#*|}\$' '$log'"
+done
+
 finish
