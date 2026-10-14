@@ -182,13 +182,19 @@ class PauseGate:
 
 
 def playerctl_playing():
+    # Every player: without --all-players playerctl reports only the first it finds, which may be a paused browser
+    # while another player plays.
     try:
         result = subprocess.run(
-            ["playerctl", "status"], capture_output=True, text=True, timeout=3, stdin=subprocess.DEVNULL
+            ["playerctl", "--all-players", "status"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.TimeoutExpired):
         return False
-    return result.stdout.strip() == "Playing"
+    return "Playing" in (line.strip() for line in result.stdout.splitlines())
 
 
 class Listener:
