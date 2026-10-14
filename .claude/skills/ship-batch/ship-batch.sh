@@ -56,6 +56,15 @@ fi
 other_greetd=$(grep -E '^system/etc/greetd/' <<<"$changed" | grep -Ev "$greeter_paths" | paste -sd' ' || true)
 [[ -z $other_greetd ]] || echo "ship-batch: $other_greetd changed; deploy with: just system-apply"
 
+# Before the reloads below, which may load a script or unit the merge added.
+while IFS= read -r package; do
+  (cd "$repo" && just restow "$package") 9>&- || die "restowing $package failed; run: just restow $package"
+  echo "ship-batch: restowed $package (files added or removed)"
+done < <(packages_to_restow "$repo" "$before" "$after")
+if grep -q '^home/systemd/\.config/systemd/user/' <<<"$changed"; then
+  systemctl --user daemon-reload 9>&- || die "systemctl --user daemon-reload failed"
+  echo "ship-batch: reloaded the user units"
+fi
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/hypr; then
   hyprctl reload 9>&- >/dev/null
   errors=$(hyprctl configerrors 9>&-)
