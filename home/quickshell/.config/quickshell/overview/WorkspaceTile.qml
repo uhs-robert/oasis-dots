@@ -161,12 +161,15 @@ Item {
                     }
                 }
 
+                // Bottom left: the workspace label chip sits at the tile's top left and the mark check at the window's top right.
+                // The text shrinks with the window so a small window or a two-digit number is never cut off at its edges.
                 Rectangle {
-                    visible: root.show_numbers && win.voice_n > 0 && win.height >= 12
+                    readonly property real number_px: Math.max(7, Math.min(root.label_px, win.height * 0.28, (win.width - 10) / (0.75 * number_text.text.length)))
+                    visible: root.show_numbers && win.voice_n > 0 && win.height >= 10 && win.width >= 12
                     anchors.left: parent.left
-                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
                     anchors.margins: 3
-                    width: Math.max(height, number_text.implicitWidth + 8)
+                    width: Math.max(height, number_text.implicitWidth + 6)
                     height: number_text.implicitHeight + 2
                     radius: Style.radius(3)
                     color: Theme.bg_crust
@@ -179,7 +182,7 @@ Item {
                         text: String(win.voice_n)
                         color: Style.text_accent
                         font.family: Style.font_family
-                        font.pixelSize: root.label_px
+                        font.pixelSize: parent.number_px
                         font.bold: true
                     }
                 }
@@ -200,7 +203,7 @@ Item {
                         text: "\u2713" + win.mark
                         color: Theme.bg_crust
                         font.family: Style.font_family
-                        font.pixelSize: root.label_px
+                        font.pixelSize: Math.min(root.label_px, win.height * 0.28)
                         font.bold: true
                     }
                 }

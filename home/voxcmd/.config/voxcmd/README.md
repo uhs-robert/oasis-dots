@@ -524,11 +524,11 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | `show workspaces`, `open overview`, `show the workspace overview`                    | Opens the overview and a voice session on it (numbers appear on every window)              |
 | `show numbers`, `number the windows`                                                 | The same session on an overview you opened by key                                          |
-| `two`, `two and four`, `mark one, three and five`                                    | Marks those windows (idempotent; lists split on "and" and commas, digits or words)          |
+| `two`, `two and four`, `mark one, three and five`                                    | Marks those windows (idempotent; lists split on "and" and commas, digits or words). "workspace number 7" and "work space 7" are heard as "workspace 7"          |
 | `unmark three`, `clear`, `unmark all`                                                | Unmarks, or clears every mark                                                              |
-| `move two to workspace three`, `move the marked windows to workspace 5`              | Moves them (the marked ones when no number is said)                                        |
-| `move two and four to the left monitor`, `move four to monitor two`                  | Sends them to that monitor's visible workspace                                             |
-| `close two`, `close the marked windows`                                              | Asks "Close 2 windows?" on the [confirm card](#confirm), then closes                       |
+| `move two to workspace three`, `move to workspace 7`, `move them to workspace 7`     | Moves them; with no number said (`them`, `these`, `it`, `the marked/selected windows`, or nothing) the marked ones, or the selected window when none is marked, as `m` does |
+| `move two and four to the left monitor`, `send them to the right screen`             | Sends them (or the marks or selected window) to that monitor's visible workspace           |
+| `close two`, `close the marked windows`, `close them`, `close the selected`          | Asks "Close 2 windows?" on the [confirm card](#confirm), then closes                       |
 | `focus two`, `go to two`                                                             | Focuses the window and closes the overview                                                 |
 | `go to workspace three`, `workspace three`                                           | Focuses the workspace and closes the overview                                              |
 | `move workspace three to the right monitor`                                          | Sends the workspace to that monitor                                                        |
