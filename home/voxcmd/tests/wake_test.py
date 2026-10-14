@@ -28,6 +28,12 @@ spec = importlib.util.spec_from_loader("voxcmd_wake", loader)
 wake = importlib.util.module_from_spec(spec)
 loader.exec_module(wake)
 
+# No test may send a real notification: every notifier records into this list instead. A test that wants the
+# notices passes its own notify (fetch_models) or reads this.
+sent_notifications = []
+for notifier in ("notify_info", "notify_error"):
+    setattr(wake, notifier, lambda summary, body, kind=notifier: sent_notifications.append((kind, summary, body)))
+
 FRAME_SECS = 0.08
 THRESHOLD = 0.8
 
@@ -1015,11 +1021,10 @@ class FetchModelsTest(unittest.TestCase):
         saved = os.environ.get("VOXCMD_WAKE_MODEL_DIR")
         os.environ["VOXCMD_WAKE_MODEL_DIR"] = self.target_dir
         self.addCleanup(lambda: os.environ.pop("VOXCMD_WAKE_MODEL_DIR") if saved is None else os.environ.__setitem__("VOXCMD_WAKE_MODEL_DIR", saved))
-        original_notify = wake.notify_error
-        wake.notify_error = lambda summary, body: None
-        self.addCleanup(setattr, wake, "notify_error", original_notify)
+        del sent_notifications[:]
         self.assertEqual(wake.main(["--fetch-models"]), wake.EXIT_ERROR)
         self.assertEqual(os.listdir(self.target_dir), [])
+        self.assertEqual([kind for kind, _, _ in sent_notifications], ["notify_info", "notify_error"])
 
 
 class ModelTest(unittest.TestCase):

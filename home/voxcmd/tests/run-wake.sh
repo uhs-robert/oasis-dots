@@ -10,9 +10,10 @@ tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 . "$tests_dir/../../../lib/check-lock.sh"
 check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 if [ -z "${SANDBOX_DIR:-}" ]; then
-  python3 -I "$tests_dir/wake_test.py"
   exec "$tests_dir/sandbox.sh" "$0" "$@"
 fi
+# In the sandbox, so a notify-send the tests miss reaches its stub, never the desktop.
+python3 -I "$tests_dir/wake_test.py"
 
 # A systemctl that keeps the unit's state in a file: start sets it, stop clears it.
 systemctl_dir="$SANDBOX_DIR/wake-bin"
