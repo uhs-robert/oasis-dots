@@ -544,6 +544,8 @@ The wake word (default `jarvis`; `VOXCMD_WAKE_WORD`, plus other spellings Whispe
 - **Outside a session** the word is only stripped, with a leading "hey" ([the wake listener](#hey-jarvis-wake-listener)'s phrase): "jarvis open firefox" and "hey jarvis open firefox" are "open firefox".
 - Matching is on the transcript normalized as for any phrase: case and punctuation do not matter ("Jarvis, stop typing.").
 
+`voxtype-daemon` runs voxtype with `-q` (errors only), so transcripts stay out of `journalctl --user -u voxtype`; set `VOXCMD_LOG_TRANSCRIPTS=1` in the user manager's environment and restart the daemon to log every transcript at INFO again. Transcripts logged before this change stay in the journal until it rotates.
+
 ### Hey jarvis wake listener
 
 Saying "hey jarvis" starts a voice command, with no key: the same as `SUPER + COMMA`. It is off by default, because it keeps the microphone open while it listens. "Hey" is part of the phrase because the detector's pretrained model is trained on it; a bare "jarvis" stays the [control word](#wake-word) inside a session and is not heard by the detector.

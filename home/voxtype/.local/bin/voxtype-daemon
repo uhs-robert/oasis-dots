@@ -14,4 +14,9 @@ if ((${#prompt_files[@]})); then
   # awk 1 ends every file with a newline, so a file without one cannot glue its last word to the next file's first.
   local_vocabulary+=" $(awk 1 "${prompt_files[@]}" | tr -s '[:space:]' ' ')"
 fi
-exec voxtype --initial-prompt "$base_prompt ${local_vocabulary% }" daemon "$@"
+# voxtype logs every transcript at INFO, and the journal keeps it, so -q (errors only) is the default.
+log_flags=(-q)
+if [[ "${VOXCMD_LOG_TRANSCRIPTS:-}" == 1 ]]; then
+  log_flags=()
+fi
+exec voxtype --initial-prompt "$base_prompt ${local_vocabulary% }" "${log_flags[@]}" daemon "$@"
