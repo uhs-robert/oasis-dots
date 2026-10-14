@@ -51,11 +51,32 @@ g -C "$repo" commit -q --allow-empty -m unrelated
 check "a commit main does not descend from is refused" "! base_is_ancestor '$repo' '$first' other"
 check "a missing commit is refused" "! base_is_ancestor '$repo' 0000000000000000000000000000000000000001 main"
 
-echo "== one batch at a time"
-check "the first run takes the lock" "take_lock '$repo'"
-check "a second run is refused" "! (take_lock '$repo')"
-exec 9>&-
-check "the lock is free once the first run exits" "(take_lock '$repo')"
+echo "== the check owed after the lock"
+check "nothing is owed at first" "[[ -z \$(owed_check '$repo') ]]"
+owe_check "$repo" "$first"
+owe_check "$repo" "$(git -C "$repo" rev-parse main)"
+check "the oldest debt is kept" "[[ \$(owed_check '$repo') == '$first' ]]"
+settle_check "$repo"
+check "settling clears it" "[[ -z \$(owed_check '$repo') ]]"
+
+echo "== one batch at a time on the main checkout"
+lock_file=$(dirname "$file")/ship-batch.lock
+check "the first run takes the lock" "take_lock '$repo' '7 8'"
+check "a second run gives up after the bounded wait" "! (SHIP_BATCH_LOCK_WAIT=1 take_lock '$repo' 9 2>'$root/err')"
+check "naming the holder" "grep -q 'pid $$, since .*, merging 7 8' '$root/err'"
+release_lock
+check "release frees it at once" "(SHIP_BATCH_LOCK_WAIT=1 take_lock '$repo' 9)"
+(
+  take_lock "$repo" 5
+  sleep 2
+) &
+holder=$!
+for _ in $(seq 100); do
+  grep -qs 'merging 5' "$lock_file" && break
+  sleep 0.1
+done
+check "a second run waits for the first to finish" "(SHIP_BATCH_LOCK_WAIT=60 take_lock '$repo' 6 2>'$root/err') && grep -q 'merging 5' '$root/err'"
+wait "$holder"
 
 echo "== packages a merge left out of date"
 stow_repo=$root/stow-repo
@@ -141,6 +162,102 @@ check "an unknown ref fails without leaving a worktree" "! add_temp_worktree '$w
   exit 1
 )
 check "the EXIT trap removes it on a failing exit" "[[ ! -e \$(<'$root/exit-path') ]]"
+
+echo "== a whole batch: reviews and branch checks before the lock, the check of main after it"
+# Stubs log each step with whether the ship lock was held at that moment: merge-prs (the gate under --check, the merge
+# otherwise), lib/check.sh in each worktree, and just check on main.
+e2e=$root/e2e
+stubs=$e2e/stubs
+fake_home=$e2e/home
+mkdir -p "$stubs" "$fake_home/.claude/skills/merge-prs"
+export SHIP_LOG=$e2e/log
+# shellcheck disable=SC2016 # expanded by the stubs
+lock_state='$(if flock -n "$SHIP_LOCK" true; then echo free; else echo held; fi)'
+cat >"$fake_home/.claude/skills/merge-prs/merge-prs.sh" <<STUB
+#!/usr/bin/env bash
+if [[ \$1 == --check ]]; then
+  echo "gate \$* $lock_state" >>"\$SHIP_LOG"
+  [[ " \${STUB_GATE_FAIL:-} " != *" \${*: -1} "* ]]
+  exit
+fi
+echo "merge \$* $lock_state" >>"\$SHIP_LOG"
+for pr; do git push -q origin "b\$pr:main" 2>/dev/null || exit 1; done
+STUB
+printf '#!/bin/sh\n' >"$fake_home/.claude/skills/merge-prs/status.sh"
+# shellcheck disable=SC2016 # expanded by the stub
+printf '#!/bin/sh\necho "b$3"\n' >"$stubs/gh"
+cat >"$stubs/just" <<STUB
+#!/usr/bin/env bash
+echo "just \$* $lock_state" >>"\$SHIP_LOG"
+exit \${STUB_JUST_STATUS:-0}
+STUB
+chmod +x "$stubs"/* "$fake_home"/.claude/skills/merge-prs/*
+
+# A main checkout on main with two stacked PR branches, b1 and b2, each in a worktree of its own.
+e2e_setup() {
+  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG"
+  git init -q --bare -b main "$e2e/origin.git"
+  git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
+  mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
+  cp "$here/../../../../lib/check-passed.sh" "$e2e/main/lib/"
+  cp "$here/../ship-batch.sh" "$here/../base.sh" "$e2e/main/.claude/skills/ship-batch/"
+  cat >"$e2e/main/lib/check.sh" <<STUB
+#!/usr/bin/env bash
+echo "check \$(basename "\$PWD") \$* $lock_state" >>"\$SHIP_LOG"
+STUB
+  chmod +x "$e2e/main/lib/check.sh"
+  g -C "$e2e/main" add -A
+  g -C "$e2e/main" commit -q -m base
+  git -C "$e2e/main" push -q origin main 2>/dev/null
+  e2e_base=$(git -C "$e2e/main" rev-parse HEAD)
+  export SHIP_LOCK=$e2e/main/.git/ship-batch.lock
+  git -C "$e2e/main" worktree add -q -b b1 "$e2e/wt-1"
+  echo 1 >"$e2e/wt-1/one"
+  g -C "$e2e/wt-1" add -A
+  g -C "$e2e/wt-1" commit -q -m one
+  git -C "$e2e/main" worktree add -q -b b2 "$e2e/wt-2" b1
+  echo 2 >"$e2e/wt-2/two"
+  g -C "$e2e/wt-2" add -A
+  g -C "$e2e/wt-2" commit -q -m two
+}
+ship() { HOME=$fake_home PATH="$stubs:$PATH" bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" "$@" >"$e2e/out" 2>&1; }
+logged() { grep -qxF -- "$1" "$SHIP_LOG"; }
+line_of() { grep -nxF -- "$1" "$SHIP_LOG" | cut -d: -f1; }
+
+e2e_setup
+ship 1 2
+check "the batch succeeds" "[[ $? == 0 ]] || { cat '$e2e/out'; false; }"
+check "each review is waited for outside the lock" "logged 'gate --check --wait-review --request-review 1 free' && logged 'gate --check --wait-review --request-review 2 free'"
+check "each branch is checked outside the lock" "logged 'check wt-1 --changed $e2e_base free' && logged 'check wt-2 --changed $e2e_base free'"
+check "the merge runs under the lock, without waiting for reviews" "logged 'merge 1 2 held'"
+check "after every review and branch check" "((\$(line_of 'check wt-2 --changed $e2e_base free') < \$(line_of 'merge 1 2 held')))"
+check "main is checked after the lock is released" "logged 'just check free'"
+check "main is pulled" "[[ \$(git -C '$e2e/main' rev-parse HEAD) == \$(git -C '$e2e/main' rev-parse b2) ]]"
+check "nothing is left owed" "[[ -z \$(owed_check '$e2e/main') && ! -e \$(base_file '$e2e/main') ]]"
+check "the lock is free" "flock -n '$SHIP_LOCK' true"
+
+e2e_setup
+STUB_GATE_FAIL=2 ship 1 2
+check "a PR failing its gate fails the run" "[[ $? != 0 ]]"
+check "the PRs before it still merge" "logged 'merge 1 held' && [[ \$(git -C '$e2e/main' rev-parse HEAD) == \$(git -C '$e2e/main' rev-parse b1) ]]"
+check "it and the ones after it are named for a rerun" "grep -q 'PR 2 does not pass the review gate; rerun ship-batch' '$e2e/out'"
+check "a branch after it is not checked" "! logged 'check wt-2 --changed $e2e_base free'"
+
+e2e_setup
+STUB_GATE_FAIL=1 ship 1 2
+check "a first PR failing its gate merges nothing" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && [[ ! -e \$(base_file '$e2e/main') ]]"
+
+e2e_setup
+STUB_JUST_STATUS=1 ship 1 2
+check "a failing check of main fails the run" "[[ $? != 0 ]] && grep -q 'the check fails on main' '$e2e/out'"
+check "and leaves the check owed from the old main" "[[ \$(owed_check '$e2e/main') == '$e2e_base' ]]"
+: >"$SHIP_LOG"
+ship
+check "a rerun with no PRs checks main again" "[[ $? == 0 ]] && logged 'just check free'"
+check "and clears the debt" "[[ -z \$(owed_check '$e2e/main') ]]"
+: >"$SHIP_LOG"
+ship
+check "a run with nothing new and nothing owed checks nothing" "[[ $? == 0 ]] && ! grep -q check '$SHIP_LOG'"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))

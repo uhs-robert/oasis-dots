@@ -6,13 +6,28 @@ base_file() {
   echo "$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)/ship-batch-base"
 }
 
-# One batch at a time per repository: a second run would resume from the first one's base and the first would delete it.
-# The lock lives on fd 9 until the process exits, so it also covers merge-prs and the checks it spawns.
+# One batch at a time per repository works on the main checkout: the merge, the pull and the reloads after them. A
+# second run waits for the first, up to SHIP_BATCH_LOCK_WAIT seconds (default 900), naming it. The lock lives on fd 9
+# until release_lock or exit, so it also covers merge-prs and the reloads it spawns.
 take_lock() {
-  local lock
-  lock="$(dirname "$(base_file "$1")")/ship-batch.lock"
-  exec 9>"$lock"
-  flock -n 9
+  local repo=$1 merging=$2 lock holder wait_s=${SHIP_BATCH_LOCK_WAIT:-900}
+  lock="$(dirname "$(base_file "$repo")")/ship-batch.lock"
+  # Opened read-write, since truncating it would wipe the note naming the holder.
+  exec 9<>"$lock"
+  if ! flock -n 9; then
+    holder=$(<"$lock")
+    echo "ship-batch: another ship-batch holds the main checkout (${holder:-unknown}); waiting up to ${wait_s}s" >&2
+    flock -w "$wait_s" 9 || {
+      echo "ship-batch: still held after ${wait_s}s by: $(<"$lock")" >&2
+      return 1
+    }
+  fi
+  printf 'pid %s, since %s, merging %s\n' "$$" "$(date +%H:%M:%S)" "${merging:-no PRs}" >"$lock"
+}
+
+release_lock() {
+  flock -u 9 2>/dev/null
+  exec 9>&-
 }
 
 # Prints the commit to check from. A base left by an unfinished run wins over HEAD, since that run may already
@@ -37,6 +52,30 @@ base_is_ancestor() {
 
 finish_base() {
   rm -f "$(base_file "$1")"
+}
+
+# The check of main runs after the lock is released, so what it still owes is kept apart from the base above: the
+# commit main was at before the oldest merge not yet checked. Written under the lock; an older debt is kept, since
+# checking from it covers the newer merges too.
+check_base_file() {
+  echo "$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)/ship-batch-check-base"
+}
+
+owe_check() {
+  local file
+  file=$(check_base_file "$1")
+  [[ -s $file ]] || echo "$2" >"$file"
+}
+
+# Prints the owed base, or nothing when no check is owed.
+owed_check() {
+  local file
+  file=$(check_base_file "$1")
+  [[ ! -s $file ]] || cat "$file"
+}
+
+settle_check() {
+  rm -f "$(check_base_file "$1")"
 }
 
 # Prints the stow packages under home/ that gained, lost or renamed a file between two commits and are installed here.
