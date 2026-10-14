@@ -29,6 +29,11 @@
 #   keeptabs-pick --json              SANDBOX_AGENTS_JSON
 #   systemctl list-timers|list-units  SANDBOX_TIMERS_JSON
 #   tmux list-sessions|has-session    SANDBOX_TMUX_SESSIONS (one name per line)
+#   qs-ipc call overview open|close|state|act
+#                                     the workspace overview. state prints what $SANDBOX_DIR/overview-state holds
+#                                     ("closed" when absent), which open sets to "open" and close to "closed"; act
+#                                     answers SANDBOX_OVERVIEW_ACT ("ok" by default). Its snapshot is the test's own
+#                                     $XDG_RUNTIME_DIR/voxcmd/overview.json.
 #   qs-ipc call clickhints open|dismiss|state
 #                                     the bar's numbered overlay. open logs a "clickhints-open" line holding the
 #                                     pending-pick.json it finds and the spec file's JSON, then answers through the
@@ -266,6 +271,16 @@ qs-ipc)
     fi
     cat "$SANDBOX_DIR/clickhints-state" 2>/dev/null || echo closed ;;
   *"call popup state"*) cat "$SANDBOX_DIR/popup-state" 2>/dev/null || echo closed ;;
+  *"call overview open"*)
+    echo open >"$SANDBOX_DIR/overview-state"
+    echo ok
+    ;;
+  *"call overview close"*)
+    echo closed >"$SANDBOX_DIR/overview-state"
+    echo ok
+    ;;
+  *"call overview state"*) cat "$SANDBOX_DIR/overview-state" 2>/dev/null || echo closed ;;
+  *"call overview act"*) echo "${SANDBOX_OVERVIEW_ACT:-ok}" ;;
   *"confirm ask"* | *"sound play"*) echo ok ;;
   esac
   ;;

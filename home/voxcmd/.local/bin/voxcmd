@@ -234,7 +234,7 @@ compile_pattern() {
 # Callers source each integration in its own subshell so their variables and functions never collide.
 # A `declare` in a file sourced from a function is local to that function, so the arrays are copied out to globals.
 load_integration() {
-  unset -f candidates help_choices pick_box session_rewrite session_ended session_handle_turn session_control
+  unset -f candidates help_choices pick_box session_rewrite session_ended session_handle_turn session_control surface_open session_alive
   name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1 pick_command="" private_labels=0
   # The mode settings load_mode_settings reads back, which shellcheck cannot see through ${!value}.
   # shellcheck disable=SC2034
@@ -324,6 +324,22 @@ forcing_integration() {
       exit 1
     ) && return 0
   done < <(integration_files)
+  return 1
+}
+
+# Prints the file of the first integration whose surface_open succeeds: a bar surface (the workspace overview) that is up
+# and takes phrases before any other integration, so "close two" never reaches Apps. Only files that define one are loaded.
+open_surface_file() {
+  local file
+  while IFS= read -r file; do
+    if (
+      load_integration "$file"
+      surface_open
+    ); then
+      printf '%s\n' "$file"
+      return 0
+    fi
+  done < <(grep -l '^surface_open()' "$config_dir"/integrations.d/*.sh 2>/dev/null || true)
   return 1
 }
 
@@ -761,7 +777,10 @@ route_step() {
   if forcing=$(forcing_integration "$text"); then
     forced_file="${forcing%%$'\t'*}"
     options=$(resolve_matches "$(match_forced_verbs "${forcing#*$'\t'}" "$forced_file")")
+  elif forced_file=$(open_surface_file) && options=$(resolve_matches "$(match_forced_verbs "$text" "$forced_file")") && [ "$(jq length <<<"$options")" != 0 ]; then
+    : # the bar surface that is open took the phrase
   else
+    forced_file=""
     options=$(resolve_matches "$(match_verbs "$text" normal)")
     [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")
     [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(match_verbs "$text" fallback)")
@@ -1796,11 +1815,29 @@ session_mode_limit_reason() {
   fi
 }
 
+# Whether the mode on top is still wanted: its integration's session_alive, when it has one, says its screen is still up.
+session_mode_alive() {
+  (
+    load_integration "$1"
+    ! declare -F session_alive >/dev/null || session_alive
+  )
+}
+
+# Leaves the modes whose screen is gone (the overview closed by key), so a mode never outlives what it drives.
+session_drop_dead_modes_locked() {
+  local state
+  while state=$(session_state_locked) && ! session_mode_alive "$(jq -r .integration <<<"$state")"; do
+    session_leave_locked "$(jq -r .kind <<<"$state")" "its screen closed" || return 0
+  done
+}
+
 # Opens the microphone for the next turn, unless the session ended or another listen took it over. Holding the lock
 # while it starts, a failed start cannot be a listen of ours, so voxtype is busy with something else.
 session_listen() { session_locked session_listen_locked; }
 session_listen_locked() {
   local state
+  state=$(session_state_locked) || return 0
+  session_drop_dead_modes_locked
   state=$(session_state_locked) || return 0
   if ! session_is_mine "$state"; then
     debug "session: another listen took over"
@@ -2030,6 +2067,14 @@ session_turn() {
   file=$(jq -r .integration <<<"$state")
   kind=$(jq -r .kind <<<"$state")
   load_mode_settings "$file"
+  if ! session_mode_alive "$file"; then
+    # What was said was heard for a mode whose screen has closed: it goes where it would without the mode.
+    debug "session: $kind's screen is gone"
+    session_leave "$kind" "its screen closed" || true
+    route "$transcript" || true
+    session_continue unheard
+    return
+  fi
   if [ -n "$heard_mode" ] && [ "$heard_mode" != "$(session_mode_token "$state")" ]; then
     debug "session: heard in $heard_mode but the session is in $(session_mode_token "$state"), not routed"
     notify info "voxcmd" "The mode changed, say it again"

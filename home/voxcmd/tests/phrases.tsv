@@ -223,3 +223,10 @@ set a timer for 5 minutes and then list my timers	Timers/timer > Timers/list	a t
 open firefox and then what can i say and then list my timers	Apps/open > none	a Voice Help step is a no match and stops the rest
 open firefox and then jarvis and then list my timers	Apps/open > none	the wake word alone is a no match and stops the rest
 open firefox and then bogus words and then list my timers	Apps/open > none	a step that matches nothing stops the rest
+show workspaces	Overview/overview_open
+open overview	Overview/overview_open
+bring up the workspace overview	Overview/overview_open
+show the overview	Overview/overview_open
+close overview	Overview/overview_close
+two and four	none	the overview is closed in the sandbox: its phrases reach nothing
+close two	none	the overview is closed: Apps finds no window named two
