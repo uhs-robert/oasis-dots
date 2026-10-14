@@ -411,7 +411,7 @@ class StubbedCommandsTest(unittest.TestCase):
         with open(self.pcm, "wb") as pcm:
             pcm.write(b"\x01\x00" * wake.FRAME_SAMPLES * 6 + b"\x01")
         write_stub(os.path.join(self.bin, "pw-record"), f'echo "pw-record $*" >>"{self.calls}"\n/bin/cat "{self.pcm}"\n')
-        write_stub(os.path.join(self.bin, "playerctl"), f'echo "playerctl $*" >>"{self.calls}"\necho "$PLAYERCTL_ANSWER"\n')
+        write_stub(os.path.join(self.bin, "playerctl"), f'echo "playerctl $*" >>"{self.calls}"\nprintf "%b\\n" "$PLAYERCTL_ANSWER"\n')
         write_stub(os.path.join(self.bin, "voxcmd"), f'echo "voxcmd $*" >>"{self.calls}"\n')
         saved = {k: os.environ.get(k) for k in ("PATH", "VOXCMD_WAKE_VOXCMD", "PLAYERCTL_ANSWER", "XDG_RUNTIME_DIR")}
         self.addCleanup(lambda: [os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v) for k, v in saved.items()])
@@ -454,6 +454,12 @@ class StubbedCommandsTest(unittest.TestCase):
         os.environ["PLAYERCTL_ANSWER"] = "Playing"
         self.run_listener([], 3)
         self.assertFalse([call for call in self.recorded() if call.startswith("pw-record")])
+
+    def test_any_playing_player_pauses_even_after_a_paused_one(self):
+        os.environ["PLAYERCTL_ANSWER"] = "Paused\nPlaying"
+        self.run_listener([], 3)
+        self.assertFalse([call for call in self.recorded() if call.startswith("pw-record")])
+        self.assertIn("playerctl --all-players status", self.recorded())
 
 
 class FetchModelsTest(unittest.TestCase):
