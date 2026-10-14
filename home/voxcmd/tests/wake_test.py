@@ -174,7 +174,7 @@ class SettingsTest(unittest.TestCase):
 
     def test_a_missing_file_and_absent_key_are_strict(self):
         self.assertEqual(self.settings_with_file(None).threshold, 0.8)
-        self.assertEqual(self.settings_with_file("VOXCMD_TYPE_CHUNK_PAUSE_SECS=2\n").frames, 3)
+        self.assertEqual(self.settings_with_file("VOXCMD_DUCK_MEDIA_VOLUME=20\n").frames, 3)
 
     def test_a_bad_saved_level_is_strict(self):
         for content in ("VOXCMD_WAKE_SENSITIVITY=loud\n", "VOXCMD_WAKE_SENSITIVITY=3\n", "VOXCMD_WAKE_SENSITIVITY=Strict\n", "VOXCMD_WAKE_SENSITIVITY=\n"):

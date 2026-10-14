@@ -105,13 +105,6 @@ RowsSection {
             text: v => v === 0 ? "Silent" : v + "%",
             value: () => VoiceSettings.duck,
             set: v => VoiceSettings.set("duck", v)
-        }, {
-            label: "Type mode pause",
-            desc: "How long a pause ends a chunk of dictation, which is then typed. Applies to the next type-mode session.",
-            values: () => Choices.with_current(VoiceSettings.chunk_pause_steps, VoiceSettings.chunk_pause),
-            text: v => v + " s",
-            value: () => VoiceSettings.chunk_pause,
-            set: v => VoiceSettings.set("chunk", v)
         }]
 
     // Settings keeps a loaded section across closes, so the units are asked again on every open.
