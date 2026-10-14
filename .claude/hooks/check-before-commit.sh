@@ -3,6 +3,8 @@
 # fails at the commit, not at the PR. The voxcmd suites are left to the PR and the merge, and CHECK_NO_LOCK keeps any
 # heavy step from waiting for a slot: this check is cheap and must never wait behind a long one.
 set -u
+# shellcheck source=command-dir.sh
+source "$(dirname "${BASH_SOURCE[0]}")/command-dir.sh"
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
 commit_re='(^|[;&|(]|[[:space:]])git[[:space:]]+((-[^;&|]*[[:space:]])?)commit([[:space:]]|$)'
@@ -13,8 +15,7 @@ after_commit=${cmd#*"${BASH_REMATCH[0]}"}
 dir=$(jq -r '.cwd // empty' <<<"$input")
 cd "${dir:-${CLAUDE_PROJECT_DIR:-$PWD}}" || exit 0
 # A leading `cd <dir> &&` and `git -C <dir>` move where the commit happens.
-cd_re='^[[:space:]]*cd[[:space:]]+([^;&|[:space:]]+)[[:space:]]*(&&|;)'
-if [[ $cmd =~ $cd_re ]]; then cd "$(tr -d "\"'" <<<"${BASH_REMATCH[1]}")" 2>/dev/null || exit 0; fi
+enter_leading_cd "$cmd" || exit 0
 dir_re='-C[[:space:]]+("[^"]+"|'"'"'[^'"'"']+'"'"'|[^[:space:]]+)'
 if [[ $git_options =~ $dir_re ]]; then cd "$(tr -d "\"'" <<<"${BASH_REMATCH[1]}")" 2>/dev/null || exit 0; fi
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0

@@ -4,11 +4,17 @@
 # check here would hold the agent for as long as the check takes, so a missing pass is denied at once with the command
 # to run in the background.
 set -u
+# shellcheck source=command-dir.sh
+source "$(dirname "${BASH_SOURCE[0]}")/command-dir.sh"
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
 [[ $cmd =~ gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$) ]] || exit 0
 dir=$(jq -r '.cwd // empty' <<<"$input")
 cd "${dir:-${CLAUDE_PROJECT_DIR:-$PWD}}" || exit 0
+# The PR is opened from where the command runs, which an agent in another worktree reaches with a leading `cd`.
+enter_leading_cd "$cmd" || exit 0
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$root" || exit 0
 [[ -x lib/check-passed.sh ]] || exit 0
 base=$(git merge-base HEAD origin/main 2>/dev/null) || exit 0
 
