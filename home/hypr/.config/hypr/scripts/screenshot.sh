@@ -342,14 +342,19 @@ case "$1" in
   ;;
 esac
 
-# Stop recorder if already running
-if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
-  kill -SIGINT "$REC_PID"
-  exit 0
-fi
-
 # Choose action
 CHOICE="$1"
+
+# Opening the menu or starting a recording while one runs stops it; the capture flags take their shot beside it, as the
+# bar's menu rows do.
+case "$CHOICE" in
+"" | --record-*)
+  if REC_PID=$(pidof "$RECORDER" 2>/dev/null); then
+    kill -SIGINT "$REC_PID"
+    exit 0
+  fi
+  ;;
+esac
 if [[ -z "$CHOICE" ]] && [[ "$("$SCRIPT_DIR/qs-ipc" call screenshot open 2>/dev/null)" == ok ]]; then
   exit 0
 fi
