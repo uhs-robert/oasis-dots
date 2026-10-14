@@ -9,7 +9,7 @@ The audio stays in memory. The only log is scores and timestamps, in voxcmd's de
   voxcmd-wake --fetch-models download the models on first use (the unit's ExecStartPre)
   voxcmd-wake --check        exit 0 when the packages and models are in place, else 1 and say what is missing
 
-Settings (environment, voxcmd README "Wake word"):
+Settings (environment, else the file Settings > Voice writes; voxcmd README "Wake word"):
   VOXCMD_WAKE_THRESHOLD       score a frame needs to count (0.8)
   VOXCMD_WAKE_FRAMES          consecutive 80 ms frames at or above it before a trigger is pending (3)
   VOXCMD_WAKE_COOLDOWN_SECS   quiet time after a trigger (3)
@@ -17,6 +17,7 @@ Settings (environment, voxcmd README "Wake word"):
 """
 
 import os
+import re
 
 # Set before onnxruntime loads: one thread is plenty for an 80 ms frame and keeps the idle cost low.
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -91,15 +92,51 @@ def default_model_dir():
     return os.path.join(data_home, "voxcmd", "wake-models")
 
 
+# Settings > Voice's file, outside the stow-folded ~/.config/voxcmd. Read as data: only KEY=NUMBER lines count.
+VOICE_ENV_LINE = re.compile(r"^(VOXCMD_[A-Z_]+)=([0-9]+(?:\.[0-9]+)?)$")
+
+
+def voice_env_path(env):
+    """The voice.env path; reads HOME from env, not the process, so a test's empty env never finds a real file."""
+    override = env.get("VOXCMD_VOICE_ENV_FILE")
+    if override:
+        return override
+    state_home = env.get("XDG_STATE_HOME") or os.path.join(env.get("HOME") or "/nonexistent", ".local", "state")
+    return os.path.join(state_home, "voxcmd", "voice.env")
+
+
+def read_voice_env(env):
+    """KEY -> value text for the valid lines of voice.env; a missing or unreadable file is empty. The last line wins."""
+    try:
+        with open(voice_env_path(env), encoding="utf-8", errors="replace") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return {}
+    return {m.group(1): m.group(2) for m in map(VOICE_ENV_LINE.match, lines) if m}
+
+
 class Settings:
     def __init__(self, environ=None):
         env = os.environ if environ is None else environ
-        self.threshold = float(env.get("VOXCMD_WAKE_THRESHOLD") or DEFAULT_THRESHOLD)
-        self.frames = int(env.get("VOXCMD_WAKE_FRAMES") or DEFAULT_FRAMES)
+        saved = read_voice_env(env)
+        # An environment value that is bad refuses to start, as it always has. The file's must not: a unit that
+        # exits on it would crash-loop, so a bad file value falls back to the default.
+        saved_threshold = self.saved_or_default(saved, "VOXCMD_WAKE_THRESHOLD", float, DEFAULT_THRESHOLD, lambda v: 0 < v <= 1)
+        saved_frames = self.saved_or_default(saved, "VOXCMD_WAKE_FRAMES", int, DEFAULT_FRAMES, lambda v: v >= 1)
+        self.threshold = float(env.get("VOXCMD_WAKE_THRESHOLD") or saved_threshold)
+        self.frames = int(env.get("VOXCMD_WAKE_FRAMES") or saved_frames)
         self.cooldown_secs = float(env.get("VOXCMD_WAKE_COOLDOWN_SECS") or DEFAULT_COOLDOWN_SECS)
         self.model_dir = env.get("VOXCMD_WAKE_MODEL_DIR") or default_model_dir()
         if not 0 < self.threshold <= 1 or self.frames < 1 or self.cooldown_secs < 0:
             raise ValueError("VOXCMD_WAKE_THRESHOLD must be in (0, 1], _FRAMES at least 1, _COOLDOWN_SECS not negative")
+
+    @staticmethod
+    def saved_or_default(saved, key, parse, default, acceptable):
+        try:
+            value = parse(saved[key])
+        except (KeyError, ValueError):
+            return default
+        return value if acceptable(value) else default
 
 
 class TriggerDecider:
