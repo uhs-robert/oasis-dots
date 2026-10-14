@@ -172,7 +172,8 @@ check "an error in voxcmd itself is a failure, not a verdict" "2" "$(
   echo "$code"
 )"
 reset_calls
-no_prompt_path=$(printf '%s' "$PATH" | tr ':' '\n' | grep -v -x -F "$voxtype_package_bin" | paste -sd:)
+# Every directory holding one, not just the package's: a stowed voxtype puts it in ~/.local/bin too.
+no_prompt_path=$(printf '%s' "$PATH" | tr ':' '\n' | while IFS= read -r dir; do [ -x "$dir/voxtype-prompt" ] || printf '%s\n' "$dir"; done | paste -sd:)
 check "without voxtype-prompt it still transcribes, without a prompt" "wake" "$(PATH="$transcribe_dir:$no_prompt_path" FAKE_TRANSCRIPT=Cortana voxcmd _wake-confirm /dev/stdin <"$wav")"
 check "and passes none" 1 "$(calls | grep -c '^voxtype prompt: $')"
 debug_log="$XDG_RUNTIME_DIR/voxcmd/debug.log"
