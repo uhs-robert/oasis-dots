@@ -1,2 +1,4 @@
 # Commits the settings without the update-check state nless rewrites on every run (filter in home/git/.config/git/config).
 home/nless/.config/nless/config.json filter=nless-update-state
+# Commits the plugin list without the commit pins ya pkg writes, so installs get the latest plugins.
+home/yazi/.config/yazi/package.toml filter=yazi-plugin-pins

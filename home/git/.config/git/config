@@ -52,3 +52,7 @@
 	# nless rewrites its config with its update-check state on every run; commit the settings without it.
 	clean = jq --indent 4 'del(.last_update_check, .latest_pypi_version)'
 	smudge = cat
+[filter "yazi-plugin-pins"]
+	# ya pkg pins each plugin to a commit; commit only the plugin list, so every install takes the latest.
+	clean = sed -E '/^(rev|hash) = /d'
+	smudge = cat
