@@ -6,6 +6,8 @@ set -u
 #   lib/check-passed.sh record           files HEAD's tree as passed (refuses a dirty tree)
 #   lib/check-passed.sh is-passed [rev]  exit 0 when the tree of rev passed; without rev it is HEAD's, and nothing
 #                                        tracked may be modified
+#   lib/check-passed.sh passed-somewhere [rev]  exit 0 when the tree of rev passed in any checkout, with or without
+#                                        repos/; only the symlinks into repos/ are then unverified for this one
 #
 # The caller vouches for what it records: a full `check.sh`, or a scoped `check.sh --changed <base>` on top of a
 # recorded base (ship-batch). A bare scoped pass is never recorded.
@@ -33,6 +35,10 @@ is-passed)
   grep -qxF "$tree with-repos" "$passed_file" 2>/dev/null && exit 0
   [ "$coverage" = no-repos ] && grep -qxF "$tree no-repos" "$passed_file" 2>/dev/null
   ;;
+passed-somewhere)
+  tree=$(git rev-parse "${2:-HEAD}^{tree}") || exit 1
+  grep -qxF "$tree with-repos" "$passed_file" 2>/dev/null || grep -qxF "$tree no-repos" "$passed_file" 2>/dev/null
+  ;;
 record)
   clean || {
     echo 'check-passed: uncommitted tracked changes, so the pass is not HEAD'"'"'s tree' >&2
@@ -46,7 +52,7 @@ record)
     mv "$passed_file.tmp$$" "$passed_file"
   ;;
 *)
-  echo 'usage: lib/check-passed.sh record | is-passed [rev]' >&2
+  echo 'usage: lib/check-passed.sh record | is-passed [rev] | passed-somewhere [rev]' >&2
   exit 2
   ;;
 esac

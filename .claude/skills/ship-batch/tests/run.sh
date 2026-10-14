@@ -98,5 +98,49 @@ g -C "$stow_repo" mv "$stow_repo/home/units/.config/units/only" "$stow_repo/home
 g -C "$stow_repo" commit -q -m rename
 check "renaming a package's only linked file restows it, though its link now dangles" "[[ \$(restow '$stow_units' HEAD) == units ]]"
 
+echo "== a branch with no local worktree, and recording its pass"
+origin=$root/origin.git
+work=$root/work
+git init -q --bare -b main "$origin"
+git clone -q "$origin" "$work" 2>/dev/null
+mkdir -p "$work/lib"
+cp "$here/../../../../lib/check-passed.sh" "$work/lib/"
+# shellcheck disable=SC2016 # the stub expands its own variable
+printf '#!/bin/sh\nexit "${STUB_CHECK_STATUS:-0}"\n' >"$work/lib/check.sh"
+chmod +x "$work/lib/check.sh"
+g -C "$work" add -A
+g -C "$work" commit -q -m base
+git -C "$work" push -q origin main 2>/dev/null
+git -C "$work" fetch -q origin
+base_tree=$(git -C "$work" rev-parse 'HEAD^{tree}')
+g -C "$work" switch -q -c pr-branch
+echo change >"$work/file"
+g -C "$work" add -A
+g -C "$work" commit -q -m change
+branch_tree=$(git -C "$work" rev-parse 'HEAD^{tree}')
+# What a forge serves for a PR whose branch was pushed from elsewhere.
+git -C "$work" push -q origin pr-branch:refs/pull/7/head 2>/dev/null
+passed_file=$(git -C "$work" rev-parse --path-format=absolute --git-common-dir)/claude-check-passed-trees
+check "the branch tree has not passed yet" "! (cd '$work' && lib/check-passed.sh passed-somewhere HEAD)"
+check "a pass on an unrecorded base is not recorded" "(cd '$work' && check_branch_here) && ! grep -sq '$branch_tree' '$passed_file'"
+printf '%s no-repos\n' "$base_tree" >"$passed_file"
+check "a pass on a recorded base is recorded" "(cd '$work' && check_branch_here) && grep -qx '$branch_tree no-repos' '$passed_file'"
+check "a no-repos pass does not stand in for a checkout with repos/" "(mkdir -p '$work/repos/x' && cd '$work' && ! lib/check-passed.sh is-passed '$branch_tree' && lib/check-passed.sh passed-somewhere '$branch_tree'); rm -rf '$work/repos'"
+check "a failing check fails the branch" "! (cd '$work' && STUB_CHECK_STATUS=1 check_branch_here)"
+add_temp_worktree "$work" pull/7/head
+check "the temporary worktree is the PR head" "[[ \$(git -C '$temp_worktree' rev-parse HEAD) == \$(git -C '$work' rev-parse pr-branch) ]]"
+tmp_path=$temp_worktree
+remove_temp_worktree
+check "removing it deletes the directory and the registration" "[[ ! -e '$tmp_path' ]] && ! git -C '$work' worktree list | grep -q '$tmp_path'"
+check "a second removal is harmless" "remove_temp_worktree"
+check "an unknown ref fails without leaving a worktree" "! add_temp_worktree '$work' pull/99/head && [[ -z \$temp_worktree ]]"
+(
+  add_temp_worktree "$work" pull/7/head
+  echo "$temp_worktree" >"$root/exit-path"
+  trap remove_temp_worktree EXIT
+  exit 1
+)
+check "the EXIT trap removes it on a failing exit" "[[ ! -e \$(<'$root/exit-path') ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))

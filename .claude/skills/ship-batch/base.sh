@@ -58,3 +58,33 @@ packages_to_restow() {
     )
   done < <(git -C "$repo" diff --name-only --diff-filter=ADR "$before" "$after" -- home/ | awk -F/ 'NF > 2 { print $2 }' | sort -u)
 }
+
+# A PR whose branch has no local worktree (pushed from a cloud session) is checked in a temporary one. The caller traps
+# EXIT, INT and TERM to remove_temp_worktree, so every way out of the script removes it.
+temp_worktree='' temp_repo=''
+add_temp_worktree() {
+  local repo=$1 ref=$2
+  git -C "$repo" fetch -q origin "$ref" || return 1
+  temp_worktree=$(mktemp -d) || return 1
+  git -C "$repo" worktree add -q --detach "$temp_worktree" FETCH_HEAD || return 1
+  temp_repo=$repo
+}
+
+remove_temp_worktree() {
+  [[ -z $temp_worktree ]] || {
+    git -C "$temp_repo" worktree remove --force "$temp_worktree" 2>/dev/null || true
+    rm -rf "$temp_worktree"
+    git -C "$temp_repo" worktree prune
+    temp_worktree=''
+  }
+}
+
+# Checks the branch checked out in the current directory against its merge-base with origin/main. A pass on top of a base
+# recorded as passed is recorded for the branch's tree, so the check of main after the merge can skip a tree that already
+# passed. A bare scoped pass is never recorded: without a passed base it vouches for the changed files only.
+check_branch_here() {
+  local base
+  base=$(git merge-base HEAD origin/main) || return 1
+  lib/check.sh --changed "$base" || return 1
+  if lib/check-passed.sh passed-somewhere "$base"; then lib/check-passed.sh record || true; fi
+}

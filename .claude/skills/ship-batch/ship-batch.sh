@@ -16,16 +16,23 @@ die() {
 # Commands below that can leave a daemon behind run with fd 9 closed so it cannot hold the lock after this run.
 take_lock "$repo" || die "another ship-batch is running in this repository; wait for it to finish"
 before=$(select_base "$repo")
-# Each branch passes its own scoped check right before it merges. A branch with no local worktree was checked when
-# its PR was opened (check-before-pr.sh), so it is only reported.
+# Each branch passes its own scoped check right before it merges, in its local worktree or, for a branch pushed from
+# elsewhere (a cloud session), in a temporary worktree at the PR head that is removed on every exit path.
+trap remove_temp_worktree EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 for pr in "$@"; do
   branch=$(cd "$repo" && gh pr view "$pr" --json headRefName -q .headRefName) || die "cannot read PR $pr"
   worktree=$(git -C "$repo" worktree list --porcelain | awk -v ref="branch refs/heads/$branch" '/^worktree /{w = substr($0, 10)} $0 == ref {print w; exit}')
   if [[ -z $worktree ]]; then
-    echo "ship-batch: no local worktree for $branch (PR $pr); relying on the check run when it was opened"
+    echo "ship-batch: no local worktree for $branch (PR $pr); checking its head in a temporary worktree"
+    add_temp_worktree "$repo" "pull/$pr/head" 9>&- || die "cannot fetch the head of PR $pr into a temporary worktree"
+    (cd "$temp_worktree" && check_branch_here) 9>&- || die "the check fails on $branch (PR $pr); nothing was merged"
+    remove_temp_worktree
     continue
   fi
-  (cd "$worktree" && lib/check.sh --changed "$(git merge-base HEAD origin/main)") 9>&- || die "the check fails on $branch (PR $pr); nothing was merged"
+  (cd "$worktree" && check_branch_here) 9>&- || die "the check fails on $branch (PR $pr); nothing was merged"
 done
 # The owner already said to merge, so a Codex review still running is waited out rather than failing the batch.
 (($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --wait-review "$@") 9>&- || die "merge-prs failed; nothing after the merge ran"
@@ -39,11 +46,20 @@ if ! base_is_ancestor "$repo" "$before" "$after"; then
   echo "ship-batch: ${before:0:12} is not an ancestor of main; running the full check"
   before=$(git -C "$repo" hash-object -t tree /dev/null)
 fi
+# A tree that already passed (a branch checked before the merge, when main had not moved since) needs no second check.
+# Whether a pass made in a branch worktree counts for main depends on repos/: a worktree has none, so
+# lib/check-symlinks.sh skipped the links into it. Such a pass vouches for everything but those links, so main runs only
+# that step; check-passed.sh is-passed accepts the pass outright only when it was made with repos/.
 # Inductive: a full pass of `before` plus a scoped pass over everything changed since
 # vouches for `after`. A `before` not recorded as passed (check-passed.sh also ignores a worktree's no-repos pass,
 # which skipped this checkout's repos/ symlinks) or CHECK_FULL=1 falls back to the full check.
 if [[ $before != "$after" ]]; then
-  if $base_ok && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$before"); then
+  if [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$after"); then
+    echo "ship-batch: main's tree already passed the check; not checking it again"
+  elif [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh passed-somewhere "$after"); then
+    echo "ship-batch: main's tree passed the check in a worktree; checking only the links into repos/"
+    (cd "$repo" && sh lib/check-symlinks.sh) 9>&- || die "the symlinks check fails on main after the merge; fix it before anything else"
+  elif $base_ok && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$before"); then
     (cd "$repo" && lib/check.sh --changed "$before") 9>&- || die "the check fails on main after the merge; fix it before anything else"
   else
     (cd "$repo" && just check) 9>&- || die "just check fails on main after the merge; fix it before anything else"

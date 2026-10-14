@@ -38,6 +38,7 @@ plan_line=''
 plan_lists=''
 ran=''
 skipped=''
+requested=''
 
 start_case() {
   case_name=$1
@@ -45,18 +46,32 @@ start_case() {
   git clean -qfdx
 }
 
-# Runs the plan for the scratch change made so far.
-plan() {
-  local output
-  # CHECK_FULL is cleared because an outer `CHECK_FULL=1 just check` would otherwise make every plan full.
-  output=$(env -u CHECK_FULL "$@" sh lib/check.sh --plan --changed HEAD 2>&1)
-  plan_line=$(printf '%s\n' "$output" | grep '^check:')
-  plan_lists=$(printf '%s\n' "$output" | grep '^shellcheck ')
+# Reads the summary line and shellcheck lists out of a plan's output.
+parse_plan() {
+  plan_line=$(printf '%s\n' "$1" | grep '^check:')
+  plan_lists=$(printf '%s\n' "$1" | grep '^shellcheck ')
   ran=${plan_line#*; ran:}
   ran=${ran%%; skipped by scope:*}
   skipped=${plan_line#*skipped by scope:}
+  skipped=${skipped%%; skipped by request:*}
+  requested=${plan_line#*skipped by request:}
+  [ "$requested" != "$plan_line" ] || requested=''
   read -r ran <<<"$ran"
   read -r skipped <<<"$skipped"
+  read -r requested <<<"$requested"
+}
+
+# Runs the plan for the scratch change made so far.
+plan() {
+  # CHECK_FULL is cleared because an outer `CHECK_FULL=1 just check` would otherwise make every plan full.
+  parse_plan "$(env -u CHECK_FULL "$@" sh lib/check.sh --plan --changed HEAD 2>&1)"
+}
+
+# Like plan, for a change given as a path list ($1) instead of read from git.
+plan_paths() {
+  local paths=$1
+  shift
+  parse_plan "$(printf '%s\n' "$paths" | env -u CHECK_FULL "$@" sh lib/check.sh --plan --paths-from - 2>&1)"
 }
 
 fail() {
@@ -213,8 +228,47 @@ case_firefox_policy() {
   expect_skipped qmllint luacheck voxcmd-click check-scope
 }
 
+case_paths_list() {
+  start_case 'path list from stdin'
+  plan_paths 'README.md'
+  expect_ran_exactly packages symlinks git-diff-check whitespace conflicts
+  [ "$plan_line" = "${plan_line/listed files/}" ] && fail 'the label to say listed files'
+  local qml
+  qml=$(first_tracked 'home/quickshell/*.qml') || return 0
+  plan_paths "$qml"
+  expect_ran qmllint
+  expect_skipped voxcmd-click luacheck
+}
+
+case_paths_list_unclaimed_skip_voxcmd() {
+  start_case 'unclaimed listed path with the voxcmd steps skipped'
+  local voxcmd='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox'
+  plan_paths 'newdir/file' CHECK_SKIP_STEPS="$voxcmd"
+  expect_ran qmllint shellcheck shfmt luacheck packages
+  for step in $voxcmd; do
+    case " $ran " in *" $step "*) fail "$step not to run" ;; esac
+    case " $requested " in *" $step "*) ;; *) fail "$step to be listed as skipped by request" ;; esac
+  done
+  [ "$skipped" = none ] || fail 'nothing skipped by scope'
+}
+
+case_paths_list_deleted_script() {
+  start_case 'listed path that is gone lints the shell groups'
+  plan_paths 'lib/does-not-exist.sh'
+  expect_ran shellcheck
+}
+
+case_skip_steps_with_changed() {
+  start_case 'CHECK_SKIP_STEPS drops an in-scope step'
+  echo '# x' >>lib/check-qml.sh
+  plan CHECK_SKIP_STEPS='check-scope shfmt'
+  case " $ran " in *" check-scope "* | *" shfmt "*) fail 'check-scope and shfmt not to run' ;; esac
+  [ "$requested" = 'check-scope shfmt' ] || fail "requested to list check-scope shfmt, got: $requested"
+}
+
 for case_fn in case_readme case_home_qml case_greeter_lua case_voxcmd_runner case_deleted_sourced_helper \
-  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy; do
+  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy \
+  case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed; do
   report "$case_fn"
 done
 
