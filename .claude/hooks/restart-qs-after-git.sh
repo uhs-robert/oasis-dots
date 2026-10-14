@@ -52,6 +52,11 @@ moved_at=$(git -C "$repo" log -g -1 --date=unix --format=%gd HEAD 2>/dev/null) |
 moved_at=${moved_at//[^0-9]/}
 [[ -n $moved_at ]] && ((moved_at >= $(date +%s) - 120)) || exit 0
 git -C "$repo" diff --quiet 'HEAD@{1}' HEAD -- home/quickshell 2>/dev/null && exit 0
+# Any git command in any session lands here within those 120 s, worktree commands included, so the same move of the
+# live checkout would restart the bar once per command. Each HEAD is handled once, by whichever command sees it first.
+handled_file=$(git -C "$repo" rev-parse --git-path claude-qs-restarted-head 2>/dev/null) || exit 0
+head=$(git -C "$repo" rev-parse HEAD 2>/dev/null) || exit 0
+[[ $(cat "$handled_file" 2>/dev/null) == "$head" ]] && exit 0
 
 say() { jq -n --arg c "$1" '{systemMessage: $c, hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $c}}'; }
 
@@ -65,6 +70,7 @@ if [[ $state != unlocked ]] && pgrep -x qs >/dev/null; then
   exit 0
 fi
 
+printf '%s\n' "$head" >"$handled_file"
 pkill -x qs
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   pgrep -x qs >/dev/null || break
