@@ -619,9 +619,10 @@ run_option() {
 }
 
 print_dry_run() {
-  local transcript="$1" text="$2" options="$3" forced_file="${4:-}" count
+  local transcript="$1" text="$2" options="$3" forced_file="${4:-}" corrected="${5:-}" count
   count=$(jq length <<<"$options")
   printf 'transcript:  %s\nnormalized:  %s\n' "$transcript" "$text"
+  [ -z "$corrected" ] || printf 'corrected:   no match as spoken, retried after the last correction point\n'
   [ -z "$forced_file" ] || printf 'forced to:   %s\n' "$(basename "$forced_file")"
   if [ "$count" = 0 ]; then
     printf 'result:      no match\n'
@@ -728,13 +729,99 @@ split_trailing_wake() {
   [ -n "$wake_before" ]
 }
 
+# Sets options (a JSON array) and forced_file to what the text routes to, in the order described above route_step; they
+# are the caller's locals, which route_step and retry_after_correction share.
+route_options() {
+  local text="$1" forcing
+  if forcing=$(forcing_integration "$text"); then
+    forced_file="${forcing%%$'\t'*}"
+    options=$(resolve_matches "$(match_forced_verbs "${forcing#*$'\t'}" "$forced_file")")
+  elif forced_file=$(open_surface_file) && options=$(resolve_matches "$(match_forced_verbs "$text" "$forced_file")") && [ "$(jq length <<<"$options")" != 0 ]; then
+    : # the bar surface that is open took the phrase
+  else
+    forced_file=""
+    options=$(resolve_matches "$(match_verbs "$text" normal)")
+    [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")
+    [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(match_verbs "$text" fallback)")
+  fi
+}
+
+# Words that open a retry when a phrase matched nothing: a speaker who corrects themselves faster than the pause that
+# ends a turn gets both attempts in one transcript. Said alone, "no" and "sorry" are not commands.
+correction_phrases='no wait|let me rephrase|scratch that|i mean|actually|sorry|wait|no'
+leading_filler='um|umm|uh|uhh|hmm|okay|ok|so|hey'
+
+# correction_tails <normalized text>: prints what follows each correction point, the last point's tail first: after a
+# correction phrase, after the leading filler, and from the second occurrence of the first word ("exit exit overview").
+# Never an arbitrary tail: a leftover "four" can be a command of its own.
+correction_tails() {
+  local -a words starts=()
+  read -ra words <<<"$1"
+  local count=${#words[@]} index=0 rest start
+  rest="$1"
+  while [[ "$rest" =~ ^($leading_filler)\ (.+)$ ]]; do
+    rest="${BASH_REMATCH[2]}"
+    index=$((index + 1))
+    starts+=("$index")
+  done
+  for ((index = 0; index < count; index++)); do
+    if [ "$index" != 0 ] && [ "${words[index]}" = "${words[0]}" ]; then starts+=("$index"); fi
+    rest="${words[*]:index}"
+    if [[ "$rest" =~ ^($correction_phrases)(\ |$) ]]; then
+      starts+=("$((index + $(wc -w <<<"${BASH_REMATCH[1]}")))")
+    fi
+  done
+  [ "${#starts[@]}" != 0 ] || return 0
+  for start in $(printf '%s\n' "${starts[@]}" | sort -u -n -r); do
+    if [ "$start" -gt 0 ] && [ "$start" -lt "$count" ]; then printf '%s\n' "${words[*]:start}"; fi
+  done
+}
+
+# raw_suffix_of <raw transcript> <normalized tail>: prints the last words of the raw transcript that normalize to the
+# tail, or the tail itself when none do, so a command that reads $raw_transcript still sees its own punctuation.
+raw_suffix_of() {
+  local -a tokens
+  read -ra tokens <<<"$1"
+  local size suffix
+  for ((size = 1; size <= ${#tokens[@]}; size++)); do
+    suffix="${tokens[*]: -size}"
+    if [ "$(apply_replacements "$(normalize "$suffix")")" = "$2" ]; then
+      printf '%s' "$suffix"
+      return
+    fi
+  done
+  printf '%s' "$2"
+}
+
+# When the text left no strong option, routes the part after the last correction point instead ("exit, exit overview"
+# is "exit overview"), then earlier points. A retry counts only as one option that is not a weak match; otherwise
+# route_step goes on with what the text as spoken found. Sets text, options, forced_file, raw_transcript and corrected
+# of route_step. Behind a force prefix the correction is read in the rest of the phrase.
+retry_after_correction() {
+  local lead="" body="$text" forcing retry kept_options="$options" kept_forced="$forced_file"
+  if forcing=$(forcing_integration "$text"); then
+    body="${forcing#*$'\t'}"
+    lead="${text%"$body"}"
+  fi
+  while IFS= read -r retry; do
+    route_options "$lead$retry"
+    if [ "$(jq 'length == 1 and (.[0].weak | not)' <<<"$options")" = true ]; then
+      text="$lead$retry"
+      raw_transcript="$lead$(raw_suffix_of "$raw_transcript" "$retry")"
+      corrected=1
+      return
+    fi
+  done < <(correction_tails "$body")
+  options="$kept_options" forced_file="$kept_forced"
+}
+
 # A phrase starting with an integration's force prefix goes to that integration alone. Otherwise normal integrations
 # go first, then the LLM hook, then fallback integrations, each only when the ones before it left nothing to run, so a
 # catch-all fallback never competes with a real verb.
 # Sets step_outcome. In a sequence it sends no no-match toast and does not open Voice Help: the sequence reports the
 # step it stopped at.
 route_step() {
-  local transcript="$*" text options count choices picked forcing="" forced_file=""
+  local transcript="$*" text options count choices picked forced_file="" corrected=""
   step_outcome=no_match
   # Global, not local: the integration contract promises it to candidates() and to every action.
   # shellcheck disable=SC2034 # read by integrations
@@ -774,22 +861,13 @@ route_step() {
     step_outcome=discarded
     return 0
   fi
-  if forcing=$(forcing_integration "$text"); then
-    forced_file="${forcing%%$'\t'*}"
-    options=$(resolve_matches "$(match_forced_verbs "${forcing#*$'\t'}" "$forced_file")")
-  elif forced_file=$(open_surface_file) && options=$(resolve_matches "$(match_forced_verbs "$text" "$forced_file")") && [ "$(jq length <<<"$options")" != 0 ]; then
-    : # the bar surface that is open took the phrase
-  else
-    forced_file=""
-    options=$(resolve_matches "$(match_verbs "$text" normal)")
-    [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(llm_match "$text")")
-    [ "$(jq length <<<"$options")" != 0 ] || options=$(resolve_matches "$(match_verbs "$text" fallback)")
-  fi
+  route_options "$text"
+  if [ "$(jq 'all(.[]; .weak)' <<<"$options")" = true ]; then retry_after_correction; fi
   count=$(jq length <<<"$options")
 
   if [ "$dry_run" = 1 ]; then
     dry_run_options="$options"
-    print_dry_run "$transcript" "$text" "$options" "$forced_file"
+    print_dry_run "$transcript" "$text" "$options" "$forced_file" "$corrected"
     [ "$count" = 0 ] || step_outcome=ran
     return 0
   fi

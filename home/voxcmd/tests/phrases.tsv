@@ -230,3 +230,27 @@ show the overview	Overview/overview_open
 close overview	Overview/overview_close
 two and four	none	the overview is closed in the sandbox: its phrases reach nothing
 close two	none	the overview is closed: Apps finds no window named two
+
+um, okay so open firefox	Apps/open	leading filler is dropped when the phrase matches nothing
+uh open firefox	Apps/open
+hey, open firefox	Apps/open
+open open firefox	Apps/open	a repeated first word restarts the phrase
+open slack, open firefox	Apps/open	the last attempt wins
+close slack, no wait, close slack	Apps/close	correction word "no wait"
+close slack, wait, close slack	Apps/close
+close slack, I mean, close slack	Apps/close
+close slack, sorry, close slack	Apps/close
+close slack, actually close slack	Apps/close
+close slack, scratch that, close slack	Apps/close
+close slack, let me rephrase, close slack	Apps/close
+close slack, no, close slack	Apps/close
+um, close slack, no wait, close slack	Apps/close	filler and a correction together
+sorry, open firefox	Apps/open	a correction word at the start
+set volume to 20, no wait, set volume to 40	Media/volume_set	$raw_transcript is the retried part
+close slack four	picker	an arbitrary tail is never retried
+open firefox four	picker	an arbitrary tail is never retried: the weak match asks as before
+sorry	none	a correction word with nothing after it
+open firefox, sorry	picker	nothing follows the correction word: the weak match asks as before
+remind me to say sorry	Timers/remind	a correction word inside a command that matches whole
+remind me to say no wait	Timers/remind
+open firefox open	picker	the repeated word is a tail that routes no better: the weak match asks as before
