@@ -5,7 +5,7 @@ import Quickshell
 import Quickshell.Io
 
 // Voice choices saved in voice.env under the voxcmd state dir, for voxcmd-wake, voxcmd and voxtype-daemon to read.
-// The file is KEY=NUMBER lines, one per setting the user has chosen; an absent key means the reader's own default.
+// The file is KEY=VALUE lines (numbers, and the sensitivity level's name), one per setting the user has chosen; an absent key means the reader's own default.
 // It sits outside ~/.config/voxcmd, which is stow-folded into the public repo. An environment variable of the same
 // name still wins in every reader, so a value shown here may be overridden; the sensitivity row shows that as Custom.
 Singleton {
@@ -17,91 +17,65 @@ Singleton {
     }
     readonly property string file_path: root.state_dir + "/voice.env"
 
-    readonly property var levels: ({
-            strict: { threshold: 0.8, frames: 3 },
-            balanced: { threshold: 0.7, frames: 2 },
-            relaxed: { threshold: 0.6, frames: 2 }
-        })
+    // The named sensitivity levels; voxcmd-wake maps each to its detector's threshold and frames.
     readonly property var level_ids: ["strict", "balanced", "relaxed"]
+    readonly property string default_level: "strict"
     // Percent of its volume ducked music keeps while voxtype records; 30 is config.toml's own value.
     readonly property int default_duck: 30
     readonly property real default_chunk_pause: 2.5
     readonly property var duck_steps: [0, 10, 20, 30, 50, 70]
     readonly property var chunk_pause_steps: [1.5, 2, 2.5, 3, 4]
-
-    // The listener keeps hearing while music plays (a song can then say the phrase) and stops in a calendar meeting.
+    // The listener keeps hearing while music plays (a song can then say the phrase) and stops while another app records.
     readonly property int default_pause_for_media: 0
-    readonly property int default_pause_for_meetings: 1
+    readonly property int default_pause_for_mic: 1
 
     readonly property var keys: ({
-            threshold: "VOXCMD_WAKE_THRESHOLD",
-            frames: "VOXCMD_WAKE_FRAMES",
+            sensitivity: "VOXCMD_WAKE_SENSITIVITY",
             duck: "VOXCMD_DUCK_MEDIA_VOLUME",
             chunk: "VOXCMD_TYPE_CHUNK_PAUSE_SECS",
             pause_media: "VOXCMD_WAKE_PAUSE_FOR_MEDIA",
-            pause_meetings: "VOXCMD_WAKE_PAUSE_FOR_MEETINGS"
+            pause_mic: "VOXCMD_WAKE_PAUSE_FOR_MIC"
         })
-    readonly property var limits: ({
-            threshold: v => v > 0 && v <= 1,
-            frames: v => Number.isInteger(v) && v >= 1,
-            duck: v => Number.isInteger(v) && v >= 0 && v <= 100,
-            chunk: v => v > 0 && v <= 30,
-            pause_media: v => v === 0 || v === 1,
-            pause_meetings: v => v === 0 || v === 1
+    // Reads a value as the listener and voxcmd do, from its exact text: undefined when they would ignore it.
+    // Matching by text, not by number, keeps 0.0, 01 and 30.0 out, as voice-env.sh and voxcmd-wake do.
+    readonly property var readers: ({
+            sensitivity: text => root.level_ids.indexOf(text) >= 0 ? text : undefined,
+            duck: text => /^[0-9]+$/.test(text) && Number(text) <= 100 ? Number(text) : undefined,
+            chunk: text => /^[0-9]+(\.[0-9]+)?$/.test(text) && Number(text) > 0 && Number(text) <= 30 ? Number(text) : undefined,
+            pause_media: text => text === "0" || text === "1" ? Number(text) : undefined,
+            pause_mic: text => text === "0" || text === "1" ? Number(text) : undefined
         })
 
-    // The user's saved numbers; a setting never chosen is absent, not defaulted.
+    // The user's saved choices; a setting never chosen is absent, not defaulted.
     property var saved: ({})
     // The units a pending write must try-restart once it lands.
     property var restart_units: ({})
 
-    function number_or_undefined(text) {
-        return /^[0-9]+(\.[0-9]+)?$/.test(text || "") ? Number(text) : undefined;
-    }
-
     // What the readers will use: their environment, else the file, else the default. Only the Quickshell process's
     // own environment is visible here, which is the best the bar can know about the systemd user manager's.
     function effective(key, fallback) {
-        const from_env = root.number_or_undefined(Quickshell.env(root.keys[key]));
-        if (from_env !== undefined && root.limits[key](from_env)) return from_env;
+        const from_env = root.readers[key](Quickshell.env(root.keys[key]) || "");
+        if (from_env !== undefined) return from_env;
         return root.saved[key] !== undefined ? root.saved[key] : fallback;
     }
 
-    readonly property string sensitivity: {
-        const threshold = root.effective("threshold", root.levels.strict.threshold);
-        const frames = root.effective("frames", root.levels.strict.frames);
-        for (const id of root.level_ids) {
-            if (root.levels[id].threshold === threshold && root.levels[id].frames === frames) return id;
-        }
-        return "custom";
-    }
+    // Raw threshold or frames in the environment override any level, so the level shown would not be what runs.
+    readonly property bool env_overrides_level: !!Quickshell.env("VOXCMD_WAKE_THRESHOLD") || !!Quickshell.env("VOXCMD_WAKE_FRAMES")
+    readonly property string sensitivity: root.env_overrides_level ? "custom" : root.effective("sensitivity", root.default_level)
     readonly property int duck: root.effective("duck", root.default_duck)
     readonly property real chunk_pause: root.effective("chunk", root.default_chunk_pause)
-
     readonly property int pause_for_media: root.effective("pause_media", root.default_pause_for_media)
-    readonly property int pause_for_meetings: root.effective("pause_meetings", root.default_pause_for_meetings)
+    readonly property int pause_for_mic: root.effective("pause_mic", root.default_pause_for_mic)
 
     function set(key, value) {
+        if (!root.readers[key] || root.readers[key](String(value)) === undefined) return;
         const next = Object.assign({}, root.saved);
         const units = Object.assign({}, root.restart_units);
-        if (key === "sensitivity") {
-            if (!root.levels[value]) return;
-            next.threshold = root.levels[value].threshold;
-            next.frames = root.levels[value].frames;
-            units["voxcmd-wake.service"] = true;
-        } else if (key === "pause_media" || key === "pause_meetings") {
-            if (!root.limits[key](value)) return;
-            next[key] = value;
-            // Read once when the listener starts, like its sensitivity.
-            units["voxcmd-wake.service"] = true;
-        } else if (key === "duck" || key === "chunk") {
-            if (!root.limits[key](value)) return;
-            next[key] = value;
-            // The chunk pause is read afresh by each type-mode session; only voxtype reads ducking once, at start.
-            if (key === "duck") units["voxtype.service"] = true;
-        } else {
-            return;
-        }
+        next[key] = value;
+        // The chunk pause is read afresh by each type-mode session. Ducking is read by voxtype once, at start; the
+        // listener's sensitivity and pause switches the same, at its own.
+        if (key === "duck") units["voxtype.service"] = true;
+        else if (key !== "chunk") units["voxcmd-wake.service"] = true;
         root.saved = next;
         root.restart_units = units;
         save_timer.restart();
@@ -114,13 +88,13 @@ Singleton {
     function parse(text) {
         const found = {};
         for (const line of text.split("\n")) {
-            const match = /^(VOXCMD_[A-Z_]+)=([0-9]+(\.[0-9]+)?)$/.exec(line);
-            if (match) found[match[1]] = Number(match[2]);
+            const match = /^(VOXCMD_[A-Z_]+)=([0-9]+(\.[0-9]+)?|[a-z]+)$/.exec(line);
+            if (match) found[match[1]] = match[2];
         }
         const next = {};
         for (const key in root.keys) {
-            const value = found[root.keys[key]];
-            if (value !== undefined && root.limits[key](value)) next[key] = value;
+            const value = root.readers[key](found[root.keys[key]] || "");
+            if (value !== undefined) next[key] = value;
         }
         return next;
     }

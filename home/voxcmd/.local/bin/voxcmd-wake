@@ -10,10 +10,11 @@ The audio stays in memory. The only log is scores and timestamps, in voxcmd's de
   voxcmd-wake --check        exit 0 when the packages and models are in place, else 1 and say what is missing
 
 Settings (environment, else the file Settings > Voice writes; voxcmd README "Wake word"):
-  VOXCMD_WAKE_THRESHOLD       score a frame needs to count (0.8)
-  VOXCMD_WAKE_FRAMES          consecutive 80 ms frames at or above it before a trigger is pending (3)
+  VOXCMD_WAKE_SENSITIVITY     strict, balanced or relaxed: a named threshold and frame count for the model (strict)
+  VOXCMD_WAKE_THRESHOLD       score a frame needs to count; overrides the level's (strict: 0.8)
+  VOXCMD_WAKE_FRAMES          consecutive 80 ms frames at or above it before a trigger is pending; overrides the level's (3)
   VOXCMD_WAKE_PAUSE_FOR_MEDIA 1 pauses while a player plays; 0 keeps listening, so a song can say the phrase (0)
-  VOXCMD_WAKE_PAUSE_FOR_MEETINGS 1 pauses during a calendar meeting, as the bar's meeting dot reads it (1)
+  VOXCMD_WAKE_PAUSE_FOR_MIC   1 pauses while another app records from a microphone; 0 keeps listening (1)
   VOXCMD_WAKE_COOLDOWN_SECS   quiet time after a trigger (3)
   VOXCMD_WAKE_MODEL_DIR       where the models live (~/.local/share/voxcmd/wake-models)
 """
@@ -25,7 +26,6 @@ import re
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import hashlib
-import datetime
 import json
 import select
 import signal
@@ -44,14 +44,14 @@ SAMPLE_RATE = 16000
 FRAME_SAMPLES = 1280
 FRAME_BYTES = FRAME_SAMPLES * 2
 
-DEFAULT_THRESHOLD = 0.8
-DEFAULT_FRAMES = 3
+# Named sensitivity per wake model: level -> (threshold, frames). A model added later gets a row of its own here.
+SENSITIVITY_LEVELS = {
+    "hey_jarvis_v0.1.onnx": {"strict": (0.8, 3), "balanced": (0.7, 2), "relaxed": (0.6, 2)},
+}
+DEFAULT_SENSITIVITY = "strict"
 DEFAULT_COOLDOWN_SECS = 3.0
 DEFAULT_PAUSE_FOR_MEDIA = False
-DEFAULT_PAUSE_FOR_MEETINGS = True
-
-# Timed events longer than this are out-of-office or conference blocks, not meetings (CalendarState.max_meeting_ms).
-MAX_MEETING_SECS = 12 * 3600
+DEFAULT_PAUSE_FOR_MIC = True
 
 # After a trigger, how long voxtype gets to report that it is recording before the "ready" cue is given up, and how
 # often its state is looked at meanwhile.
@@ -101,7 +101,7 @@ def default_model_dir():
 
 
 # Settings > Voice's file, outside the stow-folded ~/.config/voxcmd. Read as data: only KEY=NUMBER lines count.
-VOICE_ENV_LINE = re.compile(r"^(VOXCMD_[A-Z_]+)=([0-9]+(?:\.[0-9]+)?)$")
+VOICE_ENV_LINE = re.compile(r"^(VOXCMD_[A-Z_]+)=([0-9]+(?:\.[0-9]+)?|[a-z]+)$")
 
 
 def voice_env_path(env):
@@ -129,12 +129,17 @@ class Settings:
         saved = read_voice_env(env)
         # An environment value that is bad refuses to start, as it always has. The file's must not: a unit that
         # exits on it would crash-loop, so a bad file value falls back to the default.
-        saved_threshold = self.saved_or_default(saved, "VOXCMD_WAKE_THRESHOLD", float, DEFAULT_THRESHOLD, lambda v: 0 < v <= 1)
-        saved_frames = self.saved_or_default(saved, "VOXCMD_WAKE_FRAMES", int, DEFAULT_FRAMES, lambda v: v >= 1)
-        self.threshold = float(env.get("VOXCMD_WAKE_THRESHOLD") or saved_threshold)
-        self.frames = int(env.get("VOXCMD_WAKE_FRAMES") or saved_frames)
+        levels = SENSITIVITY_LEVELS[WAKE_MODEL]
+        level = env.get("VOXCMD_WAKE_SENSITIVITY") or saved.get("VOXCMD_WAKE_SENSITIVITY")
+        if level not in levels:
+            if env.get("VOXCMD_WAKE_SENSITIVITY"):
+                raise ValueError("VOXCMD_WAKE_SENSITIVITY must be " + ", ".join(levels))
+            level = DEFAULT_SENSITIVITY
+        level_threshold, level_frames = levels[level]
+        self.threshold = float(env.get("VOXCMD_WAKE_THRESHOLD") or level_threshold)
+        self.frames = int(env.get("VOXCMD_WAKE_FRAMES") or level_frames)
         self.pause_for_media = self.flag(env, saved, "VOXCMD_WAKE_PAUSE_FOR_MEDIA", DEFAULT_PAUSE_FOR_MEDIA)
-        self.pause_for_meetings = self.flag(env, saved, "VOXCMD_WAKE_PAUSE_FOR_MEETINGS", DEFAULT_PAUSE_FOR_MEETINGS)
+        self.pause_for_mic = self.flag(env, saved, "VOXCMD_WAKE_PAUSE_FOR_MIC", DEFAULT_PAUSE_FOR_MIC)
         self.cooldown_secs = float(env.get("VOXCMD_WAKE_COOLDOWN_SECS") or DEFAULT_COOLDOWN_SECS)
         self.model_dir = env.get("VOXCMD_WAKE_MODEL_DIR") or default_model_dir()
         if not 0 < self.threshold <= 1 or self.frames < 1 or self.cooldown_secs < 0:
@@ -148,14 +153,6 @@ class Settings:
                 raise ValueError(f"{key} must be 0 or 1")
             return env[key] == "1"
         return {"0": False, "1": True}.get(saved.get(key), default)
-
-    @staticmethod
-    def saved_or_default(saved, key, parse, default, acceptable):
-        try:
-            value = parse(saved[key])
-        except (KeyError, ValueError):
-            return default
-        return value if acceptable(value) else default
 
 
 class TriggerDecider:
@@ -189,8 +186,8 @@ class TriggerDecider:
 
 class PauseGate:
     """Whether the microphone should be left alone: voxtype is recording, a voice session is open, or, when asked to,
-    media plays or a calendar meeting is on. Media and meetings are looked at once a second; a check that is switched
-    off is never run."""
+    media plays or another app records from a microphone. Media and microphone are looked at once a second; a check
+    that is switched off is never run."""
 
     def __init__(
         self,
@@ -200,7 +197,7 @@ class PauseGate:
         session_file=None,
         proc_dir="/proc",
         pause_for_media=True,
-        in_meeting=None,
+        other_app_recording=None,
     ):
         self.clock = clock
         self.voxtype_state_file = voxtype_state_file
@@ -208,9 +205,9 @@ class PauseGate:
         self.session_file = session_file
         self.proc_dir = proc_dir
         self.pause_for_media = pause_for_media
-        self.in_meeting = in_meeting
+        self.other_app_recording = other_app_recording
         self.media_playing = False
-        self.meeting_on = False
+        self.mic_in_use = False
         self.next_slow_check = 0.0
 
     def voxtype_recording(self):
@@ -247,71 +244,71 @@ class PauseGate:
         now = self.clock()
         if now >= self.next_slow_check:
             self.media_playing = self.pause_for_media and self.run_playerctl()
-            self.meeting_on = self.in_meeting is not None and self.in_meeting()
+            self.mic_in_use = self.other_app_recording is not None and self.other_app_recording()
             self.next_slow_check = now + MEDIA_CHECK_SECS
-        return self.media_playing or self.meeting_on
+        return self.media_playing or self.mic_in_use
 
 
-def parse_calendar_time(text):
-    """Seconds since the epoch, or None. A time without an offset is local, as JavaScript's Date.parse reads it."""
+def pactl_json(*args):
+    """The parsed `pactl -f json <args>` list, or None when pactl is missing, fails, times out or prints no JSON."""
     try:
-        return datetime.datetime.fromisoformat(str(text)).timestamp()
-    except ValueError:
+        result = subprocess.run(
+            ["pactl", "-f", "json", *args],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            stdin=subprocess.DEVNULL,
+        )
+        parsed = json.loads(result.stdout) if result.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired, ValueError):
         return None
+    return parsed if isinstance(parsed, list) else None
 
 
-class MeetingCalendar:
-    """Whether a calendar meeting is on now, from the cache calendar-sync writes (events.json), without the bar.
+class MicActivity:
+    """Whether some other app holds a capture stream on a real microphone (a call, a recorder), through PipeWire's Pulse
+    interface. A stream does not count when it is this listener's own pw-record, voxtype's recording, a monitor of an
+    output, or corked (paused, so nothing is captured). A call muted in its app keeps its stream and counts. Anything
+    that cannot be read means not active, silently.
 
-    "Meeting" is what CalendarState.in_meeting means: not cancelled, not all-day, no longer than MAX_MEETING_SECS, and
-    now inside [start, end). The file is read again only when its mtime changes. A missing or unreadable cache means
-    no meeting, silently."""
+    The listener's stream is told by pid, not by name, so another program that uses pw-record still counts: pw-record is
+    a PipeWire client of its own, whose client properties carry application.process.id. pactl serves streams of
+    pipewire-pulse clients under that daemon's pid, so those never match the listener's."""
 
-    def __init__(self, path, wall_clock=time.time):
-        self.path = path
-        self.wall_clock = wall_clock
-        self.mtime = None
-        self.spans = []
+    def __init__(self, run_pactl=pactl_json):
+        self.run_pactl = run_pactl
+        self.own_pid = None
 
-    def reload_if_changed(self):
+    def other_app_recording(self):
         try:
-            mtime = os.stat(self.path).st_mtime_ns
-        except OSError:
-            self.mtime, self.spans = None, []
-            return
-        if mtime == self.mtime:
-            return
-        self.mtime = mtime
-        self.spans = []
-        try:
-            with open(self.path, encoding="utf-8") as cache:
-                events = json.load(cache)["events"]
-            for event in events:
-                span = self.meeting_span(event)
-                if span:
-                    self.spans.append(span)
-        except (OSError, ValueError, KeyError, TypeError, AttributeError):
-            self.spans = []
+            return self.find_other_app_recording()
+        except (KeyError, TypeError, AttributeError):
+            return False
+
+    def find_other_app_recording(self):
+        streams = [stream for stream in self.run_pactl("list", "source-outputs") or [] if not stream.get("corked")]
+        if not streams:
+            return False
+        clients = {str(client["index"]): client.get("properties") or {} for client in self.run_pactl("list", "clients") or []}
+        monitors = {source["index"] for source in self.run_pactl("list", "sources") or [] if self.is_monitor(source)}
+        for stream in streams:
+            properties = {**clients.get(str(stream.get("client")), {}), **(stream.get("properties") or {})}
+            if stream.get("source") in monitors or self.is_voxtype(properties) or self.is_own(properties):
+                continue
+            return True
+        return False
 
     @staticmethod
-    def meeting_span(event):
-        if not isinstance(event, dict) or event.get("status") == "cancelled" or event.get("all_day") is True:
-            return None
-        start = parse_calendar_time(event.get("start"))
-        end = parse_calendar_time(event.get("end"))
-        if start is None or end is None or not 0 < end - start <= MAX_MEETING_SECS:
-            return None
-        return start, end
+    def is_monitor(source):
+        return source["name"].endswith(".monitor") or (source.get("properties") or {}).get("device.class") == "monitor"
 
-    def in_meeting(self):
-        self.reload_if_changed()
-        now = self.wall_clock()
-        return any(start <= now < end for start, end in self.spans)
+    @staticmethod
+    def is_voxtype(properties):
+        names = (properties.get("application.process.binary"), properties.get("application.name"))
+        return any("voxtype" in (name or "").lower() for name in names)
 
-
-def calendar_events_path(env):
-    cache_home = env.get("XDG_CACHE_HOME") or os.path.join(env.get("HOME") or os.path.expanduser("~"), ".cache")
-    return os.path.join(cache_home, "calendar", "events.json")
+    def is_own(self, properties):
+        return self.own_pid is not None and properties.get("application.process.id") == str(self.own_pid)
 
 
 def playerctl_playing():
@@ -664,18 +661,25 @@ def main(argv):
         print(f"voxcmd-wake: {problem}", file=sys.stderr)
         return EXIT_MISSING_SETUP
     state_file = StateFile()
+    mic_activity = MicActivity()
+
+    def open_source():
+        source = PwRecordSource()
+        mic_activity.own_pid = source.process.pid
+        return source
+
     log = make_logger()
     listener = Listener(
         settings,
         load_scorer(settings),
-        PwRecordSource,
+        open_source,
         PauseGate(
             time.monotonic,
             os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "voxtype", "state"),
             playerctl_playing,
             os.path.join(runtime_dir(), "session.json"),
             pause_for_media=settings.pause_for_media,
-            in_meeting=MeetingCalendar(calendar_events_path(os.environ)).in_meeting if settings.pause_for_meetings else None,
+            other_app_recording=mic_activity.other_app_recording if settings.pause_for_mic else None,
         ),
         make_run_listen(log),
         state_file.publish,
