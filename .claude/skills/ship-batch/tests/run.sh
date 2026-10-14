@@ -57,5 +57,36 @@ check "a second run is refused" "! (take_lock '$repo')"
 exec 9>&-
 check "the lock is free once the first run exits" "(take_lock '$repo')"
 
+echo "== packages a merge left out of date"
+stow_repo=$root/stow-repo
+fake_home=$root/home
+git init -q -b main "$stow_repo"
+mkdir -p "$stow_repo/home/tools/.local/bin" "$stow_repo/home/folded/.config/folded" "$stow_repo/home/absent/.local/bin" "$fake_home/.local/bin" "$fake_home/.config"
+echo a >"$stow_repo/home/tools/.local/bin/old"
+echo a >"$stow_repo/home/folded/.config/folded/old"
+echo a >"$stow_repo/home/absent/.local/bin/old"
+g -C "$stow_repo" add -A
+g -C "$stow_repo" commit -q -m base
+stow_before=$(git -C "$stow_repo" rev-parse HEAD)
+# tools is stowed unfolded (a link per file), folded as a whole folder, absent not at all.
+ln -s "$stow_repo/home/tools/.local/bin/old" "$fake_home/.local/bin/old"
+ln -s "$stow_repo/home/folded/.config/folded" "$fake_home/.config/folded"
+echo b >"$stow_repo/home/tools/.local/bin/new"
+echo b >"$stow_repo/home/folded/.config/folded/new"
+echo b >"$stow_repo/home/absent/.local/bin/new"
+g -C "$stow_repo" add -A
+g -C "$stow_repo" commit -q -m add
+stow_added=$(git -C "$stow_repo" rev-parse HEAD)
+echo c >>"$stow_repo/home/tools/.local/bin/old"
+g -C "$stow_repo" commit -q -am edit
+stow_edited=$(git -C "$stow_repo" rev-parse HEAD)
+restow() { HOME=$fake_home packages_to_restow "$stow_repo" "$@" | paste -sd,; }
+check "an added file restows each installed package, folded or not" "[[ \$(restow '$stow_before' '$stow_added') == folded,tools ]]"
+check "a package that is not stowed here is left alone" "[[ \$(restow '$stow_before' '$stow_added') != *absent* ]]"
+check "an edit alone needs no restow" "[[ -z \$(restow '$stow_added' '$stow_edited') ]]"
+g -C "$stow_repo" rm -q "$stow_repo/home/tools/.local/bin/new"
+g -C "$stow_repo" commit -q -m remove
+check "a removed file restows its package" "[[ \$(restow '$stow_edited' HEAD) == tools ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))

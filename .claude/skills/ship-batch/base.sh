@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Sourced by ship-batch.sh and its tests: the commit the post-merge check is measured from.
+# Sourced by ship-batch.sh and its tests: the commit the post-merge check is measured from, and the stow packages a
+# merge left out of date.
 
 base_file() {
   echo "$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)/ship-batch-base"
@@ -36,4 +37,21 @@ base_is_ancestor() {
 
 finish_base() {
   rm -f "$(base_file "$1")"
+}
+
+# Prints the stow packages under home/ that gained, lost or renamed a file between two commits and are installed here.
+# Pulling updates the files behind existing links, but a new file in a folder stow did not fold has no link until the
+# package is restowed (a merged unit or script then silently does not exist), and a deleted one leaves a dead link.
+# A package counts as installed when one of its files at <after> is reached through its link in $HOME; a package
+# never stowed here is left alone.
+packages_to_restow() {
+  local repo=$1 before=$2 after=$3 package relative
+  while IFS= read -r package; do
+    while IFS= read -r relative; do
+      if [[ $(realpath -q "$HOME/$relative") == "$(realpath -q "$repo/home/$package/$relative")" ]]; then
+        echo "$package"
+        break
+      fi
+    done < <(git -C "$repo" ls-tree -r --name-only "$after" -- "home/$package/" | sed "s|^home/$package/||")
+  done < <(git -C "$repo" diff --name-only --diff-filter=ADR "$before" "$after" -- home/ | awk -F/ 'NF > 2 { print $2 }' | sort -u)
 }
