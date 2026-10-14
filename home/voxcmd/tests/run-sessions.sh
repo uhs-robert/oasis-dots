@@ -577,15 +577,17 @@ detector_starts_without_session_lock() {
   printf '%s\n' SILENCE >"$sess_turns"
   fresh_logs
   echo recording >"$XDG_RUNTIME_DIR/voxtype/state"
-  (flock 9 && sleep 30) 9>"$XDG_RUNTIME_DIR/voxcmd/session.lock" &
+  rm -f "$root/holder-ready" "$root/holder-release"
+  (flock 9 && : >"$root/holder-ready" && wait_for_path "$root/holder-release") 9>"$XDG_RUNTIME_DIR/voxcmd/session.lock" &
   holder=$!
-  sleep 0.2
+  wait_for_path "$root/holder-ready"
   env SANDBOX_VOXTYPE_TURNS="$sess_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$sess_config" \
     VOXCMD_DEBUG=1 "$sess_voxcmd" _watch session_turn - 0 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=7 >/dev/null 2>&1 &
   watcher=$!
-  log_has_soon 'no_speech_secs=7$' 5 && status=0
-  pkill -P "$holder" 2>/dev/null
-  kill "$holder" "$watcher" 2>/dev/null
+  # Logged while the lock is still held here: a watcher that waited for it would log only after the release.
+  log_has_soon 'no_speech_secs=7$' && status=0
+  : >"$root/holder-release"
+  kill "$watcher" 2>/dev/null
   wait "$holder" "$watcher" 2>/dev/null
   pkill -f "$stub_sleep" 2>/dev/null
   echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
@@ -784,6 +786,21 @@ sess_phrase="type mode"
 wtype_is() { [[ $(grep '^wtype ' "$log") == "$(printf '%s\n' "$@")" ]]; }
 # A mode's ended hook runs in the background and may outlive its watcher.
 hooks_done() { wait_until ended_hooks_gone; }
+hook_waits_for_lock() {
+  local pid
+  [[ -n $1 ]] || return 1
+  for pid in $(pgrep -x flock); do
+    descends_from "$pid" "$1" && return 0
+  done
+  return 1
+}
+descends_from() {
+  local pid=$1
+  until [[ $pid == "$2" ]]; do
+    pid=$(sed 's/.*) //' "/proc/$pid/stat" 2>/dev/null | awk '{print $2}')
+    [[ -n $pid && $pid != 0 && $pid != 1 ]] || return 1
+  done
+}
 other_window='{"address":"0x2","class":"foot","size":[800,600]}'
 type_flushed() { log_has_soon "^wtype -- [.!?]\$"; }
 sess_run "Hello world." "This is a test." "cortana stop typing"
@@ -855,13 +872,14 @@ check "typed chunks are not turns of the session's cap" "session_gone && [[ \$(g
 # The time caps below hold one type-mode listen open while the session is aged past its cap, so the typing outlasts the
 # cap without the test waiting it out. The cap is far over what the few turns outside type mode take on a loaded machine.
 session_cap_secs=600
-# age_session <secs>: as if that long had passed, every time the session recorded moves that far into the past. Under
-# the session lock, so no turn rewrites the file meanwhile.
+# age_session <secs>: as if that long had passed, every time the session recorded moves that far into the past, but
+# last_heard: the held turn is being heard now, so type mode's idle bound stays out of the test. Under the session lock,
+# so no turn rewrites the file meanwhile.
 age_session() {
   (
     flock 9
     jq -c --argjson secs "$1" '
-      def aged: with_entries(if .key == "started" or .key == "mode_started" or .key == "last_heard" then .value -= $secs else . end);
+      def aged: with_entries(if .key == "started" or .key == "mode_started" then .value -= $secs else . end);
       aged | if .stack then .stack |= map(aged) else . end' "$session_json" >"$session_json.aged" &&
       mv "$session_json.aged" "$session_json"
   ) 9>"$XDG_RUNTIME_DIR/voxcmd/session.lock"
@@ -876,14 +894,14 @@ sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" "VOXCMD_SESSION_MAX_SECS=$
 sess_start "type mode" HOLD "cortana stop typing" "tap beta" "done"
 type_past_session_cap
 sess_wait
-check "and the time spent in type mode is not counted against the session's time" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit'"
+check "and the time spent in type mode is not counted against the session's time" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit' && ! toast_has 'nothing was said'"
 
 # Time spent in type mode is credited when click mode opens over it, not when it is popped, so the new mode's cap does
 # not count the typing.
 sess_start "type mode" HOLD "cortana click mode" "done" "cortana stop typing" "tap beta" "done"
 type_past_session_cap
 sess_wait
-check "a mode opened over type mode does not count the time spent typing against its cap" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit'"
+check "a mode opened over type mode does not count the time spent typing against its cap" "session_gone && [[ \$(taps) == 1 ]] && ! toast_has 'time limit' && ! toast_has 'nothing was said'"
 
 # A detour through another mode keeps the held mark and the spacing, but not what "scratch that" would delete: a click
 # may have moved the cursor.
@@ -1012,9 +1030,10 @@ flock "$flock_file" sh -c ": >'$root/lock-held'; until [ -e '$root/lock-release'
 lock_holder=$!
 wait_for_path "$root/lock-held"
 : >"$root/hook-block.release"
-# A negative: the hook, not holding the lock, must wait for the one held here. Once a flock of voxcmd's waits on it, the
-# hook has reached the lock without typing.
-wait_until pgrep -fx 'flock 9' >/dev/null
+# A negative: the hook, not holding the lock, must wait for the one held here. Once a flock started by the hook waits on
+# it, the hook has reached the lock without typing.
+hook_pid=$(sed -n 's/.* session: ended hook \([0-9]*\) runs$/\1/p' "$debug_log" | tail -n 1)
+wait_until hook_waits_for_lock "$hook_pid"
 check "the ended hook takes the session lock instead of assuming the caller's" "! grep -q '^wtype -- \.\$' '$log'"
 : >"$root/lock-release"
 wait "$lock_holder"

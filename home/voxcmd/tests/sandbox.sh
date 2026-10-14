@@ -83,7 +83,8 @@
 #   SANDBOX_EXTRA_STUBS        space-separated commands to stub as well, such as the ones an extra integration calls
 #   SANDBOX_SHOW_CALLS=1       print the stub call log to stderr when the command ends
 #   SANDBOX_STUB_DELAY=<secs>  every stub call first sleeps that long: a slow machine, the same on every run, for
-#                              checking that a suite waits on events rather than on time
+#                              checking that a suite waits on events rather than on time. Keep it under 2: voxcmd
+#                              reads the bar's state through `timeout 2`, and a slower bar reads as none
 #   SANDBOX_DIR                set for the command: the sandbox root, with the call log at $SANDBOX_DIR/calls.log
 #
 # HOME, XDG_STATE_HOME and XDG_CACHE_HOME are empty dirs in the sandbox, so the caller's tmuxifier layouts, timers
