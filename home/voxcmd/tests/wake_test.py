@@ -159,31 +159,39 @@ class SettingsTest(unittest.TestCase):
                     f.write(content)
             return wake.Settings({"VOXCMD_VOICE_ENV_FILE": path, **(env or {})})
 
-    def test_file_values_apply_when_the_environment_has_none(self):
-        s = self.settings_with_file("VOXCMD_WAKE_THRESHOLD=0.7\nVOXCMD_WAKE_FRAMES=2\n")
+    def test_each_saved_level_maps_to_its_threshold_and_frames(self):
+        for level, expected in (("strict", (0.8, 3)), ("balanced", (0.7, 2)), ("relaxed", (0.6, 2))):
+            s = self.settings_with_file(f"VOXCMD_WAKE_SENSITIVITY={level}\n")
+            self.assertEqual((s.threshold, s.frames), expected, level)
+
+    def test_environment_level_beats_the_file_and_raw_values_beat_the_level(self):
+        s = self.settings_with_file("VOXCMD_WAKE_SENSITIVITY=relaxed\n", {"VOXCMD_WAKE_SENSITIVITY": "balanced"})
         self.assertEqual((s.threshold, s.frames), (0.7, 2))
+        s = self.settings_with_file("VOXCMD_WAKE_SENSITIVITY=relaxed\n", {"VOXCMD_WAKE_THRESHOLD": "0.9"})
+        self.assertEqual((s.threshold, s.frames), (0.9, 2))
+        s = self.settings_with_file("VOXCMD_WAKE_SENSITIVITY=relaxed\n", {"VOXCMD_WAKE_FRAMES": "5"})
+        self.assertEqual((s.threshold, s.frames), (0.6, 5))
 
-    def test_environment_beats_the_file_per_key(self):
-        s = self.settings_with_file("VOXCMD_WAKE_THRESHOLD=0.7\nVOXCMD_WAKE_FRAMES=2\n", {"VOXCMD_WAKE_THRESHOLD": "0.6"})
-        self.assertEqual((s.threshold, s.frames), (0.6, 2))
-
-    def test_a_missing_file_and_absent_keys_are_the_defaults(self):
+    def test_a_missing_file_and_absent_key_are_strict(self):
         self.assertEqual(self.settings_with_file(None).threshold, 0.8)
         self.assertEqual(self.settings_with_file("VOXCMD_TYPE_CHUNK_PAUSE_SECS=2\n").frames, 3)
 
-    def test_bad_file_values_fall_back_to_the_defaults(self):
-        for content in (
-            "VOXCMD_WAKE_THRESHOLD=0\nVOXCMD_WAKE_FRAMES=0\n",
-            "VOXCMD_WAKE_THRESHOLD=1.5\nVOXCMD_WAKE_FRAMES=-2\n",
-            "VOXCMD_WAKE_THRESHOLD=loud\nVOXCMD_WAKE_FRAMES=2.5\n",
-            "VOXCMD_WAKE_THRESHOLD=\n$(touch x)\nexport VOXCMD_WAKE_FRAMES=2\n",
-        ):
+    def test_a_bad_saved_level_is_strict(self):
+        for content in ("VOXCMD_WAKE_SENSITIVITY=loud\n", "VOXCMD_WAKE_SENSITIVITY=3\n", "VOXCMD_WAKE_SENSITIVITY=Strict\n", "VOXCMD_WAKE_SENSITIVITY=\n"):
             s = self.settings_with_file(content)
             self.assertEqual((s.threshold, s.frames), (0.8, 3), msg=content)
 
+    def test_old_threshold_and_frames_lines_in_the_file_are_ignored(self):
+        s = self.settings_with_file("VOXCMD_WAKE_THRESHOLD=0.6\nVOXCMD_WAKE_FRAMES=2\n")
+        self.assertEqual((s.threshold, s.frames), (0.8, 3))
+
+    def test_an_environment_level_that_is_not_a_level_is_refused(self):
+        with self.assertRaises(ValueError):
+            wake.Settings({"VOXCMD_WAKE_SENSITIVITY": "loud"})
+
     def test_the_last_valid_line_wins_and_junk_lines_are_ignored(self):
-        s = self.settings_with_file("VOXCMD_WAKE_FRAMES=2\nnonsense\nVOXCMD_WAKE_FRAMES=junk\nVOXCMD_WAKE_FRAMES=4\n")
-        self.assertEqual(s.frames, 4)
+        s = self.settings_with_file("VOXCMD_WAKE_SENSITIVITY=relaxed\nnonsense\n$(touch x)\nVOXCMD_WAKE_SENSITIVITY=balanced\n")
+        self.assertEqual((s.threshold, s.frames), (0.7, 2))
 
     def test_defaults_are_the_strict_setting(self):
         s = wake.Settings({})
@@ -355,25 +363,26 @@ class ListenerTest(unittest.TestCase):
 
 
 class PauseFlagsTest(unittest.TestCase):
-    def test_defaults_keep_listening_for_media_and_pause_for_meetings(self):
+    def test_defaults_keep_listening_for_media_and_pause_for_the_mic(self):
         s = wake.Settings({})
-        self.assertEqual((s.pause_for_media, s.pause_for_meetings), (False, True))
+        self.assertEqual((s.pause_for_media, s.pause_for_mic), (False, True))
 
     def test_file_flips_both(self):
-        s = SettingsTest().settings_with_file("VOXCMD_WAKE_PAUSE_FOR_MEDIA=1\nVOXCMD_WAKE_PAUSE_FOR_MEETINGS=0\n")
-        self.assertEqual((s.pause_for_media, s.pause_for_meetings), (True, False))
+        s = SettingsTest().settings_with_file("VOXCMD_WAKE_PAUSE_FOR_MEDIA=1\nVOXCMD_WAKE_PAUSE_FOR_MIC=0\n")
+        self.assertEqual((s.pause_for_media, s.pause_for_mic), (True, False))
 
     def test_environment_beats_the_file(self):
         s = SettingsTest().settings_with_file("VOXCMD_WAKE_PAUSE_FOR_MEDIA=1\n", {"VOXCMD_WAKE_PAUSE_FOR_MEDIA": "0"})
         self.assertFalse(s.pause_for_media)
 
-    def test_a_file_value_other_than_0_or_1_is_the_default(self):
-        s = SettingsTest().settings_with_file("VOXCMD_WAKE_PAUSE_FOR_MEDIA=2\nVOXCMD_WAKE_PAUSE_FOR_MEETINGS=0.5\n")
-        self.assertEqual((s.pause_for_media, s.pause_for_meetings), (False, True))
+    def test_a_file_value_other_than_exactly_0_or_1_is_the_default(self):
+        for value in ("2", "0.5", "01", "1.0", "0.0", "yes"):
+            s = SettingsTest().settings_with_file(f"VOXCMD_WAKE_PAUSE_FOR_MEDIA={value}\nVOXCMD_WAKE_PAUSE_FOR_MIC={value}\n")
+            self.assertEqual((s.pause_for_media, s.pause_for_mic), (False, True), value)
 
     def test_an_environment_value_other_than_0_or_1_is_refused(self):
         with self.assertRaises(ValueError):
-            wake.Settings({"VOXCMD_WAKE_PAUSE_FOR_MEETINGS": "yes"})
+            wake.Settings({"VOXCMD_WAKE_PAUSE_FOR_MIC": "yes"})
 
     def test_media_is_never_asked_when_not_paused_for(self):
         calls = []
@@ -384,81 +393,102 @@ class PauseFlagsTest(unittest.TestCase):
             clock.now += 2.0
         self.assertEqual(calls, [])
 
-    def test_a_meeting_pauses_on_the_same_cadence(self):
+    def test_the_mic_check_pauses_on_the_same_once_a_second_cadence(self):
         calls = []
         clock = Clock()
-        gate = wake.PauseGate(clock, "/nonexistent", lambda: False, pause_for_media=False, in_meeting=lambda: calls.append(1) or True)
+        gate = wake.PauseGate(clock, "/nonexistent", lambda: False, pause_for_media=False, other_app_recording=lambda: calls.append(1) or True)
         for _ in range(5):
             self.assertTrue(gate.paused())
             clock.now += 0.1
         self.assertEqual(len(calls), 1)
 
+    def test_without_a_mic_check_nothing_is_asked(self):
+        gate = wake.PauseGate(Clock(), "/nonexistent", lambda: False, pause_for_media=False)
+        self.assertFalse(gate.paused())
 
-class MeetingCalendarTest(unittest.TestCase):
-    NOW = 1_800_000_000.0
 
-    def iso(self, offset_secs):
-        moment = wake.datetime.datetime.fromtimestamp(self.NOW + offset_secs, wake.datetime.timezone.utc)
-        return moment.isoformat()
+def source_output(index, client, source, properties=None, corked=False):
+    return {"index": index, "client": str(client), "source": source, "corked": corked, "properties": properties or {}}
 
-    def event(self, start, end, **extra):
-        return {"title": "x", "start": self.iso(start), "end": self.iso(end), "all_day": False, **extra}
 
-    def in_meeting(self, events, now_offset=0):
+def client(index, binary, pid=None, name=None):
+    properties = {"application.process.binary": binary, "application.name": name or binary}
+    if pid is not None:
+        properties["application.process.id"] = str(pid)
+    return {"index": index, "properties": properties}
+
+
+class MicActivityTest(unittest.TestCase):
+    MIC, MONITOR, VIRTUAL = 91, 85, 34
+    SOURCES = [
+        {"index": MIC, "name": "alsa_input.pci-0000_07_00.6.analog-stereo", "properties": {"device.class": "sound"}},
+        {"index": MONITOR, "name": "alsa_output.pci.hdmi-stereo.monitor", "properties": {"device.class": "monitor"}},
+        {"index": 33, "name": "easyeffects_sink.monitor", "properties": {}},
+    ]
+    CLIENTS = [
+        client(10, "pw-cat", pid=4242),
+        client(11, "firefox", pid=3676),
+        client(12, "zoom"),
+        client(13, "voxtype"),
+        client(14, "pw-cat", pid=777),
+    ]
+
+    def check(self, outputs, own_pid=4242, sources=None, clients=None):
+        answers = {"source-outputs": outputs, "clients": self.CLIENTS if clients is None else clients, "sources": self.SOURCES if sources is None else sources}
+        mic = wake.MicActivity(lambda *args: answers[args[1]])
+        mic.own_pid = own_pid
+        return mic.other_app_recording()
+
+    def test_only_the_listeners_own_stream_is_not_active(self):
+        self.assertFalse(self.check([source_output(1, 10, self.MIC, {"application.name": "pw-record"})]))
+
+    def test_no_streams_is_not_active(self):
+        self.assertFalse(self.check([]))
+
+    def test_firefox_or_zoom_counts(self):
+        self.assertTrue(self.check([source_output(1, 11, self.MIC)]))
+        self.assertTrue(self.check([source_output(1, 12, self.MIC)]))
+
+    def test_another_pw_record_user_counts_though_the_listener_does_not(self):
+        outputs = [source_output(1, 10, self.MIC), source_output(2, 14, self.MIC)]
+        self.assertTrue(self.check(outputs))
+        self.assertFalse(self.check(outputs[:1]))
+        self.assertTrue(self.check(outputs[:1], own_pid=None))
+
+    def test_voxtypes_recording_is_excluded_by_client_or_by_stream(self):
+        self.assertFalse(self.check([source_output(1, 13, self.MIC)]))
+        self.assertFalse(self.check([source_output(1, 99, self.MIC, {"application.process.binary": "voxtype"})]))
+
+    def test_a_stream_on_a_monitor_is_excluded(self):
+        self.assertFalse(self.check([source_output(1, 11, self.MONITOR)]))
+        self.assertFalse(self.check([source_output(1, 11, 33)]))
+
+    def test_a_corked_stream_is_not_capturing(self):
+        self.assertFalse(self.check([source_output(1, 11, self.MIC, corked=True)]))
+
+    def test_one_counting_stream_among_excluded_ones_is_enough(self):
+        outputs = [source_output(1, 10, self.MIC), source_output(2, 13, self.MIC), source_output(3, 11, self.MIC)]
+        self.assertTrue(self.check(outputs))
+
+    def test_a_missing_or_failing_pactl_is_not_active(self):
+        self.assertFalse(wake.MicActivity(lambda *args: None).other_app_recording())
+        self.assertFalse(wake.MicActivity(lambda *args: [{"nonsense": 1}]).other_app_recording())
+
+    def test_the_real_reader_survives_a_missing_pactl_and_garbage(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "events.json")
-            with open(path, "w") as f:
-                json.dump({"events": events}, f)
-            return wake.MeetingCalendar(path, lambda: self.NOW + now_offset).in_meeting()
-
-    def test_a_timed_event_spanning_now_is_a_meeting(self):
-        self.assertTrue(self.in_meeting([self.event(-600, 600)]))
-
-    def test_the_start_counts_and_the_end_does_not(self):
-        self.assertTrue(self.in_meeting([self.event(0, 600)]))
-        self.assertFalse(self.in_meeting([self.event(-600, 0)]))
-
-    def test_ended_and_future_events_are_not(self):
-        self.assertFalse(self.in_meeting([self.event(-7200, -3600), self.event(3600, 7200)]))
-
-    def test_all_day_cancelled_and_day_long_blocks_are_not(self):
-        self.assertFalse(self.in_meeting([self.event(-600, 600, all_day=True)]))
-        self.assertFalse(self.in_meeting([self.event(-600, 600, status="cancelled")]))
-        self.assertFalse(self.in_meeting([self.event(-600, 13 * 3600)]))
-        self.assertTrue(self.in_meeting([self.event(-600, 12 * 3600 - 600)]))
-
-    def test_a_zero_length_event_is_never_live(self):
-        self.assertFalse(self.in_meeting([self.event(0, 0)]))
-
-    def test_any_one_of_several_events_is_enough(self):
-        self.assertTrue(self.in_meeting([self.event(-7200, -3600), self.event(-60, 60)]))
-
-    def test_a_missing_or_bad_cache_is_no_meeting(self):
-        self.assertFalse(wake.MeetingCalendar("/nonexistent/events.json", lambda: self.NOW).in_meeting())
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "events.json")
-            for content in ("{", "[]", '{"events": 3}', '{"events": [null, 4, {"start": "no", "end": "no"}]}'):
-                with open(path, "w") as f:
-                    f.write(content)
-                self.assertFalse(wake.MeetingCalendar(path, lambda: self.NOW).in_meeting(), content)
-
-    def test_the_file_is_read_again_only_when_it_changes(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "events.json")
-            with open(path, "w") as f:
-                json.dump({"events": []}, f)
-            calendar = wake.MeetingCalendar(path, lambda: self.NOW)
-            self.assertFalse(calendar.in_meeting())
-            with open(path, "w") as f:
-                json.dump({"events": [self.event(-60, 60)]}, f)
-            os.utime(path, ns=(1, 2_000_000_000))
-            self.assertTrue(calendar.in_meeting())
-            os.unlink(path)
-            self.assertFalse(calendar.in_meeting())
-
-    def test_the_cache_path_follows_xdg_cache_home(self):
-        self.assertEqual(wake.calendar_events_path({"XDG_CACHE_HOME": "/c"}), "/c/calendar/events.json")
-        self.assertEqual(wake.calendar_events_path({"HOME": "/h"}), "/h/.cache/calendar/events.json")
+            old_path = os.environ["PATH"]
+            try:
+                os.environ["PATH"] = tmp
+                self.assertIsNone(wake.pactl_json("list", "source-outputs"))
+                stub = os.path.join(tmp, "pactl")
+                write_stub(stub, "echo not json")
+                self.assertIsNone(wake.pactl_json("list", "source-outputs"))
+                write_stub(stub, "exit 1")
+                self.assertIsNone(wake.pactl_json("list", "source-outputs"))
+                write_stub(stub, "echo '[]'")
+                self.assertEqual(wake.pactl_json("list", "source-outputs"), [])
+            finally:
+                os.environ["PATH"] = old_path
 
 
 class PauseGateTest(unittest.TestCase):
