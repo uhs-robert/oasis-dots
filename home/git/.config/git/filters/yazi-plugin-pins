@@ -1,0 +1,40 @@
+#!/bin/sh
+# Git filter for yazi's package.toml: git stores the plugin list without the `rev`/`hash` pins `ya pkg` writes, so every
+# install fetches the latest plugins, and the working copy keeps its pins. Without them yazi takes an installed plugin
+# with no hash for a locally edited one and refuses to install or upgrade anything.
+#
+#   yazi-plugin-pins clean    working copy on stdin, stored list on stdout; remembers the pins in the git dir
+#   yazi-plugin-pins smudge   stored list on stdin, working copy on stdout, with the remembered pins put back
+#
+# The pins are kept beside the repository because git removes the old working copy before it smudges the new one. Git
+# runs clean whenever the file changed since it last looked, so the copy is current by the time a checkout replaces it.
+# A plugin new to the list stays unpinned, so `ya pkg install` fetches its latest.
+set -u
+pins_file=$(git rev-parse --git-path yazi-plugin-pins 2>/dev/null) || pins_file=''
+case ${1:-} in
+clean)
+  input=$(cat)
+  if [ -n "$pins_file" ] && printf '%s\n' "$input" | grep -Eq '^(rev|hash) = '; then
+    printf '%s\n' "$input" >"$pins_file.tmp" && mv "$pins_file.tmp" "$pins_file"
+  fi
+  printf '%s\n' "$input" | sed -E '/^(rev|hash) = /d'
+  ;;
+smudge)
+  [ -n "$pins_file" ] && [ -r "$pins_file" ] || exec cat
+  # The remembered copy first: the pin lines that follow each `use = ...` line. Then the stored list, with them added back.
+  awk '
+    FNR == NR {
+      if ($0 ~ /^use = /) { use = $0; next }
+      if (use != "" && $0 ~ /^(rev|hash) = /) { pins[use] = pins[use] $0 "\n"; next }
+      use = ""
+      next
+    }
+    { print }
+    /^use = / && ($0 in pins) { printf "%s", pins[$0] }
+  ' "$pins_file" -
+  ;;
+*)
+  echo "usage: yazi-plugin-pins clean|smudge" >&2
+  exit 2
+  ;;
+esac

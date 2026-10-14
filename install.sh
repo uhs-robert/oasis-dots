@@ -111,6 +111,9 @@ main() {
     if ! ya pkg install; then
       warn "Failed to install Yazi packages; continuing"
     fi
+    # ya pkg wrote pins the committed list leaves out (git's yazi-plugin-pins filter); git add only refreshes the index, so
+    # the larger file does not read as modified and block the next pull.
+    git -C "$DOTFILES_DIR" add -- home/yazi/.config/yazi/package.toml 2>/dev/null || true
   fi
 
   SELECTED_OPTIONAL=()
