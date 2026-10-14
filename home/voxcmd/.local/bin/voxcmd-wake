@@ -2,8 +2,8 @@
 """voxcmd-wake: listen for "Cortana" and start a voice command, with no key.
 
 Run by voxcmd-wake.service (`voxcmd wake on`). Reads the default source through pw-record (16 kHz mono s16) into
-openWakeWord with the cortana model kept in voxcmd's share folder. A trigger is only a candidate: the last 2 s of
-audio go to `voxcmd _wake-confirm`, which has Whisper transcribe them, and only when that hears the wake word does it
+openWakeWord with the cortana model kept in voxcmd's share folder. A trigger is only a candidate: the 2 s of
+audio ending 0.4 s after it go to `voxcmd _wake-confirm`, which has Whisper transcribe them, and only when that hears the wake word does it
 run `voxcmd listen --start-only`, as the voice key does. The audio stays in memory (an anonymous memfd for the
 confirmation). The only log is scores, verdicts and timestamps, in voxcmd's debug log while it is on.
 
@@ -19,6 +19,7 @@ Settings (environment, else the file Settings > Voice writes; voxcmd README "Wak
   VOXCMD_WAKE_PAUSE_FOR_MIC   1 pauses while another app records from a microphone; 0 keeps listening (1)
   VOXCMD_WAKE_COOLDOWN_SECS   quiet time after a trigger (3)
   VOXCMD_WAKE_MODEL_DIR       where the downloaded feature models live (~/.local/share/voxcmd-wake/models)
+
 """
 
 import os
@@ -28,6 +29,7 @@ import re
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import collections
+import ctypes
 import hashlib
 import io
 import json
@@ -87,9 +89,13 @@ STABLE_STREAM_SECS = 10.0
 # Scores below this are not worth a debug line at 12 a second.
 LOG_SCORE_FLOOR = 0.2
 
-# The audio a confirmation transcribes: the frames read up to the trigger, which fires near the end of the word.
+# The audio a confirmation transcribes: CONFIRM_AUDIO_SECS ending CONFIRM_TAIL_FRAMES after the trigger. The trigger
+# fires near the end of the word, and a lenient level triggers earlier still, so the tail keeps the word's end in the clip.
 CONFIRM_AUDIO_SECS = 2.0
 CONFIRM_AUDIO_FRAMES = round(CONFIRM_AUDIO_SECS * SAMPLE_RATE / FRAME_SAMPLES)
+CONFIRM_TAIL_FRAMES = 5
+# A verdict older than this when it is collected is dropped: what it heard is no longer happening.
+CONFIRM_MAX_AGE_SECS = 4.0
 # How long `voxtype transcribe` may take (passed to voxcmd, which enforces it), and how much longer voxcmd-wake waits
 # before it kills the whole confirmation.
 CONFIRM_TIMEOUT_SECS = 6
@@ -392,9 +398,13 @@ def start_daemon_thread(work):
     threading.Thread(target=work, daemon=True).start()
 
 
+Verdict = collections.namedtuple("Verdict", "result generation started_at")
+
+
 class Confirmation:
     """Runs confirm(wav) -> CONFIRMED, REJECTED or CONFIRM_FAILED off the audio loop, one at a time, so frames keep being
-    read while Whisper works. The loop collects the verdict with take_verdict; busy holds until it has."""
+    read while Whisper works. The loop collects the Verdict with take_verdict; busy holds until it has. A job carries the
+    stream generation and time it started at, so the loop can tell a verdict that no longer applies."""
 
     def __init__(self, confirm, spawn=start_daemon_thread):
         self.confirm = confirm
@@ -407,18 +417,23 @@ class Confirmation:
         with self.lock:
             return self.running or self.verdict is not None
 
-    def start(self, wav):
+    def start(self, wav, generation, started_at):
         with self.lock:
             self.running = True
-        self.spawn(lambda: self.finish(wav))
-
-    def finish(self, wav):
         try:
-            verdict = self.confirm(wav)
+            self.spawn(lambda: self.finish(wav, generation, started_at))
+        except BaseException:  # a thread that never started would leave busy() true for good
+            with self.lock:
+                self.running = False
+            raise
+
+    def finish(self, wav, generation, started_at):
+        try:
+            result = self.confirm(wav)
         except Exception:  # a worker that raised must still free the next trigger
-            verdict = CONFIRM_FAILED
+            result = CONFIRM_FAILED
         with self.lock:
-            self.verdict = verdict
+            self.verdict = Verdict(result, generation, started_at)
             self.running = False
 
     def take_verdict(self):
@@ -444,6 +459,10 @@ class Listener:
         self.decider = TriggerDecider(settings.threshold, settings.frames, settings.cooldown_secs)
         # The frames read since the stream opened, up to CONFIRM_AUDIO_SECS: the audio a trigger sends to be confirmed.
         self.recent_frames = collections.deque(maxlen=CONFIRM_AUDIO_FRAMES)
+        # Frames still to read after a trigger before its clip is cut, or None when no trigger waits.
+        self.tail_frames_left = None
+        # Counts stream closes, so a verdict for audio from before a pause is known by its number.
+        self.stream_generation = 0
         self.source = None
         self.opened_at = 0.0
         self.backoff_secs = BACKOFF_FIRST_SECS
@@ -460,6 +479,8 @@ class Listener:
         self.decider.reset()
         self.scorer.reset()
         self.recent_frames.clear()
+        self.tail_frames_left = None
+        self.stream_generation += 1
 
     def fail_stream(self, reason):
         self.close_stream()
@@ -496,7 +517,7 @@ class Listener:
         if self.gate.paused():
             if verdict is not None:
                 # What paused it (the voice key, a session, a call) has the microphone now.
-                self.log(f"{verdict} while paused, dropped")
+                self.log(f"{verdict.result} while paused, dropped")
             if self.source is not None:
                 self.log("paused")
                 self.close_stream()
@@ -505,7 +526,13 @@ class Listener:
             self.sleep(READY_POLL_SECS if self.ready_deadline is not None else PAUSED_SLEEP_SECS)
             return
         if verdict is not None:
-            self.act_on_verdict(verdict)
+            # A pause that ended since the trigger closed the stream, so its verdict must not start a recording now.
+            if verdict.generation != self.stream_generation:
+                self.log(f"{verdict.result} from before the stream was reopened, dropped")
+            elif self.clock() - verdict.started_at > CONFIRM_MAX_AGE_SECS:
+                self.log(f"{verdict.result} too old, dropped")
+            else:
+                self.act_on_verdict(verdict.result)
         if self.ready_deadline is not None and (self.ready_seen or self.clock() >= self.ready_deadline):
             self.ready_deadline = None
             self.ready_seen = False
@@ -531,17 +558,23 @@ class Listener:
             return
         self.recent_frames.append(frame)
         now = self.clock()
+        if self.tail_frames_left is not None:
+            self.tail_frames_left -= 1
+            if self.tail_frames_left == 0:
+                self.tail_frames_left = None
+                self.confirmation.start(wav_bytes(self.recent_frames), self.stream_generation, now)
         if now - self.opened_at >= STABLE_STREAM_SECS:
             self.backoff_secs = BACKOFF_FIRST_SECS
         score = self.scorer.score(frame)
         if score >= LOG_SCORE_FLOOR:
             self.log(f"score {score:.2f}")
         if self.decider.update(score, now):
-            if self.confirmation.busy():
+            if self.confirmation.busy() or self.tail_frames_left is not None:
                 self.log(f"trigger score {score:.2f} skipped, still confirming")
                 return
             self.log(f"trigger score {score:.2f}, confirming")
-            self.confirmation.start(wav_bytes(self.recent_frames))
+            # The frames after the trigger are read by the loop as usual; the clip is cut when the last one is in.
+            self.tail_frames_left = CONFIRM_TAIL_FRAMES
 
     def run(self):
         while not self.stopping:
@@ -598,14 +631,19 @@ class PwRecordSource:
         self.process.stdout.close()
 
 
-def die_with_parent():
-    # PR_SET_PDEATHSIG: pw-record goes too if this process is killed without running its cleanup.
-    import ctypes
+# Resolved here, not in die_with_parent: that runs in the forked child, where importing or loading a library is unsafe
+# once another thread exists (a lock it held stays locked in the child).
+try:
+    LIBC_PRCTL = ctypes.CDLL(None, use_errno=True).prctl
+except (OSError, AttributeError):
+    LIBC_PRCTL = None
+PR_SET_PDEATHSIG = 1
 
-    try:
-        ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGKILL)
-    except (OSError, AttributeError):
-        pass
+
+def die_with_parent():
+    # pw-record goes too if this process is killed without running its cleanup.
+    if LIBC_PRCTL is not None:
+        LIBC_PRCTL(PR_SET_PDEATHSIG, signal.SIGKILL)
 
 
 class ModelScorer:
@@ -788,8 +826,8 @@ def private_audio_file(content):
 
 def make_run_confirm(log):
     """The real confirm: `voxcmd _wake-confirm /dev/stdin` with the WAV as its stdin, so the wake word and its spellings
-    are matched where voxcmd keeps them. Exit 0 is the wake word, 1 is not; anything else, a timeout included, is a
-    failure. Its output, which holds what was heard, is never read."""
+    are matched where voxcmd keeps them. Exit 0 is the wake word and 1 is not; any other code, a timeout included, is
+    a failure (voxcmd exits 2 for its own). Its output, which holds what was heard, is never read."""
 
     def run_confirm(wav):
         try:

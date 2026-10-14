@@ -35,6 +35,7 @@ for notifier in ("notify_info", "notify_error"):
     setattr(wake, notifier, lambda summary, body, kind=notifier: sent_notifications.append((kind, summary, body)))
 
 FRAME_SECS = 0.08
+TAIL = wake.CONFIRM_TAIL_FRAMES
 THRESHOLD = 0.8
 
 
@@ -313,9 +314,13 @@ class ListenerTest(unittest.TestCase):
             self.listener.step()
 
     def test_the_hold_starts_a_confirmation_and_a_confirmed_one_runs_listen(self):
-        scores = [0.0, 0.9, 0.95, 0.97, 0.9, 0.3, 0.1, 0.0]
+        scores = [0.0, 0.9, 0.95, 0.97, 0.9, 0.3, 0.1, 0.0] + [0.0] * TAIL
         self.build([[b"f"] * len(scores)], scores)
         self.steps(3)
+        self.assertEqual(self.confirmed_audio, [])
+        self.steps(1)
+        self.assertEqual(self.confirmed_audio, [], "the clip waits for the frames after the trigger")
+        self.steps(TAIL - 1)
         self.assertEqual(self.confirmed_audio, [])
         self.steps(1)
         self.assertEqual(len(self.confirmed_audio), 1)
@@ -324,11 +329,11 @@ class ListenerTest(unittest.TestCase):
         self.assertEqual(self.listens, 1)
         self.assertIn("confirmed", self.logs)
         self.assertEqual(self.states[0], "armed")
-        self.steps(len(scores) - 5)
+        self.steps(len(scores) - 4 - TAIL)
         self.assertEqual(self.listens, 1)
 
     def test_a_rejected_trigger_does_nothing_visible(self):
-        scores = [0.9, 0.95, 0.97, 0.0, 0.0]
+        scores = [0.9, 0.95, 0.97] + [0.0] * (TAIL + 2)
         self.build([[b"f"] * len(scores)], scores, verdict=wake.REJECTED)
         self.steps(len(scores))
         self.assertEqual(len(self.confirmed_audio), 1)
@@ -339,27 +344,32 @@ class ListenerTest(unittest.TestCase):
 
     def test_a_failed_confirmation_does_not_listen(self):
         for verdict in (wake.CONFIRM_FAILED, RuntimeError("voxcmd broke")):
-            scores = [0.9, 0.95, 0.97, 0.0, 0.0]
+            scores = [0.9, 0.95, 0.97] + [0.0] * (TAIL + 2)
             self.build([[b"f"] * len(scores)], scores, verdict=verdict)
             self.steps(len(scores))
             self.assertEqual(self.listens, 0, verdict)
             self.assertIn("confirm failed, not listening", self.logs)
             self.assertFalse(self.listener.confirmation.busy())
 
-    def test_the_confirmation_gets_the_last_two_seconds_read_as_a_wav(self):
-        count = wake.CONFIRM_AUDIO_FRAMES + 5
+    def test_the_confirmation_gets_two_seconds_ending_after_the_trigger_read_as_a_wav(self):
+        trigger_index = wake.CONFIRM_AUDIO_FRAMES + 2
+        count = trigger_index + 1 + TAIL + 3
         frames = [bytes([index]) * wake.FRAME_BYTES for index in range(count)]
-        self.build([frames], [0.0] * (count - 3) + [0.9] * 3)
+        self.build([frames], [0.0] * (trigger_index - 2) + [0.9] * 3 + [0.0] * (count - trigger_index - 1))
         self.steps(count)
         self.assertEqual(wake.CONFIRM_AUDIO_FRAMES, 25)
+        self.assertEqual(TAIL, 5)
         rate, channels, width, audio = wav_frames(self.confirmed_audio[0])
         self.assertEqual((rate, channels, width), (16000, 1, 2))
-        self.assertEqual(audio, b"".join(frames[-wake.CONFIRM_AUDIO_FRAMES:]))
+        end = trigger_index + 1 + TAIL
+        self.assertEqual(audio, b"".join(frames[end - wake.CONFIRM_AUDIO_FRAMES : end]))
+        self.assertIn(frames[trigger_index], self.confirmed_audio[0], "the trigger frame is inside the clip, not its end")
+        self.assertNotIn(frames[end], self.confirmed_audio[0])
 
     def test_a_reopened_stream_starts_its_buffer_afresh(self):
         before = [b"\x01\x00" * wake.FRAME_SAMPLES] * 10
-        after = [b"\x02\x00" * wake.FRAME_SAMPLES] * 3
-        self.build([before, after], [0.0] * 10 + [0.9] * 3)
+        after = [b"\x02\x00" * wake.FRAME_SAMPLES] * (3 + TAIL)
+        self.build([before, after], [0.0] * 10 + [0.9] * 3 + [0.0] * TAIL)
         self.steps(40)
         self.assertEqual(len(self.sources), 2)
         self.assertEqual(wav_frames(self.confirmed_audio[0])[3], b"".join(after))
@@ -367,7 +377,7 @@ class ListenerTest(unittest.TestCase):
     def test_frames_keep_being_read_while_a_confirmation_runs_and_its_triggers_are_skipped(self):
         held = HeldWork()
         phrase = [0.9, 0.9, 0.9, 0.0]
-        scores = phrase + [0.0] * 3 + phrase
+        scores = phrase + [0.0] * (TAIL + 2) + phrase
         self.build([[b"f"] * (len(scores) + 2)], scores + [0.0, 0.0], spawn=held, VOXCMD_WAKE_COOLDOWN_SECS="0")
         self.steps(len(scores))
         self.assertEqual(self.scorer.scores, [0.0, 0.0])
@@ -380,8 +390,8 @@ class ListenerTest(unittest.TestCase):
 
     def test_a_verdict_that_arrives_while_paused_is_dropped(self):
         held = HeldWork()
-        self.build([[b"f"] * 5, [b"f"] * 5], [0.9, 0.95, 0.97] + [0.0] * 7, spawn=held)
-        self.steps(3)
+        self.build([[b"f"] * 10, [b"f"] * 10], [0.9, 0.95, 0.97] + [0.0] * (TAIL + 12), spawn=held)
+        self.steps(3 + TAIL)
         self.gate.paused_now = True
         self.steps(1)
         held.release()
@@ -391,9 +401,48 @@ class ListenerTest(unittest.TestCase):
         self.assertEqual(self.listens, 0)
         self.assertIn("confirmed while paused, dropped", self.logs)
 
+    def test_a_verdict_from_before_a_pause_is_dropped_after_the_pause_ends(self):
+        held = HeldWork()
+        self.build([[b"f"] * 10, [b"f"] * 10], [0.9, 0.95, 0.97] + [0.0] * (TAIL + 12), spawn=held)
+        self.steps(3 + TAIL)
+        self.assertEqual(len(held.pending), 1)
+        # The pause starts and ends between two loop steps, so no step sees it paused with the verdict in hand.
+        self.listener.close_stream()
+        held.release()
+        self.steps(3)
+        self.assertEqual(self.listens, 0)
+        self.assertIn("confirmed from before the stream was reopened, dropped", self.logs)
+
+    def test_a_verdict_older_than_four_seconds_is_dropped(self):
+        held = HeldWork()
+        self.build([[b"f"] * 10], [0.9, 0.95, 0.97] + [0.0] * (TAIL + 6), spawn=held)
+        self.steps(3 + TAIL)
+        self.clock.now += wake.CONFIRM_MAX_AGE_SECS + 0.5
+        held.release()
+        self.steps(2)
+        self.assertEqual(self.listens, 0)
+        self.assertIn("confirmed too old, dropped", self.logs)
+
+    def test_a_verdict_just_inside_four_seconds_still_counts(self):
+        held = HeldWork()
+        self.build([[b"f"] * 10], [0.9, 0.95, 0.97] + [0.0] * (TAIL + 6), spawn=held)
+        self.steps(3 + TAIL)
+        self.clock.now += wake.CONFIRM_MAX_AGE_SECS - 0.5
+        held.release()
+        self.steps(2)
+        self.assertEqual(self.listens, 1)
+
+    def test_a_trigger_during_the_tail_is_skipped_and_a_close_forgets_the_tail(self):
+        self.build([[b"f"] * 20, [b"f"] * 20], [0.9] * 7 + [0.0] * 30, VOXCMD_WAKE_COOLDOWN_SECS="0")
+        self.steps(7)
+        self.assertEqual(self.listener.tail_frames_left, TAIL - 4)
+        self.assertTrue(any("skipped, still confirming" in line for line in self.logs))
+        self.listener.close_stream()
+        self.assertIsNone(self.listener.tail_frames_left)
+
     def test_two_phrases_inside_the_cooldown_run_listen_once(self):
         phrase = [0.9, 0.95, 0.97, 0.1]
-        scores = phrase + [0.0] * 5 + phrase + [0.0] * 5
+        scores = phrase + [0.0] * (TAIL + 5) + phrase + [0.0] * 5
         self.build([[b"f"] * len(scores)], scores)
         self.steps(len(scores))
         self.assertEqual(self.listens, 1)
@@ -425,8 +474,8 @@ class ListenerTest(unittest.TestCase):
         self.assertEqual(self.listens, 0)
 
     def test_ready_is_published_while_the_recording_it_started_is_under_way(self):
-        self.build([[b"f"] * 5], [0.9, 0.95, 0.97, 0.0, 0.0])
-        self.steps(4)
+        self.build([[b"f"] * (TAIL + 5)], [0.9, 0.95, 0.97] + [0.0] * (TAIL + 2))
+        self.steps(4 + TAIL)
         self.assertEqual(self.listens, 1)
         self.assertEqual(self.states, ["armed"])
         self.gate.paused_now = True
@@ -442,8 +491,8 @@ class ListenerTest(unittest.TestCase):
         self.assertIsNone(self.listener.ready_deadline)
 
     def test_a_recording_that_never_starts_gives_up_the_ready_cue(self):
-        self.build([[b"f"] * 3, [b"f"] * 5], [0.9, 0.95, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0])
-        self.steps(4)
+        self.build([[b"f"] * (3 + TAIL + 1), [b"f"] * 5], [0.9, 0.95, 0.97] + [0.0] * (TAIL + 6))
+        self.steps(4 + TAIL)
         self.assertEqual(self.listens, 1)
         self.gate.paused_now = True
         self.steps(1)
@@ -503,8 +552,8 @@ class ListenerTest(unittest.TestCase):
         self.assertIn("retry in 2s", waits[2])
 
     def test_only_scores_and_events_are_logged(self):
-        self.build([[b"secret-audio"] * 5], [0.9, 0.95, 0.97, 0.1, 0.0])
-        self.steps(6)
+        self.build([[b"secret-audio"] * (TAIL + 5)], [0.9, 0.95, 0.97, 0.1] + [0.0] * (TAIL + 1))
+        self.steps(TAIL + 6)
         self.assertFalse(any("secret" in line for line in self.logs))
         self.assertTrue(any(line.startswith("trigger score") for line in self.logs))
         self.assertIn("confirmed", self.logs)
@@ -806,7 +855,7 @@ class StubbedCommandsTest(unittest.TestCase):
         self.calls = os.path.join(self.tmp.name, "calls")
         self.pcm = os.path.join(self.tmp.name, "audio.pcm")
         with open(self.pcm, "wb") as pcm:
-            pcm.write(b"\x01\x00" * wake.FRAME_SAMPLES * 6 + b"\x01")
+            pcm.write(b"\x01\x00" * wake.FRAME_SAMPLES * (TAIL + 6) + b"\x01")
         write_stub(os.path.join(self.bin, "pw-record"), f'echo "pw-record $*" >>"{self.calls}"\n/bin/cat "{self.pcm}"\n')
         write_stub(os.path.join(self.bin, "playerctl"), f'echo "playerctl $*" >>"{self.calls}"\nprintf "%b\\n" "$PLAYERCTL_ANSWER"\n')
         # _wake-confirm keeps a copy of the audio it got, notes where its stdin points, and exits $CONFIRM_EXIT.
@@ -853,7 +902,7 @@ class StubbedCommandsTest(unittest.TestCase):
         return states
 
     def test_reads_80ms_frames_from_pw_record_and_runs_listen_once(self):
-        states = self.run_listener([0.9, 0.95, 0.97, 0.1, 0.0, 0.0], 6)
+        states = self.run_listener([0.9, 0.95, 0.97, 0.1] + [0.0] * (TAIL + 2), TAIL + 6)
         calls = self.recorded()
         self.assertIn('pw-record -P { voxcmd.tag = "wake" } --rate 16000 --channels 1 --format s16 --raw -', calls)
         self.assertEqual(calls.count("voxcmd _wake-confirm /dev/stdin"), 1)
@@ -862,7 +911,7 @@ class StubbedCommandsTest(unittest.TestCase):
         self.assertEqual(states[0], "armed")
 
     def test_the_confirmation_reads_the_audio_from_an_anonymous_memfd(self):
-        self.run_listener([0.9, 0.95, 0.97, 0.0], 4)
+        self.run_listener([0.9, 0.95, 0.97] + [0.0] * TAIL, 3 + TAIL)
         stdin_lines = [call for call in self.recorded() if call.startswith("stdin ")]
         self.assertEqual(len(stdin_lines), 1)
         self.assertTrue(stdin_lines[0].startswith("stdin /memfd:voxcmd-wake-audio"), stdin_lines[0])
@@ -870,17 +919,17 @@ class StubbedCommandsTest(unittest.TestCase):
         with open(self.heard, "rb") as heard:
             rate, channels, width, audio = wav_frames(heard.read())
         self.assertEqual((rate, channels, width), (16000, 1, 2))
-        self.assertEqual(audio, b"\x01\x00" * wake.FRAME_SAMPLES * 3)
+        self.assertEqual(audio, b"\x01\x00" * wake.FRAME_SAMPLES * (3 + TAIL))
 
     def test_a_rejected_confirmation_never_runs_listen(self):
         os.environ["CONFIRM_EXIT"] = "1"
-        self.run_listener([0.9, 0.95, 0.97, 0.0, 0.0, 0.0], 6)
+        self.run_listener([0.9, 0.95, 0.97] + [0.0] * (TAIL + 3), TAIL + 6)
         self.assertEqual(self.recorded().count("voxcmd _wake-confirm /dev/stdin"), 1)
         self.assertNotIn("voxcmd listen --start-only", self.recorded())
 
     def test_a_failing_confirmation_is_logged_and_never_runs_listen(self):
         os.environ["CONFIRM_EXIT"] = "2"
-        self.run_listener([0.9, 0.95, 0.97, 0.0, 0.0, 0.0], 6)
+        self.run_listener([0.9, 0.95, 0.97] + [0.0] * (TAIL + 3), TAIL + 6)
         self.assertNotIn("voxcmd listen --start-only", self.recorded())
         self.assertIn("confirm exit 2", self.logs)
 
@@ -903,14 +952,40 @@ class StubbedCommandsTest(unittest.TestCase):
 
     def test_the_real_worker_thread_hands_back_a_verdict(self):
         confirmation = wake.Confirmation(lambda wav: wake.REJECTED)
-        confirmation.start(b"")
+        confirmation.start(b"", 0, 0.0)
         deadline = time.monotonic() + 5
         verdict = None
         while verdict is None and time.monotonic() < deadline:
             verdict = confirmation.take_verdict()
             time.sleep(0.01)
-        self.assertEqual(verdict, wake.REJECTED)
+        self.assertEqual(verdict.result, wake.REJECTED)
         self.assertFalse(confirmation.busy())
+
+    def test_a_thread_that_cannot_start_leaves_the_confirmation_free(self):
+        def no_thread(work):
+            raise RuntimeError("can't start new thread")
+
+        confirmation = wake.Confirmation(lambda wav: wake.CONFIRMED, no_thread)
+        with self.assertRaises(RuntimeError):
+            confirmation.start(b"", 0, 0.0)
+        self.assertFalse(confirmation.busy())
+
+    def test_an_exit_other_than_0_or_1_is_a_failure(self):
+        for code in ("2", "3", "127", "255"):
+            os.environ["CONFIRM_EXIT"] = code
+            logs = []
+            self.assertEqual(wake.make_run_confirm(logs.append)(wake.wav_bytes([b"\0\0"])), wake.CONFIRM_FAILED, code)
+        os.environ["CONFIRM_EXIT"] = "0"
+        self.assertEqual(wake.make_run_confirm(lambda message: None)(wake.wav_bytes([b"\0\0"])), wake.CONFIRMED)
+
+    def test_the_child_only_calls_prctl(self):
+        # ctypes and prctl are resolved at import, so the forked child loads nothing.
+        self.assertIn("ctypes", sys.modules)
+        self.assertTrue(callable(wake.LIBC_PRCTL))
+        with unittest.mock.patch.object(wake, "LIBC_PRCTL") as prctl, unittest.mock.patch("builtins.__import__") as importer:
+            wake.die_with_parent()
+        importer.assert_not_called()
+        prctl.assert_called_once_with(wake.PR_SET_PDEATHSIG, wake.signal.SIGKILL)
 
     def test_playing_media_never_starts_pw_record(self):
         os.environ["PLAYERCTL_ANSWER"] = "Playing"
