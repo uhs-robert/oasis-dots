@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: ship-batch.sh [<pr>...]; merges the PRs in order, then updates main, checks it and restarts what changed.
+# Usage: ship-batch.sh [<pr>...]; merges the PRs in order, then updates main, restarts what changed and checks it.
 set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
@@ -13,63 +13,56 @@ die() {
 }
 
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
-# Commands below that can leave a daemon behind run with fd 9 closed so it cannot hold the lock after this run.
-take_lock "$repo" || die "another ship-batch is running in this repository; wait for it to finish"
-before=$(select_base "$repo")
-# Each branch passes its own scoped check right before it merges, in its local worktree or, for a branch pushed from
-# elsewhere (a cloud session), in a temporary worktree at the PR head that is removed on every exit path.
+
+# Waiting for reviews and checking branches take minutes and touch nothing shared, so they run before the ship lock: a
+# PR still waiting for its review must not hold up another session's batch. Each PR in turn waits for its Codex review
+# (requesting one for a changed head) and passes its own scoped check, in its local worktree or, for a branch pushed from
+# elsewhere (a cloud session), in a temporary worktree at the PR head that is removed on every exit path. The first PR
+# that is not ready stops the list: the ones before it merge, in order, and it and the rest are left for a rerun.
 trap remove_temp_worktree EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-
+ready=() not_ready=''
 for pr in "$@"; do
+  if ! (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --check --wait-review --request-review "$pr"); then
+    not_ready="PR $pr does not pass the review gate"
+    break
+  fi
   branch=$(cd "$repo" && gh pr view "$pr" --json headRefName -q .headRefName) || die "cannot read PR $pr"
   worktree=$(git -C "$repo" worktree list --porcelain | awk -v ref="branch refs/heads/$branch" '/^worktree /{w = substr($0, 10)} $0 == ref {print w; exit}')
   if [[ -z $worktree ]]; then
     echo "ship-batch: no local worktree for $branch (PR $pr); checking its head in a temporary worktree"
-    add_temp_worktree "$repo" "pull/$pr/head" 9>&- || die "cannot fetch the head of PR $pr into a temporary worktree"
-    (cd "$temp_worktree" && check_branch_here) 9>&- || die "the check fails on $branch (PR $pr); nothing was merged"
-    remove_temp_worktree
-    continue
+    add_temp_worktree "$repo" "pull/$pr/head" || die "cannot fetch the head of PR $pr into a temporary worktree"
+    worktree=$temp_worktree
   fi
-  (cd "$worktree" && check_branch_here) 9>&- || die "the check fails on $branch (PR $pr); nothing was merged"
+  branch_passed=true
+  (cd "$worktree" && check_branch_here) || branch_passed=false
+  remove_temp_worktree
+  if ! $branch_passed; then
+    not_ready="the check fails on $branch (PR $pr)"
+    break
+  fi
+  ready+=("$pr")
 done
-# The owner already said to merge, so a Codex review still running is waited out rather than failing the batch.
-(($# == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --wait-review "$@") 9>&- || die "merge-prs failed; nothing after the merge ran"
+if [[ -n $not_ready ]]; then
+  ((${#ready[@]})) || die "$not_ready; nothing was merged"
+  echo "ship-batch: $not_ready; merging only ${ready[*]}, in order"
+fi
+
+# Only what must happen one batch at a time on the main checkout runs under the lock: the merge, the pull, and the
+# restows, reloads and restarts that follow it. Commands below that can leave a daemon behind run with fd 9 closed so it
+# cannot hold the lock after this run.
+take_lock "$repo" "${ready[*]}" || die "gave up waiting for the ship-batch running in this repository"
+before=$(select_base "$repo")
+# The reviews were waited for above, so the gate here only confirms them and never waits under the lock.
+((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only
 after=$(git -C "$repo" rev-parse HEAD)
-# A recorded base that main no longer descends from (rewritten history, pruned commit) vouches for nothing: check
-# everything, and treat every file as changed so no reload or restart is skipped.
-base_ok=true
+# A recorded base that main no longer descends from (rewritten history, pruned commit) vouches for nothing: treat every
+# file as changed so no reload or restart is skipped.
 if ! base_is_ancestor "$repo" "$before" "$after"; then
-  base_ok=false
-  echo "ship-batch: ${before:0:12} is not an ancestor of main; running the full check"
+  echo "ship-batch: ${before:0:12} is not an ancestor of main; reloading everything"
   before=$(git -C "$repo" hash-object -t tree /dev/null)
-fi
-# A tree that already passed (a branch checked before the merge, when main had not moved since) needs no second check.
-# Whether a pass made in a branch worktree counts for main depends on repos/: a worktree has none, so
-# lib/check-symlinks.sh skipped the links into it. Such a pass vouches for everything but those links, so main runs only
-# that step; check-passed.sh is-passed accepts the pass outright only when it was made with repos/.
-# Inductive: a full pass of `before` plus a scoped pass over everything changed since
-# vouches for `after`. A `before` not recorded as passed (check-passed.sh also ignores a worktree's no-repos pass,
-# which skipped this checkout's repos/ symlinks) or CHECK_FULL=1 falls back to the full check.
-# The skips vouch for main's commit, not its working tree, so local edits or untracked files in the main checkout rule them out.
-main_clean=false
-[[ -z $(git -C "$repo" status --porcelain) ]] && main_clean=true
-if [[ $before != "$after" ]]; then
-  if $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$after"); then
-    echo "ship-batch: main's tree already passed the check; not checking it again"
-  elif $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh passed-somewhere "$after"); then
-    echo "ship-batch: main's tree passed the check in a worktree; checking only the links into repos/"
-    (cd "$repo" && sh lib/check-symlinks.sh) 9>&- || die "the symlinks check fails on main after the merge; fix it before anything else"
-  elif $base_ok && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$before"); then
-    (cd "$repo" && lib/check.sh --changed "$before") 9>&- || die "the check fails on main after the merge; fix it before anything else"
-  else
-    (cd "$repo" && just check) 9>&- || die "just check fails on main after the merge; fix it before anything else"
-  fi
-  # With uncommitted changes in the main checkout the pass was of its working tree, not `after`'s, and the helper
-  # refuses to record it; that must not stop the reloads and restarts below.
-  (cd "$repo" && lib/check-passed.sh record) || true
 fi
 
 qs_dir=home/quickshell/.config/quickshell
@@ -120,7 +113,49 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
   fi
 fi
 
-# Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the check and the reloads.
+# Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the reloads and restarts.
+[[ $before == "$after" ]] || owe_check "$repo" "$before"
 finish_base "$repo"
+release_lock
+
+# The check of main runs after the lock is released, so a long check never holds up another batch. It checks from the
+# oldest base still owed (see owe_check), so a rerun after a failed or interrupted check checks again, and the step
+# records make that rerun cost only the steps that did not pass.
+# Whether a pass made in a branch worktree counts for main depends on repos/: a worktree has none, so
+# lib/check-symlinks.sh skipped the links into it. Such a pass vouches for everything but those links, so main runs only
+# that step; check-passed.sh is-passed accepts the pass outright only when it was made with repos/.
+# Inductive: a full pass of the base plus a scoped pass over everything changed since vouches for `after`. A base main
+# does not descend from or not recorded as passed, or CHECK_FULL=1, falls back to the full check.
+# The skips vouch for main's commit, not its working tree, so local edits or untracked files in the main checkout rule them out.
+check_from=$(owed_check "$repo")
+if [[ -n $check_from ]]; then
+  main_clean=false
+  [[ -z $(git -C "$repo" status --porcelain) ]] && main_clean=true
+  main_passed=true
+  if $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$after"); then
+    echo "ship-batch: main's tree already passed the check; not checking it again"
+  elif $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh passed-somewhere "$after"); then
+    echo "ship-batch: main's tree passed the check in a worktree; checking only the links into repos/"
+    (cd "$repo" && sh lib/check-symlinks.sh) || main_passed=false
+  elif [[ -z ${CHECK_FULL:-} ]] && base_is_ancestor "$repo" "$check_from" "$after" && (cd "$repo" && lib/check-passed.sh is-passed "$check_from"); then
+    (cd "$repo" && lib/check.sh --changed "$check_from") || main_passed=false
+  else
+    (cd "$repo" && just check) || main_passed=false
+  fi
+  # Another batch may merge and pull while this check runs, changing the files under it, so this run's result says
+  # nothing about main. The debt stays: that batch's check starts from this one's base and covers both.
+  if [[ $(git -C "$repo" rev-parse HEAD) != "$after" ]]; then
+    echo "ship-batch: main moved during the check; the check from ${check_from:0:12} is still owed, and the next ship-batch run makes it"
+  elif ! $main_passed; then
+    die "the check fails on main after the merge; fix it before anything else"
+  else
+    # With uncommitted changes in the main checkout the pass was of its working tree, not `after`'s, and the helper
+    # refuses to record it.
+    (cd "$repo" && lib/check-passed.sh record) || true
+    settle_check "$repo"
+  fi
+fi
+
 echo "ship-batch: main is at $(git -C "$repo" log --oneline -1)"
-(cd "$repo" && "$HOME/.claude/skills/merge-prs/status.sh") 9>&- || true
+(cd "$repo" && "$HOME/.claude/skills/merge-prs/status.sh") || true
+[[ -z $not_ready ]] || die "$not_ready; rerun ship-batch with it and the PRs after it once that is fixed"
