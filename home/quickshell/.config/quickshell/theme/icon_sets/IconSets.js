@@ -36,14 +36,14 @@ var sets = {
 
 var names = Object.keys(sets);
 
-// An entry is either sprite rows (an array of strings) or a vector: { w, h, body, accent?, fill_rule? }, drawn on a viewBox w wide and h (24) tall.
+// An entry is sprite rows (an array of strings), a vector { w, h, body, accent?, fill_rule? } drawn on a viewBox w wide and h (24) tall, or text { text, font? } such as an emoji.
 function entry(set, name, variant) {
     const table = sets[set];
     const icon = table ? table[name] : undefined;
     return icon ? icon[variant] : undefined;
 }
 
-// The sprite rows, or null when the module should draw its glyph: no set, an icon or variant the set lacks, one not drawn yet (an empty array), or a vector.
+// The sprite rows, or null when the module should draw its glyph: no set, an icon or variant the set lacks, one not drawn yet (an empty array), a vector or text.
 function sprite(set, name, variant) {
     const rows = entry(set, name, variant);
     return Array.isArray(rows) && rows.length > 0 ? rows : null;
@@ -53,6 +53,24 @@ function sprite(set, name, variant) {
 function vector(set, name, variant) {
     const drawn = entry(set, name, variant);
     return drawn && !Array.isArray(drawn) && (drawn.body || drawn.accent) ? drawn : null;
+}
+
+// The text entry { text, font? }, or null when the set has no text for this icon and variant.
+function text(set, name, variant) {
+    const drawn = entry(set, name, variant);
+    return drawn && !Array.isArray(drawn) && drawn.text ? drawn : null;
+}
+
+// The longest text among all of an icon's variants, which a fixed slot measures to stay as wide as its widest variant, or "" when the set draws no text for it.
+function widest_text(set, name) {
+    const table = sets[set];
+    const icon = table ? table[name] : undefined;
+    let widest = "";
+    for (const variant in icon) {
+        const drawn = icon[variant];
+        if (drawn && drawn.text && drawn.text.length > widest.length) widest = drawn.text;
+    }
+    return widest;
 }
 
 // The widest and tallest sprite among all of an icon's variants, in sprite pixels, or null when the set does not draw it.
