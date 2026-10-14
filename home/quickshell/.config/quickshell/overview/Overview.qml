@@ -845,7 +845,7 @@ OverviewBase {
         return addresses.every(a => known[a]) ? addresses : null;
     }
 
-    // The voice entry: each verb calls what its key calls. Window arguments are addresses; with none, a verb acts on the marks like the keys.
+    // The voice entry: each verb calls what its key calls. Window arguments are addresses; with none, a verb acts on the marks, or the selected window when nothing is marked, like the keys.
     function voice_act(verb, text) {
         if (!root.wanted) return "error: the overview is closed";
         const args = text.split(" ").filter(a => a !== "");
@@ -855,7 +855,9 @@ OverviewBase {
         const monitor = verb === "send" || verb === "workspace_to_monitor" ? (verb === "send" ? ref : args.shift()) : "";
         const explicit = root.shown_windows(args);
         if (!explicit && ["mark", "unmark", "move", "send", "close", "focus"].indexOf(verb) >= 0) return "error: unknown window";
-        const targets = args.length > 0 ? explicit : root.alive(root.marks);
+        // Like x and m: the marks, or the selected window when nothing is marked.
+        const marked = root.alive(root.marks);
+        const targets = args.length > 0 ? explicit : marked.length > 0 ? marked : root.current_address !== "" ? [root.current_address] : [];
         if (verb === "mark") {
             root.marks = root.marks.concat(targets.filter(a => root.marks.indexOf(a) < 0));
         } else if (verb === "unmark") {

@@ -113,6 +113,21 @@ move two to monitor two|send HDMI-A-1 aaa2
 move the marked windows to workspace 5|move 5
 move the marked windows to workspace five|move 5
 close the marked windows|close
+move to workspace 7|move 7
+move them to workspace 7|move 7
+move these to workspace seven|move 7
+move it to workspace number 7|move 7
+move the selected windows to work space 7|move 7
+send the marked windows to workspace 3|move 3
+put them on workspace 4|move 4
+move to the left monitor|send DP-1
+send them to the right screen|send HDMI-A-1
+send the selected window to the right monitor|send HDMI-A-1
+close them|close
+close these|close
+close it|close
+close the selected|close
+close the selected window|close
 close two|close aaa2
 focus two|focus aaa2
 go to four|focus aaa4

@@ -44,6 +44,8 @@ examples=(
   "move two to workspace three"
   "move two and four to the left monitor"
   "move the marked windows to workspace 5"
+  "move to workspace 7"
+  "close them"
   "close two"
   "close the marked windows"
   "focus two"
@@ -231,7 +233,7 @@ overview_monitor() {
 overview_windows() {
   local text="$1" numbers number address
   text="${text#the }"
-  if [[ "$text" =~ ^(marked|selected|checked|ticked)( windows| ones| window| items)?$ || "$text" =~ ^(them|these|those)$ ]]; then
+  if [[ "$text" =~ ^(marked|selected|checked|ticked)( windows| ones| window| items)?$ || "$text" =~ ^(them|these|those|it|this|that)$ ]]; then
     echo "marked"
     return 0
   fi
@@ -252,6 +254,10 @@ overview_parse() {
   local text="$1" rest ref ws ws2 addresses monitor
   text="${text#please }"
   text="${text% please}"
+  # Whisper's habits: "work space 7", "workspace number 7".
+  text="${text//work space/workspace}"
+  text="${text//workspace number /workspace }"
+  text="${text//desktop number /desktop }"
   if [[ "$text" =~ ^(unmark|deselect|uncheck|remove)\ (all|everything)$ || "$text" =~ ^(clear|clear (the )?(marks|marked|selection|all marks))$ ]]; then
     echo "clear"
   elif [[ "$text" =~ ^(unmark|deselect|uncheck|remove)\ (.+)$ ]]; then
@@ -276,17 +282,19 @@ overview_parse() {
       return 0
     }
     echo "workspace_to_monitor $ref $monitor"
-  elif [[ "$text" =~ ^(move|send|put|carry)\ (.+)\ (to|onto|on)\ (the )?(workspace|desktop)\ ([a-z0-9]+)$ ]]; then
-    addresses=$(overview_windows "${BASH_REMATCH[2]}") || return 0
-    ws=$(overview_number "${BASH_REMATCH[6]}") || return 0
+  elif [[ "$text" =~ ^(move|send|put|carry)(\ (.+))?\ (to|onto|on)\ (the )?(workspace|desktop)\ ([a-z0-9\ ]+)$ ]]; then
+    # Without windows named ("move to workspace 7"), the marks go.
+    addresses=$(overview_windows "${BASH_REMATCH[3]:-marked}") || return 0
+    ws=$(overview_number_list "${BASH_REMATCH[7]}") || return 0
+    [ "$(wc -l <<<"$ws")" = 1 ] || return 0
     ref=$(overview_workspace_ref "$ws") || {
       echo "error:no workspace $ws"
       return 0
     }
     overview_emit move "$addresses" "$ref"
-  elif [[ "$text" =~ ^(move|send|put|carry)\ (.+)\ (to|onto|on)\ (the )?(.+\ (monitor|screen|display)|(monitor|screen|display)\ .+)$ ]]; then
-    addresses=$(overview_windows "${BASH_REMATCH[2]}") || return 0
-    monitor=$(overview_monitor "${BASH_REMATCH[5]}")
+  elif [[ "$text" =~ ^(move|send|put|carry)(\ (.+))?\ (to|onto|on)\ (the )?(.+\ (monitor|screen|display)|(monitor|screen|display)\ .+)$ ]]; then
+    addresses=$(overview_windows "${BASH_REMATCH[3]:-marked}") || return 0
+    monitor=$(overview_monitor "${BASH_REMATCH[6]}")
     [[ "$monitor" != error:* ]] || {
       echo "$monitor"
       return 0
@@ -364,7 +372,8 @@ overview_label() {
     case "$verb" in
     close | mark | unmark | move | send)
       if [ "$count" -le 0 ]; then
-        count=$(jq '.marks | length' "$overview_file" 2>/dev/null || echo 0)
+        # No numbers said: the marks, or the selected window when nothing is marked, as the keys do.
+        count=$(jq '.marks | length | if . == 0 then 1 else . end' "$overview_file" 2>/dev/null || echo 1)
       fi
       echo "$verb $count window$([ "$count" = 1 ] || echo s)"
       ;;
