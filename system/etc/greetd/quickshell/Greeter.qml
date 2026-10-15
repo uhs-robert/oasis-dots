@@ -84,7 +84,7 @@ Singleton {
     // The greeter's WirePlumber cannot save state, so every boot starts the sink near -24 dB; start at the desktop's volume instead.
     readonly property var output_sink: Pipewire.defaultAudioSink
     readonly property bool output_sink_ready: root.output_sink !== null && root.output_sink.ready && root.output_sink.audio !== null
-    property var volume_applied_sink: null
+    property var volume_applied_sinks: []
     property PwObjectTracker output_tracker: PwObjectTracker {
         objects: [root.output_sink].filter(o => o)
     }
@@ -96,8 +96,8 @@ Singleton {
         if (root.preview || text === undefined || !root.output_sink_ready) return;
         const volume = parseFloat(text);
         if (isNaN(volume)) return;
-        if (root.volume_applied_sink === root.output_sink) return;
-        root.volume_applied_sink = root.output_sink;
+        if (root.volume_applied_sinks.includes(root.output_sink)) return;
+        root.volume_applied_sinks = root.volume_applied_sinks.concat([root.output_sink]);
         root.output_sink.audio.volume = Math.max(0, Math.min(1, volume));
     }
     onOutput_sink_readyChanged: root.apply_output_volume()
