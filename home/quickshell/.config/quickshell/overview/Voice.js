@@ -34,15 +34,16 @@ function cluster_words(list, words) {
     return out;
 }
 
-// Groups in rows, top to bottom. A group joins the row while its centre is above the row's lowest bottom edge, so a tall
-// neighbour (a rotated monitor) never pulls a monitor that sits below the others into their row.
+// Groups in rows, top to bottom. A group joins the row while its top is above the bottom of every group in it (the row's
+// lowest bottom edge), so a tall neighbour sharing the top edge stays in the row. A group starting at or below the shortest
+// member's bottom starts a new row, as a laptop set below a row of monitors does.
 function rows(groups) {
     const order = groups.map((g, i) => i).sort((a, b) => groups[a].y - groups[b].y || groups[a].h - groups[b].h || a - b);
     const out = [];
     let bottom = Infinity;
     for (const i of order) {
         const g = groups[i];
-        if (out.length > 0 && g.y + g.h / 2 < bottom) {
+        if (out.length > 0 && g.y < bottom) {
             out[out.length - 1].push(i);
             bottom = Math.min(bottom, g.y + g.h);
         } else {
