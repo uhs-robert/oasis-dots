@@ -994,6 +994,17 @@ check "Stop Voice after the recording ended but before its watcher read it keeps
 kill -CONT "$stopped_owner"
 sess_wait
 check "and the finished dictation is typed, then the session ends" "session_gone && wtype_is 'wtype -- Finished words.' && toast_has 'Type mode ended stopped'"
+# A voice key pressed in the same window (twice, or just after auto-stop) must not take the transcript or the session.
+sess_start "UNTIL_STOP Kept dictation."
+owner_is_listening
+stopped_owner=$(jq -r .owner "$session_json")
+kill -STOP "$stopped_owner"
+SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record stop
+sess_voxcmd_env listen
+check "a voice key while the watcher has not read its transcript starts no recording" "[[ \$(record_starts) == 1 && -s '$XDG_RUNTIME_DIR/voxcmd/transcript.txt' && \$(jq -r .owner '$session_json') == '$stopped_owner' ]] && toast_has 'voxcmd: Type mode Still typing what was said'"
+kill -CONT "$stopped_owner"
+sess_wait
+check "and the dictation is typed" "session_gone && wtype_is 'wtype -- Kept dictation.' && [[ \$(record_starts) == 1 ]]"
 
 # Type mode re-created at the same depth while the recording was handled: nothing is typed into the new one.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_CLICKHINTS_STATE_BLOCK="$root/frame-block")

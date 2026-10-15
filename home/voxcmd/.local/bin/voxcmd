@@ -2519,6 +2519,14 @@ recording_ended_unseen() {
 # card's) must not end one the user is making.
 # Under the session lock, so a voice key pressed during a session turn and that turn's own next listen never both start.
 listen() { session_locked listen_locked "$@"; }
+
+# recording_transcript_pending <session state>: succeeds while a one-recording mode's recording is over (voxtype is idle
+# when this is asked) and its watcher, some process other than this one, still owns the session: the transcript it
+# wrote is not handled yet. Its own listen, after a turn heard in another mode, may go on.
+recording_transcript_pending() {
+  [ "$(jq -r '.one_recording // false' <<<"$1")" = true ] || return 1
+  [ "$(jq -r '.recording_owner // empty' <<<"$1")" = "$(jq -r .owner <<<"$1")" ] && [ "$(jq -r .owner <<<"$1")" != $$ ]
+}
 listen_locked() {
   local transcript_handler=route state start_only=0 session_json mode_token=- mode_private=0
   [ "${1:-}" != --start-only ] || start_only=1
@@ -2540,6 +2548,12 @@ listen_locked() {
   esac
   mkdir -p "$runtime_dir"
   if session_json=$(session_state); then
+    if recording_transcript_pending "$session_json"; then
+      # A new recording would take the transcript file and the session from the watcher still to type what was said.
+      debug "listen: a one-recording mode's watcher still has its transcript to hand over, not listening"
+      notify info "voxcmd: $(jq -r .label <<<"$session_json")" "Still typing what was said"
+      return 1
+    fi
     load_mode_settings "$(jq -r .integration <<<"$session_json")"
     # A mode that takes the words itself or keeps them private (type mode) never has its dictation read as a reply to a
     # picker, which would log the words and could answer a card with them.
