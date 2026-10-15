@@ -84,7 +84,7 @@ Four lock screens are modelled on games, and the shell can use those games' own 
 
 The source is the last argument and is required, for example `scripts/mgs2-audio ~/Music/mgs2`. Run a script with `--help` for the file names it expects.
 
-`mgs2-audio` also levels its menu sounds to about -21 dB active loudness (the other packs' level), limiting any sharp click so the peak stays under -1 dBFS. `ff7-audio` and `ocarina-audio` level music and effects in their own ways.
+`mgs2-audio` also levels its menu sounds to about -21 dB active loudness (the other packs' level), limiting any sharp click so the peak stays under -1 dBFS. A click too sharp to reach that without heavy limiting stays a little quieter. `ff7-audio` and `ocarina-audio` level music and effects in their own ways.
 
 Until you import, a lock screen simply has no game music or effects. Every importer needs `ffmpeg` and `python3` with `numpy`. All but `ff7-audio` also need `ffprobe` and `jq`, and `goldeneye-audio` and `ocarina-audio` need `pipx` to find loop points unless you pass them. Playing the result needs `mpv`. On Arch: `pacman -S ffmpeg jq python-numpy python-pipx mpv`. The GoldenEye intro frames come from `scripts/goldeneye-frames`, which also needs `yt-dlp` and `python-pillow`, and without a video file it seeks into the reference capture and reads only the seconds it needs, a few MB.
 

@@ -2,7 +2,7 @@
 # Imports the MGS2 lock skin's audio into $XDG_DATA_HOME/quickshell/mgs2-audio: the title and menu themes as an intro plus a sample-exact loop, and the menu sound effects.
 # Music is title.* (else any file with "title" in its name) and menu.*, in SOURCE_DIR or its music/. Loops come from --*-loop, else LOOPSTART/LOOPLENGTH (or LOOPEND) tags,
 # else they are detected from the track's repeats and tagged into the source losslessly, so later runs reuse them; a track with no clean repeat loops whole.
-# Effects, in SOURCE_DIR or its fx/: back, select, error, submit, transition_wipe, transition_left and transition_right, levelled to -21 dB active loudness like the other packs with the peak held under -1 dBFS (a fast limiter shaves a click that would pass it); a missing file stays silent.
+# Effects, in SOURCE_DIR or its fx/: back, select, error, submit, transition_wipe, transition_left and transition_right, levelled to -21 dB active loudness like the other packs with the peak held under -1 dBFS (a fast limiter shaves up to 12 dB off a click that would pass it); a missing file stays silent.
 # Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--redetect] [--out DIR] SOURCE_DIR   (seconds; overrides are tagged too)
 set -euo pipefail
 # shellcheck source=lib/audio-loop.sh
