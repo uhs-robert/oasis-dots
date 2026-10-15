@@ -48,7 +48,7 @@ set -u
 #   time-format              no hand-built am/pm text in Quickshell QML/JS; clock text goes through TimeFormat
 #                            (lib/check-time-format.sh).
 #   voxcmd-phrases           each phrase in home/voxcmd/tests/phrases.tsv routes as recorded (run-phrases.sh). Needs jq, fzf.
-#   voxcmd-click             voxcmd's click support (run.sh, with run-sessions.sh and run-sequences.sh beside it). Needs jq, fzf.
+#   voxcmd-click             voxcmd's click support (run.sh, with run-sessions.sh, run-sequences.sh, run-overview.sh and run-monitors.sh beside it). Needs jq, fzf.
 #   voxcmd-calendar          the calendar phrases against stubs (run-calendar.sh). Needs jq, fzf.
 #   voxcmd-wake              the wake word listener (run-wake.sh). Needs jq, fzf.
 #   voxcmd-firefox           the Firefox extension and its native-messaging host (run-firefox-extension.sh). Needs jq, fzf;

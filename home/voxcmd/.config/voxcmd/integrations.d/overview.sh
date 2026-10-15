@@ -19,6 +19,8 @@ confirm_labels=('^close ')
 source "$voxcmd_share_dir/spoken-time.sh"
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=mode-phrases.sh
 source "$voxcmd_share_dir/mode-phrases.sh"
+# shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=monitor-words.sh
+source "$voxcmd_share_dir/monitor-words.sh"
 
 overview_object='(the )?(workspace )?(overview|workspaces)'
 overview_leave_phrase=$(mode_exit_phrase "$overview_object")
@@ -207,33 +209,10 @@ overview_workspace_ref() {
   echo "${id// /%20}"
 }
 
-# Prints the name of the monitor the words ("left", "top right", "monitor two") name, or an "error:" line.
+# Prints the name of the monitor the words ("left", "top right", "monitor two", "laptop") name, or an "error:" line. The
+# words are read against the monitors the overview published, by the rule voxcmd shares with its own monitor phrases.
 overview_monitor() {
-  local words="$1" found count
-  words="${words#the }"
-  words="${words% monitor}"
-  words="${words% screen}"
-  words="${words% display}"
-  words="${words//center/middle}"
-  words="${words//centre/middle}"
-  if [[ "$words" =~ ^(monitor|screen|display)\ (number )?([a-z0-9]+)$ ]]; then
-    local slot
-    slot=$(overview_number "${BASH_REMATCH[3]}") || {
-      echo "error:no monitor $words"
-      return
-    }
-    found=$(jq -c --argjson slot "$slot" '[.monitors[] | select(.slot == $slot) | .id]' "$overview_file")
-  else
-    found=$(jq -c --arg words "$words" '
-      ($words | split(" ")) as $spoken
-      | [.monitors[] | . as $m | select($spoken | all(. as $word | $m.horizontal == $word or $m.vertical == $word)) | .id]' "$overview_file")
-  fi
-  count=$(jq length <<<"$found")
-  case "$count" in
-  1) jq -r '.[0]' <<<"$found" ;;
-  0) echo "error:no $words monitor" ;;
-  *) echo "error:more than one $words monitor" ;;
-  esac
+  monitor_named "$1" "$(jq -c '.monitors // []' "$overview_file")"
 }
 
 # Prints the addresses a window reference names, one per line: numbers ("two and four", "window three") or the marked
