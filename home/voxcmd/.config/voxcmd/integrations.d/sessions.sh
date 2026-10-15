@@ -6,16 +6,19 @@ confirm=0
 # The session's windows appearing is the feedback.
 silent_actions=(open)
 
-# "open the session launcher" never ends in "session" after a target, so it stays with the keybinds. "skip" verbs
-# match first and offer nothing, so their phrases fall through as if this integration were absent:
-# - "open the work tmux session" is Tmux's, not a session called "work tmux".
-# - "open a session" and "open a new session" name no session, and are left to the Session Launcher bind; "open a work
-#   session" names one.
+# "open the session launcher" never ends in "session" after a target, so it stays with the keybinds. The "skip" verb
+# matches first and offers nothing, so "open the work tmux session" falls through to Tmux instead of naming a session
+# called "work tmux".
 verbs=(
   "skip  {open} (.* )?tmux {target}"
-  "skip  {open} ((a|an|any|some)( new)?|new) session"
-  "open  {open} (the |a |an )?{target} session"
+  "open  {open} (the )?{target} session"
 )
+
+# A target of these words alone names no session, and word matching then offers nothing at all, not even "no session
+# called", so "open a session" and "open a new session" are left to the Session Launcher bind; "open a work session"
+# still names "work".
+target_match=words
+match_ignore_words=(a an any some new)
 
 examples=(
   "open the <name> session"
