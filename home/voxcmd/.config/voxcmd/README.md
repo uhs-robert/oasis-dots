@@ -369,7 +369,7 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 
 ### Keys
 
-`keys.sh` presses bare keys in the focused window with `wtype -k`. Every phrase starts with "press" or "hit", except "send it" and "send the message", and a bare "enter" or "send" is deliberately nothing: a misheard Enter can submit a form or run a shell line, and "send firefox to workspace 3" is [Apps](#apps).
+`keys.sh` presses bare keys in the focused window, or in a bar popup, picker or overview while one is open, with `wtype -k`. Every phrase starts with "press" or "hit", except "send it" and "send the message", and a bare "enter" or "send" is deliberately nothing: a misheard Enter can submit a form or run a shell line, and "send firefox to workspace 3" is [Apps](#apps).
 
 | Say                                                                      | Presses                              |
 | ------------------------------------------------------------------------ | ------------------------------------ |
@@ -383,7 +383,7 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 | "press delete", "press space" (also "space bar")                         | Delete, space                        |
 | "press y", "hit n", "press the letter y", "press y key", "press why" (Whisper hears "y" as "why") | that letter, a to z, pressed in lowercase |
 
-Any of the "press" phrases takes a count after the key: "press down three times", "hit tab twice", "press enter once", "hit backspace 5 times" (digits or the words one to ten). Letters are the exception and press once: "a" is also an article, so "press a button" is left to the keybinds. Only a to z are letters, never digits, so a digit after a key name is always the count. More than 20 presses is cut to 20, and a count that is none ("press tab banana") presses nothing and says so. The key press is its own feedback, so the actions are [silent](#silent-actions). Nothing is pressed while a voxcmd picker or the click overlay is open, or when no window has focus.
+Any of the "press" phrases takes a count after the key: "press down three times", "hit tab twice", "press enter once", "hit backspace 5 times" (digits or the words one to ten). Letters are the exception and press once: "a" is also an article, so "press a button" is left to the keybinds. Only a to z are letters, never digits, so a digit after a key name is always the count. More than 20 presses is cut to 20, and a count that is none ("press tab banana") presses nothing and says so. The key press is its own feedback, so the actions are [silent](#silent-actions). Nothing is pressed while a voxcmd picker or the click overlay is open, or when neither a window nor a bar popup, picker or overview has focus.
 
 ### Answers
 

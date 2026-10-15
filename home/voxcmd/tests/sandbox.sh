@@ -34,6 +34,7 @@
 #                                     ("closed" when absent), which open sets to "open" and close to "closed"; act
 #                                     answers SANDBOX_OVERVIEW_ACT ("ok" by default). Its snapshot is the test's own
 #                                     $XDG_RUNTIME_DIR/voxcmd/overview.json.
+#   qs-ipc call tmux-overview state   what $SANDBOX_DIR/tmux-overview-state holds ("closed" when absent)
 #   qs-ipc call clickhints open|dismiss|state
 #                                     the bar's numbered overlay. open logs a "clickhints-open" line holding the
 #                                     pending-pick.json it finds and the spec file's JSON, then answers through the
@@ -298,6 +299,7 @@ qs-ipc)
     ;;
   *"call overview state"*) cat "$SANDBOX_DIR/overview-state" 2>/dev/null || echo closed ;;
   *"call overview act"*) echo "${SANDBOX_OVERVIEW_ACT:-ok}" ;;
+  *"call tmux-overview state"*) cat "$SANDBOX_DIR/tmux-overview-state" 2>/dev/null || echo closed ;;
   *"confirm ask"* | *"sound play"*) echo ok ;;
   esac
   ;;

@@ -7,14 +7,27 @@ confirm=0
 # The key press is its own feedback.
 silent_actions=(enter escape tab shift_tab up down left right page_up page_down home end backspace delete space)
 
-# Prints why no key may be pressed now, nothing when pressing is fine (the same checks as type mode's).
+qs_ipc="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-ipc"
+
+# Whether a bar popup (the pickers included) or either overview is up. They are layer-shell surfaces that hold the keyboard without a focused
+# client, so Hyprland's activewindow is empty while they are open. Hyprland does not report which layer has the
+# keyboard, so the bar's own state stands for it.
+bar_surface_open() {
+  [ -x "$qs_ipc" ] || return 1
+  case "$(timeout 2 "$qs_ipc" call popup state 2>/dev/null)" in "open "* | "opening "*) return 0 ;; esac
+  [ "$(timeout 2 "$qs_ipc" call overview state 2>/dev/null)" = open ] ||
+    [ "$(timeout 2 "$qs_ipc" call tmux-overview state 2>/dev/null)" = open ]
+}
+
+# Prints why no key may be pressed now, nothing when pressing is fine (the same checks as type mode's, except that a
+# bar surface counts as focus: typing into one would put text where it is not wanted, a key press drives it).
 keys_refusal() {
   if pending_pick >/dev/null; then
     echo "a voxcmd picker or card is open"
   elif [ -x "$qs_ipc" ] && [ "$(timeout 2 "$qs_ipc" call clickhints state 2>/dev/null)" = open ]; then
     echo "the click overlay is open"
-  elif ! hyprctl activewindow -j 2>/dev/null | jq -e 'length > 0' >/dev/null 2>&1; then
-    echo "no window has focus"
+  elif ! hyprctl activewindow -j 2>/dev/null | jq -e 'length > 0' >/dev/null 2>&1 && ! bar_surface_open; then
+    echo "no window or bar surface has focus"
   fi
 }
 
