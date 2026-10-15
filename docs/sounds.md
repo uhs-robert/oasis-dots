@@ -60,7 +60,7 @@ pw-play ~/.local/share/quickshell/sounds/nes/cursor.wav
 A few things that make a replacement sit well with the rest:
 
 - Keep `cursor` short, under a tenth of a second. It plays on every key press, and a long one turns to mush when you hold a key.
-- Match the level of the pack. Shipped sounds peak at about a third of full scale. To bring a loud file down: `ffmpeg -i in.wav -af volume=-9dB out.wav`.
+- Match the level of the pack. Shipped sounds sit around -20 dB active loudness (RMS over the sound's audible part); keep the peak under -1 dBFS. To bring a loud file down: `ffmpeg -i in.wav -af volume=-9dB out.wav`.
 - Trim silence from the start. A sound that begins 50 ms into its file feels late.
 
 ### When a sound is missing
@@ -73,7 +73,7 @@ So a pack of your own can start with only the files you care about.
 
 ## Game audio you import
 
-Four lock screens are modelled on games, and the shell can use those games' own audio if you supply it. None of it is in the repo. Each has an importer in `scripts/` that you run once. It reads your copies, trims and levels them, finds the music's loop points, and writes the result where the shell looks for it. The shell only ever reads those results, so the source folder can be deleted afterwards. Keep it if you might import again: the loop points are saved as tags in the source files.
+Four lock screens are modelled on games, and the shell can use those games' own audio if you supply it. None of it is in the repo. Each has an importer in `scripts/` that you run once. It reads your copies, trims them, finds the music's loop points, and writes the result where the shell looks for it. The shell only ever reads those results, so the source folder can be deleted afterwards. Keep it if you might import again: the loop points are saved as tags in the source files.
 
 | Script | Give it | Writes to |
 | --- | --- | --- |
@@ -83,6 +83,8 @@ Four lock screens are modelled on games, and the shell can use those games' own 
 | `goldeneye-audio` | The watch theme, as one audio file | `~/.local/share/quickshell/goldeneye-audio/` |
 
 The source is the last argument and is required, for example `scripts/mgs2-audio ~/Music/mgs2`. Run a script with `--help` for the file names it expects.
+
+`mgs2-audio` also levels its menu sounds to about -21 dB active loudness (the other packs' level), limiting any sharp click so the peak stays under -1 dBFS. `ff7-audio` and `ocarina-audio` level music and effects in their own ways.
 
 Until you import, a lock screen simply has no game music or effects. Every importer needs `ffmpeg` and `python3` with `numpy`. All but `ff7-audio` also need `ffprobe` and `jq`, and `goldeneye-audio` and `ocarina-audio` need `pipx` to find loop points unless you pass them. Playing the result needs `mpv`. On Arch: `pacman -S ffmpeg jq python-numpy python-pipx mpv`. The GoldenEye intro frames come from `scripts/goldeneye-frames`, which also needs `yt-dlp` and `python-pillow`, and without a video file it seeks into the reference capture and reads only the seconds it needs, a few MB.
 
