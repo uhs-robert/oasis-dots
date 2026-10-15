@@ -35,6 +35,8 @@
 #                                     answers SANDBOX_OVERVIEW_ACT ("ok" by default). Its snapshot is the test's own
 #                                     $XDG_RUNTIME_DIR/voxcmd/overview.json.
 #   qs-ipc call tmux-overview state   what $SANDBOX_DIR/tmux-overview-state holds ("closed" when absent)
+#   qs-ipc call popup keyboard        what $SANDBOX_DIR/popup-keyboard holds ("no" when absent): "yes" when the open
+#                                     popup takes the keyboard, "no" when it is hands-off or none is open
 #   qs-ipc call clickhints open|dismiss|state
 #                                     the bar's numbered overlay. open logs a "clickhints-open" line holding the
 #                                     pending-pick.json it finds and the spec file's JSON, then answers through the
@@ -289,6 +291,7 @@ qs-ipc)
     fi
     cat "$SANDBOX_DIR/clickhints-state" 2>/dev/null || echo closed ;;
   *"call popup state"*) cat "$SANDBOX_DIR/popup-state" 2>/dev/null || echo closed ;;
+  *"call popup keyboard"*) cat "$SANDBOX_DIR/popup-keyboard" 2>/dev/null || echo no ;;
   *"call overview open"*)
     echo open >"$SANDBOX_DIR/overview-state"
     echo ok

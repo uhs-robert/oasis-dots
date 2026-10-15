@@ -369,7 +369,7 @@ Brightness and do not disturb send no notification when they work ([silent](#sil
 
 ### Keys
 
-`keys.sh` presses bare keys in the focused window, or in a bar popup, picker or overview while one is open, with `wtype -k`. Every phrase starts with "press" or "hit", except "send it" and "send the message", and a bare "enter" or "send" is deliberately nothing: a misheard Enter can submit a form or run a shell line, and "send firefox to workspace 3" is [Apps](#apps).
+`keys.sh` presses bare keys in the focused window, or in a bar popup, picker or overview while one is open (a hands-off popup does not count, since it does not take the keyboard), with `wtype -k`. Every phrase starts with "press" or "hit", except "send it" and "send the message", and a bare "enter" or "send" is deliberately nothing: a misheard Enter can submit a form or run a shell line, and "send firefox to workspace 3" is [Apps](#apps).
 
 | Say                                                                      | Presses                              |
 | ------------------------------------------------------------------------ | ------------------------------------ |

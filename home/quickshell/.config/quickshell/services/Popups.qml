@@ -21,6 +21,8 @@ Singleton {
     // While set, the open popup and the scrim take no keyboard focus and no pointer input, so IPC can show one on a screen the owner is not using.
     // Cleared by every open() that does not ask for it, and by close().
     property bool hands_off: false
+    // Whether the open popup holds the keyboard: Popup.qml gives a hands-off popup none. A passive popup is never the open one.
+    readonly property bool takes_keyboard: open_name !== "" && open_screen_name !== "" && !hands_off
     // Asks the open popup for the keyboard; it holds it Exclusive until the window is active, then lets go.
     // The popup clears it straight away when its window already has the keyboard.
     property bool grab_keyboard: false

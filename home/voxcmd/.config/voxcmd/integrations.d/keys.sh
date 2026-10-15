@@ -9,13 +9,13 @@ silent_actions=(enter escape tab shift_tab up down left right page_up page_down 
 
 qs_ipc="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-ipc"
 
-# Whether a bar popup (the pickers included) or either overview is up. They are layer-shell surfaces that hold the keyboard without a focused
-# client, so Hyprland's activewindow is empty while they are open. Hyprland does not report which layer has the
-# keyboard, so the bar's own state stands for it.
+# Whether a bar popup that takes the keyboard (the pickers included) or either overview is up. They are layer-shell surfaces
+# that hold the keyboard without a focused client, so Hyprland's activewindow is empty while they are open. Hyprland does not
+# report which layer has the keyboard, so the bar's own state stands for it. A hands-off popup leaves it to the window below.
 bar_surface_open() {
   [ -x "$qs_ipc" ] || return 1
-  case "$(timeout 2 "$qs_ipc" call popup state 2>/dev/null)" in "open "* | "opening "*) return 0 ;; esac
-  [ "$(timeout 2 "$qs_ipc" call overview state 2>/dev/null)" = open ] ||
+  [ "$(timeout 2 "$qs_ipc" call popup keyboard 2>/dev/null)" = yes ] ||
+    [ "$(timeout 2 "$qs_ipc" call overview state 2>/dev/null)" = open ] ||
     [ "$(timeout 2 "$qs_ipc" call tmux-overview state 2>/dev/null)" = open ]
 }
 
