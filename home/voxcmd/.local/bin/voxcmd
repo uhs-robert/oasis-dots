@@ -1663,8 +1663,6 @@ session_unclear_cap=3
 # Turns that keep doing something never trip the unclear cap, so a session also ends after this long or this many.
 session_max_secs="${VOXCMD_SESSION_MAX_SECS:-300}"
 session_max_turns="${VOXCMD_SESSION_MAX_TURNS:-40}"
-# voxtype's max_duration_secs (its config.toml), which a one-recording mode stops just short of.
-voxtype_max_recording_secs=300
 ui_settle_max_secs="${VOXCMD_UI_SETTLE_MAX_SECS:-2}"
 app_settle_secs="${VOXCMD_APP_SETTLE_SECS:-0.3}"
 ui_settle_poll_secs=$(scaled_secs 0.1)
@@ -2134,7 +2132,7 @@ session_finish_recording() {
   case "$by:$action" in
   *:discard) reason="cancelled, nothing typed" ;;
   key:* | *:end_session) end_all=1 reason="stopped" ;;
-  cap:*) reason="it reached the $(duration_words "$voxtype_max_recording_secs") recording limit" ;;
+  cap:*) reason="it reached its recording limit ($(duration_words "${mode_setting[listen_max_secs]}"))" ;;
   idle:*) reason="nothing was said for $(duration_words "${mode_setting[listen_no_speech_secs]:-$session_no_speech_secs}")" ;;
   *) reason="done" ;;
   esac
