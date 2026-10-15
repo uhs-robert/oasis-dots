@@ -123,7 +123,7 @@ case_readme() {
   start_case 'README-only change'
   echo >>README.md
   plan
-  expect_ran_exactly packages symlinks git-diff-check whitespace conflicts
+  expect_ran_exactly packages symlinks git-diff-check whitespace conflicts ignored-integrations
 }
 
 case_home_qml() {
@@ -240,7 +240,7 @@ case_greeter_keyring() {
 case_paths_list() {
   start_case 'path list from stdin'
   plan_paths 'README.md'
-  expect_ran_exactly packages symlinks git-diff-check whitespace conflicts
+  expect_ran_exactly packages symlinks git-diff-check whitespace conflicts ignored-integrations
   [ "$plan_line" = "${plan_line/listed files/}" ] && fail 'the label to say listed files'
   local qml
   qml=$(first_tracked 'home/quickshell/*.qml') || return 0

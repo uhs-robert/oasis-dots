@@ -67,6 +67,7 @@ set -u
 #   packages                 duplicate package names across the manifests (lib/check-packages.sh).
 #   symlinks, whitespace,    tracked symlinks that dangle or leave the repo; trailing whitespace; conflict markers.
 #   conflicts, git-diff-check  and `git diff --check HEAD`.
+#   ignored-integrations     no voxcmd integration or replacement file is one git ignores (lib/check-ignored-integrations.sh).
 #
 # Slots and records: only the voxcmd steps are limited, one after another in a slot of their own (they are timing-sensitive)
 # and each holding a CHECK_HEAVY_SLOTS slot; the cheap steps take none. A step's pass is recorded only when its files did not
@@ -80,7 +81,7 @@ cd "$repo_dir" || exit 1
 # Every step, longest first. The voxcmd steps are timing-sensitive, so they run one after another in a slot
 # of their own, ahead of the rest.
 voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox'
-other_steps='check-scope check-cache firefox-policy greeter-keyring qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
+other_steps='check-scope check-cache firefox-policy greeter-keyring qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts ignored-integrations'
 
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
 # worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
@@ -150,6 +151,7 @@ step_body() {
   git-diff-check) git diff --check HEAD ;;
   whitespace) sh ./lib/check-whitespace.sh ;;
   conflicts) sh ./lib/check-conflicts.sh ;;
+  ignored-integrations) sh ./lib/check-ignored-integrations.sh ;;
   esac
 }
 
@@ -258,7 +260,7 @@ path_scopes() {
 # cheap steps that scan the whole checkout, always run. "shell": the files in the shell lists below.
 step_scope() {
   case $1 in
-  packages | symlinks | git-diff-check | whitespace | conflicts) step_scope=tree ;;
+  packages | symlinks | git-diff-check | whitespace | conflicts | ignored-integrations) step_scope=tree ;;
   check-scope | check-cache) step_scope=checkscope ;;
   firefox-policy) step_scope=policy ;;
   greeter-keyring) step_scope=keyring ;;
