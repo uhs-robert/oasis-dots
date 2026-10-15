@@ -830,7 +830,7 @@ wake_heard "asked Cortana about it. Cortana, stop."
 sess_wait
 check "the ending follows the clip's last wake word, and only the one at the end is cut" "session_gone && wtype_is 'wtype -- I asked Cortana about it.'"
 
-for ending in "Cortana, send it." "Cortana press enter"; do
+for ending in "Cortana, send it." "Cortana press enter" "Cortana, send." "Cortana send message"; do
   sess_start "UNTIL_STOP Ship it. $ending"
   owner_is_listening
   wake_heard "$ending"
