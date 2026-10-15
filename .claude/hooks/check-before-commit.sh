@@ -3,7 +3,7 @@
 # fails at the commit, not at the PR. The voxcmd suites are left to the PR and the merge, and CHECK_NO_LOCK keeps any
 # heavy step from waiting for a slot: this check is cheap and must never wait behind a long one.
 # It lints the paths the commit takes: the staged ones, all tracked changes for -a/--all, and everything changed or untracked
-# when the same command runs `git add` first. `-C <dir>` and a leading `cd <dir> &&` say where the commit happens. The commit
+# when the same command runs `git add` first. `-C <dir>` and a `cd <dir> &&` before it say where the commit happens. The commit
 # is denied with the FAILED: summary; after 120 s it goes through with a message that the lint did not finish.
 set -u
 # shellcheck source=command-dir.sh
@@ -17,8 +17,8 @@ after_commit=${cmd#*"${BASH_REMATCH[0]}"}
 
 dir=$(jq -r '.cwd // empty' <<<"$input")
 cd "${dir:-${CLAUDE_PROJECT_DIR:-$PWD}}" || exit 0
-# A leading `cd <dir> &&` and `git -C <dir>` move where the commit happens.
-enter_leading_cd "$cmd" || exit 0
+# A `cd <dir> &&` before it and `git -C <dir>` move where the commit happens.
+enter_command_cd "$cmd" "$commit_re" || exit 0
 dir_re='-C[[:space:]]+("[^"]+"|'"'"'[^'"'"']+'"'"'|[^[:space:]]+)'
 if [[ $git_options =~ $dir_re ]]; then cd "$(tr -d "\"'" <<<"${BASH_REMATCH[1]}")" 2>/dev/null || exit 0; fi
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0

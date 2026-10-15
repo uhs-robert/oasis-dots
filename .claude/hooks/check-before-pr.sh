@@ -8,11 +8,12 @@ set -u
 source "$(dirname "${BASH_SOURCE[0]}")/command-dir.sh"
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
-[[ $cmd =~ gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$) ]] || exit 0
+pr_create_re='gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$)'
+[[ $cmd =~ $pr_create_re ]] || exit 0
 dir=$(jq -r '.cwd // empty' <<<"$input")
 cd "${dir:-${CLAUDE_PROJECT_DIR:-$PWD}}" || exit 0
-# The PR is opened from where the command runs, which an agent in another worktree reaches with a leading `cd`.
-enter_leading_cd "$cmd" || exit 0
+# The PR is opened from where the command runs, which an agent in another worktree reaches with a `cd` before it.
+enter_command_cd "$cmd" "$pr_create_re" || exit 0
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 cd "$root" || exit 0
 [[ -x lib/check-passed.sh ]] || exit 0
