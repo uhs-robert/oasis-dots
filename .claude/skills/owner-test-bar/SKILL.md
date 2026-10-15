@@ -1,6 +1,6 @@
 ---
 name: owner-test-bar
-description: Put unmerged Quickshell branches on the owner's real screen so the OWNER can try them, then restore the normal bar. Not for agents' own checks, which go through the shadow skill; use this only when a branch needs the owner's live test before merging.
+description: Put unmerged Quickshell, Hyprland or voxcmd branches on the owner's real desktop so the OWNER can try them, then restore main. Not for agents' own checks, which go through the shadow skill; use this only when a branch needs the owner's live test before merging, including a voxcmd change the owner wants to say out loud.
 ---
 
 # Owner test bar
