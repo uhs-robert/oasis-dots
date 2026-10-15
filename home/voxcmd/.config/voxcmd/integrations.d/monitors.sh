@@ -24,9 +24,11 @@ examples=(
   "focus the center monitor"
   "switch to the top right screen"
   "go to monitor two"
+  "go to the second screen"
   "focus the laptop display"
   "move this window to the right monitor"
   "move it to monitor three"
+  "move this window to the 4th monitor"
   "send the window to the laptop screen"
 )
 
