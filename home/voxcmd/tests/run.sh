@@ -1525,29 +1525,34 @@ done
 VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" "press tab banana" >/dev/null 2>&1
 check "a count that is none presses nothing" "! grep -q '^wtype' '$log'"
 
-# No client has focus (activewindow is {}): a key goes to an open bar popup or either overview, and to nothing otherwise.
+# No client has focus (activewindow is {}): a key goes to an open bar popup that takes the keyboard, or to either
+# overview, and to nothing otherwise. Fields: popup state, popup keyboard, overview, tmux overview, expected.
 keys_bar_surface_cases=(
-  "open weather||pressed"
-  "opening notifications||pressed"
-  "closing weather||refused"
-  "closed||refused"
-  "closed|open|pressed"
-  "closed||pressed|open"
+  "open weather|yes|||pressed"
+  "opening notifications|yes|||pressed"
+  "open weather|no|||refused"
+  "open weather|no|open||pressed"
+  "closing weather|no|||refused"
+  "closed|no|||refused"
+  "closed|no|open||pressed"
+  "closed|no||open|pressed"
 )
 for entry in "${keys_bar_surface_cases[@]}"; do
-  IFS='|' read -r popup_answer overview_answer expected tmux_overview_answer <<<"$entry"
+  IFS='|' read -r popup_answer keyboard_answer overview_answer tmux_overview_answer expected <<<"$entry"
   : >"$log"
   echo "$popup_answer" >"$SANDBOX_DIR/popup-state"
+  echo "${keyboard_answer:-no}" >"$SANDBOX_DIR/popup-keyboard"
   echo "${overview_answer:-closed}" >"$SANDBOX_DIR/overview-state"
   echo "${tmux_overview_answer:-closed}" >"$SANDBOX_DIR/tmux-overview-state"
   SANDBOX_ACTIVEWINDOW_JSON='{}' VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" "press enter" >/dev/null 2>&1
+  case_name="no client, popup '$popup_answer' keyboard ${keyboard_answer:-no} overview '${overview_answer:-closed}' tmux overview '${tmux_overview_answer:-closed}'"
   if [ "$expected" = pressed ]; then
-    check "no client, popup '$popup_answer' overview '${overview_answer:-closed}' tmux overview '${tmux_overview_answer:-closed}': enter is pressed" "grep -Fxq 'wtype -k Return' '$log'"
+    check "$case_name: enter is pressed" "grep -Fxq 'wtype -k Return' '$log'"
   else
-    check "no client, popup '$popup_answer' overview '${overview_answer:-closed}' tmux overview '${tmux_overview_answer:-closed}': enter is refused" "! grep -q '^wtype' '$log' && grep -q 'no window or bar surface has focus' '$log'"
+    check "$case_name: enter is refused" "! grep -q '^wtype' '$log' && grep -q 'no window or bar surface has focus' '$log'"
   fi
 done
-rm -f "$SANDBOX_DIR/popup-state" "$SANDBOX_DIR/overview-state" "$SANDBOX_DIR/tmux-overview-state"
+rm -f "$SANDBOX_DIR/popup-state" "$SANDBOX_DIR/popup-keyboard" "$SANDBOX_DIR/overview-state" "$SANDBOX_DIR/tmux-overview-state"
 
 section "screenshot.sh beside a recording"
 # The real script, with the sandbox's stub for qs-ipc beside it and a pidof that names a harmless process as the recorder.

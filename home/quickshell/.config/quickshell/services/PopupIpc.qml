@@ -21,6 +21,11 @@ IpcHandler {
         return Popups.focus_open() ? "popup" : "none";
     }
 
+    // "yes" when the open or opening popup holds the keyboard, "no" when none is open or it is hands-off.
+    function keyboard(): string {
+        return Popups.takes_keyboard ? "yes" : "no";
+    }
+
     // "opening <name>" while it animates in, "open <name>" once it is fully drawn, "closing <name>" while it animates
     // out, then "closed" once no popup layer is mapped.
     function state(): string {
