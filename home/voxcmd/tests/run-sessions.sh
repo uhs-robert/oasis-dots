@@ -858,7 +858,7 @@ wake_heard "Cortana cancel"
 check "an ending recorded first wins: a later cancel does nothing" "[[ \$(voxtype_now) == recording ]] && ! grep -q '^voxtype record cancel' '$log'"
 SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record stop
 sess_wait
-check "and the recording is typed as that ending says" "session_gone && wtype_is 'wtype -- Kept words.' && toast_has 'Type mode ended it reached the 5 min recording limit'"
+check "and the recording is typed as that ending says" "session_gone && wtype_is 'wtype -- Kept words.' && toast_has 'Type mode ended it reached its recording limit (295 s)'"
 
 # A confirmation that outlasted its recording: its clip was cut during an earlier type mode, or an earlier recording of
 # this one (another watcher), and must not end the recording now under way.
@@ -880,7 +880,11 @@ sess_wait
 check "while its own stop still ends it" "session_gone && wtype_is 'wtype -- Newer words.'"
 
 sess_run "CAP A long talk."
-check "at the length limit it types what was said, ends the mode with a toast, and records nothing more" "session_gone && wtype_is 'wtype -- A long talk.' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended it reached the 5 min recording limit'"
+check "at the length limit it types what was said, ends the mode with a toast, and records nothing more" "session_gone && wtype_is 'wtype -- A long talk.' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended it reached its recording limit (295 s)'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_MAX_SECS=60)
+sess_run "CAP A long talk."
+check "the limit toast names the limit that was set" "session_gone && wtype_is 'wtype -- A long talk.' && toast_has 'Type mode ended it reached its recording limit (1 min)'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_run "IDLE Words, then quiet."
 check "2 min of quiet after speech type what was said" "session_gone && wtype_is 'wtype -- Words, then quiet.' && toast_has 'Type mode ended nothing was said for 2 min'"
 sess_run SILENCE
