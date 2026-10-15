@@ -29,6 +29,7 @@
 #   keeptabs-pick --json              SANDBOX_AGENTS_JSON
 #   systemctl list-timers|list-units  SANDBOX_TIMERS_JSON
 #   tmux list-sessions|has-session    SANDBOX_TMUX_SESSIONS (one name per line)
+#   hyprctl eval (launcher write_names)  SANDBOX_LAUNCHER_SESSIONS (the Session Launcher's names, one per line)
 #   qs-ipc call overview open|close|state|act
 #                                     the workspace overview. state prints what $SANDBOX_DIR/overview-state holds
 #                                     ("closed" when absent), which open sets to "open" and close to "closed"; act
@@ -203,6 +204,13 @@ hyprctl)
     # SANDBOX_MONITOR_SLOTS: what Hyprland's slot lookup writes to the file the eval names, e.g. "DP-8 HDMI-A-1 - eDP-1".
     slots_file=$(printf '%s' "${2-}" | sed -n "s/.*io\.open('\([^']*\)', 'w').*/\1/p")
     [ -z "${SANDBOX_MONITOR_SLOTS+x}" ] || [ -z "$slots_file" ] || printf '%s' "$SANDBOX_MONITOR_SLOTS" >"$slots_file"
+    # The Session Launcher's names, which Hyprland's Lua writes to the file the eval names.
+    case "${2-}" in
+    *write_names*)
+      names_file=${2#*write_names\(\'}
+      jq -R -s -c 'split("\n") | map(select(. != ""))' <<<"${SANDBOX_LAUNCHER_SESSIONS-}" >"${names_file%%\'*}"
+      ;;
+    esac
     echo ok
     ;;
   dispatch | keyword) log "$@" && echo ok ;;

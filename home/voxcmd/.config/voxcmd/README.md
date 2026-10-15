@@ -450,7 +450,7 @@ Every phrase takes any `{focus}` [intent](#intents) form: "go to", "switch to", 
 
 ### Tmux
 
-`tmux.sh` works on sessions by name, and every phrase says `tmux` and names a session, so "open the work session", "open the session launcher" and "switch to X" stay free for the keybinds and windows.
+`tmux.sh` works on sessions by name, and every phrase says `tmux` and names a session, so "open the session launcher" and "switch to X" stay free for the keybinds and windows. Launcher sessions are [Sessions](#sessions).
 
 | Say                                                                                | Does                                                       |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -458,6 +458,18 @@ Every phrase takes any `{focus}` [intent](#intents) form: "go to", "switch to", 
 | "new tmux session X", "open a new tmux session called X"                           | a terminal on a new session X (attached if X already runs) |
 
 Switching takes any `{focus}` or `{open}` [intent](#intents) form before the session ("take me to the X tmux session", "launch tmux session X"). Both are [silent](#silent-actions) when they work, since the session's terminal shows it; an unknown session still says so. X is matched against running sessions (`tmux list-sessions`) and the tmuxifier layouts in `~/.tmuxifier/layouts`, a layout by the `session_name` it sets or its file name. A layout goes through the Project picker's script (`hypr/scripts/rofi-tmux.sh <layout>`), which focuses its terminal or loads it in a new one. A running session without a layout focuses the terminal titled with its name, else opens a terminal attached to it. An X that matches nothing says so instead of falling through to the keybinds. Tab on its Voice Help entries lists every running session and layout; picking one switches to it.
+
+### Sessions
+
+`sessions.sh` launches the Hyprland [auto-launcher sessions](../../../hypr/.config/hypr/README.md#app-launcher--sessions) by name, the same as picking one in the Session Launcher (`SUPER + SHIFT + O`), saved sessions included:
+
+| Say                                                                              | Does                                |
+| -------------------------------------------------------------------------------- | ----------------------------------- |
+| "open the work session", "open work session", "launch the work session", "start the work session" | launches the session called work |
+
+X is matched like other integrations' targets, against the names the launcher offers (a leading emoji does not matter). The names come from Hyprland's Lua: `hyprctl eval` calls `Launcher.write_names`, which writes them to a temporary file under `$XDG_RUNTIME_DIR/voxcmd`, since `eval` prints nothing back; launching calls `Launcher.launch(name)`, which runs the session with the picker's own `run`. A name that matches no session says "no session called X" instead of falling through to the keybinds and opening the picker. Launching is [silent](#silent-actions), since the windows appearing shows it worked. Tab on its Voice Help entry lists every session.
+
+Every phrase ends in "session" after a name, so "open the session launcher" still reaches the keybind. A phrase with "tmux" in it belongs to [Tmux](#tmux). "Switch to" and "go to" are not accepted, since those are for windows and agents.
 
 ### Notifications
 

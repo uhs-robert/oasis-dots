@@ -4,6 +4,7 @@ local Monitors = require("config.monitors") ---@class Monitors
 local Sessions = require("extensions.auto_launcher.sessions") ---@class Sessions
 local Provenance = require("extensions.auto_launcher.provenance") ---@class Provenance
 local Prompt = require("lib.prompt") ---@class Prompt
+local Json = require("lib.json") ---@class Json
 
 --- @type table<string, HL.WindowRule>
 local RULES = {}
@@ -251,19 +252,43 @@ end
 --- @class Launcher
 local Launcher = {}
 
+--- @param sessions table<string, SessionInfo>
+--- @return string[]
+local function sorted_names(sessions)
+  local names = {}
+  for name in pairs(sessions) do
+    names[#names + 1] = name
+  end
+  table.sort(names)
+  return names
+end
+
 ---Open a session picker and launch the chosen session; sessions are read at pick time.
 function Launcher.show_picker()
   local sessions = Sessions.resolve()
-  local names = {}
-  for k in pairs(sessions) do
-    names[#names + 1] = k
-  end
-  table.sort(names)
 
-  Prompt.select("Session", names, function(choice)
+  Prompt.select("Session", sorted_names(sessions), function(choice)
     local session = choice and sessions[choice]
     if session then run(session.apps, session.sequential) end
   end)
+end
+
+---Launches a session by exact name, as picking it in the picker does.
+--- @param name string
+--- @return boolean launched false when no session has that name
+function Launcher.launch(name)
+  local session = Sessions.resolve()[name]
+  if not session then return false end
+  run(session.apps, session.sequential)
+  return true
+end
+
+---Writes the names of every session the picker offers to `out_path` as a JSON array, for voxcmd.
+--- @param out_path string
+function Launcher.write_names(out_path)
+  local file = assert(io.open(out_path, "w"))
+  file:write(Json.encode(Json.array(sorted_names(Sessions.resolve()))))
+  file:close()
 end
 
 return Launcher

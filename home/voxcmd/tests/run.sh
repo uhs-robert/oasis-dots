@@ -1578,4 +1578,20 @@ PATH=$recorder_work/bin:$PATH "$recorder_work/screenshot.sh" >/dev/null 2>&1
 check "the menu key still stops it" "wait_until_gone $fake_recorder"
 kill "$fake_recorder" 2>/dev/null
 
+section "sessions.sh launches by name"
+sessions_config=$root/sessions-config
+mkdir -p "$sessions_config/integrations.d" "$sessions_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/sessions.sh" "$package/.config/voxcmd/integrations.d/tmux.sh" "$sessions_config/integrations.d/"
+export SANDBOX_LAUNCHER_SESSIONS=$'work\n🌐 Browsing'
+: >"$log"
+VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" "open the browsing session" >/dev/null 2>&1
+check "a session is launched by its exact name" "grep -Fq '.launch(\"🌐 Browsing\")' '$log'"
+: >"$log"
+VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" "open the nowhere session" >/dev/null 2>&1
+check "an unknown name launches nothing, but still asks Hyprland for the names" "grep -q 'write_names' '$log' && ! grep -Fq '.launch(' '$log'"
+: >"$log"
+VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" "open the work tmux session" >/dev/null 2>&1
+check "a tmux phrase launches no launcher session" "! grep -Fq '.launch(' '$log'"
+unset SANDBOX_LAUNCHER_SESSIONS
+
 finish
