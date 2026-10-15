@@ -2,9 +2,10 @@
 """voxcmd-autostop: tell voxcmd when a voice command recording has heard speech and then a pause.
 
 Listens to the default source through pw-record (16 kHz mono s16) and exits with a verdict:
-  0  speech, then silence_secs of quiet, or max_secs of recording with speech in it: stop the recording
+  0  speech, then silence_secs of quiet: stop the recording
   3  no speech at all within no_speech_secs: cancel it
   4  nothing to do: the recording ended some other way, the audio ended, or auto-stop is off
+  5  max_secs of recording with speech in it: stop the recording, which hit its length limit
   1  error (pw-record missing, a bad setting)
 
 Settings: ~/.config/voxcmd/autostop.conf, overridden by VOXCMD_AUTOSTOP_* environment variables (voxcmd README).
@@ -30,11 +31,13 @@ import time
 VERDICT_SILENCE = 0
 VERDICT_NO_SPEECH = 3
 VERDICT_NOTHING_TO_DO = 4
+VERDICT_MAX_LENGTH = 5
 VERDICT_ERROR = 1
 VERDICT_NAMES = {
     VERDICT_SILENCE: "speech then quiet",
     VERDICT_NO_SPEECH: "no speech",
     VERDICT_NOTHING_TO_DO: "ended elsewhere",
+    VERDICT_MAX_LENGTH: "length limit",
 }
 
 SAMPLE_RATE = 16000
@@ -48,7 +51,7 @@ DEFAULT_SETTINGS = {
     "no_speech_secs": "6",
     "threshold_db": "auto",
     "margin_db": "12",
-    # 0 is no limit. Type mode sets it so a long speech is cut into chunks inside the transcriber's window.
+    # 0 is no limit. Type mode sets it just under voxtype's max_duration_secs, so its own cut is never the one that ends it.
     "max_secs": "0",
 }
 
@@ -254,7 +257,7 @@ class SpeechThenSilence:
             return VERDICT_SILENCE
         if self.max_secs > 0 and self.elapsed_secs >= self.max_secs and self.speech_secs > 0:
             self.trace(f"{self.elapsed_secs:.2f}s of recording with speech in it, cutting here")
-            return VERDICT_SILENCE
+            return VERDICT_MAX_LENGTH
         if not self.speech_heard() and self.elapsed_secs >= self.no_speech_secs:
             return VERDICT_NO_SPEECH
         return None

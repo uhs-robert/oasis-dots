@@ -67,10 +67,15 @@
 #                                     an empty queue) is no speech, EMPTY is speech that transcribes to nothing, HOLD
 #                                     records until stopped or cancelled, FAIL is a start that fails, and
 #                                     "GATED <speech>" is spoken only once $SANDBOX_DIR/voxtype-release exists, for a
-#                                     test to act while it is heard. voxcmd-autostop
+#                                     test to act while it is heard. "UNTIL_STOP <speech>" records until stopped, and
+#                                     the stop writes the speech (a cancel writes nothing), as a long dictation does;
+#                                     "CAP <speech>" and "IDLE <speech>" are the same, with the detector giving its
+#                                     length-limit (5) or pause (0) verdict. voxcmd-autostop
 #                                     then reads the turn from $SANDBOX_DIR/voxtype-turn: SILENCE is its no-speech
 #                                     exit (3) after half a second, any other turn waits on `$SANDBOX_AUTOSTOP_SLEEP 30`
 #                                     (default sleep; a copy under another name lets a test end leftovers by name).
+#   voxtype -q ... transcribe <file>  prints voxtype's progress lines, a blank line and $SANDBOX_TRANSCRIBE_TEXT, as a
+#                                     wake confirmation's transcription does (no blank line without it: no speech)
 #                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
 #                                     then "autostop min_speech_secs=<n> silence_secs=<n>" from the matching variables,
 #                                     and "max_secs=<n>" when VOXCMD_AUTOSTOP_MAX_SECS is set.
@@ -325,11 +330,18 @@ voxcmd-autostop)
   log "no_speech_secs=${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}"
   log "min_speech_secs=${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}"
   [ -z "${VOXCMD_AUTOSTOP_MAX_SECS-}" ] || log "max_secs=$VOXCMD_AUTOSTOP_MAX_SECS"
-  if [ "$(cat "$SANDBOX_DIR/voxtype-turn")" = SILENCE ]; then
+  turn=$(cat "$SANDBOX_DIR/voxtype-turn")
+  case "$turn" in
+  SILENCE | "CAP "* | "IDLE "*)
     recording_mark=$(last_recording_mark)
     wait_for_watcher_to_see_recording 0.5
-    exit 3
-  fi
+    case "$turn" in
+    SILENCE) exit 3 ;;
+    CAP*) exit 5 ;;
+    *) exit 0 ;;
+    esac
+    ;;
+  esac
   exec "${SANDBOX_AUTOSTOP_SLEEP:-sleep}" 30
   ;;
 setsid)
@@ -340,8 +352,16 @@ setsid)
   ;;
 voxtype)
   log "$@"
+  if [ "${1-}" = -q ]; then
+    for transcribed; do :; done
+    printf 'Loading audio file: "%s"\n' "$transcribed"
+    [ -z "${SANDBOX_TRANSCRIBE_TEXT-}" ] || printf '\n%s\n' "$SANDBOX_TRANSCRIBE_TEXT"
+    exit 0
+  fi
   [ -n "${SANDBOX_VOXTYPE_TURNS-}" ] || exit 0
   state_file=$XDG_RUNTIME_DIR/voxtype/state
+  # A turn that is spoken when it is stopped: the --file and the speech.
+  until_stop=$SANDBOX_DIR/voxtype-until-stop
   case "${1-} ${2-}" in
   "record start")
     file=${3#--file=}
@@ -353,6 +373,13 @@ voxtype)
     recording_mark="$(date +%s%N) $(recordings_watchers_saw)"
     echo "$recording_mark" >"$SANDBOX_DIR/recording-mark"
     echo recording >"$state_file"
+    rm -f "$until_stop"
+    case "$turn" in
+    "UNTIL_STOP "* | "CAP "* | "IDLE "*)
+      printf '%s\n%s' "$file" "${turn#* }" >"$until_stop"
+      turn=HOLD
+      ;;
+    esac
     if [ "$turn" != SILENCE ] && [ "$turn" != HOLD ]; then
       (
         wait_for_watcher_to_see_recording 0
@@ -373,7 +400,17 @@ voxtype)
       ) >/dev/null 2>&1 &
     fi
     ;;
-  "record cancel" | "record stop") echo idle >"$state_file" ;;
+  "record stop")
+    if [ -e "$until_stop" ] && [ "$(cat "$state_file")" = recording ]; then
+      tail -n +2 "$until_stop" >"$(head -n 1 "$until_stop")"
+    fi
+    rm -f "$until_stop"
+    echo idle >"$state_file"
+    ;;
+  "record cancel")
+    rm -f "$until_stop"
+    echo idle >"$state_file"
+    ;;
   esac
   ;;
 xdg-mime)
