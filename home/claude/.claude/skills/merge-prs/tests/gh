@@ -65,6 +65,16 @@ case "$args" in
   ;;
 "pr edit"*) put base "$(sed -E 's/.*--base ([^ ]+).*/\1/' <<<"$args")" ;;
 "api graphql"*)
+  # codex_pending_reads=N reports no Codex review yet on a fresh PR for N reads, then completed.
+  pending=$(get codex_pending_reads || true)
+  if [[ -n $pending ]]; then
+    if ((pending > 0)); then
+      put codex_pending_reads $((pending - 1))
+      put codex Pending
+    else
+      put codex Completed
+    fi
+  fi
   # codex_running_reads=N reports the Codex review as running for N reads, then completed.
   runs=$(get codex_running_reads || true)
   if [[ -n $runs ]]; then
