@@ -47,6 +47,8 @@ voxcmd_autostop="$(dirname "$voxcmd_self")/voxcmd-autostop"
 # Helpers integrations and print_errors source ("$voxcmd_share_dir/spoken-time.sh"), found from voxcmd's real path so a stowed or
 # checked-out voxcmd reads its own copy. Not in integrations.d/, where every file is loaded as an integration.
 voxcmd_share_dir="$(dirname "$voxcmd_self")/../share/voxcmd"
+# shellcheck source-path=SCRIPTDIR/../share/voxcmd source=spoken-position.sh
+source "$voxcmd_share_dir/spoken-position.sh"
 dry_run=0
 # 1 while a voice session's turn is being handled.
 in_session_turn=0
@@ -168,7 +170,33 @@ apply_replacements() {
     done <"$file"
   done
   text="${text#" "}"
-  printf '%s' "${text%" "}"
+  name_workspace_ordinals "${text%" "}"
+}
+
+# Prints the text with "the second workspace" or "twenty first desktop" rewritten to "workspace 2" / "workspace 21", so the
+# integrations and the keybinds' "Go to Workspace 2" see one form. Only an ordinal next to the noun counts; "workspace 2",
+# and a count such as "two workspaces", are left alone.
+name_workspace_ordinals() {
+  local -a words out=()
+  local word position
+  read -ra words <<<"$1"
+  for word in "${words[@]}"; do
+    if [[ "$word" =~ ^(workspace|desktop)$ ]]; then
+      position=""
+      if [ "${#out[@]}" -ge 2 ] && position=$(spoken_ordinal "${out[-2]} ${out[-1]}"); then
+        out=("${out[@]:0:${#out[@]}-2}")
+      elif [ "${#out[@]}" -ge 1 ] && position=$(spoken_ordinal "${out[-1]}"); then
+        out=("${out[@]:0:${#out[@]}-1}")
+      fi
+      if [ -n "$position" ]; then
+        [ "${#out[@]}" = 0 ] || [ "${out[-1]}" != the ] || out=("${out[@]:0:${#out[@]}-1}")
+        out+=("workspace" "$position")
+        continue
+      fi
+    fi
+    out+=("$word")
+  done
+  printf '%s' "${out[*]}"
 }
 
 # Intents: the spoken forms of a verb that several integrations share, written {open}, {focus}, ... in a verb pattern.
@@ -1416,25 +1444,23 @@ pick_still_pending() {
   [ "$(jq -r '[.pid, .fifo] | @tsv' <<<"$now")" = "$(jq -r '[.pid, .fifo] | @tsv' <<<"$1")" ]
 }
 
-# Prints the 1-based position an ordinal reply names ("two", "the second one", "number 3", "last"), else nothing.
+# Prints the 1-based position an ordinal reply names ("two", "the second one", "number 3", "twenty first", "last"), else nothing.
 ordinal_position() {
-  local text="$1" count="$2" word
-  [[ "$text" =~ ^((pick|choose|select|take|use|go with|the|number|option|choice|item|entry) )*([a-z0-9]+)( one)?$ ]] || return 0
-  word="${BASH_REMATCH[3]}"
-  case "$word" in
-  one | first | 1st) echo 1 ;;
-  two | second | 2nd) echo 2 ;;
-  three | third | 3rd) echo 3 ;;
-  four | fourth) echo 4 ;;
-  five | fifth) echo 5 ;;
-  six | sixth) echo 6 ;;
-  seven | seventh) echo 7 ;;
-  eight | eighth) echo 8 ;;
-  nine | ninth) echo 9 ;;
-  ten | tenth) echo 10 ;;
-  last) echo "$count" ;;
-  *) if [[ "$word" =~ ^([0-9]+)(st|nd|rd|th)?$ ]]; then echo "$((10#${BASH_REMATCH[1]}))"; fi ;;
-  esac
+  local text="$1" count="$2" position
+  while [[ "$text" =~ ^(pick|choose|select|take|use|go\ with|the|number|option|choice|item|entry)\ (.+)$ ]]; do
+    text="${BASH_REMATCH[2]}"
+  done
+  # "twenty one" ends in the word "one" without being "twenty" and "one".
+  if position=$(spoken_position "$text"); then
+    echo "$position"
+  elif [[ "$text" =~ ^(.+)\ one$ ]]; then
+    case "${BASH_REMATCH[1]}" in
+    last) echo "$count" ;;
+    *) spoken_position "${BASH_REMATCH[1]}" || true ;;
+    esac
+  elif [ "$text" = last ]; then
+    echo "$count"
+  fi
 }
 
 # Prints the lines of spoken_labels ("<displayed label><TAB><normalized label>") whose label shares the most words

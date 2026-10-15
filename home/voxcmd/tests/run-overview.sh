@@ -133,6 +133,22 @@ workspace two|workspace 2
 move workspace three to the right monitor|workspace_to_monitor 3 HDMI-A-1
 swap workspaces two and five|swap_workspaces 2 5
 swap workspace 1 with 2|swap_workspaces 1 2
+second|mark aaa2
+mark first and third|mark aaa1 aaa3
+mark the 2nd and 4th windows|mark aaa2 aaa4
+focus the second window|focus aaa2
+close the third one|close aaa3
+unmark the fifth one|unmark aaa5
+move the second window to the third workspace|move 3 aaa2
+move to the twelfth workspace|move 12
+move two to workspace twenty first|move 21 aaa2
+go to the first workspace|workspace 1
+go to workspace third|workspace 3
+workspace 3rd|workspace 3
+go to the 2nd desktop|workspace 2
+move the third workspace to the right monitor|workspace_to_monitor 3 HDMI-A-1
+swap the second and fifth workspaces|swap_workspaces 2 5
+swap the 1st and 2nd workspaces|swap_workspaces 1 2
 CASES
 
 section "overview: collisions and what it leaves alone"
@@ -140,6 +156,10 @@ ov_run -- "close two"
 check "close two goes to the overview, not Apps' close" "[[ \$(acts) == 'close aaa2' ]] && ! grep -q 'hyprctl dispatch.*window.close' '$log'"
 ov_run -- "go to workspace 3"
 check "go to workspace 3 goes to the overview, not Keybinds" "[[ \$(acts) == 'workspace 3' ]] && ! grep -q 'hyprctl dispatch' '$log'"
+ov_run -- "focus the ninth window"
+check "an ordinal past the windows shown is an error toast and no act" "[[ -z \$(acts) ]] && grep -q '^notify-send .*no window 9' '$log'"
+ov_run -- "go to the 2th workspace"
+check "an ordinal without its own suffix names nothing" "[[ -z \$(acts) ]]"
 ov_run -- "open firefox"
 check "a phrase that is not about the overview is routed as usual" "[[ -z \$(acts) ]] && grep -q 'hyprctl dispatch.*focus' '$log'"
 ov_run -- "move nine to workspace 2"

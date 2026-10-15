@@ -1104,6 +1104,11 @@ check "an ordinal picks by number" "grep -q 'result:      pick: 2. Next - bottom
 check "a spoken number picks by number" "grep -q 'result:      pick: 3. ' <<<\"\$(reply_dry 3)\""
 check "label words pick" "grep -q 'result:      pick: 3. Settings - middle' <<<\"\$(reply_dry settings)\""
 check "a number past the choices is unclear" "grep -q 'unclear: there are only 3 choices' <<<\"\$(reply_dry 'number 8')\""
+check "an ordinal with its own suffix picks" "grep -q 'result:      pick: 3. ' <<<\"\$(reply_dry 'the 3rd one')\""
+check "an ordinal past the choices is unclear" "grep -q 'unclear: there are only 3 choices' <<<\"\$(reply_dry 'the twelfth one')\""
+check "a compound ordinal is a position" "grep -q 'unclear: there are only 3 choices' <<<\"\$(reply_dry 'twenty first')\""
+check 'last picks the last choice' "grep -q 'result:      pick: 3. ' <<<\"\$(reply_dry 'the last one')\""
+check "an ordinal without its own suffix is no position" "! grep -q 'result:      pick: 2. ' <<<\"\$(reply_dry '2th')\" && ! grep -q 'there are only' <<<\"\$(reply_dry '2th')\""
 check "cancel cancels" "grep -q 'result:      cancel' <<<\"\$(reply_dry 'never mind')\""
 
 : >"$log"

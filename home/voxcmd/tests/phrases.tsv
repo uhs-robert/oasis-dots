@@ -13,6 +13,11 @@ open a new kitty	Apps/open_new
 focus slack	Apps/focus
 take me to firefox	Apps/focus	failed live, works now
 move firefox to workspace 3	Apps/move
+move firefox to the third workspace	Apps/move
+move firefox to workspace third	Apps/move
+move firefox to workspace 3rd	Apps/move
+move firefox to workspace twenty five	Apps/move
+move firefox to the twelfth workspace	Apps/move
 close slack	Apps/close
 resize the window to 1200 by 800	Apps/resize
 make it 400 pixels tall	Apps/resize
@@ -133,6 +138,9 @@ screenshot	Keybinds/run	no verb here; the Print bind opens the menu
 toggle fullscreen	Keybinds/run
 close window	Keybinds/run
 go to workspace 2	Keybinds/run
+go to the first workspace	Keybinds/run	an ordinal before the noun is the numbered workspace
+go to the 2nd workspace	Keybinds/run
+go to workspace 2th	none	an ordinal needs its own suffix
 cursor mode	Keybinds/enter_submap
 activate cursor mode	Keybinds/enter_submap	failed live, works now
 activate resize submap	Keybinds/enter_submap
@@ -384,6 +392,10 @@ move this window to the second monitor	Monitors/move
 move it to the 3rd screen	Monitors/move
 go to the tenth monitor	Monitors/focus	no such monitor on the owner's four; the phrase is still ours
 go to the 10th monitor	Monitors/focus	no such monitor on the owner's four; the phrase is still ours
+what is a third of 9	Answers/calculate	a fraction word is not a position
+set a timer for thirty seconds	Timers/timer	"seconds" stays a time unit beside the ordinals
+go to the 11th monitor	Monitors/focus	no such monitor; the phrase is still ours
+go to monitor twenty first	Monitors/focus	no such monitor; the phrase is still ours
 set a timer for 30 seconds	Timers/timer	the ordinal words never take "seconds" from a timer
 go to the system monitor	none	not a monitor word, so left to the apps
 move two and four to the left monitor	none	overview phrase, only with the overview open

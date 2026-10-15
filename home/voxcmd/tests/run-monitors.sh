@@ -150,6 +150,38 @@ check "go to firefox stays with Apps" "[[ \$(route_of 'go to firefox') == Apps/f
 check "a monitor that is no monitor word is left to the apps" "[[ \$(route_of 'go to the system monitor') != Monitors/* ]]"
 check "move two and four to the left monitor is not ours with the overview closed" "[[ \$(route_of 'move two and four to the left monitor') != Monitors/* ]]"
 
+section "spoken positions: numbers and ordinals"
+while IFS='|' read -r words expected; do
+  check "'$words' is position '$expected'" "[[ \$(spoken_position '$words') == '$expected' ]]"
+done <<'CASES'
+two|2
+7|7
+twenty five|25
+second|2
+twelfth|12
+thirtieth|30
+twenty first|21
+ninety ninth|99
+2nd|2
+13th|13
+21st|21
+111th|111
+101st|101
+CASES
+while IFS= read -r words; do
+  check "'$words' is no position" "! spoken_position '$words' >/dev/null"
+done <<'CASES'
+2th
+11st
+12nd
+21th
+0th
+twenty ten
+first second
+seconds
+CASES
+check "a cardinal is no ordinal" "! spoken_ordinal 'twenty five' >/dev/null && ! spoken_ordinal two >/dev/null"
+
 section "monitors: the shell words agree with the overview's rule"
 voice_js=$package/../quickshell/.config/quickshell/overview/Voice.js
 if command -v node >/dev/null 2>&1; then
