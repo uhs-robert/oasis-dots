@@ -61,7 +61,7 @@ monitor_words_known() {
 # monitor_named <words> <monitors json>: prints the name of the monitor the words name, or an "error:" line. The JSON is
 # monitor_places' or overview.json's "monitors".
 monitor_named() {
-  local words="$1" monitors="$2" found count named slot
+  local words="$1" monitors="$2" found count named slot slot_asked=""
   words="${words#the }"
   words="${words% monitor}" words="${words% screen}" words="${words% display}"
   words="${words#monitor }" words="${words#screen }" words="${words#display }"
@@ -73,6 +73,7 @@ monitor_named() {
     found=$(jq -c '[.[] | select(.id | test("^(eDP|LVDS|DSI)-")) | .id]' <<<"$monitors")
   elif slot=$(monitor_slot_word "$words"); then
     named="monitor $words"
+    slot_asked=1
     found=$(jq -c --argjson slot "$slot" '[.[] | select(.slot == $slot and $slot > 0) | .id]' <<<"$monitors")
   else
     found=$(jq -c --arg words "$words" '
@@ -82,7 +83,14 @@ monitor_named() {
   count=$(jq length <<<"$found")
   case "$count" in
   1) jq -r '.[0]' <<<"$found" ;;
-  0) echo "error:no $named" ;;
+  0)
+    # A monitor with no known slot may be the one asked for, so the answer is "can't tell", not "no such monitor".
+    if [ -n "$slot_asked" ] && jq -e 'any(.[]; .slot == 0)' <<<"$monitors" >/dev/null; then
+      echo "error:can't tell which monitor is slot $slot"
+    else
+      echo "error:no $named"
+    fi
+    ;;
   *) echo "error:more than one $named" ;;
   esac
 }
