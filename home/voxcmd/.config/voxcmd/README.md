@@ -469,7 +469,7 @@ Switching takes any `{focus}` or `{open}` [intent](#intents) form before the ses
 
 X is matched like other integrations' targets, against the names the launcher offers (a leading emoji does not matter). The names come from Hyprland's Lua: `hyprctl eval` calls `Launcher.write_names`, which writes them to a temporary file under `$XDG_RUNTIME_DIR/voxcmd`, since `eval` prints nothing back; launching calls `Launcher.launch(name)`, which runs the session with the picker's own `run`. A name that matches no session says "no session called X" instead of falling through to the keybinds and opening the picker. Launching is [silent](#silent-actions), since the windows appearing shows it worked. Tab on its Voice Help entry lists every session.
 
-Every phrase ends in "session" after a name, so "open the session launcher" still reaches the keybind, and "open a session" or "open a new session" (no name) are left to the keybinds too, which offer the Session Launcher bind. A phrase with "tmux" in it belongs to [Tmux](#tmux). "Switch to" and "go to" are not accepted, since those are for windows and agents.
+Every phrase ends in "session" after a name, so "open the session launcher" still reaches the keybind, and "open a session", "start a new session" and the like (no name) open the Session Launcher to pick one. A phrase with "tmux" in it belongs to [Tmux](#tmux). "Switch to" and "go to" are not accepted, since those are for windows and agents.
 
 ### Notifications
 

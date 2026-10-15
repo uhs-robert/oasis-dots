@@ -4,27 +4,29 @@
 name="Sessions"
 confirm=0
 # The session's windows appearing is the feedback.
-silent_actions=(open)
+silent_actions=(open launcher)
 
 # "open the session launcher" never ends in "session" after a target, so it stays with the keybinds. The "skip" verb
 # matches first and offers nothing, so "open the work tmux session" falls through to Tmux instead of naming a session
 # called "work tmux".
+# "open a session" and "open a new session" name none, so they open the Session Launcher to pick one, as its bind does.
 verbs=(
-  "skip  {open} (.* )?tmux {target}"
-  "open  {open} (the )?{target} session"
+  "skip      {open} (.* )?tmux {target}"
+  "launcher  {open} ((a|an|any|some)( new)?|new) session"
+  "open      {open} (the )?{target} session"
 )
 
-# A target of these words alone names no session, and word matching then offers nothing at all, not even "no session
-# called", so "open a session" and "open a new session" are left to the Session Launcher bind; "open a work session"
-# still names "work".
+# Word matching with the articles ignored still finds "work" in "open a work session".
 target_match=words
 match_ignore_words=(a an any some new)
 
 examples=(
   "open the <name> session"
+  "open a session"
 )
 
 declare -A actions=(
+  [launcher]='hyprctl_eval "$launcher_module.show_picker()"'
   [open]='launch_session "$id"'
   [not_found]='echo "no session called \"$target\""; false'
 )
