@@ -607,7 +607,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 
 - **Ending it**, by the [wake word](#wake-word) and what follows it, which the [Cortana wake listener](#cortana-wake-listener) hears during the recording (it keeps listening through type mode's recording, and only through it):
   - `cortana stop` (also `stop typing`, `stop recording`, `done`, `stop dictation` and the other exits of the mode) types it and leaves type mode, back to rapid or click mode when it was opened from one.
-  - `cortana send it` or `cortana press enter` types it, then presses Return.
+  - `cortana send`, `cortana send it`, `cortana send message` or `cortana press enter` types it, then presses Return.
   - `cortana cancel` or `cortana never mind` types nothing.
   - `cortana stop listening` (or `stop everything`, `end session`) types it and ends the whole session.
   - Any other words after the wake word ("cortana new paragraph") are dictation, typed with the rest.

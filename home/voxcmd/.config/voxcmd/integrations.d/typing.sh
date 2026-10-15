@@ -49,7 +49,7 @@ session_wake_listens=1
 # others. Whisper writes "never mind" both ways.
 session_endings=(
   "type        stop|stop typing|stop recording|done|im done|thats all|$type_exit_phrase|(im )?done typing|done with $type_exit_object"
-  "send        send it|press enter"
+  "send        send|send it|send (the |a )?message|press enter"
   "discard     cancel|never ?mind"
   "end_session stop listening|stop everything|end session|end the session"
 )
