@@ -827,7 +827,8 @@ heard_wake_word() {
   wake_rest="${BASH_REMATCH[2]% }"
 }
 
-# voxcmd _wake-confirm <wav>: whether a short recording (16 kHz mono WAV) holds the wake word, from `voxtype transcribe`.
+# voxcmd _wake-confirm <wav> [recording]: whether a short recording (16 kHz mono WAV) holds the wake word, from
+# `voxtype transcribe`. A clip cut during dictation names the recording it was heard in (dictation_wake_heard).
 # Prints "wake <words after it>" and exits 0, "not_wake" and exits 1, or "failed" and exits 2 when voxtype fails,
 # outlasts VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS, or voxcmd itself errors. voxcmd-wake asks it before a trigger starts a
 # command, with the audio on stdin as /dev/stdin; nothing it heard is logged.
@@ -837,7 +838,7 @@ wake_confirm() {
   # Exit 1 means "not the wake word" to the caller, which set -e would also give an unexpected error.
   set -E
   trap 'exit 2' ERR
-  local wav="$1" output transcript prompt_script prompt model model_file
+  local wav="$1" dictation_recording="$2" output transcript prompt_script prompt model model_file
   local -a prompt_flags=() model_flags=()
   if [ -z "$wav" ]; then
     echo failed
@@ -869,7 +870,7 @@ wake_confirm() {
   transcript=$(awk 'after_blank; /^$/ { after_blank = 1 }' <<<"$output")
   if heard_wake_word "$transcript"; then
     debug "wake confirm: the wake word"
-    dictation_wake_heard "$wake_rest" || debug "wake confirm: could not act on it in the session"
+    [ -z "$dictation_recording" ] || dictation_wake_heard "$wake_rest" "$dictation_recording" || debug "wake confirm: could not act on it in the session"
     printf 'wake%s\n' "${wake_rest:+ $wake_rest}"
     exit 0
   fi
@@ -2033,17 +2034,23 @@ watcher_record_ending_locked() {
   session_record_ending_locked "$state" "$1" "$2"
 }
 
-# dictation_wake_heard <normalized words after the wake word>: the wake word, confirmed by voxcmd-wake while a
-# wake_listens mode records. When the words are one of the mode's endings, records it and ends the recording: stopped,
-# so the watcher gets the transcript, or cancelled for discard. Any other words leave the recording running. Under the
-# lock and only while voxtype records, so a mode left, a session ended or an ending recorded since the trigger is never
-# ended twice. The recording is the owner's: voxtype records for nobody else while one of its watchers owns the session,
-# since a voice key pressed meanwhile stops it rather than starting another.
+# dictation_wake_heard <normalized words after the wake word> <recording>: the wake word, confirmed by voxcmd-wake in a
+# clip cut while a wake_listens mode recorded. When the words are one of the mode's endings, records it and ends the
+# recording: stopped, so the watcher gets the transcript, or cancelled for discard. Any other words leave the recording
+# running. Under the lock, only while voxtype records, and only for the recording the trigger was heard in
+# ("<frame_id>:<owner>:<owner_start>", which voxcmd-wake read from session.json then: the owner is the watcher of that
+# one recording), so a confirmation that outlasted its recording never ends the next one, and a mode left, a session
+# ended or an ending recorded since the trigger is never ended twice. While its watcher owns the session, voxtype records
+# for nobody else, since a voice key pressed meanwhile stops the recording rather than starting another.
 dictation_wake_heard() { session_locked dictation_wake_heard_locked "$@"; }
 dictation_wake_heard_locked() {
-  local after_wake="$1" state action
+  local after_wake="$1" heard_in="$2" state action
   state=$(session_state_locked) || return 0
   [ "$(jq -r '.wake_listens // false' <<<"$state")" = true ] && [ "$(voxtype_state)" = recording ] || return 0
+  if [ "$(jq -r '"\(.frame_id // ""):\(.owner):\(.owner_start)"' <<<"$state")" != "$heard_in" ]; then
+    debug "dictation: the wake word was heard in an earlier recording, not acted on"
+    return 0
+  fi
   # The clip holds dictation before the trigger too, which may say the wake word: the ending follows the last one.
   init_wake_regex
   while [[ " $after_wake " =~ " "($wake_regex)" "(.*)$ ]]; do after_wake="${BASH_REMATCH[2]% }"; done
@@ -2783,7 +2790,7 @@ _watch)
   watch_recording "$2"
   ;;
 _cancel_owned_recording) cancel_owned_recording "$2" ;;
-_wake-confirm) wake_confirm "${2:-}" ;;
+_wake-confirm) wake_confirm "${2:-}" "${3:-}" ;;
 list)
   while IFS= read -r file; do
     (

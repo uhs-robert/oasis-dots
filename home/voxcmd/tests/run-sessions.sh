@@ -791,9 +791,11 @@ sess_env=()
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_phrase="type mode"
 wtype_is() { [[ $(grep '^wtype ' "$log") == "$(printf '%s\n' "$@")" ]]; }
-# wake_heard <transcript>: what the confirmation's Whisper heard in the clip. It runs in the foreground, as the
-# listener's confirmation does, so whatever it ends has been ended once it returns.
-wake_heard() { SANDBOX_TRANSCRIBE_TEXT="$1" sess_voxcmd_env _wake-confirm /dev/stdin </dev/null; }
+# wake_heard <transcript> [recording]: what the confirmation's Whisper heard in a clip cut during that recording (by
+# default the one now under way, as voxcmd-wake names it). It runs in the foreground, as the listener's confirmation
+# does, so whatever it ends has been ended once it returns.
+wake_heard() { SANDBOX_TRANSCRIBE_TEXT="$1" sess_voxcmd_env _wake-confirm /dev/stdin "${2:-$(recording_now)}" </dev/null; }
+recording_now() { jq -r '"\(.frame_id):\(.owner):\(.owner_start)"' "$session_json"; }
 voxtype_now() { cat "$XDG_RUNTIME_DIR/voxtype/state"; }
 # A mode's ended hook runs in the background and may outlive its watcher.
 hooks_done() { wait_until ended_hooks_gone; }
@@ -857,6 +859,25 @@ check "an ending recorded first wins: a later cancel does nothing" "[[ \$(voxtyp
 SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record stop
 sess_wait
 check "and the recording is typed as that ending says" "session_gone && wtype_is 'wtype -- Kept words.' && toast_has 'Type mode ended it reached the 5 min recording limit'"
+
+# A confirmation that outlasted its recording: its clip was cut during an earlier type mode, or an earlier recording of
+# this one (another watcher), and must not end the recording now under way.
+sess_start "UNTIL_STOP Earlier words."
+owner_is_listening
+earlier_recording=$(recording_now)
+sess_voxcmd_env listen
+sess_wait
+sess_start "UNTIL_STOP Newer words."
+owner_is_listening
+wake_heard "Cortana, stop." "$earlier_recording"
+check "a stop heard in an earlier type mode's recording leaves the new one running" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log' && grep -q 'heard in an earlier recording' '$debug_log'"
+wake_heard "Cortana cancel" "$(jq -r '"\(.frame_id):1:1"' "$session_json")"
+check "so does a cancel heard in an earlier recording of the same type mode" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log' && ! jq -e .ending '$session_json' >/dev/null"
+SANDBOX_TRANSCRIBE_TEXT="Cortana, stop." sess_voxcmd_env _wake-confirm /dev/stdin </dev/null
+check "and a confirmation that names no recording ends none" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log'"
+wake_heard "Cortana, stop."
+sess_wait
+check "while its own stop still ends it" "session_gone && wtype_is 'wtype -- Newer words.'"
 
 sess_run "CAP A long talk."
 check "at the length limit it types what was said, ends the mode with a toast, and records nothing more" "session_gone && wtype_is 'wtype -- A long talk.' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended it reached the 5 min recording limit'"
