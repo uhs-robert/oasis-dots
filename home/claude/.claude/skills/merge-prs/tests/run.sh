@@ -326,6 +326,33 @@ check "fails" "[[ $code != 0 ]]"
 check "says the review is running" "grep -q '#7: the Codex review is still running' <<<\"\$out\""
 check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
 
+echo "== --check: fresh PR that Codex has not started on"
+setup
+printf 'codex=Pending\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "says Codex has not started" "grep -q '#7: opened under 300s ago and Codex has not started on it' <<<\"\$out\""
+
+echo "== --wait-review: Codex starts and finishes on a fresh PR"
+setup
+printf 'codex_pending_reads=2\ncodex_commit=abc1234\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 "$script" --check --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "passes" "[[ $code == 0 ]]"
+check "says it is waiting" "grep -q 'waiting up to' <<<\"\$out\""
+
+echo "== --wait-review: Codex never starts on a fresh PR"
+setup
+printf 'codex_pending_reads=99\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=1 timeout 30 "$script" --check --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "says no review came" "grep -q '#7: still no Codex review after' <<<\"\$out\""
+
 echo "== --wait-review: Codex review finishes while waiting"
 setup
 printf 'codex_running_reads=2\ncodex_commit=abc1234\n' >>"$GH_STATE"

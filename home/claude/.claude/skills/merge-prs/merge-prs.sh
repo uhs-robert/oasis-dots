@@ -89,20 +89,29 @@ if ! $check_only; then
   fi
 fi
 
+review_start_s=${MERGE_PRS_REVIEW_START:-300}
+
 # One query per PR: unresolved review threads, and the Codex summary comment's status and reviewed commit, if the repo uses Codex.
+# Codex posts that comment about a minute after a PR opens, so with none yet its eyes reaction counts as Running, and a
+# PR younger than review_start_s is Pending rather than "none": a repo without Codex only waits out that window.
 # shellcheck disable=SC2016 # GraphQL and jq variables, not shell ones.
 review_query='query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) { pullRequest(number: $number) {
     headRefOid
+    createdAt
     reviewThreads(first: 100) { nodes { isResolved } }
     comments(last: 100) { nodes { body } }
+    reactions(content: EYES, first: 20) { nodes { user { login } } }
   } }
 }'
 # shellcheck disable=SC2016
 review_jq='.data.repository.pullRequest as $p
   | ([$p.comments.nodes[] | select(.body | contains("codex-pull-request-review-summary"))] | last | .body // "") as $codex
+  | (if any($p.reactions.nodes[]; .user.login | startswith("chatgpt-codex")) then "Running"
+     elif (now - ($p.createdAt | fromdateiso8601)) < '"$review_start_s"' then "Pending"
+     else "none" end) as $no_summary
   | [([$p.reviewThreads.nodes[] | select(.isResolved | not)] | length),
-     ($codex | capture("\\*\\*(?<s>Running|Completed|Failed)\\*\\*").s // "none"),
+     ($codex | capture("\\*\\*(?<s>Running|Completed|Failed)\\*\\*").s // $no_summary),
      ($codex | capture("\\| `(?<c>[0-9a-f]{7,40})` \\|").c // "-"),
      $p.headRefOid] | @tsv'
 
@@ -191,7 +200,7 @@ rereview_reason() {
 poll_review() {
   local number=$1 until=${2:-} started=$SECONDS
   while ((waited < review_wait_s)); do
-    if [[ $status != Running ]]; then
+    if [[ $status != Running && $status != Pending ]]; then
       [[ $until == head && $status != Failed && $head != "$reviewed"* ]] || return 0
     fi
     sleep "$review_poll_s"
@@ -210,7 +219,7 @@ check_reviews() {
     info=$(read_review "$number")
     IFS=$'\t' read -r open status reviewed head <<<"$info"
     waited=0
-    if [[ $status == Running ]] && $wait_review; then
+    if [[ $status == Running || $status == Pending ]] && $wait_review; then
       echo "merge-prs: waiting up to ${review_wait_s}s for #$number's Codex review" >&2
       poll_review "$number"
     fi
@@ -245,6 +254,13 @@ check_reviews() {
         problems+=("#$number: the Codex review is still running after ${waited}s; rerun with --wait-review once it finishes")
       else
         problems+=("#$number: the Codex review is still running; wait for it to finish, or rerun with --wait-review")
+      fi
+      ;;
+    Pending)
+      if ((waited)); then
+        problems+=("#$number: still no Codex review after ${waited}s; rerun with --wait-review once one has started")
+      else
+        problems+=("#$number: opened under ${review_start_s}s ago and Codex has not started on it; wait for its review, or rerun with --wait-review")
       fi
       ;;
     Failed) problems+=("#$number: the Codex review failed at $reviewed; comment \"@codex review\" on the PR and wait for it") ;;
