@@ -154,32 +154,35 @@ music_gain() {
   python3 -c "import sys; print(round(min(-18 - float(sys.argv[1]), -1 - float(sys.argv[2])), 2))" "$loud" "$peak"
 }
 
-# Prints the active loudness in dB of $1: RMS of the channel average in 10ms windows, kept within 20 dB of the loudest, averaged as power. Short clips are too brief for LUFS to be reliable.
-# Channels are averaged here because ffmpeg's -ac 1 lifts identical stereo channels 3 dB, and its mono to stereo upmix drops them 3 dB.
+# Prints the active loudness in dB of $1: power averaged over its channels in 10ms windows, kept within 20 dB of the loudest window. Short clips are too brief for LUFS to be reliable.
+# Power is averaged per channel rather than downmixing: ffmpeg's -ac 1 lifts identical stereo channels 3 dB, and a sample average cancels channels out of phase.
 active_loudness() {
   local channels
   channels=$(ffprobe -v error -select_streams a:0 -show_entries stream=channels -of csv=p=0 "$1")
   ffmpeg -v error -i "$1" -ar 44100 -f f32le - | python3 -c '
 import sys
 import numpy as np
-x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64).reshape(-1, int(sys.argv[1])).mean(axis=1)
+power = (np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64).reshape(-1, int(sys.argv[1])) ** 2).mean(axis=1)
 w = 441
-rms = np.array([np.sqrt(np.mean(x[i:i + w] ** 2)) for i in range(0, max(1, len(x) - w), w)])
-db = 20 * np.log10(rms + 1e-12)
-print(round(20 * np.log10(np.sqrt(np.mean(rms[db > db.max() - 20] ** 2)) + 1e-12), 2))
+windows = np.array([np.mean(power[i:i + w]) for i in range(0, len(power), w)])
+db = 10 * np.log10(windows + 1e-24)
+print(round(10 * np.log10(np.mean(windows[db > db.max() - 20]) + 1e-24), 2))
 ' "$channels"
 }
 
 # Writes $1 to $2 as 16-bit PCM at $rate, at $3 dB active loudness with its sample peak held to -1 dBFS. Where the gain would pass that, a fast limiter shaves the transient and the gain is raised again until the limited result reaches the target.
+# Limiting stops at 12 dB: a click whose spike holds most of its energy would need far more, which turns it into a different sound, so it is left short of the target instead.
 level_fx() {
-  local file=$1 dest=$2 target=$3 gain loud
+  local file=$1 dest=$2 target=$3 gain loud peak ceiling
   loud=$(active_loudness "$file")
-  gain=$(python3 -c "import sys; print(round(float(sys.argv[1]) - float(sys.argv[2]), 2))" "$target" "$loud")
-  for _ in 1 2 3 4; do
+  peak=$(ffmpeg -hide_banner -nostats -i "$file" -af volumedetect -f null - 2>&1 | awk '/max_volume:/ { v = $5 } END { print v }')
+  ceiling=$(python3 -c "import sys; print(round(-1 - float(sys.argv[1]) + 12, 2))" "$peak")
+  gain=$(python3 -c "import sys; print(round(min(float(sys.argv[1]) - float(sys.argv[2]), float(sys.argv[3])), 2))" "$target" "$loud" "$ceiling")
+  for _ in 1 2 3 4 5 6; do
     ffmpeg -v error -y -i "$file" -ar "$rate" -af "volume=${gain}dB,alimiter=limit=0.891:attack=0.1:release=1:level=disabled" -c:a pcm_s16le "$dest"
     loud=$(active_loudness "$dest")
-    python3 -c "import sys; sys.exit(abs(float(sys.argv[1]) - float(sys.argv[2])) < 0.2)" "$target" "$loud" || break
-    gain=$(python3 -c "import sys; print(round(float(sys.argv[1]) + float(sys.argv[2]) - float(sys.argv[3]), 2))" "$gain" "$target" "$loud")
+    python3 -c "import sys; g, t, l, c = map(float, sys.argv[1:]); sys.exit(abs(t - l) < 0.2 or g >= c)" "$gain" "$target" "$loud" "$ceiling" || break
+    gain=$(python3 -c "import sys; g, t, l, c = map(float, sys.argv[1:]); print(round(min(g + t - l, c), 2))" "$gain" "$target" "$loud" "$ceiling")
   done
 }
 
