@@ -34,5 +34,6 @@
   {"submap": "System", "key": "K32", "modmask": 64, "description": "Reboot", "has_description": true, "dispatcher": "__lua", "arg": "132", "mouse": false},
   {"submap": "System", "key": "K33", "modmask": 64, "description": "Power Off", "has_description": true, "dispatcher": "__lua", "arg": "133", "mouse": false},
   {"submap": "System", "key": "K34", "modmask": 64, "description": "Toggle Auto-Lock", "has_description": true, "dispatcher": "__lua", "arg": "134", "mouse": false},
-  {"submap": "System", "key": "K35", "modmask": 64, "description": "Exit System", "has_description": true, "dispatcher": "__lua", "arg": "135", "mouse": false}
+  {"submap": "System", "key": "K35", "modmask": 64, "description": "Exit System", "has_description": true, "dispatcher": "__lua", "arg": "135", "mouse": false},
+  {"submap": "", "key": "K36", "modmask": 64, "description": "Session Launcher", "has_description": true, "dispatcher": "__lua", "arg": "136", "mouse": false}
 ]

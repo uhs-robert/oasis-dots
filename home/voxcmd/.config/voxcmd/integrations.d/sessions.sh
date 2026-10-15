@@ -6,11 +6,13 @@ confirm=0
 # The session's windows appearing is the feedback.
 silent_actions=(open)
 
-# "open the session launcher" and "open session X" never end in "session" after a target, so they stay with the keybinds.
-# "skip" claims every "open ... tmux ..." phrase first and offers nothing, so "open the work tmux session" is left to
-# Tmux instead of being read as a session called "work tmux".
+# "open the session launcher" never ends in "session" after a target, so it stays with the keybinds. "skip" verbs
+# match first and offer nothing, so their phrases fall through as if this integration were absent:
+# - "open the work tmux session" is Tmux's, not a session called "work tmux".
+# - "open a session" and "open a new session" name no session, and are left to the Session Launcher bind.
 verbs=(
   "skip  {open} (.* )?tmux {target}"
+  "skip  {open} ((a|an|any|some)( new)?|new) {target}"
   "open  {open} (the )?{target} session"
 )
 

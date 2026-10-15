@@ -15,7 +15,7 @@ force_prefixes=(keybind "key bind")
 # Words that only say "run a keybind", ignored on both sides: "run close window" is "close window". "open" and
 # "launch" are here because launcher binds are named for what they open ("Terminal"), so "open terminal" is that bind.
 # "activate" and "engage" are the one-word {activate} forms that never start a description the way "start" or "enable" can.
-match_ignore_words=(run press keybind key bind shortcut "do" trigger open launch activate engage)
+match_ignore_words=(run press keybind key bind shortcut "do" trigger open launch activate engage a an any some new)
 
 # Candidate labels name what runs ("Close Window", "Submap: Cursor"), so pickers leave the action word out.
 action_labels=0
