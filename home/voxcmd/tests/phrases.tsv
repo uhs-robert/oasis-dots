@@ -64,7 +64,7 @@ go to the dotfiles tmux session	Tmux/switch
 go to the dotfiles session	none	no tmux in the phrase, so no Tmux
 switch to tmux session dotfiles	Tmux/switch
 open the tmux session notes	Tmux/not_found	no such session or layout
-open session notes	none	no tmux in the phrase, so no Tmux
+open session notes	none	neither Tmux nor a launcher session form
 open the tmux session config	Tmux/not_found	no session or layout named config in the sandbox
 new tmux session scratch	Tmux/new
 open a new tmux session called scratch	Tmux/new
@@ -72,10 +72,17 @@ new session scratch	none	no tmux in the phrase, so no Tmux
 attach tmux dotfiles	Tmux/switch
 attach to the tmux session dotfiles	Tmux/switch
 attach dotfiles	none	no tmux in the phrase, so no Tmux
-open the work session	none	no tmux in the phrase, so no Tmux
+open the work session	Sessions/open
+open work session	Sessions/open
+launch the work session	Sessions/open
+start the work session	Sessions/open
+open the browsing session	Sessions/open	the name has an emoji before it
+open the nowhere session	Sessions/not_found	no such launcher session
+open the work tmux session	Tmux/not_found	no work tmux session or layout in the sandbox, but the phrase is still Tmux's
+open the dotfiles tmux session	Tmux/switch	a phrase with tmux is never a launcher session
 open the session launcher	none	the Session Launcher bind (leader SHIFT + O) is not in the binds fixture
 session launcher	none	the Session Launcher bind is not in the binds fixture
-launch a session	none	no tmux in the phrase, so no Tmux
+launch a session	Sessions/not_found	no name: reported as a session called "a"
 clear notifications	Notifications/clear
 read the last notification	Notifications/read_last
 open notifications	Notifications/open
