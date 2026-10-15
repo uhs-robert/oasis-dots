@@ -352,5 +352,14 @@ focus the built in screen	Monitors/focus
 move this window to the right monitor	Monitors/move
 move it to monitor three	Monitors/move
 send the window to the laptop screen	Monitors/move
+go to the first monitor	Monitors/focus	an ordinal is the slot: first is monitor one
+go to the second screen	Monitors/focus
+focus the 2nd display	Monitors/focus
+go to the fourth monitor	Monitors/focus
+move this window to the second monitor	Monitors/move
+move it to the 3rd screen	Monitors/move
+go to the tenth monitor	Monitors/focus	no such monitor on the owner's four; the phrase is still ours
+go to the 10th monitor	Monitors/focus	no such monitor on the owner's four; the phrase is still ours
+set a timer for 30 seconds	Timers/timer	the ordinal words never take "seconds" from a timer
 go to the system monitor	none	not a monitor word, so left to the apps
 move two and four to the left monitor	none	overview phrase, only with the overview open

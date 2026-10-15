@@ -53,9 +53,16 @@ owner|go to the top right monitor|DP-13
 owner|go to the top monitor|-
 owner|go to the bottom left monitor|-
 owner|go to monitor two|DP-8
-owner|go to the third monitor|-
+owner|go to the third monitor|HDMI-A-1
 owner|go to monitor number four|DP-13
 owner|go to monitor nine|-
+owner|go to the first monitor|eDP-1
+owner|go to the second screen|DP-8
+owner|focus the 2nd display|DP-8
+owner|go to the fourth monitor|DP-13
+owner|go to the 4th monitor|DP-13
+owner|go to the tenth monitor|-
+owner|go to the 10th monitor|-
 owner_real|go to the left monitor|DP-8
 owner_real|go to the center monitor|HDMI-A-1
 owner_real|go to the right monitor|DP-13
@@ -65,9 +72,14 @@ laptop|go to the left monitor|-
 laptop|go to the center monitor|-
 laptop|go to monitor one|eDP-1
 laptop|go to monitor two|-
+laptop|go to the second monitor|-
+laptop|go to the 2nd display|-
+laptop|go to the 10th monitor|-
 side_by_side|go to the left monitor|DP-1
 side_by_side|go to the right monitor|DP-2
 side_by_side|go to the center monitor|-
+side_by_side|go to the second monitor|DP-2
+side_by_side|go to the third monitor|-
 side_by_side|go to the top monitor|-
 side_by_side|go to the laptop monitor|-
 stacked|go to the top monitor|DP-1
@@ -89,6 +101,9 @@ check "a monitor the lookup does not list takes the lowest free slot" "[[ \$(SAN
 section "monitors: moving the active window"
 active_address=$(jq -r .address <<<"$SANDBOX_ACTIVEWINDOW_JSON")
 check "move this window to the right monitor" "[[ \$(dispatches owner 'move this window to the right monitor') == \$(move_of DP-13) ]]"
+check "move this window to the second monitor" "[[ \$(dispatches owner 'move this window to the second monitor') == \$(move_of DP-8) ]]"
+check "move it to the 3rd screen" "[[ \$(dispatches owner 'move it to the 3rd screen') == \$(move_of HDMI-A-1) ]]"
+check "a 10th monitor on the owner's four moves nothing" "[[ -z \$(dispatches owner 'move this window to the 10th monitor') ]]"
 check "move it to the laptop screen" "[[ \$(dispatches owner 'move it to the laptop screen') == \$(move_of eDP-1) ]]"
 check "send the window to monitor two" "[[ \$(dispatches owner 'send the window to monitor two') == \$(move_of DP-8) ]]"
 check "a monitor no word fits moves nothing" "[[ -z \$(dispatches side_by_side 'move this window to the center monitor') ]]"
@@ -96,6 +111,7 @@ check "no focused window moves nothing" "[[ -z \$(SANDBOX_ACTIVEWINDOW_JSON='{}'
 
 section "monitors: other phrases keep their route"
 route_of() { SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/owner.json") voxcmd --dry-run "$1" 2>/dev/null | sed -n 's/^option 1: *\([^ ]*\) .* action=\([^ ]*\) .*/\1\/\2/p'; }
+check "set a timer for 30 seconds stays with Timers" "[[ \$(route_of 'set a timer for 30 seconds') == Timers/timer ]]"
 check "move firefox to workspace 3 stays with Apps" "[[ \$(route_of 'move firefox to workspace 3') == Apps/move ]]"
 check "go to firefox stays with Apps" "[[ \$(route_of 'go to firefox') == Apps/focus ]]"
 check "a monitor that is no monitor word is left to the apps" "[[ \$(route_of 'go to the system monitor') != Monitors/* ]]"
