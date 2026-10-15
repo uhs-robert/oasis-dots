@@ -14,18 +14,32 @@ write() {
   rm -f "$tmp"
 }
 
-write greeter.json "$1"
+# With no sink bound (unplugged, PipeWire restarting, the bar just started) the bar sends no output_volume; keep the last one.
+settings=$1
+if ! jq -e 'has("output_volume")' >/dev/null 2>&1 <<<"$settings"; then
+  last=$(jq -c 'if (.output_volume | type) == "string" then {output_volume} else {} end' "$dir/greeter.json" 2>/dev/null) &&
+    settings=$(jq -c --argjson last "$last" '. + $last' <<<"$settings" 2>/dev/null) || settings=$1
+fi
+write greeter.json "$settings"
 [[ -f "$2" ]] && write theme.json "$(cat "$2")"
 if [[ -n "${3:-}" && -f "$3" && -n "${USER:-}" ]] && ! cmp -s "$3" "$dir/faces/$USER"; then
   mkdir -p "$dir/faces" && tmp=$(mktemp "$dir/faces/.$USER.XXXXXX") &&
     { cp -L "$3" "$tmp" && chmod 640 "$tmp" && mv -f "$tmp" "$dir/faces/$USER" || rm -f "$tmp"; }
 fi
 
-# The theme music the greeter plays; an empty or missing path clears it.
-rm -f "$dir"/music.ogg "$dir"/music.wav "$dir"/music.mp3
+# The theme music the greeter plays; an empty or missing path clears it. Copied only when it changed, since every sync
+# (a volume change among them) lands here, and through a rename so a logout mid-copy never leaves a partial file.
+keep=""
 if [[ -n "${4:-}" && -f "$4" ]]; then
   case "${4##*.}" in
-  ogg | wav | mp3) cp -L "$4" "$dir/music.${4##*.}" && chmod 640 "$dir/music.${4##*.}" ;;
+  ogg | wav | mp3) keep="music.${4##*.}" ;;
   esac
+fi
+for name in music.ogg music.wav music.mp3; do
+  [[ $name == "$keep" ]] || rm -f "${dir:?}/$name"
+done
+if [[ -n $keep ]] && ! cmp -s "$4" "$dir/$keep"; then
+  tmp=$(mktemp "$dir/.$keep.XXXXXX") &&
+    { cp -L "$4" "$tmp" && chmod 640 "$tmp" && mv -f "$tmp" "$dir/$keep" || rm -f "$tmp"; }
 fi
 exit 0
