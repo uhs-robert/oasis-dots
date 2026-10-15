@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests for voxcmd's sequences, several steps in one phrase joined by "and then": order and waiting, what stops the
-# rest, the one toast it sends, Stop Voice, the dry run. run.sh runs this beside its own checks, in a sandbox of its
-# own; run alone: home/voxcmd/tests/run-sequences.sh. Sequences inside voice sessions are in run-sessions.sh.
+# rest, the one toast it sends, Stop Voice, the dry run; also what an action learns from a yes on the confirm card.
+# run.sh runs this beside its own checks, in a sandbox of its own; run alone: home/voxcmd/tests/run-sequences.sh.
+# Sequences inside voice sessions are in run-sessions.sh.
 #
 # voxcmd runs for real against the sandbox's stubs and a copy of the package whose card and picker are stubs that
 # answer from files. A wait is observed by what its condition logs, never by sleeping.
@@ -303,6 +304,25 @@ fresh
 echo "open notifications" >"$SANDBOX_DIR/popup-state"
 seq_voxcmd "one and then two"
 check "but not for a popup that is open" "[[ \$(ran) == one,two ]]"
+
+section "a confirmed keybind"
+# Keybinds alone, so no other integration takes the phrases.
+keybinds_config=$root/config-keybinds
+mkdir -p "$keybinds_config/integrations.d"
+cp "$package/.config/voxcmd/integrations.d/keybinds.sh" "$keybinds_config/integrations.d/"
+keybind_voxcmd() { env VOXCMD_CONFIG_DIR="$keybinds_config" "$seq_bin" "$@" >/dev/null 2>&1; }
+skips_power_prompt() { grep -q "call power run" "$log"; }
+runs_bind() { grep -qF "getregistry()[$1]" "$log"; }
+fresh
+keybind_voxcmd "power off the computer"
+check "a yes on the card runs the Power Off bind past the bar's own prompt" "grep -q '^voxcmd-confirm .*Power Off' '$log' && runs_bind 133 && skips_power_prompt"
+fresh
+: >"$root/confirm-no"
+keybind_voxcmd "power off the computer"
+check "a no runs nothing" "! grep -q 'getregistry()' '$log'"
+fresh
+keybind_voxcmd "toggle auto-lock"
+check "a bind voxcmd did not confirm runs unchanged" "! grep -q '^voxcmd-confirm' '$log' && runs_bind 134 && ! skips_power_prompt"
 
 section "dry run"
 fresh

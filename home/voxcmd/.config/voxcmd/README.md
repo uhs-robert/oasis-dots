@@ -104,7 +104,8 @@ verbs=(
 )
 
 # Commands are eval'd with $id (the chosen candidate's id, else the target), $target (the spoken text) and
-# $raw_transcript (the transcript before normalization and replacements, with its punctuation, digits and symbols).
+# $raw_transcript (the transcript before normalization and replacements, with its punctuation, digits and symbols),
+# and $confirmed, 1 when the confirm card asked and was answered yes, else 0.
 # The last line a command prints is appended to the notification, so it can say what actually happened.
 declare -A actions=(
   [focus]='hyprctl dispatch "hl.dsp.focus({ window = \"address:$id\" })"'
@@ -312,6 +313,7 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 - "exit submap", "leave the submap", "deactivate submap" (any `{deactivate}`) or "reset submap" go back to the global map like the Exit binds. The voice key is not bound inside submaps, so these are for submaps that keep global keys, the CLI and Voice Help.
 - `excluded_descriptions` hides the voice binds themselves and anything about passwords or secrets; edit the list in the file.
 - `confirm_labels` asks before closing, killing, locking, logging out, powering off, rebooting, suspending, deleting or clearing.
+- A bind that opens the bar's Power prompt (`qs-ipc call power confirm <action>`, the System submap's Lock, Logout, Reboot and Power Off) runs the action straight away once the confirm card was answered yes, so the voice answer is the only confirmation. Without that yes, the bind opens its prompt as usual.
 - A verb for the whole machine (`lock`, `suspend`, `sleep`, `hibernate`, `reboot`, `log out`, `power off`, `shut down`) followed by a word that only names it (`computer`, `pc`, `laptop`, `machine`, `screen`, `system`, `session`, `desktop`) is the bind named for the verb: "lock the computer" and "lock screen" are `Lock (System)` as a strong match, so they go straight to its confirmation rather than through a picker first. Edit `machine_verbs` and `machine_words` in the file.
 - A bind that runs sends no notification ([silent](#silent-actions)); one that fails does.
 - Tab on its Voice Help entries lists every submap (`Submap: Cursor`), "Exit submap" and every offered bind; picking one runs it as saying it would.

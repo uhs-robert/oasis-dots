@@ -179,7 +179,27 @@ run_keybind() {
     echo "not a keybind: $1"
     return 1
   fi
-  hyprctl_eval 'hl.dispatch(hl.dsp.submap("reset"))' && hyprctl_eval "debug.getregistry()[$1]()"
+  hyprctl_eval 'hl.dispatch(hl.dsp.submap("reset"))' || return 1
+  if [ "${confirmed:-0}" = 1 ]; then
+    run_bind_skipping_power_prompt "$1"
+  else
+    hyprctl_eval "debug.getregistry()[$1]()"
+  fi
+}
+
+# The Lock, Logout, Reboot and Power Off binds open the bar's own prompt, a second question after the confirm card
+# that only a key can answer. The bind runs with exec_cmd rewriting that prompt's IPC call to the one that runs the
+# action, so whatever else it does still happens, and a bind that never opens the prompt is untouched.
+run_bind_skipping_power_prompt() {
+  hyprctl_eval "
+    local exec_cmd = hl.dsp.exec_cmd
+    hl.dsp.exec_cmd = function(command, ...)
+      if type(command) == 'string' then command = command:gsub(' call power confirm ', ' call power run ') end
+      return exec_cmd(command, ...)
+    end
+    local ok, err = pcall(debug.getregistry()[$1])
+    hl.dsp.exec_cmd = exec_cmd
+    if not ok then error(err, 0) end"
 }
 
 # Back to the global map like the Exit binds, through both Submap modules so the current submap's exit hook runs
