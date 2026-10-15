@@ -39,9 +39,14 @@ fi
 # of a known parent (-P) is the one pattern kill that stays inside this session.
 pattern_kill="${at_cmd}(killall|pkill)([[:space:]][^;&|]*)?(;|$)"
 pgrep_kill="${at_cmd}pgrep([[:space:]][^;&|]*)?\|[[:space:]]*xargs([[:space:]][^;&|]*)?[[:space:]]kill"
-if [[ $flat =~ $pattern_kill || $flat =~ $pgrep_kill ]] && ! [[ ${BASH_REMATCH[0]} =~ [[:space:]](-P|--parent)[[:space:]=] ]]; then
-  deny "a kill by name or pattern also hits other sessions' processes (they run the same suites): kill the PIDs you started (\$! when you launch them), or scope with pkill -P <your parent pid>"
-fi
+# Each kill is judged on its own: a scoped one earlier in the command must not excuse a later one.
+unchecked=$flat
+while [[ $unchecked =~ $pattern_kill || $unchecked =~ $pgrep_kill ]]; do
+  kill_cmd=${BASH_REMATCH[0]}
+  [[ $kill_cmd =~ [[:space:]](-P|--parent)[[:space:]=] ]] ||
+    deny "a kill by name or pattern also hits other sessions' processes (they run the same suites): kill the PIDs you started (\$! when you launch them), or scope with pkill -P <your parent pid>"
+  unchecked=${unchecked/"$kill_cmd"/ }
+done
 
 word='[^[:space:];&|]'
 checks="just[[:space:]]+check|make[[:space:]]+(check|test)|(npm([[:space:]]+run)?|pnpm|yarn)[[:space:]]+test|pytest"
