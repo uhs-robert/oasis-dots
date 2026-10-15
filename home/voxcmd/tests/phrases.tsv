@@ -60,10 +60,22 @@ go to the waiting agent	Agents/jump_waiting
 go to the done agent	Agents/jump_done	failed live, works now
 next agent	Agents/jump_next
 go to the frontend agent	Agents/not_found	no agent is tracked in the sandbox
-go to the dotfiles session	Tmux/switch
-open session notes	Tmux/not_found	no such session or layout
-new session scratch	Tmux/new
-attach dotfiles	Tmux/switch
+go to the dotfiles tmux session	Tmux/switch
+go to the dotfiles session	none	no tmux in the phrase, so no Tmux
+switch to tmux session dotfiles	Tmux/switch
+open the tmux session notes	Tmux/not_found	no such session or layout
+open session notes	none	no tmux in the phrase, so no Tmux
+open the tmux session config	Tmux/not_found	no session or layout named config in the sandbox
+new tmux session scratch	Tmux/new
+open a new tmux session called scratch	Tmux/new
+new session scratch	none	no tmux in the phrase, so no Tmux
+attach tmux dotfiles	Tmux/switch
+attach to the tmux session dotfiles	Tmux/switch
+attach dotfiles	none	no tmux in the phrase, so no Tmux
+open the work session	none	no tmux in the phrase, so no Tmux
+open the session launcher	none	the Session Launcher bind (leader SHIFT + O) is not in the binds fixture
+session launcher	none	the Session Launcher bind is not in the binds fixture
+launch a session	none	no tmux in the phrase, so no Tmux
 clear notifications	Notifications/clear
 read the last notification	Notifications/read_last
 open notifications	Notifications/open

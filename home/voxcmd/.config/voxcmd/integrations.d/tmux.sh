@@ -6,23 +6,25 @@ confirm=0
 # The session's terminal taking focus is the feedback.
 silent_actions=(switch new)
 
-# Every phrase names a session ("the X session", "session X", "attach X"), so "switch to X" stays the apps' verb.
-# "new session" comes first so "open a new session X" is not read as opening a session called "new session X".
+# Every phrase says "tmux" and names a session ("the X tmux session", "tmux session X", "attach tmux X"), so "open the
+# work session" and "open the session launcher" stay with the keybinds and apps.
+# "new" comes first so "open a new tmux session X" is not read as opening a session called "new tmux session X".
 verbs=(
-  "new     (start |create |open )?(a )?new (tmux )?session( called| named)? {target}"
-  "switch  {focus} (the )?(tmux )?session {target}"
-  "switch  {focus} (the )?{target} (tmux )?session"
-  "switch  attach( to)?( the)? {target} (tmux )?session"
-  "switch  attach( to)?( the)?( (tmux )?session)? {target}"
-  "switch  {open} (the )?(tmux )?session {target}"
-  "switch  {open} (the )?{target} (tmux )?session"
+  "new     (start |create |open )?(a )?new tmux session( called| named)? {target}"
+  "switch  {focus} (the )?tmux session {target}"
+  "switch  {focus} (the )?{target} tmux session"
+  "switch  attach( to)?( the)? {target} tmux session"
+  "switch  attach( to)?( the)? tmux session {target}"
+  "switch  attach( to)?( the)? tmux {target}"
+  "switch  {open} (the )?tmux session {target}"
+  "switch  {open} (the )?{target} tmux session"
 )
 
 examples=(
-  "go to the <name> session"
-  "open session <name>"
-  "new session <name>"
-  "attach <name>"
+  "go to the <name> tmux session"
+  "open the tmux session <name>"
+  "new tmux session <name>"
+  "attach tmux <name>"
 )
 
 declare -A actions=(
