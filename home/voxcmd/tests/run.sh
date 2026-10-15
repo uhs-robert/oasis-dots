@@ -1509,6 +1509,10 @@ keys_pressed=(
   "press end|wtype -k End"
   "press delete twice|wtype -k Delete -k Delete"
   "press space bar|wtype -k space"
+  "press Y.|wtype -k y"
+  "hit why|wtype -k y"
+  "press the letter n|wtype -k n"
+  "press a|wtype -k a"
   "press down 50 times|wtype$(printf ' -k Down%.0s' {1..20})"
   "press down 18446744073709551616 times|wtype$(printf ' -k Down%.0s' {1..20})"
 )

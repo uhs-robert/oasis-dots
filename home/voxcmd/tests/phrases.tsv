@@ -331,6 +331,15 @@ hit delete twice	Keys/delete
 press space	Keys/space
 press the space bar	Keys/space
 press space bar	Keys/space
+press y	Keys/letter_y
+press Y.	Keys/letter_y
+hit n	Keys/letter_n
+press the letter y	Keys/letter_y	"the letter" is optional
+press y key	Keys/letter_y
+press a button	none	letters take no count, so the article "a" is not a key press
+press why	Keys/letter_y	Whisper hears "y" as "why" (owner-approved)
+hit why	Keys/letter_y
+press a	Keys/letter_a
 enter	none	a misheard Enter can submit a form: Keys never takes a bare one
 send	none	Keys never takes a bare send
 send firefox to workspace 3	Apps/move	Keys has no bare send
