@@ -240,7 +240,7 @@ private_labels=1          # error toasts leave out the option's label
 A phrase starting with one of an integration's `force_prefixes` goes to that integration alone, with the prefix dropped, even when another integration has a verb for the rest. Prefixes are normalized like the phrase and must be followed by at least one word; the first integration (by file name) whose prefix matches wins.
 
 ```bash
-force_prefixes=(press keybind "key bind")   # "press toggle fullscreen" runs the keybind, never another verb
+force_prefixes=(keybind "key bind")   # "keybind toggle fullscreen" runs the keybind, never another verb
 ```
 
 ### Fallback integrations
@@ -305,7 +305,7 @@ Strong matches hide weak ones.
 
 `keybinds.sh` is a fallback integration over `hyprctl binds -j`, so any phrase no other integration takes is matched against keybind descriptions: "close window", "toggle fullscreen", "go to workspace two". `run`, `press`, `keybind`, `do`, `trigger`, `activate` and `engage` are ignored words, so "run close window" and "activate toggle fullscreen" are the same phrase as the bare description.
 
-As a fallback it never sees a phrase another integration takes. Starting the phrase with "press", "keybind" or "key bind" ([force prefixes](#force-prefixes)) sends it here first and only: "press open terminal" runs the Open Terminal bind even when another integration has a verb for "open terminal".
+As a fallback it never sees a phrase another integration takes. Starting the phrase with "keybind" or "key bind" ([force prefixes](#force-prefixes)) sends it here first and only: "keybind open terminal" runs the Open Terminal bind even when another integration has a verb for "open terminal". "press" is an ignored word, not a force prefix, so "press open terminal" also lands here (no other integration's verb starts with "press") while "press enter" is a [key press](#keys).
 
 - Binds from every submap are offered, one per description, preferring the global one; a submap bind is labelled with its submap, `Lock (System)`. Submap navigation (`+Name`, `Back`, `Exit <submap>`), one-character descriptions and lid switches are left out; the phrases below take its place.
 - "submap X", "X submap", "X mode", "enter X mode", "activate X mode" or "go to the X submap" (any `{activate}` or `{focus}` [intent](#intents), or "open") enter the submap named X, word matched against the submap names which-key shows (`cursor mode` is Cursor, `normal mode` is hyprvim's NORMAL). A name shared by several submaps (Delete and hyprvim's DELETE) opens the picker; a name that is no submap is a "no match". "X mode" also reaches a bind named "X mode" that is not a submap (`command mode`). As a fallback, these lose to any other integration's verb, so "performance mode" still sets the power profile.
@@ -364,6 +364,23 @@ Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{c
 | "keep the screen awake", "activate" / "deactivate caffeine", "caffeine on" / "off", "enable" / "disable autolock" | Stops or starts hypridle with `toggle-autolock.sh`, like the System submap's auto-lock key |
 
 Brightness and do not disturb send no notification when they work ([silent](#silent-actions)), since the OSD and the bar's indicator show them; power profile and auto-lock still say what they set. Only the laptop backlight is driven; external monitors are not (no DDC/CI). A spoken power profile lasts until the next AC or battery change, when `power.sh` applies the one chosen in Settings, unless that is "keep".
+
+### Keys
+
+`keys.sh` presses bare keys in the focused window with `wtype -k`. Every phrase starts with "press" or "hit", except "send it" and "send the message", and a bare "enter" or "send" is deliberately nothing: a misheard Enter can submit a form or run a shell line, and "send firefox to workspace 3" is [Apps](#apps).
+
+| Say                                                                      | Presses                              |
+| ------------------------------------------------------------------------ | ------------------------------------ |
+| "press enter", "hit enter", "press return", "send it", "send the message" | Return                               |
+| "press escape", "hit escape"                                             | Escape                               |
+| "press tab", "press shift tab"                                           | Tab, Shift+Tab                       |
+| "press up", "press down", "press left", "press right" (also "... arrow") | Up, Down, Left, Right |
+| "press page up", "press page down"                                       | Page Up, Page Down                   |
+| "press backspace"                                                        | BackSpace                            |
+| "press home", "press end"                                                | Home, End                            |
+| "press delete", "press space" (also "space bar")                         | Delete, space                        |
+
+Any of the "press" phrases takes a count after the key: "press down three times", "hit tab twice", "press enter once", "hit backspace 5 times" (digits or the words one to ten). More than 20 presses is cut to 20, and a count that is none ("press tab banana") presses nothing and says so. The key press is its own feedback, so the actions are [silent](#silent-actions). Nothing is pressed while a voxcmd picker or the click overlay is open, or when no window has focus.
 
 ### Answers
 
