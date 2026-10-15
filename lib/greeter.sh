@@ -76,6 +76,7 @@ stage_greeter() {
 }
 
 # The commands that install a staged tree at $1 and the wrapper and greetd Hyprland config from the repo at $2, then seed the data dir.
+# The volume levels in a live greeter.json come only from the bar, so reseeding it keeps them.
 greeter_install_cmds() {
   local stage=$1 repo=$2
   local seed_theme=":"
@@ -87,7 +88,7 @@ greeter_install_cmds() {
     "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua" \
     "printf '%s\\n' '${GREETER_USER:-$USER}' | sudo tee /etc/greetd/admin_user >/dev/null" \
     "sudo install -d -m 2750 -o '$USER' -g greeter '$GREETER_DATA'" \
-    "install -m 640 '$stage/greeter.json' '$GREETER_DATA/greeter.json'" \
+    "if levels=\$(jq -c '{music_volume, output_volume} | with_entries(select(.value | type == \"string\"))' '$GREETER_DATA/greeter.json' 2>/dev/null); then jq --argjson levels \"\$levels\" '. + \$levels' '$stage/greeter.json' >'$GREETER_DATA/.greeter.json.new' && chmod 640 '$GREETER_DATA/.greeter.json.new' && mv -f '$GREETER_DATA/.greeter.json.new' '$GREETER_DATA/greeter.json'; else install -m 640 '$stage/greeter.json' '$GREETER_DATA/greeter.json'; fi" \
     "$seed_theme" \
     "[ ! -f '$HOME/.face' ] || install -D -m 640 '$HOME/.face' '$GREETER_DATA/faces/$USER'"
 }
