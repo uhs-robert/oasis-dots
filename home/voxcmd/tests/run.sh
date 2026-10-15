@@ -546,8 +546,8 @@ check "'show hints' launches wl-kbptr" "grep -q 'action=show_hints' <<<\"\$out\"
 check "'show hints' is silent" "grep -q 'silent: true' <<<\"\$out\""
 out=$(route "show click hints")
 check "'show click hints' is the same" "grep -q 'action=show_hints' <<<\"\$out\""
-out=$(route "press enter")
-check "'press' still forces the keybinds" "grep -q 'forced to:   keybinds.sh' <<<\"\$out\""
+out=$(route "keybind enter")
+check "'keybind' still forces the keybinds" "grep -q 'forced to:   keybinds.sh' <<<\"\$out\""
 
 # Two matches and a weak one go to the picker; a lone strong one runs.
 SANDBOX_TESSERACT_TSV=$({
@@ -1487,6 +1487,39 @@ for entry in "${screenshot_flags[@]}"; do
   VOXCMD_CONFIG_DIR=$screenshot_config "$voxcmd" "${entry%|*}" >/dev/null 2>&1
   check "'${entry%|*}' runs screenshot.sh ${entry#*|}" "[[ \$(grep -c 'screenshot.sh' '$log') == 1 ]] && grep -Eq 'screenshot.sh ${entry#*|}\$' '$log'"
 done
+
+section "keys by voice"
+# Each phrase runs for real and must press the keys it names, as many times as it counts, capped at 20.
+keys_config=$root/keys-config
+mkdir -p "$keys_config/integrations.d" "$keys_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/keys.sh" "$keys_config/integrations.d/"
+keys_pressed=(
+  "press enter|wtype -k Return"
+  "send it|wtype -k Return"
+  "press down three times|wtype -k Down -k Down -k Down"
+  "hit tab twice|wtype -k Tab -k Tab"
+  "press up arrow|wtype -k Up"
+  "press left three times|wtype -k Left -k Left -k Left"
+  "hit right arrow|wtype -k Right"
+  "press shift tab|wtype -M shift -k Tab -m shift"
+  "press page down once|wtype -k Next"
+  "press backspace 2 times|wtype -k BackSpace -k BackSpace"
+  "hit escape|wtype -k Escape"
+  "press home|wtype -k Home"
+  "press end|wtype -k End"
+  "press delete twice|wtype -k Delete -k Delete"
+  "press space bar|wtype -k space"
+  "press down 50 times|wtype$(printf ' -k Down%.0s' {1..20})"
+  "press down 18446744073709551616 times|wtype$(printf ' -k Down%.0s' {1..20})"
+)
+for entry in "${keys_pressed[@]}"; do
+  : >"$log"
+  VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" "${entry%|*}" >/dev/null 2>&1
+  check "'${entry%|*}' runs ${entry#*|}" "[[ \$(grep -c '^wtype' '$log') == 1 ]] && grep -Fxq '${entry#*|}' '$log'"
+done
+: >"$log"
+VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" "press tab banana" >/dev/null 2>&1
+check "a count that is none presses nothing" "! grep -q '^wtype' '$log'"
 
 section "screenshot.sh beside a recording"
 # The real script, with the sandbox's stub for qs-ipc beside it and a pidof that names a harmless process as the recorder.

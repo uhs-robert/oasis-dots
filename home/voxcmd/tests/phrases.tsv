@@ -114,7 +114,10 @@ cursor mode	Keybinds/enter_submap
 activate cursor mode	Keybinds/enter_submap	failed live, works now
 activate resize submap	Keybinds/enter_submap
 exit submap	Keybinds/exit_submap
-press toggle fullscreen	Keybinds/run	forced to Keybinds
+press toggle fullscreen	Keybinds/run	"press" is an ignored word, and no other verb starts with it
+keybind toggle fullscreen	Keybinds/run	forced to Keybinds
+press open terminal	Keybinds/run	Apps has a verb for "open terminal", but none for "press open terminal"
+press cursor mode	Keybinds/enter_submap
 lock computer	Keybinds/run	failed live, works now
 never mind	builtin	failed live, works now
 cancel	builtin
@@ -294,3 +297,39 @@ open firefox, sorry	picker	nothing follows the correction word: the weak match a
 remind me to say sorry	Timers/remind	a correction word inside a command that matches whole
 remind me to say no wait	Timers/remind
 open firefox open	picker	the repeated word is a tail that routes no better: the weak match asks as before
+press enter	Keys/enter
+hit enter	Keys/enter
+press return	Keys/enter
+send it	Keys/enter
+send the message	Keys/enter
+send message	Keys/enter
+hit enter 2 times	Keys/enter
+press enter twice	Keys/enter
+press escape	Keys/escape
+press tab	Keys/tab
+hit tab twice	Keys/tab
+press shift tab	Keys/shift_tab
+press up	Keys/up
+press up arrow	Keys/up
+press down	Keys/down
+press down arrow	Keys/down
+press down three times	Keys/down
+press down 3 times	Keys/down
+hit down once	Keys/down
+press left	Keys/left
+press left three times	Keys/left
+press right arrow	Keys/right
+hit right twice	Keys/right
+press page up	Keys/page_up
+press page down	Keys/page_down
+press backspace	Keys/backspace
+press home	Keys/home
+press end	Keys/end
+press delete	Keys/delete
+hit delete twice	Keys/delete
+press space	Keys/space
+press the space bar	Keys/space
+press space bar	Keys/space
+enter	none	a misheard Enter can submit a form: Keys never takes a bare one
+send	none	Keys never takes a bare send
+send firefox to workspace 3	Apps/move	Keys has no bare send

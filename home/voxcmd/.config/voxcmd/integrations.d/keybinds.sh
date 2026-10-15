@@ -8,8 +8,10 @@ fallback=1
 # A bind's own effect is the feedback, often a bar popup that a success toast would cover.
 silent=1
 target_match=words
-# "press toggle fullscreen" comes straight here even when another integration has a verb for "toggle fullscreen".
-force_prefixes=(press keybind "key bind")
+# "keybind toggle fullscreen" comes straight here even when another integration has a verb for "toggle fullscreen".
+# "press" is only an ignored word, not a prefix: "press enter" is a key press (keys.sh), and "press <description>" still
+# lands here, since no other integration's verb starts with "press".
+force_prefixes=(keybind "key bind")
 # Words that only say "run a keybind", ignored on both sides: "run close window" is "close window". "open" and
 # "launch" are here because launcher binds are named for what they open ("Terminal"), so "open terminal" is that bind.
 # "activate" and "engage" are the one-word {activate} forms that never start a description the way "start" or "enable" can.
