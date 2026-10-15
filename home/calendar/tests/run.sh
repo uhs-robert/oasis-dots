@@ -73,7 +73,7 @@ cat >"$stubs/secret-tool" <<'STUB'
 echo "secret-tool $*" >>"$STUB_LOG"
 case "$1" in
 store) cat >"$KEYRING_FILE" ;;
-lookup) cat "$KEYRING_FILE" ;;
+lookup) cat "${KEYRING_FILE:-$FEED_URL_FILE}" ;;
 esac
 STUB
 for name in systemctl xdg-open; do
@@ -286,17 +286,17 @@ for bad in "days_ahead = abc" "days_ahead = -1" "days_ahead = 3651" "days_back =
 done
 export XDG_CONFIG_HOME="$work/config"
 
-# --- vault path: locked, then unlocked ---------------------------------------
+# --- default keyring path: locked, then an explicit rbw config -----------------
 export XDG_CACHE_HOME="$work/cache_rbw"
 printf 'file://%s/%s/%s\n' "$work" "$secret" "feed.ics" >"$FEED_URL_FILE"
 mkdir -p "$work/$secret"
 cp "$fixture" "$work/$secret/feed.ics"
 
 : >"$STUB_LOG"
-RBW_STATE=locked "$sync_bin" >"$work/locked.out" 2>&1
-check "locked vault exits quietly" test ! -s "$work/locked.out"
-check "locked vault is not asked for the entry" test "$(grep -c '^rbw get' "$STUB_LOG")" -eq 0
-check "locked vault writes nothing" test ! -e "$XDG_CACHE_HOME/calendar/events.json"
+KEYRING_MODE=locked "$sync_bin" >"$work/locked.out" 2>&1
+check "a locked default keyring exits quietly" test ! -s "$work/locked.out"
+check "a locked default keyring is not asked for the address" test "$(grep -c '^secret-tool' "$STUB_LOG")" -eq 0
+check "a locked default keyring writes nothing" test ! -e "$XDG_CACHE_HOME/calendar/events.json"
 
 : >"$STUB_LOG"
 mkdir -p "$XDG_CONFIG_HOME/calendar-sync"
@@ -308,14 +308,14 @@ check "unlocked vault syncs" test -s "$XDG_CACHE_HOME/calendar/events.json"
 check "the address stays out of the cache" test "$(grep -rc "$secret" "$XDG_CACHE_HOME" | grep -vc ':0$')" -eq 0
 check "the address stays out of output" test "$(grep -c "$secret" "$work/unlocked.out")" -eq 0
 
-# --- unlocked vault with no entry is the same as not configured ---------------
+# --- an empty keyring entry is the same as not configured --------------------
 export XDG_CACHE_HOME="$work/cache_unconfigured"
 : >"$FEED_URL_FILE"
-RBW_STATE=unlocked "$sync_bin" >"$work/unconfigured.out" 2>&1
+"$sync_bin" >"$work/unconfigured.out" 2>&1
 check "missing entry exits quietly" test ! -s "$work/unconfigured.out"
 check "missing entry writes no error.json" test ! -e "$XDG_CACHE_HOME/calendar/error.json"
 check "missing entry writes no events.json" test ! -e "$XDG_CACHE_HOME/calendar/events.json"
-RBW_STATE=unlocked "$sync_bin" --now >"$work/unconfigured_now.out" 2>&1
+"$sync_bin" --now >"$work/unconfigured_now.out" 2>&1
 check "missing entry hints under --now" test -s "$work/unconfigured_now.out"
 
 # --- file:// is refused unless the test switch is set ------------------------
@@ -444,6 +444,16 @@ for stub in "$stubs"/*; do
   [ "$(basename "$stub")" = rbw ] || ln -s "$stub" "$without_rbw/"
 done
 
+# A PATH where secret-tool is not installed, built the same way.
+without_keyring="$work/without_keyring"
+mkdir -p "$without_keyring"
+for tool in env bash python3 sh cat head rm sleep setsid; do
+  ln -s "$(command -v "$tool")" "$without_keyring/$tool"
+done
+for stub in "$stubs"/*; do
+  [ "$(basename "$stub")" = secret-tool ] || ln -s "$stub" "$without_keyring/"
+done
+
 # Fresh home, config, data, cache, vault and keyring for each scenario.
 fresh_setup_env() {
   setup_runs=$((setup_runs + 1))
@@ -471,8 +481,13 @@ assert_address_not_leaked() {
 }
 
 fresh_setup_env
-run_setup n "$feed_address" "" ""
-check "auto picks rbw when unlocked" test -s "$RBW_STORE_DIR/google-calendar-ical"
+run_setup n "$feed_address" ""
+check "auto picks the keyring over an unlocked rbw" test -s "$KEYRING_FILE"
+check "rbw is left alone when the keyring wins" test ! -e "$RBW_STORE_DIR/google-calendar-ical"
+
+fresh_setup_env
+SETUP_PATH="$without_keyring" run_setup n "$feed_address" "" ""
+check "auto picks rbw when the keyring is absent" test -s "$RBW_STORE_DIR/google-calendar-ical"
 check "rbw setup writes an explicit config" grep -qx 'url_command = rbw get -- google-calendar-ical' "$XDG_CONFIG_HOME/calendar-sync/config"
 check "config directory is mode 700" test "$(stat -c %a "$XDG_CONFIG_HOME/calendar-sync")" = 700
 check "setup validates and reports the count" grep -q '^Found [0-9]* events in the next 365 days' "$setup_out"
@@ -490,19 +505,23 @@ check "keyring setup syncs" test -s "$XDG_CACHE_HOME/calendar/events.json"
 assert_address_not_leaked "keyring"
 
 fresh_setup_env
-RBW_STATE=locked run_setup n "$feed_address" "" keyring
-check "a locked rbw has no Auto choice" grep -q 'no Auto choice' "$setup_out"
+RBW_STATE=locked run_setup n "$feed_address" ""
+check "a locked rbw does not stop Auto picking the keyring" test -s "$KEYRING_FILE"
 check "a locked rbw is listed" grep -q 'rbw (locked, unlock it first)' "$setup_out"
-check "the user can still pick another backend" test -s "$KEYRING_FILE"
+fresh_setup_env
+RBW_STATE=locked KEYRING_MODE=locked run_setup n "$feed_address" "" file
+check "locked stores leave no Auto choice" grep -q 'no Auto choice' "$setup_out"
+check "the user can still pick another backend" test -s "$XDG_DATA_HOME/calendar-sync/ical-url"
 fresh_setup_env
 RBW_STATE=locked run_setup n "$feed_address" rbw-locked file
 check "picking the locked rbw asks to unlock it first" grep -q 'Unlock rbw first' "$setup_out"
 
 fresh_setup_env
-KEYRING_MODE=locked SETUP_PATH="$without_rbw" run_setup n "$feed_address" ""
+KEYRING_MODE=locked SETUP_PATH="$without_rbw" run_setup n "$feed_address" "" file
 file_path="$XDG_DATA_HOME/calendar-sync/ical-url"
 check "a locked keyring is not offered" grep -q 'keyring is locked' "$setup_out"
-check "auto falls back to a private file" test -s "$file_path"
+check "a locked keyring leaves no Auto choice" grep -q 'no Auto choice' "$setup_out"
+check "the private file can still be picked" test -s "$file_path"
 check "private file is mode 600" test "$(stat -c %a "$file_path")" = 600
 check "private file directory is mode 700" test "$(stat -c %a "$(dirname "$file_path")")" = 700
 check "file config uses cat" grep -q '^url_command = cat ' "$XDG_CONFIG_HOME/calendar-sync/config"
@@ -612,13 +631,13 @@ check "the answers seam needs the test switch" test "$status" -eq 2
 fresh_setup_env
 status=0
 "$sync_bin" setup --check >/dev/null 2>&1 || status=$?
-check "--check fails when rbw has no entry" test "$status" -eq 1
-RBW_STATE=locked "$sync_bin" setup --check >/dev/null 2>&1 || status=$?
-check "--check reports a locked rbw as 3" test "$status" -eq 3
-mkdir -p "$XDG_CONFIG_HOME/calendar-sync"
-printf 'url_command = secret-tool lookup service calendar-sync key ical-url\n' >"$XDG_CONFIG_HOME/calendar-sync/config"
+check "--check fails when the keyring has no entry" test "$status" -eq 1
 KEYRING_MODE=locked "$sync_bin" setup --check >/dev/null 2>&1 || status=$?
 check "--check reports a locked keyring as 4" test "$status" -eq 4
+mkdir -p "$XDG_CONFIG_HOME/calendar-sync"
+printf 'url_command = rbw get -- google-calendar-ical\n' >"$XDG_CONFIG_HOME/calendar-sync/config"
+RBW_STATE=locked "$sync_bin" setup --check >/dev/null 2>&1 || status=$?
+check "--check reports a locked rbw as 3" test "$status" -eq 3
 printf 'url_command = cat %s/feed_address\n' "$work" >"$XDG_CONFIG_HOME/calendar-sync/config"
 printf '%s\n' "$feed_address" >"$work/feed_address"
 status=0
