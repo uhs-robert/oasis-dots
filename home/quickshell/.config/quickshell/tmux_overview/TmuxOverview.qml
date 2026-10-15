@@ -88,6 +88,11 @@ OverviewBase {
             else root.show_overview();
             return "ok";
         }
+
+        // "open" or "closed", for voxcmd.
+        function state(): string {
+            return root.wanted ? "open" : "closed";
+        }
     }
 
     function show_overview() {
