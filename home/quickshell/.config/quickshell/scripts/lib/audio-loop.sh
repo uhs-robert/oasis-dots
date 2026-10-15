@@ -154,17 +154,20 @@ music_gain() {
   python3 -c "import sys; print(round(min(-18 - float(sys.argv[1]), -1 - float(sys.argv[2])), 2))" "$loud" "$peak"
 }
 
-# Prints the active loudness in dB of $1: mono RMS in 10ms windows, kept within 20 dB of the loudest, averaged as power. Short clips are too brief for LUFS to be reliable.
+# Prints the active loudness in dB of $1: RMS of the channel average in 10ms windows, kept within 20 dB of the loudest, averaged as power. Short clips are too brief for LUFS to be reliable.
+# Channels are averaged here because ffmpeg's -ac 1 lifts identical stereo channels 3 dB, and its mono to stereo upmix drops them 3 dB.
 active_loudness() {
-  ffmpeg -v error -i "$1" -ac 1 -ar 44100 -f f32le - | python3 -c '
+  local channels
+  channels=$(ffprobe -v error -select_streams a:0 -show_entries stream=channels -of csv=p=0 "$1")
+  ffmpeg -v error -i "$1" -ar 44100 -f f32le - | python3 -c '
 import sys
 import numpy as np
-x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
+x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64).reshape(-1, int(sys.argv[1])).mean(axis=1)
 w = 441
 rms = np.array([np.sqrt(np.mean(x[i:i + w] ** 2)) for i in range(0, max(1, len(x) - w), w)])
 db = 20 * np.log10(rms + 1e-12)
 print(round(20 * np.log10(np.sqrt(np.mean(rms[db > db.max() - 20] ** 2)) + 1e-12), 2))
-'
+' "$channels"
 }
 
 # Writes $1 to $2 as 16-bit PCM at $rate, at $3 dB active loudness with its sample peak held to -1 dBFS. Where the gain would pass that, a fast limiter shaves the transient and the gain is raised again until the limited result reaches the target.
