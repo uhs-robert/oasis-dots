@@ -1,7 +1,9 @@
 # Mirrors positions() and slot_order() in quickshell/overview/Voice.js, so a monitor has the same words whether the overview
 # or `hyprctl monitors -j` is asked; tests/run-monitors.sh runs both on the same layouts and fails when they differ.
 # Input: `hyprctl monitors -j`. $slots: the monitor name of each slot in order, space separated, "-" for an empty slot.
-# Output: [{id, slot, horizontal, vertical, focused}] in slot order, the shape of overview.json's "monitors".
+# Output: [{id, slot, horizontal, vertical, focused}] in slot order, the shape of overview.json's "monitors". A monitor
+# no slot names gets slot 0 (unknown), never a guessed one: the slot order is Hyprland's, and guessing it would send
+# "monitor one" to the wrong display.
 
 def words_for($count; $two; $three):
   if $count == 2 then $two
@@ -46,15 +48,11 @@ def rows:
     | cluster_words(.; ["left", "right"]; ["left", "middle", "right"])]
   | add // [] | . as $horizontal
 | ($slots | split(" ") | map(select(. != ""))) as $named
-| ([$named | to_entries[] | select(.value != "-") | .key + 1]) as $taken
-| ([$groups[] | select(.name as $n | $named | index($n) | not)] | sort_by([.id_number, .name])) as $unslotted
-| ([range(1; 1000)] - $taken | .[: ($unslotted | length)]) as $free
-| (reduce range(0; $unslotted | length) as $k ({}; .[$unslotted[$k].name] = $free[$k])) as $filled
 | [$groups[]
     | . as $g
     | {id: .name,
-       slot: ((($named | index($g.name)) | if . == null then null else . + 1 end) // $filled[$g.name]),
+       slot: (($named | index($g.name)) | if . == null then 0 else . + 1 end),
        horizontal: (($horizontal[] | select(.i == $g.i) | .word) // ""),
        vertical: (($vertical[] | select(.i == $g.i) | .word) // ""),
        focused: .focused}]
-| sort_by(.slot)
+| sort_by(if .slot == 0 then 1000 else .slot end)

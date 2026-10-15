@@ -20,12 +20,26 @@ if [ -z "${SANDBOX_DIR:-}" ]; then
 fi
 # shellcheck source-path=SCRIPTDIR source=lib.sh
 source "$here/lib.sh"
+# shellcheck source=/dev/null # the resolver is a share file; its functions are the ones checked here
+source "$package/.local/share/voxcmd/monitor-words.sh"
 
-# dispatches <layout> <phrase>: the hyprctl dispatches the phrase causes on that layout, one per line.
+# id_order_slots <layout>: the slot lookup a layout answers when none is given: the monitors in id order.
+id_order_slots() {
+  jq -r '[.[] | select(.disabled | not)] | sort_by(.id) | map(.name) | join(" ")' "$layouts_dir/$1.json"
+}
+
+# dispatches <layout> <phrase>: the hyprctl dispatches the phrase causes on that layout, one per line. SANDBOX_MONITOR_SLOTS
+# overrides the slot lookup; set empty, the lookup answers nothing.
 dispatches() {
+  local slots
+  slots="${SANDBOX_MONITOR_SLOTS-$(id_order_slots "$1")}"
   : >"$log"
-  SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/$1.json") voxcmd "$2" >/dev/null 2>&1
+  SANDBOX_MONITOR_SLOTS=$slots SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/$1.json") voxcmd "$2" >/dev/null 2>&1
   sed -n 's/^hyprctl dispatch //p' "$log"
+}
+# named_of <words> <layout> <slots>: what monitor_named answers for the words on a layout, given the slot lookup's answer.
+named_of() {
+  monitor_named "$1" "$(jq -c --arg slots "$3" -f "$package/.local/share/voxcmd/monitor-places.jq" "$layouts_dir/$2.json")"
 }
 focus_of() { echo "hl.dsp.focus({ monitor = '$1' })"; }
 move_of() { echo "hl.dsp.window.move({ window = 'address:$(jq -r .address <<<"$SANDBOX_ACTIVEWINDOW_JSON")', monitor = '$1', follow = false })"; }
@@ -96,7 +110,19 @@ CASES
 section "monitors: slots follow the slot lookup"
 check "monitor two is the second slot Hyprland names, not the second monitor" "[[ \$(SANDBOX_MONITOR_SLOTS='HDMI-A-1 - eDP-1 DP-8 DP-13' dispatches owner 'go to monitor three') == \$(focus_of eDP-1) ]]"
 check "an empty slot names nothing" "[[ -z \$(SANDBOX_MONITOR_SLOTS='HDMI-A-1 - eDP-1 DP-8 DP-13' dispatches owner 'go to monitor two') ]]"
-check "a monitor the lookup does not list takes the lowest free slot" "[[ \$(SANDBOX_MONITOR_SLOTS='HDMI-A-1 - eDP-1' dispatches owner 'go to monitor two') == \$(focus_of DP-8) ]]"
+check "a monitor the lookup does not list has no slot, so monitor two is not guessed" "[[ -z \$(SANDBOX_MONITOR_SLOTS='HDMI-A-1 - eDP-1' dispatches owner 'go to monitor two') ]]"
+check "a monitor the lookup does not list says it cannot tell which is slot two" "[[ \$(named_of 'monitor two' owner 'HDMI-A-1 - eDP-1') == \"error:can't tell which monitor is slot 2\" ]]"
+check "a slot the lookup places still focuses with an unlisted monitor" "[[ \$(SANDBOX_MONITOR_SLOTS='HDMI-A-1 - eDP-1' dispatches owner 'go to monitor one') == \$(focus_of HDMI-A-1) ]]"
+
+section "monitors: when Hyprland cannot say which monitor is which slot"
+check "the first monitor focuses nothing with no slot lookup" "[[ -z \$(SANDBOX_MONITOR_SLOTS= dispatches owner 'go to the first monitor') ]]"
+check "monitor two focuses nothing with no slot lookup" "[[ -z \$(SANDBOX_MONITOR_SLOTS= dispatches owner 'go to monitor two') ]]"
+check "a 2nd monitor move moves nothing with no slot lookup" "[[ -z \$(SANDBOX_MONITOR_SLOTS= dispatches owner 'move this window to the 2nd monitor') ]]"
+check "the position words still focus with no slot lookup" "[[ \$(SANDBOX_MONITOR_SLOTS= dispatches owner 'go to the left monitor') == \$(focus_of DP-8) ]]"
+check "the laptop still focuses with no slot lookup" "[[ \$(SANDBOX_MONITOR_SLOTS= dispatches owner 'go to the laptop screen') == \$(focus_of eDP-1) ]]"
+check "a slot with no lookup says it cannot tell" "[[ \$(named_of 'monitor two' owner '') == \"error:can't tell which monitor is slot 2\" ]]"
+check "an ordinal past the layout with no lookup still says it cannot tell" "[[ \$(named_of 'tenth monitor' owner '') == \"error:can't tell which monitor is slot 10\" ]]"
+check "a slot past the layout with the lookup answered says no such monitor" "[[ \$(named_of 'tenth monitor' owner 'eDP-1 DP-8 HDMI-A-1 DP-13') == 'error:no monitor tenth' ]]"
 
 section "monitors: moving the active window"
 active_address=$(jq -r .address <<<"$SANDBOX_ACTIVEWINDOW_JSON")
