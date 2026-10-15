@@ -13,13 +13,11 @@ top=$(git rev-parse --show-toplevel 2>/dev/null) || {
   echo "overlap: not inside a git repository" >&2
   exit 2
 }
-# Paths are taken relative to the current directory, like git's own pathspecs, and compared repo-relative.
-prefix=$(git rev-parse --show-prefix)
+# Paths are taken relative to the current directory, like git's own pathspecs, and compared repo-relative; "."
+# at the top is the whole repo.
 wanted=()
 for path in "$@"; do
-  path=${path#./}
-  [[ $path == /* ]] && path=$(realpath -m --relative-to="$top" "$path") || path="$prefix$path"
-  wanted+=("${path%/}")
+  wanted+=("$(realpath -m --relative-to="$top" "$path")")
 done
 
 default=$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)
@@ -32,7 +30,7 @@ matching() {
   while IFS= read -r file; do
     [[ -n $file ]] || continue
     for path in "${wanted[@]}"; do
-      if [[ $file == "$path" || $file == "$path"/* ]]; then
+      if [[ $path == . || $file == "$path" || $file == "$path"/* ]]; then
         echo "$file"
         break
       fi
