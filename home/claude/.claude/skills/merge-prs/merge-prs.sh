@@ -203,7 +203,7 @@ poll_review() {
 
 # Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
 check_reviews() {
-  local pr number info open status reviewed head waited reason cross rereview_why generated_skipped
+  local pr number info open status reviewed head waited reason cross rereview_why generated_skipped rerun_flags
   local -a problems=()
   for pr in "${prs[@]}"; do
     number=${pr#\#}
@@ -232,7 +232,10 @@ check_reviews() {
         [[ $status != Completed || $head == "$reviewed"* ]] ||
           problems+=("#$number: Codex has not reviewed the head ${head:0:7} after ${waited}s; rerun with --wait-review once it has")
       else
-        problems+=("#$number: commits since Codex reviewed $reviewed need their own review ($reason); rerun with --wait-review to request one and wait")
+        # --check alone never comments on the PR, so the rerun it needs takes --request-review as well.
+        rerun_flags="--wait-review"
+        ! $check_only || rerun_flags="--check --wait-review --request-review"
+        problems+=("#$number: commits since Codex reviewed $reviewed need their own review ($reason); rerun with $rerun_flags to request one and wait")
       fi
     fi
     ((open == 0)) || problems+=("#$number: $open unresolved review thread(s); answer and resolve them")

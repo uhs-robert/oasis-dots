@@ -267,6 +267,7 @@ show "$out"
 check "fails" "[[ $code != 0 ]]"
 check "names the file" "grep -q 'c was not in the reviewed changes' <<<\"\$out\""
 check "does not request a review under --check" "! grep -q '^commented=' '$GH_STATE'"
+check "names the --check rerun that requests one" "grep -q 'rerun with --check --wait-review --request-review' <<<\"\$out\""
 
 echo "== --wait-review: new work gets a review requested and waited for"
 setup
