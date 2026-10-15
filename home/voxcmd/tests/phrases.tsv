@@ -119,6 +119,7 @@ keybind toggle fullscreen	Keybinds/run	forced to Keybinds
 press open terminal	Keybinds/run	Apps has a verb for "open terminal", but none for "press open terminal"
 press cursor mode	Keybinds/enter_submap
 lock computer	Keybinds/run	failed live, works now
+power off	Keybinds/run	one confirm, the card's, not the bar's Power prompt too
 never mind	builtin	failed live, works now
 cancel	builtin
 what can i say	builtin

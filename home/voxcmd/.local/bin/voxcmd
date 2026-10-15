@@ -572,10 +572,10 @@ confirm_question() {
 }
 
 run_option() {
-  local option="$1" file command id target label output
+  local option="$1" file command id target label output confirmed=0
   file=$(jq -r .file <<<"$option")
   command=$(jq -r .command <<<"$option")
-  # shellcheck disable=SC2034 # id and target are read by the action's command
+  # shellcheck disable=SC2034 # id, target and confirmed are read by the action's command
   id=$(jq -r .id <<<"$option")
   target=$(jq -r .target <<<"$option")
   label=$(option_label "$option")
@@ -603,6 +603,7 @@ run_option() {
       return 0
     fi
     debug "confirm answered yes: running $toast_label"
+    confirmed=1
   fi
   if output=$(
     load_integration "$file"
