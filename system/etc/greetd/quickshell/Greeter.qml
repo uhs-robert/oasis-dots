@@ -84,21 +84,20 @@ Singleton {
     // The greeter's WirePlumber cannot save state, so every boot starts the sink near -24 dB; start at the desktop's volume instead.
     readonly property var output_sink: Pipewire.defaultAudioSink
     readonly property bool output_sink_ready: root.output_sink !== null && root.output_sink.ready && root.output_sink.audio !== null
-    property var volume_applied_to: []
+    property var volume_applied_sink: null
     property PwObjectTracker output_tracker: PwObjectTracker {
         objects: [root.output_sink].filter(o => o)
     }
 
-    // Once per sink, so a default sink that appears late (USB audio) gets it too and the user's later changes stay.
+    // Once per sink object, so a sink that appears late or is recreated (USB audio, PipeWire restarting) gets it too and the user's later changes stay.
     function apply_output_volume() {
         const text = root.settings.output_volume;
         // A preview runs in the owner's own session, where the volume is already theirs.
         if (root.preview || text === undefined || !root.output_sink_ready) return;
         const volume = parseFloat(text);
         if (isNaN(volume)) return;
-        const name = root.output_sink.name;
-        if (root.volume_applied_to.includes(name)) return;
-        root.volume_applied_to = root.volume_applied_to.concat([name]);
+        if (root.volume_applied_sink === root.output_sink) return;
+        root.volume_applied_sink = root.output_sink;
         root.output_sink.audio.volume = Math.max(0, Math.min(1, volume));
     }
     onOutput_sink_readyChanged: root.apply_output_volume()
