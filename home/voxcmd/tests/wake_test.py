@@ -918,6 +918,12 @@ class SessionPauseTest(unittest.TestCase):
         self.gate.paused()
         self.assertIsNone(self.gate.dictation_recording)
 
+    def test_a_recording_still_being_handed_to_its_watcher_pauses(self):
+        self.dictating(wake_listens=True, owner_handover=True)
+        self.assertTrue(self.gate.paused())
+        self.assertEqual((self.gate.reason, self.gate.listen_reason), ("voxtype_recording", None))
+        self.assertIsNone(self.gate.dictation_recording)
+
     def test_any_other_recording_in_a_session_pauses(self):
         self.dictating(wake_listens=False)
         self.assertTrue(self.gate.paused())

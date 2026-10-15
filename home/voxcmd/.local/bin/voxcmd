@@ -1739,7 +1739,7 @@ session_update_locked() {
 # session_set_owner <pid>: the watcher with this PID hears the next turn.
 session_set_owner() {
   # shellcheck disable=SC2016 # a jq filter
-  session_update '.owner = $owner | .owner_start = $owner_start' \
+  session_update '.owner = $owner | .owner_start = $owner_start | del(.owner_handover)' \
     --argjson owner "$1" --arg owner_start "$(process_start_time "$1")"
 }
 
@@ -2538,6 +2538,9 @@ listen_locked() {
     transcript_handler=reply
   fi
   rm -f "$transcript_file"
+  # From the recording's start until its watcher is the owner, session.json still names the watcher before it, so
+  # voxcmd-wake would name that one as the recording a trigger was heard in; owner_handover tells it to wait.
+  [ "$transcript_handler" != session_turn ] || session_update '.owner_handover = true'
   if ! voxtype record start --file="$transcript_file" 9>&-; then
     notify error "voxcmd error" "voxtype record start failed"
     return 1
