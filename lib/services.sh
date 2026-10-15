@@ -124,6 +124,7 @@ install_greetd() {
   sudo install -Dm644 system/etc/greetd/kitty.conf /etc/greetd/kitty.conf
   rm -f "$tmp"
   success "greetd/tuigreet config installed"
+  enable_greetd_keyring_unlock
 
   if confirm "Use the Quickshell greeter (your lock screen style; tuigreet stays as fallback)?"; then
     local stage

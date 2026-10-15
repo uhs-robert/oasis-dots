@@ -229,6 +229,14 @@ case_firefox_policy() {
   expect_skipped qmllint luacheck voxcmd-click check-scope
 }
 
+case_greeter_keyring() {
+  start_case 'greetd keyring unlock installer'
+  echo '# x' >>lib/greeter-keyring.sh
+  plan
+  expect_ran greeter-keyring shellcheck
+  expect_skipped firefox-policy qmllint luacheck check-scope
+}
+
 case_paths_list() {
   start_case 'path list from stdin'
   plan_paths 'README.md'
@@ -268,7 +276,7 @@ case_skip_steps_with_changed() {
 }
 
 for case_fn in case_readme case_home_qml case_greeter_lua case_voxcmd_runner case_deleted_sourced_helper \
-  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy \
+  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed; do
   report "$case_fn"
 done

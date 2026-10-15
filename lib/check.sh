@@ -56,6 +56,7 @@ set -u
 #   calendar-sync            home/calendar/tests/run.sh. Runs only when python-icalendar and python-recurring-ical-events
 #   calendar-sync-syntax     import; the syntax check of calendar-sync always runs.
 #   firefox-policy           lib/tests/firefox-policy.sh, the Firefox policy installer. Needs jq.
+#   greeter-keyring          lib/tests/greeter-keyring.sh, the greetd keyring unlock installer.
 #   agent-hooks              the tests of guard-masked-checks.sh, check-before-pr.sh and restart-qs-after-git.sh. Needs jq.
 #   stale-shells-hook        the test of stale-shells.sh. Needs jq.
 #   owner-test-bar           the owner-test-bar skill's tests/run.sh, when it changes. Needs jq.
@@ -79,7 +80,7 @@ cd "$repo_dir" || exit 1
 # Every step, longest first. The voxcmd steps are timing-sensitive, so they run one after another in a slot
 # of their own, ahead of the rest.
 voxcmd_steps='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox'
-other_steps='check-scope check-cache firefox-policy qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
+other_steps='check-scope check-cache firefox-policy greeter-keyring qmllint shellcheck calendar-sync owner-test-bar ship-batch merge-prs shfmt stylua luacheck lock-skins style-exports time-format calendar-sync-syntax agent-hooks stale-shells-hook notification-markup packages symlinks git-diff-check whitespace conflicts'
 
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
 # worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
@@ -123,6 +124,7 @@ step_body() {
   check-scope) bash ./lib/tests/check-scope.sh ;;
   check-cache) bash ./lib/tests/check-cache.sh && bash ./lib/tests/check-lock.sh ;;
   firefox-policy) bash ./lib/tests/firefox-policy.sh ;;
+  greeter-keyring) bash ./lib/tests/greeter-keyring.sh ;;
   stylua) stylua --respect-ignores --check home/hypr/.config/hypr ;;
   luacheck) sh ./lib/check-lua.sh ;;
   qmllint) sh ./lib/check-qml.sh ;;
@@ -239,6 +241,7 @@ path_scopes() {
   home/voxcmd/* | extras/voxcmd-firefox/*) scopes="$scopes voxcmd" ;;
   # The installer and the justfile call it, but those already run everything.
   lib/firefox-policy.sh | lib/tests/firefox-policy.sh) scopes="$scopes policy" ;;
+  lib/greeter-keyring.sh | lib/tests/greeter-keyring.sh) scopes="$scopes keyring" ;;
   home/calendar/*) scopes="$scopes calendar" ;;
   home/claude/.claude/hooks/* | .claude/hooks/*) scopes="$scopes hooks" ;;
   .claude/skills/owner-test-bar/*) scopes="$scopes bar" ;;
@@ -258,6 +261,7 @@ step_scope() {
   packages | symlinks | git-diff-check | whitespace | conflicts) step_scope=tree ;;
   check-scope | check-cache) step_scope=checkscope ;;
   firefox-policy) step_scope=policy ;;
+  greeter-keyring) step_scope=keyring ;;
   shellcheck | shfmt) step_scope=shell ;;
   stylua | luacheck) step_scope=lua ;;
   qmllint | lock-skins | style-exports | time-format) step_scope=qml ;;
