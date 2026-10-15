@@ -154,6 +154,32 @@ music_gain() {
   python3 -c "import sys; print(round(min(-18 - float(sys.argv[1]), -1 - float(sys.argv[2])), 2))" "$loud" "$peak"
 }
 
+# Prints the active loudness in dB of $1: mono RMS in 10ms windows, kept within 20 dB of the loudest, averaged as power. Short clips are too brief for LUFS to be reliable.
+active_loudness() {
+  ffmpeg -v error -i "$1" -ac 1 -ar 44100 -f f32le - | python3 -c '
+import sys
+import numpy as np
+x = np.frombuffer(sys.stdin.buffer.read(), dtype=np.float32).astype(np.float64)
+w = 441
+rms = np.array([np.sqrt(np.mean(x[i:i + w] ** 2)) for i in range(0, max(1, len(x) - w), w)])
+db = 20 * np.log10(rms + 1e-12)
+print(round(20 * np.log10(np.sqrt(np.mean(rms[db > db.max() - 20] ** 2)) + 1e-12), 2))
+'
+}
+
+# Writes $1 to $2 as 16-bit PCM at $rate, at $3 dB active loudness with its sample peak held to -1 dBFS. Where the gain would pass that, a fast limiter shaves the transient and the gain is raised again until the limited result reaches the target.
+level_fx() {
+  local file=$1 dest=$2 target=$3 gain loud
+  loud=$(active_loudness "$file")
+  gain=$(python3 -c "import sys; print(round(float(sys.argv[1]) - float(sys.argv[2]), 2))" "$target" "$loud")
+  for _ in 1 2 3 4; do
+    ffmpeg -v error -y -i "$file" -ar "$rate" -af "volume=${gain}dB,alimiter=limit=0.891:attack=0.1:release=1:level=disabled" -c:a pcm_s16le "$dest"
+    loud=$(active_loudness "$dest")
+    python3 -c "import sys; sys.exit(abs(float(sys.argv[1]) - float(sys.argv[2])) < 0.2)" "$target" "$loud" || break
+    gain=$(python3 -c "import sys; print(round(float(sys.argv[1]) + float(sys.argv[2]) - float(sys.argv[3]), 2))" "$gain" "$target" "$loud")
+  done
+}
+
 # Writes samples [from, end) of $1 to $2 with $5 dB of gain, from being $6 or start; the last 60ms crossfade into the audio just before start, so it hands over seamlessly to the loop.
 cut_loop() {
   ffmpeg -v error -i "$1" -ar "$rate" -ac 2 -f f32le - | python3 -c '

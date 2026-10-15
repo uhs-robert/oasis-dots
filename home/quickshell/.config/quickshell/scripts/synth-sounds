@@ -526,9 +526,10 @@ def mgs2_menu():
     back = (np.sin(phase) + 0.5 * np.sin(2 * phase)) * np.interp(t, [0, 0.05, 0.1, 0.2, 0.21], [0, 1, 0.3, 0.12, 0])
     back += 0.45 * np.sin(2 * np.pi * 3141 * t) * np.interp(t, [0, 0.05, 0.12], [0, 1, 0])
     return {
-        "select": finish(np.concatenate([buzz(), np.zeros(480)]), 0.4),
-        "submit": finish(lowpass(reverb(submit, 0.7, 0.3), 14000), 0.2),
-        "back": finish(lowpass(reverb(back, 0.7, 0.3), 14000), 0.2),
+        # A hard first pulse would hit the peak limit long before the click is as loud as the other packs, so it is kept mild.
+        "select": finish(np.concatenate([buzz(first=0.15), np.zeros(480)]), 0.86),
+        "submit": finish(lowpass(reverb(submit, 0.7, 0.3), 14000), 0.36),
+        "back": finish(lowpass(reverb(back, 0.7, 0.3), 14000), 0.42),
     }
 
 
@@ -544,7 +545,7 @@ def mgs2():
         "cursor": menu["select"],
         "confirm": menu["submit"],
         "cancel": menu["back"],
-        "notify": finish(lowpass(reverb(ring, 0.6, 0.2), 14000), 0.2),
+        "notify": finish(lowpass(reverb(ring, 0.6, 0.2), 14000), 0.32),
         "error": skin["error"],
         "lock": skin["transition_wipe"],
         "unlock": skin["transition_left"],
@@ -603,10 +604,10 @@ def mgs2_skin():
     left = [0.0, 0.21, 0.57, 0.76, 1.0, 0.37, 0.30, 0.27, 0.25, 0.21, 0.16, 0.14, 0.11, 0.11, 0.10, 0.08, 0.08, 0.06, 0.06, 0.04, 0.04, 0.03, 0.02, 0.01, 0.01, 0]
     return {
         **mgs2_menu(),
-        "error": finish(lowpass(reverb(error, 0.7, 0.3), 14000), 0.22),
-        "transition_wipe": finish(swish([(0, 9250), (0.5, 7430)], wipe), 0.14),
-        "transition_right": finish(swish([(0, 9250), (0.5, 7430)], wipe[:3] + [1.0, 0.47] + wipe[5:]), 0.14),
-        "transition_left": finish(swish([(0, 8180), (0.08, 8200), (0.52, 9290)], left), 0.14),
+        "error": finish(lowpass(reverb(error, 0.7, 0.3), 14000), 0.56),
+        "transition_wipe": finish(swish([(0, 9250), (0.5, 7430)], wipe), 0.545),
+        "transition_right": finish(swish([(0, 9250), (0.5, 7430)], wipe[:3] + [1.0, 0.47] + wipe[5:]), 0.545),
+        "transition_left": finish(swish([(0, 8180), (0.08, 8200), (0.52, 9290)], left), 0.584),
     }
 
 

@@ -2,7 +2,7 @@
 # Imports the MGS2 lock skin's audio into $XDG_DATA_HOME/quickshell/mgs2-audio: the title and menu themes as an intro plus a sample-exact loop, and the menu sound effects.
 # Music is title.* (else any file with "title" in its name) and menu.*, in SOURCE_DIR or its music/. Loops come from --*-loop, else LOOPSTART/LOOPLENGTH (or LOOPEND) tags,
 # else they are detected from the track's repeats and tagged into the source losslessly, so later runs reuse them; a track with no clean repeat loops whole.
-# Effects, in SOURCE_DIR or its fx/: back, select, error, submit, transition_wipe, transition_left and transition_right; a missing file stays silent.
+# Effects, in SOURCE_DIR or its fx/: back, select, error, submit, transition_wipe, transition_left and transition_right, levelled to -21 dB active loudness like the other packs with the peak held under -1 dBFS (a fast limiter shaves a click that would pass it); a missing file stays silent.
 # Usage: mgs2-audio [--title-loop START END] [--menu-loop START END] [--redetect] [--out DIR] SOURCE_DIR   (seconds; overrides are tagged too)
 set -euo pipefail
 # shellcheck source=lib/audio-loop.sh
@@ -164,7 +164,7 @@ music() {
   printf 'mgs2-audio: %s loops %.3fs to %.3fs\n' "$name" "$(awk -v v="$s" -v r="$sr" 'BEGIN { print v / r }')" "$(awk -v v="$e" -v r="$sr" 'BEGIN { print v / r }')"
 }
 
-# Writes $out/$1.wav from the source $1.* as 16-bit PCM, which QSoundEffect can play.
+# Writes $out/$1.wav from the source $1.* as 16-bit PCM, which QSoundEffect can play, at the level of the other packs (-21 dB active loudness, peak under -1 dBFS).
 fx() {
   local file
   file=$(find_src "$1" wav ogg flac mp3)
@@ -173,7 +173,7 @@ fx() {
     echo "mgs2-audio: no $1 effect in $src; it stays silent" >&2
     return 0
   fi
-  ffmpeg -v error -y -i "$file" -ar "$rate" -c:a pcm_s16le "$out/$1.wav"
+  level_fx "$file" "$out/$1.wav" -21
 }
 
 music title "${title_loop[@]}"
