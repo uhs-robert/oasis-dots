@@ -48,6 +48,8 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - When work spans layers (e.g. a UI and a backend), agree the hand-off format first (an id format, an API call, a JSON shape), then run one implementer per layer in parallel.
 
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements.
+   - Tell it to run validation in the foreground with a long timeout, never in the background: a background run hands back early and pings the orchestrator on every tick while it waits.
+   - When the repo has a `lib/check.sh`, its final `lib/check.sh --changed <merge-base>` with everything committed is the validation; a separate full run of a suite it already covers only queues for the same test slots.
    Require a report of:
    - changes made
    - validation performed
