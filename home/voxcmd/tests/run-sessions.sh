@@ -980,6 +980,18 @@ printf 'Late words.' >"$XDG_RUNTIME_DIR/voxcmd/transcript.txt"
 echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 sess_wait
 check "and the transcript is typed before the session ends" "session_gone && wtype_is 'wtype -- Late words.' && toast_has 'Type mode ended stopped'"
+# Stopped once voxtype is idle again but before the watcher has read the transcript: the watcher is frozen meanwhile, so
+# Stop Voice finds only the session to tell it the recording is still to be handled.
+sess_start "UNTIL_STOP Finished words."
+owner_is_listening
+stopped_owner=$(jq -r .owner "$session_json")
+kill -STOP "$stopped_owner"
+SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record stop
+sess_voxcmd_env stop
+check "Stop Voice after the recording ended but before its watcher read it keeps the session for the watcher" "[[ -e '$session_json' && \$(jq -r .ending.by '$session_json') == key ]] && ! grep -q '^voxtype record cancel' '$log'"
+kill -CONT "$stopped_owner"
+sess_wait
+check "and the finished dictation is typed, then the session ends" "session_gone && wtype_is 'wtype -- Finished words.' && toast_has 'Type mode ended stopped'"
 
 # Type mode re-created at the same depth while the recording was handled: nothing is typed into the new one.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_CLICKHINTS_STATE_BLOCK="$root/frame-block")
