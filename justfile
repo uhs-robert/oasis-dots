@@ -112,6 +112,14 @@ sign-firefox-extension:
     cp "$signed" extras/voxcmd-firefox.xpi
     echo "signed: extras/voxcmd-firefox.xpi"
 
+# Let the greetd login unlock the GNOME keyring (needs sudo); greeter-sync --install and the installer also run it
+greeter-keyring:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source lib/output.sh
+    source lib/greeter-keyring.sh
+    enable_greetd_keyring_unlock
+
 # Install the signed voxcmd extension through a Firefox policy (needs sudo) and register its host, so one command sets everything up
 firefox-extension:
     #!/usr/bin/env bash
@@ -185,6 +193,9 @@ greeter-sync *ARGS:
     echo "Staged greeter in $stage (skin: $skin)"
     if ((install)); then
       while read -r cmd; do echo "+ $cmd"; eval "$cmd"; done < <(greeter_install_cmds "$stage" "$PWD")
+      source lib/output.sh
+      source lib/greeter-keyring.sh
+      enable_greetd_keyring_unlock
     else
       echo "Install with:"
       greeter_install_cmds "$stage" "$PWD" | sed 's/^/  /'
