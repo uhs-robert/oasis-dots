@@ -50,6 +50,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements.
    - Tell it to run validation in the foreground with a long timeout, never in the background: a background run hands back early and pings the orchestrator on every tick while it waits.
    - When the repo has a `lib/check.sh`, its final `lib/check.sh --changed <merge-base>` with everything committed is the validation; a separate full run of a suite it already covers only queues for the same test slots.
+   - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
    Require a report of:
    - changes made
    - validation performed
@@ -58,6 +59,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
 
 6. Independently review the resulting diff.
    - Verify correctness, acceptance criteria, regressions, architecture, scope, DRYness, edge cases, tests, and repository conventions.
+   - Confirm the commit messages follow `commit-messages`.
 
 7. Get an external review of the actual issue and diff for bugs, regressions, missed requirements, unnecessary complexity, and weak tests. Codex first; an Opus subagent when Codex is unavailable.
    - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call. It handles stall detection, timeouts, and retries, and gives up at once on a usage limit.
