@@ -90,6 +90,8 @@ if ! $check_only; then
 fi
 
 review_start_s=${MERGE_PRS_REVIEW_START:-300}
+# It is spliced into the jq program below, where anything but a number fails as "cannot read the review state".
+[[ $review_start_s =~ ^[0-9]+$ ]] || die "MERGE_PRS_REVIEW_START must be a number of seconds, not $review_start_s"
 
 # One query per PR: unresolved review threads, and the Codex summary comment's status and reviewed commit, if the repo uses Codex.
 # Codex posts that comment about a minute after a PR opens, so with none yet its eyes reaction counts as Running, and a
@@ -107,7 +109,7 @@ review_query='query($owner: String!, $name: String!, $number: Int!) {
 # shellcheck disable=SC2016
 review_jq='.data.repository.pullRequest as $p
   | ([$p.comments.nodes[] | select(.body | contains("codex-pull-request-review-summary"))] | last | .body // "") as $codex
-  | (if any($p.reactions.nodes[]; .user.login | startswith("chatgpt-codex")) then "Running"
+  | (if any($p.reactions.nodes[]; (.user.login // "") | startswith("chatgpt-codex")) then "Running"
      elif (now - ($p.createdAt | fromdateiso8601)) < '"$review_start_s"' then "Pending"
      else "none" end) as $no_summary
   | [([$p.reviewThreads.nodes[] | select(.isResolved | not)] | length),

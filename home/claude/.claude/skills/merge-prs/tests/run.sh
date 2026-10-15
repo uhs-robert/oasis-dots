@@ -353,6 +353,38 @@ show "$out"
 check "fails" "[[ $code != 0 ]]"
 check "says no review came" "grep -q '#7: still no Codex review after' <<<\"\$out\""
 
+echo "== --wait-review: a fresh PR in a repo without Codex passes once the window is over"
+setup
+printf 'codex_pending_reads=1\n' >>"$GH_STATE"
+# The fake reports Completed after the pending reads; this repo has no Codex, so report none instead.
+sed -i 's/^codex_pending_reads=1$/codex_pending_reads=1\nno_codex=1/' "$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 "$script" --check --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "passes" "[[ $code == 0 ]]"
+
+echo "== review_jq: Codex status with no summary comment"
+# The jq the gate runs on GitHub's answer, taken from the script so the fake gh cannot stand in for it.
+review_defs=$(sed -n '/^review_start_s=/,/^review_poll_s=/p' "$script")
+pr_json() {
+  jq -n --arg created "$1" --argjson reactions "$2" --arg body "${3:-hi}" \
+    '{data: {repository: {pullRequest: {headRefOid: "abc", createdAt: $created, reviewThreads: {nodes: []},
+      comments: {nodes: [{body: $body}]}, reactions: {nodes: $reactions}}}}}'
+}
+# shellcheck disable=SC2154 # review_jq comes from the eval of the script's definitions.
+review_status() { (eval "$review_defs" && jq -r "$review_jq" | cut -f2); }
+fresh=$(date -u -d '-30 sec' +%FT%TZ)
+old=$(date -u -d '-1 hour' +%FT%TZ)
+codex_eyes='[{"user": {"login": "chatgpt-codex-connector[bot]"}}]'
+check "a fresh PR is Pending" "[[ \$(pr_json '$fresh' '[]' | review_status) == Pending ]]"
+check "an old PR is none" "[[ \$(pr_json '$old' '[]' | review_status) == none ]]"
+check "Codex's eyes are Running" "[[ \$(pr_json '$old' '$codex_eyes' | review_status) == Running ]]"
+check "a person's eyes are not" "[[ \$(pr_json '$fresh' '[{\"user\": {\"login\": \"someone\"}}]' | review_status) == Pending ]]"
+check "a reaction from a deleted account is skipped" "[[ \$(pr_json '$old' '[{\"user\": null}]' | review_status) == none ]]"
+check "a summary comment wins over the eyes" "[[ \$(pr_json '$fresh' '$codex_eyes' 'codex-pull-request-review-summary | **Completed** | \\\`abc1234\\\` |' | review_status) == Completed ]]"
+out=$(MERGE_PRS_REVIEW_START=5m PATH="$here:$PATH" "$script" --check 7 2>&1)
+check "a window that is not seconds is refused by name" "grep -q 'MERGE_PRS_REVIEW_START must be a number of seconds' <<<\"\$out\""
+
 echo "== --wait-review: Codex review finishes while waiting"
 setup
 printf 'codex_running_reads=2\ncodex_commit=abc1234\n' >>"$GH_STATE"
