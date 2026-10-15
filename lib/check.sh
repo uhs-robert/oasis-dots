@@ -389,6 +389,8 @@ step_key() {
       # symlinks skips the links into a repos/ that is not set up, and git-diff-check compares with HEAD.
       echo "$3 $coverage"
       [ "$1" != git-diff-check ] || git rev-parse 'HEAD^{tree}'
+      # The tree snapshot leaves ignored files out, and they are what ignored-integrations looks for.
+      [ "$1" != ignored-integrations ] || git ls-files --others --ignored --exclude-standard -- home/voxcmd/.config/voxcmd
       ;;
     shell)
       for group in plain sourcing agent; do
