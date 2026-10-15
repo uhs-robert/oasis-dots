@@ -81,6 +81,7 @@ expect deny "no cd: the cwd's own tree decides" "$create" "$root/wt-fail"
 expect deny "a cd behind an earlier command, into a worktree with no pass, from a passing cwd" "tail -1 file; cd $root/wt-fail && git status; $create" "$root/wt-pass"
 expect allow "a cd behind an earlier command, into a worktree that passed" "tail -1 file; cd $root/wt-pass && git status; $create" "$root/wt-fail"
 expect allow "cds in turn, the second relative to the first" "cd $root && cd wt-pass && $create" "$root/wt-fail"
+expect deny "a cd after || runs only on a failure, so it does not count" "true || cd $root/wt-pass; $create" "$root/wt-fail"
 expect deny "a cd after the PR command does not count" "cd $root/wt-fail && $create; cd $root/wt-pass && true" "$root/wt-pass"
 
 if [[ -z $(jq -n --arg c 'gh pr view 1' --arg d "$repo" '{tool_input: {command: $c}, cwd: $d}' | "$hook") ]]; then
