@@ -25,10 +25,12 @@ def x_clusters:
       else .out[-1] += [$g.i] | .end = ([.end, $g.x + $g.w] | max) end)
   | .out;
 
+# A group joins the row while its top is above every member's bottom, so a tall neighbour sharing the top edge stays in it;
+# a group starting at or below the shortest member's bottom starts a new row. Voice.js rows() states the same rule.
 def rows:
   sort_by([.y, .h, .i])
   | reduce .[] as $g ({out: [], bottom: null};
-      if (.out | length) > 0 and $g.y + $g.h / 2 < .bottom
+      if (.out | length) > 0 and $g.y < .bottom
       then .out[-1] += [$g.i] | .bottom = ([.bottom, $g.y + $g.h] | min)
       else .out += [[$g.i]] | .bottom = $g.y + $g.h end)
   | .out;

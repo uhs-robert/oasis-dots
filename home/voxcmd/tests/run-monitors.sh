@@ -41,6 +41,7 @@ dispatches() {
 named_of() {
   monitor_named "$1" "$(jq -c --arg slots "$3" -f "$package/.local/share/voxcmd/monitor-places.jq" "$layouts_dir/$2.json")"
 }
+places_of() { jq -c --arg slots '' -f "$package/.local/share/voxcmd/monitor-places.jq" "$layouts_dir/$1.json"; }
 focus_of() { echo "hl.dsp.focus({ monitor = '$1' })"; }
 move_of() { echo "hl.dsp.window.move({ window = 'address:$(jq -r .address <<<"$SANDBOX_ACTIVEWINDOW_JSON")', monitor = '$1', follow = false })"; }
 
@@ -105,7 +106,13 @@ grid|go to the left monitor|-
 five_in_a_row|go to the left monitor|DP-1
 five_in_a_row|go to the right monitor|DP-5
 five_in_a_row|go to the center monitor|-
+tall_beside|go to the left monitor|DP-1
+tall_beside|go to the right monitor|DP-2
+tall_beside|go to the top monitor|-
+tall_beside|go to the bottom monitor|-
 CASES
+
+check "tall_beside: the tall monitor shares the short one's row, so neither has a vertical word" "[[ -z \$(jq -r '.[].vertical' <<<\$(places_of tall_beside) | tr -d '\\n') ]]"
 
 section "monitors: slots follow the slot lookup"
 check "monitor two is the second slot Hyprland names, not the second monitor" "[[ \$(SANDBOX_MONITOR_SLOTS='HDMI-A-1 - eDP-1 DP-8 DP-13' dispatches owner 'go to monitor three') == \$(focus_of eDP-1) ]]"
