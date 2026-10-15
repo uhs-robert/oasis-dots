@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Greetd
+import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 
 // Login state and the greetd conversation; without a greetd socket it runs as a preview that accepts any password but "wrong".
@@ -68,7 +69,7 @@ Singleton {
         try {
             const d = JSON.parse(text);
             if (!d || typeof d !== "object" || Array.isArray(d)) return null;
-            for (const k of ["user", "lock_style", "lock_tint", "lock_music", "watch_colors", "session", "theme_music", "music_file", "music_volume"]) {
+            for (const k of ["user", "lock_style", "lock_tint", "lock_music", "watch_colors", "session", "theme_music", "music_file", "music_volume", "output_volume"]) {
                 if (d[k] !== undefined && typeof d[k] !== "string") return null;
             }
             if (d.lock_style !== undefined && !/^[a-z0-9_]+$/.test(d.lock_style)) return null;
@@ -79,6 +80,29 @@ Singleton {
             return null;
         }
     }
+
+    // The greeter's WirePlumber cannot save state, so every boot starts the sink near -24 dB; start at the desktop's volume instead.
+    readonly property var output_sink: Pipewire.defaultAudioSink
+    readonly property bool output_sink_ready: root.output_sink !== null && root.output_sink.ready && root.output_sink.audio !== null
+    property var volume_applied_to: []
+    property PwObjectTracker output_tracker: PwObjectTracker {
+        objects: [root.output_sink].filter(o => o)
+    }
+
+    // Once per sink, so a default sink that appears late (USB audio) gets it too and the user's later changes stay.
+    function apply_output_volume() {
+        const text = root.settings.output_volume;
+        if (text === undefined || !root.output_sink_ready) return;
+        const volume = parseFloat(text);
+        if (isNaN(volume)) return;
+        const name = root.output_sink.name;
+        if (root.volume_applied_to.includes(name)) return;
+        root.volume_applied_to = root.volume_applied_to.concat([name]);
+        root.output_sink.audio.volume = Math.max(0, Math.min(1, volume));
+    }
+    onOutput_sink_readyChanged: root.apply_output_volume()
+    onOutput_sinkChanged: root.apply_output_volume()
+    onSettingsChanged: root.apply_output_volume()
 
     property string buffer: ""
     property bool insert: false

@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Pipewire
 import "../theme"
 
 // Keeps the login screen's data (LoginScreen's choices, theme, face) in /var/lib/qs-greeter current; does nothing when that directory is absent.
@@ -10,6 +11,14 @@ Scope {
 
     readonly property string theme_path: Theme.source_path
     readonly property string face_path: Quickshell.env("HOME") + "/.face"
+
+    PwObjectTracker {
+        objects: [Pipewire.defaultAudioSink].filter(o => o)
+    }
+
+    readonly property var sink: Pipewire.defaultAudioSink
+    // Empty until the sink is bound: its volume reads 0 before then, which must not reach the login screen.
+    readonly property string output_volume: sink && sink.ready && sink.audio ? String(Math.round(sink.audio.volume * 100) / 100) : ""
 
     function write() {
         if (!LoginScreen.sync) return;
@@ -26,6 +35,7 @@ Scope {
             session: LoginScreen.session,
             music_volume: String(ThemeAudio.music_volume)
         };
+        if (root.output_volume !== "") data.output_volume = root.output_volume;
         const music = ThemeAudio.login_music_path;
         if (music !== "") {
             data.theme_music = "on";
@@ -63,6 +73,8 @@ Scope {
         target: Theme
         function onSource_pathChanged() { root.schedule(); }
     }
+
+    onOutput_volumeChanged: root.schedule()
 
     Connections {
         target: Style
