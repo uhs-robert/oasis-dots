@@ -98,7 +98,13 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
   if pgrep -af '^qs .*-p ' >/dev/null; then
     echo "ship-batch: a test bar is running; restore it with the owner-test-bar skill"
   else
-    state=$(timeout 3 "$ipc" call lock state 9>&- 2>/dev/null || true)
+    # The pull just changed the bar's files, so the running bar is often mid-reload and answers nothing, or "Not ready to
+    # accept queries yet.", for a few seconds. Only a settled answer says whether the lock is up.
+    for _ in $(seq 15); do
+      state=$(timeout 3 "$ipc" call lock state 9>&- 2>/dev/null || true)
+      [[ -z $state || $state == "Not ready"* ]] || break
+      sleep 1
+    done
     [[ $state == unlocked ]] || die "Quickshell changed but the lock state is '${state:-unknown}'; restart the bar once unlocked"
     hyprctl version 9>&- >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); restart the bar by hand"
     pkill -x qs || true
