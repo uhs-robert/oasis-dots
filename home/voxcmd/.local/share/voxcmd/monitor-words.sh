@@ -9,7 +9,7 @@ source "$monitors_share_dir/spoken-time.sh"
 
 # Prints the monitor name of each slot, space separated ("-" for an empty one). Hyprland's Lua owns the slot order, and
 # `hyprctl eval` prints nothing back, so the answer goes through a file, as the overview gets it. Prints nothing when
-# Hyprland cannot answer, which leaves the slots in monitor id order.
+# Hyprland cannot answer, which leaves every slot unknown.
 monitor_slot_names() {
   local file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/monitor-slots"
   mkdir -p "${file%/*}"
@@ -31,14 +31,14 @@ declare -gA ordinal_words=(
   [first]=1 [second]=2 [third]=3 [fourth]=4 [fifth]=5 [sixth]=6 [seventh]=7 [eighth]=8 [ninth]=9 [tenth]=10
 )
 
-# Prints the slot a word names: a number ("two", "2") or an ordinal ("second", "2nd"), or fails. Any ordinal digits are
-# taken as the number; one above the monitors count says there is no such monitor, as "nine" does.
+# Prints the slot a word names: a number ("two", "2") or an ordinal ("second", "2nd", up to "10th"), or fails. One above
+# the monitors count says there is no such monitor, as "nine" does.
 monitor_slot_word() {
   if [ -n "${number_words[$1]+set}" ]; then
     echo "${number_words[$1]}"
   elif [ -n "${ordinal_words[$1]+set}" ]; then
     echo "${ordinal_words[$1]}"
-  elif [[ "$1" =~ ^[0-9]+(st|nd|rd|th)?$ ]]; then
+  elif [[ "$1" =~ ^[0-9]+$ || "$1" =~ ^(1st|2nd|3rd|[4-9]th|10th)$ ]]; then
     echo "$((10#${1%%[a-z]*}))"
   else
     return 1
