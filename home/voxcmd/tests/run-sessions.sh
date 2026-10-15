@@ -795,7 +795,14 @@ wtype_is() { [[ $(grep '^wtype ' "$log") == "$(printf '%s\n' "$@")" ]]; }
 # default the one now under way, as voxcmd-wake names it). It runs in the foreground, as the listener's confirmation
 # does, so whatever it ends has been ended once it returns.
 wake_heard() { SANDBOX_TRANSCRIBE_TEXT="$1" sess_voxcmd_env _wake-confirm /dev/stdin "${2:-$(recording_now)}" </dev/null; }
-recording_now() { jq -r '"\(.frame_id):\(.owner):\(.owner_start)"' "$session_json"; }
+# Read under the session lock: a listen holds it from the recording's start until its watcher is the owner, and
+# hold_in alone can pass before that, on the watcher before it, which saw a recording of its own.
+recording_now() {
+  (
+    flock 9
+    jq -r '"\(.frame_id):\(.owner):\(.owner_start)"' "$session_json"
+  ) 9>"$XDG_RUNTIME_DIR/voxcmd/session.lock"
+}
 voxtype_now() { cat "$XDG_RUNTIME_DIR/voxtype/state"; }
 # A mode's ended hook runs in the background and may outlive its watcher.
 hooks_done() { wait_until ended_hooks_gone; }
@@ -804,6 +811,7 @@ sess_start "UNTIL_STOP Hello world. Cortana, stop."
 owner_is_listening
 check "type mode's session file names it, its hint, and that it is one recording the wake listener hears through" "[[ \$(jq -c '[.kind, .label, .exit_hint, .one_recording, .wake_listens, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say cortana stop, or cortana cancel\",true,true,[]]' ]]"
 check "its one recording ends after 2 min of quiet or of no speech, and at 295 s" "log_has_soon 'no_speech_secs=120\$' && log_has_soon 'autostop min_speech_secs=0.4 silence_secs=120\$' && log_has_soon 'autostop max_secs=295\$'"
+check "once its watcher owns the session, the hand-over is over" "! jq -e '.owner_handover' '$session_json' >/dev/null"
 check "with the wake listener off, its start says to press the voice key" "log_has_soon '^notify-send .*voxcmd: Type mode Press the voice key to type it'"
 wake_heard "Cortana, stop."
 sess_wait

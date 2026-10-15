@@ -331,7 +331,8 @@ class PauseGate:
         if not self.voxtype_recording():
             return False
         state = self.open_session()
-        if state is None or state.get("wake_listens") is not True:
+        # While voxcmd hands the session to the recording's watcher, the owner named is still the one before it.
+        if state is None or state.get("wake_listens") is not True or state.get("owner_handover"):
             return False
         self.dictation_recording = f"{state.get('frame_id', '')}:{state['owner']}:{state['owner_start']}"
         return True
