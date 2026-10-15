@@ -71,6 +71,8 @@ case "$args" in
     if ((pending > 0)); then
       put codex_pending_reads $((pending - 1))
       put codex Pending
+    elif [[ $(get no_codex || true) == 1 ]]; then
+      put codex none
     else
       put codex Completed
     fi
