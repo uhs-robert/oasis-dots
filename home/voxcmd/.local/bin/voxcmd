@@ -1739,7 +1739,10 @@ session_update_locked() {
 # session_set_owner <pid>: the watcher with this PID hears the next turn.
 session_set_owner() {
   # shellcheck disable=SC2016 # a jq filter
-  session_update '.owner = $owner | .owner_start = $owner_start | del(.owner_handover)' \
+  # A one-recording mode's recording_owner is the watcher of its one recording, which still has its transcript to hand
+  # over for as long as it owns the session in that mode, whatever voxtype's state is by then.
+  session_update '.owner = $owner | .owner_start = $owner_start | del(.owner_handover)
+    | if .one_recording == true then .recording_owner = $owner else . end' \
     --argjson owner "$1" --arg owner_start "$(process_start_time "$1")"
 }
 
@@ -2067,13 +2070,16 @@ dictation_wake_heard_locked() {
   fi
 }
 
-# Stop Voice in a one-recording mode whose recording is under way: the recording stops and is handled as any ending
-# that keeps it would be, then the session ends. An ending already recorded keeps its action, so a cancel stays a cancel,
-# and Stop Voice then ends the session as usual. Fails when there is no such recording, for Stop Voice to go on as usual.
+# Stop Voice in a one-recording mode whose recording's watcher still owns the session: the recording, if voxtype still
+# records it, stops, and it is handled as any ending that keeps it would be, then the session ends. The watcher's
+# ownership decides, not voxtype's state: once voxtype is idle the watcher may still be reading the transcript, which
+# must not be dropped. An ending already recorded keeps its action, so a cancel stays a cancel, and Stop Voice then
+# ends the session as usual. Fails when there is no such recording, for Stop Voice to go on as usual (also before the
+# mode's recording has started, while the turn that opened the mode still owns the session).
 stop_voice_recording_locked() {
   local state
   state=$(session_state_locked) && [ "$(jq -r '.one_recording // false' <<<"$state")" = true ] || return 1
-  case "$(voxtype_state)" in recording | transcribing) ;; *) return 1 ;; esac
+  [ "$(jq -r '.recording_owner // empty' <<<"$state")" = "$(jq -r .owner <<<"$state")" ] || return 1
   if ! session_record_ending_locked "$state" type key; then
     [ "$(jq -r .ending.action <<<"$state")" != discard ] || return 1
     session_update_locked '.ending.by = "key"'
@@ -2109,7 +2115,7 @@ session_ending_starts() {
 # of the ending, to the mode with the ending's action, then leaves the mode (or ends the session) saying why, and the
 # mode underneath listens on. Nothing is handed over when it was discarded or cancelled, or heard only noise.
 session_finish_recording() {
-  local transcript="$1" discarded="${2:-}" state file kind ending action by text reason end_all=0
+  local transcript="$1" discarded="${2:-}" state file kind ending action by text
   state=$(session_state) && session_is_mine "$state" || return 0
   file=$(jq -r .integration <<<"$state")
   kind=$(jq -r .kind <<<"$state")
@@ -2129,19 +2135,27 @@ session_finish_recording() {
       session_handle_turn "$text" "$action"
     ) || true
   fi
+  session_locked session_leave_recording_mode_locked "$kind" "$action"
+  session_continue ran
+}
+
+# session_leave_recording_mode_locked <kind> <action>: leaves the one-recording mode saying why, or ends the session.
+# The ending's by is read again here, under the lock: Stop Voice may have made it key while the text was handled.
+session_leave_recording_mode_locked() {
+  local kind="$1" action="$2" state by reason
+  state=$(session_state_locked) && session_is_mine "$state" || return 0
+  by=$(jq -r '.ending.by // "voice_key"' <<<"$state")
   case "$by:$action" in
   *:discard) reason="cancelled, nothing typed" ;;
-  key:* | *:end_session) end_all=1 reason="stopped" ;;
+  key:* | *:end_session)
+    session_end_all_locked "stopped"
+    return
+    ;;
   cap:*) reason="it reached its recording limit ($(duration_words "${mode_setting[listen_max_secs]}"))" ;;
   idle:*) reason="nothing was said for $(duration_words "${mode_setting[listen_no_speech_secs]:-$session_no_speech_secs}")" ;;
   *) reason="done" ;;
   esac
-  if [ "$end_all" = 1 ]; then
-    session_end_all "$reason"
-  else
-    session_leave "$kind" "$reason" || true
-  fi
-  session_continue ran
+  session_leave_locked "$kind" "$reason" || true
 }
 
 # Whether the mode on top is still wanted: its integration's session_alive, when it has one, says its screen is still up.
