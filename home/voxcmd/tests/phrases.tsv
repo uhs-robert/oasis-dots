@@ -80,9 +80,12 @@ open the browsing session	Sessions/open	the name has an emoji before it
 open the nowhere session	Sessions/not_found	no such launcher session
 open the work tmux session	Tmux/not_found	no work tmux session or layout in the sandbox, but the phrase is still Tmux's
 open the dotfiles tmux session	Tmux/switch	a phrase with tmux is never a launcher session
-open the session launcher	none	the Session Launcher bind (leader SHIFT + O) is not in the binds fixture
-session launcher	none	the Session Launcher bind is not in the binds fixture
-launch a session	Sessions/not_found	no name: reported as a session called "a"
+open the session launcher	Keybinds/run
+session launcher	Keybinds/run
+launch a session	picker	only "session" matches the Session Launcher bind, a weak match
+open a session	picker	only "session" matches the Session Launcher bind, a weak match
+open a new session	picker	the article and "new" are ignored words, leaving the weak "session" match
+start a new session	none	Keybinds ignores "open" and "launch" but not "start", so nothing claims it
 clear notifications	Notifications/clear
 read the last notification	Notifications/read_last
 open notifications	Notifications/open
