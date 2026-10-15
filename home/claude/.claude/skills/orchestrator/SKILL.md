@@ -34,6 +34,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
 
 3. Investigate the issue or PR and repository.
    - Read issue or PR context (including review comments), relevant code, repository instructions, tests, and analogous implementations.
+   - Run `~/.claude/skills/orchestrator/overlap.sh <path>...` on the files the plan will touch. It lists other worktrees (committed and uncommitted work) and open PRs that change them. Settle each overlap with the session or PR owner before delegating, and put the outcome in the plan.
    - Produce a concise implementation plan and provide to human for approval.
    - Escalate only materially ambiguous product or architectural decisions.
 
