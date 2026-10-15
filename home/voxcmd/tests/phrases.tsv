@@ -343,3 +343,14 @@ press a	Keys/letter_a
 enter	none	a misheard Enter can submit a form: Keys never takes a bare one
 send	none	Keys never takes a bare send
 send firefox to workspace 3	Apps/move	Keys has no bare send
+go to the center monitor	Monitors/focus
+focus the left monitor	Monitors/focus
+switch to the top right screen	Monitors/focus
+take me to monitor two	Monitors/focus
+go to the laptop display	Monitors/focus
+focus the built in screen	Monitors/focus
+move this window to the right monitor	Monitors/move
+move it to monitor three	Monitors/move
+send the window to the laptop screen	Monitors/move
+go to the system monitor	none	not a monitor word, so left to the apps
+move two and four to the left monitor	none	overview phrase, only with the overview open

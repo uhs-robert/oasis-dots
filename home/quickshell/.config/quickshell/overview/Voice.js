@@ -34,11 +34,36 @@ function cluster_words(list, words) {
     return out;
 }
 
-// { horizontal, vertical } per group: "left", "middle", "right" along x and "top", "middle", "bottom" along y, each empty
-// while all monitors share that axis' cluster. Monitors side by side have no vertical word.
+// Groups in rows, top to bottom. A group joins the row while its centre is above the row's lowest bottom edge, so a tall
+// neighbour (a rotated monitor) never pulls a monitor that sits below the others into their row.
+function rows(groups) {
+    const order = groups.map((g, i) => i).sort((a, b) => groups[a].y - groups[b].y || groups[a].h - groups[b].h || a - b);
+    const out = [];
+    let bottom = Infinity;
+    for (const i of order) {
+        const g = groups[i];
+        if (out.length > 0 && g.y + g.h / 2 < bottom) {
+            out[out.length - 1].push(i);
+            bottom = Math.min(bottom, g.y + g.h);
+        } else {
+            out.push([i]);
+            bottom = g.y + g.h;
+        }
+    }
+    return out;
+}
+
+// { horizontal, vertical } per group: "top", "middle", "bottom" by row, then "left", "middle", "right" within the row, each
+// empty while there is only one row or one column to tell apart. Monitors side by side have no vertical word, and a laptop
+// below a row of monitors is just "bottom".
 function positions(groups) {
-    const horizontal = cluster_words(clusters(groups, "x", "w"), columns_words);
-    const vertical = cluster_words(clusters(groups, "y", "h"), rows_words);
+    const row_list = rows(groups);
+    const vertical = cluster_words(row_list, rows_words);
+    const horizontal = {};
+    for (const row of row_list) {
+        const columns = clusters(row.map(i => groups[i]), "x", "w").map(members => members.map(k => row[k]));
+        Object.assign(horizontal, cluster_words(columns, columns_words));
+    }
     return groups.map((g, i) => ({ horizontal: horizontal[i] || "", vertical: vertical[i] || "" }));
 }
 

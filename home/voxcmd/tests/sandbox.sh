@@ -85,7 +85,8 @@
 #                                     With VOXCMD_DEBUG set, speech and SILENCE first wait for the watcher to log that it
 #                                     sees the recording, and SILENCE then exits at once.
 #
-# Hyprland's dispatch, eval and keyword are logged and never sent.
+# Hyprland's dispatch, eval and keyword are logged and never sent. The eval that asks for monitor slots is answered from
+# SANDBOX_MONITOR_SLOTS (the slot lookup's file contents, e.g. "DP-8 HDMI-A-1 - eDP-1"); without it the file stays absent.
 #
 #   VOXCMD_EXTRA_INTEGRATIONS  colon-separated integration files to load too, e.g. a private one
 #   SANDBOX_EXTRA_STUBS        space-separated commands to stub as well, such as the ones an extra integration calls
@@ -197,7 +198,14 @@ hyprctl)
   binds | clients | monitors | activeworkspace | version)
     printenv "SANDBOX_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')_JSON" || pass_through "$@"
     ;;
-  dispatch | eval | keyword) log "$@" && echo ok ;;
+  eval)
+    log "$@"
+    # SANDBOX_MONITOR_SLOTS: what Hyprland's slot lookup writes to the file the eval names, e.g. "DP-8 HDMI-A-1 - eDP-1".
+    slots_file=$(printf '%s' "${2-}" | sed -n "s/.*io\.open('\([^']*\)', 'w').*/\1/p")
+    [ -z "${SANDBOX_MONITOR_SLOTS+x}" ] || [ -z "$slots_file" ] || printf '%s' "$SANDBOX_MONITOR_SLOTS" >"$slots_file"
+    echo ok
+    ;;
+  dispatch | keyword) log "$@" && echo ok ;;
   *) log "$@" ;;
   esac
   ;;
