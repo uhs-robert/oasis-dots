@@ -44,6 +44,7 @@ examples=(
   "press down three times"
   "hit escape"
   "press shift tab"
+  "press y"
 )
 
 declare -A actions=(
@@ -63,6 +64,17 @@ declare -A actions=(
   [delete]='press_key Delete "$target"'
   [space]='press_key space "$target"'
 )
+
+# A verb captures only the count as {target}, so each letter is a verb of its own, with the letter in its action name.
+# Letters take no count: "a" is also an article, and with a count "press a button" would be a press of "a" with a
+# count it cannot read, refused instead of going on to the keybinds. Whisper hears a spoken "y" as "why".
+for letter in {a..z}; do
+  alternatives="$letter"
+  [ "$letter" != y ] || alternatives="y|why"
+  verbs+=("letter_$letter  (press|hit) (the )?(letter )?($alternatives)( key)?")
+  actions[letter_$letter]="press_key $letter"
+  silent_actions+=("letter_$letter")
+done
 
 # A runaway count (a misheard "20 times") stops here.
 max_key_presses=20
