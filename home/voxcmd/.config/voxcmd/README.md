@@ -450,14 +450,14 @@ Every phrase takes any `{focus}` [intent](#intents) form: "go to", "switch to", 
 
 ### Tmux
 
-`tmux.sh` works on sessions by name, and every phrase names a session, so "switch to X" stays free for windows.
+`tmux.sh` works on sessions by name, and every phrase says `tmux` and names a session, so "open the work session", "open the session launcher" and "switch to X" stay free for the keybinds and windows.
 
 | Say                                                                                | Does                                                       |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| "go to the X session", "switch to session X", "open the X session", "attach X"     | focus or open the session                                  |
-| "new session X", "open a new session X"                                            | a terminal on a new session X (attached if X already runs) |
+| "go to the X tmux session", "switch to tmux session X", "open the tmux session X", "attach tmux X" | focus or open the session                                  |
+| "new tmux session X", "open a new tmux session called X"                           | a terminal on a new session X (attached if X already runs) |
 
-Switching takes any `{focus}` or `{open}` [intent](#intents) form before the session ("take me to the X session", "launch session X"). Both are [silent](#silent-actions) when they work, since the session's terminal shows it; an unknown session still says so. X is matched against running sessions (`tmux list-sessions`) and the tmuxifier layouts in `~/.tmuxifier/layouts`, a layout by the `session_name` it sets or its file name. A layout goes through the Project picker's script (`hypr/scripts/rofi-tmux.sh <layout>`), which focuses its terminal or loads it in a new one. A running session without a layout focuses the terminal titled with its name, else opens a terminal attached to it. An X that matches nothing says so instead of falling through to the keybinds. Tab on its Voice Help entries lists every running session and layout; picking one switches to it.
+Switching takes any `{focus}` or `{open}` [intent](#intents) form before the session ("take me to the X tmux session", "launch tmux session X"). Both are [silent](#silent-actions) when they work, since the session's terminal shows it; an unknown session still says so. X is matched against running sessions (`tmux list-sessions`) and the tmuxifier layouts in `~/.tmuxifier/layouts`, a layout by the `session_name` it sets or its file name. A layout goes through the Project picker's script (`hypr/scripts/rofi-tmux.sh <layout>`), which focuses its terminal or loads it in a new one. A running session without a layout focuses the terminal titled with its name, else opens a terminal attached to it. An X that matches nothing says so instead of falling through to the keybinds. Tab on its Voice Help entries lists every running session and layout; picking one switches to it.
 
 ### Notifications
 
