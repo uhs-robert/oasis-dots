@@ -74,6 +74,7 @@ attach to the tmux session dotfiles	Tmux/switch
 attach dotfiles	none	no tmux in the phrase, so no Tmux
 open the work session	Sessions/open
 open work session	Sessions/open
+open a work session	Sessions/open	an article before a name still names it
 launch the work session	Sessions/open
 start the work session	Sessions/open
 open the browsing session	Sessions/open	the name has an emoji before it
