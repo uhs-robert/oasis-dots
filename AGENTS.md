@@ -96,7 +96,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 
 ## voxcmd
 
-Test voxcmd actions through `home/voxcmd/tests/sandbox.sh`, never against the live desktop; add a phrase to `home/voxcmd/tests/phrases.tsv` for every new or fixed phrasing.
+Test voxcmd actions through `home/voxcmd/tests/sandbox.sh`, never against the live desktop; add a phrase to `home/voxcmd/tests/phrases.tsv` for every new or fixed phrasing. When the owner should try a voxcmd branch by voice before merging, put it live with the `owner-test-bar` skill (`up <name> <branch>`, then `restore`), which swaps voxcmd's links to the branch and back; the installed voxcmd otherwise runs from the main checkout.
 
 Firefox tabs are listed and switched by the companion extension in `extras/voxcmd-firefox/` when it is loaded: a native-messaging host (`home/voxcmd/.local/share/voxcmd/firefox-host`, stdlib Python) bridges it to `$XDG_RUNTIME_DIR/voxcmd/firefox.sock`, which `firefox-tab` asks first, falling back to the session store and the address bar. One-time setup: `just firefox-host` (also run by the installer) registers the host, whose manifest needs an absolute path and so is generated, not stowed; `just firefox-extension` (also run by the installer, via `lib/firefox-policy.sh`) installs the signed `extras/voxcmd-firefox.xpi` through a Firefox policy; sign with `just sign-firefox-extension` (its README covers updates and removal). Tests: `lib/tests/firefox-policy.sh` (the `firefox-policy` check step; overridable paths, no sudo), `home/voxcmd/tests/run-firefox-extension.sh` (the `voxcmd-firefox` check step) and run.sh's "firefox live" section.
 
