@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse(Bash): refuse commits and --continue steps with conflict markers staged, check runs piped into a filter
-# that hides their exit code from && or ||, and synthetic CPU load.
+# that hides their exit code from && or ||, synthetic CPU load, and process kills by name or pattern.
 set -u
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
@@ -33,6 +33,14 @@ stress="${at_cmd}stress(-ng)?([[:space:]]|;|$)"
 busy_loop='(while[[:space:]]+(true|:|\[[[:space:]]*1[[:space:]]*\])|for[[:space:]]*\(\([[:space:]]*;[[:space:]]*;[[:space:]]*\)\))[[:space:]]*;[[:space:];]*do[[:space:];]+(:|true)[[:space:]]*;[[:space:];]*done'
 if [[ $flat =~ $yes_to_null || $flat =~ $stress || $flat =~ $busy_loop ]]; then
   deny "the owner works on this machine: find flakes from failure output, not synthetic CPU load"
+fi
+
+# Other sessions run the same test suites, so a name or pattern kill takes their runs down too. Scoping to children
+# of a known parent (-P) is the one pattern kill that stays inside this session.
+pattern_kill="${at_cmd}(killall|pkill)([[:space:]][^;&|]*)?(;|$)"
+pgrep_kill="${at_cmd}pgrep([[:space:]][^;&|]*)?\|[[:space:]]*xargs([[:space:]][^;&|]*)?[[:space:]]kill"
+if [[ $flat =~ $pattern_kill || $flat =~ $pgrep_kill ]] && ! [[ ${BASH_REMATCH[0]} =~ [[:space:]](-P|--parent)[[:space:]=] ]]; then
+  deny "a kill by name or pattern also hits other sessions' processes (they run the same suites): kill the PIDs you started (\$! when you launch them), or scope with pkill -P <your parent pid>"
 fi
 
 word='[^[:space:];&|]'
