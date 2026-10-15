@@ -1998,7 +1998,8 @@ session_heard_nothing() {
 # Type mode hears one recording and types it once it ends. Whoever ends the recording first records how, as the current
 # mode's .ending {action, by}, under the session lock; the watcher reads it once the transcript is in. by is voice (the
 # wake word and one of the mode's session_endings, which voxcmd-wake confirms during the recording), key (Stop Voice),
-# cap (auto-stop's max_secs, just under voxtype's own limit) or idle (auto-stop's pause or no-speech bound). The voice key
+# cap (auto-stop's max_secs, just under voxtype's own limit), pause (auto-stop's quiet after speech) or idle (its
+# no-speech bound). The voice key
 # stops the recording without an ending, which reads as {action: type}. action is the session_endings row's: discard
 # cancels the recording, end_session ends the session once the text is handled, and any other is handed to the mode's
 # session_handle_turn with the text.
@@ -2152,6 +2153,7 @@ session_leave_recording_mode_locked() {
     return
     ;;
   cap:*) reason="it reached its recording limit ($(duration_words "${mode_setting[listen_max_secs]}"))" ;;
+  pause:*) reason="typed after $(duration_words "${mode_setting[listen_silence_secs]:-$session_silence_secs}") of quiet" ;;
   idle:*) reason="nothing was said for $(duration_words "${mode_setting[listen_no_speech_secs]:-$session_no_speech_secs}")" ;;
   *) reason="done" ;;
   esac
@@ -2604,7 +2606,8 @@ autostop_recording() {
   # In a one-recording mode the verdict is how the recording ended, unless something else ended it first; elsewhere
   # nothing is recorded.
   case "$verdict" in
-  "$autostop_verdict_silence" | "$autostop_verdict_no_speech") watcher_record_ending type idle || true ;;
+  "$autostop_verdict_silence") watcher_record_ending type pause || true ;;
+  "$autostop_verdict_no_speech") watcher_record_ending type idle || true ;;
   "$autostop_verdict_max_length") watcher_record_ending type cap || true ;;
   esac
   [ "$(voxtype_state)" = recording ] || return 0

@@ -1,7 +1,7 @@
 # shellcheck shell=bash disable=SC2034,SC2016,SC2154
 # Type mode: one dictation into the focused window. It is one voxtype recording, typed once it ends: on "cortana stop"
-# and the other endings below, the voice key or Stop Voice, at voxtype's recording limit, or after 2 minutes without
-# speech. "cortana cancel" ends it typing nothing. Format: ~/.config/voxcmd/README.md
+# and the other endings below, the voice key or Stop Voice, at voxtype's recording limit, or after 10 s of quiet once
+# something was said. "cortana cancel", or 10 s with nothing said at all, ends it typing nothing. Format: ~/.config/voxcmd/README.md
 
 name="Type"
 confirm=0
@@ -53,10 +53,10 @@ session_endings=(
   "discard     cancel|never ?mind"
   "end_session stop listening|stop everything|end session|end the session"
 )
-# The idle bound: 2 minutes of quiet after speech stop the recording and type it, and 2 minutes with no speech at all
-# end the mode. The cap stops it before voxtype's max_duration_secs (300), whose own cut would lose the transcript's end.
-session_listen_no_speech_secs="${VOXCMD_TYPE_IDLE_SECS:-120}"
-session_listen_silence_secs="${VOXCMD_TYPE_IDLE_SECS:-120}"
+# The idle bound: 10 s of quiet after speech stop the recording and type it, as "cortana stop" would, and 10 s with no
+# speech at all end the mode. The cap stops it before voxtype's max_duration_secs (300), whose own cut would lose the transcript's end.
+session_listen_no_speech_secs="${VOXCMD_TYPE_IDLE_SECS:-10}"
+session_listen_silence_secs="${VOXCMD_TYPE_IDLE_SECS:-10}"
 session_listen_max_secs="${VOXCMD_TYPE_MAX_SECS:-295}"
 
 # Opens the mode and says how to finish it: by the wake word while voxcmd-wake runs, else by the voice key.
