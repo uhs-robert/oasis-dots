@@ -54,6 +54,21 @@ expect allow "" "$root" 'yes | head -n 3'
 expect allow "" "$root" 'grep -rn stress-ng . && echo yes > /dev/null'
 expect allow "" "$root" $'cat >notes <<\'EOF\'\nyes > /dev/null\nstress-ng --cpu 8\nwhile true; do :; done\nEOF'
 
+echo "== kills by name or pattern"
+kill_msg="other sessions' processes"
+expect deny "$kill_msg" "$root" 'pkill -f tests/run.sh'
+expect deny "$kill_msg" "$root" 'pkill voxcmd'
+expect deny "$kill_msg" "$root" 'sleep 1; killall -q run.sh'
+expect deny "$kill_msg" "$root" 'pgrep -f run-phrases | xargs kill'
+expect deny "$kill_msg" "$root" 'pgrep -f run-phrases | xargs -r kill -9'
+expect allow "" "$root" 'pkill -P 4242 -f tests/run.sh'
+expect allow "" "$root" 'pkill --parent=4242 sleep'
+expect allow "" "$root" 'kill 4242'
+expect allow "" "$root" 'kill "$!"'
+expect allow "" "$root" 'pgrep -f tests/run.sh'
+expect allow "" "$root" 'grep -rn pkill lib/'
+expect allow "" "$root" $'cat >notes <<\'EOF\'\npkill -f tests/run.sh\nEOF'
+
 echo "== check output piped into a filter"
 masked="hides its exit code from &&"
 expect deny "just check | tail $masked" "$root" 'just check 2>&1 | tail -3 && git push'
