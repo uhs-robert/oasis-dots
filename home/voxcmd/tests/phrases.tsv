@@ -355,6 +355,7 @@ send the window to the laptop screen	Monitors/move
 go to the first monitor	Monitors/focus	an ordinal is the slot: first is monitor one
 go to the second screen	Monitors/focus
 focus the 2nd display	Monitors/focus
+go to the 2th monitor	none	an ordinal needs its own suffix
 go to the fourth monitor	Monitors/focus
 move this window to the second monitor	Monitors/move
 move it to the 3rd screen	Monitors/move
