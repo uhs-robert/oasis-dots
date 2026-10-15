@@ -92,7 +92,8 @@ Singleton {
     // Once per sink, so a default sink that appears late (USB audio) gets it too and the user's later changes stay.
     function apply_output_volume() {
         const text = root.settings.output_volume;
-        if (text === undefined || !root.output_sink_ready) return;
+        // A preview runs in the owner's own session, where the volume is already theirs.
+        if (root.preview || text === undefined || !root.output_sink_ready) return;
         const volume = parseFloat(text);
         if (isNaN(volume)) return;
         const name = root.output_sink.name;
