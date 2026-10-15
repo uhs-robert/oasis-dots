@@ -166,7 +166,8 @@ Singleton {
         const now = Date.now();
         if (url === "" || now - root.played_at < 30) return;
         root.played_at = now;
-        voices.objectAt(root.voice).play(["pw-play", "-P", "{ node.name = " + root.fx_node_name + " }", "--volume", String(root.fx_volume), decodeURIComponent(String(url).replace(/^file:\/\//, ""))]);
+        // WirePlumber remembers a stream's volume by application.name; left as pw-play, the effects would share whatever level any other pw-play stream was last set to.
+        voices.objectAt(root.voice).play(["pw-play", "-P", "{ node.name = " + root.fx_node_name + ", application.name = " + root.fx_node_name + " }", "--volume", String(root.fx_volume), decodeURIComponent(String(url).replace(/^file:\/\//, ""))]);
         root.voice = (root.voice + 1) % voices.count;
     }
 
