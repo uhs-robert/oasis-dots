@@ -614,13 +614,14 @@ wait "$owner_pid" "$waiter_pid" 2>/dev/null
 rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json" "$XDG_RUNTIME_DIR/voxtype/state"
 
 # ---- modes: rapid, type, and the stack they share ----------------------------------------------------------------------
-# rapid.sh, typing.sh and click.sh for real beside the test mode, Media (a routed "stop") and two
+# rapid.sh, typing.sh and click.sh for real beside the test mode, Media (a routed "stop"), Keys (whose "send it" and
+# "press enter" type mode's endings must win over) and two
 # integrations that ask: a yes/no card and a picker of two. The card and the picker are logging stubs.
 section "modes"
 modes_config=$root/config-modes
 mkdir -p "$modes_config/integrations.d" "$modes_config/replacements.d"
 cp "$root/config-sess/integrations.d/sess.sh" "$modes_config/integrations.d/"
-for integration in rapid typing click media; do
+for integration in rapid typing click media keys; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$modes_config/integrations.d/"
 done
 cat >"$modes_config/integrations.d/ask.sh" <<STUB
@@ -830,12 +831,13 @@ wake_heard "asked Cortana about it. Cortana, stop."
 sess_wait
 check "the ending follows the clip's last wake word, and only the one at the end is cut" "session_gone && wtype_is 'wtype -- I asked Cortana about it.'"
 
-for ending in "Cortana, send it." "Cortana press enter" "Cortana, send." "Cortana send message"; do
+for ending in "Cortana, send it." "Cortana press enter" "Cortana, send." "Cortana send message" "Cortana, send the message."; do
   sess_start "UNTIL_STOP Ship it. $ending"
   owner_is_listening
   wake_heard "$ending"
   sess_wait
-  check "'$ending' types the dictation, then presses Return" "session_gone && wtype_is 'wtype -- Ship it.' 'wtype -k Return'"
+  # Keys has the same phrases outside type mode; here they are only the mode's ending, never routed.
+  check "'$ending' types the dictation, then presses Return" "session_gone && wtype_is 'wtype -- Ship it.' 'wtype -k Return' && ! grep -q 'Keys' '$log'"
 done
 
 for ending in "Cortana, cancel." "Cortana never mind" "Cortana, nevermind."; do
