@@ -9,11 +9,12 @@ silent_actions=(open)
 # "open the session launcher" never ends in "session" after a target, so it stays with the keybinds. "skip" verbs
 # match first and offer nothing, so their phrases fall through as if this integration were absent:
 # - "open the work tmux session" is Tmux's, not a session called "work tmux".
-# - "open a session" and "open a new session" name no session, and are left to the Session Launcher bind.
+# - "open a session" and "open a new session" name no session, and are left to the Session Launcher bind; "open a work
+#   session" names one.
 verbs=(
   "skip  {open} (.* )?tmux {target}"
-  "skip  {open} ((a|an|any|some)( new)?|new) {target}"
-  "open  {open} (the )?{target} session"
+  "skip  {open} ((a|an|any|some)( new)?|new) session"
+  "open  {open} (the |a |an )?{target} session"
 )
 
 examples=(
