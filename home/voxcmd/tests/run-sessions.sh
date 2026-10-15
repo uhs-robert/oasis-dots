@@ -810,7 +810,7 @@ hooks_done() { wait_until ended_hooks_gone; }
 sess_start "UNTIL_STOP Hello world. Cortana, stop."
 owner_is_listening
 check "type mode's session file names it, its hint, and that it is one recording the wake listener hears through" "[[ \$(jq -c '[.kind, .label, .exit_hint, .one_recording, .wake_listens, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say cortana stop, or cortana cancel\",true,true,[]]' ]]"
-check "its one recording ends after 2 min of quiet or of no speech, and at 295 s" "log_has_soon 'no_speech_secs=120\$' && log_has_soon 'autostop min_speech_secs=0.4 silence_secs=120\$' && log_has_soon 'autostop max_secs=295\$'"
+check "its one recording ends after 10 s of quiet or of no speech, and at 295 s" "log_has_soon 'no_speech_secs=10\$' && log_has_soon 'autostop min_speech_secs=0.4 silence_secs=10\$' && log_has_soon 'autostop max_secs=295\$'"
 check "once its watcher owns the session, the hand-over is over" "! jq -e '.owner_handover' '$session_json' >/dev/null"
 check "with the wake listener off, its start says to press the voice key" "log_has_soon '^notify-send .*voxcmd: Type mode Press the voice key to type it'"
 wake_heard "Cortana, stop."
@@ -894,9 +894,9 @@ sess_run "CAP A long talk."
 check "the limit toast names the limit that was set" "session_gone && wtype_is 'wtype -- A long talk.' && toast_has 'Type mode ended it reached its recording limit (1 min)'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_run "IDLE Words, then quiet."
-check "2 min of quiet after speech type what was said" "session_gone && wtype_is 'wtype -- Words, then quiet.' && toast_has 'Type mode ended nothing was said for 2 min'"
+check "10 s of quiet after speech type what was said, as a stop would" "session_gone && wtype_is 'wtype -- Words, then quiet.' && toast_has 'Type mode ended typed after 10 s of quiet'"
 sess_run SILENCE
-check "2 min with no speech end the mode, typing nothing" "session_gone && ! grep -q '^wtype' '$log' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended nothing was said for 2 min'"
+check "10 s with no speech end the mode, typing nothing" "session_gone && ! grep -q '^wtype' '$log' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended nothing was said for 10 s'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_IDLE_SECS=30 VOXCMD_TYPE_MAX_SECS=60)
 sess_run SILENCE
 check "VOXCMD_TYPE_IDLE_SECS and VOXCMD_TYPE_MAX_SECS set the bounds" "every_detector_logged no_speech_secs= no_speech_secs=30 && grep -q 'silence_secs=30\$' '$log' && grep -q 'max_secs=60\$' '$log'"
