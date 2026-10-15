@@ -15,8 +15,8 @@ action_labels=0
 force_prefixes=(overview)
 confirm_labels=('^close ')
 
-# shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=spoken-time.sh
-source "$voxcmd_share_dir/spoken-time.sh"
+# shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=spoken-position.sh
+source "$voxcmd_share_dir/spoken-position.sh"
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=mode-phrases.sh
 source "$voxcmd_share_dir/mode-phrases.sh"
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=monitor-words.sh
@@ -51,7 +51,11 @@ examples=(
   "close two"
   "close the marked windows"
   "focus two"
+  "focus the second window"
+  "close the third one"
+  "mark first and third"
   "go to workspace three"
+  "go to the first workspace"
   "move workspace three to the right monitor"
   "swap workspaces two and five"
   "close overview"
@@ -157,35 +161,24 @@ overview_act() {
 
 # ---- reading the phrase ----------------------------------------------------------------------------------------------
 
-# Prints the number a word names (digits or a number word), or fails.
-overview_number() {
-  if [[ "$1" =~ ^[0-9]+$ ]]; then
-    echo "$((10#$1))"
-  elif [ -n "${number_words[$1]+set}" ]; then
-    echo "${number_words[$1]}"
-  else
-    return 1
-  fi
-}
+# Prints the position the words name (digits, a number word, an ordinal: "7", "seven", "twenty five", "seventh"), or fails.
+overview_number() { spoken_position "$1"; }
 
-# Prints the numbers of a list like "two and four" or "one three and five", one per line; fails on any other word. A tens
-# word followed by a digit word is one number ("twenty five").
+# Prints the numbers of a list like "two and four" or "one third and fifth", one per line; fails on any other word. A tens
+# word followed by a ones or ordinal word is one number ("twenty five", "twenty first").
 overview_number_list() {
   local -a words
-  local index=0 word value next
+  local index=0 word value
   read -ra words <<<"$1"
   [ "${#words[@]}" -gt 0 ] || return 1
   while [ "$index" -lt "${#words[@]}" ]; do
     word="${words[index]}"
     index=$((index + 1))
     [ "$word" != and ] || continue
-    value=$(overview_number "$word") || return 1
-    if [ "$value" -ge 20 ] && [ $((value % 10)) = 0 ] && [ "$index" -lt "${#words[@]}" ]; then
-      next=$(overview_number "${words[index]}") || next=""
-      if [ -n "$next" ] && [ "$next" -ge 1 ] && [ "$next" -le 9 ]; then
-        value=$((value + next))
-        index=$((index + 1))
-      fi
+    if [ "$index" -lt "${#words[@]}" ] && value=$(spoken_position "$word ${words[index]}"); then
+      index=$((index + 1))
+    else
+      value=$(spoken_position "$word") || return 1
     fi
     echo "$value"
   done
@@ -226,6 +219,11 @@ overview_windows() {
     return 0
   fi
   text="${text#window }" text="${text#windows }" text="${text#number }" text="${text#numbers }"
+  # "the second window", "the third one"; after a cardinal "one" is a number ("twenty one").
+  text="${text% windows}" text="${text% window}"
+  if [[ "$text" =~ ^(.*\ )?([a-z0-9]+)\ ones?$ ]] && spoken_ordinal "${BASH_REMATCH[2]}" >/dev/null; then
+    text="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+  fi
   numbers=$(overview_number_list "$text") || return 1
   while IFS= read -r number; do
     address=$(overview_window_id "$number") || {
@@ -246,6 +244,10 @@ overview_parse() {
   text="${text//work space/workspace}"
   text="${text//workspace number /workspace }"
   text="${text//desktop number /desktop }"
+  # "swap the second and fifth workspaces" names the noun once, after the pair.
+  if [[ "$text" =~ ^swap\ (the\ )?(.+)\ (and|with)\ (.+)\ (workspaces|desktops)$ ]]; then
+    text="swap workspace ${BASH_REMATCH[2]} and ${BASH_REMATCH[4]}"
+  fi
   if [[ "$text" =~ ^(unmark|deselect|uncheck|remove)\ (all|everything)$ || "$text" =~ ^(clear|clear (the )?(marks|marked|selection|all marks))$ ]]; then
     echo "clear"
   elif [[ "$text" =~ ^(unmark|deselect|uncheck|remove)\ (.+)$ ]]; then

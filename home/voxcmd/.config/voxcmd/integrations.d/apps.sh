@@ -13,6 +13,9 @@ target_match=words
 ignored_words=(window app application program)
 match_ignore_words=("${ignored_words[@]}")
 
+# shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=spoken-position.sh disable=SC2154
+source "$voxcmd_share_dir/spoken-position.sh"
+
 # Found beside this file; while it is installed, Firefox windows are not focused by the title of the tab they show.
 firefox_integration="$(dirname "${BASH_SOURCE[0]}")/firefox.sh"
 
@@ -39,6 +42,7 @@ examples=(
   "open a new <app>"
   "focus <window>"
   "move <window> to workspace <number>"
+  "move <window> to the third workspace"
   "close <window>"
   "resize the window to <width> by <height>"
   "make it <number> pixels tall"
@@ -344,7 +348,7 @@ window_candidates() {
 # without the workspace part offers nothing.
 move_candidates() {
   local target="$1" workspace_words workspace
-  [[ "$target" =~ ^(.+)(\ (to|onto|on)\ (the\ )?(workspace|desktop)\ ([a-z0-9]+))$ ]] || {
+  [[ "$target" =~ ^(.+)(\ (to|onto|on)\ (the\ )?(workspace|desktop)\ ([a-z0-9]+(\ [a-z0-9]+)?))$ ]] || {
     echo '[]'
     return
   }
@@ -362,14 +366,11 @@ move_candidates() {
           | {id: "\(.address) \($workspace)", label: $label, match_text: (.title + $suffix)}))'
 }
 
+# Prints the workspace the words name ("3", "three", "twenty five", "third"), or nothing for a number below 1.
 workspace_number() {
-  case "$1" in
-  one) echo 1 ;; two) echo 2 ;; three) echo 3 ;; four) echo 4 ;; five) echo 5 ;;
-  six) echo 6 ;; seven) echo 7 ;; eight) echo 8 ;; nine) echo 9 ;; ten) echo 10 ;;
-  eleven) echo 11 ;; twelve) echo 12 ;; thirteen) echo 13 ;; fourteen) echo 14 ;; fifteen) echo 15 ;;
-  sixteen) echo 16 ;; seventeen) echo 17 ;; eighteen) echo 18 ;; nineteen) echo 19 ;; twenty) echo 20 ;;
-  *) if [[ "$1" =~ ^[0-9]+$ ]] && [ "$((10#$1))" -ge 1 ]; then echo "$((10#$1))"; fi ;;
-  esac
+  local number
+  number=$(spoken_position "$1") && [ "$number" -ge 1 ] && echo "$number"
+  return 0
 }
 
 focus_window() {

@@ -4,8 +4,8 @@
 # (the integration). The position words come from monitor-places.jq, which mirrors the Quickshell overview's own rule (overview/Voice.js) so the two never disagree.
 
 monitors_share_dir="${BASH_SOURCE[0]%/*}"
-# shellcheck source-path=SCRIPTDIR source=spoken-time.sh
-source "$monitors_share_dir/spoken-time.sh"
+# shellcheck source-path=SCRIPTDIR source=spoken-position.sh
+source "$monitors_share_dir/spoken-position.sh"
 
 # Prints the monitor name of each slot, space separated ("-" for an empty one). Hyprland's Lua owns the slot order, and
 # `hyprctl eval` prints nothing back, so the answer goes through a file, as the overview gets it. Prints nothing when
@@ -27,23 +27,10 @@ monitor_places() {
 
 monitor_position_words='left|right|middle|center|centre|top|bottom'
 monitor_builtin_words='laptop|builtin|built in|internal'
-declare -gA ordinal_words=(
-  [first]=1 [second]=2 [third]=3 [fourth]=4 [fifth]=5 [sixth]=6 [seventh]=7 [eighth]=8 [ninth]=9 [tenth]=10
-)
 
-# Prints the slot a word names: a number ("two", "2") or an ordinal ("second", "2nd", up to "10th"), or fails. One above
-# the monitors count says there is no such monitor, as "nine" does.
-monitor_slot_word() {
-  if [ -n "${number_words[$1]+set}" ]; then
-    echo "${number_words[$1]}"
-  elif [ -n "${ordinal_words[$1]+set}" ]; then
-    echo "${ordinal_words[$1]}"
-  elif [[ "$1" =~ ^[0-9]+$ || "$1" =~ ^(1st|2nd|3rd|[4-9]th|10th)$ ]]; then
-    echo "$((10#${1%%[a-z]*}))"
-  else
-    return 1
-  fi
-}
+# Prints the slot a word names: a number ("two", "2") or an ordinal ("second", "2nd"), or fails. A slot past the monitors
+# count says there is no such monitor, as "nine" does.
+monitor_slot_word() { spoken_position "$1"; }
 
 # Succeeds when every word of $1 (with "monitor", "screen" or "display" around it dropped) is one this file understands, so
 # "system monitor" is left to the apps and "bottom right" is answered even when no monitor sits there.
