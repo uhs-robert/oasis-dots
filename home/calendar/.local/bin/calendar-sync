@@ -4,9 +4,9 @@
 Usage: calendar-sync [--now] [--ics FILE] [--at ISO8601]
        calendar-sync setup [--at ISO8601]   guided connection of your calendar
 
-The feed address is a credential. A password-manager command (rbw by default)
-prints it into memory, and it never reaches argv, output, the cache or an error
-message.
+The feed address is a credential. A secret-store command (the system keyring
+by default) prints it into memory, and it never reaches argv, output, the cache
+or an error message.
 """
 
 import argparse
@@ -170,7 +170,7 @@ def sync_window(now):
 
 
 def url_command():
-    return configured_url_command() or f"rbw get -- {shlex.quote(DEFAULT_RBW_ENTRY)}"
+    return configured_url_command() or KEYRING_COMMAND
 
 
 def command_program(command):
@@ -699,18 +699,24 @@ def store_in_rbw(address, entry, entry_exists):
 def choose_backend(prompter):
     rbw, keyring = rbw_state(), keyring_state()
     usable = {}
-    if rbw == "unlocked":
-        usable["rbw"] = "rbw"
+    # The keyring comes first because it unlocks with the login, so the timer can read it all session; rbw locks
+    # again after its lock_timeout and the calendar then goes stale until something unlocks it.
     if keyring == "unlocked":
         usable["keyring"] = "the system keyring (secret-tool)"
+    if rbw == "unlocked":
+        usable["rbw"] = "rbw"
     usable["file"] = "a private file"
     if keyring == "locked":
         print("The keyring is locked, so it is not offered; unlock it (it normally unlocks at login) to use it.")
     # A lock must not quietly steer Auto to a weaker home for the address.
-    automatic = None if rbw == "locked" else next(iter(usable))
+    password_store_locked = "locked" in (keyring, rbw)
+    automatic = next(iter(usable))
+    if automatic == "file" and password_store_locked:
+        automatic = None
     options = [("auto", f"Auto (recommended): {usable[automatic]}")] if automatic else []
+    if not automatic:
+        print("A password store is installed but locked, so there is no Auto choice: unlock it and run setup again, or pick another.")
     if rbw == "locked":
-        print("rbw is installed but locked, so there is no Auto choice: unlock it and run setup again, or pick another.")
         options.append(("rbw-locked", "rbw (locked, unlock it first)"))
     options += list(usable.items())
     print("Where should the address be stored?")
