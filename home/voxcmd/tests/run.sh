@@ -1598,6 +1598,121 @@ check "a record flag stops a running recording" "wait_until_gone $record_recorde
 check "and starts no new one" "! grep -q '^wf-recorder' '$log'"
 kill "$record_recorder" 2>/dev/null
 
+section "near misses"
+# A last tier for a phrase nothing else could use: a verb whose words are all there in another order is offered as a weak
+# pick. The stub integration's verbs stand for any integration's: a target verb, a verb with no placeholder, one with a
+# digit slot and twelve verbs of the same words, for the cap.
+near_config=$root/config-near
+mkdir -p "$near_config/integrations.d" "$near_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/apps.sh" "$package/.config/voxcmd/integrations.d/devices.sh" "$package/.config/voxcmd/integrations.d/sessions.sh" "$near_config/integrations.d/"
+near_actions=$root/near-actions.log
+{
+  cat <<'STUB'
+name="Near"
+verbs=(
+  "raise raise the (blinds|shades) {target}"
+  "lock lock all doors"
+  "dim dim the lights"
+  "level set the level to {number}"
+  "zoom zoom {target}"
+STUB
+  for number in $(seq 1 12); do printf '  "note%s note {target}"\n' "$number"; done
+  echo ')'
+  printf 'declare -A actions=([raise]=%s [lock]=%s [dim]=%s [level]=%s [zoom]=%s' "'echo \"raise \$id\" >> $near_actions'" "'echo lock >> $near_actions'" "'echo dim >> $near_actions'" "'echo level >> $near_actions'" "'echo zoom >> $near_actions'"
+  for number in $(seq 1 12); do printf ' [note%s]=%s' "$number" "'echo note$number >> $near_actions'"; done
+  echo ')'
+} >"$near_config/integrations.d/near.sh"
+near_dry() { VOXCMD_CONFIG_DIR=$near_config "$voxcmd" --dry-run "$1" 2>&1; }
+near_live() { VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" "$1" >/dev/null 2>&1; }
+near_miss_log=$XDG_STATE_HOME/voxcmd/no-match.log
+rm -f "$near_miss_log"
+
+out=$(near_dry "kitchen blinds raise")
+check "a reordered phrase is a near miss, never a run" "grep -q 'result:      ask with the picker (1 options' <<<\"\$out\" && grep -q 'Near (near.sh) \[near miss\] action=raise target=.kitchen.' <<<\"\$out\""
+check "it is a weak match, so a spoken one listens for the reply" "grep -q 'weak: true' <<<\"\$out\" && grep -q 'listens for the reply when spoken' <<<\"\$out\""
+out=$(near_dry "raise the blinds kitchen")
+check "a phrase that matches as spoken is no near miss" "grep -q 'result:      run' <<<\"\$out\" && ! grep -q 'near miss' <<<\"\$out\""
+out=$(near_dry "doors lock all please")
+check "a verb without a placeholder takes the filler 'please' left over" "grep -q 'action=lock ' <<<\"\$out\" && grep -q '\[near miss\]' <<<\"\$out\""
+out=$(near_dry "lock all doors please now maybe")
+check "stray speech beside the verb's words stays no match" "grep -q 'result:      no match' <<<\"\$out\""
+out=$(near_dry "lock doors")
+check "a missing word stays no match" "grep -q 'result:      no match' <<<\"\$out\""
+out=$(near_dry "blinds raise")
+check "a target verb with nothing left for the target stays no match" "grep -q 'result:      no match' <<<\"\$out\""
+out=$(near_dry "level 40 the set to")
+check "a digit slot takes a digit word" "grep -q 'action=level ' <<<\"\$out\""
+out=$(near_dry "level forty set the to")
+check "a digit slot does not take a number word" "grep -q 'result:      no match' <<<\"\$out\""
+out=$(near_dry "foo note")
+check "at most ten options are offered" "grep -q 'ask with the picker (10 options' <<<\"\$out\""
+out=$(near_dry "big zoom view")
+check "a target split by a slot's word stays no match" "grep -q 'result:      no match' <<<\"\$out\""
+out=$(near_dry "view big zoom")
+check "a target in one run is a near miss" "grep -q 'action=zoom target=.view big.' <<<\"\$out\""
+out=$(near_dry "open session notes")
+check "a target naming no candidate offers no 'not found' report" "grep -q 'result:      no match' <<<\"\$out\""
+out=$(near_dry "firefox open")
+check "other integrations' verbs reorder too: Apps" "grep -q 'Apps (apps.sh) \[near miss\] action=open target=.firefox.' <<<\"\$out\""
+out=$(near_dry "bluetooth turn on")
+check "other integrations' verbs reorder too: Devices" "grep -q 'Devices (devices.sh) \[near miss\] action=bluetooth_on' <<<\"\$out\""
+out=$(near_dry "force.. kitchen blinds raise")
+check "a phrase that no prefix forces is still a near miss" "grep -q 'near miss' <<<\"\$out\""
+
+: >"$log"
+: >"$near_actions"
+near_live "kitchen blinds raise"
+check "a near miss opens the picker" "grep -q '^voxcmd-pick Which command?' '$log'"
+check "and runs the option only once it is picked" "[[ \$(cat '$near_actions') == 'raise kitchen' ]]"
+: >"$log"
+: >"$near_actions"
+near_live "kitchen blinds raise no wait lock all doors"
+check "a correction retry that matches wins over the whole phrase's near miss" "[[ \$(cat '$near_actions') == lock ]] && ! grep -q '^voxcmd-pick' '$log'"
+out=$(near_dry "kitchen blinds raise no wait lock all doors")
+check "the dry run shows the retry, not the near miss" "grep -q '^corrected:' <<<\"\$out\" && ! grep -q 'near miss' <<<\"\$out\""
+: >"$near_actions"
+near_live "blinds raise kitchen no wait lock doors"
+check "a retry that is itself no match leaves the whole phrase's near miss" "[[ \$(cat '$near_actions') == 'raise kitchen no wait lock doors' ]]"
+
+: >"$log"
+check "a near miss reached no log line" "[[ ! -e '$near_miss_log' ]]"
+near_live "lock all doors please now maybe"
+check "a phrase that still matches nothing is logged" "[[ \$(wc -l <'$near_miss_log') == 1 ]] && grep -qP '^\\d{4}-\\d\\d-\\d\\dT[0-9:+-]+\\tlock all doors please now maybe\$' '$near_miss_log'"
+check "stray speech picked nothing" "! grep -q '^voxcmd-pick' '$log'"
+near_live "Lock  Doors!"
+check "the logged phrase is the normalized one" "tail -n 1 '$near_miss_log' | grep -qP '\\tlock doors\$'"
+VOXCMD_CONFIG_DIR=$near_config "$voxcmd" --dry-run "nothing matches this at all" >/dev/null 2>&1
+check "a dry run logs nothing" "[[ \$(wc -l <'$near_miss_log') == 2 ]]"
+out=$(VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" misses 1)
+check "voxcmd misses prints the last lines" "grep -qP '\\tlock doors\$' <<<\"\$out\" && [[ \$(wc -l <<<\"\$out\") == 1 ]]"
+near_live $'lock doors\nquickly'
+check "a transcript over two lines is one record" "[[ \$(wc -l <'$near_miss_log') == 3 ]] && tail -n 1 '$near_miss_log' | grep -qP '\\tlock doors\$'"
+
+mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
+near_watch() {
+  echo recording >"$XDG_RUNTIME_DIR/voxtype/state"
+  echo "$1" >"$XDG_RUNTIME_DIR/voxcmd/transcript.txt"
+  : >"$debug_log"
+  (
+    wait_for_line 'watch: voxtype recording' "$debug_log"
+    echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+  ) &
+  VOXCMD_DEBUG=1 VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" _watch route "${2:--}" "${3:-0}" >/dev/null 2>&1
+  wait
+  rm -f "$debug_log" "$XDG_RUNTIME_DIR/voxtype/state"
+}
+near_watch "secret words nobody routes" - 1
+check "a transcript heard in a private mode is not logged" "! grep -q secret '$near_miss_log'"
+near_watch "public words nobody routes" - 0
+check "the same heard in an ordinary mode is" "grep -q 'public words nobody routes' '$near_miss_log'"
+
+rm -f "$near_miss_log"
+{
+  for line in $(seq 1 1100); do printf '2026-01-01T00:00:00+00:00\told %s\n' "$line"; done
+} >"$near_miss_log"
+near_live "one more stray phrase"
+check "the log keeps its last 1000 lines" "[[ \$(wc -l <'$near_miss_log') == 1000 ]] && tail -n 1 '$near_miss_log' | grep -q 'one more stray phrase'"
+
 section "sessions.sh launches by name"
 sessions_config=$root/sessions-config
 mkdir -p "$sessions_config/integrations.d" "$sessions_config/replacements.d"
