@@ -2027,21 +2027,23 @@ session_heard_nothing() {
 
 # ---- One-recording modes -----------------------------------------------------------------------------------------
 # Type mode hears one recording and types it once it ends. Whoever ends the recording first records how, as the current
-# mode's .ending {action, by}, under the session lock; the watcher reads it once the transcript is in. by is voice (the
+# mode's .ending {action, by[, chain]}, under the session lock; the watcher reads it once the transcript is in. by is voice (the
 # wake word and one of the mode's session_endings, which voxcmd-wake confirms during the recording), key (Stop Voice),
 # cap (auto-stop's max_secs, just under voxtype's own limit), pause (auto-stop's quiet after speech) or idle (its
 # no-speech bound). The voice key
 # stops the recording without an ending, which reads as {action: type}. action is the session_endings row's: discard
 # cancels the recording, end_session ends the session once the text is handled, and any other is handed to the mode's
-# session_handle_turn with the text.
+# session_handle_turn with the text. A voice ending followed by "and then" also has chain: true, and the commands after
+# it, found in the final transcript, run once the text is handled (session_chain_text).
 
-# session_ending_action <normalized words>: prints the action of the first row of mode_endings ("<action> <regex>")
-# whose regex matches the whole of the words; fails when none does.
+# session_ending_action <normalized words> [tail regex]: prints the action of the first row of mode_endings
+# ("<action> <regex>") whose regex matches the whole of the words, or the whole of them but for a tail that follows it;
+# fails when none does.
 session_ending_action() {
-  local row ending_regex
+  local row ending_regex tail_regex="${2:-}"
   for row in "${mode_endings[@]}"; do
     ending_regex="${row#* }"
-    if [[ "$1" =~ ^($ending_regex)$ ]]; then
+    if [[ "$1" =~ ^($ending_regex)${tail_regex}$ ]]; then
       printf '%s' "${row%% *}"
       return 0
     fi
@@ -2049,12 +2051,18 @@ session_ending_action() {
   return 1
 }
 
-# session_record_ending_locked <state> <action> <by>: records how the current mode's recording ended, unless an ending is
-# already recorded: the first one wins, and this fails.
+# What follows an ending that starts a chain: "and then" with or without the words after it (the wake clip is cut early),
+# or "then" with words, since the clip's normalizing took the comma off ", then".
+ending_chain_tail='( and then( .*)?| then .+)'
+
+# session_record_ending_locked <state> <action> <by> [chain]: records how the current mode's recording ended, unless an
+# ending is already recorded: the first one wins, and this fails. chain is true when words that run as commands follow
+# the ending, which the watcher finds in the final transcript.
 session_record_ending_locked() {
   ! jq -e '.ending' <<<"$1" >/dev/null || return 1
   # shellcheck disable=SC2016 # a jq filter
-  session_update_locked '.ending = {action: $action, by: $by}' --arg action "$2" --arg by "$3"
+  session_update_locked '.ending = {action: $action, by: $by} + (if $chain == "true" then {chain: true} else {} end)' \
+    --arg action "$2" --arg by "$3" --arg chain "${4:-false}"
 }
 
 # watcher_record_ending <action> <by>: the same, from the watcher (or its auto-stop, a subshell with its $$), and only
@@ -2069,37 +2077,84 @@ watcher_record_ending_locked() {
 
 # dictation_wake_heard <normalized words after the wake word> <recording>: the wake word, confirmed by voxcmd-wake in a
 # clip cut while a wake_listens mode recorded. When the words are one of the mode's endings, records it and ends the
-# recording: stopped, so the watcher gets the transcript, or cancelled for discard. Any other words leave the recording
-# running. Under the lock, only while voxtype records, and only for the recording the trigger was heard in
-# ("<frame_id>:<owner>:<owner_start>", which voxcmd-wake read from session.json then: the owner is the watcher of that
-# one recording), so a confirmation that outlasted its recording never ends the next one, and a mode left, a session
-# ended or an ending recorded since the trigger is never ended twice. While its watcher owns the session, voxtype records
-# for nobody else, since a voice key pressed meanwhile stops the recording rather than starting another.
+# recording: stopped, so the watcher gets the transcript, or cancelled for discard. An ending followed by "and then" is
+# recorded as a chain and the recording runs on until the next pause (dictation_chain_stop), so the commands after it
+# are in the transcript. Any other words leave the recording running. Under the lock, only while voxtype records, and
+# only for the recording the trigger was heard in ("<frame_id>:<owner>:<owner_start>", which voxcmd-wake read from
+# session.json then: the owner is the watcher of that one recording), so a confirmation that outlasted its recording
+# never ends the next one, and a mode left, a session ended or an ending recorded since the trigger is never ended
+# twice. While its watcher owns the session, voxtype records for nobody else, since a voice key pressed meanwhile stops
+# the recording rather than starting another.
 dictation_wake_heard() { session_locked dictation_wake_heard_locked "$@"; }
 dictation_wake_heard_locked() {
-  local after_wake="$1" heard_in="$2" state action
-  state=$(session_state_locked) || return 0
-  [ "$(jq -r '.wake_listens // false' <<<"$state")" = true ] && [ "$(voxtype_state)" = recording ] || return 0
-  if [ "$(jq -r '"\(.frame_id // ""):\(.owner):\(.owner_start)"' <<<"$state")" != "$heard_in" ]; then
-    debug "dictation: the wake word was heard in an earlier recording, not acted on"
-    return 0
-  fi
+  local after_wake="$1" heard_in="$2" state action chain=false
+  state=$(dictation_heard_in_locked "$heard_in") || return 0
   # The clip holds dictation before the trigger too, which may say the wake word: the ending follows the last one.
   init_wake_regex
   while [[ " $after_wake " =~ " "($wake_regex)" "(.*)$ ]]; do after_wake="${BASH_REMATCH[2]% }"; done
   load_mode_settings "$(jq -r .integration <<<"$state")"
-  if ! action=$(session_ending_action "$after_wake"); then
+  if action=$(session_ending_action "$after_wake"); then
+    :
+  elif action=$(session_ending_action "$after_wake" "$ending_chain_tail"); then
+    chain=true
+  else
     debug "dictation: the wake word, not an ending"
     return 0
   fi
-  session_record_ending_locked "$state" "$action" voice || return 0
+  session_record_ending_locked "$state" "$action" voice "$chain" || return 0
   debug "dictation: ended by voice ($action)"
-  if [ "$action" = discard ]; then
+  if [ "$chain" = true ]; then
+    debug "dictation: a chain follows the ending, recording until the next pause"
+    # The detached stopper must not hold the session lock (fd 9) its parent has.
+    setsid "$0" _chain-stop "$heard_in" "$(dictation_chain_autostop_settings)" </dev/null >/dev/null 2>&1 9>&- &
+  elif [ "$action" = discard ]; then
     touch "$(discard_flag_of "$(jq -r .owner <<<"$state")")"
     voxtype record cancel || true
   else
     voxtype record stop || true
   fi
+}
+
+# dictation_heard_in_locked <recording>: prints the session when its mode is a wake_listens one, voxtype records, and the
+# recording is the one named (see dictation_wake_heard); fails otherwise.
+dictation_heard_in_locked() {
+  local state
+  state=$(session_state_locked) || return 1
+  [ "$(jq -r '.wake_listens // false' <<<"$state")" = true ] && [ "$(voxtype_state)" = recording ] || return 1
+  if [ "$(jq -r '"\(.frame_id // ""):\(.owner):\(.owner_start)"' <<<"$state")" != "$1" ]; then
+    debug "dictation: the wake word was heard in an earlier recording, not acted on"
+    return 1
+  fi
+  printf '%s' "$state"
+}
+
+# The auto-stop settings (VAR=value lines) of the pause that ends a recording after a chained ending: a session turn's.
+dictation_chain_autostop_settings() {
+  printf '%s\n' \
+    "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs" \
+    "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$session_min_speech_secs" \
+    "VOXCMD_AUTOSTOP_SILENCE_SECS=$session_silence_secs" \
+    "VOXCMD_AUTOSTOP_MAX_SECS=$session_no_speech_secs"
+}
+
+# voxcmd _chain-stop <recording> <auto-stop settings>: waits for the pause (or the deadline) after a chained ending, then
+# stops the recording, if it is still the one the ending was recorded in and still waits for this stop. Every verdict
+# stops it, a silent one too: the ending was spoken. Only "ended elsewhere" leaves it alone.
+dictation_chain_stop() {
+  local verdict=0
+  local -a detector_env=()
+  [ -x "$voxcmd_autostop" ] || return 0
+  mapfile -t detector_env <<<"$2"
+  env "${detector_env[@]}" "$voxcmd_autostop" || verdict=$?
+  [ "$verdict" != 4 ] || return 0
+  session_locked dictation_chain_stop_locked "$1"
+}
+dictation_chain_stop_locked() {
+  local state
+  state=$(dictation_heard_in_locked "$1") || return 0
+  [ "$(jq -r '[.ending.by, .ending.chain] | join(" ")' <<<"$state")" = "voice true" ] || return 0
+  debug "dictation: the pause after the chained ending, stopping"
+  voxtype record stop || true
 }
 
 # Stop Voice in a one-recording mode whose recording's watcher still owns the session: the recording, if voxtype still
@@ -2132,6 +2187,21 @@ session_cut_ending() {
     printf '%s' "$transcript"
   fi
 }
+# session_chain_text <transcript>: prints the words after the "and then" that follows the ending, from the transcript's
+# last wake word on, as spoken, for route to run as an ordinary sequence; nothing when the ending is not followed by one.
+# An "and then" in the dictation before the wake word is text, and so is one after words that are no ending.
+session_chain_text() {
+  local rest="" before separator
+  init_wake_regex
+  shopt -s nocasematch
+  if [[ "$1" =~ ^(.*[^[:alnum:]])?($wake_regex)[^[:alnum:]]+(.*)$ ]]; then rest="${BASH_REMATCH[3]}"; fi
+  shopt -u nocasematch
+  has_split_separator "$rest" || return 0
+  separator="${BASH_REMATCH[0]}"
+  before="${rest%%"$separator"*}"
+  session_ending_action "$(apply_replacements "$(normalize "$before")")" >/dev/null || return 0
+  trim_step "${rest#*"$separator"}"
+}
 # session_ending_starts <normalized words>: succeeds when they start with one of the mode's endings, whatever follows
 # (the dictation's own transcriber may hear a word more than the clip's).
 session_ending_starts() {
@@ -2147,7 +2217,7 @@ session_ending_starts() {
 # of the ending, to the mode with the ending's action, then leaves the mode (or ends the session) saying why, and the
 # mode underneath listens on. Nothing is handed over when it was discarded or cancelled, or heard only noise.
 session_finish_recording() {
-  local transcript="$1" discarded="${2:-}" state file kind ending action by text
+  local transcript="$1" discarded="${2:-}" state file kind ending action by text chain_text=""
   state=$(session_state) && session_is_mine "$state" || return 0
   file=$(jq -r .integration <<<"$state")
   kind=$(jq -r .kind <<<"$state")
@@ -2161,13 +2231,20 @@ session_finish_recording() {
     text=$(session_cut_ending "$transcript")
     [[ ! "$(normalize "$text")" =~ $session_noise_transcripts ]] || text=""
   fi
+  # A cancel drops the dictation but not the chain after it. Stop Voice, pressed meanwhile, drops both.
+  if [ -z "$discarded" ] && [ "$(jq -r '.chain // false' <<<"$ending")" = true ] && [ "$by" = voice ]; then
+    chain_text=$(session_chain_text "$transcript")
+  fi
   if [ -n "$text" ]; then
     (
       load_integration "$file"
       session_handle_turn "$text" "$action"
     ) || true
   fi
+  if [ -n "$chain_text" ] && [ "$(session_state | jq -r '.ending.by // empty')" = key ]; then chain_text=""; fi
   session_locked session_leave_recording_mode_locked "$kind" "$action"
+  # The mode is left first, so the commands run as they would after "cortana stop typing".
+  [ -z "$chain_text" ] || route "$chain_text" || true
   session_continue ran
 }
 
@@ -2875,6 +2952,7 @@ _watch)
   ;;
 _cancel_owned_recording) cancel_owned_recording "$2" ;;
 _wake-confirm) wake_confirm "${2:-}" "${3:-}" ;;
+_chain-stop) dictation_chain_stop "${2:-}" "${3:-}" ;;
 list)
   while IFS= read -r file; do
     (
