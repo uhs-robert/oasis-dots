@@ -6,8 +6,8 @@ script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 qs_dir="$repo_dir/home/quickshell/.config/quickshell"
 skins_dir="$qs_dir/lock/skins"
-# shellcheck source=lib/greeter-files.sh
-source "$repo_dir/lib/greeter-files.sh"
+# shellcheck source=lib/common/greeter-files.sh
+source "$repo_dir/lib/common/greeter-files.sh"
 index="$skins_dir/index.json"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -83,7 +83,7 @@ while IFS=: read -r file line text; do
     continue
   fi
   if ! is_staged_folder "$folder"; then
-    echo "lock skins: ${file#"$qs_dir"/}:$line imports $folder/, which the greeter does not stage (see lib/greeter-files.sh):" >&2
+    echo "lock skins: ${file#"$qs_dir"/}:$line imports $folder/, which the greeter does not stage (see lib/common/greeter-files.sh):" >&2
     echo "$statement" >&2
     status=1
   fi

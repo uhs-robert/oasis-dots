@@ -10,7 +10,7 @@ Personal Arch Linux dotfiles deployed with GNU Stow. Two deployment targets, eac
 - `system/` — files rsynced into `/` (`/etc`, `/opt`, `/usr/local/bin`). Not stowed; copied.
 - `extras/` — configs imported by hand into other apps (browser extensions). Never stowed or copied; keep anything Stow-shaped in `home/`.
 
-`.stowrc` pins `--dir=home --target=~`, so a bare `stow <package>` from the repo root works, except for the packages in `NO_FOLD_PACKAGES` (`lib/stow.sh`: `systemd`, `calendar`). systemd ignores drop-in and `.wants` directories that are symlinks, and stow folds a directory missing from `~` into one, so those packages are stowed with `--no-folding` by `do_stow` and the `just` stow recipes; use `just stow`/`restow`, not a bare `stow`, for them. Any new package shipping `~/.config/systemd/user` units or drop-ins goes in that list. `just migrate-systemd [--dry-run]` (`lib/migrate.sh`, idempotent) repairs a machine stowed before this: it unfolds the tree, moves generated files out of the repo into `~`, and enables voxtype; the installer runs its unfold step before stowing.
+`.stowrc` pins `--dir=home --target=~`, so a bare `stow <package>` from the repo root works, except for the packages in `NO_FOLD_PACKAGES` (`lib/install/stow.sh`: `systemd`, `calendar`). systemd ignores drop-in and `.wants` directories that are symlinks, and stow folds a directory missing from `~` into one, so those packages are stowed with `--no-folding` by `do_stow` and the `just` stow recipes; use `just stow`/`restow`, not a bare `stow`, for them. Any new package shipping `~/.config/systemd/user` units or drop-ins goes in that list. `just migrate-systemd [--dry-run]` (`lib/install/migrate.sh`, idempotent) repairs a machine stowed before this: it unfolds the tree, moves generated files out of the repo into `~`, and enables voxtype; the installer runs its unfold step before stowing.
 
 ## Commands
 
@@ -18,7 +18,7 @@ Personal Arch Linux dotfiles deployed with GNU Stow. Two deployment targets, eac
 just                  # list recipes
 just check            # full validation (run before committing)
 lib/check.sh --changed origin/main   # only the steps the changed files can affect, skipping those already passed for the same files
-just lint             # shellcheck install.sh uninstall.sh lib/*.sh, lib/check/**/*.sh, demo/*.sh and the Quickshell audio importers
+just lint             # shellcheck install.sh uninstall.sh, lib/check.sh, lib/{common,install,check}/**/*.sh, demo/*.sh and the Quickshell audio importers
 just stow <pkg>       # symlink one package into ~
 just restow <pkg>     # fix stale/broken links
 just unstow <pkg>
@@ -39,7 +39,7 @@ Formatting scope is deliberately narrow — whitespace and stylua checks only co
 
 ## Installer architecture
 
-`install.sh` is a thin orchestrator: parse flags, then call functions sourced from `lib/`. Each lib file owns one concern — `packages.sh` (manifest reading + pacman/pipx/luarocks), `arch.sh` (paru/AUR), `rust.sh`, `fonts.sh`, `stow.sh` (stowing, `NO_FOLD_PACKAGES`, tmuxifier/neovim/root-symlink bootstrap), `repos.sh` (external repos in `repos/`), `services.sh` (greetd, keyd, Steam, Nvidia, voxtype, the calendar sync timer and its `calendar-sync setup` offer when the optional `calendar` package is stowed, dev runtimes), `migrate.sh` (one-time layout migrations), `distro.sh`, `output.sh` (`info`/`warn`/`success`/`die`).
+`install.sh` is a thin orchestrator: parse flags, then call functions sourced from `lib/`. `lib/common/` holds the helpers `uninstall.sh` and the justfile share: `packages.sh` (manifest reading + pacman/pipx/luarocks), `distro.sh`, `output.sh` (`info`/`warn`/`success`/`die`) and `greeter-files.sh` (the Quickshell files the greeter stages). `lib/install/` holds the install steps, each file one concern — `arch.sh` (paru/AUR), `rust.sh`, `fonts.sh`, `stow.sh` (stowing, `NO_FOLD_PACKAGES`, tmuxifier/neovim/root-symlink bootstrap), `repos.sh` (external repos in `repos/`), `services.sh` (greetd, keyd, Steam, Nvidia, voxtype, the calendar sync timer and its `calendar-sync setup` offer when the optional `calendar` package is stowed, dev runtimes), `migrate.sh` (one-time layout migrations), `tailnet-ssh.sh`, `greeter.sh`, `greeter-keyring.sh`, `firefox-policy.sh`; their tests are in `lib/install/tests/`.
 
 New install behavior belongs in the matching lib function, not inline in `install.sh`.
 
@@ -98,7 +98,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 
 Test voxcmd actions through `home/voxcmd/tests/sandbox.sh`, never against the live desktop; add a phrase to `home/voxcmd/tests/phrases.tsv` for every new or fixed phrasing. When the owner should try a voxcmd branch by voice before merging, put it live with the `owner-test-bar` skill (`up <name> <branch>`, then `restore`), which swaps voxcmd's links to the branch and back; the installed voxcmd otherwise runs from the main checkout.
 
-Firefox tabs are listed and switched by the companion extension in `extras/voxcmd-firefox/` when it is loaded: a native-messaging host (`home/voxcmd/.local/share/voxcmd/firefox-host`, stdlib Python) bridges it to `$XDG_RUNTIME_DIR/voxcmd/firefox.sock`, which `firefox-tab` asks first, falling back to the session store and the address bar. One-time setup: `just firefox-host` (also run by the installer) registers the host, whose manifest needs an absolute path and so is generated, not stowed; `just firefox-extension` (also run by the installer, via `lib/firefox-policy.sh`) installs the signed `extras/voxcmd-firefox.xpi` through a Firefox policy; sign with `just sign-firefox-extension` (its README covers updates and removal). Tests: `lib/tests/firefox-policy.sh` (the `firefox-policy` check step; overridable paths, no sudo), `home/voxcmd/tests/run-firefox-extension.sh` (the `voxcmd-firefox` check step) and run.sh's "firefox live" section.
+Firefox tabs are listed and switched by the companion extension in `extras/voxcmd-firefox/` when it is loaded: a native-messaging host (`home/voxcmd/.local/share/voxcmd/firefox-host`, stdlib Python) bridges it to `$XDG_RUNTIME_DIR/voxcmd/firefox.sock`, which `firefox-tab` asks first, falling back to the session store and the address bar. One-time setup: `just firefox-host` (also run by the installer) registers the host, whose manifest needs an absolute path and so is generated, not stowed; `just firefox-extension` (also run by the installer, via `lib/install/firefox-policy.sh`) installs the signed `extras/voxcmd-firefox.xpi` through a Firefox policy; sign with `just sign-firefox-extension` (its README covers updates and removal). Tests: `lib/install/tests/firefox-policy.sh` (the `firefox-policy` check step; overridable paths, no sudo), `home/voxcmd/tests/run-firefox-extension.sh` (the `voxcmd-firefox` check step) and run.sh's "firefox live" section.
 
 ## Betterbird / tbkeys
 
@@ -112,7 +112,7 @@ Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as t
 
 ## External repos
 
-This repo has no submodules. `lib/repos.sh` sets up every repo in `repos.ini` (`owner/name` entries) plus the Neovim config under the gitignored `repos/` directory. By default each is cloned there over HTTPS. `$GITHUB_DIR` (default `~/Development`) and `$GITHUB_ORG` (default `uhs-robert`) can be overridden by the environment or an ignored `install.local` in the repo root (environment wins); `lib/distro.sh` reads it. With `./install.sh --dev`, or when `$GITHUB_DIR/<section>/<name>` already exists, the checkout lives under `$GITHUB_DIR` and `repos/<name>` is a symlink to it, so there is only ever one copy. `just update-repos` pulls the non-linked clones.
+This repo has no submodules. `lib/install/repos.sh` sets up every repo in `repos.ini` (`owner/name` entries) plus the Neovim config under the gitignored `repos/` directory. By default each is cloned there over HTTPS. `$GITHUB_DIR` (default `~/Development`) and `$GITHUB_ORG` (default `uhs-robert`) can be overridden by the environment or an ignored `install.local` in the repo root (environment wins); `lib/common/distro.sh` reads it. With `./install.sh --dev`, or when `$GITHUB_DIR/<section>/<name>` already exists, the checkout lives under `$GITHUB_DIR` and `repos/<name>` is a symlink to it, so there is only ever one copy. `just update-repos` pulls the non-linked clones.
 
 `lib/check/steps/symlinks.sh` fails on a tracked symlink that dangles or points outside the repo; links into a `repos/` clone that is not set up yet are skipped.
 

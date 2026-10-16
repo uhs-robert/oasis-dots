@@ -1,6 +1,6 @@
 #!/bin/bash
 # Tests which steps `lib/check.sh --changed` picks for a change, through `check.sh --plan`, so no linter runs.
-# Each case edits a scratch clone of this checkout (with the working tree's lib/check.sh and lib/check/ on top) and reads the plan.
+# Each case edits a scratch clone of this checkout (with the working tree's lib/check.sh, lib/check/, lib/common/ and lib/install/ on top) and reads the plan.
 set -u
 # A hook or an outer check can leave these pointing at another repository, or skipping steps (the commit hook skips the
 # voxcmd ones).
@@ -17,6 +17,9 @@ git config user.email scope-test@example.invalid
 cp "$repo_dir"/lib/check.sh lib/
 mkdir -p lib/check
 cp -R "$repo_dir"/lib/check/. lib/check/
+mkdir -p lib/common lib/install
+cp -R "$repo_dir"/lib/common/. lib/common/
+cp -R "$repo_dir"/lib/install/. lib/install/
 git add -A
 git commit -q --allow-empty -m 'scratch base' || exit 1
 
@@ -223,7 +226,7 @@ case_firefox_extension() {
 
 case_firefox_policy() {
   start_case 'Firefox policy installer'
-  echo '# x' >>lib/firefox-policy.sh
+  echo '# x' >>lib/install/firefox-policy.sh
   plan
   expect_ran firefox-policy shellcheck
   expect_skipped qmllint luacheck voxcmd-click check-scope
@@ -231,7 +234,7 @@ case_firefox_policy() {
 
 case_greeter_keyring() {
   start_case 'greetd keyring unlock installer'
-  echo '# x' >>lib/greeter-keyring.sh
+  echo '# x' >>lib/install/greeter-keyring.sh
   plan
   expect_ran greeter-keyring shellcheck
   expect_skipped firefox-policy qmllint luacheck check-scope

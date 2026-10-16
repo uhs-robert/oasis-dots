@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Tests install_firefox_extension_policy against a scratch HOME and scratch paths, with no sudo and no real Firefox.
 set -u
-repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 scratch=$(mktemp -d) || exit 1
 trap 'rm -rf "$scratch"' EXIT
 
 DOTFILES_DIR=$scratch/dotfiles
 export HOME=$scratch/home
-source "$repo_dir/lib/output.sh"
-source "$repo_dir/lib/firefox-policy.sh"
+source "$repo_dir/lib/common/output.sh"
+source "$repo_dir/lib/install/firefox-policy.sh"
 
 mkdir -p "$DOTFILES_DIR/extras" "$HOME/.local/share/voxcmd" "$scratch/bin"
 printf '#!/bin/sh\n' >"$scratch/bin/firefox"

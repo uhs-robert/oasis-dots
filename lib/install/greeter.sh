@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Stages and installs the Quickshell greeter (/etc/greetd/quickshell) with the lock skins, theme, fonts and the user's lock style.
 
-# shellcheck source=lib/greeter-files.sh
-source "$(dirname "${BASH_SOURCE[0]}")/greeter-files.sh"
+# shellcheck source=lib/common/greeter-files.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../common/greeter-files.sh"
 
 GREETER_DEST=/etc/greetd/quickshell
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Tests enable_greetd_keyring_unlock against scratch PAM files, with no sudo and no real greetd.
 set -u
-repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 scratch=$(mktemp -d) || exit 1
 trap 'rm -rf "$scratch"' EXIT
 
-source "$repo_dir/lib/output.sh"
-source "$repo_dir/lib/greeter-keyring.sh"
+source "$repo_dir/lib/common/output.sh"
+source "$repo_dir/lib/install/greeter-keyring.sh"
 
 export GREETD_KEYRING_SUDO=''
 export GREETD_PAM_FILE=$scratch/pam.d/greetd

@@ -329,7 +329,7 @@ just greeter-sync --install  # stage and install it
 just greeter-preview         # try it in a window with a fake greetd
 ```
 
-The Quickshell files it stages are listed once, in `lib/greeter-files.sh` (edit that list when one moves). `just greeter-sync --from DIR` stages the skins, theme files and fonts from another Quickshell config dir (for example a worktree's `home/quickshell/.config/quickshell`) instead of the repo's, and takes `DIR/theme/theme.json` over your saved theme when it has one. It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, which the bar keeps current as your theme and choices change (Settings > Login screen > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
+The Quickshell files it stages are listed once, in `lib/common/greeter-files.sh` (edit that list when one moves). `just greeter-sync --from DIR` stages the skins, theme files and fonts from another Quickshell config dir (for example a worktree's `home/quickshell/.config/quickshell`) instead of the repo's, and takes `DIR/theme/theme.json` over your saved theme when it has one. It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, which the bar keeps current as your theme and choices change (Settings > Login screen > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
 
 ## Extending
 
@@ -343,7 +343,7 @@ Folder imports are root-anchored, `import qs.<path>` (`import qs.theme`, `import
 
 **A picker provider.** Subclass `picker/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `lib/actions/menu.lua`, so the bind still works without the bar.
 
-**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). `services/LockSkins.qml` is the only registry: it lists the folder, and the lock, the greeter staging, Settings and the thumbnails all resolve skins through it. The skin shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock/skins/index.json` with `lock_only` and a `label`; every skin has an entry there (fonts, `audio`, `own_music`). The greeter stages only the folders listed in `lib/greeter-files.sh`, so a skin imports nothing from any other (no `import qs.components`, `import qs.services`; `lib/check/steps/lock-skins.sh` fails on it); pieces a bar style shares with its skin (the GoldenEye watch colors, segment arcs and panel) live in the skin's own folder and the style imports them from there.
+**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). `services/LockSkins.qml` is the only registry: it lists the folder, and the lock, the greeter staging, Settings and the thumbnails all resolve skins through it. The skin shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock/skins/index.json` with `lock_only` and a `label`; every skin has an entry there (fonts, `audio`, `own_music`). The greeter stages only the folders listed in `lib/common/greeter-files.sh`, so a skin imports nothing from any other (no `import qs.components`, `import qs.services`; `lib/check/steps/lock-skins.sh` fails on it); pieces a bar style shares with its skin (the GoldenEye watch colors, segment arcs and panel) live in the skin's own folder and the style imports them from there.
 
 The skin contract:
 
@@ -378,7 +378,7 @@ Everything below is optional. A missing tool only disables the feature next to i
 | `notify-send` | Error notices from the screenshot, usage and bar-layout checks |
 | `ffmpeg` | The audio and frame import scripts in `scripts/` |
 
-The Nerd Font set in `theme/theme.json` draws every icon. `install.sh` installs Maple Mono NF (`lib/fonts.sh`) and the JetBrains and Symbols Nerd Fonts (`arch.ini`), and the shell logs a warning at startup when it is missing.
+The Nerd Font set in `theme/theme.json` draws every icon. `install.sh` installs Maple Mono NF (`lib/install/fonts.sh`) and the JetBrains and Symbols Nerd Fonts (`arch.ini`), and the shell logs a warning at startup when it is missing.
 
 ## Development
 
