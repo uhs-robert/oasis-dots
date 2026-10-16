@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/picker/Picker.qml
 import QtQuick
 import Quickshell
 import Quickshell.Widgets

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/SaveClock.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

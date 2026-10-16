@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/NotificationsIpc.qml
 import Quickshell.Io
 import Quickshell.Services.Notifications
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/WindowThumbnail.qml
 import QtQuick
 import QtQuick.Effects
 import Quickshell

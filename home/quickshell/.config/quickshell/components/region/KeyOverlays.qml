@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/region/KeyOverlays.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../theme"

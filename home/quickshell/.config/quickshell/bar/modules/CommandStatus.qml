@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/modules/CommandStatus.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../theme"

@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/lib/utils.lua
-
 --- @class Utils
 local Utils = {}
 

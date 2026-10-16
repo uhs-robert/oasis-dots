@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/extensions/auto_launcher/provenance.lua
 -- Remembers which AppEntry opened each window, so capture can save the exact command instead of guessing from /proc.
 -- Lives in $XDG_RUNTIME_DIR/hypr-launched.json as { "<window address>": <AppEntry as JSON> }: it outlives
 -- `hyprctl reload` and is cleared at logout, the same lifetime as the addresses it keys.

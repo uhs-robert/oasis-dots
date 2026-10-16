@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/SessionJson.js
 .pragma library
 
 // Pure helpers for the saved sessions document: { version, sessions: { <name>: { windows: [AppEntry] } }, ...unknown }.

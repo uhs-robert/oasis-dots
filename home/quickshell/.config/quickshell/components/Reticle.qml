@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Reticle.qml
 import QtQuick
 import QtQuick.Shapes
 

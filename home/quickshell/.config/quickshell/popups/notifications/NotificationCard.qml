@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/notifications/NotificationCard.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/PowerConfirm.qml
 import QtQuick
 import QtQuick.Layouts
 import "../theme"

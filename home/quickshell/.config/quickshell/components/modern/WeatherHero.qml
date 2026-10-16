@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/modern/WeatherHero.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

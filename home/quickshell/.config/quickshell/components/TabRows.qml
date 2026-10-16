@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/TabRows.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts

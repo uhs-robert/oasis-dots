@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/WttrArt.js
 .pragma library
 
 // wttr.in's condition drawings; a mask line colors its line per character, else the art's base key does.

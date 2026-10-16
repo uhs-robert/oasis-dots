@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/gameboy/PokeBall.qml
 import QtQuick
 import "../../theme"
 import ".."

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/PixelSprite.qml
 import QtQuick
 import "../theme"
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/PowerSettings.qml
 pragma Singleton
 import QtQuick
 import Quickshell

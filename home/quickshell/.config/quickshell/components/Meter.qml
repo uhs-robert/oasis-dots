@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Meter.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects

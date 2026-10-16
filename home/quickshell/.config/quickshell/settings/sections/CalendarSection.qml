@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/CalendarSection.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io

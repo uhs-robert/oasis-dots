@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/NotificationToastCard.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

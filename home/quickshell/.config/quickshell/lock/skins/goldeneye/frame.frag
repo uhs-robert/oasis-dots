@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/goldeneye/frame.frag
 // Rebuild: /usr/lib/qt6/bin/qsb --glsl "100es,120,150" --hlsl 50 --msl 12 -o frame.frag.qsb frame.frag
 #version 440
 layout(location = 0) in vec2 qt_TexCoord0;

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/SaveBlock.qml
 import QtQuick
 import "../../theme"
 import "../../services"

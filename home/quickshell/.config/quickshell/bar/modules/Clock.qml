@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/modules/Clock.qml
 import QtQuick
 import Quickshell
 import "../../theme"

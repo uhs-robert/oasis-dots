@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/overview/OverviewBase.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell

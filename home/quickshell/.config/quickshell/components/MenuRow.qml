@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/MenuRow.qml
 import QtQuick
 import "../theme"
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/TickGauge.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../theme"

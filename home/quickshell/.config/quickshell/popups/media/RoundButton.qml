@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/media/RoundButton.qml
 import QtQuick
 import "../../theme"
 import "../../services"

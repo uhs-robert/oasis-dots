@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/WatchDayColumn.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts

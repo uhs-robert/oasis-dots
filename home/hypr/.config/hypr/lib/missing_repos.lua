@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/lib/missing_repos.lua
-
 --- Collects missing repo-backed parts and posts one notification naming them.
 --- @class MissingRepos
 local MissingRepos = {}

@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/extensions/auto_launcher/launcher.lua
 local Config = require("config") ---@class Config
 local Monitors = require("config.monitors") ---@class Monitors
 local Sessions = require("extensions.auto_launcher.sessions") ---@class Sessions

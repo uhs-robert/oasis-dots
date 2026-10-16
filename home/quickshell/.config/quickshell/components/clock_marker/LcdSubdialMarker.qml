@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/clock_marker/LcdSubdialMarker.qml
 import QtQuick
 import "../../theme"
 import "../../theme/Watch.js" as W

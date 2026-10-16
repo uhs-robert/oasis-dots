@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/Mode7Floor.qml
 import QtQuick
 import "../../theme"
 

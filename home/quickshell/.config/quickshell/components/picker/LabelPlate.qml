@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/picker/LabelPlate.qml
 import QtQuick
 import "../../theme"
 

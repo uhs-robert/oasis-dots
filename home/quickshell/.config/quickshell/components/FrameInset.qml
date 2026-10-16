@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/FrameInset.qml
 import QtQuick
 import "../theme"
 

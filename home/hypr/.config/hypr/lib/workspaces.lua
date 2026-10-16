@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/lib/workspaces.lua
-
 local Config = require("config") ---@class Config
 local ORDER = Config.monitors
 

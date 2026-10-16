@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/StaticBurst.qml
 import QtQuick
 import "../../services"
 import "../../theme"

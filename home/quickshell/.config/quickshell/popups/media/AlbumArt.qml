@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/media/AlbumArt.qml
 import QtQuick
 import QtQuick.Effects
 import "../../theme"

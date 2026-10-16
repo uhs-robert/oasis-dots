@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/ui/Menu.js
 .pragma library
 
 // Menu state for the skins with game menus, kept in ctx.scene as "<prefix>:<item>:<note>"; skins keep their own keys and cues.

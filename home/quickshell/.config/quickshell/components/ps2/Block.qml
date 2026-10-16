@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps2/Block.qml
 import QtQuick
 import "../../theme"
 

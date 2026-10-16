@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps2/SaveCube.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/snes/SnesSoundTest.qml
 import QtQuick
 import "../../theme"
 

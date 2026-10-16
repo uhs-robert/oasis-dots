@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/screensavers/MatrixRain.qml
 import QtQuick
 
 // Falling glyph columns: a bright head over a fading trail, each column at its own speed.

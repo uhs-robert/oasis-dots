@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/StatusWindow.qml
 import QtQuick
 import "../../components"
 import "../../theme"

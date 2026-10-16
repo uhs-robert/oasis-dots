@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/DqWindow.qml
 import QtQuick
 import "../../theme"
 

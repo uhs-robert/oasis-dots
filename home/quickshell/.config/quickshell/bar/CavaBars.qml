@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/CavaBars.qml
 import QtQuick
 import QtQuick.Shapes
 import "../theme"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/WeatherIcon.qml
 import QtQuick
 import QtQuick.Effects
 import Quickshell

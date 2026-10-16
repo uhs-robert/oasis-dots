@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/extensions/steam/init.lua
 -- Regenerates a prime-run-wrapped Steam desktop entry on hybrid GPU machines so
 -- launching Steam from rofi drun runs it on the dGPU, same as the other launch points.
 

@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/extensions/wallpaper/lib/solar.lua
 -- Coordinates + sunrise/sunset + period boundary calculation
 
 --- @class Solar

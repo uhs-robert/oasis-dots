@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/WorkspaceIcon.qml
 import QtQuick
 import Quickshell.Widgets
 import "../services"

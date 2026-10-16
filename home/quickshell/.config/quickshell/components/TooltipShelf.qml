@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/TooltipShelf.qml
 import QtQuick
 import "../services"
 

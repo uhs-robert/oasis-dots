@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/neovim/BorderTitle.qml
 import QtQuick
 import "../../theme"
 

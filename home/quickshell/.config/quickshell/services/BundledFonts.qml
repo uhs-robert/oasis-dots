@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/BundledFonts.qml
 import QtQuick
 import Qt.labs.folderlistmodel
 import "../theme"

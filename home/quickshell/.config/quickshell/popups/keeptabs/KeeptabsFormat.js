@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/KeeptabsFormat.js
 .pragma library
 
 // A library cannot see Style, so callers pass the colors in: error, ok, warning, text_primary and text_dim.

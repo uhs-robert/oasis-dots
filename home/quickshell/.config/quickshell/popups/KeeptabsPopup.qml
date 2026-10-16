@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/KeeptabsPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

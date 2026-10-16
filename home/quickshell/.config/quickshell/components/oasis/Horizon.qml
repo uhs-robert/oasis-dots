@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/oasis/Horizon.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

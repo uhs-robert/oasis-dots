@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/nes/QBlock.qml
 import QtQuick
 import "../../theme"
 

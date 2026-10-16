@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/TacticsTile.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

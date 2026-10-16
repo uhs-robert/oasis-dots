@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/Ocarina.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects

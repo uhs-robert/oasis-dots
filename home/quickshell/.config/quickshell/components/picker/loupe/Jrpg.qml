@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/picker/loupe/Jrpg.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../../theme"

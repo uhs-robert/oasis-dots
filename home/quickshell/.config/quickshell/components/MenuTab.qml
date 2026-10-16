@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/MenuTab.qml
 import QtQuick
 import QtQuick.Layouts
 import "../theme"

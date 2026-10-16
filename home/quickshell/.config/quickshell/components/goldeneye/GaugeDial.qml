@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/GaugeDial.qml
 import QtQuick
 import "../../theme"
 import "../../theme/Watch.js" as W

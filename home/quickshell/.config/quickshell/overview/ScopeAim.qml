@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/overview/ScopeAim.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../components"

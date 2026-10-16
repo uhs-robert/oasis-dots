@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/VoiceSection.qml
 import QtQuick
 import Quickshell.Io
 import "../../services"

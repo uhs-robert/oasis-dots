@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/picker/PickerProvider.qml
 import QtQuick
 import Quickshell
 import "../services"

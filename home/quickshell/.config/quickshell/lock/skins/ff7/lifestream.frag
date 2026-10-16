@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/ff7/lifestream.frag
 // Rebuild: /usr/lib/qt6/bin/qsb --glsl "100es,120,150" --hlsl 50 --msl 12 -o lifestream.frag.qsb lifestream.frag
 #version 440
 layout(location = 0) in vec2 qt_TexCoord0;

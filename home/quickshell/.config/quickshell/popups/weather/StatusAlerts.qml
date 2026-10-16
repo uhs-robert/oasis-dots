@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/StatusAlerts.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts

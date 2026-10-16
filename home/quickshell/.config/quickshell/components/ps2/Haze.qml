@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps2/Haze.qml
 import QtQuick
 import "../../theme"
 import "../../popups/weather" as Weather

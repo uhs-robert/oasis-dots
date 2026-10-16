@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/ClockPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

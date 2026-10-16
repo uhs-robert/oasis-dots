@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/goldeneye/SegmentArc.qml
 import QtQuick
 
 // Bezel segments on the left half of an ellipse (right half when mirrored), the first at the top; `lit` of them at full colour, counted from the top or the bottom.

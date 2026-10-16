@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/Mode7Hourly.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components"

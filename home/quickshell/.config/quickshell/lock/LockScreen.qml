@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/LockScreen.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects

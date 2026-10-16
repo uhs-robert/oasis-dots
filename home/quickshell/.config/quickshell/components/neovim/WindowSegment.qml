@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/neovim/WindowSegment.qml
 import QtQuick
 import QtQuick.Shapes
 import Quickshell

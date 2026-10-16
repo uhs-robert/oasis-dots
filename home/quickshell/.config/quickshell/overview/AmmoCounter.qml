@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/overview/AmmoCounter.qml
 import QtQuick
 import "../theme"
 import "../theme/Watch.js" as W

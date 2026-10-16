@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/updates/NesInventory.qml
 import QtQuick
 import "../../components"
 import "../../services"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/start/NesMenu.qml
 import QtQuick
 import "../../components"
 import "../../components/nes" as Nes

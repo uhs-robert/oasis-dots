@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/SettingsPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import "../components"

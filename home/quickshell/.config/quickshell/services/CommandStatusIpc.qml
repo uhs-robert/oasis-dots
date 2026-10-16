@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/CommandStatusIpc.qml
 import Quickshell.Io
 
 IpcHandler {

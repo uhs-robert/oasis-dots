@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/ScanStatic.qml
 import QtQuick
 import "../../services"
 import "../../theme"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/FrameShade.qml
 import QtQuick
 import QtQuick.Shapes
 import "../theme"

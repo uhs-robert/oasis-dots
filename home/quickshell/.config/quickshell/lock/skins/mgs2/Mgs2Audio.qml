@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/mgs2/Mgs2Audio.qml
 import QtQuick
 import QtMultimedia
 import Qt.labs.folderlistmodel

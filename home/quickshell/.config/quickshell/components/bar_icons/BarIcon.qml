@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/bar_icons/BarIcon.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

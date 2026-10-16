@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/BlockGauge.qml
 import QtQuick
 import "../../theme"
 

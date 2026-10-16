@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/goldeneye/WatchHands.qml
 import QtQuick
 import QtQuick.Shapes
 

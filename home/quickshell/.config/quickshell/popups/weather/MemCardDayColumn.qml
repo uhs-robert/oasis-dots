@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/MemCardDayColumn.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

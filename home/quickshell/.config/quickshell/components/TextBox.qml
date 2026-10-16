@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/TextBox.qml
 import QtQuick
 import "../theme"
 

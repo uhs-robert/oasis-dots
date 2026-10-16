@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/modules/Bluetooth.qml
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth as QsBt

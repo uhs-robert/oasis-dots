@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/picker/ScanGlass.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

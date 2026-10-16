@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/modern/CapsuleSlider.qml
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Services.Pipewire

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/CodecPortrait.qml
 import QtQuick
 import Quickshell
 import "../../theme"

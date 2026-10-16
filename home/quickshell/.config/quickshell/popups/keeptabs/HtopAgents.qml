@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/HtopAgents.qml
 import QtQuick
 import "../../theme"
 import "../weather/WttrArt.js" as WttrArt

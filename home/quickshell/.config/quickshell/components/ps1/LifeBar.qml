@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/LifeBar.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

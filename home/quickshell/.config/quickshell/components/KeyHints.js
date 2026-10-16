@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/KeyHints.js
 .pragma library
 
 const key_glyphs = { Enter: String.fromCodePoint(0xF0311), Esc: String.fromCodePoint(0xF12B7), Tab: String.fromCodePoint(0xF0312), space: String.fromCodePoint(0xF1050), Backspace: String.fromCodePoint(0xF030D) };

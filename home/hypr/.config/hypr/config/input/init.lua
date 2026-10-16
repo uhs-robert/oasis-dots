@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/config/input/init.lua
 --- Keyboard, mouse and touchpad options from Config.input, with the Settings panel's choices in
 --- ~/.local/state/hypr/input.json winning over the machine profile.
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/CodecPanel.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

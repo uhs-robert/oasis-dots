@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/clock_marker/RingGaugeMarker.qml
 import QtQuick
 import "../../theme"
 

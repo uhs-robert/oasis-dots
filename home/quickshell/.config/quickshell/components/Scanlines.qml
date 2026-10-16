@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Scanlines.qml
 // Static 1px lines every `period` px, drawn by one shader instead of a Rectangle per line.
 import QtQuick
 

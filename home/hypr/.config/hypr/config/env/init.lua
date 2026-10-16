@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/config/env/init.lua
 --- Sets Wayland, Qt, cursor, and XDG environment variables. Conditionally applies NVIDIA-specific and PRIME offload vars.
 
 local Config = require("config") ---@class Config

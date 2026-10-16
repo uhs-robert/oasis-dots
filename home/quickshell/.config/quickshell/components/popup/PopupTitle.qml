@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/popup/PopupTitle.qml
 import QtQuick
 import "../../theme"
 import ".."

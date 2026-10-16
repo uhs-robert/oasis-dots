@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/ClockFace.qml
 import QtQuick
 import Quickshell
 import "../../theme"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/region/SelectionChrome.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../theme"

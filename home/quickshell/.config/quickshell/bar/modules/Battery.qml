@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/modules/Battery.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.UPower

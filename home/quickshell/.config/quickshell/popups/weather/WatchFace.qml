@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/WatchFace.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/PickerIpc.qml
 import Quickshell.Io
 
 IpcHandler {

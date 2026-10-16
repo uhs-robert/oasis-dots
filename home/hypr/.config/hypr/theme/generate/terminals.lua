@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/theme/generate/terminals.lua
-
 local HOME = os.getenv("HOME")
 local Config = require("config") ---@class Config
 local Utils = require("lib.utils") ---@class Utils

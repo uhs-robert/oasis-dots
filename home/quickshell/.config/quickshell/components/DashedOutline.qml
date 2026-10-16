@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/DashedOutline.qml
 import QtQuick
 
 Item {

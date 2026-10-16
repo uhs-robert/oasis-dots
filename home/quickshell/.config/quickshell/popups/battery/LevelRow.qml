@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/battery/LevelRow.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components"

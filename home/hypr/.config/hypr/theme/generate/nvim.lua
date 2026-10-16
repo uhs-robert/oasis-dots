@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/theme/generate/nvim.lua
-
 local Config = require("config") ---@class Config
 local Utils = require("lib.utils") ---@class Utils
 local StateDir = require("lib.state")

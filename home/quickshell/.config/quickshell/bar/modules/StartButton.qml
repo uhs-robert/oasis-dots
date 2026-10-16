@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/modules/StartButton.qml
 import QtQuick
 import Quickshell
 import "../../theme"

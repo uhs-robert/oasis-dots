@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Popup.qml
 import QtQuick
 import QtQuick.Effects
 import Quickshell

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/NotificationMarkup.js
 .pragma library
 
 // Turns a notification body into StyledText that can only show text. Any app, and anyone who can put text into one

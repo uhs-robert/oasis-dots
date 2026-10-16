@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/modules/Voxtype.qml
 import QtQuick
 import QtQuick.Shapes
 import Quickshell

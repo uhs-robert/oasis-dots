@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/oasis/MoonRule.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

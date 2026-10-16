@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/ActivitiesUsage.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

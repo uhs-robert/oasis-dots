@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/media/CavaStrip.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

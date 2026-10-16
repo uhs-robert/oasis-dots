@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/modern/TileOsd.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

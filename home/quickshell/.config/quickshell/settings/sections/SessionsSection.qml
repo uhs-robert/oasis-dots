@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/SessionsSection.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

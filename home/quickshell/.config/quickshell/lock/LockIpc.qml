@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/LockIpc.qml
 import Quickshell
 import Quickshell.Io
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/oasis/OasisCard.qml
 import QtQuick
 import "../../theme"
 import ".."

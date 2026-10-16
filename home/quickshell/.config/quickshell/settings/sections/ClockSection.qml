@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/ClockSection.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

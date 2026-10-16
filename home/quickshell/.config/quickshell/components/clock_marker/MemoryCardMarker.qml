@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/clock_marker/MemoryCardMarker.qml
 import QtQuick
 import "../../theme"
 import "../"

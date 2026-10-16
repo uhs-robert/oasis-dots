@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/neovim/NotifyHeader.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

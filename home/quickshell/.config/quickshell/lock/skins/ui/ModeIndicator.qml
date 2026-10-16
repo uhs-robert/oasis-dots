@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/ui/ModeIndicator.qml
 import QtQuick
 
 // "-- INSERT --" bottom-left while typing a password; a skin may set mode_indicator ("shared", "own", "none"), mode_color and mode_font.

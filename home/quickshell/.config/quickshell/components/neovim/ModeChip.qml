@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/neovim/ModeChip.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

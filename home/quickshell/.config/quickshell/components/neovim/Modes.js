@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/neovim/Modes.js
 .pragma library
 
 // The Neovim mode family of a Hyprland submap name; "" is the global (reset) submap.

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/PopupPanel.qml
 import QtQuick
 import "../../lock/skins/goldeneye" as Watch
 

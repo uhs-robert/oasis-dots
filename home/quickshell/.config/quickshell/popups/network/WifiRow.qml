@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/network/WifiRow.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Networking

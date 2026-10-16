@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/SegmentStrip.qml
 import QtQuick
 import "../../theme/Watch.js" as W
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/SizeText.qml
 import QtQuick
 import "../../theme"
 import "../../theme/Watch.js" as W

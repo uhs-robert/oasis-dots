@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/snes/SnesClockStatus.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/picker/hyprvim/OutputPane.qml
 import QtQuick
 import "../../services"
 

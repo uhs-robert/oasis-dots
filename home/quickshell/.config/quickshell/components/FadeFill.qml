@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/FadeFill.qml
 import QtQuick
 
 // A fill that fades out to the right.

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/WsPanel.qml
 import QtQuick
 import "../../theme"
 

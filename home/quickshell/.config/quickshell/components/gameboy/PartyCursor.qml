@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/gameboy/PartyCursor.qml
 import QtQuick
 import "../../theme"
 import ".."

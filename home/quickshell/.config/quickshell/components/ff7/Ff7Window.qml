@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ff7/Ff7Window.qml
 import QtQuick
 import "../../theme"
 import ".."

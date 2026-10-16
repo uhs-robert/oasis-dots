@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/WttrSunMoon.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

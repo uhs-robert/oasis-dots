@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/DisplaysSection.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components"

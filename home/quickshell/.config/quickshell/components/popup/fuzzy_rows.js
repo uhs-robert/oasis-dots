@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/popup/fuzzy_rows.js
 .pragma library
 .import "../../picker/Fuzzy.js" as Fuzzy
 

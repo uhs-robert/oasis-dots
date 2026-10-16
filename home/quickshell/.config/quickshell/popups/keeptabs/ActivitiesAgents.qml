@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/ActivitiesAgents.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components/modern" as Modern

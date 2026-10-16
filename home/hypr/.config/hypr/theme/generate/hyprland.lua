@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/theme/generate/hyprland.lua
-
 --- Applies theme colors to Hyprland borders and shadow via hl.config().
 --- @param c table Palette color table from theme.colors.*
 return function(c)

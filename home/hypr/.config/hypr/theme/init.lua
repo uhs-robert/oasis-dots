@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/theme/init.lua
-
 local Config = require("config") ---@class Config
 local Generate = require("theme.generate") ---@class Generate
 local MissingRepos = require("lib.missing_repos") ---@class MissingRepos

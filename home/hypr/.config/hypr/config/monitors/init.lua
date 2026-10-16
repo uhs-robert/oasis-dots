@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/config/monitors/init.lua
-
 local Config = require("config") ---@class Config
 local Json = require("lib.json") ---@class Json
 local Workspaces = require("lib.workspaces") ---@class Workspaces

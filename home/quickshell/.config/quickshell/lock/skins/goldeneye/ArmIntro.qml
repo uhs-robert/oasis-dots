@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/goldeneye/ArmIntro.qml
 import QtQuick
 import QtQuick.Shapes
 import QtQuick3D

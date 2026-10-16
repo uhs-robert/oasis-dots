@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/ScopeDayGauge.qml
 import QtQuick
 import "../../theme"
 

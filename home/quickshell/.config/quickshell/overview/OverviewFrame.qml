@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/overview/OverviewFrame.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes

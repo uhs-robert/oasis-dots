@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/WttrTable.qml
 import QtQuick
 import "../../theme"
 import "../../services"

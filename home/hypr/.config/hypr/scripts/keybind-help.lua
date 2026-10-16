@@ -1,6 +1,4 @@
 #!/usr/bin/env lua
--- home/hypr/.config/hypr/scripts/keybind-help.lua
---
 -- Shows keybinds for the active Hyprland submap in rofi and dispatches the selection.
 -- Binds without a description are excluded.
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/nes/SlimePill.qml
 import QtQuick
 import "../../theme"
 import "../../services"

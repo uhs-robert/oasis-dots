@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/HevHeader.qml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/modern/DayColumn.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

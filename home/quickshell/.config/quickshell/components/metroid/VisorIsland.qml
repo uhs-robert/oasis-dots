@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/metroid/VisorIsland.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

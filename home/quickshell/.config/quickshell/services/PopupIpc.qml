@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/PopupIpc.qml
 import Quickshell.Io
 
 IpcHandler {

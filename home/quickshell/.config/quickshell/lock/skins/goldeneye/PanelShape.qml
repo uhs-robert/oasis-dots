@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/goldeneye/PanelShape.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../../theme/Watch.js" as Watch

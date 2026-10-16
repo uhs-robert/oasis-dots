@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/AlertMark.qml
 import QtQuick
 import "../../theme"
 

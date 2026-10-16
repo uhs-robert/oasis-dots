@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/PixelArt.js
 .pragma library
 
 // Weather drawn as four-shade pixel grids: rows of "0"-"3" (darkest to lightest) and "." for clear.

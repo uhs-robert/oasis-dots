@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/picker/HyprvimPrompt.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell

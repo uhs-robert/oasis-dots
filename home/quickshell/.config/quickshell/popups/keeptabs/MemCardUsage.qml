@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/MemCardUsage.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components/ps1" as Ps1

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/TitleIndex.qml
 import QtQuick
 import "../theme"
 
