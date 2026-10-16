@@ -4,7 +4,7 @@
 name="Apps"
 confirm=0
 # The window that opens, takes focus or changes size is the feedback; moving and closing keep their toast.
-silent_actions=(open open_new focus resize grow shrink resize_spoken_size)
+silent_actions=(open open_new focus swap resize grow shrink resize_spoken_size)
 # App names and window classes are short, so a fuzzy hit on scattered letters would run the wrong thing.
 target_match=words
 # "close the firefox window" is "close firefox"; a target of only these words ("close window", "open application")
@@ -28,6 +28,7 @@ move_verbs="move|send|put"
 verbs=(
   "open_new  {open} (a )?new {target}"
   "open      {open} {target}"
+  "swap      (swap( places)?|switch places) {target}"
   "focus     {focus} {target}"
   "move      (${move_verbs}) {target}"
   "close     {close} {target}"
@@ -44,6 +45,7 @@ examples=(
   "move <window> to workspace <number>"
   "move <window> to the third workspace"
   "move <window> to special workspace <name>"
+  "swap this window with <window>"
   "close <window>"
   "resize the window to <width> by <height>"
   "make it <number> pixels tall"
@@ -61,6 +63,7 @@ declare -A actions=(
   [open]='open_app "$id"'
   [focus]='focus_window "$id"'
   [move]='move_window "$id"'
+  [swap]='swap_window "$id"'
   [close]='close_window "$id"'
   [resize]='resize_option "$id"'
   [grow]='resize_option "$id"'
@@ -108,6 +111,7 @@ candidates() {
   open | open_new) app_candidates ;;
   focus | close) window_candidates "$action" ;;
   move) move_candidates "$target" ;;
+  swap) swap_candidates "$target" ;;
   esac
 }
 
@@ -138,6 +142,7 @@ action_verbs() {
   case "$1" in
   open_new) intent_forms open | sed 's/$/ new/' ;;
   move) tr '|' '\n' <<<"$move_verbs" ;;
+  swap) echo swap ;;
   open | focus | close) intent_forms "$1" ;;
   esac
 }
@@ -386,6 +391,27 @@ special_workspace_name() {
   echo "${existing:-${spoken// /-}}"
 }
 
+# "swap this window with firefox": the focused window is always one side, so only "with <window>" is offered, and
+# every window but the focused one. The words before "with" stay in match_text so word matching sees the same text
+# as the target. A pair of named windows ("swap firefox and slack") and the overview's "swap workspaces ..." have no
+# leading "with" and offer nothing.
+swap_candidates() {
+  local target="$1" prefix active_address
+  [[ "$target" =~ ^((this\ |the\ |that\ )?(window|it)\ )?with\ .+$ ]] || {
+    echo '[]'
+    return
+  }
+  prefix="${BASH_REMATCH[1]}with "
+  active_address=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+  windows | jq -c --arg active "$active_address" --arg prefix "$prefix" '
+    def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
+    map(select(.address != $active)
+      | "swap with \(.app): \(.title)" as $label
+      | {id: .address, label: $label, match_text: ($prefix + .app)},
+        (select(.title != "" and (.title | plain) != (.app | plain))
+          | {id: .address, label: $label, match_text: ($prefix + .title)}))'
+}
+
 # Prints the workspace the words name ("3", "three", "twenty five", "third"), or nothing for a number below 1.
 workspace_number() {
   local number
@@ -414,6 +440,34 @@ move_window() {
     return 1
   fi
   hypr_dispatch "hl.dsp.window.move({ window = 'address:$address', workspace = $lua_workspace, follow = false })"
+}
+
+# Hyprland does swap across workspaces and with a floating window, but then leaves focus on a window that is no
+# longer on the shown workspace and swaps floating geometry into tiled slots; refused instead.
+swap_window() {
+  local address="$1" active_address pair
+  window_address "$address" || return 1
+  active_address=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+  [ -n "$active_address" ] || {
+    echo "no active window"
+    return 1
+  }
+  pair=$(hyprctl clients -j 2>/dev/null | jq -r --arg a "$active_address" --arg b "$address" '
+    [.[] | select(.address == $a or .address == $b)] as $both
+    | if ($both | length) != 2 then "missing"
+      elif any($both[]; .floating) then "floating"
+      elif $both[0].workspace.id != $both[1].workspace.id then "workspace"
+      else "ok" end')
+  case "$pair" in
+  ok)
+    hypr_dispatch "hl.dsp.window.swap({ window = 'address:$active_address', target = 'address:$address' })"
+    return
+    ;;
+  floating) echo "cannot swap with a floating window" ;;
+  workspace) echo "cannot swap with a window on another workspace" ;;
+  *) echo "that window is gone" ;;
+  esac
+  return 1
 }
 
 close_window() {

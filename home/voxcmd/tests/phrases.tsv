@@ -406,3 +406,15 @@ go to monitor twenty first	Monitors/focus	no such monitor; the phrase is still o
 set a timer for 30 seconds	Timers/timer	the ordinal words never take "seconds" from a timer
 go to the system monitor	none	not a monitor word, so left to the apps
 move two and four to the left monitor	none	overview phrase, only with the overview open
+swap this window with firefox	Apps/swap
+swap it with slack	Apps/swap
+swap the window with slack	Apps/swap
+swap window with firefox	Apps/swap
+swap with slack	Apps/swap	no subject means the focused window
+switch places with slack	Apps/swap
+swap places with firefox	Apps/swap
+swap this window with general acme slack	Apps/swap	by title
+swap this window with kitty	none	the focused window is never offered
+swap workspaces two and five	none	overview phrase, only with the overview open
+swap workspace 1 with 2	none	overview phrase, only with the overview open
+swap this window with selected	picker	only a weak Keybinds hit for the Windows submap bind
