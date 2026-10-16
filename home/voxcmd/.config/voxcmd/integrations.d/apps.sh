@@ -43,6 +43,7 @@ examples=(
   "focus <window>"
   "move <window> to workspace <number>"
   "move <window> to the third workspace"
+  "move <window> to special workspace <name>"
   "close <window>"
   "resize the window to <width> by <height>"
   "make it <number> pixels tall"
@@ -345,25 +346,43 @@ window_candidates() {
 
 # For "move firefox to workspace 3" every window is offered as "<app> to workspace 3" (and by title), so word
 # matching compares the window part while the workspace rides along in the id as "<address> <workspace>". A target
-# without the workspace part offers nothing.
+# without the workspace part offers nothing. "to special workspace <name>" works the same, with the special workspace
+# that special_workspace_name() resolves the spoken name to.
 move_candidates() {
-  local target="$1" workspace_words workspace
-  [[ "$target" =~ ^(.+)(\ (to|onto|on)\ (the\ )?(workspace|desktop)\ ([a-z0-9]+(\ [a-z0-9]+)?))$ ]] || {
+  local target="$1" workspace_words workspace label_to
+  if [[ "$target" =~ ^(.+)(\ to\ (the\ )?special\ workspace\ ([a-z0-9]+(\ [a-z0-9]+)*))$ ]]; then
+    workspace_words="${BASH_REMATCH[2]}"
+    workspace="special:$(special_workspace_name "${BASH_REMATCH[4]}")"
+    label_to="to special workspace ${workspace#special:}"
+  elif [[ "$target" =~ ^(.+)(\ (to|onto|on)\ (the\ )?(workspace|desktop)\ ([a-z0-9]+(\ [a-z0-9]+)?))$ ]]; then
+    workspace_words="${BASH_REMATCH[2]}"
+    workspace=$(workspace_number "${BASH_REMATCH[6]}")
+    label_to="to workspace $workspace"
+  else
     echo '[]'
     return
-  }
-  workspace_words="${BASH_REMATCH[2]}"
-  workspace=$(workspace_number "${BASH_REMATCH[6]}")
+  fi
   if [ -z "$workspace" ]; then
     echo '[]'
     return
   fi
-  windows | jq -c --arg suffix "$workspace_words" --arg workspace "$workspace" '
+  windows | jq -c --arg suffix "$workspace_words" --arg workspace "$workspace" --arg label_to "$label_to" '
     def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
-    map("\(.app): \(.title) to workspace \($workspace)" as $label
+    map("\(.app): \(.title) \($label_to)" as $label
       | {id: "\(.address) \($workspace)", label: $label, match_text: (.app + $suffix)},
         (select(.title != "" and (.title | plain) != (.app | plain))
           | {id: "\(.address) \($workspace)", label: $label, match_text: (.title + $suffix)}))'
+}
+
+# Prints the name of the special workspace the spoken words mean, without its "special:" prefix. An existing special
+# workspace wins when its name, hyphens dropped and in any case, is the words with spaces dropped ("scratch pad" is
+# scratchpad or Scratchpad); otherwise the words are joined with hyphens, since a name with a space would split off in
+# move_window.
+special_workspace_name() {
+  local spoken="${1,,}" existing
+  existing=$(timeout 2 hyprctl workspaces -j 2>/dev/null | jq -r --arg squashed "${spoken// /}" '
+    first(.[] | .name | select(startswith("special:")) | ltrimstr("special:") | select(gsub("-"; "") | ascii_downcase == $squashed))')
+  echo "${existing:-${spoken// /-}}"
 }
 
 # Prints the workspace the words name ("3", "three", "twenty five", "third"), or nothing for a number below 1.
@@ -380,13 +399,17 @@ focus_window() {
 
 # The window stays put on the current workspace's side: moving a window out of the way should not drag focus along.
 move_window() {
-  local address="${1% *}" workspace="${1##* }"
+  local address="${1% *}" workspace="${1##* }" lua_workspace
   window_address "$address" || return 1
-  [[ "$workspace" =~ ^[0-9]+$ ]] || {
+  if [[ "$workspace" =~ ^special:[A-Za-z0-9_-]+$ ]]; then
+    lua_workspace="'$workspace'"
+  elif [[ "$workspace" =~ ^[0-9]+$ ]]; then
+    lua_workspace="$workspace"
+  else
     echo "not a workspace: $workspace"
     return 1
-  }
-  hypr_dispatch "hl.dsp.window.move({ window = 'address:$address', workspace = $workspace, follow = false })"
+  fi
+  hypr_dispatch "hl.dsp.window.move({ window = 'address:$address', workspace = $lua_workspace, follow = false })"
 }
 
 close_window() {
