@@ -32,6 +32,7 @@ voxcmd wake toggle                # switch the "Cortana" listener on or off (on,
 voxcmd list                       # integrations and their verbs
 voxcmd help                       # pick from the integrations' example phrases
 voxcmd errors 5                   # the last 5 voxcmd notifications the bar kept, newest first (default 10)
+voxcmd misses 5                   # the last 5 phrases that matched nothing (default 20), from the no-match log
 ```
 
 `listen` records with `voxtype record start --file=...`, so the transcript is written to a file instead of being typed. Dictation keeps working as before.
@@ -69,6 +70,7 @@ Settings go in `~/.config/voxcmd/autostop.conf` (`name = value`, `#` comments; i
 5. A verb with a target whose integration lists candidates for that action matches the target against them: fuzzy (`fzf --filter`, an exact label winning outright) or, for an integration with `target_match=words`, [word matching](#word-matching).
 6. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any. A [word matching](#word-matching) target with no words left after the filler and `match_ignore_words` are dropped names nothing, so it runs no such action and the phrase can fall through to the fallbacks.
 7. If nothing so far can run, the [LLM hook](#llm-hook) gets a turn, then the [fallback integrations](#fallback-integrations) go through steps 4 to 6.
+7b. If still nothing can run, and no force prefix or open surface took the phrase, the verbs whose words are all in the phrase in another order are offered as [near misses](#near-misses), each as a weak pick. A [correction retry](#how-a-phrase-is-routed) (step 9) is tried first and wins when it matches.
 8. One option runs (after a [confirm card](#confirm) if the integration sets `confirm=1` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification with a Voice Help button.
 
 9. A phrase that matched nothing, or only weak matches, is retried on the part after its last correction point, then earlier points: after "no", "no wait", "wait", "I mean", "sorry", "actually", "scratch that" or "let me rephrase", after leading filler ("um", "uh", "okay", "so", "hey"), and from the second occurrence of the first word. "Exit, exit overview" is "exit overview", "close two, no wait, close three" is "close three" and "um, okay so open firefox" is "open firefox". The retry is taken only when it is one option that is not a weak match; otherwise step 8 goes on with the phrase as spoken. A phrase that matches as spoken is never retried ("remind me to say sorry" is a reminder), and no other tail is tried, since a leftover "four" can be a command of its own. A [voice session](#voice-sessions) turn is retried the same way (its mode's integration only); [type mode](#type-mode) never is. `$raw_transcript` is the retried part.
@@ -257,6 +259,19 @@ An integration with `fallback=1` is tried only when the normal integrations, and
 - anything else is no match, so stray speech does nothing.
 
 Strong matches hide weak ones.
+
+### Near misses
+
+A verb pattern is a fixed sequence, so "kitchen blinds raise" misses `raise the (blinds|shades) {target}` though every word is there. When the normal tier, the LLM hook, the fallback integrations and the [correction retry](#how-a-phrase-is-routed) all leave nothing to run, voxcmd reads each verb's pattern as a set of word slots and offers the verbs whose slots the phrase fills, in any order:
+
+- A literal word is a slot. A group with alternatives, `(move|send|bring up)`, is one slot that any alternative fills (an alternative of several words needs all of them). `{number}` is a slot that a digit word fills ("forty" does not). Optional groups, `(...)?`, are dropped.
+- Filler words (`the a an this that my please to of on over`) are optional on both sides: a slot whose alternatives are all filler is dropped, filler words in an alternative with other words are dropped ("go to" needs "go"), and a leftover filler word in the phrase counts for nothing. A group like `(to|onto|on)` stays a slot, since "onto" is not filler.
+- Each slot needs a word of its own. Then, with `{target}`, at least one other non-filler word must be left, all in one run with no slot word between them, and the words left (from the first to the last, filler inside included) are the target; without a placeholder no non-filler word may be left, so stray speech stays a no match, as does a phrase missing a word.
+- A verb that cannot be read reliably is skipped, never guessed at: character classes, anchors, `.`, `*`, `+`, a `?` after a single character, a group glued to a word, `{target}` inside a group, a required group with nested alternatives, and a pattern with no slot of its own (`{target}` alone). A phrase of more than 16 words is not tried.
+
+Each near miss then goes through the normal matching of its integration (candidates, [word matching](#word-matching)) and every resulting option is forced weak; a target that names no candidate offers nothing, rather than the integration's `no_match_actions` report, so the picker always opens, and listens for the reply when the phrase was spoken. Nothing runs without a pick. At most ten options are offered, the ones with the fewest words left over first. Voice session turns and the steps of a [sequence](#sequences) skip the tier. `--dry-run` marks such an option `[near miss]`.
+
+A phrase that matches nothing even so goes to the [no-match log](#no-match-log).
 
 ### Timers
 
@@ -839,3 +854,7 @@ With no session, picker or recording open it does nothing and says nothing. `vox
 ## Debug log
 
 `VOXCMD_DEBUG=1`, or creating `$XDG_RUNTIME_DIR/voxcmd/debug.log`, makes voxcmd and `voxcmd-confirm` append a timestamped trace there: each listen and the voxtype state it found, the watcher's state changes, auto-stop's verdict and `voxcmd-autostop`'s own summary of what it heard (see [Auto-stop](#auto-stop)), the transcript and where it went (only its length for a private mode, [type mode](#type-mode)), a confirm's question, reply and answer, a cancelled reply recording, and whether the action ran. Delete the file to turn it off again.
+
+## No-match log
+
+A phrase that still matches nothing, after the [near misses](#near-misses), is appended to `${XDG_STATE_HOME:-~/.local/state}/voxcmd/no-match.log` as one line, the ISO time, a tab and the normalized phrase, so you can review what keeps missing. `voxcmd misses [N]` prints the last N (default 20) lines. The file keeps its last 1000 lines. Nothing is logged for a dry run, a transcript heard in a private mode ([type mode](#type-mode)), a voice session turn, or a phrase forced to an integration with `private_labels=1`. Delete the file to clear it.

@@ -24,6 +24,7 @@ Usage:
                               start or stop the "Cortana" listener, which holds the microphone while it runs
   voxcmd list                 list integrations and their verbs
   voxcmd help                 pick from the integrations' example phrases (Tab lists what one can run); one without placeholders runs
+  voxcmd misses [N]           print the last N (default 20) phrases that matched nothing, with their time
   voxcmd errors [N]           print the last N (default 10) voxcmd notifications the bar kept: its errors, as info is transient
 EOF
 }
@@ -239,14 +240,21 @@ intent_forms() {
   [ "${#forms[@]}" = 0 ] || printf '%s\n' "${forms[@]}"
 }
 
+# Sets expanded_pattern to the pattern with each {intent} replaced by a group of its spoken forms.
+expand_intents() {
+  local intent
+  expanded_pattern="$1"
+  for intent in "${!intents[@]}"; do
+    expanded_pattern="${expanded_pattern//"{$intent}"/"(${intents[$intent]})"}"
+  done
+}
+
 # Turns a verb pattern into an anchored ERE and the capture group holding the target (0 when none).
 # Bash ERE has no named or non-capturing groups, so the target group is found by counting the "(" before it. Intents
 # expand first, each into one group of plain words, so that count includes theirs.
 compile_pattern() {
-  local pattern="^($1)\$" intent placeholder group_regex before opens
-  for intent in "${!intents[@]}"; do
-    pattern="${pattern//"{$intent}"/"(${intents[$intent]})"}"
-  done
+  expand_intents "^($1)\$"
+  local pattern="$expanded_pattern" placeholder group_regex before opens
   for placeholder in '{target}' '{number}'; do
     [[ "$pattern" == *"$placeholder"* ]] || continue
     [ "$placeholder" = '{target}' ] && group_regex='(.+)' || group_regex='([0-9]+)'
@@ -336,6 +344,33 @@ match_integration_verbs() {
 # Prints one JSON match per integration of the tier.
 match_verbs() {
   integration_files | for_each_line_in_parallel match_integration_verbs "$1" "$2"
+}
+
+# The last tier, for a phrase nothing else could use: the verbs whose words are all in the phrase, in any order (see
+# near-miss.awk). Prints one JSON match per such verb of the integration, with the words left over for the target.
+near_miss_integration() {
+  local text="$1" file="$2"
+  (
+    load_integration "$file"
+    local entry action pattern
+    for entry in "${integration_verbs[@]}"; do
+      read -r action pattern <<<"$entry"
+      expand_intents "$pattern"
+      printf '%s\t%s\n' "$action" "$expanded_pattern"
+    done | NEAR_MISS_PHRASE="$text" awk -f "$voxcmd_share_dir/near-miss.awk" \
+      | jq -R -c --arg file "$file" --arg name "$name" --argjson fallback "$([ "$fallback" = 1 ] && echo true || echo false)" \
+        'split("\t") | {file: $file, name: $name, action: .[0], verb_action: .[0], target: .[1], has_target: (.[2] == "true"),
+          fallback: $fallback, near_miss: true, leftover: (.[3] | tonumber)}'
+  )
+}
+
+# Sets options (route_step's) to what the phrase's near misses resolve to, all weak so that the picker always asks, the
+# ten with the fewest left over words first. Two verbs reading the same option offer it once. A target that named no
+# candidate, so that the integration's no_match_actions entry (a "not found" report) took the option, offers nothing.
+near_miss_options() {
+  local matches
+  matches=$(integration_files | for_each_line_in_parallel near_miss_integration "$1")
+  options=$(resolve_matches "$matches" | jq -c 'map(select(.action == .verb_action) | .weak = true) | sort_by(.leftover) | unique_by([.file, .action, .id]) | sort_by(.leftover) | .[:10]')
 }
 
 # Prints "<file><TAB><rest of the text>" for the first integration whose force_prefixes starts the text.
@@ -664,7 +699,7 @@ print_dry_run() {
     printf 'result:      run\n'
   fi
   jq -r 'to_entries[] | .key as $n | .value |
-    "option \($n + 1):    \(.name) (\(.file | split("/") | last))\(if .fallback then " [fallback]" else "" end) action=\(.action) target=\(.target | @sh) id=\(.id | @sh) label=\(.label | @sh)",
+    "option \($n + 1):    \(.name) (\(.file | split("/") | last))\(if .fallback then " [fallback]" else "" end)\(if .near_miss then " [near miss]" else "" end) action=\(.action) target=\(.target | @sh) id=\(.id | @sh) label=\(.label | @sh)",
     "             candidates offered: \(.candidates), weak: \(.weak), confirm: \(.confirm), silent: \(.silent)",
     "             command: \(.command)"' <<<"$options"
 }
@@ -908,6 +943,32 @@ wake_confirm() {
   exit 1
 }
 
+# Where phrases that still matched nothing are kept for the owner to review (`voxcmd misses`), trimmed to the last
+# no_match_log_lines when it passes a tenth more.
+no_match_log="${XDG_STATE_HOME:-$HOME/.local/state}/voxcmd/no-match.log"
+no_match_log_lines=1000
+
+# log_no_match <normalized phrase> [forced integration file]: one "<ISO time><TAB><phrase>" line. Skipped for what the
+# debug log also keeps out: a transcript heard in a private mode, and a phrase forced to an integration with private
+# labels. A voice session's turns are skipped too, since its mode may take them as dictation.
+log_no_match() {
+  [ -n "$1" ] || return 0
+  [ "$heard_private" != 1 ] && [ "$in_session_turn" != 1 ] || return 0
+  if [ -n "$2" ] && (
+    load_integration "$2"
+    [ "$private_labels" = 1 ]
+  ); then return 0; fi
+  mkdir -p "$(dirname "$no_match_log")"
+  # The lock keeps another voxcmd's append from landing in the file a trim is about to replace.
+  (
+    flock 9
+    printf '%s\t%s\n' "$(date -Is)" "$1" >>"$no_match_log"
+    if [ "$(wc -l <"$no_match_log")" -gt $((no_match_log_lines + no_match_log_lines / 10)) ]; then
+      tail -n "$no_match_log_lines" "$no_match_log" >"$no_match_log.tmp" && mv "$no_match_log.tmp" "$no_match_log"
+    fi
+  ) 9>>"$no_match_log.lock"
+}
+
 # A phrase starting with an integration's force prefix goes to that integration alone. Otherwise normal integrations
 # go first, then the LLM hook, then fallback integrations, each only when the ones before it left nothing to run, so a
 # catch-all fallback never competes with a real verb.
@@ -956,6 +1017,11 @@ route_step() {
   fi
   route_options "$text"
   if [ "$(jq 'all(.[]; .weak)' <<<"$options")" = true ]; then retry_after_correction; fi
+  # After the retry, which only takes a strong option and so would only waste the pass over every integration's verbs.
+  # Not behind a force prefix, in a sequence (its fragments are no phrase to guess at) or in a voice session turn.
+  if [ "$(jq length <<<"$options")" = 0 ] && [ -z "$forced_file" ] && [ "$in_sequence" != 1 ] && [ "$in_session_turn" != 1 ]; then
+    near_miss_options "$text"
+  fi
   count=$(jq length <<<"$options")
 
   if [ "$dry_run" = 1 ]; then
@@ -965,6 +1031,7 @@ route_step() {
     return 0
   fi
   if [ "$count" = 0 ]; then
+    log_no_match "$text" "$forced_file"
     [ "$in_sequence" = 1 ] || notify_no_match "voxcmd: no match" "\"$transcript\""
     return 1
   elif ! needs_pick "$options"; then
@@ -2972,6 +3039,7 @@ case "${1:-}" in
 listen) listen "${2:-}" ;;
 help) voice_help ;;
 errors) print_errors "${2:-}" ;;
+misses) tail -n "${2:-20}" "$no_match_log" 2>/dev/null || true ;;
 rapid) route "rapid mode" ;;
 end-session) session_end_all "ended by request" ;;
 stop) stop_voice ;;

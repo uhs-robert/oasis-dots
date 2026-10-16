@@ -432,3 +432,12 @@ swap this window with kitty	none	the focused window is never offered
 swap workspaces two and five	none	overview phrase, only with the overview open
 swap workspace 1 with 2	none	overview phrase, only with the overview open
 swap this window with selected	picker	only a weak Keybinds hit for the Windows submap bind
+firefox open	picker	near miss: the words of "open firefox" in another order, always a weak pick
+slack close	picker	near miss: Apps close, a weak pick
+tab new	picker	near miss: Firefox new tab
+bluetooth turn on	picker	near miss: Devices, a verb with no placeholder
+monitor laptop send the window to	picker	near miss: Monitors move, reordered so an optional article cannot match it
+the weather looks nice today	none	stray speech holds one verb's word and stays no match
+send to laptop monitor	none	a near miss needs every word: no window
+open the	none	a target verb needs a non-filler word left for the target
+firefox open no wait open slack	Apps/open	a correction retry that matches wins over the whole phrase's near miss
