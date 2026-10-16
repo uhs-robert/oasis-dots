@@ -2,7 +2,7 @@
 # The machine-wide limit on heavy check steps, shared by lib/check.sh and the voxcmd suites (home/voxcmd/tests/run*.sh),
 # and the low priority every check runs at. Sourced, not run.
 #
-# Only the long, timing-sensitive voxcmd suites are limited: at most CHECK_HEAVY_SLOTS (default 2) run at once on this
+# Only the long, timing-sensitive voxcmd suites are limited: at most CHECK_HEAVY_SLOTS (default 1) run at once on this
 # machine, each holding one slot, a flock'd file. The cheap steps take no slot; the low CPU and IO priority keeps them off
 # the desktop's back instead.
 #
@@ -41,7 +41,7 @@ check_slot_holders() {
 check_lock_take() {
   owner=$1
   [ -z "${CHECK_LOCK_HELD:-}" ] && [ -z "${CHECK_NO_LOCK:-}" ] && command -v flock >/dev/null || return 0
-  slot_count=${CHECK_HEAVY_SLOTS:-2}
+  slot_count=${CHECK_HEAVY_SLOTS:-1}
   lock_wait=${CHECK_LOCK_WAIT_SECS:-1200}
   give_up_at=$(($(date +%s) + lock_wait))
   announced=''
