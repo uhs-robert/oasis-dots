@@ -1038,6 +1038,12 @@ owner_is_listening
 sess_voxcmd_env listen
 sess_wait
 check "without a focused window nothing is typed" "session_gone && toast_has 'voxcmd: not typed no window has focus' && ! grep -q '^wtype' '$log' && ! grep -rq 'Secret' '$log' '$debug_log'"
+sess_env=(SANDBOX_HYPRCTL_UNREACHABLE=1)
+sess_start "UNTIL_STOP Secret words."
+owner_is_listening
+sess_voxcmd_env listen
+sess_wait
+check "an unreachable Hyprland is named, not read as no focus" "session_gone && toast_has 'voxcmd: not typed Hyprland cannot be reached' && ! grep -q '^wtype' '$log'"
 # Dictation never goes to a picker that is waiting when type mode listens.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 cp /bin/sleep "$root/voxcmd-hints"

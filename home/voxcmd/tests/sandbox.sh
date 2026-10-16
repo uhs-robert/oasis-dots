@@ -169,6 +169,11 @@ case "$name" in
 hyprctl)
   case "${1-}" in
   activewindow)
+    # SANDBOX_HYPRCTL_UNREACHABLE: hyprctl holds a dead instance's signature, as a listener that outlived its Hyprland.
+    if [ -n "${SANDBOX_HYPRCTL_UNREACHABLE:-}" ]; then
+      echo "Couldn't connect to /run/user/1000/hypr/dead/.socket.sock. (4)" >&2
+      exit 4
+    fi
     if [ -n "${SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE:-}" ] && [ ! -e "$SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE.entered" ] &&
       grep -q '^wtype ' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
       : >"$SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE.entered"
