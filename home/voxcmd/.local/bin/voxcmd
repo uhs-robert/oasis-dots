@@ -266,7 +266,7 @@ load_integration() {
   name="" confirm=0 fallback=0 silent=0 target_match=fuzzy help_action="" action_labels=1 pick_command="" private_labels=0
   # The mode settings load_mode_settings reads back, which shellcheck cannot see through ${!value}.
   # shellcheck disable=SC2034
-  session_exit_phrases="" session_default_exits=1 session_allows_switches=0 session_exit_hint=""
+  session_exit_phrases="" session_default_exits=1 session_bare_exits=1 session_allows_switches=0 session_exit_hint=""
   # shellcheck disable=SC2034
   session_private=0 session_open_ended=0 session_one_recording=0 session_wake_listens=0
   # shellcheck disable=SC2034
@@ -1671,6 +1671,10 @@ reply_confirm() {
 # Only phrases nobody would click: "cancel", "exit", "stop" and "never mind" are button labels, so they are targets. The
 # open mode's integration adds its own as session_exit_phrases.
 session_exit_words='^(done|im done|thats all)$'
+# Bare words that end the whole session and everything it opened or attached to (the overview, rapid mode), so nothing
+# modal is left up with nothing listening. A mode where they are content (click mode's button labels, type mode's
+# dictation) opts out with session_bare_exits=0 or session_default_exits=0. Outside a session they are ordinary commands.
+session_bare_exit_words='^(exit|stop|cancel|quit)$'
 # After the wake word, "stop" ends the whole session as the Stop Voice key does.
 session_stop_words='^(stop|stop listening|stop everything|end session|end the session)$'
 # A turn is a whole thought and the user is reading the screen first, so longer than a command's default.
@@ -1791,7 +1795,7 @@ load_mode_settings() {
     fi
   done < <(
     load_integration "$1"
-    for key in default_exits allows_switches exit_hint exit_phrases private open_ended one_recording wake_listens \
+    for key in default_exits bare_exits allows_switches exit_hint exit_phrases private open_ended one_recording wake_listens \
       listen_silence_secs listen_max_secs listen_no_speech_secs; do
       value="session_$key"
       printf '%s=%s\n' "$key" "${!value}"
@@ -2317,6 +2321,12 @@ session_text_is_exit() {
   [ -n "${mode_setting[exit_phrases]:-}" ] && [[ "$1" =~ ^(${mode_setting[exit_phrases]})$ ]]
 }
 
+# Whether the normalized text is a bare word that ends the whole session, for the mode loaded in mode_setting.
+session_text_is_bare_exit() {
+  [ "${mode_setting[default_exits]:-1}" = 1 ] && [ "${mode_setting[bare_exits]:-1}" = 1 ] &&
+    [[ "$1" =~ $session_bare_exit_words ]]
+}
+
 # Prints the runnable options (a JSON array) that the whole text asks of the modes: entering one or leaving one.
 session_mode_options() {
   local matches
@@ -2467,6 +2477,11 @@ session_turn() {
     session_continue "$turn_outcome"
     return
   fi
+  if session_text_is_bare_exit "$text"; then
+    session_end_all "done"
+    session_continue ran
+    return 0
+  fi
   if [ "${mode_setting[default_exits]:-1}" = 1 ] && session_text_is_exit "$text"; then
     session_leave "$kind" "done" || true
     session_continue ran
@@ -2494,10 +2509,15 @@ session_turn() {
     split_phrase "$transcript"
     # A last step that is the mode's exit phrase leaves the mode after the steps before it, not a word to act on.
     leave_after=0
-    if [ "${#phrase_steps[@]}" -gt 1 ] && [ "${mode_setting[default_exits]:-1}" = 1 ] &&
-      session_text_is_exit "$(apply_replacements "$(normalize "${phrase_steps[-1]}")")"; then
-      unset 'phrase_steps[-1]'
-      leave_after=1
+    if [ "${#phrase_steps[@]}" -gt 1 ] && [ "${mode_setting[default_exits]:-1}" = 1 ]; then
+      last_step=$(apply_replacements "$(normalize "${phrase_steps[-1]}")")
+      if session_text_is_bare_exit "$last_step"; then
+        unset 'phrase_steps[-1]'
+        leave_after=2
+      elif session_text_is_exit "$last_step"; then
+        unset 'phrase_steps[-1]'
+        leave_after=1
+      fi
     fi
     if [ "${#phrase_steps[@]}" -gt 1 ]; then
       if ! session_sequence_steps "$file"; then
@@ -2520,7 +2540,12 @@ session_turn() {
         outcome=missed
       fi
     fi
-    if [ "$leave_after" = 1 ] && [ "$step_outcome" = ran ]; then session_leave "$kind" "done" || true; fi
+    if [ "$step_outcome" = ran ]; then
+      case "$leave_after" in
+      1) session_leave "$kind" "done" || true ;;
+      2) session_end_all "done" ;;
+      esac
+    fi
   fi
   session_continue "$outcome"
 }

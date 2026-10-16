@@ -6,7 +6,8 @@ name="Rapid"
 confirm=0
 silent_actions=(rapid_mode stop_rapid)
 
-# The ways out, as a command and as a turn inside the mode. Each names the mode: a bare "stop" or "cancel" is a command.
+# The ways out, as a command and as a turn inside the mode. Outside a session the command forms name the mode, so a bare
+# "stop" there still pauses the music; inside, a bare exit word ends the session (voxcmd's session_bare_exit_words).
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=mode-phrases.sh
 source "$voxcmd_share_dir/mode-phrases.sh"
 rapid_exit_object='(the )?(rapid|rapid mode|rapid fire mode)'
