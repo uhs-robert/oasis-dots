@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Lints the Quickshell config and the greeter with Qt 6 qmllint, failing only on findings that are real errors.
 # Stages qmldirs only for the folders Quickshell registers (reached by imports from shell.qml) and flags uses of unregistered types.
 # Fails on syntax errors, unknown types or imports, unknown or misspelled properties and names, type-incompatible
@@ -14,6 +14,8 @@ cd "$repo_dir" || exit 1
 
 qs_dir=home/quickshell/.config/quickshell
 greeter_dir=system/etc/greetd/quickshell
+# shellcheck source=lib/greeter-files.sh
+source "$script_dir/greeter-files.sh"
 
 # /usr/bin/qmllint on Arch is the Qt 5 one, which cannot read Qt 6 QML.
 qmllint_bin=''
@@ -191,11 +193,7 @@ check_unregistered() {
 
 copy_sources "$qs_dir" "$stage/shell"
 copy_sources "$greeter_dir" "$stage/greeter"
-copy_sources "$qs_dir/lock/skins" "$stage/greeter/lock/skins"
-cp "$qs_dir/lock/Tints.js" "$stage/greeter/lock/"
-mkdir -p "$stage/greeter/theme"
-cp "$qs_dir/theme/Theme.qml" "$qs_dir/theme/Style.qml" "$qs_dir/theme/StyleSchema.js" "$qs_dir/theme/Paths.qml" "$qs_dir/theme/Watch.js" "$qs_dir/theme/MarkerTokens.js" "$stage/greeter/theme/"
-cp -r "$qs_dir/theme/styles" "$qs_dir/theme/icon_sets" "$stage/greeter/theme/"
+copy_greeter_qs_files "$qs_dir" "$stage/greeter" || exit 1
 
 # Quickshell 0.3.2 gives each module one-line opaque stubs (no members) for types another module defines, and qmllint
 # resolves a name to whichever stub it meets first, so every member of QuickshellScreenInfo, ObjectModel or Anchors reads

@@ -186,7 +186,10 @@ greeter-sync *ARGS:
       if [[ ${args[i]} == --from ]]; then
         from=${args[i+1]:-}
         [[ -n $from ]] || { echo "greeter-sync: --from needs a directory" >&2; exit 1; }
-        [[ -d $from/lock/skins && -f $from/theme/Theme.qml ]] || { echo "greeter-sync: $from is not a Quickshell config dir" >&2; exit 1; }
+        for entry in "${GREETER_QS_FILES[@]}"; do
+          [[ $entry == *'?' ]] && continue
+          compgen -G "$from/${entry%/}" >/dev/null || { echo "greeter-sync: $from is not a Quickshell config dir: no $entry" >&2; exit 1; }
+        done
       fi
     done
     skin=$(stage_greeter "$stage" "$PWD" "$from") || { echo "greeter-sync: staging failed" >&2; exit 1; }

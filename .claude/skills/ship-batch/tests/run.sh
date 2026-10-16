@@ -259,5 +259,14 @@ check "and clears the debt" "[[ -z \$(owed_check '$e2e/main') ]]"
 ship
 check "a run with nothing new and nothing owed checks nothing" "[[ $? == 0 ]] && ! grep -q check '$SHIP_LOG'"
 
+echo "== the greeter's Quickshell paths"
+greeter_regex=$(greeter_qs_regex "$here/../../../.." qs)
+for path in lock/skins/x.qml lock/skins/sub/y.png lock/Tints.js theme/Style.qml theme/styles/a.js fonts/a.ttf fonts/OFL-a.txt VERSION; do
+  check "$path is staged" "grep -Eq '^$greeter_regex' <<<'qs/$path'"
+done
+for path in services/Foo.qml lock/Lock.qml fonts/a.otf theme/Foo.qml; do
+  check "$path is not staged" "! grep -Eq '^$greeter_regex' <<<'qs/$path'"
+done
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
