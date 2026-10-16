@@ -230,7 +230,7 @@ ColumnLayout {
             readonly property color band_color: root.day.uv_max >= 8 ? mark_color : Style.text_primary
             value: root.day.uv_max / 12
             color: band_color
-            caption: ["LOW", "MOD", "HIGH", "V.HIGH", "EXTR"][WeatherState.uv_bands.indexOf(WeatherState.uv_band(root.day.uv_max))]
+            caption: WeatherState.uv_band(root.day.uv_max).short
             value_text: root.day.uv_max.toFixed(1)
         }
     }

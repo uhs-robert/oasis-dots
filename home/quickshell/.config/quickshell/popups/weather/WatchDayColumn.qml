@@ -10,7 +10,8 @@ import "../../theme/Watch.js" as W
 
 // One Daily column as a strip of the pause watch's bezel: warm segments lit from the day's low to its high on the week's scale,
 // a thin cold strip beside it lit to the rain chance, readings in the LCD digits; the selected day sits in a watch-face panel.
-// sub 1 lights wind speed with a gust strip beside it, sub 2 the UV index, sub 3 the sunshine hours, the rain chance reads as text under every sub.
+// sub 1 lights wind speed with a gust strip beside it, sub 2 the UV index, sub 3 the sunshine against the daylight. The foot under the strips is the
+// rain chance on sub 0, nothing on sub 1 (its gust reading is already the bottom text), the UV band on sub 2 and the share of daylight sunshine on sub 3.
 Item {
     id: root
 
@@ -50,6 +51,17 @@ Item {
         return String(Math.round(root.sub === 1 ? root.day.wind_gusts_max : root.day.min));
     }
 
+    readonly property string footer_text: {
+        if (!root.day) return "";
+        if (root.sub === 0) return root.day.pop + "%";
+        if (root.sub === 2) return WeatherState.uv_band(root.day.uv_max).short;
+        if (root.sub === 3 && root.sun_share >= 0) return Math.round(root.sun_share * 100) + "%";
+        return "";
+    }
+
+    // Sunshine against the day's daylight, -1 when the day has none, as a forecast cached before daylight was fetched.
+    readonly property real sun_share: root.day && root.day.daylight_hours > 0 ? Math.min(1, root.day.sunshine_hours / root.day.daylight_hours) : -1
+
     // Yellow at the cold end to red at the hot end, as the watch's warm bezel runs.
     function warm_ramp(from_bottom) {
         return W.warm[7 - Math.round(from_bottom * 7 / Math.max(1, root.seg_count - 1))];
@@ -67,7 +79,7 @@ Item {
         if (!root.day) return false;
         if (root.sub === 1) return root.fraction_lit(from_bottom, root.day.wind_speed_max / root.wind_max);
         if (root.sub === 2) return root.fraction_lit(from_bottom, root.day.uv_max / 12);
-        if (root.sub === 3) return root.fraction_lit(from_bottom, root.day.sunshine_hours / 14);
+        if (root.sub === 3) return root.fraction_lit(from_bottom, root.sun_share >= 0 ? root.sun_share : root.day.sunshine_hours / 14);
         return root.temp_lit(from_bottom);
     }
 
@@ -179,9 +191,10 @@ Item {
         }
 
         Text {
+            visible: root.footer_text !== ""
             Layout.alignment: Qt.AlignHCenter
-            text: root.day ? root.day.pop + "%" : ""
-            color: W.cold_lit[7]
+            text: root.footer_text
+            color: root.sub === 0 ? W.cold_lit[7] : root.text_color
             opacity: root.selected ? 1 : 0.8
             font.family: W.mono_font
             font.pixelSize: Style.fs(-3)

@@ -62,7 +62,8 @@ function make_day(now, i) {
         wind_speed_max: 10 + i,
         wind_gusts_max: 20 + i,
         wind_dir: 210,
-        sunshine_hours: 9 - (i % 3)
+        sunshine_hours: 9 - (i % 3),
+        daylight_hours: 11.5
     };
 }
 
