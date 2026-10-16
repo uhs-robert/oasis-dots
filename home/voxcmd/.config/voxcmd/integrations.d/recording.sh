@@ -72,7 +72,7 @@ start_recording() {
   setsid -f "$screenshot_tool" "$@" >/dev/null 2>&1 </dev/null
 }
 
-# Any screenshot.sh call stops a running recording first, as pressing Print again does.
+# screenshot.sh with no argument stops a running recording, as pressing Print again does.
 stop_recording() {
   local pid file waited
   if ! pid=$(recorder_pid); then
