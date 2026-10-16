@@ -1650,6 +1650,8 @@ out=$(near_dry "big zoom view")
 check "a target split by a slot's word stays no match" "grep -q 'result:      no match' <<<\"\$out\""
 out=$(near_dry "view big zoom")
 check "a target in one run is a near miss" "grep -q 'action=zoom target=.view big.' <<<\"\$out\""
+out=$(printf 'focus\t(go to|take me to|focus) tab {target}\n' | NEAR_MISS_PHRASE="tab focus firefox take me to" awk -f "$package/.local/share/voxcmd/near-miss.awk")
+check "of two alternatives that fit, the one leaving fewer words wins" "[[ \$out == \$'focus\\tfocus firefox\\ttrue\\t3' ]]"
 out=$(near_dry "open session notes")
 check "a target naming no candidate offers no 'not found' report" "grep -q 'result:      no match' <<<\"\$out\""
 out=$(near_dry "firefox open")

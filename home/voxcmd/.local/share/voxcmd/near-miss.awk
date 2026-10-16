@@ -119,30 +119,36 @@ function drop_filler(slots,    n, parts, i, out) {
   return out
 }
 
-# Fills one slot's alternatives, then goes on to the next slot; backtracks over which phrase words the slots take.
+# Fills one slot's alternatives, then goes on to the next slot; backtracks over which phrase words the slots take. It
+# tries every assignment rather than stopping at the first that fits: alternatives of different lengths ("focus", "take
+# me to") leave different words for the target, and finish() keeps the one with the fewest left over.
 function solve(slot_index,    n, alts, a) {
-  if (slot_index > slot_count) return finish()
+  if (slot_index > slot_count) {
+    finish()
+    return
+  }
   n = split(slot_alts[slot_index], alts, RS_ALT)
-  for (a = 1; a <= n; a++) if (place(slot_index, alts[a], 1)) return 1
-  return 0
+  for (a = 1; a <= n; a++) place(slot_index, alts[a], 1)
 }
 
 function place(slot_index, alt, k,    count, words, p) {
   count = split(alt, words, " ")
-  if (k > count) return solve(slot_index + 1)
+  if (k > count) {
+    solve(slot_index + 1)
+    return
+  }
   for (p = 1; p <= phrase_count; p++) {
     if (used[p]) continue
     if (words[k] == "#number" ? phrase[p] ~ /^[0-9]+$/ : phrase[p] == words[k]) {
       used[p] = 1
-      if (place(slot_index, alt, k + 1)) return 1
+      place(slot_index, alt, k + 1)
       used[p] = 0
     }
   }
-  return 0
 }
 
 # All slots are filled: the words left over must fit the verb. With {target} a non-filler one becomes the target, else
-# none may remain, so stray speech stays a miss.
+# none may remain, so stray speech stays a miss. Keeps the reading in result_* when it leaves fewer words than the best so far.
 function finish(    p, nonfiller, first, last, text, count) {
   nonfiller = 0
   count = 0
@@ -157,14 +163,14 @@ function finish(    p, nonfiller, first, last, text, count) {
       last = p
     }
   }
-  if (has_target ? nonfiller == 0 : nonfiller > 0) return 0
+  if (has_target ? nonfiller == 0 : nonfiller > 0) return
   # The target is one run of speech: a slot's word between two target words ("double click it") splits it in two.
-  if (has_target) for (p = first; p <= last; p++) if (used[p]) return 0
+  if (has_target) for (p = first; p <= last; p++) if (used[p]) return
+  if (result_leftover >= 0 && count >= result_leftover) return
   text = ""
   if (has_target) for (p = first; p <= last; p++) if (!used[p]) text = text (text == "" ? "" : " ") phrase[p]
   result_target = text
   result_leftover = count
-  return 1
 }
 
 function try_reading(    p, n, i) {
@@ -172,7 +178,9 @@ function try_reading(    p, n, i) {
   slot_count = split(reading_slots, slot_alts, RS_SLOT)
   if (reading_slots == "") slot_count = 0
   if (slot_count == 0) return 0
-  return solve(1)
+  result_leftover = -1
+  solve(1)
+  return result_leftover >= 0
 }
 
 BEGIN {
