@@ -930,6 +930,19 @@ check "Stop Voice while the dictation is typed ends the session and runs no chai
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 rm -f "$SANDBOX_DIR/chain-pause"
 
+# The chain's detector starts mid-speech, so it takes the threshold the recording's own detector wrote.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_ROOM_THRESHOLD_DB=-45.0)
+sess_start "UNTIL_STOP Typed. Cortana stop and then tap tap beta."
+owner_is_listening
+wait_until compgen -G "$XDG_RUNTIME_DIR/voxcmd/threshold.*" >/dev/null
+wake_heard "Cortana stop and then tap"
+chain_pause
+sess_wait
+check "the chain's detector, and only it, gets the room threshold the recording's own detector measured" "[[ \$(grep -c '^voxcmd-autostop threshold_db=' '$log') == 1 ]] && grep -q '^voxcmd-autostop threshold_db=-45.0' '$log' && [[ \$(taps) == 1 ]]"
+check "and the threshold file is gone with the watcher" "! compgen -G '$XDG_RUNTIME_DIR/voxcmd/threshold.*'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+rm -f "$SANDBOX_DIR/chain-pause"
+
 sess_start "UNTIL_STOP Typed. Cortana stop."
 owner_is_listening
 wake_heard "Cortana stop."

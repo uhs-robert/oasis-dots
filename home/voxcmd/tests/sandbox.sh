@@ -82,7 +82,8 @@
 #                                     (default sleep; a copy under another name lets a test end leftovers by name).
 #                                     The detector with VOXCMD_AUTOSTOP_MAX_SECS=10 on an UNTIL_STOP turn (a chained ending's) waits
 #                                     for $SANDBOX_DIR/chain-pause, then gives the pause verdict (0), or exits at once with
-#                                     SANDBOX_CHAIN_DETECTOR_EXIT.
+#                                     SANDBOX_CHAIN_DETECTOR_EXIT. It logs "threshold_db=<n>" when VOXCMD_AUTOSTOP_THRESHOLD_DB is set,
+#                                     and writes SANDBOX_ROOM_THRESHOLD_DB to VOXCMD_AUTOSTOP_THRESHOLD_FILE when both are set.
 #   voxtype -q ... transcribe <file>  prints voxtype's progress lines, a blank line and $SANDBOX_TRANSCRIBE_TEXT, as a
 #                                     wake confirmation's transcription does (no blank line without it: no speech)
 #                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
@@ -373,6 +374,10 @@ voxcmd-autostop)
   log "no_speech_secs=${VOXCMD_AUTOSTOP_NO_SPEECH_SECS:-default}"
   log "min_speech_secs=${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}"
   [ -z "${VOXCMD_AUTOSTOP_MAX_SECS-}" ] || log "max_secs=$VOXCMD_AUTOSTOP_MAX_SECS"
+  [ -z "${VOXCMD_AUTOSTOP_THRESHOLD_DB-}" ] || log "threshold_db=$VOXCMD_AUTOSTOP_THRESHOLD_DB"
+  # The room threshold a watcher's detector measures, as the real one writes it.
+  [ -z "${VOXCMD_AUTOSTOP_THRESHOLD_FILE-}" ] || [ -z "${SANDBOX_ROOM_THRESHOLD_DB-}" ] ||
+    echo "$SANDBOX_ROOM_THRESHOLD_DB" >"$VOXCMD_AUTOSTOP_THRESHOLD_FILE"
   turn=$(cat "$SANDBOX_DIR/voxtype-turn")
   # The pause detector of a chained ending (max_secs=10, which type mode's own detector never has) hears its pause once
   # $SANDBOX_DIR/chain-pause exists, and gives up when the recording is over.
