@@ -1,0 +1,26 @@
+phrase	live	why
+play pause	yes	Media: the smallest integration
+volume up by twenty	yes	Media: a {number} placeholder
+open firefox	yes	Apps: the largest integration
+move it to the scratchpad	yes	Keybinds: reads the binds
+set timer for one minute	no	Timers: spoken durations; live it starts a timer unit
+turn bluetooth on	yes	Devices
+brightness up	yes	System
+what time is it	yes	Answers: spoken times
+go to the dotfiles tmux session	yes	Tmux: a live lookup
+open the work session	yes	Sessions
+clear notifications	yes	Notifications
+screenshot region	no	Screenshot: live it waits on a region pick
+press enter	yes	Keys
+go to the center monitor	yes	Monitors: a live lookup
+show workspaces	no	Overview: live it opens a voice session
+go to weekly sync notes	no	Firefox: a tab lookup; live it needs the host
+join my meeting	no	Calendar
+click sign in	no	Click: OCR and click-match.awk
+start recording	no	Recording: live it starts a recording
+rapid mode	no	Rapid: live it opens a voice session
+never mind	yes	built-in
+firefox open	no	near miss: always a picker
+move firefox to scratchpad	no	a picker with a weak fallback
+open firefox and then go to youtube	no	a two-step sequence
+pause firefox	yes	no match

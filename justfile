@@ -92,6 +92,14 @@ lint:
 check:
     sh ./lib/check.sh
 
+# Time how long voxcmd takes to route the benchmark phrases in the sandbox (--runs N, --live, --all); see home/voxcmd/tests/bench.sh
+voxcmd-bench *ARGS:
+    home/voxcmd/tests/bench.sh {{ARGS}}
+
+# Sample the running wake word listener's memory and CPU for N minutes; run it on an idle machine
+voxcmd-wake-sample minutes="60":
+    home/voxcmd/tests/wake-sample.sh {{minutes}}
+
 # Sign the voxcmd Firefox extension as unlisted on addons.mozilla.org, into extras/voxcmd-firefox.xpi; the API key is read from rbw
 sign-firefox-extension:
     #!/usr/bin/env bash
