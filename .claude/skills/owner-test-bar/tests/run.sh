@@ -130,7 +130,7 @@ mkdir -p "$bar/.local/bin" "$bar/.config/voxcmd" "$HOME/.local/bin"
 # shellcheck disable=SC2016 # the stub's own variables, not this script's
 stub='#!/usr/bin/env bash
 echo "config ${VOXCMD_CONFIG_DIR:-none}" >&2
-case $2 in *nowhere*) echo "result:      no match" ;; *) echo "result:      run"; echo "option 1:    Keybinds (keybinds.sh) action=run" ;; esac'
+case $2 in *toolong*) echo "result:      refused, too many steps" ;; *nowhere*) echo "result:      no match" ;; *) echo "result:      run"; echo "option 1:    Keybinds (keybinds.sh) action=run" ;; esac'
 printf '%s\n' "$stub" >"$HOME/.local/bin/voxcmd"
 chmod +x "$HOME/.local/bin/voxcmd"
 out=$(as "" "" try_phrases "focus workspace 3" "go nowhere")
@@ -151,6 +151,20 @@ out=$(as "" "" try_phrases "go nowhere")
 code=$?
 show "$out"
 check "uses the live test build and its config" "grep -q 'try: test build clicks' <<<\"\$out\" && [[ $code == 1 ]]"
+
+out=$(as "" "" try_phrases "toolong phrase")
+check "a refused sequence exits 1" "[[ \$? == 1 ]] && grep -q 'refused' <<<\"\$out\""
+rm "$XDG_CACHE_HOME/dotfiles/test-bars/.voxcmd_bar"
+out=$(as "" "" try_phrases "focus workspace 3")
+code=$?
+check "half swapped refuses and names restore" "[[ $code == 1 ]] && grep -q 'half swapped; run restore' <<<\"\$out\" && ! grep -q 'main install' <<<\"\$out\""
+
+echo "== debug marker after a reboot"
+rm -rf "$XDG_RUNTIME_DIR"
+mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
+echo owner >"$debug_log"
+as "" "" voxcmd_debug_stop >/dev/null
+check "a stale marker cannot delete the owner's later log" "[[ \$(cat $debug_log) == owner ]]"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
