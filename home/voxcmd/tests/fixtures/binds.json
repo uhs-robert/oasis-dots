@@ -36,5 +36,6 @@
   {"submap": "System", "key": "K34", "modmask": 64, "description": "Toggle Auto-Lock", "has_description": true, "dispatcher": "__lua", "arg": "134", "mouse": false},
   {"submap": "System", "key": "K35", "modmask": 64, "description": "Exit System", "has_description": true, "dispatcher": "__lua", "arg": "135", "mouse": false},
   {"submap": "", "key": "K36", "modmask": 64, "description": "Session Launcher", "has_description": true, "dispatcher": "__lua", "arg": "136", "mouse": false},
-  {"submap": "", "key": "S", "modmask": 65, "description": "Move to Scratchpad", "has_description": true, "dispatcher": "__lua", "arg": "137", "mouse": false}
+  {"submap": "", "key": "S", "modmask": 65, "description": "Move to Scratchpad", "has_description": true, "dispatcher": "__lua", "arg": "137", "mouse": false},
+  {"submap": "Windows", "key": "K37", "modmask": 64, "description": "Swap with Selected", "has_description": true, "dispatcher": "__lua", "arg": "138", "mouse": false}
 ]

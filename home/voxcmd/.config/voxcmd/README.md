@@ -331,6 +331,7 @@ As a fallback it never sees a phrase another integration takes. Starting the phr
 | "focus slack", "go to firefox", "take me to tmux config"       | focuses the window                                                 |
 | "move slack to workspace 3", "send firefox to workspace three", "move slack to the third workspace" | moves the window there, leaving focus where it is                  |
 | "move firefox to special workspace scratchpad", "send slack to the special workspace notes" | moves the window to that special workspace, leaving focus where it is; "scratch pad" finds the existing scratchpad, and a new name is its words joined with hyphens. "special workspace" must be said |
+| "swap this window with firefox", "swap it with slack", "switch places with firefox" | swaps the focused window with the named one; focus stays with the window you were in. Refused for a floating window or one on another workspace |
 | "close slack", "quit the firefox window"                       | closes the window, after a confirm                                 |
 | "resize the window to 400 pixels high", "make it 800 wide", "set the height to 400" | resizes the active window, keeping the size it does not name |
 | "resize to 1200 by 800", "1200 by 800", "make it 1200x800"     | resizes the active window to that size                             |
