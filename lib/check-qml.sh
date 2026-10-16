@@ -193,7 +193,13 @@ check_unregistered() {
 
 copy_sources "$qs_dir" "$stage/shell"
 copy_sources "$greeter_dir" "$stage/greeter"
-copy_greeter_qs_files "$qs_dir" "$stage/greeter" || exit 1
+# The lint tree takes the greeter's QML and JS from the source-only shell copy, never its fonts or the imported skin
+# audio and GoldenEye frames, which can run to hundreds of megabytes.
+for entry in "${GREETER_QS_FILES[@]}"; do
+  entry=${entry%'?'}
+  case $entry in */ | *.qml | *.js) ;; *) continue ;; esac
+  (cd "$stage/shell" && cp -r --parents "${entry%/}" "$stage/greeter/") || exit 1
+done
 
 # Quickshell 0.3.2 gives each module one-line opaque stubs (no members) for types another module defines, and qmllint
 # resolves a name to whichever stub it meets first, so every member of QuickshellScreenInfo, ObjectModel or Anchors reads

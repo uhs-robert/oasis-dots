@@ -237,7 +237,9 @@ path_scopes() {
   lib/check-lua.sh | .luacheckrc | home/hypr/*) scopes="$scopes lua" ;;
   # Ahead of the greeter's QML arm, since case takes only the first match.
   system/etc/greetd/*.lua) scopes="$scopes lua qml" ;;
-  lib/check-qml.sh | lib/check-lock-skins.sh | lib/greeter-files.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scopes="$scopes qml" ;;
+  # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
+  lib/greeter-files.sh) scopes="$scopes qml ship" ;;
+  lib/check-qml.sh | lib/check-lock-skins.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scopes="$scopes qml" ;;
   home/quickshell/tests/*) scopes="$scopes node" ;;
   home/quickshell/*) scopes="$scopes qml node" ;;
   home/voxcmd/* | extras/voxcmd-firefox/*) scopes="$scopes voxcmd" ;;
