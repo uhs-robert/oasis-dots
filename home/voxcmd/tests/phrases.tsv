@@ -147,9 +147,9 @@ close window	Keybinds/run
 go to workspace 2	Keybinds/run
 go to the first workspace	Keybinds/run	an ordinal before the noun is the numbered workspace
 go to the 2nd workspace	Keybinds/run
-focus workspace 3	Keybinds/run	{focus} forms are one intent, so a "Go to Workspace 3" bind answers them all
-switch to workspace 3	Keybinds/run
-focus the third workspace	Keybinds/run
+focus workspace 2	Keybinds/run	{focus} forms are one intent, so a "Go to Workspace 2" bind answers them all
+switch to workspace 2	Keybinds/run
+focus the second workspace	Keybinds/run
 focus left	Keybinds/run	still the Focus Left bind
 go to workspace 2th	none	an ordinal needs its own suffix
 cursor mode	Keybinds/enter_submap
