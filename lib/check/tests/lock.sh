@@ -1,8 +1,8 @@
 #!/bin/bash
-# Tests the heavy-step slots of lib/check-lock.sh in a runtime dir of its own, so the machine's real slots are untouched.
+# Tests the heavy-step slots of lib/check/lock.sh in a runtime dir of its own, so the machine's real slots are untouched.
 set -u
 unset CHECK_LOCK_HELD CHECK_NO_LOCK CHECK_HEAVY_SLOTS CHECK_LOCK_WAIT_SECS SANDBOX_REAL_XDG_RUNTIME_DIR
-lock_lib=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)/check-lock.sh
+lock_lib=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)/lock.sh
 scratch=$(mktemp -d) || exit 1
 holders=''
 trap 'kill $holders 2>/dev/null; rm -rf "$scratch"' EXIT

@@ -13,8 +13,8 @@ g() { git -C "$repo" -c user.name=t -c user.email=t@t "$@"; }
 repo=$root/repo
 git init -q --bare -b main "$root/origin.git"
 git clone -q "$root/origin.git" "$repo" 2>/dev/null
-mkdir -p "$repo/lib"
-cp "$repo_lib/check-passed.sh" "$repo/lib/"
+mkdir -p "$repo/lib/check"
+cp "$repo_lib/check/passed.sh" "$repo/lib/check/"
 printf '#!/bin/sh\ntouch "%s/check-ran"\n' "$root" >"$repo/lib/check.sh"
 chmod +x "$repo/lib/check.sh"
 g add -A
@@ -46,13 +46,13 @@ expect() {
 }
 
 expect deny "no recorded pass"
-(cd "$repo" && lib/check-passed.sh record-changed "$base")
+(cd "$repo" && lib/check/passed.sh record-changed "$base")
 expect allow "HEAD's tree passed --changed against the merge-base"
 echo dirty >>"$repo/file"
 expect allow "uncommitted edits do not change what the PR sends"
 g checkout -q -- file
 : >"$trees_file"
-(cd "$repo" && lib/check-passed.sh record-changed HEAD)
+(cd "$repo" && lib/check/passed.sh record-changed HEAD)
 expect deny "a pass against another base"
 printf '%s no-repos\n' "$(g rev-parse 'HEAD^{tree}')" >"$trees_file"
 expect allow "a full pass of HEAD's tree, made anywhere"
@@ -68,7 +68,7 @@ for wt in wt-pass wt-fail; do
   git -C "$root/$wt" -c user.name=t -c user.email=t@t add -A
   git -C "$root/$wt" -c user.name=t -c user.email=t@t commit -qm change
 done
-(cd "$root/wt-pass" && lib/check-passed.sh record-changed "$base")
+(cd "$root/wt-pass" && lib/check/passed.sh record-changed "$base")
 create='gh pr create --fill'
 expect allow "cd into a worktree whose tree passed, while the cwd's did not" "cd $root/wt-pass && $create"
 expect allow "a ; after the cd" "cd $root/wt-pass; $create"

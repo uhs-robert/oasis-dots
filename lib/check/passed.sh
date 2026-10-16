@@ -4,16 +4,16 @@ set -u
 # Remembers what passed `lib/check.sh`, across every worktree of the repository: whole trees, and single steps by the
 # content of the files they read.
 #
-#   lib/check-passed.sh record           files HEAD's tree as passed (refuses a dirty tree)
-#   lib/check-passed.sh record-changed <base>  files HEAD's tree as passing `check.sh --changed <base>` (refuses a dirty tree)
-#   lib/check-passed.sh is-passed [rev]  exit 0 when the tree of rev passed; without rev it is HEAD's, and nothing
+#   lib/check/passed.sh record           files HEAD's tree as passed (refuses a dirty tree)
+#   lib/check/passed.sh record-changed <base>  files HEAD's tree as passing `check.sh --changed <base>` (refuses a dirty tree)
+#   lib/check/passed.sh is-passed [rev]  exit 0 when the tree of rev passed; without rev it is HEAD's, and nothing
 #                                        tracked may be modified
-#   lib/check-passed.sh passed-somewhere [rev]  exit 0 when the tree of rev passed in any checkout, with or without
+#   lib/check/passed.sh passed-somewhere [rev]  exit 0 when the tree of rev passed in any checkout, with or without
 #                                        repos/; only the symlinks into repos/ are then unverified for this one
-#   lib/check-passed.sh passed-since <base> [rev]  exit 0 when the tree of rev passed anywhere, or passed
+#   lib/check/passed.sh passed-since <base> [rev]  exit 0 when the tree of rev passed anywhere, or passed
 #                                        `check.sh --changed <base>`: what a PR needs
-#   lib/check-passed.sh step-record <step> <key>     files a step as passed for the input key check.sh computed
-#   lib/check-passed.sh step-is-passed <step> <key>  exit 0 when it was
+#   lib/check/passed.sh step-record <step> <key>     files a step as passed for the input key check.sh computed
+#   lib/check/passed.sh step-is-passed <step> <key>  exit 0 when it was
 #
 # The caller vouches for what it records: check.sh records a tree once every step passed for that tree's content, or a
 # scoped pass on top of a recorded base; ship-batch records the same inductive case.
@@ -25,7 +25,7 @@ steps_file=$common_dir/claude-check-passed-steps
 keep_entries=200
 keep_step_entries=2000
 
-# Only a checkout with repos/ clones verified the symlinks into them (lib/check-symlinks.sh skips those links
+# Only a checkout with repos/ clones verified the symlinks into them (lib/check/steps/symlinks.sh skips those links
 # otherwise), so a pass from a worktree does not vouch for the main checkout.
 if [ -n "$(find repos -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
   coverage=with-repos
@@ -95,7 +95,7 @@ step-record)
   fi
   ;;
 *)
-  echo 'usage: lib/check-passed.sh record | record-changed <base> | is-passed [rev] | passed-somewhere [rev] | passed-since <base> [rev] | step-record <step> <key> | step-is-passed <step> <key>' >&2
+  echo 'usage: lib/check/passed.sh record | record-changed <base> | is-passed [rev] | passed-somewhere [rev] | passed-since <base> [rev] | step-record <step> <key> | step-is-passed <step> <key>' >&2
   exit 2
   ;;
 esac

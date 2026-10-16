@@ -3,7 +3,7 @@ set -eu
 
 # Resolve manifests relative to the repository, not the caller's directory.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-repo_dir=$(dirname -- "$script_dir")
+repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 pkg_dir="$repo_dir/packages"
 
 # Every manifest in packages/ lists OS/language package names, except these two:

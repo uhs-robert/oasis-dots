@@ -10,7 +10,7 @@ set -u
 #                                 repository root, instead of `git diff <base>`: a commit's staged paths, say
 #   lib/check.sh --plan [--changed <base>|--paths-from <file|->] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
 #
-# A step that passes is recorded (lib/check-passed.sh) under a key hashing the content of the files it reads, the same
+# A step that passes is recorded (lib/check/passed.sh) under a key hashing the content of the files it reads, the same
 # files whose change makes --changed pick it (step_scope); a later run skips a step whose key already passed, uncommitted and
 # untracked content included. A run that leaves the tree clean also records the tree: when every step passed for its
 # content, or for --changed <base> on top of a base recorded as passed; and a --changed run records that it passed
@@ -19,15 +19,15 @@ set -u
 # CHECK_FULL=1 makes --changed run everything, and runs every step whatever passed before. CHECK_JOBS sets how many steps
 # run at once (default min(cores/2, 4)); 1 runs them one after another with live output. CHECK_SKIP_STEPS="step ..." drops
 # those steps whatever the scope says (the summary line lists them). Everything runs at nice 19 in the idle IO class, and
-# the voxcmd suites each hold one of CHECK_HEAVY_SLOTS machine-wide slots (lib/check-lock.sh), waiting at most
+# the voxcmd suites each hold one of CHECK_HEAVY_SLOTS machine-wide slots (lib/check/lock.sh), waiting at most
 # CHECK_LOCK_WAIT_SECS (default 1200) for one; CHECK_NO_LOCK=1 runs them without a slot, for a check that must never
 # wait (the commit hook).
 #
 # Where it runs on its own: nothing runs it at the end of a turn, only a commit (.claude/hooks/check-before-commit.sh,
 # the committed files), a PR open (.claude/hooks/check-before-pr.sh, which only looks up a recorded pass) and ship-batch
-# (each PR's branch, then main). A worktree has no repos/, so its pass does not cover lib/check-symlinks.sh for the main
+# (each PR's branch, then main). A worktree has no repos/, so its pass does not cover lib/check/steps/symlinks.sh for the main
 # checkout: run the check in the real checkout before merging. --changed always runs the cheap steps (git-diff-check,
-# whitespace, conflicts, symlinks, packages); a change to this file, lib/check-lock.sh, lib/check-passed.sh, the justfile,
+# whitespace, conflicts, symlinks, packages); a change to this file, lib/check/lock.sh, lib/check/passed.sh, the justfile,
 # .claude/check-commands or any path no rule in path_scopes claims runs everything. The parallel output of a step is
 # buffered and a passing step prints one line; after the FAILED: line, the last 25 lines of each failing step follow. A step
 # whose tool is missing prints "skip:" and passes. There is no single-step runner: the steps are all-or-nothing and a run
@@ -38,15 +38,15 @@ set -u
 #                            importers (scripts/lib/*.sh, ff7-, goldeneye-, mgs2-, ocarina-audio) and the tracked agent scripts
 #                            under .claude/ and home/claude/.claude/ (by *.sh name or shell shebang; not worktrees/ or
 #                            skills/synced/); shfmt -i 2. Needs shellcheck, shfmt.
-#   stylua, luacheck         Hyprland config (stylua) and Hyprland plus greetd Lua (luacheck, via lib/check-lua.sh). Needs
+#   stylua, luacheck         Hyprland config (stylua) and Hyprland plus greetd Lua (luacheck, via lib/check/steps/lua.sh). Needs
 #                            stylua, luacheck or lua5.4/5.3/luajit with LuaFileSystem.
-#   qmllint                  Quickshell config and greeter (lib/check-qml.sh). Needs Qt 6 qmllint, jq.
+#   qmllint                  Quickshell config and greeter (lib/check/steps/qml.sh). Needs Qt 6 qmllint, jq.
 #   lock-skins               lock/skins/index.json matches the skin files and audio importers; no skin imports a folder
-#                            the greeter does not stage (lib/greeter-files.sh; lib/check-lock-skins.sh). Needs jq.
-#   style-exports            generated property lines in theme/Style.qml match theme/StyleSchema.js (lib/check-style-exports.sh).
+#                            the greeter does not stage (lib/greeter-files.sh; lib/check/steps/lock-skins.sh). Needs jq.
+#   style-exports            generated property lines in theme/Style.qml match theme/StyleSchema.js (lib/check/steps/style-exports.sh).
 #                            Needs python3.
 #   time-format              no hand-built am/pm text in Quickshell QML/JS; clock text goes through TimeFormat
-#                            (lib/check-time-format.sh).
+#                            (lib/check/steps/time-format.sh).
 #   voxcmd-phrases           each phrase in home/voxcmd/tests/phrases.tsv routes as recorded (run-phrases.sh). Needs jq, fzf.
 #   voxcmd-click             voxcmd's click support (run.sh, with run-sessions.sh, run-sequences.sh, run-overview.sh and run-monitors.sh beside it). Needs jq, fzf.
 #   voxcmd-calendar          the calendar phrases against stubs (run-calendar.sh). Needs jq, fzf.
@@ -62,16 +62,16 @@ set -u
 #   owner-test-bar           the owner-test-bar skill's tests/run.sh, when it changes. Needs jq.
 #   ship-batch, merge-prs    those skills' tests/run.sh, when either changes.
 #   notification-markup      home/quickshell/tests/notification_markup.js, the notification body sanitizer. Needs node.
-#   check-scope, check-cache which steps --changed picks (lib/tests/check-scope.sh), and the pass records and slot lock
-#                            (lib/tests/check-cache.sh, lib/tests/check-lock.sh).
-#   packages                 duplicate package names across the manifests (lib/check-packages.sh).
+#   check-scope, check-cache which steps --changed picks (lib/check/tests/scope.sh), and the pass records and slot lock
+#                            (lib/check/tests/cache.sh, lib/check/tests/lock.sh).
+#   packages                 duplicate package names across the manifests (lib/check/steps/packages.sh).
 #   symlinks, whitespace,    tracked symlinks that dangle or leave the repo; trailing whitespace; conflict markers.
 #   conflicts, git-diff-check  and `git diff --check HEAD`.
-#   ignored-integrations     no voxcmd integration or replacement file is one git ignores (lib/check-ignored-integrations.sh).
+#   ignored-integrations     no voxcmd integration or replacement file is one git ignores (lib/check/steps/ignored-integrations.sh).
 #
 # Slots and records: only the voxcmd steps are limited, one after another in a slot of their own (they are timing-sensitive)
 # and each holding a CHECK_HEAVY_SLOTS slot; the cheap steps take none. A step's pass is recorded only when its files did not
-# change while it ran. lib/check-passed.sh keeps the records in the repository's common git dir, shared by every worktree.
+# change while it ran. lib/check/passed.sh keeps the records in the repository's common git dir, shared by every worktree.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(dirname -- "$script_dir")
 self=$script_dir/check.sh
@@ -86,7 +86,7 @@ other_steps='check-scope check-cache firefox-policy greeter-keyring qmllint shel
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
 # worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
 plain_shell_files() {
-  printf '%s\n' install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/calendar/tests/*.sh lib/tests/*.sh
+  printf '%s\n' install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/calendar/tests/*.sh lib/tests/*.sh lib/check/*.sh lib/check/steps/*.sh lib/check/tests/*.sh
 }
 # Linted with -x, which follows `source`, so each is checked together with its libraries.
 sourcing_shell_files() {
@@ -122,16 +122,16 @@ step_body() {
     [ ! -s "$logs/agent.fmt.list" ] || xargs shfmt -i 2 -d <"$logs/agent.fmt.list" || status=1
     return $status
     ;;
-  check-scope) bash ./lib/tests/check-scope.sh ;;
-  check-cache) bash ./lib/tests/check-cache.sh && bash ./lib/tests/check-lock.sh ;;
+  check-scope) bash ./lib/check/tests/scope.sh ;;
+  check-cache) bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh ;;
   firefox-policy) bash ./lib/tests/firefox-policy.sh ;;
   greeter-keyring) bash ./lib/tests/greeter-keyring.sh ;;
   stylua) stylua --respect-ignores --check home/hypr/.config/hypr ;;
-  luacheck) sh ./lib/check-lua.sh ;;
-  qmllint) bash ./lib/check-qml.sh ;;
-  lock-skins) bash ./lib/check-lock-skins.sh ;;
-  style-exports) sh ./lib/check-style-exports.sh ;;
-  time-format) sh ./lib/check-time-format.sh ;;
+  luacheck) sh ./lib/check/steps/lua.sh ;;
+  qmllint) bash ./lib/check/steps/qml.sh ;;
+  lock-skins) bash ./lib/check/steps/lock-skins.sh ;;
+  style-exports) sh ./lib/check/steps/style-exports.sh ;;
+  time-format) sh ./lib/check/steps/time-format.sh ;;
   voxcmd-phrases) bash ./home/voxcmd/tests/run-phrases.sh ;;
   voxcmd-click) bash ./home/voxcmd/tests/run.sh ;;
   voxcmd-calendar) bash ./home/voxcmd/tests/run-calendar.sh ;;
@@ -146,12 +146,12 @@ step_body() {
   ship-batch) bash ./.claude/skills/ship-batch/tests/run.sh ;;
   merge-prs) bash ./home/claude/.claude/skills/merge-prs/tests/run.sh ;;
   notification-markup) node ./home/quickshell/tests/notification_markup.js ;;
-  packages) sh ./lib/check-packages.sh ;;
-  symlinks) sh ./lib/check-symlinks.sh ;;
+  packages) sh ./lib/check/steps/packages.sh ;;
+  symlinks) sh ./lib/check/steps/symlinks.sh ;;
   git-diff-check) git diff --check HEAD ;;
-  whitespace) sh ./lib/check-whitespace.sh ;;
-  conflicts) sh ./lib/check-conflicts.sh ;;
-  ignored-integrations) sh ./lib/check-ignored-integrations.sh ;;
+  whitespace) sh ./lib/check/steps/whitespace.sh ;;
+  conflicts) sh ./lib/check/steps/conflicts.sh ;;
+  ignored-integrations) sh ./lib/check/steps/ignored-integrations.sh ;;
   esac
 }
 
@@ -212,8 +212,8 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# shellcheck source-path=SCRIPTDIR source=check-lock.sh
-. "$script_dir/check-lock.sh"
+# shellcheck source-path=SCRIPTDIR source=check/lock.sh
+. "$script_dir/check/lock.sh"
 [ -n "$plan_only" ] || check_lower_priority
 
 logs=$(mktemp -d) || exit 1
@@ -230,16 +230,16 @@ jobs=${CHECK_JOBS:-$(($(nproc 2>/dev/null || echo 2) / 2))}
 path_scopes() {
   scopes=''
   case $1 in
-  lib/check-*.sh | lib/tests/check-*.sh) scopes=checkscope ;;
+  lib/check/*) scopes=checkscope ;;
   esac
   case $1 in
-  lib/check.sh | lib/check-lock.sh | lib/check-passed.sh | justfile | .claude/check-commands) scopes="$scopes all" ;;
-  lib/check-lua.sh | .luacheckrc | home/hypr/*) scopes="$scopes lua" ;;
+  lib/check.sh | lib/check/lock.sh | lib/check/passed.sh | justfile | .claude/check-commands) scopes="$scopes all" ;;
+  lib/check/steps/lua.sh | .luacheckrc | home/hypr/*) scopes="$scopes lua" ;;
   # Ahead of the greeter's QML arm, since case takes only the first match.
   system/etc/greetd/*.lua) scopes="$scopes lua qml" ;;
   # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
   lib/greeter-files.sh) scopes="$scopes qml ship" ;;
-  lib/check-qml.sh | lib/check-lock-skins.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scopes="$scopes qml" ;;
+  lib/check/steps/qml.sh | lib/check/steps/lock-skins.sh | lib/check/steps/style-exports.sh | lib/check/steps/time-format.sh | system/etc/greetd/quickshell/*) scopes="$scopes qml" ;;
   home/quickshell/tests/*) scopes="$scopes node" ;;
   home/quickshell/*) scopes="$scopes qml node" ;;
   home/voxcmd/* | extras/voxcmd-firefox/*) scopes="$scopes voxcmd" ;;
@@ -437,7 +437,7 @@ for name in $voxcmd_steps $other_steps; do
     continue
   fi
   if [ -n "$cache_tree" ] && step_key "$name" "$logs/tree.before" "$cache_tree" run >"$logs/$name.key"; then
-    if [ -z "${CHECK_FULL:-}" ] && lib/check-passed.sh step-is-passed "$name" "$(cat "$logs/$name.key")"; then
+    if [ -z "${CHECK_FULL:-}" ] && lib/check/passed.sh step-is-passed "$name" "$(cat "$logs/$name.key")"; then
       passed_before="$passed_before $name"
       continue
     fi
@@ -493,7 +493,7 @@ if [ -n "$cache_tree" ] && after_tree=$(snapshot_tree) && classify_tree "$after_
   for name in $ran; do
     [ ! -e "$logs/$name.failed" ] && [ -s "$logs/$name.key" ] || continue
     key=$(step_key "$name" "$logs/tree.after" "$after_tree" run) || continue
-    [ "$key" != "$(cat "$logs/$name.key")" ] || lib/check-passed.sh step-record "$name" "$key"
+    [ "$key" != "$(cat "$logs/$name.key")" ] || lib/check/passed.sh step-record "$name" "$key"
   done
 else
   after_tree=''
@@ -505,15 +505,15 @@ fi
 every_step_passed() {
   for name in $voxcmd_steps $other_steps; do
     [ -z "$(tool_missing "$name")" ] || continue
-    key=$(step_key "$name" "$logs/tree.after" "$after_tree" full) && lib/check-passed.sh step-is-passed "$name" "$key" || return 1
+    key=$(step_key "$name" "$logs/tree.after" "$after_tree" full) && lib/check/passed.sh step-is-passed "$name" "$key" || return 1
   done
 }
 if [ -z "$paths_from" ] && [ -n "$after_tree" ] && [ "$after_tree" = "$cache_tree" ] &&
   [ "$after_tree" = "$(git rev-parse 'HEAD^{tree}')" ]; then
-  [ -z "$changed_base" ] || lib/check-passed.sh record-changed "$changed_base" || true
+  [ -z "$changed_base" ] || lib/check/passed.sh record-changed "$changed_base" || true
   # Inductive: a base whose every step passed, plus a scoped pass over everything changed since, vouches for the tree.
-  if every_step_passed || { [ -n "$changed_base" ] && lib/check-passed.sh passed-somewhere "$changed_base"; }; then
-    lib/check-passed.sh record || true
+  if every_step_passed || { [ -n "$changed_base" ] && lib/check/passed.sh passed-somewhere "$changed_base"; }; then
+    lib/check/passed.sh record || true
   fi
 fi
 

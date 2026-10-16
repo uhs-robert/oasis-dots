@@ -5,7 +5,7 @@
 set -u
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-repo_dir=$(dirname -- "$script_dir")
+repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 cd "$repo_dir" || exit 1
 
 git ls-files -s | sed -n 's/^120000 [^	]*	//p' | {

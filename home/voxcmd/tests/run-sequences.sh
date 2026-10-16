@@ -12,8 +12,8 @@ set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 package=$(cd "$here/.." && pwd)
 fixtures_dir=$here/fixtures
-# shellcheck source-path=SCRIPTDIR source=../../../lib/check-lock.sh
-. "$here/../../../lib/check-lock.sh"
+# shellcheck source-path=SCRIPTDIR source=../../../lib/check/lock.sh
+. "$here/../../../lib/check/lock.sh"
 check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 if [ -z "${SANDBOX_DIR:-}" ]; then
   SANDBOX_CLIENTS_JSON=$(cat "$fixtures_dir/clients.json")

@@ -4,7 +4,7 @@
 set -u
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE CHECK_FULL CHECK_SKIP_STEPS CHECK_JOBS
 
-repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 scratch=$(mktemp -d) || exit 1
 holders=''
 trap 'kill $holders 2>/dev/null; rm -rf "$scratch"' EXIT
@@ -13,7 +13,9 @@ git clone -q "$repo_dir" "$scratch/clone" || exit 1
 cd "$scratch/clone" || exit 1
 git config user.name cache-test
 git config user.email cache-test@example.invalid
-cp "$repo_dir"/lib/check*.sh lib/
+cp "$repo_dir"/lib/check.sh lib/
+mkdir -p lib/check
+cp -R "$repo_dir"/lib/check/. lib/check/
 # Each step logs its name, fails when listed in FAIL_STEPS, and appends to EDIT_FILE when it is EDIT_STEP, as an agent
 # editing while the check runs would.
 # shellcheck disable=SC2016 # expanded by check.sh, where the stub lands
@@ -49,7 +51,7 @@ qml_file=$(git ls-files 'home/quickshell/*.qml' | head -n 1)
 
 check_run
 expect "a first run runs every step" "[ $status = 0 ] && ran_step voxcmd-click && ran_step qmllint && ran_step shellcheck"
-expect "a full pass of a clean tree records the tree" "lib/check-passed.sh is-passed"
+expect "a full pass of a clean tree records the tree" "lib/check/passed.sh is-passed"
 check_run
 expect "a second run runs nothing" "[ $status = 0 ] && [ -z '$ran' ]"
 expect "and says why" "grep -q '^== voxcmd-click skipped (passed for these inputs)' '$scratch/out'"
@@ -59,7 +61,7 @@ expect "CHECK_FULL=1 trusts no record" "ran_step voxcmd-click && ran_step confli
 # Both heavy-step slots held: the check itself takes none, so its steps run at once (the suites take theirs, stubbed here).
 mkdir "$scratch/runtime"
 for _ in 1 2; do
-  XDG_RUNTIME_DIR=$scratch/runtime CHECK_HEAVY_SLOTS=2 sh -c '. lib/check-lock.sh; check_lock_take holder && exec sleep 30' &
+  XDG_RUNTIME_DIR=$scratch/runtime CHECK_HEAVY_SLOTS=2 sh -c '. lib/check/lock.sh; check_lock_take holder && exec sleep 30' &
   holders="$holders $!"
 done
 sleep 0.5
@@ -75,8 +77,8 @@ git commit -qam 'voxcmd change'
 check_run --changed main-line
 expect "a voxcmd change reruns the voxcmd steps" "ran_step voxcmd-click && ran_step voxcmd-wake"
 expect "but not the QML ones" "! ran_step qmllint"
-expect "a scoped pass on a clean tree is recorded against its base" "lib/check-passed.sh passed-since main-line"
-expect "and, every step having passed for this content, as the tree" "lib/check-passed.sh is-passed"
+expect "a scoped pass on a clean tree is recorded against its base" "lib/check/passed.sh passed-since main-line"
+expect "and, every step having passed for this content, as the tree" "lib/check/passed.sh is-passed"
 voxcmd_commit=$(git rev-parse HEAD)
 
 # main moves on with a change outside voxcmd, and the branch is rebased onto it.
@@ -88,11 +90,11 @@ git rebase -q main-line
 check_run --changed main-line
 expect "a rebase onto a main that leaves voxcmd alone reuses the voxcmd passes" "[ $status = 0 ] && ! ran_step voxcmd-click"
 expect "a scoped run checks the tree steps again for the new tree" "ran_step conflicts"
-expect "the rebased tree passed against its new base" "lib/check-passed.sh passed-since main-line"
-expect "but not in full: main's QML change never passed" "! lib/check-passed.sh is-passed"
+expect "the rebased tree passed against its new base" "lib/check/passed.sh passed-since main-line"
+expect "but not in full: main's QML change never passed" "! lib/check/passed.sh is-passed"
 check_run
 expect "a full run then runs only what the QML change reaches" "ran_step qmllint && ! ran_step voxcmd-click"
-expect "and records the tree" "lib/check-passed.sh is-passed"
+expect "and records the tree" "lib/check/passed.sh is-passed"
 
 trees_file=$(git rev-parse --git-common-dir)/claude-check-passed-trees
 cp "$trees_file" "$scratch/trees.before"
@@ -131,7 +133,7 @@ printf '%s\n' "$qml_file" >"$scratch/paths"
 git commit -qam 'qml again'
 check_run --paths-from "$scratch/paths"
 expect "--paths-from records steps" "ran_step qmllint"
-expect "but no tree" "! lib/check-passed.sh is-passed"
+expect "but no tree" "! lib/check/passed.sh is-passed"
 
 [ "$failures" = 0 ] || {
   printf '%s failed\n' "$failures" >&2

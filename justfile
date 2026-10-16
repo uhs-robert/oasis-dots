@@ -83,9 +83,9 @@ uninstall *ARGS:
 sync-root-yazi:
     ./system/usr/local/bin/yazi-root --sync-only
 
-# Shellcheck install.sh, uninstall.sh, lib/*.sh, demo/*.sh, and the Quickshell audio importers
+# Shellcheck install.sh, uninstall.sh, lib/*.sh, lib/check/**/*.sh, demo/*.sh, and the Quickshell audio importers
 lint:
-    shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh
+    shellcheck install.sh uninstall.sh lib/*.sh lib/check/*.sh lib/check/steps/*.sh lib/check/tests/*.sh demo/*.sh
     shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
 
 # Validate formatting, package manifests, and whitespace; run optional tooling when available
