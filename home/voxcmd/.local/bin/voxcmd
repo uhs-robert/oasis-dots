@@ -2202,20 +2202,32 @@ session_cut_ending() {
     printf '%s' "$transcript"
   fi
 }
-# session_chain_text <transcript>: prints the words after the "and then" that follows the ending, from the transcript's
-# last wake word on, as spoken, for route to run as an ordinary sequence; nothing when the ending is not followed by one.
-# An "and then" in the dictation before the wake word is text, and so is one after words that are no ending.
+# session_chain_text <transcript>: prints the words after the "and then" (or ", then", or a bare "then") that follows the
+# ending, from the transcript's last wake word on, as spoken, for route to run as an ordinary sequence; nothing when the
+# ending is not followed by one. An "and then" in the dictation before the wake word is text, and so is one after words
+# that are no ending.
 session_chain_text() {
   local rest="" before separator
   init_wake_regex
   shopt -s nocasematch
   if [[ "$1" =~ ^(.*[^[:alnum:]])?($wake_regex)[^[:alnum:]]+(.*)$ ]]; then rest="${BASH_REMATCH[3]}"; fi
   shopt -u nocasematch
-  has_split_separator "$rest" || return 0
-  separator="${BASH_REMATCH[0]}"
-  before="${rest%%"$separator"*}"
-  session_ending_action "$(apply_replacements "$(normalize "$before")")" >/dev/null || return 0
-  trim_step "${rest#*"$separator"}"
+  # "and then" or ", then" first; a bare "then" only right after the ending, since the clip that recorded the chain lost
+  # the comma and the final transcript may have none either.
+  local -a separator_regexes=("$split_regex" '(^|[^[:alnum:]])then([^[:alnum:]]|$)')
+  local separator_regex
+  shopt -s nocasematch
+  for separator_regex in "${separator_regexes[@]}"; do
+    [[ "$rest" =~ $separator_regex ]] || continue
+    separator="${BASH_REMATCH[0]}"
+    before="${rest%%"$separator"*}"
+    if session_ending_action "$(apply_replacements "$(normalize "$before")")" >/dev/null; then
+      shopt -u nocasematch
+      trim_step "${rest#*"$separator"}"
+      return 0
+    fi
+  done
+  shopt -u nocasematch
 }
 # session_ending_starts <normalized words>: succeeds when they start with one of the mode's endings, whatever follows
 # (the dictation's own transcriber may hear a word more than the clip's).

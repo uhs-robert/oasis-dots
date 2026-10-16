@@ -53,7 +53,7 @@ DEFAULT_SETTINGS = {
     "margin_db": "12",
     # 0 is no limit. Type mode sets it just under voxtype's max_duration_secs, so its own cut is never the one that ends it.
     "max_secs": "0",
-    # A file the auto threshold is written to, lowest so far, for a later detector that starts mid-speech and cannot
+    # A file the auto threshold is written to, as the quiet room sets it, for a later detector that starts mid-speech and cannot
     # measure the room itself (voxcmd's chain after a type-mode ending). Set by voxcmd, not meant for autostop.conf.
     "threshold_file": "",
 }
@@ -172,10 +172,16 @@ class SpeechThenSilence:
         return max(self.room_db() + self.margin_db, MIN_AUTO_THRESHOLD_DB)
 
     def publish_threshold(self, threshold_db):
-        """Writes the lowest auto threshold heard so far to threshold_file: the room before any speech louder than it."""
+        """Writes the auto threshold to threshold_file, for a detector that starts mid-speech. Only a threshold from
+        a stretch of quiet as long as the room window counts, so the voice cannot raise it: the first reading, then
+        each one that follows ROOM_WINDOW_SECS of quiet and has moved by a dB or more, which follows a room that was
+        quieter at the start (a fan) up to its real level."""
         if not self.threshold_file or self.fixed_threshold_db is not None:
             return
-        if self.published_threshold_db is not None and threshold_db >= self.published_threshold_db:
+        first = self.published_threshold_db is None
+        if not first and self.quiet_secs < ROOM_WINDOW_SECS:
+            return
+        if not first and abs(threshold_db - self.published_threshold_db) < 1.0:
             return
         self.published_threshold_db = threshold_db
         try:
@@ -263,11 +269,11 @@ class SpeechThenSilence:
             self.calibrated = True
             room = f"room {self.room_db():.1f} dBFS, " if self.room_levels else ""
             self.trace(f"calibrated: {room}threshold {threshold_db:.1f} dBFS")
-        self.publish_threshold(threshold_db)
         if self.speech_heard():
             self.count_frame(len(self.levels) - 1, threshold_db)
         else:
             self.rescore(threshold_db)
+        self.publish_threshold(threshold_db)
         self.log(
             f"{self.elapsed_secs:6.2f}s level {level_db:6.1f} threshold {threshold_db:6.1f} dBFS"
             f" speech {self.speech_secs:.2f}s quiet {self.quiet_secs:.2f}s"

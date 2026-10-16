@@ -328,6 +328,15 @@ pcm "$root/long-speech.pcm" noise:0.3:-60 voice:9:-18 noise:3:-60
 check "max_secs cuts a long speech with the length-limit verdict" "[[ \$(detect '$root/long-speech.pcm' VOXCMD_AUTOSTOP_MAX_SECS=4) == 5 ]] && grep -q 'recording with speech in it, cutting here' '$detector_trace' && grep -q 'verdict length limit at 4\.' '$detector_trace'"
 check "and with none the speech runs to its pause" "[[ \$(detect '$root/long-speech.pcm') == 0 ]] && grep -q 'verdict speech then quiet at 1[0-9]\.' '$detector_trace'"
 pcm "$root/quiet-room.pcm" noise:6:-60
+threshold_out=$root/threshold-out
+pcm "$root/fan-room.pcm" noise:0.3:-75 noise:7.7:-42
+rm -f "$threshold_out"
+detect "$root/fan-room.pcm" VOXCMD_AUTOSTOP_THRESHOLD_FILE="$threshold_out" >/dev/null
+check "the published threshold follows a room that was quieter at the start, not the floor it began at" "awk '{ exit !(\$1 > -40) }' '$threshold_out'"
+pcm "$root/talk-in-quiet.pcm" noise:3:-55 voice:4:-18 noise:3:-55
+rm -f "$threshold_out"
+detect "$root/talk-in-quiet.pcm" VOXCMD_AUTOSTOP_THRESHOLD_FILE="$threshold_out" >/dev/null
+check "and speech does not raise it" "awk '{ exit !(\$1 < -40) }' '$threshold_out'"
 check "a quiet room is no speech" "[[ \$(detect '$root/quiet-room.pcm') == 3 ]]"
 check "for a reply too" "[[ \$(detect '$root/quiet-room.pcm' \"\${reply_detector[@]}\") == 3 && \$(detect '$root/fan-after-quiet-start.pcm' \"\${reply_detector[@]}\") == 3 ]]"
 check "without the debug log there is no trace" "env -u VOXCMD_DEBUG XDG_RUNTIME_DIR='$root/no-trace' python3 '$package/.local/bin/voxcmd-autostop' --pcm '$root/quiet-room.pcm'; [[ ! -e '$root/no-trace/voxcmd/debug.log' ]]"
@@ -860,6 +869,14 @@ done
 chain_pause() { touch "$SANDBOX_DIR/chain-pause"; }
 chain_is_waiting() { [[ $(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' "$log" && [[ $(jq -r '.ending.chain' "$session_json") == true ]]; }
 rm -f "$SANDBOX_DIR/chain-pause"
+sess_start "UNTIL_STOP Typed. Cortana stop typing then tap tap beta and then tap tap alpha."
+owner_is_listening
+wake_heard "Cortana stop typing then tap tap beta"
+chain_pause
+sess_wait
+check "a bare 'then' right after the ending is a separator in the final transcript too, and the router splits the rest" "session_gone && wtype_is 'wtype -- Typed.' && [[ \$(grep '^tap ' '$log' | tr '\\n' ' ') == 'tap tap beta tap tap alpha ' ]]"
+rm -f "$SANDBOX_DIR/chain-pause"
+
 sess_start "UNTIL_STOP Ship it. Cortana send it and then tap tap beta."
 owner_is_listening
 wake_heard "Cortana send it and then"
