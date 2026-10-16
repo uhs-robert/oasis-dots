@@ -958,18 +958,20 @@ Singleton {
 
     // --- Temperature and precipitation bands (ported from Temperature / Precipitation) ---
 
+    // Comfort bands in Fahrenheit: narrow around the comfortable middle, wide at the extremes where the advice stops changing.
+    // The edges follow freezing and, on air temperature, roughly where humid air reaches the NWS heat-index caution levels.
+    // There is no orange slot; bright_yellow is the theme's orange.
     function temp_color(temp) {
-        const unit_c = root.metric;
-        const very_cold = unit_c ? 5 : 41;
-        const cold = unit_c ? 13 : 55;
-        const chilly = unit_c ? 19 : 66;
-        const neutral = unit_c ? 24 : 76;
-        const warm = unit_c ? 29 : 85;
-        if (temp < very_cold) return Style.pal.bright_cyan;
-        if (temp < cold) return Style.pal.cyan;
-        if (temp < chilly) return Style.pal.bright_green;
-        if (temp < neutral) return Style.pal.green;
-        if (temp < warm) return Style.pal.yellow;
+        const temp_f = root.metric ? temp * 9 / 5 + 32 : temp;
+        if (temp_f < 10) return Style.pal.magenta;
+        if (temp_f < 32) return Style.pal.bright_magenta;
+        if (temp_f < 45) return Style.pal.blue;
+        if (temp_f < 55) return Style.pal.bright_blue;
+        if (temp_f < 65) return Style.pal.cyan;
+        if (temp_f < 74) return Style.pal.green;
+        if (temp_f < 78) return Style.pal.bright_green;
+        if (temp_f < 86) return Style.pal.yellow;
+        if (temp_f < 95) return Style.pal.bright_yellow;
         return Style.pal.red;
     }
 

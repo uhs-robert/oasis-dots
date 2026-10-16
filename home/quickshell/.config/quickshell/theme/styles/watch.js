@@ -76,10 +76,12 @@ function tokens(pal, r) {
             bg_crust: r.crust,
             bg_mantle: r.mantle,
             bg_surface: r.surface,
-            magenta: Watch.cold_lit[2],
-            bright_yellow: Watch.warm[7],
+            // magenta, bright_magenta, blue and bright_blue are the four cold temperature bands, kept two steps apart on cold_lit so they stay distinct;
+            // bright_yellow is the orange band between yellow and red.
+            magenta: Watch.cold_lit[0],
+            bright_yellow: Watch.warm[3],
             bright_blue: Watch.cold_lit[6],
-            bright_magenta: Watch.cold_lit[4],
+            bright_magenta: Watch.cold_lit[2],
             bright_red: Watch.red,
             blue: Watch.cold_lit[4]
         }, r.bands),
