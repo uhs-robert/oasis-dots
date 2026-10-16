@@ -262,7 +262,10 @@ expect_value "parse_day weekday" "$(date -d friday +%F)" "$(parse_day friday)"
 expect_value "parse_day next weekday" "$(date -d "next friday" +%F)" "$(parse_day "next friday")"
 expect_value "parse_day tomorrow" "$(date -d tomorrow +%F)" "$(parse_day tomorrow)"
 expect_value "parse_day rejects words" "fail" "$(parse_day banana || echo fail)"
-expect_value "parse_clock weekday" "$(date -d "friday 09:00" +%s)" "$(parse_clock "friday at 9 am")"
+# Tomorrow's weekday: today's would roll to next week once its 9 am has passed.
+clock_weekday=$(date -d tomorrow +%A)
+clock_weekday=${clock_weekday,,}
+expect_value "parse_clock weekday" "$(date -d "$clock_weekday 09:00" +%s)" "$(parse_clock "$clock_weekday at 9 am")"
 expect_value "parse_clock next weekday" "$(date -d "next friday 15:00" +%s)" "$(parse_clock "next friday at 3 pm")"
 # The same weekday is a week out once its time has passed, and today before it.
 today_name=$(date +%A)
