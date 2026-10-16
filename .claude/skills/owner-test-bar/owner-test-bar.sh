@@ -17,6 +17,10 @@ voxcmd_config_link="$HOME/.config/voxcmd"
 # The private integrations dirs, which a private dotfiles repo links into per file.
 voxcmd_private_dirs=(integrations.d replacements.d)
 voxcmd_bar="$bars/.voxcmd_bar"
+# voxcmd logs while this file exists (debug() in voxcmd). The marker is present only when a swap created the file, so
+# restore never deletes a log the owner turned on themselves.
+voxcmd_debug_log="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/debug.log"
+voxcmd_debug_marker="$bars/.voxcmd_debug_created"
 # Which agent session put the live test bar up, so a second session does not swap it out from under the owner.
 owner_file="$bars/.owner"
 
@@ -251,6 +255,22 @@ voxcmd_link_private() {
   done
 }
 
+voxcmd_debug_start() {
+  if [[ -e $voxcmd_debug_log && ! -f $voxcmd_debug_marker ]]; then
+    echo "voxcmd: debug log at $voxcmd_debug_log (already on, left alone on restore)"
+    return 0
+  fi
+  mkdir -p "$(dirname "$voxcmd_debug_log")" "$bars"
+  touch "$voxcmd_debug_log"
+  touch "$voxcmd_debug_marker"
+  echo "voxcmd: debug log at $voxcmd_debug_log"
+}
+
+voxcmd_debug_stop() {
+  [[ -f $voxcmd_debug_marker ]] || return 0
+  rm -f "$voxcmd_debug_log" "$voxcmd_debug_marker"
+}
+
 voxcmd_swap() {
   local name=$1 dir=$2
   if [[ -z $(git -C "$dir" diff --name-only origin/main...HEAD -- "$voxcmd_rel") ]]; then
@@ -283,6 +303,7 @@ voxcmd_swap() {
   done
   ln -sfn "$config" "$voxcmd_config_link"
   echo "voxcmd: test build $name"
+  voxcmd_debug_start
 }
 
 # Safe to rerun after an interrupted swap or restore: the record goes only once stow has relinked main.
@@ -297,6 +318,7 @@ voxcmd_restore() {
     stow -d "$repo/home" -t "$HOME" -R voxcmd
     rm -f "$voxcmd_bar"
   fi
+  voxcmd_debug_stop
   echo "voxcmd: main"
 }
 
@@ -330,6 +352,31 @@ voxcmd_status() {
   else
     echo "voxcmd: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
   fi
+}
+
+# Dry-runs each phrase with the live voxcmd, so a phrase is checked before the owner is told to say it.
+try_phrases() {
+  (($# > 0)) || die "usage: owner-test-bar.sh try <phrase>..."
+  local live voxcmd phrase output result option status=0
+  live=$(voxcmd_status)
+  if [[ $live == "voxcmd: test build "* ]]; then
+    live=${live#"voxcmd: test build "}
+    voxcmd=$bars/$live/$voxcmd_rel/.local/bin/voxcmd
+    echo "try: test build $live"
+    # The swap links ~/.config/voxcmd to this build's copy; set explicitly so the dry run does not depend on that link.
+    export VOXCMD_CONFIG_DIR=$bars/$live/$voxcmd_rel/.config/voxcmd
+  else
+    voxcmd=$voxcmd_bin_dir/voxcmd
+    echo "try: no voxcmd test bar is live, using the main install"
+  fi
+  for phrase in "$@"; do
+    output=$("$voxcmd" --dry-run "$phrase" 2>&1) || true
+    result=$(sed -n 's/^result: *//p' <<<"$output" | paste -sd ';')
+    option=$(sed -n '0,/^option 1:/s/^option 1: *\(.*\) (.*/\1/p' <<<"$output")
+    echo "\"$phrase\": ${result:-no result (voxcmd failed)}${option:+ -> $option}"
+    [[ $result == *"no match"* || -z $result ]] && status=1
+  done
+  return "$status"
 }
 
 # How the test bar at $1 compares with the branches it was built from.
@@ -562,8 +609,12 @@ main() {
     shift
     probe "$@"
     ;;
+  try)
+    shift
+    try_phrases "$@"
+    ;;
   *)
-    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace] [--take]|build <name> <branch>...|swap <name> [--replace] [--take]|restore [--take]|rebuild <name> [--take]|remove <name>|status|probe <ipc call>...}"
+    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace] [--take]|build <name> <branch>...|swap <name> [--replace] [--take]|restore [--take]|rebuild <name> [--take]|remove <name>|status|probe <ipc call>...|try <phrase>...}"
     ;;
   esac
 }

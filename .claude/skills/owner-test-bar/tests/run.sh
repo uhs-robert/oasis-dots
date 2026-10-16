@@ -108,5 +108,49 @@ out=$(FAKE_GH_DOWN=1 PATH="$here:$PATH" as "" "" request_codex_reviews feat-unre
 code=$?
 check "is silent when gh fails" "[[ $code == 0 && -z \$out ]]"
 
+echo "== voxcmd debug log"
+export HOME=$root/home XDG_RUNTIME_DIR=$root/run
+mkdir -p "$HOME"
+debug_log=$XDG_RUNTIME_DIR/voxcmd/debug.log
+out=$(as "" "" voxcmd_debug_start)
+show "$out"
+check "a swap creates the log and prints its path" "[[ -f $debug_log && \$out == 'voxcmd: debug log at $debug_log' ]]"
+as "" "" voxcmd_restore >/dev/null
+check "restore deletes a log the swap created" "[[ ! -e $debug_log ]]"
+mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
+echo owner >"$debug_log"
+as "" "" voxcmd_debug_start >/dev/null
+as "" "" voxcmd_restore >/dev/null
+check "restore keeps a log the owner turned on" "[[ \$(cat $debug_log) == owner ]]"
+rm -f "$debug_log"
+
+echo "== try"
+bar=$XDG_CACHE_HOME/dotfiles/test-bars/clicks/home/voxcmd
+mkdir -p "$bar/.local/bin" "$bar/.config/voxcmd" "$HOME/.local/bin"
+# shellcheck disable=SC2016 # the stub's own variables, not this script's
+stub='#!/usr/bin/env bash
+echo "config ${VOXCMD_CONFIG_DIR:-none}" >&2
+case $2 in *nowhere*) echo "result:      no match" ;; *) echo "result:      run"; echo "option 1:    Keybinds (keybinds.sh) action=run" ;; esac'
+printf '%s\n' "$stub" >"$HOME/.local/bin/voxcmd"
+chmod +x "$HOME/.local/bin/voxcmd"
+out=$(as "" "" try_phrases "focus workspace 3" "go nowhere")
+code=$?
+show "$out"
+check "uses the main install and says so" "grep -q 'using the main install' <<<\"\$out\""
+check "prints one line per phrase" "grep -qF '\"focus workspace 3\": run -> Keybinds' <<<\"\$out\" && grep -qF '\"go nowhere\": no match' <<<\"\$out\""
+check "exits 1 on a no match" "[[ $code == 1 ]]"
+out=$(as "" "" try_phrases "focus workspace 3")
+check "exits 0 when every phrase matches" "[[ \$? == 0 ]]"
+cp "$HOME/.local/bin/voxcmd" "$bar/.local/bin/voxcmd"
+rm "$HOME/.local/bin/voxcmd"
+ln -s "$bar/.local/bin/voxcmd" "$HOME/.local/bin/voxcmd"
+mkdir -p "$HOME/.config"
+ln -s "$bar/.config/voxcmd" "$HOME/.config/voxcmd"
+echo clicks >"$XDG_CACHE_HOME/dotfiles/test-bars/.voxcmd_bar"
+out=$(as "" "" try_phrases "go nowhere")
+code=$?
+show "$out"
+check "uses the live test build and its config" "grep -q 'try: test build clicks' <<<\"\$out\" && [[ $code == 1 ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
