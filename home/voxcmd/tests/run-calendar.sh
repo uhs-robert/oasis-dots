@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the calendar phrases for real inside the sandbox, against an events cache built around the current time, and
+# Runs the calendar phrases for real inside the sandbox, against an events cache built around a pinned time (VOXCMD_NOW), and
 # checks what reached the stubs: the browser, the bar's IPC and the notification. Also checks the spoken-time.sh
 # day words the calendar uses. The cache holds placeholder data only.
 #
@@ -18,6 +18,14 @@ if [ -z "${SANDBOX_DIR:-}" ]; then
 fi
 
 export TZ=UTC
+# Wednesday 10:05, mid-week and mid-morning: no named day, clock time or twenty-minute countdown here depends on when
+# the suite runs. Offsets from it are written out below: tomorrow is +1 day, Friday +2, next Wednesday +7.
+pinned_now=$(date -d '2026-10-14 10:05:00' +%s)
+export VOXCMD_NOW=$pinned_now
+pinned_date() { date -d "@$VOXCMD_NOW" +%F; }
+# The date this many days after the pinned one, as YYYY-MM-DD and as YYYYMMDD.
+days_after() { date -d "$(pinned_date) +$1 days" +%F; }
+days_after_compact() { date -d "$(pinned_date) +$1 days" +%Y%m%d; }
 # No Firefox window is open unless a test opens one: the pages then go to xdg-open.
 export SANDBOX_CLIENTS_JSON='[]'
 cache_file="$XDG_CACHE_HOME/calendar/events.json"
@@ -30,9 +38,7 @@ iso() { TZ=America/New_York date -d "@$1" +%Y-%m-%dT%H:%M:%S%:z; }
 
 # event <uid> <title> <start offset secs> <end offset secs> <join_url|null> <event_url|null> [status]
 event() {
-  local now
-  now=$(date +%s)
-  jq -n -c --arg uid "$1" --arg title "$2" --arg start "$(iso $((now + $3)))" --arg end "$(iso $((now + $4)))" \
+  jq -n -c --arg uid "$1" --arg title "$2" --arg start "$(iso $((VOXCMD_NOW + $3)))" --arg end "$(iso $((VOXCMD_NOW + $4)))" \
     --arg meet "$5" --arg url "$6" --arg status "${7:-confirmed}" \
     '{uid: $uid, title: $title, start: $start, end: $end, all_day: false,
       join_url: (if $meet == "null" then null else $meet end), event_url: (if $url == "null" then null else $url end),
@@ -69,9 +75,6 @@ expect_absent() {
   fi
 }
 
-# A countdown crossing midnight reads "tomorrow", so those checks stand down in the last minutes of the day.
-same_day_in_20_minutes() { [ "$(date +%F)" = "$(date -d '+20 minutes' +%F)" ]; }
-
 # ---- Open the meeting ------------------------------------------------------------------------------------------
 
 write_cache \
@@ -84,27 +87,25 @@ expect_absent "cancelled meeting" "cancelled"
 expect "says which meeting" "Joining Standup"
 
 # An in-progress and an upcoming meeting: "current" and "next" each take only their own.
-if same_day_in_20_minutes; then
-  write_cache \
-    "$(event q "Running" -300 600 https://meet.example.com/running null)" \
-    "$(event r "Upcoming" 900 1800 https://meet.example.com/upcoming null)"
-  say "join my current meeting"
-  expect "current joins the one in progress" "xdg-open https://meet.example.com/running"
-  say "join my next meeting"
-  expect "next joins the upcoming one" "xdg-open https://meet.example.com/upcoming"
-  expect_absent "next skips the one in progress" "meet.example.com/running"
-  say "join my meeting"
-  expect "no qualifier keeps the ranking" "xdg-open https://meet.example.com/running"
+write_cache \
+  "$(event q "Running" -300 600 https://meet.example.com/running null)" \
+  "$(event r "Upcoming" 900 1800 https://meet.example.com/upcoming null)"
+say "join my current meeting"
+expect "current joins the one in progress" "xdg-open https://meet.example.com/running"
+say "join my next meeting"
+expect "next joins the upcoming one" "xdg-open https://meet.example.com/upcoming"
+expect_absent "next skips the one in progress" "meet.example.com/running"
+say "join my meeting"
+expect "no qualifier keeps the ranking" "xdg-open https://meet.example.com/running"
 
-  write_cache "$(event s "Running" -300 600 https://meet.example.com/running null)"
-  say "join my next meeting"
-  expect "next with none" "No more meetings today"
-  expect_absent "next never falls back to the one in progress" "xdg-open"
-  write_cache "$(event t2 "Upcoming" 900 1800 https://meet.example.com/upcoming null)"
-  say "join my current meeting"
-  expect "current with none" "No meeting in progress"
-  expect_absent "current never falls back to a future one" "xdg-open"
-fi
+write_cache "$(event s "Running" -300 600 https://meet.example.com/running null)"
+say "join my next meeting"
+expect "next with none" "No more meetings today"
+expect_absent "next never falls back to the one in progress" "xdg-open"
+write_cache "$(event t2 "Upcoming" 900 1800 https://meet.example.com/upcoming null)"
+say "join my current meeting"
+expect "current with none" "No meeting in progress"
+expect_absent "current never falls back to a future one" "xdg-open"
 
 # Focus (9:00-12:00, no Meet) overlapping Standup (10:00-10:15, Meet) at 10:05; every event has an event_url, as
 # calendar-sync writes them.
@@ -151,11 +152,9 @@ say "join my meeting"
 expect "nothing left today" "No more meetings today"
 expect_absent "nothing left today" "xdg-open"
 
-if same_day_in_20_minutes; then
-  write_cache "$(event f "Planning" 600 1800 https://meet.example.com/planning null)"
-  say "open my meeting"
-  expect "next meeting today" "xdg-open https://meet.example.com/planning"
-fi
+write_cache "$(event f "Planning" 600 1800 https://meet.example.com/planning null)"
+say "open my meeting"
+expect "next meeting today" "xdg-open https://meet.example.com/planning"
 
 rm -f "$cache_file"
 say "join my meeting"
@@ -164,14 +163,12 @@ expect_absent "no cache" "xdg-open"
 
 # ---- What is next ----------------------------------------------------------------------------------------------
 
-if same_day_in_20_minutes; then
-  write_cache "$(event g "Standup" 719 1800 null null)"
-  say "what's my next meeting"
-  expect "next meeting with a countdown" "Standup"
-  expect "next meeting with a countdown" ", in 12 minutes"
-  say "what's next on my calendar"
-  expect "other phrasing" ", in 12 minutes"
-fi
+write_cache "$(event g "Standup" 719 1800 null null)"
+say "what's my next meeting"
+expect "next meeting with a countdown" "Standup"
+expect "next meeting with a countdown" ", in 12 minutes"
+say "what's next on my calendar"
+expect "other phrasing" ", in 12 minutes"
 
 write_cache "$(event h "Past" -7200 -3600 null null)"
 say "what's my next meeting"
@@ -180,14 +177,14 @@ expect "no next meeting" "No upcoming meetings"
 # ---- A day, a new event, the calendar --------------------------------------------------------------------------
 
 say "what's on my calendar tomorrow"
-expect "tomorrow in the bar" "qs-ipc call calendar open_day $(date -d tomorrow +%F)"
+expect "tomorrow in the bar" "qs-ipc call calendar open_day $(days_after 1)"
 expect_absent "day is silent" "notify-send"
 say "what's on my calendar"
-expect "today by default" "qs-ipc call calendar open_day $(date +%F)"
+expect "today by default" "qs-ipc call calendar open_day $(days_after 0)"
 say "what's on my calendar friday"
-expect "weekday" "qs-ipc call calendar open_day $(date -d friday +%F)"
+expect "weekday" "qs-ipc call calendar open_day $(days_after 2)"
 
-tomorrow=$(date -d tomorrow +%Y%m%d)
+tomorrow=$(days_after_compact 1)
 say "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com"
 expect "new meeting" "xdg-open https://calendar.google.com/calendar/render?action=TEMPLATE&text=Design%20review&dates=${tomorrow}T150000/${tomorrow}T160000&ctz=UTC&add=alice%40example.com"
 say "new meeting tomorrow at 3 pm for 30 minutes called Lunch with Bob"
@@ -195,11 +192,8 @@ expect "title keeps 'with' and its casing" "&text=Lunch%20with%20Bob&dates=${tom
 expect_absent "no guests" "&add="
 say "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com and bob@example.com"
 expect "two guests, title cut at the first with" "&text=Design%20review&dates=${tomorrow}T150000/${tomorrow}T160000&ctz=UTC&add=alice%40example.com%2Cbob%40example.com"
-# Tomorrow's weekday: today's would roll to next week once its 3 pm has passed.
-sync_weekday=$(date -d tomorrow +%A)
-sync_weekday=${sync_weekday,,}
-say "new meeting $sync_weekday at 3 called Sync"
-expect "bare 3 is the afternoon" "&text=Sync&dates=$(date -d "$sync_weekday" +%Y%m%d)T150000/$(date -d "$sync_weekday" +%Y%m%d)T160000"
+say "new meeting thursday at 3 called Sync"
+expect "bare 3 is the afternoon" "&text=Sync&dates=${tomorrow}T150000/${tomorrow}T160000"
 say "new meeting tomorrow at 9 called Sync"
 expect "bare 9 is the morning" "&dates=${tomorrow}T090000/${tomorrow}T100000"
 say "new meeting tomorrow at 12 called Sync"
@@ -213,7 +207,7 @@ expect "for before a clock time" "&dates=${tomorrow}T150000/${tomorrow}T160000"
 say "new meeting tomorrow at 3 pm"
 expect "no title" "render?action=TEMPLATE&dates=${tomorrow}T150000/${tomorrow}T160000&ctz=UTC"
 say "new meeting friday called Offsite"
-expect "day only is all day" "&text=Offsite&dates=$(date -d friday +%Y%m%d)/$(date -d 'friday +1 day' +%Y%m%d)"
+expect "day only is all day" "&text=Offsite&dates=$(days_after_compact 2)/$(days_after_compact 3)"
 say "new meeting"
 expect "blank form" "xdg-open https://calendar.google.com/calendar/render?action=TEMPLATE"
 say "open my calendar"
@@ -261,29 +255,30 @@ expect_value() {
   fi
 }
 
-expect_value "parse_day weekday" "$(date -d friday +%F)" "$(parse_day friday)"
-expect_value "parse_day next weekday" "$(date -d "next friday" +%F)" "$(parse_day "next friday")"
-expect_value "parse_day tomorrow" "$(date -d tomorrow +%F)" "$(parse_day tomorrow)"
+expect_value "parse_day weekday" "$(days_after 2)" "$(parse_day friday)"
+expect_value "parse_day next weekday" "$(days_after 2)" "$(parse_day "next friday")"
+expect_value "parse_day tomorrow" "$(days_after 1)" "$(parse_day tomorrow)"
 expect_value "parse_day rejects words" "fail" "$(parse_day banana || echo fail)"
-# Tomorrow's weekday: today's would roll to next week once its 9 am has passed.
-clock_weekday=$(date -d tomorrow +%A)
-clock_weekday=${clock_weekday,,}
-expect_value "parse_clock weekday" "$(date -d "$clock_weekday 09:00" +%s)" "$(parse_clock "$clock_weekday at 9 am")"
-expect_value "parse_clock next weekday" "$(date -d "next friday 15:00" +%s)" "$(parse_clock "next friday at 3 pm")"
-# The same weekday is a week out once its time has passed, and today before it.
-today_name=$(date +%A)
-today_name=${today_name,,}
-past=$(date -d '-1 hour' '+%-I %M %P')
-if [ "$(date +%F)" = "$(date -d '-1 hour' +%F)" ]; then
-  expect_value "parse_clock same weekday, time passed" "$(date -d "$today_name +7 days $(date -d '-1 hour' +%H:%M)" +%s)" \
-    "$(parse_clock "$today_name $past")"
-fi
-# "next <today's weekday>" is a week out, whichever weekday the test runs on.
-expect_value "next today's weekday" "$(date -d "$today_name +7 days" +%F)" "$(parse_day "next $today_name")"
-expect_value "parse_clock next today's weekday" "$(date -d "$today_name +7 days 15:00" +%s)" "$(parse_clock "next $today_name 3 pm")"
+expect_value "parse_clock weekday" "$(date -d "$(days_after 1) 09:00" +%s)" "$(parse_clock "thursday at 9 am")"
+expect_value "parse_clock next weekday" "$(date -d "$(days_after 2) 15:00" +%s)" "$(parse_clock "next friday at 3 pm")"
+# The pinned weekday is a week out once its time has passed, and today before it.
+expect_value "parse_clock same weekday, time passed" "$(date -d "$(days_after 7) 09:00" +%s)" "$(parse_clock "wednesday at 9 am")"
+expect_value "parse_clock same weekday, time ahead" "$(date -d "$(days_after 0) 11:00" +%s)" "$(parse_clock "wednesday at 11 am")"
+# "next <today's weekday>" is a week out.
+expect_value "next today's weekday" "$(days_after 7)" "$(parse_day "next wednesday")"
+expect_value "parse_clock next today's weekday" "$(date -d "$(days_after 7) 15:00" +%s)" "$(parse_clock "next wednesday 3 pm")"
 expect_value "next elsewhere is not a day word" "fail" "$(parse_clock "9 am next in tokyo" || echo fail)"
 expect_value "parse_clock rejects day clash" "fail" "$(parse_clock "tomorrow friday at 3" || echo fail)"
 expect_value "parse_duration" "5400" "$(parse_duration "an hour and a half")"
+
+# ---- A Friday late evening: where a spoken weekday rolls over ------------------------------------------------------
+
+VOXCMD_NOW=$(date -d '2026-10-16 23:30:00' +%s)
+expect_value "friday at 9 am, passed, is next week" "$(date -d "$(days_after 7) 09:00" +%s)" "$(parse_clock "friday at 9 am")"
+expect_value "friday at 11:45 pm is still today" "$(date -d "$(days_after 0) 23:45" +%s)" "$(parse_clock "friday at 11 45 pm")"
+expect_value "friday at 11:15 pm, passed, is next week" "$(date -d "$(days_after 7) 23:15" +%s)" "$(parse_clock "friday at 11 15 pm")"
+expect_value "next friday is a week out" "$(days_after 7)" "$(parse_day "next friday")"
+expect_value "saturday is tomorrow" "$(days_after 1)" "$(parse_day saturday)"
 
 if [ "$failures" != 0 ]; then
   printf '%s of %s calendar checks failed\n' "$failures" "$total"
