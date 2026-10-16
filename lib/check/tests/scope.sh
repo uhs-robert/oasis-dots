@@ -226,7 +226,7 @@ case_firefox_extension() {
 
 case_firefox_policy() {
   start_case 'Firefox policy installer'
-  echo '# x' >>lib/install/firefox-policy.sh
+  echo '# x' >>lib/install/voice.sh
   plan
   expect_ran firefox-policy shellcheck
   expect_skipped qmllint luacheck voxcmd-click check-scope
@@ -234,7 +234,7 @@ case_firefox_policy() {
 
 case_greeter_keyring() {
   start_case 'greetd keyring unlock installer'
-  echo '# x' >>lib/install/greeter-keyring.sh
+  echo '# x' >>lib/install/greeter.sh
   plan
   expect_ran greeter-keyring shellcheck
   expect_skipped firefox-policy qmllint luacheck check-scope

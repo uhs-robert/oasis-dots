@@ -10,11 +10,13 @@ source "$DOTFILES_DIR/lib/install/arch.sh"
 source "$DOTFILES_DIR/lib/install/rust.sh"
 source "$DOTFILES_DIR/lib/install/stow.sh"
 source "$DOTFILES_DIR/lib/install/migrate.sh"
-source "$DOTFILES_DIR/lib/install/services.sh"
+source "$DOTFILES_DIR/lib/install/dev-tools.sh"
+source "$DOTFILES_DIR/lib/install/system.sh"
+source "$DOTFILES_DIR/lib/install/hardware.sh"
+source "$DOTFILES_DIR/lib/install/voice.sh"
+source "$DOTFILES_DIR/lib/install/calendar.sh"
 source "$DOTFILES_DIR/lib/install/tailnet-ssh.sh"
 source "$DOTFILES_DIR/lib/install/greeter.sh"
-source "$DOTFILES_DIR/lib/install/greeter-keyring.sh"
-source "$DOTFILES_DIR/lib/install/firefox-policy.sh"
 source "$DOTFILES_DIR/lib/install/repos.sh"
 source "$DOTFILES_DIR/lib/install/fonts.sh"
 
@@ -76,6 +78,19 @@ parse_args() {
     esac
     shift
   done
+}
+
+# Checks for the Lua-config Hyprland runtime, then says how to start the session the installer set up.
+print_next_steps() {
+  if ! command -v start-hyprland &>/dev/null; then
+    warn "start-hyprland not found: this config needs a Hyprland build with the Lua config API (the hyprland package)"
+    return
+  fi
+  if systemctl is-enabled greetd &>/dev/null; then
+    warn "Next: reboot to log in through greetd"
+  else
+    warn "Next: reboot, or log out and run start-hyprland from a TTY"
+  fi
 }
 
 main() {

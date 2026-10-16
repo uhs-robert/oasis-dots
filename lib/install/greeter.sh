@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Stages and installs the Quickshell greeter (/etc/greetd/quickshell) with the lock skins, theme, fonts and the user's lock style.
+# Stages and installs the Quickshell greeter (/etc/greetd/quickshell) with the lock skins, theme, fonts and the user's lock style,
+# and lets the greetd login unlock the GNOME keyring.
 
 # shellcheck source=lib/common/greeter-files.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../common/greeter-files.sh"
@@ -89,4 +90,130 @@ greeter_install_cmds() {
     "if levels=\$(jq -c '{music_volume, output_volume} | with_entries(select(.value | type == \"string\"))' '$GREETER_DATA/greeter.json' 2>/dev/null); then jq --argjson levels \"\$levels\" '. + \$levels' '$stage/greeter.json' >'$GREETER_DATA/.greeter.json.new' && chmod 640 '$GREETER_DATA/.greeter.json.new' && mv -f '$GREETER_DATA/.greeter.json.new' '$GREETER_DATA/greeter.json'; else install -m 640 '$stage/greeter.json' '$GREETER_DATA/greeter.json'; fi" \
     "$seed_theme" \
     "[ ! -f '$HOME/.face' ] || install -D -m 640 '$HOME/.face' '$GREETER_DATA/faces/$USER'"
+}
+
+detect_primary_connector() {
+  local connected=()
+  for f in /sys/class/drm/*/status; do
+    [[ "$(cat "$f" 2>/dev/null)" == "connected" ]] || continue
+    local name
+    name=$(basename "$(dirname "$f")")
+    name="${name#card?-}"
+    connected+=("$name")
+  done
+  case ${#connected[@]} in
+  0) echo "eDP-1" ;;
+  1) echo "${connected[0]}" ;;
+  *)
+    if [[ $OPT_YES -eq 1 ]]; then
+      info "Primary display for greeter: ${connected[0]} (--yes)" >&2
+      echo "${connected[0]}"
+    else
+      printf '%s\n' "${connected[@]}" | fzf --prompt="Primary display for greeter> " --no-info
+    fi
+    ;;
+  esac
+}
+
+# Optionally installs greetd + tuigreet, deploys their configs, the Quickshell greeter (tuigreet stays as its fallback), and enables greetd.
+install_greetd() {
+  confirm "Install greetd + tuigreet (display manager)?" || return 0
+
+  info "Installing greetd and tuigreet..."
+  sudo pacman -S --needed --noconfirm greetd
+  sudo pacman -S --needed --noconfirm greetd-tuigreet
+
+  cd "$DOTFILES_DIR" || return 1
+  local connector
+  connector=$(detect_primary_connector)
+  info "Setting greeter primary display: $connector"
+  local tmp
+  tmp=$(mktemp --suffix=.toml)
+  sed "s/connector = \"eDP-1\"/connector = \"$connector\"/" \
+    system/etc/tuigreet/config.toml >"$tmp"
+  sudo install -Dm644 system/etc/greetd/config.toml /etc/greetd/config.toml
+  sudo install -Dm644 "$tmp" /etc/tuigreet/config.toml
+  sudo install -Dm755 system/usr/local/bin/tuigreet-oasis /usr/local/bin/tuigreet-oasis
+  sudo install -Dm644 system/etc/greetd/kitty.conf /etc/greetd/kitty.conf
+  rm -f "$tmp"
+  success "greetd/tuigreet config installed"
+  enable_greetd_keyring_unlock
+
+  if confirm "Use the Quickshell greeter (your lock screen style; tuigreet stays as fallback)?"; then
+    local stage
+    stage=$(mktemp -d)
+    skin=$(stage_greeter "$stage" "$DOTFILES_DIR") || die "Staging the greeter failed"
+    info "Greeter skin: $skin"
+    while read -r cmd; do eval "$cmd"; done < <(greeter_install_cmds "$stage" "$DOTFILES_DIR")
+    rm -rf "$stage"
+    success "Quickshell greeter installed (F10 or SUPER+T switches to tuigreet)"
+  else
+    sudo install -Dm644 system/etc/greetd/hyprland.lua /etc/greetd/hyprland.lua
+    printf '%s\n' "$USER" | sudo tee /etc/greetd/admin_user >/dev/null
+    sudo rm -f /usr/local/bin/qs-greeter
+    success "tuigreet greeter installed"
+  fi
+
+  sudo systemctl enable greetd
+  success "greetd enabled (active on next boot)"
+}
+
+# Lets the greetd login unlock the GNOME keyring with the password typed at the greeter, so the first secret lookup after
+# login (Slack, calendar-sync) raises no second unlock prompt. PAM can only do that while the keyring's password matches
+# the login password; when they differ the keyring stays locked and prompts as before, and the login itself still works.
+
+GREETD_KEYRING_AUTH_LINE='auth       optional     pam_gnome_keyring.so'
+GREETD_KEYRING_SESSION_LINE='session    optional     pam_gnome_keyring.so auto_start'
+
+# The paths and the sudo command are overridable so the test can run against scratch files without root.
+# GREETD_KEYRING_SUDO may be set to the empty string.
+enable_greetd_keyring_unlock() {
+  local pam_file="${GREETD_PAM_FILE:-/etc/pam.d/greetd}"
+  local module="${PAM_GNOME_KEYRING_MODULE:-/usr/lib/security/pam_gnome_keyring.so}"
+  local -a sudo_cmd
+  read -ra sudo_cmd <<<"${GREETD_KEYRING_SUDO-sudo}"
+
+  if [[ ! -f "$module" ]]; then
+    info "gnome-keyring's PAM module is not installed, skipping the login keyring unlock"
+    return 0
+  fi
+  if [[ ! -f "$pam_file" ]]; then
+    warn "$pam_file is missing, so greetd cannot unlock the keyring; install greetd first"
+    return 0
+  fi
+
+  local add_auth=1 add_session=1
+  grep -Eq '^[[:space:]]*-?auth[[:space:]].*pam_gnome_keyring\.so' "$pam_file" && add_auth=0
+  grep -Eq '^[[:space:]]*-?session[[:space:]].*pam_gnome_keyring\.so' "$pam_file" && add_session=0
+  if ((! add_auth && ! add_session)); then
+    info "greetd already unlocks the keyring at login"
+    return 0
+  fi
+
+  # pacman owns this file, so only our two lines go in, each after the last line of its PAM type; an upgrade then
+  # leaves a .pacnew to merge rather than silently losing them.
+  local tmp
+  tmp=$(mktemp) || return 1
+  awk -v add_auth="$add_auth" -v add_session="$add_session" \
+    -v auth_line="$GREETD_KEYRING_AUTH_LINE" -v session_line="$GREETD_KEYRING_SESSION_LINE" '
+    { lines[NR] = $0; if ($1 == "auth") last_auth = NR; if ($1 == "session") last_session = NR }
+    END {
+      for (i = 1; i <= NR; i++) {
+        print lines[i]
+        if (add_auth && i == last_auth) print auth_line
+        if (add_session && i == last_session) print session_line
+      }
+      if (add_auth && !last_auth) print auth_line
+      if (add_session && !last_session) print session_line
+    }' "$pam_file" >"$tmp" || {
+    rm -f "$tmp"
+    return 1
+  }
+  if ! "${sudo_cmd[@]}" install -m 644 "$tmp" "$pam_file"; then
+    rm -f "$tmp"
+    warn "Could not write $pam_file"
+    return 1
+  fi
+  rm -f "$tmp"
+  success "greetd now unlocks the keyring at login (needs the keyring password to match your login password)"
 }
