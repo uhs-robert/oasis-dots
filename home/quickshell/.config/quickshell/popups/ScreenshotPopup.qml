@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../components"
-import "../theme"
-import "../services"
+import qs.components
+import qs.theme
+import qs.services
 
 Popup {
     id: root

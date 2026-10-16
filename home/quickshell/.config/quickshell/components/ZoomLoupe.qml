@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import "../services"
-import "picker"
+import qs.services
+import qs.components.picker
 
 // One per screen: zoom mode's live loupe, shown on the monitor under the pointer.
 PanelWindow {

@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/ps2" as Ps2
-import "../../components/goldeneye" as Goldeneye
-import "../../theme"
-import "../../services"
-import "../snes" as Snes
+import qs.components
+import qs.components.ps2 as Ps2
+import qs.components.goldeneye as Goldeneye
+import qs.theme
+import qs.services
+import qs.popups.snes as Snes
 
 // Progress bar and knob; click or drag to seek the given player.
 Item {

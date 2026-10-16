@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "../../theme/Watch.js" as W
 
 // Hourly's Air sub-view as the pause watch's objectives screen: US AQI in 12-hour pages of the 24 hours, each hour a bar in its AQI category colour at its real clock position,

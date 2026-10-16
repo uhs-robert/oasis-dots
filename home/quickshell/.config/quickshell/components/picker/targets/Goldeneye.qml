@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import "../../goldeneye" as Goldeneye
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.goldeneye as Goldeneye
 import "../../../theme/Watch.js" as W
 
 // GoldenEye dressing for the window/screen/region target: red lock-on brackets that

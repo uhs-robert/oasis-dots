@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
+import qs.theme
 
 // An nvim-notify title line: level icon and app in the level color, a level tag, the age at the right, a rule under it.
 Item {

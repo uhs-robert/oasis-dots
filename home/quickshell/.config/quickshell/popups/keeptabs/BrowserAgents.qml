@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/ps2"
-import "../../theme"
-import "../../services"
+import qs.components.ps2
+import qs.theme
+import qs.services
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the PS2 Browser's memory card screen: the selected session's save-info block over a field of

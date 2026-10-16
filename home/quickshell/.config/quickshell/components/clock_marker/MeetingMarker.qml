@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The bar clock's meeting marker: the countdown before a meeting and the in-meeting mark, drawn by the file Style.bar_meeting_marker names.
 // `minutes` and `progress` describe the upcoming meeting; `in_meeting` is the live one.

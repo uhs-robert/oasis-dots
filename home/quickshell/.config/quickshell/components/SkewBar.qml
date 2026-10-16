@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../theme"
+import qs.theme
 
 // An HEV-style readout bar: outlined cells leaning right, lit up to `value`.
 Item {

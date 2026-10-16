@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
-import "../theme"
+import qs.theme
 
 // Keeps the login screen's data (LoginScreen's choices, theme, face) in /var/lib/qs-greeter current; does nothing when that directory is absent.
 Scope {

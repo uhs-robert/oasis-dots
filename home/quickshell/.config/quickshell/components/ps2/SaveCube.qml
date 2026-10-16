@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // A memory card save icon: a translucent cube seen from above, its letter pressed into the left face.
 Item {

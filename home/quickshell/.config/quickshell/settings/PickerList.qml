@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../components"
-import "../theme"
-import "../services"
+import qs.components
+import qs.theme
+import qs.services
 import "../picker/Fuzzy.js" as Fuzzy
 
 // A fuzzy-filtered list of a row's options; items are { label, thumb? }, picked(index) reports the position in items.

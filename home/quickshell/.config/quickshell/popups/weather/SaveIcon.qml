@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // A memory card save block: a bordered square holding the weather icon rasterised at 16px and scaled up unsmoothed.
 Rectangle {

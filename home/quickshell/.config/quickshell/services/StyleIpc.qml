@@ -1,6 +1,6 @@
 import Quickshell.Io
-import "../theme"
-import "../components/transitions"
+import qs.theme
+import qs.components.transitions
 
 IpcHandler {
     target: "style"

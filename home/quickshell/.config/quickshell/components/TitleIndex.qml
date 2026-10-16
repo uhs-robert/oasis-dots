@@ -1,5 +1,5 @@
 import QtQuick
-import "../theme"
+import qs.theme
 
 // The popup's two-digit position in the style's title_index, drawn before its title.
 Text {

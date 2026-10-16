@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "WttrArt.js" as WttrArt
 
 // `curl wttr.in/?format=v2`: a braille-dot graph with a value axis, a precipitation histogram under it and the

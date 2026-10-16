@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../"
+import qs.theme
+import qs.components
 
 // ps1: a memory-card save slot in the frame's dithered shade, holding 12m before a meeting and a lit MTG during one.
 MarkerBase {

@@ -1,7 +1,7 @@
 import QtQuick
-import "../../components"
-import "../../components/snes" as Snes
-import "../../theme"
+import qs.components
+import qs.components.snes as Snes
+import qs.theme
 
 // Start as an FF6 main menu: the command column in a blue window, the glove on the selected command.
 Item {

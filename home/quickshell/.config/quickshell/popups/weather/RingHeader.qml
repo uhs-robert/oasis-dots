@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The current conditions as a ticked ring gauge around the temperature, with leader-line callouts beside it,
 // then today's range, humidity and rain as hairline scales over a row of small readouts.

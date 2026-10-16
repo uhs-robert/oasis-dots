@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 // Recent voxtype mic levels, newest on the right: a mirrored line wave, or bars.
 Item {

@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
-import "../theme"
+import qs.theme
 
 Singleton {
     id: root

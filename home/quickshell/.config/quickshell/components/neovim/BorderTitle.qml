@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A title chip set into a floating frame's top border; centre it on the border line.
 Item {

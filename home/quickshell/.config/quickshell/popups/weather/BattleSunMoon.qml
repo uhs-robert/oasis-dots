@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "NesSprites.js" as NesSprites
 
 // The inn: the innkeeper's lines about the selected day's sun, a status window of day length and moon, and the day window strip with the DQ cursor.

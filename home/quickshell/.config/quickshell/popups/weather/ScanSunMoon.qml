@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // A Scan Visor logbook entry, "Celestial bodies": the selected day as the sun's orbit with its rise and set nodes, the moon scanned beside it,
 // then the sky events as data rows, under the Daily day window as a visor strip.

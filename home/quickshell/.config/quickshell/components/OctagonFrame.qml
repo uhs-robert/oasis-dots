@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
+import qs.theme
 
 // A viewport cut to an octagon: gradient edge line, glass fill, clipped scan rows, corner struts and edge ticks.
 Item {

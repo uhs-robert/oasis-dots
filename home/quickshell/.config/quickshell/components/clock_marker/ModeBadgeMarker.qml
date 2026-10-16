@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // neovim: a lualine mode block, MTG 12m before a meeting and a plain MTG during one. On the accent fill it inverts to an ink block.
 MarkerBase {

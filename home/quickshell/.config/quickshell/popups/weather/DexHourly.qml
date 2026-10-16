@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "PixelArt.js" as PixelArt
 
 // The Pokégear radio: each hour a column of signal bars on a tuner dial that scrolls past a fixed needle, the hour's reading in the readout above.

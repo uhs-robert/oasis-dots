@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../components/modern" as Modern
+import qs.components
+import qs.theme
+import qs.components.modern as Modern
 
 // A backlight level row: a capsule slider or a menu row with a plain slider and percent readout.
 Item {

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../components"
-import "../theme"
-import "../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The confirm card: Confirm's question with Yes and No, dropped from the center island like the Power confirm.
 Popup {

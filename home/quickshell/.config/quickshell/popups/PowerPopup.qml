@@ -1,6 +1,6 @@
 import QtQuick
-import "../components"
-import "../services"
+import qs.components
+import qs.services
 
 Popup {
     id: root

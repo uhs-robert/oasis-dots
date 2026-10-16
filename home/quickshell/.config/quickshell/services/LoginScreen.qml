@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../theme"
+import qs.theme
 
 // What the login screen shows; "follow" fields take the lock screen's value. Saved in greeter.json under the state dir.
 Singleton {

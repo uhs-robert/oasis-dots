@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // modern: a small primary pill after the date, tinted with 12m before a meeting and solid with a dot and MTG during one.
 MarkerBase {

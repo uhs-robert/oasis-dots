@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
-import "../../lock/skins/goldeneye" as Watch
+import qs.components
+import qs.theme
+import qs.services
+import qs.lock.skins.goldeneye as Watch
 import "../../theme/Watch.js" as W
 
 // The current conditions as the classic pause watch: warm segments left spanning today's low to high with now picked out,

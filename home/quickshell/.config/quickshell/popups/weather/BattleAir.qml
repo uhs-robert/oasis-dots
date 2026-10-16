@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "../../components/nes/Slimes.js" as Slimes
 
 // Hourly's Air sub-view as a Dragon Quest encounter: the air is the monster, its pollutants are its stat lines,

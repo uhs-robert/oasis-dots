@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import ".."
-import "../../snes" as SnesParts
+import qs.theme
+import qs.services
+import qs.components.picker
+import qs.components.snes as SnesParts
 
 Item {
     id: root

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components/snes" as Snes
-import "../../theme"
-import "../../services"
+import qs.components.snes as Snes
+import qs.theme
+import qs.services
 
 // The clock as an FF6 status window: DATE and TIME rows, ticking by the minute while shown.
 Item {

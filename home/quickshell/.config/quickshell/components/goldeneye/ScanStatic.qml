@@ -1,6 +1,6 @@
 import QtQuick
-import "../../services"
-import "../../theme"
+import qs.services
+import qs.theme
 
 // A faint, steady static over a list while it is scanning; only on AC and while shown, and the shader is unloaded otherwise.
 Item {

@@ -3,8 +3,8 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 // One per screen while voxcmd's click offers several matches: outlines each candidate's box with a numbered keycap,
 // picked by number key, click or a spoken number. Only the screen with the first box takes the keyboard.

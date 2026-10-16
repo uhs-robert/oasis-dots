@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Dragon Quest window: black fill inside a white double border, with an optional name set into the top edge.
 Rectangle {

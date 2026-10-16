@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // terminal: a bracketed tag, [-12m] before a meeting and [MTG] during one.
 MarkerBase {

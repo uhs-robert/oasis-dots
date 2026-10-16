@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // WeatherStar 4000 "Current Conditions": a yellow title over a bevelled blue panel of readings.
 ColumnLayout {

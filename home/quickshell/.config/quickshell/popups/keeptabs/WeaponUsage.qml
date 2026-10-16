@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as the bottom of the HEV HUD: the session limit is HEALTH, the weekly limit SUIT, any other limit an

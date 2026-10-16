@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
+import qs.theme
 
 // The style's frame shade into frame_color, diagonal or vertical; it also paints chamfered frames.
 Item {

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import ".." as Shared
+import qs.theme
+import qs.components as Shared
 
 // The OSD as a card: an accent tile, the level's name and device, a large readout and the level as a capsule or 20-segment meter.
 ColumnLayout {

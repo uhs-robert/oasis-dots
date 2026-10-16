@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The MGS alert "!": pops up with an overshoot each time pop() is called.
 Item {

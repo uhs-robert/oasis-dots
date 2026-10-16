@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 // The yes/no prompt for a Power action, shared by the Start menu and the keybind popup, or for any question
 // (the confirm card) when `question` is set.

@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The link bars joining a workspace's materia slots in pairs; with no slots it is one bare socket.
 Item {

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // WeatherStar 4000+ "Hourly Graph": a bold line over a gridded blue panel, scrolling left to right.
 // sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity.

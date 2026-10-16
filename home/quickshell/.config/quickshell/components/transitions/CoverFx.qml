@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
-import "../../theme"
+import qs.theme
 import "Covers.js" as Covers
 
 // Paints a cover over the bar, clipped to the islands by the bar's own alpha.

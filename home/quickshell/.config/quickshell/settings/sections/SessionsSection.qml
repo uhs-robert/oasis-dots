@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "../Choices.js" as Choices
-import ".."
+import qs.settings
 
 // Three levels in one pane: the session list, one session's windows, and one window's fields. h and Esc step up a level before leaving the pane.
 RowsSection {

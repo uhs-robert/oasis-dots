@@ -1,6 +1,6 @@
 import QtQuick
 import Qt.labs.folderlistmodel
-import "../theme"
+import qs.theme
 
 // Registers the fonts the active style and lock skin use now, then the rest once startup settles.
 Item {

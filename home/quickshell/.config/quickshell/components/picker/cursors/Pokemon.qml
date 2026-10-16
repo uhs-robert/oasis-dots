@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
+import qs.theme
+import qs.services
+import qs.components
 
 // Game Boy party ▶ arrow pointing at the sampled pixel, tip a few px short of it, plus a tiny dot on the pixel.
 Item {

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
-import "../weather"
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.weather
 import "KeeptabsFormat.js" as Fmt
 
 // CRT: the WeatherStar 4000 "Latest Observations" page. A table pages as many sessions as fit, the page

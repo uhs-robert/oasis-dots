@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The PS1 memory card screen: a location strip over the current conditions as the selected save's info panel.
 ColumnLayout {

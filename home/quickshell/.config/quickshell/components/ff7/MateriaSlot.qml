@@ -1,6 +1,6 @@
 import QtQuick
-import ".."
-import "../../theme"
+import qs.components
+import qs.theme
 
 // A weapon's materia socket, bare or holding an orb; lit rings it in the ready glow.
 Item {

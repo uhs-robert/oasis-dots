@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // WeatherStar 4000 warning page: a red banner with the selected alert's event in large letters, the statement text on a blue panel,
 // and a red crawl of every alert headline along the bottom. With several alerts a list picks one (h/l, j/k);

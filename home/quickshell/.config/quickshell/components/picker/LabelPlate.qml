@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // Dark backing behind a HUD label so it reads over any window content.
 Rectangle {

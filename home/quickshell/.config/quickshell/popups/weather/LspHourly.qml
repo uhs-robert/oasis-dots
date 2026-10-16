@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The hours as a Neovim buffer scrolled sideways like `nowrap`: the value axis as the line-number gutter, diagnostic signs
 // (E W I H) along the top of each hour for notable values, the plot in the buffer and the cursor hour as cursorcolumn and cursorline.

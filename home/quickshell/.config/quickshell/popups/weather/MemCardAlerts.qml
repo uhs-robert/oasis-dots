@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Active NWS alerts as the memory card manager: each alert a save in the card's slot list, its icon the severity and
 // its blocks the severity level, with the selected save's info panel holding the full text. With a single alert the

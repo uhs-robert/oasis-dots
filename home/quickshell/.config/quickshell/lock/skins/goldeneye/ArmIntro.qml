@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import QtQuick3D
 import QtQuick3D.Helpers
-import "../goldeneye" as GE
+import qs.lock.skins.goldeneye as GE
 
 // The intro without footage: a low-poly sleeve, hand and watch rise into view and the camera closes on the dial until it fills the 1020 x 720 plate.
 Item {

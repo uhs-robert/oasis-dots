@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/oasis" as Oasis
-import "../../theme"
-import "../../services"
+import qs.components.oasis as Oasis
+import qs.theme
+import qs.services
 
 // Oasis Alerts: notices as a stack of cards tinted by severity. With several alerts the others sit as short cards
 // above the selected one, which opens with its full text; with one, h/l scroll that text (see scroll_detail, called

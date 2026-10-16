@@ -2,8 +2,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "Kinds.js" as Kinds
 
 // Owns the displayed style: a change covers the old look, swaps Style.name while covered, then reveals the new one.

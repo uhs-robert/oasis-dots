@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // One Audio CD player sphere: a glassy ball, glowing blue when lit.
 Item {

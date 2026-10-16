@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // Full-range scrollable line chart. sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity.
 // h/l move the hour cursor (auto-scrolling into view); H/L jump +-1 day, same hour.

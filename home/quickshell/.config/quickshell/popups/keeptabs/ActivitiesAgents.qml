@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/modern" as Modern
-import "../../theme"
-import "../../services"
+import qs.components.modern as Modern
+import qs.theme
+import qs.services
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as a stack of Live Activity cards. Same contract as AgentsView.

@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell.Widgets
-import "../components"
-import "../services"
-import "../theme"
+import qs.components
+import qs.services
+import qs.theme
 
 // Ranked window matches beside the overview tiles; the highlighted row is the one Enter acts on. Rows take `icon_source` or else the toplevel's icon.
 Rectangle {

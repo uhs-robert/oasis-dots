@@ -1,5 +1,5 @@
 import QtQuick
-import "../../services"
+import qs.services
 
 // Scrollable read-only output for a prompt of kind "output".
 FocusScope {

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/ps2"
-import "../../theme"
-import "../../services"
+import qs.components.ps2
+import qs.theme
+import qs.services
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as the PS2 Browser's card selection screen: each limit is a memory card whose free space

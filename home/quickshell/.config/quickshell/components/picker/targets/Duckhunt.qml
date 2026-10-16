@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import ".."
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.picker
 
 // Duck Hunt dressing for the window/screen/region target: a white frame with a dark outer
 // ring around the current pick, duck markers on windows, and a HUD row of NES-box readouts.

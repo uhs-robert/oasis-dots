@@ -2,13 +2,13 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 import "Search.js" as Search
 import "popup/fuzzy_rows.js" as FuzzyRows
-import "neovim" as Neovim
-import "goldeneye" as Goldeneye
-import "popup"
+import qs.components.neovim as Neovim
+import qs.components.goldeneye as Goldeneye
+import qs.components.popup
 
 PanelWindow {
     id: root

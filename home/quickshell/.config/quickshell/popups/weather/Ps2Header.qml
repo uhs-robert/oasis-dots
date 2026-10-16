@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The PS2 clock screen: a thin oversized temperature in a soft blue glow, readings set out beneath like the system browser.
 ColumnLayout {

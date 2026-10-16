@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/snes" as Snes
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.components.snes as Snes
+import qs.theme
+import qs.services
 
 // Active NWS alerts as an RPG event: an item-menu window lists the alerts with the glove on the selected one and severity as a star rating,
 // and a dialogue window under it speaks the selected alert, the event as the speaker, a blinking ▼ while more text waits.

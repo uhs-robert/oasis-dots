@@ -130,7 +130,7 @@ launch() {
 
 fail_pattern='ERROR|TypeError|ReferenceError|Binding loop|is not a type|Could not set initial property|File not found|is not installed|Cannot assign'
 # shellcheck disable=SC2016
-load_hint='a QML type or file failed to load; for `X is not a type` on a folder loaded by URL, add `import "<folder>"` to the loader file (see #531)'
+load_hint='a QML type or file failed to load; for `X is not a type` on a folder loaded by URL, add `import qs.<folder>` to the loader file (see #531)'
 
 verify() {
   local log=$1

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Today as the selected save's info panel: a lit calendar save block beside the time, date and week.
 Rectangle {

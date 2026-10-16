@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A day's reading as a vertical targeting scale: ticks lit up to `value` (0-1), a caption above and the figure beside the lit tip.
 // A `mark` (0-1, negative for none) adds a lock-coloured hairline with its own figure on the other side, for a gust or peak over the reading.

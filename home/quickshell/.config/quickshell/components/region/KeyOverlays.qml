@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import ".."
+import qs.theme
+import qs.services
+import qs.components
 
 // The key help box and the key hint bar.
 Item {

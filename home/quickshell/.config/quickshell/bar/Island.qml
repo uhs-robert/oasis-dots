@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import "../components"
-import "../components/metroid" as Metroid
-import "../services"
-import "../theme"
+import qs.components
+import qs.components.metroid as Metroid
+import qs.services
+import qs.theme
 
 Item {
     id: root

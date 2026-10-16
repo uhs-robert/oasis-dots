@@ -1,7 +1,7 @@
 import QtQuick
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The first weather alert as a red Pokémon text box: "Warning! A COASTAL FLOOD is approaching!"
 TextBox {

@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A memory card block holding a glyph, like the weather save blocks; lit blocks take the selection fill.
 Rectangle {

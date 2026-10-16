@@ -1,5 +1,5 @@
 import QtQuick
-import "../theme"
+import qs.theme
 
 // Pixel art from rows of "0"-"3" (palette index) and "." (clear), painted once at an integer pixel size.
 Canvas {

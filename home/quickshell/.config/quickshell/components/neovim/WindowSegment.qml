@@ -3,8 +3,8 @@ import QtQuick.Shapes
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Lualine section c: the focused window's app on this monitor and, for terminals, its working directory.
 Item {

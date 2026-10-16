@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "WttrArt.js" as WttrArt
 
 // `curl wttr.in`: the condition's ASCII drawing beside the current readings, coloured like the terminal report.

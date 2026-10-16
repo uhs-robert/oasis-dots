@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // metroid: energy tanks that empty as the meeting nears, beside a two-digit ENERGY readout; in a meeting the tanks go and MTG stands alone in the warning colour.
 MarkerBase {

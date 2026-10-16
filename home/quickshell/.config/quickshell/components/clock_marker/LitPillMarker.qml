@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // ps2: the lit selection pill of the menus around the minutes, reading MTG during a meeting.
 MarkerBase {

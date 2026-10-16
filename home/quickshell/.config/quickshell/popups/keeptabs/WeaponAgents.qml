@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
+import qs.theme
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the HL1 weapon-selection menu: a numbered bucket per state with its sessions stacked as weapons.

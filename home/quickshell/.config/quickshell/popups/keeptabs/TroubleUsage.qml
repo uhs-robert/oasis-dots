@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The Usage tab as `:checkhealth claude`: a "claude: usage" section, one OK/WARNING/ERROR line per limit and an
 // ADVICE line for when it resets. The levels follow ClaudeUsageState's own warning thresholds (80% for the

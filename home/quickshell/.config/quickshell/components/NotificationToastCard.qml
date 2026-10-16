@@ -2,13 +2,13 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
-import "../theme"
-import "../services"
-import "../popups/weather" as Weather
-import "goldeneye" as Goldeneye
-import "ps1" as Ps1
-import "modern" as Modern
-import "neovim" as Neovim
+import qs.theme
+import qs.services
+import qs.popups.weather as Weather
+import qs.components.goldeneye as Goldeneye
+import qs.components.ps1 as Ps1
+import qs.components.modern as Modern
+import qs.components.neovim as Neovim
 
 Rectangle {
     id: root

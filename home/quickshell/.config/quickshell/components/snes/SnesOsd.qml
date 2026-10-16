@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The OSD as an FF6 readout: a big raised number over an ATB gauge.
 Row {

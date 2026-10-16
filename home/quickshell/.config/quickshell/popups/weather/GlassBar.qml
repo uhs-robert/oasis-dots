@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A daily tower laid on its side: a translucent prism filled from the left to `value`, a bright cap where the fill stops.
 Item {

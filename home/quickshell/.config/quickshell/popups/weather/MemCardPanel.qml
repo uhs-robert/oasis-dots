@@ -1,7 +1,7 @@
 import QtQuick
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // A BIOS panel: a rounded frame under a title strip, with `heading` at the left and `trailing` at the right.
 // Children land in `body`, the frame's interior under the strip.

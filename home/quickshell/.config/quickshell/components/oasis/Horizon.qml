@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The clock island's desert horizon: a palm at the left, the sun by day or the moon by night riding the line.
 Item {

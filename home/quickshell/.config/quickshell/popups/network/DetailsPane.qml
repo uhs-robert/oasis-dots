@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
+import qs.components
+import qs.theme
 
 ColumnLayout {
     id: root

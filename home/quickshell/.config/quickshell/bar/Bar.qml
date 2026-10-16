@@ -1,13 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 import "../services/BarLayout.js" as BarLayout
 import "../services/BarModules.js" as BarModules
 // Keeps bar/modules in the Quickshell scan; modules load by URL and need BarModule.
-import "modules"
-import "../components/oasis" as Oasis
-import "../components/neovim" as Neovim
+import qs.bar.modules
+import qs.components.oasis as Oasis
+import qs.components.neovim as Neovim
 
 Item {
     id: root

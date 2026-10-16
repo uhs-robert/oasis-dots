@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import ".."
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.picker
 
 // PS1 scope dressing for the window/screen/region target: dashed olive outlines on the rest,
 // an olive box with corner ticks, a center +, hairlines to the screen edges, and MGS-style readouts.

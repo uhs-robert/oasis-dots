@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
+import qs.theme
+import qs.services
+import qs.components
 
 // Game Boy party dressing for the window/screen/region target: a double-bordered pick frame and
 // a party-menu box listing windows or outputs with HP-style size bars.

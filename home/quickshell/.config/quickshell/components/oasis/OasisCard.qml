@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import ".."
+import qs.theme
+import qs.components
 
 // A raised night-blue card with a light top edge; sand marks the selected one, a red edge a critical one.
 Rectangle {

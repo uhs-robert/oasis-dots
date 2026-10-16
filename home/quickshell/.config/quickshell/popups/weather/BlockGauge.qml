@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A gauge as a memory card's row of 15 save blocks, `value` (0-1) of them used. With `mark_last`, the last used block
 // is lit like the selected save, for a reading that marks a point in a range rather than an amount.

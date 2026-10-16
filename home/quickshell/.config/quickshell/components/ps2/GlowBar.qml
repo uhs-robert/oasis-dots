@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The System Configuration level: a thin bar on a faint track, its lit part glowing.
 Item {

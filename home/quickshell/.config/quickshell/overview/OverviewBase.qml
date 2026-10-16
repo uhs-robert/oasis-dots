@@ -3,9 +3,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
-import "../components"
-import "../theme"
-import "../services"
+import qs.components
+import qs.theme
+import qs.services
 import "Layout.js" as Layout
 import "../picker/Fuzzy.js" as Fuzzy
 

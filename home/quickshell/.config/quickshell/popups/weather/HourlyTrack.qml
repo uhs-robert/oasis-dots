@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The scrolling hour track under every Hourly style: a Flickable one column per hour, a chart canvas above a row of hour cells.
 // It owns scrolling, cursor-follow, day boundaries, click selection and repaint triggers; a style supplies only the look.

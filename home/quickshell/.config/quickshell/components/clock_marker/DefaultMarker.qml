@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A hollow dot and the minutes before a meeting, a solid dot during one.
 MarkerBase {

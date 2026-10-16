@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "WttrArt.js" as WttrArt
 import "WttrSky.js" as WttrSky
 

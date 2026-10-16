@@ -2,7 +2,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import "theme"
+import qs.theme
 
 // The login screen: the lock skin in the user's lock style, fullscreen under greetd, in a window as a preview otherwise.
 ShellRoot {

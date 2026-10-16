@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Active NWS alerts as a Trouble.nvim panel: the alerts as diagnostics (E W I H, event, until time), the selected one's
 // full text in a hover float below it, and a statusline footer. h/l or j/k select when there's more than one; with a single

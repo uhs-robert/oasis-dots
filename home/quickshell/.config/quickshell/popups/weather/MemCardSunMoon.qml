@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components"
-import "../../components/ps1"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.components.ps1
+import qs.theme
+import qs.services
 
 // Daily's Sun & Moon sub-view as the PS1 BIOS clock screen: the days as memory card slot tabs over a panel setting
 // sunrise and sunset like the clock fields, with day length and today's live sun position as block gauges,

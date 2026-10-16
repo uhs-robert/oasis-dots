@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // halflife: an HEV readout, a dim MTG label beside the minutes in a larger numeral; during a meeting the readout itself reads MTG in the warning colour.
 MarkerBase {

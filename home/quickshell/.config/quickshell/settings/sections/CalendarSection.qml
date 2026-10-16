@@ -1,9 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../../theme"
-import "../../services"
-import ".."
+import qs.theme
+import qs.services
+import qs.settings
 
 RowsSection {
     id: root

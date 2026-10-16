@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // A Scan Visor logbook entry, "Threat": each active NWS alert as a scanned threat, the selected one locked on in brackets,
 // its severity as a threat level and its text as the logbook entry. h/l or j/k select when there's more than one;

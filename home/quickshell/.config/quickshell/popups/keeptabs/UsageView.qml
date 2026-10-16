@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab: Claude usage bars from ClaudeUsageState, which it reads directly. The popup sets only `st`;

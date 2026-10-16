@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // Ring end caps on a 1px range line; fills its parent.
 Item {

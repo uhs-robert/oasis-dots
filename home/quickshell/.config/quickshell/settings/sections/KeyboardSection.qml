@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import Quickshell.Io
-import ".."
+import qs.settings
 import "../Choices.js" as Choices
 import "../Keyd.js" as Keyd
 

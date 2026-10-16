@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The moon at its phase over a small oasis pool that holds the same phase upside down, broken by ripples, with a palm on the bank.
 Item {

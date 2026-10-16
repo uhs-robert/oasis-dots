@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // A Final Fantasy Tactics map tile: a 2:1 isometric slab that stretches for its units; selected wears the blue move grid.
 Item {

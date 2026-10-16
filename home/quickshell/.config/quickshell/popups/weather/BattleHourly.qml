@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "../../components/nes/Slimes.js" as Slimes
 
 // The hours as a Dragon Quest field map: a stepped line in a command window with a king slime hopping on the cursor hour, the hour's stats in a message window above.

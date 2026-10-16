@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // tie: a targeting-computer readout inside the clock brackets, · T-12 before a meeting and · MTG during one.
 MarkerBase {

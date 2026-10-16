@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/snes" as Snes
-import "../../theme"
+import qs.components.snes as Snes
+import qs.theme
 
 // The battery as an FF6 status line: "BAT 82/100" over a gauge, then state, time and rate in a blue window.
 Item {

@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "KeeptabsFormat.js" as Fmt
 
 // The Reticle Usage tab: the limits as concentric rings, the first row outermost, each with a leader line

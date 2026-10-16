@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // Chamfered visor-glass panel for the scan visor picker skin: a cut-corner pane with a
 // cyan-tinted gradient fill, thin bright border and an optional top sheen.

@@ -1,7 +1,7 @@
 import QtQuick
-import "../../components"
-import "../../services"
-import "../../theme"
+import qs.components
+import qs.services
+import qs.theme
 
 // A Zelda inventory: one item tile per package, the selected one boxed, its versions spelled out below.
 Item {

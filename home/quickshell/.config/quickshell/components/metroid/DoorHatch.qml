@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Metroid door hatch: a blue shield in a grey frame, retracted to its edge panels when open.
 Item {

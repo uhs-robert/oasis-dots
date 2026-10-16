@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The recessed strip of a weapon's slot bar that the materia sockets sit in.
 Rectangle {

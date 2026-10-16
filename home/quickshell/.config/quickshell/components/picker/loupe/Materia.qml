@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import ".."
-import "../../ff7" as Ff7Parts
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.picker
+import qs.components.ff7 as Ff7Parts
 
 Item {
     id: root

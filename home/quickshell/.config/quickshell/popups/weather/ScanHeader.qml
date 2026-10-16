@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // A Scan Visor logbook entry: the condition locked in scan brackets beside the reading and a generated analysis line,
 // then the vitals as energy readouts: TEMP as an energy bar across today's low to high, HUM and RAIN as energy tanks.

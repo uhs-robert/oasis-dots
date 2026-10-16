@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Hourly's Air sub-view as a memory card: the 24 hours as save blocks filled to their AQI and coloured by category,
 // the selected hour's save title above, and the pollutants as block gauges in a BIOS panel. h/l move the hour cursor.

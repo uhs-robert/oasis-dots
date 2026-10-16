@@ -333,6 +333,8 @@ just greeter-preview         # try it in a window with a fake greetd
 
 ## Extending
 
+Folder imports are root-anchored, `import qs.<path>` (`import qs.theme`, `import qs.lock.skins as Skins`), so moving a file only renames the path; JS imports stay relative (`import "Tints.js" as Tints`).
+
 **A style.** Add `theme/styles/<name>.js` with an `overrides(t, ctx)` that returns the tokens it changes from the schema defaults (`t` is `Theme`), import it in `theme/styles/index.js` and add it to the object `build()` returns there and to `sources` (the files Style.qml watches for hot reload), then add its name to `order` in `theme/Style.qml`, and to `labels` if the label isn't just the capitalized name. Shared popup components take their palette colors from `Style.pal`, which defaults to the Oasis palette; a style can remap it (goldeneye does). Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
 
 **A style token.** Add one `tok(...)` line to `theme/StyleSchema.js` with its export type, default, a one-line doc and any options (`expr` for a computed export, `via: "bar"`, `export: false` for an internal key), then run `scripts/gen-style-exports` to rewrite the generated property lines in `Style.qml`. `just check` fails while they are out of date.
@@ -341,7 +343,7 @@ just greeter-preview         # try it in a window with a fake greetd
 
 **A picker provider.** Subclass `picker/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `lib/actions/menu.lua`, so the bind still works without the bar.
 
-**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). `services/LockSkins.qml` is the only registry: it lists the folder, and the lock, the greeter staging, Settings and the thumbnails all resolve skins through it. The skin shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock/skins/index.json` with `lock_only` and a `label`; every skin has an entry there (fonts, `audio`, `own_music`). The greeter stages only `lock/skins/`, `lock/Tints.js`, `theme/` and `fonts/`, so a skin imports nothing from `components/` or `services/`; pieces a bar style shares with its skin (the GoldenEye watch colors, segment arcs and panel) live in the skin's own folder and the style imports them from there.
+**A lock skin.** Add `lock/skins/<Style>.qml` (first letter capitalized). `services/LockSkins.qml` is the only registry: it lists the folder, and the lock, the greeter staging, Settings and the thumbnails all resolve skins through it. The skin shows up in Settings > Lock screen and in the greeter once it exists. For a skin with no bar style, also add it to `lock/skins/index.json` with `lock_only` and a `label`; every skin has an entry there (fonts, `audio`, `own_music`). The greeter stages only `lock/skins/`, `lock/Tints.js`, `theme/` and `fonts/`, so a skin imports nothing from `components/` or `services/` (no `import qs.components`, `import qs.services`); pieces a bar style shares with its skin (the GoldenEye watch colors, segment arcs and panel) live in the skin's own folder and the style imports them from there.
 
 The skin contract:
 

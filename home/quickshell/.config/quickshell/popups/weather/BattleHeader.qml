@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // A Dragon Quest encounter: the condition appears as the enemy, its stats laid out like the party status window.
 Item {

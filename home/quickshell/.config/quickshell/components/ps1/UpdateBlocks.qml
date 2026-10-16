@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
+import qs.theme
 
 // Updates as a memory card: a row per package under the selected save's info panel; only the selected row shows its block.
 ColumnLayout {

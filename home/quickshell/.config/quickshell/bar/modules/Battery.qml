@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.UPower
-import "../../theme"
-import "../../services"
-import "../../components"
-import "../../components/bar_icons"
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.bar_icons
 
 BarModule {
     id: root

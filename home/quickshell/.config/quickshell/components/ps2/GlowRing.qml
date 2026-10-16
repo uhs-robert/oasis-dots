@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // The PS2 OSD: a soft blue glow behind a thin ring lit clockwise from the top by `value`, a thin readout inside.
 Item {

@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // One Super Famicom controller button: a/b/x/y face buttons, l/r/lr shoulders, the start/select pill, or the D-pad lit on dpad_v/dpad_h.
 Item {

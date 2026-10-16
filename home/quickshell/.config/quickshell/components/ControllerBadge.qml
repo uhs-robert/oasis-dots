@@ -1,5 +1,5 @@
 import QtQuick
-import "../theme"
+import qs.theme
 import "KeyHints.js" as KeyHints
 
 // A key drawn as the console's buttons, registered in KeyHints.controllers; unmapped parts stay key text.

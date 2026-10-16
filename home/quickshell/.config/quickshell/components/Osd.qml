@@ -6,15 +6,15 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
-import "../theme"
-import "../services"
-import "snes" as Snes
-import "ps1" as Ps1
-import "ps2" as Ps2
-import "oasis" as Oasis
-import "modern" as Modern
-import "neovim" as Neovim
-import "goldeneye" as Goldeneye
+import qs.theme
+import qs.services
+import qs.components.snes as Snes
+import qs.components.ps1 as Ps1
+import qs.components.ps2 as Ps2
+import qs.components.oasis as Oasis
+import qs.components.modern as Modern
+import qs.components.neovim as Neovim
+import qs.components.goldeneye as Goldeneye
 
 PanelWindow {
     id: root

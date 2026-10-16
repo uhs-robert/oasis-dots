@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The PS2 clock screen: a big thin digital clock floating over the tower haze, the date and zone beneath.
 Item {

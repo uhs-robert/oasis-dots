@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import "../../ff7" as Ff7
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.ff7 as Ff7
 
 // FF7 dressing for the window/screen/region target: a materia-window border on the pick, a centered
 // help-bar naming it, and a weapon bar of linked materia slots for the windows or outputs on this screen.

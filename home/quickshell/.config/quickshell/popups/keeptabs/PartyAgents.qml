@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/nes"
-import "../../theme"
-import "../../services"
-import "../weather" as Weather
+import qs.components
+import qs.components.nes
+import qs.theme
+import qs.services
+import qs.popups.weather as Weather
 import "../../components/nes/Slimes.js" as Slimes
 import "KeeptabsFormat.js" as Fmt
 

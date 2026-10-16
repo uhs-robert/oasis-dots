@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // An NES HP bar: a flat fill in a white outline; `marker` adds a tick standing out of the bar at the fill's end.
 Item {

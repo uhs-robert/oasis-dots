@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Effects
-import "../../theme"
+import qs.theme
 
 // Rounded album art tile with a drop shadow and a note-glyph fallback.
 Item {

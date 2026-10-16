@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Default day column: range band, wind, UV or sunshine bars by sub, then rain chance, icon and label.
 ColumnLayout {

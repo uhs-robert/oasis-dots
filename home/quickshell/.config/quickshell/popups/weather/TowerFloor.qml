@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The dark floor the PS2 towers stand on: a faint haze above the horizon, fading into the dark below it.
 Item {

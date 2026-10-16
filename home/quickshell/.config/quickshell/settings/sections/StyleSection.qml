@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
-import "../../components/transitions"
-import ".."
+import qs.theme
+import qs.services
+import qs.components.transitions
+import qs.settings
 
 RowsSection {
     id: root

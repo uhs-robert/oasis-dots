@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
-import "../weather"
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.weather
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as a targeting computer: the selected session in a CMD target window, the others as IFF-coloured contacts below.

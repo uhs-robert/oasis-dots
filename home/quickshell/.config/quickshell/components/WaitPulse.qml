@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
+import qs.theme
 
 // A one-shot "waiting for you" cue centred on this item's origin; `nudge` plays a shorter, fainter pass.
 Item {

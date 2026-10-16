@@ -1,5 +1,5 @@
 import QtQuick
-import "../theme"
+import qs.theme
 
 // An open card: a 1px rule down the left edge, with a fading sweep while selected.
 Item {

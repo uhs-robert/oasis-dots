@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
-import "../../theme"
+import qs.theme
 
 // Final Fantasy VII: the Buster Sword title menu, a save file per user, the password as a name entry and a battle swirl to unlock.
 Item {

@@ -1,7 +1,7 @@
 import QtQuick
-import "../../components"
-import "../../components/snes" as Snes
-import "../../theme"
+import qs.components
+import qs.components.snes as Snes
+import qs.theme
 
 // Updates as the FF6 inventory: a description window for the selected package over a two-column item list.
 Item {

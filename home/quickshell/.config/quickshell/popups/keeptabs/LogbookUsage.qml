@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The Usage tab as the combat visor's ENERGY HUD: each limit reads as what is left of it, in energy tanks and a bar,
 // red under 15. Reads ClaudeUsageState directly; the contract is UsageView's.

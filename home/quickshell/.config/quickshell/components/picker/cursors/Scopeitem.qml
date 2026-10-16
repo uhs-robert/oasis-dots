@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
+import qs.theme
+import qs.services
+import qs.components
 
 // MGS2 scope item reticle for the PS2 picker skin: blue corner brackets around a
 // center dot, with a small zero-padded global-X readout above.

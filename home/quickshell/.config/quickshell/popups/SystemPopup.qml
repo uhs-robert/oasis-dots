@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../components"
-import "../theme"
-import "../services"
-import "../components/modern" as Modern
+import qs.components
+import qs.theme
+import qs.services
+import qs.components.modern as Modern
 
 Popup {
     id: root

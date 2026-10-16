@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // reticle: a hairline ring that closes as the meeting nears, beside T-minus in thin caps; in a meeting the ring is solid, with MTG.
 MarkerBase {

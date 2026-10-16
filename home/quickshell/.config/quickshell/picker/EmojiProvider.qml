@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../services"
+import qs.services
 
 // rofimoji character sets, one per tab: Enter types the character into the previous window, `y` copies it.
 PickerProvider {

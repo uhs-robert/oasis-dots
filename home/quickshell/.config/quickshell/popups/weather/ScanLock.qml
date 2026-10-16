@@ -1,6 +1,6 @@
 import QtQuick
-import "../../components"
-import "../../theme"
+import qs.components
+import qs.theme
 
 // Scan brackets that close in on the selected day once each time it is picked.
 CornerBrackets {

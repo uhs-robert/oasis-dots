@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A SNES RPG menu window: blue vertical gradient in a rounded light double border, with a hard drop shadow.
 Item {

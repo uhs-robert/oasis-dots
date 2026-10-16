@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/snes" as Snes
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.components.snes as Snes
+import qs.theme
+import qs.services
 
 // The hours as gauge pillars standing on the Mode 7 floor, a kart parked at the cursor hour, the hour's stats in an RPG window above.
 // sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity. h/l move the hour cursor (auto-scrolling into view).

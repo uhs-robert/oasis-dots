@@ -1,9 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth as QsBt
-import "../../theme"
-import "../../services"
-import "../../components/bar_icons"
+import qs.theme
+import qs.services
+import qs.components.bar_icons
 
 BarModule {
     id: root

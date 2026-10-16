@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A PS2 browser block: a translucent slab with a lit top edge, floating on a soft shadow; the selected one glows.
 Item {

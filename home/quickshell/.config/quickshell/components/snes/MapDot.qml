@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Super Mario World level dot: yellow oval with a darker underside, hollow when empty, larger with a soft glow when selected, dimmed and underlined when shown on another monitor.
 Canvas {

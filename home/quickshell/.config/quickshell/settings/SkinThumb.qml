@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
-import "../services"
-import "../lock"
+import qs.theme
+import qs.services
+import qs.lock
 
 // A lock or login skin drawn at screen size and scaled down, with fake auth state.
 Rectangle {

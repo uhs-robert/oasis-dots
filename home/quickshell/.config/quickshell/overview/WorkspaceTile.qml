@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Widgets
-import "../components"
-import "../theme"
-import "../services"
+import qs.components
+import qs.theme
+import qs.services
 import "Layout.js" as Layout
 
 // One workspace as a small monitor: its windows at their real places, scaled into the tile.

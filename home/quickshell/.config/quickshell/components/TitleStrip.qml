@@ -1,6 +1,6 @@
 import QtQuick
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 // A VGUI window title strip: tracked caps on a tinted band over a hairline, with a close box at the right.
 Item {

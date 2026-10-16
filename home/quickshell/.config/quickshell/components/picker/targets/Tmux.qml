@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
+import qs.theme
+import qs.services
 
 // tmux dressing for the Terminal picker skin: display-panes digits and a hyprctl clients card on
 // windows, a status bar across the bottom, and a copy-mode selection rect in region mode.

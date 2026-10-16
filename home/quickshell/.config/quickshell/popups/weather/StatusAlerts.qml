@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // Active NWS alerts as an FF7 battle: the selected alert's event in the battle-message bar, the alerts as an enemy
 // list under the white glove, and the selected one as a Sense window. With a single alert, h/l scroll its detail

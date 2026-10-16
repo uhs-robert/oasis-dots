@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell
-import "../services"
+import qs.services
 
 // Builds its popup on open and drops it once the close animation has hidden it.
 LazyLoader {

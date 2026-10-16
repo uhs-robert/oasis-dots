@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components"
-import "../../theme"
-import "../../services"
-import "../../components/oasis" as Oasis
-import "../../components/modern" as Modern
+import qs.components
+import qs.theme
+import qs.services
+import qs.components.oasis as Oasis
+import qs.components.modern as Modern
 
 // One column per day in a window of up to five that the popup scrolls with day_cursor.
 // A style may restyle columns freely but days always run left to right, horizontal table style.

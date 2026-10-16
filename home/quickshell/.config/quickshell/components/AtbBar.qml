@@ -1,5 +1,5 @@
 import QtQuick
-import "../theme"
+import qs.theme
 
 // An ATB gauge: one bar on a dark track, lit from shade_color at the top into fill_color; `ticks` notches it like a Limit gauge.
 Item {

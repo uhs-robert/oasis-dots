@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../popups/weather" as Weather
+import qs.theme
+import qs.popups.weather as Weather
 
 // The PS2 boot-screen backdrop, static: faint translucent towers standing on a hazy horizon.
 Item {

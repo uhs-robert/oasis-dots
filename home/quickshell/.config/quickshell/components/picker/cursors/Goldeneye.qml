@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import ".."
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.picker
 import "../../../theme/Watch.js" as W
 
 // Perfect Dark reticle for the Goldeneye picker skin: a four-tick crosshair with a center dot,

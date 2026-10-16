@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Mega Man energy bar: thin segments with a bright core in a black case, filling up or rightward.
 Item {

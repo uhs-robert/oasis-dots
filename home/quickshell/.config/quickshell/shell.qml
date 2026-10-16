@@ -2,16 +2,16 @@
 //@ pragma Env mesa_glthread=false
 import QtQuick
 import Quickshell
-import "./bar"
-import "./components"
-import "./components/transitions"
-import "./lock"
-import "./overview"
-import "./tmux_overview"
-import "./picker"
-import "./popups"
-import "./services"
-import "./settings"
+import qs.bar
+import qs.components
+import qs.components.transitions
+import qs.lock
+import qs.overview
+import qs.tmux_overview
+import qs.picker
+import qs.popups
+import qs.services
+import qs.settings
 
 ShellRoot {
     id: root

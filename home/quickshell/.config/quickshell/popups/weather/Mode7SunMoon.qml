@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/snes" as Snes
-import "../../theme"
-import "../../services"
+import qs.components.snes as Snes
+import qs.theme
+import qs.services
 
 // A Mode 7 horizon: the selected day's sun arcing over the perspective floor (today's live position marked), the moon in the sky with its phase,
 // and the sun and moon figures in an RPG window under a strip of day windows.

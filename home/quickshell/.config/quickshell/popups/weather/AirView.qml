@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Hourly's Air sub-view: big US AQI number, pollutant readouts, and a 24h trend. h/l move the hour cursor.
 Item {

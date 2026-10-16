@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // A memory card's 15 save blocks stood on end, used from block `low` (0-1) up to block `high`; the top used block
 // is lit like the selected save. Each used block takes the temperature colour of its own place on the scale.

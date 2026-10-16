@@ -3,8 +3,8 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
-import "../../theme"
-import "goldeneye" as GE
+import qs.theme
+import qs.lock.skins.goldeneye as GE
 import "ui/Menu.js" as Menu
 import "../../theme/Watch.js" as Watch
 

@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A save-block style 5x5 mirrored pixel icon hashed from a name, so each package keeps its own.
 Item {

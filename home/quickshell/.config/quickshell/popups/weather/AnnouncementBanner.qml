@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The first active alert as a Black Mesa Announcement System bulletin.
 Rectangle {

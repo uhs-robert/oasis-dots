@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/ff7" as Ff7
-import "../../services"
-import "../../theme"
+import qs.components
+import qs.components.ff7 as Ff7
+import qs.services
+import qs.theme
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the FF7 main menu: a party window of sessions (LV = time in state, HP = context left,

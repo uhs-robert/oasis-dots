@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The hours as memory card saves: each hour a save block with its weather icon under a stack of used blocks that
 // reads the sub's value, the selected hour lifted and lit with its readout above as the save's info panel.

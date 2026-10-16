@@ -1,5 +1,5 @@
 import QtQuick
-import "../theme"
+import qs.theme
 
 // The style's inner ring, frame_inset_gap inside the frame's border; set the frame's outer radii.
 Rectangle {

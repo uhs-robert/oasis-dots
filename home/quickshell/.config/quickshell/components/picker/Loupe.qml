@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
-import "loupe" as LoupeSkins
+import qs.theme
+import qs.services
+import qs.components.picker.loupe as LoupeSkins
 
 // The region selector's magnifier: a zoomed, skinned view of `source` around `at`, placed beside the cursor.
 Item {

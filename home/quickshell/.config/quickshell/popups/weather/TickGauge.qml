@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A gauge as a targeting scale: thin ticks lit up to `value` (0-1), every fifth one long. With `marked`, a
 // lock-coloured hairline stands at `value`, for a reading that is a point in a range rather than an amount.
