@@ -314,7 +314,7 @@ Singleton {
             longitude: lon,
             current: "temperature_2m,apparent_temperature,is_day,precipitation,weather_code,relative_humidity_2m,dew_point_2m,pressure_msl,visibility,uv_index,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
             hourly: "temperature_2m,precipitation_probability,precipitation,weather_code,is_day,apparent_temperature,relative_humidity_2m,uv_index,wind_speed_10m,wind_direction_10m,wind_gusts_10m,dew_point_2m,pressure_msl,visibility,cloud_cover",
-            daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset,uv_index_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunshine_duration",
+            daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset,uv_index_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunshine_duration,daylight_duration",
             temperature_unit: unit_c ? "celsius" : "fahrenheit",
             precipitation_unit: unit_c ? "mm" : "inch",
             wind_speed_unit: unit_c ? "kmh" : "mph",
@@ -716,7 +716,8 @@ Singleton {
                 wind_speed_max: root.parse_num(daily.wind_speed_10m_max ? daily.wind_speed_10m_max[i] : undefined, 0),
                 wind_gusts_max: root.parse_num(daily.wind_gusts_10m_max ? daily.wind_gusts_10m_max[i] : undefined, 0),
                 wind_dir: Math.round(root.parse_num(daily.wind_direction_10m_dominant ? daily.wind_direction_10m_dominant[i] : undefined, 0)),
-                sunshine_hours: root.parse_num(daily.sunshine_duration ? daily.sunshine_duration[i] : undefined, 0) / 3600
+                sunshine_hours: root.parse_num(daily.sunshine_duration ? daily.sunshine_duration[i] : undefined, 0) / 3600,
+                daylight_hours: root.parse_num(daily.daylight_duration ? daily.daylight_duration[i] : undefined, 0) / 3600
             });
         }
 
@@ -1033,11 +1034,11 @@ Singleton {
     }
 
     readonly property var uv_bands: [
-        { limit: 3, label: "Low", color_key: "green" },
-        { limit: 6, label: "Moderate", color_key: "yellow" },
-        { limit: 8, label: "High", color_key: "warning" },
-        { limit: 11, label: "Very High", color_key: "red" },
-        { limit: Infinity, label: "Extreme", color_key: "magenta" }
+        { limit: 3, label: "Low", short: "LOW", color_key: "green" },
+        { limit: 6, label: "Moderate", short: "MOD", color_key: "yellow" },
+        { limit: 8, label: "High", short: "HIGH", color_key: "warning" },
+        { limit: 11, label: "Very High", short: "V.HIGH", color_key: "red" },
+        { limit: Infinity, label: "Extreme", short: "EXTR", color_key: "magenta" }
     ]
 
     function uv_band(uv) {
