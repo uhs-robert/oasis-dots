@@ -13,6 +13,28 @@ declare -gA number_words=(
   [nineteen]=19 [twenty]=20 [thirty]=30 [forty]=40 [fifty]=50 [sixty]=60 [seventy]=70 [eighty]=80 [ninety]=90
 )
 
+# A test hook: VOXCMD_NOW=<epoch seconds> stands in for the clock in everything below and in the calendar integration,
+# so the test suite's expectations do not move with the day and hour. Unset, the real clock is read.
+now_epoch() { echo "${VOXCMD_NOW:-$(date +%s)}"; }
+
+# Today's date ("2026-10-13"), and the date a day word ("today", "tomorrow", "friday", "next friday") names; a bare
+# weekday may be today, "next friday" never is. GNU date will not mix "@epoch" with relative words, nor read a weekday
+# relative to an explicit date, so the weekday offset is counted here.
+today_date() { date -d "@$(now_epoch)" +%F; }
+day_date() {
+  local today ahead weekday="${1#next }"
+  today=$(today_date)
+  case "$1" in
+  today) echo "$today" ;;
+  tomorrow) date -d "$today +1 day" +%F ;;
+  *)
+    ahead=$(((7 + $(date -d "$weekday" +%u) - $(date -d "$today" +%u)) % 7))
+    [ "$weekday" = "$1" ] || [ "$ahead" != 0 ] || ahead=7
+    date -d "$today +$ahead days" +%F
+    ;;
+  esac
+}
+
 unit_seconds() {
   case "$1" in
   s | sec | secs | second | seconds) echo 1 ;;
@@ -164,11 +186,11 @@ parse_clock() {
     [ "$meridiem" = am ] || hour=$((hour + 12))
     ;;
   esac
-  local now base candidate first="" hours=("$hour") bases=(today tomorrow)
-  now=$(date +%s)
+  local now base candidate first="" hours=("$hour") bases=("$(today_date)" "$(day_date tomorrow)")
+  now=$(now_epoch)
   if [ -n "$weekday" ]; then
     [ -z "$day" ] || return 1
-    base=$(date -d "${weekday_prefix:+$weekday_prefix }$weekday" +%F)
+    base=$(day_date "${weekday_prefix:+$weekday_prefix }$weekday")
     bases=("$base" "$(date -d "$base +7 days" +%F)")
   else
     [ "$anchor" = next ] || [ -n "$day" ] || day=today
@@ -176,7 +198,7 @@ parse_clock() {
   # No am or pm on a 1 to 12 hour: the sooner of the morning and evening time.
   [ -n "$meridiem" ] || [ "$hour" -lt 1 ] || [ "$hour" -gt 12 ] || hours=("$((hour % 12))" "$((hour % 12 + 12))")
   for base in "${bases[@]}"; do
-    [ -z "$day" ] || [ "$day" = "$base" ] || continue
+    [ -z "$day" ] || [ "$(day_date "$day")" = "$base" ] || continue
     for hour in "${hours[@]}"; do
       candidate=$(date -d "$base $hour:$minute" +%s) || return 1
       first="${first:-$candidate}"
@@ -213,8 +235,8 @@ is_weekday() {
 parse_day() {
   local weekday="${1#next }"
   case "$1" in
-  today | tomorrow) date -d "$1" +%F ;;
-  *) is_weekday "$weekday" && date -d "$1" +%F ;;
+  today | tomorrow) day_date "$1" ;;
+  *) is_weekday "$weekday" && day_date "$1" ;;
   esac
 }
 
@@ -233,7 +255,7 @@ format_due() {
   local due="$1" format day=""
   format=$(clock_time_format)
   local due_day today
-  due_day=$(date -d "@$due" +%F) today=$(date +%F)
+  due_day=$(date -d "@$due" +%F) today=$(today_date)
   if [ "$due_day" = "$today" ]; then
     day=""
   elif [ "$due_day" = "$(date -d "$today +1 day" +%F)" ]; then

@@ -124,8 +124,8 @@ open_meeting() {
     echo "$events"
     return 1
   }
-  now=$(date +%s)
-  end_of_day=$(date -d 'tomorrow 00:00' +%s)
+  now=$(now_epoch)
+  end_of_day=$(date -d "$(day_date tomorrow) 00:00" +%s)
   event=$(jq -c --arg scope "$scope" --argjson now "$now" --argjson end_of_day "$end_of_day" '
     def has_join_link: (.join_url // "") != "";
     (map(select(.start_epoch <= $now and .end_epoch > $now)) | sort_by([(has_join_link | not), -.start_epoch])) as $current
@@ -160,7 +160,7 @@ next_meeting() {
     echo "$events"
     return 1
   }
-  now=$(date +%s)
+  now=$(now_epoch)
   event=$(jq -c --argjson now "$now" 'map(select(.start_epoch > $now)) | sort_by(.start_epoch) | first // empty' <<<"$events")
   if [ -z "$event" ]; then
     echo "No upcoming meetings"
@@ -169,7 +169,7 @@ next_meeting() {
   title=$(escape_markup "$(jq -r 'if (.title // "") == "" then "Untitled" else .title end' <<<"$event")")
   start_epoch=$(jq -r .start_epoch <<<"$event")
   message="$title $(format_at "$start_epoch")"
-  if [ "$(date -d "@$start_epoch" +%F)" = "$(date +%F)" ]; then
+  if [ "$(date -d "@$start_epoch" +%F)" = "$(today_date)" ]; then
     minutes=$(((start_epoch - now + 30) / 60))
     [ "$minutes" -ge 1 ] || minutes=1
     message+=", in $(format_length $((minutes * 60)))"
