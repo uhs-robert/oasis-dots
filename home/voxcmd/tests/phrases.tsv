@@ -396,6 +396,14 @@ focus the built in screen	Monitors/focus
 move this window to the right monitor	Monitors/move
 move it to monitor three	Monitors/move
 send the window to the laptop screen	Monitors/move
+send window to laptop	Monitors/move_laptop	no noun: the built-in panel alone is a monitor phrase
+move active window to the laptop	Monitors/move_laptop	the noun-less move takes "active window" too
+send window to laptop monitor	Monitors/move	the noun verbs still name the panel with the noun
+send window to monitor laptop	Monitors/move	the noun first, then the panel
+go to laptop	Monitors/focus_laptop	no noun: focuses the built-in panel
+focus the laptop	Monitors/focus_laptop	no noun, with "the"
+go to two	picker	a number is no built-in panel, so the noun-less focus offers nothing and the other integrations answer
+move window to the left	none	a position is no built-in panel, so the noun-less move offers nothing
 go to the first monitor	Monitors/focus	an ordinal is the slot: first is monitor one
 go to the second screen	Monitors/focus
 focus the 2nd display	Monitors/focus
