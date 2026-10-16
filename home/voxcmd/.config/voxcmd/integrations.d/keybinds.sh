@@ -130,14 +130,25 @@ machine_words='computer|pc|laptop|machine|screen|system|session|desktop'
 
 # A machine verb said with a machine word matches a bind named for that verb alone, or for it and a machine word, as if
 # the bind said what was spoken. The verbs are compared without spaces, so "log out" is a Logout bind.
+# A {focus} form said first ("focus workspace 3", "switch to workspace 3") likewise matches a bind starting with any
+# other {focus} form ("Go to Workspace 3"): the forms are one intent, and bind authors pick whichever they like.
 candidates() {
   case "$1" in
   enter_submap) bind_lists | jq -c '(.submaps // []) + (.mode_binds // [])' ;;
   *)
-    bind_lists | jq -c --arg target "$2" --arg verbs "$machine_verbs" --arg machine_words "$machine_words" '
+    bind_lists | jq -c --arg target "$2" --arg verbs "$machine_verbs" --arg machine_words "$machine_words" \
+      --argjson focus_forms "$(intent_forms focus | jq -R -s -c 'split("\n") | map(select(. != ""))')" '
       def squeezed: gsub("[^a-z]"; "");
+      def with_spoken_focus_form:
+        ([$focus_forms[] | select(. as $form | $target | startswith($form + " "))] | max_by(length)) as $spoken
+        | if $spoken == null then . else
+            map(.match_text as $text
+              | ([$focus_forms[] | select(. as $form | $text | ascii_downcase | startswith($form + " "))] | max_by(length)) as $written
+              | if $written == null then . else .match_text = $spoken + $text[($written | length):] end)
+          end;
       ([$target | capture("^(?<verb>\($verbs))( (the|my|this))? (\($machine_words))$")] | .[0].verb // "") as $spoken_verb
       | (.binds // [])
+      | with_spoken_focus_form
       | if $spoken_verb == "" then . else
           map((.match_text | ascii_downcase) as $description
             | if ($description | test("^(\($verbs))( (\($machine_words)))?$"))
