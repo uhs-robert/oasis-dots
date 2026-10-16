@@ -244,8 +244,8 @@ path_scopes() {
   home/quickshell/*) scopes="$scopes qml node" ;;
   home/voxcmd/* | extras/voxcmd-firefox/*) scopes="$scopes voxcmd" ;;
   # The installer and the justfile call it, but those already run everything.
-  lib/install/firefox-policy.sh | lib/install/tests/firefox-policy.sh) scopes="$scopes policy" ;;
-  lib/install/greeter-keyring.sh | lib/install/tests/greeter-keyring.sh) scopes="$scopes keyring" ;;
+  lib/install/voice.sh | lib/install/tests/firefox-policy.sh) scopes="$scopes policy" ;;
+  lib/install/greeter.sh | lib/install/tests/greeter-keyring.sh) scopes="$scopes keyring" ;;
   home/calendar/*) scopes="$scopes calendar" ;;
   home/claude/.claude/hooks/* | .claude/hooks/*) scopes="$scopes hooks" ;;
   .claude/skills/owner-test-bar/*) scopes="$scopes bar" ;;

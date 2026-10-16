@@ -8,7 +8,7 @@ trap 'rm -rf "$scratch"' EXIT
 DOTFILES_DIR=$scratch/dotfiles
 export HOME=$scratch/home
 source "$repo_dir/lib/common/output.sh"
-source "$repo_dir/lib/install/firefox-policy.sh"
+source "$repo_dir/lib/install/voice.sh"
 
 mkdir -p "$DOTFILES_DIR/extras" "$HOME/.local/share/voxcmd" "$scratch/bin"
 printf '#!/bin/sh\n' >"$scratch/bin/firefox"

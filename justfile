@@ -127,7 +127,7 @@ greeter-keyring:
     #!/usr/bin/env bash
     set -euo pipefail
     source lib/common/output.sh
-    source lib/install/greeter-keyring.sh
+    source lib/install/greeter.sh
     enable_greetd_keyring_unlock
 
 # Install the signed voxcmd extension through a Firefox policy (needs sudo) and register its host, so one command sets everything up
@@ -136,8 +136,7 @@ firefox-extension:
     set -euo pipefail
     export DOTFILES_DIR="$PWD"
     source lib/common/output.sh
-    source lib/install/firefox-policy.sh
-    source lib/install/services.sh
+    source lib/install/voice.sh
     register_firefox_host
     install_firefox_extension_policy
 
@@ -146,7 +145,7 @@ firefox-host:
     #!/usr/bin/env bash
     set -euo pipefail
     source lib/common/output.sh
-    source lib/install/services.sh
+    source lib/install/voice.sh
     register_firefox_host
 
 # Opt in to an SSH server reachable only over Tailscale, key login only (needs sudo)
@@ -169,7 +168,7 @@ repos *ARGS:
     source lib/common/distro.sh
     source lib/common/packages.sh
     source lib/install/repos.sh
-    source lib/install/stow.sh
+    source lib/install/dev-tools.sh
     OPT_DEV=0
     [[ " {{ARGS}} " == *" --dev "* ]] && OPT_DEV=1
     clone_repos
@@ -214,7 +213,6 @@ greeter-sync *ARGS:
     if ((install)); then
       while read -r cmd; do echo "+ $cmd"; eval "$cmd"; done < <(greeter_install_cmds "$stage" "$PWD")
       source lib/common/output.sh
-      source lib/install/greeter-keyring.sh
       enable_greetd_keyring_unlock
     else
       echo "Install with:"

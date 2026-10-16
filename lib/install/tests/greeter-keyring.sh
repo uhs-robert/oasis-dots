@@ -6,7 +6,7 @@ scratch=$(mktemp -d) || exit 1
 trap 'rm -rf "$scratch"' EXIT
 
 source "$repo_dir/lib/common/output.sh"
-source "$repo_dir/lib/install/greeter-keyring.sh"
+source "$repo_dir/lib/install/greeter.sh"
 
 export GREETD_KEYRING_SUDO=''
 export GREETD_PAM_FILE=$scratch/pam.d/greetd
