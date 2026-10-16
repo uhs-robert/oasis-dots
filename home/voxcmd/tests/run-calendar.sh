@@ -195,8 +195,11 @@ expect "title keeps 'with' and its casing" "&text=Lunch%20with%20Bob&dates=${tom
 expect_absent "no guests" "&add="
 say "new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com and bob@example.com"
 expect "two guests, title cut at the first with" "&text=Design%20review&dates=${tomorrow}T150000/${tomorrow}T160000&ctz=UTC&add=alice%40example.com%2Cbob%40example.com"
-say "new meeting friday at 3 called Sync"
-expect "bare 3 is the afternoon" "&text=Sync&dates=$(date -d friday +%Y%m%d)T150000/$(date -d friday +%Y%m%d)T160000"
+# Tomorrow's weekday: today's would roll to next week once its 3 pm has passed.
+sync_weekday=$(date -d tomorrow +%A)
+sync_weekday=${sync_weekday,,}
+say "new meeting $sync_weekday at 3 called Sync"
+expect "bare 3 is the afternoon" "&text=Sync&dates=$(date -d "$sync_weekday" +%Y%m%d)T150000/$(date -d "$sync_weekday" +%Y%m%d)T160000"
 say "new meeting tomorrow at 9 called Sync"
 expect "bare 9 is the morning" "&dates=${tomorrow}T090000/${tomorrow}T100000"
 say "new meeting tomorrow at 12 called Sync"
