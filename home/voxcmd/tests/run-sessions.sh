@@ -855,6 +855,77 @@ for ending in "Cortana, cancel." "Cortana never mind" "Cortana, nevermind."; do
   check "'$ending' cancels the recording and types nothing" "session_gone && ! grep -q '^wtype' '$log' && grep -q '^voxtype record cancel' '$log' && toast_has 'Type mode ended cancelled, nothing typed'"
 done
 
+# An ending followed by "and then" records the chain and keeps recording until the pause (the stub detector hears it
+# once $SANDBOX_DIR/chain-pause exists), then handles the dictation and routes the words after it from the transcript.
+chain_pause() { touch "$SANDBOX_DIR/chain-pause"; }
+chain_is_waiting() { [[ $(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' "$log" && [[ $(jq -r '.ending.chain' "$session_json") == true ]]; }
+rm -f "$SANDBOX_DIR/chain-pause"
+sess_start "UNTIL_STOP Ship it. Cortana send it and then tap tap beta."
+owner_is_listening
+wake_heard "Cortana send it and then"
+check "an ending and 'and then' keep recording and record the chain" "chain_is_waiting && [[ \$(jq -c .ending '$session_json') == '{\"action\":\"send\",\"by\":\"voice\",\"chain\":true}' ]]"
+chain_pause
+sess_wait
+check "the pause stops it: the dictation is sent without the ending, then the chain runs" "session_gone && wtype_is 'wtype -- Ship it.' 'wtype -k Return' && [[ \$(taps) == 1 ]] && grep -q '^tap tap beta' '$log'"
+rm -f "$SANDBOX_DIR/chain-pause"
+
+sess_start "UNTIL_STOP Some text. Cortana, stop typing, then tap tap beta."
+owner_is_listening
+wake_heard "Cortana stop typing then tap tap beta"
+check "'stop typing, then ...' is a chain too" "chain_is_waiting"
+chain_pause
+sess_wait
+check "and types the dictation, then runs the commands" "session_gone && wtype_is 'wtype -- Some text.' && [[ \$(taps) == 1 ]]"
+rm -f "$SANDBOX_DIR/chain-pause"
+
+sess_start "UNTIL_STOP Secret words. Cortana cancel and then tap tap beta."
+owner_is_listening
+wake_heard "Cortana cancel and then tap"
+chain_pause
+sess_wait
+check "cancel with a chain drops the dictation, stopping the recording instead of cancelling it, and still runs the chain" "session_gone && ! grep -q '^wtype' '$log' && ! grep -q '^voxtype record cancel' '$log' && grep -q '^voxtype record stop' '$log' && [[ \$(taps) == 1 ]] && toast_has 'Type mode ended cancelled, nothing typed'"
+rm -f "$SANDBOX_DIR/chain-pause"
+
+sess_start "UNTIL_STOP Go. Cortana stop and then tap tap a and then tap tap b and then tap tap c and then tap tap d and then tap tap e."
+owner_is_listening
+wake_heard "Cortana stop and then tap tap a"
+chain_pause
+sess_wait
+check "a chain of 5 steps runs them all, in order" "session_gone && wtype_is 'wtype -- Go.' && [[ \$(taps) == 5 ]] && [[ \$(grep '^tap ' '$log' | tr '\\n' ' ') == 'tap tap a tap tap b tap tap c tap tap d tap tap e ' ]]"
+rm -f "$SANDBOX_DIR/chain-pause"
+sess_start "UNTIL_STOP Go. Cortana stop and then tap tap a and then tap tap b and then tap tap c and then tap tap d and then tap tap e and then tap tap f."
+owner_is_listening
+wake_heard "Cortana stop and then tap tap a"
+chain_pause
+sess_wait
+check "a sixth step runs nothing of the chain, as in any phrase, but the dictation is typed" "session_gone && wtype_is 'wtype -- Go.' && [[ \$(taps) == 0 ]] && toast_has 'Nothing ran: a phrase can have at most 5 steps'"
+rm -f "$SANDBOX_DIR/chain-pause"
+
+sess_start "UNTIL_STOP Typed. Cortana stop."
+owner_is_listening
+wake_heard "Cortana stop."
+sess_wait
+check "a plain ending stops at once, with no chain" "session_gone && wtype_is 'wtype -- Typed.' && ! grep -q '_chain-stop' '$log'"
+
+sess_start "UNTIL_STOP First part and then tap tap beta. Cortana stop."
+owner_is_listening
+wake_heard "Cortana stop."
+sess_wait
+check "'and then' in the dictation, before the wake word and ending, stays text" "session_gone && wtype_is 'wtype -- First part and then tap tap beta.' && [[ \$(taps) == 0 ]]"
+
+sess_start "UNTIL_STOP Note it. Cortana stop. And then tap tap beta."
+owner_is_listening
+wake_heard "Cortana stop."
+sess_wait
+check "so is an 'and then' after a plain ending the clip heard as the whole phrase" "session_gone && [[ \$(taps) == 0 ]]"
+
+sess_start "UNTIL_STOP Hello. Cortana new paragraph and then more."
+owner_is_listening
+wake_heard "Cortana new paragraph and then more"
+check "a wake word and 'and then' after words that are no ending leave the recording running" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log' && ! jq -e .ending '$session_json' >/dev/null"
+sess_voxcmd_env listen
+sess_wait
+
 sess_start "UNTIL_STOP Hello. Cortana new paragraph. More."
 owner_is_listening
 wake_heard "Cortana, new paragraph."

@@ -78,6 +78,8 @@
 #                                     then reads the turn from $SANDBOX_DIR/voxtype-turn: SILENCE is its no-speech
 #                                     exit (3) after half a second, any other turn waits on `$SANDBOX_AUTOSTOP_SLEEP 30`
 #                                     (default sleep; a copy under another name lets a test end leftovers by name).
+#                                     The detector with VOXCMD_AUTOSTOP_MAX_SECS=10 on an UNTIL_STOP turn (a chained ending's) waits
+#                                     for $SANDBOX_DIR/chain-pause, then gives the pause verdict (0).
 #   voxtype -q ... transcribe <file>  prints voxtype's progress lines, a blank line and $SANDBOX_TRANSCRIBE_TEXT, as a
 #                                     wake confirmation's transcription does (no blank line without it: no speech)
 #                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
@@ -361,6 +363,15 @@ voxcmd-autostop)
   log "min_speech_secs=${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}"
   [ -z "${VOXCMD_AUTOSTOP_MAX_SECS-}" ] || log "max_secs=$VOXCMD_AUTOSTOP_MAX_SECS"
   turn=$(cat "$SANDBOX_DIR/voxtype-turn")
+  # The pause detector of a chained ending (max_secs=10, which type mode's own detector never has) hears its pause once
+  # $SANDBOX_DIR/chain-pause exists, and gives up when the recording is over.
+  if [ "${VOXCMD_AUTOSTOP_MAX_SECS-}" = 10 ] && [ "${turn#UNTIL_STOP }" != "$turn" ]; then
+    until [ -e "$SANDBOX_DIR/chain-pause" ]; do
+      [ "$(cat "$XDG_RUNTIME_DIR/voxtype/state" 2>/dev/null)" = recording ] || exit 4
+      sleep 0.05
+    done
+    exit 0
+  fi
   case "$turn" in
   SILENCE | "CAP "* | "IDLE "*)
     recording_mark=$(last_recording_mark)

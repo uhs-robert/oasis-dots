@@ -644,6 +644,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
   - `cortana cancel` or `cortana never mind` types nothing.
   - `cortana stop listening` (or `stop everything`, `end session`) types it and ends the whole session.
   - Any other words after the wake word ("cortana new paragraph") are dictation, typed with the rest.
+  - An ending followed by "and then" (or ", then") and commands ("cortana stop typing and then focus workspace 3", "cortana send it and then open firefox") ends it as the ending says, then runs the commands as an ordinary [sequence](#sequences), up to 5 steps. The recording runs on until the next pause (1.5 s, at most 10 s) so the whole chain is heard, and the commands are read from the final transcript. "cortana cancel and then ..." drops the dictation and still runs them. An "and then" in the dictation, with no wake word and ending before it, is text.
   The ending at the end of the transcript is cut before typing ("...the plan. Cortana, stop." types "...the plan."); the wake word elsewhere in a sentence is text. The table is `session_endings` in `typing.sh`, one row per ending.
 - **Without the wake listener**, the voice key ends the recording and types it, leaving type mode; the start toast says so. With it, the voice key does the same.
 - **Stop Voice** types it too, then ends the session.
