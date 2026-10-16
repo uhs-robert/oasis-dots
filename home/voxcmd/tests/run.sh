@@ -4,7 +4,7 @@
 #
 # Nothing here clicks, moves the pointer or captures the screen: it runs inside sandbox.sh, whose stubs stand in for
 # grim, magick, tesseract, hyprctl, wlrctl, wl-kbptr and notify-send and log their calls, and voxcmd only ever runs
-# with --dry-run, except in the numbered picks, which run it against the sandbox's voxtype and bar. All fixture text is
+# with `explain`, except in the numbered picks, which run it against the sandbox's voxtype and bar. All fixture text is
 # made up.
 # Fixtures are read by name inside the strings check evals.
 # shellcheck disable=SC2034
@@ -515,8 +515,8 @@ config=$root/config
 mkdir -p "$config/integrations.d" "$config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/click.sh" "$package/.config/voxcmd/integrations.d/keybinds.sh" "$config/integrations.d/"
 export VOXCMD_CONFIG_DIR=$config
-voxcmd=$package/.local/bin/voxcmd
-route() { "$voxcmd" --dry-run "$1" 2>&1; }
+voxcmd=$package/tests/bin/voxcmd
+route() { "$voxcmd" explain "$1" 2>&1; }
 
 : >"$log"
 out=$(route "click sign in")
@@ -740,9 +740,11 @@ SANDBOX_TESSERACT_TSV=$({
 })
 
 section "click-explain"
-# `voxcmd click-explain` runs the same candidates() as a click, tracing; these check each reason line, and that it only
+# `voxcmd explain --window focused click` runs the same candidates() as a click, tracing; these check each reason line, and that it only
 # reads. The window is the covered-text section's: "Sign in" centred at 175,82 and "Settings" at 230,132.
-explain() { "$voxcmd" click-explain "$@" 2>&1; }
+# The shim spells the focused window "--window focused" (see tests/bin/voxcmd).
+explain() { "$voxcmd" explain --window focused click "$@" 2>&1; }
+explain_window() { "$voxcmd" explain --window "$1" click "${@:2}" 2>&1; }
 SANDBOX_CLIENTS_JSON='[]'
 SANDBOX_TESSERACT_TSV=$({
   header
@@ -823,9 +825,9 @@ check "a filler-only target reads nothing and says so" "grep -q '^outcome  fille
 
 : >"$log"
 SANDBOX_CLIENTS_JSON='[{"address": "0x4001", "mapped": true, "class": "other", "stableId": "18000009", "at": [100, 50], "size": [160, 96], "floating": false, "pinned": false, "monitor": 0, "workspace": {"id": 1}}]'
-out=$(explain "sign in" --window 18000009)
+out=$(explain_window 18000009 "sign in")
 check "--window captures that client by stableId and names its class" "grep -q '^grim .*-T 18000009' '$log' && grep -q '^window   other ' <<<\"\$out\""
-out=$(explain "sign in" --window 99999)
+out=$(explain_window 99999 "sign in")
 check "an unknown --window says so" "grep -q 'no such window' <<<\"\$out\""
 check "--window never read the focused window's buffer" "! grep -q '^grim .*-T 18000004' '$log'"
 SANDBOX_CLIENTS_JSON='[]'
@@ -876,7 +878,7 @@ check "click itself sends no toast for a failure" "! grep -q 'voxcmd failed' '$l
 # The whole path: a failed click reaches the engine as a failure and its error toast leaves the screen text out.
 : >"$log"
 real_status=0
-PATH="$root/nowlrctl:$PATH" "$voxcmd" "click sign in" >/dev/null 2>&1 || real_status=$?
+PATH="$root/nowlrctl:$PATH" "$voxcmd" run "click sign in" >/dev/null 2>&1 || real_status=$?
 check "the engine sees a failed click as a failure" "[[ $real_status != 0 ]]"
 check "the failed click is one error toast with the reason" "[[ \$(grep -c '^notify-send .*voxcmd failed' '$log') == 1 ]] && grep -q '^notify-send -a voxcmd voxcmd failed Click: click: wlrctl: no seat\$' '$log'"
 check "no toast holds the screen text" "! grep -q -i 'sign' '$log'"
@@ -886,7 +888,7 @@ public_config=$root/config-public
 mkdir -p "$public_config/integrations.d" "$public_config/replacements.d"
 printf 'name="Plain"\nverbs=("break {target}")\ndeclare -A actions=([break]=%s)\n' "'false'" >"$public_config/integrations.d/plain.sh"
 : >"$log"
-VOXCMD_CONFIG_DIR=$public_config "$voxcmd" "break widget" >/dev/null 2>&1
+VOXCMD_CONFIG_DIR=$public_config "$voxcmd" run "break widget" >/dev/null 2>&1
 check "an ordinary integration's failure toast names its label" "grep -q '^notify-send -a voxcmd voxcmd failed Plain: break widget\$' '$log'"
 
 section "the window changed before the click"
@@ -942,7 +944,8 @@ mkdir -p "$pkg"
 cp -r "$package/.local" "$pkg/.local"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-pick" "$pkg/.local/bin/voxcmd-pick"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$pkg/.local/bin/voxcmd-autostop"
-pkg_voxcmd=$pkg/.local/bin/voxcmd
+link_voxcmd_shim "$pkg"
+pkg_voxcmd=$pkg/tests/bin/voxcmd
 action_log=$root/actions.log
 fake_pick=$root/fake-pick
 # shellcheck disable=SC2016 # the stub expands its own arguments
@@ -973,7 +976,7 @@ box_function='pick_box() { IFS=, read -r _ _ _ left top width height <<<"$1"; [ 
 : >"$action_log"
 export VOXCMD_CONFIG_DIR
 VOXCMD_CONFIG_DIR=$(new_config boxed "$box_function")
-"$pkg_voxcmd" tap next >/dev/null 2>&1
+"$pkg_voxcmd" run tap next >/dev/null 2>&1
 check "several matches ask the integration's pick command" "grep -q '^fake-pick Which one? ' '$log' && ! grep -q 'voxcmd-pick' '$log'"
 check "its choices carry each option's box" "grep -q '\"box\":\[100,50,60,20\]' '$log' && grep -q '\"box\":\[300,200,70,22\]' '$log'"
 check "a typed command does not listen" "! grep -q 'fake-pick --listen' '$log'"
@@ -981,19 +984,19 @@ check "the pick's answer runs that option" "[[ \$(cat '$action_log') == '3,4,lef
 
 VOXCMD_CONFIG_DIR=$(new_config unboxed 'pick_box() { return 1; }')
 : >"$log"
-"$pkg_voxcmd" tap next >/dev/null 2>&1
+"$pkg_voxcmd" run tap next >/dev/null 2>&1
 check "an option without a box falls back to the text picker" "grep -q '^voxcmd-pick Which command?' '$log' && ! grep -q fake-pick '$log'"
 # shellcheck disable=SC2016 # integration source, expanded when the integration runs
 VOXCMD_CONFIG_DIR=$(new_config garbled 'pick_box() { case "$1" in 3,*) echo "not a box" ;; *) echo "1 2 3 4" ;; esac; }')
 : >"$log"
-"$pkg_voxcmd" tap next >/dev/null 2>&1
+"$pkg_voxcmd" run tap next >/dev/null 2>&1
 check "a pick_box that prints garbage for one option falls back to the text picker" "grep -q '^voxcmd-pick Which command?' '$log' && ! grep -q fake-pick '$log'"
 VOXCMD_CONFIG_DIR=$(new_config nofunction "")
 : >"$log"
-"$pkg_voxcmd" tap next >/dev/null 2>&1
+"$pkg_voxcmd" run tap next >/dev/null 2>&1
 check "pick_command without pick_box falls back too" "grep -q '^voxcmd-pick ' '$log' && ! grep -q fake-pick '$log'"
 
-# A spoken command: _watch routes the transcript voxtype wrote, as `voxcmd listen` leaves it to do.
+# A spoken command: `internal watch` routes the transcript voxtype wrote, as `voxcmd listen` leaves it to do.
 VOXCMD_CONFIG_DIR=$(new_config boxed2 "$box_function")
 : >"$log"
 mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
@@ -1004,7 +1007,7 @@ echo "tap next" >"$XDG_RUNTIME_DIR/voxcmd/transcript.txt"
   wait_for_line 'watch: voxtype recording' "$debug_log"
   echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 ) &
-VOXCMD_DEBUG=1 "$pkg_voxcmd" _watch route >/dev/null 2>&1
+VOXCMD_DEBUG=1 "$pkg_voxcmd" internal watch route >/dev/null 2>&1
 wait
 rm -f "$debug_log"
 check "a spoken command passes --listen to the pick command" "grep -q '^fake-pick --listen Which one? ' '$log'"
@@ -1012,9 +1015,8 @@ rm -f "$XDG_RUNTIME_DIR/voxtype/state"
 
 # voxcmd-hints: the sandbox's qs-ipc logs the pending state as it is when the overlay opens, then answers through the
 # result FIFO as the bar would, with SANDBOX_CLICKHINTS_ANSWER: a number, a label or nothing.
-hints=$pkg/.local/bin/voxcmd-hints
 hint_choices='[{"id":"a","label":"Next - top","box":[100,50,60,20]},{"id":"b","label":"Next - bottom","box":[300,200,70,22]}]'
-run_hints() { "$hints" "$@"; }
+run_hints() { "$pkg_voxcmd" ask hints "$@"; }
 export SANDBOX_CLICKHINTS_ANSWER=
 
 : >"$log"
@@ -1044,7 +1046,7 @@ check "more than ten choices fall back to the text picker, which lists them all"
 # until voxcmd-hints reads the answer FIFO: before then it may not yet know the overlay is up.
 hints_reading_answer() { wait_until pgrep -f "head -n 1 $XDG_RUNTIME_DIR/voxcmd-hints\\." >/dev/null; }
 : >"$log"
-SANDBOX_CLICKHINTS_HOLD=1 "$hints" "Which one?" "$hint_choices" >/dev/null &
+SANDBOX_CLICKHINTS_HOLD=1 "$pkg_voxcmd" ask hints "Which one?" "$hint_choices" >/dev/null &
 waiter_pid=$!
 hints_reading_answer
 kill -TERM "$waiter_pid"
@@ -1059,7 +1061,7 @@ check "a reader timeout exits 1 and dismisses the overlay" "[[ $timeout_status =
 # stub holds the call, then releases it. The overlay was requested, so it must still be dismissed.
 : >"$log"
 open_block=$root/open-block
-SANDBOX_CLICKHINTS_HOLD=1 SANDBOX_CLICKHINTS_BLOCK=$open_block "$hints" "Which one?" "$hint_choices" >/dev/null &
+SANDBOX_CLICKHINTS_HOLD=1 SANDBOX_CLICKHINTS_BLOCK=$open_block "$pkg_voxcmd" ask hints "Which one?" "$hint_choices" >/dev/null &
 opening_pid=$!
 wait_for_path "$open_block.entered"
 kill -TERM "$opening_pid"
@@ -1078,7 +1080,7 @@ check "--listen starts the reply recording before the overlay opens" "[[ \$(grep
 : >"$log"
 echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 echo HOLD >"$root/held-turn"
-SANDBOX_VOXTYPE_TURNS=$root/held-turn SANDBOX_CLICKHINTS_HOLD=1 "$hints" --listen "Which one?" "$hint_choices" >/dev/null &
+SANDBOX_VOXTYPE_TURNS=$root/held-turn SANDBOX_CLICKHINTS_HOLD=1 "$pkg_voxcmd" ask hints --listen "Which one?" "$hint_choices" >/dev/null &
 waiter_pid=$!
 wait_for_line 'clickhints open' "$log"
 check "--listen hands the watcher the pick's recording owner file" "grep -Eq '^setsid owner=.*/voxcmd-hints\\.[^/]+/recording-owner ' '$log'"
@@ -1098,7 +1100,7 @@ jq -n -c --argjson pid "$waiter_pid" --arg fifo "$reply_fifo" --arg listen_again
   '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {}, listen_again: $listen_again,
     choices: [{id: "a", label: "1. Next - top"}, {id: "b", label: "2. Next - bottom"}, {id: "c", label: "3. Settings - middle"}]}' \
   >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
-reply_dry() { "$voxcmd" --dry-run --reply "$1" 2>&1; }
+reply_dry() { "$voxcmd" reply --dry-run "$1" 2>&1; }
 check "a waiting voxcmd-hints is a pending pick that a reply finds" "grep -q 'picker:      Which one?' <<<\"\$(reply_dry two)\""
 check "an ordinal picks by number" "grep -q 'result:      pick: 2. Next - bottom' <<<\"\$(reply_dry 'the second one')\""
 check "a spoken number picks by number" "grep -q 'result:      pick: 3. ' <<<\"\$(reply_dry 3)\""
@@ -1113,15 +1115,15 @@ check "cancel cancels" "grep -q 'result:      cancel' <<<\"\$(reply_dry 'never m
 
 : >"$log"
 touch "$listen_again"
-"$pkg_voxcmd" --reply "banana" >/dev/null 2>&1
+"$pkg_voxcmd" reply "banana" >/dev/null 2>&1
 check "an unclear reply listens once more" "[[ ! -e '$listen_again' ]] && grep -q 'voxtype record start' '$log'"
 : >"$log"
-"$pkg_voxcmd" --reply "banana" >/dev/null 2>&1
+"$pkg_voxcmd" reply "banana" >/dev/null 2>&1
 check "and only once" "! grep -q 'voxtype record start' '$log'"
 # The answer goes into the FIFO as the displayed label.
 (timeout "$test_wait_secs" head -n 1 "$reply_fifo" >"$root/reply-answer") &
 reader=$!
-"$pkg_voxcmd" --reply "two" >/dev/null 2>&1
+"$pkg_voxcmd" reply "two" >/dev/null 2>&1
 wait "$reader"
 check "a reply writes the displayed label to the FIFO" "[[ \$(cat '$root/reply-answer') == '2. Next - bottom' ]]"
 kill "$waiter_pid" 2>/dev/null
@@ -1172,7 +1174,7 @@ section "click mode routing"
 all_config=$root/config-all
 mkdir -p "$all_config/integrations.d" "$all_config/replacements.d"
 find "$package/.config/voxcmd/integrations.d" -maxdepth 1 -type f -name '*.sh' -exec cp -t "$all_config/integrations.d/" {} +
-route_all() { VOXCMD_CONFIG_DIR=$all_config "$voxcmd" --dry-run "$1" 2>&1; }
+route_all() { VOXCMD_CONFIG_DIR=$all_config "$voxcmd" explain "$1" 2>&1; }
 for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; do
   out=$(route_all "$phrase")
   check "'$phrase' opens click mode, alone" "grep -q 'result:      run' <<<\"\$out\" && grep -q 'Click (click.sh) action=click_mode' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
@@ -1466,12 +1468,12 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
 firefox_config=$root/firefox-config
 mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
 cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" --dry-run "go to inbox mailbox" 2>&1)
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to inbox mailbox" 2>&1)
 check "a tab shown in a second window is one tab, not also that window" "[[ \$(grep -c '^option' <<<\"\$out\") == 1 ]] && grep -q 'action=focus_tab' <<<\"\$out\""
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" --dry-run "go to private notes" 2>&1)
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to private notes" 2>&1)
 check "a private window is found by its title" "grep -q \"action=focus_tab .* id='0x3003 Private notes'\" <<<\"\$out\""
 rm -f "$firefox_config/integrations.d/firefox.sh"
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" --dry-run "go to inbox mailbox" 2>&1)
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to inbox mailbox" 2>&1)
 check "without firefox.sh, Apps still focuses the window by its title" "grep -q 'Apps (apps.sh) action=focus' <<<\"\$out\""
 
 section "screenshot menu by voice"
@@ -1492,7 +1494,7 @@ screenshot_flags=(
 )
 for entry in "${screenshot_flags[@]}"; do
   : >"$log"
-  VOXCMD_CONFIG_DIR=$screenshot_config "$voxcmd" "${entry%|*}" >/dev/null 2>&1
+  VOXCMD_CONFIG_DIR=$screenshot_config "$voxcmd" run "${entry%|*}" >/dev/null 2>&1
   check "'${entry%|*}' runs screenshot.sh ${entry#*|}" "[[ \$(grep -c 'screenshot.sh' '$log') == 1 ]] && grep -Eq 'screenshot.sh ${entry#*|}\$' '$log'"
 done
 
@@ -1526,11 +1528,11 @@ keys_pressed=(
 )
 for entry in "${keys_pressed[@]}"; do
   : >"$log"
-  VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" "${entry%|*}" >/dev/null 2>&1
+  VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" run "${entry%|*}" >/dev/null 2>&1
   check "'${entry%|*}' runs ${entry#*|}" "[[ \$(grep -c '^wtype' '$log') == 1 ]] && grep -Fxq '${entry#*|}' '$log'"
 done
 : >"$log"
-VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" "press tab banana" >/dev/null 2>&1
+VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" run "press tab banana" >/dev/null 2>&1
 check "a count that is none presses nothing" "! grep -q '^wtype' '$log'"
 
 # No client has focus (activewindow is {}): a key goes to an open bar popup that takes the keyboard, or to either
@@ -1552,7 +1554,7 @@ for entry in "${keys_bar_surface_cases[@]}"; do
   echo "${keyboard_answer:-no}" >"$SANDBOX_DIR/popup-keyboard"
   echo "${overview_answer:-closed}" >"$SANDBOX_DIR/overview-state"
   echo "${tmux_overview_answer:-closed}" >"$SANDBOX_DIR/tmux-overview-state"
-  SANDBOX_ACTIVEWINDOW_JSON='{}' VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" "press enter" >/dev/null 2>&1
+  SANDBOX_ACTIVEWINDOW_JSON='{}' VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" run "press enter" >/dev/null 2>&1
   case_name="no client, popup '$popup_answer' keyboard ${keyboard_answer:-no} overview '${overview_answer:-closed}' tmux overview '${tmux_overview_answer:-closed}'"
   if [ "$expected" = pressed ]; then
     check "$case_name: enter is pressed" "grep -Fxq 'wtype -k Return' '$log'"
@@ -1622,8 +1624,8 @@ STUB
   for number in $(seq 1 12); do printf ' [note%s]=%s' "$number" "'echo note$number >> $near_actions'"; done
   echo ')'
 } >"$near_config/integrations.d/near.sh"
-near_dry() { VOXCMD_CONFIG_DIR=$near_config "$voxcmd" --dry-run "$1" 2>&1; }
-near_live() { VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" "$1" >/dev/null 2>&1; }
+near_dry() { VOXCMD_CONFIG_DIR=$near_config "$voxcmd" explain "$1" 2>&1; }
+near_live() { VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" run "$1" >/dev/null 2>&1; }
 near_miss_log=$XDG_STATE_HOME/voxcmd/no-match.log
 rm -f "$near_miss_log"
 
@@ -1683,9 +1685,9 @@ check "a phrase that still matches nothing is logged" "[[ \$(wc -l <'$near_miss_
 check "stray speech picked nothing" "! grep -q '^voxcmd-pick' '$log'"
 near_live "Lock  Doors!"
 check "the logged phrase is the normalized one" "tail -n 1 '$near_miss_log' | grep -qP '\\tlock doors\$'"
-VOXCMD_CONFIG_DIR=$near_config "$voxcmd" --dry-run "nothing matches this at all" >/dev/null 2>&1
+VOXCMD_CONFIG_DIR=$near_config "$voxcmd" explain "nothing matches this at all" >/dev/null 2>&1
 check "a dry run logs nothing" "[[ \$(wc -l <'$near_miss_log') == 2 ]]"
-out=$(VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" misses 1)
+out=$(VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" log misses 1)
 check "voxcmd misses prints the last lines" "grep -qP '\\tlock doors\$' <<<\"\$out\" && [[ \$(wc -l <<<\"\$out\") == 1 ]]"
 near_live $'lock doors\nquickly'
 check "a transcript over two lines is one record" "[[ \$(wc -l <'$near_miss_log') == 3 ]] && tail -n 1 '$near_miss_log' | grep -qP '\\tlock doors\$'"
@@ -1699,7 +1701,7 @@ near_watch() {
     wait_for_line 'watch: voxtype recording' "$debug_log"
     echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
   ) &
-  VOXCMD_DEBUG=1 VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" _watch route "${2:--}" "${3:-0}" >/dev/null 2>&1
+  VOXCMD_DEBUG=1 VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" internal watch route "${2:--}" "${3:-0}" >/dev/null 2>&1
   wait
   rm -f "$debug_log" "$XDG_RUNTIME_DIR/voxtype/state"
 }
@@ -1721,13 +1723,13 @@ mkdir -p "$sessions_config/integrations.d" "$sessions_config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/sessions.sh" "$package/.config/voxcmd/integrations.d/tmux.sh" "$sessions_config/integrations.d/"
 export SANDBOX_LAUNCHER_SESSIONS=$'work\n🌐 Browsing'
 : >"$log"
-VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" "open the browsing session" >/dev/null 2>&1
+VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the browsing session" >/dev/null 2>&1
 check "a session is launched by its exact name" "grep -Fq '.launch(\"🌐 Browsing\")' '$log'"
 : >"$log"
-VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" "open the nowhere session" >/dev/null 2>&1
+VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the nowhere session" >/dev/null 2>&1
 check "an unknown name launches nothing, but still asks Hyprland for the names" "grep -q 'write_names' '$log' && ! grep -Fq '.launch(' '$log'"
 : >"$log"
-VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" "open the work tmux session" >/dev/null 2>&1
+VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the work tmux session" >/dev/null 2>&1
 check "a tmux phrase launches no launcher session" "! grep -Fq '.launch(' '$log'"
 unset SANDBOX_LAUNCHER_SESSIONS
 

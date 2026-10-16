@@ -34,7 +34,7 @@ dispatches() {
   local slots
   slots="${SANDBOX_MONITOR_SLOTS-$(id_order_slots "$1")}"
   : >"$log"
-  SANDBOX_MONITOR_SLOTS=$slots SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/$1.json") voxcmd "$2" >/dev/null 2>&1
+  SANDBOX_MONITOR_SLOTS=$slots SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/$1.json") voxcmd run "$2" >/dev/null 2>&1
   sed -n 's/^hyprctl dispatch //p' "$log"
 }
 # named_of <words> <layout> <slots>: what monitor_named answers for the words on a layout, given the slot lookup's answer.
@@ -149,7 +149,7 @@ check "a monitor no word fits moves nothing" "[[ -z \$(dispatches side_by_side '
 check "no focused window moves nothing" "[[ -z \$(SANDBOX_ACTIVEWINDOW_JSON='{}' dispatches owner 'move this window to the left monitor') ]]"
 
 section "monitors: other phrases keep their route"
-route_of() { SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/owner.json") voxcmd --dry-run "$1" 2>/dev/null | sed -n 's/^option 1: *\([^ ]*\) .* action=\([^ ]*\) .*/\1\/\2/p'; }
+route_of() { SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/owner.json") voxcmd explain "$1" 2>/dev/null | sed -n 's/^option 1: *\([^ ]*\) .* action=\([^ ]*\) .*/\1\/\2/p'; }
 check "set a timer for 30 seconds stays with Timers" "[[ \$(route_of 'set a timer for 30 seconds') == Timers/timer ]]"
 check "move firefox to workspace 3 stays with Apps" "[[ \$(route_of 'move firefox to workspace 3') == Apps/move ]]"
 check "go to firefox stays with Apps" "[[ \$(route_of 'go to firefox') == Apps/focus ]]"

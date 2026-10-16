@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Runs a command with voxcmd cut off from the live desktop: its own runtime dir, a config dir holding this checkout's
 # integrations and replacements, this checkout's voxcmd first on PATH, and stubs in place of everything that acts.
+# `voxcmd` there is the new CLI: VOXCMD_BIN=bash (the default, and for now the only value) reaches the bash voxcmd
+# through the shim in tests/bin.
 #
 #   home/voxcmd/tests/sandbox.sh <command...>
-#   home/voxcmd/tests/sandbox.sh voxcmd --dry-run "close firefox"
-#   SANDBOX_SHOW_CALLS=1 home/voxcmd/tests/sandbox.sh voxcmd "close firefox"
+#   home/voxcmd/tests/sandbox.sh voxcmd explain "close firefox"
+#   SANDBOX_SHOW_CALLS=1 home/voxcmd/tests/sandbox.sh voxcmd run "close firefox"
 #
 # Stubs log each call and succeed, printing nothing or a plausible answer (wpctl get-volume, qs-ipc get_dnd,
 # hyprctl dispatch's "ok"). Read-only queries still reach the real tool unless a fixture replaces them:
@@ -58,8 +60,8 @@
 #                                       SANDBOX_CLICKHINTS_BLOCK=<path>  open blocks before answering: it creates
 #                                                                  <path>.entered, then waits for <path>.release
 #                                       SANDBOX_CLICKHINTS_STATE_BLOCK=<path>  state blocks the same way
-#   voxcmd-pick, voxcmd-autostop      voxcmd finds these beside itself, not on PATH, so a test copies the package and
-#                                     symlinks its two onto $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first
+#   voxcmd-pick, voxcmd-autostop      voxcmd finds these beside itself, not on PATH, so a test copies the package (with the
+#                                     shim, see lib.sh) and symlinks its two onto $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first
 #                                     choice's id. voxcmd-autostop gives no verdict (exit 1) unless a voxtype turn is
 #                                     being recorded (see below); --check passes unless SANDBOX_AUTOSTOP_OFF holds the
 #                                     reason it is off
@@ -109,6 +111,11 @@ set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 package_dir=$(dirname "$tests_dir")
+# VOXCMD_BIN=rs (a build of this checkout) arrives with the Rust crate.
+[ "${VOXCMD_BIN:-bash}" = bash ] || {
+  echo "sandbox: VOXCMD_BIN=$VOXCMD_BIN is not supported yet; only bash is" >&2
+  exit 2
+}
 [ "$#" -gt 0 ] || {
   sed -n '2,/^set -euo/{/^set -euo/d;s/^# \{0,1\}//;p}' "$0" >&2
   exit 2
@@ -510,7 +517,7 @@ export SANDBOX_REAL_HOME="$HOME"
 export HOME="$sandbox_dir/home"
 export XDG_STATE_HOME="$sandbox_dir/home/.local/state"
 export XDG_CACHE_HOME="$sandbox_dir/home/.cache"
-export PATH="$stub_dir:$package_dir/.local/bin:$PATH"
+export PATH="$stub_dir:$tests_dir/bin:$package_dir/.local/bin:$PATH"
 export XDG_RUNTIME_DIR="$sandbox_dir/runtime"
 export XDG_CONFIG_HOME="$config_home"
 export VOXCMD_CONFIG_DIR="$config_home/voxcmd"

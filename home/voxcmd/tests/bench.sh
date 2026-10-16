@@ -8,9 +8,9 @@
 #   home/voxcmd/tests/bench.sh --all                 every phrase in phrases.tsv once, dry run: the overall spread and the
 #                                                    10 slowest
 #
-# VOXCMD_DRY_RUN_CMD (default "voxcmd --dry-run") and VOXCMD_RUN_CMD (default "voxcmd") are the commands a phrase is
-# appended to, so another build is timed with the same phrases (a Rust voxcmd: "voxcmd-rs run --dry-run"). Needs hyperfine
-# (not for --all) and jq.
+# VOXCMD_DRY_RUN_CMD (default "voxcmd explain") and VOXCMD_RUN_CMD (default "voxcmd run") are the commands a phrase is
+# appended to. `voxcmd` is the sandbox's: the new CLI, through the bash shim until the Rust build is a VOXCMD_BIN. Another
+# build is timed with the same phrases by setting both. Needs hyperfine (not for --all) and jq.
 set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -35,8 +35,8 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-dry_run_cmd=${VOXCMD_DRY_RUN_CMD:-voxcmd --dry-run}
-run_cmd=${VOXCMD_RUN_CMD:-voxcmd}
+dry_run_cmd=${VOXCMD_DRY_RUN_CMD:-voxcmd explain}
+run_cmd=${VOXCMD_RUN_CMD:-voxcmd run}
 
 "$tests_dir/firefox-profile" "$HOME/.config/mozilla/firefox"
 
