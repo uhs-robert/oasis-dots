@@ -2265,8 +2265,8 @@ session_finish_recording() {
 
 # session_leave_recording_mode_locked <kind> <action>: leaves the one-recording mode saying why, or ends the session.
 # The ending's by is read again here, under the lock: Stop Voice may have made it key while the text was handled.
-# Fails when Stop Voice (or anything else) ended the session or made the ending a key one, so a chain after the ending
-# must not run.
+# Fails when Stop Voice (or anything else) ended the session, left the mode or made the ending a key one, so a chain
+# after the ending must not run.
 session_leave_recording_mode_locked() {
   local kind="$1" action="$2" state by reason
   state=$(session_state_locked) && session_is_mine "$state" || return 1
@@ -2283,8 +2283,7 @@ session_leave_recording_mode_locked() {
   idle:*) reason="nothing was said for $(duration_words "${mode_setting[listen_no_speech_secs]:-$session_no_speech_secs}")" ;;
   *) reason="done" ;;
   esac
-  session_leave_locked "$kind" "$reason" || true
-  [ "$by" != key ]
+  session_leave_locked "$kind" "$reason" && [ "$by" != key ]
 }
 
 # Whether the mode on top is still wanted: its integration's session_alive, when it has one, says its screen is still up.
