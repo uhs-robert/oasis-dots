@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Detects the running distro and sets shared path variables.
-# Sets $DISTRO (arch), $PKG_DIR, $GITHUB_DIR, $GITHUB_ORG, $REPOS_DIR, $REPOS_LINK at source time.
+# Sets $PKG_DIR, $GITHUB_DIR, $GITHUB_ORG, $REPOS_DIR, $REPOS_LINK at source time, silently.
+# $DISTRO (arch) is set by require_arch, which install.sh and uninstall.sh call; sourcing must stay free of output and exits.
 
 # Environment wins over the ignored install.local, which wins over the defaults.
 _env_github_dir="${GITHUB_DIR:-}"
@@ -27,5 +28,8 @@ detect_distro() {
   fi
 }
 
-DISTRO=$(detect_distro)
-info "Detected: $DISTRO"
+# Sets $DISTRO, announces it, and dies off Arch.
+require_arch() {
+  DISTRO=$(detect_distro)
+  info "Detected: $DISTRO"
+}
