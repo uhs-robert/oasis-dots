@@ -11,7 +11,7 @@ import "../../theme/Watch.js" as W
 // One Daily column as a strip of the pause watch's bezel: warm segments lit from the day's low to its high on the week's scale,
 // a thin cold strip beside it lit to the rain chance, readings in the LCD digits; the selected day sits in a watch-face panel.
 // sub 1 lights wind speed with a gust strip beside it, sub 2 the UV index, sub 3 the sunshine against the daylight. The foot under the strips is the
-// rain chance on sub 0, nothing on sub 1 (its gust reading is already the bottom text), the UV band on sub 2 and the share of daylight sunshine on sub 3.
+// rain chance on sub 0, GUST naming the bottom reading on sub 1, the UV band on sub 2 and the share of daylight sunshine on sub 3.
 Item {
     id: root
 
@@ -54,6 +54,7 @@ Item {
     readonly property string footer_text: {
         if (!root.day) return "";
         if (root.sub === 0) return root.day.pop + "%";
+        if (root.sub === 1) return "GUST";
         if (root.sub === 2) return WeatherState.uv_band(root.day.uv_max).short;
         if (root.sub === 3 && root.sun_share >= 0) return Math.round(root.sun_share * 100) + "%";
         return "";
