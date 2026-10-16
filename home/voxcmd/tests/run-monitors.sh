@@ -150,6 +150,15 @@ check "go to firefox stays with Apps" "[[ \$(route_of 'go to firefox') == Apps/f
 check "a monitor that is no monitor word is left to the apps" "[[ \$(route_of 'go to the system monitor') != Monitors/* ]]"
 check "move two and four to the left monitor is not ours with the overview closed" "[[ \$(route_of 'move two and four to the left monitor') != Monitors/* ]]"
 
+section "apps: moves to a special workspace"
+# Beside the monitor moves for the dispatches() helper. An existing name is matched in any case and spacing and kept as
+# written, spaces included.
+special_move_of() { echo "hl.dsp.window.move({ window = 'address:0x1001', workspace = '$1', follow = false })"; }
+special_dispatches() { SANDBOX_WORKSPACES_JSON='[{"id": -98, "name": "special:project scratch"}, {"id": -99, "name": "special:Scratchpad"}]' dispatches owner "$1"; }
+check "an existing spaced name is kept" "[[ \$(special_dispatches 'move firefox to special workspace project scratch') == \$(special_move_of 'special:project scratch') ]]"
+check "an existing name is matched in any case" "[[ \$(special_dispatches 'move firefox to the special workspace scratch pad') == \$(special_move_of special:Scratchpad) ]]"
+check "a new name joins its words with hyphens" "[[ \$(special_dispatches 'send firefox to special workspace work notes') == \$(special_move_of special:work-notes) ]]"
+
 section "spoken positions: numbers and ordinals"
 while IFS='|' read -r words expected; do
   check "'$words' is position '$expected'" "[[ \$(spoken_position '$words') == '$expected' ]]"

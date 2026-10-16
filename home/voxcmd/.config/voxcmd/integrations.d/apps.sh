@@ -347,7 +347,8 @@ window_candidates() {
 # For "move firefox to workspace 3" every window is offered as "<app> to workspace 3" (and by title), so word
 # matching compares the window part while the workspace rides along in the id as "<address> <workspace>". A target
 # without the workspace part offers nothing. "to special workspace <name>" works the same, with the special workspace
-# that special_workspace_name() resolves the spoken name to.
+# that special_workspace_name() resolves the spoken name to. An existing special workspace's name may hold spaces, so
+# the workspace travels percent-encoded, as the overview's references do.
 move_candidates() {
   local target="$1" workspace_words workspace label_to
   if [[ "$target" =~ ^(.+)(\ to\ (the\ )?special\ workspace\ ([a-z0-9]+(\ [a-z0-9]+)*))$ ]]; then
@@ -368,20 +369,20 @@ move_candidates() {
   fi
   windows | jq -c --arg suffix "$workspace_words" --arg workspace "$workspace" --arg label_to "$label_to" '
     def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
-    map("\(.app): \(.title) \($label_to)" as $label
+    ($workspace | gsub("%"; "%25") | gsub(" "; "%20")) as $workspace
+    | map("\(.app): \(.title) \($label_to)" as $label
       | {id: "\(.address) \($workspace)", label: $label, match_text: (.app + $suffix)},
         (select(.title != "" and (.title | plain) != (.app | plain))
           | {id: "\(.address) \($workspace)", label: $label, match_text: (.title + $suffix)}))'
 }
 
 # Prints the name of the special workspace the spoken words mean, without its "special:" prefix. An existing special
-# workspace wins when its name, hyphens dropped and in any case, is the words with spaces dropped ("scratch pad" is
-# scratchpad or Scratchpad); otherwise the words are joined with hyphens, since a name with a space would split off in
-# move_window.
+# workspace wins when its name, spaces and hyphens dropped and in any case, is the words with spaces dropped ("scratch
+# pad" is scratchpad, Scratchpad or "scratch pad"); otherwise the words are joined with hyphens.
 special_workspace_name() {
   local spoken="${1,,}" existing
   existing=$(timeout 2 hyprctl workspaces -j 2>/dev/null | jq -r --arg squashed "${spoken// /}" '
-    first(.[] | .name | select(startswith("special:")) | ltrimstr("special:") | select(gsub("-"; "") | ascii_downcase == $squashed))')
+    first(.[] | .name | select(startswith("special:")) | ltrimstr("special:") | select(gsub("[- ]"; "") | ascii_downcase == $squashed))')
   echo "${existing:-${spoken// /-}}"
 }
 
@@ -399,9 +400,12 @@ focus_window() {
 
 # The window stays put on the current workspace's side: moving a window out of the way should not drag focus along.
 move_window() {
-  local address="${1% *}" workspace="${1##* }" lua_workspace
+  local address="${1%% *}" workspace="${1#* }" lua_workspace
   window_address "$address" || return 1
-  if [[ "$workspace" =~ ^special:[A-Za-z0-9_-]+$ ]]; then
+  workspace="${workspace//%20/ }"
+  workspace="${workspace//%25/%}"
+  # Quotes and backslashes would end the Lua string.
+  if [[ "$workspace" =~ ^special:[^\'\\]+$ ]]; then
     lua_workspace="'$workspace'"
   elif [[ "$workspace" =~ ^[0-9]+$ ]]; then
     lua_workspace="$workspace"
