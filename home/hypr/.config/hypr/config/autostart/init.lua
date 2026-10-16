@@ -11,6 +11,8 @@ local function run()
   os.execute(
     "dbus-update-activation-environment --systemd WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP DESKTOP_SESSION GTK_THEME PATH"
   )
+  -- The listener outlives a crashed Hyprland (graphical-session.target stays up), keeping the dead instance's signature.
+  os.execute("systemctl --user try-restart voxcmd-wake.service")
   os.execute("systemctl --user start hyprland-session.target")
   os.execute("systemctl --user start gnome-keyring-daemon.socket")
   os.execute("gnome-keyring-daemon --start --components=secrets,ssh")

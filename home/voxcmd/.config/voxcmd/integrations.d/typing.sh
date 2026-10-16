@@ -74,11 +74,14 @@ type_mode_begin() {
 
 # Prints why nothing may be typed now, nothing when typing is fine.
 type_refusal() {
+  local active_window
   if pending_pick >/dev/null; then
     echo "a voxcmd picker or card is open"
   elif [ -x "$qs_ipc" ] && [ "$(timeout 2 "$qs_ipc" call clickhints state 2>/dev/null)" = open ]; then
     echo "the click overlay is open"
-  elif ! hyprctl activewindow -j 2>/dev/null | jq -e 'length > 0' >/dev/null 2>&1; then
+  elif ! active_window=$(hyprctl activewindow -j 2>/dev/null); then
+    echo "Hyprland cannot be reached"
+  elif ! jq -e 'length > 0' >/dev/null 2>&1 <<<"$active_window"; then
     echo "no window has focus"
   fi
 }
