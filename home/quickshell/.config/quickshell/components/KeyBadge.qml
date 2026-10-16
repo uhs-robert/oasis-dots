@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/KeyBadge.qml
 import QtQuick
 import "../theme"
 import "KeyHints.js" as KeyHints

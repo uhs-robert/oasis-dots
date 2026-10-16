@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/mgs2/Art.js
 .pragma library
 
 // The menu face: unicase, wide and square like the game's menu type, on a 7 wide, 5 tall grid.

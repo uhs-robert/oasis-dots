@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/clock_marker/MarkerBase.qml
 import QtQuick
 
 // The inputs MeetingMarker hands every style's marker.

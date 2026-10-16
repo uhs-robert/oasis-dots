@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/popup/PopupKeys.qml
 import QtQuick
 import "../../services"
 

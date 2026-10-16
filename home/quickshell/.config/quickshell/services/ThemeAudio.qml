@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/ThemeAudio.qml
 pragma Singleton
 import QtQuick
 import Qt.labs.folderlistmodel

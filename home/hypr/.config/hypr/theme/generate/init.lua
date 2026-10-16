@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/theme/generate/init.lua
-
 --- @class Generate
 --- @field hyprland  fun(c: table) Applies colors to Hyprland via hl.config()
 --- @field rofi      fun(c: table) Writes colors.rasi

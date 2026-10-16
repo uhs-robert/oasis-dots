@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/lib/scripts.lua
-
 local HYPR = "~/.config/hypr/scripts/"
 local BIN = "~/.local/bin/"
 

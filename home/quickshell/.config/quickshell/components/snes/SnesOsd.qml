@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/snes/SnesOsd.qml
 import QtQuick
 import "../../theme"
 

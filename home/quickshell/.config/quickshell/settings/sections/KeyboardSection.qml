@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/KeyboardSection.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

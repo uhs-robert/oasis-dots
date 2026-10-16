@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/config/init.lua
-
 local Utils = require("lib.utils") ---@class Utils
 
 --- @class Config.Nvidia

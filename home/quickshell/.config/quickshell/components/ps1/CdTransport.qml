@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/CdTransport.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.Mpris

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Slider.qml
 import QtQuick
 import "../theme"
 import "ps2" as Ps2

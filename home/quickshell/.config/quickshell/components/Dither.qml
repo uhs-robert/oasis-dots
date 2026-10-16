@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Dither.qml
 import QtQuick
 
 // A static 2x2 checker; the corner squares stay clear so it never spills past rounded corners.

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/modules/Tray.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

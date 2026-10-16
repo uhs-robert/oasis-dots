@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/RangeCaps.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../theme"

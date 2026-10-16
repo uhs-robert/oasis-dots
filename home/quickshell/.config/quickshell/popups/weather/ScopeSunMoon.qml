@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/ScopeSunMoon.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts

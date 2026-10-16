@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/TowerSunMoon.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components/ps2" as Ps2

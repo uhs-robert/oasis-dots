@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps2/ClockScreen.qml
 import QtQuick
 import Quickshell
 import "../../theme"

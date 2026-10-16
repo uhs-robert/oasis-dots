@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/LockBrackets.qml
 import QtQuick
 import "../theme"
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/BatteryPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io

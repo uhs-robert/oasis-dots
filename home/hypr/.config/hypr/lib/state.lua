@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/lib/state.lua
-
 --- Directory for this config's runtime state, honouring XDG_STATE_HOME.
 --- @return string
 return function()

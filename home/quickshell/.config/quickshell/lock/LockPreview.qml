@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/LockPreview.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell

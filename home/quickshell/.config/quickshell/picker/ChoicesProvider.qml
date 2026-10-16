@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/picker/ChoicesProvider.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/Mgs2.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes

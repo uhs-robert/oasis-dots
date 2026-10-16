@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/WallpaperSection.qml
 import QtQuick
 import Quickshell
 import QtQuick.Layouts

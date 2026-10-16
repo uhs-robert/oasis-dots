@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/GaugeHeader.qml
 import QtQuick
 import QtQuick.Layouts
 

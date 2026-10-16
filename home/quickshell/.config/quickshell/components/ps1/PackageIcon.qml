@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/PackageIcon.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../theme"

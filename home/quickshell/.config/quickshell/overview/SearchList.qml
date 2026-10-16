@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/overview/SearchList.qml
 import QtQuick
 import Quickshell.Widgets
 import "../components"

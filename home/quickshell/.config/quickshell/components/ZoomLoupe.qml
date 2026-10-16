@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ZoomLoupe.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell

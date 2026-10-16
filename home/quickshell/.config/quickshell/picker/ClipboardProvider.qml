@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/picker/ClipboardProvider.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io

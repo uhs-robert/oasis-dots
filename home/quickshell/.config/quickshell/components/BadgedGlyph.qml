@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/BadgedGlyph.qml
 import QtQuick
 import "../theme"
 import "bar_icons"

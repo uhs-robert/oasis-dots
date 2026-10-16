@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/TargetUsage.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts

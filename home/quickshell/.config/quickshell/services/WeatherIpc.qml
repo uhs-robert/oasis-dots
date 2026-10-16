@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/WeatherIpc.qml
 import Quickshell.Io
 
 IpcHandler {

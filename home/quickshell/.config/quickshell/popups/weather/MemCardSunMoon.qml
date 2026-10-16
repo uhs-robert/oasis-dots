@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/MemCardSunMoon.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

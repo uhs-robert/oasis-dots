@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/modern/AccentTile.qml
 import QtQuick
 import Quickshell
 import "../../theme"

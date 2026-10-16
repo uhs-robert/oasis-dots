@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/Materia.js
 .pragma library
 
 // WeatherState color keys folded into the style's materia kinds.

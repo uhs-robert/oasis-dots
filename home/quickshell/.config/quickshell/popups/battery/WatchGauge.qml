@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/battery/WatchGauge.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

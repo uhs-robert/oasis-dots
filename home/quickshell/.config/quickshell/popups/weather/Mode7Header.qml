@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/Mode7Header.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/lib/window.lua
 -- Focus-or-launch: find an existing Hyprland window or open the app.
 
 --- @class Window

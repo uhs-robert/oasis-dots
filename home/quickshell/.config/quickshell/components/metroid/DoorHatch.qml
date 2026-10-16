@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/metroid/DoorHatch.qml
 import QtQuick
 import "../../theme"
 

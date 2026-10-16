@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/RowLabel.qml
 import QtQuick
 import "../theme"
 import "Search.js" as Search

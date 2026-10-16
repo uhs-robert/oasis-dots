@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/BattleSunMoon.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components"

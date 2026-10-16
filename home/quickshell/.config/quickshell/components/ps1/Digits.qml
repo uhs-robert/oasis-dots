@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps1/Digits.qml
 import QtQuick
 import "../../theme"
 

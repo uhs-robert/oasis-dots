@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/clock_marker/HevReadoutMarker.qml
 import QtQuick
 import "../../theme"
 

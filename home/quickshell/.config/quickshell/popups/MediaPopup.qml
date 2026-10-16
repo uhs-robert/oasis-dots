@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/MediaPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects

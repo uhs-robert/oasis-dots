@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/CardRule.qml
 import QtQuick
 import "../theme"
 

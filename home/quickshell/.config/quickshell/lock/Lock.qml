@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/Lock.qml
 pragma Singleton
 pragma ComponentBehavior: Bound
 import QtQuick

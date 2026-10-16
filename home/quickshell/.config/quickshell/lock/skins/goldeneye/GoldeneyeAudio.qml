@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/goldeneye/GoldeneyeAudio.qml
 import QtQuick
 import QtMultimedia
 import Qt.labs.folderlistmodel

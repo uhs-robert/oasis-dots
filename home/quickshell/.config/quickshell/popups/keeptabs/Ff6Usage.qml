@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/Ff6Usage.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components/snes" as Snes

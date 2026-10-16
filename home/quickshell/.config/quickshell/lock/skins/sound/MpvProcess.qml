@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/sound/MpvProcess.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io

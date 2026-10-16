@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/CutBox.qml
 import QtQuick
 import QtQuick.Shapes
 

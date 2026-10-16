@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/oasis/OasisHeader.qml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes

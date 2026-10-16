@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/WatchDial.qml
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland

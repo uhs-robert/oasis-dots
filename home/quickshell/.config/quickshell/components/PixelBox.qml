@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/PixelBox.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 

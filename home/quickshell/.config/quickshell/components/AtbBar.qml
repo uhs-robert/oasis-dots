@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/AtbBar.qml
 import QtQuick
 import "../theme"
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/clock_marker/ReserveBoxMarker.qml
 import QtQuick
 import "../snes"
 import "../../theme"

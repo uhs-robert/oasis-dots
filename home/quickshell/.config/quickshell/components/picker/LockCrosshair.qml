@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/picker/LockCrosshair.qml
 import QtQuick
 import "../../theme/Watch.js" as W
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/ModeTab.qml
 import QtQuick
 import "../components"
 import "../theme"

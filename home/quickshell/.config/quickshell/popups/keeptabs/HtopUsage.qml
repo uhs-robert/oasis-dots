@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/HtopUsage.qml
 import QtQuick
 import "../../theme"
 import "../../services"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/HourlyTrack.qml
 import QtQuick
 import Quickshell
 import "../../theme"

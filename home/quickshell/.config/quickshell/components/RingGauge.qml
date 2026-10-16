@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/RingGauge.qml
 import QtQuick
 import QtQuick.Shapes
 import "../theme"

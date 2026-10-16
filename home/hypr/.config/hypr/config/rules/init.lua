@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/config/rules/init.lua
-
 --- @class Rules
 --- @field layer_rules table<string, any> Registry of named layer-rule handles (supports set_enabled/is_enabled).
 --- @field window_rules table<string, any> Registry of named window-rule handles (supports set_enabled/is_enabled).

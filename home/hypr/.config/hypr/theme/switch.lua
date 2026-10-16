@@ -1,5 +1,4 @@
 #!/usr/bin/env lua
--- home/hypr/.config/hypr/theme/switch.lua
 -- Standalone theme switcher. No hl dependency, safe to spawn as a subprocess.
 -- Picks a palette via rofi (or `--set NAME` from Quickshell), saves the choice, then reloads Hyprland so all
 -- in-process generators (hyprland, quickshell, rofi, conf) run with hl available.

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/SegBar.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 

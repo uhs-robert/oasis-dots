@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/oasis/HorizonOsd.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

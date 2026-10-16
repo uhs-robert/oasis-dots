@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/Island.qml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes

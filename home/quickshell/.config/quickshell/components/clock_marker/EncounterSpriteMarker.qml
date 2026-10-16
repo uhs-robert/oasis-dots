@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/clock_marker/EncounterSpriteMarker.qml
 import QtQuick
 import ".."
 import "../../theme"

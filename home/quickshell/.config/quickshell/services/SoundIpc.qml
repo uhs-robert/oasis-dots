@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/SoundIpc.qml
 import Quickshell.Io
 
 IpcHandler {

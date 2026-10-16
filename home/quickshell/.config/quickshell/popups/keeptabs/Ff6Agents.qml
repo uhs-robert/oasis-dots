@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/Ff6Agents.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/WorkspaceDropTarget.qml
 import QtQuick
 import "../theme"
 import "../services"

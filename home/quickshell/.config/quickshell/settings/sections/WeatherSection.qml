@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/WeatherSection.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

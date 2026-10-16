@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/ZoomIpc.qml
 import Quickshell.Io
 
 IpcHandler {

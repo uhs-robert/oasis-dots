@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/theme/fallback.lua
 -- Embedded copy of oasis_moonlight, used when repos/oasis.nvim is not set up.
 
 return {

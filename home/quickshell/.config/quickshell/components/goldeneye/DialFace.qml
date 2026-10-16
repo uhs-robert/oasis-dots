@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/DialFace.qml
 import QtQuick
 import "../../theme"
 import "../../lock/skins/goldeneye" as Watch

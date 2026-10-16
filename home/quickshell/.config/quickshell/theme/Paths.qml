@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/theme/Paths.qml
 pragma Singleton
 import QtQuick
 import Quickshell

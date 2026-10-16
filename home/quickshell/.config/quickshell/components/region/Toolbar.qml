@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/region/Toolbar.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts

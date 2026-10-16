@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/NotificationsPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

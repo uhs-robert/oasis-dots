@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/ClickHintsIpc.qml
 import Quickshell.Io
 
 IpcHandler {

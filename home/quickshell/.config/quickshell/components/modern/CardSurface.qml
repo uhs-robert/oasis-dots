@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/modern/CardSurface.qml
 import QtQuick
 import "../../theme"
 import ".."

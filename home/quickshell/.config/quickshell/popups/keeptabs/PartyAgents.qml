@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/PartyAgents.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components"

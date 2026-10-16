@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/ScanHeader.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/HeroAir.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components/modern" as Modern

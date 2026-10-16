@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/metroid/CompassRule.qml
 import QtQuick
 import QtQuick.Shapes
 

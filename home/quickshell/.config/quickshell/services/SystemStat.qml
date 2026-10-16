@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/SystemStat.qml
 pragma Singleton
 import QtQuick
 import Quickshell

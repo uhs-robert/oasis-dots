@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/LazyPopup.qml
 import QtQuick
 import Quickshell
 import "../services"

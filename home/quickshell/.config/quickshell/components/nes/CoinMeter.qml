@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/nes/CoinMeter.qml
 import QtQuick
 import "../../theme"
 import ".."

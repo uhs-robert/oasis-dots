@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/snes/SnesBatteryStatus.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components/snes" as Snes

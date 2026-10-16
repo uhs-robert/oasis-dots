@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/lib/json.lua
-
 --- @class Json
 local Json = {}
 

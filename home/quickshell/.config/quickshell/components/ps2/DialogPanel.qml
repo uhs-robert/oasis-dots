@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ps2/DialogPanel.qml
 import QtQuick
 import "../../theme"
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Search.js
 .pragma library
 
 function starts_word(text, i) {

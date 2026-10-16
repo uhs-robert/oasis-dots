@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/CaravanUsage.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../components/oasis" as Oasis

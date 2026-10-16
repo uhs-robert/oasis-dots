@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/KeyHelp.qml
 import QtQuick
 import "../theme"
 import "../services"

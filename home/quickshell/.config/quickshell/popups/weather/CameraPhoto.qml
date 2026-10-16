@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/CameraPhoto.qml
 import QtQuick
 import "../../components"
 import "../../theme"

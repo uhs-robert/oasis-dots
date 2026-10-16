@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Osd.qml
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts

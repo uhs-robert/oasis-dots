@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/PopupScrim.qml
 import QtQuick
 import Quickshell
 import Quickshell.Wayland

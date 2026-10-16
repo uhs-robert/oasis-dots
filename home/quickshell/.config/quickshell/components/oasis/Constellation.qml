@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/oasis/Constellation.qml
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland

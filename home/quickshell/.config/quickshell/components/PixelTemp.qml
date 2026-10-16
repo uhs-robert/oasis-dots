@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/PixelTemp.qml
 import QtQuick
 import "../theme"
 

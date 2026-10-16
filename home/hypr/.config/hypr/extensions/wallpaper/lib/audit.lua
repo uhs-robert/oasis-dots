@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/extensions/wallpaper/lib/audit.lua
 -- Report folder sizes, images no folder uses, and folders outside the layout
 
 local Apply = require("wallpaper.lib.apply") ---@class Apply

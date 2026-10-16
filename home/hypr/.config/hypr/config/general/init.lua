@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/config/general/init.lua
 --- Applies global Hyprland options: layout, decoration, input, cursor, animations, and misc.
 
 local Config = require("config") ---@class Config

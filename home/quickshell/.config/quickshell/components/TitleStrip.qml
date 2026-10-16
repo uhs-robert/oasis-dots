@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/TitleStrip.qml
 import QtQuick
 import "../theme"
 import "../services"

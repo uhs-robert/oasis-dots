@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/gameboy/PartyBox.qml
 import QtQuick
 import "../../theme"
 

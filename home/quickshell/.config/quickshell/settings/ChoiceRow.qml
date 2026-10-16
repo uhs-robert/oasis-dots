@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/ChoiceRow.qml
 import QtQuick
 import QtQuick.Layouts
 import "../components"

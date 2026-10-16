@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/settings/sections/BarModulesSection.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

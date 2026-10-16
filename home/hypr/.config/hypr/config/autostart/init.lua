@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/config/autostart/init.lua
-
 local Config = require("config")
 local TERM = Config.app.term
 

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/MateriaSlots.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell

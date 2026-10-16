@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/snes/SnesStartView.qml
 import QtQuick
 import "../../components"
 import "../../components/snes" as Snes

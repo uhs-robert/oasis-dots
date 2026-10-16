@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/ff7/Ff7Audio.qml
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell

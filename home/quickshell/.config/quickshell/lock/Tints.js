@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/Tints.js
 .pragma library
 
 // The lock tint `name` as [base, bright] from the Theme singleton `t`; unknown names use primary.

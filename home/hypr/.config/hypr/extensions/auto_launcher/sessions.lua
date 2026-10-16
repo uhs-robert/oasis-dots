@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/extensions/auto_launcher/sessions.lua
 -- Session registry for the launcher; monitor indices follow Config.monitors order.
 -- These are generic defaults; add your own from custom/ (see custom/README.md).
 --

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/nes/NesButton.qml
 import QtQuick
 import "../../theme"
 import ".."

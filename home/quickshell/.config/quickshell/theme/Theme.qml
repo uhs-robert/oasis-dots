@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/theme/Theme.qml
 pragma Singleton
 import QtQuick
 import Quickshell

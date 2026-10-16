@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/oasis/OasisPalm.qml
 import QtQuick
 import QtQuick.Shapes
 

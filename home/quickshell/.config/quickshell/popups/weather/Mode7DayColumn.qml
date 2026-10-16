@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/Mode7DayColumn.qml
 import QtQuick
 import QtQuick.Effects
 import "../../theme"

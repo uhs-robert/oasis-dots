@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/TroubleUsage.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

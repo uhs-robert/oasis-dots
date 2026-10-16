@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/extensions/wallpaper/lib/settings_page.lua
 -- Settings state written by the Quickshell Settings page, and the status file written back for it
 
 local Json = require("lib.json") ---@class Json

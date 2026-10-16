@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/extensions/init.lua
-
 --- Apply wallpaper to a monitor when it is added.
 local function enable_wallpaper_rotation()
   if not require("config").wallpaper_enabled then return end

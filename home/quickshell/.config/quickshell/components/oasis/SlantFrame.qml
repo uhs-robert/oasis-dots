@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/oasis/SlantFrame.qml
 import QtQuick
 import QtQuick.Shapes
 import "../../theme"

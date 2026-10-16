@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/skins/ocarina/OcarinaAudio.qml
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/picker/cursors/Tvosd.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../../theme"

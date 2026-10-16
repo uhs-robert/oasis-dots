@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/gameboy/GameboyButton.qml
 import QtQuick
 import "../../theme"
 import "../nes" as Nes

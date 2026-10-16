@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/gameboy/DPad.qml
 import QtQuick
 
 // A handheld's cross pad, three arm widths square, with a dimple at the hub.

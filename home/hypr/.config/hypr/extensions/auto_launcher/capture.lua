@@ -1,4 +1,3 @@
--- home/hypr/.config/hypr/extensions/auto_launcher/capture.lua
 -- Turns open windows into draft session entries for the Settings Sessions tab. Settings runs
 --   hyprctl eval "require('extensions.auto_launcher.capture').draft({'0x...'}, '<runtime path>.json')"
 -- and reads `{ "windows": [ <AppEntry as JSON> ] }` back from the file, since eval prints nothing.

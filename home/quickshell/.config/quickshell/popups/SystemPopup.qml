@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/SystemPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/lock/LockCapture.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io

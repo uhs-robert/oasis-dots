@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/ScreenshotIpc.qml
 import Quickshell.Io
 
 IpcHandler {

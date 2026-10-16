@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/ScopeAlerts.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts

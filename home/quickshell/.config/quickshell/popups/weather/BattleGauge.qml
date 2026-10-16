@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/BattleGauge.qml
 import QtQuick
 import "../../theme"
 

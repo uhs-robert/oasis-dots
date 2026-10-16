@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/PixelFrame.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../theme"

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/SubmapTab.qml
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland

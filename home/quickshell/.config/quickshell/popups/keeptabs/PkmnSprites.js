@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/keeptabs/PkmnSprites.js
 .pragma library
 
 // Party-menu mini sprites per agent, rows of PixelSprite shade digits: claude is a spark, codex a terminal prompt.

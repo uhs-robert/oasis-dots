@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/GreeterSync.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io

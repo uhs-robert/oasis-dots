@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/HotCorner.qml
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland

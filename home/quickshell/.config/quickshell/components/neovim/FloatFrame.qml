@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/neovim/FloatFrame.qml
 import QtQuick
 import "../../theme"
 

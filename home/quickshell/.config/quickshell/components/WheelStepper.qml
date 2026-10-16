@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/WheelStepper.qml
 import QtQuick
 
 // Accumulates fractional wheel deltas into whole 120-unit notches and

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/picker/hyprvim/CompletionMenu.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../components"

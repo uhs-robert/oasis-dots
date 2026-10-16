@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/weather/DexStatBar.qml
 import QtQuick
 import "../../components"
 import "../../theme"

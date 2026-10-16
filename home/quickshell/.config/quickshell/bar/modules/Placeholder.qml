@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/bar/modules/Placeholder.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

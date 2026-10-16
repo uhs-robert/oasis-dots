@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/Sheen.qml
 import QtQuick
 
 // A 1px highlight along the top edge of a rounded surface, fading out into its corners.

@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/MediaState.qml
 pragma Singleton
 import QtQuick
 import Quickshell

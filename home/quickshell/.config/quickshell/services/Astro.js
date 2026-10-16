@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/Astro.js
 .pragma library
 
 // Moon position/rise/set math ported from SunCalc (mourner/suncalc, BSD-2-Clause).

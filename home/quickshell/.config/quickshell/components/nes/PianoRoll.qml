@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/nes/PianoRoll.qml
 import QtQuick
 import "../../theme"
 

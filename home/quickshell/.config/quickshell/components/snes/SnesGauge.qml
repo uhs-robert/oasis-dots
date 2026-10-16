@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/snes/SnesGauge.qml
 import QtQuick
 import ".."
 import "../../theme"

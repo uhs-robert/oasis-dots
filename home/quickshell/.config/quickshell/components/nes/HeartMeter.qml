@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/nes/HeartMeter.qml
 import QtQuick
 import "../../theme"
 import ".."

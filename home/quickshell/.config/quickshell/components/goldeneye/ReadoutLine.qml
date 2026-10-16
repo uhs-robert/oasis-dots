@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/goldeneye/ReadoutLine.qml
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"

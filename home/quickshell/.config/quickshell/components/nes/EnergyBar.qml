@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/nes/EnergyBar.qml
 import QtQuick
 import "../../theme"
 

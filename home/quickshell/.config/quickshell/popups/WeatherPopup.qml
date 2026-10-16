@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/popups/WeatherPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import "../components"

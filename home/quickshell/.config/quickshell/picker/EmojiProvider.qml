@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/picker/EmojiProvider.qml
 import QtQuick
 import Quickshell
 import Quickshell.Io

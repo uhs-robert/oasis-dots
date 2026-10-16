@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/ToggleRow.qml
 import QtQuick
 import QtQuick.Layouts
 import "../theme"

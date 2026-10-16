@@ -1,5 +1,3 @@
--- home/hypr/.config/hypr/theme/generate/quickshell.lua
-
 local HOME = os.getenv("HOME")
 local Utils = require("lib.utils") ---@class Utils
 

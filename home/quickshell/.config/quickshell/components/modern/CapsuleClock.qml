@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/modern/CapsuleClock.qml
 import QtQuick
 import "../../theme"
 

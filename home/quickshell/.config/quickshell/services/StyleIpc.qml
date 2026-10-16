@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/services/StyleIpc.qml
 import Quickshell.Io
 import "../theme"
 import "../components/transitions"

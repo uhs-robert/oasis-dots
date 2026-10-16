@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/components/gameboy/ShellDmg.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 

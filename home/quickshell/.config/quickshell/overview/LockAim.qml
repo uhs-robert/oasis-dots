@@ -1,4 +1,3 @@
-// home/quickshell/.config/quickshell/overview/LockAim.qml
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../components"
