@@ -34,6 +34,13 @@ hold_slot() {
 }
 try_take() { CHECK_LOCK_WAIT_SECS=${1:-0} sh -c '. "$1"; check_lock_take tester' _ "$lock_lib" 2>"$scratch/err"; }
 
+# One slot by default: the click suite alone keeps the machine busy, and two at once make its timing flaky.
+expect "a first holder takes the one default slot" "hold_slot only"
+expect "a second waits for it, then gives up" "! try_take 1"
+rm "$scratch/hold.only"
+expect "and gets it once it frees" "try_take 5"
+
+export CHECK_HEAVY_SLOTS=2
 expect "a first holder takes a slot" "hold_slot one"
 expect "a second holder takes the other slot" "hold_slot two"
 expect "a third waits, then gives up" "! try_take 1"
