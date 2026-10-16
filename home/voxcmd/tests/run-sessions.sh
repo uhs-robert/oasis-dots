@@ -56,6 +56,8 @@ name="Sess"
 verbs=("begin_it start testing" "stop_it stop testing" "tap tap {target}")
 session_miss_actions=(none)
 session_exit_phrases="(okay )?stop testing|done testing"
+# As click mode: a bare exit word is a button label.
+session_bare_exits=0
 pick_command=$sess_stubs/sess-hints
 candidates() {
   case "\$2" in
@@ -200,7 +202,7 @@ for word in "done" "Done." "that's all" "I'm done" "stop testing" "Okay, stop te
   check "'$word' ends the session and the microphone with it" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
 # Button labels: these are what the user wants clicked.
-for word in "cancel" "exit" "stop" "never mind" "stop clicking" "stop testing now"; do
+for word in "cancel" "exit" "stop" "quit" "never mind" "stop clicking" "stop testing now"; do
   sess_run "$word" "done"
   check "'$word' is a target, not an exit" "[[ \$(grep '^tap ' '$log') == 'tap $word' && \$(record_starts) == 2 ]]"
 done
@@ -669,8 +671,13 @@ for word in "cortana done" "Cortana, I'm done." "Cortana, stop rapid mode." "cor
   sess_run "tap alpha" "$word" "tap gamma"
   check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
-sess_run "stop" "cancel" "done"
-check "'stop' is a command (pause) and 'cancel' a discarded one, neither an exit" "session_gone && grep -q '^playerctl pause' '$log' && [[ \$(record_starts) == 3 ]]"
+# A bare exit word ends the session, not just the mode, and is not routed (stop would pause the music).
+for word in "exit" "stop" "cancel" "quit" "Stop."; do
+  sess_run "tap alpha" "$word" "tap gamma"
+  check "bare '$word' ends rapid mode, pausing nothing" "session_gone && ! grep -q '^playerctl' '$log' && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
+done
+sess_run "tap alpha and then exit" "tap gamma"
+check "a sequence ending in a bare exit runs its steps, then ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 1 ]]"
 sess_run "cortana tap alpha" "tap beta" "done"
 check "a 'cortana ...' that is no mode command is routed as a command, and the mode goes on" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
 sess_run "cortana tap" "tap beta" "done"
@@ -917,6 +924,11 @@ owner_is_listening
 sess_voxcmd_env listen
 sess_wait
 check "control characters become spaces and a dash is typed as text" "wtype_is 'wtype -- Tab here -x'"
+sess_start "UNTIL_STOP exit, stop, cancel and quit"
+owner_is_listening
+sess_voxcmd_env listen
+sess_wait
+check "bare exit words are dictated text in type mode" "wtype_is 'wtype -- exit, stop, cancel and quit'"
 sess_start "UNTIL_STOP done, stop typing and click mode"
 owner_is_listening
 sess_voxcmd_env listen

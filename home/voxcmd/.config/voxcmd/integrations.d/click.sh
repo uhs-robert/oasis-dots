@@ -22,6 +22,8 @@ click_exit_phrase=$(mode_exit_phrase "$click_exit_object")
 session_exit_phrases="done clicking|im done clicking|done with $click_exit_object|$click_exit_phrase"
 session_exit_hint="say done to stop"
 session_allows_switches=1
+# A bare "exit" or "stop" is a button label here; only the mode-naming forms and "done" end the mode.
+session_bare_exits=0
 # The entries and exits another mode may run while click mode is open: the whole utterance is matched, never rewritten
 # into a click.
 mode_actions=(click_mode stop_clicking)

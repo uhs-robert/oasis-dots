@@ -192,6 +192,11 @@ ov_run "done" -- "show workspaces"
 check "show workspaces opens the overview" "grep -q '^qs-ipc call overview open' '$log'"
 check "and the session is the overview's, until done" "session_gone && grep -q 'session: overview begins' '$debug_log'"
 check "done closes the overview too" "wait_for_line '^qs-ipc call overview close' '$log'"
+for word in "exit" "stop" "cancel" "quit"; do
+  ov_state=closed
+  ov_run "$word" "close two" -- "show workspaces"
+  check "bare '$word' closes the overview and ends the session, acting on nothing" "session_gone && wait_for_line '^qs-ipc call overview close' '$log' && [[ -z \$(acts) ]] && ! grep -q '^playerctl' '$log'"
+done
 ov_state=closed
 ov_run -- "open overview"
 check "open overview does too" "grep -q '^qs-ipc call overview open' '$log'"
