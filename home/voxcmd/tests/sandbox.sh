@@ -9,7 +9,7 @@
 # Stubs log each call and succeed, printing nothing or a plausible answer (wpctl get-volume, qs-ipc get_dnd,
 # hyprctl dispatch's "ok"). Read-only queries still reach the real tool unless a fixture replaces them:
 #
-#   hyprctl binds|clients|monitors|activewindow|activeworkspace|version -j
+#   hyprctl binds|clients|monitors|activewindow|activeworkspace|version|workspaces -j
 #                                     SANDBOX_BINDS_JSON, SANDBOX_CLIENTS_JSON, ... (the JSON itself); activewindow
 #                                     is {} (no focused window) without its fixture, never the live window;
 #                                     SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON replaces it once wtype has been called,
@@ -198,6 +198,10 @@ hyprctl)
     ;;
   binds | clients | monitors | activeworkspace | version)
     printenv "SANDBOX_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')_JSON" || pass_through "$@"
+    ;;
+  workspaces)
+    # Without its fixture no special workspace exists, rather than the live session's.
+    printenv SANDBOX_WORKSPACES_JSON || echo '[]'
     ;;
   eval)
     log "$@"

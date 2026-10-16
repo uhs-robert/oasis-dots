@@ -18,6 +18,13 @@ move firefox to workspace third	Apps/move
 move firefox to workspace 3rd	Apps/move
 move firefox to workspace twenty five	Apps/move
 move firefox to the twelfth workspace	Apps/move
+move firefox to special workspace scratchpad	Apps/move
+send firefox to special workspace scratchpad	Apps/move
+put firefox to the special workspace scratchpad	Apps/move
+move firefox to the special workspace scratch pad	Apps/move	scratch pad is the existing special:scratchpad
+move firefox to special workspace notes	Apps/move	no special:notes yet, so the name is notes
+move firefox to scratchpad	picker	no "special workspace", so not Apps/move: a weak Keybinds fallback is offered in the picker
+move it to the scratchpad	Keybinds/run	the Move to Scratchpad keybind, which moves the focused window
 close slack	Apps/close
 resize the window to 1200 by 800	Apps/resize
 make it 400 pixels tall	Apps/resize
