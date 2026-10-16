@@ -4,9 +4,9 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Hyprland
 import Quickshell.Widgets
-import "../components"
-import "../theme"
-import "../services"
+import qs.components
+import qs.theme
+import qs.services
 
 Popup {
     id: root

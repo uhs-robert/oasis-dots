@@ -2,14 +2,14 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
-import "../components"
-import "../theme"
-import "../services"
-import "snes" as Snes
-import "../components/ps1" as Ps1
-import "../components/ps2" as Ps2
-import "../components/modern" as Modern
-import "../components/goldeneye" as Goldeneye
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.snes as Snes
+import qs.components.ps1 as Ps1
+import qs.components.ps2 as Ps2
+import qs.components.modern as Modern
+import qs.components.goldeneye as Goldeneye
 
 Popup {
     id: root

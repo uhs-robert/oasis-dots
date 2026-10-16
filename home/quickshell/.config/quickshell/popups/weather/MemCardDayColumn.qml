@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // One day as a memory card save: its save block on top, the temperature range as a stack of save blocks on the
 // week's scale, and the rain chance as a five-block readout. The selected day is framed like the selected save.

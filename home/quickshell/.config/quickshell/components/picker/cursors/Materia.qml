@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
+import qs.theme
+import qs.services
+import qs.components
 
 // FF7 battle targeting: the materia glove points at the pixel, fingertip just left of it.
 Item {

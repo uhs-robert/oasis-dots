@@ -3,8 +3,8 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Days as HL1 weapon-slot buckets numbered along the top; the selected one opens wider.
 // sub 0 shows temps with rain chance as the ammo bar; 1 wind, 2 UV and 3 sunshine put that measure in the bar instead.

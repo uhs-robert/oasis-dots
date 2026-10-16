@@ -1,5 +1,5 @@
 import QtQuick
-import "../../lock/skins/goldeneye" as Watch
+import qs.lock.skins.goldeneye as Watch
 
 // A popup or toast content area as the watch's translucent green octagon, inset in the black frame.
 Item {

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
-import "../../theme"
-import "../../services"
-import ".."
+import qs.theme
+import qs.services
+import qs.components
 
 // Workspaces as a constellation: a star per workspace with its apps beside it, stars linked across the gaps; the focused one a sand sparkle.
 Item {

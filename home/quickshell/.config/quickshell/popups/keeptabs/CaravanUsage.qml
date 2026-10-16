@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/oasis" as Oasis
-import "../../theme"
-import "../../services"
+import qs.components.oasis as Oasis
+import qs.theme
+import qs.services
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as horizons: each limit is a line with a sun at the percent used, "sunrise <resets>" at the far end.

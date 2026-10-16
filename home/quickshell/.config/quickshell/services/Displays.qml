@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import "DisplayLayout.js" as DisplayLayout
-import "../theme"
+import qs.theme
 
 // Monitor state, live apply through hyprctl, and the keep-or-revert countdown; it outlives the settings panel.
 Singleton {

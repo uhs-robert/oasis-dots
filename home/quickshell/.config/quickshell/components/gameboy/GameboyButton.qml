@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../nes" as Nes
+import qs.theme
+import qs.components.nes as Nes
 
 // The NES pad art in the Game Boy's four shades: round A/B, START/SELECT pills and the D-pad.
 Nes.NesButton {

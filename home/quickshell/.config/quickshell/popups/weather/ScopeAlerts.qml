@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The threat board: each active alert a tracked contact with a priority and a range (time until it arrives), the selected one decoded in the transmission panel below.
 // h/l or j/k select when there's more than one; with a single alert they scroll its transmission instead (see scroll_detail, called by the popup's key handler).

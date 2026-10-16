@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Mario ? block: orange with corner rivets and a ?, brown once hit, or an empty outline.
 Rectangle {

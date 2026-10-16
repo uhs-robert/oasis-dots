@@ -6,10 +6,10 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
-import "../theme"
-import "../services"
-import "neovim" as Neovim
-import "goldeneye" as Goldeneye
+import qs.theme
+import qs.services
+import qs.components.neovim as Neovim
+import qs.components.goldeneye as Goldeneye
 
 // HyprVim's which-key HUD over its `hyprvim_whichkey` IPC target, drawn in the active style.
 PanelWindow {

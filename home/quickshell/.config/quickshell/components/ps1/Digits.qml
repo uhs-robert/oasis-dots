@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // 7-segment digits (DSEG7) over their unlit "8" ghosts, like the CD Player and codec readouts.
 Item {

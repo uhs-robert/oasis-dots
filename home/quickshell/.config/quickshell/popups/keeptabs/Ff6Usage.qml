@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/snes" as Snes
-import "../../services"
-import "../../theme"
+import qs.components.snes as Snes
+import qs.services
+import qs.theme
 
 // The Usage tab as the FF6 Status screen: each limit a status line over an ATB gauge, resets as the next level up.
 // Reads ClaudeUsageState directly; the contract is in UsageView.qml.

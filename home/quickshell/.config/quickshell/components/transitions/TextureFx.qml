@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Effects
-import "../../theme"
+import qs.theme
 
 // Redraws the bar through one effect while it plays: fade, blur, crt, flash, palette, mosaic or flicker.
 Item {

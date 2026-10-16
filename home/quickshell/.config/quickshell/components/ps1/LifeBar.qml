@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
+import qs.theme
 
 // An MGS LIFE-style gauge: label and value over a long framed bar, green until under 10% charge.
 ColumnLayout {

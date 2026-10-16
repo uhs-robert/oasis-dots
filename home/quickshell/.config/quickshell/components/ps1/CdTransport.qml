@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.Mpris
-import "../../theme"
+import qs.theme
 
 // The PS1 CD Player's readout and transport: TRACK and TIME in 7-segment digits over a glyph button row.
 ColumnLayout {

@@ -1,6 +1,6 @@
 import QtQuick
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 // A bar workspace that takes a dragged WorkspaceIcon: lights while one hovers over it and moves that window here on drop, without following it.
 DropArea {

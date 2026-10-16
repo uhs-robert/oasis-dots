@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
-import "../theme"
+import qs.theme
 
 Singleton {
     id: root

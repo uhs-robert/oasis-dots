@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../components"
-import "../components/picker"
-import "../theme"
-import "../services"
+import qs.components
+import qs.components.picker
+import qs.theme
+import qs.services
 import "../theme/Watch.js" as W
 
 // The GoldenEye aiming crosshair on the overview's selected window's centre, with thin red corner brackets that step closed when the selection moves and only on a window much larger than the crosshair.

@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import "../../theme"
-import "screensavers"
+import qs.theme
+import qs.lock.skins.screensavers
 
 // A TIE cockpit targeting console: a trench-scope reticle hunts, locks green or loses red with the password.
 Item {

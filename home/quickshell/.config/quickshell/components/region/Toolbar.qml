@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
-import ".."
+import qs.theme
+import qs.services
+import qs.components
 
 // Action toolbar under, over or inside the confirmed selection.
 Rectangle {

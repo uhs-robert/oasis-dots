@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
-import ".."
+import qs.theme
+import qs.services
+import qs.settings
 
 RowsSection {
     id: root

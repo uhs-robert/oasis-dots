@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The Game Boy Color: a shell in the theme's secondary, black bezel with the five-colour logo, round speaker holes.
 Item {

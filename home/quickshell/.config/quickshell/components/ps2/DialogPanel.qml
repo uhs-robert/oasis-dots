@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A PS2 system dialog box: a rounded translucent panel with a lit rim, glowing when selected.
 Item {

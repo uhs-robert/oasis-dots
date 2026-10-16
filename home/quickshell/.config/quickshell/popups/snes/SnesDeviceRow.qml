@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/snes" as Snes
-import "../../theme"
+import qs.components
+import qs.components.snes as Snes
+import qs.theme
 
 // A Bluetooth device as a party member in its own window: name and state, then a BAT gauge (LINK when no battery is reported).
 Item {

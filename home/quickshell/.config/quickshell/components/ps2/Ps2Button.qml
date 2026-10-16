@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // One DualShock 2 button as a glossy black badge: face symbols, shoulders, START/SELECT, R3 or the D-pad.
 Item {

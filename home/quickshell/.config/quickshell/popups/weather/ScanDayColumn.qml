@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // One day as a Scan Visor readout: a hologram condition icon, the temperature range as a stack of Samus's
 // energy tanks on the week's scale, and the rain chance as the missile counter.

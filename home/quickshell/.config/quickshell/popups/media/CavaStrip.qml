@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Subtle cava visualizer for the bottom edge of the popup.
 Item {

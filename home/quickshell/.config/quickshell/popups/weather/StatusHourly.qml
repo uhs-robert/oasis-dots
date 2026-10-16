@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "Materia.js" as Materia
 
 // An FF7 battle timeline: every hour is an ATB gauge filled to its value, turning to the Limit colour in the top fifth,

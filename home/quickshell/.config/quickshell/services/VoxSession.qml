@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../theme"
+import qs.theme
 
 // The voice session voxcmd keeps open (rapid, click, type...), read from the file it writes while one is
 // open and removes when it ends. The top level describes the current mode; `stack` holds the modes underneath, last

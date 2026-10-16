@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // WeatherStar 4000 "Almanac": sunrise and sunset for the selected day and the next, the next four moon phases,
 // and the selected day's moonrise and moonset. The day strip on top picks the day.

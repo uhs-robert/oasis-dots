@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
+import qs.theme
+import qs.services
 
 // Neovim picker skin: a cursorline/cursorcolumn band pair through the point and a
 // reverse-video block cursor, like moving the cursor in a Neovim buffer.

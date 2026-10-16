@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.SystemTray
-import "../../theme"
-import "../../services"
-import "../../components/bar_icons"
+import qs.theme
+import qs.services
+import qs.components.bar_icons
 
 BarModule {
     id: root

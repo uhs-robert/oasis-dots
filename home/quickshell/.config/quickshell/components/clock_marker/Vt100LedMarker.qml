@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // crt: a VT100 keyboard lamp and "L1 12M" before a meeting; the lamp lit beside "L1 MTG" during one.
 MarkerBase {

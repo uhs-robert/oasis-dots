@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Active NWS alerts as PS2 system-dialog glass: one card per alert with a soft glow in its severity colour,
 // the selected alert's full text in a translucent panel below. h/l or j/k select when there's more than one;

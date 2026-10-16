@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 BarModule {
     id: root

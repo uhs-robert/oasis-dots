@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // One day as a ring gauge under its condition icon, a ticked bezel round it and the reading inside, then the rain chance as a smaller ring.
 // sub 0: the day's low-to-high span on the week's scale.

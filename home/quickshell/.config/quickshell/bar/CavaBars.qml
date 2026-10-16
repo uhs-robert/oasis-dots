@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 // Cava drawn inside an island's bottom edge, as bars or a smoothed line, on the island's own color.
 Item {

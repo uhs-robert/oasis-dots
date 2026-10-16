@@ -2,8 +2,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
-import "../lock"
-import "../services"
+import qs.lock
+import qs.services
 
 // A tiny overlay square in the top-left corner: resting the pointer there opens the overview.
 PanelWindow {

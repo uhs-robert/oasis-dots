@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "WttrArt.js" as WttrArt
 
 // The Daily window as a box-drawn terminal table: one column per day, the selected column inverted.

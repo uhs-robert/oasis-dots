@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Neovim floating window: FloatBorder round the frame, the title as a chip set into the top border, a status in the border at the right.
 Item {

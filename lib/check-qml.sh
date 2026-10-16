@@ -48,26 +48,35 @@ copy_sources() {
   done | (cd "$1" && tar -cf - -T -) | tar -xf - -C "$2"
 }
 
-# Prints "<alias> <importing dir>/<path>" for each folder import in the files named on stdin; alias is "-" when absent.
+# Prints "<alias> <dir>" for each folder import in the files named on stdin; alias is "-" when absent. A quoted import
+# is relative to the importing file, `import qs.a.b` to the tree root $1.
 # shellcheck disable=SC2016
 folder_imports() {
-  xargs -r -d '\n' awk '
+  xargs -r -d '\n' awk -v root="$1" '
     {
       n = split($0, statement, ";")
       for (i = 1; i <= n; i++) {
-        if (!match(statement[i], /^[[:space:]]*import[[:space:]]+"[^"]+"/)) continue
-        target = substr(statement[i], RSTART, RLENGTH)
-        sub(/^[^"]*"/, "", target)
-        sub(/"$/, "", target)
-        if (target ~ /\.m?js$/) continue
+        if (match(statement[i], /^[[:space:]]*import[[:space:]]+qs(\.[A-Za-z0-9_]+)*([[:space:]]|$)/)) {
+          target = substr(statement[i], RSTART, RLENGTH)
+          sub(/^[[:space:]]*import[[:space:]]+qs/, "", target)
+          sub(/[[:space:]].*$/, "", target)
+          gsub(/\./, "/", target)
+          dir = root
+        } else if (match(statement[i], /^[[:space:]]*import[[:space:]]+"[^"]+"/)) {
+          target = substr(statement[i], RSTART, RLENGTH)
+          sub(/^[^"]*"/, "", target)
+          sub(/"$/, "", target)
+          if (target ~ /\.m?js$/) continue
+          target = "/" target
+          dir = FILENAME
+          sub(/\/[^\/]*$/, "", dir)
+        } else continue
         alias = "-"
-        if (match(statement[i], /"[[:space:]]+as[[:space:]]+[A-Za-z_][A-Za-z0-9_]*/)) {
+        if (match(statement[i], /([[:space:]]|")[[:space:]]*as[[:space:]]+[A-Za-z_][A-Za-z0-9_]*/)) {
           alias = substr(statement[i], RSTART, RLENGTH)
           sub(/.*[[:space:]]/, "", alias)
         }
-        dir = FILENAME
-        sub(/\/[^\/]*$/, "", dir)
-        print alias " " dir "/" target
+        print alias " " dir target
       }
     }
   '
@@ -80,7 +89,7 @@ list_reached_dirs() {
     while IFS= read -r dir; do
       [ "$dir" = "$1" ] && printf '%s\n' "$dir/shell.qml"
       find "$dir" -maxdepth 1 -name '[A-Z]*.qml'
-    done <"$2.frontier" | folder_imports | cut -d ' ' -f 2- | xargs -r -d '\n' realpath -mq -- | sort -u |
+    done <"$2.frontier" | folder_imports "$1" | cut -d ' ' -f 2- | xargs -r -d '\n' realpath -mq -- | sort -u |
       while IFS= read -r dir; do
         [ -d "$dir" ] && ! grep -qxF -- "$dir" "$2" && printf '%s\n' "$dir"
       done >"$2.next"
@@ -90,20 +99,26 @@ list_reached_dirs() {
   rm -f "$2.frontier"
 }
 
-# Writes a qmldir per reached directory as Quickshell does: every capitalised .qml file is a type.
+# Writes a qmldir per reached directory as Quickshell does: every capitalised .qml file is a type, and the directory
+# is module qs.<path from the tree root $2> (qs for the root), which is what `import qs.<path>` resolves to.
 write_qmldirs() {
   while IFS= read -r dir; do
     [ -e "$dir/qmldir" ] && continue
-    for file in "$dir"/[A-Z]*.qml; do
-      [ -f "$file" ] || continue
-      name=$(basename "$file" .qml)
-      if grep -q '^pragma Singleton' "$file"; then
-        printf 'singleton %s 1.0 %s.qml\n' "$name" "$name"
-      else
-        printf '%s 1.0 %s.qml\n' "$name" "$name"
-      fi
-    done >"$dir/qmldir"
-    [ -s "$dir/qmldir" ] || rm -f "$dir/qmldir"
+    module=qs
+    [ "$dir" = "$2" ] || module=qs.$(printf '%s' "${dir#"$2"/}" | tr / .)
+    {
+      printf 'module %s\n' "$module"
+      for file in "$dir"/[A-Z]*.qml; do
+        [ -f "$file" ] || continue
+        name=$(basename "$file" .qml)
+        if grep -q '^pragma Singleton' "$file"; then
+          printf 'singleton %s 1.0 %s.qml\n' "$name" "$name"
+        else
+          printf '%s 1.0 %s.qml\n' "$name" "$name"
+        fi
+      done
+    } >"$dir/qmldir"
+    [ "$(wc -l <"$dir/qmldir")" -gt 1 ] || rm -f "$dir/qmldir"
   done <"$1"
 }
 
@@ -155,8 +170,9 @@ report_unregistered_use() {
   singletons=$(grep -l '^pragma Singleton' "$2"/[A-Z]*.qml | sed 's|.*/||; s/\.qml$//' | paste -sd '|' -)
   hit=$(awk -v types="$types" -v singletons="$singletons" "$first_use_awk" "$1")
   [ -n "$hit" ] || return 0
-  printf '%s:%s: %s will not resolve at runtime: nothing reached from shell.qml imports %s/, so Quickshell will not register its types; import %s/ from a file Quickshell reaches from shell.qml (for example the one that loads %s) (#531)\n' \
-    "${1#"$3"/}" "${hit%% *}" "${hit#* }" "${2#"$3"/}" "${2#"$3"/}" "$(basename "$1")"
+  module=qs.$(printf '%s' "${2#"$3"/}" | tr / .)
+  printf '%s:%s: %s will not resolve at runtime: nothing reached from shell.qml imports %s, so Quickshell will not register its types; import %s from a file Quickshell reaches from shell.qml (for example the one that loads %s) (#531)\n' \
+    "${1#"$3"/}" "${hit%% *}" "${hit#* }" "$module" "$module" "$(basename "$1")"
 }
 
 # Flags files outside the registered folders that use their siblings, or an unregistered folder imported without "as".
@@ -164,7 +180,7 @@ check_unregistered() {
   find "$1" -name '*.qml' -printf '%h\n' | sort -u | grep -vxF -f "$2" | while IFS= read -r dir; do
     for file in "$dir"/*.qml; do
       report_unregistered_use "$file" "$dir" "$1"
-      printf '%s\n' "$file" | folder_imports | sed -n 's/^- //p' | xargs -r -d '\n' realpath -mq -- |
+      printf '%s\n' "$file" | folder_imports "$1" | sed -n 's/^- //p' | xargs -r -d '\n' realpath -mq -- |
         while IFS= read -r target; do
           if [ ! -d "$target" ] || grep -qxF -- "$target" "$2"; then continue; fi
           report_unregistered_use "$file" "$target" "$1"
@@ -221,7 +237,10 @@ done
 status=0
 for tree in shell greeter; do
   list_reached_dirs "$stage/$tree" "$stage/$tree.reached"
-  write_qmldirs "$stage/$tree.reached"
+  write_qmldirs "$stage/$tree.reached" "$stage/$tree"
+  # `import qs` needs a module root holding a qs link to the tree.
+  mkdir -p "$stage/${tree}_root"
+  ln -s "$stage/$tree" "$stage/${tree}_root/qs"
 done
 
 # Members read through parent, Loader.item and the like are typed QObject/QQuickItem, so a miss there is unknowable.
@@ -260,7 +279,7 @@ for tree in shell greeter; do
   (
     cd "$stage/$tree" || exit 1
     # Qt 6.12 imports only the qmldirs named with -i (one flag each, absolute like the linted files so the two paths compare equal), not the one beside the linted file.
-    set -- "$qmllint_bin" --ignore-settings --json -
+    set -- "$qmllint_bin" --ignore-settings --json - -I "$stage/${tree}_root"
     [ -n "$qs_module" ] && set -- "$@" --bare -I "$qs_module" -I "$qt_qml_dir"
     find "$PWD" -name qmldir >"$stage/$tree.qmldirs"
     while IFS= read -r qmldir; do set -- "$@" -i "$qmldir"; done <"$stage/$tree.qmldirs"

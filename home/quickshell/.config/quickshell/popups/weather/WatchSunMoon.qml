@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import "../../theme"
-import "../../services"
-import "../../lock/skins/goldeneye" as Watch
+import qs.theme
+import qs.services
+import qs.lock.skins.goldeneye as Watch
 import "../../theme/Watch.js" as W
 
 // Daily's Sun & Moon sub-view on the pause watch's 24-hour dial laid out like a sundial, noon at the top: the selected day's daylight shaded on the bezel between

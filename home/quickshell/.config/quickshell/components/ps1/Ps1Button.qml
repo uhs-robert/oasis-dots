@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // One DualShock-era PS1 pad button: grey domes with coloured symbols, grey shoulder and START/SELECT pills, a D-pad with the used arms lit.
 Item {

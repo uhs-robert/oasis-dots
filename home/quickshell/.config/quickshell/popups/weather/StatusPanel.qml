@@ -3,9 +3,9 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "Materia.js" as Materia
 
 // The FF7 status screen: the alert as a battle message, the condition as a portrait, TEMP and HUM as gauges, RAIN as a Limit bar.

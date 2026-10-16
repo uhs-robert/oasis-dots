@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // Audio CD spheres in a line, lit from the left up to `value`.
 Item {

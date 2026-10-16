@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import ".."
+import qs.theme
+import qs.components
 
 // A PS2 system dialog's prompt line: each entry is { button or key, text } and clicks run its action.
 Row {

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components/modern" as Modern
-import "../../theme"
-import "../../services"
+import qs.components.modern as Modern
+import qs.theme
+import qs.services
 
 // Modern Hourly: a smooth gradient area chart with a pill tooltip riding the cursor hour, over a row of hour pills.
 // sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity.

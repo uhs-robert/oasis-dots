@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
-import "../../components/goldeneye" as Goldeneye
-import "../../lock/skins/goldeneye" as Watch
+import qs.theme
+import qs.services
+import qs.components.goldeneye as Goldeneye
+import qs.lock.skins.goldeneye as Watch
 import "../../theme/Watch.js" as W
 
 // One Daily column as a strip of the pause watch's bezel: warm segments lit from the day's low to its high on the week's scale,

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/oasis" as Oasis
-import "../../theme"
-import "../../services"
+import qs.components.oasis as Oasis
+import qs.theme
+import qs.services
 
 // Oasis Sun & Moon: a day strip on a horizon, a desert scene where today's sun travels its arc and sinks behind the dunes
 // (other days show the arc and the sun's noon ghost), sunrise/sunset/daylight in a card, and the moon over a small oasis pool.

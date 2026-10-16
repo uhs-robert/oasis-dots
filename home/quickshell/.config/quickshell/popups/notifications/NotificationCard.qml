@@ -2,16 +2,16 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
-import "../../components"
-import "../../theme"
-import "../../services"
-import "../weather" as Weather
-import "../../components/snes" as Snes
-import "../../components/ps1" as Ps1
-import "../../components/ps2" as Ps2
-import "../../components/oasis" as Oasis
-import "../../components/modern" as Modern
-import "../../components/neovim" as Neovim
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.weather as Weather
+import qs.components.snes as Snes
+import qs.components.ps1 as Ps1
+import qs.components.ps2 as Ps2
+import qs.components.oasis as Oasis
+import qs.components.modern as Modern
+import qs.components.neovim as Neovim
 
 // A single notification row, shared by the All/Apps/Critical tabs. Every Text below sets
 // Layout.minimumWidth: 0 so a long unbroken summary/body can never grow the card past its width.

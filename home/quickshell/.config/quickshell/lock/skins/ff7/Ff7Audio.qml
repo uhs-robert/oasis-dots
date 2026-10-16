@@ -1,7 +1,7 @@
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
-import "../sound"
+import qs.lock.skins.sound
 
 // The FF7 skin's music and sound effects (made by scripts/ff7-audio): the user's data dir when it holds
 // files, else the skin's own audio/ (the greeter's staged copy, or an older in-tree import); a missing file stays silent.

@@ -1,5 +1,5 @@
 import QtQuick
-import "../theme"
+import qs.theme
 
 // Target-lock brackets at the four corners of a selected item, in the style's selection_brackets color.
 CornerBrackets {

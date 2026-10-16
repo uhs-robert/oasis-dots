@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
+import qs.theme
 
 // A materia orb: a glossy sphere lit from the top left; wider than tall it draws a capsule.
 Shape {

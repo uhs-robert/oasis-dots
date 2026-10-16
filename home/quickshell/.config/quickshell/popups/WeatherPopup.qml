@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
-import "../components"
-import "../theme"
-import "../services"
-import "weather"
-import "../components/oasis" as Oasis
-import "../components/modern" as Modern
-import "../components/neovim" as Neovim
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.weather
+import qs.components.oasis as Oasis
+import qs.components.modern as Modern
+import qs.components.neovim as Neovim
 
 Popup {
     id: root

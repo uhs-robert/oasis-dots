@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Weather as a Neovim buffer: a winbar breadcrumb, the conditions, the first alert as an LSP diagnostic on the location line,
 // and today's vitals as a hover float.

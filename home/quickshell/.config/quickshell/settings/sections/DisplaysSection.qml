@@ -1,10 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "../../services/DisplayLayout.js" as DisplayLayout
-import ".."
+import qs.settings
 
 RowsSection {
     id: root

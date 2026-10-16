@@ -1,6 +1,6 @@
 import QtQuick
-import "../../services"
-import "../../theme"
+import qs.services
+import qs.theme
 
 // A short, subdued burst of the pause watch's static over whatever it covers; play() does nothing on battery or while hidden, and the shader is unloaded between bursts.
 Item {

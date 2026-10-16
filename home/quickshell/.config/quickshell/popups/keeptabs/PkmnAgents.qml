@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/gameboy" as Gameboy
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.components.gameboy as Gameboy
+import qs.theme
+import qs.services
 import "KeeptabsFormat.js" as Fmt
 import "PkmnSprites.js" as Sprites
 

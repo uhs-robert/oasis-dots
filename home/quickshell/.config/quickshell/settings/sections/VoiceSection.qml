@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell.Io
-import "../../services"
-import ".."
+import qs.services
+import qs.settings
 import "../Choices.js" as Choices
 
 RowsSection {

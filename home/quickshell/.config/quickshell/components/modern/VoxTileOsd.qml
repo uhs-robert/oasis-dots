@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import ".." as Shared
+import qs.theme
+import qs.components as Shared
 
 // The voxtype OSD as a card: a mic tile, the phase, the elapsed time as the readout and the wave where the meter sits.
 ColumnLayout {

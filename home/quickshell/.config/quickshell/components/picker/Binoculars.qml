@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // Small binocular glyph for the PS1 scope skin's CAMERA slot.
 Item {

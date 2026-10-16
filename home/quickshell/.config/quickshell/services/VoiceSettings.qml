@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../theme"
+import qs.theme
 
 // Voice choices saved in voice.env under the voxcmd state dir, for voxcmd-wake, voxcmd and voxtype-daemon to read.
 // The file is KEY=VALUE lines (numbers, and the sensitivity level's name), one per setting the user has chosen; an absent key means the reader's own default.

@@ -339,7 +339,7 @@ echo "-- new WARN/ERROR lines"
 grep -E '^ *(WARN|ERROR)' <<<"$new" | grep -v 'qt.qpa.wayland.textinput' || echo none
 status=0
 if grep -qE "$fail_pattern" <<<"$new"; then
-  echo "smoke: log has load failures or errors; for 'X is not a type' on a folder loaded by URL, add import \"<folder>\" to the loader file (see #531)" >&2
+  echo "smoke: log has load failures or errors; for 'X is not a type' on a folder loaded by URL, add import qs.<folder> to the loader file (see #531)" >&2
   status=1
 fi
 if ((${#missing[@]} > 0)); then

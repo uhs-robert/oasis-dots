@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../theme"
-import "oasis" as Oasis
+import qs.theme
+import qs.components.oasis as Oasis
 
 // The style's own frame shape (OctagonFrame, PixelFrame, WindowGradient, SlantFrame) and FrameTicks, each loaded only when its token is set.
 Item {

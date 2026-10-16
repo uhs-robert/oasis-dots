@@ -1,7 +1,7 @@
 // /etc/greetd/quickshell/GreeterSimple.qml
 import QtQuick
 import QtQuick.Layouts
-import "theme"
+import qs.theme
 
 // The plain login screen for styles without a lock skin: clock, date, user and a masked password line.
 Item {

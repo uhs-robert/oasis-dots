@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // Active NWS alerts as a Dragon Quest encounter: an "appears!" message for the selected alert, the alerts as the enemy list
 // (severity is the enemy's level) and the alert text as battle message text. h/l or j/k select when there's more than one;

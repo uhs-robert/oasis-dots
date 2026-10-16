@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "PixelArt.js" as PixelArt
 
 // The Pokégear clock and a Pokédex entry for the day's sun: MORN / DAY / NITE over a 24-hour strip, the sun's hours in a text box,

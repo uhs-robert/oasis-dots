@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import ".."
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.picker
 
 // CRT TV on-screen-display dressing for the window/screen/region target: a glowing
 // green channel frame, a channel-list panel, and big corner readouts.

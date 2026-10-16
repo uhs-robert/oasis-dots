@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../services"
-import "../theme"
+import qs.services
+import qs.theme
 
 // zoxide directories in zoxide's own order: Enter opens the file manager there, `t` a shell.
 PickerProvider {

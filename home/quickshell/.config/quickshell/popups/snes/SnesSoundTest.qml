@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A SNES sound-test readout: the track number beside slanted spectrum columns that light up to the played fraction; nothing moves.
 Item {

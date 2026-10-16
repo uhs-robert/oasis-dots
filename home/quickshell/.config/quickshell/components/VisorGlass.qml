@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
+import qs.theme
 
 // A combat visor pane: glass fill, bottom corners cut with the bar islands' notched bracket, small top cuts when floating.
 Shape {

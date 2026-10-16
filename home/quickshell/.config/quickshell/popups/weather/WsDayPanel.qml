@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // One WeatherStar 4000 "Extended Forecast" day: name, icon, short condition, two readings and rain chance.
 // sub picks the readings: 0 Lo and Hi, 1 wind speed and gusts under the direction, 2 UV under its band, 3 sunshine hours.

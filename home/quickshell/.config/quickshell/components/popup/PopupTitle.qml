@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import ".."
+import qs.theme
+import qs.components
 
 Item {
     id: root

@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
-import "../theme"
+import qs.theme
 import "../theme/Watch.js" as W
 
 Item {

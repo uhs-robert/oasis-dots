@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The DualShock 2 ANALOG lamp: a red LED, lit while its popup holds the keyboard.
 Row {

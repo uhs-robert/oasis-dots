@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // A footer rule that fades out toward a small sand crescent at its right end.
 Item {

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/modern" as Modern
-import "../../theme"
-import "../../services"
+import qs.components.modern as Modern
+import qs.theme
+import qs.services
 
 // Modern Sun & Moon: a day-pill strip, a sky card whose gradient runs dawn to dusk around the sun arc
 // (today shows a glowing sun at its live position), sunrise/sunset/day-length tiles and a moon card.

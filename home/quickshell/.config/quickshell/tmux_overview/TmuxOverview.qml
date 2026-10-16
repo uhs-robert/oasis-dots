@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../theme"
-import "../services"
-import "../overview"
+import qs.theme
+import qs.services
+import qs.overview
 import "../overview/Layout.js" as Layout
 import "TmuxData.js" as TmuxData
 import "Ansi.js" as Ansi

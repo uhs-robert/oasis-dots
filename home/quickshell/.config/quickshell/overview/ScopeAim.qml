@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../components"
-import "../components/picker"
-import "../theme"
-import "../services"
+import qs.components
+import qs.components.picker
+import qs.theme
+import qs.services
 
 // The PS1 screenshot scope drawn over the overview's selected window: hairlines, box, ticks and MGS readouts.
 Item {

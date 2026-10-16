@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../lock/skins/goldeneye" as Watch
+import qs.theme
+import qs.lock.skins.goldeneye as Watch
 import "../../theme/Watch.js" as W
 
 // A round watch dial of any size: black face, warm arc left and blue arc right, white bars and studs, and a green octagon panel that holds the children.

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 BarModule {
     id: root

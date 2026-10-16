@@ -1,6 +1,6 @@
 import QtQuick
-import "../../components"
-import "../../theme"
+import qs.components
+import qs.theme
 
 // An FF7 menu window inside the popup: gradient fill in a light rim with a faint inner line.
 Item {

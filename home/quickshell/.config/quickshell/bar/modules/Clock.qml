@@ -1,10 +1,10 @@
 import QtQuick
 import Quickshell
-import "../../theme"
-import "../../services"
-import "../../components"
-import "../../components/clock_marker" as Marker
-import "../../components/modern" as Modern
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.clock_marker as Marker
+import qs.components.modern as Modern
 
 Row {
     id: root

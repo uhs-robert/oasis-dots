@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "../../services/BarModules.js" as BarModules
 
 // One lualine section of bar modules: a fill, an arrow in from the previous section, thin separators between components.

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // Active NWS alerts. h/l or j/k select when there's more than one; with a single alert
 // they scroll its detail text instead (see scroll_detail, called by the popup's key handler).

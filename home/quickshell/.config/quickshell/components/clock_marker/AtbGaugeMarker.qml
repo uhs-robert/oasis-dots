@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import ".."
+import qs.theme
+import qs.components
 
 // ff7: an ATB gauge filling toward the meeting beside the minutes; in a meeting it is full and the label reads MTG.
 MarkerBase {

@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
-import "../../../theme"
-import "../../../services"
-import "../.."
-import ".."
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.picker
 
 // PS2 scope item dressing for the window/screen/region target: corner brackets, global X/Y
 // rulers and CAMERA/class/size glass chips on the pick, blue outlines on the rest.

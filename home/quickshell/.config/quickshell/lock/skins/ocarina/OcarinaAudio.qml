@@ -1,7 +1,7 @@
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
-import "../sound"
+import qs.lock.skins.sound
 
 // The Ocarina skin's music and sound effects (made by scripts/ocarina-audio): the skin's own audio/ when it holds
 // files (the greeter's staged copy), else the user's data dir; a missing file stays silent.

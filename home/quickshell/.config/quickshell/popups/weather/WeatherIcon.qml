@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Effects
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // A weather condition icon, recolored to `tint` when it is not transparent (Style.weather_icon_tint by default).
 Item {

@@ -1,6 +1,6 @@
 import QtQuick
-import ".."
-import "../../theme"
+import qs.components
+import qs.theme
 
 // nes: a pixel hourglass and 12M before a meeting; the same hourglass beside MTG during one.
 MarkerBase {

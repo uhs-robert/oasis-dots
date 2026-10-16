@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
+import qs.theme
+import qs.services
+import qs.components
 
 // Metroid Prime scan visor reticle: cyan corner brackets that close in once the
 // cursor rests, then a 6-step scan sweep that turns the point and readout green.

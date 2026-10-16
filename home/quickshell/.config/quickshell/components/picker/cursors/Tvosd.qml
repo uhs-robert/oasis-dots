@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
+import qs.theme
+import qs.services
 
 // CRT TV on-screen-display reticle: a chunky green phosphor crosshair with a soft
 // glow and a dark outline, matching the picture-menu look of the OSD loupe.

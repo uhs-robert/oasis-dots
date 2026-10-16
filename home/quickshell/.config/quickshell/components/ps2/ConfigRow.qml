@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A System Configuration line: a thin caps label at the left, its value at the right, an optional glowing bar beneath.
 Item {

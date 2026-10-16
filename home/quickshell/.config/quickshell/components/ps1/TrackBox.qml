@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A CD Player track number box; the playing (default) track is lit.
 Rectangle {

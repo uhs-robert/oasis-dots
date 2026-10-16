@@ -1,6 +1,6 @@
 import QtQuick
-import "../theme"
-import "ps2" as Ps2
+import qs.theme
+import qs.components.ps2 as Ps2
 
 Item {
     id: root

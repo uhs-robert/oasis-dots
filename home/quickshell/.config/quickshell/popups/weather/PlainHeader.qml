@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The plain current conditions: icon, temperature and condition, then today's range, humidity and rain as thin bars over a row of readouts.
 ColumnLayout {

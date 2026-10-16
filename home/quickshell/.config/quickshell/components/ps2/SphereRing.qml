@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The Audio CD player ring: spheres around a circle, lit clockwise from the top up to `value`, a readout in the middle.
 Item {

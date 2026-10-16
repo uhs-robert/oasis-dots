@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "WttrArt.js" as WttrArt
 
 // Active NWS alerts as `curl ... | less`: a numbered list, then the selected alert as a man page in a pager whose status line

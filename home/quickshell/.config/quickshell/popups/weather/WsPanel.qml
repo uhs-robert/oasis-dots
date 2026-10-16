@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A WeatherStar 4000 panel: a blue gradient with a raised bevel, outlined in yellow when lit.
 Item {

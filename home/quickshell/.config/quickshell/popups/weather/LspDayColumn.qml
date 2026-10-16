@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // One day as a Neovim buffer: the day as a tab name, a syntax-coloured Nerd Font condition glyph, the range as a
 // block-character bar with lo/hi inlay hints, and the rain chance as diagnostic virtual text; the selected day is the cursor line.

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import ".."
-import "../modern" as Modern
+import qs.theme
+import qs.components
+import qs.components.modern as Modern
 
 // The oasis OSD: an icon in a well, the level in light numerals, and the 20-segment meter with a sand sun at the level.
 ColumnLayout {

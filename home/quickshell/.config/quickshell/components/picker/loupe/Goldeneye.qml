@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
-import "../../../theme"
-import "../../../services"
-import ".."
-import "../../goldeneye" as Goldeneye
+import qs.theme
+import qs.services
+import qs.components.picker
+import qs.components.goldeneye as Goldeneye
 import "../../../theme/Watch.js" as Watch
 
 Item {

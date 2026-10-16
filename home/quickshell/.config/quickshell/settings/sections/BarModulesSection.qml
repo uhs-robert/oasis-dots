@@ -2,11 +2,11 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "../../services/BarLayout.js" as BarLayout
-import ".."
+import qs.settings
 
 SettingsPane {
     id: root

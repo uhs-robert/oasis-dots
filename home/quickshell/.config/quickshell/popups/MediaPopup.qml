@@ -3,12 +3,12 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Services.Mpris
-import "../components"
-import "../theme"
-import "../services"
-import "media" as Media
-import "weather" as Weather
-import "../components/ps1" as Ps1
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.media as Media
+import qs.popups.weather as Weather
+import qs.components.ps1 as Ps1
 
 Popup {
     id: root

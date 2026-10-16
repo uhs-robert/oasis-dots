@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import "../../snes" as SnesParts
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.snes as SnesParts
 
 // SNES JRPG dressing for the window/screen/region target: a SNES-window frame on the pick, dotted
 // outlines on the rest, a bobbing glove pointing at the pick, and a battle-menu style target list.

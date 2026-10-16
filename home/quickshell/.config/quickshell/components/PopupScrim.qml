@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import "../services"
+import qs.services
 
 // Below the bar's reserved zone, so bar clicks still switch popups.
 PanelWindow {

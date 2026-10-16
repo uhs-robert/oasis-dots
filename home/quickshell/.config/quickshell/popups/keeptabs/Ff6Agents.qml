@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/snes" as Snes
-import "../../services"
-import "../../theme"
+import qs.components
+import qs.components.snes as Snes
+import qs.services
+import qs.theme
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the FF6 battle windows: the selected session's details on the left, the party on the right.

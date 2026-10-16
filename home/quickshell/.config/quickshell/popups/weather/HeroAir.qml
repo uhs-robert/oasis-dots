@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/modern" as Modern
-import "../../theme"
-import "../../services"
+import qs.components.modern as Modern
+import qs.theme
+import qs.services
 
 // Modern Air: a ring split into the AQI categories with a marker at the current AQI, pollutant tiles,
 // and a 24 hour gradient trend with a pill tooltip riding the cursor hour.

@@ -1,9 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
-import "../components"
-import "../theme"
-import "../services"
+import qs.components
+import qs.theme
+import qs.services
 import "Fuzzy.js" as Fuzzy
 
 // The shared picker over Pickers.provider: docked at the bottom from IPC, or dropped from an island when opened with an anchor.

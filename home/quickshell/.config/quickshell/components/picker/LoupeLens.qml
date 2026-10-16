@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The loupe's magnified view: buffer pixels, zoom grid and centre-pixel box; skin overlays go between them.
 Item {

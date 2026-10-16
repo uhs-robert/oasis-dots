@@ -3,8 +3,8 @@ import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
-import "../theme"
-import "../lock/skins/sound"
+import qs.theme
+import qs.lock.skins.sound
 
 // UI and notification sounds from one effects pack (a sounds/<pack>/ directory or an imported game), the style's own unless the user picks one; ~/.local/share/quickshell/sounds/<pack>/ wins file by file, and its <style>/ is the only source of lock and login music. Saved in audio.json under the state dir.
 Singleton {

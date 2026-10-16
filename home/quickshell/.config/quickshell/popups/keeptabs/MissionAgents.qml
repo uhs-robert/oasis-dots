@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/goldeneye" as Goldeneye
-import "../../lock/skins/goldeneye" as Watch
-import "../../theme"
+import qs.components
+import qs.components.goldeneye as Goldeneye
+import qs.lock.skins.goldeneye as Watch
+import qs.theme
 import "../../theme/Watch.js" as W
 import "KeeptabsFormat.js" as Fmt
 

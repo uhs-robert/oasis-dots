@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../theme"
+import qs.theme
 
 // cliphist history, newest first: Enter copies an entry back, `d` deletes it in place.
 PickerProvider {

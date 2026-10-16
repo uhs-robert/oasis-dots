@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "../../theme/Watch.js" as W
 
 // The pause watch as a dial of `hours_per_turn` hours (12 like a wall clock, or 24) with `top_hour` at the top, numerals at the four

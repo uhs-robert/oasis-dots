@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
+import qs.theme
 
 // A popup's main on/off switch, toggled by t, Enter on the row or a click.
 MenuRow {

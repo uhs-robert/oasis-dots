@@ -1,7 +1,7 @@
 import QtQuick
-import "../../components"
-import "../../components/nes" as Nes
-import "../../theme"
+import qs.components
+import qs.components.nes as Nes
+import qs.theme
 
 // The NES title screen menu: numbered caps rows, a blinking cursor and a PUSH A BUTTON line.
 Column {

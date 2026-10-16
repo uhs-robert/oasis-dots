@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Modern Alerts: a stack of notification cards tinted by severity, with the selected alert expanded below
 // into its time chips and readable paragraphs. With a single alert h/l scroll the detail (see scroll_detail).

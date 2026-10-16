@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // A Black Mesa lab oscilloscope: the hours as a scrolling phosphor trace on a graticule inside a monitor bezel, HEV amber numerals.
 // sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity. h/l move the hour cursor (auto-scrolling into view).

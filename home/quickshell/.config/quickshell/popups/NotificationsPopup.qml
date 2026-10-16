@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
-import "../components"
-import "../theme"
-import "../services"
-import "notifications"
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.notifications
 
 Popup {
     id: root

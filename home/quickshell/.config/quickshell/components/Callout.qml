@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import "../theme"
+import qs.theme
 
 // A leader line out to a small caps label over its value.
 RowLayout {

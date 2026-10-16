@@ -2,13 +2,13 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Bluetooth as QsBt
-import "../components"
-import "../theme"
-import "../services"
-import "../components/nes" as Nes
-import "../components/ps1" as Ps1
-import "../components/goldeneye" as Goldeneye
-import "snes" as Snes
+import qs.components
+import qs.theme
+import qs.services
+import qs.components.nes as Nes
+import qs.components.ps1 as Ps1
+import qs.components.goldeneye as Goldeneye
+import qs.popups.snes as Snes
 
 Popup {
     id: root

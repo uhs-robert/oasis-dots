@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
+import qs.theme
+import qs.services
 
 // tmux copy-mode cursor for the Terminal picker skin: a blinking 9x17 block
 // over the point, and a top-right position/size tag in the status bar colors.

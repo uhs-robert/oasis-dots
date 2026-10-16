@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../theme"
+import qs.theme
 
 // Whether the screen corners act as hot corners, saved in hot_corners.json.
 Singleton {

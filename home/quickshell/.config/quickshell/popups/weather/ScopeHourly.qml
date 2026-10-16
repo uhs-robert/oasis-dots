@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // The targeting computer's range chart: the hours as a trace on a flat grid with a range ruler, the cursor hour held in closing lock brackets.
 // A flat plot rather than a trench in perspective, because receding columns would shrink the labels the scroll has to keep readable.

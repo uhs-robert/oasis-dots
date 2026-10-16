@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../theme"
+import qs.theme
 
 // Default apps saved in apps.json under the Hyprland state dir; Hyprland reads `app`, apps.sh applies `mime` through xdg-mime.
 Singleton {

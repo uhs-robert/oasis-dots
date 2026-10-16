@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Swatch and hex readout; the Canvas samples the centre pixel and publishes Screenshot.pixel_hex.
 Row {

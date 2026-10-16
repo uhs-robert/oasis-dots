@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
+import qs.theme
 
 // The style's window_gradient (up to three stops) laid corner to corner like a CSS 135deg gradient.
 Shape {

@@ -4,9 +4,9 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
-import "../components"
-import "../theme"
-import "../services"
+import qs.components
+import qs.theme
+import qs.services
 import "Layout.js" as Layout
 import "Voice.js" as Voice
 

@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The CD Player's segmented level meter, one row per channel: green, yellow from 70%, red from 90%.
 Item {

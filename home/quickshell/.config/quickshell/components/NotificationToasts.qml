@@ -4,8 +4,8 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 PanelWindow {
     id: root

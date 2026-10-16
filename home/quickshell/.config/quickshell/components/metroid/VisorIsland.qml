@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // A bar island cut like the Prime combat visor: notched bracket ends.
 Item {

@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Key handling for the region selector: cursor moves, anchors, toolbar and the pick keys.
 Item {

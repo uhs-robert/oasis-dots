@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
-import "../../lock/skins/goldeneye" as Watch
+import qs.theme
+import qs.services
+import qs.lock.skins.goldeneye as Watch
 import "../../theme/Watch.js" as W
 
 // The Alerts tab as a GoldenEye mission briefing on the pause watch: each alert an objective, the selected one briefed in full by M with its priority (severity),

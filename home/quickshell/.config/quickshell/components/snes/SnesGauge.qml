@@ -1,6 +1,6 @@
 import QtQuick
-import ".."
-import "../../theme"
+import qs.components
+import qs.theme
 
 // An ATB-style bar lit left to right from deep blue into light blue; past hot_from it turns the hot color.
 AtbBar {

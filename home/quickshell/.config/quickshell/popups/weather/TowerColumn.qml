@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // One day as a PS2 boot-screen tower. Temp: a translucent prism as tall as the day's high, filled with water to its rain chance.
 // Wind: as tall as the gusts, filled to the speed. UV and sunshine: filled prisms as tall as the value.

@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
-import ".."
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.picker
 
 // Metroid Prime scan visor dressing for the window/screen/region target: cyan brackets that
 // close in on a new target, a diamond scan point, and a logbook visor card.

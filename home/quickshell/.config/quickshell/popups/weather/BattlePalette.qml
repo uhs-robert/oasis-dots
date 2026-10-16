@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The NES palette NesSprites.js rows index: 0 dark, 1 white, 2 yellow, 3 bright yellow, 4 blue, 5 light blue, 6 grey, 7 red, 8 shadow grey.
 QtObject {

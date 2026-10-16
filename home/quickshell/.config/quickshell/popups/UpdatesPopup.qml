@@ -1,13 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../components"
-import "../theme"
-import "../services"
-import "updates" as Updates
-import "snes" as Snes
-import "../components/ps1" as Ps1
-import "../components/ps2" as Ps2
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.updates as Updates
+import qs.popups.snes as Snes
+import qs.components.ps1 as Ps1
+import qs.components.ps2 as Ps2
 
 Popup {
     id: root

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../components"
-import "../theme"
+import qs.components
+import qs.theme
 
 // A setting shown as its label and current value; a click on the left or right half steps it.
 MenuRow {

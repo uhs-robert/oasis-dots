@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../theme"
+import qs.theme
 
 // The pixel screen's edge: a dark, pixel_border, dark double border over faint static scan rows.
 Item {

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components/ps2" as Ps2
-import "../../theme"
-import "../../services"
+import qs.components.ps2 as Ps2
+import qs.theme
+import qs.services
 
 // The PS2 system screen for the sun and moon: soft light drifting through dark blue space around an orbit ring, the sun and moon as glowing spheres on it.
 // The ring is a full day: sunrise at its left end, sunset at its right, the day arc above the horizon and the night arc below.

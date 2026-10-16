@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
-import "../weather" as Weather
+import qs.components
+import qs.theme
+import qs.services
+import qs.popups.weather as Weather
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as a Dragon Quest STATUS window: each limit is a row with an HP-style gauge, and its reset is the inn.

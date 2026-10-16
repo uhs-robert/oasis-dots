@@ -3,12 +3,12 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import "../theme"
-import "../services"
-import "picker"
-import "picker/cursors" as Cursors
-import "picker/targets" as Targets
-import "region"
+import qs.theme
+import qs.services
+import qs.components.picker
+import qs.components.picker.cursors as Cursors
+import qs.components.picker.targets as Targets
+import qs.components.region
 
 // One per screen while Screenshot.selecting: drag a region, then pick an action from the toolbar.
 PanelWindow {

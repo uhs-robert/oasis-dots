@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import ".."
+import qs.theme
+import qs.components
 
 // The party menu's pixel pointer in shade 3.
 PixelSprite {

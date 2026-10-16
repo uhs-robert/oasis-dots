@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 import "../weather/WttrArt.js" as WttrArt
 import "KeeptabsFormat.js" as Fmt
 

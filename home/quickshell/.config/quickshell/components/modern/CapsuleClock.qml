@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // The bar clock as one capsule line: bold tabular time, a small zone, a hairline, then the date.
 Row {

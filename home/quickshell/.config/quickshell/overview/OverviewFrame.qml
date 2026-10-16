@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
-import "../components"
-import "../theme"
-import "../components/neovim" as Neovim
+import qs.components
+import qs.theme
+import qs.components.neovim as Neovim
 
 // The active style's panel around the overview: its frame, title, a status readout and the key footer.
 Rectangle {

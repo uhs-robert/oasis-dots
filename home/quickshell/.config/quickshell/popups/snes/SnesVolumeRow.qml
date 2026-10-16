@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/snes" as Snes
-import "../../theme"
+import qs.components
+import qs.components.snes as Snes
+import qs.theme
 
 // A Volume row the SNES way: devices as plain menu lines, level rows as party members (name, VOL gauge, value) in their own window.
 Item {

@@ -55,7 +55,7 @@ if ! jq -e 'all(.[]; (.lock_only | not) or (.label | type == "string"))' "$index
   status=1
 fi
 
-if bad=$(grep -rnE '^[[:space:]]*import[[:space:]]+"[^"]*(components|services)' "$skins_dir" --include='*.qml'); then
+if bad=$(grep -rnE '^[[:space:]]*import[[:space:]]+("[^"]*|qs\.)(components|services)' "$skins_dir" --include='*.qml'); then
   echo 'lock skins: a skin imports components/ or services/, which the greeter does not stage:' >&2
   printf '%s\n' "$bad" >&2
   status=1

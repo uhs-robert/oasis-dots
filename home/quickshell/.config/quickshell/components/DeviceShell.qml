@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../theme"
-import "gameboy" as Gameboy
+import qs.theme
+import qs.components.gameboy as Gameboy
 
 // A Game Boy around a small popup: the style's model draws the shell and controls, this the pixel screen.
 Item {

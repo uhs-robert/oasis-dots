@@ -1,8 +1,8 @@
 import QtQuick
-import "../../theme"
-import ".."
-import "../neovim" as Neovim
-import "../goldeneye" as Goldeneye
+import qs.theme
+import qs.components
+import qs.components.neovim as Neovim
+import qs.components.goldeneye as Goldeneye
 
 Item {
     id: root

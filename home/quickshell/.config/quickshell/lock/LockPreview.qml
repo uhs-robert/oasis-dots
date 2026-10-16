@@ -3,8 +3,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 // A lock skin in a plain overlay window with fake auth state; never touches the session lock or PAM.
 Scope {

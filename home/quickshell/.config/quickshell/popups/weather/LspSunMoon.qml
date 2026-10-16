@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // The selected day as `:checkhealth weather` under a tabline of days: sun and moon sections of OK / WARNING lines,
 // the moon phase as a Nerd Font glyph and, for today, a progress line along the sun's path.

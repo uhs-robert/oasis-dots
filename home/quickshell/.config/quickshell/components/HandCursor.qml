@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
+import qs.theme
 
 // The white glove pointing right, drawn on a 22x14 grid and scaled to the item.
 Item {

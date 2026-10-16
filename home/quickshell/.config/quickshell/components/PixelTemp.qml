@@ -1,5 +1,5 @@
 import QtQuick
-import "../theme"
+import qs.theme
 
 // A temperature whose degree sign is a hollow pixel square raised to cap height.
 Row {

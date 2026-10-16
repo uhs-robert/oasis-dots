@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Services.Pipewire
-import "../../theme"
-import ".." as Shared
+import qs.theme
+import qs.components as Shared
 
 // A level as a tall capsule on a recessed well: the node's live wave fills it up to the level, with a marker at the level and a red tip past 90%.
 Item {

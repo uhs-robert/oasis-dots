@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../theme"
+import qs.theme
 
 // A low-to-high temperature range as a row of pixel dots on a shared scale; the dot holding the high is brightest.
 Row {

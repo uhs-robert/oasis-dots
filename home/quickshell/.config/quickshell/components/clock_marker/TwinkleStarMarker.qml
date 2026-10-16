@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // oasis: a small four-point star and 12m in sand before a meeting; the same star beside MTG during one.
 MarkerBase {

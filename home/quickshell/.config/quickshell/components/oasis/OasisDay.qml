@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Shapes
 import Quickshell
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // One Daily column: icon, a hi/lo range pill, rain chance and the weekday on a horizon; the selected day rises in sand.
 // On the wind, UV and sunshine subs the pill becomes a dune whose height is the day's value.

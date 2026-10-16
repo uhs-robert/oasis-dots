@@ -4,8 +4,8 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
-import "../theme"
-import "../services"
+import qs.theme
+import qs.services
 
 // One screen of the lock: a big clock and date, a frosted password line, then now playing and the weather.
 Item {

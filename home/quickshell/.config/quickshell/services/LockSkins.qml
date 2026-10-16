@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
-import "../theme"
+import qs.theme
 
 // The lock skins on disk, and the lock or login screens they make selectable.
 Singleton {

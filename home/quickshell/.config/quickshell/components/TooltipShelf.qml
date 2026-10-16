@@ -1,5 +1,5 @@
 import QtQuick
-import "../services"
+import qs.services
 
 // The hovered module's tooltip, dropped under its island in the popup frame.
 Popup {

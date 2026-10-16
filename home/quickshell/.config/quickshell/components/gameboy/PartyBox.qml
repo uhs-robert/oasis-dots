@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Pokemon party row: shade 0 box in a hard-cornered 1px double border, lit in shade 3 when selected.
 Rectangle {

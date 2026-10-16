@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../theme"
+import qs.theme
 
 // A ticked ring gauge: a 60-tick bezel, a faint track lit clockwise from the top by `value`, and a readout inside.
 Item {

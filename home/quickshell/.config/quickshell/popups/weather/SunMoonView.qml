@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // Daily's Sun & Moon sub-view: the Daily day window as a strip, the selected day's sun arc
 // (today shows the current-position dot), moon phase, moonrise/moonset and next full moon.

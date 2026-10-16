@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // A day's memory card save block heading its column; the selected save lifts off its shadow.
 Item {

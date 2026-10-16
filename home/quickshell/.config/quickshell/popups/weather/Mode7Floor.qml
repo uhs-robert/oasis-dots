@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Mode 7 checker floor receding to a horizon at the top edge; `run()` scrolls it forward once.
 Canvas {

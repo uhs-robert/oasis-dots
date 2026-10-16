@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
-import "../theme"
+import qs.theme
 import "BarLayout.js" as BarLayout
 
 Singleton {

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import "../../components/oasis" as Oasis
-import "../../theme"
-import "../../services"
+import qs.components.oasis as Oasis
+import qs.theme
+import qs.services
 
 // Oasis Hourly: the series as a rolling dune ridge with wind-ripple lines in the sand; a palm stands on the cursor hour
 // beside a floating value, and heat shimmers over the hot hours. Precip fills the dunes with water instead.

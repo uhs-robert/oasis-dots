@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import ".."
+import qs.theme
+import qs.components
 import "Codec.js" as Codec
 
 // The MGS codec readout for the live connection: signal as a 140.xx frequency beside the SSID and real percent.

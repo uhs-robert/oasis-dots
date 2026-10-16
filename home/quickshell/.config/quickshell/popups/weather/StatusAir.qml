@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 
 // Air as the FF7 status screen: the AQI as the headline stat with the band's status effects beside it, pollutants as
 // stat rows on ATB bars, and the next 24 hours as ATB gauges with the white glove over the cursor hour (h/l move it).

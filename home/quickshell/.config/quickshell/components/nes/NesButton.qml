@@ -1,6 +1,6 @@
 import QtQuick
-import "../../theme"
-import ".."
+import qs.theme
+import qs.components
 
 // An NES pad button as a pixel sprite: round red A/B, grey rubber START/SELECT pills, or the D-pad with its axis lit.
 Row {

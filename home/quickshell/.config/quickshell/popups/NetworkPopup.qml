@@ -3,11 +3,11 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
-import "../components"
-import "../theme"
-import "../services"
-import "../components/goldeneye" as Goldeneye
-import "network"
+import qs.components
+import qs.theme
+import qs.services
+import qs.components.goldeneye as Goldeneye
+import qs.popups.network
 import "network/Network.js" as Net
 
 Popup {

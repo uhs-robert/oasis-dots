@@ -1,7 +1,7 @@
 import QtQuick
-import "../../components"
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.theme
+import qs.services
 import "PixelArt.js" as PixelArt
 
 // One day as a framed Game Boy Camera photo with its hi/lo dot bar, temperatures and rain chance.

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../components"
-import "../../components/snes" as Snes
-import "../../theme"
-import "../../services"
+import qs.components
+import qs.components.snes as Snes
+import qs.theme
+import qs.services
 
 // The next 24 hours of AQI as gauge pillars on the Mode 7 floor, a kart parked at the cursor hour, and the current air in an RPG status window:
 // AQI, category, a status ailment once the air turns unhealthy, and the pollutants as gauges. h/l move the hour cursor.

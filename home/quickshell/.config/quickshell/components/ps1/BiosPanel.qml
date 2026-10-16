@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A PS1 BIOS menu panel: deep blue shading with a glossy upper half and a light rim; lit when picked.
 Rectangle {

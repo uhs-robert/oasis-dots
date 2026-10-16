@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
-import "../../../theme"
-import "../../../services"
-import "../.."
-import ".."
+import qs.theme
+import qs.services
+import qs.components
+import qs.components.picker
 
 Item {
     id: root

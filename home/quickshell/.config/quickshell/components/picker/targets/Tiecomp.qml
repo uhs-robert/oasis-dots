@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
-import "../.."
+import qs.theme
+import qs.services
+import qs.components
 
 // TIE targeting-computer dressing for the window/screen/region target: faint green ticks on
 // every other window, red lock-on brackets that step closed on the target, and a glass card.

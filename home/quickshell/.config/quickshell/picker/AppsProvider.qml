@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell
-import "../services"
+import qs.services
 
 PickerProvider {
     id: root

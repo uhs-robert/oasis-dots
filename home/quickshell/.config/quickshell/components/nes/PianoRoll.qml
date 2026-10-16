@@ -1,5 +1,5 @@
 import QtQuick
-import "../../theme"
+import qs.theme
 
 // A Zelda-ish piano roll as a Meter's art: a fixed tune of notes on a baseline, played up to the value.
 Item {

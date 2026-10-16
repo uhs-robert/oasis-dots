@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import "../../theme"
-import "../../services"
+import qs.theme
+import qs.services
 
 // Hourly as a PS2 tower field: one glass tower per hour on the haze floor, as tall as the sub's value.
 // The cursor hour's tower is lit and its value floats above it. sub: 0 temp, 1 precip, 2 wind, 3 UV, 4 humidity.

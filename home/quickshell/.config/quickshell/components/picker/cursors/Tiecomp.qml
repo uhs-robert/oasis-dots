@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import "../../../theme"
-import "../../../services"
+import qs.theme
+import qs.services
 
 // TIE targeting-computer reticle: a thin cockpit ring with a center dot and four
 // outboard ticks at N/E/S/W, crisp green over a faint dark outline for contrast.

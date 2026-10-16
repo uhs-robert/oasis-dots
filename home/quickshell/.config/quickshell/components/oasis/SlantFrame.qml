@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../theme"
+import qs.theme
 
 // An oasis panel: a flat top, bottom corners cut at the bar islands' slant, filled sky to night, a sand horizon along the foot.
 Item {
