@@ -394,7 +394,8 @@ special_workspace_name() {
 # "swap this window with firefox": the focused window is always one side, so only "with <window>" is offered, and
 # every window but the focused one. The words before "with" stay in match_text so word matching sees the same text
 # as the target. A pair of named windows ("swap firefox and slack") and the overview's "swap workspaces ..." have no
-# leading "with" and offer nothing.
+# leading "with" and offer nothing. The id is "<target> <focused>": the window focused now is the source even if a
+# picker or a spoken reply lets focus move before the swap runs.
 swap_candidates() {
   local target="$1" prefix active_address
   [[ "$target" =~ ^((this\ |the\ |that\ )?(window|it)\ )?with\ .+$ ]] || {
@@ -403,13 +404,17 @@ swap_candidates() {
   }
   prefix="${BASH_REMATCH[1]}with "
   active_address=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+  [ -n "$active_address" ] || {
+    echo '[]'
+    return
+  }
   windows | jq -c --arg active "$active_address" --arg prefix "$prefix" '
     def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
     map(select(.address != $active)
       | "swap with \(.app): \(.title)" as $label
-      | {id: .address, label: $label, match_text: ($prefix + .app)},
+      | {id: "\(.address) \($active)", label: $label, match_text: ($prefix + .app)},
         (select(.title != "" and (.title | plain) != (.app | plain))
-          | {id: .address, label: $label, match_text: ($prefix + .title)}))'
+          | {id: "\(.address) \($active)", label: $label, match_text: ($prefix + .title)}))'
 }
 
 # Prints the workspace the words name ("3", "three", "twenty five", "third"), or nothing for a number below 1.
@@ -445,13 +450,8 @@ move_window() {
 # Hyprland does swap across workspaces and with a floating window, but then leaves focus on a window that is no
 # longer on the shown workspace and swaps floating geometry into tiled slots; refused instead.
 swap_window() {
-  local address="$1" active_address pair
+  local address="${1% *}" active_address="${1#* }" pair
   window_address "$address" || return 1
-  active_address=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
-  [ -n "$active_address" ] || {
-    echo "no active window"
-    return 1
-  }
   pair=$(hyprctl clients -j 2>/dev/null | jq -r --arg a "$active_address" --arg b "$address" '
     [.[] | select(.address == $a or .address == $b)] as $both
     | if ($both | length) != 2 then "missing"
