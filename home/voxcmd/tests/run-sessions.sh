@@ -901,6 +901,35 @@ sess_wait
 check "a sixth step runs nothing of the chain, as in any phrase, but the dictation is typed" "session_gone && wtype_is 'wtype -- Go.' && [[ \$(taps) == 0 ]] && toast_has 'Nothing ran: a phrase can have at most 5 steps'"
 rm -f "$SANDBOX_DIR/chain-pause"
 
+check "the chain's detector wants no speech of its own: speech may be over before it starts" "grep -q 'min_speech_secs=0 silence_secs=1.5\$' '$log'"
+
+# A detector that errors (exit 1) leaves the recording running for the voice key.
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_CHAIN_DETECTOR_EXIT=1)
+sess_start "UNTIL_STOP Kept. Cortana stop and then tap tap beta."
+owner_is_listening
+wake_heard "Cortana stop and then tap"
+log_has_soon '^voxcmd-autostop max_secs=10'
+check "a detector error does not stop the recording" "chain_is_waiting && wait_for_line 'chain.s detector gave verdict 1' '$debug_log'"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+sess_voxcmd_env listen
+sess_wait
+
+# Stop Voice landing while the dictation is being typed ends the session; the chain must not run after it.
+stop_block=$root/wtype-block
+rm -f "$stop_block".entered "$stop_block".release
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" SANDBOX_WTYPE_BLOCK="$stop_block")
+sess_start "UNTIL_STOP Typed. Cortana stop and then tap tap beta."
+owner_is_listening
+wake_heard "Cortana stop and then tap"
+chain_pause
+wait_until test -e "$stop_block.entered"
+sess_voxcmd_env stop
+touch "$stop_block.release"
+sess_wait
+check "Stop Voice while the dictation is typed ends the session and runs no chain" "session_gone && [[ \$(taps) == 0 ]]"
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+rm -f "$SANDBOX_DIR/chain-pause"
+
 sess_start "UNTIL_STOP Typed. Cortana stop."
 owner_is_listening
 wake_heard "Cortana stop."

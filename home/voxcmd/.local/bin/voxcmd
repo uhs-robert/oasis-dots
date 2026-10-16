@@ -2128,25 +2128,35 @@ dictation_heard_in_locked() {
   printf '%s' "$state"
 }
 
-# The auto-stop settings (VAR=value lines) of the pause that ends a recording after a chained ending: a session turn's.
+# The auto-stop settings (VAR=value lines) of the pause that ends a recording after a chained ending: a session turn's
+# pause and deadline. The detector starts only after the wake clip is cut and transcribed, by when a short chain may
+# already be spoken, so it needs no speech of its own (min speech 0): the first pause of silence_secs stops the
+# recording, and speech still going on holds it off.
 dictation_chain_autostop_settings() {
   printf '%s\n' \
     "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs" \
-    "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=$session_min_speech_secs" \
+    "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0" \
     "VOXCMD_AUTOSTOP_SILENCE_SECS=$session_silence_secs" \
     "VOXCMD_AUTOSTOP_MAX_SECS=$session_no_speech_secs"
 }
 
 # voxcmd _chain-stop <recording> <auto-stop settings>: waits for the pause (or the deadline) after a chained ending, then
-# stops the recording, if it is still the one the ending was recorded in and still waits for this stop. Every verdict
-# stops it, a silent one too: the ending was spoken. Only "ended elsewhere" leaves it alone.
+# stops the recording, if it is still the one the ending was recorded in and still waits for this stop. Only the
+# detector's stop verdicts do (as in autostop_recording); an error or "ended elsewhere" leaves the recording to the voice
+# key and the other limits.
 dictation_chain_stop() {
   local verdict=0
   local -a detector_env=()
   [ -x "$voxcmd_autostop" ] || return 0
   mapfile -t detector_env <<<"$2"
   env "${detector_env[@]}" "$voxcmd_autostop" || verdict=$?
-  [ "$verdict" != 4 ] || return 0
+  case "$verdict" in
+  "$autostop_verdict_silence" | "$autostop_verdict_no_speech" | "$autostop_verdict_max_length") ;;
+  *)
+    debug "dictation: the chain's detector gave verdict $verdict, recording left alone"
+    return 0
+    ;;
+  esac
   session_locked dictation_chain_stop_locked "$1"
 }
 dictation_chain_stop_locked() {
@@ -2231,7 +2241,7 @@ session_finish_recording() {
     text=$(session_cut_ending "$transcript")
     [[ ! "$(normalize "$text")" =~ $session_noise_transcripts ]] || text=""
   fi
-  # A cancel drops the dictation but not the chain after it. Stop Voice, pressed meanwhile, drops both.
+  # A cancel drops the dictation but not the chain after it.
   if [ -z "$discarded" ] && [ "$(jq -r '.chain // false' <<<"$ending")" = true ] && [ "$by" = voice ]; then
     chain_text=$(session_chain_text "$transcript")
   fi
@@ -2241,23 +2251,26 @@ session_finish_recording() {
       session_handle_turn "$text" "$action"
     ) || true
   fi
-  if [ -n "$chain_text" ] && [ "$(session_state | jq -r '.ending.by // empty')" = key ]; then chain_text=""; fi
-  session_locked session_leave_recording_mode_locked "$kind" "$action"
-  # The mode is left first, so the commands run as they would after "cortana stop typing".
+  # The mode is left first, so the commands run as they would after "cortana stop typing", and not at all when Stop Voice
+  # ended the session meanwhile.
+  session_locked session_leave_recording_mode_locked "$kind" "$action" || chain_text=""
   [ -z "$chain_text" ] || route "$chain_text" || true
   session_continue ran
 }
 
 # session_leave_recording_mode_locked <kind> <action>: leaves the one-recording mode saying why, or ends the session.
 # The ending's by is read again here, under the lock: Stop Voice may have made it key while the text was handled.
+# Fails when Stop Voice (or anything else) ended the session or made the ending a key one, so a chain after the ending
+# must not run.
 session_leave_recording_mode_locked() {
   local kind="$1" action="$2" state by reason
-  state=$(session_state_locked) && session_is_mine "$state" || return 0
+  state=$(session_state_locked) && session_is_mine "$state" || return 1
   by=$(jq -r '.ending.by // "voice_key"' <<<"$state")
   case "$by:$action" in
   *:discard) reason="cancelled, nothing typed" ;;
   key:* | *:end_session)
     session_end_all_locked "stopped"
+    [ "$by" != key ]
     return
     ;;
   cap:*) reason="it reached its recording limit ($(duration_words "${mode_setting[listen_max_secs]}"))" ;;
@@ -2266,6 +2279,7 @@ session_leave_recording_mode_locked() {
   *) reason="done" ;;
   esac
   session_leave_locked "$kind" "$reason" || true
+  [ "$by" != key ]
 }
 
 # Whether the mode on top is still wanted: its integration's session_alive, when it has one, says its screen is still up.
