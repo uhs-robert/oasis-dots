@@ -2,9 +2,8 @@
 # Routes every phrase in phrases.tsv with `voxcmd --dry-run` inside the sandbox and fails when one lands somewhere
 # other than its expected column: "Integration/action" for a single option that runs, "picker", "none" or "builtin";
 # for a phrase of several steps, those per step joined by " > ", or "refused".
-# The fixtures stand in for the windows (Firefox, Slack and kitty), binds, audio devices, apps, agents, timers, tmux
-# sessions, the text OCR reads in the focused window and a Firefox profile's tabs and history, so the result does not
-# depend on what is open; no private integration is loaded.
+# The fixtures (phrase-fixtures.sh, plus a Firefox profile's tabs and history) stand in for the desktop, so the result
+# does not depend on what is open.
 #
 #   home/voxcmd/tests/run-phrases.sh
 set -euo pipefail
@@ -16,23 +15,8 @@ fixtures_dir="$tests_dir/fixtures"
 check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 
 if [ -z "${SANDBOX_DIR:-}" ]; then
-  SANDBOX_CLIENTS_JSON=$(cat "$fixtures_dir/clients.json")
-  SANDBOX_ACTIVEWINDOW_JSON=$(jq -c '.[] | select(.focusHistoryID == 0)' <<<"$SANDBOX_CLIENTS_JSON")
-  SANDBOX_MONITORS_JSON=$(cat "$fixtures_dir/monitors.json")
-  SANDBOX_ACTIVEWORKSPACE_JSON=$(jq -c '.[] | select(.focused) | .activeWorkspace' <<<"$SANDBOX_MONITORS_JSON")
-  SANDBOX_BINDS_JSON=$(cat "$fixtures_dir/binds.json")
-  SANDBOX_WORKSPACES_JSON=$(cat "$fixtures_dir/workspaces.json")
-  SANDBOX_PW_DUMP_JSON=$(cat "$fixtures_dir/pw-dump.json")
-  SANDBOX_TESSERACT_TSV=$(cat "$fixtures_dir/ocr.tsv")
-  SANDBOX_AGENTS_JSON='[]'
-  SANDBOX_TIMERS_JSON='[]'
-  SANDBOX_TMUX_SESSIONS='dotfiles'
-  SANDBOX_LAUNCHER_SESSIONS=$'work\n🌐 Browsing'
-  export SANDBOX_CLIENTS_JSON SANDBOX_ACTIVEWINDOW_JSON SANDBOX_ACTIVEWORKSPACE_JSON SANDBOX_MONITORS_JSON \
-    SANDBOX_BINDS_JSON SANDBOX_WORKSPACES_JSON SANDBOX_PW_DUMP_JSON SANDBOX_TESSERACT_TSV SANDBOX_AGENTS_JSON SANDBOX_TIMERS_JSON SANDBOX_TMUX_SESSIONS SANDBOX_LAUNCHER_SESSIONS
-  # Installed apps come from the fixture's desktop entries alone.
-  export XDG_DATA_HOME="$fixtures_dir" XDG_DATA_DIRS="$fixtures_dir"
-  unset VOXCMD_EXTRA_INTEGRATIONS
+  # shellcheck source-path=SCRIPTDIR source=phrase-fixtures.sh
+  . "$tests_dir/phrase-fixtures.sh"
   exec "$tests_dir/sandbox.sh" "$0" "$@"
 fi
 
