@@ -7,7 +7,7 @@ pass=0 fail=0
 root=$(mktemp -d)
 trap 'rm -rf "$root"' EXIT
 
-# Built at runtime so this file holds no line that lib/check-conflicts.sh would read as a conflict marker.
+# Built at runtime so this file holds no line that lib/check/steps/conflicts.sh would read as a conflict marker.
 printf -v ours '%*s' 7 ''
 ours=${ours// /<}
 printf -v theirs '%*s' 7 ''

@@ -1,12 +1,12 @@
 #!/bin/bash
 # Tests which steps `lib/check.sh --changed` picks for a change, through `check.sh --plan`, so no linter runs.
-# Each case edits a scratch clone of this checkout (with the working tree's lib/check*.sh on top) and reads the plan.
+# Each case edits a scratch clone of this checkout (with the working tree's lib/check.sh and lib/check/ on top) and reads the plan.
 set -u
 # A hook or an outer check can leave these pointing at another repository, or skipping steps (the commit hook skips the
 # voxcmd ones).
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE CHECK_SKIP_STEPS
 
-repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 scratch=$(mktemp -d) || exit 1
 trap 'rm -rf "$scratch"' EXIT
 
@@ -14,9 +14,9 @@ git clone -q "$repo_dir" "$scratch/clone" || exit 1
 cd "$scratch/clone" || exit 1
 git config user.name scope-test
 git config user.email scope-test@example.invalid
-cp "$repo_dir"/lib/check*.sh lib/
-mkdir -p lib/tests
-cp "$repo_dir"/lib/tests/check-scope.sh lib/tests/
+cp "$repo_dir"/lib/check.sh lib/
+mkdir -p lib/check
+cp -R "$repo_dir"/lib/check/. lib/check/
 git add -A
 git commit -q --allow-empty -m 'scratch base' || exit 1
 
@@ -197,15 +197,15 @@ case_full_override() {
 }
 
 case_check_scope_for_check_script() {
-  start_case 'check-scope runs for a lib/check-*.sh change'
-  echo '# x' >>lib/check-qml.sh
+  start_case 'check-scope runs for a lib/check/ change'
+  echo '# x' >>lib/check/steps/qml.sh
   plan
   expect_ran check-scope
 }
 
 case_check_scope_for_own_test() {
   start_case 'check-scope runs for its own test'
-  echo '# x' >>lib/tests/check-scope.sh
+  echo '# x' >>lib/check/tests/scope.sh
   plan
   expect_ran check-scope
   expect_skipped voxcmd-click qmllint
@@ -269,7 +269,7 @@ case_paths_list_deleted_script() {
 
 case_skip_steps_with_changed() {
   start_case 'CHECK_SKIP_STEPS drops an in-scope step'
-  echo '# x' >>lib/check-qml.sh
+  echo '# x' >>lib/check/steps/qml.sh
   plan CHECK_SKIP_STEPS='check-scope shfmt'
   case " $ran " in *" check-scope "* | *" shfmt "*) fail 'check-scope and shfmt not to run' ;; esac
   [ "$requested" = 'check-scope shfmt' ] || fail "requested to list check-scope shfmt, got: $requested"

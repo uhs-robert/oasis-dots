@@ -124,8 +124,8 @@ origin=$root/origin.git
 work=$root/work
 git init -q --bare -b main "$origin"
 git clone -q "$origin" "$work" 2>/dev/null
-mkdir -p "$work/lib"
-cp "$here/../../../../lib/check-passed.sh" "$work/lib/"
+mkdir -p "$work/lib/check"
+cp "$here/../../../../lib/check/passed.sh" "$work/lib/check/"
 # shellcheck disable=SC2016 # the stub expands its own variable
 printf '#!/bin/sh\nexit "${STUB_CHECK_STATUS:-0}"\n' >"$work/lib/check.sh"
 chmod +x "$work/lib/check.sh"
@@ -142,11 +142,11 @@ branch_tree=$(git -C "$work" rev-parse 'HEAD^{tree}')
 # What a forge serves for a PR whose branch was pushed from elsewhere.
 git -C "$work" push -q origin pr-branch:refs/pull/7/head 2>/dev/null
 passed_file=$(git -C "$work" rev-parse --path-format=absolute --git-common-dir)/claude-check-passed-trees
-check "the branch tree has not passed yet" "! (cd '$work' && lib/check-passed.sh passed-somewhere HEAD)"
+check "the branch tree has not passed yet" "! (cd '$work' && lib/check/passed.sh passed-somewhere HEAD)"
 check "a pass on an unrecorded base is not recorded" "(cd '$work' && check_branch_here) && ! grep -sq '$branch_tree' '$passed_file'"
 printf '%s no-repos\n' "$base_tree" >"$passed_file"
 check "a pass on a recorded base is recorded" "(cd '$work' && check_branch_here) && grep -qx '$branch_tree no-repos' '$passed_file'"
-check "a no-repos pass does not stand in for a checkout with repos/" "(mkdir -p '$work/repos/x' && cd '$work' && ! lib/check-passed.sh is-passed '$branch_tree' && lib/check-passed.sh passed-somewhere '$branch_tree'); rm -rf '$work/repos'"
+check "a no-repos pass does not stand in for a checkout with repos/" "(mkdir -p '$work/repos/x' && cd '$work' && ! lib/check/passed.sh is-passed '$branch_tree' && lib/check/passed.sh passed-somewhere '$branch_tree'); rm -rf '$work/repos'"
 check "a failing check fails the branch" "! (cd '$work' && STUB_CHECK_STATUS=1 check_branch_here)"
 add_temp_worktree "$work" pull/7/head
 check "the temporary worktree is the PR head" "[[ \$(git -C '$temp_worktree' rev-parse HEAD) == \$(git -C '$work' rev-parse pr-branch) ]]"
@@ -198,8 +198,8 @@ e2e_setup() {
   rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG"
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
-  mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
-  cp "$here/../../../../lib/check-passed.sh" "$e2e/main/lib/"
+  mkdir -p "$e2e/main/lib/check" "$e2e/main/.claude/skills/ship-batch"
+  cp "$here/../../../../lib/check/passed.sh" "$e2e/main/lib/check/"
   cp "$here/../ship-batch.sh" "$here/../base.sh" "$e2e/main/.claude/skills/ship-batch/"
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash

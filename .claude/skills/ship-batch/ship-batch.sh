@@ -128,8 +128,8 @@ release_lock
 # oldest base still owed (see owe_check), so a rerun after a failed or interrupted check checks again, and the step
 # records make that rerun cost only the steps that did not pass.
 # Whether a pass made in a branch worktree counts for main depends on repos/: a worktree has none, so
-# lib/check-symlinks.sh skipped the links into it. Such a pass vouches for everything but those links, so main runs only
-# that step; check-passed.sh is-passed accepts the pass outright only when it was made with repos/.
+# lib/check/steps/symlinks.sh skipped the links into it. Such a pass vouches for everything but those links, so main runs only
+# that step; lib/check/passed.sh is-passed accepts the pass outright only when it was made with repos/.
 # Inductive: a full pass of the base plus a scoped pass over everything changed since vouches for `after`. A base main
 # does not descend from or not recorded as passed, or CHECK_FULL=1, falls back to the full check.
 # The skips vouch for main's commit, not its working tree, so local edits or untracked files in the main checkout rule them out.
@@ -138,12 +138,12 @@ if [[ -n $check_from ]]; then
   main_clean=false
   [[ -z $(git -C "$repo" status --porcelain) ]] && main_clean=true
   main_passed=true
-  if $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh is-passed "$after"); then
+  if $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check/passed.sh is-passed "$after"); then
     echo "ship-batch: main's tree already passed the check; not checking it again"
-  elif $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check-passed.sh passed-somewhere "$after"); then
+  elif $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check/passed.sh passed-somewhere "$after"); then
     echo "ship-batch: main's tree passed the check in a worktree; checking only the links into repos/"
-    (cd "$repo" && sh lib/check-symlinks.sh) || main_passed=false
-  elif [[ -z ${CHECK_FULL:-} ]] && base_is_ancestor "$repo" "$check_from" "$after" && (cd "$repo" && lib/check-passed.sh is-passed "$check_from"); then
+    (cd "$repo" && sh lib/check/steps/symlinks.sh) || main_passed=false
+  elif [[ -z ${CHECK_FULL:-} ]] && base_is_ancestor "$repo" "$check_from" "$after" && (cd "$repo" && lib/check/passed.sh is-passed "$check_from"); then
     (cd "$repo" && lib/check.sh --changed "$check_from") || main_passed=false
   else
     (cd "$repo" && just check) || main_passed=false
@@ -157,7 +157,7 @@ if [[ -n $check_from ]]; then
   else
     # With uncommitted changes in the main checkout the pass was of its working tree, not `after`'s, and the helper
     # refuses to record it.
-    (cd "$repo" && lib/check-passed.sh record) || true
+    (cd "$repo" && lib/check/passed.sh record) || true
     settle_check "$repo"
   fi
 fi

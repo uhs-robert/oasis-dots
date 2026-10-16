@@ -18,7 +18,7 @@ Personal Arch Linux dotfiles deployed with GNU Stow. Two deployment targets, eac
 just                  # list recipes
 just check            # full validation (run before committing)
 lib/check.sh --changed origin/main   # only the steps the changed files can affect, skipping those already passed for the same files
-just lint             # shellcheck install.sh uninstall.sh lib/*.sh demo/*.sh and the Quickshell audio importers
+just lint             # shellcheck install.sh uninstall.sh lib/*.sh, lib/check/**/*.sh, demo/*.sh and the Quickshell audio importers
 just stow <pkg>       # symlink one package into ~
 just restow <pkg>     # fix stale/broken links
 just unstow <pkg>
@@ -53,7 +53,7 @@ New install behavior belongs in the matching lib function, not inline in `instal
 - `stow.ini` — dotfile package names (`[CORE]` auto-stowed, `[OPTIONAL]` fzf-selected, `[SERVER]` used instead of `[CORE]` under `--server`).
 - `repos.ini` — git repositories to clone.
 
-`lib/check-packages.sh` fails on a name appearing in two manifests, excluding `stow.ini` and `repos.ini` (those namespace directories and repos, not packages). It also fails when a `stow.ini` entry has no `home/` dir, or a `home/` dir is in neither `stow.ini` nor its `unstowed` list. Adding a package means editing the manifest, not the installer.
+`lib/check/steps/packages.sh` fails on a name appearing in two manifests, excluding `stow.ini` and `repos.ini` (those namespace directories and repos, not packages). It also fails when a `stow.ini` entry has no `home/` dir, or a `home/` dir is in neither `stow.ini` nor its `unstowed` list. Adding a package means editing the manifest, not the installer.
 
 An `[MANUAL]` section's comment lines in `arch.ini` are printed as post-install notes.
 
@@ -114,7 +114,7 @@ Plugins are managed by `ya pkg`, with `home/yazi/.config/yazi/package.toml` as t
 
 This repo has no submodules. `lib/repos.sh` sets up every repo in `repos.ini` (`owner/name` entries) plus the Neovim config under the gitignored `repos/` directory. By default each is cloned there over HTTPS. `$GITHUB_DIR` (default `~/Development`) and `$GITHUB_ORG` (default `uhs-robert`) can be overridden by the environment or an ignored `install.local` in the repo root (environment wins); `lib/distro.sh` reads it. With `./install.sh --dev`, or when `$GITHUB_DIR/<section>/<name>` already exists, the checkout lives under `$GITHUB_DIR` and `repos/<name>` is a symlink to it, so there is only ever one copy. `just update-repos` pulls the non-linked clones.
 
-`lib/check-symlinks.sh` fails on a tracked symlink that dangles or points outside the repo; links into a `repos/` clone that is not set up yet are skipped.
+`lib/check/steps/symlinks.sh` fails on a tracked symlink that dangles or points outside the repo; links into a `repos/` clone that is not set up yet are skipped.
 
 Tracked files must reach external repos only through `repos/`: theme files are relative symlinks into `repos/oasis.nvim/extras`, and `hyprvim` and `deserted-everything-css` are symlinks into `repos/`. Runtime configs that cannot find the dotfiles checkout (shell rc files, Hyprland env) use `~/.local/share/dotfiles/repos`, which the installer links to `repos/`. Never hardcode `~/Development`.
 

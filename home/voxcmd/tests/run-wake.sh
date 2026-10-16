@@ -6,8 +6,8 @@
 set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-# shellcheck source-path=SCRIPTDIR source=../../../lib/check-lock.sh
-. "$tests_dir/../../../lib/check-lock.sh"
+# shellcheck source-path=SCRIPTDIR source=../../../lib/check/lock.sh
+. "$tests_dir/../../../lib/check/lock.sh"
 check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 if [ -z "${SANDBOX_DIR:-}" ]; then
   exec "$tests_dir/sandbox.sh" "$0" "$@"

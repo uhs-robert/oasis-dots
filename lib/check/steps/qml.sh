@@ -9,13 +9,13 @@
 set -u
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-repo_dir=$(dirname -- "$script_dir")
+repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 cd "$repo_dir" || exit 1
 
 qs_dir=home/quickshell/.config/quickshell
 greeter_dir=system/etc/greetd/quickshell
 # shellcheck source=lib/greeter-files.sh
-source "$script_dir/greeter-files.sh"
+source "$repo_dir/lib/greeter-files.sh"
 
 # /usr/bin/qmllint on Arch is the Qt 5 one, which cannot read Qt 6 QML.
 qmllint_bin=''

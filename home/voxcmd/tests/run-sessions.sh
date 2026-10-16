@@ -8,8 +8,8 @@
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 package=$(cd "$here/.." && pwd)
-# shellcheck source-path=SCRIPTDIR source=../../../lib/check-lock.sh
-. "$here/../../../lib/check-lock.sh"
+# shellcheck source-path=SCRIPTDIR source=../../../lib/check/lock.sh
+. "$here/../../../lib/check/lock.sh"
 check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 [ -n "${SANDBOX_DIR:-}" ] || exec "$here/sandbox.sh" "$0" "$@"
 # shellcheck source-path=SCRIPTDIR source=lib.sh

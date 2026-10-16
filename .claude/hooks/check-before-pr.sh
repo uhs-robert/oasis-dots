@@ -16,9 +16,9 @@ cd "${dir:-${CLAUDE_PROJECT_DIR:-$PWD}}" || exit 0
 enter_command_cd "$cmd" "$pr_create_re" || exit 0
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 cd "$root" || exit 0
-[[ -x lib/check-passed.sh ]] || exit 0
+[[ -x lib/check/passed.sh ]] || exit 0
 base=$(git merge-base HEAD origin/main 2>/dev/null) || exit 0
 
-lib/check-passed.sh passed-since "$base" HEAD && exit 0
+lib/check/passed.sh passed-since "$base" HEAD && exit 0
 reason="No recorded pass of 'lib/check.sh --changed $base' for HEAD's tree, so the PR was not opened. Commit everything (a pass is recorded only for a tree with nothing uncommitted or untracked), run that command in the background, and open the PR again once it passes; steps that already passed for the same files are skipped."
 jq -n --arg r "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'

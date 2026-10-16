@@ -3,11 +3,11 @@ set -eu
 
 # Keeps lock/skins/index.json in step with the skin files, audio importers and the greeter's import limits.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-repo_dir=$(dirname -- "$script_dir")
+repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 qs_dir="$repo_dir/home/quickshell/.config/quickshell"
 skins_dir="$qs_dir/lock/skins"
 # shellcheck source=lib/greeter-files.sh
-source "$script_dir/greeter-files.sh"
+source "$repo_dir/lib/greeter-files.sh"
 index="$skins_dir/index.json"
 
 if ! command -v jq >/dev/null 2>&1; then

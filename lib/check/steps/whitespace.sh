@@ -5,7 +5,7 @@ set -eu
 # a clean checkout. Scan the tracked files this repository owns instead; the rest
 # of home/ is vendored upstream and is not ours to reformat.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-repo_dir=$(dirname -- "$script_dir")
+repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 
 cd "$repo_dir" || exit 1
 
