@@ -69,6 +69,8 @@ command -v hyperfine >/dev/null || {
 }
 
 results_dir="$SANDBOX_DIR/bench"
+# Seconds per run from hyperfine's --export-json: 1.x lists them as times, 2.x as measurements.
+sample_times() { jq '.results[0] | (.times // [.measurements[].time_wall_clock.value])[]' "$@"; }
 mkdir -p "$results_dir"
 printf 'mode\tphrase\tp50_ms\tp95_ms\tmean_ms\tmax_ms\n'
 bench_one() {
@@ -76,7 +78,7 @@ bench_one() {
   local result="$results_dir/$mode-$4.json"
   # -N runs the command without a shell, splitting it on spaces, so a phrase must not hold quotes.
   hyperfine -N --style none --warmup 2 --runs "$runs" -i --export-json "$result" "$cmd $phrase" >/dev/null 2>&1
-  printf '%s\t%s\t%s\n' "$mode" "$phrase" "$(jq '.results[0].measurements[].time_wall_clock.value' "$result" | summarize)"
+  printf '%s\t%s\t%s\n' "$mode" "$phrase" "$(sample_times "$result" | summarize)"
 }
 index=0
 while IFS=$'\t' read -r phrase is_live _; do
@@ -87,5 +89,5 @@ while IFS=$'\t' read -r phrase is_live _; do
 done <"$tests_dir/bench-phrases.tsv"
 for mode in dry live; do
   compgen -G "$results_dir/$mode-*.json" >/dev/null || continue
-  printf '%s\tall\t%s\n' "$mode" "$(jq '.results[0].measurements[].time_wall_clock.value' "$results_dir/$mode"-*.json | summarize)"
+  printf '%s\tall\t%s\n' "$mode" "$(sample_times "$results_dir/$mode"-*.json | summarize)"
 done
