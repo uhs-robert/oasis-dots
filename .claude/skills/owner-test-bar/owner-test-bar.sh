@@ -18,9 +18,10 @@ voxcmd_config_link="$HOME/.config/voxcmd"
 voxcmd_private_dirs=(integrations.d replacements.d)
 voxcmd_bar="$bars/.voxcmd_bar"
 # voxcmd logs while this file exists (debug() in voxcmd). The marker is present only when a swap created the file, so
-# restore never deletes a log the owner turned on themselves.
+# restore never deletes a log the owner turned on themselves. The marker sits beside the log so a reboot clears both; in
+# the cache it would outlive the log and make restore delete one the owner turned on afterwards.
 voxcmd_debug_log="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/debug.log"
-voxcmd_debug_marker="$bars/.voxcmd_debug_created"
+voxcmd_debug_marker="${voxcmd_debug_log%/*}/.debug_log_created_by_test_bar"
 # Which agent session put the live test bar up, so a second session does not swap it out from under the owner.
 owner_file="$bars/.owner"
 
@@ -260,7 +261,7 @@ voxcmd_debug_start() {
     echo "voxcmd: debug log at $voxcmd_debug_log (already on, left alone on restore)"
     return 0
   fi
-  mkdir -p "$(dirname "$voxcmd_debug_log")" "$bars"
+  mkdir -p "$(dirname "$voxcmd_debug_log")"
   touch "$voxcmd_debug_log"
   touch "$voxcmd_debug_marker"
   echo "voxcmd: debug log at $voxcmd_debug_log"
@@ -365,6 +366,8 @@ try_phrases() {
     echo "try: test build $live"
     # The swap links ~/.config/voxcmd to this build's copy; set explicitly so the dry run does not depend on that link.
     export VOXCMD_CONFIG_DIR=$bars/$live/$voxcmd_rel/.config/voxcmd
+  elif [[ $live == *"half swapped"* ]]; then
+    die "voxcmd is half swapped; run restore first"
   else
     voxcmd=$voxcmd_bin_dir/voxcmd
     echo "try: no voxcmd test bar is live, using the main install"
@@ -374,7 +377,7 @@ try_phrases() {
     result=$(sed -n 's/^result: *//p' <<<"$output" | paste -sd ';')
     option=$(sed -n '0,/^option 1:/s/^option 1: *\(.*\) (.*/\1/p' <<<"$output")
     echo "\"$phrase\": ${result:-no result (voxcmd failed)}${option:+ -> $option}"
-    [[ $result == *"no match"* || -z $result ]] && status=1
+    [[ $result == *"no match"* || $result == *refused* || -z $result ]] && status=1
   done
   return "$status"
 }
