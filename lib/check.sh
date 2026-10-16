@@ -41,8 +41,8 @@ set -u
 #   stylua, luacheck         Hyprland config (stylua) and Hyprland plus greetd Lua (luacheck, via lib/check-lua.sh). Needs
 #                            stylua, luacheck or lua5.4/5.3/luajit with LuaFileSystem.
 #   qmllint                  Quickshell config and greeter (lib/check-qml.sh). Needs Qt 6 qmllint, jq.
-#   lock-skins               lock/skins/index.json matches the skin files and audio importers; no skin imports components/
-#                            or services/ (lib/check-lock-skins.sh). Needs jq.
+#   lock-skins               lock/skins/index.json matches the skin files and audio importers; no skin imports a folder
+#                            the greeter does not stage (lib/greeter-files.sh; lib/check-lock-skins.sh). Needs jq.
 #   style-exports            generated property lines in theme/Style.qml match theme/StyleSchema.js (lib/check-style-exports.sh).
 #                            Needs python3.
 #   time-format              no hand-built am/pm text in Quickshell QML/JS; clock text goes through TimeFormat
@@ -128,8 +128,8 @@ step_body() {
   greeter-keyring) bash ./lib/tests/greeter-keyring.sh ;;
   stylua) stylua --respect-ignores --check home/hypr/.config/hypr ;;
   luacheck) sh ./lib/check-lua.sh ;;
-  qmllint) sh ./lib/check-qml.sh ;;
-  lock-skins) sh ./lib/check-lock-skins.sh ;;
+  qmllint) bash ./lib/check-qml.sh ;;
+  lock-skins) bash ./lib/check-lock-skins.sh ;;
   style-exports) sh ./lib/check-style-exports.sh ;;
   time-format) sh ./lib/check-time-format.sh ;;
   voxcmd-phrases) bash ./home/voxcmd/tests/run-phrases.sh ;;
@@ -237,7 +237,7 @@ path_scopes() {
   lib/check-lua.sh | .luacheckrc | home/hypr/*) scopes="$scopes lua" ;;
   # Ahead of the greeter's QML arm, since case takes only the first match.
   system/etc/greetd/*.lua) scopes="$scopes lua qml" ;;
-  lib/check-qml.sh | lib/check-lock-skins.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scopes="$scopes qml" ;;
+  lib/check-qml.sh | lib/check-lock-skins.sh | lib/greeter-files.sh | lib/check-style-exports.sh | lib/check-time-format.sh | system/etc/greetd/quickshell/*) scopes="$scopes qml" ;;
   home/quickshell/tests/*) scopes="$scopes node" ;;
   home/quickshell/*) scopes="$scopes qml node" ;;
   home/voxcmd/* | extras/voxcmd-firefox/*) scopes="$scopes voxcmd" ;;

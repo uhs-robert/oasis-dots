@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Stages and installs the Quickshell greeter (/etc/greetd/quickshell) with the lock skins, theme, fonts and the user's lock style.
 
+# shellcheck source=lib/greeter-files.sh
+source "$(dirname "${BASH_SOURCE[0]}")/greeter-files.sh"
+
 GREETER_DEST=/etc/greetd/quickshell
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
 GREETER_DATA=/var/lib/qs-greeter
@@ -14,11 +17,9 @@ stage_greeter() {
   local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
 
   rm -rf "$dest"
-  mkdir -p "$dest/lock/skins" "$dest/theme" "$dest/fonts"
+  mkdir -p "$dest"
   cp -r "$repo/system/etc/greetd/quickshell/." "$dest/" || return 1
-  cp -r "$qs/lock/skins/." "$dest/lock/skins/" || return 1
-  cp "$qs/lock/Tints.js" "$dest/lock/" || return 1
-  [[ -f "$qs/VERSION" ]] && cp "$qs/VERSION" "$dest/"
+  copy_greeter_qs_files "$qs" "$dest" || return 1
   local skin audio_dir audio_skins
   # Skins whose imported audio lives in $XDG_DATA_HOME/quickshell/<skin>-audio.
   audio_skins=$(jq -r 'to_entries[] | select(.value.audio) | .key' "$qs/lock/skins/index.json") || return 1
@@ -37,8 +38,6 @@ stage_greeter() {
     mkdir -p "$dest/lock/skins/goldeneye/frames"
     cp -rL "$frames_dir/." "$dest/lock/skins/goldeneye/frames/"
   fi
-  cp "$qs/theme/Theme.qml" "$qs/theme/Style.qml" "$qs/theme/StyleSchema.js" "$qs/theme/Paths.qml" "$qs/theme/Watch.js" "$qs/theme/MarkerTokens.js" "$dest/theme/" || return 1
-  cp -r "$qs/theme/styles" "$qs/theme/icon_sets" "$dest/theme/" || return 1
   if [[ -n ${3:-} && -f "$3/theme/theme.json" ]]; then
     cp "$3/theme/theme.json" "$dest/theme/" || return 1
   elif jq -e 'type == "object"' "$state_dir/theme.json" &>/dev/null; then
@@ -46,7 +45,6 @@ stage_greeter() {
   elif [[ -f "$live/theme/theme.json" ]]; then
     cp "$live/theme/theme.json" "$dest/theme/"
   fi
-  cp "$qs"/fonts/*.ttf "$qs"/fonts/OFL-*.txt "$dest/fonts/" || return 1
 
   local style=oasis lock=follow tint=primary music=on session=Hyprland watch=Theme
   local login_screen=follow login_tint=follow login_music=follow

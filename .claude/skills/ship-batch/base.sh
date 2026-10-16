@@ -129,3 +129,18 @@ check_branch_here() {
   [[ -z $(git status --porcelain) ]] || return 0
   if lib/check-passed.sh passed-somewhere "$base"; then lib/check-passed.sh record || true; fi
 }
+
+# Prints an extended regex for the Quickshell paths the greeter stages (lib/greeter-files.sh of the repo at $1), under
+# the config dir $2: a directory entry matches as a prefix, a file or glob entry exactly.
+greeter_qs_regex() {
+  local entry pattern alternatives=()
+  # shellcheck source=/dev/null
+  source "$1/lib/greeter-files.sh"
+  for entry in "${GREETER_QS_FILES[@]}"; do
+    entry=${entry%'?'}
+    pattern=$(sed 's/[.]/\\./g; s/[*]/[^\/]*/g' <<<"$entry")
+    [[ $entry == */ ]] || pattern+='$'
+    alternatives+=("$pattern")
+  done
+  printf '%s/(%s)' "$2" "$(IFS='|' && echo "${alternatives[*]}")"
+}
