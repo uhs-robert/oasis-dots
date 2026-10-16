@@ -103,6 +103,12 @@ Item {
                     height: slot.height
                     color: slot.lit ? slot.lit_fill : "transparent"
 
+                    WorkspaceDropTarget {
+                        anchors.fill: parent
+                        z: 1
+                        workspace_id: slot.modelData.id
+                    }
+
                     MouseArea {
                         anchors.fill: parent
                         onClicked: Hyprland.dispatch("hl.dsp.focus({ workspace = '" + slot.modelData.id + "' })")

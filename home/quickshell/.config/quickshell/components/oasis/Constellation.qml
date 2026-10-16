@@ -172,6 +172,12 @@ Item {
                 id: slot_hover
             }
 
+            WorkspaceDropTarget {
+                anchors.fill: parent
+                workspace_id: slot.modelData.id
+                radius: 4
+            }
+
             Text {
                 x: root.star_x + (slot.info.focused ? 5 : 4)
                 y: slot.info.cy - implicitHeight - (slot.info.focused ? 3 : 2)

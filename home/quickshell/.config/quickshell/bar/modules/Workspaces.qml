@@ -458,6 +458,18 @@ Item {
                     onClicked: Hyprland.dispatch("hl.dsp.focus({ workspace = '" + pill.modelData.id + "' })")
                 }
 
+                // A dot is dropped on through its full hit area, not just the 11px slot.
+                WorkspaceDropTarget {
+                    anchors.fill: parent
+                    anchors.leftMargin: pill.dot ? -row.spacing / 2 : 0
+                    anchors.rightMargin: anchors.leftMargin
+                    anchors.topMargin: pill.dot ? -(root.bar_height - Style.bar_capsule - pill.height) / 2 : 0
+                    anchors.bottomMargin: anchors.topMargin
+                    z: 2
+                    workspace_id: pill.modelData.id
+                    radius: pill.dot ? 4 : pill.radius
+                }
+
                 HoverHandler {
                     id: pill_hover
                 }
