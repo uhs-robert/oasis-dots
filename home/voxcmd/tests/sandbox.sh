@@ -20,6 +20,8 @@
 #                                     SANDBOX_SWITCHED_TITLE retitles it once Return has been typed
 #                                     SANDBOX_ACTIVEWINDOW_BLOCK_AFTER_WTYPE=<path> makes the first query after wtype
 #                                     create <path>.entered and wait for <path>.release
+#   wtype                             logged; with SANDBOX_WTYPE_BLOCK=<path> the first call creates <path>.entered and
+#                                     waits for <path>.release
 #   tesseract                         SANDBOX_TESSERACT_TSV (the tsv itself; no words without it)
 #   grim, magick                      never real: grim writes a blank image the size of the activewindow fixture
 #                                     times SANDBOX_GRIM_SCALE (default 1), or SANDBOX_GRIM_SIZE ("W H"), and fails
@@ -79,7 +81,8 @@
 #                                     exit (3) after half a second, any other turn waits on `$SANDBOX_AUTOSTOP_SLEEP 30`
 #                                     (default sleep; a copy under another name lets a test end leftovers by name).
 #                                     The detector with VOXCMD_AUTOSTOP_MAX_SECS=10 on an UNTIL_STOP turn (a chained ending's) waits
-#                                     for $SANDBOX_DIR/chain-pause, then gives the pause verdict (0).
+#                                     for $SANDBOX_DIR/chain-pause, then gives the pause verdict (0), or exits at once with
+#                                     SANDBOX_CHAIN_DETECTOR_EXIT.
 #   voxtype -q ... transcribe <file>  prints voxtype's progress lines, a blank line and $SANDBOX_TRANSCRIBE_TEXT, as a
 #                                     wake confirmation's transcription does (no blank line without it: no speech)
 #                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
@@ -348,6 +351,14 @@ brightnessctl)
   log "$@"
   [ "${1-}" != -m ] || echo 'sandbox,backlight,50,50%,100'
   ;;
+wtype)
+  log "$@"
+  # SANDBOX_WTYPE_BLOCK=<path>: the first call creates <path>.entered and waits for <path>.release.
+  if [ -n "${SANDBOX_WTYPE_BLOCK:-}" ] && [ ! -e "$SANDBOX_WTYPE_BLOCK.entered" ]; then
+    : >"$SANDBOX_WTYPE_BLOCK.entered"
+    until [ -e "$SANDBOX_WTYPE_BLOCK.release" ]; do sleep 0.02; done
+  fi
+  ;;
 voxcmd-pick)
   log "$@"
   for last; do :; done
@@ -366,6 +377,7 @@ voxcmd-autostop)
   # The pause detector of a chained ending (max_secs=10, which type mode's own detector never has) hears its pause once
   # $SANDBOX_DIR/chain-pause exists, and gives up when the recording is over.
   if [ "${VOXCMD_AUTOSTOP_MAX_SECS-}" = 10 ] && [ "${turn#UNTIL_STOP }" != "$turn" ]; then
+    [ -z "${SANDBOX_CHAIN_DETECTOR_EXIT-}" ] || exit "$SANDBOX_CHAIN_DETECTOR_EXIT"
     until [ -e "$SANDBOX_DIR/chain-pause" ]; do
       [ "$(cat "$XDG_RUNTIME_DIR/voxtype/state" 2>/dev/null)" = recording ] || exit 4
       sleep 0.05
