@@ -53,7 +53,7 @@ fi
 scratch=$(mktemp -d) || exit 0
 trap 'rm -rf "$scratch"' EXIT
 # shellcheck disable=SC2016
-if ! timeout 2 bash -c 'source "$1"; stage_greeter "$2" "$3" >/dev/null' _ "$repo/lib/greeter.sh" "$scratch/stage" "$repo" 2>/dev/null; then
+if ! timeout 2 bash -c 'source "$1"; stage_greeter "$2" "$3" >/dev/null' _ "$repo/lib/install/greeter.sh" "$scratch/stage" "$repo" 2>/dev/null; then
   echo "greeter: unknown"
   exit 0
 fi

@@ -16,6 +16,9 @@ git config user.email cache-test@example.invalid
 cp "$repo_dir"/lib/check.sh lib/
 mkdir -p lib/check
 cp -R "$repo_dir"/lib/check/. lib/check/
+mkdir -p lib/common lib/install
+cp -R "$repo_dir"/lib/common/. lib/common/
+cp -R "$repo_dir"/lib/install/. lib/install/
 # Each step logs its name, fails when listed in FAIL_STEPS, and appends to EDIT_FILE when it is EDIT_STEP, as an agent
 # editing while the check runs would.
 # shellcheck disable=SC2016 # expanded by check.sh, where the stub lands

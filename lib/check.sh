@@ -34,7 +34,7 @@ set -u
 # reports every failure.
 #
 # Steps (the "needs" tools are optional unless stated):
-#   lint (shellcheck, shfmt) installer, lib/, lib/tests/, demo/, home/voxcmd/tests/, home/calendar/tests/, the Quickshell audio
+#   lint (shellcheck, shfmt) installer, lib/ (common, install, check), demo/, home/voxcmd/tests/, home/calendar/tests/, the Quickshell audio
 #                            importers (scripts/lib/*.sh, ff7-, goldeneye-, mgs2-, ocarina-audio) and the tracked agent scripts
 #                            under .claude/ and home/claude/.claude/ (by *.sh name or shell shebang; not worktrees/ or
 #                            skills/synced/); shfmt -i 2. Needs shellcheck, shfmt.
@@ -42,7 +42,7 @@ set -u
 #                            stylua, luacheck or lua5.4/5.3/luajit with LuaFileSystem.
 #   qmllint                  Quickshell config and greeter (lib/check/steps/qml.sh). Needs Qt 6 qmllint, jq.
 #   lock-skins               lock/skins/index.json matches the skin files and audio importers; no skin imports a folder
-#                            the greeter does not stage (lib/greeter-files.sh; lib/check/steps/lock-skins.sh). Needs jq.
+#                            the greeter does not stage (lib/common/greeter-files.sh; lib/check/steps/lock-skins.sh). Needs jq.
 #   style-exports            generated property lines in theme/Style.qml match theme/StyleSchema.js (lib/check/steps/style-exports.sh).
 #                            Needs python3.
 #   time-format              no hand-built am/pm text in Quickshell QML/JS; clock text goes through TimeFormat
@@ -55,8 +55,8 @@ set -u
 #                            the extension's script runs under node when present.
 #   calendar-sync            home/calendar/tests/run.sh. Runs only when python-icalendar and python-recurring-ical-events
 #   calendar-sync-syntax     import; the syntax check of calendar-sync always runs.
-#   firefox-policy           lib/tests/firefox-policy.sh, the Firefox policy installer. Needs jq.
-#   greeter-keyring          lib/tests/greeter-keyring.sh, the greetd keyring unlock installer.
+#   firefox-policy           lib/install/tests/firefox-policy.sh, the Firefox policy installer. Needs jq.
+#   greeter-keyring          lib/install/tests/greeter-keyring.sh, the greetd keyring unlock installer.
 #   agent-hooks              the tests of guard-masked-checks.sh, check-before-pr.sh and restart-qs-after-git.sh. Needs jq.
 #   stale-shells-hook        the test of stale-shells.sh. Needs jq.
 #   owner-test-bar           the owner-test-bar skill's tests/run.sh, when it changes. Needs jq.
@@ -86,7 +86,7 @@ other_steps='check-scope check-cache firefox-policy greeter-keyring qmllint shel
 # Shell files by the group they are linted in. Symlinks are skipped (their target is linted itself).
 # worktrees/ holds other agents' scratch copies and skills/synced/ is vendored.
 plain_shell_files() {
-  printf '%s\n' install.sh uninstall.sh lib/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/calendar/tests/*.sh lib/tests/*.sh lib/check/*.sh lib/check/steps/*.sh lib/check/tests/*.sh
+  printf '%s\n' install.sh uninstall.sh lib/check.sh lib/common/*.sh lib/install/*.sh lib/install/tests/*.sh demo/*.sh home/hypr/.config/hypr/scripts/state-write home/voxcmd/tests/*.sh home/calendar/tests/*.sh lib/check/*.sh lib/check/steps/*.sh lib/check/tests/*.sh
 }
 # Linted with -x, which follows `source`, so each is checked together with its libraries.
 sourcing_shell_files() {
@@ -124,8 +124,8 @@ step_body() {
     ;;
   check-scope) bash ./lib/check/tests/scope.sh ;;
   check-cache) bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh ;;
-  firefox-policy) bash ./lib/tests/firefox-policy.sh ;;
-  greeter-keyring) bash ./lib/tests/greeter-keyring.sh ;;
+  firefox-policy) bash ./lib/install/tests/firefox-policy.sh ;;
+  greeter-keyring) bash ./lib/install/tests/greeter-keyring.sh ;;
   stylua) stylua --respect-ignores --check home/hypr/.config/hypr ;;
   luacheck) sh ./lib/check/steps/lua.sh ;;
   qmllint) bash ./lib/check/steps/qml.sh ;;
@@ -238,14 +238,14 @@ path_scopes() {
   # Ahead of the greeter's QML arm, since case takes only the first match.
   system/etc/greetd/*.lua) scopes="$scopes lua qml" ;;
   # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
-  lib/greeter-files.sh) scopes="$scopes qml ship" ;;
+  lib/common/greeter-files.sh) scopes="$scopes qml ship" ;;
   lib/check/steps/qml.sh | lib/check/steps/lock-skins.sh | lib/check/steps/style-exports.sh | lib/check/steps/time-format.sh | system/etc/greetd/quickshell/*) scopes="$scopes qml" ;;
   home/quickshell/tests/*) scopes="$scopes node" ;;
   home/quickshell/*) scopes="$scopes qml node" ;;
   home/voxcmd/* | extras/voxcmd-firefox/*) scopes="$scopes voxcmd" ;;
   # The installer and the justfile call it, but those already run everything.
-  lib/firefox-policy.sh | lib/tests/firefox-policy.sh) scopes="$scopes policy" ;;
-  lib/greeter-keyring.sh | lib/tests/greeter-keyring.sh) scopes="$scopes keyring" ;;
+  lib/install/firefox-policy.sh | lib/install/tests/firefox-policy.sh) scopes="$scopes policy" ;;
+  lib/install/greeter-keyring.sh | lib/install/tests/greeter-keyring.sh) scopes="$scopes keyring" ;;
   home/calendar/*) scopes="$scopes calendar" ;;
   home/claude/.claude/hooks/* | .claude/hooks/*) scopes="$scopes hooks" ;;
   .claude/skills/owner-test-bar/*) scopes="$scopes bar" ;;

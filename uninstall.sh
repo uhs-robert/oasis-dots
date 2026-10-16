@@ -3,9 +3,9 @@ set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "$DOTFILES_DIR/lib/output.sh"
-source "$DOTFILES_DIR/lib/distro.sh"
-source "$DOTFILES_DIR/lib/packages.sh"
+source "$DOTFILES_DIR/lib/common/output.sh"
+source "$DOTFILES_DIR/lib/common/distro.sh"
+source "$DOTFILES_DIR/lib/common/packages.sh"
 
 OPT_SYSTEM_FILES=1
 OPT_SERVICES=1

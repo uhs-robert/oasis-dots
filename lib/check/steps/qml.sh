@@ -14,8 +14,8 @@ cd "$repo_dir" || exit 1
 
 qs_dir=home/quickshell/.config/quickshell
 greeter_dir=system/etc/greetd/quickshell
-# shellcheck source=lib/greeter-files.sh
-source "$repo_dir/lib/greeter-files.sh"
+# shellcheck source=lib/common/greeter-files.sh
+source "$repo_dir/lib/common/greeter-files.sh"
 
 # /usr/bin/qmllint on Arch is the Qt 5 one, which cannot read Qt 6 QML.
 qmllint_bin=''
