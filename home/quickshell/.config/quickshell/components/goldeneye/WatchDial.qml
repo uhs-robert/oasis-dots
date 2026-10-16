@@ -251,6 +251,13 @@ Item {
                 id: slot_hover
             }
 
+            WorkspaceDropTarget {
+                y: slot.arc_at + 2
+                width: parent.width
+                height: parent.height - y
+                workspace_id: slot.modelData.id
+            }
+
             Rectangle {
                 y: slot.arc_at + 2
                 width: parent.width
