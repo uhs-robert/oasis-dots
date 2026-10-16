@@ -9,14 +9,18 @@ silent=1
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=monitor-words.sh
 source "$voxcmd_share_dir/monitor-words.sh"
 
-# The noun is part of each pattern, so "go to firefox" and "move it to workspace 3" never reach candidates(). Moving takes
-# only the active window ("this window", "it"); "move two and four to the left monitor" belongs to the overview.
-moved_window='(this|the|that)( active| current| focused)? window|it|this|that'
+# A position or slot needs the noun, since "go to two" is a workspace and "move window to the left" a keybind. The
+# built-in panel alone is a monitor without one, so the *_laptop verbs drop it and candidates() offers nothing for any
+# other words, which leaves "go to firefox" to the apps. Moving takes only the active window ("this window", "it");
+# "move two and four to the left monitor" belongs to the overview.
+moved_window='((this|the|that) )?((active|current|focused) )?window|it|this|that'
 verbs=(
   "focus {focus} (the )?(monitor|screen|display) {target}"
   "focus {focus} (the )?{target} (monitor|screen|display)"
   "move  (move|send|put|take|bring) ($moved_window)( over)? (to|onto|on) (the )?(monitor|screen|display) {target}"
   "move  (move|send|put|take|bring) ($moved_window)( over)? (to|onto|on) (the )?{target} (monitor|screen|display)"
+  "focus_laptop {focus} (the )?{target}"
+  "move_laptop  (move|send|put|take|bring) ($moved_window)( over)? (to|onto|on) (the )?{target}"
 )
 
 examples=(
@@ -30,21 +34,32 @@ examples=(
   "move it to monitor three"
   "move this window to the 4th monitor"
   "send the window to the laptop screen"
+  "go to the laptop"
+  "send window to laptop"
 )
 
 declare -A actions=(
   [focus]='focus_monitor "$id"'
   [move]='move_window_to_monitor "$id"'
+  [focus_laptop]='focus_monitor "$id"'
+  [move_laptop]='move_window_to_monitor "$id"'
 )
 
 # One candidate: the monitor the words name, or the reason they name none. Words that are no monitor vocabulary at all
 # ("system monitor") offer nothing, which leaves the phrase to the apps.
 candidates() {
-  local monitor
-  monitor_words_known "$2" || {
-    echo '[]'
-    return
-  }
+  local action="$1" monitor
+  if [[ "$action" == *_laptop ]]; then
+    [[ "${2#the }" =~ ^($monitor_builtin_words)$ ]] || {
+      echo '[]'
+      return
+    }
+  else
+    monitor_words_known "$2" || {
+      echo '[]'
+      return
+    }
+  fi
   monitor=$(monitor_named "$2" "$(monitor_places)")
   jq -n -c --arg id "$monitor" --arg match_text "$2" '[{id: $id, label: ($id | sub("^error:"; "")), match_text: $match_text}]'
 }

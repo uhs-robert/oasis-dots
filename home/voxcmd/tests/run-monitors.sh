@@ -78,6 +78,8 @@ owner|go to the fourth monitor|DP-13
 owner|go to the 4th monitor|DP-13
 owner|go to the tenth monitor|-
 owner|go to the 10th monitor|-
+owner|go to the laptop|eDP-1
+owner|go to the left|-
 owner_real|go to the left monitor|DP-8
 owner_real|go to the center monitor|HDMI-A-1
 owner_real|go to the right monitor|DP-13
@@ -90,6 +92,8 @@ laptop|go to monitor two|-
 laptop|go to the second monitor|-
 laptop|go to the 2nd display|-
 laptop|go to the 10th monitor|-
+laptop|go to laptop|eDP-1
+laptop|go to two|-
 side_by_side|go to the left monitor|DP-1
 side_by_side|go to the right monitor|DP-2
 side_by_side|go to the center monitor|-
@@ -137,6 +141,8 @@ check "move this window to the right monitor" "[[ \$(dispatches owner 'move this
 check "move this window to the second monitor" "[[ \$(dispatches owner 'move this window to the second monitor') == \$(move_of DP-8) ]]"
 check "move it to the 3rd screen" "[[ \$(dispatches owner 'move it to the 3rd screen') == \$(move_of HDMI-A-1) ]]"
 check "a 10th monitor on the owner's four moves nothing" "[[ -z \$(dispatches owner 'move this window to the 10th monitor') ]]"
+check "send window to laptop moves the active window to the built-in panel without a noun" "[[ \$(dispatches owner 'send window to laptop') == \$(move_of eDP-1) ]]"
+check "move window to the left with no noun moves nothing" "[[ -z \$(dispatches owner 'move window to the left') ]]"
 check "move it to the laptop screen" "[[ \$(dispatches owner 'move it to the laptop screen') == \$(move_of eDP-1) ]]"
 check "send the window to monitor two" "[[ \$(dispatches owner 'send the window to monitor two') == \$(move_of DP-8) ]]"
 check "a monitor no word fits moves nothing" "[[ -z \$(dispatches side_by_side 'move this window to the center monitor') ]]"
