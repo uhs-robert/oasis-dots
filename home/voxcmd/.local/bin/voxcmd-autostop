@@ -53,6 +53,9 @@ DEFAULT_SETTINGS = {
     "margin_db": "12",
     # 0 is no limit. Type mode sets it just under voxtype's max_duration_secs, so its own cut is never the one that ends it.
     "max_secs": "0",
+    # A file the auto threshold is written to, lowest so far, for a later detector that starts mid-speech and cannot
+    # measure the room itself (voxcmd's chain after a type-mode ending). Set by voxcmd, not meant for autostop.conf.
+    "threshold_file": "",
 }
 
 # With threshold_db = auto, speech is margin_db above the room: a low percentile of the last ROOM_WINDOW_SECS, first
@@ -140,6 +143,8 @@ class SpeechThenSilence:
         self.max_secs = float(settings["max_secs"])
         self.fixed_threshold_db = None if settings["threshold_db"] == "auto" else float(settings["threshold_db"])
         self.margin_db = float(settings["margin_db"])
+        self.threshold_file = settings["threshold_file"]
+        self.published_threshold_db = None
         self.log = log
         self.trace = trace
         self.elapsed_secs = 0.0
@@ -165,6 +170,21 @@ class SpeechThenSilence:
         if not self.room_levels:
             return MIN_AUTO_THRESHOLD_DB
         return max(self.room_db() + self.margin_db, MIN_AUTO_THRESHOLD_DB)
+
+    def publish_threshold(self, threshold_db):
+        """Writes the lowest auto threshold heard so far to threshold_file: the room before any speech louder than it."""
+        if not self.threshold_file or self.fixed_threshold_db is not None:
+            return
+        if self.published_threshold_db is not None and threshold_db >= self.published_threshold_db:
+            return
+        self.published_threshold_db = threshold_db
+        try:
+            temporary = self.threshold_file + ".new"
+            with open(temporary, "w") as threshold_out:
+                threshold_out.write(f"{threshold_db:.1f}\n")
+            os.replace(temporary, self.threshold_file)
+        except OSError:
+            self.threshold_file = ""
 
     def speech_heard(self):
         """Past no_speech_secs any speech run will do: a short word ("yes", "cancel") is still an answer, and voxtype's
@@ -243,6 +263,7 @@ class SpeechThenSilence:
             self.calibrated = True
             room = f"room {self.room_db():.1f} dBFS, " if self.room_levels else ""
             self.trace(f"calibrated: {room}threshold {threshold_db:.1f} dBFS")
+        self.publish_threshold(threshold_db)
         if self.speech_heard():
             self.count_frame(len(self.levels) - 1, threshold_db)
         else:

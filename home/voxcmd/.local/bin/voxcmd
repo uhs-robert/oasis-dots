@@ -2106,7 +2106,7 @@ dictation_wake_heard_locked() {
   if [ "$chain" = true ]; then
     debug "dictation: a chain follows the ending, recording until the next pause"
     # The detached stopper must not hold the session lock (fd 9) its parent has.
-    setsid "$0" _chain-stop "$heard_in" "$(dictation_chain_autostop_settings)" </dev/null >/dev/null 2>&1 9>&- &
+    setsid "$0" _chain-stop "$heard_in" "$(dictation_chain_autostop_settings "$(jq -r .owner <<<"$state")")" </dev/null >/dev/null 2>&1 9>&- &
   elif [ "$action" = discard ]; then
     touch "$(discard_flag_of "$(jq -r .owner <<<"$state")")"
     voxtype record cancel || true
@@ -2128,11 +2128,16 @@ dictation_heard_in_locked() {
   printf '%s' "$state"
 }
 
-# The auto-stop settings (VAR=value lines) of the pause that ends a recording after a chained ending: a session turn's
-# pause and deadline. The detector starts only after the wake clip is cut and transcribed, by when a short chain may
-# already be spoken, so it needs no speech of its own (min speech 0): the first pause of silence_secs stops the
-# recording, and speech still going on holds it off.
+# dictation_chain_autostop_settings <recording's watcher PID>: the auto-stop settings (VAR=value lines) of the pause that
+# ends a recording after a chained ending: a session turn's pause and deadline. The detector starts only after the wake
+# clip is cut and transcribed, by when the chain is under way or spoken, so it needs no speech of its own (min speech 0):
+# the first pause of silence_secs stops the recording, and speech still going on holds it off. For the same reason it
+# cannot measure the room (its first 0.3 s would be the voice), so it takes the threshold the recording's own detector
+# measured before any speech, when that has written one.
 dictation_chain_autostop_settings() {
+  local room_threshold
+  room_threshold=$(cat "$(threshold_file_of "$1")" 2>/dev/null || true)
+  [ -z "$room_threshold" ] || printf 'VOXCMD_AUTOSTOP_THRESHOLD_DB=%s\n' "$room_threshold"
   printf '%s\n' \
     "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=$session_no_speech_secs" \
     "VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0" \
@@ -2754,6 +2759,8 @@ autostop_recording() {
   local -a detector_env=()
   [ -x "$voxcmd_autostop" ] || return 0
   [ -z "$detector_settings" ] || mapfile -t detector_env <<<"$detector_settings"
+  # The room's threshold, for the chain detector of an ending that starts mid-speech (dictation_chain_autostop_settings).
+  detector_env+=("VOXCMD_AUTOSTOP_THRESHOLD_FILE=$(threshold_file_of $$)")
   env "${detector_env[@]}" "$voxcmd_autostop" &
   detector_pid=$!
   trap 'kill "$detector_pid" 2>/dev/null; exit 0' TERM
@@ -2792,6 +2799,9 @@ watch_max_polls=3000
 watch_start_grace_polls=50
 watch_file_grace_polls=10
 
+# The auto threshold the detector of the watcher with this PID measured, where the room was quiet.
+threshold_file_of() { printf '%s/threshold.%s' "$runtime_dir" "$1"; }
+
 # The discard flag of the watcher with this PID: present, its transcript is thrown away.
 discard_flag_of() { printf '%s/discard.%s' "$runtime_dir" "$1"; }
 
@@ -2804,7 +2814,7 @@ watch_recording() {
   autostop_pid=$!
   # The kill fails once auto-stop is done, and under errexit that would end the trap before the cleanup after it.
   # shellcheck disable=SC2064 # expanded now: the PID and paths are fixed
-  trap "kill $autostop_pid 2>/dev/null || true; rm -f '$discard_flag'; release_recording_ownership; [ '$transcript_handler' != session_turn ] || session_end_if_mine 'the listener stopped unexpectedly'" EXIT
+  trap "kill $autostop_pid 2>/dev/null || true; rm -f '$discard_flag' '$(threshold_file_of $$)'; release_recording_ownership; [ '$transcript_handler' != session_turn ] || session_end_if_mine 'the listener stopped unexpectedly'" EXIT
   # listen only starts a watcher for a recording it started from idle, so the recording is this watcher's from the
   # start. The owner may already be gone, its file with it.
   if [ -n "$recording_owner_file" ]; then echo $$ 2>/dev/null >"$recording_owner_file" || true; fi
