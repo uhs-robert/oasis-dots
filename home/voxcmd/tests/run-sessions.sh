@@ -28,7 +28,10 @@ sess_pkg=$root/sess-pkg
 mkdir -p "$sess_stubs" "$sess_pkg"
 cp -r "$package/.local" "$sess_pkg/.local"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$sess_pkg/.local/bin/voxcmd-autostop"
-sess_voxcmd=$sess_pkg/.local/bin/voxcmd
+link_voxcmd_shim "$sess_pkg"
+# sess_voxcmd is the new CLI, over this copy's bash voxcmd, which is the process name the tests look for.
+sess_voxcmd=$sess_pkg/tests/bin/voxcmd
+sess_real_voxcmd=$sess_pkg/.local/bin/voxcmd
 # The stub detector's long sleep, under its own name so the tests can end the ones a killed watcher leaves behind.
 stub_sleep=$root/stub-sleep
 cp "$(command -v sleep)" "$stub_sleep"
@@ -111,7 +114,7 @@ sess_start() {
   mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
   echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
   # shellcheck disable=SC2086 # the phrase is words
-  sess_voxcmd_env ${sess_phrase:-start testing}
+  sess_voxcmd_env run ${sess_phrase:-start testing}
 }
 sess_phrase=""
 # The stub call log and voxcmd's debug log, emptied before a run so sess_wait reads only its watchers.
@@ -367,7 +370,7 @@ sess_env=()
 # Ending the session while its recording is open cancels that recording.
 sess_start HOLD
 owner_is_listening
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 check "end-session while recording cancels it and closes the microphone" "session_gone && grep -q '^voxtype record cancel' '$log' && [[ \$(cat '$XDG_RUNTIME_DIR/voxtype/state') == idle && \$(record_starts) == 1 ]] && ended_because 'ended by request'"
 
@@ -461,17 +464,17 @@ check "stop with nothing open exits 0 and does nothing" "env SANDBOX_SETSID_RUN=
 settle_ms() {
   local started
   started=$(date +%s%N)
-  timeout "$test_wait_secs" env "$@" "$sess_voxcmd" _settle >/dev/null 2>&1
+  timeout "$test_wait_secs" env "$@" "$sess_voxcmd" internal settle >/dev/null 2>&1
   echo $((($(date +%s%N) - started) / 1000000))
 }
 bar_asks() { grep -c '^qs-ipc call clickhints state' "$log"; }
-# settle_waits_out <state file> <state>: with the overlay or popup in that state, _settle has asked the bar twice and
+# settle_waits_out <state file> <state>: with the overlay or popup in that state, `internal settle` has asked the bar twice and
 # is still waiting, then settles once it closes.
 settle_waits_out() {
   local settle_pid
   echo "$2" >"$1"
   : >"$log"
-  env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS="$test_wait_secs" "$sess_voxcmd" _settle >/dev/null 2>&1 &
+  env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS="$test_wait_secs" "$sess_voxcmd" internal settle >/dev/null 2>&1 &
   settle_pid=$!
   wait_until asked_twice_or_gone "$settle_pid"
   process_running "$settle_pid" || return 1
@@ -487,9 +490,9 @@ for popup_state in "opening weather" "open weather" "closing weather"; do
   check "a popup that is '$popup_state' is waited out" "settle_waits_out '$popup_state_file' '$popup_state'"
 done
 echo open >"$hints_state"
-check "a screen that never settles is waited on for a bounded time" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.3) -ge 300 ]] && { timeout '$test_wait_secs' env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.1 '$sess_voxcmd' _settle; [[ \$? == 1 ]]; }"
+check "a screen that never settles is waited on for a bounded time" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.3) -ge 300 ]] && { timeout '$test_wait_secs' env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.1 '$sess_voxcmd' internal settle; [[ \$? == 1 ]]; }"
 rm -f "$hints_state"
-check "no bar to ask counts as settled" "env XDG_CONFIG_HOME='$root/no-bar' VOXCMD_APP_SETTLE_SECS=0 '$sess_voxcmd' _settle"
+check "no bar to ask counts as settled" "env XDG_CONFIG_HOME='$root/no-bar' VOXCMD_APP_SETTLE_SECS=0 '$sess_voxcmd' internal settle"
 
 # In a session the bar is asked after the turn's action and before the microphone opens again.
 sess_run alpha "done"
@@ -539,13 +542,13 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/debug.log"
 # starts dies before its trap is set, and one handing over to a successor that is starting leaves the session to it.
 sess_start HOLD
 owner_is_listening
-pkill -TERM -f "$sess_voxcmd _watch"
+pkill -TERM -f "$sess_real_voxcmd _watch"
 sess_wait
 check "a killed listener ends the session" "session_gone"
 # SIGKILL runs no trap, so the file stays, but the owner check reads it as no session.
 sess_start HOLD
 owner_is_listening
-pkill -KILL -f "$sess_voxcmd _watch"
+pkill -KILL -f "$sess_real_voxcmd _watch"
 sess_wait
 check "a SIGKILLed listener leaves its file behind" "! session_gone"
 printf '%s\n' "tap hello" >"$sess_turns"
@@ -599,7 +602,7 @@ detector_starts_without_session_lock() {
   holder=$!
   wait_for_path "$root/holder-ready"
   env SANDBOX_VOXTYPE_TURNS="$sess_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$sess_config" \
-    VOXCMD_DEBUG=1 "$sess_voxcmd" _watch session_turn - 0 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=7 >/dev/null 2>&1 &
+    VOXCMD_DEBUG=1 "$sess_voxcmd" internal watch session_turn - 0 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=7 >/dev/null 2>&1 &
   watcher=$!
   # Logged while the lock is still held here: a watcher that waited for it would log only after the release.
   log_has_soon 'no_speech_secs=7$' && status=0
@@ -670,7 +673,7 @@ check "rapid mode routes each turn as a command until 'done'" "session_gone && [
 sess_start HOLD
 owner_is_listening
 check "rapid mode's session names the mode, its exit hint and an empty stack" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"rapid\",\"Rapid mode\",\"say done to stop\",[]]' ]]"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 for word in "done" "Done." "that's all" "I'm done" "stop rapid mode" "Okay, quit rapid mode." "done with rapid mode" "rapid mode off" "turn off rapid fire mode"; do
   sess_run "tap alpha" "$word" "tap gamma"
@@ -744,19 +747,19 @@ check "and runs its ended hook once" "log_has_soon '^ended-hook' && [[ \$(grep -
 sess_start "start testing" HOLD
 hold_in 'test rapid' 2
 check "the session file names the mode on top and the one underneath" "mode_is 'test rapid' && [[ \$(jq -r '[.exit_hint, .stack[0].label] | join(\"|\")' '$session_json') == 'say done to stop (back to Rapid mode)|Rapid mode' ]]"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 check "ending the session ends every mode in it, running each one's hook" "session_gone && log_has_soon '^ended-hook' && toast_has 'Rapid mode ended ended by request'"
 sess_start "rapid mode" HOLD
 hold_in 'rapid ' 2
 check "saying the mode that is open again changes nothing" "mode_is 'rapid '"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 sess_start "tap alpha" HOLD
 hold_in 'rapid ' 2
-sess_voxcmd_env rapid
+sess_voxcmd_env session rapid
 check "a key or terminal command during a session does not open another mode" "mode_is 'rapid ' && toast_has 'A voice session is already open'"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 
 # Click mode over rapid mode: switch phrases are never clicked, and a mode already underneath is returned to.
@@ -765,12 +768,12 @@ check "'rapid mode' in click mode goes back to rapid mode, clicking nothing" "se
 sess_start "click mode" "type mode" HOLD
 hold_in 'type rapid/click' 3
 check "'type mode' in click mode opens type mode over it, clicking nothing" "mode_is 'type rapid/click' && no_clicks"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 sess_start "click mode" "done" HOLD
 hold_in 'rapid ' 3
 check "click mode's own 'done' returns to rapid mode" "mode_is 'rapid '"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 sess_run "click mode" "stop rapid mode" "tap alpha"
 check "'stop rapid mode' in click mode leaves both" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
@@ -783,12 +786,12 @@ check "plain 'start typing' in click mode stays a click turn, not a switch to ty
 sess_start "cortana start typing" HOLD
 hold_in 'type click' 2
 check "'cortana start typing' in click mode switches to type mode, clicking nothing" "mode_is 'type click' && no_clicks"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 sess_start "rapid mode" HOLD
 hold_in 'rapid click' 2
 check "'rapid mode' in click mode opens rapid mode over it, clicking nothing" "mode_is 'rapid click' && no_clicks"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 sess_phrase="rapid mode"
 
@@ -811,7 +814,7 @@ wtype_is() { [[ $(grep '^wtype ' "$log") == "$(printf '%s\n' "$@")" ]]; }
 # wake_heard <transcript> [recording]: what the confirmation's Whisper heard in a clip cut during that recording (by
 # default the one now under way, as voxcmd-wake names it). It runs in the foreground, as the listener's confirmation
 # does, so whatever it ends has been ended once it returns.
-wake_heard() { SANDBOX_TRANSCRIBE_TEXT="$1" sess_voxcmd_env _wake-confirm /dev/stdin "${2:-$(recording_now)}" </dev/null; }
+wake_heard() { SANDBOX_TRANSCRIBE_TEXT="$1" sess_voxcmd_env internal wake-confirm /dev/stdin "${2:-$(recording_now)}" </dev/null; }
 # Read under the session lock: a listen holds it from the recording's start until its watcher is the owner, and
 # hold_in alone can pass before that, on the watcher before it, which saw a recording of its own.
 recording_now() {
@@ -1020,7 +1023,7 @@ wake_heard "Cortana, stop." "$earlier_recording"
 check "a stop heard in an earlier type mode's recording leaves the new one running" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log' && grep -q 'heard in an earlier recording' '$debug_log'"
 wake_heard "Cortana cancel" "$(jq -r '"\(.frame_id):1:1"' "$session_json")"
 check "so does a cancel heard in an earlier recording of the same type mode" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log' && ! jq -e .ending '$session_json' >/dev/null"
-SANDBOX_TRANSCRIBE_TEXT="Cortana, stop." sess_voxcmd_env _wake-confirm /dev/stdin </dev/null
+SANDBOX_TRANSCRIBE_TEXT="Cortana, stop." sess_voxcmd_env internal wake-confirm /dev/stdin </dev/null
 check "and a confirmation that names no recording ends none" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log'"
 wake_heard "Cortana, stop."
 sess_wait
@@ -1082,7 +1085,7 @@ sess_start HOLD
 owner_is_listening
 wake_heard "Cortana, stop."
 check "a mode that is not listened through is never ended by the wake listener" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log'"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 sess_start "type mode" "UNTIL_STOP Stopped words." "tap beta"
 hold_in 'type rapid' 2
@@ -1238,7 +1241,7 @@ check "the ended hook takes the session lock instead of assuming the caller's" "
 wait "$lock_holder"
 log_has_soon '^ended-hook'
 rm -f "$root/hook-gate" "$root/hook-go"
-sess_voxcmd_env end-session
+sess_voxcmd_env session end
 sess_wait
 hooks_done
 sess_phrase="type mode"
@@ -1254,7 +1257,7 @@ sess_phrase="rapid mode"
 rm -f "$voxtype_release"
 sess_start "start testing" "GATED tap alpha" "done"
 record_starts_reach 2
-sess_voxcmd_env "stop testing"
+sess_voxcmd_env run "stop testing"
 : >"$voxtype_release"
 sess_wait
 check "a transcript heard before the mode changed is told so and never run" "session_gone && ! grep -q '^tap alpha' '$log' && toast_has 'The mode changed, say it again'"

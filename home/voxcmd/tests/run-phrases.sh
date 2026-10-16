@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Routes every phrase in phrases.tsv with `voxcmd --dry-run` inside the sandbox and fails when one lands somewhere
+# Routes every phrase in phrases.tsv with `voxcmd explain` inside the sandbox and fails when one lands somewhere
 # other than its expected column: "Integration/action" for a single option that runs, "picker", "none" or "builtin";
 # for a phrase of several steps, those per step joined by " > ", or "refused".
 # The fixtures (phrase-fixtures.sh, plus a Firefox profile's tabs and history) stand in for the desktop, so the result
@@ -25,7 +25,7 @@ fi
 # printing would die of SIGPIPE, and under pipefail that fails the job, which `wait -n` below turns into the whole
 # script exiting.
 route_of() {
-  voxcmd --dry-run "$1" 2>/dev/null | awk '
+  voxcmd explain "$1" 2>/dev/null | awk '
     function add(route) { routes = routes (routes == "" ? "" : " > ") route; found = 1 }
     /^step [0-9]+ of [0-9]+$/ { found = 0; next }
     /^result: +refused/ { refused = 1 }

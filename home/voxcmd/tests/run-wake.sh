@@ -97,7 +97,7 @@ status=0
 voxcmd wake sideways 2>/dev/null || status=$?
 check "an unknown argument is a usage error" 2 "$status"
 
-# ---- voxcmd _wake-confirm: a trigger's audio, transcribed by a fake `voxtype transcribe` -------------------------------
+# ---- voxcmd internal wake-confirm: a trigger's audio, transcribed by a fake `voxtype transcribe` -------------------------------
 # It prints what the real `voxtype -q transcribe` does (captured on a recorded take): progress lines on stdout naming
 # the file, then a blank line and the transcript ($FAKE_TRANSCRIPT); FAKE_TRANSCRIBE=nospeech, fail or hang act out VAD
 # finding nothing, an error and a stuck GPU. Without -q the real one would also log INFO lines, so the stub refuses to
@@ -136,12 +136,12 @@ wav="$SANDBOX_DIR/trigger.wav"
 python3 -I -c 'import sys, wave
 with wave.open(sys.argv[1], "wb") as w:
     w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(bytes(64000))' "$wav"
-# confirm <transcript> [voxcmd args...]: "<exit> <output>" of `voxcmd _wake-confirm` on the WAV, as stdin like voxcmd-wake
+# confirm <transcript> [voxcmd args...]: "<exit> <output>" of `voxcmd internal wake-confirm` on the WAV, as stdin like voxcmd-wake
 # passes it.
 confirm() {
   local transcript="$1" output code=0
   shift
-  output=$(PATH="$transcribe_dir:$voxtype_package_bin:$PATH" FAKE_TRANSCRIPT="$transcript" voxcmd _wake-confirm "${@:-/dev/stdin}" <"$wav") || code=$?
+  output=$(PATH="$transcribe_dir:$voxtype_package_bin:$PATH" FAKE_TRANSCRIPT="$transcript" voxcmd internal wake-confirm "${@:-/dev/stdin}" <"$wav") || code=$?
   printf '%s %s' "$code" "$output"
 }
 
@@ -177,7 +177,7 @@ check "no speech is not" "1 not_wake" "$(FAKE_TRANSCRIBE=nospeech confirm "")"
 check "the file name in voxtype's progress is not heard" "1 not_wake" "$(cp "$wav" "$SANDBOX_DIR/cortana.wav" && confirm "hello" "$SANDBOX_DIR/cortana.wav")"
 check "a failed transcription is a failure" "2 failed" "$(FAKE_TRANSCRIBE=fail confirm "")"
 status=0
-PATH="$transcribe_dir:$voxtype_package_bin:$PATH" voxcmd _wake-confirm </dev/null >/dev/null || status=$?
+PATH="$transcribe_dir:$voxtype_package_bin:$PATH" voxcmd internal wake-confirm </dev/null >/dev/null || status=$?
 check "no file is a failure" 2 "$status"
 started=$(date +%s)
 check "a stuck transcription times out as a failure" "2 failed" "$(VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS=1 FAKE_TRANSCRIBE=hang confirm "")"
@@ -192,13 +192,13 @@ printf '#!/bin/sh\nexit 1\n' >"$failing_awk_dir/awk"
 chmod +x "$failing_awk_dir/awk"
 check "an error in voxcmd itself is a failure, not a verdict" "2" "$(
   code=0
-  PATH="$failing_awk_dir:$transcribe_dir:$voxtype_package_bin:$PATH" FAKE_TRANSCRIPT="Cortana" voxcmd _wake-confirm /dev/stdin <"$wav" >/dev/null || code=$?
+  PATH="$failing_awk_dir:$transcribe_dir:$voxtype_package_bin:$PATH" FAKE_TRANSCRIPT="Cortana" voxcmd internal wake-confirm /dev/stdin <"$wav" >/dev/null || code=$?
   echo "$code"
 )"
 reset_calls
 # Every directory holding one, not just the package's: a stowed voxtype puts it in ~/.local/bin too.
 no_prompt_path=$(printf '%s' "$PATH" | tr ':' '\n' | while IFS= read -r dir; do [ -x "$dir/voxtype-prompt" ] || printf '%s\n' "$dir"; done | paste -sd:)
-check "without voxtype-prompt it still transcribes, without a prompt" "wake" "$(PATH="$transcribe_dir:$no_prompt_path" FAKE_TRANSCRIPT=Cortana voxcmd _wake-confirm /dev/stdin <"$wav")"
+check "without voxtype-prompt it still transcribes, without a prompt" "wake" "$(PATH="$transcribe_dir:$no_prompt_path" FAKE_TRANSCRIPT=Cortana voxcmd internal wake-confirm /dev/stdin <"$wav")"
 check "and passes none" 1 "$(calls | grep -c '^voxtype prompt: $')"
 debug_log="$XDG_RUNTIME_DIR/voxcmd/debug.log"
 rm -f "$debug_log"

@@ -53,7 +53,7 @@ write_cache() {
 # say <phrase>: runs it and leaves the stub calls in $calls.
 say() {
   : >"$SANDBOX_DIR/calls.log"
-  voxcmd "$1" >/dev/null 2>&1 || true
+  voxcmd run "$1" >/dev/null 2>&1 || true
   calls=$(cat "$SANDBOX_DIR/calls.log")
 }
 

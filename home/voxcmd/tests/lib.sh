@@ -68,6 +68,14 @@ stub_calls_done() { ! pgrep -f -- "^/bin/sh $SANDBOX_DIR/bin/" >/dev/null; }
 watchers_gone() { logged_processes_gone '.* listen: recording started, watcher \([0-9]*\) .*'; }
 ended_hooks_gone() { logged_processes_gone '.* session: ended hook \([0-9]*\) runs$'; }
 
+# link_voxcmd_shim <package copy>: the new CLI for a copied package, whose stubbed siblings sit beside its own bash voxcmd.
+# A suite then runs <copy>/tests/bin/voxcmd, which execs that copy's voxcmd by its real path. Only VOXCMD_BIN=bash exists
+# so far (sandbox.sh refuses the rest).
+link_voxcmd_shim() {
+  mkdir -p "$1/tests/bin"
+  ln -sf "$(dirname "${BASH_SOURCE[0]}")/bin/voxcmd" "$1/tests/bin/voxcmd"
+}
+
 root=$(mktemp -d)
 trap 'rm -rf "$root"' EXIT
 export XDG_RUNTIME_DIR=$root/run

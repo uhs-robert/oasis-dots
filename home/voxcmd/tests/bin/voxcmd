@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# The new voxcmd CLI on top of the bash voxcmd, until the Rust binary replaces it (voxcmd-port 3.6). The suites call only
+# the new forms; this maps each to the old one and execs the bash voxcmd by its real path, so it still finds its siblings.
+# It sits at <package>/tests/bin, and a copied package (a suite's stubbed siblings) links it at the same place.
+set -euo pipefail
+
+# Spelled without ".." so the paths the bash voxcmd logs and re-execs are the ones the suites match on.
+bin_dir=${0%/tests/bin/voxcmd}/.local/bin
+voxcmd=$bin_dir/voxcmd
+
+fail() {
+  echo "$1" >&2
+  exit 2
+}
+not_in_bash() { fail "shim: not in the bash voxcmd"; }
+usage() { fail "usage: voxcmd run|explain|reply|listen|stop|help|wake|session|ask|timer|integrations|log|internal ..."; }
+
+for arg; do
+  [ "$arg" != -- ] || break
+  [ "$arg" != --json ] || not_in_bash
+done
+[ "$#" -gt 0 ] || usage
+subcommand=$1
+shift
+case "$subcommand" in
+run) exec "$voxcmd" "$@" ;;
+explain)
+  case "${1-}" in
+  # The click trace of the focused window has no spelling in the new CLI yet: "--window focused" stands for it.
+  --window)
+    [ "$#" -ge 3 ] && [ "$3" = click ] || usage
+    window=$2
+    shift 3
+    if [ "$window" = focused ]; then exec "$voxcmd" click-explain "$@"; fi
+    exec "$voxcmd" click-explain "$@" --window "$window"
+    ;;
+  --reply) shift && exec "$voxcmd" --dry-run --reply "$@" ;;
+  *) exec "$voxcmd" --dry-run "$@" ;;
+  esac
+  ;;
+reply)
+  if [ "${1-}" = --dry-run ]; then shift && exec "$voxcmd" --dry-run --reply "$@"; fi
+  exec "$voxcmd" --reply "$@"
+  ;;
+listen | stop | help | wake) exec "$voxcmd" "$subcommand" "$@" ;;
+session)
+  case "${1-}" in
+  rapid) shift && exec "$voxcmd" rapid "$@" ;;
+  end) shift && exec "$voxcmd" end-session "$@" ;;
+  *) usage ;;
+  esac
+  ;;
+ask)
+  case "${1-}" in
+  pick | confirm | hints) kind=$1 && shift && exec "$bin_dir/voxcmd-$kind" "$@" ;;
+  *) usage ;;
+  esac
+  ;;
+timer) if [ "${1-}" = ring ]; then shift && exec "$bin_dir/voxcmd-alarm" "$@"; else usage; fi ;;
+integrations)
+  case "${1-}" in
+  list) shift && exec "$voxcmd" list "$@" ;;
+  check | examples | schema) not_in_bash ;;
+  *) usage ;;
+  esac
+  ;;
+log)
+  case "${1-}" in
+  misses | errors) exec "$voxcmd" "$@" ;;
+  *) usage ;;
+  esac
+  ;;
+internal)
+  [ "$#" -gt 0 ] || usage
+  # The only internal name whose bash spelling differs from the new one's hyphens.
+  name=${1//cancel-owned-recording/cancel_owned_recording}
+  shift
+  exec "$voxcmd" "_$name" "$@"
+  ;;
+util) not_in_bash ;;
+*) usage ;;
+esac

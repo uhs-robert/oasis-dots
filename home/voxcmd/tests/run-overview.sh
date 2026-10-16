@@ -26,10 +26,11 @@ source "$here/lib.sh"
 
 ov_pkg=$root/ov-pkg
 ov_config=$root/config-ov
-ov_voxcmd=$ov_pkg/.local/bin/voxcmd
+ov_voxcmd=$ov_pkg/tests/bin/voxcmd
 ov_turns=$root/turns
 mkdir -p "$ov_pkg" "$ov_config/integrations.d" "$ov_config/replacements.d" "$XDG_RUNTIME_DIR/voxcmd" "$XDG_RUNTIME_DIR/voxtype"
 cp -r "$package/.local" "$ov_pkg/.local"
+link_voxcmd_shim "$ov_pkg"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$ov_pkg/.local/bin/voxcmd-autostop"
 for integration in apps keybinds overview rapid; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$ov_config/integrations.d/"
@@ -82,7 +83,7 @@ ov_run() {
   fi
   echo "$ov_state" >"$overview_state"
   env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$ov_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$ov_config" \
-    VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0 "$ov_voxcmd" "$@" >/dev/null 2>&1
+    VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0 "$ov_voxcmd" run "$@" >/dev/null 2>&1
   ov_wait
   wait
 }
@@ -259,7 +260,7 @@ echo open >"$overview_state"
 ) &
 closer=$!
 env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$ov_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$ov_config" \
-  VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0 "$ov_voxcmd" two >/dev/null 2>&1
+  VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0 "$ov_voxcmd" run two >/dev/null 2>&1
 ov_wait
 wait "$closer"
 check "closing the overview by key ends the session" "session_gone && [[ \$(acts | paste -sd,) == 'mark aaa2,mark aaa4' ]] && grep -q 'its screen closed' '$log'"
@@ -277,7 +278,7 @@ echo open >"$overview_state"
 ) &
 closer=$!
 env SANDBOX_SETSID_RUN=1 SANDBOX_VOXTYPE_TURNS="$ov_turns" SANDBOX_AUTOSTOP_SLEEP="$stub_sleep" VOXCMD_CONFIG_DIR="$ov_config" \
-  VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0 "$ov_voxcmd" two >/dev/null 2>&1
+  VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 SANDBOX_VOXTYPE_SPEAK_SECS=0 "$ov_voxcmd" run two >/dev/null 2>&1
 wait "$closer"
 wait_for_line 'session: rapid begins' "$debug_log"
 # A second listen would come from the watcher that heard "rapid mode", so once it is gone there can be none.
@@ -285,7 +286,7 @@ wait_until_gone "$(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*
 rm -f "$SANDBOX_DIR/voxtype-release"
 check "the mode the turn opened is the open session" "[[ \$(jq -r .kind '$session_json') == rapid ]]"
 check "with one listen of its own, not a second one on top, and no second listen attempt" "! grep -q 'another listen took over' '$debug_log' && [[ \$(grep -c '^voxtype record start' '$log') == 2 ]] && ! grep -q 'microphone could not be opened' '$log'"
-env VOXCMD_CONFIG_DIR="$ov_config" "$ov_voxcmd" end-session >/dev/null 2>&1
+env VOXCMD_CONFIG_DIR="$ov_config" "$ov_voxcmd" session end >/dev/null 2>&1
 ov_wait
 
 finish

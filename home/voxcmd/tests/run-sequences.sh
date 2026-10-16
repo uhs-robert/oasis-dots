@@ -30,10 +30,13 @@ source "$here/lib.sh"
 
 seq_pkg=$root/seq-pkg
 seq_config=$root/config-seq
-seq_bin=$seq_pkg/.local/bin/voxcmd
+# seq_bin is the new CLI, over this copy's bash voxcmd, which is the process name the tests look for.
+seq_bin=$seq_pkg/tests/bin/voxcmd
+seq_real_bin=$seq_pkg/.local/bin/voxcmd
 gate=$root/gate
 mkdir -p "$seq_pkg" "$seq_config/integrations.d" "$seq_config/replacements.d"
 cp -r "$package/.local" "$seq_pkg/.local"
+link_voxcmd_shim "$seq_pkg"
 for integration in apps calendar notifications answers rapid; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$seq_config/integrations.d/"
 done
@@ -105,9 +108,10 @@ declare -A actions=([secret]='echo "denied"; exit 1')
 STUB
 
 seq_env=()
-seq_voxcmd() {
+seq_voxcmd_cmd() {
   env VOXCMD_CONFIG_DIR="$seq_config" VOXCMD_APP_SETTLE_SECS=0 VOXCMD_DEBUG=1 "${seq_env[@]}" "$seq_bin" "$@" >/dev/null 2>&1
 }
+seq_voxcmd() { seq_voxcmd_cmd run "$@"; }
 # fresh: empties the logs and the state a test leaves behind.
 fresh() {
   mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
@@ -124,7 +128,7 @@ toasts() { grep -c "^notify-send .*$1" "$log"; }
 # once nothing the run started is left to log it.
 detached_toast_has() { wait_for_line "^setsid .*$1" "$log"; }
 no_detached_toast() { wait_until run_finished && ! grep -q "^setsid .*$1" "$log"; }
-run_finished() { ! pgrep -f -- "$seq_bin( |\$)" >/dev/null && stub_calls_done; }
+run_finished() { ! pgrep -f -- "$seq_real_bin( |\$)" >/dev/null && stub_calls_done; }
 polls_reach() { wait_for_count "$1" "$log" "$2"; }
 sequence_dir=$XDG_RUNTIME_DIR/voxcmd/sequences
 sequence_files() { ls "$sequence_dir"/*.json 2>/dev/null; }
@@ -138,7 +142,7 @@ check "each step that succeeds keeps its own toast" "[[ \$(toasts 'Seq: one') ==
 check "the sequence leaves no state behind" "[[ -z \$(sequence_files) ]] && ! ls '$XDG_RUNTIME_DIR'/voxcmd/discard.* >/dev/null 2>&1"
 fresh
 seq_status=0
-seq_stderr=$(env VOXCMD_CONFIG_DIR="$seq_config" VOXCMD_APP_SETTLE_SECS=0 "$seq_bin" "one and then two" 2>&1 >/dev/null) || seq_status=$?
+seq_stderr=$(env VOXCMD_CONFIG_DIR="$seq_config" VOXCMD_APP_SETTLE_SECS=0 "$seq_bin" run "one and then two" 2>&1 >/dev/null) || seq_status=$?
 check "run from a terminal, a sequence that ran exits 0 and its cleanup trap raises no error" "[[ $seq_status == 0 && \$(ran) == one,two ]] && ! grep -q 'unbound variable' <<<\"\$seq_stderr\""
 fresh
 seq_voxcmd "One, then two."
@@ -186,7 +190,7 @@ fresh
 seq_voxcmd "gate and then two" &
 seq_pid=$!
 polls_reach '^poll' 3
-seq_voxcmd stop
+seq_voxcmd_cmd stop
 wait "$seq_pid"
 check "Stop Voice during a wait ends the sequence without running the rest" "[[ \$(ran) == gate ]]"
 check "and without a toast" "[[ \$(toasts 'stopped at step') == 0 ]] && no_detached_toast 'stopped at step'"
@@ -199,12 +203,12 @@ seq_voxcmd "gate and then three" &
 second_pid=$!
 wait_until sequences_running 2
 polls_reach '^poll' 6
-seq_voxcmd stop
+seq_voxcmd_cmd stop
 wait "$first_pid" "$second_pid"
 check "Stop Voice ends every running sequence, not only the newest" "[[ \$(ran) == gate,gate ]] && [[ -z \$(sequence_files) ]]"
 mkdir -p "$sequence_dir"
 echo '{"pid": 999999, "start": "1"}' >"$sequence_dir/999999.json"
-seq_voxcmd stop
+seq_voxcmd_cmd stop
 check "and a file left by a dead sequence is cleaned up" "[[ -z \$(sequence_files) ]]"
 
 section "stopping"
@@ -310,7 +314,7 @@ section "a confirmed keybind"
 keybinds_config=$root/config-keybinds
 mkdir -p "$keybinds_config/integrations.d"
 cp "$package/.config/voxcmd/integrations.d/keybinds.sh" "$keybinds_config/integrations.d/"
-keybind_voxcmd() { env VOXCMD_CONFIG_DIR="$keybinds_config" "$seq_bin" "$@" >/dev/null 2>&1; }
+keybind_voxcmd() { env VOXCMD_CONFIG_DIR="$keybinds_config" "$seq_bin" run "$@" >/dev/null 2>&1; }
 skips_power_prompt() { grep -q "call power run" "$log"; }
 runs_bind() { grep -qF "getregistry()[$1]" "$log"; }
 fresh
@@ -327,10 +331,10 @@ check "a bind voxcmd did not confirm runs unchanged" "! grep -q '^voxcmd-confirm
 section "dry run"
 fresh
 before=$(cat "$log")
-out=$(env VOXCMD_CONFIG_DIR="$seq_config" "$seq_bin" --dry-run "one and then gate and then take milk and then two" 2>&1)
+out=$(env VOXCMD_CONFIG_DIR="$seq_config" "$seq_bin" explain "one and then gate and then take milk and then two" 2>&1)
 check "a dry run prints the sequence header, each step, its wait and what a free-text action took" "grep -q '^sequence: *3 steps' <<<\"\$out\" && grep -q '^step 2 of 3' <<<\"\$out\" && grep -q '^waits for: .*poll' <<<\"\$out\" && grep -q 'free-text action takes the rest' <<<\"\$out\" && grep -q '^waits for: *nothing, it is the last step' <<<\"\$out\""
 check "and touches neither the log of calls nor anything else" "[[ -z \$(ran) && \$(cat '$log') == \"\$before\" ]] && [[ -z \$(sequence_files) ]]"
-out=$(env VOXCMD_CONFIG_DIR="$seq_config" "$seq_bin" --dry-run "rapid mode and then one" 2>&1)
+out=$(env VOXCMD_CONFIG_DIR="$seq_config" "$seq_bin" explain "rapid mode and then one" 2>&1)
 check "a refused phrase prints result: refused" "grep -q '^result: *refused' <<<\"\$out\""
 
 finish
