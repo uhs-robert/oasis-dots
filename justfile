@@ -50,27 +50,24 @@ stow-optional:
 _stow mode *pkgs:
     #!/usr/bin/env bash
     set -euo pipefail
-    DOTFILES_DIR="$PWD"
-    source lib/install/stow.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     stow_packages "-{{mode}}" {{pkgs}}
 
 # One-time fix for a systemd tree folded into the repo (before #812's follow-up); idempotent, pass --dry-run to only report
 migrate-systemd *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
-    DOTFILES_DIR="$PWD"
-    source lib/common/output.sh
-    source lib/install/stow.sh
-    source lib/install/migrate.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     migrate_systemd {{ARGS}}
 
 # Copy *.template.* defaults of the given packages into place when missing
 _seed *pkgs:
     #!/usr/bin/env bash
     set -euo pipefail
-    DOTFILES_DIR="$PWD"
-    source lib/common/output.sh
-    source lib/install/stow.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     seed_generated_defaults {{pkgs}}
 
 # Run full dotfiles install (packages, stow, services); pass flags like --minimal
@@ -126,8 +123,8 @@ sign-firefox-extension:
 greeter-keyring:
     #!/usr/bin/env bash
     set -euo pipefail
-    source lib/common/output.sh
-    source lib/install/greeter.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     enable_greetd_keyring_unlock
 
 # Install the signed voxcmd extension through a Firefox policy (needs sudo) and register its host, so one command sets everything up
@@ -135,8 +132,7 @@ firefox-extension:
     #!/usr/bin/env bash
     set -euo pipefail
     export DOTFILES_DIR="$PWD"
-    source lib/common/output.sh
-    source lib/install/voice.sh
+    source lib/install/load.sh
     register_firefox_host
     install_firefox_extension_policy
 
@@ -144,31 +140,24 @@ firefox-extension:
 firefox-host:
     #!/usr/bin/env bash
     set -euo pipefail
-    source lib/common/output.sh
-    source lib/install/voice.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     register_firefox_host
 
 # Opt in to an SSH server reachable only over Tailscale, key login only (needs sudo)
 ssh-server:
     #!/usr/bin/env bash
     set -euo pipefail
-    DOTFILES_DIR="$PWD"
-    source lib/common/output.sh
-    source lib/common/distro.sh
-    source lib/common/packages.sh
-    source lib/install/tailnet-ssh.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     setup_tailnet_ssh
 
 # Clone or link external repos into repos/ without a full install; pass --dev to use $GITHUB_DIR (default ~/Development)
 repos *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
-    DOTFILES_DIR="$PWD"
-    source lib/common/output.sh
-    source lib/common/distro.sh
-    source lib/common/packages.sh
-    source lib/install/repos.sh
-    source lib/install/dev-tools.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     OPT_DEV=0
     [[ " {{ARGS}} " == *" --dev "* ]] && OPT_DEV=1
     clone_repos
@@ -192,7 +181,8 @@ update-repos:
 greeter-sync *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
-    source lib/install/greeter.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     stage="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/greeter"
     args=("$@")
     from=""
@@ -212,7 +202,6 @@ greeter-sync *ARGS:
     echo "Staged greeter in $stage (skin: $skin)"
     if ((install)); then
       while read -r cmd; do echo "+ $cmd"; eval "$cmd"; done < <(greeter_install_cmds "$stage" "$PWD")
-      source lib/common/output.sh
       enable_greetd_keyring_unlock
     else
       echo "Install with:"
@@ -223,7 +212,8 @@ greeter-sync *ARGS:
 greeter-preview:
     #!/usr/bin/env bash
     set -euo pipefail
-    source lib/install/greeter.sh
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
     stage="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/greeter"
     stage_greeter "$stage" "$PWD" >/dev/null
     env -u GREETD_SOCK -u QS_GREETER_STATE qs -p "$stage"

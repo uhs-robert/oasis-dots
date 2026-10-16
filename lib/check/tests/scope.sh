@@ -240,6 +240,22 @@ case_greeter_keyring() {
   expect_skipped firefox-policy qmllint luacheck check-scope
 }
 
+case_install_loader() {
+  start_case 'install library loader'
+  echo '# x' >>lib/install/fonts.sh
+  plan
+  expect_ran install-load shellcheck
+  expect_skipped firefox-policy greeter-keyring qmllint luacheck check-scope
+}
+
+case_install_loader_reached_through_earlier_arms() {
+  start_case 'install libraries claimed by earlier arms still reach the loader test'
+  plan_paths "$(printf '%s\n' lib/install/voice.sh lib/install/greeter.sh)"
+  expect_ran install-load firefox-policy greeter-keyring
+  plan_paths lib/common/greeter-files.sh
+  expect_ran install-load qmllint
+}
+
 case_paths_list() {
   start_case 'path list from stdin'
   plan_paths 'README.md'
@@ -279,7 +295,7 @@ case_skip_steps_with_changed() {
 }
 
 for case_fn in case_readme case_home_qml case_greeter_lua case_voxcmd_runner case_deleted_sourced_helper \
-  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring \
+  case_unmapped_path case_check_sh case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed; do
   report "$case_fn"
 done

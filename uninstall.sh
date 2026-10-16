@@ -3,9 +3,8 @@ set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "$DOTFILES_DIR/lib/common/output.sh"
-source "$DOTFILES_DIR/lib/common/distro.sh"
-source "$DOTFILES_DIR/lib/common/packages.sh"
+source "$DOTFILES_DIR/lib/install/load.sh"
+require_arch
 
 OPT_SYSTEM_FILES=1
 OPT_SERVICES=1

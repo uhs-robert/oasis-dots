@@ -3,22 +3,8 @@ set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source "$DOTFILES_DIR/lib/common/output.sh"
-source "$DOTFILES_DIR/lib/common/distro.sh"
-source "$DOTFILES_DIR/lib/common/packages.sh"
-source "$DOTFILES_DIR/lib/install/arch.sh"
-source "$DOTFILES_DIR/lib/install/rust.sh"
-source "$DOTFILES_DIR/lib/install/stow.sh"
-source "$DOTFILES_DIR/lib/install/migrate.sh"
-source "$DOTFILES_DIR/lib/install/dev-tools.sh"
-source "$DOTFILES_DIR/lib/install/system.sh"
-source "$DOTFILES_DIR/lib/install/hardware.sh"
-source "$DOTFILES_DIR/lib/install/voice.sh"
-source "$DOTFILES_DIR/lib/install/calendar.sh"
-source "$DOTFILES_DIR/lib/install/tailnet-ssh.sh"
-source "$DOTFILES_DIR/lib/install/greeter.sh"
-source "$DOTFILES_DIR/lib/install/repos.sh"
-source "$DOTFILES_DIR/lib/install/fonts.sh"
+source "$DOTFILES_DIR/lib/install/load.sh"
+require_arch
 
 OPT_AUR=1
 OPT_CARGO=1
@@ -67,7 +53,10 @@ parse_args() {
     --no-cargo) OPT_CARGO=0 ;;
     --no-system-files) OPT_SYSTEM_FILES=0 ;;
     --no-services) OPT_SERVICES=0 ;;
-    --dev) OPT_DEV=1 ;;
+    --dev)
+      # shellcheck disable=SC2034  # read by lib/install/repos.sh, which shellcheck cannot follow through load.sh's glob
+      OPT_DEV=1
+      ;;
     --server)
       OPT_SERVER=1
       OPT_CARGO=0
