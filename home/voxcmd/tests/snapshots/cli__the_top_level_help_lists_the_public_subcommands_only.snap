@@ -1,0 +1,25 @@
+---
+source: tests/cli.rs
+expression: help
+---
+Voice command router
+
+Usage: voxcmd <COMMAND>
+
+Commands:
+  run           Route a phrase ("and then" sequences included) and act on it
+  explain       Print the routing trace of a phrase without acting on it
+  reply         Answer the open picker or confirm card with a spoken phrase
+  listen        Start a listen turn
+  stop          End the session and cancel anything open or recording
+  session       Voice sessions
+  ask           Open a picker, confirm card or hints overlay and print the answer
+  wake          The wake-word listener
+  integrations  Inspect the integrations
+  help          Open the example-phrase picker
+  log           Read the logs of phrases and notifications
+  timer         Timer units
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
