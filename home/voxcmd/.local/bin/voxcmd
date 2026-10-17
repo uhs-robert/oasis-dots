@@ -3000,6 +3000,67 @@ stop_voice() {
   esac
 }
 
+# _legacy-dump: one JSON object per integration file, the settings and verbs load_integration reads, for the Rust port's
+# loader (home/voxcmd/src/config/legacy.rs), which caches it. Verbs come split as match_loaded_verbs splits them, and
+# hooks says which router-called functions the file defines. Goes in voxcmd-port 3.2 with this script.
+legacy_dump() {
+  local file
+  while IFS= read -r file; do
+    # A file that fails to load offers no verbs when routing either.
+    (
+      load_integration "$file" >/dev/null
+      legacy_dump_loaded "$file"
+    ) || true
+  done < <(integration_files)
+}
+
+legacy_dump_loaded() {
+  local file="$1" entry action pattern key hook surface_open=false
+  local -a verb_fields=() action_fields=() no_match_fields=() wait_fields=() hooks=()
+  # shellcheck disable=SC2031 # set by load_integration in the caller's subshell
+  for entry in "${integration_verbs[@]}"; do
+    read -r action pattern <<<"$entry"
+    verb_fields+=("$action" "$pattern")
+  done
+  for key in "${!integration_actions[@]}"; do action_fields+=("$key" "${integration_actions[$key]}"); done
+  for key in "${!integration_no_match_actions[@]}"; do no_match_fields+=("$key" "${integration_no_match_actions[$key]}"); done
+  for key in "${!integration_step_waits[@]}"; do wait_fields+=("$key" "${integration_step_waits[$key]}"); done
+  for hook in candidates help_choices pick_box session_rewrite session_ended session_handle_turn session_alive; do
+    if declare -F "$hook" >/dev/null; then hooks+=("$hook"); fi
+  done
+  # open_surface_file only runs the files whose definition starts a line.
+  if grep -q '^surface_open()' "$file" && declare -F surface_open >/dev/null; then surface_open=true; fi
+  # Lists go as positional arguments, each led by its length.
+  jq -n -c --arg file "$file" --arg name "$name" --arg confirm "$confirm" --arg fallback "$fallback" --arg silent "$silent" \
+    --arg target_match "$target_match" --arg help_action "$help_action" --arg action_labels "$action_labels" \
+    --arg pick_command "$pick_command" --arg private_labels "$private_labels" --argjson surface_open "$surface_open" \
+    'def lists: if length == 0 then [] else (.[0] | tonumber) as $n | [.[1:1 + $n]] + (.[1 + $n:] | lists) end;
+      def pairs: [range(0; length; 2) as $i | {key: .[$i], value: .[$i + 1]}];
+      $ARGS.positional | lists as [$verbs, $actions, $no_match, $waits, $hooks, $examples, $confirm_labels, $ignore_words,
+        $silent_actions, $force_prefixes, $miss_actions, $mode_actions, $mode_switch_actions, $free_text_actions]
+      | {file: $file, name: $name, fallback: ($fallback == "1"), confirm: ($confirm == "1"), silent: ($silent == "1"),
+          target_match: $target_match, action_labels: ($action_labels == "1"), private_labels: ($private_labels == "1"),
+          help_action: $help_action, pick_command: $pick_command,
+          verbs: ($verbs | pairs | map({action: .key, pattern: .value})),
+          actions: ($actions | pairs | from_entries), no_match_actions: ($no_match | pairs | from_entries),
+          step_waits: ($waits | pairs | from_entries), hooks: ($hooks + if $surface_open then ["surface_open"] else [] end),
+          examples: $examples, confirm_labels: $confirm_labels, match_ignore_words: $ignore_words,
+          silent_actions: $silent_actions, force_prefixes: $force_prefixes, session_miss_actions: $miss_actions,
+          mode_actions: $mode_actions, mode_switch_actions: $mode_switch_actions, free_text_actions: $free_text_actions}' \
+    --args -- \
+    "${#verb_fields[@]}" "${verb_fields[@]}" "${#action_fields[@]}" "${action_fields[@]}" \
+    "${#no_match_fields[@]}" "${no_match_fields[@]}" "${#wait_fields[@]}" "${wait_fields[@]}" \
+    "${#hooks[@]}" "${hooks[@]}" "${#integration_examples[@]}" "${integration_examples[@]}" \
+    "${#integration_confirm_labels[@]}" "${integration_confirm_labels[@]}" \
+    "${#integration_match_ignore_words[@]}" "${integration_match_ignore_words[@]}" \
+    "${#integration_silent_actions[@]}" "${integration_silent_actions[@]}" \
+    "${#integration_force_prefixes[@]}" "${integration_force_prefixes[@]}" \
+    "${#integration_session_miss_actions[@]}" "${integration_session_miss_actions[@]}" \
+    "${#integration_mode_actions[@]}" "${integration_mode_actions[@]}" \
+    "${#integration_mode_switch_actions[@]}" "${integration_mode_switch_actions[@]}" \
+    "${#integration_free_text_actions[@]}" "${integration_free_text_actions[@]}"
+}
+
 # The bar keeps only voxcmd's errors in its history (see notify), so this lists the failures behind recent commands.
 print_errors() {
   local count="${1:-10}" json
@@ -3056,6 +3117,7 @@ _watch)
 _cancel_owned_recording) cancel_owned_recording "$2" ;;
 _wake-confirm) wake_confirm "${2:-}" "${3:-}" ;;
 _chain-stop) dictation_chain_stop "${2:-}" "${3:-}" ;;
+_legacy-dump) legacy_dump ;;
 list)
   while IFS= read -r file; do
     (
