@@ -4,7 +4,9 @@
 //! Every stage appends to the `StepTrace` that `explain` prints. The LLM hook sits between the normal and the fallback
 //! tier in bash; it is 2.6 here, so a phrase that reaches it goes straight on to the fallback tier. Nothing here acts:
 //! running the chosen option is 2.3.
-use super::matcher::{IntegrationMatch, Match, Matcher, Outcome};
+use super::matcher::{Arg, IntegrationMatch, Match, Matcher, Outcome};
+use super::near_miss::NearMiss;
+use super::pattern::PlaceholderType;
 use super::resolve::{self, PendingMatch, Resolved, RouteOption};
 use super::trace::{
     ArgValue, Decision, DecisionKind, IntegrationOutcome, IntegrationTrace, NearMissTrace, OptionTrace, Rejection,
@@ -388,6 +390,42 @@ impl<'c> Router<'c> {
         }
     }
 
+    /// The arguments a TOML verb's near miss read from the phrase, so that its command gets its number as an exact match
+    /// would. A legacy verb keeps none: the bash near miss passed only the target.
+    fn near_miss_args(&self, index: usize, verb: usize, miss: &NearMiss) -> Vec<Arg> {
+        if self.config.integrations[index].format == Format::Bash {
+            return Vec::new();
+        }
+        let Ok(pattern) = self.matcher.pattern(index, verb) else {
+            return Vec::new();
+        };
+        let mut target_taken = false;
+        pattern
+            .placeholders
+            .iter()
+            .map(|placeholder| {
+                let words = match placeholder.kind {
+                    PlaceholderType::Text if miss.has_target && !target_taken => {
+                        target_taken = true;
+                        Some(miss.target.clone())
+                    }
+                    PlaceholderType::Number => miss
+                        .numbers
+                        .iter()
+                        .find(|(name, _)| *name == placeholder.name)
+                        .map(|(_, word)| word.clone()),
+                    _ => None,
+                };
+                Arg {
+                    name: placeholder.name.clone(),
+                    kind: placeholder.kind,
+                    value: words.clone(),
+                    words,
+                }
+            })
+            .collect()
+    }
+
     fn trace_match(&self, index: usize, tier: RouteTier, found: IntegrationMatch) -> (IntegrationTrace, Option<Match>) {
         let integration = &self.config.integrations[index];
         let rejections: Vec<Rejection> = found
@@ -500,7 +538,8 @@ impl<'c> Router<'c> {
             }
             for (verb, miss) in misses {
                 let action = &self.config.integrations[index].verbs[verb].action;
-                let mut one = PendingMatch::from_args(index, self.config, action, Vec::new());
+                let args = self.near_miss_args(index, verb, &miss);
+                let mut one = PendingMatch::from_args(index, self.config, action, args);
                 one.target = miss.target;
                 one.has_target = miss.has_target;
                 one.near_miss = Some(miss.leftover);

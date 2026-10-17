@@ -7,7 +7,7 @@
 use super::near_miss::{NearMiss, Readings};
 use super::pattern::{self, CompiledPattern, Placeholder, PlaceholderType};
 use crate::config::Config;
-use crate::config::schema::{Format, Tier};
+use crate::config::schema::{self, Format, Tier};
 use crate::text::normalize::normalize;
 use crate::text::speech::{self, Anchor, Clock};
 use regex::bytes::Regex;
@@ -192,9 +192,7 @@ impl<'c> Matcher<'c> {
                 continue;
             };
             let verb = &config.verbs[index];
-            if let Some(required) = &verb.requires
-                && !self.config.integrations.iter().any(|loaded| &loaded.stem == required)
-            {
+            if let Some(required) = self.unmet_requirement(verb) {
                 rejections.push(Rejection {
                     verb: index,
                     reason: format!("requires {required}"),
@@ -226,6 +224,18 @@ impl<'c> Matcher<'c> {
             outcome: Outcome::NoVerb,
             rejections,
         }
+    }
+
+    fn unmet_requirement<'v>(&self, verb: &'v schema::Verb) -> Option<&'v str> {
+        verb.requires
+            .as_deref()
+            .filter(|required| !self.config.integrations.iter().any(|loaded| loaded.stem == *required))
+    }
+
+    /// Whether an exact match of the verb would offer something: a TOML `yield` verb only hands the phrase on, and a
+    /// verb whose required integration is not loaded is rejected. Legacy verbs have neither.
+    fn offers_options(&self, format: Format, verb: &schema::Verb) -> bool {
+        !(format == Format::Toml && verb.action == "yield") && self.unmet_requirement(verb).is_none()
     }
 
     fn arguments(
@@ -280,10 +290,12 @@ impl<'c> Matcher<'c> {
         })
     }
 
-    /// Every verb of the integration that is a near miss for the text, in verb order, each with its best reading.
+    /// Every verb of the integration that is a near miss for the text and could offer an option, in verb order, each
+    /// with its best reading.
     pub fn near_misses(&self, integration: usize, text: &str) -> Vec<(usize, NearMiss)> {
         let config = &self.config.integrations[integration];
         (0..config.verbs.len())
+            .filter(|&index| self.offers_options(config.format, &config.verbs[index]))
             .filter_map(|index| {
                 let readings = self.verbs[integration][index]
                     .near_miss
@@ -454,5 +466,64 @@ mod tests {
         assert_eq!(actions, ["toggle_mute"]);
         // "{number}( percent)?" glues a group to the placeholder, which near-miss.awk could not read either.
         assert!(matcher.near_misses(0, "up volume").is_empty());
+    }
+
+    #[test]
+    fn a_yield_verb_is_no_near_miss() {
+        let mut config = fixtures(&["apps"]);
+        config.integrations[0].verbs.insert(
+            0,
+            schema::Verb {
+                action: "yield".into(),
+                pattern: "open the calendar".into(),
+                line: None,
+                requires: None,
+            },
+        );
+        let matcher = Matcher::new(&config);
+        let verb = 0;
+        assert_eq!(
+            matcher.first_match(0, "open the calendar").outcome,
+            Outcome::Yielded { verb }
+        );
+        let actions: Vec<&str> = matcher
+            .near_misses(0, "calendar open")
+            .iter()
+            .map(|(verb, _)| config.integrations[0].verbs[*verb].action.as_str())
+            .collect();
+        assert!(!actions.contains(&"yield"), "{actions:?}");
+    }
+
+    #[test]
+    fn a_verb_with_an_unloaded_requirement_is_no_near_miss() {
+        let mut config = fixtures(&["media"]);
+        let toggle = config.integrations[0]
+            .verbs
+            .iter()
+            .position(|v| v.action == "toggle_mute")
+            .unwrap();
+        config.integrations[0].verbs[toggle].requires = Some("firefox".into());
+        assert!(Matcher::new(&config).near_misses(0, "mute toggle").is_empty());
+        config.integrations[0].verbs[toggle].requires = Some("media".into());
+        assert_eq!(Matcher::new(&config).near_misses(0, "mute toggle").len(), 1);
+    }
+
+    #[test]
+    fn a_near_miss_reports_the_digits_each_number_took() {
+        let mut config = fixtures(&["media"]);
+        config.integrations[0].verbs.push(schema::Verb {
+            action: "pick".into(),
+            pattern: "(close|select) {number}".into(),
+            line: None,
+            requires: None,
+        });
+        let matcher = Matcher::new(&config);
+        let misses = matcher.near_misses(0, "10 close");
+        let pick = misses
+            .iter()
+            .find(|(verb, _)| config.integrations[0].verbs[*verb].action == "pick")
+            .expect("pick is a near miss");
+        assert_eq!(pick.1.numbers.len(), 1);
+        assert_eq!(pick.1.numbers[0].1, "10");
     }
 }
