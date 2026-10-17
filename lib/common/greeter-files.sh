@@ -9,7 +9,7 @@ GREETER_QS_FILES=(
   theme/Theme.qml
   theme/Style.qml
   theme/StyleSchema.js
-  theme/Paths.qml
+  core/Paths.qml
   theme/Watch.js
   theme/MarkerTokens.js
   theme/styles/

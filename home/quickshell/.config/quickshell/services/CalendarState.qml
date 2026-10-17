@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.theme
+import qs.core
 
 // Reads the calendar cache that calendar-sync writes; the bar never talks to the network. With no cache file
 // nothing is configured: no events, no timer, and every surface that reads this draws nothing.

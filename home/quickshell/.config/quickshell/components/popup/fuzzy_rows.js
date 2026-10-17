@@ -1,5 +1,5 @@
 .pragma library
-.import "../../picker/Fuzzy.js" as Fuzzy
+.import "../../core/Fuzzy.js" as Fuzzy
 
 function fuzzy_matches(rows, query) {
     const terms = Fuzzy.terms_of(query);

@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.components
 import qs.theme
-import "../Fuzzy.js" as Fuzzy
+import "../../core/Fuzzy.js" as Fuzzy
 
 // Fixed slots over a window of items: typing rebinds rows instead of recreating them.
 Column {

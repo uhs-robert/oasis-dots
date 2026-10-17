@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
-import qs.theme
+import qs.core
 
 // Power choices saved in power.json under the Hyprland state dir; power.sh turns them into hypridle, logind and power-profile settings.
 Singleton {

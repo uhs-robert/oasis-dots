@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.theme
+import qs.core
 
 // Keyboard, mouse and touchpad choices saved in input.json under the Hyprland state dir; config/input applies them.
 // Unsaved keys show Hyprland's live value, so a machine profile's choice reads correctly until it is overridden.
