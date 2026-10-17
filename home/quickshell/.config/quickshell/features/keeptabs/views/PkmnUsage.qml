@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
+import qs.features.keeptabs
 import qs.ui.frames
 import qs.features.clock
 import qs.styles.gameboy.widgets

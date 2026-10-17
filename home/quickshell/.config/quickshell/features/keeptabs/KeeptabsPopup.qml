@@ -45,7 +45,7 @@ Popup {
     onJump_first: root.go_first()
     onJump_last: root.go_last()
 
-    // Views a layout draws itself, as keeptabs/<prefix><View>.qml for Agents or Usage; any other view falls back
+    // Views a layout draws itself, as views/<prefix><View>.qml for Agents or Usage; any other view falls back
     // to the shared one. The blank lines keep each layout's line its own hunk, so style PRs that each flip one line
     // merge without conflicts.
     readonly property var layout_views: ({
@@ -85,7 +85,7 @@ Popup {
     function view_url(view, shared) {
         const own = root.layout_views[Style.keeptabs_layout];
         const file = own && own.views.includes(view) ? own.prefix + view : shared;
-        return Qt.resolvedUrl("keeptabs/" + file + ".qml");
+        return Qt.resolvedUrl("views/" + file + ".qml");
     }
 
     // The shared MenuFooter is hidden only while the visible tab's view draws its own key help.

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.styles.snes.widgets as Snes
-import qs.services
+import qs.features.keeptabs
 import qs.theme
 import qs.features.clock
 
