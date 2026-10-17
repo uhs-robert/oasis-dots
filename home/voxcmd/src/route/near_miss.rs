@@ -37,6 +37,8 @@ const NUMBER_SLOT_PREFIX: &str = "#number:";
 pub struct NearMiss {
     pub target: String,
     pub has_target: bool,
+    /// The text placeholder the target fills, which differs between a verb's top-level alternatives.
+    pub target_placeholder: Option<String>,
     /// Words of the phrase no slot took, the target's included.
     pub leftover: usize,
     /// The digit word each number placeholder took, by placeholder name; one that sat in an alternative the best
@@ -52,12 +54,12 @@ struct Unreadable;
 
 struct Reader<'p> {
     placeholders: &'p [Placeholder],
-    has_target: bool,
+    target_placeholder: Option<String>,
 }
 
 /// A verb as near-miss reads it: one reading per top-level alternative, each its slots and whether it has a target.
 /// None when the verb is unreadable. Independent of the phrase, so it is read once per verb.
-pub struct Readings(Option<Vec<(Vec<Slot>, bool)>>);
+pub struct Readings(Option<Vec<(Vec<Slot>, Option<String>)>>);
 
 impl Readings {
     pub fn unreadable() -> Self {
@@ -77,14 +79,14 @@ impl Readings {
         for branch in branches {
             let mut reader = Reader {
                 placeholders,
-                has_target: false,
+                target_placeholder: None,
             };
             // One unreadable reading drops the whole verb, readings that filled before it included.
             let Ok(slots) = reader.sequence(items(branch), 0) else {
                 return Self(None);
             };
             let slots: Vec<Slot> = slots.into_iter().filter(|slot| !is_filler_word_slot(slot)).collect();
-            readings.push((slots, reader.has_target));
+            readings.push((slots, reader.target_placeholder));
         }
         Self(Some(readings))
     }
@@ -96,8 +98,8 @@ impl Readings {
             return None;
         }
         let mut best: Option<NearMiss> = None;
-        for (slots, has_target) in self.0.as_ref()? {
-            if let Some(found) = Search::best(slots, &phrase, *has_target)
+        for (slots, target_placeholder) in self.0.as_ref()? {
+            if let Some(found) = Search::best(slots, &phrase, target_placeholder.as_deref())
                 && best.as_ref().is_none_or(|kept| found.leftover < kept.leftover)
             {
                 best = Some(found);
@@ -193,7 +195,9 @@ impl Reader<'_> {
                         return Err(Unreadable);
                     }
                     match self.placeholder(group) {
-                        Some(PlaceholderType::Text) if depth == 0 && !self.has_target => self.has_target = true,
+                        Some(PlaceholderType::Text) if depth == 0 && self.target_placeholder.is_none() => {
+                            self.target_placeholder = Some(self.placeholder_name(group));
+                        }
                         Some(PlaceholderType::Number) => {
                             slots.push(vec![vec![format!(
                                 "{NUMBER_SLOT_PREFIX}{}",
@@ -271,6 +275,7 @@ struct Search<'s> {
     slots: &'s [Slot],
     phrase: &'s [&'s str],
     has_target: bool,
+    target_placeholder: Option<&'s str>,
     used: Vec<bool>,
     /// Number placeholders and the phrase word each holds in the placement being tried.
     numbers: Vec<(String, usize)>,
@@ -278,14 +283,15 @@ struct Search<'s> {
 }
 
 impl<'s> Search<'s> {
-    fn best(slots: &'s [Slot], phrase: &'s [&'s str], has_target: bool) -> Option<NearMiss> {
+    fn best(slots: &'s [Slot], phrase: &'s [&'s str], target_placeholder: Option<&'s str>) -> Option<NearMiss> {
         if slots.is_empty() {
             return None;
         }
         let mut search = Search {
             slots,
             phrase,
-            has_target,
+            has_target: target_placeholder.is_some(),
+            target_placeholder,
             used: vec![false; phrase.len()],
             numbers: Vec::new(),
             best: None,
@@ -361,6 +367,7 @@ impl<'s> Search<'s> {
         self.best = Some(NearMiss {
             target,
             has_target: self.has_target,
+            target_placeholder: self.target_placeholder.map(str::to_string),
             leftover: unused.len(),
             numbers: self
                 .numbers
@@ -387,6 +394,25 @@ mod tests {
     }
 
     #[test]
+    fn the_target_names_the_placeholder_of_the_alternative_read() {
+        let two = vec![
+            Placeholder {
+                name: "foo".into(),
+                kind: PlaceholderType::Text,
+            },
+            Placeholder {
+                name: "bar".into(),
+                kind: PlaceholderType::Text,
+            },
+        ];
+        let source = "(?P<foo>x) open|close (?P<bar>x)";
+        let found = near_miss(source, &two, "thing close").unwrap();
+        assert_eq!(found.target_placeholder.as_deref(), Some("bar"));
+        let found = near_miss(source, &two, "thing open").unwrap();
+        assert_eq!(found.target_placeholder.as_deref(), Some("foo"));
+    }
+
+    #[test]
     fn words_in_another_order_are_a_near_miss() {
         let found = near_miss("(open|launch) (?P<t>x)", &target(), "firefox open").unwrap();
         assert_eq!(
@@ -394,6 +420,7 @@ mod tests {
             NearMiss {
                 target: "firefox".into(),
                 has_target: true,
+                target_placeholder: Some("t".into()),
                 leftover: 1,
                 numbers: Vec::new(),
             }
