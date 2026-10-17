@@ -226,7 +226,11 @@ extern "C" fn mark_stopped(_signal: libc::c_int) {
 }
 
 impl StopSignals {
+    /// Also unblocks the three, which a parent's blocked mask would otherwise keep from ever arriving; one already
+    /// pending is then marked at once.
     pub fn hold() -> Self {
+        // SAFETY: a zeroed sigset filled by sigemptyset and sigaddset.
+        let mut stop_set: libc::sigset_t = unsafe { std::mem::zeroed() };
         for signal in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
             // SAFETY: the handler only stores to an atomic; SA_RESTART resumes the call it interrupted.
             unsafe {
@@ -235,8 +239,11 @@ impl StopSignals {
                 action.sa_flags = libc::SA_RESTART;
                 libc::sigemptyset(&mut action.sa_mask);
                 libc::sigaction(signal, &action, std::ptr::null_mut());
+                libc::sigaddset(&mut stop_set, signal);
             }
         }
+        // SAFETY: changes only this thread's mask, the one the ask runs on.
+        unsafe { libc::pthread_sigmask(libc::SIG_UNBLOCK, &stop_set, std::ptr::null_mut()) };
         Self
     }
 
@@ -336,6 +343,15 @@ impl Asking {
             .arg(&self.fifo)
             .stdin(Stdio::null())
             .stdout(Stdio::piped());
+        // `timeout` moves to a process group of its own, which a stop signal to the ask's group misses. It is TERMed
+        // when the ask dies, even when the ask is killed outright, and passes that on to `head`.
+        // SAFETY: prctl is async-signal-safe and touches only the child.
+        unsafe {
+            command.pre_exec(|| {
+                libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+                Ok(())
+            });
+        }
         let Ok(mut reader) = command.spawn() else {
             return Ok(String::new());
         };
@@ -477,10 +493,7 @@ impl AskWith {
     pub fn from_env() -> Self {
         match std::env::var_os("VOXCMD_ASK_CMD").filter(|cmd| !cmd.is_empty()) {
             Some(ask_cmd) => Self::new(ask_cmd.into(), Vec::new()),
-            None => Self::new(
-                std::env::current_exe().unwrap_or_else(|_| "voxcmd".into()),
-                vec!["ask".into()],
-            ),
+            None => Self::new(this_binary(), vec!["ask".into()]),
         }
     }
 
@@ -497,9 +510,31 @@ impl AskWith {
 
     /// Runs an asker to its end, its group listed so that Stop Voice reaches it; stderr is passed on.
     fn run(mut command: Command) -> Option<String> {
-        let outcome = process::run_to_end(&mut command).ok()?;
+        let outcome = match process::run_ask_to_end(&mut command) {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                debug(&format!(
+                    "cannot run the asker {}: {error}",
+                    command.get_program().to_string_lossy()
+                ));
+                return None;
+            }
+        };
         eprint!("{}", outcome.stderr);
         (outcome.code() == Some(0)).then_some(outcome.stdout)
+    }
+}
+
+/// This binary's path. Once a rebuild has replaced the running binary, Linux names it `<path> (deleted)`; the path
+/// then holds the new build, which asks as well.
+fn this_binary() -> PathBuf {
+    std::env::current_exe().map_or_else(|_| "voxcmd".into(), without_deleted_mark)
+}
+
+fn without_deleted_mark(exe: PathBuf) -> PathBuf {
+    match exe.as_os_str().as_bytes().strip_suffix(b" (deleted)") {
+        Some(rebuilt) if !exe.exists() => PathBuf::from(OsStr::from_bytes(rebuilt)),
+        _ => exe,
     }
 }
 
@@ -640,6 +675,17 @@ pub(crate) mod tests {
             AskWith::new(junk, Vec::new()).pick(&PickWith::Picker, "l", "[]", false),
             None
         );
+    }
+
+    #[test]
+    fn a_rebuilt_binary_is_asked_by_its_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let rebuilt = dir.path().join("voxcmd");
+        let deleted = dir.path().join("voxcmd (deleted)");
+        assert_eq!(without_deleted_mark(deleted.clone()), rebuilt);
+        std::fs::write(&deleted, "").unwrap();
+        assert_eq!(without_deleted_mark(deleted.clone()), deleted);
+        assert_eq!(without_deleted_mark(rebuilt.clone()), rebuilt);
     }
 
     #[test]
