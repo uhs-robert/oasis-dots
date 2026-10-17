@@ -1,6 +1,6 @@
 #!/bin/bash
 # Tests the pass records of `lib/check.sh`: which steps a run skips as passed for their inputs, and when it records a tree.
-# Runs in a scratch clone of this checkout whose check.sh steps only log their name, so no linter or suite runs.
+# Runs in a scratch clone of this checkout whose steps (lib/check/scopes.py) only log their name, so no linter or suite runs.
 set -u
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE CHECK_FULL CHECK_SKIP_STEPS CHECK_JOBS
 
@@ -21,9 +21,11 @@ cp -R "$repo_dir"/lib/common/. lib/common/
 cp -R "$repo_dir"/lib/install/. lib/install/
 # Each step logs its name, fails when listed in FAIL_STEPS, and appends to EDIT_FILE when it is EDIT_STEP, as an agent
 # editing while the check runs would.
-# shellcheck disable=SC2016 # expanded by check.sh, where the stub lands
-stub='  echo "$1" >>"$STEP_LOG"\n  [ "$1" != "${EDIT_STEP:-}" ] || echo edit >>"$EDIT_FILE"\n  case " ${FAIL_STEPS:-} " in *" $1 "*) return 1 ;; esac\n  return 0'
-sed -i "s/^step_body() {\$/&\\n$stub/" lib/check.sh
+cat >>lib/check/scopes.py <<'EOF'
+
+STUB = 'name=%s; echo "$name" >>"$STEP_LOG"; [ "$name" != "${EDIT_STEP:-}" ] || echo edit >>"$EDIT_FILE"; case " ${FAIL_STEPS:-} " in *" $name "*) exit 1 ;; esac'
+STEPS = [step._replace(command=STUB % step.name) for step in STEPS]
+EOF
 git add -A
 git commit -q --allow-empty -m 'scratch base' || exit 1
 git branch -q main-line
