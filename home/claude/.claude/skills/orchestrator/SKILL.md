@@ -12,7 +12,7 @@ arguments:
 
 # Orchestrator
 
-Act as the orchestrator, not the primary implementer.
+Act as the orchestrator: delegate all hands-on work.
 
 Target: `$target`
 
@@ -40,14 +40,14 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - Escalate only materially ambiguous product or architectural decisions.
 
 4. Delegate implementation and hands-on work using the cheapest capable model:
-   - trivial → fix directly
+   - Never do hands-on work yourself, however small: every edit, fix, validation run and app run or screenshot goes to an agent. Your part is planning, briefing, reviewing diffs and reports, the review and merge-gate scripts, PRs, and the owner.
    - small, localized, deterministic → Haiku
    - substantial, multi-file, ambiguous, architectural, or high-risk → Sonnet
    - if Haiku discovers unexpected complexity, escalate to Sonnet
    - if Sonnet fails after a corrected retry, or the task needs deep debugging or subtle correctness reasoning (concurrency, security, data integrity), escalate to Opus
    - Give exploratory agents (research, investigating an intermittent failure, a throwaway measurement) a time limit, 20 minutes by default, after which they report what they have.
    - When work spans layers (e.g. a UI and a backend), agree the hand-off format first (an id format, an API call, a JSON shape), then run one implementer per layer in parallel.
-   - Delegate hands-on verification too: never load a skill that runs, drives or screenshots the app yourself. Brief an agent with the branch, the surfaces to check and what counts as a failure, then review its report and screenshots.
+   - For hands-on verification (a skill that runs, drives or screenshots the app), brief the agent with the branch, the surfaces to check and what counts as a failure, then review its report and screenshots.
 
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements.
    - Tell it to run validation in the foreground with a long timeout, never in the background: a background run hands back early and pings the orchestrator on every tick while it waits.
@@ -74,14 +74,13 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
 8. Evaluate every material review finding yourself. Classify it as valid, partially valid, invalid, or out of scope. Do not blindly apply reviewer suggestions.
 
 9. Resolve valid findings using the same delegation policy:
-   - trivial → directly
    - small → Haiku
    - substantial → Sonnet
    - Sonnet fails after a corrected retry, or needs subtle correctness reasoning → Opus
 
    Re-run the external review (Codex, or the Opus fallback) only if remediation materially changes the implementation.
 
-10. Final validation:
+10. Final validation, run by an agent and confirmed from its report:
     - relevant tests/checks pass
     - diff and git status are clean
     - no unrelated changes
@@ -99,5 +98,5 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
     - validation performed
     - noteworthy review findings and dispositions
     - remaining risks
-    - before saying it is ready for human review, run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` and resolve any thread or Codex problem it reports (answer and resolve the threads, or fix); only a passing check makes it ready
+    - before saying it is ready for human review, run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` and resolve any thread or Codex problem it reports (answer and resolve the threads, or have an agent fix the code); only a passing check makes it ready
     - whether it is ready for human review
