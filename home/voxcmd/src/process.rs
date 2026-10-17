@@ -4,7 +4,8 @@
 //! The one place that spawns a hook or an action. Either is `bash -c` and may start children of its own; killing only
 //! bash would leave them running (and holding the pipes open), so each command leads a process group of its own. A
 //! timeout kills the group, and so does SIGINT or SIGTERM to voxcmd (Stop Voice must reach a running action), which also
-//! removes the files listed with `RemovedOnSignal`.
+//! removes the files listed with `RemovedOnSignal`. An ask is the exception: a stop signal TERMs it so it can take its
+//! question down, and kills it only if it is still there after `STOP_GRACE`.
 use std::ffi::CString;
 use std::io::Read;
 use std::os::unix::ffi::OsStrExt;
@@ -25,6 +26,19 @@ const DRAIN_GRACE: Duration = Duration::from_millis(200);
 
 /// How long after the group was killed the readers get to hand over their last bytes.
 const DRAIN_AFTER_KILL: Duration = Duration::from_millis(100);
+
+/// How long a stop signal lets an ask clean up (its pending pick, its directory, the bar's overlay) before it is
+/// killed. It ends sooner once every ask has exited.
+const STOP_GRACE: Duration = Duration::from_secs(2);
+
+/// How a command is ended when voxcmd is told to stop.
+#[derive(Clone, Copy, PartialEq)]
+enum OnStop {
+    /// A hook or an action: killed at once.
+    Kill,
+    /// An ask: TERM, then KILL after `STOP_GRACE`.
+    LetCleanUp,
+}
 
 #[derive(Debug)]
 pub struct Outcome {
@@ -58,22 +72,27 @@ impl Outcome {
 /// Runs the command with no stdin and both outputs captured. After `timeout` the command's process group is killed;
 /// so it is when the command has exited, so that children it left behind do not outlive the call.
 pub fn run_with_timeout(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
-    run(command, Some(timeout))
+    run(command, Some(timeout), OnStop::Kill)
 }
 
 /// `run_with_timeout` for an action, which has no deadline of its own (Stop Voice ends it). What it left running after
 /// it exited is left alone: an action may start an app, which must outlive it.
 pub fn run_to_end(command: &mut Command) -> std::io::Result<Outcome> {
-    run(command, None)
+    run(command, None, OnStop::Kill)
 }
 
-fn run(command: &mut Command, timeout: Option<Duration>) -> std::io::Result<Outcome> {
+/// `run_to_end` for an ask, which a stop signal gives time to take its question down (see `STOP_GRACE`).
+pub fn run_ask_to_end(command: &mut Command) -> std::io::Result<Outcome> {
+    run(command, None, OnStop::LetCleanUp)
+}
+
+fn run(command: &mut Command, timeout: Option<Duration>, on_stop: OnStop) -> std::io::Result<Outcome> {
     command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0);
-    let (mut child, _live) = spawn_listed(command)?;
+    let (mut child, _live) = spawn_listed(command, on_stop)?;
     let stdout = Drain::start(child.stdout.take());
     let stderr = Drain::start(child.stderr.take());
     let deadline = timeout.map(|timeout| Instant::now() + timeout);
@@ -186,7 +205,8 @@ fn kill_group(pid: u32) {
 const LIVE_SLOTS: usize = 32;
 const REMOVED_SLOTS: usize = 4;
 
-/// Process groups of the commands running now, 0 for a free slot.
+/// Process groups of the commands running now, 0 for a free slot; negated for an `OnStop::LetCleanUp` group, so that
+/// the handler never reads a group without how to end it.
 static LIVE_GROUPS: [AtomicI32; LIVE_SLOTS] = [const { AtomicI32::new(0) }; LIVE_SLOTS];
 /// Files to remove on a stop signal, null for a free slot.
 static REMOVED_ON_SIGNAL: [AtomicPtr<libc::c_char>; REMOVED_SLOTS] =
@@ -198,12 +218,15 @@ static PENDING_SIGNAL: AtomicI32 = AtomicI32::new(0);
 static HANDLERS: Once = Once::new();
 
 /// Spawns the command and lists its group, with no moment between the two at which a stop signal leaves it running.
-fn spawn_listed(command: &mut Command) -> std::io::Result<(Child, LiveGroup)> {
+fn spawn_listed(command: &mut Command, on_stop: OnStop) -> std::io::Result<(Child, LiveGroup)> {
     HANDLERS.call_once(install_handlers);
     // SeqCst throughout, paired with the handler's: it either sees this thread spawning, or this thread sees its signal.
     SPAWNING.fetch_add(1, Ordering::SeqCst);
     let spawned = command.spawn();
-    let live = spawned.as_ref().ok().map(|child| LiveGroup::register(child.id()));
+    let live = spawned
+        .as_ref()
+        .ok()
+        .map(|child| LiveGroup::register(child.id(), on_stop));
     if SPAWNING.fetch_sub(1, Ordering::SeqCst) == 1 {
         let signal = PENDING_SIGNAL.load(Ordering::SeqCst);
         if signal != 0 {
@@ -217,10 +240,11 @@ fn spawn_listed(command: &mut Command) -> std::io::Result<(Child, LiveGroup)> {
 struct LiveGroup(Option<usize>);
 
 impl LiveGroup {
-    fn register(pid: u32) -> Self {
+    fn register(pid: u32, on_stop: OnStop) -> Self {
         let Ok(group) = libc::pid_t::try_from(pid) else {
             return Self(None);
         };
+        let group = if on_stop == OnStop::LetCleanUp { -group } else { group };
         let slot = LIVE_GROUPS.iter().position(|slot| {
             slot.compare_exchange(0, group, Ordering::AcqRel, Ordering::Acquire)
                 .is_ok()
@@ -267,7 +291,8 @@ impl Drop for RemovedOnSignal {
 
 fn install_handlers() {
     for signal in [libc::SIGINT, libc::SIGTERM] {
-        // SAFETY: the handler only uses atomics and async-signal-safe calls (killpg, unlink, signal, raise).
+        // SAFETY: the handler only uses atomics and async-signal-safe calls (killpg, waitpid, nanosleep, unlink,
+        // signal, raise).
         unsafe {
             libc::signal(
                 signal,
@@ -285,15 +310,22 @@ extern "C" fn on_stop_signal(signal: libc::c_int) {
     }
 }
 
-/// Kills every listed group and removes every listed file, then lets the signal do what it would have done, so voxcmd
+/// Ends every listed group and removes every listed file, then lets the signal do what it would have done, so voxcmd
 /// still ends as the signal says. Runs in the handler, or on the thread that held the signal.
 fn end_on_signal(signal: libc::c_int) {
+    let mut asks_terminated = false;
     for slot in &LIVE_GROUPS {
-        let group = slot.load(Ordering::Acquire);
+        let listed = slot.load(Ordering::Acquire);
+        let (group, sent) = if listed < 0 {
+            (-listed, libc::SIGTERM)
+        } else {
+            (listed, libc::SIGKILL)
+        };
         // Each listed group leads a command voxcmd started, so it is never voxcmd's own or the session's.
         if group > 1 {
             // SAFETY: killpg only sends a signal.
-            unsafe { libc::killpg(group, libc::SIGKILL) };
+            unsafe { libc::killpg(group, sent) };
+            asks_terminated |= sent == libc::SIGTERM;
         }
     }
     for slot in &REMOVED_ON_SIGNAL {
@@ -303,10 +335,43 @@ fn end_on_signal(signal: libc::c_int) {
             unsafe { libc::unlink(path) };
         }
     }
+    if asks_terminated {
+        kill_asks_after_grace();
+    }
     // SAFETY: restoring the default action and raising again are async-signal-safe.
     unsafe {
         libc::signal(signal, libc::SIG_DFL);
         libc::raise(signal);
+    }
+}
+
+/// Waits up to `STOP_GRACE` for every TERMed ask to exit, then kills what is left of their groups: an ask stuck past
+/// it, or a child of one. Exited asks are reaped here, as voxcmd is about to end anyway.
+fn kill_asks_after_grace() {
+    const POLL_NANOS: libc::c_long = 10_000_000;
+    let polls = STOP_GRACE.as_nanos() / POLL_NANOS as u128;
+    for _ in 0..polls {
+        let any_asking = LIVE_GROUPS.iter().any(|slot| {
+            let leader = -slot.load(Ordering::Acquire);
+            // SAFETY: a non-blocking waitpid on a child of voxcmd; -1 means another thread reaped it already.
+            leader > 1 && unsafe { libc::waitpid(leader, std::ptr::null_mut(), libc::WNOHANG) } == 0
+        });
+        if !any_asking {
+            break;
+        }
+        let pause = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: POLL_NANOS,
+        };
+        // SAFETY: nanosleep is async-signal-safe; an early wake only shortens one poll.
+        unsafe { libc::nanosleep(&pause, std::ptr::null_mut()) };
+    }
+    for slot in &LIVE_GROUPS {
+        let group = -slot.load(Ordering::Acquire);
+        if group > 1 {
+            // SAFETY: killpg only sends a signal; a group that is gone is an ignored ESRCH.
+            unsafe { libc::killpg(group, libc::SIGKILL) };
+        }
     }
 }
 

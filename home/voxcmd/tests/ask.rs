@@ -398,3 +398,41 @@ fn replies_match_as_the_bash_reply_did() {
     let _ = waiter.kill();
     let _ = waiter.wait();
 }
+
+/// The command with a TERM already pending when it starts: blocked and raised in the child before its exec, which keeps
+/// both, so the ask sees it as soon as it holds its signals.
+fn with_term_pending(mut command: Command) -> Command {
+    use std::os::unix::process::CommandExt;
+    // SAFETY: sigprocmask and raise are async-signal-safe and touch only the child.
+    unsafe {
+        command.pre_exec(|| {
+            let mut term: libc::sigset_t = std::mem::zeroed();
+            libc::sigemptyset(&mut term);
+            libc::sigaddset(&mut term, libc::SIGTERM);
+            libc::sigprocmask(libc::SIG_BLOCK, &term, std::ptr::null_mut());
+            libc::raise(libc::SIGTERM);
+            Ok(())
+        });
+    }
+    command
+}
+
+#[test]
+fn a_stop_signal_during_setup_ends_the_ask_before_the_question_shows() {
+    let asks: [&[&str]; 3] = [
+        &["ask", "pick", "Which?", TWO],
+        &["ask", "confirm", "--verb", "close", "Close it?"],
+        &["ask", "hints", "Which one?", BOXES],
+    ];
+    for args in asks {
+        let bar = Bar::new();
+        let child = with_term_pending(bar.command(args, &[("GOLDEN_HOLD", "1")]))
+            .spawn()
+            .unwrap();
+        let (code, _, err) = finish(child);
+        assert_eq!(code, 1, "{args:?}: {err}");
+        assert_eq!(bar.calls(), "", "{args:?}: the question showed");
+        assert!(!bar.pending_pick().exists(), "{args:?}");
+        assert!(bar.left_behind().is_empty(), "{args:?}: left {:?}", bar.left_behind());
+    }
+}

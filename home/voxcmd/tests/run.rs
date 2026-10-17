@@ -756,6 +756,119 @@ fn a_stop_signal_mid_sequence_removes_its_record_and_discard_flag() {
     assert!(left.is_empty(), "{left:?}");
 }
 
+/// The bar's stubs from tests/ask.rs (tests/fixtures/ask) in this setup, holding every question open; what they were
+/// asked is copied into `work/dumps`.
+fn bar_holding_questions(setup: &Setup) -> Vec<(&'static str, String)> {
+    let scripts = setup.path().join("xdg/hypr/scripts");
+    let dumps = setup.path().join("work/dumps");
+    std::fs::create_dir_all(&scripts).unwrap();
+    std::fs::create_dir_all(&dumps).unwrap();
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/ask");
+    for name in ["qs-ipc", "qs-picker"] {
+        std::os::unix::fs::symlink(fixtures.join(name), scripts.join(name)).unwrap();
+    }
+    vec![
+        ("GOLDEN_HOLD", "1".to_string()),
+        ("GOLDEN_DUMPS", dumps.display().to_string()),
+    ]
+}
+
+/// The pid of the `timeout ... head -n 1 <fifo>` an ask in this setup reads its answer with.
+fn answer_reader(setup: &Setup) -> Option<i32> {
+    let runtime = setup.path().join("runtime").display().to_string();
+    std::fs::read_dir("/proc").ok()?.flatten().find_map(|entry| {
+        let pid: i32 = entry.file_name().to_str()?.parse().ok()?;
+        let cmdline = std::fs::read(entry.path().join("cmdline")).ok()?;
+        let cmdline = String::from_utf8_lossy(&cmdline);
+        (cmdline.starts_with("timeout\0") && cmdline.contains(&runtime)).then_some(pid)
+    })
+}
+
+/// `voxcmd run <phrase>` TERMed while its ask waits for an answer: voxcmd ends as TERM says, and the ask has cleaned
+/// up after itself. Returns what the bar was asked.
+fn term_run_while_asking(setup: &Setup, phrase: &str, envs: &[(&str, String)]) -> String {
+    use std::os::unix::process::ExitStatusExt;
+    let voxcmd = setup
+        .command(&["run", phrase], envs)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let reader = loop {
+        if let Some(pid) = answer_reader(setup) {
+            break pid;
+        }
+        assert!(std::time::Instant::now() < deadline, "the ask never waited");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    };
+    let pending = setup.path().join("runtime/voxcmd/pending-pick.json");
+    assert!(pending.exists());
+    // SAFETY: kill only sends a signal.
+    unsafe { libc::kill(voxcmd.id() as i32, libc::SIGTERM) };
+    let output = voxcmd.wait_with_output().unwrap();
+    assert_eq!(output.status.signal(), Some(libc_signal("TERM")));
+    assert!(!pending.exists(), "the pending pick stayed");
+    let ask_dirs: Vec<_> = std::fs::read_dir(setup.path().join("runtime"))
+        .unwrap()
+        .flatten()
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| name.starts_with("voxcmd-"))
+        .collect();
+    assert!(ask_dirs.is_empty(), "{ask_dirs:?}");
+    assert!(
+        gone_within(reader, std::time::Duration::from_secs(2)),
+        "the answer reader {reader} outlived the ask"
+    );
+    let dumps = setup.path().join("work/dumps");
+    let mut calls: Vec<_> = std::fs::read_dir(&dumps)
+        .unwrap()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "call"))
+        .collect();
+    calls.sort();
+    calls
+        .iter()
+        .map(|path| std::fs::read_to_string(path).unwrap())
+        .collect()
+}
+
+#[test]
+fn a_stop_signal_lets_the_open_ask_clean_up() {
+    let setup = Setup::new(INTEGRATION);
+    let envs = bar_holding_questions(&setup);
+    // As the bash voxcmd-pick, a stopped pick leaves closing the picker to the bar.
+    assert_eq!(term_run_while_asking(&setup, "do pick", &envs), "qs-picker choices\n");
+
+    let (setup, mut envs) = legacy_setup();
+    let file = setup.path().join("config/integrations.d/old.sh");
+    std::fs::write(
+        setup.path().join("dump.jsonl"),
+        PICK_DUMP.replace("FILE", &file.display().to_string()),
+    )
+    .unwrap();
+    let fake = setup.script(
+        "voxcmd-bash",
+        "case \"$2\" in\n\
+           candidates) printf '[{\"id\": \"w1\", \"label\": \"Thing One\"}, {\"id\": \"w2\", \"label\": \"Thing Two\"}]' ;;\n\
+           pick-boxes) echo /opt/voxcmd-hints\n\
+             printf '[{\"id\":\"0\",\"label\":\"One\",\"box\":[0,0,1,1]},{\"id\":\"1\",\"label\":\"Two\",\"box\":[2,2,1,1]}]\\n' ;;\n\
+         esac",
+    );
+    envs[0].1 = fake.display().to_string();
+    envs.extend(bar_holding_questions(&setup));
+    let calls = term_run_while_asking(&setup, "choose thing", &envs);
+    let fifo = regex::Regex::new(r"/voxcmd-hints\.[A-Za-z0-9]{6}/result").unwrap();
+    assert_eq!(
+        fifo.replace_all(&calls, "/X/result"),
+        format!(
+            "qs-ipc call clickhints open\nqs-ipc call clickhints dismiss {}/runtime/X/result\n",
+            setup.path().display()
+        )
+    );
+}
+
 fn libc_signal(name: &str) -> i32 {
     match name {
         "INT" => 2,

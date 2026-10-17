@@ -1501,7 +1501,7 @@ pending_pick() {
   pid=$(jq -r '.pid // empty' <<<"$state" 2>/dev/null) || return 1
   fifo=$(jq -r '.fifo // empty' <<<"$state" 2>/dev/null) || return 1
   [ -n "$pid" ] && [ -p "$fifo" ] || return 1
-  grep -qE 'voxcmd-(pick|confirm|hints)|(^|/)voxcmd(-rs)? ask (pick|confirm|hints)( |$)' \
+  grep -qE 'voxcmd-(pick|confirm|hints)|^([^ ]*/)?voxcmd(-rs)? ask (pick|confirm|hints)( |$)' \
     <<<"$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null)" || return 1
   printf '%s' "$state"
 }

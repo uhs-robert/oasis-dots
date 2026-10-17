@@ -204,6 +204,8 @@ fn ask(
     }) {
         return Ok(Err(error));
     }
+    // A signal during setup ends the ask before the question shows, as the bash trap did.
+    signals.check()?;
     if listen {
         let _ = std::fs::write(&listen_again, "");
         asking.start_reply_recording(signals)?;

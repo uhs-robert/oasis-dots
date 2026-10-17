@@ -98,7 +98,7 @@ pub fn normalize_expansions(map: &Value) -> Result<BTreeMap<String, Expansion>, 
             return Err(format!("expansion {key:?} is not an object"));
         }
         let choices = match &value["choices"] {
-            Value::Null => Vec::new(),
+            Value::Null | Value::Bool(false) => Vec::new(),
             list => normalize_choices(list)?,
         };
         if !choices.is_empty() {
@@ -130,13 +130,19 @@ fn jq_or<'a>(a: &'a Value, b: &'a Value) -> &'a Value {
     if jq_truthy(a) { a } else { b }
 }
 
-/// The choices and expansions to ask with, from the command line's JSON.
+/// The choices and expansions to ask with, from the command line's JSON. Empty expansions are none, as the bash
+/// `${3:-"{}"}` read them.
 pub fn prepare(
     choices_json: &str,
     expansions_json: &str,
 ) -> Result<(Vec<PickChoice>, BTreeMap<String, Expansion>), String> {
     let parse = |json: &str| serde_json::from_str::<Value>(json).map_err(|error| format!("not JSON: {error}"));
     let mut choices = normalize_choices(&parse(choices_json)?)?;
+    let expansions_json = if expansions_json.is_empty() {
+        "{}"
+    } else {
+        expansions_json
+    };
     let expansions = normalize_expansions(&parse(expansions_json)?)?;
     for choice in &mut choices {
         if choice.expand.as_ref().is_some_and(|key| !expansions.contains_key(key)) {
@@ -167,7 +173,7 @@ pub fn run(
     expansions_json: Option<&str>,
 ) -> Result<Option<String>, CliError> {
     let signals = StopSignals::hold();
-    let (choices, expansions) = prepare(choices_json, expansions_json.unwrap_or("{}"))
+    let (choices, expansions) = prepare(choices_json, expansions_json.unwrap_or_default())
         .map_err(|message| CliError::usage("ask pick", message))?;
     let mut asking = Asking::create("pick")?;
     let picked = ask(&mut asking, &signals, listen, label, &choices, &expansions);
@@ -242,6 +248,8 @@ fn ask(
     }) {
         return Ok(Err(error));
     }
+    // A signal during setup ends the ask before the question shows, as the bash trap did.
+    signals.check()?;
     if listen {
         asking.start_reply_recording(signals)?;
     }
@@ -319,7 +327,8 @@ mod tests {
     fn an_expand_naming_no_expansion_is_dropped_and_so_is_an_empty_expansion() {
         let (choices, expansions) = prepare(
             r#"[{"id":"a","label":"A","expand":"more"},{"id":"b","label":"B","expand":"none"},{"id":"c","label":"C","expand":"empty"}]"#,
-            r#"{"more":{"title":"More","choices":["x","y"]},"empty":{"title":"E","choices":[]},"a\tb":{"choices":["z"]}}"#,
+            r#"{"more":{"title":"More","choices":["x","y"]},"empty":{"title":"E","choices":[]},"a\tb":{"choices":["z"]},
+                "off":{"choices":false}}"#,
         )
         .unwrap();
         assert_eq!(choices[0].expand.as_deref(), Some("more"));
@@ -327,6 +336,13 @@ mod tests {
         assert_eq!(choices[2].expand, None);
         assert_eq!(expansions.keys().collect::<Vec<_>>(), ["more"]);
         assert_eq!(labels(&expansions["more"].choices), ["1. x", "2. y"]);
+    }
+
+    #[test]
+    fn empty_expansions_are_none() {
+        let (choices, expansions) = prepare(r#"["a"]"#, "").unwrap();
+        assert_eq!(labels(&choices), ["1. a"]);
+        assert!(expansions.is_empty());
     }
 
     #[test]
