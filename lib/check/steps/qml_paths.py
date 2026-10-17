@@ -123,8 +123,7 @@ TABLES = [
     Table("ui/keys/ControllerBadge.qml", "../../styles/", "ui/keys/KeyHints.js", in_widgets(key_values("button"))),
     # Any style may set meter_art; today only nes does.
     Table("ui/gauges/Meter.qml", "../../styles/", "theme/styles/*.js", in_widgets(meter_art_values)),
-    # Every style has a pack in styles/<style>/sounds; an extra pack belongs to no style and stays in sounds/.
-    Table("services/ThemeAudio.qml", "../styles/", "theme/Style.qml", array_values("order")),
+    # A style's own pack is optional (its call carries a qs-path: optional marker); an extra pack must exist.
     Table("services/ThemeAudio.qml", "../sounds/", "services/ThemeAudio.qml", extra_pack_names),
     Table("services/WeatherState.qml", "../assets/weather/", "services/WeatherState.qml", weather_slugs),
     Table("lock/skins/goldeneye/GoldeneyeAudio.qml", "fx/", "lock/skins/goldeneye/GoldeneyeAudio.qml", array_values("shipped")),

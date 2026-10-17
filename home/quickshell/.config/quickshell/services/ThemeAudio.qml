@@ -86,7 +86,8 @@ Singleton {
 
     // Where a shipped pack lives: a style's own folder, except an extra pack, which belongs to no style.
     function pack_dir(name) {
-        return name in root.extra_packs ? Qt.resolvedUrl("../sounds/" + name) : Qt.resolvedUrl("../styles/" + name + "/sounds");
+        if (name in root.extra_packs) return Qt.resolvedUrl("../sounds/" + name);
+        return Qt.resolvedUrl("../styles/" + name + "/sounds"); // qs-path: optional a style without a pack plays silence
     }
 
     function valid_pack(name) {
