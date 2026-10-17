@@ -240,8 +240,9 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
             };
             let timeout_secs = match table.timeout_secs {
                 // The untagged `ActionEntry` cannot carry a span, so the line is looked up in the text.
-                Some(secs) => Some(checked_timeout(secs, || {
-                    format!("{}:{}", file.display(), line_of(timeout_offset(text, &id)))
+                Some(secs) => Some(checked_timeout(secs, || match timeout_offset(text, &id) {
+                    Some(offset) => format!("{}:{}", file.display(), line_of(offset)),
+                    None => file.display().to_string(),
                 })?),
                 None => None,
             };
@@ -282,14 +283,23 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
     })
 }
 
-/// Where an action's `timeout_secs` is written: the first one after the action's table (or its key under `[actions]`),
-/// else the action itself, else the top of the file.
-fn timeout_offset(text: &str, action: &str) -> usize {
-    let start = [format!("[actions.{action}]"), format!("\n{action} = ")]
-        .iter()
-        .find_map(|opening| text.find(opening.as_str()))
-        .unwrap_or(0);
-    text[start..].find("timeout_secs").map_or(start, |found| start + found)
+/// Where an action's `timeout_secs` is written: inside the action's own `[actions.<id>]` table, or on its key's line
+/// under `[actions]`. None when it is not found there (a dotted key elsewhere), and the error then names only the file.
+fn timeout_offset(text: &str, action: &str) -> Option<usize> {
+    let table = format!("[actions.{action}]");
+    let (start, end) = match text.find(&table) {
+        Some(start) => (
+            start,
+            text[start + 1..]
+                .find("\n[")
+                .map_or(text.len(), |next| start + 1 + next),
+        ),
+        None => {
+            let start = text.find(&format!("\n{action} = "))? + 1;
+            (start, text[start..].find('\n').map_or(text.len(), |next| start + next))
+        }
+    };
+    text[start..end].find("timeout_secs").map(|found| start + found)
 }
 
 /// The longest a hook may be given; anything longer is a typo for a hook that never ends.
@@ -363,5 +373,14 @@ mod tests {
                 "{bad}: {error}"
             );
         }
+    }
+
+    #[test]
+    fn a_bad_timeout_names_the_line_of_its_own_action() {
+        let text = "verbs = []\n[actions.a]\nrun = \"true\"\ntimeout_secs = 1\n[actions.b]\nrun = \"true\"\ntimeout_secs = 0\n";
+        let error = parse_toml(Path::new("t.toml"), text).unwrap_err();
+        assert!(error.starts_with("t.toml:7: "), "{error}");
+        let no_key = "verbs = []\n[actions.a]\nrun = \"true\"\ntimeout_secs = 1\n[actions.b]\nrun = \"true\"\n";
+        assert_eq!(timeout_offset(no_key, "b"), None);
     }
 }

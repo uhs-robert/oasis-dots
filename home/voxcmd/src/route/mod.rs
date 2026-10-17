@@ -5,7 +5,9 @@ pub mod near_miss;
 pub mod pattern;
 pub mod resolve;
 pub mod router;
+pub mod runner;
 pub mod sequence;
+pub mod sequence_run;
 pub mod trace;
 
 #[cfg(test)]

@@ -6,13 +6,19 @@ pass=0 fail=0 failed_checks=()
 # VOXCMD_TEST_TIMES=1 adds each check's seconds since the previous one, and each section's total as it ends.
 times=${VOXCMD_TEST_TIMES:-}
 current_section="" section_started=$EPOCHREALTIME check_started=$EPOCHREALTIME
+# VOXCMD_ONLY_SECTIONS="name|name" runs only the checks of the sections so named (a section's other code still runs, which
+# is cheap next to the sections that wait on voice), so the checks a port item can pass are run alone.
+only_sections=${VOXCMD_ONLY_SECTIONS:-} skipping_section=0
 elapsed_since() { awk -v from="$1" -v to="$EPOCHREALTIME" 'BEGIN { printf "%.2fs", to - from }'; }
 section() {
   [ -z "$times" ] || [ -z "$current_section" ] || echo "   $current_section took $(elapsed_since "$section_started")"
   current_section=$1 section_started=$EPOCHREALTIME check_started=$EPOCHREALTIME
-  [ -z "$1" ] || echo "== $1"
+  skipping_section=0
+  [ -z "$only_sections" ] || [ -z "$1" ] || [[ "|$only_sections|" == *"|$1|"* ]] || skipping_section=1
+  [ -z "$1" ] || [ "$skipping_section" = 1 ] || echo "== $1"
 }
 check() {
+  [ "$skipping_section" = 0 ] || return 0
   local took=""
   if eval "$2"; then
     pass=$((pass + 1))
@@ -32,6 +38,7 @@ check() {
 test_wait_secs=${VOXCMD_TEST_WAIT_SECS:-120}
 # wait_until <command...>: runs the command until it succeeds, failing after test_wait_secs.
 wait_until() {
+  [ "$skipping_section" = 0 ] || return 1
   local deadline=$((SECONDS + test_wait_secs))
   until "$@"; do
     ((SECONDS < deadline)) || return 1

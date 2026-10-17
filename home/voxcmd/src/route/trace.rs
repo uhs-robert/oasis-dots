@@ -71,6 +71,21 @@ pub struct StepTrace {
     /// Whether a sequence goes on past this step: it matched something, or was Voice Help outside a sequence.
     #[serde(skip)]
     pub ran: bool,
+    /// The phrase was handled before any integration was tried; a live run acts on it without options.
+    #[serde(skip)]
+    pub builtin: Option<Builtin>,
+    /// The integration (index) a force prefix or an open surface chose, for the no-match log.
+    #[serde(skip)]
+    pub forced_integration: Option<usize>,
+}
+
+/// What a phrase handled before any integration was tried is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Builtin {
+    OnlyWakeWord,
+    VoiceHelp,
+    VoiceHelpInSequence,
+    Discard,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

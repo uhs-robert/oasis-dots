@@ -25,6 +25,20 @@ impl Kind {
     }
 }
 
+/// Where a run's toasts go, so tests can read them instead of the desktop.
+pub trait Notifier: Sync {
+    fn notify(&self, kind: Kind, summary: &str, body: &str);
+}
+
+/// The desktop's notification daemon (or stderr when explaining).
+pub struct Desktop;
+
+impl Notifier for Desktop {
+    fn notify(&self, kind: Kind, summary: &str, body: &str) {
+        notify(kind, summary, body);
+    }
+}
+
 pub fn dry_run() -> bool {
     std::env::var("VOXCMD_DRY_RUN").is_ok_and(|value| value == "1")
 }
@@ -47,12 +61,21 @@ pub fn notify(kind: Kind, summary: &str, body: &str) {
     if kind == Kind::Info {
         command.arg("--transient");
     }
+    if needs_end_of_options(summary, body) {
+        command.arg("--");
+    }
     let _ = command
-        .args(["--", summary, body])
+        .args([summary, body])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
+}
+
+/// The bash voxcmd passed the text bare, and the suites match the logged call; `--` only where a leading dash would
+/// be read as an option.
+fn needs_end_of_options(summary: &str, body: &str) -> bool {
+    summary.starts_with('-') || body.starts_with('-')
 }
 
 /// The toast carries a Voice Help button. notify-send waits for the toast to close to report a clicked action, so a
@@ -62,10 +85,13 @@ fn notify_no_match(summary: &str, body: &str) {
         return notify(Kind::Info, summary, body);
     }
     // Text goes in as positional parameters of the inner sh, never into its script.
-    let script = r#"[ "$(notify-send -a voxcmd --transient --action=help="Voice Help" -- "$1" "$2")" = help ] && exec "$3" help"#;
+    let end_of_options = if needs_end_of_options(summary, body) { " --" } else { "" };
+    let script = format!(
+        r#"[ "$(notify-send -a voxcmd --transient --action=help="Voice Help"{end_of_options} "$1" "$2")" = help ] && exec "$3" help"#
+    );
     let exe = std::env::current_exe().unwrap_or_else(|_| "voxcmd".into());
     let spawned = Command::new("setsid")
-        .args(["sh", "-c", script, "sh", summary, body])
+        .args(["sh", "-c", &script, "sh", summary, body])
         .arg(exe)
         .stdin(Stdio::null())
         .stdout(Stdio::null())

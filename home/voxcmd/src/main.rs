@@ -1,8 +1,14 @@
 //! parses argv (cli), dispatches to the subcommand's module; no logic
+mod actions;
+mod ask;
+mod bar;
 mod cli;
 mod config;
+mod debug;
 mod exit;
 mod hooks;
+mod hypr;
+mod log;
 mod notify;
 mod paths;
 mod process;
@@ -46,7 +52,9 @@ fn main() -> ExitCode {
         }
         Ok(None) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("{error}");
+            if !error.message.is_empty() {
+                eprintln!("{error}");
+            }
             error.exit_code()
         }
     }
@@ -65,7 +73,7 @@ fn version() -> &'static str {
 fn dispatch(command: Command) -> Result<Option<String>, CliError> {
     let later = |subcommand: &str, phase_item: &str| Err(CliError::not_implemented(subcommand, phase_item));
     match command {
-        Command::Run(_) => later("run", "2.3"),
+        Command::Run(args) => route::runner::run(args).map(|()| None),
         Command::Explain(args) => route::trace::run(args).map(Some),
         Command::Reply(_) => later("reply", "2.4"),
         Command::Listen { .. } => later("listen", "2.4"),
