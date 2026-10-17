@@ -3,7 +3,9 @@ mod cli;
 mod config;
 mod exit;
 mod hooks;
+mod notify;
 mod paths;
+mod process;
 mod route;
 mod text;
 
@@ -82,7 +84,7 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Log(LogCommand::Misses { .. }) => later("log misses", "2.6"),
         Command::Log(LogCommand::Errors { .. }) => later("log errors", "2.6"),
         Command::Timer(TimerCommand::Ring { .. }) => later("timer ring", "2.6"),
-        Command::Util(UtilCommand::Notify { .. }) => later("util notify", "2.3"),
+        Command::Util(UtilCommand::Notify { level, title, body }) => notify::run(&level, &title, &body).map(|()| None),
         Command::Util(UtilCommand::Intents { name }) => config::intents::run(&name).map(Some),
         Command::Util(UtilCommand::WordMatch { ignore, target }) => {
             route::resolve::run_word_match(ignore.as_deref(), &target).map(Some)

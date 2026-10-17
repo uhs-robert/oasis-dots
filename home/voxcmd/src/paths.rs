@@ -46,3 +46,15 @@ pub fn runtime_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("/tmp"))
         .join("voxcmd")
 }
+
+/// The directory of voxcmd's shared scripts (`spoken-time.sh` and the like), which hooks find as `$VOXCMD_SHARE_DIR`:
+/// `$VOXCMD_SHARE_DIR`, else `share/voxcmd` beside the `bin` of the legacy voxcmd, as the bash script finds it.
+pub fn share_dir() -> PathBuf {
+    env_dir("VOXCMD_SHARE_DIR").unwrap_or_else(|| {
+        legacy_bin()
+            .parent()
+            .and_then(std::path::Path::parent)
+            .unwrap_or(std::path::Path::new("/"))
+            .join("share/voxcmd")
+    })
+}

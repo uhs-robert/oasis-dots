@@ -9,7 +9,7 @@ use super::matcher::Arg;
 use crate::config::Config;
 use crate::config::schema::{Integration, TargetMatch};
 use crate::exit::CliError;
-use crate::hooks::{Candidate, HookRun, Hooks, Lookup};
+use crate::hooks::{Candidate, HookQuery, HookRun, Hooks, Lookup};
 use regex::RegexBuilder;
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
@@ -87,13 +87,22 @@ pub struct Resolved {
     pub hook: Option<HookRun>,
 }
 
-pub fn resolve(config: &Config, hooks: &dyn Hooks, pending: &PendingMatch, raw_transcript: &str) -> Resolved {
+pub fn resolve(config: &Config, hooks: &dyn Hooks, pending: &PendingMatch, texts: Texts) -> Resolved {
     let integration = &config.integrations[pending.integration];
     let settings = &integration.settings;
     let mut action = pending.verb_action.clone();
     // A bash `candidates` function is only asked about a verb that captured something; a TOML hook is asked always.
     let asks_hook = integration.candidates_for(&action).is_some() && (pending.has_target || !is_legacy(integration));
-    let hook = asks_hook.then(|| hooks.candidates(integration, &action, &pending.target, raw_transcript));
+    let hook = asks_hook.then(|| {
+        let query = HookQuery {
+            action: &action,
+            target: &pending.target,
+            args: &pending.args,
+            phrase: texts.phrase,
+            raw_transcript: texts.raw_transcript,
+        };
+        hooks.candidates(integration, &query)
+    });
     let lookup = hook.as_ref().map_or(&Lookup::Unhooked, |run| &run.lookup);
     let target_only = || vec![Candidate::plain(&pending.target, &pending.target)];
     let (candidate_count, entries) = match lookup {
@@ -181,14 +190,18 @@ fn runnable(
     }
 }
 
+/// The two spellings of the step a match came from, which hooks read.
+#[derive(Clone, Copy)]
+pub struct Texts<'a> {
+    /// Normalized, with replacements applied.
+    pub phrase: &'a str,
+    /// As spoken.
+    pub raw_transcript: &'a str,
+}
+
 /// Resolves matches side by side, hooks being queries of live state that need not wait on each other, and returns
 /// them in the order given.
-pub fn resolve_all(
-    config: &Config,
-    hooks: &dyn Hooks,
-    pending: &[PendingMatch],
-    raw_transcript: &str,
-) -> Vec<Resolved> {
+pub fn resolve_all(config: &Config, hooks: &dyn Hooks, pending: &[PendingMatch], texts: Texts) -> Vec<Resolved> {
     let hooked = pending
         .iter()
         .filter(|one| {
@@ -198,15 +211,12 @@ pub fn resolve_all(
         })
         .count();
     if hooked < 2 {
-        return pending
-            .iter()
-            .map(|one| resolve(config, hooks, one, raw_transcript))
-            .collect();
+        return pending.iter().map(|one| resolve(config, hooks, one, texts)).collect();
     }
     std::thread::scope(|scope| {
         let running: Vec<_> = pending
             .iter()
-            .map(|one| scope.spawn(move || resolve(config, hooks, one, raw_transcript)))
+            .map(|one| scope.spawn(move || resolve(config, hooks, one, texts)))
             .collect();
         running
             .into_iter()

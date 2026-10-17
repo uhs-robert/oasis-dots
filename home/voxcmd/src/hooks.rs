@@ -1,17 +1,27 @@
 //! asking an integration's hooks what a phrase names: a `candidates` lookup and a `surface_open` check
 //!
-//! Minimal, for the router (2.2b): only the legacy bash functions, reached through the bash voxcmd's hidden
-//! `_legacy-hook` (so each call costs a bash start plus sourcing the file). The hook runner for TOML integrations
-//! (environment, timeouts, exit 3 = yield, `run` and `wait_hook`) is 2.3; until then a TOML `candidates` hook is not
-//! run and reads as "no hook". The module is deleted down to that runner in 3.2.
+//! A TOML integration's hook is a shell string run by `ShellHooks` (1.1 section 2.5): `bash -c` over the integration's
+//! `<stem>.sh` library, the match handed over in `VOXCMD_*` variables, a 3 s deadline, exit 3 meaning "yield". A bash
+//! integration's hook is reached through the bash voxcmd's hidden `_legacy-hook` (a bash start plus sourcing per
+//! call); `Dispatch` picks by the integration's format. The legacy half is deleted in 3.2.
 use crate::config::schema::{Candidates, Format, Integration, Surface};
 use crate::paths;
+use crate::process;
+use crate::route::matcher::Arg;
+use crate::route::resolve::arg_env;
 use serde::Serialize;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
+/// How long a `candidates` hook may run unless its action sets `timeout_secs`.
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// A `candidates` hook's exit code for "nothing to offer for this phrase": another integration may take it, and the
+/// action's `no_match` does not run.
+const YIELD_EXIT: i32 = 3;
 /// One thing an action can be run on: a window, an app, a keybind.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Candidate {
@@ -54,7 +64,7 @@ pub enum Lookup {
 pub struct HookRun {
     pub integration: String,
     pub action: String,
-    /// `candidates`; `provider`, `wait_hook`, `list` and `run` come with 2.3.
+    /// `candidates`; `provider`, `wait_hook`, `list` and `run` come with 2.3b.
     pub kind: String,
     pub command: String,
     pub exit: Option<i32>,
@@ -62,6 +72,9 @@ pub struct HookRun {
     pub millis: f64,
     pub lines: Vec<Candidate>,
     pub stderr_tail: Vec<String>,
+    /// Why a TOML hook offered nothing: it failed, timed out or printed lines that cannot be read.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub problem: Option<String>,
     #[serde(skip)]
     pub lookup: Lookup,
 }
@@ -79,14 +92,25 @@ impl HookRun {
             millis: 0.0,
             lines: Vec::new(),
             stderr_tail: Vec::new(),
+            problem: None,
             lookup: Lookup::Unhooked,
         }
     }
 }
 
+/// What a hook is asked about: the verb that matched and the text it matched.
+pub struct HookQuery<'a> {
+    pub action: &'a str,
+    pub target: &'a str,
+    pub args: &'a [Arg],
+    /// The step after normalization and replacements.
+    pub phrase: &'a str,
+    /// The step as spoken, which some hooks read in place of the target.
+    pub raw_transcript: &'a str,
+}
+
 pub trait Hooks: Sync {
-    /// `raw_transcript` is the step as spoken, which some hooks read in place of the target.
-    fn candidates(&self, integration: &Integration, action: &str, target: &str, raw_transcript: &str) -> HookRun;
+    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun;
     /// Whether the integration's bar surface is open and takes the phrase before any other integration.
     fn surface_open(&self, integration: &Integration) -> bool;
 }
@@ -118,13 +142,19 @@ impl LegacyHooks {
 }
 
 impl Hooks for LegacyHooks {
-    fn candidates(&self, integration: &Integration, action: &str, target: &str, raw_transcript: &str) -> HookRun {
+    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+        let HookQuery {
+            action,
+            target,
+            raw_transcript,
+            ..
+        } = *query;
         let shown = format!(
             "voxcmd _legacy-hook candidates {} {action} {target}",
             integration.file.display()
         );
         if integration.format != Format::Bash {
-            return unrun(integration, action, &shown);
+            return HookRun::unhooked(integration, action, &shown);
         }
         let started = Instant::now();
         let output = self
@@ -171,32 +201,251 @@ impl Hooks for LegacyHooks {
     }
 }
 
+/// The hooks of the TOML integrations: shell strings run by `bash`, with the match in the environment.
+pub struct ShellHooks {
+    integration_dir: PathBuf,
+    share_dir: PathBuf,
+    /// Every loaded integration's stem, space separated.
+    integrations: String,
+    dry_run: bool,
+}
+
+/// The variables a hook sees (1.1 section 2.5), built once per option.
+pub struct HookEnv<'a> {
+    pub integration: &'a Integration,
+    pub action: &'a str,
+    pub args: &'a [Arg],
+    pub phrase: &'a str,
+    pub raw_transcript: &'a str,
+    /// The chosen option: for `run` and `wait_hook`, not for `candidates`.
+    pub id: Option<&'a str>,
+    pub label: Option<&'a str>,
+    pub confirmed: bool,
+    /// For waits only.
+    pub active_before: Option<&'a str>,
+    /// Whether the command came by voice (2.4).
+    pub spoken: bool,
+}
+
+impl ShellHooks {
+    pub fn new(config_dir: &std::path::Path, stems: impl IntoIterator<Item = String>, dry_run: bool) -> Self {
+        Self {
+            integration_dir: config_dir.join("integrations"),
+            share_dir: paths::share_dir(),
+            integrations: stems.into_iter().collect::<Vec<_>>().join(" "),
+            dry_run,
+        }
+    }
+
+    /// `bash -c` over the integration's library (when it has one) and then the hook string. The library path is a
+    /// literal of the wrapper, quoted; spoken text only ever reaches the hook through the environment.
+    fn command(&self, shell: &str, env: &HookEnv) -> Command {
+        let library = format!("{}.sh", env.integration.stem);
+        let script = format!(
+            "if [ -f \"$VOXCMD_INTEGRATION_DIR\"/{library} ]; then . \"$VOXCMD_INTEGRATION_DIR\"/{library}; fi\n{shell}",
+            library = shell_quote(&library),
+        );
+        let mut command = Command::new("bash");
+        command.args(["--noprofile", "--norc", "-c", &script]);
+        for (name, value) in self.env(env) {
+            command.env(name, value);
+        }
+        // Variables of the option-level kinds must not leak in from voxcmd's own environment when this call has none.
+        for name in ["VOXCMD_ID", "VOXCMD_LABEL", "VOXCMD_ACTIVE_BEFORE"] {
+            if !command.get_envs().any(|(set, _)| set == name) {
+                command.env_remove(name);
+            }
+        }
+        command
+    }
+
+    fn env(&self, env: &HookEnv) -> BTreeMap<String, String> {
+        let mut vars = arg_env(env.args);
+        let flag = |on: bool| if on { "1" } else { "0" }.to_string();
+        let mut set = |name: &str, value: String| vars.insert(name.to_string(), value);
+        set("VOXCMD_INTEGRATION", env.integration.stem.clone());
+        set("VOXCMD_ACTION", env.action.to_string());
+        set("VOXCMD_PHRASE", env.phrase.to_string());
+        set("VOXCMD_RAW_TRANSCRIPT", env.raw_transcript.to_string());
+        set("VOXCMD_CONFIRMED", flag(env.confirmed));
+        set(
+            "VOXCMD_MATCH_IGNORE_WORDS",
+            env.integration.settings.match_ignore_words.join(" "),
+        );
+        set("VOXCMD_INTEGRATIONS", self.integrations.clone());
+        set("VOXCMD_SHARE_DIR", self.share_dir.display().to_string());
+        set("VOXCMD_INTEGRATION_DIR", self.integration_dir.display().to_string());
+        set("VOXCMD_SPOKEN", flag(env.spoken));
+        if self.dry_run {
+            set("VOXCMD_DRY_RUN", "1".to_string());
+        }
+        for (name, value) in [
+            ("VOXCMD_ID", env.id),
+            ("VOXCMD_LABEL", env.label),
+            ("VOXCMD_ACTIVE_BEFORE", env.active_before),
+        ] {
+            if let Some(value) = value {
+                set(name, value.to_string());
+            }
+        }
+        vars
+    }
+}
+
+impl Hooks for ShellHooks {
+    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+        let mut run = HookRun::unhooked(integration, query.action, "");
+        let Some(Candidates::Shell(shell)) = integration.candidates_for(query.action) else {
+            return run;
+        };
+        run.command.clone_from(shell);
+        let timeout = integration
+            .actions
+            .get(query.action)
+            .and_then(|declared| declared.timeout_secs)
+            .map_or(DEFAULT_TIMEOUT, Duration::from_secs_f64);
+        let env = HookEnv {
+            integration,
+            action: query.action,
+            args: query.args,
+            phrase: query.phrase,
+            raw_transcript: query.raw_transcript,
+            id: None,
+            label: None,
+            confirmed: false,
+            active_before: None,
+            spoken: false,
+        };
+        let started = Instant::now();
+        let outcome = process::run_with_timeout(&mut self.command(shell, &env), timeout);
+        run.millis = started.elapsed().as_secs_f64() * 1000.0;
+        run.lookup = match outcome {
+            Err(error) => {
+                run.problem = Some(format!("could not start bash: {error}"));
+                Lookup::Broken
+            }
+            Ok(outcome) => {
+                run.exit = outcome.code();
+                run.timed_out = outcome.timed_out;
+                run.stderr_tail = tail_lines(&outcome.stderr, 3);
+                match outcome.code() {
+                    _ if outcome.timed_out => {
+                        run.problem = Some(format!("timed out after {} s", timeout.as_secs_f64()));
+                        Lookup::Broken
+                    }
+                    Some(0) => match parse_lines(&outcome.stdout) {
+                        Ok(lines) => Lookup::Candidates(lines),
+                        Err(message) => {
+                            run.problem = Some(message);
+                            Lookup::Broken
+                        }
+                    },
+                    Some(YIELD_EXIT) => Lookup::Yield,
+                    _ => {
+                        run.problem = Some(outcome.how_it_ended());
+                        Lookup::Broken
+                    }
+                }
+            }
+        };
+        if let Lookup::Candidates(lines) = &run.lookup {
+            run.lines.clone_from(lines);
+        }
+        run
+    }
+
+    fn surface_open(&self, integration: &Integration) -> bool {
+        match &integration.surface {
+            Some(Surface::StateFile(path)) => state_file_open(path),
+            _ => false,
+        }
+    }
+}
+
+/// The lines of a hook's output: `id<TAB>label<TAB>match_text`, the last two optional, one option per line. A blank
+/// line is skipped; an empty id is a row of its own (static help rows).
+pub fn parse_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
+    let mut candidates = Vec::new();
+    for (index, line) in stdout.split('\n').enumerate() {
+        let line = line.strip_suffix('\r').unwrap_or(line);
+        if line.is_empty() {
+            continue;
+        }
+        let fields: Vec<&str> = line.split('\t').collect();
+        if fields.len() > 3 {
+            return Err(format!(
+                "output line {} has {} tab-separated fields, at most 3 are read",
+                index + 1,
+                fields.len()
+            ));
+        }
+        let id = fields[0];
+        let label = fields.get(1).copied().filter(|label| !label.is_empty()).unwrap_or(id);
+        let match_text = fields.get(2).copied().filter(|text| !text.is_empty());
+        candidates.push(Candidate {
+            id: id.to_string(),
+            label: label.to_string(),
+            match_text: match_text.map(str::to_string),
+            weak: false,
+        });
+    }
+    Ok(candidates)
+}
+
+fn shell_quote(text: &str) -> String {
+    format!("'{}'", text.replace('\'', r"'\''"))
+}
+
+/// Each integration's hooks by its format: the shell runner for TOML, the bash voxcmd for the bash files.
+pub struct Dispatch {
+    shell: ShellHooks,
+    legacy: Box<dyn Hooks>,
+}
+
+impl Dispatch {
+    pub fn new(shell: ShellHooks, legacy: Box<dyn Hooks>) -> Self {
+        Self { shell, legacy }
+    }
+
+    fn for_format(&self, integration: &Integration) -> &dyn Hooks {
+        match integration.format {
+            Format::Toml => &self.shell,
+            Format::Bash => self.legacy.as_ref(),
+        }
+    }
+}
+
+impl Hooks for Dispatch {
+    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+        self.for_format(integration).candidates(integration, query)
+    }
+
+    fn surface_open(&self, integration: &Integration) -> bool {
+        self.for_format(integration).surface_open(integration)
+    }
+}
+
 /// Hooks that are never run: the legacy dump was given as a file (`VOXCMD_LEGACY_DUMP_FILE`), so there is no bash
 /// integration to source, and the latency test must not wait on bash.
 pub struct NoHooks;
 
 impl Hooks for NoHooks {
-    fn candidates(&self, integration: &Integration, action: &str, target: &str, _raw_transcript: &str) -> HookRun {
-        unrun(
+    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+        let mut run = HookRun::unhooked(
             integration,
-            action,
-            &format!("(hooks off) candidates {} {target}", integration.file.display()),
-        )
+            query.action,
+            &format!("(hooks off) candidates {} {}", integration.file.display(), query.target),
+        );
+        if let Some(Candidates::Shell(shell)) = integration.candidates_for(query.action) {
+            run.command.clone_from(shell);
+            run.stderr_tail = vec!["not run: hooks are off".to_string()];
+        }
+        run
     }
 
     fn surface_open(&self, _integration: &Integration) -> bool {
         false
     }
-}
-
-/// A lookup the hook runner cannot do yet: a TOML hook before 2.3.
-fn unrun(integration: &Integration, action: &str, command: &str) -> HookRun {
-    let mut run = HookRun::unhooked(integration, action, command);
-    if let Some(Candidates::Shell(shell)) = integration.candidates_for(action) {
-        run.command.clone_from(shell);
-        run.stderr_tail = vec!["not run: the TOML hook runner is 2.3".to_string()];
-    }
-    run
 }
 
 /// Under `$XDG_RUNTIME_DIR/voxcmd`; open while the file's top-level `open` is true.
@@ -290,12 +539,262 @@ mod tests {
         let toml = "name = \"Search\"\nverbs = []\n";
         let mut integration = crate::config::schema::parse_toml(std::path::Path::new("search.toml"), toml).unwrap();
         integration.format = Format::Bash;
-        let run = hooks.candidates(&integration, "find", "tea cup", "Find Tea Cup");
+        let query = HookQuery {
+            action: "find",
+            target: "tea cup",
+            args: &[],
+            phrase: "find tea cup",
+            raw_transcript: "Find Tea Cup",
+        };
+        let run = hooks.candidates(&integration, &query);
         assert_eq!(run.exit, Some(0));
         assert_eq!(
             run.lookup,
             Lookup::Candidates(vec![Candidate::plain("find|tea cup", "Find Tea Cup")])
         );
+    }
+
+    // ---- the shell runner ----
+
+    use crate::route::pattern::PlaceholderType;
+
+    struct Fixture {
+        dir: tempfile::TempDir,
+        hooks: ShellHooks,
+        integration: Integration,
+    }
+
+    /// An integration `t` whose one action `go` has the given `candidates` hook (and `timeout_secs`), with `t.sh` as
+    /// its library when given.
+    fn fixture(hook: &str, timeout_secs: Option<f64>, library: Option<&str>) -> Fixture {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("integrations")).unwrap();
+        if let Some(library) = library {
+            std::fs::write(dir.path().join("integrations/t.sh"), library).unwrap();
+        }
+        let timeout = timeout_secs.map_or(String::new(), |secs| format!("timeout_secs = {secs}\n"));
+        let toml = format!(
+            "name = \"T\"\nverbs = [{{ action = \"go\", match = 'go {{target}}' }}]\nmatch_ignore_words = [\"the\", \"a\"]\n\
+             [actions.go]\nrun = \"true\"\n{timeout}candidates = '''{hook}'''\n"
+        );
+        let file = dir.path().join("integrations/t.toml");
+        std::fs::write(&file, &toml).unwrap();
+        let integration = crate::config::schema::parse_toml(&file, &toml).unwrap();
+        let hooks = ShellHooks::new(dir.path(), ["t".to_string(), "other".to_string()], false);
+        Fixture {
+            dir,
+            hooks,
+            integration,
+        }
+    }
+
+    impl Fixture {
+        fn ask(&self, raw_transcript: &str) -> HookRun {
+            let args = [Arg {
+                name: "target".into(),
+                kind: PlaceholderType::Text,
+                words: Some("tea".into()),
+                value: Some("tea".into()),
+            }];
+            self.hooks.candidates(
+                &self.integration,
+                &HookQuery {
+                    action: "go",
+                    target: "tea",
+                    args: &args,
+                    phrase: "go tea",
+                    raw_transcript,
+                },
+            )
+        }
+    }
+
+    #[test]
+    fn output_lines_are_id_label_and_match_text() {
+        let lines = parse_lines("a\tA\tmatch a\r\nb\tB\n\nc\n\t\tonly match\n\tStatic row\n").unwrap();
+        let flat: Vec<_> = lines
+            .iter()
+            .map(|c| (c.id.as_str(), c.label.as_str(), c.match_text.as_deref()))
+            .collect();
+        assert_eq!(
+            flat,
+            [
+                ("a", "A", Some("match a")),
+                ("b", "B", None),
+                ("c", "c", None),
+                ("", "", Some("only match")),
+                ("", "Static row", None),
+            ]
+        );
+        assert_eq!(parse_lines("").unwrap(), Vec::new());
+        let error = parse_lines("a\tb\tc\td\n").unwrap_err();
+        assert!(error.contains("line 1") && error.contains("4 tab-separated"), "{error}");
+        assert!(parse_lines("ok\nx\ty\tz\tw\n").unwrap_err().contains("line 2"));
+    }
+
+    #[test]
+    fn exit_codes_are_options_yield_or_a_failure_that_offers_nothing() {
+        let ok = fixture(r"printf 'a\tA\n'; exit 0", None, None).ask("go tea");
+        assert_eq!(ok.lookup, Lookup::Candidates(vec![Candidate::plain("a", "A")]));
+        assert_eq!((ok.exit, ok.problem.as_deref()), (Some(0), None));
+
+        let empty = fixture("true", None, None).ask("go tea");
+        assert_eq!(empty.lookup, Lookup::Candidates(Vec::new()));
+
+        let yielded = fixture("echo ignored; exit 3", None, None).ask("go tea");
+        assert_eq!((yielded.lookup, yielded.exit), (Lookup::Yield, Some(3)));
+
+        let failed = fixture("echo boom >&2; exit 2", None, None).ask("go tea");
+        assert_eq!((failed.lookup, failed.exit), (Lookup::Broken, Some(2)));
+        assert_eq!(failed.problem.as_deref(), Some("exit 2"));
+        assert_eq!(failed.stderr_tail, ["boom"]);
+
+        let slow = fixture("sleep 30", Some(0.2), None).ask("go tea");
+        assert_eq!((slow.lookup, slow.exit, slow.timed_out), (Lookup::Broken, None, true));
+        assert_eq!(slow.problem.as_deref(), Some("timed out after 0.2 s"));
+        assert!(slow.millis < 5000.0, "{}", slow.millis);
+
+        let garbled = fixture(r"printf 'a\tb\tc\td\n'", None, None).ask("go tea");
+        assert_eq!(garbled.lookup, Lookup::Broken);
+        assert!(garbled.problem.unwrap().contains("line 1"));
+    }
+
+    #[test]
+    fn a_timed_out_hook_takes_its_children_with_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("child.pid");
+        let hook = format!("sleep 30 & echo $! > '{}'; wait", pid_file.display());
+        let run = fixture(&hook, Some(0.3), None).ask("go tea");
+        assert!(run.timed_out);
+        let child: i32 = std::fs::read_to_string(&pid_file).unwrap().trim().parse().unwrap();
+        assert!(
+            crate::process::tests::gone_within(child, Duration::from_secs(2)),
+            "child {child} is alive"
+        );
+    }
+
+    #[test]
+    fn spoken_text_never_runs_as_shell() {
+        let marker_dir = tempfile::tempdir().unwrap();
+        let (one, two) = (marker_dir.path().join("one"), marker_dir.path().join("two"));
+        let spoken = format!(
+            "it's \"quoted\" $(touch {}) `touch {}` ; touch {} #",
+            one.display(),
+            two.display(),
+            one.display()
+        );
+        let hook = r#"printf '%s\t%s\n' "$VOXCMD_RAW_TRANSCRIPT" "$VOXCMD_ARG_TARGET""#;
+        let run = fixture(hook, None, None).ask(&spoken);
+        assert_eq!(run.lookup, Lookup::Candidates(vec![Candidate::plain(&spoken, "tea")]));
+        assert!(!one.exists() && !two.exists(), "spoken text ran as a command");
+    }
+
+    #[test]
+    fn the_hook_sees_the_documented_environment() {
+        let hook = r#"env | grep '^VOXCMD_' | while IFS== read -r name value; do printf '%s\t%s\n' "$name" "${value:-(empty)}"; done"#;
+        let fixture = fixture(hook, None, None);
+        let run = fixture.ask("Go Tea");
+        let Lookup::Candidates(lines) = run.lookup else {
+            panic!("{run:?}")
+        };
+        let seen: BTreeMap<&str, &str> = lines.iter().map(|c| (c.id.as_str(), c.label.as_str())).collect();
+        let integration_dir = fixture.dir.path().join("integrations").display().to_string();
+        assert_eq!(seen["VOXCMD_INTEGRATION"], "t");
+        assert_eq!(seen["VOXCMD_ACTION"], "go");
+        assert_eq!(seen["VOXCMD_ARG_TARGET"], "tea");
+        assert_eq!(seen["VOXCMD_ARG_TARGET_WORDS"], "tea");
+        assert_eq!(seen["VOXCMD_PHRASE"], "go tea");
+        assert_eq!(seen["VOXCMD_RAW_TRANSCRIPT"], "Go Tea");
+        assert_eq!(seen["VOXCMD_CONFIRMED"], "0");
+        assert_eq!(seen["VOXCMD_MATCH_IGNORE_WORDS"], "the a");
+        assert_eq!(seen["VOXCMD_INTEGRATIONS"], "t other");
+        assert_eq!(seen["VOXCMD_INTEGRATION_DIR"], integration_dir);
+        assert_eq!(seen["VOXCMD_SPOKEN"], "0");
+        assert!(seen["VOXCMD_SHARE_DIR"].ends_with("share/voxcmd"), "{seen:?}");
+        // Only a chosen option has an id and label, only a wait an active window, only a dry run VOXCMD_DRY_RUN.
+        for absent in ["VOXCMD_ID", "VOXCMD_LABEL", "VOXCMD_ACTIVE_BEFORE", "VOXCMD_DRY_RUN"] {
+            assert!(!seen.contains_key(absent), "{absent} is set");
+        }
+    }
+
+    #[test]
+    fn env_carries_every_placeholder_of_a_verb_and_the_chosen_option() {
+        let fixture = fixture("true", None, None);
+        let arg = |name: &str, kind, words: Option<&str>, value: Option<&str>| Arg {
+            name: name.into(),
+            kind,
+            words: words.map(str::to_string),
+            value: value.map(str::to_string),
+        };
+        let args = [
+            arg("app", PlaceholderType::Text, Some("the editor"), Some("editor")),
+            arg("count", PlaceholderType::Number, Some("three"), Some("3")),
+            arg("skipped", PlaceholderType::Text, None, None),
+        ];
+        let env = fixture.hooks.env(&HookEnv {
+            integration: &fixture.integration,
+            action: "go",
+            args: &args,
+            phrase: "p",
+            raw_transcript: "P",
+            id: Some("7"),
+            label: Some("Seven"),
+            confirmed: true,
+            active_before: Some("0xabc"),
+            spoken: true,
+        });
+        let get = |name: &str| env.get(name).map(String::as_str);
+        assert_eq!(get("VOXCMD_ARG_APP"), Some("editor"));
+        assert_eq!(get("VOXCMD_ARG_APP_WORDS"), Some("the editor"));
+        assert_eq!(get("VOXCMD_ARG_COUNT"), Some("3"));
+        assert_eq!(get("VOXCMD_ARG_COUNT_WORDS"), Some("three"));
+        assert_eq!(get("VOXCMD_ARG_SKIPPED"), None);
+        assert_eq!(
+            (get("VOXCMD_ID"), get("VOXCMD_LABEL"), get("VOXCMD_CONFIRMED")),
+            (Some("7"), Some("Seven"), Some("1"))
+        );
+        assert_eq!(
+            (get("VOXCMD_ACTIVE_BEFORE"), get("VOXCMD_SPOKEN")),
+            (Some("0xabc"), Some("1"))
+        );
+    }
+
+    #[test]
+    fn a_dry_run_marks_the_hooks_environment() {
+        let mut fixture = fixture(r#"printf '%s\n' "$VOXCMD_DRY_RUN""#, None, None);
+        fixture.hooks.dry_run = true;
+        assert_eq!(
+            fixture.ask("go tea").lookup,
+            Lookup::Candidates(vec![Candidate::plain("1", "1")])
+        );
+    }
+
+    #[test]
+    fn the_integrations_library_is_sourced_before_the_hook() {
+        let library = "list_teas() { printf 'green\\tGreen tea\\n'; }\n";
+        let run = fixture("list_teas", None, Some(library)).ask("go tea");
+        assert_eq!(
+            run.lookup,
+            Lookup::Candidates(vec![Candidate::plain("green", "Green tea")])
+        );
+        // No library file is fine for a hook that needs none.
+        assert_eq!(fixture("true", None, None).ask("go tea").problem, None);
+    }
+
+    #[test]
+    fn a_library_that_does_not_parse_fails_the_hook_and_says_why() {
+        let run = fixture("list_teas", None, Some("list_teas() { echo ; ;\n")).ask("go tea");
+        assert_eq!(run.lookup, Lookup::Broken);
+        assert!(
+            run.stderr_tail.iter().any(|line| line.contains("t.sh")),
+            "{:?}",
+            run.stderr_tail
+        );
+    }
+
+    #[test]
+    fn a_library_name_with_a_quote_is_still_one_literal_word() {
+        assert_eq!(shell_quote("it's.sh"), r"'it'\''s.sh'");
     }
 
     #[test]

@@ -54,7 +54,6 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["log", "misses"], "log misses", "2.6"),
     (&["log", "errors", "5", "--json"], "log errors", "2.6"),
     (&["timer", "ring", "Timer", "done"], "timer ring", "2.6"),
-    (&["util", "notify", "info", "title", "body"], "util notify", "2.3"),
     (&["internal", "watch", "--any", "args"], "internal watch", "2.4"),
     (&["internal", "settle"], "internal settle", "2.4"),
     (
@@ -365,4 +364,157 @@ fn util_intents_prints_the_forms_with_intents_local() {
     let output = voxcmd_in(config.path(), &["util", "intents", "nope"]);
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(stderr(&output), "voxcmd: util intents: no intent named \"nope\"\n");
+}
+
+/// Runs the binary with a PATH of its own, so a test never reaches the real `notify-send`.
+fn voxcmd_on_path(args: &[&str], path: &Path, envs: &[(&str, &str)]) -> Output {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_voxcmd"));
+    command
+        .args(args)
+        .env_clear()
+        .env("PATH", path)
+        .env("HOME", "/nonexistent")
+        .env("LC_ALL", "C");
+    for (name, value) in envs {
+        command.env(name, value);
+    }
+    command.output().expect("the binary runs")
+}
+
+/// A directory holding a `notify-send` that appends its arguments, one per line, to `calls`.
+fn stub_notify_send() -> (tempfile::TempDir, std::path::PathBuf) {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let calls = dir.path().join("calls");
+    let stub = dir.path().join("notify-send");
+    std::fs::write(
+        &stub,
+        format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\nprintf -- '---\\n' >> '{0}'\n",
+            calls.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+    (dir, calls)
+}
+
+#[test]
+fn util_notify_sends_info_transient_and_error_in_the_history() {
+    let (dir, calls) = stub_notify_send();
+    let path = dir.path();
+    assert_eq!(
+        voxcmd_on_path(&["util", "notify", "info", "Title", "Body"], path, &[])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        voxcmd_on_path(&["util", "notify", "error", "Oops", "It broke"], path, &[])
+            .status
+            .code(),
+        Some(0)
+    );
+    assert_eq!(
+        std::fs::read_to_string(calls).unwrap(),
+        "-a\nvoxcmd\n--transient\nTitle\nBody\n---\n-a\nvoxcmd\nOops\nIt broke\n---\n"
+    );
+}
+
+#[test]
+fn util_notify_prints_to_stderr_in_a_dry_run_or_without_notify_send() {
+    let (dir, calls) = stub_notify_send();
+    let dry = voxcmd_on_path(
+        &["util", "notify", "info", "Title", "Body"],
+        dir.path(),
+        &[("VOXCMD_DRY_RUN", "1")],
+    );
+    assert_eq!(
+        (stderr(&dry), dry.status.code()),
+        ("Title: Body\n".to_string(), Some(0))
+    );
+    assert!(!calls.exists(), "a dry run sent a toast");
+    let empty = tempfile::tempdir().unwrap();
+    let none = voxcmd_on_path(&["util", "notify", "error", "Title", "Body"], empty.path(), &[]);
+    assert_eq!(stderr(&none), "Title: Body\n");
+}
+
+#[test]
+fn util_notify_no_match_offers_voice_help_without_waiting_for_the_toast() {
+    let (dir, calls) = stub_notify_send();
+    let path = std::env::join_paths([dir.path(), Path::new("/usr/bin"), Path::new("/bin")]).unwrap();
+    let output = voxcmd_on_path(
+        &["util", "notify", "no-match", "voxcmd: no match", "\"zzz\""],
+        Path::new(&path),
+        &[],
+    );
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    // The waiter is detached, so its call lands a moment after voxcmd has exited.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while !calls.exists() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert_eq!(
+        std::fs::read_to_string(calls).unwrap(),
+        "-a\nvoxcmd\n--transient\n--action=help=Voice Help\nvoxcmd: no match\n\"zzz\"\n---\n"
+    );
+}
+
+#[test]
+fn util_notify_rejects_an_unknown_level() {
+    let output = voxcmd(&["util", "notify", "loud", "Title", "Body"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(
+        stderr(&output).starts_with("voxcmd: util notify: level must be"),
+        "{}",
+        stderr(&output)
+    );
+}
+
+/// `explain` runs a TOML integration's hook for real, in a dry run: what the hook toasts goes to stderr.
+#[test]
+fn explain_runs_toml_hooks_in_a_dry_run_and_reports_a_failing_one() {
+    let (stub, calls) = stub_notify_send();
+    let config = tempfile::tempdir().unwrap();
+    std::fs::create_dir(config.path().join("integrations")).unwrap();
+    let integration = |name: &str, hook: &str| {
+        format!(
+            "name = \"{name}\"\nverbs = [{{ action = \"go\", match = '{name} {{target}}' }}]\n\
+             [actions.go]\nrun = 'true'\ncandidates = '''{hook}'''\nno_match = \"gone\"\n[actions.gone]\nrun = 'true'\n"
+        )
+    };
+    std::fs::write(
+        config.path().join("integrations/good.toml"),
+        integration(
+            "good",
+            r#""$VOXCMD_TEST_BIN" util notify info Toast "from $VOXCMD_ACTION"; printf '1\tFirst\n2\tSecond\n'"#,
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        config.path().join("integrations/bad.toml"),
+        integration("bad", "echo broke >&2; exit 4"),
+    )
+    .unwrap();
+    let envs = [
+        ("VOXCMD_CONFIG_DIR", config.path().to_str().unwrap()),
+        ("VOXCMD_TEST_BIN", env!("CARGO_BIN_EXE_voxcmd")),
+        ("XDG_RUNTIME_DIR", config.path().to_str().unwrap()),
+    ];
+    let path = std::env::join_paths([stub.path(), Path::new("/usr/bin"), Path::new("/bin")]).unwrap();
+    let path = Path::new(&path);
+    let good = voxcmd_on_path(&["explain", "good first"], path, &envs);
+    assert_eq!(good.status.code(), Some(0), "{}", stderr(&good));
+    let text = stdout(&good);
+    assert!(text.contains("hook good go: 2 line(s)"), "{text}");
+    assert!(text.contains("stderr: Toast: from go"), "{text}");
+    assert!(!calls.exists(), "the hook's toast was sent, not printed");
+
+    let bad = voxcmd_on_path(&["explain", "bad thing"], path, &envs);
+    let text = stdout(&bad);
+    assert!(
+        text.contains("failed: exit 4; it offers nothing, and no_match is skipped"),
+        "{text}"
+    );
+    assert!(text.contains("result:      no match"), "{text}");
 }
