@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import "../../styles/terminal/widgets/WttrArt.js" as WttrArt
+import "../../../styles/terminal/widgets/WttrArt.js" as WttrArt
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as htop's process list: one monospace line per session, the selected one a full-width bar,

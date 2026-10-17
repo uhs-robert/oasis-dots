@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.theme
-import qs.services
+import qs.features.keeptabs
 import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 

@@ -27,6 +27,7 @@ import qs.features.system
 import qs.features.bluetooth
 import qs.features.network
 import qs.features.media
+import qs.features.keeptabs
 
 ShellRoot {
     id: root

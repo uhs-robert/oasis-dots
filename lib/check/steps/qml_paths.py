@@ -130,7 +130,7 @@ TABLES = [
     Table("bar/Bar.qml", "modules/", "services/BarModules.js", key_values("file")),
     Table("settings/SettingsPopup.qml", "section.source", "settings/Sections.js", key_values("source")),
     Table("features/weather/WeatherPopup.qml", "views/", "features/weather/WeatherPopup.qml", folder_view_files),
-    Table("popups/KeeptabsPopup.qml", "keeptabs/", "popups/KeeptabsPopup.qml", view_files),
+    Table("features/keeptabs/KeeptabsPopup.qml", "views/", "features/keeptabs/KeeptabsPopup.qml", view_files),
     Table("theme/Style.qml", "styles/", "theme/styles/index.js", array_values("sources")),
     Table("ui/keys/ControllerBadge.qml", "../../styles/", "ui/keys/KeyHints.js", in_widgets(key_values("button"))),
     # Any style may set meter_art; today only nes does.
