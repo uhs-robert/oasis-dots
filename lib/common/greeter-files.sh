@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The Quickshell files the login greeter stages, relative to the Quickshell config dir: the one list to edit when a greeter-staged file moves.
 # A trailing / is a directory copied whole, a trailing ? an optional entry, and * a glob matched at stage time.
-# Read by stage_greeter (lib/install/greeter.sh), lib/check/steps/qml.sh, lib/check/steps/lock-skins.sh, the greeter-sync check in the justfile and ship-batch.
+# Read by stage_greeter (lib/install/greeter.sh), lib/check/steps/qml.py, lib/check/steps/lock-skins.sh, the greeter-sync check in the justfile and ship-batch.
 GREETER_QS_FILES=(
   lock/skins/
   lock/Tints.js

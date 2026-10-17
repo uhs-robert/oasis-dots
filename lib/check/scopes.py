@@ -36,7 +36,7 @@ PATH_SCOPES = [
     ("system/etc/greetd/*.lua", "lua qml"),
     # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
     ("lib/common/greeter-files.sh", "qml ship loader"),
-    ("lib/check/steps/qml.sh", "qml"),
+    ("lib/check/steps/qml.py", "qml"),
     ("lib/check/steps/lock-skins.sh", "qml"),
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),
@@ -119,7 +119,7 @@ STEPS = [
     Step("firefox-policy", "policy", "bash ./lib/install/tests/firefox-policy.sh", ("jq",), skip_reason="the firefox policy test needs jq"),
     Step("greeter-keyring", "keyring", "bash ./lib/install/tests/greeter-keyring.sh"),
     Step("install-load", "loader", "bash ./lib/install/tests/load.sh"),
-    Step("qmllint", "qml", "bash ./lib/check/steps/qml.sh"),
+    Step("qmllint", "qml", "python3 -B ./lib/check/steps/qml.py"),
     Step("shellcheck", "shell", 'status=0; [ ! -s "$CHECK_LOGS/plain.list" ] || xargs shellcheck <"$CHECK_LOGS/plain.list" || status=1; [ ! -s "$CHECK_LOGS/sourcing.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/sourcing.list" || status=1; [ ! -s "$CHECK_LOGS/agent.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/agent.list" || status=1; exit $status', ("shellcheck",), skip_reason="shellcheck not installed"),
     Step("calendar-sync", "calendar", "bash ./home/calendar/tests/run.sh", probe="python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1", skip_reason="calendar-sync tests need python-icalendar and python-recurring-ical-events"),
     Step("owner-test-bar", "bar", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),
