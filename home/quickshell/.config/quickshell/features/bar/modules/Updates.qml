@@ -4,6 +4,7 @@ import qs.theme
 import qs.services
 import qs.components
 import qs.features.updates
+import qs.features.bar
 
 BarModule {
     id: root

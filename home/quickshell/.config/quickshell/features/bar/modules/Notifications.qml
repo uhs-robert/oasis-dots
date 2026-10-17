@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.features.notifications
 import qs.components
+import qs.features.bar
 
 BarModule {
     id: root

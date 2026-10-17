@@ -2,7 +2,7 @@
 //@ pragma Env mesa_glthread=false
 import QtQuick
 import Quickshell
-import qs.bar
+import qs.features.bar
 import qs.components
 import qs.components.transitions
 import qs.lock

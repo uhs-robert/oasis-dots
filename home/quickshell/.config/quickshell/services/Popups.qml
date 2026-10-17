@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import qs.theme
+import qs.features.bar
 
 Singleton {
     id: root
