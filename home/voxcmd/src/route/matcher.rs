@@ -63,7 +63,7 @@ pub struct IntegrationMatch {
 struct LazyVerb {
     pattern: OnceCell<Result<CompiledPattern, String>>,
     required: OnceCell<Vec<Vec<String>>>,
-    regex: OnceCell<Option<Regex>>,
+    regex: OnceCell<Result<Regex, String>>,
     near_miss: OnceCell<Readings>,
 }
 
@@ -122,12 +122,13 @@ impl<'c> Matcher<'c> {
             .all(|clause| clause.iter().any(|literal| text.contains(literal.as_str())))
     }
 
-    fn regex(&self, integration: usize, verb: usize) -> Option<&Regex> {
-        let pattern = self.pattern(integration, verb).ok()?;
+    fn regex(&self, integration: usize, verb: usize) -> Result<&Regex, &str> {
+        let pattern = self.pattern(integration, verb)?;
         self.verbs[integration][verb]
             .regex
-            .get_or_init(|| Regex::new(&pattern.regex).ok())
+            .get_or_init(|| Regex::new(&pattern.regex).map_err(|error| error.to_string()))
             .as_ref()
+            .map_err(String::as_str)
     }
 
     pub fn integrations(&self) -> &'c [Integration] {
@@ -164,10 +165,21 @@ impl<'c> Matcher<'c> {
             if !self.may_match(integration, index, text) {
                 continue;
             }
-            let Some(captures) = self
-                .regex(integration, index)
-                .and_then(|regex| regex.captures(text.as_bytes()))
-            else {
+            let regex = match self.regex(integration, index) {
+                Ok(regex) => regex,
+                // Bash skips a pattern its regex engine rejects without a word, and the legacy dialect must equal it.
+                // A TOML verb says why, so `explain` shows the broken regex instead of an unexplained no-match.
+                Err(error) => {
+                    if config.format == Format::Toml {
+                        rejections.push(Rejection {
+                            verb: index,
+                            reason: format!("bad regex: {error}"),
+                        });
+                    }
+                    continue;
+                }
+            };
+            let Some(captures) = regex.captures(text.as_bytes()) else {
                 continue;
             };
             let verb = &config.verbs[index];
@@ -363,6 +375,28 @@ mod tests {
             "{:?}",
             result.rejections
         );
+    }
+
+    #[test]
+    fn a_toml_verb_with_a_broken_regex_says_why() {
+        let mut config = fixtures(&["media"]);
+        config.integrations[0].verbs.insert(
+            0,
+            schema::Verb {
+                action: "broken".into(),
+                pattern: "volume (up".into(),
+                line: None,
+                requires: None,
+            },
+        );
+        let matcher = Matcher::new(&config);
+        let result = matcher.first_match(0, "volume up");
+        assert!(
+            result.rejections[0].reason.starts_with("bad regex: "),
+            "{:?}",
+            result.rejections
+        );
+        assert!(matches!(result.outcome, Outcome::Matched(ref found) if found.action == "volume_up"));
     }
 
     #[test]
