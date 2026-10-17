@@ -31,6 +31,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - Otherwise create a dedicated worktree and branch before any changes, and keep the main checkout untouched.
    - Pass the worktree path to every implementer and reviewer, and confirm edits land there.
    - When the owner will try a change by hand before merging, build it on one branch until they have, and split it into PRs only after their verdict, so a fix never has to be rebased up a stack.
+   - Before handing the owner a hands-on test, have an agent check everything the repo's preview tools can reach (an isolated run of the app, screenshots, scripted input). Ask the owner only for what those tools cannot reach, and say why.
 
 3. Investigate the issue or PR and repository.
    - Read issue or PR context (including review comments), relevant code, repository instructions, tests, and analogous implementations.
@@ -38,7 +39,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - Produce a concise implementation plan and provide to human for approval.
    - Escalate only materially ambiguous product or architectural decisions.
 
-4. Delegate implementation using the cheapest capable model:
+4. Delegate implementation and hands-on work using the cheapest capable model:
    - trivial → fix directly
    - small, localized, deterministic → Haiku
    - substantial, multi-file, ambiguous, architectural, or high-risk → Sonnet
@@ -46,6 +47,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - if Sonnet fails after a corrected retry, or the task needs deep debugging or subtle correctness reasoning (concurrency, security, data integrity), escalate to Opus
    - Give exploratory agents (research, investigating an intermittent failure, a throwaway measurement) a time limit, 20 minutes by default, after which they report what they have.
    - When work spans layers (e.g. a UI and a backend), agree the hand-off format first (an id format, an API call, a JSON shape), then run one implementer per layer in parallel.
+   - Delegate hands-on verification too: never load a skill that runs, drives or screenshots the app yourself. Brief an agent with the branch, the surfaces to check and what counts as a failure, then review its report and screenshots.
 
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements.
    - Tell it to run validation in the foreground with a long timeout, never in the background: a background run hands back early and pings the orchestrator on every tick while it waits.
