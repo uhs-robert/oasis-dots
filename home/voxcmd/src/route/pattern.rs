@@ -6,7 +6,7 @@
 //!   the first of `{target}` (`.+`, greedy) or `{number}` (`[0-9]+`) becomes a capture. Rust's leftmost-first
 //!   captures equal bash's on the match goldens (tests/fixtures/gen-match-goldens.sh).
 //! - **TOML** (1.1 section 2): a Rust regex whose `{name}`s resolve to a placeholder (`{target}`, `{number}`,
-//!   `{name:type}`), a `define`, `{mode_object}`/`{mode_exit}`, or an intent, in that order.
+//!   `{name:type}`; words captured lazily), a `define`, `{mode_object}`/`{mode_exit}`, or an intent, in that order.
 //!
 //! Both compile with `.` matching newlines and Unicode off: phrases are normalized to `[a-z0-9 ]` (a newline can
 //! survive), and the ASCII engine builds faster.
@@ -51,11 +51,13 @@ impl PlaceholderType {
         }
     }
 
-    /// What the capture group matches. Words are greedy in both dialects, though 1.1 proposed lazy for TOML: bash
-    /// captures "how far ahead is tokyo please" as "tokyo please", and the match goldens hold such phrases.
-    fn capture_body(self) -> &'static str {
-        match self {
-            Self::Number => "[0-9]+",
+    /// What the capture group matches. Bash captures words greedily ("how far ahead is tokyo please" gives "tokyo
+    /// please"), and the legacy dialect must equal it. TOML captures them lazily (1.1), so optional words after a slot,
+    /// as in `open {target}( in firefox)?`, stay out of the target; a title that really ends in one gets cut.
+    fn capture_body(self, format: Format) -> &'static str {
+        match (self, format) {
+            (Self::Number, _) => "[0-9]+",
+            (_, Format::Toml) => ".+?",
             _ => ".+",
         }
     }
@@ -123,7 +125,7 @@ fn compile_legacy(pattern: &str, intents: &Intents) -> CompiledPattern {
     ] {
         if body.contains(token) {
             let name = token.trim_matches(['{', '}']).to_string();
-            body = body.replacen(token, &format!("(?P<{name}>{})", kind.capture_body()), 1);
+            body = body.replacen(token, &format!("(?P<{name}>{})", kind.capture_body(Format::Bash)), 1);
             placeholders.push(Placeholder { name, kind });
             break;
         }
@@ -267,7 +269,7 @@ fn resolve_name(
             name: name.to_string(),
             kind,
         });
-        return Ok(format!("(?P<{name}>{})", kind.capture_body()));
+        return Ok(format!("(?P<{name}>{})", kind.capture_body(Format::Toml)));
     }
     if let Some(fragment) = integration.defines.get(name) {
         let expanded = expand_toml(integration, fragment, intents, placeholders, depth + 1)?;
@@ -530,6 +532,21 @@ mod tests {
     }
 
     #[test]
+    fn words_are_greedy_in_bash_and_lazy_in_toml() {
+        let intents = Intents::default();
+        let target = |format| {
+            let compiled = compile(&integration(format), &verb("is {target}( please)*"), &intents).unwrap();
+            let captures = regex::bytes::Regex::new(&compiled.regex)
+                .unwrap()
+                .captures(b"is tokyo please")
+                .unwrap();
+            String::from_utf8_lossy(&captures["target"]).into_owned()
+        };
+        assert_eq!(target(Format::Bash), "tokyo please");
+        assert_eq!(target(Format::Toml), "tokyo");
+    }
+
+    #[test]
     fn toml_resolves_placeholders_defines_modes_and_intents() {
         let intents = Intents::default();
         let toml = integration(Format::Toml);
@@ -541,7 +558,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             compiled.regex,
-            "(?s-u)^(?:(?:((?:(move|send))|(?:open|launch|start|bring up|pull up))) (?P<window>.+) to (?P<n>.+)( [0-9]{3})?)$"
+            "(?s-u)^(?:(?:((?:(move|send))|(?:open|launch|start|bring up|pull up))) (?P<window>.+?) to (?P<n>.+?)( [0-9]{3})?)$"
         );
         assert_eq!(compiled.placeholders.len(), 2);
         assert!(
