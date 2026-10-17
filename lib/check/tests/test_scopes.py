@@ -25,7 +25,7 @@ CASES = [
     # Named one by one above because `*` crosses `/`: a test module is no runner file.
     ("lib/check/tests/test_keys.py", "checkscope"),
     ("lib/check/tests/scope.sh", "checkscope"),
-    ("lib/check/steps/qml.sh", "checkscope qml"),
+    ("lib/check/steps/qml.py", "checkscope qml"),
     ("lib/check/steps/lua.sh", "checkscope lua"),
     ("lib/check/steps/symlinks.sh", "checkscope"),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.

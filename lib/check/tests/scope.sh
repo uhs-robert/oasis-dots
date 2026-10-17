@@ -218,7 +218,7 @@ case_check_py() {
 
 case_check_scope_for_check_script() {
   start_case 'check-scope runs for a lib/check/ change'
-  echo '# x' >>lib/check/steps/qml.sh
+  echo '# x' >>lib/check/steps/qml.py
   plan
   expect_ran check-scope
 }
@@ -305,7 +305,7 @@ case_paths_list_deleted_script() {
 
 case_skip_steps_with_changed() {
   start_case 'CHECK_SKIP_STEPS drops an in-scope step'
-  echo '# x' >>lib/check/steps/qml.sh
+  echo '# x' >>lib/check/steps/qml.py
   plan CHECK_SKIP_STEPS='check-scope shfmt'
   case " $ran " in *" check-scope "* | *" shfmt "*) fail 'check-scope and shfmt not to run' ;; esac
   [ "$requested" = 'check-scope shfmt' ] || fail "requested to list check-scope shfmt, got: $requested"
