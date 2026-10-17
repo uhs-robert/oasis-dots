@@ -181,7 +181,7 @@ if [[ \$1 == --check ]]; then
   exit
 fi
 echo "merge \$* $lock_state" >>"\$SHIP_LOG"
-for pr; do git push -q origin "b\$pr:main" 2>/dev/null || exit 1; done
+for pr; do [[ \$pr == --* ]] && continue; git push -q origin "b\$pr:main" 2>/dev/null || exit 1; done
 STUB
 printf '#!/bin/sh\n' >"$fake_home/.claude/skills/merge-prs/status.sh"
 # shellcheck disable=SC2016 # expanded by the stub
@@ -258,6 +258,18 @@ check "and clears the debt" "[[ -z \$(owed_check '$e2e/main') ]]"
 : >"$SHIP_LOG"
 ship
 check "a run with nothing new and nothing owed checks nothing" "[[ $? == 0 ]] && ! grep -q check '$SHIP_LOG'"
+
+e2e_setup
+ship --skip-review-gate 1 2
+check "with --skip-review-gate the batch succeeds" "[[ $? == 0 ]] || { cat '$e2e/out'; false; }"
+check "the review gate is never called" "! grep -q '^gate' '$SHIP_LOG'"
+check "each branch is still checked outside the lock" "logged 'check wt-1 --changed $e2e_base free' && logged 'check wt-2 --changed $e2e_base free'"
+check "the merge gets --skip-review-gate under the lock" "logged 'merge --skip-review-gate 1 2 held'"
+check "each PR says its gate was skipped" "grep -q 'PR 1: review gate skipped by request' '$e2e/out' && grep -q 'PR 2: review gate skipped by request' '$e2e/out'"
+
+e2e_setup
+ship 1 2
+check "without the flag nothing is skipped" "! grep -q 'skip' '$SHIP_LOG' '$e2e/out' && logged 'merge 1 2 held'"
 
 echo "== the greeter's Quickshell paths"
 greeter_regex=$(greeter_qs_regex "$here/../../../.." qs)
