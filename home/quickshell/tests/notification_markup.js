@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/services/NotificationMarkup.js"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/notifications/NotificationMarkup.js"), "utf8");
 const context = vm.createContext({});
 vm.runInContext(source.replace(/^\.pragma.*$/m, ""), context);
 const sanitize = context.sanitize;

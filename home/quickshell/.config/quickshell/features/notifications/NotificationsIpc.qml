@@ -1,5 +1,6 @@
 import Quickshell.Io
 import Quickshell.Services.Notifications
+import qs.services
 
 IpcHandler {
     id: root

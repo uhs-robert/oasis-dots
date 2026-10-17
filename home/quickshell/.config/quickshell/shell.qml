@@ -20,6 +20,7 @@ import qs.features.screenshot
 import qs.features.screen_select
 import qs.features.display
 import qs.features.osd
+import qs.features.notifications
 
 ShellRoot {
     id: root
