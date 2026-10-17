@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
+import qs.ui.frames
 
 // A one-shot celebration centred on this item's origin: the glyph pops with a ring and hearts float up; `nudge` is a quieter pass.
 Item {

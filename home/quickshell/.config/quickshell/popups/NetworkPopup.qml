@@ -3,7 +3,8 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
-import qs.components
+import qs.ui
+import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.components.goldeneye as Goldeneye

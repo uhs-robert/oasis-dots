@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
-import qs.components
+import qs.ui
 import qs.theme
 import qs.services
 import "../core/Fuzzy.js" as Fuzzy

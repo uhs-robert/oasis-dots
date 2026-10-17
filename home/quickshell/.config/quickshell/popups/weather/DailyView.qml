@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import qs.components
+import qs.ui.frames
 import qs.theme
 import qs.services
 import qs.components.oasis as Oasis

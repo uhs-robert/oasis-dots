@@ -4,6 +4,8 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import qs.components
+import qs.ui.effects
+import qs.ui.menu
 import qs.theme
 import qs.services
 import "Layout.js" as Layout

@@ -1,6 +1,7 @@
 import QtQuick
 import qs.theme
-import qs.components
+import qs.ui.effects
+import qs.ui.frames
 
 // ps1: a memory-card save slot in the frame's dithered shade, holding 12m before a meeting and a lit MTG during one.
 MarkerBase {

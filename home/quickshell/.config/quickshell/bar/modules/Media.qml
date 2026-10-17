@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui
 import qs.components.bar_icons
 
 BarModule {

@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.components
+import qs.ui.effects
 
 // A ~12x10 pixel duck silhouette: the Duck Hunt skin's unit for shots, hits and window/output markers.
 PixelSprite {

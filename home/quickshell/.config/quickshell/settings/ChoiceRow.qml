@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
+import qs.ui.menu
 import qs.theme
 
 // A setting shown as its label and current value; a click on the left or right half steps it.

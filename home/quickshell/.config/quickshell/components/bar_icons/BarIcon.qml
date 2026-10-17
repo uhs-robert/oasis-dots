@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
-import qs.components
+import qs.ui.effects
 import "../../theme/icon_sets/IconSets.js" as IconSets
 
 // A bar module's icon: the pixel sprite, vector or text (emoji) Style.bar_icon_set draws for `name` and `variant`, else the module's Nerd Font `glyph`.

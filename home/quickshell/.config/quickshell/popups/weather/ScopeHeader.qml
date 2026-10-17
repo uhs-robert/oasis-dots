@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.components
+import qs.ui.frames
 import qs.theme
 import qs.services
 

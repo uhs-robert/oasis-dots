@@ -41,8 +41,8 @@ CASES = [
     ("home/voxcmd/tests/run-monitors.sh", " voxcmd qml"),
     ("home/quickshell/.config/quickshell/shell.qml", " qml node"),
     # A shader reaches only the shader step; its compiled output also reaches QML, which names it by path.
-    ("home/quickshell/.config/quickshell/components/scanlines.frag", " shaders"),
-    ("home/quickshell/.config/quickshell/components/scanlines.frag.qsb", " shaders qml"),
+    ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag", " shaders"),
+    ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag.qsb", " shaders qml"),
     ("lib/check/steps/shaders.sh", "checkscope shaders"),
     ("home/hypr/.config/hypr/hyprland.lua", " lua"),
     (".luacheckrc", " lua"),

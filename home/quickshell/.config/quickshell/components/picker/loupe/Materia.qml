@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui.effects
 import qs.components.picker
 import qs.components.ff7 as Ff7Parts
 

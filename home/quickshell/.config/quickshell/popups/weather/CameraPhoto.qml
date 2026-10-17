@@ -1,5 +1,6 @@
 import QtQuick
 import qs.components
+import qs.ui.effects
 import qs.theme
 import qs.services
 import "PixelArt.js" as PixelArt

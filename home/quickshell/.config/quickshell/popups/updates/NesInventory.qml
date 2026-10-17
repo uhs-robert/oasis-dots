@@ -1,5 +1,6 @@
 import QtQuick
-import qs.components
+import qs.ui.effects
+import qs.ui.menu
 import qs.services
 import qs.theme
 

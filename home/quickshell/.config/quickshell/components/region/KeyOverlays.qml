@@ -3,6 +3,7 @@ import QtQuick
 import qs.theme
 import qs.services
 import qs.components
+import qs.ui.menu
 
 // The key help box and the key hint bar.
 Item {

@@ -1,6 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.components
+import qs.ui.menu
 import qs.theme
 import "../../core/Fuzzy.js" as Fuzzy
 

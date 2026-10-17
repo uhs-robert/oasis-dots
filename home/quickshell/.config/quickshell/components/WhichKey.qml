@@ -10,6 +10,9 @@ import qs.theme
 import qs.services
 import qs.components.neovim as Neovim
 import qs.components.goldeneye as Goldeneye
+import qs.ui.effects
+import qs.ui.frames
+import qs.ui.menu
 
 // HyprVim's which-key HUD over its `hyprvim_whichkey` IPC target, drawn in the active style.
 PanelWindow {

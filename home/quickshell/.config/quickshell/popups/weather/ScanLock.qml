@@ -1,5 +1,5 @@
 import QtQuick
-import qs.components
+import qs.ui.frames
 import qs.theme
 
 // Scan brackets that close in on the selected day once each time it is picked.

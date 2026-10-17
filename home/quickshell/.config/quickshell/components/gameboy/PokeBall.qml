@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import qs.components
+import qs.ui.effects
 
 // A Poke Ball per closed workspace: whole when it holds windows, an outline when empty. Red and white on the Color, shades on the original.
 PixelSprite {

@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.components
+import qs.ui.gauges
+import qs.ui.menu
 import qs.theme
 import "KeeptabsFormat.js" as Fmt
 

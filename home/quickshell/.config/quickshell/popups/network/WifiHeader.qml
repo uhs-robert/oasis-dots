@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
+import qs.ui.menu
 import qs.theme
 import qs.components.ps1 as Ps1
 import qs.components.ps2 as Ps2

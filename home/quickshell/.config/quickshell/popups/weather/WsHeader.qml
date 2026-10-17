@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import qs.components
+import qs.ui.gauges
 import qs.theme
 import qs.services
 

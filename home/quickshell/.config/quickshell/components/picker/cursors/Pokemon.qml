@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui.effects
 
 // Game Boy party ▶ arrow pointing at the sampled pixel, tip a few px short of it, plus a tiny dot on the pixel.
 Item {

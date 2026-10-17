@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import qs.theme
-import qs.components
+import qs.ui.effects
 
 // An MGS codec portrait: the app icon in a green scanlined frame, with CALL blinking a few times on arrival.
 Column {

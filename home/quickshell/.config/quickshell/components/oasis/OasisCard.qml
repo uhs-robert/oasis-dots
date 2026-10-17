@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import qs.components
+import qs.ui.effects
 
 // A raised night-blue card with a light top edge; sand marks the selected one, a red edge a critical one.
 Rectangle {

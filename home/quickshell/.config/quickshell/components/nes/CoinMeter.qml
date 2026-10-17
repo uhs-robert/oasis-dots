@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import qs.components
+import qs.ui.effects
 
 // A signal meter of Mario coins: one lit coin per quarter of the value, dim outline when unlit.
 Row {

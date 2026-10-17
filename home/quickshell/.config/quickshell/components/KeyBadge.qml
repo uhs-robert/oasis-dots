@@ -1,5 +1,6 @@
 import QtQuick
 import qs.theme
+import qs.ui.effects
 import "KeyHints.js" as KeyHints
 
 Rectangle {

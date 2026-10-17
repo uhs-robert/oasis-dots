@@ -2,7 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui.frames
+import qs.ui.menu
 import qs.components.ff7 as Ff7
 
 // FF7 dressing for the window/screen/region target: a materia-window border on the pick, a centered

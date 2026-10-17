@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs.components
+import qs.ui.effects
+import qs.ui.frames
 import qs.theme
 
 // One tmux window as a small terminal: its panes at their real places, each showing its last captured text.

@@ -1,5 +1,8 @@
 import QtQuick
 import qs.theme
+import qs.components
+import qs.ui.effects
+import qs.ui.frames
 
 Rectangle {
     id: root

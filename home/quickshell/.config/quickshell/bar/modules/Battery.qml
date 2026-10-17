@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import Quickshell.Services.UPower
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui
 import qs.components.bar_icons
 
 BarModule {

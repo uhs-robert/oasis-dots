@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui.menu
 
 // JRPG battle targeting: a bobbing white glove points at the target pixel, which blinks.
 Item {

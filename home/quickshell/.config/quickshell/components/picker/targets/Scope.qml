@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui.frames
 import qs.components.picker
 
 // PS1 scope dressing for the window/screen/region target: dashed olive outlines on the rest,

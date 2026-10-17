@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui.effects
 import qs.components.clock_marker as Marker
 import qs.components.modern as Modern
 

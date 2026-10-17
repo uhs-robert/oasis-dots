@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import qs.components
+import qs.ui.effects
 
 // Zelda heart containers as a Meter's art: ten hearts (five when narrow), each half a step.
 Item {

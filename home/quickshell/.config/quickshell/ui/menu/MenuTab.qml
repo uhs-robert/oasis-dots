@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
+import qs.components
+import qs.ui.effects
 
 // A tab or sub-view chip; tabs fill their row, chips size to the label.
 Rectangle {

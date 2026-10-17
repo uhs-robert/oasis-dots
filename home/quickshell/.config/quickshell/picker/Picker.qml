@@ -1,7 +1,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
-import qs.components
+import qs.ui
+import qs.ui.menu
 import qs.theme
 import qs.services
 import "../core/Fuzzy.js" as Fuzzy

@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.theme
 import qs.services
 import qs.components
+import qs.ui.effects
 import qs.components.ff7 as Ff7
 import qs.components.gameboy as Gameboy
 import qs.components.goldeneye as Goldeneye
