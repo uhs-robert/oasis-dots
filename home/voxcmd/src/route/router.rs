@@ -399,14 +399,12 @@ impl<'c> Router<'c> {
         let Ok(pattern) = self.matcher.pattern(index, verb) else {
             return Vec::new();
         };
-        let mut target_taken = false;
         pattern
             .placeholders
             .iter()
             .map(|placeholder| {
                 let words = match placeholder.kind {
-                    PlaceholderType::Text if miss.has_target && !target_taken => {
-                        target_taken = true;
+                    PlaceholderType::Text if miss.target_placeholder.as_deref() == Some(placeholder.name.as_str()) => {
                         Some(miss.target.clone())
                     }
                     PlaceholderType::Number => miss

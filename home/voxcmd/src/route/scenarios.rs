@@ -287,6 +287,30 @@ fn a_yield_verb_is_not_offered_as_a_near_miss() {
 }
 
 #[test]
+fn a_near_miss_binds_the_target_to_the_placeholder_of_the_alternative_it_read() {
+    let mut config = config();
+    config.integrations.push(integration(
+        "pairs",
+        r#"
+name = "Pairs"
+verbs = [{ action = "pair", match = '{foo:text} open|close {bar:text}' }]
+[actions.pair]
+run = 'pair "$VOXCMD_ARG_FOO" "$VOXCMD_ARG_BAR"'
+"#,
+    ));
+    let hooks = CannedHooks::default();
+    let explain = explain_phrase(&Router::new(&config, &hooks), "thing close");
+    let pair = explain
+        .steps
+        .iter()
+        .flat_map(|step| &step.options)
+        .find(|option| option.action == "pair")
+        .unwrap_or_else(|| panic!("{}", explain.text()));
+    assert_eq!(pair.env.get("VOXCMD_ARG_BAR").map(String::as_str), Some("thing"));
+    assert_ne!(pair.env.get("VOXCMD_ARG_FOO").map(String::as_str), Some("thing"));
+}
+
+#[test]
 fn a_sequence_routes_every_step_and_says_what_each_waits_for() {
     let explain = snapshot!("sequence", "next track and then volume up", CannedHooks::default());
     assert_eq!(explain.steps.len(), 2);
