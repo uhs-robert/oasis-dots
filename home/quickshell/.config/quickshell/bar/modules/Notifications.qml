@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
+import qs.features.notifications
 import qs.components
 
 BarModule {

@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
 import qs.theme
-import qs.services
 import qs.styles.nes.widgets as Nes
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.styles.ps1.widgets as Ps1

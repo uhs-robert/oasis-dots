@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
+import qs.services
 import "NotificationMarkup.js" as NotificationMarkup
 
 // One shared notification server for every bar/popup/toast. Entries wrap a tracked
