@@ -8,7 +8,6 @@ import qs.components.transitions
 import qs.lock
 import qs.overview
 import qs.tmux_overview
-import qs.picker
 import qs.popups
 import qs.services
 import qs.theme
@@ -16,6 +15,7 @@ import qs.settings
 import qs.features.power
 import qs.features.clock
 import qs.features.weather
+import qs.features.launcher
 
 ShellRoot {
     id: root
