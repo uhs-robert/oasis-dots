@@ -3014,6 +3014,27 @@ legacy_dump() {
   done < <(integration_files)
 }
 
+# _legacy-hook candidates|surface <file> [action target]: what the router's hooks print for the Rust port, until it runs
+# them itself. `candidates` prints what the file's candidates function prints for the action and target (nothing when it
+# defines none); `surface` succeeds when its surface_open does. $VOXCMD_LEGACY_RAW_TRANSCRIPT is the $raw_transcript the
+# hook reads. Goes in voxcmd-port 3.2 with this script.
+legacy_hook() {
+  local kind="${1:-}" file="${2:-}" candidates_json
+  raw_transcript="${VOXCMD_LEGACY_RAW_TRANSCRIPT-}"
+  load_integration "$file" >/dev/null
+  case "$kind" in
+  candidates)
+    declare -F candidates >/dev/null || return 0
+    candidates_json=$(candidates "${3-}" "${4-}" || true)
+    printf '%s' "$candidates_json"
+    ;;
+  surface)
+    declare -F surface_open >/dev/null && surface_open
+    ;;
+  *) return 2 ;;
+  esac
+}
+
 legacy_dump_loaded() {
   local file="$1" entry action pattern key hook surface_open=false
   local -a verb_fields=() action_fields=() no_match_fields=() wait_fields=() hooks=()
@@ -3118,6 +3139,7 @@ _cancel_owned_recording) cancel_owned_recording "$2" ;;
 _wake-confirm) wake_confirm "${2:-}" "${3:-}" ;;
 _chain-stop) dictation_chain_stop "${2:-}" "${3:-}" ;;
 _legacy-dump) legacy_dump ;;
+_legacy-hook) legacy_hook "${@:2}" ;;
 list)
   while IFS= read -r file; do
     (
