@@ -14,7 +14,6 @@ use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -211,13 +210,11 @@ impl Hooks for LegacyHooks {
 /// action with several verbs matches the same hook from each, so the hook's answer is kept and handed out again.
 /// Matches that differ still run side by side; a query being run holds up only an identical one.
 ///
-/// Two kinds of "identical": normally the whole query (action, target, arguments and both spellings of the phrase);
-/// while `reuse_any_target` is on (the near-miss pass), the action and the phrase alone, since a near miss reads the
-/// phrase's words in another order and so names another target, and its options are only offered through the picker.
+/// Identical means the whole query: action, target, arguments and both spellings of the phrase. A near miss that
+/// names another target is a distinct query and runs its own hook, since a hook may filter by target.
 pub struct Memoized<'a> {
     inner: &'a dyn Hooks,
     answers: Mutex<HashMap<String, Arc<OnceLock<HookRun>>>>,
-    reuse_any_target: AtomicBool,
 }
 
 impl<'a> Memoized<'a> {
@@ -225,12 +222,7 @@ impl<'a> Memoized<'a> {
         Self {
             inner,
             answers: Mutex::default(),
-            reuse_any_target: AtomicBool::new(false),
         }
-    }
-
-    pub fn reuse_any_target(&self, on: bool) {
-        self.reuse_any_target.store(on, Ordering::SeqCst);
     }
 
     fn slot(&self, key: String) -> Arc<OnceLock<HookRun>> {
@@ -251,25 +243,21 @@ impl<'a> Memoized<'a> {
 
 impl Hooks for Memoized<'_> {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
-        let any_target = format!(
-            "{}\0{}\0{}\0{}",
+        let key = format!(
+            "{}\0{}\0{}\0{:?}\0{}\0{}",
             integration.file.display(),
             query.action,
+            query.target,
+            query.args,
             query.phrase,
             query.raw_transcript
         );
-        let exact = format!("{any_target}\0{}\0{:?}", query.target, query.args);
-        let reuse_any_target = self.reuse_any_target.load(Ordering::SeqCst);
-        let slot = self.slot(if reuse_any_target { any_target.clone() } else { exact });
+        let slot = self.slot(key);
         let mut asked = false;
         let run = slot.get_or_init(|| {
             asked = true;
             self.inner.candidates(integration, query)
         });
-        if asked && !reuse_any_target {
-            // The near-miss pass may reuse this answer for another target.
-            let _ = self.slot(any_target).set(run.clone());
-        }
         let mut run = run.clone();
         if !asked {
             run.millis = 0.0;
@@ -644,7 +632,16 @@ mod tests {
             phrase: "find tea cup",
             raw_transcript: "Find Tea Cup",
         };
-        let run = hooks.candidates(&integration, &query);
+        // Another test thread forking while the script was open for writing makes the first exec fail with "text file
+        // busy"; it clears once that fork has exec'd.
+        let mut run = hooks.candidates(&integration, &query);
+        for _ in 0..20 {
+            if run.exit.is_some() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+            run = hooks.candidates(&integration, &query);
+        }
         assert_eq!(run.exit, Some(0));
         assert_eq!(
             run.lookup,

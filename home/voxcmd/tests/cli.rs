@@ -519,10 +519,11 @@ fn explain_runs_toml_hooks_in_a_dry_run_and_reports_a_failing_one() {
     assert!(text.contains("result:      no match"), "{text}");
 }
 
-/// A phrase nothing takes goes through the normal pass and then the near-miss pass; the hook of an action with two
-/// verbs is asked the same thing in each, and runs once.
+/// A phrase nothing takes goes through the normal pass and then the near-miss pass. The hook of an action with two
+/// verbs is asked the same thing in each when the target is the same, and runs once; a near miss that names another
+/// target ("tea" for "the tea") is another query and runs its own hook.
 #[test]
-fn explain_runs_the_same_hook_query_once_per_phrase() {
+fn explain_runs_each_distinct_hook_query_once_per_phrase() {
     let config = tempfile::tempdir().unwrap();
     std::fs::create_dir(config.path().join("integrations")).unwrap();
     let counter = config.path().join("runs");
@@ -530,18 +531,23 @@ fn explain_runs_the_same_hook_query_once_per_phrase() {
         config.path().join("integrations/finder.toml"),
         format!(
             "name = \"Finder\"\nverbs = [\n  {{ action = \"find\", match = 'find {{target}}' }},\n  {{ action = \"find\", match = 'look for {{target}}' }},\n]\n\
-             [actions.find]\nrun = 'true'\ncandidates = '''echo run >> '{}'; exit 2'''\nno_match = \"gone\"\n[actions.gone]\nrun = 'true'\n",
+             [actions.find]\nrun = 'true'\ncandidates = '''echo \"$VOXCMD_ARG_TARGET\" >> '{}'; exit 2'''\nno_match = \"gone\"\n[actions.gone]\nrun = 'true'\n",
             counter.display()
         ),
     )
     .unwrap();
     let path = std::env::join_paths([Path::new("/usr/bin"), Path::new("/bin")]).unwrap();
     let envs = [("VOXCMD_CONFIG_DIR", config.path().to_str().unwrap())];
-    for phrase in ["find the tea", "look for the tea find"] {
+    let targets_asked = |phrase: &str| {
         std::fs::write(&counter, "").unwrap();
         let output = voxcmd_on_path(&["explain", phrase], Path::new(&path), &envs);
         assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-        let runs = std::fs::read_to_string(&counter).unwrap().lines().count();
-        assert_eq!(runs, 1, "{phrase}: {}", stdout(&output));
-    }
+        std::fs::read_to_string(&counter)
+            .unwrap()
+            .lines()
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(targets_asked("find tea"), ["tea"]);
+    assert_eq!(targets_asked("find the tea"), ["the tea", "tea"]);
 }
