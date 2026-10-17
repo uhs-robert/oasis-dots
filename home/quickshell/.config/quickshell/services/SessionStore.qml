@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.theme
+import qs.core
 import "SessionJson.js" as SessionJson
 
 // Saved sessions in sessions.json under the Hyprland state dir, plus the Lua sessions listed read-only.

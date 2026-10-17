@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.components
 import qs.theme
 import qs.services
-import "../picker/Fuzzy.js" as Fuzzy
+import "../core/Fuzzy.js" as Fuzzy
 
 // A fuzzy-filtered list of a row's options; items are { label, thumb? }, picked(index) reports the position in items.
 // An item's thumb is an image url shown beside its label; a list with thumbs shows fewer, taller rows.

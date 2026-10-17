@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.theme
+import qs.core
 
 // Input choices saved in input.json under the Quickshell state dir.
 Singleton {

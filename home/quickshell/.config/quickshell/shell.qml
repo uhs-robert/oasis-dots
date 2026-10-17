@@ -11,6 +11,7 @@ import qs.tmux_overview
 import qs.picker
 import qs.popups
 import qs.services
+import qs.theme
 import qs.settings
 
 ShellRoot {

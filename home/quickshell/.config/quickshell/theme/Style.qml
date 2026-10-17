@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 import "Watch.js" as Watch
 import "styles/index.js" as Styles
 import "icon_sets/IconSets.js" as IconSets

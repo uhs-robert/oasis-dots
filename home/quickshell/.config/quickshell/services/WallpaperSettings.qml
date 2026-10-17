@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.theme
+import qs.core
 
 // Wallpaper rotator choices saved in wallpaper.json under the Hyprland state dir, and the rotator's own report read back from wallpaper-status.json.
 // The rotator polls the settings file, so saving is all it takes to apply a change.

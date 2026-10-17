@@ -7,7 +7,7 @@ import qs.components
 import qs.theme
 import qs.services
 import "Layout.js" as Layout
-import "../picker/Fuzzy.js" as Fuzzy
+import "../core/Fuzzy.js" as Fuzzy
 
 // The shared full-screen overview shell: grouped tiles, keys, search and help; the derived file fills in the data.
 PanelWindow {

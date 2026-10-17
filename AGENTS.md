@@ -95,7 +95,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 - Picker lists step rows with Tab/Shift+Tab, except a provider whose items expand into lists of their own (`PickerProvider.expands`, e.g. Voice Help): there Tab expands the selected item, as Tab completes in HyprVim's prompt, and Backspace on an empty search goes back.
 - Full-screen interactive modes (pickers, zoom) follow `RegionSelector`: Quickshell owns keyboard and pointer, loads the skin cursor through `picker/cursors`, and has a `?` help box; never a Hyprland submap.
 - Style tokens are declared once in `theme/StyleSchema.js` (type, default, doc) and each style's overrides live in `theme/styles/<name>.js`. Never hand-edit the `BEGIN generated` block in `Style.qml`; edit the schema and run `scripts/gen-style-exports` (in the Quickshell dir).
-- Times use `TimeFormat` and `ClockSettings` (Settings > Clock); state paths use `theme/Paths.qml` and `lib/state.lua` instead of recomputing XDG dirs.
+- Times use `TimeFormat` and `ClockSettings` (Settings > Clock); state paths use `core/Paths.qml` and `lib/state.lua` instead of recomputing XDG dirs.
 - A path built as a string (`Qt.resolvedUrl`, `Quickshell.shellDir + "/x"`, a JS `.import`) is checked by `lib/check/steps/qml_paths.py`, which qmllint cannot do. A path drawn from a table (bar modules, settings sections, popup views, picker skins) needs a rule in its `TABLES`; a use the step cannot classify fails until it has one or carries `// qs-path: skip <reason>`, and a target meant to be missing that git does not ignore carries `// qs-path: optional <reason>`. A file outside the Quickshell tree that names such a path goes in its `OUTSIDE_REFS`.
 
 ## voxcmd

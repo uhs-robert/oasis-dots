@@ -122,7 +122,7 @@ pick_render_node() {
   die "no non-NVIDIA render node under /sys/class/drm; set SHADOW_RENDER_NODE=/dev/dri/renderD..."
 }
 
-# Copies of only the non-secret files the bar reads (theme/Paths.qml dirs), never links into the owner's state.
+# Copies of only the non-secret files the bar reads (core/Paths.qml dirs), never links into the owner's state.
 seed_home() {
   local file
   mkdir -p "$shadow_home"/.config/fontconfig/conf.d "$shadow_home"/.local/state/{quickshell,hypr} \

@@ -6,7 +6,7 @@ import Quickshell.Io
 import qs.components
 import qs.theme
 import qs.services
-import "Fuzzy.js" as Fuzzy
+import "../core/Fuzzy.js" as Fuzzy
 import qs.picker.hyprvim
 import "hyprvim/PromptSpec.js" as Spec
 import "hyprvim/VimMotions.js" as Vim
