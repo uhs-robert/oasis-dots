@@ -13,6 +13,7 @@ import qs.popups
 import qs.services
 import qs.theme
 import qs.settings
+import qs.features.power
 
 ShellRoot {
     id: root

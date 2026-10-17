@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.services
 import qs.theme
+import qs.features.power
 import "Tints.js" as Tints
 
 // Everything a lock skin draws: live status plus the auth state, which the lock (or the preview) sets.

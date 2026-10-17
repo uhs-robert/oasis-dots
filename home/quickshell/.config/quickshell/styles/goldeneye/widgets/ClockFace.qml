@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import qs.theme
 import qs.services
+import qs.features.power
 import qs.lock.skins.goldeneye as Watch
 import "../../../theme/Watch.js" as W
 

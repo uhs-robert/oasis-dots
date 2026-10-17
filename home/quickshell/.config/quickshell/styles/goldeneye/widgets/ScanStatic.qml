@@ -1,6 +1,7 @@
 import QtQuick
 import qs.services
 import qs.theme
+import qs.features.power
 
 // A faint, steady static over a list while it is scanning; only on AC and while shown, and the shader is unloaded otherwise.
 Item {

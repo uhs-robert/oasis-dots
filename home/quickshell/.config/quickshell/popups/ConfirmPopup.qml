@@ -4,6 +4,7 @@ import qs.components
 import qs.ui
 import qs.theme
 import qs.services
+import qs.features.power
 
 // The confirm card: Confirm's question with Yes and No, dropped from the center island like the Power confirm.
 Popup {

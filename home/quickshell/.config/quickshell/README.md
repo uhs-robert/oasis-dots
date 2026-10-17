@@ -12,11 +12,12 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | ------------- | ------------------------------------------------------------------------------------------ |
 | `shell.qml`   | Entry point: a bar per monitor, then every popup, picker provider, IPC handler and overlay |
 | `bar/`        | The bar, its islands, the submap and voice-mode tabs, the hot corner, and one file per module in `modules/` |
-| `popups/`     | One popup per bar module (clock, volume, network, weather...), plus Start, Power and the screenshot tool |
+| `popups/`     | One popup per bar module (clock, volume, network, weather...), plus Start and the screenshot tool |
 | `picker/`     | The fuzzy picker, its providers (apps, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
 | `services/`   | Singletons that hold state (media, network, weather, notifications...) and the IPC handlers |
 | `ui/`         | Shared, style-neutral widgets: `Popup`, `popup/` (its title, keys and decor), `menu/` (rows, tabs, footers), `frames/` (brackets, frame stack, title strip), `gauges/` (`Meter`, `AtbBar`, `TickRuler`...), `keys/` (key hints and controller badges), `effects/` (dither, scanlines, sheen, sprites) |
 | `styles/`     | One folder per style with the pieces that only that style draws: `widgets/` and `sounds/` (the style's sound pack), and for snes `popups/` |
+| `features/`   | One folder per feature (`features/<name>/`); `power/` holds `Power` (AC and battery state), its IPC handler and settings, the Power and Battery popups, and `PowerConfirm` |
 | `components/` | The remaining widgets: feature surfaces and pieces not yet sorted |
 | `core/`       | `Paths.qml` (XDG dirs) and `Fuzzy.js` (the fuzzy matcher); imports nothing from the rest of the shell |
 | `theme/`      | `Theme.qml` (colors from the Oasis theme), `Style.qml` (the active style's tokens), `StyleSchema.js` (every token's type, default and doc), `styles/` (one file per style) and `BundledFonts.qml` (registers the bundled fonts) |

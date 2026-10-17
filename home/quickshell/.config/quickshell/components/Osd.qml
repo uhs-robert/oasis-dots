@@ -18,6 +18,7 @@ import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui.effects
 import qs.ui.frames
 import qs.ui.gauges
+import qs.features.power
 
 PanelWindow {
     id: root

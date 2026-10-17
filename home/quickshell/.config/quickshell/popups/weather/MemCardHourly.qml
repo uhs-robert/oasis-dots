@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.ui.effects
 import qs.theme
 import qs.services
+import qs.features.power
 
 // The hours as memory card saves: each hour a save block with its weather icon under a stack of used blocks that
 // reads the sub's value, the selected hour lifted and lit with its readout above as the save's info panel.

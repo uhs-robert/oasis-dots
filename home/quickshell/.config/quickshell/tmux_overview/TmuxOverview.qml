@@ -5,6 +5,7 @@ import Quickshell.Io
 import qs.theme
 import qs.services
 import qs.overview
+import qs.features.power
 import "../overview/Layout.js" as Layout
 import "TmuxData.js" as TmuxData
 import "Ansi.js" as Ansi

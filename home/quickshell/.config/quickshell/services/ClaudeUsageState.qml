@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.features.power
 
 // `claude -p /usage`, refreshed every 10 min only on AC while agents run, and when one finishes.
 Singleton {

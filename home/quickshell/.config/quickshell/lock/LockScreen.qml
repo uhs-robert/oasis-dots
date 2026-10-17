@@ -6,6 +6,7 @@ import QtQuick.Shapes
 import Quickshell
 import qs.theme
 import qs.services
+import qs.features.power
 
 // One screen of the lock: a big clock and date, a frosted password line, then now playing and the weather.
 Item {

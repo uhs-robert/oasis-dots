@@ -7,6 +7,7 @@ import qs.theme
 import qs.services
 import qs.components
 import qs.ui.effects
+import qs.features.power
 import qs.styles.ff7.widgets as Ff7
 import qs.styles.gameboy.widgets as Gameboy
 import qs.styles.goldeneye.widgets as Goldeneye
