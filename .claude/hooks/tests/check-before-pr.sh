@@ -14,7 +14,7 @@ repo=$root/repo
 git init -q --bare -b main "$root/origin.git"
 git clone -q "$root/origin.git" "$repo" 2>/dev/null
 mkdir -p "$repo/lib/check"
-cp "$repo_lib/check/passed.sh" "$repo/lib/check/"
+cp "$repo_lib/check/passed.sh" "$repo_lib/check/passed.py" "$repo/lib/check/"
 printf '#!/bin/sh\ntouch "%s/check-ran"\n' "$root" >"$repo/lib/check.sh"
 chmod +x "$repo/lib/check.sh"
 g add -A

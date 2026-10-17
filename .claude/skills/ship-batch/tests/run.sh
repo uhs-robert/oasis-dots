@@ -125,7 +125,7 @@ work=$root/work
 git init -q --bare -b main "$origin"
 git clone -q "$origin" "$work" 2>/dev/null
 mkdir -p "$work/lib/check"
-cp "$here/../../../../lib/check/passed.sh" "$work/lib/check/"
+cp "$here/../../../../lib/check/passed.sh" "$here/../../../../lib/check/passed.py" "$work/lib/check/"
 # shellcheck disable=SC2016 # the stub expands its own variable
 printf '#!/bin/sh\nexit "${STUB_CHECK_STATUS:-0}"\n' >"$work/lib/check.sh"
 chmod +x "$work/lib/check.sh"
@@ -199,7 +199,7 @@ e2e_setup() {
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib/check" "$e2e/main/.claude/skills/ship-batch"
-  cp "$here/../../../../lib/check/passed.sh" "$e2e/main/lib/check/"
+  cp "$here/../../../../lib/check/passed.sh" "$here/../../../../lib/check/passed.py" "$e2e/main/lib/check/"
   cp "$here/../ship-batch.sh" "$here/../base.sh" "$e2e/main/.claude/skills/ship-batch/"
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash

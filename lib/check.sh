@@ -27,8 +27,8 @@ set -u
 # the committed files), a PR open (.claude/hooks/check-before-pr.sh, which only looks up a recorded pass) and ship-batch
 # (each PR's branch, then main). A worktree has no repos/, so its pass does not cover lib/check/steps/symlinks.sh for the main
 # checkout: run the check in the real checkout before merging. --changed always runs the cheap steps (git-diff-check,
-# whitespace, conflicts, symlinks, packages); a change to this file, lib/check/lock.sh, lib/check/passed.sh, the justfile,
-# .claude/check-commands or any path no rule in path_scopes claims runs everything. The parallel output of a step is
+# whitespace, conflicts, symlinks, packages); a change to this file, lib/check/lock.sh, lib/check/passed.sh,
+# lib/check/passed.py, the justfile, .claude/check-commands or any path no rule in path_scopes claims runs everything. The parallel output of a step is
 # buffered and a passing step prints one line; after the FAILED: line, the last 25 lines of each failing step follow. A step
 # whose tool is missing prints "skip:" and passes. There is no single-step runner: the steps are all-or-nothing and a run
 # reports every failure.
@@ -64,7 +64,7 @@ set -u
 #   ship-batch, merge-prs    those skills' tests/run.sh, when either changes.
 #   notification-markup      home/quickshell/tests/notification_markup.js, the notification body sanitizer. Needs node.
 #   check-scope, check-cache which steps --changed picks (lib/check/tests/scope.sh), and the pass records and slot lock
-#                            (lib/check/tests/cache.sh, lib/check/tests/lock.sh).
+#                            (lib/check/tests/test_passed.py, cache.sh, lock.sh). Needs python3.
 #   packages                 duplicate package names across the manifests (lib/check/steps/packages.sh).
 #   symlinks, whitespace,    tracked symlinks that dangle or leave the repo; trailing whitespace; conflict markers.
 #   conflicts, git-diff-check  and `git diff --check HEAD`.
@@ -124,7 +124,7 @@ step_body() {
     return $status
     ;;
   check-scope) bash ./lib/check/tests/scope.sh ;;
-  check-cache) bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh ;;
+  check-cache) python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh ;;
   firefox-policy) bash ./lib/install/tests/firefox-policy.sh ;;
   greeter-keyring) bash ./lib/install/tests/greeter-keyring.sh ;;
   install-load) bash ./lib/install/tests/load.sh ;;
@@ -235,7 +235,7 @@ path_scopes() {
   lib/check/*) scopes=checkscope ;;
   esac
   case $1 in
-  lib/check.sh | lib/check/lock.sh | lib/check/passed.sh | justfile | .claude/check-commands) scopes="$scopes all" ;;
+  lib/check.sh | lib/check/lock.sh | lib/check/passed.sh | lib/check/passed.py | justfile | .claude/check-commands) scopes="$scopes all" ;;
   lib/check/steps/lua.sh | .luacheckrc | home/hypr/*) scopes="$scopes lua" ;;
   # Ahead of the greeter's QML arm, since case takes only the first match.
   system/etc/greetd/*.lua) scopes="$scopes lua qml" ;;
