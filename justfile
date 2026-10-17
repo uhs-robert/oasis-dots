@@ -87,6 +87,10 @@ lint:
     shellcheck install.sh uninstall.sh lib/check.sh lib/common/*.sh lib/install/*.sh lib/install/tests/*.sh lib/check/*.sh lib/check/steps/*.sh lib/check/tests/*.sh demo/*.sh
     shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
 
+# Rebuild every Quickshell .frag.qsb from its .frag (qt6-shadertools); `just check` fails when one is stale
+shaders:
+    sh lib/check/steps/shaders.sh --write
+
 # Validate formatting, package manifests, and whitespace; run optional tooling when available
 check:
     sh ./lib/check.sh

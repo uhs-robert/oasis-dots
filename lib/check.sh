@@ -47,6 +47,8 @@
 #                            Needs python3.
 #   time-format              no hand-built am/pm text in Quickshell QML/JS; clock text goes through TimeFormat
 #                            (lib/check/steps/time-format.sh).
+#   shaders                  each tracked Quickshell .frag rebuilds (qsb) to its committed .frag.qsb byte for byte, and its `// Rebuild:` header
+#                            matches the command used; `just shaders` rewrites them (lib/check/steps/shaders.sh). Needs qsb (qt6-shadertools).
 #   voxcmd-phrases           each phrase in home/voxcmd/tests/phrases.tsv routes as recorded (run-phrases.sh). Needs jq, fzf.
 #   voxcmd-click             voxcmd's click support (run.sh, with run-sessions.sh, run-sequences.sh, run-overview.sh and run-monitors.sh beside it). Needs jq, fzf.
 #   voxcmd-calendar          the calendar phrases against stubs (run-calendar.sh). Needs jq, fzf.
@@ -66,7 +68,7 @@
 #   ship-batch, merge-prs    those skills' tests/run.sh, when either changes.
 #   notification-markup      home/quickshell/tests/notification_markup.js, the notification body sanitizer. Needs node.
 #   check-scope, check-cache which steps --changed picks (lib/check/tests/scope.sh), and the runner's scopes, keys,
-#                            pass records and slot lock (lib/check/tests/test_*.py, cache.sh, lock.sh).
+#                            pass records and slot lock (lib/check/tests/test_*.py, cache.sh, lock.sh); and shaders.sh, the shaders step's tests.
 #   packages                 duplicate package names across the manifests (lib/check/steps/packages.sh).
 #   symlinks, whitespace,    tracked symlinks that dangle or leave the repo; trailing whitespace; conflict markers.
 #   conflicts, git-diff-check  and `git diff --check HEAD`.

@@ -40,6 +40,10 @@ PATH_SCOPES = [
     ("lib/check/steps/lock-skins.sh", "qml"),
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),
+    ("lib/check/steps/shaders.sh", "shaders"),
+    # Ahead of the Quickshell rule below: nothing else reads a shader or its compiled .qsb at check time.
+    ("home/quickshell/*.frag", "shaders"),
+    ("home/quickshell/*.frag.qsb", "shaders"),
     ("system/etc/greetd/quickshell/*", "qml"),
     ("home/quickshell/tests/*", "node"),
     ("home/quickshell/*", "qml node"),
@@ -115,7 +119,7 @@ STEPS = [
     Step("voxcmd-firefox", "voxcmd", "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-rust", "rust", "sh ./lib/check/steps/voxcmd-rust.sh"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
-    Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh"),
+    Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     Step("firefox-policy", "policy", "bash ./lib/install/tests/firefox-policy.sh", ("jq",), skip_reason="the firefox policy test needs jq"),
     Step("greeter-keyring", "keyring", "bash ./lib/install/tests/greeter-keyring.sh"),
     Step("install-load", "loader", "bash ./lib/install/tests/load.sh"),
@@ -130,6 +134,7 @@ STEPS = [
     Step("luacheck", "lua", "sh ./lib/check/steps/lua.sh"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
+    Step("shaders", "shaders", "sh ./lib/check/steps/shaders.sh"),
     Step("time-format", "qml", "sh ./lib/check/steps/time-format.sh"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
     Step("calendar-sync-syntax", "calendar", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
