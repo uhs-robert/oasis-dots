@@ -1,0 +1,618 @@
+import QtQuick
+import QtQuick.Layouts
+import qs.ui
+import qs.ui.menu
+import qs.theme
+import qs.services
+import qs.styles.oasis.widgets as Oasis
+import qs.styles.modern.widgets as Modern
+import qs.styles.neovim.widgets as Neovim
+import qs.features.weather.views.battle
+import qs.features.weather.views.hev
+import qs.features.weather.views.memcard
+import qs.features.weather.views.mode7
+import qs.features.weather.views.pokedex
+import qs.features.weather.views.ring
+import qs.features.weather.views.scan
+import qs.features.weather.views.scope
+import qs.features.weather.views.shared
+import qs.features.weather.views.status
+import qs.features.weather.views.towers
+import qs.features.weather.views.watch
+import qs.features.weather.views.weatherstar
+import qs.features.weather.views.wttr
+
+Popup {
+    id: root
+
+    popup_name: "weather"
+    size_class: "large"
+    preferred_width: 440
+    fit_island: true
+    title_value: WeatherState.has_data ? root.day_span + "D" : ""
+    body_height: content.implicitHeight + 24
+    key_help: "Tab tabs · 1-" + root.tabs.length + " select · [ ] view · " + (root.on_alerts_tab ? "h/l alert · j/k scroll" : "h/l move") + " · H/L jump · gg/0 now · G/$ end · r refresh" + (root.has_alerts ? " · a alerts" : "")
+
+    readonly property var base_tab_names: ["Daily", "Hourly"]
+    readonly property bool has_alerts: WeatherState.alerts.length > 0
+    tabs: root.has_alerts ? root.base_tab_names.concat(["Alerts"]) : root.base_tab_names
+    readonly property bool on_alerts_tab: root.has_alerts && root.current_tab === 2
+    readonly property bool mission: Style.weather_header === "watch"
+    readonly property bool threat: Style.weather_header === "scan"
+    readonly property bool hev: Style.weather_header === "hev"
+    readonly property bool dex: Style.weather_header === "pokedex"
+    // Headers that carry their own alert (HEV banner, Pokédex alert, FF7 status panel) replace the shared banner.
+    readonly property bool own_alert: root.hev || root.dex || Style.weather_header === "status" || Style.weather_header === "hero" || Style.weather_header === "lsp"
+
+    readonly property var daily_sub_names: ["Temp & Precip", "Wind", "UV", "Sunshine", "Sun & Moon"]
+    readonly property int sun_moon_sub: 4
+    readonly property var hourly_sub_names: ["Temp", "Precip", "Wind", "UV", "Humid", "Air"]
+    readonly property int air_sub: 5
+    sub_views: root.current_tab === 0 ? root.daily_sub_names : root.current_tab === 1 ? root.hourly_sub_names : []
+    jumps_enabled: true
+    cursor_state: [root.day_cursor, root.day_first, root.hour_cursor, root.alert_cursor]
+
+    // LazyPopup rebuilds the popup on every open, so these start from their defaults each time.
+    property int daily_sub: 0
+    property int hourly_sub: 0
+    property int day_cursor: 0
+    // First day of the Daily window; Daily and Sun & Moon share it with day_cursor.
+    property int day_first: 0
+    property int hour_cursor: 0
+    property int alert_cursor: 0
+
+    readonly property int content_height: Style.px(400)
+    readonly property bool on_air: root.current_tab === 1 && root.hourly_sub === root.air_sub
+    readonly property int air_hours: Math.min(24, WeatherState.aq_hours.length)
+
+    readonly property bool on_sun_moon: root.current_tab === 0 && root.daily_sub === root.sun_moon_sub
+    property int day_span: 5
+    property real hourly_scroll_x: 0
+    property real alert_detail_y: 0
+
+    Binding {
+        target: root
+        property: "day_span"
+        value: daily_loader.item ? Math.max(1, daily_loader.item.fit_days) : root.day_span
+        when: daily_loader.item !== null
+        restoreMode: Binding.RestoreNone
+    }
+
+    function sync_day_window() {
+        const n = root.day_span;
+        let first = root.day_first;
+        if (root.day_cursor < first) first = root.day_cursor;
+        else if (root.day_cursor >= first + n) first = root.day_cursor - n + 1;
+        root.day_first = Math.max(0, Math.min(first, WeatherState.days.length - n));
+    }
+
+    onDay_cursorChanged: root.sync_day_window()
+    onDay_spanChanged: root.sync_day_window()
+
+    Connections {
+        target: WeatherState
+        function onDaysChanged() { root.sync_day_window(); }
+    }
+
+    onCurrent_subChanged: {
+        if (root.current_tab === 0) root.daily_sub = root.current_sub;
+        else if (root.current_tab === 1) root.hourly_sub = root.current_sub;
+    }
+    onJump_first: root.go_now()
+    onJump_last: root.go_end()
+    line_ends_enabled: true
+    onLine_start: root.go_now()
+    onLine_end: root.go_end()
+
+    // Views a layout draws itself, as views/<token>/<prefix><View>.qml for Hourly, SunMoon, Air or Alerts;
+    // every other view falls back to the shared one. The blank lines keep each layout's line its own hunk,
+    // so style PRs that each flip one line merge without conflicts.
+    readonly property var layout_views: ({
+        battle: { prefix: "Battle", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        hero: { prefix: "Hero", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        hev: { prefix: "Hev", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        lsp: { prefix: "Lsp", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        memcard: { prefix: "MemCard", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        mode7: { prefix: "Mode7", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        oasis: { prefix: "Oasis", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        pokedex: { prefix: "Dex", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        ring: { prefix: "Ring", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        scan: { prefix: "Scan", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        scope: { prefix: "Scope", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        status: { prefix: "Status", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        towers: { prefix: "Tower", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        watch: { prefix: "Watch", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        weatherstar: { prefix: "Ws", views: ["Hourly", "SunMoon", "Air", "Alerts"] },
+
+        wttr: { prefix: "Wttr", views: ["Hourly", "SunMoon", "Air", "Alerts"] }
+    })
+
+    function view_url(view, shared) {
+        const own = root.layout_views[Style.weather_header];
+        const is_own = own && own.views.includes(view);
+        return Qt.resolvedUrl("views/" + (is_own ? Style.weather_header + "/" + own.prefix + view : "shared/" + shared) + ".qml");
+    }
+
+    readonly property bool is_open: Popups.open_name === "weather"
+    onIs_openChanged: if (is_open) { WeatherState.refresh_if_due(); root.go_now(); }
+
+    function move_day_cursor(dir, jump) {
+        const n = Math.max(1, WeatherState.days.length);
+        root.day_cursor = jump ? (dir < 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, root.day_cursor + dir));
+    }
+
+    // Same hour, one day over: an index step of 24 is a good approximation even on a
+    // partial first day (fewer than 24 hours before midnight).
+    function shifted_hour_cursor(dir) {
+        const hrs = WeatherState.hours;
+        if (hrs.length === 0) return 0;
+        return Math.max(0, Math.min(hrs.length - 1, root.hour_cursor + 24 * dir));
+    }
+
+    function move_hour_cursor(dir, jump, n, is_hourly_tab) {
+        n = Math.max(1, n);
+        if (jump) root.hour_cursor = is_hourly_tab ? root.shifted_hour_cursor(dir) : (dir < 0 ? 0 : n - 1);
+        else root.hour_cursor = Math.max(0, Math.min(n - 1, root.hour_cursor + dir));
+        if (is_hourly_tab && hourly_loader.item) hourly_loader.item.scroll_to_cursor();
+    }
+
+    function move_alert_cursor(dir, jump) {
+        const n = Math.max(1, WeatherState.alerts.length);
+        if (jump) {
+            root.alert_cursor = dir < 0 ? 0 : n - 1;
+        } else if (WeatherState.alerts.length > 1) {
+            root.alert_cursor = root.wrap_index(root.alert_cursor, dir, 0, WeatherState.alerts.length);
+        } else if (alerts_loader.item) {
+            alerts_loader.item.scroll_detail(dir);
+        }
+    }
+
+    function move_time(dir, jump) {
+        if (root.current_tab === 0) root.move_day_cursor(dir, jump);
+        else if (root.on_air) root.move_hour_cursor(dir, jump, root.air_hours, false);
+        else if (root.current_tab === 1) root.move_hour_cursor(dir, jump, WeatherState.hours.length, true);
+        else if (root.on_alerts_tab) root.move_alert_cursor(dir, jump);
+    }
+
+    function go_now() {
+        root.day_cursor = 0;
+        root.hour_cursor = 0;
+        root.alert_cursor = 0;
+        if (hourly_loader.item) hourly_loader.item.scroll_to_cursor();
+    }
+
+    function go_end() {
+        if (root.current_tab === 0) {
+            root.day_cursor = Math.max(0, WeatherState.days.length - 1);
+        } else if (root.on_air) {
+            root.hour_cursor = Math.max(0, root.air_hours - 1);
+        } else if (root.current_tab === 1) {
+            root.hour_cursor = Math.max(0, WeatherState.hours.length - 1);
+            if (hourly_loader.item) hourly_loader.item.scroll_to_cursor();
+        } else if (root.on_alerts_tab) {
+            root.alert_cursor = Math.max(0, WeatherState.alerts.length - 1);
+        }
+    }
+
+    function jump_to_hour_for_selected_day() {
+        const day = WeatherState.days[root.day_cursor];
+        if (!day) return;
+        const hrs = WeatherState.hours;
+        const target_hour = root.day_cursor === 0 ? WeatherState.location_now().getUTCHours() : 12;
+        let idx = hrs.findIndex(h => h.date === day.date && h.hour === target_hour);
+        if (idx === -1) idx = hrs.findIndex(h => h.date === day.date);
+        if (idx === -1) idx = 0;
+        root.hour_cursor = idx;
+        root.set_tab(1);
+        if (root.on_air) root.current_sub = 0;
+        if (hourly_loader.item) hourly_loader.item.request_scroll();
+    }
+
+    function fmt_temp(t) {
+        return Math.round(t) + "°" + WeatherState.unit_symbol();
+    }
+
+    function fmt_alert_time(iso) {
+        return iso ? WeatherState.fmt_location_time(new Date(iso)) : "—";
+    }
+
+    function open_alerts() {
+        root.set_tab(root.tabs.length - 1);
+        ThemeAudio.play("confirm");
+    }
+
+    function handle_key(event) {
+        const before = root.cursor_key();
+        if (event.key === Qt.Key_A && root.has_alerts) {
+            root.open_alerts();
+            event.accepted = true;
+        } else if (event.key === Qt.Key_R) {
+            WeatherState.refresh(true);
+            ThemeAudio.play("confirm");
+            event.accepted = true;
+        } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.current_tab === 0) {
+            root.jump_to_hour_for_selected_day();
+            ThemeAudio.play("confirm");
+            event.accepted = true;
+        } else if (event.key === Qt.Key_H) {
+            root.move_time(-1, !!(event.modifiers & Qt.ShiftModifier));
+            root.play_if_moved(before);
+            event.accepted = true;
+        } else if (event.key === Qt.Key_L) {
+            root.move_time(1, !!(event.modifiers & Qt.ShiftModifier));
+            root.play_if_moved(before);
+            event.accepted = true;
+        } else if (root.on_alerts_tab && (event.key === Qt.Key_J || event.key === Qt.Key_K)) {
+            // h/l pick the alert, so j/k are free to scroll its text however many alerts there are.
+            if (alerts_loader.item) alerts_loader.item.scroll_detail(event.key === Qt.Key_J ? 1 : -1);
+            event.accepted = true;
+        }
+    }
+
+    Item {
+        id: content
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 14
+        implicitHeight: main_column.implicitHeight
+        focus: true
+
+        Keys.onPressed: event => root.handle_key(event)
+
+        ColumnLayout {
+            id: main_column
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            spacing: 8
+
+            // --- Current conditions header, shown above every tab ---
+            Loader {
+                Layout.fillWidth: true
+                active: Style.weather_header !== ""
+                visible: active
+                sourceComponent: ({ scope: scope_header, watch: watch_header, memcard: memcard_header, battle: battle_header, mode7: mode7_header, wttr: wttr_header, weatherstar: ws_header, towers: towers_header, scan: scan_header, hev: hev_header, pokedex: dex_header, status: status_header, oasis: oasis_header, hero: hero_header, lsp: lsp_header })[Style.weather_header] || ring_header
+
+                Component {
+                    id: scope_header
+                    ScopeHeader {}
+                }
+
+                Component {
+                    id: watch_header
+                    WatchHeader {}
+                }
+
+                Component {
+                    id: memcard_header
+                    MemCardHeader {}
+                }
+
+                Component {
+                    id: battle_header
+                    BattleHeader {}
+                }
+
+                Component {
+                    id: mode7_header
+                    Mode7Header {}
+                }
+
+                Component {
+                    id: wttr_header
+                    WttrHeader {}
+                }
+
+                Component {
+                    id: ws_header
+                    WsHeader {}
+                }
+
+                Component {
+                    id: towers_header
+                    Ps2Header {}
+                }
+
+                Component {
+                    id: scan_header
+                    ScanHeader {}
+                }
+
+                Component {
+                    id: dex_header
+                    DexHeader {}
+                }
+
+                Component {
+                    id: status_header
+                    StatusPanel {
+                        onAlert_clicked: root.open_alerts()
+                    }
+                }
+
+                Component {
+                    id: hero_header
+                    Modern.WeatherHero {
+                        onAlert_clicked: root.open_alerts()
+                    }
+                }
+
+                Component {
+                    id: lsp_header
+                    Neovim.WeatherLsp {
+                        trail: [root.tabs[root.current_tab] || "", root.sub_views[root.current_sub] || ""]
+                        onAlert_clicked: root.open_alerts()
+                    }
+                }
+
+                Component {
+                    id: ring_header
+                    RingHeader {}
+                }
+
+                Component {
+                    id: hev_header
+                    HevHeader {}
+                }
+
+                Component {
+                    id: oasis_header
+                    Oasis.OasisHeader {}
+                }
+            }
+
+            AnnouncementBanner {
+                Layout.fillWidth: true
+                visible: root.hev && root.has_alerts
+                on_open: function () { root.open_alerts(); }
+            }
+
+            // A zero preferred width keeps the header's width-dependent children from feeding back into the column's width.
+            PlainHeader {
+                visible: Style.weather_header === ""
+                Layout.fillWidth: true
+                Layout.preferredWidth: 0
+            }
+
+            // --- Active-alert banner: the event over when it ends, like the FF7 battle message ---
+            Rectangle {
+                id: alert_banner
+                readonly property bool shown: root.has_alerts && !root.own_alert
+                readonly property var alert: WeatherState.alerts.length > 0 ? WeatherState.alerts[0] : null
+                readonly property int more: Math.max(0, WeatherState.alerts.length - 1)
+                readonly property color severity_color: alert_banner.alert ? WeatherState.alert_color(alert_banner.alert.severity) : Style.text_dim
+                readonly property color alert_color: root.mission || root.threat ? Style.pal.label : alert_banner.severity_color
+                Layout.fillWidth: true
+                Layout.preferredHeight: shown ? banner_lines.implicitHeight + 12 : 0
+                visible: shown
+                radius: Style.pill_chips ? height / 2 : Style.radius(4)
+                color: Style.boxed_cards ? Qt.alpha(alert_color, 0.1) : Style.pal.bg_surface
+                border.width: Style.boxed_cards ? 1 : 0
+                border.color: alert_color
+
+                ColumnLayout {
+                    id: banner_lines
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Style.pill_chips ? 12 : 6
+                    anchors.rightMargin: anchors.leftMargin
+                    spacing: 1
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Rectangle {
+                            id: severity_dot
+                            Layout.preferredWidth: 8
+                            Layout.preferredHeight: 8
+                            radius: Style.radius(4)
+                            color: alert_banner.severity_color
+                        }
+
+                        Text {
+                            visible: (root.mission || root.threat) && main_column.width >= 340
+                            text: root.mission ? "ALERT:" : "THREAT DETECTED"
+                            color: Style.pal.label
+                            font.family: root.mission ? Style.title_font_family : Style.font_family
+                            font.pixelSize: Style.fs(-6)
+                            font.letterSpacing: 1
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            text: !alert_banner.alert ? "" : root.mission ? alert_banner.alert.event.toUpperCase() : alert_banner.alert.event
+                            color: root.mission || root.threat ? Style.pal.label : alert_banner.severity_color
+                            font.family: Style.font_family
+                            font.pixelSize: Style.fs(-2)
+                            font.bold: true
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.leftMargin: severity_dot.Layout.preferredWidth + 8
+                        visible: text !== ""
+                        elide: Text.ElideRight
+                        text: !alert_banner.alert ? "" : [alert_banner.alert.ends ? "until " + root.fmt_alert_time(alert_banner.alert.ends) : "", alert_banner.more > 0 ? "+" + alert_banner.more + " more" : ""].filter(s => s !== "").join("  ")
+                        color: root.mission || root.threat ? Qt.alpha(Style.pal.label, 0.75) : Style.text_muted
+                        font.family: Style.font_family
+                        font.pixelSize: Style.fs(-4)
+                        font.capitalization: root.mission || root.threat ? Font.AllUppercase : Font.MixedCase
+                        font.letterSpacing: root.mission || root.threat ? 1 : 0
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.open_alerts()
+                }
+            }
+
+            Loader {
+                Layout.fillWidth: true
+                active: root.dex && root.has_alerts
+                visible: active
+                sourceComponent: DexAlert {
+                    onClicked: root.open_alerts()
+                }
+            }
+
+            TabRows {
+                Layout.fillWidth: true
+                labels: root.tabs
+                current: root.current_tab
+                tab_height: Style.px(26)
+                onPicked: i => {
+                    root.set_tab(i);
+                    ThemeAudio.play("cursor");
+                }
+            }
+
+            // Alerts has no sub-views, so it takes over the chip slot below and the popup keeps its height.
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: root.content_height + (root.on_alerts_tab ? sub_tabs.Layout.preferredHeight + main_column.spacing : 0)
+
+                Loader {
+                    id: daily_loader
+                    anchors.fill: parent
+                    active: root.current_tab === 0
+                    sourceComponent: DailyView {
+                        anchors.fill: parent
+                        visible: !root.on_sun_moon
+                        day_cursor: root.day_cursor
+                        first_day: root.day_first
+                        sub: root.daily_sub
+                        on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
+                    }
+                }
+
+                Loader {
+                    id: hourly_loader
+                    anchors.fill: parent
+                    active: root.current_tab === 1 && !root.on_air
+                    readonly property url url: root.view_url("Hourly", "HourlyView")
+                    onUrlChanged: hourly_loader.load()
+                    Component.onCompleted: hourly_loader.load()
+
+                    function load() {
+                        hourly_loader.setSource(hourly_loader.url, {
+                            hour_cursor: Qt.binding(() => root.hour_cursor),
+                            sub: Qt.binding(() => root.hourly_sub),
+                            scroll_x: Qt.binding(() => root.hourly_scroll_x),
+                            on_scroll: function (x) { root.hourly_scroll_x = x; },
+                            on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                        });
+                    }
+                }
+
+                Loader {
+                    id: air_loader
+                    anchors.fill: parent
+                    active: root.on_air
+                    readonly property url url: root.view_url("Air", "AirView")
+                    onUrlChanged: air_loader.load()
+                    Component.onCompleted: air_loader.load()
+
+                    function load() {
+                        air_loader.setSource(air_loader.url, {
+                            hour_cursor: Qt.binding(() => root.hour_cursor),
+                            on_select: function (i) { root.hour_cursor = i; ThemeAudio.play("cursor"); }
+                        });
+                    }
+                }
+
+                Loader {
+                    id: sun_moon_loader
+                    anchors.fill: parent
+                    active: root.on_sun_moon
+                    readonly property url url: root.view_url("SunMoon", "SunMoonView")
+                    onUrlChanged: sun_moon_loader.load()
+                    Component.onCompleted: sun_moon_loader.load()
+
+                    function load() {
+                        sun_moon_loader.setSource(sun_moon_loader.url, {
+                            day_cursor: Qt.binding(() => root.day_cursor),
+                            first_day: Qt.binding(() => root.day_first),
+                            day_span: Qt.binding(() => root.day_span),
+                            on_select: function (i) { root.day_cursor = i; ThemeAudio.play("cursor"); }
+                        });
+                    }
+                }
+
+                Loader {
+                    id: alerts_loader
+                    anchors.fill: parent
+                    active: root.on_alerts_tab
+                    readonly property url url: root.view_url("Alerts", "AlertsView")
+                    onUrlChanged: alerts_loader.load()
+                    Component.onCompleted: alerts_loader.load()
+
+                    function load() {
+                        alerts_loader.setSource(alerts_loader.url, {
+                            alert_cursor: Qt.binding(() => root.alert_cursor),
+                            detail_y: Qt.binding(() => root.alert_detail_y),
+                            on_detail_scroll: function (y) { root.alert_detail_y = y; },
+                            on_select: function (i) { root.alert_cursor = i; ThemeAudio.play("cursor"); }
+                        });
+                    }
+                }
+            }
+
+            // --- Sub-view chips (Daily/Hourly), under the content ---
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: sub_tabs.Layout.preferredHeight
+                visible: !root.on_alerts_tab
+
+                TabRows {
+                    id: sub_tabs
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    visible: root.current_tab === 0 || root.current_tab === 1
+                    chips: true
+                    labels: root.sub_views
+                    current: root.current_sub
+                    reserve_labels: [root.daily_sub_names, root.hourly_sub_names]
+                    onPicked: i => {
+                        root.current_sub = i;
+                        ThemeAudio.play("cursor");
+                    }
+                }
+            }
+
+            Text {
+                text: WeatherState.updated > 0 ? "Updated " + WeatherState.format_hour(new Date(WeatherState.updated)) : "Never updated"
+                color: Style.text_dim
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-4)
+            }
+
+            MenuFooter {
+                Layout.fillWidth: true
+                wrap: true
+                text: root.help_hint
+            }
+        }
+    }
+}

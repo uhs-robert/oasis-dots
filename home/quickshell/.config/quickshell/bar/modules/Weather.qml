@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.theme
-import qs.services
+import qs.features.weather
 
 BarModule {
     id: root

@@ -139,6 +139,38 @@ class WidgetTokenTest(PathsCase):
         ])
 
 
+class FolderViewTest(PathsCase):
+    """WeatherPopup picks a view from views/<token>/ or, failing that, views/shared/."""
+
+    TABLES = [r for r in qml_paths.TABLES if r.consumer == "features/weather/WeatherPopup.qml"]
+    FILES = {
+        "qs/features/weather/WeatherPopup.qml": (
+            'battle: { prefix: "Battle", views: ["Hourly", "Air"] },\n'
+            'function view_url(view, shared) { return Qt.resolvedUrl("views/" + folder + "/" + file + ".qml"); }\n'
+            'readonly property url url: root.view_url("Hourly", "HourlyView")\n'
+        ),
+        "qs/features/weather/views/battle/BattleHourly.qml": "",
+        "qs/features/weather/views/battle/BattleAir.qml": "",
+        "qs/features/weather/views/shared/HourlyView.qml": "",
+    }
+
+    def test_each_token_view_and_shared_fallback_resolves_in_its_folder(self):
+        self.assertEqual(self.check(self.FILES, self.TABLES), [])
+
+    def test_a_view_left_in_the_wrong_folder_fails(self):
+        files = {name: text for name, text in self.FILES.items() if not name.endswith("BattleAir.qml")}
+        files["qs/features/weather/views/shared/BattleAir.qml"] = ""
+        self.assertEqual(self.check(files, self.TABLES), [
+            "qs/features/weather/WeatherPopup.qml:2: features/weather/views/battle/BattleAir.qml (from qs/features/weather/WeatherPopup.qml:1) does not exist",
+        ])
+
+    def test_a_missing_shared_fallback_fails(self):
+        files = {name: text for name, text in self.FILES.items() if not name.endswith("shared/HourlyView.qml")}
+        self.assertEqual(self.check(files, self.TABLES), [
+            "qs/features/weather/WeatherPopup.qml:2: features/weather/views/shared/HourlyView.qml (from qs/features/weather/WeatherPopup.qml:3) does not exist",
+        ])
+
+
 class SoundPackTest(PathsCase):
     """ThemeAudio.pack_dir finds a style's pack in styles/<style>/sounds, which may be missing, and an extra pack in sounds/, which may not."""
 

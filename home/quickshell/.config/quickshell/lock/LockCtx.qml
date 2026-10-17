@@ -6,6 +6,7 @@ import qs.services
 import qs.theme
 import qs.features.power
 import qs.features.clock
+import qs.features.weather
 import "Tints.js" as Tints
 
 // Everything a lock skin draws: live status plus the auth state, which the lock (or the preview) sets.

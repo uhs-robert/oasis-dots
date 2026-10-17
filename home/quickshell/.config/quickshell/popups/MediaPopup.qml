@@ -8,7 +8,7 @@ import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.popups.media as Media
-import qs.popups.weather as Weather
+import qs.styles.nes.widgets as Nes
 import qs.styles.ps1.widgets as Ps1
 
 Popup {
@@ -181,7 +181,7 @@ Popup {
                         visible: active
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
-                        sourceComponent: Weather.DqWindow {
+                        sourceComponent: Nes.DqWindow {
                             implicitHeight: dq_title.implicitHeight + 24
 
                             Text {
