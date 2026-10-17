@@ -24,6 +24,11 @@ case ${1-} in
 esac
 
 if [ -n "${QSB-}" ]; then
+  # An override that names nothing is a mistake, not a missing tool: skipping would record a pass that compiled nothing.
+  [ -x "$QSB" ] || {
+    echo "shaders: QSB=$QSB is not an executable" >&2
+    exit 1
+  }
   qsb=$QSB
 elif qsb=$(command -v qsb); then
   :
@@ -32,7 +37,8 @@ else
 fi
 
 cd "$root" || exit 1
-shaders=$(git ls-files -- '*.frag')
+# Untracked ones too, so `just shaders` builds a new shader before its first `git add`.
+shaders=$(git ls-files --cached --others --exclude-standard -- '*.frag')
 failed=0
 
 # The `// Rebuild:` header on each .frag is documentation for whoever opens it; keep it equal to the command run here.

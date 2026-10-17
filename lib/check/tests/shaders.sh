@@ -75,6 +75,11 @@ else
   expect "a missing .qsb fails" '! run_step'
   expect "the failure says it is missing" 'grep -q "shader.frag: no shader.frag.qsb (run: just shaders)" "$scratch/out"'
   expect "--write creates a missing .qsb" 'run_step --write && run_step'
+
+  new_tree
+  sed "1s|$frag|new.frag|g" "$scratch/tree/$frag" >"$scratch/tree/new.frag"
+  expect "a new shader not yet added fails without its .qsb" '! run_step && grep -q "new.frag: no new.frag.qsb" "$scratch/out"'
+  expect "--write builds a shader not yet added" 'run_step --write && [ -f "$scratch/tree/new.frag.qsb" ]'
 fi
 
 new_tree
@@ -83,7 +88,7 @@ expect "a header that differs from the script's command fails" '! run_step'
 expect "the header failure names the file" 'grep -q "FAIL shader.frag: first line" "$scratch/out"'
 
 new_tree
-expect "no qsb skips and passes" 'QSB=$scratch/none run_step && grep -q "^skip: qsb not installed" "$scratch/out"'
+expect "a QSB naming nothing fails" '! QSB=$scratch/none run_step && grep -q "is not an executable" "$scratch/out"'
 expect "--write without qsb fails" '! QSB=$scratch/none run_step --write'
 
 [ "$failures" -eq 0 ] || exit 1
