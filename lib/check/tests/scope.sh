@@ -162,6 +162,16 @@ case_voxcmd_runner() {
   expect_list_has plain "$lib"
 }
 
+case_voxcmd_rust_source() {
+  start_case 'voxcmd Rust source'
+  local source
+  source=$(first_tracked 'home/voxcmd/src/cli.rs') || return 0
+  echo '// x' >>"$source"
+  plan
+  expect_ran voxcmd-rust voxcmd-click
+  expect_skipped luacheck qmllint
+}
+
 case_deleted_sourced_helper() {
   start_case 'deleted helper another script sources'
   local helper sourcing
@@ -301,7 +311,7 @@ case_skip_steps_with_changed() {
   [ "$requested" = 'check-scope shfmt' ] || fail "requested to list check-scope shfmt, got: $requested"
 }
 
-for case_fn in case_readme case_home_qml case_greeter_lua case_voxcmd_runner case_deleted_sourced_helper \
+for case_fn in case_readme case_home_qml case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_deleted_sourced_helper \
   case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed; do
   report "$case_fn"
