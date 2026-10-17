@@ -64,6 +64,10 @@ An `[MANUAL]` section's comment lines in `arch.ini` are printed as post-install 
 
 `home/git/.config/git/config` is tracked and ends up at `~/.config/git/config`. It includes `identity`, a gitignored file holding only `[user]`; `setup_git_identity` writes it on install when absent and never overwrites one. Keep name and email out of the tracked config, the repo is public.
 
+## Merging
+
+Every PR merge goes through `.claude/skills/ship-batch/ship-batch.sh <n>...` (PRs in merge order), whether the owner said "merge N" or a standing approval covers it. `merge-prs.sh` is for `--check` only; a hook blocks it and the `gh` merge command otherwise. After a PR was merged on GitHub by hand, run `ship-batch.sh` with no arguments for the post-merge steps.
+
 ## Hyprland config
 
 `home/hypr/.config/hypr/` is Lua, not `hyprland.conf`. `hyprland.lua` is the entrypoint; it merges machine config (`config/machines/`) and loads the `hyprvim` plugin (Vim-modal window management with a which-key overlay). Subsystems live in `config/`, `keymaps/`, `extensions/`, `lib/`, `scripts/`, `theme/`. This tree is stylua-checked.
