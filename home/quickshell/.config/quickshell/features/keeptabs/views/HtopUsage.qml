@@ -1,8 +1,8 @@
 import QtQuick
 import qs.theme
-import qs.services
+import qs.features.keeptabs
 import qs.features.clock
-import "../../styles/terminal/widgets/WttrArt.js" as WttrArt
+import "../../../styles/terminal/widgets/WttrArt.js" as WttrArt
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as Claude Code's /usage screen: each limit a bold label, a text bar with its percentage, and a dim reset line.

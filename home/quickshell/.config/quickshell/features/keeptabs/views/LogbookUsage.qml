@@ -5,6 +5,7 @@ import qs.ui.frames
 import qs.ui.gauges
 import qs.theme
 import qs.services
+import qs.features.keeptabs
 import qs.features.clock
 
 // The Usage tab as the combat visor's ENERGY HUD: each limit reads as what is left of it, in energy tanks and a bar,

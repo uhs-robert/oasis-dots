@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.styles.ps1.widgets as Ps1
 import qs.theme
-import qs.services
+import qs.features.keeptabs
 import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 

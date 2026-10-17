@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
+import qs.features.keeptabs
 import qs.ui.gauges
 import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
