@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Synthesizes each pack's sounds into sounds/<pack>/ (a style, or an extra pack such as mgs2): cursor, confirm, cancel, notify, and where made error, lock and unlock (ogg). Also writes lock skin effects (mgs2-skin, goldeneye-skin) and the default sounds/alarm.ogg (alarm). Needs numpy and ffmpeg.
-# Usage: synth-sounds [--out DIR] [NAME...]   (no names means all; files in ~/.local/share/quickshell/sounds/<style>/ override these)
+# Synthesizes each pack's sounds into styles/<style>/sounds/ (or sounds/<pack>/ for an extra pack such as mgs2): cursor, confirm, cancel, notify, and where made error, lock and unlock (ogg). Also writes lock skin effects (mgs2-skin, goldeneye-skin) and the default sounds/alarm.ogg (alarm). Needs numpy and ffmpeg.
+# Usage: synth-sounds [--out DIR] [NAME...]   (no names means all; files in ~/.local/share/quickshell/sounds/<pack>/ override these)
 import argparse
 import importlib.util
 import os
@@ -1027,6 +1027,8 @@ STYLES = {
 SKIN_FX = {"mgs2-skin": ("lock/skins/mgs2/fx", mgs2_skin), "goldeneye-skin": ("lock/skins/goldeneye/fx", goldeneye_skin)}
 # Single files under sounds/ that belong to no pack.
 LOOSE = {"alarm": alarm}
+# Packs that belong to no style; every other pack is a style's own.
+EXTRA_PACKS = {"mgs2"}
 
 if __name__ == "__main__":
     root = Path(__file__).resolve().parent.parent
@@ -1041,8 +1043,9 @@ if __name__ == "__main__":
         if name in LOOSE:
             write_audio((options.out or root / "sounds") / f"{name}.ogg", LOOSE[name]())
         elif name in STYLES:
+            home = Path("sounds") / name if name in EXTRA_PACKS else Path("styles") / name / "sounds"
             for kind, signal in STYLES[name]().items():
-                write_audio((options.out or root / "sounds") / name / f"{kind}.ogg", signal)
+                write_audio((options.out / name if options.out else root / home) / f"{kind}.ogg", signal)
         else:
             target, render = SKIN_FX[name]
             for kind, signal in render().items():

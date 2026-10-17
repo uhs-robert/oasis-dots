@@ -7,7 +7,7 @@ import qs.core
 import qs.theme
 import qs.lock.skins.sound
 
-// UI and notification sounds from one effects pack (a sounds/<pack>/ directory or an imported game), the style's own unless the user picks one; ~/.local/share/quickshell/sounds/<pack>/ wins file by file, and its <style>/ is the only source of lock and login music. Saved in audio.json under the state dir.
+// UI and notification sounds from one effects pack (a styles/<style>/sounds/ or sounds/<extra pack>/ directory, or an imported game), the style's own unless the user picks one; ~/.local/share/quickshell/sounds/<pack>/ wins file by file, and its <style>/ is the only source of lock and login music. Saved in audio.json under the state dir.
 Singleton {
     id: root
 
@@ -82,6 +82,11 @@ Singleton {
             if (url.startsWith(prefix)) out[model.get(i, "fileName")] = url;
         }
         return out;
+    }
+
+    // Where a shipped pack lives: a style's own folder, except an extra pack, which belongs to no style.
+    function pack_dir(name) {
+        return name in root.extra_packs ? Qt.resolvedUrl("../sounds/" + name) : Qt.resolvedUrl("../styles/" + name + "/sounds");
     }
 
     function valid_pack(name) {
@@ -204,7 +209,7 @@ Singleton {
             id: shipped
             active: pack.active
             sourceComponent: FolderListModel {
-                folder: Qt.resolvedUrl("../sounds/" + (pack.style_name || "none"))
+                folder: root.pack_dir(pack.style_name || "none")
                 nameFilters: ["*.wav", "*.ogg", "*.mp3"]
                 showDirs: false
             }
@@ -225,7 +230,7 @@ Singleton {
             id: other
             active: pack.active
             sourceComponent: FolderListModel {
-                folder: Qt.resolvedUrl("../sounds/" + (!pack.game && pack.choice ? pack.choice : "none"))
+                folder: root.pack_dir(!pack.game && pack.choice ? pack.choice : "none")
                 nameFilters: ["*.wav", "*.ogg", "*.mp3"]
                 showDirs: false
             }
@@ -249,7 +254,7 @@ Singleton {
             }
 
             readonly property FolderListModel legacy: FolderListModel {
-                folder: root.games[game_dir.modelData].legacy_dir || Qt.resolvedUrl("../sounds/none") // qs-path: optional "none" is the no-pack sentinel, never a folder
+                folder: root.games[game_dir.modelData].legacy_dir || root.pack_dir("none") // "none" is the no-pack sentinel, never a folder
                 nameFilters: ["*.wav", "*.ogg", "*.mp3"]
                 showDirs: false
             }

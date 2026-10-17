@@ -62,6 +62,14 @@ def meter_art_values(lines):
     return [(m.group(2), n) for n, line in lines if "meter_art:" in line for m in pattern.finditer(line)]
 
 
+def extra_pack_names(lines):
+    """Extractor: the keys of the object on the line declaring `extra_packs`."""
+    return [
+        (name, n) for n, line in lines if "extra_packs: ({" in line
+        for name in re.findall(r"(\w+):\s*\{", line.split("({", 1)[1])
+    ]
+
+
 def array_values(name, capitalise=False):
     """Extractor: the strings of the array on the line declaring `name`, empty ones dropped."""
     declaration = re.compile(rf"\b{name}\b[^\[\n]*\[(.*?)\]")
@@ -115,6 +123,9 @@ TABLES = [
     Table("ui/keys/ControllerBadge.qml", "../../styles/", "ui/keys/KeyHints.js", in_widgets(key_values("button"))),
     # Any style may set meter_art; today only nes does.
     Table("ui/gauges/Meter.qml", "../../styles/", "theme/styles/*.js", in_widgets(meter_art_values)),
+    # Every style has a pack in styles/<style>/sounds; an extra pack belongs to no style and stays in sounds/.
+    Table("services/ThemeAudio.qml", "../styles/", "theme/Style.qml", array_values("order")),
+    Table("services/ThemeAudio.qml", "../sounds/", "services/ThemeAudio.qml", extra_pack_names),
     Table("services/WeatherState.qml", "../assets/weather/", "services/WeatherState.qml", weather_slugs),
     Table("lock/skins/goldeneye/GoldeneyeAudio.qml", "fx/", "lock/skins/goldeneye/GoldeneyeAudio.qml", array_values("shipped")),
     Table("lock/skins/mgs2/Mgs2Audio.qml", "fx/", "lock/skins/mgs2/Mgs2Audio.qml", array_values("shipped")),
