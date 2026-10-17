@@ -42,9 +42,9 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
 3. Investigate the issue or PR and repository.
    - Read issue or PR context (including review comments), relevant code, repository instructions, tests, and analogous implementations.
    - Run `~/.claude/skills/orchestrator/overlap.sh <path>...` on the files the plan will touch. It lists other worktrees (committed and uncommitted work) and open PRs that change them. Settle each overlap with the session or PR owner before delegating, and put the outcome in the plan.
-   - Produce a concise implementation plan and provide to human for approval.
+   - Produce a concise implementation plan and put it to the owner for approval through `AskUserQuestion` (see below).
    - Escalate only materially ambiguous product or architectural decisions.
-   - Collect open questions for the owner into one ask rather than asking each as it comes up, and keep agents whose work does not depend on the answer running while you wait.
+   - Put every decision for the owner, plan approvals included, in `AskUserQuestion`, never in the reply text. Use one question per decision, and make each question stand on its own: no item numbers and no references to earlier text the owner must look up. Put the recommended option first, marked "(Recommended)". Each option's description says in one line what that choice changes; for a plan approval, put the today-vs-after summary there. Send all open questions in one call (four at most, the most blocking first), and keep agents whose work does not depend on the answers running while you wait.
 
 4. Delegate implementation and hands-on work using the cheapest capable model:
    - Never do hands-on work yourself, however small: every edit, fix, validation run and app run or screenshot goes to an agent. Your part is planning, briefing, reviewing diffs and reports, the review and merge-gate scripts, PRs, and the owner.
