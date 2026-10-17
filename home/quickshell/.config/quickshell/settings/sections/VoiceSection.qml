@@ -3,6 +3,7 @@ import Quickshell.Io
 import qs.services
 import qs.settings
 import "../Choices.js" as Choices
+import qs.features.voice
 
 RowsSection {
     id: root

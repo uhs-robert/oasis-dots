@@ -11,6 +11,7 @@ import qs.features.power
 import qs.features.screenshot
 import "Layout.js" as Layout
 import "Voice.js" as Voice
+import qs.features.voice
 
 // Every monitor's workspaces in one full-screen view on the focused monitor: pick, focus and move windows by key.
 OverviewBase {

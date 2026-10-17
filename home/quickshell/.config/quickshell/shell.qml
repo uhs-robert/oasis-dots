@@ -29,6 +29,7 @@ import qs.features.network
 import qs.features.media
 import qs.features.keeptabs
 import qs.features.updates
+import qs.features.voice
 
 ShellRoot {
     id: root
