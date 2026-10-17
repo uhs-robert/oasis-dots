@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.theme
 import qs.services
 import qs.ui.menu
+import qs.ui.keys
 
 // One per screen while zoom is on: owns keyboard and pointer, and draws the skin's reticle with the loupe's sampled area cut out.
 PanelWindow {

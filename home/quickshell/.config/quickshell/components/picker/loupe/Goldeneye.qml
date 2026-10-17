@@ -4,7 +4,7 @@ import QtQuick.Effects
 import qs.theme
 import qs.services
 import qs.components.picker
-import qs.components.goldeneye as Goldeneye
+import qs.styles.goldeneye.widgets as Goldeneye
 import "../../../theme/Watch.js" as Watch
 
 Item {

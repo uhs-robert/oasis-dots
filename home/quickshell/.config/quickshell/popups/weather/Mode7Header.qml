@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.theme
 import qs.services
-import qs.components.snes as Snes
+import qs.styles.snes.widgets as Snes
 
 // A SNES RPG menu window: blue gradient panel in a light double border, conditions set out like a status screen.
 Item {

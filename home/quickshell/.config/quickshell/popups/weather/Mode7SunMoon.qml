@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components.snes as Snes
+import qs.styles.snes.widgets as Snes
 import qs.theme
 import qs.services
 

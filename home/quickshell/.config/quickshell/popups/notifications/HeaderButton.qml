@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.effects
 import qs.theme
-import "../../components/KeyHints.js" as KeyHints
+import "../../ui/keys/KeyHints.js" as KeyHints
 
 // A pill button for the notifications header: icon + label + a keycap-style key hint.
 Rectangle {

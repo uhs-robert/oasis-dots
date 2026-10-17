@@ -15,8 +15,9 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `popups/`     | One popup per bar module (clock, volume, network, weather...), plus Start, Power and the screenshot tool |
 | `picker/`     | The fuzzy picker, its providers (apps, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
 | `services/`   | Singletons that hold state (media, network, weather, notifications...) and the IPC handlers |
-| `ui/`         | Shared, style-neutral widgets: `Popup`, `popup/` (its title, keys and decor), `menu/` (rows, tabs, footers), `frames/` (brackets, frame stack, title strip), `gauges/`, `effects/` (dither, scanlines, sheen, sprites) |
-| `components/` | The remaining widgets: per-style pieces in their own folders (`nes/`, `ps1/`, `oasis/`...), key hints and feature surfaces |
+| `ui/`         | Shared, style-neutral widgets: `Popup`, `popup/` (its title, keys and decor), `menu/` (rows, tabs, footers), `frames/` (brackets, frame stack, title strip), `gauges/` (`Meter`, `AtbBar`, `TickRuler`...), `keys/` (key hints and controller badges), `effects/` (dither, scanlines, sheen, sprites) |
+| `styles/`     | One folder per style with the pieces that only that style draws: `widgets/` (`nes/`, `ps1/`, `oasis/`...) and, for snes, `popups/` |
+| `components/` | The remaining widgets: feature surfaces and pieces not yet sorted |
 | `core/`       | `Paths.qml` (XDG dirs) and `Fuzzy.js` (the fuzzy matcher); imports nothing from the rest of the shell |
 | `theme/`      | `Theme.qml` (colors from the Oasis theme), `Style.qml` (the active style's tokens), `StyleSchema.js` (every token's type, default and doc), `styles/` (one file per style) and `BundledFonts.qml` (registers the bundled fonts) |
 | `settings/`   | The Settings panel and its sections                                                        |
@@ -234,7 +235,7 @@ Every popup uses the same keys. `?` shows the full list for the popup you're in.
 
 A popup with only one level of views answers both `Tab` and `[`/`]`. In the clock popup, `Tab` and `[`/`]` cycle the time zones. `h`/`l` and `j`/`k` move the cursor by a day and a week, `Shift` + `h`/`l`/`j`/`k` by a month and a year; `Enter` opens the cursor day's events, `n`/`N` jump between days with events, `o` and `e` open Calendar and `c` creates an event (see Calendar).
 
-Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `components/KeyHints.js` (`controllers`): the path of its button component and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
+Console styles draw controller buttons in place of keys in the footers and help. Each console is one entry in `ui/keys/KeyHints.js` (`controllers`): the path of its button component (`<console>/File.qml`, under `styles/<console>/widgets/`) and the key to button map. A button component is an `Item` with `button` (a name from the map), `size` and, for the Game Boy shades, `shades`.
 
 The main binds that open things (the leader is `SUPER`):
 
@@ -337,7 +338,7 @@ The Quickshell files it stages are listed once, in `lib/common/greeter-files.sh`
 
 Folder imports are root-anchored, `import qs.<path>` (`import qs.theme`, `import qs.lock.skins as Skins`), so moving a file only renames the path; JS imports stay relative (`import "Tints.js" as Tints`).
 
-**A style.** Add `theme/styles/<name>.js` with an `overrides(t, ctx)` that returns the tokens it changes from the schema defaults (`t` is `Theme`), import it in `theme/styles/index.js` and add it to the object `build()` returns there and to `sources` (the files Style.qml watches for hot reload), then add its name to `order` in `theme/Style.qml`, and to `labels` if the label isn't just the capitalized name. Shared popup components take their palette colors from `Style.pal`, which defaults to the Oasis palette; a style can remap it (goldeneye does). Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
+**A style.** Add `theme/styles/<name>.js` with an `overrides(t, ctx)` that returns the tokens it changes from the schema defaults (`t` is `Theme`), import it in `theme/styles/index.js` and add it to the object `build()` returns there and to `sources` (the files Style.qml watches for hot reload), then add its name to `order` in `theme/Style.qml`, and to `labels` if the label isn't just the capitalized name. Shared popup components take their palette colors from `Style.pal`, which defaults to the Oasis palette; a style can remap it (goldeneye does). Its own widgets go in `styles/<name>/widgets/`; a `meter_art` or controller `button` token names one as `<name>/File.qml`. Optional extras: a transition in `components/transitions/Kinds.js`, a sound pack in `sounds/<style>/` (a patch in `scripts/synth-sounds`) and a lock skin.
 
 **A style token.** Add one `tok(...)` line to `theme/StyleSchema.js` with its export type, default, a one-line doc and any options (`expr` for a computed export, `via: "bar"`, `export: false` for an internal key), then run `scripts/gen-style-exports` to rewrite the generated property lines in `Style.qml`. `just check` fails while they are out of date.
 

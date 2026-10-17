@@ -3,7 +3,7 @@ import QtQuick
 import qs.theme
 import qs.services
 import qs.ui.frames
-import qs.components.goldeneye as Goldeneye
+import qs.styles.goldeneye.widgets as Goldeneye
 import "../../../theme/Watch.js" as W
 
 // GoldenEye dressing for the window/screen/region target: red lock-on brackets that

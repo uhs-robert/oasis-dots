@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.ui.effects
 import qs.theme
 import qs.services
-import "../../components/nes/Slimes.js" as Slimes
+import "../../styles/nes/widgets/Slimes.js" as Slimes
 
 // Hourly's Air sub-view as a Dragon Quest encounter: the air is the monster, its pollutants are its stat lines,
 // and the 24 hours are a strip of gauges with a king slime hopping on the cursor hour. h/l move the hour cursor.

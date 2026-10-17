@@ -8,12 +8,12 @@ import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.popups.weather as Weather
-import qs.components.snes as Snes
-import qs.components.ps1 as Ps1
-import qs.components.ps2 as Ps2
-import qs.components.oasis as Oasis
-import qs.components.modern as Modern
-import qs.components.neovim as Neovim
+import qs.styles.snes.widgets as Snes
+import qs.styles.ps1.widgets as Ps1
+import qs.styles.ps2.widgets as Ps2
+import qs.styles.oasis.widgets as Oasis
+import qs.styles.modern.widgets as Modern
+import qs.styles.neovim.widgets as Neovim
 
 // A single notification row, shared by the All/Apps/Critical tabs. Every Text below sets
 // Layout.minimumWidth: 0 so a long unbroken summary/body can never grow the card past its width.

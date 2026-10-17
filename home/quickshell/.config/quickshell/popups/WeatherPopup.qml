@@ -5,9 +5,9 @@ import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.popups.weather
-import qs.components.oasis as Oasis
-import qs.components.modern as Modern
-import qs.components.neovim as Neovim
+import qs.styles.oasis.widgets as Oasis
+import qs.styles.modern.widgets as Modern
+import qs.styles.neovim.widgets as Neovim
 
 Popup {
     id: root

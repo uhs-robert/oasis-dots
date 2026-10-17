@@ -9,7 +9,7 @@ import qs.theme
 import qs.services
 import qs.popups.media as Media
 import qs.popups.weather as Weather
-import qs.components.ps1 as Ps1
+import qs.styles.ps1.widgets as Ps1
 
 Popup {
     id: root

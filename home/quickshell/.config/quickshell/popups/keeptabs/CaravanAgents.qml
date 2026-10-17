@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import qs.components
-import qs.components.oasis as Oasis
+import qs.styles.oasis.widgets as Oasis
 import qs.theme
+import qs.ui.gauges
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as caravan cards: one oasis card per session, a sky glyph for its state and the context

@@ -1,6 +1,6 @@
 import QtQuick
 import qs.ui.menu
-import qs.components.nes as Nes
+import qs.styles.nes.widgets as Nes
 import qs.theme
 
 // The NES title screen menu: numbered caps rows, a blinking cursor and a PUSH A BUTTON line.

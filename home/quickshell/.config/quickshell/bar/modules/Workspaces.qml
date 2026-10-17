@@ -7,18 +7,18 @@ import qs.theme
 import qs.services
 import qs.components
 import qs.ui.effects
-import qs.components.ff7 as Ff7
-import qs.components.gameboy as Gameboy
-import qs.components.goldeneye as Goldeneye
-import qs.components.metroid as Metroid
-import qs.components.neovim as Neovim
-import qs.components.nes as Nes
-import qs.components.oasis as Oasis
-import qs.components.ps1 as Ps1
-import qs.components.ps2 as Ps2
-import qs.components.snes as Snes
-import "../../components/ff7/Materia.js" as Materia
-import "../../components/nes/Slimes.js" as Slimes
+import qs.styles.ff7.widgets as Ff7
+import qs.styles.gameboy.widgets as Gameboy
+import qs.styles.goldeneye.widgets as Goldeneye
+import qs.styles.metroid.widgets as Metroid
+import qs.styles.neovim.widgets as Neovim
+import qs.styles.nes.widgets as Nes
+import qs.styles.oasis.widgets as Oasis
+import qs.styles.ps1.widgets as Ps1
+import qs.styles.ps2.widgets as Ps2
+import qs.styles.snes.widgets as Snes
+import "../../styles/ff7/widgets/Materia.js" as Materia
+import "../../styles/nes/widgets/Slimes.js" as Slimes
 
 Item {
     id: root

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.ui.menu
 import qs.theme
 import qs.services
+import qs.styles.halflife.widgets
 
 // Active NWS alerts as a Black Mesa announcement board: severity as an alert level, the selected announcement's full text
 // in a monitor. h/l or j/k select when there's more than one; with a single alert they scroll its text instead

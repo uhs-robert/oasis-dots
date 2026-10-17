@@ -6,10 +6,10 @@ import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.services
-import qs.components.nes as Nes
-import qs.components.ps1 as Ps1
-import qs.components.goldeneye as Goldeneye
-import qs.popups.snes as Snes
+import qs.styles.nes.widgets as Nes
+import qs.styles.ps1.widgets as Ps1
+import qs.styles.goldeneye.widgets as Goldeneye
+import qs.styles.snes.popups as Snes
 
 Popup {
     id: root

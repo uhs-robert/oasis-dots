@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.theme
 import qs.services
+import qs.styles.halflife.widgets
 
 // Sun & Moon as a Black Mesa Transit System departures board under the Daily day strip: each sky event is a "train"
 // with its time and a status that, for today, says whether it has already left.

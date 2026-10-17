@@ -4,7 +4,7 @@ import qs.theme
 import qs.services
 import qs.ui.frames
 import qs.ui.menu
-import qs.components.snes as SnesParts
+import qs.styles.snes.widgets as SnesParts
 
 // SNES JRPG dressing for the window/screen/region target: a SNES-window frame on the pick, dotted
 // outlines on the rest, a bobbing glove pointing at the pick, and a battle-menu style target list.

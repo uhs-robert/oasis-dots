@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components
 import qs.ui.menu
+import qs.ui.keys
 
 // The key help box and the key hint bar.
 Item {

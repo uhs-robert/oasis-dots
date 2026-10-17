@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
-import qs.components.goldeneye as Goldeneye
+import qs.styles.goldeneye.widgets as Goldeneye
 import qs.lock.skins.goldeneye as Watch
 import "../../theme/Watch.js" as W
 

@@ -2,10 +2,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import qs.components
 import qs.ui.frames
 import qs.theme
 import qs.services
+import qs.styles.reticle.widgets
 
 // Current conditions on a sensor scope: wind bearing and the next 12 hours of precip as contacts, the temperature as the locked target.
 ColumnLayout {

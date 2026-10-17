@@ -5,7 +5,7 @@ import qs.ui.effects
 import qs.theme
 import qs.services
 import "NesSprites.js" as NesSprites
-import "../../components/nes/Slimes.js" as Slimes
+import "../../styles/nes/widgets/Slimes.js" as Slimes
 
 // One day as a Dragon Quest enemy: its weather monster, a tower of slimes from low to high, an MP-style rain gauge and its name.
 Item {

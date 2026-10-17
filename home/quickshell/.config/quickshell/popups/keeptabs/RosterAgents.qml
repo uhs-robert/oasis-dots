@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.ui.gauges
 import qs.ui.menu
 import qs.theme
+import qs.styles.reticle.widgets
 import "KeeptabsFormat.js" as Fmt
 
 // The Reticle Agents tab: a drone roster. Each session is a numbered unit with a ring gauge lit to its context,

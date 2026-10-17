@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.ui.effects
 import qs.theme
 import qs.services
-import "../../components/nes/Slimes.js" as Slimes
+import "../../styles/nes/widgets/Slimes.js" as Slimes
 
 // The hours as a Dragon Quest field map: a stepped line in a command window with a king slime hopping on the cursor hour, the hour's stats in a message window above.
 // sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity. h/l move the hour cursor (auto-scrolling into view).

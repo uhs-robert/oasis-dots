@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components.ps2
+import qs.styles.ps2.widgets
 import qs.theme
 import qs.services
 import "KeeptabsFormat.js" as Fmt

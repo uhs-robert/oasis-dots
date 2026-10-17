@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import qs.components
 import qs.theme
 import qs.services
+import qs.styles.halflife.widgets
 
 // The HEV suit readout: a health cross beside TEMP over its range for the day, the suit shield and an angled bar for HUM,
 // RAIN, UV and AQI as the lower row of readouts, then an HEV voice line.

@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import qs.theme
 import qs.services
-import qs.components.neovim as Neovim
+import qs.styles.neovim.widgets as Neovim
 
 Item {
     id: root

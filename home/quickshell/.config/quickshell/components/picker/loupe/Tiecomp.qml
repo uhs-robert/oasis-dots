@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components
 import qs.ui.frames
 import qs.components.picker
+import qs.styles.tie.widgets
 
 Item {
     id: root

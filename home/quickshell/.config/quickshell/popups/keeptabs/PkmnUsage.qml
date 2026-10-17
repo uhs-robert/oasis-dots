@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.theme
 import qs.services
 import qs.popups.weather
+import qs.ui.frames
 
 // The Usage tab as a Trainer Card: each limit is a name, an EXP-style bar and a percent, with its reset in a
 // TIME line. Contract as in UsageView.

@@ -3,10 +3,10 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
-import qs.components
 import qs.ui.effects
 import qs.theme
 import qs.services
+import qs.ui.gauges
 import "Materia.js" as Materia
 
 // The FF7 status screen: the alert as a battle message, the condition as a portrait, TEMP and HUM as gauges, RAIN as a Limit bar.

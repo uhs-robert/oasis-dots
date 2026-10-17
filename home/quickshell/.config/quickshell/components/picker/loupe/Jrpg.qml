@@ -3,7 +3,7 @@ import QtQuick
 import qs.theme
 import qs.services
 import qs.components.picker
-import qs.components.snes as SnesParts
+import qs.styles.snes.widgets as SnesParts
 
 Item {
     id: root

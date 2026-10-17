@@ -4,6 +4,7 @@ import qs.components
 import qs.ui.effects
 import qs.theme
 import qs.services
+import qs.ui.frames
 import "PixelArt.js" as PixelArt
 
 // A Pokédex entry for the current weather: dot-matrix sprite, No. (WMO code), name, stats and a typed-out description.

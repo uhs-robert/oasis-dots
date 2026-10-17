@@ -6,8 +6,8 @@ import "../services/BarLayout.js" as BarLayout
 import "../services/BarModules.js" as BarModules
 // Keeps bar/modules in the Quickshell scan; modules load by URL and need BarModule.
 import qs.bar.modules
-import qs.components.oasis as Oasis
-import qs.components.neovim as Neovim
+import qs.styles.oasis.widgets as Oasis
+import qs.styles.neovim.widgets as Neovim
 
 Item {
     id: root

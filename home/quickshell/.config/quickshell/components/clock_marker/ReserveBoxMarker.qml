@@ -1,5 +1,5 @@
 import QtQuick
-import qs.components.snes
+import qs.styles.snes.widgets
 import qs.theme
 
 // snes: Super Mario World's item reserve box, a small inset window holding "12M" before a meeting and "MTG" with its border lit during one.

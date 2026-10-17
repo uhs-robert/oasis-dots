@@ -1,8 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.components.oasis as Oasis
-import qs.components
+import qs.styles.oasis.widgets as Oasis
+import qs.styles.ff7.widgets
+import qs.styles.gameboy.widgets
+import qs.styles.tie.widgets
 
 // The style's own frame shape (OctagonFrame, PixelFrame, WindowGradient, SlantFrame) and FrameTicks, each loaded only when its token is set.
 Item {

@@ -1,11 +1,11 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.ui.effects
 import qs.ui.menu
 import qs.theme
 import qs.services
+import qs.ui.gauges
 
 // Sun & Moon as two FF7 materia status pages: each body an orb with its stat rows, then AP-style gauges for today's
 // sun and the moon's light, under a strip of menu tabs for the Daily day window.

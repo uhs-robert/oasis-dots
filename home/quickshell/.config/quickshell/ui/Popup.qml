@@ -6,12 +6,12 @@ import qs.theme
 import qs.services
 import "Search.js" as Search
 import "popup/fuzzy_rows.js" as FuzzyRows
-import qs.components.neovim as Neovim
-import qs.components.goldeneye as Goldeneye
+import qs.styles.neovim.widgets as Neovim
+import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui.popup
-import qs.components
 import qs.ui.frames
 import qs.ui.menu
+import qs.ui.keys
 
 PanelWindow {
     id: root
