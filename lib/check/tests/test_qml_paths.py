@@ -41,6 +41,23 @@ class LiteralTest(PathsCase):
         files = {"qs/A.qml": 'a: 1\nImage { source: "gone.png" }\nImage { source: "image://x/y" }\nPathSvg { path: "M3 2.5" }\n'}
         self.assertEqual(self.check(files), ["qs/A.qml:2: gone.png does not exist"])
 
+    def test_single_quoted_forms_are_read_like_double_quoted_ones(self):
+        files = {
+            "qs/A.qml": "import 'gone'\nImage { source: 'gone.png' }\nx: Qt.resolvedUrl('gone2')\ny: Quickshell.shellDir + '/gone3'\n",
+            "qs/b.js": ".import 'gone.js' as G\n",
+        }
+        self.assertEqual(self.check(files), [
+            "qs/A.qml:1: import \"gone\" does not resolve",
+            "qs/A.qml:2: gone.png does not exist",
+            "qs/A.qml:3: gone2 does not exist",
+            "qs/A.qml:4: gone3 does not exist",
+            "qs/b.js:1: import \"gone.js\" does not resolve",
+        ])
+
+    def test_a_name_inside_a_string_literal_is_not_a_use(self):
+        files = {"qs/A.qml": "Text { text: \"Quickshell.shellDir\" }\nText { text: 'Qt.resolvedUrl(x)' }\nText { text: \"source: 'gone.png'\" }\n"}
+        self.assertEqual(self.check(files), [])
+
     def test_commented_use_is_ignored(self):
         self.assertEqual(self.check({"qs/A.qml": '// Qt.resolvedUrl("gone")\n/* Qt.resolvedUrl("gone")\n*/\n'}), [])
 

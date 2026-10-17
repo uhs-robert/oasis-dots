@@ -82,6 +82,12 @@ class StagedFilesTest(unittest.TestCase):
         entries = ["a/", "fonts/*.ttf", "VERSION?", "gone?", "missing/"]
         self.assertEqual(qml_imports.staged_files(files, entries), ({"a/x.qml", "fonts/F.ttf", "VERSION"}, ["missing/"]))
 
+    def test_a_glob_follows_bash_pathname_expansion(self):
+        files = {"fonts/F.ttf", "fonts/nested/G.ttf", "fonts/.H.ttf", "fonts/OFL-x.txt"}
+        staged, _ = qml_imports.staged_files(files, ["fonts/*.ttf", "fonts/OFL-?.txt", "fonts/[!x]*.txt"])
+        self.assertEqual(staged, {"fonts/F.ttf", "fonts/OFL-x.txt"})
+        self.assertEqual(qml_imports.staged_files(files, ["fonts/.*.ttf"])[0], {"fonts/.H.ttf"})
+
 
 class KeepStringsTest(unittest.TestCase):
     def test_strings_survive_and_comments_do_not(self):

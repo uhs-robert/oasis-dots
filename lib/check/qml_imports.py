@@ -48,6 +48,22 @@ def greeter_entries(repo):
     return entries
 
 
+def glob_matches(path, pattern):
+    """Whether path matches the entry as bash pathname expansion reads it, which is how copy_greeter_qs_files expands
+    it: `*`, `?` and `[..]` stop at `/`, and none of them matches a leading `.`. fnmatch alone lets `*` cross `/`. A
+    path below a matched directory matches too, as `cp -r` copies the directory whole."""
+    path_parts = path.split("/")
+    pattern_parts = pattern.split("/")
+    if len(pattern_parts) > len(path_parts):
+        return False
+    for part, glob in zip(path_parts, pattern_parts):
+        if part.startswith(".") and not glob.startswith("."):
+            return False
+        if not fnmatch.fnmatchcase(part, re.sub(r"^\[\^", "[!", glob)):
+            return False
+    return True
+
+
 def staged_files(qs_files, entries):
     """Splits the greeter list's entries (as greeter_list reads them) into the Quickshell files the greeter stages,
     from qs_files (paths relative to the Quickshell dir), and the required entries that match none of them."""
@@ -59,7 +75,7 @@ def staged_files(qs_files, entries):
         if entry.endswith("/"):
             found = {path for path in qs_files if path.startswith(entry)}
         else:
-            found = {path for path in qs_files if fnmatch.fnmatchcase(path, entry)}
+            found = {path for path in qs_files if glob_matches(path, entry)}
         staged |= found
         if not found and not optional:
             unmatched.append(entry)
@@ -134,7 +150,32 @@ def strip_code(line, state, keep_strings=False):
     return "".join(out)
 
 
-QUOTED_STATEMENT = re.compile(rf'^{WS}*\.?import{WS}+"([^"]+)"')
+def blank_strings(line):
+    """The line with every string's contents replaced by spaces, so a name inside a string cannot match while every
+    other character keeps its position. Expects comments already stripped."""
+    out = []
+    quote = ""
+    escaped = False
+    for c in line:
+        if not quote:
+            if c in "\"'`":
+                quote = c
+            out.append(c)
+        elif escaped:
+            escaped = False
+            out.append(" ")
+        elif c == "\\":
+            escaped = True
+            out.append(" ")
+        elif c == quote:
+            quote = ""
+            out.append(c)
+        else:
+            out.append(" ")
+    return "".join(out)
+
+
+QUOTED_STATEMENT = re.compile(rf"""^{WS}*\.?import{WS}+(["'])(.+?)\1""")
 QS_STATEMENT = re.compile(rf"^{WS}*import{WS}+qs((?:\.[A-Za-z0-9_]+)*)({WS}|$)")
 
 
@@ -153,5 +194,5 @@ def imports(path):
             if match := QS_STATEMENT.match(statement):
                 yield "qs", match.group(1).removeprefix(".").replace(".", "/"), number
             elif match := QUOTED_STATEMENT.match(statement):
-                kind = "script" if SCRIPT_TARGET.search(match.group(1)) else "folder"
-                yield kind, match.group(1), number
+                kind = "script" if SCRIPT_TARGET.search(match.group(2)) else "folder"
+                yield kind, match.group(2), number
