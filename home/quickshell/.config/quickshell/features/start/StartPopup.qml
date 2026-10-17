@@ -8,7 +8,6 @@ import qs.theme
 import qs.services
 import qs.features.power
 import qs.features.launcher
-import qs.popups.start as Start
 import qs.styles.snes.popups as Snes
 import qs.styles.ps2.widgets as Ps2
 
@@ -174,7 +173,7 @@ Popup {
 
         Component {
             id: nes_menu
-            Start.NesMenu {
+            NesMenu {
                 popup: root
             }
         }

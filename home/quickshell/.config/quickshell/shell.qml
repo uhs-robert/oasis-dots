@@ -21,6 +21,11 @@ import qs.features.screen_select
 import qs.features.display
 import qs.features.osd
 import qs.features.notifications
+import qs.features.start
+import qs.features.tray
+import qs.features.system
+import qs.features.bluetooth
+import qs.features.network
 
 ShellRoot {
     id: root
