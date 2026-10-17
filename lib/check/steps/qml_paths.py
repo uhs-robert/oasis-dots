@@ -30,7 +30,7 @@ from typing import Callable, NamedTuple
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from qml_imports import GREETER_LIST, WS, greeter_list, imports, read_lines, staged_files, strip_code  # noqa: E402
+from qml_imports import GREETER_LIST, WS, blank_strings, greeter_list, imports, read_lines, staged_files, strip_code  # noqa: E402
 
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 QS_DIR = "home/quickshell/.config/quickshell"
@@ -42,8 +42,11 @@ SOURCE_SUFFIXES = (".qml", ".js", ".mjs")
 
 def key_values(key):
     """Extractor: the string after `key:` wherever it appears."""
-    pattern = re.compile(rf'\b{key}:{WS}*"([^"]*)"')
-    return lambda lines: [(m.group(1), n) for n, line in lines for m in pattern.finditer(line)]
+    pattern = re.compile(rf"""\b{key}:{WS}*(["'])(.*?)\1""")
+    return lambda lines: [(m.group(2), n) for n, line in lines for m in pattern.finditer(line)]
+
+
+STRING_LITERAL = r"""(["'])(.*?)\1"""
 
 
 def array_values(name, capitalise=False):
@@ -52,7 +55,7 @@ def array_values(name, capitalise=False):
     return lambda lines: [
         (value[:1].upper() + value[1:] if capitalise else value, n)
         for n, line in lines if (m := declaration.search(line))
-        for value in re.findall(r'"([^"]*)"', m.group(1)) if value
+        for _, value in re.findall(STRING_LITERAL, m.group(1)) if value
     ]
 
 
@@ -61,9 +64,9 @@ def view_files(lines):
     argument of each view_url(view, shared) call is a file as is."""
     found = []
     for n, line in lines:
-        if m := re.search(r'prefix: "([^"]+)", views: \[(.*?)\]', line):
-            found += [(m.group(1) + view, n) for view in re.findall(r'"([^"]+)"', m.group(2))]
-        found += [(m.group(1), n) for m in re.finditer(r'view_url\("[^"]+", "([^"]+)"\)', line)]
+        if m := re.search(r"""prefix: (["'])([^"']+)\1, views: \[(.*?)\]""", line):
+            found += [(m.group(2) + view, n) for _, view in re.findall(r"""(["'])([^"']+)\1""", m.group(3))]
+        found += [(m.group(3), n) for m in re.finditer(r"""view_url\((["'])[^"']+\1, (["'])([^"']+)\2\)""", line)]
     return found
 
 
@@ -72,13 +75,13 @@ def weather_slugs(lines):
     found = []
     in_moon = False
     for n, line in lines:
-        found += [(m.group(1), n) for m in re.finditer(r'asset_url\("([^"]+)"\)', line)]
+        found += [(m.group(2), n) for m in re.finditer(r"""asset_url\((["'])([^"']+)\1\)""", line)]
         if "moon_icon_slugs: ({" in line:
             in_moon = True
         elif in_moon and line.strip().startswith("})"):
             in_moon = False
         elif in_moon:
-            found += [(m.group(1), n) for m in re.finditer(r':\s*"([^"]+)"', line)]
+            found += [(m.group(2), n) for m in re.finditer(r""":\s*(["'])([^"']+)\1""", line)]
     return found
 
 
@@ -122,7 +125,8 @@ OUTSIDE_REFS = [
 ]
 
 # A relative string on these QML keys is a path; other keys hold prose, glyphs or SVG data.
-BARE_PATH_KEYS = re.compile(rf'\b(?:source|fragmentShader){WS}*:{WS}*"([^"]+)"')
+BARE_PATH_KEYS = re.compile(rf"""\b(?:source|fragmentShader){WS}*:{WS}*(?=["'])""")
+BARE_STRING = re.compile(r"""(["'])((?:\\.|(?!\1)[^\\])+)\1""")
 URL_SCHEME = re.compile(r"^(/|[A-Za-z][A-Za-z0-9+.-]*:)")
 CALL_SITE = re.compile(r"Qt\.resolvedUrl\(|Quickshell\.shellPath\(|\bshellDir\b")
 MARKER = re.compile(r"//{}*qs-path:{}*(optional|skip){}+\S".format(WS, WS, WS))
@@ -222,7 +226,9 @@ def call_sites(path, qml_file):
     for number, line in enumerate(code):
         marker = (MARKER.search(raw[number]) or [None, ""])[1]
         window = "\n".join(code[number:number + 3])
-        for match in CALL_SITE.finditer(line):
+        # Names are found on the line with its strings blanked, so one inside a string literal is not a use; the
+        # arguments are read from the same offsets in the line with its strings kept.
+        for match in CALL_SITE.finditer(blank_strings(line)):
             if match.group().endswith("("):
                 argument = balanced_argument(window, match.end())
                 terms = None
@@ -240,9 +246,10 @@ def call_sites(path, qml_file):
                         terms = None
                 sites.append(Site(number + 1, marker, True, terms, ""))
         if qml_file:
-            for match in BARE_PATH_KEYS.finditer(line):
-                if not URL_SCHEME.match(match.group(1)):
-                    sites.append(Site(number + 1, marker, False, [("lit", match.group(1))], ""))
+            for match in BARE_PATH_KEYS.finditer(blank_strings(line)):
+                literal = BARE_STRING.match(line, match.end())
+                if literal and not URL_SCHEME.match(literal.group(2)):
+                    sites.append(Site(number + 1, marker, False, [("lit", literal.group(2))], ""))
     return sites
 
 
