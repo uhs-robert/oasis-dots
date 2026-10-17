@@ -14,6 +14,8 @@ arguments:
 
 Act as the orchestrator: delegate all hands-on work.
 
+Your context is the session's scarce resource: keep skill loads, file dumps, long diffs and logs out of it. Read summaries, reports and targeted excerpts, not whole files or outputs.
+
 Target: `$target`
 
 The target may be an issue or PR URL/number, repository URL/name, or omitted.
@@ -60,6 +62,7 @@ The target may be an issue or PR URL/number, repository URL/name, or omitted.
    - remaining concerns
 
 6. Independently review the resulting diff.
+   - For a large diff (more than a few hundred lines or many files), brief a read-only reviewer agent with the same checks and read its findings instead of the diff.
    - Verify correctness, acceptance criteria, regressions, architecture, scope, DRYness, edge cases, tests, and repository conventions.
    - Confirm the commit messages follow `commit-messages`.
 
