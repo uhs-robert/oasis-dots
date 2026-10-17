@@ -417,7 +417,7 @@ fn util_notify_sends_info_transient_and_error_in_the_history() {
     );
     assert_eq!(
         std::fs::read_to_string(calls).unwrap(),
-        "-a\nvoxcmd\n--transient\nTitle\nBody\n---\n-a\nvoxcmd\nOops\nIt broke\n---\n"
+        "-a\nvoxcmd\n--transient\n--\nTitle\nBody\n---\n-a\nvoxcmd\n--\nOops\nIt broke\n---\n"
     );
 }
 
@@ -456,7 +456,7 @@ fn util_notify_no_match_offers_voice_help_without_waiting_for_the_toast() {
     }
     assert_eq!(
         std::fs::read_to_string(calls).unwrap(),
-        "-a\nvoxcmd\n--transient\n--action=help=Voice Help\nvoxcmd: no match\n\"zzz\"\n---\n"
+        "-a\nvoxcmd\n--transient\n--action=help=Voice Help\n--\nvoxcmd: no match\n\"zzz\"\n---\n"
     );
 }
 
@@ -517,4 +517,31 @@ fn explain_runs_toml_hooks_in_a_dry_run_and_reports_a_failing_one() {
         "{text}"
     );
     assert!(text.contains("result:      no match"), "{text}");
+}
+
+/// A phrase nothing takes goes through the normal pass and then the near-miss pass; the hook of an action with two
+/// verbs is asked the same thing in each, and runs once.
+#[test]
+fn explain_runs_the_same_hook_query_once_per_phrase() {
+    let config = tempfile::tempdir().unwrap();
+    std::fs::create_dir(config.path().join("integrations")).unwrap();
+    let counter = config.path().join("runs");
+    std::fs::write(
+        config.path().join("integrations/finder.toml"),
+        format!(
+            "name = \"Finder\"\nverbs = [\n  {{ action = \"find\", match = 'find {{target}}' }},\n  {{ action = \"find\", match = 'look for {{target}}' }},\n]\n\
+             [actions.find]\nrun = 'true'\ncandidates = '''echo run >> '{}'; exit 2'''\nno_match = \"gone\"\n[actions.gone]\nrun = 'true'\n",
+            counter.display()
+        ),
+    )
+    .unwrap();
+    let path = std::env::join_paths([Path::new("/usr/bin"), Path::new("/bin")]).unwrap();
+    let envs = [("VOXCMD_CONFIG_DIR", config.path().to_str().unwrap())];
+    for phrase in ["find the tea", "look for the tea find"] {
+        std::fs::write(&counter, "").unwrap();
+        let output = voxcmd_on_path(&["explain", phrase], Path::new(&path), &envs);
+        assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+        let runs = std::fs::read_to_string(&counter).unwrap().lines().count();
+        assert_eq!(runs, 1, "{phrase}: {}", stdout(&output));
+    }
 }

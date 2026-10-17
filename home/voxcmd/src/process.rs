@@ -5,15 +5,20 @@
 //! timeout kills the group.
 use std::io::Read;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
-use std::process::{Command, ExitStatus, Stdio};
-use std::sync::mpsc;
+use std::process::{Child, Command, ExitStatus, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 const POLL: Duration = Duration::from_millis(5);
 
-/// How long to wait for the pipes to close after the command exited. A child that outlived it may still hold them.
+/// How long, once the command has exited, its pipes get to deliver what is left. A child that outlived it may still
+/// hold them open, and its output is cut off there. One deadline covers both pipes.
 const DRAIN_GRACE: Duration = Duration::from_millis(200);
+
+/// How long after the group was killed the readers get to hand over their last bytes.
+const DRAIN_AFTER_KILL: Duration = Duration::from_millis(100);
 
 #[derive(Debug)]
 pub struct Outcome {
@@ -44,7 +49,8 @@ impl Outcome {
     }
 }
 
-/// Runs the command with no stdin and both outputs captured. After `timeout` the command's process group is killed.
+/// Runs the command with no stdin and both outputs captured. After `timeout` the command's process group is killed;
+/// so it is when the command has exited, so that children it left behind do not outlive the call.
 pub fn run_with_timeout(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
     command
         .stdin(Stdio::null())
@@ -52,45 +58,92 @@ pub fn run_with_timeout(command: &mut Command, timeout: Duration) -> std::io::Re
         .stderr(Stdio::piped())
         .process_group(0);
     let mut child = command.spawn()?;
-    let stdout = drain(child.stdout.take());
-    let stderr = drain(child.stderr.take());
+    let stdout = Drain::start(child.stdout.take());
+    let stderr = Drain::start(child.stderr.take());
     let deadline = Instant::now() + timeout;
     let (status, timed_out) = loop {
-        if let Some(status) = child.try_wait()? {
-            break (Some(status), false);
+        match child.try_wait() {
+            Ok(Some(status)) => break (Some(status), false),
+            Ok(None) => {}
+            Err(error) => {
+                kill_and_reap(&mut child);
+                return Err(error);
+            }
         }
         if Instant::now() >= deadline {
-            kill_group(child.id());
-            // Reaped so no zombie is left; the group is gone, so this does not wait long.
-            let _ = child.wait();
+            kill_and_reap(&mut child);
             break (None, true);
         }
         thread::sleep(POLL);
     };
+    if !timed_out {
+        let grace_ends = Instant::now() + DRAIN_GRACE;
+        wait_until(grace_ends, || stdout.finished() && stderr.finished());
+        // The command is reaped, but a child of its group may live on; the group id stays taken while it does.
+        kill_group(child.id());
+    }
+    wait_until(Instant::now() + DRAIN_AFTER_KILL, || {
+        stdout.finished() && stderr.finished()
+    });
     Ok(Outcome {
         status,
-        stdout: collect(&stdout),
-        stderr: collect(&stderr),
+        stdout: stdout.text(),
+        stderr: stderr.text(),
         timed_out,
     })
 }
 
-/// Reads a pipe to its end on a thread of its own, so that a full pipe never blocks the command.
-fn drain(pipe: Option<impl Read + Send + 'static>) -> mpsc::Receiver<Vec<u8>> {
-    let (sender, receiver) = mpsc::channel();
-    thread::spawn(move || {
-        let mut bytes = Vec::new();
-        if let Some(mut pipe) = pipe {
-            let _ = pipe.read_to_end(&mut bytes);
-        }
-        let _ = sender.send(bytes);
-    });
-    receiver
+fn kill_and_reap(child: &mut Child) {
+    kill_group(child.id());
+    // Reaped so no zombie is left; the group is gone, so this does not wait long.
+    let _ = child.wait();
 }
 
-fn collect(receiver: &mpsc::Receiver<Vec<u8>>) -> String {
-    let bytes = receiver.recv_timeout(DRAIN_GRACE).unwrap_or_default();
-    String::from_utf8_lossy(&bytes).into_owned()
+fn wait_until(deadline: Instant, done: impl Fn() -> bool) {
+    while !done() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(2));
+    }
+}
+
+/// One pipe read on a thread of its own, so that a full pipe never blocks the command. The bytes are kept as they
+/// arrive: a pipe held open by a leftover child must not cost the output already read.
+struct Drain {
+    bytes: Arc<Mutex<Vec<u8>>>,
+    reached_end: Arc<AtomicBool>,
+}
+
+impl Drain {
+    fn start(pipe: Option<impl Read + Send + 'static>) -> Self {
+        let drain = Self {
+            bytes: Arc::default(),
+            reached_end: Arc::default(),
+        };
+        let (bytes, reached_end) = (Arc::clone(&drain.bytes), Arc::clone(&drain.reached_end));
+        thread::spawn(move || {
+            if let Some(mut pipe) = pipe {
+                let mut chunk = [0u8; 4096];
+                while let Ok(count) = pipe.read(&mut chunk) {
+                    if count == 0 {
+                        break;
+                    }
+                    bytes
+                        .lock()
+                        .expect("reader holds the lock briefly")
+                        .extend_from_slice(&chunk[..count]);
+                }
+            }
+            reached_end.store(true, Ordering::Release);
+        });
+        drain
+    }
+
+    fn finished(&self) -> bool {
+        self.reached_end.load(Ordering::Acquire)
+    }
+
+    fn text(&self) -> String {
+        String::from_utf8_lossy(&self.bytes.lock().expect("reader holds the lock briefly")).into_owned()
+    }
 }
 
 /// SIGKILL to the group the child leads. Never pid 0 or 1, and never voxcmd's own group: either would take voxcmd (or
@@ -144,12 +197,21 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn a_child_holding_the_pipes_does_not_hold_up_a_command_that_exited() {
+    fn a_child_holding_the_pipes_costs_neither_time_nor_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("child.pid");
+        let script = format!("sleep 3 & echo $! > '{}'; printf 'a\\tA\\n'", pid_file.display());
         let started = Instant::now();
-        let outcome = run_with_timeout(&mut sh("sleep 3 >/dev/null 2>&1 & echo done"), Duration::from_secs(5)).unwrap();
+        let outcome = run_with_timeout(&mut sh(&script), Duration::from_secs(5)).unwrap();
         assert_eq!(outcome.code(), Some(0));
-        assert_eq!(outcome.stdout, "done\n");
-        assert!(started.elapsed() < Duration::from_secs(3));
+        assert_eq!(outcome.stdout, "a\tA\n");
+        assert!(started.elapsed() < Duration::from_secs(1), "{:?}", started.elapsed());
+        // The leftover child is killed with the group, not left to hold the pipes.
+        let child: i32 = std::fs::read_to_string(&pid_file).unwrap().trim().parse().unwrap();
+        assert!(
+            gone_within(child, Duration::from_secs(2)),
+            "child {child} outlived the call"
+        );
     }
 
     /// Dead, or a zombie nobody has reaped yet.

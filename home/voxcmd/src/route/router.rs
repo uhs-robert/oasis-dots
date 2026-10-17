@@ -14,7 +14,7 @@ use super::trace::{
 };
 use crate::config::Config;
 use crate::config::schema::{Format, Integration, Tier};
-use crate::hooks::{HookRun, Hooks, Lookup};
+use crate::hooks::{HookRun, Hooks, Lookup, Memoized};
 use crate::text::normalize::{apply_replacements, normalize};
 use crate::text::wake_word::{WakeWords, correction_tails};
 use regex::Regex;
@@ -46,7 +46,7 @@ pub struct Router<'c> {
     config: &'c Config,
     matcher: Matcher<'c>,
     wake: WakeWords,
-    hooks: &'c dyn Hooks,
+    hooks: Memoized<'c>,
     /// Time spent resolving matches (hooks, fzf) in the step being routed, left out of its `millis`.
     resolve_wall: Cell<Duration>,
 }
@@ -80,7 +80,7 @@ impl<'c> Router<'c> {
             config,
             matcher: Matcher::new(config),
             wake: WakeWords::from_env(),
-            hooks,
+            hooks: Memoized::new(hooks),
             resolve_wall: Cell::new(Duration::ZERO),
         }
     }
@@ -112,6 +112,7 @@ impl<'c> Router<'c> {
     pub fn route_step_with_options(&self, transcript: &str, context: StepContext) -> (StepTrace, Vec<RouteOption>) {
         let started = Instant::now();
         self.resolve_wall.set(Duration::ZERO);
+        self.hooks.forget();
         let mut text = apply_replacements(&normalize(transcript), &self.config.replacements);
         let mut step = StepTrace {
             transcript: transcript.to_string(),
@@ -360,7 +361,7 @@ impl<'c> Router<'c> {
 
     fn resolve(&self, pending: &[PendingMatch], texts: Texts) -> Vec<Resolved> {
         let started = Instant::now();
-        let resolved = resolve::resolve_all(self.config, self.hooks, pending, texts);
+        let resolved = resolve::resolve_all(self.config, &self.hooks, pending, texts);
         if resolved.iter().any(|one| one.hook.is_some()) {
             self.resolve_wall.set(self.resolve_wall.get() + started.elapsed());
         }
@@ -552,13 +553,16 @@ impl<'c> Router<'c> {
         }
         let mut options = Vec::new();
         let mut hooks = Vec::new();
-        for resolved in self.resolve(
+        self.hooks.reuse_any_target(true);
+        let resolved_all = self.resolve(
             &pending,
             Texts {
                 phrase: text,
                 raw_transcript: raw,
             },
-        ) {
+        );
+        self.hooks.reuse_any_target(false);
+        for resolved in resolved_all {
             options.extend(
                 resolved
                     .options
