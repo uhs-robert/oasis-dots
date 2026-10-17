@@ -473,8 +473,11 @@ impl Scan<'_> {
         self.position += 1;
         let escaped = self.peek()?;
         self.position += 1;
-        if matches!(escaped, b'p' | b'P' | b'x') && self.peek() == Some(b'{') {
+        if matches!(escaped, b'p' | b'P' | b'x' | b'u' | b'U') && self.peek() == Some(b'{') {
             self.position += self.text[self.position..].iter().position(|&b| b == b'}')? + 1;
+        } else if matches!(escaped, b'x' | b'u' | b'U') {
+            // `\x66` and friends: fixed-width hex digits follow, which would otherwise read as required literal text.
+            return None;
         }
         Some(())
     }
@@ -554,6 +557,12 @@ mod tests {
         );
         assert!(compile(&toml, &verb("{loop}"), &intents).is_err());
         assert!(compile(&toml, &verb("{target} {target}"), &intents).is_err());
+    }
+
+    #[test]
+    fn required_literals_give_up_on_fixed_width_hex_escapes() {
+        assert!(required_literals(r"\x66oo").is_empty());
+        assert!(required_literals(r"\u0066oo").is_empty());
     }
 
     #[test]
