@@ -1494,13 +1494,15 @@ reply_listen_wanted() {
 }
 
 # Prints the pending pick's state while its voxcmd-pick, voxcmd-confirm or voxcmd-hints still waits on its FIFO. A stale file is
-# left alone: a new pick may be about to replace it.
+# left alone: a new pick may be about to replace it. The Rust port's `voxcmd[-rs] ask <kind>` asks too (goes in 3.2).
 pending_pick() {
   local state pid fifo
   state=$(cat "$pending_pick_file" 2>/dev/null) || return 1
   pid=$(jq -r '.pid // empty' <<<"$state" 2>/dev/null) || return 1
   fifo=$(jq -r '.fifo // empty' <<<"$state" 2>/dev/null) || return 1
-  [ -n "$pid" ] && [ -p "$fifo" ] && grep -qsE 'voxcmd-(pick|confirm|hints)' "/proc/$pid/cmdline" || return 1
+  [ -n "$pid" ] && [ -p "$fifo" ] || return 1
+  grep -qE 'voxcmd-(pick|confirm|hints)|(^|/)voxcmd(-rs)? ask (pick|confirm|hints)( |$)' \
+    <<<"$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null)" || return 1
   printf '%s' "$state"
 }
 

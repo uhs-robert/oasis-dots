@@ -7,7 +7,7 @@
 #   VOXCMD_DIFF_ONLY='volume|close' home/voxcmd/tests/run-live-diff.sh   only the phrases matching the regex
 #
 # Both binaries ask through the same stubs (voxcmd-pick answers the first choice, voxcmd-confirm says yes), found
-# beside a copy of the bash voxcmd. Left out of the comparison: how often a sequence polled the bar. `date +%s` is the
+# beside a copy of the bash voxcmd (the Rust one through tests/bin/ask-stub). Left out of the comparison: how often a sequence polled the bar. `date +%s` is the
 # same moment for every phrase, so a timer's calendar time compares as written. Skipped: "what can i say" (Voice Help
 # is 2.6 in Rust) and "stop" (the bash voxcmd's `run stop` is its Stop Voice command, not the phrase).
 set -euo pipefail
@@ -51,7 +51,7 @@ clock_dir=$SANDBOX_DIR/clock
 mkdir -p "$clock_dir"
 printf '#!/bin/sh\n[ "$*" = +%%s ] && exec echo %s\nexec %s "$@"\n' "$(date +%s)" "$(command -v date)" >"$clock_dir/date"
 chmod +x "$clock_dir/date"
-export VOXCMD_LEGACY_BIN="$bash_bin"
+export VOXCMD_LEGACY_BIN="$bash_bin" VOXCMD_ASK_CMD="$tests_dir/bin/ask-stub"
 "$tests_dir/firefox-profile" "$HOME/.config/mozilla/firefox"
 
 # The monitor slot query runs as a hook once per phrase in Rust (hooks run each query once) and once per use in bash.

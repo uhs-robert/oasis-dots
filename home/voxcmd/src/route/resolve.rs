@@ -258,7 +258,7 @@ pub fn fuzzy_match(target: &str, candidates: &[Candidate]) -> Vec<Candidate> {
     Vec::new()
 }
 
-fn fzf_filter(target: &str, mode: &str, input: &str) -> String {
+pub(crate) fn fzf_filter(target: &str, mode: &str, input: &str) -> String {
     let child = Command::new("fzf")
         .arg(format!("--filter={target}"))
         .arg(mode)

@@ -787,6 +787,8 @@ fn a_bash_wait_is_cut_off_at_the_step_timeout_though_shorter_than_a_hook_s() {
 const PICK_DUMP: &str = r#"{"file":"FILE","name":"Click","fallback":false,"confirm":false,"silent":false,"target_match":"fuzzy","action_labels":false,"private_labels":false,"verbs":[{"action":"choose","pattern":"choose {target}"}],"actions":{"choose":"true"},"no_match_actions":{},"step_waits":{},"hooks":["candidates"],"confirm_labels":[],"match_ignore_words":[],"silent_actions":[],"force_prefixes":[],"mode_actions":[],"mode_switch_actions":[],"free_text_actions":[]}"#;
 
 #[test]
+/// click.sh names `voxcmd-hints`, which is this binary's `ask hints` (through the seam here); any other command an
+/// integration names runs as named (a unit test in ask/ covers that).
 fn a_bash_integration_with_boxes_asks_through_its_own_picker() {
     let (setup, mut envs) = legacy_setup();
     let file = setup.path().join("config/integrations.d/old.sh");
@@ -796,7 +798,7 @@ fn a_bash_integration_with_boxes_asks_through_its_own_picker() {
         "voxcmd-bash",
         "case \"$2\" in\n\
            candidates) printf '[{\"id\": \"w1\", \"label\": \"Thing One\"}, {\"id\": \"w2\", \"label\": \"Thing Two\"}]' ;;\n\
-           pick-boxes) echo \"$*\" > \"$WORK/boxes-asked\"; echo /opt/hints\n\
+           pick-boxes) echo \"$*\" > \"$WORK/boxes-asked\"; echo /opt/voxcmd-hints\n\
              printf '[{\"id\":\"0\",\"label\":\"One\",\"box\":[0,0,1,1]},{\"id\":\"1\",\"label\":\"Two\",\"box\":[2,2,1,1]}]\\n' ;;\n\
            run) echo \"ran $VOXCMD_LEGACY_ID\" ;;\n\
          esac",

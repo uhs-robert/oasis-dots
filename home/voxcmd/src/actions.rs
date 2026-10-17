@@ -22,6 +22,18 @@ pub struct Runtime<'a> {
     pub legacy: &'a LegacyHooks,
     pub asker: &'a dyn Asker,
     pub notifier: &'a dyn Notifier,
+    /// The phrase was spoken (a watcher routes it), so a question it asks records the answer by voice too.
+    pub came_by_voice: bool,
+    /// A voice session's turn: nobody is at the keyboard, so every picker listens.
+    pub in_session_turn: bool,
+}
+
+impl Runtime<'_> {
+    /// A question asked now records its spoken answer: the command was spoken, and Stop Voice has not discarded this
+    /// turn since (an action already routing still finishes, but nothing it opens listens).
+    pub fn reply_listen_wanted(&self) -> bool {
+        self.came_by_voice && !crate::paths::discard_flag(std::process::id()).exists()
+    }
 }
 
 /// How a step ended. A sequence goes on only past `Ran`.
@@ -129,11 +141,13 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         let question = confirm_question(&integration.name, &option_label(integration, option, true));
         // Not logged with the flags: the verb is the question's first word, which for a private label is screen text.
         let verb = normalize(question.split(' ').next().unwrap_or_default());
+        let listen = rt.reply_listen_wanted();
         debug(&format!(
-            "confirm asks: {}",
-            confirm_question(&integration.name, &toast)
+            "confirm asks: {}{}",
+            confirm_question(&integration.name, &toast),
+            if listen { " (by voice)" } else { "" }
         ));
-        if !rt.asker.confirm(&question, &verb) {
+        if !rt.asker.confirm(&question, &verb, listen) {
             debug(&format!("confirm answered no: {toast} not run"));
             return StepResult {
                 label: toast,

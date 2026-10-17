@@ -24,8 +24,8 @@ pub struct Explain {
     pub steps: Vec<StepTrace>,
     /// The click trace (`--window`): 2.5.
     pub click: Option<serde_json::Value>,
-    /// The reply trace (`--reply`): 2.4.
-    pub reply: Option<serde_json::Value>,
+    /// The reply trace (`--reply`).
+    pub reply: Option<crate::ask::reply::ReplyTrace>,
 }
 
 #[derive(Debug, Serialize)]
@@ -411,7 +411,7 @@ pub fn run(args: ExplainArgs) -> Result<String, CliError> {
         return Err(CliError::not_implemented("explain --window", "2.5"));
     }
     if args.reply {
-        return Err(CliError::not_implemented("explain --reply", "2.4"));
+        return crate::ask::reply::explain(&args.phrase.join(" "), args.json);
     }
     let config_dir = crate::paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("explain", message))?;

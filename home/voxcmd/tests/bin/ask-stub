@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# VOXCMD_ASK_CMD for the suites under VOXCMD_BIN=rs: called as `ask-stub <kind> <args>` for every question the Rust voxcmd
+# asks on its own (a run's confirm or pick, the hints overlay's fall back to the text picker), it runs the bash helper
+# voxcmd-<kind> beside the bash voxcmd the Rust one bridges to. A suite stubs those helpers in its package copy, so the
+# answers and the lines they log stay what the suite expects of the bash voxcmd. Goes with the bash helpers in 3.2.
+set -euo pipefail
+
+kind=${1:?usage: ask-stub pick|confirm|hints <args>}
+shift
+exec "$(dirname "${VOXCMD_LEGACY_BIN:?ask-stub needs VOXCMD_LEGACY_BIN}")/voxcmd-$kind" "$@"
