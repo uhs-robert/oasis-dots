@@ -3,7 +3,7 @@
 # integrations and replacements, this checkout's voxcmd first on PATH, and stubs in place of everything that acts.
 # `voxcmd` there is the new CLI: VOXCMD_BIN=bash (the default) reaches the bash voxcmd through the shim in tests/bin;
 # VOXCMD_BIN=rs builds this checkout's Rust crate (cargo build --release, once per sandbox start) and puts its binary
-# first on PATH instead. The suites are expected to fail under rs until the router lands in it (voxcmd-port 2.2).
+# first on PATH instead. run-phrases.sh passes under rs; the other suites fail until their items land (voxcmd-port 2.3 and later).
 #
 #   home/voxcmd/tests/sandbox.sh <command...>
 #   home/voxcmd/tests/sandbox.sh voxcmd explain "close firefox"

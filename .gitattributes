@@ -4,3 +4,4 @@ home/nless/.config/nless/config.json filter=nless-update-state
 home/yazi/.config/yazi/package.toml filter=yazi-plugin-pins
 # Generated goldens: an empty expected field leaves a trailing tab, which is data, not whitespace to clean up.
 home/voxcmd/tests/fixtures/*-goldens.tsv -whitespace
+home/voxcmd/tests/fixtures/*-goldens.tsv linguist-generated=true
