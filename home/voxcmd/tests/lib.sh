@@ -77,13 +77,15 @@ ended_hooks_gone() { logged_processes_gone '.* session: ended hook \([0-9]*\) ru
 
 # link_voxcmd_shim <package copy>: the new CLI for a copied package, whose stubbed siblings sit beside its own bash voxcmd.
 # A suite then runs <copy>/tests/bin/voxcmd. With VOXCMD_BIN=bash (the default) that is the shim, which execs the copy's
-# voxcmd by its real path; with VOXCMD_BIN=rs it is a link to this checkout's Rust build, which sandbox.sh made.
+# voxcmd by its real path; with VOXCMD_BIN=rs it is a link to this checkout's Rust build, which sandbox.sh made, and the
+# Rust build bridges to the copy's bash voxcmd and asks through the copy's helpers (tests/bin/ask-stub).
 link_voxcmd_shim() {
   local tests_dir
   tests_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
   mkdir -p "$1/tests/bin"
   if [ "${VOXCMD_BIN:-bash}" = rs ]; then
     ln -sf "$tests_dir/../target/release/voxcmd" "$1/tests/bin/voxcmd"
+    export VOXCMD_LEGACY_BIN=$1/.local/bin/voxcmd VOXCMD_ASK_CMD=$tests_dir/bin/ask-stub
   else
     ln -sf "$tests_dir/bin/voxcmd" "$1/tests/bin/voxcmd"
   fi

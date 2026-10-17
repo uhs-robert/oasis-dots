@@ -1,0 +1,4 @@
+#!/bin/sh
+# notify-send for tests/ask.rs: logs each toast's arguments to $GOLDEN_TOASTS instead of showing it.
+printf '%s|' "$@" >>"$GOLDEN_TOASTS"
+echo >>"$GOLDEN_TOASTS"

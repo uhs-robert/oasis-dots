@@ -75,13 +75,24 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
     match command {
         Command::Run(args) => route::runner::run(args).map(|()| None),
         Command::Explain(args) => route::trace::run(args).map(Some),
-        Command::Reply(_) => later("reply", "2.4"),
+        Command::Reply(args) => ask::reply::run(args),
         Command::Listen { .. } => later("listen", "2.4"),
         Command::Stop => later("stop", "2.4"),
         Command::Session(_) => later("session", "2.4"),
-        Command::Ask(AskCommand::Pick { .. }) => later("ask pick", "2.4"),
-        Command::Ask(AskCommand::Confirm { .. }) => later("ask confirm", "2.4"),
-        Command::Ask(AskCommand::Hints { .. }) => later("ask hints", "2.4"),
+        Command::Ask(AskCommand::Pick {
+            ask,
+            label,
+            choices_json,
+            expansions_json,
+        }) => ask::pick::run(ask.listen, &label, &choices_json, expansions_json.as_deref()),
+        Command::Ask(AskCommand::Confirm { ask, verb, question }) => {
+            ask::confirm::run(ask.listen, verb.as_deref(), &question).map(|()| None)
+        }
+        Command::Ask(AskCommand::Hints {
+            ask,
+            label,
+            choices_json,
+        }) => ask::hints::run(ask.listen, &label, &choices_json),
         Command::Wake(WakeCommand::Listen { .. }) => later("wake listen", "4.1"),
         Command::Wake(_) => later("wake", "2.6"),
         Command::Integrations(IntegrationsCommand::List(_)) => later("integrations list", "2.6"),
@@ -101,7 +112,9 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Util(UtilCommand::VoiceEnv { key }) => config::voice_env::run(&key).map(Some),
         Command::Internal(InternalCommand::Watch(_)) => later("internal watch", "2.4"),
         Command::Internal(InternalCommand::Settle(_)) => later("internal settle", "2.4"),
-        Command::Internal(InternalCommand::CancelOwnedRecording(_)) => later("internal cancel-owned-recording", "2.4"),
+        Command::Internal(InternalCommand::CancelOwnedRecording(args)) => {
+            ask::run_cancel_owned_recording(&args.args).map(|()| None)
+        }
         Command::Internal(InternalCommand::WakeConfirm(_)) => later("internal wake-confirm", "2.4"),
         Command::Internal(InternalCommand::ChainStop(_)) => later("internal chain-stop", "2.4"),
     }

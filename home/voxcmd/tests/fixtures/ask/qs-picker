@@ -1,0 +1,11 @@
+#!/bin/sh
+# The bar's qs-picker for gen-ask-goldens.sh and tests/ask.rs: copies the pending pick and the picker's spec into
+# $GOLDEN_DUMPS, then answers through the spec's FIFO with $GOLDEN_ANSWER, as the bar's picker would.
+next() { printf '%s/%03d.%s' "$GOLDEN_DUMPS" "$(find "$GOLDEN_DUMPS" -type f | wc -l)" "$1"; }
+printf '%s\n' "qs-picker $1" >"$(next call)"
+cp "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json" "$(next pending)"
+cp "$3" "$(next spec)"
+# GOLDEN_HOLD: nobody answers, as a picker waiting on the user. GOLDEN_REPLACE: a newer ask takes the pending pick first.
+[ -z "${GOLDEN_REPLACE-}" ] || printf '{"pid":1,"fifo":"/newer"}\n' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+result=$(sed -n 's/.*"result_path": *"\([^"]*\)".*/\1/p' "$3" | head -n 1)
+if [ -z "${GOLDEN_HOLD-}" ]; then (printf '%s\n' "${GOLDEN_ANSWER-}" >"$result") >/dev/null 2>&1 & fi

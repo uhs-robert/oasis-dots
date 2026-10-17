@@ -1,0 +1,29 @@
+#!/bin/sh
+# The bar's qs-ipc for gen-ask-goldens.sh and tests/ask.rs: copies what each call shows into $GOLDEN_DUMPS (one
+# numbered file per call or file, in order), then answers through the ask's FIFO with $GOLDEN_ANSWER, as the bar would.
+# GOLDEN_OPEN is what an open prints ("ok" by default; anything else is a bar that refused, and nobody answers).
+next() { printf '%s/%03d.%s' "$GOLDEN_DUMPS" "$(find "$GOLDEN_DUMPS" -type f | wc -l)" "$1"; }
+note() { printf '%s\n' "$*" >"$(next call)"; }
+dump() { cp "$1" "$(next "$2")"; }
+# GOLDEN_HOLD: nobody answers, as a bar waiting on the user. GOLDEN_REPLACE: a newer ask takes the pending pick first.
+answer() {
+  [ -z "${GOLDEN_REPLACE-}" ] || printf '{"pid":1,"fifo":"/newer"}\n' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+  if [ -z "${GOLDEN_HOLD-}" ]; then (printf '%s\n' "${GOLDEN_ANSWER-}" >"$1") >/dev/null 2>&1 & fi
+}
+result_path() { sed -n 's/.*"result_path": *"\([^"]*\)".*/\1/p' "$1" | head -n 1; }
+case "$2 $3" in
+"clickhints open")
+  note "qs-ipc call clickhints open"
+  dump "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json" pending
+  dump "$4" spec
+  [ "${GOLDEN_OPEN:-ok}" != ok ] || answer "$(result_path "$4")"
+  echo "${GOLDEN_OPEN:-ok}"
+  ;;
+"confirm ask")
+  note "qs-ipc call confirm ask $4"
+  dump "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json" pending
+  [ "${GOLDEN_OPEN:-ok}" != ok ] || answer "$5"
+  echo "${GOLDEN_OPEN:-ok}"
+  ;;
+*) note "qs-ipc $*" ;;
+esac

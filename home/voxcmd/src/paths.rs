@@ -40,11 +40,24 @@ pub fn legacy_dump_override() -> Option<PathBuf> {
     env_dir("VOXCMD_LEGACY_DUMP_FILE")
 }
 
+/// `$XDG_RUNTIME_DIR`, else `/tmp`: where voxcmd's own directory and the asks' private ones live.
+pub fn user_runtime_dir() -> PathBuf {
+    env_dir("XDG_RUNTIME_DIR").unwrap_or_else(|| PathBuf::from("/tmp"))
+}
+
 /// `$XDG_RUNTIME_DIR/voxcmd`, else `/tmp/voxcmd`: sockets, state files the bar reads, pending picks.
 pub fn runtime_dir() -> PathBuf {
-    env_dir("XDG_RUNTIME_DIR")
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("voxcmd")
+    user_runtime_dir().join("voxcmd")
+}
+
+/// The open picker, confirm card or hints overlay that a spoken reply can answer.
+pub fn pending_pick() -> PathBuf {
+    runtime_dir().join("pending-pick.json")
+}
+
+/// voxtype's `idle`/`recording`/`transcribing`, rewritten on every transition.
+pub fn voxtype_state() -> PathBuf {
+    user_runtime_dir().join("voxtype/state")
 }
 
 /// The directory of voxcmd's shared scripts (`spoken-time.sh` and the like), which hooks find as `$VOXCMD_SHARE_DIR`:
@@ -86,9 +99,15 @@ pub fn debug_log() -> PathBuf {
     runtime_dir().join("debug.log")
 }
 
-/// The bar's command line, which `qs-ipc call ...` talks to.
-pub fn qs_ipc() -> PathBuf {
+/// A script of Hyprland's config that talks to the bar: `qs-ipc`, `qs-picker`.
+pub fn hypr_script(name: &str) -> PathBuf {
     env_dir("XDG_CONFIG_HOME")
         .unwrap_or_else(|| home().join(".config"))
-        .join("hypr/scripts/qs-ipc")
+        .join("hypr/scripts")
+        .join(name)
+}
+
+/// The bar's command line, which `qs-ipc call ...` talks to.
+pub fn qs_ipc() -> PathBuf {
+    hypr_script("qs-ipc")
 }

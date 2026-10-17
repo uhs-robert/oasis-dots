@@ -8,7 +8,7 @@ use super::sequence;
 use super::sequence_run::Pacing;
 use super::trace::Builtin;
 use crate::actions::{Runtime, Spoken, StepOutcome, StepResult, run_option};
-use crate::ask::{LegacyAsk, PickWith};
+use crate::ask::{AskWith, PickWith};
 use crate::cli::PhraseArgs;
 use crate::config::Config;
 use crate::config::schema::Format;
@@ -37,7 +37,7 @@ impl Runner<'_> {
             transcript,
             StepContext {
                 in_sequence,
-                in_session_turn: false,
+                in_session_turn: self.rt.in_session_turn,
             },
         );
         match step.builtin {
@@ -95,14 +95,21 @@ impl Runner<'_> {
     fn pick_and_run(&self, options: &[RouteOption], said: &Spoken) -> StepResult {
         let choices = choices_json(self.rt, options);
         let command;
-        let (with, label, choices) = match self.integration_pick(options, &choices) {
+        let listen_wanted = self.rt.reply_listen_wanted();
+        // An integration's own picker (numbers on screen) is answered by voice whenever the command was, since the user
+        // is looking at it. The text picker is when it asks only "this one?" (a single weak match), as a confirmation
+        // is, or in a session turn, where nobody is at the keyboard.
+        let (with, label, choices, listen) = match self.integration_pick(options, &choices) {
             Some((own_command, boxed)) => {
                 command = own_command;
-                (PickWith::Command(&command), "Which one?", boxed)
+                (PickWith::Command(&command), "Which one?", boxed, listen_wanted)
             }
-            None => (PickWith::Picker, "Which command?", choices),
+            None => {
+                let listen = listen_wanted && (options.len() == 1 || self.rt.in_session_turn);
+                (PickWith::Picker, "Which command?", choices, listen)
+            }
         };
-        match self.rt.asker.pick(&with, label, &choices) {
+        match self.rt.asker.pick(&with, label, &choices, listen) {
             Some(index) if index < options.len() => run_option(self.rt, &options[index], said),
             _ => StepResult::new(StepOutcome::Cancelled),
         }
@@ -159,13 +166,16 @@ pub fn run(args: PhraseArgs) -> Result<(), CliError> {
         Box::new(LegacyHooks::with_bin(paths::legacy_bin(), paths::config_dir())),
     );
     let router = Router::new(&config, &hooks);
-    let asker = LegacyAsk::from_env();
+    let asker = AskWith::from_env();
     let runtime = Runtime {
         config: &config,
         shell: &shell,
         legacy: &legacy,
         asker: &asker,
         notifier: &Desktop,
+        // A typed `run`; the watcher that routes a spoken one sets these (voxcmd-port 2.4b and 2.4c).
+        came_by_voice: false,
+        in_session_turn: false,
     };
     let runner = Runner {
         router: &router,
