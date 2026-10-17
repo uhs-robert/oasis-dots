@@ -5,7 +5,7 @@ use regex::Regex;
 use std::cell::OnceCell;
 use std::sync::LazyLock;
 
-const WAKE_WORD: &str = "cortana";
+pub const WAKE_WORD: &str = "cortana";
 const DEFAULT_ALIASES: &str = "kortana|cortona";
 
 /// Words that open a retry when a phrase matched nothing: a speaker who corrects themselves faster than the pause

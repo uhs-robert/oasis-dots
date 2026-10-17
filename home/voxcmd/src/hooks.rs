@@ -4,7 +4,11 @@
 //! `<stem>.sh` library, the match handed over in `VOXCMD_*` variables, a 3 s deadline, exit 3 meaning "yield". A bash
 //! integration's hook is reached through the bash voxcmd's hidden `_legacy-hook` (a bash start plus sourcing per
 //! call); `Dispatch` picks by the integration's format. The legacy half is deleted in 3.2.
+//!
+//! `VOXCMD_INTEGRATION` is the integration's file stem. A hook output line with four or more tab fields fails the hook.
+//! Background children a `candidates` hook leaves behind are killed when it exits.
 use crate::config::schema::{Candidates, Format, Integration, Surface};
+use crate::debug::debug;
 use crate::paths;
 use crate::process;
 use crate::route::matcher::Arg;
@@ -18,7 +22,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 /// How long a `candidates` hook may run unless its action sets `timeout_secs`.
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(3);
+pub(crate) const DEFAULT_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// A `candidates` hook's exit code for "nothing to offer for this phrase": another integration may take it, and the
 /// action's `no_match` does not run.
@@ -135,7 +139,7 @@ impl LegacyHooks {
         Self { bin, config_dir }
     }
 
-    fn call(&self, kind: &str, integration: &Integration) -> Command {
+    pub(crate) fn call(&self, kind: &str, integration: &Integration) -> Command {
         let mut command = Command::new(&self.bin);
         command
             .args(["_legacy-hook", kind])
@@ -188,6 +192,12 @@ impl Hooks for LegacyHooks {
         }
         if let Lookup::Candidates(lines) = &run.lookup {
             run.lines.clone_from(lines);
+        }
+        if run.lookup == Lookup::Broken {
+            let how = run
+                .exit
+                .map_or_else(|| "did not run".to_string(), |code| format!("exit {code}"));
+            log_failure(integration, &run, run.problem.as_deref().unwrap_or(&how));
         }
         run
     }
@@ -272,6 +282,7 @@ impl Hooks for Memoized<'_> {
 }
 
 /// The hooks of the TOML integrations: shell strings run by `bash`, with the match in the environment.
+#[derive(Clone)]
 pub struct ShellHooks {
     integration_dir: PathBuf,
     share_dir: PathBuf,
@@ -308,11 +319,18 @@ impl ShellHooks {
     }
 
     /// `bash -c` over the integration's library (when it has one) and then the hook string. The library path is a
-    /// literal of the wrapper, quoted; spoken text only ever reaches the hook through the environment.
-    fn command(&self, shell: &str, env: &HookEnv) -> Command {
+    /// literal of the wrapper, quoted; spoken text only ever reaches the hook through the environment. An action
+    /// (`merge_output`) has its stderr folded into its stdout, as `eval "$command" 2>&1` did, so that its toast and
+    /// its failure detail read both in order; the library's own errors stay on stderr.
+    pub(crate) fn command(&self, shell: &str, env: &HookEnv, merge_output: bool) -> Command {
         let library = format!("{}.sh", env.integration.stem);
+        let body = if merge_output {
+            format!("{{\n{shell}\n}} 2>&1")
+        } else {
+            shell.to_string()
+        };
         let script = format!(
-            "if [ -f \"$VOXCMD_INTEGRATION_DIR\"/{library} ]; then . \"$VOXCMD_INTEGRATION_DIR\"/{library}; fi\n{shell}",
+            "if [ -f \"$VOXCMD_INTEGRATION_DIR\"/{library} ]; then . \"$VOXCMD_INTEGRATION_DIR\"/{library}; fi\n{body}",
             library = shell_quote(&library),
         );
         let mut command = Command::new("bash");
@@ -399,7 +417,7 @@ impl Hooks for ShellHooks {
             spoken: false,
         };
         let started = Instant::now();
-        let outcome = process::run_with_timeout(&mut self.command(shell, &env), timeout);
+        let outcome = process::run_with_timeout(&mut self.command(shell, &env, false), timeout);
         run.millis = started.elapsed().as_secs_f64() * 1000.0;
         run.lookup = match outcome {
             Err(error) => {
@@ -433,6 +451,9 @@ impl Hooks for ShellHooks {
         if let Lookup::Candidates(lines) = &run.lookup {
             run.lines.clone_from(lines);
         }
+        if let Some(problem) = &run.problem {
+            log_failure(integration, &run, problem);
+        }
         run
     }
 
@@ -442,6 +463,19 @@ impl Hooks for ShellHooks {
             _ => false,
         }
     }
+}
+
+/// A hook that failed offers nothing and nothing says why, so the debug log does (`voxcmd log errors` lists only
+/// the bar's notifications). A private integration's stderr can hold screen text, so it is left out there.
+fn log_failure(integration: &Integration, run: &HookRun, problem: &str) {
+    let detail = match run.stderr_tail.last() {
+        Some(line) if !integration.settings.private_labels => format!(": {line}"),
+        _ => String::new(),
+    };
+    debug(&format!(
+        "hook failed: {} {} {}: {problem}{detail}",
+        integration.name, run.action, run.kind
+    ));
 }
 
 /// The lines of a hook's output: `id<TAB>label<TAB>match_text`, the last two optional, one option per line. A blank
@@ -547,7 +581,7 @@ fn state_file_open(path: &std::path::Path) -> bool {
         .is_some_and(|state| state.get("open").and_then(Value::as_bool) == Some(true))
 }
 
-fn tail_lines(text: &str, count: usize) -> Vec<String> {
+pub(crate) fn tail_lines(text: &str, count: usize) -> Vec<String> {
     let lines: Vec<&str> = text.lines().collect();
     lines[lines.len().saturating_sub(count)..]
         .iter()
@@ -611,16 +645,13 @@ mod tests {
 
     #[test]
     fn the_bridge_passes_the_action_target_and_raw_transcript_to_the_bash_voxcmd() {
-        use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
-        let bin = dir.path().join("voxcmd");
-        std::fs::write(
-            &bin,
-            "#!/bin/sh\n[ \"$1 $2\" = '_legacy-hook candidates' ] || exit 9\n\
-             printf '[{\"id\": \"%s|%s\", \"label\": \"%s\"}]' \"$4\" \"$5\" \"$VOXCMD_LEGACY_RAW_TRANSCRIPT\"\n",
-        )
-        .unwrap();
-        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let bin = crate::ask::tests::script(
+            dir.path(),
+            "voxcmd",
+            "[ \"$1 $2\" = '_legacy-hook candidates' ] || exit 9\n\
+             printf '[{\"id\": \"%s|%s\", \"label\": \"%s\"}]' \"$4\" \"$5\" \"$VOXCMD_LEGACY_RAW_TRANSCRIPT\"",
+        );
         let hooks = LegacyHooks::with_bin(bin, dir.path().to_path_buf());
         let toml = "name = \"Search\"\nverbs = []\n";
         let mut integration = crate::config::schema::parse_toml(std::path::Path::new("search.toml"), toml).unwrap();
@@ -632,16 +663,7 @@ mod tests {
             phrase: "find tea cup",
             raw_transcript: "Find Tea Cup",
         };
-        // Another test thread forking while the script was open for writing makes the first exec fail with "text file
-        // busy"; it clears once that fork has exec'd.
-        let mut run = hooks.candidates(&integration, &query);
-        for _ in 0..20 {
-            if run.exit.is_some() {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(20));
-            run = hooks.candidates(&integration, &query);
-        }
+        let run = hooks.candidates(&integration, &query);
         assert_eq!(run.exit, Some(0));
         assert_eq!(
             run.lookup,
@@ -864,7 +886,7 @@ mod tests {
             active_before: None,
             spoken: false,
         };
-        let command = fixture.hooks.command("true", &env);
+        let command = fixture.hooks.command("true", &env, false);
         let cleared: Vec<String> = command
             .get_envs()
             .filter(|(_, value)| value.is_none())

@@ -946,6 +946,9 @@ ln -sf "$SANDBOX_DIR/bin/voxcmd-pick" "$pkg/.local/bin/voxcmd-pick"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$pkg/.local/bin/voxcmd-autostop"
 link_voxcmd_shim "$pkg"
 pkg_voxcmd=$pkg/tests/bin/voxcmd
+# The Rust voxcmd finds voxcmd-pick, voxcmd-confirm and the share files beside the bash voxcmd it falls back on; the
+# bash one ignores this.
+export VOXCMD_LEGACY_BIN=$pkg/.local/bin/voxcmd
 action_log=$root/actions.log
 fake_pick=$root/fake-pick
 # shellcheck disable=SC2016 # the stub expands its own arguments

@@ -36,6 +36,11 @@ impl CliError {
         }
     }
 
+    /// A failure that has said all there is to say (a toast, a log line): exit 1, nothing on stderr.
+    pub fn quiet(subcommand: &str) -> Self {
+        Self::failed(subcommand, "")
+    }
+
     /// A subcommand whose handler lands in a later item of the port; `phase_item` names it ("2.2").
     pub fn not_implemented(subcommand: &str, phase_item: &str) -> Self {
         Self::failed(subcommand, format!("not implemented yet ({phase_item})"))

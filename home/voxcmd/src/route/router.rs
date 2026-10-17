@@ -9,8 +9,8 @@ use super::near_miss::NearMiss;
 use super::pattern::PlaceholderType;
 use super::resolve::{self, PendingMatch, Resolved, RouteOption, Texts};
 use super::trace::{
-    ArgValue, Decision, DecisionKind, IntegrationOutcome, IntegrationTrace, NearMissTrace, OptionTrace, Rejection,
-    RouteTier, StepTrace, VerbRef,
+    ArgValue, Builtin, Decision, DecisionKind, IntegrationOutcome, IntegrationTrace, NearMissTrace, OptionTrace,
+    Rejection, RouteTier, StepTrace, VerbRef,
 };
 use crate::config::Config;
 use crate::config::schema::{Format, Integration, Tier};
@@ -137,6 +137,8 @@ impl<'c> Router<'c> {
             wait: None,
             millis: 0.0,
             ran: false,
+            builtin: None,
+            forced_integration: None,
         };
         if let Some(rest) = self.wake.split_leading(&text) {
             step.wake_word = Some(text[..text.len() - rest.len()].trim().to_string());
@@ -148,6 +150,7 @@ impl<'c> Router<'c> {
                         step,
                         DecisionKind::NoMatch,
                         false,
+                        Builtin::OnlyWakeWord,
                         "no match, only the wake word",
                         "only the wake word was said",
                         started,
@@ -163,6 +166,7 @@ impl<'c> Router<'c> {
                     step,
                     DecisionKind::NoMatch,
                     false,
+                    Builtin::VoiceHelpInSequence,
                     "no match, Voice Help is not opened inside a sequence",
                     "a Voice Help phrase is no match inside a sequence",
                     started,
@@ -172,6 +176,7 @@ impl<'c> Router<'c> {
                     step,
                     DecisionKind::Builtin,
                     true,
+                    Builtin::VoiceHelp,
                     "built-in, opens Voice Help",
                     "a Voice Help phrase, handled before any integration",
                     started,
@@ -185,6 +190,7 @@ impl<'c> Router<'c> {
                     step,
                     DecisionKind::Builtin,
                     false,
+                    Builtin::Discard,
                     "built-in, discarded",
                     "a discard phrase, handled before any integration",
                     started,
@@ -215,6 +221,7 @@ impl<'c> Router<'c> {
             pass.options = options;
         }
 
+        step.forced_integration = pass.forced;
         if let Some(index) = pass.forced {
             let name = self.config.integrations[index].file.clone();
             let shown = name.file_name().unwrap_or_default().to_string_lossy().into_owned();
@@ -588,15 +595,12 @@ fn rank_near_misses(mut options: Vec<RouteOption>) -> Vec<RouteOption> {
 }
 
 /// The label a toast or the picker shows for the option (`option_label`): the integration's name, then the action and
-/// the candidate, or only the candidate when the action says nothing the integration's name does not. A private
-/// integration's candidate labels (screen text) are left out.
-fn toast_label(integration: &Integration, option: &RouteOption) -> String {
+/// the candidate, or only the candidate when the action says nothing the integration's name does not. Without
+/// `with_candidate` the candidate's label is left out, as a private integration's is (screen text must reach neither
+/// the notification history nor the debug log).
+pub fn option_label(integration: &Integration, option: &RouteOption, with_candidate: bool) -> String {
     let settings = &integration.settings;
-    let label = if settings.private_labels {
-        ""
-    } else {
-        option.label.as_str()
-    };
+    let label = if with_candidate { option.label.as_str() } else { "" };
     let omits_action = integration.actions.len() == 1 || !settings.action_labels;
     if omits_action && !label.is_empty() {
         return format!("{}: {label}", option.name);
@@ -608,6 +612,11 @@ fn toast_label(integration: &Integration, option: &RouteOption) -> String {
         format!(" {label}")
     };
     format!("{}: {action}{candidate}", option.name)
+}
+
+/// `option_label` as notifications and logs may show it.
+pub fn toast_label(integration: &Integration, option: &RouteOption) -> String {
+    option_label(integration, option, !integration.settings.private_labels)
 }
 
 fn tier_of(tier: Tier) -> RouteTier {
@@ -635,6 +644,7 @@ fn finish_builtin(
     mut step: StepTrace,
     kind: DecisionKind,
     ran: bool,
+    builtin: Builtin,
     result: &str,
     reason: &str,
     started: Instant,
@@ -646,6 +656,7 @@ fn finish_builtin(
         result: result.to_string(),
     };
     step.ran = ran;
+    step.builtin = Some(builtin);
     step.millis = started.elapsed().as_secs_f64() * 1000.0;
     step
 }

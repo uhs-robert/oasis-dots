@@ -3014,10 +3014,16 @@ legacy_dump() {
   done < <(integration_files)
 }
 
-# _legacy-hook candidates|surface <file> [action target]: what the router's hooks print for the Rust port, until it runs
-# them itself. `candidates` prints what the file's candidates function prints for the action and target (nothing when it
-# defines none); `surface` succeeds when its surface_open does. $VOXCMD_LEGACY_RAW_TRANSCRIPT is the $raw_transcript the
-# hook reads. Goes in voxcmd-port 3.2 with this script.
+# _legacy-hook <kind> <file> ...: what the router's hooks do for the Rust port, until it runs them itself. $VOXCMD_LEGACY_*
+# carry the router's globals the file's functions read: _RAW_TRANSCRIPT ($raw_transcript), and for run and wait _ID
+# ($id), _TARGET ($target), _CONFIRMED ($confirmed) and _ACTIVE_BEFORE ($active_before). Goes in voxcmd-port 3.2 with
+# this script.
+#   candidates <action> <target>  prints what the file's candidates function prints (nothing when it defines none)
+#   surface                       succeeds when its surface_open does
+#   run <action>                  evals the action's command as run_option does, output merged, exit status passed on
+#   wait <action>                 evals the action's step_waits condition once (the Rust port polls it)
+#   pick-boxes <choices> <id>...  prints the integration's pick command and the choices with each id's pick_box, or
+#                                 fails when it has no on-screen picker (integration_pick)
 legacy_hook() {
   local kind="${1:-}" file="${2:-}" candidates_json
   raw_transcript="${VOXCMD_LEGACY_RAW_TRANSCRIPT-}"
@@ -3031,8 +3037,37 @@ legacy_hook() {
   surface)
     declare -F surface_open >/dev/null && surface_open
     ;;
+  run | wait)
+    [ -n "${3-}" ] || return 2
+    # shellcheck disable=SC2034 # read by the file's actions and waits
+    id="${VOXCMD_LEGACY_ID-}" target="${VOXCMD_LEGACY_TARGET-}" confirmed="${VOXCMD_LEGACY_CONFIRMED-0}" active_before="${VOXCMD_LEGACY_ACTIVE_BEFORE-}"
+    set +eu
+    if [ "$kind" = run ]; then eval "${integration_actions[$3]-}" 2>&1; else eval "${integration_step_waits[$3]-}"; fi
+    ;;
+  pick-boxes)
+    legacy_pick_boxes "${3-}" "${@:4}"
+    ;;
   *) return 2 ;;
   esac
+}
+
+legacy_pick_boxes() {
+  local choices="$1" command_path="$pick_command" boxes="" id box
+  shift
+  [ -n "$command_path" ] && declare -F pick_box >/dev/null || return 1
+  [[ "$command_path" == */* ]] || ! [ -x "$(dirname "$voxcmd_self")/$command_path" ] || command_path="$(dirname "$voxcmd_self")/$command_path"
+  for id; do
+    box=$(pick_box "$id") || return 1
+    [[ "$box" != *$'\n'* ]] || return 1
+    boxes+="$box"$'\n'
+  done
+  printf '%s\n' "$command_path"
+  # Fails on a box line that is not four numbers, or a line count that is not the choices', so no box shifts onto
+  # another option.
+  jq -c -R -s --argjson choices "$choices" '
+    split("\n")[:-1] | map(split(" ") | map(tonumber)) as $boxes
+    | if ($boxes | length) != ($choices | length) or any($boxes[]; length != 4) then error("bad boxes") else . end
+    | [range(0; length) as $i | $choices[$i] + {box: $boxes[$i]}]' <<<"${boxes%$'\n'}"
 }
 
 legacy_dump_loaded() {

@@ -24,7 +24,6 @@ fn stderr(output: &Output) -> String {
 
 /// (argv, subcommand named in the message, port item that implements it)
 const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
-    (&["run", "open", "firefox"], "run", "2.3"),
     (
         &["explain", "--window", "focused", "click", "close"],
         "explain --window",
@@ -75,8 +74,9 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["_wake-confirm", "clip.wav"], "internal wake-confirm", "2.4"),
     (&["_chain-stop"], "internal chain-stop", "2.4"),
     // `--` ends the flags, so a phrase can start with a dash.
-    (&["run", "--", "-5", "degrees"], "run", "2.3"),
 ];
+
+mod common;
 
 #[test]
 fn unimplemented_subcommands_exit_1_naming_their_port_item() {
@@ -381,21 +381,37 @@ fn voxcmd_on_path(args: &[&str], path: &Path, envs: &[(&str, &str)]) -> Output {
     command.output().expect("the binary runs")
 }
 
+/// Runs the script once in probe mode until it execs. Renaming does not help (the inode is the same), but a fork on
+/// another test thread that held the write fd lets go of it at its exec, so after this no later exec is ETXTBSY.
+fn settle_exec(path: &Path) {
+    for _ in 0..500 {
+        match Command::new(path).env("VOXCMD_TEST_PROBE", "1").status() {
+            Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            _ => return,
+        }
+    }
+}
+
 /// A directory holding a `notify-send` that appends its arguments, one per line, to `calls`.
 fn stub_notify_send() -> (tempfile::TempDir, std::path::PathBuf) {
     use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     let calls = dir.path().join("calls");
     let stub = dir.path().join("notify-send");
+    let temp = dir.path().join(".notify-send.tmp");
     std::fs::write(
-        &stub,
+        &temp,
         format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\nprintf -- '---\\n' >> '{0}'\n",
+            "#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\nprintf '%s\\n' \"$@\" >> '{}'\nprintf -- '---\\n' >> '{0}'\n",
             calls.display()
         ),
     )
     .unwrap();
-    std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::rename(&temp, &stub).unwrap();
+    settle_exec(&stub);
     (dir, calls)
 }
 
@@ -417,7 +433,7 @@ fn util_notify_sends_info_transient_and_error_in_the_history() {
     );
     assert_eq!(
         std::fs::read_to_string(calls).unwrap(),
-        "-a\nvoxcmd\n--transient\n--\nTitle\nBody\n---\n-a\nvoxcmd\n--\nOops\nIt broke\n---\n"
+        "-a\nvoxcmd\n--transient\nTitle\nBody\n---\n-a\nvoxcmd\nOops\nIt broke\n---\n"
     );
 }
 
@@ -440,6 +456,26 @@ fn util_notify_prints_to_stderr_in_a_dry_run_or_without_notify_send() {
 }
 
 #[test]
+fn util_notify_no_match_keeps_text_that_starts_with_a_dash_as_text() {
+    let (dir, calls) = stub_notify_send();
+    let path = std::env::join_paths([dir.path(), Path::new("/usr/bin"), Path::new("/bin")]).unwrap();
+    let output = voxcmd_on_path(
+        &["util", "notify", "no-match", "--", "-title", "-u"],
+        Path::new(&path),
+        &[],
+    );
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while !calls.exists() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert_eq!(
+        std::fs::read_to_string(calls).unwrap(),
+        "-a\nvoxcmd\n--transient\n--action=help=Voice Help\n--\n-title\n-u\n---\n"
+    );
+}
+
+#[test]
 fn util_notify_no_match_offers_voice_help_without_waiting_for_the_toast() {
     let (dir, calls) = stub_notify_send();
     let path = std::env::join_paths([dir.path(), Path::new("/usr/bin"), Path::new("/bin")]).unwrap();
@@ -456,7 +492,7 @@ fn util_notify_no_match_offers_voice_help_without_waiting_for_the_toast() {
     }
     assert_eq!(
         std::fs::read_to_string(calls).unwrap(),
-        "-a\nvoxcmd\n--transient\n--action=help=Voice Help\n--\nvoxcmd: no match\n\"zzz\"\n---\n"
+        "-a\nvoxcmd\n--transient\n--action=help=Voice Help\nvoxcmd: no match\n\"zzz\"\n---\n"
     );
 }
 
@@ -550,4 +586,43 @@ fn explain_runs_each_distinct_hook_query_once_per_phrase() {
     };
     assert_eq!(targets_asked("find tea"), ["tea"]);
     assert_eq!(targets_asked("find the tea"), ["the tea", "tea"]);
+}
+
+#[test]
+fn sigterm_to_voxcmd_kills_the_running_action_and_its_children() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = dir.path().join("config");
+    std::fs::create_dir_all(config.join("integrations")).unwrap();
+    let pid_file = dir.path().join("child.pid");
+    std::fs::write(
+        config.join("integrations/slow.toml"),
+        format!(
+            "verbs = [ {{ action = \"go\", match = 'go slow' }} ]\n[actions.go]\nrun = \"sleep 60 & echo $! > '{}'; wait\"\n",
+            pid_file.display()
+        ),
+    )
+    .unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_voxcmd"))
+        .args(["run", "go", "slow"])
+        .env_clear()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("HOME", "/nonexistent")
+        .env("VOXCMD_CONFIG_DIR", &config)
+        .env("VOXCMD_DRY_RUN", "1")
+        .env("XDG_RUNTIME_DIR", dir.path())
+        .env("XDG_STATE_HOME", dir.path())
+        .spawn()
+        .unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !pid_file.exists() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let sleeper: i32 = std::fs::read_to_string(&pid_file).unwrap().trim().parse().unwrap();
+    // SAFETY: signals a child this test started.
+    unsafe { libc::kill(child.id() as i32, libc::SIGTERM) };
+    child.wait().unwrap();
+    assert!(
+        common::gone_within(sleeper, std::time::Duration::from_secs(5)),
+        "the action's child outlived voxcmd"
+    );
 }

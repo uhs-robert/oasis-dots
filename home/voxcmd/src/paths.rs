@@ -58,3 +58,37 @@ pub fn share_dir() -> PathBuf {
             .join("share/voxcmd")
     })
 }
+
+/// `$XDG_STATE_HOME/voxcmd`, else `~/.local/state/voxcmd`: what is kept between runs (the no-match log).
+pub fn state_dir() -> PathBuf {
+    env_dir("XDG_STATE_HOME")
+        .unwrap_or_else(|| home().join(".local/state"))
+        .join("voxcmd")
+}
+
+pub fn no_match_log() -> PathBuf {
+    state_dir().join("no-match.log")
+}
+
+/// One `<pid>.json` per running sequence, so Stop Voice reaches all of them.
+pub fn sequence_dir() -> PathBuf {
+    runtime_dir().join("sequences")
+}
+
+/// Present when Stop Voice has flagged the sequence the process runs.
+pub fn discard_flag(pid: u32) -> PathBuf {
+    runtime_dir().join(format!("discard.{pid}"))
+}
+
+/// The trace of listening, routing and replies that the suites read; written while the file exists or `VOXCMD_DEBUG`
+/// is set.
+pub fn debug_log() -> PathBuf {
+    runtime_dir().join("debug.log")
+}
+
+/// The bar's command line, which `qs-ipc call ...` talks to.
+pub fn qs_ipc() -> PathBuf {
+    env_dir("XDG_CONFIG_HOME")
+        .unwrap_or_else(|| home().join(".config"))
+        .join("hypr/scripts/qs-ipc")
+}
