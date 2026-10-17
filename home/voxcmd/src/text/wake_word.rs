@@ -2,6 +2,7 @@
 use super::normalize::{Replacements, apply_replacements, normalize};
 use super::speech::split_words;
 use regex::Regex;
+use std::cell::OnceCell;
 use std::sync::LazyLock;
 
 const WAKE_WORD: &str = "cortana";
@@ -12,12 +13,19 @@ const DEFAULT_ALIASES: &str = "kortana|cortona";
 const CORRECTION_PHRASES: &str = "no wait|let me rephrase|scratch that|i mean|actually|sorry|wait|no";
 const LEADING_FILLER: &str = "um|umm|uh|uhh|hmm|okay|ok|so|hey";
 
-/// The wake word and its aliases, compiled once. The wake word is fixed because the wake listener's acoustic model
-/// only knows it; the aliases are the spellings Whisper still produces.
+/// The wake word and its aliases, each regex compiled on first use: a route needs only the leading split, and the
+/// trailing one's Unicode classes take a millisecond to build. The wake word is fixed because the wake listener's
+/// acoustic model only knows it; the aliases are the spellings Whisper still produces.
 pub struct WakeWords {
-    leading: Regex,
-    trailing: Regex,
-    heard: Regex,
+    /// The forms as one alternation body, longest first.
+    any: String,
+    leading: OnceCell<Regex>,
+    trailing: OnceCell<Regex>,
+    heard: OnceCell<Regex>,
+}
+
+fn compiled(cell: &OnceCell<Regex>, pattern: impl FnOnce() -> String) -> &Regex {
+    cell.get_or_init(|| Regex::new(&pattern()).expect("wake forms are plain words"))
 }
 
 impl WakeWords {
@@ -39,25 +47,30 @@ impl WakeWords {
         }
         // Longest first: the bash regex took the longest alternative, this engine takes the first that fits.
         forms.sort_by_key(|form| std::cmp::Reverse(form.len()));
-        let any = forms.join("|");
-        let compile = |pattern: String| Regex::new(&pattern).expect("wake forms are plain words");
         Self {
-            leading: compile(format!("(?s)^(?:hey )?(?:{any})(?: (.*))?$")),
-            trailing: compile(format!(r"(?is)^(.*[^\p{{L}}\p{{N}}])(?:{any})[^\p{{L}}\p{{N}}]+(.*)$")),
-            heard: compile(format!("(?s) (?:{any}) (.*)$")),
+            any: forms.join("|"),
+            leading: OnceCell::new(),
+            trailing: OnceCell::new(),
+            heard: OnceCell::new(),
         }
     }
 
     /// The rest of normalized text that starts with the wake word, an optional "hey" dropped too.
     pub fn split_leading(&self, normalized: &str) -> Option<String> {
-        let captures = self.leading.captures(normalized)?;
+        let any = &self.any;
+        let leading = compiled(&self.leading, || format!("(?s)^(?:hey )?(?:{any})(?: (.*))?$"));
+        let captures = leading.captures(normalized)?;
         Some(captures.get(1).map_or("", |rest| rest.as_str()).to_string())
     }
 
     /// For a raw transcript holding the wake word after something else: what came before the last wake word as
     /// spoken (trailing blanks cut) and what follows it, normalized.
     pub fn split_trailing(&self, transcript: &str) -> Option<(String, String)> {
-        let captures = self.trailing.captures(transcript)?;
+        let any = &self.any;
+        let trailing = compiled(&self.trailing, || {
+            format!(r"(?is)^(.*[^\p{{L}}\p{{N}}])(?:{any})[^\p{{L}}\p{{N}}]+(.*)$")
+        });
+        let captures = trailing.captures(transcript)?;
         let before = captures[1].trim_end_matches(char::is_whitespace);
         (!before.is_empty()).then(|| (before.to_string(), normalize(&captures[2])))
     }
@@ -66,7 +79,8 @@ impl WakeWords {
     pub fn heard(&self, transcript: &str, replacements: &Replacements) -> Option<String> {
         let text = apply_replacements(&normalize(transcript), replacements);
         let padded = format!(" {text} ");
-        let captures = self.heard.captures(&padded)?;
+        let any = &self.any;
+        let captures = compiled(&self.heard, || format!("(?s) (?:{any}) (.*)$")).captures(&padded)?;
         let rest = &captures[1];
         Some(rest.strip_suffix(' ').unwrap_or(rest).to_string())
     }
