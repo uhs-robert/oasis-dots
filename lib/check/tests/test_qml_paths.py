@@ -140,17 +140,17 @@ class WidgetTokenTest(PathsCase):
 
 
 class SoundPackTest(PathsCase):
-    """ThemeAudio.pack_dir finds a style's pack in styles/<style>/sounds and an extra pack in sounds/."""
+    """ThemeAudio.pack_dir finds a style's pack in styles/<style>/sounds, which may be missing, and an extra pack in sounds/, which may not."""
 
-    TABLES = [r for r in qml_paths.TABLES if r.consumer == "services/ThemeAudio.qml" and r.head in ("../styles/", "../sounds/")]
+    TABLES = [r for r in qml_paths.TABLES if r.consumer == "services/ThemeAudio.qml" and r.head == "../sounds/"]
     FILES = {
         "qs/services/ThemeAudio.qml": (
             'readonly property var extra_packs: ({ mgs2: { label: "MGS2" } })\n'
             'function pack_dir(name) {\n'
-            '    return name in extra_packs ? Qt.resolvedUrl("../sounds/" + name) : Qt.resolvedUrl("../styles/" + name + "/sounds");\n'
+            '    if (name in extra_packs) return Qt.resolvedUrl("../sounds/" + name);\n'
+            '    return Qt.resolvedUrl("../styles/" + name + "/sounds"); // qs-path: optional a style without a pack plays silence\n'
             '}\n'
         ),
-        "qs/theme/Style.qml": 'readonly property var order: ["oasis", "nes"]\n',
         "qs/styles/oasis/sounds/cursor.ogg": "",
         "qs/styles/nes/sounds/cursor.ogg": "",
         "qs/sounds/mgs2/cursor.ogg": "",
@@ -159,13 +159,13 @@ class SoundPackTest(PathsCase):
     def test_every_pack_resolves(self):
         self.assertEqual(self.check(self.FILES, self.TABLES), [])
 
-    def test_a_renamed_style_or_extra_pack_folder_fails(self):
-        for moved, message in (
-            ("qs/styles/nes/sounds/cursor.ogg", "qs/services/ThemeAudio.qml:3: styles/nes/sounds (from qs/theme/Style.qml:1) does not exist"),
-            ("qs/sounds/mgs2/cursor.ogg", "qs/services/ThemeAudio.qml:3: sounds/mgs2 (from qs/services/ThemeAudio.qml:1) does not exist"),
-        ):
-            files = {name: text for name, text in self.FILES.items() if name != moved}
-            self.assertEqual(self.check(files, self.TABLES), [message])
+    def test_a_style_without_a_pack_folder_passes(self):
+        files = {name: text for name, text in self.FILES.items() if name != "qs/styles/nes/sounds/cursor.ogg"}
+        self.assertEqual(self.check(files, self.TABLES), [])
+
+    def test_a_missing_extra_pack_folder_fails(self):
+        files = {name: text for name, text in self.FILES.items() if name != "qs/sounds/mgs2/cursor.ogg"}
+        self.assertEqual(self.check(files, self.TABLES), ["qs/services/ThemeAudio.qml:3: sounds/mgs2 (from qs/services/ThemeAudio.qml:1) does not exist"])
 
 
 class PrefixTest(PathsCase):
