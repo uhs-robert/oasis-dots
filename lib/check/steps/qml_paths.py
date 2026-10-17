@@ -6,8 +6,8 @@ qmllint follows `import` lines and type names only, so moving a file that `Qt.re
 reads the working tree (tracked and untracked-but-not-ignored files, as git lists them) and checks, in the shell tree
 and in the greeter tree (the greeter's own files plus the Quickshell files lib/common/greeter-files.sh stages):
 
-  - a literal path (`Qt.resolvedUrl("x")`, `Quickshell.shellDir + "/x"`, `shellPath("x")`, and a bare relative string on
-    `source:` or `fragmentShader:` in QML) names an existing file or folder;
+  - a literal path (`Qt.resolvedUrl("x")`, `Quickshell.shellDir + "/x"`, `shellPath("x")`, and a bare relative string, or a ternary
+    branch of one, on `source:`, `fragmentShader:` or `vertexShader:` in QML) names an existing file or folder;
   - a path with a dynamic tail either has a TABLES rule, which enumerates the table in the repo it is drawn from and
     checks every file, or gets a prefix check: the folder exists and holds an entry starting with the literal head;
   - every quoted or `qs.` import, and every JS `.import`, resolves;
@@ -125,9 +125,11 @@ OUTSIDE_REFS = [
 ]
 
 # A relative string on these QML keys is a path; other keys hold prose, glyphs or SVG data.
-BARE_PATH_KEYS = re.compile(rf"""\b(?:source|fragmentShader){WS}*:{WS}*(?=["'])""")
-BARE_STRING = re.compile(r"""(["'])((?:\\.|(?!\1)[^\\])+)\1""")
-URL_SCHEME = re.compile(r"^(/|[A-Za-z][A-Za-z0-9+.-]*:)")
+BARE_PATH_KEYS = re.compile(rf"""\b(?:source|fragmentShader|vertexShader){WS}*:{WS}*""")
+BARE_STRING = re.compile(r"""(["'])((?:\\.|(?!\1)[^\\])*)\1""")
+URL_SCHEME = re.compile(r"^(/|#|[A-Za-z][A-Za-z0-9+.-]*:)")
+BRANCH_BEFORE = re.compile(r"(?:^|\?\??|:|\|\||&&)\s*$")
+BRANCH_AFTER = re.compile(r"\s*(?:$|[:,;)\]}]|\|\||&&|\?\?)")
 CALL_SITE = re.compile(r"Qt\.resolvedUrl\(|Quickshell\.shellPath\(|\bshellDir\b")
 MARKER = re.compile(r"//{}*qs-path:{}*(optional|skip){}+\S".format(WS, WS, WS))
 
@@ -246,11 +248,42 @@ def call_sites(path, qml_file):
                         terms = None
                 sites.append(Site(number + 1, marker, True, terms, ""))
         if qml_file:
-            for match in BARE_PATH_KEYS.finditer(blank_strings(line)):
-                literal = BARE_STRING.match(line, match.end())
-                if literal and not URL_SCHEME.match(literal.group(2)):
-                    sites.append(Site(number + 1, marker, False, [("lit", literal.group(2))], ""))
+            blanked = blank_strings(line)
+            for match in BARE_PATH_KEYS.finditer(blanked):
+                for literal in branch_literals(line, blanked, match.end()):
+                    if literal.group(2) and not URL_SCHEME.match(literal.group(2)):
+                        sites.append(Site(number + 1, marker, False, [("lit", literal.group(2))], ""))
     return sites
+
+
+def branch_literals(code, blanked, start):
+    """The string literals of the binding value starting at code[start:] that are the value or a direct branch of a
+    ternary, `||`, `&&` or `??` in it, as regex matches. A string in a call argument, a comparison or a
+    concatenation is not a bare path, except that a value *starting* with a literal is one as before ("a/" + x)."""
+    found = []
+    depth, i = 0, start
+    while i < len(blanked):
+        c = blanked[i]
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            if depth == 0:
+                break
+            depth -= 1
+        elif c in ",;" and depth == 0:
+            break
+        elif c in "\"'" and depth == 0:
+            literal = BARE_STRING.match(code, i)
+            if not literal:
+                break
+            i = literal.end()
+            if literal.start() == start or (
+                BRANCH_BEFORE.search(blanked[start:literal.start()]) and BRANCH_AFTER.match(blanked, i)
+            ):
+                found.append(literal)
+            continue
+        i += 1
+    return found
 
 
 # --- The trees paths resolve in -----------------------------------------------------------------------------------------
