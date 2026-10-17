@@ -34,6 +34,10 @@ CASES = [
     ("system/etc/greetd/config.toml", " lua"),
     ("home/quickshell/tests/notification_markup.js", " node"),
     ("home/quickshell/.config/quickshell/shell.qml", " qml node"),
+    # Shaders and their compiled output reach only the shader step, not QML.
+    ("home/quickshell/.config/quickshell/components/scanlines.frag", " shaders"),
+    ("home/quickshell/.config/quickshell/components/scanlines.frag.qsb", " shaders"),
+    ("lib/check/steps/shaders.sh", "checkscope shaders"),
     ("home/hypr/.config/hypr/hyprland.lua", " lua"),
     (".luacheckrc", " lua"),
     ("home/voxcmd/tests/run.sh", " voxcmd"),
