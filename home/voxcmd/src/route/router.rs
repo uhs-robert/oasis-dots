@@ -7,7 +7,7 @@
 use super::matcher::{Arg, IntegrationMatch, Match, Matcher, Outcome};
 use super::near_miss::NearMiss;
 use super::pattern::PlaceholderType;
-use super::resolve::{self, PendingMatch, Resolved, RouteOption};
+use super::resolve::{self, PendingMatch, Resolved, RouteOption, Texts};
 use super::trace::{
     ArgValue, Decision, DecisionKind, IntegrationOutcome, IntegrationTrace, NearMissTrace, OptionTrace, Rejection,
     RouteTier, StepTrace, VerbRef,
@@ -347,14 +347,20 @@ impl<'c> Router<'c> {
                 ));
             }
         }
-        for (one, resolved) in pending.iter().zip(self.resolve(&pending, raw)) {
+        for (one, resolved) in pending.iter().zip(self.resolve(
+            &pending,
+            Texts {
+                phrase: text,
+                raw_transcript: raw,
+            },
+        )) {
             self.take(pass, one.integration, resolved);
         }
     }
 
-    fn resolve(&self, pending: &[PendingMatch], raw: &str) -> Vec<Resolved> {
+    fn resolve(&self, pending: &[PendingMatch], texts: Texts) -> Vec<Resolved> {
         let started = Instant::now();
-        let resolved = resolve::resolve_all(self.config, self.hooks, pending, raw);
+        let resolved = resolve::resolve_all(self.config, self.hooks, pending, texts);
         if resolved.iter().any(|one| one.hook.is_some()) {
             self.resolve_wall.set(self.resolve_wall.get() + started.elapsed());
         }
@@ -546,7 +552,13 @@ impl<'c> Router<'c> {
         }
         let mut options = Vec::new();
         let mut hooks = Vec::new();
-        for resolved in self.resolve(&pending, raw) {
+        for resolved in self.resolve(
+            &pending,
+            Texts {
+                phrase: text,
+                raw_transcript: raw,
+            },
+        ) {
             options.extend(
                 resolved
                     .options

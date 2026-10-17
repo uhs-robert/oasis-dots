@@ -197,6 +197,7 @@ fn integration(dumped: Dumped) -> Integration {
                 mode_switch: mode.contains(id),
                 mode_entry: mode_switch.contains(id) && !mode.contains(id),
                 wait: dumped.step_waits.get(id).cloned().map(Wait::LegacyCondition),
+                timeout_secs: None,
             };
             (id.clone(), action)
         })

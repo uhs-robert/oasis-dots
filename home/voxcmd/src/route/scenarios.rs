@@ -6,7 +6,7 @@ use super::trace::{DecisionKind, Explain};
 use crate::config::Config;
 use crate::config::intents::Intents;
 use crate::config::schema::{Integration, parse_toml};
-use crate::hooks::{Candidate, HookRun, Hooks, Lookup};
+use crate::hooks::{Candidate, HookQuery, HookRun, Hooks, Lookup};
 use crate::text::normalize::Replacements;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -121,8 +121,9 @@ impl CannedHooks {
 }
 
 impl Hooks for CannedHooks {
-    fn candidates(&self, integration: &Integration, action: &str, _target: &str, raw: &str) -> HookRun {
-        self.raw_seen.lock().unwrap().push(raw.to_string());
+    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+        let action = query.action;
+        self.raw_seen.lock().unwrap().push(query.raw_transcript.to_string());
         let mut run = HookRun::unhooked(integration, action, "canned");
         let key = self
             .lookups
@@ -489,4 +490,131 @@ fn a_sequence_stops_at_the_first_step_that_does_not_run() {
     assert_eq!(explain.steps[1].decision.result, "no match");
     assert!(explain.text().contains("step 2 of 3\n"));
     assert!(!explain.text().contains("step 3 of 3"));
+}
+
+// ---- the real hook runner: TOML integrations only, since the match goldens do not cover that dialect ----
+
+mod shell_hooks {
+    use super::*;
+    use crate::hooks::ShellHooks;
+
+    const PLAYERS: &str = "printf 'spotify.instance1\\tspotify\\nfirefox.instance2\\tfirefox\\n'";
+
+    /// The media fixture with its `playerctl` listing swapped for a fixed one.
+    fn media_text() -> String {
+        fixture_text("media").replace(
+            r#"playerctl --list-all 2>/dev/null | awk -F. 'NF { print $0 "\t" $1 }' "#,
+            PLAYERS,
+        )
+    }
+
+    fn explain_with(integrations: &[(&str, String)], phrase: &str) -> Explain {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("integrations")).unwrap();
+        let mut config = config();
+        config.integrations = integrations
+            .iter()
+            .map(|(stem, text)| {
+                std::fs::write(dir.path().join(format!("integrations/{stem}.toml")), text).unwrap();
+                integration(stem, text)
+            })
+            .collect();
+        let stems = config.integrations.iter().map(|one| one.stem.clone());
+        let hooks = ShellHooks::new(dir.path(), stems, true);
+        explain_phrase(&Router::new(&config, &hooks), phrase)
+    }
+
+    const KEYBINDS_BY_SHELL: &str = r#"
+name = "Keybinds"
+fallback = true
+verbs = [{ action = "run", match = '(run )?{target}' }]
+[actions.run]
+run = 'run_keybind "$VOXCMD_ID"'
+candidates = 'printf "141\tMute volume\n"'
+"#;
+
+    #[test]
+    fn a_media_player_hook_lists_players_and_the_target_picks_one() {
+        let explain = explain_with(&[("media", media_text())], "play spotify");
+        let step = only_step(&explain);
+        assert_eq!(step.decision.kind, DecisionKind::Run, "{}", explain.text());
+        assert_eq!(step.options[0].id, "spotify.instance1");
+        assert_eq!(step.options[0].candidates, 2);
+        assert_eq!(step.hooks[0].exit, Some(0));
+        assert_eq!(step.hooks[0].lines.len(), 2);
+    }
+
+    #[test]
+    fn a_hook_that_exits_3_yields_so_the_phrase_falls_through_to_the_next_integration() {
+        let veto = r#"
+name = "Veto"
+verbs = [{ action = "open", match = '(open|mute) {target}' }]
+[actions.open]
+run = 'open_it'
+candidates = 'exit 3'
+"#;
+        let explain = explain_with(
+            &[("keybinds", KEYBINDS_BY_SHELL.into()), ("veto", veto.into())],
+            "mute volume",
+        );
+        let step = only_step(&explain);
+        assert_eq!(step.options.len(), 1, "{}", explain.text());
+        assert_eq!(step.options[0].integration, "Keybinds");
+        assert_eq!(step.options[0].id, "141");
+        assert!(explain.text().contains("the open hook yielded"), "{}", explain.text());
+    }
+
+    #[test]
+    fn match_text_is_what_the_target_is_matched_against() {
+        let integration = r#"
+name = "Tea"
+verbs = [{ action = "brew", match = 'brew {target}' }]
+[actions.brew]
+run = 'brew_it'
+candidates = 'printf "1\tFirst\tdarjeeling\n2\tSecond\tassam\n"'
+"#;
+        let explain = explain_with(&[("tea", integration.into())], "brew assam");
+        let step = only_step(&explain);
+        assert_eq!(step.options.len(), 1, "{}", explain.text());
+        assert_eq!(
+            (step.options[0].id.as_str(), step.options[0].label.as_str()),
+            ("2", "Second")
+        );
+    }
+
+    fn search(candidates: &str) -> String {
+        format!(
+            r#"
+name = "Search"
+verbs = [{{ action = "find", match = 'find {{target}}' }}]
+[actions.find]
+run = 'show "$VOXCMD_ID"'
+candidates = '{candidates}'
+no_match = "missing"
+[actions.missing]
+run = 'notify "nothing named $VOXCMD_ARG_TARGET"'
+"#
+        )
+    }
+
+    #[test]
+    fn no_match_runs_for_a_hook_that_listed_nothing_but_not_for_one_that_failed() {
+        let nothing = explain_with(&[("search", search("true"))], "find tea");
+        let step = only_step(&nothing);
+        assert_eq!(step.options[0].action, "missing", "{}", nothing.text());
+
+        for failing in ["exit 2", "sleep 30"] {
+            let text = search(failing).replace("[actions.find]", "[actions.find]\ntimeout_secs = 0.2");
+            let broken = explain_with(&[("search", text)], "find tea");
+            let step = only_step(&broken);
+            assert!(step.options.is_empty(), "{failing}: {}", broken.text());
+            assert_eq!(step.decision.kind, DecisionKind::NoMatch);
+            assert!(step.hooks[0].problem.is_some());
+            assert!(
+                broken.text().contains("it offers nothing, and no_match is skipped"),
+                "{}",
+                broken.text()
+            );
+        }
+    }
 }

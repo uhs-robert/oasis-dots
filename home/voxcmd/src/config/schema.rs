@@ -94,6 +94,8 @@ pub struct Action {
     pub mode_switch: bool,
     pub mode_entry: bool,
     pub wait: Option<Wait>,
+    /// Seconds the action's hooks may run; the hook default (3) when unset.
+    pub timeout_secs: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -180,6 +182,7 @@ struct ActionTable {
     mode_entry: bool,
     wait: Option<String>,
     wait_hook: Option<String>,
+    timeout_secs: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -244,6 +247,7 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 mode_switch: table.mode_switch,
                 mode_entry: table.mode_entry,
                 wait,
+                timeout_secs: table.timeout_secs,
             };
             (id, action)
         })

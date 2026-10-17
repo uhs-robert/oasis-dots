@@ -8,7 +8,7 @@ use super::sequence;
 use crate::cli::ExplainArgs;
 use crate::config::Config;
 use crate::exit::CliError;
-use crate::hooks::{HookRun, Hooks, LegacyHooks, NoHooks};
+use crate::hooks::{Dispatch, HookRun, Hooks, LegacyHooks, NoHooks, ShellHooks};
 use serde::Serialize;
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -325,6 +325,12 @@ fn why_lines(out: &mut String, step: &StepTrace, prefix: &str) {
             hook.lines.len(),
             hook.millis
         );
+        if let Some(problem) = &hook.problem {
+            let _ = writeln!(
+                out,
+                "      failed: {problem}; it offers nothing, and no_match is skipped"
+            );
+        }
         for line in &hook.stderr_tail {
             let _ = writeln!(out, "      stderr: {line}");
         }
@@ -394,7 +400,13 @@ pub fn run(args: ExplainArgs) -> Result<String, CliError> {
     let hooks: Box<dyn Hooks> = if crate::paths::legacy_dump_override().is_some() {
         Box::new(NoHooks)
     } else {
-        Box::new(LegacyHooks::new(config_dir))
+        // A dry run: a hook that toasts prints it to stderr instead.
+        let shell = ShellHooks::new(
+            &config_dir,
+            config.integrations.iter().map(|integration| integration.stem.clone()),
+            true,
+        );
+        Box::new(Dispatch::new(shell, Box::new(LegacyHooks::new(config_dir))))
     };
     let router = Router::new(&config, hooks.as_ref());
     let explain = sequence::explain_phrase(&router, &args.phrase.join(" "));
