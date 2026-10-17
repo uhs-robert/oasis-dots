@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Shapes
 import qs.theme
 import qs.services
-import "../../../services/BarModules.js" as BarModules
+import "../../../features/bar/BarModules.js" as BarModules
+import qs.features.bar
 
 // One lualine section of bar modules: a fill, an arrow in from the previous section, thin separators between components.
 // Hovered components light up as powerline segments, like the buffers.

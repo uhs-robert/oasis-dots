@@ -6,6 +6,7 @@ import qs.services
 import qs.components
 import qs.features.power
 import qs.features.keeptabs
+import qs.features.bar
 
 BarModule {
     id: root

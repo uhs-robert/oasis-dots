@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import qs.theme
 import qs.services
+import qs.features.bar
 
 PanelWindow {
     id: root

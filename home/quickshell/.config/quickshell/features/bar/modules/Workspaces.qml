@@ -18,8 +18,8 @@ import qs.styles.oasis.widgets as Oasis
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.ps2.widgets as Ps2
 import qs.styles.snes.widgets as Snes
-import "../../styles/ff7/widgets/Materia.js" as Materia
-import "../../styles/nes/widgets/Slimes.js" as Slimes
+import "../../../styles/ff7/widgets/Materia.js" as Materia
+import "../../../styles/nes/widgets/Slimes.js" as Slimes
 
 Item {
     id: root

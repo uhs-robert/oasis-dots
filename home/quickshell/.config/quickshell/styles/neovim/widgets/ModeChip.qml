@@ -3,6 +3,7 @@ import QtQuick.Shapes
 import qs.theme
 import qs.services
 import "Modes.js" as Modes
+import qs.features.bar
 
 // Lualine's section a: the HyprVim mode from the Hyprland submap, with an arrow into the next section.
 Item {

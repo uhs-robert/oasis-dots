@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import qs.theme
 import qs.services
 import qs.components
+import qs.features.bar
 
 // Workspaces as lualine buffers: number and app icons, the focused one a full-height visual-bg segment with arrow edges.
 Item {

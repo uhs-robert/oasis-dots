@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
+import qs.features.bar
 
 BarModule {
     id: root
