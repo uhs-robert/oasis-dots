@@ -81,6 +81,7 @@ When the owner asks you to hand off to a fresh session, pass the baton or wind d
    - While waiting on the owner or a review, start read-only research for the next planned piece of work.
    - Exit 0 → read the review path it prints.
    - Exit 2 → spawn a read-only `general-purpose` agent with `model: opus` as the external reviewer. Give it the worktree path, the issue, how to get the diff (`git diff <base>...HEAD`), the root cause and design, and the same review dimensions. Name the risky areas to probe (ordering and races, lifecycle and reload paths, behavior the change silently dropped). Tell it not to edit, commit, push or comment, and require findings ranked by severity, each with file:line, a concrete failure scenario, confidence (confirmed/plausible) and a suggested fix. In the final report, name which reviewer ran and quote the line Codex printed after `codex unavailable:`.
+   - Codex at its usage limit (local or on GitHub) is a standing owner waiver: the Opus review stands in for it, and an Opus "approve, no revisions" counts as Codex's approval, including under a standing merge approval. GitHub Codex will not review either, so merge with the repo's review-gate skip (here `.claude/skills/ship-batch/ship-batch.sh --skip-review-gate <n>...`, flag before the PR numbers). The skip also skips the unresolved-thread check: confirm by hand first that the PR has none. Say in the PR that Opus reviewed in place of Codex. Once Codex is back, use it again.
 
 8. Evaluate every material review finding yourself. Classify it as valid, partially valid, invalid, or out of scope. Do not blindly apply reviewer suggestions.
 
@@ -108,5 +109,5 @@ When the owner asks you to hand off to a fresh session, pass the baton or wind d
     - validation performed
     - noteworthy review findings and dispositions
     - remaining risks
-    - before saying it is ready for human review, run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` and resolve any thread or Codex problem it reports (answer and resolve the threads, or have an agent fix the code); only a passing check makes it ready
+    - before saying it is ready for human review, run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` and resolve any thread or Codex problem it reports (answer and resolve the threads, or have an agent fix the code); only a passing check makes it ready (with Codex at its usage limit, the Opus approval and a hand check that no review thread is open stand in for it)
     - whether it is ready for human review
