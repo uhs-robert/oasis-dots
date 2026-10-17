@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Usage: ship-batch.sh [<pr>...]; merges the PRs in order, then updates main, restarts what changed and checks it.
+# Usage: ship-batch.sh [--skip-review-gate] [<pr>...]; merges the PRs in order, then updates main, restarts what changed and
+# checks it. --skip-review-gate skips the Codex review gate for every PR, only when the owner waived Codex or named
+# another reviewer; each PR's branch check still runs.
 set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
@@ -11,6 +13,12 @@ die() {
   echo "ship-batch: $*" >&2
   exit 1
 }
+
+skip_gate=()
+if [[ ${1:-} == --skip-review-gate ]]; then
+  skip_gate=(--skip-review-gate)
+  shift
+fi
 
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
 
@@ -24,7 +32,9 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 ready=() not_ready=''
 for pr in "$@"; do
-  if ! (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --check --wait-review --request-review "$pr"); then
+  if ((${#skip_gate[@]})); then
+    echo "ship-batch: PR $pr: review gate skipped by request"
+  elif ! (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --check --wait-review --request-review "$pr"); then
     not_ready="PR $pr does not pass the review gate"
     break
   fi
@@ -55,7 +65,7 @@ fi
 take_lock "$repo" "${ready[*]}" || die "gave up waiting for the ship-batch running in this repository"
 before=$(select_base "$repo")
 # The reviews were waited for above, so the gate here only confirms them and never waits under the lock.
-((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
+((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${skip_gate[@]}" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only
 after=$(git -C "$repo" rev-parse HEAD)
 # A recorded base that main no longer descends from (rewritten history, pruned commit) vouches for nothing: treat every

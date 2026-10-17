@@ -7,11 +7,14 @@ cmd=$(jq -r '.tool_input.command // empty')
 # merges skips ship-batch's per-PR check, restows and post-merge check. Only a command word counts, not a mention
 # (`grep merge-prs.sh x`); `--check` and `--help` merge nothing.
 nl=$'\n'
-invocation="(^|[;&|(\`$nl])[[:space:]]*(bash[[:space:]]+)?([^[:space:]]*/)?merge-prs\.sh([^;&|)\`$nl]*)"
+# Wrappers that still run the script as the command word: timeout <dur>, env and VAR=val, sh/bash, exec, nohup, command, time, !.
+# The arguments are the last capture group, whatever the number of prefix groups.
+prefix='((timeout[[:space:]]+[^[:space:]]+|env|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|bash|sh|exec|nohup|command|time|!)[[:space:]]+)*'
+invocation="(^|[;&|(\`$nl])[[:space:]]*${prefix}([^[:space:]]*/)?merge-prs\.sh([^;&|)\`$nl]*)"
 merges_directly() {
   local rest=$cmd args
   while [[ $rest =~ $invocation ]]; do
-    args=${BASH_REMATCH[4]}
+    args=${BASH_REMATCH[${#BASH_REMATCH[@]} - 1]}
     rest=${rest#*"${BASH_REMATCH[0]}"}
     [[ $args =~ ^[[:space:]]*$ || $args =~ [[:space:]](--check|--help|-h)([[:space:]=]|$) ]] || return 0
   done
