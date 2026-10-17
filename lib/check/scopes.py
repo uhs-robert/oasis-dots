@@ -134,7 +134,8 @@ STEPS = [
     Step("luacheck", "lua", "sh ./lib/check/steps/lua.sh"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
-    Step("shaders", "shaders", "sh ./lib/check/steps/shaders.sh"),
+    # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
+    Step("shaders", "shaders", "sh ./lib/check/steps/shaders.sh", probe='[ -n "${QSB-}" ] || command -v qsb >/dev/null || [ -x /usr/lib/qt6/bin/qsb ]', skip_reason="the shader check needs qsb (qt6-shadertools)"),
     Step("time-format", "qml", "sh ./lib/check/steps/time-format.sh"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
     Step("calendar-sync-syntax", "calendar", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
