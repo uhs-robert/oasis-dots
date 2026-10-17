@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
+import qs.features.keeptabs
 import qs.features.clock
 
 // The Usage tab as `:checkhealth claude`: a "claude: usage" section, one OK/WARNING/ERROR line per limit and an
