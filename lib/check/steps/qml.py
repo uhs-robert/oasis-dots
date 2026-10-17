@@ -28,13 +28,14 @@ import sys
 import tempfile
 
 sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from qml_imports import GREETER_LIST, WS, folder_imports, greeter_entries, read_lines, strip_code  # noqa: E402
 
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 QS_DIR = "home/quickshell/.config/quickshell"
 GREETER_DIR = "system/etc/greetd/quickshell"
 # Each staged tree and the repository folder its findings are reported under.
 TREE_SOURCES = {"shell": QS_DIR, "greeter": GREETER_DIR}
-GREETER_LIST = "lib/common/greeter-files.sh"
 # /usr/bin/qmllint on Arch is the Qt 5 one, which cannot read Qt 6 QML.
 QMLLINT_CANDIDATES = ("/usr/lib/qt6/bin/qmllint", "qmllint6", "qmllint")
 FALLBACK_QT_QML_DIR = "/usr/lib/qt6/qml"
@@ -43,16 +44,6 @@ SOURCE_SUFFIXES = (".qml", ".js", ".mjs")
 LINT_DEPTH = {"shell": 99, "greeter": 1}
 # Each qmllint call stays below this, as find -exec + and xargs keep under ARG_MAX.
 MAX_ARGV_BYTES = 128 * 1024
-
-# POSIX [[:space:]], ASCII only.
-WS = "[ \t\n\v\f\r]"
-QS_IMPORT = re.compile(rf"^{WS}*import{WS}+qs(\.[A-Za-z0-9_]+)*({WS}|$)")
-QS_IMPORT_HEAD = re.compile(rf"^{WS}*import{WS}+qs")
-QUOTED_IMPORT = re.compile(rf'^{WS}*import{WS}+"[^"]+"')
-IMPORT_ALIAS = re.compile(rf'({WS}|"){WS}*as{WS}+[A-Za-z_][A-Za-z0-9_]*')
-SCRIPT_TARGET = re.compile(r"\.m?js$")
-FROM_FIRST_SPACE = re.compile(rf"{WS}.*$", re.S)
-UP_TO_LAST_SPACE = re.compile(rf".*{WS}", re.S)
 
 COMPONENT_OPEN = re.compile(r"^    Component \{$")
 COMPONENT_CLOSE = re.compile(r"^    \}$")
@@ -90,16 +81,6 @@ def strip_prefix(text, prefix):
     return text[len(prefix):] if text.startswith(prefix) else text
 
 
-def read_lines(path):
-    """A file's lines as awk and grep see them: split on newline only, no empty record after a final newline."""
-    with open(path, "rb") as file:
-        text = file.read().decode("utf-8", "surrogateescape")
-    lines = text.split("\n")
-    if lines[-1] == "":
-        lines.pop()
-    return lines
-
-
 def write_out(stream, lines):
     """Writes the lines as UTF-8 whatever the locale, as the shell passed qmllint's bytes through."""
     stream.buffer.write("".join(line + "\n" for line in lines).encode("utf-8", "surrogateescape"))
@@ -118,21 +99,6 @@ def find_qmllint():
         if any(line.startswith(b"qmllint 6.") for line in probe.stdout.split(b"\n")):
             return path
     return None
-
-
-def greeter_entries(repo):
-    """The greeter list's QML and JS entries (directories, .qml and .js files), optional mark dropped. The list stays
-    bash, read by sourcing it, so it has no second copy here."""
-    script = 'source "$1" && printf "%s\\0" "${GREETER_QS_FILES[@]}"'
-    output = subprocess.run(
-        ("bash", "-c", script, "_", os.path.join(repo, GREETER_LIST)), stdout=subprocess.PIPE, check=True
-    ).stdout.decode("utf-8", "surrogateescape")
-    entries = []
-    for entry in output.split("\0")[:-1]:
-        entry = entry.removesuffix("?")
-        if entry.endswith(("/", ".qml", ".js")):
-            entries.append(entry)
-    return entries
 
 
 def copy_sources(src, dest):
@@ -165,34 +131,6 @@ def stage_greeter_sources(shell, greeter, entries):
             os.makedirs(os.path.dirname(target), exist_ok=True)
             shutil.copy2(source, target, follow_symlinks=False)
     return None
-
-
-def folder_imports(path, root):
-    """Yields (alias or None, folder) for each folder import in the file. A quoted import is relative to the importing
-    file, `import qs.a.b` to the tree root. The folder is not resolved; script imports are skipped. Only single-line
-    imports are read, and commented-out ones count."""
-    try:
-        lines = read_lines(path)
-    except OSError:
-        return
-    for line in lines:
-        for statement in line.split(";"):
-            if match := QS_IMPORT.match(statement):
-                target = QS_IMPORT_HEAD.sub("", match.group(0), count=1)
-                target = FROM_FIRST_SPACE.sub("", target, count=1).replace(".", "/")
-                base = root
-            elif match := QUOTED_IMPORT.match(statement):
-                target = match.group(0).split('"', 1)[1].removesuffix('"')
-                if SCRIPT_TARGET.search(target):
-                    continue
-                target = "/" + target
-                base = path.rsplit("/", 1)[0]
-            else:
-                continue
-            alias = None
-            if match := IMPORT_ALIAS.search(statement):
-                alias = UP_TO_LAST_SPACE.sub("", match.group(0), count=1)
-            yield alias, base + target
 
 
 def type_names(directory):
@@ -255,39 +193,6 @@ def write_qmldirs(reached, root):
         if len(lines) > 1:
             with open(qmldir, "w", encoding="utf-8", errors="surrogateescape") as file:
                 file.write("".join(line + "\n" for line in lines))
-
-
-def strip_code(line, state):
-    """The line without comments and string contents (a string keeps its quotes). state["in_block"] carries an open
-    block comment to the next line; a string's quote does not carry, so a template literal's later lines read as
-    code."""
-    out = []
-    quote = ""
-    i = 0
-    while i < len(line):
-        c = line[i]
-        following = line[i + 1:i + 2]
-        if state["in_block"]:
-            if c == "*" and following == "/":
-                state["in_block"] = False
-                i += 1
-        elif quote:
-            if c == "\\":
-                i += 1
-            elif c == quote:
-                quote = ""
-                out.append(c)
-        elif c == "/" and following == "/":
-            break
-        elif c == "/" and following == "*":
-            state["in_block"] = True
-            i += 1
-        else:
-            if c in "\"'`":
-                quote = c
-            out.append(c)
-        i += 1
-    return "".join(out)
 
 
 USE_NAME_LEAD = re.compile(r"^[^A-Za-z_]+")

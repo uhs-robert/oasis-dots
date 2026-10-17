@@ -37,6 +37,7 @@ PATH_SCOPES = [
     # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
     ("lib/common/greeter-files.sh", "qml ship loader"),
     ("lib/check/steps/qml.py", "qml"),
+    ("lib/check/qml_imports.py", "qml"),
     ("lib/check/steps/lock-skins.sh", "qml"),
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),

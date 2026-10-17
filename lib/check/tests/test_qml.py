@@ -29,33 +29,6 @@ class TreeCase(unittest.TestCase):
         return os.path.join(self.root, *parts)
 
 
-class FolderImportsTest(TreeCase):
-    def imports(self, text):
-        write_tree(self.root, {"a/File.qml": text})
-        return list(qml.folder_imports(self.path("a/File.qml"), self.root))
-
-    def test_qs_root_and_nested(self):
-        self.assertEqual(self.imports("import qs\nimport qs.b.c\n"), [(None, self.root), (None, self.path("b/c"))])
-
-    def test_quoted_is_relative_to_the_file(self):
-        self.assertEqual(self.imports('import "../b"\n'), [(None, self.path("a") + "/../b")])
-
-    def test_alias(self):
-        self.assertEqual(self.imports('import qs.b as B\nimport "c" as C\n'), [("B", self.path("b")), ("C", self.path("a/c"))])
-
-    def test_scripts_skipped(self):
-        self.assertEqual(self.imports('import "x.js" as X\nimport "y.mjs" as Y\n'), [])
-
-    def test_two_statements_on_one_line(self):
-        self.assertEqual(self.imports('import "b"; import "c"\n'), [(None, self.path("a/b")), (None, self.path("a/c"))])
-
-    def test_version_token(self):
-        self.assertEqual(self.imports("import qs.b 1.0 as B\n"), [("B", self.path("b"))])
-
-    def test_other_imports_ignored(self):
-        self.assertEqual(self.imports("import QtQuick\nimport qsx.b\n"), [])
-
-
 class ReachedDirsTest(TreeCase):
     def test_chain_cycle_lowercase_and_missing(self):
         write_tree(self.root, {
@@ -88,21 +61,6 @@ class WriteQmldirsTest(TreeCase):
         self.assertEqual(self.read("a/b"), "module qs.a.b\nPlain 1.0 Plain.qml\nsingleton Single 1.0 Single.qml\n")
         self.assertFalse(os.path.exists(self.path("empty/qmldir")))
         self.assertEqual(self.read("kept"), "module custom\n")
-
-
-class StripCodeTest(unittest.TestCase):
-    def strip(self, *lines):
-        state = {"in_block": False}
-        return [qml.strip_code(line, state) for line in lines]
-
-    def test_comment_markers_inside_strings(self):
-        self.assertEqual(self.strip('a: "//x" // y', "b: '/*' + 1"), ['a: "" ', "b: '' + 1"])
-
-    def test_escaped_quote(self):
-        self.assertEqual(self.strip(r'a: "x\"y" + z'), ['a: "" + z'])
-
-    def test_block_comment_across_lines(self):
-        self.assertEqual(self.strip("a /* b", "c */ d", "e"), ["a ", " d", "e"])
 
 
 class FirstUnregisteredUseTest(TreeCase):
@@ -205,13 +163,6 @@ class RelabelTest(unittest.TestCase):
     def test_stage_path_replaced_as_a_string(self):
         self.assertEqual(qml.relabel("/t/a.b/shell/F.qml: in /t/a.b/shell/x", "/t/a.b/shell", "repo"), "repo/F.qml: in repo/x")
         self.assertEqual(qml.relabel("/t/aXb/shell/F.qml", "/t/a.b/shell", "repo"), "/t/aXb/shell/F.qml")
-
-
-class GreeterEntriesTest(unittest.TestCase):
-    def test_reads_the_real_list(self):
-        entries = qml.greeter_entries(os.path.dirname(os.path.dirname(CHECK_DIR)))
-        self.assertTrue(entries)
-        self.assertFalse([entry for entry in entries if "?" in entry or "*" in entry])
 
 
 if __name__ == "__main__":
