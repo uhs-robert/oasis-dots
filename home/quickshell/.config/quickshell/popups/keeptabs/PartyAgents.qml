@@ -4,7 +4,6 @@ import qs.ui.effects
 import qs.styles.nes.widgets
 import qs.theme
 import qs.services
-import qs.popups.weather as Weather
 import "../../styles/nes/widgets/Slimes.js" as Slimes
 import "KeeptabsFormat.js" as Fmt
 
@@ -45,7 +44,7 @@ Item {
 
     // One session as a Dragon Quest party member: a slime for its agent in a window named by the title, with H (context
     // left), M (context used) and L (time in this state) beneath. The border turns warning-coloured as context runs out.
-    component PartyMemberWindow: Weather.DqWindow {
+    component PartyMemberWindow: DqWindow {
         id: member
 
         required property var session
@@ -238,7 +237,7 @@ Item {
             Layout.fillHeight: true
             spacing: 6
 
-            Weather.DqWindow {
+            DqWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 border.color: root.low ? root.low_color : Theme.fg_strong
@@ -296,7 +295,7 @@ Item {
                         font.pixelSize: root.st.fs(-4)
                     }
 
-                    Weather.BattleGauge {
+                    BattleGauge {
                         Layout.fillWidth: true
                         visible: root.has_context
                         value: root.has_context ? root.current.context_pct / 100 : 0
@@ -305,7 +304,7 @@ Item {
                 }
             }
 
-            Weather.DqWindow {
+            DqWindow {
                 visible: root.current_state === "waiting"
                 title: "COMMAND"
                 Layout.preferredWidth: Style.px(96)

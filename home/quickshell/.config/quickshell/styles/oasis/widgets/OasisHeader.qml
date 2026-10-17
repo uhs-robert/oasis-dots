@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.theme
-import qs.services
+import qs.features.weather
 
 // Current conditions over the desert: a light temperature numeral, the condition lines, and a small night or day scene,
 // then today's vitals under a horizon line: a low-to-high pill and hairline gauges beside plain readouts.

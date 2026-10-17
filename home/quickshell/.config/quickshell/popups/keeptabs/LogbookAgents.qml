@@ -6,7 +6,6 @@ import qs.ui.gauges
 import qs.styles.metroid.widgets
 import qs.theme
 import qs.services
-import qs.popups.weather
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as a Scan Visor logbook: sessions are entries in a list with a scan marker each, and the selected

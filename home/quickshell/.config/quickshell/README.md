@@ -12,12 +12,12 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | ------------- | ------------------------------------------------------------------------------------------ |
 | `shell.qml`   | Entry point: a bar per monitor, then every popup, picker provider, IPC handler and overlay |
 | `bar/`        | The bar, its islands, the submap and voice-mode tabs, the hot corner, and one file per module in `modules/` |
-| `popups/`     | One popup per bar module (clock, volume, network, weather...), plus Start and the screenshot tool |
+| `popups/`     | One popup per bar module (volume, network, bluetooth...), plus Start and the screenshot tool |
 | `picker/`     | The fuzzy picker, its providers (apps, clipboard, dirs, emoji, keybinds) and the HyprVim `:` prompt |
-| `services/`   | Singletons that hold state (media, network, weather, notifications...) and the IPC handlers |
+| `services/`   | Singletons that hold state (media, network, notifications...) and the IPC handlers |
 | `ui/`         | Shared, style-neutral widgets: `Popup`, `popup/` (its title, keys and decor), `menu/` (rows, tabs, footers), `frames/` (brackets, frame stack, title strip), `gauges/` (`Meter`, `AtbBar`, `TickRuler`...), `keys/` (key hints and controller badges), `effects/` (dither, scanlines, sheen, sprites) |
 | `styles/`     | One folder per style with the pieces that only that style draws: `widgets/` and `sounds/` (the style's sound pack), and for snes `popups/` |
-| `features/`   | One folder per feature (`features/<name>/`); `power/` holds `Power` (AC and battery state), its IPC handler and settings, the Power and Battery popups, and `PowerConfirm`; `clock/` holds `TimeFormat`, the clock and calendar settings, state and IPC, `Timezones`, the clock popup, and the meeting markers in `markers/` |
+| `features/`   | One folder per feature (`features/<name>/`); `power/` holds `Power` (AC and battery state), its IPC handler and settings, the Power and Battery popups, and `PowerConfirm`; `clock/` holds `TimeFormat`, the clock and calendar settings, state and IPC, `Timezones`, the clock popup, and the meeting markers in `markers/`; `weather/` holds `WeatherState`, its IPC handler and fixtures, `Astro.js`, the weather popup, its icons in `icons/` and the per-style layouts in `views/` (see `views/README.md`) |
 | `components/` | The remaining widgets: feature surfaces and pieces not yet sorted |
 | `core/`       | `Paths.qml` (XDG dirs) and `Fuzzy.js` (the fuzzy matcher); imports nothing from the rest of the shell |
 | `theme/`      | `Theme.qml` (colors from the Oasis theme), `Style.qml` (the active style's tokens), `StyleSchema.js` (every token's type, default and doc), `styles/` (one file per style) and `BundledFonts.qml` (registers the bundled fonts) |
@@ -28,7 +28,6 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | `fonts/`      | Bundled OFL fonts, registered for the whole shell                                          |
 | `sounds/`     | `alarm.ogg` and `mgs2/`, the sounds that belong to no style (each style's pack is in `styles/<style>/sounds/`) |
 | `scripts/`    | Helpers the shell runs: greeter data, lock backdrop, audio importers, sound generator; `gen-style-exports` for `Style.qml` |
-| `assets/`     | Weather icons                                                                              |
 | `bars.json`   | Tracked bar layout per monitor, matched by description or connector name                   |
 
 Settings > Calendar shows whether `calendar-sync` is connected and when it last synced. Enter offers Connect (or Reconnect), which opens your terminal on `calendar-sync setup`, and Sync now. The row asks `calendar-sync setup --check` once when the section opens, never on a timer, so a locked rbw or keyring shows as such without being prodded repeatedly.
@@ -302,7 +301,7 @@ qs-ipc show        # list every target and function
 | `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
 | `confirm`       | `ask <question> <result_path>`: drop the yes/no card from the center island; it writes `yes` or `no` to the path (No, Esc, the scrim and 10s without an answer are all `no`, the countdown waiting while voxtype records or transcribes); `dismiss <result_path>` closes that card without writing. `voxcmd-confirm` is the shell wrapper |
 | `clickhints`    | `open <spec_path>`: numbered boxes over the screen from a JSON file `{label, choices: [{label, x, y, w, h}], result_path}` (global logical coordinates, at most ten); it writes the picked number, or an empty line for Esc, a click outside a box and 10s without an answer (the countdown waiting while voxtype records or transcribes), to the path, and returns `ok` (anything else means fall back to a text picker); `dismiss <result_path>` closes it without writing; `state` is `open` or `closed`. `voxcmd-hints` is the shell wrapper |
-| `weather`       | `preview <fixture\|off>`, `previewing`: overlay a `services/WeatherFixture.js` fixture on the live data (see Weather views) |
+| `weather`       | `preview <fixture\|off>`, `previewing`: overlay a `features/weather/WeatherFixture.js` fixture on the live data (see Weather views) |
 | `calendar`      | `refresh` (reread the calendar cache), `open_day <YYYY-MM-DD>` (open the clock popup on that day) |
 | `brightness`    | `refresh`                                                             |
 | `cmdstatus`     | `refresh <id>` (`""` refreshes every entry)                          |
@@ -401,13 +400,15 @@ One rule for new code: nothing animates or polls on battery or while it isn't vi
 
 ## Weather views
 
-Test data lives in `services/WeatherFixture.js` (`base`, `alerts1`, `alerts3`, `aqi-bad`, `rain`, `night`), shaped like the data `WeatherState` builds.
+Each style draws its own popup layout in `features/weather/views/<token>/`; `views/README.md` maps tokens to styles.
+
+Test data lives in `features/weather/WeatherFixture.js` (`base`, `alerts1`, `alerts3`, `aqi-bad`, `rain`, `night`), shaped like the data `WeatherState` builds.
 
 To see a fixture in the live popup, `qs-ipc call weather preview alerts3` (then open the popup), `qs-ipc call weather previewing`, and `qs-ipc call weather preview off`. While a preview is on, weather fetches are paused; `off` restores the real data and refetches.
 
 ## Fonts and sounds
 
-The bundled fonts are all under the SIL Open Font License. `fonts/README.md` lists each one with its source and licence file. The weather icons in `assets/weather/` are MIT licensed (see its `LICENSE`).
+The bundled fonts are all under the SIL Open Font License. `fonts/README.md` lists each one with its source and licence file. The weather icons in `features/weather/icons/` are MIT licensed (see its `LICENSE`).
 
 The sounds in `styles/<style>/sounds/` are synthesized by `scripts/synth-sounds` (numpy and ffmpeg), one hand-built patch per style. `sounds/mgs2/` is an extra pack tied to no style. `sounds/alarm.ogg`, a digital watch beep from the same script, is the alarm for a style with no pack and for Theme audio with interface and notification sounds both off. To use your own, drop `cursor`, `confirm`, `cancel`, `notify`, `error`, `lock`, `unlock` or `alarm` files (`.wav` or `.ogg`) into `~/.local/share/quickshell/sounds/<pack>/`, where `<pack>` is the style or pack name. They win file by file. [Custom sounds and music](../../../../docs/sounds.md) walks through it, along with lock music and the game lock screens' audio.
 

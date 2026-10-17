@@ -7,7 +7,7 @@ import qs.ui.frames
 import qs.ui.menu
 import qs.theme
 import qs.services
-import qs.popups.weather as Weather
+import qs.styles.nes.widgets as Nes
 import qs.styles.snes.widgets as Snes
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.ps2.widgets as Ps2
@@ -386,7 +386,7 @@ Item {
 
     Component {
         id: dq_card
-        Weather.DqWindow {
+        Nes.DqWindow {
             border.color: root.selected ? Style.caret_color : Style.pal.fg_strong
 
             Text {

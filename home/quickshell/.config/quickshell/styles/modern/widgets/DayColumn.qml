@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.theme
-import qs.services
+import qs.features.weather
 
 // One Daily column: day pill, icon, headline value, a vertical track, a second value and a footer; raised when selected.
 // sub 0 is the temperature range on the week scale with rain chance, 1 wind speed with a gust cap and direction arrow,

@@ -7,6 +7,7 @@ import qs.features.power
 import qs.features.clock.markers as Marker
 import qs.styles.modern.widgets as Modern
 import qs.features.clock
+import qs.features.weather
 
 Row {
     id: root

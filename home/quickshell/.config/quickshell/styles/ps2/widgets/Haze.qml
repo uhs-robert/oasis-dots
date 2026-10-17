@@ -1,6 +1,5 @@
 import QtQuick
 import qs.theme
-import qs.popups.weather as Weather
 
 // The PS2 boot-screen backdrop, static: faint translucent towers standing on a hazy horizon.
 Item {
@@ -14,7 +13,7 @@ Item {
 
     clip: true
 
-    Weather.TowerFloor {
+    TowerFloor {
         y: root.horizon_y - haze_h
         width: root.width
         height: root.height - y

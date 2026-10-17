@@ -91,6 +91,18 @@ def view_files(lines):
     return found
 
 
+def folder_view_files(lines):
+    """Extractor for a popup whose layouts each live in a folder named by their key: each
+    `key: { prefix: "P", views: ["A", ...] }` gives key/PA, and the second argument of each view_url(view, shared)
+    call is a file in shared/."""
+    found = []
+    for n, line in lines:
+        if m := re.search(r"""\b(\w+): \{ prefix: (["'])([^"']+)\2, views: \[(.*?)\]""", line):
+            found += [(f"{m.group(1)}/{m.group(3)}{view}", n) for _, view in re.findall(r"""(["'])([^"']+)\1""", m.group(4))]
+        found += [(f"shared/{m.group(3)}", n) for m in re.finditer(r"""view_url\((["'])[^"']+\1, (["'])([^"']+)\2\)""", line)]
+    return found
+
+
 def weather_slugs(lines):
     """Extractor for WeatherState.asset_url: its literal calls and the values of moon_icon_slugs."""
     found = []
@@ -117,7 +129,7 @@ PICKER_PARTS = ("cursors", "targets", "loupe")
 TABLES = [
     Table("bar/Bar.qml", "modules/", "services/BarModules.js", key_values("file")),
     Table("settings/SettingsPopup.qml", "section.source", "settings/Sections.js", key_values("source")),
-    Table("popups/WeatherPopup.qml", "weather/", "popups/WeatherPopup.qml", view_files),
+    Table("features/weather/WeatherPopup.qml", "views/", "features/weather/WeatherPopup.qml", folder_view_files),
     Table("popups/KeeptabsPopup.qml", "keeptabs/", "popups/KeeptabsPopup.qml", view_files),
     Table("theme/Style.qml", "styles/", "theme/styles/index.js", array_values("sources")),
     Table("ui/keys/ControllerBadge.qml", "../../styles/", "ui/keys/KeyHints.js", in_widgets(key_values("button"))),
@@ -125,7 +137,7 @@ TABLES = [
     Table("ui/gauges/Meter.qml", "../../styles/", "theme/styles/*.js", in_widgets(meter_art_values)),
     # A style's own pack is optional (its call carries a qs-path: optional marker); an extra pack must exist.
     Table("services/ThemeAudio.qml", "../sounds/", "services/ThemeAudio.qml", extra_pack_names),
-    Table("services/WeatherState.qml", "../assets/weather/", "services/WeatherState.qml", weather_slugs),
+    Table("features/weather/WeatherState.qml", "icons/", "features/weather/WeatherState.qml", weather_slugs),
     Table("lock/skins/goldeneye/GoldeneyeAudio.qml", "fx/", "lock/skins/goldeneye/GoldeneyeAudio.qml", array_values("shipped")),
     Table("lock/skins/mgs2/Mgs2Audio.qml", "fx/", "lock/skins/mgs2/Mgs2Audio.qml", array_values("shipped")),
 ] + [

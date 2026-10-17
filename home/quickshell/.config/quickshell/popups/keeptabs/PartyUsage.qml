@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.components
 import qs.theme
 import qs.services
-import qs.popups.weather as Weather
+import qs.styles.nes.widgets as Nes
 import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
@@ -17,7 +17,7 @@ Item {
 
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_primary, text_dim: root.st.text_dim })
 
-    Weather.DqWindow {
+    Nes.DqWindow {
         anchors.fill: parent
         anchors.topMargin: 6
         title: "STATUS"
@@ -85,7 +85,7 @@ Item {
                         }
                     }
 
-                    Weather.BattleGauge {
+                    Nes.BattleGauge {
                         Layout.fillWidth: true
                         value: usage_row.modelData.percent / 100
                         fill_color: Fmt.context_bar_color(usage_row.modelData.percent, root.colors)

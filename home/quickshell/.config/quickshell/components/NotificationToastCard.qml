@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Services.Notifications
 import qs.theme
 import qs.services
-import qs.popups.weather as Weather
+import qs.styles.nes.widgets as Nes
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.modern.widgets as Modern
@@ -151,7 +151,7 @@ Rectangle {
     Loader {
         active: root.dq
         anchors.fill: parent
-        sourceComponent: Weather.DqWindow {
+        sourceComponent: Nes.DqWindow {
             border.color: root.highlighted ? Style.pal.secondary : Style.pal.fg_strong
         }
     }
