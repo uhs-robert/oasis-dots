@@ -41,8 +41,10 @@
 #   stylua, luacheck         Hyprland config (stylua) and Hyprland plus greetd Lua (luacheck, via lib/check/steps/lua.sh). Needs
 #                            stylua, luacheck or lua5.4/5.3/luajit with LuaFileSystem.
 #   qmllint                  Quickshell config and greeter (lib/check/steps/qml.py). Needs Qt 6 qmllint.
-#   lock-skins               lock/skins/index.json matches the skin files and audio importers; no skin imports a folder
-#                            the greeter does not stage (lib/common/greeter-files.sh; lib/check/steps/lock-skins.sh). Needs jq.
+#   qml-paths                file paths built as strings in Quickshell QML and JS exist: Qt.resolvedUrl, shellDir, QML and JS
+#                            imports, in the shell and in the greeter tree (lib/common/greeter-files.sh), and the files outside
+#                            Quickshell that name a path in it (lib/check/steps/qml_paths.py).
+#   lock-skins               lock/skins/index.json matches the skin files and audio importers (lib/check/steps/lock-skins.sh). Needs jq.
 #   style-exports            generated property lines in theme/Style.qml match theme/StyleSchema.js (lib/check/steps/style-exports.sh).
 #                            Needs python3.
 #   time-format              no hand-built am/pm text in Quickshell QML/JS; clock text goes through TimeFormat

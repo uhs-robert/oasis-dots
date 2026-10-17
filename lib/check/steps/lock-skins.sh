@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 set -eu
 
-# Keeps lock/skins/index.json in step with the skin files, audio importers and the greeter's import limits.
+# Keeps lock/skins/index.json in step with the skin files and audio importers. What a skin may import is checked by qml_paths.py.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 qs_dir="$repo_dir/home/quickshell/.config/quickshell"
 skins_dir="$qs_dir/lock/skins"
-# shellcheck source=lib/common/greeter-files.sh
-source "$repo_dir/lib/common/greeter-files.sh"
 index="$skins_dir/index.json"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -56,37 +54,5 @@ if ! jq -e 'all(.[]; (.lock_only | not) or (.label | type == "string"))' "$index
   echo 'lock skins: every lock_only skin in index.json needs a label' >&2
   status=1
 fi
-
-# True when folder $1 (relative to the Quickshell config dir) holds files the greeter stages.
-is_staged_folder() {
-  local entry
-  for entry in "${GREETER_QS_FILES[@]}"; do
-    entry=${entry%'?'}
-    if [[ $entry == */ ]]; then
-      [[ $1 == "${entry%/}" || $1 == "${entry%/}"/* ]] && return 0
-    else
-      [[ $(dirname -- "$entry") == "$1" ]] && return 0
-    fi
-  done
-  return 1
-}
-
-# A quoted import is relative to the importing file and `import qs.a.b` to the config root; JS imports are files, not folders.
-while IFS=: read -r file line text; do
-  statement=${text#"${text%%[![:space:]]*}"}
-  if [[ $statement =~ ^import[[:space:]]+qs\.([A-Za-z0-9_.]+) ]]; then
-    folder=${BASH_REMATCH[1]//.//}
-  elif [[ $statement =~ ^import[[:space:]]+\"([^\"]+)\" ]]; then
-    [[ ${BASH_REMATCH[1]} == *.js || ${BASH_REMATCH[1]} == *.mjs ]] && continue
-    folder=$(realpath -m --relative-to="$qs_dir" -- "$(dirname -- "$file")/${BASH_REMATCH[1]}")
-  else
-    continue
-  fi
-  if ! is_staged_folder "$folder"; then
-    echo "lock skins: ${file#"$qs_dir"/}:$line imports $folder/, which the greeter does not stage (see lib/common/greeter-files.sh):" >&2
-    echo "$statement" >&2
-    status=1
-  fi
-done < <(grep -rnE '^[[:space:]]*import[[:space:]]+("|qs\.)' "$skins_dir" --include='*.qml' || true)
 
 exit "$status"

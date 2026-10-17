@@ -60,5 +60,34 @@ class GreeterEntriesTest(unittest.TestCase):
         self.assertFalse([entry for entry in entries if "?" in entry or "*" in entry])
 
 
+class ImportsTest(TreeCase):
+    def imports(self, name, text):
+        write_tree(self.root, {name: text})
+        return list(qml_imports.imports(self.path(name)))
+
+    def test_every_form_with_line_numbers(self):
+        text = 'import QtQuick\nimport qs\nimport qs.a.b as B\nimport "../c" as C\nimport "x.js" as X\n'
+        self.assertEqual(self.imports("a/F.qml", text), [("qs", "", 2), ("qs", "a/b", 3), ("folder", "../c", 4), ("script", "x.js", 5)])
+
+    def test_dot_import_in_a_js_file(self):
+        self.assertEqual(self.imports("F.js", '.pragma library\n.import "y.mjs" as Y\n'), [("script", "y.mjs", 2)])
+
+    def test_comments_do_not_count(self):
+        self.assertEqual(self.imports("F.qml", '// import "x.js"\n/* import qs.a\n*/ import qs.b\n'), [("qs", "b", 3)])
+
+
+class StagedFilesTest(unittest.TestCase):
+    def test_folders_globs_optional_and_unmatched(self):
+        files = {"a/x.qml", "fonts/F.ttf", "fonts/O.txt", "VERSION"}
+        entries = ["a/", "fonts/*.ttf", "VERSION?", "gone?", "missing/"]
+        self.assertEqual(qml_imports.staged_files(files, entries), ({"a/x.qml", "fonts/F.ttf", "VERSION"}, ["missing/"]))
+
+
+class KeepStringsTest(unittest.TestCase):
+    def test_strings_survive_and_comments_do_not(self):
+        state = {"in_block": False}
+        self.assertEqual(qml_imports.strip_code('a: "//x" + \'b\' // c', state, keep_strings=True), 'a: "//x" + \'b\' ')
+
+
 if __name__ == "__main__":
     unittest.main()
