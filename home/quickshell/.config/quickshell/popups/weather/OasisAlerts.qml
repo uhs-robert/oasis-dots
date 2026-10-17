@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components.oasis as Oasis
+import qs.styles.oasis.widgets as Oasis
 import qs.theme
 import qs.services
 

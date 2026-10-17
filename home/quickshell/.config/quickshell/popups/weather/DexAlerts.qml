@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.components
 import qs.theme
 import qs.services
+import qs.ui.frames
 
 // Active NWS alerts as Pokémon boxes: "A wild FLOOD WATCH appeared!", the alerts as the party list, the selected one's text in a paging text box.
 // h/l or j/k select when there's more than one; with a single alert they page its text instead (see scroll_detail, called by the popup's key handler).

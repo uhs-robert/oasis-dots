@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.ui.effects
 import qs.theme
 import qs.services
+import qs.styles.ff7.widgets
 
 // The first active alert as a battle message: a small centred window with a red orb, the event and when it ends.
 Item {

@@ -8,13 +8,13 @@ import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import qs.theme
 import qs.services
-import qs.components.snes as Snes
-import qs.components.ps1 as Ps1
-import qs.components.ps2 as Ps2
-import qs.components.oasis as Oasis
-import qs.components.modern as Modern
-import qs.components.neovim as Neovim
-import qs.components.goldeneye as Goldeneye
+import qs.styles.snes.widgets as Snes
+import qs.styles.ps1.widgets as Ps1
+import qs.styles.ps2.widgets as Ps2
+import qs.styles.oasis.widgets as Oasis
+import qs.styles.modern.widgets as Modern
+import qs.styles.neovim.widgets as Neovim
+import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui.effects
 import qs.ui.frames
 import qs.ui.gauges

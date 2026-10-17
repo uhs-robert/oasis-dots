@@ -1,10 +1,10 @@
 import QtQuick
 import qs.theme
-import qs.components
 import qs.ui.effects
 import qs.ui.frames
-import qs.components.neovim as Neovim
-import qs.components.goldeneye as Goldeneye
+import qs.styles.neovim.widgets as Neovim
+import qs.styles.goldeneye.widgets as Goldeneye
+import qs.styles.gameboy.widgets
 
 Item {
     id: root

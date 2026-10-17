@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.ui.menu
 import qs.theme
+import qs.ui.gauges
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab: one row per session, waiting first. This is the contract every layout's Agents view

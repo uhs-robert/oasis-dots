@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components.neovim as Nvim
+import qs.styles.neovim.widgets as Nvim
 
 // Neovim dressing for the window/screen/region target: window-picker letter tiles, a float with a
 // winbar on the pick, a tabline of outputs, and a visual-block highlight for regions.

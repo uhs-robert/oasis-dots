@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.components
-import qs.components.goldeneye as Goldeneye
+import qs.styles.goldeneye.widgets as Goldeneye
 import qs.lock.skins.goldeneye as Watch
 import qs.services
 import qs.theme

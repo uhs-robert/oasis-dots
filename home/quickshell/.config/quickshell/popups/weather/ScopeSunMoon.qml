@@ -1,10 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.ui.frames
 import qs.theme
 import qs.services
+import qs.styles.reticle.widgets
 
 // A targeting scope on the sky: the selected day as a 24-hour range track, the sun an arc from sunrise to sunset with a lock on it when it is up today,
 // the moon a dashed second arc with its phase drawn on the contact. Sunrise, sunset and the moon's data read out as HUD lines beneath.

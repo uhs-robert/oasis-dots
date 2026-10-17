@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import qs.theme
-import "../components/neovim/Modes.js" as Modes
+import "../styles/neovim/widgets/Modes.js" as Modes
 
 Singleton {
     id: root

@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import qs.components
 import qs.theme
 import qs.services
+import qs.styles.reticle.widgets
 
 // Active NWS alerts as a HUD list: a severity ring per alert, the selected one framed by the reticle, its text below.
 // h/l or j/k select when there's more than one; with a single alert they scroll its detail text instead

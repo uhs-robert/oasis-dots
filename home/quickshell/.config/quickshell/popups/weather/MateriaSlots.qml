@@ -1,11 +1,11 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
-import qs.components
 import qs.ui.effects
 import qs.ui.menu
 import qs.theme
 import qs.services
+import qs.ui.gauges
 import "Materia.js" as Materia
 
 // The Daily window as a weapon's materia slots: one socket per day, linked in pairs, with icon and three stat rows below.

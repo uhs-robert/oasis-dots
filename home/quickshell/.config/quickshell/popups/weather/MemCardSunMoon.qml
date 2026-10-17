@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.components
-import qs.components.ps1
+import qs.styles.ps1.widgets
 import qs.theme
 import qs.services
 

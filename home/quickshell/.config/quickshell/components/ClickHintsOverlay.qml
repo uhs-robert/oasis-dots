@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.theme
 import qs.services
 import qs.ui.menu
+import qs.ui.keys
 
 // One per screen while voxcmd's click offers several matches: outlines each candidate's box with a numbered keycap,
 // picked by number key, click or a spoken number. Only the screen with the first box takes the keyboard.

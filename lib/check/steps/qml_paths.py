@@ -21,6 +21,7 @@ theme/theme.json or a skin's audio/), or when its line carries `// qs-path: opti
   python3 -B lib/check/steps/qml_paths.py
 """
 
+import glob
 import os
 import posixpath
 import re
@@ -47,6 +48,18 @@ def key_values(key):
 
 
 STRING_LITERAL = r"""(["'])(.*?)\1"""
+
+
+def in_widgets(extract):
+    """Wraps an extractor of "<style>/File.qml" tokens that Meter and ControllerBadge resolve under
+    styles/<style>/widgets/, so the table lists the files they load."""
+    return lambda lines: [(value.replace("/", "/widgets/", 1), n) for value, n in extract(lines)]
+
+
+def meter_art_values(lines):
+    """Extractor: the "<style>/File.qml" strings on the line setting `meter_art`."""
+    pattern = re.compile(r"""(["'])(\w+/[^"']+\.qml)\1""")
+    return [(m.group(2), n) for n, line in lines if "meter_art:" in line for m in pattern.finditer(line)]
 
 
 def array_values(name, capitalise=False):
@@ -88,7 +101,7 @@ def weather_slugs(lines):
 class Table(NamedTuple):
     consumer: str  # Quickshell-relative file holding the call
     head: str  # the call's literal head, or its whole argument when that starts with no literal
-    source: str  # Quickshell-relative file holding the table
+    source: str  # Quickshell-relative file holding the table, or a glob of such files
     extract: Callable  # (lines of the source as (number, text)) -> [(value, line)]
 
 
@@ -99,7 +112,9 @@ TABLES = [
     Table("popups/WeatherPopup.qml", "weather/", "popups/WeatherPopup.qml", view_files),
     Table("popups/KeeptabsPopup.qml", "keeptabs/", "popups/KeeptabsPopup.qml", view_files),
     Table("theme/Style.qml", "styles/", "theme/styles/index.js", array_values("sources")),
-    Table("components/ControllerBadge.qml", "KeyHints.button_path(root.controller)", "components/KeyHints.js", key_values("button")),
+    Table("ui/keys/ControllerBadge.qml", "../../styles/", "ui/keys/KeyHints.js", in_widgets(key_values("button"))),
+    # Any style may set meter_art; today only nes does.
+    Table("ui/gauges/Meter.qml", "../../styles/", "theme/styles/*.js", in_widgets(meter_art_values)),
     Table("services/WeatherState.qml", "../assets/weather/", "services/WeatherState.qml", weather_slugs),
     Table("lock/skins/goldeneye/GoldeneyeAudio.qml", "fx/", "lock/skins/goldeneye/GoldeneyeAudio.qml", array_values("shipped")),
     Table("lock/skins/mgs2/Mgs2Audio.qml", "fx/", "lock/skins/mgs2/Mgs2Audio.qml", array_values("shipped")),
@@ -377,13 +392,17 @@ def build_trees(repo, layout, listing, ignored):
 # --- Checks -----------------------------------------------------------------------------------------------------------
 
 def table_values(repo, layout, rule):
-    path = os.path.join(repo, layout.qs_dir, rule.source)
-    try:
-        state = {"in_block": False}
-        lines = [(n, strip_code(line, state, keep_strings=True)) for n, line in enumerate(read_lines(path), 1)]
-    except OSError:
-        return []
-    return rule.extract(lines)
+    """(value, "<source file>:<line>") for every value the rule's extractor finds in each file its source matches."""
+    found = []
+    for path in sorted(glob.glob(os.path.join(repo, layout.qs_dir, rule.source))):
+        try:
+            state = {"in_block": False}
+            lines = [(n, strip_code(line, state, keep_strings=True)) for n, line in enumerate(read_lines(path), 1)]
+        except OSError:
+            continue
+        source = posixpath.join(layout.qs_dir, os.path.relpath(path, os.path.join(repo, layout.qs_dir)))
+        found += [(value, f"{source}:{line}") for value, line in rule.extract(lines)]
+    return found
 
 
 def check_site(repo, layout, tree, consumer, origin, site):
@@ -419,8 +438,8 @@ def check_site(repo, layout, tree, consumer, origin, site):
         if not values:
             return [Finding(origin, site.line, f"no values found in {layout.qs_dir}/{rule.source} for its TABLES rule")]
         found = []
-        for value, line in values:
-            found += missing(resolve(prefix + value + suffix), f" (from {layout.qs_dir}/{rule.source}:{line})")
+        for value, where in values:
+            found += missing(resolve(prefix + value + suffix), f" (from {where})")
         return found
     if not leading:
         return [unrecognised]

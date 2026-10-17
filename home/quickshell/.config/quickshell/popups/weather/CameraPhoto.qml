@@ -3,6 +3,7 @@ import qs.components
 import qs.ui.effects
 import qs.theme
 import qs.services
+import qs.ui.frames
 import "PixelArt.js" as PixelArt
 
 // One day as a framed Game Boy Camera photo with its hi/lo dot bar, temperatures and rain chance.

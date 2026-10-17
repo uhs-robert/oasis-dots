@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.ui.menu
-import qs.components.snes as Snes
+import qs.styles.snes.widgets as Snes
 import qs.services
 import qs.theme
 import "KeeptabsFormat.js" as Fmt

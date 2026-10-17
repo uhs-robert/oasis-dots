@@ -4,8 +4,8 @@ import Quickshell
 import qs.ui.frames
 import qs.theme
 import qs.services
-import qs.components.oasis as Oasis
-import qs.components.modern as Modern
+import qs.styles.oasis.widgets as Oasis
+import qs.styles.modern.widgets as Modern
 
 // One column per day in a window of up to five that the popup scrolls with day_cursor.
 // A style may restyle columns freely but days always run left to right, horizontal table style.

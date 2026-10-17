@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.components.goldeneye as Goldeneye
+import qs.styles.goldeneye.widgets as Goldeneye
 
 // The goldeneye battery header: the gauge dial beside status, draw, time, health and profile readouts.
 Goldeneye.GaugeHeader {

@@ -3,10 +3,10 @@ import QtQuick.Layouts
 import Quickshell.Networking
 import qs.ui.menu
 import qs.theme
-import qs.components.nes as Nes
-import qs.components.snes as Snes
-import qs.components.ps2 as Ps2
-import qs.components.goldeneye as Goldeneye
+import qs.styles.nes.widgets as Nes
+import qs.styles.snes.widgets as Snes
+import qs.styles.ps2.widgets as Ps2
+import qs.styles.goldeneye.widgets as Goldeneye
 import "Network.js" as Net
 
 MenuRow {

@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components.modern as Modern
+import qs.styles.modern.widgets as Modern
 import qs.theme
 import qs.services
 

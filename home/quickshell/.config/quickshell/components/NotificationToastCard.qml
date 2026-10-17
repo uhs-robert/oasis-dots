@@ -5,10 +5,10 @@ import Quickshell.Services.Notifications
 import qs.theme
 import qs.services
 import qs.popups.weather as Weather
-import qs.components.goldeneye as Goldeneye
-import qs.components.ps1 as Ps1
-import qs.components.modern as Modern
-import qs.components.neovim as Neovim
+import qs.styles.goldeneye.widgets as Goldeneye
+import qs.styles.ps1.widgets as Ps1
+import qs.styles.modern.widgets as Modern
+import qs.styles.neovim.widgets as Neovim
 import qs.ui.effects
 import qs.ui.frames
 import qs.ui.menu

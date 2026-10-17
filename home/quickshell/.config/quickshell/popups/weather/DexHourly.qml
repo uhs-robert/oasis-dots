@@ -4,6 +4,7 @@ import qs.components
 import qs.ui.effects
 import qs.theme
 import qs.services
+import qs.ui.frames
 import "PixelArt.js" as PixelArt
 
 // The Pokégear radio: each hour a column of signal bars on a tuner dial that scrolls past a fixed needle, the hour's reading in the readout above.

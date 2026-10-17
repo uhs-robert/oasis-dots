@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
-import qs.components.ps2 as Ps2
-import qs.components.goldeneye as Goldeneye
+import qs.styles.ps2.widgets as Ps2
+import qs.styles.goldeneye.widgets as Goldeneye
 import qs.theme
 import qs.services
-import qs.popups.snes as Snes
+import qs.styles.snes.popups as Snes
+import qs.ui.gauges
 
 // Progress bar and knob; click or drag to seek the given player.
 Item {

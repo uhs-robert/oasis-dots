@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.ui.effects
-import qs.components.nes
+import qs.styles.nes.widgets
 import qs.theme
 import qs.services
 import qs.popups.weather as Weather
-import "../../components/nes/Slimes.js" as Slimes
+import "../../styles/nes/widgets/Slimes.js" as Slimes
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as a Dragon Quest party: a strip of four member windows paging around the selection, a message

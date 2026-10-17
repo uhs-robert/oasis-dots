@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import qs.theme
 import qs.services
-import qs.components.snes as Snes
+import qs.styles.snes.widgets as Snes
 
 // One day as a 16-bit gauge pillar standing on the Mode 7 floor, a plinth at its foot.
 // Temp & Precip: lit from the day's low to its high, rain on the plinth. Wind, UV and Sunshine: lit from the floor up to the value.

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.theme
+import qs.ui.frames
 
 // A Pokémon-style text box: pixel double border, text that can type itself out, and a ▼ prompt blinking with the caret.
 Item {

@@ -1,6 +1,7 @@
 import QtQuick
 import qs.theme
-import qs.components.ps2 as Ps2
+import qs.styles.ps2.widgets as Ps2
+import qs.ui.gauges
 
 Item {
     id: root

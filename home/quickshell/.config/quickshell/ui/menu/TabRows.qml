@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import "../../components/KeyHints.js" as KeyHints
+import "../keys/KeyHints.js" as KeyHints
 
 // A row of MenuTabs sized to their labels that wraps into balanced rows when one row cannot hold them; `chips` centers pill chips instead.
 ColumnLayout {

@@ -6,9 +6,9 @@ import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.popups.updates as Updates
-import qs.popups.snes as Snes
-import qs.components.ps1 as Ps1
-import qs.components.ps2 as Ps2
+import qs.styles.snes.popups as Snes
+import qs.styles.ps1.widgets as Ps1
+import qs.styles.ps2.widgets as Ps2
 
 Popup {
     id: root

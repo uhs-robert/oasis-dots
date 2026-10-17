@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
-import qs.components
 import qs.theme
 import qs.services
+import qs.styles.reticle.widgets
 
 // Hourly's Air sub-view: the US AQI as a ring gauge split into its category bands, a small ring per pollutant,
 // then the 24h trend as a hairline trace over a ring per hour with the cursor hour framed by a reticle. h/l move the hour cursor.
