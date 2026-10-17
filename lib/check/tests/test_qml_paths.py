@@ -198,6 +198,18 @@ class OptionalTargetTest(PathsCase):
         self.assertEqual(self.check(files), ["qs/A.qml:1: none does not exist"])
 
 
+class SymlinkedTargetTest(PathsCase):
+    def test_ignored_symlink_to_a_missing_file_is_not_a_failure(self):
+        files = {
+            "qs/custom/.gitignore": "*\n!README.md\n!.gitignore\n",
+            "qs/custom/README.md": "",
+            "qs/A.qml": 'a: Quickshell.shellDir + "/custom/link.json"\n',
+        }
+        self.check(files)
+        os.symlink("/nonexistent/link.json", os.path.join(self.root, "qs/custom/link.json"))
+        self.assertEqual(qml_paths.run_checks(self.root, qml_paths.Layout("qs", "greeter", [], [], [])), [])
+
+
 class UnrecognisedTest(PathsCase):
     def test_unclassifiable_fails_until_marked_skip(self):
         files = {"qs/A.qml": "a: Qt.resolvedUrl(name)\nb: Quickshell.shellDir\nc: Qt.resolvedUrl(flag ? x : y)\n"}
