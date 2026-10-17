@@ -8,8 +8,7 @@ import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.styles.goldeneye.widgets as Goldeneye
-import qs.popups.network
-import "network/Network.js" as Net
+import "Network.js" as Net
 
 Popup {
     id: root
