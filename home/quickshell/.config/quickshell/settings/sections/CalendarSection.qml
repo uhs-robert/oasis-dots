@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.theme
 import qs.services
 import qs.settings
+import qs.features.clock
 
 RowsSection {
     id: root

@@ -5,6 +5,7 @@ import qs.styles.goldeneye.widgets as Goldeneye
 import qs.lock.skins.goldeneye as Watch
 import qs.services
 import qs.theme
+import qs.features.clock
 import "../../theme/Watch.js" as W
 
 // GoldenEye's usage in the bar's own dress: per limit a caps label, the percent in seven-segment digits on the clock chip, a warm segment strip and when it resets. Inputs as in UsageView.

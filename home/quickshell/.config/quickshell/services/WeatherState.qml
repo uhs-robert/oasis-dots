@@ -5,6 +5,7 @@ import Quickshell.Io
 import Quickshell.Networking
 import qs.core
 import qs.theme
+import qs.features.clock
 import "Astro.js" as Astro
 import "WeatherFixture.js" as Fixture
 

@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.styles.snes.widgets as Snes
 import qs.services
 import qs.theme
+import qs.features.clock
 
 // The Usage tab as the FF6 Status screen: each limit a status line over an ATB gauge, resets as the next level up.
 // Reads ClaudeUsageState directly; the contract is in UsageView.qml.

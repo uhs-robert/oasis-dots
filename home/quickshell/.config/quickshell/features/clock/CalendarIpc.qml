@@ -1,4 +1,5 @@
 import Quickshell.Io
+import qs.services
 
 IpcHandler {
     target: "calendar"

@@ -19,7 +19,7 @@ status=0
 offenders=$(
   git grep --untracked -nIE "${ternary}|${literal}" -- \
     "$qs_dir/*.qml" "$qs_dir/*.js" \
-    ":(exclude)$qs_dir/services/TimeFormat.qml"
+    ":(exclude)$qs_dir/features/clock/TimeFormat.qml"
 ) || status=$?
 
 if [ "$status" -gt 1 ]; then

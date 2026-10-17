@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import qs.components
 import qs.theme
 import qs.services
+import qs.features.clock
 
 // The Usage tab as the cockpit's power allocation: one vertical targeting scale per limit, like the LSR, SHD and ENG columns.
 Item {

@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.styles.ps2.widgets
 import qs.theme
 import qs.services
+import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as the PS2 Browser's card selection screen: each limit is a memory card whose free space

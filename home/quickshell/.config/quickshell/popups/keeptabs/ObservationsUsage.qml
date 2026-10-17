@@ -5,6 +5,7 @@ import qs.ui.gauges
 import qs.theme
 import qs.services
 import qs.popups.weather
+import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
 // CRT: the WeatherStar 4000 "Almanac" page, one column per usage limit where the sun and moon times sat.

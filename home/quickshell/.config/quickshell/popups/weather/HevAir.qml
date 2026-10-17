@@ -4,6 +4,7 @@ import QtQuick.Shapes
 import qs.theme
 import qs.services
 import qs.styles.halflife.widgets
+import qs.features.clock
 
 // The HEV suit's environment scan: AQI as a hazard level in HUD numerals, each pollutant as a sensor channel with a gauge,
 // a warning once the air is unhealthy, and the 24 AQI hours as a monitor trace. h/l move the hour cursor.

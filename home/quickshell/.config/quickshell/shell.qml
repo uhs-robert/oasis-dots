@@ -14,6 +14,7 @@ import qs.services
 import qs.theme
 import qs.settings
 import qs.features.power
+import qs.features.clock
 
 ShellRoot {
     id: root

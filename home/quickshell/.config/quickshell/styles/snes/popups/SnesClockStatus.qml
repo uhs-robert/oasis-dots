@@ -4,6 +4,7 @@ import Quickshell
 import qs.styles.snes.widgets as Snes
 import qs.theme
 import qs.services
+import qs.features.clock
 
 // The clock as an FF6 status window: DATE and TIME rows, ticking by the minute while shown.
 Item {

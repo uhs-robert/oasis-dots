@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.theme
 import qs.services
+import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
 // The Reticle Usage tab: the limits as concentric rings, the first row outermost, each with a leader line

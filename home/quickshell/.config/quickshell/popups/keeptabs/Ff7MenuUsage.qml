@@ -5,6 +5,7 @@ import qs.styles.ff7.widgets as Ff7
 import qs.services
 import qs.theme
 import qs.ui.gauges
+import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as the FF7 materia AP page: each limit is an orb with an AP bar that reads MASTERED at 100%,

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
+import qs.features.clock
 import "../../theme/Watch.js" as W
 
 // Hourly as the pause watch's dial: 12-hour pages counted from the forecast's first hour, so the bezel is always full and a page may start at any clock hour. Each hour is a bar at its

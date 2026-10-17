@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.styles.oasis.widgets as Oasis
 import qs.theme
 import qs.services
+import qs.features.clock
 
 // Oasis Air: the 24 AQI hours as a dune ridge under a dust haze that thickens with the AQI; a palm stands on the
 // cursor hour beside its value. The current AQI and the pollutants sit in cards above.

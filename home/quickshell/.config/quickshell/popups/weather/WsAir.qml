@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
+import qs.features.clock
 
 // WeatherStar 4000 "Air Quality": the US AQI in the big lettering over a pollutant table, then the next 24 hours as bars in the Hourly Graph's style.
 // h/l move the hour cursor.
