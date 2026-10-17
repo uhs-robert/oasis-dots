@@ -18,6 +18,8 @@ import qs.features.weather
 import qs.features.launcher
 import qs.features.screenshot
 import qs.features.screen_select
+import qs.features.display
+import qs.features.osd
 
 ShellRoot {
     id: root

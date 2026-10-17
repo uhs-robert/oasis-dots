@@ -3,6 +3,7 @@ import Quickshell
 import QtQuick.Layouts
 import qs.theme
 import qs.services
+import qs.features.display
 import qs.settings
 
 RowsSection {

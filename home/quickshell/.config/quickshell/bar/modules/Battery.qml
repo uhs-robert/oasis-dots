@@ -6,6 +6,7 @@ import qs.services
 import qs.ui
 import qs.components.bar_icons
 import qs.features.power
+import qs.features.display
 
 BarModule {
     id: root
