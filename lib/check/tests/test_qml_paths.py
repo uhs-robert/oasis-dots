@@ -41,6 +41,25 @@ class LiteralTest(PathsCase):
         files = {"qs/A.qml": 'a: 1\nImage { source: "gone.png" }\nImage { source: "image://x/y" }\nPathSvg { path: "M3 2.5" }\n'}
         self.assertEqual(self.check(files), ["qs/A.qml:2: gone.png does not exist"])
 
+    def test_a_ternary_branch_on_source_is_a_path_but_empty_and_call_strings_are_not(self):
+        files = {
+            "qs/a/A.qml": (
+                'Item { source: active ? "../b/B.qml" : "" }\n'
+                'Item { source: active ? "../b/gone.qml" : "" }\n'
+                'Item { source: active ? "" : "../b/gone2.qml" }\n'
+                'Item { source: audio.file("x.wav") }\n'
+                'Item { source: active ? Quickshell.iconPath("a", "b") : "" }\n'
+                'Item { source: mode === "cmp" ? "" : "" }\n'
+                'Item { fragmentShader: a || "../b/gone3.qsb" }\n'
+            ),
+            "qs/b/B.qml": "",
+        }
+        self.assertEqual(self.check(files), [
+            "qs/a/A.qml:2: b/gone.qml does not exist",
+            "qs/a/A.qml:3: b/gone2.qml does not exist",
+            "qs/a/A.qml:7: b/gone3.qsb does not exist",
+        ])
+
     def test_single_quoted_forms_are_read_like_double_quoted_ones(self):
         files = {
             "qs/A.qml": "import 'gone'\nImage { source: 'gone.png' }\nx: Qt.resolvedUrl('gone2')\ny: Quickshell.shellDir + '/gone3'\n",
