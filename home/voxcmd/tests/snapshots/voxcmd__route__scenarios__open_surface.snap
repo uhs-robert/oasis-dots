@@ -1,0 +1,135 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "close 2",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "close 2",
+      "wake_word": null,
+      "normalized": "close 2",
+      "raw_transcript": "close 2",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": "overview.toml",
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the open surface Overview took the phrase"
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the open surface Overview took the phrase"
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the open surface Overview took the phrase"
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the open surface Overview took the phrase"
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "surface",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 0,
+              "line": 3,
+              "action": "act",
+              "pattern": "(close|select) {number}",
+              "regex": "(?s-u)^(?:(close|select) (?P<number>[0-9]+))$"
+            },
+            "args": {
+              "number": {
+                "type": "number",
+                "value": "2",
+                "words": "2"
+              }
+            }
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the open surface Overview took the phrase"
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the open surface Overview took the phrase"
+          }
+        }
+      ],
+      "hooks": [],
+      "options": [
+        {
+          "integration": "Overview",
+          "file": "integrations/overview.toml",
+          "fallback": false,
+          "action": "act",
+          "target": "",
+          "id": "",
+          "label": "",
+          "toast_label": "Overview: act",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": null,
+          "silent": false,
+          "candidates": 0,
+          "command": "overview_act",
+          "env": {
+            "VOXCMD_ARG_NUMBER": "2",
+            "VOXCMD_ARG_NUMBER_WORDS": "2",
+            "VOXCMD_ID": ""
+          }
+        }
+      ],
+      "decision": {
+        "kind": "run",
+        "option": 0,
+        "reason": "one option, not a weak match: Overview act",
+        "result": "run"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

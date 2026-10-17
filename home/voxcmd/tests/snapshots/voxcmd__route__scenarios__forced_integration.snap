@@ -1,0 +1,156 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "keybind mute",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "keybind mute",
+      "wake_word": null,
+      "normalized": "keybind mute",
+      "raw_transcript": "keybind mute",
+      "replacements": [],
+      "corrected": null,
+      "forced": "keybinds.toml",
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "forced to Keybinds"
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "forced to Keybinds"
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "forced",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 0,
+              "line": 5,
+              "action": "run",
+              "pattern": "(run )?{target}",
+              "regex": "(?s-u)^(?:(run )?(?P<target>.+?))$"
+            },
+            "args": {
+              "target": {
+                "type": "text",
+                "value": "mute",
+                "words": "mute"
+              }
+            }
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "forced to Keybinds"
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "forced to Keybinds"
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "forced to Keybinds"
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "forced to Keybinds"
+          }
+        }
+      ],
+      "hooks": [
+        {
+          "integration": "Keybinds",
+          "action": "run",
+          "kind": "candidates",
+          "command": "canned",
+          "exit": null,
+          "timed_out": false,
+          "millis": 0.0,
+          "lines": [
+            {
+              "id": "141",
+              "label": "Mute"
+            },
+            {
+              "id": "142",
+              "label": "Unmute"
+            }
+          ],
+          "stderr_tail": []
+        }
+      ],
+      "options": [
+        {
+          "integration": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "fallback": true,
+          "action": "run",
+          "target": "mute",
+          "id": "141",
+          "label": "Mute",
+          "toast_label": "Keybinds: Mute",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": null,
+          "silent": true,
+          "candidates": 2,
+          "command": "run_keybind \"$VOXCMD_ID\"",
+          "env": {
+            "VOXCMD_ARG_TARGET": "mute",
+            "VOXCMD_ARG_TARGET_WORDS": "mute",
+            "VOXCMD_ID": "141"
+          }
+        }
+      ],
+      "decision": {
+        "kind": "run",
+        "option": 0,
+        "reason": "one option, not a weak match: Keybinds run",
+        "result": "run"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

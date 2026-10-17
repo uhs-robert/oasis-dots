@@ -29,9 +29,11 @@ impl Config {
             .iter()
             .map(|integration| integration.stem.clone())
             .collect();
-        if legacy::legacy_files(dir)
-            .iter()
-            .any(|file| !converted.iter().any(|stem| file.file_stem() == Some(stem.as_ref())))
+        // A dump given as a file (tests, benchmarks) stands in for the bash files, so it needs none to be on disk.
+        if crate::paths::legacy_dump_override().is_some()
+            || legacy::legacy_files(dir)
+                .iter()
+                .any(|file| !converted.iter().any(|stem| file.file_stem() == Some(stem.as_ref())))
         {
             let legacy = legacy::load(dir)?;
             integrations.extend(

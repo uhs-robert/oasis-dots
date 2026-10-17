@@ -1,0 +1,35 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "never mind",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "never mind",
+      "wake_word": null,
+      "normalized": "never mind",
+      "raw_transcript": "never mind",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [],
+      "hooks": [],
+      "options": [],
+      "decision": {
+        "kind": "builtin",
+        "option": null,
+        "reason": "a discard phrase, handled before any integration",
+        "result": "built-in, discarded"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

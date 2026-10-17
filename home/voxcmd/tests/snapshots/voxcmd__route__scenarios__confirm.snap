@@ -1,0 +1,158 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "close the firefox window",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "close the firefox window",
+      "wake_word": null,
+      "normalized": "close the firefox window",
+      "raw_transcript": "close the firefox window",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 9,
+              "line": 27,
+              "action": "close",
+              "pattern": "{close} {target}",
+              "regex": "(?s-u)^(?:(?:close|quit|kill) (?P<target>.+?))$"
+            },
+            "args": {
+              "target": {
+                "type": "text",
+                "value": "the firefox window",
+                "words": "the firefox window"
+              }
+            }
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the normal tier had options"
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        }
+      ],
+      "hooks": [
+        {
+          "integration": "Apps",
+          "action": "close",
+          "kind": "candidates",
+          "command": "canned",
+          "exit": null,
+          "timed_out": false,
+          "millis": 0.0,
+          "lines": [
+            {
+              "id": "0x1",
+              "label": "Firefox window: Inbox",
+              "match_text": "firefox"
+            },
+            {
+              "id": "0x2",
+              "label": "Kitty window: sh",
+              "match_text": "kitty"
+            }
+          ],
+          "stderr_tail": []
+        }
+      ],
+      "options": [
+        {
+          "integration": "Apps",
+          "file": "integrations/apps.toml",
+          "fallback": false,
+          "action": "close",
+          "target": "the firefox window",
+          "id": "0x1",
+          "label": "Firefox window: Inbox",
+          "toast_label": "Apps: close Firefox window: Inbox",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": "confirm_labels[0]",
+          "silent": false,
+          "candidates": 2,
+          "command": "close_window \"$VOXCMD_ID\"",
+          "env": {
+            "VOXCMD_ARG_TARGET": "the firefox window",
+            "VOXCMD_ARG_TARGET_WORDS": "the firefox window",
+            "VOXCMD_ID": "0x1"
+          }
+        }
+      ],
+      "decision": {
+        "kind": "confirm",
+        "option": 0,
+        "reason": "one option, not a weak match: Apps close; it asks first (confirm_labels[0])",
+        "result": "run"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

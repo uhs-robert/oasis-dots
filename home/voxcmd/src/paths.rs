@@ -39,3 +39,10 @@ pub fn legacy_bin() -> PathBuf {
 pub fn legacy_dump_override() -> Option<PathBuf> {
     env_dir("VOXCMD_LEGACY_DUMP_FILE")
 }
+
+/// `$XDG_RUNTIME_DIR/voxcmd`, else `/tmp/voxcmd`: sockets, state files the bar reads, pending picks.
+pub fn runtime_dir() -> PathBuf {
+    env_dir("XDG_RUNTIME_DIR")
+        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .join("voxcmd")
+}

@@ -1,0 +1,148 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "mute toggle",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "mute toggle",
+      "wake_word": null,
+      "normalized": "mute toggle",
+      "raw_transcript": "mute toggle",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 0,
+              "line": 5,
+              "action": "run",
+              "pattern": "(run )?{target}",
+              "regex": "(?s-u)^(?:(run )?(?P<target>.+?))$"
+            },
+            "args": {
+              "target": {
+                "type": "text",
+                "value": "mute toggle",
+                "words": "mute toggle"
+              }
+            }
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": {
+              "action": "toggle_mute",
+              "leftover": 0
+            }
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        }
+      ],
+      "hooks": [
+        {
+          "integration": "Keybinds",
+          "action": "run",
+          "kind": "candidates",
+          "command": "canned",
+          "exit": null,
+          "timed_out": false,
+          "millis": 0.0,
+          "lines": [],
+          "stderr_tail": []
+        }
+      ],
+      "options": [
+        {
+          "integration": "Media",
+          "file": "integrations/media.toml",
+          "fallback": false,
+          "action": "toggle_mute",
+          "target": "",
+          "id": "",
+          "label": "",
+          "toast_label": "Media: toggle mute",
+          "score": null,
+          "weak": true,
+          "near_miss": true,
+          "confirm": null,
+          "silent": true,
+          "candidates": 0,
+          "command": "pamixer --toggle-mute",
+          "env": {
+            "VOXCMD_ID": ""
+          }
+        }
+      ],
+      "decision": {
+        "kind": "pick",
+        "option": null,
+        "reason": "Media toggle_mute is a weak match, so the picker asks",
+        "result": "ask with the picker (1 options, weak match, listens for the reply when spoken)"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

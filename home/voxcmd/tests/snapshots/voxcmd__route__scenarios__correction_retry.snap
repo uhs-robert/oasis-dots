@@ -1,0 +1,150 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "play pause no wait next track",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "play pause no wait next track",
+      "wake_word": null,
+      "normalized": "next track",
+      "raw_transcript": "next track",
+      "replacements": [],
+      "corrected": "next track",
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the normal tier had options"
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 3,
+              "line": 11,
+              "action": "next",
+              "pattern": "(play )?(the )?next( (song|track))?|skip( (this|the))?( (song|track))?",
+              "regex": "(?s-u)^(?:(play )?(the )?next( (song|track))?|skip( (this|the))?( (song|track))?)$"
+            },
+            "args": {}
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        }
+      ],
+      "hooks": [
+        {
+          "integration": "Media",
+          "action": "play_on",
+          "kind": "candidates",
+          "command": "canned",
+          "exit": null,
+          "timed_out": false,
+          "millis": 0.0,
+          "lines": [],
+          "stderr_tail": []
+        },
+        {
+          "integration": "Keybinds",
+          "action": "run",
+          "kind": "candidates",
+          "command": "canned",
+          "exit": null,
+          "timed_out": false,
+          "millis": 0.0,
+          "lines": [],
+          "stderr_tail": []
+        }
+      ],
+      "options": [
+        {
+          "integration": "Media",
+          "file": "integrations/media.toml",
+          "fallback": false,
+          "action": "next",
+          "target": "",
+          "id": "",
+          "label": "",
+          "toast_label": "Media: next",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": null,
+          "silent": false,
+          "candidates": 0,
+          "command": "playerctl next",
+          "env": {
+            "VOXCMD_ID": ""
+          }
+        }
+      ],
+      "decision": {
+        "kind": "run",
+        "option": 0,
+        "reason": "one option, not a weak match: Media next",
+        "result": "run"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

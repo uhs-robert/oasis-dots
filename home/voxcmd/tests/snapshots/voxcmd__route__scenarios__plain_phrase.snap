@@ -1,0 +1,135 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "volume up by 10",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "volume up by 10",
+      "wake_word": null,
+      "normalized": "volume up by 10",
+      "raw_transcript": "volume up by 10",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the normal tier had options"
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 5,
+              "line": 13,
+              "action": "volume_up",
+              "pattern": "(turn )?(the )?(volume|sound) up( by {number}( percent)?)?|louder|turn it up",
+              "regex": "(?s-u)^(?:(turn )?(the )?(volume|sound) up( by (?P<number>[0-9]+)( percent)?)?|louder|turn it up)$"
+            },
+            "args": {
+              "number": {
+                "type": "number",
+                "value": "10",
+                "words": "10"
+              }
+            }
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        }
+      ],
+      "hooks": [],
+      "options": [
+        {
+          "integration": "Media",
+          "file": "integrations/media.toml",
+          "fallback": false,
+          "action": "volume_up",
+          "target": "",
+          "id": "",
+          "label": "",
+          "toast_label": "Media: volume up",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": null,
+          "silent": true,
+          "candidates": 0,
+          "command": "pamixer --increase \"${VOXCMD_ARG_NUMBER:-5}\"",
+          "env": {
+            "VOXCMD_ARG_NUMBER": "10",
+            "VOXCMD_ARG_NUMBER_WORDS": "10",
+            "VOXCMD_ID": ""
+          }
+        }
+      ],
+      "decision": {
+        "kind": "run",
+        "option": 0,
+        "reason": "one option, not a weak match: Media volume_up",
+        "result": "run"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

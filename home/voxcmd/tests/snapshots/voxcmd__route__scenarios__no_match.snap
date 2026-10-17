@@ -1,0 +1,124 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "bogus words",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "bogus words",
+      "wake_word": null,
+      "normalized": "bogus words",
+      "raw_transcript": "bogus words",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 0,
+              "line": 5,
+              "action": "run",
+              "pattern": "(run )?{target}",
+              "regex": "(?s-u)^(?:(run )?(?P<target>.+?))$"
+            },
+            "args": {
+              "target": {
+                "type": "text",
+                "value": "bogus words",
+                "words": "bogus words"
+              }
+            }
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        }
+      ],
+      "hooks": [
+        {
+          "integration": "Keybinds",
+          "action": "run",
+          "kind": "candidates",
+          "command": "canned",
+          "exit": null,
+          "timed_out": false,
+          "millis": 0.0,
+          "lines": [],
+          "stderr_tail": []
+        }
+      ],
+      "options": [],
+      "decision": {
+        "kind": "no_match",
+        "option": null,
+        "reason": "no verb matched, and no verb nearly matched",
+        "result": "no match"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

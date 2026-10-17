@@ -21,6 +21,7 @@ pub struct WakeWords {
     any: String,
     leading: OnceCell<Regex>,
     trailing: OnceCell<Regex>,
+    raw_leading: OnceCell<Regex>,
     heard: OnceCell<Regex>,
 }
 
@@ -51,6 +52,7 @@ impl WakeWords {
             any: forms.join("|"),
             leading: OnceCell::new(),
             trailing: OnceCell::new(),
+            raw_leading: OnceCell::new(),
             heard: OnceCell::new(),
         }
     }
@@ -60,6 +62,17 @@ impl WakeWords {
         let any = &self.any;
         let leading = compiled(&self.leading, || format!("(?s)^(?:hey )?(?:{any})(?: (.*))?$"));
         let captures = leading.captures(normalized)?;
+        Some(captures.get(1).map_or("", |rest| rest.as_str()).to_string())
+    }
+
+    /// What follows the wake word that opens a raw transcript (any case, punctuation before it allowed), untrimmed:
+    /// the text after the word itself, which starts with a non-word character when there is any.
+    pub fn after_leading_raw(&self, transcript: &str) -> Option<String> {
+        let any = &self.any;
+        let leading = compiled(&self.raw_leading, || {
+            format!(r"(?is)^[^\p{{L}}\p{{N}}]*(?:{any})([^\p{{L}}\p{{N}}].*)?$")
+        });
+        let captures = leading.captures(transcript)?;
         Some(captures.get(1).map_or("", |rest| rest.as_str()).to_string())
     }
 

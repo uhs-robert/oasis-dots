@@ -44,12 +44,23 @@ pub struct Integration {
     /// `[mode] exit_object`, the `{mode_object}` of patterns and the object of `{mode_exit}` (TOML only).
     pub mode_exit_object: Option<String>,
     pub verbs: Vec<Verb>,
-    #[allow(dead_code, reason = "read by resolve from 2.2b")]
     pub settings: MatchSettings,
-    #[allow(dead_code, reason = "read by resolve and sequences from 2.2b")]
     pub actions: BTreeMap<String, Action>,
-    #[allow(dead_code, reason = "read by the router from 2.2b")]
     pub surface: Option<Surface>,
+}
+
+impl Integration {
+    /// The hook that lists candidates for the action. A legacy file has one `candidates` function for all its actions,
+    /// including a verb's action the file never declared.
+    pub fn candidates_for(&self, action: &str) -> Option<&Candidates> {
+        match self.actions.get(action) {
+            Some(declared) => declared.candidates.as_ref(),
+            None if self.format == Format::Bash => {
+                self.actions.values().find_map(|declared| declared.candidates.as_ref())
+            }
+            None => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -63,7 +74,6 @@ pub struct Verb {
     pub requires: Option<String>,
 }
 
-#[allow(dead_code, reason = "read by resolve from 2.2b")]
 #[derive(Debug, Clone, Default)]
 pub struct MatchSettings {
     pub target_match: TargetMatch,
@@ -74,7 +84,6 @@ pub struct MatchSettings {
     pub action_labels: bool,
 }
 
-#[allow(dead_code, reason = "read by resolve and sequences from 2.2b")]
 #[derive(Debug, Clone, Default)]
 pub struct Action {
     pub run: String,
@@ -87,7 +96,6 @@ pub struct Action {
     pub wait: Option<Wait>,
 }
 
-#[allow(dead_code, reason = "run by resolve from 2.2b")]
 #[derive(Debug, Clone)]
 pub enum Candidates {
     Shell(String),
@@ -95,7 +103,6 @@ pub enum Candidates {
     LegacyFunction,
 }
 
-#[allow(dead_code, reason = "printed by explain and run by sequences from 2.2b")]
 #[derive(Debug, Clone)]
 pub enum Wait {
     Builtin(String),
@@ -104,7 +111,6 @@ pub enum Wait {
     LegacyCondition(String),
 }
 
-#[allow(dead_code, reason = "read by the router from 2.2b")]
 #[derive(Debug, Clone)]
 pub enum Surface {
     /// Under `$XDG_RUNTIME_DIR/voxcmd`; open while its top-level `open` is true.
