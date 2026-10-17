@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import qs.components
 import qs.theme
 import qs.services
+import qs.features.voice
 
 PanelWindow {
     id: root

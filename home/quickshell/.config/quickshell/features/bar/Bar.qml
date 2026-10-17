@@ -10,6 +10,7 @@ import qs.features.power
 import qs.features.media
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.neovim.widgets as Neovim
+import qs.features.voice
 
 Item {
     id: root

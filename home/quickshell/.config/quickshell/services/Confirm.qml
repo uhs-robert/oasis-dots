@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import qs.features.voice
 
 // The yes/no question the confirm card asks for a shell caller (voxcmd-confirm), which blocks reading result_path.
 // Every way the card ends writes one answer there: "yes", or "no" for No, Esc, the scrim, the timeout or another popup.

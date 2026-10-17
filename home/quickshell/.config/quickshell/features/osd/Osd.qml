@@ -21,6 +21,7 @@ import qs.ui.effects
 import qs.ui.frames
 import qs.ui.gauges
 import qs.features.power
+import qs.features.voice
 
 PanelWindow {
     id: root
