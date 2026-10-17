@@ -11,9 +11,11 @@ use crate::route::matcher::Arg;
 use crate::route::resolve::arg_env;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 /// How long a `candidates` hook may run unless its action sets `timeout_secs`.
@@ -75,6 +77,9 @@ pub struct HookRun {
     /// Why a TOML hook offered nothing: it failed, timed out or printed lines that cannot be read.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub problem: Option<String>,
+    /// The answer of an identical query already made for this phrase, not a run of its own (`millis` is 0).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub reused: bool,
     #[serde(skip)]
     pub lookup: Lookup,
 }
@@ -93,6 +98,7 @@ impl HookRun {
             lines: Vec::new(),
             stderr_tail: Vec::new(),
             problem: None,
+            reused: false,
             lookup: Lookup::Unhooked,
         }
     }
@@ -201,6 +207,82 @@ impl Hooks for LegacyHooks {
     }
 }
 
+/// Asks each distinct query once per phrase: routing resolves the same match again in the near-miss pass, and an
+/// action with several verbs matches the same hook from each, so the hook's answer is kept and handed out again.
+/// Matches that differ still run side by side; a query being run holds up only an identical one.
+///
+/// Two kinds of "identical": normally the whole query (action, target, arguments and both spellings of the phrase);
+/// while `reuse_any_target` is on (the near-miss pass), the action and the phrase alone, since a near miss reads the
+/// phrase's words in another order and so names another target, and its options are only offered through the picker.
+pub struct Memoized<'a> {
+    inner: &'a dyn Hooks,
+    answers: Mutex<HashMap<String, Arc<OnceLock<HookRun>>>>,
+    reuse_any_target: AtomicBool,
+}
+
+impl<'a> Memoized<'a> {
+    pub fn new(inner: &'a dyn Hooks) -> Self {
+        Self {
+            inner,
+            answers: Mutex::default(),
+            reuse_any_target: AtomicBool::new(false),
+        }
+    }
+
+    pub fn reuse_any_target(&self, on: bool) {
+        self.reuse_any_target.store(on, Ordering::SeqCst);
+    }
+
+    fn slot(&self, key: String) -> Arc<OnceLock<HookRun>> {
+        Arc::clone(
+            self.answers
+                .lock()
+                .expect("no panic holds the lock")
+                .entry(key)
+                .or_default(),
+        )
+    }
+
+    /// Starts a new phrase: what a hook said about the last one may be stale (a step before it changed the desktop).
+    pub fn forget(&self) {
+        self.answers.lock().expect("no panic holds the lock").clear();
+    }
+}
+
+impl Hooks for Memoized<'_> {
+    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+        let any_target = format!(
+            "{}\0{}\0{}\0{}",
+            integration.file.display(),
+            query.action,
+            query.phrase,
+            query.raw_transcript
+        );
+        let exact = format!("{any_target}\0{}\0{:?}", query.target, query.args);
+        let reuse_any_target = self.reuse_any_target.load(Ordering::SeqCst);
+        let slot = self.slot(if reuse_any_target { any_target.clone() } else { exact });
+        let mut asked = false;
+        let run = slot.get_or_init(|| {
+            asked = true;
+            self.inner.candidates(integration, query)
+        });
+        if asked && !reuse_any_target {
+            // The near-miss pass may reuse this answer for another target.
+            let _ = self.slot(any_target).set(run.clone());
+        }
+        let mut run = run.clone();
+        if !asked {
+            run.millis = 0.0;
+            run.reused = true;
+        }
+        run
+    }
+
+    fn surface_open(&self, integration: &Integration) -> bool {
+        self.inner.surface_open(integration)
+    }
+}
+
 /// The hooks of the TOML integrations: shell strings run by `bash`, with the match in the environment.
 pub struct ShellHooks {
     integration_dir: PathBuf,
@@ -247,15 +329,27 @@ impl ShellHooks {
         );
         let mut command = Command::new("bash");
         command.args(["--noprofile", "--norc", "-c", &script]);
-        for (name, value) in self.env(env) {
-            command.env(name, value);
-        }
-        // Variables of the option-level kinds must not leak in from voxcmd's own environment when this call has none.
-        for name in ["VOXCMD_ID", "VOXCMD_LABEL", "VOXCMD_ACTIVE_BEFORE"] {
-            if !command.get_envs().any(|(set, _)| set == name) {
+        let vars = self.env(env);
+        // A variable this call does not set must not leak in from voxcmd's own environment: a stale argument or
+        // option would read as part of this match. BASH_ENV would make bash run a file before the library.
+        let inherited_args = std::env::vars_os()
+            .filter_map(|(name, _)| name.into_string().ok())
+            .filter(|name| name.starts_with("VOXCMD_ARG_"));
+        let always_cleared = [
+            "VOXCMD_ID",
+            "VOXCMD_LABEL",
+            "VOXCMD_ACTIVE_BEFORE",
+            "VOXCMD_CONFIRMED",
+            "VOXCMD_DRY_RUN",
+            "BASH_ENV",
+        ]
+        .map(str::to_string);
+        for name in inherited_args.chain(always_cleared) {
+            if !vars.contains_key(&name) {
                 command.env_remove(name);
             }
         }
+        command.envs(vars);
         command
     }
 
@@ -363,7 +457,8 @@ impl Hooks for ShellHooks {
 }
 
 /// The lines of a hook's output: `id<TAB>label<TAB>match_text`, the last two optional, one option per line. A blank
-/// line is skipped; an empty id is a row of its own (static help rows).
+/// line is skipped; a line with no id is an error, since the id is what `run` is later given. (Help lists, 2.6, will
+/// want id-less rows and need their own reader.)
 pub fn parse_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
     let mut candidates = Vec::new();
     for (index, line) in stdout.split('\n').enumerate() {
@@ -380,6 +475,9 @@ pub fn parse_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
             ));
         }
         let id = fields[0];
+        if id.trim().is_empty() {
+            return Err(format!("output line {} has an empty id", index + 1));
+        }
         let label = fields.get(1).copied().filter(|label| !label.is_empty()).unwrap_or(id);
         let match_text = fields.get(2).copied().filter(|text| !text.is_empty());
         candidates.push(Candidate {
@@ -611,22 +709,17 @@ mod tests {
 
     #[test]
     fn output_lines_are_id_label_and_match_text() {
-        let lines = parse_lines("a\tA\tmatch a\r\nb\tB\n\nc\n\t\tonly match\n\tStatic row\n").unwrap();
+        let lines = parse_lines("a\tA\tmatch a\r\nb\tB\n\nc\n").unwrap();
         let flat: Vec<_> = lines
             .iter()
             .map(|c| (c.id.as_str(), c.label.as_str(), c.match_text.as_deref()))
             .collect();
-        assert_eq!(
-            flat,
-            [
-                ("a", "A", Some("match a")),
-                ("b", "B", None),
-                ("c", "c", None),
-                ("", "", Some("only match")),
-                ("", "Static row", None),
-            ]
-        );
+        assert_eq!(flat, [("a", "A", Some("match a")), ("b", "B", None), ("c", "c", None),]);
         assert_eq!(parse_lines("").unwrap(), Vec::new());
+        for no_id in ["\tLabel\n", " \t\tx\n", "ok\n  \n\t\n"] {
+            let error = parse_lines(no_id).unwrap_err();
+            assert!(error.contains("empty id"), "{no_id:?}: {error}");
+        }
         let error = parse_lines("a\tb\tc\td\n").unwrap_err();
         assert!(error.contains("line 1") && error.contains("4 tab-separated"), "{error}");
         assert!(parse_lines("ok\nx\ty\tz\tw\n").unwrap_err().contains("line 2"));
@@ -760,6 +853,43 @@ mod tests {
     }
 
     #[test]
+    fn variables_a_call_does_not_set_are_cleared_from_the_inherited_environment() {
+        let fixture = fixture("true", None, None);
+        let env = HookEnv {
+            integration: &fixture.integration,
+            action: "go",
+            args: &[],
+            phrase: "p",
+            raw_transcript: "P",
+            id: None,
+            label: None,
+            confirmed: false,
+            active_before: None,
+            spoken: false,
+        };
+        let command = fixture.hooks.command("true", &env);
+        let cleared: Vec<String> = command
+            .get_envs()
+            .filter(|(_, value)| value.is_none())
+            .map(|(name, _)| name.to_string_lossy().into_owned())
+            .collect();
+        for name in [
+            "VOXCMD_ID",
+            "VOXCMD_LABEL",
+            "VOXCMD_ACTIVE_BEFORE",
+            "VOXCMD_DRY_RUN",
+            "BASH_ENV",
+        ] {
+            assert!(
+                cleared.iter().any(|one| one == name),
+                "{name} is not cleared: {cleared:?}"
+            );
+        }
+        // Set by every call, so never cleared.
+        assert!(!cleared.iter().any(|one| one == "VOXCMD_CONFIRMED"));
+    }
+
+    #[test]
     fn a_dry_run_marks_the_hooks_environment() {
         let mut fixture = fixture(r#"printf '%s\n' "$VOXCMD_DRY_RUN""#, None, None);
         fixture.hooks.dry_run = true;
@@ -795,6 +925,59 @@ mod tests {
     #[test]
     fn a_library_name_with_a_quote_is_still_one_literal_word() {
         assert_eq!(shell_quote("it's.sh"), r"'it'\''s.sh'");
+    }
+
+    /// Counts the runs it is asked for, and answers slowly enough for concurrent askers to overlap.
+    struct Counting(std::sync::atomic::AtomicUsize);
+
+    impl Hooks for Counting {
+        fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            std::thread::sleep(Duration::from_millis(50));
+            HookRun::unhooked(integration, query.action, query.target)
+        }
+
+        fn surface_open(&self, _integration: &Integration) -> bool {
+            false
+        }
+    }
+
+    #[test]
+    fn an_identical_query_runs_once_even_when_asked_side_by_side_until_the_phrase_is_forgotten() {
+        let fixture = fixture("true", None, None);
+        let counting = Counting(Default::default());
+        let memo = Memoized::new(&counting);
+        let ask = |target: &str| {
+            memo.candidates(
+                &fixture.integration,
+                &HookQuery {
+                    action: "go",
+                    target,
+                    args: &[],
+                    phrase: "go",
+                    raw_transcript: "go",
+                },
+            )
+        };
+        let runs = || counting.0.load(std::sync::atomic::Ordering::SeqCst);
+        let answers: Vec<HookRun> = std::thread::scope(|scope| {
+            let asking: Vec<_> = (0..3).map(|_| scope.spawn(|| ask("tea"))).collect();
+            asking.into_iter().map(|one| one.join().unwrap()).collect()
+        });
+        assert_eq!(runs(), 1);
+        assert_eq!(answers.iter().filter(|answer| answer.reused).count(), 2);
+        ask("coffee");
+        assert_eq!(runs(), 2, "a different target is a different query");
+        memo.forget();
+        ask("tea");
+        assert_eq!(runs(), 3, "a new phrase asks again");
+    }
+
+    #[test]
+    fn a_child_that_outlives_the_hook_costs_neither_options_nor_no_match() {
+        let run = fixture(r"sleep 3 & printf 'a\tA\n'", None, None).ask("go tea");
+        assert_eq!(run.lookup, Lookup::Candidates(vec![Candidate::plain("a", "A")]));
+        assert!(run.millis < 1000.0, "{}", run.millis);
     }
 
     #[test]

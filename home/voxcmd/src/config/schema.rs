@@ -238,6 +238,13 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 (Some(builtin), None) => Some(Wait::Builtin(builtin)),
                 (None, None) => None,
             };
+            let timeout_secs = match table.timeout_secs {
+                // The untagged `ActionEntry` cannot carry a span, so the line is looked up in the text.
+                Some(secs) => Some(checked_timeout(secs, || {
+                    format!("{}:{}", file.display(), line_of(timeout_offset(text, &id)))
+                })?),
+                None => None,
+            };
             let action = Action {
                 run: table.run,
                 candidates: table.candidates.map(Candidates::Shell),
@@ -247,11 +254,11 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 mode_switch: table.mode_switch,
                 mode_entry: table.mode_entry,
                 wait,
-                timeout_secs: table.timeout_secs,
+                timeout_secs,
             };
-            (id, action)
+            Ok((id, action))
         })
-        .collect();
+        .collect::<Result<BTreeMap<_, _>, String>>()?;
     Ok(Integration {
         name: parsed.name.unwrap_or_else(|| stem.clone()),
         stem,
@@ -273,6 +280,32 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         actions,
         surface: parsed.surface.map(|surface| Surface::StateFile(surface.state_file)),
     })
+}
+
+/// Where an action's `timeout_secs` is written: the first one after the action's table (or its key under `[actions]`),
+/// else the action itself, else the top of the file.
+fn timeout_offset(text: &str, action: &str) -> usize {
+    let start = [format!("[actions.{action}]"), format!("\n{action} = ")]
+        .iter()
+        .find_map(|opening| text.find(opening.as_str()))
+        .unwrap_or(0);
+    text[start..].find("timeout_secs").map_or(start, |found| start + found)
+}
+
+/// The longest a hook may be given; anything longer is a typo for a hook that never ends.
+const MAX_TIMEOUT_SECS: f64 = 300.0;
+
+/// `timeout_secs` as a duration in seconds: finite, above zero (zero would time every hook out) and at most
+/// `MAX_TIMEOUT_SECS`. `place` names the file and line for the error.
+fn checked_timeout(secs: f64, place: impl Fn() -> String) -> Result<f64, String> {
+    if secs.is_finite() && secs > 0.0 && secs <= MAX_TIMEOUT_SECS {
+        Ok(secs)
+    } else {
+        Err(format!(
+            "{}: timeout_secs must be above 0 and at most {MAX_TIMEOUT_SECS}, not {secs}",
+            place()
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -313,5 +346,22 @@ mod tests {
     fn a_bad_file_names_its_line() {
         let error = parse_toml(Path::new("bad.toml"), "name = \"x\"\nverbs = [ { action = 1 } ]\n").unwrap_err();
         assert!(error.starts_with("bad.toml:2: "), "{error}");
+    }
+
+    #[test]
+    fn timeout_secs_must_be_a_usable_number_of_seconds() {
+        let with = |value: &str| {
+            let text = format!("verbs = []\n[actions.go]\nrun = \"true\"\ntimeout_secs = {value}\n");
+            parse_toml(Path::new("t.toml"), &text)
+        };
+        assert_eq!(with("0.5").unwrap().actions["go"].timeout_secs, Some(0.5));
+        assert_eq!(with("300").unwrap().actions["go"].timeout_secs, Some(300.0));
+        for bad in ["0", "-1", "nan", "inf", "-inf", "301"] {
+            let error = with(bad).unwrap_err();
+            assert!(
+                error.starts_with("t.toml:4: timeout_secs must be above 0"),
+                "{bad}: {error}"
+            );
+        }
     }
 }

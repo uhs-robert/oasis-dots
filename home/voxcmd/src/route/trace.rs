@@ -317,13 +317,17 @@ fn why_lines(out: &mut String, step: &StepTrace, prefix: &str) {
         }
     }
     for hook in &step.hooks {
+        let timing = if hook.reused {
+            "reused".to_string()
+        } else {
+            format!("{:.1} ms", hook.millis)
+        };
         let _ = writeln!(
             out,
-            "    hook {} {}: {} line(s) in {:.1} ms",
+            "    hook {} {}: {} line(s) in {timing}",
             hook.integration,
             hook.action,
             hook.lines.len(),
-            hook.millis
         );
         if let Some(problem) = &hook.problem {
             let _ = writeln!(
@@ -396,7 +400,8 @@ pub fn run(args: ExplainArgs) -> Result<String, CliError> {
     }
     let config_dir = crate::paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("explain", message))?;
-    // A dump given as a file stands in for the bash files, which a hook would need to source.
+    // A dump given as a file turns every hook off, TOML ones too: the latency test routes phrases that reach TOML
+    // hooks, and a bash start per hook would measure bash, not routing.
     let hooks: Box<dyn Hooks> = if crate::paths::legacy_dump_override().is_some() {
         Box::new(NoHooks)
     } else {

@@ -48,7 +48,7 @@ pub fn notify(kind: Kind, summary: &str, body: &str) {
         command.arg("--transient");
     }
     let _ = command
-        .args([summary, body])
+        .args(["--", summary, body])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -62,8 +62,7 @@ fn notify_no_match(summary: &str, body: &str) {
         return notify(Kind::Info, summary, body);
     }
     // Text goes in as positional parameters of the inner sh, never into its script.
-    let script =
-        r#"[ "$(notify-send -a voxcmd --transient --action=help="Voice Help" "$1" "$2")" = help ] && exec "$3" help"#;
+    let script = r#"[ "$(notify-send -a voxcmd --transient --action=help="Voice Help" -- "$1" "$2")" = help ] && exec "$3" help"#;
     let exe = std::env::current_exe().unwrap_or_else(|_| "voxcmd".into());
     let spawned = Command::new("setsid")
         .args(["sh", "-c", script, "sh", summary, body])
