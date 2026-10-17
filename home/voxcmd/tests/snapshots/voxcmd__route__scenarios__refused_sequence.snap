@@ -1,0 +1,15 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "click mode and then next track",
+  "sequence": {
+    "steps": 2,
+    "refused": "a mode switch can only be the last step (step 1 of 2)",
+    "free_text_step": null
+  },
+  "steps": [],
+  "click": null,
+  "reply": null
+}

@@ -1,0 +1,252 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "next track and then volume up",
+  "sequence": {
+    "steps": 2,
+    "refused": null,
+    "free_text_step": null
+  },
+  "steps": [
+    {
+      "transcript": "next track",
+      "wake_word": null,
+      "normalized": "next track",
+      "raw_transcript": "next track",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the normal tier had options"
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 3,
+              "line": 11,
+              "action": "next",
+              "pattern": "(play )?(the )?next( (song|track))?|skip( (this|the))?( (song|track))?",
+              "regex": "(?s-u)^(?:(play )?(the )?next( (song|track))?|skip( (this|the))?( (song|track))?)$"
+            },
+            "args": {}
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        }
+      ],
+      "hooks": [],
+      "options": [
+        {
+          "integration": "Media",
+          "file": "integrations/media.toml",
+          "fallback": false,
+          "action": "next",
+          "target": "",
+          "id": "",
+          "label": "",
+          "toast_label": "Media: next",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": null,
+          "silent": false,
+          "candidates": 0,
+          "command": "playerctl next",
+          "env": {
+            "VOXCMD_ID": ""
+          }
+        }
+      ],
+      "decision": {
+        "kind": "run",
+        "option": 0,
+        "reason": "one option, not a weak match: Media next",
+        "result": "run"
+      },
+      "wait": "no popup opening or closing and no click overlay, then 0.3s",
+      "millis": 0.0
+    },
+    {
+      "transcript": "volume up",
+      "wake_word": null,
+      "normalized": "volume up",
+      "raw_transcript": "volume up",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the normal tier had options"
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 5,
+              "line": 13,
+              "action": "volume_up",
+              "pattern": "(turn )?(the )?(volume|sound) up( by {number}( percent)?)?|louder|turn it up",
+              "regex": "(?s-u)^(?:(turn )?(the )?(volume|sound) up( by (?P<number>[0-9]+)( percent)?)?|louder|turn it up)$"
+            },
+            "args": {
+              "number": {
+                "type": "number",
+                "value": null,
+                "words": null
+              }
+            }
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        }
+      ],
+      "hooks": [],
+      "options": [
+        {
+          "integration": "Media",
+          "file": "integrations/media.toml",
+          "fallback": false,
+          "action": "volume_up",
+          "target": "",
+          "id": "",
+          "label": "",
+          "toast_label": "Media: volume up",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": null,
+          "silent": true,
+          "candidates": 0,
+          "command": "pamixer --increase \"${VOXCMD_ARG_NUMBER:-5}\"",
+          "env": {
+            "VOXCMD_ID": ""
+          }
+        }
+      ],
+      "decision": {
+        "kind": "run",
+        "option": 0,
+        "reason": "one option, not a weak match: Media volume_up",
+        "result": "run"
+      },
+      "wait": "nothing, it is the last step",
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

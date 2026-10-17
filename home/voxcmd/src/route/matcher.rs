@@ -7,7 +7,7 @@
 use super::near_miss::{NearMiss, Readings};
 use super::pattern::{self, CompiledPattern, Placeholder, PlaceholderType};
 use crate::config::Config;
-use crate::config::schema::{Format, Integration, Tier};
+use crate::config::schema::{Format, Tier};
 use crate::text::normalize::normalize;
 use crate::text::speech::{self, Anchor, Clock};
 use regex::bytes::Regex;
@@ -131,7 +131,8 @@ impl<'c> Matcher<'c> {
             .map_err(String::as_str)
     }
 
-    pub fn integrations(&self) -> &'c [Integration] {
+    #[cfg(test)]
+    pub fn integrations(&self) -> &'c [crate::config::schema::Integration] {
         &self.config.integrations
     }
 
@@ -159,9 +160,17 @@ impl<'c> Matcher<'c> {
     /// The integration's first verb that matches the whole text and counts: its typed arguments parse and the
     /// integration it requires is loaded.
     pub fn first_match(&self, integration: usize, text: &str) -> IntegrationMatch {
+        self.first_match_among(integration, text, |_| true)
+    }
+
+    /// `first_match` over the verbs whose action `listed` accepts: the integration's mode or free-text actions.
+    pub fn first_match_among(&self, integration: usize, text: &str, listed: impl Fn(&str) -> bool) -> IntegrationMatch {
         let config = &self.config.integrations[integration];
         let mut rejections = Vec::new();
         for index in 0..config.verbs.len() {
+            if !listed(&config.verbs[index].action) {
+                continue;
+            }
             if !self.may_match(integration, index, text) {
                 continue;
             }

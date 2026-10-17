@@ -25,7 +25,6 @@ fn stderr(output: &Output) -> String {
 /// (argv, subcommand named in the message, port item that implements it)
 const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["run", "open", "firefox"], "run", "2.3"),
-    (&["explain", "--json", "open", "firefox"], "explain --json", "2.2b"),
     (
         &["explain", "--window", "focused", "click", "close"],
         "explain --window",
@@ -56,11 +55,6 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["log", "errors", "5", "--json"], "log errors", "2.6"),
     (&["timer", "ring", "Timer", "done"], "timer ring", "2.6"),
     (&["util", "notify", "info", "title", "body"], "util notify", "2.3"),
-    (
-        &["util", "word-match", "--ignore", "the", "target"],
-        "util word-match",
-        "2.2b",
-    ),
     (&["internal", "watch", "--any", "args"], "internal watch", "2.4"),
     (&["internal", "settle"], "internal settle", "2.4"),
     (
@@ -255,26 +249,96 @@ fn voxcmd_in(config: &Path, args: &[&str]) -> Output {
 }
 
 #[test]
-fn explain_prints_the_match_layer() {
+fn explain_prints_the_dry_run_lines_then_why() {
     let config = toml_config(&["media", "apps"]);
     let output = voxcmd_in(config.path(), &["explain", "Cortana,", "volume", "up", "by", "10"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     let text = stdout(&output);
-    assert!(
-        text.starts_with("transcript: Cortana, volume up by 10\nnormalized: volume up by 10\n"),
-        "{text}"
+    let (dry_run, why) = text.split_once("\n\n").expect("a blank line before the why block");
+    assert_eq!(
+        dry_run,
+        "transcript:  Cortana, volume up by 10\n\
+         normalized:  volume up by 10\n\
+         result:      run\n\
+         option 1:    Media (media.toml) action=volume_up target='' id='' label=''\n             \
+         candidates offered: 0, weak: false, confirm: false, silent: true\n             \
+         command: pamixer --increase \"${VOXCMD_ARG_NUMBER:-5}\""
     );
+    assert!(why.starts_with("why:\n"), "{why}");
     assert!(
-        text.contains("match: Media (media.toml) verb 5 (line 13) action=volume_up number=10\n"),
-        "{text}"
+        why.contains("Media (media.toml, normal): matched verb 5 (line 13) action=volume_up number=10\n"),
+        "{why}"
     );
-    assert!(!text.contains("result:"), "{text}");
 
     let text = stdout(&voxcmd_in(config.path(), &["explain", "mute", "toggle"]));
     assert!(
-        text.contains("near miss: Media (media.toml) verb 8 (line 16) action=toggle_mute target= leftover=0\n"),
+        text.contains("result:      ask with the picker (1 options, weak match"),
         "{text}"
     );
+    assert!(
+        text.contains("option 1:    Media (media.toml) [near miss] action=toggle_mute"),
+        "{text}"
+    );
+}
+
+#[test]
+fn explain_json_is_one_document_of_steps() {
+    let config = toml_config(&["media"]);
+    let output = voxcmd_in(
+        config.path(),
+        &["explain", "--json", "next", "track", "and", "then", "mute"],
+    );
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let document: serde_json::Value = serde_json::from_str(&stdout(&output)).expect("one JSON document");
+    assert_eq!(document["phrase"], "next track and then mute");
+    assert_eq!(document["sequence"]["steps"], 2);
+    let steps = document["steps"].as_array().unwrap();
+    assert_eq!(steps.len(), 2);
+    assert_eq!(steps[0]["options"][0]["action"], "next");
+    assert_eq!(steps[1]["decision"]["kind"], "run");
+    assert!(steps[0]["millis"].as_f64().unwrap() >= 0.0);
+}
+
+#[test]
+fn explain_reads_a_legacy_dump_file_without_bash() {
+    let dump = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/legacy-dump.jsonl");
+    let config = toml_config(&[]);
+    let output = Command::new(env!("CARGO_BIN_EXE_voxcmd"))
+        .args(["explain", "volume", "up"])
+        .env_clear()
+        .env("HOME", "/nonexistent")
+        .env("VOXCMD_CONFIG_DIR", config.path())
+        .env("VOXCMD_LEGACY_DUMP_FILE", dump)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(
+        stdout(&output).contains("option 1:    Media (media.sh) action=volume_up"),
+        "{}",
+        stdout(&output)
+    );
+}
+
+#[test]
+fn util_word_match_filters_the_lines_on_stdin() {
+    use std::io::Write;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_voxcmd"))
+        .args(["util", "word-match", "--ignore", "window", "firefox window"])
+        .env_clear()
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"1\tFirefox\tfirefox\n2\tKitty\n")
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(stdout(&output), "1\tFirefox\tfirefox\n");
 }
 
 #[test]

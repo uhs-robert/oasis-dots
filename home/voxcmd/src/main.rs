@@ -2,6 +2,7 @@
 mod cli;
 mod config;
 mod exit;
+mod hooks;
 mod paths;
 mod route;
 mod text;
@@ -83,7 +84,9 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Timer(TimerCommand::Ring { .. }) => later("timer ring", "2.6"),
         Command::Util(UtilCommand::Notify { .. }) => later("util notify", "2.3"),
         Command::Util(UtilCommand::Intents { name }) => config::intents::run(&name).map(Some),
-        Command::Util(UtilCommand::WordMatch { .. }) => later("util word-match", "2.2b"),
+        Command::Util(UtilCommand::WordMatch { ignore, target }) => {
+            route::resolve::run_word_match(ignore.as_deref(), &target).map(Some)
+        }
         Command::Util(UtilCommand::Speech(speech)) => text::speech::run(speech).map(Some),
         Command::Util(UtilCommand::VoiceEnv { key }) => config::voice_env::run(&key).map(Some),
         Command::Internal(InternalCommand::Watch(_)) => later("internal watch", "2.4"),

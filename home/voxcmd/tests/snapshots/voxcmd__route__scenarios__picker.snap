@@ -1,0 +1,178 @@
+---
+source: src/route/scenarios.rs
+expression: stable_json(& mut explain)
+---
+{
+  "phrase": "play spotify",
+  "sequence": null,
+  "steps": [
+    {
+      "transcript": "play spotify",
+      "wake_word": null,
+      "normalized": "play spotify",
+      "raw_transcript": "play spotify",
+      "replacements": [],
+      "corrected": null,
+      "forced": null,
+      "surface": null,
+      "mode": null,
+      "rewritten": null,
+      "integrations": [
+        {
+          "name": "Apps",
+          "file": "integrations/apps.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Click",
+          "file": "integrations/click.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Keybinds",
+          "file": "integrations/keybinds.toml",
+          "tier": "fallback",
+          "outcome": {
+            "kind": "not_tried",
+            "reason": "the normal tier had options"
+          }
+        },
+        {
+          "name": "Media",
+          "file": "integrations/media.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "matched",
+            "verb": {
+              "index": 11,
+              "line": 19,
+              "action": "play_on",
+              "pattern": "(play|resume) {target}",
+              "regex": "(?s-u)^(?:(play|resume) (?P<target>.+?))$"
+            },
+            "args": {
+              "target": {
+                "type": "text",
+                "value": "spotify",
+                "words": "spotify"
+              }
+            }
+          }
+        },
+        {
+          "name": "Overview",
+          "file": "integrations/overview.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Search",
+          "file": "integrations/search.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        },
+        {
+          "name": "Timers",
+          "file": "integrations/timers.toml",
+          "tier": "normal",
+          "outcome": {
+            "kind": "no_verb",
+            "near_miss": null
+          }
+        }
+      ],
+      "hooks": [
+        {
+          "integration": "Media",
+          "action": "play_on",
+          "kind": "candidates",
+          "command": "canned",
+          "exit": null,
+          "timed_out": false,
+          "millis": 0.0,
+          "lines": [
+            {
+              "id": "spotify.i1",
+              "label": "spotify"
+            },
+            {
+              "id": "spotify.i2",
+              "label": "spotify"
+            }
+          ],
+          "stderr_tail": []
+        }
+      ],
+      "options": [
+        {
+          "integration": "Media",
+          "file": "integrations/media.toml",
+          "fallback": false,
+          "action": "play_on",
+          "target": "spotify",
+          "id": "spotify.i1",
+          "label": "spotify",
+          "toast_label": "Media: play on spotify",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": null,
+          "silent": false,
+          "candidates": 2,
+          "command": "playerctl --player=\"$VOXCMD_ID\" play",
+          "env": {
+            "VOXCMD_ARG_TARGET": "spotify",
+            "VOXCMD_ARG_TARGET_WORDS": "spotify",
+            "VOXCMD_ID": "spotify.i1"
+          }
+        },
+        {
+          "integration": "Media",
+          "file": "integrations/media.toml",
+          "fallback": false,
+          "action": "play_on",
+          "target": "spotify",
+          "id": "spotify.i2",
+          "label": "spotify",
+          "toast_label": "Media: play on spotify",
+          "score": null,
+          "weak": false,
+          "near_miss": false,
+          "confirm": null,
+          "silent": false,
+          "candidates": 2,
+          "command": "playerctl --player=\"$VOXCMD_ID\" play",
+          "env": {
+            "VOXCMD_ARG_TARGET": "spotify",
+            "VOXCMD_ARG_TARGET_WORDS": "spotify",
+            "VOXCMD_ID": "spotify.i2"
+          }
+        }
+      ],
+      "decision": {
+        "kind": "pick",
+        "option": null,
+        "reason": "2 options, so the picker asks which",
+        "result": "ask with the picker (2 options)"
+      },
+      "wait": null,
+      "millis": 0.0
+    }
+  ],
+  "click": null,
+  "reply": null
+}

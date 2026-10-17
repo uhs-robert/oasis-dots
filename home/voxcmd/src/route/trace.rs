@@ -1,132 +1,406 @@
-//! the `explain` printout; so far the match layer: which verb of which integration matches, or nearly matches
+//! the `explain` record every stage of routing fills in, its text printout and its `--json` document
 //!
-//! The lines are not the bash dry run's: no `result:` or `option N:` line appears until 2.2b resolves matches into
-//! options, so nothing that parses the dry run (run-phrases.sh, bench.sh, owner-test-bar) mistakes this for a route.
-use super::matcher::{Matcher, Outcome};
+//! The text starts with the lines the bash dry run printed (`transcript:`, `normalized:`, `result:`, `option N:`, ...),
+//! which run-phrases.sh, bench.sh and owner-test-bar parse, then a blank line and the `why:` block. The JSON shapes
+//! follow voxcmd-port 1.3 section 3.3 and are provisional until 3.2: additions are free, renames need the owner.
+use super::router::Router;
+use super::sequence;
 use crate::cli::ExplainArgs;
 use crate::config::Config;
-use crate::config::schema::{Integration, Tier};
 use crate::exit::CliError;
-use crate::text::normalize::{apply_replacements, normalize};
-use crate::text::wake_word::WakeWords;
+use crate::hooks::{HookRun, Hooks, LegacyHooks, NoHooks};
+use serde::Serialize;
 use std::fmt::Write as _;
+use std::path::PathBuf;
+
+/// One `voxcmd explain --json` document.
+#[derive(Debug, Serialize)]
+pub struct Explain {
+    /// As given on the command line.
+    pub phrase: String,
+    /// Set when "and then" split the phrase into steps.
+    pub sequence: Option<SequenceTrace>,
+    /// One per step; one for a plain phrase; none for a refused sequence.
+    pub steps: Vec<StepTrace>,
+    /// The click trace (`--window`): 2.5.
+    pub click: Option<serde_json::Value>,
+    /// The reply trace (`--reply`): 2.4.
+    pub reply: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SequenceTrace {
+    /// The steps the phrase split into; one past the limit when it split into more.
+    pub steps: usize,
+    pub refused: Option<String>,
+    pub free_text_step: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StepTrace {
+    /// The step's raw text.
+    pub transcript: String,
+    /// The leading wake word that was stripped.
+    pub wake_word: Option<String>,
+    /// After normalizing, replacements and workspace ordinals; the retry's text when `corrected`.
+    pub normalized: String,
+    /// What the chosen action reads as the raw transcript: the step as spoken, or, after a correction retry, the
+    /// normalized text before the retried part plus the raw words that became it. Hooks always see the step as spoken.
+    pub raw_transcript: String,
+    /// Which replacements.d lines fired: not recorded yet.
+    pub replacements: Vec<serde_json::Value>,
+    /// The text retried after a correction point, when the phrase as spoken left no strong option.
+    pub corrected: Option<String>,
+    /// The integration a force prefix chose.
+    pub forced: Option<String>,
+    /// The integration whose bar surface was open and took the phrase.
+    pub surface: Option<String>,
+    pub mode: Option<String>,
+    pub rewritten: Option<String>,
+    /// Every integration, in the order tried.
+    pub integrations: Vec<IntegrationTrace>,
+    /// Every hook run, in order, those of discarded passes (a retry that did not win) included.
+    pub hooks: Vec<HookRun>,
+    /// What the user would be offered, in order.
+    pub options: Vec<OptionTrace>,
+    pub decision: Decision,
+    /// What the next step of a sequence would wait for.
+    pub wait: Option<String>,
+    /// Route time without the hooks and the target matching that follows them.
+    pub millis: f64,
+    /// Whether a sequence goes on past this step: it matched something, or was Voice Help outside a sequence.
+    #[serde(skip)]
+    pub ran: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RouteTier {
+    Forced,
+    Surface,
+    Normal,
+    #[allow(
+        dead_code,
+        reason = "the LLM hook is 2.6; the tier keeps its place in the JSON shape"
+    )]
+    Llm,
+    Fallback,
+}
+
+impl RouteTier {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Forced => "forced",
+            Self::Surface => "surface",
+            Self::Normal => "normal",
+            Self::Llm => "llm",
+            Self::Fallback => "fallback",
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct IntegrationTrace {
+    pub name: String,
+    pub file: PathBuf,
+    pub tier: RouteTier,
+    pub outcome: IntegrationOutcome,
+    /// Verbs whose regex matched but did not count, before the one that did.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub rejected: Vec<Rejection>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum IntegrationOutcome {
+    Matched {
+        verb: VerbRef,
+        args: std::collections::BTreeMap<String, ArgValue>,
+    },
+    NoVerb {
+        near_miss: Option<NearMissTrace>,
+    },
+    /// Verbs matched, and every one was rejected.
+    Rejected {
+        verbs: Vec<Rejection>,
+    },
+    YieldedByVerb {
+        verb: VerbRef,
+    },
+    YieldedByHook {
+        action: String,
+    },
+    NotTried {
+        reason: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VerbRef {
+    pub index: usize,
+    pub line: Option<usize>,
+    pub action: String,
+    pub pattern: String,
+    pub regex: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Rejection {
+    pub verb: VerbRef,
+    pub reason: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ArgValue {
+    pub r#type: String,
+    pub value: Option<String>,
+    pub words: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NearMissTrace {
+    pub action: String,
+    pub leftover: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct OptionTrace {
+    pub integration: String,
+    pub file: PathBuf,
+    pub fallback: bool,
+    pub action: String,
+    pub target: String,
+    pub id: String,
+    pub label: String,
+    /// What a toast or the picker shows for the option.
+    pub toast_label: String,
+    pub score: Option<f64>,
+    pub weak: bool,
+    pub near_miss: bool,
+    /// Why it would ask first: `confirm = true`, or the `confirm_labels` entry its label matches.
+    pub confirm: Option<String>,
+    pub silent: bool,
+    /// How many candidates the hook offered before the target narrowed them.
+    pub candidates: usize,
+    /// The action's `run` string.
+    pub command: String,
+    /// What the command can read: a TOML action's `VOXCMD_*` variables, a bash one's `id` and `target`.
+    pub env: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DecisionKind {
+    Run,
+    Confirm,
+    Pick,
+    NoMatch,
+    Builtin,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Decision {
+    pub kind: DecisionKind,
+    /// Index into `options` for `run` and `confirm`.
+    pub option: Option<usize>,
+    /// One sentence: why this and not another outcome.
+    pub reason: String,
+    /// The text after `result:` in the dry-run lines.
+    pub result: String,
+}
+
+// ---- text -----------------------------------------------------------------------------------------------------------
+
+/// jq's `@sh` for a string: single-quoted, a quote inside as `'\''`.
+fn shell_quote(text: &str) -> String {
+    format!("'{}'", text.replace('\'', r"'\''"))
+}
+
+fn file_name(path: &std::path::Path) -> String {
+    path.file_name().unwrap_or_default().to_string_lossy().into_owned()
+}
+
+/// The dry-run lines of one step (the bash `print_dry_run`).
+fn step_lines(out: &mut String, step: &StepTrace) {
+    let _ = writeln!(out, "transcript:  {}", step.transcript);
+    let _ = writeln!(out, "normalized:  {}", step.normalized);
+    if step.corrected.is_some() {
+        out.push_str("corrected:   no match as spoken, retried after the last correction point\n");
+    }
+    if let Some(forced) = step.forced.as_ref().or(step.surface.as_ref()) {
+        let _ = writeln!(out, "forced to:   {forced}");
+    }
+    let _ = writeln!(out, "result:      {}", step.decision.result);
+    for (index, option) in step.options.iter().enumerate() {
+        let fallback = if option.fallback { " [fallback]" } else { "" };
+        let near = if option.near_miss { " [near miss]" } else { "" };
+        let _ = writeln!(
+            out,
+            "option {}:    {} ({}){fallback}{near} action={} target={} id={} label={}",
+            index + 1,
+            option.integration,
+            file_name(&option.file),
+            option.action,
+            shell_quote(&option.target),
+            shell_quote(&option.id),
+            shell_quote(&option.label)
+        );
+        let _ = writeln!(
+            out,
+            "             candidates offered: {}, weak: {}, confirm: {}, silent: {}",
+            option.candidates,
+            option.weak,
+            option.confirm.is_some(),
+            option.silent
+        );
+        let _ = writeln!(out, "             command: {}", option.command);
+    }
+}
+
+fn verb_text(verb: &VerbRef) -> String {
+    match verb.line {
+        Some(line) => format!("verb {} (line {line})", verb.index),
+        None => format!("verb {}", verb.index),
+    }
+}
+
+/// The `why:` lines of one step: the decision, each integration that did more than find no verb, then the hooks.
+fn why_lines(out: &mut String, step: &StepTrace, prefix: &str) {
+    let _ = writeln!(out, "  {prefix}{}", step.decision.reason);
+    for trace in &step.integrations {
+        let who = format!("{} ({}, {})", trace.name, file_name(&trace.file), trace.tier.name());
+        for rejection in &trace.rejected {
+            let _ = writeln!(
+                out,
+                "    {who}: {} rejected: {}",
+                verb_text(&rejection.verb),
+                rejection.reason
+            );
+        }
+        match &trace.outcome {
+            IntegrationOutcome::Matched { verb, args } => {
+                let args: String = args
+                    .iter()
+                    .map(|(name, arg)| format!(" {name}={}", arg.words.as_deref().unwrap_or("")))
+                    .collect();
+                let _ = writeln!(
+                    out,
+                    "    {who}: matched {} action={}{args}",
+                    verb_text(verb),
+                    verb.action
+                );
+            }
+            IntegrationOutcome::YieldedByVerb { verb } => {
+                let _ = writeln!(out, "    {who}: {} yields to other integrations", verb_text(verb));
+            }
+            IntegrationOutcome::Rejected { verbs } => {
+                for rejection in verbs {
+                    let _ = writeln!(
+                        out,
+                        "    {who}: {} rejected: {}",
+                        verb_text(&rejection.verb),
+                        rejection.reason
+                    );
+                }
+            }
+            IntegrationOutcome::NoVerb { near_miss: Some(near) } => {
+                let _ = writeln!(
+                    out,
+                    "    {who}: near miss, action={} with {} word(s) left over",
+                    near.action, near.leftover
+                );
+            }
+            IntegrationOutcome::YieldedByHook { action } => {
+                let _ = writeln!(out, "    {who}: the {action} hook yielded");
+            }
+            IntegrationOutcome::NoVerb { near_miss: None } | IntegrationOutcome::NotTried { .. } => {}
+        }
+    }
+    for hook in &step.hooks {
+        let _ = writeln!(
+            out,
+            "    hook {} {}: {} line(s) in {:.1} ms",
+            hook.integration,
+            hook.action,
+            hook.lines.len(),
+            hook.millis
+        );
+        for line in &hook.stderr_tail {
+            let _ = writeln!(out, "      stderr: {line}");
+        }
+    }
+    let _ = writeln!(out, "    route time without hooks: {:.2} ms", step.millis);
+}
+
+impl Explain {
+    pub fn text(&self) -> String {
+        let mut out = String::new();
+        if let Some(sequence) = &self.sequence {
+            let count = if sequence.steps > sequence::MAX_STEPS {
+                format!("more than {}", sequence::MAX_STEPS)
+            } else {
+                sequence.steps.to_string()
+            };
+            let _ = writeln!(out, "sequence:    {count} steps");
+            if let Some(refusal) = &sequence.refused {
+                let _ = writeln!(out, "result:      refused, {refusal}");
+            }
+        }
+        // A sequence stopped at a step that did not run lists fewer steps than it has.
+        let total = self
+            .sequence
+            .as_ref()
+            .map_or(self.steps.len(), |sequence| sequence.steps);
+        for (index, step) in self.steps.iter().enumerate() {
+            if self.sequence.is_some() {
+                let _ = writeln!(out, "step {} of {total}", index + 1);
+            }
+            step_lines(&mut out, step);
+            if self.sequence.as_ref().and_then(|sequence| sequence.free_text_step) == Some(index + 1) {
+                out.push_str("note:        a free-text action takes the rest of the phrase\n");
+            }
+            if let Some(wait) = &step.wait {
+                let _ = writeln!(out, "waits for:   {wait}");
+            }
+        }
+        out.push_str("\nwhy:\n");
+        if let Some(refusal) = self.sequence.as_ref().and_then(|sequence| sequence.refused.as_ref()) {
+            let _ = writeln!(out, "  refused before any step was routed: {refusal}");
+        }
+        for (index, step) in self.steps.iter().enumerate() {
+            let prefix = if self.sequence.is_some() {
+                format!("step {}: ", index + 1)
+            } else {
+                String::new()
+            };
+            why_lines(&mut out, step, &prefix);
+        }
+        out.truncate(out.trim_end().len());
+        out
+    }
+}
 
 /// `voxcmd explain <phrase>`.
 pub fn run(args: ExplainArgs) -> Result<String, CliError> {
-    if args.json {
-        return Err(CliError::not_implemented("explain --json", "2.2b"));
-    }
     if args.window.is_some() {
         return Err(CliError::not_implemented("explain --window", "2.5"));
     }
     if args.reply {
         return Err(CliError::not_implemented("explain --reply", "2.4"));
     }
-    let config = Config::load(&crate::paths::config_dir()).map_err(|message| CliError::usage("explain", message))?;
-    let matcher = Matcher::new(&config);
-    Ok(match_layer(
-        &matcher,
-        &config,
-        &WakeWords::from_env(),
-        &args.phrase.join(" "),
-    ))
-}
-
-fn describe(integration: &Integration) -> String {
-    let file = integration.file.file_name().unwrap_or_default().to_string_lossy();
-    let fallback = if integration.tier == Tier::Fallback {
-        " [fallback]"
+    let config_dir = crate::paths::config_dir();
+    let config = Config::load(&config_dir).map_err(|message| CliError::usage("explain", message))?;
+    // A dump given as a file stands in for the bash files, which a hook would need to source.
+    let hooks: Box<dyn Hooks> = if crate::paths::legacy_dump_override().is_some() {
+        Box::new(NoHooks)
     } else {
-        ""
+        Box::new(LegacyHooks::new(config_dir))
     };
-    format!("{} ({file}){fallback}", integration.name)
-}
-
-/// "verb 3", or "verb 3 (line 12)" for a TOML verb, so the line can be opened.
-fn verb_ref(integration: &Integration, verb: usize) -> String {
-    match integration.verbs[verb].line {
-        Some(line) => format!("verb {verb} (line {line})"),
-        None => format!("verb {verb}"),
+    let router = Router::new(&config, hooks.as_ref());
+    let explain = sequence::explain_phrase(&router, &args.phrase.join(" "));
+    if args.json {
+        serde_json::to_string_pretty(&explain).map_err(|error| CliError::failed("explain", error.to_string()))
+    } else {
+        Ok(explain.text())
     }
-}
-
-fn match_layer(matcher: &Matcher, config: &Config, wake: &WakeWords, phrase: &str) -> String {
-    let mut out = String::new();
-    let mut text = apply_replacements(&normalize(phrase), &config.replacements);
-    if let Some(rest) = wake.split_leading(&text) {
-        text = rest;
-    }
-    let _ = writeln!(out, "transcript: {phrase}");
-    let _ = writeln!(out, "normalized: {text}");
-    let integrations = matcher.integrations();
-    let forced = matcher.forced(&text);
-    let (tried, text): (Vec<usize>, String) = match forced.clone() {
-        Some((index, rest)) => {
-            let _ = writeln!(out, "forced to: {}", describe(&integrations[index]));
-            (vec![index], rest)
-        }
-        None => (
-            matcher.tier(Tier::Normal).chain(matcher.tier(Tier::Fallback)).collect(),
-            text,
-        ),
-    };
-    let mut any_match = false;
-    for &index in &tried {
-        for verb in 0..integrations[index].verbs.len() {
-            if let Err(error) = matcher.pattern(index, verb) {
-                let at = verb_ref(&integrations[index], verb);
-                let _ = writeln!(out, "bad pattern: {} {at}: {error}", describe(&integrations[index]));
-            }
-        }
-        let found = matcher.first_match(index, &text);
-        for rejection in &found.rejections {
-            let _ = writeln!(
-                out,
-                "rejected: {} {}: {}",
-                describe(&integrations[index]),
-                verb_ref(&integrations[index], rejection.verb),
-                rejection.reason
-            );
-        }
-        match found.outcome {
-            Outcome::Matched(matched) => {
-                any_match = true;
-                let args: String = matched
-                    .args
-                    .iter()
-                    .map(|arg| format!(" {}={}", arg.name, arg.value.as_deref().unwrap_or("")))
-                    .collect();
-                let _ = writeln!(
-                    out,
-                    "match: {} {} action={}{args}",
-                    describe(&integrations[index]),
-                    verb_ref(&integrations[index], matched.verb),
-                    matched.action
-                );
-            }
-            Outcome::Yielded { verb } => {
-                let at = verb_ref(&integrations[index], verb);
-                let _ = writeln!(out, "yielded: {} {at}", describe(&integrations[index]));
-            }
-            Outcome::NoVerb => {}
-        }
-    }
-    // As in routing: a phrase forced to one integration gets no near misses.
-    if !any_match && forced.is_none() {
-        for &index in &tried {
-            for (verb, near) in matcher.near_misses(index, &text) {
-                let action = &integrations[index].verbs[verb].action;
-                let _ = writeln!(
-                    out,
-                    "near miss: {} {} action={action} target={} leftover={}",
-                    describe(&integrations[index]),
-                    verb_ref(&integrations[index], verb),
-                    near.target,
-                    near.leftover
-                );
-            }
-        }
-    }
-    out.push_str("note: the match layer only; options, hooks and the decision come in 2.2b");
-    out
 }
