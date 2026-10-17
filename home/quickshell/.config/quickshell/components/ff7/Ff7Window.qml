@@ -1,6 +1,7 @@
 import QtQuick
 import qs.theme
 import qs.components
+import qs.ui.frames
 
 // The FF7 style's own popup window: blue gradient fill, light border and drop shadow.
 Item {

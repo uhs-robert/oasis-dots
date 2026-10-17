@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
 import qs.components
+import qs.ui.effects
 import qs.theme
 import qs.services
 import "Materia.js" as Materia

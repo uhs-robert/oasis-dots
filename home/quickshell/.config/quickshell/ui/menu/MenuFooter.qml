@@ -3,7 +3,8 @@ import QtQuick.Layouts
 import qs.theme
 import qs.components.oasis as Oasis
 import qs.components.metroid as Metroid
-import "KeyHints.js" as KeyHints
+import qs.components
+import "../../components/KeyHints.js" as KeyHints
 
 // The key hint line under a popup; some styles rule it off with a dashed line.
 Item {

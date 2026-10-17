@@ -1,5 +1,6 @@
 import QtQuick
-import qs.components
+import qs.ui.effects
+import qs.ui.frames
 import qs.theme
 
 // One tab hanging from the center island's line: a Hyprland submap or a voice mode.

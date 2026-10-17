@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
-import qs.components
+import qs.ui.menu
 import qs.theme
 import qs.services
 import "../../services/BarLayout.js" as BarLayout

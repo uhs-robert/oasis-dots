@@ -1,6 +1,8 @@
 import QtQuick
 import qs.theme
 import qs.components
+import qs.ui.effects
+import qs.ui.frames
 
 Item {
     id: root
@@ -126,7 +128,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: title_readout.anchors.rightMargin
         y: title_tab.y + (title_tab.height - height) / 2
-        source: active ? "../ps2/AnalogLed.qml" : ""
+        source: active ? "../../components/ps2/AnalogLed.qml" : ""
         onLoaded: item.lit = Qt.binding(() => root.wanted && root.layer_item.Window.active)
     }
 

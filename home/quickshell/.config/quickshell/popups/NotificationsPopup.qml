@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
-import qs.components
+import qs.ui
+import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.popups.notifications

@@ -2,6 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Widgets
 import qs.components
+import qs.ui.effects
+import qs.ui.frames
 import qs.theme
 import qs.services
 import "Layout.js" as Layout

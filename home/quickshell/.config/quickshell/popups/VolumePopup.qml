@@ -3,6 +3,8 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
 import qs.components
+import qs.ui
+import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.popups.snes as Snes

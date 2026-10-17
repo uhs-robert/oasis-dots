@@ -1,5 +1,5 @@
 import QtQuick
-import qs.components
+import qs.ui.effects
 import qs.theme
 import "../../theme/icon_sets/GameboySprites.js" as GameboySprites
 

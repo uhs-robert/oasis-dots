@@ -1,5 +1,5 @@
 import QtQuick
-import qs.components
+import qs.ui.menu
 import qs.components.nes as Nes
 import qs.theme
 

@@ -1,5 +1,5 @@
 import QtQuick
-import qs.components
+import qs.ui.gauges
 import qs.theme
 
 // A Pokédex base-stat bar in the Game Boy shades: segments lit up to `value`, the last lit one brightest.

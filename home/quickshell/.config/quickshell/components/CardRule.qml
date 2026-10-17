@@ -1,5 +1,6 @@
 import QtQuick
 import qs.theme
+import qs.ui.effects
 
 // An open card: a 1px rule down the left edge, with a fading sweep while selected.
 Item {

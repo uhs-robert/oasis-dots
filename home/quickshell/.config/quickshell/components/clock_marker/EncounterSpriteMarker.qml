@@ -1,5 +1,5 @@
 import QtQuick
-import qs.components
+import qs.ui.effects
 import qs.theme
 
 // nes: a pixel hourglass and 12M before a meeting; the same hourglass beside MTG during one.

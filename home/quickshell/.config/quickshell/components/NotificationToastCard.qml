@@ -9,6 +9,9 @@ import qs.components.goldeneye as Goldeneye
 import qs.components.ps1 as Ps1
 import qs.components.modern as Modern
 import qs.components.neovim as Neovim
+import qs.ui.effects
+import qs.ui.frames
+import qs.ui.menu
 
 Rectangle {
     id: root

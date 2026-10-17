@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import "Search.js" as Search
+import "../Search.js" as Search
 
 // A row's label text; the enclosing popup's `/` query is underlined in it.
 Text {

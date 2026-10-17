@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
 import qs.theme
+import qs.ui.effects
 
 // The style's frame stack: fill, glass, glow, shade, custom frame, inset, sheen, effects layer, scanlines and dither.
 Item {

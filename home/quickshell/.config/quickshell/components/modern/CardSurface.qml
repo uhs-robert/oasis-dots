@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import qs.components
+import qs.ui.effects
 
 // A card on a layered popup: a faint plate, raised with a highlight and the tab gradient when selected.
 Rectangle {

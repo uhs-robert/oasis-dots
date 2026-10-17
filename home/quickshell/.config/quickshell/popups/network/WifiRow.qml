@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Networking
-import qs.components
+import qs.ui.menu
 import qs.theme
 import qs.components.nes as Nes
 import qs.components.snes as Snes

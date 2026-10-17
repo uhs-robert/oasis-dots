@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
+import qs.ui.gauges
 
 // The style's hairline frame marks: a tick scale on the top or left edge, with corner crosses or a corner ring.
 Item {

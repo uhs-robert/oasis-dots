@@ -15,6 +15,9 @@ import qs.components.oasis as Oasis
 import qs.components.modern as Modern
 import qs.components.neovim as Neovim
 import qs.components.goldeneye as Goldeneye
+import qs.ui.effects
+import qs.ui.frames
+import qs.ui.gauges
 
 PanelWindow {
     id: root

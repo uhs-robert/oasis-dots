@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.services
-import qs.components
+import qs.ui.frames
 
 // Dimming around the selection, fallback target outlines, the selection frame and its size readout.
 Item {

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.components
+import qs.ui.effects
 import qs.theme
 import qs.services
 import "NesSprites.js" as NesSprites

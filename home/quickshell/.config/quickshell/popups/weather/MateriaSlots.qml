@@ -2,6 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.components
+import qs.ui.effects
+import qs.ui.menu
 import qs.theme
 import qs.services
 import "Materia.js" as Materia

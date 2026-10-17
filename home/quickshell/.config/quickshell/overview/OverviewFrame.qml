@@ -1,7 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
-import qs.components
+import qs.ui.effects
+import qs.ui.frames
+import qs.ui.menu
 import qs.theme
 import qs.components.neovim as Neovim
 

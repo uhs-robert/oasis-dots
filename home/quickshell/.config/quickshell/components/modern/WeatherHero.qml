@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.theme
-import qs.components
+import qs.ui.effects
 import qs.services
 
 // Current conditions as a large temperature beside the condition, today's low-to-high range bar,

@@ -2,6 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.components
+import qs.ui.effects
+import qs.ui.menu
 import qs.theme
 import qs.services
 

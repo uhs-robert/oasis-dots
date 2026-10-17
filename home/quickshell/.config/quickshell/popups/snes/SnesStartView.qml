@@ -1,5 +1,6 @@
 import QtQuick
 import qs.components
+import qs.ui.menu
 import qs.components.snes as Snes
 import qs.theme
 

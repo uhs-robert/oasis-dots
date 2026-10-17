@@ -1,5 +1,6 @@
 import QtQuick
 import qs.services
+import qs.ui
 
 // The hovered module's tooltip, dropped under its island in the popup frame.
 Popup {

@@ -4,7 +4,8 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Hyprland
 import Quickshell.Widgets
-import qs.components
+import qs.ui
+import qs.ui.menu
 import qs.theme
 import qs.services
 
