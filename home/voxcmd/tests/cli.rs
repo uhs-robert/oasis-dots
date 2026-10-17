@@ -24,13 +24,14 @@ fn stderr(output: &Output) -> String {
 
 /// (argv, subcommand named in the message, port item that implements it)
 const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
-    (&["run", "open", "firefox"], "run", "2.2"),
-    (&["explain", "open", "firefox"], "explain", "2.2"),
+    (&["run", "open", "firefox"], "run", "2.3"),
+    (&["explain", "--json", "open", "firefox"], "explain --json", "2.2b"),
     (
-        &["explain", "--json", "--window", "focused", "click", "close"],
-        "explain",
-        "2.2",
+        &["explain", "--window", "focused", "click", "close"],
+        "explain --window",
+        "2.5",
     ),
+    (&["explain", "--reply", "one"], "explain --reply", "2.4"),
     (&["reply", "--dry-run", "one"], "reply", "2.4"),
     (&["listen", "--start-only"], "listen", "2.4"),
     (&["stop"], "stop", "2.4"),
@@ -55,11 +56,10 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["log", "errors", "5", "--json"], "log errors", "2.6"),
     (&["timer", "ring", "Timer", "done"], "timer ring", "2.6"),
     (&["util", "notify", "info", "title", "body"], "util notify", "2.3"),
-    (&["util", "intents", "open"], "util intents", "2.2"),
     (
         &["util", "word-match", "--ignore", "the", "target"],
         "util word-match",
-        "2.2",
+        "2.2b",
     ),
     (&["internal", "watch", "--any", "args"], "internal watch", "2.4"),
     (&["internal", "settle"], "internal settle", "2.4"),
@@ -82,7 +82,7 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["_wake-confirm", "clip.wav"], "internal wake-confirm", "2.4"),
     (&["_chain-stop"], "internal chain-stop", "2.4"),
     // `--` ends the flags, so a phrase can start with a dash.
-    (&["run", "--", "-5", "degrees"], "run", "2.2"),
+    (&["run", "--", "-5", "degrees"], "run", "2.3"),
 ];
 
 #[test]
@@ -227,4 +227,78 @@ fn every_source_file_starts_with_a_module_doc_line() {
             file.display()
         );
     }
+}
+
+/// A config dir holding copies of the TOML fixtures, so `explain` needs no bash.
+fn toml_config(stems: &[&str]) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("integrations")).unwrap();
+    for stem in stems {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("tests/fixtures/integrations/{stem}.toml"));
+        std::fs::copy(source, dir.path().join(format!("integrations/{stem}.toml"))).unwrap();
+    }
+    std::fs::write(dir.path().join("intents.local"), "zap = zap, blast\n").unwrap();
+    dir
+}
+
+fn voxcmd_in(config: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_voxcmd"))
+        .args(args)
+        .env_clear()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("HOME", "/nonexistent")
+        .env("TZ", "America/New_York")
+        .env("LC_ALL", "C")
+        .env("VOXCMD_CONFIG_DIR", config)
+        .output()
+        .expect("the binary runs")
+}
+
+#[test]
+fn explain_prints_the_match_layer() {
+    let config = toml_config(&["media", "apps"]);
+    let output = voxcmd_in(config.path(), &["explain", "Cortana,", "volume", "up", "by", "10"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let text = stdout(&output);
+    assert!(
+        text.starts_with("transcript: Cortana, volume up by 10\nnormalized: volume up by 10\n"),
+        "{text}"
+    );
+    assert!(
+        text.contains("match: Media (media.toml) verb 5 (line 13) action=volume_up number=10\n"),
+        "{text}"
+    );
+    assert!(!text.contains("result:"), "{text}");
+
+    let text = stdout(&voxcmd_in(config.path(), &["explain", "mute", "toggle"]));
+    assert!(
+        text.contains("near miss: Media (media.toml) verb 8 (line 16) action=toggle_mute target= leftover=0\n"),
+        "{text}"
+    );
+}
+
+#[test]
+fn explain_with_an_unreadable_integration_is_a_usage_error() {
+    let config = toml_config(&[]);
+    std::fs::write(config.path().join("integrations/bad.toml"), "verbs = 3\n").unwrap();
+    let output = voxcmd_in(config.path(), &["explain", "volume", "up"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr(&output).starts_with("voxcmd: explain: "), "{}", stderr(&output));
+}
+
+#[test]
+fn util_intents_prints_the_forms_with_intents_local() {
+    let config = toml_config(&[]);
+    let output = voxcmd_in(config.path(), &["util", "intents", "close"]);
+    assert_eq!(
+        (output.status.code(), stdout(&output)),
+        (Some(0), "close\nquit\nkill\n".to_string())
+    );
+    assert_eq!(
+        stdout(&voxcmd_in(config.path(), &["util", "intents", "zap"])),
+        "zap\nblast\n"
+    );
+    let output = voxcmd_in(config.path(), &["util", "intents", "nope"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(stderr(&output), "voxcmd: util intents: no intent named \"nope\"\n");
 }

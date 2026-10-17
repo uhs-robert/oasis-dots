@@ -1,0 +1,102 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Test fixture: the worked conversion of the bash integration in voxcmd-port 1.1 (section 3), not installed.
+# Opens installed apps and focuses, moves, resizes or closes Hyprland windows.
+name = "Apps"
+# App names and window classes are short, so a fuzzy hit on scattered letters would run the wrong thing.
+target_match = "words"
+# "close the firefox window" is "close firefox"; a target of only these words matches nothing (Keybinds gets it).
+match_ignore_words = ["window", "app", "application", "program"]
+# Only close labels read "<app> window: <title>", so only closing asks first.
+confirm_labels = ['^[^:]+ window(:|$)']
+
+define = { move = '(move|send|put)', swap = '(swap( places)?|switch places)', names_window = '({open}|{focus}|{close}|{move}|{swap})' }
+
+verbs = [
+  # Phrases another integration owns; first match per integration counts, so these shadow the verbs below.
+  { action = "yield", match = '{names_window} (.+ )?(sessions?|agents?)( .+)?' },              # sessions, keeptabs
+  { action = "yield", match = '({open}( a)? new|{open}|{focus}) (my|the) calendar' },          # calendar opens Google Calendar
+  { action = "yield", match = '{open} .+ (in|on|with) (firefox|the browser|a new tab|new tab)', requires = "firefox" },
+  { action = "open_new", match = '{open} (a )?new {target}' },
+  { action = "open",     match = '{open} {target}' },
+  { action = "swap",     match = '{swap} {target}' },
+  { action = "focus",    match = '{focus} {target}' },
+  { action = "move",     match = '{move} {window:text} (to|onto|on) (the )?(workspace|desktop) {workspace:position}',
+    label = '{label} to workspace {workspace}' },
+  { action = "move",     match = '{move} {window:text} to (the )?special workspace {special:text}',
+    label = '{label} to special workspace {special}' },
+  { action = "close",    match = '{close} {target}' },
+  { action = "resize",   match = '(resize|{set}) {target}' },
+  { action = "grow",     match = '(grow|enlarge|increase|expand|extend|raise|add) {target}' },
+  { action = "shrink",   match = '(shrink|decrease|reduce|lower) {target}' },
+  { action = "resize_spoken_size", match = '[0-9]+( [0-9]{3})?( (by|x) |x)[0-9]+( [0-9]{3})?( pixels?| px)?' },
+]
+
+examples = ["open <app>", "open a new <app>", "focus <window>", "move <window> to workspace <number>",
+  "move <window> to the third workspace", "move <window> to special workspace <name>", "swap this window with <window>",
+  "close <window>", "resize the window to <width> by <height>", "make it <number> pixels tall", "set the width to <number>",
+  "make it wider by <number>", "increase the width by <number>", "decrease the height by <number>",
+  "grow horizontally by <number>", "shrink it by <number> pixels", "resize <window> to <width> by <height>"]
+
+# An app that already has a window is focused rather than started again; "open new" always starts one. Opening returns at
+# the fork, so a sequence waits for the app's window to have focus (or for focus to move, for an app whose class is not
+# its desktop id).
+[actions.open]
+candidates = 'yield_if_keybind open "$VOXCMD_ARG_TARGET"; app_candidates'
+run = 'open_app "$VOXCMD_ID"'
+silent = true
+wait_hook = 'app_window_focused "$VOXCMD_ID" || active_window_changed'
+
+[actions.open_new]
+candidates = 'yield_if_keybind open_new "$VOXCMD_ARG_TARGET"; app_candidates'
+run = 'start_app "$VOXCMD_ID"'
+silent = true
+wait = "active_window_changed"
+
+[actions.focus]
+candidates = 'yield_if_keybind focus "$VOXCMD_ARG_TARGET"; window_candidates focus'
+run = 'focus_window "$VOXCMD_ID"'
+silent = true
+wait = "active_window_is_id"
+
+[actions.close]
+candidates = 'yield_if_keybind close "$VOXCMD_ARG_TARGET"; window_candidates close'
+run = 'close_window "$VOXCMD_ID"'
+wait = "window_gone"
+
+# The workspace rides in VOXCMD_ARG_WORKSPACE or VOXCMD_ARG_SPECIAL; only the window part is matched. The move verbs are
+# one word each, so the phrase after the first word is today's target for the keybind check.
+[actions.move]
+candidate_arg = "window"
+candidates = 'yield_if_keybind move "${VOXCMD_PHRASE#* }"; window_candidates move'
+run = 'move_window "$VOXCMD_ID"'
+
+[actions.swap]
+candidates = 'yield_if_keybind swap "$VOXCMD_ARG_TARGET"; swap_candidates'
+run = 'swap_window "$VOXCMD_ID"'
+silent = true
+
+[actions.resize]
+candidates = 'resize_candidates resize'
+run = 'resize_option "$VOXCMD_ID"'
+silent = true
+
+[actions.grow]
+candidates = 'resize_candidates grow'
+run = 'resize_option "$VOXCMD_ID"'
+silent = true
+
+[actions.shrink]
+candidates = 'resize_candidates shrink'
+run = 'resize_option "$VOXCMD_ID"'
+silent = true
+
+# The verb has no target to carry the size, so it is read from the transcript.
+[actions.resize_spoken_size]
+run = 'resize_active_to_spoken_size "$VOXCMD_RAW_TRANSCRIPT"'
+silent = true
+
+# Tab on these examples in Voice Help lists every installed app; picking one opens it like "open <app>".
+# Not the candidates of "open": their keybind check would read the empty target as a phrase.
+[[help]]
+action = "open"
+list = "help_apps"

@@ -1,0 +1,3 @@
+# Test fixture for gen-match-goldens.sh: intents.local lines append forms to an intent and declare a new one.
+open = fire up, spin up
+zap = zap, blast

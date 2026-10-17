@@ -1,16 +1,14 @@
 //! spoken text: normalizing a transcript, parsing numbers, positions, times and monitor words, the wake word
 //!
-//! Only `speech` has a CLI surface so far (`util speech`); the rest is library code the router uses from 2.2.
+//! Only `speech` has a CLI surface (`util speech`); the rest is library code the router uses.
 #[allow(dead_code, reason = "used by the router from 2.2")]
 pub mod monitors;
-#[allow(dead_code, reason = "used by the router from 2.2")]
 pub mod normalize;
+pub mod speech;
 #[allow(
     dead_code,
-    reason = "positions and ordinals are used by the router and monitors from 2.2"
+    reason = "the trailing split, heard wake words and correction tails are used by the router from 2.2b and 2.4"
 )]
-pub mod speech;
-#[allow(dead_code, reason = "used by the router from 2.2")]
 pub mod wake_word;
 
 /// The bash functions this module replaces, run over a corpus once (tests/fixtures/gen-speech-goldens.sh) and compared

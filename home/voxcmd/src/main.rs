@@ -2,6 +2,8 @@
 mod cli;
 mod config;
 mod exit;
+mod paths;
+mod route;
 mod text;
 
 use clap::{CommandFactory, FromArgMatches};
@@ -60,8 +62,8 @@ fn version() -> &'static str {
 fn dispatch(command: Command) -> Result<Option<String>, CliError> {
     let later = |subcommand: &str, phase_item: &str| Err(CliError::not_implemented(subcommand, phase_item));
     match command {
-        Command::Run(_) => later("run", "2.2"),
-        Command::Explain(_) => later("explain", "2.2"),
+        Command::Run(_) => later("run", "2.3"),
+        Command::Explain(args) => route::trace::run(args).map(Some),
         Command::Reply(_) => later("reply", "2.4"),
         Command::Listen { .. } => later("listen", "2.4"),
         Command::Stop => later("stop", "2.4"),
@@ -80,8 +82,8 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Log(LogCommand::Errors { .. }) => later("log errors", "2.6"),
         Command::Timer(TimerCommand::Ring { .. }) => later("timer ring", "2.6"),
         Command::Util(UtilCommand::Notify { .. }) => later("util notify", "2.3"),
-        Command::Util(UtilCommand::Intents { .. }) => later("util intents", "2.2"),
-        Command::Util(UtilCommand::WordMatch { .. }) => later("util word-match", "2.2"),
+        Command::Util(UtilCommand::Intents { name }) => config::intents::run(&name).map(Some),
+        Command::Util(UtilCommand::WordMatch { .. }) => later("util word-match", "2.2b"),
         Command::Util(UtilCommand::Speech(speech)) => text::speech::run(speech).map(Some),
         Command::Util(UtilCommand::VoiceEnv { key }) => config::voice_env::run(&key).map(Some),
         Command::Internal(InternalCommand::Watch(_)) => later("internal watch", "2.4"),
