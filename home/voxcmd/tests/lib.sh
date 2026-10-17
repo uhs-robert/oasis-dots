@@ -69,11 +69,17 @@ watchers_gone() { logged_processes_gone '.* listen: recording started, watcher \
 ended_hooks_gone() { logged_processes_gone '.* session: ended hook \([0-9]*\) runs$'; }
 
 # link_voxcmd_shim <package copy>: the new CLI for a copied package, whose stubbed siblings sit beside its own bash voxcmd.
-# A suite then runs <copy>/tests/bin/voxcmd, which execs that copy's voxcmd by its real path. Only VOXCMD_BIN=bash exists
-# so far (sandbox.sh refuses the rest).
+# A suite then runs <copy>/tests/bin/voxcmd. With VOXCMD_BIN=bash (the default) that is the shim, which execs the copy's
+# voxcmd by its real path; with VOXCMD_BIN=rs it is a link to this checkout's Rust build, which sandbox.sh made.
 link_voxcmd_shim() {
+  local tests_dir
+  tests_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
   mkdir -p "$1/tests/bin"
-  ln -sf "$(dirname "${BASH_SOURCE[0]}")/bin/voxcmd" "$1/tests/bin/voxcmd"
+  if [ "${VOXCMD_BIN:-bash}" = rs ]; then
+    ln -sf "$tests_dir/../target/release/voxcmd" "$1/tests/bin/voxcmd"
+  else
+    ln -sf "$tests_dir/bin/voxcmd" "$1/tests/bin/voxcmd"
+  fi
 }
 
 root=$(mktemp -d)

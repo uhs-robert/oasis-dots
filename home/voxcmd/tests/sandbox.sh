@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Runs a command with voxcmd cut off from the live desktop: its own runtime dir, a config dir holding this checkout's
 # integrations and replacements, this checkout's voxcmd first on PATH, and stubs in place of everything that acts.
-# `voxcmd` there is the new CLI: VOXCMD_BIN=bash (the default, and for now the only value) reaches the bash voxcmd
-# through the shim in tests/bin.
+# `voxcmd` there is the new CLI: VOXCMD_BIN=bash (the default) reaches the bash voxcmd through the shim in tests/bin;
+# VOXCMD_BIN=rs builds this checkout's Rust crate (cargo build --release, once per sandbox start) and puts its binary
+# first on PATH instead. The suites are expected to fail under rs until the router lands in it (voxcmd-port 2.2).
 #
 #   home/voxcmd/tests/sandbox.sh <command...>
 #   home/voxcmd/tests/sandbox.sh voxcmd explain "close firefox"
@@ -111,11 +112,18 @@ set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 package_dir=$(dirname "$tests_dir")
-# VOXCMD_BIN=rs (a build of this checkout) arrives with the Rust crate.
-[ "${VOXCMD_BIN:-bash}" = bash ] || {
-  echo "sandbox: VOXCMD_BIN=$VOXCMD_BIN is not supported yet; only bash is" >&2
+case "${VOXCMD_BIN:-bash}" in
+bash) voxcmd_path_dirs="$tests_dir/bin:$package_dir/.local/bin" ;;
+rs)
+  # A nested sandbox (run.sh running a sibling suite) has the build already.
+  [ -n "${SANDBOX_DIR:-}" ] || cargo build --release --quiet --manifest-path "$package_dir/Cargo.toml" >&2 || exit 1
+  voxcmd_path_dirs="$package_dir/target/release"
+  ;;
+*)
+  echo "sandbox: VOXCMD_BIN=$VOXCMD_BIN is not bash or rs" >&2
   exit 2
-}
+  ;;
+esac
 [ "$#" -gt 0 ] || {
   sed -n '2,/^set -euo/{/^set -euo/d;s/^# \{0,1\}//;p}' "$0" >&2
   exit 2
@@ -517,7 +525,7 @@ export SANDBOX_REAL_HOME="$HOME"
 export HOME="$sandbox_dir/home"
 export XDG_STATE_HOME="$sandbox_dir/home/.local/state"
 export XDG_CACHE_HOME="$sandbox_dir/home/.cache"
-export PATH="$stub_dir:$tests_dir/bin:$package_dir/.local/bin:$PATH"
+export PATH="$stub_dir:$voxcmd_path_dirs:$PATH"
 export XDG_RUNTIME_DIR="$sandbox_dir/runtime"
 export XDG_CONFIG_HOME="$config_home"
 export VOXCMD_CONFIG_DIR="$config_home/voxcmd"
