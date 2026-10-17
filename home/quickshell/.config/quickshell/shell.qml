@@ -16,6 +16,8 @@ import qs.features.power
 import qs.features.clock
 import qs.features.weather
 import qs.features.launcher
+import qs.features.screenshot
+import qs.features.screen_select
 
 ShellRoot {
     id: root

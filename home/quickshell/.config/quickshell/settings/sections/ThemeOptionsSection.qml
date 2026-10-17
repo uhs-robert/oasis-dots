@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.settings
+import qs.features.screenshot
 
 RowsSection {
     id: root

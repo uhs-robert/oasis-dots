@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.ui.frames
-import qs.components.picker
+import qs.features.screen_select
 import qs.theme
 import qs.services
 
