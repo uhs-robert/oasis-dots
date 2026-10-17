@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import qs.styles.ps2.widgets as Ps2
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.theme
-import qs.services
 import qs.styles.snes.popups as Snes
 import qs.ui.gauges
 
