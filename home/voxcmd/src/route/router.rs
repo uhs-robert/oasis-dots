@@ -553,7 +553,6 @@ impl<'c> Router<'c> {
         }
         let mut options = Vec::new();
         let mut hooks = Vec::new();
-        self.hooks.reuse_any_target(true);
         let resolved_all = self.resolve(
             &pending,
             Texts {
@@ -561,7 +560,6 @@ impl<'c> Router<'c> {
                 raw_transcript: raw,
             },
         );
-        self.hooks.reuse_any_target(false);
         for resolved in resolved_all {
             options.extend(
                 resolved
