@@ -33,7 +33,7 @@ just update-repos     # pull non-linked clones in repos/
 ./install.sh --server # headless install, no desktop packages/configs/services
 ```
 
-`just check` runs everything; the header of `lib/check.sh` lists the steps and how `--changed`, the heavy-step slots and the pass records work.
+`just check` runs everything; the header of `lib/check.sh` lists the steps and how `--changed`, the heavy-step slots and the pass records work. `lib/check.sh` is a shim for `lib/check/runner.py` (stdlib Python 3.11+, always run with `-B`). A new step, or a path that should reach one, goes in the tables of `lib/check/scopes.py`; `lib/check/keys.py` builds the pass-record keys byte for byte as the shell runner did, since branches cut before the port still run it against the same records.
 
 Formatting scope is deliberately narrow — whitespace and stylua checks only cover `install.sh`, `uninstall.sh`, `justfile`, `lib/`, `packages/`, `home/hypr/`, and shfmt covers the Quickshell audio importers (`scripts/*-audio`, `scripts/lib/`) and the agent tooling's tracked shell scripts under `.claude/` and `home/claude/.claude/` (skills, hooks, `status.d`; written here, not vendored). Everything else under `home/` is vendored or hand-maintained upstream config; do not reformat it.
 
