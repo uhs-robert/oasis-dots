@@ -1,0 +1,11 @@
+# Extra cases for the differential test: comments, blanks, odd spacing and punctuation, an empty replacement.
+
+   # an indented comment
+not a pair
+  Pre-Size   =   Resize
+um =
+volume   up = louder
+louder = volume up
+cortana's = cortana
+= nothing
+ok google = cortana
