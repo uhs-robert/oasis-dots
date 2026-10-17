@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
+import qs.features.display
 import "../Choices.js" as Choices
 import qs.settings
 

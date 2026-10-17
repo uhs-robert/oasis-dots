@@ -3,7 +3,8 @@ import QtQuick.Layouts
 import qs.components
 import qs.theme
 import qs.services
-import "../../services/DisplayLayout.js" as DisplayLayout
+import qs.features.display
+import "../../features/display/DisplayLayout.js" as DisplayLayout
 import qs.settings
 
 RowsSection {

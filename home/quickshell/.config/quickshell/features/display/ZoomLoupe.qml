@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import qs.services
 import qs.features.screen_select
 
 // One per screen: zoom mode's live loupe, shown on the monitor under the pointer.
