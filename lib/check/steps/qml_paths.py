@@ -363,14 +363,16 @@ def git_listing(repo, pathspecs):
 
 def make_ignored(repo):
     """A cached predicate on repository paths. A folder-only ignore pattern matches only the path with a trailing slash
-    when nothing exists there (a clean checkout), so both spellings are asked."""
+    when nothing exists there (a clean checkout), so both spellings are asked. Each is its own git call: git aborts the
+    whole call, answering nothing, on the slash spelling of a path that is a symlink (a machine's linked-in private file)."""
     cache = {}
 
     def ignored(path):
         if path not in cache:
-            cache[path] = bool(subprocess.run(
-                ("git", "check-ignore", "--", path, path + "/"), cwd=repo, stdout=subprocess.PIPE
-            ).stdout.strip())
+            cache[path] = any(
+                subprocess.run(("git", "check-ignore", "--", spelling), cwd=repo, stdout=subprocess.PIPE).stdout.strip()
+                for spelling in (path, path + "/")
+            )
         return cache[path]
 
     return ignored
