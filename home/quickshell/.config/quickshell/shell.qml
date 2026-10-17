@@ -6,8 +6,7 @@ import qs.features.bar
 import qs.components
 import qs.components.transitions
 import qs.lock
-import qs.overview
-import qs.tmux_overview
+import qs.features.overview
 import qs.popups
 import qs.services
 import qs.theme

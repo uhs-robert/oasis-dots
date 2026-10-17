@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # Names monitors for voice: by position ("left", "top right", "center"), by slot ("monitor two", "the second screen", "the
 # 2nd display", the one SUPER + CTRL + 2 focuses) or as the built-in panel ("laptop"). Sourced by overview.sh and monitors.sh
-# (the integration). The position words come from monitor-places.jq, which mirrors the Quickshell overview's own rule (overview/Voice.js) so the two never disagree.
+# (the integration). The position words come from monitor-places.jq, which mirrors the Quickshell overview's own rule (features/overview/Voice.js) so the two never disagree.
 
 monitors_share_dir="${BASH_SOURCE[0]%/*}"
 # shellcheck source-path=SCRIPTDIR source=spoken-position.sh

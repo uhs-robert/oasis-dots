@@ -4,7 +4,7 @@ import qs.ui.frames
 import qs.features.screen_select
 import qs.theme
 import qs.services
-import "../theme/Watch.js" as W
+import "../../theme/Watch.js" as W
 
 // The GoldenEye aiming crosshair on the overview's selected window's centre, with thin red corner brackets that step closed when the selection moves and only on a window much larger than the crosshair.
 Item {
