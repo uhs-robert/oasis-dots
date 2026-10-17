@@ -29,7 +29,9 @@ fn is_filler(word: &str) -> bool {
     FILLER.contains(&word)
 }
 
-const NUMBER_SLOT: &str = "#number";
+/// A number slot's word is this prefix and the placeholder's name, so that a placement says which placeholder a digit
+/// word filled.
+const NUMBER_SLOT_PREFIX: &str = "#number:";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NearMiss {
@@ -37,6 +39,9 @@ pub struct NearMiss {
     pub has_target: bool,
     /// Words of the phrase no slot took, the target's included.
     pub leftover: usize,
+    /// The digit word each number placeholder took, by placeholder name; one that sat in an alternative the best
+    /// placement did not use is absent.
+    pub numbers: Vec<(String, String)>,
 }
 
 /// One slot: its alternatives, each the words it needs.
@@ -159,6 +164,13 @@ impl Reader<'_> {
         Some(placeholder.kind)
     }
 
+    fn placeholder_name(&self, group: &ast::Group) -> String {
+        match &group.kind {
+            ast::GroupKind::CaptureName { name, .. } => name.name.clone(),
+            _ => String::new(),
+        }
+    }
+
     /// The slots of a sequence, up to the end of its group or alternative.
     fn sequence(&mut self, items: &[Ast], depth: usize) -> Result<Vec<Slot>, Unreadable> {
         let mut slots: Vec<Slot> = Vec::new();
@@ -182,7 +194,12 @@ impl Reader<'_> {
                     }
                     match self.placeholder(group) {
                         Some(PlaceholderType::Text) if depth == 0 && !self.has_target => self.has_target = true,
-                        Some(PlaceholderType::Number) => slots.push(vec![vec![NUMBER_SLOT.to_string()]]),
+                        Some(PlaceholderType::Number) => {
+                            slots.push(vec![vec![format!(
+                                "{NUMBER_SLOT_PREFIX}{}",
+                                self.placeholder_name(group)
+                            )]]);
+                        }
                         _ => return Err(Unreadable),
                     }
                 }
@@ -255,6 +272,8 @@ struct Search<'s> {
     phrase: &'s [&'s str],
     has_target: bool,
     used: Vec<bool>,
+    /// Number placeholders and the phrase word each holds in the placement being tried.
+    numbers: Vec<(String, usize)>,
     best: Option<NearMiss>,
 }
 
@@ -268,6 +287,7 @@ impl<'s> Search<'s> {
             phrase,
             has_target,
             used: vec![false; phrase.len()],
+            numbers: Vec::new(),
             best: None,
         };
         search.solve(0);
@@ -294,14 +314,21 @@ impl<'s> Search<'s> {
                 continue;
             }
             let spoken = self.phrase[position];
-            let fits = if alternative[word] == NUMBER_SLOT {
+            let number = alternative[word].strip_prefix(NUMBER_SLOT_PREFIX);
+            let fits = if number.is_some() {
                 !spoken.is_empty() && spoken.bytes().all(|b| b.is_ascii_digit())
             } else {
                 spoken == alternative[word]
             };
             if fits {
                 self.used[position] = true;
+                if let Some(name) = number {
+                    self.numbers.push((name.to_string(), position));
+                }
                 self.place(slot, alternative, word + 1);
+                if number.is_some() {
+                    self.numbers.pop();
+                }
                 self.used[position] = false;
             }
         }
@@ -335,6 +362,11 @@ impl<'s> Search<'s> {
             target,
             has_target: self.has_target,
             leftover: unused.len(),
+            numbers: self
+                .numbers
+                .iter()
+                .map(|(name, position)| (name.clone(), self.phrase[*position].to_string()))
+                .collect(),
         });
     }
 }
@@ -362,7 +394,8 @@ mod tests {
             NearMiss {
                 target: "firefox".into(),
                 has_target: true,
-                leftover: 1
+                leftover: 1,
+                numbers: Vec::new(),
             }
         );
     }

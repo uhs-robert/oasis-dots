@@ -253,6 +253,40 @@ fn a_phrase_with_its_words_in_the_wrong_order_offers_near_misses_through_the_pic
 }
 
 #[test]
+fn a_near_miss_carries_the_number_it_read() {
+    let explain = explain("10 close", &CannedHooks::default());
+    let step = only_step(&explain);
+    let act = step
+        .options
+        .iter()
+        .find(|option| option.action == "act")
+        .unwrap_or_else(|| panic!("{}", explain.text()));
+    assert_eq!(act.env["VOXCMD_ARG_NUMBER"], "10");
+}
+
+#[test]
+fn a_yield_verb_is_not_offered_as_a_near_miss() {
+    let mut config = config();
+    config.integrations[0].verbs.push(crate::config::schema::Verb {
+        action: "yield".into(),
+        pattern: "open the calendar".into(),
+        line: None,
+        requires: None,
+    });
+    let hooks = CannedHooks::default();
+    let explain = explain_phrase(&Router::new(&config, &hooks), "calendar open");
+    assert!(
+        explain
+            .steps
+            .iter()
+            .flat_map(|step| &step.options)
+            .all(|option| option.action != "yield"),
+        "{}",
+        explain.text()
+    );
+}
+
+#[test]
 fn a_sequence_routes_every_step_and_says_what_each_waits_for() {
     let explain = snapshot!("sequence", "next track and then volume up", CannedHooks::default());
     assert_eq!(explain.steps.len(), 2);
