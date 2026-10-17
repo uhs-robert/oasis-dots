@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.theme
 import qs.services
+import qs.features.power
 import "Kinds.js" as Kinds
 
 // Owns the displayed style: a change covers the old look, swaps Style.name while covered, then reveals the new one.

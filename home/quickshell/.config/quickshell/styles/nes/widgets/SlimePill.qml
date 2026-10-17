@@ -2,6 +2,7 @@ import QtQuick
 import qs.theme
 import qs.services
 import qs.ui.effects
+import qs.features.power
 import "Slimes.js" as Slimes
 
 // A Dragon Quest slime leading a workspace pill: grey metal slime when empty, blue with apps, a hopping king on the focused one. The workspace's icons sit to its right.

@@ -6,6 +6,7 @@ import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.services
+import qs.features.power
 import qs.popups.start as Start
 import qs.styles.snes.popups as Snes
 import qs.styles.ps2.widgets as Ps2

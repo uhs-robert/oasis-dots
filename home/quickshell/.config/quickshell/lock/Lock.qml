@@ -10,6 +10,7 @@ import qs.theme
 // Skins load by URL; importing the folder lets Quickshell register the component folders they import.
 import qs.lock.skins
 import qs.lock.skins.ui
+import qs.features.power
 
 // The session lock: one surface per screen, unlocked only by a PAM success.
 Singleton {

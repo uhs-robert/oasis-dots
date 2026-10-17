@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.ui.effects
 import qs.theme
 import qs.services
+import qs.features.power
 import "../../styles/nes/widgets/Slimes.js" as Slimes
 
 // The hours as a Dragon Quest field map: a stepped line in a command window with a king slime hopping on the cursor hour, the hour's stats in a message window above.

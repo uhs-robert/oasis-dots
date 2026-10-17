@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.theme
+import qs.features.power
 
 // One shared cava process for every screen's border strip, running only while media is
 // playing on AC power. Parses "n;n;...;" stdout lines into a 0..1 levels array.

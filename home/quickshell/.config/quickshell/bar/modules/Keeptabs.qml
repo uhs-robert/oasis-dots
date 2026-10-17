@@ -4,6 +4,7 @@ import Quickshell
 import qs.theme
 import qs.services
 import qs.components
+import qs.features.power
 
 BarModule {
     id: root
