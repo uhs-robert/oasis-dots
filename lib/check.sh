@@ -53,6 +53,8 @@
 #   voxcmd-wake              the wake word listener (run-wake.sh). Needs jq, fzf.
 #   voxcmd-firefox           the Firefox extension and its native-messaging host (run-firefox-extension.sh). Needs jq, fzf;
 #                            the extension's script runs under node when present.
+#   voxcmd-rust              the voxcmd crate: cargo fmt --check, clippy -D warnings, cargo test (lib/check/steps/voxcmd-rust.sh).
+#                            Takes a heavy slot but runs in the pool. Needs cargo.
 #   calendar-sync            home/calendar/tests/run.sh. Runs only when python-icalendar and python-recurring-ical-events
 #   calendar-sync-syntax     import; the syntax check of calendar-sync always runs.
 #   firefox-policy           lib/install/tests/firefox-policy.sh, the Firefox policy installer. Needs jq.
@@ -70,8 +72,8 @@
 #   conflicts, git-diff-check  and `git diff --check HEAD`.
 #   ignored-integrations     no voxcmd integration or replacement file is one git ignores (lib/check/steps/ignored-integrations.sh).
 #
-# Slots and records: only the voxcmd steps are limited, one after another in a slot of their own (they are timing-sensitive)
-# and each holding a CHECK_HEAVY_SLOTS slot; the cheap steps take none. A step's pass is recorded only when its files did not
+# Slots and records: only the voxcmd steps and voxcmd-rust hold a CHECK_HEAVY_SLOTS slot, and the voxcmd suites also run one after another
+# in a lane of their own (they are timing-sensitive); the cheap steps take none. A step's pass is recorded only when its files did not
 # change while it ran. lib/check/passed.sh keeps the records in the repository's common git dir, shared by every worktree.
 # On INT or TERM the running steps and their children are ended.
 #

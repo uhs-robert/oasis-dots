@@ -43,6 +43,15 @@ PATH_SCOPES = [
     ("system/etc/greetd/quickshell/*", "qml"),
     ("home/quickshell/tests/*", "node"),
     ("home/quickshell/*", "qml node"),
+    ("lib/check/steps/voxcmd-rust.sh", "rust"),
+    # These also reach the voxcmd suites, which run against the checkout's build under VOXCMD_BIN=rs. An integration
+    # file reaches the crate through tests/integrations.rs.
+    ("home/voxcmd/src/*", "rust voxcmd"),
+    ("home/voxcmd/Cargo.*", "rust voxcmd"),
+    ("home/voxcmd/rustfmt.toml", "rust voxcmd"),
+    ("home/voxcmd/tests/*.rs", "rust voxcmd"),
+    ("home/voxcmd/tests/fixtures/*", "rust voxcmd"),
+    ("home/voxcmd/.config/voxcmd/integrations/*", "rust voxcmd"),
     ("home/voxcmd/*", "voxcmd"),
     ("extras/voxcmd-firefox/*", "voxcmd"),
     # The installer and the justfile call it, but those already run everything.
@@ -104,6 +113,7 @@ STEPS = [
     Step("voxcmd-calendar", "voxcmd", "bash ./home/voxcmd/tests/run-calendar.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-wake", "voxcmd", "bash ./home/voxcmd/tests/run-wake.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-firefox", "voxcmd", "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxcmd-rust", "rust", "sh ./lib/check/steps/voxcmd-rust.sh"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh"),
     Step("firefox-policy", "policy", "bash ./lib/install/tests/firefox-policy.sh", ("jq",), skip_reason="the firefox policy test needs jq"),
