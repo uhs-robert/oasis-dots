@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import qs.features.screenshot
 
 // State for zoom mode: a live loupe at the pointer, or the compositor's full-screen zoom.
 Singleton {
