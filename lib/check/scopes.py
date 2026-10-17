@@ -31,6 +31,10 @@ PATH_SCOPES = [
     (".claude/check-commands", "all"),
     ("lib/check/steps/lua.sh", "lua"),
     (".luacheckrc", "lua"),
+    # The files outside the Quickshell tree that OUTSIDE_REFS in lib/check/steps/qml_paths.py names, ahead of their folders.
+    ("home/hypr/.config/hypr/scripts/lock-screen.sh", "lua qml"),
+    ("home/voxcmd/.local/bin/voxcmd-alarm", "voxcmd qml"),
+    ("home/voxcmd/tests/run-monitors.sh", "voxcmd qml"),
     ("home/hypr/*", "lua"),
     # Ahead of the greeter's QML entry.
     ("system/etc/greetd/*.lua", "lua qml"),
@@ -38,6 +42,7 @@ PATH_SCOPES = [
     ("lib/common/greeter-files.sh", "qml ship loader"),
     ("lib/check/steps/qml.py", "qml"),
     ("lib/check/qml_imports.py", "qml"),
+    ("lib/check/steps/qml_paths.py", "qml"),
     ("lib/check/steps/lock-skins.sh", "qml"),
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),
@@ -46,7 +51,7 @@ PATH_SCOPES = [
     ("home/quickshell/*.frag", "shaders"),
     ("home/quickshell/*.frag.qsb", "shaders"),
     ("system/etc/greetd/quickshell/*", "qml"),
-    ("home/quickshell/tests/*", "node"),
+    ("home/quickshell/tests/*", "node qml"),
     ("home/quickshell/*", "qml node"),
     ("lib/check/steps/voxcmd-rust.sh", "rust"),
     # These also reach the voxcmd suites, which run against the checkout's build under VOXCMD_BIN=rs. An integration
@@ -133,6 +138,7 @@ STEPS = [
     Step("shfmt", "shell", 'status=0; cat "$CHECK_LOGS/plain.fmt.list" "$CHECK_LOGS/sourcing.fmt.list" | grep . | xargs -r shfmt -i 2 -d || status=1; [ ! -s "$CHECK_LOGS/agent.fmt.list" ] || xargs shfmt -i 2 -d <"$CHECK_LOGS/agent.fmt.list" || status=1; exit $status', ("shfmt",), skip_reason="shfmt not installed"),
     Step("stylua", "lua", "stylua --respect-ignores --check home/hypr/.config/hypr", ("stylua",), skip_reason="stylua not installed"),
     Step("luacheck", "lua", "sh ./lib/check/steps/lua.sh"),
+    Step("qml-paths", "qml", "python3 -B ./lib/check/steps/qml_paths.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.

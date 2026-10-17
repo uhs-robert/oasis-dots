@@ -248,7 +248,7 @@ Singleton {
             }
 
             readonly property FolderListModel legacy: FolderListModel {
-                folder: root.games[game_dir.modelData].legacy_dir || Qt.resolvedUrl("../sounds/none")
+                folder: root.games[game_dir.modelData].legacy_dir || Qt.resolvedUrl("../sounds/none") // qs-path: optional "none" is the no-pack sentinel, never a folder
                 nameFilters: ["*.wav", "*.ogg", "*.mp3"]
                 showDirs: false
             }

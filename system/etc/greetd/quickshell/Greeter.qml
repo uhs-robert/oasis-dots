@@ -22,7 +22,7 @@ Singleton {
         printErrors: false
     }
     property FileView settings_file: FileView {
-        path: Quickshell.shellDir + "/greeter.json"
+        path: Quickshell.shellDir + "/greeter.json" // qs-path: optional greeter-data writes it at sync time
         blockLoading: true
         printErrors: false
     }

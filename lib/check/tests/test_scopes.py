@@ -26,13 +26,19 @@ CASES = [
     ("lib/check/tests/test_keys.py", "checkscope"),
     ("lib/check/tests/scope.sh", "checkscope"),
     ("lib/check/steps/qml.py", "checkscope qml"),
+    ("lib/check/qml_imports.py", "checkscope qml"),
+    ("lib/check/steps/qml_paths.py", "checkscope qml"),
     ("lib/check/steps/lua.sh", "checkscope lua"),
     ("lib/check/steps/symlinks.sh", "checkscope"),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.
     ("system/etc/greetd/quickshell/init.lua", " lua qml"),
     ("system/etc/greetd/quickshell/Greeter.qml", " qml"),
     ("system/etc/greetd/config.toml", " lua"),
-    ("home/quickshell/tests/notification_markup.js", " node"),
+    ("home/quickshell/tests/notification_markup.js", " node qml"),
+    # The consumers OUTSIDE_REFS in lib/check/steps/qml_paths.py names reach the qml scope beside their own.
+    ("home/hypr/.config/hypr/scripts/lock-screen.sh", " lua qml"),
+    ("home/voxcmd/.local/bin/voxcmd-alarm", " voxcmd qml"),
+    ("home/voxcmd/tests/run-monitors.sh", " voxcmd qml"),
     ("home/quickshell/.config/quickshell/shell.qml", " qml node"),
     # Shaders and their compiled output reach only the shader step, not QML.
     ("home/quickshell/.config/quickshell/components/scanlines.frag", " shaders"),
