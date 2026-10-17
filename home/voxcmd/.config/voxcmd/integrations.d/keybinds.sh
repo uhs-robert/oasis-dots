@@ -77,8 +77,11 @@ confirm_labels=(
   '\b(suspend|hibernate|sleep)\b'
   '^lock\b'
   '\block (screen|session)\b'
-  # Not the Delete submaps, whose entry deletes nothing.
-  '^(?!Submap: ).*\bdelete\b'
+  # Not the Delete submaps, whose entry deletes nothing: "delete" in a label that does not start with "Submap: ". Spelled
+  # without look-around, which the Rust router's regex engine lacks: the first alternatives are a label starting with
+  # "delete" (the prefix test below would eat its first letter) or with "Submap:delete", then one that differs from
+  # "submap: " at its first differing character.
+  '^delete\b|^submap:delete\b|^(?:[^s\n]|s[^u\n]|su[^b\n]|sub[^m\n]|subm[^a\n]|subma[^p\n]|submap[^:\n]|submap:[^ \n]).*\bdelete\b'
   '\bclear\b'
 )
 
