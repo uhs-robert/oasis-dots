@@ -2,7 +2,24 @@
 # PreToolUse(Bash): route PR merges through ship-batch, which also cleans up and leaves a running test bar alone.
 set -u
 cmd=$(jq -r '.tool_input.command // empty')
-[[ $cmd =~ gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|$) ]] || exit 0
 
-reason="Blocked: merge PRs with \`.claude/skills/ship-batch/ship-batch.sh <pr>...\` (in merge order), not \`gh pr merge\`. It rebase-merges, rebases stacked PRs, removes merged worktrees and branches, pulls main, runs \`just check\`, and skips the bar restart while a test bar is running. Load the ship-batch skill for details."
+# merge-prs.sh is the merge engine ship-batch calls itself (a subprocess this hook never sees), so a direct run that
+# merges skips ship-batch's per-PR check, restows and post-merge check. Only a command word counts, not a mention
+# (`grep merge-prs.sh x`); `--check` and `--help` merge nothing.
+nl=$'\n'
+invocation="(^|[;&|(\`$nl])[[:space:]]*(bash[[:space:]]+)?([^[:space:]]*/)?merge-prs\.sh([^;&|)\`$nl]*)"
+merges_directly() {
+  local rest=$cmd args
+  while [[ $rest =~ $invocation ]]; do
+    args=${BASH_REMATCH[4]}
+    rest=${rest#*"${BASH_REMATCH[0]}"}
+    [[ $args =~ ^[[:space:]]*$ || $args =~ [[:space:]](--check|--help|-h)([[:space:]=]|$) ]] || return 0
+  done
+  return 1
+}
+
+gh_merge='gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)'
+[[ $cmd =~ $gh_merge ]] || merges_directly || exit 0
+
+reason="Blocked: merge PRs with \`.claude/skills/ship-batch/ship-batch.sh <pr>...\` (in merge order), not \`gh pr merge\` or a direct \`merge-prs.sh <pr>\`; \`merge-prs.sh --check\` is still fine. ship-batch checks each PR, rebase-merges, rebases stacked PRs, removes merged worktrees and branches, pulls main, restows packages that gained files, syncs the greeter, restarts the bar (skipped while a test bar is running) and checks main. After a PR was merged on GitHub by hand, run \`ship-batch.sh\` with no arguments for the post-merge steps. Load the ship-batch skill for details."
 jq -n --arg r "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'

@@ -1,11 +1,11 @@
 ---
 name: ship-batch
-description: Open and merge the PRs for a batch of reviewed, owner-tested branches, then update main, restart the bar if needed and clean up. Use once the owner has approved merging.
+description: The only way to merge PRs in this repo. Open and merge the PRs for a batch of branches, then update main, restart the bar if needed and clean up. Use whenever merging is approved, explicitly ("merge N") or by a standing approval such as Codex approving with no revisions; also with no arguments after a PR was merged by hand.
 ---
 
 # Ship a batch
 
-Only after the owner has tested the branches and said to merge.
+The only way to merge PRs in this repo, never `merge-prs.sh <n>` or the `gh` merge command directly. Use it once merging is approved: the owner said to merge, or a standing approval covers the PR (e.g. merge without asking when Codex approves with no revisions).
 
 1. For each branch: rebase on `origin/main` if it is behind, push, and `gh pr create` written with the global `pr-descriptions` skill, plus a note if Codex could not run.
 2. Run `.claude/skills/ship-batch/ship-batch.sh <n>...` from anywhere in the repo, PRs in merge order. It works in three phases:
