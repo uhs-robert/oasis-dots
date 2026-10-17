@@ -47,9 +47,10 @@ PATH_SCOPES = [
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),
     ("lib/check/steps/shaders.sh", "shaders"),
-    # Ahead of the Quickshell rule below: nothing else reads a shader or its compiled .qsb at check time.
+    # Ahead of the Quickshell rule below. Only the shader step reads a .frag; QML names the compiled .qsb by path, which
+    # qml-paths checks, so a renamed or deleted .qsb reaches it too.
     ("home/quickshell/*.frag", "shaders"),
-    ("home/quickshell/*.frag.qsb", "shaders"),
+    ("home/quickshell/*.frag.qsb", "shaders qml"),
     ("system/etc/greetd/quickshell/*", "qml"),
     ("home/quickshell/tests/*", "node qml"),
     ("home/quickshell/*", "qml node"),
