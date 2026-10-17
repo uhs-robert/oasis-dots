@@ -7,6 +7,7 @@ import Quickshell
 import qs.theme
 import qs.services
 import qs.features.power
+import qs.features.media
 import qs.features.clock
 import qs.features.weather
 

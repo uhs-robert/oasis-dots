@@ -7,7 +7,6 @@ import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.services
-import qs.popups.media as Media
 import qs.styles.nes.widgets as Nes
 import qs.styles.ps1.widgets as Ps1
 
@@ -132,7 +131,7 @@ Popup {
                 Layout.fillWidth: true
                 spacing: 14
 
-                Media.AlbumArt {
+                AlbumArt {
                     Layout.preferredWidth: 168
                     Layout.preferredHeight: 168
                     Layout.alignment: Qt.AlignTop
@@ -225,7 +224,7 @@ Popup {
                     Item { Layout.fillHeight: true }
 
                     // --- Progress bar: click or drag to seek ---
-                    Media.SeekBar {
+                    SeekBar {
                         id: seek_bar
                         player: root.player
                     }
@@ -276,7 +275,7 @@ Popup {
                         Layout.topMargin: 2
                         spacing: 10
 
-                        Media.RoundButton {
+                        RoundButton {
                             visible: !!root.player && root.player.shuffleSupported
                             diameter: 32
                             icon: "\u{f04b3}"
@@ -284,14 +283,14 @@ Popup {
                             onActivated: MediaState.toggle_shuffle()
                         }
 
-                        Media.RoundButton {
+                        RoundButton {
                             diameter: 32
                             icon: "\u{f048}"
                             button_enabled: !!root.player && root.player.canGoPrevious
                             onActivated: MediaState.previous()
                         }
 
-                        Media.RoundButton {
+                        RoundButton {
                             diameter: 44
                             primary: true
                             icon: root.player && root.player.isPlaying ? "\u{f04c}" : "\u{f04b}"
@@ -299,14 +298,14 @@ Popup {
                             onActivated: MediaState.toggle()
                         }
 
-                        Media.RoundButton {
+                        RoundButton {
                             diameter: 32
                             icon: "\u{f051}"
                             button_enabled: !!root.player && root.player.canGoNext
                             onActivated: MediaState.next()
                         }
 
-                        Media.RoundButton {
+                        RoundButton {
                             visible: !!root.player && root.player.loopSupported
                             diameter: 32
                             icon: (!!root.player && root.player.loopState !== MprisLoopState.None) ? "\u{f0456}" : "\u{f0457}"
@@ -317,7 +316,7 @@ Popup {
                     }
 
                     // --- Subtle cava visualizer along the bottom edge ---
-                    Media.CavaStrip {}
+                    CavaStrip {}
                 }
             }
 
