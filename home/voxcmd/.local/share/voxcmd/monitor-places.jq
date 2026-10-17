@@ -1,4 +1,4 @@
-# Mirrors positions() and slot_order() in quickshell/overview/Voice.js, so a monitor has the same words whether the overview
+# Mirrors positions() and slot_order() in quickshell/features/overview/Voice.js, so a monitor has the same words whether the overview
 # or `hyprctl monitors -j` is asked; tests/run-monitors.sh runs both on the same layouts and fails when they differ.
 # Input: `hyprctl monitors -j`. $slots: the monitor name of each slot in order, space separated, "-" for an empty slot.
 # Output: [{id, slot, horizontal, vertical, focused}] in slot order, the shape of overview.json's "monitors". A monitor

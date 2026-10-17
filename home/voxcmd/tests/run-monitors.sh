@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests for voxcmd's monitor phrases (monitors.sh): which monitor each word names on several layouts, the dispatch that
 # follows, phrases that must keep their old route, and that the words agree with the Quickshell overview's rule
-# (overview/Voice.js, mirrored by monitor-places.jq). run.sh runs this beside its own checks; run alone:
+# (features/overview/Voice.js, mirrored by monitor-places.jq). run.sh runs this beside its own checks; run alone:
 # home/voxcmd/tests/run-monitors.sh
 # shellcheck disable=SC2034
 set -uo pipefail
@@ -198,7 +198,7 @@ CASES
 check "a cardinal is no ordinal" "! spoken_ordinal 'twenty five' >/dev/null && ! spoken_ordinal two >/dev/null"
 
 section "monitors: the shell words agree with the overview's rule"
-voice_js=$package/../quickshell/.config/quickshell/overview/Voice.js
+voice_js=$package/../quickshell/.config/quickshell/features/overview/Voice.js
 if command -v node >/dev/null 2>&1; then
   agree() {
     local layout="$1" expected actual
