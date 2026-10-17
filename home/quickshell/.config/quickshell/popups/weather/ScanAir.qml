@@ -4,6 +4,7 @@ import qs.ui.frames
 import qs.theme
 import qs.services
 import qs.styles.reticle.widgets
+import qs.features.clock
 
 // A Scan Visor logbook entry, "Atmospheric toxicity": the AQI as a contamination level, the pollutants as analysed compounds with scan bars,
 // and the 24 hours as a trace with the cursor hour locked on. h/l move the hour cursor.

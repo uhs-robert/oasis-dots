@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.services
 import qs.ui.gauges
+import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab: Claude usage bars from ClaudeUsageState, which it reads directly. The popup sets only `st`;

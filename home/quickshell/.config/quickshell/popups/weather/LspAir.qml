@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
+import qs.features.clock
 
 // Hourly's Air sub-view as a Neovim buffer: `:checkhealth air` with the pollutants as inlay hints, then the 24 AQI hours
 // plotted under a sign column (E unhealthy and worse, W sensitive groups, I moderate) with the AQI axis as the line-number gutter.

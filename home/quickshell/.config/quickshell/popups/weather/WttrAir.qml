@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
+import qs.features.clock
 import "WttrArt.js" as WttrArt
 
 // Hourly's Air sub-view as a btop panel: the US AQI and each pollutant as a gradient meter, then the 24h AQI trend

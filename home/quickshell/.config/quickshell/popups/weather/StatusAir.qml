@@ -6,6 +6,7 @@ import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.ui.gauges
+import qs.features.clock
 
 // Air as the FF7 status screen: the AQI as the headline stat with the band's status effects beside it, pollutants as
 // stat rows on ATB bars, and the next 24 hours as ATB gauges with the white glove over the cursor hour (h/l move it).

@@ -1,6 +1,7 @@
 import QtQuick
 import qs.theme
 import qs.services
+import qs.features.clock
 import "../weather/WttrArt.js" as WttrArt
 import "KeeptabsFormat.js" as Fmt
 

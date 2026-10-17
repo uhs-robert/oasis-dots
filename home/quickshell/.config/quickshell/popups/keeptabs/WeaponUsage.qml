@@ -5,6 +5,7 @@ import QtQuick.Shapes
 import qs.theme
 import qs.services
 import qs.styles.halflife.widgets
+import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as the bottom of the HEV HUD: the session limit is HEALTH, the weekly limit SUIT, any other limit an

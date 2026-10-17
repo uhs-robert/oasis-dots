@@ -14,6 +14,7 @@ import qs.styles.ps2.widgets as Ps2
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.modern.widgets as Modern
 import qs.styles.neovim.widgets as Neovim
+import qs.features.clock
 
 // A single notification row, shared by the All/Apps/Critical tabs. Every Text below sets
 // Layout.minimumWidth: 0 so a long unbroken summary/body can never grow the card past its width.

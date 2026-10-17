@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.theme
 import qs.services
+import qs.features.clock
 
 // Today as the selected save's info panel: a lit calendar save block beside the time, date and week.
 Rectangle {

@@ -4,8 +4,9 @@ import qs.theme
 import qs.services
 import qs.ui.effects
 import qs.features.power
-import qs.components.clock_marker as Marker
+import qs.features.clock.markers as Marker
 import qs.styles.modern.widgets as Modern
+import qs.features.clock
 
 Row {
     id: root

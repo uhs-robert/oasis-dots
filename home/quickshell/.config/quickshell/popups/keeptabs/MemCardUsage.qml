@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.styles.ps1.widgets as Ps1
 import qs.theme
 import qs.services
+import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as the BIOS memory card slots: each limit is a card whose used blocks are the percent. Contract as in UsageView.

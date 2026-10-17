@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.styles.modern.widgets as Modern
 import qs.theme
 import qs.services
+import qs.features.clock
 
 // Modern Air: a ring split into the AQI categories with a marker at the current AQI, pollutant tiles,
 // and a 24 hour gradient trend with a pill tooltip riding the cursor hour.

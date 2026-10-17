@@ -4,6 +4,7 @@ import qs.components
 import qs.theme
 import qs.services
 import qs.popups.weather as Weather
+import qs.features.clock
 import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as a Dragon Quest STATUS window: each limit is a row with an HP-style gauge, and its reset is the inn.

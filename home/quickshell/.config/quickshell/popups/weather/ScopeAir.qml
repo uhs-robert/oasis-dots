@@ -5,6 +5,7 @@ import qs.ui.frames
 import qs.theme
 import qs.services
 import qs.styles.reticle.widgets
+import qs.features.clock
 
 // The targeting computer's atmosphere sensor: the current US AQI as a reading on a tick scale, the pollutants as sensor channels,
 // and the 24 hours as a trace on the range grid with the cursor hour held in lock brackets. A red warning replaces the calm header when the air is unhealthy.

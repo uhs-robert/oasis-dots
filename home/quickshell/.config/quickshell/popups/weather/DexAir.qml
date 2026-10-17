@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.services
 import qs.ui.frames
+import qs.features.clock
 
 // The air's Pokédex entry: AQI and category as the entry, pollutants as base-stat bars, and the 24h trend as Pokégear signal bars with the needle on the cursor hour. h/l move the hour cursor.
 Item {

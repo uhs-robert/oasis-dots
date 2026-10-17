@@ -9,6 +9,7 @@ import qs.popups.updates as Updates
 import qs.styles.snes.popups as Snes
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.ps2.widgets as Ps2
+import qs.features.clock
 
 Popup {
     id: root

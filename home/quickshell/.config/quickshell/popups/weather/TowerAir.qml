@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
+import qs.features.clock
 
 // Air as PS2 glass panels over a tower field: the current AQI and pollutants in thin panels, then one tower per hour
 // standing on the haze floor, coloured by AQI category. The cursor hour's tower is lit with its value above it.
