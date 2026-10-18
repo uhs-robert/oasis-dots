@@ -188,6 +188,20 @@ expect deny $'cat <<END; tmux kill-server\nbody\nEND'
 expect deny 'cat <<END; tmux ls'
 expect allow $'cat <<\'END-X\'\ntmux kill-server\nEND-X\necho done'
 expect allow $'cat <<END-X\ntmux kill-server\nEND-X'
+# watch runs its arguments through a shell unless -x
+expect deny "watch 'tmux kill-server'"
+expect deny 'watch -n1 "tmux ls; tmux kill-server"'
+expect deny "watch -n 2 'echo hi && tmux kill-server'"
+expect deny "watch 'watch \"tmux kill-server\"'"
+expect allow "watch 'tmux ls'"
+expect allow "watch -n1 'tmux ls; tmux list-windows'"
+expect allow "watch 'tmux -L mine kill-server'"
+expect allow 'watch -n 1 date'
+# nohup options
+expect deny 'nohup -- tmux kill-server'
+expect deny 'nohup tmux kill-server'
+expect deny 'nohup --weird tmux ls'
+expect allow 'nohup -- tmux -L mine kill-server'
 # Mentions only
 expect allow 'git commit -m "fix: tmux kill-server guard"'
 expect allow "git commit -m 'stop tmux kill-server'"

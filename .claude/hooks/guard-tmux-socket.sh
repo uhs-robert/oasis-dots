@@ -5,6 +5,8 @@
 # Fails closed: a heredoc with no terminator, or a wrapper option it does not know before a tmux word, is denied.
 # Known limit: tmux inside a script file or a `bash -c '...'` string is not inspected, nor is a `$(` inside double
 # quotes, nor tmux behind a wrapper command it has no entry for (setsid, stdbuf, ...).
+# Known limits, left open because only a contrived command reaches them: a later -L/-S overriding an earlier one
+# (`tmux -L safe -S /owner/sock ...`), and a per-command TMUX_TMPDIR=... changing what -L resolves to.
 # shellcheck disable=SC1003 # a literal backslash in a case pattern, not an escaped quote
 set -u
 cmd=$(jq -r '.tool_input.command // empty')
@@ -241,6 +243,7 @@ wrapper_spec() {
     long_flag='beep color no-color errexit chgexit precise no-title no-wrap exec help version differences'
     long_arg='interval equexit'
     ;;
+  nohup) long_flag='help version' ;;
   command) short_flag=p ;;
   exec) short_flag=cl short_arg=a ;;
   time) short_flag=p ;;
@@ -313,14 +316,15 @@ for ((k = 0; k < ${#tokens[@]}; k++)); do
     k=$((k + 1)) # its operand
     continue
     ;;
-  [A-Za-z_]*=* | '{' | '!' | if | then | else | elif | while | until | do | nohup)
+  [A-Za-z_]*=* | '{' | '!' | if | then | else | elif | while | until | do)
     continue
     ;;
-  env | sudo | nice | timeout | xargs | watch | command | exec | time)
+  env | sudo | nice | timeout | xargs | watch | nohup | command | exec | time)
     if [[ $t == command && ${tokens[k + 1]:-} == -[vV] ]]; then
       at_start=0 # `command -v tmux` only looks tmux up
       continue
     fi
+    start_k=$k
     skip_wrapper_options "$t" "$k"
     k=$wrapper_end
     if ((wrapper_deny)); then
@@ -337,6 +341,26 @@ for ((k = 0; k < ${#tokens[@]}; k++)); do
       ((denied)) && break
       at_start=0
       continue
+    fi
+    if [[ $t == watch ]]; then
+      # Without -x, watch runs its joined arguments through a shell, so judge them as a command of their own.
+      has_x=0
+      for ((j = start_k + 1; j <= k; j++)); do
+        [[ ${tokens[j]} =~ ^-[A-Za-z]*x || ${tokens[j]} == --exec ]] && has_x=1
+      done
+      if ((! has_x)); then
+        joined=''
+        for ((j = k + 1; j < ${#tokens[@]}; j++)); do
+          [[ ${tokens[j]} == "$sep" ]] && break
+          [[ ${tokens[j]} == "$redir"* ]] || joined+=" ${tokens[j]}"
+        done
+        if [[ $(jq -n --arg c "$joined" '{tool_input: {command: $c}}' | "${BASH_SOURCE[0]}") == *'"deny"'* ]]; then
+          denied=1
+          break
+        fi
+        at_start=0
+        continue
+      fi
     fi
     [[ $t == timeout && ${tokens[k + 1]:-} != "$sep" ]] && k=$((k + 1)) # the duration
     continue
