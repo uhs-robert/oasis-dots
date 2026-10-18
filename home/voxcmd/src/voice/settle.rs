@@ -16,9 +16,15 @@ pub fn run() -> Result<(), CliError> {
     // No bar to ask counts as settled.
     if ask::is_executable(&paths::qs_ipc()) {
         let deadline = Instant::now() + max_wait;
-        while bar::ui_busy() {
+        loop {
+            let busy = bar::ui_busy(deadline.saturating_duration_since(Instant::now()));
+            // Past the deadline even a "closed" is no answer: a probe cut short by it reads as closed. So a stalled
+            // bar times out here after the max, where bash's two 2 s probes overran it and then counted as settled.
             if Instant::now() >= deadline {
                 timed_out = true;
+                break;
+            }
+            if !busy {
                 break;
             }
             std::thread::sleep(poll);

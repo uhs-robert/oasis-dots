@@ -731,3 +731,22 @@ fn settle_waits_for_the_overlay_but_not_forever() {
     assert_eq!(busy.code(), Some(1));
     assert!(started.elapsed() >= Duration::from_millis(300));
 }
+
+#[test]
+fn settle_with_a_stalled_bar_waits_no_longer_than_its_max() {
+    let voice = Voice::new();
+    std::fs::create_dir_all(voice.path().join("xdg/hypr/scripts")).unwrap();
+    voice.script("xdg/hypr/scripts/qs-ipc", "exec sleep 30");
+    for (max_secs, bound) in [("0.5", Duration::from_millis(1200)), ("2", Duration::from_millis(2700))] {
+        let started = Instant::now();
+        let stalled = voice
+            .command(&["internal", "settle"])
+            .env("VOXCMD_APP_SETTLE_SECS", "0")
+            .env("VOXCMD_UI_SETTLE_MAX_SECS", max_secs)
+            .status()
+            .unwrap();
+        // Each probe alone could take 2 s, so two of them would be past either bound.
+        assert!(started.elapsed() < bound, "max {max_secs}: {:?}", started.elapsed());
+        assert_eq!(stalled.code(), Some(1), "max {max_secs}");
+    }
+}

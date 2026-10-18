@@ -37,9 +37,11 @@ pub fn popup_is_open(name: &str, time_left: Duration) -> bool {
 
 /// The overlay is open or a popup is opening, open or closing: the screen is not yet the one the next turn should read.
 /// Unlike `ui_settled`, a popup that stays open counts as busy.
-pub fn ui_busy() -> bool {
-    let overlay = ask(&["clickhints", "state"], ANSWER_WITHIN).unwrap_or_else(|| "closed".to_string());
-    let popup = ask(&["popup", "state"], ANSWER_WITHIN).unwrap_or_else(|| "closed".to_string());
+pub fn ui_busy(time_left: Duration) -> bool {
+    let started = Instant::now();
+    let overlay = ask(&["clickhints", "state"], time_left).unwrap_or_else(|| "closed".to_string());
+    let popup =
+        ask(&["popup", "state"], time_left.saturating_sub(started.elapsed())).unwrap_or_else(|| "closed".to_string());
     let showing = ["opening", "open", "closing"]
         .iter()
         .any(|state| popup == *state || popup.starts_with(&format!("{state} ")));
