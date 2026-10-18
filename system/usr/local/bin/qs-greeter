@@ -5,6 +5,10 @@
 config=${QS_GREETER_CONFIG:-/etc/greetd/quickshell}
 state="${XDG_RUNTIME_DIR:-/tmp}/qs-greeter"
 data=/var/lib/qs-greeter
+# Pre-created by the installer so the login test's log outlives the greeter's runtime dir; without it the log stays in the runtime dir.
+greeter_log=${QS_GREETER_LOG:-/var/log/qs-greeter.log}
+qs_log=$state/qs.log
+[[ -w $greeter_log ]] && qs_log=$greeter_log
 mkdir -p "$state/cache" "$state/state" "$state/data"
 rm -f "$state/ready" "$state/fallback" "$state/launched"
 
@@ -31,7 +35,7 @@ command -v qs >/dev/null && [[ -f "$config/shell.qml" ]] || tuigreet_fallback
 # The greeter user's home is /, so its XDG dirs live here; no crash dialog over the fallback.
 XDG_CACHE_HOME="$state/cache" XDG_STATE_HOME="$state/state" XDG_DATA_HOME="$state/data" \
   QS_DISABLE_CRASH_HANDLER=1 QS_GREETER_STATE="$state" QS_THEME_JSON="$data/theme.json" \
-  qs -p "$config" >"$state/qs.log" 2>&1 &
+  qs -p "$config" >"$qs_log" 2>&1 &
 qs_pid=$!
 
 for _ in $(seq 40); do

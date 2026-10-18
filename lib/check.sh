@@ -67,7 +67,7 @@
 #   calendar-sync            home/calendar/tests/run.sh. Runs only when python-icalendar and python-recurring-ical-events
 #   calendar-sync-syntax     import; the syntax check of calendar-sync always runs.
 #   firefox-policy           lib/install/tests/firefox-policy.sh, the Firefox policy installer. Needs jq.
-#   greeter-keyring          lib/install/tests/greeter-keyring.sh, the greetd keyring unlock installer.
+#   greeter-keyring          lib/install/tests/greeter-keyring.sh (the greetd keyring unlock installer) and greeter-log.sh (the greeter log file and the qs-greeter wrapper's choice of it).
 #   install-load             lib/install/tests/load.sh, that sourcing the install libraries prints nothing and never exits.
 #   agent-hooks              the tests of guard-masked-checks.sh, check-before-pr.sh, restart-qs-after-git.sh, guard-gh-merge.sh
 #                            and warn-direct-voxcmd-suite.sh. Needs jq.

@@ -8,6 +8,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/../common/greeter-files.sh"
 GREETER_DEST=/etc/greetd/quickshell
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
 GREETER_DATA=/var/lib/qs-greeter
+# The Quickshell greeter's output: written by the greeter user, readable by the installing user's group, so a login
+# test can be read afterwards. Pre-created here because the greeter cannot create files in /var/log.
+GREETER_LOG=/var/log/qs-greeter.log
 
 # Builds the greeter tree in $1 from the repo at $2 plus this user's theme and lock style; prints the resolved skin.
 # $3 is a Quickshell config dir to stage skins and theme from instead of the repo's, e.g. a worktree's.
@@ -87,6 +90,7 @@ greeter_install_cmds() {
     "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua" \
     "printf '%s\\n' '${GREETER_USER:-$USER}' | sudo tee /etc/greetd/admin_user >/dev/null" \
     "sudo install -d -m 2750 -o '$USER' -g greeter '$GREETER_DATA'" \
+    "sudo touch '$GREETER_LOG' && sudo chown greeter:\"\$(id -gn)\" '$GREETER_LOG' && sudo chmod 640 '$GREETER_LOG'" \
     "if levels=\$(jq -c '{music_volume, output_volume} | with_entries(select(.value | type == \"string\"))' '$GREETER_DATA/greeter.json' 2>/dev/null); then jq --argjson levels \"\$levels\" '. + \$levels' '$stage/greeter.json' >'$GREETER_DATA/.greeter.json.new' && chmod 640 '$GREETER_DATA/.greeter.json.new' && mv -f '$GREETER_DATA/.greeter.json.new' '$GREETER_DATA/greeter.json'; else install -m 640 '$stage/greeter.json' '$GREETER_DATA/greeter.json'; fi" \
     "$seed_theme" \
     "[ ! -f '$HOME/.face' ] || install -D -m 640 '$HOME/.face' '$GREETER_DATA/faces/$USER'"
