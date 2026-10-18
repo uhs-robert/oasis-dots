@@ -23,9 +23,7 @@ PATH_SCOPES = [
     ("lib/check.sh", "all"),
     ("lib/check/runner.py", "all"),
     ("lib/check/keys.py", "all"),
-    # Data tables only: the check's own tests cover an edit (they include the path-existence test), and the runner
-    # re-runs each step whose Step(...) line the diff changed (runner.redefined_steps_since).
-    ("lib/check/scopes.py", ""),
+    ("lib/check/scopes.py", "all"),
     ("lib/check/lock.sh", "all"),
     ("lib/check/passed.sh", "all"),
     ("lib/check/passed.py", "all"),
