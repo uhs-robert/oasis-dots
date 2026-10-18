@@ -18,6 +18,7 @@ Personal Arch Linux dotfiles deployed with GNU Stow. Two deployment targets, eac
 just                  # list recipes
 just check            # full validation (run before committing)
 lib/check.sh --changed origin/main   # only the steps the changed files can affect, skipping those already passed for the same files
+lib/check.sh --only voxcmd-click,voxcmd-rust   # just those steps; their passes count for the final --changed run
 just lint             # shellcheck install.sh uninstall.sh, lib/check.sh, lib/{common,install,check}/**/*.sh, demo/*.sh and the Quickshell audio importers
 just shaders          # rebuild every Quickshell .frag.qsb from its .frag (qsb); the shaders check step fails on a stale one
 just stow <pkg>       # symlink one package into ~
@@ -104,7 +105,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 
 ## voxcmd
 
-Test voxcmd actions through `home/voxcmd/tests/sandbox.sh`, never against the live desktop; add a phrase to `home/voxcmd/tests/phrases.tsv` for every new or fixed phrasing. When the owner should try a voxcmd branch by voice before merging, put it live with the `owner-test-bar` skill (`up <name> <branch>`, then `restore`), which swaps voxcmd's links to the branch and back; the installed voxcmd otherwise runs from the main checkout.
+Test voxcmd actions through `home/voxcmd/tests/sandbox.sh`, never against the live desktop; add a phrase to `home/voxcmd/tests/phrases.tsv` for every new or fixed phrasing. Run a whole suite, or the crate's `cargo test`/`clippy`, as its check step (`lib/check.sh --only voxcmd-phrases`, `voxcmd-click`, `voxcmd-calendar`, `voxcmd-wake`, `voxcmd-firefox`, `voxcmd-rust`), not by hand: a hand run records no pass, so the final `--changed` run repeats it behind the check lock (`.claude/hooks/warn-direct-voxcmd-suite.sh` warns). Iterating on one section with `VOXCMD_ONLY_SECTIONS=` by hand is fine; a check run with it set records no voxcmd pass. When the owner should try a voxcmd branch by voice before merging, put it live with the `owner-test-bar` skill (`up <name> <branch>`, then `restore`), which swaps voxcmd's links to the branch and back; the installed voxcmd otherwise runs from the main checkout.
 
 The Rust port of voxcmd is the crate in `home/voxcmd/` (`Cargo.toml`, `src/`; stow ignores it) and is not yet what runs: the bash `voxcmd` stays live until the swap. `just voxcmd-build` installs it as `voxcmd-rs`. `VOXCMD_BIN=rs` makes `tests/sandbox.sh` build this checkout and put the Rust binary first on PATH (default `bash`), and `just voxcmd-test` runs `cargo test` and then the suites that way; `tests/run-phrases.sh` passes under `rs` (`VOXCMD_ROUTE_DIFF=1` explains every phrase with both binaries and reports each difference); the other suites fail until their items (2.3 and later) land. `cargo test` compares the ported text parsers and the verb matcher with goldens made from the bash by `tests/fixtures/gen-speech-goldens.sh` and `gen-match-goldens.sh`; regenerate them only with the owner's sign-off. Until 3.1 converts them, the Rust binary reads the bash integrations through the bash voxcmd's hidden `_legacy-dump` (`src/config/legacy.rs`, cached under `~/.cache/voxcmd`; `VOXCMD_LEGACY_BIN` names the script), and an `integrations/<stem>.toml` wins over `integrations.d/<stem>.sh`.
 
