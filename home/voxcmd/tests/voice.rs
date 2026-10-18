@@ -425,14 +425,6 @@ fn the_detector_gets_the_listen_s_settings_and_the_threshold_file() {
     );
 }
 
-#[test]
-fn a_session_turn_s_watcher_is_the_bash_one() {
-    let voice = Voice::new();
-    let output = voice.output(&["internal", "watch", "session_turn", "1:click:x", "0", "A=1"]);
-    assert!(output.status.success());
-    assert_eq!(voice.calls(), "bash voxcmd _watch session_turn 1:click:x 0 A=1\n");
-}
-
 // ---- listen -----------------------------------------------------------------------------------------------------
 
 #[test]
@@ -514,24 +506,35 @@ fn listen_stops_a_recording_and_leaves_a_transcription_alone() {
 }
 
 #[test]
-fn listen_hands_an_open_session_to_the_bash_voxcmd() {
+fn listen_hands_an_open_session_s_next_turn_to_a_session_turn_watcher() {
     let voice = Voice::new();
     voice.set_state("idle");
     let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
     let session = serde_json::json!({"kind": "click", "integration": "/i/click.sh", "label": "Click mode",
-        "owner": owner.id(), "owner_start": start_time_of(owner.id())});
+        "frame_id": "7", "owner": owner.id(), "owner_start": start_time_of(owner.id())});
     std::fs::write(voice.runtime().join("session.json"), session.to_string()).unwrap();
-    let owner_file = voice.work("owner");
     assert!(voice.output(&["listen"]).status.success());
-    let started_only = voice
-        .command(&["listen", "--start-only"])
-        .env("VOXCMD_RECORDING_OWNER_FILE", &owner_file)
-        .status()
-        .unwrap();
     end(&mut owner);
-    assert!(started_only.success());
-    assert_eq!(voice.calls(), "bash voxcmd listen\nbash voxcmd listen --start-only\n");
-    assert!(!voice.debug_log().contains("listen:"));
+    assert!(
+        wait_for(|| voice.calls().contains(&format!(
+            "setsid owner= {} internal watch session_turn 1:click:7 0 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=10\n",
+            env!("CARGO_BIN_EXE_voxcmd")
+        ))),
+        "{}",
+        voice.calls()
+    );
+    assert!(!voice.calls().contains("bash voxcmd"));
+    let state: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(voice.runtime().join("session.json")).unwrap()).unwrap();
+    let watcher = voice
+        .debug_log()
+        .split("recording started, watcher ")
+        .nth(1)
+        .and_then(|rest| rest.split(' ').next())
+        .map(str::to_string)
+        .unwrap();
+    assert_eq!(state["owner"].to_string(), watcher);
+    assert!(state.get("owner_handover").is_none());
 }
 
 #[test]

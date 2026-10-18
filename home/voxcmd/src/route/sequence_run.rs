@@ -4,7 +4,7 @@
 //! The first step that does not run stops the rest, and one toast says where. Stop Voice flags a running sequence
 //! with a `discard.<pid>` file; the sequence notices between steps and while it waits.
 use super::resolve::RouteOption;
-use super::runner::Runner;
+use super::runner::{Routed, Runner};
 use super::sequence::{Steps, refusal};
 use crate::actions::{Spoken, StepOutcome, legacy_env};
 use crate::bar;
@@ -213,13 +213,17 @@ impl Runner<'_> {
     }
 
     /// Runs the steps in order, each routed only after the one before finished and what it started has settled. Fails
-    /// (1) when no step ran, or the sequence is refused before any does.
-    pub fn run_sequence(&self, split: &Steps, pacing: &Pacing) -> i32 {
+    /// (1) when no step ran, or the sequence is refused before any does. The outcome is the last step's, `Ran` only
+    /// when every step ran.
+    pub fn run_sequence(&self, split: &Steps, pacing: &Pacing) -> Routed {
         if let Some(why) = refusal(self.router, &split.steps) {
             self.rt
                 .notifier
                 .notify(Kind::Info, "voxcmd", &format!("Nothing ran: {why}"));
-            return 1;
+            return Routed {
+                exit_code: 1,
+                outcome: StepOutcome::NoMatch,
+            };
         }
         let _record = OwnRecord::create();
         let total = split.steps.len();
@@ -277,7 +281,10 @@ impl Runner<'_> {
         if !self.rt.came_by_voice {
             let _ = std::fs::remove_file(paths::discard_flag(std::process::id()));
         }
-        i32::from(ran == 0)
+        Routed {
+            exit_code: i32::from(ran == 0),
+            outcome,
+        }
     }
 
     /// Tells why the sequence stopped. Silent after Stop Voice, which is its own answer.

@@ -9,6 +9,15 @@ use crate::paths;
 use std::time::{Duration, Instant};
 
 pub fn run() -> Result<(), CliError> {
+    if wait_until_ui_settled() {
+        Ok(())
+    } else {
+        Err(CliError::quiet("internal settle"))
+    }
+}
+
+/// The wait itself, between a session's turns too; false when the screen never settled.
+pub fn wait_until_ui_settled() -> bool {
     let max_wait = seconds(&secs_setting("VOXCMD_UI_SETTLE_MAX_SECS", "2"));
     let app_settle = seconds(&secs_setting("VOXCMD_APP_SETTLE_SECS", "0.3"));
     let poll = time_scaled(0.1);
@@ -31,11 +40,7 @@ pub fn run() -> Result<(), CliError> {
         }
     }
     std::thread::sleep(app_settle);
-    if timed_out {
-        Err(CliError::quiet("internal settle"))
-    } else {
-        Ok(())
-    }
+    !timed_out
 }
 
 /// A setting in seconds; one that is not a usable number is none, as the bash `awk` and `sleep` read it.

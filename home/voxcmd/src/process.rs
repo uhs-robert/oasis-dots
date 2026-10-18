@@ -426,6 +426,75 @@ extern "C" fn on_stop_signal(signal: libc::c_int) {
     }
 }
 
+/// The command a stop signal runs, and waits for, once the groups and files are done: a session turn's watcher ending
+/// the session it still owns, which takes the session lock and reads JSON, so it cannot run in the handler itself.
+struct LastAct {
+    program: CString,
+    /// NUL-terminated, pointing into `_args`.
+    argv: Vec<*const libc::c_char>,
+    _args: Vec<CString>,
+}
+
+static LAST_ACT: AtomicPtr<LastAct> = AtomicPtr::new(std::ptr::null_mut());
+/// The descriptor of the `flock` this process holds now (the session lock), -1 for none: released before the last act
+/// runs, which would otherwise wait for it while this process waits for the act.
+static HELD_FLOCK: AtomicI32 = AtomicI32::new(-1);
+
+/// Notes the `flock` taken on this descriptor, or with none that it was let go.
+pub fn note_held_flock(fd: Option<std::os::fd::RawFd>) {
+    HELD_FLOCK.store(fd.unwrap_or(-1), Ordering::Release);
+}
+
+/// Has a stop signal run `program args` as voxcmd's last act, after it has ended its groups and removed its files.
+/// Set once per process; a later call replaces it.
+pub fn run_on_stop(program: &Path, args: &[&str]) {
+    HANDLERS.call_once(install_handlers);
+    let Ok(program) = CString::new(program.as_os_str().as_bytes()) else {
+        return;
+    };
+    let Ok(mut owned) = std::iter::once(Ok(program.clone()))
+        .chain(args.iter().map(|arg| CString::new(*arg)))
+        .collect::<Result<Vec<CString>, _>>()
+    else {
+        return;
+    };
+    owned.shrink_to_fit();
+    let mut argv: Vec<*const libc::c_char> = owned.iter().map(|arg| arg.as_ptr()).collect();
+    argv.push(std::ptr::null());
+    // Never freed, as a listed removal is not: the handler may be reading the one it replaces.
+    let act = Box::into_raw(Box::new(LastAct {
+        program,
+        argv,
+        _args: owned,
+    }));
+    LAST_ACT.store(act, Ordering::Release);
+}
+
+/// Runs the last act, if any, and waits for it. Only system calls a handler may make: flock, fork, execv, _exit and
+/// waitpid.
+fn run_last_act() {
+    // SAFETY: a stored act is never freed.
+    let Some(act) = (unsafe { LAST_ACT.load(Ordering::Acquire).as_ref() }) else {
+        return;
+    };
+    let held = HELD_FLOCK.load(Ordering::Acquire);
+    if held >= 0 {
+        // SAFETY: flock only releases this process's lock on its own descriptor; voxcmd ends right after.
+        unsafe { libc::flock(held, libc::LOCK_UN) };
+    }
+    // SAFETY: the child only execs or exits; the parent waits for that one child.
+    unsafe {
+        let child = libc::fork();
+        if child == 0 {
+            libc::execv(act.program.as_ptr(), act.argv.as_ptr());
+            libc::_exit(127);
+        }
+        if child > 0 {
+            while libc::waitpid(child, std::ptr::null_mut(), 0) < 0 && *libc::__errno_location() == libc::EINTR {}
+        }
+    }
+}
+
 /// Ends every listed group and removes every listed file, then lets the signal do what it would have done, so voxcmd
 /// still ends as the signal says. Runs in the handler, or on the thread that held the signal. A second signal during
 /// the first one's grace (another thread's, or INT on top of TERM) only ends what has been listed since, and leaves
@@ -467,6 +536,7 @@ fn end_on_signal(signal: libc::c_int) {
     if asks_terminated {
         kill_asks_after_grace();
     }
+    run_last_act();
     // SAFETY: restoring the default action and raising again are async-signal-safe.
     unsafe {
         libc::signal(signal, libc::SIG_DFL);

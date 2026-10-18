@@ -27,6 +27,8 @@ pub struct Runtime<'a> {
     pub came_by_voice: bool,
     /// The mode the phrase was heard in is private (type mode): nothing of it goes to the no-match log.
     pub heard_private: bool,
+    /// The session mode the phrase was heard in, for a bash action's `$heard_mode`.
+    pub heard_mode: &'a str,
     /// A voice session's turn: nobody is at the keyboard, so every picker listens.
     pub in_session_turn: bool,
 }
@@ -257,7 +259,10 @@ fn action_command(
         }
         Format::Bash => {
             let mut command = rt.legacy.call("run", integration);
-            command.arg(&option.action).envs(legacy_env(option, said, confirmed));
+            command
+                .arg(&option.action)
+                .envs(legacy_env(option, said, confirmed))
+                .envs(crate::session::bridge::hook_env(rt.heard_mode));
             command
         }
     }

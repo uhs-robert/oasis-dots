@@ -6,7 +6,8 @@
 //! ask's recording owner file or the detector itself behind: on return by `Cleanup`, on SIGINT, SIGTERM or SIGHUP by
 //! the stop handler in `process.rs` (which TERMs the detector's group and removes the listed files), and when it is
 //! SIGKILLed the detector still dies with it (`die_with_parent`); only the two files are then left, as the bash EXIT
-//! trap left them, and a later watcher that gets the same pid removes them before it starts. A session turn's watcher (`session_turn`) is the bash voxcmd's until voxcmd-port 2.4c.
+//! trap left them, and a later watcher that gets the same pid removes them before it starts. A session turn's watcher
+//! that ends while it still owns the session ends the session too, on return and on a stop signal alike.
 use super::listen::{Handler, inherited_owner_file};
 use super::{time_scaled, voxtype_record, voxtype_state, voxtype_write_mark};
 use crate::ask;
@@ -16,7 +17,8 @@ use crate::exit::CliError;
 use crate::paths;
 use crate::process::{self, LiveGroup, RemovedOnSignal};
 use crate::route;
-use std::os::unix::process::{CommandExt, ExitStatusExt};
+use crate::session;
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -38,20 +40,14 @@ const VERDICT_SILENCE: i32 = 0;
 const VERDICT_NO_SPEECH: i32 = 3;
 const VERDICT_MAX_LENGTH: i32 = 5;
 
-/// `internal watch` (alias `_watch`), positional as the bash entry point took them: the handler (`route`, `reply`;
-/// `session_turn` goes to the bash voxcmd), the session mode the recording is heard in, 1 when that mode is private
-/// (only lengths are logged, nothing goes to the no-match log), and the detector's `VAR=value` lines.
+/// `internal watch` (alias `_watch`), positional as the bash entry point took them: the handler (`route`, `reply`,
+/// `session_turn`), the session mode the recording is heard in (`-` for none), 1 when that mode is private (only
+/// lengths are logged, nothing goes to the no-match log), and the detector's `VAR=value` lines.
 pub fn run(args: &[String]) -> Result<(), CliError> {
     let handler = match args.first().map(String::as_str) {
         Some("route") => Handler::Route,
         Some("reply") => Handler::Reply,
-        Some("session_turn") => {
-            let error = Command::new(paths::legacy_bin()).arg("_watch").args(args).exec();
-            return Err(CliError::failed(
-                "internal watch",
-                format!("cannot run the bash watcher: {error}"),
-            ));
-        }
+        Some("session_turn") => Handler::SessionTurn,
         _ => {
             return Err(CliError::usage(
                 "internal watch",
@@ -59,14 +55,26 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
             ));
         }
     };
+    let heard_mode = args.get(1).map_or("", String::as_str);
     let heard_private = args.get(2).is_some_and(|private| private == "1");
     let detector_settings = args.get(3).map_or("", String::as_str);
+    let me = std::process::id();
     process::stop_on_hangup_too();
     // Held until the handler is done: Stop Voice flags this watcher's discard flag to keep what the handler opens
     // from listening.
-    let mut cleanup = Cleanup::new();
-    let Some(transcript) = watch_recording(&mut cleanup, detector_settings) else {
-        return Ok(());
+    let mut cleanup = Cleanup::new(handler == Handler::SessionTurn);
+    let transcript = match watch_recording(&mut cleanup, detector_settings) {
+        Heard::Transcript(transcript) => transcript,
+        // Autostop's no-speech cancel, or a recording cancelled: the mode is over.
+        Heard::Discarded if handler == Handler::SessionTurn => {
+            session::turn::silence(me);
+            return Ok(());
+        }
+        Heard::Nothing if handler == Handler::SessionTurn => {
+            session::turn::heard_nothing(me);
+            return Ok(());
+        }
+        Heard::Discarded | Heard::Nothing => return Ok(()),
     };
     if heard_private {
         debug(&format!(
@@ -80,8 +88,14 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
             handler.name()
         ));
     }
+    let heard = route::runner::Heard {
+        by_voice: true,
+        private: heard_private,
+        mode: heard_mode.to_string(),
+        in_session_turn: handler == Handler::SessionTurn,
+    };
     let exit_code = match handler {
-        Handler::Route => route::runner::run_spoken(&transcript, heard_private),
+        Handler::Route => route::runner::run_spoken(&transcript, &heard),
         Handler::Reply => i32::from(
             ask::reply::run(ReplyArgs {
                 dry_run: false,
@@ -89,6 +103,10 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
             })
             .is_err(),
         ),
+        Handler::SessionTurn => route::runner::with_runner(&heard, |runner| {
+            session::turn::session_turn(runner, &transcript, heard_mode, heard_private);
+        })
+        .map_or(1, |()| 0),
     };
     drop(cleanup);
     if exit_code == 0 {
@@ -98,8 +116,17 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
     }
 }
 
-/// Follows the recording to its end and returns its transcript; none when it was discarded or nothing was said.
-fn watch_recording(cleanup: &mut Cleanup, detector_settings: &str) -> Option<String> {
+/// How a recording ended, for its watcher.
+enum Heard {
+    Transcript(String),
+    /// Discarded: auto-stop heard no speech, or Stop Voice or an answer by key cancelled it.
+    Discarded,
+    /// It ended with no transcript.
+    Nothing,
+}
+
+/// Follows the recording to its end and returns its transcript, or how it ended without one.
+fn watch_recording(cleanup: &mut Cleanup, detector_settings: &str) -> Heard {
     let poll = time_scaled(POLL_SECS);
     cleanup.detector = Detector::start(detector_settings, &cleanup.discard_flag);
     if let Some(owner_file) = &cleanup.owner_file {
@@ -150,7 +177,7 @@ fn watch_recording(cleanup: &mut Cleanup, detector_settings: &str) -> Option<Str
     cleanup.stop_detector();
     if cleanup.discard_flag.exists() {
         debug("watch: recording discarded");
-        return None;
+        return Heard::Discarded;
     }
     let transcript_written = || std::fs::metadata(paths::transcript()).is_ok_and(|meta| meta.len() > 0);
     for _ in 0..TRANSCRIPT_GRACE_POLLS {
@@ -162,14 +189,14 @@ fn watch_recording(cleanup: &mut Cleanup, detector_settings: &str) -> Option<Str
     // Checked again: a key can answer the confirm this reply was for while voxtype finishes writing it.
     if !transcript_written() || cleanup.discard_flag.exists() {
         debug("watch: no transcript");
-        return None;
+        return Heard::Nothing;
     }
     let transcript = std::fs::read(paths::transcript())
         .map(|bytes| String::from_utf8_lossy(&bytes).trim_end_matches('\n').to_string())
         .unwrap_or_default();
     // Dictation must not outlive its turn on disk; the next listen starts from a fresh file anyway.
     let _ = std::fs::remove_file(paths::transcript());
-    Some(transcript)
+    Heard::Transcript(transcript)
 }
 
 /// A watcher polls, so it can miss voxtype going idle when a dictation starts within one poll. That shows as a new
@@ -185,6 +212,8 @@ struct Cleanup {
     /// An ask's recording owner file, which holds this watcher's pid while the recording is its.
     owner_file: Option<PathBuf>,
     detector: Option<Detector>,
+    /// A session turn's watcher: the session it still owns when it ends goes with it.
+    ends_session: bool,
     _on_signal: Vec<RemovedOnSignal>,
 }
 
@@ -192,8 +221,14 @@ impl Cleanup {
     /// Listed for the stop handler before any of the files exists, so no signal falls between the two. Files by this
     /// pid already there are an earlier watcher's that was SIGKILLed with the same pid, and a discard flag of its
     /// would drop what is said now.
-    fn new() -> Self {
+    fn new(ends_session: bool) -> Self {
         let pid = std::process::id();
+        if ends_session {
+            process::run_on_stop(
+                &ask::this_binary(),
+                &["internal", "session", "end-if-mine", &pid.to_string(), UNEXPECTED_END],
+            );
+        }
         let discard_flag = paths::discard_flag(pid);
         let threshold_file = paths::threshold_file(pid);
         let _ = std::fs::remove_file(&discard_flag);
@@ -211,6 +246,7 @@ impl Cleanup {
             threshold_file,
             owner_file,
             detector: None,
+            ends_session,
             _on_signal: on_signal,
         }
     }
@@ -240,8 +276,14 @@ impl Drop for Cleanup {
         let _ = std::fs::remove_file(&self.discard_flag);
         let _ = std::fs::remove_file(&self.threshold_file);
         self.release_recording_ownership();
+        if self.ends_session {
+            session::end_if_mine(UNEXPECTED_END, std::process::id());
+        }
     }
 }
+
+/// Why a session ends with the turn's watcher that still owned it.
+const UNEXPECTED_END: &str = "the listener stopped unexpectedly";
 
 /// voxcmd-autostop, which ends the recording once it hears speech and then a pause, or cancels it when nothing was
 /// said. It exits by itself when the recording ends some other way; `stop` ends it first otherwise.

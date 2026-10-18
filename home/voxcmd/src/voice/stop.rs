@@ -20,7 +20,7 @@ pub fn run() -> Result<(), CliError> {
         return bash_stops();
     }
     drop(lock);
-    session::end_all("stopped");
+    session::end_all("stopped", std::process::id());
     // Before the ask is cancelled, so the sequence it was asking for reads that answer as Stop Voice's.
     for pid in running_sequence_pids() {
         let _ = std::fs::OpenOptions::new()
