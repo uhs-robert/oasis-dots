@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import qs.ui
 import qs.ui.menu
 import qs.theme
-import qs.services
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.modern.widgets as Modern
 import qs.styles.neovim.widgets as Neovim
@@ -22,6 +21,7 @@ import qs.features.weather.views.watch
 import qs.features.weather.views.weatherstar
 import qs.features.weather.views.wttr
 import qs.features.popups
+import qs.features.audio
 
 Popup {
     id: root

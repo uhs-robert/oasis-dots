@@ -1,6 +1,6 @@
 import QtQuick
-import qs.services
 import qs.features.popups
+import qs.features.audio
 
 QtObject {
     id: root

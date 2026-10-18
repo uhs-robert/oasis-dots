@@ -4,10 +4,10 @@ import Quickshell
 import qs.ui
 import qs.ui.menu
 import qs.theme
-import qs.services
 import qs.styles.modern.widgets as Modern
 import qs.ui.gauges
 import qs.features.popups
+import qs.features.audio
 
 Popup {
     id: root

@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.theme
-import qs.services
 import qs.components
 import qs.ui.effects
 import qs.features.power
@@ -18,6 +17,7 @@ import qs.styles.oasis.widgets as Oasis
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.ps2.widgets as Ps2
 import qs.styles.snes.widgets as Snes
+import qs.features.windows
 import "../../../styles/ff7/widgets/Materia.js" as Materia
 import "../../../styles/nes/widgets/Slimes.js" as Slimes
 

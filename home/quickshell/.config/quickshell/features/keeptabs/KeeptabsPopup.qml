@@ -5,8 +5,8 @@ import Quickshell.Io
 import qs.ui
 import qs.ui.menu
 import qs.theme
-import qs.services
 import qs.features.popups
+import qs.features.audio
 
 Popup {
     id: root

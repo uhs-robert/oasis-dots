@@ -12,6 +12,7 @@ import qs.lock.skins
 import qs.lock.skins.ui
 import qs.features.power
 import qs.features.popups
+import qs.features.audio
 
 // The session lock: one surface per screen, unlocked only by a PAM success.
 Singleton {

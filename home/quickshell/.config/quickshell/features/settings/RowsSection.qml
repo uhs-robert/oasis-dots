@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
+import qs.features.audio
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
 // Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops H/L from stepping it, and `activate: () => void` replaces Enter or a click.

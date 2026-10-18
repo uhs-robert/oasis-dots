@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import qs.services
+import qs.features.audio
 
 // A small round icon button for the media transport row.
 Rectangle {
