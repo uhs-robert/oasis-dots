@@ -137,6 +137,7 @@ fn run_ended_hook(integration: &str, reason: &str, frame_id: &str) {
     let mut command = Command::new(paths::legacy_bin());
     command
         .args(["_legacy-hook", "ended", integration, reason, frame_id, "0"])
+        .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
     match command.spawn() {

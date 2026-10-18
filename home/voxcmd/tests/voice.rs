@@ -308,7 +308,8 @@ fn stop_mid_recording_cancels_it_and_the_watcher_cleans_up() {
 
 #[test]
 fn a_stop_signal_mid_recording_still_cleans_up() {
-    for stop_signal in [libc::SIGTERM, libc::SIGINT] {
+    // SIGHUP as well: logind sends it at logout.
+    for stop_signal in [libc::SIGTERM, libc::SIGINT, libc::SIGHUP] {
         let voice = Voice::new();
         voice.detector("exec sleep 30");
         let owner_file = voice.work("recording-owner");
@@ -328,6 +329,41 @@ fn a_stop_signal_mid_recording_still_cleans_up() {
             "signal {stop_signal}"
         );
     }
+}
+
+#[test]
+fn a_discard_flag_an_earlier_watcher_left_under_the_same_pid_is_cleared() {
+    let voice = Voice::new();
+    std::fs::write(voice.runtime().join("transcript.txt"), "do ok\n").unwrap();
+    voice.set_state("recording");
+    // exec keeps the pid, so the files are there, under the watcher's own pid, before it starts.
+    let mut command = Command::new("sh");
+    command.env_clear();
+    for (name, value) in voice.command(&[]).get_envs() {
+        if let Some(value) = value {
+            command.env(name, value);
+        }
+    }
+    let mut watcher = command
+        .env("VOXCMD", env!("CARGO_BIN_EXE_voxcmd"))
+        .args([
+            "-c",
+            "touch \"$XDG_RUNTIME_DIR/voxcmd/discard.$$\" \"$XDG_RUNTIME_DIR/voxcmd/threshold.$$\"
+             exec \"$VOXCMD\" internal watch route - 0 ''",
+        ])
+        .stdin(Stdio::null())
+        .spawn()
+        .unwrap();
+    assert!(wait_for(|| voice.debug_log().contains("watch: voxtype recording")));
+    voice.set_state("idle");
+    assert!(watcher.wait().unwrap().success());
+    assert!(
+        !voice.debug_log().contains("watch: recording discarded"),
+        "{}",
+        voice.debug_log()
+    );
+    assert_eq!(std::fs::read_to_string(voice.work("ran")).unwrap(), "ran\n");
+    assert_eq!(voice.leftovers(watcher.id()), Vec::<PathBuf>::new());
 }
 
 #[test]
@@ -604,6 +640,29 @@ fn stop_with_nothing_open_does_nothing() {
     voice.set_state("idle");
     assert!(voice.output(&["stop"]).status.success());
     assert_eq!(voice.calls(), "");
+}
+
+#[test]
+fn an_ended_hook_never_gets_the_caller_s_stdin() {
+    let voice = Voice::new();
+    voice.script(
+        "legacy/voxcmd",
+        &format!("readlink /proc/$$/fd/0 >> '{}'", voice.work("hook-stdin").display()),
+    );
+    let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
+    open_session(&voice, &owner, serde_json::json!({}));
+    let mut ending = voice
+        .command(&["session", "end"])
+        .stdin(Stdio::piped())
+        .spawn()
+        .unwrap();
+    assert!(ending.wait().unwrap().success());
+    end(&mut owner);
+    assert!(wait_for(|| {
+        std::fs::read_to_string(voice.work("hook-stdin")).is_ok_and(|seen| seen.lines().count() == 2)
+    }));
+    let seen = std::fs::read_to_string(voice.work("hook-stdin")).unwrap();
+    assert!(seen.lines().all(|stdin| stdin == "/dev/null"), "{seen}");
 }
 
 #[test]

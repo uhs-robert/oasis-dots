@@ -3,10 +3,10 @@
 //! answers the waiting ask with it (was `watch_recording`, `autostop_recording` and `release_recording_ownership`)
 //!
 //! A watcher ends however it ends without leaving its discard flag, its detector's threshold file, its claim on an
-//! ask's recording owner file or the detector itself behind: on return by `Cleanup`, on SIGINT or SIGTERM by the stop
-//! handler in `process.rs` (which TERMs the detector's group and removes the listed files), and when it is SIGKILLed
-//! the detector still dies with it (`die_with_parent`); only the two files are then left, as the bash EXIT trap left
-//! them. A session turn's watcher (`session_turn`) is the bash voxcmd's until voxcmd-port 2.4c.
+//! ask's recording owner file or the detector itself behind: on return by `Cleanup`, on SIGINT, SIGTERM or SIGHUP by
+//! the stop handler in `process.rs` (which TERMs the detector's group and removes the listed files), and when it is
+//! SIGKILLed the detector still dies with it (`die_with_parent`); only the two files are then left, as the bash EXIT
+//! trap left them, and a later watcher that gets the same pid removes them before it starts. A session turn's watcher (`session_turn`) is the bash voxcmd's until voxcmd-port 2.4c.
 use super::listen::{Handler, inherited_owner_file};
 use super::{time_scaled, voxtype_record, voxtype_state, voxtype_write_mark};
 use crate::ask;
@@ -61,6 +61,7 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
     };
     let heard_private = args.get(2).is_some_and(|private| private == "1");
     let detector_settings = args.get(3).map_or("", String::as_str);
+    process::stop_on_hangup_too();
     // Held until the handler is done: Stop Voice flags this watcher's discard flag to keep what the handler opens
     // from listening.
     let mut cleanup = Cleanup::new();
@@ -188,11 +189,15 @@ struct Cleanup {
 }
 
 impl Cleanup {
-    /// Listed for the stop handler before any of the files exists, so no signal falls between the two.
+    /// Listed for the stop handler before any of the files exists, so no signal falls between the two. Files by this
+    /// pid already there are an earlier watcher's that was SIGKILLed with the same pid, and a discard flag of its
+    /// would drop what is said now.
     fn new() -> Self {
         let pid = std::process::id();
         let discard_flag = paths::discard_flag(pid);
         let threshold_file = paths::threshold_file(pid);
+        let _ = std::fs::remove_file(&discard_flag);
+        let _ = std::fs::remove_file(&threshold_file);
         let owner_file = inherited_owner_file();
         let mut on_signal = vec![
             RemovedOnSignal::new(&discard_flag),
@@ -241,9 +246,18 @@ impl Drop for Cleanup {
 /// voxcmd-autostop, which ends the recording once it hears speech and then a pause, or cancels it when nothing was
 /// said. It exits by itself when the recording ends some other way; `stop` ends it first otherwise.
 struct Detector {
-    /// Taken by the waiting thread once the detector has exited, so a stop never signals a reused pid.
-    child: Arc<Mutex<Option<Child>>>,
+    /// Emptied by the waiting thread once the group has no process left, so neither `stop` nor a stop signal reaches
+    /// the group id after it may have been handed out again.
+    group: Arc<Mutex<Option<DetectorGroup>>>,
     stopped: Arc<AtomicBool>,
+}
+
+/// The detector's process group, which it leads, and its listing for the stop handler, dropped together.
+struct DetectorGroup {
+    id: libc::pid_t,
+    /// None once reaped. The group can outlive it: a child of the detector's (its `pw-record`) may not have exited
+    /// yet, and is still the detector's to end.
+    leader: Option<Child>,
     _listed: LiveGroup,
 }
 
@@ -264,51 +278,81 @@ impl Detector {
         );
         // Spawned on the main thread, which lives as long as the watcher.
         process::die_with_parent(&mut command);
-        let (child, listed) = process::spawn_letting_clean_up(&mut command).ok()?;
+        Self::spawn(&mut command, discard_flag)
+    }
+
+    fn spawn(command: &mut Command, discard_flag: &Path) -> Option<Self> {
+        let (leader, listed) = process::spawn_letting_clean_up(command).ok()?;
         let detector = Self {
-            child: Arc::new(Mutex::new(Some(child))),
+            group: Arc::new(Mutex::new(Some(DetectorGroup {
+                id: libc::pid_t::try_from(leader.id()).ok()?,
+                leader: Some(leader),
+                _listed: listed,
+            }))),
             stopped: Arc::default(),
-            _listed: listed,
         };
-        let (child, stopped, discard_flag) = (
-            Arc::clone(&detector.child),
+        let (group, stopped, discard_flag) = (
+            Arc::clone(&detector.group),
             Arc::clone(&detector.stopped),
             discard_flag.to_path_buf(),
         );
         thread::spawn(move || {
-            let Some(verdict) = wait_for_verdict(&child) else {
-                return;
-            };
-            if !stopped.load(Ordering::SeqCst) {
+            if let Some(verdict) = wait_for_verdict(&group)
+                && !stopped.load(Ordering::SeqCst)
+            {
                 act_on_verdict(verdict, &discard_flag);
             }
+            unlist_once_empty(&group);
         });
         Some(detector)
     }
 
-    /// TERMs the detector's group (it leads one) unless it has exited; its verdict is then ignored.
+    /// TERMs the detector's group while any of it runs; its verdict is then ignored.
     fn stop(&self) {
         self.stopped.store(true, Ordering::SeqCst);
-        let child = self.child.lock().expect("held briefly");
-        if let Some(group) = child.as_ref().and_then(|child| libc::pid_t::try_from(child.id()).ok()) {
+        let group = self.group.lock().expect("held briefly");
+        if let Some(group) = group.as_ref() {
             // SAFETY: killpg only sends a signal; the group is the detector's own, never voxcmd's.
-            unsafe { libc::killpg(group, libc::SIGTERM) };
+            unsafe { libc::killpg(group.id, libc::SIGTERM) };
         }
     }
 }
 
+const GROUP_POLL: Duration = Duration::from_millis(20);
+
 /// The detector's exit code once it has exited, 128 + the signal when a signal ended it, as `wait` reports it.
-fn wait_for_verdict(child: &Mutex<Option<Child>>) -> Option<i32> {
+fn wait_for_verdict(group: &Mutex<Option<DetectorGroup>>) -> Option<i32> {
     loop {
         {
-            let mut held = child.lock().ok()?;
-            let status = held.as_mut()?.try_wait().ok()?;
-            if let Some(status) = status {
-                held.take();
+            let mut held = group.lock().ok()?;
+            let held = held.as_mut()?;
+            if let Some(status) = held.leader.as_mut()?.try_wait().ok()? {
+                held.leader = None;
                 return status.code().or_else(|| status.signal().map(|signal| 128 + signal));
             }
         }
-        thread::sleep(Duration::from_millis(20));
+        thread::sleep(GROUP_POLL);
+    }
+}
+
+/// Drops the group, and its listing, once its last process has gone. Checked under the lock `stop` takes, so `stop`
+/// signals only a group that still has members. The stop handler takes no lock: it can reach the id for up to one poll
+/// after the group emptied, too soon for the kernel to have handed it out again short of a pid wraparound.
+fn unlist_once_empty(group: &Mutex<Option<DetectorGroup>>) {
+    loop {
+        {
+            let Ok(mut held) = group.lock() else {
+                return;
+            };
+            let Some(running) = held.as_ref() else {
+                return;
+            };
+            if !process::group_has_members(running.id) {
+                *held = None;
+                return;
+            }
+        }
+        thread::sleep(GROUP_POLL);
     }
 }
 
@@ -351,5 +395,50 @@ mod tests {
         // The ordinary transitions.
         assert!(!ended_unseen("recording", AT_1, "transcribing", AT_2));
         assert!(!ended_unseen("transcribing", AT_1, "idle", AT_2));
+    }
+
+    /// Whether the detector's group is dropped, and so no longer listed for a stop signal, within 10 s.
+    fn unlisted_within_10s(detector: &Detector, group: libc::pid_t) -> bool {
+        for _ in 0..500 {
+            if detector.group.lock().unwrap().is_none() {
+                return !process::tests::is_listed(group);
+            }
+            thread::sleep(GROUP_POLL);
+        }
+        false
+    }
+
+    fn detector_of(script: &str) -> (Detector, libc::pid_t) {
+        let dir = tempfile::tempdir().unwrap();
+        let mut command = Command::new("sh");
+        command.args(["-c", script]);
+        let detector = Detector::spawn(&mut command, &dir.path().join("discard")).unwrap();
+        let group = detector.group.lock().unwrap().as_ref().unwrap().id;
+        (detector, group)
+    }
+
+    // A stop signal mid-route, long after the detector exited, must not reach its group id, which may have been
+    // handed out again by then.
+    #[test]
+    fn a_reaped_detector_s_group_is_no_longer_signalled_on_stop() {
+        let (detector, group) = detector_of("exit 4");
+        assert!(unlisted_within_10s(&detector, group));
+    }
+
+    #[test]
+    fn a_detector_s_group_stays_listed_while_a_child_of_it_runs() {
+        let (detector, group) = detector_of("sleep 1 & exit 4");
+        thread::sleep(Duration::from_millis(300));
+        assert!(
+            detector
+                .group
+                .lock()
+                .unwrap()
+                .as_ref()
+                .is_some_and(|held| held.leader.is_none()),
+            "the detector was not reaped, or its group was dropped with its child running"
+        );
+        assert!(process::tests::is_listed(group));
+        assert!(unlisted_within_10s(&detector, group));
     }
 }
