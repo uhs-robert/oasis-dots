@@ -63,6 +63,7 @@ When the owner asks you to hand off to a fresh session, pass the baton or wind d
    - Tell it to run validation in the foreground with a long timeout, never in the background: a background run hands back early and pings the orchestrator on every tick while it waits.
    - When the repo has a `lib/check.sh`, its final `lib/check.sh --changed <merge-base>` with everything committed is the validation; a separate full run of a suite it already covers only queues for the same test slots.
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
+   - For concurrency or lifecycle work (signals, locks, processes that hand over or race), name those risks in the brief and require tests that drive each risky path before review. Review rounds otherwise find these bugs one at a time.
    Require a report of:
    - changes made
    - validation performed
@@ -82,14 +83,16 @@ When the owner asks you to hand off to a fresh session, pass the baton or wind d
    - Exit 0 → read the review path it prints.
    - Exit 2 → spawn a read-only `general-purpose` agent with `model: opus` as the external reviewer. Give it the worktree path, the issue, how to get the diff (`git diff <base>...HEAD`), the root cause and design, and the same review dimensions. Name the risky areas to probe (ordering and races, lifecycle and reload paths, behavior the change silently dropped). Tell it not to edit, commit, push or comment, and require findings ranked by severity, each with file:line, a concrete failure scenario, confidence (confirmed/plausible) and a suggested fix. In the final report, name which reviewer ran and quote the line Codex printed after `codex unavailable:`.
    - Codex at its usage limit (local or on GitHub) is a standing owner waiver: the Opus review stands in for it, and an Opus "approve, no revisions" counts as Codex's approval, including under a standing merge approval. GitHub Codex will not review either, so merge with the repo's review-gate skip (here `.claude/skills/ship-batch/ship-batch.sh --skip-review-gate <n>...`, flag before the PR numbers). The skip also skips the unresolved-thread check: confirm by hand first that the PR has none. Say in the PR that Opus reviewed in place of Codex. Once Codex is back, use it again.
+   - A standing merge approval that requires the external review to find nothing counts the last external round plus your own review of any non-material fixes after it (step 9). It does not require a fresh external pass on the final head.
 
 8. Evaluate every material review finding yourself. Classify it as valid, partially valid, invalid, or out of scope. Do not blindly apply reviewer suggestions.
 
 9. Resolve valid findings using the model policy from step 4.
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when its context is under 150k tokens, judged from the token count its completion reports, and the fix is in code it already read.
    - Otherwise brief a fresh agent with the diff, the finding and the file paths. Also start fresh when the finding shows the approach itself was wrong.
+   - Tell the fixer to make the smallest change that fixes the finding, with a test for it. If the fix needs a new mechanism, it reports that before building it.
 
-   Re-run the external review (Codex, or the Opus fallback) only if remediation materially changes the implementation.
+   Re-run the external review (Codex, or the Opus fallback) only if remediation materially changes the implementation. A fix is material when it changes the design: a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic. A targeted fix to the code a finding named is not: review its diff yourself, confirm its test, and move on.
 
 10. Final validation, run by an agent and confirmed from its report:
     - relevant tests/checks pass
