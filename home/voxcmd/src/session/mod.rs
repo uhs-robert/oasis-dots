@@ -23,7 +23,7 @@ use std::process::{Command, Stdio};
 /// The session lock, held until dropped. Every read that may clear the file and every change to it holds it. Opened
 /// close-on-exec, so nothing voxcmd starts while holding it keeps it.
 pub struct SessionLock {
-    _file: File,
+    _file: Option<File>,
 }
 
 impl SessionLock {
@@ -33,24 +33,24 @@ impl SessionLock {
             .create(true)
             .append(true)
             .open(paths::session_lock());
-        match file {
-            Ok(file) => {
-                // SAFETY: flock on a descriptor this lock owns; it is released when the file closes.
-                unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) };
-                crate::process::note_held_flock(Some(file.as_raw_fd()));
-                Self { _file: file }
-            }
-            // A runtime dir that cannot hold the lock cannot hold a session either: reads then find none.
-            Err(_) => Self {
-                _file: File::open("/dev/null").expect("/dev/null opens"),
-            },
+        // A runtime dir that cannot hold the lock cannot hold a session either: reads then find none.
+        let Ok(file) = file else {
+            return Self { _file: None };
+        };
+        // SAFETY: flock on a descriptor this lock owns; it is released when the file closes.
+        unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) };
+        if crate::process::last_act_runs_elsewhere() {
+            // A stop signal's last act ends the session next; it takes the lock once this lets it go.
+            drop(file);
+            crate::process::wait_for_last_act();
         }
+        Self { _file: Some(file) }
     }
-}
 
-impl Drop for SessionLock {
-    fn drop(&mut self) {
-        crate::process::note_held_flock(None);
+    /// The lock a hook's caller holds while the hook runs (`bridge::lock_held_by_caller`): taking it again here would
+    /// wait for the caller, which waits for the hook.
+    pub fn held_by_caller() -> Self {
+        Self { _file: None }
     }
 }
 
@@ -470,6 +470,95 @@ pub fn run_end() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::tests::{in_own_process, is_own_process};
+    use std::io::Write as _;
+    use std::os::unix::process::ExitStatusExt;
+    use std::time::{Duration, Instant};
+
+    /// A session owned by this process, a stop's last act that ends it, and the order things happened in, in `dir`.
+    fn own_a_session_ended_on_stop(dir: &std::path::Path) {
+        let me = std::process::id();
+        let session = json!({"kind": "rapid", "label": "Rapid mode", "integration": "/i/rapid.sh", "frame_id": "1",
+            "owner": me.to_string(), "owner_start": process_start_time(me).unwrap(), "stack": []});
+        std::fs::create_dir_all(paths::runtime_dir()).unwrap();
+        std::fs::write(paths::session_file(), session.to_string()).unwrap();
+        let events = dir.join("events");
+        crate::process::run_on_stop(move || {
+            end_if_mine("stopped", me);
+            note(&events, "ended");
+        });
+    }
+
+    fn note(events: &std::path::Path, event: &str) {
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(events)
+            .unwrap();
+        writeln!(file, "{event}").unwrap();
+    }
+
+    /// Runs the test in a process of its own against `dir`, and checks it ended by its stop signal, soon, having ended
+    /// the session once.
+    fn ends_by_its_stop_signal(test: &str, dir: &std::path::Path) -> String {
+        let started = Instant::now();
+        let status = in_own_process(test)
+            .env("XDG_RUNTIME_DIR", dir)
+            .env("VOXCMD_DEBUG", "1")
+            .env("VOXCMD_DRY_RUN", "1")
+            .env("VOXCMD_TEST_DIR", dir)
+            .status()
+            .unwrap();
+        assert_eq!(status.signal(), Some(libc::SIGTERM), "{status:?}");
+        assert!(started.elapsed() < Duration::from_secs(4), "{:?}", started.elapsed());
+        let log = std::fs::read_to_string(dir.join("voxcmd/debug.log")).unwrap_or_default();
+        assert_eq!(log.matches("session ended: stopped").count(), 1, "{log}");
+        assert!(!dir.join("voxcmd/session.json").exists());
+        std::fs::read_to_string(dir.join("events")).unwrap_or_default()
+    }
+
+    fn test_dir() -> std::path::PathBuf {
+        std::env::var_os("VOXCMD_TEST_DIR").unwrap().into()
+    }
+
+    #[test]
+    fn a_stop_signal_while_the_lock_is_held_ends_the_session_once_it_is_let_go() {
+        let test = "session::tests::a_stop_signal_while_the_lock_is_held_ends_the_session_once_it_is_let_go";
+        if is_own_process() {
+            let dir = test_dir();
+            own_a_session_ended_on_stop(&dir);
+            let lock = SessionLock::take();
+            // SAFETY: kill only sends a signal, here to this process.
+            unsafe { libc::kill(libc::getpid(), libc::SIGTERM) };
+            std::thread::sleep(Duration::from_millis(300));
+            note(&dir.join("events"), "released");
+            drop(lock);
+            std::thread::sleep(Duration::from_secs(30));
+            std::process::exit(0);
+        }
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(ends_by_its_stop_signal(test, dir.path()), "released\nended\n");
+    }
+
+    #[test]
+    fn a_stop_signal_while_the_lock_is_taken_and_let_go_ends_the_session_once() {
+        let test = "session::tests::a_stop_signal_while_the_lock_is_taken_and_let_go_ends_the_session_once";
+        if is_own_process() {
+            own_a_session_ended_on_stop(&test_dir());
+            std::thread::spawn(|| {
+                std::thread::sleep(Duration::from_millis(100));
+                // SAFETY: kill only sends a signal, here to this process.
+                unsafe { libc::kill(libc::getpid(), libc::SIGTERM) };
+            });
+            let deadline = Instant::now() + Duration::from_secs(30);
+            while Instant::now() < deadline {
+                drop(SessionLock::take());
+            }
+            std::process::exit(0);
+        }
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(ends_by_its_stop_signal(test, dir.path()), "ended\n");
+    }
 
     #[test]
     fn frames_run_from_the_bottom_mode_to_the_current_one() {

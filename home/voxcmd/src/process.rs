@@ -13,9 +13,9 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use std::sync::Once;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicPtr, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::sync::{Once, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -409,7 +409,7 @@ pub fn stop_on_hangup_too() {
 
 fn handle_as_stop(signal: libc::c_int) {
     // SAFETY: the handler only uses atomics and async-signal-safe calls (killpg, waitpid, nanosleep, open, read, close,
-    // unlink, signal, raise).
+    // unlink, write, signal, raise).
     unsafe {
         libc::signal(
             signal,
@@ -426,77 +426,87 @@ extern "C" fn on_stop_signal(signal: libc::c_int) {
     }
 }
 
-/// The command a stop signal runs, and waits for, once the groups and files are done: a session turn's watcher ending
-/// the session it still owns, which takes the session lock and reads JSON, so it cannot run in the handler itself.
-struct LastAct {
-    program: CString,
-    /// NUL-terminated, pointing into `_args`.
-    argv: Vec<*const libc::c_char>,
-    _args: Vec<CString>,
-}
+/// The write end of the pipe that wakes the thread running the stop's last act (`run_on_stop`), -1 while there is
+/// none. The handler only writes the signal's number to it: the act takes the session lock, reads JSON and starts
+/// processes, none of which a handler may do.
+static LAST_ACT_WAKE: AtomicI32 = AtomicI32::new(-1);
+static LAST_ACT_THREAD: OnceLock<thread::ThreadId> = OnceLock::new();
 
-static LAST_ACT: AtomicPtr<LastAct> = AtomicPtr::new(std::ptr::null_mut());
-/// The descriptor of the `flock` this process holds now (the session lock), -1 for none: released before the last act
-/// runs, which would otherwise wait for it while this process waits for the act.
-static HELD_FLOCK: AtomicI32 = AtomicI32::new(-1);
+/// How long the last act may take before voxcmd ends anyway: it waits for the session lock, which a hung holder could
+/// keep.
+const LAST_ACT_LIMIT: Duration = Duration::from_secs(5);
 
-/// Notes the `flock` taken on this descriptor, or with none that it was let go.
-pub fn note_held_flock(fd: Option<std::os::fd::RawFd>) {
-    HELD_FLOCK.store(fd.unwrap_or(-1), Ordering::Release);
-}
-
-/// Has a stop signal run `program args` as voxcmd's last act, after it has ended its groups and removed its files.
-/// Set once per process; a later call replaces it.
-pub fn run_on_stop(program: &Path, args: &[&str]) {
+/// Has a stop signal run `act` as voxcmd's last act, after it has ended its groups and removed its files: on a thread
+/// of its own, which then ends voxcmd as the signal would have. Once per process.
+pub fn run_on_stop(act: impl FnOnce() + Send + 'static) {
     HANDLERS.call_once(install_handlers);
-    let Ok(program) = CString::new(program.as_os_str().as_bytes()) else {
+    let mut fds = [0; 2];
+    // SAFETY: pipe2 fills the two descriptors given.
+    if unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
+        return;
+    }
+    let [wake_read, wake_write] = fds;
+    let spawned = thread::Builder::new().name("last act".into()).spawn(move || {
+        let signal = wait_for_wake(wake_read);
+        // The bound on the act, on a thread of its own since the act may block.
+        thread::spawn(move || {
+            thread::sleep(LAST_ACT_LIMIT);
+            end_as(signal);
+        });
+        act();
+        end_as(signal);
+    });
+    let Ok(last_act_thread) = spawned else {
         return;
     };
-    let Ok(mut owned) = std::iter::once(Ok(program.clone()))
-        .chain(args.iter().map(|arg| CString::new(*arg)))
-        .collect::<Result<Vec<CString>, _>>()
-    else {
-        return;
-    };
-    owned.shrink_to_fit();
-    let mut argv: Vec<*const libc::c_char> = owned.iter().map(|arg| arg.as_ptr()).collect();
-    argv.push(std::ptr::null());
-    // Never freed, as a listed removal is not: the handler may be reading the one it replaces.
-    let act = Box::into_raw(Box::new(LastAct {
-        program,
-        argv,
-        _args: owned,
-    }));
-    LAST_ACT.store(act, Ordering::Release);
+    let _ = LAST_ACT_THREAD.set(last_act_thread.thread().id());
+    LAST_ACT_WAKE.store(wake_write, Ordering::SeqCst);
 }
 
-/// Runs the last act, if any, and waits for it. Only system calls a handler may make: flock, fork, execv, _exit and
-/// waitpid.
-fn run_last_act() {
-    // SAFETY: a stored act is never freed.
-    let Some(act) = (unsafe { LAST_ACT.load(Ordering::Acquire).as_ref() }) else {
-        return;
-    };
-    let held = HELD_FLOCK.load(Ordering::Acquire);
-    if held >= 0 {
-        // SAFETY: flock only releases this process's lock on its own descriptor; voxcmd ends right after.
-        unsafe { libc::flock(held, libc::LOCK_UN) };
+fn wait_for_wake(wake_read: libc::c_int) -> libc::c_int {
+    let mut signal = 0u8;
+    loop {
+        // SAFETY: a one-byte read into a byte on this stack.
+        let read = unsafe { libc::read(wake_read, (&raw mut signal).cast(), 1) };
+        if read == 1 {
+            return libc::c_int::from(signal);
+        }
+        if read == 0 || std::io::Error::last_os_error().raw_os_error() != Some(libc::EINTR) {
+            // Nothing can wake it any more, so the handler ends voxcmd itself.
+            LAST_ACT_WAKE.store(-1, Ordering::SeqCst);
+            loop {
+                thread::park();
+            }
+        }
     }
-    // SAFETY: the child only execs or exits; the parent waits for that one child.
+}
+
+/// Whether a stop's last act is under way on a thread other than this one. A session change made here now would land
+/// after the act has ended the session, or before it in the lock's queue, so `SessionLock::take` holds this thread.
+pub fn last_act_runs_elsewhere() -> bool {
+    STOPPING.load(Ordering::SeqCst)
+        && LAST_ACT_WAKE.load(Ordering::SeqCst) >= 0
+        && LAST_ACT_THREAD.get() != Some(&thread::current().id())
+}
+
+/// Holds this thread until the last act ends voxcmd.
+pub fn wait_for_last_act() -> ! {
+    loop {
+        thread::park();
+    }
+}
+
+/// Lets the signal do what it would have done, so voxcmd still ends as the signal says.
+fn end_as(signal: libc::c_int) {
+    // SAFETY: restoring the default action and raising again are async-signal-safe.
     unsafe {
-        let child = libc::fork();
-        if child == 0 {
-            libc::execv(act.program.as_ptr(), act.argv.as_ptr());
-            libc::_exit(127);
-        }
-        if child > 0 {
-            while libc::waitpid(child, std::ptr::null_mut(), 0) < 0 && *libc::__errno_location() == libc::EINTR {}
-        }
+        libc::signal(signal, libc::SIG_DFL);
+        libc::raise(signal);
     }
 }
 
-/// Ends every listed group and removes every listed file, then lets the signal do what it would have done, so voxcmd
-/// still ends as the signal says. Runs in the handler, or on the thread that held the signal. A second signal during
+/// Ends every listed group and removes every listed file, then ends voxcmd as the signal says, after the last act
+/// when there is one. Runs in the handler, or on the thread that held the signal. A second signal during
 /// the first one's grace (another thread's, or INT on top of TERM) only ends what has been listed since, and leaves
 /// the waiting and the exit to the first, so a stop never takes two graces.
 fn end_on_signal(signal: libc::c_int) {
@@ -536,12 +546,16 @@ fn end_on_signal(signal: libc::c_int) {
     if asks_terminated {
         kill_asks_after_grace();
     }
-    run_last_act();
-    // SAFETY: restoring the default action and raising again are async-signal-safe.
-    unsafe {
-        libc::signal(signal, libc::SIG_DFL);
-        libc::raise(signal);
+    let wake = LAST_ACT_WAKE.load(Ordering::SeqCst);
+    if wake >= 0 {
+        // Signal numbers fit a byte.
+        let byte = signal as u8;
+        // SAFETY: write is async-signal-safe; the last act's thread ends voxcmd once it has read this.
+        if unsafe { libc::write(wake, (&raw const byte).cast(), 1) } == 1 {
+            return;
+        }
     }
+    end_as(signal);
 }
 
 /// Waits up to `STOP_GRACE` for every TERMed ask to exit, then kills what is left of their groups: an ask stuck past
@@ -628,19 +642,19 @@ pub(crate) mod tests {
         );
     }
 
-    /// Runs the named test again in a process of its own with `VOXCMD_PROCESS_TEST_CHILD` set: a stop signal, and
-    /// the stopping it starts, would end or poison every other test in this one.
-    fn in_own_process(test: &str) -> Command {
+    /// Runs the test at that path again in a process of its own with `VOXCMD_PROCESS_TEST_CHILD` set: a stop signal,
+    /// and the stopping it starts, would end or poison every other test in this one.
+    pub(crate) fn in_own_process(test: &str) -> Command {
         let mut command = Command::new(std::env::current_exe().unwrap());
         command
-            .args(["--exact", &format!("process::tests::{test}"), "--test-threads=1"])
+            .args(["--exact", test, "--test-threads=1"])
             .env("VOXCMD_PROCESS_TEST_CHILD", "1")
             .stdout(Stdio::null())
             .stderr(Stdio::null());
         command
     }
 
-    fn is_own_process() -> bool {
+    pub(crate) fn is_own_process() -> bool {
         std::env::var_os("VOXCMD_PROCESS_TEST_CHILD").is_some()
     }
 
@@ -653,7 +667,7 @@ pub(crate) mod tests {
             std::process::exit(i32::from(!refused));
         }
         assert!(
-            in_own_process("nothing_is_spawned_once_a_stop_has_begun")
+            in_own_process("process::tests::nothing_is_spawned_once_a_stop_has_begun")
                 .status()
                 .unwrap()
                 .success()
@@ -675,7 +689,7 @@ pub(crate) mod tests {
             std::process::exit(0);
         }
         let started = Instant::now();
-        let status = in_own_process("a_second_stop_signal_during_the_grace_does_not_add_one")
+        let status = in_own_process("process::tests::a_second_stop_signal_during_the_grace_does_not_add_one")
             .status()
             .unwrap();
         // One grace (2 s) after the first signal; two would be past 4 s.

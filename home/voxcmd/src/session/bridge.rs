@@ -1,4 +1,4 @@
-//! `voxcmd internal session begin|leave|end|end-all|state|end-if-mine`: the Rust session as the bash integrations
+//! `voxcmd internal session begin|leave|end|end-all|state`: the Rust session as the bash integrations
 //! reach it (deleted in voxcmd-port 3.2 with the bash voxcmd)
 //!
 //! A bash action runs in a `_legacy-hook` child, where `$$` is that child, not the Rust process that ran it. The child
@@ -7,6 +7,7 @@
 //! which these subcommands also take as "mine".
 use super::{SessionLock, turn};
 use crate::ask;
+use crate::debug::debug;
 use crate::exit::CliError;
 use std::process::Command;
 
@@ -18,6 +19,14 @@ pub fn hook_env(heard_mode: &str) -> [(&'static str, String); 3] {
         ("VOXCMD_LEGACY_HEARD_MODE", heard_mode.to_string()),
         ("VOXCMD_LEGACY_RS_BIN", ask::this_binary().display().to_string()),
     ]
+}
+
+/// Set for a hook run while the session lock is held (a mode's `session_alive`). Its session reads then skip the lock,
+/// as bash's nested `session_locked` calls did, and its changes are refused, where either would wait for the caller.
+pub const LOCK_HELD_BY_CALLER: &str = "VOXCMD_SESSION_LOCK_HELD";
+
+fn lock_held_by_caller() -> bool {
+    std::env::var_os(LOCK_HELD_BY_CALLER).is_some_and(|held| held == "1")
 }
 
 /// The variables a bash action or hook was run with, which a process it starts must not take as its own: a watcher a
@@ -32,6 +41,7 @@ pub fn clear_hook_env(command: &mut Command) {
         "VOXCMD_LEGACY_CONFIRMED",
         "VOXCMD_LEGACY_RAW_TRANSCRIPT",
         "VOXCMD_LEGACY_ACTIVE_BEFORE",
+        LOCK_HELD_BY_CALLER,
     ] {
         command.env_remove(name);
     }
@@ -46,11 +56,23 @@ fn caller() -> u32 {
 }
 
 const USAGE: &str = "usage: begin <kind> <file> <label> | leave <kind> [reason] | end [reason] | end-all [reason] | \
-                     state | end-if-mine <pid> <reason>";
+                     state";
 
 pub fn run(args: &[String]) -> Result<Option<String>, CliError> {
     let me = caller();
     let arg = |index: usize| args.get(index).map_or("", String::as_str);
+    if lock_held_by_caller() {
+        if arg(0) == "state" {
+            return super::state(&SessionLock::held_by_caller())
+                .map(|state| Some(state.to_string()))
+                .ok_or_else(|| CliError::quiet("internal session"));
+        }
+        debug(&format!(
+            "internal session: {} refused, called from a hook run under the session lock",
+            arg(0)
+        ));
+        return Err(CliError::quiet("internal session"));
+    }
     match arg(0) {
         "begin" if args.len() == 4 => turn::begin(arg(1), arg(2), arg(3), me),
         "leave" if args.len() >= 2 => {
@@ -64,12 +86,6 @@ pub fn run(args: &[String]) -> Result<Option<String>, CliError> {
             return super::read_state()
                 .map(|state| Some(state.to_string()))
                 .ok_or_else(|| CliError::quiet("internal session"));
-        }
-        // A watcher that a stop signal ends runs this as its last act (`process::run_on_stop`), as the bash EXIT trap
-        // ran `session_end_if_mine`.
-        "end-if-mine" if args.len() == 3 => {
-            let pid = arg(1).parse().map_err(|_| CliError::usage("internal session", USAGE))?;
-            super::end_if_mine(arg(2), pid);
         }
         _ => return Err(CliError::usage("internal session", USAGE)),
     }
