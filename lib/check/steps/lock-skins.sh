@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -eu
 
-# Keeps lock/skins/index.json in step with the skin files and audio importers. What a skin may import is checked by qml_paths.py.
+# Keeps features/lock/skins/index.json in step with the skin files and audio importers. What a skin may import is checked by qml_paths.py.
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 qs_dir="$repo_dir/home/quickshell/.config/quickshell"
-skins_dir="$qs_dir/lock/skins"
+skins_dir="$qs_dir/features/lock/skins"
 index="$skins_dir/index.json"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -27,7 +27,7 @@ files=$(
 )
 keys=$(jq -r 'keys[]' "$index" | sort)
 if [ "$files" != "$keys" ]; then
-  echo 'lock skins: index.json keys differ from lock/skins/*.qml:' >&2
+  echo 'lock skins: index.json keys differ from features/lock/skins/*.qml:' >&2
   echo '--- files:' >&2
   printf '%s\n' "$files" >&2
   echo '--- index.json:' >&2

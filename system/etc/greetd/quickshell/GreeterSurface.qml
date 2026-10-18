@@ -1,10 +1,10 @@
 // /etc/greetd/quickshell/GreeterSurface.qml
 import QtQuick
 import qs.theme
-import qs.lock.skins.ui
+import qs.features.lock.skins.ui
 // Unused here; Quickshell registers only imported folders, and the skins loaded by URL need these.
-import qs.lock.skins as Skins
-import qs.lock.skins.sound as Sound
+import qs.features.lock.skins as Skins
+import qs.features.lock.skins.sound as Sound
 
 // One screen of the greeter: the lock skin for the saved lock style, else the simple screen, with the session and power keys under it.
 Item {
@@ -34,7 +34,7 @@ Item {
 
         Component.onCompleted: {
             const name = Greeter.skin;
-            if (name !== "simple") skin_loader.setSource(Qt.resolvedUrl("lock/skins/" + name.charAt(0).toUpperCase() + name.slice(1) + ".qml"), { ctx: Greeter.ctx });
+            if (name !== "simple") skin_loader.setSource(Qt.resolvedUrl("features/lock/skins/" + name.charAt(0).toUpperCase() + name.slice(1) + ".qml"), { ctx: Greeter.ctx });
             if (name === "simple" || skin_loader.status === Loader.Error) skin_loader.setSource(Qt.resolvedUrl("GreeterSimple.qml"), { ctx: Greeter.ctx });
             const ms = skin_loader.item ? skin_loader.item.unlock_ms : undefined;
             Greeter.unlock_ms = typeof ms === "number" ? ms : 0;

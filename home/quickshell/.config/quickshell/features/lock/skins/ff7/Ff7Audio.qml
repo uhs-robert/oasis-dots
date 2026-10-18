@@ -1,45 +1,40 @@
 import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
-import qs.lock.skins.sound
+import qs.features.lock.skins.sound
 
-// The Ocarina skin's music and sound effects (made by scripts/ocarina-audio): the skin's own audio/ when it holds
-// files (the greeter's staged copy), else the user's data dir; a missing file stays silent.
+// The FF7 skin's music and sound effects (made by scripts/ff7-audio): the user's data dir when it holds
+// files, else the skin's own audio/ (the greeter's staged copy, or an older in-tree import); a missing file stays silent.
 Item {
     id: audio
 
-    // "title", "fairy" or "".
+    // "title" or "".
     property string track: ""
     property real music_setting: 0.5
     readonly property real music_volume: audio.music_setting * 0.8
     readonly property real fx_volume: 0.4
     property real title_level: 0
     property bool fx_used: false
-    property real fairy_level: 0
-    readonly property string data_dir: "file://" + (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/quickshell/ocarina-audio"
-    readonly property bool local_has_files: local_listing.count > 0
-    readonly property string base: audio.local_has_files ? Qt.resolvedUrl("audio") : audio.data_dir
+    readonly property string data_dir: "file://" + (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/quickshell/ff7-audio"
+    readonly property bool data_has_files: data_listing.count > 0
+    readonly property string base: audio.data_has_files ? audio.data_dir : Qt.resolvedUrl("audio").toString().replace(/\/$/, "")
     readonly property var files: {
         const out = {};
-        const listing = audio.local_has_files ? local_listing : data_listing;
+        const listing = audio.data_has_files ? data_listing : local_listing;
         for (let i = 0; i < listing.count; i++) out[listing.get(i, "fileName")] = true;
         return out;
     }
+    readonly property var fx_files: ({ cursor: "cursor.wav", select: "cursor.wav", cancel: "cancel.wav", buzzer: "buzzer.wav", loading: "loading.wav", loaded: "loaded.wav" })
 
     function file(name) {
         return audio.files[name] ? audio.base + "/" + name : "";
     }
 
     function play(name) {
-        const url = audio.file(name + ".wav");
+        const url = audio.file(audio.fx_files[name] || "");
         if (url === "") return;
         fx.queue(["loadfile", url, "replace"]);
         audio.fx_used = true;
-    }
-
-    function track_args(name) {
-        const intro = audio.file(name + "_intro.ogg");
-        return (intro !== "" ? [intro] : []).concat(["--{", "--loop-file=inf", audio.file(name + "_loop.ogg"), "--}"]);
     }
 
     // `to` is set here, not bound: a binding on track may not have updated yet when this handler runs.
@@ -47,8 +42,6 @@ Item {
         if (audio.track !== "") audio.fx_used = true;
         title_fade.to = audio.track === "title" ? 1 : 0;
         title_fade.restart();
-        fairy_fade.to = audio.track === "fairy" ? 1 : 0;
-        fairy_fade.restart();
     }
 
     FolderListModel {
@@ -60,7 +53,7 @@ Item {
 
     FolderListModel {
         id: data_listing
-        folder: audio.local_has_files ? "" : audio.data_dir
+        folder: audio.data_dir
         nameFilters: ["*.ogg", "*.wav"]
         showDirs: false
     }
@@ -72,23 +65,11 @@ Item {
         duration: 800
     }
 
-    NumberAnimation {
-        id: fairy_fade
-        target: audio
-        property: "fairy_level"
-        duration: 800
-    }
-
     MpvProcess {
-        wanted: audio.file("title_loop.ogg") !== "" && (audio.track === "title" || audio.title_level > 0)
-        args: audio.track_args("title")
+        readonly property string loop: audio.file("title_loop.ogg")
+        wanted: loop !== "" && (audio.track === "title" || audio.title_level > 0)
+        args: (audio.file("title_intro.ogg") !== "" ? [audio.file("title_intro.ogg")] : []).concat(["--{", "--loop-file=inf", loop, "--}"])
         volume: audio.title_level * audio.music_volume
-    }
-
-    MpvProcess {
-        wanted: audio.file("fairy_loop.ogg") !== "" && (audio.track === "fairy" || audio.fairy_level > 0)
-        args: audio.track_args("fairy")
-        volume: audio.fairy_level * audio.music_volume
     }
 
     MpvProcess {

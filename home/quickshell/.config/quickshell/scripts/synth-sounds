@@ -1024,7 +1024,7 @@ STYLES = {
 }
 
 # Lock skin effects, written as wav under the config root; QtMultimedia's SoundEffect plays nothing else.
-SKIN_FX = {"mgs2-skin": ("lock/skins/mgs2/fx", mgs2_skin), "goldeneye-skin": ("lock/skins/goldeneye/fx", goldeneye_skin)}
+SKIN_FX = {"mgs2-skin": ("features/lock/skins/mgs2/fx", mgs2_skin), "goldeneye-skin": ("features/lock/skins/goldeneye/fx", goldeneye_skin)}
 # Single files under sounds/ that belong to no pack.
 LOOSE = {"alarm": alarm}
 # Packs that belong to no style; every other pack is a style's own.

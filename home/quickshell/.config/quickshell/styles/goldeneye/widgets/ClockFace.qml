@@ -3,7 +3,7 @@ import Quickshell
 import qs.theme
 import qs.services
 import qs.features.power
-import qs.lock.skins.goldeneye as Watch
+import qs.styles.goldeneye as Watch
 import "../Watch.js" as W
 
 // An analogue clock in the watch's dress: a round black dial with the bezel arcs, white bars and studs, a green panel and the pale hands, and the time in seven-segment digits beside it.

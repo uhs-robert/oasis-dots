@@ -49,7 +49,7 @@
 #   qml-paths                file paths built as strings in Quickshell QML and JS exist: Qt.resolvedUrl, shellDir, QML and JS
 #                            imports, in the shell and in the greeter tree (lib/common/greeter-files.sh), and the files outside
 #                            Quickshell that name a path in it (lib/check/steps/qml_paths.py).
-#   lock-skins               lock/skins/index.json matches the skin files and audio importers (lib/check/steps/lock-skins.sh). Needs jq.
+#   lock-skins               features/lock/skins/index.json matches the skin files and audio importers (lib/check/steps/lock-skins.sh). Needs jq.
 #   style-exports            generated property lines in theme/Style.qml match theme/StyleSchema.js (lib/check/steps/style-exports.sh).
 #                            Needs python3.
 #   time-format              no hand-built am/pm text in Quickshell QML/JS; clock text goes through TimeFormat

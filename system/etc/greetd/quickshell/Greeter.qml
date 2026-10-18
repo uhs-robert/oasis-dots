@@ -64,7 +64,7 @@ Singleton {
     }
     readonly property string skin: root.settings.lock_style || "simple"
 
-    // Settings as an object whose fields are plain strings, with a skin name that can only name a file in lock/skins; else null.
+    // Settings as an object whose fields are plain strings, with a skin name that can only name a file in features/lock/skins; else null.
     function parse_settings(text) {
         try {
             const d = JSON.parse(text);

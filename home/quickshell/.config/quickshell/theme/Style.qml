@@ -69,12 +69,12 @@ Singleton {
 
     FileView {
         id: skin_index
-        path: Qt.resolvedUrl("../lock/skins/index.json")
+        path: Qt.resolvedUrl("../features/lock/skins/index.json")
         blockLoading: true
         printErrors: false
     }
 
-    // Per-skin metadata from lock/skins/index.json.
+    // Per-skin metadata from features/lock/skins/index.json.
     readonly property var lock_skins: {
         try {
             return JSON.parse(skin_index.text());

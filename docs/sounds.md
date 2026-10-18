@@ -106,7 +106,7 @@ Then turn on Lock music under Sound > Theme audio and Music under Lock & Login >
 
 ## Sounds on the game lock screens
 
-The MGS2 and GoldenEye lock screens have their own effects: menu blips, transitions, the watch static. Synthesized stand-ins ship with the repo, in `lock/skins/mgs2/fx/` and `lock/skins/goldeneye/fx/`.
+The MGS2 and GoldenEye lock screens have their own effects: menu blips, transitions, the watch static. Synthesized stand-ins ship with the repo, in `features/lock/skins/mgs2/fx/` and `features/lock/skins/goldeneye/fx/`.
 
 To use real ones, put a `.wav` of the same name in that lock screen's import folder, `~/.local/share/quickshell/mgs2-audio/` or `~/.local/share/quickshell/goldeneye-audio/`. Yours win one file at a time, as with packs. These must be `.wav`; the lock screens cannot play `.ogg` effects.
 

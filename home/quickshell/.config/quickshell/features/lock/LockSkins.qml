@@ -30,12 +30,12 @@ Singleton {
     }
 
     function url_for(style_name) {
-        return root.has(style_name) ? Qt.resolvedUrl("../lock/skins/" + root.file_for(style_name)) : Qt.resolvedUrl("../lock/LockScreen.qml");
+        return root.has(style_name) ? Qt.resolvedUrl("skins/" + root.file_for(style_name)) : Qt.resolvedUrl("LockScreen.qml");
     }
 
     FolderListModel {
         id: skin_files
-        folder: Qt.resolvedUrl("../lock/skins")
+        folder: Qt.resolvedUrl("skins")
         nameFilters: ["*.qml"]
         showDirs: false
     }
