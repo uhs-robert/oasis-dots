@@ -9,7 +9,7 @@ pass=0 fail=0
 # expect <allow|deny> <command>
 expect() {
   local out got=allow
-  out=$(jq -n --arg c "$2" '{tool_input: {command: $c}}' | "$hook" | jq -r '.hookSpecificOutput.permissionDecision // empty')
+  out=$(jq -n --arg c "$2" '{tool_input: {command: $c}}' | TMUX=/run/owner/sock,123,0 TMUX_TMPDIR='' "$hook" | jq -r '.hookSpecificOutput.permissionDecision // empty')
   [[ $out == deny ]] && got=deny
   if [[ $got == "$1" ]]; then
     echo "ok   $1: $2"
@@ -128,6 +128,55 @@ expect deny 'watch tmux kill-server'
 expect deny 'watch -n 1 tmux kill-server'
 expect allow 'watch -n 1 tmux ls'
 expect allow 'xargs -I{} tmux -L mine kill-session -t {}'
+# -L/-S must provably name another socket
+expect deny 'tmux -L default kill-server'
+expect deny 'tmux -Ldefault kill-server'
+expect deny 'tmux -L "$X" kill-server'
+expect deny 'tmux -L `echo default` kill-server'
+expect deny 'tmux -S "${TMUX%%,*}" kill-server'
+expect deny 'tmux -S ~/s.sock kill-server'
+expect deny 'tmux -S /tmp/tmux-1000/default kill-server'
+expect deny 'tmux -S/tmp/tmux-1000/default kill-server'
+expect deny 'tmux -S /tmp//x/../tmux-1000/default kill-server'
+expect deny 'tmux -S /run/owner/sock kill-server'
+expect deny 'tmux -S /run/owner/../owner/sock kill-server'
+expect deny 'tmux -L'
+expect allow 'tmux -L defaults kill-server'
+expect allow 'tmux -S /run/owner/other kill-server'
+# Long wrapper options with an argument
+expect deny 'env --chdir /tmp tmux kill-server'
+expect deny 'env --chdir=/tmp tmux kill-server'
+expect deny 'env --unset TMUX tmux kill-server'
+expect deny 'env --unset=TMUX tmux kill-server'
+expect deny "env --split-string 'tmux kill-server'"
+expect deny 'sudo --user root tmux kill-server'
+expect deny 'sudo --user=root tmux kill-server'
+expect deny 'timeout --signal KILL 5 tmux kill-server'
+expect deny 'timeout --kill-after=2 5 tmux kill-server'
+expect deny 'nice --adjustment 5 tmux kill-server'
+expect deny 'nice -5 tmux kill-server'
+expect deny 'xargs --max-args 1 tmux kill-session -t'
+expect deny 'watch --interval 1 tmux kill-server'
+expect deny 'command -p tmux kill-server'
+expect deny 'exec -a x tmux kill-server'
+expect deny 'env -- tmux kill-server'
+expect allow 'env --unset TMUX tmux -L mine kill-server'
+expect allow 'env --chdir /tmp tmux -L mine kill-server'
+# Unknown wrapper options fail closed when tmux follows
+expect deny 'env --frobnicate tmux -L mine ls'
+expect deny 'sudo --weird tmux ls'
+expect deny 'timeout --weird 5 tmux ls'
+expect allow 'env --frobnicate ls'
+expect allow 'env --frobnicate echo "tmux kill-server"'
+# Heredoc delimiters
+expect deny $'cat <<\'END-X\'\nbody\nEND-X\ntmux kill-server'
+expect deny $'cat <<"END.X"\nbody\nEND.X\ntmux kill-server'
+expect deny $'cat <<-END\n\tbody\n\tEND\ntmux kill-server'
+expect deny $'cat <<END\nbody\ntmux kill-server'
+expect deny $'cat <<END; tmux kill-server\nbody\nEND'
+expect deny 'cat <<END; tmux ls'
+expect allow $'cat <<\'END-X\'\ntmux kill-server\nEND-X\necho done'
+expect allow $'cat <<END-X\ntmux kill-server\nEND-X'
 # Mentions only
 expect allow 'git commit -m "fix: tmux kill-server guard"'
 expect allow "git commit -m 'stop tmux kill-server'"
