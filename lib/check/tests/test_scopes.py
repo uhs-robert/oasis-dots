@@ -54,7 +54,7 @@ CASES = [
     ("home/voxcmd/Cargo.lock", " rust"),
     ("home/voxcmd/rustfmt.toml", " rust"),
     ("home/voxcmd/tests/cli.rs", " rust"),
-    ("home/voxcmd/tests/fixtures/x.txt", " rust"),
+    ("home/voxcmd/tests/fixtures/x.txt", " rust voxcmd"),
     ("home/voxcmd/.config/voxcmd/integrations/x.toml", " rust voxcmd"),
     ("home/voxcmd/.config/voxcmd/integrations.d/x.toml", " voxcmd"),
     ("lib/check/steps/voxcmd-rust.sh", "checkscope rust"),
