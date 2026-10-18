@@ -111,3 +111,31 @@ pub fn hypr_script(name: &str) -> PathBuf {
 pub fn qs_ipc() -> PathBuf {
     hypr_script("qs-ipc")
 }
+
+/// The open voice session (`session/`), which the bar reads too.
+pub fn session_file() -> PathBuf {
+    runtime_dir().join("session.json")
+}
+
+/// The flock target for every change to the session file, shared with the bash voxcmd.
+pub fn session_lock() -> PathBuf {
+    runtime_dir().join("session.lock")
+}
+
+/// Where voxtype writes a recording's transcript for the watcher (`voxtype record start --file`).
+pub fn transcript() -> PathBuf {
+    runtime_dir().join("transcript.txt")
+}
+
+/// The auto threshold the detector of the watcher with this pid measured, where the room was quiet.
+pub fn threshold_file(pid: u32) -> PathBuf {
+    runtime_dir().join(format!("threshold.{pid}"))
+}
+
+/// The speech detector that ends a recording after a pause (Python until voxcmd-port 4.2), beside the bash voxcmd.
+pub fn autostop() -> PathBuf {
+    legacy_bin()
+        .parent()
+        .unwrap_or(std::path::Path::new("/"))
+        .join("voxcmd-autostop")
+}

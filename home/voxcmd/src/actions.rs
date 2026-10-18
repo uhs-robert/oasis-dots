@@ -22,8 +22,11 @@ pub struct Runtime<'a> {
     pub legacy: &'a LegacyHooks,
     pub asker: &'a dyn Asker,
     pub notifier: &'a dyn Notifier,
-    /// The phrase was spoken (a watcher routes it), so a question it asks records the answer by voice too.
+    /// The phrase was spoken: a watcher routes it, so a question it asks records the answer by voice too, and the
+    /// watcher's discard flag (which Stop Voice sets) is its recording's as well as its sequence's.
     pub came_by_voice: bool,
+    /// The mode the phrase was heard in is private (type mode): nothing of it goes to the no-match log.
+    pub heard_private: bool,
     /// A voice session's turn: nobody is at the keyboard, so every picker listens.
     pub in_session_turn: bool,
 }
@@ -179,12 +182,14 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         return result;
     }
     result.detail = tail_lines(&output, 3).join("\n");
+    // The stop under way is ending what was said; it is no failure to report.
+    let refused_while_stopping = started.as_ref().is_err_and(process::refused_while_stopping);
     let how = started.map_or_else(|_| "did not start".to_string(), |outcome| outcome.how_it_ended());
     debug(&format!(
         "action failed: {toast}: {how}{}",
         detail_suffix(integration, &result.detail)
     ));
-    if !said.in_sequence {
+    if !said.in_sequence && !refused_while_stopping {
         let body = if output.is_empty() {
             toast
         } else {
