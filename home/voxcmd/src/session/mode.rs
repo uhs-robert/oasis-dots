@@ -292,9 +292,29 @@ fn hook_timeout(mode: &TomlMode) -> Duration {
         .map_or(hooks::DEFAULT_TIMEOUT, Duration::from_secs_f64)
 }
 
-/// Runs a TOML mode's `ended` hook in the background, after the lock has gone; true when `file` is a TOML mode, so
-/// the bash loader never gets it. Like the bash hook it gets no session identity, so a session read in it takes the
-/// lock as any reader does.
+/// `command` run under `timeout(1)`, which ends it and what it started after `limit`. The ended hook is spawned and
+/// not waited for, and the voxcmd that spawned it may exit first, so no thread of ours could enforce the limit.
+fn bounded_by_timeout(command: &Command, limit: Duration) -> Command {
+    let mut bounded = Command::new("timeout");
+    bounded
+        .args(["--kill-after=1", &limit.as_secs_f64().to_string()])
+        .arg(command.get_program())
+        .args(command.get_args());
+    for (name, value) in command.get_envs() {
+        match value {
+            Some(value) => bounded.env(name, value),
+            None => bounded.env_remove(name),
+        };
+    }
+    if let Some(dir) = command.get_current_dir() {
+        bounded.current_dir(dir);
+    }
+    bounded
+}
+
+/// Runs a TOML mode's `ended` hook in the background for at most `timeout_secs`, after the lock has gone; true when
+/// `file` is a TOML mode, so the bash loader never gets it. Like the bash hook it gets no session identity, so a
+/// session read in it takes the lock as any reader does.
 pub fn run_toml_ended(file: &str, reason: &str, frame_id: &str, continues: bool) -> bool {
     if !is_toml_file(file) {
         return false;
@@ -318,6 +338,7 @@ pub fn run_toml_ended(file: &str, reason: &str, frame_id: &str, continues: bool)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
+    let mut command = bounded_by_timeout(&command, hook_timeout(&mode));
     std::os::unix::process::CommandExt::process_group(&mut command, 0);
     match command.spawn() {
         Ok(hook) => debug(&format!("session: ended hook {} runs", hook.id())),

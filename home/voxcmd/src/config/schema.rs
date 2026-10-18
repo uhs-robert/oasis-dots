@@ -131,6 +131,7 @@ pub struct Mode {
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ModeListen {
     pub silence_secs: Option<f64>,
     pub max_secs: Option<f64>,
@@ -570,6 +571,13 @@ mod tests {
         assert!(integration.actions["go"].enter_mode && integration.actions["go"].run.is_empty());
         assert_eq!(integration.actions["stop"].leave_mode.as_deref(), Some("done"));
         assert!(integration.actions["lost"].miss);
+    }
+
+    #[test]
+    fn a_mistyped_listen_key_is_an_error_not_a_default() {
+        let error = mode_error("[mode]\nlisten = { silence_sec = 2 }\n");
+        assert!(error.contains("silence_sec"), "{error}");
+        assert!(mode_error("[mode]\n[mode.listen]\nmax = 9\n").contains("max"));
     }
 
     #[test]
