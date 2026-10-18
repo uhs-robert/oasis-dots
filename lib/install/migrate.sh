@@ -102,6 +102,7 @@ migrate_systemd() {
 _LOCK_ASSET_DIRS=(ocarina/audio ff7/audio mgs2/audio goldeneye/audio goldeneye/frames)
 
 # Moves one file or symlink from lock/ to the same place under features/lock/, unless something is already there.
+# A relative symlink is rewritten so it still resolves to the same place from its new location.
 _migrate_lock_asset() {
   local qs_dir=$1 file=$2 rel dest
   rel=${file#"$qs_dir/lock/"}
@@ -113,6 +114,11 @@ _migrate_lock_asset() {
   info "Moving lock/$rel to features/lock/$rel"
   _migrate_run mkdir -p "$(dirname "$dest")"
   _migrate_run mv "$file" "$dest"
+  [[ "${MIGRATE_DRY_RUN:-0}" -eq 1 ]] && return 0
+  local target
+  if [[ -L "$dest" ]] && target=$(readlink "$dest") && [[ "$target" != /* ]]; then
+    ln -sfn "$(realpath -m --relative-to="$(dirname "$dest")" "$(dirname "$file")/$target")" "$dest"
+  fi
 }
 
 # Moves imported lock-skin assets from the old top-level lock/ into features/lock/ (moved there by the Quickshell refactor 4.1);

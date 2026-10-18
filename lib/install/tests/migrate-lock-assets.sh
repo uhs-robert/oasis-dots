@@ -78,6 +78,18 @@ check test -L "$scratch/l/features/lock/skins/ff7/audio/link.ogg"
 check test -f "$scratch/target/file.ogg"
 check test ! -e "$scratch/l/lock/skins/ff7"
 
+case_name='keeps relative symlinks (dir and file) pointing at the same target'
+old_layout "$scratch/r"
+mkdir -p "$scratch/r/store/dir"
+printf rdir >"$scratch/r/store/dir/x.ogg"
+printf rfile >"$scratch/r/store/file.ogg"
+rm -r "$scratch/r/lock/skins/ff7/audio"
+ln -s ../../../store/dir "$scratch/r/lock/skins/ff7/audio"
+ln -s ../../../../store/file.ogg "$scratch/r/lock/skins/goldeneye/frames/rel.png"
+migrate_quickshell_lock_assets "$scratch/r" >/dev/null 2>&1
+check test "$(cat "$scratch/r/features/lock/skins/ff7/audio/x.ogg")" = rdir
+check test "$(cat "$scratch/r/features/lock/skins/goldeneye/frames/rel.png")" = rfile
+
 case_name='dry run changes nothing'
 old_layout "$scratch/d"
 before=$(find "$scratch/d" | sort)
