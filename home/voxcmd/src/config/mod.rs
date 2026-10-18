@@ -21,9 +21,12 @@ impl Config {
     /// Every integration of `dir`. A stem with both an `integrations/<stem>.toml` and an `integrations.d/<stem>.sh`
     /// is the TOML one, so a converted file can sit beside its bash original until 3.2 deletes `integrations.d/`.
     pub fn load(dir: &Path) -> Result<Self, String> {
+        let intents = Intents::load(dir);
         let mut integrations = Vec::new();
         for file in toml_files(dir) {
-            integrations.push(schema::load_toml(&file)?);
+            let integration = schema::load_toml(&file)?;
+            crate::route::pattern::compile_mode(&integration, &intents)?;
+            integrations.push(integration);
         }
         let converted: Vec<String> = integrations
             .iter()
@@ -45,7 +48,7 @@ impl Config {
         integrations.sort_by(|a, b| a.file.file_name().cmp(&b.file.file_name()));
         Ok(Self {
             integrations,
-            intents: Intents::load(dir),
+            intents,
             replacements: Replacements::load(&dir.join("replacements.d")),
         })
     }

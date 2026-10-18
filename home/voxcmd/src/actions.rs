@@ -133,7 +133,10 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
     let toast = toast_label(integration, option);
     let mut result = StepResult::new(StepOutcome::Failed);
     result.label.clone_from(&toast);
-    if option.command.is_empty() {
+    let declared = integration.actions.get(&option.action);
+    let enters_mode = declared.is_some_and(|action| action.enter_mode);
+    let leaves_mode = declared.and_then(|action| action.leave_mode.as_deref());
+    if option.command.is_empty() && !enters_mode && leaves_mode.is_none() {
         result.detail = "has no command".to_string();
         if !said.in_sequence {
             rt.notifier
@@ -162,12 +165,28 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         debug(&format!("confirm answered yes: running {toast}"));
         confirmed = true;
     }
-    let started = process::run_to_end(&mut action_command(rt, integration, option, said, confirmed));
+    if let Some(reason) = leaves_mode {
+        crate::session::leave(
+            &crate::session::SessionLock::take(),
+            &integration.stem,
+            reason,
+            std::process::id(),
+        );
+    }
+    let opened_mode = enters_mode && open_mode(integration);
+    // An action with no command only opens or leaves its mode.
+    let started = (!option.command.is_empty())
+        .then(|| process::run_to_end(&mut action_command(rt, integration, option, said, confirmed)));
     let output = match &started {
-        Ok(outcome) => action_output(integration, outcome),
-        Err(error) => error.to_string(),
+        Some(Ok(outcome)) => action_output(integration, outcome),
+        Some(Err(error)) => error.to_string(),
+        None => String::new(),
     };
-    if started.as_ref().is_ok_and(|outcome| outcome.code() == Some(0)) {
+    let succeeded = match &started {
+        Some(started) => started.as_ref().is_ok_and(|outcome| outcome.code() == Some(0)),
+        None => true,
+    };
+    if succeeded {
         result.outcome = StepOutcome::Ran;
         result.exit_code = 0;
         result.ran = Some(option.clone());
@@ -183,6 +202,15 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         }
         return result;
     }
+    if opened_mode {
+        crate::session::leave(
+            &crate::session::SessionLock::take(),
+            &integration.stem,
+            "could not start",
+            std::process::id(),
+        );
+    }
+    let started = started.expect("an action with no command succeeds");
     result.detail = tail_lines(&output, 3).join("\n");
     // The stop under way is ending what was said; it is no failure to report.
     let refused_while_stopping = started.as_ref().is_err_and(process::refused_while_stopping);
@@ -200,6 +228,28 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         rt.notifier.notify(Kind::Error, "voxcmd failed", &body);
     }
     result
+}
+
+/// Opens the integration's mode before its action runs; whether this call opened a new one. A session another process
+/// owns, or the mode already on top, is left as it was, and is not the call's to close if the action then fails.
+fn open_mode(integration: &Integration) -> bool {
+    let Some(mode) = &integration.mode else {
+        return false;
+    };
+    let top_frame = |state: Option<serde_json::Value>| {
+        state
+            .filter(|state| crate::session::text_of(&state["kind"]) == integration.stem)
+            .map(|state| crate::session::text_of(&state["frame_id"]))
+    };
+    let before = top_frame(crate::session::read_state());
+    crate::session::turn::begin(
+        &integration.stem,
+        &integration.file.display().to_string(),
+        &mode.label,
+        std::process::id(),
+    );
+    let after = top_frame(crate::session::read_state());
+    after.is_some() && after != before
 }
 
 /// The output of a failed action in the debug log, unless the integration's labels are screen text.

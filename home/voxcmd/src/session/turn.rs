@@ -503,7 +503,7 @@ impl TurnRun<'_> {
         } else {
             let text = replaced(&split.steps[0]);
             let rewritten = if self.mode.has_rewrite {
-                mode::rewrite(self.file, &[text], self.heard_mode)
+                mode::rewrite(self.mode, self.file, &[text], self.heard_mode)
                     .and_then(|mut rewritten| rewritten.pop())
                     .unwrap_or_default()
             } else {
@@ -535,7 +535,7 @@ impl TurnRun<'_> {
             return Some(steps.to_vec());
         }
         let texts: Vec<String> = steps.iter().map(|step| replaced(step)).collect();
-        let rewritten = mode::rewrite(self.file, &texts, self.heard_mode)?;
+        let rewritten = mode::rewrite(self.mode, self.file, &texts, self.heard_mode)?;
         let router = self.runner.router;
         let steps: Vec<String> = texts
             .into_iter()
