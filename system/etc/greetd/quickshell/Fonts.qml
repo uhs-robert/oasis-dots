@@ -1,17 +1,25 @@
 // /etc/greetd/quickshell/Fonts.qml
 import QtQuick
-import Qt.labs.folderlistmodel
+import "theme/FontFiles.js" as FontFiles
 
-// Registers the fonts synced into assets/fonts/.
-Instantiator {
-    model: FolderListModel {
-        folder: Qt.resolvedUrl("assets/fonts")
-        nameFilters: ["*.ttf", "*.otf"]
-        showDirs: false
+// Registers every bundled font synchronously at creation, so a skin that measures text once (TextMetrics, PathText) already sees its family.
+// Not a FolderListModel: that fills asynchronously and the MGS2 title was laid out in the fallback font.
+Item {
+    ListModel {
+        id: fonts
     }
 
-    delegate: FontLoader {
-        required property url fileUrl
-        source: fileUrl
+    Instantiator {
+        model: fonts
+        delegate: FontLoader {
+            required property string file
+            source: Qt.resolvedUrl("assets/fonts/" + file)
+        }
+    }
+
+    Component.onCompleted: {
+        for (const files of Object.values(FontFiles.family_files)) {
+            for (const file of files) fonts.append({ file: file });
+        }
     }
 }
