@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.core
 import qs.services
+import qs.features.settings
 import "SessionJson.js" as SessionJson
 
 // Saved sessions in sessions.json under the Hyprland state dir, plus the Lua sessions listed read-only.

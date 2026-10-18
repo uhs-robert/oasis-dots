@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.services
+import qs.features.settings
 import qs.theme
 
 // zoxide directories in zoxide's own order: Enter opens the file manager there, `t` a shell.

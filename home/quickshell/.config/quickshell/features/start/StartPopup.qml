@@ -6,6 +6,7 @@ import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.services
+import qs.features.settings
 import qs.features.power
 import qs.features.launcher
 import qs.styles.snes.popups as Snes

@@ -33,7 +33,7 @@ Rectangle {
             return;
         }
         skin_loader.setSource(LockSkins.url_for(root.skin), { ctx: fake });
-        if (skin_loader.status === Loader.Error) skin_loader.setSource(Qt.resolvedUrl("../lock/LockScreen.qml"), { ctx: fake });
+        if (skin_loader.status === Loader.Error) skin_loader.setSource(Qt.resolvedUrl("../../lock/LockScreen.qml"), { ctx: fake });
     }
 
     onSkinChanged: root.load()

@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import qs.ui.frames
 import qs.theme
 import qs.services
+import qs.features.settings
 import qs.features.power
 import qs.features.screenshot
 import "Layout.js" as Layout

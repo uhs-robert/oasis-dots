@@ -5,8 +5,8 @@ import Quickshell.Hyprland
 import qs.ui.menu
 import qs.theme
 import qs.services
-import "../../features/bar/BarLayout.js" as BarLayout
-import qs.settings
+import "../../bar/BarLayout.js" as BarLayout
+import qs.features.settings
 import qs.features.bar
 
 SettingsPane {

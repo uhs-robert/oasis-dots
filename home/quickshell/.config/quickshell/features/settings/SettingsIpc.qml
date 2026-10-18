@@ -1,9 +1,10 @@
 import Quickshell.Io
+import qs.services
 
 IpcHandler {
     target: "settings"
 
-    // A section id from settings/Sections.js, or "" for the last one shown.
+    // A section id from features/settings/Sections.js, or "" for the last one shown.
     function open(section: string): void {
         SettingsNav.open(section);
     }

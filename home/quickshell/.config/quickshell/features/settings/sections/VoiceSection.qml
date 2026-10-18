@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import qs.services
-import qs.settings
+import qs.features.settings
 import "../Choices.js" as Choices
 import qs.features.voice
 

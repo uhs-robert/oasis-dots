@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.components
 import qs.theme
 import qs.services
-import qs.settings
+import qs.features.settings
 
 RowsSection {
     id: root

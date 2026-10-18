@@ -128,7 +128,7 @@ class Table(NamedTuple):
 PICKER_PARTS = ("cursors", "targets", "loupe")
 TABLES = [
     Table("features/bar/Bar.qml", "modules/", "features/bar/BarModules.js", key_values("file")),
-    Table("settings/SettingsPopup.qml", "section.source", "settings/Sections.js", key_values("source")),
+    Table("features/settings/SettingsPopup.qml", "section.source", "features/settings/Sections.js", key_values("source")),
     Table("features/weather/WeatherPopup.qml", "views/", "features/weather/WeatherPopup.qml", folder_view_files),
     Table("features/keeptabs/KeeptabsPopup.qml", "views/", "features/keeptabs/KeeptabsPopup.qml", view_files),
     Table("theme/Style.qml", "styles/", "theme/styles/index.js", array_values("sources")),

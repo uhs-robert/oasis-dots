@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
-import qs.settings
+import qs.features.settings
 import qs.features.clock
 
 RowsSection {
