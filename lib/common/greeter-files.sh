@@ -7,6 +7,7 @@ GREETER_QS_FILES=(
   features/lock/Tints.js
   VERSION?
   theme/Theme.qml
+  theme/FontFiles.js
   theme/Style.qml
   theme/StyleSchema.js
   core/Paths.qml
