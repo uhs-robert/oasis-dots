@@ -4,8 +4,8 @@ import qs.components
 import qs.theme
 import qs.services
 import qs.features.display
-import "../../features/display/DisplayLayout.js" as DisplayLayout
-import qs.settings
+import "../../display/DisplayLayout.js" as DisplayLayout
+import qs.features.settings
 
 RowsSection {
     id: root

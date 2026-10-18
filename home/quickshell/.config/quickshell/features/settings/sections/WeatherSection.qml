@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.settings
+import qs.features.settings
 import qs.features.weather
 
 RowsSection {

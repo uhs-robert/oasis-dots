@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
-import qs.settings
+import qs.features.settings
 import "../Choices.js" as Choices
 
 RowsSection {

@@ -10,7 +10,7 @@ import qs.features.overview
 import qs.popups
 import qs.services
 import qs.theme
-import qs.settings
+import qs.features.settings
 import qs.features.power
 import qs.features.clock
 import qs.features.weather

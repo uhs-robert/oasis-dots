@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.services
 import Quickshell.Io
-import qs.settings
+import qs.features.settings
 import "../Choices.js" as Choices
 import "../Keyd.js" as Keyd
 

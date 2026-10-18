@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.theme
 import qs.services
+import qs.features.settings
 import qs.features.power
 import "Layout.js" as Layout
 import "TmuxData.js" as TmuxData

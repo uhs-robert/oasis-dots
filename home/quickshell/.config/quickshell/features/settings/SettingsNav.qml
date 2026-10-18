@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import qs.services
 
 // Opens the settings popup, optionally on a named section, and relays hands-off commands to it.
 Singleton {
