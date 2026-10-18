@@ -7,7 +7,9 @@ set -u
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
 cwd=$(jq -r '.cwd // empty' <<<"$input")
-[[ $cmd == *VOXCMD_ONLY_SECTIONS=* || $cmd == *CHECK_ALLOW_DIRECT=1* ]] && exit 0
+# Only a non-empty VOXCMD_ONLY_SECTIONS limits the suite: an empty one runs it whole.
+sections_named=$'(^|[[:space:];&|(])VOXCMD_ONLY_SECTIONS=([^[:space:];&|"\']|"[^"]|\'[^\'])'
+[[ $cmd =~ $sections_named || $cmd == *CHECK_ALLOW_DIRECT=1* ]] && exit 0
 
 # The command-word anchors of check-in-background.sh, so a path that is only an argument (shellcheck, git diff, cat)
 # does not count. The newline is a real one: ERE reads a written \n as the letter n.
@@ -15,6 +17,8 @@ start="(^|[;&|(]|"$'\n'")[[:space:]]*"
 wrappers='(([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|timeout[[:space:]]+[^[:space:]]+|(ba)?sh)[[:space:]]+)*'
 dir='([^[:space:];&|]*/)?'
 suite="${dir}(sandbox\.sh[[:space:]]+${dir})?(run[^/[:space:];&|]*)\.sh([[:space:]]|$)"
+# `just voxcmd-test` runs cargo test and every suite; just's own options (-f <file>, -d <dir>) may come first.
+just_suites='just([[:space:]]+(-f|--justfile|-d|--working-directory)[[:space:]]+[^[:space:]]+|[[:space:]]+-[^[:space:]]+)*[[:space:]]+voxcmd-test([[:space:]]|$)'
 cargo='cargo[[:space:]]+([^;&|]*[[:space:]])?(test|clippy|nextest)([[:space:]]|$)'
 # Inside voxcmd's tree a bare tests/run.sh or cargo test is voxcmd's: by the hook's cwd, or a cd or path in the command.
 in_voxcmd=0
@@ -25,6 +29,8 @@ if [[ $cmd =~ ${start}${wrappers}${dir}home/voxcmd/tests/${suite} ]] ||
   # The suite is the match's last run*.sh, past any sandbox.sh.
   [[ ${BASH_REMATCH[0]} =~ (run[^/[:space:]]*)\.sh[[:space:]]*$ ]]
   script=${BASH_REMATCH[1]}
+elif [[ $cmd =~ ${start}${wrappers}${just_suites} ]]; then
+  script=just-voxcmd-test
 elif ((in_voxcmd)) && [[ $cmd =~ ${start}${wrappers}${cargo} ]]; then
   script=cargo
 else
@@ -37,6 +43,7 @@ run-calendar) step=voxcmd-calendar ;;
 run-wake) step=voxcmd-wake ;;
 run-firefox-extension) step=voxcmd-firefox ;;
 cargo) step=voxcmd-rust ;;
+just-voxcmd-test) step="all six, lib/check.sh --only voxcmd-phrases,voxcmd-click,voxcmd-calendar,voxcmd-wake,voxcmd-firefox,voxcmd-rust" ;;
 run-sessions | run-sequences | run-overview | run-monitors) step="none of its own; voxcmd-click runs it inside run.sh" ;;
 *) step="none; this suite is not a check step" ;;
 esac

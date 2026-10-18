@@ -32,7 +32,15 @@ expect warn 'cd home/voxcmd && cargo test' '' voxcmd-rust
 expect warn 'cargo clippy --manifest-path home/voxcmd/Cargo.toml --all-targets' '' voxcmd-rust
 expect warn 'env RUST_LOG=1 cargo test --locked' /home/u/dotfiles/home/voxcmd voxcmd-rust
 expect warn 'tests/run-phrases.sh' /home/u/dotfiles/home/voxcmd voxcmd-phrases
+expect warn 'just voxcmd-test' '' 'all six, lib/check.sh --only voxcmd-phrases,voxcmd-click,voxcmd-calendar,voxcmd-wake,voxcmd-firefox,voxcmd-rust'
+expect warn 'cd ~/dotfiles && just -f justfile voxcmd-test 2>&1 | tail' '' 'all six'
+expect warn 'timeout 900 env X=1 just voxcmd-test' '' 'all six'
+expect warn 'VOXCMD_ONLY_SECTIONS= home/voxcmd/tests/run.sh' '' voxcmd-click
+expect warn 'VOXCMD_ONLY_SECTIONS="" home/voxcmd/tests/run-wake.sh' '' voxcmd-wake
+expect warn "VOXCMD_ONLY_SECTIONS='' home/voxcmd/tests/run-phrases.sh" '' voxcmd-phrases
 expect silent 'lib/check.sh --changed origin/main'
+expect silent 'just voxcmd-build'
+expect silent 'just --list | grep voxcmd-test'
 expect silent 'lib/check.sh --only voxcmd-click'
 expect silent '.claude/skills/ship-batch/ship-batch.sh 12'
 expect silent 'just check'
@@ -45,6 +53,8 @@ expect silent 'cd ~/src/other && cargo test'
 expect silent 'cargo test' /home/u/src/other
 expect silent 'VOXCMD_ONLY_SECTIONS="wake word" home/voxcmd/tests/run-wake.sh'
 expect silent 'CHECK_ALLOW_DIRECT=1 home/voxcmd/tests/run.sh'
+expect silent 'VOXCMD_ONLY_SECTIONS=wake home/voxcmd/tests/run-wake.sh'
+expect silent "VOXCMD_ONLY_SECTIONS='a|b' home/voxcmd/tests/run.sh"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
