@@ -15,7 +15,7 @@ use crate::config::schema::Format;
 use crate::exit::CliError;
 use crate::hooks::{Dispatch, LegacyHooks, ShellHooks};
 use crate::log::log_no_match;
-use crate::notify::{self, Desktop, Kind};
+use crate::notify::{Desktop, Kind};
 use crate::paths;
 use crate::process;
 use crate::text::wake_word::WAKE_WORD;
@@ -259,8 +259,7 @@ pub struct Heard {
 pub fn with_runner<R>(heard: &Heard, act: impl FnOnce(&Runner) -> R) -> Result<R, CliError> {
     let config_dir = paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("run", message))?;
-    let stems = || config.integrations.iter().map(|integration| integration.stem.clone());
-    let shell = ShellHooks::new(&config_dir, stems(), notify::dry_run());
+    let shell = ShellHooks::for_config_dir(&config_dir);
     let legacy = LegacyHooks::new(config_dir);
     let hooks = Dispatch::new(
         shell.clone(),

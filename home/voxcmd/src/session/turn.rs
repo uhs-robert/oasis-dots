@@ -7,7 +7,7 @@
 //! over"). A one-recording mode's turn (type mode) is the bash voxcmd's until voxcmd-port 2.4d: `listen` starts the
 //! bash watcher for it.
 use super::mode::{self, ModeSettings};
-use super::{SessionLock, is_mine, mode_token, now_secs, text_of};
+use super::{Opened, SessionLock, is_mine, mode_token, now_secs, text_of};
 use crate::actions::{Spoken, StepOutcome};
 use crate::debug::debug;
 use crate::notify::{self, Kind};
@@ -57,9 +57,7 @@ pub enum Outcome {
 
 /// Whether the replaced text is a way out of the mode: the exit words, or its own phrases.
 fn is_exit(text: &str, mode: &ModeSettings) -> bool {
-    EXIT_WORDS.is_match(text)
-        || (!mode.exit_phrases.is_empty()
-            && Regex::new(&format!("^({})$", mode.exit_phrases)).is_ok_and(|phrases| phrases.is_match(text)))
+    EXIT_WORDS.is_match(text) || mode.exit_phrases.as_ref().is_some_and(|phrases| phrases.is_match(text))
 }
 
 /// Whether the replaced text is a bare word that ends the whole session.
@@ -133,35 +131,42 @@ pub fn classify<T>(
     Heard::Words
 }
 
-/// Opens a mode and, when no session is open, the session, which listens for its first turn. From a turn of the
-/// session `me` owns it enters the mode (the turn's own listen follows); from anything else (a terminal, a key) an
-/// open session is left as it is. Auto-stop's silence timeout is the only way an idle mode ends, so without it there is
-/// none.
+/// Opens a mode and, when no session is open, the session, which listens for its first turn at once (a bash mode's
+/// `session_begin`, called once its screen is up).
 pub fn begin(kind: &str, file: &str, label: &str, me: u32) {
+    if open(kind, file, label, me) == Opened::Session {
+        listen_for_turn(me);
+    }
+}
+
+/// Opens a mode and, when no session is open, the session; a new session's first listen is the caller's, once what
+/// the mode drives is up (its `alive` would end it before). From a turn of the session `me` owns it enters the mode
+/// (the turn's own listen follows); from anything else (a terminal, a key) an open session is left as it is and the
+/// mode refused. Auto-stop's silence timeout is the only way an idle mode ends, so without it there is none.
+pub fn open(kind: &str, file: &str, label: &str, me: u32) -> Opened {
     {
         let lock = SessionLock::take();
         if let Some(state) = super::state(&lock) {
             if is_mine(&state, me) {
-                super::enter(&lock, kind, file, label, me);
-            } else {
-                notify::notify(
-                    Kind::Info,
-                    &format!("voxcmd: {label}"),
-                    "A voice session is already open",
-                );
+                return super::enter(&lock, kind, file, label, me);
             }
-            return;
+            notify::notify(
+                Kind::Info,
+                &format!("voxcmd: {label}"),
+                "A voice session is already open",
+            );
+            return Opened::Refused;
         }
     }
     if let Some(why) = autostop_unavailable() {
         notify::notify(Kind::Info, &format!("voxcmd: {label} needs auto-stop"), &why);
-        return;
+        return Opened::Refused;
     }
     if !super::create(&SessionLock::take(), kind, file, label, me) {
-        return;
+        return Opened::Refused;
     }
     debug(&format!("session: {kind} begins"));
-    listen_for_turn(me);
+    Opened::Session
 }
 
 /// Why auto-stop cannot end a session's listens (`voxcmd-autostop --check`), none when it can.
@@ -185,24 +190,26 @@ fn autostop_unavailable() -> Option<String> {
     }
 }
 
-/// Opens the microphone for the next turn, unless the session ended or another listen took it over. Holding the lock
-/// while it starts, a failed start cannot be a listen of ours, so voxtype is busy with something else.
-pub fn listen_for_turn(me: u32) {
+/// Opens the microphone for the next turn, unless the session ended or another listen took it over; whether it did.
+/// Holding the lock while it starts, a failed start cannot be a listen of ours, so voxtype is busy with something else.
+pub fn listen_for_turn(me: u32) -> bool {
     let lock = SessionLock::take();
     if super::state(&lock).is_none() {
-        return;
+        return false;
     }
     drop_dead_modes(&lock, me);
     let Some(state) = super::state(&lock) else {
-        return;
+        return false;
     };
     if !is_mine(&state, me) {
         debug("session: another listen took over");
-        return;
+        return false;
     }
-    if !listen::listen_locked(&lock, true, None, me) {
+    let listening = listen::listen_locked(&lock, true, None, me);
+    if !listening {
         super::end_all_locked(&lock, "the microphone could not be opened", me);
     }
+    listening
 }
 
 /// Leaves the modes whose screen is gone (the overview closed by key), so a mode never outlives what it drives.
@@ -570,6 +577,7 @@ enum LeaveAfter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::route::pattern::WholeText;
 
     fn heard(said: &str, mode: &ModeSettings, switches: &[&'static str]) -> Heard<&'static str> {
         let wake = WakeWords::new("kortana|cortona");
@@ -583,7 +591,7 @@ mod tests {
         let click = ModeSettings {
             bare_exits: false,
             allows_switches: true,
-            exit_phrases: "done clicking|stop clicking".into(),
+            exit_phrases: WholeText::new("done clicking|stop clicking").ok(),
             ..ModeSettings::default()
         };
         let typing = ModeSettings {
@@ -634,16 +642,6 @@ mod tests {
             heard("cortana rapid mode", &mode, &both),
             Heard::WakeCommand("rapid mode".into())
         );
-    }
-
-    #[test]
-    fn an_exit_phrase_that_is_no_regex_matches_nothing() {
-        let mode = ModeSettings {
-            exit_phrases: "done (".into(),
-            ..ModeSettings::default()
-        };
-        assert!(!is_exit("done (", &mode));
-        assert!(is_exit("thats all", &mode));
     }
 
     #[test]

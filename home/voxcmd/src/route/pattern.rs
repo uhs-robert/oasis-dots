@@ -81,6 +81,39 @@ pub struct CompiledPattern {
 
 const FLAGS: &str = "(?s-u)";
 
+/// A TOML pattern's expanded body as the anchored regex source the matcher compiles.
+fn anchored(body: &str) -> String {
+    format!("{FLAGS}^(?:{body})$")
+}
+
+/// A pattern that must match a whole text, compiled exactly as a TOML verb is (`regex::bytes`, `FLAGS`), so a mode's
+/// patterns and its verbs accept and match the same things.
+#[derive(Debug, Clone)]
+pub struct WholeText(regex::bytes::Regex);
+
+impl WholeText {
+    pub fn new(body: &str) -> Result<Self, regex::Error> {
+        regex::bytes::Regex::new(&anchored(body)).map(Self)
+    }
+
+    pub fn is_match(&self, text: &str) -> bool {
+        self.0.is_match(text.as_bytes())
+    }
+
+    /// The regex source, flags and anchors included.
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl PartialEq for WholeText {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl Eq for WholeText {}
+
 /// A verb's pattern in its integration's dialect. Errors name what does not resolve.
 pub fn compile(integration: &Integration, verb: &Verb, intents: &Intents) -> Result<CompiledPattern, String> {
     match integration.format {
@@ -173,12 +206,12 @@ pub fn legacy_near_miss_source(pattern: &str, intents: &Intents) -> (String, Vec
     (source, placeholders)
 }
 
-/// A `[mode]` pattern's regex bodies, expanded and checked.
+/// A `[mode]`'s patterns, compiled.
 #[derive(Debug, Clone, Default)]
 pub struct ModePatterns {
-    pub exit_phrases: String,
-    pub drop: Option<String>,
-    pub keep: Option<String>,
+    pub exit_phrases: Option<WholeText>,
+    pub drop: Option<WholeText>,
+    pub keep: Option<WholeText>,
 }
 
 /// Compiles the patterns of the integration's `[mode]` (`exit_phrases`, `rewrite.drop`, `rewrite.keep`) in the verbs'
@@ -188,7 +221,7 @@ pub fn compile_mode(integration: &Integration, intents: &Intents) -> Result<Opti
     let Some(mode) = &integration.mode else {
         return Ok(None);
     };
-    let compile_one = |key: &'static str, pattern: &str| -> Result<String, String> {
+    let compile_one = |key: &'static str, pattern: &str| -> Result<WholeText, String> {
         let fail = |message: String| {
             let line = mode.pattern_lines.get(key).copied().unwrap_or(1);
             format!("{}:{line}: [mode] {key}: {message}", integration.file.display())
@@ -198,16 +231,14 @@ pub fn compile_mode(integration: &Integration, intents: &Intents) -> Result<Opti
         if let Some(placeholder) = placeholders.first() {
             return Err(fail(format!("{{{}}} has nothing to capture here", placeholder.name)));
         }
-        regex::Regex::new(&format!("(?s)^(?:{body})$")).map_err(|error| fail(error.to_string()))?;
-        Ok(body)
+        WholeText::new(&body).map_err(|error| fail(error.to_string()))
     };
     let rewrite = mode.rewrite.as_ref();
     Ok(Some(ModePatterns {
-        exit_phrases: if mode.exit_phrases.is_empty() {
-            String::new()
-        } else {
-            compile_one("exit_phrases", &mode.exit_phrases)?
-        },
+        exit_phrases: Some(mode.exit_phrases.as_str())
+            .filter(|pattern| !pattern.is_empty())
+            .map(|pattern| compile_one("exit_phrases", pattern))
+            .transpose()?,
         drop: rewrite
             .and_then(|rewrite| rewrite.drop.as_deref())
             .map(|pattern| compile_one("drop", pattern))
@@ -246,7 +277,7 @@ fn compile_toml(integration: &Integration, pattern: &str, intents: &Intents) -> 
     let mut placeholders = Vec::new();
     let body = expand_toml(integration, pattern, intents, &mut placeholders, 0)?;
     Ok(CompiledPattern {
-        regex: format!("{FLAGS}^(?:{body})$"),
+        regex: anchored(&body),
         body,
         placeholders,
     })
@@ -663,20 +694,58 @@ mod tests {
         let text = text.replace("'(a|b'", "'a|b'");
         let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), &text).unwrap();
         let patterns = compile_mode(&integration, &Intents::default()).unwrap().unwrap();
+        let exit_phrases = patterns.exit_phrases.unwrap();
         assert!(
-            patterns.exit_phrases.starts_with("done with (?:click mode)|(?:"),
+            exit_phrases
+                .as_str()
+                .starts_with("(?s-u)^(?:done with (?:click mode)|(?:"),
             "{}",
-            patterns.exit_phrases
+            exit_phrases.as_str()
         );
-        assert_eq!(
-            (patterns.drop.as_deref(), patterns.keep.as_deref()),
-            (Some("click"), Some("a|b"))
-        );
+        assert!(exit_phrases.is_match("done with click mode") && exit_phrases.is_match("stop click mode"));
+        assert!(patterns.drop.unwrap().is_match("click"));
+        let keep = patterns.keep.unwrap();
+        assert!(keep.is_match("a") && !keep.is_match("ab"));
         for bad in ["{target}", "{nonesuch}"] {
             let text = format!("verbs = []\n[mode]\nexit_phrases = '{bad}'\n");
             let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), &text).unwrap();
             let error = compile_mode(&integration, &Intents::default()).unwrap_err();
             assert!(error.starts_with("m.toml:3: [mode] exit_phrases: "), "{error}");
+        }
+    }
+
+    /// Owner decision a: one dialect. Whatever a verb's pattern accepts and matches, a mode's pattern does too.
+    #[test]
+    fn a_mode_pattern_compiles_and_matches_as_the_same_verb_pattern() {
+        let integration = integration(Format::Toml);
+        let verb_matches = |pattern: &str, text: &str| {
+            let compiled = compile_toml(&integration, pattern, &Intents::default()).ok()?;
+            let regex = regex::bytes::Regex::new(&compiled.regex).ok()?;
+            Some(regex.is_match(text.as_bytes()))
+        };
+        let mode_matches = |pattern: &str, text: &str| {
+            let text_toml = format!(
+                "verbs = []\n[mode]\nexit_phrases = '{pattern}'\nrewrite = {{ drop = '{pattern}', keep = '{pattern}' }}\n"
+            );
+            let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), &text_toml).unwrap();
+            let patterns = compile_mode(&integration, &Intents::default()).ok()??;
+            let each = [patterns.exit_phrases?, patterns.drop?, patterns.keep?].map(|regex| regex.is_match(text));
+            assert!(each.iter().all(|matched| *matched == each[0]), "{pattern}: {each:?}");
+            Some(each[0])
+        };
+        for (pattern, text) in [
+            ("a.b", "a\nb"),
+            ("done( now)?", "done now"),
+            ("done", "im done"),
+            (r"\p{L}+", "abc"),
+            (r"(?-u:\xff)", "x"),
+            (r"\w+", "abc"),
+        ] {
+            assert_eq!(
+                mode_matches(pattern, text),
+                verb_matches(pattern, text),
+                "{pattern} on {text:?}"
+            );
         }
     }
 }
