@@ -66,6 +66,10 @@ check "log line has timestamp, worktree, branch, head and reason" \
 check "reason is echoed into the transcript" "run 'CHECK_FULL=1 CHECK_FULL_REASON=bare lib/check.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"bare\")' >/dev/null"
 check "two reasons, two lines" "[[ \$(wc -l <$log) -eq 2 ]]"
 expect deny "an empty reason does not count" "CHECK_FULL_REASON= CHECK_FULL=1 lib/check.sh"
+echo new >"$repo/untracked"
+expect allow "a new untracked file: the runner reads it too" "CHECK_FULL=1 lib/check.sh"
+rm "$repo/untracked"
+expect deny "clean again" "CHECK_FULL=1 lib/check.sh"
 echo dirty >>"$repo/file"
 expect allow "uncommitted edits: the inputs differ from the record" "CHECK_FULL=1 lib/check.sh"
 

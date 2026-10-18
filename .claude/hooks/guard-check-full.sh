@@ -37,9 +37,10 @@ if [[ -n $reason ]]; then
   exit 0
 fi
 
-# Only a clean tree can match a record: with edits, the run checks inputs nobody has passed.
+# Only a clean tree can match a record: with edits or new untracked files (the runner reads both), the run checks
+# inputs nobody has passed.
 [[ -x lib/check/passed.sh ]] || exit 0
-git diff --quiet HEAD 2>/dev/null || exit 0
+[[ -z $(git status --porcelain --untracked-files=normal 2>/dev/null) ]] || exit 0
 base=$(git merge-base HEAD origin/main 2>/dev/null) || exit 0
 lib/check/passed.sh passed-since "$base" HEAD >/dev/null 2>&1 || exit 0
 
