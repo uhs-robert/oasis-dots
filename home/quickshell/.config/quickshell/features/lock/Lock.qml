@@ -107,11 +107,12 @@ Singleton {
     }
 
     // The generic screen draws the backdrop unless it is off; skins in backdrop_skins always take one for their own intro.
-    readonly property var backdrop_skins: ["Goldeneye.qml"]
+    // Resolved URLs rather than a path suffix: they compare equal to LockSkins.url_for wherever the folder lives, and qml_paths checks each file exists.
+    readonly property var backdrop_skins: [Qt.resolvedUrl("skins/Goldeneye.qml")]
 
     function wants_backdrop(style_name) {
         const url = String(root.skin_url(style_name));
-        if (root.backdrop_skins.some(f => url.endsWith("/lock/skins/" + f))) return true;
+        if (root.backdrop_skins.some(skin => String(skin) === url)) return true;
         return Style.lock_backdrop !== "off" && url === String(Qt.resolvedUrl("LockScreen.qml"));
     }
 
