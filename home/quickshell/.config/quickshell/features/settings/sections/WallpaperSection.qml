@@ -5,6 +5,7 @@ import qs.theme
 import qs.services
 import qs.features.display
 import qs.features.settings
+import qs.features.popups
 
 RowsSection {
     id: root

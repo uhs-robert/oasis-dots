@@ -7,6 +7,7 @@ import qs.theme
 import qs.services
 import qs.features.keeptabs
 import qs.features.clock
+import qs.features.popups
 
 // The Usage tab as the combat visor's ENERGY HUD: each limit reads as what is left of it, in energy tanks and a bar,
 // red under 15. Reads ClaudeUsageState directly; the contract is UsageView's.

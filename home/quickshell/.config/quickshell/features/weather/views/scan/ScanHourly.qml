@@ -7,6 +7,7 @@ import qs.styles.reticle.widgets
 import qs.features.weather
 import qs.features.weather.views.shared
 import qs.styles.metroid.widgets
+import qs.features.popups
 
 // A Scan Visor waveform readout: the hours as a glowing trace over a hex lattice, the cursor hour locked on by scan brackets and a reticle.
 // sub: 0 temp, 1 precip (chance + amount), 2 wind, 3 UV, 4 humidity. h/l move the hour cursor (auto-scrolling into view).

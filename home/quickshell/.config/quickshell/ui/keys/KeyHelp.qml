@@ -2,6 +2,7 @@ import QtQuick
 import qs.theme
 import qs.services
 import qs.ui.menu
+import qs.features.popups
 import "KeyHints.js" as KeyHints
 
 // A popup's full key list, drawn over its content at the same size.

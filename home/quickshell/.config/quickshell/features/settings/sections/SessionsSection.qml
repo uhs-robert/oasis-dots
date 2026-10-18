@@ -6,6 +6,7 @@ import qs.features.display
 import qs.features.overview
 import "../Choices.js" as Choices
 import qs.features.settings
+import qs.features.popups
 
 // Three levels in one pane: the session list, one session's windows, and one window's fields. h and Esc step up a level before leaving the pane.
 RowsSection {

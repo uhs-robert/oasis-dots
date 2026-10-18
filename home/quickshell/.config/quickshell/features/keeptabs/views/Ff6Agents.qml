@@ -4,6 +4,7 @@ import qs.ui.menu
 import qs.styles.snes.widgets as Snes
 import qs.services
 import qs.theme
+import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the FF6 battle windows: the selected session's details on the left, the party on the right.

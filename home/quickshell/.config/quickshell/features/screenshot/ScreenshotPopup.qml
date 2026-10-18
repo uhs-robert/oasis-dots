@@ -5,6 +5,7 @@ import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.services
+import qs.features.popups
 
 Popup {
     id: root

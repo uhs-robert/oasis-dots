@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
 import qs.services
+import qs.features.popups
 import "NotificationMarkup.js" as NotificationMarkup
 
 // One shared notification server for every bar/popup/toast. Entries wrap a tracked

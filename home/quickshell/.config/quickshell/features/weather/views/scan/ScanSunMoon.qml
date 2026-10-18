@@ -5,6 +5,7 @@ import qs.theme
 import qs.services
 import qs.features.weather
 import qs.styles.metroid.widgets
+import qs.features.popups
 
 // A Scan Visor logbook entry, "Celestial bodies": the selected day as the sun's orbit with its rise and set nodes, the moon scanned beside it,
 // then the sky events as data rows, under the Daily day window as a visor strip.

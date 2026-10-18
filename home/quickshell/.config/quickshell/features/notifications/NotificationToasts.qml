@@ -7,6 +7,7 @@ import Quickshell.Services.Notifications
 import qs.theme
 import qs.services
 import qs.features.bar
+import qs.features.popups
 
 PanelWindow {
     id: root

@@ -7,6 +7,7 @@ import qs.ui.frames
 import qs.features.weather
 import qs.features.weather.views.shared
 import qs.styles.gameboy.widgets
+import qs.features.popups
 import "PixelArt.js" as PixelArt
 
 // A Pokédex entry for the current weather: dot-matrix sprite, No. (WMO code), name, stats and a typed-out description.

@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.styles.ps2.widgets
 import qs.theme
 import qs.services
+import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the PS2 Browser's memory card screen: the selected session's save-info block over a field of

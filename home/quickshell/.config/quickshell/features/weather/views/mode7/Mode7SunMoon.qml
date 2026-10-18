@@ -4,6 +4,7 @@ import qs.styles.snes.widgets as Snes
 import qs.theme
 import qs.services
 import qs.features.weather
+import qs.features.popups
 
 // A Mode 7 horizon: the selected day's sun arcing over the perspective floor (today's live position marked), the moon in the sky with its phase,
 // and the sun and moon figures in an RPG window under a strip of day windows.

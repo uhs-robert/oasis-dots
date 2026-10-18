@@ -6,6 +6,7 @@ import qs.ui.menu
 import qs.theme
 import qs.services
 import qs.styles.tie.widgets
+import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as a targeting computer: the selected session in a CMD target window, the others as IFF-coloured contacts below.

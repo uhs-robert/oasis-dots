@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.styles.modern.widgets as Modern
 import qs.theme
 import qs.services
+import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as a stack of Live Activity cards. Same contract as AgentsView.

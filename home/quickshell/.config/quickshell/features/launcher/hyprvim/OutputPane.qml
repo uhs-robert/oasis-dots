@@ -1,5 +1,6 @@
 import QtQuick
 import qs.services
+import qs.features.popups
 
 // Scrollable read-only output for a prompt of kind "output".
 FocusScope {

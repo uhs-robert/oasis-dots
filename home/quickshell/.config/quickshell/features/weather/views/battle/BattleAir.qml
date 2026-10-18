@@ -7,6 +7,7 @@ import qs.features.power
 import qs.features.clock
 import qs.features.weather
 import qs.styles.nes.widgets
+import qs.features.popups
 import "../../../../styles/nes/widgets/Slimes.js" as Slimes
 
 // Hourly's Air sub-view as a Dragon Quest encounter: the air is the monster, its pollutants are its stat lines,

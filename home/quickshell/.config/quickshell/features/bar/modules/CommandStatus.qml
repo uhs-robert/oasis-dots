@@ -3,6 +3,7 @@ import QtQuick
 import qs.theme
 import qs.services
 import qs.features.bar
+import qs.features.popups
 
 BarModule {
     id: root

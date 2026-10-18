@@ -6,6 +6,7 @@ import qs.services
 import qs.styles.reticle.widgets
 import qs.features.clock
 import qs.features.weather
+import qs.features.popups
 
 // The selected day as two concentric rings under the Daily day strip: a 24 hour dial whose lit segment runs sunrise to sunset
 // (today adds the sun's live position), and inside it the moon's illumination as a gauge with the phase marked on it.

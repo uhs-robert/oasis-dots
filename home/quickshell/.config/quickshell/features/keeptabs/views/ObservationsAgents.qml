@@ -4,6 +4,7 @@ import qs.ui.effects
 import qs.theme
 import qs.services
 import qs.styles.crt.widgets
+import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // CRT: the WeatherStar 4000 "Latest Observations" page. A table pages as many sessions as fit, the page

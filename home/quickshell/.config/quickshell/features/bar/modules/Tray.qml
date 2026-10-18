@@ -5,6 +5,7 @@ import Quickshell.Services.SystemTray
 import qs.theme
 import qs.services
 import qs.components.bar_icons
+import qs.features.popups
 
 BarModule {
     id: root
