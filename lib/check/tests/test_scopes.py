@@ -17,7 +17,7 @@ CASES = [
     ("lib/check.sh", " all"),
     ("lib/check/runner.py", "checkscope all"),
     ("lib/check/keys.py", "checkscope all"),
-    ("lib/check/scopes.py", "checkscope"),
+    ("lib/check/scopes.py", "checkscope all"),
     ("lib/check/passed.py", "checkscope all"),
     ("lib/check/passed.sh", "checkscope all"),
     ("lib/check/lock.sh", "checkscope all"),
@@ -107,7 +107,7 @@ class PathScopes(unittest.TestCase):
                 self.assertIn(step.scope, reachable)
 
     def test_step_commands_name_existing_paths(self):
-        """A step edited in scopes.py is not run by that edit, so a typo in its command must fail here instead."""
+        """A typo in a step command must fail here, with the tests, not only when that step runs."""
         repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         for step in scopes.STEPS:
             for word in shlex.split(step.command):
