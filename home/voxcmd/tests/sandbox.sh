@@ -180,11 +180,10 @@ recordings_watchers_saw() {
   count=$(grep -c 'watch: voxtype recording$' "$XDG_RUNTIME_DIR/voxcmd/debug.log" 2>/dev/null)
   echo "${count:-0}"
 }
-pass_through() {
-  PATH=$SANDBOX_REAL_PATH XDG_RUNTIME_DIR=$SANDBOX_REAL_XDG_RUNTIME_DIR HOME=$SANDBOX_REAL_HOME
-  export PATH XDG_RUNTIME_DIR HOME
-  command -v "$name" >/dev/null 2>&1 || exit 1
-  exec "$name" "$@"
+# fixture_missing <variable>: a stub answered from a fixture the test never set. Failing here keeps the call off the real tool and the live desktop.
+fixture_missing() {
+  echo "sandbox: '$name $*' needs \$$1, which this test does not set; add the fixture rather than reaching the live desktop" >&2
+  exit 1
 }
 case "$name" in
 hyprctl)
@@ -223,7 +222,8 @@ hyprctl)
     fi
     ;;
   binds | clients | monitors | activeworkspace | version)
-    printenv "SANDBOX_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')_JSON" || pass_through "$@"
+    fixture_var="SANDBOX_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')_JSON"
+    printenv "$fixture_var" || fixture_missing "$fixture_var"
     ;;
   workspaces)
     # Without its fixture no special workspace exists, rather than the live session's.
@@ -277,24 +277,24 @@ magick)
     previous=$arg
   done
   ;;
-pw-dump) printenv SANDBOX_PW_DUMP_JSON || pass_through "$@" ;;
+pw-dump) printenv SANDBOX_PW_DUMP_JSON || fixture_missing SANDBOX_PW_DUMP_JSON ;;
 keeptabs-pick)
   case "$*" in
-  *--json*) printenv SANDBOX_AGENTS_JSON || pass_through "$@" ;;
+  *--json*) printenv SANDBOX_AGENTS_JSON || fixture_missing SANDBOX_AGENTS_JSON ;;
   *) log "$@" ;;
   esac
   ;;
 systemctl)
   case "$*" in
-  *list-timers* | *list-units*) printenv SANDBOX_TIMERS_JSON || pass_through "$@" ;;
+  *list-timers* | *list-units*) printenv SANDBOX_TIMERS_JSON || fixture_missing SANDBOX_TIMERS_JSON ;;
   *) log "$@" ;;
   esac
   ;;
 tmux)
   case "${1-}" in
-  list-sessions) printenv SANDBOX_TMUX_SESSIONS || pass_through "$@" ;;
+  list-sessions) printenv SANDBOX_TMUX_SESSIONS || fixture_missing SANDBOX_TMUX_SESSIONS ;;
   has-session)
-    [ -n "${SANDBOX_TMUX_SESSIONS+set}" ] || pass_through "$@"
+    [ -n "${SANDBOX_TMUX_SESSIONS+set}" ] || fixture_missing SANDBOX_TMUX_SESSIONS
     eval "session=\${$#}"
     printf '%s\n' "$SANDBOX_TMUX_SESSIONS" | grep -qxF -- "${session#=}"
     ;;
@@ -519,9 +519,7 @@ for script_name in qs-ipc qs-picker screenshot.sh toggle-autolock.sh rofi-tmux.s
 done
 
 export SANDBOX_DIR="$sandbox_dir"
-export SANDBOX_REAL_PATH="$PATH"
 export SANDBOX_REAL_XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-export SANDBOX_REAL_HOME="$HOME"
 export HOME="$sandbox_dir/home"
 export XDG_STATE_HOME="$sandbox_dir/home/.local/state"
 export XDG_CACHE_HOME="$sandbox_dir/home/.cache"
