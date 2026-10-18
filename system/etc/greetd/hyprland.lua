@@ -63,49 +63,16 @@ hl.bind("SUPER + Q", restart_login)
 hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p " .. RUNTIME_DIR .. "/qs-greeter; touch " .. RUNTIME_DIR .. "/qs-greeter/fallback; pkill -x qs; sleep 1; pkill -9 -x qs"))
 
 ---- [MONITORS] ----
-local function resolve_primary()
-	local connected = {}
-	local pipe = io.popen("ls -d /sys/class/drm/card*-* 2>/dev/null | sort")
-	if pipe then
-		for path in pipe:lines() do
-			local file = io.open(path .. "/status")
-			local status = file and file:read("*l")
-			if file then
-				file:close()
-			end
-			local name = path:match("card%d+%-(.+)$")
-			if name and status == "connected" then
-				table.insert(connected, name)
-			end
-		end
-		pipe:close()
-	end
-	for _, name in ipairs(connected) do
-		if name:match("^eDP") then
-			return name
-		end
-	end
-	return connected[1] or "eDP-1"
-end
+-- Duplicates the position, scale and transform of the session's monitors in uphill-arch-laptop.lua (machines profile, read by
+-- config/monitors/init.lua); the greeter runs from /etc as another user and cannot load it, so keep the two in sync by hand.
+-- Matching is by description, so an unlisted display falls through to the catch-all.
+hl.monitor({ output = "desc:BOE 0x0C8E", mode = "preferred", position = "317x1080", scale = 1.6 })
+hl.monitor({ output = "desc:Lenovo Group Limited T22i-30 V81037ZT", mode = "preferred", position = "0x0", scale = 1 })
+hl.monitor({ output = "desc:GIGA-BYTE TECHNOLOGY CO. LTD. G27QC A 0x00000D48", mode = "preferred", position = "1920x0", scale = 1 })
+hl.monitor({ output = "desc:HP Inc. HP Z22n G2 6CM8411J22", mode = "preferred", position = "4480x0", scale = 1, transform = 3 })
 
-PRIMARY = resolve_primary()
-
--- MAIN
-hl.monitor({
-	output = "desc:BOE 0x0C8E",
-	mode = "1920x1080@60",
-	scale = 1,
-	position = "auto",
-})
-
--- MIRRORS
-hl.monitor({
-	output = "",
-	mode = "preferred",
-	position = "auto",
-	scale = 1,
-	mirror = PRIMARY,
-})
+-- Unknown outputs
+hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 
 ---- [ADMIN TERMINAL FULLSCREEN] ----
 hl.window_rule({
