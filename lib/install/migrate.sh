@@ -97,3 +97,33 @@ migrate_systemd() {
   _migrate_voxtype_unit
   success "systemd migration checked"
 }
+
+# The gitignored, user-imported skin assets, relative to a skin's folder under skins/; the Quickshell .gitignore lists the same ones.
+_LOCK_ASSET_DIRS=(ocarina/audio ff7/audio mgs2/audio goldeneye/audio goldeneye/frames)
+
+# Moves imported lock-skin assets from the old top-level lock/ into features/lock/ (moved there by the Quickshell refactor 4.1);
+# git leaves ignored files behind, and the QML reads only the new paths. Never overwrites: a file already at the new path stays,
+# and the old copy is reported and left for the user. $1 is the Quickshell config dir, for the tests.
+migrate_quickshell_lock_assets() {
+  local qs_dir=${1:-$DOTFILES_DIR/home/quickshell/.config/quickshell} asset old_dir file rel dest
+  for asset in "${_LOCK_ASSET_DIRS[@]}"; do
+    old_dir="$qs_dir/lock/skins/$asset"
+    [[ -d "$old_dir" ]] || continue
+    while IFS= read -r -d '' file; do
+      rel=${file#"$qs_dir/lock/"}
+      dest="$qs_dir/features/lock/$rel"
+      if [[ -e "$dest" || -L "$dest" ]]; then
+        warn "Not moving lock/$rel: features/lock/$rel already exists, delete whichever copy you do not want"
+        continue
+      fi
+      info "Moving lock/$rel to features/lock/$rel"
+      _migrate_run mkdir -p "$(dirname "$dest")"
+      _migrate_run mv "$file" "$dest"
+    done < <(find "$old_dir" \( -type f -o -type l \) -print0)
+    [[ "${MIGRATE_DRY_RUN:-0}" -eq 1 ]] && continue
+    # Removes emptied directories only, up through lock/ itself.
+    find "$old_dir" -depth -type d -empty -delete
+    (cd "$qs_dir" && rmdir -p --ignore-fail-on-non-empty "lock/skins/${asset%%/*}" 2>/dev/null) || true
+  done
+  return 0
+}
