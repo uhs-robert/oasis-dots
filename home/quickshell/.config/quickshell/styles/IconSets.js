@@ -1,19 +1,19 @@
 .pragma library
-.import "GameboySprites.js" as Gameboy
-.import "NesSprites.js" as Nes
-.import "SnesSprites.js" as Snes
-.import "Ps1Vectors.js" as Ps1
-.import "OasisVectors.js" as Oasis
-.import "GoldeneyeVectors.js" as Goldeneye
-.import "MetroidVectors.js" as Metroid
-.import "Ff7Vectors.js" as Ff7
-.import "CrtVectors.js" as Crt
-.import "Ps2Vectors.js" as Ps2
-.import "HalflifeVectors.js" as Halflife
-.import "TieVectors.js" as Tie
-.import "ReticleVectors.js" as Reticle
-.import "ModernVectors.js" as Modern
-.import "TerminalEmoji.js" as Terminal
+.import "gameboy/icons.js" as Gameboy
+.import "nes/icons.js" as Nes
+.import "snes/icons.js" as Snes
+.import "ps1/icons.js" as Ps1
+.import "oasis/icons.js" as Oasis
+.import "goldeneye/icons.js" as Goldeneye
+.import "metroid/icons.js" as Metroid
+.import "ff7/icons.js" as Ff7
+.import "crt/icons.js" as Crt
+.import "ps2/icons.js" as Ps2
+.import "halflife/icons.js" as Halflife
+.import "tie/icons.js" as Tie
+.import "reticle/icons.js" as Reticle
+.import "modern/icons.js" as Modern
+.import "terminal/icons.js" as Terminal
 
 // Icon sets a bar style can draw in place of the Nerd Font glyphs: set name -> icon name -> variant -> sprite rows or vector.
 var sets = {

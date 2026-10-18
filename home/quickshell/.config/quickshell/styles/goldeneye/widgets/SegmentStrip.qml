@@ -1,5 +1,5 @@
 import QtQuick
-import "../../../theme/Watch.js" as W
+import "../Watch.js" as W
 
 // A short run of slanted warm bezel segments, lit up to `value` (0-1), dim after; yellow first, red at the full end.
 Row {

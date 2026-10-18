@@ -3,9 +3,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.core
-import "Watch.js" as Watch
-import "styles/index.js" as Styles
-import "icon_sets/IconSets.js" as IconSets
+import "../styles/goldeneye/Watch.js" as Watch
+import "../styles/index.js" as Styles
+import "../styles/IconSets.js" as IconSets
 import "MarkerTokens.js" as MarkerTokens
 
 Singleton {
@@ -102,7 +102,7 @@ Singleton {
         model: Styles.sources
         delegate: FileView {
             required property string modelData
-            path: Qt.resolvedUrl("styles/" + modelData)
+            path: Qt.resolvedUrl("../styles/" + modelData)
             watchChanges: true
             printErrors: false
             onFileChanged: Quickshell.reload(false)

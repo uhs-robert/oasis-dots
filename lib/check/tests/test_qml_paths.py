@@ -114,7 +114,7 @@ class WidgetTokenTest(PathsCase):
     FILES = {
         "qs/ui/gauges/Meter.qml": 'source: art === "" ? "" : Qt.resolvedUrl("../../styles/" + art.replace("/", "/widgets/"))\n',
         "qs/ui/keys/ControllerBadge.qml": 'u: Qt.resolvedUrl("../../styles/" + KeyHints.button_path(c).replace("/", "/widgets/"))\n',
-        "qs/theme/styles/nes.js": 'meter_art: ({ volume: "nes/HeartMeter.qml", media: "nes/PianoRoll.qml" })\n',
+        "qs/styles/nes/tokens.js": 'meter_art: ({ volume: "nes/HeartMeter.qml", media: "nes/PianoRoll.qml" })\n',
         "qs/ui/keys/KeyHints.js": 'nes: { button: "nes/NesButton.qml", keys: {} },\n',
         "qs/styles/nes/widgets/HeartMeter.qml": "",
         "qs/styles/nes/widgets/PianoRoll.qml": "",
@@ -126,16 +126,16 @@ class WidgetTokenTest(PathsCase):
 
     def test_a_renamed_meter_art_or_button_target_fails(self):
         for target, message in (
-            ("qs/styles/nes/widgets/PianoRoll.qml", "qs/ui/gauges/Meter.qml:1: styles/nes/widgets/PianoRoll.qml (from qs/theme/styles/nes.js:1) does not exist"),
+            ("qs/styles/nes/widgets/PianoRoll.qml", "qs/ui/gauges/Meter.qml:1: styles/nes/widgets/PianoRoll.qml (from qs/styles/nes/tokens.js:1) does not exist"),
             ("qs/styles/nes/widgets/NesButton.qml", "qs/ui/keys/ControllerBadge.qml:1: styles/nes/widgets/NesButton.qml (from qs/ui/keys/KeyHints.js:1) does not exist"),
         ):
             files = {name: text for name, text in self.FILES.items() if name != target}
             self.assertEqual(self.check(files, self.TABLES), [message])
 
     def test_meter_art_in_any_style_file_is_checked(self):
-        files = dict(self.FILES, **{"qs/theme/styles/ps2.js": 'meter_art: ({ osd: "ps2/Missing.qml" })\n'})
+        files = dict(self.FILES, **{"qs/styles/ps2/tokens.js": 'meter_art: ({ osd: "ps2/Missing.qml" })\n'})
         self.assertEqual(self.check(files, self.TABLES), [
-            "qs/ui/gauges/Meter.qml:1: styles/ps2/widgets/Missing.qml (from qs/theme/styles/ps2.js:1) does not exist",
+            "qs/ui/gauges/Meter.qml:1: styles/ps2/widgets/Missing.qml (from qs/styles/ps2/tokens.js:1) does not exist",
         ])
 
 

@@ -5,7 +5,7 @@ import qs.ui.gauges
 import qs.theme
 import qs.lock.skins.goldeneye as Watch
 import qs.features.weather
-import "../../../../theme/Watch.js" as W
+import "../../../../styles/goldeneye/Watch.js" as W
 
 // The current conditions as the classic pause watch: warm segments left spanning today's low to high with now picked out,
 // blue segments right for today's chance of rain, a green panel between, and a strip of LCD bars for TEMP, HUM and RAIN below.

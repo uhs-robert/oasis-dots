@@ -4,7 +4,7 @@ import qs.theme
 import qs.features.clock
 import qs.features.weather
 import qs.features.weather.views.shared
-import "../../../../theme/Watch.js" as W
+import "../../../../styles/goldeneye/Watch.js" as W
 
 // Hourly as the pause watch's dial: 12-hour pages counted from the forecast's first hour, so the bezel is always full and a page may start at any clock hour. Each hour is a bar at its
 // real clock position growing outward from the band's inner edge, its length and brightness carrying the sub's value; the hand sits on the cursor hour and its readings on the face.

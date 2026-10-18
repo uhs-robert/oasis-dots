@@ -2,10 +2,10 @@
 import QtQuick
 import Qt.labs.folderlistmodel
 
-// Registers the fonts synced into fonts/.
+// Registers the fonts synced into assets/fonts/.
 Instantiator {
     model: FolderListModel {
-        folder: Qt.resolvedUrl("fonts")
+        folder: Qt.resolvedUrl("assets/fonts")
         nameFilters: ["*.ttf", "*.otf"]
         showDirs: false
     }

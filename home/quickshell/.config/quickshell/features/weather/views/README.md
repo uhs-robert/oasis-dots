@@ -1,6 +1,6 @@
 # Weather views
 
-`WeatherPopup` picks a folder here from the style's `weather_header` token (`theme/styles/<style>.js`). A token's folder holds the views that style redraws: the Hourly, Sun & Moon, Air and Alerts views, and usually a header and day column (`hero` and `lsp` have neither, and `oasis` keeps its header in `styles/oasis/widgets/`); any view a token does not redraw falls back to the plain one in `shared/`. The popup's `layout_views` table lists which views each token owns.
+`WeatherPopup` picks a folder here from the style's `weather_header` token (`styles/<style>/tokens.js`). A token's folder holds the views that style redraws: the Hourly, Sun & Moon, Air and Alerts views, and usually a header and day column (`hero` and `lsp` have neither, and `oasis` keeps its header in `styles/oasis/widgets/`); any view a token does not redraw falls back to the plain one in `shared/`. The popup's `layout_views` table lists which views each token owns.
 
 | token | style | what it draws |
 | --- | --- | --- |

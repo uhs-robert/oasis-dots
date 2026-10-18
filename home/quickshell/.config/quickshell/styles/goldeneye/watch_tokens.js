@@ -1,5 +1,5 @@
 .pragma library
-.import "../Watch.js" as Watch
+.import "Watch.js" as Watch
 
 // The palette slots shared components draw with; goldeneye remaps them to the watch's fixed colours.
 function palette(t) {
