@@ -64,10 +64,13 @@ wait_until_gone() { [ -n "$1" ] && wait_until process_gone "$1"; }
 # voxcmd logs each watcher it starts and each ended hook it runs before it exits, so once the logged watchers are gone
 # no line naming another is still to come.
 logged_processes_gone() {
-  local pid
+  local pid logged
+  logged=$(sed -n "s/$1/\\1/p" "$debug_log")
   while read -r pid; do
-    process_gone "$pid" || return 1
-  done < <(sed -n "s/$1/\\1/p" "$debug_log")
+    [ -z "$pid" ] || process_gone "$pid" || return 1
+  done <<<"$logged"
+  # Read again once they are seen gone: the last one may have logged another and exited in between.
+  [[ $(sed -n "s/$1/\\1/p" "$debug_log") == "$logged" ]]
 }
 # Stubs run as "/bin/sh $SANDBOX_DIR/bin/<name>", so once none is running no stub call is still to be logged: what a
 # check that a call was never made waits for.

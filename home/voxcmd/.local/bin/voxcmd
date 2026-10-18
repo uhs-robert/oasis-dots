@@ -1864,14 +1864,24 @@ load_mode_settings() {
     fi
   done < <(
     load_integration "$1"
-    for key in default_exits bare_exits allows_switches exit_hint exit_phrases private open_ended one_recording wake_listens \
-      listen_silence_secs listen_max_secs listen_no_speech_secs; do
-      value="session_$key"
-      printf '%s=%s\n' "$key" "${!value}"
-    done
-    if declare -F session_handle_turn >/dev/null; then echo has_handler=1; else echo has_handler=0; fi
-    for value in "${session_endings[@]}"; do printf 'ending=%s\n' "$value"; done
+    print_mode_settings
   )
+}
+
+# The settings of the integration loaded, as load_mode_settings reads them; also what `_legacy-hook mode-settings`
+# prints for the Rust port, which reads has_rewrite, has_alive and the miss_action rows too.
+print_mode_settings() {
+  local key value hook
+  for key in default_exits bare_exits allows_switches exit_hint exit_phrases private open_ended one_recording wake_listens \
+    listen_silence_secs listen_max_secs listen_no_speech_secs; do
+    value="session_$key"
+    printf '%s=%s\n' "$key" "${!value}"
+  done
+  for hook in handler:session_handle_turn rewrite:session_rewrite alive:session_alive; do
+    if declare -F "${hook#*:}" >/dev/null; then echo "has_${hook%%:*}=1"; else echo "has_${hook%%:*}=0"; fi
+  done
+  for value in "${integration_session_miss_actions[@]}"; do printf 'miss_action=%s\n' "$value"; done
+  for value in "${session_endings[@]}"; do printf 'ending=%s\n' "$value"; done
 }
 
 # The modes of a session, bottom first, each {kind, integration, label, exit_hint, unclear, mode_started,
@@ -3028,10 +3038,15 @@ legacy_dump() {
 #                                 fails when it has no on-screen picker (integration_pick)
 #   ended <reason> <frame_id> <continues 0|1>
 #                                 runs the file's session_ended for a popped mode, as session_run_ended_hook does
+#   mode-settings                 prints the file's mode settings (print_mode_settings)
+#   rewrite <text>...             prints each text as the file's session_rewrite makes it, one a line
+#   alive                         succeeds while the file's mode is wanted (session_mode_alive)
+#   handle-turn <text> [action]   runs the file's session_handle_turn
 legacy_hook() {
-  local kind="${1:-}" file="${2:-}" candidates_json
+  local kind="${1:-}" file="${2:-}" candidates_json text
   raw_transcript="${VOXCMD_LEGACY_RAW_TRANSCRIPT-}"
   load_integration "$file" >/dev/null
+  legacy_session_shims
   case "$kind" in
   candidates)
     declare -F candidates >/dev/null || return 0
@@ -3055,8 +3070,38 @@ legacy_hook() {
     declare -F session_ended >/dev/null || return 0
     session_ended "${3-}" "${4-}" "${5:-0}"
     ;;
+  mode-settings) print_mode_settings ;;
+  rewrite)
+    for text in "${@:3}"; do printf '%s\n' "$(session_rewrite "$text")"; done
+    ;;
+  alive)
+    ! declare -F session_alive >/dev/null || session_alive
+    ;;
+  handle-turn)
+    declare -F session_handle_turn >/dev/null || return 0
+    session_handle_turn "${@:3}"
+    ;;
   *) return 2 ;;
   esac
+}
+
+# In an action or mode hook the Rust port runs, the session is the Rust one's, and "this process" is the Rust process
+# that ran the hook ($VOXCMD_LEGACY_PID), not this bash child: the session calls integrations make go to
+# `voxcmd-rs internal session`, and discard_flag_of $$ names that process's flag. Not set for an ended hook, whose
+# session_state takes the lock as any reader does.
+legacy_session_shims() {
+  [ -n "${VOXCMD_LEGACY_PID-}" ] || return 0
+  heard_mode="${VOXCMD_LEGACY_HEARD_MODE-}"
+  session_begin() { "$VOXCMD_LEGACY_RS_BIN" internal session begin "$@"; }
+  session_leave() { "$VOXCMD_LEGACY_RS_BIN" internal session leave "$@"; }
+  session_end() { "$VOXCMD_LEGACY_RS_BIN" internal session end "$@"; }
+  session_end_all() { "$VOXCMD_LEGACY_RS_BIN" internal session end-all "$@"; }
+  session_state() { "$VOXCMD_LEGACY_RS_BIN" internal session state; }
+  discard_flag_of() {
+    local pid="$1"
+    [ "$pid" != $$ ] || pid="$VOXCMD_LEGACY_PID"
+    printf '%s/discard.%s' "$runtime_dir" "$pid"
+  }
 }
 
 legacy_pick_boxes() {

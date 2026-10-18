@@ -127,5 +127,6 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         }
         Command::Internal(InternalCommand::WakeConfirm(_)) => later("internal wake-confirm", "2.4"),
         Command::Internal(InternalCommand::ChainStop(_)) => later("internal chain-stop", "2.4"),
+        Command::Internal(InternalCommand::Session(args)) => session::bridge::run(&args.args),
     }
 }

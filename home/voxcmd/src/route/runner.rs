@@ -19,6 +19,7 @@ use crate::notify::{self, Desktop, Kind};
 use crate::paths;
 use crate::process;
 use crate::text::wake_word::WAKE_WORD;
+use std::cell::RefCell;
 use std::collections::BTreeSet;
 
 /// The most options an integration's own picker (numbered boxes on screen) takes; more go to the text picker.
@@ -27,9 +28,72 @@ const MAX_BOXED_OPTIONS: usize = 10;
 pub struct Runner<'a> {
     pub router: &'a Router<'a>,
     pub rt: &'a Runtime<'a>,
+    /// The action of the last option that ran, which a session turn reads to tell what it did (bash
+    /// `last_run_action`).
+    last_run_action: RefCell<String>,
 }
 
-impl Runner<'_> {
+/// How a phrase routed: the exit code `run` gives, and how its last step ended.
+#[derive(Debug, Clone, Copy)]
+pub struct Routed {
+    pub exit_code: i32,
+    pub outcome: StepOutcome,
+}
+
+impl<'a> Runner<'a> {
+    pub fn new(router: &'a Router<'a>, rt: &'a Runtime<'a>) -> Self {
+        Self {
+            router,
+            rt,
+            last_run_action: RefCell::default(),
+        }
+    }
+
+    pub fn last_run_action(&self) -> String {
+        self.last_run_action.borrow().clone()
+    }
+
+    pub fn forget_last_run_action(&self) {
+        self.last_run_action.borrow_mut().clear();
+    }
+
+    /// Runs an option chosen outside routing (a mode switch a session turn names).
+    pub fn run_option(&self, option: &RouteOption, said: &Spoken) -> StepResult {
+        let result = run_option(self.rt, option, said);
+        self.note_ran(&result);
+        result
+    }
+
+    fn note_ran(&self, result: &StepResult) {
+        if let Some(option) = &result.ran {
+            self.last_run_action.borrow_mut().clone_from(&option.action);
+        }
+    }
+
+    /// One spoken or typed phrase: one step, or the steps of "and then" in order.
+    pub fn route(&self, phrase: &str) -> Routed {
+        let split = sequence::split_phrase(self.router, phrase);
+        if split.steps.len() == 1 {
+            let result = self.route_step(&split.steps[0]);
+            Routed {
+                exit_code: result.exit_code,
+                outcome: result.outcome,
+            }
+        } else {
+            self.route_steps(&split)
+        }
+    }
+
+    /// One step, as the whole of a phrase.
+    pub fn route_step(&self, transcript: &str) -> StepResult {
+        self.run_step(transcript, false, "")
+    }
+
+    /// The steps as one sequence, which may be refused before any runs.
+    pub fn route_steps(&self, steps: &sequence::Steps) -> Routed {
+        self.run_sequence(steps, &Pacing::from_env())
+    }
+
     /// Routes the step and acts on it. In a sequence it sends no no-match toast and does not open Voice Help: the
     /// sequence reports the step it stopped at.
     pub fn run_step(&self, transcript: &str, in_sequence: bool, active_before: &str) -> StepResult {
@@ -91,6 +155,7 @@ impl Runner<'_> {
         } else {
             run_option(self.rt, &options[0], &said)
         };
+        self.note_ran(&result);
         result.phrase.clone_from(&step.normalized);
         result.raw_transcript.clone_from(&step.raw_transcript);
         result
@@ -160,7 +225,8 @@ fn choices_json(rt: &Runtime, options: &[RouteOption]) -> String {
 /// `voxcmd run <phrase>`: one step, or the steps of "and then" in order. Exit 0 when the user decided (it ran, or was
 /// cancelled, declined or discarded), 1 when nothing matched, the action failed or no step of a sequence ran.
 pub fn run(args: PhraseArgs) -> Result<(), CliError> {
-    let exit_code = route_phrase(&args.phrase.join(" "), Heard::Typed)?;
+    let phrase = args.phrase.join(" ");
+    let exit_code = with_runner(&Heard::default(), |runner| runner.route(&phrase).exit_code)?;
     if exit_code == 0 {
         Ok(())
     } else {
@@ -168,23 +234,29 @@ pub fn run(args: PhraseArgs) -> Result<(), CliError> {
     }
 }
 
-/// A transcript a watcher heard, routed as `run` routes a phrase; the exit code `run` would have. `heard_private`: the
-/// mode it was heard in keeps what is said out of the logs.
-pub fn run_spoken(transcript: &str, heard_private: bool) -> i32 {
-    route_phrase(transcript, Heard::Spoken { heard_private }).unwrap_or_else(|error| {
+/// A transcript a watcher heard, routed as `run` routes a phrase; the exit code `run` would have.
+pub fn run_spoken(transcript: &str, heard: &Heard) -> i32 {
+    with_runner(heard, |runner| runner.route(transcript).exit_code).unwrap_or_else(|error| {
         eprintln!("{error}");
         1
     })
 }
 
-/// How the phrase arrived.
-#[derive(Clone, Copy)]
-enum Heard {
-    Typed,
-    Spoken { heard_private: bool },
+/// How a phrase arrived; the default is typed.
+#[derive(Debug, Default)]
+pub struct Heard {
+    /// Spoken: a watcher routes it.
+    pub by_voice: bool,
+    /// The mode it was heard in keeps what is said out of the logs.
+    pub private: bool,
+    /// The session mode it was heard in (`session::mode_token`), as the watcher was told; bash `$heard_mode`.
+    pub mode: String,
+    /// A voice session's turn.
+    pub in_session_turn: bool,
 }
 
-fn route_phrase(phrase: &str, heard: Heard) -> Result<i32, CliError> {
+/// Loads the configuration and hands `act` a runner over it.
+pub fn with_runner<R>(heard: &Heard, act: impl FnOnce(&Runner) -> R) -> Result<R, CliError> {
     let config_dir = paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("run", message))?;
     let stems = || config.integrations.iter().map(|integration| integration.stem.clone());
@@ -202,19 +274,10 @@ fn route_phrase(phrase: &str, heard: Heard) -> Result<i32, CliError> {
         legacy: &legacy,
         asker: &asker,
         notifier: &Desktop,
-        came_by_voice: matches!(heard, Heard::Spoken { .. }),
-        heard_private: matches!(heard, Heard::Spoken { heard_private: true }),
-        // A session's turns are the bash voxcmd's until voxcmd-port 2.4c.
-        in_session_turn: false,
+        came_by_voice: heard.by_voice,
+        heard_private: heard.private,
+        heard_mode: &heard.mode,
+        in_session_turn: heard.in_session_turn,
     };
-    let runner = Runner {
-        router: &router,
-        rt: &runtime,
-    };
-    let split = sequence::split_phrase(&router, phrase);
-    Ok(if split.steps.len() == 1 {
-        runner.run_step(&split.steps[0], false, "").exit_code
-    } else {
-        runner.run_sequence(&split, &Pacing::from_env())
-    })
+    Ok(act(&Runner::new(&router, &runtime)))
 }

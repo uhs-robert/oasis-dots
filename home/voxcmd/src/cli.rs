@@ -287,6 +287,8 @@ pub enum InternalCommand {
     WakeConfirm(InternalArgs),
     #[command(alias = "_chain-stop")]
     ChainStop(InternalArgs),
+    /// The session as a bash integration's hooks reach it (begin, leave, end, end-all, state, end-if-mine)
+    Session(InternalArgs),
 }
 
 #[derive(Args, Debug)]

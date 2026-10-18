@@ -32,6 +32,13 @@ link_voxcmd_shim "$sess_pkg"
 # sess_voxcmd is the new CLI, over this copy's bash voxcmd, which is the process name the tests look for.
 sess_voxcmd=$sess_pkg/tests/bin/voxcmd
 sess_real_voxcmd=$sess_pkg/.local/bin/voxcmd
+# A session turn's watcher, as the binary under test names it: the bash `_watch`, or the Rust build's `internal watch`.
+if [ "${VOXCMD_BIN:-bash}" = rs ]; then
+  sess_rust_voxcmd=$(readlink -f "$sess_voxcmd")
+  sess_watcher="$sess_rust_voxcmd internal watch"
+else
+  sess_watcher="$sess_real_voxcmd _watch"
+fi
 # The stub detector's long sleep, under its own name so the tests can end the ones a killed watcher leaves behind.
 stub_sleep=$root/stub-sleep
 cp "$(command -v sleep)" "$stub_sleep"
@@ -131,7 +138,9 @@ sess_wait() {
     running=0
     watchers=$(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*/\1/p' "$debug_log")
     while read -r pid; do [ -n "$pid" ] && process_running "$pid" && running=1 && break; done <<<"$watchers"
-    ((running)) || return 0
+    # Read again once they are seen gone: the last one may have logged its successor and exited in between.
+    ((running)) || [[ $(sed -n 's/.* listen: recording started, watcher \([0-9]*\) .*/\1/p' "$debug_log") != "$watchers" ]] ||
+      return 0
     if (($(wc -l <<<"$watchers") > seen)); then
       seen=$(wc -l <<<"$watchers") deadline=$((SECONDS + test_wait_secs))
     fi
@@ -162,6 +171,15 @@ owner_saw_recording() {
   local owner
   owner=$(jq -r .owner "$XDG_RUNTIME_DIR/voxcmd/session.json" 2>/dev/null)
   [ -n "$owner" ] && grep -q "voxcmd\[$owner\] watch: voxtype recording\$" "$debug_log"
+}
+# The session's owner is a session turn's watcher of the binary under test, so a passing run under VOXCMD_BIN=rs is one
+# whose turns the Rust build heard, not one it handed to the bash voxcmd.
+owner_is_the_binary_under_test() {
+  local owner cmdline
+  owner=$(jq -r .owner "$XDG_RUNTIME_DIR/voxcmd/session.json" 2>/dev/null)
+  cmdline=$(tr '\0' ' ' <"/proc/$owner/cmdline" 2>/dev/null) || return 1
+  [[ $cmdline == *"$sess_watcher session_turn "* ]] || return 1
+  [ "${VOXCMD_BIN:-bash}" != rs ] || [[ $(readlink -f "/proc/$owner/exe") == "$sess_rust_voxcmd" ]]
 }
 
 sess_run alpha beta "done"
@@ -198,6 +216,11 @@ sess_env=()
 # While it is open, the session file names its kind and a live owner.
 sess_start alpha "done"
 check "an open session records its kind, label and a live owner" "[[ \$(jq -r '[.kind, .label, (.owner | tostring | test(\"^[0-9]+\$\"))] | join(\",\")' '$XDG_RUNTIME_DIR/voxcmd/session.json') == 'test,Test mode,true' ]]"
+sess_wait
+sess_start HOLD
+owner_is_listening
+check "the session's turns are heard by the binary under test" "owner_is_the_binary_under_test"
+sess_voxcmd_env session end
 sess_wait
 
 for word in "done" "Done." "that's all" "I'm done" "stop testing" "Okay, stop testing." "done testing"; do
@@ -542,13 +565,13 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/debug.log"
 # starts dies before its trap is set, and one handing over to a successor that is starting leaves the session to it.
 sess_start HOLD
 owner_is_listening
-pkill -TERM -f "$sess_real_voxcmd _watch"
+pkill -TERM -f "$sess_watcher"
 sess_wait
 check "a killed listener ends the session" "session_gone"
 # SIGKILL runs no trap, so the file stays, but the owner check reads it as no session.
 sess_start HOLD
 owner_is_listening
-pkill -KILL -f "$sess_real_voxcmd _watch"
+pkill -KILL -f "$sess_watcher"
 sess_wait
 check "a SIGKILLed listener leaves its file behind" "! session_gone"
 printf '%s\n' "tap hello" >"$sess_turns"
@@ -577,13 +600,13 @@ echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 : >"$log"
 "$sess_voxcmd" listen >/dev/null 2>&1
 log_has_soon 'setsid '
-check "a pending picker's reply wins over the open session" "grep -q 'setsid .*_watch reply' '$log' && ! grep -q 'setsid .*_watch session_turn' '$log'"
+check "a pending picker's reply wins over the open session" "grep -qE 'setsid .*(_watch|internal watch) reply' '$log' && ! grep -qE 'setsid .*(_watch|internal watch) session_turn' '$log'"
 rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 : >"$log"
 echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 "$sess_voxcmd" listen >/dev/null 2>&1
 log_has_soon 'setsid '
-check "with nothing pending, a live session's listen goes to the session" "grep -q 'setsid .*_watch session_turn' '$log'"
+check "with nothing pending, a live session's listen goes to the session" "grep -qE 'setsid .*(_watch|internal watch) session_turn' '$log'"
 # The detector each listen starts: a reply's lower speech minimum, the session's settings, nothing for a command.
 sess_env=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.5)
 jq -n -c --argjson owner "$owner_pid" --arg owner_start "$(start_time_of "$owner_pid")" \
@@ -673,6 +696,7 @@ check "rapid mode routes each turn as a command until 'done'" "session_gone && [
 sess_start HOLD
 owner_is_listening
 check "rapid mode's session names the mode, its exit hint and an empty stack" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"rapid\",\"Rapid mode\",\"say done to stop\",[]]' ]]"
+check "and its turns are heard by the binary under test" "owner_is_the_binary_under_test"
 sess_voxcmd_env session end
 sess_wait
 for word in "done" "Done." "that's all" "I'm done" "stop rapid mode" "Okay, quit rapid mode." "done with rapid mode" "rapid mode off" "turn off rapid fire mode"; do

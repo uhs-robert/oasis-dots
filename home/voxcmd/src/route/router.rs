@@ -103,6 +103,44 @@ impl<'c> Router<'c> {
         self.wake.split_leading(&text).unwrap_or(text)
     }
 
+    /// The options a session turn's whole text names as mode switches: entering or leaving a mode (each integration's
+    /// mode actions, bash `session_mode_options`), resolved as any match is.
+    pub fn mode_options(&self, text: &str) -> Vec<RouteOption> {
+        self.hooks.forget();
+        let pending: Vec<PendingMatch> = (0..self.config.integrations.len())
+            .filter_map(|index| match self.mode_action_match(index, text).outcome {
+                Outcome::Matched(matched) => Some(PendingMatch::from_args(
+                    index,
+                    self.config,
+                    &matched.action,
+                    matched.args,
+                )),
+                _ => None,
+            })
+            .collect();
+        let texts = Texts {
+            phrase: text,
+            raw_transcript: text,
+        };
+        self.resolve(&pending, texts)
+            .into_iter()
+            .flat_map(|resolved| resolved.options)
+            .collect()
+    }
+
+    /// Whether some integration's mode action takes the whole text.
+    pub fn is_mode_action(&self, text: &str) -> bool {
+        (0..self.config.integrations.len())
+            .any(|index| matches!(self.mode_action_match(index, text).outcome, Outcome::Matched(_)))
+    }
+
+    fn mode_action_match(&self, index: usize, text: &str) -> IntegrationMatch {
+        let actions = &self.config.integrations[index].actions;
+        self.matcher.first_match_among(index, text, |action| {
+            actions.get(action).is_some_and(|action| action.mode_switch)
+        })
+    }
+
     /// Routes one step. The record says what a run would do; nothing is run.
     pub fn route_step(&self, transcript: &str, context: StepContext) -> StepTrace {
         self.route_step_with_options(transcript, context).0
