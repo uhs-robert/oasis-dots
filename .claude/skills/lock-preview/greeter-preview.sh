@@ -63,7 +63,8 @@ for _ in $(seq 100); do
 done
 sleep 2
 if [[ -z $out ]]; then out=$(mktemp --suffix=.png "${TMPDIR:-/tmp}/greeter-preview-XXXXXX"); fi
-"$shadow" shot "$name" "$layer" --out "$out" >/dev/null || true
-
-grep -m1 'greeter: fonts_ready=' "$log" || { echo "greeter-preview: no fonts_ready line; qs log tail:" >&2 && tail -n 15 "$log" >&2; }
+# The trap still tears the shadow down on these exits.
+"$shadow" shot "$name" "$layer" --out "$out" >/dev/null || die "no $layer screenshot (the greeter never mapped, or the capture was blank); qs log tail: $(tail -n 15 "$log")"
+[[ -s $out ]] || die "screenshot $out is missing or empty"
+grep -m1 'greeter: fonts_ready=' "$log" || die "no fonts_ready line; qs log tail: $(tail -n 15 "$log")"
 echo "$out"
