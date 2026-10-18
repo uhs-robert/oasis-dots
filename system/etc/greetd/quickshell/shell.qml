@@ -8,12 +8,16 @@ import qs.theme
 ShellRoot {
     id: root
 
-    Fonts {}
+    Fonts {
+        id: bundled_fonts
+    }
 
     GreeterAudio {}
 
     Variants {
-        model: Greeter.preview ? [] : Quickshell.screens
+        // Variants builds its windows in componentComplete, before Fonts' onCompleted registers the files, and the MGS2 title measures
+        // its text once; building the screens only after `ready` keeps it from locking in a fallback font.
+        model: Greeter.preview || !bundled_fonts.ready ? [] : Quickshell.screens
 
         delegate: Component {
             PanelWindow {
