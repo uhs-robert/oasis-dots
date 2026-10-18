@@ -101,12 +101,13 @@ pub fn spawn_letting_clean_up(command: &mut Command) -> std::io::Result<(Child, 
 pub fn die_with_parent(command: &mut Command) {
     // SAFETY: getpid has no preconditions.
     let parent = unsafe { libc::getpid() };
-    // SAFETY: prctl and getppid are async-signal-safe and touch only the child.
+    // SAFETY: prctl and getppid are async-signal-safe and touch only the child. Nothing here may allocate: another
+    // thread may have held the malloc lock at the fork.
     unsafe {
         command.pre_exec(move || {
             libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
             if parent_is_gone(parent, libc::getppid()) {
-                return Err(std::io::Error::other("the parent is gone"));
+                return Err(std::io::Error::from_raw_os_error(libc::ESRCH));
             }
             Ok(())
         });
@@ -260,7 +261,7 @@ fn spawn_listed(command: &mut Command, on_stop: OnStop) -> std::io::Result<(Chil
     SPAWNING.fetch_add(1, Ordering::SeqCst);
     if STOPPING.load(Ordering::SeqCst) {
         SPAWNING.fetch_sub(1, Ordering::SeqCst);
-        return Err(std::io::Error::other("voxcmd is stopping"));
+        return Err(std::io::Error::other(RefusedWhileStopping));
     }
     let spawned = command.spawn();
     let live = spawned
@@ -274,6 +275,32 @@ fn spawn_listed(command: &mut Command, on_stop: OnStop) -> std::io::Result<(Chil
         }
     }
     Ok((spawned?, live.unwrap_or(LiveGroup(None))))
+}
+
+/// Why `spawn_listed` refused: the stop under way ends what voxcmd was doing, so this is no failure to report.
+#[derive(Debug)]
+struct RefusedWhileStopping;
+
+impl std::fmt::Display for RefusedWhileStopping {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("voxcmd is stopping")
+    }
+}
+
+impl std::error::Error for RefusedWhileStopping {}
+
+/// Whether a spawn failed only because voxcmd is stopping.
+pub fn refused_while_stopping(error: &std::io::Error) -> bool {
+    error.get_ref().is_some_and(|inner| inner.is::<RefusedWhileStopping>())
+}
+
+/// Whether any process is still in the group. While one is, even a zombie, the kernel keeps the group's id from being
+/// handed out again, so signalling it cannot reach someone else's processes.
+pub fn group_has_members(group: libc::pid_t) -> bool {
+    // SAFETY: signal 0 only checks that the group exists; EPERM means it does, with a member voxcmd may not signal.
+    group > 1
+        && (unsafe { libc::killpg(group, 0) } == 0
+            || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM))
 }
 
 /// A running command's group, listed until dropped.
@@ -369,15 +396,26 @@ fn file_holds(path: &CString, expected: &CString) -> bool {
 
 fn install_handlers() {
     for signal in [libc::SIGINT, libc::SIGTERM] {
-        // SAFETY: the handler only uses atomics and async-signal-safe calls (killpg, waitpid, nanosleep, open,
-        // read, close, unlink, signal, raise).
-        unsafe {
-            libc::signal(
-                signal,
-                on_stop_signal as extern "C" fn(libc::c_int) as libc::sighandler_t,
-            )
-        };
+        handle_as_stop(signal);
     }
+}
+
+/// SIGHUP ends voxcmd as SIGTERM does. Only for a watcher, which logind HUPs at logout and which must still take its
+/// files and detector down then, as the bash EXIT trap did; a CLI run whose terminal closes keeps the default.
+pub fn stop_on_hangup_too() {
+    HANDLERS.call_once(install_handlers);
+    handle_as_stop(libc::SIGHUP);
+}
+
+fn handle_as_stop(signal: libc::c_int) {
+    // SAFETY: the handler only uses atomics and async-signal-safe calls (killpg, waitpid, nanosleep, open, read, close,
+    // unlink, signal, raise).
+    unsafe {
+        libc::signal(
+            signal,
+            on_stop_signal as extern "C" fn(libc::c_int) as libc::sighandler_t,
+        )
+    };
 }
 
 extern "C" fn on_stop_signal(signal: libc::c_int) {
@@ -540,7 +578,8 @@ pub(crate) mod tests {
     fn nothing_is_spawned_once_a_stop_has_begun() {
         if is_own_process() {
             STOPPING.store(true, Ordering::SeqCst);
-            let refused = run_with_timeout(&mut sh("true"), Duration::from_secs(1)).is_err();
+            let refused = run_with_timeout(&mut sh("true"), Duration::from_secs(1))
+                .is_err_and(|error| refused_while_stopping(&error));
             std::process::exit(i32::from(!refused));
         }
         assert!(
@@ -589,6 +628,32 @@ pub(crate) mod tests {
         .join()
         .unwrap();
         assert!(gone_within(i32::try_from(child).unwrap(), Duration::from_secs(2)));
+    }
+
+    #[test]
+    fn only_the_stop_s_own_refusal_counts_as_refused_while_stopping() {
+        assert!(refused_while_stopping(&std::io::Error::other(RefusedWhileStopping)));
+        assert!(!refused_while_stopping(&std::io::Error::other("voxcmd is stopping")));
+        assert!(!refused_while_stopping(&std::io::Error::from_raw_os_error(
+            libc::ENOENT
+        )));
+    }
+
+    #[test]
+    fn a_group_has_members_until_its_last_process_is_reaped() {
+        let mut leader = sh("sleep 30").process_group(0).spawn().unwrap();
+        let group = libc::pid_t::try_from(leader.id()).unwrap();
+        assert!(group_has_members(group));
+        leader.kill().unwrap();
+        leader.wait().unwrap();
+        assert!(!group_has_members(group));
+    }
+
+    /// Whether a stop signal would now signal the group.
+    pub(crate) fn is_listed(group: libc::pid_t) -> bool {
+        LIVE_GROUPS
+            .iter()
+            .any(|slot| slot.load(Ordering::Acquire).abs() == group)
     }
 
     #[test]
