@@ -329,9 +329,26 @@ case_skip_steps_with_changed() {
   [ "$requested" = 'check-scope shfmt' ] || fail "requested to list check-scope shfmt, got: $requested"
 }
 
+case_only() {
+  start_case '--only names the steps'
+  parse_plan "$(env -u CHECK_FULL sh lib/check.sh --plan --only qmllint --only check-scope,shfmt 2>&1)"
+  expect_ran_exactly check-scope qmllint shfmt
+  [ "$skipped" = none ] || fail 'nothing skipped by scope'
+  case $plan_line in "check: only qmllint,check-scope,shfmt; "*) ;; *) fail "the label to name the steps, got: $plan_line" ;; esac
+  local qml
+  qml=$(first_tracked 'home/quickshell/*.qml') || return 0
+  echo '// x' >>"$qml"
+  parse_plan "$(env -u CHECK_FULL sh lib/check.sh --plan --changed HEAD --only qmllint,check-scope 2>&1)"
+  expect_ran_exactly qmllint
+  expect_skipped check-scope
+  case $plan_line in "check: only qmllint,check-scope, scoped to "*) ;; *) fail "the label to name both limits, got: $plan_line" ;; esac
+  env -u CHECK_FULL sh lib/check.sh --plan --only qmllint,nope >/dev/null 2>&1
+  [ $? = 2 ] || fail 'an unknown step to exit 2'
+}
+
 for case_fn in case_readme case_home_qml case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_deleted_sourced_helper \
   case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
-  case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed; do
+  case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed case_only; do
   report "$case_fn"
 done
 

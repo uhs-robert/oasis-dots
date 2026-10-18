@@ -7,13 +7,18 @@
 #   lib/check.sh --changed <base> only the steps the files changed since <base> can affect
 #   lib/check.sh --paths-from <file|-> like --changed, but the changed paths are the lines of the file (or stdin), relative to the
 #                                 repository root, instead of `git diff <base>`: a commit's staged paths, say
-#   lib/check.sh --plan [--changed <base>|--paths-from <file|->] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
+#   lib/check.sh --only <step>[,<step>...] only the named steps (repeatable), whatever their scope; with --changed or
+#                                 --paths-from, those of them the change reaches. An unknown name exits 2 before anything runs
+#   lib/check.sh --plan [--changed <base>|--paths-from <file|->] [--only ...] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
 #
 # A step that passes is recorded (lib/check/passed.sh) under a key hashing the content of the files it reads, the same
 # files whose change makes --changed pick it (its scope in lib/check/scopes.py); a later run skips a step whose key already passed, uncommitted and
 # untracked content included. A run that leaves the tree clean also records the tree: when every step passed for its
 # content, or for --changed <base> on top of a base recorded as passed; and a --changed run records that it passed
-# against <base>, which is what the PR hook looks up.
+# against <base>, which is what the PR hook looks up. An --only run records its steps' passes, under the same keys a later
+# --changed run looks up, but never the tree or a base. The shell steps (shellcheck, shfmt) key on the run's file lists,
+# so for them pass --only the same --changed base the final run will use, or expect it to run them again. With
+# VOXCMD_ONLY_SECTIONS set the voxcmd suites run in part, so no run records their pass, the tree or a base.
 #
 # CHECK_FULL=1 makes --changed run everything, and runs every step whatever passed before. CHECK_JOBS sets how many steps
 # run at once (default min(cores/2, 4)); 1 runs them one after another with live output. CHECK_SKIP_STEPS="step ..." drops
@@ -29,8 +34,8 @@
 # whitespace, conflicts, symlinks, packages); a change to this file, the runner's own files under lib/check/, the
 # justfile, .claude/check-commands or any path no rule in lib/check/scopes.py claims runs everything. The parallel output of a step is
 # buffered and a passing step prints one line; after the FAILED: line, the last 25 lines of each failing step follow. A step
-# whose tool is missing prints "skip:" and passes. There is no single-step runner: the steps are all-or-nothing and a run
-# reports every failure.
+# whose tool is missing prints "skip:" and passes. Run a suite through --only rather than by hand (a hook warns), so its
+# pass is recorded and the final --changed run skips it.
 #
 # Steps (the "needs" tools are optional unless stated; each one's command and scope is in lib/check/scopes.py, where a
 # new step goes):
@@ -64,7 +69,8 @@
 #   firefox-policy           lib/install/tests/firefox-policy.sh, the Firefox policy installer. Needs jq.
 #   greeter-keyring          lib/install/tests/greeter-keyring.sh, the greetd keyring unlock installer.
 #   install-load             lib/install/tests/load.sh, that sourcing the install libraries prints nothing and never exits.
-#   agent-hooks              the tests of guard-masked-checks.sh, check-before-pr.sh and restart-qs-after-git.sh. Needs jq.
+#   agent-hooks              the tests of guard-masked-checks.sh, check-before-pr.sh, restart-qs-after-git.sh, guard-gh-merge.sh
+#                            and warn-direct-voxcmd-suite.sh. Needs jq.
 #   stale-shells-hook        the test of stale-shells.sh. Needs jq.
 #   owner-test-bar           the owner-test-bar skill's tests/run.sh, when it changes. Needs jq.
 #   ship-batch, merge-prs    those skills' tests/run.sh, when either changes.

@@ -28,7 +28,7 @@ import keys  # noqa: E402
 import passed  # noqa: E402
 import scopes  # noqa: E402
 
-USAGE = "usage: lib/check.sh [--plan] [--changed <base> | --paths-from <file|->]"
+USAGE = "usage: lib/check.sh [--plan] [--changed <base> | --paths-from <file|->] [--only <step>[,<step>...]]"
 SHELL_GROUP_NAMES = ("plain", "sourcing", "agent")
 FAILURE_TAIL_LINES = 25
 
@@ -42,6 +42,7 @@ class Options:
         self.plan = False
         self.changed_base = ""
         self.paths_from = ""
+        self.only = []
         args = list(argv)
         while args:
             arg = args.pop(0)
@@ -50,12 +51,28 @@ class Options:
             elif arg in ("--changed", "--paths-from") and args:
                 # An empty value counts as not given, as the shell's `[ -n ]` tests did.
                 setattr(self, "changed_base" if arg == "--changed" else "paths_from", args.pop(0))
+            elif arg == "--only" and args:
+                names = [name for name in args.pop(0).split(",") if name]
+                if not names:
+                    raise UsageError
+                self.only.extend(names)
             else:
                 raise UsageError
+
+    def unknown_steps(self):
+        known = {step.name for step in scopes.STEPS}
+        return [name for name in self.only if name not in known]
 
 
 def env_set(name):
     return bool(os.environ.get(name))
+
+
+def runs_in_part(step):
+    """Whether this run runs only part of step, so its pass would vouch for more than ran. VOXCMD_ONLY_SECTIONS
+    reaches the voxcmd suites (home/voxcmd/tests/lib.sh) through the environment and runs only the sections it names;
+    the Rust crate's step never reads it."""
+    return step.scope == "voxcmd" and env_set("VOXCMD_ONLY_SECTIONS")
 
 
 def job_count():
@@ -512,6 +529,9 @@ def run(options, logs, pool):
     ran, passed_before, skipped_by_scope, skipped_by_request, skip_lines = [], [], [], [], set()
     keys_before = {}
     for step in scopes.STEPS:
+        # A step --only leaves out is not skipped, it is outside the run, so no summary list names it.
+        if options.only and step.name not in options.only:
+            continue
         if f" {step.name} " in skip_steps:
             skipped_by_request.append(step.name)
             continue
@@ -534,7 +554,10 @@ def run(options, logs, pool):
     for line in sorted_like_shell(skip_lines):
         print_out(line)
     ran_names = [step.name for step in ran]
-    print_out(summary_line(change_set.label, ran_names, passed_before, skipped_by_scope, skipped_by_request))
+    label = change_set.label
+    if options.only:
+        label = "only " + ",".join(options.only) + ("" if label == "full" else ", " + label)
+    print_out(summary_line(label, ran_names, passed_before, skipped_by_scope, skipped_by_request))
     for name in passed_before:
         print_out(f"== {name} skipped (passed for these inputs)")
 
@@ -553,9 +576,12 @@ def run(options, logs, pool):
 
     # Records what passed. A step counts only when its inputs are what they were when it started.
     after = Snapshot.take(logs, coverage) if before else None
+    ran_in_part = [step.name for step in ran if runs_in_part(step)]
+    if ran_in_part:
+        print_out(f"check: VOXCMD_ONLY_SECTIONS is set, so no pass is recorded for{name_list(ran_in_part)}")
     if after:
         for step in ran:
-            if step.name in pool.failed or step.name not in keys_before:
+            if step.name in pool.failed or step.name not in keys_before or step.name in ran_in_part:
                 continue
             if after.key(step, shell_lists) == keys_before[step.name]:
                 ignoring_git_errors(passed.step_record, step.name, keys_before[step.name])
@@ -563,8 +589,9 @@ def run(options, logs, pool):
         return 1
 
     # A whole-tree record means HEAD's tree, so it needs a working tree with nothing uncommitted or untracked that was
-    # not edited during the run. --paths-from checks a list someone chose, which vouches for no tree.
-    if not options.paths_from and after and after.tree == before.tree:
+    # not edited during the run. --paths-from checks a list someone chose and --only the steps someone chose, which
+    # vouch for no tree; neither does a step that ran in part.
+    if not options.paths_from and not options.only and not ran_in_part and after and after.tree == before.tree:
         head_tree = keys.git_output("rev-parse", "HEAD^{tree}")
         if head_tree is not None and after.tree == head_tree.decode().strip():
             if options.changed_base:
@@ -585,6 +612,11 @@ def main(argv):
         options = Options(argv)
     except UsageError:
         print(USAGE, file=sys.stderr)
+        return 2
+    unknown = options.unknown_steps()
+    if unknown:
+        steps = " ".join(step.name for step in scopes.STEPS)
+        print(f"check: unknown step {', '.join(repr(name) for name in unknown)}; steps: {steps}", file=sys.stderr)
         return 2
     try:
         locale.setlocale(locale.LC_COLLATE, "")
