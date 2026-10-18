@@ -11,6 +11,7 @@ import qs.features.media
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.neovim.widgets as Neovim
 import qs.features.voice
+import qs.features.popups
 
 Item {
     id: root

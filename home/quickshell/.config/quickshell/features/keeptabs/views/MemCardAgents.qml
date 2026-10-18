@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.styles.ps1.widgets as Ps1
 import qs.theme
 import qs.services
+import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the PS1 BIOS memory card manager: one save block per session on a 5x3 card, and the

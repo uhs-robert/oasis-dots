@@ -8,6 +8,7 @@ import qs.services
 import qs.styles.reticle.widgets
 import qs.features.weather
 import qs.styles.tie.widgets
+import qs.features.popups
 
 // Current conditions on a sensor scope: wind bearing and the next 12 hours of precip as contacts, the temperature as the locked target.
 ColumnLayout {

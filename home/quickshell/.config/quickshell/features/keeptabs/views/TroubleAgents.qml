@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 import qs.services
+import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as a Trouble.nvim list: a fold per state (the given waiting-first order is kept, so a fold

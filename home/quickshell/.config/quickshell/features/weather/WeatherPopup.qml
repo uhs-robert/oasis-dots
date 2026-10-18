@@ -21,6 +21,7 @@ import qs.features.weather.views.towers
 import qs.features.weather.views.watch
 import qs.features.weather.views.weatherstar
 import qs.features.weather.views.wttr
+import qs.features.popups
 
 Popup {
     id: root

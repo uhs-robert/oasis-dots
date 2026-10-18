@@ -7,6 +7,7 @@ import qs.theme
 import qs.services
 import qs.styles.modern.widgets as Modern
 import qs.ui.gauges
+import qs.features.popups
 
 Popup {
     id: root

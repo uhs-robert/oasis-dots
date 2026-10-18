@@ -13,6 +13,7 @@ import qs.styles.ps1.widgets as Ps1
 import qs.styles.ps2.widgets as Ps2
 import qs.styles.modern.widgets as Modern
 import qs.styles.goldeneye.widgets as Goldeneye
+import qs.features.popups
 
 Popup {
     id: root

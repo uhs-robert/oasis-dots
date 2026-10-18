@@ -6,6 +6,7 @@ import qs.ui.frames
 import qs.features.weather
 import qs.features.weather.views.shared
 import qs.styles.gameboy.widgets
+import qs.features.popups
 import "PixelArt.js" as PixelArt
 
 // One day as a framed Game Boy Camera photo with its hi/lo dot bar, temperatures and rain chance.

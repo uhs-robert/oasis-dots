@@ -14,6 +14,7 @@ import qs.ui.menu
 import qs.ui.keys
 import qs.features.power
 import qs.features.launcher
+import qs.features.popups
 
 PanelWindow {
     id: root

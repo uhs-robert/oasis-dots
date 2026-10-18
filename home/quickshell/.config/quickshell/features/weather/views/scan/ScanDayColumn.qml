@@ -8,6 +8,7 @@ import qs.styles.reticle.widgets
 import qs.features.weather
 import qs.features.weather.views.shared
 import qs.styles.metroid.widgets
+import qs.features.popups
 
 // One day as a Scan Visor readout: a hologram condition icon, the temperature range as a stack of Samus's
 // energy tanks on the week's scale, and the rain chance as the missile counter.

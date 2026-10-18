@@ -4,6 +4,7 @@ import qs.theme
 import qs.services
 import "../../../features/bar/BarModules.js" as BarModules
 import qs.features.bar
+import qs.features.popups
 
 // One lualine section of bar modules: a fill, an arrow in from the previous section, thin separators between components.
 // Hovered components light up as powerline segments, like the buffers.

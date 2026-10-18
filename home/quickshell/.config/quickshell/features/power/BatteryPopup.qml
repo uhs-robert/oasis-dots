@@ -12,6 +12,7 @@ import qs.styles.snes.popups as Snes
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.ps2.widgets as Ps2
 import qs.features.power.battery
+import qs.features.popups
 
 Popup {
     id: root

@@ -6,6 +6,7 @@ import qs.theme
 import qs.services
 import qs.features.weather
 import qs.features.weather.views.shared
+import qs.features.popups
 
 // Oasis Hourly: the series as a rolling dune ridge with wind-ripple lines in the sand; a palm stands on the cursor hour
 // beside a floating value, and heat shimmers over the hot hours. Precip fills the dunes with water instead.

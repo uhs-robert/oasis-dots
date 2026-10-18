@@ -4,6 +4,7 @@ import qs.styles.ps2.widgets as Ps2
 import qs.theme
 import qs.services
 import qs.features.weather
+import qs.features.popups
 
 // The PS2 system screen for the sun and moon: soft light drifting through dark blue space around an orbit ring, the sun and moon as glowing spheres on it.
 // The ring is a full day: sunrise at its left end, sunset at its right, the day arc above the horizon and the night arc below.

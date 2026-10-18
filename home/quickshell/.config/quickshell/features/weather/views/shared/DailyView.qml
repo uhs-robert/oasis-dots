@@ -22,6 +22,7 @@ import qs.features.weather.views.wttr
 import qs.styles.metroid.widgets
 import qs.styles.nes.widgets
 import qs.styles.ps2.widgets
+import qs.features.popups
 
 // One column per day in a window of up to five that the popup scrolls with day_cursor.
 // A style may restyle columns freely but days always run left to right, horizontal table style.

@@ -4,6 +4,7 @@ import qs.theme
 import qs.services
 import qs.features.weather
 import qs.styles.metroid.widgets
+import qs.features.popups
 
 // A Scan Visor logbook entry, "Threat": each active NWS alert as a scanned threat, the selected one locked on in brackets,
 // its severity as a threat level and its text as the logbook entry. h/l or j/k select when there's more than one;

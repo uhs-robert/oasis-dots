@@ -9,6 +9,7 @@ import qs.theme
 import qs.services
 import qs.ui.keys
 import qs.features.power
+import qs.features.popups
 import "Layout.js" as Layout
 import "../../core/Fuzzy.js" as Fuzzy
 

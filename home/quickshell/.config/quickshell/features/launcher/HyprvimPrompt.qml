@@ -8,6 +8,7 @@ import qs.theme
 import qs.services
 import "../../core/Fuzzy.js" as Fuzzy
 import qs.features.launcher.hyprvim
+import qs.features.popups
 import "hyprvim/PromptSpec.js" as Spec
 import "hyprvim/VimMotions.js" as Vim
 

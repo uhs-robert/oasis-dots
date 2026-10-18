@@ -1,6 +1,7 @@
 import QtQuick
 import qs.theme
 import qs.services
+import qs.features.popups
 
 // A VGUI window title strip: tracked caps on a tinted band over a hairline, with a close box at the right.
 Item {

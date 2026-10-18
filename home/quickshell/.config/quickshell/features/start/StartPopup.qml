@@ -11,6 +11,7 @@ import qs.features.power
 import qs.features.launcher
 import qs.styles.snes.popups as Snes
 import qs.styles.ps2.widgets as Ps2
+import qs.features.popups
 
 Popup {
     id: root

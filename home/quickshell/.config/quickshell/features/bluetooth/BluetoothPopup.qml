@@ -10,6 +10,7 @@ import qs.styles.nes.widgets as Nes
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.styles.snes.popups as Snes
+import qs.features.popups
 
 Popup {
     id: root

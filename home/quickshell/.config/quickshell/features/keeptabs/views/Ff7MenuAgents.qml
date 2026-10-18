@@ -5,6 +5,7 @@ import qs.styles.ff7.widgets as Ff7
 import qs.services
 import qs.theme
 import qs.ui.gauges
+import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the FF7 main menu: a party window of sessions (LV = time in state, HP = context left,

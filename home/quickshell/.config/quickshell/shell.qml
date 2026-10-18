@@ -7,7 +7,6 @@ import qs.components
 import qs.components.transitions
 import qs.lock
 import qs.features.overview
-import qs.popups
 import qs.services
 import qs.theme
 import qs.features.settings
@@ -29,6 +28,7 @@ import qs.features.media
 import qs.features.keeptabs
 import qs.features.updates
 import qs.features.voice
+import qs.features.popups
 
 ShellRoot {
     id: root

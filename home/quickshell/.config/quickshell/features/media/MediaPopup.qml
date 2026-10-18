@@ -9,6 +9,7 @@ import qs.theme
 import qs.services
 import qs.styles.nes.widgets as Nes
 import qs.styles.ps1.widgets as Ps1
+import qs.features.popups
 
 Popup {
     id: root

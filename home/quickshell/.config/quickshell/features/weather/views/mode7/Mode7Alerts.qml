@@ -6,6 +6,7 @@ import qs.styles.snes.widgets as Snes
 import qs.theme
 import qs.services
 import qs.features.weather
+import qs.features.popups
 
 // Active NWS alerts as an RPG event: an item-menu window lists the alerts with the glove on the selected one and severity as a star rating,
 // and a dialogue window under it speaks the selected alert, the event as the speaker, a blinking ▼ while more text waits.

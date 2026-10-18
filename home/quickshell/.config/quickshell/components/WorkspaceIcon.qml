@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Widgets
 import qs.services
+import qs.features.popups
 
 // An app on a bar workspace: click focuses its window, middle-click closes it, hover shows its title, dragging onto another workspace's WorkspaceDropTarget moves it; `host` is the Workspaces module.
 Item {

@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.services
+import qs.features.popups
 
 // The screenshot menu, the region selector's shared state, and the recording indicator.
 Singleton {
