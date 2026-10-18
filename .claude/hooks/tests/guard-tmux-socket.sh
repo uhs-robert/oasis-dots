@@ -94,6 +94,40 @@ expect deny 'tmux -L mine ls && tmux kill-server'
 expect allow 'tmux -L a new -d && tmux -L a kill-server'
 expect allow 'tmux ls && tmux has-session -t x'
 expect deny 'tmux ls && tmux kill-server'
+# tmux's own command separator
+expect deny 'tmux list-sessions \; kill-server'
+expect deny "tmux ls ';' kill-server"
+expect deny 'tmux ls\; kill-server'
+expect deny 'tmux ls ";" new -d'
+expect allow 'tmux ls \; list-windows'
+expect allow 'tmux -L mine ls \; kill-server'
+# Format expansion runs shell on the server
+expect deny "tmux list-panes -F '#(tmux kill-server)'"
+expect deny "tmux display-message -p '#(touch /tmp/x)'"
+expect allow "tmux list-panes -F '#{pane_id}'"
+expect allow "tmux -L mine list-panes -F '#(echo hi)'"
+# Leading redirections
+expect deny '< /dev/null tmux kill-server'
+expect deny '> /tmp/out tmux kill-server'
+expect deny '>/tmp/out tmux kill-server'
+expect deny '2>/dev/null tmux kill-server'
+expect deny '2>&1 tmux kill-server'
+expect deny '&>/dev/null tmux kill-server'
+expect deny '>> /tmp/out tmux kill-server'
+expect deny 'echo hi && <>/tmp/x tmux kill-server'
+expect deny '>| /tmp/out env A=1 tmux kill-server'
+expect deny 'tmux kill-server > /dev/null 2>&1'
+expect allow '> /tmp/out tmux -L mine kill-server'
+expect allow 'tmux ls > /tmp/out'
+expect allow 'echo hi > /tmp/tmux.txt'
+expect allow 'cat < /tmp/tmux.txt'
+# xargs and watch wrappers
+expect deny 'xargs tmux kill-server'
+expect deny 'echo x | xargs -n 1 tmux kill-session -t'
+expect deny 'watch tmux kill-server'
+expect deny 'watch -n 1 tmux kill-server'
+expect allow 'watch -n 1 tmux ls'
+expect allow 'xargs -I{} tmux -L mine kill-session -t {}'
 # Mentions only
 expect allow 'git commit -m "fix: tmux kill-server guard"'
 expect allow "git commit -m 'stop tmux kill-server'"
