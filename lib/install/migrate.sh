@@ -102,7 +102,8 @@ migrate_systemd() {
 _LOCK_ASSET_DIRS=(ocarina/audio ff7/audio mgs2/audio goldeneye/audio goldeneye/frames)
 
 # Moves one file or symlink from lock/ to the same place under features/lock/, unless something is already there.
-# A relative symlink is rewritten so it still resolves to the same place from its new location.
+# A relative symlink is rewritten so it still resolves to the same place from its new location;
+# a target inside a migrated asset dir is itself moving, so the link follows it to features/lock/.
 _migrate_lock_asset() {
   local qs_dir=$1 file=$2 rel dest
   rel=${file#"$qs_dir/lock/"}
@@ -115,9 +116,14 @@ _migrate_lock_asset() {
   _migrate_run mkdir -p "$(dirname "$dest")"
   _migrate_run mv "$file" "$dest"
   [[ "${MIGRATE_DRY_RUN:-0}" -eq 1 ]] && return 0
-  local target
+  local target resolved old_root asset
   if [[ -L "$dest" ]] && target=$(readlink "$dest") && [[ "$target" != /* ]]; then
-    ln -sfn "$(realpath -m --relative-to="$(dirname "$dest")" "$(dirname "$file")/$target")" "$dest"
+    resolved=$(realpath -m "$(dirname "$file")/$target")
+    old_root=$(realpath -m "$qs_dir/lock")
+    for asset in "${_LOCK_ASSET_DIRS[@]}"; do
+      [[ "$resolved" == "$old_root/skins/$asset"/* ]] && resolved="$(realpath -m "$qs_dir/features/lock")/${resolved#"$old_root"/}"
+    done
+    ln -sfn "$(realpath -m --relative-to="$(dirname "$dest")" "$resolved")" "$dest"
   fi
 }
 

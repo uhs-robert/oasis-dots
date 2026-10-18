@@ -90,6 +90,17 @@ migrate_quickshell_lock_assets "$scratch/r" >/dev/null 2>&1
 check test "$(cat "$scratch/r/features/lock/skins/ff7/audio/x.ogg")" = rdir
 check test "$(cat "$scratch/r/features/lock/skins/goldeneye/frames/rel.png")" = rfile
 
+case_name='keeps a relative symlink to a sibling asset that moves too'
+old_layout "$scratch/m"
+ln -s ../../goldeneye/frames/f1.png "$scratch/m/lock/skins/ff7/audio/sib.ogg"
+ln -s ../../mgs2/Keep.qml "$scratch/m/lock/skins/ff7/audio/stay.ogg"
+ln -s a.ogg "$scratch/m/lock/skins/ff7/audio/near.ogg"
+migrate_quickshell_lock_assets "$scratch/m" >/dev/null 2>&1
+check test "$(cat "$scratch/m/features/lock/skins/ff7/audio/near.ogg")" = one
+check test -L "$scratch/m/features/lock/skins/ff7/audio/sib.ogg"
+check test "$(cat "$scratch/m/features/lock/skins/ff7/audio/sib.ogg")" = frame
+check test "$(cat "$scratch/m/features/lock/skins/ff7/audio/stay.ogg")" = qml
+
 case_name='dry run changes nothing'
 old_layout "$scratch/d"
 before=$(find "$scratch/d" | sort)
