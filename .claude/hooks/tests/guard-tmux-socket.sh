@@ -6,10 +6,10 @@ set -uo pipefail
 hook=$(cd "$(dirname "$0")" && pwd)/../guard-tmux-socket.sh
 pass=0 fail=0
 
-# expect <allow|deny> <command>
+# expect <allow|deny> <command> [the hook's own $TMUX]
 expect() {
   local out got=allow
-  out=$(jq -n --arg c "$2" '{tool_input: {command: $c}}' | TMUX=/run/owner/sock,123,0 TMUX_TMPDIR='' "$hook" | jq -r '.hookSpecificOutput.permissionDecision // empty')
+  out=$(jq -n --arg c "$2" '{tool_input: {command: $c}}' | TMUX=${3:-/run/owner/sock,123,0} TMUX_TMPDIR='' "$hook" | jq -r '.hookSpecificOutput.permissionDecision // empty')
   [[ $out == deny ]] && got=deny
   if [[ $got == "$1" ]]; then
     echo "ok   $1: $2"
@@ -143,6 +143,17 @@ expect deny 'tmux -S /run/owner/../owner/sock kill-server'
 expect deny 'tmux -L'
 expect allow 'tmux -L defaults kill-server'
 expect allow 'tmux -S /run/owner/other kill-server'
+expect deny 'tmux -S sock kill-server'
+expect deny 'cd /run/owner && tmux -S sock kill-server'
+expect deny 'tmux -S ./s.sock kill-server'
+# -L name can be the owner's named server: socket /tmp/tmux-<uid>/<name>
+expect deny 'tmux -L work kill-server' "/tmp/tmux-$(id -u)/work,1,0"
+expect allow 'tmux -L other kill-server' "/tmp/tmux-$(id -u)/work,1,0"
+# -I forwards stdin into a pane
+expect deny 'tmux display-message -p -I'
+expect deny 'tmux display-message -pI'
+expect deny 'tmux display -I -p'
+expect allow 'tmux display-message -p "#S"'
 # Long wrapper options with an argument
 expect deny 'env --chdir /tmp tmux kill-server'
 expect deny 'env --chdir=/tmp tmux kill-server'

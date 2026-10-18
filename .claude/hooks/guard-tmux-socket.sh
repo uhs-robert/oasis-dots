@@ -122,12 +122,17 @@ tokenize() {
 own_socket() {
   local kind=$1 val=$2 norm tmpdir owner=${TMUX%%,*}
   [[ -n $val && $val != *[\$\`~]* ]] || return 1
+  tmpdir=$(realpath -m -- "${TMUX_TMPDIR:-/tmp}" 2>/dev/null) || return 1
   if [[ $kind == L ]]; then
-    [[ $val != default ]]
+    [[ $val != default ]] || return 1
+    # -L name is the socket tmux-<uid>/name in the temp dir, which can be the owner's own (a named owner server).
+    norm=$(realpath -m -- "$tmpdir/tmux-$(id -u)/$val" 2>/dev/null) || return 1
+    [[ -z $owner || $norm != "$(realpath -m -- "$owner" 2>/dev/null)" ]]
     return
   fi
+  # A relative path resolves against a cwd that may differ by the time tmux runs.
+  [[ $val == /* ]] || return 1
   norm=$(realpath -m -- "$val" 2>/dev/null) || return 1
-  tmpdir=$(realpath -m -- "${TMUX_TMPDIR:-/tmp}" 2>/dev/null) || return 1
   [[ $norm == */tmux-[0-9]*/* || $norm == "$tmpdir"/tmux-*/* ]] && return 1
   [[ -z $owner || $norm != "$(realpath -m -- "$owner" 2>/dev/null)" ]]
 }
@@ -169,6 +174,8 @@ judge_tmux() {
       :
     elif [[ -n $sub ]]; then
       [[ $arg =~ ^-[A-Za-z]*p ]] && has_p=1
+      # -I forwards stdin into a pane, so no flag cluster may carry it.
+      [[ $arg =~ ^-[A-Za-z]*I ]] && has_fmt=1
     elif [[ $first == 1 && $arg == -* ]]; then
       rest=${arg:1}
       for ((j = 0; j < ${#rest}; j++)); do
