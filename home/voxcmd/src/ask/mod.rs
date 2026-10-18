@@ -345,13 +345,7 @@ impl Asking {
             .stdout(Stdio::piped());
         // `timeout` moves to a process group of its own, which a stop signal to the ask's group misses. It is TERMed
         // when the ask dies, even when the ask is killed outright, and passes that on to `head`.
-        // SAFETY: prctl is async-signal-safe and touches only the child.
-        unsafe {
-            command.pre_exec(|| {
-                libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
-                Ok(())
-            });
-        }
+        process::die_with_parent(&mut command);
         let Ok(mut reader) = command.spawn() else {
             return Ok(String::new());
         };
