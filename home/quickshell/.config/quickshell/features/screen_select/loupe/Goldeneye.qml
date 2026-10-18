@@ -6,7 +6,7 @@ import qs.services
 import qs.features.screen_select
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.features.screenshot
-import "../../../theme/Watch.js" as Watch
+import "../../../styles/goldeneye/Watch.js" as Watch
 
 Item {
     id: root

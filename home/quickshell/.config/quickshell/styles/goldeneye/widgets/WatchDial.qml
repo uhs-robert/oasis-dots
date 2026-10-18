@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
 import qs.theme
-import "../../../theme/Watch.js" as Watch
+import "../Watch.js" as Watch
 import qs.components
 import qs.features.windows
 

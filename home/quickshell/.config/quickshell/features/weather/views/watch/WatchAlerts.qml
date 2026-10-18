@@ -5,7 +5,7 @@ import qs.services
 import qs.lock.skins.goldeneye as Watch
 import qs.features.weather
 import qs.features.popups
-import "../../../../theme/Watch.js" as W
+import "../../../../styles/goldeneye/Watch.js" as W
 
 // The Alerts tab as a GoldenEye mission briefing on the pause watch: each alert an objective, the selected one briefed in full by M with its priority (severity),
 // the time left on the LCD digits, the description as the briefing and the instruction as orders. h/l or j/k select when there's more than one;

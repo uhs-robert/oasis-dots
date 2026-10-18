@@ -1,25 +1,25 @@
 .pragma library
-.import "../StyleSchema.js" as Schema
-.import "watch.js" as WatchTokens
-.import "terminal.js" as Terminal
-.import "crt.js" as Crt
-.import "nes.js" as Nes
-.import "snes.js" as Snes
-.import "ps1.js" as Ps1
-.import "goldeneye.js" as Goldeneye
-.import "metroid.js" as Metroid
-.import "ps2.js" as Ps2
-.import "tie.js" as Tie
-.import "reticle.js" as Reticle
-.import "halflife.js" as Halflife
-.import "gameboy.js" as Gameboy
-.import "ff7.js" as Ff7
-.import "oasis.js" as Oasis
-.import "modern.js" as Modern
-.import "neovim.js" as Neovim
+.import "../theme/StyleSchema.js" as Schema
+.import "goldeneye/watch_tokens.js" as WatchTokens
+.import "terminal/tokens.js" as Terminal
+.import "crt/tokens.js" as Crt
+.import "nes/tokens.js" as Nes
+.import "snes/tokens.js" as Snes
+.import "ps1/tokens.js" as Ps1
+.import "goldeneye/tokens.js" as Goldeneye
+.import "metroid/tokens.js" as Metroid
+.import "ps2/tokens.js" as Ps2
+.import "tie/tokens.js" as Tie
+.import "reticle/tokens.js" as Reticle
+.import "halflife/tokens.js" as Halflife
+.import "gameboy/tokens.js" as Gameboy
+.import "ff7/tokens.js" as Ff7
+.import "oasis/tokens.js" as Oasis
+.import "modern/tokens.js" as Modern
+.import "neovim/tokens.js" as Neovim
 
 // Watched by Style.qml for hot reload, relative to this folder.
-var sources = ["../StyleSchema.js", "index.js", "watch.js", "terminal.js", "crt.js", "nes.js", "snes.js", "ps1.js", "goldeneye.js", "metroid.js", "ps2.js", "tie.js", "reticle.js", "halflife.js", "gameboy.js", "ff7.js", "oasis.js", "modern.js", "neovim.js"];
+var sources = ["../theme/StyleSchema.js", "index.js", "goldeneye/watch_tokens.js", "terminal/tokens.js", "crt/tokens.js", "nes/tokens.js", "snes/tokens.js", "ps1/tokens.js", "goldeneye/tokens.js", "metroid/tokens.js", "ps2/tokens.js", "tie/tokens.js", "reticle/tokens.js", "halflife/tokens.js", "gameboy/tokens.js", "ff7/tokens.js", "oasis/tokens.js", "modern/tokens.js", "neovim/tokens.js"];
 
 // Every style's raw token set by name: the schema defaults with the style's overrides laid over them.
 function build(t, version) {

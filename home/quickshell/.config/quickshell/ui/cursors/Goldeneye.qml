@@ -5,7 +5,7 @@ import qs.services
 import qs.ui.frames
 import qs.features.screen_select
 import qs.features.screenshot
-import "../../theme/Watch.js" as W
+import "../../styles/goldeneye/Watch.js" as W
 
 // Perfect Dark reticle for the Goldeneye picker skin: a four-tick crosshair with a center dot,
 // plus red corner brackets that step inward once the cursor has held still for ~220ms.

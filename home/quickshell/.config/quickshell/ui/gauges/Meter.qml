@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Effects
 import qs.theme
 import qs.ui.frames
-import "../../theme/Watch.js" as W
+import "../../styles/goldeneye/Watch.js" as W
 
 Item {
     id: root
@@ -106,7 +106,7 @@ Item {
 
     Loader {
         id: art_loader
-        // The token stays "<style>/File.qml" because theme/styles/ is staged for the greeter; the file lives under styles/<style>/widgets/.
+        // The token stays "<style>/File.qml" because the style tokens (styles/<style>/tokens.js) are staged for the greeter; the file lives under styles/<style>/widgets/.
         width: root.width
         height: root.implicitHeight
         source: root.art === "" ? "" : Qt.resolvedUrl("../../styles/" + root.art.replace("/", "/widgets/"))

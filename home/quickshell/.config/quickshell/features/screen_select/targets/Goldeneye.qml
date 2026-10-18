@@ -5,7 +5,7 @@ import qs.services
 import qs.ui.frames
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.features.screenshot
-import "../../../theme/Watch.js" as W
+import "../../../styles/goldeneye/Watch.js" as W
 
 // GoldenEye dressing for the window/screen/region target: red lock-on brackets that
 // step closed when the target changes, a TARGET/AREA panel, and an OASIS WATCH readout.

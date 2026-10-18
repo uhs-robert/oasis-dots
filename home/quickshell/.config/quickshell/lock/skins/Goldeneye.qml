@@ -6,7 +6,7 @@ import Quickshell.Io
 import qs.theme
 import qs.lock.skins.goldeneye as GE
 import "ui/Menu.js" as Menu
-import "../../theme/Watch.js" as Watch
+import "../../styles/goldeneye/Watch.js" as Watch
 
 // GoldenEye 007's pause watch: the arm lifts and the view zooms into the dial; the panel takes the user and password, OPTIONS RESTART POWEROFF sit under the header.
 Item {

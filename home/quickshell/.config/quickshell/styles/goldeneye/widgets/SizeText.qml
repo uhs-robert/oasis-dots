@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import "../../../theme/Watch.js" as W
+import "../Watch.js" as W
 
 // "W x H" with the numbers in seven-segment digits and the multiplication sign in a text font.
 Row {
