@@ -33,6 +33,7 @@ Target: `$target`
    - Have an agent investigate the issue or PR, the code and its tests.
    - Run `~/.claude/skills/orchestrator/overlap.sh <path>...` on the files the plan will touch. It lists other worktrees (committed and uncommitted work) and open PRs that change them. Settle each overlap with the session or PR owner before delegating, and put the outcome in the plan.
    - Get the owner's approval on a concise plan.
+   - Every owner decision goes through `AskUserQuestion`, never a question in prose.
    - Escalate only materially ambiguous product or architectural decisions, collected into one ask rather than each as it comes up, and keep agents whose work does not depend on the answer running while you wait.
 
 4. Delegate using the cheapest capable model:
@@ -40,6 +41,7 @@ Target: `$target`
    - Opus when Sonnet fails after a corrected retry, or for deep debugging or subtle correctness (concurrency, security, data integrity).
    - Give exploratory agents a time limit, 20 minutes by default, after which they report what they have.
    - When work spans layers (e.g. a UI and a backend), agree the hand-off format first (an id format, an API call, a JSON shape), then run one implementer per layer in parallel.
+   - When the permission classifier denies an action, do not retry it in another form or via an agent; hand the owner the exact `!` command.
 
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements.
    - Tell it to run validation in the foreground with a long timeout, never in the background: a background run hands back early and pings the orchestrator on every tick while it waits.
@@ -49,6 +51,7 @@ Target: `$target`
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
 
 6. Review the diff yourself against the review dimensions and repository conventions. Confirm the commit messages follow `commit-messages`. For a large diff (more than a few hundred lines or many files), brief a read-only reviewer agent with the same checks and read its findings instead of the diff.
+   - When an agent finishes but its report never arrives, verify its work from its pushed commits and worktree, ask it once, and if it stays silent, verify independently (a small agent runs the check) rather than waiting.
 
 7. Get an external review of the issue and diff against the review dimensions. Codex first; an Opus subagent when Codex is unavailable.
    - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call.

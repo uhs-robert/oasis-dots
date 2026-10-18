@@ -75,6 +75,8 @@ Every PR merge goes through `.claude/skills/ship-batch/ship-batch.sh <n>...` (PR
 
 Hyprland runs this Lua config, so drive it with the Lua API: `hyprctl keyword` fails, and `hyprctl dispatch` takes an `hl.dsp.*` expression (`hyprctl dispatch "hl.dsp.exec_cmd('qs -n')"`), not a dispatcher name like `exec` or `movecursor`. Use `hyprctl eval '...'` for anything else, including `hl.config({ ... })` in place of `keyword`.
 
+After a re-login `HYPRLAND_INSTANCE_SIGNATURE` in long-lived shells is stale: the live instance is the newest socket under `$XDG_RUNTIME_DIR/hypr` that answers `hyprctl monitors`. Kill `qs` by PID rather than relying on `hyprctl`.
+
 User overrides live in two gitignored places, and tracked files must stay generic: `Config` values (hardware, default apps) in `config/machines/<hostname>.lua`, and everything built on the loaded library (binds, rules, launcher sessions) in `custom/`, whose `custom/init.lua` `hyprland.lua` requires last if present. Never auto-load other files in `custom/` from the Hyprland config. The one exception is the wallpaper rotator, a separate process that `custom/init.lua` cannot reach: it reads `custom/wallpaper.lua` and `custom/hyprpaper.conf` itself when present. Register binds through `lib/key/bind.lua` (`Bind.key`, `Bind.submap`), never raw `hl.bind` or `hl.define_submap`, so `Bind.unbind` can remove a key from one submap (hyprwm/Hyprland#15040). `Bind.unbind` and `Bind.submap` are public API for `custom/`; keep their signatures stable.
 
 ## Interaction conventions
