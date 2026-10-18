@@ -97,6 +97,11 @@
             "type": "command",
             "command": "~/.claude/hooks/guard-masked-checks.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/guard-tmux-socket.sh",
+            "timeout": 10
           }
         ]
       }
