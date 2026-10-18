@@ -98,6 +98,7 @@ remove_system_files() {
     /etc/greetd/hyprland.lua
     /etc/greetd/admin_user
     /usr/local/bin/qs-greeter
+    /var/log/qs-greeter.log
     /etc/tuigreet/config.toml
     /usr/local/bin/tuigreet-oasis
     /etc/vtrgb-oasis
