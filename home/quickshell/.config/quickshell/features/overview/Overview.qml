@@ -6,13 +6,14 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.ui.frames
 import qs.theme
-import qs.services
 import qs.features.settings
 import qs.features.power
 import qs.features.screenshot
 import "Layout.js" as Layout
 import "Voice.js" as Voice
 import qs.features.voice
+import qs.features.audio
+import qs.features.windows
 
 // Every monitor's workspaces in one full-screen view on the focused monitor: pick, focus and move windows by key.
 OverviewBase {

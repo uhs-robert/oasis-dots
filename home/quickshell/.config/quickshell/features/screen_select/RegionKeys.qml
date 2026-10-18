@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
 import qs.features.screenshot
+import qs.features.audio
 
 // Key handling for the region selector: cursor moves, anchors, toolbar and the pick keys.
 Item {

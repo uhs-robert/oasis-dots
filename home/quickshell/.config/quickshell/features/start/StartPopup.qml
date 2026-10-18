@@ -5,13 +5,13 @@ import qs.components
 import qs.ui
 import qs.ui.menu
 import qs.theme
-import qs.services
 import qs.features.settings
 import qs.features.power
 import qs.features.launcher
 import qs.styles.snes.popups as Snes
 import qs.styles.ps2.widgets as Ps2
 import qs.features.popups
+import qs.features.audio
 
 Popup {
     id: root

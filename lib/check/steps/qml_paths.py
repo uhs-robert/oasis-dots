@@ -136,7 +136,7 @@ TABLES = [
     # Any style may set meter_art; today only nes does.
     Table("ui/gauges/Meter.qml", "../../styles/", "theme/styles/*.js", in_widgets(meter_art_values)),
     # A style's own pack is optional (its call carries a qs-path: optional marker); an extra pack must exist.
-    Table("services/ThemeAudio.qml", "../sounds/", "services/ThemeAudio.qml", extra_pack_names),
+    Table("features/audio/ThemeAudio.qml", "../../sounds/", "features/audio/ThemeAudio.qml", extra_pack_names),
     Table("features/weather/WeatherState.qml", "icons/", "features/weather/WeatherState.qml", weather_slugs),
     Table("lock/skins/goldeneye/GoldeneyeAudio.qml", "fx/", "lock/skins/goldeneye/GoldeneyeAudio.qml", array_values("shipped")),
     Table("lock/skins/mgs2/Mgs2Audio.qml", "fx/", "lock/skins/mgs2/Mgs2Audio.qml", array_values("shipped")),

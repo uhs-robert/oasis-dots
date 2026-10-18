@@ -3,9 +3,10 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.theme
-import qs.services
 import qs.features.settings
 import qs.features.power
+import qs.features.audio
+import qs.features.windows
 import "Layout.js" as Layout
 import "TmuxData.js" as TmuxData
 import "Ansi.js" as Ansi

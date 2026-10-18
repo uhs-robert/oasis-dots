@@ -2,9 +2,9 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
 import qs.theme
-import qs.services
 import "../../../theme/Watch.js" as Watch
 import qs.components
+import qs.features.windows
 
 // The classic pause watch as a bar strip: a tick per workspace on a shallow arc, apps under their ticks, a pale hand on the focused one. Fixed classic colours, whatever the palette.
 Item {

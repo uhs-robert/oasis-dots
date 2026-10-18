@@ -6,9 +6,9 @@ import Quickshell.Networking
 import qs.ui
 import qs.ui.menu
 import qs.theme
-import qs.services
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.features.popups
+import qs.features.audio
 import "Network.js" as Net
 
 Popup {

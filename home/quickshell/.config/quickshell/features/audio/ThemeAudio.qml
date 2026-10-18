@@ -4,6 +4,7 @@ import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import qs.core
+import qs.services
 import qs.theme
 import qs.lock.skins.sound
 
@@ -35,13 +36,13 @@ Singleton {
     // sound comes from: the chosen one, or the style's own under a game pack that lacks the stand-in.
     readonly property var alarm_stand_ins: ({ goldeneye: "lock" })
     // Rings when the pack has nothing to play, or is not loaded because interface and notification sounds are off.
-    readonly property string default_alarm_url: Qt.resolvedUrl("../sounds/alarm.ogg")
+    readonly property string default_alarm_url: Qt.resolvedUrl("../../sounds/alarm.ogg")
     readonly property var volumes: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     readonly property string data_dir: Paths.data_dir
     readonly property string user_dir: root.data_dir + "/sounds"
     // Game packs, offered once imported; names maps a kind to the file base, and a kind left out uses the style's own sound.
     readonly property var games: ({
-            "game:ff7": { label: "FFVII", replaces: "ff7", dir: "file://" + root.data_dir + "/ff7-audio", legacy_dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel", error: "buzzer" } },
+            "game:ff7": { label: "FFVII", replaces: "ff7", dir: "file://" + root.data_dir + "/ff7-audio", legacy_dir: Qt.resolvedUrl("../../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel", error: "buzzer" } },
             "game:mgs2": { label: "MGS2 (imported)", dir: "file://" + root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back", error: "error" } },
             "game:ocarina": { label: "Ocarina", dir: "file://" + root.data_dir + "/ocarina-audio", names: { cursor: "move", confirm: "decide", cancel: "cancel", notify: "letter", error: "error" } }
         })
@@ -86,8 +87,8 @@ Singleton {
 
     // Where a shipped pack lives: a style's own folder, except an extra pack, which belongs to no style.
     function pack_dir(name) {
-        if (name in root.extra_packs) return Qt.resolvedUrl("../sounds/" + name);
-        return Qt.resolvedUrl("../styles/" + name + "/sounds"); // qs-path: optional a style without a pack plays silence
+        if (name in root.extra_packs) return Qt.resolvedUrl("../../sounds/" + name);
+        return Qt.resolvedUrl("../../styles/" + name + "/sounds"); // qs-path: optional a style without a pack plays silence
     }
 
     function valid_pack(name) {

@@ -4,10 +4,10 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.theme
-import qs.services
 import qs.ui.cursors as Cursors
 import qs.features.screen_select.targets as Targets
 import qs.features.screenshot
+import qs.features.audio
 
 // One per screen while Screenshot.selecting: drag a region, then pick an action from the toolbar.
 PanelWindow {

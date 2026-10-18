@@ -1,8 +1,8 @@
 import QtQuick
 import qs.ui.effects
 import qs.ui.menu
-import qs.services
 import qs.theme
+import qs.features.audio
 
 // A Zelda inventory: one item tile per package, the selected one boxed, its versions spelled out below.
 Item {

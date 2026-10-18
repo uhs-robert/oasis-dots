@@ -1,6 +1,7 @@
 import Quickshell.Io
 import qs.theme
 import qs.components.transitions
+import qs.features.audio
 
 IpcHandler {
     target: "style"

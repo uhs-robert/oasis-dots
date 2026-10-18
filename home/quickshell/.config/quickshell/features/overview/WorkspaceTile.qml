@@ -5,7 +5,7 @@ import qs.components
 import qs.ui.effects
 import qs.ui.frames
 import qs.theme
-import qs.services
+import qs.features.windows
 import "Layout.js" as Layout
 
 // One workspace as a small monitor: its windows at their real places, scaled into the tile.

@@ -3,7 +3,6 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.theme
-import qs.services
 import "Search.js" as Search
 import "popup/fuzzy_rows.js" as FuzzyRows
 import qs.styles.neovim.widgets as Neovim
@@ -15,6 +14,7 @@ import qs.ui.keys
 import qs.features.power
 import qs.features.launcher
 import qs.features.popups
+import qs.features.audio
 
 PanelWindow {
     id: root

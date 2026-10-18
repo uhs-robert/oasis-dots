@@ -174,13 +174,13 @@ class FolderViewTest(PathsCase):
 class SoundPackTest(PathsCase):
     """ThemeAudio.pack_dir finds a style's pack in styles/<style>/sounds, which may be missing, and an extra pack in sounds/, which may not."""
 
-    TABLES = [r for r in qml_paths.TABLES if r.consumer == "services/ThemeAudio.qml" and r.head == "../sounds/"]
+    TABLES = [r for r in qml_paths.TABLES if r.consumer == "features/audio/ThemeAudio.qml" and r.head == "../../sounds/"]
     FILES = {
-        "qs/services/ThemeAudio.qml": (
+        "qs/features/audio/ThemeAudio.qml": (
             'readonly property var extra_packs: ({ mgs2: { label: "MGS2" } })\n'
             'function pack_dir(name) {\n'
-            '    if (name in extra_packs) return Qt.resolvedUrl("../sounds/" + name);\n'
-            '    return Qt.resolvedUrl("../styles/" + name + "/sounds"); // qs-path: optional a style without a pack plays silence\n'
+            '    if (name in extra_packs) return Qt.resolvedUrl("../../sounds/" + name);\n'
+            '    return Qt.resolvedUrl("../../styles/" + name + "/sounds"); // qs-path: optional a style without a pack plays silence\n'
             '}\n'
         ),
         "qs/styles/oasis/sounds/cursor.ogg": "",
@@ -197,7 +197,7 @@ class SoundPackTest(PathsCase):
 
     def test_a_missing_extra_pack_folder_fails(self):
         files = {name: text for name, text in self.FILES.items() if name != "qs/sounds/mgs2/cursor.ogg"}
-        self.assertEqual(self.check(files, self.TABLES), ["qs/services/ThemeAudio.qml:3: sounds/mgs2 (from qs/services/ThemeAudio.qml:1) does not exist"])
+        self.assertEqual(self.check(files, self.TABLES), ["qs/features/audio/ThemeAudio.qml:3: sounds/mgs2 (from qs/features/audio/ThemeAudio.qml:1) does not exist"])
 
 
 class PrefixTest(PathsCase):

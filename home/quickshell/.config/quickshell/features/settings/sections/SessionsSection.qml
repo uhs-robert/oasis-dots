@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
 import qs.features.display
 import qs.features.overview
 import "../Choices.js" as Choices
 import qs.features.settings
 import qs.features.popups
+import qs.features.audio
 
 // Three levels in one pane: the session list, one session's windows, and one window's fields. h and Esc step up a level before leaving the pane.
 RowsSection {
