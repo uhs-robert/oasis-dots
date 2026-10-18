@@ -186,8 +186,8 @@ case_voxcmd_rust_source() {
   source=$(first_tracked 'home/voxcmd/src/cli.rs') || return 0
   echo '// x' >>"$source"
   plan
-  expect_ran voxcmd-rust voxcmd-click
-  expect_skipped luacheck qmllint
+  expect_ran voxcmd-rust
+  expect_skipped voxcmd-click voxcmd-phrases luacheck qmllint
 }
 
 case_deleted_sourced_helper() {
