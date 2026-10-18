@@ -423,21 +423,34 @@ declare -A actions=(
   [state]='echo "state=$(session_state)"'
   [flags]='echo "own=$(discard_flag_of $$) other=$(discard_flag_of 7) heard=$heard_mode"'
 )
-session_rewrite() { printf 'fake %s' "$1"; }
-session_alive() { [ ! -e "$WORK/dead" ]; }
+session_rewrite() {
+  echo "own=$(discard_flag_of $$) state=$(session_state)" >> "$WORK/rewrite_saw"
+  printf 'fake %s' "$1"
+}
+session_alive() {
+  echo "own=$(discard_flag_of $$) state=$(session_state)" >> "$WORK/alive_saw"
+  [ ! -e "$WORK/dead" ]
+}
 session_handle_turn() { echo "handled $* own=$(discard_flag_of $$)" > "$WORK/handled"; }
 "#;
 
 /// The bash voxcmd this checkout installs, running a hook of the fake integration, with `$VOXCMD_LEGACY_PID` 4242
 /// when `from_rust` (as the Rust port runs it) and its `voxcmd-rs` a recorder of what it is asked.
 fn bash_hook(setup: &Setup, from_rust: bool, args: &[&str]) -> Output {
+    bash_hook_locked(setup, from_rust, false, args)
+}
+
+/// `bash_hook` as the Rust port runs a hook under the session lock when `lock_held`.
+fn bash_hook_locked(setup: &Setup, from_rust: bool, lock_held: bool, args: &[&str]) -> Output {
     let integration = setup.path().join("config/integrations.d/fake.sh");
     std::fs::write(&integration, FAKE_INTEGRATION).unwrap();
     let recorder = setup.script(
         "work/voxcmd-rs",
         &format!(
-            "echo \"$* pid=$VOXCMD_LEGACY_PID\" >> '{}'\n[ \"$3\" != state ] || echo '{{\"kind\":\"fake\"}}'",
-            setup.path().join("work/forwarded").display()
+            "echo \"$* pid=$VOXCMD_LEGACY_PID\" >> '{0}'\necho \"lock=${{VOXCMD_SESSION_LOCK_HELD-}}\" >> '{1}'\n\
+             [ \"$3\" != state ] || echo '{{\"kind\":\"fake\"}}'",
+            setup.path().join("work/forwarded").display(),
+            setup.path().join("work/rs_lock").display()
         ),
     );
     let mut command = Command::new(concat!(env!("CARGO_MANIFEST_DIR"), "/.local/bin/voxcmd"));
@@ -453,6 +466,9 @@ fn bash_hook(setup: &Setup, from_rust: bool, args: &[&str]) -> Output {
         .env("XDG_RUNTIME_DIR", setup.path().join("runtime"))
         .env("VOXCMD_CONFIG_DIR", setup.path().join("config"))
         .stdin(Stdio::null());
+    if lock_held {
+        command.env("VOXCMD_SESSION_LOCK_HELD", "1");
+    }
     if from_rust {
         command
             .env("VOXCMD_LEGACY_PID", "4242")
@@ -538,4 +554,27 @@ fn the_mode_arms_read_the_settings_and_run_the_hooks() {
         std::fs::read_to_string(setup.path().join("work/handled")).unwrap(),
         format!("handled some words own={}/discard.4242\n", setup.runtime().display())
     );
+}
+
+#[test]
+fn an_alive_or_rewrite_hook_run_from_rust_names_the_rust_process_as_its_own() {
+    let setup = Setup::new();
+    let own = format!(
+        "own={}/discard.4242 state={{\"kind\":\"fake\"}}\n",
+        setup.runtime().display()
+    );
+    let work = |name: &str| std::fs::read_to_string(setup.path().join("work").join(name)).unwrap_or_default();
+
+    assert!(bash_hook(&setup, true, &["alive"]).status.success());
+    assert_eq!(work("alive_saw"), own);
+    assert_eq!(work("rs_lock"), "lock=\n");
+
+    // Under the session lock the guard reaches the Rust session call the shim makes, which then reads without it.
+    let _ = std::fs::remove_file(setup.path().join("work/rs_lock"));
+    assert!(bash_hook_locked(&setup, true, true, &["alive"]).status.success());
+    assert_eq!(work("rs_lock"), "lock=1\n");
+
+    let rewritten = bash_hook(&setup, true, &["rewrite", "tap a"]);
+    assert_eq!(String::from_utf8_lossy(&rewritten.stdout), "fake tap a\n");
+    assert_eq!(work("rewrite_saw"), own);
 }
