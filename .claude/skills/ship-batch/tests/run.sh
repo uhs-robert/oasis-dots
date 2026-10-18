@@ -273,10 +273,10 @@ check "without the flag nothing is skipped" "! grep -q 'skip' '$SHIP_LOG' '$e2e/
 
 echo "== the greeter's Quickshell paths"
 greeter_regex=$(greeter_qs_regex "$here/../../../.." qs)
-for path in lock/skins/x.qml lock/skins/sub/y.png lock/Tints.js theme/Style.qml styles/nes/tokens.js assets/fonts/a.ttf assets/fonts/OFL-a.txt VERSION; do
+for path in features/lock/skins/x.qml features/lock/skins/sub/y.png features/lock/Tints.js styles/goldeneye/PanelShape.qml theme/Style.qml styles/nes/tokens.js assets/fonts/a.ttf assets/fonts/OFL-a.txt VERSION; do
   check "$path is staged" "grep -Eq '^$greeter_regex' <<<'qs/$path'"
 done
-for path in services/Foo.qml lock/Lock.qml assets/fonts/a.otf styles/nes/widgets/Foo.qml theme/Foo.qml; do
+for path in services/Foo.qml features/lock/Lock.qml assets/fonts/a.otf styles/nes/widgets/Foo.qml theme/Foo.qml; do
   check "$path is not staged" "! grep -Eq '^$greeter_regex' <<<'qs/$path'"
 done
 

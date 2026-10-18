@@ -138,8 +138,8 @@ TABLES = [
     # A style's own pack is optional (its call carries a qs-path: optional marker); an extra pack must exist.
     Table("features/audio/ThemeAudio.qml", "../../sounds/", "features/audio/ThemeAudio.qml", extra_pack_names),
     Table("features/weather/WeatherState.qml", "icons/", "features/weather/WeatherState.qml", weather_slugs),
-    Table("lock/skins/goldeneye/GoldeneyeAudio.qml", "fx/", "lock/skins/goldeneye/GoldeneyeAudio.qml", array_values("shipped")),
-    Table("lock/skins/mgs2/Mgs2Audio.qml", "fx/", "lock/skins/mgs2/Mgs2Audio.qml", array_values("shipped")),
+    Table("features/lock/skins/goldeneye/GoldeneyeAudio.qml", "fx/", "features/lock/skins/goldeneye/GoldeneyeAudio.qml", array_values("shipped")),
+    Table("features/lock/skins/mgs2/Mgs2Audio.qml", "fx/", "features/lock/skins/mgs2/Mgs2Audio.qml", array_values("shipped")),
 ] + [
     Table(consumer, head, "theme/Style.qml", array_values("picker_skins", capitalise=True))
     for consumer, head in [

@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
-import qs.lock
+import qs.features.lock
 import qs.services
 import qs.features.settings
 

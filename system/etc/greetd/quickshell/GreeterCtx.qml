@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.theme
-import "lock/Tints.js" as Tints
+import "features/lock/Tints.js" as Tints
 
 // The lock skins' ctx for the greeter: the same fields as the shell's LockCtx, minus media, weather and notifications.
 QtObject {

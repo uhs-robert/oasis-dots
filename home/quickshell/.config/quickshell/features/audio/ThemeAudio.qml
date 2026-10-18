@@ -4,9 +4,9 @@ import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import qs.core
-import qs.services
+import qs.features.lock
 import qs.theme
-import qs.lock.skins.sound
+import qs.features.lock.skins.sound
 
 // UI and notification sounds from one effects pack (a styles/<style>/sounds/ or sounds/<extra pack>/ directory, or an imported game), the style's own unless the user picks one; ~/.local/share/quickshell/sounds/<pack>/ wins file by file, and its <style>/ is the only source of lock and login music. Saved in audio.json under the state dir.
 Singleton {
@@ -42,7 +42,7 @@ Singleton {
     readonly property string user_dir: root.data_dir + "/sounds"
     // Game packs, offered once imported; names maps a kind to the file base, and a kind left out uses the style's own sound.
     readonly property var games: ({
-            "game:ff7": { label: "FFVII", replaces: "ff7", dir: "file://" + root.data_dir + "/ff7-audio", legacy_dir: Qt.resolvedUrl("../../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel", error: "buzzer" } },
+            "game:ff7": { label: "FFVII", replaces: "ff7", dir: "file://" + root.data_dir + "/ff7-audio", legacy_dir: Qt.resolvedUrl("../lock/skins/ff7/audio"), names: { cursor: "cursor", confirm: "cursor", cancel: "cancel", error: "buzzer" } },
             "game:mgs2": { label: "MGS2 (imported)", dir: "file://" + root.data_dir + "/mgs2-audio", names: { cursor: "select", confirm: "submit", cancel: "back", error: "error" } },
             "game:ocarina": { label: "Ocarina", dir: "file://" + root.data_dir + "/ocarina-audio", names: { cursor: "move", confirm: "decide", cancel: "cancel", notify: "letter", error: "error" } }
         })

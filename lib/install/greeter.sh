@@ -23,21 +23,21 @@ stage_greeter() {
   copy_greeter_qs_files "$qs" "$dest" || return 1
   local skin audio_dir audio_skins
   # Skins whose imported audio lives in $XDG_DATA_HOME/quickshell/<skin>-audio.
-  audio_skins=$(jq -r 'to_entries[] | select(.value.audio) | .key' "$qs/lock/skins/index.json") || return 1
+  audio_skins=$(jq -r 'to_entries[] | select(.value.audio) | .key' "$qs/features/lock/skins/index.json") || return 1
   mapfile -t audio_skins <<<"$audio_skins"
   for skin in "${audio_skins[@]}"; do
     audio_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/$skin-audio"
     if [[ -d "$audio_dir" && -n "$(ls -A "$audio_dir")" ]]; then
-      rm -rf "${dest:?}/lock/skins/$skin/audio"
-      mkdir -p "$dest/lock/skins/$skin/audio"
-      cp -rL "$audio_dir/." "$dest/lock/skins/$skin/audio/"
+      rm -rf "${dest:?}/features/lock/skins/$skin/audio"
+      mkdir -p "$dest/features/lock/skins/$skin/audio"
+      cp -rL "$audio_dir/." "$dest/features/lock/skins/$skin/audio/"
     fi
   done
   local frames_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/goldeneye-frames"
   if (($(cat "$frames_dir/count.txt" 2>/dev/null || echo 0) > 0)); then
-    rm -rf "${dest:?}/lock/skins/goldeneye/frames"
-    mkdir -p "$dest/lock/skins/goldeneye/frames"
-    cp -rL "$frames_dir/." "$dest/lock/skins/goldeneye/frames/"
+    rm -rf "${dest:?}/features/lock/skins/goldeneye/frames"
+    mkdir -p "$dest/features/lock/skins/goldeneye/frames"
+    cp -rL "$frames_dir/." "$dest/features/lock/skins/goldeneye/frames/"
   fi
   if [[ -n ${3:-} && -f "$3/theme/theme.json" ]]; then
     cp "$3/theme/theme.json" "$dest/theme/" || return 1
@@ -67,7 +67,7 @@ stage_greeter() {
   [[ "$login_music" != "follow" ]] && music=$login_music
   [[ "$lock" == "follow" ]] && lock=$style
   local file="${lock^}.qml"
-  [[ "$lock" != "simple" && -f "$dest/lock/skins/$file" ]] || lock=simple
+  [[ "$lock" != "simple" && -f "$dest/features/lock/skins/$file" ]] || lock=simple
 
   jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" --arg session "$session" --arg watch "$watch" \
     '{user: $user, lock_style: $lock, lock_tint: $tint, lock_music: $music, watch_colors: $watch, session: $session}' >"$dest/greeter.json"

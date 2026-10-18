@@ -3,8 +3,8 @@
 # A trailing / is a directory copied whole, a trailing ? an optional entry, and * a glob matched at stage time.
 # Read by stage_greeter (lib/install/greeter.sh), lib/check/steps/qml.py, lib/check/steps/qml_paths.py, the greeter-sync check in the justfile and ship-batch.
 GREETER_QS_FILES=(
-  lock/skins/
-  lock/Tints.js
+  features/lock/skins/
+  features/lock/Tints.js
   VERSION?
   theme/Theme.qml
   theme/Style.qml
@@ -47,6 +47,10 @@ GREETER_QS_FILES=(
   styles/tie/icons.js
   styles/goldeneye/Watch.js
   styles/goldeneye/watch_tokens.js
+  styles/goldeneye/PanelShape.qml
+  styles/goldeneye/SegmentArc.qml
+  styles/goldeneye/WatchHands.qml
+  styles/goldeneye/static.frag.qsb
   'assets/fonts/*.ttf'
   'assets/fonts/OFL-*.txt'
 )

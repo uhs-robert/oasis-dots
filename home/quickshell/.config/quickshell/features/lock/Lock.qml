@@ -5,11 +5,10 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pam
-import qs.services
 import qs.theme
 // Skins load by URL; importing the folder lets Quickshell register the component folders they import.
-import qs.lock.skins
-import qs.lock.skins.ui
+import qs.features.lock.skins
+import qs.features.lock.skins.ui
 import qs.features.power
 import qs.features.popups
 import qs.features.audio

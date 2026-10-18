@@ -1,7 +1,7 @@
 theme/theme.json
 weather.local.json
-lock/skins/ocarina/audio/
-lock/skins/ff7/audio/
-lock/skins/mgs2/audio/
-lock/skins/goldeneye/audio/
-lock/skins/goldeneye/frames/
+features/lock/skins/ocarina/audio/
+features/lock/skins/ff7/audio/
+features/lock/skins/mgs2/audio/
+features/lock/skins/goldeneye/audio/
+features/lock/skins/goldeneye/frames/
