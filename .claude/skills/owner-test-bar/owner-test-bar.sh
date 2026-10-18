@@ -500,6 +500,12 @@ copy_assets() {
   done < <(git -C "$repo" status --short --ignored "$qs_rel" | awk '$1 == "!!" { sub(/\/$/, "", $2); print $2 }')
 }
 
+# True when the branch already contains origin/main (so the merged tree is the branch's own tree) and that head has a
+# recorded `check.sh --changed` pass against it.
+branch_passed() {
+  git merge-base --is-ancestor origin/main "$1" && lib/check/passed.sh passed-since origin/main "$1"
+}
+
 build() {
   local name=$1
   shift
@@ -514,8 +520,12 @@ build() {
   done
   copy_assets "$dir"
   printf '%s\n' "$@" >"$dir.branches"
-  # A tree already recorded as passing needs no run; otherwise only what the branches changed.
-  (cd "$dir" && { lib/check/passed.sh is-passed || lib/check.sh --changed origin/main; } >/dev/null) || die "the check fails on the combined build in $dir"
+  # The merged tree is fresh, so a recorded tree pass never matches it. A lone branch that already contains origin/main
+  # merges to its own tree, so its recorded pass stands in; any other merge was never checked, so it runs. CHECK_NO_LOCK: this
+  # must not queue behind other sessions' voxcmd suites.
+  (cd "$dir" && {
+    lib/check/passed.sh is-passed || { (($# == 1)) && branch_passed "$1"; } || CHECK_NO_LOCK=1 lib/check.sh --changed origin/main
+  } >/dev/null) || die "the check fails on the combined build in $dir"
   echo "owner-test-bar: built $dir from $*"
 }
 

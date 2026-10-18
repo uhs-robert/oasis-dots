@@ -23,7 +23,7 @@
 # CHECK_FULL=1 makes --changed run everything, and runs every step whatever passed before. CHECK_JOBS sets how many steps
 # run at once (default min(cores/2, 4)); 1 runs them one after another with live output. CHECK_SKIP_STEPS="step ..." drops
 # those steps whatever the scope says (the summary line lists them). Everything runs at nice 19 in the idle IO class, and
-# the voxcmd suites each hold one of CHECK_HEAVY_SLOTS machine-wide slots (lib/check/lock.sh), waiting at most
+# the voxcmd suites (not voxcmd-rust) each hold one of CHECK_HEAVY_SLOTS machine-wide slots (lib/check/lock.sh), waiting at most
 # CHECK_LOCK_WAIT_SECS (default 1200) for one; CHECK_NO_LOCK=1 runs them without a slot, for a check that must never
 # wait (the commit hook).
 #
@@ -82,7 +82,7 @@
 #   conflicts, git-diff-check  and `git diff --check HEAD`.
 #   ignored-integrations     no voxcmd integration or replacement file is one git ignores (lib/check/steps/ignored-integrations.sh).
 #
-# Slots and records: only the voxcmd steps and voxcmd-rust hold a CHECK_HEAVY_SLOTS slot, and the voxcmd suites also run one after another
+# Slots and records: only the voxcmd suites hold a CHECK_HEAVY_SLOTS slot, and the voxcmd suites also run one after another
 # in a lane of their own (they are timing-sensitive); the cheap steps take none. A step's pass is recorded only when its files did not
 # change while it ran. lib/check/passed.sh keeps the records in the repository's common git dir, shared by every worktree.
 # On INT or TERM the running steps and their children are ended.

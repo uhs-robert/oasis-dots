@@ -23,7 +23,9 @@ PATH_SCOPES = [
     ("lib/check.sh", "all"),
     ("lib/check/runner.py", "all"),
     ("lib/check/keys.py", "all"),
-    ("lib/check/scopes.py", "all"),
+    # Data tables only: the check's own tests cover an edit (they include the path-existence test), and the runner
+    # re-runs each step whose Step(...) line the diff changed (runner.redefined_steps_since).
+    ("lib/check/scopes.py", ""),
     ("lib/check/lock.sh", "all"),
     ("lib/check/passed.sh", "all"),
     ("lib/check/passed.py", "all"),
@@ -55,13 +57,14 @@ PATH_SCOPES = [
     ("home/quickshell/tests/*", "node qml"),
     ("home/quickshell/*", "qml node"),
     ("lib/check/steps/voxcmd-rust.sh", "rust"),
-    # These also reach the voxcmd suites, which run against the checkout's build under VOXCMD_BIN=rs. An integration
-    # file reaches the crate through tests/integrations.rs.
-    ("home/voxcmd/src/*", "rust voxcmd"),
-    ("home/voxcmd/Cargo.*", "rust voxcmd"),
-    ("home/voxcmd/rustfmt.toml", "rust voxcmd"),
-    ("home/voxcmd/tests/*.rs", "rust voxcmd"),
-    ("home/voxcmd/tests/fixtures/*", "rust voxcmd"),
+    # Only the Rust step: the voxcmd suites run with VOXCMD_BIN unset, so they exercise the bash voxcmd and never the
+    # crate. Revisit when VOXCMD_BIN=rs becomes the suites' default. An integration file also reaches the bash voxcmd,
+    # and the crate through tests/integrations.rs.
+    ("home/voxcmd/src/*", "rust"),
+    ("home/voxcmd/Cargo.*", "rust"),
+    ("home/voxcmd/rustfmt.toml", "rust"),
+    ("home/voxcmd/tests/*.rs", "rust"),
+    ("home/voxcmd/tests/fixtures/*", "rust"),
     ("home/voxcmd/.config/voxcmd/integrations/*", "rust voxcmd"),
     ("home/voxcmd/*", "voxcmd"),
     ("extras/voxcmd-firefox/*", "voxcmd"),

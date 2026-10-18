@@ -3,6 +3,7 @@ are the raw $scopes of the shell runner the port replaced, leading space include
 """
 
 import os
+import shlex
 import sys
 import unittest
 
@@ -16,7 +17,7 @@ CASES = [
     ("lib/check.sh", " all"),
     ("lib/check/runner.py", "checkscope all"),
     ("lib/check/keys.py", "checkscope all"),
-    ("lib/check/scopes.py", "checkscope all"),
+    ("lib/check/scopes.py", "checkscope"),
     ("lib/check/passed.py", "checkscope all"),
     ("lib/check/passed.sh", "checkscope all"),
     ("lib/check/lock.sh", "checkscope all"),
@@ -47,12 +48,13 @@ CASES = [
     ("home/hypr/.config/hypr/hyprland.lua", " lua"),
     (".luacheckrc", " lua"),
     ("home/voxcmd/tests/run.sh", " voxcmd"),
-    # The crate's files reach the Rust step and the suites; the rest of the package only the suites.
-    ("home/voxcmd/src/main.rs", " rust voxcmd"),
-    ("home/voxcmd/Cargo.lock", " rust voxcmd"),
-    ("home/voxcmd/rustfmt.toml", " rust voxcmd"),
-    ("home/voxcmd/tests/cli.rs", " rust voxcmd"),
-    ("home/voxcmd/tests/fixtures/x.txt", " rust voxcmd"),
+    # The crate's files reach only the Rust step, since the suites run the bash voxcmd. An integration file is read by
+    # both.
+    ("home/voxcmd/src/main.rs", " rust"),
+    ("home/voxcmd/Cargo.lock", " rust"),
+    ("home/voxcmd/rustfmt.toml", " rust"),
+    ("home/voxcmd/tests/cli.rs", " rust"),
+    ("home/voxcmd/tests/fixtures/x.txt", " rust"),
     ("home/voxcmd/.config/voxcmd/integrations/x.toml", " rust voxcmd"),
     ("home/voxcmd/.config/voxcmd/integrations.d/x.toml", " voxcmd"),
     ("lib/check/steps/voxcmd-rust.sh", "checkscope rust"),
@@ -103,6 +105,15 @@ class PathScopes(unittest.TestCase):
         for step in scopes.STEPS:
             with self.subTest(step=step.name):
                 self.assertIn(step.scope, reachable)
+
+    def test_step_commands_name_existing_paths(self):
+        """A step edited in scopes.py is not run by that edit, so a typo in its command must fail here instead."""
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        for step in scopes.STEPS:
+            for word in shlex.split(step.command):
+                if word.startswith("./") and "$" not in word:
+                    with self.subTest(step=step.name, path=word):
+                        self.assertTrue(os.path.exists(os.path.join(repo, word)))
 
     def test_step_names_are_unique(self):
         names = [step.name for step in scopes.STEPS]
