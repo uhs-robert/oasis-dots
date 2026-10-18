@@ -1,13 +1,10 @@
 ---
-
 name: orchestrator
 description: Orchestrate implementation work from investigation through pull request. Work in a git worktree. Work from an existing PR or GitHub issue when provided, or create an issue first when given only a repository or working from the current repository. Delegate implementation to sub-agents, independently review the result, obtain an external review (Codex, or Opus when Codex is unavailable), resolve valid findings efficiently, and deliver a PR ready for human review.
 argument-hint: "[issue-pr-or-repo]"
 arguments:
-
-* target
-  disable-model-invocation: true
-
+  - target
+disable-model-invocation: true
 ---
 
 # Orchestrator
