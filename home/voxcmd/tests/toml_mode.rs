@@ -574,6 +574,21 @@ fn the_ended_hook_runs_once_with_the_reason_frame_and_whether_the_session_goes_o
 }
 
 #[test]
+fn an_ended_hook_that_outlives_timeout_secs_is_killed_with_what_it_started() {
+    let rig = Rig::new();
+    rig.integration(
+        "demo",
+        "ended = 'sleep 30 & echo \"$$ $!\" > \"$WORK/pids\"; wait'\ntimeout_secs = 0.3\n",
+    );
+    rig.run("demo mode");
+    assert!(rig.command(&["session", "end"]).status().unwrap().success());
+    assert!(wait_for(|| rig.work("pids").exists()));
+    let pids = rig.read_work("pids");
+    let alive = |pid: &str| Path::new("/proc").join(pid).exists();
+    assert!(wait_for(|| !pids.split_whitespace().any(alive)), "{pids}");
+}
+
+#[test]
 fn the_sweep_before_a_listen_leaves_a_dead_mode_and_ended_says_whether_the_session_goes_on() {
     let rig = Rig::new();
     rig.integration(
