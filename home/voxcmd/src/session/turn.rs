@@ -150,23 +150,28 @@ pub fn open(kind: &str, file: &str, label: &str, me: u32) -> Opened {
             if is_mine(&state, me) {
                 return super::enter(&lock, kind, file, label, me);
             }
-            notify::notify(
-                Kind::Info,
-                &format!("voxcmd: {label}"),
-                "A voice session is already open",
-            );
-            return Opened::Refused;
+            return refuse_occupied(label);
         }
     }
     if let Some(why) = autostop_unavailable() {
         notify::notify(Kind::Info, &format!("voxcmd: {label} needs auto-stop"), &why);
         return Opened::Refused;
     }
+    // Another process may have opened a session while auto-stop was probed.
     if !super::create(&SessionLock::take(), kind, file, label, me) {
-        return Opened::Refused;
+        return refuse_occupied(label);
     }
     debug(&format!("session: {kind} begins"));
     Opened::Session
+}
+
+fn refuse_occupied(label: &str) -> Opened {
+    notify::notify(
+        Kind::Info,
+        &format!("voxcmd: {label}"),
+        "A voice session is already open",
+    );
+    Opened::Refused
 }
 
 /// Why auto-stop cannot end a session's listens (`voxcmd-autostop --check`), none when it can.
@@ -190,26 +195,36 @@ fn autostop_unavailable() -> Option<String> {
     }
 }
 
-/// Opens the microphone for the next turn, unless the session ended or another listen took it over; whether it did.
+/// How a session's next listen went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Listen {
+    Started,
+    /// Another listen (a voice key's) owns the session, so there is a listener and nothing to start.
+    TookOver,
+    /// The session had ended, or the microphone could not be opened (which ends it).
+    Failed,
+}
+
+/// Opens the microphone for the next turn, unless the session ended or another listen took it over.
 /// Holding the lock while it starts, a failed start cannot be a listen of ours, so voxtype is busy with something else.
-pub fn listen_for_turn(me: u32) -> bool {
+pub fn listen_for_turn(me: u32) -> Listen {
     let lock = SessionLock::take();
     if super::state(&lock).is_none() {
-        return false;
+        return Listen::Failed;
     }
     drop_dead_modes(&lock, me);
     let Some(state) = super::state(&lock) else {
-        return false;
+        return Listen::Failed;
     };
     if !is_mine(&state, me) {
         debug("session: another listen took over");
-        return false;
+        return Listen::TookOver;
     }
     let listening = listen::listen_locked(&lock, true, None, me);
     if !listening {
         super::end_all_locked(&lock, "the microphone could not be opened", me);
     }
-    listening
+    if listening { Listen::Started } else { Listen::Failed }
 }
 
 /// Leaves the modes whose screen is gone (the overview closed by key), so a mode never outlives what it drives.

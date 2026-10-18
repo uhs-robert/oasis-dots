@@ -196,7 +196,9 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
     if succeeded {
         // A new session listens only now: its mode's `alive` checks what `run` just opened. When it cannot, the
         // session's own ending toast says why.
-        if opened == Some(Opened::Session) && !crate::session::turn::listen_for_turn(std::process::id()) {
+        if opened == Some(Opened::Session)
+            && crate::session::turn::listen_for_turn(std::process::id()) == crate::session::turn::Listen::Failed
+        {
             result.detail = "its session could not listen".to_string();
             debug(&format!("action failed: {toast}: its session could not listen"));
             return result;
@@ -249,6 +251,11 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
 /// Opens the integration's mode before its action runs (`enter_mode` needs a `[mode]`, which the schema checks).
 fn open_mode(integration: &Integration) -> Opened {
     let Some(mode) = &integration.mode else {
+        crate::notify::notify(
+            Kind::Error,
+            "voxcmd",
+            &format!("{} has no mode to open", integration.name),
+        );
         return Opened::Refused;
     };
     crate::session::turn::open(

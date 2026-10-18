@@ -426,6 +426,67 @@ fn a_mode_that_cannot_open_fails_its_action_without_running_it() {
     );
 }
 
+/// A session file of mode `stem` owned by the live process `owner`, as another process's listen would leave it.
+fn session_owned_by(rig: &Rig, stem: &str, owner: u32) -> Value {
+    let mut session = rig.frame_under(stem);
+    session["owner"] = json!(owner);
+    session["owner_start"] = json!(start_time_of(owner));
+    session["started"] = json!(now());
+    session["turns"] = json!(0);
+    session["stack"] = json!([]);
+    session
+}
+
+#[test]
+fn a_listen_that_takes_the_session_during_run_leaves_the_action_a_success() {
+    let rig = Rig::new();
+    let file = rig.integration("demo", "");
+    let mut listener = Command::new("sleep").arg("30").spawn().unwrap();
+    let taken = rig.work("taken.json");
+    std::fs::write(&taken, session_owned_by(&rig, "demo", listener.id()).to_string()).unwrap();
+    // What a voice-key listen does meanwhile: the session passes to its watcher.
+    rig.edit(
+        &file,
+        OPEN_RUN,
+        "run = 'cp \"$WORK/taken.json\" \"$XDG_RUNTIME_DIR/voxcmd/session.json\"'",
+    );
+    let ran = rig.command(&["run", "demo mode"]).status().unwrap();
+    let session = rig.session();
+    listener.kill().unwrap();
+    listener.wait().unwrap();
+    assert!(ran.success(), "{}", rig.debug_log());
+    assert!(!rig.debug_log().contains("could not listen"), "{}", rig.debug_log());
+    assert!(
+        rig.debug_log().contains("another listen took over"),
+        "{}",
+        rig.debug_log()
+    );
+    assert_eq!(session.unwrap()["owner"], json!(listener.id()));
+}
+
+#[test]
+fn a_session_another_process_opens_while_auto_stop_is_probed_refuses_with_the_usual_toast() {
+    let rig = Rig::new();
+    rig.integration("demo", "");
+    let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
+    let taken = rig.work("taken.json");
+    std::fs::write(&taken, session_owned_by(&rig, "other", owner.id()).to_string()).unwrap();
+    rig.script(
+        "legacy/voxcmd-autostop",
+        "cp \"$WORK/taken.json\" \"$XDG_RUNTIME_DIR/voxcmd/session.json\"",
+    );
+    let refused = rig.command(&["run", "demo mode"]).status().unwrap();
+    owner.kill().unwrap();
+    owner.wait().unwrap();
+    assert!(!refused.success());
+    assert_eq!(rig.read_work("ran"), "");
+    assert!(
+        rig.calls().contains("A voice session is already open"),
+        "{}",
+        rig.calls()
+    );
+}
+
 // ---- rewrite ----------------------------------------------------------------------------------------------------------
 
 #[test]
