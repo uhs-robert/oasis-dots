@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "../../../styles/goldeneye/Watch.js" as Watch
+import "Watch.js" as Watch
 
 // The watch's translucent green octagon with the pale notches on its sides, at any size.
 Item {

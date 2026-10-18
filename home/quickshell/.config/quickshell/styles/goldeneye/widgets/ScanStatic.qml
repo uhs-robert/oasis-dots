@@ -21,7 +21,7 @@ Item {
             property real calm: 1
             property real tint_amt: Style.watch_mode === "Theme" ? 1 : 0
             property color tint_col: Style.wk.mid
-            fragmentShader: Qt.resolvedUrl("../../../lock/skins/goldeneye/static.frag.qsb")
+            fragmentShader: Qt.resolvedUrl("../static.frag.qsb")
         }
     }
 

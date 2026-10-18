@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.theme
-import qs.lock.skins.goldeneye as Watch
+import qs.styles.goldeneye as Watch
 import qs.features.weather
 import "../../../../styles/goldeneye/Watch.js" as W
 

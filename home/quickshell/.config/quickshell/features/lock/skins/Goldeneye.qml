@@ -4,9 +4,9 @@ import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import qs.theme
-import qs.lock.skins.goldeneye as GE
+import qs.styles.goldeneye as GE
 import "ui/Menu.js" as Menu
-import "../../styles/goldeneye/Watch.js" as Watch
+import "../../../styles/goldeneye/Watch.js" as Watch
 
 // GoldenEye 007's pause watch: the arm lifts and the view zooms into the dial; the panel takes the user and password, OPTIONS RESTART POWEROFF sit under the header.
 Item {
@@ -24,7 +24,7 @@ Item {
     readonly property bool motion: root.animate && !!root.ctx && root.ctx.sound === true
 
     property FileView version_file: FileView {
-        path: Qt.resolvedUrl("../../VERSION")
+        path: Qt.resolvedUrl("../../../VERSION")
         blockLoading: true
         printErrors: false
     }
@@ -632,7 +632,7 @@ Item {
                 property real calm: 0
                 property real tint_amt: root.tinted ? 1 : 0
                 property color tint_col: root.green_mid
-                fragmentShader: Qt.resolvedUrl("goldeneye/static.frag.qsb")
+                fragmentShader: Qt.resolvedUrl("../../../styles/goldeneye/static.frag.qsb")
             }
 
             Item {

@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.theme
-import qs.lock.skins.screensavers
+import qs.features.lock.skins.screensavers
 
 // A TIE cockpit targeting console: a trench-scope reticle hunts, locks green or loses red with the password.
 Item {

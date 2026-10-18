@@ -1,8 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
-import qs.lock
+import qs.features.lock
 
 // A lock or login skin drawn at screen size and scaled down, with fake auth state.
 Rectangle {
@@ -33,7 +32,7 @@ Rectangle {
             return;
         }
         skin_loader.setSource(LockSkins.url_for(root.skin), { ctx: fake });
-        if (skin_loader.status === Loader.Error) skin_loader.setSource(Qt.resolvedUrl("../../lock/LockScreen.qml"), { ctx: fake });
+        if (skin_loader.status === Loader.Error) skin_loader.setSource(Qt.resolvedUrl("../lock/LockScreen.qml"), { ctx: fake });
     }
 
     onSkinChanged: root.load()

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.menu
 import qs.styles.goldeneye.widgets as Goldeneye
-import qs.lock.skins.goldeneye as Watch
+import qs.styles.goldeneye as Watch
 import qs.theme
 import "../../../styles/goldeneye/Watch.js" as W
 import "KeeptabsFormat.js" as Fmt
