@@ -273,8 +273,10 @@ impl Runner<'_> {
             };
             self.report_stop(&stop, pacing);
         }
-        // The sequence is over, whoever flagged it.
-        let _ = std::fs::remove_file(paths::discard_flag(std::process::id()));
+        // The sequence is over, whoever flagged it. A watcher's flag also discards its recording, and its exit removes it.
+        if !self.rt.came_by_voice {
+            let _ = std::fs::remove_file(paths::discard_flag(std::process::id()));
+        }
         i32::from(ran == 0)
     }
 

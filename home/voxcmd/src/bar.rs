@@ -1,4 +1,5 @@
-//! asking the Quickshell bar what it is showing, for the waits between the steps of a sequence
+//! asking the Quickshell bar what it is showing, for the waits between the steps of a sequence and between a session's
+//! turns (`internal settle`)
 //!
 //! Every question is bounded by two seconds and by the time the step has left, and a bar that does not answer reads as closed (or as having nothing to
 //! wait for): a stalled bar must not hold a sequence past its own step timeout.
@@ -32,4 +33,15 @@ pub fn ui_settled(time_left: Duration) -> bool {
 /// The named popup is fully drawn. No bar to ask counts as done: there is nothing to wait for.
 pub fn popup_is_open(name: &str, time_left: Duration) -> bool {
     ask(&["popup", "state"], time_left).is_none_or(|state| state == format!("open {name}"))
+}
+
+/// The overlay is open or a popup is opening, open or closing: the screen is not yet the one the next turn should read.
+/// Unlike `ui_settled`, a popup that stays open counts as busy.
+pub fn ui_busy() -> bool {
+    let overlay = ask(&["clickhints", "state"], ANSWER_WITHIN).unwrap_or_else(|| "closed".to_string());
+    let popup = ask(&["popup", "state"], ANSWER_WITHIN).unwrap_or_else(|| "closed".to_string());
+    let showing = ["opening", "open", "closing"]
+        .iter()
+        .any(|state| popup == *state || popup.starts_with(&format!("{state} ")));
+    overlay == "open" || showing
 }

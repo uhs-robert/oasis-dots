@@ -194,18 +194,10 @@ pub fn run_cancel_owned_recording(args: &[String]) -> Result<(), CliError> {
 }
 
 /// Starts a reply's recording as `voxcmd listen --start-only` does: only from idle, never stopping a recording someone
-/// else started. The bash voxcmd's listen until the Rust one lands (voxcmd-port 2.4b). With an owner file, the watcher
-/// keeps its pid there while voxtype records or transcribes, so the ask can cancel only its own recording.
+/// else started. With an owner file, the watcher keeps its pid there while voxtype records or transcribes, so the ask
+/// can cancel only its own recording.
 pub fn listen_start_only(owner_file: Option<&Path>) -> bool {
-    let mut command = Command::new(paths::legacy_bin());
-    command
-        .args(["listen", "--start-only"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null());
-    if let Some(owner_file) = owner_file {
-        command.env("VOXCMD_RECORDING_OWNER_FILE", owner_file);
-    }
-    command.status().is_ok_and(|status| status.success())
+    crate::voice::listen::start_only(owner_file)
 }
 
 // ---- the asking side ------------------------------------------------------------------------------------------------
@@ -521,7 +513,7 @@ impl AskWith {
 
 /// This binary's path. Once a rebuild has replaced the running binary, Linux names it `<path> (deleted)`; the path
 /// then holds the new build, which asks as well.
-fn this_binary() -> PathBuf {
+pub fn this_binary() -> PathBuf {
     std::env::current_exe().map_or_else(|_| "voxcmd".into(), without_deleted_mark)
 }
 

@@ -29,10 +29,6 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
         "explain --window",
         "2.5",
     ),
-    (&["listen", "--start-only"], "listen", "2.4"),
-    (&["stop"], "stop", "2.4"),
-    (&["session", "rapid"], "session", "2.4"),
-    (&["session", "end"], "session", "2.4"),
     (&["wake", "on"], "wake", "2.6"),
     (&["wake", "status"], "wake", "2.6"),
     (&["wake", "listen", "--check"], "wake listen", "4.1"),
@@ -44,8 +40,6 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["log", "misses"], "log misses", "2.6"),
     (&["log", "errors", "5", "--json"], "log errors", "2.6"),
     (&["timer", "ring", "Timer", "done"], "timer ring", "2.6"),
-    (&["internal", "watch", "--any", "args"], "internal watch", "2.4"),
-    (&["internal", "settle"], "internal settle", "2.4"),
     (
         &["internal", "wake-confirm", "clip.wav"],
         "internal wake-confirm",
@@ -53,9 +47,6 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     ),
     (&["internal", "chain-stop"], "internal chain-stop", "2.4"),
     // The bash spellings stay as aliases until the Python listeners move, at the top level where callers run them.
-    (&["internal", "_watch"], "internal watch", "2.4"),
-    (&["_watch"], "internal watch", "2.4"),
-    (&["_settle"], "internal settle", "2.4"),
     (&["_wake-confirm", "clip.wav"], "internal wake-confirm", "2.4"),
     (&["_chain-stop"], "internal chain-stop", "2.4"),
     // `--` ends the flags, so a phrase can start with a dash.
@@ -99,6 +90,19 @@ fn usage_errors_exit_2() {
         assert!(
             message.contains("Usage:") || message.starts_with("error:"),
             "{args:?}: {message}"
+        );
+    }
+}
+
+#[test]
+fn a_watcher_needs_a_handler_under_either_spelling() {
+    for args in [&["internal", "watch", "--any", "args"][..], &["_watch"]] {
+        let output = voxcmd(args);
+        assert_eq!(output.status.code(), Some(2), "{args:?}");
+        assert!(
+            stderr(&output).starts_with("voxcmd: internal watch: usage: "),
+            "{args:?}: {}",
+            stderr(&output)
         );
     }
 }
