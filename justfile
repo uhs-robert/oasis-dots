@@ -52,6 +52,7 @@ _stow mode *pkgs:
     set -euo pipefail
     export DOTFILES_DIR="$PWD"
     source lib/install/load.sh
+    [[ "{{mode}}" == D ]] || migrate_quickshell_lock_assets
     stow_packages "-{{mode}}" {{pkgs}}
 
 # One-time fix for a systemd tree folded into the repo (before #812's follow-up); idempotent, pass --dry-run to only report

@@ -5,3 +5,9 @@ features/lock/skins/ff7/audio/
 features/lock/skins/mgs2/audio/
 features/lock/skins/goldeneye/audio/
 features/lock/skins/goldeneye/frames/
+# Old locations until migrate_quickshell_lock_assets (lib/install/migrate.sh) has moved the imports; drop once everyone has pulled.
+lock/skins/ocarina/audio/
+lock/skins/ff7/audio/
+lock/skins/mgs2/audio/
+lock/skins/goldeneye/audio/
+lock/skins/goldeneye/frames/
