@@ -3047,6 +3047,8 @@ legacy_hook() {
   raw_transcript="${VOXCMD_LEGACY_RAW_TRANSCRIPT-}"
   load_integration "$file" >/dev/null
   legacy_session_shims
+  # A hook the Rust port runs under the session lock: a nested session call runs directly, as it would in bash.
+  [ "${VOXCMD_SESSION_LOCK_HELD-}" != 1 ] || session_lock_held=1
   case "$kind" in
   candidates)
     declare -F candidates >/dev/null || return 0

@@ -208,7 +208,7 @@ pub fn listen_for_turn(me: u32) {
 /// Leaves the modes whose screen is gone (the overview closed by key), so a mode never outlives what it drives.
 fn drop_dead_modes(lock: &SessionLock, me: u32) {
     while let Some(state) = super::state(lock) {
-        if mode::alive(&text_of(&state["integration"]))
+        if mode::alive_under(lock, &text_of(&state["integration"]))
             || !super::leave(lock, &text_of(&state["kind"]), "its screen closed", me)
         {
             return;

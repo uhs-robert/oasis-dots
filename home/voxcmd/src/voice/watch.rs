@@ -224,10 +224,7 @@ impl Cleanup {
     fn new(ends_session: bool) -> Self {
         let pid = std::process::id();
         if ends_session {
-            process::run_on_stop(
-                &ask::this_binary(),
-                &["internal", "session", "end-if-mine", &pid.to_string(), UNEXPECTED_END],
-            );
+            process::run_on_stop(move || session::end_if_mine(UNEXPECTED_END, pid));
         }
         let discard_flag = paths::discard_flag(pid);
         let threshold_file = paths::threshold_file(pid);

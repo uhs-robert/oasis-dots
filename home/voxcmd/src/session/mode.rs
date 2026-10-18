@@ -5,7 +5,7 @@
 //! A bash integration's settings may read the environment (type mode's `VOXCMD_TYPE_*`), so they are read live, by
 //! `_legacy-hook mode-settings`, at every session event that needs them, never from the cached legacy dump. A TOML
 //! mode is voxcmd-port 2.4c2; until then any other file has the defaults.
-use super::bridge;
+use super::{SessionLock, bridge};
 use crate::paths;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -127,15 +127,30 @@ fn legacy_hook(kind: &str, file: &str) -> Command {
     command
 }
 
-/// Whether the mode is still wanted: its `session_alive`, when it has one, says its screen is still up. Run while the
-/// session lock is held, as bash ran it, so the hook must not read the session: overview's only asks the bar.
+/// Whether the mode is still wanted: its `session_alive`, when it has one, says its screen is still up.
 pub fn alive(file: &str) -> bool {
-    !is_legacy_file(file)
-        || legacy_hook("alive", file)
-            .stdout(Stdio::null())
-            .status()
-            // A hook that cannot run says nothing against the mode.
-            .map_or(true, |status| status.success())
+    is_alive(file, false)
+}
+
+/// `alive` while the session lock is held, as bash ran it there. The hook's session reads skip the lock and its
+/// changes are refused (`bridge::LOCK_HELD_BY_CALLER`), so it cannot wait for this caller.
+pub fn alive_under(_lock: &SessionLock, file: &str) -> bool {
+    is_alive(file, true)
+}
+
+fn is_alive(file: &str, lock_held: bool) -> bool {
+    if !is_legacy_file(file) {
+        return true;
+    }
+    let mut command = legacy_hook("alive", file);
+    if lock_held {
+        command.env(bridge::LOCK_HELD_BY_CALLER, "1");
+    }
+    command
+        .stdout(Stdio::null())
+        .status()
+        // A hook that cannot run says nothing against the mode.
+        .map_or(true, |status| status.success())
 }
 
 /// Each text as the mode's `session_rewrite` makes it; none when the hook failed to give one per text. A single text

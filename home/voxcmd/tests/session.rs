@@ -323,6 +323,41 @@ fn leave_state_and_end_reach_the_session_from_any_process() {
 }
 
 #[test]
+fn a_hook_run_under_the_session_lock_reads_the_session_without_it_and_changes_nothing() {
+    use std::os::fd::AsRawFd;
+    let setup = Setup::new();
+    let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
+    owned_session(&setup, &owner, serde_json::json!({}));
+    let lock = std::fs::File::create(setup.runtime().join("session.lock")).unwrap();
+    // SAFETY: flock on a descriptor this test owns, released when it closes.
+    unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX) };
+    let under_lock = |args: &[&str]| {
+        setup
+            .command(&[&["internal", "session"][..], args].concat())
+            .env("VOXCMD_LEGACY_PID", "1")
+            .env("VOXCMD_SESSION_LOCK_HELD", "1")
+            .output()
+            .unwrap()
+    };
+    let printed = under_lock(&["state"]);
+    assert!(printed.status.success());
+    assert_eq!(
+        serde_json::from_slice::<Value>(&printed.stdout).unwrap()["kind"],
+        "rapid"
+    );
+    assert!(!under_lock(&["end-all", "stopped"]).status.success());
+    assert!(setup.state().is_some());
+    assert!(
+        setup
+            .debug_log()
+            .contains("internal session: end-all refused, called from a hook run under the session lock")
+    );
+    drop(lock);
+    let _ = owner.kill();
+    let _ = owner.wait();
+}
+
+#[test]
 fn a_voice_key_during_a_session_takes_it_over_and_keeps_its_other_fields() {
     let setup = Setup::new();
     let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
