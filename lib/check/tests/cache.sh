@@ -2,7 +2,7 @@
 # Tests the pass records of `lib/check.sh`: which steps a run skips as passed for their inputs, and when it records a tree.
 # Runs in a scratch clone of this checkout whose steps (lib/check/scopes.py) only log their name, so no linter or suite runs.
 set -u
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE CHECK_FULL CHECK_SKIP_STEPS CHECK_JOBS
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE CHECK_FULL CHECK_SKIP_STEPS CHECK_JOBS VOXCMD_ONLY_SECTIONS
 
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 scratch=$(mktemp -d) || exit 1
@@ -139,6 +139,44 @@ git commit -qam 'qml again'
 check_run --paths-from "$scratch/paths"
 expect "--paths-from records steps" "ran_step qmllint"
 expect "but no tree" "! lib/check/passed.sh is-passed"
+
+check_run --only nope
+expect "--only with an unknown step exits 2" "[ $status = 2 ] && grep -q \"unknown step 'nope'\" '$scratch/out'"
+check_run --only voxcmd-click,nope
+expect "and runs nothing, even the steps it does know" "[ $status = 2 ] && [ -z '$ran' ]"
+
+# Every step but voxcmd-click passes for this content, so once --only passes it, every step has: the tree record is
+# then held back by the --only gate alone.
+echo w >>"$voxcmd_file"
+git commit -qam 'voxcmd change for --only'
+FAIL_STEPS=voxcmd-click check_run
+cp "$trees_file" "$scratch/trees.before"
+check_run --only voxcmd-click,voxcmd-wake
+expect "--only runs only the named steps not yet passed" "[ $status = 0 ] && [ '$ran' = voxcmd-click ]"
+expect "and names the rest as passed" "grep -q 'skipped (passed for these inputs): voxcmd-wake;' '$scratch/out'"
+expect "and says what it was limited to" "grep -q '^check: only voxcmd-click,voxcmd-wake; ran: voxcmd-click;' '$scratch/out'"
+expect "--only never records the tree, though every step has now passed" "cmp -s '$trees_file' '$scratch/trees.before'"
+check_run --only voxcmd-click --changed HEAD~
+expect "nor a pass against a --changed base" "[ $status = 0 ] && cmp -s '$trees_file' '$scratch/trees.before'"
+check_run --changed HEAD~
+expect "a later --changed run reuses the pass --only recorded" "[ $status = 0 ] && ! ran_step voxcmd-click"
+expect "and says so" "grep -q '^== voxcmd-click skipped (passed for these inputs)' '$scratch/out'"
+expect "and records the tree itself" "lib/check/passed.sh passed-since HEAD~ && lib/check/passed.sh is-passed"
+echo dirty >>"$voxcmd_file"
+check_run --only voxcmd-click
+expect "--only after an edit in the step's scope runs it again" "ran_step voxcmd-click"
+git checkout -q -- "$voxcmd_file"
+
+echo v >>"$voxcmd_file"
+git commit -qam 'voxcmd change run in part'
+cp "$trees_file" "$scratch/trees.before"
+VOXCMD_ONLY_SECTIONS=some-section check_run --changed HEAD~
+expect "VOXCMD_ONLY_SECTIONS runs the voxcmd suites" "[ $status = 0 ] && ran_step voxcmd-click"
+expect "and says their pass is not recorded" "grep -q 'VOXCMD_ONLY_SECTIONS is set, so no pass is recorded for' '$scratch/out'"
+expect "nor the tree or the base" "cmp -s '$trees_file' '$scratch/trees.before'"
+check_run --changed HEAD~
+expect "so the next run runs the suites again" "ran_step voxcmd-click && ran_step voxcmd-wake"
+expect "but not the steps that ran whole beside them" "! ran_step conflicts"
 
 [ "$failures" = 0 ] || {
   printf '%s failed\n' "$failures" >&2
