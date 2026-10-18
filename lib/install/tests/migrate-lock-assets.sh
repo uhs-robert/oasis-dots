@@ -57,6 +57,27 @@ check test "$(cat "$scratch/c/lock/skins/ff7/audio/a.ogg")" = one
 check grep -q 'already exists' <<<"$output"
 check test "$(cat "$scratch/c/features/lock/skins/ff7/audio/sub/b.ogg")" = two
 
+case_name='moves a symlinked asset dir as a link and survives under set -e'
+old_layout "$scratch/s"
+mkdir -p "$scratch/target/audio"
+printf real >"$scratch/target/audio/x.ogg"
+rm -r "$scratch/s/lock/skins/ff7/audio"
+ln -s "$scratch/target/audio" "$scratch/s/lock/skins/ff7/audio"
+check bash -ec "source $repo_dir/lib/common/output.sh; source $repo_dir/lib/install/migrate.sh; migrate_quickshell_lock_assets $scratch/s" >/dev/null 2>&1
+check test -L "$scratch/s/features/lock/skins/ff7/audio"
+check test "$(cat "$scratch/s/features/lock/skins/ff7/audio/x.ogg")" = real
+check test ! -L "$scratch/s/lock/skins/ff7/audio"
+check test -f "$scratch/target/audio/x.ogg"
+
+case_name='moves a symlinked file inside a real dir without following it'
+old_layout "$scratch/l"
+printf real >"$scratch/target/file.ogg"
+ln -s "$scratch/target/file.ogg" "$scratch/l/lock/skins/ff7/audio/link.ogg"
+migrate_quickshell_lock_assets "$scratch/l" >/dev/null 2>&1
+check test -L "$scratch/l/features/lock/skins/ff7/audio/link.ogg"
+check test -f "$scratch/target/file.ogg"
+check test ! -e "$scratch/l/lock/skins/ff7"
+
 case_name='dry run changes nothing'
 old_layout "$scratch/d"
 before=$(find "$scratch/d" | sort)
