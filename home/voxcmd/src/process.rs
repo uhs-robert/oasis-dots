@@ -5,7 +5,8 @@
 //! bash would leave them running (and holding the pipes open), so each command leads a process group of its own. A
 //! timeout kills the group, and so does SIGINT or SIGTERM to voxcmd (Stop Voice must reach a running action), which also
 //! removes the files listed with `RemovedOnSignal`. An ask is the exception: a stop signal TERMs it so it can take its
-//! question down, and kills it only if it is still there after `STOP_GRACE`.
+//! question down, and kills it only if it is still there after `STOP_GRACE`; so is a watcher's auto-stop detector
+//! (`spawn_letting_clean_up`). Once a stop signal has begun ending voxcmd, nothing new is spawned.
 use std::ffi::CString;
 use std::io::Read;
 use std::os::unix::ffi::OsStrExt;
@@ -84,6 +85,37 @@ pub fn run_to_end(command: &mut Command) -> std::io::Result<Outcome> {
 /// `run_to_end` for an ask, which a stop signal gives time to take its question down (see `STOP_GRACE`).
 pub fn run_ask_to_end(command: &mut Command) -> std::io::Result<Outcome> {
     run(command, None, OnStop::LetCleanUp)
+}
+
+/// Starts a long-lived child in a process group of its own and returns at once, its group listed until the returned
+/// guard drops: a stop signal TERMs it, as it does an ask. For a watcher's auto-stop detector, whose caller waits on it.
+pub fn spawn_letting_clean_up(command: &mut Command) -> std::io::Result<(Child, LiveGroup)> {
+    command.process_group(0);
+    spawn_listed(command, OnStop::LetCleanUp)
+}
+
+/// Has the child TERMed when the thread that spawns it ends (`PR_SET_PDEATHSIG`; for a child that must not outlive
+/// voxcmd even when voxcmd is SIGKILLed). A parent that died before the call took effect is caught too: the child then
+/// never execs. It exits instead of raising TERM, which in the forked child would run voxcmd's own handler, or stay
+/// blocked by an inherited mask.
+pub fn die_with_parent(command: &mut Command) {
+    // SAFETY: getpid has no preconditions.
+    let parent = unsafe { libc::getpid() };
+    // SAFETY: prctl and getppid are async-signal-safe and touch only the child.
+    unsafe {
+        command.pre_exec(move || {
+            libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+            if parent_is_gone(parent, libc::getppid()) {
+                return Err(std::io::Error::other("the parent is gone"));
+            }
+            Ok(())
+        });
+    }
+}
+
+/// A child whose parent died is reparented, so its parent pid is no longer the one it was forked from.
+fn parent_is_gone(forked_from: libc::pid_t, parent_now: libc::pid_t) -> bool {
+    forked_from != parent_now
 }
 
 fn run(command: &mut Command, timeout: Option<Duration>, on_stop: OnStop) -> std::io::Result<Outcome> {
@@ -203,25 +235,33 @@ fn kill_group(pid: u32) {
 // paths turned into C strings before they are listed.
 
 const LIVE_SLOTS: usize = 32;
-const REMOVED_SLOTS: usize = 4;
+const REMOVED_SLOTS: usize = 8;
 
 /// Process groups of the commands running now, 0 for a free slot; negated for an `OnStop::LetCleanUp` group, so that
 /// the handler never reads a group without how to end it.
 static LIVE_GROUPS: [AtomicI32; LIVE_SLOTS] = [const { AtomicI32::new(0) }; LIVE_SLOTS];
 /// Files to remove on a stop signal, null for a free slot.
-static REMOVED_ON_SIGNAL: [AtomicPtr<libc::c_char>; REMOVED_SLOTS] =
+static REMOVED_ON_SIGNAL: [AtomicPtr<Removal>; REMOVED_SLOTS] =
     [const { AtomicPtr::new(std::ptr::null_mut()) }; REMOVED_SLOTS];
 /// Threads between spawning a command and listing its group. A signal then is held until the last of them has
 /// listed its group (`PENDING_SIGNAL`), or the command would outlive voxcmd.
 static SPAWNING: AtomicUsize = AtomicUsize::new(0);
 static PENDING_SIGNAL: AtomicI32 = AtomicI32::new(0);
+/// Set once a stop signal has begun ending voxcmd. A thread the signal did not land on keeps running through the
+/// ask's grace, and must not start a command the ending has already passed over.
+static STOPPING: AtomicBool = AtomicBool::new(false);
 static HANDLERS: Once = Once::new();
 
 /// Spawns the command and lists its group, with no moment between the two at which a stop signal leaves it running.
+/// Fails once voxcmd is stopping.
 fn spawn_listed(command: &mut Command, on_stop: OnStop) -> std::io::Result<(Child, LiveGroup)> {
     HANDLERS.call_once(install_handlers);
     // SeqCst throughout, paired with the handler's: it either sees this thread spawning, or this thread sees its signal.
     SPAWNING.fetch_add(1, Ordering::SeqCst);
+    if STOPPING.load(Ordering::SeqCst) {
+        SPAWNING.fetch_sub(1, Ordering::SeqCst);
+        return Err(std::io::Error::other("voxcmd is stopping"));
+    }
     let spawned = command.spawn();
     let live = spawned
         .as_ref()
@@ -237,7 +277,7 @@ fn spawn_listed(command: &mut Command, on_stop: OnStop) -> std::io::Result<(Chil
 }
 
 /// A running command's group, listed until dropped.
-struct LiveGroup(Option<usize>);
+pub struct LiveGroup(Option<usize>);
 
 impl LiveGroup {
     fn register(pid: u32, on_stop: OnStop) -> Self {
@@ -261,20 +301,39 @@ impl Drop for LiveGroup {
     }
 }
 
+/// A file to remove, and the only text it may then hold (none: whatever it holds).
+struct Removal {
+    path: CString,
+    if_holding: Option<CString>,
+}
+
 /// A file removed if a stop signal ends voxcmd while this lives; a signal skips every `Drop`, so the owner's own
 /// cleanup would not run. Dropping it only unlists the file.
 pub struct RemovedOnSignal(Option<usize>);
 
 impl RemovedOnSignal {
     pub fn new(path: &Path) -> Self {
+        Self::listed(path, None)
+    }
+
+    /// Removed only while the file still holds `content` (a watcher's pid in an ask's recording owner file, which a
+    /// newer watcher may have taken over).
+    pub fn if_holding(path: &Path, content: &str) -> Self {
+        Self::listed(path, Some(content))
+    }
+
+    fn listed(path: &Path, if_holding: Option<&str>) -> Self {
         HANDLERS.call_once(install_handlers);
         let Ok(path) = CString::new(path.as_os_str().as_bytes()) else {
             return Self(None);
         };
-        // Never freed: the handler may be reading it on another thread as it is unlisted. One per sequence.
-        let path = path.into_raw();
+        let Ok(if_holding) = if_holding.map(CString::new).transpose() else {
+            return Self(None);
+        };
+        // Never freed: the handler may be reading it on another thread as it is unlisted. A few per process.
+        let removal = Box::into_raw(Box::new(Removal { path, if_holding }));
         let slot = REMOVED_ON_SIGNAL.iter().position(|slot| {
-            slot.compare_exchange(std::ptr::null_mut(), path, Ordering::AcqRel, Ordering::Acquire)
+            slot.compare_exchange(std::ptr::null_mut(), removal, Ordering::AcqRel, Ordering::Acquire)
                 .is_ok()
         });
         Self(slot)
@@ -289,10 +348,29 @@ impl Drop for RemovedOnSignal {
     }
 }
 
+/// Whether the file holds exactly `expected`. Only async-signal-safe calls, for the handler.
+fn file_holds(path: &CString, expected: &CString) -> bool {
+    let mut held = [0u8; 64];
+    // SAFETY: open, read and close on a NUL-terminated path, into a buffer of the length given.
+    let length = unsafe {
+        let fd = libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC);
+        if fd < 0 {
+            return false;
+        }
+        let length = libc::read(fd, held.as_mut_ptr().cast(), held.len());
+        libc::close(fd);
+        length
+    };
+    let Ok(length) = usize::try_from(length) else {
+        return false;
+    };
+    &held[..length] == expected.as_bytes()
+}
+
 fn install_handlers() {
     for signal in [libc::SIGINT, libc::SIGTERM] {
-        // SAFETY: the handler only uses atomics and async-signal-safe calls (killpg, waitpid, nanosleep, unlink,
-        // signal, raise).
+        // SAFETY: the handler only uses atomics and async-signal-safe calls (killpg, waitpid, nanosleep, open,
+        // read, close, unlink, signal, raise).
         unsafe {
             libc::signal(
                 signal,
@@ -311,8 +389,11 @@ extern "C" fn on_stop_signal(signal: libc::c_int) {
 }
 
 /// Ends every listed group and removes every listed file, then lets the signal do what it would have done, so voxcmd
-/// still ends as the signal says. Runs in the handler, or on the thread that held the signal.
+/// still ends as the signal says. Runs in the handler, or on the thread that held the signal. A second signal during
+/// the first one's grace (another thread's, or INT on top of TERM) only ends what has been listed since, and leaves
+/// the waiting and the exit to the first, so a stop never takes two graces.
 fn end_on_signal(signal: libc::c_int) {
+    let already_stopping = STOPPING.swap(true, Ordering::SeqCst);
     let mut asks_terminated = false;
     for slot in &LIVE_GROUPS {
         let listed = slot.load(Ordering::Acquire);
@@ -329,11 +410,21 @@ fn end_on_signal(signal: libc::c_int) {
         }
     }
     for slot in &REMOVED_ON_SIGNAL {
-        let path = slot.load(Ordering::Acquire);
-        if !path.is_null() {
-            // SAFETY: a listed path is a NUL-terminated string that is never freed.
-            unsafe { libc::unlink(path) };
+        // SAFETY: a listed removal is never freed.
+        let Some(removal) = (unsafe { slot.load(Ordering::Acquire).as_ref() }) else {
+            continue;
+        };
+        if removal
+            .if_holding
+            .as_ref()
+            .is_none_or(|expected| file_holds(&removal.path, expected))
+        {
+            // SAFETY: unlink on a NUL-terminated path.
+            unsafe { libc::unlink(removal.path.as_ptr()) };
         }
+    }
+    if already_stopping {
+        return;
     }
     if asks_terminated {
         kill_asks_after_grace();
@@ -427,6 +518,83 @@ pub(crate) mod tests {
             gone_within(child, Duration::from_secs(2)),
             "child {child} outlived the call"
         );
+    }
+
+    /// Runs the named test again in a process of its own with `VOXCMD_PROCESS_TEST_CHILD` set: a stop signal, and
+    /// the stopping it starts, would end or poison every other test in this one.
+    fn in_own_process(test: &str) -> Command {
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args(["--exact", &format!("process::tests::{test}"), "--test-threads=1"])
+            .env("VOXCMD_PROCESS_TEST_CHILD", "1")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        command
+    }
+
+    fn is_own_process() -> bool {
+        std::env::var_os("VOXCMD_PROCESS_TEST_CHILD").is_some()
+    }
+
+    #[test]
+    fn nothing_is_spawned_once_a_stop_has_begun() {
+        if is_own_process() {
+            STOPPING.store(true, Ordering::SeqCst);
+            let refused = run_with_timeout(&mut sh("true"), Duration::from_secs(1)).is_err();
+            std::process::exit(i32::from(!refused));
+        }
+        assert!(
+            in_own_process("nothing_is_spawned_once_a_stop_has_begun")
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+
+    #[test]
+    fn a_second_stop_signal_during_the_grace_does_not_add_one() {
+        if is_own_process() {
+            // An ask that ignores TERM, so only the KILL after the grace ends it.
+            thread::spawn(|| run_ask_to_end(&mut sh("trap '' TERM; sleep 30")));
+            thread::sleep(Duration::from_millis(200));
+            // SAFETY: kill only sends a signal, here to this process.
+            unsafe { libc::kill(libc::getpid(), libc::SIGTERM) };
+            thread::sleep(Duration::from_millis(300));
+            // SAFETY: as above.
+            unsafe { libc::kill(libc::getpid(), libc::SIGINT) };
+            thread::sleep(Duration::from_secs(30));
+            std::process::exit(0);
+        }
+        let started = Instant::now();
+        let status = in_own_process("a_second_stop_signal_during_the_grace_does_not_add_one")
+            .status()
+            .unwrap();
+        // One grace (2 s) after the first signal; two would be past 4 s.
+        assert!(
+            started.elapsed() < Duration::from_millis(3500),
+            "{:?}",
+            started.elapsed()
+        );
+        assert_eq!(status.signal(), Some(libc::SIGTERM), "the first signal ends it");
+    }
+
+    #[test]
+    fn a_child_that_dies_with_its_parent_dies_with_the_thread_that_started_it() {
+        let child = thread::spawn(|| {
+            let mut command = Command::new("sleep");
+            command.arg("30");
+            die_with_parent(&mut command);
+            command.spawn().unwrap().id()
+        })
+        .join()
+        .unwrap();
+        assert!(gone_within(i32::try_from(child).unwrap(), Duration::from_secs(2)));
+    }
+
+    #[test]
+    fn a_parent_is_gone_once_the_child_has_been_reparented() {
+        assert!(!parent_is_gone(100, 100));
+        assert!(parent_is_gone(100, 1));
     }
 
     /// Dead, or a zombie nobody has reaped yet.
