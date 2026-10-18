@@ -4,13 +4,13 @@
 # TMUX_TMPDIR: `TMUX_TMPDIR=/tmp/x tmux kill-server` killed the real server. Only -L or -S reliably points elsewhere.
 # Fails closed: a heredoc with no terminator, or a wrapper option it does not know before a tmux word, is denied.
 # Known limit: tmux inside a script file or a `bash -c '...'` string is not inspected, nor is a `$(` inside double
-# quotes, nor tmux behind a wrapper command it has no entry for (setsid, stdbuf, ...).
+# quotes or in an unquoted heredoc body, nor tmux behind a wrapper command it has no entry for (setsid, stdbuf, ...).
 # Known limits, left open because only a contrived command reaches them: a later -L/-S overriding an earlier one
 # (`tmux -L safe -S /owner/sock ...`), and a per-command TMUX_TMPDIR=... changing what -L resolves to.
 # shellcheck disable=SC1003 # a literal backslash in a case pattern, not an escaped quote
 set -u
 cmd=$(jq -r '.tool_input.command // empty')
-[[ $cmd == *tmux* ]] || exit 0
+[[ ${cmd//$'\\\n'/} == *tmux* ]] || exit 0
 
 sep=$'\x01'
 redir=$'\x02' # prefixes a redirection operator token; the operand follows as its own token
@@ -36,7 +36,8 @@ tokenize() {
         quote=''
       elif [[ $c == '\' ]]; then
         i=$((i + 1))
-        word+=${s:i:1}
+        # A backslash-newline is a line continuation: bash drops both characters.
+        [[ ${s:i:1} == $'\n' ]] || word+=${s:i:1}
       else
         word+=$c
       fi
@@ -45,7 +46,7 @@ tokenize() {
       "'" | '"') quote=$c in_word=1 ;;
       '\')
         i=$((i + 1))
-        word+=${s:i:1} in_word=1
+        if [[ ${s:i:1} != $'\n' ]]; then word+=${s:i:1} in_word=1; fi
         ;;
       '#')
         if ((in_word)); then word+=$c; else

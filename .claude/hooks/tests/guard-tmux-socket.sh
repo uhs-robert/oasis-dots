@@ -202,6 +202,17 @@ expect deny 'nohup -- tmux kill-server'
 expect deny 'nohup tmux kill-server'
 expect deny 'nohup --weird tmux ls'
 expect allow 'nohup -- tmux -L mine kill-server'
+# Backslash-newline continuations
+expect deny $'TMUX_TMPDIR=/tmp/x \\\ntmux kill-server'
+expect deny $'env -u TMUX \\\ntmux kill-server'
+expect deny $'timeout 5 \\\n  tmux kill-server'
+expect deny $'tmux \\\n-f /dev/null kill-server'
+expect deny $'tmux \\\nkill-server'
+expect deny $'tm\\\nux kill-server'
+expect deny $'echo "a \\\nb" && tmux kill-server'
+expect allow $'tmux -L mine \\\nkill-server'
+expect allow $'tmux \\\n-L mine kill-server'
+expect allow $'echo \'a \\\ntmux kill-server\''
 # Mentions only
 expect allow 'git commit -m "fix: tmux kill-server guard"'
 expect allow "git commit -m 'stop tmux kill-server'"
