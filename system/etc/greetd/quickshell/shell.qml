@@ -14,10 +14,14 @@ ShellRoot {
 
     GreeterAudio {}
 
+    // Opt-in: a preview normally opens one window, which skips the per-screen path real hardware takes (and hid the G3b font-order bug).
+    // The screens are an exclusive-keyboard overlay, so this must never be the default for a preview on a live desktop.
+    readonly property bool use_screens: !Greeter.preview || Quickshell.env("QS_GREETER_SCREENS") === "1"
+
     Variants {
         // Variants builds its windows in componentComplete, before Fonts' onCompleted registers the files, and the MGS2 title measures
         // its text once; building the screens only after `ready` keeps it from locking in a fallback font.
-        model: Greeter.preview || !bundled_fonts.ready ? [] : Quickshell.screens
+        model: root.use_screens && bundled_fonts.ready ? Quickshell.screens : []
 
         delegate: Component {
             PanelWindow {
@@ -34,6 +38,9 @@ ShellRoot {
                 WlrLayershell.layer: WlrLayer.Overlay
                 WlrLayershell.keyboardFocus: panel.modelData === Quickshell.screens[0] ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
+                // Once per start, so a test can tell whether the skin was built before or after the fonts registered.
+                Component.onCompleted: if (panel.modelData === Quickshell.screens[0]) console.log("greeter: fonts_ready=" + bundled_fonts.ready + " at screen build")
+
                 GreeterSurface {
                     anchors.fill: parent
                 }
@@ -42,7 +49,7 @@ ShellRoot {
     }
 
     LazyLoader {
-        active: Greeter.preview
+        active: !root.use_screens
 
         FloatingWindow {
             title: "Greeter preview"
