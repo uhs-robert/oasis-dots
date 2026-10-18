@@ -56,13 +56,13 @@ PATH_SCOPES = [
     ("home/quickshell/*", "qml node"),
     ("lib/check/steps/voxcmd-rust.sh", "rust"),
     # Only the Rust step: the voxcmd suites run with VOXCMD_BIN unset, so they exercise the bash voxcmd and never the
-    # crate. Revisit when VOXCMD_BIN=rs becomes the suites' default. An integration file also reaches the bash voxcmd,
+    # crate, except through the shared fixtures. Revisit when VOXCMD_BIN=rs becomes the suites' default. An integration file also reaches the bash voxcmd,
     # and the crate through tests/integrations.rs.
     ("home/voxcmd/src/*", "rust"),
     ("home/voxcmd/Cargo.*", "rust"),
     ("home/voxcmd/rustfmt.toml", "rust"),
     ("home/voxcmd/tests/*.rs", "rust"),
-    ("home/voxcmd/tests/fixtures/*", "rust"),
+    ("home/voxcmd/tests/fixtures/*", "rust voxcmd"),
     ("home/voxcmd/.config/voxcmd/integrations/*", "rust voxcmd"),
     ("home/voxcmd/*", "voxcmd"),
     ("extras/voxcmd-firefox/*", "voxcmd"),
