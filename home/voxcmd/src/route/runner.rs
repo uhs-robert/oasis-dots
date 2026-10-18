@@ -63,7 +63,11 @@ impl Runner<'_> {
             let private = step
                 .forced_integration
                 .is_some_and(|index| integrations[index].settings.private_labels);
-            log_no_match(&step.normalized, private);
+            // Kept out, as the debug log keeps them out: a transcript heard in a private mode, and a session's turns,
+            // which its mode may take as dictation.
+            if !self.rt.heard_private && !self.rt.in_session_turn {
+                log_no_match(&step.normalized, private);
+            }
             if !in_sequence {
                 self.rt
                     .notifier
@@ -156,6 +160,31 @@ fn choices_json(rt: &Runtime, options: &[RouteOption]) -> String {
 /// `voxcmd run <phrase>`: one step, or the steps of "and then" in order. Exit 0 when the user decided (it ran, or was
 /// cancelled, declined or discarded), 1 when nothing matched, the action failed or no step of a sequence ran.
 pub fn run(args: PhraseArgs) -> Result<(), CliError> {
+    let exit_code = route_phrase(&args.phrase.join(" "), Heard::Typed)?;
+    if exit_code == 0 {
+        Ok(())
+    } else {
+        Err(CliError::quiet("run"))
+    }
+}
+
+/// A transcript a watcher heard, routed as `run` routes a phrase; the exit code `run` would have. `heard_private`: the
+/// mode it was heard in keeps what is said out of the logs.
+pub fn run_spoken(transcript: &str, heard_private: bool) -> i32 {
+    route_phrase(transcript, Heard::Spoken { heard_private }).unwrap_or_else(|error| {
+        eprintln!("{error}");
+        1
+    })
+}
+
+/// How the phrase arrived.
+#[derive(Clone, Copy)]
+enum Heard {
+    Typed,
+    Spoken { heard_private: bool },
+}
+
+fn route_phrase(phrase: &str, heard: Heard) -> Result<i32, CliError> {
     let config_dir = paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("run", message))?;
     let stems = || config.integrations.iter().map(|integration| integration.stem.clone());
@@ -173,23 +202,19 @@ pub fn run(args: PhraseArgs) -> Result<(), CliError> {
         legacy: &legacy,
         asker: &asker,
         notifier: &Desktop,
-        // A typed `run`; the watcher that routes a spoken one sets these (voxcmd-port 2.4b and 2.4c).
-        came_by_voice: false,
+        came_by_voice: matches!(heard, Heard::Spoken { .. }),
+        heard_private: matches!(heard, Heard::Spoken { heard_private: true }),
+        // A session's turns are the bash voxcmd's until voxcmd-port 2.4c.
         in_session_turn: false,
     };
     let runner = Runner {
         router: &router,
         rt: &runtime,
     };
-    let split = sequence::split_phrase(&router, &args.phrase.join(" "));
-    let exit_code = if split.steps.len() == 1 {
+    let split = sequence::split_phrase(&router, phrase);
+    Ok(if split.steps.len() == 1 {
         runner.run_step(&split.steps[0], false, "").exit_code
     } else {
         runner.run_sequence(&split, &Pacing::from_env())
-    };
-    if exit_code == 0 {
-        Ok(())
-    } else {
-        Err(CliError::quiet("run"))
-    }
+    })
 }

@@ -13,11 +13,14 @@ mod notify;
 mod paths;
 mod process;
 mod route;
+mod session;
 mod text;
+mod voice;
 
 use clap::{CommandFactory, FromArgMatches};
 use cli::{
-    AskCommand, Cli, Command, IntegrationsCommand, InternalCommand, LogCommand, TimerCommand, UtilCommand, WakeCommand,
+    AskCommand, Cli, Command, IntegrationsCommand, InternalCommand, LogCommand, SessionCommand, TimerCommand,
+    UtilCommand, WakeCommand,
 };
 use exit::CliError;
 use std::io::Write;
@@ -76,9 +79,16 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Run(args) => route::runner::run(args).map(|()| None),
         Command::Explain(args) => route::trace::run(args).map(Some),
         Command::Reply(args) => ask::reply::run(args),
-        Command::Listen { .. } => later("listen", "2.4"),
-        Command::Stop => later("stop", "2.4"),
-        Command::Session(_) => later("session", "2.4"),
+        Command::Listen { start_only } => voice::listen::run(start_only).map(|()| None),
+        Command::Stop => voice::stop::run().map(|()| None),
+        Command::Session(SessionCommand::End) => {
+            session::run_end();
+            Ok(None)
+        }
+        Command::Session(SessionCommand::Rapid) => route::runner::run(cli::PhraseArgs {
+            phrase: vec!["rapid mode".to_string()],
+        })
+        .map(|()| None),
         Command::Ask(AskCommand::Pick {
             ask,
             label,
@@ -110,8 +120,8 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         }
         Command::Util(UtilCommand::Speech(speech)) => text::speech::run(speech).map(Some),
         Command::Util(UtilCommand::VoiceEnv { key }) => config::voice_env::run(&key).map(Some),
-        Command::Internal(InternalCommand::Watch(_)) => later("internal watch", "2.4"),
-        Command::Internal(InternalCommand::Settle(_)) => later("internal settle", "2.4"),
+        Command::Internal(InternalCommand::Watch(args)) => voice::watch::run(&args.args).map(|()| None),
+        Command::Internal(InternalCommand::Settle(_)) => voice::settle::run().map(|()| None),
         Command::Internal(InternalCommand::CancelOwnedRecording(args)) => {
             ask::run_cancel_owned_recording(&args.args).map(|()| None)
         }

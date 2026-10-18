@@ -22,8 +22,11 @@ pub struct Runtime<'a> {
     pub legacy: &'a LegacyHooks,
     pub asker: &'a dyn Asker,
     pub notifier: &'a dyn Notifier,
-    /// The phrase was spoken (a watcher routes it), so a question it asks records the answer by voice too.
+    /// The phrase was spoken: a watcher routes it, so a question it asks records the answer by voice too, and the
+    /// watcher's discard flag (which Stop Voice sets) is its recording's as well as its sequence's.
     pub came_by_voice: bool,
+    /// The mode the phrase was heard in is private (type mode): nothing of it goes to the no-match log.
+    pub heard_private: bool,
     /// A voice session's turn: nobody is at the keyboard, so every picker listens.
     pub in_session_turn: bool,
 }
