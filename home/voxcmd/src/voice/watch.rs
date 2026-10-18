@@ -59,10 +59,12 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
     let heard_private = args.get(2).is_some_and(|private| private == "1");
     let detector_settings = args.get(3).map_or("", String::as_str);
     let me = std::process::id();
+    let stop_signals_held = process::StopSignalsHeld::new();
     process::stop_on_hangup_too();
     // Held until the handler is done: Stop Voice flags this watcher's discard flag to keep what the handler opens
     // from listening.
     let mut cleanup = Cleanup::new(handler == Handler::SessionTurn);
+    drop(stop_signals_held);
     let transcript = match watch_recording(&mut cleanup, detector_settings) {
         Heard::Transcript(transcript) => transcript,
         // Autostop's no-speech cancel, or a recording cancelled: the mode is over.

@@ -483,10 +483,12 @@ mod tests {
         std::fs::create_dir_all(paths::runtime_dir()).unwrap();
         std::fs::write(paths::session_file(), session.to_string()).unwrap();
         let events = dir.join("events");
+        let held = crate::process::StopSignalsHeld::new();
         crate::process::run_on_stop(move || {
             end_if_mine("stopped", me);
             note(&events, "ended");
         });
+        drop(held);
     }
 
     fn note(events: &std::path::Path, event: &str) {

@@ -400,6 +400,35 @@ fn install_handlers() {
     }
 }
 
+/// The stop signals held back on this thread until dropped: one that arrives meanwhile is delivered then. For the
+/// steps that set up how a stop ends voxcmd (the handlers, `run_on_stop`), so no signal finds them half done. Only
+/// while this is voxcmd's one thread: another one would take the signal instead. Threads started meanwhile keep the
+/// signals held for good, so the handler never runs on them.
+pub struct StopSignalsHeld(libc::sigset_t);
+
+impl StopSignalsHeld {
+    pub fn new() -> Self {
+        // SAFETY: sigset_t is plain data, filled by sigemptyset and pthread_sigmask before it is read.
+        unsafe {
+            let mut held: libc::sigset_t = std::mem::zeroed();
+            libc::sigemptyset(&raw mut held);
+            for signal in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
+                libc::sigaddset(&raw mut held, signal);
+            }
+            let mut before: libc::sigset_t = std::mem::zeroed();
+            libc::pthread_sigmask(libc::SIG_BLOCK, &raw const held, &raw mut before);
+            Self(before)
+        }
+    }
+}
+
+impl Drop for StopSignalsHeld {
+    fn drop(&mut self) {
+        // SAFETY: restores the mask `new` saved.
+        unsafe { libc::pthread_sigmask(libc::SIG_SETMASK, &raw const self.0, std::ptr::null_mut()) };
+    }
+}
+
 /// SIGHUP ends voxcmd as SIGTERM does. Only for a watcher, which logind HUPs at logout and which must still take its
 /// files and detector down then, as the bash EXIT trap did; a CLI run whose terminal closes keeps the default.
 pub fn stop_on_hangup_too() {
@@ -437,7 +466,8 @@ static LAST_ACT_THREAD: OnceLock<thread::ThreadId> = OnceLock::new();
 const LAST_ACT_LIMIT: Duration = Duration::from_secs(5);
 
 /// Has a stop signal run `act` as voxcmd's last act, after it has ended its groups and removed its files: on a thread
-/// of its own, which then ends voxcmd as the signal would have. Once per process.
+/// of its own, which then ends voxcmd as the signal would have. Once per process, under `StopSignalsHeld`: a signal
+/// before the act is listed would end voxcmd without it.
 pub fn run_on_stop(act: impl FnOnce() + Send + 'static) {
     HANDLERS.call_once(install_handlers);
     let mut fds = [0; 2];
@@ -496,11 +526,16 @@ pub fn wait_for_last_act() -> ! {
     }
 }
 
-/// Lets the signal do what it would have done, so voxcmd still ends as the signal says.
+/// Lets the signal do what it would have done, so voxcmd still ends as the signal says. The last act's thread holds the
+/// stop signals (`StopSignalsHeld`), so the one raised is let through on this thread first.
 fn end_as(signal: libc::c_int) {
-    // SAFETY: restoring the default action and raising again are async-signal-safe.
+    // SAFETY: restoring the default action, unblocking and raising again are async-signal-safe.
     unsafe {
         libc::signal(signal, libc::SIG_DFL);
+        let mut raised: libc::sigset_t = std::mem::zeroed();
+        libc::sigemptyset(&raw mut raised);
+        libc::sigaddset(&raw mut raised, signal);
+        libc::pthread_sigmask(libc::SIG_UNBLOCK, &raw const raised, std::ptr::null_mut());
         libc::raise(signal);
     }
 }
@@ -699,6 +734,33 @@ pub(crate) mod tests {
             started.elapsed()
         );
         assert_eq!(status.signal(), Some(libc::SIGTERM), "the first signal ends it");
+    }
+
+    #[test]
+    fn a_stop_signal_while_the_last_act_is_set_up_waits_for_it() {
+        let test = "process::tests::a_stop_signal_while_the_last_act_is_set_up_waits_for_it";
+        if is_own_process() {
+            let marker = std::env::var_os("VOXCMD_TEST_MARKER").unwrap();
+            let held = StopSignalsHeld::new();
+            stop_on_hangup_too();
+            // To this thread: the test harness's own threads would take one sent to the process. Pending while held.
+            // SAFETY: raise only sends a signal.
+            unsafe { libc::raise(libc::SIGHUP) };
+            run_on_stop(move || std::fs::write(marker, "ran").unwrap());
+            drop(held);
+            thread::sleep(Duration::from_secs(30));
+            std::process::exit(0);
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("marker");
+        let started = Instant::now();
+        let status = in_own_process(test)
+            .env("VOXCMD_TEST_MARKER", &marker)
+            .status()
+            .unwrap();
+        assert_eq!(status.signal(), Some(libc::SIGHUP), "{status:?}");
+        assert!(started.elapsed() < Duration::from_secs(4), "{:?}", started.elapsed());
+        assert_eq!(std::fs::read_to_string(&marker).unwrap_or_default(), "ran");
     }
 
     #[test]
