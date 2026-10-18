@@ -444,10 +444,14 @@ pub fn end_if_mine(reason: &str, me: u32) {
     }
 }
 
-/// Runs a popped mode's `session_ended` in the background, through the bash voxcmd that loaded its integration. Its
+/// Runs a popped mode's `session_ended` (a TOML mode's `ended`) in the background, a bash one through the bash voxcmd
+/// that loaded its integration. Its
 /// pid is logged: the suites wait for the hook by it. It gets no `VOXCMD_LEGACY_PID`, so a `session_state` in it takes
 /// the lock as any reader does, after the caller has let it go.
 fn run_ended_hook(integration: &str, reason: &str, frame_id: &str, continues: bool) {
+    if mode::run_toml_ended(integration, reason, frame_id, continues) {
+        return;
+    }
     let mut command = Command::new(paths::legacy_bin());
     command
         .args(["_legacy-hook", "ended", integration, reason, frame_id])

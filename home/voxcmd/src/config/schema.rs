@@ -43,6 +43,8 @@ pub struct Integration {
     pub defines: BTreeMap<String, String>,
     /// `[mode] exit_object`, the `{mode_object}` of patterns and the object of `{mode_exit}` (TOML only).
     pub mode_exit_object: Option<String>,
+    /// The voice-session mode this integration opens (`[mode]`, TOML only).
+    pub mode: Option<Mode>,
     pub verbs: Vec<Verb>,
     pub settings: MatchSettings,
     pub actions: BTreeMap<String, Action>,
@@ -93,9 +95,57 @@ pub struct Action {
     pub free_text: bool,
     pub mode_switch: bool,
     pub mode_entry: bool,
+    /// Opens the integration's mode before `run`; `run` may then be empty.
+    pub enter_mode: bool,
+    /// Leaves the integration's mode with this reason; nothing happens when it is not open.
+    pub leave_mode: Option<String>,
+    /// The action ran but found nothing to act on: the session turn counts as unclear.
+    pub miss: bool,
     pub wait: Option<Wait>,
     /// Seconds the action's hooks may run; the hook default (3) when unset.
     pub timeout_secs: Option<f64>,
+}
+
+/// A voice-session mode, as `[mode]` declares it. Patterns are as written (same `{define}`/`{mode_object}` dialect as
+/// verbs); `config::check_modes` compiles them.
+#[derive(Debug, Clone)]
+pub struct Mode {
+    pub label: String,
+    pub exit_phrases: String,
+    pub exit_hint: String,
+    pub bare_exits: bool,
+    pub default_exits: bool,
+    pub allows_switches: bool,
+    pub private: bool,
+    pub open_ended: bool,
+    pub wake_listens: bool,
+    pub listen: ModeListen,
+    pub rewrite: Option<Rewrite>,
+    pub rewrite_hook: Option<String>,
+    pub ended: Option<String>,
+    pub alive: Option<String>,
+    /// Seconds the mode's hooks may run; the hook default (3) when unset.
+    pub timeout_secs: Option<f64>,
+    /// Lines in the TOML file of the keys holding patterns, for error messages.
+    pub pattern_lines: BTreeMap<&'static str, usize>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ModeListen {
+    pub silence_secs: Option<f64>,
+    pub max_secs: Option<f64>,
+    pub no_speech_secs: Option<f64>,
+}
+
+/// A turn's words with the first rule that applies: `drop` routes nothing, `keep` routes them as spoken, else the
+/// `prefix` goes before them. Whole-text patterns.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Rewrite {
+    pub drop: Option<String>,
+    pub keep: Option<String>,
+    #[serde(default)]
+    pub prefix: String,
 }
 
 #[derive(Debug, Clone)]
@@ -180,6 +230,11 @@ struct ActionTable {
     mode_switch: bool,
     #[serde(default)]
     mode_entry: bool,
+    #[serde(default)]
+    enter_mode: bool,
+    leave_mode: Option<String>,
+    #[serde(default)]
+    miss: bool,
     wait: Option<String>,
     wait_hook: Option<String>,
     timeout_secs: Option<f64>,
@@ -191,8 +246,35 @@ struct SurfaceEntry {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ModeEntry {
+    label: Option<String>,
     exit_object: Option<String>,
+    #[serde(default)]
+    exit_phrases: String,
+    #[serde(default)]
+    exit_hint: String,
+    bare_exits: Option<bool>,
+    default_exits: Option<bool>,
+    #[serde(default)]
+    allows_switches: bool,
+    #[serde(default)]
+    private: bool,
+    #[serde(default)]
+    open_ended: bool,
+    #[serde(default)]
+    wake_listens: bool,
+    #[serde(default)]
+    listen: ModeListen,
+    rewrite: Option<Rewrite>,
+    rewrite_hook: Option<String>,
+    ended: Option<String>,
+    alive: Option<String>,
+    timeout_secs: Option<f64>,
+    // Parsed so that a mode written for 2.4d is rejected by name, not silently stripped of them.
+    handle_turn: Option<toml::Value>,
+    endings: Option<toml::Value>,
+    one_recording: Option<bool>,
 }
 
 /// Reads one `integrations/<stem>.toml`. The error is `file:line: message`.
@@ -208,6 +290,18 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         format!("{}:{line}: {}", file.display(), error.message())
     })?;
     let stem = file.file_stem().unwrap_or_default().to_string_lossy().into_owned();
+    let has_mode = parsed.mode.is_some();
+    let (mode, mode_exit_object) = match parsed.mode {
+        Some(entry) => {
+            let label = entry
+                .label
+                .clone()
+                .unwrap_or_else(|| parsed.name.clone().unwrap_or_else(|| stem.clone()));
+            let exit_object = entry.exit_object.clone();
+            (Some(build_mode(file, text, entry, label)?), exit_object)
+        }
+        None => (None, None),
+    };
     let verbs = parsed
         .verbs
         .into_iter()
@@ -238,14 +332,27 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 (Some(builtin), None) => Some(Wait::Builtin(builtin)),
                 (None, None) => None,
             };
+            // The untagged `ActionEntry` cannot carry a span, so the line is looked up in the text.
+            let place = |key: &str| match key_offset(text, &id, key) {
+                Some(offset) => format!("{}:{}", file.display(), line_of(offset)),
+                None => file.display().to_string(),
+            };
             let timeout_secs = match table.timeout_secs {
-                // The untagged `ActionEntry` cannot carry a span, so the line is looked up in the text.
-                Some(secs) => Some(checked_timeout(secs, || match timeout_offset(text, &id) {
-                    Some(offset) => format!("{}:{}", file.display(), line_of(offset)),
-                    None => file.display().to_string(),
-                })?),
+                Some(secs) => Some(checked_timeout(secs, || place("timeout_secs"))?),
                 None => None,
             };
+            if table.enter_mode && !has_mode {
+                return Err(format!(
+                    "{}: action {id}: enter_mode needs a [mode] table",
+                    place("enter_mode")
+                ));
+            }
+            if table.enter_mode && table.leave_mode.is_some() {
+                return Err(format!(
+                    "{}: action {id}: enter_mode and leave_mode cannot share an action",
+                    place("leave_mode")
+                ));
+            }
             let action = Action {
                 run: table.run,
                 candidates: table.candidates.map(Candidates::Shell),
@@ -254,6 +361,9 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 free_text: table.free_text,
                 mode_switch: table.mode_switch,
                 mode_entry: table.mode_entry,
+                enter_mode: table.enter_mode,
+                leave_mode: table.leave_mode,
+                miss: table.miss,
                 wait,
                 timeout_secs,
             };
@@ -268,7 +378,8 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         tier: if parsed.fallback { Tier::Fallback } else { Tier::Normal },
         force_prefixes: parsed.force_prefixes,
         defines: parsed.define,
-        mode_exit_object: parsed.mode.and_then(|mode| mode.exit_object),
+        mode_exit_object,
+        mode,
         verbs,
         settings: MatchSettings {
             target_match: parsed.target_match,
@@ -283,9 +394,9 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
     })
 }
 
-/// Where an action's `timeout_secs` is written: inside the action's own `[actions.<id>]` table, or on its key's line
-/// under `[actions]`. None when it is not found there (a dotted key elsewhere), and the error then names only the file.
-fn timeout_offset(text: &str, action: &str) -> Option<usize> {
+/// Where an action's `key` is written: inside the action's own `[actions.<id>]` table, or on its key's line under
+/// `[actions]`. None when it is not found there (a dotted key elsewhere), and the error then names only the file.
+fn key_offset(text: &str, action: &str, key: &str) -> Option<usize> {
     let table = format!("[actions.{action}]");
     let (start, end) = match text.find(&table) {
         Some(start) => (
@@ -299,7 +410,65 @@ fn timeout_offset(text: &str, action: &str) -> Option<usize> {
             (start, text[start..].find('\n').map_or(text.len(), |next| start + next))
         }
     };
-    text[start..end].find("timeout_secs").map(|found| start + found)
+    text[start..end].find(key).map(|found| start + found)
+}
+
+/// The `[mode]` table as a `Mode`, rejecting what 2.4c does not run. Errors are `file:line: message`.
+fn build_mode(file: &Path, text: &str, entry: ModeEntry, label: String) -> Result<Mode, String> {
+    let header = regex::Regex::new(r"(?m)^\[mode\]")
+        .expect("fixed pattern")
+        .find(text)
+        .map_or(0, |found| found.start());
+    // The first `key =` inside the table: its line, or the table's own when the key is not found.
+    let line_number = |key: &str| {
+        let found = regex::Regex::new(&format!(r"\b{key}\s*="))
+            .expect("fixed pattern")
+            .find(&text[header..])
+            .map_or(header, |found| header + found.start());
+        text[..found].matches('\n').count() + 1
+    };
+    let line = |key: &str| format!("{}:{}", file.display(), line_number(key));
+    for (key, present) in [
+        ("handle_turn", entry.handle_turn.is_some()),
+        ("endings", entry.endings.is_some()),
+        ("one_recording", entry.one_recording == Some(true)),
+    ] {
+        if present {
+            return Err(format!("{}: [mode] {key} is not supported until 2.4d", line(key)));
+        }
+    }
+    if entry.rewrite.is_some() && entry.rewrite_hook.is_some() {
+        return Err(format!(
+            "{}: [mode] rewrite and rewrite_hook are both set; use one",
+            line("rewrite_hook")
+        ));
+    }
+    let timeout_secs = match entry.timeout_secs {
+        Some(secs) => Some(checked_timeout(secs, || line("timeout_secs"))?),
+        None => None,
+    };
+    let pattern_lines = ["exit_phrases", "drop", "keep"]
+        .into_iter()
+        .map(|key| (key, line_number(key)))
+        .collect();
+    Ok(Mode {
+        label,
+        exit_phrases: entry.exit_phrases,
+        exit_hint: entry.exit_hint,
+        bare_exits: entry.bare_exits.unwrap_or(true),
+        default_exits: entry.default_exits.unwrap_or(true),
+        allows_switches: entry.allows_switches,
+        private: entry.private,
+        open_ended: entry.open_ended,
+        wake_listens: entry.wake_listens,
+        listen: entry.listen,
+        rewrite: entry.rewrite,
+        rewrite_hook: entry.rewrite_hook,
+        ended: entry.ended,
+        alive: entry.alive,
+        timeout_secs,
+        pattern_lines,
+    })
 }
 
 /// The longest a hook may be given; anything longer is a typo for a hook that never ends.
@@ -381,6 +550,61 @@ mod tests {
         let error = parse_toml(Path::new("t.toml"), text).unwrap_err();
         assert!(error.starts_with("t.toml:7: "), "{error}");
         let no_key = "verbs = []\n[actions.a]\nrun = \"true\"\ntimeout_secs = 1\n[actions.b]\nrun = \"true\"\n";
-        assert_eq!(timeout_offset(no_key, "b"), None);
+        assert_eq!(key_offset(no_key, "b", "timeout_secs"), None);
+    }
+
+    fn mode_error(text: &str) -> String {
+        parse_toml(Path::new("m.toml"), &format!("verbs = []\n{text}")).unwrap_err()
+    }
+
+    #[test]
+    fn a_mode_table_loads_with_its_defaults_and_its_action_keys() {
+        let text = "verbs = []\n[actions.go]\nenter_mode = true\n[actions.stop]\nleave_mode = \"done\"\n\
+                    [actions.lost]\nrun = \"true\"\nmiss = true\n[mode]\nlabel = \"Go\"\n\
+                    rewrite = { prefix = \"go \" }\nlisten = { max_secs = 295 }\n";
+        let integration = parse_toml(Path::new("m.toml"), text).unwrap();
+        let mode = integration.mode.unwrap();
+        assert!(mode.bare_exits && mode.default_exits && !mode.allows_switches);
+        assert_eq!(mode.rewrite.unwrap().prefix, "go ");
+        assert_eq!(mode.listen.max_secs, Some(295.0));
+        assert!(integration.actions["go"].enter_mode && integration.actions["go"].run.is_empty());
+        assert_eq!(integration.actions["stop"].leave_mode.as_deref(), Some("done"));
+        assert!(integration.actions["lost"].miss);
+    }
+
+    #[test]
+    fn a_mode_that_cannot_run_yet_or_contradicts_itself_is_an_error_at_its_line() {
+        assert!(mode_error("[mode]\nlabel = \"x\"\nfrobnicate = 1\n").starts_with("m.toml:4: "));
+        let both = mode_error("[mode]\nrewrite = { prefix = \"a \" }\nrewrite_hook = \"echo\"\n");
+        assert!(both.starts_with("m.toml:4: ") && both.contains("both set"), "{both}");
+        for (key, line) in [
+            ("handle_turn = \"x\"", 3),
+            ("endings = []", 3),
+            ("one_recording = true", 3),
+        ] {
+            let error = mode_error(&format!("[mode]\n{key}\n"));
+            assert!(error.starts_with(&format!("m.toml:{line}: ")), "{error}");
+            assert!(error.contains("not supported until 2.4d"), "{error}");
+        }
+        assert!(parse_toml(Path::new("m.toml"), "verbs = []\n[mode]\none_recording = false\n").is_ok());
+        let bad_timeout = mode_error("[mode]\ntimeout_secs = 0\n");
+        assert!(
+            bad_timeout.starts_with("m.toml:3: timeout_secs must be above 0"),
+            "{bad_timeout}"
+        );
+    }
+
+    #[test]
+    fn enter_mode_needs_a_mode_and_cannot_share_an_action_with_leave_mode() {
+        let without = mode_error("[actions.go]\nenter_mode = true\n");
+        assert!(
+            without.starts_with("m.toml:3: ") && without.contains("needs a [mode]"),
+            "{without}"
+        );
+        let both = mode_error("[actions.go]\nenter_mode = true\nleave_mode = \"x\"\n[mode]\n");
+        assert!(
+            both.starts_with("m.toml:4: ") && both.contains("cannot share"),
+            "{both}"
+        );
     }
 }

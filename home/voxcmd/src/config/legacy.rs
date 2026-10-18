@@ -198,6 +198,7 @@ fn integration(dumped: Dumped) -> Integration {
                 mode_entry: mode_switch.contains(id) && !mode.contains(id),
                 wait: dumped.step_waits.get(id).cloned().map(Wait::LegacyCondition),
                 timeout_secs: None,
+                ..Action::default()
             };
             (id.clone(), action)
         })
@@ -211,6 +212,7 @@ fn integration(dumped: Dumped) -> Integration {
         force_prefixes: dumped.force_prefixes,
         defines: BTreeMap::new(),
         mode_exit_object: None,
+        mode: None,
         verbs: dumped
             .verbs
             .into_iter()

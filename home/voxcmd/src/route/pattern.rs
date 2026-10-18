@@ -173,6 +173,52 @@ pub fn legacy_near_miss_source(pattern: &str, intents: &Intents) -> (String, Vec
     (source, placeholders)
 }
 
+/// A `[mode]` pattern's regex bodies, expanded and checked.
+#[derive(Debug, Clone, Default)]
+pub struct ModePatterns {
+    pub exit_phrases: String,
+    pub drop: Option<String>,
+    pub keep: Option<String>,
+}
+
+/// Compiles the patterns of the integration's `[mode]` (`exit_phrases`, `rewrite.drop`, `rewrite.keep`) in the verbs'
+/// dialect, minus placeholders: a turn's words are all there is to capture. None without a `[mode]`. The error is
+/// `file:line: message`.
+pub fn compile_mode(integration: &Integration, intents: &Intents) -> Result<Option<ModePatterns>, String> {
+    let Some(mode) = &integration.mode else {
+        return Ok(None);
+    };
+    let compile_one = |key: &'static str, pattern: &str| -> Result<String, String> {
+        let fail = |message: String| {
+            let line = mode.pattern_lines.get(key).copied().unwrap_or(1);
+            format!("{}:{line}: [mode] {key}: {message}", integration.file.display())
+        };
+        let mut placeholders = Vec::new();
+        let body = expand_toml(integration, pattern, intents, &mut placeholders, 0).map_err(fail)?;
+        if let Some(placeholder) = placeholders.first() {
+            return Err(fail(format!("{{{}}} has nothing to capture here", placeholder.name)));
+        }
+        regex::Regex::new(&format!("(?s)^(?:{body})$")).map_err(|error| fail(error.to_string()))?;
+        Ok(body)
+    };
+    let rewrite = mode.rewrite.as_ref();
+    Ok(Some(ModePatterns {
+        exit_phrases: if mode.exit_phrases.is_empty() {
+            String::new()
+        } else {
+            compile_one("exit_phrases", &mode.exit_phrases)?
+        },
+        drop: rewrite
+            .and_then(|rewrite| rewrite.drop.as_deref())
+            .map(|pattern| compile_one("drop", pattern))
+            .transpose()?,
+        keep: rewrite
+            .and_then(|rewrite| rewrite.keep.as_deref())
+            .map(|pattern| compile_one("keep", pattern))
+            .transpose()?,
+    }))
+}
+
 /// The words an exit from a mode is said with, around its object (was mode-phrases.sh `mode_exit_phrase`).
 fn mode_exit(object: &str) -> String {
     let filler = "(?:okay|ok|alright|please|now)";
@@ -505,6 +551,7 @@ mod tests {
                 ("loop".to_string(), "{loop}".to_string()),
             ]),
             mode_exit_object: Some("click mode".into()),
+            mode: None,
             verbs: Vec::new(),
             settings: MatchSettings::default(),
             actions: BTreeMap::new(),
@@ -604,5 +651,32 @@ mod tests {
             legacy_near_miss_source("move {target} to {number} {number} {x}", &Intents::default());
         assert_eq!(source, "move (?P<p0>x) to (?P<p1>x) (?P<p2>x) {x}");
         assert_eq!(placeholders.len(), 3);
+    }
+
+    #[test]
+    fn mode_patterns_expand_like_verbs_and_a_bad_one_names_its_line() {
+        let text = "verbs = []\n[mode]\nexit_object = 'click mode'\nexit_phrases = 'done with {mode_object}|{mode_exit}'\n\
+                    rewrite = { drop = 'click', keep = '(a|b' }\n";
+        let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), text).unwrap();
+        let error = compile_mode(&integration, &Intents::default()).unwrap_err();
+        assert!(error.starts_with("m.toml:5: [mode] keep: "), "{error}");
+        let text = text.replace("'(a|b'", "'a|b'");
+        let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), &text).unwrap();
+        let patterns = compile_mode(&integration, &Intents::default()).unwrap().unwrap();
+        assert!(
+            patterns.exit_phrases.starts_with("done with (?:click mode)|(?:"),
+            "{}",
+            patterns.exit_phrases
+        );
+        assert_eq!(
+            (patterns.drop.as_deref(), patterns.keep.as_deref()),
+            (Some("click"), Some("a|b"))
+        );
+        for bad in ["{target}", "{nonesuch}"] {
+            let text = format!("verbs = []\n[mode]\nexit_phrases = '{bad}'\n");
+            let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), &text).unwrap();
+            let error = compile_mode(&integration, &Intents::default()).unwrap_err();
+            assert!(error.starts_with("m.toml:3: [mode] exit_phrases: "), "{error}");
+        }
     }
 }
