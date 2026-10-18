@@ -1,5 +1,5 @@
 .pragma library
-.import "../Watch.js" as Watch
+.import "Watch.js" as Watch
 
 // The pause watch for every popup: tinted from the palette, or the classic fixed colours (the watch_colors option).
 function overrides(t, ctx) {

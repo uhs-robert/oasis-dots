@@ -4,7 +4,7 @@ import QtQuick.Shapes
 import qs.theme
 import qs.lock.skins.goldeneye as Watch
 import qs.features.weather
-import "../../../../theme/Watch.js" as W
+import "../../../../styles/goldeneye/Watch.js" as W
 
 // Daily's Sun & Moon sub-view on the pause watch's 24-hour dial laid out like a sundial, noon at the top: the selected day's daylight shaded on the bezel between
 // sunrise on the left and sunset on the right, today's sun as the hand, the moon in a date-window aperture on the face. The Daily day window runs above as a strip.

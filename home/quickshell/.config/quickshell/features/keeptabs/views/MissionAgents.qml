@@ -4,7 +4,7 @@ import qs.ui.menu
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.lock.skins.goldeneye as Watch
 import qs.theme
-import "../../../theme/Watch.js" as W
+import "../../../styles/goldeneye/Watch.js" as W
 import "KeeptabsFormat.js" as Fmt
 
 // GoldenEye's Mission Status: each session is an objective, with the selected one's context on the watch dial above.

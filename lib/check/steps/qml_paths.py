@@ -131,10 +131,10 @@ TABLES = [
     Table("features/settings/SettingsPopup.qml", "section.source", "features/settings/Sections.js", key_values("source")),
     Table("features/weather/WeatherPopup.qml", "views/", "features/weather/WeatherPopup.qml", folder_view_files),
     Table("features/keeptabs/KeeptabsPopup.qml", "views/", "features/keeptabs/KeeptabsPopup.qml", view_files),
-    Table("theme/Style.qml", "styles/", "theme/styles/index.js", array_values("sources")),
+    Table("theme/Style.qml", "../styles/", "styles/index.js", array_values("sources")),
     Table("ui/keys/ControllerBadge.qml", "../../styles/", "ui/keys/KeyHints.js", in_widgets(key_values("button"))),
     # Any style may set meter_art; today only nes does.
-    Table("ui/gauges/Meter.qml", "../../styles/", "theme/styles/*.js", in_widgets(meter_art_values)),
+    Table("ui/gauges/Meter.qml", "../../styles/", "styles/*/tokens.js", in_widgets(meter_art_values)),
     # A style's own pack is optional (its call carries a qs-path: optional marker); an extra pack must exist.
     Table("features/audio/ThemeAudio.qml", "../../sounds/", "features/audio/ThemeAudio.qml", extra_pack_names),
     Table("features/weather/WeatherState.qml", "icons/", "features/weather/WeatherState.qml", weather_slugs),

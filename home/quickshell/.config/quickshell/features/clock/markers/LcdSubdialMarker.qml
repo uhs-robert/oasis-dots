@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import "../../../theme/Watch.js" as W
+import "../../../styles/goldeneye/Watch.js" as W
 
 // goldeneye: a small LCD window like a watch complication, holding the minutes in segment digits before a meeting and MTG in the bar font during one, as DSEG7 has no M.
 MarkerBase {

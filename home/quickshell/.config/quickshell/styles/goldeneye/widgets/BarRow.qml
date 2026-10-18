@@ -1,6 +1,6 @@
 import QtQuick
 import qs.theme
-import "../../../theme/Watch.js" as W
+import "../Watch.js" as W
 
 // The lock face's row of green bars as a progress meter: lit up to `value` (0-1), dim after.
 Item {

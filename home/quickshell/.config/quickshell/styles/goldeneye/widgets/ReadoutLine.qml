@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import "../../../theme/Watch.js" as W
+import "../Watch.js" as W
 
 // A caps label over a value in the watch's fonts: digits in seven-segment, the rest in Share Tech Mono, long text elided.
 ColumnLayout {

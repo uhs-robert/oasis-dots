@@ -5,7 +5,7 @@ import Qt.labs.folderlistmodel
 Item {
     id: root
 
-    // Family name to its files in fonts/; keep in step with fonts/README.md.
+    // Family name to its files in assets/fonts/; keep in step with assets/fonts/README.md.
     readonly property var family_files: ({
         "Press Start 2P": ["PressStart2P-Regular.ttf"],
         "VT323": ["VT323-Regular.ttf"],
@@ -93,7 +93,7 @@ Item {
         id: lister
         active: false
         sourceComponent: FolderListModel {
-            folder: Qt.resolvedUrl("../fonts")
+            folder: Qt.resolvedUrl("../assets/fonts")
             nameFilters: ["*.ttf", "*.otf"]
             showDirs: false
             onStatusChanged: if (status === FolderListModel.Ready) {
@@ -124,7 +124,7 @@ Item {
         model: fonts
         delegate: FontLoader {
             required property string file
-            source: Qt.resolvedUrl("../fonts/" + file)
+            source: Qt.resolvedUrl("../assets/fonts/" + file)
         }
     }
 }

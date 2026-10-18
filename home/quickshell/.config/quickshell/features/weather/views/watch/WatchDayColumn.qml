@@ -6,7 +6,7 @@ import qs.styles.goldeneye.widgets as Goldeneye
 import qs.lock.skins.goldeneye as Watch
 import qs.features.weather
 import qs.features.weather.views.shared
-import "../../../../theme/Watch.js" as W
+import "../../../../styles/goldeneye/Watch.js" as W
 
 // One Daily column as a strip of the pause watch's bezel: warm segments lit from the day's low to its high on the week's scale,
 // a thin cold strip beside it lit to the rain chance, readings in the LCD digits; the selected day sits in a watch-face panel.
