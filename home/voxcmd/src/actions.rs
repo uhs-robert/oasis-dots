@@ -12,6 +12,7 @@ use crate::notify::{Kind, Notifier};
 use crate::process::{self, Outcome};
 use crate::route::resolve::RouteOption;
 use crate::route::router::{option_label, toast_label};
+use crate::session::Opened;
 use crate::text::normalize::normalize;
 use std::process::Command;
 
@@ -173,7 +174,13 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
             std::process::id(),
         );
     }
-    let opened_mode = enters_mode && open_mode(integration);
+    let opened = enters_mode.then(|| open_mode(integration));
+    if opened == Some(Opened::Refused) {
+        // `open` toasted why; the action's command is never run without the mode it promises.
+        result.detail = "its mode could not open".to_string();
+        debug(&format!("action not run: {toast}: its mode could not open"));
+        return result;
+    }
     // An action with no command only opens or leaves its mode.
     let started = (!option.command.is_empty())
         .then(|| process::run_to_end(&mut action_command(rt, integration, option, said, confirmed)));
@@ -187,6 +194,13 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         None => true,
     };
     if succeeded {
+        // A new session listens only now: its mode's `alive` checks what `run` just opened. When it cannot, the
+        // session's own ending toast says why.
+        if opened == Some(Opened::Session) && !crate::session::turn::listen_for_turn(std::process::id()) {
+            result.detail = "its session could not listen".to_string();
+            debug(&format!("action failed: {toast}: its session could not listen"));
+            return result;
+        }
         result.outcome = StepOutcome::Ran;
         result.exit_code = 0;
         result.ran = Some(option.clone());
@@ -202,7 +216,7 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         }
         return result;
     }
-    if opened_mode {
+    if opened.is_some_and(Opened::is_new) {
         crate::session::leave(
             &crate::session::SessionLock::take(),
             &integration.stem,
@@ -210,7 +224,9 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
             std::process::id(),
         );
     }
-    let started = started.expect("an action with no command succeeds");
+    let Some(started) = started else {
+        unreachable!("an action with no command succeeds");
+    };
     result.detail = tail_lines(&output, 3).join("\n");
     // The stop under way is ending what was said; it is no failure to report.
     let refused_while_stopping = started.as_ref().is_err_and(process::refused_while_stopping);
@@ -230,26 +246,17 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
     result
 }
 
-/// Opens the integration's mode before its action runs; whether this call opened a new one. A session another process
-/// owns, or the mode already on top, is left as it was, and is not the call's to close if the action then fails.
-fn open_mode(integration: &Integration) -> bool {
+/// Opens the integration's mode before its action runs (`enter_mode` needs a `[mode]`, which the schema checks).
+fn open_mode(integration: &Integration) -> Opened {
     let Some(mode) = &integration.mode else {
-        return false;
+        return Opened::Refused;
     };
-    let top_frame = |state: Option<serde_json::Value>| {
-        state
-            .filter(|state| crate::session::text_of(&state["kind"]) == integration.stem)
-            .map(|state| crate::session::text_of(&state["frame_id"]))
-    };
-    let before = top_frame(crate::session::read_state());
-    crate::session::turn::begin(
+    crate::session::turn::open(
         &integration.stem,
         &integration.file.display().to_string(),
         &mode.label,
         std::process::id(),
-    );
-    let after = top_frame(crate::session::read_state());
-    after.is_some() && after != before
+    )
 }
 
 /// The output of a failed action in the debug log, unless the integration's labels are screen text.

@@ -318,6 +318,15 @@ impl ShellHooks {
         }
     }
 
+    /// The hooks of every integration in `config_dir`, as `voxcmd run` runs them.
+    pub fn for_config_dir(config_dir: &std::path::Path) -> Self {
+        Self::new(
+            config_dir,
+            crate::config::integration_stems(config_dir),
+            crate::notify::dry_run(),
+        )
+    }
+
     /// `bash -c` over the integration's library (when it has one) and then the hook string. The library path is a
     /// literal of the wrapper, quoted; spoken text only ever reaches the hook through the environment. An action
     /// (`merge_output`) has its stderr folded into its stdout, as `eval "$command" 2>&1` did, so that its toast and

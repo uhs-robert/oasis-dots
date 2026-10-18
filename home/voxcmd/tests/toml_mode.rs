@@ -92,7 +92,10 @@ impl Rig {
             "bin/notify-send",
             &format!("echo \"notify-send $*\" >> '{}'", calls.display()),
         );
-        rig.script("legacy/voxcmd", "exit 0");
+        rig.script(
+            "legacy/voxcmd",
+            &format!("echo \"legacy voxcmd $*\" >> '{}'", calls.display()),
+        );
         rig.script("legacy/voxcmd-autostop", "exit 0");
         std::fs::write(&state, "idle\n").unwrap();
         rig
@@ -180,12 +183,28 @@ impl Rig {
         std::fs::read_to_string(self.path().join("runtime/voxcmd/debug.log")).unwrap_or_default()
     }
 
+    /// The frame of a mode `stem` open underneath, for a session's `stack`.
+    fn frame_under(&self, stem: &str) -> Value {
+        json!({"kind": stem, "integration": format!("{}/config/integrations/{stem}.toml", self.path().display()),
+            "label": stem, "exit_hint": "x", "unclear": 0, "mode_started": now(), "last_heard": now(),
+            "frame_id": "under", "active_secs": 0, "resumes": 0, "open_ended": false, "one_recording": false,
+            "wake_listens": false})
+    }
+
+    /// Replaces a line of the integration file at `file`.
+    fn edit(&self, file: &str, from: &str, to: &str) {
+        let text = std::fs::read_to_string(file).unwrap();
+        assert!(text.contains(from), "{from}");
+        std::fs::write(file, text.replace(from, to)).unwrap();
+    }
+
     /// A session of one mode `stem` whose turn's watcher hears `transcript`; returns once the turn is over.
     /// `fields` adds to the session file (an unclear count, say).
     fn hear(&self, stem: &str, fields: Value, transcript: &str) {
         let seen = self.debug_log().matches("watch: voxtype recording").count();
         std::fs::write(self.path().join("runtime/voxtype/state"), "recording\n").unwrap();
-        let token = format!("1:{stem}:1");
+        let depth = 1 + fields["stack"].as_array().map_or(0, Vec::len);
+        let token = format!("{depth}:{stem}:1");
         let mut watcher = self
             .command(&["internal", "watch", "session_turn", &token, "0", ""])
             .spawn()
@@ -252,6 +271,8 @@ fn start_time_of(pid: u32) -> String {
         .to_string()
 }
 
+const OPEN_RUN: &str = "run = 'echo \"opened demo\" >> \"$WORK/ran\"'";
+
 const REWRITE: &str = "rewrite = { drop = 'skip', keep = 'keep it', prefix = 'do ' }\n";
 
 // ---- enter_mode and leave_mode --------------------------------------------------------------------------------------
@@ -317,6 +338,92 @@ fn a_failing_run_ends_the_mode_it_opened() {
     assert!(!rig.command(&["run", "demo mode"]).status().unwrap().success());
     assert!(rig.session().is_none());
     assert!(wait_for(|| rig.read_work("ended") == "could not start\n"));
+}
+
+#[test]
+fn a_new_session_listens_only_after_run_so_its_alive_sees_what_run_opened() {
+    let rig = Rig::new();
+    rig.integration("other", "");
+    // `alive` passes only once `run` has written "ran"; it reports how it was run, under the session lock.
+    rig.integration(
+        "demo",
+        "alive = '\"$VOXCMD_LEGACY_RS_BIN\" internal session state > \"$WORK/alive-state\"; env > \"$WORK/alive-env\"; \
+         test -e \"$WORK/ran\"'\n",
+    );
+    rig.run("demo mode");
+    let state = rig.session().expect("the mode outlived its first listen");
+    assert_eq!(state["kind"], "demo");
+    assert!(
+        rig.debug_log().contains("listen: recording started"),
+        "{}",
+        rig.debug_log()
+    );
+    // The sweep before that listen ran `alive` as the session's owner, with the lock held and every integration listed.
+    let env = rig.read_work("alive-env");
+    for line in ["VOXCMD_SESSION_LOCK_HELD=1", "VOXCMD_INTEGRATIONS=demo other"] {
+        assert!(env.lines().any(|seen| seen == line), "{line} not in\n{env}");
+    }
+    // `voxcmd run`'s own pid: the session's owner by then is the watcher its listen started.
+    assert!(
+        env.lines().any(|seen| seen
+            .strip_prefix("VOXCMD_LEGACY_PID=")
+            .is_some_and(|pid| pid.parse::<u32>().is_ok())),
+        "{env}"
+    );
+    assert!(
+        rig.read_work("alive-state").contains("\"kind\":\"demo\""),
+        "{}",
+        rig.read_work("alive-state")
+    );
+}
+
+#[test]
+fn a_failing_run_leaves_alone_a_mode_it_went_back_to() {
+    let rig = Rig::new();
+    let file = rig.integration(
+        "demo",
+        "ended = 'echo \"demo $VOXCMD_MODE_END_REASON\" >> \"$WORK/ended\"'\n",
+    );
+    rig.edit(&file, OPEN_RUN, "run = 'exit 1'");
+    rig.integration("other", "");
+    // In other mode, over demo: "demo mode" goes back to demo, and its failing run must not end it.
+    rig.hear("other", json!({"stack": [rig.frame_under("demo")]}), "demo mode");
+    let state = rig.session().expect("the mode it went back to is still open");
+    assert_eq!(state["kind"], "demo", "{}", rig.debug_log());
+    assert!(!rig.debug_log().contains("could not start"), "{}", rig.debug_log());
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(rig.read_work("ended"), "");
+}
+
+#[test]
+fn a_mode_that_cannot_open_fails_its_action_without_running_it() {
+    let rig = Rig::new();
+    rig.integration("demo", "");
+    rig.script("legacy/voxcmd-autostop", "echo 'no silence detection'; exit 1");
+    assert!(!rig.command(&["run", "demo mode"]).status().unwrap().success());
+    assert!(rig.session().is_none());
+    assert_eq!(rig.read_work("ran"), "");
+    assert!(rig.calls().contains("needs auto-stop"), "{}", rig.calls());
+    // A session another process owns refuses it too.
+    rig.script("legacy/voxcmd-autostop", "exit 0");
+    let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
+    let mut session = rig.frame_under("other");
+    session["owner"] = json!(owner.id());
+    session["owner_start"] = json!(start_time_of(owner.id()));
+    session["started"] = json!(now());
+    session["turns"] = json!(0);
+    session["stack"] = json!([]);
+    std::fs::write(rig.path().join("runtime/voxcmd/session.json"), session.to_string()).unwrap();
+    let refused = rig.command(&["run", "demo mode"]).status().unwrap();
+    owner.kill().unwrap();
+    owner.wait().unwrap();
+    assert!(!refused.success());
+    assert_eq!(rig.read_work("ran"), "");
+    assert!(
+        rig.calls().contains("A voice session is already open"),
+        "{}",
+        rig.calls()
+    );
 }
 
 // ---- rewrite ----------------------------------------------------------------------------------------------------------
@@ -396,11 +503,64 @@ fn the_ended_hook_runs_once_with_the_reason_frame_and_whether_the_session_goes_o
     assert!(rig.command(&["session", "end"]).status().unwrap().success());
     assert!(wait_for(|| rig.work("ended").exists()));
     assert_eq!(rig.read_work("ended"), format!("ended by request|{frame}|0\n"));
+    // The stand-in voxtype is still recording what the ended session listened for.
+    std::fs::write(rig.path().join("runtime/voxtype/state"), "idle\n").unwrap();
     // A mode without the hook runs nothing when it ends.
     rig.run("plain mode");
     rig.run("stop plain");
     std::thread::sleep(Duration::from_millis(300));
     assert_eq!(rig.read_work("ended").lines().count(), 1);
+}
+
+#[test]
+fn the_sweep_before_a_listen_leaves_a_dead_mode_and_ended_says_whether_the_session_goes_on() {
+    let rig = Rig::new();
+    rig.integration(
+        "demo",
+        "alive = 'test ! -e \"$WORK/dead\"'\nended = 'echo \"demo $VOXCMD_MODE_END_REASON $VOXCMD_MODE_CONTINUES\" >> \"$WORK/ended\"'\n",
+    );
+    rig.integration(
+        "other",
+        "ended = 'echo \"other $VOXCMD_MODE_END_REASON $VOXCMD_MODE_CONTINUES\" >> \"$WORK/ended\"'\n",
+    );
+    std::fs::write(rig.work("dead"), "").unwrap();
+    // Leaving other returns to demo, whose screen has closed meanwhile: the listen that follows ends it.
+    rig.hear("other", json!({"stack": [rig.frame_under("demo")]}), "stop other");
+    assert!(rig.session().is_none());
+    assert!(wait_for(|| rig.read_work("ended").lines().count() == 2));
+    let ended = rig.read_work("ended");
+    assert!(
+        ended.contains("other done 1\n") && ended.contains("demo its screen closed 0\n"),
+        "{ended}"
+    );
+}
+
+#[test]
+fn a_toml_mode_that_stops_loading_keeps_its_last_settings_and_never_reaches_bash() {
+    let rig = Rig::new();
+    let file = rig.integration(
+        "demo",
+        "bare_exits = false\nended = 'echo ended >> \"$WORK/ended\"'\nalive = 'echo alive >> \"$WORK/alive\"'\n",
+    );
+    rig.hear("demo", json!({}), "do ok");
+    assert_eq!(rig.read_work("ran"), "ok:do ok\n", "{}", rig.debug_log());
+    let alive_runs = rig.read_work("alive").lines().count();
+    // Moved away mid-session: "stop" is still a target here, as the last version that loaded says, not a bare exit.
+    let moved = rig.work("demo.toml");
+    std::fs::rename(&file, &moved).unwrap();
+    rig.hear("demo", json!({}), "stop");
+    assert!(rig.session().is_some(), "{}", rig.debug_log());
+    assert!(rig.debug_log().contains("its hooks are skipped"), "{}", rig.debug_log());
+    assert_eq!(rig.read_work("alive").lines().count(), alive_runs);
+    // Back but malformed (a routed turn then fails as any broken integration fails `voxcmd run`): ending the mode runs
+    // no hook.
+    std::fs::rename(&moved, &file).unwrap();
+    std::fs::write(&file, "[mode\nlabel = ").unwrap();
+    assert!(rig.command(&["session", "end"]).status().unwrap().success());
+    assert!(rig.session().is_none());
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(rig.read_work("ended"), "");
+    assert!(!rig.calls().contains("legacy voxcmd"), "{}", rig.calls());
 }
 
 // ---- exits and misses -----------------------------------------------------------------------------------------------

@@ -107,7 +107,7 @@ pub struct Action {
 }
 
 /// A voice-session mode, as `[mode]` declares it. Patterns are as written (same `{define}`/`{mode_object}` dialect as
-/// verbs); `config::check_modes` compiles them.
+/// verbs); `route::pattern::compile_mode` compiles them.
 #[derive(Debug, Clone)]
 pub struct Mode {
     pub label: String,

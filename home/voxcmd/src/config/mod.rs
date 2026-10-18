@@ -54,6 +54,27 @@ impl Config {
     }
 }
 
+/// The stems of the integrations `Config::load` takes from `dir`, in its order, found by file name alone: a hook's
+/// `VOXCMD_INTEGRATIONS` where no `Config` is loaded (a session's mode hooks, which run under the session lock).
+pub fn integration_stems(dir: &Path) -> Vec<String> {
+    let mut files = toml_files(dir);
+    let converted: Vec<std::ffi::OsString> = files
+        .iter()
+        .filter_map(|file| file.file_stem())
+        .map(Into::into)
+        .collect();
+    files.extend(legacy::legacy_files(dir).into_iter().filter(|file| {
+        !file
+            .file_stem()
+            .is_some_and(|stem| converted.iter().any(|toml| toml == stem))
+    }));
+    files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+    files
+        .iter()
+        .map(|file| file.file_stem().unwrap_or_default().to_string_lossy().into_owned())
+        .collect()
+}
+
 fn toml_files(dir: &Path) -> Vec<std::path::PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir.join("integrations")) else {
         return Vec::new();

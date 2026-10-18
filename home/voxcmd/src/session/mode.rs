@@ -9,20 +9,21 @@
 //!
 //! A TOML `alive` runs under the session lock, as bash's did, so a slow one holds up every session call: it gets
 //! `[mode] timeout_secs` (3 s by default) and counts as alive when it times out or cannot run.
+//!
+//! Which kind a mode is goes by its file's extension alone. A `.toml` mode that stops loading mid-session (a live edit
+//! half done, the file moved away) is never handed to the bash loader, which would source it as shell: its settings
+//! stay those of the last version that loaded, and its hooks are skipped until it loads again.
 use super::{SessionLock, bridge};
 use crate::config::intents::Intents;
 use crate::config::schema::{self, Integration};
 use crate::debug::debug;
-use crate::hooks::{HookEnv, ShellHooks};
+use crate::hooks::{self, HookEnv, ShellHooks};
 use crate::paths;
 use crate::process;
-use crate::route::pattern;
-use regex::Regex;
+use crate::route::pattern::{self, ModePatterns, WholeText};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
-
-const HOOK_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModeSettings {
@@ -33,8 +34,8 @@ pub struct ModeSettings {
     /// A turn that is exactly another mode's entry or exit switches to it.
     pub allows_switches: bool,
     pub exit_hint: String,
-    /// An ERE alternation, the mode's own ways out.
-    pub exit_phrases: String,
+    /// The mode's own ways out.
+    pub exit_phrases: Option<WholeText>,
     /// What is said is dictation: no text in the logs, and a wake word command that is no mode command is not routed.
     pub private: bool,
     /// Bounded by its own limits, not the session's turn and time caps.
@@ -63,7 +64,7 @@ impl Default for ModeSettings {
             bare_exits: true,
             allows_switches: false,
             exit_hint: String::new(),
-            exit_phrases: String::new(),
+            exit_phrases: None,
             private: false,
             open_ended: false,
             one_recording: false,
@@ -83,8 +84,9 @@ impl Default for ModeSettings {
 impl ModeSettings {
     /// The settings of the mode whose integration file this is.
     pub fn of(file: &str) -> Self {
-        if let Some((integration, config_dir)) = toml_integration(file) {
-            return Self::from_toml(&integration, &config_dir);
+        if is_toml_file(file) {
+            // No version of it ever loaded: nothing better than the defaults is known.
+            return load_toml_mode(file).map_or_else(Self::default, |mode| Self::from_toml(&mode));
         }
         if !is_legacy_file(file) {
             return Self::default();
@@ -96,17 +98,12 @@ impl ModeSettings {
         }
     }
 
-    fn from_toml(integration: &Integration, config_dir: &Path) -> Self {
+    fn from_toml(loaded: &TomlMode) -> Self {
+        let integration = &loaded.integration;
         let Some(mode) = &integration.mode else {
             return Self::default();
         };
-        let patterns = match pattern::compile_mode(integration, &Intents::load(config_dir)) {
-            Ok(patterns) => patterns.unwrap_or_default(),
-            Err(error) => {
-                debug(&format!("session: {error}"));
-                return Self::default();
-            }
-        };
+        let patterns = loaded.patterns.clone();
         let secs = |value: Option<f64>| value.map(|secs| secs.to_string()).unwrap_or_default();
         Self {
             default_exits: mode.default_exits,
@@ -147,7 +144,11 @@ impl ModeSettings {
                 "bare_exits" => settings.bare_exits = on,
                 "allows_switches" => settings.allows_switches = on,
                 "exit_hint" => settings.exit_hint = value.to_string(),
-                "exit_phrases" => settings.exit_phrases = value.to_string(),
+                "exit_phrases" if !value.is_empty() => {
+                    settings.exit_phrases = WholeText::new(value)
+                        .inspect_err(|error| debug(&format!("session: exit_phrases: {error}")))
+                        .ok();
+                }
                 "private" => settings.private = on,
                 "open_ended" => settings.open_ended = on,
                 "one_recording" => settings.one_recording = on,
@@ -174,22 +175,18 @@ impl ModeSettings {
     }
 }
 
-/// A declared `rewrite` (TOML): what a turn's words become, as compiled regex bodies matched against the whole text.
+/// A declared `rewrite` (TOML): what a turn's words become.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rewriting {
-    drop: Option<String>,
-    keep: Option<String>,
+    drop: Option<WholeText>,
+    keep: Option<WholeText>,
     prefix: String,
 }
 
 impl Rewriting {
     /// The text to route, empty when nothing is: `drop` first, then `keep` (as spoken), else the prefix and the text.
     fn apply(&self, text: &str) -> String {
-        let whole = |body: &Option<String>| {
-            body.as_ref()
-                .and_then(|body| Regex::new(&format!("(?s)^(?:{body})$")).ok())
-                .is_some_and(|regex| regex.is_match(text))
-        };
+        let whole = |pattern: &Option<WholeText>| pattern.as_ref().is_some_and(|pattern| pattern.is_match(text));
         if whole(&self.drop) {
             String::new()
         } else if whole(&self.keep) {
@@ -200,37 +197,75 @@ impl Rewriting {
     }
 }
 
-/// The TOML integration at `file` that has a `[mode]`, and the config dir it was loaded from.
-fn toml_integration(file: &str) -> Option<(Integration, PathBuf)> {
+/// A TOML mode as one session event reads it: the file as it is now, or the last version of it that loaded when it no
+/// longer does (`current` false), whose hooks are then not run.
+struct TomlMode {
+    integration: Integration,
+    config_dir: PathBuf,
+    patterns: ModePatterns,
+    current: bool,
+}
+
+fn is_toml_file(file: &str) -> bool {
+    Path::new(file).extension().is_some_and(|extension| extension == "toml")
+}
+
+/// The mode at `file`, logging why it does not load now. None only when no version of it ever loaded.
+fn load_toml_mode(file: &str) -> Option<TomlMode> {
     let path = Path::new(file);
-    if !path.extension().is_some_and(|extension| extension == "toml") || !path.is_file() {
-        return None;
-    }
-    let integration = schema::load_toml(path)
-        .inspect_err(|error| debug(&format!("session: {error}")))
-        .ok()?;
-    integration.mode.as_ref()?;
     // `<config dir>/integrations/<stem>.toml`
-    Some((integration, path.parent()?.parent()?.to_path_buf()))
+    let config_dir = path.parent()?.parent()?.to_path_buf();
+    let intents = Intents::load(&config_dir);
+    let last_good = last_good_copy(path);
+    let as_it_is_now = std::fs::read_to_string(path)
+        .map_err(|error| format!("{file}: {error}"))
+        .and_then(|text| compile_toml_mode(path, &text, &intents).map(|compiled| (text, compiled)));
+    let (integration, patterns, current) = match as_it_is_now {
+        Ok((text, (integration, patterns))) => {
+            let copy_is_stale = std::fs::read_to_string(&last_good).ok().as_deref() != Some(text.as_str());
+            if copy_is_stale && let Some(copies) = last_good.parent() {
+                // A copy that cannot be written only leaves a later broken edit with the defaults.
+                let _ = std::fs::create_dir_all(copies).and_then(|()| std::fs::write(&last_good, &text));
+            }
+            (integration, patterns, true)
+        }
+        Err(error) => {
+            debug(&format!("session: {error}; its hooks are skipped"));
+            let text = std::fs::read_to_string(&last_good).ok()?;
+            let (integration, patterns) = compile_toml_mode(path, &text, &intents).ok()?;
+            debug(&format!("session: {file}: the last version that loaded stands in"));
+            (integration, patterns, false)
+        }
+    };
+    Some(TomlMode {
+        integration,
+        config_dir,
+        patterns,
+        current,
+    })
+}
+
+fn compile_toml_mode(path: &Path, text: &str, intents: &Intents) -> Result<(Integration, ModePatterns), String> {
+    let integration = schema::parse_toml(path, text)?;
+    let patterns = pattern::compile_mode(&integration, intents)?
+        .ok_or_else(|| format!("{}: has no [mode] table", path.display()))?;
+    Ok((integration, patterns))
+}
+
+/// Where the last version of a TOML mode that loaded is kept, for when it stops loading. In the runtime dir, so it
+/// lasts the login, not the session: a session gone before a fix still has it the next time.
+fn last_good_copy(path: &Path) -> PathBuf {
+    let name = path.to_string_lossy().replace('%', "%25").replace('/', "%2F");
+    paths::runtime_dir().join("last-good-modes").join(name)
 }
 
 /// A mode hook's command: the integration's library sourced first, the turn's words as `VOXCMD_PHRASE`. With a
 /// `heard_mode` it runs with the identity of the Rust process, so a session call in it reaches this session; without
 /// one it has none.
-fn toml_hook(
-    integration: &Integration,
-    config_dir: &Path,
-    shell: &str,
-    phrase: &str,
-    heard_mode: Option<&str>,
-) -> Command {
-    let hooks = ShellHooks::new(
-        config_dir,
-        [integration.stem.clone()],
-        std::env::var_os("VOXCMD_DRY_RUN").is_some_and(|value| value == "1"),
-    );
+fn toml_hook(mode: &TomlMode, shell: &str, phrase: &str, heard_mode: Option<&str>) -> Command {
+    let hooks = ShellHooks::for_config_dir(&mode.config_dir);
     let env = HookEnv {
-        integration,
+        integration: &mode.integration,
         action: "",
         args: &[],
         phrase,
@@ -249,25 +284,33 @@ fn toml_hook(
     command
 }
 
-fn hook_timeout(integration: &Integration) -> Duration {
-    integration
+fn hook_timeout(mode: &TomlMode) -> Duration {
+    mode.integration
         .mode
         .as_ref()
         .and_then(|mode| mode.timeout_secs)
-        .map_or(HOOK_TIMEOUT, Duration::from_secs_f64)
+        .map_or(hooks::DEFAULT_TIMEOUT, Duration::from_secs_f64)
 }
 
-/// Runs a TOML mode's `ended` hook in the background, after the lock has gone; true when `file` is a TOML mode (with
-/// or without one). Like the bash hook it gets no session identity, so a session read in it takes the lock as any
-/// reader does.
+/// Runs a TOML mode's `ended` hook in the background, after the lock has gone; true when `file` is a TOML mode, so
+/// the bash loader never gets it. Like the bash hook it gets no session identity, so a session read in it takes the
+/// lock as any reader does.
 pub fn run_toml_ended(file: &str, reason: &str, frame_id: &str, continues: bool) -> bool {
-    let Some((integration, config_dir)) = toml_integration(file) else {
+    if !is_toml_file(file) {
         return false;
-    };
-    let Some(shell) = integration.mode.as_ref().and_then(|mode| mode.ended.clone()) else {
+    }
+    let Some(mode) = load_toml_mode(file).filter(|mode| mode.current) else {
         return true;
     };
-    let mut command = toml_hook(&integration, &config_dir, &shell, "", None);
+    let Some(shell) = mode
+        .integration
+        .mode
+        .as_ref()
+        .and_then(|declared| declared.ended.clone())
+    else {
+        return true;
+    };
+    let mut command = toml_hook(&mode, &shell, "", None);
     command
         .env("VOXCMD_MODE_END_REASON", reason)
         .env("VOXCMD_MODE_FRAME_ID", frame_id)
@@ -310,8 +353,10 @@ pub fn alive_under(_lock: &SessionLock, file: &str) -> bool {
 }
 
 fn is_alive(file: &str, heard_mode: &str, lock_held: bool) -> bool {
-    if let Some((integration, config_dir)) = toml_integration(file) {
-        return toml_alive(&integration, &config_dir, heard_mode, lock_held);
+    if is_toml_file(file) {
+        return load_toml_mode(file)
+            .filter(|mode| mode.current)
+            .is_none_or(|mode| toml_alive(&mode, heard_mode, lock_held));
     }
     if !is_legacy_file(file) {
         return true;
@@ -329,19 +374,24 @@ fn is_alive(file: &str, heard_mode: &str, lock_held: bool) -> bool {
 }
 
 /// A hook that cannot run, or runs out of time, says nothing against the mode.
-fn toml_alive(integration: &Integration, config_dir: &Path, heard_mode: &str, lock_held: bool) -> bool {
-    let Some(shell) = integration.mode.as_ref().and_then(|mode| mode.alive.as_deref()) else {
+fn toml_alive(mode: &TomlMode, heard_mode: &str, lock_held: bool) -> bool {
+    let Some(shell) = mode
+        .integration
+        .mode
+        .as_ref()
+        .and_then(|declared| declared.alive.as_deref())
+    else {
         return true;
     };
-    let mut command = toml_hook(integration, config_dir, shell, "", Some(heard_mode));
+    let mut command = toml_hook(mode, shell, "", Some(heard_mode));
     if lock_held {
         command.env(bridge::LOCK_HELD_BY_CALLER, "1");
     }
-    match process::run_with_timeout(&mut command, hook_timeout(integration)) {
+    match process::run_with_timeout(&mut command, hook_timeout(mode)) {
         Ok(outcome) if outcome.timed_out => {
             debug(&format!(
                 "session: {}'s alive hook timed out, counted as alive",
-                integration.stem
+                mode.integration.stem
             ));
             true
         }
@@ -354,16 +404,18 @@ fn toml_alive(integration: &Integration, config_dir: &Path, heard_mode: &str, lo
 /// `hook_env` as `alive`). None when a hook failed to give one per text. A bash hook given a single text keeps every
 /// line it printed.
 pub fn rewrite(settings: &ModeSettings, file: &str, texts: &[String], heard_mode: &str) -> Option<Vec<String>> {
-    if let Some((integration, config_dir)) = toml_integration(file) {
+    if is_toml_file(file) {
         if let Some(rewriting) = &settings.rewriting {
             return Some(texts.iter().map(|text| rewriting.apply(text)).collect());
         }
-        let shell = integration.mode.as_ref()?.rewrite_hook.clone()?;
+        // A hook skipped (the file does not load now) routes nothing rather than words it was meant to change.
+        let mode = load_toml_mode(file).filter(|mode| mode.current)?;
+        let shell = mode.integration.mode.as_ref()?.rewrite_hook.clone()?;
         return texts
             .iter()
             .map(|text| {
-                let mut command = toml_hook(&integration, &config_dir, &shell, text, Some(heard_mode));
-                let outcome = process::run_with_timeout(&mut command, hook_timeout(&integration)).ok()?;
+                let mut command = toml_hook(&mode, &shell, text, Some(heard_mode));
+                let outcome = process::run_with_timeout(&mut command, hook_timeout(&mode)).ok()?;
                 (outcome.code() == Some(0)).then(|| outcome.stdout.trim_end_matches('\n').to_string())
             })
             .collect();
@@ -404,10 +456,14 @@ mod tests {
         );
         assert!(!settings.default_exits && settings.bare_exits && settings.private && settings.has_rewrite);
         assert!(!settings.allows_switches && !settings.has_handler && !settings.has_alive);
-        assert_eq!(settings.exit_phrases, "done (clicking|with it)");
+        let exit_phrases = settings.exit_phrases.as_ref().unwrap();
+        assert!(exit_phrases.is_match("done with it") && !exit_phrases.is_match("done with it now"));
         assert_eq!(settings.listen_max_secs, "295");
         assert_eq!(settings.miss_actions, ["no_text"]);
         assert_eq!(settings.exit_hint_or_default(), "say cortana stop");
+        // One that is no regex matches nothing, and the mode's other settings still apply.
+        let broken = ModeSettings::parse("exit_phrases=done (\nbare_exits=0\n");
+        assert!(broken.exit_phrases.is_none() && !broken.bare_exits);
     }
 
     #[test]
@@ -422,8 +478,8 @@ mod tests {
     #[test]
     fn a_declared_rewrite_drops_then_keeps_then_prefixes_whole_texts() {
         let rewriting = Rewriting {
-            drop: Some("click".into()),
-            keep: Some("(left )?click .+".into()),
+            drop: WholeText::new("click").ok(),
+            keep: WholeText::new("(left )?click .+").ok(),
             prefix: "click ".into(),
         };
         assert_eq!(rewriting.apply("click"), "");
@@ -446,11 +502,8 @@ mod tests {
         assert!(!settings.bare_exits && settings.allows_switches && settings.default_exits && settings.has_rewrite);
         assert_eq!(settings.miss_actions, ["no_text"]);
         assert_eq!(settings.exit_hint, "say done to stop");
-        assert!(
-            settings
-                .exit_phrases
-                .starts_with("done clicking|im done clicking|done with (?:")
-        );
+        let exit_phrases = settings.exit_phrases.as_ref().unwrap();
+        assert!(exit_phrases.is_match("im done clicking") && exit_phrases.is_match("done with click mode"));
         let rewriting = settings.rewriting.unwrap();
         assert_eq!(rewriting.apply("click"), "");
         assert_eq!(rewriting.apply("right click settings"), "right click settings");

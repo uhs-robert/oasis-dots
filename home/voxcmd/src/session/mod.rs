@@ -246,22 +246,48 @@ pub fn create(lock: &SessionLock, kind: &str, file: &str, label: &str, me: u32) 
     true
 }
 
+/// What opening a mode did, so that a caller whose action then fails closes only a mode it opened.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Opened {
+    /// A new session in the mode, which nothing listens for yet.
+    Session,
+    /// The mode, over the current one.
+    Pushed,
+    /// Back to the mode, which was open underneath; the modes over it ended.
+    WentBack,
+    /// It was the current mode already.
+    AlreadyOn,
+    /// It could not open (another process's session, no auto-stop); a toast said why.
+    Refused,
+}
+
+impl Opened {
+    /// This call opened the mode, so it is this call's to close again.
+    pub fn is_new(self) -> bool {
+        matches!(self, Self::Session | Self::Pushed)
+    }
+}
+
 /// From a turn of the session `me` owns: opens the mode on top of the current one, or returns to it when it is open
 /// underneath, and does nothing when it is the current one.
-pub fn enter(lock: &SessionLock, kind: &str, file: &str, label: &str, me: u32) {
+pub fn enter(lock: &SessionLock, kind: &str, file: &str, label: &str, me: u32) -> Opened {
     let Some(state) = state(lock).filter(|state| is_mine(state, me)) else {
-        return;
+        return Opened::Refused;
     };
     let count = frames(&state).len();
     match frame_index(&state, kind) {
-        None => push(lock, &state, kind, file, label),
+        None => {
+            push(lock, &state, kind, file, label);
+            Opened::Pushed
+        }
         Some(index) if index + 1 < count => {
             debug(&format!("session: back to {kind}"));
             if let Some(popped) = truncate(lock, index + 1, "", me) {
                 popped.announce();
             }
+            Opened::WentBack
         }
-        Some(_) => {}
+        Some(_) => Opened::AlreadyOn,
     }
 }
 
