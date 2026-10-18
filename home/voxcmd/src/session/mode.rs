@@ -127,22 +127,24 @@ fn legacy_hook(kind: &str, file: &str) -> Command {
     command
 }
 
-/// Whether the mode is still wanted: its `session_alive`, when it has one, says its screen is still up.
-pub fn alive(file: &str) -> bool {
-    is_alive(file, false)
+/// Whether the mode is still wanted: its `session_alive`, when it has one, says its screen is still up. Run with
+/// `bridge::hook_env`, so a session check in the hook names this process as `$$`, not the bash child.
+pub fn alive(file: &str, heard_mode: &str) -> bool {
+    is_alive(file, heard_mode, false)
 }
 
 /// `alive` while the session lock is held, as bash ran it there. The hook's session reads skip the lock and its
 /// changes are refused (`bridge::LOCK_HELD_BY_CALLER`), so it cannot wait for this caller.
 pub fn alive_under(_lock: &SessionLock, file: &str) -> bool {
-    is_alive(file, true)
+    is_alive(file, "", true)
 }
 
-fn is_alive(file: &str, lock_held: bool) -> bool {
+fn is_alive(file: &str, heard_mode: &str, lock_held: bool) -> bool {
     if !is_legacy_file(file) {
         return true;
     }
     let mut command = legacy_hook("alive", file);
+    command.envs(bridge::hook_env(heard_mode));
     if lock_held {
         command.env(bridge::LOCK_HELD_BY_CALLER, "1");
     }
@@ -153,10 +155,14 @@ fn is_alive(file: &str, lock_held: bool) -> bool {
         .map_or(true, |status| status.success())
 }
 
-/// Each text as the mode's `session_rewrite` makes it; none when the hook failed to give one per text. A single text
+/// Each text as the mode's `session_rewrite` makes it, with the same `hook_env` as `alive`; none when the hook failed to give one per text. A single text
 /// keeps every line the hook printed.
-pub fn rewrite(file: &str, texts: &[String]) -> Option<Vec<String>> {
-    let output = legacy_hook("rewrite", file).args(texts).output().ok()?;
+pub fn rewrite(file: &str, texts: &[String], heard_mode: &str) -> Option<Vec<String>> {
+    let output = legacy_hook("rewrite", file)
+        .args(texts)
+        .envs(bridge::hook_env(heard_mode))
+        .output()
+        .ok()?;
     let printed = String::from_utf8_lossy(&output.stdout);
     let printed = printed.trim_end_matches('\n');
     if texts.len() == 1 {
@@ -200,6 +206,6 @@ mod tests {
         assert_eq!(settings, ModeSettings::default());
         assert!(settings.default_exits && settings.bare_exits);
         assert_eq!(settings.exit_hint_or_default(), "say done to stop");
-        assert!(alive("x"));
+        assert!(alive("x", ""));
     }
 }
