@@ -15,16 +15,11 @@ fixtures_dir=$here/fixtures
 # shellcheck source-path=SCRIPTDIR source=../../../lib/check/lock.sh
 . "$here/../../../lib/check/lock.sh"
 check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
-if [ -z "${SANDBOX_DIR:-}" ]; then
-  SANDBOX_CLIENTS_JSON=$(cat "$fixtures_dir/clients.json")
-  SANDBOX_ACTIVEWINDOW_JSON=$(jq -c '.[] | select(.focusHistoryID == 0)' <<<"$SANDBOX_CLIENTS_JSON")
-  SANDBOX_BINDS_JSON=$(cat "$fixtures_dir/binds.json")
-  export SANDBOX_CLIENTS_JSON SANDBOX_ACTIVEWINDOW_JSON SANDBOX_BINDS_JSON
-  # Installed apps come from the fixture's desktop entries alone; kitty and gnome-calendar must exist for "open a new kitty" and "open calendar" to start them.
-  export XDG_DATA_HOME="$fixtures_dir" XDG_DATA_DIRS="$fixtures_dir" SANDBOX_EXTRA_STUBS="kitty gnome-calendar"
-  unset VOXCMD_EXTRA_INTEGRATIONS
-  exec "$here/sandbox.sh" "$0" "$@"
-fi
+# shellcheck source-path=SCRIPTDIR source=window-fixtures.sh
+source "$here/window-fixtures.sh"
+# kitty and gnome-calendar must exist for "open a new kitty" and "open calendar" to start them.
+export SANDBOX_EXTRA_STUBS="kitty gnome-calendar"
+[ -n "${SANDBOX_DIR:-}" ] || exec "$here/sandbox.sh" "$0" "$@"
 # shellcheck source-path=SCRIPTDIR source=lib.sh
 source "$here/lib.sh"
 

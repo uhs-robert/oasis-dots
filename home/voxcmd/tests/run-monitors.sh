@@ -9,15 +9,9 @@ here=$(cd "$(dirname "$0")" && pwd)
 package=$(cd "$here/.." && pwd)
 fixtures_dir=$here/fixtures
 layouts_dir=$fixtures_dir/monitors
-if [ -z "${SANDBOX_DIR:-}" ]; then
-  SANDBOX_CLIENTS_JSON=$(cat "$fixtures_dir/clients.json")
-  SANDBOX_ACTIVEWINDOW_JSON=$(jq -c '.[] | select(.focusHistoryID == 0)' <<<"$SANDBOX_CLIENTS_JSON")
-  SANDBOX_BINDS_JSON=$(cat "$fixtures_dir/binds.json")
-  export SANDBOX_CLIENTS_JSON SANDBOX_ACTIVEWINDOW_JSON SANDBOX_BINDS_JSON
-  export XDG_DATA_HOME="$fixtures_dir" XDG_DATA_DIRS="$fixtures_dir"
-  unset VOXCMD_EXTRA_INTEGRATIONS
-  exec "$here/sandbox.sh" "$0" "$@"
-fi
+# shellcheck source-path=SCRIPTDIR source=window-fixtures.sh
+source "$here/window-fixtures.sh"
+[ -n "${SANDBOX_DIR:-}" ] || exec "$here/sandbox.sh" "$0" "$@"
 # shellcheck source-path=SCRIPTDIR source=lib.sh
 source "$here/lib.sh"
 # shellcheck source=/dev/null # the resolver is a share file; its functions are the ones checked here
