@@ -334,33 +334,10 @@
       description: "Reload every tbkeys module into this window",
       run: ({ args }) => {
         if (args.length) return tk.commands.reload.usage;
-        const manifest = tk.MODULE_MANIFEST;
-        if (!Array.isArray(manifest) || !manifest.length)
-          return "No module manifest to reload";
+        if (typeof window.tbkeys_reload !== "function")
+          return "tbkeys loader not found; restart Betterbird";
         try {
-          const dir = window.Services?.dirsvc?.get(
-            "Home",
-            window.Components?.interfaces?.nsIFile,
-          );
-          if (!dir) return "Cannot resolve tbkeys directory";
-          dir.append(".config");
-          dir.append("tbkeys");
-          const files = manifest.map((name) => {
-            const file = dir.clone();
-            file.append(name);
-            return file;
-          });
-          const missing = files
-            .filter((file) => !file.exists())
-            .map((file) => file.path);
-          if (missing.length)
-            return `tbkeys reload: not loaded, missing ${missing.join(", ")}`;
-          for (const file of files) {
-            window.Services.scriptloader.loadSubScriptWithOptions(
-              window.Services.io.newFileURI(file).spec,
-              { target: window, allowUnsafeURL: true, ignoreCache: true },
-            );
-          }
+          return window.tbkeys_reload();
         } catch (e) {
           return `tbkeys reload failed: ${e}`;
         }
