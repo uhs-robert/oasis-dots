@@ -186,7 +186,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/timezones.json`               | Extra clock zones, a JSON array of IANA names    |
 | `quickshell/clock.json`                   | Time format and first day of week                |
 | `quickshell/typing.json`                  | Start mode for pickers and search popups         |
-| `voxcmd/voice.env`                        | Voice choices (listener sensitivity, music ducking, type-mode pause), read by voxcmd, voxcmd-wake and voxtype-daemon |
+| `voxcmd/voice.env`                        | Voice choices (listener sensitivity, music ducking, type-mode pause), read by voxcmd, voxcmd-wake and voxtype-duck |
 | `hypr/monitors.json`                      | Display settings, read by Hyprland               |
 | `hypr/wallpaper.json`                     | Wallpaper rotation settings and per-monitor pins, read by the rotator |
 | `hypr/wallpaper-status.json`              | What the rotator is doing, written by the rotator |

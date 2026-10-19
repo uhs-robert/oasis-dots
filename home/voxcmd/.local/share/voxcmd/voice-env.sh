@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Voice settings saved by Quickshell's Settings > Voice, read by voxcmd and voxtype-daemon.
+# Voice settings saved by Quickshell's Settings > Voice, read by voxcmd (voxcmd-wake and voxtype-duck have their own readers).
 #
 # The file sits outside the stow-folded ~/.config/voxcmd, which links into the public repo. It is read as data, never sourced:
 # only lines of the shape KEY=NUMBER with a VOXCMD_ key count (VOXCMD_WAKE_SENSITIVITY takes one of its level names

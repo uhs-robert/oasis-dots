@@ -1,0 +1,18 @@
+[Unit]
+Description=Lowers the output volume while voxtype records
+PartOf=graphical-session.target
+# Not After=graphical-session.target: the target wants this unit, and a target orders itself after the units it wants,
+# so that would be a cycle.
+After=graphical-session-pre.target
+
+# Idle until voxtype records, and holds no microphone. Enabled by the installer and by `just migrate-systemd`.
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I %h/.local/bin/voxtype-duck
+# Undoes a duck the follower left behind when it was killed; a clean stop has already restored it.
+ExecStopPost=/usr/bin/python3 -I %h/.local/bin/voxtype-duck --restore
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

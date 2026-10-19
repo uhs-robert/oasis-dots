@@ -1,0 +1,330 @@
+#!/usr/bin/env python3
+"""Lowers the default output sink while voxtype records, and puts it back afterwards.
+
+Follows `voxtype status --follow --format json`, so every recording ducks, whoever started it. Run as
+`python3 -I voxtype-duck` by voxtype-duck.service; `--restore` (the unit's ExecStopPost) undoes a duck a killed
+follower left behind.
+
+The sink's volume is persistent and global, so a duck the follower never undoes strands the whole system quiet. The
+journal $XDG_RUNTIME_DIR/voxcmd/duck.json exists exactly while the sink is ducked; it names the sink and the volume to
+return to, so any later run can finish the job. The bar reads the file to keep its volume OSD quiet meanwhile.
+"""
+
+import json
+import os
+import re
+import selectors
+import signal
+import subprocess
+import sys
+import time
+
+FADE_SECS = 0.15
+FADE_STEPS = 5
+# Voice sessions record once per phrase; without the hold-off the volume would pump between phrases.
+RESTORE_HOLD_SECS = 0.5
+RETRY_SECS = 5
+MAX_RETRIES = 3
+RECONNECT_MIN_SECS = 1
+RECONNECT_MAX_SECS = 30
+DEFAULT_PERCENT = 30
+# wpctl prints the volume with two decimals, so two readings of one value can differ by up to 0.005.
+TOLERANCE = 0.006
+WPCTL_TIMEOUT_SECS = 5
+
+
+class Terminate(Exception):
+    """Raised by the signal handler so a fade in progress stops at once."""
+
+
+def log(message):
+    print("voxtype-duck: " + message, file=sys.stderr, flush=True)
+
+
+def journal_path():
+    return os.path.join(os.environ["XDG_RUNTIME_DIR"], "voxcmd", "duck.json")
+
+
+def read_journal():
+    try:
+        with open(journal_path(), encoding="utf-8") as f:
+            journal = json.load(f)
+    except (OSError, ValueError):
+        return None
+    ok = isinstance(journal, dict) and isinstance(journal.get("sink_id"), int)
+    return journal if ok and all(isinstance(journal.get(k), (int, float)) for k in ("saved_volume", "ducked_to", "last_written")) else None
+
+
+def write_journal(journal):
+    path = journal_path()
+    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    tmp = path + ".tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(journal, f)
+    os.replace(tmp, path)
+
+
+def delete_journal():
+    try:
+        os.unlink(journal_path())
+    except FileNotFoundError:
+        pass
+
+
+def duck_percent():
+    """Percent of its volume the sink keeps: the environment first, else Settings' voice.env, else the default."""
+    key = "VOXCMD_DUCK_MEDIA_VOLUME"
+    candidates = [os.environ.get(key, "")]
+    state_home = os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local", "state")
+    voice_env = os.environ.get("VOXCMD_VOICE_ENV_FILE") or os.path.join(state_home, "voxcmd", "voice.env")
+    try:
+        with open(voice_env, encoding="utf-8", errors="replace") as f:
+            lines = [line.rstrip("\n") for line in f]
+    except OSError:
+        lines = []
+    saved = [line[len(key) + 1:] for line in lines if re.fullmatch(key + "=[0-9]+(\\.[0-9]+)?", line)]
+    candidates.append(saved[-1] if saved else "")
+    for text in candidates:
+        if re.fullmatch("[0-9]+", text) and int(text) <= 100:
+            return int(text)
+    return DEFAULT_PERCENT
+
+
+def wpctl(*args):
+    """The command's stdout, or None when it failed or hung."""
+    try:
+        done = subprocess.run(["wpctl", *args], capture_output=True, text=True, timeout=WPCTL_TIMEOUT_SECS)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return done.stdout if done.returncode == 0 else None
+
+
+def default_sink():
+    """(id, node name) of the default sink, or None."""
+    out = wpctl("inspect", "@DEFAULT_AUDIO_SINK@")
+    sink_id = re.search(r"^id (\d+),", out or "", re.M)
+    if not sink_id:
+        return None
+    name = re.search(r'node\.name = "([^"]*)"', out)
+    return int(sink_id.group(1)), name.group(1) if name else ""
+
+
+def sink_state(sink_id):
+    """(volume, muted) of the sink, or None when wpctl cannot read it."""
+    out = wpctl("get-volume", str(sink_id))
+    match = re.match(r"Volume: ([0-9.]+)( \[MUTED\])?", out or "")
+    return (float(match.group(1)), bool(match.group(2))) if match else None
+
+
+def set_volume(sink_id, volume):
+    return wpctl("set-volume", str(sink_id), "%.4f" % max(volume, 0.0)) is not None
+
+
+def fade_values(start, end):
+    return [start + (end - start) * step / FADE_STEPS for step in range(1, FADE_STEPS + 1)]
+
+
+def is_ours(journal, state, loose):
+    """Whether the sink still sits where this follower left it, so nobody touched it since.
+
+    A fade interrupted between a set-volume and the journal update leaves the sink one step from last_written; that
+    is still ours while it lies between the two ends of the duck."""
+    volume, muted = state
+    if muted != bool(journal.get("saved_muted", False)):
+        return False
+    if abs(volume - journal["last_written"]) <= TOLERANCE:
+        return True
+    low, high = sorted((journal["ducked_to"], journal["saved_volume"]))
+    return loose and low - TOLERANCE <= volume <= high + TOLERANCE
+
+
+class Ducker:
+    def __init__(self):
+        self.journal = read_journal()
+        self.cut_short = False
+        self.restore_at = None
+        self.retries = 0
+
+    @property
+    def ducked(self):
+        return self.journal is not None
+
+    def duck(self):
+        self.restore_at = None
+        if self.ducked:
+            return
+        sink = default_sink()
+        state = sink_state(sink[0]) if sink else None
+        if state is None:
+            log("cannot read the default sink, not ducking")
+            return
+        volume, muted = state
+        target = volume * duck_percent() / 100
+        if muted or target >= volume:
+            return
+        self.journal = {"version": 1, "sink_id": sink[0], "sink_name": sink[1], "saved_volume": volume,
+                        "saved_muted": muted, "ducked_to": target, "last_written": volume, "pid": os.getpid()}
+        write_journal(self.journal)
+        self.retries = 0
+        if not self.fade(volume, target):
+            log("set-volume failed, undoing the duck")
+            if self.journal["last_written"] == volume:
+                self.forget()
+            else:
+                self.restore(fade=False, loose=True)
+
+    def fade(self, start, end, fade=True):
+        """Steps the sink from start to end, journalling each value written. False when set-volume failed."""
+        try:
+            values = fade_values(start, end) if fade else [end]
+            for index, value in enumerate(values):
+                if not set_volume(self.journal["sink_id"], value):
+                    return False
+                self.journal["last_written"] = value
+                write_journal(self.journal)
+                if index < len(values) - 1:
+                    time.sleep(FADE_SECS / FADE_STEPS)
+            return True
+        except Terminate:
+            self.cut_short = True
+            raise
+
+    def schedule_restore(self):
+        if self.ducked and self.restore_at is None:
+            self.restore_at = time.monotonic() + RESTORE_HOLD_SECS
+
+    def restore(self, fade=True, loose=False):
+        """Returns the journalled sink to its saved volume, unless the user moved it; then forgets the duck.
+
+        loose: the sink may sit mid-fade (after a kill), not only where the last write left it."""
+        self.restore_at = None
+        journal = self.journal
+        if journal is None:
+            return
+        state = sink_state(journal["sink_id"])
+        if state is None:
+            # A default sink that answers while the journalled one does not means the device is gone, and there
+            # is nothing to restore; wpctl failing outright is worth retrying.
+            if default_sink() is not None:
+                log("the ducked sink is gone")
+                self.forget()
+            else:
+                self.retry_later("cannot read the ducked sink")
+            return
+        if is_ours(journal, state, loose):
+            if not self.fade(state[0], journal["saved_volume"], fade):
+                self.retry_later("set-volume failed")
+                return
+        self.forget()
+
+    def retry_later(self, why):
+        self.retries += 1
+        if self.retries > MAX_RETRIES:
+            log(why + ", giving up")
+            self.forget()
+        else:
+            self.restore_at = time.monotonic() + RETRY_SECS
+
+    def forget(self):
+        self.journal = None
+        self.restore_at = None
+        self.retries = 0
+        delete_journal()
+
+    def on_state(self, state):
+        if state == "recording":
+            self.duck()
+        else:
+            self.schedule_restore()
+
+    def on_eof(self):
+        self.restore()
+
+    def finish(self):
+        """Leaves nothing ducked: at once, no fade, and tolerant of a fade a signal cut short."""
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            signal.signal(sig, signal.SIG_IGN)
+        self.restore(fade=False, loose=self.cut_short)
+
+
+def parse_state(line):
+    if not line.startswith("{"):
+        return None
+    try:
+        status = json.loads(line)
+    except ValueError:
+        return None
+    state = status.get("alt") or status.get("class") if isinstance(status, dict) else None
+    return state if isinstance(state, str) else None
+
+
+def follow(ducker):
+    """Reads voxtype's status stream until it ends; returns True when at least one line arrived."""
+    try:
+        proc = subprocess.Popen(["voxtype", "status", "--follow", "--format", "json"], stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL)
+    except OSError as error:
+        log("cannot start voxtype: %s" % error)
+        return False
+    selector = selectors.DefaultSelector()
+    selector.register(proc.stdout, selectors.EVENT_READ)
+    pending = b""
+    got_line = False
+    try:
+        while True:
+            timeout = None
+            if ducker.restore_at is not None:
+                timeout = max(0.0, ducker.restore_at - time.monotonic())
+            if selector.select(timeout):
+                chunk = os.read(proc.stdout.fileno(), 65536)
+                if not chunk:
+                    return got_line
+                pending += chunk
+                *lines, pending = pending.split(b"\n")
+                for raw in lines:
+                    state = parse_state(raw.decode("utf-8", "replace").strip())
+                    if state is not None:
+                        got_line = True
+                        ducker.on_state(state)
+            elif ducker.restore_at is not None and time.monotonic() >= ducker.restore_at:
+                ducker.restore()
+    finally:
+        selector.close()
+        proc.terminate()
+        proc.wait()
+        proc.stdout.close()
+
+
+def raise_terminate(signum, frame):
+    raise Terminate()
+
+
+def run():
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(sig, raise_terminate)
+    ducker = Ducker()
+    try:
+        # A journal here is a duck a killed run left behind.
+        ducker.restore(fade=False, loose=True)
+        backoff = RECONNECT_MIN_SECS
+        while True:
+            if follow(ducker):
+                backoff = RECONNECT_MIN_SECS
+            ducker.on_eof()
+            time.sleep(backoff)
+            backoff = min(backoff * 2, RECONNECT_MAX_SECS)
+    except Terminate:
+        pass
+    finally:
+        ducker.finish()
+
+
+def restore_only():
+    Ducker().restore(fade=False, loose=True)
+
+
+if __name__ == "__main__":
+    if "XDG_RUNTIME_DIR" not in os.environ:
+        sys.exit("voxtype-duck: XDG_RUNTIME_DIR is not set")
+    restore_only() if sys.argv[1:] == ["--restore"] else run()

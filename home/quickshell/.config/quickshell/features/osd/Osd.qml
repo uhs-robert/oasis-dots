@@ -162,6 +162,8 @@ PanelWindow {
 
     function audio_changed() {
         if (!root.audio_armed || !root.sink || !root.sink.audio) return;
+        // The ducker's own volume writes are not the user's.
+        if (VoxDuck.ducked || duck_quiet.running) return;
         root.show("volume", root.sink.audio.volume, root.sink.audio.muted);
     }
 
@@ -217,6 +219,19 @@ PanelWindow {
         id: audio_arm
         interval: 800
         onTriggered: root.audio_armed = true
+    }
+
+    // The last volume event of a restore arrives after the journal is gone.
+    Timer {
+        id: duck_quiet
+        interval: 400
+    }
+
+    Connections {
+        target: VoxDuck
+        function onDuckedChanged() {
+            if (!VoxDuck.ducked) duck_quiet.restart();
+        }
     }
 
     Timer {

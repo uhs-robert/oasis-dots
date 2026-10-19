@@ -98,8 +98,8 @@ RowsSection {
             value: () => VoiceSettings.pause_for_mic,
             set: v => VoiceSettings.set("pause_mic", v)
         }, {
-            label: "Music while recording",
-            desc: "The share of its volume music keeps while recording. A change restarts voxtype, which cuts off a recording in progress.",
+            label: "Output volume while listening",
+            desc: "The share of the output volume kept while you speak to voxtype. Applies from the next recording.",
             values: () => Choices.with_current(VoiceSettings.duck_steps, VoiceSettings.duck),
             text: v => v === 0 ? "Silent" : v + "%",
             value: () => VoiceSettings.duck,
