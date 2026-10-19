@@ -9,11 +9,11 @@ import qs.theme
 Singleton {
     id: root
 
-    property bool sync: true
-    property string screen: "follow"
-    property string tint: "follow"
-    property string music: "follow"
-    property string session: "Hyprland"
+    readonly property bool sync: store.values.sync
+    readonly property string screen: store.values.screen
+    readonly property string tint: store.values.tint
+    readonly property string music: store.values.music
+    readonly property string session: store.values.session
 
     readonly property var musics: ["follow", "on", "off"]
     // Wayland session names from /usr/share/wayland-sessions, Hyprland first.
@@ -39,59 +39,44 @@ Singleton {
     }
 
     function set_sync(on) {
-        root.sync = on;
         if (on) root.probe();
-        root.save();
+        store.set_key("sync", on);
     }
 
     function set_screen(name) {
         if (!root.valid_screen(name)) return false;
-        root.screen = name;
-        root.save();
+        store.set_key("screen", name);
         return true;
     }
 
     function set_tint(name) {
         if (name !== "follow" && Style.lock_tints.indexOf(name) < 0) return false;
-        root.tint = name;
-        root.save();
+        store.set_key("tint", name);
         return true;
     }
 
     function set_music(value) {
         if (root.musics.indexOf(value) < 0) return false;
-        root.music = value;
-        root.save();
+        store.set_key("music", value);
         return true;
     }
 
     function set_session(name) {
-        root.session = name;
-        root.save();
+        store.set_key("session", name);
     }
 
-    function save() {
-        state_file.setText(JSON.stringify({ sync: root.sync, screen: root.screen, tint: root.tint, music: root.music, session: root.session }));
-    }
-
-    FileView {
-        id: state_file
+    JsonStore {
+        id: store
         path: Paths.state_dir + "/greeter.json"
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                root.sync = data.sync !== false;
-                if (typeof data.screen === "string") root.screen = data.screen;
-                if (data.tint === "follow" || Style.lock_tints.indexOf(data.tint) >= 0) root.tint = data.tint;
-                if (root.musics.indexOf(data.music) >= 0) root.music = data.music;
-                if (typeof data.session === "string" && data.session !== "") root.session = data.session;
-            } catch (e) {
-                console.warn("LoginScreen: invalid greeter.json (" + e + ")");
-            }
-        }
-        onLoadFailed: error => {}
+        defaults: ({ sync: true, screen: "follow", tint: "follow", music: "follow", session: "Hyprland" })
+        // A field that fails its check keeps the value it has now, as the loader always did.
+        validate: raw => ({
+            sync: raw.sync !== false,
+            screen: typeof raw.screen === "string" ? raw.screen : root.screen,
+            tint: raw.tint === "follow" || Style.lock_tints.indexOf(raw.tint) >= 0 ? raw.tint : root.tint,
+            music: root.musics.indexOf(raw.music) >= 0 ? raw.music : root.music,
+            session: typeof raw.session === "string" && raw.session !== "" ? raw.session : root.session
+        })
     }
 
     Process {

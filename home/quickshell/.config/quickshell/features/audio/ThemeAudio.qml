@@ -12,16 +12,16 @@ import qs.features.lock.skins.sound
 Singleton {
     id: root
 
-    property bool ui: false
-    property bool notify: false
-    property bool music: false
+    readonly property bool ui: store.values.ui
+    readonly property bool notify: store.values.notify
+    readonly property bool music: store.values.music
     // The Audio settings page is open: it previews sounds and lists packs even with every category off.
     property int settings_open: 0
     readonly property bool packs_wanted: root.ui || root.notify || root.music || root.settings_open > 0
-    property real music_volume: 0.5
-    property real fx_volume: 0.5
+    readonly property real music_volume: store.values.music_volume
+    readonly property real fx_volume: store.values.fx_volume
     // The user's pack for every style; "" follows the style (its preset, else its own).
-    property string choice: ""
+    readonly property string choice: store.values.pack
     // The lock host sets this while the session is locked.
     property bool lock_active: false
     // The lock host clears this until a key press; lock music fades out with it.
@@ -120,21 +120,18 @@ Singleton {
 
     function set_flag(name, on) {
         if (["ui", "notify", "music"].indexOf(name) < 0) return;
-        root[name] = on;
-        root.save();
+        store.set_key(name, on);
     }
 
     function set_volume(name, value) {
         if (["music_volume", "fx_volume"].indexOf(name) < 0 || root.volumes.indexOf(value) < 0) return false;
-        root[name] = value;
-        root.save();
+        store.set_key(name, value);
         return true;
     }
 
     function set_pack(name) {
         if (name !== "" && !root.valid_pack(name)) return false;
-        root.choice = name;
-        root.save();
+        store.set_key("pack", name);
         return true;
     }
 
@@ -178,9 +175,6 @@ Singleton {
         root.voice = (root.voice + 1) % voices.count;
     }
 
-    function save() {
-        state_file.setText(JSON.stringify({ ui: root.ui, notify: root.notify, music: root.music, music_volume: root.music_volume, fx_volume: root.fx_volume, pack: root.choice }));
-    }
 
     component Pack: Item {
         id: pack
@@ -300,28 +294,26 @@ Singleton {
         volume: root.music_volume * root.music_level
     }
 
-    FileView {
-        id: state_file
+    JsonStore {
+        id: store
         path: Paths.state_dir + "/audio.json"
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                root.ui = data.ui === true;
-                root.notify = data.notify === true;
-                root.music = data.music === true;
-                const music_saved = data.music_volume !== undefined ? data.music_volume : data.volume;
-                const fx_saved = data.fx_volume !== undefined ? data.fx_volume : data.volume;
-                if (root.volumes.indexOf(music_saved) >= 0) root.music_volume = music_saved;
-                if (root.volumes.indexOf(fx_saved) >= 0) root.fx_volume = fx_saved;
-                if (typeof data.pack === "string" && (Style.names.indexOf(data.pack) >= 0 || data.pack in root.extra_packs || data.pack in root.games)) root.choice = data.pack;
-            } catch (e) {
-                console.warn("ThemeAudio: invalid audio.json (" + e + ")");
-            }
+        defaults: ({ ui: false, notify: false, music: false, music_volume: 0.5, fx_volume: 0.5, pack: "" })
+        // `volume`, the one level the file held before music and effects were split, is read here and not kept: it is
+        // listed as known so a save drops it instead of carrying it as an extra.
+        known_keys: ["ui", "notify", "music", "music_volume", "fx_volume", "pack", "volume"]
+        // A field that fails its check keeps the value it has now, as the loader always did.
+        validate: raw => {
+            const music_saved = raw.music_volume !== undefined ? raw.music_volume : raw.volume;
+            const fx_saved = raw.fx_volume !== undefined ? raw.fx_volume : raw.volume;
+            const pack_ok = typeof raw.pack === "string" && (Style.names.indexOf(raw.pack) >= 0 || raw.pack in root.extra_packs || raw.pack in root.games);
+            return {
+                ui: raw.ui === true,
+                notify: raw.notify === true,
+                music: raw.music === true,
+                music_volume: root.volumes.indexOf(music_saved) >= 0 ? music_saved : root.music_volume,
+                fx_volume: root.volumes.indexOf(fx_saved) >= 0 ? fx_saved : root.fx_volume,
+                pack: pack_ok ? raw.pack : root.choice
+            };
         }
-        onLoadFailed: error => {}
     }
-
-    Component.onCompleted: state_file.reload()
 }

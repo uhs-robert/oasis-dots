@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.core
 
 // `claude -p /usage`, refreshed every 10 min only on AC while agents run, and when one finishes.
@@ -21,7 +20,7 @@ Singleton {
     readonly property var warnings: root.rows.filter(r => r.percent >= (/session/i.test(r.label) ? 80 : 90))
     readonly property bool warning: root.warnings.length > 0
     // Persisted so a restart or reload doesn't warn again for the same window.
-    property var warned: ({})
+    readonly property var warned: store.values
 
     // The reset time wobbles between e.g. "6am" and "5:59am"; round to the hour.
     function reset_key(resets) {
@@ -31,17 +30,10 @@ Singleton {
         return m[1] + " " + hour;
     }
 
-    FileView {
-        id: warned_file
+    JsonStore {
+        id: store
         path: Paths.state_dir + "/claude_usage_warned.json"
-        printErrors: false
-        blockAllReads: true
-        onLoaded: {
-            try {
-                root.warned = JSON.parse(text()) || {};
-            } catch (e) {}
-        }
-        onLoadFailed: error => {}
+        validate: raw => raw
     }
 
     onWarningsChanged: {
@@ -54,8 +46,7 @@ Singleton {
             const urgency = r.percent >= 95 ? "critical" : "normal";
             Quickshell.execDetached(["notify-send", "-a", "Claude usage", "-u", urgency, r.label + " at " + r.percent + "%", r.resets ? "Resets " + r.resets : ""]);
         }
-        root.warned = next;
-        warned_file.setText(JSON.stringify(next));
+        store.replace(next);
     }
 
     // A finished agent is exactly when usage just moved; the tooltip lists each session's state.

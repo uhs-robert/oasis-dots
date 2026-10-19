@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Notifications
 import qs.features.popups
 import qs.features.audio
@@ -15,7 +14,7 @@ Singleton {
 
     property var history: []
     property var toasts: []
-    property bool dnd: false
+    readonly property bool dnd: store.values.dnd
     // Toast timers by entry id; kept off the entries so model rows never hold a Timer.
     property var timers: ({})
     readonly property int unread: history.filter(e => !e.read).length
@@ -318,8 +317,7 @@ Singleton {
     }
 
     function toggle_dnd() {
-        root.dnd = !root.dnd;
-        root.save_state();
+        store.set_key("dnd", !root.dnd);
     }
 
     function find_default_action(n) {
@@ -375,38 +373,14 @@ Singleton {
         return NotificationMarkup.sanitize(lines.join("\n")).replace(/^(\s|<br>)+|(\s|<br>)+$/g, "");
     }
 
-    readonly property string state_dir: Paths.state_dir
-
-    Process {
-        id: ensure_state_dir
-        command: ["mkdir", "-p", root.state_dir]
-        onExited: state_file.reload()
+    JsonStore {
+        id: store
+        path: Paths.state_dir + "/notifications.json"
+        defaults: ({ dnd: false })
+        validate: raw => ({ dnd: !!raw.dnd })
     }
 
-    FileView {
-        id: state_file
-        path: root.state_dir + "/notifications.json"
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                const parsed = JSON.parse(text());
-                root.dnd = !!parsed.dnd;
-            } catch (e) {
-                console.warn("Notifications: invalid notifications.json (" + e + ")");
-            }
-        }
-        onLoadFailed: error => {}
-    }
-
-    function save_state() {
-        state_file.setText(JSON.stringify({ dnd: root.dnd }));
-    }
-
-    Component.onCompleted: {
-        ensure_state_dir.running = true;
-        root.restore_tracked();
-    }
+    Component.onCompleted: root.restore_tracked()
 
     // Tracked notifications outlive this singleton on reload; drop its handlers so they don't pile up.
     Component.onDestruction: {
