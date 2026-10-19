@@ -219,10 +219,11 @@ def readers_for(rel):
 
 def callers_in(rel, text):
     """The callers one file holds, as Callers."""
+    code = without_comment_lines(rel, text)
     return [
-        Caller(rel, text.count("\n", 0, match.start()) + 1, target, function)
+        Caller(rel, code.count("\n", 0, match.start()) + 1, target, function)
         for regex, reader in readers_for(rel)
-        for match in regex.finditer(without_comment_lines(rel, text))
+        for match in regex.finditer(code)
         for target, function in reader(match)
         if target not in BUILTINS
     ]
