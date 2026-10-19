@@ -1,6 +1,6 @@
 """Lifecycle tests for core/JsonStore.qml and the FileView write it relies on, run in a headless qs.
 
-Each scenario gets a fresh XDG_STATE_HOME, runs shell.qml with SCENARIO set, and is judged here from the RESULT line
+Each scenario gets a fresh XDG_STATE_HOME, runs shell.qml with SCENARIO set, and is judged here from the result file
 the shell prints and from what happened on disk. A directory watch (inotify through ctypes) records how files arrived.
 
   python3 -B run.py [scenario...]
@@ -57,7 +57,7 @@ class Watch:
 
 
 def run_qs(scenario, state_home, prepare=None):
-    """Runs the harness shell once; returns (RESULT dict or None, qs output)."""
+    """Runs the harness shell once; returns (result dict or None, qs output)."""
     cfg = os.path.join(state_home, "cfg")
     os.makedirs(cfg)
     shutil.copy(os.path.join(HERE, "shell.qml"), cfg)
@@ -75,10 +75,11 @@ def run_qs(scenario, state_home, prepare=None):
         os.makedirs(os.path.join(state_home, name), mode=0o700, exist_ok=True)
     proc = subprocess.run(["qs", "-p", cfg], env=env, capture_output=True, text=True, timeout=20)
     out = "qs exit code %d\n" % proc.returncode + proc.stdout + proc.stderr
-    for line in out.splitlines():
-        if "RESULT " in line:
-            return json.loads(line.split("RESULT ", 1)[1]), out
-    return None, out
+    try:
+        with open(os.path.join(state_home, "state", "result.json")) as f:
+            return json.load(f), out
+    except (FileNotFoundError, ValueError):
+        return None, out
 
 
 def scenario_atomic(state_home):
@@ -104,7 +105,7 @@ def scenario_atomic(state_home):
     inodes.append(os.stat(target).st_ino)
     problems = []
     if result is None:
-        return ["no RESULT line:\n" + out]
+        return ["no result file:\n" + out]
     if result.get("saves") != 2 or result.get("failures"):
         problems.append("saved/saveFailed did not fire as expected: %r" % result)
     renamed_in = [e for e in watch.events if e[1] & IN_MOVED_TO and e[2] == "atomic.json"]
@@ -129,7 +130,7 @@ def store_run(name, state_home, seed=None, extra=None):
     if extra:
         extra(store_dir)
     result, out = run_qs(name, state_home)
-    problems = [] if result is not None else ["no RESULT line:\n" + out]
+    problems = [] if result is not None else ["no result file:\n" + out]
     return result, store_dir, problems
 
 
@@ -250,6 +251,33 @@ def scenario_after_save(state_home):
     return problems
 
 
+def scenario_revert(state_home):
+    result, store_dir, problems = store_run("revert", state_home)
+    if problems:
+        return problems
+    expect(problems, "values follow a revert to our last write", result["values"], {"a": 1, "b": 0})
+    return problems
+
+
+def scenario_recreate(state_home):
+    result, store_dir, problems = store_run("recreate", state_home)
+    if problems:
+        return problems
+    expect(problems, "values follow the recreated file", result["values"], {"a": 1, "b": 0})
+    return problems
+
+
+def scenario_after_save_inflight(state_home):
+    result, store_dir, problems = store_run("after_save_inflight", state_home)
+    if problems:
+        return problems
+    # The reload flag was set with the second set, so the second write's argv must be the one that took it. The first
+    # entry is the directory-making write.
+    expect(problems, "after_save kinds in write order", read(store_dir, "after.log").splitlines(), ["apply", "apply", "reload"])
+    expect(problems, "after_save_done", result["after_log"], ["done 0"] * 3)
+    return problems
+
+
 def scenario_write_fails(state_home):
     def make_blocker(store_dir):
         open(os.path.join(store_dir, "blocker"), "w").close()
@@ -286,6 +314,9 @@ SCENARIOS = {
     "unknown_keys": scenario_unknown_keys,
     "dropped_known": scenario_dropped_known,
     "after_save": scenario_after_save,
+    "revert": scenario_revert,
+    "recreate": scenario_recreate,
+    "after_save_inflight": scenario_after_save_inflight,
     "write_fails": scenario_write_fails,
     "watch_after_first_write": scenario_watch_after_first_write,
 }

@@ -2,8 +2,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Harness shell for run.py: runs the scenario named by $SCENARIO against the files under $XDG_STATE_HOME and prints
-// one "RESULT {json}" line when it is done, then quits.
+// Harness shell for run.py: runs the scenario named by $SCENARIO against the files under $XDG_STATE_HOME and writes
+// the result as result.json under $XDG_STATE_HOME when it is done, then quits.
 ShellRoot {
     id: root
 
@@ -11,9 +11,18 @@ ShellRoot {
     readonly property string dir: Quickshell.env("XDG_STATE_HOME") + "/json_store"
     property var result: ({})
 
+    // The result goes to a file and the shell quits once it is saved: a log line can be lost at exit.
     function finish() {
-        console.log("RESULT " + JSON.stringify(root.result));
-        Qt.quit();
+        result_file.setText(JSON.stringify(root.result));
+    }
+
+    FileView {
+        id: result_file
+        path: Quickshell.env("XDG_STATE_HOME") + "/result.json"
+        atomicWrites: true
+        printErrors: false
+        onSaved: Qt.quit()
+        onSaveFailed: Qt.quit()
     }
 
     // The store scenarios: each plan gives the store's settings and timed steps (ms from start); `end` is when the
@@ -115,6 +124,39 @@ ShellRoot {
             ],
             end: 1600
         },
+        // A file edited and then put back to the text we last wrote is an edit, not our echo.
+        revert: {
+            steps: [
+                [100, () => store.set_key("a", 1)],
+                [500, () => root.outside_write(root.store_path, '{"a":2,"b":0}')],
+                [900, () => root.outside_write(root.store_path, '{"a":1,"b":0}')]
+            ],
+            end: 1400
+        },
+        // Same for a delete (reset to defaults) followed by the same bytes again.
+        recreate: {
+            steps: [
+                [100, () => store.set_key("a", 1)],
+                [500, () => Quickshell.execDetached(["rm", root.store_path])],
+                [900, () => root.outside_write(root.store_path, '{"a":1,"b":0}')]
+            ],
+            end: 1400
+        },
+        // A set lands while a write is in flight: each write's argv comes from the values it carried, and the second
+        // one waits for the first, which is still running (it sleeps).
+        after_save_inflight: {
+            after_save: values => {
+                const kind = root.reload_pending ? "reload" : "apply";
+                root.reload_pending = false;
+                return ["sh", "-c", 'sleep 0.3; echo "$1" >> "$2"', "sh", kind, root.dir + "/after.log"];
+            },
+            steps: [
+                [100, () => store.set_key("c", 0)],
+                [600, () => store.set_key("a", 1)],
+                [600, () => { root.reload_pending = true; store.set_key("b", 5); }]
+            ],
+            end: 2200
+        },
         // The directory cannot be made (its parent is a file): save_failed fires and after_save never runs.
         write_fails: {
             path: root.dir + "/blocker/store.json",
@@ -210,7 +252,7 @@ ShellRoot {
         onTriggered: atomic_file.setText("{\"n\":1}")
     }
 
-    // Hard stop so a scenario that never finishes fails on the missing RESULT line instead of hanging.
+    // Hard stop so a scenario that never finishes fails on the missing result file instead of hanging.
     Timer {
         interval: 8000
         running: true
