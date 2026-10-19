@@ -27,6 +27,7 @@ printf '#!/bin/sh\ntouch "%s/killed"\n' "$root" >"$stubs/pkill"
 cat >"$stubs/hyprctl" <<STUB
 #!/bin/sh
 grep -qx "\$HYPRLAND_INSTANCE_SIGNATURE" "$root/live_sigs" || exit 1
+[ -e "\$XDG_RUNTIME_DIR/hypr/\$HYPRLAND_INSTANCE_SIGNATURE/.socket.sock" ] || exit 1
 [ "\$1" = dispatch ] || exit 0
 echo "\$HYPRLAND_INSTANCE_SIGNATURE" >"$root/dispatched_to"
 [ -e "$root/relaunch_fails" ] || touch "$root/relaunched"
@@ -73,7 +74,7 @@ expect() {
   call=$((call + 1))
   rm -f "$root/killed" "$root/relaunched" "$root/dispatched_to"
   json=$(jq -n --arg c "$4" --arg id "toolu_$call" '{tool_use_id: $id, tool_input: {command: $c}}')
-  hook_env=(HOME="$root/home" XDG_RUNTIME_DIR="$root/run" QS_IPC="$stubs/qs-ipc" PATH="$stubs:$PATH" HYPRLAND_INSTANCE_SIGNATURE="${session_sig:-live1}")
+  hook_env=(HOME="$root/home" XDG_RUNTIME_DIR="${session_runtime:-$root/run}" OWNER_RUNTIME_DIR="$root/run" QS_IPC="$stubs/qs-ipc" PATH="$stubs:$PATH" HYPRLAND_INSTANCE_SIGNATURE="${session_sig:-live1}")
   env "${hook_env[@]}" "$hook" snapshot <<<"$json"
   (cd "$3" && eval "$4") >/dev/null 2>&1
   env "${hook_env[@]}" "$hook" <<<"$json" >"$root/said"
@@ -132,6 +133,18 @@ touch "$root/relaunch_fails"
 expect killed "a relaunch that never brings qs back" "$repo" "git stash -q"
 check "a failed relaunch is reported" grep -q "did not come back" "$root/said"
 rm -f "$root/relaunch_fails"
+session_sig=
+
+# A shell inside a shadow has the shadow's runtime dir; hyprctl must still be pointed at the owner's.
+session_runtime=/tmp/shadow-$UID-hooktest
+mkdir -p "$session_runtime/hypr/nested"
+touch "$session_runtime/hypr/nested/.socket.sock"
+session_sig=nested
+printf 'live1\nnested\n' >"$root/live_sigs"
+expect restart "a shell inside a shadow" "$repo" "git stash pop -q"
+check "the relaunch goes to the owner's instance, not the shadow's" grep -qx live1 "$root/dispatched_to"
+rm -rf "$session_runtime"
+session_runtime=
 session_sig=
 git -C "$repo" stash pop -q
 

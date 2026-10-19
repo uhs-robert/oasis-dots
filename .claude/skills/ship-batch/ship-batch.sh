@@ -22,10 +22,12 @@ die() {
 hypr_checked=false
 use_live_hypr() {
   $hypr_checked && return
-  if ! timeout 3 hyprctl version 9>&- >/dev/null 2>&1; then
+  # Inside a shadow its own signature answers, so the fast path is skipped: reloading it and killing the owner's qs would split.
+  if in_shadow_runtime || ! timeout 3 hyprctl version 9>&- >/dev/null 2>&1; then
     local live
     live=$(find_live_hypr_signature) || die "hyprctl cannot reach Hyprland (no instance answers 'hyprctl version'); $1"
-    export HYPRLAND_INSTANCE_SIGNATURE=$live
+    export HYPRLAND_INSTANCE_SIGNATURE=$live XDG_RUNTIME_DIR
+    XDG_RUNTIME_DIR=$(owner_runtime_dir)
     echo "ship-batch: HYPRLAND_INSTANCE_SIGNATURE was unset or stale; using the live instance $live" >&2
   fi
   hypr_checked=true
