@@ -137,6 +137,15 @@ class WidgetTokenTest(PathsCase):
         files = {"qs/theme/StyleArt.qml": self.FILES["qs/theme/StyleArt.qml"], "qs/A.js": 'a: "x/One.qml"\n', "qs/B.js": 'b: "y/Two.qml"\n', "qs/styles/x/One.qml": ""}
         self.assertEqual(self.check(files, rules), ["qs/theme/StyleArt.qml:1: styles/y/Two.qml (from qs/B.js:1) does not exist"])
 
+    def test_a_rule_with_no_values_does_not_hide_the_next_rules_findings(self):
+        rules = [qml_paths.Table("theme/StyleArt.qml", "../styles/", "A.js", qml_paths.key_values("a")),
+                 qml_paths.Table("theme/StyleArt.qml", "../styles/", "B.js", qml_paths.key_values("b"))]
+        files = {"qs/theme/StyleArt.qml": self.FILES["qs/theme/StyleArt.qml"], "qs/A.js": "nothing\n", "qs/B.js": 'b: "y/Two.qml"\n'}
+        self.assertEqual(self.check(files, rules), [
+            "qs/theme/StyleArt.qml:1: no values found in qs/A.js for its TABLES rule",
+            "qs/theme/StyleArt.qml:1: styles/y/Two.qml (from qs/B.js:1) does not exist",
+        ])
+
     def test_meter_art_in_any_style_file_is_checked(self):
         files = dict(self.FILES, **{"qs/styles/ps2/tokens.js": 'meter_art: ({ osd: "ps2/Missing.qml" })\n'})
         self.assertEqual(self.check(files, self.TABLES), [
