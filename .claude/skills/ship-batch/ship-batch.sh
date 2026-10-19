@@ -9,10 +9,26 @@ ipc="$HOME/.config/hypr/scripts/qs-ipc"
 bars="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/test-bars"
 # shellcheck source=base.sh
 source "$(dirname "$0")/base.sh"
+# shellcheck source=../../hooks/live-hypr.sh
+source "$(dirname "$0")/../../hooks/live-hypr.sh"
 
 die() {
   echo "ship-batch: $*" >&2
   exit 1
+}
+
+# Agent shells often carry a stale or missing signature, and a caller cannot prefix one without the command leaving the
+# owner's allow rule, so the first hyprctl use finds the live instance itself. A valid signature in the environment is kept.
+hypr_checked=false
+use_live_hypr() {
+  $hypr_checked && return
+  if ! timeout 3 hyprctl version 9>&- >/dev/null 2>&1; then
+    local live
+    live=$(find_live_hypr_signature) || die "hyprctl cannot reach Hyprland (no instance answers 'hyprctl version'); $1"
+    export HYPRLAND_INSTANCE_SIGNATURE=$live
+    echo "ship-batch: HYPRLAND_INSTANCE_SIGNATURE was unset or stale; using the live instance $live" >&2
+  fi
+  hypr_checked=true
 }
 
 skip_gate=()
@@ -100,8 +116,9 @@ if grep -q '^home/systemd/\.config/systemd/user/' <<<"$changed"; then
   echo "ship-batch: reloaded the user units"
 fi
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/hypr; then
-  hyprctl reload 9>&- >/dev/null
-  errors=$(hyprctl configerrors 9>&-)
+  use_live_hypr "reload Hyprland by hand: hyprctl reload"
+  hyprctl reload 9>&- >/dev/null || die "hyprctl reload failed (exit $?); reload Hyprland by hand: hyprctl reload"
+  errors=$(hyprctl configerrors 9>&-) || die "hyprctl configerrors failed; check the config by hand: hyprctl configerrors"
   [[ -z ${errors//[[:space:]]/} ]] || die "Hyprland config errors after reload: $errors"
 fi
 
@@ -117,13 +134,13 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
       sleep 1
     done
     [[ $state == unlocked ]] || die "Quickshell changed but the lock state is '${state:-unknown}'; restart the bar once unlocked"
-    hyprctl version 9>&- >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); restart the bar by hand"
+    use_live_hypr "restart the bar by hand"
     pkill -x qs || true
     for _ in $(seq 20); do
       pgrep -x qs >/dev/null || break
       sleep 0.2
     done
-    hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" 9>&- >/dev/null
+    hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" 9>&- >/dev/null || die "hyprctl could not relaunch qs; start it by hand: hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\""
     sleep 6
     pgrep -x qs >/dev/null || die "qs did not come back; read 'qs log'"
     echo "ship-batch: restarted the stowed bar"

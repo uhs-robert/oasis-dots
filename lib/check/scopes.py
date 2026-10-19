@@ -92,6 +92,7 @@ PATH_SCOPES = [
     ("lib/common/*.sh", "loader"),
     ("home/calendar/*", "calendar"),
     ("home/claude/.claude/hooks/*", "hooks"),
+    (".claude/hooks/live-hypr.sh", "hooks ship"),
     (".claude/hooks/*", "hooks"),
     (".claude/skills/owner-test-bar/*", "bar"),
     (".claude/skills/ship-batch/*", "ship"),
