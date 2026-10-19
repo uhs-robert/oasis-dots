@@ -464,7 +464,8 @@ def check_site(repo, layout, tree, consumer, origin, site):
         for rule in rules:
             values = table_values(repo, layout, rule)
             if not values:
-                return [Finding(origin, site.line, f"no values found in {layout.qs_dir}/{rule.source} for its TABLES rule")]
+                found.append(Finding(origin, site.line, f"no values found in {layout.qs_dir}/{rule.source} for its TABLES rule"))
+                continue
             for value, where in values:
                 found += missing(resolve(prefix + value + suffix), f" (from {where})")
         return found
