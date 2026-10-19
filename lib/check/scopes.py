@@ -70,6 +70,9 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/*", "rust voxcmd"),
     ("home/voxcmd/.config/voxcmd/integrations/*", "rust voxcmd"),
     ("home/voxcmd/*", "voxcmd"),
+    ("home/voxtype/.local/bin/voxtype-daemon", "voxcmd"),
+    ("home/voxtype/*", "voxtype"),
+    ("home/systemd/.config/systemd/user/voxtype-duck.service", "voxtype"),
     ("extras/voxcmd-firefox/*", "voxcmd"),
     # The installer and the justfile call it, but those already run everything.
     ("lib/install/voice.sh", "policy loader"),
@@ -137,6 +140,7 @@ STEPS = [
     Step("voxcmd-click", "voxcmd", "bash ./home/voxcmd/tests/run.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-calendar", "voxcmd", "bash ./home/voxcmd/tests/run-calendar.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-wake", "voxcmd", "bash ./home/voxcmd/tests/run-wake.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxtype-duck", "voxtype", "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
     Step("voxcmd-firefox", "voxcmd", "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-rust", "rust", "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),

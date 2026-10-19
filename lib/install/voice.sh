@@ -55,6 +55,15 @@ setup_voxtype() {
       systemctl --user "$state" --quiet voxtype || warn "voxtype is not ${state#is-} after setup, check: systemctl --user status voxtype"
     done
   fi
+  # Lowers the output volume while voxtype records; voxtype's own ducking is off in config.toml. Idle until a recording.
+  if [[ -e "$HOME/.config/systemd/user/voxtype-duck.service" ]]; then
+    if systemctl --user show-environment &>/dev/null; then
+      systemctl --user daemon-reload
+      systemctl --user is-enabled --quiet voxtype-duck || systemctl --user enable --now voxtype-duck || warn "voxtype-duck did not enable, run later: systemctl --user enable --now voxtype-duck"
+    else
+      warn "User systemd not available, run after login: systemctl --user enable --now voxtype-duck"
+    fi
+  fi
   success "voxtype configured"
 }
 

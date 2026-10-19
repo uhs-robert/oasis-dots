@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.core
 
-// Voice choices saved in voice.env under the voxcmd state dir, for voxcmd-wake, voxcmd and voxtype-daemon to read.
+// Voice choices saved in voice.env under the voxcmd state dir, for voxcmd-wake, voxcmd and voxtype-duck to read.
 // The file is KEY=VALUE lines (numbers, and the sensitivity level's name), one per setting the user has chosen; an absent key means the reader's own default.
 // It sits outside ~/.config/voxcmd, which is stow-folded into the public repo. An environment variable of the same
 // name still wins in every reader, so a value shown here may be overridden; the sensitivity row shows that as Custom.
@@ -17,7 +17,7 @@ Singleton {
     // The named sensitivity levels; voxcmd-wake maps each to its detector's threshold and frames.
     readonly property var level_ids: ["strict", "balanced", "relaxed"]
     readonly property string default_level: "strict"
-    // Percent of its volume ducked music keeps while voxtype records; 30 is config.toml's own value.
+    // Percent of its volume the output sink keeps while voxtype records; voxtype-duck's default is 30.
     readonly property int default_duck: 30
     readonly property var duck_steps: [0, 10, 20, 30, 50, 70]
     // The listener keeps hearing while music plays (a song can then say the phrase) and stops while another app records.
@@ -44,7 +44,7 @@ Singleton {
     // The units a pending write must try-restart once it lands.
     property var restart_units: ({})
 
-    // The environment voxcmd-wake and voxtype actually run with: the user manager's (`set-environment`) overlaid by
+    // The environment voxcmd-wake and voxtype-duck actually run with: the user manager's (`set-environment`) overlaid by
     // each unit's own Environment= (drop-ins), read from systemd because the bar's own environment never sees either.
     // Until the first read lands, the bar's environment stands in. EnvironmentFile= is not followed.
     property var service_env: null
@@ -85,9 +85,8 @@ Singleton {
         const next = Object.assign({}, root.saved);
         const units = Object.assign({}, root.restart_units);
         next[key] = value;
-        // Ducking is read by voxtype once, at start; the listener's sensitivity and pause switches the same, at its own.
-        if (key === "duck") units["voxtype.service"] = true;
-        else units["voxcmd-wake.service"] = true;
+        // voxtype-duck reads the percent at each duck; the listener reads its settings once, at its own start.
+        if (key !== "duck") units["voxcmd-wake.service"] = true;
         root.saved = next;
         root.restart_units = units;
         save_timer.restart();
@@ -118,14 +117,13 @@ Singleton {
 
     Process {
         id: env_proc
-        command: ["sh", "-c", "systemctl --user show-environment; systemctl --user show -p Environment voxcmd-wake.service voxtype.service"]
+        command: ["sh", "-c", "systemctl --user show-environment; systemctl --user show -p Environment voxcmd-wake.service voxtype-duck.service"]
         stdout: StdioCollector {
             onStreamFinished: root.service_env = root.parse_service_env(text)
         }
     }
 
-    // try-restart leaves a stopped unit stopped, so a listener or voxtype the user has off is not started by a setting.
-    // A voxtype restart cuts off a recording in progress.
+    // try-restart leaves a stopped unit stopped, so a listener the user has off is not started by a setting.
     Timer {
         id: save_timer
         interval: 300

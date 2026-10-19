@@ -207,7 +207,7 @@ VOXCMD_DEBUG=1 XDG_DATA_HOME="$model_data" confirm "another secret sentence" >/d
 check "the debug log has the verdicts" 2 "$(grep -c 'wake confirm: ' "$debug_log")"
 check "but never what was heard" 0 "$(grep -c -i 'secret' "$debug_log")"
 
-# ---- voice.env: the saved settings voxcmd and voxtype-daemon read when the environment has none -----------------------
+# ---- voice.env: the saved settings voxcmd reads when the environment has none -----------------------
 package_dir="$(cd "$tests_dir/.." && pwd)"
 share_dir="$package_dir/.local/share/voxcmd"
 voice_env="$SANDBOX_DIR/voice.env"
@@ -266,12 +266,9 @@ daemon_args() { PATH="$voxtype_dir:$PATH" XDG_DATA_HOME="$package_dir/.local/sha
 
 printf 'VOXCMD_DUCK_MEDIA_VOLUME=20\n' >"$voice_env"
 check "daemon passes the same prompt the confirmation got" 1 "$(daemon_args | grep -c -e '--initial-prompt base Voice commands start with Cortana.')"
-check "daemon passes the saved ducking" 1 "$(daemon_args | grep -c '^--duck-media-volume 20 --initial-prompt ')"
-check "daemon prefers the environment" 1 "$(VOXCMD_DUCK_MEDIA_VOLUME=0 daemon_args | grep -c '^--duck-media-volume 0 ')"
+check "daemon passes no ducking, voxtype-duck owns it" 0 "$(daemon_args | grep -c -e '--duck-media-volume')"
+check "daemon passes no ducking even from the environment" 0 "$(VOXCMD_DUCK_MEDIA_VOLUME=0 daemon_args | grep -c -e '--duck-media-volume')"
 rm -f "$voice_env"
-check "daemon leaves config.toml's ducking alone without a value" 0 "$(daemon_args | grep -c -e '--duck-media-volume')"
-printf 'VOXCMD_DUCK_MEDIA_VOLUME=loud\n' >"$voice_env"
-check "daemon ignores a bad saved value" 0 "$(daemon_args | grep -c -e '--duck-media-volume')"
 unset VOXCMD_VOICE_ENV_FILE
 
 if [ "$failures" -gt 0 ]; then

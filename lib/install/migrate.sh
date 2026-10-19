@@ -89,12 +89,27 @@ _migrate_voxtype_unit() {
   systemctl --user is-active --quiet voxtype || _migrate_run systemctl --user start voxtype
 }
 
+# voxtype-duck.service ducks the output sink, and config.toml now turns voxtype's own per-app ducking off. voxtype reads
+# config.toml only at start, so it restarts BEFORE the follower is enabled: the other way round, one recording would duck
+# twice (30% of 30%). Done once, when the follower is not yet enabled, so a later run never cuts a recording off.
+_migrate_voxtype_duck() {
+  command -v voxtype &>/dev/null || return 0
+  [[ -e "$HOME/.config/systemd/user/voxtype-duck.service" ]] || return 0
+  systemctl --user show-environment &>/dev/null || return 0
+  systemctl --user is-enabled --quiet voxtype-duck && return 0
+  info "voxtype-duck is not enabled"
+  _migrate_run systemctl --user daemon-reload
+  _migrate_run systemctl --user try-restart voxtype
+  _migrate_run systemctl --user enable --now voxtype-duck
+}
+
 # Unfolds the systemd packages and enables voxtype; `--dry-run` only reports. Run on its own with `just migrate-systemd`.
 migrate_systemd() {
   [[ "${1:-}" == --dry-run ]] && MIGRATE_DRY_RUN=1
   info "Checking the systemd packages for the folded layout..."
   migrate_unfold_systemd
   _migrate_voxtype_unit
+  _migrate_voxtype_duck
   success "systemd migration checked"
 }
 
