@@ -164,6 +164,30 @@ Item {
         height: row.height + 4
     }
 
+    // The icon the dial and constellation repeat per window; each widget sets its own glyph size.
+    Component {
+        id: dial_icon
+
+        WorkspaceIcon {
+            host: root
+            workspace_id: modelData.workspace.id
+        }
+    }
+
+    // Fills the slot's Item; the Repeater's one-entry model supplies workspace_id and slot_radius as required properties.
+    component DialDropTarget: WorkspaceDropTarget {
+        required property real slot_radius
+
+        anchors.fill: parent
+        radius: slot_radius
+    }
+
+    Component {
+        id: dial_drop_target
+
+        DialDropTarget {}
+    }
+
     Row {
         id: row
         x: root.materia ? 6 : 0
@@ -175,6 +199,8 @@ Item {
             sourceComponent: Goldeneye.WatchDial {
                 host: root
                 windows_on: WindowState.windows_on
+                workspace_icon: dial_icon
+                workspace_drop_target: dial_drop_target
                 workspaces: root.workspace_list
                 compact: root.compact
             }
@@ -186,6 +212,8 @@ Item {
             sourceComponent: Oasis.Constellation {
                 host: root
                 windows_on: WindowState.windows_on
+                workspace_icon: dial_icon
+                workspace_drop_target: dial_drop_target
                 workspaces: root.workspace_list
                 compact: root.compact
                 bar_height: root.bar_height

@@ -11,6 +11,9 @@ ColumnLayout {
     property string elapsed: "0:00"
     property string glyph: ""
     property bool running: false
+    // The mic level source for the wave, supplied by the OSD so this widget stays out of features/voice.
+    required property var sample
+    required property real gain
     readonly property color state_color: root.recording ? Theme.theme_label : Theme.warning
 
     spacing: Style.px(14)
@@ -63,5 +66,7 @@ ColumnLayout {
         Layout.preferredHeight: Style.px(36)
         frozen: !root.recording
         running: root.running
+        sample: root.sample
+        gain: root.gain
     }
 }

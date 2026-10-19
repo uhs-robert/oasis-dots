@@ -3,7 +3,6 @@ import QtQuick.Shapes
 import Quickshell.Hyprland
 import qs.theme
 import "../Watch.js" as Watch
-import qs.features.windows
 
 // The classic pause watch as a bar strip: a tick per workspace on a shallow arc, apps under their ticks, a pale hand on the focused one. Fixed classic colours, whatever the palette.
 Item {
@@ -14,6 +13,10 @@ Item {
     property var workspaces: []
     // A workspace's toplevels, supplied by the host so this widget stays out of features/windows.
     required property var windows_on
+    // Builds one workspace icon from the Repeater's toplevel; supplied by the host for the same reason.
+    required property Component workspace_icon
+    // Fills a slot with a WorkspaceDropTarget; the Repeater model entry gives workspace_id and slot_radius. Supplied by the host for the same reason.
+    required property Component workspace_drop_target
     property bool compact: false
 
     readonly property int glyph: compact ? 13 : 15
@@ -29,6 +32,11 @@ Item {
     readonly property color hand: root.light ? Theme.fg_core : Qt.rgba(0.82, 0.92, 0.82, 1)
     readonly property color rim: Qt.tint(Style.bar_center_bg, Qt.alpha(Theme.fg_muted, 0.25))
     readonly property color metal: Qt.tint(Style.bar_center_bg, Qt.alpha(Theme.fg_muted, 0.5))
+
+    // The icon is a host type this widget cannot name, so its size is set through an untyped parameter.
+    function style_icon(icon) {
+        icon.glyph = Qt.binding(() => root.glyph);
+    }
 
     function gap(on) {
         return on ? 6 : 2;
@@ -251,11 +259,15 @@ Item {
                 id: slot_hover
             }
 
-            WorkspaceDropTarget {
+            Item {
                 y: slot.arc_at + 2
                 width: parent.width
                 height: parent.height - y
-                workspace_id: slot.modelData.id
+
+                Repeater {
+                    model: [{ workspace_id: slot.modelData.id, slot_radius: 0 }]
+                    delegate: root.workspace_drop_target
+                }
             }
 
             Rectangle {
@@ -278,11 +290,8 @@ Item {
                 Repeater {
                     model: root.windows_on(slot.modelData)
 
-                    WorkspaceIcon {
-                        host: root.host
-                        workspace_id: slot.modelData.id
-                        glyph: root.glyph
-                    }
+                    delegate: root.workspace_icon
+                    onItemAdded: (index, item) => root.style_icon(item)
                 }
             }
         }

@@ -445,6 +445,8 @@ PanelWindow {
                     anchors.fill: parent
                     frozen: !root.vox_recording
                     running: root.showing_vox && root.visible && !root.replaced("meter")
+                    sample: n => VoxtypeAudio.averages(n)
+                    gain: VoxtypeAudio.gain
                 }
             }
 
@@ -524,6 +526,8 @@ PanelWindow {
                 elapsed: root.elapsed
                 glyph: "󰍬"
                 running: root.showing_vox && root.visible
+                sample: n => VoxtypeAudio.averages(n)
+                gain: VoxtypeAudio.gain
             }
         }
 

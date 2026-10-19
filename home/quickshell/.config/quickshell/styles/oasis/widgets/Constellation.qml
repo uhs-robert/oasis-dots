@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
 import qs.theme
-import qs.features.windows
 
 // Workspaces as a constellation: a star per workspace with its apps beside it, stars linked across the gaps; the focused one a sand sparkle.
 Item {
@@ -13,6 +12,10 @@ Item {
     property var workspaces: []
     // A workspace's toplevels, supplied by the host so this widget stays out of features/windows.
     required property var windows_on
+    // Builds one workspace icon from the Repeater's toplevel; supplied by the host for the same reason.
+    required property Component workspace_icon
+    // Fills a slot with a WorkspaceDropTarget; the Repeater model entry gives workspace_id and slot_radius. Supplied by the host for the same reason.
+    required property Component workspace_drop_target
     property bool compact: false
     property int bar_height: 30
 
@@ -24,6 +27,12 @@ Item {
     readonly property int link_room: 16
     readonly property color sand: Theme.theme_secondary
     readonly property var lifts: [0, -3, 2, -2, 3]
+
+    // The icon is a host type this widget cannot name, so its size and dimming are set through an untyped parameter.
+    function style_icon(icon, slot, hover) {
+        icon.glyph = Qt.binding(() => root.glyph);
+        icon.opacity = Qt.binding(() => slot.info.focused || hover.hovered ? 1 : 0.75);
+    }
 
     function slot_width(k) {
         return k > 0 ? root.apps_x + k * root.glyph + (k - 1) * root.gap + root.link_room : root.star_x * 2 + root.link_room - 4;
@@ -172,10 +181,13 @@ Item {
                 id: slot_hover
             }
 
-            WorkspaceDropTarget {
+            Item {
                 anchors.fill: parent
-                workspace_id: slot.modelData.id
-                radius: 4
+
+                Repeater {
+                    model: [{ workspace_id: slot.modelData.id, slot_radius: 4 }]
+                    delegate: root.workspace_drop_target
+                }
             }
 
             Text {
@@ -197,12 +209,8 @@ Item {
                 Repeater {
                     model: root.windows_on(slot.modelData)
 
-                    WorkspaceIcon {
-                        host: root.host
-                        workspace_id: slot.modelData.id
-                        glyph: root.glyph
-                        opacity: slot.info.focused || slot_hover.hovered ? 1 : 0.75
-                    }
+                    delegate: root.workspace_icon
+                    onItemAdded: (index, item) => root.style_icon(item, slot, slot_hover)
                 }
             }
         }
