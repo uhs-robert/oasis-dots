@@ -159,7 +159,7 @@ PanelWindow {
                 props.box_w = 58;
                 props.box_h = 38;
             }
-            cursor_loader.setSource(Qt.resolvedUrl("../../ui/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
+            cursor_loader.setSource(Qt.resolvedUrl("../screen_select/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
         }
     }
 

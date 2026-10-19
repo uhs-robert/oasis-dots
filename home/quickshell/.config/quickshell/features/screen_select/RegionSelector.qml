@@ -248,7 +248,7 @@ PanelWindow {
                     props.box_w = Qt.binding(() => Screenshot.lens_on ? Math.ceil(picker_loupe.sample_half) * 2 + 5 : 58);
                     props.box_h = Qt.binding(() => Screenshot.lens_on ? Math.ceil(picker_loupe.sample_half) * 2 + 5 : 38);
                 }
-                cursor_loader.setSource(Qt.resolvedUrl("../../ui/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
+                cursor_loader.setSource(Qt.resolvedUrl("cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
             }
         }
 
