@@ -51,8 +51,8 @@ STRING_LITERAL = r"""(["'])(.*?)\1"""
 
 
 def in_widgets(extract):
-    """Wraps an extractor of "<style>/File.qml" tokens that Meter and ControllerBadge resolve under
-    styles/<style>/widgets/, so the table lists the files they load."""
+    """Wraps an extractor of "<style>/File.qml" tokens that StyleArt.widget_url resolves under
+    styles/<style>/widgets/, so the table lists the files it loads."""
     return lambda lines: [(value.replace("/", "/widgets/", 1), n) for value, n in extract(lines)]
 
 
@@ -132,9 +132,10 @@ TABLES = [
     Table("features/weather/WeatherPopup.qml", "views/", "features/weather/WeatherPopup.qml", folder_view_files),
     Table("features/keeptabs/KeeptabsPopup.qml", "views/", "features/keeptabs/KeeptabsPopup.qml", view_files),
     Table("theme/Style.qml", "../styles/", "styles/index.js", array_values("sources")),
-    Table("ui/keys/ControllerBadge.qml", "../../styles/", "ui/keys/KeyHints.js", in_widgets(key_values("button"))),
+    # Two rules share StyleArt's one call: its tokens come from controller buttons and from meter_art.
+    Table("theme/StyleArt.qml", "../styles/", "ui/keys/KeyHints.js", in_widgets(key_values("button"))),
     # Any style may set meter_art; today only nes does.
-    Table("ui/gauges/Meter.qml", "../../styles/", "styles/*/tokens.js", in_widgets(meter_art_values)),
+    Table("theme/StyleArt.qml", "../styles/", "styles/*/tokens.js", in_widgets(meter_art_values)),
     # A style's own pack is optional (its call carries a qs-path: optional marker); an extra pack must exist.
     Table("features/audio/ThemeAudio.qml", "../../sounds/", "features/audio/ThemeAudio.qml", extra_pack_names),
     Table("features/weather/WeatherState.qml", "icons/", "features/weather/WeatherState.qml", weather_slugs),
@@ -455,15 +456,17 @@ def check_site(repo, layout, tree, consumer, origin, site):
 
     if all_literal:
         return missing(resolve(prefix))
-    rule = next((r for r in layout.tables if r.consumer == consumer and r.head == (prefix if leading else site.argument)), None)
+    head = prefix if leading else site.argument
+    rules = [r for r in layout.tables if r.consumer == consumer and r.head == head]
     suffix = site.terms[-1][1] if site.terms[-1][0] == "lit" else ""
-    if rule is not None:
-        values = table_values(repo, layout, rule)
-        if not values:
-            return [Finding(origin, site.line, f"no values found in {layout.qs_dir}/{rule.source} for its TABLES rule")]
+    if rules:
         found = []
-        for value, where in values:
-            found += missing(resolve(prefix + value + suffix), f" (from {where})")
+        for rule in rules:
+            values = table_values(repo, layout, rule)
+            if not values:
+                return [Finding(origin, site.line, f"no values found in {layout.qs_dir}/{rule.source} for its TABLES rule")]
+            for value, where in values:
+                found += missing(resolve(prefix + value + suffix), f" (from {where})")
         return found
     if not leading:
         return [unrecognised]

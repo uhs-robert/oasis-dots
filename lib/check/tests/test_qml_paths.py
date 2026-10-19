@@ -108,12 +108,11 @@ class TableTest(PathsCase):
 
 
 class WidgetTokenTest(PathsCase):
-    """Meter and ControllerBadge load a style's "<style>/File.qml" token from styles/<style>/widgets/."""
+    """StyleArt loads a style's "<style>/File.qml" token (meter_art or controller button) from styles/<style>/widgets/."""
 
-    TABLES = [r for r in qml_paths.TABLES if r.consumer in ("ui/gauges/Meter.qml", "ui/keys/ControllerBadge.qml")]
+    TABLES = [r for r in qml_paths.TABLES if r.consumer == "theme/StyleArt.qml"]
     FILES = {
-        "qs/ui/gauges/Meter.qml": 'source: art === "" ? "" : Qt.resolvedUrl("../../styles/" + art.replace("/", "/widgets/"))\n',
-        "qs/ui/keys/ControllerBadge.qml": 'u: Qt.resolvedUrl("../../styles/" + KeyHints.button_path(c).replace("/", "/widgets/"))\n',
+        "qs/theme/StyleArt.qml": 'return Qt.resolvedUrl("../styles/" + token.replace("/", "/widgets/"));\n',
         "qs/styles/nes/tokens.js": 'meter_art: ({ volume: "nes/HeartMeter.qml", media: "nes/PianoRoll.qml" })\n',
         "qs/ui/keys/KeyHints.js": 'nes: { button: "nes/NesButton.qml", keys: {} },\n',
         "qs/styles/nes/widgets/HeartMeter.qml": "",
@@ -126,16 +125,22 @@ class WidgetTokenTest(PathsCase):
 
     def test_a_renamed_meter_art_or_button_target_fails(self):
         for target, message in (
-            ("qs/styles/nes/widgets/PianoRoll.qml", "qs/ui/gauges/Meter.qml:1: styles/nes/widgets/PianoRoll.qml (from qs/styles/nes/tokens.js:1) does not exist"),
-            ("qs/styles/nes/widgets/NesButton.qml", "qs/ui/keys/ControllerBadge.qml:1: styles/nes/widgets/NesButton.qml (from qs/ui/keys/KeyHints.js:1) does not exist"),
+            ("qs/styles/nes/widgets/PianoRoll.qml", "qs/theme/StyleArt.qml:1: styles/nes/widgets/PianoRoll.qml (from qs/styles/nes/tokens.js:1) does not exist"),
+            ("qs/styles/nes/widgets/NesButton.qml", "qs/theme/StyleArt.qml:1: styles/nes/widgets/NesButton.qml (from qs/ui/keys/KeyHints.js:1) does not exist"),
         ):
             files = {name: text for name, text in self.FILES.items() if name != target}
             self.assertEqual(self.check(files, self.TABLES), [message])
 
+    def test_a_second_rule_on_the_same_call_is_not_ignored(self):
+        rules = [qml_paths.Table("theme/StyleArt.qml", "../styles/", "A.js", qml_paths.key_values("a")),
+                 qml_paths.Table("theme/StyleArt.qml", "../styles/", "B.js", qml_paths.key_values("b"))]
+        files = {"qs/theme/StyleArt.qml": self.FILES["qs/theme/StyleArt.qml"], "qs/A.js": 'a: "x/One.qml"\n', "qs/B.js": 'b: "y/Two.qml"\n', "qs/styles/x/One.qml": ""}
+        self.assertEqual(self.check(files, rules), ["qs/theme/StyleArt.qml:1: styles/y/Two.qml (from qs/B.js:1) does not exist"])
+
     def test_meter_art_in_any_style_file_is_checked(self):
         files = dict(self.FILES, **{"qs/styles/ps2/tokens.js": 'meter_art: ({ osd: "ps2/Missing.qml" })\n'})
         self.assertEqual(self.check(files, self.TABLES), [
-            "qs/ui/gauges/Meter.qml:1: styles/ps2/widgets/Missing.qml (from qs/styles/ps2/tokens.js:1) does not exist",
+            "qs/theme/StyleArt.qml:1: styles/ps2/widgets/Missing.qml (from qs/styles/ps2/tokens.js:1) does not exist",
         ])
 
 
