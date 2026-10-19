@@ -31,9 +31,9 @@ from qml_paths import QS_DIR, REPO_DIR, SOURCE_SUFFIXES, Finding, call_sites, gi
 
 ALLOW_PATH = "lib/check/qml-layers.allow"
 
-# The Target tree in quickshell-refactor.md. services/ and components/ are leftovers that dissolve in 5.9; services
+# The Target tree in quickshell-refactor.md. services/ is a leftover that dissolves in 5.9; it
 # keeps rank 3 as a placeholder until its two files have a destination.
-LAYERS = {"core": 0, "theme": 1, "ui": 2, "components": 2, "services": 3, "styles": 4, "features": 5}
+LAYERS = {"core": 0, "theme": 1, "ui": 2, "services": 3, "styles": 4, "features": 5}
 UNRANKED = {"scripts", "assets", "sounds", "custom"}
 
 ENTRY = re.compile(r"^(\S+) -> (\S+)\s+#\s*(\S.*\S)\s+\(([^()]+)\)\s*$")

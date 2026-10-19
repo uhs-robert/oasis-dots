@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.components.transitions
+import qs.theme.transitions
 import qs.features.settings
 
 RowsSection {
