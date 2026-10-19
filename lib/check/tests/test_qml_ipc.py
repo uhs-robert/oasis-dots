@@ -159,6 +159,34 @@ class CallerSyntaxTest(IpcCase):
         )
         self.assertEqual(self.calls("h/a.lua", text), [])
 
+    def test_quoted_literal_words_are_read_and_quoted_interpolations_are_not(self):
+        ok = 'qs-ipc call "popup" "open"\nqs-ipc call popup "state"\nqs-ipc call \'popup\' \'state\'\n'
+        self.assertEqual(self.calls("bin/a.sh", ok), [])
+        self.assert_flagged("bin/a.sh", 'qs-ipc call "gone" "open"\n', "gone")
+        found = self.calls("bin/a.sh", 'qs-ipc call popup "nope"\n')
+        self.assertIn('has no typed function "nope"', found[0])
+        self.assertEqual(self.calls("bin/a.sh", 'qs-ipc call "pop$x" "$fn"\nqs-ipc call popup "o$x"\nqs-ipc call "$t" "gone"\n'), [])
+
+    def test_a_python_argv_must_start_with_qs_ipc(self):
+        self.assertEqual(self.calls("c/a.py", 'run(["tool", "call", "api", "get"])\n'), [])
+        self.assertEqual(self.calls("c/a.py", 'run(["gdbus", "call", "gone", "x"])\n'), [])
+        self.assertEqual(self.calls("c/a.py", 'run([qs_ipc, "call", "popup", "state"])\nrun(["qs", "ipc", "call", "popup", "state"])\n'), [])
+        self.assertEqual(self.calls("c/a.py", 'run(["/x/hypr/scripts/qs-ipc", "call", "popup", "state"])\n'), [])
+        self.assert_flagged("c/a.py", 'run(["/x/qs-ipc", "call", "gone", "state"])\n', "gone")
+        self.assert_flagged("c/a.py", 'run(["qs", "ipc", "call", "gone", "state"])\n', "gone")
+        self.assert_flagged("c/a.py", 'run([self.qs_ipc, "call", "gone"])\n', "gone")
+
+    def test_whole_line_comments_are_not_callers_in_each_comment_syntax(self):
+        self.assertEqual(self.calls("bin/a.sh", "  # qs-ipc call gone open\n"), [])
+        self.assertEqual(self.calls("t/.tmux.conf", "# run-shell 'qs-ipc call gone open'\n"), [])
+        self.assertEqual(self.calls("h/a.lua", '-- x .. " call gone open"\n'), [])
+        self.assertEqual(self.calls("s/a.rs", '// qs_ipc_call(&["gone", "open"]);\n/// ask(&["gone", "x"])\n'), [])
+        self.assertEqual(self.calls("c/a.py", '# run(["qs-ipc", "call", "gone"])\n'), [])
+        self.assert_flagged("bin/a.sh", "# note\nqs-ipc call gone open\n", "gone")
+        self.assert_flagged("h/a.lua", '# not a lua comment: " call gone open"\n', "gone")
+        self.assert_flagged("s/a.rs", '# not a rust comment\nask(&["gone", "x"]);\n', "gone")
+        self.assert_flagged("bin/a.sh", "qs-ipc call gone open # trailing comments still count\n", "gone")
+
     def test_a_literal_target_with_a_computed_function_still_checks_the_target(self):
         self.assert_flagged("bin/a.sh", 'qs-ipc call gone "$fn"\n', "gone")
 

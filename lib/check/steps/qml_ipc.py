@@ -12,8 +12,8 @@ depth. Quickshell exposes only a function whose parameters and return are all ty
 looser scan and fails live. A target that is not a string literal, or declared twice, fails.
 
 Callers: every file except `.qml`, `.md`, binaries and lib/check/. See CALLERS for the syntaxes; a target or function
-that is computed (`$name`, `" .. x`) is skipped, a literal target beside a computed function still has its target
-checked, and arity is not checked. Docs are not scanned because prose has placeholders such as `<name>`.
+that is computed (`$name`, `" .. x`, a quoted word with `$` in it) is skipped, a literal target beside a computed function still has its target
+checked, and arity is not checked. A whole-line comment is not a caller; a trailing comment after code still is. Docs are not scanned because prose has placeholders such as `<name>`.
 
 lib/check/qml-ipc.allow holds the exceptions, one per line:
 
@@ -136,14 +136,36 @@ def declared(repo, qml_dirs):
 # --- Callers ---------------------------------------------------------------------------------------------------------
 
 # A target or function token: a literal name, and not the start of a longer expression (`popup_$x`, `a.b`).
-TARGET = r"([A-Za-z_][\w-]*)(?![\w$.{\[(-])"
-FUNCTION = r"([A-Za-z_]\w*)(?![\w$.{\[(-])"
-CALL_ARGS = rf"call[ \t]+{TARGET}(?:[ \t]+{FUNCTION})?"
+TARGET = r"(?P<target>[A-Za-z_][\w-]*)(?![\w$.{\[(-])"
+FUNCTION = r"(?P<function>[A-Za-z_]\w*)(?![\w$.{\[(-])"
+
+
+def quotable(name, word):
+    """The word, or the word in a matching pair of quotes (`call "popup" "open"`); a quoted word with `$` inside is
+    not a literal, so it does not match and the call stays computed."""
+    return rf"""(?:(?P<{name}_quote>["'])?{word}(?({name}_quote)(?P={name}_quote)))"""
+
+
+CALL_ARGS = rf"call[ \t]+{quotable('target', TARGET)}(?:[ \t]+{quotable('function', FUNCTION)})?"
 # The word before `call`: qs-ipc, QS_IPC, $ipc, ${QS_IPC:-.../qs-ipc}, overlay_ipc, qs_query, or `qs ipc [--pid X]` itself. A bare
 # `ipc` is not one, so prose such as "<ipc call args>" is not read as a call.
 IPC_WORD = r"(?:\$\{?\w*ipc\w*|[\w-]*(?:qs[-_](?:ipc|query)|_ipc)\w*|\bqs[ \t]+ipc(?:[ \t]+--pid[ \t]+\S+)?)[}\"']*"
 # Quickshell's own `ipc show`, not a handler.
 BUILTINS = {"show"}
+
+
+# The program element of an argv list that runs qs-ipc, so another tool's `"call"` subcommand is not read as one.
+ARGV_PROGRAM = r"""(?:["'](?:[^"']*/)?qs[-_]ipc["']|\b\w*qs_ipc\w*|["']qs["'],\s*["']ipc["'])"""
+
+# Whole-line comments by file type; anything else is a #-comment file (sh, py, tmux.conf, toml).
+COMMENT_MARKERS = {".lua": "--", ".rs": "//", ".js": "//", ".mjs": "//"}
+
+
+def without_comment_lines(rel, text):
+    """The text with every whole-line comment emptied, so a commented-out call is not a caller and line numbers stay.
+    A trailing comment after code is not removed."""
+    marker = re.escape(COMMENT_MARKERS.get(os.path.splitext(rel)[1], "#"))
+    return re.sub(rf"^[ \t]*{marker}.*$", "", text, flags=re.M)
 
 
 class Caller(NamedTuple):
@@ -158,12 +180,12 @@ CALL_LIST_ITEM = re.compile(rf"""["']{TARGET}(?:[ \t]+{FUNCTION})?["']""")
 
 def pair(match):
     """The (target, function) of a match whose groups are a target and an optional function."""
-    return [(match.group(1), match.group(2) or "")]
+    return [(match.group("target"), match.groupdict().get("function") or "")]
 
 
 def call_list(match):
     """The pairs in a `for call in "popup close" "overview close"` list."""
-    return [(item.group(1), item.group(2) or "") for item in CALL_LIST_ITEM.finditer(match.group(1))]
+    return [(item.group("target"), item.group("function") or "") for item in CALL_LIST_ITEM.finditer(match.group(1))]
 
 
 def readers_for(rel):
@@ -174,24 +196,24 @@ def readers_for(rel):
         (re.compile(rf"{IPC_WORD}[ \t]+{CALL_ARGS}", re.I), pair),
         # a case pattern in a test stub: *"call popup open"*
         (re.compile(rf"""\*"{CALL_ARGS}"""), pair),
-        # Python argv: "call", "calendar", "refresh"
-        (re.compile(rf"""["']call["'],\s*["']{TARGET}["'](?:,\s*["']{FUNCTION}["'])?"""), pair),
+        # Python argv that starts with the program: ["qs-ipc", "call", "calendar", "refresh"]
+        (re.compile(rf"""{ARGV_PROGRAM},\s*["']call["'],\s*["']{TARGET}["'](?:,\s*["']{FUNCTION}["'])?"""), pair),
         # Rust: qs_ipc_call(&["popup".as_ref(), "open".as_ref()]) and ask(&["popup", "state"]), over lines
         (re.compile(rf"""\b(?:qs_ipc_call|ask)\(\s*&\[\s*["']{TARGET}["'](?:(?:\.as_ref\(\))?\s*,\s*["']{FUNCTION}["'])?"""), pair),
         # the shadow skill's own command: shadow.sh ipc base popup state
-        (re.compile(rf"""\bshadow\.sh[ \t]+ipc[ \t]+\S+[ \t]+{TARGET}(?:[ \t]+{FUNCTION})?"""), pair),
+        (re.compile(rf"""\bshadow\.sh[ \t]+ipc[ \t]+\S+[ \t]+{quotable('target', TARGET)}(?:[ \t]+{quotable('function', FUNCTION)})?"""), pair),
         (re.compile(r"""\bfor[ \t]+call[ \t]+in((?:[ \t]+"[^"]*")+)[ \t]*;"""), call_list),
     ]
     if rel.endswith(".lua"):
         # a Lua string that starts with `call`, so a continuation line has no ipc word: " call settings open"
         readers.append((re.compile(rf"""["']\s*{CALL_ARGS}"""), pair))
     if rel in Q_SHORTHAND_FILES:
-        readers.append((re.compile(rf"""(?<![\w-])q[ \t]+{TARGET}(?:[ \t]+{FUNCTION})?"""), pair))
+        readers.append((re.compile(rf"""(?<![\w-])q[ \t]+{quotable('target', TARGET)}(?:[ \t]+{quotable('function', FUNCTION)})?"""), pair))
     if rel == "demo/showcase.sh":
         # its ipc helper takes the key label first: ipc "SUPER + TAB" call overview open
         readers.append((re.compile(rf"""^[ \t]*ipc[ \t]+"[^"]*"[ \t]+{CALL_ARGS}""", re.M), pair))
     for helper, target in WRAPPERS.get(rel, []):
-        readers.append((re.compile(rf"""\b{helper}[ \t]+{FUNCTION}"""), lambda match, target=target: [(target, match.group(1))]))
+        readers.append((re.compile(rf"""\b{helper}[ \t]+{quotable('function', FUNCTION)}"""), lambda match, target=target: [(target, match.group("function"))]))
     return readers
 
 
@@ -200,7 +222,7 @@ def callers_in(rel, text):
     return [
         Caller(rel, text.count("\n", 0, match.start()) + 1, target, function)
         for regex, reader in readers_for(rel)
-        for match in regex.finditer(text)
+        for match in regex.finditer(without_comment_lines(rel, text))
         for target, function in reader(match)
         if target not in BUILTINS
     ]
