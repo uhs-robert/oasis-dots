@@ -4,10 +4,10 @@ import Quickshell
 import Quickshell.Wayland
 import qs.core
 import qs.theme
-import "Search.js" as Search
-import "popup/fuzzy_rows.js" as FuzzyRows
+import "../../../ui/Search.js" as Search
+import "fuzzy_rows.js" as FuzzyRows
 import qs.styles.goldeneye.widgets as Goldeneye
-import qs.ui.popup
+import qs.ui
 import qs.ui.frames
 import qs.ui.menu
 import qs.ui.keys

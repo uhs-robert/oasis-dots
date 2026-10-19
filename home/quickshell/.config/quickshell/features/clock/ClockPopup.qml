@@ -1,13 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import qs.ui
 import qs.theme
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.styles.snes.widgets as SnesParts
 import qs.features.clock.views
 import qs.features.popups
+import qs.features.popups.frames
 import qs.features.audio
 
 Popup {

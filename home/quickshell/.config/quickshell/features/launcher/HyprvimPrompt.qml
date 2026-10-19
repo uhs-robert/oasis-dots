@@ -3,11 +3,11 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
-import qs.ui
 import qs.theme
 import "../../core/Fuzzy.js" as Fuzzy
 import qs.features.launcher.hyprvim
 import qs.features.popups
+import qs.features.popups.frames
 import "hyprvim/PromptSpec.js" as Spec
 import "hyprvim/VimMotions.js" as Vim
 

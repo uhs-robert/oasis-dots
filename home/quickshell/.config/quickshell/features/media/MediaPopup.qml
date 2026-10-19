@@ -3,12 +3,12 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Services.Mpris
-import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.styles.nes.widgets as Nes
 import qs.styles.ps1.widgets as Ps1
 import qs.features.popups
+import qs.features.popups.frames
 import qs.features.audio
 
 Popup {
