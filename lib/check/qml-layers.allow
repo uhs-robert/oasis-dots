@@ -4,8 +4,6 @@
 # the step of the imports-that-run-the-wrong-way item in quickshell-refactor.md.
 
 services/StyleIpc.qml -> qs.features.audio                              # services has no destination yet (undecided)
-styles/goldeneye/widgets/WatchDial.qml -> qs.features.windows           # the workspace icons come in as a feature type; inject the data instead (5.9 step 5)
-styles/oasis/widgets/Constellation.qml -> qs.features.windows           # the workspace icons come in as a feature type; inject the data instead (5.9 step 5)
 theme/Style.qml -> styles/IconSets.js                                   # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/goldeneye/Watch.js                            # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/index.js                                      # the style engine consumes style data by design (permanent)
@@ -13,5 +11,4 @@ theme/Style.qml -> url:features/lock/skins/index.json                   # skin l
 theme/Style.qml -> url:styles                                           # the style engine consumes style data by design (permanent)
 ui/gauges/Meter.qml -> styles/goldeneye/Watch.js                        # popup framework moves above styles, or takes the data as properties (5.9 step 5)
 ui/gauges/Meter.qml -> url:styles                                       # popup framework moves above styles, or takes the data as properties (5.9 step 5)
-ui/gauges/Waveform.qml -> qs.features.voice                             # shared widget reads the voice level; inject the data (5.9 step 5)
 ui/keys/ControllerBadge.qml -> url:styles                               # popup framework moves above styles, or takes the data as properties (5.9 step 5)
