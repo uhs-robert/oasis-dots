@@ -27,6 +27,8 @@ PickerProvider {
     property bool session: false
 
     function refresh(arg) {
+        // A second open while one shows would otherwise drop the first caller; answer it as Escape does.
+        root.finish("");
         root.session = true;
         root.spec = {};
         root.view = "";
