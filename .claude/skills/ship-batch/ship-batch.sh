@@ -6,6 +6,7 @@ set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
 ipc="$HOME/.config/hypr/scripts/qs-ipc"
+bars="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/test-bars"
 # shellcheck source=base.sh
 source "$(dirname "$0")/base.sh"
 
@@ -105,7 +106,7 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
 fi
 
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/quickshell; then
-  if pgrep -af '^qs .*-p ' >/dev/null; then
+  if pgrep -af "^qs .*-p $bars/" >/dev/null; then
     echo "ship-batch: a test bar is running; restore it with the owner-test-bar skill"
   else
     # The pull just changed the bar's files, so the running bar is often mid-reload and answers nothing, or "Not ready to
