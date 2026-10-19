@@ -74,26 +74,34 @@ impl Outcome {
 /// so it is when the command has exited, so that children it left behind do not outlive the call.
 pub fn run_with_timeout(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
     command.stdin(Stdio::null());
-    run(command, Some(timeout), OnStop::Kill)
+    run(command, Some(timeout), OnStop::Kill, Capture::Yes)
 }
 
-/// `run_with_timeout` for a command that reads voxcmd's own stdin (a wake clip voxcmd-wake pipes in, `/dev/stdin`).
-pub fn run_with_timeout_on_stdin(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
+/// `run_with_timeout` for a command that reads voxcmd's own stdin (a wake clip voxcmd-wake pipes in, `/dev/stdin`);
+/// no `timeout` is no deadline.
+pub fn run_with_timeout_on_stdin(command: &mut Command, timeout: Option<Duration>) -> std::io::Result<Outcome> {
     command.stdin(Stdio::inherit());
-    run(command, Some(timeout), OnStop::Kill)
+    run(command, timeout, OnStop::Kill, Capture::Yes)
 }
 
 /// `run_with_timeout` for an action, which has no deadline of its own (Stop Voice ends it). What it left running after
 /// it exited is left alone: an action may start an app, which must outlive it.
 pub fn run_to_end(command: &mut Command) -> std::io::Result<Outcome> {
     command.stdin(Stdio::null());
-    run(command, None, OnStop::Kill)
+    run(command, None, OnStop::Kill, Capture::Yes)
+}
+
+/// `run_to_end` with both outputs to /dev/null, as bash ran a hook: a child the hook leaves behind never holds a pipe
+/// this call waits on, and never gets SIGPIPE when this call is gone.
+pub fn run_to_end_discarding_output(command: &mut Command) -> std::io::Result<Outcome> {
+    command.stdin(Stdio::null());
+    run(command, None, OnStop::Kill, Capture::No)
 }
 
 /// `run_to_end` for an ask, which a stop signal gives time to take its question down (see `STOP_GRACE`).
 pub fn run_ask_to_end(command: &mut Command) -> std::io::Result<Outcome> {
     command.stdin(Stdio::null());
-    run(command, None, OnStop::LetCleanUp)
+    run(command, None, OnStop::LetCleanUp, Capture::Yes)
 }
 
 /// Starts a long-lived child in a process group of its own and returns at once, its group listed until the returned
@@ -128,9 +136,24 @@ fn parent_is_gone(forked_from: libc::pid_t, parent_now: libc::pid_t) -> bool {
     forked_from != parent_now
 }
 
+#[derive(Clone, Copy)]
+enum Capture {
+    Yes,
+    No,
+}
+
 /// Each caller sets stdin: only `run_with_timeout_on_stdin` lets a command read voxcmd's own.
-fn run(command: &mut Command, timeout: Option<Duration>, on_stop: OnStop) -> std::io::Result<Outcome> {
-    command.stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0);
+fn run(
+    command: &mut Command,
+    timeout: Option<Duration>,
+    on_stop: OnStop,
+    capture: Capture,
+) -> std::io::Result<Outcome> {
+    let output = match capture {
+        Capture::Yes => Stdio::piped,
+        Capture::No => Stdio::null,
+    };
+    command.stdout(output()).stderr(output()).process_group(0);
     let (mut child, _live) = spawn_listed(command, on_stop)?;
     let stdout = Drain::start(child.stdout.take());
     let stderr = Drain::start(child.stderr.take());
@@ -663,6 +686,36 @@ pub(crate) mod tests {
             gone_within(child, Duration::from_secs(2)),
             "child {child} outlived the kill"
         );
+    }
+
+    #[test]
+    fn a_command_run_discarding_output_leaves_its_children_no_pipe_to_hold_or_break() {
+        let dir = tempfile::tempdir().unwrap();
+        let (out_file, err_file) = (dir.path().join("out"), dir.path().join("err"));
+        let script = format!(
+            "(sleep 0.3; [ /dev/fd/1 -ef /dev/null ] && echo null > '{}'; [ /dev/fd/2 -ef /dev/null ] && echo null > '{}') & \
+             echo hi; echo hi >&2",
+            out_file.display(),
+            err_file.display()
+        );
+        let started = Instant::now();
+        let outcome = run_to_end_discarding_output(&mut sh(&script)).unwrap();
+        assert!(
+            started.elapsed() < DRAIN_GRACE,
+            "waited for the child: {:?}",
+            started.elapsed()
+        );
+        assert_eq!(
+            (outcome.code(), outcome.stdout.as_str(), outcome.stderr.as_str()),
+            (Some(0), "", "")
+        );
+        for file in [out_file, err_file] {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while std::fs::read_to_string(&file).unwrap_or_default().is_empty() && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(20));
+            }
+            assert_eq!(std::fs::read_to_string(&file).unwrap().trim(), "null");
+        }
     }
 
     #[test]

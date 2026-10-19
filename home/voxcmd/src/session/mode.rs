@@ -470,7 +470,7 @@ pub fn rewrite(settings: &ModeSettings, file: &str, texts: &[String], heard_mode
 pub fn handle_turn(file: &str, text: &str, ending: Option<&str>, heard_mode: &str) {
     let mut command = legacy_hook("handle-turn", file);
     command.arg(text).args(ending).envs(bridge::hook_env(heard_mode));
-    let _ = process::run_to_end(&mut command);
+    let _ = process::run_to_end_discarding_output(&mut command);
 }
 
 #[cfg(test)]

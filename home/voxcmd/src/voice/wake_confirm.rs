@@ -1,5 +1,5 @@
-//! `voxcmd internal wake-confirm <wav> [recording]` (alias `_wake-confirm`): whether a short recording (16 kHz mono WAV)
-//! holds the wake word, from `voxtype transcribe` (was `wake_confirm` and `heard_wake_word`)
+//! `voxcmd internal wake-confirm <wav> [recording]` (alias `_wake-confirm`): whether a short recording (16 kHz mono
+//! WAV) holds the wake word, from `voxtype transcribe` (was `wake_confirm` and `heard_wake_word`)
 //!
 //! voxcmd-wake asks it before a trigger starts a command, with the audio on stdin as `/dev/stdin`, and reads only the
 //! exit code: prints `wake <words after it>` and exits 0, `not_wake` and exits 1, or `failed` and exits 2 when there is
@@ -54,10 +54,16 @@ fn say(verdict: &str) {
     let _ = writeln!(std::io::stdout(), "{verdict}");
 }
 
+/// Runs its arguments (voxtype's) as a child of the group's leader, which this process's death (`die_with_parent`)
+/// TERMs: the leader then TERMs the whole group, so a child voxtype started goes too. The clip stays on stdin: a background
+/// job of a non-interactive shell would otherwise get /dev/null.
+const VOXTYPE_AS_GROUP_LEADER: &str = r#"trap 'trap "" TERM; kill -TERM -- -$$' TERM; "$@" <&0 & wait $!"#;
+
 /// What voxtype heard in the clip: "" for no speech, none when it failed or ran out of time.
 fn transcribe(wav: &str) -> Option<String> {
     let prompt = initial_prompt();
-    let mut command = Command::new("voxtype");
+    let mut command = Command::new("sh");
+    command.args(["-c", VOXTYPE_AS_GROUP_LEADER, "voxtype", "voxtype"]);
     // -q keeps voxtype's INFO lines (which hold the transcript) out of the output; the progress lines stay on stdout.
     command.arg("-q");
     if let Some(model) = downloaded_model() {
@@ -67,19 +73,37 @@ fn transcribe(wav: &str) -> Option<String> {
         command.args(["--initial-prompt", &prompt]);
     }
     command.args(["transcribe", wav]);
-    // voxcmd-wake kills this process's group when it outlasts its own limit, and voxtype runs in a group of its own.
+    // voxcmd-wake kills this process's group when it outlasts its own limit; voxtype's group is told by its leader.
     process::die_with_parent(&mut command);
-    let timeout = std::env::var("VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS")
-        .ok()
-        .and_then(|secs| secs.parse::<f64>().ok())
-        .and_then(|secs| Duration::try_from_secs_f64(secs).ok())
-        .unwrap_or(Duration::from_secs(6));
-    match process::run_with_timeout_on_stdin(&mut command, timeout) {
+    let limit = confirm_limit(std::env::var("VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS").ok().as_deref());
+    match process::run_with_timeout_on_stdin(&mut command, limit) {
         Ok(outcome) if outcome.code() == Some(0) => Some(after_blank_line(&outcome.stdout)),
         _ => {
             debug("wake confirm: voxtype transcribe failed or timed out");
             None
         }
+    }
+}
+
+/// How long voxtype may transcribe, read as bash's `timeout` read the setting: a number of seconds, decimals allowed,
+/// with an optional s, m, h or d; 0 is no limit (none). Unset or unreadable, 6 s.
+fn confirm_limit(setting: Option<&str>) -> Option<Duration> {
+    let setting = setting.unwrap_or_default();
+    let (number, unit_secs) = match setting.chars().last() {
+        Some('s') => (&setting[..setting.len() - 1], 1.0),
+        Some('m') => (&setting[..setting.len() - 1], 60.0),
+        Some('h') => (&setting[..setting.len() - 1], 3600.0),
+        Some('d') => (&setting[..setting.len() - 1], 86400.0),
+        _ => (setting, 1.0),
+    };
+    let secs = number
+        .parse::<f64>()
+        .ok()
+        .filter(|secs| secs.is_finite() && *secs >= 0.0);
+    match secs.map(|secs| Duration::try_from_secs_f64(secs * unit_secs)) {
+        Some(Ok(limit)) if limit.is_zero() => None,
+        Some(Ok(limit)) => Some(limit),
+        _ => Some(Duration::from_secs(6)),
     }
 }
 
@@ -136,6 +160,31 @@ fn on_path(name: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_limit_reads_as_bash_s_timeout_reads_it() {
+        let secs = |secs: f64| Some(Duration::from_secs_f64(secs));
+        for (setting, limit) in [
+            ("1", secs(1.0)),
+            ("6s", secs(6.0)),
+            ("1m", secs(60.0)),
+            ("2h", secs(7200.0)),
+            ("1d", secs(86400.0)),
+            ("1.5", secs(1.5)),
+            ("0.5s", secs(0.5)),
+            ("0", None),
+            ("0s", None),
+            ("0.0", None),
+            ("", secs(6.0)),
+            ("soon", secs(6.0)),
+            ("s", secs(6.0)),
+            ("-1", secs(6.0)),
+            ("1x", secs(6.0)),
+        ] {
+            assert_eq!(confirm_limit(Some(setting)), limit, "{setting:?}");
+        }
+        assert_eq!(confirm_limit(None), secs(6.0));
+    }
 
     #[test]
     fn the_transcript_is_what_follows_the_first_blank_line() {
