@@ -155,6 +155,7 @@ STEPS = [
     Step("luacheck", "lua", "sh ./lib/check/steps/lua.sh"),
     Step("qml-paths", "qml", "python3 -B ./lib/check/steps/qml_paths.py"),
     Step("qml-layers", "qml", "python3 -B ./lib/check/steps/qml_layers.py"),
+    Step("qml-ipc", "tree", "python3 -B ./lib/check/steps/qml_ipc.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.

@@ -1,0 +1,11 @@
+# IpcHandler targets the repo does not call, or calls only from outside it (lib/check/steps/qml_ipc.py), one per line:
+#   uncalled <target>  # <reason> (<item that removes it, or "permanent">)
+#   frozen <target> <function>...  # <reason> (<item>)
+# A line whose exception no longer applies fails as stale: delete it in the PR that makes it so.
+
+uncalled cmdstatus                    # the module id is also the target; nothing calls refresh yet (5.7 keeps it)
+uncalled weather                      # README-documented preview hook for fixtures (permanent)
+uncalled transition                   # a debugging hook, called by hand (permanent)
+uncalled osd                          # shadow.sh wait reaches it through a computed target (permanent)
+frozen hyprvim_prompt open close      # called by repos/hyprvim, outside this repo (permanent)
+frozen hyprvim_whichkey open close    # called by repos/hyprvim and .claude/skills/shadow/smoke.sh (permanent)
