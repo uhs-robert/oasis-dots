@@ -4,7 +4,6 @@ import QtQuick.Shapes
 import qs.ui.effects
 import qs.ui.gauges
 import qs.styles.metroid.widgets as Metroid
-import qs.services
 import qs.theme
 import qs.features.popups
 

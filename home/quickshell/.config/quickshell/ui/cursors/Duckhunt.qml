@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
 import qs.features.screenshot
 
 // NES Zapper reticle: a white ring with four white arms, each outlined in black.

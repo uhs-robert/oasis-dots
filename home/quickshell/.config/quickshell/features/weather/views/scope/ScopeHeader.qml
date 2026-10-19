@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.ui.frames
 import qs.theme
-import qs.services
 import qs.styles.reticle.widgets
 import qs.features.weather
 import qs.styles.tie.widgets

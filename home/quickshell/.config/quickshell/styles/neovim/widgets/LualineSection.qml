@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
-import qs.services
 import "../../../features/bar/BarModules.js" as BarModules
 import qs.features.bar
 import qs.features.popups

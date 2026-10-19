@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell
 import qs.theme
-import qs.services
 import qs.components.bar_icons
 import qs.features.power
 import qs.features.voice

@@ -5,7 +5,6 @@ import Quickshell.Wayland
 import qs.theme
 import "Search.js" as Search
 import "popup/fuzzy_rows.js" as FuzzyRows
-import qs.styles.neovim.widgets as Neovim
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui.popup
 import qs.ui.frames

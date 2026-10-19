@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import qs.ui.frames
 import qs.ui.gauges
 import qs.theme
-import qs.services
 import qs.features.keeptabs
 import qs.features.clock
 import qs.features.popups

@@ -1,7 +1,6 @@
 import QtQuick
 import qs.ui.effects
 import qs.theme
-import qs.services
 import qs.ui.frames
 import qs.features.weather
 import qs.features.weather.views.shared

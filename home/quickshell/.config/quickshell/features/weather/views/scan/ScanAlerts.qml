@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
 import qs.features.weather
 import qs.styles.metroid.widgets
 import qs.features.popups

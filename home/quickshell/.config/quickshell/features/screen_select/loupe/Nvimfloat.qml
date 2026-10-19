@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
-import qs.services
 import qs.features.screen_select
 import qs.features.screenshot
 

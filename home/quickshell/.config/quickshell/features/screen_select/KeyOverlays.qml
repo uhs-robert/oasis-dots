@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
 import qs.ui.menu
 import qs.ui.keys
 import qs.features.screenshot

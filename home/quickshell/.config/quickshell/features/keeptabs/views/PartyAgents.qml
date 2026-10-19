@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import qs.ui.effects
 import qs.styles.nes.widgets
 import qs.theme
-import qs.services
 import qs.features.popups
 import "../../../styles/nes/widgets/Slimes.js" as Slimes
 import "KeeptabsFormat.js" as Fmt

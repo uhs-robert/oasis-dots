@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import qs.theme
-import qs.services
 import qs.features.screen_select
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.features.screenshot

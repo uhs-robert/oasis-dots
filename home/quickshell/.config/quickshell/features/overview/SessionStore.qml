@@ -3,7 +3,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.core
-import qs.services
 import qs.features.settings
 import "SessionJson.js" as SessionJson
 

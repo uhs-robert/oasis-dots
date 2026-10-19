@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
 import qs.theme
-import qs.services
 import qs.ui
 import qs.components.bar_icons
 

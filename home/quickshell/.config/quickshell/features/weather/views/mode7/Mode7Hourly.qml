@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import qs.ui.effects
 import qs.styles.snes.widgets as Snes
 import qs.theme
-import qs.services
 import qs.features.weather
 import qs.features.weather.views.shared
 import qs.features.popups

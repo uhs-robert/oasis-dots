@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.theme
 import qs.features.audio
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.

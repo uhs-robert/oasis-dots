@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
-import qs.services
 import "Modes.js" as Modes
 import qs.features.bar
 

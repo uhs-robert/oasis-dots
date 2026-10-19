@@ -1,7 +1,5 @@
 import QtQuick
-import qs.components
 import qs.ui
-import qs.services
 import qs.features.popups
 
 Popup {

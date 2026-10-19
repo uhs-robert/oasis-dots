@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.effects
 import qs.theme
-import qs.services
 import qs.styles.crt.widgets
 import qs.features.popups
 import "KeeptabsFormat.js" as Fmt

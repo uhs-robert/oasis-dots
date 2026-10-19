@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import qs.services
 
 // Base for a picker source. Items are { id, label, description, icon, keywords, glyph, accent }; any other fields pass through.
 Scope {

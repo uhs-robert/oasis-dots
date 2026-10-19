@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.frames
 import qs.theme
-import qs.services
 import qs.styles.reticle.widgets
 import qs.features.clock
 import qs.features.weather

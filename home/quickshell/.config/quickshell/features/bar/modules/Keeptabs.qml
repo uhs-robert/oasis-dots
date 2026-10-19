@@ -2,8 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.theme
-import qs.services
-import qs.components
 import qs.features.power
 import qs.features.keeptabs
 import qs.features.bar

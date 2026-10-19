@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
 import qs.features.screenshot
 
 // MGS binocular reticle for the PS1 picker skin: gapped full-screen hairlines, a box reticle

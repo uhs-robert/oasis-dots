@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
-import qs.services
 import qs.features.voice
 
 // Recent voxtype mic levels, newest on the right: a mirrored line wave, or bars.

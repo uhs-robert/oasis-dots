@@ -5,7 +5,6 @@ import qs.ui.effects
 import qs.ui.gauges
 import qs.styles.gameboy.widgets as Gameboy
 import qs.theme
-import qs.services
 import qs.ui.frames
 import qs.features.popups
 import "KeeptabsFormat.js" as Fmt

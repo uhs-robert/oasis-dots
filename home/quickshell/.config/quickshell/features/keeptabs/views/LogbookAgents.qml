@@ -5,7 +5,6 @@ import qs.ui.frames
 import qs.ui.gauges
 import qs.styles.metroid.widgets
 import qs.theme
-import qs.services
 import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 

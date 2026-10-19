@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Networking
 import qs.theme
-import qs.services
 import qs.components.bar_icons
 
 BarModule {

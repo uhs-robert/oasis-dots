@@ -5,7 +5,6 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs.ui
 import qs.theme
-import qs.services
 import "../../core/Fuzzy.js" as Fuzzy
 import qs.features.launcher.hyprvim
 import qs.features.popups

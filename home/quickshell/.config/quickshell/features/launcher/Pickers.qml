@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.theme
-import qs.services
 import qs.features.popups
 
 Singleton {

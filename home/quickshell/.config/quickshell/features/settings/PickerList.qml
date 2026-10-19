@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.menu
 import qs.theme
-import qs.services
 import qs.features.launcher
 import "../../core/Fuzzy.js" as Fuzzy
 

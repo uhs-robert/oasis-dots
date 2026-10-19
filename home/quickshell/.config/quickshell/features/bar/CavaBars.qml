@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
-import qs.services
 import qs.features.media
 
 // Cava drawn inside an island's bottom edge, as bars or a smoothed line, on the island's own color.

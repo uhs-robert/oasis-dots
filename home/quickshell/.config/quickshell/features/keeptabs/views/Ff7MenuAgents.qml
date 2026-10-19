@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.menu
 import qs.styles.ff7.widgets as Ff7
-import qs.services
 import qs.theme
 import qs.ui.gauges
 import qs.features.popups

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
 import qs.features.popups
 
 // Stand-in for a module that isn't built yet: shows its glyph and a dim label, no actions.

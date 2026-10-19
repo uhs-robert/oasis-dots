@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import qs.styles.ps2.widgets as Ps2
 import qs.theme
-import qs.services
 import qs.features.weather
 import qs.features.popups
 

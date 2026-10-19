@@ -4,7 +4,6 @@ import qs.styles.oasis.widgets as Oasis
 import qs.theme
 import qs.features.keeptabs
 import qs.features.clock
-import "KeeptabsFormat.js" as Fmt
 
 // The Usage tab as horizons: each limit is a line with a sun at the percent used, "sunrise <resets>" at the far end.
 // The contract is UsageView's.

@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import qs.theme
-import qs.services
 import qs.features.settings
 import qs.styles.neovim.widgets as Neovim
 import qs.features.bar
