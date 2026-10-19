@@ -8,7 +8,8 @@
 //! which voxcmd-wake confirms during the recording), `key` (Stop Voice), or the detector's `cap`, `pause` or `idle`.
 //! The voice key stops the recording without an ending, which reads as `{type, voice_key}`. `action` is the ending
 //! row's: `discard` cancels the recording, `end_session` ends the session once the text is handled, and any other is
-//! handed to the mode's `handle_turn` with the text. An ending followed by "and then" (a chain) is voxcmd-port 2.4d-2's.
+//! handed to the mode's `handle_turn` with the text. An ending followed by "and then" (a chain) is voxcmd-port
+//! 2.4d-2's.
 //!
 //! Nothing here holds the lock while a mode hook runs: typing.sh's `handle_turn` reads the session through the bridge,
 //! which takes the lock.
@@ -34,8 +35,8 @@ pub struct Ending {
 }
 
 impl Ending {
-    /// A bash `ending=` row, `<action> <regex>`, split as `read -r action regex` splits it. None when the regex does not
-    /// compile, which bash would have matched nothing with either.
+    /// A bash `ending=` row, `<action> <regex>`, split as `read -r action regex` splits it. None when the regex does
+    /// not compile, which bash would have matched nothing with either.
     pub fn from_row(row: &str) -> Option<Self> {
         let row = row.trim();
         let (action, body) = row.split_once(char::is_whitespace).unwrap_or((row, ""));

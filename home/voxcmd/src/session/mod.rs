@@ -3,8 +3,9 @@
 //! `session_enter/push/truncate/leave/end`, `session_end_all`, `session_end_if_mine` and `session_run_ended_hook`)
 //!
 //! The lock is the bash one's (`flock` on the same file), so either binary may hold it: until voxcmd-port 3.2 the
-//! installed bash voxcmd and voxcmd-wake still act on a session the Rust port opened, and the reverse. The file stays a `serde_json::Value`, so fields this port does not
-//! know are kept, and it is replaced whole (written beside it, then renamed), so the bar never reads half of it.
+//! installed bash voxcmd and voxcmd-wake still act on a session the Rust port opened, and the reverse. The file stays a
+//! `serde_json::Value`, so fields this port does not know are kept, and it is replaced whole (written beside it, then
+//! renamed), so the bar never reads half of it.
 //! "Mine" is a pid the caller names: the watcher's own, or the Rust process a bash hook was run from (`bridge.rs`).
 pub mod bridge;
 pub mod dictation;
