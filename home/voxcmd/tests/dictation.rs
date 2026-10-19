@@ -716,11 +716,11 @@ fn a_clip_cut_during_another_recording_ends_nothing() {
         .status()
         .unwrap();
     assert!(setup.record_calls().is_empty());
-    // Nor does one heard once voxtype stopped recording, or in a mode the wake listener does not hear through.
+    // Nor does one heard once voxtype stopped recording, or in a mode that is not one recording.
     setup.set_state("transcribing");
     setup.confirm("Cortana stop.", &recording);
     setup.set_state("recording");
-    setup.open_session(owner.id(), serde_json::json!({"wake_listens": false}));
+    setup.open_session(owner.id(), serde_json::json!({"one_recording": false}));
     setup.confirm("Cortana stop.", &recording);
     assert!(setup.state().unwrap()["ending"].is_null());
     assert!(setup.record_calls().is_empty());

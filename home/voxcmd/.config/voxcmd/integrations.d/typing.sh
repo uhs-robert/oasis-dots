@@ -1,7 +1,7 @@
 # shellcheck shell=bash disable=SC2034,SC2016,SC2154
 # Type mode: one dictation into the focused window. It is one voxtype recording, typed once it ends: on "cortana stop"
-# and the other endings below, the voice key or Stop Voice, at voxtype's recording limit, or after 10 s of quiet once
-# something was said. "cortana cancel", or 10 s with nothing said at all, ends it typing nothing. Format: ~/.config/voxcmd/README.md
+# and the other endings below, said before a pause, the voice key or Stop Voice, at voxtype's recording limit, or after
+# 10 s of quiet once something was said. "cortana cancel", or 10 s with nothing said at all, ends it typing nothing. Format: ~/.config/voxcmd/README.md
 
 name="Type"
 confirm=0
@@ -42,8 +42,9 @@ session_private=1
 # Long by design, and bounded by its recording instead of the session's turn and time caps.
 session_open_ended=1
 session_one_recording=1
-# voxcmd-wake keeps listening through the recording, for the wake word and an ending.
-session_wake_listens=1
+# The endings are heard at the recording's pauses (voxcmd-autostop's pause checks), not by voxcmd-wake, whose detector
+# misses a "cortana stop" said in one breath; it pauses through the recording as through any other.
+session_wake_listens=0
 # How the recording ends, after the wake word: "<action> <regex>" rows, the first whose regex matches the whole of the
 # words wins. discard and end_session are voxcmd's (see voxcmd's one-recording modes); session_handle_turn gets the
 # others. Whisper writes "never mind" both ways.
@@ -59,17 +60,12 @@ session_listen_no_speech_secs="${VOXCMD_TYPE_IDLE_SECS:-10}"
 session_listen_silence_secs="${VOXCMD_TYPE_IDLE_SECS:-10}"
 session_listen_max_secs="${VOXCMD_TYPE_MAX_SECS:-295}"
 
-# Opens the mode and says how to finish it: by the wake word while voxcmd-wake runs, else by the voice key.
+# Opens the mode and says how to finish it.
 type_mode_begin() {
-  local session wake_pid
+  local session
   session_begin type "$file" "Type mode"
   session=$(session_state) && [ "$(jq -r .kind <<<"$session")" = type ] || return 0
-  wake_pid=$(jq -r '.pid // empty' "$runtime_dir/wake.json" 2>/dev/null || true)
-  if [ -n "$wake_pid" ] && kill -0 "$wake_pid" 2>/dev/null; then
-    notify info "voxcmd: Type mode" "Say \"cortana stop\" to type it, \"cortana cancel\" to drop it"
-  else
-    notify info "voxcmd: Type mode" "Press the voice key to type it: the Cortana listener is off"
-  fi
+  notify info "voxcmd: Type mode" "Say \"cortana stop\" to type it, \"cortana cancel\" to drop it"
 }
 
 # Prints why nothing may be typed now, nothing when typing is fine.

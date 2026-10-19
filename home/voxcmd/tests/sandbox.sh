@@ -87,6 +87,15 @@
 #                                     for $SANDBOX_DIR/chain-pause, then gives the pause verdict (0), or exits at once with
 #                                     SANDBOX_CHAIN_DETECTOR_EXIT. It logs "threshold_db=<n>" when VOXCMD_AUTOSTOP_THRESHOLD_DB is set,
 #                                     and writes SANDBOX_ROOM_THRESHOLD_DB to VOXCMD_AUTOSTOP_THRESHOLD_FILE when both are set.
+#                                     It logs "pause_check_recording=<id>" and "pause_check_voxcmd=<path>" when voxcmd
+#                                     asks for type mode's pause checks;
+#                                     then, with $SANDBOX_DIR/pause-text present, a detached checker waits for the
+#                                     recording's watcher to own the session and runs, for each line, the
+#                                     $VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD _wake-confirm /dev/stdin <id> pause the real
+#                                     detector would, its transcriber hearing that line; each logs "pause-check done".
+#                                     A line "WAKE <text>" is voxcmd-wake's confirmation instead (no "pause"), "AFTER_END
+#                                     <text>" waits for the recording to end first, SANDBOX_PAUSE_CHECKS_AT_ONCE=1 runs
+#                                     the lines together, and $SANDBOX_DIR/pause-recording replaces the id.
 #   voxtype -q ... transcribe <file>  prints voxtype's progress lines, a blank line and $SANDBOX_TRANSCRIBE_TEXT, as a
 #                                     wake confirmation's transcription does (no blank line without it: no speech)
 #                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
@@ -381,6 +390,36 @@ voxcmd-pick)
   printf '%s\n' "$last" | jq -r '.[0].id'
   ;;
 voxcmd-autostop)
+  if [ "${1-}" = --sandbox-pause-checks ]; then
+    recording=$VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING
+    owner=${recording#*:} owner=${owner%%:*}
+    [ ! -e "$SANDBOX_DIR/pause-recording" ] || recording=$(cat "$SANDBOX_DIR/pause-recording")
+    waited=0 max_polls=$((${VOXCMD_TEST_WAIT_SECS:-120} * 50))
+    until [ "$(jq -r '"\(.owner) \(.owner_handover // false)"' "$XDG_RUNTIME_DIR/voxcmd/session.json" 2>/dev/null)" = "$owner false" ] ||
+      [ "$waited" -ge "$max_polls" ]; do
+      sleep 0.02
+      waited=$((waited + 1))
+    done
+    pause_check() {
+      # As the real detector, without the settings a chain detector the check starts must not inherit.
+      env -u VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING -u VOXCMD_AUTOSTOP_THRESHOLD_FILE SANDBOX_TRANSCRIBE_TEXT="$1" \
+        "$VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD" _wake-confirm /dev/stdin "$recording" $2 </dev/null >/dev/null 2>&1
+      log "pause-check done"
+    }
+    while IFS= read -r heard; do
+      cutter=pause
+      case "$heard" in
+      "WAKE "*) heard=${heard#WAKE } cutter= ;;
+      "AFTER_END "*)
+        heard=${heard#AFTER_END }
+        while [ "$(cat "$XDG_RUNTIME_DIR/voxtype/state" 2>/dev/null)" = recording ]; do sleep 0.02; done
+        ;;
+      esac
+      if [ -n "${SANDBOX_PAUSE_CHECKS_AT_ONCE-}" ]; then pause_check "$heard" $cutter & else pause_check "$heard" $cutter; fi
+    done <"$SANDBOX_DIR/pause-text"
+    wait
+    exit 0
+  fi
   if [ "${1-}" = --check ]; then
     [ -z "${SANDBOX_AUTOSTOP_OFF-}" ] || { echo "$SANDBOX_AUTOSTOP_OFF"; exit 1; }
     exit 0
@@ -390,6 +429,13 @@ voxcmd-autostop)
   log "min_speech_secs=${VOXCMD_AUTOSTOP_MIN_SPEECH_SECS:-default} silence_secs=${VOXCMD_AUTOSTOP_SILENCE_SECS:-default}"
   [ -z "${VOXCMD_AUTOSTOP_MAX_SECS-}" ] || log "max_secs=$VOXCMD_AUTOSTOP_MAX_SECS"
   [ -z "${VOXCMD_AUTOSTOP_THRESHOLD_DB-}" ] || log "threshold_db=$VOXCMD_AUTOSTOP_THRESHOLD_DB"
+  if [ -n "${VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING-}" ]; then
+    log "pause_check_recording=$VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING"
+    log "pause_check_voxcmd=${VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD-}"
+    # Detached as the real detector's checks are, so a watcher ending this detector never ends them.
+    [ ! -e "$SANDBOX_DIR/pause-text" ] ||
+      python3 -c 'import os, sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$0" --sandbox-pause-checks </dev/null >/dev/null 2>&1 &
+  fi
   # The room threshold a watcher's detector measures, as the real one writes it.
   [ -z "${VOXCMD_AUTOSTOP_THRESHOLD_FILE-}" ] || [ -z "${SANDBOX_ROOM_THRESHOLD_DB-}" ] ||
     echo "$SANDBOX_ROOM_THRESHOLD_DB" >"$VOXCMD_AUTOSTOP_THRESHOLD_FILE"

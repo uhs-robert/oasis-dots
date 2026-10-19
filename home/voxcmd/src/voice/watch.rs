@@ -8,7 +8,7 @@
 //! SIGKILLed the detector still dies with it (`die_with_parent`); only the two files are then left, as the bash EXIT
 //! trap left them, and a later watcher that gets the same pid removes them before it starts. A session turn's watcher
 //! that ends while it still owns the session ends the session too, on return and on a stop signal alike.
-use super::listen::{Handler, inherited_owner_file};
+use super::listen::{Handler, PAUSE_CHECK_VOXCMD, inherited_owner_file};
 use super::{time_scaled, voxtype_record, voxtype_state, voxtype_write_mark};
 use crate::ask;
 use crate::cli::ReplyArgs;
@@ -311,14 +311,26 @@ impl Detector {
             return None;
         }
         let mut command = Command::new(program);
+        let mut checks_pauses = false;
         for (name, value) in settings.lines().filter_map(|line| line.split_once('=')) {
             command.env(name, value);
+            checks_pauses |= name == PAUSE_CHECK_VOXCMD;
         }
         // The room's threshold, for the chain detector of an ending that starts mid-speech (`chain_stop`).
         command.env(
             "VOXCMD_AUTOSTOP_THRESHOLD_FILE",
             paths::threshold_file(std::process::id()),
         );
+        // The recording as `dictation::heard_in_locked` names it: this watcher is its owner.
+        if checks_pauses && let Some(heard_mode) = session_mode {
+            let frame_id = heard_mode.rsplit(':').next().unwrap_or_default();
+            let me = std::process::id();
+            let start = route::sequence_run::process_start_time(me).unwrap_or_default();
+            command.env(
+                "VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING",
+                format!("{frame_id}:{me}:{start}"),
+            );
+        }
         // Spawned on the main thread, which lives as long as the watcher.
         process::die_with_parent(&mut command);
         Self::spawn(&mut command, discard_flag, session_mode)

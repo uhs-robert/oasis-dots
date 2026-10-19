@@ -36,9 +36,12 @@ sess_real_voxcmd=$sess_pkg/.local/bin/voxcmd
 if [ "${VOXCMD_BIN:-bash}" = rs ]; then
   sess_rust_voxcmd=$(readlink -f "$sess_voxcmd")
   sess_watcher="$sess_rust_voxcmd internal watch"
+  # The voxcmd a type-mode recording's detector has check its pauses: the binary that listened.
+  sess_pause_voxcmd=$sess_rust_voxcmd
   sess_chain_stopper="$sess_rust_voxcmd internal chain-stop"
 else
   sess_watcher="$sess_real_voxcmd _watch"
+  sess_pause_voxcmd=$sess_real_voxcmd
   sess_chain_stopper="$sess_real_voxcmd _chain-stop"
 fi
 # The stub detector's long sleep, under its own name so the tests can end the ones a killed watcher leaves behind.
@@ -369,6 +372,76 @@ check "and speech does not raise it" "awk '{ exit !(\$1 < -40) }' '$threshold_ou
 check "a quiet room is no speech" "[[ \$(detect '$root/quiet-room.pcm') == 3 ]]"
 check "for a reply too" "[[ \$(detect '$root/quiet-room.pcm' \"\${reply_detector[@]}\") == 3 && \$(detect '$root/fan-after-quiet-start.pcm' \"\${reply_detector[@]}\") == 3 ]]"
 check "without the debug log there is no trace" "env -u VOXCMD_DEBUG XDG_RUNTIME_DIR='$root/no-trace' python3 '$package/.local/bin/voxcmd-autostop' --pcm '$root/quiet-room.pcm'; [[ ! -e '$root/no-trace/voxcmd/debug.log' ]]"
+
+# Type mode's pause checks, handed to a stand-in voxcmd that keeps each clip and its arguments, numbered in the order
+# they ran. Its first run waits for $pause_gate when the test sets PAUSE_GATE. Fed through a pipe, so a test can wait on
+# what the detector did before it sends more.
+pause_runs=$root/pause-runs pause_gate=$root/pause-gate pause_voxcmd=$root/pause-voxcmd
+cat >"$pause_voxcmd" <<'STUB'
+#!/bin/sh
+run=$(($(find "$PAUSE_RUNS" -name '*.args' | wc -l) + 1))
+[ "$run" = 1 ] || [ -e "$PAUSE_RUNS/$((run - 1)).done" ] || : >"$PAUSE_RUNS/overlapped"
+cat >"$PAUSE_RUNS/$run.wav"
+printf '%s|%s|%s\n' "$*" "${VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING-}" "${VOXCMD_AUTOSTOP_THRESHOLD_FILE-}" >"$PAUSE_RUNS/$run.args"
+if [ "$run" = 1 ] && [ -n "${PAUSE_GATE-}" ]; then until [ -e "$PAUSE_GATE" ]; do sleep 0.02; done; fi
+: >"$PAUSE_RUNS/$run.done"
+STUB
+chmod +x "$pause_voxcmd"
+type_detector=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.4 VOXCMD_AUTOSTOP_SILENCE_SECS=10 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=10
+  VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING=f1:1:1 "VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD=$pause_voxcmd"
+  "VOXCMD_AUTOSTOP_THRESHOLD_FILE=$root/pause-threshold" "PAUSE_RUNS=$pause_runs")
+# pause_detect <feeder> [VAR=value...]: runs the detector on what the feeder (a command line) writes, with type mode's
+# settings, leaving its exit code in $pause_verdict once it has exited.
+pause_detect() {
+  rm -rf "$pause_runs" "$pause_gate"
+  mkdir -p "$pause_runs"
+  : >"$detector_trace"
+  pause_verdict=0
+  eval "$1" | env XDG_RUNTIME_DIR="$root/detector-run" VOXCMD_CONFIG_DIR="$root/detector-config" "${type_detector[@]}" "${@:2}" \
+    python3 "$package/.local/bin/voxcmd-autostop" --pcm - 2>/dev/null || pause_verdict=$?
+}
+pause_runs_made() { find "$pause_runs" -name '*.args' | wc -l; }
+# clip_is <run> <secs>: the clip that run was handed is a 16 kHz mono 16-bit WAV of that length.
+clip_is() {
+  python3 -c 'import sys, wave
+with wave.open(sys.argv[1]) as clip:
+    sys.exit(not (clip.getframerate(), clip.getnchannels(), clip.getsampwidth(), clip.getnframes()) == (16000, 1, 2, int(float(sys.argv[2]) * 16000)))' "$pause_runs/$1.wav" "$2"
+}
+# clip_peak <run>: the loudest sample of that run's clip.
+clip_peak() {
+  python3 -c 'import array, sys, wave
+with wave.open(sys.argv[1]) as clip:
+    print(max(abs(sample) for sample in array.array("h", clip.readframes(clip.getnframes()))))' "$pause_runs/$1.wav"
+}
+pcm "$root/pause-first.pcm" noise:2:-55 voice:1:-18 noise:0.7:-55
+pcm "$root/pause-quieter.pcm" noise:0.1:-55 voice:1:-24 noise:0.7:-55
+pcm "$root/pause-louder.pcm" noise:0.1:-55 voice:1:-12 noise:0.7:-55
+pcm "$root/pause-quiet-tail.pcm" noise:0.5:-55
+pcm "$root/pause-long-quiet.pcm" noise:2:-55 voice:1:-18 noise:4:-55
+pause_detect "cat '$root/pause-first.pcm'; wait_for_path '$pause_runs/1.done'; cat '$root/pause-quieter.pcm'; wait_for_path '$pause_runs/2.done'; cat '$root/pause-quiet-tail.pcm'"
+check "each pause after speech hands its last 3 s to voxcmd's confirmation, as a 16 kHz mono WAV" "[[ \$(pause_runs_made) == 2 ]] && clip_is 1 3 && clip_is 2 3 && grep -q 'pause check at 3\.6' '$detector_trace'"
+check "naming the recording, as a pause, without the recording's settings in its environment" "[[ \$(cat '$pause_runs/1.args') == '_wake-confirm /dev/stdin f1:1:1 pause||' ]]"
+check "and the verdict is still the detector's own: none yet" "[[ \$pause_verdict == 4 ]]"
+pause_detect "cat '$root/pause-long-quiet.pcm'; wait_for_path '$pause_runs/1.done'; cat '$root/pause-quiet-tail.pcm'"
+check "one long pause is one check" "[[ \$(pause_runs_made) == 1 ]]"
+pause_detect "cat '$root/quiet-room.pcm'"
+check "quiet alone is no check" "[[ \$(pause_runs_made) == 0 ]]"
+pause_detect "cat '$root/pause-first.pcm' '$root/pause-quiet-tail.pcm'" VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING=
+check "and with no recording named, no pause is checked" "[[ \$(pause_runs_made) == 0 ]]"
+# Three pauses while the first check runs: the second check gets the third pause's clip, the louder voice.
+pause_detect "cat '$root/pause-first.pcm'; wait_for_path '$pause_runs/1.args'; cat '$root/pause-quieter.pcm' '$root/pause-louder.pcm';
+  wait_for_count 'waits for the check running' '$detector_trace' 2; : >'$pause_gate'; wait_for_path '$pause_runs/1.done';
+  cat '$root/pause-quiet-tail.pcm'; wait_for_path '$pause_runs/2.done'" "PAUSE_GATE=$pause_gate"
+check "pauses during a check keep only the newest clip, run once the check is over" "[[ \$(pause_runs_made) == 2 && ! -e '$pause_runs/overlapped' ]] && ((\$(clip_peak 2) > 10000 && \$(clip_peak 1) < 10000))"
+# The detector exits (the recording ended) while its check still runs.
+pause_detect "cat '$root/pause-first.pcm'; wait_for_path '$pause_runs/1.args'" "PAUSE_GATE=$pause_gate"
+check "a check still running when the detector exits is left to finish" "[[ ! -e '$pause_runs/1.done' ]] && : >'$pause_gate' && wait_for_path '$pause_runs/1.done'"
+pcm "$root/word-then-quiet.pcm" noise:2:-55 voice:1:-18 noise:2:-55
+type_verdict() { grep 'verdict ' "$detector_trace" | sed 's/.*verdict/verdict/'; }
+pause_detect "cat '$root/word-then-quiet.pcm'" VOXCMD_AUTOSTOP_SILENCE_SECS=1.5
+with_checks="$pause_verdict $(type_verdict)"
+pause_detect "cat '$root/word-then-quiet.pcm'" VOXCMD_AUTOSTOP_SILENCE_SECS=1.5 VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING=
+check "checks change neither the verdict nor when it comes" "[[ \$pause_verdict == 0 && '$with_checks' == \"\$pause_verdict \$(type_verdict)\" ]]"
 
 section "voice sessions: endings and settling"
 # A start that fails ends the session rather than leaving it open with no microphone.
@@ -912,11 +985,12 @@ hooks_done() { wait_until ended_hooks_gone; }
 
 sess_start "UNTIL_STOP Hello world. Cortana, stop."
 owner_is_listening
-check "type mode's session file names it, its hint, and that it is one recording the wake listener hears through" "[[ \$(jq -c '[.kind, .label, .exit_hint, .one_recording, .wake_listens, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say cortana stop, or cortana cancel\",true,true,[]]' ]]"
+check "type mode's session file names it, its hint, and that it is one recording the wake listener does not hear through" "[[ \$(jq -c '[.kind, .label, .exit_hint, .one_recording, .wake_listens, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say cortana stop, or cortana cancel\",true,false,[]]' ]]"
 check "its one recording ends after 10 s of quiet or of no speech, and at 295 s" "log_has_soon 'no_speech_secs=10\$' && log_has_soon 'autostop min_speech_secs=0.4 silence_secs=10\$' && log_has_soon 'autostop max_secs=295\$'"
 check "once its watcher owns the session, the hand-over is over" "! jq -e '.owner_handover' '$session_json' >/dev/null"
 check "its one recording is watched by the binary under test" "owner_is_the_binary_under_test"
-check "with the wake listener off, its start says to press the voice key" "log_has_soon '^notify-send .*voxcmd: Type mode Press the voice key to type it'"
+check "with the wake listener off, its start still says to say cortana stop" "log_has_soon '^notify-send .*voxcmd: Type mode Say \"cortana stop\" to type it'"
+check "its detector checks the pauses of this recording, with the binary under test" "log_has_soon \"^voxcmd-autostop pause_check_recording=\$(recording_now)\$\" && log_has_soon \"^voxcmd-autostop pause_check_voxcmd=\$sess_pause_voxcmd\$\""
 wake_heard "Cortana, stop."
 sess_wait
 check "cortana stop ends the recording and types it once, without the ending" "session_gone && wtype_is 'wtype -- Hello world.' && [[ \$(record_starts) == 1 ]] && grep -q '^voxtype record stop' '$log' && toast_has 'Type mode ended done'"
@@ -1115,6 +1189,96 @@ wake_heard "Cortana, stop."
 sess_wait
 check "while its own stop still ends it" "session_gone && wtype_is 'wtype -- Newer words.'"
 
+# Endings heard at the recording's pauses: the stub detector's checker runs the confirmation the real one would, its
+# transcriber hearing each line of pause-text (see sandbox.sh).
+pause_says() { printf '%s\n' "$@" >"$SANDBOX_DIR/pause-text"; }
+pause_checks_done() { wait_for_count '^voxcmd-autostop pause-check done' "$log" "$1"; }
+pause_checks_off() { rm -f "$SANDBOX_DIR/pause-text" "$SANDBOX_DIR/pause-recording"; }
+still_recording() { [[ $(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' "$log" && ! jq -e .ending "$session_json" >/dev/null; }
+for ending in "Cortana stop." "Cortana, stop typing." "Cortana done."; do
+  pause_says "Hello world. $ending"
+  sess_start "UNTIL_STOP Hello world. $ending"
+  sess_wait
+  check "'$ending' before a pause types the dictation without it" "session_gone && wtype_is 'wtype -- Hello world.' && grep -q 'pause check: the wake word' '$debug_log' && grep -q 'dictation: ended by voice (type)' '$debug_log' && toast_has 'Type mode ended done'"
+done
+pause_says "Secret words. Cortana, cancel."
+sess_start "UNTIL_STOP Secret words. Cortana, cancel."
+sess_wait
+check "'Cortana, cancel.' before a pause types nothing" "session_gone && ! grep -q '^wtype' '$log' && grep -q '^voxtype record cancel' '$log'"
+pause_says "Ship it. Cortana, send it."
+sess_start "UNTIL_STOP Ship it. Cortana, send it."
+sess_wait
+check "'Cortana, send it.' before a pause types it, then presses Return" "session_gone && wtype_is 'wtype -- Ship it.' 'wtype -k Return'"
+pause_says "Hello. Cortana stop. Thank you."
+sess_start "UNTIL_STOP Hello. Cortana stop. Thank you."
+sess_wait
+check "the transcriber's 'Thank you.' after the ending does not hide it" "session_gone && wtype_is 'wtype -- Hello.'"
+pause_says "Hello world. Cortana stop. Cortana stop."
+sess_start "UNTIL_STOP Hello world. Cortana stop. Cortana stop."
+sess_wait
+check "a retried ending is cut with the first, leaving none behind" "session_gone && wtype_is 'wtype -- Hello world.'"
+
+for heard in "I asked Cortana about it." "Hello world." "Cortana." "Cortana, new paragraph."; do
+  pause_says "$heard"
+  sess_start "UNTIL_STOP $heard More."
+  pause_checks_done 1
+  check "a pause after '$heard' leaves the recording running" "still_recording"
+  sess_voxcmd_env listen
+  sess_wait
+  check "and the voice key types all of it" "session_gone && wtype_is 'wtype -- $heard More.'"
+done
+check "the wake word with no ending after it is logged as such" "grep -q 'dictation: the wake word, not an ending' '$debug_log'"
+
+pause_says "Hello. Cortana new paragraph." "Hello. Cortana new paragraph. More. Cortana stop."
+sess_start "UNTIL_STOP Hello. Cortana new paragraph. More. Cortana stop."
+sess_wait
+pause_checks_done 2
+check "of two pauses, the one after the ending ends it, once" "session_gone && wtype_is 'wtype -- Hello. Cortana new paragraph. More.' && [[ \$(grep -c '^voxtype record stop' '$log') == 1 ]]"
+
+sess_env+=(SANDBOX_PAUSE_CHECKS_AT_ONCE=1)
+pause_says "Words. Cortana stop." "WAKE Cortana, stop." "Words. Cortana stop."
+sess_start "UNTIL_STOP Words. Cortana stop."
+sess_wait
+pause_checks_done 3
+check "pause checks and a wake confirmation hearing the ending at once end it exactly once" "session_gone && wtype_is 'wtype -- Words.' && [[ \$(grep -cE '^voxtype record (stop|cancel)' '$log') == 1 && \$(grep -c 'dictation: ended by voice' '$debug_log') == 1 ]]"
+pause_says "Words. Cortana cancel." "WAKE Cortana, stop."
+sess_start "UNTIL_STOP Words. Cortana stop."
+sess_wait
+pause_checks_done 2
+check "a cancel and a stop at once: one wins, and what is typed follows it" "session_gone && [[ \$(grep -cE '^voxtype record (stop|cancel)' '$log') == 1 ]] && if grep -q '^voxtype record cancel' '$log'; then ! grep -q '^wtype' '$log'; else wtype_is 'wtype -- Words.'; fi"
+unset 'sess_env[-1]'
+
+pause_says "AFTER_END Cortana cancel."
+sess_start "UNTIL_STOP Kept words."
+owner_is_listening
+sess_voxcmd_env listen
+sess_wait
+pause_checks_done 1
+check "a pause check that finishes after its recording ended does nothing" "session_gone && wtype_is 'wtype -- Kept words.' && ! grep -q '^voxtype record cancel' '$log'"
+
+pause_checks_off
+sess_start "UNTIL_STOP Earlier words."
+owner_is_listening
+recording_now >"$SANDBOX_DIR/pause-recording"
+sess_voxcmd_env listen
+sess_wait
+pause_says "Cortana stop."
+sess_start "UNTIL_STOP Newer words."
+pause_checks_done 1
+check "a pause check naming an earlier recording leaves the new one running" "still_recording && grep -q 'heard in an earlier recording' '$debug_log'"
+sess_voxcmd_env listen
+sess_wait
+pause_checks_off
+
+sess_phrase="rapid mode"
+pause_says "All done. Cortana, stop listening."
+sess_start "type mode" "UNTIL_STOP All done. Cortana, stop listening." "tap beta"
+sess_wait
+check "'Cortana, stop listening.' before a pause types it and ends the whole session" "session_gone && wtype_is 'wtype -- All done.' && [[ \$(taps) == 0 && \$(record_starts) == 2 ]] && toast_has 'Rapid mode ended stopped'"
+check "and only type mode's recording had its pauses checked" "[[ \$(grep -c '^voxcmd-autostop pause_check_recording=' '$log') == 1 ]]"
+pause_checks_off
+sess_phrase="type mode"
+
 sess_run "CAP A long talk."
 check "at the length limit it types what was said, ends the mode with a toast, and records nothing more" "session_gone && wtype_is 'wtype -- A long talk.' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended it reached its recording limit (295 s)'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_MAX_SECS=60)
@@ -1170,7 +1334,7 @@ check "cortana stop listening types it and ends the whole session" "session_gone
 sess_start HOLD
 owner_is_listening
 wake_heard "Cortana, stop."
-check "a mode that is not listened through is never ended by the wake listener" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log'"
+check "a mode that is not one recording is never ended by a confirmation" "[[ \$(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' '$log'"
 sess_voxcmd_env session end
 sess_wait
 sess_start "type mode" "UNTIL_STOP Stopped words." "tap beta"

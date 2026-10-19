@@ -190,6 +190,9 @@ fn start_watcher(handler: Handler, session_listen: Option<&SessionListen>, owner
     }
 }
 
+/// The detector setting that names the voxcmd checking a recording's pauses for its endings.
+pub const PAUSE_CHECK_VOXCMD: &str = "VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD";
+
 /// The auto-stop settings (`VAR=value` lines) for the watcher's detector. Computed here and passed as an argument, as
 /// the bash listen did, so the detector starts with the recording; not as an environment, which the watcher's turn
 /// would pass on to the overlay and pickers it starts. A reply has a lower speech minimum: "yes" is short. A session
@@ -223,6 +226,11 @@ pub fn autostop_settings(handler: Handler, mode: Option<&ModeSettings>) -> Strin
             );
             if let Some(max) = mode.map(|mode| &mode.listen_max_secs).filter(|max| !max.is_empty()) {
                 settings.push_str(&format!("\nVOXCMD_AUTOSTOP_MAX_SECS={max}"));
+            }
+            // A one-recording mode's spoken endings are checked at each pause, by this voxcmd; the watcher adds the
+            // recording (`Detector::start`).
+            if mode.is_some_and(|mode| mode.one_recording && !mode.endings.is_empty()) {
+                settings.push_str(&format!("\n{PAUSE_CHECK_VOXCMD}={}", ask::this_binary().display()));
             }
             settings
         }
