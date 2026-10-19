@@ -321,7 +321,7 @@ fn leave_mode_with_no_mode_open_does_nothing_and_a_leave_with_one_open_ends_it()
     rig.run("demo mode");
     rig.run("stop demo");
     assert!(rig.session().is_none());
-    assert!(wait_for(|| rig.work("ended").exists()));
+    assert!(wait_for(|| rig.read_work("ended") == "done\n"));
     assert_eq!(rig.read_work("ended"), "done\n");
 }
 
@@ -563,8 +563,9 @@ fn the_ended_hook_runs_once_with_the_reason_frame_and_whether_the_session_goes_o
     rig.run("demo mode");
     let frame = rig.session().unwrap()["frame_id"].as_str().unwrap().to_string();
     assert!(rig.command(&["session", "end"]).status().unwrap().success());
-    assert!(wait_for(|| rig.work("ended").exists()));
-    assert_eq!(rig.read_work("ended"), format!("ended by request|{frame}|0\n"));
+    let ended = format!("ended by request|{frame}|0\n");
+    assert!(wait_for(|| rig.read_work("ended") == ended));
+    assert_eq!(rig.read_work("ended"), ended);
     // The stand-in voxtype is still recording what the ended session listened for.
     std::fs::write(rig.path().join("runtime/voxtype/state"), "idle\n").unwrap();
     // A mode without the hook runs nothing when it ends.
@@ -583,7 +584,7 @@ fn an_ended_hook_that_outlives_timeout_secs_is_killed_with_what_it_started() {
     );
     rig.run("demo mode");
     assert!(rig.command(&["session", "end"]).status().unwrap().success());
-    assert!(wait_for(|| rig.work("pids").exists()));
+    assert!(wait_for(|| rig.read_work("pids").ends_with('\n')));
     let pids = rig.read_work("pids");
     let alive = |pid: &str| Path::new("/proc").join(pid).exists();
     assert!(wait_for(|| !pids.split_whitespace().any(alive)), "{pids}");
