@@ -1,5 +1,6 @@
 import QtQuick
 import qs.theme
+import qs.ui.gauges
 import qs.styles.ps2.widgets as Ps2
 
 Item {

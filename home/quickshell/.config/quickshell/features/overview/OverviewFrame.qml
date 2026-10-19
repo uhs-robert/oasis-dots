@@ -3,9 +3,9 @@ import QtQuick
 import QtQuick.Shapes
 import qs.ui.effects
 import qs.ui.frames
-import qs.ui.menu
 import qs.theme
 import qs.styles.neovim.widgets as Neovim
+import qs.features.popups.frames
 
 // The active style's panel around the overview: its frame, title, a status readout and the key footer.
 Rectangle {

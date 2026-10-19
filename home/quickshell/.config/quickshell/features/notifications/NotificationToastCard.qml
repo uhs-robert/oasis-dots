@@ -11,6 +11,7 @@ import qs.styles.neovim.widgets as Neovim
 import qs.ui.effects
 import qs.ui.frames
 import qs.ui.menu
+import qs.features.popups.frames
 
 Rectangle {
     id: root

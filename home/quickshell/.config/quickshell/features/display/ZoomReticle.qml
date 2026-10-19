@@ -4,8 +4,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.theme
-import qs.ui.menu
-import qs.ui.keys
+import qs.features.popups.frames
 
 // One per screen while zoom is on: owns keyboard and pointer, and draws the skin's reticle with the loupe's sampled area cut out.
 PanelWindow {

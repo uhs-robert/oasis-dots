@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.ui.gauges
 import qs.ui.menu
 import qs.theme
 import qs.styles.modern.widgets as Modern
+import qs.features.popups.frames
 
 // A backlight level row: a capsule slider or a menu row with a plain slider and percent readout.
 Item {
