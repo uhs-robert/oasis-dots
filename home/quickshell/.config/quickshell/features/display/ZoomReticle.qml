@@ -97,7 +97,7 @@ PanelWindow {
                     props.box_w = Qt.binding(() => root.hole_half * 2 + 5);
                     props.box_h = Qt.binding(() => root.hole_half * 2 + 5);
                 }
-                cursor_loader.setSource(Qt.resolvedUrl("../../ui/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
+                cursor_loader.setSource(Qt.resolvedUrl("../screen_select/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
             }
         }
     }

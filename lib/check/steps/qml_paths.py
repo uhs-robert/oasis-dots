@@ -143,10 +143,10 @@ TABLES = [
 ] + [
     Table(consumer, head, "theme/Style.qml", array_values("picker_skins", capitalise=True))
     for consumer, head in [
-        ("features/display/ZoomReticle.qml", "../../ui/cursors/"),
-        ("features/voice/ClickHintsOverlay.qml", "../../ui/cursors/"),
+        ("features/display/ZoomReticle.qml", "../screen_select/cursors/"),
+        ("features/voice/ClickHintsOverlay.qml", "../screen_select/cursors/"),
         ("features/screen_select/RegionSelector.qml", "targets/"),
-        ("features/screen_select/RegionSelector.qml", "../../ui/cursors/"),
+        ("features/screen_select/RegionSelector.qml", "cursors/"),
         ("features/screen_select/Loupe.qml", "loupe/"),
     ]
 ]
