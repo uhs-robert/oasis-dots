@@ -109,6 +109,7 @@ main() {
   mapfile -t core < <(read_ini_section stow.ini "$stow_section")
   migrate_unfold_systemd
   migrate_quickshell_lock_assets
+  migrate_quickshell_state
   do_stow "${core[@]}"
   seed_generated_defaults "${core[@]}"
 

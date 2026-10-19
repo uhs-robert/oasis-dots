@@ -52,7 +52,7 @@ _stow mode *pkgs:
     set -euo pipefail
     export DOTFILES_DIR="$PWD"
     source lib/install/load.sh
-    [[ "{{mode}}" == D ]] || migrate_quickshell_lock_assets
+    [[ "{{mode}}" == D ]] || { migrate_quickshell_lock_assets; migrate_quickshell_state; }
     stow_packages "-{{mode}}" {{pkgs}}
 
 # One-time fix for a systemd tree folded into the repo (before #812's follow-up); idempotent, pass --dry-run to only report
@@ -62,6 +62,14 @@ migrate-systemd *ARGS:
     export DOTFILES_DIR="$PWD"
     source lib/install/load.sh
     migrate_systemd {{ARGS}}
+
+# Move Quickshell's per-checkout notifications/Claude usage state (by-shell) into the shared state dir; idempotent, MIGRATE_DRY_RUN=1 only reports
+migrate-quickshell-state:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
+    migrate_quickshell_state
 
 # Copy *.template.* defaults of the given packages into place when missing
 _seed *pkgs:
