@@ -75,16 +75,35 @@ migrate_quickshell_state "$s" >/dev/null 2>&1
 check test ! -e "$s/notifications.json"
 check test ! -e "$s/by-shell"
 
-case_name='a running qs -p bar: copies, warns, keeps by-shell'
+case_name='a running qs -p bar: touches nothing, warns, and a later run still migrates the newest'
 s=$scratch/e/quickshell
 put "$s" x notifications.json '{"dnd":true}' 1
 touch "$scratch/qs-p-running"
 output=$(migrate_quickshell_state "$s" 2>&1)
-rm "$scratch/qs-p-running"
-check test "$(cat "$s/notifications.json")" = '{"dnd":true}'
+check test ! -e "$s/notifications.json"
 check test -d "$s/by-shell"
 check grep -q 'qs -p' <<<"$output"
+put "$s" x notifications.json '{"dnd":false}' 0
 migrate_quickshell_state "$s" >/dev/null 2>&1
+rm "$scratch/qs-p-running"
+check test ! -e "$s/notifications.json"
+migrate_quickshell_state "$s" >/dev/null 2>&1
+check test "$(cat "$s/notifications.json")" = '{"dnd":false}'
+check test ! -e "$s/by-shell"
+
+case_name='a large by-shell survives pipefail'
+s=$scratch/h/quickshell
+for i in $(seq 1 3000); do
+  mkdir -p "$s/by-shell/id-with-a-fairly-long-name-to-fill-the-pipe-buffer-$i"
+  printf x >"$s/by-shell/id-with-a-fairly-long-name-to-fill-the-pipe-buffer-$i/notifications.json"
+done
+put "$s" newest notifications.json '{"dnd":true}' 0
+touch -d '1 day ago' "$s"/by-shell/id-with-*/notifications.json
+(
+  set -euo pipefail
+  migrate_quickshell_state "$s" >/dev/null 2>&1
+)
+check test "$(cat "$s/notifications.json")" = '{"dnd":true}'
 check test ! -e "$s/by-shell"
 
 case_name='dry run changes nothing'

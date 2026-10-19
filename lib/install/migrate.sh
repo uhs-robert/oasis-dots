@@ -151,23 +151,24 @@ migrate_quickshell_lock_assets() {
 # <state>/by-shell/<id>/ (Quickshell.stateDir); both now live in <state>/ with the rest. Copies the newest non-empty file of each
 # into <state>/ when it is absent, then deletes by-shell. Newest by mtime because the id is a hash of the shell.qml path, which
 # the shell cannot derive, so the newest copy may come from a worktree or shadow run; accepted.
-# A `qs -p` bar may still run old code that writes into by-shell: it keeps the dir and warns. $1 is the Quickshell state dir, for the tests.
+# A `qs -p` bar may still run old code that writes into by-shell, so while one runs nothing is copied or deleted: a copy now would make the
+# next run skip the (then newer) by-shell file as its target exists, and delete it. $1 is the Quickshell state dir, for the tests.
 migrate_quickshell_state() {
   local state=${1:-${XDG_STATE_HOME:-$HOME/.local/state}/quickshell} by name newest
   by=$state/by-shell
   [[ -d "$by" ]] || return 0
+  if pgrep -af '^qs .*-p ' >/dev/null; then
+    warn "A 'qs -p' bar is running and may still write into $by; leaving it untouched. Rerun after it exits."
+    return 0
+  fi
   for name in notifications.json claude_usage_warned.json; do
     [[ ! -e "$state/$name" ]] || continue
-    newest=$(find "$by" -mindepth 2 -maxdepth 2 -name "$name" -type f -size +0 -printf '%T@ %p\n' | sort -rn | head -n1 | cut -d' ' -f2-)
+    newest=$(find "$by" -mindepth 2 -maxdepth 2 -name "$name" -type f -size +0 -printf '%T@\t%p\n' | awk -F'\t' '$1 > newest { newest = $1; path = $2 } END { print path }')
     [[ -n "$newest" ]] || continue
     _migrate_run mkdir -p "$state"
     _migrate_run cp -p -- "$newest" "$state/$name"
     info "Copied $newest to $state/$name"
   done
-  if pgrep -af '^qs .*-p ' >/dev/null; then
-    warn "A 'qs -p' bar is running and may still write into $by; leaving it. Rerun after it exits."
-    return 0
-  fi
   [[ "$by" == */quickshell/by-shell ]] || return 0
   _migrate_run rm -rf -- "$by"
   return 0
