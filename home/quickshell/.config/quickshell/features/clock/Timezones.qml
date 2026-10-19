@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.theme
+import qs.core
 
 Singleton {
     id: root
@@ -45,7 +45,7 @@ Singleton {
     Component.onCompleted: refresh_abbrevs()
 
     FileView {
-        path: Style.state_dir + "/timezones.json"
+        path: Paths.state_dir + "/timezones.json"
         printErrors: false
         blockLoading: true
         watchChanges: true

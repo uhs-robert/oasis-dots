@@ -197,7 +197,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 
 The calendar clock cycles through the local zone plus any listed in `quickshell/timezones.json`, for example `["America/Los_Angeles", "America/Denver"]`; there is no Settings page for it.
 
-Notification history is kept in memory only (the last 100) and is gone when the shell restarts. Quickshell's own per-config state folder (`~/.local/state/quickshell/by-shell/<id>/notifications.json`) holds just the Do Not Disturb flag, as `{ "dnd": true }`.
+Notification history is kept in memory only (the last 100) and is gone when the shell restarts. The Do Not Disturb flag is saved as `{ "dnd": true }` in `notifications.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, default `~/.local/state/quickshell/`).
 
 `qs-ipc call notifications history <count> <app>` prints that history as a JSON array, newest first: the newest `count` entries (`0` or less for all), only those from `app` when it is not `""`. Each entry is `get_last`'s fields plus the time it arrived, its urgency and whether the center has been opened since:
 

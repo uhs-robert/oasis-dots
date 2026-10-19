@@ -6,6 +6,7 @@ import Quickshell.Services.Notifications
 import qs.features.popups
 import qs.features.audio
 import "NotificationMarkup.js" as NotificationMarkup
+import qs.core
 
 // One shared notification server for every bar/popup/toast. Entries wrap a tracked
 // Notification with the time it arrived; history and toasts are newest-first arrays.
@@ -374,7 +375,7 @@ Singleton {
         return NotificationMarkup.sanitize(lines.join("\n")).replace(/^(\s|<br>)+|(\s|<br>)+$/g, "");
     }
 
-    readonly property string state_dir: Quickshell.stateDir
+    readonly property string state_dir: Paths.state_dir
 
     Process {
         id: ensure_state_dir

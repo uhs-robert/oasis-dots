@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.theme
+import qs.core
 
 // Whether the screen corners act as hot corners, saved in hot_corners.json.
 Singleton {
@@ -17,7 +17,7 @@ Singleton {
 
     FileView {
         id: file
-        path: Style.state_dir + "/hot_corners.json"
+        path: Paths.state_dir + "/hot_corners.json"
         printErrors: false
         blockLoading: true
         onLoaded: {

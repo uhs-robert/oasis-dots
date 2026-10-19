@@ -33,7 +33,7 @@ Singleton {
 
     FileView {
         id: warned_file
-        path: Quickshell.stateDir + "/claude_usage_warned.json"
+        path: Paths.state_dir + "/claude_usage_warned.json"
         printErrors: false
         blockAllReads: true
         onLoaded: {

@@ -2,15 +2,13 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 
 // Clock and calendar choices saved in clock.json under the Quickshell state dir.
 Singleton {
     id: root
 
-    readonly property string state_dir: {
-        const xdg = Quickshell.env("XDG_STATE_HOME");
-        return (xdg && xdg !== "" ? xdg : Quickshell.env("HOME") + "/.local/state") + "/quickshell";
-    }
+    readonly property string state_dir: Paths.state_dir
 
     readonly property var choices: ({ week_start: ["locale", "monday", "sunday"], time_format: ["locale", "12h", "24h"] })
     readonly property var defaults: ({ week_start: "locale", time_format: "locale" })

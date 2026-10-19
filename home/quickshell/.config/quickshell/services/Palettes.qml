@@ -2,16 +2,14 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 
 // The Oasis palettes Hyprland's theme switcher knows, the active one, and applying a choice through that switcher.
 Singleton {
     id: root
 
     readonly property string home: Quickshell.env("HOME")
-    readonly property string state_dir: {
-        const xdg = Quickshell.env("XDG_STATE_HOME");
-        return (xdg && xdg !== "" ? xdg : root.home + "/.local/state") + "/hypr";
-    }
+    readonly property string state_dir: Paths.hypr_state_dir
     readonly property string switch_script: root.home + "/.config/hypr/theme/switch.lua"
     // Palette name to { key: "#hex" }.
     property var colors: ({})
