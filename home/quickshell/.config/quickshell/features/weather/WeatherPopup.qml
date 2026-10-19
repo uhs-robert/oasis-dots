@@ -638,18 +638,17 @@ Popup {
         }
 
         // Topmost, so the wheel reaches it before HourlyTrack's Flickable, which accepts wheel events itself.
-        // Disabled on Alerts, whose lists keep their own wheel scrolling.
-        Item {
+        // A MouseArea sees both wheel axes, which a WheelHandler (vertical-only by default) does not.
+        // No buttons and no hover, so clicks and hover reach the views below. Disabled on Alerts,
+        // whose lists keep their own wheel scrolling.
+        MouseArea {
             anchors.fill: parent
             z: 100
+            acceptedButtons: Qt.NoButton
             enabled: !root.on_alerts_tab
-
-            WheelHandler {
-                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                onWheel: event => {
-                    root.wheel_step(event);
-                    event.accepted = true;
-                }
+            onWheel: wheel => {
+                root.wheel_step(wheel);
+                wheel.accepted = true;
             }
         }
     }
