@@ -353,6 +353,25 @@ def scenario_edit_during_failed_flush(state_home):
     return failed_write_with_newer_edit("edit_during_failed_flush", state_home)
 
 
+def scenario_same_values_after_failed_write(state_home):
+    # The store's directory exists but is read-only for the first set; the shell reopens it before the second.
+    store_dir = os.path.join(state_home, "state", "json_store")
+
+    def lock(directory):
+        os.chmod(directory, 0o500)
+
+    result, store_dir, problems = store_run("same_values_after_failed_write", state_home, extra=lock)
+    os.chmod(store_dir, 0o700)
+    if problems:
+        return problems
+    expect(problems, "save_failed count (the first set only)", len(result["failures"]), 1)
+    expect(problems, "saved after the same values were set again", result["saved_count"], 1)
+    on_disk = read(store_dir) if os.path.exists(os.path.join(store_dir, "store.json")) else None
+    expect(problems, "disk", on_disk and json.loads(on_disk), {"a": 1, "b": 0})
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
 def scenario_watch_after_first_write(state_home):
     result, store_dir, problems = store_run("watch_after_first_write", state_home)
     if problems:
@@ -384,6 +403,7 @@ SCENARIOS = {
     "write_fails": scenario_write_fails,
     "edit_during_failed_write": scenario_edit_during_failed_write,
     "edit_during_failed_flush": scenario_edit_during_failed_flush,
+    "same_values_after_failed_write": scenario_same_values_after_failed_write,
     "watch_after_first_write": scenario_watch_after_first_write,
 }
 
