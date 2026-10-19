@@ -19,6 +19,11 @@ Popup {
     body_height: Math.max(nav.implicitHeight, root.pane_height) + 24
     reserve_height: root.max_body
     jumps_enabled: true
+    // Only on the section list: panes hold sliders and fields with wheel behavior of their own.
+    wheel_steps: !root.in_pane
+    onWheel_stepped: (dir, horizontal) => {
+        if (!horizontal) root.nav_index = root.clamp_index(root.nav_index, dir, 0, Sections.list.length);
+    }
     search_enabled: true
     footer_hint: root.in_pane && root.pane ? root.pane.shown_hint : "/ find · j/k move · l enter · 1-9 pick · gg/G first/last · q close"
 

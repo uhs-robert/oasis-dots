@@ -128,14 +128,11 @@ Popup {
     }
 
     // The wheel steps a level row like h/l, one snap step per notch.
-    property var wheel_node: null
     function wheel_adjust(node, wheel) {
-        if (node !== root.wheel_node) {
-            stepper.accumulated = 0;
-            root.wheel_node = node;
-        }
-        const notches = stepper.consume_event(wheel);
-        for (let i = 0; i < Math.abs(notches); i++) root.adjust_snap(node, notches > 0 ? 1 : -1);
+        if (!node || !node.ready || !node.audio) return;
+        const current = Math.round(node.audio.volume * 100);
+        const pct = stepper.step_level(wheel, node, current, 0, 100);
+        if (pct !== current) node.audio.volume = pct / 100;
     }
 
     function toggle_mute(node) {

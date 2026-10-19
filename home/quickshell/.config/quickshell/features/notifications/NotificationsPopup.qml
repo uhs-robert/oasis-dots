@@ -27,6 +27,12 @@ Popup {
     sub_views: root.current_tab === 1 ? root.app_sort_names : root.time_sort_names
     jumps_enabled: true
     cursor_state: [root.selected, root.action_index]
+    wheel_steps: true
+    onWheel_stepped: (dir, horizontal) => {
+        if (horizontal || root.entry_rows.length === 0) return;
+        root.selected = root.clamp_index(root.selected, dir, 0, root.entry_rows.length);
+        root.scroll_to_selected();
+    }
 
     property int selected: 0
     // -1 is the card body; 0.. are the selected card's action buttons.

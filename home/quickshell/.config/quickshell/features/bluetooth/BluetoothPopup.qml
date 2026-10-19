@@ -21,6 +21,12 @@ Popup {
     body_height: Math.max(340, content.implicitHeight + 24)
     jumps_enabled: !root.forget_confirm
     cursor_state: root.selected
+    wheel_steps: !root.forget_confirm
+    // Row -1 is the adapter's power switch, above the devices.
+    onWheel_stepped: (dir, horizontal) => {
+        const min = root.has_adapter ? -1 : 0;
+        if (!horizontal) root.selected = root.clamp_index(root.selected, dir, min, root.rows.length - min);
+    }
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
     readonly property bool has_adapter: !!adapter

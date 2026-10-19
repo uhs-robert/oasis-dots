@@ -90,9 +90,8 @@ BarModule {
         anchors.fill: parent
         onClicked: root.toggle_popup()
         onWheel: wheel => {
-            const notches = wheel_stepper.consume(wheel.angleDelta.y || wheel.pixelDelta.y);
-            if (notches === 0) return;
-            Backlight.set_percent(wheel_stepper.snap_by(Backlight.percent, notches, 1, 100));
+            const pct = wheel_stepper.step_level(wheel, null, Backlight.percent, 1, 100);
+            if (pct !== Backlight.percent) Backlight.set_percent(pct);
         }
     }
 }

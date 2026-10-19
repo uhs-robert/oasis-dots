@@ -25,6 +25,17 @@ Popup {
     body_height: Math.max(340, content.implicitHeight + 24)
     jumps_enabled: !root.password_mode && !root.forget_confirm && !root.dns_edit_mode
     cursor_state: [root.selected, root.setting_selected]
+    wheel_steps: !root.password_mode && !root.forget_confirm && !root.dns_edit_mode
+    // On the list, row -1 is the Wi-Fi switch above the networks.
+    onWheel_stepped: (dir, horizontal) => {
+        if (horizontal) return;
+        if (root.on_details) {
+            if (root.setting_count > 0) root.setting_selected = root.clamp_index(root.setting_selected, dir, 0, root.setting_count);
+            return;
+        }
+        root.selected = root.clamp_index(root.selected, dir, -1, root.nav_rows.length + 1);
+        if (root.selected >= 0) network_list.positionViewAtIndex(root.selected, ListView.Contain);
+    }
 
     readonly property string list_help: "Tab details · j/k move · gg/G first/last · Enter connect · x forget · t toggle · r scan · q close"
     readonly property string details_help: root.profile

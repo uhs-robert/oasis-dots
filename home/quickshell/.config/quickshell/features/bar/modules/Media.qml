@@ -74,7 +74,7 @@ BarModule {
             }
         }
         onWheel: wheel => {
-            const notches = wheel_stepper.consume(wheel.angleDelta.y || wheel.pixelDelta.y);
+            const notches = wheel_stepper.consume_event(wheel);
             if (notches === 0) return;
             if (notches > 0) MediaState.next();
             else MediaState.previous();
