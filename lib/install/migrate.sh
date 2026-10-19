@@ -152,7 +152,8 @@ migrate_quickshell_lock_assets() {
 # into <state>/ unless <state>/ already holds a newer one, then deletes by-shell. Newest by mtime because the id is a hash of the
 # shell.qml path, which the shell cannot derive, so the newest copy may come from a worktree or shadow run; accepted.
 # Meant to run twice around the bar restart: a bar still on the old code keeps writing into by-shell, so while any bar runs by-shell
-# is kept and the copy repeats (newest wins, so a rerun picks up what was written since). Detecting an old-code bar is not
+# is kept and the copy repeats (newest wins, so a rerun picks up what was written since).
+# Only a run with no bar up deletes it. Detecting an old-code bar is not
 # possible from its command line (`qs -n` names no config), so any running bar counts. $1 is the Quickshell state dir, for the tests.
 migrate_quickshell_state() {
   local state=${1:-${XDG_STATE_HOME:-$HOME/.local/state}/quickshell} by name newest
@@ -167,7 +168,7 @@ migrate_quickshell_state() {
     info "Copied $newest to $state/$name"
   done
   if pgrep -x 'qs|quickshell' >/dev/null; then
-    warn "A Quickshell bar is running and may still write into $by; kept it. Rerun after restarting the bar to pick up later changes and delete it."
+    warn "A Quickshell bar is running and may still write into $by; kept it. A rerun with the bar up still copies newer files; to delete it, stop the bar, rerun, then start the bar."
     return 0
   fi
   [[ "$by" == */quickshell/by-shell ]] || return 0
