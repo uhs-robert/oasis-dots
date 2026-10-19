@@ -1215,7 +1215,8 @@ check "a click phrase is routed as spoken" "[[ \$(session_rewrite_of 'right clic
 check "a bare click names no target" "[[ -z \$(session_rewrite_of 'right click') && -z \$(session_rewrite_of click) ]]"
 check "the entry phrases are not read as targets" "[[ \$(session_rewrite_of 'clicking mode') == 'clicking mode' && \$(session_rewrite_of 'click mode') == 'click mode' ]]"
 
-# As voxcmd's session_turn matches them, after its own "done", "I'm done" and "that's all".
+# As voxcmd's session_turn matches them, after its own "done", "I'm done" and "that's all". Bare "exit" and "quit" are here
+# because only "cortana exit" reaches this regex (default exits are off); run-sessions covers them bare, as targets.
 click_mode_exits() (
   # shellcheck disable=SC2034 # read by click.sh
   voxcmd_share_dir=$share_dir
@@ -1226,10 +1227,10 @@ click_mode_exits() (
 )
 for phrase in "stop clicking" "exit click mode" "done clicking" "im done clicking" "done with click mode" "okay exit click mode" \
   "quit click mode" "stop click mode" "exit clicking mode" "leave the click mode" "end clicking" "close click mode" "turn off click mode" \
-  "click mode off" "exit click mode please" "alright please finish clicking now" "now exit click mode" "stop clicking okay"; do
+  "click mode off" "exit" "quit" "exit click mode please" "alright please finish clicking now" "now exit click mode" "stop clicking okay"; do
   check "'$phrase' ends click mode" "click_mode_exits '$phrase'"
 done
-for phrase in stop exit quit close cancel "exit settings" "stop recording" "turn off" "click mode"; do
+for phrase in stop close cancel "exit settings" "stop recording" "turn off" "click mode"; do
   check "'$phrase' stays a click mode target" "! click_mode_exits '$phrase'"
 done
 
