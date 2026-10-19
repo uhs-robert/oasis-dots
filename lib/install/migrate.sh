@@ -149,26 +149,27 @@ migrate_quickshell_lock_assets() {
 
 # Quickshell used to keep the notification Do Not Disturb flag and the Claude usage "warned" marker per checkout, under
 # <state>/by-shell/<id>/ (Quickshell.stateDir); both now live in <state>/ with the rest. Copies the newest non-empty file of each
-# into <state>/ when it is absent, then deletes by-shell. Newest by mtime because the id is a hash of the shell.qml path, which
-# the shell cannot derive, so the newest copy may come from a worktree or shadow run; accepted.
-# A `qs -p` bar may still run old code that writes into by-shell, so while one runs nothing is copied or deleted: a copy now would make the
-# next run skip the (then newer) by-shell file as its target exists, and delete it. $1 is the Quickshell state dir, for the tests.
+# into <state>/ unless <state>/ already holds a newer one, then deletes by-shell. Newest by mtime because the id is a hash of the
+# shell.qml path, which the shell cannot derive, so the newest copy may come from a worktree or shadow run; accepted.
+# Meant to run twice around the bar restart: a bar still on the old code keeps writing into by-shell, so while any bar runs by-shell
+# is kept and the copy repeats (newest wins, so a rerun picks up what was written since). Detecting an old-code bar is not
+# possible from its command line (`qs -n` names no config), so any running bar counts. $1 is the Quickshell state dir, for the tests.
 migrate_quickshell_state() {
   local state=${1:-${XDG_STATE_HOME:-$HOME/.local/state}/quickshell} by name newest
   by=$state/by-shell
   [[ -d "$by" ]] || return 0
-  if pgrep -af '^qs .*-p ' >/dev/null; then
-    warn "A 'qs -p' bar is running and may still write into $by; leaving it untouched. Rerun after it exits."
-    return 0
-  fi
   for name in notifications.json claude_usage_warned.json; do
-    [[ ! -e "$state/$name" ]] || continue
     newest=$(find "$by" -mindepth 2 -maxdepth 2 -name "$name" -type f -size +0 -printf '%T@\t%p\n' | awk -F'\t' '$1 > newest { newest = $1; path = $2 } END { print path }')
     [[ -n "$newest" ]] || continue
+    [[ ! -e "$state/$name" || "$newest" -nt "$state/$name" ]] || continue
     _migrate_run mkdir -p "$state"
     _migrate_run cp -p -- "$newest" "$state/$name"
     info "Copied $newest to $state/$name"
   done
+  if pgrep -x 'qs|quickshell' >/dev/null; then
+    warn "A Quickshell bar is running and may still write into $by; kept it. Rerun after restarting the bar to pick up later changes and delete it."
+    return 0
+  fi
   [[ "$by" == */quickshell/by-shell ]] || return 0
   _migrate_run rm -rf -- "$by"
   return 0
