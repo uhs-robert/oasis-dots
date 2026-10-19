@@ -306,6 +306,7 @@ stop	Media/pause	a bare stop outside a session still pauses; only inside one is 
 stop rapid mode	Rapid/stop_rapid	the exit forms are Rapid's own, ahead of Media and System
 quit rapid mode	Rapid/stop_rapid	the exit forms are Rapid's own, ahead of Media and System
 turn off rapid mode	Rapid/stop_rapid	the exit forms are Rapid's own, ahead of Media and System
+say cortana done to leave	Rapid/rapid_leave_hint	the hint text routes to its own verb, not to Media or System
 type mode	Type/type_mode	Type's own verb
 typing mode	Type/type_mode	Type's own verb
 dictation mode	Type/type_mode	Type's own verb
