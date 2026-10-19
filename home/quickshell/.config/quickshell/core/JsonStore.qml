@@ -8,6 +8,9 @@ import Quickshell.Io
 // A set in memory always beats the disk while it is unsaved: file changes that arrive while `dirty` or `writing` are ignored.
 // An external edit made inside that window is lost, as is any key it added.
 //
+// The first write waits for the initial read (it only matters with block_loading off), which a write would otherwise
+// disown: the keys on disk would be neither adopted nor kept. The keys set before it arrives win; the disk fills in the rest.
+//
 // FileView is never asked to read or write from inside its own signals: it clears its live operation after emitting,
 // which orphans one started in a handler (its saved never comes, and a read can then run beside the write and deliver
 // older text). Both go through Qt.callLater, also for a set made from a `loaded` or `saved` handler.
@@ -63,6 +66,8 @@ Scope {
     property bool reading: true
     property bool reread: false
     property bool dir_ready: false
+    // Keys set before the initial load arrived.
+    property var early_keys: ({})
     // The after_save argv of the write in flight, computed from the values that write carries.
     property var pending_argv: null
     // Argvs of finished writes waiting for after_proc, which is still running for an earlier one. All run, in order: a later write cannot stand in for an earlier one, whose argv may be the one that reloads.
@@ -71,14 +76,24 @@ Scope {
     property bool rearming: false
 
     function set_key(key, value) {
-        root.replace(Object.assign({}, root.values, { [key]: value }));
+        root.commit(Object.assign({}, root.values, { [key]: value }), [key]);
     }
 
     function patch(next) {
-        root.replace(Object.assign({}, root.values, next));
+        root.commit(Object.assign({}, root.values, next), Object.keys(next));
     }
 
     function replace(next) {
+        root.commit(next, Object.keys(next));
+    }
+
+    // `keys` are the ones this edit set; before the initial load they are the only ones that beat the disk.
+    function commit(next, keys) {
+        if (!root.loaded_once) {
+            const early = Object.assign({}, root.early_keys);
+            for (const key of keys) early[key] = true;
+            root.early_keys = early;
+        }
         root.values = next;
         root.dirty = true;
         root.edit_seq += 1;
@@ -107,8 +122,8 @@ Scope {
     }
 
     function start_write() {
-        // A write in flight picks the newer values up from onSaved.
-        if (root.writing) return;
+        // A write in flight picks the newer values up from onSaved; the initial load starts the first one.
+        if (root.writing || !root.loaded_once) return;
         root.writing = true;
         root.write_seq = root.edit_seq;
         if (root.dir_ready) {
@@ -188,6 +203,21 @@ Scope {
         after_proc.running = true;
     }
 
+    // The initial load found edits made before it arrived. They win key by key; the disk fills in the rest. `parsed` is
+    // null for a missing or corrupt file, which leaves the edits as they are.
+    function merge_initial(parsed, text) {
+        root.loaded_once = true;
+        root.synced_text = text;
+        if (parsed !== null) {
+            const edits = {};
+            for (const key in root.early_keys) edits[key] = root.values[key];
+            root.adopt(parsed);
+            root.values = Object.assign({}, root.values, edits);
+        }
+        root.loaded();
+        if (!save_timer.running) root.start_write();
+    }
+
     function adopt(parsed) {
         const clean = typeof root.validate === "function" ? root.validate(parsed) : Object.assign({}, parsed);
         const extras = {};
@@ -262,17 +292,22 @@ Scope {
                 root.reload();
                 return;
             }
-            if (root.dirty || root.writing) return;
+            if (root.loaded_once && (root.dirty || root.writing)) return;
             if (root.loaded_once && text === root.synced_text) return;
-            root.synced_text = text;
             let parsed = null;
             try {
                 parsed = JSON.parse(text);
             } catch (e) {
                 parsed = null;
             }
+            const usable = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);
+            if (root.dirty) {
+                root.merge_initial(usable ? parsed : null, text);
+                return;
+            }
+            root.synced_text = text;
             root.loaded_once = true;
-            if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+            if (!usable) {
                 console.warn("JsonStore: " + root.path + " is not a JSON object; keeping the current values");
                 return;
             }
@@ -290,7 +325,11 @@ Scope {
                 root.reload();
                 return;
             }
-            if (root.dirty || root.writing) return;
+            if (root.loaded_once && (root.dirty || root.writing)) return;
+            if (root.dirty) {
+                root.merge_initial(null, "");
+                return;
+            }
             root.loaded_once = true;
             root.synced_text = "";
             root.raw = {};
