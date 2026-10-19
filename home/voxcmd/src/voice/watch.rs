@@ -36,9 +36,9 @@ const START_GRACE_POLLS: u32 = 50;
 const TRANSCRIPT_GRACE_POLLS: u32 = 10;
 
 /// voxcmd-autostop's `VERDICT_*` exit codes; any other exit leaves the recording alone.
-const VERDICT_SILENCE: i32 = 0;
-const VERDICT_NO_SPEECH: i32 = 3;
-const VERDICT_MAX_LENGTH: i32 = 5;
+pub(super) const VERDICT_SILENCE: i32 = 0;
+pub(super) const VERDICT_NO_SPEECH: i32 = 3;
+pub(super) const VERDICT_MAX_LENGTH: i32 = 5;
 
 /// `internal watch` (alias `_watch`), positional as the bash entry point took them: the handler (`route`, `reply`,
 /// `session_turn`), the session mode the recording is heard in (`-` for none), 1 when that mode is private (only
@@ -314,7 +314,7 @@ impl Detector {
         for (name, value) in settings.lines().filter_map(|line| line.split_once('=')) {
             command.env(name, value);
         }
-        // The room's threshold, for the chain detector of an ending that starts mid-speech (voxcmd-port 2.4d).
+        // The room's threshold, for the chain detector of an ending that starts mid-speech (`chain_stop`).
         command.env(
             "VOXCMD_AUTOSTOP_THRESHOLD_FILE",
             paths::threshold_file(std::process::id()),

@@ -22,6 +22,7 @@ pub struct WakeWords {
     leading: OnceCell<Regex>,
     trailing: OnceCell<Regex>,
     raw_leading: OnceCell<Regex>,
+    raw_last: OnceCell<Regex>,
     heard: OnceCell<Regex>,
 }
 
@@ -53,6 +54,7 @@ impl WakeWords {
             leading: OnceCell::new(),
             trailing: OnceCell::new(),
             raw_leading: OnceCell::new(),
+            raw_last: OnceCell::new(),
             heard: OnceCell::new(),
         }
     }
@@ -74,6 +76,16 @@ impl WakeWords {
         });
         let captures = leading.captures(transcript)?;
         Some(captures.get(1).map_or("", |rest| rest.as_str()).to_string())
+    }
+
+    /// What follows the last wake word of a raw transcript (any case, at its start or after a non-word character), as
+    /// spoken, from the first word character after it; none when no wake word is followed by a non-word character.
+    pub fn after_last_raw(&self, transcript: &str) -> Option<String> {
+        let any = &self.any;
+        let last = compiled(&self.raw_last, || {
+            format!(r"(?is)^(?:.*[^\p{{L}}\p{{N}}])?(?:{any})[^\p{{L}}\p{{N}}]+(.*)$")
+        });
+        Some(last.captures(transcript)?[1].to_string())
     }
 
     /// For a raw transcript holding the wake word after something else: what came before the last wake word as

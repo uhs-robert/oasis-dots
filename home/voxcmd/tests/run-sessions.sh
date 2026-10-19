@@ -36,8 +36,10 @@ sess_real_voxcmd=$sess_pkg/.local/bin/voxcmd
 if [ "${VOXCMD_BIN:-bash}" = rs ]; then
   sess_rust_voxcmd=$(readlink -f "$sess_voxcmd")
   sess_watcher="$sess_rust_voxcmd internal watch"
+  sess_chain_stopper="$sess_rust_voxcmd internal chain-stop"
 else
   sess_watcher="$sess_real_voxcmd _watch"
+  sess_chain_stopper="$sess_real_voxcmd _chain-stop"
 fi
 # The stub detector's long sleep, under its own name so the tests can end the ones a killed watcher leaves behind.
 stub_sleep=$root/stub-sleep
@@ -909,6 +911,7 @@ sess_start "UNTIL_STOP Ship it. Cortana send it and then tap tap beta."
 owner_is_listening
 wake_heard "Cortana send it and then"
 check "an ending and 'and then' keep recording and record the chain" "chain_is_waiting && [[ \$(jq -c .ending '$session_json') == '{\"action\":\"send\",\"by\":\"voice\",\"chain\":true}' ]]"
+check "its stopper is detached through setsid by the binary under test" "wait_until grep -qF 'setsid owner= $sess_chain_stopper ' '$log'"
 chain_pause
 sess_wait
 check "the pause stops it: the dictation is sent without the ending, then the chain runs" "session_gone && wtype_is 'wtype -- Ship it.' 'wtype -k Return' && [[ \$(taps) == 1 ]] && grep -q '^tap tap beta' '$log'"
@@ -993,6 +996,7 @@ owner_is_listening
 wake_heard "Cortana stop."
 sess_wait
 check "a plain ending stops at once, with no chain" "session_gone && wtype_is 'wtype -- Typed.' && ! grep -q '_chain-stop' '$log'"
+check "and detaches no chain stopper, under either binary's spelling" "! grep -qE '(_chain-stop|internal chain-stop)' '$log'"
 
 sess_start "UNTIL_STOP First part and then tap tap beta. Cortana stop."
 owner_is_listening

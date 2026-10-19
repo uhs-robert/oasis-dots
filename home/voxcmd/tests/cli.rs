@@ -40,9 +40,6 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["log", "misses"], "log misses", "2.6"),
     (&["log", "errors", "5", "--json"], "log errors", "2.6"),
     (&["timer", "ring", "Timer", "done"], "timer ring", "2.6"),
-    (&["internal", "chain-stop"], "internal chain-stop", "2.4d-2"),
-    // The bash spellings stay as aliases until the Python listeners move, at the top level where callers run them.
-    (&["_chain-stop"], "internal chain-stop", "2.4d-2"),
     // `--` ends the flags, so a phrase can start with a dash.
 ];
 

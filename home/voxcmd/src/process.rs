@@ -131,6 +131,25 @@ pub fn die_with_parent(command: &mut Command) {
     }
 }
 
+/// Leaves a detached child (a watcher, a chain's stopper) hearing SIGINT, SIGTERM and SIGHUP whatever the caller does
+/// with them: an ask holding its stop signals, or a caller that ignores them, must not leave the child deaf to Stop
+/// Voice's TERM, and exec keeps a blocked mask and an ignored signal.
+pub fn hear_stop_signals(command: &mut Command) {
+    // SAFETY: sigprocmask and signal are async-signal-safe and touch only the child.
+    unsafe {
+        command.pre_exec(|| {
+            let mut stop_set: libc::sigset_t = std::mem::zeroed();
+            libc::sigemptyset(&mut stop_set);
+            for signal in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
+                libc::signal(signal, libc::SIG_DFL);
+                libc::sigaddset(&mut stop_set, signal);
+            }
+            libc::sigprocmask(libc::SIG_UNBLOCK, &stop_set, std::ptr::null_mut());
+            Ok(())
+        });
+    }
+}
+
 /// A child whose parent died is reparented, so its parent pid is no longer the one it was forked from.
 fn parent_is_gone(forked_from: libc::pid_t, parent_now: libc::pid_t) -> bool {
     forked_from != parent_now
