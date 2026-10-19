@@ -131,8 +131,8 @@ pub struct Mode {
     pub one_recording: bool,
     /// How a one-recording mode's recording ends after the wake word, first match first.
     pub endings: Vec<ModeEnding>,
-    /// Seconds the mode's hooks may run; the hook default (3) when unset, and for `handle_turn` a default that grows
-    /// with the text (`session::mode`).
+    /// Seconds the mode's hooks may run; the hook default (3) when unset. `handle_turn` has a limit that grows with
+    /// the text (`session::mode`), and this can only lengthen it, never cut a long dictation short.
     pub timeout_secs: Option<f64>,
     /// Lines in the TOML file of the keys holding patterns, for error messages.
     pub pattern_lines: BTreeMap<&'static str, usize>,

@@ -61,8 +61,8 @@ const TOKEN: &str = "1:dictate:f1";
 
 /// `DICTATE` as a TOML mode (voxcmd-port 2.4d-3), whose `handle_turn` voxcmd runs itself, behind its guards. Its hook
 /// writes the same line, from `VOXCMD_TEXT` and `VOXCMD_ENDING` (`-` when unset), and reads the session from this
-/// process as typing.sh would; `$WORK/turn-hang` makes it type part of the text and hang, and `$WORK/turn-exit` holds
-/// its exit code.
+/// process as typing.sh would; `$WORK/turn-hang` makes it type part of the text and hang, `$WORK/gate-child` makes it
+/// start a long-lived child first, and `$WORK/turn-exit` holds its exit code.
 const DICTATE_TOML: &str = r#"
 name = "Dictate"
 verbs = [ { action = "dictate_mode", match = 'dictate mode' } ]
@@ -86,6 +86,7 @@ endings = [
 ]
 handle_turn = '''
 echo $$ > "$WORK/turn-pid"
+if [ -e "$WORK/gate-child" ]; then ( sleep 30 ) & echo $! > "$WORK/gate-child-pid"; fi
 if [ -e "$WORK/turn-gate" ]; then
   : > "$WORK/turn-entered"
   until [ -e "$WORK/turn-release" ]; do sleep 0.02; done
@@ -1594,6 +1595,7 @@ fn stop_voice_during_a_toml_hand_over_waits_for_no_hook_and_the_hook_reads_the_s
 fn a_stop_signal_during_a_toml_hook_ends_its_group_and_the_session_once() {
     let setup = Setup::toml("");
     std::fs::write(setup.work("turn-gate"), "").unwrap();
+    std::fs::write(setup.work("gate-child"), "").unwrap();
     let (mut watcher, recording) = setup.rust_watcher("Words.");
     assert!(setup.confirm("Cortana stop.", &recording).status.success());
     assert!(wait_for(|| setup.work("turn-entered").exists()), "the hook never ran");
@@ -1603,6 +1605,10 @@ fn a_stop_signal_during_a_toml_hook_ends_its_group_and_the_session_once() {
     assert!(
         gone_within(hook, Duration::from_secs(2)),
         "the hook outlived its watcher"
+    );
+    assert!(
+        gone_within(pid_in(&setup, "gate-child-pid"), Duration::from_secs(2)),
+        "the hook's child outlived its watcher"
     );
     assert_eq!(setup.handled(), "");
     assert!(setup.state().is_none());
@@ -1623,9 +1629,13 @@ fn a_toml_hook_past_its_deadline_is_ended_with_its_group_and_the_turn_goes_on() 
     assert_eq!(setup.handled(), "partial|");
     let log = setup.debug_log();
     assert!(
-        log.contains("session: dictate's handle_turn ran past 0.5 s and was ended with what it started; part of the text may have been typed"),
+        log.contains("session: dictate's handle_turn ran past 1.09 s and was ended with what it started; part of the text may have been typed"),
         "{log}"
     );
+    // The label, never the words.
+    let toast = "notify-send -a voxcmd --transient voxcmd: Dictate mode the turn hook timed out\n";
+    assert!(setup.calls().contains(toast), "{}", setup.calls());
+    assert!(!setup.calls().contains("Words"), "{}", setup.calls());
     // The mode is left as after any hand-over.
     assert!(
         setup.calls().contains("voxcmd: Dictate mode ended done\n"),
@@ -1633,6 +1643,43 @@ fn a_toml_hook_past_its_deadline_is_ended_with_its_group_and_the_turn_goes_on() 
         setup.calls()
     );
     assert_eq!(log.matches("session ended: ").count(), 1, "{log}");
+}
+
+/// By design the chain runs: a timeout is a hook that failed, and the turn goes on from there as after any hand-over.
+#[test]
+fn a_chain_still_runs_after_the_hook_timed_out() {
+    let setup = Setup::toml("timeout_secs = 0.5");
+    std::fs::write(setup.work("turn-hang"), "").unwrap();
+    let (mut watcher, recording) = setup.rust_watcher("Ship it. Cortana send it and then tap beta.");
+    confirm_running_the_stopper(&setup, "Cortana send it and then", &recording);
+    std::fs::write(setup.work("chain-verdict"), "0").unwrap();
+    assert!(exits_within(&mut watcher, Duration::from_secs(15)).is_some());
+    assert_eq!(setup.handled(), "partial|tap beta\n", "{}", setup.debug_log());
+    assert!(setup.debug_log().contains("handle_turn ran past"));
+    assert!(setup.state().is_none());
+}
+
+#[test]
+fn a_toml_mode_that_no_longer_declares_handle_turn_drops_the_words_and_says_so() {
+    let setup = Setup::toml("");
+    setup.bar(
+        "closed",
+        &format!(
+            "printf 'name = \"Dictate\"\nverbs = []\n[mode]\nlabel = \"Dictate mode\"\n' > '{}'",
+            setup.integration.display()
+        ),
+    );
+    let (mut watcher, recording) = setup.rust_watcher("Words.");
+    assert!(setup.confirm("Cortana stop.", &recording).status.success());
+    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
+    assert!(setup.work("acted").exists(), "the bar was never asked");
+    assert_eq!(setup.handled(), "");
+    let log = setup.debug_log();
+    assert!(
+        log.contains("session: dictate has no handle_turn now; the turn is not handed over"),
+        "{log}"
+    );
+    assert!(!log.contains("Words"), "{log}");
 }
 
 #[test]
