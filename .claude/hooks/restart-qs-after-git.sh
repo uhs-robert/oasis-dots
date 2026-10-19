@@ -106,7 +106,8 @@ if [[ -z $live_signature ]]; then
   say "Quickshell files changed in the live checkout, but no running Hyprland instance answers 'hyprctl monitors', so the bar was not killed. Restart it by hand from a shell inside the owner's session: pkill -x qs; hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\"."
   exit 0
 fi
-export HYPRLAND_INSTANCE_SIGNATURE=$live_signature
+export HYPRLAND_INSTANCE_SIGNATURE=$live_signature XDG_RUNTIME_DIR
+XDG_RUNTIME_DIR=$(owner_runtime_dir)
 
 # Recorded only now, so a restart withheld above is not marked as done.
 printf '%s\n' "$after" >"$handled_file"

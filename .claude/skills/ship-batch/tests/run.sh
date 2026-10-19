@@ -312,6 +312,7 @@ echo "== ship-batch finds the live Hyprland signature itself"
 cat >"$stubs/hyprctl" <<STUB
 #!/bin/sh
 grep -qx "\$HYPRLAND_INSTANCE_SIGNATURE" "\$STUB_LIVE_SIGS" || exit 1
+[ -e "\$XDG_RUNTIME_DIR/hypr/\$HYPRLAND_INSTANCE_SIGNATURE/.socket.sock" ] || exit 1
 echo "hyprctl \${HYPRLAND_INSTANCE_SIGNATURE} \$*" >>"\$SHIP_LOG"
 [ "\$1" = reload ] && exit "\${STUB_RELOAD_STATUS:-0}"
 exit 0
@@ -344,6 +345,8 @@ hypr_ship XDG_RUNTIME_DIR="$owner_run" HYPRLAND_INSTANCE_SIGNATURE=old_live
 check "a valid signature in the environment is kept" "[[ $? == 0 ]] && logged 'hyprctl old_live reload' && ! grep -q 'using the live instance' '$e2e/out'"
 hypr_ship XDG_RUNTIME_DIR="$shadow_run" OWNER_RUNTIME_DIR="$owner_run"
 check "a shell inside a shadow still picks the owner's session, never the nested instance" "[[ $? == 0 ]] && logged 'hyprctl live reload' && ! grep -q nested '$SHIP_LOG'"
+hypr_ship XDG_RUNTIME_DIR="$shadow_run" OWNER_RUNTIME_DIR="$owner_run" HYPRLAND_INSTANCE_SIGNATURE=nested
+check "a shadow's own valid signature is not kept" "[[ $? == 0 ]] && logged 'hyprctl live reload' && ! grep -q nested '$SHIP_LOG'"
 printf 'nested\n' >"$STUB_LIVE_SIGS"
 hypr_ship XDG_RUNTIME_DIR="$shadow_run" OWNER_RUNTIME_DIR="$owner_run"
 check "with only a shadow answering it dies instead of using it" "[[ $? != 0 ]] && grep -q 'hyprctl cannot reach Hyprland' '$e2e/out' && ! grep -q '^hyprctl' '$SHIP_LOG'"
