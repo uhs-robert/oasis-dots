@@ -100,14 +100,18 @@ def wpctl(*args):
     return done.stdout if done.returncode == 0 else None
 
 
-def default_sink():
-    """(id, node name) of the default sink, or None."""
-    out = wpctl("inspect", "@DEFAULT_AUDIO_SINK@")
+def inspect_sink(target):
+    """(id, node name) of a sink given by id or `@DEFAULT_AUDIO_SINK@`, or None."""
+    out = wpctl("inspect", target)
     sink_id = re.search(r"^id (\d+),", out or "", re.M)
     if not sink_id:
         return None
     name = re.search(r'node\.name = "([^"]*)"', out)
     return int(sink_id.group(1)), name.group(1) if name else ""
+
+
+def default_sink():
+    return inspect_sink("@DEFAULT_AUDIO_SINK@")
 
 
 def sink_state(sink_id):
@@ -125,24 +129,21 @@ def fade_values(start, end):
     return [start + (end - start) * step / FADE_STEPS for step in range(1, FADE_STEPS + 1)]
 
 
-def is_ours(journal, state, loose):
+def is_ours(journal, state):
     """Whether the sink still sits where this follower left it, so nobody touched it since.
 
-    A fade interrupted between a set-volume and the journal update leaves the sink one step from last_written; that
-    is still ours while it lies between the two ends of the duck."""
+    Besides the last value written it may sit at `pending`: a kill can land between a set-volume and the journal
+    update that follows it. Any other value, even one inside the duck's range, is the user's."""
     volume, muted = state
     if muted != bool(journal.get("saved_muted", False)):
         return False
-    if abs(volume - journal["last_written"]) <= TOLERANCE:
-        return True
-    low, high = sorted((journal["ducked_to"], journal["saved_volume"]))
-    return loose and low - TOLERANCE <= volume <= high + TOLERANCE
+    pending = journal.get("pending", journal["last_written"])
+    return abs(volume - journal["last_written"]) <= TOLERANCE or abs(volume - pending) <= TOLERANCE
 
 
 class Ducker:
     def __init__(self):
         self.journal = read_journal()
-        self.cut_short = False
         self.restore_at = None
         self.retries = 0
 
@@ -172,38 +173,36 @@ class Ducker:
             if self.journal["last_written"] == volume:
                 self.forget()
             else:
-                self.restore(fade=False, loose=True)
+                self.restore(fade=False)
 
     def fade(self, start, end, fade=True):
-        """Steps the sink from start to end, journalling each value written. False when set-volume failed."""
-        try:
-            values = fade_values(start, end) if fade else [end]
-            for index, value in enumerate(values):
-                if not set_volume(self.journal["sink_id"], value):
-                    return False
-                self.journal["last_written"] = value
-                write_journal(self.journal)
-                if index < len(values) - 1:
-                    time.sleep(FADE_SECS / FADE_STEPS)
-            return True
-        except Terminate:
-            self.cut_short = True
-            raise
+        """Steps the sink from start to end. False when set-volume failed.
+
+        Each value is journalled as `pending` before it is written, so a kill between the write and the journal
+        update still leaves the sink at a value the journal names."""
+        values = fade_values(start, end) if fade else [end]
+        for index, value in enumerate(values):
+            self.journal["pending"] = value
+            write_journal(self.journal)
+            if not set_volume(self.journal["sink_id"], value):
+                return False
+            self.journal["last_written"] = value
+            if index < len(values) - 1:
+                time.sleep(FADE_SECS / FADE_STEPS)
+        return True
 
     def schedule_restore(self):
         if self.ducked and self.restore_at is None:
             self.restore_at = time.monotonic() + RESTORE_HOLD_SECS
 
-    def restore(self, fade=True, loose=False):
-        """Returns the journalled sink to its saved volume, unless the user moved it; then forgets the duck.
-
-        loose: the sink may sit mid-fade (after a kill), not only where the last write left it."""
+    def restore(self, fade=True):
+        """Returns the journalled sink to its saved volume, unless the user moved it; then forgets the duck."""
         self.restore_at = None
         journal = self.journal
         if journal is None:
             return
-        state = sink_state(journal["sink_id"])
-        if state is None:
+        node = inspect_sink(str(journal["sink_id"]))
+        if node is None:
             # A default sink that answers while the journalled one does not means the device is gone, and there
             # is nothing to restore; wpctl failing outright is worth retrying.
             if default_sink() is not None:
@@ -212,7 +211,16 @@ class Ducker:
             else:
                 self.retry_later("cannot read the ducked sink")
             return
-        if is_ours(journal, state, loose):
+        # PipeWire reuses ids, so the id may now belong to another device.
+        if journal.get("sink_name") and node[1] != journal["sink_name"]:
+            log("the ducked sink's id now names another device")
+            self.forget()
+            return
+        state = sink_state(journal["sink_id"])
+        if state is None:
+            self.retry_later("cannot read the ducked sink")
+            return
+        if is_ours(journal, state):
             if not self.fade(state[0], journal["saved_volume"], fade):
                 self.retry_later("set-volume failed")
                 return
@@ -242,10 +250,10 @@ class Ducker:
         self.restore()
 
     def finish(self):
-        """Leaves nothing ducked: at once, no fade, and tolerant of a fade a signal cut short."""
+        """Leaves nothing ducked, at once and without a fade."""
         for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
             signal.signal(sig, signal.SIG_IGN)
-        self.restore(fade=False, loose=self.cut_short)
+        self.restore(fade=False)
 
 
 def parse_state(line):
@@ -306,7 +314,7 @@ def run():
     ducker = Ducker()
     try:
         # A journal here is a duck a killed run left behind.
-        ducker.restore(fade=False, loose=True)
+        ducker.restore(fade=False)
         backoff = RECONNECT_MIN_SECS
         while True:
             if follow(ducker):
@@ -321,7 +329,7 @@ def run():
 
 
 def restore_only():
-    Ducker().restore(fade=False, loose=True)
+    Ducker().restore(fade=False)
 
 
 if __name__ == "__main__":

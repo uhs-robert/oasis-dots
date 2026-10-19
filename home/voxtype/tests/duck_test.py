@@ -341,9 +341,36 @@ class DuckTest(unittest.TestCase):
         os.makedirs(os.path.dirname(self.rig.journal_path))
         with open(self.rig.journal_path, "w") as f:
             json.dump({"version": 1, "sink_id": 79, "sink_name": "usb", "saved_volume": 1.0, "saved_muted": False,
-                       "ducked_to": 0.3, "last_written": 0.72, "pid": 1}, f)
+                       "ducked_to": 0.3, "last_written": 0.72, "pending": 0.58, "pid": 1}, f)
         self.rig.start()
         wait_until(self.volume_is(1.0), what="the restore at start")
+
+    def test_stale_journal_keeps_a_user_volume_inside_the_duck_range(self):
+        self.rig.set_sink(79, volume=0.6)
+        os.makedirs(os.path.dirname(self.rig.journal_path))
+        with open(self.rig.journal_path, "w") as f:
+            json.dump({"version": 1, "sink_id": 79, "sink_name": "usb", "saved_volume": 1.0, "saved_muted": False,
+                       "ducked_to": 0.3, "last_written": 0.3, "pending": 0.3, "pid": 1}, f)
+        self.rig.start()
+        wait_until(lambda: self.rig.journal() is None, what="the journal to go")
+        self.assertEqual(self.rig.sink()["volume"], 0.6)
+
+    def test_restore_flag_keeps_a_user_volume_after_a_kill(self):
+        self.start_ducked()
+        self.rig.proc.kill()
+        self.rig.proc.wait()
+        self.rig.set_sink(79, volume=0.6)
+        self.rig.run_once("--restore")
+        self.assertEqual(self.rig.sink()["volume"], 0.6)
+        self.assertIsNone(self.rig.journal())
+
+    def test_a_reused_sink_id_is_treated_as_gone(self):
+        self.start_ducked()
+        self.rig.set_sink(79, name="bluetooth", volume=0.9)
+        self.rig.say("idle")
+        wait_until(lambda: self.rig.journal() is None, what="the journal to go")
+        self.assertEqual(self.rig.sink()["volume"], 0.9)
+        self.assertEqual(len(self.rig.volume_writes()), 5)
 
     def test_stale_journal_with_a_changed_volume_is_dropped_not_restored(self):
         self.rig.set_sink(79, volume=0.9)
