@@ -76,7 +76,7 @@ if ! base_is_ancestor "$repo" "$before" "$after"; then
 fi
 
 qs_dir=home/quickshell/.config/quickshell
-greeter_paths="^($(greeter_qs_regex "$repo" "$qs_dir")|system/etc/greetd/(quickshell/|hyprland\.lua$)|system/usr/local/bin/qs-greeter$|lib/(install/greeter|common/greeter-files)\.sh$|justfile$)"
+greeter_paths="^($(greeter_qs_regex "$repo" "$qs_dir")|system/etc/greetd/(quickshell/|hyprland\.lua$)|system/usr/local/bin/qs-greeter$|lib/(install/greeter|common/greeter-files)\.sh$|lib/install/greeter-monitors\.lua$|justfile$)"
 changed=$(git -C "$repo" diff --name-only "$before" "$after")
 if grep -Eq "$greeter_paths" <<<"$changed"; then
   if sudo -n true 2>/dev/null; then

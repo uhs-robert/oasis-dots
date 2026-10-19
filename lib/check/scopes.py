@@ -35,8 +35,11 @@ PATH_SCOPES = [
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", "lua qml"),
     ("home/voxcmd/.local/bin/voxcmd-alarm", "voxcmd qml"),
     ("home/voxcmd/tests/run-monitors.sh", "voxcmd qml"),
+    # The greeter monitor generator loads the session's JSON reader.
+    ("home/hypr/.config/hypr/lib/json.lua", "lua keyring"),
     ("home/hypr/*", "lua"),
     # Ahead of the greeter's QML entry.
+    ("system/etc/greetd/hyprland.lua", "lua qml keyring"),
     ("system/etc/greetd/*.lua", "lua qml"),
     # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
     ("lib/common/greeter-files.sh", "qml ship loader"),
@@ -74,6 +77,8 @@ PATH_SCOPES = [
     ("lib/install/greeter.sh", "keyring loader"),
     ("lib/install/tests/greeter-keyring.sh", "keyring"),
     ("lib/install/tests/greeter-log.sh", "keyring"),
+    ("lib/install/tests/greeter-monitors.sh", "keyring"),
+    ("lib/install/greeter-monitors.lua", "keyring lua"),
     ("system/usr/local/bin/qs-greeter", "keyring"),
     # Every install library is sourced by the loader test, as are the common ones it loads.
     ("lib/install/*.sh", "loader"),
@@ -133,7 +138,7 @@ STEPS = [
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     Step("firefox-policy", "policy", "bash ./lib/install/tests/firefox-policy.sh", ("jq",), skip_reason="the firefox policy test needs jq"),
-    Step("greeter-keyring", "keyring", "bash ./lib/install/tests/greeter-keyring.sh && bash ./lib/install/tests/greeter-log.sh"),
+    Step("greeter-keyring", "keyring", "bash ./lib/install/tests/greeter-keyring.sh && bash ./lib/install/tests/greeter-log.sh && bash ./lib/install/tests/greeter-monitors.sh"),
     Step("migrate-lock", "migratelock", "bash ./lib/install/tests/migrate-lock-assets.sh"),
     Step("install-load", "loader", "bash ./lib/install/tests/load.sh"),
     Step("qmllint", "qml", "python3 -B ./lib/check/steps/qml.py"),

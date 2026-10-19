@@ -63,15 +63,15 @@ hl.bind("SUPER + Q", restart_login)
 hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p " .. RUNTIME_DIR .. "/qs-greeter; touch " .. RUNTIME_DIR .. "/qs-greeter/fallback; pkill -x qs; sleep 1; pkill -9 -x qs"))
 
 ---- [MONITORS] ----
--- Duplicates the position, scale and transform of the session's monitors in uphill-arch-laptop.lua (machines profile, read by
--- config/monitors/init.lua); the greeter runs from /etc as another user and cannot load it, so keep the two in sync by hand.
--- Matching is by description, so an unlisted display falls through to the catch-all.
-hl.monitor({ output = "desc:BOE 0x0C8E", mode = "preferred", position = "317x1080", scale = 1.6 })
-hl.monitor({ output = "desc:Lenovo Group Limited T22i-30 V81037ZT", mode = "preferred", position = "0x0", scale = 1 })
-hl.monitor({ output = "desc:GIGA-BYTE TECHNOLOGY CO. LTD. G27QC A 0x00000D48", mode = "preferred", position = "1920x0", scale = 1 })
-hl.monitor({ output = "desc:HP Inc. HP Z22n G2 6CM8411J22", mode = "preferred", position = "4480x0", scale = 1, transform = 3 })
+-- monitors.lua is generated at install time from the owner's session config (lib/install/greeter-monitors.lua). A missing
+-- or broken file must leave login working, so a failure only costs the explicit layout; the catch-all below still lights
+-- every output.
+local loaded, load_error = pcall(dofile, GREETD_DIRECTORY .. "/monitors.lua")
+if not loaded and not tostring(load_error):find("No such file", 1, true) then
+	io.stderr:write("greetd: monitors.lua failed: ", tostring(load_error), "\n")
+end
 
--- Unknown outputs
+-- Outputs the generated rules do not name
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 
 ---- [ADMIN TERMINAL FULLSCREEN] ----

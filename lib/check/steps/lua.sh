@@ -6,7 +6,7 @@ script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 cd "$repo_dir" || exit 1
 
-set -- home/hypr/.config/hypr system/etc/greetd
+set -- home/hypr/.config/hypr system/etc/greetd lib/install/greeter-monitors.lua
 
 if command -v luacheck >/dev/null 2>&1 && luacheck --version >/dev/null 2>&1; then
   exec luacheck "$@"

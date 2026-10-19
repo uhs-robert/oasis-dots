@@ -96,6 +96,7 @@ remove_system_files() {
     /etc/greetd/config.toml
     /etc/greetd/kitty.conf
     /etc/greetd/hyprland.lua
+    /etc/greetd/monitors.lua
     /etc/greetd/admin_user
     /usr/local/bin/qs-greeter
     /var/log/qs-greeter.log
