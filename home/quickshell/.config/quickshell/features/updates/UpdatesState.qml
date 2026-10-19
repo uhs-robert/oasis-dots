@@ -56,8 +56,8 @@ Singleton {
         root.checking = true;
         root.official_done = false;
         root.aur_done = false;
-        official_proc.running = true;
-        aur_proc.running = true;
+        official_cmd.run();
+        aur_cmd.run();
     }
 
     // Splits "name oldver -> newver" into { name, old, new }; blank lines are skipped.
@@ -90,42 +90,31 @@ Singleton {
         }
     }
 
-    // The exit code rides on the last stdout line, so parsing never races the process exit.
-    function split_status(text) {
-        const m = /__rc=(\d+)\s*$/.exec(text);
-        return { code: m ? parseInt(m[1]) : -1, body: m ? text.slice(0, m.index) : text };
-    }
-
-    Process {
-        id: official_proc
-        command: ["sh", "-c", "checkupdates; echo \"__rc=$?\""]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const r = root.split_status(text);
-                root.official_available = r.code !== 127;
-                if (!root.official_available) root.official = [];
-                root.official_failed = r.code !== 0 && r.code !== 2 && r.code !== 127;
-                if (r.code === 0) root.official = root.parse_official(r.body);
-                else if (r.code === 2) root.official = [];
-                root.official_done = true;
-                root.finish_if_done();
-            }
+    PolledCommand {
+        id: official_cmd
+        // Through sh so a missing checkupdates exits 127, read as unavailable, instead of failing to start.
+        command: ["sh", "-c", "checkupdates"]
+        onFinished: (code, out) => {
+            root.official_available = code !== 127;
+            if (!root.official_available) root.official = [];
+            root.official_failed = code !== 0 && code !== 2 && code !== 127;
+            if (code === 0) root.official = root.parse_official(out);
+            else if (code === 2) root.official = [];
+            root.official_done = true;
+            root.finish_if_done();
         }
     }
 
-    Process {
-        id: aur_proc
-        command: ["sh", "-c", "paru -Qua; echo \"__rc=$?\""]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const r = root.split_status(text);
-                root.aur_available = r.code !== 127;
-                if (!root.aur_available) root.aur = [];
-                root.aur_failed = r.code !== 0 && r.code !== 127;
-                if (r.code === 0) root.aur = root.parse_aur(r.body);
-                root.aur_done = true;
-                root.finish_if_done();
-            }
+    PolledCommand {
+        id: aur_cmd
+        command: ["sh", "-c", "paru -Qua"]
+        onFinished: (code, out) => {
+            root.aur_available = code !== 127;
+            if (!root.aur_available) root.aur = [];
+            root.aur_failed = code !== 0 && code !== 127;
+            if (code === 0) root.aur = root.parse_aur(out);
+            root.aur_done = true;
+            root.finish_if_done();
         }
     }
 
@@ -143,22 +132,20 @@ Singleton {
     Process {
         id: upgrade_proc
         command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" --class " + root.upgrade_class + " -e topgrade", Paths.term_script]
-        onExited: upgrade_watch.start()
+        onExited: root.upgrade_watching = true
     }
 
-    Timer {
-        id: upgrade_watch
-        interval: 10000
-        repeat: true
-        onTriggered: if (!upgrade_check.running) upgrade_check.running = true
-    }
+    property bool upgrade_watching: false
 
-    Process {
+    PolledCommand {
         id: upgrade_check
         command: ["pgrep", "-x", "topgrade"]
-        onExited: code => {
+        enabled: root.upgrade_watching
+        interval_ms: 10000
+        run_on_start: false
+        onFinished: code => {
             if (code === 0) return;
-            upgrade_watch.stop();
+            root.upgrade_watching = false;
             root.upgrade_running = false;
             root.refresh();
         }
