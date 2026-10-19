@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.ui.menu
+import qs.features.popups.frames
 
 // Base of a settings section; the popup loads one and hands itself in as `popup`.
 FocusScope {

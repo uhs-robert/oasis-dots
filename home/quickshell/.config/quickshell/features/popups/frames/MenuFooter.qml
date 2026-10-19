@@ -4,7 +4,7 @@ import qs.theme
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.metroid.widgets as Metroid
 import qs.ui.keys
-import "../keys/KeyHints.js" as KeyHints
+import "../../../ui/keys/KeyHints.js" as KeyHints
 
 // The key hint line under a popup; some styles rule it off with a dashed line.
 Item {

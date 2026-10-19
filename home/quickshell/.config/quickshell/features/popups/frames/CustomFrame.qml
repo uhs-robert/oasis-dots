@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
+import qs.ui.frames
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.ff7.widgets
 import qs.styles.gameboy.widgets

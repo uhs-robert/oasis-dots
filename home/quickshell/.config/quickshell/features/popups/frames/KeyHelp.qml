@@ -1,9 +1,10 @@
 import QtQuick
 import qs.theme
 import qs.ui.menu
+import qs.ui.keys
 import qs.features.popups
 import qs.features.audio
-import "KeyHints.js" as KeyHints
+import "../../../ui/keys/KeyHints.js" as KeyHints
 
 // A popup's full key list, drawn over its content at the same size.
 Item {

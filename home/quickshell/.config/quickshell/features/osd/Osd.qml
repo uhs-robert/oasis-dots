@@ -20,6 +20,7 @@ import qs.ui.effects
 import qs.ui.frames
 import qs.ui.gauges
 import qs.features.voice
+import qs.features.popups.frames
 
 PanelWindow {
     id: root

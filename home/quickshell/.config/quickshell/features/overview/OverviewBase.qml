@@ -7,10 +7,10 @@ import qs.core
 import qs.ui.effects
 import qs.ui.menu
 import qs.theme
-import qs.ui.keys
 import qs.features.popups
 import qs.features.audio
 import qs.features.windows
+import qs.features.popups.frames
 import "Layout.js" as Layout
 import "../../core/Fuzzy.js" as Fuzzy
 

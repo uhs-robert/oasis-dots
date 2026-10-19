@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.ui.menu
 import qs.theme
+import qs.features.popups.frames
 
 ColumnLayout {
     id: root
