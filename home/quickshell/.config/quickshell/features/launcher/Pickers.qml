@@ -2,7 +2,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
-import Quickshell.Io
 import qs.core
 import qs.features.popups
 
@@ -16,7 +15,7 @@ Singleton {
     readonly property bool is_open: Popups.open_name === "picker"
 
     // provider_key -> { count, last_ms }
-    property var usage: ({})
+    readonly property var usage: store.values
     readonly property real half_life_days: 14
 
     signal step_requested(int delta)
@@ -90,22 +89,15 @@ Singleton {
             if (root.frecency(k.slice(0, sep), k.slice(sep + 1)) >= 0.05) next[k] = root.usage[k];
         }
         next[provider_name + ":" + id] = { count: root.frecency(provider_name, id) + 1, last_ms: Date.now() };
-        root.usage = next;
-        usage_file.setText(JSON.stringify(next));
+        store.replace(next);
     }
 
-    FileView {
-        id: usage_file
+    // Every key is a usage entry, so nothing in the file is an extra. Read without blocking startup; a record made before
+    // the read arrives is merged over the file by the store.
+    JsonStore {
+        id: store
         path: Paths.state_dir + "/picker_usage.json"
-        printErrors: false
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                if (data && typeof data === "object") root.usage = data;
-            } catch (e) {
-                console.warn("Pickers: invalid picker_usage.json (" + e + ")");
-            }
-        }
-        onLoadFailed: error => {}
+        block_loading: false
+        validate: raw => raw
     }
 }

@@ -1,32 +1,22 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.core
 
 // Whether the screen corners act as hot corners, saved in hot_corners.json.
 Singleton {
     id: root
 
-    property bool enabled: true
+    readonly property bool enabled: store.values.enabled
 
     function set_enabled(on) {
-        root.enabled = on;
-        file.setText(JSON.stringify({ enabled: on }));
+        store.set_key("enabled", on);
     }
 
-    FileView {
-        id: file
+    JsonStore {
+        id: store
         path: Paths.state_dir + "/hot_corners.json"
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                root.enabled = JSON.parse(text()).enabled !== false;
-            } catch (e) {
-                console.warn("HotCorners: invalid hot_corners.json (" + e + ")");
-            }
-        }
-        onLoadFailed: error => {}
+        defaults: ({ enabled: true })
+        validate: raw => ({ enabled: raw.enabled !== false })
     }
 }
