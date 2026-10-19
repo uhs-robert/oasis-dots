@@ -201,6 +201,8 @@ e2e_setup() {
   mkdir -p "$e2e/main/lib/check" "$e2e/main/.claude/skills/ship-batch"
   cp "$here/../../../../lib/check/passed.sh" "$here/../../../../lib/check/passed.py" "$e2e/main/lib/check/"
   cp "$here/../ship-batch.sh" "$here/../base.sh" "$e2e/main/.claude/skills/ship-batch/"
+  mkdir -p "$e2e/main/.claude/hooks"
+  cp "$here/../../../hooks/live-hypr.sh" "$e2e/main/.claude/hooks/"
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash
 echo "check \$(basename "\$PWD") \$* $lock_state" >>"\$SHIP_LOG"
@@ -303,6 +305,54 @@ check "an unrelated qs -p instance does not block the restart" "grep -q \"lock s
 echo "qs -n -p $e2e/cache/dotfiles/test-bars/x/home/quickshell/.config/quickshell" >"$STUB_QS_PROCS"
 bar_ship
 check "an owner test bar still blocks it" "grep -q 'a test bar is running' '$e2e/out'"
+
+echo "== ship-batch finds the live Hyprland signature itself"
+# hyprctl answers only for signatures listed in STUB_LIVE_SIGS and logs the signature each call ran with. Instance
+# directories hold a .socket.sock whose age orders them; a shadow's nested Hyprland lives in its own runtime dir.
+cat >"$stubs/hyprctl" <<STUB
+#!/bin/sh
+grep -qx "\$HYPRLAND_INSTANCE_SIGNATURE" "\$STUB_LIVE_SIGS" || exit 1
+echo "hyprctl \${HYPRLAND_INSTANCE_SIGNATURE} \$*" >>"\$SHIP_LOG"
+[ "\$1" = reload ] && exit "\${STUB_RELOAD_STATUS:-0}"
+exit 0
+STUB
+chmod +x "$stubs/hyprctl"
+export STUB_LIVE_SIGS=$e2e/live_sigs
+owner_run=$e2e/owner_run
+shadow_run=/tmp/shadow-$UID-shipbatchtest
+rm -rf "$owner_run" "$shadow_run"
+mkdir -p "$owner_run/hypr/live" "$owner_run/hypr/old_live" "$owner_run/hypr/dead" "$shadow_run/hypr/nested"
+touch -d '1 hour ago' "$owner_run/hypr/live/.socket.sock"
+touch -d '2 hours ago' "$owner_run/hypr/old_live/.socket.sock"
+touch "$owner_run/hypr/dead/.socket.sock"
+touch "$shadow_run/hypr/nested/.socket.sock"
+printf 'live\nold_live\nnested\n' >"$STUB_LIVE_SIGS"
+hypr_ship() {
+  e2e_setup
+  mkdir -p "$e2e/wt-1/home/hypr"
+  echo cfg >"$e2e/wt-1/home/hypr/cfg"
+  g -C "$e2e/wt-1" add -A
+  g -C "$e2e/wt-1" commit -q -m hypr
+  env -u HYPRLAND_INSTANCE_SIGNATURE "$@" HOME="$fake_home" PATH="$stubs:$PATH" bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/out" 2>&1
+}
+hypr_ship XDG_RUNTIME_DIR="$owner_run" HYPRLAND_INSTANCE_SIGNATURE=gone
+check "a stale signature gives way to the newest instance that answers" "[[ $? == 0 ]] && logged 'hyprctl live reload' && logged 'hyprctl live configerrors'"
+check "it says which instance it used, on stderr" "grep -q 'using the live instance live' '$e2e/out'"
+hypr_ship XDG_RUNTIME_DIR="$owner_run"
+check "an unset signature is found too" "[[ $? == 0 ]] && logged 'hyprctl live reload'"
+hypr_ship XDG_RUNTIME_DIR="$owner_run" HYPRLAND_INSTANCE_SIGNATURE=old_live
+check "a valid signature in the environment is kept" "[[ $? == 0 ]] && logged 'hyprctl old_live reload' && ! grep -q 'using the live instance' '$e2e/out'"
+hypr_ship XDG_RUNTIME_DIR="$shadow_run" OWNER_RUNTIME_DIR="$owner_run"
+check "a shell inside a shadow still picks the owner's session, never the nested instance" "[[ $? == 0 ]] && logged 'hyprctl live reload' && ! grep -q nested '$SHIP_LOG'"
+printf 'nested\n' >"$STUB_LIVE_SIGS"
+hypr_ship XDG_RUNTIME_DIR="$shadow_run" OWNER_RUNTIME_DIR="$owner_run"
+check "with only a shadow answering it dies instead of using it" "[[ $? != 0 ]] && grep -q 'hyprctl cannot reach Hyprland' '$e2e/out' && ! grep -q '^hyprctl' '$SHIP_LOG'"
+hypr_ship XDG_RUNTIME_DIR="$owner_run"
+check "with no instance answering it dies with a clear message" "[[ $? != 0 ]] && grep -q 'hyprctl cannot reach Hyprland' '$e2e/out'"
+printf 'live\n' >"$STUB_LIVE_SIGS"
+hypr_ship XDG_RUNTIME_DIR="$owner_run" STUB_RELOAD_STATUS=4
+check "a failing reload dies with a message, not a silent exit" "[[ $? != 0 ]] && grep -q 'hyprctl reload failed (exit 4)' '$e2e/out'"
+rm -rf "$shadow_run"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
