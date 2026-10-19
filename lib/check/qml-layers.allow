@@ -3,10 +3,9 @@
 # Delete a line in the PR that removes its edge; a line whose edge is gone fails the check as stale. "5.9 step N" is
 # the step of the imports-that-run-the-wrong-way item in quickshell-refactor.md.
 
-components/WorkspaceDropTarget.qml -> qs.features.windows               # components/ dissolves (5.9 step 4)
-components/WorkspaceIcon.qml -> qs.features.popups                      # components/ dissolves (5.9 step 4)
-components/WorkspaceIcon.qml -> qs.features.windows                     # components/ dissolves (5.9 step 4)
 services/StyleIpc.qml -> qs.features.audio                              # services has no destination yet (undecided)
+styles/goldeneye/widgets/WatchDial.qml -> qs.features.windows           # the workspace icons come in as a feature type; inject the data instead (5.9 step 5)
+styles/oasis/widgets/Constellation.qml -> qs.features.windows           # the workspace icons come in as a feature type; inject the data instead (5.9 step 5)
 theme/Style.qml -> styles/IconSets.js                                   # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/goldeneye/Watch.js                            # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/index.js                                      # the style engine consumes style data by design (permanent)
