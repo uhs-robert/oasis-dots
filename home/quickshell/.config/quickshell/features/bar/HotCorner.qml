@@ -3,7 +3,6 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import qs.features.lock
-import qs.services
 import qs.features.settings
 
 // A tiny overlay square in the top-left corner: resting the pointer there opens the overview.

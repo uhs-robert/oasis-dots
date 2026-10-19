@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
 import qs.features.screenshot
 
 // Neovim picker skin: a cursorline/cursorcolumn band pair through the point and a

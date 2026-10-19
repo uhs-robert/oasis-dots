@@ -1,5 +1,4 @@
 import Quickshell.Io
-import qs.services
 import qs.features.popups
 
 IpcHandler {

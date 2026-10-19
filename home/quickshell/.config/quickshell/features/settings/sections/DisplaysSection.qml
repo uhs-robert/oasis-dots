@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.theme
-import qs.services
 import qs.features.display
 import "../../display/DisplayLayout.js" as DisplayLayout
 import qs.features.settings

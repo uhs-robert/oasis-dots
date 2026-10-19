@@ -1,9 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.ui
 import qs.theme
-import qs.services
 import qs.features.power
 import qs.features.voice
 

@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import qs.styles.oasis.widgets as Oasis
 import qs.theme
-import qs.services
 import qs.features.clock
 import qs.features.weather
 import qs.features.popups

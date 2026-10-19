@@ -2,7 +2,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.theme
 
 // One keeptabs-status stream shared by every bar; it animates and idles on battery by itself.
 Singleton {

@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import qs.theme
-import qs.services
 import qs.ui.effects
 import qs.features.power
 import qs.features.clock.markers as Marker

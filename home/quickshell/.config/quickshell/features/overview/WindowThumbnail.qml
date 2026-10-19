@@ -6,7 +6,6 @@ import Quickshell.Widgets
 import qs.theme
 import qs.features.power
 import qs.features.windows
-import "../../styles/goldeneye/Watch.js" as W
 
 // A Hyprland toplevel's live image fitted inside the item, with its app icon until a frame arrives.
 Item {

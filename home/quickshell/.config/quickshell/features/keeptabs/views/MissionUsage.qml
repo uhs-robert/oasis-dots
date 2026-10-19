@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.styles.goldeneye as Watch
 import qs.features.keeptabs

@@ -1,8 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
-import qs.features.screen_select.loupe as LoupeSkins
 import qs.features.screenshot
 
 // The region selector's magnifier: a zoomed, skinned view of `source` around `at`, placed beside the cursor.

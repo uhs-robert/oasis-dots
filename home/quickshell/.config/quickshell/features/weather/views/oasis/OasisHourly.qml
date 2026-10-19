@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import Quickshell
 import qs.styles.oasis.widgets as Oasis
 import qs.theme
-import qs.services
 import qs.features.weather
 import qs.features.weather.views.shared
 import qs.features.popups

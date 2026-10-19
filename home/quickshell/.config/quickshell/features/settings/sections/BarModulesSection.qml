@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.ui.menu
 import qs.theme
-import qs.services
 import "../../bar/BarLayout.js" as BarLayout
 import qs.features.settings
 import qs.features.bar

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
 import qs.components.transitions
 import qs.features.settings
 

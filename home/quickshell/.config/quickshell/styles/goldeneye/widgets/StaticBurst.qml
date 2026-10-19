@@ -1,5 +1,4 @@
 import QtQuick
-import qs.services
 import qs.theme
 import qs.features.power
 

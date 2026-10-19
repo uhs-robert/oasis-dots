@@ -4,7 +4,6 @@ import qs.ui.effects
 import qs.ui.menu
 import qs.styles.snes.widgets as Snes
 import qs.theme
-import qs.services
 import qs.features.weather
 import qs.features.popups
 

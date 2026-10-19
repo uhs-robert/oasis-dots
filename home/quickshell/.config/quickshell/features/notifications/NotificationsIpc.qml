@@ -1,6 +1,5 @@
 import Quickshell.Io
 import Quickshell.Services.Notifications
-import qs.services
 import qs.features.popups
 
 IpcHandler {

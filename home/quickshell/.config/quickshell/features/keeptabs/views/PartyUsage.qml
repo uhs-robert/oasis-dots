@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.components
 import qs.theme
 import qs.features.keeptabs
 import qs.styles.nes.widgets as Nes

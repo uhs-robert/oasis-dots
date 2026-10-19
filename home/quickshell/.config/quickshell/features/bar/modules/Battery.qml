@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.UPower
 import qs.theme
-import qs.services
 import qs.ui
 import qs.components.bar_icons
 import qs.features.power

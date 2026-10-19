@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import qs.theme
-import qs.services
 import qs.ui.menu
 import qs.ui.keys
 

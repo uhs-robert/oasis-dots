@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import qs.ui.frames
 import qs.ui.menu
 import qs.theme
-import qs.services
 import qs.styles.tie.widgets
 import qs.features.popups
 import "KeeptabsFormat.js" as Fmt

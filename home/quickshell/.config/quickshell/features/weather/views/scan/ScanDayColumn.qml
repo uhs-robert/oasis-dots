@@ -3,7 +3,6 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.gauges
 import qs.theme
-import qs.services
 import qs.styles.reticle.widgets
 import qs.features.weather
 import qs.features.weather.views.shared

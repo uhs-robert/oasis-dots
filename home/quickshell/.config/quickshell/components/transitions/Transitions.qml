@@ -3,7 +3,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.theme
-import qs.services
 import qs.features.power
 import "Kinds.js" as Kinds
 

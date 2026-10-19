@@ -4,8 +4,6 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
-import qs.theme
-import qs.services
 import qs.features.bar
 import qs.features.popups
 

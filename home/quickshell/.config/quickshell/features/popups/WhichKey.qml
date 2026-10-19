@@ -7,7 +7,6 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.theme
-import qs.services
 import qs.styles.neovim.widgets as Neovim
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui.effects

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
 import qs.styles.goldeneye as Watch
 import qs.features.weather
 import qs.features.popups

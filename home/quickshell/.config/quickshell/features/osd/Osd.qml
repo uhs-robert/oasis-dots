@@ -7,7 +7,6 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import qs.theme
-import qs.services
 import qs.components
 import qs.features.display
 import qs.styles.snes.widgets as Snes

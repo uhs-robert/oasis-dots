@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
 import qs.ui.frames
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.features.screenshot

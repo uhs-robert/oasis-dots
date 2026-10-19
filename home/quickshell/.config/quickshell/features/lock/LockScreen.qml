@@ -5,7 +5,6 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
 import qs.theme
-import qs.services
 import qs.features.power
 import qs.features.media
 import qs.features.clock

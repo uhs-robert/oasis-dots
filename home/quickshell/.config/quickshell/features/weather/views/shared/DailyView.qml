@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import Quickshell
 import qs.ui.frames
 import qs.theme
-import qs.services
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.modern.widgets as Modern
 import qs.features.weather

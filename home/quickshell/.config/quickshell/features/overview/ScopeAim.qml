@@ -3,7 +3,6 @@ import QtQuick
 import qs.ui.frames
 import qs.features.screen_select
 import qs.theme
-import qs.services
 
 // The PS1 screenshot scope drawn over the overview's selected window: hairlines, box, ticks and MGS readouts.
 Item {

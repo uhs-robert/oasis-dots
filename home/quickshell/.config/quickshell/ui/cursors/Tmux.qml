@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
 import qs.features.screenshot
 
 // tmux copy-mode cursor for the Terminal picker skin: a blinking 9x17 block

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.services
 import "BarLayout.js" as BarLayout
 import "BarModules.js" as BarModules
 // Keeps features/bar/modules in the Quickshell scan; modules load by URL and need BarModule.

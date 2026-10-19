@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.services
 
 // Caller-supplied choices from Prompt.select or a shell caller (voxcmd-pick). The mode arg is a JSON spec path:
 // { id, label, choices, result_path, expansions, view_path }. Enter or close writes the pick (empty on cancel) to

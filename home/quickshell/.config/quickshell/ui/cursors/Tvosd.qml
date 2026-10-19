@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
-import qs.services
 import qs.features.screenshot
 
 // CRT TV on-screen-display reticle: a chunky green phosphor crosshair with a soft

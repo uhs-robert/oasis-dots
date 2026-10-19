@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.effects
 import qs.theme
-import qs.services
 import qs.features.weather
 import qs.features.weather.views.shared
 import qs.features.popups
