@@ -731,6 +731,10 @@ for word in "stop" "Stop."; do
   sess_run "tap alpha" "$word" "tap gamma" "cortana done"
   check "bare '$word' pauses nothing, leaves rapid mode open and says how to leave" "session_gone && ! grep -q '^playerctl' '$log' && toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 done
+for word in "Stop. Stop. Stop." "stop stop" "Done. Done."; do
+  sess_run "tap alpha" "$word" "tap gamma" "cortana done"
+  check "repeated '$word' pauses nothing, leaves rapid mode open and says how to leave" "session_gone && ! grep -q '^playerctl' '$log' && toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+done
 for word in "stop the music" "pause"; do
   sess_run "tap alpha" "$word" "tap gamma" "cortana done"
   check "'$word' still pauses the music in rapid mode" "session_gone && grep -q '^playerctl' '$log' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
