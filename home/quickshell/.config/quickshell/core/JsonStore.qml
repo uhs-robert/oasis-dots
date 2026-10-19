@@ -54,6 +54,8 @@ Scope {
     // text is skipped by FileView and never answered with saved or saveFailed. Unwritten when that write failed.
     property string view_text: ""
     property bool view_text_unwritten: false
+    // Set while a reload clears FileView's cached copy of text that failed to save; the load it ends with restarts the write.
+    property bool retrying: false
     // The text `values` were last reconciled with: our last write, the last load adopted or found corrupt, "" when missing.
     property string synced_text: ""
     // FileView drops a reload() asked while it is reading, so a change seen then is reread once that read is in.
@@ -119,14 +121,21 @@ Scope {
 
     function write_now() {
         const text = JSON.stringify(Object.assign({}, root.extras, root.values));
+        // FileView skips a setText equal to its cached text, silently, so a write of text that failed to save needs a
+        // load first (any load drops the cache). Only an explicit write gets here; a failure never retries by itself.
+        if (root.view_text_unwritten && text === root.view_text && !root.retrying) {
+            root.retrying = true;
+            file.reload();
+            return;
+        }
+        root.retrying = false;
         root.dirty = false;
         root.write_seq = root.edit_seq;
         root.pending_argv = typeof root.after_save === "function" ? root.after_save(root.values) : null;
         root.synced_text = text;
         if (text === root.view_text) {
             // FileView would skip this setText without a word.
-            if (root.view_text_unwritten) root.fail_write("unchanged since the failed write");
-            else root.finish_write();
+            root.finish_write();
             return;
         }
         // The write disowns any read in flight.
@@ -134,6 +143,14 @@ Scope {
         root.reread = false;
         root.view_text = text;
         file.setText(text);
+    }
+
+    // True when this load was the one a retry waited for.
+    function resume_retry() {
+        if (!root.retrying) return false;
+        root.reread = false;
+        Qt.callLater(root.write_now);
+        return true;
     }
 
     function finish_write() {
@@ -238,6 +255,7 @@ Scope {
             root.view_text = text;
             root.view_text_unwritten = false;
             root.reading = false;
+            if (root.resume_retry()) return;
             if (root.reread) {
                 // This read may have started before the change that asked for it.
                 root.reread = false;
@@ -266,6 +284,7 @@ Scope {
             root.view_text = "";
             root.view_text_unwritten = false;
             root.reading = false;
+            if (root.resume_retry()) return;
             if (root.reread) {
                 root.reread = false;
                 root.reload();

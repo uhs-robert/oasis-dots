@@ -224,6 +224,16 @@ ShellRoot {
             }]],
             end: 900
         },
+        // A write fails, the path becomes writable, and the same values are set again: that is a real write attempt.
+        // run.py makes the directory unwritable first; the step between the sets makes it writable again.
+        same_values_after_failed_write: {
+            steps: [
+                [100, () => store.set_key("a", 1)],
+                [300, () => Quickshell.execDetached(["chmod", "700", root.dir])],
+                [500, () => store.set_key("a", 1)]
+            ],
+            end: 1000
+        },
         // The watch was armed while the directory was missing: the first save makes it, and an edit after that must still arrive.
         watch_after_first_write: {
             path: root.dir + "/late/store.json",
