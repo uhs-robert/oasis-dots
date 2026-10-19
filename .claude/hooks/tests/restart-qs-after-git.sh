@@ -12,6 +12,7 @@ g() { git -c user.name=t -c user.email=t@t "$@"; }
 
 stubs=$root/stubs
 mkdir -p "$stubs" "$root/home/.config" "$root/run/hypr/live1"
+touch "$root/run/hypr/live1/.socket.sock"
 echo live1 >"$root/live_sigs"
 # pgrep -af looks for a test bar (none); pgrep -x qs sees the bar gone between pkill and the relaunch.
 cat >"$stubs/pgrep" <<STUB
@@ -100,16 +101,25 @@ expect none "a Quickshell change with no snapshot from before the command" "$rep
 # The hook gets the session's signature, which may be dead; the newest instance that answers is the live one.
 session_sig=stale
 mkdir -p "$root/run/hypr/stale"
-touch -d '2 days ago' "$root/run/hypr/stale"
+touch -d '2 days ago' "$root/run/hypr/stale/.socket.sock"
 git -C "$repo" stash -q 2>/dev/null
 expect restart "a stale session signature" "$repo" "git stash pop -q"
 check "the relaunch goes to the live instance, not the stale session signature" grep -qx live1 "$root/dispatched_to"
 # Both answer: the newer one wins.
 mkdir -p "$root/run/hypr/live2"
+touch "$root/run/hypr/live2/.socket.sock"
 printf 'live1\nlive2\n' >"$root/live_sigs"
-touch -d '1 hour ago' "$root/run/hypr/live1"
+touch -d '1 hour ago' "$root/run/hypr/live1/.socket.sock"
 expect restart "two live instances" "$repo" "git stash -q"
 check "the newest answering instance is used" grep -qx live2 "$root/dispatched_to"
+
+# A directory touched later (a recreated .hyprpaper.sock) does not make an older instance newer.
+touch -d '2 hours ago' "$root/run/hypr/live2/.socket.sock"
+touch "$root/run/hypr/live1/.socket.sock"
+touch "$root/run/hypr/live2/.hyprpaper.sock"
+expect restart "an older instance whose directory is newer" "$repo" "git stash pop -q"
+check "the instance with the newer socket wins over the newer directory" grep -qx live1 "$root/dispatched_to"
+git -C "$repo" stash -q
 
 # No instance answers: the bar stays up.
 : >"$root/live_sigs"
