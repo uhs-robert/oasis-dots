@@ -97,6 +97,9 @@ local cursor_mode = Submap.define({
       { "T",              Cursor.kbptr("tile_click"),                          "Tiling Click" },
       { "SHIFT + T",      Cursor.kbptr("tile_r_click",     { exit = false }),  "Tiling Right Click" },
       { "CTRL + T",       Cursor.kbptr("tile_move"),                           "Tiling Move" },
+      { "G",              Cursor.kbptr("split_click"),                         "Split Click" },
+      { "SHIFT + G",      Cursor.kbptr("split_r_click", { exit = false }),     "Split Right Click" },
+      { "CTRL + G",       Cursor.kbptr("split_move"),                          "Split Move" },
       -- Clicks (CTRL=exit after), the same in every pointer_keys mode
       { "SPACE",          Cursor.click_left(),                "Left Click" },
       { "CTRL + SPACE",   oneshot(Cursor.click_left()),       "Left Click (Exit)" },
@@ -182,6 +185,9 @@ local quick_click = Submap.define({
       { "T",                  Cursor.kbptr("tile_click"),                         "Tiling Click" },
       { "SHIFT + T",          Cursor.kbptr("tile_r_click", { exit = false }),     "Tile Right Click" },
       { "CTRL + T",           Cursor.kbptr("tile_move"),                          "Tiling Move" },
+      { "G",                  Cursor.kbptr("split_click"),                        "Split Click" },
+      { "SHIFT + G",          Cursor.kbptr("split_r_click", { exit = false }),    "Split Right Click" },
+      { "CTRL + G",           Cursor.kbptr("split_move"),                         "Split Move" },
     }
     -- stylua: ignore end
 

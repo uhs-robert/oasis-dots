@@ -21,6 +21,9 @@ local KBPTR_CMDS = {
   tile_click = "wl-kbptr -o modes=tile,click",
   tile_move = "wl-kbptr -o modes=tile",
   tile_r_click = "wl-kbptr -o modes=tile ; wlrctl pointer click right",
+  split_click = "wl-kbptr -o modes=split,click",
+  split_move = "wl-kbptr -o modes=split",
+  split_r_click = "wl-kbptr -o modes=split ; wlrctl pointer click right",
 }
 
 --- @class CursorActions
