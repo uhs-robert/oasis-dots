@@ -8,6 +8,9 @@ trap 'chmod -R u+rwX "$scratch" 2>/dev/null; rm -rf "$scratch"' EXIT
 source "$repo_dir/lib/common/output.sh"
 source "$repo_dir/lib/install/migrate.sh"
 
+# The real pgrep would make every case depend on the machine's bars.
+_quickshell_running() { return 1; }
+
 failures=0
 check() {
   if ! "$@"; then
@@ -71,6 +74,33 @@ check test "$?" -eq 0
 check grep -q 'exist and differ' <<<"$output"
 check test "$(cat "$q/weather.local.json")" = old
 check test "$(cat "$s/weather.local.json")" = mine
+
+case_name='a bar running: old kept and new written, with old only'
+fresh m
+printf '%s' "$content" >"$q/weather.local.json"
+output=$(
+  _quickshell_running() { return 0; }
+  migrate_quickshell_weather "$q" "$s" 2>&1
+)
+check test "$(cat "$s/weather.local.json")" = "$content"
+check test "$(cat "$q/weather.local.json")" = "$content"
+check grep -q 'bar is running' <<<"$output"
+
+case_name='a bar running, then none: the next run deletes the old file'
+migrate_quickshell_weather "$q" "$s" >/dev/null 2>&1
+check test ! -e "$q/weather.local.json"
+check test "$(cat "$s/weather.local.json")" = "$content"
+
+case_name='a bar running with both identical: old kept'
+fresh n
+mkdir -p "$s"
+printf '%s' "$content" >"$q/weather.local.json"
+printf '%s' "$content" >"$s/weather.local.json"
+(
+  _quickshell_running() { return 0; }
+  migrate_quickshell_weather "$q" "$s" >/dev/null 2>&1
+)
+check test -f "$q/weather.local.json"
 
 case_name='dry run changes nothing, with old only and with both identical'
 fresh e

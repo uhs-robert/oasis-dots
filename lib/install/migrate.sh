@@ -162,14 +162,19 @@ migrate_quickshell_lock_assets() {
   return 0
 }
 
+# Any Quickshell bar counts: an old-code bar cannot be told apart by its command line (`qs -n` names no config). A function so the
+# tests can stand in for it.
+_quickshell_running() {
+  pgrep -x 'qs|quickshell' >/dev/null
+}
+
 # Quickshell used to keep the notification Do Not Disturb flag and the Claude usage "warned" marker per checkout, under
 # <state>/by-shell/<id>/ (Quickshell.stateDir); both now live in <state>/ with the rest. Copies the newest non-empty file of each
 # into <state>/ unless <state>/ already holds a newer one, then deletes by-shell. Newest by mtime because the id is a hash of the
 # shell.qml path, which the shell cannot derive, so the newest copy may come from a worktree or shadow run; accepted.
 # Meant to run twice around the bar restart: a bar still on the old code keeps writing into by-shell, so while any bar runs by-shell
 # is kept and the copy repeats (newest wins, so a rerun picks up what was written since).
-# Only a run with no bar up deletes it. Detecting an old-code bar is not
-# possible from its command line (`qs -n` names no config), so any running bar counts. $1 is the Quickshell state dir, for the tests.
+# Only a run with no bar up deletes it. $1 is the Quickshell state dir, for the tests.
 migrate_quickshell_state() {
   local state=${1:-${XDG_STATE_HOME:-$HOME/.local/state}/quickshell} by name newest
   by=$state/by-shell
@@ -182,7 +187,7 @@ migrate_quickshell_state() {
     _migrate_run cp -p -- "$newest" "$state/$name"
     info "Copied $newest to $state/$name"
   done
-  if pgrep -x 'qs|quickshell' >/dev/null; then
+  if _quickshell_running; then
     warn "A Quickshell bar is running and may still write into $by; kept it. A rerun with the bar up still copies newer files; to delete it, stop the bar, rerun, then start the bar."
     return 0
   fi
@@ -211,6 +216,8 @@ migrate_quickshell_input() {
 # ~/.config/quickshell because install.sh runs this before stow has made that link. Never overwrites: when both files exist the old
 # one is deleted only if identical, else both are kept and the owner is told. A failure warns and returns 0, since install.sh
 # runs under set -e and a weather setting is not worth blocking the install.
+# The old file is deleted only while no bar runs: install does not restart the bar, and a bar still reading the old path would
+# reset Weather to the defaults when the file vanished. A later install deletes it.
 # $1 is the Quickshell source dir and $2 the state dir, for the tests.
 migrate_quickshell_weather() {
   local qs_dir=${1:-$DOTFILES_DIR/home/quickshell/.config/quickshell}
@@ -218,16 +225,20 @@ migrate_quickshell_weather() {
   local old=$qs_dir/weather.local.json new=$state/weather.local.json
   [[ -f "$old" ]] || return 0
   if [[ -e "$new" || -L "$new" ]]; then
-    if cmp -s -- "$old" "$new"; then
-      _migrate_run rm -f -- "$old" && info "Removed $old, identical to $new"
-    else
+    if ! cmp -s -- "$old" "$new"; then
       warn "Both $old and $new exist and differ; $new is used. Compare them and delete $old by hand."
+    elif _quickshell_running; then
+      info "A Quickshell bar is running; kept $old, a later install removes it."
+    else
+      _migrate_run rm -f -- "$old" && info "Removed $old, identical to $new"
     fi
     return 0
   fi
   if _migrate_run mkdir -p -- "$state" && _migrate_run cp -p -- "$old" "$new" &&
     { [[ "${MIGRATE_DRY_RUN:-0}" -eq 1 ]] || cmp -s -- "$old" "$new"; }; then
-    if _migrate_run rm -- "$old"; then
+    if _quickshell_running; then
+      info "Copied $old to $new; a Quickshell bar is running, so $old is kept and a later install removes it."
+    elif _migrate_run rm -- "$old"; then
       info "Moved $old to $new"
     else
       # The copy is good and now wins; the next run's identical-files rule deletes the old one.
