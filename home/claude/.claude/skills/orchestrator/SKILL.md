@@ -33,7 +33,11 @@ Target: `$target`
    - Have an agent investigate the issue or PR, the code and its tests.
    - Run `~/.claude/skills/orchestrator/overlap.sh <path>...` on the files the plan will touch. It lists other worktrees (committed and uncommitted work) and open PRs that change them. Settle each overlap with the session or PR owner before delegating, and put the outcome in the plan.
    - Get the owner's approval on a concise plan.
-   - Every owner decision goes through `AskUserQuestion`, never a question in prose.
+   - Every owner decision goes through `AskUserQuestion`, never a question in prose. In the same turn, just before the call, brief the owner in plain words, assuming they have not followed the work:
+     - Where the work stands and what the decision affects.
+     - For each option, as bullets: what it leads to, its pros and cons, and its cost (time, risk, follow-up work). A yes/no ask gets one line per answer on what it leads to instead.
+     - The core tradeoff in one line, and your recommendation with its reason.
+     The briefing explains; only the tool asks.
    - Escalate only materially ambiguous product or architectural decisions, collected into one ask rather than each as it comes up, and keep agents whose work does not depend on the answer running while you wait.
 
 4. Delegate using the cheapest capable model:
