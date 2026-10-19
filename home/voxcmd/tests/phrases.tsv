@@ -25,6 +25,46 @@ move firefox to the special workspace scratch pad	Apps/move	scratch pad is the e
 move firefox to special workspace notes	Apps/move	no special:notes yet, so the name is notes
 move firefox to scratchpad	picker	no "special workspace", so not Apps/move: a weak Keybinds fallback is offered in the picker
 move it to the scratchpad	Keybinds/run	the Move to Scratchpad keybind, which moves the focused window
+move this window to workspace 5	Apps/move	focused window, deictic
+move it to workspace 12	Apps/move	number above 10 on the focused window
+move to workspace 5	Apps/move	no window part: the focused window
+move the window to the third workspace	Apps/move	ordinal on the focused window
+move that to special workspace notes	Apps/move	special workspace on the focused window
+send this window to workspace 5	Apps/move
+send it to workspace 12	Apps/move
+send to workspace 5	Apps/move
+send the window to the third workspace	Apps/move
+send that to special workspace notes	Apps/move
+put this window to workspace 5	Apps/move
+put it to workspace 12	Apps/move
+put to workspace 5	Apps/move
+put the window to the third workspace	Apps/move
+put that to special workspace notes	Apps/move
+take to workspace 5	Apps/move
+bring it to workspace 12	Apps/move
+shift this window to workspace 5	Apps/move
+push that to special workspace notes	Apps/move
+carry the window to the third workspace	Apps/move
+relocate to workspace 5	Apps/move
+place it to workspace 12	Apps/move
+move window to workspace 5	Apps/move	the Move to Workspace bind no longer swallows it
+move to the third workspace	Apps/move	ordinal, no window part
+move firefox to workspace 5	Apps/move	a named window is unchanged
+take firefox to workspace 5	Apps/move	a named window with the new verbs
+bring firefox to the third workspace	Apps/move
+switch this window to workspace 5	Apps/move_with_window	switch moves a window it is given
+switch it to the third workspace	Apps/move_with_window
+switch firefox to workspace 5	Apps/move_with_window
+switch to the second workspace	Keybinds/run	bare switch with an ordinal stays a focus
+take me to workspace 2	Keybinds/run	take me to is a focus, not a move
+bring up firefox	Apps/open	bring up opens
+send it	Keys/enter	send it stays Enter
+send the message	Keys/enter	send the message stays Enter
+bring to workspace 5	Apps/move
+shift to workspace 5	Apps/move
+push to workspace 5	Apps/move
+carry to workspace 5	Apps/move
+place to workspace 5	Apps/move
 close slack	Apps/close
 resize the window to 1200 by 800	Apps/resize
 make it 400 pixels tall	Apps/resize
@@ -411,6 +451,8 @@ go to the 2th monitor	none	an ordinal needs its own suffix
 go to the fourth monitor	Monitors/focus
 move this window to the second monitor	Monitors/move
 move it to the 3rd screen	Monitors/move
+take this window to the right monitor	Monitors/move	monitor moves keep take and bring
+bring it to monitor three	Monitors/move
 go to the tenth monitor	Monitors/focus	no such monitor on the owner's four; the phrase is still ours
 go to the 10th monitor	Monitors/focus	no such monitor on the owner's four; the phrase is still ours
 what is a third of 9	Answers/calculate	a fraction word is not a position
