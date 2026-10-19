@@ -1,5 +1,5 @@
 // Shared logic behind home/thunderbird/tbkeys/keys.json, loaded into each mail
-// window by betterbird.cfg. Creates a fresh window.tk on every load so a
+// window by loader.js. Creates a fresh window.tk on every load so a
 // reload cleanly replaces the last; other modules populate this namespace.
 (function () {
   "use strict";
@@ -20,23 +20,6 @@
   tk.MARK_PREF = "tbkeys.folder_marks";
   // Excludes d, f, g, m, z: chord leaders elsewhere in keys.json.
   tk.MARK_LETTERS = "abcehijklnopqrstuvwxy";
-
-  // Must match MODULE_MANIFEST in betterbird.cfg; :reload depends on the two agreeing.
-  tk.MODULE_MANIFEST = [
-    "core.js",
-    "selection.js",
-    "folders.js",
-    "motions.js",
-    "navigation.js",
-    "actions.js",
-    "yank.js",
-    "editor.js",
-    "search.js",
-    "command.js",
-    "ui.js",
-    "hints.js",
-    "whichkey.js",
-  ];
 
   // -- window/tree accessors --------------------------------------------
 

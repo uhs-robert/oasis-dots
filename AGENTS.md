@@ -116,7 +116,7 @@ Firefox tabs are listed and switched by the companion extension in `extras/voxcm
 
 ## Betterbird / tbkeys
 
-`home/thunderbird/.config/tbkeys/*.js` are loaded in a fixed dependency order by `system/opt/betterbird/betterbird.cfg` — later modules may call earlier ones, never the reverse. `core.js` runs the previous load's teardown hooks and recreates `window.tk` from scratch. See `home/thunderbird/README.md` for the full module responsibility table; put new behavior in the module that owns that responsibility rather than reimplementing primitives.
+`home/thunderbird/.config/tbkeys/*.js` are loaded in a fixed dependency order by `loader.js` beside them, the only file `system/opt/betterbird/betterbird.cfg` loads; keep the module list there, since the installed `.cfg` is not refreshed by stowing — later modules may call earlier ones, never the reverse. `core.js` runs the previous load's teardown hooks and recreates `window.tk` from scratch. See `home/thunderbird/README.md` for the full module responsibility table; put new behavior in the module that owns that responsibility rather than reimplementing primitives.
 
 `keys.json` and `quicktext.json` are tracked copies, not read from disk — after editing, paste into the add-on's options page. Restart Betterbird after editing any module.
 
