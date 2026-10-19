@@ -8,6 +8,7 @@ import qs.ui.gauges
 import qs.features.popups
 import qs.features.popups.frames
 import qs.features.audio
+import qs.core
 
 Popup {
     id: root
@@ -65,7 +66,7 @@ Popup {
 
     function open_btop() {
         ThemeAudio.play("confirm");
-        Popups.after_close(() => Quickshell.execDetached(["sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e btop"]));
+        Popups.after_close(() => Quickshell.execDetached(["sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e btop", Paths.term_script]));
     }
 
     Item {

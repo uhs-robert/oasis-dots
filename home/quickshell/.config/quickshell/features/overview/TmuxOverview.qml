@@ -277,7 +277,7 @@ OverviewBase {
                 root.tmux(["switch-client", "-c", latest.name, "-t", tile.session_id, ";"].concat(select));
             } else {
                 root.tmux(select);
-                Quickshell.execDetached(["sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e tmux attach-session -t \"$1\"", "sh", tile.session_id]);
+                Quickshell.execDetached(["sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e tmux attach-session -t \"$1\"", Paths.term_script, tile.session_id]);
             }
         }
         root.hide_overview();

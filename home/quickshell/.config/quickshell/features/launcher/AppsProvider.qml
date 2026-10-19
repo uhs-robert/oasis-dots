@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs.core
 
 PickerProvider {
     id: root
@@ -31,7 +32,7 @@ PickerProvider {
         const e = item.entry;
         if (!e) return;
         if (e.runInTerminal) {
-            const context = { command: ["sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" \"$@\"", "sh", "-e"].concat(Array.from(e.command)) };
+            const context = { command: ["sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" \"$@\"", Paths.term_script, "-e"].concat(Array.from(e.command)) };
             if (e.workingDirectory !== "") context.workingDirectory = e.workingDirectory;
             Quickshell.execDetached(context);
         } else {

@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.features.settings
 import qs.features.clock
 import qs.features.popups
+import qs.core
 
 RowsSection {
     id: root
@@ -88,7 +89,7 @@ RowsSection {
 
     // The terminal stays open after setup so its last message can be read.
     function open_setup() {
-        Popups.after_close(() => Quickshell.execDetached(["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e sh -c \"$1\"", "sh", "calendar-sync setup; printf '\\nPress Enter to close. '; read -r _"]));
+        Popups.after_close(() => Quickshell.execDetached(["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e sh -c \"$1\"", Paths.term_script, "calendar-sync setup; printf '\\nPress Enter to close. '; read -r _"]));
     }
 
     function offer_actions() {

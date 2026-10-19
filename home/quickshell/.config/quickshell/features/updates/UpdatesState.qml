@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
+import qs.core
 
 // Official (checkupdates) and AUR (paru -Qua) update counts, ported from the Waybar
 // arch_updates.rb script so the bar has no Ruby dependency.
@@ -141,7 +142,7 @@ Singleton {
     // window to a running instance and exit at once, so the refresh waits on topgrade itself.
     Process {
         id: upgrade_proc
-        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" --class " + root.upgrade_class + " -e topgrade"]
+        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" --class " + root.upgrade_class + " -e topgrade", Paths.term_script]
         onExited: upgrade_watch.start()
     }
 
