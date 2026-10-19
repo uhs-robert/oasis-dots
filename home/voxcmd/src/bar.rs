@@ -47,3 +47,8 @@ pub fn ui_busy(time_left: Duration) -> bool {
         .any(|state| popup == *state || popup.starts_with(&format!("{state} ")));
     overlay == "open" || showing
 }
+
+/// The click overlay is up, waiting on the user. A bar that does not answer within two seconds reads as closed.
+pub fn click_overlay_open() -> bool {
+    ask(&["clickhints", "state"], ANSWER_WITHIN).is_some_and(|state| state == "open")
+}

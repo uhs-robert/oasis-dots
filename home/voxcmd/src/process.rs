@@ -74,34 +74,46 @@ impl Outcome {
 /// so it is when the command has exited, so that children it left behind do not outlive the call.
 pub fn run_with_timeout(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
     command.stdin(Stdio::null());
-    run(command, Some(timeout), OnStop::Kill, Capture::Yes)
+    run(command, Some(timeout), OnStop::Kill, Capture::Yes, Leftovers::Killed)
 }
 
 /// `run_with_timeout` for a command that reads voxcmd's own stdin (a wake clip voxcmd-wake pipes in, `/dev/stdin`);
 /// `None` is no deadline.
 pub fn run_with_timeout_on_stdin(command: &mut Command, timeout: Option<Duration>) -> std::io::Result<Outcome> {
     command.stdin(Stdio::inherit());
-    run(command, timeout, OnStop::Kill, Capture::Yes)
+    let leftovers = if timeout.is_some() {
+        Leftovers::Killed
+    } else {
+        Leftovers::Kept
+    };
+    run(command, timeout, OnStop::Kill, Capture::Yes, leftovers)
 }
 
 /// `run_with_timeout` for an action, which has no deadline of its own (Stop Voice ends it). What it left running after
 /// it exited is left alone: an action may start an app, which must outlive it.
 pub fn run_to_end(command: &mut Command) -> std::io::Result<Outcome> {
     command.stdin(Stdio::null());
-    run(command, None, OnStop::Kill, Capture::Yes)
+    run(command, None, OnStop::Kill, Capture::Yes, Leftovers::Kept)
 }
 
 /// `run_to_end` with both outputs to /dev/null, as bash ran a hook: a child the hook leaves behind never holds a pipe
 /// this call waits on, and never gets SIGPIPE when this call is gone.
 pub fn run_to_end_discarding_output(command: &mut Command) -> std::io::Result<Outcome> {
     command.stdin(Stdio::null());
-    run(command, None, OnStop::Kill, Capture::No)
+    run(command, None, OnStop::Kill, Capture::No, Leftovers::Kept)
+}
+
+/// `run_to_end_discarding_output` with a deadline, which kills the command's whole group. A child it left running when
+/// it exited in time is left alone, as `run_to_end` leaves it.
+pub fn run_discarding_output_within(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
+    command.stdin(Stdio::null());
+    run(command, Some(timeout), OnStop::Kill, Capture::No, Leftovers::Kept)
 }
 
 /// `run_to_end` for an ask, which a stop signal gives time to take its question down (see `STOP_GRACE`).
 pub fn run_ask_to_end(command: &mut Command) -> std::io::Result<Outcome> {
     command.stdin(Stdio::null());
-    run(command, None, OnStop::LetCleanUp, Capture::Yes)
+    run(command, None, OnStop::LetCleanUp, Capture::Yes, Leftovers::Kept)
 }
 
 /// Starts a long-lived child in a process group of its own and returns at once, its group listed until the returned
@@ -161,12 +173,20 @@ enum Capture {
     No,
 }
 
+/// What becomes of what the command left running in its group once it has exited by itself.
+#[derive(Clone, Copy, PartialEq)]
+enum Leftovers {
+    Killed,
+    Kept,
+}
+
 /// Each caller sets stdin: only `run_with_timeout_on_stdin` lets a command read voxcmd's own.
 fn run(
     command: &mut Command,
     timeout: Option<Duration>,
     on_stop: OnStop,
     capture: Capture,
+    leftovers: Leftovers,
 ) -> std::io::Result<Outcome> {
     let output_stdio = match capture {
         Capture::Yes => Stdio::piped,
@@ -195,7 +215,7 @@ fn run(
     if !timed_out {
         let grace_ends = Instant::now() + DRAIN_GRACE;
         wait_until(grace_ends, || stdout.finished() && stderr.finished());
-        if timeout.is_some() {
+        if leftovers == Leftovers::Killed {
             // The command is reaped, but a child of its group may live on; the group id stays taken while it does.
             kill_group(child.id());
         }
@@ -752,6 +772,35 @@ pub(crate) mod tests {
         assert!(
             gone_within(child, Duration::from_secs(2)),
             "child {child} outlived the call"
+        );
+    }
+
+    #[test]
+    fn a_deadline_without_output_kills_the_group_only_when_it_passes() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("child.pid");
+        // In time: the child it left behind lives on, and the call does not wait for it.
+        let script = format!("sleep 3 & echo $! > '{}'; exit 4", pid_file.display());
+        let started = Instant::now();
+        let outcome = run_discarding_output_within(&mut sh(&script), Duration::from_secs(5)).unwrap();
+        assert_eq!((outcome.code(), outcome.timed_out), (Some(4), false));
+        assert!(started.elapsed() < Duration::from_secs(1), "{:?}", started.elapsed());
+        let child: i32 = std::fs::read_to_string(&pid_file).unwrap().trim().parse().unwrap();
+        assert!(
+            !gone_within(child, Duration::from_millis(300)),
+            "the leftover child {child} was killed"
+        );
+        // SAFETY: kill only signals the child this test started.
+        unsafe { libc::kill(child, libc::SIGKILL) };
+        // Past it: the command and what it started are killed.
+        std::fs::remove_file(&pid_file).unwrap();
+        let script = format!("sleep 30 & echo $! > '{}'; wait", pid_file.display());
+        let outcome = run_discarding_output_within(&mut sh(&script), Duration::from_millis(300)).unwrap();
+        assert!(outcome.timed_out);
+        let child: i32 = std::fs::read_to_string(&pid_file).unwrap().trim().parse().unwrap();
+        assert!(
+            gone_within(child, Duration::from_secs(2)),
+            "child {child} outlived the deadline"
         );
     }
 

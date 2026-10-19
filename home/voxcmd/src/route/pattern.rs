@@ -212,27 +212,43 @@ pub struct ModePatterns {
     pub exit_phrases: Option<WholeText>,
     pub drop: Option<WholeText>,
     pub keep: Option<WholeText>,
+    /// Each of `endings` as its action and its pattern expanded to a regex body, in order; `session::dictation::Ending`
+    /// anchors it in the ways an ending is matched.
+    pub endings: Vec<(String, String)>,
 }
 
-/// Compiles the patterns of the integration's `[mode]` (`exit_phrases`, `rewrite.drop`, `rewrite.keep`) in the verbs'
-/// dialect, minus placeholders: a turn's words are all there is to capture. None without a `[mode]`. The error is
-/// `file:line: message`.
+/// Compiles the patterns of the integration's `[mode]` (`exit_phrases`, `rewrite.drop`, `rewrite.keep`, each of
+/// `endings`) in the verbs' dialect, minus placeholders: a turn's words are all there is to capture. None without a
+/// `[mode]`. The error is `file:line: message`.
 pub fn compile_mode(integration: &Integration, intents: &Intents) -> Result<Option<ModePatterns>, String> {
     let Some(mode) = &integration.mode else {
         return Ok(None);
     };
-    let compile_one = |key: &'static str, pattern: &str| -> Result<WholeText, String> {
-        let fail = |message: String| {
-            let line = mode.pattern_lines.get(key).copied().unwrap_or(1);
-            format!("{}:{line}: [mode] {key}: {message}", integration.file.display())
-        };
+    let expand_at = |key: &'static str, line: usize, pattern: &str| -> Result<String, String> {
+        let fail = |message: String| format!("{}:{line}: [mode] {key}: {message}", integration.file.display());
         let mut placeholders = Vec::new();
         let body = expand_toml(integration, pattern, intents, &mut placeholders, 0).map_err(fail)?;
         if let Some(placeholder) = placeholders.first() {
             return Err(fail(format!("{{{}}} has nothing to capture here", placeholder.name)));
         }
-        WholeText::new(&body).map_err(|error| fail(error.to_string()))
+        WholeText::new(&body).map_err(|error| fail(error.to_string()))?;
+        Ok(body)
     };
+    let compile_one = |key: &'static str, pattern: &str| -> Result<WholeText, String> {
+        let line = mode.pattern_lines.get(key).copied().unwrap_or(1);
+        let body = expand_at(key, line, pattern)?;
+        Ok(WholeText::new(&body).expect("checked by expand_at"))
+    };
+    let endings = mode
+        .endings
+        .iter()
+        .map(|ending| {
+            Ok((
+                ending.action.clone(),
+                expand_at("endings", ending.line, &ending.pattern)?,
+            ))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     let rewrite = mode.rewrite.as_ref();
     Ok(Some(ModePatterns {
         exit_phrases: Some(mode.exit_phrases.as_str())
@@ -247,6 +263,7 @@ pub fn compile_mode(integration: &Integration, intents: &Intents) -> Result<Opti
             .and_then(|rewrite| rewrite.keep.as_deref())
             .map(|pattern| compile_one("keep", pattern))
             .transpose()?,
+        endings,
     }))
 }
 
@@ -711,6 +728,28 @@ mod tests {
             let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), &text).unwrap();
             let error = compile_mode(&integration, &Intents::default()).unwrap_err();
             assert!(error.starts_with("m.toml:3: [mode] exit_phrases: "), "{error}");
+        }
+    }
+
+    #[test]
+    fn mode_endings_expand_their_object_and_a_bad_one_names_its_own_line() {
+        let text = "verbs = []\n[mode]\nexit_object = 'typing'\none_recording = true\nhandle_turn = 'x'\nendings = [\n  \
+                    { action = \"type\", match = 'stop|{mode_exit}' },\n  { action = \"send\", match = 'send( it)?' },\n]\n";
+        let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), text).unwrap();
+        let endings = compile_mode(&integration, &Intents::default())
+            .unwrap()
+            .unwrap()
+            .endings;
+        assert_eq!(endings.len(), 2);
+        assert_eq!(endings[1], ("send".to_string(), "send( it)?".to_string()));
+        let stop = WholeText::new(&endings[0].1).unwrap();
+        assert!(stop.is_match("stop") && stop.is_match("okay stop typing please") && !stop.is_match("stop it"));
+        for (bad, says) in [("send (", "unclosed"), ("send {target}", "nothing to capture")] {
+            let broken = text.replace("send( it)?", bad);
+            let integration = crate::config::schema::parse_toml(std::path::Path::new("m.toml"), &broken).unwrap();
+            let error = compile_mode(&integration, &Intents::default()).unwrap_err();
+            assert!(error.starts_with("m.toml:8: [mode] endings: "), "{error}");
+            assert!(error.to_lowercase().contains(says), "{error}");
         }
     }
 

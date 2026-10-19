@@ -51,7 +51,11 @@ impl Ending {
     pub fn from_row(row: &str) -> Option<Self> {
         let row = row.trim();
         let (action, body) = row.split_once(char::is_whitespace).unwrap_or((row, ""));
-        let body = body.trim_start();
+        Self::new(action, body.trim_start())
+    }
+
+    /// An ending from its action and its regex body (a TOML ending's `match`, expanded). None when it does not compile.
+    pub fn new(action: &str, body: &str) -> Option<Self> {
         Some(Self {
             action: action.to_string(),
             whole: WholeText::new(body).ok()?,
