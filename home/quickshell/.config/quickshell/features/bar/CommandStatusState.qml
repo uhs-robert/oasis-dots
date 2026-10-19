@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 
 // Machine-local status commands from custom/command-status.json, each polled into one pill of the cmdstatus module.
 Singleton {
@@ -148,23 +149,11 @@ Singleton {
             required property var modelData
             readonly property var entry: runner.modelData
 
-            // Exit and end of stdout arrive in either order; the result settles once both are in.
-            property int exit_code: 0
-            property bool exited: false
-            property bool drained: false
             property bool click_exited: false
 
-            // A run still going skips this refresh, so a slow command never stacks up.
             function run() {
-                if (!root.polling || runner.status_proc.running) return;
-                runner.exited = false;
-                runner.drained = false;
-                runner.status_proc.running = true;
-            }
-
-            function settle() {
-                if (!runner.exited || !runner.drained) return;
-                root.set_result(runner.entry.id, root.result_from_output(runner.entry.id, runner.exit_code, status_out.text, status_err.text));
+                if (!root.polling) return;
+                runner.status_poll.run();
             }
 
             function click(right) {
@@ -175,29 +164,13 @@ Singleton {
                 runner.click_proc.running = true;
             }
 
-            readonly property Process status_proc: Process {
+            readonly property PolledCommand status_poll: PolledCommand {
                 command: runner.entry.command
-                stdout: StdioCollector {
-                    id: status_out
-                    onStreamFinished: {
-                        runner.drained = true;
-                        runner.settle();
-                    }
-                }
-                stderr: StdioCollector {
-                    id: status_err
-                }
-                onExited: code => {
-                    runner.exit_code = code;
-                    runner.exited = true;
-                    runner.settle();
-                }
-                // A command that cannot start (a missing argv executable) stops running without exited or the end of
-                // stdout, so it would never settle.
-                onRunningChanged: {
-                    if (!runner.status_proc.running && !runner.exited)
-                        root.set_result(runner.entry.id, root.error_result(runner.entry.id, "could not start " + runner.entry.command[0]));
-                }
+                collect_stderr: true
+                enabled: root.polling
+                interval_ms: runner.entry.interval_ms > 0 ? Math.max(runner.entry.interval_ms, root.min_interval_ms) : 0
+                onFinished: (code, out, err) => root.set_result(runner.entry.id, root.result_from_output(runner.entry.id, code, out, err))
+                onStart_failed: root.set_result(runner.entry.id, root.error_result(runner.entry.id, "could not start " + runner.entry.command[0]))
             }
 
             // A click usually changes what the status command reports, so it reruns once the click's command ends.
@@ -210,14 +183,6 @@ Singleton {
                     if (!runner.click_proc.running && !runner.click_exited)
                         root.set_result(runner.entry.id, root.error_result(runner.entry.id, "could not start " + runner.click_proc.command[0]));
                 }
-            }
-
-            readonly property Timer poll: Timer {
-                interval: Math.max(runner.entry.interval_ms, root.min_interval_ms)
-                running: root.polling && runner.entry.interval_ms > 0
-                repeat: true
-                triggeredOnStart: true
-                onTriggered: runner.run()
             }
 
             // An interval of 0 still runs once when the module appears, then only on a click or IPC refresh.

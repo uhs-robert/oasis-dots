@@ -58,14 +58,6 @@ Singleton {
         warned_file.setText(JSON.stringify(next));
     }
 
-    Timer {
-        interval: root.poll_ms
-        running: PowerSource.on_ac && KeeptabsState.available
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root.refresh(false)
-    }
-
     // A finished agent is exactly when usage just moved; the tooltip lists each session's state.
     property int done_count: 0
     Connections {
@@ -82,12 +74,11 @@ Singleton {
     readonly property var line_pattern: /^(Current [^:]+):\s*(\d+)%\s*used(?:\s*[·-]\s*resets\s*(.+))?$/
 
     function refresh(force) {
-        if (fetch_proc.running) return;
+        if (poll.busy) return;
         if (!force && root.updated > 0 && Date.now() - root.updated < root.max_age_ms) return;
         root.loading = true;
         root.error = "";
-        fetch_proc.running = true;
-        timeout_timer.restart();
+        poll.run();
     }
 
     function parse(result_text) {
@@ -100,40 +91,38 @@ Singleton {
         return out;
     }
 
-    Process {
-        id: fetch_proc
-        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "claude", "-p", "/usage", "--output-format", "json", "--no-session-persistence"]
-        onExited: code => {
-            timeout_timer.stop();
-            root.loading = false;
-            if (code !== 0 && !root.error) root.error = "claude /usage exited with code " + code;
-        }
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const data = JSON.parse(text);
-                    if (data.is_error) {
-                        root.error = "claude /usage reported an error";
-                        return;
-                    }
-                    const parsed = root.parse(data.result);
-                    if (parsed.length === 0) {
-                        root.error = "could not parse usage output";
-                        return;
-                    }
+    // Sets `rows`/`updated` or `error` from the command's JSON, then the exit-code error if none was set.
+    function apply_output(code, text) {
+        try {
+            const data = JSON.parse(text);
+            if (data.is_error) {
+                root.error = "claude /usage reported an error";
+            } else {
+                const parsed = root.parse(data.result);
+                if (parsed.length === 0) {
+                    root.error = "could not parse usage output";
+                } else {
                     root.rows = parsed;
                     root.updated = Date.now();
                     root.error = "";
-                } catch (e) {
-                    root.error = "claude /usage failed: " + e;
                 }
             }
+        } catch (e) {
+            root.error = "claude /usage failed: " + e;
         }
+        if (code !== 0 && !root.error) root.error = "claude /usage exited with code " + code;
+        root.loading = false;
     }
 
-    Timer {
-        id: timeout_timer
-        interval: root.timeout_ms
-        onTriggered: if (fetch_proc.running) fetch_proc.running = false
+    PolledCommand {
+        id: poll
+        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "claude", "-p", "/usage", "--output-format", "json", "--no-session-persistence"]
+        enabled: PowerSource.on_ac && KeeptabsState.available
+        interval_ms: root.poll_ms
+        // The tick only asks; refresh() applies the max-age rule.
+        auto_run: false
+        timeout_ms: root.timeout_ms
+        onDue: root.refresh(false)
+        onFinished: (code, out) => root.apply_output(code, out)
     }
 }
