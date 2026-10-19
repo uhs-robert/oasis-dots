@@ -175,6 +175,7 @@ Item {
             visible: active
             sourceComponent: Goldeneye.WatchDial {
                 host: root
+                windows_on: WindowState.windows_on
                 workspaces: root.workspace_list
                 compact: root.compact
             }
@@ -185,6 +186,7 @@ Item {
             visible: active
             sourceComponent: Oasis.Constellation {
                 host: root
+                windows_on: WindowState.windows_on
                 workspaces: root.workspace_list
                 compact: root.compact
                 bar_height: root.bar_height

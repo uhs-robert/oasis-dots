@@ -3,7 +3,6 @@ import QtQuick.Shapes
 import Quickshell.Hyprland
 import qs.theme
 import qs.components
-import qs.features.windows
 
 // Workspaces as a constellation: a star per workspace with its apps beside it, stars linked across the gaps; the focused one a sand sparkle.
 Item {
@@ -12,6 +11,8 @@ Item {
     // The Workspaces module, for its icon, name and window helpers.
     required property Item host
     property var workspaces: []
+    // A workspace's toplevels, supplied by the host so this widget stays out of features/windows.
+    required property var windows_on
     property bool compact: false
     property int bar_height: 30
 
@@ -32,7 +33,7 @@ Item {
         const out = [];
         let x = 0;
         for (const w of root.workspaces) {
-            const k = WindowState.windows_on(w).length, wd = root.slot_width(k);
+            const k = root.windows_on(w).length, wd = root.slot_width(k);
             const end = k > 0 ? x + root.apps_x + k * root.glyph + (k - 1) * root.gap : x + root.star_x;
             out.push({ id: w.id, x: x, w: wd, cx: x + root.star_x, cy: root.bar_height / 2 + root.lifts[Math.abs(w.id) % 5], end: end, k: k, focused: w.focused, active: w.active });
             x += wd;
@@ -194,7 +195,7 @@ Item {
                 spacing: root.gap
 
                 Repeater {
-                    model: WindowState.windows_on(slot.modelData)
+                    model: root.windows_on(slot.modelData)
 
                     WorkspaceIcon {
                         host: root.host
