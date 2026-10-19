@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.ui
+import qs.features.popups.frames
 import qs.theme
 import qs.features.power
 import qs.features.voice

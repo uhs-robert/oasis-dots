@@ -3,11 +3,11 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
-import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.features.popups
+import qs.features.popups.frames
 import qs.features.audio
 import "Network.js" as Net
 

@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Bluetooth as QsBt
-import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.styles.nes.widgets as Nes
@@ -10,6 +9,7 @@ import qs.styles.ps1.widgets as Ps1
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.styles.snes.popups as Snes
 import qs.features.popups
+import qs.features.popups.frames
 import qs.features.audio
 
 Popup {

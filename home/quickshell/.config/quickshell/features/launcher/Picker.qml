@@ -1,10 +1,10 @@
 import QtQuick
 import Quickshell
 import Quickshell.Widgets
-import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.features.popups
+import qs.features.popups.frames
 import qs.features.audio
 import "../../core/Fuzzy.js" as Fuzzy
 

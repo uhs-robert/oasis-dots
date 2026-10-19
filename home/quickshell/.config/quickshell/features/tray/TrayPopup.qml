@@ -4,10 +4,10 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Hyprland
 import Quickshell.Widgets
-import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.features.popups
+import qs.features.popups.frames
 import qs.features.audio
 
 Popup {

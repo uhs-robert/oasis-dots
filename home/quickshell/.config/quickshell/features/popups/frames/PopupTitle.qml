@@ -128,7 +128,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: title_readout.anchors.rightMargin
         y: title_tab.y + (title_tab.height - height) / 2
-        source: active ? "../../styles/ps2/widgets/AnalogLed.qml" : ""
+        source: active ? "../../../styles/ps2/widgets/AnalogLed.qml" : ""
         onLoaded: item.lit = Qt.binding(() => root.wanted && root.layer_item.Window.active)
     }
 

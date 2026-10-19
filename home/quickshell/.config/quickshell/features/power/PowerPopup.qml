@@ -1,6 +1,6 @@
 import QtQuick
-import qs.ui
 import qs.features.popups
+import qs.features.popups.frames
 
 Popup {
     id: root

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import qs.ui
 import qs.ui.menu
 import qs.theme
 import qs.features.settings
@@ -10,6 +9,7 @@ import qs.features.launcher
 import qs.styles.snes.popups as Snes
 import qs.styles.ps2.widgets as Ps2
 import qs.features.popups
+import qs.features.popups.frames
 import qs.features.audio
 
 Popup {
