@@ -43,6 +43,13 @@ ShellRoot {
     property real started: 0
     property var done_steps: ({})
 
+    function try_all_setters() {
+        store.set_key("a", 99);
+        store.patch({ b: 98 });
+        store.replace({ a: 97 });
+        store.flush();
+    }
+
     function outside_write(path, text) {
         Quickshell.execDetached(["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && printf %s \"$2\" > \"$1.ext\" && mv \"$1.ext\" \"$1\"", "sh", path, text]);
     }
@@ -272,6 +279,93 @@ ShellRoot {
             ],
             end: 1000
         },
+        // A read-only store follows a file that is not ours. Every setter, also before the initial read arrives, must
+        // leave the file, its directory and the values alone.
+        ro_set_attempts: {
+            read_only: true,
+            block_loading: false,
+            init: () => root.try_all_setters(),
+            steps: [[300, () => root.try_all_setters()], [500, () => root.outside_write(root.store_path, '{"a":2,"b":1}')], [800, () => root.try_all_setters()]],
+            end: 1200
+        },
+        // Missing file and missing directory: defaults, nothing created.
+        ro_missing: {
+            path: root.dir + "/absent/store.json",
+            read_only: true,
+            block_loading: false,
+            init: () => root.try_all_setters(),
+            steps: [[300, () => root.try_all_setters()]],
+            end: 700
+        },
+        // Corrupt files of every shape read as the defaults and are left as they are.
+        ro_corrupt: {
+            read_only: true,
+            steps: [[200, () => store.set_key("a", 9)]],
+            end: 600
+        },
+        // A good file goes bad and comes back.
+        ro_corrupt_later: {
+            read_only: true,
+            steps: [
+                [200, () => root.outside_write(root.store_path, '{"a":3')],
+                [450, () => root.outside_write(root.store_path, '{"a":4,"b":4}')],
+                [700, () => root.outside_write(root.store_path, '[1,2]')]
+            ],
+            end: 1000
+        },
+        // The file shows up in a directory that exists.
+        ro_file_appears: {
+            read_only: true,
+            steps: [[200, () => root.outside_write(root.store_path, '{"a":5,"b":6}')]],
+            end: 700
+        },
+        // The directory shows up later; rearm() is what finds the file in it.
+        ro_dir_appears: {
+            path: root.dir + "/late/store.json",
+            read_only: true,
+            steps: [
+                [200, () => root.outside_write(root.dir + "/late/store.json", '{"a":5,"b":6}')],
+                [400, () => store.rearm()],
+                [700, () => root.outside_write(root.dir + "/late/store.json", '{"a":7,"b":8}')]
+            ],
+            end: 1100
+        },
+        ro_delete_recreate: {
+            read_only: true,
+            steps: [
+                [200, () => Quickshell.execDetached(["rm", root.store_path])],
+                [500, () => root.outside_write(root.store_path, '{"a":3,"b":3}')],
+                [800, () => Quickshell.execDetached(["rm", root.store_path])],
+                [1000, () => root.outside_write(root.store_path, '{"a":3,"b":3}')]
+            ],
+            end: 1400
+        },
+        // Many rewrites with no pause: the last one is what the store ends with. Renamed into place, then written in place.
+        ro_burst_rename: {
+            read_only: true,
+            steps: [[200, () => Quickshell.execDetached(["sh", "-c",
+                "for i in $(seq 1 40); do printf '{\"a\":%s,\"b\":0}' $i > \"$1.ext\" && mv \"$1.ext\" \"$1\"; done", "sh", root.store_path])]],
+            end: 900
+        },
+        ro_burst_inplace: {
+            read_only: true,
+            steps: [[200, () => Quickshell.execDetached(["sh", "-c",
+                "for i in $(seq 1 40); do printf '{\"a\":%s,\"b\":0}' $i > \"$1\"; done", "sh", root.store_path])]],
+            end: 900
+        },
+        // A list file (the cmdstatus config): an object where the list should be reads as the defaults.
+        ro_array_root: {
+            read_only: true,
+            array_root: true,
+            defaults: { entries: [] },
+            validate: raw => ({ entries: raw.map(e => e.id) }),
+            steps: [
+                [200, () => root.outside_write(root.store_path, '[{"id":"x"},{"id":"y"}]')],
+                [450, () => root.outside_write(root.store_path, '{"id":"z"}')],
+                [700, () => root.outside_write(root.store_path, '[{"id":"w"}]')]
+            ],
+            end: 1000
+        },
         // The watch was armed while the directory was missing: the first save makes it, and an edit after that must still arrive.
         watch_after_first_write: {
             path: root.dir + "/late/store.json",
@@ -292,6 +386,8 @@ ShellRoot {
         known_keys: root.plan.known_keys || Object.keys(root.plan.defaults || ({ a: 0, b: 0 }))
         debounce_ms: root.plan.debounce_ms || 0
         block_loading: root.plan.block_loading !== false
+        read_only: root.plan.read_only === true
+        array_root: root.plan.array_root === true
         after_save: root.plan.after_save || null
         onLoaded: {
             root.loaded_count += 1;

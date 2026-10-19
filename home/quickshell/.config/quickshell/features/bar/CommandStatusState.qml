@@ -14,7 +14,7 @@ Singleton {
     readonly property int min_interval_ms: 1000
     readonly property string error_glyph: "\u{f0026}"
 
-    property var entries: []
+    readonly property var entries: config.values.entries
     // id -> { text, tooltip, class, hidden }; an entry without a result yet has no key.
     property var results: ({})
     // Mounted cmdstatus modules; commands only run while one is on a bar.
@@ -65,7 +65,6 @@ Singleton {
     }
 
     function parse_entries(raw) {
-        if (!Array.isArray(raw)) throw new Error("expected a JSON array of entries");
         const out = [];
         const seen = [];
         raw.forEach((e, i) => {
@@ -114,22 +113,13 @@ Singleton {
         };
     }
 
-    FileView {
-        id: config_file
+    JsonStore {
+        id: config
         path: root.config_path
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                root.entries = root.parse_entries(JSON.parse(text()));
-            } catch (e) {
-                console.warn("cmdstatus: ignoring custom/command-status.json (" + e + ")");
-                root.entries = [];
-            }
-        }
-        onLoadFailed: error => root.entries = []
+        read_only: true
+        array_root: true
+        defaults: ({ entries: [] })
+        validate: raw => ({ entries: root.parse_entries(raw) })
     }
 
     onEntriesChanged: {

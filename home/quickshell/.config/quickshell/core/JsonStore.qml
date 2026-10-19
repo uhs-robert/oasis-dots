@@ -5,6 +5,10 @@ import Quickshell.Io
 // One settings object persisted as a JSON file: loaded and watched, written back debounced and atomically (tmp + rename).
 // A store singleton holds one as a child and exposes `values` through its own named properties.
 //
+// With `read_only` the file belongs to another program: the store only follows it. Its setters do nothing, it never
+// writes or makes the directory, and a file that is missing or not the expected JSON gives `defaults` (there is no
+// write of ours for a corrupt file to protect).
+//
 // A set in memory always beats the disk while it is unsaved: file changes that arrive while `dirty` or `writing` are ignored.
 // An external edit made inside that window is lost, as is any key it added.
 //
@@ -31,12 +35,15 @@ Scope {
     property int debounce_ms: 0
     property bool watch: true
     property bool block_loading: true
+    property bool read_only: false
+    // The file's top level is a JSON array, not an object (a user's list of entries); `validate` is then required.
+    property bool array_root: false
     // (values) -> argv or null, called when a write starts and never for a load. The argv runs once that write is on disk, so it describes the values that write carried.
     property var after_save: null
 
     // Replaced, never mutated, so bindings on it fire. Starts as a copy of `defaults`.
     property var values: Object.assign({}, root.defaults)
-    // The last parsed top-level object, {} when the file was missing or corrupt; for migrations that need old keys.
+    // The last parsed top level, {} when the file was missing or corrupt; for migrations that need old keys.
     property var raw: ({})
     // Read-only for callers.
     property bool loaded_once: false
@@ -89,6 +96,7 @@ Scope {
 
     // `keys` are the ones this edit set; before the initial load they are the only ones that beat the disk.
     function commit(next, keys) {
+        if (root.read_only) return;
         if (!root.loaded_once) {
             const early = Object.assign({}, root.early_keys);
             for (const key of keys) early[key] = true;
@@ -117,13 +125,20 @@ Scope {
         Qt.callLater(root.read_now);
     }
 
+    // For a file whose directory did not exist when the store started: a watch armed then never fires for it.
+    function rearm() {
+        root.rearming = true;
+        root.rearming = false;
+        root.reload();
+    }
+
     function read_now() {
         file.reload();
     }
 
     function start_write() {
         // A write in flight picks the newer values up from onSaved; the initial load starts the first one.
-        if (root.writing || !root.loaded_once) return;
+        if (root.read_only || root.writing || !root.loaded_once) return;
         root.writing = true;
         root.write_seq = root.edit_seq;
         if (root.dir_ready) {
@@ -222,11 +237,18 @@ Scope {
         const clean = typeof root.validate === "function" ? root.validate(parsed) : Object.assign({}, parsed);
         const extras = {};
         for (const key in parsed) {
-            if (root.known_keys.indexOf(key) < 0 && !(key in clean)) extras[key] = parsed[key];
+            if (!root.read_only && root.known_keys.indexOf(key) < 0 && !(key in clean)) extras[key] = parsed[key];
         }
         root.raw = parsed;
         root.extras = extras;
         root.values = clean;
+    }
+
+    function reset_to_defaults() {
+        root.raw = {};
+        root.extras = {};
+        root.values = Object.assign({}, root.defaults);
+        root.loaded();
     }
 
     Timer {
@@ -300,7 +322,7 @@ Scope {
             } catch (e) {
                 parsed = null;
             }
-            const usable = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);
+            const usable = parsed !== null && typeof parsed === "object" && Array.isArray(parsed) === root.array_root;
             if (root.dirty) {
                 root.merge_initial(usable ? parsed : null, text);
                 return;
@@ -308,7 +330,8 @@ Scope {
             root.synced_text = text;
             root.loaded_once = true;
             if (!usable) {
-                console.warn("JsonStore: " + root.path + " is not a JSON object; keeping the current values");
+                console.warn("JsonStore: " + root.path + " is not a JSON " + (root.array_root ? "array" : "object") + (root.read_only ? "; using the defaults" : "; keeping the current values"));
+                if (root.read_only) root.reset_to_defaults();
                 return;
             }
             root.adopt(parsed);
@@ -332,10 +355,7 @@ Scope {
             }
             root.loaded_once = true;
             root.synced_text = "";
-            root.raw = {};
-            root.extras = {};
-            root.values = Object.assign({}, root.defaults);
-            root.loaded();
+            root.reset_to_defaults();
         }
     }
 

@@ -18,7 +18,7 @@ Singleton {
 
     // wallpaper.json as last read or written; keys this UI does not know are kept when saving.
     readonly property var saved: store.values
-    property var status: ({})
+    readonly property var status: status_store.values
     // Assumed until a check says otherwise, so the not-running hint does not flash on every open.
     property bool alive: true
     // True while a Settings section is showing, which is when the rotator's pid is worth polling.
@@ -204,20 +204,10 @@ Singleton {
         onSave_failed: root.say("Could not save wallpaper settings")
     }
 
-    FileView {
+    // The rotator's report; a missing or broken file reads as no report.
+    JsonStore {
+        id: status_store
         path: root.status_path
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                root.status = data && typeof data === "object" && !Array.isArray(data) ? data : {};
-            } catch (e) {
-                root.status = {};
-            }
-        }
-        onLoadFailed: error => root.status = {}
+        read_only: true
     }
 }

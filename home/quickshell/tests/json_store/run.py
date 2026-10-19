@@ -426,6 +426,122 @@ def scenario_watch_after_first_write(state_home):
     return problems
 
 
+def untouched(problems, store_dir, expected_names, text):
+    """A read-only store leaves the file as given and creates nothing beside it (no tmp file, no directory)."""
+    expect(problems, "directory listing", sorted(os.listdir(store_dir)), sorted(expected_names))
+    if text is not None:
+        expect(problems, "file untouched", read(store_dir), text)
+
+
+def scenario_ro_set_attempts(state_home):
+    result, store_dir, problems = store_run("ro_set_attempts", state_home, seed='{"a":1,"b":0,"x":3}')
+    if problems:
+        return problems
+    # The outside edit at 500 ms is the last write to the file.
+    untouched(problems, store_dir, ["store.json"], '{"a":2,"b":1}')
+    expect(problems, "values follow the file", result["values"], {"a": 2, "b": 1})
+    expect(problems, "saved signals", result["saved_count"], 0)
+    expect(problems, "dirty/writing", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_ro_missing(state_home):
+    result, store_dir, problems = store_run("ro_missing", state_home)
+    if problems:
+        return problems
+    untouched(problems, store_dir, [], None)
+    expect(problems, "values", result["values"], {"a": 0, "b": 0})
+    expect(problems, "saved signals", result["saved_count"], 0)
+    expect(problems, "dirty/writing", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_ro_corrupt(state_home):
+    problems = []
+    for seed in ["{", "[1,2]", "5", "null", "", '"text"']:
+        sub = tempfile.mkdtemp(prefix="json_store_")
+        try:
+            result, store_dir, found = store_run("ro_corrupt", sub, seed=seed)
+            if found:
+                return found
+            label = "seed %r: " % seed
+            expect(problems, label + "values are the defaults", result["values"], {"a": 0, "b": 0})
+            expect(problems, label + "loaded() once", result["loaded_count"], 1)
+            untouched(problems, store_dir, ["store.json"], seed)
+        finally:
+            shutil.rmtree(sub, ignore_errors=True)
+    return problems
+
+
+def scenario_ro_corrupt_later(state_home):
+    result, store_dir, problems = store_run("ro_corrupt_later", state_home, seed='{"a":1,"b":1}')
+    if problems:
+        return problems
+    # Good, corrupt, good, list: each one a load, ending on the defaults.
+    expect(problems, "values after the list", result["values"], {"a": 0, "b": 0})
+    expect(problems, "loaded() count", result["loaded_count"], 4)
+    untouched(problems, store_dir, ["store.json"], "[1,2]")
+    return problems
+
+
+def scenario_ro_file_appears(state_home):
+    result, store_dir, problems = store_run("ro_file_appears", state_home)
+    if problems:
+        return problems
+    expect(problems, "values", result["values"], {"a": 5, "b": 6})
+    untouched(problems, store_dir, ["store.json"], '{"a":5,"b":6}')
+    return problems
+
+
+def scenario_ro_dir_appears(state_home):
+    result, store_dir, problems = store_run("ro_dir_appears", state_home)
+    if problems:
+        return problems
+    # The edit at 700 ms is seen only if rearm() re-armed the watch for the new directory.
+    expect(problems, "values", result["values"], {"a": 7, "b": 8})
+    untouched(problems, os.path.join(store_dir, "late"), ["store.json"], None)
+    return problems
+
+
+def scenario_ro_delete_recreate(state_home):
+    result, store_dir, problems = store_run("ro_delete_recreate", state_home, seed='{"a":1,"b":1}')
+    if problems:
+        return problems
+    expect(problems, "values", result["values"], {"a": 3, "b": 3})
+    # start, deleted, recreated, deleted, recreated with the same text as before the second delete
+    expect(problems, "loaded() count", result["loaded_count"], 5)
+    untouched(problems, store_dir, ["store.json"], '{"a":3,"b":3}')
+    return problems
+
+
+def burst_scenario(name, state_home):
+    result, store_dir, problems = store_run(name, state_home, seed='{"a":0,"b":0}')
+    if problems:
+        return problems
+    expect(problems, "values: last rewrite wins", result["values"], {"a": 40, "b": 0})
+    untouched(problems, store_dir, ["store.json"], '{"a":40,"b":0}')
+    return problems
+
+
+def scenario_ro_burst_rename(state_home):
+    return burst_scenario("ro_burst_rename", state_home)
+
+
+def scenario_ro_burst_inplace(state_home):
+    return burst_scenario("ro_burst_inplace", state_home)
+
+
+def scenario_ro_array_root(state_home):
+    result, store_dir, problems = store_run("ro_array_root", state_home, seed="[]")
+    if problems:
+        return problems
+    # [] at start, two entries, an object (the defaults), one entry.
+    expect(problems, "values", result["values"], {"entries": ["w"]})
+    expect(problems, "loaded() count", result["loaded_count"], 4)
+    untouched(problems, store_dir, ["store.json"], '[{"id":"w"}]')
+    return problems
+
+
 SCENARIOS = {
     "atomic": scenario_atomic,
     "firstrun": scenario_firstrun,
@@ -456,6 +572,16 @@ SCENARIOS = {
     "edit_during_failed_flush": scenario_edit_during_failed_flush,
     "same_values_after_failed_write": scenario_same_values_after_failed_write,
     "watch_after_first_write": scenario_watch_after_first_write,
+    "ro_set_attempts": scenario_ro_set_attempts,
+    "ro_missing": scenario_ro_missing,
+    "ro_corrupt": scenario_ro_corrupt,
+    "ro_corrupt_later": scenario_ro_corrupt_later,
+    "ro_file_appears": scenario_ro_file_appears,
+    "ro_dir_appears": scenario_ro_dir_appears,
+    "ro_delete_recreate": scenario_ro_delete_recreate,
+    "ro_burst_rename": scenario_ro_burst_rename,
+    "ro_burst_inplace": scenario_ro_burst_inplace,
+    "ro_array_root": scenario_ro_array_root,
 }
 
 

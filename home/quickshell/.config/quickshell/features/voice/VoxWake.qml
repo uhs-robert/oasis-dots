@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 
 // Whether voxcmd's wake word listener holds the microphone, read from the file the listener keeps while it runs:
 // {"state": "armed" | "ready" | "paused", "reason": <name of the check that paused>}. Paused has released the microphone;
@@ -14,8 +15,8 @@ Singleton {
     // The listener's trigger started a recording: speak now.
     readonly property bool ready: state === "ready"
     readonly property bool paused: state === "paused"
-    property string state: ""
-    property string reason: ""
+    readonly property string state: wake.values.state
+    readonly property string reason: wake.values.reason
     // Why the listener is paused, in words for a tooltip.
     readonly property string paused_text: {
         const why = {
@@ -27,34 +28,19 @@ Singleton {
         return why ? "Wake word paused: " + why : "Wake word paused";
     }
 
-    FileView {
-        id: wake_file
+    JsonStore {
+        id: wake
         path: VoxSession.voxcmd_dir + "/wake.json"
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                const wake = JSON.parse(text());
-                root.state = String(wake.state || "");
-                root.reason = String(wake.reason || "");
-            } catch (e) {
-                root.state = "";
-                root.reason = "";
-            }
-        }
-        onLoadFailed: error => {
-            root.state = "";
-            root.reason = "";
-        }
+        read_only: true
+        defaults: ({ state: "", reason: "" })
+        validate: raw => ({ state: String(raw.state || ""), reason: String(raw.reason || "") })
     }
 
     // VoxSession finds the folder once voxcmd has made it; a watch reports a file only in a folder that exists.
     Connections {
         target: VoxSession
         function onVoxcmd_dir_existsChanged() {
-            wake_file.reload();
+            wake.rearm();
         }
     }
 }
