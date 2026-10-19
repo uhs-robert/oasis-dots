@@ -33,7 +33,7 @@ ff() {
 
 # Show fastfetch immediately on startup if not a floating terminal
 if [[ -o interactive && -n "$HYPRLAND_INSTANCE_SIGNATURE" && -z "$NO_FASTFETCH" ]]; then
-  is_floating=$(hyprctl activewindow -j 2>/dev/null | jq -r '.floating // empty')
+  is_floating=$(hyprctl activewindow -j 2>/dev/null | jq -r '.floating // empty' 2>/dev/null)
 
   if [[ "$is_floating" != "true" ]]; then
     fastfetch
