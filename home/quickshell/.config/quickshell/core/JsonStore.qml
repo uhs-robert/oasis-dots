@@ -5,8 +5,16 @@ import Quickshell.Io
 // One settings object persisted as a JSON file: loaded and watched, written back debounced and atomically (tmp + rename).
 // A store singleton holds one as a child and exposes `values` through its own named properties.
 //
-// A set in memory always beats the disk while it is unsaved: file changes that arrive while `dirty` or `writing` are ignored, which also covers the reload our own write causes.
+// A set in memory always beats the disk while it is unsaved: file changes that arrive while `dirty` or `writing` are ignored.
 // An external edit made inside that window is lost, as is any key it added.
+//
+// FileView is never asked to read or write from inside its own signals: it clears its live operation after emitting,
+// which orphans one started in a handler (its saved never comes, and a read can then run beside the write and deliver
+// older text). Both go through Qt.callLater, also for a set made from a `loaded` or `saved` handler.
+//
+// Echoes need no record of our writes. FileView disowns a read in flight when a write starts and ignores reload() while
+// its write is live, so every load we receive was read after our last write landed. A load of `synced_text` changes
+// nothing and is skipped; any other text is an edit, even one that restores an earlier write of ours.
 Scope {
     id: root
 
@@ -39,9 +47,16 @@ Scope {
     signal after_save_done(int code)
 
     property var extras: ({})
-    // Texts of our recent writes. The reload each write causes can arrive late and read an earlier one, so any of them is an echo, until an outside edit is adopted.
-    property var own_writes: []
-    property string last_corrupt: ""
+    // Mirrors the text FileView holds: our last write, or the last load ("" for a missing file). setText of that same
+    // text is skipped by FileView and never answered with saved or saveFailed. Unwritten when that write failed.
+    property string view_text: ""
+    property bool view_text_unwritten: false
+    // The text `values` were last reconciled with: our last write, the last load adopted or found corrupt, "" when missing.
+    property string synced_text: ""
+    // FileView drops a reload() asked while it is reading, so a change seen then is reread once that read is in.
+    // It starts reading as soon as it has its path.
+    property bool reading: true
+    property bool reread: false
     property bool dir_ready: false
     // The after_save argv of the write in flight, computed from the values that write carries.
     property var pending_argv: null
@@ -72,6 +87,16 @@ Scope {
     }
 
     function reload() {
+        if (root.writing) return;
+        if (root.reading) {
+            root.reread = true;
+            return;
+        }
+        root.reading = true;
+        Qt.callLater(root.read_now);
+    }
+
+    function read_now() {
         file.reload();
     }
 
@@ -80,7 +105,7 @@ Scope {
         if (root.writing) return;
         root.writing = true;
         if (root.dir_ready) {
-            root.write_now();
+            Qt.callLater(root.write_now);
             return;
         }
         mkdir_proc.command = ["mkdir", "-p", root.path.substring(0, root.path.lastIndexOf("/"))];
@@ -90,9 +115,28 @@ Scope {
     function write_now() {
         const text = JSON.stringify(Object.assign({}, root.extras, root.values));
         root.dirty = false;
-        root.own_writes = root.own_writes.concat([text]).slice(-4);
         root.pending_argv = typeof root.after_save === "function" ? root.after_save(root.values) : null;
+        root.synced_text = text;
+        if (text === root.view_text) {
+            // FileView would skip this setText without a word.
+            if (root.view_text_unwritten) root.fail_write("unchanged since the failed write");
+            else root.finish_write();
+            return;
+        }
+        // The write disowns any read in flight.
+        root.reading = false;
+        root.reread = false;
+        root.view_text = text;
         file.setText(text);
+    }
+
+    function finish_write() {
+        root.writing = false;
+        root.saved();
+        const argv = root.pending_argv;
+        root.pending_argv = null;
+        root.run_after_save(argv);
+        if (root.dirty && !save_timer.running) root.start_write();
     }
 
     function fail_write(error) {
@@ -120,8 +164,6 @@ Scope {
         for (const key in parsed) {
             if (root.known_keys.indexOf(key) < 0 && !(key in clean)) extras[key] = parsed[key];
         }
-        // A file that went back to our last write is an edit to adopt, not the echo of that write.
-        root.own_writes = [];
         root.raw = parsed;
         root.extras = extras;
         root.values = clean;
@@ -166,27 +208,32 @@ Scope {
         printErrors: false
         blockLoading: root.block_loading
         atomicWrites: true
-        watchChanges: root.watch && !root.rearming
-
-        onFileChanged: {
-            if (!root.dirty && !root.writing) root.reload();
-        }
+        watchChanges: false
 
         onSaved: {
-            root.writing = false;
-            root.saved();
-            const argv = root.pending_argv;
-            root.pending_argv = null;
-            root.run_after_save(argv);
-            if (root.dirty && !save_timer.running) root.start_write();
+            root.view_text_unwritten = false;
+            root.finish_write();
         }
 
-        onSaveFailed: error => root.fail_write(error)
+        onSaveFailed: error => {
+            root.view_text_unwritten = true;
+            root.fail_write(error);
+        }
 
         onLoaded: {
-            if (root.dirty || root.writing) return;
             const text = file.text();
-            if (root.loaded_once && root.own_writes.indexOf(text) >= 0) return;
+            root.view_text = text;
+            root.view_text_unwritten = false;
+            root.reading = false;
+            if (root.reread) {
+                // This read may have started before the change that asked for it.
+                root.reread = false;
+                root.reload();
+                return;
+            }
+            if (root.dirty || root.writing) return;
+            if (root.loaded_once && text === root.synced_text) return;
+            root.synced_text = text;
             let parsed = null;
             try {
                 parsed = JSON.parse(text);
@@ -195,23 +242,42 @@ Scope {
             }
             root.loaded_once = true;
             if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-                if (text !== root.last_corrupt) console.warn("JsonStore: " + root.path + " is not a JSON object; keeping the current values");
-                root.last_corrupt = text;
+                console.warn("JsonStore: " + root.path + " is not a JSON object; keeping the current values");
                 return;
             }
-            root.last_corrupt = "";
             root.adopt(parsed);
             root.loaded();
         }
 
         onLoadFailed: error => {
+            root.view_text = "";
+            root.view_text_unwritten = false;
+            root.reading = false;
+            if (root.reread) {
+                root.reread = false;
+                root.reload();
+                return;
+            }
             if (root.dirty || root.writing) return;
             root.loaded_once = true;
-            root.own_writes = [];
+            root.synced_text = "";
             root.raw = {};
             root.extras = {};
             root.values = Object.assign({}, root.defaults);
             root.loaded();
+        }
+    }
+
+    // The watch lives apart from `file` because FileView's reload() rebuilds its watch after starting the read, so a
+    // change landing in between would never be reported. This one is never reloaded and keeps its watch.
+    FileView {
+        path: root.path
+        preload: false
+        printErrors: false
+        watchChanges: root.watch && !root.rearming
+
+        onFileChanged: {
+            if (!root.dirty && !root.writing) root.reload();
         }
     }
 }
