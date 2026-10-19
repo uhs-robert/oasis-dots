@@ -17,7 +17,7 @@ Singleton {
     readonly property var image_extensions: ["png", "jpg", "jpeg", "webp", "bmp"]
 
     // wallpaper.json as last read or written; keys this UI does not know are kept when saving.
-    property var saved: ({})
+    readonly property var saved: store.values
     property var status: ({})
     // Assumed until a check says otherwise, so the not-running hint does not flash on every open.
     property bool alive: true
@@ -49,16 +49,14 @@ Singleton {
     }
 
     function set_value(key, value) {
-        root.saved = Object.assign({}, root.saved, { [key]: value });
-        save_timer.restart();
+        store.set_key(key, value);
     }
 
     // Removes a key, so the rotator falls back to the config-file value.
     function clear_value(key) {
         const next = Object.assign({}, root.saved);
         delete next[key];
-        root.saved = next;
-        save_timer.restart();
+        store.replace(next);
     }
 
     function set_pin(description, path) {
@@ -158,27 +156,6 @@ Singleton {
         onTriggered: root.notice = ""
     }
 
-    Timer {
-        id: save_timer
-        interval: 300
-        onTriggered: {
-            if (save_proc.running) {
-                save_timer.restart();
-                return;
-            }
-            save_proc.command = ["sh", "-c", "mkdir -p \"$1\" && printf %s \"$2\" > \"$1/wallpaper.json.tmp\" && mv \"$1/wallpaper.json.tmp\" \"$1/wallpaper.json\"",
-                "sh", Paths.hypr_state_dir, JSON.stringify(root.saved)];
-            save_proc.running = true;
-        }
-    }
-
-    Process {
-        id: save_proc
-        onExited: code => {
-            if (code !== 0) root.say("Could not save wallpaper settings");
-        }
-    }
-
     Process {
         id: folder_proc
         property string path: ""
@@ -220,25 +197,11 @@ Singleton {
         }
     }
 
-    // A reload during a pending save would swap in the older file and drop the edit.
-    FileView {
+    JsonStore {
+        id: store
         path: root.settings_path
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            if (save_timer.running || save_proc.running) return;
-            try {
-                const data = JSON.parse(text());
-                root.saved = data && typeof data === "object" && !Array.isArray(data) ? data : {};
-            } catch (e) {
-                console.warn("WallpaperSettings: invalid wallpaper.json (" + e + ")");
-            }
-        }
-        onLoadFailed: error => {
-            if (!save_timer.running && !save_proc.running) root.saved = {};
-        }
+        debounce_ms: 300
+        onSave_failed: root.say("Could not save wallpaper settings")
     }
 
     FileView {
