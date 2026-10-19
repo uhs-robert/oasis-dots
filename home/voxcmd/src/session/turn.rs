@@ -313,7 +313,7 @@ pub fn silence(me: u32, heard_mode: &str) {
     };
     if state["one_recording"] == json!(true) {
         drop(lock);
-        dictation::finish_recording("", true, heard_mode, &Replacements::default(), me);
+        dictation::finish_recording("", true, heard_mode, None, me);
         return;
     }
     super::leave(&lock, &text_of(&state["kind"]), "nothing was said", me);
@@ -324,7 +324,7 @@ pub fn silence(me: u32, heard_mode: &str) {
 /// A recording that ended with no transcript: the session listens again, and a one-recording mode is over.
 pub fn heard_nothing(me: u32, heard_mode: &str) {
     if super::read_state().is_some_and(|state| state["one_recording"] == json!(true)) {
-        dictation::finish_recording("", false, heard_mode, &Replacements::default(), me);
+        dictation::finish_recording("", false, heard_mode, None, me);
     } else {
         continue_turns(Outcome::Unheard, me);
     }
@@ -376,7 +376,7 @@ pub fn session_turn(runner: &Runner, transcript: &str, heard_mode: &str, heard_p
         return;
     }
     if mode.one_recording {
-        dictation::finish_recording(transcript, false, heard_mode, &runner.router.config().replacements, me);
+        dictation::finish_recording(transcript, false, heard_mode, Some(runner), me);
         return;
     }
     let outcome = TurnRun {

@@ -1,15 +1,15 @@
 //! one-recording modes (type mode): how the mode's one recording ended, and what becomes of its text (was
 //! `session_ending_action`, `session_record_ending_locked`, `watcher_record_ending`, `dictation_wake_heard`,
-//! `dictation_heard_in_locked`, `stop_voice_recording_locked`, `session_cut_ending`, `session_ending_starts`,
-//! `session_finish_recording` and `session_leave_recording_mode_locked`)
+//! `dictation_heard_in_locked`, `stop_voice_recording_locked`, `session_cut_ending`, `session_chain_text`,
+//! `session_ending_starts`, `session_finish_recording` and `session_leave_recording_mode_locked`)
 //!
 //! Whoever ends the recording first records how, as the current mode's `.ending` `{action, by}`, under the session
 //! lock; the watcher reads it once the transcript is in. `by` is `voice` (the wake word and one of the mode's endings,
 //! which voxcmd-wake confirms during the recording), `key` (Stop Voice), or the detector's `cap`, `pause` or `idle`.
 //! The voice key stops the recording without an ending, which reads as `{type, voice_key}`. `action` is the ending
 //! row's: `discard` cancels the recording, `end_session` ends the session once the text is handled, and any other is
-//! handed to the mode's `handle_turn` with the text. An ending followed by "and then" (a chain) is voxcmd-port
-//! 2.4d-2's.
+//! handed to the mode's `handle_turn` with the text. A voice ending followed by "and then" also has `chain: true`, and
+//! the commands after it, found in the final transcript, run once the text is handled (`chain_text`).
 //!
 //! Nothing here holds the lock while a mode hook runs: typing.sh's `handle_turn` reads the session through the bridge,
 //! which takes the lock.
@@ -19,10 +19,15 @@ use super::{SessionLock, is_mine, mode_token, text_of};
 use crate::debug::debug;
 use crate::paths;
 use crate::route::pattern::WholeText;
+use crate::route::runner::Runner;
+use crate::route::sequence;
 use crate::text::normalize::{Replacements, apply_replacements, normalize};
 use crate::text::wake_word::WakeWords;
+use crate::voice::chain_stop;
 use crate::voice::{secs_setting, voxtype_record, voxtype_state};
+use regex::Regex;
 use serde_json::{Value, json};
+use std::sync::LazyLock;
 
 /// One of a mode's ways to end its recording after the wake word.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,7 +37,13 @@ pub struct Ending {
     whole: WholeText,
     /// The start of the words, whatever follows: the dictation's own transcriber may hear a word more than the clip's.
     starting: WholeText,
+    /// The words followed by what starts a chain (`CHAIN_TAIL`).
+    chained: WholeText,
 }
+
+/// What follows an ending that starts a chain: "and then" with or without the words after it (the wake clip is cut
+/// early), or "then" with words, since the clip's normalizing took the comma off ", then".
+const CHAIN_TAIL: &str = "(?: and then(?: .*)?| then .+)";
 
 impl Ending {
     /// A bash `ending=` row, `<action> <regex>`, split as `read -r action regex` splits it. None when the regex does
@@ -45,6 +56,7 @@ impl Ending {
             action: action.to_string(),
             whole: WholeText::new(body).ok()?,
             starting: WholeText::new(&format!("(?:{body})(?: .*)?")).ok()?,
+            chained: WholeText::new(&format!("(?:{body}){CHAIN_TAIL}")).ok()?,
         })
     }
 }
@@ -54,6 +66,14 @@ pub fn ending_action<'a>(endings: &'a [Ending], words: &str) -> Option<&'a str> 
     endings
         .iter()
         .find(|ending| ending.whole.is_match(words))
+        .map(|ending| ending.action.as_str())
+}
+
+/// The action of the first ending that the normalized words are, followed by what starts a chain.
+fn chained_ending_action<'a>(endings: &'a [Ending], words: &str) -> Option<&'a str> {
+    endings
+        .iter()
+        .find(|ending| ending.chained.is_match(words))
         .map(|ending| ending.action.as_str())
 }
 
@@ -67,13 +87,18 @@ fn is_set(value: &Value) -> bool {
 }
 
 /// Records how the current mode's recording ended, unless an ending is recorded already: the first one wins, and this
-/// one then fails.
-fn record_ending(lock: &SessionLock, state: &Value, action: &str, by: &str) -> bool {
+/// one then fails. `chain` when words that run as commands follow the ending, which the watcher finds in the final
+/// transcript.
+fn record_ending(lock: &SessionLock, state: &Value, action: &str, by: &str, chain: bool) -> bool {
     if is_set(&state["ending"]) {
         return false;
     }
+    let mut ending = json!({"action": action, "by": by});
+    if chain {
+        ending["chain"] = json!(true);
+    }
     super::update(lock, |fields| {
-        fields.insert("ending".into(), json!({"action": action, "by": by}));
+        fields.insert("ending".into(), ending);
     });
     true
 }
@@ -88,13 +113,15 @@ pub fn watcher_record_ending(action: &str, by: &str, heard_mode: &str, me: u32) 
     if state["one_recording"] != Value::Bool(true) || mode_token(&state) != heard_mode {
         return false;
     }
-    record_ending(&lock, &state, action, by)
+    record_ending(&lock, &state, action, by, false)
 }
 
 /// The wake word, confirmed by voxcmd-wake in a clip cut while a `wake_listens` mode recorded: `after_wake` is the
 /// normalized words after its first wake word. When the words after the clip's last wake word are one of the mode's
 /// endings, records it and ends the recording: stopped, so the watcher gets the transcript, or cancelled for discard.
-/// Any other words leave the recording running.
+/// An ending followed by "and then" is recorded as a chain and the recording runs on until the next pause
+/// (`chain_stop`), so the commands after it are in the transcript; a cancel too, which drops only the dictation. Any
+/// other words leave the recording running.
 ///
 /// Under the lock, only while voxtype records, and only for the recording the trigger was heard in (`heard_in`,
 /// `<frame_id>:<owner>:<owner_start>`, which voxcmd-wake read from session.json then: the owner is the watcher of that
@@ -108,15 +135,26 @@ pub fn wake_heard(after_wake: &str, heard_in: &str, wake: &WakeWords) {
     // The clip holds dictation before the trigger too, which may say the wake word: the ending follows the last one.
     let words = wake.after_last(after_wake);
     let mode = ModeSettings::of(&text_of(&state["integration"]));
-    let Some(action) = ending_action(&mode.endings, &words) else {
-        debug("dictation: the wake word, not an ending");
-        return;
+    let (action, chain) = match ending_action(&mode.endings, &words) {
+        Some(action) => (action, false),
+        None => match chained_ending_action(&mode.endings, &words) {
+            Some(action) => (action, true),
+            None => {
+                debug("dictation: the wake word, not an ending");
+                return;
+            }
+        },
     };
-    if !record_ending(&lock, &state, action, "voice") {
+    if !record_ending(&lock, &state, action, "voice", chain) {
         return;
     }
     debug(&format!("dictation: ended by voice ({action})"));
-    if action == "discard" {
+    if chain {
+        // Before the discard branch: a chained cancel is stopped, not cancelled, so its commands reach the transcript.
+        debug("dictation: a chain follows the ending, recording until the next pause");
+        let settings = chain_stop::autostop_settings(&text_of(&state["owner"]));
+        chain_stop::start(heard_in, &settings);
+    } else if action == "discard" {
         if let Ok(owner) = text_of(&state["owner"]).parse::<u32>() {
             touch(&paths::discard_flag(owner));
         }
@@ -131,7 +169,7 @@ fn touch(path: &std::path::Path) {
 }
 
 /// The session, when its mode is a `wake_listens` one, voxtype records, and the recording is the one named.
-fn heard_in_locked(lock: &SessionLock, heard_in: &str) -> Option<Value> {
+pub(crate) fn heard_in_locked(lock: &SessionLock, heard_in: &str) -> Option<Value> {
     let state = super::state(lock)?;
     if state["wake_listens"] != Value::Bool(true) || voxtype_state() != "recording" {
         return None;
@@ -159,7 +197,7 @@ pub fn stop_recording_locked(lock: &SessionLock) -> bool {
     let Some(state) = super::state(lock).filter(super::recording_owner_holds) else {
         return false;
     };
-    if !record_ending(lock, &state, "type", "key") {
+    if !record_ending(lock, &state, "type", "key", false) {
         if text_of(&state["ending"]["action"]) == "discard" {
             return false;
         }
@@ -194,10 +232,35 @@ fn cut_ending(transcript: &str, endings: &[Ending], wake: &WakeWords, replacemen
     }
 }
 
+/// A bare "then", tried after the router's "and then" / ", then" and counted only right after the ending: the clip that
+/// recorded the chain lost the comma and the final transcript may have none either.
+static BARE_THEN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)(?:^|[^\p{L}\p{N}])then(?:[^\p{L}\p{N}]|$)").expect("fixed pattern"));
+
+/// The words after the "and then" (or ", then", or a bare "then") that follows the ending, from the transcript's last
+/// wake word on, as spoken, for the router to run as an ordinary sequence; none when the ending is not followed by
+/// one. An "and then" in the dictation before the wake word is text, and so is one after words that are no ending.
+/// Only the first of each separator is tried, as bash did.
+fn chain_text(transcript: &str, endings: &[Ending], wake: &WakeWords, replacements: &Replacements) -> Option<String> {
+    let rest = wake.after_last_raw(transcript).unwrap_or_default();
+    for separator in [&*sequence::SEPARATOR, &*BARE_THEN] {
+        let Some(found) = separator.find(&rest) else {
+            continue;
+        };
+        let before = apply_replacements(&normalize(&rest[..found.start()]), replacements);
+        if ending_action(endings, &before).is_some() {
+            return Some(sequence::trim_step(&rest[found.end()..]).to_string());
+        }
+    }
+    None
+}
+
 /// The current mode's one recording is over (`discarded` when it was cancelled or heard no speech). Hands its text, cut
 /// of the ending, to the mode with the ending's action, then leaves the mode (or ends the session) saying why, and the
-/// mode underneath listens on. Nothing is handed over when it was discarded or cancelled, or heard only noise.
-pub fn finish_recording(transcript: &str, discarded: bool, heard_mode: &str, replacements: &Replacements, me: u32) {
+/// mode underneath listens on. Nothing is handed over when it was discarded or cancelled, or heard only noise. A
+/// chain after a voice ending is routed by `runner` once the mode is left; with no runner (the recording ended with no
+/// transcript) there is none to find.
+pub fn finish_recording(transcript: &str, discarded: bool, heard_mode: &str, runner: Option<&Runner>, me: u32) {
     let Some(state) = super::read_state().filter(|state| is_mine(state, me)) else {
         return;
     };
@@ -210,19 +273,34 @@ pub fn finish_recording(transcript: &str, discarded: bool, heard_mode: &str, rep
         ("type".to_string(), "voice_key".to_string())
     };
     debug(&format!("session: the {kind} recording ended ({by}, {action})"));
+    let no_replacements = Replacements::default();
+    let replacements = runner.map_or(&no_replacements, |runner| &runner.router.config().replacements);
+    let wake = WakeWords::from_env();
     let mut text = String::new();
     if action != "discard" && !discarded {
-        text = cut_ending(transcript, &mode.endings, &WakeWords::from_env(), replacements);
+        text = cut_ending(transcript, &mode.endings, &wake, replacements);
         if NOISE.is_match(&normalize(&text)) {
             text.clear();
         }
     }
+    // A cancel drops the dictation but not the chain after it. Compared as text, as bash's jq did, so a "true" string
+    // counts too.
+    let voice_chain = text_of(&state["ending"]["chain"]) == "true" && by == "voice";
+    let mut chain_commands = None;
+    if !discarded && voice_chain {
+        chain_commands = chain_text(transcript, &mode.endings, &wake, replacements);
+    }
     if !text.is_empty() {
         mode::handle_turn(&file, &text, Some(&action), heard_mode);
     }
-    // The mode is left first, so a chain after the ending (2.4d-2) runs as it would after "cortana stop typing", and
-    // not at all when Stop Voice ended the session meanwhile.
-    leave_recording_mode(&kind, &action, &mode, me);
+    // The mode is left first, so the commands run as they would after "cortana stop typing", and not at all when Stop
+    // Voice ended the session meanwhile.
+    if !leave_recording_mode(&kind, &action, &mode, me) {
+        chain_commands = None;
+    }
+    if let (Some(commands), Some(runner)) = (chain_commands.filter(|commands| !commands.is_empty()), runner) {
+        runner.route(&commands);
+    }
     turn::continue_turns(Outcome::Ran, me);
 }
 
@@ -357,6 +435,64 @@ end_session stop listening|stop everything|end session|end the session";
             cut("Hello. Cortana new paragraph. More."),
             "Hello. Cortana new paragraph. More."
         );
+    }
+
+    #[test]
+    fn an_ending_starts_a_chain_with_and_then_or_with_then_and_words() {
+        let endings = typing_endings();
+        for (words, action) in [
+            // The wake clip may be cut right after "and then".
+            ("stop and then", Some("type")),
+            ("send it and then tap tap beta", Some("send")),
+            ("cancel and then tap", Some("discard")),
+            ("stop typing then tap tap beta", Some("type")),
+            // A bare "then" needs words after it.
+            ("stop then", None),
+            ("stop andthen tap", None),
+            ("new paragraph and then more", None),
+            ("stop", None),
+        ] {
+            assert_eq!(chained_ending_action(&endings, words), action, "{words:?}");
+        }
+    }
+
+    #[test]
+    fn the_chain_is_what_follows_the_separator_after_the_last_wake_word_s_ending() {
+        let endings = typing_endings();
+        let wake = WakeWords::new("kortana|cortona");
+        let none = Replacements::default();
+        let chain = |transcript: &str| chain_text(transcript, &endings, &wake, &none);
+        assert_eq!(
+            chain("Ship it. Cortana send it and then tap tap beta.").as_deref(),
+            Some("tap tap beta")
+        );
+        assert_eq!(
+            chain("Some text. Cortana, stop typing, then tap tap beta.").as_deref(),
+            Some("tap tap beta")
+        );
+        // "and then" is tried first; where what precedes it is no ending, a bare "then" right after the ending is.
+        assert_eq!(
+            chain("Typed. Cortana stop typing then tap tap beta and then tap tap alpha.").as_deref(),
+            Some("tap tap beta and then tap tap alpha")
+        );
+        // All the steps go to the router, which refuses a sixth.
+        assert_eq!(
+            chain("Go. Cortana stop and then a and then b and then c and then d and then e and then f.").as_deref(),
+            Some("a and then b and then c and then d and then e and then f")
+        );
+        assert_eq!(chain("Secret. KORTANA, cancel and then tap.").as_deref(), Some("tap"));
+        assert_eq!(chain("Words. Cortana stop and then.").as_deref(), Some(""));
+        // Before the wake word, or after words that are no ending, "and then" is text.
+        assert_eq!(chain("First part and then tap tap beta. Cortana stop."), None);
+        assert_eq!(chain("Hello. Cortana new paragraph and then more."), None);
+        assert_eq!(chain("Note it and then go."), None);
+        // From the last wake word: an earlier one's ending and chain are dictation.
+        assert_eq!(
+            chain("Cortana stop and then go. Cortana new paragraph and then more."),
+            None
+        );
+        // Only the first "and then" is tried.
+        assert_eq!(chain("Cortana new paragraph and then stop and then go."), None);
     }
 
     #[test]

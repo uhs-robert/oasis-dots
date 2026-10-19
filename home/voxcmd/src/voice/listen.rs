@@ -10,10 +10,10 @@ use crate::debug::debug;
 use crate::exit::CliError;
 use crate::notify::{self, Kind};
 use crate::paths;
+use crate::process;
 use crate::session::mode::ModeSettings;
 use crate::session::{self, SessionLock, bridge, text_of};
 use serde_json::Value;
-use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -170,21 +170,7 @@ fn start_watcher(handler: Handler, session_listen: Option<&SessionListen>, owner
     if let Some(owner_file) = owner_file {
         command.env("VOXCMD_RECORDING_OWNER_FILE", owner_file);
     }
-    // An ask holding its stop signals, or a caller that ignores them, must not leave the watcher deaf to Stop Voice's
-    // TERM: exec keeps a blocked mask and an ignored signal.
-    // SAFETY: sigprocmask and signal are async-signal-safe and touch only the child.
-    unsafe {
-        command.pre_exec(|| {
-            let mut stop_set: libc::sigset_t = std::mem::zeroed();
-            libc::sigemptyset(&mut stop_set);
-            for signal in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
-                libc::signal(signal, libc::SIG_DFL);
-                libc::sigaddset(&mut stop_set, signal);
-            }
-            libc::sigprocmask(libc::SIG_UNBLOCK, &stop_set, std::ptr::null_mut());
-            Ok(())
-        });
-    }
+    process::hear_stop_signals(&mut command);
     match command.spawn() {
         Ok(watcher) => {
             debug(&format!(

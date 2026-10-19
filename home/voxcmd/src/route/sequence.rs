@@ -15,12 +15,12 @@ pub const MAX_STEPS: usize = 5;
 
 /// "and then", or a comma before "then" (never a bare "then": "then" alone is ordinary speech). Matched in the raw
 /// transcript, where the comma still is. The edges are one non-word character or the string's end.
-static SEPARATOR: LazyLock<Regex> = LazyLock::new(|| {
+pub static SEPARATOR: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?is)((?:^|[^\p{L}\p{N}])and\s+then|,\s*then)(?:[^\p{L}\p{N}]|$)").expect("fixed pattern")
 });
 
 /// The text without the whitespace and the `,;.` around it that the split leaves.
-fn trim_step(text: &str) -> &str {
+pub fn trim_step(text: &str) -> &str {
     text.trim_matches(|c: char| c.is_whitespace() || matches!(c, ',' | ';' | '.'))
 }
 
