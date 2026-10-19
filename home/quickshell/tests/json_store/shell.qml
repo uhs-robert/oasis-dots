@@ -203,6 +203,27 @@ ShellRoot {
             steps: [[100, () => store.set_key("a", 1)]],
             end: 800
         },
+        // An edit lands while a write that then fails is in flight: it must be tried, not dropped with the failed one.
+        // The set comes on the next turn of the event loop, after the write started (its mkdir is still running).
+        edit_during_failed_write: {
+            path: root.dir + "/blocker/store.json",
+            steps: [[100, () => {
+                store.set_key("a", 1);
+                Qt.callLater(() => store.set_key("a", 2));
+            }]],
+            end: 800
+        },
+        // Same through flush() with a debounce: nothing else would start a write for the newer edit.
+        edit_during_failed_flush: {
+            path: root.dir + "/blocker/store.json",
+            debounce_ms: 300,
+            steps: [[100, () => {
+                store.set_key("a", 1);
+                store.flush();
+                Qt.callLater(() => { store.set_key("a", 2); store.flush(); });
+            }]],
+            end: 900
+        },
         // The watch was armed while the directory was missing: the first save makes it, and an edit after that must still arrive.
         watch_after_first_write: {
             path: root.dir + "/late/store.json",

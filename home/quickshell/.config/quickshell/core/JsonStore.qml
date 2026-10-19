@@ -39,6 +39,9 @@ Scope {
     property bool loaded_once: false
     property bool dirty: false
     property bool writing: false
+    // Counts edits; `write_seq` is the count the write in flight carries, so a failure can tell a newer edit from its own content.
+    property int edit_seq: 0
+    property int write_seq: 0
 
     // After values were replaced from disk or reset to defaults; not for echoes of our own writes.
     signal loaded
@@ -76,6 +79,7 @@ Scope {
     function replace(next) {
         root.values = next;
         root.dirty = true;
+        root.edit_seq += 1;
         if (root.debounce_ms > 0) save_timer.restart();
         else root.start_write();
     }
@@ -104,6 +108,7 @@ Scope {
         // A write in flight picks the newer values up from onSaved.
         if (root.writing) return;
         root.writing = true;
+        root.write_seq = root.edit_seq;
         if (root.dir_ready) {
             Qt.callLater(root.write_now);
             return;
@@ -115,6 +120,7 @@ Scope {
     function write_now() {
         const text = JSON.stringify(Object.assign({}, root.extras, root.values));
         root.dirty = false;
+        root.write_seq = root.edit_seq;
         root.pending_argv = typeof root.after_save === "function" ? root.after_save(root.values) : null;
         root.synced_text = text;
         if (text === root.view_text) {
@@ -141,11 +147,18 @@ Scope {
 
     function fail_write(error) {
         root.writing = false;
-        root.dirty = false;
+        // Only an edit made after the failed write started stays dirty; the failed content is not retried, or an unwritable path would loop.
+        root.dirty = root.edit_seq !== root.write_seq;
         root.dir_ready = false;
         root.pending_argv = null;
         console.warn("JsonStore: could not write " + root.path + " (" + error + ")");
         root.save_failed(error);
+        if (root.dirty) Qt.callLater(root.resume_dirty);
+    }
+
+    // Deferred, like every write start: this runs out of a failure signal of FileView or mkdir_proc.
+    function resume_dirty() {
+        if (root.dirty && !root.writing && !save_timer.running) root.start_write();
     }
 
     function run_after_save(argv) {

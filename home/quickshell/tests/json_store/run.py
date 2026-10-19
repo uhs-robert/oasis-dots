@@ -330,6 +330,29 @@ def scenario_write_fails(state_home):
     return problems
 
 
+def failed_write_with_newer_edit(name, state_home):
+    def make_blocker(store_dir):
+        open(os.path.join(store_dir, "blocker"), "w").close()
+
+    result, store_dir, problems = store_run(name, state_home, extra=make_blocker)
+    if problems:
+        return problems
+    # The path stays unwritable, so the newer edit cannot reach the disk; what shows it was not dropped is a second
+    # attempt (second save_failed). No third one: the failed content is not retried, so the store ends clean.
+    expect(problems, "save_failed count (failed write + attempt for the newer edit)", len(result["failures"]), 2)
+    expect(problems, "values stay in memory", result["values"], {"a": 2, "b": 0})
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_edit_during_failed_write(state_home):
+    return failed_write_with_newer_edit("edit_during_failed_write", state_home)
+
+
+def scenario_edit_during_failed_flush(state_home):
+    return failed_write_with_newer_edit("edit_during_failed_flush", state_home)
+
+
 def scenario_watch_after_first_write(state_home):
     result, store_dir, problems = store_run("watch_after_first_write", state_home)
     if problems:
@@ -359,6 +382,8 @@ SCENARIOS = {
     "set_from_loaded": scenario_set_from_loaded,
     "after_save_inflight": scenario_after_save_inflight,
     "write_fails": scenario_write_fails,
+    "edit_during_failed_write": scenario_edit_during_failed_write,
+    "edit_during_failed_flush": scenario_edit_during_failed_flush,
     "watch_after_first_write": scenario_watch_after_first_write,
 }
 
