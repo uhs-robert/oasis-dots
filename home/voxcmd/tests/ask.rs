@@ -232,6 +232,17 @@ fn a_pick_nobody_answers_times_out_closes_the_picker_and_cleans_up() {
 }
 
 #[test]
+fn a_qs_picker_slow_to_exit_after_its_answer_is_still_closed_as_the_bar_picker() {
+    let bar = Bar::new();
+    let (code, out, err) = finish(bar.spawn(
+        &["ask", "pick", "Which?", TWO],
+        &[("GOLDEN_ANSWER", "2. Slack"), ("GOLDEN_LINGER", "0.1")],
+    ));
+    assert_eq!((code, out.as_str()), (0, "Slack"), "{err}");
+    assert!(bar.calls().ends_with("qs-ipc call picker close"), "{}", bar.calls());
+}
+
+#[test]
 fn term_while_waiting_exits_1_dismisses_the_overlay_and_cleans_up() {
     let bar = Bar::new();
     let child = bar.spawn(&["ask", "hints", "Which one?", BOXES], &[("GOLDEN_HOLD", "1")]);
