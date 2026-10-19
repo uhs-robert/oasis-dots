@@ -14,6 +14,7 @@ import qml_ipc  # noqa: E402
 from test_qml import TreeCase, write_tree  # noqa: E402
 
 ALLOW = "allow"
+README = "qs/README.md"
 POPUP = """IpcHandler {
     target: "popup"
     function open(name: string): void {}
@@ -27,17 +28,17 @@ OVERVIEW = 'IpcHandler { target: "tmux_overview"; function state(): string { ret
 class IpcCase(TreeCase):
     """A repository with the QML in qs/ (and demo/overlay/) and the allowlist in allow."""
 
-    def check(self, files, allow=""):
+    def check(self, files, allow="", readme=None):
         for name in os.listdir(self.root):
             full = os.path.join(self.root, name)
             shutil.rmtree(full) if os.path.isdir(full) else os.remove(full)
-        write_tree(self.root, {**files, ALLOW: allow})
+        write_tree(self.root, {**files, ALLOW: allow, **({README: readme} if readme is not None else {})})
         subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
-        found = qml_ipc.run_checks(self.root, ("qs", "demo/overlay"), ALLOW)
+        found = qml_ipc.run_checks(self.root, ("qs", "demo/overlay"), ALLOW, README if readme is not None else None)
         return [f"{f.path}:{f.line}: {f.message}" for f in found]
 
-    def messages(self, files, allow=""):
-        return [line.split(": ", 1)[1] for line in self.check(files, allow)]
+    def messages(self, files, allow="", readme=None):
+        return [line.split(": ", 1)[1] for line in self.check(files, allow, readme)]
 
     def calls(self, name, text, extra=None):
         """The findings for one caller file beside a popup handler that is called elsewhere."""
@@ -200,7 +201,7 @@ class CallerSyntaxTest(IpcCase):
 
 
 class AllowlistTest(IpcCase):
-    FILES = {"qs/Popup.qml": POPUP, "qs/Overview.qml": OVERVIEW}
+    FILES = {"qs/Popup.qml": POPUP.replace("function helper", "function close(): void {}\n    function keyboard(): string { return \"\" }\n    function helper"), "qs/Overview.qml": OVERVIEW}
 
     def test_an_uncalled_target_needs_a_line_and_passes_with_one(self):
         files = {**self.FILES, "bin/a.sh": "qs-ipc call popup state\n"}
@@ -270,6 +271,53 @@ class MutationTest(IpcCase):
         files = {path: text.replace("tmux_overview", "tmux_renamed") if not path.endswith(".qml") else text for path, text in self.FILES.items()}
         found = self.check(files)
         self.assertEqual(len(found), 5, found)
+
+
+class ReadmeTableTest(IpcCase):
+    """The IPC table in qs/README.md against the declared handlers."""
+
+    FILES = {"qs/Popup.qml": POPUP.replace("function helper", "function close(): void {}\n    function keyboard(): string { return \"\" }\n    function helper"), "qs/Overview.qml": OVERVIEW, "bin/keep.sh": "qs-ipc call popup state\nqs-ipc call tmux_overview state\n"}
+    TABLE = (
+        "## Other\n\n| `id` | Unique name |\n\n## IPC\n\n| Target | Functions |\n| --- | --- |\n"
+        "| `popup` | `open <name>`, `close` (shut it); `state` is `open` or `closed`, and `keyboard` |\n"
+        "| `tmux_overview` | `state` |\n\n## After\n\n| `ghost` | `nothing` |\n"
+    )
+
+    def table(self, files=None, readme=None, allow=""):
+        return self.messages(files or self.FILES, allow, self.TABLE if readme is None else readme)
+
+    def test_a_complete_table_passes(self):
+        self.assertEqual(self.table(), [])
+
+    def test_a_declared_target_without_a_row_fails_at_its_handler(self):
+        readme = self.TABLE.replace("| `tmux_overview` | `state` |\n", "")
+        self.assertEqual(self.table(readme=readme), ['target "tmux_overview" has no row in the IPC table of qs/README.md'])
+
+    def test_a_function_that_is_not_typed_or_is_gone_fails(self):
+        readme = self.TABLE.replace("`close` (shut it)", "`close` (shut it), `helper`").replace("`state` is", "`vanish` is").replace("`keyboard`", "`gone`")
+        self.assertEqual(sorted(m.split(" (has")[0] for m in self.table(readme=readme)), [
+            'IPC table row "popup" names "gone", which is not a typed function',
+            'IPC table row "popup" names "helper", which is not a typed function',
+            'IPC table row "popup" names "vanish", which is not a typed function',
+        ])
+
+    def test_prose_spans_are_not_functions(self):
+        readme = self.TABLE.replace("| `state` |", "| `state`: the `yes` or `no` answer, see `Foo.qml` |")
+        self.assertEqual(self.table(readme=readme), [])
+
+    def test_a_row_for_an_undeclared_target_fails(self):
+        readme = self.TABLE.replace("## After", "| `osd` | `state` |\n\n## After")
+        self.assertEqual(self.table(readme=readme), ['IPC table row "osd" is declared by no IpcHandler'])
+
+    def test_a_shared_row_documents_both_targets_and_the_demo_overlay_needs_none(self):
+        files = {**self.FILES, "qs/Prompt.qml": 'IpcHandler { target: "hp"; function open(): void {} }\n', "demo/overlay/D.qml": 'IpcHandler { target: "demo"; function card(): void {} }\n', "bin/d.sh": "qs-ipc call demo card\n"}
+        files["bin/keep.sh"] += "qs-ipc call hp open\n"
+        readme = self.TABLE.replace("| `tmux_overview` | `state` |", "| `tmux_overview` | `state` |\n| `hp`, `hq` | The HUD |")
+        self.assertEqual(self.table(files, readme), ['IPC table row "hq" is declared by no IpcHandler'])
+
+    def test_a_missing_section_or_an_empty_file_fails(self):
+        self.assertEqual(self.table(readme="# Nothing\n"), ['no IPC table rows under "## IPC"'])
+        self.assertEqual(self.messages(self.FILES, "", ""), ['no IPC table rows under "## IPC"'])
 
 
 class LiveTreeTest(unittest.TestCase):
