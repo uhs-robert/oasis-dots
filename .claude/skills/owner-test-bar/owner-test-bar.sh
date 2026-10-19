@@ -17,6 +17,12 @@ voxcmd_config_link="$HOME/.config/voxcmd"
 # The private integrations dirs, which a private dotfiles repo links into per file.
 voxcmd_private_dirs=(integrations.d replacements.d)
 voxcmd_bar="$bars/.voxcmd_bar"
+# The Rust voxcmd that `just voxcmd-build` installs from the main checkout. rs-swap points only the voxcmd link at it.
+voxcmd_rs_bin="${XDG_DATA_HOME:-$HOME/.local/share}/voxcmd-rs/bin/voxcmd"
+# The epoch second the rs swap's timer fires at. Written before the link moves; lives in the cache, so it outlasts the
+# timer across a reboot, which is how status tells a lost timer from a swap that never happened.
+voxcmd_rs_marker="$bars/.voxcmd_rs"
+voxcmd_rs_timer="voxcmd-rs-restore"
 # voxcmd logs while this file exists (debug() in voxcmd). The marker is present only when a swap created the file, so
 # restore never deletes a log the owner turned on themselves. The marker sits beside the log so a reboot clears both; in
 # the cache it would outlive the log and make restore delete one the owner turned on afterwards.
@@ -232,13 +238,20 @@ hypr_swap() {
   restart_rotator
 }
 
-# Every voxcmd link in ~ that resolves into a test bar, from a swap or a half-done one.
+# Every voxcmd link in ~ that resolves into a test bar or the Rust build, from a swap or a half-done one. The Rust link
+# is listed so restore removes it before `stow -R`, which aborts on a link it does not own.
 voxcmd_test_links() {
-  local link
+  local link target
   for link in "$voxcmd_bin_dir"/* "$voxcmd_config_link"; do
-    [[ -L $link && $(readlink -m "$link") == "$bars"/* ]] && echo "$link"
+    [[ -L $link ]] || continue
+    target=$(readlink -m "$link")
+    [[ $target == "$bars"/* || $target == "$voxcmd_rs_bin" ]] && echo "$link"
   done
   return 0
+}
+
+voxcmd_rs_linked() {
+  [[ -L $voxcmd_bin_dir/voxcmd && $(readlink -m "$voxcmd_bin_dir/voxcmd") == "$voxcmd_rs_bin" ]]
 }
 
 # Links the owner's private integrations into the test build, the same way their private dotfiles link them into the main checkout.
@@ -278,6 +291,9 @@ voxcmd_swap() {
     voxcmd_restore
     return 0
   fi
+  if [[ -f $voxcmd_rs_marker ]] || voxcmd_rs_linked; then
+    die "voxcmd runs the Rust build; run restore before swapping a voxcmd test build"
+  fi
   local bin=$dir/$voxcmd_rel/.local/bin config=$dir/$voxcmd_rel/.config/voxcmd file target link main_bin
   main_bin=$(readlink -m "$repo/$voxcmd_rel/.local/bin")
   [[ -L $voxcmd_config_link ]] || die "$voxcmd_config_link is not a symlink (stow unfolded it?); refusing the voxcmd swap"
@@ -307,17 +323,49 @@ voxcmd_swap() {
   voxcmd_debug_start
 }
 
+# Runs the Rust voxcmd for one session. Refuses rather than renews on a second call: a silent renewal would hide that a
+# session is already running on a clock. The wake word stays bash (voxcmd-wake starts the stow dir's script).
+voxcmd_rs_swap() {
+  local minutes=${1:-60} runtime=${XDG_RUNTIME_DIR:-/tmp}/voxcmd status self
+  [[ $minutes =~ ^[1-9][0-9]*$ ]] || die "usage: owner-test-bar.sh rs-swap [minutes]"
+  [[ -x $voxcmd_rs_bin ]] || die "$voxcmd_rs_bin is not built; run just voxcmd-build in the main checkout ($repo)"
+  status=$(voxcmd_status)
+  [[ $status != "voxcmd: Rust"* ]] || die "already swapped ($status); restore first"
+  [[ $status == "voxcmd: main" ]] || die "voxcmd is not on main ($status); restore first"
+  [[ -L $voxcmd_bin_dir/voxcmd ]] || die "$voxcmd_bin_dir/voxcmd is not a symlink; refusing the rs swap"
+  [[ ! -e $runtime/session.json && ! -e $runtime/pending-pick.json ]] || die "voxcmd has a session or picker open; run voxcmd stop first"
+  self=$(readlink -f "${BASH_SOURCE[0]}")
+  mkdir -p "$bars"
+  # Recorded before the link moves, so restore and status see a half swap if this stops partway.
+  echo $(($(date +%s) + minutes * 60)) >"$voxcmd_rs_marker"
+  ln -sfn "$voxcmd_rs_bin" "$voxcmd_bin_dir/voxcmd"
+  # A transient timer outlives this shell and the agent session, so the owner is not stranded on the Rust build.
+  if ! systemd-run --user --unit="$voxcmd_rs_timer" --on-active="${minutes}m" "$self" rs-restore; then
+    voxcmd_restore >/dev/null
+    die "could not start the restore timer; swap undone"
+  fi
+  echo "voxcmd: Rust (restores in $minutes min); restore early with: $self restore"
+  echo "voxcmd: after a reboot the timer is gone and the link stays; run restore"
+}
+
+# Ends an open Rust session and the restore timer; best effort, since restore must finish whatever state it finds.
+voxcmd_rs_end_session() {
+  if voxcmd_rs_linked && [[ -x $voxcmd_rs_bin ]]; then "$voxcmd_rs_bin" stop >/dev/null 2>&1 || true; fi
+  if [[ -f $voxcmd_rs_marker ]]; then systemctl --user stop "$voxcmd_rs_timer.timer" >/dev/null 2>&1 || true; fi
+}
+
 # Safe to rerun after an interrupted swap or restore: the record goes only once stow has relinked main.
 voxcmd_restore() {
   local links
   links=$(voxcmd_test_links)
-  if [[ -n $links || -f $voxcmd_bar ]]; then
+  if [[ -n $links || -f $voxcmd_bar || -f $voxcmd_rs_marker ]]; then
     command -v stow >/dev/null || die "stow is not installed; cannot relink voxcmd from main"
+    voxcmd_rs_end_session
     # stow refuses to replace links it does not own, so the test links go first.
     [[ -z $links ]] || xargs -d '\n' rm -f <<<"$links"
     # -d and -t absolute: stow run from inside home/ would target the repo itself.
     stow -d "$repo/home" -t "$HOME" -R voxcmd
-    rm -f "$voxcmd_bar"
+    rm -f "$voxcmd_bar" "$voxcmd_rs_marker"
   fi
   voxcmd_debug_stop
   echo "voxcmd: main"
@@ -328,6 +376,7 @@ voxcmd_linked_bars() {
   local link target
   voxcmd_test_links | while read -r link; do
     target=$(readlink -m "$link")
+    [[ $target == "$bars"/* ]] || continue
     target=${target#"$bars"/}
     echo "${target%%/*}"
   done | sort -u
@@ -342,11 +391,29 @@ voxcmd_fully_linked() {
   done
 }
 
+# Minutes until the rs swap's timer fires, rounded up; 0 or less once it is due.
+voxcmd_rs_minutes_left() {
+  echo $((($(<"$voxcmd_rs_marker") - $(date +%s) + 59) / 60))
+}
+
 # Which voxcmd is live; also read by .claude/status.d/quickshell.sh.
 voxcmd_status() {
-  local names
+  local names left
   names=$(voxcmd_linked_bars)
-  if [[ -z $names && ! -f $voxcmd_bar ]]; then
+  if [[ -f $voxcmd_rs_marker ]] || voxcmd_rs_linked; then
+    if [[ ! -f $voxcmd_rs_marker ]] || ! voxcmd_rs_linked || [[ -n $names ]]; then
+      echo "voxcmd: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
+      return 0
+    fi
+    left=$(voxcmd_rs_minutes_left)
+    if ((left <= 0)); then
+      echo "voxcmd: Rust (restore overdue; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore)"
+    elif ! systemctl --user is-active --quiet "$voxcmd_rs_timer.timer" 2>/dev/null; then
+      echo "voxcmd: Rust (restore timer lost, $left min left; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore)"
+    else
+      echo "voxcmd: Rust (restores in $left min)"
+    fi
+  elif [[ -z $names && ! -f $voxcmd_bar ]]; then
     echo "voxcmd: main"
   elif [[ -f $voxcmd_bar && $names == "$(<"$voxcmd_bar")" ]] && voxcmd_fully_linked "$names"; then
     echo "voxcmd: test build $names"
@@ -366,6 +433,8 @@ try_phrases() {
     echo "try: test build $live"
     # The swap links ~/.config/voxcmd to this build's copy; set explicitly so the dry run does not depend on that link.
     export VOXCMD_CONFIG_DIR=$bars/$live/$voxcmd_rel/.config/voxcmd
+  elif [[ $live == "voxcmd: Rust"* ]]; then
+    die "voxcmd runs the Rust build, which has no --dry-run; run try before rs-swap"
   elif [[ $live == *"half swapped"* ]]; then
     die "voxcmd is half swapped; run restore first"
   else
@@ -572,6 +641,13 @@ main() {
     "$0" swap "${swap_args[@]}"
     request_codex_reviews "$@"
     ;;
+  rs-swap)
+    voxcmd_rs_swap "${2:-}"
+    ;;
+  rs-restore)
+    # What the swap's timer runs: only voxcmd, never the bar or the test-bar claim.
+    voxcmd_restore
+    ;;
   restore)
     guard_owner "$take"
     require_unlocked
@@ -627,7 +703,7 @@ main() {
     try_phrases "$@"
     ;;
   *)
-    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace] [--take]|build <name> <branch>...|swap <name> [--replace] [--take]|restore [--take]|rebuild <name> [--take]|remove <name>|status|probe <ipc call>...|try <phrase>...}"
+    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace] [--take]|build <name> <branch>...|swap <name> [--replace] [--take]|restore [--take]|rs-swap [minutes]|rebuild <name> [--take]|remove <name>|status|probe <ipc call>...|try <phrase>...}"
     ;;
   esac
 }
