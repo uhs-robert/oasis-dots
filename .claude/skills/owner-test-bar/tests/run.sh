@@ -424,6 +424,8 @@ cat >"$vt_stubs/systemctl" <<STUB
 #!/usr/bin/env bash
 echo "systemctl \$*" >>"$vt_calls"
 case \$* in
+# A plain restart starts a stopped unit; try-restart leaves it alone, which is what keeps this marker absent.
+"--user restart voxtype") touch "$root/voxtype_started" ;;
 *"is-enabled"*) [[ -z \${FAKE_NOT_ENABLED:-} ]] || exit 1 ;;
 *"disable --now "*) [[ -z \${FAKE_DISABLE_FAIL:-} || \$* != *"\$FAKE_DISABLE_FAIL" ]] || exit 1 ;;
 *"enable --now "*) [[ -z \${FAKE_ENABLE_FAIL:-} || \$* != *"\$FAKE_ENABLE_FAIL" ]] || exit 1 ;;
@@ -478,7 +480,7 @@ out=$(vtx voxtype_restore)
 code=$?
 show "$out"
 check "restore succeeds" "[[ $code == 0 && \$out == 'voxtype: main' ]]"
-check "restore disables the follower, then restows, reloads and restarts, in that order" "[[ \$(vt_order 'disable --now voxtype-duck.service') -lt \$(vt_order 'stow') && \$(vt_order 'stow') -lt \$(vt_order 'daemon-reload') && \$(vt_order 'daemon-reload') -lt \$(vt_order 'restart voxtype') ]]"
+check "restore disables the follower, then restows, reloads and restarts, in that order" "[[ \$(vt_order 'disable --now voxtype-duck.service') -lt \$(vt_order 'stow') && \$(vt_order 'stow') -lt \$(vt_order 'daemon-reload') && \$(vt_order 'daemon-reload') -lt \$(vt_order 'try-restart voxtype') ]]"
 check "restore puts main's links back and removes the test ones" "vt_link_is $vt_home/.config/voxtype $vt_main_config && vt_link_is $vt_home/.local/bin/voxtype-daemon $vt_main_bin && [[ ! -e $vt_home/.local/bin/voxtype-duck && ! -e $vt_units/voxtype-duck.service && ! -e $vt_units/voxtype.service.d/duck.conf && -L $vt_units/voxtype.service.d/prompt.conf ]]"
 check "restore clears the records" "[[ ! -e $bars_dir/.voxtype_bar && ! -e $bars_dir/.voxtype_enabled ]]"
 : >"$vt_calls"
@@ -539,7 +541,7 @@ out=$(vtx voxtype_status)
 check "status reports the test build" "grep -q 'test build deletes' <<<\"\$out\""
 : >"$vt_calls"
 out=$(vtx voxtype_restore)
-check "restore relinks what was deleted and re-enables the unit after restarting voxtype" "[[ \$out == 'voxtype: main' && -L $vt_home/.local/bin/voxtype-old && -L $vt_units/old.service && -L $vt_units/voxtype.service.d/prompt.conf && ! -e $bars_dir/.voxtype_disabled ]] && [[ \$(vt_order 'restart voxtype') -lt \$(vt_order 'enable --now old.service') ]]"
+check "restore relinks what was deleted and re-enables the unit after restarting voxtype" "[[ \$out == 'voxtype: main' && -L $vt_home/.local/bin/voxtype-old && -L $vt_units/old.service && -L $vt_units/voxtype.service.d/prompt.conf && ! -e $bars_dir/.voxtype_disabled ]] && [[ \$(vt_order 'try-restart voxtype') -lt \$(vt_order 'enable --now old.service') ]]"
 
 echo "== voxtype: a unit that will not stop"
 vt_reset
@@ -584,7 +586,14 @@ out=$(FAKE_NOT_ENABLED=1 vtx voxtype_swap deletes "$bars_dir/deletes")
 check "swap stops it without disabling" "grep -q 'systemctl --user stop old.service' '$vt_calls' && ! grep -q 'disable --now old.service' '$vt_calls' && [[ ! -e $vt_units/old.service ]]"
 : >"$vt_calls"
 vtx voxtype_restore >/dev/null
-check "restore starts it again after restarting voxtype" "[[ \$(vt_order 'restart voxtype') -lt \$(vt_order 'start old.service') && -L $vt_units/old.service && ! -e $bars_dir/.voxtype_stopped ]]"
+check "restore starts it again after restarting voxtype" "[[ \$(vt_order 'try-restart voxtype') -lt \$(vt_order 'start old.service') && -L $vt_units/old.service && ! -e $bars_dir/.voxtype_stopped ]]"
+
+echo "== voxtype: voxtype was stopped before the test"
+vt_reset
+rm -f "$root/voxtype_started"
+vtx voxtype_swap duck "$bars_dir/duck" >/dev/null
+vtx voxtype_restore >/dev/null
+check "swap and restore never use a plain restart, which would start it" "[[ ! -e $root/voxtype_started ]] && grep -q 'try-restart voxtype' '$vt_calls' && ! grep -qx 'systemctl --user restart voxtype' '$vt_calls'"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
