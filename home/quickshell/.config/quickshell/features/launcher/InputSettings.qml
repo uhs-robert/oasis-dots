@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.core
 
 // Input choices saved in input.json under the Quickshell state dir.
@@ -13,7 +12,7 @@ Singleton {
     readonly property var choices: ({ start_mode: ["insert", "normal"], remember_query: [false, true] })
     readonly property var defaults: ({ start_mode: "insert", remember_query: false })
 
-    property var values: root.defaults
+    readonly property var values: store.values
     // Island pickers, settings lists and type-to-search popups open in INSERT when true; bottom-docked pickers and the HyprVim prompt always do.
     readonly property bool starts_insert: root.values.start_mode === "insert"
     // Last query per picker or settings list, for this session only; recall gives "" unless remember_query is on.
@@ -33,46 +32,20 @@ Singleton {
 
     function set(key, value) {
         if (!root.valid(key, value)) return;
-        root.values = Object.assign({}, root.values, { [key]: value });
-        save_timer.restart();
+        store.set_key(key, value);
     }
 
-    Timer {
-        id: save_timer
-        interval: 300
-        onTriggered: {
-            if (save_proc.running) {
-                save_timer.restart();
-                return;
-            }
-            save_proc.command = ["sh", "-c", "mkdir -p \"$1\" && printf %s \"$2\" > \"$1/input.json.tmp\" && mv \"$1/input.json.tmp\" \"$1/input.json\"",
-                "sh", root.state_dir, JSON.stringify(root.values)];
-            save_proc.running = true;
-        }
-    }
-
-    Process {
-        id: save_proc
-    }
-
-    FileView {
+    JsonStore {
+        id: store
         path: root.state_dir + "/input.json"
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                const next = Object.assign({}, root.defaults);
-                for (const key in next) {
-                    if (root.valid(key, data[key])) next[key] = data[key];
-                }
-                root.values = next;
-            } catch (e) {
-                console.warn("InputSettings: invalid input.json (" + e + ")");
+        defaults: root.defaults
+        debounce_ms: 300
+        validate: raw => {
+            const next = Object.assign({}, root.defaults);
+            for (const key in next) {
+                if (root.valid(key, raw[key])) next[key] = raw[key];
             }
+            return next;
         }
-        onLoadFailed: error => root.values = root.defaults
     }
 }
