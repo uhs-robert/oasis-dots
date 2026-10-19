@@ -674,9 +674,9 @@ mod tests {
     fn the_click_conversion_loads_as_mode_settings() {
         let file = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/integrations/click.toml");
         let settings = ModeSettings::of(file);
-        assert!(!settings.bare_exits && settings.allows_switches && settings.default_exits && settings.has_rewrite);
+        assert!(!settings.allows_switches && !settings.default_exits && settings.has_rewrite);
         assert_eq!(settings.miss_actions, ["no_text"]);
-        assert_eq!(settings.exit_hint, "say done to stop");
+        assert_eq!(settings.exit_hint, "say cortana done to stop");
         let exit_phrases = settings.exit_phrases.as_ref().unwrap();
         assert!(exit_phrases.is_match("im done clicking") && exit_phrases.is_match("done with click mode"));
         let rewriting = settings.rewriting.unwrap();

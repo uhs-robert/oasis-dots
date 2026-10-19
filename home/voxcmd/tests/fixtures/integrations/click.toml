@@ -70,11 +70,11 @@ mode_switch = true
 
 [mode]
 label = "Click mode"
-# Each way out names the mode, since a bare "stop", "exit" or "close" is a button label and stays a target.
+# No bare word leaves: "done", "stop", "exit" and "close" are button labels and stay targets; only "cortana ..." leaves.
 exit_object = '(the )?(clicking|click mode|clicking mode)'
 exit_phrases = 'done clicking|im done clicking|done with {mode_object}|{mode_exit}'
-exit_hint = "say done to stop"
-bare_exits = false
-allows_switches = true
+exit_hint = "say cortana done to stop"
+default_exits = false
+allows_switches = false
 # A turn is a target ("sign in") or a click phrase ("right click settings"); a bare "click" names nothing.
 rewrite = { drop = '((left|right|double) )?click', keep = '((left|right|double) )?click .+|clicking mode|start clicking', prefix = "click " }

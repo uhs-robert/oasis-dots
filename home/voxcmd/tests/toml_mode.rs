@@ -702,13 +702,15 @@ fn the_click_conversion_runs_as_a_mode() {
         (state["kind"].as_str(), state["label"].as_str()),
         (Some("click"), Some("Click mode"))
     );
-    assert_eq!(state["exit_hint"], "say done to stop");
-    // A bare "click" names nothing to click; "stop" stays a target, so only a phrase naming the mode leaves it.
+    assert_eq!(state["exit_hint"], "say cortana done to stop");
+    // A bare "click" names nothing to click; every exit word, "done clicking" too, stays a target, so only "cortana ..." leaves.
     rig.hear("click", json!({}), "click");
     assert!(rig.calls().contains("Not understood: \"click\""), "{}", rig.calls());
     rig.hear("click", json!({}), "stop");
     assert!(rig.session().is_some());
     rig.hear("click", json!({}), "done clicking");
+    assert!(rig.session().is_some());
+    rig.hear("click", json!({}), "cortana done clicking");
     assert!(rig.session().is_none());
 }
 
