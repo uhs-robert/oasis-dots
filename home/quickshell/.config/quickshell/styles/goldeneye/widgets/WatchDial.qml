@@ -4,7 +4,6 @@ import Quickshell.Hyprland
 import qs.theme
 import "../Watch.js" as Watch
 import qs.components
-import qs.features.windows
 
 // The classic pause watch as a bar strip: a tick per workspace on a shallow arc, apps under their ticks, a pale hand on the focused one. Fixed classic colours, whatever the palette.
 Item {
@@ -13,6 +12,8 @@ Item {
     // The Workspaces module, for its icon, name and window helpers.
     required property Item host
     property var workspaces: []
+    // A workspace's toplevels, supplied by the host so this widget stays out of features/windows.
+    required property var windows_on
     property bool compact: false
 
     readonly property int glyph: compact ? 13 : 15
@@ -41,7 +42,7 @@ Item {
         const out = [];
         let x = root.lead;
         for (const w of root.workspaces) {
-            const k = WindowState.windows_on(w).length, wd = root.slot_width(k, w.focused);
+            const k = root.windows_on(w).length, wd = root.slot_width(k, w.focused);
             out.push({ id: w.id, x: x, mid: x + wd / 2, w: wd, k: k, focused: w.focused, active: w.active });
             x += wd;
         }
@@ -275,7 +276,7 @@ Item {
                 spacing: root.gap(slot.modelData.focused)
 
                 Repeater {
-                    model: WindowState.windows_on(slot.modelData)
+                    model: root.windows_on(slot.modelData)
 
                     WorkspaceIcon {
                         host: root.host
