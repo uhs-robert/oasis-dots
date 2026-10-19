@@ -78,7 +78,7 @@ pub fn run_with_timeout(command: &mut Command, timeout: Duration) -> std::io::Re
 }
 
 /// `run_with_timeout` for a command that reads voxcmd's own stdin (a wake clip voxcmd-wake pipes in, `/dev/stdin`);
-/// no `timeout` is no deadline.
+/// `None` is no deadline.
 pub fn run_with_timeout_on_stdin(command: &mut Command, timeout: Option<Duration>) -> std::io::Result<Outcome> {
     command.stdin(Stdio::inherit());
     run(command, timeout, OnStop::Kill, Capture::Yes)
@@ -149,11 +149,11 @@ fn run(
     on_stop: OnStop,
     capture: Capture,
 ) -> std::io::Result<Outcome> {
-    let output = match capture {
+    let output_stdio = match capture {
         Capture::Yes => Stdio::piped,
         Capture::No => Stdio::null,
     };
-    command.stdout(output()).stderr(output()).process_group(0);
+    command.stdout(output_stdio()).stderr(output_stdio()).process_group(0);
     let (mut child, _live) = spawn_listed(command, on_stop)?;
     let stdout = Drain::start(child.stdout.take());
     let stderr = Drain::start(child.stderr.take());

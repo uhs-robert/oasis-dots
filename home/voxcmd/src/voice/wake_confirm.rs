@@ -54,9 +54,10 @@ fn say(verdict: &str) {
     let _ = writeln!(std::io::stdout(), "{verdict}");
 }
 
-/// Runs its arguments (voxtype's) as a child of the group's leader, which this process's death (`die_with_parent`)
-/// TERMs: the leader then TERMs the whole group, so a child voxtype started goes too. The clip stays on stdin: a background
-/// job of a non-interactive shell would otherwise get /dev/null.
+/// Runs its arguments (voxtype's) as a background job, with this shell as the leader of the process group. The shell
+/// is what `die_with_parent` TERMs when this process dies; on that TERM it TERMs the whole group, so a child voxtype
+/// started goes too. The clip stays on stdin (`<&0`) because a background job of a non-interactive shell would
+/// otherwise get /dev/null.
 const VOXTYPE_AS_GROUP_LEADER: &str = r#"trap 'trap "" TERM; kill -TERM -- -$$' TERM; "$@" <&0 & wait $!"#;
 
 /// What voxtype heard in the clip: "" for no speech, none when it failed or ran out of time.
@@ -73,7 +74,7 @@ fn transcribe(wav: &str) -> Option<String> {
         command.args(["--initial-prompt", &prompt]);
     }
     command.args(["transcribe", wav]);
-    // voxcmd-wake kills this process's group when it outlasts its own limit; voxtype's group is told by its leader.
+    // voxcmd-wake kills this process's group when it outlasts its own limit; the shell in front of voxtype passes that on to voxtype's own children.
     process::die_with_parent(&mut command);
     let limit = confirm_limit(std::env::var("VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS").ok().as_deref());
     match process::run_with_timeout_on_stdin(&mut command, limit) {
