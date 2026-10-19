@@ -279,18 +279,19 @@ qs-ipc show        # list every target and function
 
 | Target          | Functions                                                             |
 | --------------- | --------------------------------------------------------------------- |
-| `popup`         | `open <name>`, `toggle <name>`, `close`, `focus`, `state`             |
+| `popup`         | `open <name>`, `toggle <name>`, `close`, `focus`, `keyboard`, `state` |
 | `picker`        | `open <name>`, `open_with <name> <mode>`, `toggle <name>`, `close`    |
-| `settings`      | `open <section>`, `toggle`                                            |
+| `settings`      | `open <section>`, `toggle`, `view <section> <screen>`, `cursor <index>`, `step <delta>`, `activate`, `back`, `hide` |
 | `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |
 | `sound`         | `play <kind>`: a Theme audio sound if its category is on; `play alarm` always rings |
 | `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`, `save_session <name>`, `state` (`open` or `closed`), `act <verb> <args>` (see Workspace overview and voice) |
-| `tmux_overview` | `open`, `close`, `toggle`, `search`                                   |
+| `tmux_overview` | `open`, `close`, `toggle`, `search`, `state`                          |
+| `osd`           | `state`                                                               |
 | `notifications` | `open`, `close`, `toggle_dnd`, `get_dnd`, `get_last` (the newest history entry as JSON), `history <count> <app>` (see below), `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
 | `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
 | `zoom`          | `start`, `stop`, `toggle`, `step <delta>`, `size <delta>`, `full`     |
 | `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |
-| `power`         | `confirm <lock\|logout\|reboot\|poweroff>`                            |
+| `power`         | `confirm <lock\|logout\|reboot\|poweroff>`, `run <action>`            |
 | `confirm`       | `ask <question> <result_path>`: drop the yes/no card from the center island; it writes `yes` or `no` to the path (No, Esc, the scrim and 10s without an answer are all `no`, the countdown waiting while voxtype records or transcribes); `dismiss <result_path>` closes that card without writing. `voxcmd-confirm` is the shell wrapper |
 | `clickhints`    | `open <spec_path>`: numbered boxes over the screen from a JSON file `{label, choices: [{label, x, y, w, h}], result_path}` (global logical coordinates, at most ten); it writes the picked number, or an empty line for Esc, a click outside a box and 10s without an answer (the countdown waiting while voxtype records or transcribes), to the path, and returns `ok` (anything else means fall back to a text picker); `dismiss <result_path>` closes it without writing; `state` is `open` or `closed`. `voxcmd-hints` is the shell wrapper |
 | `weather`       | `preview <fixture\|off>`, `previewing`: overlay a `features/weather/WeatherFixture.js` fixture on the live data (see Weather views) |
@@ -298,7 +299,7 @@ qs-ipc show        # list every target and function
 | `brightness`    | `refresh`                                                             |
 | `cmdstatus`     | `refresh <id>` (`""` refreshes every entry)                          |
 | `transition`    | `play <kind or style>`                                                |
-| `hyprvim_whichkey`, `hyprvim_prompt` | The HyprVim which-key HUD and `:` prompt          |
+| `hyprvim_whichkey`, `hyprvim_prompt` | External API: the HyprVim which-key HUD and `:` prompt, each with `open` and `close`, called by the hyprvim plugin |
 
 Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `power`, `clock`, `volume`, `battery`, `bluetooth`, `system`, `tray`, `network`, `keeptabs`, `weather`, `updates`, `media`, `screenshot`, `notifications`, `picker`.
 
