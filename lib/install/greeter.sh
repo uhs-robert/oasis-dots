@@ -6,11 +6,31 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../common/greeter-files.sh"
 
 GREETER_DEST=/etc/greetd/quickshell
+GREETER_MONITORS=/etc/greetd/monitors.lua
+GREETER_MONITORS_GENERATOR="$(dirname "${BASH_SOURCE[0]}")/greeter-monitors.lua"
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
 GREETER_DATA=/var/lib/qs-greeter
 # The Quickshell greeter's output: written by the greeter user, readable by the installing user's group, so a login
 # test can be read afterwards. Pre-created here because the greeter cannot create files in /var/log.
 GREETER_LOG=/var/log/qs-greeter.log
+
+# Writes the greeter's monitor rules to $1 from the session's machine profile and monitors.json overrides (the greeter user
+# cannot read the owner's home). Login must never depend on this: any failure warns and leaves an empty file, which the
+# greeter's catch-all rule turns into "every output, preferred mode, auto position".
+write_greeter_monitors() {
+  local out=$1
+  local machines_dir="${HYPR_MACHINES_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/config/machines}"
+  local state_file="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/monitors.json"
+  local tmp
+  tmp=$(mktemp) || return 1
+  if command -v lua &>/dev/null && lua "$GREETER_MONITORS_GENERATOR" "$machines_dir" "$state_file" >"$tmp"; then
+    mv -f "$tmp" "$out"
+  else
+    rm -f "$tmp"
+    warn "Could not generate the greeter's monitor rules; every screen will use its preferred mode and automatic position" >&2
+    printf '%s\n' '-- Empty: the generator failed, so the greeter lays out every output itself.' >"$out"
+  fi
+}
 
 # Builds the greeter tree in $1 from the repo at $2 plus this user's theme and lock style; prints the resolved skin.
 # $3 is a Quickshell config dir to stage skins and theme from instead of the repo's, e.g. a worktree's.
@@ -24,6 +44,8 @@ stage_greeter() {
   mkdir -p "$dest"
   cp -r "$repo/system/etc/greetd/quickshell/." "$dest/" || return 1
   copy_greeter_qs_files "$qs" "$dest" || return 1
+  # Not part of the Quickshell tree: greeter_install_cmds installs it to /etc/greetd and keeps it out of the rsync.
+  write_greeter_monitors "$dest/monitors.lua" || return 1
   local skin audio_dir audio_skins
   # Skins whose imported audio lives in $XDG_DATA_HOME/quickshell/<skin>-audio.
   audio_skins=$(jq -r 'to_entries[] | select(.value.audio) | .key' "$qs/features/lock/skins/index.json") || return 1
@@ -85,9 +107,10 @@ greeter_install_cmds() {
   [[ -f "$stage/theme/theme.json" ]] && seed_theme="install -m 640 '$stage/theme/theme.json' '$GREETER_DATA/theme.json'"
   printf '%s\n' \
     "[ ! -f /etc/greetd/hyprland.lua ] || [ -f /etc/greetd/hyprland.lua.bak ] || sudo cp /etc/greetd/hyprland.lua /etc/greetd/hyprland.lua.bak" \
-    "sudo rsync -rlpt --delete --chown=root:root --chmod=D755,F644 '$stage/' '$GREETER_DEST/'" \
+    "sudo rsync -rlpt --delete --exclude=/monitors.lua --chown=root:root --chmod=D755,F644 '$stage/' '$GREETER_DEST/'" \
     "sudo install -Dm755 '$repo/system/usr/local/bin/qs-greeter' /usr/local/bin/qs-greeter" \
     "sudo install -Dm644 '$repo/system/etc/greetd/hyprland.lua' /etc/greetd/hyprland.lua" \
+    "sudo install -Dm644 '$stage/monitors.lua' '$GREETER_MONITORS'" \
     "printf '%s\\n' '${GREETER_USER:-$USER}' | sudo tee /etc/greetd/admin_user >/dev/null" \
     "sudo install -d -m 2750 -o '$USER' -g greeter '$GREETER_DATA'" \
     "sudo touch '$GREETER_LOG' && sudo chown greeter:\"\$(id -gn)\" '$GREETER_LOG' && sudo chmod 640 '$GREETER_LOG'" \
@@ -153,6 +176,9 @@ install_greetd() {
     success "Quickshell greeter installed (F10 or SUPER+T switches to tuigreet)"
   else
     sudo install -Dm644 system/etc/greetd/hyprland.lua /etc/greetd/hyprland.lua
+    local monitors
+    monitors=$(mktemp) && write_greeter_monitors "$monitors" && sudo install -Dm644 "$monitors" "$GREETER_MONITORS"
+    rm -f "$monitors"
     printf '%s\n' "$USER" | sudo tee /etc/greetd/admin_user >/dev/null
     sudo rm -f /usr/local/bin/qs-greeter
     success "tuigreet greeter installed"
