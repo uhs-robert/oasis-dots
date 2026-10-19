@@ -1,6 +1,6 @@
 ---
 name: orchestrator-handoff
-description: Move the orchestrator role to a fresh session with an empty context, or wind down for the day, at a natural break. The owner starts it in the current orchestrator, which winds down, updates its tracking docs and stops; the fresh session then starts cold from the docs. Use when the owner asks the orchestrator to hand off, pass the baton or wind down for the day, when a `BATON` message arrives from another session, or when the owner asks a fresh session to resume orchestrating from the docs.
+description: Move the orchestrator role to a fresh session with an empty context, piece by piece, or wind down for the day at a natural break. The owner starts it in the current orchestrator, which hands the successor what is ready now, finishes what is in flight and hands each remaining piece over as it reaches its break. Use when the owner asks the orchestrator to hand off, pass the baton or wind down for the day, when a `BATON` or `PIECE` message arrives from another session, or when the owner asks a fresh session to resume orchestrating from the docs.
 argument-hint: "[successor-session-name | end-of-day]"
 ---
 
@@ -8,7 +8,7 @@ argument-hint: "[successor-session-name | end-of-day]"
 
 Moves the orchestrator role to a fresh session so its context starts empty. The tracking docs carry everything: the successor gets no chat history, so anything not written down is lost.
 
-The handoff is sequential: the outgoing orchestrator stops before the successor starts, so two sessions never orchestrate at once. Messages between them only carry information (the docs are ready, a question, an answer), never the role, so a lost message costs at most a step the owner does by hand.
+The role moves piece by piece, so the successor starts work at once instead of waiting for everything in flight. A piece is a track, or an item within one (a PR being built, a plan awaiting the owner). Every piece has exactly one owning session at any time, and the docs say which; a session never touches another's pieces: their agents, worktrees, branches or PRs. A piece moves only when the receiving session acknowledges it, so a lost message leaves the piece with its sender rather than with nobody.
 
 Only the owner starts a handoff, in the current orchestrator. A request from another session to hand over goes to the owner.
 
@@ -16,26 +16,25 @@ Argument: `$ARGUMENTS`
 
 ## Hand over (the current orchestrator; the owner starts it here)
 
-Tell the owner in one line, per track, what is in flight and where you expect it to stop, then work through these.
+### 1. Split the pieces
 
-### 1. Reach a natural break
+Sort every piece into one of two lists and tell the owner both, one line per piece:
 
-Carry each track on as usual until its natural break, then hold it there:
+- **Hand now:** pieces at a natural break (below), and every next step nobody has started: the next roadmap item, a plan to draft, a decision to put to the owner. Suggest what the successor should start on first.
+- **Keep until its break:** pieces with work in flight (an agent, a review or a check running), with where you expect each to stop.
+
+A natural break is either:
 
 - **Its work is done:** merged, or, with no merge approval, its PR ready for the owner.
-- **Or it reaches a point where you would normally ask the owner what to do next:** a plan to approve, an owner test, a decision. Record the question in the docs as waiting on the owner instead of asking it.
+- **Or a point where you would normally ask the owner what to do next:** a plan to approve, an owner test, a decision. Record the question in the docs as waiting on the owner instead of asking it; the successor asks.
 
-Until then, the work that belongs to the piece in flight continues: research feeding the plan or PR it was started for, implementation, review cycles and their fixes, merges the owner approved. What does not continue is the next piece: the next roadmap item, or a new direction the work turned up. It goes in the docs as the next step.
-
-Stop nothing and rush nothing to reach the break. End the turn while things run and let the completion notices drive the next turns; never poll or sleep.
-
-Done when every track is at its break, no agent, background shell or review is running, and each worktree with unfinished work has it committed (by an agent, as usual) or the docs say what is uncommitted and why.
+End of day (the owner said so, or passed `end-of-day`) has no successor, so nothing is handed now: carry every piece to its break (step 3), then update the docs (step 2) and stop. A fresh session resumes later when the owner runs `/orchestrator-handoff` there.
 
 ### 2. Update the docs
 
 The tracking docs are the local, git-ignored `.md` files the orchestrator has been keeping (named in the session, usually at the main checkout's root and listed in `.git/info/exclude`). Edit them at the main checkout; worktrees do not see them. With none (a short task tracked only in chat), create `<task>.md` at the main checkout's root, add it to `.git/info/exclude`, and give it a Resume here and a decisions log. For each:
 
-- **Resume here:** date and "handoff to the Nth orchestrator"; phase; open PRs; running agents (none); worktrees with branch, commit and whether pushed; standing approvals; what waits on the owner; the next steps in order.
+- **Resume here:** date and "handoff to the Nth orchestrator"; phase; open PRs; running agents; worktrees with branch, commit and whether pushed; standing approvals; what waits on the owner; the next steps in order. Mark each piece you keep as "held by `<your session>` until <its break>", with what the successor does once it arrives.
 - Each item's row: status and PR.
 - The decisions log: every owner decision from this session, including ones given only in chat.
 - Open questions and lessons.
@@ -43,13 +42,9 @@ The tracking docs are the local, git-ignored `.md` files the orchestrator has be
 
 Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in.
 
-### 3. Stop orchestrating
+This is your last doc edit. From the baton on the successor owns the docs, and you send it what they need instead, so two sessions never edit one file.
 
-From here on, act on nothing: no agents, doc edits, git or merges. Tell the owner the docs are ready: their paths, the next step per track, and anything waiting on them.
-
-End of day (the owner said so, or passed `end-of-day`): you are done. A fresh session resumes later when the owner runs `/orchestrator-handoff` there. The owner may close this session.
-
-### 4. Tell the successor
+### 3. Tell the successor
 
 Find it, taking the first that applies:
 
@@ -60,18 +55,39 @@ Find it, taking the first that applies:
 Send it, with `SendMessage`:
 
 ```
-BATON: <your session name> has stopped orchestrating <repo> and left the docs for you; you are the Nth orchestrator.
+BATON: <your session name> hands you the orchestrator role for <repo>; you are the Nth orchestrator.
 Load the orchestrator-handoff skill and follow its "Take over" part.
 Docs, in order: <doc paths, and any handoff draft to read first>.
+Yours now: <pieces handed now>. Suggested first: <what to start on>.
+Held by me until their break: <pieces, and where each will stop>. Leave them alone; each comes to you in a PIECE message.
 Time-sensitive: <owner tests pending, PRs awaiting review, or "nothing">.
 Send me any questions; I keep my context open to answer them.
 ```
 
 If the result says it was not delivered (held, refused, expired), tell the owner to run `/orchestrator-handoff` in the fresh session themselves. Do not resend.
 
-### 5. Answer questions
+### 4. Finish the pieces you hold
 
-Answer the successor's questions from what you know, reading files if needed, but change nothing: the successor owns the docs now and records whatever the roadmap needs. The owner may close this session whenever they like.
+Carry each held piece on as usual until its break: research feeding the plan or PR it was started for, implementation, review cycles and their fixes, and merges the existing approvals cover (ship-batch's lock serializes them with the successor's). What does not continue is the next piece: the next roadmap item, or a new direction the work turned up. Send it to the successor as a next step.
+
+Stop nothing and rush nothing to reach the break. End the turn while things run and let the completion notices drive the next turns; never poll or sleep.
+
+At each break, send the successor:
+
+```
+PIECE: <piece> is at its break and is yours.
+State: <merged / PR #N ready / waiting on the owner for X>; branch, commit, pushed or not.
+For the docs: <decisions, findings and next steps to record>.
+Reply "TAKEN <piece>" once recorded.
+```
+
+The piece is the successor's once it replies `TAKEN`. Until then it is still yours: an agent report for it still comes to you and you act on it.
+
+Agent reports and notices for pieces already handed over arrive here, because the agents were started here. Forward each to the successor unchanged and act on none of them.
+
+### 5. Close the transition
+
+When you hold no piece and nothing you started is running (no agent, background shell or review), send `TRANSITION COMPLETE: <your session name> holds nothing in <repo>.` and tell the owner in one line. From then on act on nothing; answer the successor's questions from what you know, reading files if needed. The owner may close this session whenever they like.
 
 ## Take over (the fresh session)
 
@@ -83,4 +99,5 @@ Starts on a `BATON` message, or when the owner runs this skill here (a cold star
 2. Read `~/.claude/skills/orchestrator/SKILL.md` in full with the Read tool (model invocation of that skill is disabled, so the Skill tool cannot load it), and act under it from here on.
 3. Read the docs: the ones the baton names, in its order; on a cold start, the ones the owner names, or the `.md` files at the main checkout's root listed in `.git/info/exclude` that have a "Resume here". Each "Resume here" first, then any draft it says to read first. Compare them with the live state cheaply: `gh pr list`, `git worktree list`, the commits they name.
 4. Questions: send what the docs leave unclear to the predecessor in one short message, if a `BATON` came from it, and wait for the answer. With no predecessor, a message not delivered, or a question it cannot answer, the question goes to the owner in the next step. Put any answer the roadmap needs into the docs.
-5. Update each doc's "Resume here" heading to say you took over (date, which orchestrator you are). Tell the owner, through `AskUserQuestion` per the orchestrator skill: the phase and next step per track, what waits on them, anything in the docs that contradicted the live state, and any open question. Then continue as the orchestrator, keeping the docs' rules (plan approval before delegating still applies).
+5. Update each doc's "Resume here" heading to say you took over (date, which orchestrator you are). Tell the owner, through `AskUserQuestion` per the orchestrator skill: the phase and next step per piece you own, what waits on them, what the predecessor still holds, anything in the docs that contradicted the live state, and any open question. Then continue as the orchestrator on the pieces you own, keeping the docs' rules (plan approval before delegating still applies).
+6. While the predecessor holds pieces: leave their agents, worktrees, branches and PRs alone, and include their worktrees in `overlap.sh` like any other session's. On each `PIECE` message, record what it says in the docs, mark the piece as yours, and reply `TAKEN <piece>`. A forwarded agent report is for you to act on. `TRANSITION COMPLETE` means you own every piece.
