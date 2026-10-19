@@ -11,7 +11,7 @@ import qs.styles.ff7.widgets as Ff7
 import qs.styles.gameboy.widgets as Gameboy
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.styles.metroid.widgets as Metroid
-import qs.styles.neovim.widgets as Neovim
+import qs.features.bar.neovim as Neovim
 import qs.styles.nes.widgets as Nes
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.ps1.widgets as Ps1

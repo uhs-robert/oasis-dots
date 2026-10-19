@@ -7,7 +7,7 @@ import "BarModules.js" as BarModules
 import qs.features.bar.modules
 import qs.features.power
 import qs.features.media
-import qs.styles.neovim.widgets as Neovim
+import qs.features.bar.neovim as Neovim
 import qs.features.weather
 import qs.features.voice
 import qs.features.popups
