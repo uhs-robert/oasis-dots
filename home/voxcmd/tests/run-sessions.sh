@@ -374,8 +374,9 @@ check "for a reply too" "[[ \$(detect '$root/quiet-room.pcm' \"\${reply_detector
 check "without the debug log there is no trace" "env -u VOXCMD_DEBUG XDG_RUNTIME_DIR='$root/no-trace' python3 '$package/.local/bin/voxcmd-autostop' --pcm '$root/quiet-room.pcm'; [[ ! -e '$root/no-trace/voxcmd/debug.log' ]]"
 
 # Type mode's pause checks, handed to a stand-in voxcmd that keeps each clip and its arguments, numbered in the order
-# they ran. Its first run waits for $pause_gate when the test sets PAUSE_GATE. Fed through a pipe, so a test can wait on
-# what the detector did before it sends more.
+# they ran. Its first run waits for $pause_gate when the test sets PAUSE_GATE, and each run ends the recording in the
+# voxtype state file PAUSE_CANCELS names, as a check hearing "cortana cancel" does. Fed through a pipe, so a test can
+# wait on what the detector did before it sends more.
 pause_runs=$root/pause-runs pause_gate=$root/pause-gate pause_voxcmd=$root/pause-voxcmd
 cat >"$pause_voxcmd" <<'STUB'
 #!/bin/sh
@@ -384,6 +385,7 @@ run=$(($(find "$PAUSE_RUNS" -name '*.args' | wc -l) + 1))
 cat >"$PAUSE_RUNS/$run.wav"
 printf '%s|%s|%s\n' "$*" "${VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING-}" "${VOXCMD_AUTOSTOP_THRESHOLD_FILE-}" >"$PAUSE_RUNS/$run.args"
 if [ "$run" = 1 ] && [ -n "${PAUSE_GATE-}" ]; then until [ -e "$PAUSE_GATE" ]; do sleep 0.02; done; fi
+[ -z "${PAUSE_CANCELS-}" ] || echo idle >"$PAUSE_CANCELS"
 : >"$PAUSE_RUNS/$run.done"
 STUB
 chmod +x "$pause_voxcmd"
@@ -391,15 +393,16 @@ type_detector=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.4 VOXCMD_AUTOSTOP_SILENCE_SECS=
   VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING=f1:1:1 "VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD=$pause_voxcmd"
   "VOXCMD_AUTOSTOP_THRESHOLD_FILE=$root/pause-threshold" "PAUSE_RUNS=$pause_runs")
 # pause_detect <feeder> [VAR=value...]: runs the detector on what the feeder (a command line) writes, with type mode's
-# settings, leaving its exit code in $pause_verdict once it has exited.
+# settings and the arguments in pause_detect_args, leaving its exit code in $pause_verdict once it has exited.
 pause_detect() {
   rm -rf "$pause_runs" "$pause_gate"
   mkdir -p "$pause_runs"
   : >"$detector_trace"
   pause_verdict=0
   eval "$1" | env XDG_RUNTIME_DIR="$root/detector-run" VOXCMD_CONFIG_DIR="$root/detector-config" "${type_detector[@]}" "${@:2}" \
-    python3 "$package/.local/bin/voxcmd-autostop" --pcm - 2>/dev/null || pause_verdict=$?
+    python3 "$package/.local/bin/voxcmd-autostop" --pcm - "${pause_detect_args[@]}" 2>/dev/null || pause_verdict=$?
 }
+pause_detect_args=()
 pause_runs_made() { find "$pause_runs" -name '*.args' | wc -l; }
 # clip_is <run> <secs>: the clip that run was handed is a 16 kHz mono 16-bit WAV of that length.
 clip_is() {
@@ -442,6 +445,23 @@ pause_detect "cat '$root/word-then-quiet.pcm'" VOXCMD_AUTOSTOP_SILENCE_SECS=1.5
 with_checks="$pause_verdict $(type_verdict)"
 pause_detect "cat '$root/word-then-quiet.pcm'" VOXCMD_AUTOSTOP_SILENCE_SECS=1.5 VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING=
 check "checks change neither the verdict nor when it comes" "[[ \$pause_verdict == 0 && '$with_checks' == \"\$pause_verdict \$(type_verdict)\" ]]"
+# The pause verdict comes while the pause's check still transcribes, which then hears "cortana cancel".
+pause_state=$root/pause-state
+pause_detect_args=(--state-file "$pause_state")
+echo recording >"$pause_state"
+pause_detect "cat '$root/word-then-quiet.pcm'; wait_for_path '$pause_runs/1.args'; wait_for_count 'stop waits for the pause checks' '$detector_trace' 1;
+  : >'$pause_gate'" VOXCMD_AUTOSTOP_SILENCE_SECS=1.5 "PAUSE_GATE=$pause_gate" "PAUSE_CANCELS=$pause_state"
+check "a pause verdict waits for the check still running, and gives way when it ends the recording" "[[ \$pause_verdict == 4 && -e '$pause_runs/1.done' ]]"
+echo recording >"$pause_state"
+pause_detect "cat '$root/word-then-quiet.pcm'; wait_for_count 'stop waits for the pause checks' '$detector_trace' 1; : >'$pause_gate'" \
+  VOXCMD_AUTOSTOP_SILENCE_SECS=1.5 "PAUSE_GATE=$pause_gate"
+check "and stops it once a check that heard no ending is over" "[[ \$pause_verdict == 0 && -e '$pause_runs/1.done' ]]"
+pause_detect "cat '$root/word-then-quiet.pcm'" VOXCMD_AUTOSTOP_SILENCE_SECS=1.5 VOXCMD_AUTOSTOP_PAUSE_CHECK_WAIT_SECS=0.5 \
+  "PAUSE_GATE=$pause_gate"
+check "a hung check holds the pause verdict back only pause_check_wait_secs" "[[ \$pause_verdict == 0 && ! -e '$pause_runs/1.done' ]] && grep -q 'still running after 0.5s, stopping anyway' '$detector_trace'"
+: >"$pause_gate"
+wait_for_path "$pause_runs/1.done"
+pause_detect_args=()
 
 section "voice sessions: endings and settling"
 # A start that fails ends the session rather than leaving it open with no microphone.
@@ -1255,6 +1275,16 @@ sess_voxcmd_env listen
 sess_wait
 pause_checks_done 1
 check "a pause check that finishes after its recording ended does nothing" "session_gone && wtype_is 'wtype -- Kept words.' && ! grep -q '^voxtype record cancel' '$log'"
+
+# The quiet after the ending runs out while its check still transcribes.
+pause_says "Secret words. Cortana, cancel."
+sess_start "IDLE Secret words. Cortana, cancel."
+sess_wait
+check "'Cortana, cancel.' heard as the quiet runs out types nothing" "session_gone && ! grep -q '^wtype' '$log' && grep -q '^voxtype record cancel' '$log' && ! grep -q '^voxtype record stop' '$log'"
+pause_says "Hello world."
+sess_start "IDLE Hello world."
+sess_wait
+check "while a check that heard no ending lets the quiet type it" "session_gone && wtype_is 'wtype -- Hello world.'"
 
 pause_checks_off
 sess_start "UNTIL_STOP Earlier words."
