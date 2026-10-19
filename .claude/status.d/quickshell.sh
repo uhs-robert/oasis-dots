@@ -57,9 +57,13 @@ if ! timeout 2 bash -c 'source "$1"; stage_greeter "$2" "$3" >/dev/null' _ "$rep
   echo "greeter: unknown"
   exit 0
 fi
-diffs=$(diff -rq "$scratch/stage" "$dest" 2>&1)
+diffs=$(diff -rq -x monitors.lua "$scratch/stage" "$dest" 2>&1)
+# monitors.lua is installed to /etc/greetd, outside $dest; a missing install counts as differing.
+if ! cmp -s "$scratch/stage/monitors.lua" /etc/greetd/monitors.lua; then
+  diffs+="monitors.lua"$'\n'
+fi
 if [[ -z $diffs ]]; then
   echo "greeter: up to date"
 else
-  echo "greeter: differs ($(wc -l <<<"$diffs") files); run: just greeter-sync --install"
+  echo "greeter: differs ($(grep -c . <<<"$diffs") files); run: just greeter-sync --install"
 fi
