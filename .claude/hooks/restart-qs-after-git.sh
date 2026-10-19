@@ -99,14 +99,15 @@ fi
 
 # This session's HYPRLAND_INSTANCE_SIGNATURE can be stale (the owner logged in again since it started), and then the
 # relaunch below fails silently after pkill has already taken the bar down. The newest instance that answers is the
-# live one; with none, nothing is killed.
+# live one, by its socket: a directory's mtime moves whenever a child like .hyprpaper.sock is recreated. With none, nothing is killed.
 live_signature=
-while read -r instance; do
+while read -r socket; do
+  instance=$(basename "$(dirname "$socket")")
   if HYPRLAND_INSTANCE_SIGNATURE=$instance timeout 3 hyprctl monitors >/dev/null 2>&1; then
     live_signature=$instance
     break
   fi
-done < <(ls -1t "${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr" 2>/dev/null)
+done < <(ls -1t "${XDG_RUNTIME_DIR:-/run/user/$UID}"/hypr/*/.socket.sock 2>/dev/null)
 if [[ -z $live_signature ]]; then
   say "Quickshell files changed in the live checkout, but no running Hyprland instance answers 'hyprctl monitors', so the bar was not killed. Restart it by hand from a shell inside the owner's session: pkill -x qs; hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\"."
   exit 0
