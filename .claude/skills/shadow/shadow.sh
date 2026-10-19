@@ -128,6 +128,8 @@ seed_home() {
   mkdir -p "$shadow_home"/.config/fontconfig/conf.d "$shadow_home"/.local/state/{quickshell,hypr} \
     "$shadow_home"/.cache/quickshell "$shadow_home"/.local/share/quickshell
   for file in "$owner_state"/quickshell/*.json "$owner_state"/hypr/*.json "$owner_state"/hypr/theme; do
+    # weather.local.json holds the owner's real coordinates.
+    [[ ${file##*/} == weather.local.json ]] && continue
     [[ -f $file ]] && cp "$file" "$shadow_home/.local/state/${file#"$owner_state"/}"
   done
   [[ -f $owner_cache/quickshell/weather.json ]] && cp "$owner_cache/quickshell/weather.json" "$shadow_home/.cache/quickshell/"
