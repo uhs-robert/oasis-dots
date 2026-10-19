@@ -5,8 +5,8 @@ import Quickshell.Io
 import Quickshell.Services.Notifications
 import qs.features.popups
 import qs.features.audio
-import "NotificationMarkup.js" as NotificationMarkup
 import qs.core
+import "NotificationMarkup.js" as NotificationMarkup
 
 // One shared notification server for every bar/popup/toast. Entries wrap a tracked
 // Notification with the time it arrived; history and toasts are newest-first arrays.

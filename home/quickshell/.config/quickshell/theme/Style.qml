@@ -669,7 +669,6 @@ Singleton {
         if (style_name in root.styles) root.name = style_name;
     }
 
-
     Process {
         id: ensure_state_dir
         command: ["mkdir", "-p", Paths.state_dir]
