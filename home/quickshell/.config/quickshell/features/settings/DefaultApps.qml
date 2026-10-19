@@ -28,8 +28,8 @@ Singleton {
         { key: "directories", label: "Directories" }
     ]
 
-    property var app: ({})
-    property var mime: ({})
+    readonly property var app: store.values.app
+    readonly property var mime: store.values.mime
     property var found: ({ mime: {}, app: {} })
     property bool reload_pending: false
 
@@ -77,37 +77,16 @@ Singleton {
         const next = Object.assign({}, root.app);
         if (value === "") delete next[key];
         else next[key] = value;
-        root.app = next;
         root.reload_pending = true;
-        save_timer.restart();
+        store.set_key("app", next);
     }
 
     function set_mime(group, id) {
-        root.mime = Object.assign({}, root.mime, { [group]: id });
-        save_timer.restart();
+        store.set_key("mime", Object.assign({}, root.mime, { [group]: id }));
     }
 
     function refresh() {
         if (!dump_proc.running) dump_proc.running = true;
-    }
-
-    Timer {
-        id: save_timer
-        interval: 600
-        onTriggered: {
-            if (save_proc.running) {
-                save_timer.restart();
-                return;
-            }
-            save_proc.command = ["sh", "-c", "mkdir -p \"$1\" && printf %s \"$2\" > \"$1/apps.json.tmp\" && mv \"$1/apps.json.tmp\" \"$1/apps.json\" && \"$HOME/.config/hypr/scripts/apps.sh\" apply; [ \"$3\" = 1 ] && hyprctl reload",
-                "sh", root.state_dir, JSON.stringify({ app: root.app, mime: root.mime }), root.reload_pending ? "1" : "0"];
-            root.reload_pending = false;
-            save_proc.running = true;
-        }
-    }
-
-    Process {
-        id: save_proc
     }
 
     Process {
@@ -125,27 +104,27 @@ Singleton {
         }
     }
 
-    FileView {
+    JsonStore {
+        id: store
         path: root.state_dir + "/apps.json"
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                const clean = obj => {
-                    const out = {};
-                    for (const key in obj || {}) {
-                        if (typeof obj[key] === "string" && obj[key] !== "") out[key] = obj[key];
-                    }
-                    return out;
-                };
-                root.app = clean(data.app);
-                root.mime = clean(data.mime);
-            } catch (e) {
-                console.warn("DefaultApps: invalid apps.json (" + e + ")");
-            }
+        defaults: ({ app: {}, mime: {} })
+        debounce_ms: 600
+        validate: raw => {
+            const clean = obj => {
+                const out = {};
+                for (const key in obj || {}) {
+                    if (typeof obj[key] === "string" && obj[key] !== "") out[key] = obj[key];
+                }
+                return out;
+            };
+            return { app: clean(raw.app), mime: clean(raw.mime) };
         }
-        onLoadFailed: error => {}
+        // An `if`, not `&&`: with no reload wanted the command must not exit 1.
+        after_save: values => {
+            const reload = root.reload_pending ? "1" : "0";
+            root.reload_pending = false;
+            return ["sh", "-c", '"$HOME/.config/hypr/scripts/apps.sh" apply; if [ "$1" = 1 ]; then hyprctl reload; fi', "sh", reload];
+        }
     }
 
     Component.onCompleted: root.refresh()
