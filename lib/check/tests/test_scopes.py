@@ -29,6 +29,8 @@ CASES = [
     ("lib/check/steps/qml.py", "checkscope qml"),
     ("lib/check/qml_imports.py", "checkscope qml"),
     ("lib/check/steps/qml_paths.py", "checkscope qml"),
+    ("lib/check/steps/qml_layers.py", "checkscope qml"),
+    ("lib/check/qml-layers.allow", "checkscope qml"),
     ("lib/check/steps/lua.sh", "checkscope lua"),
     ("lib/check/steps/symlinks.sh", "checkscope"),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.

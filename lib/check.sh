@@ -49,6 +49,8 @@
 #   qml-paths                file paths built as strings in Quickshell QML and JS exist: Qt.resolvedUrl, shellDir, QML and JS
 #                            imports, in the shell and in the greeter tree (lib/common/greeter-files.sh), and the files outside
 #                            Quickshell that name a path in it (lib/check/steps/qml_paths.py).
+#   qml-layers               no Quickshell import or literal URL load runs to a higher layer than its file's, except the edges in
+#                            lib/check/qml-layers.allow, which fails when one goes stale (lib/check/steps/qml_layers.py).
 #   lock-skins               features/lock/skins/index.json matches the skin files and audio importers (lib/check/steps/lock-skins.sh). Needs jq.
 #   style-exports            generated property lines in theme/Style.qml match theme/StyleSchema.js (lib/check/steps/style-exports.sh).
 #                            Needs python3.

@@ -46,6 +46,8 @@ PATH_SCOPES = [
     ("lib/check/steps/qml.py", "qml"),
     ("lib/check/qml_imports.py", "qml"),
     ("lib/check/steps/qml_paths.py", "qml"),
+    ("lib/check/steps/qml_layers.py", "qml"),
+    ("lib/check/qml-layers.allow", "qml"),
     ("lib/check/steps/lock-skins.sh", "qml"),
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),
@@ -151,6 +153,7 @@ STEPS = [
     Step("stylua", "lua", "stylua --respect-ignores --check home/hypr/.config/hypr", ("stylua",), skip_reason="stylua not installed"),
     Step("luacheck", "lua", "sh ./lib/check/steps/lua.sh"),
     Step("qml-paths", "qml", "python3 -B ./lib/check/steps/qml_paths.py"),
+    Step("qml-layers", "qml", "python3 -B ./lib/check/steps/qml_layers.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
