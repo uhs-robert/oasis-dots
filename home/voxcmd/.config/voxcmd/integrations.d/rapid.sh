@@ -16,9 +16,10 @@ rapid_exit_phrase=$(mode_exit_phrase "$rapid_exit_object")
 session_exit_phrases="done with $rapid_exit_object|$rapid_exit_phrase|exit|quit"
 session_exit_hint="say cortana done to stop"
 session_default_exits=0
-# A bare done or exit word is a missed turn that answers with the hint, since only "cortana ..." leaves.
+# A bare done, exit or stop word is a missed turn that answers with the hint, since only "cortana ..." leaves; bare "stop"
+# is not Media's pause here, "pause" and "stop the music" still are.
 session_miss_actions=(rapid_leave_hint)
-rapid_leave_words='done|im done|thats all|exit|quit|done with (the )?(rapid|rapid mode|rapid fire mode)'
+rapid_leave_words='done|im done|thats all|exit|quit|stop|done with (the )?(rapid|rapid mode|rapid fire mode)'
 rapid_leave_hint_text="say cortana done to leave"
 mode_actions=(rapid_mode stop_rapid)
 
