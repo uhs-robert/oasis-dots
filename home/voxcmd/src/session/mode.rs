@@ -512,6 +512,9 @@ fn toml_handle_turn(file: &str, text: &str, ending: Option<&str>, heard_mode: &s
         .as_ref()
         .and_then(|declared| declared.handle_turn.clone())
     else {
+        debug(&format!(
+            "session: {stem} has no handle_turn now; the turn is not handed over"
+        ));
         return;
     };
     let mut command = toml_hook(&mode, &shell, "", Some(heard_mode));
@@ -521,11 +524,20 @@ fn toml_handle_turn(file: &str, text: &str, ending: Option<&str>, heard_mode: &s
     }
     let limit = handle_turn_timeout(&mode, text);
     match process::run_discarding_output_within(&mut command, limit) {
-        Ok(outcome) if outcome.timed_out => debug(&format!(
-            "session: {stem}'s handle_turn ran past {} s and was ended with what it started; part of the text may \
-             have been typed",
-            limit.as_secs_f64()
-        )),
+        Ok(outcome) if outcome.timed_out => {
+            debug(&format!(
+                "session: {stem}'s handle_turn ran past {} s and was ended with what it started; part of the text may \
+                 have been typed",
+                limit.as_secs_f64()
+            ));
+            // The label only: private modes keep their words out of toasts.
+            let label = &mode
+                .integration
+                .mode
+                .as_ref()
+                .map_or(stem.as_str(), |declared| declared.label.as_str());
+            notify::notify(Kind::Info, &format!("voxcmd: {label}"), "the turn hook timed out");
+        }
         Ok(outcome) if outcome.code() != Some(0) => {
             debug(&format!(
                 "session: {stem}'s handle_turn failed ({})",
@@ -551,20 +563,20 @@ fn handle_turn_refusal(heard_mode: &str) -> Option<&'static str> {
     (!still_wanted).then_some("the session ended or was stopped")
 }
 
-/// `[mode] timeout_secs`, else long enough to type the whole text: wtype typed about 4.4 ms a character into a
-/// terminal and a browser (5,000 characters, 2026-10-19), and this allows over three times that.
+/// Long enough to type the whole text: wtype typed about 4.4 ms a character into a terminal and a browser (5,000
+/// characters, 2026-10-19), and this allows over three times that. `[mode] timeout_secs` can only lengthen it: a
+/// short value meant for `alive` must not cut a long dictation.
 fn handle_turn_timeout(mode: &TomlMode, text: &str) -> Duration {
-    const BASE: Duration = Duration::from_secs(10);
+    // Scaled by VOXCMD_TIME_SCALE so the suites need not wait 10 s for a deadline.
+    let base = crate::voice::time_scaled(10.0);
     const PER_CHARACTER: Duration = Duration::from_millis(15);
     let declared = mode
         .integration
         .mode
         .as_ref()
         .and_then(|declared| declared.timeout_secs);
-    declared.map_or_else(
-        || BASE + PER_CHARACTER * u32::try_from(text.chars().count()).unwrap_or(u32::MAX),
-        Duration::from_secs_f64,
-    )
+    let computed = base + PER_CHARACTER * u32::try_from(text.chars().count()).unwrap_or(u32::MAX);
+    declared.map_or(computed, |seconds| computed.max(Duration::from_secs_f64(seconds)))
 }
 
 #[cfg(test)]
@@ -629,7 +641,7 @@ mod tests {
     }
 
     #[test]
-    fn handle_turn_has_time_to_type_the_whole_text_unless_timeout_secs_says_otherwise() {
+    fn handle_turn_has_time_to_type_the_whole_text_and_timeout_secs_only_lengthens_it() {
         let mode = |extra: &str| {
             let text = format!("verbs = []\n[mode]\nhandle_turn = 'x'\n{extra}");
             let integration = schema::parse_toml(Path::new("m.toml"), &text).unwrap();
@@ -647,9 +659,14 @@ mod tests {
             handle_turn_timeout(&mode(""), &dictation),
             Duration::from_millis(77_500)
         );
+        // Only a longer declared limit counts.
         assert_eq!(
             handle_turn_timeout(&mode("timeout_secs = 2.5\n"), &dictation),
-            Duration::from_millis(2_500)
+            Duration::from_millis(77_500)
+        );
+        assert_eq!(
+            handle_turn_timeout(&mode("timeout_secs = 120\n"), &dictation),
+            Duration::from_secs(120)
         );
     }
 

@@ -157,6 +157,7 @@ impl Rig {
             .env("VOXCMD_LEGACY_BIN", self.path().join("legacy/voxcmd"))
             .env("XDG_RUNTIME_DIR", self.path().join("runtime"))
             .env("XDG_STATE_HOME", self.path().join("state"))
+            .env("XDG_CONFIG_HOME", self.path().join("xdg"))
             .env("VOXCMD_DEBUG", "1")
             .env("VOXCMD_TIME_SCALE", "0.1")
             .stdin(Stdio::null())
@@ -755,5 +756,28 @@ fn a_mode_s_handle_turn_is_not_run_while_a_picker_waits_on_the_user() {
     assert!(
         rig.debug_log()
             .contains("session: demo's handle_turn not run: a voxcmd picker or card is open")
+    );
+}
+
+#[test]
+fn a_mode_s_handle_turn_is_not_run_while_the_click_overlay_is_open() {
+    let rig = Rig::new();
+    rig.integration("demo", HANDLER);
+    std::fs::create_dir_all(rig.path().join("xdg/hypr/scripts")).unwrap();
+    rig.script(
+        "xdg/hypr/scripts/qs-ipc",
+        "[ \"$2 $3\" != 'clickhints state' ] || echo open",
+    );
+    rig.hear("demo", json!({}), "some words");
+    assert_eq!(rig.read_work("handled"), "", "{}", rig.debug_log());
+    assert!(
+        rig.calls()
+            .contains("notify-send -a voxcmd --transient voxcmd: not typed the click overlay is open"),
+        "{}",
+        rig.calls()
+    );
+    assert!(
+        rig.debug_log()
+            .contains("session: demo's handle_turn not run: the click overlay is open")
     );
 }
