@@ -11,7 +11,8 @@ trap 'rm -rf "$root"' EXIT
 g() { git -c user.name=t -c user.email=t@t "$@"; }
 
 stubs=$root/stubs
-mkdir -p "$stubs" "$root/home/.config" "$root/run"
+mkdir -p "$stubs" "$root/home/.config" "$root/run/hypr/live1"
+echo live1 >"$root/live_sigs"
 # pgrep -af looks for a test bar (none); pgrep -x qs sees the bar gone between pkill and the relaunch.
 cat >"$stubs/pgrep" <<STUB
 #!/bin/sh
@@ -20,7 +21,15 @@ cat >"$stubs/pgrep" <<STUB
 exit 0
 STUB
 printf '#!/bin/sh\ntouch "%s/killed"\n' "$root" >"$stubs/pkill"
-printf '#!/bin/sh\ntouch "%s/relaunched"\n' "$root" >"$stubs/hyprctl"
+# hyprctl answers only for signatures listed in live_sigs; a dispatch to a live one relaunches the bar unless
+# relaunch_fails exists.
+cat >"$stubs/hyprctl" <<STUB
+#!/bin/sh
+grep -qx "\$HYPRLAND_INSTANCE_SIGNATURE" "$root/live_sigs" || exit 1
+[ "\$1" = dispatch ] || exit 0
+echo "\$HYPRLAND_INSTANCE_SIGNATURE" >"$root/dispatched_to"
+[ -e "$root/relaunch_fails" ] || touch "$root/relaunched"
+STUB
 printf '#!/bin/sh\necho unlocked\n' >"$stubs/qs-ipc"
 printf '#!/bin/sh\n' >"$stubs/sleep"
 chmod +x "$stubs"/*
@@ -43,18 +52,31 @@ g -C "$repo" commit -qam other
 g -C "$repo" switch -q main
 git -C "$repo" worktree add -q -b topic "$root/wt"
 
+# check <description> <command...>: passes when the command succeeds.
+check() {
+  local what=$1
+  shift
+  if "$@"; then
+    echo "ok   $what"
+    pass=$((pass + 1))
+  else
+    echo "FAIL $what ($(cat "$root/said" 2>/dev/null))"
+    fail=$((fail + 1))
+  fi
+}
+
 call=0
-# expect <restart|none> <description> <dir> <command>: the command runs in dir between the two hook runs.
+# expect <restart|killed|none> <description> <dir> <command>: the command runs in dir between the two hook runs.
 expect() {
   local json
   call=$((call + 1))
-  rm -f "$root/killed" "$root/relaunched"
+  rm -f "$root/killed" "$root/relaunched" "$root/dispatched_to"
   json=$(jq -n --arg c "$4" --arg id "toolu_$call" '{tool_use_id: $id, tool_input: {command: $c}}')
-  hook_env=(HOME="$root/home" XDG_RUNTIME_DIR="$root/run" QS_IPC="$stubs/qs-ipc" PATH="$stubs:$PATH")
+  hook_env=(HOME="$root/home" XDG_RUNTIME_DIR="$root/run" QS_IPC="$stubs/qs-ipc" PATH="$stubs:$PATH" HYPRLAND_INSTANCE_SIGNATURE="${session_sig:-live1}")
   env "${hook_env[@]}" "$hook" snapshot <<<"$json"
   (cd "$3" && eval "$4") >/dev/null 2>&1
   env "${hook_env[@]}" "$hook" <<<"$json" >"$root/said"
-  if [[ $1 == restart && -e $root/killed && -e $root/relaunched ]] || [[ $1 == none && ! -e $root/killed ]]; then
+  if [[ $1 == restart && -e $root/killed && -e $root/relaunched ]] || [[ $1 == killed && -e $root/killed ]] || [[ $1 == none && ! -e $root/killed ]]; then
     echo "ok   $1: $2"
     pass=$((pass + 1))
   else
@@ -75,9 +97,37 @@ expect restart "a stash of an uncommitted Quickshell edit in the live checkout" 
 expect none "a git command that moves nothing" "$repo" "git status"
 expect none "a Quickshell change with no snapshot from before the command" "$repo" "git stash pop -q && rm -rf '$root/run/claude-restart-qs'"
 
+# The hook gets the session's signature, which may be dead; the newest instance that answers is the live one.
+session_sig=stale
+mkdir -p "$root/run/hypr/stale"
+touch -d '2 days ago' "$root/run/hypr/stale"
+git -C "$repo" stash -q 2>/dev/null
+expect restart "a stale session signature" "$repo" "git stash pop -q"
+check "the relaunch goes to the live instance, not the stale session signature" grep -qx live1 "$root/dispatched_to"
+# Both answer: the newer one wins.
+mkdir -p "$root/run/hypr/live2"
+printf 'live1\nlive2\n' >"$root/live_sigs"
+touch -d '1 hour ago' "$root/run/hypr/live1"
+expect restart "two live instances" "$repo" "git stash -q"
+check "the newest answering instance is used" grep -qx live2 "$root/dispatched_to"
+
+# No instance answers: the bar stays up.
+: >"$root/live_sigs"
+expect none "no Hyprland instance answers" "$repo" "git stash pop -q"
+check "the message says the bar was not killed" grep -q "not killed" "$root/said"
+
+# The relaunch is lost: the message must not claim success.
+echo live1 >"$root/live_sigs"
+touch "$root/relaunch_fails"
+expect killed "a relaunch that never brings qs back" "$repo" "git stash -q"
+check "a failed relaunch is reported" grep -q "did not come back" "$root/said"
+rm -f "$root/relaunch_fails"
+session_sig=
+git -C "$repo" stash pop -q
+
 # Two sessions' commands overlap one pull of the live checkout: both snapshots predate it, both runs see it.
 rm -f "$root/killed" "$root/relaunched"
-hook_env=(HOME="$root/home" XDG_RUNTIME_DIR="$root/run" QS_IPC="$stubs/qs-ipc" PATH="$stubs:$PATH")
+hook_env=(HOME="$root/home" XDG_RUNTIME_DIR="$root/run" QS_IPC="$stubs/qs-ipc" PATH="$stubs:$PATH" HYPRLAND_INSTANCE_SIGNATURE=live1)
 for id in pull rebase; do
   jq -n --arg c "git rebase main" --arg id "$id" '{tool_use_id: $id, tool_input: {command: $c}}' | env "${hook_env[@]}" "$hook" snapshot
 done

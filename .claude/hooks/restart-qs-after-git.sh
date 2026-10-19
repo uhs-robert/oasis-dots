@@ -97,6 +97,22 @@ if [[ $state != unlocked ]] && pgrep -x qs >/dev/null; then
   exit 0
 fi
 
+# This session's HYPRLAND_INSTANCE_SIGNATURE can be stale (the owner logged in again since it started), and then the
+# relaunch below fails silently after pkill has already taken the bar down. The newest instance that answers is the
+# live one; with none, nothing is killed.
+live_signature=
+while read -r instance; do
+  if HYPRLAND_INSTANCE_SIGNATURE=$instance timeout 3 hyprctl monitors >/dev/null 2>&1; then
+    live_signature=$instance
+    break
+  fi
+done < <(ls -1t "${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr" 2>/dev/null)
+if [[ -z $live_signature ]]; then
+  say "Quickshell files changed in the live checkout, but no running Hyprland instance answers 'hyprctl monitors', so the bar was not killed. Restart it by hand from a shell inside the owner's session: pkill -x qs; hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\"."
+  exit 0
+fi
+export HYPRLAND_INSTANCE_SIGNATURE=$live_signature
+
 # Recorded only now, so a restart withheld above is not marked as done.
 printf '%s\n' "$after" >"$handled_file"
 pkill -x qs
@@ -105,9 +121,12 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
   sleep 0.2
 done
 hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" >/dev/null 2>&1
-sleep 3
+for _ in $(seq 25); do
+  pgrep -x qs >/dev/null && break
+  sleep 0.2
+done
 if pgrep -x qs >/dev/null; then
   say "Quickshell files changed in the live checkout ($repo), so the stowed bar was restarted: hot-reload can keep stale code after a git checkout or merge. Check 'qs log' for load errors before telling the owner it is live."
 else
-  say "Quickshell files changed and the bar was restarted, but qs is not running now: it probably failed to load. Read 'qs log' for the error and relaunch with hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\"."
+  say "Quickshell files changed and the bar was killed, but qs did not come back within 5 s (Hyprland instance $live_signature): it probably failed to load, or the relaunch was not delivered. Read 'qs log', then relaunch with HYPRLAND_INSTANCE_SIGNATURE=$live_signature hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\"."
 fi
