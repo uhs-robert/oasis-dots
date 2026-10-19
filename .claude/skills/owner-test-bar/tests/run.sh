@@ -294,6 +294,17 @@ check "a bare stow -R aborts on the foreign link, which is why restore removes i
 out=$(rsx voxcmd_restore)
 check "restore's stow -R succeeds while swapped" "[[ \$? == 0 ]] && link_is '$stow_target'"
 
+echo "== rs: the permanent voxcmd-rs alias"
+reset_calls
+ln -s "$rs_bin" "$rs_home/.local/bin/voxcmd-rs"
+check "status stays main when only the alias exists" "[[ \$(rsx voxcmd_status) == 'voxcmd: main' ]]"
+rsx voxcmd_restore >/dev/null
+check "restore with no swap keeps the alias" "[[ -L $rs_home/.local/bin/voxcmd-rs ]]"
+rsx main rs-swap 5 >/dev/null
+rsx voxcmd_restore >/dev/null
+check "restore after an rs swap keeps the alias and relinks main" "[[ -L $rs_home/.local/bin/voxcmd-rs ]] && link_is '$stow_target'"
+rm "$rs_home/.local/bin/voxcmd-rs"
+
 echo "== rs: a symlinked data dir"
 reset_calls
 ln -s "$rs_home/.local/share" "$root/data_link"

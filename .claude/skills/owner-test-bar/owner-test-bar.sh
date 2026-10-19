@@ -247,7 +247,8 @@ voxcmd_test_links() {
   for link in "$voxcmd_bin_dir"/* "$voxcmd_config_link"; do
     [[ -L $link ]] || continue
     target=$(readlink -m "$link")
-    [[ $target == "$bars"/* || $target == "$voxcmd_rs_target" ]] && echo "$link"
+    # Only the voxcmd link itself: `just voxcmd-build` leaves a permanent voxcmd-rs alias to the same binary.
+    [[ $target == "$bars"/* || ($link == "$voxcmd_bin_dir/voxcmd" && $target == "$voxcmd_rs_target") ]] && echo "$link"
   done
   return 0
 }
