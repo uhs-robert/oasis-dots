@@ -70,6 +70,7 @@ CASES = [
     ("extras/other/file", ""),
     ("lib/install/voice.sh", " policy loader"),
     ("lib/install/tests/migrate-quickshell-input.sh", " migratelock"),
+    ("lib/install/tests/migrate-quickshell-weather.sh", " migratelock"),
     ("lib/install/tests/firefox-policy.sh", " policy"),
     ("lib/install/greeter.sh", " keyring loader"),
     ("lib/install/tests/greeter-keyring.sh", " keyring"),

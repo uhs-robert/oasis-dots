@@ -52,7 +52,7 @@ _stow mode *pkgs:
     set -euo pipefail
     export DOTFILES_DIR="$PWD"
     source lib/install/load.sh
-    [[ "{{mode}}" == D ]] || { migrate_quickshell_lock_assets; migrate_quickshell_state; migrate_quickshell_input; }
+    [[ "{{mode}}" == D ]] || { migrate_quickshell_lock_assets; migrate_quickshell_state; migrate_quickshell_input; migrate_quickshell_weather; }
     stow_packages "-{{mode}}" {{pkgs}}
 
 # One-time fix for a systemd tree folded into the repo (before #812's follow-up); idempotent, pass --dry-run to only report
@@ -63,7 +63,7 @@ migrate-systemd *ARGS:
     source lib/install/load.sh
     migrate_systemd {{ARGS}}
 
-# Copy Quickshell's input.json to typing.json (kept, never overwritten), and move its per-checkout notifications/Claude usage state (by-shell) into the shared state dir; newest wins, so run it before and again after the bar restart (by-shell is deleted only by a run with no bar up: stop the bar, run, start it); MIGRATE_DRY_RUN=1 only reports
+# Copy Quickshell's input.json to typing.json (kept, never overwritten), move weather.local.json from the checkout into the state dir (old copy deleted once the copy is verified), and move its per-checkout notifications/Claude usage state (by-shell) into the shared state dir; newest wins, so run it before and again after the bar restart (by-shell is deleted only by a run with no bar up: stop the bar, run, start it); MIGRATE_DRY_RUN=1 only reports
 migrate-quickshell-state:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -71,6 +71,7 @@ migrate-quickshell-state:
     source lib/install/load.sh
     migrate_quickshell_state
     migrate_quickshell_input
+    migrate_quickshell_weather
 
 # Copy *.template.* defaults of the given packages into place when missing
 _seed *pkgs:
