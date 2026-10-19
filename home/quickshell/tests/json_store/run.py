@@ -267,6 +267,43 @@ def scenario_recreate(state_home):
     return problems
 
 
+def scenario_undo_to_earlier_write(state_home):
+    result, store_dir, problems = store_run("undo_to_earlier_write", state_home)
+    if problems:
+        return problems
+    expect(problems, "values follow a revert to an earlier write", result["values"], {"a": 1, "b": 0})
+    return problems
+
+
+def scenario_same_value(state_home):
+    result, store_dir, problems = store_run("same_value", state_home)
+    if problems:
+        return problems
+    expect(problems, "values", result["values"], {"a": 2, "b": 0})
+    expect(problems, "disk after the set that follows an unchanged one", json.loads(read(store_dir)), {"a": 2, "b": 0})
+    expect(problems, "saved signals", result["saved_count"], 3)
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_external_burst(state_home):
+    result, store_dir, problems = store_run("external_burst", state_home, seed='{"a":0,"b":0}')
+    if problems:
+        return problems
+    expect(problems, "values follow the last of two quick edits", result["values"], {"a": 2, "b": 0})
+    return problems
+
+
+def scenario_set_from_loaded(state_home):
+    result, store_dir, problems = store_run("set_from_loaded", state_home, seed='{"a":1,"b":0}')
+    if problems:
+        return problems
+    expect(problems, "disk: the edit plus the set made on loading it", json.loads(read(store_dir)), {"a": 4, "b": 9})
+    expect(problems, "saved signals", result["saved_count"], 2)
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
 def scenario_after_save_inflight(state_home):
     result, store_dir, problems = store_run("after_save_inflight", state_home)
     if problems:
@@ -316,6 +353,10 @@ SCENARIOS = {
     "after_save": scenario_after_save,
     "revert": scenario_revert,
     "recreate": scenario_recreate,
+    "undo_to_earlier_write": scenario_undo_to_earlier_write,
+    "same_value": scenario_same_value,
+    "external_burst": scenario_external_burst,
+    "set_from_loaded": scenario_set_from_loaded,
     "after_save_inflight": scenario_after_save_inflight,
     "write_fails": scenario_write_fails,
     "watch_after_first_write": scenario_watch_after_first_write,

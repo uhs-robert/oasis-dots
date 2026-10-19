@@ -60,14 +60,15 @@ ShellRoot {
             steps: [],
             end: 500
         },
-        // Debounce against the reload our own write causes: the second set lands at several offsets around the echo.
+        // Debounce against the reload our own write causes: the second set lands at several offsets around the echo. The
+        // first set waits for the initial load, which a write starting earlier would cancel.
         echo: {
             debounce_ms: 100,
             steps: [0, 1, 2, 3, 4, 5, 6, 7].reduce((all, i) => all.concat([
-                [i * 600, () => store.set_key("a", i + 1)],
-                [i * 600 + [90, 100, 104, 110, 120, 150, 200, 300][i], () => store.set_key("b", i + 1)]
+                [100 + i * 600, () => store.set_key("a", i + 1)],
+                [100 + i * 600 + [90, 100, 104, 110, 120, 150, 200, 300][i], () => store.set_key("b", i + 1)]
             ]), []),
-            end: 8 * 600 + 800
+            end: 100 + 8 * 600 + 800
         },
         // Immediate writes: five sets in a row all land, the last wins, and every echo is ignored.
         immediate: {
@@ -142,6 +143,41 @@ ShellRoot {
             ],
             end: 1400
         },
+        // Two saves, then the file is put back to the first one's bytes (an editor's undo): an edit, not a late echo.
+        undo_to_earlier_write: {
+            steps: [
+                [100, () => store.set_key("a", 1)],
+                [400, () => store.set_key("a", 2)],
+                [800, () => root.outside_write(root.store_path, '{"a":1,"b":0}')]
+            ],
+            end: 1300
+        },
+        // Setting what the file already holds writes nothing but still completes; the store must not wait for it.
+        same_value: {
+            steps: [
+                [100, () => store.set_key("a", 1)],
+                [400, () => store.set_key("a", 1)],
+                [700, () => store.set_key("a", 2)]
+            ],
+            end: 1200
+        },
+        // Two outside saves back to back: the second can land while the first one's read is in flight. Under load only.
+        external_burst: {
+            steps: [[200, () => Quickshell.execDetached(["sh", "-c",
+                "printf %s '{\"a\":1,\"b\":0}' > \"$1.ext\" && mv \"$1.ext\" \"$1\" && printf %s '{\"a\":2,\"b\":0}' > \"$1.ext\" && mv \"$1.ext\" \"$1\"",
+                "sh", root.store_path])]],
+            end: 800
+        },
+        // A migration that sets from its loaded handler, which runs inside FileView's own signal.
+        // The first save makes the directory known, so the set after the edit goes straight to FileView.
+        set_from_loaded: {
+            on_loaded: () => { if (root.loaded_count === 2) store.set_key("b", 9); },
+            steps: [
+                [100, () => store.set_key("a", 3)],
+                [400, () => root.outside_write(root.store_path, '{"a":4,"b":0}')]
+            ],
+            end: 900
+        },
         // A set lands while a write is in flight: each write's argv comes from the values it carried, and the second
         // one waits for the first, which is still running (it sleeps).
         after_save_inflight: {
@@ -152,8 +188,11 @@ ShellRoot {
             },
             steps: [
                 [100, () => store.set_key("c", 0)],
-                [600, () => store.set_key("a", 1)],
-                [600, () => { root.reload_pending = true; store.set_key("b", 5); }]
+                [600, () => {
+                    store.set_key("a", 1);
+                    // The store starts its write on the next turn of the event loop; this set comes right after that.
+                    Qt.callLater(() => { root.reload_pending = true; store.set_key("b", 5); });
+                }]
             ],
             end: 2200
         },
@@ -184,7 +223,10 @@ ShellRoot {
         known_keys: root.plan.known_keys || Object.keys(root.plan.defaults || ({ a: 0, b: 0 }))
         debounce_ms: root.plan.debounce_ms || 0
         after_save: root.plan.after_save || null
-        onLoaded: root.loaded_count += 1
+        onLoaded: {
+            root.loaded_count += 1;
+            if (root.plan.on_loaded) root.plan.on_loaded();
+        }
         onSaved: root.saved_count += 1
         onSave_failed: error => root.failures = root.failures.concat([String(error)])
         onAfter_save_done: code => root.after_log = root.after_log.concat(["done " + code])
