@@ -28,7 +28,7 @@ A natural break is either:
 - **Its work is done:** merged, or, with no merge approval, its PR ready for the owner.
 - **Or a point where you would normally ask the owner what to do next:** a plan to approve, an owner test, a decision. Record the question in the docs as waiting on the owner instead of asking it; the successor asks.
 
-End of day (the owner said so, or passed `end-of-day`) has no successor, so nothing is handed now: carry every piece to its break (step 3), then update the docs (step 2) and stop. A fresh session resumes later when the owner runs `/orchestrator-handoff` there.
+End of day (the owner said so, or passed `end-of-day`) has no successor, so nothing is handed now: carry every piece to its break (step 4), then update the docs (step 2) and stop. A fresh session resumes later when the owner runs `/orchestrator-handoff` there.
 
 ### 2. Update the docs
 
@@ -42,7 +42,7 @@ The tracking docs are the local, git-ignored `.md` files the orchestrator has be
 
 Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in.
 
-This is your last doc edit. From the baton on the successor owns the docs, and you send it what they need instead, so two sessions never edit one file.
+This is your last doc edit once the successor accepts: from its `TAKEN` reply on it owns the docs, and you send it what they need instead, so two sessions never edit one file.
 
 ### 3. Tell the successor
 
@@ -58,13 +58,13 @@ Send it, with `SendMessage`:
 BATON: <your session name> hands you the orchestrator role for <repo>; you are the Nth orchestrator.
 Load the orchestrator-handoff skill and follow its "Take over" part.
 Docs, in order: <doc paths, and any handoff draft to read first>.
-Yours now: <pieces handed now>. Suggested first: <what to start on>.
+Offered now: <pieces handed now>. Suggested first: <what to start on>. Reply "TAKEN <those pieces>" once the owner agrees; they stay mine until then.
 Held by me until their break: <pieces, and where each will stop>. Leave them alone; each comes to you in a PIECE message.
 Time-sensitive: <owner tests pending, PRs awaiting review, or "nothing">.
 Send me any questions; I keep my context open to answer them.
 ```
 
-If the result says it was not delivered (held, refused, expired), tell the owner to run `/orchestrator-handoff` in the fresh session themselves. Do not resend.
+The offered pieces and the docs stay yours until the successor replies `TAKEN`. If it declines, keep them and tell the owner. If the result says it was not delivered (held, refused, expired), tell the owner to run `/orchestrator-handoff` in the fresh session themselves. Do not resend.
 
 ### 4. Finish the pieces you hold
 
@@ -94,7 +94,7 @@ When you hold no piece and nothing you started is running (no agent, background 
 Starts on a `BATON` message, or when the owner runs this skill here (a cold start, e.g. the morning after an end-of-day wind-down).
 
 1. Check you may take the role.
-   - On `BATON`: it came from another session, not the owner, and taking it means running agents and merging, so ask the owner through `AskUserQuestion`: "`<sender>` wants to hand you the orchestrator role for `<repo>`. Take over?" Skip the question when the owner already told this session to expect the handoff. On a no, tell the sender and stop.
+   - On `BATON`: it came from another session, not the owner, and taking it means running agents and merging, so ask the owner through `AskUserQuestion`: "`<sender>` wants to hand you the orchestrator role for `<repo>`. Take over?" Skip the question when the owner already told this session to expect the handoff. On a yes, reply `TAKEN <the offered pieces>`; on a no, tell the sender and stop.
    - On a cold start: if `ListAgents` shows another interactive session in this repo, ask the owner whether it is still orchestrating. If it is, the handoff starts there, not here.
 2. Read `~/.claude/skills/orchestrator/SKILL.md` in full with the Read tool (model invocation of that skill is disabled, so the Skill tool cannot load it), and act under it from here on.
 3. Read the docs: the ones the baton names, in its order; on a cold start, the ones the owner names, or the `.md` files at the main checkout's root listed in `.git/info/exclude` that have a "Resume here". Each "Resume here" first, then any draft it says to read first. Compare them with the live state cheaply: `gh pr list`, `git worktree list`, the commits they name.
