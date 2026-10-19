@@ -38,6 +38,8 @@ session_handle_turn() {
     : > "$WORK/turn-entered"
     until [ -e "$WORK/turn-release" ]; do sleep 0.02; done
   fi
+  # Writes to stdout after the turn is over: dies of SIGPIPE if the hook's stdout was a pipe voxcmd has closed.
+  if [ -e "$WORK/turn-child" ]; then ( sleep 1; echo late; : > "$WORK/child-survived" ) & fi
   printf '%s|%s|%s|%s\n' "$1" "${2-}" "$(discard_flag_of $$)" "$(session_state | jq -r .ending.by)" >> "$WORK/handled"
 }
 "#;
@@ -293,6 +295,43 @@ esac"#,
     }
 }
 
+/// The session lock, held by the test, until the dropped guard lets the processes waiting on it go at once.
+struct HeldLock(std::fs::File);
+
+impl HeldLock {
+    fn take(setup: &Setup) -> Self {
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(setup.runtime().join("session.lock"))
+            .unwrap();
+        // SAFETY: flock only locks the open file this test owns.
+        assert_eq!(
+            unsafe { libc::flock(std::os::fd::AsRawFd::as_raw_fd(&file), libc::LOCK_EX) },
+            0
+        );
+        Self(file)
+    }
+
+    /// How many processes wait for the lock, from /proc/locks (a waiter's line has `->` after its number).
+    fn waiters(&self) -> usize {
+        let inode = std::os::unix::fs::MetadataExt::ino(&self.0.metadata().unwrap());
+        std::fs::read_to_string("/proc/locks")
+            .unwrap_or_default()
+            .lines()
+            .filter(|line| line.contains("->") && line.contains(&format!(":{inode} ")))
+            .count()
+    }
+
+    /// Lets go once `count` processes wait for it.
+    fn release_when_waited_on_by(self, count: usize) {
+        assert!(
+            wait_for(|| self.waiters() >= count),
+            "{count} never waited for the lock"
+        );
+    }
+}
+
 fn wait_for(done: impl Fn() -> bool) -> bool {
     let deadline = Instant::now() + Duration::from_secs(10);
     while !done() {
@@ -460,10 +499,13 @@ fn of_endings_confirmed_at_once_exactly_one_is_recorded_and_acted_on() {
             "Cortana cancel.",
             "Cortana stop listening.",
         ];
+        // Held until all four wait for it, so they race for the lock together.
+        let lock = HeldLock::take(&setup);
         let mut confirms: Vec<Child> = heard
             .iter()
             .map(|heard| setup.confirm_command(heard, &recording).spawn().unwrap())
             .collect();
+        lock.release_when_waited_on_by(heard.len());
         for confirm in &mut confirms {
             assert!(confirm.wait().unwrap().success());
         }
@@ -487,8 +529,10 @@ fn of_endings_confirmed_at_once_exactly_one_is_recorded_and_acted_on() {
         let mut owner = setup.stand_in();
         setup.set_state("recording");
         let recording = setup.open_session(owner.id(), serde_json::json!({}));
+        let lock = HeldLock::take(&setup);
         let mut confirm = setup.confirm_command("Cortana send it.", &recording).spawn().unwrap();
         let mut stop = setup.command(&["stop"]).spawn().unwrap();
+        lock.release_when_waited_on_by(2);
         assert!(confirm.wait().unwrap().success() && stop.wait().unwrap().success());
         let ending = setup.state().unwrap()["ending"].clone();
         assert_eq!(ending["by"], "key", "round {round}");
@@ -586,6 +630,115 @@ fn a_clip_cut_during_another_recording_ends_nothing() {
     assert!(setup.state().unwrap()["ending"].is_null());
     assert!(setup.debug_log().contains("dictation: the wake word, not an ending"));
     end(&mut owner);
+}
+
+#[test]
+fn a_verdict_the_session_is_not_waiting_for_records_no_ending() {
+    // (what the session is by then, why it is refused)
+    let other_mode = serde_json::json!({"stack": [{"kind": "rapid", "integration": "/i/rapid.sh", "label": "Rapid mode",
+        "frame_id": "r1"}]});
+    let not_mine = serde_json::json!({"owner": 1, "recording_owner": 1});
+    let not_one_recording = serde_json::json!({"one_recording": false});
+    for (fields, why) in [
+        (other_mode, "another heard mode"),
+        (not_mine, "a session that is not the watcher's"),
+        (not_one_recording, "a mode that is not one_recording"),
+    ] {
+        let setup = Setup::new();
+        let (mut watcher, _) = setup.rust_watcher("Words.");
+        let mut stand_in = setup.stand_in();
+        let mut fields = fields;
+        if fields.get("owner") == Some(&serde_json::json!(1)) {
+            fields["owner"] = stand_in.id().into();
+            fields["owner_start"] = start_time_of(stand_in.id()).into();
+            fields["recording_owner"] = stand_in.id().into();
+        } else {
+            fields["owner"] = watcher.id().into();
+        }
+        setup.open_session(watcher.id(), fields);
+        std::fs::write(setup.work("verdict"), "5").unwrap();
+        assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some(), "{why}");
+        let ending = setup.state().map_or(Value::Null, |state| state["ending"].clone());
+        assert_eq!(ending, Value::Null, "{why}");
+        assert!(!setup.debug_log().contains("(cap, "), "{why}: {}", setup.debug_log());
+        assert!(!setup.calls().contains("reached its recording limit"), "{why}");
+        end(&mut stand_in);
+    }
+}
+
+/// voxtype's `record stop` as a voice key makes it: the transcript is written and the recording over.
+fn stop_recording_by_key(setup: &Setup) {
+    assert!(
+        Command::new(setup.path().join("bin/voxtype"))
+            .args(["record", "stop"])
+            .status()
+            .unwrap()
+            .success()
+    );
+}
+
+#[test]
+fn a_recording_stopped_by_the_voice_key_is_typed_and_done() {
+    let setup = Setup::new();
+    let (mut watcher, _) = setup.rust_watcher("Typed by key.");
+    stop_recording_by_key(&setup);
+    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
+    let log = setup.debug_log();
+    assert!(log.contains("the dictate recording ended (voice_key, type)"), "{log}");
+    assert!(
+        setup.handled().starts_with("Typed by key.|type|"),
+        "{}",
+        setup.handled()
+    );
+    assert!(setup.calls().contains("Dictate mode ended done\n"), "{}", setup.calls());
+    assert!(setup.state().is_none());
+}
+
+#[test]
+fn a_one_recording_mode_that_heard_nothing_or_was_discarded_is_over() {
+    // The recording ended with no transcript.
+    let setup = Setup::new();
+    let (mut watcher, _) = setup.rust_watcher("");
+    stop_recording_by_key(&setup);
+    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
+    assert!(setup.debug_log().contains("watch: no transcript"));
+    assert!(
+        setup
+            .debug_log()
+            .contains("the dictate recording ended (voice_key, type)")
+    );
+    assert_eq!(setup.handled(), "");
+    assert!(setup.calls().contains("Dictate mode ended done\n"), "{}", setup.calls());
+    assert!(setup.state().is_none());
+
+    // The recording was cancelled (the discard flag, as autostop's no-speech cancel leaves it).
+    let setup = Setup::new();
+    let (mut watcher, _) = setup.rust_watcher("Dropped.");
+    std::fs::write(setup.runtime().join(format!("discard.{}", watcher.id())), "").unwrap();
+    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
+    assert!(setup.debug_log().contains("watch: recording discarded"));
+    assert!(
+        setup
+            .debug_log()
+            .contains("the dictate recording ended (voice_key, type)")
+    );
+    assert_eq!(setup.handled(), "");
+    assert!(setup.state().is_none());
+}
+
+#[test]
+fn a_background_child_of_the_hook_neither_holds_the_turn_nor_loses_its_output() {
+    let setup = Setup::new();
+    std::fs::write(setup.work("turn-child"), "").unwrap();
+    let (mut watcher, recording) = setup.rust_watcher("Words.");
+    assert!(setup.confirm("Cortana stop.", &recording).status.success());
+    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
+    assert!(setup.handled().starts_with("Words.|type|"));
+    // The watcher is gone; the child's write to stdout (a pipe voxcmd had closed would kill it) still succeeds.
+    assert!(
+        wait_for(|| setup.work("child-survived").exists()),
+        "the hook's child died of its output"
+    );
 }
 
 // ---- the session lock -----------------------------------------------------------------------------------------------
@@ -823,19 +976,23 @@ fn a_stuck_transcription_fails_in_time_and_leaves_no_voxtype_behind() {
 
     // voxcmd-wake kills the confirmation's group when it outlasts its own limit; voxtype, in a group of its own,
     // goes with it.
-    let _ = std::fs::remove_file(setup.work("hang"));
+    for left in ["hang", "hang-child"] {
+        let _ = std::fs::remove_file(setup.work(left));
+    }
     let mut confirm = setup.command(&["_wake-confirm", "/dev/stdin"]);
     confirm.env("TRANSCRIBE", "hang");
     let mut confirm = confirm.spawn().unwrap();
     assert!(wait_for(|| setup.work("hang").exists()));
-    let voxtype: i32 = std::fs::read_to_string(setup.work("hang"))
-        .unwrap()
-        .trim()
-        .parse()
-        .unwrap();
     end(&mut confirm);
-    assert!(
-        gone_within(voxtype, Duration::from_secs(2)),
-        "voxtype outlived a killed confirmation"
-    );
+    for left in ["hang", "hang-child"] {
+        let pid: i32 = std::fs::read_to_string(setup.work(left))
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        assert!(
+            gone_within(pid, Duration::from_secs(2)),
+            "{left} outlived a killed confirmation"
+        );
+    }
 }
