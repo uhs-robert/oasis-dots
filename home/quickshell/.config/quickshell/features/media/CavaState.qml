@@ -20,10 +20,6 @@ Singleton {
     property int lualine_viewers: 0
     readonly property bool wanted: MediaState.playing && PowerSource.on_ac && (!Style.bar_lualine || root.lualine_viewers > 0)
 
-    property int restart_delay_ms: 2000
-    property double started_ms: 0
-    property bool warned: false
-
     function zeros() {
         const a = [];
         for (let i = 0; i < root.bar_count; i++) a.push(0);
@@ -58,40 +54,18 @@ Singleton {
     Component.onCompleted: Qt.callLater(root.sync)
 
     function sync() {
-        cava_proc.running = root.wanted;
         if (!root.wanted) root.levels = root.zeros();
     }
 
-    Process {
+    RestartingStream {
         id: cava_proc
+        wanted: root.wanted
         command: ["cava", "-p", root.config_path]
-        onStarted: root.started_ms = Date.now()
-
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => root.parse_line(data)
-        }
-
-        onExited: {
-            root.levels = root.zeros();
-            if (!root.wanted) return;
-            if (Date.now() - root.started_ms < 30000) {
-                if (!root.warned) console.warn("cava: exits quickly, backing off");
-                root.warned = true;
-                root.restart_delay_ms = Math.min(root.restart_delay_ms * 2, 60000);
-            } else {
-                root.restart_delay_ms = 2000;
-                root.warned = false;
-            }
-            restart_timer.restart();
-        }
-    }
-
-    // If cava exits unexpectedly while still wanted (e.g. pipewire hiccup), retry.
-    Timer {
-        id: restart_timer
-        interval: root.restart_delay_ms
-        onTriggered: if (root.wanted) cava_proc.running = true
+        initial_delay_ms: 2000
+        max_delay_ms: 60000
+        warn_text: "cava: exits quickly, backing off"
+        onLine: text => root.parse_line(text)
+        onExited: root.levels = root.zeros()
     }
 
     function smooth_levels() {

@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 
 // One keeptabs-status stream shared by every bar; it animates and idles on battery by itself.
 Singleton {
@@ -20,6 +21,8 @@ Singleton {
     property int last_seq: -1
     property int waiting_count: 0
     property int last_wait_seq: -1
+    // Idle ticks repeat the same frame; kept here so it survives a restart as the parser's did.
+    property string last_line: ""
 
     // A session went from running to done since the previous line.
     signal finished()
@@ -77,78 +80,50 @@ Singleton {
         return out.filter(r => r.text !== "");
     }
 
-    property int restart_delay_ms: 5000
-    property double started_ms: 0
-    property bool warned: false
-
-    Process {
-        id: probe
-        command: ["sh", "-c", "test -x ~/.local/bin/keeptabs-status"]
-        running: true
-        onExited: code => stream.running = code === 0
-    }
-
-    Process {
+    RestartingStream {
         id: stream
         command: ["sh", "-c", "exec ~/.local/bin/keeptabs-status"]
-        onStarted: root.started_ms = Date.now()
-        stdout: SplitParser {
-            property string last_line: ""
-            onRead: line => {
-                // Idle ticks repeat the same frame; skip them so the bars don't redraw.
-                if (line === last_line) return;
-                last_line = line;
-                try {
-                    const data = JSON.parse(line);
-                    const runs = root.parse(data.text || "");
-                    root.state_class = root.class_of(data);
-                    root.tooltip = root.decode(data.tooltip || "");
-                    const waiting = root.waiting_in(runs);
-                    root.runs = runs;
-                    let wait_rose;
-                    if (typeof data.waiting_seq === "number") {
-                        wait_rose = root.primed && data.waiting_seq > root.last_wait_seq;
-                        root.last_wait_seq = data.waiting_seq;
-                    } else {
-                        wait_rose = root.primed && waiting > root.waiting_count;
-                    }
-                    root.waiting_count = waiting;
-                    const done = root.count("DONE");
-                    const was_running = root.running_count;
-                    let rose;
-                    if (typeof data.finished_seq === "number") {
-                        rose = root.primed && data.finished_seq > root.last_seq;
-                        root.last_seq = data.finished_seq;
-                    } else {
-                        rose = root.primed && done > root.done_count && was_running > 0;
-                    }
-                    root.done_count = done;
-                    root.running_count = root.count("RUNNING");
-                    root.primed = true;
-                    if (rose) root.finished();
-                    if (wait_rose) root.waiting_started();
-                } catch (e) {
-                    console.warn("keeptabs: " + e);
+        probe_command: ["sh", "-c", "test -x ~/.local/bin/keeptabs-status"]
+        initial_delay_ms: 5000
+        max_delay_ms: 300000
+        warn_text: "keeptabs: status stream exits quickly, backing off"
+        onLine: text => {
+            // Idle ticks repeat the same frame; skip them so the bars don't redraw.
+            if (text === root.last_line) return;
+            root.last_line = text;
+            try {
+                const data = JSON.parse(text);
+                const runs = root.parse(data.text || "");
+                root.state_class = root.class_of(data);
+                root.tooltip = root.decode(data.tooltip || "");
+                const waiting = root.waiting_in(runs);
+                root.runs = runs;
+                let wait_rose;
+                if (typeof data.waiting_seq === "number") {
+                    wait_rose = root.primed && data.waiting_seq > root.last_wait_seq;
+                    root.last_wait_seq = data.waiting_seq;
+                } else {
+                    wait_rose = root.primed && waiting > root.waiting_count;
                 }
+                root.waiting_count = waiting;
+                const done = root.count("DONE");
+                const was_running = root.running_count;
+                let rose;
+                if (typeof data.finished_seq === "number") {
+                    rose = root.primed && data.finished_seq > root.last_seq;
+                    root.last_seq = data.finished_seq;
+                } else {
+                    rose = root.primed && done > root.done_count && was_running > 0;
+                }
+                root.done_count = done;
+                root.running_count = root.count("RUNNING");
+                root.primed = true;
+                if (rose) root.finished();
+                if (wait_rose) root.waiting_started();
+            } catch (e) {
+                console.warn("keeptabs: " + e);
             }
         }
-        onExited: {
-            root.primed = false;
-            if (Date.now() - root.started_ms < 30000) {
-                if (!root.warned) console.warn("keeptabs: status stream exits quickly, backing off");
-                root.warned = true;
-                root.restart_delay_ms = Math.min(root.restart_delay_ms * 2, 300000);
-            } else {
-                root.restart_delay_ms = 5000;
-                root.warned = false;
-            }
-            restart_timer.restart();
-        }
-    }
-
-    Timer {
-        id: restart_timer
-        interval: root.restart_delay_ms
-        onTriggered: stream.running = true
+        onExited: root.primed = false
     }
 }
