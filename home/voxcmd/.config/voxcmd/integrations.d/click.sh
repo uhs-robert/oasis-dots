@@ -90,10 +90,11 @@ pick_box() {
 }
 
 # A turn in click mode is a target ("sign in") or a click phrase ("right click settings"). Prints the phrase to route,
-# nothing when the turn names no target.
+# nothing when the turn names no target. "click mode off" names none either: it would reach the stop_clicking verb, but
+# only "cortana ..." leaves the mode.
 session_rewrite() {
   local text="$1"
-  if [[ "$text" =~ ^((left|right|double) )?click$ ]]; then
+  if [[ "$text" =~ ^((left|right|double) )?click$ || "$text" == click\ * && "$text" =~ ^($click_exit_phrase)$ ]]; then
     return
   elif [[ "$text" =~ ^((left|right|double) )?click\  || "$text" == "clicking mode" || "$text" == "start clicking" ]]; then
     printf '%s' "$text"

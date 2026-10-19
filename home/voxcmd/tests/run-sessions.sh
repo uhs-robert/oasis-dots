@@ -701,15 +701,14 @@ check "rapid mode's session names the mode, its exit hint and an empty stack" "[
 check "and its turns are heard by the binary under test" "owner_is_the_binary_under_test"
 sess_voxcmd_env session end
 sess_wait
-# The mode-naming verbs are commands, so they end rapid mode bare; a bare "done" is no command and leaves nothing.
-for word in "stop rapid mode" "Okay, quit rapid mode." "rapid mode off" "turn off rapid fire mode"; do
-  sess_run "tap alpha" "$word" "tap gamma"
-  check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
-done
-for word in "done" "Done." "that's all" "I'm done" "done with rapid mode"; do
+# Bare, a mode-naming exit is a missed turn like "done": the verbs stay for outside a session, but only "cortana ..."
+# leaves.
+for word in "done" "Done." "that's all" "I'm done" "done with rapid mode" "stop rapid mode" "Okay, quit rapid mode." "rapid mode off" "turn off rapid fire mode"; do
   sess_run "tap alpha" "$word" "tap gamma" "cortana done"
   check "bare '$word' does not end rapid mode" "session_gone && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 done
+sess_run "tap alpha and then stop rapid mode" "tap gamma" "cortana done"
+check "a trailing 'and then stop rapid mode' step does not end rapid mode either" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 3 ]]"
 for word in "cortana done" "Cortana, I'm done." "Cortana, stop rapid mode." "cortana stop" "cortana that's all" "cortana done with rapid mode"; do
   sess_run "tap alpha" "$word" "tap gamma"
   check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
@@ -825,9 +824,10 @@ for word in "done" "I'm done" "that's all" "exit" "stop clicking" "done clicking
   sess_run "$word" "cortana done"
   check "bare '$word' in click mode is clicked, not an exit" "session_gone && toast_has 'no focused window' && [[ \$(record_starts) == 2 ]]"
 done
-# "click mode off" starts with "click", so the rewrite lets it through as a phrase and the stop_clicking verb runs it.
-sess_run "click mode off" "tap alpha"
-check "'click mode off' still ends click mode bare: the rewrite passes it on as a click phrase, the verb runs it" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 1 ]]"
+# "click mode off" starts with "click", so it used to reach the stop_clicking verb as a click phrase; the rewrite drops it
+# now, a missed turn like the other bare exits.
+sess_run "click mode off" "cortana done"
+check "'click mode off' does not end click mode: the rewrite rejects it" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
 for word in "cortana done" "cortana stop clicking" "cortana done clicking" "cortana exit click mode"; do
   sess_run "$word" "tap alpha"
   check "'$word' leaves click mode" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 1 ]]"

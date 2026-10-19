@@ -76,5 +76,5 @@ exit_phrases = 'done clicking|im done clicking|done with {mode_object}|{mode_exi
 exit_hint = "say cortana done to stop"
 default_exits = false
 allows_switches = false
-# A turn is a target ("sign in") or a click phrase ("right click settings"); a bare "click" names nothing.
-rewrite = { drop = '((left|right|double) )?click', keep = '((left|right|double) )?click .+|clicking mode|start clicking', prefix = "click " }
+# A turn is a target ("sign in") or a click phrase ("right click settings"); a bare "click" and "click mode off" name nothing.
+rewrite = { drop = '((left|right|double) )?click|click mode off( (okay|ok|alright|please|now))*', keep = '((left|right|double) )?click .+|clicking mode|start clicking', prefix = "click " }

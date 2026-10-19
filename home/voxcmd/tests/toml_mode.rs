@@ -710,6 +710,9 @@ fn the_click_conversion_runs_as_a_mode() {
     assert!(rig.session().is_some());
     rig.hear("click", json!({}), "done clicking");
     assert!(rig.session().is_some());
+    // "click mode off" starts with "click", so only the rewrite's drop keeps it from reaching the stop_clicking verb.
+    rig.hear("click", json!({}), "click mode off");
+    assert!(rig.session().is_some());
     rig.hear("click", json!({}), "cortana done clicking");
     assert!(rig.session().is_none());
 }
