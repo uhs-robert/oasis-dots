@@ -74,7 +74,7 @@ def run_qs(scenario, state_home, prepare=None):
     for name in ("state", "run", "home"):
         os.makedirs(os.path.join(state_home, name), mode=0o700, exist_ok=True)
     proc = subprocess.run(["qs", "-p", cfg], env=env, capture_output=True, text=True, timeout=20)
-    out = proc.stdout + proc.stderr
+    out = "qs exit code %d\n" % proc.returncode + proc.stdout + proc.stderr
     for line in out.splitlines():
         if "RESULT " in line:
             return json.loads(line.split("RESULT ", 1)[1]), out
@@ -119,7 +119,176 @@ def scenario_atomic(state_home):
     return problems
 
 
-SCENARIOS = {"atomic": scenario_atomic}
+def store_run(name, state_home, seed=None, extra=None):
+    """Runs a store scenario with an optional seed for store.json; returns (result, dir, problems so far)."""
+    store_dir = os.path.join(state_home, "state", "json_store")
+    os.makedirs(store_dir)
+    if seed is not None:
+        with open(os.path.join(store_dir, "store.json"), "w") as f:
+            f.write(seed)
+    if extra:
+        extra(store_dir)
+    result, out = run_qs(name, state_home)
+    problems = [] if result is not None else ["no RESULT line:\n" + out]
+    return result, store_dir, problems
+
+
+def read(store_dir, name="store.json"):
+    with open(os.path.join(store_dir, name)) as f:
+        return f.read()
+
+
+def expect(problems, label, got, want):
+    if got != want:
+        problems.append("%s: got %r, want %r" % (label, got, want))
+
+
+def scenario_firstrun(state_home):
+    result, store_dir, problems = store_run("firstrun", state_home)
+    if problems:
+        return problems
+    # The scenario's store lives in a directory that did not exist.
+    expect(problems, "file written", json.loads(read(os.path.join(store_dir, "absent", "deeper"))), {"a": 1, "b": 0})
+    expect(problems, "saved signals", result["saved_count"], 1)
+    return problems
+
+
+def scenario_no_write_before_set(state_home):
+    result, store_dir, problems = store_run("no_write_before_set", state_home)
+    if problems:
+        return problems
+    expect(problems, "dir created by a load", os.path.exists(os.path.join(store_dir, "absent")), False)
+    expect(problems, "values", result["values"], {"a": 0, "b": 0})
+    return problems
+
+
+def scenario_echo(state_home):
+    result, store_dir, problems = store_run("echo", state_home)
+    if problems:
+        return problems
+    want = {"a": 8, "b": 8}
+    expect(problems, "final values", result["values"], want)
+    expect(problems, "final disk", json.loads(read(store_dir)), want)
+    expect(problems, "loaded() only for the missing file at start", result["loaded_count"], 1)
+    expect(problems, "failures", result["failures"], [])
+    return problems
+
+
+def scenario_immediate(state_home):
+    result, store_dir, problems = store_run("immediate", state_home)
+    if problems:
+        return problems
+    expect(problems, "final values", result["values"], {"a": 5, "b": 0})
+    expect(problems, "final disk", json.loads(read(store_dir)), {"a": 5, "b": 0})
+    expect(problems, "loaded() churn from echoes", result["loaded_count"], 1)
+    return problems
+
+
+def scenario_corrupt(state_home):
+    result, store_dir, problems = store_run("corrupt", state_home, seed="{")
+    if problems:
+        return problems
+    expect(problems, "values keep defaults", result["values"], {"a": 0, "b": 0})
+    expect(problems, "file untouched", read(store_dir), "{")
+    expect(problems, "loaded() for a corrupt file", result["loaded_count"], 0)
+    return problems
+
+
+def scenario_corrupt_then_set(state_home):
+    result, store_dir, problems = store_run("corrupt_then_set", state_home, seed="[1,2]")
+    if problems:
+        return problems
+    expect(problems, "disk after a set", json.loads(read(store_dir)), {"a": 5, "b": 0})
+    return problems
+
+
+def scenario_external_idle(state_home):
+    result, store_dir, problems = store_run("external_idle", state_home, seed='{"a":1,"b":1,"x":9}')
+    if problems:
+        return problems
+    expect(problems, "values follow the edit", result["values"], {"a": 2, "b": 1})
+    expect(problems, "extras never exposed", result["raw"].get("x"), 9)
+    expect(problems, "loaded() count (start + edit)", result["loaded_count"], 2)
+    return problems
+
+
+def scenario_external_dirty(state_home):
+    result, store_dir, problems = store_run("external_dirty", state_home, seed='{"a":1,"b":1,"x":9}')
+    if problems:
+        return problems
+    expect(problems, "values: local value wins", result["values"], {"a": 2, "b": 7})
+    expect(problems, "disk: our write, extras from the last load", json.loads(read(store_dir)), {"x": 9, "a": 2, "b": 7})
+    return problems
+
+
+def scenario_unknown_keys(state_home):
+    result, store_dir, problems = store_run("unknown_keys", state_home, seed='{"pins":[1],"week_start":"monday"}')
+    if problems:
+        return problems
+    expect(problems, "values hide extras", result["values"], {"week_start": "sunday"})
+    expect(problems, "disk keeps extras", json.loads(read(store_dir)), {"pins": [1], "week_start": "sunday"})
+    return problems
+
+
+def scenario_dropped_known(state_home):
+    result, store_dir, problems = store_run("dropped_known", state_home, seed='{"a":5,"b":6,"x":1}')
+    if problems:
+        return problems
+    expect(problems, "disk: b stays deleted, x kept", json.loads(read(store_dir)), {"x": 1, "a": 1})
+    return problems
+
+
+def scenario_after_save(state_home):
+    result, store_dir, problems = store_run("after_save", state_home)
+    if problems:
+        return problems
+    log = read(store_dir, "after.log").splitlines()
+    # "reload" is returned once, then cleared; the argv sees the new file, so the write finished first; the outside
+    # edit at the end runs nothing.
+    expect(problems, "after_save log", log, ['reload {"a":1,"b":0}', 'apply {"a":2,"b":0}'])
+    expect(problems, "after_save_done", result["after_log"], ["done 0", "done 0"])
+    return problems
+
+
+def scenario_write_fails(state_home):
+    def make_blocker(store_dir):
+        open(os.path.join(store_dir, "blocker"), "w").close()
+
+    result, store_dir, problems = store_run("write_fails", state_home, extra=make_blocker)
+    if problems:
+        return problems
+    expect(problems, "save_failed count", len(result["failures"]), 1)
+    expect(problems, "saved_count", result["saved_count"], 0)
+    expect(problems, "after_save skipped", result["after_log"], [])
+    expect(problems, "values stay in memory", result["values"], {"a": 1, "b": 0})
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_watch_after_first_write(state_home):
+    result, store_dir, problems = store_run("watch_after_first_write", state_home)
+    if problems:
+        return problems
+    expect(problems, "an edit after the first save reaches the store", result["values"], {"a": 4, "b": 0})
+    return problems
+
+
+SCENARIOS = {
+    "atomic": scenario_atomic,
+    "firstrun": scenario_firstrun,
+    "no_write_before_set": scenario_no_write_before_set,
+    "echo": scenario_echo,
+    "immediate": scenario_immediate,
+    "corrupt": scenario_corrupt,
+    "corrupt_then_set": scenario_corrupt_then_set,
+    "external_idle": scenario_external_idle,
+    "external_dirty": scenario_external_dirty,
+    "unknown_keys": scenario_unknown_keys,
+    "dropped_known": scenario_dropped_known,
+    "after_save": scenario_after_save,
+    "write_fails": scenario_write_fails,
+    "watch_after_first_write": scenario_watch_after_first_write,
+}
 
 
 def main():
