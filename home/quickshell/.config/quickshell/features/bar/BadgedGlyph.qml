@@ -1,6 +1,5 @@
 import QtQuick
 import qs.theme
-import qs.components.bar_icons
 
 // A glyph with its count as a small superscript badge at the top right.
 Item {

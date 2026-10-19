@@ -3,12 +3,9 @@
 # Delete a line in the PR that removes its edge; a line whose edge is gone fails the check as stale. "5.9 step N" is
 # the step of the imports-that-run-the-wrong-way item in quickshell-refactor.md.
 
-components/Slider.qml -> qs.styles.ps2.widgets                          # components/ dissolves (5.9 step 4)
-components/Waveform.qml -> qs.features.voice                            # components/ dissolves (5.9 step 4)
 components/WorkspaceDropTarget.qml -> qs.features.windows               # components/ dissolves (5.9 step 4)
 components/WorkspaceIcon.qml -> qs.features.popups                      # components/ dissolves (5.9 step 4)
 components/WorkspaceIcon.qml -> qs.features.windows                     # components/ dissolves (5.9 step 4)
-components/bar_icons/BarIcon.qml -> styles/IconSets.js                  # components/ dissolves (5.9 step 4)
 services/StyleIpc.qml -> qs.features.audio                              # services has no destination yet (undecided)
 theme/Style.qml -> styles/IconSets.js                                   # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/goldeneye/Watch.js                            # the style engine consumes style data by design (permanent)
@@ -26,6 +23,8 @@ ui/frames/CustomFrame.qml -> qs.styles.tie.widgets                      # popup 
 ui/frames/TitleStrip.qml -> qs.features.popups                          # popup framework moves above styles, or takes the data as properties (5.9 step 5)
 ui/gauges/Meter.qml -> styles/goldeneye/Watch.js                        # popup framework moves above styles, or takes the data as properties (5.9 step 5)
 ui/gauges/Meter.qml -> url:styles                                       # popup framework moves above styles, or takes the data as properties (5.9 step 5)
+ui/gauges/Slider.qml -> qs.styles.ps2.widgets                           # skinned tier moves above styles, or takes the skin as a property (5.9 step 5)
+ui/gauges/Waveform.qml -> qs.features.voice                             # shared widget reads the voice level; inject the data (5.9 step 5)
 ui/keys/ControllerBadge.qml -> url:styles                               # popup framework moves above styles, or takes the data as properties (5.9 step 5)
 ui/keys/KeyHelp.qml -> qs.features.audio                                # popup framework moves above styles, or takes the data as properties (5.9 step 5)
 ui/keys/KeyHelp.qml -> qs.features.popups                               # popup framework moves above styles, or takes the data as properties (5.9 step 5)

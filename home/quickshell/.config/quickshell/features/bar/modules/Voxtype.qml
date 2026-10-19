@@ -3,7 +3,7 @@ import QtQuick.Shapes
 import Quickshell
 import qs.core
 import qs.theme
-import qs.components.bar_icons
+import qs.features.bar
 import qs.features.voice
 
 BarModule {

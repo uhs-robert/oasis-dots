@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Services.Pipewire
 import qs.theme
 import qs.ui
-import qs.components.bar_icons
+import qs.features.bar
 
 BarModule {
     id: root

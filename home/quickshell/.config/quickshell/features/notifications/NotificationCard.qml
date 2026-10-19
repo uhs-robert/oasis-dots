@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
-import qs.components
 import qs.ui.frames
 import qs.ui.menu
 import qs.theme

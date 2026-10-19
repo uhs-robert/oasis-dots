@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.features.media
 import qs.ui
-import qs.components.bar_icons
+import qs.features.bar
 
 BarModule {
     id: root

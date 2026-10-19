@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Services.Pipewire
 import qs.theme
-import qs.components as Shared
+import qs.ui.gauges
 
 // A level as a tall capsule on a recessed well: the node's live wave fills it up to the level, with a marker at the level and a red tip past 90%.
 Item {
@@ -193,7 +193,7 @@ Item {
             }
         }
 
-        Shared.Waveform {
+        Waveform {
             visible: !root.glow
             y: root.height * 0.12
             width: parent.width
