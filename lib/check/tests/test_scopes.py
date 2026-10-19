@@ -31,6 +31,8 @@ CASES = [
     ("lib/check/steps/qml_paths.py", "checkscope qml"),
     ("lib/check/steps/qml_layers.py", "checkscope qml"),
     ("lib/check/qml-layers.allow", "checkscope qml"),
+    ("lib/check/steps/qml_singleton_names.py", "checkscope qml"),
+    ("lib/check/qml-singleton-names.allow", "checkscope qml"),
     ("lib/check/steps/qml_ipc.py", "checkscope"),
     ("lib/check/qml-ipc.allow", "checkscope"),
     ("lib/check/steps/lua.sh", "checkscope lua"),

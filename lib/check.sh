@@ -51,6 +51,8 @@
 #                            Quickshell that name a path in it (lib/check/steps/qml_paths.py).
 #   qml-layers               no Quickshell import or literal URL load runs to a higher layer than its file's, except the edges in
 #                            lib/check/qml-layers.allow, which fails when one goes stale (lib/check/steps/qml_layers.py).
+#   qml-singleton-names      no Quickshell `pragma Singleton` file is named *Config, *Store or *Manager, except the temporary lines in
+#                            lib/check/qml-singleton-names.allow, which fails when one goes stale (lib/check/steps/qml_singleton_names.py).
 #   qml-ipc                  every `qs ipc call` target and function in scripts, Lua, Rust, tmux.conf and test stubs is a typed function of an
 #                            IpcHandler, and every handler is called, except lib/check/qml-ipc.allow, which fails when a line goes stale
 #                            (lib/check/steps/qml_ipc.py). It also checks the README IPC table: a row per handler, and only real functions in a row. Always runs.
