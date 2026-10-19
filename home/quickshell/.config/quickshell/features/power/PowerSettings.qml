@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.core
 
@@ -20,7 +19,7 @@ Singleton {
     readonly property var profiles: PowerProfiles.hasPerformanceProfile ? ["keep", "power-saver", "balanced", "performance"] : ["keep", "power-saver", "balanced"]
     readonly property var idle_steps: [0, 30, 60, 120, 150, 180, 300, 600, 900, 1800, 3600, 7200]
 
-    property var values: root.defaults()
+    readonly property var values: store.values
 
     function defaults() {
         const out = { lid_ac: "suspend", lid_battery: "suspend", power_button: "poweroff", profile_ac: "keep", profile_battery: "keep" };
@@ -50,8 +49,7 @@ Singleton {
     }
 
     function set(key, value) {
-        root.values = Object.assign({}, root.values, { [key]: value });
-        save_timer.restart();
+        store.set_key(key, value);
     }
 
     function profile_of(key) {
@@ -66,40 +64,18 @@ Singleton {
         return Number.isInteger(value) && value >= 0;
     }
 
-    Timer {
-        id: save_timer
-        interval: 700
-        onTriggered: {
-            if (save_proc.running) {
-                save_timer.restart();
-                return;
-            }
-            save_proc.command = ["sh", "-c", "mkdir -p \"$1\" && printf %s \"$2\" > \"$1/power.json.tmp\" && mv \"$1/power.json.tmp\" \"$1/power.json\" && \"$HOME/.config/hypr/scripts/power.sh\" apply",
-                "sh", root.state_dir, JSON.stringify(root.values)];
-            save_proc.running = true;
-        }
-    }
-
-    Process {
-        id: save_proc
-    }
-
-    FileView {
+    JsonStore {
+        id: store
         path: root.state_dir + "/power.json"
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                const next = root.defaults();
-                for (const key in next) {
-                    if (root.valid(key, data[key])) next[key] = data[key];
-                }
-                root.values = next;
-            } catch (e) {
-                console.warn("PowerSettings: invalid power.json (" + e + ")");
+        defaults: root.defaults()
+        debounce_ms: 700
+        validate: raw => {
+            const next = root.defaults();
+            for (const key in next) {
+                if (root.valid(key, raw[key])) next[key] = raw[key];
             }
+            return next;
         }
-        onLoadFailed: error => {}
+        after_save: values => ["sh", "-c", '"$HOME/.config/hypr/scripts/power.sh" apply']
     }
 }
