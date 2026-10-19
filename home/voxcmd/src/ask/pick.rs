@@ -14,7 +14,8 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::time::{Duration, Instant};
 
 /// What the bar's picker reads from `spec.json`. With no id it only writes the pick to `result_path` and skips the
 /// Hyprland prompt callback.
@@ -261,7 +262,8 @@ fn ask(
         shell_quote(asking.fifo.as_os_str())
     );
     let qs_picker = paths::hypr_script("qs-picker");
-    let mut picker = if is_executable(&qs_picker) {
+    let uses_qs_picker = is_executable(&qs_picker);
+    let mut picker = if uses_qs_picker {
         let mut command = Command::new(qs_picker);
         command.arg("choices").arg(&rofi_fallback).arg(&spec_path);
         command
@@ -278,9 +280,15 @@ fn ask(
     // Removed before closing: closing the bar's picker writes a cancel to the FIFO, which must find it gone.
     asking.clean_up();
     // qs-picker exits as soon as the bar takes the pick, so this is still running at the end only when it is rofi.
-    let picker_running = picker
-        .as_mut()
-        .is_some_and(|picker| picker.try_wait().is_ok_and(|status| status.is_none()));
+    // The answer can arrive a moment before qs-picker's exit, so it gets a short grace before it reads as rofi.
+    let picker_running = picker.as_mut().is_some_and(|picker| {
+        let grace = if uses_qs_picker {
+            PICKER_EXIT_GRACE
+        } else {
+            Duration::ZERO
+        };
+        still_running_after(picker, grace)
+    });
     if let Some(picker) = picker.filter(|_| picker_running) {
         terminate_with_children(&picker);
     } else if is_executable(&paths::qs_ipc()) {
@@ -292,6 +300,21 @@ fn ask(
     } else {
         Ok(picked)
     })
+}
+
+const PICKER_EXIT_GRACE: Duration = Duration::from_millis(200);
+
+fn still_running_after(picker: &mut Child, grace: Duration) -> bool {
+    let deadline = Instant::now() + grace;
+    loop {
+        if !picker.try_wait().is_ok_and(|status| status.is_none()) {
+            return false;
+        }
+        if Instant::now() >= deadline {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
 }
 
 #[cfg(test)]

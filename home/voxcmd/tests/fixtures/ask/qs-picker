@@ -9,3 +9,5 @@ cp "$3" "$(next spec)"
 [ -z "${GOLDEN_REPLACE-}" ] || printf '{"pid":1,"fifo":"/newer"}\n' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 result=$(sed -n 's/.*"result_path": *"\([^"]*\)".*/\1/p' "$3" | head -n 1)
 if [ -z "${GOLDEN_HOLD-}" ]; then (printf '%s\n' "${GOLDEN_ANSWER-}" >"$result") >/dev/null 2>&1 & fi
+# GOLDEN_LINGER: seconds the picker stays alive after answering, as a bar that is slow to let it go.
+[ -z "${GOLDEN_LINGER-}" ] || sleep "$GOLDEN_LINGER"
