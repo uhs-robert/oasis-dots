@@ -7,13 +7,15 @@ confirm=0
 silent_actions=(rapid_mode stop_rapid)
 
 # The ways out, as a command and as a turn inside the mode. Outside a session the command forms name the mode, so a bare
-# "stop" there still pauses the music; inside, a bare exit word ends the session (voxcmd's session_bare_exit_words).
+# "stop" there still pauses the music; inside, bare done and exit words are not exits (default exits are off), so only
+# "cortana ..." and the mode-naming verbs leave.
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=mode-phrases.sh
 source "$voxcmd_share_dir/mode-phrases.sh"
 rapid_exit_object='(the )?(rapid|rapid mode|rapid fire mode)'
 rapid_exit_phrase=$(mode_exit_phrase "$rapid_exit_object")
 session_exit_phrases="done with $rapid_exit_object|$rapid_exit_phrase"
-session_exit_hint="say done to stop"
+session_exit_hint="say cortana done to stop"
+session_default_exits=0
 mode_actions=(rapid_mode stop_rapid)
 
 # "stop rapid mode" is here because Media's "stop {target}" would otherwise hear it.

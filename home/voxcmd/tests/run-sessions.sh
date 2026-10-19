@@ -693,32 +693,42 @@ holding_in() { mode_is "$1" && [[ $(record_starts) == "$2" ]] && owner_saw_recor
 
 # Rapid mode: every turn is a command.
 sess_phrase="rapid mode"
-sess_run "tap alpha" "tap beta" "done"
-check "rapid mode routes each turn as a command until 'done'" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
+sess_run "tap alpha" "tap beta" "cortana done"
+check "rapid mode routes each turn as a command until 'cortana done'" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
 sess_start HOLD
 owner_is_listening
-check "rapid mode's session names the mode, its exit hint and an empty stack" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"rapid\",\"Rapid mode\",\"say done to stop\",[]]' ]]"
+check "rapid mode's session names the mode, its exit hint and an empty stack" "[[ \$(jq -c '[.kind, .label, .exit_hint, .stack]' '$session_json') == '[\"rapid\",\"Rapid mode\",\"say cortana done to stop\",[]]' ]]"
 check "and its turns are heard by the binary under test" "owner_is_the_binary_under_test"
 sess_voxcmd_env session end
 sess_wait
-for word in "done" "Done." "that's all" "I'm done" "stop rapid mode" "Okay, quit rapid mode." "done with rapid mode" "rapid mode off" "turn off rapid fire mode"; do
+# The mode-naming verbs are commands, so they end rapid mode bare; a bare "done" is no command and leaves nothing.
+for word in "stop rapid mode" "Okay, quit rapid mode." "rapid mode off" "turn off rapid fire mode"; do
   sess_run "tap alpha" "$word" "tap gamma"
   check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
-for word in "cortana done" "Cortana, I'm done." "Cortana, stop rapid mode." "cortana stop"; do
+for word in "done" "Done." "that's all" "I'm done" "done with rapid mode"; do
+  sess_run "tap alpha" "$word" "tap gamma" "cortana done"
+  check "bare '$word' does not end rapid mode" "session_gone && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+done
+for word in "cortana done" "Cortana, I'm done." "Cortana, stop rapid mode." "cortana stop" "cortana that's all" "cortana done with rapid mode"; do
   sess_run "tap alpha" "$word" "tap gamma"
   check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
-# A bare exit word ends the session, not just the mode, and is not routed (stop would pause the music).
-for word in "exit" "stop" "cancel" "quit" "Stop."; do
-  sess_run "tap alpha" "$word" "tap gamma"
-  check "bare '$word' ends rapid mode, pausing nothing" "session_gone && ! grep -q '^playerctl' '$log' && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
+# Bare exit words are not exits in rapid mode: "exit", "cancel" and "quit" match nothing, and "stop" is Media's, as
+# outside a session.
+for word in "exit" "cancel" "quit"; do
+  sess_run "tap alpha" "$word" "tap gamma" "cortana done"
+  check "bare '$word' leaves rapid mode open, pausing nothing" "session_gone && ! grep -q '^playerctl' '$log' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 done
-sess_run "tap alpha and then exit" "tap gamma"
-check "a sequence ending in a bare exit runs its steps, then ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 1 ]]"
-sess_run "cortana tap alpha" "tap beta" "done"
+for word in "stop" "Stop."; do
+  sess_run "tap alpha" "$word" "tap gamma" "cortana done"
+  check "bare '$word' pauses the music and leaves rapid mode open" "session_gone && grep -q '^playerctl' '$log' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+done
+sess_run "tap alpha and then exit" "tap gamma" "cortana done"
+check "a sequence ending in a bare exit does not end rapid mode" "session_gone && [[ \$(taps) == 2 && \$(record_starts) == 3 ]]"
+sess_run "cortana tap alpha" "tap beta" "cortana done"
 check "a 'cortana ...' that is no mode command is routed as a command, and the mode goes on" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
-sess_run "cortana tap" "tap beta" "done"
+sess_run "cortana tap" "tap beta" "cortana done"
 check "and one that matches nothing is a missed turn with the usual toast" "session_gone && toast_has 'no match' && [[ \$(grep '^tap ' '$log') == 'tap beta' && \$(record_starts) == 3 ]]"
 sess_run "tap alpha"
 check "rapid mode ends when nothing is said" "session_gone && toast_has 'Rapid mode ended nothing was said'"
@@ -731,43 +741,43 @@ sess_run "kortana done" "Komputer, done" "tap alpha"
 check "the wake word's spellings are a setting, and the built-in ones are then no command" "session_gone && grep -q 'voxcmd: no match' '$log' && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
 sess_env=()
 sess_phrase="cortana rapid mode"
-sess_run "done"
+sess_run "cortana done"
 check "the wake word before an entry phrase is stripped" "session_gone && [[ \$(record_starts) == 1 ]]"
 sess_phrase="rapid mode"
 
 # A card and a picker asked in a rapid turn listen for the spoken answer.
-sess_run "ask me" "pick number" "done"
+sess_run "ask me" "pick number" "cortana done"
 check "a confirm card in rapid mode listens for yes or no" "grep -q '^voxcmd-confirm .*--listen' '$log' && [[ \$(grep -c '^asked' '$log') == 1 ]]"
 check "and so does a picker of several options" "grep -q '^voxcmd-pick --listen' '$log' && grep -q '^picked one' '$log'"
 
 # A phrase of steps joined by "and then" is one turn, and each step may ask.
-sess_run "tap alpha and then tap beta" "done"
+sess_run "tap alpha and then tap beta" "cortana done"
 check "a sequence in rapid mode runs its steps in order, as one turn" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 2 ]]"
 sess_env=(VOXCMD_SESSION_MAX_TURNS=2)
 sess_run "tap alpha and then tap beta" "tap gamma" "tap delta"
 check "and counts once against the turn cap" "session_gone && [[ \$(taps) == 3 ]] && toast_has 'Rapid mode ended it reached 2 turns'"
 sess_env=()
-sess_run "tap alpha and then tap" "tap beta and then tap" "tap gamma and then tap" "tap delta" "done"
+sess_run "tap alpha and then tap" "tap beta and then tap" "tap gamma and then tap" "tap delta" "cortana done"
 check "a sequence in which a step ran is not a missed turn, though a later step matched nothing" "session_gone && [[ \$(taps) == 4 ]] && ! toast_has 'nothing understood'"
 sess_run "tap and then tap" "tap and then tap" "tap and then tap" "tap delta"
 check "one in which no step ran is a missed turn" "session_gone && [[ \$(taps) == 0 ]] && toast_has 'nothing understood 3 times'"
-sess_run "tap alpha and then ask me" "done"
+sess_run "tap alpha and then ask me" "cortana done"
 check "a card asked in a later step listens for yes or no when it was spoken" "grep -q '^voxcmd-confirm .*--listen' '$log' && [[ \$(taps) == 1 && \$(grep -c '^asked' '$log') == 1 ]]"
 : >"$root/confirm-no"
 sess_run "ask me" "ask me" "ask me" "tap delta"
 check "a declined confirm card is a missed turn, not one that ran" "session_gone && [[ \$(taps) == 0 && \$(grep -c '^asked' '$log') == 0 ]] && toast_has 'nothing understood 3 times'"
-sess_run "tap alpha and then ask me and then tap beta" "done"
+sess_run "tap alpha and then ask me and then tap beta" "cortana done"
 check "a declined card in a sequence stops the rest with one toast" "[[ \$(taps) == 1 && \$(grep -c 'Stopped at step 2 of 3' '$log') == 1 ]] && toast_has 'Stopped at step 2 of 3: not confirmed' && grep -q '^1 more step not run' '$log'"
 rm -f "$root/confirm-no"
 
 # Modes nest: the one opened inside returns to the one it was opened from.
 sess_run "start testing" "alpha and then beta" "done"
 check "a mode that rewrites its turns rewrites each step of a sequence" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' ]]"
-sess_run "start testing" "alpha and then done" "tap beta" "done"
+sess_run "start testing" "alpha and then done" "tap beta" "cortana done"
 check "a last step that is the mode's exit phrase runs the steps before it, then leaves the mode" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 4 ]]"
-sess_run "tap alpha and then done" "tap beta"
-check "and in rapid mode it ends the mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 1 ]]"
-sess_run "start testing" "alpha" "done" "tap beta" "done"
+sess_run "tap alpha and then done" "tap beta" "cortana done"
+check "and in rapid mode it does not: the steps run up to the bare 'done', which matches nothing" "session_gone && toast_has 'stopped at step 2 of 2' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
+sess_run "start testing" "alpha" "done" "tap beta" "cortana done"
 check "a mode opened in rapid mode returns to it: test mode's targets, then rapid mode's commands" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 5 ]]"
 check "and runs its ended hook once" "log_has_soon '^ended-hook' && [[ \$(grep -c '^ended-hook' '$log') == 1 ]]"
 sess_start "start testing" HOLD
@@ -789,41 +799,70 @@ sess_voxcmd_env session end
 sess_wait
 
 # Click mode over rapid mode: switch phrases are never clicked, and a mode already underneath is returned to.
-sess_run "click mode" "rapid mode" "done"
-check "'rapid mode' in click mode goes back to rapid mode, clicking nothing" "session_gone && no_clicks && [[ \$(record_starts) == 3 ]]"
-sess_start "click mode" "type mode" HOLD
+sess_run "click mode" "cortana rapid mode" "cortana done"
+check "'cortana rapid mode' in click mode goes back to rapid mode, clicking nothing" "session_gone && no_clicks && [[ \$(record_starts) == 3 ]]"
+sess_start "click mode" "cortana type mode" HOLD
 hold_in 'type rapid/click' 3
-check "'type mode' in click mode opens type mode over it, clicking nothing" "mode_is 'type rapid/click' && no_clicks"
+check "'cortana type mode' in click mode opens type mode over it, clicking nothing" "mode_is 'type rapid/click' && no_clicks"
 sess_voxcmd_env session end
 sess_wait
-sess_start "click mode" "done" HOLD
+sess_start "click mode" "cortana done" HOLD
 hold_in 'rapid ' 3
-check "click mode's own 'done' returns to rapid mode" "mode_is 'rapid '"
+check "'cortana done' in click mode returns to rapid mode" "mode_is 'rapid '"
 sess_voxcmd_env session end
 sess_wait
-sess_run "click mode" "stop rapid mode" "tap alpha"
-check "'stop rapid mode' in click mode leaves both" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
+sess_run "click mode" "cortana stop rapid mode" "tap alpha"
+check "'cortana stop rapid mode' in click mode leaves both" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
 sess_phrase="click mode"
-sess_run "cortana tap alpha" "done"
+sess_run "cortana tap alpha" "cortana done"
 check "a 'cortana ...' that is no mode command is routed as a command in click mode too" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log') == 'tap alpha' ]] && no_clicks"
 # "start typing" is a click target in click mode, a search box may carry that label; only the wake word switches.
-sess_run "start typing" "done"
+sess_run "start typing" "cortana done"
 check "plain 'start typing' in click mode stays a click turn, not a switch to type mode" "session_gone && ! toast_has 'Type mode' && [[ \$(record_starts) == 2 ]]"
+# No bare word leaves click mode: every exit word is a button label, and only "cortana ..." ends it.
+# The sandbox has no focused window, so a clicked word fails with that toast, which proves it was routed as a click.
+for word in "done" "I'm done" "that's all" "exit" "stop clicking" "done clicking" "rapid mode" "type mode"; do
+  sess_run "$word" "cortana done"
+  check "bare '$word' in click mode is clicked, not an exit" "session_gone && toast_has 'no focused window' && [[ \$(record_starts) == 2 ]]"
+done
+# "click mode off" starts with "click", so the rewrite lets it through as a phrase and the stop_clicking verb runs it.
+sess_run "click mode off" "tap alpha"
+check "'click mode off' still ends click mode bare: the rewrite passes it on as a click phrase, the verb runs it" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 1 ]]"
+for word in "cortana done" "cortana stop clicking" "cortana done clicking" "cortana exit click mode"; do
+  sess_run "$word" "tap alpha"
+  check "'$word' leaves click mode" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 1 ]]"
+done
+sess_start HOLD
+hold_in 'click ' 1
+check "click mode's hint names the wake word" "[[ \$(jq -r .exit_hint '$session_json') == 'say cortana done to stop' ]]"
+sess_voxcmd_env session end
+sess_wait
 sess_start "cortana start typing" HOLD
 hold_in 'type click' 2
 check "'cortana start typing' in click mode switches to type mode, clicking nothing" "mode_is 'type click' && no_clicks"
 sess_voxcmd_env session end
 sess_wait
-sess_start "rapid mode" HOLD
+sess_start "cortana rapid mode" HOLD
 hold_in 'rapid click' 2
-check "'rapid mode' in click mode opens rapid mode over it, clicking nothing" "mode_is 'rapid click' && no_clicks"
+check "'cortana rapid mode' in click mode opens rapid mode over it, clicking nothing" "mode_is 'rapid click' && no_clicks"
 sess_voxcmd_env session end
 sess_wait
 sess_phrase="rapid mode"
+sess_start "click mode" HOLD
+hold_in 'click rapid' 2
+check "click mode over rapid mode says cortana done, and the mode underneath" "[[ \$(jq -r .exit_hint '$session_json') == 'say cortana done to stop (back to Rapid mode)' ]]"
+sess_voxcmd_env session end
+sess_wait
+# The mode-entering verbs are commands, so rapid mode runs them bare.
+sess_start "type mode" HOLD
+hold_in 'type rapid' 2
+check "'type mode' in rapid mode still opens type mode bare" "mode_is 'type rapid'"
+sess_voxcmd_env session end
+sess_wait
 
 # Silence leaves one mode at a time.
 sess_phrase="rapid mode"
-sess_run "click mode" SILENCE "tap beta" "done"
+sess_run "click mode" SILENCE "tap beta" "cortana done"
 check "silence in click mode returns to rapid mode, which goes on" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 4 ]] && toast_has 'Click mode ended nothing was said'"
 
 # Caps end every mode and run every popped hook.
@@ -1099,7 +1138,7 @@ check "without the wake word 'done', 'stop typing' and 'click mode' are text" "w
 
 # Inside rapid mode.
 sess_phrase="rapid mode"
-sess_start "type mode" "UNTIL_STOP Back again. Cortana stop." "tap beta" "done"
+sess_start "type mode" "UNTIL_STOP Back again. Cortana stop." "tap beta" "cortana done"
 hold_in 'type rapid' 2
 check "type mode's hint says where it returns to" "[[ \$(jq -r .exit_hint '$session_json') == 'say cortana stop, or cortana cancel (back to Rapid mode)' ]]"
 wake_heard "Cortana stop."

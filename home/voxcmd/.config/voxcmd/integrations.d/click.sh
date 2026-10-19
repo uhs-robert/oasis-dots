@@ -13,19 +13,16 @@ session_miss_actions=(no_text)
 # Labels are text read off the screen, so voxcmd's error toast, which the bar keeps in its history, leaves them out.
 private_labels=1
 
-# The ways out of click mode, as a command and as a turn inside it. Each names the mode, since a bare "stop", "exit" or
-# "close" is a button label and stays a target.
+# The ways out of click mode, as a command outside it and after "cortana" inside it. Inside, no bare word leaves: "done",
+# "stop", "exit" and "close" are all button labels and stay targets, so default exits are off.
 # shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=mode-phrases.sh
 source "$voxcmd_share_dir/mode-phrases.sh"
 click_exit_object='(the )?(clicking|click mode|clicking mode)'
 click_exit_phrase=$(mode_exit_phrase "$click_exit_object")
 session_exit_phrases="done clicking|im done clicking|done with $click_exit_object|$click_exit_phrase"
-session_exit_hint="say done to stop"
-session_allows_switches=1
-# A bare "exit" or "stop" is a button label here; only the mode-naming forms and "done" end the mode.
-session_bare_exits=0
-# The entries and exits another mode may run while click mode is open: the whole utterance is matched, never rewritten
-# into a click.
+session_exit_hint="say cortana done to stop"
+session_default_exits=0
+# What "cortana ..." runs inside click mode. A bare "rapid mode" is a click: session_allows_switches stays at 0.
 mode_actions=(click_mode stop_clicking)
 
 # Every click verb needs a target, so a bare "click" or "right click" still reaches the Cursor submap's binds in
