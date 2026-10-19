@@ -58,6 +58,35 @@ Cursor.scroll = function(step)
   }
 end
 
+local hold_timers = {}
+
+--- Cancel the repeat started by Cursor.hold.
+Cursor.hold_stop = function()
+  for _, timer in ipairs(hold_timers) do
+    timer:set_enabled(false)
+  end
+  hold_timers = {}
+end
+
+--- Repeat `fn` while its key stays down, until Cursor.hold_stop runs on the key's release.
+--- A binding's own `repeating` flag cannot do this for scrolling: Hyprland drops the key repeat as soon as an
+--- axis event arrives, so wlrctl's first scroll ends it. The keyboard's repeat delay and rate are mirrored.
+--- @param fn fun()
+--- @return fun()
+Cursor.hold = function(fn)
+  return function()
+    Cursor.hold_stop()
+    fn()
+    local delay = hl.get_config("input.repeat_delay") or 600
+    local rate = hl.get_config("input.repeat_rate") or 25
+    local start = hl.timer(
+      function() hold_timers[#hold_timers + 1] = hl.timer(fn, { timeout = math.floor(1000 / rate), type = "repeat" }) end,
+      { timeout = delay, type = "oneshot" }
+    )
+    hold_timers[#hold_timers + 1] = start
+  end
+end
+
 --- Run a wl-kbptr mode.
 --- opts.exit = false: exit submap raw, run wl-kbptr, return to Cursor when done (default).
 --- opts.exit = true:  run wl-kbptr then exit submap via Submap.reset().

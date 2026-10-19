@@ -20,6 +20,7 @@ end
 --- Restore cursor config and kill wl-kbptr. Called on submap exit.
 local function exit_cursor()
   hl.config({ cursor = { inactive_timeout = DEFAULTS.timeout, hide_on_key_press = DEFAULTS.hide } })
+  Cursor.hold_stop()
   hl.dispatch(hl.dsp.exec_cmd("pkill wl-kbptr"))
 end
 
@@ -33,21 +34,31 @@ local function oneshot(fn)
   end
 end
 
---- Build scroll bind rows for a modifier tier.
+--- Build scroll bind rows for a modifier tier. Scrolling repeats through Cursor.hold, whose release rows
+--- come from scroll_release_binds.
 --- @param mod string
 --- @param step number
 --- @param suffix string
 --- @return table[]
 local function scroll_binds(mod, step, suffix)
   local p = mod ~= "" and (mod .. " + ") or ""
-  local rep = { repeating = true }
   local s = Cursor.scroll(step)
   return {
-    { p .. "E", s.up, "Scroll Up" .. suffix, rep },
-    { p .. "Y", s.down, "Scroll Down" .. suffix, rep },
-    { p .. "COMMA", s.left, "Scroll Left" .. suffix, rep },
-    { p .. "PERIOD", s.right, "Scroll Right" .. suffix, rep },
+    { p .. "E", Cursor.hold(s.up), "Scroll Up" .. suffix },
+    { p .. "Y", Cursor.hold(s.down), "Scroll Down" .. suffix },
+    { p .. "COMMA", Cursor.hold(s.left), "Scroll Left" .. suffix },
+    { p .. "PERIOD", Cursor.hold(s.right), "Scroll Right" .. suffix },
   }
+end
+
+--- Release rows that end a held scroll. They ignore modifiers so letting go of SHIFT or CTRL first still stops it.
+--- @return table[]
+local function scroll_release_binds()
+  local rows = {}
+  for _, key in ipairs({ "E", "Y", "COMMA", "PERIOD" }) do
+    rows[#rows + 1] = { key, Cursor.hold_stop, nil, { release = true, ignore_mods = true } }
+  end
+  return rows
 end
 
 --- Letter sets bound per Config.input.pointer_keys; the arrow keys come with the first set only.
@@ -134,6 +145,9 @@ local cursor_mode = Submap.define({
       keys[#keys + 1] = key
     end
     for _, key in ipairs(scroll_binds("CTRL", 1, " (Pixel)")) do
+      keys[#keys + 1] = key
+    end
+    for _, key in ipairs(scroll_release_binds()) do
       keys[#keys + 1] = key
     end
 
