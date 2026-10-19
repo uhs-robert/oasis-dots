@@ -187,6 +187,10 @@ class CallerSyntaxTest(IpcCase):
         self.assert_flagged("s/a.rs", '# not a rust comment\nask(&["gone", "x"]);\n', "gone")
         self.assert_flagged("bin/a.sh", "qs-ipc call gone open # trailing comments still count\n", "gone")
 
+    def test_a_caller_after_comment_lines_reports_its_real_line(self):
+        found = self.calls("bin/a.sh", "# one\n# a longer second comment line\n\nqs-ipc call gone open\n")
+        self.assertEqual([line.split(": ")[0] for line in found if "gone" in line], ["bin/a.sh:4"])
+
     def test_a_literal_target_with_a_computed_function_still_checks_the_target(self):
         self.assert_flagged("bin/a.sh", 'qs-ipc call gone "$fn"\n', "gone")
 
