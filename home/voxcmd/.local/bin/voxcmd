@@ -2571,11 +2571,12 @@ session_run_wake_command() {
 }
 
 # Sets session_steps to what each step of phrase_steps routes as in the mode on top (integration <file>): the step
-# rewritten by the mode's session_rewrite, or unchanged when it has none. A step that is exactly a mode switch the
-# mode allows is left as spoken, as a whole turn would be. Fails when a step names nothing to route.
+# rewritten by the mode's session_rewrite, or unchanged when it has none or leaves its text as it was (so the handler's
+# raw_transcript keeps the operators that normalizing drops). A step that is exactly a mode switch the mode allows is
+# left as spoken, as a whole turn would be. Fails when a step names nothing to route.
 session_steps=()
 session_sequence_steps() {
-  local file="$1" allows_switches="${mode_setting[allows_switches]:-0}" step
+  local file="$1" allows_switches="${mode_setting[allows_switches]:-0}" step rewritten
   session_steps=()
   while IFS= read -r step; do
     [ -n "$step" ] || return 1
@@ -2590,7 +2591,8 @@ session_sequence_steps() {
       elif [ "$allows_switches" = 1 ] && [ -n "$(integration_files | for_each_line_in_parallel match_mode_action "$text")" ]; then
         printf '%s\n' "$text"
       else
-        printf '%s\n' "$(session_rewrite "$text")"
+        rewritten=$(session_rewrite "$text")
+        if [ "$rewritten" = "$text" ]; then printf '%s\n' "$step"; else printf '%s\n' "$rewritten"; fi
       fi
     done
   )

@@ -65,7 +65,7 @@ sess_config=$root/config-sess
 mkdir -p "$sess_config/integrations.d" "$sess_config/replacements.d"
 cat >"$sess_config/integrations.d/sess.sh" <<STUB
 name="Sess"
-verbs=("begin_it start testing" "stop_it stop testing" "tap tap {target}")
+verbs=("begin_it start testing" "stop_it stop testing" "tap tap {target}" "calc calculate {target}")
 session_miss_actions=(none)
 session_exit_phrases="(okay )?stop testing|done testing"
 # As click mode: a bare exit word is a button label.
@@ -90,6 +90,7 @@ declare -A actions=(
   [begin_it]='session_begin test "\$file" "Test mode"'
   [stop_it]='session_end done'
   [tap]='echo "tap \$id" >> "$log"'
+  [calc]='echo "calc \$raw_transcript" >> "$log"'
   [none]='echo "tap nothing" >> "$log"'
 )
 session_ended() {
@@ -752,6 +753,8 @@ check "and so does a picker of several options" "grep -q '^voxcmd-pick --listen'
 # A phrase of steps joined by "and then" is one turn, and each step may ask.
 sess_run "tap alpha and then tap beta" "cortana done"
 check "a sequence in rapid mode runs its steps in order, as one turn" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 2 ]]"
+sess_run "tap alpha and then calculate 10 / 2" "cortana done"
+check "a sequence in rapid mode hands each step's words as spoken to its handler, operators kept" "session_gone && grep -qx 'calc calculate 10 / 2' '$log'"
 sess_env=(VOXCMD_SESSION_MAX_TURNS=2)
 sess_run "tap alpha and then tap beta" "tap gamma" "tap delta"
 check "and counts once against the turn cap" "session_gone && [[ \$(taps) == 3 ]] && toast_has 'Rapid mode ended it reached 2 turns'"

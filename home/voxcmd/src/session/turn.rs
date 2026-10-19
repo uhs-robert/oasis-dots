@@ -555,9 +555,10 @@ impl TurnRun<'_> {
         outcome
     }
 
-    /// What each step routes as in the mode: rewritten by its `session_rewrite`, or unchanged when it has none. A step
-    /// that is exactly a mode switch the mode allows is left as spoken, as a whole turn would be. None when a step
-    /// names nothing to route.
+    /// What each step routes as in the mode: rewritten by its `session_rewrite`, or unchanged when it has none or leaves
+    /// its text as it was (so the handler's raw transcript keeps the operators normalizing drops). A step that is
+    /// exactly a mode switch the mode allows is left as spoken, as a whole turn would be. None when a step names
+    /// nothing to route.
     fn rewrite_steps(&self, steps: &[String], replaced: impl Fn(&str) -> String) -> Option<Vec<String>> {
         if !self.mode.has_rewrite {
             return Some(steps.to_vec());
@@ -568,9 +569,12 @@ impl TurnRun<'_> {
         let steps: Vec<String> = texts
             .into_iter()
             .zip(rewritten)
-            .map(|(text, rewritten)| {
+            .zip(steps)
+            .map(|((text, rewritten), step)| {
                 if self.mode.allows_switches && router.is_mode_action(&text) {
                     text
+                } else if rewritten == text {
+                    step.clone()
                 } else {
                     rewritten
                 }
