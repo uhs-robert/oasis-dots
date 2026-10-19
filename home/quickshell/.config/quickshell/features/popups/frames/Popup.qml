@@ -52,7 +52,7 @@ PanelWindow {
     readonly property var st: root.size_class === "small" ? Style.small : Style
     // A hover shelf: follows Tooltip instead of Popups, never takes focus or input, and plays faster.
     property bool passive: false
-    // Holds the keyboard while open: Hyprland refocuses the window under the pointer whenever a layer maps, such as hyprpaper's surface on every wallpaper change, which an on-demand popup loses its keys to.
+    // Holds the keyboard while wanted (not through the close animation, which would starve the next popup of focus): Hyprland refocuses the window under the pointer whenever a layer maps, such as hyprpaper's surface on every wallpaper change, which an on-demand popup loses its keys to.
     property bool hold_keyboard: false
     property real anim_scale: root.passive ? 0.6 : 1
     // Small popups inside the style's handheld shell (DeviceShell), and the room it keeps around the content.
@@ -295,7 +295,7 @@ PanelWindow {
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: root.passive || root.held_hands_off ? WlrKeyboardFocus.None : root.hold_keyboard || (root.wanted && Popups.grab_keyboard) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: root.passive || root.held_hands_off ? WlrKeyboardFocus.None : root.wanted && (root.hold_keyboard || Popups.grab_keyboard) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     mask: root.passive || root.held_hands_off ? no_input : root.reserving || root.shadow_room > 0 ? panel_input : null
     // The soft shadow's room under the frame; it passes clicks through to the scrim like the reserve does.
     readonly property real shadow_room: !root.dock_bottom && root.st.frame_shadow.a > 0 ? root.st.frame_drop : 0
