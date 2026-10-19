@@ -108,19 +108,6 @@ Popup {
         root.flush();
     }
 
-    IpcHandler {
-        target: "hyprvim_prompt"
-
-        // Returns "ok" once the prompt is shown; HyprVim falls back to its terminal bar on anything else.
-        function open(path: string): string {
-            return root.open_spec(path);
-        }
-
-        function close(): void {
-            if (root.session) root.finish(null);
-        }
-    }
-
     Timer {
         id: warn_timer
         interval: 2000
@@ -209,6 +196,10 @@ Popup {
         const screen = (mon && Quickshell.screens.find(s => s.name === mon.name)) || Quickshell.screens[0];
         Popups.open(root.popup_name, null, Style.pal.bg_mantle, screen ? screen.name : "");
         return "ok";
+    }
+
+    function dismiss() {
+        if (root.session) root.finish(null);
     }
 
     // Cancel is result null: HyprVim reads a missing result file as no input.

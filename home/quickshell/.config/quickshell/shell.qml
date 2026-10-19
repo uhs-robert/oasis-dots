@@ -210,7 +210,12 @@ ShellRoot {
         name: "picker"
         Picker {}
     }
-    HyprvimPrompt {}
+    HyprvimPrompt {
+        id: hyprvim_prompt
+    }
+    HyprvimPromptIpc {
+        prompt: hyprvim_prompt
+    }
     AppsProvider {}
     ClipboardProvider {}
     EmojiProvider {}
@@ -222,6 +227,7 @@ ShellRoot {
     BrightnessIpc {}
     NotificationsIpc {}
     StyleIpc {}
+    TransitionsIpc {}
     WeatherIpc {}
     SettingsIpc {}
     GreeterSync {}
@@ -242,8 +248,18 @@ ShellRoot {
     }
     TooltipShelf {}
     NotificationToasts {}
-    Osd {}
-    WhichKey {}
+    Osd {
+        id: osd
+    }
+    OsdIpc {
+        osd: osd
+    }
+    WhichKey {
+        id: whichkey
+    }
+    WhichKeyIpc {
+        whichkey: whichkey
+    }
     Overview {
         id: overview_window
     }
