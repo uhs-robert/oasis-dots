@@ -20,7 +20,11 @@ source "$voxcmd_share_dir/spoken-position.sh"
 firefox_integration="$(dirname "${BASH_SOURCE[0]}")/firefox.sh"
 
 # Moving has no shared intent; its words are kept here for the keybind check in candidates() as well.
-move_verbs="move|send|put"
+move_verbs="move|send|put|take|bring|shift|push|carry|relocate|place"
+# "switch" moves only a window it is given ("switch firefox to workspace 5"); bare "switch to workspace 5" is a focus.
+move_with_window_verbs="switch"
+# The windows that mean the focused one, as in monitors.sh; moving the focused window offers nothing else.
+focused_window_words='((this|the|that) )?((active|current|focused) )?window|it|this|that'
 
 # move's target is "<window> to workspace <n>" and a resize's "<window> to 1200 by 800": one placeholder carries
 # both, and candidates() splits it. A resize target that names no size ("resize left") offers nothing, which
@@ -31,6 +35,7 @@ verbs=(
   "swap      (swap( places)?|switch places) {target}"
   "focus     {focus} {target}"
   "move      (${move_verbs}) {target}"
+  "move_with_window  (${move_with_window_verbs}) {target}"
   "close     {close} {target}"
   "resize    (resize|{set}) {target}"
   "grow      (grow|enlarge|increase|expand|extend|raise|add) {target}"
@@ -45,6 +50,10 @@ examples=(
   "move <window> to workspace <number>"
   "move <window> to the third workspace"
   "move <window> to special workspace <name>"
+  "move this window to workspace <number>"
+  "send it to the third workspace"
+  "put to special workspace <name>"
+  "switch <window> to workspace <number>"
   "swap this window with <window>"
   "close <window>"
   "resize the window to <width> by <height>"
@@ -63,6 +72,7 @@ declare -A actions=(
   [open]='open_app "$id"'
   [focus]='focus_window "$id"'
   [move]='move_window "$id"'
+  [move_with_window]='move_window "$id"'
   [swap]='swap_window "$id"'
   [close]='close_window "$id"'
   [resize]='resize_option "$id"'
@@ -101,6 +111,15 @@ candidates() {
     return
     ;;
   esac
+  case "$action" in
+  move | move_with_window)
+    # Before the keybind check below: "move window to workspace 5" names the "Move to Workspace 5" bind once the
+    # ignored word is dropped, and that bind would swallow the focused-window move.
+    if focused_move_candidates "$action" "$target"; then
+      return
+    fi
+    ;;
+  esac
   if spoken_as_keybind "$action" "$target" || names_session_or_agent "$target" || launches_keybind "$action" "$target" ||
     { [[ "$action" =~ ^(open|open_new|focus)$ ]] && [[ "$target" =~ ^(my|the)\ calendar$ ]]; } ||
     opens_in_browser "$action" "$target"; then
@@ -110,7 +129,7 @@ candidates() {
   case "$action" in
   open | open_new) app_candidates ;;
   focus | close) window_candidates "$action" ;;
-  move) move_candidates "$target" ;;
+  move | move_with_window) move_candidates "$target" ;;
   swap) swap_candidates "$target" ;;
   esac
 }
@@ -142,6 +161,7 @@ action_verbs() {
   case "$1" in
   open_new) intent_forms open | sed 's/$/ new/' ;;
   move) tr '|' '\n' <<<"$move_verbs" ;;
+  move_with_window) tr '|' '\n' <<<"$move_with_window_verbs" ;;
   swap) echo swap ;;
   open | focus | close) intent_forms "$1" ;;
   esac
@@ -349,29 +369,71 @@ window_candidates() {
           | {id: .address, label: $label, match_text: .title}))'
 }
 
+# Splits a move target into move_window_part (the words before the destination, possibly none), move_workspace (a
+# number, or "special:<name>"), move_label_to and move_workspace_words (the destination as spoken, with its leading
+# space, which word matching reads after the window part). Fails when the target names no workspace.
+split_move_target() {
+  local spoken=" $1"
+  if [[ "$spoken" =~ ^(.*)(\ to\ (the\ )?special\ workspace\ ([a-z0-9]+(\ [a-z0-9]+)*))$ ]]; then
+    move_workspace="special:$(special_workspace_name "${BASH_REMATCH[4]}")"
+    move_label_to="to special workspace ${move_workspace#special:}"
+  elif [[ "$spoken" =~ ^(.*)(\ (to|onto|on)\ (the\ )?(workspace|desktop)\ ([a-z0-9]+(\ [a-z0-9]+)?))$ ]]; then
+    move_workspace=$(workspace_number "${BASH_REMATCH[6]}")
+    move_label_to="to workspace $move_workspace"
+  else
+    return 1
+  fi
+  move_window_part="${BASH_REMATCH[1]# }"
+  move_workspace_words="${BASH_REMATCH[2]}"
+  [ -n "$move_workspace" ]
+}
+
+# "move this window to workspace 5", "send it to the third workspace", "put to special workspace notes": no window
+# or a deictic one means the focused window, offered alone with the whole target as its match_text so it is an exact
+# match and runs without a picker. Never lists other windows for it. Prints the candidates and succeeds when the
+# target is one of those moves; fails for a named window, which move_candidates() handles. With no focused window
+# it offers nothing, which leaves the phrase to the keybinds fallback. "switch" moves only a window it is given, so
+# its bare form ("switch to workspace 5") is left to the focus keybinds. "take me to workspace 5" is a focus.
+focused_move_candidates() {
+  local action="$1" target="$2" active label encoded
+  local move_window_part move_workspace move_label_to move_workspace_words
+  split_move_target "$target" || return 1
+  if [[ "$move_window_part" =~ ^(me|us)$ ]]; then
+    echo '[]'
+    return 0
+  fi
+  if [ -n "$move_window_part" ] && ! [[ "$move_window_part" =~ ^($focused_window_words)$ ]]; then
+    return 1
+  fi
+  if [ -z "$move_window_part" ] && [ "$action" = move_with_window ]; then
+    echo '[]'
+    return 0
+  fi
+  active=$(timeout 2 hyprctl activewindow -j 2>/dev/null | jq -c 'select(.address // "" != "") | {address, class, title}')
+  if [ -z "$active" ]; then
+    echo '[]'
+    return 0
+  fi
+  encoded="${move_workspace//%/%25}"
+  encoded="${encoded// /%20}"
+  jq -c --arg workspace "$encoded" --arg label_to "$move_label_to" --arg match_text "$target" '
+    [{id: "\(.address) \($workspace)",
+      label: (if .title == "" then "\(.class) \($label_to)" else "\(.class): \(.title) \($label_to)" end),
+      match_text: $match_text}]' <<<"$active"
+}
+
 # For "move firefox to workspace 3" every window is offered as "<app> to workspace 3" (and by title), so word
 # matching compares the window part while the workspace rides along in the id as "<address> <workspace>". A target
 # without the workspace part offers nothing. "to special workspace <name>" works the same, with the special workspace
 # that special_workspace_name() resolves the spoken name to. An existing special workspace's name may hold spaces, so
 # the workspace travels percent-encoded, as the overview's references do.
 move_candidates() {
-  local target="$1" workspace_words workspace label_to
-  if [[ "$target" =~ ^(.+)(\ to\ (the\ )?special\ workspace\ ([a-z0-9]+(\ [a-z0-9]+)*))$ ]]; then
-    workspace_words="${BASH_REMATCH[2]}"
-    workspace="special:$(special_workspace_name "${BASH_REMATCH[4]}")"
-    label_to="to special workspace ${workspace#special:}"
-  elif [[ "$target" =~ ^(.+)(\ (to|onto|on)\ (the\ )?(workspace|desktop)\ ([a-z0-9]+(\ [a-z0-9]+)?))$ ]]; then
-    workspace_words="${BASH_REMATCH[2]}"
-    workspace=$(workspace_number "${BASH_REMATCH[6]}")
-    label_to="to workspace $workspace"
-  else
+  local move_window_part move_workspace move_label_to move_workspace_words
+  split_move_target "$1" && [ -n "$move_window_part" ] || {
     echo '[]'
     return
-  fi
-  if [ -z "$workspace" ]; then
-    echo '[]'
-    return
-  fi
+  }
+  local workspace_words="$move_workspace_words" workspace="$move_workspace" label_to="$move_label_to"
   windows | jq -c --arg suffix "$workspace_words" --arg workspace "$workspace" --arg label_to "$label_to" '
     def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
     ($workspace | gsub("%"; "%25") | gsub(" "; "%20")) as $workspace
