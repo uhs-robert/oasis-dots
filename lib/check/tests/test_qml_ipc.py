@@ -21,7 +21,7 @@ POPUP = """IpcHandler {
     function helper(x) { return x }
 }
 """
-OVERVIEW = 'IpcHandler { target: "tmux-overview"; function state(): string { return "" } }\n'
+OVERVIEW = 'IpcHandler { target: "tmux_overview"; function state(): string { return "" } }\n'
 
 
 class IpcCase(TreeCase):
@@ -206,36 +206,36 @@ class AllowlistTest(IpcCase):
         files = {**self.FILES, "bin/a.sh": "qs-ipc call popup state\n"}
         found = self.messages(files)
         self.assertEqual(len(found), 1)
-        self.assertIn('target "tmux-overview" is called by nothing in the repo', found[0])
-        self.assertEqual(self.check(files, "uncalled tmux-overview  # nobody yet (permanent)\n"), [])
+        self.assertIn('target "tmux_overview" is called by nothing in the repo', found[0])
+        self.assertEqual(self.check(files, "uncalled tmux_overview  # nobody yet (permanent)\n"), [])
 
     def test_an_uncalled_line_goes_stale_when_the_target_is_called(self):
-        files = {**self.FILES, "bin/a.sh": "qs-ipc call popup state\nqs-ipc call tmux-overview state\n"}
-        found = self.messages(files, "uncalled tmux-overview  # nobody yet (permanent)\n")
-        self.assertEqual(found, ["uncalled tmux-overview is stale: something calls it now. Delete the line."])
+        files = {**self.FILES, "bin/a.sh": "qs-ipc call popup state\nqs-ipc call tmux_overview state\n"}
+        found = self.messages(files, "uncalled tmux_overview  # nobody yet (permanent)\n")
+        self.assertEqual(found, ["uncalled tmux_overview is stale: something calls it now. Delete the line."])
 
     def test_an_uncalled_line_goes_stale_when_the_target_is_gone(self):
         files = {"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
-        found = self.messages(files, "uncalled tmux-overview  # nobody yet (permanent)\n")
-        self.assertEqual(found, ["uncalled tmux-overview is stale: no IpcHandler declares it. Delete the line."])
+        found = self.messages(files, "uncalled tmux_overview  # nobody yet (permanent)\n")
+        self.assertEqual(found, ["uncalled tmux_overview is stale: no IpcHandler declares it. Delete the line."])
 
     def test_a_frozen_target_needs_no_caller(self):
         files = {**self.FILES, "bin/a.sh": "qs-ipc call popup state\n"}
-        self.assertEqual(self.check(files, "frozen tmux-overview state  # called from elsewhere (permanent)\n"), [])
+        self.assertEqual(self.check(files, "frozen tmux_overview state  # called from elsewhere (permanent)\n"), [])
 
     def test_a_frozen_function_that_is_missing_or_untyped_fails(self):
         files = {**self.FILES, "bin/a.sh": "qs-ipc call popup state\n"}
-        found = self.messages(files, "frozen tmux-overview state close  # called from elsewhere (permanent)\n")
+        found = self.messages(files, "frozen tmux_overview state close  # called from elsewhere (permanent)\n")
         self.assertEqual(len(found), 1)
-        self.assertIn('frozen tmux-overview is stale: it has no typed function "close"', found[0])
+        self.assertIn('frozen tmux_overview is stale: it has no typed function "close"', found[0])
         files = {"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
         found = self.messages(files, "frozen popup helper  # called from elsewhere (permanent)\n")
         self.assertIn('no typed function "helper"', found[0])
 
     def test_a_frozen_target_that_is_gone_fails(self):
         files = {"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
-        found = self.messages(files, "frozen tmux-overview state  # called from elsewhere (permanent)\n")
-        self.assertEqual(found, ["frozen tmux-overview is stale: no IpcHandler declares it. Delete the line."])
+        found = self.messages(files, "frozen tmux_overview state  # called from elsewhere (permanent)\n")
+        self.assertEqual(found, ["frozen tmux_overview is stale: no IpcHandler declares it. Delete the line."])
 
     def test_malformed_and_duplicate_lines_fail(self):
         files = {"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
@@ -249,25 +249,25 @@ class MutationTest(IpcCase):
     """A repository shaped like the real one: a handler, and callers in every kind of file."""
 
     FILES = {
-        "qs/features/TmuxOverviewIpc.qml": 'IpcHandler { target: "tmux-overview"; function state(): string { return "" } }\n',
-        "h/lib/actions/menu.lua": 'run(Scripts.qs_ipc .. " call tmux-overview state")\n',
-        "t/.tmux.conf": "run-shell 'qs-ipc call tmux-overview state'\n",
-        "v/tests/sandbox.sh": '*"call tmux-overview state"*) echo closed ;;\n',
-        "v/src/bar.rs": 'ask(&["tmux-overview", "state"], t);\n',
+        "qs/features/TmuxOverviewIpc.qml": 'IpcHandler { target: "tmux_overview"; function state(): string { return "" } }\n',
+        "h/lib/actions/menu.lua": 'run(Scripts.qs_ipc .. " call tmux_overview state")\n',
+        "t/.tmux.conf": "run-shell 'qs-ipc call tmux_overview state'\n",
+        "v/tests/sandbox.sh": '*"call tmux_overview state"*) echo closed ;;\n',
+        "v/src/bar.rs": 'ask(&["tmux_overview", "state"], t);\n',
     }
 
     def test_the_fixture_passes(self):
         self.assertEqual(self.check(self.FILES), [])
 
     def test_renaming_the_target_in_the_qml_only_flags_every_caller(self):
-        files = {**self.FILES, "qs/features/TmuxOverviewIpc.qml": self.FILES["qs/features/TmuxOverviewIpc.qml"].replace("tmux-overview", "tmux_overview")}
+        files = {**self.FILES, "qs/features/TmuxOverviewIpc.qml": self.FILES["qs/features/TmuxOverviewIpc.qml"].replace("tmux_overview", "tmux_renamed")}
         found = self.check(files)
         flagged = sorted(line.split(":")[0] for line in found if "declared by no IpcHandler" in line)
         self.assertEqual(flagged, ["h/lib/actions/menu.lua", "t/.tmux.conf", "v/src/bar.rs", "v/tests/sandbox.sh"])
-        self.assertTrue(any('target "tmux_overview" is called by nothing' in line for line in found), found)
+        self.assertTrue(any('target "tmux_renamed" is called by nothing' in line for line in found), found)
 
     def test_renaming_the_target_in_the_callers_only_fails(self):
-        files = {path: text.replace("tmux-overview", "tmux_overview") if not path.endswith(".qml") else text for path, text in self.FILES.items()}
+        files = {path: text.replace("tmux_overview", "tmux_renamed") if not path.endswith(".qml") else text for path, text in self.FILES.items()}
         found = self.check(files)
         self.assertEqual(len(found), 5, found)
 

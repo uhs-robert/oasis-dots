@@ -263,5 +263,13 @@ ShellRoot {
     Overview {
         id: overview_window
     }
-    TmuxOverview {}
+    OverviewIpc {
+        overview: overview_window
+    }
+    TmuxOverview {
+        id: tmux_overview_window
+    }
+    TmuxOverviewIpc {
+        tmux_overview: tmux_overview_window
+    }
 }

@@ -709,7 +709,7 @@ stage() {
 restore_ui() {
   hyprctl eval 'hl.dispatch(hl.dsp.submap("reset"))' >/dev/null 2>&1 || true
   local call
-  for call in "popup close" "overview close" "tmux-overview close" "picker close" "lock preview_close" "screenshot close"; do
+  for call in "popup close" "overview close" "tmux_overview close" "picker close" "lock preview_close" "screenshot close"; do
     # shellcheck disable=SC2086 # each entry is a target and a function, split on purpose
     "$qs_ipc_bin" call $call >/dev/null 2>&1 || true
   done

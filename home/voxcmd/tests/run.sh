@@ -1557,7 +1557,7 @@ for entry in "${keys_bar_surface_cases[@]}"; do
   echo "$popup_answer" >"$SANDBOX_DIR/popup-state"
   echo "${keyboard_answer:-no}" >"$SANDBOX_DIR/popup-keyboard"
   echo "${overview_answer:-closed}" >"$SANDBOX_DIR/overview-state"
-  echo "${tmux_overview_answer:-closed}" >"$SANDBOX_DIR/tmux-overview-state"
+  echo "${tmux_overview_answer:-closed}" >"$SANDBOX_DIR/tmux_overview-state"
   SANDBOX_ACTIVEWINDOW_JSON='{}' VOXCMD_CONFIG_DIR=$keys_config "$voxcmd" run "press enter" >/dev/null 2>&1
   case_name="no client, popup '$popup_answer' keyboard ${keyboard_answer:-no} overview '${overview_answer:-closed}' tmux overview '${tmux_overview_answer:-closed}'"
   if [ "$expected" = pressed ]; then
@@ -1566,7 +1566,7 @@ for entry in "${keys_bar_surface_cases[@]}"; do
     check "$case_name: enter is refused" "! grep -q '^wtype' '$log' && grep -q 'no window or bar surface has focus' '$log'"
   fi
 done
-rm -f "$SANDBOX_DIR/popup-state" "$SANDBOX_DIR/popup-keyboard" "$SANDBOX_DIR/overview-state" "$SANDBOX_DIR/tmux-overview-state"
+rm -f "$SANDBOX_DIR/popup-state" "$SANDBOX_DIR/popup-keyboard" "$SANDBOX_DIR/overview-state" "$SANDBOX_DIR/tmux_overview-state"
 
 section "screenshot.sh beside a recording"
 # The real script, with the sandbox's stub for qs-ipc beside it and a pidof that names a harmless process as the recorder.

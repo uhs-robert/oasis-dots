@@ -114,7 +114,7 @@ function Menu.overview() return Cmd.run(Scripts.qs_ipc .. " call overview open")
 
 --- Return an action that opens the Quickshell tmux overview.
 --- @return fun()
-function Menu.tmux_overview() return Cmd.run(Scripts.qs_ipc .. " call tmux-overview open") end
+function Menu.tmux_overview() return Cmd.run(Scripts.qs_ipc .. " call tmux_overview open") end
 
 --- Return an action that opens the workspace overview with window search active.
 --- @return fun()
