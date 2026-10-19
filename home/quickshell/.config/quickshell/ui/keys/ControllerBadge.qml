@@ -17,7 +17,7 @@ Row {
     property string font_family: Style.mono_font
     property real font_size: Style.fs(-5)
     readonly property var parts: KeyHints.controller_parts(root.controller, root.key, root.desc, root.glyphs)
-    readonly property string button_url: KeyHints.button_path(root.controller) === "" ? "" : Qt.resolvedUrl("../../styles/" + KeyHints.button_path(root.controller).replace("/", "/widgets/"))
+    readonly property string button_url: StyleArt.widget_url(KeyHints.button_path(root.controller))
 
     spacing: 2
 

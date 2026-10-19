@@ -3,7 +3,6 @@ import QtQuick
 import QtQuick.Effects
 import qs.theme
 import qs.ui.frames
-import "../../styles/goldeneye/Watch.js" as W
 
 Item {
     id: root
@@ -27,11 +26,8 @@ Item {
     // The bezel palette applies to meters that keep the style's default colour; callers that set their own colour (state bars) keep it.
     readonly property bool bezel: root.st.meter_palette === "bezel" && Qt.colorEqual(root.on_color, root.st.meter_on)
 
-    // Warm run then blues, light end first, the order the gauge dial fills.
     function bezel_at(index) {
-        const f = (index + 0.5) / root.segment_count;
-        const k = Math.min(7, Math.floor((f < 0.5 ? f : f - 0.5) * 16));
-        return f < 0.5 ? W.warm[7 - k] : W.cold_lit[7 - k];
+        return StyleArt.bezel_heat((index + 0.5) / root.segment_count);
     }
     // Slanted segments lean past their slot by this much at the top.
     readonly property real lean: root.st.meter_slant * root.implicitHeight
@@ -106,10 +102,9 @@ Item {
 
     Loader {
         id: art_loader
-        // The token stays "<style>/File.qml" because the style tokens (styles/<style>/tokens.js) are staged for the greeter; the file lives under styles/<style>/widgets/.
         width: root.width
         height: root.implicitHeight
-        source: root.art === "" ? "" : Qt.resolvedUrl("../../styles/" + root.art.replace("/", "/widgets/"))
+        source: StyleArt.widget_url(root.art)
         onLoaded: item.meter = root
     }
 
