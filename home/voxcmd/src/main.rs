@@ -125,8 +125,8 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Internal(InternalCommand::CancelOwnedRecording(args)) => {
             ask::run_cancel_owned_recording(&args.args).map(|()| None)
         }
-        Command::Internal(InternalCommand::WakeConfirm(_)) => later("internal wake-confirm", "2.4"),
-        Command::Internal(InternalCommand::ChainStop(_)) => later("internal chain-stop", "2.4"),
+        Command::Internal(InternalCommand::WakeConfirm(args)) => voice::wake_confirm::run(&args.args),
+        Command::Internal(InternalCommand::ChainStop(_)) => later("internal chain-stop", "2.4d-2"),
         Command::Internal(InternalCommand::Session(args)) => session::bridge::run(&args.args),
     }
 }

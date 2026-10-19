@@ -856,6 +856,7 @@ owner_is_listening
 check "type mode's session file names it, its hint, and that it is one recording the wake listener hears through" "[[ \$(jq -c '[.kind, .label, .exit_hint, .one_recording, .wake_listens, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say cortana stop, or cortana cancel\",true,true,[]]' ]]"
 check "its one recording ends after 10 s of quiet or of no speech, and at 295 s" "log_has_soon 'no_speech_secs=10\$' && log_has_soon 'autostop min_speech_secs=0.4 silence_secs=10\$' && log_has_soon 'autostop max_secs=295\$'"
 check "once its watcher owns the session, the hand-over is over" "! jq -e '.owner_handover' '$session_json' >/dev/null"
+check "its one recording is watched by the binary under test" "owner_is_the_binary_under_test"
 check "with the wake listener off, its start says to press the voice key" "log_has_soon '^notify-send .*voxcmd: Type mode Press the voice key to type it'"
 wake_heard "Cortana, stop."
 sess_wait

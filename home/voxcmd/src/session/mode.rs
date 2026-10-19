@@ -13,6 +13,7 @@
 //! Which kind a mode is goes by its file's extension alone. A `.toml` mode that stops loading mid-session (a live edit
 //! half done, the file moved away) is never handed to the bash loader, which would source it as shell: its settings
 //! stay those of the last version that loaded, and its hooks are skipped until it loads again.
+use super::dictation::Ending;
 use super::{SessionLock, bridge};
 use crate::config::intents::Intents;
 use crate::config::schema::{self, Integration};
@@ -40,7 +41,7 @@ pub struct ModeSettings {
     pub private: bool,
     /// Bounded by its own limits, not the session's turn and time caps.
     pub open_ended: bool,
-    /// Hears one recording (type mode), which the bash voxcmd handles until voxcmd-port 2.4d.
+    /// Hears one recording (type mode), handed to the mode once it ends (`dictation.rs`).
     pub one_recording: bool,
     pub wake_listens: bool,
     /// The auto-stop settings of the mode's listens; empty takes the session's.
@@ -55,6 +56,9 @@ pub struct ModeSettings {
     pub rewriting: Option<Rewriting>,
     /// Actions that ran but found nothing to act on, so the turn missed.
     pub miss_actions: Vec<String>,
+    /// How a one-recording mode's recording ends after the wake word, first row first. A TOML mode has none until
+    /// voxcmd-port 2.4d-3.
+    pub endings: Vec<Ending>,
 }
 
 impl Default for ModeSettings {
@@ -77,6 +81,7 @@ impl Default for ModeSettings {
             has_alive: false,
             rewriting: None,
             miss_actions: Vec::new(),
+            endings: Vec::new(),
         }
     }
 }
@@ -134,7 +139,7 @@ impl ModeSettings {
         }
     }
 
-    /// `print_mode_settings` output: `key=value` lines. Its `ending` rows are 2.4d's.
+    /// `print_mode_settings` output: `key=value` lines.
     fn parse(output: &str) -> Self {
         let mut settings = Self::default();
         for (key, value) in output.lines().filter_map(|line| line.split_once('=')) {
@@ -160,6 +165,10 @@ impl ModeSettings {
                 "has_rewrite" => settings.has_rewrite = on,
                 "has_alive" => settings.has_alive = on,
                 "miss_action" if !value.is_empty() => settings.miss_actions.push(value.to_string()),
+                "ending" => match Ending::from_row(value) {
+                    Some(ending) => settings.endings.push(ending),
+                    None => debug("session: an ending is no regex, skipped"),
+                },
                 _ => {}
             }
         }
@@ -455,14 +464,13 @@ pub fn rewrite(settings: &ModeSettings, file: &str, texts: &[String], heard_mode
     (lines.len() == texts.len()).then_some(lines)
 }
 
-/// Hands the turn's words to the mode's `session_handle_turn`, whose session calls go to this process.
-pub fn handle_turn(file: &str, transcript: &str, heard_mode: &str) {
+/// Hands the turn's words to the mode's `session_handle_turn`, with how a one-recording mode's recording ended; its
+/// session calls go to this process. In a process group of its own, which a stop signal ends as it does an action's
+/// (typing.sh's `wtype` with it). Its failure is ignored, as bash's subshell call ignored it.
+pub fn handle_turn(file: &str, text: &str, ending: Option<&str>, heard_mode: &str) {
     let mut command = legacy_hook("handle-turn", file);
-    command
-        .arg(transcript)
-        .stdout(Stdio::null())
-        .envs(bridge::hook_env(heard_mode));
-    let _ = command.status();
+    command.arg(text).args(ending).envs(bridge::hook_env(heard_mode));
+    let _ = process::run_to_end(&mut command);
 }
 
 #[cfg(test)]
@@ -481,10 +489,20 @@ mod tests {
         assert!(exit_phrases.is_match("done with it") && !exit_phrases.is_match("done with it now"));
         assert_eq!(settings.listen_max_secs, "295");
         assert_eq!(settings.miss_actions, ["no_text"]);
+        assert_eq!(settings.endings.len(), 1);
+        assert_eq!(settings.endings[0].action, "type");
         assert_eq!(settings.exit_hint_or_default(), "say cortana stop");
         // One that is no regex matches nothing, and the mode's other settings still apply.
-        let broken = ModeSettings::parse("exit_phrases=done (\nbare_exits=0\n");
+        let broken = ModeSettings::parse("exit_phrases=done (\nending=send (\nending=type stop\nbare_exits=0\n");
         assert!(broken.exit_phrases.is_none() && !broken.bare_exits);
+        assert_eq!(
+            broken
+                .endings
+                .iter()
+                .map(|ending| ending.action.as_str())
+                .collect::<Vec<_>>(),
+            ["type"]
+        );
     }
 
     #[test]

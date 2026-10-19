@@ -1,10 +1,12 @@
 //! the voice key's loop: starting a recording (`listen`), the watcher that hands its transcript on (`internal
-//! watch`), Stop Voice (`stop`) and the wait for the screen to settle between turns (`internal settle`)
+//! watch`), Stop Voice (`stop`), the wait for the screen to settle between turns (`internal settle`) and the wake
+//! listener's confirmation of a trigger (`internal wake-confirm`)
 //!
 //! voxtype records and transcribes; voxcmd only reads its state file and calls `voxtype record start|stop|cancel`.
 pub mod listen;
 pub mod settle;
 pub mod stop;
+pub mod wake_confirm;
 pub mod watch;
 
 use crate::paths;

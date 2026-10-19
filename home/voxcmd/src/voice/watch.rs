@@ -17,7 +17,7 @@ use crate::exit::CliError;
 use crate::paths;
 use crate::process::{self, LiveGroup, RemovedOnSignal};
 use crate::route;
-use crate::session;
+use crate::session::{self, dictation};
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
@@ -65,15 +65,16 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
     // from listening.
     let mut cleanup = Cleanup::new(handler == Handler::SessionTurn);
     drop(stop_signals_held);
-    let transcript = match watch_recording(&mut cleanup, detector_settings) {
+    let session_mode = (handler == Handler::SessionTurn).then_some(heard_mode);
+    let transcript = match watch_recording(&mut cleanup, detector_settings, session_mode) {
         Heard::Transcript(transcript) => transcript,
         // Autostop's no-speech cancel, or a recording cancelled: the mode is over.
         Heard::Discarded if handler == Handler::SessionTurn => {
-            session::turn::silence(me);
+            session::turn::silence(me, heard_mode);
             return Ok(());
         }
         Heard::Nothing if handler == Handler::SessionTurn => {
-            session::turn::heard_nothing(me);
+            session::turn::heard_nothing(me, heard_mode);
             return Ok(());
         }
         Heard::Discarded | Heard::Nothing => return Ok(()),
@@ -127,10 +128,11 @@ enum Heard {
     Nothing,
 }
 
-/// Follows the recording to its end and returns its transcript, or how it ended without one.
-fn watch_recording(cleanup: &mut Cleanup, detector_settings: &str) -> Heard {
+/// Follows the recording to its end and returns its transcript, or how it ended without one. A session turn's
+/// recording names the mode it is heard in (`session_mode`).
+fn watch_recording(cleanup: &mut Cleanup, detector_settings: &str, session_mode: Option<&str>) -> Heard {
     let poll = time_scaled(POLL_SECS);
-    cleanup.detector = Detector::start(detector_settings, &cleanup.discard_flag);
+    cleanup.detector = Detector::start(detector_settings, &cleanup.discard_flag, session_mode);
     if let Some(owner_file) = &cleanup.owner_file {
         // listen starts a watcher only for a recording it started from idle, so the recording is this one's from the
         // start. The ask may be gone already, its directory with it.
@@ -303,7 +305,7 @@ struct DetectorGroup {
 }
 
 impl Detector {
-    fn start(settings: &str, discard_flag: &Path) -> Option<Self> {
+    fn start(settings: &str, discard_flag: &Path, session_mode: Option<&str>) -> Option<Self> {
         let program = paths::autostop();
         if !ask::is_executable(&program) {
             return None;
@@ -319,10 +321,10 @@ impl Detector {
         );
         // Spawned on the main thread, which lives as long as the watcher.
         process::die_with_parent(&mut command);
-        Self::spawn(&mut command, discard_flag)
+        Self::spawn(&mut command, discard_flag, session_mode)
     }
 
-    fn spawn(command: &mut Command, discard_flag: &Path) -> Option<Self> {
+    fn spawn(command: &mut Command, discard_flag: &Path, session_mode: Option<&str>) -> Option<Self> {
         let (leader, listed) = process::spawn_letting_clean_up(command).ok()?;
         let detector = Self {
             group: Arc::new(Mutex::new(Some(DetectorGroup {
@@ -332,16 +334,17 @@ impl Detector {
             }))),
             stopped: Arc::default(),
         };
-        let (group, stopped, discard_flag) = (
+        let (group, stopped, discard_flag, session_mode) = (
             Arc::clone(&detector.group),
             Arc::clone(&detector.stopped),
             discard_flag.to_path_buf(),
+            session_mode.map(str::to_string),
         );
         thread::spawn(move || {
             if let Some(verdict) = wait_for_verdict(&group)
                 && !stopped.load(Ordering::SeqCst)
             {
-                act_on_verdict(verdict, &discard_flag);
+                act_on_verdict(verdict, &discard_flag, session_mode.as_deref());
             }
             unlist_once_empty(&group);
         });
@@ -397,10 +400,24 @@ fn unlist_once_empty(group: &Mutex<Option<DetectorGroup>>) {
     }
 }
 
-fn act_on_verdict(verdict: i32, discard_flag: &Path) {
+fn act_on_verdict(verdict: i32, discard_flag: &Path, session_mode: Option<&str>) {
     // A voice key may have stopped the recording in the meantime.
     if voxtype_state() != "recording" {
         return;
+    }
+    // In a one-recording mode the verdict is how the recording ended, unless something else ended it first. Recorded
+    // before the stop, so the watcher finds it once the transcript is in.
+    let ending = match verdict {
+        VERDICT_SILENCE => Some("pause"),
+        VERDICT_NO_SPEECH => Some("idle"),
+        VERDICT_MAX_LENGTH => Some("cap"),
+        _ => None,
+    };
+    if let (Some(heard_mode), Some(by)) = (session_mode, ending) {
+        dictation::watcher_record_ending("type", by, heard_mode, std::process::id());
+        if voxtype_state() != "recording" {
+            return;
+        }
     }
     match verdict {
         VERDICT_SILENCE => {
@@ -453,7 +470,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut command = Command::new("sh");
         command.args(["-c", script]);
-        let detector = Detector::spawn(&mut command, &dir.path().join("discard")).unwrap();
+        let detector = Detector::spawn(&mut command, &dir.path().join("discard"), None).unwrap();
         let group = detector.group.lock().unwrap().as_ref().unwrap().id;
         (detector, group)
     }

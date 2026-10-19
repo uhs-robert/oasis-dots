@@ -4,8 +4,8 @@
 //!
 //! A turn's watcher owns the session while it hears and acts; its next listen hands the session to the next watcher.
 //! A voice key pressed meanwhile takes the session over, and the turn then leaves it alone ("another listen took
-//! over"). A one-recording mode's turn (type mode) is the bash voxcmd's until voxcmd-port 2.4d: `listen` starts the
-//! bash watcher for it.
+//! over"). A one-recording mode's one turn (type mode's) is handed to `dictation.rs` however its recording ended.
+use super::dictation;
 use super::mode::{self, ModeSettings};
 use super::{Opened, SessionLock, is_mine, mode_token, now_secs, text_of};
 use crate::actions::{Spoken, StepOutcome};
@@ -34,7 +34,7 @@ static STOP_WORDS: LazyLock<Regex> = LazyLock::new(|| {
 /// Whisper's stock output for silence and noise, normalized (before replacements): a turn that heard only one of these
 /// heard nothing. voxtype-daemon puts "Voice commands start with <wake word>." in Whisper's prompt, which Whisper can
 /// echo on silence.
-static NOISE: LazyLock<Regex> = LazyLock::new(|| {
+pub(super) static NOISE: LazyLock<Regex> = LazyLock::new(|| {
     let echo = regex::escape(&normalize(&format!("Voice commands start with {WAKE_WORD}")));
     Regex::new(&format!(
         "^(|you|bye|the end|thank you|thank you for watching|thanks for watching|blank audio|{echo})$"
@@ -305,20 +305,29 @@ pub fn duration_words(secs: i64) -> String {
 }
 
 /// A listen that was discarded: no speech, or a recording cancelled. The mode ends, back to the mode under it, which
-/// listens on.
-pub fn silence(me: u32) {
+/// listens on; a one-recording mode says how its recording ended instead.
+pub fn silence(me: u32, heard_mode: &str) {
     let lock = SessionLock::take();
     let Some(state) = super::state(&lock).filter(|state| is_mine(state, me)) else {
         return;
     };
+    if state["one_recording"] == json!(true) {
+        drop(lock);
+        dictation::finish_recording("", true, heard_mode, &Replacements::default(), me);
+        return;
+    }
     super::leave(&lock, &text_of(&state["kind"]), "nothing was said", me);
     drop(lock);
     listen_for_turn(me);
 }
 
-/// A recording that ended with no transcript: the session listens again.
-pub fn heard_nothing(me: u32) {
-    continue_turns(Outcome::Unheard, me);
+/// A recording that ended with no transcript: the session listens again, and a one-recording mode is over.
+pub fn heard_nothing(me: u32, heard_mode: &str) {
+    if super::read_state().is_some_and(|state| state["one_recording"] == json!(true)) {
+        dictation::finish_recording("", false, heard_mode, &Replacements::default(), me);
+    } else {
+        continue_turns(Outcome::Unheard, me);
+    }
 }
 
 /// The transcript handler while a session is open. A session that ended while the recording ran hands it to the
@@ -367,10 +376,7 @@ pub fn session_turn(runner: &Runner, transcript: &str, heard_mode: &str, heard_p
         return;
     }
     if mode.one_recording {
-        // Its own watcher is the bash one's (listen starts it); a Rust watcher's turn heard in it is a turn heard
-        // before the mode changed.
-        debug("session: a one-recording mode's turn reached the Rust watcher, not acted on");
-        continue_turns(Outcome::Unheard, me);
+        dictation::finish_recording(transcript, false, heard_mode, &runner.router.config().replacements, me);
         return;
     }
     let outcome = TurnRun {
@@ -453,7 +459,7 @@ impl TurnRun<'_> {
             }
             Heard::Words if self.mode.has_handler => {
                 // The mode takes the words itself.
-                mode::handle_turn(self.file, self.transcript, self.heard_mode);
+                mode::handle_turn(self.file, self.transcript, None, self.heard_mode);
                 Outcome::Ran
             }
             Heard::Words => self.words(),
