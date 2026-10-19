@@ -205,3 +205,34 @@ migrate_quickshell_input() {
   }
   info "Copied $state/input.json to $state/typing.json"
 }
+
+# Quickshell's Weather settings used to be saved as weather.local.json next to the sources (untracked); they now live in the state
+# dir with the other settings. Moves the file: copy, verify with cmp, then delete the old one. Looks in the checkout rather than
+# ~/.config/quickshell because install.sh runs this before stow has made that link. Never overwrites: when both files exist the old
+# one is deleted only if identical, else both are kept and the owner is told. A failure warns and returns 0, since install.sh
+# runs under set -e and a weather setting is not worth blocking the install.
+# $1 is the Quickshell source dir and $2 the state dir, for the tests.
+migrate_quickshell_weather() {
+  local qs_dir=${1:-$DOTFILES_DIR/home/quickshell/.config/quickshell}
+  local state=${2:-${XDG_STATE_HOME:-$HOME/.local/state}/quickshell}
+  local old=$qs_dir/weather.local.json new=$state/weather.local.json
+  [[ -f "$old" ]] || return 0
+  if [[ -e "$new" || -L "$new" ]]; then
+    if cmp -s -- "$old" "$new"; then
+      _migrate_run rm -f -- "$old" && info "Removed $old, identical to $new"
+    else
+      warn "Both $old and $new exist and differ; $new is used. Compare them and delete $old by hand."
+    fi
+    return 0
+  fi
+  if _migrate_run mkdir -p -- "$state" && _migrate_run cp -p -- "$old" "$new" &&
+    { [[ "${MIGRATE_DRY_RUN:-0}" -eq 1 ]] || cmp -s -- "$old" "$new"; } &&
+    _migrate_run rm -- "$old"; then
+    info "Moved $old to $new"
+    return 0
+  fi
+  # cp can leave a partial file, and a truncated one must not win the next run's "new exists" rule.
+  [[ "${MIGRATE_DRY_RUN:-0}" -eq 1 ]] || rm -f -- "$new"
+  warn "Could not move $old to $new; Settings > Weather starts at the defaults. Old file kept."
+  return 0
+}
