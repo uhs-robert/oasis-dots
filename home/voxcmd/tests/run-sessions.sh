@@ -1215,7 +1215,7 @@ pause_says() { printf '%s\n' "$@" >"$SANDBOX_DIR/pause-text"; }
 pause_checks_done() { wait_for_count '^voxcmd-autostop pause-check done' "$log" "$1"; }
 pause_checks_off() { rm -f "$SANDBOX_DIR/pause-text" "$SANDBOX_DIR/pause-recording"; }
 still_recording() { [[ $(voxtype_now) == recording ]] && ! grep -qE '^voxtype record (stop|cancel)' "$log" && ! jq -e .ending "$session_json" >/dev/null; }
-for ending in "Cortana stop." "Cortana, stop typing." "Cortana done."; do
+for ending in "Cortana stop." "Cortana, stop typing." "Cortana done." "Cortana exit." "Cortana, quit."; do
   pause_says "Hello world. $ending"
   sess_start "UNTIL_STOP Hello world. $ending"
   sess_wait
@@ -1237,6 +1237,10 @@ pause_says "Hello world. Cortana stop. Cortana stop."
 sess_start "UNTIL_STOP Hello world. Cortana stop. Cortana stop."
 sess_wait
 check "a retried ending is cut with the first, leaving none behind" "session_gone && wtype_is 'wtype -- Hello world.'"
+pause_says "Hello world. Cortana exit. Cortana, quit."
+sess_start "UNTIL_STOP Hello world. Cortana exit. Cortana, quit."
+sess_wait
+check "retried exit and quit endings are cut too" "session_gone && wtype_is 'wtype -- Hello world.'"
 
 for heard in "I asked Cortana about it." "Hello world." "Cortana." "Cortana, new paragraph."; do
   pause_says "$heard"
