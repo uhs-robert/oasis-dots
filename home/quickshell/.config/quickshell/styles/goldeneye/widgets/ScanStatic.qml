@@ -1,6 +1,6 @@
 import QtQuick
+import qs.core
 import qs.theme
-import qs.features.power
 
 // A faint, steady static over a list while it is scanning; only on AC and while shown, and the shader is unloaded otherwise.
 Item {
@@ -8,7 +8,7 @@ Item {
 
     property bool scanning: false
     property int noise_step: 0
-    readonly property bool running: root.scanning && root.visible && Power.on_ac
+    readonly property bool running: root.scanning && root.visible && PowerSource.on_ac
 
     Loader {
         anchors.fill: parent

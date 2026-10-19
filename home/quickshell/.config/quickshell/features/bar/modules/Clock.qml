@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
+import qs.core
 import qs.theme
 import qs.ui.effects
-import qs.features.power
 import qs.features.clock.markers as Marker
 import qs.styles.modern.widgets as Modern
 import qs.features.clock
@@ -65,7 +65,7 @@ Row {
     }
 
     // Seconds tick once a second, so they are dropped on battery.
-    readonly property bool show_seconds: !root.compact && Power.on_ac
+    readonly property bool show_seconds: !root.compact && PowerSource.on_ac
     readonly property var shifted: Timezones.shift(clock.date)
 
     // Styles with a clock chip draw the digits on it and the zone beside it.

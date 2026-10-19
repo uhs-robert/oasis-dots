@@ -2,8 +2,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
+import qs.core
 import qs.theme
-import qs.features.power
 import qs.features.clock
 import qs.features.weather
 import qs.features.notifications
@@ -30,7 +30,7 @@ QtObject {
     property bool granted: false
     property bool saver: false
     // Loops run only while this is true: on AC and not left alone for long.
-    property bool animate: Power.on_ac
+    property bool animate: PowerSource.on_ac
     // The lock tint family (Style.lock_tint): a base and a bright shade that skins derive their colours from.
     property string tint: Style.lock_tint
     // The GoldenEye skin's Watch colours choice (Style option), Theme or Classic.

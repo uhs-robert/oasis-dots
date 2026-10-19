@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 import qs.theme
 import qs.features.settings
-import qs.features.power
 import qs.features.audio
 import qs.features.windows
 import "Layout.js" as Layout
@@ -428,7 +428,7 @@ OverviewBase {
         id: live_timer
         interval: 1000
         repeat: true
-        running: root.visible && root.wanted && root.loaded && Power.on_ac
+        running: root.visible && root.wanted && root.loaded && PowerSource.on_ac
         onTriggered: {
             if (root.selected_tile && !capture_proc.running) root.capture(root.selected_tile.panes.map(p => p.pane_id));
         }
@@ -525,6 +525,6 @@ OverviewBase {
         cls: root.aim ? root.aim.cls : ""
         place: root.aim ? root.aim.place : ""
         real: root.aim ? root.aim.real : null
-        glide: Power.on_ac && root.reveal === 1
+        glide: PowerSource.on_ac && root.reveal === 1
     }
 }

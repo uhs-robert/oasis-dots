@@ -2,8 +2,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 import qs.theme
-import qs.features.power
 import "Kinds.js" as Kinds
 
 // Owns the displayed style: a change covers the old look, swaps Style.name while covered, then reveals the new one.
@@ -29,7 +29,7 @@ Singleton {
     function show(name, now) {
         if (!root.valid(name)) return;
         root.target = name;
-        if (!root.armed || !Power.on_ac) {
+        if (!root.armed || !PowerSource.on_ac) {
             rest.stop();
             if (root.phase === "idle") Style.preview(name);
             return;
@@ -47,7 +47,7 @@ Singleton {
     function settle() {
         rest.stop();
         if (root.phase === "cover" || Style.name === root.target) return;
-        if (!Power.on_ac) {
+        if (!PowerSource.on_ac) {
             Style.preview(root.target);
             return;
         }
@@ -62,7 +62,7 @@ Singleton {
 
     // Plays a kind or a style's transition without changing the style.
     function request(name, force) {
-        if (!force && !Power.on_ac) return;
+        if (!force && !PowerSource.on_ac) return;
         root.play(Kinds.kind_for(name), 0);
     }
 
@@ -97,7 +97,7 @@ Singleton {
         onLoaded: {
             if (process_state.started) return;
             process_state.started = true;
-            root.intro = Power.on_ac;
+            root.intro = PowerSource.on_ac;
         }
     }
 
@@ -110,7 +110,7 @@ Singleton {
             root.armed = true;
             if (!root.intro) return;
             root.intro = false;
-            if (!Power.on_ac) {
+            if (!PowerSource.on_ac) {
                 root.stop();
                 return;
             }

@@ -4,10 +4,10 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
+import qs.core
 import qs.ui.frames
 import qs.theme
 import qs.features.settings
-import qs.features.power
 import qs.features.screenshot
 import "Layout.js" as Layout
 import "Voice.js" as Voice
@@ -1201,7 +1201,7 @@ OverviewBase {
         cls: root.aim ? root.aim.cls : ""
         place: root.aim ? root.aim.place : ""
         real: root.aim ? root.aim.real : null
-        glide: Power.on_ac && root.reveal === 1
+        glide: PowerSource.on_ac && root.reveal === 1
     }
 
     AmmoCounter {
@@ -1216,7 +1216,7 @@ OverviewBase {
     LockAim {
         anchors.fill: parent
         aim: root.help_open ? null : root.aim
-        animate: Power.on_ac && root.reveal === 1
+        animate: PowerSource.on_ac && root.reveal === 1
     }
 
     // Names the session being saved; Enter saves and Esc goes back to marking.

@@ -3,10 +3,10 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
 import qs.components
+import qs.core
 import qs.ui
 import qs.ui.menu
 import qs.theme
-import qs.features.power
 import qs.styles.snes.popups as Snes
 import qs.styles.ps1.widgets as Ps1
 import qs.styles.ps2.widgets as Ps2
@@ -87,7 +87,7 @@ Popup {
     readonly property bool cd: root.st.console_views === "ps1"
     readonly property bool capsules: ["capsule", "slant", "visor"].indexOf(root.st.level_layout) >= 0
     // Live peaks cost a PipeWire stream per row, so they only run while the popup is open on AC power.
-    readonly property bool peaks_on: root.capsules && root.is_open && root.visible && Power.on_ac
+    readonly property bool peaks_on: root.capsules && root.is_open && root.visible && PowerSource.on_ac
 
     function track_number(index) {
         const row = root.rows[index];

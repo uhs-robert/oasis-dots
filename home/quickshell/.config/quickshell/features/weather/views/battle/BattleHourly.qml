@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.core
 import qs.ui.effects
 import qs.theme
-import qs.features.power
 import qs.features.weather
 import qs.features.weather.views.shared
 import qs.styles.nes.widgets
@@ -391,7 +391,7 @@ Item {
                     }
 
                     Timer {
-                        running: root.cursor_valid && king.visible && Power.on_ac
+                        running: root.cursor_valid && king.visible && PowerSource.on_ac
                         interval: 500
                         repeat: true
                         onTriggered: king.hopped = !king.hopped

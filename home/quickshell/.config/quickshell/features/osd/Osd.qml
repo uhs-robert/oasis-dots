@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
+import qs.core
 import qs.theme
 import qs.components
 import qs.features.display
@@ -19,7 +20,6 @@ import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui.effects
 import qs.ui.frames
 import qs.ui.gauges
-import qs.features.power
 import qs.features.voice
 
 PanelWindow {
@@ -424,7 +424,7 @@ PanelWindow {
                     interactive: false
                     show_readout: false
                     node: root.sink
-                    peaks_on: root.visor_wave && root.wanted && root.visible && Power.on_ac
+                    peaks_on: root.visor_wave && root.wanted && root.visible && PowerSource.on_ac
                 }
 
                 Meter {
@@ -489,7 +489,7 @@ PanelWindow {
                 detail: root.kind === "brightness" ? "Backlight" : root.sink ? root.sink.description || root.sink.name : ""
                 wave: root.kind === "volume"
                 node: root.sink
-                peaks_on: root.wanted && root.visible && Power.on_ac
+                peaks_on: root.wanted && root.visible && PowerSource.on_ac
             }
         }
 
@@ -513,7 +513,7 @@ PanelWindow {
                 glyph: root.glyph
                 device: root.kind === "volume" && root.sink ? root.sink.description || root.sink.name : ""
                 node: root.sink
-                peaks_on: root.wanted && root.visible && Power.on_ac
+                peaks_on: root.wanted && root.visible && PowerSource.on_ac
             }
         }
 

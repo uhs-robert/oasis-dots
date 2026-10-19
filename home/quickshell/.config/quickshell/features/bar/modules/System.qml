@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.core
 import qs.theme
 import qs.components.bar_icons
-import qs.features.power
 import qs.features.system
 
 BarModule {
@@ -15,7 +15,7 @@ BarModule {
     readonly property string effective_stat: SystemStat.stat_for(root.screen_name, root.stat)
     readonly property bool show_temp: root.effective_stat === "temperature"
     readonly property bool show_mem: root.effective_stat === "memory"
-    readonly property bool dim: !Power.on_ac
+    readonly property bool dim: !PowerSource.on_ac
 
     readonly property string glyph: root.show_temp ? "" : (root.show_mem ? "" : "")
     readonly property bool hot: root.show_temp && SysStats.temp_c >= 80

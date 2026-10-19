@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Shapes
 import Quickshell
+import qs.core
 import qs.theme
 import qs.components.bar_icons
-import qs.features.power
 import qs.features.voice
 
 BarModule {
@@ -35,7 +35,7 @@ BarModule {
 
         SequentialAnimation {
             id: pulse_animation
-            running: VoxtypeState.recording && Power.on_ac
+            running: VoxtypeState.recording && PowerSource.on_ac
             loops: Animation.Infinite
             onRunningChanged: if (!running) glyph.opacity = 1
 
@@ -91,7 +91,7 @@ BarModule {
         }
 
         RotationAnimation on rotation {
-            running: ring.visible && Power.on_ac
+            running: ring.visible && PowerSource.on_ac
             loops: Animation.Infinite
             from: 0
             to: 360

@@ -4,8 +4,8 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Shapes
 import Quickshell
+import qs.core
 import qs.theme
-import qs.features.power
 import qs.features.media
 import qs.features.clock
 import qs.features.weather
@@ -24,7 +24,7 @@ Item {
     readonly property string backdrop_mode: root.ctx ? root.ctx.backdrop_mode : "off"
     readonly property string backdrop_source: root.ctx && root.backdrop_mode !== "off" ? root.ctx.backdrops[root.screen_name] || "" : ""
     readonly property bool has_backdrop: root.backdrop_source !== "" && shot.status === Image.Ready
-    readonly property bool animate: root.ctx ? root.ctx.animate : Power.on_ac
+    readonly property bool animate: root.ctx ? root.ctx.animate : PowerSource.on_ac
     readonly property bool unlocking: !!root.ctx && root.ctx.phase === "unlock"
 
     // 0 shows the sharp capture, 1 the full pixelation or blur; the pixel size only changes at quarter marks.

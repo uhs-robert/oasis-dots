@@ -2,13 +2,10 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.UPower
 import qs.theme
 
 Singleton {
     id: root
-
-    readonly property bool on_ac: !UPower.onBattery
 
     property bool ppd_available: false
 
