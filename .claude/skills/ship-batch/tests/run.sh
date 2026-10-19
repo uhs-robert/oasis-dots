@@ -280,5 +280,29 @@ for path in services/Foo.qml features/lock/Lock.qml assets/fonts/a.otf styles/ne
   check "$path is not staged" "! grep -Eq '^$greeter_regex' <<<'qs/$path'"
 done
 
+echo "== only an owner test bar blocks the bar restart"
+# pgrep greps the command lines in STUB_QS_PROCS with the pattern ship-batch passes. A restart would pkill the real qs,
+# so the stub qs-ipc reports a locked screen: reaching that failure shows the test-bar check let the restart proceed.
+mkdir -p "$fake_home/.config/hypr/scripts" "$e2e/cache"
+# shellcheck disable=SC2016 # expanded by the stub
+printf '#!/bin/sh\ngrep -E -- "$2" "$STUB_QS_PROCS"\n' >"$stubs/pgrep"
+printf '#!/bin/sh\necho locked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+chmod +x "$stubs/pgrep" "$fake_home/.config/hypr/scripts/qs-ipc"
+export STUB_QS_PROCS=$e2e/qs_procs XDG_CACHE_HOME=$e2e/cache
+bar_ship() {
+  e2e_setup
+  mkdir -p "$e2e/wt-1/home/quickshell"
+  echo bar >"$e2e/wt-1/home/quickshell/bar"
+  g -C "$e2e/wt-1" add -A
+  g -C "$e2e/wt-1" commit -q -m bar
+  ship 1
+}
+echo "qs -p /tmp/json_store_x/cfg" >"$STUB_QS_PROCS"
+bar_ship
+check "an unrelated qs -p instance does not block the restart" "grep -q \"lock state is 'locked'\" '$e2e/out'"
+echo "qs -n -p $e2e/cache/dotfiles/test-bars/x/home/quickshell/.config/quickshell" >"$STUB_QS_PROCS"
+bar_ship
+check "an owner test bar still blocks it" "grep -q 'a test bar is running' '$e2e/out'"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
