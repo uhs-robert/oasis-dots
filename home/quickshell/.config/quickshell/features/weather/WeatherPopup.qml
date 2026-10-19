@@ -196,7 +196,10 @@ Popup {
     // The wheel does what h/l does. Shift adds the 24-hour step only where Shift+H/L has one:
     // Daily and Air have no day-sized step.
     function wheel_step(wheel) {
-        const horizontal = Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y);
+        // Touchpads may send pixelDelta alone, so it decides the axis when present.
+        const has_pixels = wheel.pixelDelta.x !== 0 || wheel.pixelDelta.y !== 0;
+        const axis_delta = has_pixels ? wheel.pixelDelta : wheel.angleDelta;
+        const horizontal = Math.abs(axis_delta.x) > Math.abs(axis_delta.y);
         const pixels = horizontal ? wheel.pixelDelta.x : wheel.pixelDelta.y;
         const notches = wheel_stepper.consume(pixels !== 0 ? pixels * 2 : (horizontal ? wheel.angleDelta.x : wheel.angleDelta.y));
         if (notches === 0) return;
