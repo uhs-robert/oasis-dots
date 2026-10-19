@@ -4,9 +4,7 @@
 Run by voxcmd-wake.service (`voxcmd wake on`). Reads the default source through pw-record (16 kHz mono s16) into
 openWakeWord with the cortana model kept in voxcmd's share folder. A trigger is only a candidate: the 2 s of
 audio ending 0.16 s after it go to `voxcmd _wake-confirm`, which has Whisper transcribe them, and only when that hears the wake word does it
-run `voxcmd listen --start-only`, as the voice key does. During type mode's dictation it keeps listening, and a trigger's
-clip (3 s ending 1.2 s after it, so the words after the wake word are in it) goes to the same confirmation, which ends
-the dictation itself when those words are an ending; nothing else starts. The audio stays in memory (an anonymous memfd
+run `voxcmd listen --start-only`, as the voice key does. The audio stays in memory (an anonymous memfd
 for the confirmation). The only log is scores, verdicts and timestamps, in voxcmd's debug log while it is on.
 
   voxcmd-wake                run the listener
@@ -97,16 +95,6 @@ LOG_SCORE_FLOOR = 0.2
 CONFIRM_AUDIO_SECS = 2.0
 CONFIRM_AUDIO_FRAMES = round(CONFIRM_AUDIO_SECS * SAMPLE_RATE / FRAME_SAMPLES)
 CONFIRM_TAIL_FRAMES = 2
-# During dictation the words after the wake word decide ("cortana stop", "cortana never mind", "cortana stop
-# recording"), so the clip runs on for them, 1.2 s for a short pause and two or three words, and is longer so the wake
-# word stays in it. Nothing waits on this latency but the stop itself. A fixed tail, not one that ends at the next pause, since
-# the listener has no voice detection of its own and a pause after "cortana" would end it before the command.
-CONFIRM_DICTATION_AUDIO_SECS = 3.0
-CONFIRM_DICTATION_AUDIO_FRAMES = round(CONFIRM_DICTATION_AUDIO_SECS * SAMPLE_RATE / FRAME_SAMPLES)
-CONFIRM_DICTATION_TAIL_FRAMES = 15
-# The cooldown after a trigger during dictation lasts only as long as its tail, so a stop said right after another
-# "cortana ..." still triggers; its clip waits for the confirmation running then.
-DICTATION_COOLDOWN_SECS = CONFIRM_DICTATION_TAIL_FRAMES * FRAME_SAMPLES / SAMPLE_RATE
 # A verdict older than this when it is collected is dropped: what it heard is no longer happening.
 CONFIRM_MAX_AGE_SECS = 4.0
 # How long `voxtype transcribe` may take (passed to voxcmd, which enforces it), and how much longer voxcmd-wake waits
@@ -240,15 +228,13 @@ class TriggerDecider:
 
 
 PAUSE = "pause"
-LISTEN = "listen"
 
 
 class PauseGate:
-    """Whether the microphone should be left alone, decided by an ordered list of checks. A check returns PAUSE, LISTEN
+    """Whether the microphone should be left alone, decided by an ordered list of checks. A check returns PAUSE
     or None (no opinion); the first that has one decides, and with none the listener listens. Today's checks are
-    dictation (listen while a mode that asks for it records), voxtype recording, a voice session open, then, when asked
-    to, media playing and another app recording. A rule that must win over the rest goes earlier in `checks`; `reason`
-    names the check that last paused and `listen_reason` the one that last made it listen. Media and microphone are
+    voxtype recording, a voice session open, then, when asked to, media playing and another app recording. A rule that
+    must win over the rest goes earlier in `checks`; `reason` names the check that last paused. Media and microphone are
     looked at once a second, and a check that is switched off is not in the list, so never runs."""
 
     def __init__(
@@ -266,12 +252,7 @@ class PauseGate:
         self.session_file = session_file
         self.proc_dir = proc_dir
         self.reason = None
-        self.listen_reason = None
-        # While dictating, the recording heard: "<frame_id>:<owner>:<owner_start>" of the session's current mode, which
-        # voxcmd checks before it ends one. The owner is the watcher of that one recording.
-        self.dictation_recording = None
         self.checks = [
-            ("dictation", lambda: LISTEN if self.dictating() else None),
             ("voxtype_recording", lambda: PAUSE if self.voxtype_recording() else None),
             ("session_open", lambda: PAUSE if self.session_open() else None),
         ]
@@ -325,27 +306,13 @@ class PauseGate:
     def session_open(self):
         return self.open_session() is not None
 
-    def dictating(self):
-        """voxtype records for a session whose current mode asks to be listened through (type mode's wake_listens)."""
-        self.dictation_recording = None
-        if not self.voxtype_recording():
-            return False
-        state = self.open_session()
-        # While voxcmd hands the session to the recording's watcher, the owner named is still the one before it.
-        if state is None or state.get("wake_listens") is not True or state.get("owner_handover"):
-            return False
-        self.dictation_recording = f"{state.get('frame_id', '')}:{state['owner']}:{state['owner_start']}"
-        return True
-
     def paused(self):
         for name, check in self.checks:
             verdict = check()
             if verdict is not None:
-                self.reason = name if verdict == PAUSE else None
-                self.listen_reason = name if verdict == LISTEN else None
-                return verdict == PAUSE
+                self.reason = name
+                return True
         self.reason = None
-        self.listen_reason = None
         return False
 
 
@@ -435,13 +402,11 @@ def start_daemon_thread(work):
     threading.Thread(target=work, daemon=True).start()
 
 
-# recording: the dictation recording the clip was cut during (PauseGate.dictation_recording), where voxcmd acts on the
-# words itself and no listen may start; None for any other clip.
-Verdict = collections.namedtuple("Verdict", "result generation started_at recording")
+Verdict = collections.namedtuple("Verdict", "result generation started_at")
 
 
 class Confirmation:
-    """Runs confirm(wav, recording) -> CONFIRMED, REJECTED or CONFIRM_FAILED off the audio loop, one at a time, so frames keep being
+    """Runs confirm(wav) -> CONFIRMED, REJECTED or CONFIRM_FAILED off the audio loop, one at a time, so frames keep being
     read while Whisper works. The loop collects the Verdict with take_verdict; busy holds until it has. A job carries the
     stream generation and time it started at, so the loop can tell a verdict that no longer applies."""
 
@@ -456,23 +421,23 @@ class Confirmation:
         with self.lock:
             return self.running or self.verdict is not None
 
-    def start(self, wav, generation, started_at, recording=None):
+    def start(self, wav, generation, started_at):
         with self.lock:
             self.running = True
         try:
-            self.spawn(lambda: self.finish(wav, generation, started_at, recording))
+            self.spawn(lambda: self.finish(wav, generation, started_at))
         except BaseException:  # a thread that never started would leave busy() true for good
             with self.lock:
                 self.running = False
             raise
 
-    def finish(self, wav, generation, started_at, recording):
+    def finish(self, wav, generation, started_at):
         try:
-            result = self.confirm(wav, recording)
+            result = self.confirm(wav)
         except Exception:  # a worker that raised must still free the next trigger
             result = CONFIRM_FAILED
         with self.lock:
-            self.verdict = Verdict(result, generation, started_at, recording)
+            self.verdict = Verdict(result, generation, started_at)
             self.running = False
 
     def take_verdict(self):
@@ -496,15 +461,10 @@ class Listener:
         self.sleep = sleep
         self.log = log
         self.decider = TriggerDecider(settings.threshold, settings.frames, settings.cooldown_secs)
-        # The frames read since the stream opened, as many as the longer clip: the audio a trigger sends to be confirmed.
-        self.recent_frames = collections.deque(maxlen=max(CONFIRM_AUDIO_FRAMES, CONFIRM_DICTATION_AUDIO_FRAMES))
-        # Frames still to read after a trigger before its clip is cut, or None when no trigger waits, and the dictation
-        # recording that trigger came during (None outside dictation).
+        # The frames read since the stream opened: the audio a trigger sends to be confirmed.
+        self.recent_frames = collections.deque(maxlen=CONFIRM_AUDIO_FRAMES)
+        # Frames still to read after a trigger before its clip is cut, or None when no trigger waits.
         self.tail_frames_left = None
-        self.tail_recording = None
-        # A dictation clip cut while a confirmation ran, (wav, generation, cut_at, recording), started once that one is
-        # collected.
-        self.queued_clip = None
         # Counts stream closes, so a verdict for audio from before a pause is known by its number.
         self.stream_generation = 0
         self.source = None
@@ -524,7 +484,6 @@ class Listener:
         self.scorer.reset()
         self.recent_frames.clear()
         self.tail_frames_left = None
-        self.queued_clip = None
         self.stream_generation += 1
 
     def fail_stream(self, reason):
@@ -547,9 +506,7 @@ class Listener:
         return "paused"
 
     def act_on_verdict(self, verdict):
-        if verdict.recording is not None:
-            self.log(f"{verdict.result} during dictation, voxcmd acts on it")
-        elif verdict.result == CONFIRMED:
+        if verdict.result == CONFIRMED:
             self.log("confirmed")
             self.ready_deadline = self.clock() + READY_WAIT_SECS
             self.ready_seen = False
@@ -580,9 +537,6 @@ class Listener:
                 self.log(f"{verdict.result} too old, dropped")
             else:
                 self.act_on_verdict(verdict)
-        if self.queued_clip is not None and not self.confirmation.busy():
-            self.confirmation.start(*self.queued_clip)
-            self.queued_clip = None
         if self.ready_deadline is not None and (self.ready_seen or self.clock() >= self.ready_deadline):
             self.ready_deadline = None
             self.ready_seen = False
@@ -619,30 +573,17 @@ class Listener:
         if score >= LOG_SCORE_FLOOR:
             self.log(f"score {score:.2f}")
         if self.decider.update(score, now):
-            dictation = self.gate.listen_reason == "dictation"
-            if self.tail_frames_left is not None or (self.confirmation.busy() and not dictation):
+            if self.tail_frames_left is not None or self.confirmation.busy():
                 self.log(f"trigger score {score:.2f} skipped, still confirming")
                 return
-            self.log(f"trigger score {score:.2f}, confirming{' during dictation' if dictation else ''}")
+            self.log(f"trigger score {score:.2f}, confirming")
             # The frames after the trigger are read by the loop as usual; the clip is cut when the last one is in.
-            # Taken now: the confirmation may only end the recording this trigger was heard in.
-            self.tail_recording = self.gate.dictation_recording if dictation else None
-            if dictation:
-                self.tail_frames_left = CONFIRM_DICTATION_TAIL_FRAMES
-                self.decider.cooldown_until = now + DICTATION_COOLDOWN_SECS
-            else:
-                self.tail_frames_left = CONFIRM_TAIL_FRAMES
+            self.tail_frames_left = CONFIRM_TAIL_FRAMES
 
     def cut_clip(self, now):
-        """Sends the clip a trigger waited for to be confirmed. A dictation clip waits for a confirmation still running
-        (the newest such clip; an older one was a "cortana ..." already passed by)."""
-        length = CONFIRM_DICTATION_AUDIO_FRAMES if self.tail_recording is not None else CONFIRM_AUDIO_FRAMES
-        frames = list(self.recent_frames)[-length:]
+        """Sends the clip a trigger waited for to be confirmed."""
         if not self.confirmation.busy():
-            self.confirmation.start(wav_bytes(frames), self.stream_generation, now, self.tail_recording)
-        elif self.tail_recording is not None:
-            self.log("dictation clip queued behind the running confirmation")
-            self.queued_clip = (wav_bytes(frames), self.stream_generation, now, self.tail_recording)
+            self.confirmation.start(wav_bytes(list(self.recent_frames)), self.stream_generation, now)
 
     def run(self):
         while not self.stopping:
@@ -893,16 +834,15 @@ def private_audio_file(content):
 
 
 def make_run_confirm(log):
-    """The real confirm: `voxcmd _wake-confirm /dev/stdin [recording]` with the WAV as its stdin, so the wake word and
-    its spellings are matched where voxcmd keeps them; a dictation clip names the recording it was cut during, the only
-    one voxcmd may end. Exit 0 is the wake word and 1 is not; any other code, a timeout included, is a failure (voxcmd
+    """The real confirm: `voxcmd _wake-confirm /dev/stdin` with the WAV as its stdin, so the wake word and
+    its spellings are matched where voxcmd keeps them. Exit 0 is the wake word and 1 is not; any other code, a timeout included, is a failure (voxcmd
     exits 2 for its own). Its output, which holds what was heard, is never read."""
 
-    def run_confirm(wav, recording=None):
+    def run_confirm(wav):
         try:
             with private_audio_file(wav) as audio:
                 process = subprocess.Popen(
-                    [voxcmd_command(), "_wake-confirm", "/dev/stdin", *([recording] if recording else [])],
+                    [voxcmd_command(), "_wake-confirm", "/dev/stdin"],
                     stdin=audio,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,

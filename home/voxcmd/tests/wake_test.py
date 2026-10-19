@@ -36,7 +36,6 @@ for notifier in ("notify_info", "notify_error"):
 
 FRAME_SECS = 0.08
 TAIL = wake.CONFIRM_TAIL_FRAMES
-DICTATION_TAIL = wake.CONFIRM_DICTATION_TAIL_FRAMES
 THRESHOLD = 0.8
 
 
@@ -123,13 +122,6 @@ class FakeGate:
         self.paused_now = False
         self.recording = False
         self.reason = None
-        # "dictation" while a type-mode recording is listened through, and that recording.
-        self.listen_reason = None
-        self.dictation_recording = None
-
-    def dictate(self, recording="frame-1:4242:99"):
-        self.listen_reason = "dictation"
-        self.dictation_recording = recording
 
     def voxtype_recording(self):
         return self.recording
@@ -277,7 +269,6 @@ class ListenerTest(unittest.TestCase):
         self.listens = 0
         self.verdict = verdict
         self.confirmed_audio = []
-        self.confirmed_recordings = []
         self.states = []
         self.reasons = []
         self.logs = []
@@ -295,9 +286,8 @@ class ListenerTest(unittest.TestCase):
         def run_listen():
             self.listens += 1
 
-        def confirm(wav, recording=None):
+        def confirm(wav):
             self.confirmed_audio.append(wav)
-            self.confirmed_recordings.append(recording)
             if isinstance(self.verdict, Exception):
                 raise self.verdict
             return self.verdict
@@ -463,63 +453,6 @@ class ListenerTest(unittest.TestCase):
         self.steps(len(scores))
         self.assertEqual(self.listens, 1)
         self.assertEqual(len(self.confirmed_audio), 1)
-
-    def test_a_dictation_trigger_waits_for_the_words_after_it_and_sends_three_seconds(self):
-        trigger_index = wake.CONFIRM_DICTATION_AUDIO_FRAMES + 2
-        count = trigger_index + 1 + DICTATION_TAIL + 3
-        frames = [bytes([index]) * wake.FRAME_BYTES for index in range(count)]
-        self.build([frames], [0.0] * (trigger_index - 2) + [0.9] * 3 + [0.0] * (count - trigger_index - 1))
-        self.gate.dictate()
-        self.steps(trigger_index + DICTATION_TAIL)
-        self.assertEqual(self.confirmed_audio, [], "the clip waits for the words after the wake word")
-        self.steps(1)
-        self.assertEqual((wake.CONFIRM_DICTATION_AUDIO_FRAMES, DICTATION_TAIL), (38, 15))
-        end = trigger_index + 1 + DICTATION_TAIL
-        self.assertEqual(wav_frames(self.confirmed_audio[0])[3], b"".join(frames[end - wake.CONFIRM_DICTATION_AUDIO_FRAMES : end]))
-
-    def test_a_confirmed_dictation_clip_never_runs_listen(self):
-        scores = [0.9, 0.95, 0.97] + [0.0] * (DICTATION_TAIL + 3)
-        self.build([[b"f"] * len(scores)], scores)
-        self.gate.dictate()
-        self.steps(len(scores))
-        self.assertEqual(len(self.confirmed_audio), 1)
-        self.assertEqual(self.listens, 0)
-        self.assertIn("confirmed during dictation, voxcmd acts on it", self.logs)
-        self.assertEqual(self.confirmed_recordings, ["frame-1:4242:99"], "the clip names the recording it was heard in")
-        self.assertIsNone(self.listener.ready_deadline)
-
-    def test_a_stop_said_while_a_dictation_clip_is_confirmed_is_queued_behind_it(self):
-        held = HeldWork()
-        phrase = [0.9, 0.95, 0.97]
-        # The second phrase starts as soon as the first one's tail and its short cooldown are over.
-        scores = phrase + [0.0] * DICTATION_TAIL + phrase + [0.0] * (DICTATION_TAIL + 3)
-        self.build([[b"f"] * len(scores)], scores, spawn=held)
-        self.gate.dictate()
-        self.steps(len(scores) - 2)
-        self.assertEqual(len(held.pending), 1, "the first clip is still being confirmed")
-        self.assertTrue(any("queued behind the running confirmation" in line for line in self.logs))
-        self.gate.dictate("frame-2:4343:100")
-        held.release()
-        self.steps(1)
-        self.assertEqual(len(held.pending), 1, "the queued clip starts once the first verdict is in")
-        held.release()
-        self.steps(1)
-        self.assertEqual(len(self.confirmed_audio), 2)
-        self.assertEqual(self.confirmed_recordings, ["frame-1:4242:99", "frame-1:4242:99"], "a queued clip keeps the recording of its trigger")
-        self.assertEqual(self.listens, 0)
-
-    def test_outside_dictation_the_long_cooldown_still_holds(self):
-        phrase = [0.9, 0.95, 0.97]
-        scores = phrase + [0.0] * DICTATION_TAIL + phrase + [0.0] * 3
-        self.build([[b"f"] * len(scores)], scores)
-        self.steps(len(scores))
-        self.assertEqual(len(self.confirmed_audio), 1)
-
-    def test_a_closed_stream_forgets_a_queued_dictation_clip(self):
-        self.build([[b"f"] * 3], [0.0] * 3)
-        self.listener.queued_clip = (b"wav", 0, 0.0, "frame-1:4242:99")
-        self.listener.close_stream()
-        self.assertIsNone(self.listener.queued_clip)
 
     def test_media_playing_closes_the_stream_and_ignores_the_wake_phrase(self):
         self.build([[b"f"] * 5, [b"f"] * 5], [0.0] * 10)
@@ -801,11 +734,11 @@ class PauseChecksTest(unittest.TestCase):
 
     def test_the_checks_run_in_the_documented_order(self):
         gate = self.gate(other_app_recording=lambda: False)
-        self.assertEqual([name for name, _ in gate.checks], ["dictation", "voxtype_recording", "session_open", "media_playing", "mic_in_use"])
+        self.assertEqual([name for name, _ in gate.checks], ["voxtype_recording", "session_open", "media_playing", "mic_in_use"])
 
     def test_a_disabled_check_is_not_in_the_list(self):
         gate = self.gate(pause_for_media=False)
-        self.assertEqual([name for name, _ in gate.checks], ["dictation", "voxtype_recording", "session_open"])
+        self.assertEqual([name for name, _ in gate.checks], ["voxtype_recording", "session_open"])
 
     def test_a_disabled_check_never_runs_its_probe(self):
         asked = []
@@ -823,12 +756,6 @@ class PauseChecksTest(unittest.TestCase):
 
     def test_nothing_pausing_listens_with_no_reason(self):
         gate = self.gate(other_app_recording=lambda: False)
-        self.assertFalse(gate.paused())
-        self.assertIsNone(gate.reason)
-
-    def test_a_check_ahead_of_the_rest_can_force_listening(self):
-        gate = wake.PauseGate(Clock(), "/nonexistent", lambda: True, other_app_recording=lambda: True)
-        gate.checks.insert(0, ("always_listen", lambda: wake.LISTEN))
         self.assertFalse(gate.paused())
         self.assertIsNone(gate.reason)
 
@@ -898,45 +825,34 @@ class SessionPauseTest(unittest.TestCase):
             f.write("{")
         self.assertFalse(self.gate.paused())
 
-    def dictating(self, **state):
+    def recording_in_session(self, **state):
         with open(self.voxtype_state, "w") as f:
             f.write("recording\n")
         self.write_session(owner=os.getpid(), owner_start=self.gate.process_start_time(os.getpid()), **state)
 
-    def test_a_wake_listens_mode_that_records_is_listened_through(self):
-        self.dictating(wake_listens=True)
-        self.assertFalse(self.gate.paused())
-        self.assertEqual(self.gate.listen_reason, "dictation")
-        self.assertIsNone(self.gate.reason)
-
-    def test_dictation_names_the_recording_by_frame_and_owner(self):
-        self.dictating(wake_listens=True, frame_id="f-7")
-        self.gate.paused()
-        start = self.gate.process_start_time(os.getpid())
-        self.assertEqual(self.gate.dictation_recording, f"f-7:{os.getpid()}:{start}")
-        self.dictating(wake_listens=False)
-        self.gate.paused()
-        self.assertIsNone(self.gate.dictation_recording)
+    def test_a_wake_listens_session_pauses_like_any_other_recording(self):
+        self.recording_in_session(wake_listens=True)
+        self.assertTrue(self.gate.paused())
+        self.assertEqual(self.gate.reason, "voxtype_recording")
 
     def test_a_recording_still_being_handed_to_its_watcher_pauses(self):
-        self.dictating(wake_listens=True, owner_handover=True)
+        self.recording_in_session(wake_listens=True, owner_handover=True)
         self.assertTrue(self.gate.paused())
-        self.assertEqual((self.gate.reason, self.gate.listen_reason), ("voxtype_recording", None))
-        self.assertIsNone(self.gate.dictation_recording)
+        self.assertEqual(self.gate.reason, "voxtype_recording")
 
     def test_any_other_recording_in_a_session_pauses(self):
-        self.dictating(wake_listens=False)
+        self.recording_in_session(wake_listens=False)
         self.assertTrue(self.gate.paused())
-        self.assertEqual((self.gate.reason, self.gate.listen_reason), ("voxtype_recording", None))
+        self.assertEqual(self.gate.reason, "voxtype_recording")
 
     def test_a_stale_wake_listens_session_pauses(self):
-        self.dictating(wake_listens=True)
+        self.recording_in_session(wake_listens=True)
         self.write_session(owner=os.getpid(), owner_start="1", wake_listens=True)
         self.assertTrue(self.gate.paused())
         self.assertEqual(self.gate.reason, "voxtype_recording")
 
     def test_a_wake_listens_session_between_recordings_pauses(self):
-        self.dictating(wake_listens=True)
+        self.recording_in_session(wake_listens=True)
         with open(self.voxtype_state, "w") as f:
             f.write("transcribing\n")
         self.assertTrue(self.gate.paused())
@@ -947,7 +863,7 @@ class SessionPauseTest(unittest.TestCase):
         clock = Clock()
         listener = wake.Listener(
             settings(), ScriptedScorer([0.0] * 5), lambda: FakeSource(clock, [b"f"] * 5), gate, lambda: None,
-            wake.Confirmation(lambda wav, recording=None: wake.REJECTED, run_now), lambda state, reason: None, clock, clock.sleep, lambda message: None,
+            wake.Confirmation(lambda wav: wake.REJECTED, run_now), lambda state, reason: None, clock, clock.sleep, lambda message: None,
         )
         listener.step()
         source = listener.source
@@ -1069,7 +985,7 @@ class StubbedCommandsTest(unittest.TestCase):
         self.assertTrue(logs[0].startswith("confirm could not run"))
 
     def test_the_real_worker_thread_hands_back_a_verdict(self):
-        confirmation = wake.Confirmation(lambda wav, recording=None: wake.REJECTED)
+        confirmation = wake.Confirmation(lambda wav: wake.REJECTED)
         confirmation.start(b"", 0, 0.0)
         deadline = time.monotonic() + 5
         verdict = None
@@ -1083,7 +999,7 @@ class StubbedCommandsTest(unittest.TestCase):
         def no_thread(work):
             raise RuntimeError("can't start new thread")
 
-        confirmation = wake.Confirmation(lambda wav, recording=None: wake.CONFIRMED, no_thread)
+        confirmation = wake.Confirmation(lambda wav: wake.CONFIRMED, no_thread)
         with self.assertRaises(RuntimeError):
             confirmation.start(b"", 0, 0.0)
         self.assertFalse(confirmation.busy())
@@ -1095,15 +1011,6 @@ class StubbedCommandsTest(unittest.TestCase):
             self.assertEqual(wake.make_run_confirm(logs.append)(wake.wav_bytes([b"\0\0"])), wake.CONFIRM_FAILED, code)
         os.environ["CONFIRM_EXIT"] = "0"
         self.assertEqual(wake.make_run_confirm(lambda message: None)(wake.wav_bytes([b"\0\0"])), wake.CONFIRMED)
-
-    def test_a_dictation_clip_names_its_recording_to_voxcmd(self):
-        run_confirm = wake.make_run_confirm(lambda message: None)
-        self.assertEqual(run_confirm(wake.wav_bytes([b"\0\0"]), "f-7:4242:99"), wake.CONFIRMED)
-        self.assertEqual(run_confirm(wake.wav_bytes([b"\0\0"])), wake.CONFIRMED)
-        self.assertEqual(
-            [line for line in self.recorded() if line.startswith("voxcmd ")],
-            ["voxcmd _wake-confirm /dev/stdin f-7:4242:99", "voxcmd _wake-confirm /dev/stdin"],
-        )
 
     def test_the_child_only_calls_prctl(self):
         # ctypes and prctl are resolved at import, so the forked child loads nothing.
