@@ -24,7 +24,7 @@ Singleton {
         disable_while_typing: "input:touchpad:disable_while_typing"
     })
 
-    // Config.input's defaults until getoption answers; which_key_delay_ms and pointer_keys are not Hyprland options, so they stay the default.
+    // Config.input's defaults until Hyprland answers.
     readonly property var fallback: ({ kb_layout: "us", kb_variant: "", repeat_rate: 25, repeat_delay: 600, sensitivity: 0, follow_mouse: 1, natural_scroll: false, tap_to_click: true, disable_while_typing: true, which_key_delay_ms: 0, pointer_keys: "hjkl" })
     property var live: root.fallback
     property var saved: ({})
@@ -83,6 +83,10 @@ Singleton {
             if (chunk.trim() === "") continue;
             try {
                 const o = JSON.parse(chunk);
+                if (o.option === undefined) {
+                    for (const key in o) next[key] = o[key];
+                    continue;
+                }
                 const raw = o.str !== undefined ? (o.str === "[[EMPTY]]" ? "" : o.str) : o.int !== undefined ? o.int : o.float !== undefined ? o.float : o.bool;
                 for (const key in root.options) {
                     if (root.options[key] !== o.option) continue;
@@ -122,7 +126,8 @@ Singleton {
 
     Process {
         id: live_proc
-        command: ["sh", "-c", 'for o in "$@"; do hyprctl getoption "$o" -j; printf "\\036"; done', "sh"].concat(Object.values(root.options).filter((o, i, all) => all.indexOf(o) === i))
+        // which_key_delay_ms and pointer_keys are Config.input values, not Hyprland options, and hyprctl eval prints nothing back, so they go through a file.
+        command: ["sh", "-c", 'for o in "$@"; do hyprctl getoption "$o" -j; printf "\\036"; done; f="$XDG_RUNTIME_DIR/qs-input-config"; hyprctl eval "local i = require(\'config\').input; local f = io.open(\'$f\', \'w\'); f:write(string.format(\'{\\"which_key_delay_ms\\":%d,\\"pointer_keys\\":\\"%s\\"}\', i.which_key_delay_ms or 0, i.pointer_keys or \'hjkl\')); f:close()" >/dev/null && cat "$f"', "sh"].concat(Object.values(root.options).filter((o, i, all) => all.indexOf(o) === i))
         stdout: StdioCollector {
             onStreamFinished: root.parse_live(text)
         }
