@@ -16,9 +16,9 @@ check() {
   fi
 }
 
-# pgrep stand-in: succeeds only while $scratch/qs-p-running exists.
+# pgrep stand-in: succeeds only while $scratch/bar-running exists.
 mkdir "$scratch/bin"
-printf '#!/bin/sh\n[ -e "%s/qs-p-running" ]\n' "$scratch" >"$scratch/bin/pgrep"
+printf '#!/bin/sh\n[ -e "%s/bar-running" ]\n' "$scratch" >"$scratch/bin/pgrep"
 chmod +x "$scratch/bin/pgrep"
 PATH="$scratch/bin:$PATH"
 
@@ -51,13 +51,24 @@ output=$(migrate_quickshell_state "$s" 2>&1)
 check test "$(find "$scratch/a" | sort)" = "$before"
 check test -z "$output"
 
-case_name='leaves an existing target alone and still deletes by-shell'
+case_name='an older by-shell file does not overwrite a newer target, and by-shell is still deleted'
 s=$scratch/b/quickshell
 mkdir -p "$s"
 printf mine >"$s/notifications.json"
 put "$s" x notifications.json theirs 1
+touch -d '0 days ago' "$s/notifications.json"
 migrate_quickshell_state "$s" >/dev/null 2>&1
 check test "$(cat "$s/notifications.json")" = mine
+check test ! -e "$s/by-shell"
+
+case_name='a newer by-shell file overwrites an older target'
+s=$scratch/b2/quickshell
+mkdir -p "$s"
+printf mine >"$s/notifications.json"
+touch -d '5 days ago' "$s/notifications.json"
+put "$s" x notifications.json theirs 1
+migrate_quickshell_state "$s" >/dev/null 2>&1
+check test "$(cat "$s/notifications.json")" = theirs
 check test ! -e "$s/by-shell"
 
 case_name='ignores a newer empty file for an older non-empty one'
@@ -75,21 +86,24 @@ migrate_quickshell_state "$s" >/dev/null 2>&1
 check test ! -e "$s/notifications.json"
 check test ! -e "$s/by-shell"
 
-case_name='a running qs -p bar: touches nothing, warns, and a later run still migrates the newest'
+case_name='a running bar: copies but keeps by-shell and warns; a rerun picks up later writes; a run with no bar deletes it'
 s=$scratch/e/quickshell
-put "$s" x notifications.json '{"dnd":true}' 1
-touch "$scratch/qs-p-running"
+put "$s" x notifications.json '{"dnd":true}' 2
+touch "$scratch/bar-running"
 output=$(migrate_quickshell_state "$s" 2>&1)
-check test ! -e "$s/notifications.json"
+check test "$(cat "$s/notifications.json")" = '{"dnd":true}'
 check test -d "$s/by-shell"
-check grep -q 'qs -p' <<<"$output"
+check grep -q 'bar is running' <<<"$output"
 put "$s" x notifications.json '{"dnd":false}' 0
 migrate_quickshell_state "$s" >/dev/null 2>&1
-rm "$scratch/qs-p-running"
-check test ! -e "$s/notifications.json"
+check test "$(cat "$s/notifications.json")" = '{"dnd":false}'
+check test -d "$s/by-shell"
+rm "$scratch/bar-running"
 migrate_quickshell_state "$s" >/dev/null 2>&1
 check test "$(cat "$s/notifications.json")" = '{"dnd":false}'
 check test ! -e "$s/by-shell"
+output=$(migrate_quickshell_state "$s" 2>&1)
+check test -z "$output"
 
 case_name='a large by-shell survives pipefail'
 s=$scratch/h/quickshell

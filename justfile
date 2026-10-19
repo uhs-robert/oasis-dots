@@ -63,7 +63,7 @@ migrate-systemd *ARGS:
     source lib/install/load.sh
     migrate_systemd {{ARGS}}
 
-# Move Quickshell's per-checkout notifications/Claude usage state (by-shell) into the shared state dir; idempotent, MIGRATE_DRY_RUN=1 only reports
+# Move Quickshell's per-checkout notifications/Claude usage state (by-shell) into the shared state dir; newest wins, so run it before and again after the bar restart (by-shell is deleted once no bar runs); MIGRATE_DRY_RUN=1 only reports
 migrate-quickshell-state:
     #!/usr/bin/env bash
     set -euo pipefail
