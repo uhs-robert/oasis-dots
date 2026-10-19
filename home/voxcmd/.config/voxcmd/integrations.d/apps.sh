@@ -414,12 +414,28 @@ focused_move_candidates() {
     echo '[]'
     return 0
   fi
+  if [[ "$move_workspace" =~ ^[0-9]+$ ]] && move_bind_candidate "$move_workspace" "$target"; then
+    return 0
+  fi
   encoded="${move_workspace//%/%25}"
   encoded="${encoded// /%20}"
   jq -c --arg workspace "$encoded" --arg label_to "$move_label_to" --arg match_text "$target" '
     [{id: "\(.address) \($workspace)",
       label: (if .title == "" then "\(.class) \($label_to)" else "\(.class): \(.title) \($label_to)" end),
       match_text: $match_text}]' <<<"$active"
+}
+
+# The "Move to Workspace <n>" keybind as the one candidate, when the binds cover n. The Lua config owns what moving to
+# workspace n means (the n-th workspace of the current monitor with persistent workspaces, and whether focus follows),
+# so the focused window is moved by running that bind, not by an absolute workspace id. Fails when no such bind exists
+# (a number above the bind range), which leaves the move to move_window()'s absolute id.
+move_bind_candidate() {
+  local number="$1" target="$2"
+  timeout 2 hyprctl binds -j 2>/dev/null | jq -ce --arg description "Move to Workspace $number" --arg match_text "$target" '
+    [.[] | select(.has_description and .dispatcher == "__lua" and (.mouse | not)
+        and (.description | ascii_downcase) == ($description | ascii_downcase))]
+    | sort_by(.submap != "") | first | select(. != null)
+    | [{id: "bind:\(.arg)", label: .description, match_text: $match_text}]'
 }
 
 # For "move firefox to workspace 3" every window is offered as "<app> to workspace 3" (and by title), so word
@@ -491,8 +507,20 @@ focus_window() {
   hypr_dispatch "hl.dsp.focus({ window = 'address:$1' })"
 }
 
-# The window stays put on the current workspace's side: moving a window out of the way should not drag focus along.
+# A named window stays put on the current workspace's side: moving a window out of the way should not drag focus along.
 move_window() {
+  if [[ "$1" == bind:* ]]; then
+    local bind_id="${1#bind:}" output
+    [[ "$bind_id" =~ ^[0-9]+$ ]] || {
+      echo "not a keybind: $bind_id"
+      return 1
+    }
+    output=$(hyprctl eval "debug.getregistry()[$bind_id]()") || {
+      echo "$output"
+      return 1
+    }
+    return
+  fi
   local address="${1%% *}" workspace="${1#* }" lua_workspace
   window_address "$address" || return 1
   workspace="${workspace//%20/ }"

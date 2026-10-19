@@ -28,6 +28,9 @@ move it to the scratchpad	Keybinds/run	the Move to Scratchpad keybind, which mov
 move this window to workspace 5	Apps/move	focused window, deictic
 move it to workspace 12	Apps/move	number above 10 on the focused window
 move to workspace 5	Apps/move	no window part: the focused window
+move to workspace 2	Apps/move	the fixture binds cover workspace 2, so the focused window moves by running the Move to Workspace 2 bind
+send this window to workspace 2	Apps/move	the same bind
+put it to the second workspace	Apps/move	the same bind, from an ordinal
 move the window to the third workspace	Apps/move	ordinal on the focused window
 move that to special workspace notes	Apps/move	special workspace on the focused window
 send this window to workspace 5	Apps/move
