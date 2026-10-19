@@ -100,16 +100,14 @@ Popup {
     }
 
     // The wheel steps a backlight row like h/l, one snap step per notch.
-    property string wheel_kind: ""
     function wheel_adjust(kind, wheel) {
-        if (kind !== root.wheel_kind) {
-            stepper.accumulated = 0;
-            root.wheel_kind = kind;
+        if (kind === "brightness" && Backlight.has_device) {
+            const pct = stepper.step_level(wheel, kind, Backlight.percent, 1, 100);
+            if (pct !== Backlight.percent) Backlight.set_percent(pct);
+        } else if (kind === "kbd" && Backlight.has_kbd) {
+            const pct = stepper.step_level(wheel, kind, Backlight.kbd_percent, 0, 100);
+            if (pct !== Backlight.kbd_percent) Backlight.kbd_set_percent(pct);
         }
-        const notches = stepper.consume_event(wheel);
-        if (notches === 0) return;
-        if (kind === "brightness" && Backlight.has_device) Backlight.set_percent(stepper.snap_by(Backlight.percent, notches, 1, 100));
-        else if (kind === "kbd" && Backlight.has_kbd) Backlight.kbd_set_percent(stepper.snap_by(Backlight.kbd_percent, notches, 0, 100));
     }
 
     Item {

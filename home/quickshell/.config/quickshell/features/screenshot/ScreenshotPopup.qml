@@ -18,6 +18,10 @@ Popup {
     body_height: content.implicitHeight + 24
     jumps_enabled: true
     cursor_state: root.selected
+    wheel_steps: true
+    onWheel_stepped: (dir, horizontal) => {
+        if (!horizontal) root.selected = root.clamp_index(root.selected, dir, 0, root.rows.length);
+    }
 
     // `select` rows use the themed selector; `flag` rows hand screenshot.sh one of its flags.
     readonly property var base_rows: [

@@ -279,6 +279,20 @@ exit 0
         follow_view();
     }
 
+    wheel_steps: true
+    // The wheel steps a day on the grid, as h/l does, and an event inside a day, as j/k does.
+    // Shift steps a month, as Shift+H/L does.
+    onWheel_stepped: (dir, horizontal, modifiers) => {
+        if (root.day_level) {
+            if (!horizontal) root.step_event(dir);
+        } else if (modifiers & Qt.ShiftModifier) {
+            if (dir > 0) root.next_month();
+            else root.prev_month();
+        } else {
+            root.move_day(dir);
+        }
+    }
+
     function is_same_day(a, b) {
         return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
     }

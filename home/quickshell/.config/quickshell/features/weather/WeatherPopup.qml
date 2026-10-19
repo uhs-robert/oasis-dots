@@ -189,25 +189,13 @@ Popup {
         else if (root.on_alerts_tab) root.move_alert_cursor(dir, jump);
     }
 
-    WheelStepper {
-        id: wheel_stepper
-    }
-
+    // Alerts keeps its lists' own wheel scrolling.
+    wheel_steps: !root.on_alerts_tab
     // The wheel does what h/l does. Shift adds the 24-hour step only where Shift+H/L has one:
     // Daily and Air have no day-sized step.
-    function wheel_step(wheel) {
-        // Touchpads may send pixelDelta alone, so it decides the axis when present.
-        const has_pixels = wheel.pixelDelta.x !== 0 || wheel.pixelDelta.y !== 0;
-        const axis_delta = has_pixels ? wheel.pixelDelta : wheel.angleDelta;
-        const horizontal = Math.abs(axis_delta.x) > Math.abs(axis_delta.y);
-        const pixels = horizontal ? wheel.pixelDelta.x : wheel.pixelDelta.y;
-        const notches = wheel_stepper.consume(pixels !== 0 ? pixels * 2 : (horizontal ? wheel.angleDelta.x : wheel.angleDelta.y));
-        if (notches === 0) return;
-        const by_day = !!(wheel.modifiers & Qt.ShiftModifier) && root.current_tab === 1 && !root.on_air;
-        const before = root.cursor_key();
-        // Wheel down and a rightward tilt both report negative deltas, and both mean later.
-        for (let i = 0; i < Math.abs(notches); i++) root.move_time(notches < 0 ? 1 : -1, by_day);
-        root.play_if_moved(before);
+    onWheel_stepped: (dir, horizontal, modifiers) => {
+        const by_day = !!(modifiers & Qt.ShiftModifier) && root.current_tab === 1 && !root.on_air;
+        root.move_time(dir, by_day);
     }
 
     function go_now() {
@@ -634,21 +622,6 @@ Popup {
                 Layout.fillWidth: true
                 wrap: true
                 text: root.help_hint
-            }
-        }
-
-        // Topmost, so the wheel reaches it before HourlyTrack's Flickable, which accepts wheel events itself.
-        // A MouseArea sees both wheel axes, which a WheelHandler (vertical-only by default) does not.
-        // No buttons and no hover, so clicks and hover reach the views below. Disabled on Alerts,
-        // whose lists keep their own wheel scrolling.
-        MouseArea {
-            anchors.fill: parent
-            z: 100
-            acceptedButtons: Qt.NoButton
-            enabled: !root.on_alerts_tab
-            onWheel: wheel => {
-                root.wheel_step(wheel);
-                wheel.accepted = true;
             }
         }
     }

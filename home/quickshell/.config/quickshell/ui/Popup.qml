@@ -81,6 +81,31 @@ PanelWindow {
         if (root.cursor_key() !== before) ThemeAudio.play("cursor");
     }
 
+    // Opt-in: each wheel notch over the content emits wheel_stepped once, so the popup only maps a notch to its own
+    // key moves. dir is 1 for later (wheel down, tilt right) and -1 for earlier. Off while help shows, and a popup
+    // turns it off for views that scroll their own lists.
+    property bool wheel_steps: false
+    signal wheel_stepped(int dir, bool horizontal, int modifiers)
+
+    WheelStepper {
+        id: wheel_stepper
+    }
+
+    function take_wheel(wheel) {
+        // Touchpads may send pixelDelta alone, so it decides the axis when present. Pixels count double, as in
+        // WheelStepper.consume_event.
+        const has_pixels = wheel.pixelDelta.x !== 0 || wheel.pixelDelta.y !== 0;
+        const axis_delta = has_pixels ? wheel.pixelDelta : wheel.angleDelta;
+        const horizontal = Math.abs(axis_delta.x) > Math.abs(axis_delta.y);
+        const pixels = horizontal ? wheel.pixelDelta.x : wheel.pixelDelta.y;
+        const notches = wheel_stepper.consume(pixels !== 0 ? pixels * 2 : (horizontal ? wheel.angleDelta.x : wheel.angleDelta.y));
+        if (notches === 0) return;
+        const before = root.cursor_key();
+        // Wheel down and a rightward tilt both report negative deltas, and both mean later.
+        for (let i = 0; i < Math.abs(notches); i++) root.wheel_stepped(notches < 0 ? 1 : -1, horizontal, wheel.modifiers);
+        root.play_if_moved(before);
+    }
+
     // 0/$ emit line_start/line_end only while set: the left and right ends of an h/l row.
     property bool line_ends_enabled: false
     signal line_start()
@@ -127,6 +152,12 @@ PanelWindow {
     function wrap_index(i, delta, min, count) {
         if (count <= 0) return min;
         return ((i - min + delta) % count + count) % count + min;
+    }
+
+    // wrap_index without the wrap, for the wheel: a fast spin stops at the ends instead of cycling.
+    function clamp_index(i, delta, min, count) {
+        if (count <= 0) return min;
+        return Math.max(min, Math.min(min + count - 1, i + delta));
     }
 
     function is_help_key(event) {
@@ -619,6 +650,20 @@ PanelWindow {
                     else Popups.close();
                 }
                 Keys.onPressed: event => root.handle_shared_key(event)
+
+                // Above the popup's content, so the wheel lands here before a Flickable inside can take it.
+                // A MouseArea sees both wheel axes, which a WheelHandler (vertical-only by default) does not.
+                // No buttons and no hover, so clicks and hover reach the content below.
+                MouseArea {
+                    anchors.fill: parent
+                    z: 100
+                    acceptedButtons: Qt.NoButton
+                    enabled: root.wheel_steps && !root.help_open
+                    onWheel: wheel => {
+                        root.take_wheel(wheel);
+                        wheel.accepted = true;
+                    }
+                }
             }
 
             KeyHelp {

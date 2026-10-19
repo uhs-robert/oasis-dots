@@ -19,6 +19,10 @@ Popup {
     body_height: content.implicitHeight + 24
     jumps_enabled: true
     cursor_state: root.selected
+    wheel_steps: true
+    onWheel_stepped: (dir, horizontal) => {
+        if (!horizontal) root.selected = root.clamp_index(root.selected, dir, 0, root.items.length);
+    }
 
     readonly property var items: SystemTray.items.values
 

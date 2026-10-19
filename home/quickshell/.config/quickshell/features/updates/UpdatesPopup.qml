@@ -25,6 +25,12 @@ Popup {
     sub_views: root.nes ? ["Official x" + UpdatesState.official.length, "AUR x" + UpdatesState.aur.length] : ["Official (" + UpdatesState.official.length + ")", "AUR (" + UpdatesState.aur.length + ")"]
     jumps_enabled: true
     cursor_state: root.selected
+    wheel_steps: true
+    onWheel_stepped: (dir, horizontal) => {
+        if (horizontal || root.current_list.length === 0) return;
+        root.selected = root.clamp_index(root.selected, dir, 0, root.current_list.length);
+        root.reveal(root.selected);
+    }
     readonly property var current_list: root.current_sub === 0 ? UpdatesState.official : UpdatesState.aur
 
     property int selected: 0

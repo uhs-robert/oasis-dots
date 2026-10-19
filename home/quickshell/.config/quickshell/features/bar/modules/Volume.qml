@@ -80,10 +80,9 @@ BarModule {
         }
         onWheel: wheel => {
             if (!root.sink || !root.sink.ready || !root.sink.audio) return;
-            const notches = wheel_stepper.consume(wheel.angleDelta.y || wheel.pixelDelta.y);
-            if (notches === 0) return;
-            const pct = wheel_stepper.snap_by(Math.round(root.sink.audio.volume * 100), notches, 0, 100);
-            root.sink.audio.volume = pct / 100;
+            const current = Math.round(root.sink.audio.volume * 100);
+            const pct = wheel_stepper.step_level(wheel, null, current, 0, 100);
+            if (pct !== current) root.sink.audio.volume = pct / 100;
         }
     }
 }

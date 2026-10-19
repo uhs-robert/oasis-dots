@@ -21,6 +21,10 @@ Popup {
     body_height: content.implicitHeight + 24
     jumps_enabled: !root.confirm
     cursor_state: root.selected
+    wheel_steps: !root.confirm
+    onWheel_stepped: (dir, horizontal) => {
+        if (!horizontal) root.selected = root.clamp_index(root.selected, dir, 0, root.actions.length);
+    }
 
     // Rows past the first two are Power actions, in Power.actions order.
     readonly property var actions: ["Apps", "Settings"].concat(Power.actions.map(a => Power.labels[a]))
