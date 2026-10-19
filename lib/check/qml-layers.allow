@@ -9,6 +9,5 @@ theme/Style.qml -> styles/goldeneye/Watch.js                            # the st
 theme/Style.qml -> styles/index.js                                      # the style engine consumes style data by design (permanent)
 theme/Style.qml -> url:features/lock/skins/index.json                   # skin list read as data by the style engine (permanent)
 theme/Style.qml -> url:styles                                           # the style engine consumes style data by design (permanent)
-ui/gauges/Meter.qml -> styles/goldeneye/Watch.js                        # popup framework moves above styles, or takes the data as properties (5.9 step 5)
-ui/gauges/Meter.qml -> url:styles                                       # popup framework moves above styles, or takes the data as properties (5.9 step 5)
-ui/keys/ControllerBadge.qml -> url:styles                               # popup framework moves above styles, or takes the data as properties (5.9 step 5)
+theme/StyleArt.qml -> styles/goldeneye/Watch.js                         # the style art helper reads style data by design (permanent)
+theme/StyleArt.qml -> url:styles                                        # the style art helper reads style data by design (permanent)
