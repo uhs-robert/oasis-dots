@@ -3,7 +3,6 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
-import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import qs.core
@@ -119,17 +118,6 @@ PanelWindow {
     readonly property bool settled: root.wanted && root.reveal === 1 && !reveal_anim.running
         && !(console_osd_loader.item && console_osd_loader.item.busy)
     readonly property string shown_what: root.showing_vox ? "voxtype" : root.kind
-
-    IpcHandler {
-        target: "osd"
-
-        // "opening <what>" while it slides in, "open <what>" once drawn, "closing <what>" while it slides out, then "closed";
-        // <what> is volume, brightness or voxtype.
-        function state(): string {
-            if (!root.wanted) return root.visible ? "closing " + root.shown_what : "closed";
-            return (root.settled ? "open " : "opening ") + root.shown_what;
-        }
-    }
 
     function hold_screen() {
         if (root.visible) return;

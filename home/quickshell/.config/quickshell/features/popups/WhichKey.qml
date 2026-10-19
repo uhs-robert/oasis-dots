@@ -85,19 +85,15 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-    IpcHandler {
-        target: "hyprvim_whichkey"
+    function show_payload(path: string): void {
+        root.wanted = true;
+        payload_file.path = path;
+        payload_file.reload();
+    }
 
-        function open(path: string): void {
-            root.wanted = true;
-            payload_file.path = path;
-            payload_file.reload();
-        }
-
-        function close(): void {
-            root.wanted = false;
-            root.visible = false;
-        }
+    function hide_now(): void {
+        root.wanted = false;
+        root.visible = false;
     }
 
     onVisibleChanged: if (root.visible && burst_loader.item) burst_loader.item.play()

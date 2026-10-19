@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.core
 import qs.theme
 import "Kinds.js" as Kinds
@@ -119,15 +118,6 @@ Singleton {
             end.interval = Kinds.reveal(kind);
             end.restart();
             root.play(kind, Kinds.cover(kind));
-        }
-    }
-
-    IpcHandler {
-        target: "transition"
-
-        // Plays a kind or a style's transition on every bar, on battery too.
-        function play(name: string): void {
-            root.request(name, true);
         }
     }
 }
