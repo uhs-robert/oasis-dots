@@ -68,7 +68,7 @@ The offered pieces and the docs stay yours until the successor replies `TAKEN`. 
 
 ### 4. Finish the pieces you hold
 
-Carry each held piece on as usual until its break: research feeding the plan or PR it was started for, implementation, review cycles and their fixes, and merges the existing approvals cover (ship-batch's lock serializes them with the successor's). What does not continue is the next piece: the next roadmap item, or a new direction the work turned up. Send it to the successor as a next step.
+Carry each held piece on as usual until its break: research feeding the plan or PR it was started for, implementation, review cycles and their fixes, and merges the existing approvals cover (ship-batch's lock serializes them with the successor's). Its break includes undoing what you set up for it; do that yourself, never leave it to the successor or the owner, who may be blocked from it. What does not continue is the next piece: the next roadmap item, or a new direction the work turned up. Send it to the successor as a next step.
 
 Stop nothing and rush nothing to reach the break. End the turn while things run and let the completion notices drive the next turns; never poll or sleep.
 
