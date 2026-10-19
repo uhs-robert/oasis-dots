@@ -327,6 +327,10 @@ just greeter-preview         # try it in a window with a fake greetd
 
 The Quickshell files it stages are listed once, in `lib/common/greeter-files.sh` (edit that list when one moves). `just greeter-sync --from DIR` stages the skins, theme files and fonts from another Quickshell config dir (for example a worktree's `home/quickshell/.config/quickshell`) instead of the repo's, and takes `DIR/theme/theme.json` over your saved theme when it has one. It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, which the bar keeps current as your theme and choices change (Settings > Login screen > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
 
+## Naming singletons
+
+A singleton is named for what it holds: `Settings` for the user's saved choices (`ClockSettings`, `BarSettings`), `State` for live data read from outside (the system, a daemon, a file the user does not edit), and otherwise a plain noun for what it is (`Sessions`, `Popups`). A name ending in `Config`, `Store` or `Manager` says which of those it is only by accident, so `lib/check/steps/qml_singleton_names.py` fails any `pragma Singleton` file named that way unless `lib/check/qml-singleton-names.allow` lists it as a temporary exception; the rename that removes the name deletes the line.
+
 ## Extending
 
 Folder imports are root-anchored, `import qs.<path>` (`import qs.theme`, `import qs.features.lock.skins as Skins`), so moving a file only renames the path; JS imports stay relative (`import "Tints.js" as Tints`).
