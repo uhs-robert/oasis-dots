@@ -1,11 +1,11 @@
 theme/theme.json
-weather.local.json
 features/lock/skins/ocarina/audio/
 features/lock/skins/ff7/audio/
 features/lock/skins/mgs2/audio/
 features/lock/skins/goldeneye/audio/
 features/lock/skins/goldeneye/frames/
-# Old locations until migrate_quickshell_lock_assets (lib/install/migrate.sh) has moved the imports; drop once everyone has pulled.
+# Old locations until migrate_quickshell_lock_assets and migrate_quickshell_weather (lib/install/migrate.sh) have moved the files; drop once everyone has pulled.
+weather.local.json
 lock/skins/ocarina/audio/
 lock/skins/ff7/audio/
 lock/skins/mgs2/audio/

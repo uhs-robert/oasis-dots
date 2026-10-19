@@ -34,7 +34,7 @@ DEMO_WALLPAPER=${DEMO_WALLPAPER:-}
 DEMO_MUSIC_PLAYER=${DEMO_MUSIC_PLAYER:-}
 DEMO_MUSIC_AT=${DEMO_MUSIC_AT:-374}
 DEMO_PROTECT_PID=${DEMO_PROTECT_PID:-${KITTY_PID:-}}
-DEMO_WEATHER_FILE=${DEMO_WEATHER_FILE:-$HOME/.config/quickshell/weather.local.json}
+DEMO_WEATHER_FILE=${DEMO_WEATHER_FILE:-${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/weather.local.json}
 
 T_LEAD=${T_LEAD:-0.15}
 T_KEY_GAP=${T_KEY_GAP:-0.1}
@@ -654,7 +654,7 @@ stage_weather() {
     emit weather "write {location_name: $DEMO_LOCATION} to $DEMO_WEATHER_FILE"
     return 0
   fi
-  mkdir -p "$state_dir"
+  mkdir -p "$state_dir" "$(dirname -- "$DEMO_WEATHER_FILE")"
   if [[ -f $DEMO_WEATHER_FILE && ! -f $state_dir/weather_created ]]; then
     cp -- "$DEMO_WEATHER_FILE" "$state_dir/weather.bak"
   fi

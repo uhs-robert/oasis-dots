@@ -170,7 +170,7 @@ Singleton {
     // Untracked per-machine overrides, e.g. real coordinates kept out of the public repo.
     FileView {
         id: local_settings_file
-        path: Quickshell.shellDir + "/weather.local.json"
+        path: Paths.state_dir + "/weather.local.json"
         printErrors: false
         blockLoading: true
         watchChanges: true
