@@ -7,8 +7,8 @@ import "BarModules.js" as BarModules
 import qs.features.bar.modules
 import qs.features.power
 import qs.features.media
-import qs.styles.oasis.widgets as Oasis
 import qs.styles.neovim.widgets as Neovim
+import qs.features.weather
 import qs.features.voice
 import qs.features.popups
 
@@ -216,7 +216,7 @@ Item {
         anchors.fill: parent
         z: -1
         active: root.clock_horizon
-        sourceComponent: Oasis.Horizon {
+        sourceComponent: Horizon {
             date: root.horizon_clock ? root.horizon_clock.date : new Date()
         }
     }

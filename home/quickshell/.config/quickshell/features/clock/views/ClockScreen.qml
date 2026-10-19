@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import qs.theme
 import qs.features.clock
+import qs.styles.ps2.widgets
 
 // The PS2 clock screen: a big thin digital clock floating over the tower haze, the date and zone beneath.
 Item {

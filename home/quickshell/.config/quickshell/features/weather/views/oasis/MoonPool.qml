@@ -1,6 +1,7 @@
 import QtQuick
 import qs.theme
 import qs.features.weather
+import qs.styles.oasis.widgets
 
 // The moon at its phase over a small oasis pool that holds the same phase upside down, broken by ripples, with a palm on the bank.
 Item {
