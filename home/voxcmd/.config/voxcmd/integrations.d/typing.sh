@@ -48,7 +48,7 @@ session_wake_listens=1
 # words wins. discard and end_session are voxcmd's (see voxcmd's one-recording modes); session_handle_turn gets the
 # others. Whisper writes "never mind" both ways.
 session_endings=(
-  "type        stop|stop typing|stop recording|done|im done|thats all|$type_exit_phrase|(im )?done typing|done with $type_exit_object"
+  "type        stop|stop typing|stop recording|exit|quit|done|im done|thats all|$type_exit_phrase|(im )?done typing|done with $type_exit_object"
   "send        send|send it|send (the |a )?message|press enter"
   "discard     cancel|never ?mind"
   "end_session stop listening|stop everything|end session|end the session"
