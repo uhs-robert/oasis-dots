@@ -194,9 +194,8 @@ Popup {
     }
 
     // The wheel does what h/l does. Shift adds the 24-hour step only where Shift+H/L has one:
-    // Daily and Air have no day-sized step, and Alerts keeps its own scrolling.
+    // Daily and Air have no day-sized step.
     function wheel_step(wheel) {
-        if (root.on_alerts_tab) return;
         const horizontal = Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y);
         const pixels = horizontal ? wheel.pixelDelta.x : wheel.pixelDelta.y;
         const notches = wheel_stepper.consume(pixels !== 0 ? pixels * 2 : (horizontal ? wheel.angleDelta.x : wheel.angleDelta.y));
@@ -293,14 +292,6 @@ Popup {
         focus: true
 
         Keys.onPressed: event => root.handle_key(event)
-
-        WheelHandler {
-            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-            onWheel: event => {
-                root.wheel_step(event);
-                event.accepted = true;
-            }
-        }
 
         ColumnLayout {
             id: main_column
@@ -640,6 +631,22 @@ Popup {
                 Layout.fillWidth: true
                 wrap: true
                 text: root.help_hint
+            }
+        }
+
+        // Topmost, so the wheel reaches it before HourlyTrack's Flickable, which accepts wheel events itself.
+        // Disabled on Alerts, whose lists keep their own wheel scrolling.
+        Item {
+            anchors.fill: parent
+            z: 100
+            enabled: !root.on_alerts_tab
+
+            WheelHandler {
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: event => {
+                    root.wheel_step(event);
+                    event.accepted = true;
+                }
             }
         }
     }
