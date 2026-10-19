@@ -124,10 +124,27 @@ pub struct Mode {
     pub rewrite_hook: Option<String>,
     pub ended: Option<String>,
     pub alive: Option<String>,
-    /// Seconds the mode's hooks may run; the hook default (3) when unset.
+    /// Takes the turn's words itself (`VOXCMD_TEXT`), and a one-recording mode's text with its ending's action
+    /// (`VOXCMD_ENDING`).
+    pub handle_turn: Option<String>,
+    /// Hears one recording, handed to `handle_turn` once it ends.
+    pub one_recording: bool,
+    /// How a one-recording mode's recording ends after the wake word, first match first.
+    pub endings: Vec<ModeEnding>,
+    /// Seconds the mode's hooks may run; the hook default (3) when unset, and for `handle_turn` a default that grows
+    /// with the text (`session::mode`).
     pub timeout_secs: Option<f64>,
     /// Lines in the TOML file of the keys holding patterns, for error messages.
     pub pattern_lines: BTreeMap<&'static str, usize>,
+}
+
+/// One of `[mode] endings`: `discard` cancels the recording, `end_session` ends the session once the text is handled,
+/// and any other action is handed to `handle_turn` as `VOXCMD_ENDING`.
+#[derive(Debug, Clone)]
+pub struct ModeEnding {
+    pub action: String,
+    pub pattern: String,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -272,10 +289,18 @@ struct ModeEntry {
     ended: Option<String>,
     alive: Option<String>,
     timeout_secs: Option<f64>,
-    // Parsed so that a mode written for 2.4d is rejected by name, not silently stripped of them.
-    handle_turn: Option<toml::Value>,
-    endings: Option<toml::Value>,
-    one_recording: Option<bool>,
+    handle_turn: Option<String>,
+    endings: Option<Vec<toml::Spanned<EndingEntry>>>,
+    #[serde(default)]
+    one_recording: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EndingEntry {
+    action: String,
+    #[serde(rename = "match")]
+    pattern: String,
 }
 
 /// Reads one `integrations/<stem>.toml`. The error is `file:line: message`.
@@ -414,7 +439,7 @@ fn key_offset(text: &str, action: &str, key: &str) -> Option<usize> {
     text[start..end].find(key).map(|found| start + found)
 }
 
-/// The `[mode]` table as a `Mode`, rejecting what 2.4c does not run. Errors are `file:line: message`.
+/// The `[mode]` table as a `Mode`, rejecting one that contradicts itself. Errors are `file:line: message`.
 fn build_mode(file: &Path, text: &str, entry: ModeEntry, label: String) -> Result<Mode, String> {
     let header = regex::Regex::new(r"(?m)^\[mode\]")
         .expect("fixed pattern")
@@ -429,15 +454,39 @@ fn build_mode(file: &Path, text: &str, entry: ModeEntry, label: String) -> Resul
         text[..found].matches('\n').count() + 1
     };
     let line = |key: &str| format!("{}:{}", file.display(), line_number(key));
-    for (key, present) in [
-        ("handle_turn", entry.handle_turn.is_some()),
-        ("endings", entry.endings.is_some()),
-        ("one_recording", entry.one_recording == Some(true)),
-    ] {
-        if present {
-            return Err(format!("{}: [mode] {key} is not supported until 2.4d", line(key)));
-        }
+    if entry.one_recording && entry.handle_turn.is_none() {
+        return Err(format!(
+            "{}: [mode] one_recording needs a handle_turn hook to hand the recording to",
+            line("one_recording")
+        ));
     }
+    if entry.endings.is_some() && !entry.one_recording {
+        return Err(format!("{}: [mode] endings need one_recording = true", line("endings")));
+    }
+    let line_of = |offset: usize| text[..offset.min(text.len())].matches('\n').count() + 1;
+    let endings = entry
+        .endings
+        .unwrap_or_default()
+        .into_iter()
+        .map(|spanned| {
+            let line = line_of(spanned.span().start);
+            let ending = spanned.into_inner();
+            // Passed on as an environment variable, and compared with the reserved words, so it must be one word.
+            if ending.action.is_empty() || ending.action.contains(char::is_whitespace) {
+                return Err(format!(
+                    "{}:{line}: [mode] endings: action {:?} must be one word (discard and end_session are voxcmd's, \
+                     any other goes to handle_turn as VOXCMD_ENDING)",
+                    file.display(),
+                    ending.action
+                ));
+            }
+            Ok(ModeEnding {
+                action: ending.action,
+                pattern: ending.pattern,
+                line,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     if entry.rewrite.is_some() && entry.rewrite_hook.is_some() {
         return Err(format!(
             "{}: [mode] rewrite and rewrite_hook are both set; use one",
@@ -467,6 +516,9 @@ fn build_mode(file: &Path, text: &str, entry: ModeEntry, label: String) -> Resul
         rewrite_hook: entry.rewrite_hook,
         ended: entry.ended,
         alive: entry.alive,
+        handle_turn: entry.handle_turn,
+        one_recording: entry.one_recording,
+        endings,
         timeout_secs,
         pattern_lines,
     })
@@ -581,18 +633,33 @@ mod tests {
     }
 
     #[test]
-    fn a_mode_that_cannot_run_yet_or_contradicts_itself_is_an_error_at_its_line() {
+    fn a_mode_that_contradicts_itself_is_an_error_at_its_line() {
         assert!(mode_error("[mode]\nlabel = \"x\"\nfrobnicate = 1\n").starts_with("m.toml:4: "));
         let both = mode_error("[mode]\nrewrite = { prefix = \"a \" }\nrewrite_hook = \"echo\"\n");
         assert!(both.starts_with("m.toml:4: ") && both.contains("both set"), "{both}");
-        for (key, line) in [
-            ("handle_turn = \"x\"", 3),
-            ("endings = []", 3),
-            ("one_recording = true", 3),
+        for (keys, line, says) in [
+            ("one_recording = true", 3, "needs a handle_turn"),
+            ("handle_turn = \"x\"\nendings = []", 4, "need one_recording"),
+            (
+                "one_recording = true\nhandle_turn = \"x\"\nendings = [\n  { action = \"type\", match = 'stop' },\n  \
+                 { action = \"\", match = 'go' },\n]",
+                7,
+                "must be one word",
+            ),
+            (
+                "one_recording = true\nhandle_turn = \"x\"\nendings = [ { action = \"send it\", match = 'send' } ]",
+                5,
+                "must be one word",
+            ),
+            (
+                "one_recording = true\nhandle_turn = \"x\"\nendings = [ { action = \"send\", regex = 'send' } ]",
+                5,
+                "regex",
+            ),
         ] {
-            let error = mode_error(&format!("[mode]\n{key}\n"));
+            let error = mode_error(&format!("[mode]\n{keys}\n"));
             assert!(error.starts_with(&format!("m.toml:{line}: ")), "{error}");
-            assert!(error.contains("not supported until 2.4d"), "{error}");
+            assert!(error.contains(says), "{error}");
         }
         assert!(parse_toml(Path::new("m.toml"), "verbs = []\n[mode]\none_recording = false\n").is_ok());
         let bad_timeout = mode_error("[mode]\ntimeout_secs = 0\n");
@@ -600,6 +667,25 @@ mod tests {
             bad_timeout.starts_with("m.toml:3: timeout_secs must be above 0"),
             "{bad_timeout}"
         );
+    }
+
+    #[test]
+    fn a_one_recording_mode_loads_its_hook_and_endings_in_order_with_their_lines() {
+        let text = "verbs = []\n[mode]\none_recording = true\nhandle_turn = 'type-it'\nendings = [\n  \
+                    { action = \"type\", match = 'stop' },\n  { action = \"discard\", match = 'cancel' },\n]\n";
+        let mode = parse_toml(Path::new("m.toml"), text).unwrap().mode.unwrap();
+        assert!(mode.one_recording);
+        assert_eq!(mode.handle_turn.as_deref(), Some("type-it"));
+        let endings: Vec<_> = mode
+            .endings
+            .iter()
+            .map(|ending| (ending.action.as_str(), ending.pattern.as_str(), ending.line))
+            .collect();
+        assert_eq!(endings, [("type", "stop", 6), ("discard", "cancel", 7)]);
+        // A handler without one_recording takes every turn's words.
+        let handler = parse_toml(Path::new("m.toml"), "verbs = []\n[mode]\nhandle_turn = 'x'\n").unwrap();
+        let handler = handler.mode.unwrap();
+        assert!(!handler.one_recording && handler.endings.is_empty());
     }
 
     #[test]

@@ -10,15 +10,24 @@
 //! A TOML `alive` runs under the session lock, as bash's did, so a slow one holds up every session call: it gets
 //! `[mode] timeout_secs` (3 s by default) and counts as alive when it times out or cannot run.
 //!
+//! A TOML `handle_turn` gets guards a bash one keeps in its own code (typing.sh's `type_refusal` and
+//! `type_still_wanted`): it is not run while a picker or the click overlay waits on the user, or once the turn's mode
+//! is no longer the session's, and a toast says why. Its deadline grows with the text, since typing a long dictation
+//! is its job; once passed, the hook may have typed part of it.
+//!
 //! Which kind a mode is goes by its file's extension alone. A `.toml` mode that stops loading mid-session (a live edit
 //! half done, the file moved away) is never handed to the bash loader, which would source it as shell: its settings
-//! stay those of the last version that loaded, and its hooks are skipped until it loads again.
+//! stay those of the last version that loaded, and its hooks are skipped until it loads again, but for `handle_turn`,
+//! which runs as that version has it so that a dictation is not lost.
 use super::dictation::Ending;
 use super::{SessionLock, bridge};
+use crate::ask;
+use crate::bar;
 use crate::config::intents::Intents;
 use crate::config::schema::{self, Integration};
 use crate::debug::debug;
 use crate::hooks::{self, HookEnv, ShellHooks};
+use crate::notify::{self, Kind};
 use crate::paths;
 use crate::process;
 use crate::route::pattern::{self, ModePatterns, WholeText};
@@ -56,8 +65,7 @@ pub struct ModeSettings {
     pub rewriting: Option<Rewriting>,
     /// Actions that ran but found nothing to act on, so the turn missed.
     pub miss_actions: Vec<String>,
-    /// How a one-recording mode's recording ends after the wake word, first row first. A TOML mode has none until
-    /// voxcmd-port 2.4d-3.
+    /// How a one-recording mode's recording ends after the wake word, first row first.
     pub endings: Vec<Ending>,
 }
 
@@ -118,10 +126,12 @@ impl ModeSettings {
             exit_phrases: patterns.exit_phrases,
             private: mode.private,
             open_ended: mode.open_ended,
+            one_recording: mode.one_recording,
             wake_listens: mode.wake_listens,
             listen_silence_secs: secs(mode.listen.silence_secs),
             listen_max_secs: secs(mode.listen.max_secs),
             listen_no_speech_secs: secs(mode.listen.no_speech_secs),
+            has_handler: mode.handle_turn.is_some(),
             has_rewrite: mode.rewrite.is_some() || mode.rewrite_hook.is_some(),
             has_alive: mode.alive.is_some(),
             rewriting: mode.rewrite.as_ref().map(|rewrite| Rewriting {
@@ -135,7 +145,12 @@ impl ModeSettings {
                 .filter(|(_, action)| action.miss)
                 .map(|(id, _)| id.clone())
                 .collect(),
-            ..Self::default()
+            // Compiled when the file loaded, so each one does here too.
+            endings: patterns
+                .endings
+                .iter()
+                .filter_map(|(action, body)| Ending::new(action, body))
+                .collect(),
         }
     }
 
@@ -464,13 +479,92 @@ pub fn rewrite(settings: &ModeSettings, file: &str, texts: &[String], heard_mode
     (lines.len() == texts.len()).then_some(lines)
 }
 
-/// Hands the turn's words to the mode's `session_handle_turn`, with how a one-recording mode's recording ended; its
-/// session calls go to this process. In a process group of its own, which a stop signal ends as it does an action's
-/// (typing.sh's `wtype` with it). Its failure is ignored, as bash's subshell call ignored it.
+/// Hands the turn's words to the mode's `session_handle_turn` (a TOML mode's `handle_turn`), with how a one-recording
+/// mode's recording ended; its session calls go to this process. In a process group of its own, which a stop signal
+/// ends as it does an action's (typing.sh's `wtype` with it). Its failure is ignored, as bash's subshell call ignored
+/// it.
 pub fn handle_turn(file: &str, text: &str, ending: Option<&str>, heard_mode: &str) {
+    if is_toml_file(file) {
+        return toml_handle_turn(file, text, ending, heard_mode);
+    }
     let mut command = legacy_hook("handle-turn", file);
     command.arg(text).args(ending).envs(bridge::hook_env(heard_mode));
     let _ = process::run_to_end_discarding_output(&mut command);
+}
+
+/// A file that stopped loading mid-session still hands its turn to the hook of the last version that loaded: the
+/// words would be lost otherwise. The text is only ever in `VOXCMD_TEXT`, never in a log line.
+fn toml_handle_turn(file: &str, text: &str, ending: Option<&str>, heard_mode: &str) {
+    if let Some(reason) = handle_turn_refusal(heard_mode) {
+        let stem = Path::new(file).file_stem().unwrap_or_default().to_string_lossy();
+        debug(&format!("session: {stem}'s handle_turn not run: {reason}"));
+        notify::notify(Kind::Info, "voxcmd: not typed", reason);
+        return;
+    }
+    let Some(mode) = load_toml_mode(file) else {
+        debug(&format!("session: {file} never loaded, the turn is not handed to it"));
+        return;
+    };
+    let stem = &mode.integration.stem;
+    let Some(shell) = mode
+        .integration
+        .mode
+        .as_ref()
+        .and_then(|declared| declared.handle_turn.clone())
+    else {
+        return;
+    };
+    let mut command = toml_hook(&mode, &shell, "", Some(heard_mode));
+    command.env_remove("VOXCMD_ENDING").env("VOXCMD_TEXT", text);
+    if let Some(ending) = ending {
+        command.env("VOXCMD_ENDING", ending);
+    }
+    let limit = handle_turn_timeout(&mode, text);
+    match process::run_discarding_output_within(&mut command, limit) {
+        Ok(outcome) if outcome.timed_out => debug(&format!(
+            "session: {stem}'s handle_turn ran past {} s and was ended with what it started; part of the text may \
+             have been typed",
+            limit.as_secs_f64()
+        )),
+        Ok(outcome) if outcome.code() != Some(0) => {
+            debug(&format!(
+                "session: {stem}'s handle_turn failed ({})",
+                outcome.how_it_ended()
+            ));
+        }
+        Ok(_) => {}
+        Err(error) => debug(&format!("session: cannot run {stem}'s handle_turn: {error}")),
+    }
+}
+
+/// Why the turn's text must not be handed over now, as typing.sh says it; checked straight before the hook runs. A
+/// discard flag (`discard_flag_of $$`) is this process's, the one the hook's session calls name.
+fn handle_turn_refusal(heard_mode: &str) -> Option<&'static str> {
+    if ask::read_pending().is_some() {
+        return Some("a voxcmd picker or card is open");
+    }
+    if bar::click_overlay_open() {
+        return Some("the click overlay is open");
+    }
+    let still_wanted = !paths::discard_flag(std::process::id()).exists()
+        && super::read_state().is_some_and(|state| heard_mode.is_empty() || super::mode_token(&state) == heard_mode);
+    (!still_wanted).then_some("the session ended or was stopped")
+}
+
+/// `[mode] timeout_secs`, else long enough to type the whole text: wtype typed about 4.4 ms a character into a
+/// terminal and a browser (5,000 characters, 2026-10-19), and this allows over three times that.
+fn handle_turn_timeout(mode: &TomlMode, text: &str) -> Duration {
+    const BASE: Duration = Duration::from_secs(10);
+    const PER_CHARACTER: Duration = Duration::from_millis(15);
+    let declared = mode
+        .integration
+        .mode
+        .as_ref()
+        .and_then(|declared| declared.timeout_secs);
+    declared.map_or_else(
+        || BASE + PER_CHARACTER * u32::try_from(text.chars().count()).unwrap_or(u32::MAX),
+        Duration::from_secs_f64,
+    )
 }
 
 #[cfg(test)]
@@ -532,6 +626,31 @@ mod tests {
             prefix: "overview ".into(),
         };
         assert_eq!(prefix_only.apply("next"), "overview next");
+    }
+
+    #[test]
+    fn handle_turn_has_time_to_type_the_whole_text_unless_timeout_secs_says_otherwise() {
+        let mode = |extra: &str| {
+            let text = format!("verbs = []\n[mode]\nhandle_turn = 'x'\n{extra}");
+            let integration = schema::parse_toml(Path::new("m.toml"), &text).unwrap();
+            TomlMode {
+                patterns: ModePatterns::default(),
+                integration,
+                config_dir: PathBuf::new(),
+                current: true,
+            }
+        };
+        assert_eq!(handle_turn_timeout(&mode(""), ""), Duration::from_secs(10));
+        // Characters, not bytes: about 300 s of dictation.
+        let dictation = "é".repeat(4_500);
+        assert_eq!(
+            handle_turn_timeout(&mode(""), &dictation),
+            Duration::from_millis(77_500)
+        );
+        assert_eq!(
+            handle_turn_timeout(&mode("timeout_secs = 2.5\n"), &dictation),
+            Duration::from_millis(2_500)
+        );
     }
 
     #[test]

@@ -710,3 +710,50 @@ fn the_click_conversion_runs_as_a_mode() {
     rig.hear("click", json!({}), "done clicking");
     assert!(rig.session().is_none());
 }
+
+// ---- handle_turn (voxcmd-port 2.4d-3) -------------------------------------------------------------------------------
+
+/// A mode that takes its turns' words itself: the hook writes what it got, `-` for a variable that is unset.
+const HANDLER: &str = "handle_turn = '''\nprintf '%s|%s|%s\\n' \"$VOXCMD_TEXT\" \"${VOXCMD_ENDING--}\" \"$VOXCMD_PHRASE\" >> \"$WORK/handled\"\n'''\n";
+
+#[test]
+fn a_mode_with_handle_turn_gets_each_turn_s_words_in_voxcmd_text_with_no_ending() {
+    let rig = Rig::new();
+    rig.integration("demo", HANDLER);
+    rig.hear("demo", json!({}), "Note `this` down; $(not run)");
+    assert_eq!(rig.read_work("handled"), "Note `this` down; $(not run)|-|\n");
+    // The words went to the hook, not the router.
+    assert_eq!(rig.read_work("ran"), "");
+    assert!(rig.session().is_some());
+    assert!(!rig.calls().contains("legacy voxcmd"), "{}", rig.calls());
+}
+
+#[test]
+fn a_mode_s_handle_turn_is_not_run_while_a_picker_waits_on_the_user() {
+    let rig = Rig::new();
+    rig.integration("demo", HANDLER);
+    // Not exec'd: the asker is known by its command line.
+    rig.script("bin/voxcmd-pick", "while :; do sleep 0.1; done");
+    let mut asker = Command::new(rig.path().join("bin/voxcmd-pick")).spawn().unwrap();
+    let fifo = rig.work("answer");
+    assert!(Command::new("mkfifo").arg(&fifo).status().unwrap().success());
+    std::fs::write(
+        rig.path().join("runtime/voxcmd/pending-pick.json"),
+        json!({"pid": asker.id(), "fifo": fifo}).to_string(),
+    )
+    .unwrap();
+    rig.hear("demo", json!({}), "some words");
+    let _ = asker.kill();
+    let _ = asker.wait();
+    assert_eq!(rig.read_work("handled"), "", "{}", rig.debug_log());
+    assert!(
+        rig.calls()
+            .contains("notify-send -a voxcmd --transient voxcmd: not typed a voxcmd picker or card is open"),
+        "{}",
+        rig.calls()
+    );
+    assert!(
+        rig.debug_log()
+            .contains("session: demo's handle_turn not run: a voxcmd picker or card is open")
+    );
+}
