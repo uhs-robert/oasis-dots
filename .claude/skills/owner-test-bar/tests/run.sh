@@ -383,6 +383,7 @@ mkdir -p "$vt_repo/home/voxtype/.local/bin" "$vt_repo/home/voxtype/.config/voxty
 echo main >"$vt_repo/home/voxtype/.local/bin/voxtype-daemon"
 echo main >"$vt_repo/home/voxtype/.local/bin/voxtype-old"
 echo main >"$vt_repo/home/systemd/.config/systemd/user/old.service"
+echo main >"$vt_repo/home/systemd/.config/systemd/user/other.service"
 echo main >"$vt_repo/home/voxtype/.config/voxtype/config.toml"
 echo main >"$vt_repo/home/systemd/.config/systemd/user/hyprland-session.target"
 echo main >"$vt_repo/home/systemd/.config/systemd/user/voxtype.service.d/prompt.conf"
@@ -402,6 +403,13 @@ vg switch -q -c deletes main
 vg rm -q home/voxtype/.local/bin/voxtype-old home/systemd/.config/systemd/user/old.service \
   home/systemd/.config/systemd/user/voxtype.service.d/prompt.conf
 vg commit -q -m deletes
+vg switch -q -c mod main
+echo mod >"$vt_repo/home/systemd/.config/systemd/user/other.service"
+echo mod >"$vt_repo/home/systemd/.config/systemd/user/voxtype.service.d/prompt.conf"
+mkdir "$vt_repo/home/systemd/.config/systemd/user/third.service.d"
+echo mod >"$vt_repo/home/systemd/.config/systemd/user/third.service.d/x.conf"
+vg add -A
+vg commit -q -m mod
 vg switch -q -c tests main
 echo t >"$vt_repo/home/voxtype/tests/t.sh"
 vg add -A
@@ -411,10 +419,12 @@ vg worktree add -q --detach "$bars_dir/duck" duck
 vg worktree add -q --detach "$bars_dir/tests" tests
 vg worktree add -q --detach "$bars_dir/plain" main
 vg worktree add -q --detach "$bars_dir/deletes" deletes
+vg worktree add -q --detach "$bars_dir/mod" mod
 cat >"$vt_stubs/systemctl" <<STUB
 #!/usr/bin/env bash
 echo "systemctl \$*" >>"$vt_calls"
 case \$* in
+*"is-enabled"*) [[ -z \${FAKE_NOT_ENABLED:-} ]] || exit 1 ;;
 *"disable --now "*) [[ -z \${FAKE_DISABLE_FAIL:-} || \$* != *"\$FAKE_DISABLE_FAIL" ]] || exit 1 ;;
 *"enable --now "*) [[ -z \${FAKE_ENABLE_FAIL:-} || \$* != *"\$FAKE_ENABLE_FAIL" ]] || exit 1 ;;
 esac
@@ -555,6 +565,26 @@ rm "$vt_home/.local/bin/voxtype-duck"
 out=$(vtx voxtype_status)
 check "a missing script link reads as half swapped" "grep -q 'half swapped' <<<\"\$out\""
 vtx voxtype_restore >/dev/null
+
+echo "== voxtype: a changed unit that stays"
+vt_reset
+out=$(vtx voxtype_swap mod "$bars_dir/mod")
+code=$?
+show "$out"
+check "swap succeeds without enabling anything" "[[ $code == 0 && \$out == 'voxtype: test build mod' ]] && ! grep -q 'enable' '$vt_calls'"
+check "restarts a modified unit and the unit of a changed drop-in after the reload" "[[ \$(vt_order 'daemon-reload') -lt \$(vt_order 'try-restart other.service') && \$(vt_order 'daemon-reload') -lt \$(vt_order 'try-restart third.service') ]]"
+check "voxtype is restarted once, not again for its own drop-in" "[[ \$(grep -c 'try-restart voxtype' '$vt_calls') == 1 ]]"
+: >"$vt_calls"
+vtx voxtype_restore >/dev/null
+check "restore restarts them onto main's definition after its reload" "[[ \$(vt_order 'daemon-reload') -lt \$(vt_order 'try-restart other.service') && \$(vt_order 'daemon-reload') -lt \$(vt_order 'try-restart third.service') && ! -e $bars_dir/.voxtype_restarted ]]"
+
+echo "== voxtype: a deleted unit that runs without being enabled"
+vt_reset
+out=$(FAKE_NOT_ENABLED=1 vtx voxtype_swap deletes "$bars_dir/deletes")
+check "swap stops it without disabling" "grep -q 'systemctl --user stop old.service' '$vt_calls' && ! grep -q 'disable --now old.service' '$vt_calls' && [[ ! -e $vt_units/old.service ]]"
+: >"$vt_calls"
+vtx voxtype_restore >/dev/null
+check "restore starts it again after restarting voxtype" "[[ \$(vt_order 'restart voxtype') -lt \$(vt_order 'start old.service') && -L $vt_units/old.service && ! -e $bars_dir/.voxtype_stopped ]]"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))

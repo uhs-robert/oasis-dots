@@ -26,6 +26,11 @@ voxtype_bar="$bars/.voxtype_bar"
 voxtype_enabled="$bars/.voxtype_enabled"
 # Main's units the build deletes and the swap disabled, so restore enables them again once main's links are back.
 voxtype_disabled="$bars/.voxtype_disabled"
+# Main's units the build deletes that were running but not enabled, which restore starts again.
+voxtype_stopped="$bars/.voxtype_stopped"
+# Units that stay but whose definition the build changes (a modified unit, or one with a changed drop-in); they are
+# restarted onto the new definition and again onto main's.
+voxtype_restarted="$bars/.voxtype_restarted"
 # What the swap watches in a branch: the paths that reach ~ (not voxtype's tests), as pathspecs.
 voxtype_swap_paths=(home/voxtype/.config home/voxtype/.local home/systemd/.config)
 # The Rust voxcmd that `just voxcmd-build` installs from the main checkout. rs-swap points only the voxcmd link at it.
@@ -355,6 +360,24 @@ voxtype_test_links() {
   return 0
 }
 
+# Runs `systemctl --user <args> <unit>` for each unit in <file>, then deletes the file. A unit that fails stays in the
+# file and the whole call dies, so a rerun of restore retries only those.
+voxtype_apply() {
+  local file=$1 what=$2 unit
+  local -a failed=()
+  shift 2
+  [[ -f $file ]] || return 0
+  while read -r unit; do
+    [[ -n $unit ]] || continue
+    systemctl --user "$@" "$unit" || failed+=("$unit")
+  done <"$file"
+  if ((${#failed[@]})); then
+    printf '%s\n' "${failed[@]}" >"$file"
+    die "could not $what ${failed[*]}; voxtype is not fully restored, rerun restore"
+  fi
+  rm -f "$file"
+}
+
 # Links the test build's voxtype config, its voxtype-* scripts and the units it adds or changes into ~, restarts voxtype
 # onto the new config, then enables the units the branch adds. The restart comes first: a unit that replaces something
 # voxtype did itself (voxtype-duck takes over the media ducking) would otherwise run alongside it for one recording.
@@ -364,7 +387,7 @@ voxtype_changes() {
 
 voxtype_swap() {
   local name=$1 dir=$2 changes status path unit rel link
-  local -a added_units=() changed_units=() deleted_units=() deleted_links=()
+  local -a added_units=() changed_units=() deleted_units=() deleted_links=() restart_units=()
   changes=$(voxtype_changes "$dir")
   if [[ -z $changes ]]; then
     if [[ -f $voxtype_bar ]] || [[ -n $(voxtype_test_links) ]]; then voxtype_restore; else echo "voxtype: unchanged"; fi
@@ -378,6 +401,9 @@ voxtype_swap() {
     if [[ $status == D && $path == home/voxtype/.local/bin/* ]]; then deleted_links+=("$voxtype_bin_dir/${path##*/}"); fi
     rel=${path#home/systemd/.config/systemd/user/}
     [[ $rel != "$path" ]] || continue
+    # A drop-in (x.service.d/y.conf) changes the unit it extends, whatever happened to the file.
+    if [[ $rel == *.d/* ]]; then restart_units+=("${rel%%.d/*}"); fi
+    if [[ $status == M && $rel != */* && $rel =~ \.(service|timer|socket|path)$ ]]; then restart_units+=("$rel"); fi
     if [[ $status == D ]]; then
       deleted_links+=("$voxtype_units_dir/$rel")
       if [[ $rel != */* && $rel =~ \.(service|timer|socket|path)$ ]]; then deleted_units+=("$rel"); fi
@@ -398,11 +424,18 @@ voxtype_swap() {
   echo "$name" >"$voxtype_bar"
   : >"$voxtype_enabled"
   : >"$voxtype_disabled"
-  # Main's copies of what the build deletes, so they do not keep running. A deleted unit is stopped first, while its link exists.
+  : >"$voxtype_stopped"
+  : >"$voxtype_restarted"
+  # Main's copies of what the build deletes, so they do not keep running. A deleted unit is stopped first, while its link
+  # exists; one that is running without being enabled still has to stop.
   for unit in "${deleted_units[@]}"; do
-    systemctl --user is-enabled --quiet "$unit" 2>/dev/null || continue
-    echo "$unit" >>"$voxtype_disabled"
-    systemctl --user disable --now "$unit" || die "could not disable $unit; run restore to undo the voxtype swap"
+    if systemctl --user is-enabled --quiet "$unit" 2>/dev/null; then
+      echo "$unit" >>"$voxtype_disabled"
+      systemctl --user disable --now "$unit" || die "could not disable $unit; run restore to undo the voxtype swap"
+    elif systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+      echo "$unit" >>"$voxtype_stopped"
+      systemctl --user stop "$unit" || die "could not stop $unit; run restore to undo the voxtype swap"
+    fi
   done
   for link in "${deleted_links[@]}"; do
     [[ ! -L $link ]] || rm -f "$link"
@@ -416,8 +449,17 @@ voxtype_swap() {
     mkdir -p "$(dirname "$voxtype_units_dir/$unit")"
     ln -sfn "$dir/home/systemd/.config/systemd/user/$unit" "$voxtype_units_dir/$unit"
   done
+  # Recorded before the reload; voxtype is restarted below and a unit being added or deleted is not restarted at all.
+  while read -r unit; do
+    [[ -n $unit && $unit != voxtype.service ]] || continue
+    [[ " ${added_units[*]} ${deleted_units[*]} " != *" $unit "* ]] && echo "$unit" >>"$voxtype_restarted"
+  done < <(printf '%s\n' "${restart_units[@]}" | sort -u)
   systemctl --user daemon-reload
   systemctl --user try-restart voxtype
+  # Not voxtype_apply: the record stays, since restore restarts the same units.
+  while read -r unit; do
+    systemctl --user try-restart "$unit" || die "could not restart $unit; run restore to undo the voxtype swap"
+  done <"$voxtype_restarted"
   for unit in "${added_units[@]}"; do
     echo "$unit" >>"$voxtype_enabled"
     systemctl --user enable --now "$unit" || die "could not enable $unit; run restore to undo the voxtype swap"
@@ -429,40 +471,21 @@ voxtype_swap() {
 # ducked in ExecStopPost), drop the test links, restow main, then restart voxtype onto main's config. Safe to rerun: the
 # record goes last, and with nothing swapped it touches nothing.
 voxtype_restore() {
-  local links unit
-  local -a failed=()
+  local links
   links=$(voxtype_test_links)
   [[ -n $links || -f $voxtype_bar ]] || return 0
   command -v stow >/dev/null || die "stow is not installed; cannot relink voxtype from main"
-  if [[ -f $voxtype_enabled ]]; then
-    while read -r unit; do
-      [[ -n $unit ]] || continue
-      systemctl --user disable --now "$unit" || failed+=("$unit")
-    done <"$voxtype_enabled"
-    # A unit that would not stop keeps its entry, and the links stay so the retry can still find it.
-    if ((${#failed[@]})); then
-      printf '%s\n' "${failed[@]}" >"$voxtype_enabled"
-      die "could not disable ${failed[*]}; voxtype is still swapped, rerun restore"
-    fi
-    rm -f "$voxtype_enabled"
-  fi
+  # A unit that would not stop keeps its entry, and the links stay so the retry can still find it.
+  voxtype_apply "$voxtype_enabled" "disable" disable --now
   [[ -z $links ]] || xargs -d '\n' rm -f <<<"$links"
   # -d and -t absolute: stow run from inside home/ would target the repo itself. systemd is stowed unfolded, as the installer does.
   stow -d "$repo/home" -t "$HOME" -R voxtype
   stow -d "$repo/home" -t "$HOME" --no-folding -R systemd
   systemctl --user daemon-reload
   systemctl --user restart voxtype
-  if [[ -f $voxtype_disabled ]]; then
-    while read -r unit; do
-      [[ -n $unit ]] || continue
-      systemctl --user enable --now "$unit" || failed+=("$unit")
-    done <"$voxtype_disabled"
-    if ((${#failed[@]})); then
-      printf '%s\n' "${failed[@]}" >"$voxtype_disabled"
-      die "could not re-enable ${failed[*]}; voxtype is not fully restored, rerun restore"
-    fi
-    rm -f "$voxtype_disabled"
-  fi
+  voxtype_apply "$voxtype_restarted" "restart" try-restart
+  voxtype_apply "$voxtype_disabled" "re-enable" enable --now
+  voxtype_apply "$voxtype_stopped" "start" start
   rm -f "$voxtype_bar"
   echo "voxtype: main"
 }
