@@ -27,7 +27,7 @@ Singleton {
     // Config.input's defaults until Hyprland answers.
     readonly property var fallback: ({ kb_layout: "us", kb_variant: "", repeat_rate: 25, repeat_delay: 600, sensitivity: 0, follow_mouse: 1, natural_scroll: false, tap_to_click: true, disable_while_typing: true, which_key_delay_ms: 0, pointer_keys: "hjkl" })
     property var live: root.fallback
-    property var saved: ({})
+    readonly property var saved: store.values
     property bool reload_pending: false
 
     // XKB layouts and variants from base.lst: layouts [{ code, name }], variants { layout: [{ code, name }] }.
@@ -62,8 +62,7 @@ Singleton {
         // A variant belongs to one layout.
         if (key === "kb_layout" && value !== root.value("kb_layout")) next.kb_variant = "";
         if (key === "which_key_delay_ms" || key === "pointer_keys") root.reload_pending = true;
-        root.saved = next;
-        save_timer.restart();
+        store.replace(next);
     }
 
     function layout_name(code) {
@@ -139,44 +138,25 @@ Singleton {
         onLoaded: root.parse_xkb(text())
     }
 
-    Timer {
-        id: save_timer
-        interval: 500
-        onTriggered: {
-            if (save_proc.running) {
-                save_timer.restart();
-                return;
-            }
-            // HyprVim reads its which-key delay and the Cursor submap its keys only at setup, so those changes need a reload.
-            const apply = root.reload_pending ? "hyprctl reload" : "hyprctl eval 'require(\"config.input\").apply()'";
-            root.reload_pending = false;
-            save_proc.command = ["sh", "-c", "mkdir -p \"$1\" && printf %s \"$2\" > \"$1/input.json.tmp\" && mv \"$1/input.json.tmp\" \"$1/input.json\" && " + apply,
-                "sh", root.state_dir, JSON.stringify(root.saved)];
-            save_proc.running = true;
-        }
-    }
-
-    Process {
-        id: save_proc
-        onExited: live_proc.running = true
-    }
-
-    FileView {
+    JsonStore {
+        id: store
         path: root.state_dir + "/input.json"
-        printErrors: false
-        blockLoading: true
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                const next = {};
-                for (const key in data) {
-                    if (root.valid(key, data[key])) next[key] = data[key];
-                }
-                root.saved = next;
-            } catch (e) {
-                console.warn("HyprInput: invalid input.json (" + e + ")");
+        debounce_ms: 500
+        // Listing every key the panel can drop keeps it from coming back out of the file as an unknown key.
+        known_keys: Object.keys(root.options).concat(["which_key_delay_ms", "pointer_keys"])
+        validate: raw => {
+            const next = {};
+            for (const key in raw) {
+                if (root.valid(key, raw[key])) next[key] = raw[key];
             }
+            return next;
         }
-        onLoadFailed: error => {}
+        after_save: values => {
+            // HyprVim reads its which-key delay and the Cursor submap its keys only at setup, so those changes need a reload.
+            const argv = root.reload_pending ? ["hyprctl", "reload"] : ["hyprctl", "eval", 'require("config.input").apply()'];
+            root.reload_pending = false;
+            return argv;
+        }
+        onAfter_save_done: live_proc.running = true
     }
 }
