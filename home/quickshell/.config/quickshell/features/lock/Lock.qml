@@ -5,11 +5,11 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pam
+import qs.core
 import qs.theme
 // Skins load by URL; importing the folder lets Quickshell register the component folders they import.
 import qs.features.lock.skins
 import qs.features.lock.skins.ui
-import qs.features.power
 import qs.features.popups
 import qs.features.audio
 
@@ -333,7 +333,7 @@ Singleton {
                 root.message = "";
                 root.granted = true;
                 ThemeAudio.play_lock("unlock");
-                const delay = Power.on_ac ? Math.max(0, Math.min(4000, root.unlock_ms)) : 0;
+                const delay = PowerSource.on_ac ? Math.max(0, Math.min(4000, root.unlock_ms)) : 0;
                 if (delay === 0) root.finish_unlock();
                 else unlock_timer.restart();
                 return;
@@ -449,7 +449,7 @@ Singleton {
         interval: 30000
         onTriggered: {
             if (!persist.locked) return;
-            if (Power.on_ac && !root.granted && !root.checking && root.buffer === "") root.saver = true;
+            if (PowerSource.on_ac && !root.granted && !root.checking && root.buffer === "") root.saver = true;
             else saver_timer.restart();
         }
     }
@@ -484,8 +484,8 @@ Singleton {
         typing: root.typing
         insert: root.insert
         granted: root.granted
-        saver: root.saver && Power.on_ac
-        animate: Power.on_ac
+        saver: root.saver && PowerSource.on_ac
+        animate: PowerSource.on_ac
         backdrops: root.backdrop_files
         power_live: true
         sound: true

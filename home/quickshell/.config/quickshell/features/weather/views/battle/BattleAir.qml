@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.core
 import qs.ui.effects
 import qs.theme
-import qs.features.power
 import qs.features.clock
 import qs.features.weather
 import qs.styles.nes.widgets
@@ -29,7 +29,7 @@ Item {
     // "Unhealthy for Sensitive Groups" and worse.
     readonly property bool poisoned: root.aqi >= 151
 
-    readonly property bool animating: Popups.open_name === "weather" && root.visible && Power.on_ac
+    readonly property bool animating: Popups.open_name === "weather" && root.visible && PowerSource.on_ac
 
     readonly property int sprite_pixel: 2
     readonly property int sprite_h: Slimes.KING_SLIME.length * root.sprite_pixel

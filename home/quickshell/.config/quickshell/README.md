@@ -389,7 +389,7 @@ Starting it through Hyprland rather than from a shell keeps the terminal's envir
 
 The live log is at `$XDG_RUNTIME_DIR/quickshell/by-id/<id>/log.log`, or read it with `qs log -p <path>` (`-f` to follow). A QML error there means the config didn't load. `qmllint` doesn't catch these reliably, so check the log after every change.
 
-One rule for new code: nothing animates or polls on battery or while it isn't visible. Gate timers and animations on `Power.on_ac` and on the item being shown.
+One rule for new code: nothing animates or polls on battery or while it isn't visible. Gate timers and animations on `PowerSource.on_ac` and on the item being shown.
 
 ## Weather views
 

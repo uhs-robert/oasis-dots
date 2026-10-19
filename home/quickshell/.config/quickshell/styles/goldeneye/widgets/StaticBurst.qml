@@ -1,6 +1,6 @@
 import QtQuick
+import qs.core
 import qs.theme
-import qs.features.power
 
 // A short, subdued burst of the pause watch's static over whatever it covers; play() does nothing on battery or while hidden, and the shader is unloaded between bursts.
 Item {
@@ -11,7 +11,7 @@ Item {
     property bool busy: false
 
     function play() {
-        if (!Power.on_ac || !root.visible) return;
+        if (!PowerSource.on_ac || !root.visible) return;
         root.noise_step = 0;
         root.busy = true;
         burst_anim.restart();

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
+import qs.core
 import qs.theme
 import "Search.js" as Search
 import "popup/fuzzy_rows.js" as FuzzyRows
@@ -10,7 +11,6 @@ import qs.ui.popup
 import qs.ui.frames
 import qs.ui.menu
 import qs.ui.keys
-import qs.features.power
 import qs.features.launcher
 import qs.features.popups
 import qs.features.audio
@@ -385,7 +385,7 @@ PanelWindow {
     Timer {
         interval: 530
         repeat: true
-        running: root.st.caret_blink && !root.passive && root.visible && root.wanted && Power.on_ac
+        running: root.st.caret_blink && !root.passive && root.visible && root.wanted && PowerSource.on_ac
         onTriggered: Style.caret_phase = !Style.caret_phase
         onRunningChanged: Style.caret_phase = true
     }

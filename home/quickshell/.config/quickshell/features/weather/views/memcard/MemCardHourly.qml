@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.core
 import qs.ui.effects
 import qs.theme
-import qs.features.power
 import qs.features.weather
 import qs.features.weather.views.shared
 
@@ -395,7 +395,7 @@ Item {
                         height: track.icon_row_h + track.label_row_h
 
                         Timer {
-                            running: hour_col.selected && Power.on_ac
+                            running: hour_col.selected && PowerSource.on_ac
                             interval: 450
                             repeat: true
                             onTriggered: hour_col.frame_up = !hour_col.frame_up

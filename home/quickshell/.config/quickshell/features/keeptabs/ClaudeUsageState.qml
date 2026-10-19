@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.features.power
+import qs.core
 
 // `claude -p /usage`, refreshed every 10 min only on AC while agents run, and when one finishes.
 Singleton {
@@ -60,7 +60,7 @@ Singleton {
 
     Timer {
         interval: root.poll_ms
-        running: Power.on_ac && KeeptabsState.available
+        running: PowerSource.on_ac && KeeptabsState.available
         repeat: true
         triggeredOnStart: true
         onTriggered: root.refresh(false)
@@ -72,7 +72,7 @@ Singleton {
         target: KeeptabsState
         function onTooltipChanged() {
             const count = KeeptabsState.count("DONE");
-            if (count > root.done_count && Power.on_ac) root.refresh(true);
+            if (count > root.done_count && PowerSource.on_ac) root.refresh(true);
             root.done_count = count;
         }
     }

@@ -3,8 +3,8 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Widgets
+import qs.core
 import qs.theme
-import qs.features.power
 import qs.features.windows
 
 // A Hyprland toplevel's live image fitted inside the item, with its app icon until a frame arrives.
@@ -28,7 +28,7 @@ Item {
         width: implicitWidth
         height: implicitHeight
         visible: root.has_content
-        opacity: root.tinted && !Power.on_ac ? 0.7 : 1
+        opacity: root.tinted && !PowerSource.on_ac ? 0.7 : 1
         captureSource: root.capturing ? root.toplevel.wayland : null
         live: root.live && root.capturing
         constraintSize: Qt.size(root.width, root.height)
@@ -36,7 +36,7 @@ Item {
 
     MultiEffect {
         anchors.fill: view
-        visible: root.tinted && Power.on_ac
+        visible: root.tinted && PowerSource.on_ac
         source: view
         colorization: 1
         colorizationColor: Style.wk.mid

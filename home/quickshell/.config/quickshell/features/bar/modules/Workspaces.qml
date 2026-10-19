@@ -3,10 +3,10 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import qs.core
 import qs.theme
 import qs.components
 import qs.ui.effects
-import qs.features.power
 import qs.styles.ff7.widgets as Ff7
 import qs.styles.gameboy.widgets as Gameboy
 import qs.styles.goldeneye.widgets as Goldeneye
@@ -478,7 +478,7 @@ Item {
                 }
 
                 Timer {
-                    running: root.party && pill.modelData.focused && !pill.ball && Power.on_ac
+                    running: root.party && pill.modelData.focused && !pill.ball && PowerSource.on_ac
                     interval: 500
                     repeat: true
                     onTriggered: pill.hop = !pill.hop

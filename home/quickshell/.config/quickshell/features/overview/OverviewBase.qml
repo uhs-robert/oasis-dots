@@ -3,11 +3,11 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
+import qs.core
 import qs.ui.effects
 import qs.ui.menu
 import qs.theme
 import qs.ui.keys
-import qs.features.power
 import qs.features.popups
 import qs.features.audio
 import qs.features.windows
@@ -99,7 +99,7 @@ PanelWindow {
         strip: Style.px(150)
     })
     readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
-    readonly property bool animate_moves: root.filmstrip && Power.on_ac && root.reveal === 1
+    readonly property bool animate_moves: root.filmstrip && PowerSource.on_ac && root.reveal === 1
 
     default property alias content: content_slot.data
     property alias under_tiles: under_slot.data
@@ -144,7 +144,7 @@ PanelWindow {
 
     function reveal_open() {
         reveal_anim.stop();
-        if (Power.on_ac) {
+        if (PowerSource.on_ac) {
             reveal_anim.to = 1;
             reveal_anim.start();
         } else {
@@ -161,7 +161,7 @@ PanelWindow {
         if (immediate) {
             root.reveal = 0;
             root.visible = false;
-        } else if (Power.on_ac && root.visible) {
+        } else if (PowerSource.on_ac && root.visible) {
             reveal_anim.to = 0;
             reveal_anim.start();
         } else {

@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.features.power
+import qs.core
 
 Singleton {
     id: root
@@ -44,7 +44,7 @@ Singleton {
 
     Timer {
         interval: 10000
-        running: Power.on_ac
+        running: PowerSource.on_ac
         repeat: true
         triggeredOnStart: true
         onTriggered: root.poll()

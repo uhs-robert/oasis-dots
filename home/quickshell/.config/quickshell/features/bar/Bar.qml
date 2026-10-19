@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.core
 import qs.theme
 import "BarLayout.js" as BarLayout
 import "BarModules.js" as BarModules
 // Keeps features/bar/modules in the Quickshell scan; modules load by URL and need BarModule.
 import qs.features.bar.modules
-import qs.features.power
 import qs.features.media
 import qs.features.bar.neovim as Neovim
 import qs.features.weather
@@ -146,7 +146,7 @@ Item {
     Item {
         id: lualine_cava
         readonly property real room: root.section_c - (segment_loader.item ? segment_loader.item.min_width : 0) - 16
-        readonly property bool shown: Style.bar_lualine && right_island.visible && MediaState.playing && Power.on_ac && lualine_cava.room >= 48
+        readonly property bool shown: Style.bar_lualine && right_island.visible && MediaState.playing && PowerSource.on_ac && lualine_cava.room >= 48
         visible: lualine_cava.shown
         x: right_island.x - width - 8
         width: Math.max(0, Math.min(120, lualine_cava.room))

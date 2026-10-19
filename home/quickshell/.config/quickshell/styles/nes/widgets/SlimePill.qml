@@ -1,7 +1,7 @@
 import QtQuick
+import qs.core
 import qs.theme
 import qs.ui.effects
-import qs.features.power
 import "Slimes.js" as Slimes
 
 // A Dragon Quest slime leading a workspace pill: grey metal slime when empty, blue with apps, a hopping king on the focused one. The workspace's icons sit to its right.
@@ -43,7 +43,7 @@ Item {
 
     // A one-sprite-pixel hop in place of a smooth bob, so the king stays on the pixel grid.
     Timer {
-        running: root.focused && root.visible && Power.on_ac
+        running: root.focused && root.visible && PowerSource.on_ac
         interval: 500
         repeat: true
         onTriggered: root.hopped = !root.hopped

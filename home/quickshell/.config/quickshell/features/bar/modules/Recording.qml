@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.core
 import qs.theme
 import qs.components.bar_icons
-import qs.features.power
 import qs.features.screenshot
 import qs.features.popups
 
@@ -37,7 +37,7 @@ BarModule {
             tint: root.counting ? Theme.warning : Theme.theme_label
 
             SequentialAnimation {
-                running: root.shown && Power.on_ac
+                running: root.shown && PowerSource.on_ac
                 loops: Animation.Infinite
                 onRunningChanged: if (!running) dot.opacity = 1
 

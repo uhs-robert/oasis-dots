@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
+import qs.core
 import qs.theme
-import qs.features.power
 import qs.styles.goldeneye as Watch
 import "../Watch.js" as W
 
@@ -11,7 +11,7 @@ Item {
     id: root
 
     property bool running: false
-    readonly property bool live: root.running && Power.on_ac
+    readonly property bool live: root.running && PowerSource.on_ac
     readonly property real dial: 124
     readonly property real k: face.panel_item.height / 485
 

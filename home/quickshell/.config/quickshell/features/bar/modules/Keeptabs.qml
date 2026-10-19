@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
+import qs.core
 import qs.theme
-import qs.features.power
 import qs.features.keeptabs
 import qs.features.bar
 
@@ -41,7 +41,7 @@ BarModule {
 
     // Nudges replay only on AC; the timer never runs while nothing waits or is done.
     function sync_nudge() {
-        if ((KeeptabsState.waiting_count > 0 || KeeptabsState.done_count > 0) && Power.on_ac) {
+        if ((KeeptabsState.waiting_count > 0 || KeeptabsState.done_count > 0) && PowerSource.on_ac) {
             if (!nudge_timer.running) nudge_timer.start();
         } else {
             nudge_timer.stop();
@@ -78,7 +78,7 @@ BarModule {
     }
 
     Connections {
-        target: Power
+        target: PowerSource
         function onOn_acChanged() {
             root.sync_nudge();
         }
