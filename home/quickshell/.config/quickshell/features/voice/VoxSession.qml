@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 import qs.theme
 
 // The voice session voxcmd keeps open (rapid, click, type...), read from the file it writes while one is
@@ -11,10 +12,10 @@ Singleton {
     id: root
 
     readonly property bool active: session_open && owner_alive
-    property string kind: ""
-    property string label: ""
-    property string exit_hint: ""
-    property var stack: []
+    readonly property string kind: session.values.kind
+    readonly property string label: session.values.label
+    readonly property string exit_hint: session.values.exit_hint
+    readonly property var stack: session.values.stack
 
     // Colored per mode kind from the submap palette, as SubmapState does per submap. Kinds from other integrations
     // fall back to the theme's secondary color.
@@ -26,35 +27,30 @@ Singleton {
     readonly property color mode_color: color_map[kind] || Theme.theme_secondary
 
     readonly property string voxcmd_dir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/voxcmd"
-    property bool session_open: false
-    property int owner: 0
-    property string owner_start: ""
+    readonly property bool session_open: session.values.open
+    readonly property int owner: session.values.owner
+    readonly property string owner_start: session.values.owner_start
     property bool owner_alive: false
     property bool voxcmd_dir_exists: false
 
-    FileView {
-        id: session_file
+    // The file exists only while a session is open, so a missing or unreadable one is the defaults: not open.
+    JsonStore {
+        id: session
         path: root.voxcmd_dir + "/session.json"
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
+        read_only: true
+        defaults: ({ open: false, kind: "", label: "", exit_hint: "", stack: [], owner: 0, owner_start: "" })
+        validate: raw => ({
+            open: true,
+            kind: String(raw.kind || ""),
+            label: String(raw.label || "Voice session"),
+            exit_hint: String(raw.exit_hint || ""),
+            stack: Array.isArray(raw.stack) ? raw.stack : [],
+            owner: Number(raw.owner) || 0,
+            owner_start: String(raw.owner_start || "")
+        })
         onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                root.kind = String(data.kind || "");
-                root.label = String(data.label || "Voice session");
-                root.exit_hint = String(data.exit_hint || "");
-                root.stack = Array.isArray(data.stack) ? data.stack : [];
-                root.owner_start = String(data.owner_start || "");
-                root.owner = Number(data.owner) || 0;
-                root.session_open = true;
-                owner_probe.reload();
-            } catch (e) {
-                root.session_open = false;
-            }
+            if (session.values.open) owner_probe.reload();
         }
-        onLoadFailed: error => root.session_open = false
     }
 
     // A watch only reports a file appearing in a folder that exists, and voxcmd makes its folder on first use, which
@@ -69,7 +65,7 @@ Singleton {
             if (error === FileViewError.FileNotFound)
                 return;
             root.voxcmd_dir_exists = true;
-            session_file.reload();
+            session.rearm();
         }
     }
 

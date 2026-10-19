@@ -16,31 +16,31 @@ Singleton {
     readonly property double max_meeting_ms: 12 * 3600000
 
     // True once a cache file has been read, even an empty one.
-    property bool configured: false
+    readonly property bool configured: cache.values.configured
     // calendar-sync's error.json: the events are then the last good copy and may be stale. An error older than the
     // cache's `updated` is left over from before a good sync, so it is ignored.
-    property string error_message: ""
-    property double error_at_ms: 0
+    readonly property string error_message: error_cache.values.message
+    readonly property double error_at_ms: error_cache.values.at_ms
     readonly property string error: root.error_message !== "" && (!root.configured || root.error_at_ms >= root.updated_ms) ? root.error_message : ""
-    property double updated_ms: 0
+    readonly property double updated_ms: cache.values.updated_ms
     // The span calendar-sync fetched, start inclusive, end exclusive; 0 when an older cache does not say.
-    property double window_start_ms: 0
-    property double window_end_ms: 0
+    readonly property double window_start_ms: cache.values.window_start_ms
+    readonly property double window_end_ms: cache.values.window_end_ms
     readonly property bool has_window: root.window_start_ms > 0 && root.window_end_ms > root.window_start_ms
     // Sorted by start; each has start_ms, end_ms and a day_keys list.
-    property var events: []
+    readonly property var events: cache.values.events
     // "YYYY-MM-DD" -> that day's events.
-    property var day_index: ({})
+    readonly property var day_index: cache.values.day_index
 
     // A day asked for over IPC or by a voice command; the clock popup takes it when it opens and clears it.
     property string requested_day: ""
 
     property double now_ms: Date.now()
 
-    // Reloads both files by hand too: a FileView cannot watch a file whose folder did not exist when it started.
+    // Reloads both files by hand too: a watch cannot report a file whose folder did not exist when it started.
     function refresh() {
-        file.reload();
-        error_file.reload();
+        cache.rearm();
+        error_cache.rearm();
     }
 
     function day_key(date) {
@@ -166,57 +166,36 @@ Singleton {
     // The chip looks a fixed time ahead, so it carries across midnight where next_event_today stops.
     readonly property var chip_event: root.events.find(e => root.is_meeting(e) && e.start_ms > root.now_ms && e.start_ms <= root.now_ms + root.chip_window_minutes * 60000) || null
 
-    FileView {
-        id: file
+    // A missing file is the defaults: nothing configured. A half-written or broken one is too, until the next good sync
+    // (calendar-sync replaces the file atomically).
+    JsonStore {
+        id: cache
         path: root.path
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                const list = root.normalize(Array.isArray(data.events) ? data.events : []);
-                root.events = list;
-                root.day_index = root.build_index(list);
-                root.updated_ms = Date.parse(data.updated) || 0;
-                root.window_start_ms = Date.parse(data.window_start) || 0;
-                root.window_end_ms = Date.parse(data.window_end) || 0;
-                root.configured = true;
-            } catch (e) {
-                // A half-written or broken file keeps the last good events.
-                console.warn("CalendarState: invalid events.json (" + e + ")");
-            }
-        }
-        onLoadFailed: {
-            root.configured = false;
-            root.events = [];
-            root.day_index = {};
-            root.window_start_ms = 0;
-            root.window_end_ms = 0;
+        read_only: true
+        defaults: ({ configured: false, events: [], day_index: {}, updated_ms: 0, window_start_ms: 0, window_end_ms: 0 })
+        validate: raw => {
+            const list = root.normalize(Array.isArray(raw.events) ? raw.events : []);
+            return {
+                configured: true,
+                events: list,
+                day_index: root.build_index(list),
+                updated_ms: Date.parse(raw.updated) || 0,
+                window_start_ms: Date.parse(raw.window_start) || 0,
+                window_end_ms: Date.parse(raw.window_end) || 0
+            };
         }
     }
 
-    FileView {
-        id: error_file
+    JsonStore {
+        id: error_cache
         path: root.path.replace(/events\.json$/, "error.json")
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            let message = "";
-            let at_ms = NaN;
-            try {
-                const data = JSON.parse(text());
-                message = String(data.error || "");
-                at_ms = Date.parse(data.at);
-            } catch (e) {}
+        read_only: true
+        defaults: ({ message: "", at_ms: 0 })
+        validate: raw => {
+            const at_ms = Date.parse(raw.at);
             // Without a readable time the error counts as current.
-            root.error_at_ms = isNaN(at_ms) ? Number.MAX_VALUE : at_ms;
-            root.error_message = message || "sync failed";
+            return { message: String(raw.error || "") || "sync failed", at_ms: isNaN(at_ms) ? Number.MAX_VALUE : at_ms };
         }
-        onLoadFailed: root.error_message = ""
     }
 
     SystemClock {
