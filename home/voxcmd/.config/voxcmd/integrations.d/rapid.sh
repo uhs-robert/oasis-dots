@@ -26,9 +26,11 @@ mode_actions=(rapid_mode stop_rapid)
 # Inside the session the mode-naming forms are a missed turn, not an exit: only "cortana ..." leaves. The verbs stay so
 # that outside a session they still run before Media's and System's. A bare done or exit word becomes the hint's own
 # phrase, so it routes to rapid_leave_hint per step; an empty rewrite would be the generic "Not understood" for the turn.
+# Repeats count too: voxtype hears one "stop" as "Stop. Stop. Stop.", which the routing correction retry would shrink to
+# a "stop" that pauses the music.
 session_rewrite() {
   if [[ "$1" =~ ^($rapid_exit_phrase)$ ]]; then return; fi
-  if [[ "$1" =~ ^($rapid_leave_words)$ ]]; then printf '%s' "$rapid_leave_hint_text"; return; fi
+  if [[ "$1" =~ ^($rapid_leave_words)( ($rapid_leave_words))*$ ]]; then printf '%s' "$rapid_leave_hint_text"; return; fi
   printf '%s' "$1"
 }
 
