@@ -622,7 +622,7 @@ fn stop_ends_the_session_the_sequences_the_ask_and_the_recording() {
 }
 
 #[test]
-fn stop_leaves_a_one_recording_mode_s_recording_to_the_bash_voxcmd() {
+fn stop_stops_a_one_recording_mode_s_recording_for_its_watcher_to_hand_over() {
     let voice = Voice::new();
     voice.set_state("recording");
     let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
@@ -633,8 +633,10 @@ fn stop_leaves_a_one_recording_mode_s_recording_to_the_bash_voxcmd() {
     );
     assert!(voice.output(&["stop"]).status.success());
     end(&mut owner);
-    assert_eq!(voice.calls(), "bash voxcmd stop\n");
-    assert!(voice.runtime().join("session.json").exists());
+    assert_eq!(voice.calls(), "voxtype record stop\n");
+    let session: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(voice.runtime().join("session.json")).unwrap()).unwrap();
+    assert_eq!(session["ending"], serde_json::json!({"action": "type", "by": "key"}));
 }
 
 #[test]

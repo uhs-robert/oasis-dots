@@ -73,17 +73,26 @@ impl Outcome {
 /// Runs the command with no stdin and both outputs captured. After `timeout` the command's process group is killed;
 /// so it is when the command has exited, so that children it left behind do not outlive the call.
 pub fn run_with_timeout(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
+    command.stdin(Stdio::null());
+    run(command, Some(timeout), OnStop::Kill)
+}
+
+/// `run_with_timeout` for a command that reads voxcmd's own stdin (a wake clip voxcmd-wake pipes in, `/dev/stdin`).
+pub fn run_with_timeout_on_stdin(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
+    command.stdin(Stdio::inherit());
     run(command, Some(timeout), OnStop::Kill)
 }
 
 /// `run_with_timeout` for an action, which has no deadline of its own (Stop Voice ends it). What it left running after
 /// it exited is left alone: an action may start an app, which must outlive it.
 pub fn run_to_end(command: &mut Command) -> std::io::Result<Outcome> {
+    command.stdin(Stdio::null());
     run(command, None, OnStop::Kill)
 }
 
 /// `run_to_end` for an ask, which a stop signal gives time to take its question down (see `STOP_GRACE`).
 pub fn run_ask_to_end(command: &mut Command) -> std::io::Result<Outcome> {
+    command.stdin(Stdio::null());
     run(command, None, OnStop::LetCleanUp)
 }
 
@@ -119,12 +128,9 @@ fn parent_is_gone(forked_from: libc::pid_t, parent_now: libc::pid_t) -> bool {
     forked_from != parent_now
 }
 
+/// Each caller sets stdin: only `run_with_timeout_on_stdin` lets a command read voxcmd's own.
 fn run(command: &mut Command, timeout: Option<Duration>, on_stop: OnStop) -> std::io::Result<Outcome> {
-    command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .process_group(0);
+    command.stdout(Stdio::piped()).stderr(Stdio::piped()).process_group(0);
     let (mut child, _live) = spawn_listed(command, on_stop)?;
     let stdout = Drain::start(child.stdout.take());
     let stderr = Drain::start(child.stderr.take());

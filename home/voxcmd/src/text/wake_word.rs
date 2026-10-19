@@ -97,6 +97,18 @@ impl WakeWords {
         let rest = &captures[1];
         Some(rest.strip_suffix(' ').unwrap_or(rest).to_string())
     }
+
+    /// The words after the last wake word of normalized words, all of them when there is none.
+    pub fn after_last(&self, words: &str) -> String {
+        let any = &self.any;
+        let heard = compiled(&self.heard, || format!("(?s) (?:{any}) (.*)$"));
+        let mut rest = words.to_string();
+        while let Some(captures) = heard.captures(&format!(" {rest} ")) {
+            let after = &captures[1];
+            rest = after.strip_suffix(' ').unwrap_or(after).to_string();
+        }
+        rest
+    }
 }
 
 static FILLER: LazyLock<Regex> =
@@ -163,6 +175,15 @@ mod tests {
             Some(("Open Firefox,".to_string(), "close it".to_string()))
         );
         assert_eq!(wake.split_trailing("Cortana, close it"), None);
+    }
+
+    #[test]
+    fn the_words_after_the_last_wake_word_are_kept() {
+        let wake = WakeWords::new(DEFAULT_ALIASES);
+        assert_eq!(wake.after_last("asked cortana about it cortana stop"), "stop");
+        assert_eq!(wake.after_last("stop"), "stop");
+        assert_eq!(wake.after_last("kortana cortana"), "");
+        assert_eq!(wake.after_last("cortanas stop"), "cortanas stop");
     }
 
     #[test]

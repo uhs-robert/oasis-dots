@@ -3,23 +3,20 @@
 //! The session goes first, so its watcher cannot open the microphone again: ending it flags the watcher's recording as
 //! discarded, whatever the watcher is doing. Then every running sequence is flagged, the waiting ask is cancelled, and
 //! whatever voxtype still records or transcribes is cancelled. A one-recording mode's recording (type mode's
-//! dictation) is stopped and typed instead, which the bash voxcmd still does (voxcmd-port 2.4d).
+//! dictation) is the exception: it is stopped and typed, and its watcher ends the session
+//! (`session::dictation::stop_recording_locked`).
 use super::{voxtype_record, voxtype_state};
 use crate::ask;
 use crate::debug::debug;
 use crate::exit::CliError;
 use crate::paths;
 use crate::route::sequence_run::process_start_time;
-use crate::session::{self, SessionLock, text_of};
-use std::process::{Command, Stdio};
+use crate::session::{self, SessionLock, dictation, text_of};
 
 pub fn run() -> Result<(), CliError> {
-    let lock = SessionLock::take();
-    if session::state(&lock).is_some_and(|state| session::recording_owner_holds(&state)) {
-        drop(lock);
-        return bash_stops();
+    if dictation::stop_recording_locked(&SessionLock::take()) {
+        return Ok(());
     }
-    drop(lock);
     session::end_all("stopped", std::process::id());
     // Before the ask is cancelled, so the sequence it was asking for reads that answer as Stop Voice's.
     for pid in running_sequence_pids() {
@@ -40,15 +37,6 @@ pub fn run() -> Result<(), CliError> {
         voxtype_record("cancel", &[]);
     }
     Ok(())
-}
-
-fn bash_stops() -> Result<(), CliError> {
-    let stopped = Command::new(paths::legacy_bin())
-        .arg("stop")
-        .stdin(Stdio::null())
-        .status()
-        .is_ok_and(|status| status.success());
-    if stopped { Ok(()) } else { Err(CliError::quiet("stop")) }
 }
 
 /// The pid of each sequence running now. A record whose process is gone, or is another one under a reused pid (its

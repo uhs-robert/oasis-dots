@@ -154,14 +154,11 @@ pub fn inherited_owner_file() -> Option<PathBuf> {
 }
 
 /// Starts the watcher through the `setsid` binary, so it outlives this listen and the terminal or key binding that ran
-/// it; the suites log and stub that `setsid` call. A one-recording mode's watcher (type mode's) is the bash voxcmd's
-/// `_watch` until voxcmd-port 2.4d. Its pid, none when it could not start.
+/// it; the suites log and stub that `setsid` call. The session lock is close-on-exec, so the watcher never holds it.
+/// Its pid, none when it could not start.
 fn start_watcher(handler: Handler, session_listen: Option<&SessionListen>, owner_file: Option<&Path>) -> Option<u32> {
     let mut command = Command::new("setsid");
-    match session_listen {
-        Some(listen) if listen.mode.one_recording => command.arg(paths::legacy_bin()).arg("_watch"),
-        _ => command.arg(ask::this_binary()).args(["internal", "watch"]),
-    };
+    command.arg(ask::this_binary()).args(["internal", "watch"]);
     let (token, private) = session_listen.map_or(("-", false), |listen| (listen.token.as_str(), listen.mode.private));
     command
         .args([handler.name(), token, if private { "1" } else { "0" }])

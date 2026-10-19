@@ -2,11 +2,12 @@
 //! to it (was `session_locked`, `session_state`, `session_update`, `session_set_owner`, `session_create`,
 //! `session_enter/push/truncate/leave/end`, `session_end_all`, `session_end_if_mine` and `session_run_ended_hook`)
 //!
-//! The lock is the bash one's (`flock` on the same file), so either binary may hold it: a type mode recording still
-//! runs in the bash voxcmd until voxcmd-port 2.4d. The file stays a `serde_json::Value`, so fields this port does not
+//! The lock is the bash one's (`flock` on the same file), so either binary may hold it: until voxcmd-port 3.2 the
+//! installed bash voxcmd and voxcmd-wake still act on a session the Rust port opened, and the reverse. The file stays a `serde_json::Value`, so fields this port does not
 //! know are kept, and it is replaced whole (written beside it, then renamed), so the bar never reads half of it.
 //! "Mine" is a pid the caller names: the watcher's own, or the Rust process a bash hook was run from (`bridge.rs`).
 pub mod bridge;
+pub mod dictation;
 pub mod mode;
 pub mod turn;
 
@@ -95,8 +96,8 @@ pub fn is_mine(state: &Value, me: u32) -> bool {
     text_of(&state["owner"]) == me.to_string()
 }
 
-/// A one-recording mode (type mode) whose recording's watcher still owns the session: that recording is the bash
-/// voxcmd's to stop and hand over (voxcmd-port 2.4d).
+/// A one-recording mode (type mode) whose recording's watcher still owns the session: that watcher still has the
+/// recording's transcript to hand over.
 pub fn recording_owner_holds(state: &Value) -> bool {
     state["one_recording"] == Value::Bool(true) && text_of(&state["recording_owner"]) == text_of(&state["owner"])
 }
