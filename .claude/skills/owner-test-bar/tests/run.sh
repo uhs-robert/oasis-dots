@@ -294,6 +294,16 @@ check "a bare stow -R aborts on the foreign link, which is why restore removes i
 out=$(rsx voxcmd_restore)
 check "restore's stow -R succeeds while swapped" "[[ \$? == 0 ]] && link_is '$stow_target'"
 
+echo "== rs: a symlinked data dir"
+reset_calls
+ln -s "$rs_home/.local/share" "$root/data_link"
+XDG_DATA_HOME=$root/data_link rsx main rs-swap 5 >/dev/null
+out=$(XDG_DATA_HOME=$root/data_link rsx voxcmd_status)
+check "status recognises the Rust link" "[[ \$out == 'voxcmd: Rust (restores in '* ]]"
+XDG_DATA_HOME=$root/data_link rsx voxcmd_restore >/dev/null
+check "restore leaves voxcmd on main" "[[ \$? == 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
+rm "$root/data_link"
+
 echo "== rs: the data dir and the checkout"
 reset_calls
 XDG_DATA_HOME=$rs_home/.local/share rsx main rs-swap 5 >/dev/null

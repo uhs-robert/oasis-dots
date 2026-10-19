@@ -19,6 +19,8 @@ voxcmd_private_dirs=(integrations.d replacements.d)
 voxcmd_bar="$bars/.voxcmd_bar"
 # The Rust voxcmd that `just voxcmd-build` installs from the main checkout. rs-swap points only the voxcmd link at it.
 voxcmd_rs_bin="${XDG_DATA_HOME:-$HOME/.local/share}/voxcmd-rs/bin/voxcmd"
+# Links are compared resolved, so the target is too: a symlinked XDG_DATA_HOME would otherwise never match.
+voxcmd_rs_target=$(readlink -m "$voxcmd_rs_bin")
 # The epoch second the rs swap's timer fires at. Written before the link moves; lives in the cache, so it outlasts the
 # timer across a reboot, which is how status tells a lost timer from a swap that never happened.
 voxcmd_rs_marker="$bars/.voxcmd_rs"
@@ -245,13 +247,13 @@ voxcmd_test_links() {
   for link in "$voxcmd_bin_dir"/* "$voxcmd_config_link"; do
     [[ -L $link ]] || continue
     target=$(readlink -m "$link")
-    [[ $target == "$bars"/* || $target == "$voxcmd_rs_bin" ]] && echo "$link"
+    [[ $target == "$bars"/* || $target == "$voxcmd_rs_target" ]] && echo "$link"
   done
   return 0
 }
 
 voxcmd_rs_linked() {
-  [[ -L $voxcmd_bin_dir/voxcmd && $(readlink -m "$voxcmd_bin_dir/voxcmd") == "$voxcmd_rs_bin" ]]
+  [[ -L $voxcmd_bin_dir/voxcmd && $(readlink -m "$voxcmd_bin_dir/voxcmd") == "$voxcmd_rs_target" ]]
 }
 
 # Links the owner's private integrations into the test build, the same way their private dotfiles link them into the main checkout.
