@@ -189,6 +189,25 @@ Popup {
         else if (root.on_alerts_tab) root.move_alert_cursor(dir, jump);
     }
 
+    WheelStepper {
+        id: wheel_stepper
+    }
+
+    // The wheel does what h/l does. Shift adds the 24-hour step only where Shift+H/L has one:
+    // Daily and Air have no day-sized step, and Alerts keeps its own scrolling.
+    function wheel_step(wheel) {
+        if (root.on_alerts_tab) return;
+        const horizontal = Math.abs(wheel.angleDelta.x) > Math.abs(wheel.angleDelta.y);
+        const pixels = horizontal ? wheel.pixelDelta.x : wheel.pixelDelta.y;
+        const notches = wheel_stepper.consume(pixels !== 0 ? pixels * 2 : (horizontal ? wheel.angleDelta.x : wheel.angleDelta.y));
+        if (notches === 0) return;
+        const by_day = !!(wheel.modifiers & Qt.ShiftModifier) && root.current_tab === 1 && !root.on_air;
+        const before = root.cursor_key();
+        // Wheel down and a rightward tilt both report negative deltas, and both mean later.
+        for (let i = 0; i < Math.abs(notches); i++) root.move_time(notches < 0 ? 1 : -1, by_day);
+        root.play_if_moved(before);
+    }
+
     function go_now() {
         root.day_cursor = 0;
         root.hour_cursor = 0;
@@ -274,6 +293,14 @@ Popup {
         focus: true
 
         Keys.onPressed: event => root.handle_key(event)
+
+        WheelHandler {
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+            onWheel: event => {
+                root.wheel_step(event);
+                event.accepted = true;
+            }
+        }
 
         ColumnLayout {
             id: main_column
