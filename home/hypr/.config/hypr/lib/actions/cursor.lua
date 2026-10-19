@@ -100,12 +100,15 @@ Cursor.kbptr = function(mode, opts)
   local cmd = assert(KBPTR_CMDS[mode], "unknown kbptr mode: " .. mode)
   if opts and opts.exit then
     return function()
+      Cursor.hold_stop()
       Submap.reset()
       Hypr.cmd_then_dispatch(cmd, 'hl.dsp.submap("reset")')()
     end
   end
 
+  -- Leaves the submap without exit_cursor, so the scroll key's release bind would never fire.
   return function()
+    Cursor.hold_stop()
     hl.dispatch(hl.dsp.submap("reset"))
     Hypr.cmd_then_dispatch(cmd, 'hl.dsp.submap("Cursor")')()
   end
