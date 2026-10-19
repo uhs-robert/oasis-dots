@@ -60,7 +60,7 @@ fi
 diffs=$(diff -rq -x monitors.lua "$scratch/stage" "$dest" 2>&1)
 # monitors.lua is installed to /etc/greetd, outside $dest; a missing install counts as differing.
 if ! cmp -s "$scratch/stage/monitors.lua" /etc/greetd/monitors.lua; then
-  diffs+="monitors.lua"$'\n'
+  diffs+="${diffs:+$'\n'}monitors.lua"
 fi
 if [[ -z $diffs ]]; then
   echo "greeter: up to date"
