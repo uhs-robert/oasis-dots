@@ -4,10 +4,9 @@ import Quickshell
 import qs.ui
 import qs.theme
 import qs.styles.ps1.widgets as Ps1
-import qs.styles.ps2.widgets as Ps2
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.styles.snes.widgets as SnesParts
-import qs.styles.snes.popups as Snes
+import qs.features.clock.views
 import qs.features.popups
 import qs.features.audio
 
@@ -454,14 +453,14 @@ exit 0
 
                 Component {
                     id: snes_clock
-                    Snes.SnesClockStatus {
+                    SnesClockStatus {
                         running: root.is_open
                     }
                 }
 
                 Component {
                     id: ps1_clock
-                    Ps1.SaveClock {
+                    SaveClock {
                         id: save_clock
                         running: root.is_open
                         week: root.week_number(save_clock.now)
@@ -477,7 +476,7 @@ exit 0
 
                 Component {
                     id: ps2_clock
-                    Ps2.ClockScreen {
+                    ClockScreen {
                         running: root.is_open
                     }
                 }

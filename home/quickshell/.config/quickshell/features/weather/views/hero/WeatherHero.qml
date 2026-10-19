@@ -4,6 +4,7 @@ import Quickshell
 import qs.theme
 import qs.ui.effects
 import qs.features.weather
+import qs.styles.modern.widgets
 
 // Current conditions as a large temperature beside the condition, today's low-to-high range bar,
 // a row of stat tiles, then the first alert as a tinted card.

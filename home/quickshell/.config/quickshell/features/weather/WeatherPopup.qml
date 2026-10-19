@@ -3,10 +3,10 @@ import QtQuick.Layouts
 import qs.ui
 import qs.ui.menu
 import qs.theme
-import qs.styles.oasis.widgets as Oasis
-import qs.styles.modern.widgets as Modern
-import qs.styles.neovim.widgets as Neovim
 import qs.features.weather.views.battle
+import qs.features.weather.views.hero
+import qs.features.weather.views.lsp
+import qs.features.weather.views.oasis
 import qs.features.weather.views.hev
 import qs.features.weather.views.memcard
 import qs.features.weather.views.mode7
@@ -369,14 +369,14 @@ Popup {
 
                 Component {
                     id: hero_header
-                    Modern.WeatherHero {
+                    WeatherHero {
                         onAlert_clicked: root.open_alerts()
                     }
                 }
 
                 Component {
                     id: lsp_header
-                    Neovim.WeatherLsp {
+                    WeatherLsp {
                         trail: [root.tabs[root.current_tab] || "", root.sub_views[root.current_sub] || ""]
                         onAlert_clicked: root.open_alerts()
                     }
@@ -394,7 +394,7 @@ Popup {
 
                 Component {
                     id: oasis_header
-                    Oasis.OasisHeader {}
+                    OasisHeader {}
                 }
             }
 

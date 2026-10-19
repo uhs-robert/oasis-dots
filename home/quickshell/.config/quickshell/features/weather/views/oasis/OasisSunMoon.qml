@@ -400,7 +400,7 @@ Item {
                 anchors.leftMargin: 14
                 spacing: 14
 
-                Oasis.MoonPool {
+                MoonPool {
                     Layout.preferredWidth: 112
                     Layout.preferredHeight: 92
                     phase: root.moon_phase

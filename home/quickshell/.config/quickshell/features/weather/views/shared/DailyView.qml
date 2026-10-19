@@ -3,11 +3,11 @@ import QtQuick.Layouts
 import Quickshell
 import qs.ui.frames
 import qs.theme
-import qs.styles.oasis.widgets as Oasis
-import qs.styles.modern.widgets as Modern
 import qs.features.weather
 import qs.features.weather.views.battle
 import qs.features.weather.views.lsp
+import qs.features.weather.views.hero
+import qs.features.weather.views.oasis
 import qs.features.weather.views.memcard
 import qs.features.weather.views.mode7
 import qs.features.weather.views.pokedex
@@ -367,7 +367,7 @@ Item {
                     Loader {
                         active: root.dunes
                         anchors.fill: parent
-                        sourceComponent: Oasis.OasisDay {
+                        sourceComponent: OasisDay {
                             day: day_col.modelData
                             selected: day_col.day_index === root.day_cursor
                             scale_min: root.window_temp_range.min
@@ -383,7 +383,7 @@ Item {
                     Loader {
                         active: root.pill_columns
                         anchors.fill: parent
-                        sourceComponent: Modern.DayColumn {
+                        sourceComponent: DayColumn {
                             sub: root.sub
                             wind_max: root.wind_max
                             day: day_col.modelData
