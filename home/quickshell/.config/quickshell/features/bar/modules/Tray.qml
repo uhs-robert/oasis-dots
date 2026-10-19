@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.SystemTray
 import qs.theme
-import qs.components.bar_icons
+import qs.features.bar
 import qs.features.popups
 
 BarModule {

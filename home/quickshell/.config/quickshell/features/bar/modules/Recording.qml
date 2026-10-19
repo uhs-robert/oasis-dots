@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.core
 import qs.theme
-import qs.components.bar_icons
+import qs.features.bar
 import qs.features.screenshot
 import qs.features.popups
 

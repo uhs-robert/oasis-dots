@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Bluetooth as QsBt
 import qs.theme
-import qs.components.bar_icons
+import qs.features.bar
 
 BarModule {
     id: root

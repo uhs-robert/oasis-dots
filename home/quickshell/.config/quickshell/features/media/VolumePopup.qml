@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
-import qs.components
+import qs.ui.gauges
 import qs.core
 import qs.ui
 import qs.ui.menu

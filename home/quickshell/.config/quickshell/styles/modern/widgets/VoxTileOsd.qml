@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
-import qs.components as Shared
+import qs.ui.gauges
 
 // The voxtype OSD as a card: a mic tile, the phase, the elapsed time as the readout and the wave where the meter sits.
 ColumnLayout {
@@ -58,7 +58,7 @@ ColumnLayout {
         }
     }
 
-    Shared.Waveform {
+    Waveform {
         Layout.fillWidth: true
         Layout.preferredHeight: Style.px(36)
         frozen: !root.recording

@@ -8,7 +8,6 @@ import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import qs.core
 import qs.theme
-import qs.components
 import qs.features.display
 import qs.styles.snes.widgets as Snes
 import qs.styles.ps1.widgets as Ps1
