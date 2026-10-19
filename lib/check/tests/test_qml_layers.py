@@ -35,8 +35,7 @@ class DirectionTest(LayersCase):
     def test_downward_and_same_rank_imports_pass(self):
         files = {
             "qs/features/clock/Clock.qml": "import qs.ui\nimport qs.theme\nimport qs.core\nimport qs.features.power\n",
-            "qs/ui/Box.qml": "import qs.theme\nimport qs.components\n",
-            "qs/components/Bit.qml": "import qs.ui\n",
+            "qs/ui/Box.qml": "import qs.theme\n",
             "qs/core/Core.qml": "import QtQuick\n",
             "qs/theme/Style.qml": "import qs.core\n",
             "qs/ui/x.js": '.import "../theme/y.js" as Y\n',

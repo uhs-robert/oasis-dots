@@ -3,7 +3,7 @@
 import QtQuick
 import Quickshell
 import qs.features.bar
-import qs.components.transitions
+import qs.theme.transitions
 import qs.features.lock
 import qs.features.overview
 import qs.services

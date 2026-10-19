@@ -1,6 +1,6 @@
 import Quickshell.Io
 import qs.theme
-import qs.components.transitions
+import qs.theme.transitions
 import qs.features.audio
 
 IpcHandler {
