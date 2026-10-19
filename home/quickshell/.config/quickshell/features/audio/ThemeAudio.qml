@@ -302,7 +302,7 @@ Singleton {
 
     FileView {
         id: state_file
-        path: Style.state_dir + "/audio.json"
+        path: Paths.state_dir + "/audio.json"
         printErrors: false
         blockLoading: true
         onLoaded: {

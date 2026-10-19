@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
-import qs.theme
+import qs.core
 import qs.features.popups
 
 Singleton {
@@ -96,7 +96,7 @@ Singleton {
 
     FileView {
         id: usage_file
-        path: Style.state_dir + "/picker_usage.json"
+        path: Paths.state_dir + "/picker_usage.json"
         printErrors: false
         onLoaded: {
             try {

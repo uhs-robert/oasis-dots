@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 import qs.theme
 
 // What the login screen shows; "follow" fields take the lock screen's value. Saved in greeter.json under the state dir.
@@ -75,7 +76,7 @@ Singleton {
 
     FileView {
         id: state_file
-        path: Style.state_dir + "/greeter.json"
+        path: Paths.state_dir + "/greeter.json"
         printErrors: false
         blockLoading: true
         onLoaded: {

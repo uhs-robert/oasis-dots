@@ -669,11 +669,10 @@ Singleton {
         if (style_name in root.styles) root.name = style_name;
     }
 
-    readonly property string state_dir: Paths.state_dir
 
     Process {
         id: ensure_state_dir
-        command: ["mkdir", "-p", root.state_dir]
+        command: ["mkdir", "-p", Paths.state_dir]
     }
 
     FileView {
@@ -688,7 +687,7 @@ Singleton {
 
     FileView {
         id: state_file
-        path: root.state_dir + "/style.json"
+        path: Paths.state_dir + "/style.json"
         printErrors: false
         blockLoading: true
         onLoaded: {
@@ -712,7 +711,7 @@ Singleton {
 
     FileView {
         id: options_file
-        path: root.state_dir + "/theme_options.json"
+        path: Paths.state_dir + "/theme_options.json"
         printErrors: false
         blockLoading: true
         onLoaded: {
@@ -727,7 +726,7 @@ Singleton {
 
     FileView {
         id: lock_file
-        path: root.state_dir + "/lock.json"
+        path: Paths.state_dir + "/lock.json"
         printErrors: false
         blockLoading: true
         onLoaded: {

@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import qs.core
 import qs.theme
 import "BarLayout.js" as BarLayout
 
@@ -39,7 +40,7 @@ Singleton {
 
     FileView {
         id: state_file
-        path: Style.state_dir + "/bars.json"
+        path: Paths.state_dir + "/bars.json"
         printErrors: false
         blockLoading: true
         watchChanges: true
