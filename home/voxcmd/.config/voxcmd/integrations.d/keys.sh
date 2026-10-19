@@ -16,7 +16,7 @@ bar_surface_open() {
   [ -x "$qs_ipc" ] || return 1
   [ "$(timeout 2 "$qs_ipc" call popup keyboard 2>/dev/null)" = yes ] ||
     [ "$(timeout 2 "$qs_ipc" call overview state 2>/dev/null)" = open ] ||
-    [ "$(timeout 2 "$qs_ipc" call tmux-overview state 2>/dev/null)" = open ]
+    [ "$(timeout 2 "$qs_ipc" call tmux_overview state 2>/dev/null)" = open ]
 }
 
 # Prints why no key may be pressed now, nothing when pressing is fine (the same checks as type mode's, except that a

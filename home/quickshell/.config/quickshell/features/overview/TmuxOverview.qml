@@ -65,37 +65,6 @@ OverviewBase {
     dismiss: () => root.hide_overview()
     filmstrip_vertical: dy => root.move_session(0, dy)
 
-    IpcHandler {
-        target: "tmux-overview"
-
-        function open(): string {
-            root.show_overview();
-            return "ok";
-        }
-
-        function close(): string {
-            root.hide_overview();
-            return "ok";
-        }
-
-        function search(): string {
-            root.show_overview();
-            root.start_filter(true);
-            return "ok";
-        }
-
-        function toggle(): string {
-            if (root.wanted) root.hide_overview();
-            else root.show_overview();
-            return "ok";
-        }
-
-        // "open" or "closed", for voxcmd.
-        function state(): string {
-            return root.wanted ? "open" : "closed";
-        }
-    }
-
     function show_overview() {
         if (root.wanted) return;
         root.hold_focused_screen();

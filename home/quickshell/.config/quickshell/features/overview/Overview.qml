@@ -138,8 +138,7 @@ OverviewBase {
         target: SessionStore
 
         function onSave_requested(target) {
-            root.save_target = target;
-            root.show_overview("save", false);
+            root.begin_save(target);
         }
 
         function onSaved(name) {
@@ -157,56 +156,10 @@ OverviewBase {
         }
     }
 
-    IpcHandler {
-        target: "overview"
-
-        // Marks every window to save as a session; `target_name` is a saved session to replace, or empty for a new one.
-        function save_session(target_name: string): string {
-            root.save_target = target_name;
-            root.show_overview("save", false);
-            return "ok";
-        }
-
-        function open(): string {
-            root.show_overview("", false);
-            return "ok";
-        }
-
-        function close(): string {
-            root.hide_overview();
-            return "ok";
-        }
-
-        function search(): string {
-            root.show_overview("search", false);
-            return "ok";
-        }
-
-        function move_follow(): string {
-            root.show_overview("move", true);
-            return "ok";
-        }
-
-        function move_silent(): string {
-            root.show_overview("move", false);
-            return "ok";
-        }
-
-        function toggle(): string {
-            if (root.wanted) root.hide_overview();
-            else root.show_overview("", false);
-            return "ok";
-        }
-
-        // "open" or "closed", for voxcmd and the shadow skill's wait.
-        function state(): string {
-            return root.wanted ? "open" : "closed";
-        }
-
-        // The one entry for voice: `verb` runs the function its key does, `args` is a space-separated list. Returns "ok" or "error: <why>".
-        function act(verb: string, args: string): string {
-            return root.voice_act(verb, args);
-        }
+    // Opens in save mode; `target_name` is a saved session to replace, or empty for a new one.
+    function begin_save(target_name) {
+        root.save_target = target_name;
+        root.show_overview("save", false);
     }
 
     // entry "share" or "share_resume" takes over an open overview, since the request must be answered.
