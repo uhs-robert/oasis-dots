@@ -155,6 +155,25 @@ check grep -q 'Could not move' <<<"$output"
 check test ! -e "$s/weather.local.json"
 check test "$(cat "$q/weather.local.json")" = "$content"
 
+case_name='a failed removal of the old file keeps the good new copy and warns'
+fresh l
+printf '%s' "$content" >"$q/weather.local.json"
+chmod 555 "$q"
+if (: >"$q/probe") 2>/dev/null; then
+  rm -f "$q/probe"
+  echo "skip: $case_name (directory is writable, running as root?)"
+else
+  output=$(
+    set -e
+    migrate_quickshell_weather "$q" "$s" 2>&1
+  )
+  check test "$?" -eq 0
+  check grep -q 'could not remove' <<<"$output"
+  check test "$(cat "$s/weather.local.json")" = "$content"
+  check test -f "$q/weather.local.json"
+  chmod 755 "$q"
+fi
+
 case_name='handles a space in the path'
 q="$scratch/with space/qs"
 s="$scratch/with space/state"

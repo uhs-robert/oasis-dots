@@ -226,9 +226,13 @@ migrate_quickshell_weather() {
     return 0
   fi
   if _migrate_run mkdir -p -- "$state" && _migrate_run cp -p -- "$old" "$new" &&
-    { [[ "${MIGRATE_DRY_RUN:-0}" -eq 1 ]] || cmp -s -- "$old" "$new"; } &&
-    _migrate_run rm -- "$old"; then
-    info "Moved $old to $new"
+    { [[ "${MIGRATE_DRY_RUN:-0}" -eq 1 ]] || cmp -s -- "$old" "$new"; }; then
+    if _migrate_run rm -- "$old"; then
+      info "Moved $old to $new"
+    else
+      # The copy is good and now wins; the next run's identical-files rule deletes the old one.
+      warn "Copied $old to $new but could not remove $old; the next install removes it."
+    fi
     return 0
   fi
   # cp can leave a partial file, and a truncated one must not win the next run's "new exists" rule.
