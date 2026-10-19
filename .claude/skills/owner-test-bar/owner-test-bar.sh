@@ -24,6 +24,8 @@ voxtype_units_dir="$HOME/.config/systemd/user"
 # one per line, written before each enable, so restore disables exactly those even after a failure partway.
 voxtype_bar="$bars/.voxtype_bar"
 voxtype_enabled="$bars/.voxtype_enabled"
+# Main's units the build deletes and the swap disabled, so restore enables them again once main's links are back.
+voxtype_disabled="$bars/.voxtype_disabled"
 # What the swap watches in a branch: the paths that reach ~ (not voxtype's tests), as pathspecs.
 voxtype_swap_paths=(home/voxtype/.config home/voxtype/.local home/systemd/.config)
 # The Rust voxcmd that `just voxcmd-build` installs from the main checkout. rs-swap points only the voxcmd link at it.
@@ -356,10 +358,14 @@ voxtype_test_links() {
 # Links the test build's voxtype config, its voxtype-* scripts and the units it adds or changes into ~, restarts voxtype
 # onto the new config, then enables the units the branch adds. The restart comes first: a unit that replaces something
 # voxtype did itself (voxtype-duck takes over the media ducking) would otherwise run alongside it for one recording.
+voxtype_changes() {
+  git -C "$1" diff --name-status --no-renames --diff-filter=ADM origin/main...HEAD -- "${voxtype_swap_paths[@]}"
+}
+
 voxtype_swap() {
   local name=$1 dir=$2 changes status path unit rel link
-  local -a added_units=() changed_units=()
-  changes=$(git -C "$dir" diff --name-status --no-renames --diff-filter=AM origin/main...HEAD -- "${voxtype_swap_paths[@]}")
+  local -a added_units=() changed_units=() deleted_units=() deleted_links=()
+  changes=$(voxtype_changes "$dir")
   if [[ -z $changes ]]; then
     if [[ -f $voxtype_bar ]] || [[ -n $(voxtype_test_links) ]]; then voxtype_restore; else echo "voxtype: unchanged"; fi
     return 0
@@ -369,8 +375,14 @@ voxtype_swap() {
   systemctl --user show-environment >/dev/null 2>&1 || die "the systemd user manager is unreachable; refusing the voxtype swap"
   [[ -L $voxtype_config_link ]] || die "$voxtype_config_link is not a symlink (stow unfolded it?); refusing the voxtype swap"
   while IFS=$'\t' read -r status path; do
+    if [[ $status == D && $path == home/voxtype/.local/bin/* ]]; then deleted_links+=("$voxtype_bin_dir/${path##*/}"); fi
     rel=${path#home/systemd/.config/systemd/user/}
     [[ $rel != "$path" ]] || continue
+    if [[ $status == D ]]; then
+      deleted_links+=("$voxtype_units_dir/$rel")
+      if [[ $rel != */* && $rel =~ \.(service|timer|socket|path)$ ]]; then deleted_units+=("$rel"); fi
+      continue
+    fi
     changed_units+=("$rel")
     # Only top-level units are enabled; drop-ins (x.service.d/y.conf) just ride along with the unit they extend.
     if [[ $status == A && $rel != */* && $rel =~ \.(service|timer|socket|path)$ ]]; then added_units+=("$rel"); fi
@@ -385,6 +397,16 @@ voxtype_swap() {
   # Recorded before any link moves, so restore knows to restow even if this stops halfway.
   echo "$name" >"$voxtype_bar"
   : >"$voxtype_enabled"
+  : >"$voxtype_disabled"
+  # Main's copies of what the build deletes, so they do not keep running. A deleted unit is stopped first, while its link exists.
+  for unit in "${deleted_units[@]}"; do
+    systemctl --user is-enabled --quiet "$unit" 2>/dev/null || continue
+    echo "$unit" >>"$voxtype_disabled"
+    systemctl --user disable --now "$unit" || die "could not disable $unit; run restore to undo the voxtype swap"
+  done
+  for link in "${deleted_links[@]}"; do
+    [[ ! -L $link ]] || rm -f "$link"
+  done
   mkdir -p "$voxtype_bin_dir"
   for link in "$dir/home/voxtype/.local/bin"/*; do
     ln -sfn "$link" "$voxtype_bin_dir/${link##*/}"
@@ -408,14 +430,20 @@ voxtype_swap() {
 # record goes last, and with nothing swapped it touches nothing.
 voxtype_restore() {
   local links unit
+  local -a failed=()
   links=$(voxtype_test_links)
   [[ -n $links || -f $voxtype_bar ]] || return 0
   command -v stow >/dev/null || die "stow is not installed; cannot relink voxtype from main"
   if [[ -f $voxtype_enabled ]]; then
     while read -r unit; do
       [[ -n $unit ]] || continue
-      systemctl --user disable --now "$unit" || echo "owner-test-bar: could not disable $unit; continuing" >&2
+      systemctl --user disable --now "$unit" || failed+=("$unit")
     done <"$voxtype_enabled"
+    # A unit that would not stop keeps its entry, and the links stay so the retry can still find it.
+    if ((${#failed[@]})); then
+      printf '%s\n' "${failed[@]}" >"$voxtype_enabled"
+      die "could not disable ${failed[*]}; voxtype is still swapped, rerun restore"
+    fi
     rm -f "$voxtype_enabled"
   fi
   [[ -z $links ]] || xargs -d '\n' rm -f <<<"$links"
@@ -424,6 +452,17 @@ voxtype_restore() {
   stow -d "$repo/home" -t "$HOME" --no-folding -R systemd
   systemctl --user daemon-reload
   systemctl --user restart voxtype
+  if [[ -f $voxtype_disabled ]]; then
+    while read -r unit; do
+      [[ -n $unit ]] || continue
+      systemctl --user enable --now "$unit" || failed+=("$unit")
+    done <"$voxtype_disabled"
+    if ((${#failed[@]})); then
+      printf '%s\n' "${failed[@]}" >"$voxtype_disabled"
+      die "could not re-enable ${failed[*]}; voxtype is not fully restored, rerun restore"
+    fi
+    rm -f "$voxtype_disabled"
+  fi
   rm -f "$voxtype_bar"
   echo "voxtype: main"
 }
@@ -438,13 +477,32 @@ voxtype_linked_bars() {
   done | sort -u
 }
 
+# Whether every link a swap to this test bar makes is in place, and every link it removes is gone.
+voxtype_fully_linked() {
+  local dir=$bars/$1 status path rel file
+  [[ $(readlink "$voxtype_config_link") == "$dir/home/voxtype/.config/voxtype" ]] || return 1
+  for file in "$dir/home/voxtype/.local/bin"/*; do
+    [[ -e $file ]] || continue
+    [[ $(readlink "$voxtype_bin_dir/${file##*/}") == "$file" ]] || return 1
+  done
+  while IFS=$'\t' read -r status path; do
+    rel=${path#home/systemd/.config/systemd/user/}
+    [[ $rel != "$path" ]] || continue
+    if [[ $status == D ]]; then
+      [[ ! -e $voxtype_units_dir/$rel ]] || return 1
+    else
+      [[ $(readlink "$voxtype_units_dir/$rel") == "$dir/home/systemd/.config/systemd/user/$rel" ]] || return 1
+    fi
+  done < <(voxtype_changes "$dir")
+}
+
 voxtype_status() {
   local names
   names=$(voxtype_linked_bars)
   if [[ -z $names && ! -f $voxtype_bar ]]; then
     echo "voxtype: main"
-  elif [[ -f $voxtype_bar && $names == "$(<"$voxtype_bar")" ]]; then
-    echo "voxtype: test build $names (enabled: $(paste -sd ' ' "$voxtype_enabled" 2>/dev/null || true))"
+  elif [[ -f $voxtype_bar && (-z $names || $names == "$(<"$voxtype_bar")") ]] && voxtype_fully_linked "$(<"$voxtype_bar")"; then
+    echo "voxtype: test build $(<"$voxtype_bar") (enabled: $(paste -sd ' ' "$voxtype_enabled" 2>/dev/null || true))"
   else
     echo "voxtype: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
   fi

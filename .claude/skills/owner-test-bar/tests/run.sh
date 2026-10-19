@@ -381,6 +381,8 @@ vg() { git -C "$vt_repo" -c user.name=t -c user.email=t@t "$@"; }
 mkdir -p "$vt_repo/home/voxtype/.local/bin" "$vt_repo/home/voxtype/.config/voxtype" "$vt_repo/home/voxtype/tests" \
   "$vt_repo/home/systemd/.config/systemd/user/voxtype.service.d" "$vt_repo/.claude/skills/owner-test-bar"
 echo main >"$vt_repo/home/voxtype/.local/bin/voxtype-daemon"
+echo main >"$vt_repo/home/voxtype/.local/bin/voxtype-old"
+echo main >"$vt_repo/home/systemd/.config/systemd/user/old.service"
 echo main >"$vt_repo/home/voxtype/.config/voxtype/config.toml"
 echo main >"$vt_repo/home/systemd/.config/systemd/user/hyprland-session.target"
 echo main >"$vt_repo/home/systemd/.config/systemd/user/voxtype.service.d/prompt.conf"
@@ -396,6 +398,10 @@ echo duck >"$vt_repo/home/systemd/.config/systemd/user/voxtype-duck.service"
 echo duck >"$vt_repo/home/systemd/.config/systemd/user/voxtype.service.d/duck.conf"
 vg add -A
 vg commit -q -m duck
+vg switch -q -c deletes main
+vg rm -q home/voxtype/.local/bin/voxtype-old home/systemd/.config/systemd/user/old.service \
+  home/systemd/.config/systemd/user/voxtype.service.d/prompt.conf
+vg commit -q -m deletes
 vg switch -q -c tests main
 echo t >"$vt_repo/home/voxtype/tests/t.sh"
 vg add -A
@@ -404,10 +410,12 @@ vg switch -q main
 vg worktree add -q --detach "$bars_dir/duck" duck
 vg worktree add -q --detach "$bars_dir/tests" tests
 vg worktree add -q --detach "$bars_dir/plain" main
+vg worktree add -q --detach "$bars_dir/deletes" deletes
 cat >"$vt_stubs/systemctl" <<STUB
 #!/usr/bin/env bash
 echo "systemctl \$*" >>"$vt_calls"
 case \$* in
+*"disable --now "*) [[ -z \${FAKE_DISABLE_FAIL:-} || \$* != *"\$FAKE_DISABLE_FAIL" ]] || exit 1 ;;
 *"enable --now "*) [[ -z \${FAKE_ENABLE_FAIL:-} || \$* != *"\$FAKE_ENABLE_FAIL" ]] || exit 1 ;;
 esac
 STUB
@@ -508,6 +516,45 @@ out=$(vtx voxtype_swap duck "$bars_dir/duck")
 code=$?
 check "refuses before moving anything" "[[ $code != 0 ]] && grep -q 'is not a symlink' <<<\"\$out\" && vt_link_is $vt_home/.config/voxtype $vt_main_config && [[ ! -e $bars_dir/.voxtype_bar ]] && ! grep -qE 'restart|daemon-reload|enable' '$vt_calls'"
 rm "$vt_units/voxtype-duck.service"
+
+echo "== voxtype: a branch that deletes scripts and units"
+vt_reset
+out=$(vtx voxtype_swap deletes "$bars_dir/deletes")
+code=$?
+show "$out"
+check "a deletion-only branch swaps" "[[ $code == 0 && \$out == 'voxtype: test build deletes' ]]"
+check "main's copies of what it deletes are unlinked" "[[ ! -e $vt_home/.local/bin/voxtype-old && ! -e $vt_units/old.service && ! -e $vt_units/voxtype.service.d/prompt.conf ]]"
+check "a deleted unit is stopped before its link goes" "grep -q 'disable --now old.service' '$vt_calls' && [[ \$(cat $bars_dir/.voxtype_disabled) == old.service ]]"
+out=$(vtx voxtype_status)
+check "status reports the test build" "grep -q 'test build deletes' <<<\"\$out\""
+: >"$vt_calls"
+out=$(vtx voxtype_restore)
+check "restore relinks what was deleted and re-enables the unit after restarting voxtype" "[[ \$out == 'voxtype: main' && -L $vt_home/.local/bin/voxtype-old && -L $vt_units/old.service && -L $vt_units/voxtype.service.d/prompt.conf && ! -e $bars_dir/.voxtype_disabled ]] && [[ \$(vt_order 'restart voxtype') -lt \$(vt_order 'enable --now old.service') ]]"
+
+echo "== voxtype: a unit that will not stop"
+vt_reset
+vtx voxtype_swap duck "$bars_dir/duck" >/dev/null
+out=$(FAKE_DISABLE_FAIL=voxtype-duck.service vtx voxtype_restore)
+code=$?
+show "$out"
+check "restore fails and says to rerun" "[[ $code != 0 ]] && grep -q 'rerun restore' <<<\"\$out\""
+check "the entry, the record and the links stay for the retry" "[[ \$(cat $bars_dir/.voxtype_enabled) == voxtype-duck.service && -f $bars_dir/.voxtype_bar && -L $vt_units/voxtype-duck.service ]]"
+out=$(vtx voxtype_restore)
+check "a rerun finishes" "[[ \$out == 'voxtype: main' && ! -e $bars_dir/.voxtype_bar ]] && vt_link_is $vt_home/.config/voxtype $vt_main_config"
+
+echo "== voxtype: status after a partial swap"
+vt_reset
+vtx voxtype_swap duck "$bars_dir/duck" >/dev/null
+rm "$vt_units/voxtype-duck.service"
+out=$(vtx voxtype_status)
+check "a missing unit link reads as half swapped" "grep -q 'half swapped' <<<\"\$out\""
+vtx voxtype_restore >/dev/null
+vt_reset
+vtx voxtype_swap duck "$bars_dir/duck" >/dev/null
+rm "$vt_home/.local/bin/voxtype-duck"
+out=$(vtx voxtype_status)
+check "a missing script link reads as half swapped" "grep -q 'half swapped' <<<\"\$out\""
+vtx voxtype_restore >/dev/null
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
