@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Hyprland
 import qs.theme
-import qs.components
 import qs.features.bar
 import qs.features.windows
 

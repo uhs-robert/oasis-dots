@@ -5,7 +5,6 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs.core
 import qs.theme
-import qs.components
 import qs.ui.effects
 import qs.styles.ff7.widgets as Ff7
 import qs.styles.gameboy.widgets as Gameboy
