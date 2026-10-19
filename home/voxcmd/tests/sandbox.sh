@@ -95,7 +95,8 @@
 #                                     detector would, its transcriber hearing that line; each logs "pause-check done".
 #                                     A line "WAKE <text>" is voxcmd-wake's confirmation instead (no "pause"), "AFTER_END
 #                                     <text>" waits for the recording to end first, SANDBOX_PAUSE_CHECKS_AT_ONCE=1 runs
-#                                     the lines together, and $SANDBOX_DIR/pause-recording replaces the id.
+#                                     the lines together, and $SANDBOX_DIR/pause-recording replaces the id. An IDLE
+#                                     turn's pause verdict waits for that checker to finish.
 #   voxtype -q ... transcribe <file>  prints voxtype's progress lines, a blank line and $SANDBOX_TRANSCRIBE_TEXT, as a
 #                                     wake confirmation's transcription does (no blank line without it: no speech)
 #                                     It logs its VOXCMD_AUTOSTOP_NO_SPEECH_SECS as "autostop no_speech_secs=<n>",
@@ -433,8 +434,10 @@ voxcmd-autostop)
     log "pause_check_recording=$VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING"
     log "pause_check_voxcmd=${VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD-}"
     # Detached as the real detector's checks are, so a watcher ending this detector never ends them.
-    [ ! -e "$SANDBOX_DIR/pause-text" ] ||
+    if [ -e "$SANDBOX_DIR/pause-text" ]; then
       python3 -c 'import os, sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$0" --sandbox-pause-checks </dev/null >/dev/null 2>&1 &
+      pause_checker=$!
+    fi
   fi
   # The room threshold a watcher's detector measures, as the real one writes it.
   [ -z "${VOXCMD_AUTOSTOP_THRESHOLD_FILE-}" ] || [ -z "${SANDBOX_ROOM_THRESHOLD_DB-}" ] ||
@@ -457,7 +460,11 @@ voxcmd-autostop)
     case "$turn" in
     SILENCE) exit 3 ;;
     CAP*) exit 5 ;;
-    *) exit 0 ;;
+    *)
+      # As the real detector's pause verdict waits for the pause checks still running.
+      [ -z "${pause_checker-}" ] || wait "$pause_checker"
+      exit 0
+      ;;
     esac
     ;;
   esac

@@ -66,6 +66,9 @@ DEFAULT_SETTINGS = {
     "pause_check_voxcmd": "",
     "pause_check_secs": "0.6",
     "pause_check_clip_secs": "3",
+    # How long a pause verdict waits for the checks still running or waiting, so an ending said just before the pause,
+    # a cancel above all, decides how the recording ends; bounded, so a hung check never keeps the recording open.
+    "pause_check_wait_secs": "8",
 }
 
 # With threshold_db = auto, speech is margin_db above the room: a low percentile of the last ROOM_WINDOW_SECS, first
@@ -81,6 +84,7 @@ DIGITAL_SILENCE_DB = -90.0
 # Loud frames count as speech only in runs this long: a syllable lasts longer than a key click or a tap on the desk.
 MIN_SPEECH_RUN_FRAMES = 3
 STATE_POLL_SECS = 0.2
+CHECK_POLL_SECS = 0.05
 # How long voxtype gets to report the recording it was asked to start.
 RECORDING_START_GRACE_SECS = 3.0
 
@@ -375,6 +379,7 @@ class PauseChecks:
             os.path.dirname(os.path.realpath(__file__)), "voxcmd"
         )
         self.pause_secs = float(settings["pause_check_secs"])
+        self.wait_secs = float(settings["pause_check_wait_secs"])
         self.recent_frames = collections.deque(maxlen=round(float(settings["pause_check_clip_secs"]) / FRAME_SECS))
         self.trace = trace
         self.last_quiet_secs = 0.0
@@ -395,6 +400,24 @@ class PauseChecks:
             if self.running is not None and self.running.poll() is None:
                 self.trace(f"pause at {detector.elapsed_secs:.2f}s waits for the check running")
         self.start_waiting()
+
+    def pending(self):
+        return self.waiting_clip is not None or (self.running is not None and self.running.poll() is None)
+
+    def wait_for_pending_checks(self, recording_state):
+        """Waits up to wait_secs (pause_check_wait_secs) for the checks still running or waiting. False when the
+        recording ended meanwhile, as one does when a check hears "cortana cancel", so the pause must not stop it."""
+        deadline = time.monotonic() + self.wait_secs
+        if self.pending():
+            self.trace("the stop waits for the pause checks")
+        while self.pending() and time.monotonic() < deadline:
+            if recording_state and recording_state.ended():
+                return False
+            time.sleep(CHECK_POLL_SECS)
+            self.start_waiting()
+        if self.pending():
+            self.trace(f"pause checks still running after {self.wait_secs:g}s, stopping anyway")
+        return not (recording_state and recording_state.ended())
 
     def start_waiting(self):
         if self.running is not None and self.running.poll() is None:
@@ -466,6 +489,9 @@ def wait_for_verdict(audio_fd, detector, recording_state, pause_checks):
         while len(pending) >= FRAME_BYTES:
             frame, pending = pending[:FRAME_BYTES], pending[FRAME_BYTES:]
             verdict = detector.feed(frame)
+            if verdict == VERDICT_SILENCE and pause_checks.enabled():
+                if not pause_checks.wait_for_pending_checks(recording_state):
+                    return VERDICT_NOTHING_TO_DO
             if verdict is not None:
                 return verdict
             if pause_checks.enabled():
