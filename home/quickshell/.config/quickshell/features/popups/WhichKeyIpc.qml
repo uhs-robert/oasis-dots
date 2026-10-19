@@ -1,15 +1,21 @@
+import Quickshell
 import Quickshell.Io
 
-IpcHandler {
+Scope {
+    id: root
+
+    // Kept off the IpcHandler, which exposes every property it has.
     required property WhichKey whichkey
 
-    target: "hyprvim_whichkey"
+    IpcHandler {
+        target: "hyprvim_whichkey"
 
-    function open(path: string): void {
-        whichkey.show_payload(path);
-    }
+        function open(path: string): void {
+            root.whichkey.show_payload(path);
+        }
 
-    function close(): void {
-        whichkey.hide_now();
+        function close(): void {
+            root.whichkey.hide_now();
+        }
     }
 }

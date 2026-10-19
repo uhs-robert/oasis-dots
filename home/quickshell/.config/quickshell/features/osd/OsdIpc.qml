@@ -1,14 +1,20 @@
+import Quickshell
 import Quickshell.Io
 
-IpcHandler {
+Scope {
+    id: root
+
+    // Kept off the IpcHandler, which exposes every property it has.
     required property Osd osd
 
-    target: "osd"
+    IpcHandler {
+        target: "osd"
 
-    // "opening <what>" while it slides in, "open <what>" once drawn, "closing <what>" while it slides out, then "closed";
-    // <what> is volume, brightness or voxtype.
-    function state(): string {
-        if (!osd.wanted) return osd.visible ? "closing " + osd.shown_what : "closed";
-        return (osd.settled ? "open " : "opening ") + osd.shown_what;
+        // "opening <what>" while it slides in, "open <what>" once drawn, "closing <what>" while it slides out, then "closed";
+        // <what> is volume, brightness or voxtype.
+        function state(): string {
+            if (!root.osd.wanted) return root.osd.visible ? "closing " + root.osd.shown_what : "closed";
+            return (root.osd.settled ? "open " : "opening ") + root.osd.shown_what;
+        }
     }
 }
