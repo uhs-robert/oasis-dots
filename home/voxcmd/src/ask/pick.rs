@@ -276,6 +276,8 @@ fn ask(
     // A pick timeout, so a bar that dies mid-pick cannot leave callers blocked forever.
     let timeout = super::timeout_setting("VOXCMD_PICK_TIMEOUT", "300");
     let picked = asking.read_answer(&timeout, signals)?;
+    // Read before clean_up removes our own entry: a pending pick that is not ours is a newer ask, whose picker a close would dismiss.
+    let newer_ask_pending = !asking.owns_pending_pick() && paths::pending_pick().exists();
     // Removed before closing: closing the bar's picker writes a cancel to the FIFO, which must find it gone.
     asking.clean_up();
     // qs-picker exits when the bar takes the pick but can lag the answer, so whether it has exited cannot tell the bar's
@@ -287,7 +289,7 @@ fn ask(
     if let Some(picker) = picker.filter(|_| picker_running) {
         terminate_with_children(&picker);
     }
-    if (uses_qs_picker || !picker_running) && is_executable(&paths::qs_ipc()) {
+    if (uses_qs_picker || !picker_running) && !newer_ask_pending && is_executable(&paths::qs_ipc()) {
         // A no-op unless a voice reply or the timeout ended the pick while the picker was still open.
         qs_ipc_call(&["picker".as_ref(), "close".as_ref()]);
     }

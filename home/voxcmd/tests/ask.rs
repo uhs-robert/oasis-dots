@@ -273,6 +273,8 @@ fn a_pending_pick_a_newer_ask_took_over_is_left_alone() {
         std::fs::read_to_string(bar.pending_pick()).unwrap(),
         "{\"pid\":1,\"fifo\":\"/newer\"}\n"
     );
+    // A close would dismiss the newer ask's picker.
+    assert!(!bar.calls().contains("picker close"), "{}", bar.calls());
 }
 
 #[test]

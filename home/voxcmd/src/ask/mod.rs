@@ -352,17 +352,21 @@ impl Asking {
         Ok(answer.trim_end_matches('\n').to_string())
     }
 
+    /// Whether the pending pick is this ask's.
+    pub fn owns_pending_pick(&self) -> bool {
+        std::fs::read_to_string(paths::pending_pick())
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .is_some_and(|state| state["pid"].as_u64() == Some(u64::from(std::process::id())))
+    }
+
     /// Removes the pending pick if it is still this ask's (a newer one may have replaced it), drops the reply recording
     /// when nobody answered by voice, and removes the directory. Runs once.
     pub fn clean_up(&mut self) {
         if std::mem::replace(&mut self.cleaned, true) {
             return;
         }
-        let ours = std::fs::read_to_string(paths::pending_pick())
-            .ok()
-            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-            .is_some_and(|state| state["pid"].as_u64() == Some(u64::from(std::process::id())));
-        if ours {
+        if self.owns_pending_pick() {
             let _ = std::fs::remove_file(paths::pending_pick());
         }
         if self.owner_file.exists() {
