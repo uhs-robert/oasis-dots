@@ -31,15 +31,21 @@ static BARE_EXIT_WORDS: LazyLock<Regex> =
 static STOP_WORDS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new("^(stop|stop listening|stop everything|end session|end the session)$").expect("fixed pattern")
 });
-/// Whisper's stock output for silence and noise, normalized (before replacements): a turn that heard only one of these
-/// heard nothing. voxtype-daemon puts "Voice commands start with <wake word>." in Whisper's prompt, which Whisper can
-/// echo on silence.
+/// Whisper's stock output for silence and noise, normalized (before replacements), longest first.
+pub(super) const TRANSCRIBER_NOISE: [&str; 7] = [
+    "thank you for watching",
+    "thanks for watching",
+    "blank audio",
+    "thank you",
+    "the end",
+    "bye",
+    "you",
+];
+/// A turn that heard only noise heard nothing. voxtype-daemon puts "Voice commands start with <wake word>." in Whisper's
+/// prompt, which Whisper can echo on silence.
 pub(super) static NOISE: LazyLock<Regex> = LazyLock::new(|| {
     let echo = regex::escape(&normalize(&format!("Voice commands start with {WAKE_WORD}")));
-    Regex::new(&format!(
-        "^(|you|bye|the end|thank you|thank you for watching|thanks for watching|blank audio|{echo})$"
-    ))
-    .expect("fixed pattern")
+    Regex::new(&format!("^(|{}|{echo})$", TRANSCRIBER_NOISE.join("|"))).expect("fixed pattern")
 });
 /// Unusable turns in a row that end the session.
 const UNCLEAR_CAP: i64 = 3;

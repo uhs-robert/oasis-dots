@@ -891,8 +891,9 @@ heard_wake_word() {
   wake_rest="${BASH_REMATCH[2]% }"
 }
 
-# voxcmd _wake-confirm <wav> [recording]: whether a short recording (16 kHz mono WAV) holds the wake word, from
-# `voxtype transcribe`. A clip cut during dictation names the recording it was heard in (dictation_wake_heard).
+# voxcmd _wake-confirm <wav> [recording] [pause]: whether a short recording (16 kHz mono WAV) holds the wake word, from
+# `voxtype transcribe`. A clip cut during dictation names the recording it was heard in (dictation_wake_heard); "pause"
+# says voxcmd-autostop cut it at a pause rather than voxcmd-wake at a trigger, which only changes what is logged.
 # Prints "wake <words after it>" and exits 0, "not_wake" and exits 1, or "failed" and exits 2 when voxtype fails,
 # outlasts VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS, or voxcmd itself errors. voxcmd-wake asks it before a trigger starts a
 # command, with the audio on stdin as /dev/stdin; nothing it heard is logged.
@@ -902,7 +903,8 @@ wake_confirm() {
   # Exit 1 means "not the wake word" to the caller, which set -e would also give an unexpected error.
   set -E
   trap 'exit 2' ERR
-  local wav="$1" dictation_recording="$2" output transcript prompt_script prompt model model_file
+  local wav="$1" dictation_recording="$2" output transcript prompt_script prompt model model_file log_as="wake confirm"
+  [ "${3:-}" != pause ] || log_as="pause check"
   local -a prompt_flags=() model_flags=()
   if [ -z "$wav" ]; then
     echo failed
@@ -925,7 +927,7 @@ wake_confirm() {
   fi
   # -q keeps voxtype's INFO lines (which hold the transcript) out of the output; the progress lines stay on stdout.
   if ! output=$(timeout -k 1 "${VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS:-6}" voxtype -q "${model_flags[@]}" "${prompt_flags[@]}" transcribe "$wav" 2>/dev/null); then
-    debug "wake confirm: voxtype transcribe failed or timed out"
+    debug "$log_as: voxtype transcribe failed or timed out"
     echo failed
     exit 2
   fi
@@ -933,12 +935,12 @@ wake_confirm() {
   # transcript, also with -q. Without the blank line it heard no speech.
   transcript=$(awk 'after_blank; /^$/ { after_blank = 1 }' <<<"$output")
   if heard_wake_word "$transcript"; then
-    debug "wake confirm: the wake word"
+    debug "$log_as: the wake word"
     [ -z "$dictation_recording" ] || dictation_wake_heard "$wake_rest" "$dictation_recording" || debug "wake confirm: could not act on it in the session"
     printf 'wake%s\n' "${wake_rest:+ $wake_rest}"
     exit 0
   fi
-  debug "wake confirm: not the wake word"
+  debug "$log_as: not the wake word"
   echo not_wake
   exit 1
 }
@@ -1755,10 +1757,12 @@ session_silence_secs="${VOXCMD_SESSION_SILENCE_SECS:-1.5}"
 # A reply to a picker or confirm card is often one short word ("yes", "two", "cancel"), and the user is looking at the
 # question, so a little speech then the usual pause is an answer.
 reply_min_speech_secs="${VOXCMD_REPLY_MIN_SPEECH_SECS:-0.1}"
-# Whisper's stock output for silence and noise, normalized (before replacements). A session turn that hears only one of these heard nothing,
-# so it listens again without counting toward the unclear cap; the turn and time caps still bound it.
-# voxtype-daemon puts "Voice commands start with <wake word>." in Whisper's prompt, and Whisper can echo it on silence.
-session_noise_transcripts="^(|you|bye|the end|thank you|thank you for watching|thanks for watching|blank audio|$(normalize "Voice commands start with $wake_word"))\$"
+# Whisper's stock output for silence and noise, normalized (before replacements), longest first. A session turn that
+# hears only one of these heard nothing, so it listens again without counting toward the unclear cap; the turn and time
+# caps still bound it. voxtype-daemon puts "Voice commands start with <wake word>." in Whisper's prompt, and Whisper can
+# echo it on silence.
+transcriber_noise_phrases=("thank you for watching" "thanks for watching" "blank audio" "thank you" "the end" "bye" "you")
+session_noise_transcripts="^(|$(IFS='|' && echo "${transcriber_noise_phrases[*]}")|$(normalize "Voice commands start with $wake_word"))\$"
 session_unclear_cap=3
 # Turns that keep doing something never trip the unclear cap, so a session also ends after this long or this many.
 session_max_secs="${VOXCMD_SESSION_MAX_SECS:-300}"
@@ -2107,7 +2111,8 @@ session_heard_nothing() {
 # ---- One-recording modes -----------------------------------------------------------------------------------------
 # Type mode hears one recording and types it once it ends. Whoever ends the recording first records how, as the current
 # mode's .ending {action, by[, chain]}, under the session lock; the watcher reads it once the transcript is in. by is voice (the
-# wake word and one of the mode's session_endings, which voxcmd-wake confirms during the recording), key (Stop Voice),
+# wake word and one of the mode's session_endings, heard in a clip voxcmd-autostop cuts at a pause during the recording,
+# or voxcmd-wake at a trigger), key (Stop Voice),
 # cap (auto-stop's max_secs, just under voxtype's own limit), pause (auto-stop's quiet after speech) or idle (its
 # no-speech bound). The voice key
 # stops the recording without an ending, which reads as {action: type}. action is the session_endings row's: discard
@@ -2154,15 +2159,15 @@ watcher_record_ending_locked() {
   session_record_ending_locked "$state" "$1" "$2"
 }
 
-# dictation_wake_heard <normalized words after the wake word> <recording>: the wake word, confirmed by voxcmd-wake in a
-# clip cut while a wake_listens mode recorded. When the words are one of the mode's endings, records it and ends the
+# dictation_wake_heard <normalized words after the wake word> <recording>: the wake word, confirmed in a clip cut while a
+# one-recording mode recorded (wake_confirm). When the words are one of the mode's endings, records it and ends the
 # recording: stopped, so the watcher gets the transcript, or cancelled for discard. An ending followed by "and then" is
 # recorded as a chain and the recording runs on until the next pause (dictation_chain_stop), so the commands after it
 # are in the transcript. Any other words leave the recording running. Under the lock, only while voxtype records, and
-# only for the recording the trigger was heard in ("<frame_id>:<owner>:<owner_start>", which voxcmd-wake read from
-# session.json then: the owner is the watcher of that one recording), so a confirmation that outlasted its recording
-# never ends the next one, and a mode left, a session ended or an ending recorded since the trigger is never ended
-# twice. While its watcher owns the session, voxtype records for nobody else, since a voice key pressed meanwhile stops
+# only for the recording the clip was cut from ("<frame_id>:<owner>:<owner_start>", which the cutter read from
+# session.json or was handed by the watcher: the owner is the watcher of that one recording), so a confirmation that
+# outlasted its recording never ends the next one, and a mode left, a session ended or an ending recorded since the
+# clip was cut is never ended twice. While its watcher owns the session, voxtype records for nobody else, since a voice key pressed meanwhile stops
 # the recording rather than starting another.
 dictation_wake_heard() { session_locked dictation_wake_heard_locked "$@"; }
 dictation_wake_heard_locked() {
@@ -2171,6 +2176,7 @@ dictation_wake_heard_locked() {
   # The clip holds dictation before the trigger too, which may say the wake word: the ending follows the last one.
   init_wake_regex
   while [[ " $after_wake " =~ " "($wake_regex)" "(.*)$ ]]; do after_wake="${BASH_REMATCH[2]% }"; done
+  after_wake=$(without_trailing_noise "$after_wake")
   load_mode_settings "$(jq -r .integration <<<"$state")"
   if action=$(session_ending_action "$after_wake"); then
     :
@@ -2194,12 +2200,30 @@ dictation_wake_heard_locked() {
   fi
 }
 
-# dictation_heard_in_locked <recording>: prints the session when its mode is a wake_listens one, voxtype records, and the
-# recording is the one named (see dictation_wake_heard); fails otherwise.
+# without_trailing_noise <normalized words>: prints them without the noise the transcriber appends to a clip that ends
+# in a pause ("stop thank you" is "stop"), but never all of them. Longest phrase first, so "thank you" goes whole.
+without_trailing_noise() {
+  local words="$1" noise stripped=1
+  while [ "$stripped" = 1 ]; do
+    stripped=0
+    for noise in "${transcriber_noise_phrases[@]}"; do
+      [ "$words" != "$noise" ] || break 2
+      if [[ $words == *" $noise" ]]; then
+        words="${words% "$noise"}"
+        stripped=1
+        break
+      fi
+    done
+  done
+  printf '%s' "$words"
+}
+
+# dictation_heard_in_locked <recording>: prints the session when its mode is a one-recording one, voxtype records, and
+# the recording is the one named (see dictation_wake_heard); fails otherwise.
 dictation_heard_in_locked() {
   local state
   state=$(session_state_locked) || return 1
-  [ "$(jq -r '.wake_listens // false' <<<"$state")" = true ] && [ "$(voxtype_state)" = recording ] || return 1
+  [ "$(jq -r '.one_recording // false' <<<"$state")" = true ] && [ "$(voxtype_state)" = recording ] || return 1
   if [ "$(jq -r '"\(.frame_id // ""):\(.owner):\(.owner_start)"' <<<"$state")" != "$1" ]; then
     debug "dictation: the wake word was heard in an earlier recording, not acted on"
     return 1
@@ -2269,15 +2293,16 @@ stop_voice_recording_locked() {
   [ "$(voxtype_state)" != recording ] || voxtype record stop || true
 }
 
-# session_cut_ending <transcript>: prints the transcript without the ending spoken at its end: from the last wake word
+# session_cut_ending <transcript>: prints the transcript without the endings spoken at its end: from the last wake word
 # on, when what follows it starts with one of the mode's endings ("...the plan. Cortana, stop." or "Cortana stop
-# typing."). The wake word elsewhere ("I asked Cortana about it") is text.
+# typing."), and again while what is left ends in one, so a retried ending leaves none behind. The wake word elsewhere
+# ("I asked Cortana about it") is text.
 session_cut_ending() {
-  local transcript="$1" norm
-  norm=$(normalize "$transcript")
-  if split_trailing_wake "$transcript" && session_ending_starts "$(apply_replacements "$wake_rest")"; then
-    printf '%s' "$wake_before"
-  elif ! { split_leading_wake "$norm" && session_ending_starts "$(apply_replacements "$wake_rest")"; }; then
+  local transcript="$1"
+  while split_trailing_wake "$transcript" && session_ending_starts "$(apply_replacements "$wake_rest")"; do
+    transcript="$wake_before"
+  done
+  if ! { split_leading_wake "$(normalize "$transcript")" && session_ending_starts "$(apply_replacements "$wake_rest")"; }; then
     printf '%s' "$transcript"
   fi
 }
@@ -2838,6 +2863,10 @@ autostop_settings() {
       "VOXCMD_AUTOSTOP_SILENCE_SECS=${mode_setting[listen_silence_secs]:-$session_silence_secs}"
     # A mode that records in chunks cuts a long speech into them.
     [ -z "${mode_setting[listen_max_secs]:-}" ] || printf 'VOXCMD_AUTOSTOP_MAX_SECS=%s\n' "${mode_setting[listen_max_secs]}"
+    # A one-recording mode's spoken endings are checked at each pause, by this voxcmd; the watcher adds the recording.
+    if [ "${mode_setting[one_recording]:-0}" = 1 ] && [ "${#mode_endings[@]}" -gt 0 ]; then
+      printf 'VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD=%s\n' "$0"
+    fi
     ;;
   # An overlay or confirm asked during a session turn is a reply, not the session's own listen.
   reply) printf 'VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=%s\n' "$reply_min_speech_secs" ;;
@@ -2853,6 +2882,10 @@ autostop_recording() {
   [ -z "$detector_settings" ] || mapfile -t detector_env <<<"$detector_settings"
   # The room's threshold, for the chain detector of an ending that starts mid-speech (dictation_chain_autostop_settings).
   detector_env+=("VOXCMD_AUTOSTOP_THRESHOLD_FILE=$(threshold_file_of $$)")
+  # The recording as dictation_heard_in_locked names it: this watcher is its owner.
+  if [[ $detector_settings == *VOXCMD_AUTOSTOP_PAUSE_CHECK_VOXCMD=* ]]; then
+    detector_env+=("VOXCMD_AUTOSTOP_PAUSE_CHECK_RECORDING=${heard_mode##*:}:$$:$(process_start_time $$)")
+  fi
   env "${detector_env[@]}" "$voxcmd_autostop" &
   detector_pid=$!
   trap 'kill "$detector_pid" 2>/dev/null; exit 0' TERM
@@ -3228,7 +3261,7 @@ _watch)
   watch_recording "$2"
   ;;
 _cancel_owned_recording) cancel_owned_recording "$2" ;;
-_wake-confirm) wake_confirm "${2:-}" "${3:-}" ;;
+_wake-confirm) wake_confirm "${2:-}" "${3:-}" "${4:-}" ;;
 _chain-stop) dictation_chain_stop "${2:-}" "${3:-}" ;;
 _legacy-dump) legacy_dump ;;
 _legacy-hook) legacy_hook "${@:2}" ;;

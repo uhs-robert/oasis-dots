@@ -5,7 +5,8 @@
 //!
 //! Whoever ends the recording first records how, as the current mode's `.ending` `{action, by}`, under the session
 //! lock; the watcher reads it once the transcript is in. `by` is `voice` (the wake word and one of the mode's endings,
-//! which voxcmd-wake confirms during the recording), `key` (Stop Voice), or the detector's `cap`, `pause` or `idle`.
+//! heard in a clip voxcmd-autostop cuts at a pause during the recording, or voxcmd-wake at a trigger), `key` (Stop
+//! Voice), or the detector's `cap`, `pause` or `idle`.
 //! The voice key stops the recording without an ending, which reads as `{type, voice_key}`. `action` is the ending
 //! row's: `discard` cancels the recording, `end_session` ends the session once the text is handled, and any other is
 //! handed to the mode's `handle_turn` with the text. A voice ending followed by "and then" also has `chain: true`, and
@@ -14,7 +15,7 @@
 //! Nothing here holds the lock while a mode hook runs: typing.sh's `handle_turn` reads the session through the bridge,
 //! which takes the lock.
 use super::mode::{self, ModeSettings};
-use super::turn::{self, NOISE, Outcome, duration_words};
+use super::turn::{self, NOISE, Outcome, TRANSCRIBER_NOISE, duration_words};
 use super::{SessionLock, is_mine, mode_token, text_of};
 use crate::debug::debug;
 use crate::paths;
@@ -120,24 +121,24 @@ pub fn watcher_record_ending(action: &str, by: &str, heard_mode: &str, me: u32) 
     record_ending(&lock, &state, action, by, false)
 }
 
-/// The wake word, confirmed by voxcmd-wake in a clip cut while a `wake_listens` mode recorded: `after_wake` is the
+/// The wake word, confirmed in a clip cut while a one-recording mode recorded (`wake_confirm`): `after_wake` is the
 /// normalized words after its first wake word. When the words after the clip's last wake word are one of the mode's
 /// endings, records it and ends the recording: stopped, so the watcher gets the transcript, or cancelled for discard.
 /// An ending followed by "and then" is recorded as a chain and the recording runs on until the next pause
 /// (`chain_stop`), so the commands after it are in the transcript; a cancel too, which drops only the dictation. Any
 /// other words leave the recording running.
 ///
-/// Under the lock, only while voxtype records, and only for the recording the trigger was heard in (`heard_in`,
-/// `<frame_id>:<owner>:<owner_start>`, which voxcmd-wake read from session.json then: the owner is the watcher of that
-/// one recording). So a confirmation that outlasted its recording never ends the next one, and a mode left, a session
-/// ended or an ending recorded since the trigger is never ended twice.
+/// Under the lock, only while voxtype records, and only for the recording the clip was cut from (`heard_in`,
+/// `<frame_id>:<owner>:<owner_start>`, which the cutter read from session.json or was handed by the watcher: the owner
+/// is the watcher of that one recording). So a confirmation that outlasted its recording never ends the next one, and
+/// a mode left, a session ended or an ending recorded since the clip was cut is never ended twice.
 pub fn wake_heard(after_wake: &str, heard_in: &str, wake: &WakeWords) {
     let lock = SessionLock::take();
     let Some(state) = heard_in_locked(&lock, heard_in) else {
         return;
     };
     // The clip holds dictation before the trigger too, which may say the wake word: the ending follows the last one.
-    let words = wake.after_last(after_wake);
+    let words = without_trailing_noise(&wake.after_last(after_wake));
     let mode = ModeSettings::of(&text_of(&state["integration"]));
     let (action, chain) = match ending_action(&mode.endings, &words) {
         Some(action) => (action, false),
@@ -168,14 +169,28 @@ pub fn wake_heard(after_wake: &str, heard_in: &str, wake: &WakeWords) {
     }
 }
 
+/// The words without the noise the transcriber appends to a clip that ends in a pause ("stop thank you" is "stop"), but
+/// never all of them.
+fn without_trailing_noise(words: &str) -> String {
+    let mut words = words;
+    while !TRANSCRIBER_NOISE.contains(&words)
+        && let Some(stripped) = TRANSCRIBER_NOISE
+            .iter()
+            .find_map(|noise| words.strip_suffix(noise).and_then(|rest| rest.strip_suffix(' ')))
+    {
+        words = stripped;
+    }
+    words.to_string()
+}
+
 fn touch(path: &std::path::Path) {
     let _ = std::fs::OpenOptions::new().create(true).append(true).open(path);
 }
 
-/// The session, when its mode is a `wake_listens` one, voxtype records, and the recording is the one named.
+/// The session, when its mode is a one-recording one, voxtype records, and the recording is the one named.
 pub(crate) fn heard_in_locked(lock: &SessionLock, heard_in: &str) -> Option<Value> {
     let state = super::state(lock)?;
-    if state["wake_listens"] != Value::Bool(true) || voxtype_state() != "recording" {
+    if state["one_recording"] != Value::Bool(true) || voxtype_state() != "recording" {
         return None;
     }
     let recording = format!(
@@ -221,18 +236,19 @@ pub fn stop_recording_locked(lock: &SessionLock) -> bool {
     true
 }
 
-/// The transcript without the ending spoken at its end: from the last wake word on, when what follows it starts with
-/// one of the endings ("...the plan. Cortana, stop." or "Cortana stop typing."). The wake word elsewhere ("I asked
-/// Cortana about it") is text.
+/// The transcript without the endings spoken at its end: from the last wake word on, when what follows it starts with
+/// one of the endings ("...the plan. Cortana, stop." or "Cortana stop typing."), and again while what is left ends in
+/// one, so a retried ending leaves none behind. The wake word elsewhere ("I asked Cortana about it") is text.
 fn cut_ending(transcript: &str, endings: &[Ending], wake: &WakeWords, replacements: &Replacements) -> String {
-    if let Some((before, rest)) = wake.split_trailing(transcript)
+    let mut transcript = transcript.to_string();
+    while let Some((before, rest)) = wake.split_trailing(&transcript)
         && ending_starts(endings, &apply_replacements(&rest, replacements))
     {
-        return before;
+        transcript = before;
     }
-    match wake.split_leading(&normalize(transcript)) {
+    match wake.split_leading(&normalize(&transcript)) {
         Some(rest) if ending_starts(endings, &apply_replacements(&rest, replacements)) => String::new(),
-        _ => transcript.to_string(),
+        _ => transcript,
     }
 }
 
@@ -426,6 +442,9 @@ end_session stop listening|stop everything|end session|end the session";
         let none = Replacements::default();
         let cut = |transcript: &str| cut_ending(transcript, &endings, &wake, &none);
         assert_eq!(cut("Hello world. Cortana, stop."), "Hello world.");
+        // A retried ending leaves none behind.
+        assert_eq!(cut("Hello world. Cortana stop. Cortana, stop typing."), "Hello world.");
+        assert_eq!(cut("Cortana stop. Cortana, stop."), "");
         assert_eq!(
             cut("I asked Cortana about it. Cortana, stop."),
             "I asked Cortana about it."
@@ -439,6 +458,24 @@ end_session stop listening|stop everything|end session|end the session";
             cut("Hello. Cortana new paragraph. More."),
             "Hello. Cortana new paragraph. More."
         );
+    }
+
+    #[test]
+    fn the_transcriber_s_noise_after_the_ending_is_dropped_before_it_is_matched() {
+        for (words, kept) in [
+            ("stop thank you", "stop"),
+            ("stop thank you thank you", "stop"),
+            ("cancel thanks for watching", "cancel"),
+            ("stop you", "stop"),
+            ("stop", "stop"),
+            // Only whole words at the end, and never the whole of them.
+            ("stop thank", "stop thank"),
+            ("thank you", "thank you"),
+            ("thank you thank you", "thank you"),
+            ("stop youth", "stop youth"),
+        ] {
+            assert_eq!(without_trailing_noise(words), kept, "{words:?}");
+        }
     }
 
     #[test]

@@ -1,10 +1,11 @@
-//! `voxcmd internal wake-confirm <wav> [recording]` (alias `_wake-confirm`): whether a short recording (16 kHz mono
+//! `voxcmd internal wake-confirm <wav> [recording] [pause]` (alias `_wake-confirm`): whether a short recording (16 kHz mono
 //! WAV) holds the wake word, from `voxtype transcribe` (was `wake_confirm` and `heard_wake_word`)
 //!
 //! voxcmd-wake asks it before a trigger starts a command, with the audio on stdin as `/dev/stdin`, and reads only the
 //! exit code: prints `wake <words after it>` and exits 0, `not_wake` and exits 1, or `failed` and exits 2 when there is
 //! no file, voxtype fails or outlasts `VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS`. A clip cut during a dictation names the
-//! recording it was heard in, whose ending it may be (`session::dictation::wake_heard`). Nothing it heard is logged.
+//! recording it was heard in, whose ending it may be (`session::dictation::wake_heard`); `pause` says voxcmd-autostop
+//! cut it at a pause rather than voxcmd-wake at a trigger. Nothing it heard is logged.
 //!
 //! Whisper gets the daemon's initial prompt (`voxtype-prompt`, in the voxtype package), so it hears the wake word the
 //! way a dictation does; without that script the audio is still transcribed, just without the prompt.
@@ -26,7 +27,13 @@ const PROMPT_TIMEOUT: Duration = Duration::from_secs(3);
 pub fn run(args: &[String]) -> Result<Option<String>, CliError> {
     let wav = args.first().map_or("", String::as_str);
     let recording = args.get(1).map_or("", String::as_str);
-    let transcript = if wav.is_empty() { None } else { transcribe(wav) };
+    // voxcmd-autostop cut the clip at a pause rather than voxcmd-wake at a trigger, which only changes what is logged.
+    let log_as = if args.get(2).is_some_and(|cutter| cutter == "pause") {
+        "pause check"
+    } else {
+        "wake confirm"
+    };
+    let transcript = if wav.is_empty() { None } else { transcribe(wav, log_as) };
     let Some(transcript) = transcript else {
         say("failed");
         // Exit 2 is "failed" to voxcmd-wake, not a usage error; the message stays empty so nothing goes to stderr.
@@ -35,11 +42,11 @@ pub fn run(args: &[String]) -> Result<Option<String>, CliError> {
     let wake = WakeWords::from_env();
     let replacements = Replacements::load(&paths::config_dir().join("replacements.d"));
     let Some(rest) = wake.heard(&transcript, &replacements) else {
-        debug("wake confirm: not the wake word");
+        debug(&format!("{log_as}: not the wake word"));
         say("not_wake");
         return Err(CliError::quiet(SUBCOMMAND));
     };
-    debug("wake confirm: the wake word");
+    debug(&format!("{log_as}: the wake word"));
     if !recording.is_empty() {
         dictation::wake_heard(&rest, recording, &wake);
     }
@@ -61,7 +68,7 @@ fn say(verdict: &str) {
 const VOXTYPE_AS_GROUP_LEADER: &str = r#"trap 'trap "" TERM; kill -s TERM 0' TERM; "$@" <&0 & wait $!"#;
 
 /// What voxtype heard in the clip: "" for no speech, none when it failed or ran out of time.
-fn transcribe(wav: &str) -> Option<String> {
+fn transcribe(wav: &str, log_as: &str) -> Option<String> {
     let prompt = initial_prompt();
     let mut command = Command::new("sh");
     command.args(["-c", VOXTYPE_AS_GROUP_LEADER, "voxtype", "voxtype"]);
@@ -80,7 +87,7 @@ fn transcribe(wav: &str) -> Option<String> {
     match process::run_with_timeout_on_stdin(&mut command, limit) {
         Ok(outcome) if outcome.code() == Some(0) => Some(after_blank_line(&outcome.stdout)),
         _ => {
-            debug("wake confirm: voxtype transcribe failed or timed out");
+            debug(&format!("{log_as}: voxtype transcribe failed or timed out"));
             None
         }
     }
