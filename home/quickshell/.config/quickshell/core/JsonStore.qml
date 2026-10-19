@@ -20,7 +20,7 @@ Scope {
     property int debounce_ms: 0
     property bool watch: true
     property bool block_loading: true
-    // (values) -> argv or null, called after a write succeeded and never after a load. The argv runs once the write is on disk.
+    // (values) -> argv or null, called when a write starts and never for a load. The argv runs once that write is on disk, so it describes the values that write carried.
     property var after_save: null
 
     // Replaced, never mutated, so bindings on it fire. Starts as a copy of `defaults`.
@@ -39,10 +39,14 @@ Scope {
     signal after_save_done(int code)
 
     property var extras: ({})
-    property string last_written: ""
+    // Texts of our recent writes. The reload each write causes can arrive late and read an earlier one, so any of them is an echo, until an outside edit is adopted.
+    property var own_writes: []
     property string last_corrupt: ""
     property bool dir_ready: false
-    property bool after_wanted: false
+    // The after_save argv of the write in flight, computed from the values that write carries.
+    property var pending_argv: null
+    // Argvs of finished writes waiting for after_proc, which is still running for an earlier one. All run, in order: a later write cannot stand in for an earlier one, whose argv may be the one that reloads.
+    property var queued_argvs: []
     // Toggled to re-arm the file watch.
     property bool rearming: false
 
@@ -86,7 +90,8 @@ Scope {
     function write_now() {
         const text = JSON.stringify(Object.assign({}, root.extras, root.values));
         root.dirty = false;
-        root.last_written = text;
+        root.own_writes = root.own_writes.concat([text]).slice(-4);
+        root.pending_argv = typeof root.after_save === "function" ? root.after_save(root.values) : null;
         file.setText(text);
     }
 
@@ -94,18 +99,17 @@ Scope {
         root.writing = false;
         root.dirty = false;
         root.dir_ready = false;
+        root.pending_argv = null;
         console.warn("JsonStore: could not write " + root.path + " (" + error + ")");
         root.save_failed(error);
     }
 
-    function run_after_save() {
-        if (typeof root.after_save !== "function") return;
+    function run_after_save(argv) {
+        if (!argv) return;
         if (after_proc.running) {
-            root.after_wanted = true;
+            root.queued_argvs = root.queued_argvs.concat([argv]);
             return;
         }
-        const argv = root.after_save(root.values);
-        if (!argv) return;
         after_proc.command = argv;
         after_proc.running = true;
     }
@@ -116,6 +120,8 @@ Scope {
         for (const key in parsed) {
             if (root.known_keys.indexOf(key) < 0 && !(key in clean)) extras[key] = parsed[key];
         }
+        // A file that went back to our last write is an edit to adopt, not the echo of that write.
+        root.own_writes = [];
         root.raw = parsed;
         root.extras = extras;
         root.values = clean;
@@ -146,9 +152,10 @@ Scope {
         id: after_proc
         onExited: code => {
             root.after_save_done(code);
-            if (root.after_wanted) {
-                root.after_wanted = false;
-                root.run_after_save();
+            if (root.queued_argvs.length > 0) {
+                const next = root.queued_argvs[0];
+                root.queued_argvs = root.queued_argvs.slice(1);
+                root.run_after_save(next);
             }
         }
     }
@@ -162,13 +169,15 @@ Scope {
         watchChanges: root.watch && !root.rearming
 
         onFileChanged: {
-            if (!root.dirty && !root.writing) file.reload();
+            if (!root.dirty && !root.writing) root.reload();
         }
 
         onSaved: {
             root.writing = false;
             root.saved();
-            root.run_after_save();
+            const argv = root.pending_argv;
+            root.pending_argv = null;
+            root.run_after_save(argv);
             if (root.dirty && !save_timer.running) root.start_write();
         }
 
@@ -177,7 +186,7 @@ Scope {
         onLoaded: {
             if (root.dirty || root.writing) return;
             const text = file.text();
-            if (root.loaded_once && text === root.last_written) return;
+            if (root.loaded_once && root.own_writes.indexOf(text) >= 0) return;
             let parsed = null;
             try {
                 parsed = JSON.parse(text);
@@ -198,6 +207,7 @@ Scope {
         onLoadFailed: error => {
             if (root.dirty || root.writing) return;
             root.loaded_once = true;
+            root.own_writes = [];
             root.raw = {};
             root.extras = {};
             root.values = Object.assign({}, root.defaults);
