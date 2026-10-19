@@ -365,5 +365,149 @@ reset_calls
 FAKE_TIMER_FAIL=1 rsx main rs-swap 5 >/dev/null
 check "the swap is undone" "[[ \$? != 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
 
+echo "== voxtype swap and restore"
+# A throwaway HOME and git repo with a stowed voxtype and systemd package; the real stow runs, and systemctl is a fake that
+# logs every call in order next to the stow calls, so the lifecycle order is checked. Nothing here reaches the user manager.
+vt_repo=$root/vt_repo
+vt_home=$root/vt_home
+vt_stubs=$root/vt_stubs
+vt_calls=$root/vt_calls
+vt_units=$vt_home/.config/systemd/user
+vt_dir=$bars_dir/duck
+real_stow=$(command -v stow)
+mkdir -p "$vt_stubs" "$vt_home/.local/bin" "$vt_units"
+git init -q -b main "$vt_repo"
+vg() { git -C "$vt_repo" -c user.name=t -c user.email=t@t "$@"; }
+mkdir -p "$vt_repo/home/voxtype/.local/bin" "$vt_repo/home/voxtype/.config/voxtype" "$vt_repo/home/voxtype/tests" \
+  "$vt_repo/home/systemd/.config/systemd/user/voxtype.service.d" "$vt_repo/.claude/skills/owner-test-bar"
+echo main >"$vt_repo/home/voxtype/.local/bin/voxtype-daemon"
+echo main >"$vt_repo/home/voxtype/.config/voxtype/config.toml"
+echo main >"$vt_repo/home/systemd/.config/systemd/user/hyprland-session.target"
+echo main >"$vt_repo/home/systemd/.config/systemd/user/voxtype.service.d/prompt.conf"
+ln -s "$here/../owner-test-bar.sh" "$vt_repo/.claude/skills/owner-test-bar/owner-test-bar.sh"
+vg add -A
+vg commit -q -m main
+vg update-ref refs/remotes/origin/main HEAD
+# The branches: one adds a follower unit and script and changes the config, one only touches voxtype's tests.
+vg switch -q -c duck
+echo duck >"$vt_repo/home/voxtype/.local/bin/voxtype-duck"
+echo duck >"$vt_repo/home/voxtype/.config/voxtype/config.toml"
+echo duck >"$vt_repo/home/systemd/.config/systemd/user/voxtype-duck.service"
+echo duck >"$vt_repo/home/systemd/.config/systemd/user/voxtype.service.d/duck.conf"
+vg add -A
+vg commit -q -m duck
+vg switch -q -c tests main
+echo t >"$vt_repo/home/voxtype/tests/t.sh"
+vg add -A
+vg commit -q -m tests
+vg switch -q main
+vg worktree add -q --detach "$bars_dir/duck" duck
+vg worktree add -q --detach "$bars_dir/tests" tests
+vg worktree add -q --detach "$bars_dir/plain" main
+cat >"$vt_stubs/systemctl" <<STUB
+#!/usr/bin/env bash
+echo "systemctl \$*" >>"$vt_calls"
+case \$* in
+*"enable --now "*) [[ -z \${FAKE_ENABLE_FAIL:-} || \$* != *"\$FAKE_ENABLE_FAIL" ]] || exit 1 ;;
+esac
+STUB
+cat >"$vt_stubs/stow" <<STUB
+#!/usr/bin/env bash
+echo "stow \$*" >>"$vt_calls"
+exec "$real_stow" "\$@"
+STUB
+chmod +x "$vt_stubs/systemctl" "$vt_stubs/stow"
+# vtx <function> <args>...: the sourced script against the fake repo and HOME; the stubs go first on PATH.
+vtx() {
+  PATH="$vt_stubs:$PATH" HOME=$vt_home bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ \
+    "$vt_repo/.claude/skills/owner-test-bar/owner-test-bar.sh" "$vt_repo" "$@" 2>&1
+}
+vt_link_is() { [[ $(readlink -m "$1") == "$2" ]]; }
+vt_order() { grep -n "$1" "$vt_calls" | head -1 | cut -d: -f1; }
+vt_reset() { rm -f "$vt_calls" "$bars_dir/.voxtype_bar" "$bars_dir/.voxtype_enabled"; }
+vt_main() {
+  stow -d "$vt_repo/home" -t "$vt_home" voxtype
+  stow -d "$vt_repo/home" -t "$vt_home" --no-folding systemd
+}
+rm -rf "$vt_home/.config/voxtype" "$vt_home/.local/bin/voxtype-"* "$vt_units"
+vt_main
+vt_main_config=$vt_repo/home/voxtype/.config/voxtype
+vt_main_bin=$vt_repo/home/voxtype/.local/bin/voxtype-daemon
+
+vt_reset
+out=$(vtx voxtype_swap plain "$bars_dir/plain")
+check "a branch without voxtype or systemd changes does nothing" "[[ \$out == 'voxtype: unchanged' && ! -e $vt_calls && ! -e $bars_dir/.voxtype_bar ]] && vt_link_is $vt_home/.config/voxtype $vt_main_config"
+out=$(vtx voxtype_swap tests "$bars_dir/tests")
+check "a change only to voxtype's tests does nothing" "[[ \$out == 'voxtype: unchanged' && ! -e $vt_calls ]]"
+out=$(vtx voxtype_restore)
+check "restore with nothing swapped touches nothing" "[[ -z \$out && ! -e $vt_calls ]]"
+out=$(vtx voxtype_status)
+check "status is main" "[[ \$out == 'voxtype: main' ]]"
+
+out=$(vtx voxtype_swap duck "$bars_dir/duck")
+code=$?
+show "$out"
+check "swap succeeds and names the enabled unit" "[[ $code == 0 && \$out == 'voxtype: test build duck (enabled voxtype-duck.service)' ]]"
+check "links the config, the scripts and the changed units into the test build" "vt_link_is $vt_home/.config/voxtype $vt_dir/home/voxtype/.config/voxtype && vt_link_is $vt_home/.local/bin/voxtype-duck $vt_dir/home/voxtype/.local/bin/voxtype-duck && vt_link_is $vt_home/.local/bin/voxtype-daemon $vt_dir/home/voxtype/.local/bin/voxtype-daemon && vt_link_is $vt_units/voxtype-duck.service $vt_dir/home/systemd/.config/systemd/user/voxtype-duck.service && vt_link_is $vt_units/voxtype.service.d/duck.conf $vt_dir/home/systemd/.config/systemd/user/voxtype.service.d/duck.conf"
+check "leaves units the branch did not change on main" "vt_link_is $vt_units/hyprland-session.target $vt_repo/home/systemd/.config/systemd/user/hyprland-session.target"
+check "reloads, restarts voxtype, and only then enables the follower" "[[ \$(vt_order 'daemon-reload') -lt \$(vt_order 'try-restart voxtype') && \$(vt_order 'try-restart voxtype') -lt \$(vt_order 'enable --now voxtype-duck.service') ]]"
+check "records the bar and the enabled unit" "[[ \$(cat $bars_dir/.voxtype_bar) == duck && \$(cat $bars_dir/.voxtype_enabled) == voxtype-duck.service ]]"
+out=$(vtx voxtype_status)
+check "status shows the test build" "[[ \$out == 'voxtype: test build duck (enabled: voxtype-duck.service)' ]]"
+
+: >"$vt_calls"
+out=$(vtx voxtype_restore)
+code=$?
+show "$out"
+check "restore succeeds" "[[ $code == 0 && \$out == 'voxtype: main' ]]"
+check "restore disables the follower, then restows, reloads and restarts, in that order" "[[ \$(vt_order 'disable --now voxtype-duck.service') -lt \$(vt_order 'stow') && \$(vt_order 'stow') -lt \$(vt_order 'daemon-reload') && \$(vt_order 'daemon-reload') -lt \$(vt_order 'restart voxtype') ]]"
+check "restore puts main's links back and removes the test ones" "vt_link_is $vt_home/.config/voxtype $vt_main_config && vt_link_is $vt_home/.local/bin/voxtype-daemon $vt_main_bin && [[ ! -e $vt_home/.local/bin/voxtype-duck && ! -e $vt_units/voxtype-duck.service && ! -e $vt_units/voxtype.service.d/duck.conf && -L $vt_units/voxtype.service.d/prompt.conf ]]"
+check "restore clears the records" "[[ ! -e $bars_dir/.voxtype_bar && ! -e $bars_dir/.voxtype_enabled ]]"
+: >"$vt_calls"
+out=$(vtx voxtype_restore)
+check "a second restore is a no-op" "[[ -z \$out && ! -s $vt_calls ]] && vt_link_is $vt_home/.config/voxtype $vt_main_config"
+
+echo "== voxtype: a swap that fails partway"
+vt_reset
+out=$(FAKE_ENABLE_FAIL=voxtype-duck.service vtx voxtype_swap duck "$bars_dir/duck")
+code=$?
+check "swap fails and says to restore" "[[ $code != 0 ]] && grep -q 'run restore' <<<\"\$out\""
+out=$(vtx voxtype_status)
+check "status reports the test build with the unit recorded" "grep -q 'duck' <<<\"\$out\" && [[ \$(cat $bars_dir/.voxtype_enabled) == voxtype-duck.service ]]"
+: >"$vt_calls"
+out=$(vtx voxtype_restore)
+check "restore undoes it, disabling the unit it may have enabled" "[[ \$out == 'voxtype: main' ]] && grep -q 'disable --now voxtype-duck.service' '$vt_calls' && vt_link_is $vt_home/.config/voxtype $vt_main_config && [[ ! -e $vt_units/voxtype-duck.service ]]"
+
+echo "== voxtype: a swap stopped before the enable"
+vt_reset
+vtx voxtype_swap duck "$bars_dir/duck" >/dev/null
+# the process died after linking and before the enabled record was written
+rm "$bars_dir/.voxtype_enabled"
+: >"$vt_calls"
+out=$(vtx voxtype_restore)
+check "restore from links alone still relinks main and restarts" "[[ \$out == 'voxtype: main' ]] && vt_link_is $vt_home/.config/voxtype $vt_main_config && ! grep -q disable '$vt_calls' && grep -q 'restart voxtype' '$vt_calls'"
+vt_reset
+vtx voxtype_swap duck "$bars_dir/duck" >/dev/null
+rm -f "$bars_dir/.voxtype_bar"
+out=$(vtx voxtype_status)
+check "status says half swapped when the record is gone" "grep -q 'half swapped' <<<\"\$out\""
+vtx voxtype_restore >/dev/null
+check "restore recovers from the links with no record" "vt_link_is $vt_home/.config/voxtype $vt_main_config && [[ ! -e $vt_units/voxtype-duck.service ]]"
+
+echo "== voxtype: swapping to a build without voxtype changes"
+vt_reset
+vtx voxtype_swap duck "$bars_dir/duck" >/dev/null
+: >"$vt_calls"
+out=$(vtx voxtype_swap plain "$bars_dir/plain")
+check "restores main instead of leaving the old test build" "[[ \$out == 'voxtype: main' ]] && vt_link_is $vt_home/.config/voxtype $vt_main_config && grep -q 'disable --now voxtype-duck.service' '$vt_calls'"
+
+echo "== voxtype: a real file in the way"
+vt_reset
+echo mine >"$vt_units/voxtype-duck.service"
+out=$(vtx voxtype_swap duck "$bars_dir/duck")
+code=$?
+check "refuses before moving anything" "[[ $code != 0 ]] && grep -q 'is not a symlink' <<<\"\$out\" && vt_link_is $vt_home/.config/voxtype $vt_main_config && [[ ! -e $bars_dir/.voxtype_bar ]] && ! grep -qE 'restart|daemon-reload|enable' '$vt_calls'"
+rm "$vt_units/voxtype-duck.service"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))

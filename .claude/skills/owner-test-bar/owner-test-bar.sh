@@ -17,6 +17,15 @@ voxcmd_config_link="$HOME/.config/voxcmd"
 # The private integrations dirs, which a private dotfiles repo links into per file.
 voxcmd_private_dirs=(integrations.d replacements.d)
 voxcmd_bar="$bars/.voxcmd_bar"
+voxtype_bin_dir="$HOME/.local/bin"
+voxtype_config_link="$HOME/.config/voxtype"
+voxtype_units_dir="$HOME/.config/systemd/user"
+# The test bar a voxtype/systemd swap came from, written before any link moves. Beside it, the units the swap enabled,
+# one per line, written before each enable, so restore disables exactly those even after a failure partway.
+voxtype_bar="$bars/.voxtype_bar"
+voxtype_enabled="$bars/.voxtype_enabled"
+# What the swap watches in a branch: the paths that reach ~ (not voxtype's tests), as pathspecs.
+voxtype_swap_paths=(home/voxtype/.config home/voxtype/.local home/systemd/.config)
 # The Rust voxcmd that `just voxcmd-build` installs from the main checkout. rs-swap points only the voxcmd link at it.
 voxcmd_rs_bin="${XDG_DATA_HOME:-$HOME/.local/share}/voxcmd-rs/bin/voxcmd"
 # Links are compared resolved, so the target is too: a symlinked XDG_DATA_HOME would otherwise never match.
@@ -189,12 +198,13 @@ hypr_restore() {
   restart_rotator
 }
 
-hypr_copy_ignored() {
-  local dest=$1 path
+# Copies the gitignored files under <rel> of the main checkout into the same place in the test build at <dest>.
+copy_ignored_files() {
+  local dest=$1 rel=$2 path
   while read -r path; do
     mkdir -p "$(dirname "$dest/$path")"
     cp -a "$repo/$path" "$dest/$path"
-  done < <(git -C "$repo" status --short --ignored "$hypr_rel" | awk '$1 == "!!" { sub(/\/$/, "", $2); print $2 }')
+  done < <(git -C "$repo" status --short --ignored "$rel" | awk '$1 == "!!" { sub(/\/$/, "", $2); print $2 }')
 }
 
 # Without its profile, Hyprland reloads with this machine's monitors at automatic positions.
@@ -217,7 +227,7 @@ hypr_swap() {
   # hypr_point reloads through hyprctl; a stale HYPRLAND_INSTANCE_SIGNATURE would fail it after the link moved.
   hyprctl version >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); hypr link untouched"
   orig=$(readlink "$hypr_link") || die "$hypr_link is not a symlink; refusing the hypr swap"
-  hypr_copy_ignored "$dir"
+  copy_ignored_files "$dir" "$hypr_rel"
   require_machine_profile "$dir"
   [[ -f $hypr_orig ]] && orig=$(<"$hypr_orig")
   # Recording a test bar as the original would make restore point back at it, and remove delete what Hyprland reads.
@@ -330,6 +340,114 @@ voxcmd_swap() {
   ln -sfn "$config" "$voxcmd_config_link"
   echo "voxcmd: test build $name"
   voxcmd_debug_start
+}
+
+# Every voxtype or systemd-unit link in ~ that points into a test bar, from a swap or a half-done one. The target is read
+# one level (not resolved) so a unit's .wants link, which resolves through the unit link, is not mistaken for one.
+voxtype_test_links() {
+  local link
+  # Depth two reaches drop-in links (x.service.d/y.conf).
+  for link in "$voxtype_bin_dir"/voxtype-* "$voxtype_config_link" "$voxtype_units_dir"/* "$voxtype_units_dir"/*/*; do
+    [[ -L $link && $(readlink "$link") == "$bars"/* ]] && echo "$link"
+  done
+  return 0
+}
+
+# Links the test build's voxtype config, its voxtype-* scripts and the units it adds or changes into ~, restarts voxtype
+# onto the new config, then enables the units the branch adds. The restart comes first: a unit that replaces something
+# voxtype did itself (voxtype-duck takes over the media ducking) would otherwise run alongside it for one recording.
+voxtype_swap() {
+  local name=$1 dir=$2 changes status path unit rel link
+  local -a added_units=() changed_units=()
+  changes=$(git -C "$dir" diff --name-status --no-renames --diff-filter=AM origin/main...HEAD -- "${voxtype_swap_paths[@]}")
+  if [[ -z $changes ]]; then
+    if [[ -f $voxtype_bar ]] || [[ -n $(voxtype_test_links) ]]; then voxtype_restore; else echo "voxtype: unchanged"; fi
+    return 0
+  fi
+  # A build already on the test links goes back to main first: its units may not exist in this one.
+  if [[ -f $voxtype_bar ]] || [[ -n $(voxtype_test_links) ]]; then voxtype_restore; fi
+  systemctl --user show-environment >/dev/null 2>&1 || die "the systemd user manager is unreachable; refusing the voxtype swap"
+  [[ -L $voxtype_config_link ]] || die "$voxtype_config_link is not a symlink (stow unfolded it?); refusing the voxtype swap"
+  while IFS=$'\t' read -r status path; do
+    rel=${path#home/systemd/.config/systemd/user/}
+    [[ $rel != "$path" ]] || continue
+    changed_units+=("$rel")
+    # Only top-level units are enabled; drop-ins (x.service.d/y.conf) just ride along with the unit they extend.
+    if [[ $status == A && $rel != */* && $rel =~ \.(service|timer|socket|path)$ ]]; then added_units+=("$rel"); fi
+  done <<<"$changes"
+  for unit in "${changed_units[@]}"; do
+    [[ ! -e $voxtype_units_dir/$unit || -L $voxtype_units_dir/$unit ]] || die "$voxtype_units_dir/$unit is not a symlink; refusing the voxtype swap"
+  done
+  for link in "$dir/home/voxtype/.local/bin"/*; do
+    [[ ! -e $voxtype_bin_dir/${link##*/} || -L $voxtype_bin_dir/${link##*/} ]] || die "$voxtype_bin_dir/${link##*/} is not a symlink; refusing the voxtype swap"
+  done
+  copy_ignored_files "$dir" home/voxtype
+  # Recorded before any link moves, so restore knows to restow even if this stops halfway.
+  echo "$name" >"$voxtype_bar"
+  : >"$voxtype_enabled"
+  mkdir -p "$voxtype_bin_dir"
+  for link in "$dir/home/voxtype/.local/bin"/*; do
+    ln -sfn "$link" "$voxtype_bin_dir/${link##*/}"
+  done
+  ln -sfn "$dir/home/voxtype/.config/voxtype" "$voxtype_config_link"
+  for unit in "${changed_units[@]}"; do
+    mkdir -p "$(dirname "$voxtype_units_dir/$unit")"
+    ln -sfn "$dir/home/systemd/.config/systemd/user/$unit" "$voxtype_units_dir/$unit"
+  done
+  systemctl --user daemon-reload
+  systemctl --user try-restart voxtype
+  for unit in "${added_units[@]}"; do
+    echo "$unit" >>"$voxtype_enabled"
+    systemctl --user enable --now "$unit" || die "could not enable $unit; run restore to undo the voxtype swap"
+  done
+  echo "voxtype: test build $name${added_units[*]:+ (enabled ${added_units[*]})}"
+}
+
+# Undoes voxtype_swap in the order that keeps the volume right: stop what the swap enabled (a follower restores what it
+# ducked in ExecStopPost), drop the test links, restow main, then restart voxtype onto main's config. Safe to rerun: the
+# record goes last, and with nothing swapped it touches nothing.
+voxtype_restore() {
+  local links unit
+  links=$(voxtype_test_links)
+  [[ -n $links || -f $voxtype_bar ]] || return 0
+  command -v stow >/dev/null || die "stow is not installed; cannot relink voxtype from main"
+  if [[ -f $voxtype_enabled ]]; then
+    while read -r unit; do
+      [[ -n $unit ]] || continue
+      systemctl --user disable --now "$unit" || echo "owner-test-bar: could not disable $unit; continuing" >&2
+    done <"$voxtype_enabled"
+    rm -f "$voxtype_enabled"
+  fi
+  [[ -z $links ]] || xargs -d '\n' rm -f <<<"$links"
+  # -d and -t absolute: stow run from inside home/ would target the repo itself. systemd is stowed unfolded, as the installer does.
+  stow -d "$repo/home" -t "$HOME" -R voxtype
+  stow -d "$repo/home" -t "$HOME" --no-folding -R systemd
+  systemctl --user daemon-reload
+  systemctl --user restart voxtype
+  rm -f "$voxtype_bar"
+  echo "voxtype: main"
+}
+
+# The test bars voxtype's links point into, one per line.
+voxtype_linked_bars() {
+  local link target
+  voxtype_test_links | while read -r link; do
+    target=$(readlink "$link")
+    target=${target#"$bars"/}
+    echo "${target%%/*}"
+  done | sort -u
+}
+
+voxtype_status() {
+  local names
+  names=$(voxtype_linked_bars)
+  if [[ -z $names && ! -f $voxtype_bar ]]; then
+    echo "voxtype: main"
+  elif [[ -f $voxtype_bar && $names == "$(<"$voxtype_bar")" ]]; then
+    echo "voxtype: test build $names (enabled: $(paste -sd ' ' "$voxtype_enabled" 2>/dev/null || true))"
+  else
+    echo "voxtype: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
+  fi
 }
 
 # Runs the Rust voxcmd for one session. Refuses rather than renews on a second call: a silent renewal would hide that a
@@ -519,6 +637,7 @@ status() {
     echo "hypr: stowed ($(readlink "$hypr_link"))"
   fi
   voxcmd_status
+  voxtype_status
 }
 
 probe() {
@@ -647,6 +766,7 @@ main() {
     require_unlocked
     hypr_swap "${2}" "$dir"
     voxcmd_swap "$2" "$dir"
+    voxtype_swap "$2" "$dir"
     launch "qs -n -p $dir/$qs_rel"
     verify "qs log -p $dir/$qs_rel"
     ;;
@@ -675,6 +795,7 @@ main() {
     require_unlocked
     hypr_restore
     voxcmd_restore
+    voxtype_restore
     launch "qs -n"
     verify "qs log"
     rm -f "$owner_file"
@@ -689,6 +810,9 @@ main() {
     # The links decide too: a swap stopped halfway may have moved them for this bar under another bar's record.
     if [[ -f $voxcmd_bar && $(<"$voxcmd_bar") == "$2" ]] || grep -qxF "$2" <<<"$(voxcmd_linked_bars)"; then
       voxcmd_restore
+    fi
+    if [[ -f $voxtype_bar && $(<"$voxtype_bar") == "$2" ]] || grep -qxF "$2" <<<"$(voxtype_linked_bars)"; then
+      voxtype_restore
     fi
     git -C "$repo" worktree remove --force "$dir"
     git -C "$repo" worktree prune
