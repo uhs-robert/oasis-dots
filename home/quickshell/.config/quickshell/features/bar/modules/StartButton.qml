@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import qs.theme
 import qs.features.settings
-import qs.styles.neovim.widgets as Neovim
+import qs.features.bar.neovim as Neovim
 import qs.features.bar
 import qs.features.popups
 
