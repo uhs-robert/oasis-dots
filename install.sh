@@ -110,6 +110,7 @@ main() {
   migrate_unfold_systemd
   migrate_quickshell_lock_assets
   migrate_quickshell_state
+  migrate_quickshell_input
   do_stow "${core[@]}"
   seed_generated_defaults "${core[@]}"
 

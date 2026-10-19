@@ -175,3 +175,18 @@ migrate_quickshell_state() {
   _migrate_run rm -rf -- "$by"
   return 0
 }
+
+# Quickshell's Typing settings (start mode, remember query) used to be saved as input.json, a name shared with Hyprland's
+# input.json in the hypr state dir; they now save as typing.json. Copies the old file once and leaves it: a bar still on the old
+# code keeps reading it, and a rollback finds it. Never overwrites. $1 is the Quickshell state dir, for the tests.
+migrate_quickshell_input() {
+  local state=${1:-${XDG_STATE_HOME:-$HOME/.local/state}/quickshell}
+  [[ -f "$state/input.json" ]] || return 0
+  [[ ! -e "$state/typing.json" && ! -L "$state/typing.json" ]] || return 0
+  # install.sh runs under set -e, and a Typing setting is not worth blocking the install.
+  _migrate_run cp -p -- "$state/input.json" "$state/typing.json" || {
+    warn "Could not copy $state/input.json to typing.json; the Typing settings start at their defaults"
+    return 0
+  }
+  info "Copied $state/input.json to $state/typing.json"
+}
