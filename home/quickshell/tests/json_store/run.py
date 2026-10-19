@@ -185,6 +185,52 @@ def scenario_immediate(state_home):
     return problems
 
 
+def scenario_immediate_spaced(state_home):
+    result, store_dir, problems = store_run("immediate_spaced", state_home)
+    if problems:
+        return problems
+    expect(problems, "final disk", json.loads(read(store_dir)), {"a": 5, "b": 0})
+    expect(problems, "one write per set", result["saved_count"], 5)
+    expect(problems, "loaded() churn from echoes", result["loaded_count"], 1)
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_early_set(state_home):
+    result, store_dir, problems = store_run("early_set", state_home, seed='{"a":5,"x":1,"pins":[1]}')
+    if problems:
+        return problems
+    expect(problems, "disk: set key wins, the rest kept", json.loads(read(store_dir)), {"x": 1, "pins": [1], "a": 5, "b": 7})
+    expect(problems, "values", result["values"], {"a": 5, "b": 7})
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_early_set_debounced(state_home):
+    result, store_dir, problems = store_run("early_set_debounced", state_home, seed='{"a":5,"x":1}')
+    if problems:
+        return problems
+    expect(problems, "disk", json.loads(read(store_dir)), {"x": 1, "a": 5, "b": 7})
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_early_replace(state_home):
+    result, store_dir, problems = store_run("early_replace", state_home, seed='{"old":{"count":2}}')
+    if problems:
+        return problems
+    expect(problems, "disk keeps the entries it had not read", json.loads(read(store_dir)), {"old": {"count": 2}, "new": 1})
+    return problems
+
+
+def scenario_early_set_missing(state_home):
+    result, store_dir, problems = store_run("early_set_missing", state_home)
+    if problems:
+        return problems
+    expect(problems, "disk", json.loads(read(store_dir)), {"a": 0, "b": 7})
+    return problems
+
+
 def scenario_corrupt(state_home):
     result, store_dir, problems = store_run("corrupt", state_home, seed="{")
     if problems:
@@ -386,6 +432,11 @@ SCENARIOS = {
     "no_write_before_set": scenario_no_write_before_set,
     "echo": scenario_echo,
     "immediate": scenario_immediate,
+    "immediate_spaced": scenario_immediate_spaced,
+    "early_set": scenario_early_set,
+    "early_set_debounced": scenario_early_set_debounced,
+    "early_replace": scenario_early_replace,
+    "early_set_missing": scenario_early_set_missing,
     "corrupt": scenario_corrupt,
     "corrupt_then_set": scenario_corrupt_then_set,
     "external_idle": scenario_external_idle,

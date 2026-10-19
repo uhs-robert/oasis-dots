@@ -76,6 +76,44 @@ ShellRoot {
             steps: [1, 2, 3, 4, 5].map(i => [100 + i * 3, () => store.set_key("a", i)]),
             end: 1000
         },
+        // Five sets 100 ms apart each get their own write, and none of the echoes loads over a later set.
+        immediate_spaced: {
+            debounce_ms: 0,
+            steps: [1, 2, 3, 4, 5].map(i => [100 + i * 100, () => store.set_key("a", i)]),
+            end: 1000
+        },
+        // A set made before the initial read arrives (block_loading off) must not cost the keys on disk: the keys set
+        // win, the rest of the file is kept, known or not.
+        early_set: {
+            block_loading: false,
+            init: () => store.set_key("b", 7),
+            steps: [],
+            end: 700
+        },
+        // Same when the debounce timer fires before the read is in.
+        early_set_debounced: {
+            block_loading: false,
+            debounce_ms: 1,
+            init: () => store.set_key("b", 7),
+            steps: [],
+            end: 700
+        },
+        // Whole-object replace before the load, as Pickers.record does with a map it has not read yet.
+        early_replace: {
+            block_loading: false,
+            defaults: {},
+            validate: raw => raw,
+            init: () => store.replace({ new: 1 }),
+            steps: [],
+            end: 700
+        },
+        // A file that is missing when the early set comes writes the set alone.
+        early_set_missing: {
+            block_loading: false,
+            init: () => store.set_key("b", 7),
+            steps: [],
+            end: 700
+        },
         corrupt: {
             steps: [],
             end: 600
@@ -253,6 +291,7 @@ ShellRoot {
         validate: root.plan.validate || root.overlay
         known_keys: root.plan.known_keys || Object.keys(root.plan.defaults || ({ a: 0, b: 0 }))
         debounce_ms: root.plan.debounce_ms || 0
+        block_loading: root.plan.block_loading !== false
         after_save: root.plan.after_save || null
         onLoaded: {
             root.loaded_count += 1;
@@ -287,7 +326,10 @@ ShellRoot {
         }
     }
 
-    Component.onCompleted: root.started = Date.now()
+    Component.onCompleted: {
+        root.started = Date.now();
+        if (root.plan.init) root.plan.init();
+    }
 
     // Scenario "atomic": the store's write primitive. Two writes 400 ms apart; run.py watches the directory and
     // requires the second one to arrive as a rename over the target, and the target's inode to change.
