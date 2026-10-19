@@ -56,9 +56,9 @@ fn say(verdict: &str) {
 
 /// Runs its arguments (voxtype's) as a background job, with this shell as the leader of the process group. The shell
 /// is what `die_with_parent` TERMs when this process dies; on that TERM it TERMs the whole group, so a child voxtype
-/// started goes too. The clip stays on stdin (`<&0`) because a background job of a non-interactive shell would
+/// started goes too (`kill -s TERM 0` because dash rejects the `kill -- -$$` form). The clip stays on stdin (`<&0`) because a background job of a non-interactive shell would
 /// otherwise get /dev/null.
-const VOXTYPE_AS_GROUP_LEADER: &str = r#"trap 'trap "" TERM; kill -TERM -- -$$' TERM; "$@" <&0 & wait $!"#;
+const VOXTYPE_AS_GROUP_LEADER: &str = r#"trap 'trap "" TERM; kill -s TERM 0' TERM; "$@" <&0 & wait $!"#;
 
 /// What voxtype heard in the clip: "" for no speech, none when it failed or ran out of time.
 fn transcribe(wav: &str) -> Option<String> {
@@ -161,6 +161,44 @@ fn on_path(name: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::process::CommandExt;
+
+    #[test]
+    fn a_terminated_wrapper_takes_its_child_with_it_under_every_shell_installed() {
+        for shell in ["sh", "bash", "dash"] {
+            if on_path(shell).is_none() {
+                continue;
+            }
+            let dir = tempfile::tempdir().unwrap();
+            let pid_file = dir.path().join("child");
+            let script = format!("sleep 30 & echo $! > '{}'; wait", pid_file.display());
+            let mut wrapper = Command::new(shell);
+            wrapper
+                .args(["-c", VOXTYPE_AS_GROUP_LEADER, "wrapper", "sh", "-c", &script])
+                .process_group(0);
+            let mut wrapper = wrapper.spawn().unwrap();
+            let deadline = std::time::Instant::now() + Duration::from_secs(5);
+            while std::fs::read_to_string(&pid_file).unwrap_or_default().trim().is_empty()
+                && std::time::Instant::now() < deadline
+            {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            let child: libc::pid_t = std::fs::read_to_string(&pid_file).unwrap().trim().parse().unwrap();
+            // SAFETY: signals the wrapper this test spawned.
+            unsafe { libc::kill(wrapper.id() as libc::pid_t, libc::SIGTERM) };
+            wrapper.wait().unwrap();
+            let deadline = std::time::Instant::now() + Duration::from_secs(5);
+            // SAFETY: signal 0 only checks that the process exists.
+            while unsafe { libc::kill(child, 0) } == 0 && std::time::Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            assert_ne!(
+                unsafe { libc::kill(child, 0) },
+                0,
+                "{shell}: the child outlived the wrapper"
+            );
+        }
+    }
 
     #[test]
     fn the_limit_reads_as_bash_s_timeout_reads_it() {
