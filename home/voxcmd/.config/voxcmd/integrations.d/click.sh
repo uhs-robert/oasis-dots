@@ -19,7 +19,7 @@ private_labels=1
 source "$voxcmd_share_dir/mode-phrases.sh"
 click_exit_object='(the )?(clicking|click mode|clicking mode)'
 click_exit_phrase=$(mode_exit_phrase "$click_exit_object")
-session_exit_phrases="done clicking|im done clicking|done with $click_exit_object|$click_exit_phrase"
+session_exit_phrases="done clicking|im done clicking|done with $click_exit_object|$click_exit_phrase|exit|quit"
 session_exit_hint="say cortana done to stop"
 session_default_exits=0
 # What "cortana ..." runs inside click mode. A bare "rapid mode" is a click: session_allows_switches stays at 0.

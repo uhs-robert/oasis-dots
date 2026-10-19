@@ -704,28 +704,35 @@ sess_voxcmd_env session end
 sess_wait
 # Bare, a mode-naming exit is a missed turn like "done": the verbs stay for outside a session, but only "cortana ..."
 # leaves.
-for word in "done" "Done." "that's all" "I'm done" "done with rapid mode" "stop rapid mode" "Okay, quit rapid mode." "rapid mode off" "turn off rapid fire mode"; do
+for word in "done" "Done." "that's all" "I'm done" "done with rapid mode"; do
   sess_run "tap alpha" "$word" "tap gamma" "cortana done"
-  check "bare '$word' does not end rapid mode" "session_gone && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+  check "bare '$word' does not end rapid mode, and says how to leave" "session_gone && toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+done
+# The mode-naming forms stay rejected by the rewrite, with the generic toast and no hint.
+for word in "stop rapid mode" "Okay, quit rapid mode." "rapid mode off" "turn off rapid fire mode"; do
+  sess_run "tap alpha" "$word" "tap gamma" "cortana done"
+  check "bare '$word' does not end rapid mode, and gives no leave hint" "session_gone && toast_has 'Not understood' && ! toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 done
 sess_run "tap alpha and then stop rapid mode" "tap gamma" "cortana done"
 check "a trailing 'and then stop rapid mode' step does not end rapid mode either" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 3 ]]"
-for word in "cortana done" "Cortana, I'm done." "Cortana, stop rapid mode." "cortana stop" "cortana that's all" "cortana done with rapid mode"; do
+for word in "cortana done" "Cortana, I'm done." "Cortana, stop rapid mode." "cortana stop" "cortana that's all" "cortana done with rapid mode" "cortana exit" "Cortana, quit."; do
   sess_run "tap alpha" "$word" "tap gamma"
   check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
-# Bare exit words are not exits in rapid mode: "exit", "cancel" and "quit" match nothing, and "stop" is Media's, as
-# outside a session.
-for word in "exit" "cancel" "quit"; do
+# Bare exit words are not exits in rapid mode: "exit" and "quit" give the leave hint, "cancel" matches nothing, and
+# "stop" is Media's, as outside a session.
+for word in "exit" "quit"; do
   sess_run "tap alpha" "$word" "tap gamma" "cortana done"
-  check "bare '$word' leaves rapid mode open, pausing nothing" "session_gone && ! grep -q '^playerctl' '$log' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+  check "bare '$word' leaves rapid mode open, pausing nothing, with the leave hint" "session_gone && ! grep -q '^playerctl' '$log' && toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 done
+sess_run "tap alpha" "cancel" "tap gamma" "cortana done"
+check "bare 'cancel' leaves rapid mode open, pausing nothing, with no leave hint" "session_gone && ! grep -q '^playerctl' '$log' && ! toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 for word in "stop" "Stop."; do
   sess_run "tap alpha" "$word" "tap gamma" "cortana done"
   check "bare '$word' pauses the music and leaves rapid mode open" "session_gone && grep -q '^playerctl' '$log' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 done
 sess_run "tap alpha and then exit" "tap gamma" "cortana done"
-check "a sequence ending in a bare exit does not end rapid mode" "session_gone && [[ \$(taps) == 2 && \$(record_starts) == 3 ]]"
+check "a sequence ending in a bare exit does not end rapid mode, and says how to leave" "session_gone && toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 3 ]]"
 sess_run "cortana tap alpha" "tap beta" "cortana done"
 check "a 'cortana ...' that is no mode command is routed as a command, and the mode goes on" "session_gone && ! toast_has 'Not a mode command' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
 sess_run "cortana tap" "tap beta" "cortana done"
@@ -778,7 +785,7 @@ check "a mode that rewrites its turns rewrites each step of a sequence" "session
 sess_run "start testing" "alpha and then done" "tap beta" "cortana done"
 check "a last step that is the mode's exit phrase runs the steps before it, then leaves the mode" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 4 ]]"
 sess_run "tap alpha and then done" "tap beta" "cortana done"
-check "and in rapid mode it does not: the steps run up to the bare 'done', which matches nothing" "session_gone && toast_has 'stopped at step 2 of 2' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
+check "and in rapid mode it does not: the steps run, then the bare 'done' gives the leave hint" "session_gone && toast_has 'say cortana done to leave' && ! toast_has 'stopped at step 2' && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 3 ]]"
 sess_run "start testing" "alpha" "done" "tap beta" "cortana done"
 check "a mode opened in rapid mode returns to it: test mode's targets, then rapid mode's commands" "session_gone && [[ \$(grep '^tap ' '$log' | paste -sd,) == 'tap alpha,tap beta' && \$(record_starts) == 5 ]]"
 check "and runs its ended hook once" "log_has_soon '^ended-hook' && [[ \$(grep -c '^ended-hook' '$log') == 1 ]]"
@@ -831,7 +838,7 @@ done
 # now, a missed turn like the other bare exits.
 sess_run "click mode off" "cortana done"
 check "'click mode off' does not end click mode: the rewrite rejects it" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 2 ]]"
-for word in "cortana done" "cortana stop clicking" "cortana done clicking" "cortana exit click mode"; do
+for word in "cortana done" "cortana stop clicking" "cortana done clicking" "cortana exit click mode" "cortana exit" "Cortana, quit."; do
   sess_run "$word" "tap alpha"
   check "'$word' leaves click mode" "session_gone && no_clicks && [[ \$(taps) == 0 && \$(record_starts) == 1 ]]"
 done
@@ -906,7 +913,7 @@ wake_heard "Cortana, stop."
 sess_wait
 check "cortana stop ends the recording and types it once, without the ending" "session_gone && wtype_is 'wtype -- Hello world.' && [[ \$(record_starts) == 1 ]] && grep -q '^voxtype record stop' '$log' && toast_has 'Type mode ended done'"
 
-for ending in "Cortana stop typing." "Cortana, stop recording." "cortana done" "Cortana, stop dictation."; do
+for ending in "Cortana stop typing." "Cortana, stop recording." "cortana done" "Cortana, stop dictation." "Cortana exit." "Cortana, quit."; do
   sess_start "UNTIL_STOP Some text. $ending"
   owner_is_listening
   wake_heard "$ending"
