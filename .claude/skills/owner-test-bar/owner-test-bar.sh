@@ -482,7 +482,8 @@ voxtype_restore() {
   stow -d "$repo/home" -t "$HOME" -R voxtype
   stow -d "$repo/home" -t "$HOME" --no-folding -R systemd
   systemctl --user daemon-reload
-  systemctl --user restart voxtype
+  # try-restart: a voxtype that was stopped before the test stays stopped.
+  systemctl --user try-restart voxtype
   voxtype_apply "$voxtype_restarted" "restart" try-restart
   voxtype_apply "$voxtype_disabled" "re-enable" enable --now
   voxtype_apply "$voxtype_stopped" "start" start
