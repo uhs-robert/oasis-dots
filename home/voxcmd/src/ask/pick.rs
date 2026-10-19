@@ -14,8 +14,7 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
-use std::time::{Duration, Instant};
+use std::process::{Command, Stdio};
 
 /// What the bar's picker reads from `spec.json`. With no id it only writes the pick to `result_path` and skips the
 /// Hyprland prompt callback.
@@ -279,19 +278,16 @@ fn ask(
     let picked = asking.read_answer(&timeout, signals)?;
     // Removed before closing: closing the bar's picker writes a cancel to the FIFO, which must find it gone.
     asking.clean_up();
-    // qs-picker exits as soon as the bar takes the pick, so this is still running at the end only when it is rofi.
-    // The answer can arrive a moment before qs-picker's exit, so it gets a short grace before it reads as rofi.
-    let picker_running = picker.as_mut().is_some_and(|picker| {
-        let grace = if uses_qs_picker {
-            PICKER_EXIT_GRACE
-        } else {
-            Duration::ZERO
-        };
-        still_running_after(picker, grace)
-    });
+    // qs-picker exits when the bar takes the pick but can lag the answer, so whether it has exited cannot tell the bar's
+    // picker from rofi: a qs-picker is always closed through the bar (a no-op when it fell back to rofi), and whatever is
+    // still running is terminated.
+    let picker_running = picker
+        .as_mut()
+        .is_some_and(|picker| picker.try_wait().is_ok_and(|status| status.is_none()));
     if let Some(picker) = picker.filter(|_| picker_running) {
         terminate_with_children(&picker);
-    } else if is_executable(&paths::qs_ipc()) {
+    }
+    if (uses_qs_picker || !picker_running) && is_executable(&paths::qs_ipc()) {
         // A no-op unless a voice reply or the timeout ended the pick while the picker was still open.
         qs_ipc_call(&["picker".as_ref(), "close".as_ref()]);
     }
@@ -300,21 +296,6 @@ fn ask(
     } else {
         Ok(picked)
     })
-}
-
-const PICKER_EXIT_GRACE: Duration = Duration::from_millis(200);
-
-fn still_running_after(picker: &mut Child, grace: Duration) -> bool {
-    let deadline = Instant::now() + grace;
-    loop {
-        if !picker.try_wait().is_ok_and(|status| status.is_none()) {
-            return false;
-        }
-        if Instant::now() >= deadline {
-            return true;
-        }
-        std::thread::sleep(Duration::from_millis(5));
-    }
 }
 
 #[cfg(test)]

@@ -236,7 +236,7 @@ fn a_qs_picker_slow_to_exit_after_its_answer_is_still_closed_as_the_bar_picker()
     let bar = Bar::new();
     let (code, out, err) = finish(bar.spawn(
         &["ask", "pick", "Which?", TWO],
-        &[("GOLDEN_ANSWER", "2. Slack"), ("GOLDEN_LINGER", "0.1")],
+        &[("GOLDEN_ANSWER", "2. Slack"), ("GOLDEN_LINGER", "0.5")],
     ));
     assert_eq!((code, out.as_str()), (0, "Slack"), "{err}");
     assert!(bar.calls().ends_with("qs-ipc call picker close"), "{}", bar.calls());
