@@ -9,6 +9,7 @@ RowsSection {
     // -1 to 1 in tenths, built from integers so each step compares equal to the saved value.
     readonly property var speeds: Array.from({ length: 21 }, (_, i) => (i - 10) / 10)
     readonly property var focus_modes: ({ 0: "Off, click to focus", 1: "On", 2: "Pointer only, click for keys", 3: "Detached" })
+    readonly property var pointer_key_names: ({ hjkl: "HJKL", wasd: "WASD", both: "Both" })
 
     function toggle(label, key, desc) {
         return {
@@ -37,5 +38,12 @@ RowsSection {
         text: v => root.focus_modes[v] || String(v),
         value: () => HyprInput.value("follow_mouse"),
         set: v => HyprInput.set("follow_mouse", v)
+    }, {
+        label: "Pointer keys",
+        desc: "Keys that move the keyboard pointer (Cursor mode). Reloads Hyprland to apply.",
+        values: () => ["hjkl", "wasd", "both"],
+        text: v => root.pointer_key_names[v] || String(v),
+        value: () => HyprInput.value("pointer_keys"),
+        set: v => HyprInput.set("pointer_keys", v)
     }, root.toggle("Natural scrolling (touchpad)", "natural_scroll", "Content follows your fingers on the touchpad, as on a phone."), root.toggle("Tap to click", "tap_to_click", "A tap on the touchpad clicks, without pressing it down."), root.toggle("Disable touchpad while typing", "disable_while_typing", "Ignore the touchpad while keys are being typed, so a palm does not move the pointer.")]
 }

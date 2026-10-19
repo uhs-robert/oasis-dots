@@ -50,6 +50,13 @@ local function scroll_binds(mod, step, suffix)
   }
 end
 
+--- Letter sets bound per Config.input.pointer_keys; the arrow keys come with the first set only.
+local POINTER_KEY_SETS = {
+  hjkl = { Direction.key_sets.hjkl },
+  wasd = { Direction.key_sets.wasd },
+  both = { Direction.key_sets.hjkl, { left = "A", down = "S", up = "W", right = "D", arrows = false } },
+}
+
 local cursor_mode = Submap.define({
   name = "Cursor",
   desc = "+Cursor",
@@ -60,6 +67,10 @@ local cursor_mode = Submap.define({
   on_exit = exit_cursor,
 
   binds = function()
+    local mode = POINTER_KEY_SETS[Config.input.pointer_keys] and Config.input.pointer_keys or "hjkl"
+    local key_sets = POINTER_KEY_SETS[mode]
+    -- CTRL + D is the 1px right step once WASD moves the pointer
+    local page_down = mode == "hjkl" and "D" or "N"
     -- stylua: ignore start
     local keys = {
       -- quick_click
@@ -75,39 +86,44 @@ local cursor_mode = Submap.define({
       { "T",              Cursor.kbptr("tile_click"),                          "Tiling Click" },
       { "SHIFT + T",      Cursor.kbptr("tile_r_click",     { exit = false }),  "Tiling Right Click" },
       { "CTRL + T",       Cursor.kbptr("tile_move"),                           "Tiling Move" },
-      -- Space Clicks
-      { "SPACE",          Cursor.click_left(),    "Left Click" },
-      { "SHIFT + SPACE",  Cursor.click_right(),   "Right Click" },
-      { "CTRL + SPACE",   Cursor.click_middle(),  "Middle Click" },
-      -- A,S,D Clicks (CTRL=exit after)
-      { "A",              Cursor.click_left(),             "Left Click" },
-      { "CTRL + A",       oneshot(Cursor.click_left()),    "Left Click (Exit)" },
-      { "S",              Cursor.click_middle(),           "Middle Click" },
-      { "CTRL + S",       oneshot(Cursor.click_middle()),  "Middle Click (Exit)" },
-      { "D",              Cursor.click_right(),            "Right Click" },
+      -- Clicks (CTRL=exit after), the same in every pointer_keys mode
+      { "SPACE",          Cursor.click_left(),                "Left Click" },
+      { "CTRL + SPACE",   oneshot(Cursor.click_left()),       "Left Click (Exit)" },
+      { "R",              Cursor.click_right(),               "Right Click" },
+      { "CTRL + R",       oneshot(Cursor.click_right()),      "Right Click (Exit)" },
+      { "M",              Cursor.click_middle(),              "Middle Click" },
+      { "CTRL + M",       oneshot(Cursor.click_middle()),     "Middle Click (Exit)" },
       -- PageUp/PageDown
       { "CTRL + U",       Cursor.send_key("prior"), "Page Up" },
-      { "CTRL + D",       Cursor.send_key("next"),  "Page Down" },
-      -- Arrow key movement (backup for page movement)
-      { "ALT + H",        Cursor.send_key("LEFT"),  "Arrow Left",  { repeating = true } },
-      { "ALT + J",        Cursor.send_key("DOWN"),  "Arrow Down",  { repeating = true } },
-      { "ALT + K",        Cursor.send_key("UP"),    "Arrow Up",    { repeating = true } },
-      { "ALT + L",        Cursor.send_key("RIGHT"), "Arrow Right", { repeating = true } },
+      { "CTRL + " .. page_down, Cursor.send_key("next"), "Page Down" },
     }
     -- stylua: ignore end
 
-    -- Cursor movement speed tiers (H/J/K/L) with repeating
-    for _, key in ipairs(Direction.speed_binds(Cursor.move, "Cursor")) do
-      key[4] = key[4] or {}
-      key[4].repeating = true
-      keys[#keys + 1] = key
-    end
+    for _, set in ipairs(key_sets) do
+      -- Arrow key movement (backup for page movement)
+      local arrow_keys = {
+        { set.left, "LEFT", "Arrow Left" },
+        { set.down, "DOWN", "Arrow Down" },
+        { set.up, "UP", "Arrow Up" },
+        { set.right, "RIGHT", "Arrow Right" },
+      }
+      for _, arrow in ipairs(arrow_keys) do
+        keys[#keys + 1] = { "ALT + " .. arrow[1], Cursor.send_key(arrow[2]), arrow[3], { repeating = true } }
+      end
 
-    -- Diagonal (omni-direction) speed tiers (H+K/L+K/H+J/L+J) with repeating
-    for _, key in ipairs(Direction.omni_binds(Cursor.move, "Cursor")) do
-      key[4] = key[4] or {}
-      key[4].repeating = true
-      keys[#keys + 1] = key
+      -- Cursor movement speed tiers with repeating
+      for _, key in ipairs(Direction.speed_binds(Cursor.move, "Cursor", nil, set)) do
+        key[4] = key[4] or {}
+        key[4].repeating = true
+        keys[#keys + 1] = key
+      end
+
+      -- Diagonal (omni-direction) speed tiers with repeating
+      for _, key in ipairs(Direction.omni_binds(Cursor.move, "Cursor", nil, set)) do
+        key[4] = key[4] or {}
+        key[4].repeating = true
+        keys[#keys + 1] = key
+      end
     end
 
     -- Scroll tiers (E/Y/COMMA/PERIOD)

@@ -4,7 +4,10 @@
 # be loaded if it exits. Below is the default configuration.
 
 [general]
-home_row_keys=
+# Exactly 11 keys: the first 8 are bisect-mode keys (unused here), then left, right and middle click. Right and
+# middle are r and m to match the Cursor submap, and in split mode those click slots are checked before hjkl and
+# wasd move the pointer, so no movement key may sit in them. Space and Enter confirm with a left click.
+home_row_keys=qetyuiopgrm
 modes=floating,click
 cancellation_status_code=0
 

@@ -24,8 +24,8 @@ Singleton {
         disable_while_typing: "input:touchpad:disable_while_typing"
     })
 
-    // Config.input's defaults until getoption answers; which_key_delay_ms is HyprVim's, not a Hyprland option, so it stays the default.
-    readonly property var fallback: ({ kb_layout: "us", kb_variant: "", repeat_rate: 25, repeat_delay: 600, sensitivity: 0, follow_mouse: 1, natural_scroll: false, tap_to_click: true, disable_while_typing: true, which_key_delay_ms: 0 })
+    // Config.input's defaults until getoption answers; which_key_delay_ms and pointer_keys are not Hyprland options, so they stay the default.
+    readonly property var fallback: ({ kb_layout: "us", kb_variant: "", repeat_rate: 25, repeat_delay: 600, sensitivity: 0, follow_mouse: 1, natural_scroll: false, tap_to_click: true, disable_while_typing: true, which_key_delay_ms: 0, pointer_keys: "hjkl" })
     property var live: root.fallback
     property var saved: ({})
     property bool reload_pending: false
@@ -48,6 +48,7 @@ Singleton {
         case "sensitivity": return typeof v === "number" && v >= -1 && v <= 1;
         case "follow_mouse": return integer_in(0, 3);
         case "which_key_delay_ms": return integer_in(0, 5000);
+        case "pointer_keys": return v === "hjkl" || v === "wasd" || v === "both";
         }
         return false;
     }
@@ -60,7 +61,7 @@ Singleton {
         const next = Object.assign({}, root.saved, { [key]: value });
         // A variant belongs to one layout.
         if (key === "kb_layout" && value !== root.value("kb_layout")) next.kb_variant = "";
-        if (key === "which_key_delay_ms") root.reload_pending = true;
+        if (key === "which_key_delay_ms" || key === "pointer_keys") root.reload_pending = true;
         root.saved = next;
         save_timer.restart();
     }
@@ -141,7 +142,7 @@ Singleton {
                 save_timer.restart();
                 return;
             }
-            // HyprVim reads its which-key delay only at setup, so that one change needs a reload.
+            // HyprVim reads its which-key delay and the Cursor submap its keys only at setup, so those changes need a reload.
             const apply = root.reload_pending ? "hyprctl reload" : "hyprctl eval 'require(\"config.input\").apply()'";
             root.reload_pending = false;
             save_proc.command = ["sh", "-c", "mkdir -p \"$1\" && printf %s \"$2\" > \"$1/input.json.tmp\" && mv \"$1/input.json.tmp\" \"$1/input.json\" && " + apply,

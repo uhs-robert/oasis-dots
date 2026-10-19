@@ -22,6 +22,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field tap_to_click boolean Touchpad tap to click (default: true)
 --- @field disable_while_typing boolean Touchpad off while typing (default: true)
 --- @field which_key_delay_ms integer Milliseconds before the which-key overlay shows (default: 0)
+--- @field pointer_keys "hjkl"|"wasd"|"both" Keys that move the pointer in the Cursor submap (default: "hjkl")
 
 --- @class Config.Appearance
 --- @field inactive_opacity number Opacity of unfocused windows, 0 to 1 (default: 0.5)
@@ -101,6 +102,7 @@ Config.defaults = {
     tap_to_click = true,
     disable_while_typing = true,
     which_key_delay_ms = 0,
+    pointer_keys = "hjkl",
   },
   appearance = {
     inactive_opacity = 0.5,
