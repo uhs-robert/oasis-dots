@@ -166,5 +166,145 @@ echo owner >"$debug_log"
 as "" "" voxcmd_debug_stop >/dev/null
 check "a stale marker cannot delete the owner's later log" "[[ \$(cat $debug_log) == owner ]]"
 
+echo "== rs-swap"
+# A throwaway HOME with a stowed fake voxcmd package and stubbed systemd-run, systemctl and Rust voxcmd; the real
+# stow runs, since the risk is stow aborting on the foreign link.
+rs_home=$root/rs_home
+rs_repo=$root/rs_repo
+stubs=$root/stubs
+calls=$root/calls
+bars_dir=$XDG_CACHE_HOME/dotfiles/test-bars
+export XDG_RUNTIME_DIR=$root/rs_run
+mkdir -p "$rs_home/.local/bin" "$rs_home/.config" "$XDG_RUNTIME_DIR/voxcmd" "$stubs" \
+  "$rs_repo/home/voxcmd/.local/bin" "$rs_repo/home/voxcmd/.config/voxcmd"
+touch "$rs_repo/home/voxcmd/.local/bin/voxcmd" "$rs_repo/home/voxcmd/.config/voxcmd/keybinds.sh"
+stow -d "$rs_repo/home" -t "$rs_home" voxcmd
+rs_bin=$rs_home/.local/share/voxcmd-rs/bin/voxcmd
+stow_target=$rs_repo/home/voxcmd/.local/bin/voxcmd
+cat >"$stubs/systemd-run" <<STUB
+#!/usr/bin/env bash
+echo "systemd-run \$*" >>"$calls"
+[[ -z \${FAKE_TIMER_FAIL:-} ]] || exit 1
+touch "$root/timer_active"
+STUB
+cat >"$stubs/systemctl" <<STUB
+#!/usr/bin/env bash
+echo "systemctl \$*" >>"$calls"
+case \$* in
+*is-active*) [[ -f "$root/timer_active" ]] ;;
+*stop*) rm -f "$root/timer_active" ;;
+esac
+STUB
+chmod +x "$stubs/systemd-run" "$stubs/systemctl"
+# rsx <function> <args>...: one function of the sourced script, with the fake repo, HOME and stubs.
+rsx() {
+  PATH="$stubs:$PATH" HOME=$rs_home bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ \
+    "$here/../owner-test-bar.sh" "$rs_repo" "$@" 2>&1
+}
+link_is() { [[ $(readlink -m "$rs_home/.local/bin/voxcmd") == "$1" ]]; }
+calls_count() { if [[ -f $calls ]]; then wc -l <"$calls"; else echo 0; fi; }
+reset_calls() { rm -f "$calls" "$root/timer_active"; }
+
+reset_calls
+out=$(rsx main rs-swap)
+code=$?
+show "$out"
+check "refuses while voxcmd-rs is not built" "[[ $code != 0 ]] && grep -q 'is not built' <<<\"\$out\" && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs && \$(calls_count) == 0 ]]"
+
+mkdir -p "${rs_bin%/*}"
+printf '#!/usr/bin/env bash\necho "rs voxcmd $*" >>"%s"\n' "$calls" >"$rs_bin"
+chmod +x "$rs_bin"
+touch "$XDG_RUNTIME_DIR/voxcmd/session.json"
+out=$(rsx main rs-swap)
+code=$?
+check "refuses while a voxcmd session is open" "[[ $code != 0 ]] && grep -q 'voxcmd stop' <<<\"\$out\" && link_is '$stow_target'"
+rm "$XDG_RUNTIME_DIR/voxcmd/session.json"
+
+out=$(rsx main rs-swap)
+code=$?
+show "$out"
+check "swaps with the default of 60 minutes" "[[ $code == 0 ]] && link_is '$rs_bin' && grep -q -- '--on-active=60m' '$calls' && grep -q 'rs-restore' '$calls'"
+check "leaves the helper links and the config link alone" "[[ -L $rs_home/.config/voxcmd ]] && [[ \$(readlink -m $rs_home/.config/voxcmd) == $rs_repo/home/voxcmd/.config/voxcmd ]]"
+out=$(rsx voxcmd_status)
+check "status shows Rust and the time left" "[[ \$out == 'voxcmd: Rust (restores in 60 min)' ]]"
+
+timers_started() { grep -c '^systemd-run' "$calls" || true; }
+before=$(timers_started)
+out=$(rsx main rs-swap 5)
+code=$?
+check "a second swap is refused and starts no second timer" "[[ $code != 0 ]] && grep -q 'already swapped' <<<\"\$out\" && [[ \$(timers_started) == $before ]]"
+out=$(rsx main try 'x')
+code=$?
+check "try refuses while swapped" "[[ $code != 0 ]] && grep -q 'Rust build' <<<\"\$out\""
+
+echo "== rs restore"
+: >"$calls"
+out=$(rsx voxcmd_restore)
+code=$?
+show "$out"
+check "restore relinks the stow link despite the foreign link" "[[ $code == 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
+check "restore stops the Rust session and the timer" "grep -q 'rs voxcmd stop' '$calls' && grep -q 'systemctl --user stop voxcmd-rs-restore.timer' '$calls' && [[ ! -f $root/timer_active ]]"
+check "status is main again" "[[ \$(rsx voxcmd_status) == 'voxcmd: main' ]]"
+
+: >"$calls"
+out=$(rsx voxcmd_restore)
+code=$?
+check "restore with no swap is a no-op" "[[ $code == 0 && \$out == 'voxcmd: main' && \$(calls_count) == 0 ]] && link_is '$stow_target'"
+
+echo "== rs timer fired"
+reset_calls
+rsx main rs-swap 5 >/dev/null
+# the timer has fired: its unit is gone and the deadline is past
+rm -f "$root/timer_active"
+echo $(($(date +%s) - 10)) >"$bars_dir/.voxcmd_rs"
+out=$(rsx voxcmd_status)
+check "status says the restore is overdue" "grep -q 'Rust (restore overdue' <<<\"\$out\""
+out=$(rsx main rs-restore)
+check "the timer's restore command puts main back" "[[ \$? == 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
+out=$(rsx voxcmd_restore)
+check "restore after the timer fired is a no-op" "[[ \$? == 0 && \$out == 'voxcmd: main' ]] && link_is '$stow_target'"
+
+echo "== rs crash: link on rs, no timer"
+reset_calls
+rsx main rs-swap 5 >/dev/null
+rm -f "$root/timer_active"
+out=$(rsx voxcmd_status)
+check "status says the timer is lost" "grep -q 'Rust (restore timer lost, [45] min left' <<<\"\$out\""
+rm -f "$bars_dir/.voxcmd_rs"
+out=$(rsx voxcmd_status)
+check "status says half swapped when the marker is gone too" "grep -q 'half swapped' <<<\"\$out\""
+out=$(rsx main rs-swap 5)
+check "a new swap is refused until restore" "[[ \$? != 0 ]] && grep -q 'restore first' <<<\"\$out\""
+out=$(rsx voxcmd_restore)
+check "restore recovers it" "[[ \$? == 0 ]] && link_is '$stow_target' && [[ \$(rsx voxcmd_status) == 'voxcmd: main' ]]"
+
+echo "== rs: bare stow -R while swapped"
+reset_calls
+rsx main rs-swap 5 >/dev/null
+out=$(stow -d "$rs_repo/home" -t "$rs_home" -R voxcmd 2>&1)
+check "a bare stow -R aborts on the foreign link, which is why restore removes it first" "[[ \$? != 0 ]] && link_is '$rs_bin'"
+out=$(rsx voxcmd_restore)
+check "restore's stow -R succeeds while swapped" "[[ \$? == 0 ]] && link_is '$stow_target'"
+
+echo "== rs: a voxcmd test bar is up"
+reset_calls
+bar_bin=$bars_dir/clicks/home/voxcmd/.local/bin
+mkdir -p "$bar_bin"
+touch "$bar_bin/voxcmd"
+ln -sfn "$bar_bin/voxcmd" "$rs_home/.local/bin/voxcmd"
+ln -sfn "$bars_dir/clicks/home/voxcmd/.config/voxcmd" "$rs_home/.config/voxcmd"
+echo clicks >"$bars_dir/.voxcmd_bar"
+out=$(rsx main rs-swap)
+code=$?
+show "$out"
+check "rs-swap refuses and leaves the test build linked" "[[ $code != 0 ]] && grep -q 'not on main' <<<\"\$out\" && link_is '$bar_bin/voxcmd' && [[ \$(calls_count) == 0 ]]"
+out=$(rsx voxcmd_restore)
+check "restore of the test build is unchanged" "[[ \$? == 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_bar ]]"
+
+echo "== rs: the timer cannot start"
+reset_calls
+FAKE_TIMER_FAIL=1 rsx main rs-swap 5 >/dev/null
+check "the swap is undone" "[[ \$? != 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))

@@ -12,6 +12,7 @@ The owner tests every Quickshell change on their real bar before merging; this s
 .claude/skills/owner-test-bar/owner-test-bar.sh build <name> <branch>...
 .claude/skills/owner-test-bar/owner-test-bar.sh swap <name>
 .claude/skills/owner-test-bar/owner-test-bar.sh restore                  # back to the stowed bar on main
+.claude/skills/owner-test-bar/owner-test-bar.sh rs-swap [minutes]        # run the Rust voxcmd for one session (default 60), then back to bash
 .claude/skills/owner-test-bar/owner-test-bar.sh rebuild <name>           # pick up new commits: restore if running, remove, up with the same branches
 .claude/skills/owner-test-bar/owner-test-bar.sh remove <name>
 .claude/skills/owner-test-bar/owner-test-bar.sh status                   # running qs, test bar HEAD vs its branch tips (or deleted branches), owner, hypr and voxcmd
@@ -23,6 +24,16 @@ The owner tests every Quickshell change on their real bar before merging; this s
 When the branches touch `home/hypr`, `swap` also copies the gitignored Hyprland files (machine config, `custom/`, theme state) into the test worktree, re-points `~/.config/hypr` at it, reloads Hyprland and rolls back if `hyprctl configerrors` reports anything. It refuses to swap when this machine's profile under `config/machines/` did not make it into the copy, since Hyprland would otherwise reload with the monitors at automatic positions. It prints `hypr: swapped` or `hypr: unchanged`; `restore` (and `remove` of that bar) prints `hypr: restored`. All of it needs lock state `unlocked`.
 
 When the branches touch `home/voxcmd`, `swap` also points every `~/.local/bin` script of the test build's voxcmd and the `~/.config/voxcmd` link at the test build, after linking the owner's private integrations (the extra symlinks in the live `integrations.d/` and `replacements.d/` from private dotfiles) into the test build's copy. It prints `voxcmd: test build <name>`, or `voxcmd: main` when the branches leave voxcmd alone. A test build also gets the debug log (`voxcmd: debug log at <path>`, `$XDG_RUNTIME_DIR/voxcmd/debug.log`), created if absent; `restore` deletes it only when the swap created it, so one the owner turned on stays. `restore` (and `remove` of that bar) removes the test links and restows voxcmd from the main checkout, printing `voxcmd: main`; rerun `restore` if `status` reports voxcmd half swapped. Never relink voxcmd by hand: `stow` run from inside `home/` targets the repo itself.
+
+`rs-swap [minutes]` is for the owner to try the Rust voxcmd (`voxcmd-rs`) by voice, on the keys. It repoints only `~/.local/bin/voxcmd` at `~/.local/share/voxcmd-rs/bin/voxcmd` and starts a transient `systemd-run --user --on-active=<minutes>m` timer that runs `rs-restore`, which is `restore`'s voxcmd half without touching the bar. It refuses unless that binary is built (`just voxcmd-build` in the main checkout, never a worktree, since the build bakes in the bash script's path), no voxcmd session or picker is open (run `voxcmd stop` first), and voxcmd is on main: a second `rs-swap`, or one over a voxcmd test build, is refused rather than renewed. `status` reads `voxcmd: Rust (restores in N min)`; `restore` stops the Rust session and timer, removes the rs link and restows voxcmd. A reboot loses the timer but not the link: `status` then says the timer is lost or half swapped, and `restore` fixes it. The wake word stays bash (`voxcmd-wake` starts the stow dir's script), so `wake` and `voxcmd-wake` are untouched.
+
+While swapped, do not try (each is unported or spelled differently in the Rust CLI):
+
+- `voxcmd rapid` (the C-, bind; Rust spells it `session rapid`), `voxcmd wake on|off|toggle|status` (C-. bind; use `voxcmd-wake-switch`), `voxcmd help` (C-/ bind), the spoken "what can i say" and the no-match toast's Voice Help button.
+- `voxcmd misses`, `voxcmd errors`, `timer ring`, `integrations list|check|examples|schema`, and `explain --window focused click`.
+- The old bash spellings `voxcmd "<phrase>"`, `--dry-run` and `--reply`, so no `try` (it refuses); run `try` before `rs-swap`.
+- Ending a session by saying "stop" in a type-mode recording; use S-, instead. TOML integrations and modes: none are installed yet.
+- Never unstow bash voxcmd or swap a voxcmd test build: the Rust binary reads the bash integrations through the bash script.
 
 Test bars live in `~/.cache/dotfiles/test-bars/<name>`. Rules:
 
