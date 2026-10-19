@@ -179,6 +179,12 @@ mkdir -p "$rs_home/.local/bin" "$rs_home/.config" "$XDG_RUNTIME_DIR/voxcmd" "$st
   "$rs_repo/home/voxcmd/.local/bin" "$rs_repo/home/voxcmd/.config/voxcmd"
 touch "$rs_repo/home/voxcmd/.local/bin/voxcmd" "$rs_repo/home/voxcmd/.config/voxcmd/keybinds.sh"
 stow -d "$rs_repo/home" -t "$rs_home" voxcmd
+# rs-swap requires the script to be the main checkout's own copy, which resolves through this symlink.
+# It is a git repo so the sourced script finds its main checkout the way it does for real.
+git init -q "$rs_repo"
+mkdir -p "$rs_repo/.claude/skills/owner-test-bar"
+rs_script=$rs_repo/.claude/skills/owner-test-bar/owner-test-bar.sh
+ln -s "$here/../owner-test-bar.sh" "$rs_script"
 rs_bin=$rs_home/.local/share/voxcmd-rs/bin/voxcmd
 stow_target=$rs_repo/home/voxcmd/.local/bin/voxcmd
 cat >"$stubs/systemd-run" <<STUB
@@ -199,7 +205,7 @@ chmod +x "$stubs/systemd-run" "$stubs/systemctl"
 # rsx <function> <args>...: one function of the sourced script, with the fake repo, HOME and stubs.
 rsx() {
   PATH="$stubs:$PATH" HOME=$rs_home bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ \
-    "$here/../owner-test-bar.sh" "$rs_repo" "$@" 2>&1
+    "$rs_script" "$rs_repo" "$@" 2>&1
 }
 link_is() { [[ $(readlink -m "$rs_home/.local/bin/voxcmd") == "$1" ]]; }
 calls_count() { if [[ -f $calls ]]; then wc -l <"$calls"; else echo 0; fi; }
@@ -227,6 +233,8 @@ check "swaps with the default of 60 minutes" "[[ $code == 0 ]] && link_is '$rs_b
 check "leaves the helper links and the config link alone" "[[ -L $rs_home/.config/voxcmd ]] && [[ \$(readlink -m $rs_home/.config/voxcmd) == $rs_repo/home/voxcmd/.config/voxcmd ]]"
 out=$(rsx voxcmd_status)
 check "status shows Rust and the time left" "[[ \$out == 'voxcmd: Rust (restores in 60 min)' ]]"
+
+check "the timer unit gets the cache and runtime paths" "grep -qF -- '--setenv=XDG_CACHE_HOME=$XDG_CACHE_HOME' '$calls' && grep -qF -- '--setenv=XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR' '$calls'"
 
 timers_started() { grep -c '^systemd-run' "$calls" || true; }
 before=$(timers_started)
@@ -285,6 +293,36 @@ out=$(stow -d "$rs_repo/home" -t "$rs_home" -R voxcmd 2>&1)
 check "a bare stow -R aborts on the foreign link, which is why restore removes it first" "[[ \$? != 0 ]] && link_is '$rs_bin'"
 out=$(rsx voxcmd_restore)
 check "restore's stow -R succeeds while swapped" "[[ \$? == 0 ]] && link_is '$stow_target'"
+
+echo "== rs: the data dir and the checkout"
+reset_calls
+XDG_DATA_HOME=$rs_home/.local/share rsx main rs-swap 5 >/dev/null
+check "the timer unit gets a caller's XDG_DATA_HOME" "grep -qF -- '--setenv=XDG_DATA_HOME=$rs_home/.local/share' '$calls'"
+rsx voxcmd_restore >/dev/null
+reset_calls
+ln -sfn "$root/stale/voxcmd" "$rs_home/.local/bin/voxcmd"
+out=$(rsx main rs-swap 5)
+code=$?
+check "rs-swap refuses a link that is not main's voxcmd, and leaves it" "[[ $code != 0 ]] && grep -q 'main checkout' <<<\"\$out\" && link_is '$root/stale/voxcmd' && [[ \$(calls_count) == 0 ]]"
+ln -sfn "$stow_target" "$rs_home/.local/bin/voxcmd"
+other_script=$root/worktree/owner-test-bar.sh
+mkdir -p "${other_script%/*}"
+cp "$here/../owner-test-bar.sh" "$other_script"
+out=$(PATH="$stubs:$PATH" HOME=$rs_home bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ "$other_script" "$rs_repo" main rs-swap 2>&1)
+code=$?
+check "rs-swap refuses a script outside the main checkout" "[[ $code != 0 ]] && grep -q 'from the main checkout' <<<\"\$out\" && link_is '$stow_target' && [[ \$(calls_count) == 0 && ! -e $bars_dir/.voxcmd_rs ]]"
+
+echo "== rs: test-bar commands while swapped"
+reset_calls
+rsx main rs-swap 5 >/dev/null
+for cmd in "swap clicks" "up clicks feat/x" "rebuild clicks"; do
+  rm -f "$bars_dir/.owner"
+  # shellcheck disable=SC2086
+  out=$(PATH="$stubs:$PATH" HOME=$rs_home bash "$rs_script" $cmd 2>&1)
+  code=$?
+  check "'$cmd' is refused before it claims the bar" "[[ $code != 0 ]] && grep -q 'runs the Rust build' <<<\"\$out\" && [[ ! -e $bars_dir/.owner ]] && link_is '$rs_bin'"
+done
+rsx voxcmd_restore >/dev/null
 
 echo "== rs: a voxcmd test bar is up"
 reset_calls

@@ -285,15 +285,21 @@ voxcmd_debug_stop() {
   rm -f "$voxcmd_debug_log" "$voxcmd_debug_marker"
 }
 
+# A test-bar command that repoints voxcmd, or restores it, would end the Rust session or die halfway; refused before it
+# changes anything.
+require_no_rs_swap() {
+  if [[ -f $voxcmd_rs_marker ]] || voxcmd_rs_linked; then
+    die "voxcmd runs the Rust build; run restore before swapping a test bar"
+  fi
+}
+
 voxcmd_swap() {
   local name=$1 dir=$2
   if [[ -z $(git -C "$dir" diff --name-only origin/main...HEAD -- "$voxcmd_rel") ]]; then
     voxcmd_restore
     return 0
   fi
-  if [[ -f $voxcmd_rs_marker ]] || voxcmd_rs_linked; then
-    die "voxcmd runs the Rust build; run restore before swapping a voxcmd test build"
-  fi
+  require_no_rs_swap
   local bin=$dir/$voxcmd_rel/.local/bin config=$dir/$voxcmd_rel/.config/voxcmd file target link main_bin
   main_bin=$(readlink -m "$repo/$voxcmd_rel/.local/bin")
   [[ -L $voxcmd_config_link ]] || die "$voxcmd_config_link is not a symlink (stow unfolded it?); refusing the voxcmd swap"
@@ -326,21 +332,32 @@ voxcmd_swap() {
 # Runs the Rust voxcmd for one session. Refuses rather than renews on a second call: a silent renewal would hide that a
 # session is already running on a clock. The wake word stays bash (voxcmd-wake starts the stow dir's script).
 voxcmd_rs_swap() {
-  local minutes=${1:-60} runtime=${XDG_RUNTIME_DIR:-/tmp}/voxcmd status self
+  local minutes=${1:-60} runtime=${XDG_RUNTIME_DIR:-/tmp}/voxcmd status self main_script var
+  local -a setenv=()
   [[ $minutes =~ ^[1-9][0-9]*$ ]] || die "usage: owner-test-bar.sh rs-swap [minutes]"
   [[ -x $voxcmd_rs_bin ]] || die "$voxcmd_rs_bin is not built; run just voxcmd-build in the main checkout ($repo)"
   status=$(voxcmd_status)
   [[ $status != "voxcmd: Rust"* ]] || die "already swapped ($status); restore first"
   [[ $status == "voxcmd: main" ]] || die "voxcmd is not on main ($status); restore first"
   [[ -L $voxcmd_bin_dir/voxcmd ]] || die "$voxcmd_bin_dir/voxcmd is not a symlink; refusing the rs swap"
+  # A link into a stale worktree reads as main in status, and restore would replace it with the stowed copy.
+  [[ $(readlink -m "$voxcmd_bin_dir/voxcmd") == "$(readlink -m "$repo/$voxcmd_rel/.local/bin")/voxcmd" ]] ||
+    die "$voxcmd_bin_dir/voxcmd does not point at the main checkout's voxcmd ($(readlink -m "$voxcmd_bin_dir/voxcmd")); fix the link with restore first"
   [[ ! -e $runtime/session.json && ! -e $runtime/pending-pick.json ]] || die "voxcmd has a session or picker open; run voxcmd stop first"
   self=$(readlink -f "${BASH_SOURCE[0]}")
+  # The timer runs this path later; a worktree's copy may be gone by then.
+  main_script=$(readlink -f "$repo/.claude/skills/owner-test-bar/owner-test-bar.sh")
+  [[ $self == "$main_script" ]] || die "run rs-swap from the main checkout ($main_script), not $self: the restore timer calls this path"
+  # The transient unit gets the user manager's environment, so every variable this script derives a path from is passed on.
+  for var in XDG_CACHE_HOME XDG_DATA_HOME XDG_RUNTIME_DIR; do
+    [[ -z ${!var:-} ]] || setenv+=("--setenv=$var=${!var}")
+  done
   mkdir -p "$bars"
   # Recorded before the link moves, so restore and status see a half swap if this stops partway.
   echo $(($(date +%s) + minutes * 60)) >"$voxcmd_rs_marker"
   ln -sfn "$voxcmd_rs_bin" "$voxcmd_bin_dir/voxcmd"
   # A transient timer outlives this shell and the agent session, so the owner is not stranded on the Rust build.
-  if ! systemd-run --user --unit="$voxcmd_rs_timer" --on-active="${minutes}m" "$self" rs-restore; then
+  if ! systemd-run --user --unit="$voxcmd_rs_timer" --on-active="${minutes}m" "${setenv[@]}" "$self" rs-restore; then
     voxcmd_restore >/dev/null
     die "could not start the restore timer; swap undone"
   fi
@@ -617,6 +634,7 @@ main() {
     build "$@"
     ;;
   swap)
+    require_no_rs_swap
     dir="$bars/${2:?usage: owner-test-bar.sh swap <name>}"
     [[ -d $dir ]] || die "no test bar at $dir"
     guard_owner "$take"
@@ -630,6 +648,7 @@ main() {
     verify "qs log -p $dir/$qs_rel"
     ;;
   up)
+    require_no_rs_swap
     name=${2:?usage: owner-test-bar.sh up <name> <branch>...}
     shift 2
     guard_owner "$take"
@@ -675,6 +694,7 @@ main() {
     echo "owner-test-bar: removed $dir"
     ;;
   rebuild)
+    require_no_rs_swap
     name=${2:?usage: owner-test-bar.sh rebuild <name>}
     dir="$bars/$name"
     [[ -f $dir.branches ]] || die "no test bar '$name' to rebuild"
