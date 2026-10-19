@@ -164,8 +164,8 @@ Singleton {
     // Opens sessions.json in the configured editor inside the configured terminal, creating an empty file first.
     function open_in_editor() {
         const editor = DefaultApps.app_value("editor") || root.machine_editor || Quickshell.env("EDITOR") || "nvim";
-        Quickshell.execDetached(["sh", "-c", "[ -e \"$2\" ] || \"$3\" \"$2\" \"$4\" || exit 1; t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e \"$1\" \"$2\"",
-            "sh", editor, root.path, root.state_write, SessionJson.encode(SessionJson.empty_document())]);
+        Quickshell.execDetached(["sh", "-c", "[ -e \"$2\" ] || \"$3\" \"$2\" \"$4\" || exit 1; t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e \"$1\" \"$2\"",
+            Paths.term_script, editor, root.path, root.state_write, SessionJson.encode(SessionJson.empty_document())]);
     }
 
     Timer {

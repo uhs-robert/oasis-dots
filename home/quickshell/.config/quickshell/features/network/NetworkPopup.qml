@@ -10,6 +10,7 @@ import qs.features.popups
 import qs.features.popups.frames
 import qs.features.audio
 import "Network.js" as Net
+import qs.core
 
 Popup {
     id: root
@@ -399,7 +400,7 @@ Popup {
 
     function open_advanced() {
         ThemeAudio.play("confirm");
-        Popups.after_close(() => Quickshell.execDetached(["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e nmtui"]));
+        Popups.after_close(() => Quickshell.execDetached(["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e nmtui", Paths.term_script]));
     }
 
     function toggle_wifi() {
