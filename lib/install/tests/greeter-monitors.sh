@@ -97,6 +97,26 @@ HOSTNAME=emptyhost out=$(generate) || fail "generator failed: $(cat "$scratch/ge
 expect_eq "$(rules "$out")" ''
 export HOSTNAME=testhost
 
+cat >"$machines/default.lua" <<'LUA'
+return { monitors = { { description = "Default Panel", mode = "1280x720@60", position = "0x0" } } }
+LUA
+default_rule='hl.monitor({ output = "desc:Default Panel", mode = "1280x720@60", position = "0x0", scale = 1 })'
+case_name='default.lua monitors apply when the hostname has no profile'
+HOSTNAME=nosuchhost out=$(generate) || fail "generator failed: $(cat "$scratch/gen.err")"
+expect_eq "$(rules "$out")" "$default_rule"
+case_name='the hostname profile replaces default.lua monitors'
+export HOSTNAME=testhost
+out=$(generate)
+[[ $out != *"Default Panel"* ]] || fail 'default monitors leaked past the hostname list'
+case_name='a hostname profile without monitors falls back to default.lua, as does an empty list'
+printf 'return { wallpaper_location = true }\n' >"$machines/nomonhost.lua"
+HOSTNAME=nomonhost out=$(generate) || fail "generator failed: $(cat "$scratch/gen.err")"
+expect_eq "$(rules "$out")" "$default_rule"
+HOSTNAME=emptyhost out=$(generate)
+expect_eq "$(rules "$out")" "$default_rule"
+rm "$machines/default.lua"
+export HOSTNAME=testhost
+
 case_name='an unplugged monitor still gets its desc: rule, so a later plug-in is placed'
 out=$(generate)
 grep -Fq 'output = "desc:HP Z22n"' <<<"$out" || fail 'rule for an absent monitor was dropped'
