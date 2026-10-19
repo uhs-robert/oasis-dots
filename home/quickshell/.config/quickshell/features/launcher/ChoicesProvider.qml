@@ -27,8 +27,9 @@ PickerProvider {
     property bool session: false
 
     function refresh(arg) {
-        // A second open while one shows would otherwise drop the first caller; answer it as Escape does.
-        root.finish("");
+        // A second open while one shows would drop a Lua caller's callback, so answer it as Escape does. A shell
+        // caller (no id) is left to its own timeout: its cleanup runs `picker close`, which would close this new picker.
+        if (root.spec.id) root.finish("");
         root.session = true;
         root.spec = {};
         root.view = "";
