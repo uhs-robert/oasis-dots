@@ -75,7 +75,7 @@ And control Hyprland via `:`, like Vim's **Command Mode**:
 
 ### And Even More
 
-- **Mouse from the keyboard:** `SUPER + C` enters the Cursor submap: `hjkl` moves the pointer (`SHIFT` for fast, `CTRL` for single pixels), `SPACE` clicks, `e`/`y` scroll, and `f` or `t` drop [wl-kbptr](https://github.com/moverest/wl-kbptr) hint labels on screen to click anything in a couple of keystrokes.
+- **Mouse from the keyboard:** `SUPER + C` enters the Cursor submap: `hjkl` moves the pointer (`SHIFT` for fast, `CTRL` for single pixels; `wasd` or both under Settings > Mouse & touchpad > Pointer keys), `SPACE`, `r` and `m` left, right and middle click (`CTRL` with one clicks and leaves), `e`/`y` scroll, and `f` or `t` drop [wl-kbptr](https://github.com/moverest/wl-kbptr) hint labels on screen to click anything in a couple of keystrokes.
 - **Screen sharing:** the share picker opens the workspace overview with only shareable windows, so you pick a window, a whole monitor (`s`) or a region (`r`) by keyboard.
 - **Scrolling capture:** grab a page longer than the screen and OCR it to text in one pass.
 - **Displays:** arrange monitors in Settings with `hjkl`, with a countdown that reverts anything you don't confirm.

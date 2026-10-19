@@ -24,6 +24,7 @@ local VALID = {
   tap_to_click = is_boolean,
   disable_while_typing = is_boolean,
   which_key_delay_ms = integer_in(0, 5000),
+  pointer_keys = function(v) return v == "hjkl" or v == "wasd" or v == "both" end,
 }
 
 --- Settings panel choices, validated; a missing or malformed file yields none.
@@ -66,7 +67,7 @@ function Input.options(input)
 end
 
 --- Re-reads the saved choices and applies them live; the Settings panel calls this through `hyprctl eval`.
---- The which-key delay is read once by HyprVim's setup, so a change to it needs `hyprctl reload` instead.
+--- The which-key delay and the pointer keys are read once at load, so a change to them needs `hyprctl reload` instead.
 function Input.apply()
   local Config = require("config")
   for key, value in pairs(Input.state()) do
