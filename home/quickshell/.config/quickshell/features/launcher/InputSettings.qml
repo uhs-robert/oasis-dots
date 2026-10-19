@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import qs.core
 
-// Input choices saved in input.json under the Quickshell state dir.
+// Input choices saved in typing.json under the Quickshell state dir.
 Singleton {
     id: root
 
@@ -37,7 +37,7 @@ Singleton {
 
     JsonStore {
         id: store
-        path: root.state_dir + "/input.json"
+        path: root.state_dir + "/typing.json"
         defaults: root.defaults
         debounce_ms: 300
         validate: raw => {
