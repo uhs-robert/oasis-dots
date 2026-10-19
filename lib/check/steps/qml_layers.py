@@ -36,7 +36,7 @@ ALLOW_PATH = "lib/check/qml-layers.allow"
 LAYERS = {"core": 0, "theme": 1, "ui": 2, "components": 2, "services": 3, "styles": 4, "features": 5}
 UNRANKED = {"scripts", "assets", "sounds", "custom"}
 
-ENTRY = re.compile(r"^(\S+) -> (\S+)\s+#\s*(\S.*)$")
+ENTRY = re.compile(r"^(\S+) -> (\S+)\s+#\s*(\S.*\S)\s+\(([^()]+)\)\s*$")
 
 
 class Edge(NamedTuple):

@@ -37,7 +37,7 @@ styles/snes/popups/SnesClockStatus.qml -> qs.features.clock             # style 
 theme/Style.qml -> styles/IconSets.js                                   # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/goldeneye/Watch.js                            # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/index.js                                      # the style engine consumes style data by design (permanent)
-theme/Style.qml -> url:features/lock/skins/index.json                   # skin list read as data by the style engine (unplanned)
+theme/Style.qml -> url:features/lock/skins/index.json                   # skin list read as data by the style engine (permanent)
 theme/Style.qml -> url:styles                                           # the style engine consumes style data by design (permanent)
 ui/Popup.qml -> qs.features.audio                                       # popup framework moves above styles, or takes the data as properties (5.9 step 5)
 ui/Popup.qml -> qs.features.launcher                                    # popup framework moves above styles, or takes the data as properties (5.9 step 5)

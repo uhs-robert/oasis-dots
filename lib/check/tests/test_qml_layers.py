@@ -90,12 +90,13 @@ class AllowlistTest(LayersCase):
         self.assertEqual(found, [f"{ALLOW}:1: ui/Box.qml -> qs.theme is not an upward edge. Delete the line."])
 
     def test_missing_reason_malformed_and_duplicate_lines_fail(self):
-        allow = "ui/Box.qml -> qs.features.clock\nnonsense\n" + self.ENTRY + self.ENTRY
+        allow = "ui/Box.qml -> qs.features.clock\nnonsense\nui/Box.qml -> qs.features.power  # reason without an item\n" + self.ENTRY + self.ENTRY
         found = self.check(self.FILES, allow)
         self.assertEqual(found, [
             f'{ALLOW}:1: malformed; expected "<file> -> <target>  # <reason> (<item>)"',
             f'{ALLOW}:2: malformed; expected "<file> -> <target>  # <reason> (<item>)"',
-            f"{ALLOW}:4: duplicate entry for ui/Box.qml -> qs.features.clock",
+            f'{ALLOW}:3: malformed; expected "<file> -> <target>  # <reason> (<item>)"',
+            f"{ALLOW}:5: duplicate entry for ui/Box.qml -> qs.features.clock",
         ])
 
     def test_an_entry_covers_the_file_target_pair_not_the_line(self):
