@@ -719,17 +719,21 @@ for word in "cortana done" "Cortana, I'm done." "Cortana, stop rapid mode." "cor
   sess_run "tap alpha" "$word" "tap gamma"
   check "'$word' ends rapid mode" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 2 ]]"
 done
-# Bare exit words are not exits in rapid mode: "exit" and "quit" give the leave hint, "cancel" matches nothing, and
-# "stop" is Media's, as outside a session.
+# Bare exit words are not exits in rapid mode: "exit", "quit" and "stop" give the leave hint, and "cancel" matches nothing.
 for word in "exit" "quit"; do
   sess_run "tap alpha" "$word" "tap gamma" "cortana done"
   check "bare '$word' leaves rapid mode open, pausing nothing, with the leave hint" "session_gone && ! grep -q '^playerctl' '$log' && toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 done
 sess_run "tap alpha" "cancel" "tap gamma" "cortana done"
 check "bare 'cancel' leaves rapid mode open, pausing nothing, with no leave hint" "session_gone && ! grep -q '^playerctl' '$log' && ! toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+# Owner request: a bare "stop" pausing the music was surprising, so it is a missed turn with the hint, like "done".
 for word in "stop" "Stop."; do
   sess_run "tap alpha" "$word" "tap gamma" "cortana done"
-  check "bare '$word' pauses the music and leaves rapid mode open" "session_gone && grep -q '^playerctl' '$log' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+  check "bare '$word' pauses nothing, leaves rapid mode open and says how to leave" "session_gone && ! grep -q '^playerctl' '$log' && toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
+done
+for word in "stop the music" "pause"; do
+  sess_run "tap alpha" "$word" "tap gamma" "cortana done"
+  check "'$word' still pauses the music in rapid mode" "session_gone && grep -q '^playerctl' '$log' && [[ \$(taps) == 2 && \$(record_starts) == 4 ]]"
 done
 sess_run "tap alpha and then exit" "tap gamma" "cortana done"
 check "a sequence ending in a bare exit does not end rapid mode, and says how to leave" "session_gone && toast_has 'say cortana done to leave' && [[ \$(taps) == 2 && \$(record_starts) == 3 ]]"
