@@ -137,6 +137,14 @@ Singleton {
         root.hands_off = !!hands_off;
     }
 
+    // Opens for a keybind or IPC call, where the pointer is not on the popup: asks for the keyboard up front, since a
+    // popup replacing a keyboard-holding one (Settings) is otherwise never focused and its Ctrl+H/L Shortcuts stay dead.
+    // Hover and click opens go through open() and keep the plain OnDemand focus.
+    function open_with_keyboard(name) {
+        root.open(name, undefined);
+        grab_keyboard = true;
+    }
+
     // Opens on the named screen, never the focused one: anchored to that bar's module when it has one, else unanchored.
     // False when no such screen exists.
     function open_on(name, screen_name, hands_off) {

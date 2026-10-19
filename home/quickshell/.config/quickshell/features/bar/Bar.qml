@@ -345,7 +345,12 @@ Item {
     function sync_popup_order() {
         const center_names = root.has_center ? root.popup_names(root.center_entries) : [];
         if ((root.has_center || Style.bar_lualine) && !root.lists_media) center_names.push("media");
-        Popups.register_order(root.screen_name, root.popup_names(root.left_entries).concat(center_names, root.popup_names(root.right_drawn)));
+        const right_names = root.popup_names(root.right_drawn);
+        // Settings drops from the center; with no center it drops from the right end, so it walks last.
+        const has_center_slot = root.has_center || Style.bar_lualine;
+        if (has_center_slot) center_names.push("settings");
+        else right_names.push("settings");
+        Popups.register_order(root.screen_name, root.popup_names(root.left_entries).concat(center_names, right_names));
     }
 
     function sync_popups() {

@@ -4,7 +4,7 @@ IpcHandler {
     target: "popup"
 
     function open(name: string): void {
-        Popups.open(name, undefined);
+        Popups.open_with_keyboard(name);
     }
 
     function close(): void {
@@ -12,7 +12,8 @@ IpcHandler {
     }
 
     function toggle(name: string): void {
-        Popups.toggle(name, undefined);
+        if (Popups.open_name === name) Popups.close();
+        else Popups.open_with_keyboard(name);
     }
 
     // "popup" when the open popup on the focused monitor took the keyboard back, else "none".
