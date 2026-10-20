@@ -38,7 +38,7 @@ The tracking docs are the local, git-ignored `.md` files the orchestrator has be
 - Each item's row: status and PR.
 - The decisions log: every owner decision from this session, including ones given only in chat.
 - Open questions and lessons.
-- An item stopped mid-way gets a `<doc>-<item>-handoff-draft.md` next to its doc: worktree, branch, commit, state from the last report, deviations to review, what remains. Its doc's Resume here says to read it first.
+- An item stopped mid-way gets a `<doc>-<item>-handoff-draft.md` next to its doc: worktree, branch, commit, brief file path, state from the last report, deviations to review, what remains. Its doc's Resume here says to read it first.
 
 Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in.
 

@@ -13,7 +13,11 @@ Act as the orchestrator: delegate all hands-on work, however small. Every edit, 
 
 Your context is the session's scarce resource: keep skill loads, file dumps, long diffs and logs out of it. Read summaries, reports and targeted excerpts, not whole files or outputs.
 
-Every brief asks for a report that leads with the result and stays under 2,000 characters. Anything longer (logs, full finding lists) goes in a file in the scratch dir, and the report gives its path.
+Every brief ends with its report rule as its last line, where agents least often drop it: lead with the result, stay under 2,000 characters, and put anything longer (logs, full finding lists) in a file in the scratch dir whose path the report gives. A reviewer writes its full findings to that file and reports its verdict plus one line per material finding (severity, file:line, the failure in a sentence), under 1,500 characters; open the file only for a finding you act on.
+
+Briefs go by reference: write each piece's plan, constraints and context once, in a brief file in the scratch dir, and have each brief name that file and add only what this agent needs beyond it (its task, owned files, any "Do NOT" line, the report rule). Fix briefs, reviewers and siblings reuse the same file.
+
+Tracker doc edits go to a Haiku agent: give it the doc path and the change in a line or two, and take its one-line confirmation. Read a tracker yourself only for the section you are about to act on.
 
 Agents run in the background: after dispatching, end the turn and let the completion notice start the next one. Never poll, sleep or wait on an agent, and never state its result before the notice arrives. While waiting on the owner or a review, start read-only research for the next planned piece of work. Give each agent a short unique name so you can `SendMessage` it later.
 
@@ -48,7 +52,7 @@ Target: `$target`
    - When work spans layers (e.g. a UI and a backend), agree the hand-off format first (an id format, an API call, a JSON shape), then run one implementer per layer in parallel.
    - When the permission classifier denies an action, do not retry it in another form or via an agent; hand the owner the exact `!` command.
 
-5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements.
+5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements, through the piece's brief file.
    - Tell it to run only targeted tests, each under 10 minutes, then commit, push and report in the same turn, leaving nothing running.
    - Run the final validation yourself as one background Bash call in the worktree: `lib/check.sh --changed <merge-base>` when the repo has one. A failure goes back to the agent per step 8.
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
