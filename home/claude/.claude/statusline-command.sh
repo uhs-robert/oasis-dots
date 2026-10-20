@@ -7,7 +7,10 @@ eval "$(printf '%s' "$input" | jq -r '
   @sh "name=\(.session_name // "")",
   @sh "model=\(.model.display_name // "")",
   @sh "effort=\(.effort.level // "")",
-  @sh "thinking=\(.thinking.enabled // false)"')"
+  @sh "thinking=\(.thinking.enabled // false)",
+  @sh "transcript=\(.transcript_path // "")",
+  @sh "window=\(.context_window.context_window_size // 1000000)",
+  @sh "used=\(.context_window.current_usage // {} | (.input_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0))"')"
 
 cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 ttl=60
@@ -46,6 +49,24 @@ if jq -e '.enabledPlugins["caveman@caveman"] == true' "$HOME/.claude/settings.js
   badge=$(printf '%s' "$input" | bash "$HOME/.claude/plugins/marketplaces/caveman/src/hooks/caveman-statusline.sh")
 fi
 
+# Context used against the model's window. The colour follows the owner's smaller working budget instead, turning at
+# the context-budget hook's wind-down and handoff points, since a 1M window's percentage barely moves before them.
+wind_down=${CLAUDE_CONTEXT_WIND_DOWN:-140000}
+handoff=${CLAUDE_CONTEXT_HANDOFF:-160000}
+if [ "${used:-0}" -eq 0 ] && [ -f "$transcript" ]; then
+  # Older versions send no context_window: take the latest main-chain response's usage from the transcript.
+  used=$(tac "$transcript" | grep -F '"usage"' | grep -v -F '"isSidechain":true' -m1 |
+    jq '.message.usage | .input_tokens + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0)' 2>/dev/null)
+fi
+context=""
+if [ "${used:-0}" -gt 0 ] 2>/dev/null; then
+  colour=114
+  [ "$used" -ge "$wind_down" ] && colour=179
+  [ "$used" -ge "$handoff" ] && colour=167
+  if [ "$window" -ge 1000000 ]; then size="$((window / 1000000))M"; else size="$((window / 1000))k"; fi
+  context=$(printf '\033[38;5;%sm%sk/%s %s%%\033[0m' "$colour" "$((used / 1000))" "$size" "$((used * 100 / window))")
+fi
+
 sep=" \033[38;5;240m·\033[0m "
 printf '\033[38;5;250m%s\033[0m' "$(basename "$cwd")"
 [ -n "$name" ] && printf "$sep"'\033[38;5;110m%s\033[0m' "$(printf '%s' "$name" | head -c 40)"
@@ -56,5 +77,6 @@ if [ -n "$model" ]; then
   [ "$thinking" = "false" ] && printf ' no-think'
   printf '\033[0m'
 fi
+[ -n "$context" ] && printf "$sep"'%b' "$context"
 [ -n "$badge" ] && printf ' %s' "$badge"
 exit 0
