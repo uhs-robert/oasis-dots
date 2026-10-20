@@ -297,6 +297,7 @@ pub const FILE_KEYS: &[&str] = &[
     "mode",
 ];
 pub const VERB_KEYS: &[&str] = &["action", "match", "label", "requires"];
+pub const SURFACE_KEYS: &[&str] = &["state_file"];
 pub const ACTION_KEYS: &[&str] = &[
     "run",
     "candidates",
