@@ -222,7 +222,7 @@ var tokens = [
     tok("meter_solid", "bool", false, "Meters as one continuous gauge (AtbBar) instead of segments."),
     tok("controller", "string", "", "Key badges, footers and help draw this console's buttons (KeyHints.controllers); Controller glyphs Off blanks it, so read it for glyphs only."),
     tok("controller_glyphs", "string", "dpad", 'Which keys draw as controller buttons: "all", "labeled" (the key beside each button the d-pad and shoulders cannot explain), "dpad" (only those) or "off".'),
-    tok("meter_art", "var", () => ({}), 'Meter art by popup name (or "osd"): a component path relative to components/ that replaces the segments.'),
+    tok("meter_art", "var", () => ({}), 'Meter art by popup name (or "osd"): a "<style>/<File>.qml" widget under styles/<style>/widgets/ that replaces the segments.'),
     tok("toast_enter", "string", "", 'Toast arrival (Style.toast_enters): "" fades in; "type" slides and types, "mode7" zooms from a tilted plane, "wobble" settles, "bloom" glows, each once.'),
     tok("console_views", "string", "", "Popups, toasts and bar modules swap in this console's views (\"nes\", \"snes\", \"ps1\", \"ps2\"); \"\" keeps the shared ones."),
     tok("workspace_art", "string", "", 'Bar workspace indicator art ("dots", "diamonds", "squares", "dial", "materia", "doors", "constellation", "buffers", "party", "slimes", "qblock", "map", "slots", "ps2"), one of Style.workspace_arts; "" keeps the host style pills (plain round ones when the style own look is a pill set or art), "dots", "diamonds" and "squares" draw the Modern, TIE and Half-Life ones.'),
