@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Usage: ship-batch.sh [--skip-review-gate] [<pr>...]; merges the PRs in order, then updates main, restarts what changed and
-# checks it. --skip-review-gate skips the Codex review gate for every PR, only when the owner waived Codex or named
-# another reviewer; each PR's branch check still runs.
+# Usage: ship-batch.sh [--skip-review-gate] [--sync-check] [<pr>...]; merges the PRs in order, then updates main, restarts
+# what changed and starts the check of main in the background (main-check.sh). --skip-review-gate skips the Codex review
+# gate for every PR, only when the owner waived Codex or named another reviewer; each PR's branch check still runs.
+# --sync-check (or SHIP_BATCH_SYNC_CHECK=1) waits for the check of main instead and fails the run when it fails.
+# ship-batch.sh --wait-main-check waits for the background check and exits 0 when main is green, 1 when it is not.
 set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
@@ -33,12 +35,21 @@ use_live_hypr() {
   hypr_checked=true
 }
 
-skip_gate=()
-if [[ ${1:-} == --skip-review-gate ]]; then
-  skip_gate=(--skip-review-gate)
-  shift
-fi
+main_check="$(dirname "$0")/main-check.sh"
+[[ ${1:-} != --wait-main-check ]] || exec "$main_check" wait
 
+skip_gate=() sync_check=false
+[[ -z ${SHIP_BATCH_SYNC_CHECK:-} ]] || sync_check=true
+while [[ ${1:-} == --* ]]; do
+  case $1 in
+  --skip-review-gate) skip_gate=(--skip-review-gate) ;;
+  --sync-check) sync_check=true ;;
+  *) die "unknown flag $1" ;;
+  esac
+  shift
+done
+
+main_check_failure_notice "$repo"
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
 
 # Waiting for reviews and checking branches take minutes and touch nothing shared, so they run before the ship lock: a
@@ -82,6 +93,9 @@ fi
 # restows, reloads and restarts that follow it. Commands below that can leave a daemon behind run with fd 9 closed so it
 # cannot hold the lock after this run.
 take_lock "$repo" "${ready[*]}" || die "gave up waiting for the ship-batch running in this repository"
+# A check still running verifies a main the pull below is about to replace, and would hold heavy-step slots the next
+# branch checks need. Stopping it first leaves the owed base as it was; the check restarts after this merge.
+stop_main_check "$repo" || die "could not stop the running check of main"
 before=$(select_base "$repo")
 # The reviews were waited for above, so the gate here only confirms them and never waits under the lock.
 ((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${skip_gate[@]}" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
@@ -152,46 +166,24 @@ fi
 # Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the reloads and restarts.
 [[ $before == "$after" ]] || owe_check "$repo" "$before"
 finish_base "$repo"
-release_lock
 
-# The check of main runs after the lock is released, so a long check never holds up another batch. It checks from the
-# oldest base still owed (see owe_check), so a rerun after a failed or interrupted check checks again, and the step
-# records make that rerun cost only the steps that did not pass.
-# Whether a pass made in a branch worktree counts for main depends on repos/: a worktree has none, so
-# lib/check/steps/symlinks.sh skipped the links into it. Such a pass vouches for everything but those links, so main runs only
-# that step; lib/check/passed.sh is-passed accepts the pass outright only when it was made with repos/.
-# Inductive: a full pass of the base plus a scoped pass over everything changed since vouches for `after`. A base main
-# does not descend from or not recorded as passed, or CHECK_FULL=1, falls back to the full check.
-# The skips vouch for main's commit, not its working tree, so local edits or untracked files in the main checkout rule them out.
+# The check runs from the oldest base still owed (see owe_check), so a rerun after a failed or interrupted check checks
+# again, and the step records make that rerun cost only the steps that did not pass. A lookup that costs seconds runs here
+# once the lock is released; a real check is started in the background while the lock is still held, so the next batch's
+# stop finds it and a waiter never sees the gap before it starts.
 check_from=$(owed_check "$repo")
-if [[ -n $check_from ]]; then
-  main_clean=false
-  [[ -z $(git -C "$repo" status --porcelain) ]] && main_clean=true
-  main_passed=true
-  if $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check/passed.sh is-passed "$after"); then
-    echo "ship-batch: main's tree already passed the check; not checking it again"
-  elif $main_clean && [[ -z ${CHECK_FULL:-} ]] && (cd "$repo" && lib/check/passed.sh passed-somewhere "$after"); then
-    echo "ship-batch: main's tree passed the check in a worktree; checking only the links into repos/"
-    (cd "$repo" && sh lib/check/steps/symlinks.sh) || main_passed=false
-  elif [[ -z ${CHECK_FULL:-} ]] && base_is_ancestor "$repo" "$check_from" "$after" && (cd "$repo" && lib/check/passed.sh is-passed "$check_from"); then
-    (cd "$repo" && lib/check.sh --changed "$check_from") || main_passed=false
-  else
-    (cd "$repo" && just check) || main_passed=false
-  fi
-  # Another batch may merge and pull while this check runs, changing the files under it, so this run's result says
-  # nothing about main. The debt stays: that batch's check starts from this one's base and covers both.
-  if [[ $(git -C "$repo" rev-parse HEAD) != "$after" ]]; then
-    echo "ship-batch: main moved during the check; the check from ${check_from:0:12} is still owed, and the next ship-batch run makes it"
-  elif ! $main_passed; then
-    die "the check fails on main after the merge; fix it before anything else"
-  else
-    # With uncommitted changes in the main checkout the pass was of its working tree, not `after`'s, and the helper
-    # refuses to record it.
-    (cd "$repo" && lib/check/passed.sh record) || true
-    settle_check "$repo"
-  fi
+if [[ -z $check_from ]]; then
+  release_lock
+elif $sync_check || "$main_check" quick "$after"; then
+  release_lock
+  "$main_check" run "$after" "$check_from" || die "the check fails on main after the merge; fix it before anything else"
+else
+  start_main_check "$repo" "$main_check" "$after" "$check_from" || die "the check of main is owed but did not start"
+  release_lock
+  echo "ship-batch: the check of main runs in the background (log $(main_check_path "$repo" log)); wait for it with: ship-batch.sh --wait-main-check"
 fi
 
 echo "ship-batch: main is at $(git -C "$repo" log --oneline -1)"
 (cd "$repo" && "$HOME/.claude/skills/merge-prs/status.sh") || true
+main_check_failure_notice "$repo"
 [[ -z $not_ready ]] || die "$not_ready; rerun ship-batch with it and the PRs after it once that is fixed"
