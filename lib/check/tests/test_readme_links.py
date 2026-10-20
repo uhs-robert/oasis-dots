@@ -53,6 +53,28 @@ class RelativeLinkTest(LinksCase):
         self.assertEqual(self.check(files), ["qs/a/README.md:1: link b/B.md points at qs/a/b/B.md, which does not exist"])
 
 
+class ReferenceLinkTest(LinksCase):
+    def test_defined_references_to_existing_files_and_anchors_pass(self):
+        text = "[a][one] [b][] [c]\n\n[one]: other.md#title\n[B]: other.md\n"
+        self.assertEqual(self.readme(text, **{"qs/other.md": "# Title\n"}), [])
+
+    def test_a_stale_definition_target_fails_at_the_definition(self):
+        found = self.readme("[a][one]\n\n[one]: Gone.md\n")
+        self.assertEqual(found, [f"{README}:3: link Gone.md points at qs/Gone.md, which does not exist"])
+
+    def test_a_stale_definition_anchor_fails(self):
+        found = self.readme("[a][one]\n[one]: other.md#nope\n", **{"qs/other.md": "# Title\n"})
+        self.assertEqual(found, [f"{README}:2: link other.md#nope names no heading of qs/other.md"])
+
+    def test_a_use_without_a_definition_fails(self):
+        self.assertEqual(self.readme("see [a][nowhere] and [b][]\n"), [f"{README}:1: reference [b] has no definition", f"{README}:1: reference [nowhere] has no definition"])
+
+
+class IgnoredTargetTest(LinksCase):
+    def test_a_link_to_a_gitignored_missing_file_passes(self):
+        self.assertEqual(self.check({README: "[s](custom/sessions.lua)\n[r][x]\n[x]: custom/sessions.lua\n"}, ignore="qs/custom/sessions.lua\n"), [])
+
+
 class AnchorTest(LinksCase):
     OTHER = "# Title\n\n## Naming singletons\n\n### `Code` and *emph*: more!\n\n## Repeat\n\n## Repeat\n\n```\n## Not a heading\n```\n"
 
@@ -62,6 +84,11 @@ class AnchorTest(LinksCase):
     def test_github_slugs_match(self):
         for anchor in ("title", "naming-singletons", "code-and-emph-more", "repeat", "repeat-1"):
             self.assertEqual(self.check_anchor(anchor), [], anchor)
+
+    def test_a_suffixed_heading_does_not_collide_with_a_later_repeat(self):
+        text = "# Foo\n# Foo-1\n# Foo\n"
+        for anchor in ("foo", "foo-1", "foo-2"):
+            self.assertEqual(self.readme(f"[x](other.md#{anchor})\n", **{"qs/other.md": text}), [], anchor)
 
     def test_an_unknown_anchor_fails(self):
         self.assertEqual(self.check_anchor("not-a-heading"), [f"{README}:1: link other.md#not-a-heading names no heading of qs/other.md"])

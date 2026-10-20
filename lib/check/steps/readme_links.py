@@ -6,6 +6,8 @@ Moving a folder or a section leaves the READMEs pointing at the old place, and n
 
   - `[text](path)` must name a file or folder that exists, relative to the README; `[text](file.md#anchor)` and
     `[text](#anchor)` must also name a heading of that file, by GitHub's anchor rules. URLs are not followed.
+  - reference links (`[text][ref]`, `[ref]: target`) are held to the same: each definition's target is checked, and a use
+    whose reference is undefined fails.
   - a backticked path whose first folder is one of QS_FOLDERS (resolved against the Quickshell tree) or REPO_FOLDERS
     (against the repository root) must exist, as a path in the Quickshell tree, from the README's own folder, from the
     repository root or inside a stow package under home/. A path with a glob, placeholder or variable is prose.
@@ -29,6 +31,8 @@ from qml_paths import QS_DIR, REPO_DIR, Finding, git_listing, make_ignored  # no
 QS_FOLDERS = ("core", "theme", "ui", "services", "styles", "features", "custom", "assets", "scripts", "sounds")
 REPO_FOLDERS = ("lib", "home", "system", "docs", "packages", "extras", "demo")
 
+REF_USE = re.compile(r"(?<!!)\[([^\]]*)\]\[([^\]]*)\]")
+REF_DEFINITION = re.compile(r"^ {0,3}\[([^\]]+)\]:\s*<?([^\s>]+)>?(?:\s.*)?$")
 LINK = re.compile(r"(?<!!)\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+[^)]*)?\)")
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
 PATH_TOKEN = re.compile(r"^[A-Za-z0-9_.][A-Za-z0-9_./-]*$")
@@ -51,9 +55,13 @@ def anchor_of(heading, seen):
     """GitHub's anchor for a heading line's text; seen counts earlier equal anchors in the file."""
     text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", heading).replace("`", "")
     slug = re.sub(r"[^\w\- ]", "", text.lower()).replace(" ", "-")
-    count = seen.get(slug, 0)
-    seen[slug] = count + 1
-    return slug if count == 0 else f"{slug}-{count}"
+    anchor, count = slug, seen.get(slug, 0)
+    while anchor in seen:
+        count += 1
+        anchor = f"{slug}-{count}"
+    seen[slug] = count
+    seen[anchor] = 0
+    return anchor
 
 
 def anchors(text):
@@ -98,26 +106,41 @@ def check_readme(repo, tree, ignored, qs_dir, readme):
     readme_dir = os.path.dirname(readme)
     with open(os.path.join(repo, readme), encoding="utf-8") as file:
         text = file.read()
+    lines = list(prose_lines(text))
+    definitions = {}
+    for number, line in lines:
+        match = REF_DEFINITION.match(line)
+        if match:
+            definitions.setdefault(match.group(1).lower(), (number, match.group(2)))
     own_anchors = None
-    for number, line in prose_lines(text):
+
+    def check_target(target, number):
+        nonlocal own_anchors
+        if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", target):
+            return
+        file_part, _, anchor = target.partition("#")
+        linked = readme if not file_part else os.path.normpath(os.path.join(readme_dir, file_part))
+        if file_part and not (tree.has(linked) or ignored(linked)):
+            findings.append(Finding(readme, number, f"link {target} points at {linked}, which does not exist"))
+        elif anchor and linked.endswith(".md") and linked in tree.files:
+            if linked == readme:
+                own_anchors = own_anchors if own_anchors is not None else anchors(text)
+                known = own_anchors
+            else:
+                with open(os.path.join(repo, linked), encoding="utf-8") as other:
+                    known = anchors(other.read())
+            if anchor not in known:
+                findings.append(Finding(readme, number, f"link {target} names no heading of {linked}"))
+
+    for number, target in definitions.values():
+        check_target(target, number)
+    for number, line in lines:
         for match in LINK.finditer(line):
-            target = match.group(2)
-            if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", target):
-                continue
-            file_part, _, anchor = target.partition("#")
-            linked = readme if not file_part else os.path.normpath(os.path.join(readme_dir, file_part))
-            if file_part and not tree.has(linked):
-                findings.append(Finding(readme, number, f"link {target} points at {linked}, which does not exist"))
-                continue
-            if anchor and linked.endswith(".md") and linked in tree.files:
-                if linked == readme:
-                    own_anchors = own_anchors if own_anchors is not None else anchors(text)
-                    known = own_anchors
-                else:
-                    with open(os.path.join(repo, linked), encoding="utf-8") as other:
-                        known = anchors(other.read())
-                if anchor not in known:
-                    findings.append(Finding(readme, number, f"link {target} names no heading of {linked}"))
+            check_target(match.group(2), number)
+        for match in REF_USE.finditer(line):
+            label = (match.group(2) or match.group(1)).lower()
+            if label not in definitions:
+                findings.append(Finding(readme, number, f"reference [{label}] has no definition"))
         for span in CODE_SPAN.finditer(LINK.sub(r"\1", line)):
             token = span.group(1)
             if "/" not in token or not PATH_TOKEN.match(token):
