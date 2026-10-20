@@ -648,10 +648,11 @@ rm -rf "$other_clone"
 git clone -q "$e2e/origin.git" "$other_clone" 2>/dev/null
 for clone in "$e2e/main" "$other_clone"; do
   owe_check "$clone" "$e2e_base"
-  (cd "$clone" && env -u MAIN_CHECK_UNIT HOME=$fake_home PATH="$stubs:$PATH" CHECK_FULL=1 timeout -k 5 $ship_timeout bash .claude/skills/ship-batch/ship-batch.sh >"$e2e/out" 2>&1)
+  (cd "$clone" && env -u MAIN_CHECK_UNIT HOME="$fake_home" PATH="$stubs:$PATH" CHECK_FULL=1 timeout -k 5 $ship_timeout bash .claude/skills/ship-batch/ship-batch.sh >"$e2e/out" 2>&1)
   pkill -f "$clone/.claude/skills/ship-batch/main-check.sh" 2>/dev/null
   wait_until "flock -n '$clone/.git/ship-batch-main-check.lock' true"
 done
+# shellcheck disable=SC2034 # read by the check below, through eval
 mapfile -t clone_units < <(grep -oE -- '--unit=dotfiles-main-check-[0-9a-f]{8} ' "$SHIP_LOG")
 check "two clones get different default unit names" "[[ \${#clone_units[@]} == 2 && \${clone_units[0]} != \${clone_units[1]} ]]"
 rm -rf "$other_clone"
