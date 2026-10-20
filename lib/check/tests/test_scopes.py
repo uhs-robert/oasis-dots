@@ -63,6 +63,12 @@ CASES = [
     ("home/voxcmd/rustfmt.toml", " rust"),
     ("home/voxcmd/tests/cli.rs", " rust"),
     ("home/voxcmd/tests/fixtures/x.txt", " rust voxcmd"),
+    ("home/voxcmd/tests/snapshots/cli__x.snap", " rust"),
+    ("home/voxcmd/tests/fixtures/match-goldens.tsv", " rust"),
+    ("home/voxcmd/tests/fixtures/legacy-dump.jsonl", " rust"),
+    # The bash voxcmd and the fixtures the suites read still reach them.
+    ("home/voxcmd/.local/bin/voxcmd", " voxcmd"),
+    ("home/voxcmd/tests/fixtures/ocr.tsv", " rust voxcmd"),
     ("home/voxcmd/.config/voxcmd/integrations/x.toml", " rust voxcmd"),
     ("home/voxcmd/.config/voxcmd/integrations.d/x.toml", " voxcmd"),
     ("lib/check/steps/voxcmd-rust.sh", "checkscope rust"),
@@ -106,6 +112,13 @@ class PathScopes(unittest.TestCase):
         for path, expected in CASES:
             with self.subTest(path=path):
                 self.assertEqual(keys.path_scopes(path), expected)
+
+    def test_rust_edits_skip_bash_suites_until_3_2(self):
+        """Delete this when voxcmd 3.2 makes VOXCMD_BIN=rs the suites' default: from then on a crate edit changes what
+        the voxcmd suites run, so src/*, Cargo.*, tests/*.rs, snapshots and goldens must reach them and this fails."""
+        for path in ("home/voxcmd/src/cli.rs", "home/voxcmd/tests/snapshots/cli__x.snap"):
+            with self.subTest(path=path):
+                self.assertNotIn("voxcmd", keys.path_scopes(path).split())
 
     def test_every_step_scope_is_reachable(self):
         """A step whose scope no path reaches would run only in a full check."""

@@ -67,12 +67,17 @@ PATH_SCOPES = [
     ("home/quickshell/*", "qml node"),
     ("lib/check/steps/voxcmd-rust.sh", "rust"),
     # Only the Rust step: the voxcmd suites run with VOXCMD_BIN unset, so they exercise the bash voxcmd and never the
-    # crate, except through the shared fixtures. Revisit when VOXCMD_BIN=rs becomes the suites' default. An integration file also reaches the bash voxcmd,
-    # and the crate through tests/integrations.rs.
+    # crate. Snapshots and the generated goldens are read only by cargo test; the other fixtures are read by both. An
+    # integration file also reaches the bash voxcmd, and the crate through tests/integrations.rs.
+    # VOXCMD_BIN=rs becomes the suites' default at voxcmd 3.2: then src/*, Cargo.*, tests/*.rs, snapshots and goldens
+    # must also reach the voxcmd suites; test_rust_edits_skip_bash_suites_until_3_2 fails at that point as a reminder.
     ("home/voxcmd/src/*", "rust"),
     ("home/voxcmd/Cargo.*", "rust"),
     ("home/voxcmd/rustfmt.toml", "rust"),
     ("home/voxcmd/tests/*.rs", "rust"),
+    ("home/voxcmd/tests/snapshots/*", "rust"),
+    ("home/voxcmd/tests/fixtures/*-goldens.tsv", "rust"),
+    ("home/voxcmd/tests/fixtures/legacy-dump.jsonl", "rust"),
     ("home/voxcmd/tests/fixtures/*", "rust voxcmd"),
     ("home/voxcmd/.config/voxcmd/integrations/*", "rust voxcmd"),
     ("home/voxcmd/*", "voxcmd"),
