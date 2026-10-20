@@ -59,8 +59,35 @@ window() { printf '#window %s %s %s %s %s %s\n' "$@"; }
 # strip <i> <y0> <own_top> <own_bottom>
 strip() { printf '#strip %s %s %s %s\n' "$@"; }
 
+# click_matcher <fixture> <target> <spans>: the matcher's candidates, one per line: the awk, or under VOXCMD_BIN=rs the
+# Rust build, which must be what the sandbox put first on PATH. CLICK_CASES_DUMP=<dir> also keeps each call's page,
+# target and mode there, for gen-click-goldens.sh (a call with the same inputs overwrites its files).
+rust_matcher=
+if [ "${VOXCMD_BIN:-bash}" = rs ]; then
+  rust_matcher=$(command -v voxcmd)
+  [[ $rust_matcher == "$package/target/release/voxcmd" ]] || {
+    echo "run.sh: voxcmd is not this checkout's Rust build: $rust_matcher" >&2
+    exit 2
+  }
+  # Tripwire: a call that fell through to the awk under rs would find no matcher and fail its check.
+  matcher=/nonexistent/under-rs/click-match.awk
+fi
+click_matcher() {
+  if [ -n "${CLICK_CASES_DUMP:-}" ]; then
+    local id
+    id=$(printf '%s\0%s\0%s' "$1" "$2" "$3" | md5sum | cut -c1-12)
+    printf '%s\n' "$1" >"$CLICK_CASES_DUMP/$id.page"
+    printf '%s' "$2" >"$CLICK_CASES_DUMP/$id.target"
+    printf '%s' "$3" >"$CLICK_CASES_DUMP/$id.spans"
+  fi
+  if [ -n "$rust_matcher" ]; then
+    CLICK_TARGET="$2" "$rust_matcher" internal click-match ${3:+--spans} <<<"$1"
+  else
+    CLICK_TARGET="$2" CLICK_SPANS="$3" awk -f "$matcher" <<<"$1"
+  fi
+}
 # match <fixture> <target>: the matcher's candidates, one per line.
-match() { CLICK_TARGET="$2" awk -f "$matcher" <<<"$1"; }
+match() { click_matcher "$1" "$2" ""; }
 field() { awk -F'\t' -v n="$2" '{print $n}' <<<"$1"; }
 
 # A 1000x600 window at 100,50 captured at scale 1: a button, a heading, a link, a paragraph and misread text.
@@ -280,7 +307,7 @@ check "a doubtful word beside a match is left out of its text" "[[ \$(field \"\$
 section "sub-spans"
 # Tesseract reads a sentence as one run, so a link inside it is only part of the run. CLICK_SPANS=1 searches the runs for
 # stretches that equal the spoken words.
-spans() { CLICK_SPANS=1 CLICK_TARGET="$2" awk -f "$matcher" <<<"$1"; }
+spans() { click_matcher "$1" "$2" 1; }
 sentence=$(
   window 0 0 1000 600 1000 600
   strip 0 0 0 600

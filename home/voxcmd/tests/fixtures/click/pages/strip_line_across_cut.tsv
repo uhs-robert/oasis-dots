@@ -1,0 +1,11 @@
+#window 0 0 1000 800 1000 800
+#strip 0 0 0 400
+level	page_num	block_num	par_num	line_num	word_num	left	top	width	height	conf	text
+4	1	1	1	1	0	100	390	200	20	-1	
+5	1	1	1	1	1	100	390	60	18	95	Open
+5	1	1	1	1	2	170	392	100	18	95	Project
+#strip 1 320 400 800
+level	page_num	block_num	par_num	line_num	word_num	left	top	width	height	conf	text
+4	1	1	1	1	0	100	70	200	20	-1	
+5	1	1	1	1	1	100	70	60	18	95	Open
+5	1	1	1	1	2	170	72	100	18	95	Project

@@ -289,6 +289,19 @@ pub enum InternalCommand {
     ChainStop(InternalArgs),
     /// The session as a bash integration's hooks reach it (begin, leave, end, end-all, state)
     Session(InternalArgs),
+    /// The click matcher on click-ocr's output (stdin); the target is in CLICK_TARGET. Deleted with the bash matcher (3.2)
+    #[command(hide = true)]
+    ClickMatch(ClickMatchArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct ClickMatchArgs {
+    /// Search each run for sub-spans instead of matching whole runs (the awk's CLICK_SPANS)
+    #[arg(long)]
+    pub spans: bool,
+    /// Write the trace to stderr
+    #[arg(long)]
+    pub explain: bool,
 }
 
 #[derive(Args, Debug)]

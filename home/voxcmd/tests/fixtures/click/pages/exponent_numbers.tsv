@@ -1,0 +1,5 @@
+#window 1e2 0 1e3 6e2 1e3 600
+#strip 0 0 0 600
+level	page_num	block_num	par_num	line_num	word_num	left	top	width	height	conf	text
+5	1	1	1	1	1	1e2	100	60	24	95	Sign
+5	1	1	1	1	2	168	100	24	24	96	in

@@ -5,3 +5,5 @@ home/yazi/.config/yazi/package.toml filter=yazi-plugin-pins
 # Generated goldens: an empty expected field leaves a trailing tab, which is data, not whitespace to clean up.
 home/voxcmd/tests/fixtures/*-goldens.tsv -whitespace
 home/voxcmd/tests/fixtures/*-goldens.tsv linguist-generated=true
+# The click matcher's input pages and case list: empty trailing fields and padded text are the cases.
+home/voxcmd/tests/fixtures/click/** -whitespace
