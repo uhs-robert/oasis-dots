@@ -216,7 +216,11 @@ if [[ -n \$slot ]]; then
   trap 'if [[ -e $e2e/main/.git/ship-batch-main-check.suspended ]]; then echo "stopped with marker"; else echo "stopped without marker"; fi >>"\$SHIP_LOG"; exit 143' TERM
   while [[ -e $e2e/just_hold ]]; do sleep 0.2; done
 fi
-[[ \$1 != migrate-quickshell-state || -z \${STUB_MIGRATE_STATUS:-} ]] || exit "\$STUB_MIGRATE_STATUS"
+if [[ \$1 == migrate-quickshell-state ]]; then
+  grep -q qs "\$STUB_QS_PROCS" 2>/dev/null && bar=up || bar=down
+  echo "migrate bar \$bar" >>"\$SHIP_LOG"
+  [[ -z \${STUB_MIGRATE_STATUS:-} || ( -n \${STUB_MIGRATE_ONLY_DOWN:-} && \$bar == up ) ]] || exit "\$STUB_MIGRATE_STATUS"
+fi
 exit \${STUB_JUST_STATUS:-0}
 STUB
 cat >"$stubs/notify-send" <<STUB
@@ -366,6 +370,7 @@ grep -qx "\$HYPRLAND_INSTANCE_SIGNATURE" "\$STUB_LIVE_SIGS" || exit 1
 [ -e "\$XDG_RUNTIME_DIR/hypr/\$HYPRLAND_INSTANCE_SIGNATURE/.socket.sock" ] || exit 1
 echo "hyprctl \${HYPRLAND_INSTANCE_SIGNATURE} \$*" >>"\$SHIP_LOG"
 [ "\$1" = dispatch ] && echo qs >"\$STUB_QS_PROCS"
+[ "\$1" = dispatch ] && echo qs >"\$STUB_QS_PROCS"
 [ "\$1" = reload ] && exit "\${STUB_RELOAD_STATUS:-0}"
 exit 0
 STUB
@@ -410,9 +415,10 @@ check "a failing reload dies with a message, not a silent exit" "[[ $? != 0 ]] &
 rm -rf "$shadow_run"
 
 echo "== the install migrations run when a merge changes migration code"
-# Each run commits the given files on b1; the stubs log the migration step with the lock state, and the bar restart as
-# pkill and the relaunch dispatch. The stub bar answers unlocked so the restart goes ahead.
+# Each run commits the given files on b1. The stubs log the migration step with the lock state and whether a bar is up, and
+# the restart as pkill and the relaunch dispatch. The stub bar answers unlocked so the restart goes ahead.
 printf '#!/bin/sh\necho unlocked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+# shellcheck disable=SC2016 # expanded by the stub
 printf '#!/bin/sh\necho "pkill $*" >>"$SHIP_LOG"\n: >"$STUB_QS_PROCS"\n' >"$stubs/pkill"
 chmod +x "$stubs/pkill"
 printf 'live\n' >"$STUB_LIVE_SIGS"
@@ -426,25 +432,24 @@ migrate_ship() {
   done
   g -C "$e2e/wt-1" add -A
   g -C "$e2e/wt-1" commit -q -m migrate
-  : >"$STUB_QS_PROCS"
+  echo "qs -n" >"$STUB_QS_PROCS"
   env XDG_RUNTIME_DIR="$owner_run" HOME="$fake_home" PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/out" 2>&1
 }
+# shellcheck disable=SC2329 # called by the checks below, through eval
 migrate_count() { grep -cxF -- "$migrate_step" "$SHIP_LOG"; }
+dispatch_line() { grep -n '^hyprctl live dispatch' "$SHIP_LOG" | cut -d: -f1; }
 migrate_ship lib/install/migrate.sh home/quickshell/bar
 check "a merge touching migrate.sh succeeds" "[[ $? == 0 ]] || { cat '$e2e/out'; false; }"
 check "it runs the migrations twice, under the lock" "[[ \$(migrate_count) == 2 ]]"
-# shellcheck disable=SC2034 # read by the check below, through eval
-read -r first_migrate last_migrate < <(grep -nxF -- "$migrate_step" "$SHIP_LOG" | cut -d: -f1 | paste -sd' ')
-# shellcheck disable=SC2034 # read by the check below, through eval
-read -r pkill_line < <(line_of 'pkill -x qs')
-# shellcheck disable=SC2034 # read by the check below, through eval
-dispatch_line=$(grep -n '^hyprctl live dispatch' "$SHIP_LOG" | cut -d: -f1)
-check "once before the restart and once after" "((first_migrate < pkill_line && pkill_line < dispatch_line && dispatch_line < last_migrate))"
+check "the first run is with the bar up, before the restart" "((\$(line_of 'migrate bar up') < \$(line_of 'pkill -x qs')))"
+check "the second is after the old bar is gone and before the new one starts" "logged 'migrate bar down' && ((\$(line_of 'pkill -x qs') < \$(line_of 'migrate bar down') && \$(line_of 'migrate bar down') < \$(dispatch_line)))"
 check "without the ship lock's descriptor" "! logged 'just fd9 leaked'"
 for path in lib/install/load.sh install.sh justfile; do
   migrate_ship "$path"
-  check "a merge touching $path runs them too" "[[ $? == 0 && \$(migrate_count) == 2 ]]"
+  check "a merge touching $path runs the step once, with no bar restart" "[[ $? == 0 && \$(migrate_count) == 1 ]]"
 done
+migrate_ship lib/install/migrate.sh home/hypr/cfg
+check "migration code without a bar change runs the step once, with the bar up" "[[ $? == 0 && \$(migrate_count) == 1 ]] && logged 'migrate bar up' && ! logged 'migrate bar down' && ! logged 'pkill -x qs'"
 migrate_ship home/quickshell/bar lib/install/stow.sh home/hypr/cfg
 check "a merge touching none of those paths skips the step" "[[ $? == 0 ]] && ! grep -q 'migrate' '$SHIP_LOG' && ! grep -q 'install migrations' '$e2e/out'"
 STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
@@ -453,7 +458,10 @@ check "before the restart, so the bar is left alone and no check of main starts"
 check "and leaves the base recorded, so a rerun resumes" "[[ -e \$(base_file '$e2e/main') ]]"
 check "the lock is free" "flock -n '$SHIP_LOCK' true"
 STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh
-check "a failure with no bar restart fails too, after the reloads" "[[ $? != 0 ]] && grep -q 'migrating failed' '$e2e/out'"
+check "a failure with no bar restart fails too" "[[ $? != 0 ]] && grep -q 'migrating failed' '$e2e/out'"
+STUB_MIGRATE_STATUS=1 STUB_MIGRATE_ONLY_DOWN=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
+check "a failure with the old bar stopped relaunches the bar first, then fails" "[[ $? != 0 ]] && grep -q 'the bar was restarted' '$e2e/out' && ((\$(line_of 'migrate bar down') < \$(dispatch_line)))"
+check "and keeps the base so a rerun resumes" "[[ -e \$(base_file '$e2e/main') ]]"
 printf '#!/bin/sh\necho locked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 
 echo "== the check of main in the background"

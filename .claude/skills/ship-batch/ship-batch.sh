@@ -163,16 +163,18 @@ if grep -q '^home/systemd/\.config/systemd/user/' <<<"$changed"; then
   echo "ship-batch: reloaded the user units"
 fi
 # A pull that only edits files restows nothing, so a migration the merge added or changed would never run on its own. Run
-# twice around the restart: a migration that deletes an old file waits for a run with no bar up (see lib/install/migrate.sh).
+# before the restart and, when the bar is restarted, again with the old bar gone: a migration that deletes an old file
+# waits for a run with no bar up (see lib/install/migrate.sh), and the relaunched bar would count as one.
 migrate_paths='^(lib/install/(migrate|load)\.sh|install\.sh|justfile)$'
 run_migrations=false
 grep -Eq "$migrate_paths" <<<"$changed" && run_migrations=true
+migrate_failure='migrating failed; fix it and rerun ship-batch (a rerun resumes), or run: just migrate-quickshell-state'
 migrate() {
   $run_migrations || return 0
-  (cd "$repo" && just migrate-quickshell-state) 9>&- || die "migrating failed; fix it and rerun ship-batch (a rerun resumes), or run: just migrate-quickshell-state"
+  (cd "$repo" && just migrate-quickshell-state) 9>&- || return 1
   echo "ship-batch: ran the install migrations ($1)"
 }
-migrate "before the bar restart"
+migrate "before the bar restart" || die "$migrate_failure"
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/hypr; then
   use_live_hypr "reload Hyprland by hand: hyprctl reload"
   hyprctl reload 9>&- >/dev/null || die "hyprctl reload failed (exit $?); reload Hyprland by hand: hyprctl reload"
@@ -198,14 +200,16 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
       pgrep -x qs >/dev/null || break
       sleep 0.2
     done
+    # A failure here still relaunches the bar first: dying with the old one killed would leave the owner with none.
+    migrate_status=0
+    migrate "after stopping the bar" || migrate_status=1
     hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" 9>&- >/dev/null || die "hyprctl could not relaunch qs; start it by hand: hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\""
     sleep 6
     pgrep -x qs >/dev/null || die "qs did not come back; read 'qs log'"
+    ((migrate_status == 0)) || die "$migrate_failure (the bar was restarted)"
     echo "ship-batch: restarted the stowed bar"
   fi
 fi
-
-migrate "after the bar restart"
 
 # Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the reloads and restarts.
 [[ $before == "$after" ]] || owe_check "$repo" "$before"
