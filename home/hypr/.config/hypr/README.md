@@ -151,4 +151,4 @@ vim.cmd.colorscheme(colorscheme) -- or pass it to your plugin manager, e.g. Lazy
 
 ## Desktop shell
 
-The bar, popups, notifications, pickers, workspace overview, lock screen and greeter are one Quickshell config. Hyprland starts it at login and talks to it through `scripts/qs-ipc`, falling back to the `Config.app.menu` launcher (rofi by default) or hyprlock when it isn't running. See the [Quickshell README](../../../quickshell/.config/quickshell/README.md) for styles, settings, keys and IPC.
+The bar, popups, notifications, pickers, workspace overview, lock screen and greeter are one Quickshell config. Hyprland starts it at login and talks to it through `scripts/qs-ipc`, falling back to the `Config.app.menu` launcher (rofi by default) or hyprlock when it isn't running. See the [Quickshell README](../../../quickshell/.config/quickshell/README.md) for IPC, the [theme README](../../../quickshell/.config/quickshell/theme/README.md) for styles, the [settings README](../../../quickshell/.config/quickshell/features/settings/README.md) for settings and the [popups README](../../../quickshell/.config/quickshell/features/popups/README.md) for keys.
