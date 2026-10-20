@@ -84,6 +84,7 @@
 #   stale-shells-hook        the test of stale-shells.sh. Needs jq.
 #   owner-test-bar           the owner-test-bar skill's tests/run.sh, when it changes. Needs jq.
 #   ship-batch, merge-prs    those skills' tests/run.sh, when either changes.
+#   handoff-reconcile        orchestrator-handoff's tests/run.sh, when that skill changes.
 #   notification-markup      home/quickshell/tests/notification_markup.js, the notification body sanitizer. Needs node.
 #   check-scope, check-cache which steps --changed picks (lib/check/tests/scope.sh), and the runner's scopes, keys,
 #                            pass records and slot lock (lib/check/tests/test_*.py, cache.sh, lock.sh); and shaders.sh, the shaders step's tests.

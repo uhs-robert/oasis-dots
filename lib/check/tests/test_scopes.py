@@ -85,6 +85,7 @@ CASES = [
     (".claude/skills/owner-test-bar/owner-test-bar.sh", " bar"),
     (".claude/skills/ship-batch/tests/run.sh", " ship"),
     ("home/claude/.claude/skills/merge-prs/tests/run.sh", " ship"),
+    ("home/claude/.claude/skills/orchestrator-handoff/reconcile.sh", " handoff"),
     (".claude/skills/other/SKILL.md", ""),
     ("home/kitty/.config/kitty/kitty.conf", ""),
     ("install.sh", ""),
