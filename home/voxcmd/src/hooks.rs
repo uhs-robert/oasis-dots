@@ -394,16 +394,27 @@ impl ShellHooks {
     /// order. A hook that fails, times out or prints something unreadable lists nothing for its entry, as the bash
     /// `help_listed ... || true` did, and says why in the debug log.
     pub fn help_entries(&self, integration: &Integration) -> Vec<(String, Candidate)> {
-        let mut rows = Vec::new();
-        for entry in &integration.help {
-            let listed = match &entry.rows {
-                HelpRows::Static { id, label } => vec![Candidate::plain(id, label)],
-                HelpRows::Candidates => self.no_target_candidates(integration, &entry.action),
-                HelpRows::Hook(shell) => self.help_list(integration, &entry.action, shell),
-            };
-            rows.extend(listed.into_iter().map(|candidate| (entry.action.clone(), candidate)));
-        }
-        rows
+        // The entries' hooks run side by side (each is a bash start), joined in file order.
+        std::thread::scope(|scope| {
+            let running: Vec<_> = integration
+                .help
+                .iter()
+                .map(|entry| {
+                    scope.spawn(move || {
+                        let listed = match &entry.rows {
+                            HelpRows::Static { id, label } => vec![Candidate::plain(id, label)],
+                            HelpRows::Candidates => self.no_target_candidates(integration, &entry.action),
+                            HelpRows::Hook(shell) => self.help_list(integration, &entry.action, shell),
+                        };
+                        listed.into_iter().map(|candidate| (entry.action.clone(), candidate))
+                    })
+                })
+                .collect();
+            running
+                .into_iter()
+                .flat_map(|handle| handle.join().expect("a help thread panicked"))
+                .collect()
+        })
     }
 
     /// The action's `candidates` hook asked for no target, which is how a bare `help_action` lists everything.
@@ -438,11 +449,17 @@ impl ShellHooks {
             debug(&format!("hook failed: {} {action} help list: {why}", integration.name));
             Vec::new()
         };
-        match process::run_with_timeout(&mut self.command(shell, &env, false), DEFAULT_TIMEOUT) {
+        // The list hook shares its action's deadline with the action's `candidates`, which usually runs the same query.
+        let timeout = integration
+            .actions
+            .get(action)
+            .and_then(|declared| declared.timeout_secs)
+            .map_or(DEFAULT_TIMEOUT, Duration::from_secs_f64);
+        match process::run_with_timeout(&mut self.command(shell, &env, false), timeout) {
             Err(error) => failed(&format!("could not start bash: {error}")),
-            Ok(outcome) if outcome.timed_out => failed("timed out"),
+            Ok(outcome) if outcome.timed_out => failed(&format!("timed out after {} s", timeout.as_secs_f64())),
             Ok(outcome) if outcome.code() != Some(0) => failed(&outcome.how_it_ended()),
-            Ok(outcome) => parse_help_lines(&outcome.stdout).unwrap_or_else(|message| failed(&message)),
+            Ok(outcome) => parse_help_rows(&outcome.stdout).unwrap_or_else(|message| failed(&message)),
         }
     }
 
@@ -566,13 +583,22 @@ fn log_failure(integration: &Integration, run: &HookRun, problem: &str) {
 }
 
 /// The lines of a hook's output: `id<TAB>label<TAB>match_text`, the last two optional, one option per line. A blank
-/// line is skipped; a line with no id is an error, since the id is what `run` is later given. (Help lists may have an
-/// empty id and are read by `parse_help_lines`.)
+/// line is skipped; a line with no id is an error, since the id is what `run` is later given.
 pub fn parse_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
+    parse_rows(stdout, false)
+}
+
+/// A help list's lines, read as `candidates` output except that a row may have an empty id (an "Exit submap" row
+/// that runs the action on nothing) and a whitespace-only line is skipped rather than made a row.
+fn parse_help_rows(stdout: &str) -> Result<Vec<Candidate>, String> {
+    parse_rows(stdout, true)
+}
+
+fn parse_rows(stdout: &str, empty_id_allowed: bool) -> Result<Vec<Candidate>, String> {
     let mut candidates = Vec::new();
     for (index, line) in stdout.split('\n').enumerate() {
         let line = line.strip_suffix('\r').unwrap_or(line);
-        if line.is_empty() {
+        if line.is_empty() || (empty_id_allowed && line.trim().is_empty()) {
             continue;
         }
         let fields: Vec<&str> = line.split('\t').collect();
@@ -584,7 +610,7 @@ pub fn parse_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
             ));
         }
         let id = fields[0];
-        if id.trim().is_empty() {
+        if id.trim().is_empty() && !empty_id_allowed {
             return Err(format!("output line {} has an empty id", index + 1));
         }
         let label = fields.get(1).copied().filter(|label| !label.is_empty()).unwrap_or(id);
@@ -597,32 +623,6 @@ pub fn parse_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
         });
     }
     Ok(candidates)
-}
-
-/// The lines of a help list hook: `id<TAB>label`, the label optional (it defaults to the id). Unlike `candidates`
-/// output the id may be empty, for a row such as "Exit submap" that runs the action on nothing.
-fn parse_help_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
-    let mut rows = Vec::new();
-    for (index, line) in stdout.lines().enumerate() {
-        if line.is_empty() {
-            continue;
-        }
-        let fields: Vec<&str> = line.split('\t').collect();
-        if fields.len() > 2 {
-            return Err(format!(
-                "output line {} has {} tab-separated fields, at most 2 are read",
-                index + 1,
-                fields.len()
-            ));
-        }
-        let label = fields
-            .get(1)
-            .copied()
-            .filter(|label| !label.is_empty())
-            .unwrap_or(fields[0]);
-        rows.push(Candidate::plain(fields[0], label));
-    }
-    Ok(rows)
 }
 
 fn shell_quote(text: &str) -> String {
@@ -769,6 +769,16 @@ mod tests {
         assert_eq!(parse_legacy_output("[]\n"), Lookup::Candidates(Vec::new()));
         assert_eq!(parse_legacy_output("not json"), Lookup::Broken);
         assert_eq!(parse_legacy_output("{}"), Lookup::Broken);
+    }
+
+    #[test]
+    fn a_help_list_allows_an_empty_id_and_skips_a_whitespace_only_line() {
+        let rows = parse_help_rows("\tExit submap\n \t \nreal\tReal\n").unwrap();
+        assert_eq!(
+            rows,
+            vec![Candidate::plain("", "Exit submap"), Candidate::plain("real", "Real")]
+        );
+        assert!(parse_lines("\tExit submap\n").is_err());
     }
 
     #[test]
