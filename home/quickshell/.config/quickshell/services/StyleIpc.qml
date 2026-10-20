@@ -45,7 +45,7 @@ IpcHandler {
         return Style.lock_style;
     }
 
-    // primary, secondary, green, amber or white.
+    // A name from Style.lock_tints: primary, secondary, a terminal colour (red to purple), white or classic.
     function set_lock_tint(name: string): string {
         return Style.set_lock_tint(name) ? "ok" : "unknown";
     }

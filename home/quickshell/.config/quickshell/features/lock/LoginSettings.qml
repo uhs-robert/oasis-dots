@@ -50,8 +50,9 @@ Singleton {
     }
 
     function set_tint(name) {
-        if (name !== "follow" && Style.lock_tints.indexOf(name) < 0) return false;
-        store.set_key("tint", name);
+        const current = name === "follow" ? name : Style.lock_tint_named(name);
+        if (current === "") return false;
+        store.set_key("tint", current);
         return true;
     }
 
@@ -73,7 +74,7 @@ Singleton {
         validate: raw => ({
             sync: raw.sync !== false,
             screen: typeof raw.screen === "string" ? raw.screen : root.screen,
-            tint: raw.tint === "follow" || Style.lock_tints.indexOf(raw.tint) >= 0 ? raw.tint : root.tint,
+            tint: raw.tint === "follow" ? raw.tint : Style.lock_tint_named(raw.tint) || root.tint,
             music: root.musics.indexOf(raw.music) >= 0 ? raw.music : root.music,
             session: typeof raw.session === "string" && raw.session !== "" ? raw.session : root.session
         })
