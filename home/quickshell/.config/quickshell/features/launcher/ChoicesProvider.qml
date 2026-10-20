@@ -85,7 +85,11 @@ PickerProvider {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    root.spec = JSON.parse(text);
+                    const parsed = JSON.parse(text);
+                    // null parses fine but every later root.spec read would throw
+                    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+                        throw new Error("not an object");
+                    root.spec = parsed;
                 } catch (e) {
                     console.warn("ChoicesProvider: invalid spec (" + e + ")");
                     return;
