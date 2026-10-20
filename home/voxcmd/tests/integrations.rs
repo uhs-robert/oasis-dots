@@ -220,3 +220,24 @@ fn legacy_files_are_loaded_and_counted_but_not_checked_in_depth() {
     );
     sandbox.no_bash_ran();
 }
+
+#[test]
+fn a_shadowed_verb_is_a_warning_and_leaves_the_check_clean() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/twice.toml",
+        "verbs = [\n  { action = \"a\", match = 'go' },\n  { action = \"b\", match = 'go' },\n]\n[actions]\na = \"true\"\nb = \"true\"\n",
+    );
+    let output = sandbox.voxcmd(&["integrations", "check"], &[]);
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        stdout(&output),
+        "integrations/twice.toml:3:3: warning: verb \"go\" can never match: verb 0 (\"a\") matches the same phrases first\n\
+         1 TOML files checked, 1 problems; 0 legacy files only loaded and compiled, not checked in depth\n"
+    );
+    let json = sandbox.voxcmd(&["integrations", "check", "--json"], &[]);
+    assert_eq!(json.status.code(), Some(0));
+    assert!(stdout(&json).starts_with("{\"ok\":true,\"files\":1,\"problems\":[{"));
+    assert!(stdout(&json).contains("\"severity\":\"warning\",\"code\":\"shadowed-verb\""));
+    sandbox.no_bash_ran();
+}
