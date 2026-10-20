@@ -14,7 +14,6 @@ root="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow"
 bin_dir="$root/bin"
 system_path=/usr/local/bin:/usr/bin:/bin
 owner_state="${XDG_STATE_HOME:-$HOME/.local/state}"
-owner_cache="${XDG_CACHE_HOME:-$HOME/.cache}"
 owner_data="${XDG_DATA_HOME:-$HOME/.local/share}"
 owner_config="${XDG_CONFIG_HOME:-$HOME/.config}"
 # The shadow has no PipeWire socket by design, so the bar's PipeWire connect error is expected.
@@ -134,7 +133,6 @@ seed_home() {
   done
   # Fixed public coordinates: without them the tracked "auto" default looks the owner's city up by IP (ipwho.is) and shows it.
   printf '{"latitude": 40.7128, "longitude": -74.006, "location_name": "Kokiri Forest"}\n' >"$shadow_home/.local/state/quickshell/weather.local.json"
-  [[ -f $owner_cache/quickshell/weather.json ]] && cp "$owner_cache/quickshell/weather.json" "$shadow_home/.cache/quickshell/"
   # Opt-in: with frames the GoldenEye skin shows the footage, without them its drawn fallback.
   [[ -n ${SHADOW_GOLDENEYE_FRAMES:-} && -d $owner_data/quickshell/goldeneye-frames ]] && cp -rL "$owner_data/quickshell/goldeneye-frames" "$shadow_home/.local/share/quickshell/"
   [[ -f $owner_config/fontconfig/fonts.conf ]] && cp -L "$owner_config/fontconfig/fonts.conf" "$shadow_home/.config/fontconfig/"
