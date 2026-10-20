@@ -119,6 +119,7 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
                     .as_ref()
                     .is_some_and(|mode| mode.rewrite_hook.is_some());
                 if has_surface || rewriting.is_some() {
+                    let in_session_turn = rewriting.is_some();
                     let text = rewriting.map_or_else(|| example.clone(), |one| one.apply(&router.step_text(example)));
                     if text.is_empty() {
                         // Dropped by the mode's `drop`: a way out of the mode, which the session handles itself.
@@ -127,6 +128,8 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
                     }
                     let context = StepContext {
                         open_surface: has_surface.then_some(index),
+                        // A rewrite happens only to a session turn's words, which get no near-miss pick.
+                        in_session_turn,
                         ..StepContext::default()
                     };
                     (landed, ok) = lands_on(&router, index, &text, context);

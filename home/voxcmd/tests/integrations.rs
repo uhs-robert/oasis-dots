@@ -542,6 +542,21 @@ fn route_names_what_only_routes_in_scope_in_the_text_line() {
 }
 
 #[test]
+fn route_gives_a_rewritten_example_no_near_miss_pick_as_a_session_turn_has_none() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/pane.toml",
+        &PANE
+            .replace(r#"match = "pane next""#, r#"match = "pane go next""#)
+            .replace(r#""pane next", "next", "bogus", "<anything>""#, r#""next go""#),
+    );
+    let (code, report) = sandbox.route_report();
+    assert_eq!(code, Some(1), "{report}");
+    assert_eq!(report["misrouted"][0]["example"], "next go");
+    assert_eq!(counts(&report)[1], 0);
+}
+
+#[test]
 fn route_skips_a_wake_word_example_and_one_the_mode_drops() {
     let sandbox = Sandbox::with(&[]);
     sandbox.write(
