@@ -48,7 +48,10 @@ pub struct Candidate {
 
 impl Candidate {
     /// The id every consumer parses: `x,y,button,left,top,width,height`.
-    #[allow(dead_code, reason = "used by the screen_text provider from 2.5c")]
+    #[allow(
+        dead_code,
+        reason = "used by the screen_text provider from 2.5c; only the unit test calls it until then"
+    )]
     pub fn id(&self, button: &str) -> String {
         format!(
             "{},{},{button},{},{},{},{}",
@@ -852,5 +855,25 @@ impl Matcher {
         let mut order: Vec<usize> = (0..self.found.len()).collect();
         order.sort_by_key(|&i| (self.found[i].candidate.y, self.found[i].candidate.x));
         order
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Candidate;
+
+    #[test]
+    fn id_is_x_y_button_left_top_width_height() {
+        let candidate = Candidate {
+            x: 1,
+            y: 2,
+            match_text: String::new(),
+            label: String::new(),
+            left: 3,
+            top: 4,
+            width: 5,
+            height: 6,
+        };
+        assert_eq!(candidate.id("left"), "1,2,left,3,4,5,6");
     }
 }
