@@ -10,10 +10,11 @@
 //!
 //! A TOML integration carries its surface and mode as data, so its examples are routed. One that misses as spoken is
 //! tried the way the session would hear it: with the surface forced open, and through the mode's declared `rewrite`.
-//! Only a `rewrite_hook` cannot be reproduced (it would run the hook), and its misses are skipped.
+//! Two things cannot be reproduced, and a miss by either is skipped: a `rewrite_hook` (it would run the hook), and the
+//! candidates hooks of a surface integration (they read its state file, which stays closed).
 use super::Config;
 use super::list::relative;
-use super::schema::Format;
+use super::schema::{Candidates, Format};
 use crate::exit::CliError;
 use crate::hooks::{Dispatch, Hooks, LegacyHooks, NoHooks, ShellHooks};
 use crate::route::router::{Router, StepContext};
@@ -109,27 +110,38 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
                 continue;
             }
             let (mut landed, mut ok) = lands_on(&router, index, example, StepContext::default());
-            let scoped = is_toml && (integration.surface.is_some() || integration.mode.is_some());
-            if !ok && scoped {
-                let mut text = example.clone();
-                if let Some(rewriting) = declared_rewrite(integration, &config.intents) {
-                    text = rewriting.apply(&router.step_text(example));
-                }
-                let context = StepContext {
-                    open_surface: integration.surface.is_some().then_some(index),
-                    ..StepContext::default()
-                };
+            if !ok && is_toml {
+                let has_surface = integration.surface.is_some();
+                let rewriting = declared_rewrite(integration, &config.intents)
+                    .map_err(|message| CliError::usage("integrations examples", message))?;
                 let hook_rewrites = integration
                     .mode
                     .as_ref()
                     .is_some_and(|mode| mode.rewrite_hook.is_some());
-                if hook_rewrites {
-                    in_mode += 1;
-                    continue;
-                }
-                if !text.is_empty() {
+                if has_surface || rewriting.is_some() {
+                    let text = rewriting.map_or_else(|| example.clone(), |one| one.apply(&router.step_text(example)));
+                    if text.is_empty() {
+                        // Dropped by the mode's `drop`: a way out of the mode, which the session handles itself.
+                        in_mode += 1;
+                        continue;
+                    }
+                    let context = StepContext {
+                        open_surface: has_surface.then_some(index),
+                        ..StepContext::default()
+                    };
                     (landed, ok) = lands_on(&router, index, &text, context);
                     routed_in_scope += usize::from(ok);
+                }
+                // A forced-open surface is invisible to the hooks, which read the state file themselves, so a miss
+                // by an integration whose candidates hooks would read it proves nothing.
+                let reads_surface = has_surface
+                    && integration
+                        .actions
+                        .values()
+                        .any(|action| matches!(action.candidates, Some(Candidates::Shell(_))));
+                if !ok && (hook_rewrites || reads_surface) {
+                    in_mode += 1;
+                    continue;
                 }
             }
             if ok {

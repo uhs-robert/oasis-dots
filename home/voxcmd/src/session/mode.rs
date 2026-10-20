@@ -199,15 +199,20 @@ impl ModeSettings {
     }
 }
 
-/// The integration's declared `[mode] rewrite`, compiled; none for a mode that rewrites by hook or not at all.
-pub fn declared_rewrite(integration: &Integration, intents: &Intents) -> Option<Rewriting> {
-    let patterns = pattern::compile_mode(integration, intents).ok()??;
-    let rewrite = integration.mode.as_ref()?.rewrite.as_ref()?;
-    Some(Rewriting {
+/// The integration's declared `[mode] rewrite`, compiled; none for a mode that rewrites by hook or not at all. The
+/// error is `compile_mode`'s, which loading the config has already ruled out for a loaded integration.
+pub fn declared_rewrite(integration: &Integration, intents: &Intents) -> Result<Option<Rewriting>, String> {
+    let Some(patterns) = pattern::compile_mode(integration, intents)? else {
+        return Ok(None);
+    };
+    let Some(rewrite) = integration.mode.as_ref().and_then(|mode| mode.rewrite.as_ref()) else {
+        return Ok(None);
+    };
+    Ok(Some(Rewriting {
         drop: patterns.drop,
         keep: patterns.keep,
         prefix: rewrite.prefix.clone(),
-    })
+    }))
 }
 
 /// A declared `rewrite` (TOML): what a turn's words become.

@@ -517,6 +517,101 @@ fn route_checks_a_toml_surface_example_with_the_surface_open() {
     assert_eq!(report["in_mode"], 0);
 }
 
+impl Sandbox {
+    /// `integrations examples --route --json`, parsed.
+    fn route_report(&self) -> (Option<i32>, serde_json::Value) {
+        let output = self.voxcmd(&["integrations", "examples", "--route", "--json"], &[]);
+        (output.status.code(), serde_json::from_str(&stdout(&output)).unwrap())
+    }
+}
+
+fn counts(report: &serde_json::Value) -> [i64; 4] {
+    ["routed", "routed_in_scope", "skipped", "in_mode"].map(|key| report[key].as_i64().unwrap())
+}
+
+#[test]
+fn route_names_what_only_routes_in_scope_in_the_text_line() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write("integrations/pane.toml", &PANE.replace(r#""bogus", "#, ""));
+    let output = sandbox.voxcmd(&["integrations", "examples", "--route"], &[]);
+    assert_eq!(
+        stdout(&output),
+        "2 examples route to their integration (1 only in their surface or mode), 0 do not; \
+         skipped 1 with a <placeholder> and 0 said inside a mode\n"
+    );
+}
+
+#[test]
+fn route_skips_a_wake_word_example_and_one_the_mode_drops() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/pane.toml",
+        &PANE
+            .replace(r#""bogus", "<anything>""#, r#""cortana done", "stop""#)
+            .replace(r#"{ prefix = "pane " }"#, r#"{ prefix = "pane ", drop = "stop" }"#),
+    );
+    let (code, report) = sandbox.route_report();
+    assert_eq!(code, Some(0), "{report}");
+    assert_eq!(counts(&report), [2, 1, 0, 2]);
+}
+
+#[test]
+fn route_leaves_a_kept_phrase_as_spoken() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/pane.toml",
+        &PANE.replace(r#"{ prefix = "pane " }"#, r#"{ prefix = "pane ", keep = "bogus" }"#),
+    );
+    let (code, report) = sandbox.route_report();
+    // "bogus" is kept unprefixed, so it still misses; "next" gets the prefix.
+    assert_eq!(code, Some(1), "{report}");
+    assert_eq!(report["misrouted"][0]["example"], "bogus");
+    assert_eq!(counts(&report)[..2], [2, 1]);
+}
+
+#[test]
+fn route_skips_a_miss_of_a_mode_that_rewrites_by_hook() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/pane.toml",
+        &PANE.replace(r#"rewrite = { prefix = "pane " }"#, "rewrite_hook = \"cat\""),
+    );
+    let (code, report) = sandbox.route_report();
+    assert_eq!(code, Some(0), "{report}");
+    assert_eq!(counts(&report), [1, 0, 1, 2]);
+}
+
+#[test]
+fn route_tries_the_surface_before_skipping_a_hook_rewriting_mode() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/dial.toml",
+        "name = \"Dial\"\nverbs = [{ action = \"on\", match = \"lamp on\" }]\nexamples = [\"lamp on\", \"bogus\"]\n\
+         [actions]\non = \"true\"\n[surface]\nstate_file = \"dial.json\"\n[mode]\nrewrite_hook = \"cat\"\n",
+    );
+    sandbox.write(
+        "integrations/lamp.toml",
+        &LAMP.replace("echo lit >> LOG", "true").replace(r#""lamp on", "#, ""),
+    );
+    let (code, report) = sandbox.route_report();
+    assert_eq!(code, Some(0), "{report}");
+    // "lamp on" is the dial's only with the surface open; "bogus" misses there too, and the hook cannot be run.
+    assert_eq!(counts(&report), [1, 1, 1, 1]);
+}
+
+#[test]
+fn route_skips_a_miss_of_a_surface_whose_candidates_hooks_read_its_closed_state_file() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/dial.toml",
+        "name = \"Dial\"\nverbs = [{ action = \"on\", match = \"turn {target} on\" }]\nexamples = [\"turn two on\"]\n\
+         [actions.on]\nrun = \"true\"\ncandidates = \"printf 'one\\\\tOne\\\\n'\"\n[surface]\nstate_file = \"dial.json\"\n",
+    );
+    let (code, report) = sandbox.route_report();
+    assert_eq!(code, Some(0), "{report}");
+    assert_eq!(counts(&report), [0, 0, 0, 1]);
+}
+
 #[test]
 fn route_still_skips_every_example_of_a_legacy_integration_with_a_surface() {
     let sandbox = Sandbox::with(&[]);
