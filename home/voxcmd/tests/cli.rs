@@ -30,9 +30,6 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["integrations", "examples", "--route"], "integrations examples", "2.6"),
     (&["integrations", "schema"], "integrations schema", "2.6"),
     (&["help"], "help", "2.6"),
-    (&["log", "misses"], "log misses", "2.6"),
-    (&["log", "errors", "5", "--json"], "log errors", "2.6"),
-    (&["timer", "ring", "Timer", "done"], "timer ring", "2.6"),
     // `--` ends the flags, so a phrase can start with a dash.
 ];
 

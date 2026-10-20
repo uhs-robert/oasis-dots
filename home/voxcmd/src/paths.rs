@@ -107,6 +107,14 @@ pub fn hypr_script(name: &str) -> PathBuf {
         .join(name)
 }
 
+/// A sound the Quickshell config ships, such as `alarm.ogg`.
+pub fn bar_sound(name: &str) -> PathBuf {
+    env_dir("XDG_CONFIG_HOME")
+        .unwrap_or_else(|| home().join(".config"))
+        .join("quickshell/sounds")
+        .join(name)
+}
+
 /// The bar's command line, which `qs-ipc call ...` talks to.
 pub fn qs_ipc() -> PathBuf {
     hypr_script("qs-ipc")

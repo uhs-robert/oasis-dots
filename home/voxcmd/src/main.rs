@@ -16,6 +16,7 @@ mod process;
 mod route;
 mod session;
 mod text;
+mod timer;
 mod voice;
 
 use clap::{CommandFactory, FromArgMatches};
@@ -114,9 +115,9 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Integrations(IntegrationsCommand::Examples { .. }) => later("integrations examples", "2.6"),
         Command::Integrations(IntegrationsCommand::Schema) => later("integrations schema", "2.6"),
         Command::Help => later("help", "2.6"),
-        Command::Log(LogCommand::Misses { .. }) => later("log misses", "2.6"),
-        Command::Log(LogCommand::Errors { .. }) => later("log errors", "2.6"),
-        Command::Timer(TimerCommand::Ring { .. }) => later("timer ring", "2.6"),
+        Command::Log(LogCommand::Misses { json, count }) => log::misses(count, json.json),
+        Command::Log(LogCommand::Errors { json, count }) => log::errors(count, json.json),
+        Command::Timer(TimerCommand::Ring { summary, body }) => timer::ring(&summary, &body).map(|()| None),
         Command::Util(UtilCommand::Notify { level, title, body }) => notify::run(&level, &title, &body).map(|()| None),
         Command::Util(UtilCommand::Intents { name }) => config::intents::run(&name).map(Some),
         Command::Util(UtilCommand::WordMatch { ignore, target }) => {
