@@ -115,13 +115,17 @@ main_check_is_running() {
 
 # Stops a running background check and waits until it is gone, so nothing it spawned holds a heavy-step slot or the
 # checkout when the pull changes the files under it. The owed base is not touched: only a pass settles it. Sets
-# main_check_stopped when there was one to stop, since the caller then owes starting it again.
+# main_check_stopped when there was one to stop, since the caller then owes starting it again, and marks the check
+# suspended before stopping it, so a waiter never sees it gone without the marker.
 main_check_stopped=false
 stop_main_check() {
   local repo=$1 lock pid
   lock=$(main_check_path "$repo" lock)
-  # shellcheck disable=SC2034 # read by ship-batch.sh
-  ! main_check_is_running "$repo" || main_check_stopped=true
+  if main_check_is_running "$repo"; then
+    # shellcheck disable=SC2034 # read by ship-batch.sh
+    main_check_stopped=true
+    suspend_main_check "$repo"
+  fi
   command -v systemctl >/dev/null && systemctl --user stop "$main_check_unit" 2>/dev/null
   if main_check_is_running "$repo"; then
     pid=$(cat "$(main_check_path "$repo" pid)" 2>/dev/null)
@@ -138,9 +142,10 @@ stop_main_check() {
   return 0
 }
 
-# A batch that stops the check before its branch checks holds no lock while they run, so it leaves its pid in the
-# `suspended` file: a waiter keeps waiting while that batch lives, instead of reading the gap as a check owed and not
-# running. Cleared when the check starts again or that batch exits; a marker whose batch died counts for nothing.
+# A batch that stops the check leaves its pid in the `suspended` file: a waiter keeps waiting while that batch lives,
+# instead of reading the gap before the restart as a check owed and not running (the stop before the branch checks holds no
+# lock at all). Cleared when the check starts again or that batch exits. A marker counts only while its pid is a
+# ship-batch, so one left by a killed batch blocks nothing, even once its pid is reused.
 suspend_main_check() {
   echo $$ >"$(main_check_path "$1" suspended)"
 }
@@ -156,7 +161,7 @@ clear_main_check_suspended() {
 main_check_suspended_by() {
   local pid
   pid=$(cat "$(main_check_path "$1" suspended)" 2>/dev/null)
-  [[ $pid =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null && echo "$pid"
+  [[ $pid =~ ^[0-9]+$ && $(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null) == *ship-batch.sh* ]] && echo "$pid"
 }
 
 # Starts main-check.sh run detached from this shell: a transient user unit (Nice 19, survives the agent's shell), else
