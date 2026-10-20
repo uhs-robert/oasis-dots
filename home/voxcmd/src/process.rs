@@ -120,7 +120,16 @@ pub fn run_ask_to_end(command: &mut Command) -> std::io::Result<Outcome> {
 /// guard drops: a stop signal TERMs it, as it does an ask. For a watcher's auto-stop detector, whose caller waits on it.
 pub fn spawn_letting_clean_up(command: &mut Command) -> std::io::Result<(Child, LiveGroup)> {
     command.process_group(0);
-    spawn_listed(command, OnStop::LetCleanUp)
+    spawn_listed(command, OnStop::LetCleanUp, None)
+}
+
+/// Starts one process of a pipeline and returns at once, its group listed until the returned guard drops: a stop
+/// signal kills the group. `leader` is None for the first process, which leads a group of its own, and that process's
+/// pid for each later one, which joins its group so that one kill reaches the whole pipeline. The caller spawns every
+/// stage before it waits on any: a stage spawned after the group was killed would outlive it.
+pub fn spawn_killed_on_stop(command: &mut Command, leader: Option<u32>) -> std::io::Result<(Child, LiveGroup)> {
+    command.process_group(leader.map_or(0, |pid| pid.try_into().unwrap_or(0)));
+    spawn_listed(command, OnStop::Kill, leader)
 }
 
 /// Has the child TERMed when the thread that spawns it ends (`PR_SET_PDEATHSIG`; for a child that must not outlive
@@ -193,7 +202,7 @@ fn run(
         Capture::No => Stdio::null,
     };
     command.stdout(output_stdio()).stderr(output_stdio()).process_group(0);
-    let (mut child, _live) = spawn_listed(command, on_stop)?;
+    let (mut child, _live) = spawn_listed(command, on_stop, None)?;
     let stdout = Drain::start(child.stdout.take());
     let stderr = Drain::start(child.stderr.take());
     let deadline = timeout.map(|timeout| Instant::now() + timeout);
@@ -322,8 +331,12 @@ static STOPPING: AtomicBool = AtomicBool::new(false);
 static HANDLERS: Once = Once::new();
 
 /// Spawns the command and lists its group, with no moment between the two at which a stop signal leaves it running.
-/// Fails once voxcmd is stopping.
-fn spawn_listed(command: &mut Command, on_stop: OnStop) -> std::io::Result<(Child, LiveGroup)> {
+/// Fails once voxcmd is stopping. `group_leader` is the pid of the group the command joins, None when it leads one.
+fn spawn_listed(
+    command: &mut Command,
+    on_stop: OnStop,
+    group_leader: Option<u32>,
+) -> std::io::Result<(Child, LiveGroup)> {
     HANDLERS.call_once(install_handlers);
     // SeqCst throughout, paired with the handler's: it either sees this thread spawning, or this thread sees its signal.
     SPAWNING.fetch_add(1, Ordering::SeqCst);
@@ -335,7 +348,7 @@ fn spawn_listed(command: &mut Command, on_stop: OnStop) -> std::io::Result<(Chil
     let live = spawned
         .as_ref()
         .ok()
-        .map(|child| LiveGroup::register(child.id(), on_stop));
+        .map(|child| LiveGroup::register(group_leader.unwrap_or_else(|| child.id()), on_stop));
     if SPAWNING.fetch_sub(1, Ordering::SeqCst) == 1 {
         let signal = PENDING_SIGNAL.load(Ordering::SeqCst);
         if signal != 0 {
@@ -400,6 +413,9 @@ impl Drop for LiveGroup {
 struct Removal {
     path: CString,
     if_holding: Option<CString>,
+    /// Set for a directory: the files inside it are unlinked, then it is removed. A signal handler cannot walk a
+    /// directory, so the files are listed up front.
+    inside: Option<Vec<CString>>,
 }
 
 /// A file removed if a stop signal ends voxcmd while this lives; a signal skips every `Drop`, so the owner's own
@@ -417,7 +433,23 @@ impl RemovedOnSignal {
         Self::listed(path, Some(content))
     }
 
+    /// A directory removed with the files named in it, which are the only ones it may hold (no walk in the handler).
+    pub fn directory(path: &Path, file_names: &[String]) -> Self {
+        let inside = file_names
+            .iter()
+            .map(|name| CString::new(path.join(name).as_os_str().as_bytes()))
+            .collect::<Result<Vec<_>, _>>();
+        match inside {
+            Ok(inside) => Self::listed_with(path, None, Some(inside)),
+            Err(_) => Self(None),
+        }
+    }
+
     fn listed(path: &Path, if_holding: Option<&str>) -> Self {
+        Self::listed_with(path, if_holding, None)
+    }
+
+    fn listed_with(path: &Path, if_holding: Option<&str>, inside: Option<Vec<CString>>) -> Self {
         HANDLERS.call_once(install_handlers);
         let Ok(path) = CString::new(path.as_os_str().as_bytes()) else {
             return Self(None);
@@ -426,7 +458,11 @@ impl RemovedOnSignal {
             return Self(None);
         };
         // Never freed: the handler may be reading it on another thread as it is unlisted. A few per process.
-        let removal = Box::into_raw(Box::new(Removal { path, if_holding }));
+        let removal = Box::into_raw(Box::new(Removal {
+            path,
+            if_holding,
+            inside,
+        }));
         let slot = REMOVED_ON_SIGNAL.iter().position(|slot| {
             slot.compare_exchange(std::ptr::null_mut(), removal, Ordering::AcqRel, Ordering::Acquire)
                 .is_ok()
@@ -639,8 +675,17 @@ fn end_on_signal(signal: libc::c_int) {
             .as_ref()
             .is_none_or(|expected| file_holds(&removal.path, expected))
         {
-            // SAFETY: unlink on a NUL-terminated path.
-            unsafe { libc::unlink(removal.path.as_ptr()) };
+            // SAFETY: unlink and rmdir on NUL-terminated paths.
+            unsafe {
+                if let Some(inside) = &removal.inside {
+                    for file in inside {
+                        libc::unlink(file.as_ptr());
+                    }
+                    libc::rmdir(removal.path.as_ptr());
+                } else {
+                    libc::unlink(removal.path.as_ptr());
+                }
+            }
         }
     }
     if already_stopping {

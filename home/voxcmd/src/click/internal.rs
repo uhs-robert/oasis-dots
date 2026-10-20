@@ -1,4 +1,6 @@
 //! The hidden entry points the suites reach the click code through; deleted with the bash matcher (3.2).
+use super::capture::Tools;
+use super::driver::{self, Mode, WindowSel};
 use super::matcher::{Matcher, Options};
 use crate::cli::ClickMatchArgs;
 use crate::exit::CliError;
@@ -37,4 +39,45 @@ pub fn click_match(args: &ClickMatchArgs) -> Result<Option<String>, CliError> {
         let _ = writeln!(stdout, "{}", candidate.tsv());
     }
     Ok(None)
+}
+
+const OCR_USAGE: &str = "usage: click-ocr [--window <stableId>] [--explain]";
+
+/// `[--window <stableId>] [--explain]`, None for anything else.
+fn parse_ocr_args(args: &[String]) -> Option<(WindowSel, Mode)> {
+    let (mut selection, mut mode) = (WindowSel::Focused, Mode::Click);
+    let mut rest = args.iter();
+    while let Some(arg) = rest.next() {
+        match arg.as_str() {
+            "--window" => selection = WindowSel::StableId(rest.next().filter(|id| !id.is_empty())?.clone()),
+            "--explain" => mode = Mode::Explain,
+            _ => return None,
+        }
+    }
+    Some((selection, mode))
+}
+
+/// `voxcmd internal click-ocr`: click-ocr's stream on stdout, its messages bare on stderr (the suites grep them) and
+/// its exit codes (2 for a usage error or no window, 1 for a capture or OCR that failed).
+pub fn click_ocr(args: &[String]) -> Result<Option<String>, CliError> {
+    let Some((selection, mode)) = parse_ocr_args(args) else {
+        eprintln!("{OCR_USAGE}");
+        return Err(CliError::usage("click-ocr", ""));
+    };
+    match driver::capture_page(&selection, mode, None, &Tools::default()) {
+        Ok(captured) => {
+            // A closed pipe is the reader's choice, not a failure.
+            let _ = std::io::stdout().lock().write_all(&captured.stream);
+            Ok(None)
+        }
+        Err(error) => {
+            // Printed bare; main would prefix it.
+            eprintln!("{error}");
+            Err(if error.code == 2 {
+                CliError::usage("click-ocr", "")
+            } else {
+                CliError::quiet("click-ocr")
+            })
+        }
+    }
 }

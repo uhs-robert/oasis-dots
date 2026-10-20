@@ -86,6 +86,11 @@ click_matcher() {
     CLICK_TARGET="$2" CLICK_SPANS="$3" awk -f "$matcher" <<<"$1"
   fi
 }
+# click_ocr: what the click-ocr checks run, the bash script or under rs the Rust build's hidden entry point (the same
+# tripwire as the matcher's: bash's script is not reached under rs). click_ocr_cmd is the same, quoted for a check's eval.
+click_ocr=("$share_dir/click-ocr")
+[ -z "$rust_matcher" ] || click_ocr=("$rust_matcher" internal click-ocr)
+click_ocr_cmd=$(printf '%q ' "${click_ocr[@]}")
 # match <fixture> <target>: the matcher's candidates, one per line.
 match() { click_matcher "$1" "$2" ""; }
 field() { awk -F'\t' -v n="$2" '{print $n}' <<<"$1"; }
@@ -485,47 +490,49 @@ SANDBOX_TESSERACT_TSV=$({
 export SANDBOX_TESSERACT_TSV
 
 section "click-ocr"
-out=$("$share_dir/click-ocr")
+: >"$SANDBOX_DIR/callers.log"
+: >"$SANDBOX_DIR/ocr-calls.log"
+out=$("${click_ocr[@]}")
 check "emits the window and the image size" "[[ \$(head -1 <<<\"\$out\") == '#window 100 50 160 96 256 154' ]]"
 check "emits one strip for a window of normal height" "[[ \$(grep -c '^#strip' <<<\"\$out\") == 1 ]]"
 check "captures the window's own buffer by its stable id" "grep -q 'grim -t ppm -T 18000004' '$log' && ! grep -q ' -g ' '$log'"
 check "captures at native scale: no -s" "! grep -q ' -s ' '$log'"
 check "leaves no screenshot behind" "[[ -z \$(ls '$XDG_RUNTIME_DIR' | grep voxcmd-click) ]]"
 : >"$log"
-out=$(SANDBOX_GRIM_NO_TOPLEVEL=1 "$share_dir/click-ocr")
+out=$(SANDBOX_GRIM_NO_TOPLEVEL=1 "${click_ocr[@]}")
 check "a failed toplevel capture falls back to the screen region" "grep -q 'grim -t ppm -g 100,50 160x96' '$log' && [[ \$(head -1 <<<\"\$out\") == '#window 100 50 160 96 256 154' ]]"
 SANDBOX_ACTIVEWINDOW_JSON='{"at": [100, 50], "size": [160, 96], "monitor": 0}'
 : >"$log"
-"$share_dir/click-ocr" >/dev/null
+"${click_ocr[@]}" >/dev/null
 check "no stable id captures the screen region without trying -T" "grep -q 'grim -t ppm -g 100,50 160x96' '$log' && ! grep -q ' -T ' '$log'"
 SANDBOX_ACTIVEWINDOW_JSON=$default_window
 : >"$log"
-out=$(SANDBOX_GRIM_SIZE='256 100' "$share_dir/click-ocr" 2>&1)
+out=$(SANDBOX_GRIM_SIZE='256 100' "${click_ocr[@]}" 2>&1)
 check "a toplevel capture of another shape falls back to the screen region, which stands in here for a right one" "grep -q 'grim -t ppm -T' '$log' && grep -q 'grim -t ppm -g' '$log' && [[ \$out == *'does not match'* ]]"
 : >"$log"
-out=$(SANDBOX_GRIM_SIZE='256 154' "$share_dir/click-ocr" 2>&1)
+out=$(SANDBOX_GRIM_SIZE='256 154' "${click_ocr[@]}" 2>&1)
 check "a capture within 2% of the window's shape is used as it is" "! grep -q ' -g ' '$log' && [[ \$(head -1 <<<\"\$out\") == '#window 100 50 160 96 256 154' ]]"
-out=$(SANDBOX_GRIM_SIZE='256 151' "$share_dir/click-ocr" 2>&1)
+out=$(SANDBOX_GRIM_SIZE='256 151' "${click_ocr[@]}" 2>&1)
 check "a vertical scale 2% under the horizontal one is still taken" "[[ \$(head -1 <<<\"\$out\") == '#window 100 50 160 96 256 151' ]]"
-out=$(SANDBOX_GRIM_SIZE='256 140' "$share_dir/click-ocr" 2>&1)
-check "a vertical scale 9% under the horizontal one is an error" "! SANDBOX_GRIM_SIZE='256 140' '$share_dir/click-ocr' >/dev/null 2>&1 && [[ \$out == *'does not match'* ]]"
+out=$(SANDBOX_GRIM_SIZE='256 140' "${click_ocr[@]}" 2>&1)
+check "a vertical scale 9% under the horizontal one is an error" "! SANDBOX_GRIM_SIZE='256 140' $click_ocr_cmd >/dev/null 2>&1 && [[ \$out == *'does not match'* ]]"
 SANDBOX_ACTIVEWINDOW_JSON='{"at": [0, 0], "size": [1000, 1500], "monitor": 0, "stableId": "18000004"}'
-out=$(SANDBOX_GRIM_SCALE=1 "$share_dir/click-ocr")
+out=$(SANDBOX_GRIM_SCALE=1 "${click_ocr[@]}")
 check "a tall window is cut into 4 to 6 strips" "[[ \$(grep -c '^#strip' <<<\"\$out\") -ge 4 && \$(grep -c '^#strip' <<<\"\$out\") -le 6 ]]"
 check "strips own contiguous rows from 0 to the image height" "[[ \$(grep '^#strip' <<<\"\$out\" | awk '{if (\$4 != prev) bad = 1; prev = \$5} END {print (bad ? \"gap\" : prev)}') == 1500 ]]"
 check "a lower strip's crop starts 80 px above the rows it owns at scale 1" "[[ \$(grep '^#strip 1 ' <<<\"\$out\" | awk '{print \$4 - \$3}') == 80 ]]"
-out=$(SANDBOX_GRIM_SCALE=2 "$share_dir/click-ocr")
+out=$(SANDBOX_GRIM_SCALE=2 "${click_ocr[@]}")
 check "and 160 px above them at scale 2" "[[ \$(grep '^#strip 1 ' <<<\"\$out\" | awk '{print \$4 - \$3}') == 160 ]]"
 mkdir -p "$root/failing"
 printf '#!/bin/sh\nexit 1\n' >"$root/failing/tesseract"
 chmod +x "$root/failing/tesseract"
-check "a failed strip fails the whole OCR" "! SANDBOX_GRIM_SCALE=1 PATH='$root/failing':\$PATH '$share_dir/click-ocr' >/dev/null 2>&1"
+check "a failed strip fails the whole OCR" "! SANDBOX_GRIM_SCALE=1 PATH='$root/failing':\$PATH $click_ocr_cmd >/dev/null 2>&1"
 # One strip fails at once; the rest would sleep for a minute, and the run must not wait for them. Each stub logs its
 # pid (kept across exec) so the check looks at this run's stubs only, not at any process that happens to sleep.
 printf '#!/bin/sh\necho $$ >>"%s/strip_pids"\n[ ! -e "%s/slow_started" ] && : >"%s/slow_started" && exit 1\nexec sleep 60\n' \
   "$root" "$root" "$root" >"$root/failing/tesseract"
 started=$SECONDS
-SANDBOX_GRIM_SCALE=1 PATH="$root/failing:$PATH" "$share_dir/click-ocr" >/dev/null 2>&1
+SANDBOX_GRIM_SCALE=1 PATH="$root/failing:$PATH" "${click_ocr[@]}" >/dev/null 2>&1
 # A killed stub is gone once its signal is delivered and it is reaped, which a loaded machine can take a moment to do;
 # a stub that was missed sleeps on for the whole minute.
 strip_stubs_gone() {
@@ -534,7 +541,146 @@ strip_stubs_gone() {
 }
 check "a failed strip ends the others instead of waiting for them" "[[ \$((SECONDS - started)) -lt 60 ]] && wait_until strip_stubs_gone"
 SANDBOX_ACTIVEWINDOW_JSON='{}'
-check "no focused window is an error" "! out=\$('$share_dir/click-ocr' 2>&1) && grep -q 'no focused window' <<<\"\$out\""
+check "no focused window is an error" "! out=\$($click_ocr_cmd 2>&1) && grep -q 'no focused window' <<<\"\$out\""
+SANDBOX_ACTIVEWINDOW_JSON=$default_window
+
+# The strips' tesseract is a stub a check makes fail, linger or sleep. It logs its pids so a check looks at this run's
+# processes only, and takes its turns from markers in $strips_dir (mkdir is atomic, so exactly one strip wins each).
+strips_dir=$root/strips
+reset_strips() { rm -rf "$strips_dir" && mkdir -p "$strips_dir"; }
+strip_stub() { cat >"$root/failing/tesseract"; }
+strip_pids() { tr ' ' '\n' <"$strips_dir/pids"; }
+all_strip_pids_gone() {
+  local pid
+  while read -r pid; do process_gone "$pid" || return 1; done < <(strip_pids)
+}
+failing_run() { SANDBOX_GRIM_SCALE=1 STRIPS_DIR=$strips_dir PATH="$root/failing:$PATH" "${click_ocr[@]}"; }
+SANDBOX_ACTIVEWINDOW_JSON='{"at": [0, 0], "size": [1000, 1500], "monitor": 0, "stableId": "18000004"}'
+
+# A strip that forks a child just before it fails. Ending the strips' children by parent pid missed that
+# one, which slept on after the run; the whole group must be signalled.
+reset_strips
+strip_stub <<'EOF'
+#!/bin/sh
+sleep 60 &
+echo "$$ $!" >>"$STRIPS_DIR/pids"
+if mkdir "$STRIPS_DIR/failed" 2>/dev/null; then exit 1; fi
+wait
+EOF
+chmod +x "$root/failing/tesseract"
+failing_run >/dev/null 2>&1
+check "a failed strip also ends the child it forked, not only its siblings" "[[ \$(strip_pids | wc -l) -ge 10 ]] && wait_until all_strip_pids_gone"
+
+# The failure path must find every strip, not only those a job listing shows under load. One fails at once
+# and the rest sleep; repeated, since the miss was a race.
+strip_stub <<'EOF'
+#!/bin/sh
+echo $$ >>"$STRIPS_DIR/pids"
+if mkdir "$STRIPS_DIR/failed" 2>/dev/null; then exit 1; fi
+exec sleep 60
+EOF
+leaked=0 statuses=""
+for attempt in 1 2 3 4 5 6; do
+  reset_strips
+  failing_run >/dev/null 2>"$root/failed_stderr"
+  statuses+="$? $(<"$root/failed_stderr") "
+  wait_until all_strip_pids_gone || leaked=$((leaked + 1))
+done
+check "no strip outlives a failed run, in 6 runs" "[[ $leaked == 0 ]]"
+check "each failed run exits 1 saying ocr failed" "[[ '$statuses' == '1 ocr failed 1 ocr failed 1 ocr failed 1 ocr failed 1 ocr failed 1 ocr failed ' ]]"
+check "and leaves no work directory behind" "[[ -z \$(ls '$XDG_RUNTIME_DIR' | grep voxcmd-click) ]]"
+
+# A strip that finished well is out of the set before anything is killed. One leaves a child behind in its
+# group and exits 0; once it has, another fails. Signalling the finished strip's group would take its child too.
+reset_strips
+strip_stub <<'EOF'
+#!/bin/sh
+if mkdir "$STRIPS_DIR/finished" 2>/dev/null; then
+  sleep 30 &
+  echo $! >"$STRIPS_DIR/lingering"
+  exit 0
+fi
+if mkdir "$STRIPS_DIR/failing" 2>/dev/null; then
+  while [ ! -s "$STRIPS_DIR/lingering" ]; do sleep 0.02; done
+  sleep 0.3
+  exit 1
+fi
+echo $$ >>"$STRIPS_DIR/pids"
+exec sleep 60
+EOF
+failing_run >/dev/null 2>&1
+lingering=$(<"$strips_dir/lingering")
+check "the strips still running are ended" "wait_until all_strip_pids_gone"
+check "a strip that finished well is not signalled: the child it left behind lives" "process_running $lingering"
+kill "$lingering" 2>/dev/null
+
+# The strips come out in order, each one's text after its own line, though the last one finishes first.
+strip_stub <<'EOF'
+#!/bin/sh
+number=${1##*strip}
+number=${number%.pgm}
+sleep "0.$((9 - number))"
+echo "text-$number"
+EOF
+out=$(failing_run)
+order=$(sed -n 's/^#strip \([0-9]*\) .*/\1/p;s/^text-/t/p' <<<"$out" | tr '\n' ' ')
+check "strips come out in order, each followed by its own text" "[[ '$order' == '0 t0 1 t1 2 t2 3 t3 4 t4 ' ]]"
+rm -f "$root/failing/tesseract"
+SANDBOX_ACTIVEWINDOW_JSON=$default_window
+
+# Which program drove the tools, and with what.
+if [ -n "$rust_matcher" ]; then
+  rust_real=$(realpath "$rust_matcher")
+  check "every grim, magick and tesseract call came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
+else
+  check "every grim, magick and tesseract call came from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv 'bash\$' '$SANDBOX_DIR/callers.log'"
+fi
+ocr_calls() { sed "s#$XDG_RUNTIME_DIR/voxcmd-click\.[A-Za-z0-9]*#<work>#g" "$SANDBOX_DIR/ocr-calls.log"; }
+: >"$SANDBOX_DIR/ocr-calls.log"
+"${click_ocr[@]}" >/dev/null
+tool_calls=$(ocr_calls)
+check "magick cuts the strips and measures the mean in one call" "[[ \$(grep '^magick' <<<\"\$tool_calls\") == 'magick <work>/shot.ppm -colorspace Gray -depth 8 ( +clone -crop 256x154+0+0 +repage -write <work>/strip0.pgm +delete ) ( +clone -filter box -resize 1x1! -format %[fx:mean] -write info:- +delete ) null:' ]]"
+check "tesseract reads the strip's file with the flags that keep it fast" "[[ \$(grep '^tesseract' <<<\"\$tool_calls\") == 'tesseract <work>/strip0.pgm - --psm 11 --oem 1 -c tessedit_do_invert=0 tsv' ]]"
+: >"$SANDBOX_DIR/ocr-calls.log"
+out=$(SANDBOX_IMAGE_MEAN=0.2 "${click_ocr[@]}" --explain)
+tool_calls=$(ocr_calls)
+check "a dark image is negated into a tesseract that reads the pipe" "grep -qx 'magick <work>/strip0.pgm -negate pgm:-' <<<\"\$tool_calls\" && grep -qx 'tesseract - - --psm 11 --oem 1 -c tessedit_do_invert=0 tsv' <<<\"\$tool_calls\""
+check "and the info line says so" "grep -q $'\tinverted=1\t' <<<\"\$out\""
+out=$(SANDBOX_IMAGE_MEAN=0.5 "${click_ocr[@]}" --explain)
+check "a mean of exactly 0.5 is not dark" "grep -q $'\tinverted=0\t' <<<\"\$out\""
+
+# The target window the click will check.
+target=$XDG_RUNTIME_DIR/voxcmd/click-target
+rm -f "$target"
+"${click_ocr[@]}" >/dev/null
+check "the captured window is recorded for the click" "[[ \$(jq -r '.window.stableId' '$target') == 18000004 && \$(jq -r '.captured_at | type' '$target') == number ]]"
+check "in a directory only the owner can enter" "[[ \$(stat -c %a '$XDG_RUNTIME_DIR/voxcmd') == 700 ]]"
+check "and no half-written copy is left beside it" "[[ -z \$(ls '$XDG_RUNTIME_DIR/voxcmd' | grep '^click-target\.') ]]"
+rm -f "$target"
+SANDBOX_ACTIVEWINDOW_JSON='{"at": [100, 50], "size": [160, 96], "monitor": 0, "stableId": "18000004", "class": "kitty"}'
+out=$("${click_ocr[@]}" --explain)
+check "--explain starts with the info line" "[[ \$(head -1 <<<\"\$out\") == $'#info\tclass=kitty\tmode=toplevel\tsize=160x96\timage=256x154\tscale_x=1.600\tscale_y=1.604\tinverted=0\tstrips=1\tocr_ms='* ]]"
+check "then the window line" "[[ \$(sed -n 2p <<<\"\$out\") == '#window 100 50 160 96 256 154' ]]"
+check "and leaves the click target alone" "[[ ! -e '$target' ]]"
+SANDBOX_ACTIVEWINDOW_JSON=$default_window
+
+# --window reads that client, wherever the focus is.
+SANDBOX_CLIENTS_JSON='[{"stableId": "other", "at": [0, 0], "size": [10, 10]}, {"stableId": "77", "class": "foot", "at": [300, 400], "size": [160, 96]}]'
+: >"$log"
+out=$("${click_ocr[@]}" --window 77)
+check "--window captures the named client by its stable id" "[[ \$(head -1 <<<\"\$out\") == '#window 300 400 160 96 256 154' ]] && grep -q 'grim -t ppm -T 77' '$log'"
+check "and records that client as the target" "[[ \$(jq -r .window.class '$target') == foot ]]"
+out=$("${click_ocr[@]}" --window 99 2>&1)
+status=$?
+check "an unknown client is no such window, exit 2" "[[ $status == 2 && '$out' == 'no such window' ]]"
+SANDBOX_CLIENTS_JSON='[]'
+out=$("${click_ocr[@]}" --bogus 2>&1)
+status=$?
+check "an option it does not know is a usage error, exit 2" "[[ $status == 2 && '$out' == 'usage: click-ocr [--window <stableId>] [--explain]' ]]"
+SANDBOX_ACTIVEWINDOW_JSON='{"at": [100, 50], "size": [0, 0], "monitor": 0}'
+out=$("${click_ocr[@]}" 2>&1)
+status=$?
+check "a window without size is an error, exit 2" "[[ $status == 2 && '$out' == 'focused window has no size' ]]"
 SANDBOX_ACTIVEWINDOW_JSON=$default_window
 
 section "routing with --dry-run"
