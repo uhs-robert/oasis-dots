@@ -701,7 +701,12 @@ fn finish_builtin(
 
 /// A single option runs unless it is a weak match, which the user picks like any ambiguity.
 pub fn needs_pick(options: &[RouteOption]) -> bool {
-    options.len() > 1 || options.iter().any(|option| option.weak)
+    needs_pick_among(options.len(), options.iter().any(|option| option.weak))
+}
+
+/// `needs_pick` for options not built yet: `explain --window` asks it of the candidates a click would offer.
+pub fn needs_pick_among(count: usize, any_weak: bool) -> bool {
+    count > 1 || any_weak
 }
 
 fn decide(options: &[RouteOption], near_misses: bool, step: &StepTrace) -> Decision {

@@ -53,7 +53,6 @@ pub struct Captured {
     /// click-ocr's stdout, byte for byte: the `#info` line (Explain only), `#window`, then each strip's `#strip` line
     /// and tesseract's text.
     pub stream: Vec<u8>,
-    #[allow(dead_code, reason = "nothing reads the capture info yet")]
     pub info: CaptureInfo,
 }
 

@@ -347,6 +347,68 @@ fn sorted_unique(words: &[String]) -> Vec<&String> {
 /// `None` when the target has no words left after the filler and ignored words: it names nothing, which is not the
 /// same as naming something that is missing.
 pub fn word_match(target: &str, candidates: &[Candidate], ignore: &[String]) -> Option<Vec<Candidate>> {
+    let mut kept: Vec<Judged> = judge(target, candidates, ignore)?
+        .into_iter()
+        .filter(|judged| judged.kept)
+        .collect();
+    // A strong match leaves only strong ones, in the order given; otherwise the closest weak ones come first.
+    if !kept.iter().any(|judged| !judged.weak) {
+        kept.sort_by_key(|judged| (judged.misses, judged.candidate.label.chars().count()));
+    }
+    Some(kept.into_iter().map(|judged| judged.candidate).collect())
+}
+
+/// Why `word_match` kept or dropped a candidate, worded as the bash jq did (`explain --window` prints it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Verdict {
+    Strong,
+    CoversHalf { named: usize },
+    HoldsAllPlusOne,
+    NoSpokenWord,
+    UnderHalf { named_matched: usize, named: usize },
+    DroppedStrongExists,
+    DroppedPastCap,
+}
+
+impl std::fmt::Display for Verdict {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Strong => formatter.write_str("strong: same words"),
+            Self::CoversHalf { named } => {
+                write!(
+                    formatter,
+                    "weak: the spoken words cover at least half of its {named} word(s)"
+                )
+            }
+            Self::HoldsAllPlusOne => formatter.write_str("weak: holds every spoken word plus one more"),
+            Self::NoSpokenWord => formatter.write_str("near miss only: no spoken word is in it"),
+            Self::UnderHalf { named_matched, named } => {
+                write!(
+                    formatter,
+                    "coverage under half: {named_matched} of {named} of its words are spoken"
+                )
+            }
+            Self::DroppedStrongExists => formatter.write_str("dropped: a strong match exists"),
+            Self::DroppedPastCap => formatter.write_str("dropped: past the ten best weak matches"),
+        }
+    }
+}
+
+/// A candidate with what word matching made of it.
+#[derive(Debug, Clone)]
+pub struct Judged {
+    pub candidate: Candidate,
+    /// Whether the real pick keeps it, after the strong-match rule and the cap of ten.
+    pub kept: bool,
+    pub weak: bool,
+    pub verdict: Verdict,
+    /// Spoken and named words the other side lacks; the weak ones are ranked by it.
+    pub misses: usize,
+}
+
+/// Every candidate with a word to match, judged in order. `word_match` keeps what is `kept`, so a trace built from this
+/// cannot call a match kept that the router drops. `None` as for `word_match`.
+pub fn judge(target: &str, candidates: &[Candidate], ignore: &[String]) -> Option<Vec<Judged>> {
     let ignored: Vec<String> = FILLER
         .iter()
         .map(|word| (*word).to_string())
@@ -357,11 +419,7 @@ pub fn word_match(target: &str, candidates: &[Candidate], ignore: &[String]) -> 
     if spoken.is_empty() {
         return None;
     }
-    struct Judged {
-        candidate: Candidate,
-        misses: usize,
-    }
-    let mut kept: Vec<Judged> = Vec::new();
+    let mut judged: Vec<Judged> = Vec::new();
     for candidate in candidates {
         let named = words(candidate.match_text.as_deref().unwrap_or(&candidate.label), &ignored);
         if named.is_empty() {
@@ -378,23 +436,49 @@ pub fn word_match(target: &str, candidates: &[Candidate], ignore: &[String]) -> 
         let strong = sorted_unique(&spoken) == sorted_unique(&named) || spoken.concat() == named.concat();
         let covers_half = spoken_matched == spoken.len() && named_matched * 2 >= named.len();
         let holds_all_plus_one = named.iter().all(|word| spoken.contains(word)) && spoken.len() - spoken_matched <= 1;
-        if strong || covers_half || holds_all_plus_one {
-            let mut candidate = candidate.clone();
-            candidate.weak = !strong;
-            kept.push(Judged {
-                candidate,
-                misses: named.len() - named_matched + spoken.len() - spoken_matched,
-            });
+        let verdict = if strong {
+            Verdict::Strong
+        } else if covers_half {
+            Verdict::CoversHalf { named: named.len() }
+        } else if holds_all_plus_one {
+            Verdict::HoldsAllPlusOne
+        } else if spoken_matched == 0 {
+            Verdict::NoSpokenWord
+        } else {
+            Verdict::UnderHalf {
+                named_matched,
+                named: named.len(),
+            }
+        };
+        let mut candidate = candidate.clone();
+        candidate.weak = !strong;
+        judged.push(Judged {
+            candidate,
+            kept: strong || covers_half || holds_all_plus_one,
+            weak: !strong,
+            verdict,
+            misses: named.len() - named_matched + spoken.len() - spoken_matched,
+        });
+    }
+    let has_strong = judged.iter().any(|one| one.kept && !one.weak);
+    // The ten closest weak matches stay; the stable sort keeps the order of ties as the candidates came.
+    let mut by_closeness: Vec<usize> = (0..judged.len()).filter(|&index| judged[index].kept).collect();
+    by_closeness.sort_by_key(|&index| (judged[index].misses, judged[index].candidate.label.chars().count()));
+    let past_cap: Vec<usize> = by_closeness.into_iter().skip(WEAK_KEPT).collect();
+    for (index, one) in judged.iter_mut().enumerate() {
+        if one.kept && one.weak && has_strong {
+            one.kept = false;
+            one.verdict = Verdict::DroppedStrongExists;
+        } else if !has_strong && past_cap.contains(&index) {
+            one.kept = false;
+            one.verdict = Verdict::DroppedPastCap;
         }
     }
-    if kept.iter().any(|judged| !judged.candidate.weak) {
-        kept.retain(|judged| !judged.candidate.weak);
-    } else {
-        kept.sort_by_key(|judged| (judged.misses, judged.candidate.label.chars().count()));
-        kept.truncate(10);
-    }
-    Some(kept.into_iter().map(|judged| judged.candidate).collect())
+    Some(judged)
 }
+
+/// How many weak matches go to the picker.
+const WEAK_KEPT: usize = 10;
 
 /// `voxcmd util word-match [--ignore <words>] <target>`: the `id<TAB>label<TAB>match_text` lines on stdin that the
 /// target names, in `word_match`'s order. Exit 1 when none does.
@@ -464,6 +548,76 @@ mod tests {
 
     fn ids(found: &[Candidate]) -> Vec<&str> {
         found.iter().map(|c| c.id.as_str()).collect()
+    }
+
+    fn verdicts(target: &str, candidates: &[Candidate]) -> Vec<(bool, String)> {
+        judge(target, candidates, &[])
+            .unwrap()
+            .iter()
+            .map(|one| (one.kept, one.verdict.to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn twelve_equal_weak_matches_keep_ten_and_drop_two_past_the_cap() {
+        // The bash trace check (run.sh) of the same case, which sourced the bash jq.
+        let candidates: Vec<Candidate> = (0..12)
+            .map(|index| candidate(&format!("i{index}"), "Open Settings"))
+            .collect();
+        let judged = judge("settings", &candidates, &[]).unwrap();
+        assert_eq!(judged.iter().filter(|one| one.kept).count(), 10);
+        let dropped: Vec<&str> = judged
+            .iter()
+            .filter(|one| !one.kept)
+            .map(|one| one.candidate.id.as_str())
+            .collect();
+        assert_eq!(dropped, ["i10", "i11"]);
+        assert!(judged[10..].iter().all(|one| one.verdict == Verdict::DroppedPastCap));
+        assert_eq!(word_match("settings", &candidates, &[]).unwrap().len(), 10);
+    }
+
+    #[test]
+    fn the_verdicts_read_as_the_bash_jq_worded_them() {
+        let candidates = [
+            candidate("1", "Sign In"),
+            candidate("2", "Sign In Now"),
+            candidate("3", "Sign Out"),
+            candidate("4", "Banana Apple Cherry Date"),
+            candidate("5", "!!!"),
+        ];
+        // A strong match exists, so the weak "Sign In Now" is dropped for it; "!!!" has no word and no verdict.
+        assert_eq!(
+            verdicts("sign in", &candidates),
+            [
+                (true, "strong: same words".to_string()),
+                (false, "dropped: a strong match exists".to_string()),
+                (false, "dropped: a strong match exists".to_string()),
+                (false, "near miss only: no spoken word is in it".to_string()),
+            ]
+        );
+        let weak = [candidate("1", "Sign In Now Please Today")];
+        assert_eq!(
+            verdicts("sign", &weak),
+            [(false, "coverage under half: 1 of 3 of its words are spoken".to_string())]
+        );
+        let half = [candidate("1", "Open Settings")];
+        assert_eq!(
+            verdicts("settings", &half),
+            [(
+                true,
+                "weak: the spoken words cover at least half of its 2 word(s)".to_string()
+            )]
+        );
+        let plus_one = [candidate("1", "Settings")];
+        assert_eq!(
+            verdicts("settings page", &plus_one),
+            [(true, "weak: holds every spoken word plus one more".to_string())]
+        );
+    }
+
+    #[test]
+    fn a_target_of_only_filler_judges_nothing() {
+        assert!(judge("the", &[candidate("1", "Sign In")], &[]).is_none());
     }
 
     #[test]
