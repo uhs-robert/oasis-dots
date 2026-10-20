@@ -61,7 +61,8 @@ case "$args" in
 "pr comment"*)
   put commented 1
   put codex_running_reads 1
-  put codex_commit "$(head_oid | cut -c1-7)"
+  # codex_never_reviews=1: Codex answers with a summary that records no commit, as it does out of quota.
+  [[ $(get codex_never_reviews || true) == 1 ]] || put codex_commit "$(head_oid | cut -c1-7)"
   ;;
 "pr edit"*) put base "$(sed -E 's/.*--base ([^ ]+).*/\1/' <<<"$args")" ;;
 "api graphql"*)
@@ -88,7 +89,7 @@ case "$args" in
     fi
   fi
   printf '%s\t%s\t%s\t%s\n' "$(get open_threads || true)" "$(get codex || true)" "$(get codex_commit || true)" "$(head_oid)" |
-    awk -F'\t' -v OFS='\t' '{ if ($1 == "") $1 = 0; if ($2 == "") $2 = "none"; if ($3 == "") $3 = "-"; print }'
+    awk -F'\t' -v OFS='\t' '{ if ($1 == "") $1 = 0; if ($2 == "") $2 = "none"; if ($3 == "") { $3 = "-"; if ($2 == "Completed") $2 = "Unreviewed" } print }'
   ;;
 "pr view"*"headRefName,headRefOid,baseRefName,state,isCrossRepository"*)
   printf '%s\t%s\t%s\t%s\t%s\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)" "$(get cross || true)" |

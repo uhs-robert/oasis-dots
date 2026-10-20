@@ -381,9 +381,49 @@ check "an old PR is none" "[[ \$(pr_json '$old' '[]' | review_status) == none ]]
 check "Codex's eyes are Running" "[[ \$(pr_json '$old' '$codex_eyes' | review_status) == Running ]]"
 check "a person's eyes are not" "[[ \$(pr_json '$fresh' '[{\"user\": {\"login\": \"someone\"}}]' | review_status) == Pending ]]"
 check "a reaction from a deleted account is skipped" "[[ \$(pr_json '$old' '[{\"user\": null}]' | review_status) == none ]]"
-check "a summary comment wins over the eyes" "[[ \$(pr_json '$fresh' '$codex_eyes' 'codex-pull-request-review-summary | **Completed** | \\\`abc1234\\\` |' | review_status) == Completed ]]"
+# shellcheck disable=SC2016,SC2034 # The backticks are the table's own markdown; the check strings eval the variable.
+with_commit_body='codex-pull-request-review-summary | **Completed** | `abc1234` |'
+check "a summary comment wins over the eyes" "[[ \$(pr_json '$fresh' '$codex_eyes' \"\$with_commit_body\" | review_status) == Completed ]]"
 out=$(MERGE_PRS_REVIEW_START=5m PATH="$here:$PATH" "$script" --check 7 2>&1)
 check "a window that is not seconds is refused by name" "grep -q 'MERGE_PRS_REVIEW_START must be a number of seconds' <<<\"\$out\""
+
+echo "== review_jq: a Completed summary with no commit"
+# Codex's summary for an unreviewed PR: Completed, an em dash in the Commit column.
+no_commit_body='codex-pull-request-review-summary | **Completed** | — |'
+check "no commit is Unreviewed" "[[ \$(pr_json '$old' '[]' '$no_commit_body' | review_status) == Unreviewed ]]"
+check "a commit is still Completed" "[[ \$(pr_json '$old' '[]' \"\$with_commit_body\" | review_status) == Completed ]]"
+check "a Failed summary with no commit stays Failed" "[[ \$(pr_json '$old' '[]' 'codex-pull-request-review-summary | **Failed** | — |' | review_status) == Failed ]]"
+
+echo "== review gate: Codex completed without a commit, --check"
+setup
+printf 'codex=Completed\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "names the review request" "grep -q '@codex review' <<<\"\$out\""
+check "posts no comment" "! grep -q '^commented=' '$GH_STATE'"
+check "does not try to compare" "! grep -q 'cannot compare' <<<\"\$out\""
+
+echo "== --wait-review: Codex completed without a commit gets a review requested"
+setup
+printf 'codex=Completed\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 timeout 30 "$script" --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
+check "requests a review" "grep -q '^commented=1' '$GH_STATE'"
+check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
+
+echo "== --wait-review: Codex keeps answering without a commit"
+setup
+printf 'codex=Completed\ncodex_never_reviews=1\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=1 timeout 30 "$script" --check --wait-review --request-review 7 2>&1)
+code=$?
+show "$out"
+check "fails" "[[ $code != 0 && $code != 124 ]]"
+check "says Codex has not reviewed" "grep -q 'Codex has not reviewed the head .* after 1s' <<<\"\$out\""
+check "comments exactly once" "[[ \$(grep -c '@codex review' <<<\"\$out\") -le 1 ]] && grep -q '^commented=1' '$GH_STATE'"
 
 echo "== --wait-review: Codex review finishes while waiting"
 setup
