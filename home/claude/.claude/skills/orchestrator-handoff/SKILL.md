@@ -32,13 +32,13 @@ End of day (the owner said so, or passed `end-of-day`) has no successor, so noth
 
 ### 2. Update the docs
 
-The tracking docs are the local, git-ignored `.md` files the orchestrator has been keeping (named in the session, usually at the main checkout's root and listed in `.git/info/exclude`). Edit them at the main checkout; worktrees do not see them. With none (a short task tracked only in chat), create `<task>.md` at the main checkout's root, add it to `.git/info/exclude`, and give it a Resume here and a decisions log. For each:
+The tracking docs are the local, git-ignored `.md` files the orchestrator has been keeping (named in the session, usually at the main checkout's root and listed in `.git/info/exclude`). Edit them at the main checkout; worktrees do not see them. With none (a short task tracked only in chat), create `<task>.md` at the main checkout's root, add it and `<task>-*-draft.md` to `.git/info/exclude`, and give it a Resume here and a decisions log. Delete any draft whose item has merged, then, for each doc:
 
 - **Resume here:** date and "handoff to the Nth orchestrator"; phase; open PRs; running agents; worktrees with branch, commit and whether pushed; standing approvals; what waits on the owner; the next steps in order. Mark each piece you keep as "held by `<your session>` until <its break>", with what the successor does once it arrives. Keep it under 3,000 characters: it holds the current state only, and settled history moves to the decisions log or the item rows.
 - Each item's row: status and PR.
 - The decisions log: every owner decision from this session, including ones given only in chat.
 - Open questions and lessons.
-- An item stopped mid-way gets a `<doc>-<item>-handoff-draft.md` next to its doc: worktree, branch, commit, brief file path, state from the last report, deviations to review, what remains. Its doc's Resume here says to read it first.
+- An item stopped mid-way gets a `<doc>-<item>-handoff-draft.md` next to its doc: worktree, branch, commit, state from the last report, deviations to review, what remains. Its doc's Resume here says to read it first.
 
 Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in.
 
