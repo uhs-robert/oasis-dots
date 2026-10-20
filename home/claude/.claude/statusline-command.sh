@@ -52,7 +52,7 @@ fi
 # Context used against the model's window. The colour follows the owner's smaller working budget instead, turning at
 # the context-budget hook's wind-down and handoff points, since a 1M window's percentage barely moves before them.
 wind_down=${CLAUDE_CONTEXT_WIND_DOWN:-140000}
-handoff=${CLAUDE_CONTEXT_HANDOFF:-160000}
+handoff=${CLAUDE_CONTEXT_HANDOFF:-175000}
 if [ "${used:-0}" -eq 0 ] && [ -f "$transcript" ]; then
   # Older versions send no context_window: take the latest main-chain response's usage from the transcript.
   used=$(tac "$transcript" | grep -F '"usage"' | grep -v -F '"isSidechain":true' -m1 |
