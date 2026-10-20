@@ -255,6 +255,26 @@ pub enum Picker {
     Hints,
 }
 
+/// The waits a TOML action can name with `wait = "..."`. `integrations check` and the sequence runner both go through
+/// `parse`, so a name one accepts is a name the other runs.
+pub enum BuiltinWait<'a> {
+    ActiveWindowIsId,
+    ActiveWindowChanged,
+    WindowGone,
+    PopupOpen(&'a str),
+}
+
+impl<'a> BuiltinWait<'a> {
+    pub fn parse(name: &'a str) -> Option<Self> {
+        match name {
+            "active_window_is_id" => Some(Self::ActiveWindowIsId),
+            "active_window_changed" => Some(Self::ActiveWindowChanged),
+            "window_gone" => Some(Self::WindowGone),
+            _ => name.strip_prefix("popup_open:").map(Self::PopupOpen),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Wait {
     Builtin(String),

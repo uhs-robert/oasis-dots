@@ -204,9 +204,11 @@ fn list_as_json_has_the_summary_shape() {
 fn legacy_files_are_loaded_and_counted_but_not_checked_in_depth() {
     let sandbox = Sandbox::with(&["media"]);
     std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
-    // Any file will do: the dump comes from the fixture, not from sourcing it.
-    sandbox.write("integrations.d/anything.sh", "");
+    // Any content will do: the dump comes from the fixture, not from sourcing the files.
     let dump = Path::new(FIXTURES).join("legacy-dump.jsonl");
+    for name in dumped_file_names(&dump) {
+        sandbox.write(&format!("integrations.d/{name}"), "");
+    }
     let loaded = std::fs::read_to_string(&dump).unwrap().lines().count();
     let output = sandbox.voxcmd(&["integrations", "check"], &[("VOXCMD_LEGACY_DUMP_FILE", &dump)]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
@@ -294,4 +296,65 @@ fn a_mistyped_surface_key_is_an_unknown_key() {
         "{}",
         stdout(&output)
     );
+}
+
+fn dumped_file_names(dump: &Path) -> Vec<String> {
+    std::fs::read_to_string(dump)
+        .unwrap()
+        .lines()
+        .map(|line| {
+            let value: serde_json::Value = serde_json::from_str(line).unwrap();
+            let file = value["file"].as_str().unwrap().to_string();
+            file.rsplit('/').next().unwrap().to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn a_legacy_file_that_fails_to_source_is_a_legacy_load_problem() {
+    let sandbox = Sandbox::with(&[]);
+    std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
+    for name in dumped_file_names(&Path::new(FIXTURES).join("legacy-dump.jsonl")) {
+        sandbox.write(&format!("integrations.d/{name}"), "");
+    }
+    // On disk but absent from the dump, as a file that fails while sourced is.
+    sandbox.write("integrations.d/broken.sh", "");
+    let dump = Path::new(FIXTURES).join("legacy-dump.jsonl");
+    let output = sandbox.voxcmd(
+        &["integrations", "check", "--json"],
+        &[("VOXCMD_LEGACY_DUMP_FILE", &dump)],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stdout(&output).contains("\"code\":\"legacy-load\""),
+        "{}",
+        stdout(&output)
+    );
+    assert!(
+        stdout(&output).contains("integrations.d/broken.sh"),
+        "{}",
+        stdout(&output)
+    );
+}
+
+#[test]
+fn an_unknown_builtin_wait_is_a_problem() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/waits.toml",
+        "verbs = [\n  { action = \"a\", match = 'go' },\n]\n[actions.a]\nrun = \"true\"\nwait = \"active_window_chagned\"\n",
+    );
+    let output = sandbox.voxcmd(&["integrations", "check"], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stdout(&output)
+            .contains("integrations/waits.toml:6:1: error: action a: unknown wait \"active_window_chagned\""),
+        "{}",
+        stdout(&output)
+    );
+    sandbox.write(
+        "integrations/waits.toml",
+        "verbs = [\n  { action = \"a\", match = 'go' },\n]\n[actions.a]\nrun = \"true\"\nwait = \"popup_open:menu\"\n",
+    );
+    assert_eq!(sandbox.voxcmd(&["integrations", "check"], &[]).status.code(), Some(0));
 }

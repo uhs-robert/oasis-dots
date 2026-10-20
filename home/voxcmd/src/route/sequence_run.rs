@@ -8,7 +8,7 @@ use super::runner::{Routed, Runner};
 use super::sequence::{Steps, refusal};
 use crate::actions::{Spoken, StepOutcome, legacy_env};
 use crate::bar;
-use crate::config::schema::Wait;
+use crate::config::schema::{BuiltinWait, Wait};
 use crate::debug::debug;
 use crate::hooks::{DEFAULT_TIMEOUT, HookEnv};
 use crate::hypr;
@@ -375,21 +375,19 @@ fn outcome_name(outcome: StepOutcome) -> &'static str {
 
 /// The waits a TOML action can name instead of writing a condition.
 fn builtin_wait(name: &str, option: &RouteOption, active_before: &str, time_left: Duration) -> bool {
-    match name {
-        "active_window_is_id" => hypr::active_window_address(time_left) == option.id,
-        "active_window_changed" => {
+    match BuiltinWait::parse(name) {
+        Some(BuiltinWait::ActiveWindowIsId) => hypr::active_window_address(time_left) == option.id,
+        Some(BuiltinWait::ActiveWindowChanged) => {
             let active = hypr::active_window_address(time_left);
             !active.is_empty() && active != active_before
         }
-        "window_gone" => !hypr::window_exists(&option.id, time_left),
-        _ => match name.strip_prefix("popup_open:") {
-            Some(popup) => bar::popup_is_open(popup, time_left),
-            None => {
-                // `integrations check` (2.6) rejects it; a run does not wait on a condition it cannot read.
-                debug(&format!("sequence: unknown wait {name:?}, not waited for"));
-                true
-            }
-        },
+        Some(BuiltinWait::WindowGone) => !hypr::window_exists(&option.id, time_left),
+        Some(BuiltinWait::PopupOpen(popup)) => bar::popup_is_open(popup, time_left),
+        None => {
+            // `integrations check` rejects it; a run does not wait on a condition it cannot read.
+            debug(&format!("sequence: unknown wait {name:?}, not waited for"));
+            true
+        }
     }
 }
 

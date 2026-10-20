@@ -127,7 +127,10 @@ fn check(dir: &Path, args: &[String]) -> (Report, usize) {
                     check_patterns(dir, integration, &intents, &mut problems);
                 }
                 for file in legacy_wanted.iter().filter(|file| {
-                    !args.is_empty() && file.is_file() && !loaded.iter().any(|integration| &integration.file == *file)
+                    file.is_file()
+                        && !loaded
+                            .iter()
+                            .any(|integration| integration.file.file_name() == file.file_name())
                 }) {
                     problems.push(Problem {
                         file: relative(dir, file),
@@ -195,6 +198,18 @@ fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Pro
                 (line, column),
                 "missing-action",
                 format!("verb action {:?} is not declared under [actions]", verb.action),
+            ));
+        }
+    }
+    for (id, action) in &integration.actions {
+        if let Some(schema::Wait::Builtin(name)) = &action.wait
+            && schema::BuiltinWait::parse(name).is_none()
+        {
+            let from = text.find(&format!("[actions.{id}]")).unwrap_or(0);
+            problems.push(problem(
+                line_in_text(&text, "wait", from),
+                "unknown-wait",
+                format!("action {id}: unknown wait {name:?}"),
             ));
         }
     }
@@ -372,6 +387,19 @@ fn unknown_keys(
             }
         }
     }
+}
+
+/// Line and column of the first `key =` at or after byte `from`; (1, 1) when there is none.
+fn line_in_text(text: &str, key: &str, from: usize) -> (usize, usize) {
+    regex::Regex::new(&format!(r"(?m)\b{key}\s*="))
+        .ok()
+        .and_then(|pattern| pattern.find_at(text, from))
+        .map_or((1, 1), |found| {
+            (
+                text[..found.start()].matches('\n').count() + 1,
+                schema::column_of(text, found.start()),
+            )
+        })
 }
 
 /// 1-based column of the first `needle` on the 1-based `line` of `text`.
