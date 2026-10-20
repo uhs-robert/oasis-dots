@@ -11,11 +11,11 @@ BarModule {
     module_name: "voxtype"
     has_popup: false
     // The detector holding the microphone is told apart from a recording by a dot, not by the icon's colour or pulse.
-    readonly property bool wake_listening: VoxWake.armed && VoxtypeState.state === "idle"
+    readonly property bool wake_listening: VoxWakeState.armed && VoxtypeState.state === "idle"
     // A paused listener keeps a dimmed dot, so it does not read as the setting being off.
-    readonly property bool wake_paused: VoxWake.paused && VoxtypeState.state === "idle"
-    readonly property bool wake_ready: VoxWake.ready && VoxtypeState.recording
-    tooltip_text: VoxSession.active && VoxSession.exit_hint !== "" ? VoxSession.exit_hint : root.wake_listening ? "Listening for \"Cortana\"" : root.wake_paused ? VoxWake.paused_text : VoxtypeState.tooltip
+    readonly property bool wake_paused: VoxWakeState.paused && VoxtypeState.state === "idle"
+    readonly property bool wake_ready: VoxWakeState.ready && VoxtypeState.recording
+    tooltip_text: VoxSessionState.active && VoxSessionState.exit_hint !== "" ? VoxSessionState.exit_hint : root.wake_listening ? "Listening for \"Cortana\"" : root.wake_paused ? VoxWakeState.paused_text : VoxtypeState.tooltip
 
     readonly property var glyphs: ({ idle: "", stopped: "" })
     readonly property color glyph_color: VoxtypeState.recording ? Theme.theme_label : VoxtypeState.transcribing ? Theme.warning : VoxtypeState.state === "stopped" ? Theme.fg_dim : Theme.theme_primary

@@ -20,7 +20,7 @@ PanelWindow {
     property string voice_name: ""
     property color voice_color: Theme.theme_secondary
     readonly property bool want_submap: SubmapState.active && !root.chip_shown && root.focused
-    readonly property bool want_voice: VoxSession.active && root.focused
+    readonly property bool want_voice: VoxSessionState.active && root.focused
     property real line_progress: 0
     // Tabs drop once the line has drawn and lift before it retracts.
     property real submap_progress: root.want_submap && root.line_progress >= 1 ? 1 : 0
@@ -55,8 +55,8 @@ PanelWindow {
             root.submap_color = SubmapState.bar_color;
         }
         if (root.want_voice) {
-            root.voice_name = VoxSession.label;
-            root.voice_color = VoxSession.mode_color;
+            root.voice_name = VoxSessionState.label;
+            root.voice_color = VoxSessionState.mode_color;
         }
         if (root.want_submap || root.want_voice) {
             hide_anim.stop();
@@ -79,7 +79,7 @@ PanelWindow {
     }
 
     Connections {
-        target: VoxSession
+        target: VoxSessionState
 
         function onLabelChanged() {
             root.sync();

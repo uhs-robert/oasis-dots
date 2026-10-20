@@ -261,7 +261,7 @@ Singleton {
                 root.load_error = "";
             } catch (e) {
                 root.load_error = String(e);
-                console.warn("SessionStore: invalid sessions.json (" + e + ")");
+                console.warn("Sessions: invalid sessions.json (" + e + ")");
             }
         }
         // Only a missing file starts empty; an unreadable one blocks writes like a malformed one, so a save cannot overwrite it.

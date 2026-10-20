@@ -50,7 +50,7 @@ OverviewBase {
     onScreen_pickChanged: if (!root.screen_pick && root.ws_mode === "monitor") root.end_ws_mode()
 
     // Numbers show on every window while voxcmd has an overview voice session open.
-    readonly property bool voice_on: VoxSession.active && VoxSession.kind === "overview"
+    readonly property bool voice_on: VoxSessionState.active && VoxSessionState.kind === "overview"
     readonly property string voice_dir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/voxcmd"
     // What voxcmd reads of this overview, rewritten whenever it changes; the shape is in the Quickshell README.
     readonly property var voice_snapshot: root.wanted ? Voice.snapshot({ groups: root.groups, tiles: root.tiles, marks: root.marks, special: root.special, slots: root.monitor_slots, nav_order: root.nav_order }) : ({ version: 1, open: false })
@@ -135,7 +135,7 @@ OverviewBase {
     }
 
     Connections {
-        target: SessionStore
+        target: Sessions
 
         function onSave_requested(target) {
             root.begin_save(target);
@@ -591,7 +591,7 @@ OverviewBase {
         if (root.alive(root.marks).length === 0) return;
         root.naming = true;
         root.name_error = "";
-        name_input.text = root.save_target !== "" ? root.save_target : SessionStore.default_name();
+        name_input.text = root.save_target !== "" ? root.save_target : Sessions.default_name();
         name_input.forceActiveFocus();
         name_input.selectAll();
     }
@@ -606,7 +606,7 @@ OverviewBase {
 
     function confirm_save() {
         const name = name_input.text.trim();
-        const problem = SessionStore.name_problem(name, root.save_target);
+        const problem = Sessions.name_problem(name, root.save_target);
         if (root.save_pending) return;
         if (problem !== "") {
             root.name_error = problem;
@@ -614,7 +614,7 @@ OverviewBase {
         }
         root.save_pending = true;
         root.name_error = "";
-        SessionStore.save_capture(root.alive(root.marks), name, root.save_target);
+        Sessions.save_capture(root.alive(root.marks), name, root.save_target);
     }
 
     // Marking keys pass through to the shared handling; anything that would move, close or focus a window is swallowed.
