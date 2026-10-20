@@ -7,6 +7,10 @@ leaves a stale pass in place.
 
 Patterns are fnmatch.fnmatchcase globs, where `*` crosses `/` as in a shell `case`: `lib/check/*.py` would also match
 lib/check/tests/test_keys.py, so the modules in the "all" entries below are named one by one.
+
+This file is "all" so that any edit of it selects every step under --changed, but keys.py leaves it out of the "all"
+lines of a step's key: a step's key holds its own definition and the scope column of the files it reads, which is
+where an edit here that matters to the step shows up.
 """
 
 from typing import NamedTuple
