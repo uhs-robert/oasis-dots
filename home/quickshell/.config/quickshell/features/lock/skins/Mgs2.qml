@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
 import "mgs2/Art.js" as Art
+import "mgs2/Reds.js" as Reds
 import "ui/Menu.js" as Menu
 
 // Metal Gear Solid 2 recast for the Oasis desktop: the title, the main menu, DATA LOAD picks the user, NAME ENTRY takes the password.
@@ -149,7 +150,16 @@ Item {
     readonly property color item_off: "#4a544c"
     readonly property color field_ink: "#b9c3bc"
     readonly property color ok_green: "#a0e0b0"
-    readonly property color mol_red: "#d63126"
+    readonly property color mol_red: root.red("#d63126")
+
+    // Every red follows the lock tint; "classic" (and no ctx) keeps the game's own reds.
+    readonly property var tint_hsl: !root.ctx || root.ctx.tint === "classic" ? null : Reds.tint_hsl_of(root.ctx.tint_base)
+    function red(classic_red) {
+        if (!root.tint_hsl) return classic_red;
+        // Tinting by transparent is the cheap way to parse a "#aarrggbb" string into a color.
+        const c = Qt.tint(classic_red, "transparent"), o = Reds.shade(root.tint_hsl, c.r * 255, c.g * 255, c.b * 255);
+        return Qt.rgba(o[0] / 255, o[1] / 255, o[2] / 255, c.a);
+    }
 
     // The menu box: its outline starts at the left rule, with the rail inside its left end.
     readonly property var box: ({ left: 62, top: 46, right: 1544, bottom: 756, rail: 78 })
@@ -559,9 +569,9 @@ Item {
     // A DATA LOAD cell; the selected row is red.
     component Cell: Text {
         property bool sel: false
-        color: sel ? "#c9313b" : "#8f9892"
+        color: sel ? root.red("#c9313b") : "#8f9892"
         style: sel ? Text.Outline : Text.Normal
-        styleColor: "#40c9313b"
+        styleColor: root.red("#40c9313b")
         font.family: root.ui_font
         font.pixelSize: 36
         font.letterSpacing: 0.7
@@ -754,8 +764,12 @@ Item {
             scale: 4
             transformOrigin: Item.TopLeft
             renderStrategy: Canvas.Cooperative
+            // A tint change repaints from scratch: reset() drops the old strokes and the scale.
+            readonly property var tint_hsl: root.tint_hsl
+            onTint_hslChanged: requestPaint()
             onPaint: {
                 const c = getContext("2d");
+                c.reset();
                 c.scale(0.25, 0.25);
                 const r = Art.rng(1987);
                 const stroke = (x, y, len, w, ang, col) => {
@@ -772,13 +786,13 @@ Item {
                 for (let i = 0; i < 300; i++) {
                     const a = r() * Math.PI * 2, d = Math.pow(r(), 0.7);
                     const hot = 1 - d;
-                    stroke(cx + Math.cos(a) * d * 470, cy + Math.sin(a) * d * 210, 60 + r() * 160, 14 + r() * 40, -0.9 + (r() - 0.5) * 1.1, "rgba(" + Math.floor(150 + hot * 80) + "," + Math.floor(12 + hot * 22) + "," + Math.floor(14 + hot * 12) + "," + (0.12 + hot * 0.35) + ")");
+                    stroke(cx + Math.cos(a) * d * 470, cy + Math.sin(a) * d * 210, 60 + r() * 160, 14 + r() * 40, -0.9 + (r() - 0.5) * 1.1, Reds.css(root.tint_hsl, Math.floor(150 + hot * 80), Math.floor(12 + hot * 22), Math.floor(14 + hot * 12), 0.12 + hot * 0.35));
                 }
                 for (let i = 0; i < 70; i++) {
                     const a = r() * Math.PI * 2, d = Math.pow(r(), 0.8);
-                    stroke(cx + Math.cos(a) * d * 440, cy + Math.sin(a) * d * 200, 40 + r() * 120, 6 + r() * 18, -0.8 + (r() - 0.5) * 1.4, "rgba(10,4,4," + (0.2 + r() * 0.4) + ")");
+                    stroke(cx + Math.cos(a) * d * 440, cy + Math.sin(a) * d * 200, 40 + r() * 120, 6 + r() * 18, -0.8 + (r() - 0.5) * 1.4, Reds.css(root.tint_hsl, 10, 4, 4, 0.2 + r() * 0.4));
                 }
-                for (let i = 0; i < 26; i++) stroke(1180 + r() * 300, 380 + r() * 260, 40 + r() * 130, 3 + r() * 10, -0.5 + (r() - 0.5), "rgba(160,24,20," + (0.15 + r() * 0.25) + ")");
+                for (let i = 0; i < 26; i++) stroke(1180 + r() * 300, 380 + r() * 260, 40 + r() * 130, 3 + r() * 10, -0.5 + (r() - 0.5), Reds.css(root.tint_hsl, 160, 24, 20, 0.15 + r() * 0.25));
                 c.globalCompositeOperation = "destination-in";
                 const fade = c.createRadialGradient(cx, cy, 120, cx, cy, 620);
                 fade.addColorStop(0, "rgba(0,0,0,1)");
@@ -803,8 +817,11 @@ Item {
         Canvas {
             anchors.fill: parent
             renderStrategy: Canvas.Cooperative
+            readonly property var tint_hsl: root.tint_hsl
+            onTint_hslChanged: requestPaint()
             onPaint: {
                 const c = getContext("2d");
+                c.reset();
                 const R = 34, w = Math.sqrt(3) * R;
                 c.lineWidth = 1.6;
                 for (let row = -1; row < 16; row++) {
@@ -812,7 +829,7 @@ Item {
                         const x = 560 + col * w + (row % 2 ? w / 2 : 0), y = 60 + row * R * 1.5;
                         const d = Math.hypot((x - 1180) / 1.25, y - 430) / 560;
                         if (d >= 1) continue;
-                        c.strokeStyle = "rgba(200,36,28," + (0.34 * Math.pow(1 - d, 1.6)).toFixed(3) + ")";
+                        c.strokeStyle = Reds.css(root.tint_hsl, 200, 36, 28, (0.34 * Math.pow(1 - d, 1.6)).toFixed(3));
                         c.beginPath();
                         for (let i = 0; i < 6; i++) {
                             const a = Math.PI / 6 + i * Math.PI / 3;
@@ -859,19 +876,27 @@ Item {
                 id: face_shader
                 anchors.fill: parent
                 property variant source: face_image
+                // The four bands, darkest first.
+                property color band0: root.red("#080303")
+                property color band1: root.red("#3e0808")
+                property color band2: root.red("#921412")
+                property color band3: root.red("#dc3428")
                 fragmentShader: Qt.resolvedUrl("mgs2/face.frag.qsb")
             }
 
             Canvas {
                 anchors.fill: parent
                 renderStrategy: Canvas.Cooperative
+                readonly property var tint_hsl: root.tint_hsl
+                onTint_hslChanged: requestPaint()
                 onPaint: {
                     const c = getContext("2d");
+                    c.reset();
                     const n = face.n, u = face.size / n, r = Art.rng(1987);
                     c.lineCap = "round";
                     for (let i = 0; i < 60; i++) {
                         const a = r() * Math.PI * 2, d = 0.75 * Math.pow(r(), 0.8), sx = n / 2 + Math.cos(a) * d * 380 / u, sy = n / 2 + Math.sin(a) * d * 320 / u, ang = -0.8 + (r() - 0.5) * 1.2, len = (40 + r() * 110) / u;
-                        c.strokeStyle = "rgba(10,4,4," + (0.12 + r() * 0.25) + ")";
+                        c.strokeStyle = Reds.css(root.tint_hsl, 10, 4, 4, 0.12 + r() * 0.25);
                         c.lineWidth = (5 + r() * 14) / u;
                         c.beginPath();
                         c.moveTo(sx, sy);
@@ -966,7 +991,7 @@ Item {
 
                     ShapePath {
                         fillColor: "transparent"
-                        strokeColor: "#40d63126"
+                        strokeColor: root.red("#40d63126")
                         strokeWidth: 7
                         joinStyle: ShapePath.RoundJoin
                         PathSvg { path: mol.modelData.d }
@@ -1173,7 +1198,7 @@ Item {
             text: root.desc[0]
             textFormat: Text.PlainText
             elide: Text.ElideRight
-            color: root.desc[1] === "red" ? "#ff5a55" : root.desc[1] === "green" ? "#7fe39a" : "#eef0ee"
+            color: root.desc[1] === "red" ? root.red("#ff5a55") : root.desc[1] === "green" ? "#7fe39a" : "#eef0ee"
             style: Text.Outline
             styleColor: root.desc[1] === "green" ? "#3062d49c" : "#000000"
             font.family: root.ui_font
@@ -1243,7 +1268,7 @@ Item {
 
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: "#40d63126"
+                strokeColor: root.red("#40d63126")
                 strokeWidth: 7
                 joinStyle: ShapePath.RoundJoin
                 PathSvg { path: drifter.mol.d }
@@ -1435,7 +1460,7 @@ Item {
 
                         ShapePath {
                             strokeWidth: -1
-                            fillColor: "#ab2121"
+                            fillColor: root.red("#ab2121")
                             PathText { x: logo_metrics.advanceWidth + logo.gap; text: "2"; font: logo_metrics.font }
                         }
                     }
@@ -1757,7 +1782,7 @@ Item {
         id: flash
         anchors.fill: parent
         visible: root.phase === "wrong" && root.shown === "name"
-        color: "#c01a1a"
+        color: root.red("#c01a1a")
         opacity: root.animate ? 0 : 0.12
 
         NumberAnimation {

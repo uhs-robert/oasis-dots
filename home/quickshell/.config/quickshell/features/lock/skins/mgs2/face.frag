@@ -5,6 +5,10 @@ layout(location = 0) out vec4 fragColor;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
+    vec4 band0;
+    vec4 band1;
+    vec4 band2;
+    vec4 band3;
 };
 layout(binding = 1) uniform sampler2D source;
 
@@ -12,8 +16,8 @@ void main() {
     vec4 c = texture(source, (qt_TexCoord0 - 0.5) / 1.15 + 0.5);
     float v = clamp((dot(c.rgb, vec3(0.3, 0.59, 0.11)) - 0.5) * 1.7 + 0.5, 0.0, 1.0);
     float band = min(3.0, floor(v * 4.0));
-    vec3 col = band < 1.0 ? vec3(8.0, 3.0, 3.0) : band < 2.0 ? vec3(62.0, 8.0, 8.0) : band < 3.0 ? vec3(146.0, 20.0, 18.0) : vec3(220.0, 52.0, 40.0);
+    vec3 col = band < 1.0 ? band0.rgb : band < 2.0 ? band1.rgb : band < 3.0 ? band2.rgb : band3.rgb;
     vec2 p = qt_TexCoord0 - 0.5;
     float a = clamp((0.4167 - length(vec2(p.x / 1.15, p.y))) / 0.2917, 0.0, 1.0);
-    fragColor = vec4(col / 255.0 * a, a) * qt_Opacity;
+    fragColor = vec4(col * a, a) * qt_Opacity;
 }

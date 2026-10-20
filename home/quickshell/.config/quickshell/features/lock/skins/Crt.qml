@@ -16,9 +16,10 @@ Item {
 
     readonly property bool portrait: root.height > root.width
     readonly property real u: root.portrait ? root.width / 64 : Math.min(root.width, root.height * 16 / 9) / 100
-    // The phosphor: the lock tint's bright shade for text, its base for dim text, rings and the glass.
-    readonly property color tint_base: root.ctx ? root.ctx.tint_base : Theme.green
-    readonly property color ph: root.ctx ? root.ctx.tint_bright : Theme.bright_green
+    // The phosphor: the lock tint's bright shade for text, its base for dim text, rings and the glass; green under classic.
+    readonly property bool classic: !root.ctx || root.ctx.tint === "classic"
+    readonly property color tint_base: root.classic ? Theme.green : root.ctx.tint_base
+    readonly property color ph: root.classic ? Theme.bright_green : root.ctx.tint_bright
     readonly property color ph_dim: Qt.tint(Theme.bg_shadow, Qt.alpha(root.tint_base, 0.72))
     readonly property color ph_hot: Qt.tint(root.ph, Qt.alpha(Theme.fg_strong, 0.15))
     readonly property string font: "VT323"

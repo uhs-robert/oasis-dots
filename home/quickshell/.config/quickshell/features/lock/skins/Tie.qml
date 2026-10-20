@@ -17,8 +17,10 @@ Item {
     readonly property bool animate: !!root.ctx && root.ctx.animate
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
 
-    readonly property color vec: root.phase === "wrong" ? Theme.red : root.phase === "unlock" ? Theme.green : (root.ctx ? root.ctx.tint_base : Theme.yellow)
-    readonly property color hot: root.phase === "wrong" ? Theme.bright_red : root.phase === "unlock" ? Theme.bright_green : (root.ctx ? root.ctx.tint_bright : Theme.bright_yellow)
+    // Yellow vectors under classic, else the lock tint.
+    readonly property bool classic: !root.ctx || root.ctx.tint === "classic"
+    readonly property color vec: root.phase === "wrong" ? Theme.red : root.phase === "unlock" ? Theme.green : root.classic ? Theme.yellow : root.ctx.tint_base
+    readonly property color hot: root.phase === "wrong" ? Theme.bright_red : root.phase === "unlock" ? Theme.bright_green : root.classic ? Theme.bright_yellow : root.ctx.tint_bright
     readonly property color vec_dim: Qt.alpha(root.vec, 0.55)
     readonly property color vec_faint: Qt.alpha(root.vec, 0.3)
     readonly property string body_font: "B612 Mono"
