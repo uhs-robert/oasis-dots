@@ -151,9 +151,7 @@ impl LegacyHooks {
             .stdin(Stdio::null());
         command
     }
-}
 
-impl LegacyHooks {
     /// What Tab lists in Voice Help for a legacy file: `(action, id, label)` of each entry. A file that lists nothing,
     /// or a hook that fails, gives none (bash `help_listed ... || true`).
     pub fn help_entries(&self, integration: &Integration) -> Vec<(String, Candidate)> {

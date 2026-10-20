@@ -498,12 +498,15 @@ impl AskWith {
         command
     }
 
-    /// The id the text picker answers for choices that carry their own ids, none when it was cancelled. `expansions` is
+    /// The id the text picker answers for choices that carry their own ids, none when it was cancelled or answered with nothing. `expansions` is
     /// what Tab opens on a choice: `{key: {title, choices}}`.
     pub fn pick_id(&self, label: &str, choices: &str, expansions: &str) -> Option<String> {
         let mut command = self.command("pick");
         command.args([label, choices, expansions]);
-        Some(Self::run(command)?.trim_end_matches('\n').to_string())
+        let answer = Self::run(command)?;
+        let answer = answer.trim_end_matches('\n');
+        // An empty answer is a cancel; the bash routed the empty phrase instead.
+        (!answer.is_empty()).then(|| answer.to_string())
     }
 
     /// Runs an asker to its end, its group listed so that Stop Voice reaches it; stderr is passed on.

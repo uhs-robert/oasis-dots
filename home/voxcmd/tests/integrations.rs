@@ -512,6 +512,15 @@ fn help_cancelled_is_not_a_failure() {
 }
 
 #[test]
+fn help_answered_with_nothing_cancels_like_a_cancelled_pick() {
+    let sandbox = Sandbox::with(&[]);
+    let lit = sandbox.lamp();
+    let (output, toasts, _) = sandbox.help("exit 0");
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!((toasts.as_str(), lit.exists()), ("", false));
+}
+
+#[test]
 fn help_without_examples_toasts_and_exits_1_without_asking() {
     let sandbox = Sandbox::with(&[]);
     sandbox.write(
