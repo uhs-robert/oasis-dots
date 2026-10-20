@@ -262,6 +262,23 @@ cat >"$hints_spec" <<'JSON'
 }
 JSON
 
+# The shadow must fetch weather for its pinned fake place, never show a seeded copy of the owner's.
+weather_cache="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/home/.cache/quickshell/weather.json"
+q popup open weather >/dev/null
+for _ in $(seq 100); do
+  [[ -s $weather_cache ]] && break
+  sleep 0.2
+done
+if [[ $(jq -r .location_name "$weather_cache" 2>/dev/null) == "Kokiri Forest" ]]; then
+  jq '{location_name, lat, lon}' "$weather_cache" >"$out/weather_cache_location.json"
+  "$shadow" wait "$name" popup weather --timeout 10 >/dev/null || missing+=("MISS weather popup")
+  "$shadow" shot "$name" --out "$out/weather_popup.png" >/dev/null || missing+=("MISS weather popup shot")
+else
+  missing+=("MISS weather cache does not hold the fake location (offline, or a seeded copy)")
+fi
+q popup close >/dev/null
+sleep 0.5
+
 for style in "${styles[@]}"; do
   echo "smoke: $style"
   q style set "$style" >/dev/null
