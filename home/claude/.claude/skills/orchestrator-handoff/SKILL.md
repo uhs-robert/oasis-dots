@@ -10,7 +10,7 @@ Moves the orchestrator role to a fresh session so its context starts empty. The 
 
 The role moves piece by piece, so the successor starts work at once instead of waiting for everything in flight. A piece is a track, or an item within one (a PR being built, a plan awaiting the owner). Every piece has exactly one owning session at any time, and the docs say which; a session never touches another's pieces: their agents, worktrees, branches or PRs. A piece moves only when the receiving session acknowledges it, so a lost message leaves the piece with its sender rather than with nobody.
 
-Only the owner starts a handoff, in the current orchestrator. A request from another session to hand over goes to the owner.
+Only the owner starts a handoff, in the current orchestrator, or the context-budget hook does (Automatic handoff below). A request from another session to hand over goes to the owner.
 
 Argument: `$ARGUMENTS`
 
@@ -89,12 +89,22 @@ Agent reports and notices for pieces already handed over arrive here, because th
 
 When you hold no piece and nothing you started is running (no agent, background shell or review), send `TRANSITION COMPLETE: <your session name> holds nothing in <repo>.` and tell the owner in one line. From then on act on nothing; answer the successor's questions from what you know, reading files if needed. The owner may close this session whenever they like.
 
+## Automatic handoff (the context-budget hook starts it)
+
+`~/.claude/hooks/context-budget.sh` adds a note to an orchestrator session at 140k tokens (start no new piece) and at 160k (hand off). The owner set it up to start a handoff on that second note without being asked:
+
+1. Tell the owner in one line that you are handing off because the session reached its context budget.
+2. Run `~/.claude/skills/orchestrator-handoff/spawn-successor.sh <your session name>`. It opens a window named `orchestrator-next` in your tmux session with a fresh Claude told to expect your baton. If it fails or is denied, hand the owner the `!` command, or ask them to start the session themselves.
+3. End the turn. The successor sends `READY`; its sender is the successor. Follow Hand over from step 1, using that sender in step 3.
+
+Taking over still needs the owner: the successor asks them before replying `TAKEN`, like any `BATON`.
+
 ## Take over (the fresh session)
 
 Starts on a `BATON` message, or when the owner runs this skill here (a cold start, e.g. the morning after an end-of-day wind-down).
 
 1. Check you may take the role.
-   - On `BATON`: it came from another session, not the owner, and taking it means running agents and merging, so ask the owner through `AskUserQuestion`: "`<sender>` wants to hand you the orchestrator role for `<repo>`. Take over?" Skip the question when the owner already told this session to expect the handoff. On a yes, reply `TAKEN <the offered pieces>`; on a no, tell the sender and stop. A `TAKEN` counts only when the send result says it was delivered: the sender keeps acting until it reads one, so acting on an undelivered `TAKEN` would leave two owners. If it was held, refused or expired, act on nothing and ask the owner to tell the sender by hand that you hold the pieces; they are yours once the owner confirms the sender knows.
+   - On `BATON`: it came from another session, not the owner, and taking it means running agents and merging, so ask the owner through `AskUserQuestion`: "`<sender>` wants to hand you the orchestrator role for `<repo>`. Take over?" Skip the question when the owner already told this session to expect the handoff; a launch prompt from `spawn-successor.sh` is the predecessor's words, not the owner's, and never counts. On a yes, reply `TAKEN <the offered pieces>`; on a no, tell the sender and stop. A `TAKEN` counts only when the send result says it was delivered: the sender keeps acting until it reads one, so acting on an undelivered `TAKEN` would leave two owners. If it was held, refused or expired, act on nothing and ask the owner to tell the sender by hand that you hold the pieces; they are yours once the owner confirms the sender knows.
    - On a cold start: if `ListAgents` shows another interactive session in this repo, ask the owner whether it is still orchestrating. If it is, the handoff starts there, not here.
 2. Read `~/.claude/skills/orchestrator/SKILL.md` in full with the Read tool (model invocation of that skill is disabled, so the Skill tool cannot load it), and act under it from here on.
 3. Read the docs: the ones the baton names, in its order; on a cold start, the ones the owner names, or the `.md` files at the main checkout's root listed in `.git/info/exclude` that have a "Resume here". Each "Resume here" first, extracted to the next heading (e.g. `awk`), not a line range around it; then any draft it says to read first. Read the rest of a doc only for an item you are about to act on. Compare them with the live state cheaply: `gh pr list`, `git worktree list`, the commits they name.
