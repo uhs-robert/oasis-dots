@@ -205,6 +205,8 @@ rereview_reason() {
 # Timed by the clock rather than by summing sleeps, so a zero poll interval still stops at the limit.
 poll_review() {
   local number=$1 until=${2:-} started=$SECONDS
+  # Each poll gets the whole wait: a request made after an earlier poll ran out of time must still be waited for.
+  waited=0
   while ((waited < review_wait_s)); do
     if [[ $status != Running && $status != Pending ]]; then
       [[ $until == head && $status != Failed && $head != "$reviewed"* ]] || return 0
