@@ -1982,7 +1982,8 @@ unset SANDBOX_LAUNCHER_SESSIONS
 
 section "voice help"
 # Voice Help lists every integration's examples, the fallbacks last, and Tab on one lists what it offers to run. The
-# package copy's voxcmd-pick answers what $help_answer holds (nothing is a cancel) and logs its arguments.
+# package copy's voxcmd-pick answers what $help_answer holds and logs its arguments; no such file makes it exit 1, as a
+# cancelled pick does, and an empty one answers nothing with exit 0.
 help_pkg=$root/help-pkg
 mkdir -p "$help_pkg"
 cp -r "$package/.local" "$help_pkg/.local"
@@ -1991,7 +1992,7 @@ help_voxcmd=$help_pkg/tests/bin/voxcmd
 help_answer=$root/help-answer
 rm -f "$help_pkg/.local/bin/voxcmd-pick"
 # shellcheck disable=SC2016 # the stub expands its own arguments
-printf '#!/bin/sh\necho "voxcmd-pick $*" >> "%s"\n[ -s "%s" ] && cat "%s"\n' "$log" "$help_answer" "$help_answer" >"$help_pkg/.local/bin/voxcmd-pick"
+printf '#!/bin/sh\necho "voxcmd-pick $*" >> "%s"\n[ -f "%s" ] || exit 1\ncat "%s"\n' "$log" "$help_answer" "$help_answer" >"$help_pkg/.local/bin/voxcmd-pick"
 chmod +x "$help_pkg/.local/bin/voxcmd-pick"
 export VOXCMD_LEGACY_BIN=$help_pkg/.local/bin/voxcmd
 [ -z "$rust_matcher" ] || check "the Rust build is what runs under rs" "[[ \$(readlink -f '$help_voxcmd') == '$package/target/release/voxcmd' ]]"
@@ -2030,8 +2031,15 @@ help_run "say:lamp dim to <level>"
 check "a placeholder example is a toast to say, markup escaped, and runs nothing" "grep -q '^notify-send .*voxcmd Say: lamp dim to &lt;level&gt;\$' '$log' && [[ ! -s '$help_actions' && \$help_status == 0 ]]"
 help_run "run:1"
 check "a runnable runs its action on that entry" "[[ \$(cat '$help_actions') == 'set high' && \$help_status == 0 ]]"
-help_run ""
+rm -f "$help_answer"
+: >"$log"
+: >"$help_actions"
+VOXCMD_CONFIG_DIR=$help_config "$help_voxcmd" help >/dev/null 2>&1
+help_status=$?
 check "a cancelled picker runs nothing and is not a failure" "[[ ! -s '$help_actions' && \$help_status == 0 ]] && ! grep -q '^notify-send' '$log'"
+# The bash routes an empty phrase; the Rust build cancels, on purpose.
+help_run ""
+[ -z "$rust_matcher" ] || check "an empty answer with exit 0 cancels the same way" "[[ ! -s '$help_actions' && \$help_status == 0 ]] && ! grep -q '^notify-send' '$log'"
 rm -f "$help_config/integrations.d/aaa-fallback.sh"
 printf 'name="Lamp"\nverbs=("on lamp on")\ndeclare -A actions=([on]=true)\n' >"$help_config/integrations.d/lamp.sh"
 help_run "say:lamp on"
