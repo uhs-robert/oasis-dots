@@ -166,6 +166,7 @@ STEPS = [
     Step("qml-layers", "qml", "python3 -B ./lib/check/steps/qml_layers.py"),
     Step("qml-singleton-names", "qml", "python3 -B ./lib/check/steps/qml_singleton_names.py"),
     Step("qml-ipc", "tree", "python3 -B ./lib/check/steps/qml_ipc.py"),
+    Step("readme-links", "tree", "python3 -B ./lib/check/steps/readme_links.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.

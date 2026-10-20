@@ -56,6 +56,8 @@
 #   qml-ipc                  every `qs ipc call` target and function in scripts, Lua, Rust, tmux.conf and test stubs is a typed function of an
 #                            IpcHandler, and every handler is called, except lib/check/qml-ipc.allow, which fails when a line goes stale
 #                            (lib/check/steps/qml_ipc.py). It also checks the README IPC table: a row per handler, and only real functions in a row. Always runs.
+#   readme-links             every link and backticked repo path in the Quickshell READMEs exists, and every #anchor names a heading
+#                            (lib/check/steps/readme_links.py). Always runs.
 #   lock-skins               features/lock/skins/index.json matches the skin files and audio importers (lib/check/steps/lock-skins.sh). Needs jq.
 #   style-exports            generated property lines in theme/Style.qml match theme/StyleSchema.js (lib/check/steps/style-exports.sh).
 #                            Needs python3.
