@@ -213,7 +213,11 @@ pub enum LogCommand {
 #[derive(Subcommand, Debug)]
 pub enum TimerCommand {
     /// Ring a timer: run by the timer units
-    Ring { summary: String, body: String },
+    Ring {
+        summary: String,
+        #[arg(default_value = "")]
+        body: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]

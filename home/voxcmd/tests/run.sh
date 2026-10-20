@@ -1928,6 +1928,14 @@ VOXCMD_CONFIG_DIR=$near_config "$voxcmd" explain "nothing matches this at all" >
 check "a dry run logs nothing" "[[ \$(wc -l <'$near_miss_log') == 2 ]]"
 out=$(VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" log misses 1)
 check "voxcmd misses prints the last lines" "grep -qP '\\tlock doors\$' <<<\"\$out\" && [[ \$(wc -l <<<\"\$out\") == 1 ]]"
+if [ "${VOXCMD_BIN:-bash}" = rs ]; then
+  # The bash voxcmd also answers `misses`, so show the Rust build did: `voxcmd` is the release binary and the logger in
+  # front of the bash voxcmd saw no call.
+  check "voxcmd is the Rust build" "[[ \$(readlink -f '$pkg_voxcmd') == '$package/target/release/voxcmd' ]]"
+  : >"$legacy_calls"
+  VOXCMD_LEGACY_BIN=$root/legacy-logger "$pkg_voxcmd" log misses 1 >/dev/null
+  check "and the bash voxcmd was not asked for the log" "[[ ! -s '$legacy_calls' ]]"
+fi
 near_live $'lock doors\nquickly'
 check "a transcript over two lines is one record" "[[ \$(wc -l <'$near_miss_log') == 3 ]] && tail -n 1 '$near_miss_log' | grep -qP '\\tlock doors\$'"
 
