@@ -15,6 +15,13 @@ where an edit here that matters to the step shows up.
 
 from typing import NamedTuple
 
+# One scope per bash voxcmd suite, so an edit to a file only one suite reads runs only that suite. VOXCMD_SUITES is for
+# what every suite runs (the bash voxcmd itself, its integrations); runner.py reads VOXCMD_SUITE_SCOPES to tell a suite
+# from the crate.
+VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE, VOX_FIREFOX = "voxphrases", "voxclick", "voxcalendar", "voxwake", "voxfirefox"
+VOXCMD_SUITE_SCOPES = (VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE, VOX_FIREFOX)
+VOXCMD_SUITES = " ".join(VOXCMD_SUITE_SCOPES)
+
 # Every matching entry adds its scope, ahead of the PATH_SCOPES one.
 ADDITIVE_SCOPES = [
     ("lib/check/*", "checkscope"),
@@ -37,8 +44,8 @@ PATH_SCOPES = [
     (".luacheckrc", "lua"),
     # The files outside the Quickshell tree that OUTSIDE_REFS in lib/check/steps/qml_paths.py names, ahead of their folders.
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", "lua qml"),
-    ("home/voxcmd/.local/bin/voxcmd-alarm", "voxcmd qml"),
-    ("home/voxcmd/tests/run-monitors.sh", "voxcmd qml"),
+    ("home/voxcmd/.local/bin/voxcmd-alarm", VOXCMD_SUITES + " qml"),
+    ("home/voxcmd/tests/run-monitors.sh", VOX_CLICK + " qml"),
     # The greeter monitor generator loads the session's JSON reader.
     ("home/hypr/.config/hypr/lib/json.lua", "lua keyring"),
     ("home/hypr/*", "lua"),
@@ -78,13 +85,63 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/snapshots/*", "rust"),
     ("home/voxcmd/tests/fixtures/*-goldens.tsv", "rust"),
     ("home/voxcmd/tests/fixtures/legacy-dump.jsonl", "rust"),
-    ("home/voxcmd/tests/fixtures/*", "rust voxcmd"),
-    ("home/voxcmd/.config/voxcmd/integrations/*", "rust voxcmd"),
-    ("home/voxcmd/*", "voxcmd"),
-    ("home/voxtype/.local/bin/voxtype-daemon", "voxcmd"),
+    # The bash suites by what each reads (found by following their source/read lines; run.sh stands for voxcmd-click and
+    # carries run-sessions, run-sequences, run-overview and run-monitors). Ahead of the fixture catch-all below.
+    ("home/voxcmd/tests/run-phrases.sh", VOX_PHRASES),
+    ("home/voxcmd/tests/phrases.tsv", VOX_PHRASES),
+    ("home/voxcmd/tests/phrase-fixtures.sh", VOX_PHRASES),
+    ("home/voxcmd/tests/run.sh", VOX_CLICK),
+    ("home/voxcmd/tests/run-sessions.sh", VOX_CLICK),
+    ("home/voxcmd/tests/run-sequences.sh", VOX_CLICK),
+    ("home/voxcmd/tests/run-overview.sh", VOX_CLICK),
+    ("home/voxcmd/tests/lib.sh", VOX_CLICK),
+    ("home/voxcmd/tests/window-fixtures.sh", VOX_CLICK),
+    ("home/voxcmd/tests/firefox-fake-host", VOX_CLICK),
+    ("home/voxcmd/tests/run-calendar.sh", VOX_CALENDAR),
+    ("home/voxcmd/tests/run-wake.sh", VOX_WAKE),
+    ("home/voxcmd/tests/wake_test.py", VOX_WAKE),
+    ("home/voxcmd/tests/run-firefox-extension.sh", VOX_FIREFOX),
+    ("home/voxcmd/tests/firefox-host-test", VOX_FIREFOX),
+    ("home/voxcmd/tests/firefox-background.test.js", VOX_FIREFOX),
+    # Every suite but the Firefox one runs inside sandbox.sh, whose tests/bin shim and ask-stub they reach voxcmd through.
+    ("home/voxcmd/tests/sandbox.sh", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE])),
+    ("home/voxcmd/tests/bin/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE])),
+    # Builds the fixture Firefox profile (places.sql, sessionstore.json) for the phrases, click and calendar suites.
+    ("home/voxcmd/tests/firefox-profile", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
+    # Run by hand (live diff, benchmark, wake sampling), by no step.
+    ("home/voxcmd/tests/run-live-diff.sh", ""),
+    ("home/voxcmd/tests/bench.sh", ""),
+    ("home/voxcmd/tests/bench-phrases.tsv", ""),
+    ("home/voxcmd/tests/wake-sample.sh", ""),
+    # Fixtures: phrase-fixtures.sh loads the desktop's JSON for the phrases suite, window-fixtures.sh a part of it for the
+    # click suite; applications/ is the XDG_DATA_HOME both export, and calendar.sh's suite exports it too.
+    ("home/voxcmd/tests/fixtures/clients.json", " ".join([VOX_PHRASES, VOX_CLICK])),
+    ("home/voxcmd/tests/fixtures/binds.json", " ".join([VOX_PHRASES, VOX_CLICK])),
+    ("home/voxcmd/tests/fixtures/applications/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
+    ("home/voxcmd/tests/fixtures/firefox/live-tabs.json", VOX_CLICK),
+    ("home/voxcmd/tests/fixtures/firefox/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
+    ("home/voxcmd/tests/fixtures/monitors.json", VOX_PHRASES),
+    ("home/voxcmd/tests/fixtures/workspaces.json", VOX_PHRASES),
+    ("home/voxcmd/tests/fixtures/pw-dump.json", VOX_PHRASES),
+    ("home/voxcmd/tests/fixtures/ocr.tsv", VOX_PHRASES),
+    ("home/voxcmd/tests/fixtures/overview.json", VOX_CLICK),
+    ("home/voxcmd/tests/fixtures/monitors/*", VOX_CLICK),
+    # Only the crate's tests and the generators of its goldens read these (no bash suite names them). A fixture added
+    # without a rule here falls to home/voxcmd/*, which test_scopes.py's tripwire rejects.
+    ("home/voxcmd/tests/fixtures/monitor-places/*", "rust"),
+    ("home/voxcmd/tests/fixtures/speech/*", "rust"),
+    ("home/voxcmd/tests/fixtures/match/*", "rust"),
+    ("home/voxcmd/tests/fixtures/ask/*", "rust"),
+    ("home/voxcmd/tests/fixtures/click/*", "rust"),
+    ("home/voxcmd/tests/fixtures/integrations/*", "rust"),
+    ("home/voxcmd/tests/fixtures/gen-*.sh", "rust"),
+    # The suites' own config for these is the sandbox's copy of the package, so a real integration reaches all of them.
+    ("home/voxcmd/.config/voxcmd/integrations/*", "rust " + VOXCMD_SUITES),
+    ("home/voxcmd/*", VOXCMD_SUITES),
+    ("home/voxtype/.local/bin/voxtype-daemon", VOXCMD_SUITES),
     ("home/voxtype/*", "voxtype"),
     ("home/systemd/.config/systemd/user/voxtype-duck.service", "voxtype"),
-    ("extras/voxcmd-firefox/*", "voxcmd"),
+    ("extras/voxcmd-firefox/*", VOXCMD_SUITES),
     # The installer and the justfile call it, but those already run everything.
     ("lib/install/voice.sh", "policy loader"),
     ("lib/install/migrate.sh", "migratelock loader"),
@@ -150,12 +207,12 @@ HOOKS_SKIP = "agent hook and owner-test-bar tests need jq"
 
 # Every step, longest first.
 STEPS = [
-    Step("voxcmd-phrases", "voxcmd", "bash ./home/voxcmd/tests/run-phrases.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
-    Step("voxcmd-click", "voxcmd", "bash ./home/voxcmd/tests/run.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
-    Step("voxcmd-calendar", "voxcmd", "bash ./home/voxcmd/tests/run-calendar.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
-    Step("voxcmd-wake", "voxcmd", "bash ./home/voxcmd/tests/run-wake.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxcmd-phrases", VOX_PHRASES, "bash ./home/voxcmd/tests/run-phrases.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxcmd-click", VOX_CLICK, "bash ./home/voxcmd/tests/run.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxcmd-calendar", VOX_CALENDAR, "bash ./home/voxcmd/tests/run-calendar.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxcmd-wake", VOX_WAKE, "bash ./home/voxcmd/tests/run-wake.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxtype-duck", "voxtype", "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
-    Step("voxcmd-firefox", "voxcmd", "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxcmd-firefox", VOX_FIREFOX, "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-rust", "rust", "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
