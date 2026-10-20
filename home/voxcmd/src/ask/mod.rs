@@ -498,6 +498,14 @@ impl AskWith {
         command
     }
 
+    /// The id the text picker answers for choices that carry their own ids, none when it was cancelled. `expansions` is
+    /// what Tab opens on a choice: `{key: {title, choices}}`.
+    pub fn pick_id(&self, label: &str, choices: &str, expansions: &str) -> Option<String> {
+        let mut command = self.command("pick");
+        command.args([label, choices, expansions]);
+        Some(Self::run(command)?.trim_end_matches('\n').to_string())
+    }
+
     /// Runs an asker to its end, its group listed so that Stop Voice reaches it; stderr is passed on.
     fn run(mut command: Command) -> Option<String> {
         let outcome = match process::run_ask_to_end(&mut command) {

@@ -119,8 +119,7 @@ impl<'a> Runner<'a> {
                 return StepResult::new(StepOutcome::NoMatch).with_exit_code(0);
             }
             Some(Builtin::VoiceHelp) => {
-                eprintln!("voxcmd: help: not implemented yet (2.6)");
-                return StepResult::new(StepOutcome::Cancelled).with_exit_code(1);
+                return StepResult::new(StepOutcome::Cancelled).with_exit_code(crate::help::run(self));
             }
             Some(Builtin::VoiceHelpInSequence) => return StepResult::new(StepOutcome::NoMatch),
             Some(Builtin::Discard) => return StepResult::new(StepOutcome::Discarded),

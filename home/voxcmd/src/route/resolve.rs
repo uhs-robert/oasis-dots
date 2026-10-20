@@ -151,7 +151,7 @@ fn is_legacy(integration: &Integration) -> bool {
     integration.format == crate::config::schema::Format::Bash
 }
 
-fn runnable(
+pub(crate) fn runnable(
     integration: &Integration,
     pending: &PendingMatch,
     action: &str,

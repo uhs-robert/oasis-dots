@@ -1470,19 +1470,25 @@ voice_help() {
   esac
 }
 
-# Prints the runnable options Tab shows in Voice Help for the loaded integration, [] when it lists none:
-# help_choices, else the candidates of help_action. An entry's own action overrides help_action. The target is the
-# label, what saying the entry would have captured, for actions that read it.
-help_runnables() {
-  local file="$1" listed=""
+# Prints what Tab lists in Voice Help for the loaded integration as [{id, label, action}], [] when it lists none:
+# help_choices, else the candidates of help_action. An entry's own action overrides help_action.
+help_listed() {
+  local listed=""
   if declare -F help_choices >/dev/null; then
     listed=$(help_choices || true)
   elif [ -n "$help_action" ] && declare -F candidates >/dev/null; then
     listed=$(candidates "$help_action" "" || true)
   fi
-  listed=$(jq -c --arg action "$help_action" 'if type == "array" then . else [] end
+  jq -c --arg action "$help_action" 'if type == "array" then . else [] end
     | map({id: (.id | tostring), label: (.label // .id | tostring), action: (.action // $action)} | select(.action != ""))' \
-    <<<"${listed:-[]}" 2>/dev/null) || listed='[]'
+    <<<"${listed:-[]}" 2>/dev/null || echo '[]'
+}
+
+# Prints the runnable options Tab shows in Voice Help for the loaded integration, [] when it lists none. The target is
+# the label, what saying the entry would have captured, for actions that read it.
+help_runnables() {
+  local file="$1" listed
+  listed=$(help_listed)
   runnable_options "$(jq -n -c --arg file "$file" --arg name "$name" '{file: $file, name: $name, fallback: false, has_target: true}')" \
     "$help_action" "$(jq length <<<"$listed")" <<<"$listed" | jq -s -c 'map(. + {target: .label})'
 }
@@ -3077,6 +3083,7 @@ legacy_dump() {
 #   rewrite <text>...             prints each text as the file's session_rewrite makes it, one a line
 #   alive                         succeeds while the file's mode is wanted (session_mode_alive)
 #   handle-turn <text> [action]   runs the file's session_handle_turn
+#   help                          prints what Tab lists in Voice Help, [{id, label, action}] (help_listed)
 legacy_hook() {
   local kind="${1:-}" file="${2:-}" candidates_json text
   raw_transcript="${VOXCMD_LEGACY_RAW_TRANSCRIPT-}"
@@ -3118,6 +3125,7 @@ legacy_hook() {
     declare -F session_handle_turn >/dev/null || return 0
     session_handle_turn "${@:3}"
     ;;
+  help) help_listed ;;
   *) return 2 ;;
   esac
 }

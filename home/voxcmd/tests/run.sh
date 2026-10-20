@@ -1980,4 +1980,62 @@ VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the work tmux session" >/
 check "a tmux phrase launches no launcher session" "! grep -Fq '.launch(' '$log'"
 unset SANDBOX_LAUNCHER_SESSIONS
 
+section "voice help"
+# Voice Help lists every integration's examples, the fallbacks last, and Tab on one lists what it offers to run. The
+# package copy's voxcmd-pick answers what $help_answer holds (nothing is a cancel) and logs its arguments.
+help_pkg=$root/help-pkg
+mkdir -p "$help_pkg"
+cp -r "$package/.local" "$help_pkg/.local"
+link_voxcmd_shim "$help_pkg"
+help_voxcmd=$help_pkg/tests/bin/voxcmd
+help_answer=$root/help-answer
+rm -f "$help_pkg/.local/bin/voxcmd-pick"
+# shellcheck disable=SC2016 # the stub expands its own arguments
+printf '#!/bin/sh\necho "voxcmd-pick $*" >> "%s"\n[ -s "%s" ] && cat "%s"\n' "$log" "$help_answer" "$help_answer" >"$help_pkg/.local/bin/voxcmd-pick"
+chmod +x "$help_pkg/.local/bin/voxcmd-pick"
+export VOXCMD_LEGACY_BIN=$help_pkg/.local/bin/voxcmd
+[ -z "$rust_matcher" ] || check "the Rust build is what runs under rs" "[[ \$(readlink -f '$help_voxcmd') == '$package/target/release/voxcmd' ]]"
+help_actions=$root/help-actions.log
+help_config=$root/config-help
+mkdir -p "$help_config/integrations.d" "$help_config/replacements.d"
+cat >"$help_config/integrations.d/lamp.sh" <<STUB
+name="Lamp"
+verbs=("on lamp on")
+examples=("lamp on" "lamp dim to <level>")
+declare -A actions=([on]='echo lit >> $help_actions' [set]='echo "set \$id" >> $help_actions')
+help_action=set
+candidates() { printf '[{"id":"low","label":"Low"},{"id":"high","label":"High"}]'; }
+STUB
+cat >"$help_config/integrations.d/aaa-fallback.sh" <<STUB
+name="Zed"
+fallback=1
+verbs=("any anything at all")
+examples=("fallback phrase")
+declare -A actions=([any]='true')
+STUB
+help_run() {
+  printf '%s' "$1" >"$help_answer"
+  : >"$log"
+  : >"$help_actions"
+  VOXCMD_CONFIG_DIR=$help_config "$help_voxcmd" help >/dev/null 2>&1
+  help_status=$?
+}
+
+help_run "say:lamp on"
+check "a picked example runs as if spoken" "[[ \$(cat '$help_actions') == lit && \$help_status == 0 ]]"
+check "the picker is Voice Help over every example, the fallback after the others" "grep -Eq '^voxcmd-pick Voice Help .*\"label\":\"Lamp: lamp on\".*\"label\":\"Zed: fallback phrase\"' '$log'"
+check "an integration with runnables gets a Tab expansion, one without none" "[[ \$(grep -o '\"expand\":\"[a-z]*\"' '$log' | sort -u) == '\"expand\":\"lamp\"' ]]"
+check "the expansion lists the help_action's candidates as run ids" "grep -q '\"lamp\":{\"choices\":\[{\"id\":\"run:0\",\"label\":\"Low\"},{\"id\":\"run:1\",\"label\":\"High\"}\],\"title\":\"Lamp\"}' '$log' || grep -q '\"lamp\":{\"title\":\"Lamp\",\"choices\":\[{\"id\":\"run:0\",\"label\":\"Low\"},{\"id\":\"run:1\",\"label\":\"High\"}\]}' '$log'"
+help_run "say:lamp dim to <level>"
+check "a placeholder example is a toast to say, markup escaped, and runs nothing" "grep -q '^notify-send .*voxcmd Say: lamp dim to &lt;level&gt;\$' '$log' && [[ ! -s '$help_actions' && \$help_status == 0 ]]"
+help_run "run:1"
+check "a runnable runs its action on that entry" "[[ \$(cat '$help_actions') == 'set high' && \$help_status == 0 ]]"
+help_run ""
+check "a cancelled picker runs nothing and is not a failure" "[[ ! -s '$help_actions' && \$help_status == 0 ]] && ! grep -q '^notify-send' '$log'"
+rm -f "$help_config/integrations.d/aaa-fallback.sh"
+printf 'name="Lamp"\nverbs=("on lamp on")\ndeclare -A actions=([on]=true)\n' >"$help_config/integrations.d/lamp.sh"
+help_run "say:lamp on"
+check "with no examples declared it toasts, asks nothing and exits 1" "grep -q '^notify-send .*voxcmd No integration declares examples\$' '$log' && ! grep -q '^voxcmd-pick' '$log' && [[ \$help_status == 1 ]]"
+unset VOXCMD_LEGACY_BIN
+
 finish
