@@ -422,7 +422,7 @@ fn unknown_keys(
 
 /// Line and column of the first `key =` at or after byte `from`; (1, 1) when there is none.
 fn line_in_text(text: &str, key: &str, from: usize) -> (usize, usize) {
-    regex::Regex::new(&format!(r"(?m)\b{key}\s*="))
+    regex::Regex::new(&format!(r#"(?m)\b{}"?\s*="#, regex::escape(key)))
         .ok()
         .and_then(|pattern| pattern.find_at(text, from))
         .map_or((1, 1), |found| {

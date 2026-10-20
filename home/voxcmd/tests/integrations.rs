@@ -626,6 +626,10 @@ fn check_validates_help_entries_with_file_line_column() {
             "integrations/h.toml:5:1: error: [[help]] action \"nope\" is not declared under [actions]",
         ),
         (
+            "[[help]]\n\"action\" = \"nope\"\n",
+            "integrations/h.toml:5:2: error: [[help]] action \"nope\" is not declared under [actions]",
+        ),
+        (
             "[[help]]\naction = \"a\"\nlabell = \"x\"\n",
             "integrations/h.toml:6:1: error: unknown help key \"labell\"",
         ),
