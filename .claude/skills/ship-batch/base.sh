@@ -138,6 +138,27 @@ stop_main_check() {
   return 0
 }
 
+# A batch that stops the check before its branch checks holds no lock while they run, so it leaves its pid in the
+# `suspended` file: a waiter keeps waiting while that batch lives, instead of reading the gap as a check owed and not
+# running. Cleared when the check starts again or that batch exits; a marker whose batch died counts for nothing.
+suspend_main_check() {
+  echo $$ >"$(main_check_path "$1" suspended)"
+}
+
+# Only this batch's own marker: a batch that did not stop the check exiting must not end another's suspension.
+clear_main_check_suspended() {
+  local file
+  file=$(main_check_path "$1" suspended)
+  [[ $(cat "$file" 2>/dev/null) != "$$" ]] || rm -f "$file"
+}
+
+# Prints the pid of the batch that has the check stopped, or nothing.
+main_check_suspended_by() {
+  local pid
+  pid=$(cat "$(main_check_path "$1" suspended)" 2>/dev/null)
+  [[ $pid =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null && echo "$pid"
+}
+
 # Starts main-check.sh run detached from this shell: a transient user unit (Nice 19, survives the agent's shell), else
 # setsid. fd 9 is closed so the check cannot hold the ship lock. A unit name left over from a crash is cleared first. The
 # unit gets none of this shell's environment unless passed: the session variables are what the steps and notify-send need.
@@ -145,7 +166,7 @@ stop_main_check() {
 start_main_check() {
   local repo=$1 script=$2 after=$3 check_from=$4 setenv=() name
   # The pid file marks "has started", even for a check that has already finished again.
-  rm -f "$(main_check_path "$repo" pid)"
+  rm -f "$(main_check_path "$repo" pid)" "$(main_check_path "$repo" suspended)"
   for name in PATH HOME CHECK_FULL CHECK_LOCK_WAIT_SECS WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR \
     DBUS_SESSION_BUS_ADDRESS SSH_AUTH_SOCK; do
     [[ -z ${!name:-} ]] || setenv+=("--setenv=$name")

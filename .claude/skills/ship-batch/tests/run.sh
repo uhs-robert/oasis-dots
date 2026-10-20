@@ -186,6 +186,7 @@ if [[ \$1 == --check ]]; then
   exit
 fi
 echo "merge \$* $lock_state" >>"\$SHIP_LOG"
+while [[ -e $e2e/merge_hold ]]; do sleep 0.2; done
 [[ -z \${STUB_MERGE_FAIL:-} ]] || exit 1
 for pr; do [[ \$pr == --* ]] && continue; git push -q origin "b\$pr:main" 2>/dev/null || exit 1; done
 STUB
@@ -195,12 +196,14 @@ printf '#!/bin/sh\necho "b$3"\n' >"$stubs/gh"
 # The slot file named in $e2e/just_hold makes `just check` take that flock and wait until the hold file is removed, as a
 # heavy check step does; a second holder that cannot get the slot in 5 s logs "slot busy" (a leaked lock). Control goes
 # through files, since a check started by systemd-run does not inherit this script's environment. With $e2e/just_daemon
-# present it also leaves a setsid daemon behind that keeps every descriptor it inherited.
+# present it also leaves a setsid daemon behind that keeps every descriptor it inherited, and with $e2e/just_chatty that
+# daemon writes a line to its stdout every 0.2 s, as a shadow's qs does.
 cat >"$stubs/just" <<STUB
 #!/usr/bin/env bash
 : "\${SHIP_LOG:=$e2e/log}" "\${SHIP_LOCK:=$e2e/main/.git/ship-batch.lock}"
 echo "just \$* $lock_state" >>"\$SHIP_LOG"
 [[ ! -e $e2e/just_daemon ]] || setsid -f bash -c 'exec -a $e2e/test-daemon sleep 300'
+[[ ! -e $e2e/just_chatty ]] || setsid -f bash -c 'exec -a $e2e/test-daemon bash -c "while sleep 0.2; do echo daemon tick; done"'
 slot=\$(cat "$e2e/just_hold" 2>/dev/null)
 if [[ -n \$slot ]]; then
   exec 7>"\$slot"
@@ -210,12 +213,25 @@ if [[ -n \$slot ]]; then
 fi
 exit \${STUB_JUST_STATUS:-0}
 STUB
-printf '#!/bin/sh\necho "notify-send $*" >>"%s"\n' "$e2e/log" >"$stubs/notify-send"
+cat >"$stubs/notify-send" <<STUB
+#!/usr/bin/env bash
+: "\${SHIP_LOCK:=$e2e/main/.git/ship-batch.lock}"
+echo "notify-send \$* $lock_state" >>"$e2e/log"
+STUB
+# With $e2e/setsid_delay present every setsid waits a second before starting its command, which widens the gap between
+# starting a check and the check taking its run lock.
+real_setsid=$(command -v setsid)
+cat >"$stubs/setsid" <<STUB
+#!/bin/sh
+[ ! -e $e2e/setsid_delay ] || sleep 1
+exec $real_setsid "\$@"
+STUB
 chmod +x "$stubs"/* "$fake_home"/.claude/skills/merge-prs/*
 
 # A main checkout on main with two stacked PR branches, b1 and b2, each in a worktree of its own.
 e2e_setup() {
-  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/just_hold" "$e2e/just_daemon" "$e2e/probe_main_check"
+  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/just_hold" "$e2e/just_daemon" "$e2e/just_chatty" \
+    "$e2e/probe_main_check" "$e2e/branch_hold" "$e2e/setsid_delay" "$e2e/merge_hold" "$e2e/lock_hold"
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib/check" "$e2e/main/.claude/skills/ship-batch"
@@ -223,13 +239,15 @@ e2e_setup() {
   cp "$here/../ship-batch.sh" "$here/../base.sh" "$here/../main-check.sh" "$e2e/main/.claude/skills/ship-batch/"
   mkdir -p "$e2e/main/.claude/hooks"
   cp "$here/../../../hooks/live-hypr.sh" "$e2e/main/.claude/hooks/"
-  # With $e2e/probe_main_check present a check also logs whether a check of main held its run lock at that moment.
+  # With $e2e/probe_main_check present a check also logs whether a check of main held its run lock at that moment; with
+  # $e2e/branch_hold present it waits until that file is removed.
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash
 echo "check \$(basename "\$PWD") \$* $lock_state" >>"\$SHIP_LOG"
 if [[ -e $e2e/probe_main_check ]]; then
   if flock -n "$e2e/main/.git/ship-batch-main-check.lock" true; then echo "main check idle" >>"\$SHIP_LOG"; else echo "main check running" >>"\$SHIP_LOG"; fi
 fi
+while [[ -e $e2e/branch_hold ]]; do sleep 0.2; done
 exit \${STUB_BRANCH_STATUS:-0}
 STUB
   chmod +x "$e2e/main/lib/check.sh"
@@ -248,7 +266,7 @@ STUB
   g -C "$e2e/wt-2" commit -q -m two
 }
 ship() { HOME=$fake_home PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" "$@" >"$e2e/out" 2>&1; }
-logged() { grep -qxF -- "$1" "$SHIP_LOG"; }
+logged() { grep -qxF -- "$1" "$SHIP_LOG" 2>/dev/null; }
 line_of() { grep -nxF -- "$1" "$SHIP_LOG" | cut -d: -f1; }
 
 e2e_setup
@@ -387,7 +405,15 @@ echo "== the check of main in the background"
 # setsid fallback is what runs, with real processes; the one real-unit scenario is at the end. A check "takes a slot" by
 # holding the flock named in just_hold until that file is removed.
 unset SHIP_BATCH_SYNC_CHECK
-printf '#!/bin/sh\necho "systemd-run $*" >>"%s"\nexit 1\n' "$e2e/log" >"$stubs/systemd-run"
+# The stub fails after logging its arguments and whether the script among them can be found from /, where a unit starts.
+cat >"$stubs/systemd-run" <<STUB
+#!/usr/bin/env bash
+echo "systemd-run \$*" >>"$e2e/log"
+for arg; do
+  if [[ \$arg == *main-check.sh ]] && (cd / && [[ -x \$arg ]]); then echo "systemd-run script found from /" >>"$e2e/log"; fi
+done
+exit 1
+STUB
 chmod +x "$stubs/systemd-run" "$stubs/notify-send"
 mc=$e2e/main/.claude/skills/ship-batch/main-check.sh
 slot=$e2e/slot.lock
@@ -448,6 +474,7 @@ check "it ends" "wait_until '! checking'"
 check "the result says fail with the log" "[[ \$(cut -d' ' -f1 $common/ship-batch-main-check.result) == fail ]] && grep -q 'ship-batch-main-check.log' $common/ship-batch-main-check.result"
 check "the debt is kept" "[[ \$(owed_check '$e2e/main') == '$e2e_base' ]]"
 check "the owner gets a critical alert" "grep -q 'notify-send -u critical main check failed' '$SHIP_LOG'"
+check "after the ship lock is released" "grep -q '^notify-send .* free$' '$SHIP_LOG'"
 check "wait exits 1 and shows the failure" "! timeout 30 '$mc' wait >'$e2e/wait.out' 2>&1 && grep -q 'FAILED' '$e2e/wait.out'"
 check "the session hook prints the failure" "[[ \$(CLAUDE_PROJECT_DIR='$e2e/main' '$here/../../../hooks/report-failed-main-check.sh') == *'FAILED at'* ]]"
 check "with the absolute path of main-check.sh" "[[ \$(CLAUDE_PROJECT_DIR='$e2e/main' '$here/../../../hooks/report-failed-main-check.sh') == *'$(cd "$here/.." && pwd)/main-check.sh status'* ]]"
@@ -593,10 +620,118 @@ stop_all
 
 echo "== the unit gets the session environment"
 e2e_setup
-WAYLAND_DISPLAY=wl-test HYPRLAND_INSTANCE_SIGNATURE=sig-test DBUS_SESSION_BUS_ADDRESS=unix:test SSH_AUTH_SOCK=/tmp/agent-test XDG_RUNTIME_DIR=$owner_run ship_bg 1
+# Run by the relative path SKILL.md documents, so a script path systemd-run cannot resolve from / shows.
+(
+  cd "$e2e/main" &&
+    WAYLAND_DISPLAY=wl-test HYPRLAND_INSTANCE_SIGNATURE=sig-test DBUS_SESSION_BUS_ADDRESS=unix:test SSH_AUTH_SOCK=/tmp/agent-test \
+      XDG_RUNTIME_DIR=$owner_run HOME=$fake_home PATH="$stubs:$PATH" timeout -k 5 $ship_timeout \
+      bash .claude/skills/ship-batch/ship-batch.sh 1 >"$e2e/out" 2>&1
+)
 for name in WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS SSH_AUTH_SOCK; do
   check "systemd-run passes $name" "grep '^systemd-run ' '$SHIP_LOG' | grep -q -- '--setenv=$name '"
 done
+check "and a script path that resolves from /" "logged 'systemd-run script found from /'"
+stop_all
+
+echo "== a batch waiting for the lock stops a foreground check it started under the lock"
+# The foreground batch pauses in its merge while the second batch queues for the lock; every setsid is a second slow, so a
+# check started after the lock is released would still be starting when the second batch takes it.
+e2e_setup
+touch "$e2e/merge_hold" "$e2e/setsid_delay"
+(
+  SHIP_BATCH_SYNC_CHECK=1 HOME=$fake_home PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/sync.out" 2>&1
+  echo $? >"$e2e/sync.rc"
+) &
+sync_batch=$!
+wait_until "logged 'merge 1 held'"
+(
+  ship_bg 2
+  echo $? >"$e2e/queued.rc"
+) &
+queued_batch=$!
+wait_until "grep -q 'another ship-batch holds the main checkout' '$e2e/out'"
+rm -f "$e2e/merge_hold"
+wait "$sync_batch" "$queued_batch"
+check "the queued batch merges" "[[ \$(<$e2e/queued.rc) == 0 ]] && logged 'merge 2 held' || { cat '$e2e/out'; false; }"
+check "the foreground batch exits 0" "[[ \$(<$e2e/sync.rc) == 0 ]] || { cat '$e2e/sync.out'; false; }"
+check "and the debt is settled by a check of the newest main" "wait_until '! checking' && [[ -z \$(owed_check '$e2e/main') ]] && [[ \$(cut -d' ' -f2 $common/ship-batch-main-check.result) == \$(git -C '$e2e/main' rev-parse HEAD) ]]"
+rm -f "$e2e/setsid_delay"
+stop_all
+
+echo "== wait keeps waiting while a batch has the check stopped for its branch checks"
+e2e_setup
+hold
+ship_bg 1
+checking
+touch "$e2e/branch_hold"
+(
+  ship_bg 2
+  echo $? >"$e2e/suspending.rc"
+) &
+suspending_batch=$!
+wait_until "grep -q '^check wt-2 ' '$SHIP_LOG'"
+check "the check is stopped for the branch check" "wait_until '! checking'"
+check "wait blocks instead of reporting a check owed and not running" "(timeout 3 '$mc' wait >'$e2e/wait.out' 2>&1; [[ \$? == 124 ]]) || { cat '$e2e/wait.out'; false; }"
+check "status names the batch" "[[ \$('$mc' status) == 'stopped while ship-batch (pid '[0-9]*') checks its branches'* ]]"
+(
+  timeout -k 5 60 "$mc" wait >"$e2e/wait.out" 2>&1
+  echo $? >"$e2e/wait.rc"
+) &
+waiter=$!
+sleep 1.5
+rm -f "$e2e/branch_hold"
+wait "$suspending_batch"
+check "the batch restarts the check and clears the marker" "[[ \$(<$e2e/suspending.rc) == 0 ]] && checking && [[ ! -e $common/ship-batch-main-check.suspended ]]"
+release
+wait "$waiter"
+check "a waiter that started during the branch check returns 0 once the check passed" "[[ \$(<$e2e/wait.rc) == 0 ]] || { cat '$e2e/wait.out'; false; }"
+wait_until '! checking'
+owe_check "$e2e/main" "$e2e_base"
+bash -c 'echo $$' >"$common/ship-batch-main-check.suspended"
+check "a marker left by a dead batch does not block wait" "! timeout 10 '$mc' wait >'$e2e/wait.out' 2>&1 && grep -q 'owed but none is running' '$e2e/wait.out'"
+sleep 30 &
+live_holder=$!
+echo "$live_holder" >"$common/ship-batch-main-check.suspended"
+MAIN_CHECK_WAIT_SECS=1 timeout 10 "$mc" wait >"$e2e/wait.out" 2>&1
+check "a live one blocks only up to MAIN_CHECK_WAIT_SECS" "[[ $? == 1 ]] && grep -q 'kept the check of main stopped for too long' '$e2e/wait.out'"
+kill "$live_holder"
+wait "$live_holder" 2>/dev/null
+rm -f "$common/ship-batch-main-check.suspended"
+stop_all
+
+echo "== a daemon writing to the log does not garble the next check's log"
+e2e_setup
+touch "$e2e/just_chatty"
+ship_bg 1
+wait_until '! checking'
+rm -f "$e2e/just_chatty"
+sleep 1
+owe_check "$e2e/main" "$e2e_base"
+CHECK_FULL=1 ship_bg
+check "a background check's log" "wait_until '! checking' && sleep 1 && [[ \$(tr -cd '\\0' <$common/ship-batch-main-check.log | wc -c) == 0 ]] && head -1 $common/ship-batch-main-check.log | grep -q '^main-check: checking'"
+owe_check "$e2e/main" "$e2e_base"
+SHIP_BATCH_SYNC_CHECK=1 CHECK_FULL=1 ship_bg
+check "a foreground check's log" "[[ $? == 0 ]] && sleep 1 && [[ \$(tr -cd '\\0' <$common/ship-batch-main-check.log | wc -c) == 0 ]] && head -1 $common/ship-batch-main-check.log | grep -q '^main-check: checking'"
+stop_all
+
+echo "== a batch skips the early stop while another batch holds the lock"
+e2e_setup
+hold
+ship_bg 1
+checking
+touch "$e2e/probe_main_check" "$e2e/lock_hold"
+flock "$SHIP_LOCK" bash -c "while [[ -e $e2e/lock_hold ]]; do sleep 0.2; done" &
+lock_holder=$!
+wait_until "! flock -n '$SHIP_LOCK' true"
+(
+  ship_bg 2
+  echo $? >"$e2e/skipping.rc"
+) &
+skipping_batch=$!
+check "its branch check runs at once, with the check of main left to the lock holder" "wait_until \"grep -q '^check wt-2 .* held$' '$SHIP_LOG'\" && logged 'main check running'"
+rm -f "$e2e/lock_hold"
+wait "$lock_holder" "$skipping_batch"
+check "then it takes the lock, merges and restarts the check" "[[ \$(<$e2e/skipping.rc) == 0 ]] && logged 'merge 2 held' && checking"
 stop_all
 
 if systemd-run --user --collect --quiet true 2>/dev/null; then

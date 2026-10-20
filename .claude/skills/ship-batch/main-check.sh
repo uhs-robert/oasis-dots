@@ -61,13 +61,20 @@ cmd_run() {
   # bash runs this once the foreground command ends, so a stopped check exits before it can record a failure.
   trap 'exit 143' TERM INT
   # The run lock is closed for everything this starts: a daemon a step leaves behind (a shadow's Hyprland or qs) would
-  # otherwise hold it and read as a check running forever. tee ignores the stop's TERM, which reaches the whole group: dead,
-  # it would turn bash's "Terminated" report on the killed step into a SIGPIPE that ends this shell before the trap runs.
-  # It still ends with this shell, at end of file.
-  exec > >(
-    trap '' TERM INT
-    exec tee "$log" 8>&-
-  ) 2>&1
+  # otherwise hold it and read as a check running forever. Such a daemon also keeps the log open, so the log is truncated
+  # once and then only appended to: a write at the old offset would leave the next check's log full of NULs.
+  : >"$log"
+  if $notify; then
+    exec >>"$log" 2>&1
+  else
+    # The foreground check also shows on ship-batch's output. tee ignores the stop's TERM, which reaches the whole group:
+    # dead, it would turn bash's "Terminated" report on the killed step into a SIGPIPE that ends this shell before the
+    # trap runs. It still ends with this shell, at end of file.
+    exec > >(
+      trap '' TERM INT
+      exec tee -a "$log" 8>&-
+    ) 2>&1
+  fi
   cd "$repo" || exit 1
   echo "main-check: checking ${after:0:12} from ${check_from:0:12}"
   run_checks "$after" "$check_from" 8>&- || checks_passed=false
@@ -91,26 +98,36 @@ cmd_run() {
   else
     write_result "fail $after $(date +%s) $log"
     echo "main-check: FAILED; the check of ${check_from:0:12} stays owed"
+    # Released first: a notification daemon that is slow to activate would hold up every batch.
+    exec 6>&-
     ! $notify || notify-send -u critical "main check failed" "${after:0:12}: $log" 8>&- 2>/dev/null || true
     exit 1
   fi
 }
 
-# Blocks until no check runs (at most MAIN_CHECK_WAIT_SECS for each lock), then reports whether main is green: 0 when
-# nothing is owed, 1 when the last check failed or a check is owed but not running. The ship lock is taken once as a
-# barrier, since a batch stops and restarts the check while holding it and the gap in between must not read as "not running".
+# Blocks until no check runs (at most MAIN_CHECK_WAIT_SECS for each lock, and for a suspension), then reports whether main
+# is green: 0 when nothing is owed, 1 when the last check failed or a check is owed but not running. The ship lock is taken
+# once as a barrier, since a batch stops and restarts the check while holding it and the gap in between must not read as
+# "not running"; a batch that stopped it for its branch checks holds no lock, and its suspended marker stands in for it.
 cmd_wait() {
-  local owed
+  local owed wait_s=${MAIN_CHECK_WAIT_SECS:-1800} suspended_until=''
   while :; do
-    flock -w "${MAIN_CHECK_WAIT_SECS:-1800}" "$(main_check_path "$repo" lock)" true || {
+    flock -w "$wait_s" "$(main_check_path "$repo" lock)" true || {
       echo "main-check: the check of main has run for too long; see $log" >&2
       return 1
     }
-    flock -w "${MAIN_CHECK_WAIT_SECS:-1800}" "$(dirname "$log")/ship-batch.lock" true || {
+    flock -w "$wait_s" "$(dirname "$log")/ship-batch.lock" true || {
       echo "main-check: a ship-batch has held the main checkout for too long" >&2
       return 1
     }
-    main_check_is_running "$repo" || break
+    main_check_is_running "$repo" && continue
+    [[ -n $(main_check_suspended_by "$repo") ]] || break
+    : "${suspended_until:=$((SECONDS + wait_s))}"
+    ((SECONDS < suspended_until)) || {
+      echo "main-check: a ship-batch has kept the check of main stopped for too long" >&2
+      return 1
+    }
+    sleep 1
   done
   owed=$(owed_check "$repo")
   [[ -n $owed ]] || {
@@ -127,8 +144,15 @@ cmd_wait() {
 }
 
 cmd_status() {
-  local owed
-  if main_check_is_running "$repo"; then echo "running; log $log"; else echo "not running"; fi
+  local owed suspended_by
+  suspended_by=$(main_check_suspended_by "$repo")
+  if main_check_is_running "$repo"; then
+    echo "running; log $log"
+  elif [[ -n $suspended_by ]]; then
+    echo "stopped while ship-batch (pid $suspended_by) checks its branches; it starts the check again"
+  else
+    echo "not running"
+  fi
   owed=$(owed_check "$repo")
   echo "owed from: ${owed:-nothing}"
   echo "last result: $(cat "$result" 2>/dev/null || echo none)"
