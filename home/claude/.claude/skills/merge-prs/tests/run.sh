@@ -415,6 +415,15 @@ check "exits 0" "[[ $code == 0 ]]"
 check "requests a review" "grep -q '^commented=1' '$GH_STATE'"
 check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
 
+echo "== --wait-review: the first wait runs out on a Running review that ends Unreviewed"
+setup
+printf 'codex_running_reads=2\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=1 MERGE_PRS_REVIEW_WAIT=2 timeout 60 "$script" --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "requests a review" "grep -q '^commented=1' '$GH_STATE'"
+check "waits for the requested review and merges" "[[ $code == 0 ]] && grep -q '^7 merged (rebase)' <<<\"\$out\""
+
 echo "== --wait-review: Codex keeps answering without a commit"
 setup
 printf 'codex=Completed\ncodex_never_reviews=1\n' >>"$GH_STATE"
