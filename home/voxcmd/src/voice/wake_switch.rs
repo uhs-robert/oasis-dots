@@ -29,13 +29,13 @@ pub fn run(switch: Switch) -> Result<Option<String>, CliError> {
     }
 }
 
-/// Whether `systemctl --user <args>` succeeded, and what it printed.
-fn systemctl(args: &[&str]) -> (bool, String) {
+/// Whether `systemctl --user <args>` succeeded, and what it printed. `stderr` is where its complaints go.
+fn systemctl(args: &[&str], stderr: Stdio) -> (bool, String) {
     let output = Command::new("systemctl")
         .arg("--user")
         .args(args)
         .stdin(Stdio::null())
-        .stderr(Stdio::inherit())
+        .stderr(stderr)
         .output();
     match output {
         Ok(output) => (
@@ -49,7 +49,8 @@ fn systemctl(args: &[&str]) -> (bool, String) {
 /// `activating` counts: the first start downloads the models before the listener runs.
 fn is_on() -> bool {
     matches!(
-        systemctl(&["is-active", UNIT]).1.trim_end_matches('\n'),
+        // Silent: a missing bus or unit just means off.
+        systemctl(&["is-active", UNIT], Stdio::null()).1.trim_end_matches('\n'),
         "active" | "activating" | "reloading"
     )
 }
@@ -60,7 +61,7 @@ fn switch_on() -> Result<(), CliError> {
         return Ok(());
     }
     // --no-block: the first start waits on the model download.
-    if !systemctl(&["start", "--no-block", UNIT]).0 {
+    if !systemctl(&["start", "--no-block", UNIT], Stdio::inherit()).0 {
         notify::notify(Kind::Info, "Wake word", &format!("Could not start {UNIT}"));
         return Err(CliError::quiet(SUBCOMMAND));
     }
@@ -70,7 +71,7 @@ fn switch_on() -> Result<(), CliError> {
 
 /// Says the microphone is released only once the unit has stopped: a failed stop leaves the listener holding it.
 fn switch_off() -> Result<(), CliError> {
-    if !systemctl(&["stop", UNIT]).0 || is_on() {
+    if !systemctl(&["stop", UNIT], Stdio::inherit()).0 || is_on() {
         notify::notify(
             Kind::Info,
             "Wake word",

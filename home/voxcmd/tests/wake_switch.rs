@@ -121,3 +121,16 @@ fn a_stop_that_leaves_the_unit_running_fails_without_claiming_release() {
     assert!(wake.calls().contains("may still be in use"));
     assert!(!wake.calls().contains("Microphone released"));
 }
+
+#[test]
+fn the_is_active_probe_keeps_systemctl_s_complaints_to_itself() {
+    let wake = Wake::new();
+    write_stub(
+        &wake.root.path().join("bin"),
+        "systemctl",
+        "#!/bin/sh\ncase \"$*\" in *is-active*) echo 'Failed to connect to bus' >&2; echo inactive; exit 3 ;; esac\n",
+    );
+    let status = wake.voxcmd(&["wake", "status"]);
+    assert_eq!(status.status.code(), Some(1));
+    assert_eq!(String::from_utf8_lossy(&status.stderr), "");
+}
