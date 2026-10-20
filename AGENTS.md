@@ -113,7 +113,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 - String-built paths and table-driven loads: `qml-paths` (`lib/check/steps/qml_paths.py`) lists the rules and the `// qs-path:` markers.
 - Singleton names: `qml-singleton-names`; `QS/README.md` "Naming singletons".
 - Where a new file goes (not machine-checked): shared by several features and style-neutral, `ui/`; used by one feature, that feature's folder; one style's drawing, that feature if one uses it, else `styles/<name>/`. Exception: a single-style widget with three or more consumers (`MateriaOrb`, `VisorGlass`, `HandCursor`) lives in `ui/`.
-- Greeter-staged files: any file the greeter loads is listed in `lib/common/greeter-files.sh`, edited in the PR that adds, moves or deletes it; ship-batch re-syncs the greeter from that list. A lock skin imports nothing outside it.
+- Greeter-staged files: any file the greeter loads is listed in `lib/common/greeter-files.sh`, edited in the PR that adds, moves or deletes it; ship-batch re-syncs the greeter from that list. A lock skin imports only files the greeter stages (not another skin, not `qs.services`); the contract is `home/quickshell/.config/quickshell/features/lock/README.md`, "A lock skin".
 - Tests: a check step's tests are `lib/check/tests/test_<step>.py`; a runtime QML test is `home/quickshell/tests/<name>/run.sh` with its own Step and `PATH_SCOPES` rule in `lib/check/scopes.py`. Run them through `lib/check.sh --only <step>` so the pass counts.
 - Docs: `readme-links` (`lib/check/steps/readme_links.py`) fails a dead link, anchor or backticked path in a Quickshell README. It does not read this file.
 
