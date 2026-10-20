@@ -51,6 +51,19 @@
   },
   "model": "opus",
   "skillOverrides": {
+    "anthropic-skills:built-in-browser": "user-invocable-only",
+    "anthropic-skills:chrome-browser": "user-invocable-only",
+    "anthropic-skills:computer-use": "user-invocable-only",
+    "anthropic-skills:deep-research": "user-invocable-only",
+    "anthropic-skills:docs": "user-invocable-only",
+    "anthropic-skills:docx": "user-invocable-only",
+    "anthropic-skills:google-workspace": "user-invocable-only",
+    "anthropic-skills:import-memory": "user-invocable-only",
+    "anthropic-skills:morning": "user-invocable-only",
+    "anthropic-skills:pdf": "user-invocable-only",
+    "anthropic-skills:pptx": "user-invocable-only",
+    "anthropic-skills:skill-creator": "user-invocable-only",
+    "anthropic-skills:xlsx": "user-invocable-only",
     "caveman:caveman-commit": "off",
     "simplify": "off"
   },
@@ -226,5 +239,8 @@
         "instructionFiles": "claude-md-or-agents-md"
       }
     }
-  }
+  },
+  "disableClaudeAiConnectors": true,
+  "disableWorkflows": true,
+  "enableArtifact": false
 }
