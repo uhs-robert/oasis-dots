@@ -6,6 +6,8 @@
 use super::router::Router;
 use super::sequence;
 use crate::cli::ExplainArgs;
+use crate::click::driver::WindowSel;
+use crate::click::explain::{self, ClickTrace, ExplainSink};
 use crate::config::Config;
 use crate::exit::CliError;
 use crate::hooks::{Dispatch, HookRun, Hooks, LegacyHooks, NoHooks, ShellHooks};
@@ -22,7 +24,7 @@ pub struct Explain {
     pub sequence: Option<SequenceTrace>,
     /// One per step; one for a plain phrase; none for a refused sequence.
     pub steps: Vec<StepTrace>,
-    /// The click trace (`--window`): 2.5.
+    /// The click traces (`--window`), one per click the routing asked the screen about; empty when none was.
     pub click: Option<serde_json::Value>,
     /// The reply trace (`--reply`).
     pub reply: Option<crate::ask::reply::ReplyTrace>,
@@ -405,16 +407,30 @@ impl Explain {
     }
 }
 
+/// The window `--window` names: `focused`, or a Hyprland stable id.
+fn window_of(name: &str) -> Result<WindowSel, CliError> {
+    match name {
+        "" => Err(CliError::usage(
+            "explain",
+            "--window needs `focused` or a window's stable id",
+        )),
+        "focused" => Ok(WindowSel::Focused),
+        id => Ok(WindowSel::StableId(id.to_string())),
+    }
+}
+
 /// `voxcmd explain <phrase>`.
 pub fn run(args: ExplainArgs) -> Result<String, CliError> {
-    if args.window.is_some() {
-        return Err(CliError::not_implemented("explain --window", "2.5"));
-    }
     if args.reply {
+        if args.window.is_some() {
+            return Err(CliError::usage("explain", "--window and --reply cannot be combined"));
+        }
         return crate::ask::reply::explain(&args.phrase.join(" "), args.json);
     }
+    let window = args.window.as_deref().map(window_of).transpose()?;
     let config_dir = crate::paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("explain", message))?;
+    let sink = ExplainSink::default();
     // A dump given as a file turns every hook off, TOML ones too: the latency test routes phrases that reach TOML
     // hooks, and a bash start per hook would measure bash, not routing.
     let hooks: Box<dyn Hooks> = if crate::paths::legacy_dump_override().is_some() {
@@ -426,12 +442,23 @@ pub fn run(args: ExplainArgs) -> Result<String, CliError> {
             config.integrations.iter().map(|integration| integration.stem.clone()),
             true,
         );
-        Box::new(Dispatch::new(shell, Box::new(LegacyHooks::new(config_dir))))
+        let dispatch = Dispatch::new(shell, Box::new(LegacyHooks::new(config_dir)));
+        match window {
+            // The click section comes from the capture the routing makes, so there is one capture, not two.
+            Some(window) => Box::new(dispatch.tracing(window, ExplainSink::clone(&sink))),
+            None => Box::new(dispatch),
+        }
     };
     let router = Router::new(&config, hooks.as_ref());
-    let explain = sequence::explain_phrase(&router, &args.phrase.join(" "));
+    let mut explain = sequence::explain_phrase(&router, &args.phrase.join(" "));
+    let traces: Vec<ClickTrace> = std::mem::take(&mut *sink.lock().expect("no panic holds the lock"));
+    if args.window.is_some() {
+        explain.click = Some(serde_json::Value::Array(traces.iter().map(ClickTrace::json).collect()));
+    }
     if args.json {
         serde_json::to_string_pretty(&explain).map_err(|error| CliError::failed("explain", error.to_string()))
+    } else if args.window.is_some() {
+        Ok(format!("{}\n\n{}", explain.text(), explain::sections_text(&traces)))
     } else {
         Ok(explain.text())
     }

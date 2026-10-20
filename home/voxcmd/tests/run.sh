@@ -688,7 +688,7 @@ config=$root/config
 mkdir -p "$config/integrations.d" "$config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/click.sh" "$package/.config/voxcmd/integrations.d/keybinds.sh" "$config/integrations.d/"
 export VOXCMD_CONFIG_DIR=$config
-# The bash form of the new CLI, for click-explain, which stays on bash until 2.5d.
+# The bash form of the new CLI, for the sections 2.5 has not moved to the Rust build.
 voxcmd=$package/tests/bin/voxcmd
 # What routes and runs the phrases: the same, or under VOXCMD_BIN=rs the Rust build, which asks the bash voxcmd only for
 # the integrations it has not taken over (keybinds.sh, click mode). That bash voxcmd sits behind a logger, so a check can
@@ -935,9 +935,17 @@ fi
 section "click-explain"
 # `voxcmd explain --window focused click` runs the same candidates() as a click, tracing; these check each reason line, and that it only
 # reads. The window is the covered-text section's: "Sign in" centred at 175,82 and "Settings" at 230,132.
-# The shim spells the focused window "--window focused" (see tests/bin/voxcmd).
-explain() { "$voxcmd" explain --window focused click "$@" 2>&1; }
-explain_window() { "$voxcmd" explain --window "$1" click "${@:2}" 2>&1; }
+# The shim spells the focused window "--window focused" (see tests/bin/voxcmd); the Rust build takes it as it is, and
+# prints the routing text before the click section.
+explain_bin=$voxcmd
+if [ -n "$rust_matcher" ]; then
+  explain_bin=$rust_matcher
+  # The numbered picks of an earlier run of this file re-export the legacy binary past the logger; name it here.
+  export VOXCMD_LEGACY_BIN=$root/legacy-logger
+fi
+explain() { "$explain_bin" explain --window focused click "$@" 2>&1; }
+explain_window() { "$explain_bin" explain --window "$1" click "${@:2}" 2>&1; }
+: >"$SANDBOX_DIR/callers.log"
 SANDBOX_CLIENTS_JSON='[]'
 SANDBOX_TESSERACT_TSV=$({
   header
@@ -955,6 +963,7 @@ check "a run with no spoken word is not listed" "! grep -q 'settings(' <<<\"\$ou
 check "explain reads only: no click, no pointer move, no toast" "! grep -q 'wlrctl\|hyprctl dispatch\|hyprctl eval\|notify-send' '$log'"
 check "and it leaves no click target for a later click to trust" "[ ! -e '$XDG_RUNTIME_DIR/voxcmd/click-target' ]"
 check "the capture and the trace are deleted" "! ls '$XDG_RUNTIME_DIR' | grep -q 'voxcmd-click\|voxcmd-explain'"
+check "the routing and the click section share one capture: grim ran once for the phrase" "[[ \$(grep -c '^grim' '$log') == 1 ]]"
 check "it agrees with the real route on where it clicks" "[[ \$(runs_at 'click sign in') == 175,82 ]]"
 
 SANDBOX_TESSERACT_TSV=$({
@@ -1031,6 +1040,14 @@ traced=$(bash -c "$word_match_source"'
 word_match_trace=1 word_match settings "$1"' _ "$twelve_weak")
 check "the trace keeps only the ten weak matches the real pick keeps" "[[ \$(jq '[.[] | select(.kept)] | length' <<<\"\$traced\") == 10 && \$(jq '[.[] | select(.verdict == \"dropped: past the ten best weak matches\")] | length' <<<\"\$traced\") == 2 ]]"
 check "explain never clicked or moved across all of the above" "! grep -q 'wlrctl\|hyprctl dispatch\|hyprctl eval\|notify-send' '$log'"
+if [ -n "$rust_matcher" ]; then
+  rust_real=$(realpath "$rust_matcher")
+  # The shim form prints no routing text: a trace that starts at the window line came from the bash click-explain.
+  out=$(explain "sign in")
+  check "the Rust trace prints the routing text first, then the click section" "[[ \$(head -1 <<<\"\$out\") == 'transcript:  click sign in' ]] && [[ \$(grep -n '^window   ' <<<\"\$out\" | head -1 | cut -d: -f1) -gt \$(grep -n '^why:' <<<\"\$out\" | head -1 | cut -d: -f1) ]]"
+  check "every capture of the click-explain checks came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
+  check "bash's click-explain was never asked, and the logger that would show it sees the bash voxcmd" "[[ -s '$legacy_calls' ]] && ! grep -Eq 'click-explain|^_legacy-hook candidates [^ ]*/click\.sh ' '$legacy_calls'"
+fi
 
 section "failures and toasts"
 # click_at as voxcmd would eval it, with the stubs logging instead of acting.

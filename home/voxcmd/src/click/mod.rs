@@ -6,6 +6,7 @@ pub mod bridge_map;
 pub mod capture;
 pub mod covering;
 pub mod driver;
+pub mod explain;
 #[cfg(test)]
 mod goldens;
 pub mod internal;

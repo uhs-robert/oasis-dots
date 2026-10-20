@@ -7,21 +7,45 @@
 use super::capture::Tools;
 use super::covering;
 use super::driver::{self, Mode, WindowSel};
-use super::matcher::{Options, match_stream};
+use super::explain::{
+    ClickTrace, CoveredAt, ExplainSink, InfoTrace, PassTrace, TraceKind, VerdictAt, outcome_of, point_of,
+};
+use super::matcher::{Options, Pass, match_stream};
 use super::words::FILLER_WORDS;
 use crate::config::schema::{Builtin, Button, Candidates, Integration, Provider};
 use crate::hooks::{Candidate, HookQuery, HookRun, Hooks, Lookup};
 use crate::hypr;
-use crate::route::resolve::word_match;
+use crate::route::resolve::judge;
 use serde_json::{Value, json};
 use std::time::Instant;
 
-#[derive(Default)]
 pub struct BuiltinHooks {
     tools: Tools,
+    /// `explain --window`: where each answer leaves its trace, and which window it reads. A click proper has neither.
+    explain: Option<ExplainSink>,
+    window: WindowSel,
+}
+
+impl Default for BuiltinHooks {
+    fn default() -> Self {
+        Self {
+            tools: Tools::default(),
+            explain: None,
+            window: WindowSel::Focused,
+        }
+    }
 }
 
 impl BuiltinHooks {
+    /// Hooks for `explain --window`: they read `window`, write no click-target, and record a trace of every answer.
+    pub fn tracing(window: WindowSel, sink: ExplainSink) -> Self {
+        Self {
+            explain: Some(sink),
+            window,
+            ..Self::default()
+        }
+    }
+
     fn screen_text(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         let mut run = HookRun::unhooked(
             integration,
@@ -34,25 +58,61 @@ impl BuiltinHooks {
         run.lookup = Lookup::Candidates(Vec::new());
         if has_target_word(query.target, ignored) {
             let started = Instant::now();
-            let found = self.read(query.target, button_of(integration, query.action), ignored);
+            let (found, trace) = self.read(query.target, button_of(integration, query.action), ignored);
             run.millis = started.elapsed().as_secs_f64() * 1000.0;
             run.lines.clone_from(&found);
             run.lookup = Lookup::Candidates(found);
+            self.record(trace);
+        } else {
+            self.record(Some(ClickTrace::filler_only(query.target)));
         }
         run
     }
 
-    fn read(&self, target: &str, button: Button, ignored: &[String]) -> Vec<Candidate> {
+    fn record(&self, trace: Option<ClickTrace>) {
+        if let (Some(sink), Some(trace)) = (&self.explain, trace) {
+            sink.lock().expect("no panic holds the lock").push(trace);
+        }
+    }
+
+    /// The candidates for the target in the window, and, under `explain --window`, the trace of how they were found.
+    fn read(&self, target: &str, button: Button, ignored: &[String]) -> (Vec<Candidate>, Option<ClickTrace>) {
+        let explaining = self.explain.is_some();
         // The capture writes click-target even for a dry run: a route is what records the window the click will check.
-        let captured = match driver::capture_page(&WindowSel::Focused, Mode::Click, None, &self.tools) {
+        // A trace is not a route to a click, so it leaves the record alone.
+        let mode = if explaining { Mode::Explain } else { Mode::Click };
+        let captured = match driver::capture_page(&self.window, mode, None, &self.tools) {
             Ok(captured) => captured,
-            Err(error) => return vec![error_candidate(&error.message, target)],
+            Err(error) => {
+                let candidate = error_candidate(&error.message, target);
+                let trace = explaining.then(|| ClickTrace::failed(target, &candidate.label));
+                return (vec![candidate], trace);
+            }
         };
         let stream = String::from_utf8_lossy(&captured.stream);
         // One snapshot of the focused window serves the capture and the covering check (the bash asked twice).
         let clients = hypr::clients().unwrap_or_else(|| json!([]));
         let monitors = hypr::monitors().unwrap_or_else(|| json!([]));
-        candidates_in(&stream, &captured.window, &clients, &monitors, button, target, ignored)
+        let reading = read_stream(
+            &stream,
+            &captured.window,
+            &clients,
+            &monitors,
+            button,
+            target,
+            ignored,
+            explaining,
+        );
+        let trace = explaining.then(|| ClickTrace {
+            target: target.to_string(),
+            kind: TraceKind::Run,
+            info: Some(InfoTrace::from(&captured.info)),
+            outcome: outcome_of(&reading.candidates, target, ignored),
+            passes: reading.passes,
+            used_pass: reading.used,
+            covered: reading.covered,
+        });
+        (reading.candidates, trace)
     }
 }
 
@@ -115,41 +175,141 @@ struct Found {
     candidate: Candidate,
 }
 
-/// The matcher's candidates over the stream: whole runs first, then, when word matching keeps none of those, the
-/// sub-spans of runs (the target may be part of a longer run of words, "2 tasks" in a sentence). When there are no
-/// spans either, the whole runs stay.
-fn matched(stream: &str, target: &str, button: Button, ignored: &[String]) -> Vec<Found> {
-    let pass = |spans_only: bool| -> Vec<Found> {
-        let output = match_stream(stream, target, Options::new(spans_only, false));
-        // The awk dying leaves jq an empty input and so an empty list.
-        if output.error.is_some() {
-            return Vec::new();
-        }
-        output
-            .candidates
-            .iter()
-            .map(|found| Found {
-                x: found.x,
-                y: found.y,
-                candidate: Candidate {
-                    id: found.id(button.name()),
-                    label: found.label.clone(),
-                    match_text: Some(found.match_text.clone()),
-                    weak: false,
-                },
-            })
-            .collect()
-    };
-    let whole = pass(false);
-    let candidates: Vec<Candidate> = whole.iter().map(|found| found.candidate.clone()).collect();
-    if word_match(target, &candidates, ignored).is_some_and(|kept| !kept.is_empty()) {
-        return whole;
-    }
-    let spans = pass(true);
-    if spans.is_empty() { whole } else { spans }
+/// What the matcher and the covering check made of the stream: the candidates a click is offered, and, when asked, the
+/// trace of how.
+pub struct Reading {
+    pub candidates: Vec<Candidate>,
+    pub passes: Vec<PassTrace>,
+    pub used: Pass,
+    pub covered: Vec<CoveredAt>,
 }
 
-/// The candidates for the target over click-ocr's stream of `window`, with what is drawn over it taken out.
+/// The matcher's candidates over the stream: whole runs first, then, when word matching keeps none of those, the
+/// sub-spans of runs (the target may be part of a longer run of words, "2 tasks" in a sentence). When there are no
+/// spans either, the whole runs stay. Returns the passes it ran and the one whose candidates it kept.
+fn matched(
+    stream: &str,
+    target: &str,
+    button: Button,
+    ignored: &[String],
+    explain: bool,
+) -> (Vec<Found>, Vec<PassTrace>, Pass) {
+    let pass = |spans_only: bool| -> (Vec<Found>, PassTrace) {
+        let output = match_stream(stream, target, Options::new(spans_only, explain));
+        // The awk dying leaves jq an empty input and so an empty list.
+        let found: Vec<Found> = if output.error.is_some() {
+            Vec::new()
+        } else {
+            output
+                .candidates
+                .iter()
+                .map(|found| Found {
+                    x: found.x,
+                    y: found.y,
+                    candidate: Candidate {
+                        id: found.id(button.name()),
+                        label: found.label.clone(),
+                        match_text: Some(found.match_text.clone()),
+                        weak: false,
+                    },
+                })
+                .collect()
+        };
+        let trace = PassTrace {
+            pass: if spans_only { Pass::Spans } else { Pass::Whole },
+            events: output.trace,
+            verdicts: Vec::new(),
+        };
+        (found, trace)
+    };
+    // The verdicts are word matching's own, so the trace and the real pick read the same rules.
+    let judged = |found: &[Found], trace: &mut PassTrace| -> bool {
+        let candidates: Vec<Candidate> = found.iter().map(|found| found.candidate.clone()).collect();
+        let judged = judge(target, &candidates, ignored).unwrap_or_default();
+        if explain {
+            trace.verdicts = judged
+                .iter()
+                .map(|one| VerdictAt {
+                    point: point_of(&one.candidate.id),
+                    kept: one.kept,
+                    weak: one.weak,
+                    verdict: one.verdict.to_string(),
+                })
+                .collect();
+        }
+        judged.iter().any(|one| one.kept)
+    };
+    let (whole, mut whole_trace) = pass(false);
+    if judged(&whole, &mut whole_trace) {
+        return (whole, vec![whole_trace], Pass::Whole);
+    }
+    let (spans, mut spans_trace) = pass(true);
+    judged(&spans, &mut spans_trace);
+    let passes = vec![whole_trace, spans_trace];
+    if spans.is_empty() {
+        (whole, passes, Pass::Whole)
+    } else {
+        (spans, passes, Pass::Spans)
+    }
+}
+
+/// The candidates for the target over click-ocr's stream of `window`, with what is drawn over it taken out, and with
+/// `explain` the trace of how they came to be.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one reading of one capture; a struct would only rename the arguments"
+)]
+pub fn read_stream(
+    stream: &str,
+    window: &Value,
+    clients: &Value,
+    monitors: &Value,
+    button: Button,
+    target: &str,
+    ignored: &[String],
+    explain: bool,
+) -> Reading {
+    let (found, passes, used) = matched(stream, target, button, ignored, explain);
+    let seen = found.len();
+    let covers: Vec<Option<covering::Cover>> = found
+        .iter()
+        .map(|found| covering::covered_by(found.x, found.y, window, clients, monitors))
+        .collect();
+    let covered: Vec<CoveredAt> = if explain {
+        found
+            .iter()
+            .zip(&covers)
+            .map(|(found, cover)| CoveredAt::new(point_of(&found.candidate.id), *cover))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let visible: Vec<Candidate> = found
+        .into_iter()
+        .zip(&covers)
+        .filter(|(_, cover)| cover.is_none())
+        .map(|(found, _)| found.candidate)
+        .collect();
+    let candidates = if visible.is_empty() && seen > 0 {
+        vec![Candidate {
+            id: "covered:".to_string(),
+            label: "covered".to_string(),
+            match_text: Some(target.to_string()),
+            weak: false,
+        }]
+    } else {
+        visible
+    };
+    Reading {
+        candidates,
+        passes,
+        used,
+        covered,
+    }
+}
+
+/// `read_stream` without the trace.
+#[cfg(test)]
 pub fn candidates_in(
     stream: &str,
     window: &Value,
@@ -159,22 +319,7 @@ pub fn candidates_in(
     target: &str,
     ignored: &[String],
 ) -> Vec<Candidate> {
-    let found = matched(stream, target, button, ignored);
-    let seen = found.len();
-    let visible: Vec<Candidate> = found
-        .into_iter()
-        .filter(|found| covering::covered_by(found.x, found.y, window, clients, monitors).is_none())
-        .map(|found| found.candidate)
-        .collect();
-    if visible.is_empty() && seen > 0 {
-        return vec![Candidate {
-            id: "covered:".to_string(),
-            label: "covered".to_string(),
-            match_text: Some(target.to_string()),
-            weak: false,
-        }];
-    }
-    visible
+    read_stream(stream, window, clients, monitors, button, target, ignored, false).candidates
 }
 
 #[cfg(test)]

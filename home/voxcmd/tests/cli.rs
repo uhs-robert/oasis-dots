@@ -24,11 +24,6 @@ fn stderr(output: &Output) -> String {
 
 /// (argv, subcommand named in the message, port item that implements it)
 const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
-    (
-        &["explain", "--window", "focused", "click", "close"],
-        "explain --window",
-        "2.5",
-    ),
     (&["wake", "on"], "wake", "2.6"),
     (&["wake", "status"], "wake", "2.6"),
     (&["wake", "listen", "--check"], "wake listen", "4.1"),

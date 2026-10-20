@@ -7,6 +7,8 @@
 //!
 //! `VOXCMD_INTEGRATION` is the integration's file stem. A hook output line with four or more tab fields fails the hook.
 //! Background children a `candidates` hook leaves behind are killed when it exits.
+use crate::click::driver::WindowSel;
+use crate::click::explain::ExplainSink;
 use crate::click::provider::BuiltinHooks;
 use crate::config::schema::{Candidates, Format, Integration, Surface};
 use crate::debug::debug;
@@ -541,6 +543,12 @@ impl Dispatch {
             legacy,
             builtin: BuiltinHooks::default(),
         }
+    }
+
+    /// The same hooks with the built-in providers tracing what they read (`explain --window`).
+    pub fn tracing(mut self, window: WindowSel, sink: ExplainSink) -> Self {
+        self.builtin = BuiltinHooks::tracing(window, sink);
+        self
     }
 
     fn for_format(&self, integration: &Integration) -> &dyn Hooks {

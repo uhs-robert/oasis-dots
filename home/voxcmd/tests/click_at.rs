@@ -43,7 +43,9 @@ impl Rig {
         );
         rig.script(
             "grim",
-            "for out; do :; done\n{ printf 'P6\\n256 154\\n255\\n'; head -c 118272 /dev/zero; } > \"$out\"",
+            &format!(
+                "{log}\nfor out; do :; done\n{{ printf 'P6\\n256 154\\n255\\n'; head -c 118272 /dev/zero; }} > \"$out\""
+            ),
         );
         rig.script(
             "magick",
@@ -53,7 +55,7 @@ impl Rig {
         // that was captured.
         rig.script(
             "tesseract",
-            "[ ! -f \"$WORK/switch-during-ocr\" ] || cp \"$WORK/switch-during-ocr\" \"$WORK/activewindow.json\"\ncat \"$WORK/tsv\"",
+            "echo run >> \"$WORK/ocr-runs\"\n[ ! -f \"$WORK/switch-during-ocr\" ] || cp \"$WORK/switch-during-ocr\" \"$WORK/activewindow.json\"\ncat \"$WORK/tsv\"",
         );
         rig.script(
             "wlrctl",
@@ -721,4 +723,250 @@ fn a_click_sh_with_an_edited_click_command_stays_on_the_bridge() {
             .any(|call| call.starts_with("_legacy-hook candidates ") && call.ends_with(" click sign in")),
         "the edited file's candidates() must be asked: {calls:?}"
     );
+}
+
+// ---- explain --window ----
+
+impl Rig {
+    /// `explain --window <window> <phrase>`: the output and the exit code.
+    fn explain_window(&self, window: &str, phrase: &str) -> (String, Option<i32>) {
+        let output = self.command(&["explain", "--window", window, phrase]).output().unwrap();
+        (text(&output), output.status.code())
+    }
+
+    fn ocr_runs(&self) -> usize {
+        std::fs::read_to_string(self.work().join("ocr-runs")).map_or(0, |runs| runs.lines().count())
+    }
+
+    fn grim_calls(&self) -> usize {
+        self.calls_of("grim").len()
+    }
+
+    fn untouched_by_a_click(&self) -> bool {
+        !self.moved() && self.calls_of("wlrctl").is_empty() && self.toasts().is_empty()
+    }
+}
+
+#[test]
+fn the_click_section_follows_the_routing_text_and_shares_its_single_capture() {
+    let rig = Rig::new();
+    let (out, code) = rig.explain_window("focused", "click sign in");
+    assert_eq!(code, Some(0), "{out}");
+    let routing = out.find("transcript:  click sign in").expect(&out);
+    let window = out.find("\nwindow   ").expect(&out);
+    assert!(routing < window, "routing text first: {out}");
+    assert!(out.contains("capture  toplevel, image 256x154, scale x1.600 y1.604, not inverted, 1 strip(s), OCR "));
+    assert!(
+        out.contains("candidate 175,82 \"sign\": kept strong (same words)")
+            || out.contains("candidate 175,82 \"sign in\": kept strong (same words)"),
+        "{out}"
+    );
+    assert!(out.contains("\noutcome  click at 175,82"), "{out}");
+    // The routing half and the click section read one capture: a second would shoot and read the window again.
+    assert_eq!(rig.grim_calls(), 1, "{:?}", rig.calls());
+    assert_eq!(rig.ocr_runs(), 1);
+    assert!(rig.untouched_by_a_click(), "{:?}", rig.calls());
+    assert!(!rig.target_file().exists(), "a trace leaves no click-target");
+}
+
+#[test]
+fn the_routing_half_still_runs_under_the_trace_and_agrees_with_it() {
+    let rig = Rig::new();
+    let (out, _) = rig.explain_window("focused", "click sign in");
+    assert_eq!(runs_at(&out), "175,82", "{out}");
+    assert!(out.contains("\nwhy:\n"), "{out}");
+}
+
+#[test]
+fn a_window_by_stable_id_is_captured_by_that_id_and_named() {
+    let rig = Rig::new();
+    rig.set(
+        "clients.json",
+        r#"[{"address": "0x4001", "mapped": true, "hidden": false, "class": "other", "stableId": "18000009", "at": [100, 50], "size": [160, 96], "floating": false, "pinned": false, "monitor": 0, "workspace": {"id": 1}}]"#,
+    );
+    let (out, code) = rig.explain_window("18000009", "click sign in");
+    assert_eq!(code, Some(0), "{out}");
+    assert!(out.contains("\nwindow   other 160x96\n"), "{out}");
+    let grim = rig.calls_of("grim");
+    assert_eq!(grim.len(), 1, "{grim:?}");
+    assert!(grim[0].contains("-T 18000009"), "{grim:?}");
+    assert!(rig.untouched_by_a_click());
+}
+
+#[test]
+fn an_unknown_window_is_a_section_that_says_so_and_the_routing_text_still_prints() {
+    let rig = Rig::new();
+    let (out, code) = rig.explain_window("99999", "click sign in");
+    assert_eq!(code, Some(0), "{out}");
+    assert!(out.contains("transcript:  click sign in"), "{out}");
+    assert!(
+        out.contains(
+            "\ntarget   \"sign in\"\noutcome  capture or OCR failed (no such window); a toast says the click failed"
+        ),
+        "{out}"
+    );
+    assert_eq!(rig.grim_calls(), 0);
+    assert!(rig.untouched_by_a_click());
+}
+
+#[test]
+fn no_focused_window_is_the_same_section() {
+    let rig = Rig::new();
+    rig.set("activewindow.json", "{}");
+    let (out, _) = rig.explain_window("focused", "click sign in");
+    assert!(out.contains("capture or OCR failed (no focused window)"), "{out}");
+}
+
+#[test]
+fn an_empty_window_is_a_usage_error_and_reads_nothing() {
+    let rig = Rig::new();
+    let (out, code) = rig.explain_window("", "click sign in");
+    assert_eq!(code, Some(2), "{out}");
+    assert!(out.contains("--window"), "{out}");
+    assert_eq!(rig.grim_calls(), 0);
+    let output = rig.command(&["explain", "--window"]).output().unwrap();
+    assert_eq!(output.status.code(), Some(2), "a missing id is a usage error too");
+}
+
+#[test]
+fn a_filler_only_target_prints_no_capture_and_reads_nothing() {
+    let rig = Rig::new();
+    let (out, _) = rig.explain_window("focused", "click it");
+    assert!(
+        out.contains(
+            "target   \"it\"\noutcome  filler-only target: the screen is not read, and Keybinds' click binds get it"
+        ),
+        "{out}"
+    );
+    assert!(!out.contains("\nwindow   "), "{out}");
+    assert_eq!(rig.grim_calls(), 0);
+}
+
+#[test]
+fn a_phrase_that_never_reached_click_says_so() {
+    let rig = Rig::new();
+    let (out, code) = rig.explain_window("focused", "banana split");
+    assert_eq!(code, Some(0), "{out}");
+    assert!(
+        out.trim_end()
+            .ends_with("click     not reached: the phrase did not route to the Click integration"),
+        "{out}"
+    );
+    assert_eq!(rig.grim_calls(), 0);
+}
+
+#[test]
+fn a_candidate_under_the_bar_is_kept_by_word_matching_and_dropped_as_covered() {
+    let rig = Rig::new();
+    rig.set(
+        "monitors.json",
+        r#"[{"id": 0, "width": 1920, "height": 1080, "scale": 1, "transform": 0, "x": 0, "y": 0, "reserved": [0, 100, 0, 0]}]"#,
+    );
+    let (out, _) = rig.explain_window("focused", "click sign in");
+    assert!(
+        out.contains("kept strong (same words), then dropped: covered by a reserved edge (the bar)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("\noutcome  covered: every candidate is under another window or a reserved edge"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_sentence_runs_the_sub_span_pass() {
+    let rig = Rig::new();
+    rig.screen(&[
+        "5\t1\t1\t1\t1\t1\t10\t40\t12\t24\t95\t2",
+        "5\t1\t1\t1\t1\t2\t26\t40\t40\t24\t95\ttasks",
+        "5\t1\t1\t1\t1\t3\t70\t40\t30\t24\t95\tare",
+        "5\t1\t1\t1\t1\t4\t104\t40\t60\t24\t95\tflagged",
+        "5\t1\t1\t1\t1\t5\t168\t40\t50\t24\t95\ttoday",
+        "5\t1\t1\t1\t1\t6\t222\t40\t28\t24\t95\tnow",
+    ]);
+    let (out, _) = rig.explain_window("focused", "click 2 tasks");
+    assert!(out.contains("dropped: coverage under half: 2 of 6"), "{out}");
+    assert!(
+        out.contains("\npass 2: sub-spans of runs (no whole run was kept by word matching)\n"),
+        "{out}"
+    );
+    assert!(out.contains("sub-span, kept strong"), "{out}");
+}
+
+#[test]
+fn twelve_equal_weak_matches_keep_ten_and_drop_two_in_the_trace() {
+    let rig = Rig::new();
+    let rows: Vec<String> = (0..12)
+        .flat_map(|index| {
+            let top = 2 + index * 12;
+            [
+                format!("5\t1\t{block}\t1\t1\t1\t80\t{top}\t48\t10\t95\tOpen", block = index + 1),
+                format!(
+                    "5\t1\t{block}\t1\t1\t2\t136\t{top}\t96\t10\t95\tSettings",
+                    block = index + 1
+                ),
+            ]
+        })
+        .collect();
+    let refs: Vec<&str> = rows.iter().map(String::as_str).collect();
+    rig.screen(&refs);
+    let (out, _) = rig.explain_window("focused", "click settings");
+    assert_eq!(out.matches("kept weak").count(), 10, "{out}");
+    assert_eq!(
+        out.matches("dropped: past the ten best weak matches").count(),
+        2,
+        "{out}"
+    );
+}
+
+#[test]
+fn a_sequence_gets_one_section_per_click_and_one_capture_each() {
+    let rig = Rig::new();
+    let (out, _) = rig.explain_window("focused", "click sign in and then click settings");
+    assert_eq!(out.matches("\nwindow   ").count(), 2, "{out}");
+    assert!(
+        out.contains("outcome  click at 175,82") && out.contains("outcome  click at 230,132"),
+        "{out}"
+    );
+    assert_eq!(rig.grim_calls(), 2, "{:?}", rig.calls());
+    assert!(rig.untouched_by_a_click());
+}
+
+#[test]
+fn the_json_is_one_parseable_document_with_the_click_traces() {
+    let rig = Rig::new();
+    let output = rig
+        .command(&["explain", "--json", "--window", "focused", "click sign in"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    let document: serde_json::Value = serde_json::from_slice(&output.stdout).expect("stdout is one JSON document");
+    assert_eq!(document["phrase"], "click sign in");
+    assert!(document["steps"].is_array());
+    let click = document["click"].as_array().expect("an array of traces");
+    assert_eq!(click.len(), 1);
+    let trace = &click[0];
+    assert_eq!(trace["target"], "sign in");
+    assert_eq!(trace["kind"], "run");
+    assert_eq!(trace["info"]["mode"], "toplevel");
+    assert_eq!(trace["info"]["image"], "256x154");
+    assert_eq!(trace["used_pass"], "whole");
+    assert_eq!(trace["outcome"], "click at 175,82");
+    assert_eq!(trace["passes"][0]["verdicts"][0]["kept"], true);
+    assert_eq!(rig.grim_calls(), 1);
+    assert!(!rig.target_file().exists());
+}
+
+#[test]
+fn the_json_without_window_has_no_click_and_a_phrase_that_never_clicked_has_an_empty_list() {
+    let rig = Rig::new();
+    let plain = rig.command(&["explain", "--json", "click sign in"]).output().unwrap();
+    let document: serde_json::Value = serde_json::from_slice(&plain.stdout).unwrap();
+    assert!(document["click"].is_null());
+    let hints = rig
+        .command(&["explain", "--json", "--window", "focused", "banana split"])
+        .output()
+        .unwrap();
+    let document: serde_json::Value = serde_json::from_slice(&hints.stdout).unwrap();
+    assert_eq!(document["click"], serde_json::json!([]));
 }
