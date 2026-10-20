@@ -914,6 +914,19 @@ rm -f "$e2e/lock_hold"
 wait "$lock_holder"
 stop_all
 
+echo "== flags go before the PR numbers"
+e2e_setup
+ship 1 --skip-review-gate
+check "a flag after a PR number is refused" "[[ \$? != 0 ]]"
+check "the refusal names the flag and says flags go first" "grep -q -e '--skip-review-gate came after a PR number, flags go first' '$e2e/out'"
+check "nothing was gated or merged" "[[ ! -s $SHIP_LOG ]]"
+check "the flag was not taken for a PR" "! grep -q 'cannot read PR' '$e2e/out'"
+e2e_setup
+ship --skip-review-gate --sync-check 1
+check "leading flags still parse" "[[ \$? == 0 ]] || { cat '$e2e/out'; false; }"
+check "the gate was skipped by request" "grep -q 'review gate skipped by request' '$e2e/out' && ! grep -q '^gate ' '$SHIP_LOG'"
+check "the merge got the flag and the PR" "grep -q '^merge --skip-review-gate 1 ' '$SHIP_LOG'"
+
 if systemd-run --user --collect --quiet true 2>/dev/null; then
   echo "== a real transient unit, with a stale unit of the same name"
   rm -f "$stubs/systemd-run"

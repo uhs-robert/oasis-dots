@@ -50,6 +50,10 @@ while [[ ${1:-} == --* ]]; do
   esac
   shift
 done
+# Flags are read only up front, so one after a PR number would otherwise be taken for a PR and fail late, at the gate.
+for arg; do
+  [[ $arg != -* ]] || die "usage: ship-batch.sh [--skip-review-gate] [--sync-check] [<pr>...]; $arg came after a PR number, flags go first"
+done
 
 main_check_failure_notice "$repo"
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
