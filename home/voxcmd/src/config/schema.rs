@@ -77,6 +77,8 @@ pub struct Verb {
     pub pattern: String,
     /// Line in the TOML file; legacy verbs have none.
     pub line: Option<usize>,
+    /// Column of the verb's entry in that line, for `integrations check`.
+    pub column: Option<usize>,
     /// Another integration's stem that must be loaded for this verb to count.
     pub requires: Option<String>,
     /// The legacy `verbs` entry as written, alignment spaces included, which `integrations list` prints.
@@ -429,6 +431,18 @@ struct EndingEntry {
     pattern: String,
 }
 
+/// 1-based column of a byte offset, counted in characters.
+pub fn column_of(text: &str, offset: usize) -> usize {
+    let before = &text[..offset.min(text.len())];
+    before.rsplit('\n').next().map_or(0, |line| line.chars().count()) + 1
+}
+
+/// Where the toml parser says `text` is malformed: the one place an error carries a column.
+pub fn syntax_error_column(text: &str) -> Option<usize> {
+    let error = toml::from_str::<IntegrationFile>(text).err()?;
+    Some(column_of(text, error.span()?.start))
+}
+
 /// Reads one `integrations/<stem>.toml`. The error is `file:line: message`.
 pub fn load_toml(file: &Path) -> Result<Integration, String> {
     let text = std::fs::read_to_string(file).map_err(|error| format!("{}: {error}", file.display()))?;
@@ -459,11 +473,13 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         .into_iter()
         .map(|spanned| {
             let line = line_of(spanned.span().start);
+            let column = column_of(text, spanned.span().start);
             let entry = spanned.into_inner();
             Verb {
                 action: entry.action,
                 pattern: entry.pattern,
                 line: Some(line),
+                column: Some(column),
                 requires: entry.requires,
                 listed: None,
             }

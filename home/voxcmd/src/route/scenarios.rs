@@ -272,6 +272,7 @@ fn a_yield_verb_is_not_offered_as_a_near_miss() {
         action: "yield".into(),
         pattern: "open the calendar".into(),
         line: None,
+        column: None,
         requires: None,
         listed: None,
     });
