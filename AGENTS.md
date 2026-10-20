@@ -19,6 +19,7 @@ just                  # list recipes
 just check            # full validation (run before committing)
 lib/check.sh --changed origin/main   # only the steps the changed files can affect, skipping those already passed for the same files
 lib/check.sh --only voxcmd-click,voxcmd-rust   # just those steps; their passes count for the final --changed run
+# A hook backgrounds `lib/check.sh`, `just check`, the voxcmd suites and `ship-batch.sh`: run them in a fresh private directory (`dir=$(mktemp -d)` in a separate call first, `log=$dir/log`; a reused path keeps the last run's `.exit`) as `<cmd> >"$log" 2>&1; echo $? >"$log.exit"`, then repeat `.claude/hooks/await.sh "$log"` until it stops exiting 75 and report its result; a `secs` argument above 100 needs a matching Bash `timeout` (max 600000 ms); never end a turn while one runs.
 just lint             # shellcheck install.sh uninstall.sh, lib/check.sh, lib/{common,install,check}/**/*.sh, demo/*.sh and the Quickshell audio importers
 just shaders          # rebuild every Quickshell .frag.qsb from its .frag (qsb); the shaders check step fails on a stale one
 just stow <pkg>       # symlink one package into ~
