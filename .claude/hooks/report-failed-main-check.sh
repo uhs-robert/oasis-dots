@@ -8,4 +8,5 @@ result=$common/ship-batch-main-check.result
 [[ -r $result ]] || exit 0
 read -r status sha _ log <"$result" || exit 0
 [[ $status == fail ]] || exit 0
-echo "The check of main FAILED at ${sha:0:12}; log $log. Fix it before anything else (main-check.sh status for details)."
+main_check=$(cd "$(dirname "$0")/../skills/ship-batch" && pwd)/main-check.sh
+echo "The check of main FAILED at ${sha:0:12}; log $log. Fix it before anything else ($main_check status for details)."

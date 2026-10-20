@@ -174,6 +174,8 @@ export SHIP_LOG=$e2e/log
 # The old sections wait for the check of main; the background check has its own section at the end. The unit name is
 # private to this run, so stopping it never touches the owner's real dotfiles-main-check.
 export SHIP_BATCH_SYNC_CHECK=1 MAIN_CHECK_UNIT=dotfiles-main-check-test-$$
+# Every run of ship-batch is bounded, so a reverted lifecycle fix fails its test instead of hanging the suite.
+ship_timeout=120
 # shellcheck disable=SC2016 # expanded by the stubs
 lock_state='$(if flock -n "$SHIP_LOCK" true; then echo free; else echo held; fi)'
 cat >"$fake_home/.claude/skills/merge-prs/merge-prs.sh" <<STUB
@@ -184,6 +186,7 @@ if [[ \$1 == --check ]]; then
   exit
 fi
 echo "merge \$* $lock_state" >>"\$SHIP_LOG"
+[[ -z \${STUB_MERGE_FAIL:-} ]] || exit 1
 for pr; do [[ \$pr == --* ]] && continue; git push -q origin "b\$pr:main" 2>/dev/null || exit 1; done
 STUB
 printf '#!/bin/sh\n' >"$fake_home/.claude/skills/merge-prs/status.sh"
@@ -191,11 +194,13 @@ printf '#!/bin/sh\n' >"$fake_home/.claude/skills/merge-prs/status.sh"
 printf '#!/bin/sh\necho "b$3"\n' >"$stubs/gh"
 # The slot file named in $e2e/just_hold makes `just check` take that flock and wait until the hold file is removed, as a
 # heavy check step does; a second holder that cannot get the slot in 5 s logs "slot busy" (a leaked lock). Control goes
-# through files, since a check started by systemd-run does not inherit this script's environment.
+# through files, since a check started by systemd-run does not inherit this script's environment. With $e2e/just_daemon
+# present it also leaves a setsid daemon behind that keeps every descriptor it inherited.
 cat >"$stubs/just" <<STUB
 #!/usr/bin/env bash
 : "\${SHIP_LOG:=$e2e/log}" "\${SHIP_LOCK:=$e2e/main/.git/ship-batch.lock}"
 echo "just \$* $lock_state" >>"\$SHIP_LOG"
+[[ ! -e $e2e/just_daemon ]] || setsid -f bash -c 'exec -a $e2e/test-daemon sleep 300'
 slot=\$(cat "$e2e/just_hold" 2>/dev/null)
 if [[ -n \$slot ]]; then
   exec 7>"\$slot"
@@ -210,7 +215,7 @@ chmod +x "$stubs"/* "$fake_home"/.claude/skills/merge-prs/*
 
 # A main checkout on main with two stacked PR branches, b1 and b2, each in a worktree of its own.
 e2e_setup() {
-  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/just_hold"
+  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/just_hold" "$e2e/just_daemon" "$e2e/probe_main_check"
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib/check" "$e2e/main/.claude/skills/ship-batch"
@@ -218,9 +223,14 @@ e2e_setup() {
   cp "$here/../ship-batch.sh" "$here/../base.sh" "$here/../main-check.sh" "$e2e/main/.claude/skills/ship-batch/"
   mkdir -p "$e2e/main/.claude/hooks"
   cp "$here/../../../hooks/live-hypr.sh" "$e2e/main/.claude/hooks/"
+  # With $e2e/probe_main_check present a check also logs whether a check of main held its run lock at that moment.
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash
 echo "check \$(basename "\$PWD") \$* $lock_state" >>"\$SHIP_LOG"
+if [[ -e $e2e/probe_main_check ]]; then
+  if flock -n "$e2e/main/.git/ship-batch-main-check.lock" true; then echo "main check idle" >>"\$SHIP_LOG"; else echo "main check running" >>"\$SHIP_LOG"; fi
+fi
+exit \${STUB_BRANCH_STATUS:-0}
 STUB
   chmod +x "$e2e/main/lib/check.sh"
   g -C "$e2e/main" add -A
@@ -237,7 +247,7 @@ STUB
   g -C "$e2e/wt-2" add -A
   g -C "$e2e/wt-2" commit -q -m two
 }
-ship() { HOME=$fake_home PATH="$stubs:$PATH" bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" "$@" >"$e2e/out" 2>&1; }
+ship() { HOME=$fake_home PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" "$@" >"$e2e/out" 2>&1; }
 logged() { grep -qxF -- "$1" "$SHIP_LOG"; }
 line_of() { grep -nxF -- "$1" "$SHIP_LOG" | cut -d: -f1; }
 
@@ -349,7 +359,7 @@ hypr_ship() {
   echo cfg >"$e2e/wt-1/home/hypr/cfg"
   g -C "$e2e/wt-1" add -A
   g -C "$e2e/wt-1" commit -q -m hypr
-  env -u HYPRLAND_INSTANCE_SIGNATURE "$@" HOME="$fake_home" PATH="$stubs:$PATH" bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/out" 2>&1
+  env -u HYPRLAND_INSTANCE_SIGNATURE "$@" HOME="$fake_home" PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/out" 2>&1
 }
 hypr_ship XDG_RUNTIME_DIR="$owner_run" HYPRLAND_INSTANCE_SIGNATURE=gone
 check "a stale signature gives way to the newest instance that answers" "[[ $? == 0 ]] && logged 'hyprctl live reload' && logged 'hyprctl live configerrors'"
@@ -377,7 +387,7 @@ echo "== the check of main in the background"
 # setsid fallback is what runs, with real processes; the one real-unit scenario is at the end. A check "takes a slot" by
 # holding the flock named in just_hold until that file is removed.
 unset SHIP_BATCH_SYNC_CHECK
-printf '#!/bin/sh\nexit 1\n' >"$stubs/systemd-run"
+printf '#!/bin/sh\necho "systemd-run $*" >>"%s"\nexit 1\n' "$e2e/log" >"$stubs/systemd-run"
 chmod +x "$stubs/systemd-run" "$stubs/notify-send"
 mc=$e2e/main/.claude/skills/ship-batch/main-check.sh
 slot=$e2e/slot.lock
@@ -394,9 +404,11 @@ wait_until() {
   done
   return 1
 }
+# The check is stopped before its slot is released: released first, a check still starting could pass and settle the debt.
 stop_all() {
-  release
   pkill -f "$e2e/main/.claude/skills/ship-batch/main-check.sh" 2>/dev/null
+  release
+  pkill -f "$e2e/test-daemon" 2>/dev/null
   wait_until '! checking'
 }
 
@@ -411,7 +423,7 @@ check "the ship lock is free while it runs" "flock -n '$SHIP_LOCK' true"
 check "the setsid check runs at nice 19" "[[ \$(ps -o ni= -p \$(<$common/ship-batch-main-check.pid) | tr -d ' ') == 19 ]]"
 check "wait blocks while it runs" "(timeout 2 '$e2e/main/.claude/skills/ship-batch/ship-batch.sh' --wait-main-check >/dev/null 2>&1; [[ \$? == 124 ]])"
 (
-  HOME=$fake_home PATH="$stubs:$PATH" bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" --wait-main-check >"$e2e/wait.out" 2>&1
+  HOME=$fake_home PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" --wait-main-check >"$e2e/wait.out" 2>&1
   echo $? >"$e2e/wait.rc"
 ) &
 waiter=$!
@@ -436,8 +448,9 @@ check "it ends" "wait_until '! checking'"
 check "the result says fail with the log" "[[ \$(cut -d' ' -f1 $common/ship-batch-main-check.result) == fail ]] && grep -q 'ship-batch-main-check.log' $common/ship-batch-main-check.result"
 check "the debt is kept" "[[ \$(owed_check '$e2e/main') == '$e2e_base' ]]"
 check "the owner gets a critical alert" "grep -q 'notify-send -u critical main check failed' '$SHIP_LOG'"
-check "wait exits 1 and shows the failure" "! '$mc' wait >'$e2e/wait.out' 2>&1 && grep -q 'FAILED' '$e2e/wait.out'"
+check "wait exits 1 and shows the failure" "! timeout 30 '$mc' wait >'$e2e/wait.out' 2>&1 && grep -q 'FAILED' '$e2e/wait.out'"
 check "the session hook prints the failure" "[[ \$(CLAUDE_PROJECT_DIR='$e2e/main' '$here/../../../hooks/report-failed-main-check.sh') == *'FAILED at'* ]]"
+check "with the absolute path of main-check.sh" "[[ \$(CLAUDE_PROJECT_DIR='$e2e/main' '$here/../../../hooks/report-failed-main-check.sh') == *'$(cd "$here/.." && pwd)/main-check.sh status'* ]]"
 ship_bg 2
 check "the next batch still merges" "[[ \$? == 0 ]] && logged 'merge 2 held'"
 check "and opens with the FAILED banner" "head -3 '$e2e/out' | grep -q 'the check of main FAILED'"
@@ -458,7 +471,7 @@ check "the second batch succeeds" "[[ $? == 0 ]]"
 check "the first check is gone" "! kill -0 $old_pid 2>/dev/null"
 check "a new check runs on the newest main" "checking && [[ \$(<$common/ship-batch-main-check.pid) != $old_pid ]] && wait_until \"grep -q 'checking $(git -C "$e2e/main" rev-parse --short=12 HEAD) from ${e2e_base:0:12}' $common/ship-batch-main-check.log\""
 check "it checks from the oldest owed base" "[[ \$(owed_check '$e2e/main') == '$e2e_base' ]]"
-check "the stopped check did not leave its slot held" "wait_until \"[[ \$(grep -c 'just holding' '$SHIP_LOG') == 2 ]]\" && ! logged 'slot busy'"
+check "the stopped check did not leave its slot held" "wait_until \"[[ \\\$(grep -c 'just holding' '$SHIP_LOG') == 2 ]]\" && ! logged 'slot busy'"
 check "the stopped check recorded neither a result nor a pass" "[[ ! -e $common/ship-batch-main-check.result ]] && ! (cd '$e2e/main' && lib/check/passed.sh is-passed HEAD)"
 release
 wait_until '! checking'
@@ -473,7 +486,7 @@ STUB_RELOAD_STATUS=0 STUB_GATE_FAIL=2 ship_bg 2
 check "the batch merges only the ready PR and fails for the other" "[[ $? != 0 ]]"
 check "the debt is still the oldest base" "[[ \$(owed_check '$e2e/main') == '$e2e_base' ]]"
 stop_all
-check "wait reports a check owed but not running" "! '$mc' wait >'$e2e/wait.out' 2>&1; grep -q 'owed but none is running' '$e2e/wait.out'"
+check "wait reports a check owed but not running" "! timeout 30 '$mc' wait >'$e2e/wait.out' 2>&1 && grep -q 'owed but none is running' '$e2e/wait.out'"
 check "status says so" "[[ \$('$mc' status) == 'not running'* ]]"
 
 echo "== a bar restart never meets a running check"
@@ -490,7 +503,7 @@ printf '#!/bin/sh\necho unlocked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 printf '#!/bin/sh\nif flock -n "%s" true; then echo "pkill idle" >>"%s"; else echo "pkill checking" >>"%s"; fi\n' "$run_lock" "$e2e/log" "$e2e/log" >"$stubs/pkill"
 echo "qs -p /tmp/json_store_x/cfg" >"$STUB_QS_PROCS"
 chmod +x "$stubs/pkill"
-HOME=$fake_home PATH="$stubs:$PATH" XDG_RUNTIME_DIR="$owner_run" bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 2 >"$e2e/out" 2>&1
+HOME=$fake_home PATH="$stubs:$PATH" XDG_RUNTIME_DIR="$owner_run" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 2 >"$e2e/out" 2>&1
 check "the old check was stopped before the bar was killed" "logged 'pkill idle' && ! logged 'pkill checking'"
 check "the new check started after the restart" "checking"
 stop_all
@@ -513,7 +526,77 @@ echo "== a second run of the same check is refused"
 e2e_setup
 hold
 ship_bg 1
-check "the lock refuses a duplicate" "! '$mc' run --notify HEAD HEAD >/dev/null 2>&1"
+check "the lock refuses a duplicate" "! timeout 10 '$mc' run --notify HEAD HEAD >/dev/null 2>&1"
+stop_all
+
+echo "== a batch that dies after stopping the check starts it again"
+e2e_setup
+hold
+ship_bg 1
+checking
+old_pid=$(<"$common/ship-batch-main-check.pid")
+STUB_MERGE_FAIL=1 ship_bg 2
+check "the merge failure fails the batch" "[[ $? != 0 ]] && grep -q 'merge-prs failed' '$e2e/out'"
+check "and says it restarted the check it stopped" "grep -q 'restarted the check of main this run stopped' '$e2e/out'"
+check "a new check runs on main from the oldest owed base" "checking && [[ \$(<$common/ship-batch-main-check.pid) != $old_pid ]] && wait_until \"grep -q 'checking $(git -C "$e2e/main" rev-parse --short=12 HEAD) from ${e2e_base:0:12}' $common/ship-batch-main-check.log\""
+stop_all
+
+echo "== branch checks run after the check of main is stopped"
+e2e_setup
+hold
+ship_bg 1
+checking
+touch "$e2e/probe_main_check"
+STUB_BRANCH_STATUS=1 ship_bg 2
+check "the failing branch fails the batch" "[[ $? != 0 ]] && grep -q 'the check fails on b2' '$e2e/out'"
+check "the branch check saw no check of main running" "logged 'main check idle' && ! logged 'main check running'"
+check "the stopped check runs again" "checking && grep -q 'restarted the check of main' '$e2e/out'"
+stop_all
+
+echo "== a newer batch supersedes a foreground check"
+e2e_setup
+hold
+(
+  SHIP_BATCH_SYNC_CHECK=1 HOME=$fake_home PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/sync.out" 2>&1
+  echo $? >"$e2e/sync.rc"
+) &
+sync_batch=$!
+wait_until checking
+wait_until "logged 'just holding'"
+HOME=$fake_home PATH="$stubs:$PATH" timeout 40 bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 2 >"$e2e/out" 2>&1
+check "the newer batch stops it at once and merges" "[[ $? == 0 ]] && logged 'merge 2 held'"
+check "the superseded batch exits 0" "wait_until '[[ -s $e2e/sync.rc ]]' && [[ \$(<$e2e/sync.rc) == 0 ]] || { cat '$e2e/sync.out'; false; }"
+check "saying the check is superseded and still owed" "grep -q 'superseded' '$e2e/sync.out' && ! grep -q 'the check fails on main' '$e2e/sync.out'"
+check "the newer batch's check runs from the oldest owed base" "checking && [[ \$(owed_check '$e2e/main') == '$e2e_base' ]]"
+stop_all
+wait "$sync_batch"
+
+echo "== a daemon a step leaves behind does not keep the check running"
+e2e_setup
+touch "$e2e/just_daemon"
+ship_bg 1
+check "the daemon is up" "wait_until 'pgrep -f $e2e/test-daemon >/dev/null'"
+check "the check counts as ended" "wait_until '! checking'"
+check "wait returns at once" "timeout 10 '$mc' wait >/dev/null"
+stop_all
+
+echo "== wait gives up on a check that never ends"
+e2e_setup
+flock "$run_lock" sleep 30 &
+lock_holder=$!
+wait_until checking
+MAIN_CHECK_WAIT_SECS=1 timeout 10 "$mc" wait >"$e2e/wait.out" 2>&1
+check "after MAIN_CHECK_WAIT_SECS, with exit 1" "[[ $? == 1 ]] && grep -q 'has run for too long' '$e2e/wait.out'"
+kill "$lock_holder" 2>/dev/null
+wait "$lock_holder" 2>/dev/null
+stop_all
+
+echo "== the unit gets the session environment"
+e2e_setup
+WAYLAND_DISPLAY=wl-test HYPRLAND_INSTANCE_SIGNATURE=sig-test DBUS_SESSION_BUS_ADDRESS=unix:test SSH_AUTH_SOCK=/tmp/agent-test XDG_RUNTIME_DIR=$owner_run ship_bg 1
+for name in WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS SSH_AUTH_SOCK; do
+  check "systemd-run passes $name" "grep '^systemd-run ' '$SHIP_LOG' | grep -q -- '--setenv=$name '"
+done
 stop_all
 
 if systemd-run --user --collect --quiet true 2>/dev/null; then
