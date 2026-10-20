@@ -10,7 +10,9 @@
 #
 # VOXCMD_DRY_RUN_CMD (default "voxcmd explain") and VOXCMD_RUN_CMD (default "voxcmd run") are the commands a phrase is
 # appended to. `voxcmd` is the sandbox's: the new CLI, through the bash shim until the Rust build is a VOXCMD_BIN. Another
-# build is timed with the same phrases by setting both. Needs hyperfine (not for --all) and jq.
+# build is timed with the same phrases by setting both. The `click-ocr stub` row times VOXCMD_CLICK_OCR_CMD (default
+# "voxcmd internal click-ocr") against the sandbox's instant grim, magick and tesseract stubs, so it is the driver's own
+# overhead; it is left out when that command fails, as the bash shim's does. Needs hyperfine (not for --all) and jq.
 set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -74,10 +76,10 @@ sample_times() { jq '.results[0] | (.times // [.measurements[].time_wall_clock.v
 mkdir -p "$results_dir"
 printf 'mode\tphrase\tp50_ms\tp95_ms\tmean_ms\tmax_ms\n'
 bench_one() {
-  local mode=$1 phrase=$2 cmd=$3
+  local mode=$1 phrase=$2 cmd=$3 args=${5-$2}
   local result="$results_dir/$mode-$4.json"
   # -N runs the command without a shell, splitting it on spaces, so a phrase must not hold quotes.
-  hyperfine -N --style none --warmup 2 --runs "$runs" -i --export-json "$result" "$cmd $phrase" >/dev/null 2>&1
+  hyperfine -N --style none --warmup 2 --runs "$runs" -i --export-json "$result" "$cmd $args" >/dev/null 2>&1
   printf '%s\t%s\t%s\n' "$mode" "$phrase" "$(sample_times "$result" | summarize)"
 }
 index=0
@@ -87,6 +89,11 @@ while IFS=$'\t' read -r phrase is_live _; do
   bench_one dry "$phrase" "$dry_run_cmd" "$index"
   if [ "$live" = 1 ] && [ "$is_live" = yes ]; then bench_one live "$phrase" "$run_cmd" "$index"; fi
 done <"$tests_dir/bench-phrases.tsv"
+click_ocr_cmd=${VOXCMD_CLICK_OCR_CMD:-voxcmd internal click-ocr}
+# shellcheck disable=SC2086 # the command is words
+if $click_ocr_cmd >/dev/null 2>&1; then
+  bench_one click-ocr stub "$click_ocr_cmd" ocr ""
+fi
 for mode in dry live; do
   compgen -G "$results_dir/$mode-*.json" >/dev/null || continue
   printf '%s\tall\t%s\n' "$mode" "$(sample_times "$results_dir/$mode"-*.json | summarize)"

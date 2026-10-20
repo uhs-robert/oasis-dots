@@ -132,7 +132,14 @@ fn a_stop_signal_ends_every_strip_and_removes_the_work_directory() {
 #[test]
 fn a_failed_strip_exits_1_saying_ocr_failed_with_no_strip_left_and_no_directory() {
     let rig = Rig::new(
-        "#!/bin/sh\necho \"$$\" >> \"$WORK/pids\"\nif mkdir \"$WORK/failed\" 2>/dev/null; then exit 1; fi\nexec sleep 60\n",
+        "#!/bin/sh\necho \"$$\" >> \"$WORK/pids\"\n\
+         if mkdir \"$WORK/failed\" 2>/dev/null; then\n\
+         \x20 # Fail only once the four siblings have their trap, or a TERM would find none to run.\n\
+         \x20 while [ \"$(cat \"$WORK/trapped\" 2>/dev/null | wc -l)\" -lt 4 ]; do sleep 0.02; done\n\
+         \x20 exit 1\n\
+         fi\n\
+         trap 'echo term >>\"$WORK/termed\"; exit 0' TERM\n\
+         echo ready >> \"$WORK/trapped\"\nsleep 60 &\nwait\n",
     );
     let output = rig.command(&[]).output().unwrap();
     assert_eq!(output.status.code(), Some(1));
@@ -140,6 +147,17 @@ fn a_failed_strip_exits_1_saying_ocr_failed_with_no_strip_left_and_no_directory(
     assert!(output.stdout.is_empty());
     rig.assert_all_gone();
     assert_eq!(rig.work_dirs(), Vec::<String>::new());
+    // The siblings are asked to stop before they are killed: the trap only runs on a SIGTERM that arrives first.
+    assert!(rig.work().join("termed").exists(), "no strip saw a SIGTERM");
+}
+
+#[test]
+fn a_strip_that_succeeds_but_leaves_no_text_fails_the_run() {
+    let rig = Rig::new("#!/bin/sh\nrm \"${1%.pgm}.tsv\"\n");
+    let output = rig.command(&[]).output().unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(String::from_utf8_lossy(&output.stderr), "ocr failed\n");
+    assert!(output.stdout.is_empty());
 }
 
 #[test]
