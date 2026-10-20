@@ -91,7 +91,7 @@ When you hold no piece and nothing you started is running (no agent, background 
 
 ## Automatic handoff (the context-budget hook starts it)
 
-`~/.claude/hooks/context-budget.sh` adds a note to an orchestrator session at 140k tokens (start no new piece) and at 160k (hand off). The owner set it up to start a handoff on that second note without being asked:
+`~/.claude/hooks/context-budget.sh` adds a note to an orchestrator session at 140k tokens (start no new piece) and at 160k (hand off), only when it runs inside tmux; outside tmux there are no notes and the session carries on. The owner set it up to start a handoff on that second note without being asked:
 
 1. Tell the owner in one line that you are handing off because the session reached its context budget.
 2. Run `~/.claude/skills/orchestrator-handoff/spawn-successor.sh <your session name>`. It opens a window named `orchestrator-next` in your tmux session with a fresh Claude told to expect your baton. If it fails or is denied, hand the owner the `!` command, or ask them to start the session themselves.

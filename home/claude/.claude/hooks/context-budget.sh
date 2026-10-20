@@ -5,8 +5,10 @@
 # CLAUDE_CONTEXT_HANDOFF (hand off at the next break). They come early on purpose: the outgoing orchestrator keeps
 # forwarding its agents' reports until the last piece moves, which costs context after the second note.
 # Other sessions and agents are left alone: only a session that loaded the orchestrator skill gets the notes.
+# Outside tmux there is nowhere to open the successor, so the session gets no notes and its context keeps growing.
 set -u
 input=$(cat)
+[[ -n ${TMUX:-} ]] || exit 0
 [[ -z $(jq -r '.agent_id // empty' <<<"$input") ]] || exit 0
 transcript=$(jq -r '.transcript_path // empty' <<<"$input")
 session=$(jq -r '.session_id // empty' <<<"$input")
