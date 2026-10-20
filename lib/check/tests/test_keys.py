@@ -1,12 +1,10 @@
-"""Tests the step keys of lib/check/keys.py against goldens taken once from the shell runner it replaced, in a scratch
-repository whose content is fixed, so its trees and keys are too. Branches cut before the port still run the shell
-runner against the same pass records, so a changed key here means passes neither runner honours from the other.
+"""Tests the step keys of lib/check/keys.py against goldens, in a scratch repository whose content is fixed, so its trees
+and keys are too, and tests which edits move which keys.
 
-The goldens were produced by the shell runner at e3e2aa654 (its snapshot_tree, classify_tree and step_key, run in
-build_repo's repository with SHELL_LISTS written as its list files). Keys depend on the scope table too, so the tests
-run against FROZEN_ADDITIVE_SCOPES, FROZEN_PATH_SCOPES and FROZEN_STEPS, copies of that runner's table, patched over
-the live scopes.py: later edits to scopes.py never touch them, and the goldens need regenerating only if the key format
-itself changes. test_scopes.py covers the live table."""
+Keys depend on the scope table too, so the tests run against FROZEN_ADDITIVE_SCOPES, FROZEN_PATH_SCOPES and
+FROZEN_STEPS, a copy of the table as of the shell runner at e3e2aa654, patched over the live scopes.py: later edits to
+scopes.py never touch them, and the goldens need regenerating only if the key format itself changes (print them from
+step_key over build_repo's repository). test_scopes.py covers the live table."""
 
 import os
 import shutil
@@ -63,20 +61,20 @@ SHELL_LISTS = {
     "unkeyable": {"plain": ["lib/install/fonts.sh", 'home/voxcmd/quote"d.txt'], "sourcing": [], "agent": []},
 }
 
-# From the shell runner at e3e2aa654 (see the module docstring), over (step, shell list) pairs.
+# Key version 2, over (step, shell list) pairs.
 GOLDEN_TREE = "ba39b53717554009c4abb92a39a45c05fd76328f"
 GOLDEN_KEYS = {
-    ("voxcmd-click", "run"): "db1c513895f0b2788cd44df588a30bc856e592f5",
-    ("check-scope", "run"): "a942cb4c687eff98b70e6eea1658deac0227ce7d",
-    ("qmllint", "run"): "dc1f4d544d1a4c844008a7f74dd506966f0ba5d1",
-    ("luacheck", "run"): "1702ec6b79471df0b15eec350aeb2f9db4af2db4",
-    ("notification-markup", "run"): "851f973c2749fd663465dae91b4a0eba3337947a",
-    ("install-load", "run"): "607759bdd21756b70ed9f5caaa4e179715f3d08b",
-    ("packages", "run"): "59f3dc59883518a1067a530904aba39f036a95e4",
-    ("git-diff-check", "run"): "e8a6d91c3104367ddad725110cc98852ce52b56a",
-    ("ignored-integrations", "run"): "b482d409971218170895a25b27a44c1eb995b1a4",
-    ("shellcheck", "run"): "74cac4b4e3c3c2d5b45e17c9f00dec14d600749b",
-    ("shfmt", "fmt"): "c755ffee09101fdf4f9c4ef1336a4800a97764d4",
+    ("voxcmd-click", "run"): "40c4a763a05de289c7f861ec7a63b4bc8609cb0c",
+    ("check-scope", "run"): "1a572f34cd33cc6bce605c772f70649ac612f830",
+    ("qmllint", "run"): "e5f9386e95383f8e9e2ea2d625b331a2a7a47d33",
+    ("luacheck", "run"): "5ad146ec93c9fb03509c36cd449a82961a7fade1",
+    ("notification-markup", "run"): "01b0c69970bce1191b50f9695fb8372544cec79c",
+    ("install-load", "run"): "f4049088ad8a39604f655b8236248e487c26534f",
+    ("packages", "run"): "dd87c70483085cf25e9fdd1680b7bf2110a4d718",
+    ("git-diff-check", "run"): "86e4ebb106131abaa213f246c8780a5ae26bf33f",
+    ("ignored-integrations", "run"): "184275857b6a2b4417eebf76e1a047e335b80444",
+    ("shellcheck", "run"): "c1294268a8c0b90ec44d9865084d57ca04e113d6",
+    ("shfmt", "fmt"): "b088898f0fdc23abaa8a4f78078f223de03e6aea",
     ("shellcheck", "unkeyable"): None,
 }
 
@@ -151,7 +149,7 @@ FROZEN_PATH_SCOPES = [
     ("LICENSE", ""),
     ("*", "all"),
 ]
-# A key reads only a step's name and scope.
+# A key reads a step's definition fields (keys.DEFINITION_FIELDS), here only its name and scope.
 FROZEN_STEPS = {
     name: scopes.Step(name, scope, "")
     for name, scope in (
@@ -200,7 +198,7 @@ class StepKeys(unittest.TestCase):
         after = subprocess.run(("git", "diff", "--cached", "--name-only"), stdout=subprocess.PIPE, check=True).stdout
         self.assertEqual(before, after)
 
-    def test_keys_match_the_shell_runner(self):
+    def test_keys_match_the_goldens(self):
         tree = keys.snapshot_tree(self.logs)
         entries = keys.classify_tree(tree)
         for (name, lists), golden in GOLDEN_KEYS.items():
@@ -232,6 +230,59 @@ class StepKeys(unittest.TestCase):
         self.assertNotEqual(
             keys.step_key(qml, before, tree, "no-repos", {}), keys.step_key(qml, after, after_tree, "no-repos", {})
         )
+
+    def key_of(self, step):
+        tree = keys.snapshot_tree(self.logs)
+        return keys.step_key(step, keys.classify_tree(tree), tree, "no-repos", SHELL_LISTS["run"])
+
+    def all_keys(self):
+        return {name: self.key_of(step) for name, step in FROZEN_STEPS.items()}
+
+    def moved_since(self, before):
+        after = self.all_keys()
+        return {name for name in before if before[name] != after[name]}
+
+    def test_an_unrelated_scopes_edit_keeps_the_other_steps_keys(self):
+        write_files(self.repo, {"lib/check/scopes.py": "scopes\n"})
+        before = self.all_keys()
+        write_files(self.repo, {"lib/check/scopes.py": "scopes, edited\n"})
+        # check-scope reads scopes.py through its own scope; the tree steps key on the whole tree.
+        self.assertEqual(self.moved_since(before) - {"packages", "git-diff-check", "ignored-integrations"}, {"check-scope"})
+
+    def test_widening_a_steps_scope_moves_the_keys_of_the_steps_that_read_the_file(self):
+        before = self.all_keys()
+        widened = [("home/quickshell/.config/quickshell/shell.qml", "qml voxcmd")] + FROZEN_PATH_SCOPES
+        with mock.patch.object(scopes, "PATH_SCOPES", widened):
+            moved = self.moved_since(before)
+        self.assertEqual(moved - {"packages", "git-diff-check", "ignored-integrations"}, {"voxcmd-click", "qmllint", "notification-markup"})
+
+    def test_editing_a_steps_command_moves_that_steps_key_only(self):
+        before = self.all_keys()
+        edited = FROZEN_STEPS["voxcmd-click"]._replace(command="bash ./other.sh")
+        self.assertNotEqual(self.key_of(edited), before["voxcmd-click"])
+        for name, step in FROZEN_STEPS.items():
+            if name != "voxcmd-click":
+                self.assertEqual(self.key_of(step), before[name])
+
+    def test_every_definition_field_moves_the_key(self):
+        step = FROZEN_STEPS["voxcmd-click"]
+        changes = {"name": "renamed", "scope": "qml", "command": "true", "needs": ("jq",), "probe": "true"}
+        self.assertEqual(set(changes), set(keys.DEFINITION_FIELDS))
+        for field, value in changes.items():
+            with self.subTest(field=field):
+                self.assertNotEqual(self.key_of(step), self.key_of(step._replace(**{field: value})))
+
+    def test_scheduling_fields_leave_the_key_alone(self):
+        step = FROZEN_STEPS["voxcmd-click"]
+        self.assertEqual(self.key_of(step), self.key_of(step._replace(skip_reason="other reason", serial_lane=True)))
+
+
+class StepFields(unittest.TestCase):
+    def test_every_step_field_is_keyed_or_declared_not_to_matter(self):
+        """Fails when a Step gains a field: decide whether it can change whether the step passes (then add it to
+        keys.DEFINITION_FIELDS) or not (then keys.NON_KEY_FIELDS)."""
+        self.assertEqual(set(scopes.Step._fields), set(keys.DEFINITION_FIELDS) | set(keys.NON_KEY_FIELDS))
+        self.assertFalse(set(keys.DEFINITION_FIELDS) & set(keys.NON_KEY_FIELDS))
 
 
 if __name__ == "__main__":

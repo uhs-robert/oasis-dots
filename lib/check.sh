@@ -11,8 +11,9 @@
 #                                 --paths-from, those of them the change reaches. An unknown name exits 2 before anything runs
 #   lib/check.sh --plan [--changed <base>|--paths-from <file|->] [--only ...] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
 #
-# A step that passes is recorded (lib/check/passed.sh) under a key hashing the content of the files it reads, the same
-# files whose change makes --changed pick it (its scope in lib/check/scopes.py); a later run skips a step whose key already passed, uncommitted and
+# A step that passes is recorded (lib/check/passed.sh) under a key hashing the step's definition (command, scope, needs, probe)
+# and the content of the files it reads, the same files whose change makes --changed pick it (its scope in lib/check/scopes.py).
+# scopes.py itself is no input of other steps' keys, so editing it reruns only the steps it changes; a later run skips a step whose key already passed, uncommitted and
 # untracked content included. A run that leaves the tree clean also records the tree: when every step passed for its
 # content, or for --changed <base> on top of a base recorded as passed; and a --changed run records that it passed
 # against <base>, which is what the PR hook looks up. An --only run records its steps' passes, under the same keys a later

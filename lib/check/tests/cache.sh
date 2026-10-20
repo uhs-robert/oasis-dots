@@ -63,6 +63,17 @@ expect "and says why" "grep -q '^== voxcmd-click skipped (passed for these input
 CHECK_FULL=1 check_run
 expect "CHECK_FULL=1 trusts no record" "ran_step voxcmd-click && ran_step conflicts"
 
+# An edit to the scope table that touches no step reruns only the steps that read scopes.py (check-scope, check-cache) and the
+# tree steps; the others keep their passes. Editing a step's own command or scope reruns that step.
+echo '# an unrelated edit' >>lib/check/scopes.py
+check_run
+expect "an unrelated scopes.py edit reruns only the steps that read it" "ran_step check-scope && ran_step check-cache && ! ran_step voxcmd-click && ! ran_step qmllint && ! ran_step shellcheck"
+git checkout -q -- lib/check/scopes.py
+sed -i 's|^STEPS = \[step._replace(command=STUB % step.name)|STEPS = [step._replace(command=STUB % step.name + ("; :" if step.name == "qmllint" else ""))|' lib/check/scopes.py
+check_run
+expect "editing one step's command reruns that step alone" "ran_step qmllint && ! ran_step voxcmd-click && ! ran_step shellcheck"
+git checkout -q -- lib/check/scopes.py
+
 # Both heavy-step slots held: the check itself takes none, so its steps run at once (the suites take theirs, stubbed here).
 mkdir "$scratch/runtime"
 for _ in 1 2; do
