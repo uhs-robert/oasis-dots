@@ -40,6 +40,11 @@ struct Dumped {
     /// `mode_actions` plus `mode_entry_actions`.
     mode_switch_actions: Vec<String>,
     free_text_actions: Vec<String>,
+    #[serde(default)]
+    examples: Vec<String>,
+    /// Each `verbs` entry as written; absent from a dump made before `integrations list` needed it.
+    #[serde(default)]
+    verb_entries: Vec<String>,
 }
 
 /// Split as `read -r action pattern` splits a `verbs` entry.
@@ -226,13 +231,16 @@ fn integration(dumped: Dumped) -> Integration {
         verbs: dumped
             .verbs
             .into_iter()
-            .map(|verb| Verb {
+            .enumerate()
+            .map(|(index, verb)| Verb {
                 action: verb.action,
                 pattern: verb.pattern,
                 line: None,
                 requires: None,
+                listed: dumped.verb_entries.get(index).cloned(),
             })
             .collect(),
+        examples: dumped.examples,
         settings: MatchSettings {
             target_match: dumped.target_match,
             match_ignore_words: dumped.match_ignore_words,
@@ -272,8 +280,21 @@ mod tests {
         let media = integrations.iter().find(|i| i.stem == "media").unwrap();
         assert_eq!(media.verbs[0].action, "toggle");
         assert!(media.actions["volume_up"].silent);
+        assert_eq!(media.examples[0], "play pause");
         let rapid = integrations.iter().find(|i| i.stem == "rapid").unwrap();
         assert!(rapid.actions["rapid_mode"].mode_switch);
+    }
+
+    #[test]
+    fn a_verb_keeps_its_entry_as_written_for_list() {
+        let dump = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/legacy-dump.jsonl"))
+            .expect("run gen-match-goldens.sh");
+        let first = dump.lines().next().unwrap().trim_end_matches('}').to_string();
+        let entries = format!("{first},\"verb_entries\":[\"time    aligned\"]}}");
+        assert_eq!(
+            parse_dump(&entries).unwrap()[0].verbs[0].listed.as_deref(),
+            Some("time    aligned")
+        );
     }
 
     #[test]

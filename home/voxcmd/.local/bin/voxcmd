@@ -3183,7 +3183,8 @@ legacy_dump_loaded() {
     'def lists: if length == 0 then [] else (.[0] | tonumber) as $n | [.[1:1 + $n]] + (.[1 + $n:] | lists) end;
       def pairs: [range(0; length; 2) as $i | {key: .[$i], value: .[$i + 1]}];
       $ARGS.positional | lists as [$verbs, $actions, $no_match, $waits, $hooks, $examples, $confirm_labels, $ignore_words,
-        $silent_actions, $force_prefixes, $miss_actions, $mode_actions, $mode_switch_actions, $free_text_actions]
+        $silent_actions, $force_prefixes, $miss_actions, $mode_actions, $mode_switch_actions, $free_text_actions,
+        $verb_entries]
       | {file: $file, name: $name, fallback: ($fallback == "1"), confirm: ($confirm == "1"), silent: ($silent == "1"),
           target_match: $target_match, action_labels: ($action_labels == "1"), private_labels: ($private_labels == "1"),
           help_action: $help_action, pick_command: $pick_command,
@@ -3192,7 +3193,8 @@ legacy_dump_loaded() {
           step_waits: ($waits | pairs | from_entries), hooks: ($hooks + if $surface_open then ["surface_open"] else [] end),
           examples: $examples, confirm_labels: $confirm_labels, match_ignore_words: $ignore_words,
           silent_actions: $silent_actions, force_prefixes: $force_prefixes, session_miss_actions: $miss_actions,
-          mode_actions: $mode_actions, mode_switch_actions: $mode_switch_actions, free_text_actions: $free_text_actions}' \
+          mode_actions: $mode_actions, mode_switch_actions: $mode_switch_actions, free_text_actions: $free_text_actions,
+          verb_entries: $verb_entries}' \
     --args -- \
     "${#verb_fields[@]}" "${verb_fields[@]}" "${#action_fields[@]}" "${action_fields[@]}" \
     "${#no_match_fields[@]}" "${no_match_fields[@]}" "${#wait_fields[@]}" "${wait_fields[@]}" \
@@ -3204,7 +3206,8 @@ legacy_dump_loaded() {
     "${#integration_session_miss_actions[@]}" "${integration_session_miss_actions[@]}" \
     "${#integration_mode_actions[@]}" "${integration_mode_actions[@]}" \
     "${#integration_mode_switch_actions[@]}" "${integration_mode_switch_actions[@]}" \
-    "${#integration_free_text_actions[@]}" "${integration_free_text_actions[@]}"
+    "${#integration_free_text_actions[@]}" "${integration_free_text_actions[@]}" \
+    "${#integration_verbs[@]}" "${integration_verbs[@]}"
 }
 
 # The bar keeps only voxcmd's errors in its history (see notify), so this lists the failures behind recent commands.

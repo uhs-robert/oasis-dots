@@ -273,6 +273,7 @@ fn a_yield_verb_is_not_offered_as_a_near_miss() {
         pattern: "open the calendar".into(),
         line: None,
         requires: None,
+        listed: None,
     });
     let hooks = CannedHooks::default();
     let explain = explain_phrase(&Router::new(&config, &hooks), "calendar open");

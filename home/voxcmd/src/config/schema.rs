@@ -46,6 +46,9 @@ pub struct Integration {
     /// The voice-session mode this integration opens (`[mode]`, TOML only).
     pub mode: Option<Mode>,
     pub verbs: Vec<Verb>,
+    /// Phrases for Voice Help; `<name>` marks a spoken part. Read by `integrations examples` and `help` (2.6 PR 4).
+    #[cfg_attr(not(test), expect(dead_code, reason = "first read by integrations examples"))]
+    pub examples: Vec<String>,
     pub settings: MatchSettings,
     pub actions: BTreeMap<String, Action>,
     pub surface: Option<Surface>,
@@ -76,6 +79,8 @@ pub struct Verb {
     pub line: Option<usize>,
     /// Another integration's stem that must be loaded for this verb to count.
     pub requires: Option<String>,
+    /// The legacy `verbs` entry as written, alignment spaces included, which `integrations list` prints.
+    pub listed: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -266,6 +271,48 @@ pub enum Surface {
 
 // ---- the TOML file --------------------------------------------------------------------------------------------------
 
+/// The keys each table accepts, for `integrations check` to name a mistyped one. The loader ignores unknown keys, and
+/// ignores `help`, `label` and `candidate_arg` too until 3.1 reads them, so these lists are 1.1's schema, not the
+/// serde structs below.
+pub const FILE_KEYS: &[&str] = &[
+    "name",
+    "fallback",
+    "confirm",
+    "confirm_labels",
+    "silent",
+    "private_labels",
+    "target_match",
+    "match_ignore_words",
+    "action_labels",
+    "force_prefixes",
+    "define",
+    "verbs",
+    "help",
+    "examples",
+    "actions",
+    "picker",
+    "surface",
+    "mode",
+];
+pub const VERB_KEYS: &[&str] = &["action", "match", "label", "requires"];
+pub const ACTION_KEYS: &[&str] = &[
+    "run",
+    "candidates",
+    "provider",
+    "candidate_arg",
+    "no_match",
+    "silent",
+    "free_text",
+    "mode_switch",
+    "mode_entry",
+    "enter_mode",
+    "leave_mode",
+    "miss",
+    "wait",
+    "wait_hook",
+    "timeout_secs",
+];
+
 #[derive(Deserialize)]
 struct IntegrationFile {
     name: Option<String>,
@@ -289,6 +336,8 @@ struct IntegrationFile {
     #[serde(default)]
     define: BTreeMap<String, String>,
     verbs: Vec<toml::Spanned<VerbEntry>>,
+    #[serde(default)]
+    examples: Vec<String>,
     #[serde(default)]
     actions: BTreeMap<String, ActionEntry>,
     picker: Option<String>,
@@ -416,6 +465,7 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 pattern: entry.pattern,
                 line: Some(line),
                 requires: entry.requires,
+                listed: None,
             }
         })
         .collect();
@@ -521,6 +571,7 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         mode_exit_object,
         mode,
         verbs,
+        examples: parsed.examples,
         settings: MatchSettings {
             target_match: parsed.target_match,
             match_ignore_words: parsed.match_ignore_words,
@@ -676,6 +727,14 @@ mod tests {
     fn fixture(stem: &str) -> Integration {
         let file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/fixtures/integrations/{stem}.toml"));
         load_toml(&file).unwrap()
+    }
+
+    #[test]
+    fn examples_load_with_their_placeholders_as_written() {
+        let media = fixture("media");
+        assert_eq!(media.examples.len(), 7);
+        assert_eq!(media.examples[0], "play pause");
+        assert_eq!(media.examples[3], "volume up by <number>");
     }
 
     #[test]

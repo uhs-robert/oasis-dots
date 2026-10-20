@@ -408,6 +408,7 @@ mod tests {
                 pattern: "volume (up".into(),
                 line: None,
                 requires: None,
+                listed: None,
             },
         );
         let matcher = Matcher::new(&config);
@@ -478,6 +479,7 @@ mod tests {
                 pattern: "open the calendar".into(),
                 line: None,
                 requires: None,
+                listed: None,
             },
         );
         let matcher = Matcher::new(&config);
@@ -516,6 +518,7 @@ mod tests {
             pattern: "(close|select) {number}".into(),
             line: None,
             requires: None,
+            listed: None,
         });
         let matcher = Matcher::new(&config);
         let misses = matcher.near_misses(0, "10 close");
