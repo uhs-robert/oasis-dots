@@ -321,6 +321,19 @@ class OutsideRefTest(PathsCase):
         self.assertEqual(self.check(dropped, outside=self.ROWS), ["hypr/lock.sh:1: no longer mentions scripts/lock-flag; update OUTSIDE_REFS in lib/check/steps/qml_paths.py"])
 
 
+class MissingFileTest(PathsCase):
+    def test_tracked_file_deleted_from_disk_is_a_finding_not_a_crash(self):
+        write_tree(self.root, {"qs/a/A.qml": 'Item { source: "x.png" }\n'})
+        subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
+        subprocess.run(("git", "add", "qs/a/A.qml"), cwd=self.root, check=True)
+        os.remove(os.path.join(self.root, "qs/a/A.qml"))
+        found = qml_paths.run_checks(self.root, qml_paths.Layout("qs", "greeter", [], [], []))
+        self.assertEqual(
+            [f"{f.path}:{f.line}: {f.message}" for f in found],
+            ["qs/a/A.qml:1: tracked but missing from the working tree (moved without git mv?)"],
+        )
+
+
 class LiveTreeTest(unittest.TestCase):
     def test_the_repository_passes(self):
         self.assertEqual(qml_paths.run_checks(REPO_DIR), [])
