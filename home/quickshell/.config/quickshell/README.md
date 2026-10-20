@@ -12,10 +12,10 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | ------------- | ------------------------------------------------------------------------------------------ |
 | `shell.qml`   | Entry point: a bar per monitor, then every popup, picker provider, IPC handler and overlay |
 | `services/`   | Singletons that hold state (network...) and the IPC handlers |
-| `ui/`         | Shared, style-neutral widgets: `menu/` (rows, tabs), `frames/` (brackets and the pieces a frame stack is built from), `gauges/` (`Meter`, `AtbBar`, `TickRuler`...), `keys/` (key badges and controller badges), `effects/` (dither, scanlines, sheen, sprites) |
+| `ui/`         | Shared widgets: `menu/` (rows, tabs), `frames/` (brackets and the pieces a frame stack is built from), `gauges/` (`Meter`, `AtbBar`, `TickRuler`...), `keys/` (key badges and controller badges), `effects/` (dither, scanlines, sheen, sprites) |
 | `styles/`     | One folder per style with the pieces that only that style draws: `tokens.js` (its token overrides), `icons.js` (its bar icon set, where it has one), `widgets/` and `sounds/` (the style's sound pack), and for snes `popups/`; `goldeneye/` also holds `Watch.js` (the watch colors), `watch_tokens.js` and the watch parts its lock skin shares (`PanelShape`, `SegmentArc`, `WatchHands`, `static.frag`). `index.js` builds every style's token set and `IconSets.js` registers the icon sets |
 | `features/`   | One folder per feature, listed under Features below |
-| `core/`       | `Paths.qml` (XDG dirs), `JsonStore.qml` (one JSON settings file: debounced atomic save, watch, extras kept; or with `read_only` a follower of a file another program writes), `Fuzzy.js` (the fuzzy matcher), `RestartingStream.qml` (a streamed command restarted with backoff) and `PolledCommand.qml` (a command run on a timer or on demand, one result per run); imports nothing from the rest of the shell |
+| `core/`       | `Paths.qml` (XDG dirs), `JsonStore.qml` (one JSON settings file: debounced atomic save, watch, extras kept; or with `read_only` a follower of a file another program writes), `Fuzzy.js` (the fuzzy matcher), `RestartingStream.qml` (a streamed command restarted with backoff) and `PolledCommand.qml` (a command run on a timer or on demand, one result per run) |
 | `theme/`      | `Theme.qml` (colors from the Oasis theme), `Style.qml` (the active style's tokens), `StyleSchema.js` (every token's type, default and doc) and `BundledFonts.qml` (registers the bundled fonts) |
 | `assets/fonts/` | Bundled OFL fonts, registered for the whole shell                                        |
 | `sounds/`     | `alarm.ogg` and `mgs2/`, the sounds that belong to no style (each style's pack is in `styles/<style>/sounds/`) |
@@ -99,7 +99,7 @@ A singleton is named for what it holds: `Settings` for the user's saved choices 
 
 ## Extending
 
-Folder imports are root-anchored, `import qs.<path>` (`import qs.theme`, `import qs.features.lock.skins as Skins`), so moving a file only renames the path; JS imports stay relative (`import "Tints.js" as Tints`).
+Structure rules (layers, imports, where a new file goes, greeter-staged files, tests) are in [AGENTS.md](../../../../AGENTS.md#quickshell-structure).
 
 **A Settings section.** Write `features/settings/sections/<Name>Section.qml`, usually a `RowsSection` with a list of rows, and add an entry to `list` in `features/settings/Sections.js`. The sidebar, search and IPC pick it up from there.
 

@@ -101,11 +101,21 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 - `x` removes or forgets the selected thing (closes a window in the overview, forgets a Bluetooth device or network, drops a Bar modules argument). Forgetting and deleting saved data first ask a `y`/`n` prompt naming what goes; `q` still closes from the prompt.
 - Picker lists step rows with Tab/Shift+Tab, except a provider whose items expand into lists of their own (`PickerProvider.expands`, e.g. Voice Help): there Tab expands the selected item, as Tab completes in HyprVim's prompt, and Backspace on an empty search goes back.
 - Full-screen interactive modes (pickers, zoom) follow `RegionSelector`: Quickshell owns keyboard and pointer, loads the skin cursor from `features/screen_select/cursors`, and has a `?` help box; never a Hyprland submap.
-- Style tokens are declared once in `theme/StyleSchema.js` (type, default, doc) and each style's overrides live in `styles/<name>/tokens.js`. Never hand-edit the `BEGIN generated` block in `Style.qml`; edit the schema and run `scripts/gen-style-exports` (in the Quickshell dir).
+- Never hand-edit the `BEGIN generated` block in `Style.qml`: edit `theme/StyleSchema.js` and run `scripts/gen-style-exports` (in the Quickshell dir). Adding a style or token: `theme/README.md`.
 - Times use `TimeFormat` and `ClockSettings` (Settings > Clock); state paths use `core/Paths.qml` and `lib/state.lua` instead of recomputing XDG dirs; a settings file is a `core/JsonStore.qml` child of its store singleton, not a hand-built timer plus `mkdir/printf/mv`.
-- A path built as a string (`Qt.resolvedUrl`, `Quickshell.shellDir + "/x"`, a JS `.import`) is checked by `lib/check/steps/qml_paths.py`, which qmllint cannot do. A path drawn from a table (bar modules, settings sections, popup views, picker skins) needs a rule in its `TABLES`; a use the step cannot classify fails until it has one or carries `// qs-path: skip <reason>`, and a target meant to be missing that git does not ignore carries `// qs-path: optional <reason>`. A file outside the Quickshell tree that names such a path goes in its `OUTSIDE_REFS`.
-- An import, or a URL load with a literal head, that runs to a higher layer (core 0 < theme 1 < ui 2 < services 3 < styles 4 < features 5; ranks in `LAYERS`) fails `lib/check/steps/qml_layers.py` unless `lib/check/qml-layers.allow` lists it with a reason and the item that removes it. Delete the line in the PR that removes the edge; a line whose edge is gone fails as stale. Feature-to-feature and style-to-style edges, and loads whose head is not a literal or comes from a table, are not checked.
-- A link, an `#anchor` or a backticked repo path in a Quickshell README (`*.md` under the Quickshell tree) must resolve, or `lib/check/steps/readme_links.py` fails. A path the README cites that git ignores (a machine-local file) passes.
+
+## Quickshell structure
+
+`QS` is `home/quickshell/.config/quickshell`; `QS/README.md` indexes the folders and per-feature docs. Each rule points to where it is enforced or explained.
+
+- Layers: a file imports its own layer or a lower one, in the order of `LAYERS` in `lib/check/steps/qml_layers.py` (`qml-layers`; the ranks change there, not here). `core/` imports nothing outside `core/`. A kept upward edge goes in `lib/check/qml-layers.allow`; delete the line in the PR that removes the edge.
+- Imports: folders as `import qs.<path>`, JS relative (`import "Tints.js" as Tints`). Feature-to-feature and style-to-style imports are unchecked: go through a singleton.
+- String-built paths and table-driven loads: `qml-paths` (`lib/check/steps/qml_paths.py`) lists the rules and the `// qs-path:` markers.
+- Singleton names: `qml-singleton-names`; `QS/README.md` "Naming singletons".
+- Where a new file goes (not machine-checked): shared by several features and style-neutral, `ui/`; used by one feature, that feature's folder; one style's drawing, that feature if one uses it, else `styles/<name>/`. Exception: a single-style widget with three or more consumers (`MateriaOrb`, `VisorGlass`, `HandCursor`) lives in `ui/`.
+- Greeter-staged files: any file the greeter loads is listed in `lib/common/greeter-files.sh`, edited in the PR that adds, moves or deletes it; ship-batch re-syncs the greeter from that list. A lock skin imports nothing outside it.
+- Tests: a check step's tests are `lib/check/tests/test_<step>.py`; a runtime QML test is `home/quickshell/tests/<name>/run.sh` with its own Step and `PATH_SCOPES` rule in `lib/check/scopes.py`. Run them through `lib/check.sh --only <step>` so the pass counts.
+- Docs: `readme-links` (`lib/check/steps/readme_links.py`) fails a dead link, anchor or backticked path in a Quickshell README. It does not read this file.
 
 ## voxcmd
 
