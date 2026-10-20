@@ -96,6 +96,8 @@ review_start_s=${MERGE_PRS_REVIEW_START:-300}
 # One query per PR: unresolved review threads, and the Codex summary comment's status and reviewed commit, if the repo uses Codex.
 # Codex posts that comment about a minute after a PR opens, so with none yet its eyes reaction counts as Running, and a
 # PR younger than review_start_s is Pending rather than "none": a repo without Codex only waits out that window.
+# A Completed summary with no commit in its table is Unreviewed: Codex writes one when it never ran a review (quota,
+# outage), so it pins nothing and must not pass as a clean review of the head.
 # shellcheck disable=SC2016 # GraphQL and jq variables, not shell ones.
 review_query='query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) { pullRequest(number: $number) {
@@ -112,9 +114,11 @@ review_jq='.data.repository.pullRequest as $p
   | (if any($p.reactions.nodes[]; (.user.login // "") | startswith("chatgpt-codex")) then "Running"
      elif (now - ($p.createdAt | fromdateiso8601)) < '"$review_start_s"' then "Pending"
      else "none" end) as $no_summary
+  | ($codex | capture("\\*\\*(?<s>Running|Completed|Failed)\\*\\*").s // $no_summary) as $status
+  | ($codex | capture("\\| `(?<c>[0-9a-f]{7,40})` \\|").c // "-") as $commit
   | [([$p.reviewThreads.nodes[] | select(.isResolved | not)] | length),
-     ($codex | capture("\\*\\*(?<s>Running|Completed|Failed)\\*\\*").s // $no_summary),
-     ($codex | capture("\\| `(?<c>[0-9a-f]{7,40})` \\|").c // "-"),
+     (if $status == "Completed" and $commit == "-" then "Unreviewed" else $status end),
+     $commit,
      $p.headRefOid] | @tsv'
 
 review_wait_s=${MERGE_PRS_REVIEW_WAIT:-1200}
@@ -224,6 +228,19 @@ check_reviews() {
     if [[ $status == Running || $status == Pending ]] && $wait_review; then
       echo "merge-prs: waiting up to ${review_wait_s}s for #$number's Codex review" >&2
       poll_review "$number"
+    fi
+    if [[ $status == Unreviewed ]]; then
+      if $wait_review && { ! $check_only || $request_review; }; then
+        echo "merge-prs: #$number has no Codex review (its summary records no commit); requesting one and waiting up to ${review_wait_s}s" >&2
+        gh pr comment "$number" --body "@codex review" >/dev/null || die "cannot request a Codex review on #$number"
+        poll_review "$number" head
+        [[ $status != Unreviewed ]] ||
+          problems+=("#$number: Codex has not reviewed the head ${head:0:7} after ${waited}s; rerun with --wait-review once it has")
+      else
+        rerun_flags="--wait-review"
+        ! $check_only || rerun_flags="--check --wait-review --request-review"
+        problems+=("#$number: Codex completed without a commit, so nothing was reviewed; comment @codex review, or rerun with $rerun_flags")
+      fi
     fi
     # A fix that does what the review asked does not need another round; new work or new files after it do.
     if [[ $status == Completed && $head != "$reviewed"* ]]; then
