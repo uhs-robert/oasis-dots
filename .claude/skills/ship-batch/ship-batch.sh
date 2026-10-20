@@ -202,7 +202,12 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     done
     # A failure here still relaunches the bar first: dying with the old one killed would leave the owner with none.
     migrate_status=0
-    migrate "after stopping the bar" || migrate_status=1
+    # The wait above can run out (a slow exit): migrations that see a bar keep the old state and nothing would retry.
+    if pgrep -x 'qs|quickshell' >/dev/null; then
+      $run_migrations && echo "ship-batch: the old bar was still running, so migration cleanup was skipped; stop the bar and run: just migrate-quickshell-state"
+    else
+      migrate "after stopping the bar" || migrate_status=1
+    fi
     hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" 9>&- >/dev/null || die "hyprctl could not relaunch qs; start it by hand: hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\""
     sleep 6
     pgrep -x qs >/dev/null || die "qs did not come back; read 'qs log'"
