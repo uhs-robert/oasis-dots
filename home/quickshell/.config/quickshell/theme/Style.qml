@@ -475,7 +475,7 @@ Singleton {
     readonly property string lock_name: root.lock_style === "follow" ? root.name : root.lock_style
     // The lock skins' colour family.
     property string lock_tint: "primary"
-    readonly property var lock_tints: ["primary", "secondary", "green", "amber", "white", "classic"]
+    readonly property var lock_tints: ["primary", "secondary", "red", "orange", "yellow", "green", "cyan", "blue", "purple", "white", "classic"]
     // What the simple lock draws behind its card: the desktop pixelated, blurred, or nothing.
     property string lock_backdrop: "pixelate"
     readonly property var lock_backdrops: ["pixelate", "blur", "off"]
@@ -493,9 +493,17 @@ Singleton {
         return true;
     }
 
+    // A saved or requested tint under its current name, or "" when it names no tint. Tints.js keeps the same rename
+    // for the greeter, which reads synced settings without this singleton.
+    function lock_tint_named(tint) {
+        const current = tint === "amber" ? "orange" : tint;
+        return root.lock_tints.indexOf(current) >= 0 ? current : "";
+    }
+
     function set_lock_tint(tint) {
-        if (root.lock_tints.indexOf(tint) < 0) return false;
-        root.lock_tint = tint;
+        const current = root.lock_tint_named(tint);
+        if (current === "") return false;
+        root.lock_tint = current;
         root.save_lock();
         return true;
     }
@@ -660,7 +668,7 @@ Singleton {
 
     function load_lock(data) {
         if (typeof data.lock_style === "string" && root.valid_lock_style(data.lock_style)) root.lock_style = data.lock_style;
-        if (root.lock_tints.indexOf(data.lock_tint) >= 0) root.lock_tint = data.lock_tint;
+        if (root.lock_tint_named(data.lock_tint) !== "") root.lock_tint = root.lock_tint_named(data.lock_tint);
         if (root.lock_backdrops.indexOf(data.lock_backdrop) >= 0) root.lock_backdrop = data.lock_backdrop;
         root.lock_music = data.lock_music !== false;
     }
