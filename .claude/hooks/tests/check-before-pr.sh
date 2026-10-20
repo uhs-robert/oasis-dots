@@ -84,6 +84,27 @@ expect allow "cds in turn, the second relative to the first" "cd $root && cd wt-
 expect deny "a cd after || runs only on a failure, so it does not count" "true || cd $root/wt-pass; $create" "$root/wt-fail"
 expect deny "a cd after the PR command does not count" "cd $root/wt-fail && $create; cd $root/wt-pass && true" "$root/wt-pass"
 
+# The extra sentence is for a check chained into the blocked command, and only then.
+chain_hint='cannot count'
+deny_reason() { jq -n --arg c "$1" --arg d "$root/wt-fail" '{tool_input: {command: $c}, cwd: $d}' | "$hook" | jq -r '.hookSpecificOutput.permissionDecisionReason // empty'; }
+for chained in "lib/check.sh --changed $base; $create" "just check && $create"; do
+  if [[ $(deny_reason "$chained") == *"$chain_hint"* ]]; then
+    echo "ok   deny: a chained check gets the judged-before-it-runs hint ($chained)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL a chained check gets the judged-before-it-runs hint ($chained)"
+    fail=$((fail + 1))
+  fi
+done
+plain=$(deny_reason "$create")
+if [[ -n $plain && $plain != *"$chain_hint"* ]]; then
+  echo "ok   deny: a plain gh pr create gets no chained-check hint"
+  pass=$((pass + 1))
+else
+  echo "FAIL a plain gh pr create gets no chained-check hint (got: ${plain:-allowed})"
+  fail=$((fail + 1))
+fi
+
 if [[ -z $(jq -n --arg c 'gh pr view 1' --arg d "$repo" '{tool_input: {command: $c}, cwd: $d}' | "$hook") ]]; then
   echo "ok   other gh commands pass through"
   pass=$((pass + 1))
