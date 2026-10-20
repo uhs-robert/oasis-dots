@@ -106,6 +106,7 @@ impl<'a> Runner<'a> {
             StepContext {
                 in_sequence,
                 in_session_turn: self.rt.in_session_turn,
+                ..StepContext::default()
             },
         );
         match step.builtin {

@@ -443,7 +443,7 @@ fn route_is_clean_when_every_example_lands_on_its_integration() {
     // Media's three placeholder examples and Lamp's one are skipped.
     assert!(
         stdout(&output).ends_with(
-            "5 examples route to their integration, 0 do not; skipped 4 with a <placeholder> and 0 said inside a mode\n"
+            "5 examples route to their integration (0 only in their surface or mode), 0 do not; skipped 4 with a <placeholder> and 0 said inside a mode\n"
         ),
         "{}",
         stdout(&output)
@@ -471,6 +471,75 @@ fn route_names_an_example_that_misses_or_lands_elsewhere_and_exits_1() {
     assert_eq!(json.status.code(), Some(1));
     assert_eq!(report["misrouted"][1]["routed_to"], serde_json::json!([]));
     sandbox.no_bash_ran();
+}
+
+const PANE: &str = r#"name = "Pane"
+verbs = [{ action = "next", match = "pane next" }]
+examples = ["pane next", "next", "bogus", "<anything>"]
+[actions]
+next = "true"
+[mode]
+rewrite = { prefix = "pane " }
+"#;
+
+#[test]
+fn route_checks_a_toml_mode_example_through_the_modes_rewrite() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write("integrations/pane.toml", PANE);
+    let output = sandbox.voxcmd(&["integrations", "examples", "--route", "--json"], &[]);
+    let report: serde_json::Value = serde_json::from_str(&stdout(&output)).unwrap();
+    // "pane next" routes as spoken, "next" only once the mode has made it "pane next"; "bogus" stays wrong in the mode.
+    assert_eq!(output.status.code(), Some(1), "{report}");
+    assert_eq!((&report["routed"], &report["routed_in_scope"]), (&2.into(), &1.into()));
+    assert_eq!((&report["skipped"], &report["in_mode"]), (&1.into(), &0.into()));
+    assert_eq!(report["misrouted"].as_array().unwrap().len(), 1, "{report}");
+    assert_eq!(report["misrouted"][0]["example"], "bogus");
+    sandbox.no_bash_ran();
+}
+
+#[test]
+fn route_checks_a_toml_surface_example_with_the_surface_open() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/dial.toml",
+        "name = \"Dial\"\nverbs = [{ action = \"on\", match = \"lamp on\" }]\nexamples = [\"lamp on\"]\n\
+         [actions]\non = \"true\"\n[surface]\nstate_file = \"dial.json\"\n",
+    );
+    sandbox.write(
+        "integrations/lamp.toml",
+        &LAMP.replace("echo lit >> LOG", "true").replace(r#""lamp on", "#, ""),
+    );
+    let output = sandbox.voxcmd(&["integrations", "examples", "--route", "--json"], &[]);
+    let report: serde_json::Value = serde_json::from_str(&stdout(&output)).unwrap();
+    // Lamp takes the phrase too while the dial is closed; open, the dial has it alone.
+    assert_eq!(output.status.code(), Some(0), "{report}");
+    assert_eq!((&report["routed"], &report["routed_in_scope"]), (&1.into(), &1.into()));
+    assert_eq!(report["in_mode"], 0);
+}
+
+#[test]
+fn route_still_skips_every_example_of_a_legacy_integration_with_a_surface() {
+    let sandbox = Sandbox::with(&[]);
+    let overview = std::fs::read_to_string(Path::new(FIXTURES).join("legacy-dump.jsonl"))
+        .unwrap()
+        .lines()
+        .find(|line| line.contains("\"Overview\""))
+        .unwrap()
+        .to_string();
+    let dump = sandbox.root.path().join("dump.jsonl");
+    std::fs::write(&dump, format!("{overview}\n")).unwrap();
+    std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
+    sandbox.write("integrations.d/overview.sh", "");
+    let output = sandbox.voxcmd(
+        &["integrations", "examples", "--route"],
+        &[("VOXCMD_LEGACY_DUMP_FILE", &dump)],
+    );
+    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
+    assert_eq!(
+        stdout(&output),
+        "0 examples route to their integration (0 only in their surface or mode), 0 do not; \
+         skipped 0 with a <placeholder> and 21 said inside a mode\n"
+    );
 }
 
 #[test]

@@ -199,6 +199,17 @@ impl ModeSettings {
     }
 }
 
+/// The integration's declared `[mode] rewrite`, compiled; none for a mode that rewrites by hook or not at all.
+pub fn declared_rewrite(integration: &Integration, intents: &Intents) -> Option<Rewriting> {
+    let patterns = pattern::compile_mode(integration, intents).ok()??;
+    let rewrite = integration.mode.as_ref()?.rewrite.as_ref()?;
+    Some(Rewriting {
+        drop: patterns.drop,
+        keep: patterns.keep,
+        prefix: rewrite.prefix.clone(),
+    })
+}
+
 /// A declared `rewrite` (TOML): what a turn's words become.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rewriting {
@@ -209,7 +220,7 @@ pub struct Rewriting {
 
 impl Rewriting {
     /// The text to route, empty when nothing is: `drop` first, then `keep` (as spoken), else the prefix and the text.
-    fn apply(&self, text: &str) -> String {
+    pub fn apply(&self, text: &str) -> String {
         let whole = |pattern: &Option<WholeText>| pattern.as_ref().is_some_and(|pattern| pattern.is_match(text));
         if whole(&self.drop) {
             String::new()
