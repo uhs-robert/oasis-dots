@@ -740,12 +740,18 @@ pub(crate) mod tests {
         let path = CString::new(fifo.as_os_str().as_bytes()).unwrap();
         // SAFETY: mkfifo on a NUL-terminated path.
         assert_eq!(unsafe { libc::mkfifo(path.as_ptr(), 0o600) }, 0);
-        let reader = {
-            let fifo = fifo.clone();
-            thread::spawn(move || std::fs::read_to_string(fifo).unwrap())
-        };
+        // Opened here, non-blocking, so a reader exists before the write starts: a reader thread could be starved past
+        // write_answer's 2 second give-up on a loaded machine.
+        let mut reader = std::fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NONBLOCK)
+            .open(&fifo)
+            .unwrap();
         assert!(write_answer(&fifo, "2. Next - bottom"));
-        assert_eq!(reader.join().unwrap(), "2. Next - bottom\n");
+        let mut answer = String::new();
+        reader.read_to_string(&mut answer).unwrap();
+        assert_eq!(answer, "2. Next - bottom\n");
+        drop(reader);
         let started = Instant::now();
         assert!(!write_answer(&fifo, "x"));
         assert!(started.elapsed() >= Duration::from_secs(2));
