@@ -35,7 +35,8 @@ use_live_hypr() {
   hypr_checked=true
 }
 
-main_check="$(dirname "$0")/main-check.sh"
+# Absolute, since systemd-run starts the unit from / and a relative path would fail it.
+main_check="$(cd "$(dirname "$0")" && pwd)/main-check.sh"
 [[ ${1:-} != --wait-main-check ]] || exec "$main_check" wait
 
 skip_gate=() sync_check=false
@@ -57,6 +58,7 @@ main_check_failure_notice "$repo"
 restart_stopped_check=false sync_check_pid=''
 on_exit() {
   remove_temp_worktree
+  clear_main_check_suspended "$repo"
   [[ -z $sync_check_pid ]] || kill -TERM -- "-$sync_check_pid" 2>/dev/null
   $restart_stopped_check || return 0
   # fd 9 still open: this run died holding the ship lock.
@@ -73,7 +75,10 @@ on_exit() {
 stop_main_check_early() {
   try_lock "$repo" "stopping the check of main" || return 0
   stop_main_check "$repo" || die "could not stop the running check of main"
-  ! $main_check_stopped || restart_stopped_check=true
+  if $main_check_stopped; then
+    restart_stopped_check=true
+    suspend_main_check "$repo"
+  fi
   release_lock
 }
 
@@ -204,11 +209,16 @@ if [[ -z $check_from ]]; then
   release_lock
 elif $sync_check || "$main_check" quick "$after"; then
   restart_stopped_check=false
-  release_lock
   # A foreground check is its own process group too, so a newer batch's stop reaches its steps; waiting on it in the
-  # background keeps this run's INT and TERM traps live.
-  setsid -w "$main_check" run "$after" "$check_from" &
+  # background keeps this run's INT and TERM traps live. It takes its run lock before the ship lock is released, as in
+  # start_main_check: a batch waiting for the lock would otherwise find nothing to stop and race it for the run lock.
+  rm -f "$(main_check_path "$repo" pid)"
+  setsid -w "$main_check" run "$after" "$check_from" 9>&- &
   sync_check_pid=$!
+  clear_main_check_suspended "$repo"
+  # A check that never takes its run lock shows in its exit status below.
+  wait_main_check_running "$repo" || true
+  release_lock
   check_status=0
   wait "$sync_check_pid" || check_status=$?
   sync_check_pid=''
