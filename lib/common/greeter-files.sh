@@ -5,7 +5,7 @@
 GREETER_QS_FILES=(
   features/lock/skins/
   features/lock/Tints.js
-  VERSION?
+  'VERSION?'
   theme/Theme.qml
   theme/FontFiles.js
   theme/Style.qml
@@ -58,14 +58,19 @@ GREETER_QS_FILES=(
 
 # Copies the GREETER_QS_FILES entries from the Quickshell config dir $1 into $2, each at the same relative path; fails on a missing required entry.
 copy_greeter_qs_files() {
-  local qs=$1 dest=$2 entry
+  local qs=$1 dest=$2 entry matches
   for entry in "${GREETER_QS_FILES[@]}"; do
     if [[ $entry == *'?' ]]; then
       [[ -e "$qs/${entry%'?'}" ]] || continue
       entry=${entry%'?'}
     fi
-    # The glob entries stay unquoted so cp sees what they match; a glob matching nothing reaches cp literally and fails.
-    # shellcheck disable=SC2086
-    (cd "$qs" && cp -r --parents ${entry%/} "$dest/") || return 1
+    # find does the globbing: zsh leaves an unquoted ${entry} unexpanded. A glob matching nothing fails, as it did through cp.
+    if [[ $entry == *'*'* ]]; then
+      matches=$(cd "$qs" && find "$(dirname "$entry")" -maxdepth 1 -name "$(basename "$entry")" -print0 | tr '\0' '\n') || return 1
+      [[ -n $matches ]] || return 1
+      (cd "$qs" && find "$(dirname "$entry")" -maxdepth 1 -name "$(basename "$entry")" -exec cp -r --parents -t "$dest/" {} +) || return 1
+    else
+      (cd "$qs" && cp -r --parents "${entry%/}" "$dest/") || return 1
+    fi
   done
 }

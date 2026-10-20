@@ -3,11 +3,11 @@
 # and lets the greetd login unlock the GNOME keyring.
 
 # shellcheck source=lib/common/greeter-files.sh
-source "$(dirname "${BASH_SOURCE[0]}")/../common/greeter-files.sh"
+source "$(dirname "${BASH_SOURCE[0]:-$0}")/../common/greeter-files.sh"
 
 GREETER_DEST=/etc/greetd/quickshell
 GREETER_MONITORS=/etc/greetd/monitors.lua
-GREETER_MONITORS_GENERATOR="$(dirname "${BASH_SOURCE[0]}")/greeter-monitors.lua"
+GREETER_MONITORS_GENERATOR="$(dirname "${BASH_SOURCE[0]:-$0}")/greeter-monitors.lua"
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
 GREETER_DATA=/var/lib/qs-greeter
 # The Quickshell greeter's output: written by the greeter user, readable by the installing user's group, so a login
@@ -49,15 +49,14 @@ stage_greeter() {
   local skin audio_dir audio_skins
   # Skins whose imported audio lives in $XDG_DATA_HOME/quickshell/<skin>-audio.
   audio_skins=$(jq -r 'to_entries[] | select(.value.audio) | .key' "$qs/features/lock/skins/index.json") || return 1
-  mapfile -t audio_skins <<<"$audio_skins"
-  for skin in "${audio_skins[@]}"; do
+  while IFS= read -r skin; do
     audio_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/$skin-audio"
     if [[ -d "$audio_dir" && -n "$(ls -A "$audio_dir")" ]]; then
       rm -rf "${dest:?}/features/lock/skins/$skin/audio"
       mkdir -p "$dest/features/lock/skins/$skin/audio"
       cp -rL "$audio_dir/." "$dest/features/lock/skins/$skin/audio/"
     fi
-  done
+  done <<<"$audio_skins"
   local frames_dir="${XDG_DATA_HOME:-$HOME/.local/share}/quickshell/goldeneye-frames"
   if (($(cat "$frames_dir/count.txt" 2>/dev/null || echo 0) > 0)); then
     rm -rf "${dest:?}/features/lock/skins/goldeneye/frames"
@@ -91,7 +90,8 @@ stage_greeter() {
   [[ "$login_tint" != "follow" ]] && tint=$login_tint
   [[ "$login_music" != "follow" ]] && music=$login_music
   [[ "$lock" == "follow" ]] && lock=$style
-  local file="${lock^}.qml"
+  local file
+  file="$(printf %s "${lock:0:1}" | tr "[:lower:]" "[:upper:]")${lock:1}.qml"
   [[ "$lock" != "simple" && -f "$dest/features/lock/skins/$file" ]] || lock=simple
 
   jq -n --arg user "${GREETER_USER:-$USER}" --arg lock "$lock" --arg tint "$tint" --arg music "$music" --arg session "$session" --arg watch "$watch" \
