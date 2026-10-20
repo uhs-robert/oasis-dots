@@ -199,8 +199,15 @@ class CliTests(ScratchRepo):
         self.assertTrue(os.path.exists(self.trees))
 
     def test_no_bytecode_left_behind(self):
+        # Compares against a snapshot because a stray .pyc from an unrelated import must not fail this test.
+        cache = os.path.join(CHECK_DIR, "__pycache__")
+
+        def cache_entries():
+            return set(os.listdir(cache)) if os.path.isdir(cache) else set()
+
+        before = cache_entries()
         self.cli(NEW_CLI, "record")
-        self.assertFalse(os.path.isdir(os.path.join(CHECK_DIR, "__pycache__")))
+        self.assertEqual(cache_entries() - before, set())
 
     def test_concurrent_step_records_keep_every_line(self):
         os.chdir(self.repo)
