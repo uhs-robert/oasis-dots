@@ -35,8 +35,9 @@ use_live_hypr() {
   hypr_checked=true
 }
 
-# Absolute, since systemd-run starts the unit from / and a relative path would fail it.
-main_check="$(cd "$(dirname "$0")" && pwd)/main-check.sh"
+# The main checkout's copy, not this script's neighbour: run from a PR worktree in the batch, that worktree is removed by
+# the merge before the check starts. Absolute, as systemd-run needs.
+main_check="$repo/.claude/skills/ship-batch/main-check.sh"
 [[ ${1:-} != --wait-main-check ]] || exec "$main_check" wait
 
 skip_gate=() sync_check=false
@@ -58,27 +59,25 @@ main_check_failure_notice "$repo"
 restart_stopped_check=false sync_check_pid=''
 on_exit() {
   remove_temp_worktree
-  clear_main_check_suspended "$repo"
   [[ -z $sync_check_pid ]] || kill -TERM -- "-$sync_check_pid" 2>/dev/null
-  $restart_stopped_check || return 0
   # fd 9 still open: this run died holding the ship lock.
-  { true >&9; } 2>/dev/null || take_lock "$repo" "" || return 0
-  local owed
-  owed=$(owed_check "$repo")
-  if [[ -n $owed ]] && ! main_check_is_running "$repo"; then
-    start_main_check "$repo" "$main_check" "$(git -C "$repo" rev-parse HEAD)" "$owed" &&
-      echo "ship-batch: restarted the check of main this run stopped (log $(main_check_path "$repo" log))" >&2
+  if $restart_stopped_check && { { true >&9; } 2>/dev/null || take_lock "$repo" ""; }; then
+    local owed
+    owed=$(owed_check "$repo")
+    if [[ -n $owed ]] && ! main_check_is_running "$repo"; then
+      start_main_check "$repo" "$main_check" "$(git -C "$repo" rev-parse HEAD)" "$owed" &&
+        echo "ship-batch: restarted the check of main this run stopped (log $(main_check_path "$repo" log))" >&2
+    fi
   fi
+  # Last, so a waiter keeps waiting while this run takes the lock to restart the check.
+  clear_main_check_suspended "$repo"
 }
 # Stopped before the first branch check, so its heavy steps do not wait behind a check of a main that is about to change.
 # Under the ship lock, unless another batch holds it: that batch stops and restarts the check itself.
 stop_main_check_early() {
   try_lock "$repo" "stopping the check of main" || return 0
   stop_main_check "$repo" || die "could not stop the running check of main"
-  if $main_check_stopped; then
-    restart_stopped_check=true
-    suspend_main_check "$repo"
-  fi
+  ! $main_check_stopped || restart_stopped_check=true
   release_lock
 }
 
@@ -206,6 +205,7 @@ finish_base "$repo"
 check_from=$(owed_check "$repo")
 if [[ -z $check_from ]]; then
   restart_stopped_check=false
+  clear_main_check_suspended "$repo"
   release_lock
 elif $sync_check || "$main_check" quick "$after"; then
   restart_stopped_check=false

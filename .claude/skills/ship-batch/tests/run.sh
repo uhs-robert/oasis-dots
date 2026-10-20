@@ -187,6 +187,7 @@ if [[ \$1 == --check ]]; then
 fi
 echo "merge \$* $lock_state" >>"\$SHIP_LOG"
 while [[ -e $e2e/merge_hold ]]; do sleep 0.2; done
+[[ ! -e $e2e/merge_removes_wt ]] || git -C "$e2e/main" worktree remove --force "$e2e/wt-1"
 [[ -z \${STUB_MERGE_FAIL:-} ]] || exit 1
 for pr; do [[ \$pr == --* ]] && continue; git push -q origin "b\$pr:main" 2>/dev/null || exit 1; done
 STUB
@@ -197,10 +198,14 @@ printf '#!/bin/sh\necho "b$3"\n' >"$stubs/gh"
 # heavy check step does; a second holder that cannot get the slot in 5 s logs "slot busy" (a leaked lock). Control goes
 # through files, since a check started by systemd-run does not inherit this script's environment. With $e2e/just_daemon
 # present it also leaves a setsid daemon behind that keeps every descriptor it inherited, and with $e2e/just_chatty that
-# daemon writes a line to its stdout every 0.2 s, as a shadow's qs does.
+# daemon writes a line to its stdout every 0.2 s, as a shadow's qs does. A holding check that is stopped logs whether the
+# check was marked suspended by then.
 cat >"$stubs/just" <<STUB
 #!/usr/bin/env bash
 : "\${SHIP_LOG:=$e2e/log}" "\${SHIP_LOCK:=$e2e/main/.git/ship-batch.lock}"
+# A foreground check starts under the ship lock and runs once ship-batch releases it a moment later, so the stub gives the
+# lock 2 s to come free before logging its state: a check that inherited the lock still logs "held".
+for _ in \$(seq 20); do flock -n "\$SHIP_LOCK" true && break; sleep 0.1; done
 echo "just \$* $lock_state" >>"\$SHIP_LOG"
 [[ ! -e $e2e/just_daemon ]] || setsid -f bash -c 'exec -a $e2e/test-daemon sleep 300'
 [[ ! -e $e2e/just_chatty ]] || setsid -f bash -c 'exec -a $e2e/test-daemon bash -c "while sleep 0.2; do echo daemon tick; done"'
@@ -209,6 +214,7 @@ if [[ -n \$slot ]]; then
   exec 7>"\$slot"
   flock -w 5 7 || echo "slot busy" >>"\$SHIP_LOG"
   echo "just holding" >>"\$SHIP_LOG"
+  trap 'if [[ -e $e2e/main/.git/ship-batch-main-check.suspended ]]; then echo "stopped with marker"; else echo "stopped without marker"; fi >>"\$SHIP_LOG"; exit 143' TERM
   while [[ -e $e2e/just_hold ]]; do sleep 0.2; done
 fi
 exit \${STUB_JUST_STATUS:-0}
@@ -231,7 +237,7 @@ chmod +x "$stubs"/* "$fake_home"/.claude/skills/merge-prs/*
 # A main checkout on main with two stacked PR branches, b1 and b2, each in a worktree of its own.
 e2e_setup() {
   rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/just_hold" "$e2e/just_daemon" "$e2e/just_chatty" \
-    "$e2e/probe_main_check" "$e2e/branch_hold" "$e2e/setsid_delay" "$e2e/merge_hold" "$e2e/lock_hold"
+    "$e2e/probe_main_check" "$e2e/branch_hold" "$e2e/setsid_delay" "$e2e/merge_hold" "$e2e/lock_hold" "$e2e/merge_removes_wt"
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib/check" "$e2e/main/.claude/skills/ship-batch"
@@ -690,6 +696,13 @@ owe_check "$e2e/main" "$e2e_base"
 bash -c 'echo $$' >"$common/ship-batch-main-check.suspended"
 check "a marker left by a dead batch does not block wait" "! timeout 10 '$mc' wait >'$e2e/wait.out' 2>&1 && grep -q 'owed but none is running' '$e2e/wait.out'"
 sleep 30 &
+reused_pid=$!
+echo "$reused_pid" >"$common/ship-batch-main-check.suspended"
+check "nor does one whose pid now belongs to another program" "! timeout 10 '$mc' wait >'$e2e/wait.out' 2>&1 && grep -q 'owed but none is running' '$e2e/wait.out'"
+kill "$reused_pid"
+wait "$reused_pid" 2>/dev/null
+# Named like a batch, and with a second command so bash does not exec sleep in its place.
+bash -c 'sleep 30; :' ship-batch.sh &
 live_holder=$!
 echo "$live_holder" >"$common/ship-batch-main-check.suspended"
 MAIN_CHECK_WAIT_SECS=1 timeout 10 "$mc" wait >"$e2e/wait.out" 2>&1
@@ -708,10 +721,57 @@ rm -f "$e2e/just_chatty"
 sleep 1
 owe_check "$e2e/main" "$e2e_base"
 CHECK_FULL=1 ship_bg
-check "a background check's log" "wait_until '! checking' && sleep 1 && [[ \$(tr -cd '\\0' <$common/ship-batch-main-check.log | wc -c) == 0 ]] && head -1 $common/ship-batch-main-check.log | grep -q '^main-check: checking'"
+check "a background check's log" "wait_until '! checking' && sleep 1 && [[ \$(tr -cd '\\0' <$common/ship-batch-main-check.log | wc -c) == 0 ]] && [[ \$(grep -m1 -v 'daemon tick' $common/ship-batch-main-check.log) == 'main-check: checking'* ]]"
 owe_check "$e2e/main" "$e2e_base"
 SHIP_BATCH_SYNC_CHECK=1 CHECK_FULL=1 ship_bg
-check "a foreground check's log" "[[ $? == 0 ]] && sleep 1 && [[ \$(tr -cd '\\0' <$common/ship-batch-main-check.log | wc -c) == 0 ]] && head -1 $common/ship-batch-main-check.log | grep -q '^main-check: checking'"
+check "a foreground check's log" "[[ $? == 0 ]] && sleep 1 && [[ \$(tr -cd '\\0' <$common/ship-batch-main-check.log | wc -c) == 0 ]] && [[ \$(grep -m1 -v 'daemon tick' $common/ship-batch-main-check.log) == 'main-check: checking'* ]]"
+stop_all
+
+echo "== every stop marks the check suspended before it kills it"
+e2e_setup
+hold
+ship_bg 1
+wait_until "logged 'just holding'"
+ship_bg 2
+check "the stop before the branch checks" "[[ $? == 0 ]] && logged 'stopped with marker' && ! logged 'stopped without marker'"
+stop_all
+e2e_setup
+hold
+ship_bg 1
+wait_until "logged 'just holding'"
+ship_bg
+check "the stop under the lock" "[[ $? == 0 ]] && logged 'stopped with marker' && ! logged 'stopped without marker'"
+stop_all
+
+echo "== a dying batch keeps the check marked suspended until it has restarted it"
+e2e_setup
+hold
+ship_bg 1
+wait_until "logged 'just holding'"
+touch "$e2e/branch_hold" "$e2e/lock_hold"
+(
+  STUB_BRANCH_STATUS=1 ship_bg 2
+  echo $? >"$e2e/dying.rc"
+) &
+dying_batch=$!
+wait_until "grep -q '^check wt-2 ' '$SHIP_LOG'"
+flock "$SHIP_LOCK" bash -c "while [[ -e $e2e/lock_hold ]]; do sleep 0.2; done" &
+lock_holder=$!
+wait_until "! flock -n '$SHIP_LOCK' true"
+rm -f "$e2e/branch_hold"
+wait_until "grep -q 'another ship-batch holds the main checkout' '$e2e/out'"
+check "status still names it while it waits for the lock" "[[ \$('$mc' status) == 'stopped while ship-batch'* ]]"
+rm -f "$e2e/lock_hold"
+wait "$lock_holder" "$dying_batch"
+check "then it restarts the check and clears the marker" "[[ \$(<$e2e/dying.rc) != 0 ]] && checking && grep -q 'restarted the check of main' '$e2e/out' && [[ ! -e $common/ship-batch-main-check.suspended ]]"
+stop_all
+
+echo "== a batch run from a worktree the merge removes"
+e2e_setup
+hold
+touch "$e2e/merge_removes_wt"
+(cd "$e2e" && HOME=$fake_home PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/wt-1/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/out" 2>&1)
+check "still starts the check of main" "[[ $? == 0 ]] && [[ ! -e $e2e/wt-1 ]] && checking && grep -q 'runs in the background' '$e2e/out' || { cat '$e2e/out'; false; }"
 stop_all
 
 echo "== a batch skips the early stop while another batch holds the lock"
