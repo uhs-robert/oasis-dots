@@ -640,7 +640,21 @@ for name in WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR DBUS_SES
   check "systemd-run passes $name" "grep '^systemd-run ' '$SHIP_LOG' | grep -q -- '--setenv=$name '"
 done
 check "and a script path that resolves from /" "logged 'systemd-run script found from /'"
+check "under the MAIN_CHECK_UNIT override" "grep '^systemd-run ' '$SHIP_LOG' | grep -q -- '--unit=$MAIN_CHECK_UNIT '"
 stop_all
+# Without the override each repository gets its own unit, so two clones never stop each other's check.
+other_clone=$e2e/other-clone
+rm -rf "$other_clone"
+git clone -q "$e2e/origin.git" "$other_clone" 2>/dev/null
+for clone in "$e2e/main" "$other_clone"; do
+  owe_check "$clone" "$e2e_base"
+  (cd "$clone" && env -u MAIN_CHECK_UNIT HOME=$fake_home PATH="$stubs:$PATH" CHECK_FULL=1 timeout -k 5 $ship_timeout bash .claude/skills/ship-batch/ship-batch.sh >"$e2e/out" 2>&1)
+  pkill -f "$clone/.claude/skills/ship-batch/main-check.sh" 2>/dev/null
+  wait_until "flock -n '$clone/.git/ship-batch-main-check.lock' true"
+done
+mapfile -t clone_units < <(grep -oE -- '--unit=dotfiles-main-check-[0-9a-f]{8} ' "$SHIP_LOG")
+check "two clones get different default unit names" "[[ \${#clone_units[@]} == 2 && \${clone_units[0]} != \${clone_units[1]} ]]"
+rm -rf "$other_clone"
 
 echo "== a batch waiting for the lock stops a foreground check it started under the lock"
 # The foreground batch pauses in its merge while the second batch queues for the lock; every setsid is a second slow, so a

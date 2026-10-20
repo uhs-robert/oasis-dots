@@ -96,7 +96,17 @@ settle_check() {
 # result of the last finished check ("pass <sha> <epoch>", "fail <sha> <epoch> <log>", or "unrecorded <sha> <epoch> <log>"
 # for a pass of a main checkout whose tracked files had local changes), and the run lock that
 # main-check.sh holds on fd 8 for as long as it runs (so "running" is one flock test, whether systemd or setsid started it).
-main_check_unit=${MAIN_CHECK_UNIT:-dotfiles-main-check}
+# The unit is named per repository, like the state: two clones under one user (a throwaway one, say) would otherwise stop
+# each other's check, each seeing its own run lock free. MAIN_CHECK_UNIT overrides it.
+main_check_unit() {
+  local common
+  [[ -z ${MAIN_CHECK_UNIT:-} ]] || {
+    echo "$MAIN_CHECK_UNIT"
+    return
+  }
+  common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)
+  echo "dotfiles-main-check-$(printf '%s' "$common" | sha256sum | cut -c1-8)"
+}
 
 main_check_path() {
   echo "$(dirname "$(base_file "$1")")/ship-batch-main-check.$2"
@@ -129,7 +139,7 @@ stop_main_check() {
     main_check_stopped=true
     suspend_main_check "$repo"
   fi
-  command -v systemctl >/dev/null && systemctl --user stop "$main_check_unit" 2>/dev/null
+  command -v systemctl >/dev/null && systemctl --user stop "$(main_check_unit "$repo")" 2>/dev/null
   if main_check_is_running "$repo"; then
     pid=$(cat "$(main_check_path "$repo" pid)" 2>/dev/null)
     # Every check is started as a group leader (setsid); the pid is trusted only while the run lock is held.
@@ -172,7 +182,7 @@ main_check_suspended_by() {
 # unit gets none of this shell's environment unless passed: the session variables are what the steps and notify-send need.
 # Returns once the check has taken its run lock, so a waiter that sees the ship lock free also sees the check running.
 start_main_check() {
-  local repo=$1 script=$2 after=$3 check_from=$4 setenv=() name
+  local repo=$1 script=$2 after=$3 check_from=$4 setenv=() name unit
   # The pid file marks "has started", even for a check that has already finished again.
   rm -f "$(main_check_path "$repo" pid)" "$(main_check_path "$repo" suspended)"
   for name in PATH HOME CHECK_FULL CHECK_LOCK_WAIT_SECS WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR \
@@ -180,9 +190,10 @@ start_main_check() {
     [[ -z ${!name:-} ]] || setenv+=("--setenv=$name")
   done
   if command -v systemd-run >/dev/null; then
-    systemctl --user stop "$main_check_unit" 2>/dev/null || true
-    systemctl --user reset-failed "$main_check_unit" 2>/dev/null || true
-    systemd-run --user --unit="$main_check_unit" --collect --property=Nice=19 "${setenv[@]}" \
+    unit=$(main_check_unit "$repo")
+    systemctl --user stop "$unit" 2>/dev/null || true
+    systemctl --user reset-failed "$unit" 2>/dev/null || true
+    systemd-run --user --unit="$unit" --collect --property=Nice=19 "${setenv[@]}" \
       "$script" run --notify "$after" "$check_from" 9>&- >/dev/null 2>&1 || true
     wait_main_check_running "$repo" && return 0
   fi
