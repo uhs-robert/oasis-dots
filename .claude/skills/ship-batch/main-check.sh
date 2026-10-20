@@ -45,7 +45,7 @@ is_quick() {
 }
 
 cmd_run() {
-  local notify=false after check_from passed=true ship_lock
+  local notify=false after check_from checks_passed=true ship_lock
   [[ ${1:-} != --notify ]] || {
     notify=true
     shift
@@ -62,7 +62,7 @@ cmd_run() {
   exec > >(tee "$log") 2>&1
   cd "$repo" || exit 1
   echo "main-check: checking ${after:0:12} from ${check_from:0:12}"
-  run_checks "$after" "$check_from" || passed=false
+  run_checks "$after" "$check_from" || checks_passed=false
 
   # Under the ship lock, so a batch cannot owe a newer base between the HEAD test and the settle. A batch that holds the
   # lock stops this process first, which ends the wait.
@@ -73,7 +73,7 @@ cmd_run() {
     # Another batch may have merged and pulled while this check ran, changing the files under it: the result says nothing
     # about main and the debt stays.
     echo "main-check: main moved during the check; the check from ${check_from:0:12} is still owed, and the next ship-batch run makes it"
-  elif $passed; then
+  elif $checks_passed; then
     # With uncommitted changes in the main checkout the pass was of its working tree, not `after`'s, and the helper
     # refuses to record it.
     lib/check/passed.sh record || true
