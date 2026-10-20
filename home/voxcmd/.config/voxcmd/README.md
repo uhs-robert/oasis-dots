@@ -607,7 +607,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 
 ### Overview
 
-`overview.sh` drives the Quickshell workspace overview (the contract is also in the Quickshell README, "Workspace overview and voice") by voice: it names windows by the numbers the overview draws on them and calls the overview's own actions, so voice and keys share one selection (the overview's marks) and run the same code.
+`overview.sh` drives the Quickshell workspace overview (the contract is also in the Quickshell overview README, "Workspace overview and voice") by voice: it names windows by the numbers the overview draws on them and calls the overview's own actions, so voice and keys share one selection (the overview's marks) and run the same code.
 
 | Say                                                                                  | Does                                                                                       |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |

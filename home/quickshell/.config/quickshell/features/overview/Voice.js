@@ -1,7 +1,7 @@
 .pragma library
 
 // What the overview shows, as the snapshot voxcmd reads (voxcmd/overview.json in the runtime dir). The shape is documented in
-// the Quickshell README; Overview.qml writes it and the voxcmd Overview integration reads it.
+// `features/overview/README.md`; Overview.qml writes it and the voxcmd Overview integration reads it.
 
 const columns_words = { 2: ["left", "right"], 3: ["left", "middle", "right"] };
 const rows_words = { 2: ["top", "bottom"], 3: ["top", "middle", "bottom"] };
