@@ -49,6 +49,8 @@ pub struct Integration {
     pub settings: MatchSettings,
     pub actions: BTreeMap<String, Action>,
     pub surface: Option<Surface>,
+    /// How several options are shown when the integration can place each on screen.
+    pub picker: Option<Picker>,
 }
 
 impl Integration {
@@ -90,6 +92,8 @@ pub struct MatchSettings {
 pub struct Action {
     pub run: String,
     pub candidates: Option<Candidates>,
+    /// What voxcmd does itself instead of running `run`, which stays as the text explain prints.
+    pub builtin: Option<Builtin>,
     pub no_match: Option<String>,
     pub silent: bool,
     pub free_text: bool,
@@ -171,6 +175,77 @@ pub enum Candidates {
     Shell(String),
     /// The legacy file's `candidates <action> <target>` function, run through `_legacy-hook`. Goes in 3.2.
     LegacyFunction,
+    /// A source voxcmd runs itself: no shell, no bridge.
+    Builtin(Provider),
+}
+
+/// A built-in candidate source, named by `provider = "..."` on an action.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Provider {
+    /// The text on the focused window, read by OCR.
+    ScreenText,
+}
+
+impl Provider {
+    pub const KNOWN: &'static str = "screen_text";
+
+    pub fn named(name: &str) -> Option<Self> {
+        (name == Self::KNOWN).then_some(Self::ScreenText)
+    }
+}
+
+/// The pointer button of a click.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Button {
+    Left,
+    Right,
+    Middle,
+    /// Two left clicks: wlrctl has no double click.
+    Double,
+    /// Three left clicks.
+    Triple,
+}
+
+impl Button {
+    pub fn named(name: &str) -> Option<Self> {
+        match name {
+            "left" => Some(Self::Left),
+            "right" => Some(Self::Right),
+            "middle" => Some(Self::Middle),
+            "double" => Some(Self::Double),
+            "triple" => Some(Self::Triple),
+            _ => None,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Left => "left",
+            Self::Right => "right",
+            Self::Middle => "middle",
+            Self::Double => "double",
+            Self::Triple => "triple",
+        }
+    }
+}
+
+/// An action voxcmd performs in-process in place of a shell command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Builtin {
+    /// Moves the pointer to the candidate id's point and clicks. The button the provider chose is in the id; the one
+    /// named here (`run = "click_at right"`) is what the provider puts there.
+    ClickAt(Option<Button>),
+    /// Says the spoken target is not on screen.
+    NoText,
+    /// Starts the keyboard pointer overlay.
+    ShowHints,
+}
+
+/// An integration's own way of showing several options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Picker {
+    /// Numbered boxes drawn over each option's `box` (`ask hints`); the option id must say where its box is.
+    Hints,
 }
 
 #[derive(Debug, Clone)]
@@ -216,6 +291,7 @@ struct IntegrationFile {
     verbs: Vec<toml::Spanned<VerbEntry>>,
     #[serde(default)]
     actions: BTreeMap<String, ActionEntry>,
+    picker: Option<String>,
     surface: Option<SurfaceEntry>,
     mode: Option<ModeEntry>,
 }
@@ -240,6 +316,7 @@ struct ActionTable {
     #[serde(default)]
     run: String,
     candidates: Option<String>,
+    provider: Option<String>,
     no_match: Option<String>,
     silent: Option<bool>,
     #[serde(default)]
@@ -379,9 +456,32 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                     place("leave_mode")
                 ));
             }
+            let (candidates, builtin) = match (table.candidates, table.provider) {
+                (Some(_), Some(_)) => {
+                    return Err(format!(
+                        "{}: action {id}: candidates and provider are both set; use one",
+                        place("provider")
+                    ));
+                }
+                (Some(shell), None) => (Some(Candidates::Shell(shell)), None),
+                (None, Some(name)) => {
+                    let provider = Provider::named(&name).ok_or_else(|| {
+                        format!(
+                            "{}: action {id}: unknown provider {name:?} (the known one is {})",
+                            place("provider"),
+                            Provider::KNOWN
+                        )
+                    })?;
+                    let builtin = builtin_of_run(&table.run)
+                        .map_err(|message| format!("{}: action {id}: {message}", place("run")))?;
+                    (Some(Candidates::Builtin(provider)), builtin)
+                }
+                (None, None) => (None, None),
+            };
             let action = Action {
                 run: table.run,
-                candidates: table.candidates.map(Candidates::Shell),
+                candidates,
+                builtin,
                 no_match: table.no_match,
                 silent: table.silent.unwrap_or(parsed.silent),
                 free_text: table.free_text,
@@ -396,6 +496,20 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
             Ok((id, action))
         })
         .collect::<Result<BTreeMap<_, _>, String>>()?;
+    let picker = match parsed.picker.as_deref() {
+        None => None,
+        Some("hints") => Some(Picker::Hints),
+        Some(other) => {
+            let line = regex::Regex::new(r"(?m)^picker\s*=")
+                .expect("fixed pattern")
+                .find(text)
+                .map_or(1, |found| line_of(found.start()));
+            return Err(format!(
+                "{}:{line}: unknown picker {other:?} (the known one is \"hints\")",
+                file.display()
+            ));
+        }
+    };
     Ok(Integration {
         name: parsed.name.unwrap_or_else(|| stem.clone()),
         stem,
@@ -417,7 +531,22 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         },
         actions,
         surface: parsed.surface.map(|surface| Surface::StateFile(surface.state_file)),
+        picker,
     })
+}
+
+/// `click_at <button>` on an action with a provider is the built-in click; any other `run` stays a shell command.
+fn builtin_of_run(run: &str) -> Result<Option<Builtin>, String> {
+    let mut words = run.split_whitespace();
+    if words.next() != Some("click_at") {
+        return Ok(None);
+    }
+    match (words.next(), words.next()) {
+        (Some(name), None) => Button::named(name)
+            .map(|button| Some(Builtin::ClickAt(Some(button))))
+            .ok_or_else(|| format!("click_at: unknown button {name:?} (left, right, middle, double or triple)")),
+        _ => Err("click_at takes one button (left, right, middle, double or triple)".to_string()),
+    }
 }
 
 /// Where an action's `key` is written: inside the action's own `[actions.<id>]` table, or on its key's line under
@@ -572,6 +701,82 @@ mod tests {
         assert!(apps.defines.contains_key("names_window"));
         assert_eq!(apps.verbs[2].requires.as_deref(), Some("firefox"));
         assert_eq!(apps.settings.target_match, TargetMatch::Words);
+    }
+
+    /// The fixture used to load with its `provider` and `picker` silently ignored, so it offered no candidates.
+    #[test]
+    fn the_click_fixture_resolves_its_provider_buttons_and_picker() {
+        let click = fixture("click");
+        for (action, button) in [
+            ("click", Button::Left),
+            ("right_click", Button::Right),
+            ("double_click", Button::Double),
+            ("triple_click", Button::Triple),
+        ] {
+            let declared = &click.actions[action];
+            assert!(
+                matches!(declared.candidates, Some(Candidates::Builtin(Provider::ScreenText))),
+                "{action} lost its provider"
+            );
+            assert_eq!(declared.builtin, Some(Builtin::ClickAt(Some(button))), "{action}");
+        }
+        // Its other actions are shell commands.
+        assert!(click.actions["no_text"].builtin.is_none() && click.actions["no_text"].candidates.is_none());
+        assert_eq!(click.picker, Some(Picker::Hints));
+    }
+
+    #[test]
+    fn candidates_and_provider_together_are_an_error_at_the_provider_line() {
+        let text =
+            "verbs = []\n[actions.go]\ncandidates = \"true\"\nprovider = \"screen_text\"\nrun = \"click_at left\"\n";
+        let error = parse_toml(Path::new("p.toml"), text).unwrap_err();
+        assert!(
+            error.starts_with("p.toml:4: action go: candidates and provider are both set"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn an_unknown_provider_names_the_known_one() {
+        let text = "verbs = []\n[actions.go]\nprovider = \"ocr\"\nrun = \"true\"\n";
+        let error = parse_toml(Path::new("p.toml"), text).unwrap_err();
+        assert!(
+            error.starts_with("p.toml:3: action go: unknown provider \"ocr\""),
+            "{error}"
+        );
+        assert!(error.contains("screen_text"), "{error}");
+    }
+
+    #[test]
+    fn click_at_with_a_provider_is_the_built_in_and_anything_else_stays_a_shell_command() {
+        let with = |run: &str| {
+            let text = format!("verbs = []\n[actions.go]\nprovider = \"screen_text\"\nrun = '{run}'\n");
+            parse_toml(Path::new("p.toml"), &text)
+        };
+        assert_eq!(
+            with("click_at middle").unwrap().actions["go"].builtin,
+            Some(Builtin::ClickAt(Some(Button::Middle)))
+        );
+        assert_eq!(with("echo $VOXCMD_ID").unwrap().actions["go"].builtin, None);
+        assert!(
+            with("click_at sideways")
+                .unwrap_err()
+                .starts_with("p.toml:4: action go: click_at: unknown button")
+        );
+        assert!(with("click_at left right").unwrap_err().contains("one button"));
+        // Without a provider it is just a command: there is nothing for it to read.
+        let plain = parse_toml(
+            Path::new("p.toml"),
+            "verbs = []\n[actions.go]\nrun = \"click_at left\"\n",
+        )
+        .unwrap();
+        assert_eq!(plain.actions["go"].builtin, None);
+    }
+
+    #[test]
+    fn an_unknown_picker_is_an_error_at_its_line() {
+        let error = parse_toml(Path::new("p.toml"), "name = \"x\"\npicker = \"grid\"\nverbs = []\n").unwrap_err();
+        assert!(error.starts_with("p.toml:2: unknown picker \"grid\""), "{error}");
     }
 
     #[test]

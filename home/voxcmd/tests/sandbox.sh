@@ -29,6 +29,9 @@
 #   grim, magick, tesseract           each call also appends "<name> <the caller's executable>" to $SANDBOX_DIR/callers.log
 #                                     and "<name> <args>" to $SANDBOX_DIR/ocr-calls.log, apart from calls.log, which
 #                                     other checks read whole (a suite proves which program drove the tools by the former)
+#   wlrctl, notify-send, setsid, hyprctl dispatch
+#                                     each call also appends "<name> <the caller's executable>" to
+#                                     $SANDBOX_DIR/click-callers.log, the same proof for the click's actions and toasts
 #   grim, magick                      never real: grim writes a blank image the size of the activewindow fixture
 #                                     times SANDBOX_GRIM_SCALE (default 1), or SANDBOX_GRIM_SIZE ("W H"), and fails
 #                                     -T when SANDBOX_GRIM_NO_TOPLEVEL is set; magick cuts empty strips and reports
@@ -204,6 +207,8 @@ grim | magick | tesseract)
   printf '%s %s\n' "$name" "$(readlink "/proc/$PPID/exe")" >>"$SANDBOX_DIR/callers.log"
   printf '%s %s\n' "$name" "$*" >>"$SANDBOX_DIR/ocr-calls.log"
   ;;
+wlrctl | notify-send | setsid) printf '%s %s\n' "$name" "$(readlink "/proc/$PPID/exe")" >>"$SANDBOX_DIR/click-callers.log" ;;
+hyprctl) [ "${1-}" != dispatch ] || printf '%s %s\n' "$name" "$(readlink "/proc/$PPID/exe")" >>"$SANDBOX_DIR/click-callers.log" ;;
 esac
 case "$name" in
 hyprctl)

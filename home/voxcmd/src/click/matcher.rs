@@ -48,10 +48,6 @@ pub struct Candidate {
 
 impl Candidate {
     /// The id every consumer parses: `x,y,button,left,top,width,height`.
-    #[allow(
-        dead_code,
-        reason = "used by the screen_text provider from 2.5c; only the unit test calls it until then"
-    )]
     pub fn id(&self, button: &str) -> String {
         format!(
             "{},{},{button},{},{},{},{}",
@@ -151,6 +147,19 @@ impl std::fmt::Display for MatchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("division by zero attempted")
     }
+}
+
+/// The awk run over click-ocr's whole stream: its lines fed in order, then the END block.
+pub fn match_stream(stream: &str, target: &str, options: Options) -> Output {
+    let mut matcher = Matcher::new(target, options);
+    let mut lines: Vec<&str> = stream.split('\n').collect();
+    if lines.last() == Some(&"") {
+        lines.pop();
+    }
+    for line in lines {
+        matcher.feed(line);
+    }
+    matcher.finish()
 }
 
 pub struct Output {

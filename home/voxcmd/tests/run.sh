@@ -688,8 +688,21 @@ config=$root/config
 mkdir -p "$config/integrations.d" "$config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/click.sh" "$package/.config/voxcmd/integrations.d/keybinds.sh" "$config/integrations.d/"
 export VOXCMD_CONFIG_DIR=$config
+# The bash form of the new CLI, for click-explain, which stays on bash until 2.5d.
 voxcmd=$package/tests/bin/voxcmd
-route() { "$voxcmd" explain "$1" 2>&1; }
+# What routes and runs the phrases: the same, or under VOXCMD_BIN=rs the Rust build, which asks the bash voxcmd only for
+# the integrations it has not taken over (keybinds.sh, click mode). That bash voxcmd sits behind a logger, so a check can
+# show which of click.sh's functions it was still asked to run.
+routed=$voxcmd
+legacy_calls=$root/legacy-calls.log
+if [ -n "$rust_matcher" ]; then
+  routed=$rust_matcher
+  : >"$legacy_calls"
+  printf '#!/bin/sh\necho "$*" >> "%s"\nexec "%s" "$@"\n' "$legacy_calls" "$package/.local/bin/voxcmd" >"$root/legacy-logger"
+  chmod +x "$root/legacy-logger"
+  export VOXCMD_LEGACY_BIN=$root/legacy-logger
+fi
+route() { "$routed" explain "$1" 2>&1; }
 
 : >"$log"
 out=$(route "click sign in")
@@ -911,6 +924,13 @@ SANDBOX_TESSERACT_TSV=$({
   word 1 1 1 80 40 48 24 95 Sign
   word 1 1 2 136 40 24 24 95 in
 })
+if [ -n "$rust_matcher" ]; then
+  # The routes above captured through the Rust binary: the hook that did it was the built-in, not click.sh's candidates().
+  rust_real=$(realpath "$rust_matcher")
+  check "every capture of the routes and covered text came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
+  check "no lookup went through click.sh's candidates()" "! grep -Eq '^_legacy-hook candidates [^ ]*/click\.sh ' '$legacy_calls'"
+  check "the logger sees the bash voxcmd's calls, so that absence means something" "grep -Eq '^_legacy-dump\$' '$legacy_calls' && grep -Eq '^_legacy-hook candidates [^ ]*/keybinds\.sh ' '$legacy_calls'"
+fi
 
 section "click-explain"
 # `voxcmd explain --window focused click` runs the same candidates() as a click, tracing; these check each reason line, and that it only
@@ -1014,13 +1034,22 @@ check "explain never clicked or moved across all of the above" "! grep -q 'wlrct
 
 section "failures and toasts"
 # click_at as voxcmd would eval it, with the stubs logging instead of acting.
-run_click_at() { (
-  # shellcheck disable=SC2034 # read by click.sh
-  voxcmd_share_dir=$share_dir target="sign in"
-  # shellcheck source=/dev/null
-  source "$package/.config/voxcmd/integrations.d/click.sh"
-  click_at "$1"
-); }
+# Under VOXCMD_BIN=rs it is the Rust build's hidden `internal click-at`, which prints the reason and exits 1 the same way.
+run_click_at() {
+  if [ -n "$rust_matcher" ]; then
+    "$rust_matcher" internal click-at --target "sign in" "$1"
+    return
+  fi
+  (
+    # shellcheck disable=SC2034 # read by click.sh
+    voxcmd_share_dir=$share_dir target="sign in"
+    # shellcheck source=/dev/null
+    source "$package/.config/voxcmd/integrations.d/click.sh"
+    click_at "$1"
+  )
+}
+: >"$SANDBOX_DIR/click-callers.log"
+: >"$SANDBOX_DIR/callers.log"
 # A route reads the window, which records it for click_at.
 route "click sign in" >/dev/null
 : >"$log"
@@ -1051,7 +1080,7 @@ check "click itself sends no toast for a failure" "! grep -q 'voxcmd failed' '$l
 # The whole path: a failed click reaches the engine as a failure and its error toast leaves the screen text out.
 : >"$log"
 real_status=0
-PATH="$root/nowlrctl:$PATH" "$voxcmd" run "click sign in" >/dev/null 2>&1 || real_status=$?
+PATH="$root/nowlrctl:$PATH" "$routed" run "click sign in" >/dev/null 2>&1 || real_status=$?
 check "the engine sees a failed click as a failure" "[[ $real_status != 0 ]]"
 check "the failed click is one error toast with the reason" "[[ \$(grep -c '^notify-send .*voxcmd failed' '$log') == 1 ]] && grep -q '^notify-send -a voxcmd voxcmd failed Click: click: wlrctl: no seat\$' '$log'"
 check "no toast holds the screen text" "! grep -q -i 'sign' '$log'"
@@ -1061,7 +1090,7 @@ public_config=$root/config-public
 mkdir -p "$public_config/integrations.d" "$public_config/replacements.d"
 printf 'name="Plain"\nverbs=("break {target}")\ndeclare -A actions=([break]=%s)\n' "'false'" >"$public_config/integrations.d/plain.sh"
 : >"$log"
-VOXCMD_CONFIG_DIR=$public_config "$voxcmd" run "break widget" >/dev/null 2>&1
+VOXCMD_CONFIG_DIR=$public_config "$routed" run "break widget" >/dev/null 2>&1
 check "an ordinary integration's failure toast names its label" "grep -q '^notify-send -a voxcmd voxcmd failed Plain: break widget\$' '$log'"
 
 section "the window changed before the click"
@@ -1106,6 +1135,15 @@ printf '#!/bin/sh\necho "grim: warning" >&2\nexec "%s/bin/grim" "$@"\n' "$SANDBO
 chmod +x "$root/noisy/grim"
 out=$(SANDBOX_GRIM_NO_TOPLEVEL=1 PATH="$root/noisy:$PATH" route "click sign in")
 check "stderr of the capture is not mixed into the OCR data" "grep -q '^result:      run' <<<\"\$out\" && ! grep -q 'warning' <<<\"\$out\""
+if [ -n "$rust_matcher" ]; then
+  # Proof Rust ran: the two sections above clicked, toasted and captured from the Rust binary, with no function of
+  # click.sh asked of the bash voxcmd (the toasts, the pointer, the lookups and the actions all were the built-ins).
+  rust_real=$(realpath "$rust_matcher")
+  check "every pointer move, click and toast came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/click-callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/click-callers.log' && grep -q '^wlrctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^hyprctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^notify-send ' '$SANDBOX_DIR/click-callers.log'"
+  check "so did every capture" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
+  check "none of click.sh's lookups, actions or box placing was asked of the bash voxcmd" "! grep -Eq '^_legacy-hook (candidates|run|pick-boxes) [^ ]*/click\.sh ' '$legacy_calls'"
+  check "while the bash voxcmd was still asked for the integrations that stay on it" "grep -Eq '^_legacy-hook candidates [^ ]*/keybinds\.sh ' '$legacy_calls'"
+fi
 
 # ---- numbered on-screen picks: the integration hook, voxcmd-hints and its replies ---------------------------------------
 # A copy of the package whose voxcmd-pick and voxcmd-autostop are the sandbox's stubs, so nothing asks a real picker or
@@ -1350,7 +1388,7 @@ section "click mode routing"
 all_config=$root/config-all
 mkdir -p "$all_config/integrations.d" "$all_config/replacements.d"
 find "$package/.config/voxcmd/integrations.d" -maxdepth 1 -type f -name '*.sh' -exec cp -t "$all_config/integrations.d/" {} +
-route_all() { VOXCMD_CONFIG_DIR=$all_config "$voxcmd" explain "$1" 2>&1; }
+route_all() { VOXCMD_CONFIG_DIR=$all_config "$routed" explain "$1" 2>&1; }
 for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; do
   out=$(route_all "$phrase")
   check "'$phrase' opens click mode, alone" "grep -q 'result:      run' <<<\"\$out\" && grep -q 'Click (click.sh) action=click_mode' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"

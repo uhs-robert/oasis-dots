@@ -1,8 +1,9 @@
 //! The hidden entry points the suites reach the click code through; deleted with the bash matcher (3.2).
+use super::act;
 use super::capture::Tools;
 use super::driver::{self, Mode, WindowSel};
-use super::matcher::{Matcher, Options};
-use crate::cli::ClickMatchArgs;
+use super::matcher::{Options, match_stream};
+use crate::cli::{ClickAtArgs, ClickMatchArgs};
 use crate::exit::CliError;
 use std::io::{Read, Write};
 
@@ -18,15 +19,11 @@ pub fn click_match(args: &ClickMatchArgs) -> Result<Option<String>, CliError> {
     // turns it into U+FFFD, so the 48-character label cut and the label bytes differ on invalid UTF-8. OCR text is
     // valid UTF-8 in practice, and byte-level matching would need the whole matcher off `str`; pinned in tests/click_match.rs.
     let input = String::from_utf8_lossy(&input);
-    let mut matcher = Matcher::new(&target.to_string_lossy(), Options::new(args.spans, args.explain));
-    let mut lines: Vec<&str> = input.split('\n').collect();
-    if lines.last() == Some(&"") {
-        lines.pop();
-    }
-    for line in lines {
-        matcher.feed(line);
-    }
-    let output = matcher.finish();
+    let output = match_stream(
+        &input,
+        &target.to_string_lossy(),
+        Options::new(args.spans, args.explain),
+    );
     let mut stderr = std::io::stderr().lock();
     for event in &output.trace {
         let _ = writeln!(stderr, "{}", event.tsv());
@@ -79,5 +76,18 @@ pub fn click_ocr(args: &[String]) -> Result<Option<String>, CliError> {
                 CliError::quiet("click-ocr")
             })
         }
+    }
+}
+
+/// `voxcmd internal click-at --target <spoken> <id>`: the action's own code path. The reason a click failed goes to
+/// stdout and the exit is 1, like the bash function it replaces.
+pub fn click_at(args: &ClickAtArgs) -> Result<Option<String>, CliError> {
+    match act::click_at(&args.id, &args.target) {
+        Ok(Ok(())) => Ok(None),
+        Ok(Err(reason)) => {
+            println!("{reason}");
+            Err(CliError::quiet("click-at"))
+        }
+        Err(error) => Err(CliError::failed("click-at", error.to_string())),
     }
 }

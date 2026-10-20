@@ -7,6 +7,7 @@
 //!
 //! `VOXCMD_INTEGRATION` is the integration's file stem. A hook output line with four or more tab fields fails the hook.
 //! Background children a `candidates` hook leaves behind are killed when it exits.
+use crate::click::provider::BuiltinHooks;
 use crate::config::schema::{Candidates, Format, Integration, Surface};
 use crate::debug::debug;
 use crate::paths;
@@ -525,15 +526,21 @@ fn shell_quote(text: &str) -> String {
     format!("'{}'", text.replace('\'', r"'\''"))
 }
 
-/// Each integration's hooks by its format: the shell runner for TOML, the bash voxcmd for the bash files.
+/// Each integration's hooks by its format: the shell runner for TOML, the bash voxcmd for the bash files. An action
+/// whose candidates come from a built-in provider goes to voxcmd's own, whatever the file's format.
 pub struct Dispatch {
     shell: ShellHooks,
     legacy: Box<dyn Hooks>,
+    builtin: BuiltinHooks,
 }
 
 impl Dispatch {
     pub fn new(shell: ShellHooks, legacy: Box<dyn Hooks>) -> Self {
-        Self { shell, legacy }
+        Self {
+            shell,
+            legacy,
+            builtin: BuiltinHooks::default(),
+        }
     }
 
     fn for_format(&self, integration: &Integration) -> &dyn Hooks {
@@ -546,7 +553,10 @@ impl Dispatch {
 
 impl Hooks for Dispatch {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
-        self.for_format(integration).candidates(integration, query)
+        match integration.candidates_for(query.action) {
+            Some(Candidates::Builtin(_)) => self.builtin.candidates(integration, query),
+            _ => self.for_format(integration).candidates(integration, query),
+        }
     }
 
     fn surface_open(&self, integration: &Integration) -> bool {

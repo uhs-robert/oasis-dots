@@ -164,7 +164,10 @@ pub fn parse_dump(dump: &str) -> Result<Vec<Integration>, String> {
         .filter(|line| !line.trim().is_empty())
         .map(|line| {
             let dumped: Dumped = serde_json::from_str(line).map_err(|error| format!("_legacy-dump output: {error}"))?;
-            Ok(integration(dumped))
+            let (commands, hooks) = (dumped.actions.clone(), dumped.hooks.clone());
+            let mut integration = integration(dumped);
+            crate::click::bridge_map::adapt(&mut integration, &commands, &hooks);
+            Ok(integration)
         })
         .collect()
 }
@@ -237,6 +240,7 @@ fn integration(dumped: Dumped) -> Integration {
             .iter()
             .any(|hook| hook == "surface_open")
             .then_some(Surface::LegacyHook),
+        picker: None,
     }
 }
 
