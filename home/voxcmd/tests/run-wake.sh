@@ -34,6 +34,13 @@ case "$*" in
 esac
 STUB
 chmod +x "$systemctl_dir/systemctl"
+# Tripwire: under rs, `wake` must be the Rust binary's own code, so a call to the bash voxcmd-wake-switch by name fails
+# the suite. The bash voxcmd reaches its sibling by path, so under bash this stub is never called.
+cat >"$systemctl_dir/voxcmd-wake-switch" <<'STUB'
+#!/bin/sh
+printf 'BASH-RAN voxcmd-wake-switch\n' >>"$SANDBOX_DIR/tripwire.log"
+STUB
+chmod +x "$systemctl_dir/voxcmd-wake-switch"
 PATH="$systemctl_dir:$PATH"
 
 failures=0
@@ -96,6 +103,11 @@ voxcmd wake off
 status=0
 voxcmd wake sideways 2>/dev/null || status=$?
 check "an unknown argument is a usage error" 2 "$status"
+if [ "${VOXCMD_BIN:-bash}" = rs ]; then
+  package_release_dir=$(CDPATH='' cd -- "$tests_dir/../target/release" && pwd)
+  check "voxcmd is the Rust build" "$package_release_dir/voxcmd" "$(readlink -f "$(command -v voxcmd)")"
+  check "and no bash sibling ran for wake" 0 "$(cat "$SANDBOX_DIR/tripwire.log" 2>/dev/null | grep -c '^BASH-RAN')"
+fi
 
 # ---- voxcmd internal wake-confirm: a trigger's audio, transcribed by a fake `voxtype transcribe` -------------------------------
 # It prints what the real `voxtype -q transcribe` does (captured on a recorded take): progress lines on stdout naming
@@ -186,15 +198,18 @@ check "the aliases setting replaces the built-in spellings" "1 not_wake" "$(VOXC
 check "and adds its own" "0 wake" "$(VOXCMD_WAKE_ALIASES=jarvis confirm "Jarvis.")"
 check "while the wake word itself always counts" "0 wake" "$(VOXCMD_WAKE_ALIASES=jarvis confirm "Cortana.")"
 check "no setting changes the word" "1 not_wake" "$(VOXCMD_WAKE_WORD=jarvis confirm "Jarvis.")"
-failing_awk_dir="$SANDBOX_DIR/failing-awk-bin"
-mkdir -p "$failing_awk_dir"
-printf '#!/bin/sh\nexit 1\n' >"$failing_awk_dir/awk"
-chmod +x "$failing_awk_dir/awk"
-check "an error in voxcmd itself is a failure, not a verdict" "2" "$(
-  code=0
-  PATH="$failing_awk_dir:$transcribe_dir:$voxtype_package_bin:$PATH" FAKE_TRANSCRIPT="Cortana" voxcmd internal wake-confirm /dev/stdin <"$wav" >/dev/null || code=$?
-  echo "$code"
-)"
+# Bash only: the Rust build has no awk to fail; its failures are the "failed transcription" and "no file" checks above.
+if [ "${VOXCMD_BIN:-bash}" = bash ]; then
+  failing_awk_dir="$SANDBOX_DIR/failing-awk-bin"
+  mkdir -p "$failing_awk_dir"
+  printf '#!/bin/sh\nexit 1\n' >"$failing_awk_dir/awk"
+  chmod +x "$failing_awk_dir/awk"
+  check "an error in voxcmd itself is a failure, not a verdict" "2" "$(
+    code=0
+    PATH="$failing_awk_dir:$transcribe_dir:$voxtype_package_bin:$PATH" FAKE_TRANSCRIPT="Cortana" voxcmd internal wake-confirm /dev/stdin <"$wav" >/dev/null || code=$?
+    echo "$code"
+  )"
+fi
 reset_calls
 # Every directory holding one, not just the package's: a stowed voxtype puts it in ~/.local/bin too.
 no_prompt_path=$(printf '%s' "$PATH" | tr ':' '\n' | while IFS= read -r dir; do [ -x "$dir/voxtype-prompt" ] || printf '%s\n' "$dir"; done | paste -sd:)
