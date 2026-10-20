@@ -120,17 +120,17 @@ twice = { run = "true", colour = "red" }
     assert_eq!(
         stdout(&output),
         "integrations/broken.toml:2:1: error: unknown key \"colour\"\n\
-         integrations/broken.toml:6:1: error: unknown verb key \"tone\"\n\
-         integrations/broken.toml:13:1: error: action twice: unknown key \"colour\"\n\
-         integrations/broken.toml:4:1: error: verb \"go {nowhere}\": {nowhere}: no placeholder, define or intent of that name\n\
-         integrations/broken.toml:5:1: error: verb \"stop (\": regex parse error:\n\
+         integrations/broken.toml:6:42: error: unknown verb key \"tone\"\n\
+         integrations/broken.toml:13:25: error: action twice: unknown key \"colour\"\n\
+         integrations/broken.toml:4:3: error: verb \"go {nowhere}\": {nowhere}: no placeholder, define or intent of that name\n\
+         integrations/broken.toml:5:3: error: verb \"stop (\": regex parse error:\n\
          \x20   (?s-u)^(?:stop ()$\n\
          \x20          ^\n\
          error: unclosed group\n\
-         integrations/broken.toml:7:1: error: verb \"{number} and {number}\": {number} appears twice\n\
-         integrations/broken.toml:6:1: error: verb action \"wander\" is not declared under [actions]\n\
+         integrations/broken.toml:7:3: error: verb \"{number} and {number}\": {number} appears twice\n\
+         integrations/broken.toml:6:15: error: verb action \"wander\" is not declared under [actions]\n\
          integrations/hooked.sh:2:1: error: syntax error near unexpected token `then'\n\
-         integrations/syntax.toml:1:1: error: invalid type: integer `3`, expected a sequence\n\
+         integrations/syntax.toml:1:9: error: invalid type: integer `3`, expected a sequence\n\
          4 TOML files checked, 9 problems; 0 legacy files only loaded and compiled, not checked in depth\n"
     );
     assert_eq!(stderr(&output), "");
@@ -148,7 +148,7 @@ fn check_as_json_and_of_named_files() {
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(
         stdout(&output),
-        "{\"ok\":false,\"files\":1,\"problems\":[{\"file\":\"integrations/typo.toml\",\"line\":2,\"column\":1,\
+        "{\"ok\":false,\"files\":1,\"problems\":[{\"file\":\"integrations/typo.toml\",\"line\":2,\"column\":3,\
          \"severity\":\"error\",\"code\":\"unknown-name\",\"message\":\"verb \\\"go {nowhere}\\\": {nowhere}: \
          no placeholder, define or intent of that name\"}]}\n"
     );

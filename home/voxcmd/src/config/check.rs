@@ -24,7 +24,7 @@ struct Report {
 struct Problem {
     file: PathBuf,
     line: usize,
-    /// 1 where the source of the problem has no column (toml spans are read as lines only).
+    /// 1 where the problem has no span of its own (a whole-file problem, or an error the loader words with a line only).
     column: usize,
     severity: Severity,
     code: &'static str,
@@ -128,10 +128,10 @@ fn check(dir: &Path, args: &[String]) -> (Report, usize) {
 
 fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Problem>) {
     let shown = relative(dir, file);
-    let problem = |line: usize, code: &'static str, message: String| Problem {
+    let problem = |(line, column): (usize, usize), code: &'static str, message: String| Problem {
         file: shown.clone(),
         line,
-        column: 1,
+        column,
         severity: Severity::Error,
         code,
         message,
@@ -139,7 +139,7 @@ fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Pro
     let text = match std::fs::read_to_string(file) {
         Ok(text) => text,
         Err(error) => {
-            problems.push(problem(1, "unreadable", error.to_string()));
+            problems.push(problem((1, 1), "unreadable", error.to_string()));
             return;
         }
     };
@@ -147,7 +147,8 @@ fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Pro
         Ok(integration) => integration,
         Err(error) => {
             let (line, message) = split_located(file, &error);
-            problems.push(problem(line, "invalid", message));
+            let column = schema::syntax_error_column(&text).unwrap_or(1);
+            problems.push(problem((line, column), "invalid", message));
             return;
         }
     };
@@ -155,8 +156,10 @@ fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Pro
     check_patterns(dir, &integration, intents, problems);
     for verb in &integration.verbs {
         if verb.action != "yield" && !integration.actions.contains_key(&verb.action) {
+            let line = verb.line.unwrap_or(1);
+            let column = column_in(&text, line, &verb.action).or(verb.column).unwrap_or(1);
             problems.push(problem(
-                verb.line.unwrap_or(1),
+                (line, column),
                 "missing-action",
                 format!("verb action {:?} is not declared under [actions]", verb.action),
             ));
@@ -177,11 +180,11 @@ fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Pro
                     .unwrap_or((1, first.to_string()));
                 problems.push(Problem {
                     file: relative(dir, &hook),
-                    ..problem(line, "hook-syntax", message)
+                    ..problem((line, 1), "hook-syntax", message)
                 });
             }
             Ok(_) => {}
-            Err(error) => problems.push(problem(1, "hook-syntax", format!("cannot run bash -n: {error}"))),
+            Err(error) => problems.push(problem((1, 1), "hook-syntax", format!("cannot run bash -n: {error}"))),
         }
     }
 }
@@ -189,18 +192,18 @@ fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Pro
 /// Patterns of verbs and mode, as the router compiles them.
 fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, problems: &mut Vec<Problem>) {
     let shown = relative(dir, &integration.file);
-    let mut report = |line: usize, code: &'static str, message: String| {
+    let mut report = |(line, column): (usize, usize), code: &'static str, message: String| {
         problems.push(Problem {
             file: shown.clone(),
             line,
-            column: 1,
+            column,
             severity: Severity::Error,
             code,
             message,
         });
     };
     for verb in &integration.verbs {
-        let line = verb.line.unwrap_or(1);
+        let at = (verb.line.unwrap_or(1), verb.column.unwrap_or(1));
         match pattern::compile(integration, verb, intents) {
             Err(message) => {
                 let code = if message.contains("no placeholder, define or intent") {
@@ -210,11 +213,11 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
                 } else {
                     "bad-regex"
                 };
-                report(line, code, format!("verb {:?}: {message}", verb.pattern));
+                report(at, code, format!("verb {:?}: {message}", verb.pattern));
             }
             Ok(compiled) => {
                 if let Err(error) = regex::bytes::Regex::new(&compiled.regex) {
-                    report(line, "bad-regex", format!("verb {:?}: {error}", verb.pattern));
+                    report(at, "bad-regex", format!("verb {:?}: {error}", verb.pattern));
                 }
             }
         }
@@ -223,14 +226,14 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
         && let Err(error) = pattern::compile_mode(integration, intents)
     {
         let (line, message) = split_located(&integration.file, &error);
-        report(line, "bad-regex", message);
+        report((line, 1), "bad-regex", message);
     }
 }
 
 fn unknown_keys(
     text: &str,
     integration: &Integration,
-    problem: &impl Fn(usize, &'static str, String) -> Problem,
+    problem: &impl Fn((usize, usize), &'static str, String) -> Problem,
     problems: &mut Vec<Problem>,
 ) {
     let Ok(table) = text.parse::<toml::Table>() else {
@@ -240,7 +243,12 @@ fn unknown_keys(
         let found = regex::Regex::new(&format!(r#"(?m)\b{}"?\s*="#, regex::escape(key)))
             .ok()
             .and_then(|pattern| pattern.find_at(text, from));
-        found.map_or(1, |found| text[..found.start()].matches('\n').count() + 1)
+        found.map_or((1, 1), |found| {
+            (
+                text[..found.start()].matches('\n').count() + 1,
+                schema::column_of(text, found.start()),
+            )
+        })
     };
     for key in table.keys().filter(|key| !schema::FILE_KEYS.contains(&key.as_str())) {
         problems.push(problem(
@@ -257,8 +265,9 @@ fn unknown_keys(
                 .flat_map(toml::Table::keys)
                 .filter(|key| !schema::VERB_KEYS.contains(&key.as_str()))
             {
+                let line = line.unwrap_or(1);
                 problems.push(problem(
-                    line.unwrap_or(1),
+                    (line, column_in(text, line, key).unwrap_or(1)),
                     "unknown-key",
                     format!("unknown verb key {key:?}"),
                 ));
@@ -291,6 +300,12 @@ fn unknown_keys(
             }
         }
     }
+}
+
+/// 1-based column of the first `needle` on the 1-based `line` of `text`.
+fn column_in(text: &str, line: usize, needle: &str) -> Option<usize> {
+    let line_text = text.lines().nth(line.checked_sub(1)?)?;
+    Some(line_text[..line_text.find(needle)?].chars().count() + 1)
 }
 
 /// `file:line: message` (the loader's error form) as a line and a message; line 1 when there is none.

@@ -236,6 +236,7 @@ fn integration(dumped: Dumped) -> Integration {
                 action: verb.action,
                 pattern: verb.pattern,
                 line: None,
+                column: None,
                 requires: None,
                 listed: dumped.verb_entries.get(index).cloned(),
             })

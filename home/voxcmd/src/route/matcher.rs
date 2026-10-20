@@ -407,6 +407,7 @@ mod tests {
                 action: "broken".into(),
                 pattern: "volume (up".into(),
                 line: None,
+                column: None,
                 requires: None,
                 listed: None,
             },
@@ -478,6 +479,7 @@ mod tests {
                 action: "yield".into(),
                 pattern: "open the calendar".into(),
                 line: None,
+                column: None,
                 requires: None,
                 listed: None,
             },
@@ -517,6 +519,7 @@ mod tests {
             action: "pick".into(),
             pattern: "(close|select) {number}".into(),
             line: None,
+            column: None,
             requires: None,
             listed: None,
         });

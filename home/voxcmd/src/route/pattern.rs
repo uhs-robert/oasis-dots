@@ -614,6 +614,7 @@ mod tests {
             action: "a".into(),
             pattern: pattern.into(),
             line: None,
+            column: None,
             requires: None,
             listed: None,
         }
