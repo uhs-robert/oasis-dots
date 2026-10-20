@@ -1,6 +1,6 @@
 ---
 name: report-commit
-description: Generate concise development activity reports from git commit history, in chronological order with proper markdown formatting. Optional argument: description of work done (defaults to timeframe if not provided). Use when the user asks for a session report, commit history report, activity report, or /commit-report.
+description: Generate development activity reports from git commit history for a session or timeframe, grouped into problem-and-fix sections. Optional arguments: a timeframe (defaults to since the last session-report.md) and a description of the work. Use when the user asks for a session report, commit history report, activity report, or /commit-report.
 argument-hint: "[timeframe] [description]"
 arguments:
 * args
@@ -8,115 +8,64 @@ arguments:
 
 # Commit Report
 
-Argument string (optional): `$args` — may include a timeframe and/or a work description.
+Argument string (optional): `$args`. It may include a timeframe and a work description.
 
-## Context
+A report tells someone who wasn't there what work was done in a session and why it mattered, in the order it happened. It is read by people billing, planning or reviewing the work, so it explains problems and outcomes, not just file changes.
 
-Determine the TIMEFRAME first.
+## Timeframe
 
-1. Get the modification date of `session-report.md`; this is the default TIMEFRAME.
-2. If `session-report.md` does not exist AND the user did not provide a specific timeframe then the default TIMEFRAME should instead be "24 hours ago".
+- If `$args` gives a timeframe (any git-compatible form: "today", "yesterday", "3 days ago", "2026-10-20"), use it.
+- Otherwise use the modification time of `session-report.md` (`stat -c %y session-report.md`), or "24 hours ago" if that file doesn't exist.
 
-- Get modification date: `stat -c %y session-report.md`
-- Recent commits by time: `git log --since="${TIMEFRAME}" --oneline --reverse`
-- Detailed commit info: `git log --since="${TIMEFRAME}" --stat --reverse`
-- Current branch status: `git status --short`
-- Staged changes: `git diff --cached --name-only`
-- File sizes for new assets: `ls -lah` (when relevant)
+## Gather the record
 
-### Arguments
+- Filter by **authored** date, not committed date. `git log --since` filters on the committed date, which a rebase, cherry-pick or merge resets to the day it happened, so old work would look new. List commits with `git log --all --author="$(git config user.name)" --since="<timeframe minus a margin>" --reverse --format='%aI %h %D%n%s%n%b'`, then keep the commits whose authored date (`%aI`) falls in the timeframe. Drop duplicates that are the same change on several branches (same subject and diff; `git patch-id` confirms).
+- `--all` catches work on other branches and worktrees in the session. Note each commit's branch when that's useful context (for example, "on PR #54").
+- Commit bodies carry the why (the problem found, the alternative rejected). Read them; headlines alone produce generic bullets.
+- Line counts: `git show --shortstat <sha>` per commit, or `git diff --shortstat <from>..<to>` for a contiguous range.
+- Uncommitted work: `git status --short` and `git diff --stat`. Mention it only if it's substantial, and label it as uncommitted.
+- If the work happened in this conversation, the conversation is also part of the record: verification against live systems, configuration changes outside the repo (CMS or no-code builders, dashboards, infra), merges, rebases, deploys and PRs are work and belong in the report even when they produced no commit.
 
-`$args` may include:
+## Output
 
-1. **Timeframe**: A git-compatible time format (e.g., "24 hours ago", "today", "yesterday", "3 days ago", "1 week ago")
-2. **Work Description**: A brief description of the work accomplished (e.g., "PDF optimization and font improvements")
+- Always create or overwrite `session-report.md` at the repo root (`git rev-parse --show-toplevel`).
+- After writing, check `git check-ignore session-report.md` and tell the user if it would show up as untracked.
 
-### Processing Logic
-
-- If no timeframe is specified in arguments, default to "since the last session-report.md was modified" otherwise if session-report.md does not exist, fallback to "24 hours ago".
-- If no description is provided, infer work description from git commit history analysis.
-- Arguments can contain both timeframe and description.
-
-### Timeframe Options
-
-- Default: "since last session-report.md modification (or 24 hours ago if none exists)"
-- Alternative: "today", "yesterday", "3 days ago", "1 week ago"
-- Custom: Any git-compatible time format
-
-## Your Task
-
-1. **Get commit history** in chronological order (oldest to newest)
-2. **Analyze each commit** for:
-   - Type of change (feat, fix, refactor, style, perf, chore)
-   - Files affected and significance
-   - Asset additions with file sizes
-3. **Group related changes** into logical sections
-4. **Create meaningful section titles** that describe the work accomplished
-5. **Format output** for easy copy/paste into spreadsheet (title + markdown)
-6. **Always create/overwrite session-report.md** - Replace any existing session-report.md file with the new report
-
-## Analysis Guidelines
-
-### Commit Categorization
-
-- **Features** (`feat:`): New functionality, major additions
-- **Fixes** (`fix:`): Bug fixes, corrections
-- **Refactoring** (`refactor:`): Code restructuring without behavior change
-- **Performance** (`perf:`): Optimization improvements
-- **Styling** (`style:`): Code formatting, comments, documentation
-- **Infrastructure** (`chore:`, `build:`, `ci:`): Tooling, build, deployment
-
-### Asset Analysis
-
-- For new files, include file sizes: `(1.8KB)`, `(37.6KB)`
-- Note format changes: PNG → JPEG
-- Identify optimization purposes
-
-## Output Format
-
-**Always overwrite/create `session-report.md`** with this structure:
+## Structure
 
 ```
-[Descriptive Summary Title About Work Accomplished]
+[Title: Area or Theme: What This Session Achieved]
 
-## [Section Name]
+## [Section named after the work, e.g. "Recall Check Using the Right Data Source"]
 
-[Optional: context paragraph for complex changes]
+[Context paragraph: the problem found and why it mattered, when it isn't obvious from the bullets.]
 
-- [Concise bullet point description]
-- [Another change description]
-
-## [Another Section]
-
-[Optional: context paragraph for complex changes]
-
-- [Concise bullet point description]
-- [Another change description]
-
-### [Subsection if needed]
-
-- [Detailed points]
-- [More details]
+- [What was done, naming the concrete file, view, field, endpoint or setting]
+- [Another change]
 
 ## Impact
 
-[Optional: Brief summary of overall changes and their purpose if applicable]
+[What users or the team can do now that they couldn't before; what risk is gone. Then the numbers: lines added/removed across N files. Then anything the work depends on outside the repo.]
 ```
 
-## Formatting Requirements
+### Grouping
 
-- **Use `-` for bullet points** (not `•` or other symbols)
-- **Add blank line after each heading**
-- **Keep descriptions concise** but informative
-- **No generic titles** - describe actual work accomplished
-- **Chronological order** within sections (oldest to newest)
-- **Group related commits** under logical section headings
-- **Include file paths** when relevant for context
+- Group commits by the problem they solve, not by commit type. "Reviewer Race Conditions Found in Testing" beats "Bug Fixes".
+- Order sections chronologically by when the work started, and bullets chronologically within a section.
+- Fold fix-ups, renames and review follow-ups into the section of the work they adjust. They get their own section only if substantial; trivial ones go in a closing "Cleanup, Merge and Release" style section, or nowhere.
+- Unrelated work streams in one session (two PRs, a tooling change) get separate sections, each with its own context.
 
-## Examples
+### Writing
 
-Good section title: "End-of-Month Job Fix: Duplicate Record Prevention"
-Bad section title: "Bug Fixes"
+- Write as that session's own report, in the voice of someone reporting what they did. No "initially", "first version" or references to other sessions.
+- Active voice, past-tense verbs at the start of bullets: "Added", "Moved", "Gated", "Narrowed". Inside sentences, name the actor: "the code re-reads the record", not "the record is re-read".
+- Context paragraphs state the concrete problem, with the specific mechanism: "The SMS view only matches reviewed records and carries no Reviewer field, so the check could never see a pickup", not "the check didn't work properly".
+- Name the identifiers a reader would search for: file paths, view and field keys, config names, PR numbers, SHAs.
+- New code files: give the size in lines (`(73 lines)`). New assets: give the size in bytes and any format change (`(1.8KB)`, PNG → JPEG).
+- Say how something was found when that was real work: "Testing showed…", "I checked every view against the live schema…".
+- No filler, no hedging, no praise of the work. Keep each bullet to one or two lines.
 
-Good bullet: "Added MaterialIcons-TranscriptPDF.ttf font (1.8KB) for PDF size optimization"
-Bad bullet: "Added font file"
+## Formatting
+
+- `-` for bullets, a blank line after every heading, plain markdown that pastes cleanly into a spreadsheet cell or document.
+- The title is the first line, without a `#`.

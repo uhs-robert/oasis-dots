@@ -1,118 +1,76 @@
 ---
 name: report-pr
-description: Generate concise development activity reports from a given GitHub pull request, in chronological order with proper markdown formatting. Requires a PR number or URL argument, plus an optional work description. Use when the user asks for a PR report, pull request report, or /pr-report.
-argument-hint: "<pr-number-or-url> [description]"
+description: Generate development activity reports from a GitHub pull request, grouped into problem-and-fix sections, optionally split into one report per work session or date range. Requires a PR number or URL argument, plus an optional work description and split point. Use when the user asks for a PR report, pull request report, a report for part of a PR's work (e.g. "just today's work"), or /pr-report.
+argument-hint: "<pr-number-or-url> [description] [--split <date>[,<date>...]] [--since <date>] [--until <date>]"
 arguments:
 * args
 ---
 
 # PR Report
 
-Argument string: `$args` — must include a PR number or URL, and may include a work description.
+Argument string: `$args`. It must include a PR number or URL, and may include a work description and a date range or split points.
 
-## Context
+A report tells someone who wasn't there what work was done and why it mattered, in the order it happened. It is read by people billing, planning or reviewing the work, not by the code reviewer, so it explains problems and outcomes, not just file changes.
+
+## Gather the record
 
 Determine the PR from `$args` (number, `#123`, or full URL).
 
-- PR metadata: `gh pr view <pr> --json title,body,commits,files,additions,deletions`
-- Commit list on PR (chronological): `gh pr view <pr> --json commits --jq '.commits[] | .messageHeadline'`
-- Full diff: `gh pr diff <pr>`
-- Changed files with stats: `gh pr diff <pr> --name-only` and `git diff --stat <base>...<head>` when working in a local clone
-- File sizes for new assets: `ls -lah` (when relevant)
+- Commits with **authored** dates and full messages: `gh pr view <pr> --json commits --jq '.commits[] | "\(.authoredDate) \(.oid[0:7]) \(.messageHeadline)\n\(.messageBody)\n"'`. Use authored dates, never committed dates: a rebase or merge rewrites committed dates to the day it happened, so every commit looks like it was done that day.
+- Commit bodies carry the why (the problem found, the alternative rejected). Read them; headlines alone produce generic bullets.
+- The diff, per range: `gh pr diff <pr>`, or in a local clone `git diff --stat <from>..<to>` and `git diff --shortstat <from>..<to>` for line counts per period.
+- Related work outside the PR: commits on the base branch that reference the PR or its issue (`git log --all --grep '#<pr>' --grep '#<issue>'`). Include them, marked as going straight to the base branch, with their short SHAs.
+- The PR body and review comments can be stale or describe an earlier approach. Check claims against the final code before repeating them.
+- If the work happened in this conversation, the conversation is also part of the record: verification against live systems, configuration changes outside the repo (CMS or no-code builders, dashboards, infra), merges, rebases and deploys are work and belong in the report even when they produced no commit.
 
-### Arguments
+## Splitting by session or date
 
-`$args` must include:
+When `$args` or the user asks for part of the work ("before today", "just this session", `--split`, `--since`, `--until`):
 
-1. **PR reference**: a PR number, `#number`, or PR URL
-2. **Work Description** (optional): a brief description of the work accomplished (e.g., "PDF optimization and font improvements")
+- Partition commits by authored date. A split date starts the later period.
+- Write one report per period, each standing alone: its own title, sections, impact and line counts for that period's range only.
+- Write each period as that session's own report, in the voice of someone reporting what they did in that session. Do not frame an earlier period as "initial", "first version" or "previously", and do not refer to the other period.
+- Name the files `pr-report-1-<label>.md`, `pr-report-2-<label>.md`, …, with short labels such as `previous` and `today`. Without a split, use `pr-report.md`.
 
-### Processing Logic
+## Output location
 
-- If no description is provided, infer work description from the PR title, body, and commit history analysis.
-- Treat the PR's commits as the chronological record, not repo-wide git log.
+- Compare `git remote get-url origin` with the PR's repo (`gh pr view <pr> --json url`).
+- Same repo: save at the repo root (`git rev-parse --show-toplevel`). Otherwise, or outside a repo: save under `~/Documents/Notes/work/` (create it if missing).
+- Always create or overwrite. After writing, check `git check-ignore` on each file and tell the user if any report would show up as untracked.
 
-### Output Location
-
-- Get current repo (if any): `git remote get-url origin`.
-- Get PR's repo: `gh pr view <pr> --json url` (or from the PR URL directly).
-- Current repo matches PR's repo: save as `pr-report.md` at repo root (`git rev-parse --show-toplevel`).
-- No match, or not in a git repo: save as `~/Documents/Notes/work/pr-report.md` (create `~/Documents/Notes/work` if missing).
-
-## Your Task
-
-1. **Get the PR's commit history** in chronological order (oldest to newest)
-2. **Analyze each commit** for:
-   - Type of change (feat, fix, refactor, style, perf, chore)
-   - Files affected and significance
-   - Asset additions with file sizes
-3. **Group related changes** into logical sections
-4. **Create meaningful section titles** that describe the work accomplished
-5. **Format output** for easy copy/paste into spreadsheet (title + markdown)
-6. **Always create/overwrite pr-report.md** at the resolved output location (see Output Location) - Replace any existing pr-report.md file with the new report
-
-## Analysis Guidelines
-
-### Commit Categorization
-
-- **Features** (`feat:`): New functionality, major additions
-- **Fixes** (`fix:`): Bug fixes, corrections
-- **Refactoring** (`refactor:`): Code restructuring without behavior change
-- **Performance** (`perf:`): Optimization improvements
-- **Styling** (`style:`): Code formatting, comments, documentation
-- **Infrastructure** (`chore:`, `build:`, `ci:`): Tooling, build, deployment
-
-### Asset Analysis
-
-- For new files, include file sizes: `(1.8KB)`, `(37.6KB)`
-- Note format changes: PNG → JPEG
-- Identify optimization purposes
-
-## Output Format
-
-**Always overwrite/create `pr-report.md`** at the resolved output location with this structure:
+## Structure
 
 ```
-[Descriptive Summary Title About Work Accomplished]
+[Title: Feature or Area: What This Work Achieved]
 
-## [Section Name]
+## [Section named after the work, e.g. "Recall Check Using the Right Data Source"]
 
-[Optional: context paragraph for complex changes]
+[Context paragraph: the problem found and why it mattered, when it isn't obvious from the bullets.]
 
-- [Concise bullet point description]
-- [Another change description]
-
-## [Another Section]
-
-[Optional: context paragraph for complex changes]
-
-- [Concise bullet point description]
-- [Another change description]
-
-### [Subsection if needed]
-
-- [Detailed points]
-- [More details]
+- [What was done, naming the concrete file, view, field, endpoint or setting]
+- [Another change]
 
 ## Impact
 
-[Optional: Brief summary of overall changes and their purpose if applicable]
+[What users or the team can do now that they couldn't before; what risk is gone. Then the numbers: lines added/removed across N files. Then anything the work depends on outside the repo.]
 ```
 
-## Formatting Requirements
+### Grouping
 
-- **Use `-` for bullet points** (not `•` or other symbols)
-- **Add blank line after each heading**
-- **Keep descriptions concise** but informative
-- **No generic titles** - describe actual work accomplished
-- **Chronological order** within sections (oldest to newest)
-- **Group related commits** under logical section headings
-- **Include file paths** when relevant for context
+- Group commits by the problem they solve, not by commit type. "Reviewer Race Conditions Found in Testing" beats "Bug Fixes".
+- Order sections chronologically by when the work started, and bullets chronologically within a section.
+- Fold fix-ups, renames and review follow-ups into the section of the work they adjust. They get their own section only if substantial; trivial ones go in a closing "Cleanup, Merge and Release" style section, or nowhere.
 
-## Examples
+### Writing
 
-Good section title: "End-of-Month Job Fix: Duplicate Record Prevention"
-Bad section title: "Bug Fixes"
+- Active voice, past-tense verbs at the start of bullets: "Added", "Moved", "Gated", "Narrowed". Inside sentences, name the actor: "the code re-reads the record", not "the record is re-read".
+- Context paragraphs state the concrete problem, with the specific mechanism: "The SMS view only matches reviewed records and carries no Reviewer field, so the check could never see a pickup", not "the check didn't work properly".
+- Name the identifiers a reader would search for: file paths, view and field keys, config names, SHAs for out-of-PR commits.
+- New code files: give the size in lines (`(73 lines)`). New assets: give the size in bytes and any format change (`(1.8KB)`, PNG → JPEG).
+- Say how something was found when that was real work: "Testing showed…", "I checked every view against the live schema…".
+- No filler, no hedging, no praise of the work. Keep each bullet to one or two lines.
 
-Good bullet: "Added MaterialIcons-TranscriptPDF.ttf font (1.8KB) for PDF size optimization"
-Bad bullet: "Added font file"
+## Formatting
+
+- `-` for bullets, a blank line after every heading, plain markdown that pastes cleanly into a spreadsheet cell or document.
+- The title is the first line, without a `#`.
