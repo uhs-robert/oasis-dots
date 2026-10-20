@@ -38,36 +38,36 @@ RowsSection {
         label: "Layout",
         desc: "Keyboard layout for every keyboard. Applies at once; beats the machine profile.",
         values: () => {
-            const codes = HyprInput.layouts.map(l => l.code);
-            const current = HyprInput.value("kb_layout");
+            const codes = HyprInputSettings.layouts.map(l => l.code);
+            const current = HyprInputSettings.value("kb_layout");
             return current === undefined || codes.indexOf(current) >= 0 ? codes : [current].concat(codes);
         },
-        text: v => HyprInput.layout_name(v),
-        value: () => HyprInput.value("kb_layout"),
-        set: v => HyprInput.set("kb_layout", v),
+        text: v => HyprInputSettings.layout_name(v),
+        value: () => HyprInputSettings.value("kb_layout"),
+        set: v => HyprInputSettings.set("kb_layout", v),
         cycle: false
     }, {
         label: "Variant",
         desc: "Variant of the layout, such as dvorak or intl. None uses the plain layout.",
-        values: () => [""].concat((HyprInput.variants[HyprInput.value("kb_layout")] || []).map(v => v.code)),
-        text: v => HyprInput.variant_name(HyprInput.value("kb_layout"), v),
-        value: () => HyprInput.value("kb_variant"),
-        set: v => HyprInput.set("kb_variant", v),
+        values: () => [""].concat((HyprInputSettings.variants[HyprInputSettings.value("kb_layout")] || []).map(v => v.code)),
+        text: v => HyprInputSettings.variant_name(HyprInputSettings.value("kb_layout"), v),
+        value: () => HyprInputSettings.value("kb_variant"),
+        set: v => HyprInputSettings.set("kb_variant", v),
         cycle: false
     }, {
         label: "Repeat rate",
         desc: "Characters per second while a key is held.",
-        values: () => Choices.with_current(root.repeat_rates, HyprInput.value("repeat_rate")),
+        values: () => Choices.with_current(root.repeat_rates, HyprInputSettings.value("repeat_rate")),
         text: v => v + " per second",
-        value: () => HyprInput.value("repeat_rate"),
-        set: v => HyprInput.set("repeat_rate", v)
+        value: () => HyprInputSettings.value("repeat_rate"),
+        set: v => HyprInputSettings.set("repeat_rate", v)
     }, {
         label: "Repeat delay",
         desc: "How long a key is held before it starts repeating.",
-        values: () => Choices.with_current(root.repeat_delays, HyprInput.value("repeat_delay")),
+        values: () => Choices.with_current(root.repeat_delays, HyprInputSettings.value("repeat_delay")),
         text: v => v + " ms",
-        value: () => HyprInput.value("repeat_delay"),
-        set: v => HyprInput.set("repeat_delay", v)
+        value: () => HyprInputSettings.value("repeat_delay"),
+        set: v => HyprInputSettings.set("repeat_delay", v)
     }]
 
     // Settings keeps a loaded section across closes, so keyd's state is checked again on every open.

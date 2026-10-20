@@ -48,7 +48,7 @@ ShellRoot {
                 id: screen_scope
                 required property var modelData
 
-                readonly property var rule: BarConfig.rule_for(screen_scope.modelData)
+                readonly property var rule: BarSettings.rule_for(screen_scope.modelData)
                 readonly property bool has_bar: screen_scope.rule !== null && screen_scope.rule.bar !== false
 
                 LazyLoader {
@@ -60,7 +60,7 @@ ShellRoot {
 
                         screen: screen_scope.modelData
                         color: "transparent"
-                        implicitHeight: BarConfig.height_for(screen_scope.rule)
+                        implicitHeight: BarSettings.height_for(screen_scope.rule)
                         exclusiveZone: implicitHeight
 
                         anchors {

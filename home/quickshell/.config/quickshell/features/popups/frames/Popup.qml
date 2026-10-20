@@ -122,7 +122,7 @@ PanelWindow {
     // prompt, and Esc leaves typing (NORMAL) without clearing the query rather than canceling the search.
     property bool search_starts_open: false
     // With search_starts_open, false opens in NORMAL with an empty query; `i` or `/` starts typing. Follows Settings > Input.
-    property bool search_opens_typing: InputSettings.starts_insert
+    property bool search_opens_typing: TypingSettings.starts_insert
     signal search_accept()
     readonly property bool search_shown: root.search_enabled && (root.search_starts_open ? root.search_typing : (root.search_typing || root.search_query !== ""))
     readonly property var search_matches: root.search_shown ? (root.search_starts_open ? FuzzyRows.fuzzy_matches(root.search_rows, root.search_query) : Search.matches(root.search_rows, root.search_query)) : []

@@ -55,12 +55,12 @@ ColumnLayout {
     }
 
     function open() {
-        const recalled = InputSettings.recall("settings:" + root.title);
+        const recalled = TypingSettings.recall("settings:" + root.title);
         input.text = recalled;
         root.query = recalled;
         const at = root.results.findIndex(r => r.index === root.current);
         root.cursor = Math.max(0, at);
-        root.set_insert(InputSettings.starts_insert);
+        root.set_insert(TypingSettings.starts_insert);
     }
 
     function set_insert(on) {
@@ -154,7 +154,7 @@ ColumnLayout {
             onTextChanged: {
                 root.query = text;
                 root.cursor = 0;
-                InputSettings.remember("settings:" + root.title, text);
+                TypingSettings.remember("settings:" + root.title, text);
             }
 
             Keys.onPressed: event => {

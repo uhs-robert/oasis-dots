@@ -98,7 +98,7 @@ Singleton {
                     const data = JSON.parse(text);
                     root.found = { mime: data.mime || {}, app: data.app || {} };
                 } catch (e) {
-                    console.warn("DefaultApps: apps.sh dump failed (" + e + ")");
+                    console.warn("DefaultAppsSettings: apps.sh dump failed (" + e + ")");
                 }
             }
         }

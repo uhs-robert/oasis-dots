@@ -92,7 +92,7 @@ Singleton {
                     next[key] = raw;
                 }
             } catch (e) {
-                console.warn("HyprInput: unreadable getoption output (" + e + ")");
+                console.warn("HyprInputSettings: unreadable getoption output (" + e + ")");
             }
         }
         root.live = next;
