@@ -770,6 +770,18 @@ fn the_click_section_follows_the_routing_text_and_shares_its_single_capture() {
 }
 
 #[test]
+fn a_legacy_dump_file_keeps_the_built_in_click_capture_under_the_trace() {
+    let rig = Rig::new();
+    rig.set("legacy-dump.jsonl", "");
+    let mut command = rig.command(&["explain", "--window", "focused", "click sign in"]);
+    command.env("VOXCMD_LEGACY_DUMP_FILE", rig.work().join("legacy-dump.jsonl"));
+    let out = text(&command.output().unwrap());
+    assert!(out.contains("\noutcome  click at 175,82"), "{out}");
+    assert_eq!(rig.grim_calls(), 1, "{:?}", rig.calls());
+    assert_eq!(rig.ocr_runs(), 1);
+}
+
+#[test]
 fn the_routing_half_still_runs_under_the_trace_and_agrees_with_it() {
     let rig = Rig::new();
     let (out, _) = rig.explain_window("focused", "click sign in");
