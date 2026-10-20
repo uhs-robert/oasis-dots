@@ -747,24 +747,31 @@ pub(crate) mod tests {
     #[test]
     fn an_answer_reaches_a_reader_and_a_fifo_nobody_reads_gives_up() {
         let dir = tempfile::tempdir().unwrap();
-        let fifo = dir.path().join("result");
-        let path = CString::new(fifo.as_os_str().as_bytes()).unwrap();
-        // SAFETY: mkfifo on a NUL-terminated path.
-        assert_eq!(unsafe { libc::mkfifo(path.as_ptr(), 0o600) }, 0);
+        let make_fifo = |name: &str| {
+            let fifo = dir.path().join(name);
+            let path = CString::new(fifo.as_os_str().as_bytes()).unwrap();
+            // SAFETY: mkfifo on a NUL-terminated path.
+            assert_eq!(unsafe { libc::mkfifo(path.as_ptr(), 0o600) }, 0);
+            fifo
+        };
+        // A parallel test spawning a child copies every open descriptor, these FIFO ends included, into it until its
+        // exec closes them. So the read takes the answer's bytes rather than waiting for EOF (the copied write end
+        // holds that off), and the give-up uses a FIFO this test never opened (a copied read end would answer it).
+        let answered = make_fifo("answered");
         // Opened here, non-blocking, so a reader exists before the write starts: a reader thread could be starved past
         // write_answer's 2 second give-up on a loaded machine.
         let mut reader = std::fs::OpenOptions::new()
             .read(true)
             .custom_flags(libc::O_NONBLOCK)
-            .open(&fifo)
+            .open(&answered)
             .unwrap();
-        assert!(write_answer(&fifo, "2. Next - bottom"));
-        let mut answer = String::new();
-        reader.read_to_string(&mut answer).unwrap();
-        assert_eq!(answer, "2. Next - bottom\n");
-        drop(reader);
+        assert!(write_answer(&answered, "2. Next - bottom"));
+        let mut answer = vec![0; "2. Next - bottom\n".len()];
+        reader.read_exact(&mut answer).unwrap();
+        assert_eq!(answer, b"2. Next - bottom\n");
+        let unread = make_fifo("unread");
         let started = Instant::now();
-        assert!(!write_answer(&fifo, "x"));
+        assert!(!write_answer(&unread, "x"));
         assert!(started.elapsed() >= Duration::from_secs(2));
         assert!(!write_answer(&dir.path().join("gone"), "x"));
     }
