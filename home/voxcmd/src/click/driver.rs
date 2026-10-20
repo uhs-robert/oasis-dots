@@ -141,7 +141,10 @@ pub fn capture_page(
     for cut in &cuts {
         stream.extend_from_slice(strip_line(cut).as_bytes());
         stream.push(b'\n');
-        stream.extend(std::fs::read(strips::strip_text_file(work.path(), cut)).unwrap_or_default());
+        // A strip that finished well but left no readable text is a failed read, not an empty strip.
+        let text =
+            std::fs::read(strips::strip_text_file(work.path(), cut)).map_err(|_| ClickError::new("ocr failed", 1))?;
+        stream.extend(text);
     }
     Ok(Captured { window, stream, info })
 }

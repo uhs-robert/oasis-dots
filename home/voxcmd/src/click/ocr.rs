@@ -151,21 +151,32 @@ fn spawn_strip(tools: &Tools, work: &Path, cut: &Cut, invert: bool, many: bool) 
     strip
 }
 
-/// SIGTERM to a strip's group. Never pid 0 or 1, and never voxcmd's own group.
-fn term_group(group: libc::pid_t) {
+/// A signal to a strip's group. Never pid 0 or 1, and never voxcmd's own group.
+fn signal_group(group: libc::pid_t, signal: libc::c_int) {
     // SAFETY: getpgrp has no preconditions.
     let own_group = unsafe { libc::getpgrp() };
     if group > 1 && group != own_group {
         // SAFETY: killpg only sends a signal; a group that is gone is an ignored ESRCH.
-        unsafe { libc::killpg(group, libc::SIGTERM) };
+        unsafe { libc::killpg(group, signal) };
     }
 }
 
+fn term_group(group: libc::pid_t) {
+    signal_group(group, libc::SIGTERM);
+}
+
 fn kill_group(group: libc::pid_t) {
-    if group > 1 {
-        // SAFETY: as in `term_group`; the group here was spawned by this module.
-        unsafe { libc::killpg(group, libc::SIGKILL) };
-    }
+    signal_group(group, libc::SIGKILL);
+}
+
+/// The groups worth a SIGKILL: those with a stage not yet reaped. A reaped leader frees its pid, so a group whose stages
+/// were all reaped may by now be an unrelated one; an unreaped stage, even a zombie, still pins its group's id.
+fn groups_with_unreaped_stage(strips: &[Strip]) -> Vec<libc::pid_t> {
+    strips
+        .iter()
+        .filter(|strip| strip.stages.iter().any(|stage| stage.status.is_none()))
+        .map(|strip| strip.group)
+        .collect()
 }
 
 /// Waits for the stages of the strips that were signalled, so none is left a zombie or running.
@@ -187,8 +198,8 @@ fn reap(strips: &mut [Strip]) {
         }
         thread::sleep(POLL);
     }
-    for strip in strips.iter() {
-        kill_group(strip.group);
+    for group in groups_with_unreaped_stage(strips) {
+        kill_group(group);
     }
     for stage in strips.iter_mut().flat_map(|strip| strip.stages.iter_mut()) {
         if stage.status.is_none() {
@@ -242,6 +253,34 @@ mod tests {
         let mut signalled = Vec::new();
         live.end_the_rest(|group| signalled.push(group));
         assert_eq!(signalled, [100, 300]);
+    }
+
+    fn stage_of(command: &mut std::process::Command, reaped: bool) -> Stage {
+        let mut child = command.spawn().unwrap();
+        let status = reaped.then(|| child.wait().unwrap());
+        Stage { child, status }
+    }
+
+    fn strip_of(group: libc::pid_t, stages: Vec<Stage>) -> Strip {
+        Strip {
+            group,
+            stages,
+            _live: Vec::new(),
+            spawn_failed: false,
+        }
+    }
+
+    #[test]
+    fn only_a_strip_with_an_unreaped_stage_is_killed_after_the_grace() {
+        let finished = || stage_of(&mut std::process::Command::new("true"), true);
+        let sleeper = stage_of(std::process::Command::new("sleep").arg("60"), false);
+        let mut strips = [
+            strip_of(111, vec![finished()]),
+            strip_of(222, vec![finished(), sleeper]),
+        ];
+        assert_eq!(groups_with_unreaped_stage(&strips), [222]);
+        strips[1].stages[1].child.kill().unwrap();
+        strips[1].stages[1].child.wait().unwrap();
     }
 
     #[test]
