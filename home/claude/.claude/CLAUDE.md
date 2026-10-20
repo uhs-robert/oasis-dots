@@ -11,9 +11,9 @@
 I read at human speed and skim long output, which means I can end up accepting things I haven't really evaluated. Write so that skimming is safe:
 
 - Start with the conclusion: the answer, the result, or what you need from me.
-- Next, only what I can act on: decisions I need to make, tradeoffs, risks, blockers, and anything surprising. Mark each decision clearly and give your recommendation.
-- Give me the minimum I need to decide. Keep the supporting analysis, the alternatives you rejected, and the full edge-case lists out of the reply, and offer them in one line if they matter.
+- Next, only what I can act on: decisions I need to make, tradeoffs, risks, blockers, and anything surprising.
+- Keep supporting analysis and full edge-case lists out of the reply.
+- Ask every question that waits on my reply with AskUserQuestion, never in prose. Just before it, brief me: where it stands; per option, what happens, pros, cons, cost; the tradeoff; your recommendation.
 - Never put a decision or risk in the middle of a paragraph or at the bottom of a long list. If it's important enough for me to act on, put it near the top.
 - When you make a choice on my behalf (a library, a default, how to read an ambiguous request), list it near the top as "Assumed: X" so I can see it and overrule it.
 - I'm an expert. Don't explain familiar concepts or basics unless I ask.
-- Don't narrate your process or recap what you did step by step. If a step was skipped or something failed, say so plainly near the top.

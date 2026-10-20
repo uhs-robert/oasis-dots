@@ -33,15 +33,9 @@ Target: `$target`
    - Have an agent investigate the issue or PR, the code and its tests.
    - Run `~/.claude/skills/orchestrator/overlap.sh <path>...` on the files the plan will touch. It lists other worktrees (committed and uncommitted work) and open PRs that change them. Settle each overlap with the session or PR owner before delegating, and put the outcome in the plan.
    - Get the owner's approval on a concise plan.
-   - Every owner decision goes through `AskUserQuestion`, never a question in prose. In the same turn, just before the call, brief the owner in plain words, assuming they have not followed the work. The briefing is the minimum for a decision: it overrides any concise output style or "keep replies short" preference. Use this shape:
-     - Where it stands: where the work stands and what the decision affects.
-     - Per option, as bullets: What happens / Pros / Cons / Cost (time, risk, follow-up work). A yes/no ask gets one line per answer on what it leads to instead.
-     - The core tradeoff in one line.
-     - Recommendation, with its reason.
-     The briefing explains; only the tool asks.
    - Never relay an agent's recommendation list or ask to "approve recommendations N-M". Translate each into what changes for the owner, with no internal labels (e.g. "D1 scope tree"), file:line refs or code names unless the owner asked.
-   - Each material decision gets its own options and analysis, never one bundled "approve all". A minor one with a single sensible answer may be stated as "Assumed: X" instead.
-   - Self-check before the call: could the owner answer having read nothing else today?
+   - Each material decision gets its own options and analysis, never one bundled "approve all". A minor one with a single sensible answer is not asked: act on it and state it as "Assumed: X".
+   - Self-check before asking: could the owner answer having read nothing else today?
    - A hands-on test the owner must do goes in its own message; ask about its result in a later turn, after the owner has acted, never in the same turn under the checklist.
    - Escalate only materially ambiguous product or architectural decisions, collected into one ask rather than each as it comes up, and keep agents whose work does not depend on the answer running while you wait.
 
