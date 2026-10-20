@@ -24,7 +24,7 @@ usage_line() { # $1 tokens, $2 isSidechain
 }
 run_hook() { # $1 transcript, $2 session id, $3 extra input fields
   jq -nc --arg t "$1" --arg s "$2" "{transcript_path: \$t, session_id: \$s} ${3:-}" |
-    CLAUDE_CONTEXT_STATE_DIR="$tmp/state" bash "$hook"
+    TMUX=${test_tmux-/tmp/tmux-test/default,1,0} CLAUDE_CONTEXT_STATE_DIR="$tmp/state" bash "$hook"
 }
 
 t="$tmp/orch.jsonl"
@@ -61,5 +61,6 @@ o="$tmp/other.jsonl"
 } >"$o"
 check "a session that only mentions the skill is left alone" test -z "$(run_hook "$o" s3)"
 check "an agent inside an orchestrator is left alone" test -z "$(run_hook "$h" s4 '+ {agent_id: "a1"}')"
+check "an orchestrator outside tmux is left alone" test -z "$(test_tmux='' run_hook "$h" s5)"
 
 ((failures == 0)) && echo "all passed" || exit 1
