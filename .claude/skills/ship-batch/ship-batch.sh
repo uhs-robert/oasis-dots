@@ -162,6 +162,17 @@ if grep -q '^home/systemd/\.config/systemd/user/' <<<"$changed"; then
   systemctl --user daemon-reload 9>&- || die "systemctl --user daemon-reload failed"
   echo "ship-batch: reloaded the user units"
 fi
+# A pull that only edits files restows nothing, so a migration the merge added or changed would never run on its own. Run
+# twice around the restart: a migration that deletes an old file waits for a run with no bar up (see lib/install/migrate.sh).
+migrate_paths='^(lib/install/(migrate|load)\.sh|install\.sh|justfile)$'
+run_migrations=false
+grep -Eq "$migrate_paths" <<<"$changed" && run_migrations=true
+migrate() {
+  $run_migrations || return 0
+  (cd "$repo" && just migrate-quickshell-state) 9>&- || die "migrating failed; fix it and rerun ship-batch (a rerun resumes), or run: just migrate-quickshell-state"
+  echo "ship-batch: ran the install migrations ($1)"
+}
+migrate "before the bar restart"
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/hypr; then
   use_live_hypr "reload Hyprland by hand: hyprctl reload"
   hyprctl reload 9>&- >/dev/null || die "hyprctl reload failed (exit $?); reload Hyprland by hand: hyprctl reload"
@@ -193,6 +204,8 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     echo "ship-batch: restarted the stowed bar"
   fi
 fi
+
+migrate "after the bar restart"
 
 # Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the reloads and restarts.
 [[ $before == "$after" ]] || owe_check "$repo" "$before"
