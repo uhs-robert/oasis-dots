@@ -2,7 +2,7 @@
 
 ## Styles
 
-A style changes how the whole shell looks and behaves: fonts, frames, meters, key hints, transitions, sounds, even which views a popup shows. Colors never come from a style. They always come from the active Oasis palette, so every style works with every theme. The one deliberate exception is the game iconography of `goldeneye` (and its Classic mode), which keeps the pause watch's own colors under every palette (see below). The lock-only skins are exempt as well: `Ocarina` draws its game's fixed palette and ignores the lock tint, and `Mgs2` keeps its fixed greys and greens while its reds follow the lock tint (the Classic tint keeps the game's reds).
+A style changes how the whole shell looks and behaves: fonts, frames, meters, key hints, transitions, sounds, even which views a popup shows. Colors never come from a style. They always come from the active Oasis palette, so every style works with every theme. The one deliberate exception is the game iconography of `goldeneye` (and its Classic mode), which keeps the pause watch's own colors under every palette (see below). The lock-only skins are exempt as well: `Ocarina` draws its game's fixed palette and ignores the lock tint, and `Mgs2` keeps its fixed greys and greens while its reds follow the lock tint, except the warning red of the line under the menus (the Classic tint keeps the game's reds).
 
 The styles, in picker order: `oasis` (the default), `modern`, `neovim`, `terminal`, `crt`, `nes`, `gameboy`, `snes`, `ps1`, `ff7`, `goldeneye`, `ps2`, `tie`, `halflife`, `metroid` and `reticle`. Everyday styles come first, then consoles by release year, then sci-fi.
 

@@ -152,7 +152,7 @@ Item {
     readonly property color ok_green: "#a0e0b0"
     readonly property color mol_red: root.red("#d63126")
 
-    // Every red follows the lock tint; "classic" (and no ctx) keeps the game's own reds.
+    // Every red but the warning tone of `desc` follows the lock tint; "classic" (and no ctx) keeps the game's own reds.
     readonly property var tint_hsl: !root.ctx || root.ctx.tint === "classic" ? null : Reds.tint_hsl_of(root.ctx.tint_base)
     function red(classic_red) {
         if (!root.tint_hsl) return classic_red;
@@ -1198,7 +1198,8 @@ Item {
             text: root.desc[0]
             textFormat: Text.PlainText
             elide: Text.ElideRight
-            color: root.desc[1] === "red" ? root.red("#ff5a55") : root.desc[1] === "green" ? "#7fe39a" : "#eef0ee"
+            // The warning red stays red under every tint, so a wrong password or an armed reboot reads as a warning.
+            color: root.desc[1] === "red" ? "#ff5a55" : root.desc[1] === "green" ? "#7fe39a" : "#eef0ee"
             style: Text.Outline
             styleColor: root.desc[1] === "green" ? "#3062d49c" : "#000000"
             font.family: root.ui_font
