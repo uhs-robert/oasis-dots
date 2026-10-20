@@ -130,5 +130,6 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Internal(InternalCommand::ChainStop(args)) => voice::chain_stop::run(&args.args).map(|()| None),
         Command::Internal(InternalCommand::Session(args)) => session::bridge::run(&args.args),
         Command::Internal(InternalCommand::ClickMatch(args)) => click::internal::click_match(&args),
+        Command::Internal(InternalCommand::ClickOcr(args)) => click::internal::click_ocr(&args.args),
     }
 }

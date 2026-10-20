@@ -26,6 +26,9 @@
 #   wtype                             logged; with SANDBOX_WTYPE_BLOCK=<path> the first call creates <path>.entered and
 #                                     waits for <path>.release
 #   tesseract                         SANDBOX_TESSERACT_TSV (the tsv itself; no words without it)
+#   grim, magick, tesseract           each call also appends "<name> <the caller's executable>" to $SANDBOX_DIR/callers.log
+#                                     and "<name> <args>" to $SANDBOX_DIR/ocr-calls.log, apart from calls.log, which
+#                                     other checks read whole (a suite proves which program drove the tools by the former)
 #   grim, magick                      never real: grim writes a blank image the size of the activewindow fixture
 #                                     times SANDBOX_GRIM_SCALE (default 1), or SANDBOX_GRIM_SIZE ("W H"), and fails
 #                                     -T when SANDBOX_GRIM_NO_TOPLEVEL is set; magick cuts empty strips and reports
@@ -196,6 +199,12 @@ fixture_missing() {
   echo "sandbox: '$name $*' needs \$$1, which this test does not set; add the fixture rather than reaching the live desktop" >&2
   exit 1
 }
+case "$name" in
+grim | magick | tesseract)
+  printf '%s %s\n' "$name" "$(readlink "/proc/$PPID/exe")" >>"$SANDBOX_DIR/callers.log"
+  printf '%s %s\n' "$name" "$*" >>"$SANDBOX_DIR/ocr-calls.log"
+  ;;
+esac
 case "$name" in
 hyprctl)
   case "${1-}" in

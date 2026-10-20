@@ -33,3 +33,17 @@ pub fn window_exists(address: &str, within: Duration) -> bool {
                 .any(|client| client.get("address").and_then(Value::as_str) == Some(address))
         })
 }
+
+/// The focused window's object as hyprctl prints it, None when none has focus or Hyprland did not answer.
+pub fn active_window() -> Option<Value> {
+    query("activewindow", ANSWER_WITHIN).filter(|window| window.get("at").is_some())
+}
+
+/// The client with this stableId, None when it is gone or Hyprland did not answer.
+pub fn window_by_stable_id(stable_id: &str) -> Option<Value> {
+    query("clients", ANSWER_WITHIN)?
+        .as_array()?
+        .iter()
+        .find(|client| client.get("stableId").and_then(Value::as_str) == Some(stable_id))
+        .cloned()
+}

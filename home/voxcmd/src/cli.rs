@@ -292,6 +292,10 @@ pub enum InternalCommand {
     /// The click matcher on click-ocr's output (stdin); the target is in CLICK_TARGET. Deleted with the bash matcher (3.2)
     #[command(hide = true)]
     ClickMatch(ClickMatchArgs),
+    /// Captures a window and prints its word boxes for click-match: `[--window <stableId>] [--explain]`, read by hand so
+    /// the usage line is click-ocr's. Deleted with the bash script (3.2)
+    #[command(hide = true)]
+    ClickOcr(InternalArgs),
 }
 
 #[derive(Args, Debug)]
