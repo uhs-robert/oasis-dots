@@ -90,8 +90,25 @@ pub fn errors(count: u32, json: bool) -> Result<Option<String>, CliError> {
             _ => None,
         })
         .ok_or_else(|| CliError::failed("log errors", "bar not running"))?;
+    let field = |entry: &serde_json::Value, name: &str| {
+        entry
+            .get(name)
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    };
     if json {
-        return Ok(Some(serde_json::Value::Array(history).to_string()));
+        let errors: Vec<serde_json::Value> = history
+            .iter()
+            .map(|entry| {
+                serde_json::json!({
+                    "time": field(entry, "time"),
+                    "summary": field(entry, "summary"),
+                    "body": field(entry, "body"),
+                })
+            })
+            .collect();
+        return Ok(Some(serde_json::Value::Array(errors).to_string()));
     }
     let format = if text::speech::clock_is_twelve_hour() {
         "%F %-I:%M%P"
@@ -101,9 +118,8 @@ pub fn errors(count: u32, json: bool) -> Result<Option<String>, CliError> {
     let lines: Vec<String> = history
         .iter()
         .map(|entry| {
-            let field = |name: &str| entry.get(name).and_then(serde_json::Value::as_str).unwrap_or_default();
-            let time = field("time").parse::<jiff::Timestamp>().map_or_else(
-                |_| field("time").to_string(),
+            let time = field(entry, "time").parse::<jiff::Timestamp>().map_or_else(
+                |_| field(entry, "time").to_string(),
                 |stamp| {
                     stamp
                         .to_zoned(jiff::tz::TimeZone::system())
@@ -111,7 +127,11 @@ pub fn errors(count: u32, json: bool) -> Result<Option<String>, CliError> {
                         .to_string()
                 },
             );
-            format!("{time}  {}: {}", field("summary"), field("body").replace('\n', " "))
+            format!(
+                "{time}  {}: {}",
+                field(entry, "summary"),
+                field(entry, "body").replace('\n', " ")
+            )
         })
         .collect();
     Ok((!lines.is_empty()).then(|| lines.join("\n")))
