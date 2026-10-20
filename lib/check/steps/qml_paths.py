@@ -529,6 +529,9 @@ def run_checks(repo, layout=Layout()):
         for consumer, origin in sorted(tree.origins.items()):
             if not consumer.endswith(SOURCE_SUFFIXES):
                 continue
+            if not os.path.exists(os.path.join(repo, origin)):
+                findings.append(Finding(origin, 1, "tracked but missing from the working tree (moved without git mv?)"))
+                continue
             for site in call_sites(os.path.join(repo, origin), consumer.endswith(".qml")):
                 findings += check_site(repo, layout, tree, consumer, origin, site)
             findings += check_imports(tree, repo, consumer, origin)
