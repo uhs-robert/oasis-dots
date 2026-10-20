@@ -8,7 +8,7 @@ use super::list::relative;
 use super::schema::{self, Format, Integration};
 use super::{legacy, toml_files};
 use crate::exit::CliError;
-use crate::route::pattern;
+use crate::route::pattern::{self, PlaceholderType};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -276,6 +276,8 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
                 // every one of a tier offers its option and several go to a picker. A legacy file is only loaded.
                 // `requires` is the one per-verb eligibility the matcher checks: a verb that needs an integration
                 // that is not loaded is skipped, so it shadows a later verb only if that verb needs the same one.
+                // The matcher also moves on when a typed capture does not parse, so only a verb whose captures take
+                // any words (text, number) can shadow: `go {value:position}` leaves `go tokyo` to a later `go {value}`.
                 let earlier_verbs = earlier_with_regex.entry(compiled.regex).or_default();
                 if integration.format == Format::Toml
                     && let Some(&earlier) = earlier_verbs.iter().find(|&&earlier| {
@@ -292,7 +294,13 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
                         ),
                     );
                 }
-                earlier_verbs.push(index);
+                let takes_any_words = compiled
+                    .placeholders
+                    .iter()
+                    .all(|placeholder| matches!(placeholder.kind, PlaceholderType::Text | PlaceholderType::Number));
+                if takes_any_words {
+                    earlier_verbs.push(index);
+                }
             }
         }
     }

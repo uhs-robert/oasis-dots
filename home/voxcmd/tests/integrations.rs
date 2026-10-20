@@ -283,6 +283,18 @@ fn a_shadowed_verb_needs_the_earlier_verb_to_be_as_eligible() {
 }
 
 #[test]
+fn a_verb_whose_typed_capture_can_reject_does_not_shadow_a_later_one() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/typed.toml",
+        "verbs = [\n  { action = \"a\", match = 'go {value:position}' },\n  { action = \"b\", match = 'go {value:text}' },\n]\n[actions]\na = \"true\"\nb = \"true\"\n",
+    );
+    let output = sandbox.voxcmd(&["integrations", "check"], &[]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(!stdout(&output).contains("shadowed-verb") && !stdout(&output).contains("can never match"));
+}
+
+#[test]
 fn a_mistyped_surface_key_is_an_unknown_key() {
     let sandbox = Sandbox::with(&[]);
     sandbox.write(
