@@ -45,7 +45,8 @@
       "Read(~/.claude/.credentials.json)",
       "Read(~/.config/gh/hosts.yml)",
       "Read(~/.gnupg/**)",
-      "Read(~/.ssh/**)"
+      "Read(~/.ssh/**)",
+      "SendFeedback"
     ],
     "defaultMode": "auto"
   },
@@ -64,7 +65,12 @@
     "anthropic-skills:pptx": "user-invocable-only",
     "anthropic-skills:skill-creator": "user-invocable-only",
     "anthropic-skills:xlsx": "user-invocable-only",
+    "artifact-capabilities": "user-invocable-only",
+    "artifact-design": "user-invocable-only",
+    "artifact-diagramming": "user-invocable-only",
     "caveman:caveman-commit": "off",
+    "claude-api": "user-invocable-only",
+    "dataviz": "user-invocable-only",
     "simplify": "off"
   },
   "hooks": {
