@@ -50,13 +50,12 @@
       "Read(~/.config/gh/hosts.yml)",
       "Read(~/.gnupg/**)",
       "Read(~/.ssh/**)",
-      "SendFeedback",
-      "Write(~/.claude/skills/orchestrator-handoff/spawn-successor.sh)",
-      "Write(~/dotfiles/home/claude/.claude/skills/orchestrator-handoff/spawn-successor.sh)"
+      "SendFeedback"
     ],
     "defaultMode": "auto"
   },
   "model": "opus",
+  "disableClaudeAiConnectors": true,
   "skillOverrides": {
     "anthropic-skills:built-in-browser": "user-invocable-only",
     "anthropic-skills:chrome-browser": "user-invocable-only",
@@ -225,13 +224,16 @@
   "worktree": {
     "baseRef": "fresh"
   },
+  "disableWorkflows": true,
+  "enableArtifact": false,
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
-    "lua-lsp@claude-plugins-official": true,
-    "caveman@caveman": false
+    "lua-lsp@claude-plugins-official": false,
+    "caveman@caveman": false,
+    "cc-plugin-plugin-authoring@builtin": true
   },
   "extraKnownMarketplaces": {
     "caveman": {
@@ -244,6 +246,13 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "medium",
   "promptSuggestionEnabled": false,
+  "pluginConfigs": {
+    "cc-plugin-agents-md@builtin": {
+      "options": {
+        "instructionFiles": "claude-md-or-agents-md"
+      }
+    }
+  },
   "tui": "fullscreen",
   "autoMemoryEnabled": false,
   "skipDangerousModePermissionPrompt": true,
@@ -252,15 +261,5 @@
   "preferredNotifChannel": "notifications_disabled",
   "autoCompactEnabled": false,
   "remoteControlAtStartup": true,
-  "agentPushNotifEnabled": true,
-  "pluginConfigs": {
-    "cc-plugin-agents-md@builtin": {
-      "options": {
-        "instructionFiles": "claude-md-or-agents-md"
-      }
-    }
-  },
-  "disableClaudeAiConnectors": true,
-  "disableWorkflows": true,
-  "enableArtifact": false
+  "agentPushNotifEnabled": true
 }
