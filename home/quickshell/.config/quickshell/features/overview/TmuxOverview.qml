@@ -35,7 +35,7 @@ OverviewBase {
     ranked: root.typing ? root.rank(TmuxData.search_entries(root.tiles, Quickshell.env("HOME") || "", root.picked_set), root.query) : []
     readonly property var matches: root.query === "" ? null : root.to_set(root.ranked.map(e => e.key))
     readonly property var ansi_palette: [Theme.black, Theme.red, Theme.green, Theme.yellow, Theme.blue, Theme.magenta, Theme.cyan, Theme.white, Theme.bright_black, Theme.bright_red, Theme.bright_green, Theme.bright_yellow, Theme.bright_blue, Theme.bright_magenta, Theme.bright_cyan, Theme.bright_white].map(c => String(c))
-    readonly property string term_name: (DefaultApps.app_value("term") || Quickshell.env("TERMINAL") || "kitty").toLowerCase()
+    readonly property string term_name: (DefaultAppsSettings.app_value("term") || Quickshell.env("TERMINAL") || "kitty").toLowerCase()
     // The selected pane (or the whole tile) in body coordinates, for the scope skin.
     readonly property var aim: {
         const tile = root.selected_tile;

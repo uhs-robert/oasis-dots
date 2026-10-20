@@ -72,14 +72,14 @@ Popup {
     // Reset once hidden so an open finds the empty-query results already laid out.
     onVisibleChanged: if (!visible) root.reset()
     onIs_openChanged: if (is_open) {
-        const recalled = root.provider ? InputSettings.recall("picker:" + root.provider.name) : "";
+        const recalled = root.provider ? TypingSettings.recall("picker:" + root.provider.name) : "";
         if (root.provider) root.current_tab = root.provider.tab;
         root.reset();
         query_input.text = recalled;
         // The bottom dock always opens typing; only island-anchored pickers follow the start mode setting.
         // Reads Popups.open_anchor, not dock_bottom: held_anchor may still be stale when this handler runs first.
         const docks_bottom = Popups.open_anchor === null;
-        root.set_insert((docks_bottom || InputSettings.starts_insert) && (!root.provider || root.provider.starts_insert));
+        root.set_insert((docks_bottom || TypingSettings.starts_insert) && (!root.provider || root.provider.starts_insert));
     }
     Component.onCompleted: root.sync_slots()
 
@@ -353,7 +353,7 @@ Popup {
                 font.pixelSize: root.st.fs(-1)
                 onTextChanged: {
                     root.query = text;
-                    if (root.is_open && root.provider) InputSettings.remember("picker:" + root.provider.name, text);
+                    if (root.is_open && root.provider) TypingSettings.remember("picker:" + root.provider.name, text);
                 }
                 // A static caret: the default one blinks for as long as the picker is open.
                 cursorDelegate: Rectangle {

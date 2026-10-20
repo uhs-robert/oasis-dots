@@ -5,7 +5,7 @@ import Quickshell.Services.Pipewire
 import qs.theme
 import qs.features.audio
 
-// Keeps the login screen's data (LoginScreen's choices, theme, face) in /var/lib/qs-greeter current; does nothing when that directory is absent.
+// Keeps the login screen's data (LoginSettings choices, theme, face) in /var/lib/qs-greeter current; does nothing when that directory is absent.
 Scope {
     id: root
 
@@ -21,18 +21,18 @@ Scope {
     readonly property string output_volume: sink && sink.ready && sink.audio ? String(Math.round(sink.audio.volume * 100) / 100) : ""
 
     function write() {
-        if (!LoginScreen.sync) return;
-        if (!LoginScreen.installed) {
-            LoginScreen.probe();
+        if (!LoginSettings.sync) return;
+        if (!LoginSettings.installed) {
+            LoginSettings.probe();
             return;
         }
         const data = {
             user: Quickshell.env("USER") || "",
-            lock_style: LoginScreen.resolved_screen,
-            lock_tint: LoginScreen.resolved_tint,
-            lock_music: LoginScreen.resolved_music ? "on" : "off",
+            lock_style: LoginSettings.resolved_screen,
+            lock_tint: LoginSettings.resolved_tint,
+            lock_music: LoginSettings.resolved_music ? "on" : "off",
             watch_colors: Style.watch_mode,
-            session: LoginScreen.session,
+            session: LoginSettings.session,
             music_volume: String(ThemeAudio.music_volume)
         };
         if (root.output_volume !== "") data.output_volume = root.output_volume;
@@ -60,7 +60,7 @@ Scope {
     }
 
     Connections {
-        target: LoginScreen
+        target: LoginSettings
         function onSyncChanged() { root.schedule(); }
         function onInstalledChanged() { root.schedule(); }
         function onResolved_screenChanged() { root.schedule(); }

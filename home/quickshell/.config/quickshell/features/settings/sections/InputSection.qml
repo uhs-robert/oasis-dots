@@ -13,24 +13,24 @@ RowsSection {
     rows: [{
         label: "Start typing in",
         desc: "Mode island pickers and search popups open in. From NORMAL, i or / types; bottom pickers and the HyprVim prompt are always INSERT.",
-        values: () => InputSettings.choices.start_mode,
+        values: () => TypingSettings.choices.start_mode,
         text: v => root.modes[v] || String(v),
-        value: () => InputSettings.values.start_mode,
-        set: v => InputSettings.set("start_mode", v)
+        value: () => TypingSettings.values.start_mode,
+        set: v => TypingSettings.set("start_mode", v)
     }, {
         label: "Remember last search",
         desc: "Refill each picker's query from its last open, until the shell restarts.",
-        values: () => InputSettings.choices.remember_query,
+        values: () => TypingSettings.choices.remember_query,
         text: v => v ? "On" : "Off",
-        value: () => InputSettings.values.remember_query,
-        set: v => InputSettings.set("remember_query", v),
+        value: () => TypingSettings.values.remember_query,
+        set: v => TypingSettings.set("remember_query", v),
         pick: false
     }, {
         label: "Which-key delay",
         desc: "How long a leader key waits before its overlay shows. Reloads Hyprland to apply.",
-        values: () => Choices.with_current(root.which_key_delays, HyprInput.value("which_key_delay_ms")),
+        values: () => Choices.with_current(root.which_key_delays, HyprInputSettings.value("which_key_delay_ms")),
         text: v => v === 0 ? "Instant" : v + " ms",
-        value: () => HyprInput.value("which_key_delay_ms"),
-        set: v => HyprInput.set("which_key_delay_ms", v)
+        value: () => HyprInputSettings.value("which_key_delay_ms"),
+        set: v => HyprInputSettings.set("which_key_delay_ms", v)
     }]
 }

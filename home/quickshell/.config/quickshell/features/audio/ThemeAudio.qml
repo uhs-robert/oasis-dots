@@ -66,10 +66,10 @@ Singleton {
     readonly property string music_url: music_pack.find("music", ["ogg", "wav", "mp3"])
 
     // The login screen's own pack, and the music file to hand the greeter ("" when off, or the skin brings its own).
-    readonly property string login_skin: LoginScreen.resolved_screen
+    readonly property string login_skin: LoginSettings.resolved_screen
     readonly property string login_name: root.login_skin in Style.styles ? root.login_skin : Style.saved_name
     readonly property string login_music_path: {
-        if (!root.music || !LoginScreen.resolved_music || root.own_music_skins.indexOf(root.login_skin) >= 0) return "";
+        if (!root.music || !LoginSettings.resolved_music || root.own_music_skins.indexOf(root.login_skin) >= 0) return "";
         return login_pack.find("music", ["ogg", "wav", "mp3"]).replace(/^file:\/\//, "");
     }
 

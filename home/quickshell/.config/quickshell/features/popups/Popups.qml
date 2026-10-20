@@ -77,7 +77,7 @@ Singleton {
             const found = root.find_in_screen(focused, name);
             if (found) return found;
             const screen = Quickshell.screens.find(s => s.name === focused);
-            const rule = screen ? BarConfig.rule_for(screen) : null;
+            const rule = screen ? BarSettings.rule_for(screen) : null;
             if (screen && (!rule || rule.bar === false)) return null;
         }
         for (const screen_name in default_anchors) {

@@ -20,19 +20,19 @@ SettingsPane {
     readonly property var target_screen: root.screens.find(s => s.name === root.target) || null
     readonly property var focused_screen: root.screens.find(s => Hyprland.focusedMonitor && s.name === Hyprland.focusedMonitor.name) || root.screens[0] || null
     readonly property var view_screen: root.target_screen || root.focused_screen
-    readonly property string monitor_key: root.target_screen ? BarConfig.monitor_key(root.target_screen) : ""
-    readonly property bool has_own: root.monitor_key !== "" && !!BarConfig.state.monitors[root.monitor_key]
-    readonly property var tracked: root.view_screen ? BarConfig.tracked_rule_for(root.view_screen) : null
-    readonly property var view_layout: BarLayout.layout_of(BarLayout.effective(root.tracked, BarConfig.state, root.monitor_key))
+    readonly property string monitor_key: root.target_screen ? BarSettings.monitor_key(root.target_screen) : ""
+    readonly property bool has_own: root.monitor_key !== "" && !!BarSettings.state.monitors[root.monitor_key]
+    readonly property var tracked: root.view_screen ? BarSettings.tracked_rule_for(root.view_screen) : null
+    readonly property var view_layout: BarLayout.layout_of(BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key))
     readonly property int top_count: root.target_screen ? (root.has_own ? 3 : 2) : 1
-    readonly property bool own_compact: root.has_own && BarConfig.compact_for(BarConfig.state.monitors[root.monitor_key])
+    readonly property bool own_compact: root.has_own && BarSettings.compact_for(BarSettings.state.monitors[root.monitor_key])
     readonly property var entries: {
         const out = [];
         for (const side of BarLayout.sides) {
             const list = Style.bar_lualine && side !== "left" ? BarLayout.section_sorted(root.view_layout[side]) : root.view_layout[side];
             list.forEach(e => out.push({ entry: e, side: side }));
         }
-        BarLayout.hidden_entries(BarConfig.rules, BarConfig.state, root.view_layout).forEach(e => out.push({ entry: e, side: "hidden" }));
+        BarLayout.hidden_entries(BarSettings.rules, BarSettings.state, root.view_layout).forEach(e => out.push({ entry: e, side: "hidden" }));
         return out;
     }
     readonly property int total: root.top_count + root.entries.length
@@ -74,7 +74,7 @@ SettingsPane {
         if (index === 2 && root.has_own) return "A tighter bar that hides the system modules on this monitor.";
         const item = root.entries[index - root.top_count];
         if (!item) return "";
-        const note = root.module_notes[item.entry] || root.module_notes[BarConfig.parse_module(item.entry).base] || "";
+        const note = root.module_notes[item.entry] || root.module_notes[BarSettings.parse_module(item.entry).base] || "";
         return note + (item.side === "hidden" ? " Hidden." : "");
     }
 
@@ -83,7 +83,7 @@ SettingsPane {
         if (index < root.top_count) return "Enter toggle";
         const item = root.entries[index - root.top_count];
         if (!item) return "";
-        const base = BarConfig.parse_module(item.entry).base;
+        const base = BarSettings.parse_module(item.entry).base;
         const keys = item.side === "hidden" ? ["Enter show"] : ["Enter hide", "J/K reorder", "H/L side"];
         if (BarLayout.module_args[base]) keys.push("a add argument");
         if (item.entry.indexOf(":") >= 0) keys.push("x remove");
@@ -102,7 +102,7 @@ SettingsPane {
     function target_text(name) {
         const screen = root.screens.find(s => s.name === name);
         if (!screen) return "All monitors";
-        const desc = BarConfig.description_for(screen);
+        const desc = BarSettings.description_for(screen);
         return desc ? screen.name + " · " + desc : screen.name;
     }
 
@@ -119,23 +119,23 @@ SettingsPane {
     function toggle_own() {
         if (!root.target_screen) return;
         if (root.has_own) {
-            BarConfig.set_state(BarLayout.drop_own(BarConfig.state, root.monitor_key));
+            BarSettings.set_state(BarLayout.drop_own(BarSettings.state, root.monitor_key));
             return;
         }
-        const eff = BarLayout.effective(root.tracked, BarConfig.state, root.monitor_key);
+        const eff = BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key);
         if (!eff) return;
-        BarConfig.set_state(BarLayout.set_own(BarConfig.state, root.monitor_key, eff, BarConfig.compact_for(eff)));
+        BarSettings.set_state(BarLayout.set_own(BarSettings.state, root.monitor_key, eff, BarSettings.compact_for(eff)));
     }
 
     function toggle_compact() {
         if (!root.has_own) return;
-        BarConfig.set_state(BarLayout.set_compact(BarConfig.state, root.monitor_key, !root.own_compact));
+        BarSettings.set_state(BarLayout.set_compact(BarSettings.state, root.monitor_key, !root.own_compact));
     }
 
     function add_argument() {
         const item = root.current_module();
         if (!item) return;
-        const base = BarConfig.parse_module(item.entry).base;
+        const base = BarSettings.parse_module(item.entry).base;
         const next = BarLayout.next_entry(base, root.entries.map(e => e.entry));
         if (next === "") return;
         const side = item.side === "hidden" ? "right" : item.side;
@@ -147,13 +147,13 @@ SettingsPane {
     function remove_argument() {
         const item = root.current_module();
         if (!item || item.entry.indexOf(":") < 0) return;
-        if (BarLayout.tracked_side(BarConfig.rules, item.entry) === "") root.edit({ type: "remove", entry: item.entry });
+        if (BarLayout.tracked_side(BarSettings.rules, item.entry) === "") root.edit({ type: "remove", entry: item.entry });
         else if (item.side !== "hidden") root.edit({ type: "hide", entry: item.entry });
     }
 
     function edit(op) {
         if (!root.tracked) return;
-        BarConfig.set_state(BarLayout.edit(root.tracked, BarConfig.state, root.monitor_key, op));
+        BarSettings.set_state(BarLayout.edit(root.tracked, BarSettings.state, root.monitor_key, op));
     }
 
     function current_module() {
@@ -167,7 +167,7 @@ SettingsPane {
             root.edit({ type: "hide", entry: item.entry });
             return;
         }
-        const back = BarLayout.restore_side(BarConfig.rules, BarConfig.state, root.monitor_key, item.entry);
+        const back = BarLayout.restore_side(BarSettings.rules, BarSettings.state, root.monitor_key, item.entry);
         root.edit({ type: "show", entry: item.entry, side: back.side, index: back.index });
     }
 

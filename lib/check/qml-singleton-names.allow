@@ -2,5 +2,3 @@
 #   <file under the Quickshell tree>  # <reason> (<item that removes it>)
 # Every entry is temporary: the rename deletes its line in the same commit, and a line whose file no longer matches fails
 # as stale. "5.8 PR n" means PR n of item 5.8 of the Quickshell refactor (#966).
-
-features/bar/BarConfig.qml  # saved bar choices, not yet named Settings; temporary, renamed to BarSettings (5.8 PR 3)

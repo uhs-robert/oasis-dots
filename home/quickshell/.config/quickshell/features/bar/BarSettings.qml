@@ -49,7 +49,7 @@ Singleton {
             try {
                 root.state = BarLayout.normalize(text().trim() === "" ? null : JSON.parse(text()));
             } catch (e) {
-                if (!root.warned_state) console.warn("BarConfig: invalid state bars.json, ignoring it (" + e + ")");
+                if (!root.warned_state) console.warn("BarSettings: invalid state bars.json, ignoring it (" + e + ")");
                 root.warned_state = true;
                 root.state = BarLayout.normalize(null);
             }
@@ -61,10 +61,10 @@ Singleton {
         root.rules_loaded = true;
         const message = "bars.json " + reason;
         if (root.has_good_rules) {
-            console.warn("BarConfig: " + message + ", keeping last config");
+            console.warn("BarSettings: " + message + ", keeping last config");
             return;
         }
-        console.warn("BarConfig: " + message + ", showing the emergency bar");
+        console.warn("BarSettings: " + message + ", showing the emergency bar");
         root.rules = root.emergency_rules;
         Quickshell.execDetached(["notify-send", "-u", "critical", "Quickshell bar", message + ". Showing a minimal bar until it is fixed."]);
     }
@@ -125,7 +125,7 @@ Singleton {
         if (!root.rules_loaded) return null;
         const tracked = root.tracked_rule_for(screen);
         if (!tracked) {
-            console.warn("BarConfig: no bars.json rule matched screen \"" + screen.name + "\"; no bar shown");
+            console.warn("BarSettings: no bars.json rule matched screen \"" + screen.name + "\"; no bar shown");
             return null;
         }
         return BarLayout.effective(tracked, root.state, root.monitor_key(screen));
@@ -151,6 +151,6 @@ Singleton {
     function warn_unknown_module(name) {
         if (root.warned_modules[name]) return;
         root.warned_modules[name] = true;
-        console.warn("BarConfig: unknown module \"" + name + "\" in bars.json; skipping");
+        console.warn("BarSettings: unknown module \"" + name + "\" in bars.json; skipping");
     }
 }

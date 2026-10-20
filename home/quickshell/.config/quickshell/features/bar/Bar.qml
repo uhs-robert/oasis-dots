@@ -17,8 +17,8 @@ Item {
 
     property string screen_name: ""
     property var rule: null
-    readonly property bool compact: BarConfig.compact_for(root.rule)
-    readonly property int bar_height: BarConfig.height_for(root.rule)
+    readonly property bool compact: BarSettings.compact_for(root.rule)
+    readonly property int bar_height: BarSettings.height_for(root.rule)
     readonly property real center_width: center_island.body_item.width
     // Lualine has no center island; its modules move into the right island's sections.
     readonly property bool has_center: !Style.bar_lualine && root.center_entries.length > 0
@@ -27,10 +27,10 @@ Item {
     function build_entries(names) {
         const list = [];
         for (const raw of names || []) {
-            const parsed = BarConfig.parse_module(raw);
+            const parsed = BarSettings.parse_module(raw);
             const spec = BarModules.find(parsed.base);
             if (!spec) {
-                BarConfig.warn_unknown_module(parsed.base);
+                BarSettings.warn_unknown_module(parsed.base);
                 continue;
             }
             list.push({ base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file) });

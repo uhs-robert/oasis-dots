@@ -20,21 +20,21 @@ RowsSection {
             directories: "Opens folders, including Wallpaper's o key."
         })
 
-    rows: DefaultApps.app_keys.map(c => ({
+    rows: DefaultAppsSettings.app_keys.map(c => ({
                 label: c.label,
                 desc: root.notes[c.key],
-                values: () => DefaultApps.app_choices(c.key),
+                values: () => DefaultAppsSettings.app_choices(c.key),
                 text: v => v === "" ? "Machine default" : v,
-                value: () => DefaultApps.app_value(c.key),
-                set: v => DefaultApps.set_app(c.key, v)
-            })).concat(DefaultApps.mime_keys.map(c => ({
+                value: () => DefaultAppsSettings.app_value(c.key),
+                set: v => DefaultAppsSettings.set_app(c.key, v)
+            })).concat(DefaultAppsSettings.mime_keys.map(c => ({
                 label: c.label,
                 desc: root.notes[c.key],
-                values: () => DefaultApps.mime_choices(c.key),
-                text: v => DefaultApps.mime_text(c.key, v),
-                value: () => DefaultApps.mime_value(c.key),
-                set: v => DefaultApps.set_mime(c.key, v)
+                values: () => DefaultAppsSettings.mime_choices(c.key),
+                text: v => DefaultAppsSettings.mime_text(c.key, v),
+                value: () => DefaultAppsSettings.mime_value(c.key),
+                set: v => DefaultAppsSettings.set_mime(c.key, v)
             })))
 
-    Component.onCompleted: DefaultApps.refresh()
+    Component.onCompleted: DefaultAppsSettings.refresh()
 }

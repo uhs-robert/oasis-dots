@@ -18,7 +18,7 @@ PickerProvider {
 
     readonly property string home: Quickshell.env("HOME")
     readonly property var term: ["sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" \"$@\"", Paths.term_script]
-    property string file_manager_class: DefaultApps.app_value("tui_file_manager") || "yazi"
+    property string file_manager_class: DefaultAppsSettings.app_value("tui_file_manager") || "yazi"
     readonly property string open_script: "s=${SHELL:-sh}; cd \"$1\" || exit; fm=$2; if [ \"$fm\" = yazi ] && \"$s\" -i -c 'type y' >/dev/null 2>&1; then fm=y; fi; exec \"$s\" -i -c \"$fm; exec \\\"$s\\\" -i\""
     readonly property string shell_script: "s=${SHELL:-sh}; cd \"$1\" || exit; exec \"$s\" -i"
 
@@ -36,7 +36,7 @@ PickerProvider {
 
     // The mode arg carries Config.app.tui_file_manager as the window class.
     function refresh(arg) {
-        root.file_manager_class = arg || DefaultApps.app_value("tui_file_manager") || "yazi";
+        root.file_manager_class = arg || DefaultAppsSettings.app_value("tui_file_manager") || "yazi";
         list_proc.running = false;
         list_proc.running = true;
     }

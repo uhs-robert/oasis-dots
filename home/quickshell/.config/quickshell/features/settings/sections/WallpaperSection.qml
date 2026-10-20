@@ -152,7 +152,7 @@ RowsSection {
         if (event.key === Qt.Key_P && root.current_monitor) root.toggle_pin(root.current_monitor);
         else if (event.key === Qt.Key_R) root.rotate(root.current_monitor);
         else if (event.key === Qt.Key_O) {
-            Popups.after_close(() => DefaultApps.open_folder(WallpaperSettings.collection));
+            Popups.after_close(() => DefaultAppsSettings.open_folder(WallpaperSettings.collection));
         }
         else return;
         event.accepted = true;

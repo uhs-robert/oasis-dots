@@ -32,7 +32,7 @@ PanelWindow {
         if (!root.fullscreen_here() && root.overview) root.overview.show_overview();
     }
 
-    visible: root.reachable && HotCorners.enabled && !Lock.locked
+    visible: root.reachable && HotCornersSettings.enabled && !Lock.locked
     color: "transparent"
     implicitWidth: 3
     implicitHeight: 3

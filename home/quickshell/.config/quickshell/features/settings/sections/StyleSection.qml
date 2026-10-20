@@ -32,8 +32,8 @@ RowsSection {
             desc: "Moving the pointer into the top-left screen corner opens the workspace overview.",
             values: () => ["on", "off"],
             text: v => v,
-            value: () => HotCorners.enabled ? "on" : "off",
-            set: v => HotCorners.set_enabled(v === "on")
+            value: () => HotCornersSettings.enabled ? "on" : "off",
+            set: v => HotCornersSettings.set_enabled(v === "on")
         }
     ]
 
