@@ -3,6 +3,7 @@ mod actions;
 mod ask;
 mod bar;
 mod cli;
+mod click;
 mod config;
 mod debug;
 mod exit;
@@ -128,5 +129,6 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Internal(InternalCommand::WakeConfirm(args)) => voice::wake_confirm::run(&args.args),
         Command::Internal(InternalCommand::ChainStop(args)) => voice::chain_stop::run(&args.args).map(|()| None),
         Command::Internal(InternalCommand::Session(args)) => session::bridge::run(&args.args),
+        Command::Internal(InternalCommand::ClickMatch(args)) => click::internal::click_match(&args),
     }
 }

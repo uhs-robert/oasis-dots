@@ -1,0 +1,6 @@
+#window 10 20 640 480 960 768
+#strip 0 0 0 768
+level	page_num	block_num	par_num	line_num	word_num	left	top	width	height	conf	text
+5	1	1	1	1	1	111	222	87	23	95	Apply
+5	1	2	1	1	1	501	401	13	17	95	Help
+5	1	2	1	1	2	520	401	40	17	95	me

@@ -1,0 +1,312 @@
+lookalike/sink_login	@sink	login	
+lookalike_spans/sink_login	@sink	login	1
+lookalike/sink_logln	@sink	logln	
+lookalike_spans/sink_logln	@sink	logln	1
+lookalike/sink_cancei	@sink	cancei	
+lookalike_spans/sink_cancei	@sink	cancei	1
+lookalike/sink_cancel	@sink	cancel	
+lookalike_spans/sink_cancel	@sink	cancel	1
+lookalike/sink_ca_ncel	@sink	ca ncel	
+lookalike_spans/sink_ca_ncel	@sink	ca ncel	1
+lookalike/sink_cl0se	@sink	cl0se	
+lookalike_spans/sink_cl0se	@sink	cl0se	1
+lookalike/sink_c1ose	@sink	c1ose	
+lookalike_spans/sink_c1ose	@sink	c1ose	1
+lookalike/sink_sign_ln	@sink	sign ln	
+lookalike_spans/sink_sign_ln	@sink	sign ln	1
+lookalike/sink_sign_1n	@sink	sign 1n	
+lookalike_spans/sink_sign_1n	@sink	sign 1n	1
+lookalike/sink_settlngs	@sink	settlngs	
+lookalike_spans/sink_settlngs	@sink	settlngs	1
+one_edit/sink_setting	@sink	setting	
+one_edit_spans/sink_setting	@sink	setting	1
+one_edit/sink_settings	@sink	settings	
+one_edit_spans/sink_settings	@sink	settings	1
+one_edit/sink_settngs	@sink	settngs	
+one_edit_spans/sink_settngs	@sink	settngs	1
+one_edit/sink_settingss	@sink	settingss	
+one_edit_spans/sink_settingss	@sink	settingss	1
+one_edit/sink_clone	@sink	clone	
+one_edit_spans/sink_clone	@sink	clone	1
+one_edit/sink_close	@sink	close	
+one_edit_spans/sink_close	@sink	close	1
+one_edit/sink_closes	@sink	closes	
+one_edit_spans/sink_closes	@sink	closes	1
+one_edit/sink_cancels	@sink	cancels	
+one_edit_spans/sink_cancels	@sink	cancels	1
+one_edit/sink_cancl	@sink	cancl	
+one_edit_spans/sink_cancl	@sink	cancl	1
+one_edit/sink_welcom	@sink	welcom	
+one_edit_spans/sink_welcom	@sink	welcom	1
+one_edit/sink_acme	@sink	acme	
+one_edit_spans/sink_acme	@sink	acme	1
+one_edit/sink_acne	@sink	acne	
+one_edit_spans/sink_acne	@sink	acne	1
+one_edit/sink_open	@sink	open	
+one_edit_spans/sink_open	@sink	open	1
+one_edit/sink_opem	@sink	opem	
+one_edit_spans/sink_opem	@sink	opem	1
+joined/sink_new_task	@sink	new task	
+joined_spans/sink_new_task	@sink	new task	1
+joined/sink_newtask	@sink	newtask	
+joined_spans/sink_newtask	@sink	newtask	1
+joined/sink_read_me	@sink	read me	
+joined_spans/sink_read_me	@sink	read me	1
+joined/sink_readme	@sink	readme	
+joined_spans/sink_readme	@sink	readme	1
+joined/sink_reed_me	@sink	reed me	
+joined_spans/sink_reed_me	@sink	reed me	1
+joined/sink_read_m_e	@sink	read m e	
+joined_spans/sink_read_m_e	@sink	read m e	1
+joined/sink_welcome_acme	@sink	welcome acme	
+joined_spans/sink_welcome_acme	@sink	welcome acme	1
+joined/sink_signin	@sink	signin	
+joined_spans/sink_signin	@sink	signin	1
+joined/sink_sign_in	@sink	sign in	
+joined_spans/sink_sign_in	@sink	sign in	1
+joined/sink_open_settings	@sink	open settings	
+joined_spans/sink_open_settings	@sink	open settings	1
+joined/sink_openset_tings	@sink	openset tings	
+joined_spans/sink_openset_tings	@sink	openset tings	1
+doubtful/sink_save_as	@sink	save as	
+doubtful_spans/sink_save_as	@sink	save as	1
+doubtful/sink_save	@sink	save	
+doubtful_spans/sink_save	@sink	save	1
+doubtful/sink_sign_in	@sink	sign in	
+doubtful_spans/sink_sign_in	@sink	sign in	1
+doubtful/sink_ghost	@sink	ghost	
+doubtful_spans/sink_ghost	@sink	ghost	1
+doubtful/sink_as	@sink	as	
+doubtful_spans/sink_as	@sink	as	1
+doubtful/sink_sa	@sink	sa	
+doubtful_spans/sink_sa	@sink	sa	1
+doubtful/sink_ve_as	@sink	ve as	
+doubtful_spans/sink_ve_as	@sink	ve as	1
+fillers/sink_the_sign_in	@sink	the sign in	
+fillers_spans/sink_the_sign_in	@sink	the sign in	1
+fillers/sink_sign_in_please	@sink	sign in please	
+fillers_spans/sink_sign_in_please	@sink	sign in please	1
+fillers/sink_please_sign_in	@sink	please sign in	
+fillers_spans/sink_please_sign_in	@sink	please sign in	1
+fillers/sink_to	@sink	to	
+fillers_spans/sink_to	@sink	to	1
+fillers/sink_the	@sink	the	
+fillers_spans/sink_the	@sink	the	1
+fillers/sink_it	@sink	it	
+fillers_spans/sink_it	@sink	it	1
+fillers/sink_a_an_the	@sink	a an the	
+fillers_spans/sink_a_an_the	@sink	a an the	1
+fillers/sink_my_cancel	@sink	my cancel	
+fillers_spans/sink_my_cancel	@sink	my cancel	1
+fillers/sink_welcome_to_acme	@sink	welcome to acme	
+fillers_spans/sink_welcome_to_acme	@sink	welcome to acme	1
+fillers/sink_this_settings	@sink	this settings	
+fillers_spans/sink_this_settings	@sink	this settings	1
+fillers/sink_that	@sink	that	
+fillers_spans/sink_that	@sink	that	1
+plural_number/sink_ten_items	@sink	ten items	
+plural_number_spans/sink_ten_items	@sink	ten items	1
+plural_number/sink_10_item	@sink	10 item	
+plural_number_spans/sink_10_item	@sink	10 item	1
+plural_number/sink_item_2	@sink	item 2	
+plural_number_spans/sink_item_2	@sink	item 2	1
+plural_number/sink_item_two	@sink	item two	
+plural_number_spans/sink_item_two	@sink	item two	1
+plural_number/sink_two	@sink	two	
+plural_number_spans/sink_two	@sink	two	1
+plural_number/sink_1_item	@sink	1 item	
+plural_number_spans/sink_1_item	@sink	1 item	1
+plural_number/sink_one	@sink	one	
+plural_number_spans/sink_one	@sink	one	1
+plural_number/sink_items	@sink	items	
+plural_number_spans/sink_items	@sink	items	1
+plural_number/sink_ten	@sink	ten	
+plural_number_spans/sink_ten	@sink	ten	1
+plural_number/sink_class	@sink	class	
+plural_number_spans/sink_class	@sink	class	1
+plural_number/sink_settings_or_settings	@sink	settings or settings	
+plural_number_spans/sink_settings_or_settings	@sink	settings or settings	1
+apostrophe/sink_don't_stop	@sink	don't stop	
+apostrophe_spans/sink_don't_stop	@sink	don't stop	1
+apostrophe/sink_dont_stop	@sink	dont stop	
+apostrophe_spans/sink_dont_stop	@sink	dont stop	1
+apostrophe/sink_do_not_stop	@sink	do not stop	
+apostrophe_spans/sink_do_not_stop	@sink	do not stop	1
+apostrophe/sink_don_t_stop	@sink	don t stop	
+apostrophe_spans/sink_don_t_stop	@sink	don t stop	1
+apostrophe/sink_stop	@sink	stop	
+apostrophe_spans/sink_stop	@sink	stop	1
+apostrophe/sink_'stop'	@sink	'stop'	
+apostrophe_spans/sink_'stop'	@sink	'stop'	1
+unicode/sink_istanbul	@sink	istanbul	
+unicode_spans/sink_istanbul	@sink	istanbul	1
+unicode/sink_İstanbul	@sink	İstanbul	
+unicode_spans/sink_İstanbul	@sink	İstanbul	1
+unicode/sink_İSTANBUL	@sink	İSTANBUL	
+unicode_spans/sink_İSTANBUL	@sink	İSTANBUL	1
+unicode/sink_kelvin	@sink	kelvin	
+unicode_spans/sink_kelvin	@sink	kelvin	1
+unicode/sink_Kelvin	@sink	Kelvin	
+unicode_spans/sink_Kelvin	@sink	Kelvin	1
+unicode/sink_full	@sink	full	
+unicode_spans/sink_full	@sink	full	1
+unicode/sink_ＦＵＬＬ	@sink	ＦＵＬＬ	
+unicode_spans/sink_ＦＵＬＬ	@sink	ＦＵＬＬ	1
+unicode/sink_cafe	@sink	cafe	
+unicode_spans/sink_cafe	@sink	cafe	1
+unicode/sink_café	@sink	café	
+unicode_spans/sink_café	@sink	café	1
+unicode/sink_caf	@sink	caf	
+unicode_spans/sink_caf	@sink	caf	1
+unicode/sink_stanbul	@sink	stanbul	
+unicode_spans/sink_stanbul	@sink	stanbul	1
+repeated/sink_settings	@sink	settings	
+repeated_spans/sink_settings	@sink	settings	1
+repeated/sink_save	@sink	save	
+repeated_spans/sink_save	@sink	save	1
+repeated/sink_sign	@sink	sign	
+repeated_spans/sink_sign	@sink	sign	1
+repeated/sink_open_settings	@sink	open settings	
+repeated_spans/sink_open_settings	@sink	open settings	1
+tasks/sink_2_tasks	@sink	2 tasks	
+tasks_spans/sink_2_tasks	@sink	2 tasks	1
+tasks/sink_two_tasks	@sink	two tasks	
+tasks_spans/sink_two_tasks	@sink	two tasks	1
+tasks/sink_tasks_are	@sink	tasks are	
+tasks_spans/sink_tasks_are	@sink	tasks are	1
+tasks/sink_flagged_todo	@sink	flagged todo	
+tasks_spans/sink_flagged_todo	@sink	flagged todo	1
+tasks/sink_todo	@sink	todo	
+tasks_spans/sink_todo	@sink	todo	1
+tasks/sink_2_tasks_are_flagged_todo	@sink	2 tasks are flagged todo	
+tasks_spans/sink_2_tasks_are_flagged_todo	@sink	2 tasks are flagged todo	1
+tasks/sink_are_flagged	@sink	are flagged	
+tasks_spans/sink_are_flagged	@sink	are flagged	1
+close_clone/sink_close	@sink	close	
+close_clone_spans/sink_close	@sink	close	1
+close_clone/sink_clone	@sink	clone	
+close_clone_spans/sink_clone	@sink	clone	1
+close_clone/sink_close_clone	@sink	close clone	
+close_clone_spans/sink_close_clone	@sink	close clone	1
+close_clone/sink_|_close	@sink	| close	
+close_clone_spans/sink_|_close	@sink	| close	1
+empty_target/sink_empty	@sink		
+empty_target_spans/sink_empty	@sink		1
+empty_target/sink__	@sink	 	
+empty_target_spans/sink__	@sink	 	1
+empty_target/sink_...	@sink	...	
+empty_target_spans/sink_...	@sink	...	1
+empty_target/sink_'	@sink	'	
+empty_target_spans/sink_'	@sink	'	1
+backslash/sink_sign\in	@sink	sign\in	
+backslash_spans/sink_sign\in	@sink	sign\in	1
+backslash/sink_a\tb	@sink	a\tb	
+backslash_spans/sink_a\tb	@sink	a\tb	1
+backslash/sink_sign\\in	@sink	sign\\in	
+backslash_spans/sink_sign\\in	@sink	sign\\in	1
+scale/scale_1_6_sign_in	@scale_1_6	sign in	
+scale_spans/scale_1_6_sign_in	@scale_1_6	sign in	1
+scale/scale_1_6_ok	@scale_1_6	ok	
+scale_spans/scale_1_6_ok	@scale_1_6	ok	1
+scale/scale_1_6_cancel	@scale_1_6	cancel	
+scale_spans/scale_1_6_cancel	@scale_1_6	cancel	1
+scale/scale_1_6_settings	@scale_1_6	settings	
+scale_spans/scale_1_6_settings	@scale_1_6	settings	1
+scale/scale_mixed_sign_in	@scale_mixed	sign in	
+scale_spans/scale_mixed_sign_in	@scale_mixed	sign in	1
+scale/scale_mixed_tiny	@scale_mixed	tiny	
+scale_spans/scale_mixed_tiny	@scale_mixed	tiny	1
+scale/scale_mixed_settings	@scale_mixed	settings	
+scale_spans/scale_mixed_settings	@scale_mixed	settings	1
+scale/scale_1_5_by_1_6_apply	@scale_1_5_by_1_6	apply	
+scale_spans/scale_1_5_by_1_6_apply	@scale_1_5_by_1_6	apply	1
+scale/scale_1_5_by_1_6_help_me	@scale_1_5_by_1_6	help me	
+scale_spans/scale_1_5_by_1_6_help_me	@scale_1_5_by_1_6	help me	1
+scale/scale_1_5_by_1_6_help	@scale_1_5_by_1_6	help	
+scale_spans/scale_1_5_by_1_6_help	@scale_1_5_by_1_6	help	1
+negative_origin/negative_origin_sign_in	@negative_origin	sign in	
+negative_origin_spans/negative_origin_sign_in	@negative_origin	sign in	1
+negative_origin/negative_origin_dot	@negative_origin	dot	
+negative_origin_spans/negative_origin_dot	@negative_origin	dot	1
+negative_origin/negative_origin_corner	@negative_origin	corner	
+negative_origin_spans/negative_origin_corner	@negative_origin	corner	1
+halfway/halfway_mid	@halfway	mid	
+halfway_spans/halfway_mid	@halfway	mid	1
+halfway/halfway_edge	@halfway	edge	
+halfway_spans/halfway_edge	@halfway	edge	1
+exponent/exponent_numbers_sign_in	@exponent_numbers	sign in	
+exponent_spans/exponent_numbers_sign_in	@exponent_numbers	sign in	1
+strips/strips_alpha	@strips	alpha	
+strips_spans/strips_alpha	@strips	alpha	1
+strips/strips_bravo	@strips	bravo	
+strips_spans/strips_bravo	@strips	bravo	1
+strips/strips_dupe	@strips	dupe	
+strips_spans/strips_dupe	@strips	dupe	1
+strips/strips_charlie	@strips	charlie	
+strips_spans/strips_charlie	@strips	charlie	1
+strips/strip_line_across_cut_open_project	@strip_line_across_cut	open project	
+strips_spans/strip_line_across_cut_open_project	@strip_line_across_cut	open project	1
+strips/strip_line_across_cut_open	@strip_line_across_cut	open	
+strips_spans/strip_line_across_cut_open	@strip_line_across_cut	open	1
+strips/strip_line_across_cut_project	@strip_line_across_cut	project	
+strips_spans/strip_line_across_cut_project	@strip_line_across_cut	project	1
+strips/strips_three_overlap_sign_in	@strips_three_overlap	sign in	
+strips_spans/strips_three_overlap_sign_in	@strips_three_overlap	sign in	1
+header_lines/no_strip_header_sign_in	@no_strip_header	sign in	
+header_lines_spans/no_strip_header_sign_in	@no_strip_header	sign in	1
+header_lines/two_windows_sign_in	@two_windows	sign in	
+header_lines_spans/two_windows_sign_in	@two_windows	sign in	1
+error/no_window_line_sign	@no_window_line	sign	
+error_spans/no_window_line_sign	@no_window_line	sign	1
+error/zero_image_width_sign	@zero_image_width	sign	
+error_spans/zero_image_width_sign	@zero_image_width	sign	1
+error/zero_window_width_sign	@zero_window_width	sign	
+error_spans/zero_window_width_sign	@zero_window_width	sign	1
+header_only/header_only_sign_in	@header_only	sign in	
+header_only_spans/header_only_sign_in	@header_only	sign in	1
+header_only/empty_sign_in	@empty	sign in	
+header_only_spans/empty_sign_in	@empty	sign in	1
+odd_rows/odd_rows_sign_in	@odd_rows	sign in	
+odd_rows_spans/odd_rows_sign_in	@odd_rows	sign in	1
+odd_rows/odd_rows_open	@odd_rows	open	
+odd_rows_spans/odd_rows_open	@odd_rows	open	1
+odd_rows/odd_rows_mail	@odd_rows	mail	
+odd_rows_spans/odd_rows_mail	@odd_rows	mail	1
+odd_rows/odd_rows_help	@odd_rows	help	
+odd_rows_spans/odd_rows_help	@odd_rows	help	1
+odd_rows/odd_rows_quit	@odd_rows	quit	
+odd_rows_spans/odd_rows_quit	@odd_rows	quit	1
+odd_rows/odd_rows_exit	@odd_rows	exit	
+odd_rows_spans/odd_rows_exit	@odd_rows	exit	1
+odd_rows/odd_rows_save	@odd_rows	save	
+odd_rows_spans/odd_rows_save	@odd_rows	save	1
+odd_rows/odd_rows_notaword	@odd_rows	notaword	
+odd_rows_spans/odd_rows_notaword	@odd_rows	notaword	1
+odd_rows/odd_rows_tab	@odd_rows	tab	
+odd_rows_spans/odd_rows_tab	@odd_rows	tab	1
+odd_rows/odd_rows_gone	@odd_rows	gone	
+odd_rows_spans/odd_rows_gone	@odd_rows	gone	1
+odd_rows/odd_rows_tabgone	@odd_rows	tabgone	
+odd_rows_spans/odd_rows_tabgone	@odd_rows	tabgone	1
+label_truncation/long_labels_configure_workspace	@long_labels	configure workspace	
+label_truncation_spans/long_labels_configure_workspace	@long_labels	configure workspace	1
+label_truncation/long_labels_open	@long_labels	open	
+label_truncation_spans/long_labels_open	@long_labels	open	1
+label_truncation/long_labels_exactly_fortyeight	@long_labels	exactly fortyeight	
+label_truncation_spans/long_labels_exactly_fortyeight	@long_labels	exactly fortyeight	1
+label_truncation/long_labels_uber	@long_labels	uber	
+label_truncation_spans/long_labels_uber	@long_labels	uber	1
+label_truncation/long_labels_creme	@long_labels	creme	
+label_truncation_spans/long_labels_creme	@long_labels	creme	1
+label_truncation/long_labels_workspace_preferences	@long_labels	workspace preferences	
+label_truncation_spans/long_labels_workspace_preferences	@long_labels	workspace preferences	1
+label_truncation/long_labels_nave	@long_labels	nave	
+label_truncation_spans/long_labels_nave	@long_labels	nave	1
+runs/runs_save_all	@runs	save all	
+runs_spans/runs_save_all	@runs	save all	1
+runs/runs_save_as	@runs	save as	
+runs_spans/runs_save_as	@runs	save as	1
+runs/runs_save	@runs	save	
+runs_spans/runs_save	@runs	save	1
+runs/runs_all	@runs	all	
+runs_spans/runs_all	@runs	all	1
