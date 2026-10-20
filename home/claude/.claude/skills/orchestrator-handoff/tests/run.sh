@@ -16,6 +16,7 @@ cat >"$root/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >>"$GH_LOG"
 case $3 in
+  14) echo "gh: HTTP 401 bad credentials" >&2; echo "second line" >&2; exit 1 ;;
   11) echo MERGED ;;
   12) echo CLOSED ;;
   *) echo OPEN ;;
@@ -30,17 +31,21 @@ chmod +x "$root/bin/gh" "$root/bin/git"
 export GH_LOG=$root/gh.log WORKTREES=$root/worktrees
 
 cat >"$WORKTREES" <<'EOF2'
-worktree /home/roberth/dotfiles
+worktree /srv/repo
 HEAD aaaa
 branch refs/heads/main
 
-worktree /home/roberth/dotfiles-alpha
+worktree /srv/repo-alpha
 HEAD bbbb
 branch refs/heads/feat/alpha
 
-worktree /home/roberth/dotfiles-stray
+worktree /srv/repo-stray
 HEAD cccc
 branch refs/heads/feat/stray
+
+worktree /elsewhere/odd-place
+HEAD dddd
+branch refs/heads/feat/odd
 EOF2
 
 fixture() { cat >"$root/$1.md"; }
@@ -51,8 +56,8 @@ fixture clean <<'EOF2'
 ## Resume here (2026-10-20)
 
 - Open PRs: #10, #13 (#11 merged; #12 closed)
-- Worktree /home/roberth/dotfiles-alpha, branch feat/alpha; /home/roberth/dotfiles-stray (feat/stray).
-- Doc lives at /home/roberth/dotfiles/track.md.
+- Worktree /srv/repo-alpha, branch feat/alpha; /srv/repo-stray (feat/stray); /elsewhere/odd-place.
+- Doc lives at /srv/repo/track.md.
 
 ## Done
 
@@ -62,7 +67,7 @@ EOF2
 fixture merged <<'EOF2'
 ## Resume here
 Open PRs: #10, #11
-- /home/roberth/dotfiles-alpha /home/roberth/dotfiles-stray
+- /srv/repo-alpha /srv/repo-stray /elsewhere/odd-place
 ### Sub
 ## Later
 EOF2
@@ -70,18 +75,24 @@ EOF2
 fixture finished <<'EOF2'
 ## Resume here
 - PR #11 DONE. PR #12 closed. Open PRs: none (#11 MERGED).
-- /home/roberth/dotfiles-alpha /home/roberth/dotfiles-stray
+- /srv/repo-alpha /srv/repo-stray /elsewhere/odd-place
 EOF2
 
 fixture missing <<'EOF2'
 ## Resume here
 - PR #13 open.
-- /home/roberth/dotfiles-alpha /home/roberth/dotfiles-stray /home/roberth/dotfiles-gone
+- /srv/repo-alpha /srv/repo-stray /elsewhere/odd-place /srv/repo-gone
 EOF2
 
 fixture unlisted <<'EOF2'
 ## Resume here
-- /home/roberth/dotfiles-alpha
+- /srv/repo-alpha /elsewhere/odd-place
+EOF2
+
+fixture failing <<'EOF2'
+## Resume here
+- Open PRs: #14
+- /srv/repo-alpha /srv/repo-stray /elsewhere/odd-place
 EOF2
 
 fixture none <<'EOF2'
@@ -113,13 +124,16 @@ run finished.md
 check "DONE, closed and merged PRs are not checked" '[ "$status" = 0 ] && [ -z "$out" ] && [ ! -s "$GH_LOG" ]'
 
 run missing.md
-check "listed worktree that does not exist is flagged" '[ "$status" = 1 ] && [ "$out" = "worktree /home/roberth/dotfiles-gone listed but missing" ]'
+check "listed worktree that does not exist is flagged" '[ "$status" = 1 ] && [ "$out" = "worktree /srv/repo-gone listed but missing" ]'
 
 run unlisted.md
-check "live worktree no doc lists is flagged with its branch" '[ "$status" = 1 ] && [ "$out" = "worktree /home/roberth/dotfiles-stray (feat/stray) exists but no doc lists it" ]'
+check "live worktree no doc lists is flagged with its branch" '[ "$status" = 1 ] && [ "$out" = "worktree /srv/repo-stray (feat/stray) exists but no doc lists it" ]'
 
 run unlisted.md merged.md
 check "a worktree listed by any doc counts as listed" '[ "$out" = "PR #11 listed open but MERGED" ]'
+
+run failing.md
+check "a gh failure is a mismatch carrying gh's first stderr line" '[ "$status" = 1 ] && [ "$out" = "PR #14: could not query state (gh: HTTP 401 bad credentials)" ]'
 
 run none.md
 check "doc without a section is flagged" '[ "$status" = 1 ] && grep -q "has no Resume here section" <<<"$out"'
