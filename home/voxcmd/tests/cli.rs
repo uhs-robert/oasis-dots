@@ -25,9 +25,7 @@ fn stderr(output: &Output) -> String {
 /// (argv, subcommand named in the message, port item that implements it)
 const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
     (&["wake", "listen", "--check"], "wake listen", "4.1"),
-    (&["integrations", "examples", "--route"], "integrations examples", "2.6"),
     (&["integrations", "schema"], "integrations schema", "2.6"),
-    (&["help"], "help", "2.6"),
     // `--` ends the flags, so a phrase can start with a dash.
 ];
 

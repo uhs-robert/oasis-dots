@@ -1,6 +1,7 @@
 //! loads ~/.config/voxcmd: integrations/*.toml and the legacy integrations.d/*.sh, replacements.d/*, intents.local,
 //! and the voice settings voxcmd shares with the bar
 pub mod check;
+pub mod examples;
 pub mod intents;
 pub mod legacy;
 pub mod list;

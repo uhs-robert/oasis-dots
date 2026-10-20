@@ -602,6 +602,7 @@ mod tests {
             mode: None,
             verbs: Vec::new(),
             examples: Vec::new(),
+            legacy_help: false,
             settings: MatchSettings::default(),
             actions: BTreeMap::new(),
             surface: None,

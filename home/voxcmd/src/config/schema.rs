@@ -46,9 +46,11 @@ pub struct Integration {
     /// The voice-session mode this integration opens (`[mode]`, TOML only).
     pub mode: Option<Mode>,
     pub verbs: Vec<Verb>,
-    /// Phrases for Voice Help; `<name>` marks a spoken part. Read by `integrations examples` and `help` (2.6 PR 4).
-    #[cfg_attr(not(test), expect(dead_code, reason = "first read by integrations examples"))]
+    /// Phrases for Voice Help; `<name>` marks a spoken part.
     pub examples: Vec<String>,
+    /// A legacy file lists runnable choices in Voice Help (`help_choices`, or `help_action` over `candidates`), which
+    /// only the bash voxcmd can produce. A TOML file's come with `[[help]]` in 3.1.
+    pub legacy_help: bool,
     pub settings: MatchSettings,
     pub actions: BTreeMap<String, Action>,
     pub surface: Option<Surface>,
@@ -609,6 +611,7 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         mode,
         verbs,
         examples: parsed.examples,
+        legacy_help: false,
         settings: MatchSettings {
             target_match: parsed.target_match,
             match_ignore_words: parsed.match_ignore_words,

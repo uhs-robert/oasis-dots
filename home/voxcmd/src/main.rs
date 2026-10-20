@@ -7,6 +7,7 @@ mod click;
 mod config;
 mod debug;
 mod exit;
+mod help;
 mod hooks;
 mod hypr;
 mod log;
@@ -112,9 +113,16 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Wake(WakeCommand::Status) => voice::wake_switch::run(voice::wake_switch::Switch::Status),
         Command::Integrations(IntegrationsCommand::List(json)) => config::list::run(json.json),
         Command::Integrations(IntegrationsCommand::Check { json, files }) => config::check::run(&files, json.json),
-        Command::Integrations(IntegrationsCommand::Examples { .. }) => later("integrations examples", "2.6"),
+        Command::Integrations(IntegrationsCommand::Examples { json, route }) => config::examples::run(json.json, route),
         Command::Integrations(IntegrationsCommand::Schema) => later("integrations schema", "2.6"),
-        Command::Help => later("help", "2.6"),
+        Command::Help => {
+            let code = route::runner::with_runner(&route::runner::Heard::default(), help::run)?;
+            if code == 0 {
+                Ok(None)
+            } else {
+                Err(CliError::quiet("help"))
+            }
+        }
         Command::Log(LogCommand::Misses { json, count }) => log::misses(count, json.json),
         Command::Log(LogCommand::Errors { json, count }) => log::errors(count, json.json),
         Command::Timer(TimerCommand::Ring { summary, body }) => timer::ring(&summary, &body).map(|()| None),

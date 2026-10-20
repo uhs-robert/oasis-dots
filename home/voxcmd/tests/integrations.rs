@@ -370,3 +370,156 @@ fn an_unknown_builtin_wait_is_a_problem() {
     );
     assert_eq!(sandbox.voxcmd(&["integrations", "check"], &[]).status.code(), Some(0));
 }
+
+// ---- examples and help ----------------------------------------------------------------------------------------------
+
+const LAMP: &str = r#"name = "Lamp"
+verbs = [{ action = "on", match = "lamp on" }]
+examples = ["lamp on", "lamp dim to <level>"]
+[actions]
+on = "echo lit >> LOG"
+"#;
+
+impl Sandbox {
+    /// A stub `notify-send` (logging `summary: body` lines) and an ask stub that logs its arguments and answers `pick`
+    /// when asked to; returns the paths of both logs.
+    fn with_stubs(&self, pick: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+        let bin = self.root.path().join("bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let toasts = self.root.path().join("toasts.log");
+        let asked = self.root.path().join("asked.log");
+        let script = |name: &str, body: String| {
+            let path = bin.join(name);
+            std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        };
+        script("notify-send", format!("echo \"$4: $5\" >> {}", toasts.display()));
+        script("ask", format!("echo \"$@\" >> {}\n{pick}", asked.display()));
+        (toasts, asked)
+    }
+
+    fn help(&self, pick: &str) -> (Output, String, String) {
+        let (toasts, asked) = self.with_stubs(pick);
+        let bin = self.root.path().join("bin");
+        let path = std::path::PathBuf::from(format!("{}:/usr/bin:/bin", bin.display()));
+        let output = self.voxcmd(&["help"], &[("PATH", &path), ("VOXCMD_ASK_CMD", &bin.join("ask"))]);
+        let read = |file: std::path::PathBuf| std::fs::read_to_string(file).unwrap_or_default();
+        (output, read(toasts), read(asked))
+    }
+
+    fn lamp(&self) -> std::path::PathBuf {
+        let log = self.root.path().join("lamp.log");
+        self.write(
+            "integrations/lamp.toml",
+            &LAMP.replace("LOG", &log.display().to_string()),
+        );
+        log
+    }
+}
+
+#[test]
+fn examples_are_listed_by_integration() {
+    let sandbox = Sandbox::with(&["media"]);
+    let output = sandbox.voxcmd(&["integrations", "examples"], &[]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let text = stdout(&output);
+    assert!(
+        text.starts_with("Media (integrations/media.toml)\n  play pause\n  next track\n"),
+        "{text}"
+    );
+    let json = sandbox.voxcmd(&["integrations", "examples", "--json"], &[]);
+    let listed: serde_json::Value = serde_json::from_str(&stdout(&json)).unwrap();
+    assert_eq!(listed[0]["stem"], "media");
+    assert_eq!(listed[0]["examples"][0], "play pause");
+    sandbox.no_bash_ran();
+}
+
+#[test]
+fn route_is_clean_when_every_example_lands_on_its_integration() {
+    let sandbox = Sandbox::with(&["media"]);
+    sandbox.lamp();
+    let output = sandbox.voxcmd(&["integrations", "examples", "--route"], &[]);
+    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
+    // Media's three placeholder examples and Lamp's one are skipped.
+    assert!(
+        stdout(&output).ends_with(
+            "5 examples route to their integration, 0 do not; skipped 4 with a <placeholder> and 0 said inside a mode\n"
+        ),
+        "{}",
+        stdout(&output)
+    );
+    sandbox.no_bash_ran();
+}
+
+#[test]
+fn route_names_an_example_that_misses_or_lands_elsewhere_and_exits_1() {
+    let sandbox = Sandbox::with(&["media"]);
+    sandbox.write(
+        "integrations/lamp.toml",
+        &LAMP
+            .replace("echo lit >> LOG", "true")
+            .replace(r#""lamp on", "#, r#""lamp on", "mute", "lamp off", "#),
+    );
+    let output = sandbox.voxcmd(&["integrations", "examples", "--route"], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    let text = stdout(&output);
+    assert!(text.contains("Lamp: \"mute\" routes to Media\n"), "{text}");
+    assert!(text.contains("Lamp: \"lamp off\" routes to no match\n"), "{text}");
+    assert!(!text.contains("\"lamp on\""), "{text}");
+    let json = sandbox.voxcmd(&["integrations", "examples", "--route", "--json"], &[]);
+    let report: serde_json::Value = serde_json::from_str(&stdout(&json)).unwrap();
+    assert_eq!(json.status.code(), Some(1));
+    assert_eq!(report["misrouted"][1]["routed_to"], serde_json::json!([]));
+    sandbox.no_bash_ran();
+}
+
+#[test]
+fn help_routes_a_picked_example_as_if_spoken() {
+    let sandbox = Sandbox::with(&[]);
+    let lit = sandbox.lamp();
+    let (output, toasts, asked) = sandbox.help("echo say:lamp on");
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!(std::fs::read_to_string(lit).unwrap(), "lit\n");
+    assert!(toasts.contains("voxcmd: Lamp: on"), "{toasts}");
+    assert!(
+        asked.starts_with("pick Voice Help [{\"id\":\"say:lamp on\",\"label\":\"Lamp: lamp on\"}"),
+        "{asked}"
+    );
+    assert!(
+        asked.trim_end().ends_with("{}"),
+        "no integration lists choices: {asked}"
+    );
+    sandbox.no_bash_ran();
+}
+
+#[test]
+fn help_shows_a_picked_placeholder_example_as_a_toast_and_runs_nothing() {
+    let sandbox = Sandbox::with(&[]);
+    let lit = sandbox.lamp();
+    let (output, toasts, _) = sandbox.help("echo 'say:lamp dim to <level>'");
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!(toasts, "voxcmd: Say: lamp dim to &lt;level&gt;\n");
+    assert!(!lit.exists());
+}
+
+#[test]
+fn help_cancelled_is_not_a_failure() {
+    let sandbox = Sandbox::with(&[]);
+    let lit = sandbox.lamp();
+    let (output, toasts, _) = sandbox.help("exit 1");
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!((toasts.as_str(), lit.exists()), ("", false));
+}
+
+#[test]
+fn help_without_examples_toasts_and_exits_1_without_asking() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/quiet.toml",
+        "name = \"Quiet\"\nverbs = [{ action = \"a\", match = \"quiet\" }]\n[actions]\na = \"true\"\n",
+    );
+    let (output, toasts, asked) = sandbox.help("echo say:quiet");
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(toasts, "voxcmd: No integration declares examples\n");
+    assert_eq!(asked, "");
+}

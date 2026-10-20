@@ -153,6 +153,27 @@ impl LegacyHooks {
     }
 }
 
+impl LegacyHooks {
+    /// What Tab lists in Voice Help for a legacy file: `(action, id, label)` of each entry. A file that lists nothing,
+    /// or a hook that fails, gives none (bash `help_listed ... || true`).
+    pub fn help_entries(&self, integration: &Integration) -> Vec<(String, Candidate)> {
+        let Ok(output) = self.call("help", integration).stderr(Stdio::null()).output() else {
+            return Vec::new();
+        };
+        let Ok(Value::Array(entries)) = serde_json::from_slice::<Value>(&output.stdout) else {
+            return Vec::new();
+        };
+        let field = |entry: &Value, name: &str| entry.get(name).and_then(Value::as_str).unwrap_or_default().to_string();
+        entries
+            .iter()
+            .map(|entry| {
+                let (id, label) = (field(entry, "id"), field(entry, "label"));
+                (field(entry, "action"), Candidate::plain(&id, &label))
+            })
+            .collect()
+    }
+}
+
 impl Hooks for LegacyHooks {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         let HookQuery {

@@ -42,6 +42,8 @@ struct Dumped {
     free_text_actions: Vec<String>,
     #[serde(default)]
     examples: Vec<String>,
+    #[serde(default)]
+    help_action: String,
     /// Each `verbs` entry as written; absent from a dump made before `integrations list` needed it.
     #[serde(default)]
     verb_entries: Vec<String>,
@@ -276,6 +278,7 @@ fn integration(dumped: Dumped) -> Integration {
             })
             .collect(),
         examples: dumped.examples,
+        legacy_help: lists_help(&dumped.hooks, &dumped.help_action),
         settings: MatchSettings {
             target_match: dumped.target_match,
             match_ignore_words: dumped.match_ignore_words,
@@ -292,6 +295,12 @@ fn integration(dumped: Dumped) -> Integration {
             .then_some(Surface::LegacyHook),
         picker: None,
     }
+}
+
+/// As `help_listed` in the bash voxcmd decides: `help_choices`, else `candidates` run for a `help_action`.
+fn lists_help(hooks: &[String], help_action: &str) -> bool {
+    let defines = |hook: &str| hooks.iter().any(|defined| defined == hook);
+    defines("help_choices") || (!help_action.is_empty() && defines("candidates"))
 }
 
 #[cfg(test)]
