@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for context-budget.sh: an orchestrator session gets the wind-down note once, then the handoff note once;
+# Tests for context-budget.sh: an orchestrator session gets the size-check note once, then the handoff note once;
 # other sessions, agents and a sidechain's usage are ignored.
 set -u
 hook="$(dirname "$0")/../context-budget.sh"
@@ -36,7 +36,8 @@ check "below the threshold says nothing" test -z "$(run_hook "$t" s1)"
 
 usage_line 145000 >>"$t"
 out=$(run_hook "$t" s1)
-check "at 140k the orchestrator is told to start no new piece" grep -q 'Start no new piece' <<<"$out"
+check "at 140k the orchestrator gets the size check" grep -q 'Size check' <<<"$out"
+check "the size check carries the cost table" grep -q '30-45k' <<<"$out"
 check "the note is PostToolUse context" test "$(jq -r .hookSpecificOutput.hookEventName <<<"$out")" = PostToolUse
 check "the wind-down note comes once" test -z "$(run_hook "$t" s1)"
 
@@ -44,15 +45,22 @@ usage_line 300000 true >>"$t"
 check "a sidechain's usage is not the session's" test -z "$(run_hook "$t" s1)"
 
 usage_line 165000 >>"$t"
-check "at 160k the orchestrator is told to hand off" grep -q 'Automatic handoff' <<<"$(run_hook "$t" s1)"
+usage_line 170000 >>"$t"
+check "at 170k there is no handoff note yet" test -z "$(run_hook "$t" s1)"
+
+usage_line 176000 >>"$t"
+out=$(run_hook "$t" s1)
+check "at 175k the orchestrator is told to hand off" grep -q 'Hand off now' <<<"$out"
+check "the handoff note carries the spawn step" grep -q 'spawn-successor.sh' <<<"$out"
+check "the handoff note says not to reload the skill" grep -q 'do not load it again' <<<"$out"
 check "the handoff note comes once" test -z "$(run_hook "$t" s1)"
 
 h="$tmp/handoff.jsonl"
 {
   printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"%s/.claude/skills/orchestrator/SKILL.md"}}]}}\n' "$HOME"
-  usage_line 170000
+  usage_line 180000
 } >"$h"
-check "a successor that read the skill file counts as an orchestrator" grep -q 'Automatic handoff' <<<"$(run_hook "$h" s2)"
+check "a successor that read the skill file counts as an orchestrator" grep -q 'Hand off now' <<<"$(run_hook "$h" s2)"
 
 o="$tmp/other.jsonl"
 {
