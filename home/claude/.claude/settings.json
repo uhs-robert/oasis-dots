@@ -50,6 +50,7 @@
       "Read(~/.config/gh/hosts.yml)",
       "Read(~/.gnupg/**)",
       "Read(~/.ssh/**)",
+      "SendFeedback",
       "Write(~/.claude/skills/orchestrator-handoff/spawn-successor.sh)",
       "Write(~/dotfiles/home/claude/.claude/skills/orchestrator-handoff/spawn-successor.sh)"
     ],
@@ -70,7 +71,12 @@
     "anthropic-skills:pptx": "user-invocable-only",
     "anthropic-skills:skill-creator": "user-invocable-only",
     "anthropic-skills:xlsx": "user-invocable-only",
+    "artifact-capabilities": "user-invocable-only",
+    "artifact-design": "user-invocable-only",
+    "artifact-diagramming": "user-invocable-only",
     "caveman:caveman-commit": "off",
+    "claude-api": "user-invocable-only",
+    "dataviz": "user-invocable-only",
     "simplify": "off"
   },
   "hooks": {
