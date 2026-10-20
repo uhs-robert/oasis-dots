@@ -419,7 +419,7 @@ echo "== the install migrations run when a merge changes migration code"
 # the restart as pkill and the relaunch dispatch. The stub bar answers unlocked so the restart goes ahead.
 printf '#!/bin/sh\necho unlocked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 # shellcheck disable=SC2016 # expanded by the stub
-printf '#!/bin/sh\necho "pkill $*" >>"$SHIP_LOG"\n: >"$STUB_QS_PROCS"\n' >"$stubs/pkill"
+printf '#!/bin/sh\necho "pkill $*" >>"$SHIP_LOG"\n[ -e "%s" ] || : >"$STUB_QS_PROCS"\n' "$e2e/pkill_survives" >"$stubs/pkill"
 chmod +x "$stubs/pkill"
 printf 'live\n' >"$STUB_LIVE_SIGS"
 migrate_step='just migrate-quickshell-state held'
@@ -462,6 +462,12 @@ check "a failure with no bar restart fails too" "[[ $? != 0 ]] && grep -q 'migra
 STUB_MIGRATE_STATUS=1 STUB_MIGRATE_ONLY_DOWN=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
 check "a failure with the old bar stopped relaunches the bar first, then fails" "[[ $? != 0 ]] && grep -q 'the bar was restarted' '$e2e/out' && ((\$(line_of 'migrate bar down') < \$(dispatch_line)))"
 check "and keeps the base so a rerun resumes" "[[ -e \$(base_file '$e2e/main') ]]"
+touch "$e2e/pkill_survives"
+migrate_ship lib/install/migrate.sh home/quickshell/bar
+survive_rc=$?
+rm -f "$e2e/pkill_survives"
+check "a bar that survives pkill skips the second pass, says so and does not fail" "[[ $survive_rc == 0 && \$(migrate_count) == 1 ]] && ! logged 'migrate bar down' && grep -q 'the old bar was still running, so migration cleanup was skipped' '$e2e/out'"
+check "and the bar is still relaunched" "(( \$(dispatch_line) > 0 )) && grep -q 'restarted the stowed bar' '$e2e/out'"
 printf '#!/bin/sh\necho locked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 
 echo "== the check of main in the background"
