@@ -22,6 +22,8 @@ const FINGERPRINT: [(&str, &str); 6] = [
     ("show_hints", "show_hints"),
 ];
 
+const SHIPPED_PICK_COMMAND: &str = "voxcmd-hints";
+
 /// Whether the dump of file `stem` is the shipped click.sh's.
 fn is_shipped(stem: &str, commands: &BTreeMap<String, String>, hooks: &[String]) -> bool {
     stem == "click"
@@ -35,7 +37,7 @@ fn is_shipped(stem: &str, commands: &BTreeMap<String, String>, hooks: &[String])
 
 /// Moves the click actions of a loaded bash integration onto the built-ins when it is the shipped click.sh. Mode
 /// actions (`session_begin click ...`) and everything else stay on the bridge.
-pub fn adapt(integration: &mut Integration, commands: &BTreeMap<String, String>, hooks: &[String]) {
+pub fn adapt(integration: &mut Integration, commands: &BTreeMap<String, String>, hooks: &[String], pick_command: &str) {
     if !is_shipped(&integration.stem, commands, hooks) {
         return;
     }
@@ -50,7 +52,10 @@ pub fn adapt(integration: &mut Integration, commands: &BTreeMap<String, String>,
             declared.builtin = Some(builtin);
         }
     }
-    integration.picker = Some(Picker::Hints);
+    // A changed pick_command is the user's own picker, which the bridge keeps running.
+    if pick_command == SHIPPED_PICK_COMMAND {
+        integration.picker = Some(Picker::Hints);
+    }
 }
 
 #[cfg(test)]
@@ -153,6 +158,16 @@ mod tests {
         ] {
             assert!(is_bridged(&click_of(&edited(action, edit))), "{edit}");
         }
+    }
+
+    #[test]
+    fn a_customized_pick_command_keeps_the_bash_picker_but_not_the_click_actions() {
+        let click = click_of(&edited(
+            "\"pick_command\":\"voxcmd-hints\"",
+            "\"pick_command\":\"my-picker\"",
+        ));
+        assert_eq!(click.picker, None);
+        assert_eq!(click.actions["click"].builtin, Some(Builtin::ClickAt(None)));
     }
 
     #[test]

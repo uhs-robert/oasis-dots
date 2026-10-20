@@ -48,12 +48,12 @@ impl CaptureInfo {
     }
 }
 
-#[allow(dead_code, reason = "window and info are read by screen_text from 2.5c")]
 pub struct Captured {
     pub window: Value,
     /// click-ocr's stdout, byte for byte: the `#info` line (Explain only), `#window`, then each strip's `#strip` line
     /// and tesseract's text.
     pub stream: Vec<u8>,
+    #[allow(dead_code, reason = "nothing reads the capture info yet")]
     pub info: CaptureInfo,
 }
 

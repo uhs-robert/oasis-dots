@@ -21,16 +21,22 @@ pub fn run(builtin: &Builtin, id: &str, spoken_target: &str) -> std::io::Result<
         Builtin::NoText => no_text(spoken_target)?,
         Builtin::ShowHints => show_hints()?,
     };
+    Ok(as_process(finished))
+}
+
+fn as_process(finished: Reason<String>) -> Outcome {
     let (code, stdout) = match finished {
         Ok(output) => (0, output),
+        // An empty reason prints nothing, like bash's silent failure, so the toast has no ": detail" tail.
+        Err(reason) if reason.is_empty() => (1, String::new()),
         Err(reason) => (1, format!("{reason}\n")),
     };
-    Ok(Outcome {
+    Outcome {
         status: Some(ExitStatus::from_raw(code << 8)),
         stdout,
         stderr: String::new(),
         timed_out: false,
-    })
+    }
 }
 
 /// Err is why it failed, which is what the user's error toast says.
@@ -99,14 +105,20 @@ pub fn click_at(id: &str, spoken_target: &str) -> Done {
 fn move_pointer(x: &str, y: &str) -> Done {
     let mut command = Command::new("hyprctl");
     command.args(["dispatch", &format!("hl.dsp.cursor.move({{x={x},y={y}}})")]);
-    let moved = match spawn(&mut command)? {
-        Ok(outcome) if outcome.code() == Some(0) => outcome.stdout.trim_end_matches('\n').to_string(),
-        _ => "hyprctl failed".to_string(),
+    // bash's `$(...)` leaves hyprctl's stderr to the action's merged output, so it precedes the reason in the toast.
+    let (moved, said) = match spawn(&mut command)? {
+        Ok(outcome) if outcome.code() == Some(0) => (outcome.stdout.trim_end_matches('\n').to_string(), outcome.stderr),
+        Ok(outcome) => ("hyprctl failed".to_string(), outcome.stderr),
+        Err(_) => ("hyprctl failed".to_string(), String::new()),
     };
+    Ok(pointer_moved(&moved, &said))
+}
+
+fn pointer_moved(moved: &str, said: &str) -> Reason {
     if moved == "ok" {
-        Ok(Ok(()))
+        Ok(())
     } else {
-        Ok(Err(last_line(&moved).to_string()))
+        Err(format!("{said}{}", last_line(moved)))
     }
 }
 
@@ -158,8 +170,30 @@ fn show_hints() -> Done<String> {
     ]);
     Ok(match process::run_to_end_discarding_output(&mut command) {
         Ok(outcome) if outcome.code() == Some(0) => Ok(String::new()),
-        Ok(_) => Err("setsid failed".to_string()),
+        // bash sends setsid's output to /dev/null, so the failure toast carries no reason.
+        Ok(_) => Err(String::new()),
         Err(error) if process::refused_while_stopping(&error) => return Err(error),
-        Err(error) => Err(format!("setsid: {error}")),
+        Err(_) => Err(String::new()),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failure_with_no_reason_prints_nothing() {
+        let outcome = as_process(Err(String::new()));
+        assert_eq!((outcome.code(), outcome.stdout.as_str()), (Some(1), ""));
+        assert_eq!(as_process(Err("x".into())).stdout, "x\n");
+    }
+
+    #[test]
+    fn hyprctls_stderr_comes_before_the_reason() {
+        assert_eq!(pointer_moved("ok", "noise\n"), Ok(()));
+        assert_eq!(
+            pointer_moved("invalid dispatcher", "warn\n"),
+            Err("warn\ninvalid dispatcher".to_string())
+        );
+    }
 }

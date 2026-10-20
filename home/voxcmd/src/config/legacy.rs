@@ -29,6 +29,9 @@ struct Dumped {
     step_waits: BTreeMap<String, String>,
     /// The router-called functions the file defines (`candidates`, `surface_open`, ...).
     hooks: Vec<String>,
+    /// The file's `pick_command`, empty when it sets none.
+    #[serde(default)]
+    pick_command: String,
     confirm_labels: Vec<String>,
     match_ignore_words: Vec<String>,
     silent_actions: Vec<String>,
@@ -164,9 +167,13 @@ pub fn parse_dump(dump: &str) -> Result<Vec<Integration>, String> {
         .filter(|line| !line.trim().is_empty())
         .map(|line| {
             let dumped: Dumped = serde_json::from_str(line).map_err(|error| format!("_legacy-dump output: {error}"))?;
-            let (commands, hooks) = (dumped.actions.clone(), dumped.hooks.clone());
+            let (commands, hooks, pick_command) = (
+                dumped.actions.clone(),
+                dumped.hooks.clone(),
+                dumped.pick_command.clone(),
+            );
             let mut integration = integration(dumped);
-            crate::click::bridge_map::adapt(&mut integration, &commands, &hooks);
+            crate::click::bridge_map::adapt(&mut integration, &commands, &hooks, &pick_command);
             Ok(integration)
         })
         .collect()
