@@ -30,15 +30,15 @@ Singleton {
 
     JsonStore {
         id: wake
-        path: VoxSession.voxcmd_dir + "/wake.json"
+        path: VoxSessionState.voxcmd_dir + "/wake.json"
         read_only: true
         defaults: ({ state: "", reason: "" })
         validate: raw => ({ state: String(raw.state || ""), reason: String(raw.reason || "") })
     }
 
-    // VoxSession finds the folder once voxcmd has made it; a watch reports a file only in a folder that exists.
+    // VoxSessionState finds the folder once voxcmd has made it; a watch reports a file only in a folder that exists.
     Connections {
-        target: VoxSession
+        target: VoxSessionState
         function onVoxcmd_dir_existsChanged() {
             wake.rearm();
         }

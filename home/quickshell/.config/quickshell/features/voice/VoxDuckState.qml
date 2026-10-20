@@ -13,7 +13,7 @@ Singleton {
 
     FileView {
         id: duck_file
-        path: VoxSession.voxcmd_dir + "/duck.json"
+        path: VoxSessionState.voxcmd_dir + "/duck.json"
         printErrors: false
         blockLoading: true
         watchChanges: true
@@ -29,9 +29,9 @@ Singleton {
         onLoadFailed: error => root.ducked = false
     }
 
-    // VoxSession finds the folder once voxcmd has made it; a watch reports a file only in a folder that exists.
+    // VoxSessionState finds the folder once voxcmd has made it; a watch reports a file only in a folder that exists.
     Connections {
-        target: VoxSession
+        target: VoxSessionState
         function onVoxcmd_dir_existsChanged() {
             duck_file.reload();
         }

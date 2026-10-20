@@ -23,10 +23,10 @@ RowsSection {
     // A delete or remove waiting for y/n, as { question, verb, run }; null when nothing is asked.
     property var pending: null
 
-    readonly property var session: SessionStore.find(root.session_name)
+    readonly property var session: Sessions.find(root.session_name)
     readonly property var entry: root.session && root.window_index >= 0 ? root.session.windows[root.window_index] || null : null
     readonly property var delay_steps: [0, 250, 500, 1000, 2000, 5000]
-    readonly property string hint: root.pending ? root.pending.question : SessionStore.load_error !== "" ? "sessions.json cannot be read (" + SessionStore.load_error + "); fix it with Edit sessions.json." : SessionStore.notice
+    readonly property string hint: root.pending ? root.pending.question : Sessions.load_error !== "" ? "sessions.json cannot be read (" + Sessions.load_error + "); fix it with Edit sessions.json." : Sessions.notice
     readonly property string breadcrumb: root.view === "list" ? "" : root.session_name + (root.view === "window" && root.entry ? " > " + root.window_label(root.entry) : "")
 
     section_keys: "n save layout · e edit file"
@@ -72,7 +72,7 @@ RowsSection {
 
     function ask_delete_session(name) {
         root.ask("Delete " + name + "? y/n", "delete", () => {
-            SessionStore.remove(name);
+            Sessions.remove(name);
             if (root.view !== "list") root.go_up();
         });
     }
@@ -82,7 +82,7 @@ RowsSection {
         const w = root.session ? root.session.windows[index] : null;
         if (!w) return;
         root.ask("Remove " + root.window_label(w) + " from " + name + "? y/n", "remove", () => {
-            SessionStore.remove_window(name, index);
+            Sessions.remove_window(name, index);
             if (root.view === "window") root.go_up();
         });
     }
@@ -91,9 +91,9 @@ RowsSection {
     function editable_target() {
         const row = root.rows[root.cursor];
         const name = root.view === "list" ? row && row.session_name : root.session_name;
-        const s = name ? SessionStore.find(name) : null;
+        const s = name ? Sessions.find(name) : null;
         if (s && s.read_only) {
-            SessionStore.say(s.name + " is a Lua session; edit custom/sessions.lua to change it");
+            Sessions.say(s.name + " is a Lua session; edit custom/sessions.lua to change it");
             return null;
         }
         return s;
@@ -128,7 +128,7 @@ RowsSection {
 
     function list_rows() {
         const rows = [root.action_row("Save current layout", "Opens the overview with every window marked. Unmark what to leave out, then name the session.", "Enter save layout", () => root.start_save(""), "Enter")];
-        for (const s of SessionStore.sessions) {
+        for (const s of Sessions.sessions) {
             const count = s.windows.length + (s.windows.length === 1 ? " window" : " windows");
             const desc = s.read_only ? "A Lua session from custom/sessions.lua. It is read-only here; edit that file to change it." : "A saved session. Enter opens its windows to edit them.";
             const row = root.action_row(s.name, desc, s.read_only ? "Enter open" : "Enter open · r rename · u update · x delete", () => root.open_session(s.name), s.read_only ? "Lua · " + count : count);
@@ -169,21 +169,21 @@ RowsSection {
         const name = s.name;
         const index = root.window_index;
         const special = typeof w.special === "string";
-        const patch = fields => SessionStore.update_window(name, index, fields);
+        const patch = fields => Sessions.update_window(name, index, fields);
         const rows = [root.choice_row("Placement", "Whether the window opens on a numbered workspace of a monitor or on a special workspace.", ["workspace", "special"], v => v === "special" ? "Special workspace" : "Numbered workspace", () => special ? "special" : "workspace",
             v => patch(v === "special" ? { special: w.special || "scratchpad", monitor: null, ws: null } : { special: null, monitor: w.monitor || 1, ws: w.ws || 1 }))];
         if (special) {
             rows.push(root.text_row("Special workspace", "Name of the special workspace, without the special: prefix.", "special", w.special));
         } else {
             rows.push(root.choice_row("Monitor", "Which monitor, numbered in the order of the Hyprland monitor config.", root.range(Math.max(Displays.enabled_count, w.monitor || 1, 1)), v => String(v), () => w.monitor || 1, v => patch({ monitor: v })));
-            rows.push(root.choice_row("Workspace", "Which of that monitor's workspaces, 1 to " + SessionStore.ws_per_monitor + ".", root.range(Math.max(SessionStore.ws_per_monitor, w.ws || 1)), v => String(v), () => w.ws || 1, v => patch({ ws: v })));
+            rows.push(root.choice_row("Workspace", "Which of that monitor's workspaces, 1 to " + Sessions.ws_per_monitor + ".", root.range(Math.max(Sessions.ws_per_monitor, w.ws || 1)), v => String(v), () => w.ws || 1, v => patch({ ws: v })));
         }
         const cmd_desc = w.guessed === true ? "Read from /proc when saved, so it may be wrong: a single-instance terminal reports its server process. Edit it to the command that opens this window." : "The shell command that opens the window. Enter edits it.";
         rows.push(root.text_row("Command", cmd_desc, "command", String(w.cmd || "") + (w.guessed === true ? " (guessed)" : "")));
         rows.push(root.choice_row("Delay", "How long to wait before launching this window.", Choices.with_current(root.delay_steps, w.delay || 0), v => v === 0 ? "None" : v + " ms", () => w.delay || 0, v => patch({ delay: v === 0 ? null : v })));
         const has_geometry = w.size !== undefined || w.pos !== undefined;
         rows.push(root.choice_row("Keep size and position", "Off drops the saved size and position, so the layout places the window. To capture them again, use Update from current windows.", ["on", "off"], v => v, () => has_geometry ? "on" : "off",
-            v => v === "off" ? patch({ size: null, pos: null }) : SessionStore.say("Use Update from current windows to capture size and position again")));
+            v => v === "off" ? patch({ size: null, pos: null }) : Sessions.say("Use Update from current windows to capture size and position again")));
         rows.push(root.action_row("Remove window", "Removes this window from the session, after a y/n prompt.", "Enter or x remove", () => root.ask_remove_window(index), "Enter"));
         return rows;
     }
@@ -237,20 +237,20 @@ RowsSection {
         const name = SettingsNav.requested_session;
         if (name === "") return;
         SettingsNav.requested_session = "";
-        if (!SessionStore.find(name)) return;
+        if (!Sessions.find(name)) return;
         root.view = "list";
         root.window_index = -1;
         root.parents = [];
-        root.cursor = 1 + SessionStore.names.indexOf(name);
+        root.cursor = 1 + Sessions.names.indexOf(name);
         root.open_session(name);
     }
 
     function open_editor() {
-        Popups.after_close(SessionStore.open_in_editor);
+        Popups.after_close(Sessions.open_in_editor);
     }
 
     function start_save(target) {
-        SessionStore.request_save(target);
+        Sessions.request_save(target);
     }
 
     function start_edit(kind) {
@@ -274,22 +274,22 @@ RowsSection {
         const kind = root.edit_key;
         if (kind === "rename") {
             const old_name = root.session_name;
-            const problem = SessionStore.name_problem(text, old_name);
+            const problem = Sessions.name_problem(text, old_name);
             if (problem !== "") {
-                SessionStore.say(problem);
+                Sessions.say(problem);
                 root.edit_invalid = true;
                 return;
             }
             // The session is looked up by name, so the view follows the new name before the file does.
             root.session_name = text;
-            if (!SessionStore.rename(old_name, text)) root.session_name = old_name;
+            if (!Sessions.rename(old_name, text)) root.session_name = old_name;
         } else {
             if (text === "") {
                 root.edit_invalid = true;
                 return;
             }
             const fields = kind === "command" ? { cmd: text, guessed: null } : { special: text };
-            SessionStore.update_window(root.session_name, root.window_index, fields);
+            Sessions.update_window(root.session_name, root.window_index, fields);
         }
         root.end_edit();
     }
@@ -346,7 +346,7 @@ RowsSection {
 
     Component.onCompleted: {
         Displays.refresh();
-        SessionStore.refresh();
+        Sessions.refresh();
         root.apply_requested();
     }
 

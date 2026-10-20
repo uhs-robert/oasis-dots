@@ -77,7 +77,7 @@ PanelWindow {
         return !!root.console_osd && root.console_osd.hides.indexOf(part) >= 0;
     }
 
-    readonly property string title: root.showing_vox ? root.vox_phase.toUpperCase() + (VoxSession.active ? " - " + VoxSession.label.toUpperCase() : "") : root.kind.toUpperCase()
+    readonly property string title: root.showing_vox ? root.vox_phase.toUpperCase() + (VoxSessionState.active ? " - " + VoxSessionState.label.toUpperCase() : "") : root.kind.toUpperCase()
 
     readonly property string elapsed: {
         const secs = Math.max(0, Math.floor((root.now_ms - root.vox_started_ms) / 1000));
@@ -163,7 +163,7 @@ PanelWindow {
     function audio_changed() {
         if (!root.audio_armed || !root.sink || !root.sink.audio) return;
         // The ducker's own volume writes are not the user's.
-        if (VoxDuck.ducked || duck_quiet.running) return;
+        if (VoxDuckState.ducked || duck_quiet.running) return;
         root.show("volume", root.sink.audio.volume, root.sink.audio.muted);
     }
 
@@ -228,9 +228,9 @@ PanelWindow {
     }
 
     Connections {
-        target: VoxDuck
+        target: VoxDuckState
         function onDuckedChanged() {
-            if (!VoxDuck.ducked) duck_quiet.restart();
+            if (!VoxDuckState.ducked) duck_quiet.restart();
         }
     }
 
@@ -448,8 +448,8 @@ PanelWindow {
                     anchors.fill: parent
                     frozen: !root.vox_recording
                     running: root.showing_vox && root.visible && !root.replaced("meter")
-                    sample: n => VoxtypeAudio.averages(n)
-                    gain: VoxtypeAudio.gain
+                    sample: n => VoxtypeAudioState.averages(n)
+                    gain: VoxtypeAudioState.gain
                 }
             }
 
@@ -529,8 +529,8 @@ PanelWindow {
                 elapsed: root.elapsed
                 glyph: "󰍬"
                 running: root.showing_vox && root.visible
-                sample: n => VoxtypeAudio.averages(n)
-                gain: VoxtypeAudio.gain
+                sample: n => VoxtypeAudioState.averages(n)
+                gain: VoxtypeAudioState.gain
             }
         }
 

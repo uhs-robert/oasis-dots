@@ -4,4 +4,3 @@
 # as stale. "5.8 PR n" means PR n of item 5.8 of the Quickshell refactor (#966).
 
 features/bar/BarConfig.qml  # saved bar choices, not yet named Settings; temporary, renamed to BarSettings (5.8 PR 3)
-features/overview/SessionStore.qml  # temporary, renamed to Sessions (5.8 PR 2)
