@@ -17,6 +17,8 @@ Every brief asks for a report that leads with the result and stays under 2,000 c
 
 Agents run in the background: after dispatching, end the turn and let the completion notice start the next one. Never poll, sleep or wait on an agent, and never state its result before the notice arrives. While waiting on the owner or a review, start read-only research for the next planned piece of work. Give each agent a short unique name so you can `SendMessage` it later.
 
+Every agent's report is yours to collect. On any agent notice that is not its report (interim, "waiting on its own background work", or silence), check its branch and worktree at once and tell the owner the state; never call an agent still working without checking.
+
 Review dimensions, used by every review below: correctness and regressions, missed requirements, scope (unrelated changes), reuse and unnecessary complexity, weak tests.
 
 When the owner asks you to hand off, pass the baton or wind down, load `orchestrator-handoff`; a request to hand over from another session goes to the owner.
@@ -47,14 +49,13 @@ Target: `$target`
    - When the permission classifier denies an action, do not retry it in another form or via an agent; hand the owner the exact `!` command.
 
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements.
-   - Tell it to run validation in the foreground with a long timeout, never in the background: a background run hands back early and pings the orchestrator on every tick while it waits.
-   - When the repo has a `lib/check.sh`, its final `lib/check.sh --changed <merge-base>` with everything committed is the validation; a separate full run of a suite it already covers only queues for the same test slots.
+   - Tell it to run only targeted tests, each under 10 minutes, then commit, push and report in the same turn, leaving nothing running.
+   - Run the final validation yourself as one background Bash call in the worktree: `lib/check.sh --changed <merge-base>` when the repo has one. A failure goes back to the agent per step 8.
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
    - For concurrency or lifecycle work (signals, locks, processes that hand over or race), name those risks in the brief and require tests that drive each risky path before review. Review rounds otherwise find these bugs one at a time.
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
 
 6. Review the diff yourself against the review dimensions and repository conventions. Confirm the commit messages follow `commit-messages`. For a large diff (more than a few hundred lines or many files), brief a read-only reviewer agent with the same checks and read its findings instead of the diff.
-   - When an agent finishes but its report never arrives, verify its work from its pushed commits and worktree, ask it once, and if it stays silent, verify independently (a small agent runs the check) rather than waiting.
 
 7. Get an external review of the issue and diff against the review dimensions. Codex first; an Opus subagent when Codex is unavailable.
    - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call.
@@ -73,7 +74,7 @@ Target: `$target`
    - Tell the fixer to make the smallest change that fixes the finding, with a test for it. If the fix needs a new mechanism, it reports that before building it.
    - Re-run the external review only for a material fix (a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic); a targeted fix gets your own diff review and its test.
 
-9. Final validation: an agent confirms checks pass, the tree is clean, and the diff has nothing unrelated.
+9. Final validation: your check passed on the final head, the tree is clean, and the diff has nothing unrelated.
 
 10. Create a PR against the appropriate base branch, or push to the existing PR's branch when working on one.
     Reference and close the issue, if one exists.
