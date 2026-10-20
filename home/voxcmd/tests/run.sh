@@ -1398,7 +1398,8 @@ check "'stop clicking' ends click mode instead of pausing media" "grep -q 'Click
 if [ -n "$rust_matcher" ]; then
   # The mode actions are not click built-ins; run for real (stop clicking opens no session), one reaches the bash voxcmd.
   : >"$legacy_calls"
-  VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1
+  # The "numbered picks" section pointed VOXCMD_LEGACY_BIN at its own copy, past the logger.
+  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1
   check "a mode action of click.sh still runs through the bash bridge" "grep -Eq '^_legacy-hook run [^ ]*/click\\.sh stop_clicking' '$legacy_calls'"
 fi
 out=$(route_all "click mode on")
