@@ -92,17 +92,26 @@ pub fn run(runner: &Runner) -> i32 {
 /// Integrations that have something to show, in routing order with the fallbacks last.
 fn groups(runner: &Runner) -> Vec<Group> {
     let config = runner.rt.config;
-    let legacy = runner.rt.legacy;
-    // One bash start per legacy file that lists choices; they run side by side as the bash did.
+    let (legacy, shell) = (runner.rt.legacy, runner.rt.shell);
+    // One bash start per file that lists choices (a legacy file's bridge call, a TOML file's `[[help]]` hooks); they
+    // run side by side as the bash did.
     let entries: Vec<_> = std::thread::scope(|scope| {
         let running: Vec<_> = config
             .integrations
             .iter()
-            .map(|integration| scope.spawn(move || integration.legacy_help.then(|| legacy.help_entries(integration))))
+            .map(|integration| {
+                scope.spawn(move || {
+                    if integration.legacy_help {
+                        legacy.help_entries(integration)
+                    } else {
+                        shell.help_entries(integration)
+                    }
+                })
+            })
             .collect();
         running
             .into_iter()
-            .map(|handle| handle.join().expect("a help thread panicked").unwrap_or_default())
+            .map(|handle| handle.join().expect("a help thread panicked"))
             .collect()
     });
     let mut groups: Vec<Group> = config

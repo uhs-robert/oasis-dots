@@ -279,6 +279,7 @@ fn integration(dumped: Dumped) -> Integration {
             .collect(),
         examples: dumped.examples,
         legacy_help: lists_help(&dumped.hooks, &dumped.help_action),
+        help: Vec::new(),
         settings: MatchSettings {
             target_match: dumped.target_match,
             match_ignore_words: dumped.match_ignore_words,

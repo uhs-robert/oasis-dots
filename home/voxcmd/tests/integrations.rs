@@ -532,3 +532,107 @@ fn help_without_examples_toasts_and_exits_1_without_asking() {
     assert_eq!(toasts, "voxcmd: No integration declares examples\n");
     assert_eq!(asked, "");
 }
+
+// ---- [[help]] -------------------------------------------------------------------------------------------------------
+
+/// Three `[[help]]` entries over one action: a list hook, a static row with an empty id, and the action's candidates.
+const SCENES: &str = r#"name = "Scenes"
+verbs = [{ action = "set", match = "scene {target}" }]
+examples = ["scene movie"]
+[actions.set]
+run = 'echo "$VOXCMD_ID" >> LOG'
+candidates = "printf 'day\\tDay scene\\nnight\\tNight scene\\n'; [ -z \"$VOXCMD_ARG_TARGET\" ] || true"
+
+[[help]]
+action = "set"
+list = "printf 'dusk\\tDusk scene\\nbare\\n'"
+
+[[help]]
+action = "set"
+id = ""
+label = "Lights off"
+
+[[help]]
+action = "set"
+"#;
+
+impl Sandbox {
+    fn scenes(&self) -> std::path::PathBuf {
+        let log = self.root.path().join("scenes.log");
+        self.write(
+            "integrations/scenes.toml",
+            &SCENES.replace("LOG", &log.display().to_string()),
+        );
+        log
+    }
+}
+
+#[test]
+fn help_lists_the_rows_of_every_help_entry_as_runnables_without_bash() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.scenes();
+    let (output, _, asked) = sandbox.help("echo run:0");
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let expansion = r#""scenes":{"choices":[{"id":"run:0","label":"Dusk scene"},{"id":"run:1","label":"bare"},{"id":"run:2","label":"Lights off"},{"id":"run:3","label":"Day scene"},{"id":"run:4","label":"Night scene"}],"title":"Scenes"}"#;
+    assert!(asked.contains(expansion), "{asked}");
+    assert!(asked.contains(r#""expand":"scenes""#), "{asked}");
+    sandbox.no_bash_ran();
+}
+
+#[test]
+fn help_runs_a_picked_row_with_its_id() {
+    for (pick, ran) in [("run:0", "dusk\n"), ("run:2", "\n"), ("run:4", "night\n")] {
+        let sandbox = Sandbox::with(&[]);
+        let log = sandbox.scenes();
+        let (output, _, _) = sandbox.help(&format!("echo {pick}"));
+        assert_eq!(output.status.code(), Some(0), "{pick}: {}", stderr(&output));
+        assert_eq!(std::fs::read_to_string(log).unwrap_or_default(), ran, "{pick}");
+    }
+}
+
+#[test]
+fn a_failing_help_list_lists_nothing_and_help_still_works() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/broken.toml",
+        "verbs = [{ action = \"a\", match = \"go\" }]\nexamples = [\"go\"]\n[actions]\na = \"true\"\n[[help]]\naction = \"a\"\nlist = \"exit 4\"\n",
+    );
+    let (output, _, asked) = sandbox.help("echo say:go");
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(asked.trim_end().ends_with("{}"), "{asked}");
+}
+
+#[test]
+fn check_validates_help_entries_with_file_line_column() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.scenes();
+    assert_eq!(sandbox.voxcmd(&["integrations", "check"], &[]).status.code(), Some(0));
+    let head = "verbs = [{ action = \"a\", match = \"go\" }]\n[actions]\na = \"true\"\n";
+    for (entry, expected) in [
+        (
+            "[[help]]\naction = \"a\"\nlist = \"true\"\nlabel = \"x\"\n",
+            "integrations/h.toml:4:1: error: [[help]] list and id/label are both set; use one",
+        ),
+        (
+            "[[help]]\nid = \"x\"\n",
+            "integrations/h.toml:4:1: error: missing field `action`",
+        ),
+        (
+            "[[help]]\naction = \"a\"\nid = \"x\"\n",
+            "integrations/h.toml:4:1: error: [[help]] a static row with an id needs a label",
+        ),
+        (
+            "[[help]]\naction = \"nope\"\n",
+            "integrations/h.toml:5:1: error: [[help]] action \"nope\" is not declared under [actions]",
+        ),
+        (
+            "[[help]]\naction = \"a\"\nlabell = \"x\"\n",
+            "integrations/h.toml:6:1: error: unknown help key \"labell\"",
+        ),
+    ] {
+        sandbox.write("integrations/h.toml", &format!("{head}{entry}"));
+        let output = sandbox.voxcmd(&["integrations", "check", "integrations/h.toml"], &[]);
+        assert_eq!(output.status.code(), Some(1), "{entry}");
+        assert!(stdout(&output).contains(expected), "{entry}\n{}", stdout(&output));
+    }
+}

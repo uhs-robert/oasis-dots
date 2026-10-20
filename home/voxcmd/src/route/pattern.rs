@@ -603,6 +603,7 @@ mod tests {
             verbs: Vec::new(),
             examples: Vec::new(),
             legacy_help: false,
+            help: Vec::new(),
             settings: MatchSettings::default(),
             actions: BTreeMap::new(),
             surface: None,
