@@ -78,6 +78,82 @@ settle_check() {
   rm -f "$(check_base_file "$1")"
 }
 
+# The background check of main. Its state lives beside the other ship-batch files in the git common dir: the log, the
+# result of the last finished check ("pass <sha> <epoch>" or "fail <sha> <epoch> <log>"), and the run lock that
+# main-check.sh holds on fd 8 for as long as it runs (so "running" is one flock test, whether systemd or setsid started it).
+main_check_unit=${MAIN_CHECK_UNIT:-dotfiles-main-check}
+
+main_check_path() {
+  echo "$(dirname "$(base_file "$1")")/ship-batch-main-check.$2"
+}
+
+# One line naming the failed check, or nothing. The result is warning-only: it never stops a merge, since the PR that fixes
+# main ships through ship-batch too.
+main_check_failure_notice() {
+  local result status sha log
+  result=$(main_check_path "$1" result)
+  [[ -s $result ]] || return 0
+  read -r status sha _ log <"$result"
+  [[ $status != fail ]] || echo "ship-batch: the check of main FAILED at ${sha:0:12}; log $log; fix it before anything else"
+}
+
+main_check_is_running() {
+  ! flock -n "$(main_check_path "$1" lock)" true 2>/dev/null
+}
+
+# Stops a running background check and waits until it is gone, so nothing it spawned holds a heavy-step slot or the
+# checkout when the pull changes the files under it. The owed base is not touched: only a pass settles it.
+stop_main_check() {
+  local repo=$1 lock pid
+  lock=$(main_check_path "$repo" lock)
+  command -v systemctl >/dev/null && systemctl --user stop "$main_check_unit" 2>/dev/null
+  if main_check_is_running "$repo"; then
+    pid=$(cat "$(main_check_path "$repo" pid)" 2>/dev/null)
+    # The setsid fallback made the check a group leader; the pid is trusted only while the run lock is held.
+    [[ $pid =~ ^[0-9]+$ ]] && kill -TERM -- "-$pid" 2>/dev/null
+    flock -w 60 "$lock" true || {
+      [[ $pid =~ ^[0-9]+$ ]] && kill -KILL -- "-$pid" 2>/dev/null
+      flock -w 30 "$lock" true || {
+        echo "ship-batch: the running check of main would not stop" >&2
+        return 1
+      }
+    }
+  fi
+  return 0
+}
+
+# Starts main-check.sh run detached from this shell: a transient user unit (Nice 19, survives the agent's shell), else
+# setsid. fd 9 is closed so the check cannot hold the ship lock. A unit name left over from a crash is cleared first.
+# Returns once the check has taken its run lock, so a waiter that sees the ship lock free also sees the check running.
+start_main_check() {
+  local repo=$1 script=$2 after=$3 check_from=$4 setenv=() name
+  # The pid file marks "has started", even for a check that has already finished again.
+  rm -f "$(main_check_path "$repo" pid)"
+  for name in PATH HOME CHECK_FULL CHECK_LOCK_WAIT_SECS; do
+    [[ -z ${!name:-} ]] || setenv+=("--setenv=$name")
+  done
+  if command -v systemd-run >/dev/null; then
+    systemctl --user stop "$main_check_unit" 2>/dev/null || true
+    systemctl --user reset-failed "$main_check_unit" 2>/dev/null || true
+    systemd-run --user --unit="$main_check_unit" --collect --property=Nice=19 "${setenv[@]}" \
+      "$script" run --notify "$after" "$check_from" 9>&- >/dev/null 2>&1 || true
+    wait_main_check_running "$repo" && return 0
+  fi
+  setsid -f nice -n 19 "$script" run --notify "$after" "$check_from" 9>&- </dev/null >/dev/null 2>&1 || true
+  wait_main_check_running "$repo" && return 0
+  echo "ship-batch: the background check of main did not start; run ship-batch.sh again" >&2
+  return 1
+}
+
+wait_main_check_running() {
+  local _
+  for _ in $(seq 50); do
+    [[ -e $(main_check_path "$1" pid) ]] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
 # Prints the stow packages under home/ that gained, lost or renamed a file between two commits and are installed here.
 # Pulling updates the files behind existing links, but a new file in a folder stow did not fold has no link until the
 # package is restowed (a merged unit or script then silently does not exist), and a deleted one leaves a dead link.
