@@ -115,7 +115,16 @@ class PathScopes(unittest.TestCase):
 
     def test_rust_edits_skip_bash_suites_until_3_2(self):
         """Delete this when voxcmd 3.2 makes VOXCMD_BIN=rs the suites' default: from then on a crate edit changes what
-        the voxcmd suites run, so src/*, Cargo.*, tests/*.rs, snapshots and goldens must reach them and this fails."""
+        the voxcmd suites run. It reads the default from the files that pick it, so it fails at the flip."""
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        voxcmd_tests = os.path.join(repo, "home", "voxcmd", "tests")
+        for name in ("lib.sh", "sandbox.sh"):
+            with open(os.path.join(voxcmd_tests, name)) as handle:
+                source = handle.read()
+            with self.subTest(file=name):
+                self.assertIn("${VOXCMD_BIN:-bash}", source, (
+                    f"{name} no longer defaults VOXCMD_BIN to bash: widen the rust-only rules in scopes.py "
+                    "(src, Cargo, tests/*.rs, snapshots, goldens) so they reach the voxcmd suites, then delete this test"))
         for path in ("home/voxcmd/src/cli.rs", "home/voxcmd/tests/snapshots/cli__x.snap"):
             with self.subTest(path=path):
                 self.assertNotIn("voxcmd", keys.path_scopes(path).split())
