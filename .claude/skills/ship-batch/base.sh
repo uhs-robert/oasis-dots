@@ -19,6 +19,8 @@ take_lock() {
     echo "ship-batch: another ship-batch holds the main checkout (${holder:-unknown}); waiting up to ${wait_s}s" >&2
     flock -w "$wait_s" 9 || {
       echo "ship-batch: still held after ${wait_s}s by: $(<"$lock")" >&2
+      # Closed, since ship-batch's exit trap reads an open fd 9 as holding the lock.
+      exec 9>&-
       return 1
     }
   fi
@@ -91,7 +93,8 @@ settle_check() {
 }
 
 # The background check of main. Its state lives beside the other ship-batch files in the git common dir: the log, the
-# result of the last finished check ("pass <sha> <epoch>" or "fail <sha> <epoch> <log>"), and the run lock that
+# result of the last finished check ("pass <sha> <epoch>", "fail <sha> <epoch> <log>", or "unrecorded <sha> <epoch> <log>"
+# for a pass of a main checkout whose tracked files had local changes), and the run lock that
 # main-check.sh holds on fd 8 for as long as it runs (so "running" is one flock test, whether systemd or setsid started it).
 main_check_unit=${MAIN_CHECK_UNIT:-dotfiles-main-check}
 
