@@ -1395,6 +1395,12 @@ for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; 
 done
 out=$(route_all "stop clicking")
 check "'stop clicking' ends click mode instead of pausing media" "grep -q 'Click (click.sh) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
+if [ -n "$rust_matcher" ]; then
+  # The mode actions are not click built-ins; run for real (stop clicking opens no session), one reaches the bash voxcmd.
+  : >"$legacy_calls"
+  VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1
+  check "a mode action of click.sh still runs through the bash bridge" "grep -Eq '^_legacy-hook run [^ ]*/click\\.sh stop_clicking' '$legacy_calls'"
+fi
 out=$(route_all "click mode on")
 check "'click' followed by other text is still a click on that text" "! grep -q 'action=click_mode' <<<\"\$out\""
 # Every example that needs no screen text still goes where it did: nothing but Click's own examples reaches its mode verbs.
