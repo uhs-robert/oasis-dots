@@ -2,7 +2,7 @@
 # Drives the Quickshell workspace overview by voice: "show workspaces" opens it, then windows are named by the numbers it
 # draws on them. "two and four" marks, "move two to workspace three" moves, "close the marked windows" closes (after a count).
 # The overview publishes what it shows in overview.json and takes every action through `qs-ipc call overview act`; the
-# contract is in the README (Overview) and the Quickshell README.
+# contract is in the README (Overview) and the Quickshell overview README (`features/overview/README.md`).
 # Format: ~/.config/voxcmd/README.md
 
 name="Overview"

@@ -52,7 +52,7 @@ OverviewBase {
     // Numbers show on every window while voxcmd has an overview voice session open.
     readonly property bool voice_on: VoxSessionState.active && VoxSessionState.kind === "overview"
     readonly property string voice_dir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/voxcmd"
-    // What voxcmd reads of this overview, rewritten whenever it changes; the shape is in the Quickshell README.
+    // What voxcmd reads of this overview, rewritten whenever it changes; the shape is in `features/overview/README.md`.
     readonly property var voice_snapshot: root.wanted ? Voice.snapshot({ groups: root.groups, tiles: root.tiles, marks: root.marks, special: root.special, slots: root.monitor_slots, nav_order: root.nav_order }) : ({ version: 1, open: false })
     readonly property var window_numbers: Voice.window_numbers(root.voice_snapshot)
     onVoice_snapshotChanged: voice_write_timer.restart()

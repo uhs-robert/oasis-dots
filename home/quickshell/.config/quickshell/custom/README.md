@@ -4,7 +4,7 @@ This directory holds your own machine-local Quickshell config. Everything in it 
 
 What the shell reads from here:
 
-- `command-status.json`: the commands behind the `cmdstatus` bar module. See "Command status" in the Quickshell README for the format.
+- `command-status.json`: the commands behind the `cmdstatus` bar module. See "Command status" in `features/bar/README.md` for the format.
 
 ## Keeping your files
 

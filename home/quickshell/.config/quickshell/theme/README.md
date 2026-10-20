@@ -20,3 +20,9 @@ Settings > Theme options tweaks the current style (scanlines, glow, dither, font
 ## Fonts
 
 The bundled fonts are all under the SIL Open Font License. `assets/fonts/README.md` lists each one with its source and licence file. The weather icons in `features/weather/icons/` are MIT licensed (see its `LICENSE`).
+
+## Adding a style or style token
+
+**A style.** Add `styles/<name>/tokens.js` with an `overrides(t, ctx)` that returns the tokens it changes from the schema defaults (`t` is `Theme`), import it in `styles/index.js` and add it to the object `build()` returns there and to `sources` (the files Style.qml watches for hot reload), list it in `lib/common/greeter-files.sh` (the greeter stages each style's tokens), then add its name to `order` in `theme/Style.qml`, and to `labels` if the label isn't just the capitalized name. Shared popup components take their palette colors from `Style.pal`, which defaults to the Oasis palette; a style can remap it (goldeneye does). Its own widgets go in `styles/<name>/widgets/`; a `meter_art` or controller `button` token names one as `<name>/File.qml`. Optional extras: a transition in `theme/transitions/Kinds.js`, a sound pack in `styles/<name>/sounds/` (a patch in `scripts/synth-sounds`) and a lock skin.
+
+**A style token.** Add one `tok(...)` line to `theme/StyleSchema.js` with its export type, default, a one-line doc and any options (`expr` for a computed export, `via: "bar"`, `export: false` for an internal key), then run `scripts/gen-style-exports` to rewrite the generated property lines in `Style.qml`. `just check` fails while they are out of date.
