@@ -541,7 +541,7 @@ verbs = [{ action = "set", match = "scene {target}" }]
 examples = ["scene movie"]
 [actions.set]
 run = 'echo "$VOXCMD_ID" >> LOG'
-candidates = "printf 'day\\tDay scene\\nnight\\tNight scene\\n'; [ -z \"$VOXCMD_ARG_TARGET\" ] || true"
+candidates = "[ -z \"${VOXCMD_ARG_TARGET:-}\" ] || exit 5; printf 'day\\tDay scene\\nnight\\tNight scene\\n'"
 
 [[help]]
 action = "set"
@@ -635,4 +635,39 @@ fn check_validates_help_entries_with_file_line_column() {
         assert_eq!(output.status.code(), Some(1), "{entry}");
         assert!(stdout(&output).contains(expected), "{entry}\n{}", stdout(&output));
     }
+}
+
+#[test]
+fn a_help_list_runs_under_its_actions_timeout_and_the_lists_run_side_by_side() {
+    let sandbox = Sandbox::with(&[]);
+    // `slow` outlasts the 3 s default but not its own 5 s; `cut` is held to 0.3 s. Both hooks run together.
+    sandbox.write(
+        "integrations/timeouts.toml",
+        r#"verbs = [{ action = "slow", match = "go" }]
+examples = ["go"]
+[actions.slow]
+run = "true"
+timeout_secs = 5
+[actions.cut]
+run = "true"
+timeout_secs = 0.3
+
+[[help]]
+action = "slow"
+list = "sleep 3.2; echo late"
+
+[[help]]
+action = "cut"
+list = "sleep 2; echo never"
+"#,
+    );
+    let started = std::time::Instant::now();
+    let (output, _, asked) = sandbox.help("echo run:0");
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(asked.contains(r#"{"id":"run:0","label":"late"}]"#), "{asked}");
+    assert!(!asked.contains("never"), "{asked}");
+    assert!(
+        started.elapsed().as_secs_f64() < 5.0,
+        "the lists ran one after the other"
+    );
 }
