@@ -601,6 +601,7 @@ mod tests {
             mode_exit_object: Some("click mode".into()),
             mode: None,
             verbs: Vec::new(),
+            examples: Vec::new(),
             settings: MatchSettings::default(),
             actions: BTreeMap::new(),
             surface: None,
@@ -614,6 +615,7 @@ mod tests {
             pattern: pattern.into(),
             line: None,
             requires: None,
+            listed: None,
         }
     }
 
