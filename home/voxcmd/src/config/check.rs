@@ -97,17 +97,46 @@ fn check(dir: &Path, args: &[String]) -> (Report, usize) {
     // A legacy file whose stem has a TOML file is shadowed (Config::load drops it), so it is not loaded either.
     let shadowed = |file: &Path| toml.iter().any(|toml| toml.file_stem() == file.file_stem());
     legacy_wanted.retain(|file| !shadowed(file));
-    let is_shadowed = |integration: &Integration| shadowed(&integration.file);
     let mut legacy_loaded = 0;
     if !legacy_wanted.is_empty() {
-        match legacy::load(dir) {
+        let loaded = if args.is_empty() {
+            legacy::load(dir)
+        } else {
+            // A named file is loaded itself, wherever it is: a missing one is a problem, not a file with nothing to check.
+            let (present, missing): (Vec<_>, Vec<_>) = legacy_wanted.iter().cloned().partition(|file| file.is_file());
+            for file in missing {
+                problems.push(Problem {
+                    file: relative(dir, &file),
+                    line: 1,
+                    column: 1,
+                    severity: Severity::Error,
+                    code: "unreadable",
+                    message: "not a readable file".to_string(),
+                });
+            }
+            if present.is_empty() {
+                Ok(Vec::new())
+            } else {
+                legacy::load_files(&present)
+            }
+        };
+        match loaded {
             Ok(loaded) => {
-                for integration in loaded.iter().filter(|integration| {
-                    !is_shadowed(integration)
-                        && (args.is_empty() || legacy_wanted.iter().any(|file| file == &integration.file))
-                }) {
+                for integration in loaded.iter().filter(|integration| !shadowed(&integration.file)) {
                     legacy_loaded += 1;
                     check_patterns(dir, integration, &intents, &mut problems);
+                }
+                for file in legacy_wanted.iter().filter(|file| {
+                    !args.is_empty() && file.is_file() && !loaded.iter().any(|integration| &integration.file == *file)
+                }) {
+                    problems.push(Problem {
+                        file: relative(dir, file),
+                        line: 1,
+                        column: 1,
+                        severity: Severity::Error,
+                        code: "legacy-load",
+                        message: "the file did not load".to_string(),
+                    });
                 }
             }
             Err(message) => problems.push(Problem {
@@ -210,7 +239,7 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
             message,
         });
     };
-    let mut first_with_regex = std::collections::HashMap::new();
+    let mut earlier_with_regex: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
     for (index, verb) in integration.verbs.iter().enumerate() {
         let at = (verb.line.unwrap_or(1), verb.column.unwrap_or(1));
         match pattern::compile(integration, verb, intents) {
@@ -230,8 +259,14 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
                 }
                 // Within one integration the first matching verb wins. Across integrations nothing is shadowed:
                 // every one of a tier offers its option and several go to a picker. A legacy file is only loaded.
+                // `requires` is the one per-verb eligibility the matcher checks: a verb that needs an integration
+                // that is not loaded is skipped, so it shadows a later verb only if that verb needs the same one.
+                let earlier_verbs = earlier_with_regex.entry(compiled.regex).or_default();
                 if integration.format == Format::Toml
-                    && let Some(earlier) = first_with_regex.insert(compiled.regex, index)
+                    && let Some(&earlier) = earlier_verbs.iter().find(|&&earlier| {
+                        let required = &integration.verbs[earlier].requires;
+                        required.is_none() || *required == verb.requires
+                    })
                 {
                     report(
                         at,
@@ -242,6 +277,7 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
                         ),
                     );
                 }
+                earlier_verbs.push(index);
             }
         }
     }
@@ -295,6 +331,19 @@ fn unknown_keys(
                     format!("unknown verb key {key:?}"),
                 ));
             }
+        }
+    }
+    if let Some(toml::Value::Table(surface)) = table.get("surface") {
+        let from = text.find("[surface]").unwrap_or(0);
+        for key in surface
+            .keys()
+            .filter(|key| !schema::SURFACE_KEYS.contains(&key.as_str()))
+        {
+            problems.push(problem(
+                line_of_key(key, from),
+                "unknown-key",
+                format!("unknown surface key {key:?}"),
+            ));
         }
     }
     if let Some(toml::Value::Table(actions)) = table.get("actions") {

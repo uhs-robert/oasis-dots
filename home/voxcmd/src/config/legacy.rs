@@ -100,6 +100,40 @@ pub fn load(config_dir: &Path) -> Result<Vec<Integration>, String> {
     Ok(integrations)
 }
 
+/// The legacy integrations of just `files`, which may lie outside any config dir, each with `file` set to the path
+/// given. `integrations check <file>.sh` loads the file it was asked about and no other.
+pub fn load_files(files: &[PathBuf]) -> Result<Vec<Integration>, String> {
+    let dump = if let Some(file) = paths::legacy_dump_override() {
+        std::fs::read_to_string(&file).map_err(|error| format!("{}: {error}", file.display()))?
+    } else {
+        // `_legacy-dump` reads a config dir's integrations.d, so the files are linked into a scratch one.
+        let scratch = paths::cache_dir().join(format!("check-{}", std::process::id()));
+        let staged = scratch.join("integrations.d");
+        std::fs::create_dir_all(&staged).map_err(|error| format!("{}: {error}", staged.display()))?;
+        let linked = files.iter().try_for_each(|file| {
+            let absolute = std::path::absolute(file)?;
+            std::os::unix::fs::symlink(&absolute, staged.join(file.file_name().unwrap_or_default()))
+        });
+        let dumped = linked
+            .map_err(|error| format!("{}: {error}", staged.display()))
+            .and_then(|()| run_dump(&paths::legacy_bin(), &scratch));
+        let _ = std::fs::remove_dir_all(&scratch);
+        dumped?
+    };
+    let mut loaded = parse_dump(&dump)?;
+    // The dump names the files by where it saw them; the caller knows them by the path it gave.
+    loaded.retain_mut(|integration| {
+        let given = files
+            .iter()
+            .find(|file| file.file_name() == integration.file.file_name());
+        if let Some(file) = given {
+            integration.file.clone_from(file);
+        }
+        given.is_some()
+    });
+    Ok(loaded)
+}
+
 fn run_dump(bin: &Path, config_dir: &Path) -> Result<String, String> {
     let output = Command::new(bin)
         .arg("_legacy-dump")

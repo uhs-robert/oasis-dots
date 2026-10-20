@@ -241,3 +241,57 @@ fn a_shadowed_verb_is_a_warning_and_leaves_the_check_clean() {
     assert!(stdout(&json).contains("\"severity\":\"warning\",\"code\":\"shadowed-verb\""));
     sandbox.no_bash_ran();
 }
+
+#[test]
+fn a_named_legacy_file_is_loaded_itself_and_a_missing_one_is_a_problem() {
+    let sandbox = Sandbox::with(&[]);
+    let dump = Path::new(FIXTURES).join("legacy-dump.jsonl");
+    let dump_env = [("VOXCMD_LEGACY_DUMP_FILE", dump.as_path())];
+    // Outside the config dir, and no integrations.d at all.
+    let outside = sandbox.root.path().join("apps.sh");
+    std::fs::write(&outside, "").unwrap();
+    let outside_arg = outside.to_str().unwrap();
+    let loaded = sandbox.voxcmd(&["integrations", "check", outside_arg], &dump_env);
+    assert_eq!(loaded.status.code(), Some(0), "{}", stdout(&loaded));
+    assert!(
+        stdout(&loaded).contains("1 legacy files only loaded"),
+        "{}",
+        stdout(&loaded)
+    );
+    let missing = sandbox.voxcmd(&["integrations", "check", "--json", "nowhere.sh"], &dump_env);
+    assert_eq!(missing.status.code(), Some(1));
+    assert!(
+        stdout(&missing).contains("\"code\":\"unreadable\""),
+        "{}",
+        stdout(&missing)
+    );
+    sandbox.no_bash_ran();
+}
+
+#[test]
+fn a_shadowed_verb_needs_the_earlier_verb_to_be_as_eligible() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/gated.toml",
+        "verbs = [\n  { action = \"a\", match = 'go', requires = 'absent' },\n  { action = \"b\", match = 'go' },\n]\n[actions]\na = \"true\"\nb = \"true\"\n",
+    );
+    let output = sandbox.voxcmd(&["integrations", "check"], &[]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(!stdout(&output).contains("shadowed-verb") && !stdout(&output).contains("can never match"));
+}
+
+#[test]
+fn a_mistyped_surface_key_is_an_unknown_key() {
+    let sandbox = Sandbox::with(&[]);
+    sandbox.write(
+        "integrations/surf.toml",
+        "verbs = [\n  { action = \"a\", match = 'go' },\n]\n[actions]\na = \"true\"\n[surface]\nstate_file = \"/tmp/x\"\nstate_flie = \"/tmp/x\"\n",
+    );
+    let output = sandbox.voxcmd(&["integrations", "check"], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stdout(&output).contains("integrations/surf.toml:8:1: error: unknown surface key \"state_flie\""),
+        "{}",
+        stdout(&output)
+    );
+}
