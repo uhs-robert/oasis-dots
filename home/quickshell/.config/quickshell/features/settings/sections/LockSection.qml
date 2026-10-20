@@ -20,7 +20,7 @@ RowsSection {
         },
         {
             label: "Tint",
-            desc: "Recolors the skin. Skins with a fixed game palette ignore it.",
+            desc: "Recolors the skin. Classic keeps each skin's original colours. Skins with a fixed game palette ignore it.",
             values: () => Style.lock_tints,
             text: v => root.cap(v),
             value: () => Style.lock_tint,

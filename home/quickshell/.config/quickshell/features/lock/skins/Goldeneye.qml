@@ -117,7 +117,8 @@ Item {
     }
 
     // The Watch colours option reaches the skin on the ctx; Classic is the fixed green, and a ctx without the field stays Classic.
-    readonly property bool tinted: !!root.ctx && root.ctx.watch_colors === "Theme"
+    // The classic lock tint asks for the original palette, so it shows the fixed green too.
+    readonly property bool tinted: !!root.ctx && root.ctx.watch_colors === "Theme" && root.ctx.tint !== "classic"
     readonly property color hue_src: root.ctx && root.ctx.tint !== "primary" ? root.ctx.tint_base : Theme.theme_primary
     readonly property var ramp: Watch.theme_ramp(Math.max(0, root.hue_src.hslHue), Watch.sat_of(root.hue_src), [Theme.bg_surface.r, Theme.bg_surface.g, Theme.bg_surface.b], [Theme.bg_mantle.r, Theme.bg_mantle.g, Theme.bg_mantle.b], 0.8, [0, 0, 0])
 

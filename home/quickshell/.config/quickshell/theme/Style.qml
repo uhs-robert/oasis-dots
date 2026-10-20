@@ -475,7 +475,7 @@ Singleton {
     readonly property string lock_name: root.lock_style === "follow" ? root.name : root.lock_style
     // The lock skins' colour family.
     property string lock_tint: "primary"
-    readonly property var lock_tints: ["primary", "secondary", "green", "amber", "white"]
+    readonly property var lock_tints: ["primary", "secondary", "green", "amber", "white", "classic"]
     // What the simple lock draws behind its card: the desktop pixelated, blurred, or nothing.
     property string lock_backdrop: "pixelate"
     readonly property var lock_backdrops: ["pixelate", "blur", "off"]
