@@ -8,9 +8,11 @@ use super::sequence;
 use crate::cli::ExplainArgs;
 use crate::click::driver::WindowSel;
 use crate::click::explain::{self, ClickTrace, ExplainSink};
+use crate::click::provider::BuiltinHooks;
 use crate::config::Config;
+use crate::config::schema::{Candidates, Integration};
 use crate::exit::CliError;
-use crate::hooks::{Dispatch, HookRun, Hooks, LegacyHooks, NoHooks, ShellHooks};
+use crate::hooks::{Dispatch, HookQuery, HookRun, Hooks, LegacyHooks, NoHooks, ShellHooks};
 use serde::Serialize;
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -419,6 +421,26 @@ fn window_of(name: &str) -> Result<WindowSel, CliError> {
     }
 }
 
+/// Hooks for a dump given as a file: every external hook is off, TOML ones too (the latency test routes phrases that
+/// reach TOML hooks, and a bash start per hook would measure bash, not routing). The built-in providers still run,
+/// because they are voxcmd's own and `--window` needs their capture.
+struct DumpHooks {
+    builtin: BuiltinHooks,
+}
+
+impl Hooks for DumpHooks {
+    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+        match integration.candidates_for(query.action) {
+            Some(Candidates::Builtin(_)) => self.builtin.candidates(integration, query),
+            _ => NoHooks.candidates(integration, query),
+        }
+    }
+
+    fn surface_open(&self, _integration: &Integration) -> bool {
+        false
+    }
+}
+
 /// `voxcmd explain <phrase>`.
 pub fn run(args: ExplainArgs) -> Result<String, CliError> {
     if args.reply {
@@ -431,10 +453,12 @@ pub fn run(args: ExplainArgs) -> Result<String, CliError> {
     let config_dir = crate::paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("explain", message))?;
     let sink = ExplainSink::default();
-    // A dump given as a file turns every hook off, TOML ones too: the latency test routes phrases that reach TOML
-    // hooks, and a bash start per hook would measure bash, not routing.
     let hooks: Box<dyn Hooks> = if crate::paths::legacy_dump_override().is_some() {
-        Box::new(NoHooks)
+        let builtin = match window {
+            Some(window) => BuiltinHooks::tracing(window, ExplainSink::clone(&sink)),
+            None => BuiltinHooks::default(),
+        };
+        Box::new(DumpHooks { builtin })
     } else {
         // A dry run: a hook that toasts prints it to stderr instead.
         let shell = ShellHooks::new(
