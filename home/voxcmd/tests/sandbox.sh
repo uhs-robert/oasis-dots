@@ -478,6 +478,22 @@ setsid)
   [ -z "${VOXCMD_RECORDING_OWNER_FILE-}" ] || echo $$ >"$VOXCMD_RECORDING_OWNER_FILE"
   ;;
 voxtype)
+  case "${1-} ${2-}" in
+  "record stop" | "record cancel")
+    # As the daemon does, act on a stop or cancel only until the recording is over (idle): a second one, from a
+    # confirmation that heard the ending too, is logged as "ignored" and so counts as no ending. A turn "transcribing"
+    # is still cancelled, as the stop tests expect. The lock makes the check and the change one step; two stubs
+    # started at once would otherwise both see "recording".
+    if [ -n "${SANDBOX_VOXTYPE_TURNS-}" ]; then
+      exec 8>"$SANDBOX_DIR/voxtype.lock"
+      flock 8
+      if [ "$(cat "$XDG_RUNTIME_DIR/voxtype/state" 2>/dev/null)" = idle ]; then
+        log ignored "$@"
+        exit 0
+      fi
+    fi
+    ;;
+  esac
   log "$@"
   if [ "${1-}" = -q ]; then
     for transcribed; do :; done
