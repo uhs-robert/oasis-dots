@@ -188,6 +188,7 @@ pub fn explain_phrase(router: &Router, phrase: &str) -> Explain {
             StepContext {
                 in_sequence: true,
                 in_session_turn: false,
+                ..StepContext::default()
             },
         );
         let stop = !step.ran;

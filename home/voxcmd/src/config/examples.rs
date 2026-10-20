@@ -4,14 +4,20 @@
 //! Routing asks the hooks as `explain` does (a dry run), because a catch-all `{target}` verb only claims a phrase its
 //! candidates name: without them every such integration would seem to take every example. The answer can therefore
 //! depend on live state (running apps). A phrase with a `<placeholder>` cannot be spoken as written and is skipped, and
-//! so is one only said inside a mode: every example of an integration with a bar surface (said while it is open, and
-//! its candidates read the surface), and one that starts with the wake word (a mode's exit phrase, which routing
-//! strips the wake word from).
+//! so is one only said inside a mode that cannot be reproduced: a bash integration's examples when it has a bar surface
+//! (said while it is open, and its candidates read the surface), and any example that starts with the wake word (a
+//! mode's exit phrase, which routing strips the wake word from).
+//!
+//! A TOML integration carries its surface and mode as data, so its examples are routed. One that misses as spoken is
+//! tried the way the session would hear it: with the surface forced open, and through the mode's declared `rewrite`.
+//! Only a `rewrite_hook` cannot be reproduced (it would run the hook), and its misses are skipped.
 use super::Config;
 use super::list::relative;
+use super::schema::Format;
 use crate::exit::CliError;
 use crate::hooks::{Dispatch, Hooks, LegacyHooks, NoHooks, ShellHooks};
 use crate::route::router::{Router, StepContext};
+use crate::session::mode::declared_rewrite;
 use crate::text::normalize::normalize;
 use regex::Regex;
 use serde::Serialize;
@@ -88,7 +94,7 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
         ))
     };
     let router = Router::new(config, hooks.as_ref());
-    let (mut routed, mut skipped, mut in_mode) = (0, 0, 0);
+    let (mut routed, mut skipped, mut in_mode, mut routed_in_scope) = (0, 0, 0, 0);
     let mut misrouted = Vec::new();
     for (index, integration) in config.integrations.iter().enumerate() {
         for example in &integration.examples {
@@ -96,18 +102,37 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
                 skipped += 1;
                 continue;
             }
-            if integration.surface.is_some() || router.wake().split_leading(&normalize(example)).is_some() {
+            let is_toml = integration.format == Format::Toml;
+            if (integration.surface.is_some() && !is_toml) || router.wake().split_leading(&normalize(example)).is_some()
+            {
                 in_mode += 1;
                 continue;
             }
-            let (_, options) = router.route_step_with_options(example, StepContext::default());
-            let mut landed: Vec<String> = Vec::new();
-            for option in &options {
-                if !landed.contains(&option.name) {
-                    landed.push(option.name.clone());
+            let (mut landed, mut ok) = lands_on(&router, index, example, StepContext::default());
+            let scoped = is_toml && (integration.surface.is_some() || integration.mode.is_some());
+            if !ok && scoped {
+                let mut text = example.clone();
+                if let Some(rewriting) = declared_rewrite(integration, &config.intents) {
+                    text = rewriting.apply(&router.step_text(example));
+                }
+                let context = StepContext {
+                    open_surface: integration.surface.is_some().then_some(index),
+                    ..StepContext::default()
+                };
+                let hook_rewrites = integration
+                    .mode
+                    .as_ref()
+                    .is_some_and(|mode| mode.rewrite_hook.is_some());
+                if hook_rewrites {
+                    in_mode += 1;
+                    continue;
+                }
+                if !text.is_empty() {
+                    (landed, ok) = lands_on(&router, index, &text, context);
+                    routed_in_scope += usize::from(ok);
                 }
             }
-            if !options.is_empty() && options.iter().all(|option| option.integration == index) {
+            if ok {
                 routed += 1;
             } else {
                 misrouted.push(Misrouted {
@@ -119,8 +144,14 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
         }
     }
     let text = if json {
-        serde_json::json!({"routed": routed, "skipped": skipped, "in_mode": in_mode, "misrouted": misrouted})
-            .to_string()
+        serde_json::json!({
+            "routed": routed,
+            "routed_in_scope": routed_in_scope,
+            "skipped": skipped,
+            "in_mode": in_mode,
+            "misrouted": misrouted,
+        })
+        .to_string()
     } else {
         let mut lines: Vec<String> = misrouted
             .iter()
@@ -134,7 +165,8 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
             })
             .collect();
         lines.push(format!(
-            "{routed} examples route to their integration, {} do not; skipped {skipped} with a <placeholder> and {in_mode} said inside a mode",
+            "{routed} examples route to their integration ({routed_in_scope} only in their surface or mode), {} do not; \
+             skipped {skipped} with a <placeholder> and {in_mode} said inside a mode",
             misrouted.len()
         ));
         lines.join("\n")
@@ -145,4 +177,17 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
     // The misrouted examples are the output, not an error message: print them, then exit 1 without a stderr line.
     println!("{text}");
     Err(CliError::quiet("integrations examples"))
+}
+
+/// The integrations the phrase landed on, and whether it landed on `index` alone.
+fn lands_on(router: &Router, index: usize, phrase: &str, context: StepContext) -> (Vec<String>, bool) {
+    let (_, options) = router.route_step_with_options(phrase, context);
+    let mut landed: Vec<String> = Vec::new();
+    for option in &options {
+        if !landed.contains(&option.name) {
+            landed.push(option.name.clone());
+        }
+    }
+    let ok = !options.is_empty() && options.iter().all(|option| option.integration == index);
+    (landed, ok)
 }

@@ -40,6 +40,8 @@ pub struct StepContext {
     pub in_sequence: bool,
     /// Routing a voice session's turn (2.4): no near miss.
     pub in_session_turn: bool,
+    /// Routes as if this integration's bar surface were open, without asking its state file (`examples --route`).
+    pub open_surface: Option<usize>,
 }
 
 pub struct Router<'c> {
@@ -49,6 +51,8 @@ pub struct Router<'c> {
     hooks: Memoized<'c>,
     /// Time spent resolving matches (hooks, fzf) in the step being routed, left out of its `millis`.
     resolve_wall: Cell<Duration>,
+    /// `StepContext::open_surface` of the step being routed; the correction retry reads it too.
+    assumed_surface: Cell<Option<usize>>,
 }
 
 /// The integrations one pass over the tiers tried, and what they offered.
@@ -82,6 +86,7 @@ impl<'c> Router<'c> {
             wake: WakeWords::from_env(),
             hooks: Memoized::new(hooks),
             resolve_wall: Cell::new(Duration::ZERO),
+            assumed_surface: Cell::new(None),
         }
     }
 
@@ -150,6 +155,7 @@ impl<'c> Router<'c> {
     pub fn route_step_with_options(&self, transcript: &str, context: StepContext) -> (StepTrace, Vec<RouteOption>) {
         let started = Instant::now();
         self.resolve_wall.set(Duration::ZERO);
+        self.assumed_surface.set(context.open_surface);
         self.hooks.forget();
         let mut text = apply_replacements(&normalize(transcript), &self.config.replacements);
         let mut step = StepTrace {
@@ -337,7 +343,7 @@ impl<'c> Router<'c> {
             self.try_tier(&mut pass, &[index], &rest, RouteTier::Forced, raw);
             return pass;
         }
-        if let Some(index) = self.open_surface() {
+        if let Some(index) = self.assumed_surface.get().or_else(|| self.open_surface()) {
             let mut attempt = Pass::new(self.config.integrations.len());
             self.try_tier(&mut attempt, &[index], text, RouteTier::Surface, raw);
             if !attempt.options.is_empty() {
