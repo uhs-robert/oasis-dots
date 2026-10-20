@@ -187,11 +187,11 @@ case_voxcmd_runner() {
   start_case 'voxcmd test runner only'
   local runner lib
   lib=$(first_tracked 'home/voxcmd/tests/lib.sh') || return 0
-  runner=$(first_tracked 'home/voxcmd/tests/*.sh' '/lib\.sh$') || return 0
+  runner=$(first_tracked 'home/voxcmd/tests/run-sessions.sh') || return 0
   echo '# x' >>"$runner"
   plan
-  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake shellcheck shfmt
-  expect_skipped luacheck qmllint
+  expect_ran voxcmd-click shellcheck shfmt
+  expect_skipped luacheck qmllint voxcmd-phrases voxcmd-calendar voxcmd-wake
   expect_list_has plain "$runner"
   expect_list_has plain "$lib"
 }
@@ -220,7 +220,7 @@ case_voxcmd_bash_script() {
   start_case 'bash voxcmd script'
   echo '# x' >>home/voxcmd/.local/bin/voxcmd
   plan
-  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake
+  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox
   expect_skipped voxcmd-rust
 }
 
@@ -228,7 +228,16 @@ case_voxcmd_shared_fixture() {
   start_case 'voxcmd fixture the suites read'
   echo '# x' >>home/voxcmd/tests/fixtures/ocr.tsv
   plan
-  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-rust
+  expect_ran voxcmd-phrases
+  expect_skipped voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox voxcmd-rust
+}
+
+case_voxcmd_small_suite() {
+  start_case 'one small voxcmd suite'
+  echo '# x' >>home/voxcmd/tests/run-calendar.sh
+  plan
+  expect_ran voxcmd-calendar shellcheck
+  expect_skipped voxcmd-phrases voxcmd-click voxcmd-wake voxcmd-firefox voxcmd-rust
 }
 
 case_deleted_sourced_helper() {
@@ -387,7 +396,7 @@ case_only() {
   [ $? = 2 ] || fail 'an unknown step to exit 2'
 }
 
-for case_fn in case_readme case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_deleted_sourced_helper \
+for case_fn in case_readme case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
   case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed case_only; do
   report "$case_fn"

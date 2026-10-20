@@ -72,7 +72,7 @@ def runs_in_part(step):
     """Whether this run runs only part of step, so its pass would vouch for more than ran. VOXCMD_ONLY_SECTIONS
     reaches the voxcmd suites (home/voxcmd/tests/lib.sh) through the environment and runs only the sections it names;
     the Rust crate's step never reads it."""
-    return step.scope == "voxcmd" and env_set("VOXCMD_ONLY_SECTIONS")
+    return step.scope in scopes.VOXCMD_SUITE_SCOPES and env_set("VOXCMD_ONLY_SECTIONS")
 
 
 def job_count():

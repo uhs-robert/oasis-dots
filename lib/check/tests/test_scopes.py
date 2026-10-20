@@ -46,8 +46,8 @@ CASES = [
     ("home/quickshell/.config/quickshell/core/JsonStore.qml", " qml node"),
     # The consumers OUTSIDE_REFS in lib/check/steps/qml_paths.py names reach the qml scope beside their own.
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", " lua qml"),
-    ("home/voxcmd/.local/bin/voxcmd-alarm", " voxcmd qml"),
-    ("home/voxcmd/tests/run-monitors.sh", " voxcmd qml"),
+    ("home/voxcmd/.local/bin/voxcmd-alarm", " voxphrases voxclick voxcalendar voxwake voxfirefox qml"),
+    ("home/voxcmd/tests/run-monitors.sh", " voxclick qml"),
     ("home/quickshell/.config/quickshell/shell.qml", " qml node"),
     # A shader reaches only the shader step; its compiled output also reaches QML, which names it by path.
     ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag", " shaders"),
@@ -55,24 +55,36 @@ CASES = [
     ("lib/check/steps/shaders.sh", "checkscope shaders"),
     ("home/hypr/.config/hypr/hyprland.lua", " lua"),
     (".luacheckrc", " lua"),
-    ("home/voxcmd/tests/run.sh", " voxcmd"),
+    # A suite's own files reach that suite only; what several read reaches each of them.
+    ("home/voxcmd/tests/run.sh", " voxclick"),
+    ("home/voxcmd/tests/run-phrases.sh", " voxphrases"),
+    ("home/voxcmd/tests/run-calendar.sh", " voxcalendar"),
+    ("home/voxcmd/tests/run-wake.sh", " voxwake"),
+    ("home/voxcmd/tests/wake_test.py", " voxwake"),
+    ("home/voxcmd/tests/run-firefox-extension.sh", " voxfirefox"),
+    ("home/voxcmd/tests/lib.sh", " voxclick"),
+    ("home/voxcmd/tests/sandbox.sh", " voxphrases voxclick voxcalendar voxwake"),
+    ("home/voxcmd/tests/firefox-profile", " voxphrases voxclick voxcalendar"),
+    ("home/voxcmd/tests/fixtures/binds.json", " voxphrases voxclick"),
+    ("home/voxcmd/tests/fixtures/overview.json", " voxclick"),
     # The crate's files reach only the Rust step, since the suites run the bash voxcmd. An integration file is read by
-    # both.
+    # the suites.
     ("home/voxcmd/src/main.rs", " rust"),
     ("home/voxcmd/Cargo.lock", " rust"),
     ("home/voxcmd/rustfmt.toml", " rust"),
     ("home/voxcmd/tests/cli.rs", " rust"),
-    ("home/voxcmd/tests/fixtures/x.txt", " rust voxcmd"),
+    ("home/voxcmd/tests/fixtures/x.txt", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
     ("home/voxcmd/tests/snapshots/cli__x.snap", " rust"),
     ("home/voxcmd/tests/fixtures/match-goldens.tsv", " rust"),
     ("home/voxcmd/tests/fixtures/legacy-dump.jsonl", " rust"),
     # The bash voxcmd and the fixtures the suites read still reach them.
-    ("home/voxcmd/.local/bin/voxcmd", " voxcmd"),
-    ("home/voxcmd/tests/fixtures/ocr.tsv", " rust voxcmd"),
-    ("home/voxcmd/.config/voxcmd/integrations/x.toml", " rust voxcmd"),
-    ("home/voxcmd/.config/voxcmd/integrations.d/x.toml", " voxcmd"),
+    ("home/voxcmd/.local/bin/voxcmd", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
+    ("home/voxcmd/tests/fixtures/ocr.tsv", " voxphrases"),
+    ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " rust"),
+    ("home/voxcmd/.config/voxcmd/integrations/x.toml", " rust voxphrases voxclick voxcalendar voxwake voxfirefox"),
+    ("home/voxcmd/.config/voxcmd/integrations.d/x.toml", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
     ("lib/check/steps/voxcmd-rust.sh", "checkscope rust"),
-    ("extras/voxcmd-firefox/background.js", " voxcmd"),
+    ("extras/voxcmd-firefox/background.js", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
     ("extras/other/file", ""),
     ("lib/install/voice.sh", " policy loader"),
     ("lib/install/tests/migrate-quickshell-input.sh", " migratelock"),
@@ -127,7 +139,7 @@ class PathScopes(unittest.TestCase):
                     "(src, Cargo, tests/*.rs, snapshots, goldens) so they reach the voxcmd suites, then delete this test"))
         for path in ("home/voxcmd/src/cli.rs", "home/voxcmd/tests/snapshots/cli__x.snap"):
             with self.subTest(path=path):
-                self.assertNotIn("voxcmd", keys.path_scopes(path).split())
+                self.assertFalse(set(scopes.VOXCMD_SUITE_SCOPES) & set(keys.path_scopes(path).split()))
 
     def test_every_step_scope_is_reachable(self):
         """A step whose scope no path reaches would run only in a full check."""
