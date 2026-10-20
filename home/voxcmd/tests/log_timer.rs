@@ -150,8 +150,15 @@ fn errors_formats_the_bars_history_in_the_clock_format() {
     );
 
     let json = sandbox.voxcmd(&["log", "errors", "--json"], &[]);
-    let history: serde_json::Value = serde_json::from_str(&stdout(&json)).unwrap();
-    assert_eq!(history[1]["summary"], "Nothing heard");
+    // Exactly the spec's BarError keys, the time as the bar gave it and the body untouched.
+    let expected: serde_json::Value = serde_json::json!([
+        {"time": "2026-10-17T15:47:09.123Z", "summary": "Could not open", "body": "line one\nline two"},
+        {"time": "2026-10-17T03:05:00Z", "summary": "Nothing heard", "body": ""},
+    ]);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&stdout(&json)).unwrap(),
+        expected
+    );
     sandbox.no_bash_ran();
 }
 
