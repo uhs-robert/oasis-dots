@@ -35,6 +35,7 @@ struct Problem {
 #[serde(rename_all = "lowercase")]
 enum Severity {
     Error,
+    Warning,
 }
 
 pub fn run(files: &[String], json: bool) -> Result<Option<String>, CliError> {
@@ -48,10 +49,11 @@ pub fn run(files: &[String], json: bool) -> Result<Option<String>, CliError> {
             .iter()
             .map(|problem| {
                 format!(
-                    "{}:{}:{}: error: {}",
+                    "{}:{}:{}: {}: {}",
                     problem.file.display(),
                     problem.line,
                     problem.column,
+                    problem.severity.label(),
                     problem.message
                 )
             })
@@ -119,7 +121,9 @@ fn check(dir: &Path, args: &[String]) -> (Report, usize) {
         }
     }
     let report = Report {
-        ok: problems.is_empty(),
+        ok: problems
+            .iter()
+            .all(|problem| matches!(problem.severity, Severity::Warning)),
         files: toml.len(),
         problems,
     };
@@ -197,12 +201,17 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
             file: shown.clone(),
             line,
             column,
-            severity: Severity::Error,
+            severity: if code == "shadowed-verb" {
+                Severity::Warning
+            } else {
+                Severity::Error
+            },
             code,
             message,
         });
     };
-    for verb in &integration.verbs {
+    let mut first_with_regex = std::collections::HashMap::new();
+    for (index, verb) in integration.verbs.iter().enumerate() {
         let at = (verb.line.unwrap_or(1), verb.column.unwrap_or(1));
         match pattern::compile(integration, verb, intents) {
             Err(message) => {
@@ -218,6 +227,20 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
             Ok(compiled) => {
                 if let Err(error) = regex::bytes::Regex::new(&compiled.regex) {
                     report(at, "bad-regex", format!("verb {:?}: {error}", verb.pattern));
+                }
+                // Within one integration the first matching verb wins. Across integrations nothing is shadowed:
+                // every one of a tier offers its option and several go to a picker. A legacy file is only loaded.
+                if integration.format == Format::Toml
+                    && let Some(earlier) = first_with_regex.insert(compiled.regex, index)
+                {
+                    report(
+                        at,
+                        "shadowed-verb",
+                        format!(
+                            "verb {:?} can never match: verb {} ({:?}) matches the same phrases first",
+                            verb.pattern, earlier, integration.verbs[earlier].action
+                        ),
+                    );
                 }
             }
         }
@@ -319,5 +342,14 @@ fn split_located(file: &Path, error: &str) -> (usize, String) {
             (number.parse().unwrap_or(1), message.to_string())
         }
         _ => (1, rest.to_string()),
+    }
+}
+
+impl Severity {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Error => "error",
+            Self::Warning => "warning",
+        }
     }
 }
