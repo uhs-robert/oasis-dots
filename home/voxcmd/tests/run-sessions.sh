@@ -1270,6 +1270,19 @@ sess_start "UNTIL_STOP Words. Cortana stop."
 sess_wait
 pause_checks_done 2
 check "a cancel and a stop at once: one wins, and what is typed follows it" "session_gone && [[ \$(grep -cE '^voxtype record (stop|cancel)' '$log') == 1 ]] && if grep -q '^voxtype record cancel' '$log'; then ! grep -q '^wtype' '$log'; else wtype_is 'wtype -- Words.'; fi"
+# The stub itself, as the daemon: of a stop and a cancel sent together to one recording, one acts and the other is ignored.
+stub_pairs_not_ending_once=0
+for _ in $(seq 40); do
+  echo recording >"$XDG_RUNTIME_DIR/voxtype/state"
+  : >"$log"
+  SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record stop &
+  SANDBOX_VOXTYPE_TURNS="$sess_turns" voxtype record cancel &
+  wait
+  [[ $(grep -cE '^voxtype record (stop|cancel)' "$log") == 1 && $(grep -c '^voxtype ignored record' "$log") == 1 ]] || stub_pairs_not_ending_once=$((stub_pairs_not_ending_once + 1))
+done
+check "the voxtype stub acts on one of a stop and a cancel sent together, and ignores the other" "[[ $stub_pairs_not_ending_once == 0 ]]"
+echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
+
 unset 'sess_env[-1]'
 
 pause_says "AFTER_END Cortana cancel."
