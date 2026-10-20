@@ -10,7 +10,7 @@
 use crate::click::driver::WindowSel;
 use crate::click::explain::ExplainSink;
 use crate::click::provider::BuiltinHooks;
-use crate::config::schema::{Candidates, Format, Integration, Surface};
+use crate::config::schema::{Candidates, Format, HelpRows, Integration, Surface};
 use crate::debug::debug;
 use crate::paths;
 use crate::process;
@@ -390,6 +390,62 @@ impl ShellHooks {
         command
     }
 
+    /// What Tab lists in Voice Help for a TOML file: `(action, candidate)` of each row of each `[[help]]` entry, in
+    /// order. A hook that fails, times out or prints something unreadable lists nothing for its entry, as the bash
+    /// `help_listed ... || true` did, and says why in the debug log.
+    pub fn help_entries(&self, integration: &Integration) -> Vec<(String, Candidate)> {
+        let mut rows = Vec::new();
+        for entry in &integration.help {
+            let listed = match &entry.rows {
+                HelpRows::Static { id, label } => vec![Candidate::plain(id, label)],
+                HelpRows::Candidates => self.no_target_candidates(integration, &entry.action),
+                HelpRows::Hook(shell) => self.help_list(integration, &entry.action, shell),
+            };
+            rows.extend(listed.into_iter().map(|candidate| (entry.action.clone(), candidate)));
+        }
+        rows
+    }
+
+    /// The action's `candidates` hook asked for no target, which is how a bare `help_action` lists everything.
+    fn no_target_candidates(&self, integration: &Integration, action: &str) -> Vec<Candidate> {
+        let query = HookQuery {
+            action,
+            target: "",
+            args: &[],
+            phrase: "",
+            raw_transcript: "",
+        };
+        match self.candidates(integration, &query).lookup {
+            Lookup::Candidates(lines) => lines,
+            _ => Vec::new(),
+        }
+    }
+
+    fn help_list(&self, integration: &Integration, action: &str, shell: &str) -> Vec<Candidate> {
+        let env = HookEnv {
+            integration,
+            action,
+            args: &[],
+            phrase: "",
+            raw_transcript: "",
+            id: None,
+            label: None,
+            confirmed: false,
+            active_before: None,
+            spoken: false,
+        };
+        let failed = |why: &str| {
+            debug(&format!("hook failed: {} {action} help list: {why}", integration.name));
+            Vec::new()
+        };
+        match process::run_with_timeout(&mut self.command(shell, &env, false), DEFAULT_TIMEOUT) {
+            Err(error) => failed(&format!("could not start bash: {error}")),
+            Ok(outcome) if outcome.timed_out => failed("timed out"),
+            Ok(outcome) if outcome.code() != Some(0) => failed(&outcome.how_it_ended()),
+            Ok(outcome) => parse_help_lines(&outcome.stdout).unwrap_or_else(|message| failed(&message)),
+        }
+    }
+
     fn env(&self, env: &HookEnv) -> BTreeMap<String, String> {
         let mut vars = arg_env(env.args);
         let flag = |on: bool| if on { "1" } else { "0" }.to_string();
@@ -510,8 +566,8 @@ fn log_failure(integration: &Integration, run: &HookRun, problem: &str) {
 }
 
 /// The lines of a hook's output: `id<TAB>label<TAB>match_text`, the last two optional, one option per line. A blank
-/// line is skipped; a line with no id is an error, since the id is what `run` is later given. (Help lists, 2.6, will
-/// want id-less rows and need their own reader.)
+/// line is skipped; a line with no id is an error, since the id is what `run` is later given. (Help lists may have an
+/// empty id and are read by `parse_help_lines`.)
 pub fn parse_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
     let mut candidates = Vec::new();
     for (index, line) in stdout.split('\n').enumerate() {
@@ -541,6 +597,32 @@ pub fn parse_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
         });
     }
     Ok(candidates)
+}
+
+/// The lines of a help list hook: `id<TAB>label`, the label optional (it defaults to the id). Unlike `candidates`
+/// output the id may be empty, for a row such as "Exit submap" that runs the action on nothing.
+fn parse_help_lines(stdout: &str) -> Result<Vec<Candidate>, String> {
+    let mut rows = Vec::new();
+    for (index, line) in stdout.lines().enumerate() {
+        if line.is_empty() {
+            continue;
+        }
+        let fields: Vec<&str> = line.split('\t').collect();
+        if fields.len() > 2 {
+            return Err(format!(
+                "output line {} has {} tab-separated fields, at most 2 are read",
+                index + 1,
+                fields.len()
+            ));
+        }
+        let label = fields
+            .get(1)
+            .copied()
+            .filter(|label| !label.is_empty())
+            .unwrap_or(fields[0]);
+        rows.push(Candidate::plain(fields[0], label));
+    }
+    Ok(rows)
 }
 
 fn shell_quote(text: &str) -> String {

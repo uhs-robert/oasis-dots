@@ -201,6 +201,15 @@ fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Pro
             ));
         }
     }
+    for entry in &integration.help {
+        if !integration.actions.contains_key(&entry.action) {
+            problems.push(problem(
+                line_in_text_from_line(&text, "action", entry.line),
+                "missing-action",
+                format!("[[help]] action {:?} is not declared under [actions]", entry.action),
+            ));
+        }
+    }
     for (id, action) in &integration.actions {
         if let Some(schema::Wait::Builtin(name)) = &action.wait
             && schema::BuiltinWait::parse(name).is_none()
@@ -356,6 +365,20 @@ fn unknown_keys(
             }
         }
     }
+    if let Some(toml::Value::Array(entries)) = table.get("help") {
+        for (entry, help) in entries.iter().zip(&integration.help) {
+            for key in entry
+                .as_table()
+                .into_iter()
+                .flat_map(toml::Table::keys)
+                .filter(|key| !schema::HELP_KEYS.contains(&key.as_str()))
+            {
+                // The entry's header line, then its own lines down to the key.
+                let found = line_in_text_from_line(text, key, help.line);
+                problems.push(problem(found, "unknown-key", format!("unknown help key {key:?}")));
+            }
+        }
+    }
     if let Some(toml::Value::Table(surface)) = table.get("surface") {
         let from = text.find("[surface]").unwrap_or(0);
         for key in surface
@@ -408,6 +431,16 @@ fn line_in_text(text: &str, key: &str, from: usize) -> (usize, usize) {
                 schema::column_of(text, found.start()),
             )
         })
+}
+
+/// `line_in_text` from the start of the 1-based `line`.
+fn line_in_text_from_line(text: &str, key: &str, line: usize) -> (usize, usize) {
+    let from = text
+        .split_inclusive('\n')
+        .take(line.saturating_sub(1))
+        .map(str::len)
+        .sum();
+    line_in_text(text, key, from)
 }
 
 /// 1-based column of the first `needle` on the 1-based `line` of `text`.

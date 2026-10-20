@@ -49,8 +49,10 @@ pub struct Integration {
     /// Phrases for Voice Help; `<name>` marks a spoken part.
     pub examples: Vec<String>,
     /// A legacy file lists runnable choices in Voice Help (`help_choices`, or `help_action` over `candidates`), which
-    /// only the bash voxcmd can produce. A TOML file's come with `[[help]]` in 3.1.
+    /// only the bash voxcmd can produce. A TOML file's are its `help` entries instead.
     pub legacy_help: bool,
+    /// What Tab lists in Voice Help (TOML only), in file order.
+    pub help: Vec<Help>,
     pub settings: MatchSettings,
     pub actions: BTreeMap<String, Action>,
     pub surface: Option<Surface>,
@@ -285,6 +287,24 @@ pub enum Wait {
     LegacyCondition(String),
 }
 
+/// One `[[help]]` entry: the runnable rows Tab shows for the integration in Voice Help, each run as `action`.
+#[derive(Debug, Clone)]
+pub struct Help {
+    pub action: String,
+    pub rows: HelpRows,
+    pub line: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HelpRows {
+    /// The action's `candidates` asked with no target.
+    Candidates,
+    /// A shell hook printing `id<TAB>label` lines.
+    Hook(String),
+    /// One fixed row; the id may be empty.
+    Static { id: String, label: String },
+}
+
 #[derive(Debug, Clone)]
 pub enum Surface {
     /// Under `$XDG_RUNTIME_DIR/voxcmd`; open while its top-level `open` is true.
@@ -296,7 +316,7 @@ pub enum Surface {
 // ---- the TOML file --------------------------------------------------------------------------------------------------
 
 /// The keys each table accepts, for `integrations check` to name a mistyped one. The loader ignores unknown keys, and
-/// ignores `help`, `label` and `candidate_arg` too until 3.1 reads them, so these lists are 1.1's schema, not the
+/// ignores `label` and `candidate_arg` too (nothing reads them yet), so these lists are 1.1's schema, not the
 /// serde structs below.
 pub const FILE_KEYS: &[&str] = &[
     "name",
@@ -319,6 +339,7 @@ pub const FILE_KEYS: &[&str] = &[
     "mode",
 ];
 pub const VERB_KEYS: &[&str] = &["action", "match", "label", "requires"];
+pub const HELP_KEYS: &[&str] = &["action", "list", "id", "label"];
 pub const SURFACE_KEYS: &[&str] = &["state_file"];
 pub const ACTION_KEYS: &[&str] = &[
     "run",
@@ -362,6 +383,8 @@ struct IntegrationFile {
     define: BTreeMap<String, String>,
     verbs: Vec<toml::Spanned<VerbEntry>>,
     #[serde(default)]
+    help: Vec<toml::Spanned<HelpEntry>>,
+    #[serde(default)]
     examples: Vec<String>,
     #[serde(default)]
     actions: BTreeMap<String, ActionEntry>,
@@ -376,6 +399,48 @@ struct VerbEntry {
     #[serde(rename = "match")]
     pattern: String,
     requires: Option<String>,
+}
+
+/// Checked while it is read, so a malformed entry is a toml error with the entry's own span (line and column).
+#[derive(Deserialize)]
+#[serde(try_from = "HelpFields")]
+struct HelpEntry {
+    action: String,
+    rows: HelpRows,
+}
+
+#[derive(Deserialize)]
+struct HelpFields {
+    action: String,
+    list: Option<String>,
+    id: Option<String>,
+    label: Option<String>,
+}
+
+impl TryFrom<HelpFields> for HelpEntry {
+    type Error = String;
+
+    fn try_from(fields: HelpFields) -> Result<Self, String> {
+        if fields.action.trim().is_empty() {
+            return Err("[[help]] action must name an action".to_string());
+        }
+        let rows = match (fields.list, fields.id, fields.label) {
+            (Some(hook), None, None) if hook.trim().is_empty() => return Err("[[help]] list is empty".to_string()),
+            (Some(hook), None, None) => HelpRows::Hook(hook),
+            (Some(_), _, _) => return Err("[[help]] list and id/label are both set; use one".to_string()),
+            (None, _, Some(label)) if label.is_empty() => return Err("[[help]] label is empty".to_string()),
+            (None, id, Some(label)) => HelpRows::Static {
+                id: id.unwrap_or_default(),
+                label,
+            },
+            (None, Some(_), None) => return Err("[[help]] a static row with an id needs a label".to_string()),
+            (None, None, None) => HelpRows::Candidates,
+        };
+        Ok(Self {
+            action: fields.action,
+            rows,
+        })
+    }
 }
 
 #[derive(Deserialize)]
@@ -508,6 +573,19 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
             }
         })
         .collect();
+    let help = parsed
+        .help
+        .into_iter()
+        .map(|spanned| {
+            let line = line_of(spanned.span().start);
+            let entry = spanned.into_inner();
+            Help {
+                action: entry.action,
+                rows: entry.rows,
+                line,
+            }
+        })
+        .collect();
     let actions = parsed
         .actions
         .into_iter()
@@ -612,6 +690,7 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         verbs,
         examples: parsed.examples,
         legacy_help: false,
+        help,
         settings: MatchSettings {
             target_match: parsed.target_match,
             match_ignore_words: parsed.match_ignore_words,
