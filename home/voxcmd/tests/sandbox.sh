@@ -125,8 +125,9 @@ package_dir=$(dirname "$tests_dir")
 case "${VOXCMD_BIN:-bash}" in
 bash) voxcmd_path_dirs="$tests_dir/bin:$package_dir/.local/bin" ;;
 rs)
-  # A nested sandbox (run.sh running a sibling suite) has the build already.
-  [ -n "${SANDBOX_DIR:-}" ] || cargo build --release --quiet --manifest-path "$package_dir/Cargo.toml" >&2 || exit 1
+  # Always build, nested sandboxes too: run.sh checks only the binary's path, and cargo is a no-op when it is current,
+  # so this is the one place a stale release binary is refused.
+  cargo build --release --quiet --manifest-path "$package_dir/Cargo.toml" >&2 || exit 1
   voxcmd_path_dirs="$package_dir/target/release"
   ;;
 *)

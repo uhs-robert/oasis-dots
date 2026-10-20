@@ -81,3 +81,24 @@ fn a_backslash_in_the_target_is_kept() {
     assert_eq!(output.status.code(), Some(0));
     assert!(!output.stdout.is_empty());
 }
+
+/// Pins the known divergence from the awk (see `click_match` in src/click/internal.rs): invalid bytes become U+FFFD
+/// before the 48-character label cut, where gawk keeps the bytes.
+#[test]
+fn invalid_utf8_becomes_replacement_characters_before_the_label_is_cut() {
+    let mut page = b"#window 100 50 160 96 256 154\n#strip 0 0 0 154\n5\t1\t1\t1\t1\t1\t80\t40\t48\t24\t95\t".to_vec();
+    page.extend(b"a\xff".repeat(30));
+    page.push(b'\n');
+    let mut child = Command::new(env!("CARGO_BIN_EXE_voxcmd"))
+        .args(["internal", "click-match"])
+        .env("CLICK_TARGET", "aaaa")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(&page).unwrap();
+    let output = child.wait_with_output().unwrap();
+    let stdout = String::from_utf8(output.stdout).expect("output is valid UTF-8");
+    let label = stdout.lines().next().unwrap().split('\t').nth(3).unwrap();
+    assert_eq!(label, format!("{}a... - middle #1", "a\u{fffd}".repeat(22)));
+}
