@@ -604,6 +604,7 @@ mod tests {
             settings: MatchSettings::default(),
             actions: BTreeMap::new(),
             surface: None,
+            picker: None,
         }
     }
 

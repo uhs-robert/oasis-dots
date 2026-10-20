@@ -39,6 +39,16 @@ pub fn active_window() -> Option<Value> {
     query("activewindow", ANSWER_WITHIN).filter(|window| window.get("at").is_some())
 }
 
+/// Every client, None when Hyprland did not answer with a list.
+pub fn clients() -> Option<Value> {
+    query("clients", ANSWER_WITHIN).filter(Value::is_array)
+}
+
+/// Every monitor, None when Hyprland did not answer with a list.
+pub fn monitors() -> Option<Value> {
+    query("monitors", ANSWER_WITHIN).filter(Value::is_array)
+}
+
 /// The client with this stableId, None when it is gone or Hyprland did not answer.
 pub fn window_by_stable_id(stable_id: &str) -> Option<Value> {
     query("clients", ANSWER_WITHIN)?

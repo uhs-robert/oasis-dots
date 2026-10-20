@@ -5,7 +5,7 @@
 
 /// The spoken fillers the awk skips when matching (`split("the a an ...")` in BEGIN). The test is on `normal_word`, so
 /// "this" (singularised to "thi") is not one.
-const FILLER_WORDS: [&str; 13] = [
+pub const FILLER_WORDS: [&str; 13] = [
     "the", "a", "an", "my", "this", "that", "please", "to", "of", "on", "in", "for", "it",
 ];
 

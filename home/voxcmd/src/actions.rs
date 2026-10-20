@@ -182,8 +182,11 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         return result;
     }
     // An action with no command only opens or leaves its mode.
-    let started = (!option.command.is_empty())
-        .then(|| process::run_to_end(&mut action_command(rt, integration, option, said, confirmed)));
+    let started = (!option.command.is_empty()).then(|| match declared.and_then(|action| action.builtin.as_ref()) {
+        // Done in-process; the result reads like a process's, so a failure below is reported as any other.
+        Some(builtin) => crate::click::act::run(builtin, &option.id, &option.target),
+        None => process::run_to_end(&mut action_command(rt, integration, option, said, confirmed)),
+    });
     let output = match &started {
         Some(Ok(outcome)) => action_output(integration, outcome),
         Some(Err(error)) => error.to_string(),

@@ -296,6 +296,21 @@ pub enum InternalCommand {
     /// the usage line is click-ocr's. Deleted with the bash script (3.2)
     #[command(hide = true)]
     ClickOcr(InternalArgs),
+    /// Clicks the candidate id (`x,y,button,left,top,width,height`, or `error:<why>` or `covered:`) as an action does:
+    /// prints the reason and exits 1 when it fails. `--target` is the spoken text a covered-text toast names. Deleted
+    /// with the bash click.sh (3.2)
+    #[command(hide = true)]
+    ClickAt(ClickAtArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct ClickAtArgs {
+    /// The spoken target
+    #[arg(long, default_value = "", allow_hyphen_values = true)]
+    pub target: String,
+    /// The candidate id; a negative coordinate (a monitor left of the origin) starts with a dash
+    #[arg(allow_hyphen_values = true)]
+    pub id: String,
 }
 
 #[derive(Args, Debug)]

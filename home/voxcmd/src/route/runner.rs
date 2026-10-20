@@ -10,8 +10,9 @@ use super::trace::Builtin;
 use crate::actions::{Runtime, Spoken, StepOutcome, StepResult, run_option};
 use crate::ask::{AskWith, PickWith};
 use crate::cli::PhraseArgs;
+use crate::click::pick::boxed_choices;
 use crate::config::Config;
-use crate::config::schema::Format;
+use crate::config::schema::{Format, Picker};
 use crate::exit::CliError;
 use crate::hooks::{Dispatch, LegacyHooks, ShellHooks};
 use crate::log::log_no_match;
@@ -21,6 +22,9 @@ use crate::process;
 use crate::text::wake_word::WAKE_WORD;
 use std::cell::RefCell;
 use std::collections::BTreeSet;
+
+/// What a `Picker::Hints` integration names as its pick command; `ask` knows it by this name.
+const HINTS_COMMAND: &str = "voxcmd-hints";
 
 /// The most options an integration's own picker (numbered boxes on screen) takes; more go to the text picker.
 const MAX_BOXED_OPTIONS: usize = 10;
@@ -184,15 +188,19 @@ impl<'a> Runner<'a> {
         }
     }
 
-    /// The command and choices of an integration's own picker, when every option comes from one bash integration whose
-    /// `pick_box` places each option on screen (click's numbered boxes); else none, and the text picker asks. A TOML
-    /// integration has none until 2.5.
+    /// The command and choices of an integration's own picker, when every option comes from one integration whose
+    /// options can be placed on screen (click's numbered boxes); else none, and the text picker asks. A built-in
+    /// picker reads each id's box itself; a bash integration's `pick_box` is asked through the bridge.
     fn integration_pick(&self, options: &[RouteOption], choices: &str) -> Option<(String, String)> {
         let files: BTreeSet<_> = options.iter().map(|option| &option.file).collect();
         if files.len() != 1 || options.len() > MAX_BOXED_OPTIONS {
             return None;
         }
         let integration = &self.rt.config.integrations[options[0].integration];
+        if integration.picker == Some(Picker::Hints) {
+            let ids: Vec<&str> = options.iter().map(|option| option.id.as_str()).collect();
+            return Some((HINTS_COMMAND.to_string(), boxed_choices(choices, &ids)?));
+        }
         if integration.format != Format::Bash {
             return None;
         }
