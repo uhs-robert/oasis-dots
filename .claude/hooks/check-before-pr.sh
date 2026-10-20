@@ -22,7 +22,9 @@ base=$(git merge-base HEAD origin/main 2>/dev/null) || exit 0
 lib/check/passed.sh passed-since "$base" HEAD && exit 0
 reason="No recorded pass of 'lib/check.sh --changed $base' for HEAD's tree, so the PR was not opened. Commit everything (a pass is recorded only for a tree with nothing uncommitted or untracked), run that command in the background, and open the PR again once it passes; steps that already passed for the same files are skipped."
 # A check chained into this very command cannot have been recorded yet, which the message above does not say.
-chained_re='lib/check\.sh|just[[:space:]]+check'
+# Only a check at command position counts: a mention inside a quoted --body or a longer word (`just checkfoo`) does not.
+nl=$'\n'
+chained_re="(^|[;&|(]|$nl)[[:space:]]*(([^][:space:];&|(]*/)?lib/check\\.sh|just[[:space:]]+check)([[:space:];&]|\$)"
 if [[ $cmd =~ $chained_re ]]; then
   reason+=" This command is judged before it runs, so a check inside it cannot count: run the check as its own earlier call, then gh pr create in a separate one."
 fi
