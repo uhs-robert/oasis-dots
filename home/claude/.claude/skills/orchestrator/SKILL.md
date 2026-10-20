@@ -54,8 +54,10 @@ Target: `$target`
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
    - For concurrency or lifecycle work (signals, locks, processes that hand over or race), name those risks in the brief and require tests that drive each risky path before review. Review rounds otherwise find these bugs one at a time.
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
+   - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement.
 
 6. Review the diff yourself against the review dimensions and repository conventions. Confirm the commit messages follow `commit-messages`. For a large diff (more than a few hundred lines or many files), brief a read-only reviewer agent with the same checks and read its findings instead of the diff.
+   - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
 7. Get an external review of the issue and diff against the review dimensions. Codex first; an Opus subagent when Codex is unavailable.
    - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call.
@@ -64,9 +66,7 @@ Target: `$target`
    - When the owner will try a change by hand before merging, build it on one branch until they have, and split it into PRs only after their verdict, so a fix never has to be rebased up a stack.
    - Before handing the owner a hands-on test, have an agent check everything the repo's preview tools can reach (an isolated run of the app, screenshots, scripted input). Ask the owner only for what those tools cannot reach, and say why.
    - Exit 0 → read the review path it prints.
-   - Exit 2 → spawn a read-only `general-purpose` agent with `model: opus` as the external reviewer. Give it the worktree path, the issue, the diff command (`git diff <base>...HEAD`), the root cause and design, and the review dimensions; name the risky areas to probe (ordering and races, lifecycle and reload paths, behavior the change silently dropped). It must not edit, commit, push or comment, and reports findings ranked by severity, each with file:line, a concrete failure scenario, confidence (confirmed/plausible) and a suggested fix.
-   - Codex at its usage limit (local or GitHub) is a standing owner waiver: an Opus "approve, no revisions" counts as Codex's, including under a standing merge approval. Merge via the repo's review-gate skip (ship-batch `--skip-review-gate`), first confirming by hand the PR has no unresolved threads, since the skip bypasses that check. Say in the PR that Opus reviewed in place of Codex; use Codex again once it is back.
-   - A standing merge approval that requires the external review to find nothing counts the last external round plus your own review of any targeted fixes after it (step 8). The merge-prs gate already passes `fix`/`test` commits that touch only files the last Codex review covered, so for a material fix request the re-review yourself (`@codex review` or a rerun of codex-review.sh).
+   - Exit 2, Codex at its usage limit, or a standing merge approval that hinges on the review → read `review-fallback.md` beside this skill.
 
 8. Evaluate and resolve findings. Classify each material finding as valid, partially valid, invalid, or out of scope; do not blindly apply reviewer suggestions. Fix valid ones using the model policy from step 4.
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when its context is under 150k tokens, judged from the token count its completion reports, and the fix is in code it already read.
