@@ -226,6 +226,7 @@ elif $sync_check || "$main_check" quick "$after"; then
   0) ;;
   # TERM from a newer batch's stop_main_check, or its KILL when TERM was not enough.
   143 | 137) echo "ship-batch: a newer batch stopped the check of main (superseded); the check from ${check_from:0:12} is still owed and that batch runs it" ;;
+  4) die "the check of main passed a main checkout with local changes to tracked files; the check from ${check_from:0:12} is still owed" ;;
   *) die "the check fails on main after the merge; fix it before anything else (exit $check_status)" ;;
   esac
 else

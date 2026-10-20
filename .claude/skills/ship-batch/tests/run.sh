@@ -199,14 +199,13 @@ printf '#!/bin/sh\necho "b$3"\n' >"$stubs/gh"
 # through files, since a check started by systemd-run does not inherit this script's environment. With $e2e/just_daemon
 # present it also leaves a setsid daemon behind that keeps every descriptor it inherited, and with $e2e/just_chatty that
 # daemon writes a line to its stdout every 0.2 s, as a shadow's qs does. A holding check that is stopped logs whether the
-# check was marked suspended by then.
+# check was marked suspended by then. A check started with the ship lock's fd 9 open logs "just fd9 leaked": the lock state
+# cannot show that, since ship-batch's `flock -u 9` also unlocks every inherited copy of the descriptor.
 cat >"$stubs/just" <<STUB
 #!/usr/bin/env bash
 : "\${SHIP_LOG:=$e2e/log}" "\${SHIP_LOCK:=$e2e/main/.git/ship-batch.lock}"
-# A foreground check starts under the ship lock and runs once ship-batch releases it a moment later, so the stub gives the
-# lock 2 s to come free before logging its state: a check that inherited the lock still logs "held".
-for _ in \$(seq 20); do flock -n "\$SHIP_LOCK" true && break; sleep 0.1; done
 echo "just \$* $lock_state" >>"\$SHIP_LOG"
+[[ ! -e /proc/\$\$/fd/9 ]] || echo "just fd9 leaked" >>"\$SHIP_LOG"
 [[ ! -e $e2e/just_daemon ]] || setsid -f bash -c 'exec -a $e2e/test-daemon sleep 300'
 [[ ! -e $e2e/just_chatty ]] || setsid -f bash -c 'exec -a $e2e/test-daemon bash -c "while sleep 0.2; do echo daemon tick; done"'
 slot=\$(cat "$e2e/just_hold" 2>/dev/null)
@@ -282,7 +281,9 @@ check "each review is waited for outside the lock" "logged 'gate --check --wait-
 check "each branch is checked outside the lock" "logged 'check wt-1 --changed $e2e_base free' && logged 'check wt-2 --changed $e2e_base free'"
 check "the merge runs under the lock, without waiting for reviews" "logged 'merge 1 2 held'"
 check "after every review and branch check" "((\$(line_of 'check wt-2 --changed $e2e_base free') < \$(line_of 'merge 1 2 held')))"
-check "main is checked after the lock is released" "logged 'just check free'"
+# The foreground check starts while the batch still holds the lock and releases it moments later; the overlap is benign.
+check "main is checked, even before the batch has released the lock" "grep -Eqx 'just check (held|free)' '$SHIP_LOG'"
+check "without the ship lock's descriptor" "! logged 'just fd9 leaked'"
 check "main is pulled" "[[ \$(git -C '$e2e/main' rev-parse HEAD) == \$(git -C '$e2e/main' rev-parse b2) ]]"
 check "nothing is left owed" "[[ -z \$(owed_check '$e2e/main') && ! -e \$(base_file '$e2e/main') ]]"
 check "the lock is free" "flock -n '$SHIP_LOCK' true"
@@ -304,7 +305,7 @@ check "a failing check of main fails the run" "[[ $? != 0 ]] && grep -q 'the che
 check "and leaves the check owed from the old main" "[[ \$(owed_check '$e2e/main') == '$e2e_base' ]]"
 : >"$SHIP_LOG"
 ship
-check "a rerun with no PRs checks main again" "[[ $? == 0 ]] && logged 'just check free'"
+check "a rerun with no PRs checks main again" "[[ $? == 0 ]] && grep -Eqx 'just check (held|free)' '$SHIP_LOG' && ! logged 'just fd9 leaked'"
 check "and clears the debt" "[[ -z \$(owed_check '$e2e/main') ]]"
 : >"$SHIP_LOG"
 ship
@@ -415,6 +416,7 @@ unset SHIP_BATCH_SYNC_CHECK
 cat >"$stubs/systemd-run" <<STUB
 #!/usr/bin/env bash
 echo "systemd-run \$*" >>"$e2e/log"
+[[ ! -e /proc/\$\$/fd/9 ]] || echo "systemd-run fd9 leaked" >>"$e2e/log"
 for arg; do
   if [[ \$arg == *main-check.sh ]] && (cd / && [[ -x \$arg ]]); then echo "systemd-run script found from /" >>"$e2e/log"; fi
 done
@@ -451,6 +453,7 @@ check "the batch returns while the check runs" "[[ $? == 0 ]] && checking && gre
 check "the merge is done and the check is owed" "[[ \$(git -C '$e2e/main' rev-parse HEAD) == \$(git -C '$e2e/main' rev-parse b2) && \$(owed_check '$e2e/main') == '$e2e_base' ]]"
 check "no result before the check ends" "[[ ! -e $common/ship-batch-main-check.result ]]"
 check "the background job ran just check" "wait_until \"grep -q '^just check ' '$SHIP_LOG'\""
+check "with neither systemd-run nor the setsid check given the ship lock's descriptor" "wait_until \"logged 'just holding'\" && ! logged 'systemd-run fd9 leaked' && ! logged 'just fd9 leaked'"
 check "the ship lock is free while it runs" "flock -n '$SHIP_LOCK' true"
 check "the setsid check runs at nice 19" "[[ \$(ps -o ni= -p \$(<$common/ship-batch-main-check.pid) | tr -d ' ') == 19 ]]"
 check "wait blocks while it runs" "(timeout 2 '$e2e/main/.claude/skills/ship-batch/ship-batch.sh' --wait-main-check >/dev/null 2>&1; [[ \$? == 124 ]])"
@@ -792,6 +795,45 @@ check "its branch check runs at once, with the check of main left to the lock ho
 rm -f "$e2e/lock_hold"
 wait "$lock_holder" "$skipping_batch"
 check "then it takes the lock, merges and restarts the check" "[[ \$(<$e2e/skipping.rc) == 0 ]] && logged 'merge 2 held' && checking"
+stop_all
+
+echo "== a pass of a main checkout with local changes settles nothing"
+e2e_setup
+hold
+ship_bg 1
+wait_until "logged 'just holding'"
+echo edit >>"$e2e/main/one"
+release
+check "a tracked file changed during the check: it ends" "wait_until '! checking'"
+check "with the debt still owed and no pass" "[[ \$(owed_check '$e2e/main') == '$e2e_base' && \$(cut -d' ' -f1 $common/ship-batch-main-check.result) == unrecorded ]]"
+check "the log says why" "grep -q 'tracked files in the main checkout differ' $common/ship-batch-main-check.log"
+check "wait exits 1 and names the local changes" "! timeout 30 '$mc' wait >'$e2e/wait.out' 2>&1 && grep -q 'local changes to tracked files' '$e2e/wait.out'"
+SHIP_BATCH_SYNC_CHECK=1 ship_bg
+check "a foreground check of it fails the run and keeps the debt" "[[ $? != 0 ]] && grep -q 'local changes to tracked files' '$e2e/out' && [[ \$(owed_check '$e2e/main') == '$e2e_base' ]]"
+git -C "$e2e/main" checkout -q -- one
+stop_all
+
+echo "== a batch that gives up waiting for the lock restarts nothing without it"
+e2e_setup
+hold
+ship_bg 1
+wait_until "logged 'just holding'"
+touch "$e2e/branch_hold" "$e2e/lock_hold"
+(
+  SHIP_BATCH_LOCK_WAIT=1 ship_bg 2
+  echo $? >"$e2e/timed_out.rc"
+) &
+timed_out_batch=$!
+wait_until "grep -q '^check wt-2 ' '$SHIP_LOG'"
+flock "$SHIP_LOCK" bash -c "while [[ -e $e2e/lock_hold ]]; do sleep 0.2; done" &
+lock_holder=$!
+wait_until "! flock -n '$SHIP_LOCK' true"
+rm -f "$e2e/branch_hold"
+wait "$timed_out_batch"
+check "it fails once the wait runs out" "[[ \$(<$e2e/timed_out.rc) != 0 ]] && grep -q 'gave up waiting' '$e2e/out'"
+check "and starts no check while the other holder has the main checkout" "! checking && ! grep -q 'restarted the check' '$e2e/out'"
+rm -f "$e2e/lock_hold"
+wait "$lock_holder"
 stop_all
 
 if systemd-run --user --collect --quiet true 2>/dev/null; then

@@ -2,8 +2,8 @@
 # Usage: main-check.sh run [--notify] <after> <check_from> | wait | status
 # The check of main after a merge. ship-batch.sh starts `run` detached (systemd-run, else setsid) and returns; an agent that
 # needs a green main runs `wait`. Stopped mid-run (SIGTERM, which a newer batch does), `run` writes no result, settles
-# nothing and exits 143, so the owed base stays and the next check starts from it. `run` exits 1 when the check fails and 3
-# when another check already runs.
+# nothing and exits 143, so the owed base stays and the next check starts from it. `run` exits 1 when the check fails, 3
+# when another check already runs and 4 when it passed but the main checkout's tracked files did not match `after`.
 set -uo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
@@ -88,13 +88,16 @@ cmd_run() {
     # Another batch may have merged and pulled while this check ran, changing the files under it: the result says nothing
     # about main and the debt stays.
     echo "main-check: main moved during the check; the check from ${check_from:0:12} is still owed, and the next ship-batch run makes it"
-  elif $checks_passed; then
-    # With uncommitted changes in the main checkout the pass was of its working tree, not `after`'s, and the helper
-    # refuses to record it.
-    lib/check/passed.sh record || true
+  elif $checks_passed && lib/check/passed.sh record; then
     settle_check "$repo"
     write_result "pass $after $(date +%s)"
     echo "main-check: passed"
+  elif $checks_passed; then
+    # The helper refuses a tree whose tracked files differ from HEAD's: work in the main checkout, before or during the
+    # check, means the pass was of that working tree, not of `after`.
+    write_result "unrecorded $after $(date +%s) $log"
+    echo "main-check: passed, but not as ${after:0:12}: tracked files in the main checkout differ from it; the check of ${check_from:0:12} stays owed"
+    exit 4
   else
     write_result "fail $after $(date +%s) $log"
     echo "main-check: FAILED; the check of ${check_from:0:12} stays owed"
@@ -137,6 +140,8 @@ cmd_wait() {
   if [[ -s $result && $(cut -d' ' -f1 "$result") == fail ]]; then
     main_check_failure_notice "$repo"
     tail -n 20 "$log" 2>/dev/null
+  elif [[ -s $result && $(cut -d' ' -f1 "$result") == unrecorded ]]; then
+    echo "main-check: the last check passed a main checkout with local changes to tracked files, which says nothing about main; the check from ${owed:0:12} is still owed. Commit or revert them, then run ship-batch.sh with no arguments"
   else
     echo "main-check: a check from ${owed:0:12} is owed but none is running; run ship-batch.sh with no arguments to start it"
   fi
