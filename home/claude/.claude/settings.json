@@ -6,6 +6,7 @@
   },
   "permissions": {
     "allow": [
+      "Bash(/home/roberth/.claude/skills/orchestrator-handoff/spawn-successor.sh:*)",
       "Bash(cat:*)",
       "Bash(gh issue list:*)",
       "Bash(gh issue view:*)",
@@ -28,6 +29,7 @@
       "Bash(sed -n:*)",
       "Bash(tail:*)",
       "Bash(wc:*)",
+      "Bash(~/.claude/skills/orchestrator-handoff/spawn-successor.sh:*)",
       "Read(~/.zshrc)"
     ],
     "deny": [
@@ -36,6 +38,8 @@
       "Bash(git reset --hard:*)",
       "Bash(rm -rf /:*)",
       "Bash(rm -rf ~:*)",
+      "Edit(~/.claude/skills/orchestrator-handoff/spawn-successor.sh)",
+      "Edit(~/dotfiles/home/claude/.claude/skills/orchestrator-handoff/spawn-successor.sh)",
       "Read(**/*.pem)",
       "Read(**/.env*)",
       "Read(**/config/credentials/*.key)",
@@ -45,7 +49,9 @@
       "Read(~/.claude/.credentials.json)",
       "Read(~/.config/gh/hosts.yml)",
       "Read(~/.gnupg/**)",
-      "Read(~/.ssh/**)"
+      "Read(~/.ssh/**)",
+      "Write(~/.claude/skills/orchestrator-handoff/spawn-successor.sh)",
+      "Write(~/dotfiles/home/claude/.claude/skills/orchestrator-handoff/spawn-successor.sh)"
     ],
     "defaultMode": "auto"
   },
@@ -125,6 +131,14 @@
           {
             "type": "command",
             "command": "~/.local/bin/keeptabs-hook running claude"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/context-budget.sh"
           }
         ]
       }
