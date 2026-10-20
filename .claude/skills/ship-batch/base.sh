@@ -25,6 +25,18 @@ take_lock() {
   printf 'pid %s, since %s, merging %s\n' "$$" "$(date +%H:%M:%S)" "${merging:-no PRs}" >"$lock"
 }
 
+# Takes the ship lock only if it is free right now; returns 1, holding nothing, when another batch has it.
+try_lock() {
+  local lock
+  lock="$(dirname "$(base_file "$1")")/ship-batch.lock"
+  exec 9<>"$lock"
+  flock -n 9 || {
+    exec 9>&-
+    return 1
+  }
+  printf 'pid %s, since %s, %s\n' "$$" "$(date +%H:%M:%S)" "$2" >"$lock"
+}
+
 release_lock() {
   flock -u 9 2>/dev/null
   exec 9>&-
@@ -102,14 +114,18 @@ main_check_is_running() {
 }
 
 # Stops a running background check and waits until it is gone, so nothing it spawned holds a heavy-step slot or the
-# checkout when the pull changes the files under it. The owed base is not touched: only a pass settles it.
+# checkout when the pull changes the files under it. The owed base is not touched: only a pass settles it. Sets
+# main_check_stopped when there was one to stop, since the caller then owes starting it again.
+main_check_stopped=false
 stop_main_check() {
   local repo=$1 lock pid
   lock=$(main_check_path "$repo" lock)
+  # shellcheck disable=SC2034 # read by ship-batch.sh
+  ! main_check_is_running "$repo" || main_check_stopped=true
   command -v systemctl >/dev/null && systemctl --user stop "$main_check_unit" 2>/dev/null
   if main_check_is_running "$repo"; then
     pid=$(cat "$(main_check_path "$repo" pid)" 2>/dev/null)
-    # The setsid fallback made the check a group leader; the pid is trusted only while the run lock is held.
+    # Every check is started as a group leader (setsid); the pid is trusted only while the run lock is held.
     [[ $pid =~ ^[0-9]+$ ]] && kill -TERM -- "-$pid" 2>/dev/null
     flock -w 60 "$lock" true || {
       [[ $pid =~ ^[0-9]+$ ]] && kill -KILL -- "-$pid" 2>/dev/null
@@ -123,13 +139,15 @@ stop_main_check() {
 }
 
 # Starts main-check.sh run detached from this shell: a transient user unit (Nice 19, survives the agent's shell), else
-# setsid. fd 9 is closed so the check cannot hold the ship lock. A unit name left over from a crash is cleared first.
+# setsid. fd 9 is closed so the check cannot hold the ship lock. A unit name left over from a crash is cleared first. The
+# unit gets none of this shell's environment unless passed: the session variables are what the steps and notify-send need.
 # Returns once the check has taken its run lock, so a waiter that sees the ship lock free also sees the check running.
 start_main_check() {
   local repo=$1 script=$2 after=$3 check_from=$4 setenv=() name
   # The pid file marks "has started", even for a check that has already finished again.
   rm -f "$(main_check_path "$repo" pid)"
-  for name in PATH HOME CHECK_FULL CHECK_LOCK_WAIT_SECS; do
+  for name in PATH HOME CHECK_FULL CHECK_LOCK_WAIT_SECS WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR \
+    DBUS_SESSION_BUS_ADDRESS SSH_AUTH_SOCK; do
     [[ -z ${!name:-} ]] || setenv+=("--setenv=$name")
   done
   if command -v systemd-run >/dev/null; then

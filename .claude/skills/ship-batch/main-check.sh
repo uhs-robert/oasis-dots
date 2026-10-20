@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Usage: main-check.sh run [--notify] <after> <check_from> | wait | status
 # The check of main after a merge. ship-batch.sh starts `run` detached (systemd-run, else setsid) and returns; an agent that
-# needs a green main runs `wait`. Stopped mid-run (SIGTERM, which a newer batch does), `run` writes no result and settles
-# nothing, so the owed base stays and the next check starts from it.
+# needs a green main runs `wait`. Stopped mid-run (SIGTERM, which a newer batch does), `run` writes no result, settles
+# nothing and exits 143, so the owed base stays and the next check starts from it. `run` exits 1 when the check fails and 3
+# when another check already runs.
 set -uo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
@@ -59,10 +60,17 @@ cmd_run() {
   echo $$ >"$(main_check_path "$repo" pid)"
   # bash runs this once the foreground command ends, so a stopped check exits before it can record a failure.
   trap 'exit 143' TERM INT
-  exec > >(tee "$log") 2>&1
+  # The run lock is closed for everything this starts: a daemon a step leaves behind (a shadow's Hyprland or qs) would
+  # otherwise hold it and read as a check running forever. tee ignores the stop's TERM, which reaches the whole group: dead,
+  # it would turn bash's "Terminated" report on the killed step into a SIGPIPE that ends this shell before the trap runs.
+  # It still ends with this shell, at end of file.
+  exec > >(
+    trap '' TERM INT
+    exec tee "$log" 8>&-
+  ) 2>&1
   cd "$repo" || exit 1
   echo "main-check: checking ${after:0:12} from ${check_from:0:12}"
-  run_checks "$after" "$check_from" || checks_passed=false
+  run_checks "$after" "$check_from" 8>&- || checks_passed=false
 
   # Under the ship lock, so a batch cannot owe a newer base between the HEAD test and the settle. A batch that holds the
   # lock stops this process first, which ends the wait.
@@ -83,18 +91,21 @@ cmd_run() {
   else
     write_result "fail $after $(date +%s) $log"
     echo "main-check: FAILED; the check of ${check_from:0:12} stays owed"
-    ! $notify || notify-send -u critical "main check failed" "${after:0:12}: $log" 2>/dev/null || true
+    ! $notify || notify-send -u critical "main check failed" "${after:0:12}: $log" 8>&- 2>/dev/null || true
     exit 1
   fi
 }
 
-# Blocks until no check runs, then reports whether main is green: 0 when nothing is owed, 1 when the last check failed or a
-# check is owed but not running. The ship lock is taken once as a barrier, since a batch stops and restarts the check
-# while holding it and the gap in between must not read as "not running".
+# Blocks until no check runs (at most MAIN_CHECK_WAIT_SECS for each lock), then reports whether main is green: 0 when
+# nothing is owed, 1 when the last check failed or a check is owed but not running. The ship lock is taken once as a
+# barrier, since a batch stops and restarts the check while holding it and the gap in between must not read as "not running".
 cmd_wait() {
   local owed
   while :; do
-    flock "$(main_check_path "$repo" lock)" true
+    flock -w "${MAIN_CHECK_WAIT_SECS:-1800}" "$(main_check_path "$repo" lock)" true || {
+      echo "main-check: the check of main has run for too long; see $log" >&2
+      return 1
+    }
     flock -w "${MAIN_CHECK_WAIT_SECS:-1800}" "$(dirname "$log")/ship-batch.lock" true || {
       echo "main-check: a ship-batch has held the main checkout for too long" >&2
       return 1
