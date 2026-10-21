@@ -27,6 +27,7 @@ mkdir -p "$modes_config/integrations.d" "$modes_config/replacements.d"
 cp "$root/config-sess/integrations.d/sess.sh" "$modes_config/integrations.d/"
 for integration in rapid typing click media keys; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$modes_config/integrations.d/"
+  copy_shipped_integrations "$modes_config" "$integration"
 done
 cat >"$modes_config/integrations.d/ask.sh" <<STUB
 name="Ask"

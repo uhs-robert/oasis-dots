@@ -158,6 +158,8 @@ chmod 700 "$sandbox_dir/runtime"
 # Regular files only: a private dotfiles repo links its own integrations and replacements in here per file, and those
 # would change the routes. VOXCMD_EXTRA_INTEGRATIONS loads one on purpose.
 find "$package_dir"/.config/voxcmd/integrations.d -maxdepth 1 -type f -name '*.sh' -exec cp -t "$config_home/voxcmd/integrations.d/" {} +
+mkdir -p "$config_home/voxcmd/integrations"
+find "$package_dir"/.config/voxcmd/integrations -maxdepth 1 -type f ! -name '.*' -exec cp -t "$config_home/voxcmd/integrations/" {} +
 find "$package_dir"/.config/voxcmd/replacements.d -maxdepth 1 -type f ! -name '.*' -exec cp -t "$config_home/voxcmd/replacements.d/" {} +
 if [ -n "${VOXCMD_EXTRA_INTEGRATIONS:-}" ]; then
   IFS=: read -ra extra_integrations <<<"$VOXCMD_EXTRA_INTEGRATIONS"

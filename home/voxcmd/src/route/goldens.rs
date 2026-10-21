@@ -1,9 +1,10 @@
 //! The matcher, force prefixes and near misses against what the bash voxcmd and near-miss.awk made of the same phrases
-//! (tests/fixtures/gen-match-goldens.sh), over the committed `_legacy-dump` of this checkout's integrations.
+//! (tests/fixtures/gen-match-goldens.sh), over the committed `_legacy-dump` of this checkout's integrations. A second run
+//! swaps in the shipped `integrations/*.toml`, since the dump comes from the bash files and never sees a conversion.
 use super::matcher::{Matcher, Outcome};
 use crate::config::Config;
 use crate::config::intents::Intents;
-use crate::config::legacy;
+use crate::config::{legacy, schema};
 use crate::text::normalize::Replacements;
 use std::path::PathBuf;
 
@@ -15,6 +16,33 @@ fn config() -> Config {
         intents: Intents::load(&fixtures.join("match")),
         replacements: Replacements::default(),
     }
+}
+
+/// The same config with each shipped `integrations/<stem>.toml` standing in for the dump's integration of that stem,
+/// in file-name order as `Config::load` sorts. A converted file is held to the bash goldens of its stem.
+fn config_with_shipped_toml() -> Config {
+    let mut config = config();
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations");
+    let mut shipped = 0;
+    for entry in std::fs::read_dir(&dir).expect("integrations dir").map(Result::unwrap) {
+        let path = entry.path();
+        if path.extension().is_none_or(|extension| extension != "toml") {
+            continue;
+        }
+        let toml = schema::load_toml(&path).unwrap();
+        let slot = config
+            .integrations
+            .iter_mut()
+            .find(|integration| integration.stem == toml.stem)
+            .unwrap_or_else(|| panic!("{} has no bash original in the dump", toml.stem));
+        *slot = toml;
+        shipped += 1;
+    }
+    assert!(shipped > 0, "no shipped TOML integration in {}", dir.display());
+    config
+        .integrations
+        .sort_by(|a, b| a.file.file_name().cmp(&b.file.file_name()));
+    config
 }
 
 /// The golden line's three result columns, as the generator writes them.
@@ -55,10 +83,18 @@ fn columns(matcher: &Matcher, phrase: &str) -> [String; 3] {
 
 #[test]
 fn rust_matches_the_bash_goldens() {
+    matches_the_goldens(&config());
+}
+
+#[test]
+fn shipped_toml_matches_the_bash_goldens() {
+    matches_the_goldens(&config_with_shipped_toml());
+}
+
+fn matches_the_goldens(config: &Config) {
     let goldens = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/match-goldens.tsv"))
         .expect("run gen-match-goldens.sh");
-    let config = config();
-    let matcher = Matcher::new(&config);
+    let matcher = Matcher::new(config);
     let mut checked = 0;
     let mut mismatches = Vec::new();
     for line in goldens.lines() {

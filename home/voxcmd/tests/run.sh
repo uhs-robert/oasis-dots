@@ -1409,6 +1409,7 @@ section "click mode routing"
 all_config=$root/config-all
 mkdir -p "$all_config/integrations.d" "$all_config/replacements.d"
 find "$package/.config/voxcmd/integrations.d" -maxdepth 1 -type f -name '*.sh' -exec cp -t "$all_config/integrations.d/" {} +
+copy_shipped_integrations "$all_config"
 route_all() { VOXCMD_CONFIG_DIR=$all_config "$routed" explain "$1" 2>&1; }
 for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; do
   out=$(route_all "$phrase")
@@ -1724,6 +1725,7 @@ section "screenshot menu by voice"
 screenshot_config=$root/screenshot-config
 mkdir -p "$screenshot_config/integrations.d" "$screenshot_config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/screenshot.sh" "$screenshot_config/integrations.d/"
+copy_shipped_integrations "$screenshot_config" screenshot
 screenshot_flags=(
   "screenshot region|--region"
   "take a frozen screenshot|--freeze"
@@ -1746,6 +1748,7 @@ section "keys by voice"
 keys_config=$root/keys-config
 mkdir -p "$keys_config/integrations.d" "$keys_config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/keys.sh" "$keys_config/integrations.d/"
+copy_shipped_integrations "$keys_config" keys
 keys_pressed=(
   "press enter|wtype -k Return"
   "send it|wtype -k Return"

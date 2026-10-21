@@ -272,6 +272,21 @@ class StepKeys(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertNotEqual(self.key_of(step), self.key_of(step._replace(**{field: value})))
 
+    def test_the_ignored_integrations_step_reads_the_toml_directory_too(self):
+        """The step script, run in the scratch repository: an ignored integrations/*.toml is reported, a symlink is not."""
+        step_dir = os.path.join(self.repo, "lib", "check", "steps")
+        os.makedirs(step_dir)
+        shutil.copy(os.path.join(os.path.dirname(keys.__file__), "steps", "ignored-integrations.sh"), step_dir)
+        toml_dir = "home/voxcmd/.config/voxcmd/integrations"
+        write_files(self.repo, {f"{toml_dir}/.gitignore": "*\n", f"{toml_dir}/private.toml": "x\n"})
+        os.symlink("private.toml", os.path.join(self.repo, toml_dir, "linked.toml"))
+        done = subprocess.run(
+            ("sh", os.path.join(step_dir, "ignored-integrations.sh")), capture_output=True, text=True, check=False
+        )
+        self.assertEqual(done.returncode, 1)
+        self.assertIn(f"{toml_dir}/private.toml is ignored by git", done.stderr)
+        self.assertNotIn("linked.toml", done.stderr)
+
     def test_scheduling_fields_leave_the_key_alone(self):
         step = FROZEN_STEPS["voxcmd-click"]
         self.assertEqual(self.key_of(step), self.key_of(step._replace(skip_reason="other reason", serial_lane=True)))
