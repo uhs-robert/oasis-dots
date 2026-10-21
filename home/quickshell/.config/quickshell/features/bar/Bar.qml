@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs.core
 import qs.theme
 import "BarLayout.js" as BarLayout
@@ -79,11 +80,32 @@ Item {
 
     // Lualine is one full-width statusline: section c's fill runs behind the islands.
     Rectangle {
-        visible: Style.bar_lualine
+        visible: Style.bar_lualine && !Style.islands_translucent
         width: root.width
         height: root.bar_height
         anchors.verticalCenter: parent.verticalCenter
         color: Theme.bg_mantle
+    }
+
+    // Translucent, section c fills only between the islands, beside their arrow caps, so no fill stacks on it.
+    Shape {
+        visible: Style.bar_lualine && Style.islands_translucent
+        width: root.width
+        height: root.bar_height
+        anchors.verticalCenter: parent.verticalCenter
+        preferredRendererType: Shape.CurveRenderer
+
+        ShapePath {
+            strokeWidth: -1
+            fillColor: Style.island_fill(Theme.bg_mantle)
+            PathPolyline {
+                path: {
+                    const h = root.bar_height, l = left_island.visible ? left_island.width : 0, lc = left_island.visible ? left_island.cap_width : 0;
+                    const r = right_island.visible ? right_island.x : root.width, rc = right_island.visible ? right_island.cap_width : 0;
+                    return [Qt.point(l - lc, 0), Qt.point(r + rc, 0), Qt.point(r, h / 2), Qt.point(r + rc, h), Qt.point(l - lc, h), Qt.point(l, h / 2), Qt.point(l - lc, 0)];
+                }
+            }
+        }
     }
 
     Island {
@@ -284,6 +306,8 @@ Item {
             Layout.fillHeight: true
             sourceComponent: Row {
                 readonly property var wire: (item, entry) => root.wire_module(item, entry, right_island)
+                // The sections draw their own fills, so a translucent island leaves its colour out from behind them.
+                readonly property bool lualine_fill: true
 
                 Neovim.LualineSection {
                     id: x_section

@@ -12,6 +12,8 @@ Item {
     property color bg_color: Theme.bg_crust
     property real border_width: 1
     property color border_color: Theme.theme_primary
+    // Scales the glass and its glow, not the rim or the teeth.
+    property real fill_opacity: 1
 
     readonly property real h: root.height
     readonly property real w: root.width
@@ -56,8 +58,8 @@ Item {
                 y1: 0
                 x2: 0
                 y2: root.h
-                GradientStop { position: 0; color: Qt.alpha(Theme.ui_visual_bg, 0.75) }
-                GradientStop { position: 1; color: root.bg_color }
+                GradientStop { position: 0; color: Qt.alpha(Theme.ui_visual_bg, 0.75 * root.fill_opacity) }
+                GradientStop { position: 1; color: Qt.alpha(root.bg_color, root.bg_color.a * root.fill_opacity) }
             }
             PathSvg { path: root.outline(0, true) }
         }
@@ -71,7 +73,7 @@ Item {
                 focalY: root.h * 2.4
                 centerRadius: Math.max(root.w * 0.6, root.h * 2)
                 focalRadius: 0
-                GradientStop { position: 0; color: Qt.alpha(Theme.theme_primary, 0.16) }
+                GradientStop { position: 0; color: Qt.alpha(Theme.theme_primary, 0.16 * root.fill_opacity) }
                 GradientStop { position: 0.7; color: Qt.alpha(Theme.theme_primary, 0) }
             }
             PathSvg { path: root.outline(0, true) }

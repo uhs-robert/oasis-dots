@@ -25,7 +25,7 @@ Item {
     Rectangle {
         width: root.width - root.arrow
         height: root.height
-        color: root.fill
+        color: Style.island_fill(root.fill)
     }
 
     Row {
@@ -62,13 +62,22 @@ Item {
 
         ShapePath {
             strokeWidth: -1
-            fillColor: root.next_bg
+            fillColor: Style.islands_translucent ? "transparent" : root.next_bg
             PathRectangle { width: root.arrow; height: root.height }
+        }
+
+        // Translucent, the next section's colour fills only beside the arrow instead of under it.
+        ShapePath {
+            strokeWidth: -1
+            fillColor: Style.islands_translucent ? Style.island_fill(root.next_bg) : "transparent"
+            PathPolyline {
+                path: [Qt.point(0, 0), Qt.point(root.arrow, 0), Qt.point(root.arrow, root.height), Qt.point(0, root.height), Qt.point(root.arrow, root.height / 2), Qt.point(0, 0)]
+            }
         }
 
         ShapePath {
             strokeWidth: -1
-            fillColor: root.fill
+            fillColor: Style.island_fill(root.fill)
             startX: 0
             startY: 0
             PathLine { x: root.arrow; y: root.height / 2 }

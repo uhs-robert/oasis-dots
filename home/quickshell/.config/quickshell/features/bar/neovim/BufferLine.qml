@@ -82,7 +82,7 @@ Item {
                     }
 
                     Shape {
-                        visible: slot.lit && !slot.prev_lit
+                        visible: slot.lit && !slot.prev_lit && !Style.islands_translucent
                         anchors.fill: parent
                         preferredRendererType: Shape.CurveRenderer
 
@@ -94,13 +94,44 @@ Item {
                             }
                         }
                     }
+
+                    // Translucent, the edge with the buffer before is drawn here alone, in both buffers' colours side by
+                    // side: the island leaves the buffers' area unfilled, and stacked fills would show darker. A
+                    // Rectangle between two unlit buffers, since a Shape's antialiased edge at a fractional x would show.
+                    Rectangle {
+                        visible: Style.islands_translucent && !slot.lit && !slot.prev_lit
+                        anchors.fill: parent
+                        color: Style.island_fill(Style.bar_side_bg)
+                    }
+
+                    Shape {
+                        visible: Style.islands_translucent && (slot.lit || slot.prev_lit)
+                        anchors.fill: parent
+                        preferredRendererType: Shape.CurveRenderer
+
+                        ShapePath {
+                            strokeWidth: -1
+                            fillColor: Style.island_fill(slot.prev_lit ? slot.prev_slot.lit_fill : Style.bar_side_bg)
+                            PathPolyline {
+                                path: [Qt.point(0, 0), Qt.point(root.arrow, slot.height / 2), Qt.point(0, slot.height), Qt.point(0, 0)]
+                            }
+                        }
+
+                        ShapePath {
+                            strokeWidth: -1
+                            fillColor: Style.island_fill(slot.lit ? slot.lit_fill : Style.bar_side_bg)
+                            PathPolyline {
+                                path: [Qt.point(0, 0), Qt.point(root.arrow + 1, 0), Qt.point(root.arrow + 1, slot.height), Qt.point(0, slot.height), Qt.point(root.arrow, slot.height / 2), Qt.point(0, 0)]
+                            }
+                        }
+                    }
                 }
 
                 Rectangle {
                     id: buffer
                     width: content.implicitWidth + 16
                     height: slot.height
-                    color: slot.lit ? slot.lit_fill : "transparent"
+                    color: slot.lit ? Style.island_fill(slot.lit_fill) : Style.islands_translucent ? Style.island_fill(Style.bar_side_bg) : "transparent"
 
                     WorkspaceDropTarget {
                         anchors.fill: parent
@@ -114,7 +145,7 @@ Item {
                     }
 
                     Shape {
-                        visible: slot.lit && !slot.is_last
+                        visible: slot.lit && !slot.is_last && !Style.islands_translucent
                         x: parent.width
                         width: root.arrow + 1
                         height: slot.height

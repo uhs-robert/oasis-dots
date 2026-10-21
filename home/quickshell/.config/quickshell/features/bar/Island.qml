@@ -24,6 +24,11 @@ Item {
     property real inset_gap: 0
     property real inset_width: 0
     property color inset_color: "transparent"
+    // Theme options > Island opacity: every fill goes through faded() (Style.island_fill).
+    readonly property real fill_opacity: Style.bar_island_opacity
+    readonly property bool translucent: Style.islands_translucent
+    // A translucent cap cannot overlap the body, or the overlap shows as a darker line.
+    readonly property int cap_overlap: root.translucent ? 0 : 1
     // One of Style.island_shapes; lualine draws its own sections whatever the shape.
     readonly property string shape: root.lualine ? "lualine" : Style.bar_island_shape
     // Metroid Prime visor glass cut into notched bracket ends (VisorIsland) instead of slants.
@@ -126,6 +131,10 @@ Item {
 
     signal clicked
 
+    function faded(c) {
+        return Style.island_fill(c);
+    }
+
     height: 30
     width: root.capsule ? body.width + root.capsule_inset * 2 : body.width + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0) + root.lug * 2
 
@@ -162,8 +171,8 @@ Item {
         border.width: root.border_width
         border.color: root.border_color
         gradient: Gradient {
-            GradientStop { position: 0; color: capsule_fill.top_color }
-            GradientStop { position: 1; color: capsule_fill.bottom_color }
+            GradientStop { position: 0; color: root.faded(capsule_fill.top_color) }
+            GradientStop { position: 1; color: capsule_fill.bottom_fill }
         }
 
         // Joined, the bottom takes the popup's top shade and drops its border so the fills run on unbroken.
@@ -171,12 +180,14 @@ Item {
             id: capsule_fill
             readonly property color top_color: root.shade_color.a > 0 ? root.shade_color : root.bg_color
             readonly property color bottom_color: Qt.tint(root.bg_color, Qt.alpha(capsule_fill.top_color, root.join))
+            // Opaque again as it joins, so a translucent capsule meets the opaque frame without a seam.
+            readonly property color bottom_fill: Qt.alpha(capsule_fill.bottom_color, capsule_fill.bottom_color.a * (root.fill_opacity + (1 - root.fill_opacity) * root.join))
             visible: root.join > 0 && root.border_width > 0
             x: root.border_width
             y: parent.height - root.border_width
             width: parent.width - root.border_width * 2
             height: root.border_width
-            color: capsule_fill.bottom_color
+            color: capsule_fill.bottom_fill
             opacity: root.join
         }
 
@@ -203,8 +214,8 @@ Item {
                     y1: 0
                     x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.width
                     y2: root.height
-                    GradientStop { position: 0; color: root.shade_color }
-                    GradientStop { position: 1; color: root.bg_color }
+                    GradientStop { position: 0; color: root.faded(root.shade_color) }
+                    GradientStop { position: 1; color: root.faded(root.bg_color) }
                 }
                 startX: 0
                 startY: 0
@@ -225,6 +236,7 @@ Item {
             cap_right: root.cap_right
             cap: root.cap_width
             bg_color: root.bg_color
+            fill_opacity: root.fill_opacity
             border_width: root.border_width
             border_color: root.border_color
         }
@@ -238,7 +250,7 @@ Item {
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 strokeWidth: -1
-                fillColor: root.bg_color
+                fillColor: root.faded(root.bg_color)
                 PathPolyline {
                     path: {
                         const x0 = root.oct_x0, x1 = root.oct_x1, c = root.oct_c, h = root.height;
@@ -325,14 +337,21 @@ Item {
             x: root.window_edge
             width: parent.width - root.window_edge * 2
             height: parent.height
-            color: root.bg_color
+            color: root.faded(root.bg_color)
         }
 
-        Rectangle {
-            y: root.window_edge
-            width: parent.width
-            height: parent.height - root.window_edge * 2
-            color: root.bg_color
+        // The side strips beside the centre column; overlapping it would fill those pixels twice.
+        Repeater {
+            model: [0, 1]
+
+            Rectangle {
+                required property int modelData
+                x: modelData === 0 ? 0 : parent.width - root.window_edge
+                y: root.window_edge
+                width: root.window_edge
+                height: parent.height - root.window_edge * 2
+                color: root.faded(root.bg_color)
+            }
         }
     }
 
@@ -345,7 +364,7 @@ Item {
             slant_left: root.cap_left ? root.cap_width : 0
             slant_right: root.cap_right ? root.cap_width : 0
             row_span: root.slanted ? null : root.fill_span
-            color: root.dither_color
+            color: root.faded(root.dither_color)
         }
     }
 
@@ -355,7 +374,22 @@ Item {
         x: root.capsule ? root.capsule_inset : root.lug + (cap_left ? root.cap_width : 0)
         height: root.height
         width: Math.ceil(layout.implicitWidth) + root.pad * 2
-        color: root.shaded || root.octagon || root.window ? "transparent" : root.bg_color
+        color: root.shaded || root.octagon || root.window || root.lualine && root.translucent ? "transparent" : root.faded(root.bg_color)
+
+        // Translucent lualine: the island's colour goes only behind modules that draw no section fill of their own
+        // (`lualine_fill`), since those fills over this one would show both.
+        Repeater {
+            model: root.lualine && root.translucent ? layout.children : []
+
+            Rectangle {
+                required property Item modelData
+                visible: modelData.visible && !(modelData.item && modelData.item.lualine_fill)
+                x: layout.x + modelData.x
+                width: modelData.width
+                height: body.height
+                color: root.faded(root.bg_color)
+            }
+        }
 
         // A tick scale rising from the open edge.
         Loader {
@@ -394,7 +428,7 @@ Item {
 
     // Caps overlap the body by 1px so fractional scaling (1.6 on the laptop) leaves no seam.
     Loader {
-        width: root.cap_width + 1
+        width: root.cap_width + root.cap_overlap
         height: root.height
         active: root.cap_left && !root.capsule && !root.octagon && !root.window
         transform: mirror
@@ -403,13 +437,13 @@ Item {
 
             ShapePath {
                 strokeWidth: -1
-                fillColor: root.cap_left_fill.a > 0 ? root.cap_left_fill : root.shaded ? "transparent" : root.bg_color
+                fillColor: root.faded(root.cap_left_fill.a > 0 ? root.cap_left_fill : root.shaded ? "transparent" : root.bg_color)
                 PathPolyline {
                     path: {
-                        const c = root.cap_width, h = root.height;
-                        if (!root.lualine) return [Qt.point(0, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(c, h), Qt.point(0, 0)];
-                        if (root.center) return [Qt.point(c, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(0, h), Qt.point(c, 0)];
-                        return [Qt.point(c, 0), Qt.point(c + 1, 0), Qt.point(c + 1, h), Qt.point(c, h), Qt.point(0, h / 2), Qt.point(c, 0)];
+                        const c = root.cap_width, h = root.height, o = root.cap_overlap;
+                        if (!root.lualine) return [Qt.point(0, 0), Qt.point(c + o, 0), Qt.point(c + o, h), Qt.point(c, h), Qt.point(0, 0)];
+                        if (root.center) return [Qt.point(c, 0), Qt.point(c + o, 0), Qt.point(c + o, h), Qt.point(0, h), Qt.point(c, 0)];
+                        return [Qt.point(c, 0), Qt.point(c + o, 0), Qt.point(c + o, h), Qt.point(c, h), Qt.point(0, h / 2), Qt.point(c, 0)];
                     }
                 }
             }
@@ -417,8 +451,8 @@ Item {
     }
 
     Loader {
-        x: root.width - root.cap_width - 1
-        width: root.cap_width + 1
+        x: root.width - root.cap_width - root.cap_overlap
+        width: root.cap_width + root.cap_overlap
         height: root.height
         active: root.cap_right && !root.capsule && !root.octagon && !root.window
         transform: mirror
@@ -427,12 +461,12 @@ Item {
 
             ShapePath {
                 strokeWidth: -1
-                fillColor: root.cap_right_fill.a > 0 ? root.cap_right_fill : root.shaded ? "transparent" : root.bg_color
+                fillColor: root.faded(root.cap_right_fill.a > 0 ? root.cap_right_fill : root.shaded ? "transparent" : root.bg_color)
                 PathPolyline {
                     path: {
-                        const c = root.cap_width, h = root.height;
-                        if (!root.lualine || root.center) return [Qt.point(0, 0), Qt.point(c + 1, 0), Qt.point(1, h), Qt.point(0, h), Qt.point(0, 0)];
-                        return [Qt.point(0, 0), Qt.point(1, 0), Qt.point(c + 1, h / 2), Qt.point(1, h), Qt.point(0, h), Qt.point(0, 0)];
+                        const c = root.cap_width, h = root.height, o = root.cap_overlap;
+                        if (!root.lualine || root.center) return [Qt.point(0, 0), Qt.point(c + o, 0), Qt.point(o, h), Qt.point(0, h), Qt.point(0, 0)];
+                        return [Qt.point(0, 0), Qt.point(o, 0), Qt.point(c + o, h / 2), Qt.point(o, h), Qt.point(0, h), Qt.point(0, 0)];
                     }
                 }
             }
@@ -464,7 +498,7 @@ Item {
                 y: index * root.scanline_period
                 width: Math.max(0, span.w)
                 height: 1
-                color: root.scanline_color
+                color: root.faded(root.scanline_color)
             }
         }
     }
