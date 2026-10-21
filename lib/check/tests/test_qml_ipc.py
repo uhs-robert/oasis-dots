@@ -310,6 +310,11 @@ class ReadmeTableTest(IpcCase):
         readme = self.TABLE.replace("## After", "```\n## Example\n```\n\n| `osd` | `state` |\n\n## After")
         self.assertEqual(self.table(readme=readme), ['IPC table row "osd" is declared by no IpcHandler'])
 
+    def test_a_shorter_or_other_fence_inside_a_fence_does_not_close_it(self):
+        for outer, inner in (("````", "```"), ("~~~", "```")):
+            readme = self.TABLE.replace("## After", f"{outer}\n{inner}\n## Example\n{inner}\n{outer}\n\n| `osd` | `state` |\n\n## After")
+            self.assertEqual(self.table(readme=readme), ['IPC table row "osd" is declared by no IpcHandler'])
+
     def test_a_row_for_an_undeclared_target_fails(self):
         readme = self.TABLE.replace("## After", "| `osd` | `state` |\n\n## After")
         self.assertEqual(self.table(readme=readme), ['IPC table row "osd" is declared by no IpcHandler'])
