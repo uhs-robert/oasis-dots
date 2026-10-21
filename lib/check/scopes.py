@@ -46,7 +46,7 @@ PATH_SCOPES = [
     ("system/etc/greetd/hyprland.lua", "lua qml keyring"),
     ("system/etc/greetd/*.lua", "lua qml"),
     # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
-    ("lib/common/greeter-files.sh", "qml ship loader"),
+    ("lib/common/greeter-files.sh", "qml ship loader keyring"),
     ("lib/check/steps/qml.py", "qml"),
     ("lib/check/qml_imports.py", "qml"),
     ("lib/check/steps/qml_paths.py", "qml"),
@@ -160,7 +160,8 @@ STEPS = [
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     Step("firefox-policy", "policy", "bash ./lib/install/tests/firefox-policy.sh", ("jq",), skip_reason="the firefox policy test needs jq"),
-    Step("greeter-keyring", "keyring", "bash ./lib/install/tests/greeter-keyring.sh && bash ./lib/install/tests/greeter-log.sh && bash ./lib/install/tests/greeter-monitors.sh && bash ./lib/install/tests/greeter-stage-zsh.sh"),
+    Step("greeter-keyring", "keyring", "bash ./lib/install/tests/greeter-keyring.sh && bash ./lib/install/tests/greeter-log.sh && bash ./lib/install/tests/greeter-monitors.sh"),
+    Step("greeter-stage-zsh", "keyring", "bash ./lib/install/tests/greeter-stage-zsh.sh", ("zsh", "jq"), skip_reason="the greeter zsh staging test needs zsh and jq"),
     Step("migrate-lock", "migratelock", "bash ./lib/install/tests/migrate-lock-assets.sh && bash ./lib/install/tests/migrate-quickshell-state.sh && bash ./lib/install/tests/migrate-quickshell-input.sh && bash ./lib/install/tests/migrate-quickshell-weather.sh"),
     Step("install-load", "loader", "bash ./lib/install/tests/load.sh"),
     Step("qmllint", "qml", "python3 -B ./lib/check/steps/qml.py"),

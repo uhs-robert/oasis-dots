@@ -112,7 +112,7 @@ FROZEN_PATH_SCOPES = [
     (".luacheckrc", "lua"),
     ("home/hypr/*", "lua"),
     ("system/etc/greetd/*.lua", "lua qml"),
-    ("lib/common/greeter-files.sh", "qml ship loader"),
+    ("lib/common/greeter-files.sh", "qml ship loader keyring"),
     ("lib/check/steps/qml.sh", "qml"),
     ("lib/check/steps/lock-skins.sh", "qml"),
     ("lib/check/steps/style-exports.sh", "qml"),

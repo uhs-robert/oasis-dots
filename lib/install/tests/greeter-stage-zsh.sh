@@ -3,12 +3,6 @@
 # expand an unquoted glob or ${var^}, has no mapfile or BASH_SOURCE, and treats a bare VERSION? as a glob.
 set -u
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
-for tool in zsh jq; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
-    echo "skip: the greeter zsh staging test needs $tool"
-    exit 0
-  fi
-done
 scratch=$(mktemp -d) || exit 1
 trap 'rm -rf "$scratch"' EXIT
 
