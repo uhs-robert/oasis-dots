@@ -138,6 +138,7 @@ main() {
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_root_symlinks; fi
   bootstrap_neovim
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then install_system_files; fi
+  if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_pacman_tweaks; fi
   if [[ $OPT_SERVER -eq 1 && $OPT_SERVICES -eq 1 ]]; then
     set_default_shell
     setup_tailnet_ssh
