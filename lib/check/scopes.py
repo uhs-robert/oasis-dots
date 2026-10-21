@@ -127,7 +127,7 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/overview.json", VOX_CLICK),
     ("home/voxcmd/tests/fixtures/monitors/*", VOX_CLICK),
     # Only the crate's tests and the generators of its goldens read these (no bash suite names them). A fixture added
-    # without a rule here falls to home/voxcmd/*, which test_scopes.py's tripwire rejects.
+    # without a rule here falls to home/voxcmd/*, which test_voxcmd_suite_scopes.py's tripwire rejects.
     ("home/voxcmd/tests/fixtures/monitor-places/*", "rust"),
     ("home/voxcmd/tests/fixtures/speech/*", "rust"),
     ("home/voxcmd/tests/fixtures/match/*", "rust"),
@@ -139,6 +139,8 @@ PATH_SCOPES = [
     ("home/voxcmd/.config/voxcmd/integrations/*", "rust " + VOXCMD_SUITES),
     ("home/voxcmd/*", VOXCMD_SUITES),
     ("home/voxtype/.local/bin/voxtype-daemon", VOXCMD_SUITES),
+    # run-wake.sh puts this directory on PATH and asserts the prompt voxcmd builds through it; no other suite runs it.
+    ("home/voxtype/.local/bin/voxtype-prompt", "voxtype " + VOX_WAKE),
     ("home/voxtype/*", "voxtype"),
     ("home/systemd/.config/systemd/user/voxtype-duck.service", "voxtype"),
     ("extras/voxcmd-firefox/*", VOXCMD_SUITES),

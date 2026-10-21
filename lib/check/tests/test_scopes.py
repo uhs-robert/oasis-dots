@@ -63,6 +63,7 @@ CASES = [
     ("home/voxcmd/tests/wake_test.py", " voxwake"),
     ("home/voxcmd/tests/run-firefox-extension.sh", " voxfirefox"),
     ("home/voxcmd/tests/lib.sh", " voxclick"),
+    ("home/voxtype/.local/bin/voxtype-prompt", " voxtype voxwake"),
     ("home/voxcmd/tests/sandbox.sh", " voxphrases voxclick voxcalendar voxwake"),
     ("home/voxcmd/tests/firefox-profile", " voxphrases voxclick voxcalendar"),
     ("home/voxcmd/tests/fixtures/binds.json", " voxphrases voxclick"),
