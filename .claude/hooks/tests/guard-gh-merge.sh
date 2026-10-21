@@ -64,6 +64,12 @@ expect deny "git commit -m 'x'; $gh_merge 1"
 expect deny $'cat <<EOF\nok\nEOF\nmerge-prs.sh 1'
 expect deny "git commit -m \"unclosed; merge-prs.sh 1"
 expect deny "git commit -m 'it's'; merge-prs.sh 1"
+# Text the shell still runs is not stripped: a command substitution in a message, a heredoc fed to a shell.
+expect deny 'git commit -m "$(merge-prs.sh 1)"'
+expect deny "git commit -m \"\`merge-prs.sh 1\`\""
+expect deny $'bash <<\'EOF\'\nmerge-prs.sh 1\nEOF'
+expect deny $'eval "$(cat <<\'EOF\'\nmerge-prs.sh 1\nEOF\n)"'
+expect deny $'cat <<EOF | sh\nmerge-prs.sh 1\nEOF'
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
