@@ -62,7 +62,10 @@ pacman_conf_tweaked() {
 apply_pacman_conf_tweaks() {
   local conf=${1:-$PACMAN_CONF} tweaked
   tweaked=$(mktemp) || return 1
-  pacman_conf_tweaked "$conf" >"$tweaked" || { rm -f "$tweaked"; return 1; }
+  pacman_conf_tweaked "$conf" >"$tweaked" || {
+    rm -f "$tweaked"
+    return 1
+  }
   if cmp -s "$conf" "$tweaked"; then
     warn "$conf already tweaked, skipping"
   else
