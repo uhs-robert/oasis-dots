@@ -21,7 +21,7 @@ Singleton {
     property int last_seq: -1
     property int waiting_count: 0
     property int last_wait_seq: -1
-    // Idle ticks repeat the same frame; kept here so it survives a restart as the parser's did.
+    // Idle ticks repeat the same frame; cleared on exit so a restart's first line is never skipped as one.
     property string last_line: ""
 
     // A session went from running to done since the previous line.
@@ -124,6 +124,9 @@ Singleton {
                 console.warn("keeptabs: " + e);
             }
         }
-        onExited: root.primed = false
+        onExited: {
+            root.primed = false;
+            root.last_line = "";
+        }
     }
 }
