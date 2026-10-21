@@ -1,0 +1,20 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# The bar's notification center: clear it, open it, and show the newest notification again. Do not disturb lives in
+# system.toml. Format: ~/.config/voxcmd/README.md
+name = "Notifications"
+# Each action's effect is its own feedback: the center empties, the popup opens, the toast comes back.
+silent = true
+
+verbs = [
+  { action = "clear",     match = '(clear|dismiss|delete|remove)( all)?( of)?( the| my)? notifications|clear (the )?notification (center|history)' },
+  { action = "read_last", match = '(read|show|repeat)( me)? (the )?(last|latest|previous|most recent|newest) notification( again)?|what (was|did) (that|the last) notification( say)?' },
+  { action = "open",      match = '{show}( me)?( the| my)? notifications( center| popup| history)?|{show} (the )?notification (center|popup|history)' },
+]
+
+examples = ["clear notifications", "read the last notification", "what was that notification", "open notifications"]
+
+[actions]
+clear = "clear_notifications"
+read_last = "show_last_notification"
+# A sequence's next step waits for the center to be drawn.
+open = { run = '"$qs_ipc" call notifications open', wait = "popup_open:notifications" }

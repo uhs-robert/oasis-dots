@@ -5,7 +5,9 @@
 //! integration's hook is reached through the bash voxcmd's hidden `_legacy-hook` (a bash start plus sourcing per
 //! call); `Dispatch` picks by the integration's format. The legacy half is deleted in 3.2.
 //!
-//! `VOXCMD_INTEGRATION` is the integration's file stem. A hook output line with four or more tab fields fails the hook.
+//! `VOXCMD_INTEGRATION` is the integration's file stem. `VOXCMD_SELF` is the path of the voxcmd that runs the hook: a
+//! hook calls `"$VOXCMD_SELF" util ...` and never a name on PATH, which until 3.2 is the bash voxcmd with no `util`.
+//! A hook output line with four or more tab fields fails the hook.
 //! Background children a `candidates` hook leaves behind are killed when it exits.
 use crate::click::driver::WindowSel;
 use crate::click::explain::ExplainSink;
@@ -480,6 +482,7 @@ impl ShellHooks {
         set("VOXCMD_SHARE_DIR", self.share_dir.display().to_string());
         set("VOXCMD_INTEGRATION_DIR", self.integration_dir.display().to_string());
         set("VOXCMD_SPOKEN", flag(env.spoken));
+        set("VOXCMD_SELF", crate::ask::this_binary().display().to_string());
         if self.dry_run {
             set("VOXCMD_DRY_RUN", "1".to_string());
         }
@@ -960,6 +963,7 @@ mod tests {
         assert_eq!(seen["VOXCMD_INTEGRATIONS"], "t other");
         assert_eq!(seen["VOXCMD_INTEGRATION_DIR"], integration_dir);
         assert_eq!(seen["VOXCMD_SPOKEN"], "0");
+        assert_eq!(seen["VOXCMD_SELF"], crate::ask::this_binary().display().to_string());
         assert!(seen["VOXCMD_SHARE_DIR"].ends_with("share/voxcmd"), "{seen:?}");
         // Only a chosen option has an id and label, only a wait an active window, only a dry run VOXCMD_DRY_RUN.
         for absent in ["VOXCMD_ID", "VOXCMD_LABEL", "VOXCMD_ACTIVE_BEFORE", "VOXCMD_DRY_RUN"] {

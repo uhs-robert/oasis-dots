@@ -34,6 +34,7 @@ cp -r "$package/.local" "$seq_pkg/.local"
 link_voxcmd_shim "$seq_pkg"
 for integration in apps calendar notifications answers rapid; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$seq_config/integrations.d/"
+  copy_shipped_integrations "$seq_config" "$integration"
 done
 # The card answers yes and the picker its first choice, unless $root/confirm-no or a $root/pick-answer says otherwise.
 cat >"$seq_pkg/.local/bin/voxcmd-confirm" <<STUB

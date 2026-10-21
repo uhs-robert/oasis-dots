@@ -78,6 +78,27 @@ stub_calls_done() { ! pgrep -f -- "^/bin/sh $SANDBOX_DIR/bin/" >/dev/null; }
 watchers_gone() { logged_processes_gone '.* listen: recording started, watcher \([0-9]*\) .*'; }
 ended_hooks_gone() { logged_processes_gone '.* session: ended hook \([0-9]*\) runs$'; }
 
+# copy_shipped_integrations <config dir> [stem...]: the converted integrations (integrations/<stem>.toml and its <stem>.sh
+# library) of $package into <config dir>/integrations, all of them without a stem. The bash original beside it in
+# integrations.d is copied too, as in a real config, and loses to the TOML of the same stem under VOXCMD_BIN=rs; a suite
+# that copied only integrations.d would pass on the bash files without ever reading the TOML.
+copy_shipped_integrations() {
+  local dest=$1/integrations stem file
+  # shellcheck disable=SC2154 # the suites set $package
+  local source_dir=$package/.config/voxcmd/integrations
+  shift
+  mkdir -p "$dest"
+  if [ "$#" -eq 0 ]; then
+    find "$source_dir" -maxdepth 1 -type f ! -name '.*' -exec cp -t "$dest/" {} +
+    return
+  fi
+  for stem in "$@"; do
+    for file in "$source_dir/$stem".{toml,sh}; do
+      [ ! -f "$file" ] || cp "$file" "$dest/"
+    done
+  done
+}
+
 # link_voxcmd_shim <package copy>: the new CLI for a copied package, whose stubbed siblings sit beside its own bash voxcmd.
 # A suite then runs <copy>/tests/bin/voxcmd. With VOXCMD_BIN=bash (the default) that is the shim, which execs the copy's
 # voxcmd by its real path; with VOXCMD_BIN=rs it is a link to this checkout's Rust build, which sandbox.sh made, and the
