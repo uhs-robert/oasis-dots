@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.UPower
 import qs.core
+import "../../core/Validated.js" as Validated
 
 // Power choices saved in power.json under the Hyprland state dir; power.sh turns them into hypridle, logind and power-profile settings.
 Singleton {
@@ -69,13 +70,7 @@ Singleton {
         path: root.state_dir + "/power.json"
         defaults: root.defaults()
         debounce_ms: 700
-        validate: raw => {
-            const next = root.defaults();
-            for (const key in next) {
-                if (root.valid(key, raw[key])) next[key] = raw[key];
-            }
-            return next;
-        }
+        validate: raw => Validated.validated(root.defaults(), raw, root.valid)
         after_save: values => ["sh", "-c", '"$HOME/.config/hypr/scripts/power.sh" apply']
     }
 }
