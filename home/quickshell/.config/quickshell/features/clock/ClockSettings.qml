@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import qs.core
+import "../../core/Validated.js" as Validated
 
 // Clock and calendar choices saved in clock.json under the Quickshell state dir.
 Singleton {
@@ -25,7 +26,7 @@ Singleton {
     }
 
     function valid(key, value) {
-        return !!root.choices[key] && root.choices[key].indexOf(value) >= 0;
+        return Validated.in_choices(root.choices, key, value);
     }
 
     function set(key, value) {
@@ -38,13 +39,7 @@ Singleton {
         path: root.state_dir + "/clock.json"
         defaults: root.defaults
         debounce_ms: 300
-        validate: raw => {
-            const next = Object.assign({}, root.defaults);
-            for (const key in next) {
-                if (root.valid(key, raw[key])) next[key] = raw[key];
-            }
-            return next;
-        }
+        validate: raw => Validated.validated(root.defaults, raw, root.valid)
         onLoaded: root.has_time_format = root.valid("time_format", store.raw.time_format)
     }
 }
