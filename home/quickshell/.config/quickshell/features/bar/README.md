@@ -2,6 +2,10 @@
 
 `bar/` holds the bar and its islands, the submap and voice-mode tabs, the hot corner, one file per module in `modules/`, `BarSettings` with `BarLayout.js` and `BarModules.js` (the layout and module registry), `LualineState`, `SubmapState`, the command-status state and IPC handler, the badged glyph and done/wait pulses the modules draw, and the neovim style's mode chip, buffer line, lualine sections and window segment in `neovim/`.
 
+## Island fills
+
+Every island fill (the base colour, shade, dither, scanlines and the lualine sections) goes through `Style.island_fill`, which applies Settings > Theme options > Island opacity; module content, borders, rims, insets and ticks do not. Below 100% (`Style.islands_translucent`) no pixel may be filled twice, because each fill fades on its own and stacked ones show darker. So `Island.qml` drops the 1px overlap between caps and body, and under lualine the island fills only behind modules that set no `lualine_fill` of their own, section c stops at the islands' caps, and the mode chip, buffers and sections draw each arrow as two colours side by side instead of one over the other. At 100% the overlapping opaque geometry, which hides fractional-scaling seams, is kept. A new fill follows the same rule.
+
 ## Bar layout
 
 `bars.json` is a JSON array of rules. The first rule that matches a monitor decides its bar, and a monitor no rule matches gets no bar (the log says so). The tracked file ships one `"*"` rule. Edit it live, the bar reloads on save, and a broken file keeps the last good layout (if it is broken when the shell starts, there is no last good layout, so a minimal bar with workspaces, clock and tray shows and a notification names the error, until you save a valid file).

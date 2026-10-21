@@ -39,6 +39,7 @@ RowsSection {
             wait_anim: "The keeptabs cue when a session waits on you, from any style.",
             toast_enter: "How notification toasts arrive, from any style.",
             bar_island_shape: "The outline of the bar's islands, from any style, drawn in your palette.",
+            bar_island_opacity: "How see-through the bar islands' backgrounds are; text, icons and borders stay solid.",
             workspace_art: "The bar's workspace indicator, from any style, drawn in your palette.",
             bar_icon_set: "The bar's icons, from any style: pixel art, vector or emoji icons where the set has drawn one, Nerd Font glyphs elsewhere.",
             bar_meeting_marker: "How the bar clock shows an upcoming or running meeting, from any style.",
@@ -53,7 +54,7 @@ RowsSection {
             label: def.label,
             desc: root.notes[def.key] || "",
             values: () => kind === "bool" ? ["on", "off"] : kind === "choice" ? def.choices : root.number_values(def),
-            text: v => def.labels ? def.labels[v] : String(v),
+            text: v => def.labels ? def.labels[v] : def.percent ? Math.round(v * 100) + "%" : String(v),
             value: () => kind === "bool" ? (Style.option(def.key) ? "on" : "off") : Style.option(def.key),
             set: v => Style.set_option(def.key, kind === "bool" ? v === "on" : v)
         };

@@ -20,6 +20,8 @@ Item {
     readonly property int well_size: root.compact ? 22 : 26
     // Lualine: the button is the HyprVim mode chip, full bar height.
     readonly property bool lualine: Style.bar_lualine
+    // The chip draws its own section fill, so a translucent island leaves its colour out from behind it.
+    readonly property bool lualine_fill: root.lualine
 
     implicitWidth: root.lualine && chip_loader.item ? chip_loader.item.implicitWidth : root.well ? root.well_size : icon.implicitSize
     implicitHeight: root.lualine ? root.bar_height : root.well ? root.well_size : icon.implicitSize

@@ -66,6 +66,8 @@ Item {
     readonly property int tile_depth: compact ? 2 : 3
 
     implicitWidth: row.implicitWidth + (materia ? 12 : 0)
+    // The buffers draw their own section fill, so a translucent island leaves its colour out from behind them.
+    readonly property bool lualine_fill: root.buffers
     // Dots are shorter than pills; the row keeps the pill height so it stays centered.
     implicitHeight: root.pill_tokens.bar_workspace_dot.a > 0 ? Math.max(row.implicitHeight, root.pill_height) : row.implicitHeight
 

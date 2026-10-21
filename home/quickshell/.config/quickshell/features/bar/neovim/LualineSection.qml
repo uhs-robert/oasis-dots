@@ -64,24 +64,44 @@ Item {
 
         ShapePath {
             strokeWidth: -1
-            fillColor: root.lead_bg
+            fillColor: Style.islands_translucent ? "transparent" : root.lead_bg
             PathRectangle { width: root.arrow; height: root.height }
         }
 
         ShapePath {
             strokeWidth: -1
-            fillColor: root.first_lit ? root.hover_fill : root.fill
+            fillColor: Style.islands_translucent ? "transparent" : root.first_lit ? root.hover_fill : root.fill
             PathPolyline {
                 path: [Qt.point(root.arrow, 0), Qt.point(root.arrow + 1, 0), Qt.point(root.arrow + 1, root.height), Qt.point(root.arrow, root.height), Qt.point(0, root.height / 2), Qt.point(root.arrow, 0)]
             }
         }
+
+        // Translucent fills must not stack, so the previous section's colour goes beside the arrow rather than under it,
+        // and the arrow stops where the first component's fill begins.
+        ShapePath {
+            strokeWidth: -1
+            fillColor: Style.islands_translucent ? Style.island_fill(root.lead_bg) : "transparent"
+            PathPolyline {
+                path: [Qt.point(0, 0), Qt.point(root.arrow, 0), Qt.point(0, root.height / 2), Qt.point(root.arrow, root.height), Qt.point(0, root.height), Qt.point(0, 0)]
+            }
+        }
+
+        ShapePath {
+            strokeWidth: -1
+            fillColor: Style.islands_translucent ? Style.island_fill(root.first_lit ? root.hover_fill : root.fill) : "transparent"
+            PathPolyline {
+                path: [Qt.point(root.arrow, 0), Qt.point(root.arrow, root.height), Qt.point(0, root.height / 2), Qt.point(root.arrow, 0)]
+            }
+        }
     }
 
+    // Translucent, each component fills its own part instead (cells below), so a lit one does not stack on this, and
+    // this keeps only the sliver the rounded-up width leaves after them.
     Rectangle {
-        x: root.arrow
-        width: root.width - root.arrow
+        x: root.arrow + (Style.islands_translucent ? row.width : 0)
+        width: root.width - x
         height: root.height
-        color: root.fill
+        color: Style.island_fill(root.fill)
     }
 
     Row {
@@ -163,9 +183,42 @@ Item {
                         }
                     }
 
+                    // Translucent: this gap's own fill, under the separator. A Rectangle where both sides match, since
+                    // a Shape's antialiased edge at a fractional x would show against the cells' fills.
+                    Rectangle {
+                        visible: Style.islands_translucent && cell.lit === cell.prev_lit
+                        z: -1
+                        anchors.fill: parent
+                        color: Style.island_fill(cell.lit ? root.hover_fill : root.fill)
+                    }
+
+                    // Otherwise the component before's colour beside this one's arrow.
+                    Shape {
+                        visible: Style.islands_translucent && cell.lit !== cell.prev_lit
+                        z: -1
+                        anchors.fill: parent
+                        preferredRendererType: Shape.CurveRenderer
+
+                        ShapePath {
+                            strokeWidth: -1
+                            fillColor: Style.island_fill(cell.prev_lit ? root.hover_fill : root.fill)
+                            PathPolyline {
+                                path: [Qt.point(0, 0), Qt.point(root.lead_width, 0), Qt.point(0, root.height / 2), Qt.point(root.lead_width, root.height), Qt.point(0, root.height), Qt.point(0, 0)]
+                            }
+                        }
+
+                        ShapePath {
+                            strokeWidth: -1
+                            fillColor: Style.island_fill(cell.lit ? root.hover_fill : root.fill)
+                            PathPolyline {
+                                path: [Qt.point(root.lead_width, 0), Qt.point(root.lead_width, root.height), Qt.point(0, root.height / 2), Qt.point(root.lead_width, 0)]
+                            }
+                        }
+                    }
+
                     // Right-side lualine arrows point left: this component's fill over the one before it.
                     Shape {
-                        visible: cell.lit !== cell.prev_lit
+                        visible: cell.lit !== cell.prev_lit && !Style.islands_translucent
                         anchors.fill: parent
                         preferredRendererType: Shape.CurveRenderer
 
@@ -188,7 +241,7 @@ Item {
                 Rectangle {
                     width: loader.implicitWidth + pad_left + pad_right
                     height: root.height
-                    color: cell.lit ? root.hover_fill : "transparent"
+                    color: cell.lit ? Style.island_fill(root.hover_fill) : Style.islands_translucent ? Style.island_fill(root.fill) : "transparent"
                     readonly property int pad_left: cell.first ? 10 : 4
                     readonly property int pad_right: cell.last ? 10 : 5
 

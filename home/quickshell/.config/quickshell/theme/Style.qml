@@ -157,6 +157,14 @@ Singleton {
         return o;
     }
 
+    // A bar island fill at the Island opacity option; every fill layer goes through it, never content, borders or ticks.
+    // Fills fade one by one, so translucent fills must not overlap: islands_translucent switches to geometry that never
+    // fills a pixel twice, and at 1 the overlapping opaque geometry, which hides fractional-scaling seams, is kept.
+    function island_fill(c) {
+        return Qt.alpha(c, c.a * root.bar_island_opacity);
+    }
+    readonly property bool islands_translucent: root.bar_island_opacity < 1
+
     // A text size as font_size plus an offset, through the style's type_scale.
     function fs(k) {
         const v = root.type_scale[k];
@@ -370,6 +378,7 @@ Singleton {
     readonly property string bar_separator: root.bar.bar_separator
     readonly property color bar_tick_color: root.bar.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
     readonly property string bar_island_shape: root.bar.bar_island_shape
+    readonly property real bar_island_opacity: root.bar.bar_island_opacity
     readonly property color hairline: root.active.hairline
     readonly property color hairline_dim: root.active.hairline_dim
     readonly property string frame_ticks: root.active.frame_ticks
@@ -537,7 +546,7 @@ Singleton {
 
     // Per-style option values by style then key, from theme_options.json; only values that differ from the style's own are kept.
     property var theme_values: ({})
-    // The current style's option schema: [{ key, label, type, default, choices | min, max, step }].
+    // The current style's option schema: [{ key, label, type, default, choices | min, max, step, percent }].
     readonly property var settings: root.settings_for(root.saved_name)
     readonly property var font_choices: {
         const seen = {};
@@ -585,6 +594,7 @@ Singleton {
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes) });
+        out.push({ key: "bar_island_opacity", label: "Island opacity", type: "number", default: b.bar_island_opacity, min: 0, max: 1, step: 0.05, percent: true });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.borrow_labels("workspace_art", root.workspace_arts) });
         out.push({ key: "bar_icon_set", label: "Icons", type: "choice", default: b.bar_icon_set || "", choices: root.bar_icon_sets, labels: root.borrow_labels("bar_icon_set", root.bar_icon_sets) });
         out.push({ key: "bar_meeting_marker", label: "Meeting marker", type: "choice", default: b.bar_meeting_marker || "", choices: root.bar_meeting_markers, labels: root.borrow_labels("bar_meeting_marker", root.bar_meeting_markers) });
