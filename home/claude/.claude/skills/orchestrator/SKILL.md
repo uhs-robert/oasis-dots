@@ -19,7 +19,7 @@ Briefs go by reference: write each piece's plan, constraints and context once, i
 
 Tracker doc edits go to a Haiku agent: give it the doc path and the change in a line or two, and take its one-line confirmation. When a piece merges, that agent deletes the piece's drafts, cuts its tracker row to status and PR, and moves any decision worth keeping into the decisions log. Read a tracker yourself only for the section you are about to act on.
 
-Agents run in the background: after dispatching, end the turn and let the completion notice start the next one. Never poll, sleep or wait on an agent, and never state its result before the notice arrives. While waiting on the owner or a review, start read-only research for the next planned piece of work. Give each agent a short unique name so you can `SendMessage` it later.
+Agents run in the background: after dispatching, end the turn and let the completion notice start the next one. Never poll, sleep or wait on an agent, and never state its result before the notice arrives. While waiting on the owner or a review, start read-only research for the next planned piece of work. Never end a turn idle with no piece in flight: brief the open tracker items in plain words, per the briefing rules below, and ask the owner with `AskUserQuestion` which to take next. This ask is always allowed; it is not an escalation. Give each agent a short unique name so you can `SendMessage` it later.
 
 Every agent's report is yours to collect. On any agent notice that is not its report (interim, "waiting on its own background work", or silence), check its branch and worktree at once and tell the owner the state; never call an agent still working without checking.
 
