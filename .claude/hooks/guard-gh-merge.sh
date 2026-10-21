@@ -4,12 +4,12 @@ set -u
 cmd=$(jq -r '.tool_input.command // empty')
 
 # Drop heredoc bodies and quoted -m/--message/--body/--title values, so a commit or PR message that mentions a merge
-# is no call. A double-quoted value with a command substitution and a heredoc fed to a shell both run, so they stay. An
-# unterminated quote does not match and stays in the text, so doubt still denies.
+# is no call. A double-quoted value with a command substitution, an unquoted heredoc (it expands $(...)) and a heredoc
+# fed to a shell all run, so they stay. An unterminated quote does not match and stays in the text, so doubt still denies.
 cmd=$(awk '
   skip { t = $0; sub(/^\t+/, "", t); if (t == tag) { skip = 0; print } ; next }
   { print }
-  $0 !~ /(^|[[:space:];&|(])(bash|sh|zsh|eval|source|\.)([[:space:]]|$)/ && match($0, /(^|[^<])<<-?[ ]*[\047"\\]?[A-Za-z_][A-Za-z0-9_]*/) { tag = substr($0, RSTART, RLENGTH); sub(/^.*<<-?[ ]*[\047"\\]?/, "", tag); skip = 1 }
+  $0 !~ /(^|[[:space:];&|(])(bash|sh|zsh|eval|source|\.)([[:space:]]|$)/ && match($0, /(^|[^<])<<-?[ ]*[\047"\\][A-Za-z_][A-Za-z0-9_]*/) { tag = substr($0, RSTART, RLENGTH); sub(/^.*<<-?[ ]*[\047"\\]/, "", tag); skip = 1 }
 ' <<<"$cmd")
 message_arg="(-m|--message|--body|--title)[[:space:]=]*('[^']*'|\"([^\"\\\\\`$]|\\\\.|[$]([^(]|$))*\")"
 while [[ $cmd =~ $message_arg ]]; do cmd=${cmd/"${BASH_REMATCH[0]}"/}; done

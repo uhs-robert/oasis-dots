@@ -71,6 +71,9 @@ expect deny "git commit -m \"\`merge-prs.sh 1\`\""
 expect deny $'bash <<\'EOF\'\nmerge-prs.sh 1\nEOF'
 expect deny $'eval "$(cat <<\'EOF\'\nmerge-prs.sh 1\nEOF\n)"'
 expect deny $'cat <<EOF | sh\nmerge-prs.sh 1\nEOF'
+# An unquoted heredoc expands its body, a quoted one does not.
+expect deny $'cat <<EOF\n$('"$gh_merge"$' 123)\nEOF'
+expect allow $'gh pr create --body-file - <<"EOF"\nrun '"$gh_merge"$' by hand\nEOF'
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
