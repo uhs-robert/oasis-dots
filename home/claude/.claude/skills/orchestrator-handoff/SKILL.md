@@ -10,7 +10,7 @@ Moves the orchestrator role to a fresh session so its context starts empty. The 
 
 The role moves piece by piece, so the successor starts work at once instead of waiting for everything in flight. A piece is a track, or an item within one (a PR being built, a plan awaiting the owner). Every piece has exactly one owning session at any time, and the docs say which; a session never touches another's pieces: their agents, worktrees, branches or PRs. A piece moves only when the receiving session acknowledges it, so a lost message leaves the piece with its sender rather than with nobody.
 
-Only the owner starts a handoff, in the current orchestrator, or the context-budget hook does (Automatic handoff below). A request from another session to hand over goes to the owner.
+Only the owner starts a handoff, in the current orchestrator, the context-budget hook does, or the owner says yes to its next-task offer (Automatic handoff below). A request from another session to hand over goes to the owner.
 
 Argument: `$ARGUMENTS`
 
@@ -96,6 +96,8 @@ When you hold no piece and nothing you started is running (no agent, background 
 1. Tell the owner in one line that you are handing off because the session reached its context budget.
 2. Run `~/.claude/skills/orchestrator-handoff/spawn-successor.sh <your session name>`. It opens a window named `orchestrator-next` in your tmux session with a fresh Claude told to expect your baton. If it fails or is denied, hand the owner the `!` command, or ask them to start the session themselves.
 3. End the turn. The successor sends `READY`; its sender is the successor. Follow Hand over from step 1, using that sender in step 3.
+
+After the 140k note, once no small piece remains (nothing in flight, or only pieces too big for the remaining budget), ask the owner the next-task question with `AskUserQuestion` and offer to hand it to a fresh session. On a yes, run steps 1-3 now, without waiting for 175k.
 
 Taking over still needs the owner: the successor asks them before replying `TAKEN`, like any `BATON`.
 
