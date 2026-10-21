@@ -312,7 +312,7 @@ case_greeter_keyring() {
   start_case 'greetd keyring unlock installer'
   echo '# x' >>lib/install/greeter.sh
   plan
-  expect_ran greeter-keyring shellcheck
+  expect_ran greeter-keyring greeter-stage-zsh shellcheck
   expect_skipped firefox-policy qmllint luacheck check-scope
 }
 
@@ -321,15 +321,15 @@ case_install_loader() {
   echo '# x' >>lib/install/fonts.sh
   plan
   expect_ran install-load shellcheck
-  expect_skipped firefox-policy greeter-keyring qmllint luacheck check-scope
+  expect_skipped firefox-policy greeter-keyring greeter-stage-zsh qmllint luacheck check-scope
 }
 
 case_install_loader_reached_through_earlier_arms() {
   start_case 'install libraries claimed by earlier arms still reach the loader test'
   plan_paths "$(printf '%s\n' lib/install/voice.sh lib/install/greeter.sh)"
-  expect_ran install-load firefox-policy greeter-keyring
+  expect_ran install-load firefox-policy greeter-keyring greeter-stage-zsh
   plan_paths lib/common/greeter-files.sh
-  expect_ran install-load qmllint
+  expect_ran install-load qmllint greeter-keyring greeter-stage-zsh
 }
 
 case_paths_list() {

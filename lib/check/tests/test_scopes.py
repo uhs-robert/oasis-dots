@@ -82,7 +82,7 @@ CASES = [
     ("lib/install/tests/greeter-keyring.sh", " keyring"),
     ("lib/install/fonts.sh", " loader"),
     ("lib/install/tests/load.sh", " loader"),
-    ("lib/common/greeter-files.sh", " qml ship loader"),
+    ("lib/common/greeter-files.sh", " qml ship loader keyring"),
     ("lib/common/output.sh", " loader"),
     ("lib/common/README", ""),
     ("home/calendar/tests/run.sh", " calendar"),
