@@ -11,7 +11,7 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | Path          | Purpose                                                                                    |
 | ------------- | ------------------------------------------------------------------------------------------ |
 | `shell.qml`   | Entry point: a bar per monitor, then every popup, picker provider, IPC handler and overlay |
-| `services/`   | Singletons that hold state (network...) and the IPC handlers |
+| `services/`   | `Palettes`, the one singleton not yet moved into a feature (`shell.qml` still imports it so Quickshell registers the module) |
 | `ui/`         | Shared widgets: `menu/` (rows, tabs), `frames/` (brackets and the pieces a frame stack is built from), `gauges/` (`Meter`, `AtbBar`, `TickRuler`...), `keys/` (key badges and controller badges), `effects/` (dither, scanlines, sheen, sprites) |
 | `styles/`     | One folder per style with the pieces that only that style draws: `tokens.js` (its token overrides), `icons.js` (its bar icon set, where it has one), `widgets/` and `sounds/` (the style's sound pack), and for snes `popups/`; `goldeneye/` also holds `Watch.js` (the watch colors), `watch_tokens.js` and the watch parts its lock skin shares (`PanelShape`, `SegmentArc`, `WatchHands`, `static.frag`). `index.js` builds every style's token set and `IconSets.js` registers the icon sets |
 | `features/`   | One folder per feature, listed under Features below |
@@ -51,6 +51,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - [`settings/`](features/settings/README.md): The Settings panel and its saved state files
 - [`popups/`](features/popups/README.md): Popup framework and shared popup keys
 - `audio/` holds `ThemeAudio` (the sound packs and their volumes) and the `sound` IPC handler `SoundIpc`.
+- `style/` holds `StyleIpc`, the `style` IPC handler (style, lock skin and sound-pack calls).
 - `windows/` holds `WindowState` (Hyprland windows, most recently focused first).
 - [`lock/`](features/lock/README.md): Lock screen, skins and greeter
 

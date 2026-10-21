@@ -3,7 +3,6 @@
 # Delete a line in the PR that removes its edge; a line whose edge is gone fails the check as stale. "5.9 step N" is
 # the step of the imports-that-run-the-wrong-way item in quickshell-refactor.md.
 
-services/StyleIpc.qml -> qs.features.audio                              # services has no destination yet (undecided)
 theme/Style.qml -> styles/IconSets.js                                   # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/goldeneye/Watch.js                            # the style engine consumes style data by design (permanent)
 theme/Style.qml -> styles/index.js                                      # the style engine consumes style data by design (permanent)
