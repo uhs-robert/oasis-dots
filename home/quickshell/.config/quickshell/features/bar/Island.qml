@@ -70,6 +70,48 @@ Item {
     readonly property real oct_c: root.cap_width
     readonly property real oct_i: root.border_width / 2
 
+    readonly property bool slanted: root.shape === "slant" || root.lualine
+
+    // The fill a row from y0 to y1 lies on, as { x, w }; scanlines, and dither off the slant, clip to it so they follow every shape.
+    // The slant samples only y0, as it always has; the other shapes take the narrower end so no row spills past them.
+    function fill_span(y0, y1) {
+        if (root.slanted) {
+            const s = y0 * root.cap_width / root.height;
+            const x = root.cap_left ? s : 0;
+            return { x: x, w: root.width - x - (root.cap_right ? s : 0) };
+        }
+        const a = root.fill_edges(y0), b = root.fill_edges(y1);
+        const x = Math.max(a[0], b[0]);
+        return { x: x, w: Math.min(a[1], b[1]) - x };
+    }
+
+    // The left and right x of the fill at height y, inside any border that the effects would otherwise cover; [0, 0] outside it.
+    function fill_edges(y) {
+        const h = root.height, w = root.width, e = root.border_width;
+        if (root.window) {
+            if (y < root.window_top + e || y > root.window_bottom - e) return [0, 0];
+            return [root.window_x + e, root.window_x + root.window_width - e];
+        }
+        if (root.capsule) {
+            const x0 = root.capsule_inset + e, x1 = root.capsule_inset + body.width - e, y0 = root.capsule_inset + e, y1 = h - e;
+            if (y < y0 || y > y1) return [0, 0];
+            const top_r = Math.max(0, root.capsule_radius - e), bottom_r = Math.max(0, root.capsule_radius * (1 - root.join) - e);
+            const corner = (r, dy) => r - Math.sqrt(Math.max(0, r * r - dy * dy));
+            const dx = y < y0 + top_r ? corner(top_r, y0 + top_r - y) : y > y1 - bottom_r ? corner(bottom_r, y - y1 + bottom_r) : 0;
+            return [x0 + dx, x1 - dx];
+        }
+        if (root.octagon) {
+            const c = root.oct_c;
+            const cut = y < c ? c - y : y > h - c ? y - h + c : 0;
+            return [root.oct_x0 + (root.cap_left ? cut : 0), root.oct_x1 - (root.cap_right ? cut : 0)];
+        }
+        // The visor, as VisorIsland cuts it (keep v, u0 and u1 in step with it): each end slopes in to the notch at v, steps in, then on to the bottom.
+        if (y > h - e) return [0, 0];
+        const c = root.cap_width, v = h * 0.52, u0 = c * 0.42, u1 = c * 0.64;
+        const cut = (y <= v ? (c - u1) * y / v : c - u0 + u0 * (y - v) / (h - v)) + e;
+        return [root.cap_left ? cut : 0, w - (root.cap_right ? cut : 0)];
+    }
+
     signal clicked
 
     height: 30
@@ -240,6 +282,8 @@ Item {
 
         Rectangle {
             required property int modelData
+            // Above a borrowing style's dither and scanlines, which would hatch it.
+            z: 1
             visible: modelData === 0 ? root.cap_left : root.cap_right
             x: modelData === 0 ? root.lug + 5 : root.width - root.lug - 7
             y: (root.height - height) / 2
@@ -276,8 +320,10 @@ Item {
         anchors.fill: parent
         active: root.dither_color.a > 0
         sourceComponent: Dither {
+            // The slant keeps Dither's own slant edges (the same line as fill_span's, computed in another order), so slanted styles draw exactly as before.
             slant_left: root.cap_left ? root.cap_width : 0
             slant_right: root.cap_right ? root.cap_width : 0
+            row_span: root.slanted ? null : root.fill_span
             color: root.dither_color
         }
     }
@@ -382,11 +428,12 @@ Item {
 
             Rectangle {
                 required property int index
-                readonly property real slant: index * root.scanline_period * root.cap_width / root.height
+                readonly property real island_y: scanlines.y + y
+                readonly property var span: root.fill_span(island_y, island_y + 1)
 
-                x: root.cap_left ? slant : 0
+                x: span.x - scanlines.x
                 y: index * root.scanline_period
-                width: scanlines.width - x - (root.cap_right ? slant : 0)
+                width: Math.max(0, span.w)
                 height: 1
                 color: root.scanline_color
             }
