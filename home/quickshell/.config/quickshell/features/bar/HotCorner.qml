@@ -5,11 +5,12 @@ import Quickshell.Wayland
 import qs.features.lock
 import qs.features.settings
 
-// A tiny overlay square in the top-left corner: resting the pointer there opens the overview.
+// A tiny overlay square in the bar's start corner (top-left, or bottom-left under a bottom bar): resting the pointer there opens the overview.
 PanelWindow {
     id: root
 
     property var overview: null
+    property bool bottom: false
 
     readonly property int dwell_ms: 250
     readonly property var monitor: Hyprland.monitorFor(root.screen)
@@ -20,7 +21,8 @@ PanelWindow {
         const sc = root.screen;
         if (!sc) return false;
         const covers = (s, x, y) => s !== sc && x >= s.x && x < s.x + s.width && y >= s.y && y < s.y + s.height;
-        return !Quickshell.screens.some(s => covers(s, sc.x - 1, sc.y) || covers(s, sc.x, sc.y - 1));
+        const corner_y = root.bottom ? sc.y + sc.height - 1 : sc.y;
+        return !Quickshell.screens.some(s => covers(s, sc.x - 1, corner_y) || covers(s, sc.x, root.bottom ? corner_y + 1 : corner_y - 1));
     }
 
     function fullscreen_here() {
@@ -37,7 +39,8 @@ PanelWindow {
     implicitWidth: 3
     implicitHeight: 3
     exclusionMode: ExclusionMode.Ignore
-    anchors.top: true
+    anchors.top: !root.bottom
+    anchors.bottom: root.bottom
     anchors.left: true
     WlrLayershell.namespace: "quickshell-hotcorner"
     WlrLayershell.layer: WlrLayer.Overlay

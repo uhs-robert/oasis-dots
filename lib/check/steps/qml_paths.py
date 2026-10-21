@@ -161,6 +161,8 @@ OUTSIDE_REFS = [
     ("home/voxcmd/tests/run-monitors.sh", "features/overview/Voice.js"),
     ("home/quickshell/tests/input_settings/run_js.js", "features/settings/HyprInputValidation.js"),
     ("home/quickshell/tests/notification_markup.js", "features/notifications/NotificationMarkup.js"),
+    ("home/quickshell/tests/bar_layout.js", "features/bar/BarLayout.js"),
+    ("home/quickshell/tests/bar_layout.js", "features/bar/BarModules.js"),
 ]
 
 # A relative string on these QML keys is a path; other keys hold prose, glyphs or SVG data.

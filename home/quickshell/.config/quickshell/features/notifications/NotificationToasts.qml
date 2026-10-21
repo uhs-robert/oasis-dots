@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
-import qs.features.bar
 import qs.features.popups
 
 PanelWindow {
@@ -57,7 +56,8 @@ PanelWindow {
 
     anchors.top: true
     anchors.right: true
-    margins.top: BarSettings.height_for(BarSettings.rule_for(root.screen)) + 8
+    // A top bar's exclusive zone already pushes the window below it.
+    margins.top: 8
     margins.right: 8
 
     implicitWidth: 400

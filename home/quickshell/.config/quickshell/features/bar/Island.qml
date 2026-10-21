@@ -74,6 +74,7 @@ Item {
 
     // The fill a row from y0 to y1 lies on, as { x, w }; scanlines, and dither off the slant, clip to it so they follow every shape.
     // The slant samples only y0, as it always has; the other shapes take the narrower end so no row spills past them.
+    // y is in the top-bar frame, so a layer clipping to this under a bottom bar must be mirrored with the rest (`mirror`).
     function fill_span(y0, y1) {
         if (root.slanted) {
             const s = y0 * root.cap_width / root.height;
@@ -112,6 +113,17 @@ Item {
         return [root.cap_left ? cut : 0, w - (root.cap_right ? cut : 0)];
     }
 
+    // The screen edge the bar sits on. The decoration below is drawn for "top" (open side down) and mirrored for
+    // "bottom"; the modules never flip.
+    property string edge: "top"
+    readonly property bool flipped: root.edge === "bottom"
+    // Shared by the decoration layers that span the island's full height.
+    Scale {
+        id: mirror
+        origin.y: root.height / 2
+        yScale: root.flipped ? -1 : 1
+    }
+
     signal clicked
 
     height: 30
@@ -133,11 +145,16 @@ Item {
     }
 
     Rectangle {
+        id: capsule_shape
         visible: root.capsule
         x: root.capsule_inset
-        y: root.capsule_inset
+        y: root.flipped ? 0 : root.capsule_inset
         width: body.width
         height: root.height - root.capsule_inset
+        transform: Scale {
+            origin.y: capsule_shape.height / 2
+            yScale: root.flipped ? -1 : 1
+        }
         topLeftRadius: root.capsule_radius
         topRightRadius: root.capsule_radius
         bottomLeftRadius: root.capsule_radius * (1 - root.join)
@@ -174,6 +191,7 @@ Item {
     Loader {
         anchors.fill: parent
         active: root.shaded && !root.visor && !root.capsule && !root.octagon && !root.window
+        transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -201,6 +219,7 @@ Item {
     Loader {
         anchors.fill: parent
         active: root.visor
+        transform: mirror
         sourceComponent: Metroid.VisorIsland {
             cap_left: root.cap_left
             cap_right: root.cap_right
@@ -236,6 +255,7 @@ Item {
         anchors.fill: parent
         z: 2
         active: root.octagon
+        transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -319,6 +339,7 @@ Item {
     Loader {
         anchors.fill: parent
         active: root.dither_color.a > 0
+        transform: mirror
         sourceComponent: Dither {
             // The slant keeps Dither's own slant edges (the same line as fill_span's, computed in another order), so slanted styles draw exactly as before.
             slant_left: root.cap_left ? root.cap_width : 0
@@ -336,16 +357,18 @@ Item {
         width: Math.ceil(layout.implicitWidth) + root.pad * 2
         color: root.shaded || root.octagon || root.window ? "transparent" : root.bg_color
 
-        // A tick scale rising from the bottom edge.
+        // A tick scale rising from the open edge.
         Loader {
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: parent.bottom
+            anchors.top: root.flipped ? parent.top : undefined
+            anchors.bottom: root.flipped ? undefined : parent.bottom
+            anchors.topMargin: root.border_width
             anchors.bottomMargin: root.border_width
             height: 5
             active: Style.bar_ticks.a > 0
             sourceComponent: TickScale {
-                from_end: true
+                from_end: !root.flipped
                 step: 12
                 major_length: 5
                 minor_length: 3
@@ -363,8 +386,8 @@ Item {
             id: layout
             x: root.pad
             // A window's content centres on the window rather than the bar.
-            y: root.capsule ? root.capsule_inset : 0
-            height: parent.height - y
+            y: root.capsule && !root.flipped ? root.capsule_inset : 0
+            height: parent.height - (root.capsule ? root.capsule_inset : 0)
             spacing: root.lualine && !root.center ? 0 : Style.bar_module_gap
         }
     }
@@ -374,6 +397,7 @@ Item {
         width: root.cap_width + 1
         height: root.height
         active: root.cap_left && !root.capsule && !root.octagon && !root.window
+        transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -397,6 +421,7 @@ Item {
         width: root.cap_width + 1
         height: root.height
         active: root.cap_right && !root.capsule && !root.octagon && !root.window
+        transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -422,6 +447,10 @@ Item {
         y: root.window ? root.window_top + root.window_edge : 0
         width: root.window ? root.window_width - root.window_edge * 2 : root.width
         height: root.window ? root.window_bottom - root.window_top - root.window_edge * 2 : root.height
+        transform: Scale {
+            origin.y: scanlines.height / 2
+            yScale: root.flipped ? -1 : 1
+        }
 
         Repeater {
             model: root.scanline_color.a > 0 ? Math.ceil(scanlines.height / root.scanline_period) : 0
@@ -444,6 +473,7 @@ Item {
     Loader {
         anchors.fill: parent
         active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon && !root.window
+        transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -472,6 +502,7 @@ Item {
     Loader {
         anchors.fill: parent
         active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon && !root.window
+        transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 

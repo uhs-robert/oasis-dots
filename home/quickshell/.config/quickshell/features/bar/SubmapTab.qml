@@ -10,6 +10,8 @@ PanelWindow {
 
     property real line_width: 260
     property bool bar_present: true
+    // The bar sits on the bottom edge: the line and tabs rise above it instead of hanging below.
+    property bool bottom: false
     // The bar on this screen shows the submap in a lualine mode chip instead.
     property bool chip_shown: false
     property string submap_name: ""
@@ -31,7 +33,8 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-submap"
-    anchors.top: true
+    anchors.top: !root.bottom
+    anchors.bottom: root.bottom
     implicitWidth: Math.max(line_width, tabs.width)
     implicitHeight: line.height + tabs.height
     mask: Region {}
@@ -102,6 +105,7 @@ PanelWindow {
 
     Rectangle {
         id: line
+        y: root.bottom ? tabs.height : 0
         anchors.horizontalCenter: parent.horizontalCenter
         width: root.line_width * root.line_progress
         height: 3
@@ -112,7 +116,7 @@ PanelWindow {
     // The voice mode sits beside the submap tab, so both stay readable when a submap is open during a session.
     Row {
         id: tabs
-        anchors.top: line.bottom
+        y: root.bottom ? 0 : line.height
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: 6
 
@@ -120,12 +124,14 @@ PanelWindow {
             name: root.submap_name
             tint: root.submap_color
             progress: root.submap_progress
+            rises: root.bottom
         }
 
         ModeTab {
             name: root.voice_name
             tint: root.voice_color
             progress: root.voice_progress
+            rises: root.bottom
         }
     }
 }

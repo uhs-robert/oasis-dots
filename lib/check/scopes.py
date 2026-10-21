@@ -273,6 +273,7 @@ STEPS = [
     Step("input-vectors-lua", "inputvec", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
     Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
+    Step("bar-layout", "node", "node ./home/quickshell/tests/bar_layout.js", ("node",), skip_reason="the bar layout tests need node"),
     Step("packages", "tree", "sh ./lib/check/steps/packages.sh"),
     Step("symlinks", "tree", "sh ./lib/check/steps/symlinks.sh"),
     Step("git-diff-check", "tree", "git diff --check HEAD"),
