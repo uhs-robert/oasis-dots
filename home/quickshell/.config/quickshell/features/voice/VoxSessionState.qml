@@ -49,19 +49,20 @@ Singleton {
             owner_start: String(raw.owner_start || "")
         })
         onLoaded: {
-            if (session.values.open) owner_probe.reload();
+            if (session.values.open) owner_probe.poll();
         }
     }
 
     // A watch only reports a file appearing in a folder that exists, and voxcmd makes its folder on first use, which
     // can come after the bar starts. Until the folder is there it is looked for; reading a folder fails with an error
     // other than FileNotFound.
-    FileView {
+    PolledFile {
         id: voxcmd_dir_probe
         path: root.voxcmd_dir
-        printErrors: false
-        blockLoading: true
-        onLoadFailed: error => {
+        enabled: !root.voxcmd_dir_exists
+        interval_ms: 1000
+        block_loading: true
+        onLoad_failed: error => {
             if (error === FileViewError.FileNotFound)
                 return;
             root.voxcmd_dir_exists = true;
@@ -69,24 +70,19 @@ Singleton {
         }
     }
 
-    Timer {
-        running: !root.voxcmd_dir_exists
-        repeat: true
-        triggeredOnStart: true
-        interval: 1000
-        onTriggered: voxcmd_dir_probe.reload()
-    }
-
     // voxcmd removes the file however its owner ends, except when the owner is killed outright (SIGKILL), so while a
     // session shows, its owner is checked. A pid alone could be a new process that reused it, so the owner is the pid
     // with the start time voxcmd saved, as voxcmd's own session_state_locked checks.
-    FileView {
+    PolledFile {
         id: owner_probe
         path: root.owner > 0 ? "/proc/" + root.owner + "/stat" : ""
-        printErrors: false
-        blockLoading: true
-        onLoaded: root.owner_alive = root.owner_start !== "" && root.process_start_time(text()) === root.owner_start
-        onLoadFailed: error => root.owner_alive = false
+        enabled: root.session_open
+        interval_ms: 3000
+        // The session's own load reads it at once; the timer only re-checks.
+        run_on_start: false
+        block_loading: true
+        onLoaded: text => root.owner_alive = root.owner_start !== "" && root.process_start_time(text) === root.owner_start
+        onLoad_failed: error => root.owner_alive = false
     }
 
     // Field 22 of /proc/<pid>/stat, the start time in clock ticks since boot. Fields are counted after the last ")",
@@ -95,12 +91,5 @@ Singleton {
         const after_name = stat.slice(stat.lastIndexOf(")") + 1).trim().split(/\s+/);
         // after_name starts at field 3 (the state).
         return after_name.length > 19 ? after_name[19] : "";
-    }
-
-    Timer {
-        running: root.session_open
-        repeat: true
-        interval: 3000
-        onTriggered: owner_probe.reload()
     }
 }
