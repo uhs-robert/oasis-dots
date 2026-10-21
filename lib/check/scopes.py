@@ -46,8 +46,11 @@ PATH_SCOPES = [
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", "lua qml"),
     ("home/voxcmd/.local/bin/voxcmd-alarm", VOXCMD_SUITES + " qml"),
     ("home/voxcmd/tests/run-monitors.sh", VOX_CLICK + " qml"),
+    # The input vectors run the Lua validator and the bar's, so the files either reads reach them, ahead of the folders.
+    ("home/hypr/.config/hypr/config/input/init.lua", "lua inputvec"),
+    ("home/hypr/.config/hypr/lib/state.lua", "lua inputvec"),
     # The greeter monitor generator loads the session's JSON reader.
-    ("home/hypr/.config/hypr/lib/json.lua", "lua keyring"),
+    ("home/hypr/.config/hypr/lib/json.lua", "lua keyring inputvec"),
     ("home/hypr/*", "lua"),
     # Ahead of the greeter's QML entry.
     ("system/etc/greetd/hyprland.lua", "lua qml keyring"),
@@ -72,6 +75,9 @@ PATH_SCOPES = [
     ("system/etc/greetd/quickshell/*", "qml"),
     # A runtime test and the one component it pins get their own scope, ahead of the Quickshell rules, so an edit to
     # either runs that test; the files are QML too, so the qml step still reads them.
+    ("home/quickshell/tests/input_settings/*", "inputvec qml"),
+    ("home/quickshell/.config/quickshell/features/settings/HyprInputValidation.js", "inputvec qml node"),
+    ("home/quickshell/.config/quickshell/features/settings/HyprInputSettings.qml", "inputvec qml node"),
     ("home/quickshell/tests/polled_command/*", "polledcmd qml"),
     ("home/quickshell/.config/quickshell/core/PolledCommand.qml", "polledcmd qml node"),
     ("home/quickshell/tests/polled_file/*", "polledfile qml"),
@@ -264,6 +270,8 @@ STEPS = [
     Step("polled-command", "polledcmd", "bash ./home/quickshell/tests/polled_command/run.sh", ("qs", "python3"), skip_reason="the polled-command tests need qs and python3"),
     Step("polled-file", "polledfile", "bash ./home/quickshell/tests/polled_file/run.sh", ("qs", "python3"), skip_reason="the polled-file tests need qs and python3"),
     Step("restarting-stream", "restartstream", "bash ./home/quickshell/tests/restarting_stream/run.sh", ("qs", "python3"), skip_reason="the restarting-stream tests need qs and python3"),
+    Step("input-vectors-lua", "inputvec", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
+    Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
     Step("packages", "tree", "sh ./lib/check/steps/packages.sh"),
     Step("symlinks", "tree", "sh ./lib/check/steps/symlinks.sh"),

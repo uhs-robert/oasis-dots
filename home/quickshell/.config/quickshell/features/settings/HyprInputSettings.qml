@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.core
+import "HyprInputValidation.js" as Validation
 
 // Keyboard, mouse and touchpad choices saved in input.json under the Hyprland state dir; config/input applies them.
 // Unsaved keys show Hyprland's live value, so a machine profile's choice reads correctly until it is overridden.
@@ -34,23 +35,8 @@ Singleton {
     property var layouts: []
     property var variants: ({})
 
-    // Mirrors VALID in config/input, which ignores anything else, so the panel never shows a value Hyprland did not apply.
     function valid(key, v) {
-        const integer_in = (min, max) => Number.isInteger(v) && v >= min && v <= max;
-        switch (key) {
-        case "kb_layout": return typeof v === "string" && /^[A-Za-z0-9_,-]+$/.test(v);
-        case "kb_variant": return typeof v === "string" && /^[A-Za-z0-9_,-]*$/.test(v);
-        case "natural_scroll":
-        case "tap_to_click":
-        case "disable_while_typing": return typeof v === "boolean";
-        case "repeat_rate": return integer_in(1, 100);
-        case "repeat_delay": return integer_in(100, 2000);
-        case "sensitivity": return typeof v === "number" && v >= -1 && v <= 1;
-        case "follow_mouse": return integer_in(0, 3);
-        case "which_key_delay_ms": return integer_in(0, 5000);
-        case "pointer_keys": return v === "hjkl" || v === "wasd" || v === "both";
-        }
-        return false;
+        return Validation.valid(key, v);
     }
 
     function value(key) {

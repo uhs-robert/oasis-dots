@@ -41,6 +41,13 @@ CASES = [
     ("system/etc/greetd/quickshell/init.lua", " lua qml"),
     ("system/etc/greetd/quickshell/Greeter.qml", " qml"),
     ("system/etc/greetd/config.toml", " lua"),
+    # The input vectors' inputs reach their scope ahead of the folders that hold them.
+    ("home/hypr/.config/hypr/config/input/init.lua", " lua inputvec"),
+    ("home/hypr/.config/hypr/lib/state.lua", " lua inputvec"),
+    ("home/hypr/.config/hypr/lib/json.lua", " lua keyring inputvec"),
+    ("home/quickshell/tests/input_settings/vectors.tsv", " inputvec qml"),
+    ("home/quickshell/.config/quickshell/features/settings/HyprInputValidation.js", " inputvec qml node"),
+    ("home/quickshell/.config/quickshell/features/settings/HyprInputSettings.qml", " inputvec qml node"),
     ("home/quickshell/tests/notification_markup.js", " node qml"),
     ("home/quickshell/tests/json_store/run.py", " node qml"),
     ("home/quickshell/tests/polled_command/run.py", " polledcmd qml"),
