@@ -109,10 +109,12 @@ settle
 echo EXIT >>"$control/feed.3"
 wait_for_run 4
 settle
-if grep -q 'KTSEQ exited runs=0 tooltip=\[\] counts=000 class=idle' "$base/logs/qs.log"; then
+# Only the last record counts: the earlier exits happen with empty runs and always log the cleared state.
+last_exit=$(grep 'KTSEQ exited' "$base/logs/qs.log" | tail -1)
+if [[ $last_exit == *'KTSEQ exited runs=0 tooltip=[] counts=000 class=idle'* ]]; then
   echo "PASS  exit clears runs, tooltip, counts and class"
 else
-  echo "FAIL  exit left state behind: $(grep 'KTSEQ exited' "$base/logs/qs.log" | tail -1)"
+  echo "FAIL  exit left state behind: $last_exit"
   failures=$((failures + 1))
 fi
 
