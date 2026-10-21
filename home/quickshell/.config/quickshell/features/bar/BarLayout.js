@@ -4,6 +4,23 @@
 
 var sides = ["left", "center", "right"];
 var known = BarModules.names;
+var positions = ["top", "bottom"];
+// Vertical bars are planned; until they draw, these fall back to top with a warning that does not call them typos.
+var planned_positions = ["left", "right"];
+
+// The screen edge a rule puts its bar on; anything unsupported falls back to top.
+function position_of(rule) {
+    const p = rule && rule.position;
+    return positions.indexOf(p) >= 0 ? p : "top";
+}
+
+// Why a rule's position falls back to top, or "" when it is fine.
+function position_problem(rule) {
+    const p = rule ? rule.position : undefined;
+    if (p === undefined || positions.indexOf(p) >= 0) return "";
+    if (planned_positions.indexOf(p) >= 0) return "bar position \"" + p + "\" is not supported yet; using top";
+    return "unknown bar position " + JSON.stringify(p) + " in bars.json; using top";
+}
 
 // Right-island section a lualine bar draws a module in.
 function lualine_section(entry) {
@@ -58,6 +75,7 @@ function normalize(raw) {
             if (!is_object(m)) continue;
             monitors[k] = { left: unique(m.left), center: unique(m.center), right: unique(m.right), last_side: clean_last(m.last_side) };
             if (typeof m.compact === "boolean") monitors[k].compact = m.compact;
+            if (positions.indexOf(m.position) >= 0) monitors[k].position = m.position;
         }
     }
     return { shared: { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) }, monitors: monitors };
@@ -92,6 +110,7 @@ function effective(rule, state, key) {
     if (own) {
         for (const s of sides) out[s] = own[s].slice();
         if (own.compact !== undefined) out.compact = own.compact;
+        if (own.position !== undefined) out.position = own.position;
         return out;
     }
     const place = state.shared.place;
@@ -248,9 +267,15 @@ function edit(rule, state, key, op) {
     return next;
 }
 
-function set_own(state, key, layout, compact) {
+function set_own(state, key, layout, compact, position) {
     const next = normalize(state);
-    next.monitors[key] = Object.assign({}, layout_of(layout), { compact: compact });
+    next.monitors[key] = Object.assign({}, layout_of(layout), { compact: compact, position: position_of({ position: position }) });
+    return next;
+}
+
+function set_position(state, key, position) {
+    const next = normalize(state);
+    if (next.monitors[key] && positions.indexOf(position) >= 0) next.monitors[key].position = position;
     return next;
 }
 

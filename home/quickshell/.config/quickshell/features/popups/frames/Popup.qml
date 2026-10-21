@@ -14,6 +14,7 @@ import qs.ui.keys
 import qs.features.launcher
 import qs.features.popups
 import qs.features.audio
+import qs.features.bar
 
 PanelWindow {
     id: root
@@ -224,12 +225,17 @@ PanelWindow {
     // Full width along the bottom of the screen, rising from its edge; the frame loses its rounded corners.
     property bool dock_bottom: false
     readonly property real frame_radius: root.dock_bottom ? 0 : root.st.frame_radius
+    // Over a bottom bar the popup rises from it: everything named for the bar side ("top" below) lands on the frame's
+    // bottom edge instead, and the drop room and shadow go above the frame.
+    readonly property bool rises: !root.dock_bottom && BarSettings.position_on(root.held_screen_name) === "bottom"
     readonly property bool floating: root.st.frame_float > 0 && !root.dock_bottom && !root.island_capsule
     readonly property real top_radius: root.floating ? root.frame_radius : 0
     // Hung flush from a capsule: square under it, rounded where the frame reaches past its ends.
     readonly property real overhang: root.island_capsule && !root.dock_bottom ? root.width - root.island_width : 0
     readonly property real top_left_radius: root.overhang > 0 && root.side !== "left" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
     readonly property real top_right_radius: root.overhang > 0 && root.side !== "right" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
+    // Where the frame's body starts inside the reveal, which grows from the bar side.
+    readonly property real body_shift: root.rises ? reveal.height - (root.panel_height - root.line_height) : 0
     // Shortcuts fire before the focused item, so popups that bind h/l themselves still walk.
     function walk_allowed() {
         const f = content_scope.Window.activeFocusItem;
@@ -283,11 +289,12 @@ PanelWindow {
 
     // A layer surface pinned to the screen edge: xdg popups landed a few px short of it.
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
-    anchors.top: !dock_bottom
-    anchors.bottom: dock_bottom
+    anchors.top: !dock_bottom && !rises
+    anchors.bottom: dock_bottom || rises
     anchors.left: side === "left" || dock_bottom
     anchors.right: side === "right" || dock_bottom
-    margins.top: root.floating ? root.st.frame_float : 0
+    margins.top: root.floating && !root.rises ? root.st.frame_float : 0
+    margins.bottom: root.floating && root.rises ? root.st.frame_float : 0
     margins.left: root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : 0
     margins.right: root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : 0
     exclusiveZone: 0
@@ -322,7 +329,7 @@ PanelWindow {
 
     Item {
         id: panel_area
-        y: root.dock_bottom ? root.height - root.panel_height : 0
+        y: root.dock_bottom ? root.height - root.panel_height : root.rises ? root.height - root.panel_height + root.shadow_room : 0
         width: root.width
         height: root.panel_height - root.shadow_room
     }
@@ -467,7 +474,7 @@ PanelWindow {
         id: accent_line
         readonly property real w: (root.st.accent_full_width || root.dock_bottom ? root.width : root.island_width) * root.line_progress
         x: root.edge_x(w)
-        y: root.dock_bottom ? reveal.y - root.line_height : 0
+        y: root.dock_bottom ? reveal.y - root.line_height : root.rises ? root.height - root.line_height : 0
         width: w
         height: root.line_height
         color: root.st.accent_color
@@ -481,25 +488,27 @@ PanelWindow {
         readonly property string size_class: root.size_class
         // Lets MenuFooter and RowLabel inside draw this popup's search.
         readonly property var search_popup: root
-        y: root.dock_bottom ? root.height - reveal.height : root.line_height
+        y: root.dock_bottom ? root.height - reveal.height : root.rises ? root.height - root.line_height - reveal.height : root.line_height
         width: root.width
         height: (root.panel_height - root.line_height) * root.drop_progress
         clip: true
 
         Rectangle {
             visible: !root.dock_bottom && root.st.frame_drop > 0 && root.st.frame_shadow.a === 0
-            y: root.st.frame_drop
+            y: root.body_shift + (root.rises ? 0 : root.st.frame_drop)
             width: root.width
             height: root.panel_height - root.line_height - root.st.frame_drop
             color: Theme.bg_shadow
-            bottomLeftRadius: root.frame_radius
-            bottomRightRadius: root.frame_radius
+            topLeftRadius: root.rises ? root.frame_radius : 0
+            topRightRadius: root.rises ? root.frame_radius : 0
+            bottomLeftRadius: root.rises ? 0 : root.frame_radius
+            bottomRightRadius: root.rises ? 0 : root.frame_radius
         }
 
         Loader {
             active: !root.dock_bottom && root.st.frame_shadow.a > 0
             x: root.frame_radius
-            y: root.st.frame_drop / 2
+            y: root.body_shift + root.st.frame_drop / 2
             width: root.width - root.frame_radius * 2
             height: root.panel_height - root.line_height - root.st.frame_drop
             sourceComponent: RectangularShadow {
@@ -512,17 +521,21 @@ PanelWindow {
         StyledFrame {
             id: frame
             st: root.st
+            y: root.body_shift + (root.rises ? root.st.frame_drop : 0)
             width: root.width
             height: root.panel_height - root.line_height - (root.dock_bottom ? 0 : root.st.frame_drop)
             radius: root.frame_radius
-            top_left_radius: root.top_left_radius
-            top_right_radius: root.top_right_radius
-            inner_top_radius: 0
+            top_left_radius: root.rises ? root.frame_radius : root.top_left_radius
+            top_right_radius: root.rises ? root.frame_radius : root.top_right_radius
+            bottom_radius: root.rises ? 0 : root.frame_radius
+            bottom_left_radius: root.rises ? root.top_left_radius : root.frame_radius
+            bottom_right_radius: root.rises ? root.top_right_radius : root.frame_radius
+            inner_top_radius: root.rises ? root.frame_radius : 0
             corner_radii: true
             island_color: root.held_color
             clear_fill: root.device || root.st.border_title
             clear_border: root.st.border_title
-            visor_top_cut: root.top_radius > 0 ? 6 : 0
+            visor_top_cut: root.top_radius > 0 || root.rises ? 6 : 0
             sheen_on: root.floating
             tint_color: Theme.theme_primary_light
             device: root.device
@@ -541,6 +554,7 @@ PanelWindow {
                     island_width: root.island_width
                     capsule_x: root.edge_x(root.island_width)
                     dock_bottom: root.dock_bottom
+                    rises: root.rises
                     device: root.device
                     room_side: root.device_side
                     room_top: root.device_top

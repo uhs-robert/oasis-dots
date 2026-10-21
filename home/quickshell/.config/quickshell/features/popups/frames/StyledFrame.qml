@@ -13,6 +13,9 @@ Item {
     property real top_left_radius: root.radius
     property real top_right_radius: root.radius
     property real bottom_radius: root.radius
+    // The outline's own bottom corners; the inset ring, custom frame and dither keep bottom_radius.
+    property real bottom_left_radius: root.bottom_radius
+    property real bottom_right_radius: root.bottom_radius
     // The top radius of the inset ring, custom frame and dither.
     property real inner_top_radius: root.radius
     property real inset_top_offset: 0
@@ -33,7 +36,7 @@ Item {
     readonly property color fill_color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.clear_fill ? "transparent" : root.st.frame_follows_island ? root.island_color : root.st.frame_color
     readonly property real border_width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame || root.clear_border ? 0 : root.st.frame_border_width
     // Explicit corner radii antialias differently from `radius` at fractional scales.
-    property bool corner_radii: root.top_left_radius !== root.radius || root.top_right_radius !== root.radius || root.bottom_radius !== root.radius
+    property bool corner_radii: root.top_left_radius !== root.radius || root.top_right_radius !== root.radius || root.bottom_left_radius !== root.radius || root.bottom_right_radius !== root.radius
 
     Rectangle {
         visible: !root.corner_radii
@@ -50,8 +53,8 @@ Item {
         color: root.fill_color
         topLeftRadius: root.top_left_radius
         topRightRadius: root.top_right_radius
-        bottomLeftRadius: root.bottom_radius
-        bottomRightRadius: root.bottom_radius
+        bottomLeftRadius: root.bottom_left_radius
+        bottomRightRadius: root.bottom_right_radius
         border.width: root.border_width
         border.color: root.st.frame_border_color
     }
@@ -89,7 +92,7 @@ Item {
         st: root.st
         top_left_radius: Math.max(0, root.top_left_radius - root.st.frame_border_width)
         top_right_radius: Math.max(0, root.top_right_radius - root.st.frame_border_width)
-        bottom_radius: Math.max(0, root.bottom_radius - root.st.frame_border_width)
+        bottom_radius: Math.max(0, Math.min(root.bottom_left_radius, root.bottom_right_radius) - root.st.frame_border_width)
         chamfer: root.st.frame_chamfer
     }
 

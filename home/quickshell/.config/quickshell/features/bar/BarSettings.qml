@@ -15,6 +15,7 @@ Singleton {
     property bool rules_loaded: false
     readonly property var emergency_rules: [{ match: "*", compact: true, left: ["workspaces"], center: ["clock"], right: ["tray"] }]
     property var warned_modules: ({})
+    property var warned_positions: ({})
     property var state: BarLayout.normalize(null)
     property bool warned_state: false
 
@@ -139,6 +140,25 @@ Singleton {
 
     function compact_for(rule) {
         return !!(rule && rule.compact);
+    }
+
+    // "top" or "bottom"; warns once per unsupported value.
+    function position_for(rule) {
+        const problem = BarLayout.position_problem(rule);
+        if (problem !== "" && !root.warned_positions[problem]) {
+            root.warned_positions[problem] = true;
+            console.warn("BarSettings: " + problem);
+        }
+        return BarLayout.position_of(rule);
+    }
+
+    // The edge of the bar on a screen, for surfaces that place themselves against it; "top" when it has none.
+    function position_on(screen_name) {
+        const screen = Quickshell.screens.find(s => s.name === screen_name);
+        if (!screen || !root.rules_loaded) return "top";
+        const tracked = root.tracked_rule_for(screen);
+        const rule = BarLayout.effective(tracked, root.state, root.monitor_key(screen));
+        return rule && rule.bar !== false ? root.position_for(rule) : "top";
     }
 
     // Splits "system:temperature" into { base: "system", arg: "temperature" }.

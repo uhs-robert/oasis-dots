@@ -51,6 +51,7 @@ ShellRoot {
 
                 readonly property var rule: BarSettings.rule_for(screen_scope.modelData)
                 readonly property bool has_bar: screen_scope.rule !== null && screen_scope.rule.bar !== false
+                readonly property bool bar_bottom: screen_scope.has_bar && BarSettings.position_for(screen_scope.rule) === "bottom"
 
                 LazyLoader {
                     id: bar_loader
@@ -65,7 +66,8 @@ ShellRoot {
                         exclusiveZone: implicitHeight
 
                         anchors {
-                            top: true
+                            top: !screen_scope.bar_bottom
+                            bottom: screen_scope.bar_bottom
                             left: true
                             right: true
                         }
@@ -92,6 +94,7 @@ ShellRoot {
                 HotCorner {
                     screen: screen_scope.modelData
                     overview: overview_window
+                    bottom: screen_scope.bar_bottom
                 }
 
                 SubmapTab {
@@ -99,6 +102,7 @@ ShellRoot {
                     screen_name: screen_scope.modelData.name
                     line_width: bar_loader.item ? bar_loader.item.bar_item.center_width : 260
                     bar_present: screen_scope.has_bar
+                    bottom: screen_scope.bar_bottom
                     chip_shown: !!bar_loader.item && bar_loader.item.bar_item.has_mode_chip
                 }
             }

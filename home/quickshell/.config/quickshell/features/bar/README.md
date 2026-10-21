@@ -11,6 +11,7 @@
 | `match` | `"*"` for every monitor, or `{ "name": "DP-*", "description": "*Dell*" }`. Both keys are optional globs (`*`, `?`) and must all match. `{}` or any string other than `"*"` never matches. `name` is the connector, `description` is Hyprland's monitor description (`hyprctl monitors`) |
 | `compact` | Tighter bar that hides every `system` module. Defaults to false |
 | `height` | Bar height in pixels. Defaults to the style's bar height, else 34 |
+| `position` | Screen edge the bar sits on: `"top"` (default) or `"bottom"`. A bottom bar mirrors its islands' decoration and its popups, tooltips and submap tab rise from it; the OSD moves to the top and the hot corner to the bottom-left. `"left"` and `"right"` are reserved for vertical bars and fall back to top with a warning, as does any other value |
 | `bar` | `false` shows no bar on matching monitors |
 | `left`, `center`, `right` | Module names, in draw order. Repeats within one list are dropped (a module in both `left` and `right` draws twice), unknown names are skipped with a warning. Lualine styles draw `center` inside the right island and re-sort it with `right` into their x/y/z sections, so the listed order only holds within a section |
 
@@ -31,7 +32,7 @@ While voxcmd's wake word listener holds the microphone (`$XDG_RUNTIME_DIR/voxcmd
 Settings > Bar modules edits the layout without touching the tracked file. It saves to `quickshell/bars.json` in the state folder (see [Settings panel](../settings/README.md)), with two kinds of override over the matching rule:
 
 - `shared` applies to every monitor without its own layout. `place` maps a module to `left`, `center`, `right` or `hidden`, and `order` lists modules that swap among the slots they already fill on each side, and the rest do not move.
-- `monitors` holds one full `left`/`center`/`right` layout (and `compact`) per monitor, keyed by `<description> @ <connector>`, or by the connector alone when the monitor has no description. After a connector change, the only saved key with the same description is reused. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule.
+- `monitors` holds one full `left`/`center`/`right` layout (and `compact` and `position`) per monitor, keyed by `<description> @ <connector>`, or by the connector alone when the monitor has no description. After a connector change, the only saved key with the same description is reused. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule, and so does `position` until the Position row (shown with Own layout on) saves one.
 
 Delete the state file to go back to the tracked layout.
 

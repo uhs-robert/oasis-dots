@@ -19,6 +19,7 @@ Item {
     property var rule: null
     readonly property bool compact: BarSettings.compact_for(root.rule)
     readonly property int bar_height: BarSettings.height_for(root.rule)
+    readonly property string position: BarSettings.position_for(root.rule)
     readonly property real center_width: center_island.body_item.width
     // Lualine has no center island; its modules move into the right island's sections.
     readonly property bool has_center: !Style.bar_lualine && root.center_entries.length > 0
@@ -104,6 +105,7 @@ Item {
         inset_color: Style.bar_inset_color
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
+        edge: root.position
         cap_right: true
         visible: root.left_entries.length > 0
 
@@ -189,6 +191,7 @@ Item {
         inset_color: Style.bar_inset_color
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
+        edge: root.position
         cap_left: true
         cap_right: true
         tab_joined: (SubmapState.active && !root.has_mode_chip) || VoxSessionState.active
@@ -226,7 +229,8 @@ Item {
         anchors.bottom: parent.bottom
         anchors.leftMargin: center_island.capsule ? center_island.capsule_radius : 6
         anchors.rightMargin: center_island.capsule ? center_island.capsule_radius : 6
-        anchors.bottomMargin: center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
+        // Under a bottom bar the inset line moves to the top edge, while the capsule lifts off the bottom one.
+        anchors.bottomMargin: center_island.capsule ? center_island.border_width + 1 + (center_island.flipped ? center_island.capsule_inset : 0) : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.flipped ? 0 : center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
         active: MediaState.playing && root.has_center
     }
 
@@ -249,6 +253,7 @@ Item {
         inset_color: Style.bar_inset_color
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
+        edge: root.position
         cap_left_fill: Style.bar_lualine && LualineState.right_first_fill[root.screen_name] ? LualineState.right_first_fill[root.screen_name] : "transparent"
         cap_left: true
         visible: root.right_side.length > 0

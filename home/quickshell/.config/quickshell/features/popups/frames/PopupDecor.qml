@@ -20,6 +20,7 @@ Item {
     required property real island_width
     required property real capsule_x
     required property bool dock_bottom
+    required property bool rises
     required property bool device
     required property real room_side
     required property real room_top
@@ -41,13 +42,14 @@ Item {
         }
     }
 
-    // Under a capsule the top border gives way, so the capsule's fill runs straight into the frame's.
+    // Under a capsule the border on its side gives way, so the capsule's fill runs straight into the frame's.
     Rectangle {
         visible: root.island_capsule && !root.dock_bottom && root.st.frame_border_width > 0
         x: root.capsule_x + root.st.frame_border_width
         width: root.island_width - root.st.frame_border_width * 2
+        y: root.rises ? parent.height - height : 0
         height: root.st.frame_border_width
-        color: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
+        color: root.st.frame_shade.a > 0 && !root.rises ? root.st.frame_shade : root.st.frame_color
     }
 
     Loader {

@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import qs.core
 import qs.theme
+import qs.features.bar
 import qs.features.display
 import qs.styles.snes.widgets as Snes
 import qs.styles.ps1.widgets as Ps1
@@ -95,7 +96,11 @@ PanelWindow {
 
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
     visible: root.wanted || root.reveal > 0
-    anchors.bottom: true
+    // Opposite the bar, clear of the popups that grow from it.
+    readonly property bool on_top: BarSettings.position_on(root.held_screen_name) === "bottom"
+    anchors.top: root.on_top
+    anchors.bottom: !root.on_top
+    margins.top: Style.px(72)
     margins.bottom: Style.px(72) - root.shadow_pad
     // Room around the frame for a soft shadow, so the window never clips it.
     readonly property int shadow_pad: Style.frame_shadow.a > 0 ? Style.frame_drop : 0
