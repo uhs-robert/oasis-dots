@@ -26,11 +26,27 @@ PickerProvider {
     // True from open until the callback is dispatched.
     property bool session: false
 
+    // Specs are read asynchronously, and a spec's id and result_path exist only once it is read. An open that
+    // lands while one is still loading is queued rather than started, so the load in flight can finish and answer
+    // its caller; start_load takes the queue one arg at a time.
+    property bool loading: false
+    property var queued_args: []
+
     function refresh(arg) {
+        if (root.loading) {
+            root.session = true;
+            root.queued_args = root.queued_args.concat([arg]);
+            return;
+        }
         // A second open while one shows would drop a Lua caller's callback, so answer it as Escape does. A shell
         // caller (no id) is left to its own timeout: its cleanup runs `picker close`, which would close this new picker.
         if (root.spec.id) root.finish("");
         root.session = true;
+        root.start_load(arg);
+    }
+
+    function start_load(arg) {
+        root.loading = true;
         root.spec = {};
         root.view = "";
         root.items = [];
@@ -84,16 +100,31 @@ PickerProvider {
         id: spec_proc
         stdout: StdioCollector {
             onStreamFinished: {
+                root.loading = false;
+                let parsed = null;
                 try {
-                    const parsed = JSON.parse(text);
+                    parsed = JSON.parse(text);
                     // null parses fine but every later root.spec read would throw
                     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
                         throw new Error("not an object");
-                    root.spec = parsed;
                 } catch (e) {
                     console.warn("ChoicesProvider: invalid spec (" + e + ")");
+                    parsed = null;
+                }
+                if (root.queued_args.length > 0) {
+                    // Superseded before it showed: only its caller is owed an answer.
+                    if (parsed) {
+                        root.spec = parsed;
+                        root.finish("");
+                    }
+                    const next = root.queued_args[0];
+                    root.queued_args = root.queued_args.slice(1);
+                    root.session = true;
+                    root.start_load(next);
                     return;
                 }
+                if (!parsed) return;
+                root.spec = parsed;
                 root.items = root.top_items();
             }
         }
