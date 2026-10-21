@@ -108,6 +108,7 @@ function overrides(t, ctx) {
         bar_border_width: 1,
         bar_border_color: edge,
         bar_rounded: true,
+        bar_island_shape: "capsule",
         bar_capsule: 5,
         bar_capsule_pad: 14,
         bar_height: 40,

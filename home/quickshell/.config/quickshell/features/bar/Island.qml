@@ -24,12 +24,14 @@ Item {
     property real inset_gap: 0
     property real inset_width: 0
     property color inset_color: "transparent"
+    // One of Style.island_shapes; lualine draws its own sections whatever the shape.
+    readonly property string shape: root.lualine ? "lualine" : Style.bar_island_shape
     // Metroid Prime visor glass cut into notched bracket ends (VisorIsland) instead of slants.
-    property bool visor: false
+    readonly property bool visor: root.shape === "visor"
     // A capsule this many px inside the island's top and ends, resting on its bottom edge; sheen_color lights its top edge.
     property real capsule_inset: 0
     property color sheen_color: "transparent"
-    readonly property bool capsule: root.capsule_inset > 0
+    readonly property bool capsule: root.shape === "capsule"
     readonly property real capsule_width: body.width
     readonly property real capsule_radius: (root.height - root.capsule_inset) / 2
     // The submap tab hangs from this island.
@@ -50,11 +52,11 @@ Item {
     property color cap_left_fill: "transparent"
     readonly property bool center: root.cap_left && root.cap_right
     // goldeneye: chamfered watch islands, the center one with case lugs, and a white tick at each end.
-    readonly property bool octagon: Style.bar_island_shape === "octagon" && !root.capsule && !root.visor && !root.lualine
+    readonly property bool octagon: root.shape === "octagon"
     readonly property real lug: root.octagon && root.center ? 4 : 0
     readonly property color tick_color: Style.bar_tick_color
     // nes: a floating Dragon Quest window, its corners cut by one pixel step.
-    readonly property bool window: Style.bar_island_shape === "window" && !root.capsule && !root.visor && !root.lualine
+    readonly property bool window: root.shape === "window"
     readonly property int window_edge: root.border_width
     readonly property real window_x: 4
     readonly property real window_width: root.width - root.window_x * 2

@@ -73,6 +73,7 @@ function overrides(t, ctx) {
         bar_side_bg: Qt.alpha(t.bg_crust, 0.95),
         bar_center_bg: Qt.alpha(t.bg_crust, 0.95),
         bar_fg: t.theme_primary_light,
+        bar_island_shape: "visor",
         bar_border_color: Qt.alpha(t.theme_primary, 0.5),
         bar_workspace_idle: Qt.alpha(t.theme_primary, 0.18),
         bar_hover_bg: Qt.alpha(t.theme_primary, 0.18),

@@ -36,6 +36,20 @@ Singleton {
             bar_workspace_gap: 0,
             materia: {}
         })
+    // Bar island shapes any style without lualine can borrow (Theme options); "slant" is the plain look.
+    readonly property var island_shapes: ["slant", "octagon", "window", "capsule", "visor"]
+    // What a shape brings to a style that does not own it, in place of that style's own shape sizes: `sizes` copied from
+    // the owner, a border at least `min_border` wide, and with `fg_border` the host's bar_fg as its colour so a pixel
+    // window's outline shows on every palette. Never the owner's colours.
+    readonly property var island_shape_kits: ({
+            slant: {},
+            octagon: { owner: "goldeneye", min_border: 1 },
+            window: { owner: "nes", min_border: 2, fg_border: true },
+            capsule: { owner: "modern", sizes: ["bar_capsule", "bar_capsule_pad"] },
+            visor: { owner: "metroid" }
+        })
+    // Shape sizes every kit resets before laying its own on, so leaving the capsule drops its inset.
+    readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0 })
     // OSD layouts any style can borrow (Theme options); "" is the plain OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
     readonly property var osd_layouts: ["", "ring", "hud", "rpg", "alert", "glow", "horizon", "tile", "watch"]
     // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, battle, scan and hev also reword the alert banner and the Alerts tab in their style's fiction, which comes along when borrowed.
@@ -63,6 +77,7 @@ Singleton {
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
             bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle", modern: "Modern", terminal: "Terminal" },
             bar_meeting_marker: MarkerTokens.labels,
+            bar_island_shape: { slant: "Slant", octagon: "Octagon", window: "Window", capsule: "Capsule", visor: "Visor" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
@@ -569,6 +584,7 @@ Singleton {
         out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.borrow_labels("done_anim", root.done_anims) });
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
+        if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes) });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.borrow_labels("workspace_art", root.workspace_arts) });
         out.push({ key: "bar_icon_set", label: "Icons", type: "choice", default: b.bar_icon_set || "", choices: root.bar_icon_sets, labels: root.borrow_labels("bar_icon_set", root.bar_icon_sets) });
         out.push({ key: "bar_meeting_marker", label: "Meeting marker", type: "choice", default: b.bar_meeting_marker || "", choices: root.bar_meeting_markers, labels: root.borrow_labels("bar_meeting_marker", root.bar_meeting_markers) });
@@ -633,7 +649,20 @@ Singleton {
         }
         if (o.watch_colors === "Classic" && o.watch_classic) Object.assign(o, o.watch_classic);
         if (o.controller_glyphs === "off") o.controller = "";
+        // Saved only when it differs from the style's own, so the style's own shape never passes here.
+        if (opts.bar_island_shape !== undefined) Object.assign(o, root.island_shape_tokens(opts.bar_island_shape, o));
         return o;
+    }
+
+    // The shape sizes `shape` lays over the bar tokens `host`, from island_shape_kits.
+    function island_shape_tokens(shape, host) {
+        const kit = root.island_shape_kits[shape] || {};
+        const owner = root.styles[kit.owner] || {};
+        const out = Object.assign({}, root.plain_island_shape);
+        for (const k of kit.sizes || []) out[k] = owner[k];
+        if (kit.min_border) out.bar_border_width = Math.max(host.bar_border_width, kit.min_border);
+        if (kit.fg_border) out.bar_border_color = host.bar_fg;
+        return out;
     }
 
     function save_options() {
