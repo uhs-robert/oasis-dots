@@ -111,6 +111,32 @@ expect "last caller not answered before a pick" 3 ABSENT
 settle
 expect "last picker answers its own caller" 3 p3-one
 
+echo "== shell caller (no id) in a superseded load"
+reset_run
+mkfifo "$work/fifo1"
+printf '{"label":"Title 1","choices":["p1-one"],"result_path":"%s/r1"}\n' "$work" >"$work/s1.json"
+ipc open_with choices "$work/fifo1"
+ipc open_with choices "$work/s2.json"
+release_fifo 1
+settle
+expect "shell caller left to its own timeout" 1 ABSENT
+"$shadow" keys "$name" -k Return
+settle
+expect "second picker still open and answers its own caller" 2 p2-one
+make_spec 1 p1
+
+echo "== picker closed while a second open is queued"
+reset_run
+mkfifo "$work/fifo1"
+ipc open_with choices "$work/fifo1"
+ipc open_with choices "$work/s2.json"
+ipc close
+settle
+release_fifo 1
+settle
+expect "first caller answered empty" 1 ""
+expect "queued caller answered empty, not left hanging" 2 ""
+
 # The Lua callback runs after the result is written; the shadow has no HyprVim, so a callback that opens the
 # next picker is stood in for by opening it right after the pick.
 echo "== open from inside a callback"
