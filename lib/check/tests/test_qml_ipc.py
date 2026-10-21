@@ -22,6 +22,7 @@ POPUP = """IpcHandler {
     function helper(x) { return x }
 }
 """
+POPUP_WITH_CLOSE = POPUP.replace("function helper", "function close(): void {}\n    function keyboard(): string { return \"\" }\n    function helper")
 OVERVIEW = 'IpcHandler { target: "tmux_overview"; function state(): string { return "" } }\n'
 
 
@@ -201,7 +202,7 @@ class CallerSyntaxTest(IpcCase):
 
 
 class AllowlistTest(IpcCase):
-    FILES = {"qs/Popup.qml": POPUP.replace("function helper", "function close(): void {}\n    function keyboard(): string { return \"\" }\n    function helper"), "qs/Overview.qml": OVERVIEW}
+    FILES = {"qs/Popup.qml": POPUP_WITH_CLOSE, "qs/Overview.qml": OVERVIEW}
 
     def test_an_uncalled_target_needs_a_line_and_passes_with_one(self):
         files = {**self.FILES, "bin/a.sh": "qs-ipc call popup state\n"}
@@ -276,7 +277,7 @@ class MutationTest(IpcCase):
 class ReadmeTableTest(IpcCase):
     """The IPC table in qs/README.md against the declared handlers."""
 
-    FILES = {"qs/Popup.qml": POPUP.replace("function helper", "function close(): void {}\n    function keyboard(): string { return \"\" }\n    function helper"), "qs/Overview.qml": OVERVIEW, "bin/keep.sh": "qs-ipc call popup state\nqs-ipc call tmux_overview state\n"}
+    FILES = {"qs/Popup.qml": POPUP_WITH_CLOSE, "qs/Overview.qml": OVERVIEW, "bin/keep.sh": "qs-ipc call popup state\nqs-ipc call tmux_overview state\n"}
     TABLE = (
         "## Other\n\n| `id` | Unique name |\n\n## IPC\n\n| Target | Functions |\n| --- | --- |\n"
         "| `popup` | `open <name>`, `close` (shut it); `state` is `open` or `closed`, and `keyboard` |\n"
@@ -304,6 +305,10 @@ class ReadmeTableTest(IpcCase):
     def test_prose_spans_are_not_functions(self):
         readme = self.TABLE.replace("| `state` |", "| `state`: the `yes` or `no` answer, see `Foo.qml` |")
         self.assertEqual(self.table(readme=readme), [])
+
+    def test_a_heading_inside_a_code_fence_does_not_end_the_section(self):
+        readme = self.TABLE.replace("## After", "```\n## Example\n```\n\n| `osd` | `state` |\n\n## After")
+        self.assertEqual(self.table(readme=readme), ['IPC table row "osd" is declared by no IpcHandler'])
 
     def test_a_row_for_an_undeclared_target_fails(self):
         readme = self.TABLE.replace("## After", "| `osd` | `state` |\n\n## After")
