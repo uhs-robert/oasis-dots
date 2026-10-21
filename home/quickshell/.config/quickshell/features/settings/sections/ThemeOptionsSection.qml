@@ -38,6 +38,7 @@ RowsSection {
             done_anim: "The keeptabs celebration when a session finishes, from any style.",
             wait_anim: "The keeptabs cue when a session waits on you, from any style.",
             toast_enter: "How notification toasts arrive, from any style.",
+            bar_island_shape: "The outline of the bar's islands, from any style, drawn in your palette.",
             workspace_art: "The bar's workspace indicator, from any style, drawn in your palette.",
             bar_icon_set: "The bar's icons, from any style: pixel art, vector or emoji icons where the set has drawn one, Nerd Font glyphs elsewhere.",
             bar_meeting_marker: "How the bar clock shows an upcoming or running meeting, from any style.",

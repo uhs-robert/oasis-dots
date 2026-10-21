@@ -102,7 +102,6 @@ Item {
         inset_gap: Style.bar_inset_gap
         inset_width: Style.bar_inset_width
         inset_color: Style.bar_inset_color
-        visor: Style.frame_visor
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
         cap_right: true
@@ -188,7 +187,6 @@ Item {
         inset_gap: Style.bar_inset_gap
         inset_width: Style.bar_inset_width
         inset_color: Style.bar_inset_color
-        visor: Style.frame_visor
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
         cap_left: true
@@ -249,7 +247,6 @@ Item {
         inset_gap: Style.bar_inset_gap
         inset_width: Style.bar_inset_width
         inset_color: Style.bar_inset_color
-        visor: Style.frame_visor
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
         cap_left_fill: Style.bar_lualine && LualineState.right_first_fill[root.screen_name] ? LualineState.right_first_fill[root.screen_name] : "transparent"
