@@ -54,8 +54,8 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `time-format`: no hand-built am/pm text in Quickshell QML/JS; clock text goes through `TimeFormat` (`lib/check/steps/time-format.sh`).
 - `shaders`: each tracked Quickshell `.frag` rebuilds (qsb) to its committed `.frag.qsb` byte for byte, and its `// Rebuild:` header matches the command used; `just shaders` rewrites them (`lib/check/steps/shaders.sh`). Needs qsb (qt6-shadertools).
 - `json-store`: `home/quickshell/tests/json_store/run.sh`, the lifecycle tests of `core/JsonStore.qml` in a headless qs. Needs qs, python3.
-- `polled-command`: `home/quickshell/tests/polled_command/run.sh`, pins that Quickshell ends a Process's stdout at the exit even when a child holds the pipe, which `core/PolledCommand.qml` relies on. Needs qs, python3.
-- `polled-file`: `home/quickshell/tests/polled_file/run.sh`, the read, failure, path-change, gating and interval tests of `core/PolledFile.qml` in a headless qs. Needs qs, python3.
+- `polled-command`: `home/quickshell/tests/polled_command/run.sh`, pins that Quickshell ends a Process's stdout at the exit even when a child holds the pipe, which `core/PolledCommand.qml` relies on. Its own scope `polledcmd` covers that component and `tests/polled_command/`. Needs qs, python3.
+- `polled-file`: `home/quickshell/tests/polled_file/run.sh`, the read, failure, path-change, gating and interval tests of `core/PolledFile.qml` in a headless qs. Its own scope `polledfile` covers that component and `tests/polled_file/`. Needs qs, python3.
 - `voxcmd-phrases`: each phrase in `home/voxcmd/tests/phrases.tsv` routes as recorded (`run-phrases.sh`). Needs jq, fzf.
 - `voxcmd-click`: voxcmd's click support (`run.sh`, with `run-sessions.sh`, `run-modes.sh`, `run-sequences.sh`, `run-overview.sh` and `run-monitors.sh` beside it). Needs jq, fzf.
 - `voxcmd-calendar`: the calendar phrases against stubs (`run-calendar.sh`). Needs jq, fzf.

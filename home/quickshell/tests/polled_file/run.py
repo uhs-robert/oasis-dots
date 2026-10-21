@@ -79,10 +79,11 @@ def check_missing(events, out):
     problems = []
     events = after_startup(events)
     expect(problems, "reads", [(e["kind"], e["not_found"]) for e in events], [("load_failed", True)])
-    # The read that fails is expected here, so the log must stay quiet about it.
-    for word in ("No such file", "FileNotFound", "Failed to read", "WARN", "ERROR"):
-        if word in out:
-            problems.append("qs log mentions %r" % word)
+    # The read that fails is expected here, so the log must stay quiet about it. Only lines about the file or its
+    # FileView count: qs logs unrelated warnings in some environments (e.g. the IPC server failing to start).
+    for line in out.splitlines():
+        if "missing.txt" in line or "FileView" in line:
+            problems.append("qs log mentions the read: %r" % line.strip())
     return problems
 
 

@@ -70,6 +70,12 @@ PATH_SCOPES = [
     ("home/quickshell/*.frag", "shaders"),
     ("home/quickshell/*.frag.qsb", "shaders qml"),
     ("system/etc/greetd/quickshell/*", "qml"),
+    # A runtime test and the one component it pins get their own scope, ahead of the Quickshell rules, so an edit to
+    # either runs that test; the files are QML too, so the qml step still reads them.
+    ("home/quickshell/tests/polled_command/*", "polledcmd qml"),
+    ("home/quickshell/.config/quickshell/core/PolledCommand.qml", "polledcmd qml node"),
+    ("home/quickshell/tests/polled_file/*", "polledfile qml"),
+    ("home/quickshell/.config/quickshell/core/PolledFile.qml", "polledfile qml node"),
     ("home/quickshell/tests/*", "node qml"),
     ("home/quickshell/*", "qml node"),
     ("lib/check/steps/voxcmd-rust.sh", "rust"),
@@ -253,8 +259,8 @@ STEPS = [
     Step("agent-hooks", "hooks", "bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh && bash ./.claude/hooks/tests/check-before-pr.sh && bash ./.claude/hooks/tests/restart-qs-after-git.sh && bash ./.claude/hooks/tests/guard-gh-merge.sh && bash ./.claude/hooks/tests/warn-direct-voxcmd-suite.sh && bash ./home/claude/.claude/hooks/tests/guard-tmux-socket.sh && bash ./.claude/hooks/tests/guard-check-full.sh && bash ./home/claude/.claude/hooks/tests/context-budget.sh && bash ./.claude/hooks/tests/report-failed-main-check.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("stale-shells-hook", "hooks", "bash ./home/claude/.claude/hooks/tests/stale-shells.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("json-store", "qml", "bash ./home/quickshell/tests/json_store/run.sh", ("qs", "python3"), skip_reason="the json-store tests need qs and python3"),
-    Step("polled-command", "qml", "bash ./home/quickshell/tests/polled_command/run.sh", ("qs", "python3"), skip_reason="the polled-command tests need qs and python3"),
-    Step("polled-file", "qml", "bash ./home/quickshell/tests/polled_file/run.sh", ("qs", "python3"), skip_reason="the polled-file tests need qs and python3"),
+    Step("polled-command", "polledcmd", "bash ./home/quickshell/tests/polled_command/run.sh", ("qs", "python3"), skip_reason="the polled-command tests need qs and python3"),
+    Step("polled-file", "polledfile", "bash ./home/quickshell/tests/polled_file/run.sh", ("qs", "python3"), skip_reason="the polled-file tests need qs and python3"),
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
     Step("packages", "tree", "sh ./lib/check/steps/packages.sh"),
     Step("symlinks", "tree", "sh ./lib/check/steps/symlinks.sh"),
