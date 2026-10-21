@@ -254,6 +254,7 @@ STEPS = [
     Step("stale-shells-hook", "hooks", "bash ./home/claude/.claude/hooks/tests/stale-shells.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("json-store", "qml", "bash ./home/quickshell/tests/json_store/run.sh", ("qs", "python3"), skip_reason="the json-store tests need qs and python3"),
     Step("polled-command", "qml", "bash ./home/quickshell/tests/polled_command/run.sh", ("qs", "python3"), skip_reason="the polled-command tests need qs and python3"),
+    Step("polled-file", "qml", "bash ./home/quickshell/tests/polled_file/run.sh", ("qs", "python3"), skip_reason="the polled-file tests need qs and python3"),
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
     Step("packages", "tree", "sh ./lib/check/steps/packages.sh"),
     Step("symlinks", "tree", "sh ./lib/check/steps/symlinks.sh"),

@@ -44,6 +44,7 @@ CASES = [
     ("home/quickshell/tests/notification_markup.js", " node qml"),
     ("home/quickshell/tests/json_store/run.py", " node qml"),
     ("home/quickshell/tests/polled_command/run.py", " node qml"),
+    ("home/quickshell/tests/polled_file/run.py", " node qml"),
     ("home/quickshell/.config/quickshell/core/JsonStore.qml", " qml node"),
     # The consumers OUTSIDE_REFS in lib/check/steps/qml_paths.py names reach the qml scope beside their own.
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", " lua qml"),
