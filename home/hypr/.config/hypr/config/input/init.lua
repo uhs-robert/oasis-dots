@@ -6,8 +6,13 @@ local State = require("lib.state")
 
 local Input = {}
 
+-- Accepts integral floats too (the bar accepts 25.0 and 1e2, which lib.json decodes as floats) and returns the integer to use.
 local function integer_in(min, max)
-  return function(v) return math.type(v) == "integer" and v >= min and v <= max end
+  return function(v)
+    local whole = type(v) == "number" and math.tointeger(v)
+    if whole and whole >= min and whole <= max then return true, whole end
+    return false
+  end
 end
 
 local function is_boolean(v) return type(v) == "boolean" end
@@ -39,7 +44,11 @@ function Input.state()
   if not ok or type(data) ~= "table" then return {} end
   local out = {}
   for key, valid in pairs(VALID) do
-    if valid(data[key]) then out[key] = data[key] end
+    local accepted, normalized = valid(data[key])
+    if accepted then
+      if normalized == nil then normalized = data[key] end
+      out[key] = normalized
+    end
   end
   return out
 end
