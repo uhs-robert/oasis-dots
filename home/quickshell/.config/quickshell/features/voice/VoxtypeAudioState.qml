@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 
 // Mic peaks from voxtype-audio-bridge, streamed only while recording.
 Singleton {
@@ -89,7 +90,6 @@ Singleton {
     // The last recording stays in the ring so the transcribing view can show it frozen.
     onActiveChanged: {
         if (root.active) root.clear();
-        bridge.running = root.active;
         if (root.active) {
             settings.running = true;
             gain_setting.running = true;
@@ -98,19 +98,14 @@ Singleton {
 
     Component.onCompleted: root.clear()
 
-    Process {
-        id: bridge
+    RestartingStream {
         command: ["voxtype-audio-bridge"]
-        stdout: SplitParser {
-            onRead: line => root.handle(line)
-        }
-        onExited: if (root.active) restart_timer.start()
-    }
-
-    Timer {
-        id: restart_timer
-        interval: 1000
-        onTriggered: bridge.running = root.active
+        probe_command: ["sh", "-c", "command -v voxtype-audio-bridge"]
+        wanted: root.active
+        max_delay_ms: 30000
+        warn_text: "voxtype-audio-bridge: exits quickly, backing off"
+        missing_text: "voxtype-audio-bridge: not installed, no waveform"
+        onLine: text => root.handle(text)
     }
 
     Process {
