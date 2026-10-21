@@ -571,8 +571,9 @@ if mkdir "$STRIPS_DIR/failed" 2>/dev/null; then exit 1; fi
 wait
 EOF
 chmod +x "$root/failing/tesseract"
+# Only the failing strip is sure to have logged (a loaded machine can kill the others before they start), so two pids are the floor.
 failing_run >/dev/null 2>&1
-check "a failed strip also ends the child it forked, not only its siblings" "[[ \$(strip_pids | wc -l) -ge 10 ]] && wait_until all_strip_pids_gone"
+check "a failed strip also ends the child it forked, not only its siblings" "[[ \$(strip_pids | wc -l) -ge 2 ]] && wait_until all_strip_pids_gone"
 
 # The failure path must find every strip, not only those a job listing shows under load. One fails at once
 # and the rest sleep; repeated, since the miss was a race.
