@@ -1,0 +1,69 @@
+# key	json_value	accept|reject	note
+repeat_rate	1	accept	lower edge
+repeat_rate	100	accept	upper edge
+repeat_rate	0	reject	just below range
+repeat_rate	101	reject	just above range
+repeat_delay	100	accept	lower edge
+repeat_delay	2000	accept	upper edge
+repeat_delay	99	reject	just below range
+repeat_delay	2001	reject	just above range
+follow_mouse	0	accept	lower edge
+follow_mouse	3	accept	upper edge
+follow_mouse	-1	reject	just below range
+follow_mouse	4	reject	just above range
+which_key_delay_ms	0	accept	lower edge
+which_key_delay_ms	5000	accept	upper edge
+which_key_delay_ms	-1	reject	just below range
+which_key_delay_ms	5001	reject	just above range
+repeat_rate	25.0	accept	integral float
+repeat_rate	1e2	accept	integral float, exponent form
+repeat_rate	25.5	reject	non-integral float
+repeat_delay	600.0	accept	integral float
+follow_mouse	2.0	accept	integral float
+which_key_delay_ms	1e3	accept	integral float, exponent form
+which_key_delay_ms	0.0	accept	integral float at lower edge
+repeat_rate	"25"	reject	string
+repeat_rate	true	reject	boolean
+repeat_rate	null	reject	null
+repeat_rate	1e999	reject	overflows to infinity
+sensitivity	-1	accept	lower edge
+sensitivity	1	accept	upper edge
+sensitivity	0.5	accept	fraction
+sensitivity	-1.0001	reject	just below range
+sensitivity	1.0001	reject	just above range
+sensitivity	"0"	reject	string
+sensitivity	null	reject	null
+kb_layout	"us"	accept	plain
+kb_layout	"us,de"	accept	comma list
+kb_layout	"a_b-c"	accept	underscore and dash
+kb_layout	""	reject	empty
+kb_layout	"a b"	reject	space
+kb_layout	"\u00e9"	reject	non-ASCII letter
+kb_layout	"a\nb"	reject	newline
+kb_layout	1	reject	number
+kb_variant	""	accept	empty is allowed
+kb_variant	"dvorak"	accept	plain
+kb_variant	"a b"	reject	space
+kb_variant	"\u00e9"	reject	non-ASCII letter
+kb_variant	"a\n"	reject	trailing newline
+kb_variant	null	reject	null
+natural_scroll	true	accept	boolean
+natural_scroll	false	accept	boolean
+natural_scroll	1	reject	number
+natural_scroll	"true"	reject	string
+tap_to_click	true	accept	boolean
+tap_to_click	false	accept	boolean
+tap_to_click	1	reject	number
+tap_to_click	"true"	reject	string
+disable_while_typing	true	accept	boolean
+disable_while_typing	false	accept	boolean
+disable_while_typing	1	reject	number
+disable_while_typing	"true"	reject	string
+pointer_keys	"hjkl"	accept	listed choice
+pointer_keys	"wasd"	accept	listed choice
+pointer_keys	"both"	accept	listed choice
+pointer_keys	"HJKL"	reject	case matters
+pointer_keys	""	reject	empty
+pointer_keys	true	reject	boolean
+unknown_key	1	reject	unknown key
+kb_options	"ctrl:nocaps"	reject	unknown key that Hyprland has an option for

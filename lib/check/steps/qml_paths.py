@@ -159,6 +159,7 @@ OUTSIDE_REFS = [
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", "scripts/lock-flag"),
     ("home/voxcmd/.local/bin/voxcmd-alarm", "sounds/alarm.ogg"),
     ("home/voxcmd/tests/run-monitors.sh", "features/overview/Voice.js"),
+    ("home/quickshell/tests/input_settings/run_js.js", "features/settings/HyprInputValidation.js"),
     ("home/quickshell/tests/notification_markup.js", "features/notifications/NotificationMarkup.js"),
 ]
 
