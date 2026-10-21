@@ -1,4 +1,4 @@
-// Runs BarLayout.js under node: the bar position a rule or a monitor's own layout picks, and how the state file keeps it.
+// Runs BarLayout.js under node: the bar position a rule or a monitor's saved position picks, and how the state file keeps it.
 // Both scripts are QML `.pragma library` files; BarLayout's `.import` of BarModules is stood in by loading that first.
 "use strict";
 const fs = require("fs");
@@ -26,17 +26,20 @@ const cases = [
   ["no problem for bottom", () => L.position_problem({ position: "bottom" }), ""],
   ["right is planned", () => L.position_problem({ position: "right" }), "bar position \"right\" is not supported yet; using top"],
   ["unknown named", () => L.position_problem({ position: 3 }), "unknown bar position 3 in bars.json; using top"],
-  ["normalize keeps a monitor's position", () => L.normalize({ monitors: { [key]: { left: [], position: "bottom" } } }).monitors[key].position, "bottom"],
-  ["normalize drops a bad position", () => "position" in L.normalize({ monitors: { [key]: { left: [], position: "left" } } }).monitors[key], false],
+  ["normalize keeps a saved position", () => L.normalize({ positions: { [key]: "bottom" } }).positions, { [key]: "bottom" }],
+  ["normalize drops a bad position", () => L.normalize({ positions: { [key]: "left", other: 3 } }).positions, {}],
+  ["normalize moves an own layout's position out", () => L.normalize({ monitors: { [key]: { left: [], position: "bottom" } } }), { shared: { place: {}, order: [], last_side: {} }, monitors: { [key]: { left: [], center: [], right: [], last_side: {} } }, positions: { [key]: "bottom" } }],
   ["effective takes the rule's position", () => L.effective(Object.assign({ position: "bottom" }, rule), L.normalize(null), key).position, "bottom"],
-  ["own position wins", () => L.effective(Object.assign({ position: "bottom" }, rule), L.normalize({ monitors: { [key]: { position: "top" } } }), key).position, "top"],
-  ["own layout without a position keeps the rule's", () => L.effective(Object.assign({ position: "bottom" }, rule), L.normalize({ monitors: { [key]: {} } }), key).position, "bottom"],
-  ["set_own copies the position", () => L.set_own(L.normalize(null), key, rule, false, "bottom").monitors[key].position, "bottom"],
-  ["set_own turns left into top", () => L.set_own(L.normalize(null), key, rule, false, "left").monitors[key].position, "top"],
-  ["set_position on an own layout", () => L.set_position(L.set_own(L.normalize(null), key, rule, false, "top"), key, "bottom").monitors[key].position, "bottom"],
-  ["set_position needs an own layout", () => plain(L.set_position(L.normalize(null), key, "bottom")).monitors, {}],
-  ["set_position refuses left", () => L.set_position(L.set_own(L.normalize(null), key, rule, false, "bottom"), key, "left").monitors[key].position, "bottom"],
-  ["position survives a round trip", () => L.normalize(plain(L.set_own(L.normalize(null), key, rule, true, "bottom"))).monitors[key], { left: ["start"], center: ["clock"], right: ["tray"], last_side: {}, compact: true, position: "bottom" }],
+  ["saved position wins over the rule", () => L.effective(Object.assign({ position: "bottom" }, rule), L.normalize({ positions: { [key]: "top" } }), key).position, "top"],
+  ["saved position applies with an own layout", () => L.effective(rule, L.normalize({ monitors: { [key]: {} }, positions: { [key]: "bottom" } }), key).position, "bottom"],
+  ["another monitor's position is ignored", () => L.effective(rule, L.normalize({ positions: { other: "bottom" } }), key).position === undefined, true],
+  ["set_position without an own layout", () => plain(L.set_position(L.normalize(null), key, "bottom")), { shared: { place: {}, order: [], last_side: {} }, monitors: {}, positions: { [key]: "bottom" } }],
+  ["set_position refuses left", () => L.set_position(L.normalize({ positions: { [key]: "bottom" } }), key, "left").positions[key], "bottom"],
+  ["own layout on keeps the position", () => L.set_own(L.set_position(L.normalize(null), key, "bottom"), key, rule, false).positions[key], "bottom"],
+  ["own layout off keeps the position", () => L.drop_own(L.set_own(L.set_position(L.normalize(null), key, "bottom"), key, rule, false), key).positions[key], "bottom"],
+  ["set_own writes no position", () => "position" in L.set_own(L.normalize(null), key, rule, false).monitors[key], false],
+  ["a position key is reused after a connector change", () => L.resolve_key(L.normalize({ positions: { "Dell @ DP-1": "bottom" } }), "Dell", "DP-2", [{ name: "DP-2", description: "Dell" }]), "Dell @ DP-1"],
+  ["position survives a round trip", () => L.normalize(plain(L.set_position(L.normalize(null), key, "bottom"))).positions, { [key]: "bottom" }],
 ];
 
 let failed = 0;

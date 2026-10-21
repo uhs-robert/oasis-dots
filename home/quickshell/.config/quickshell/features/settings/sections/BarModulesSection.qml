@@ -24,9 +24,10 @@ SettingsPane {
     readonly property bool has_own: root.monitor_key !== "" && !!BarSettings.state.monitors[root.monitor_key]
     readonly property var tracked: root.view_screen ? BarSettings.tracked_rule_for(root.view_screen) : null
     readonly property var view_layout: BarLayout.layout_of(BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key))
-    readonly property int top_count: root.target_screen ? (root.has_own ? 4 : 2) : 1
+    readonly property int top_count: root.target_screen ? (root.has_own ? 4 : 3) : 1
     readonly property bool own_compact: root.has_own && BarSettings.compact_for(BarSettings.state.monitors[root.monitor_key])
-    readonly property string own_position: BarLayout.position_of(BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key))
+    // Saved per monitor apart from the own layout, so the row shows and keeps its value with Own layout off.
+    readonly property string bar_position: BarLayout.position_of(BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key))
     readonly property var entries: {
         const out = [];
         for (const side of BarLayout.sides) {
@@ -62,7 +63,7 @@ SettingsPane {
         })
 
     footer_hint: "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"
-    search_rows: ["Editing target"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact", "Position"] : [], root.entries.map(e => e.entry))
+    search_rows: ["Editing target"].concat(root.target_screen ? ["Position", "Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
     search_cursor: root.cursor
     described: true
     description: root.describe(root.described_index)
@@ -71,9 +72,9 @@ SettingsPane {
 
     function describe(index) {
         if (index === 0) return "The monitor whose bar you edit. All monitors edits the layout they share.";
-        if (index === 1 && root.target_screen) return "On gives this monitor its own copy of the layout. Off goes back to the shared one.";
-        if (index === 2 && root.has_own) return "A tighter bar that hides the system modules on this monitor.";
-        if (index === 3 && root.has_own) return "The screen edge this monitor's bar sits on. Popups and the submap tab rise from a bottom bar.";
+        if (index === 1 && root.target_screen) return "The screen edge this monitor's bar sits on, with or without its own layout. Popups and the submap tab rise from a bottom bar.";
+        if (index === 2 && root.target_screen) return "On gives this monitor its own copy of the layout. Off goes back to the shared one.";
+        if (index === 3 && root.has_own) return "A tighter bar that hides the system modules on this monitor.";
         const item = root.entries[index - root.top_count];
         if (!item) return "";
         const note = root.module_notes[item.entry] || root.module_notes[BarSettings.parse_module(item.entry).base] || "";
@@ -126,7 +127,7 @@ SettingsPane {
         }
         const eff = BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key);
         if (!eff) return;
-        BarSettings.set_state(BarLayout.set_own(BarSettings.state, root.monitor_key, eff, BarSettings.compact_for(eff), BarLayout.position_of(eff)));
+        BarSettings.set_state(BarLayout.set_own(BarSettings.state, root.monitor_key, eff, BarSettings.compact_for(eff)));
     }
 
     function toggle_compact() {
@@ -135,8 +136,8 @@ SettingsPane {
     }
 
     function toggle_position() {
-        if (!root.has_own) return;
-        BarSettings.set_state(BarLayout.set_position(BarSettings.state, root.monitor_key, root.own_position === "bottom" ? "top" : "bottom"));
+        if (!root.target_screen) return;
+        BarSettings.set_state(BarLayout.set_position(BarSettings.state, root.monitor_key, root.bar_position === "bottom" ? "top" : "bottom"));
     }
 
     function add_argument() {
@@ -227,9 +228,9 @@ SettingsPane {
         else if (root.cursor === 0 && ((shift && event.key === Qt.Key_H) || event.key === Qt.Key_L)) root.cycle_target(event.key === Qt.Key_H ? -1 : 1);
         else if (root.cursor === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) root.open_target_picker();
         else if (root.cursor === 0 && event.key === Qt.Key_Space) root.cycle_target(1);
-        else if (root.target_screen && root.cursor === 1 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_own();
-        else if (root.has_own && root.cursor === 2 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_compact();
-        else if (root.has_own && root.cursor === 3 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_position();
+        else if (root.target_screen && root.cursor === 1 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_position();
+        else if (root.target_screen && root.cursor === 2 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_own();
+        else if (root.has_own && root.cursor === 3 && (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_compact();
         else if (on_module && !shift && event.key === Qt.Key_A) root.add_argument();
         else if (on_module && !shift && event.key === Qt.Key_X) root.remove_argument();
         else if (on_module && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_module();
@@ -268,39 +269,39 @@ SettingsPane {
         ChoiceRow {
             visible: !!root.target_screen && !root.picking
             selected: root.live && root.cursor === 1
-            label: "Own layout"
-            value_text: root.has_own ? "on" : "off"
+            label: "Position"
+            value_text: root.bar_position
             onHoveredChanged: root.hover(1, hovered)
             onStepped: {
                 root.focus_pane();
                 root.cursor = 1;
+                root.toggle_position();
+            }
+        }
+
+        ChoiceRow {
+            visible: !!root.target_screen && !root.picking
+            selected: root.live && root.cursor === 2
+            label: "Own layout"
+            value_text: root.has_own ? "on" : "off"
+            onHoveredChanged: root.hover(2, hovered)
+            onStepped: {
+                root.focus_pane();
+                root.cursor = 2;
                 root.toggle_own();
             }
         }
 
         ChoiceRow {
             visible: root.has_own && !root.picking
-            selected: root.live && root.cursor === 2
+            selected: root.live && root.cursor === 3
             label: "Compact"
             value_text: root.own_compact ? "on" : "off"
-            onHoveredChanged: root.hover(2, hovered)
-            onStepped: {
-                root.focus_pane();
-                root.cursor = 2;
-                root.toggle_compact();
-            }
-        }
-
-        ChoiceRow {
-            visible: root.has_own && !root.picking
-            selected: root.live && root.cursor === 3
-            label: "Position"
-            value_text: root.own_position
             onHoveredChanged: root.hover(3, hovered)
             onStepped: {
                 root.focus_pane();
                 root.cursor = 3;
-                root.toggle_position();
+                root.toggle_compact();
             }
         }
 
