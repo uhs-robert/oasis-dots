@@ -17,10 +17,10 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
 TESTS = "home/voxcmd/tests"
 FALLTHROUGH = "home/voxcmd/*"
 
-# Each suite's entry scripts. voxcmd-click's run.sh runs the other four beside its own checks.
+# Each suite's entry scripts. voxcmd-click's run.sh runs the other five beside its own checks.
 SUITE_ENTRIES = {
     scopes.VOX_PHRASES: ["run-phrases.sh"],
-    scopes.VOX_CLICK: ["run.sh", "run-sessions.sh", "run-sequences.sh", "run-overview.sh", "run-monitors.sh"],
+    scopes.VOX_CLICK: ["run.sh", "run-sessions.sh", "run-modes.sh", "run-sequences.sh", "run-overview.sh", "run-monitors.sh"],
     scopes.VOX_CALENDAR: ["run-calendar.sh"],
     scopes.VOX_WAKE: ["run-wake.sh"],
     scopes.VOX_FIREFOX: ["run-firefox-extension.sh"],

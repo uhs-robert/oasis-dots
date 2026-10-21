@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for voxcmd: the click matcher, mapping and OCR strips, click.sh routing, numbered-pick replies and click mode's
-# phrases, with run-sessions.sh (voice sessions and auto-stop), run-sequences.sh (several steps in one phrase) run-overview.sh (the overview integration) and run-monitors.sh (monitor phrases) alongside. Run from anywhere: home/voxcmd/tests/run.sh
+# phrases, with run-sessions.sh (voice sessions and auto-stop), run-modes.sh (rapid and type modes), run-sequences.sh (several steps in one phrase) run-overview.sh (the overview integration) and run-monitors.sh (monitor phrases) alongside. Run from anywhere: home/voxcmd/tests/run.sh
 #
 # Nothing here clicks, moves the pointer or captures the screen: it runs inside sandbox.sh, whose stubs stand in for
 # grim, magick, tesseract, hyprctl, wlrctl, wl-kbptr and notify-send and log their calls, and voxcmd only ever runs
@@ -16,12 +16,14 @@ package=$(cd "$here/.." && pwd)
 check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 [ -z "${SANDBOX_DIR:-}" ] || [ -z "${SANDBOX_TESSERACT_TSV+set}" ] || unset SANDBOX_TESSERACT_TSV
 if [ -z "${SANDBOX_DIR:-}" ]; then
-  # The session and sequence tests mostly wait on their watchers and waits, so they run beside these, each in a sandbox of
+  # The session, mode and sequence tests mostly wait on their watchers and waits, so they run beside these, each in a sandbox of
   # its own, and print once these are done. The last lines are the total and every failed check of all.
   outputs=$(mktemp -d)
   trap 'rm -rf "$outputs"' EXIT
   "$here/run-sessions.sh" >"$outputs/sessions" 2>&1 &
   sessions_pid=$!
+  "$here/run-modes.sh" >"$outputs/modes" 2>&1 &
+  modes_pid=$!
   "$here/run-sequences.sh" >"$outputs/sequences" 2>&1 &
   sequences_pid=$!
   "$here/run-overview.sh" >"$outputs/overview" 2>&1 &
@@ -30,16 +32,17 @@ if [ -z "${SANDBOX_DIR:-}" ]; then
   monitors_pid=$!
   "$here/sandbox.sh" "$0" "$@" 2>&1 | tee "$outputs/click"
   click_status=${PIPESTATUS[0]}
-  sessions_status=0 sequences_status=0 overview_status=0 monitors_status=0
+  sessions_status=0 modes_status=0 sequences_status=0 overview_status=0 monitors_status=0
   wait "$sessions_pid" || sessions_status=$?
+  wait "$modes_pid" || modes_status=$?
   wait "$sequences_pid" || sequences_status=$?
   wait "$overview_pid" || overview_status=$?
   wait "$monitors_pid" || monitors_status=$?
-  cat "$outputs/sessions" "$outputs/sequences" "$outputs/overview" "$outputs/monitors"
+  cat "$outputs/sessions" "$outputs/modes" "$outputs/sequences" "$outputs/overview" "$outputs/monitors"
   awk '/^[0-9]+ passed, [0-9]+ failed$/ { passed += $1; failed += $3 } END { printf "\nin all: %d passed, %d failed\n", passed, failed }' \
-    "$outputs/click" "$outputs/sessions" "$outputs/sequences" "$outputs/overview" "$outputs/monitors"
-  grep -h '^FAILED ' "$outputs/click" "$outputs/sessions" "$outputs/sequences" "$outputs/overview" "$outputs/monitors"
-  [ "$click_status" = 0 ] && [ "$sessions_status" = 0 ] && [ "$sequences_status" = 0 ] && [ "$overview_status" = 0 ] && [ "$monitors_status" = 0 ]
+    "$outputs/click" "$outputs/sessions" "$outputs/modes" "$outputs/sequences" "$outputs/overview" "$outputs/monitors"
+  grep -h '^FAILED ' "$outputs/click" "$outputs/sessions" "$outputs/modes" "$outputs/sequences" "$outputs/overview" "$outputs/monitors"
+  [ "$click_status" = 0 ] && [ "$sessions_status" = 0 ] && [ "$modes_status" = 0 ] && [ "$sequences_status" = 0 ] && [ "$overview_status" = 0 ] && [ "$monitors_status" = 0 ]
   exit
 fi
 share_dir=$package/.local/share/voxcmd

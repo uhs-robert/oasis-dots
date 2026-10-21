@@ -44,7 +44,7 @@ run-wake) step=voxcmd-wake ;;
 run-firefox-extension) step=voxcmd-firefox ;;
 cargo) step=voxcmd-rust ;;
 just-voxcmd-test) step="all six, lib/check.sh --only voxcmd-phrases,voxcmd-click,voxcmd-calendar,voxcmd-wake,voxcmd-firefox,voxcmd-rust" ;;
-run-sessions | run-sequences | run-overview | run-monitors) step="none of its own; voxcmd-click runs it inside run.sh" ;;
+run-sessions | run-modes | run-sequences | run-overview | run-monitors) step="none of its own; voxcmd-click runs it inside run.sh" ;;
 *) step="none; this suite is not a check step" ;;
 esac
 

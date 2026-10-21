@@ -1,4 +1,4 @@
-# Shared by run.sh, run-sessions.sh, run-sequences.sh, run-overview.sh and run-monitors.sh, sourced inside the sandbox: check and
+# Shared by run.sh, run-sessions.sh, run-modes.sh, run-sequences.sh, run-overview.sh and run-monitors.sh, sourced inside the sandbox: check and
 # section, waits for events, a private runtime dir under $root, and the summary.
 # shellcheck shell=bash
 # shellcheck disable=SC2034 # read by the suites that source this
