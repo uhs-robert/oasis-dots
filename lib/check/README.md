@@ -65,6 +65,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `calendar-sync`: `home/calendar/tests/run.sh`. Runs only when python-icalendar and python-recurring-ical-events import.
 - `calendar-sync-syntax`: the syntax check of `calendar-sync`; always runs when its scope is reached, whatever the libraries.
 - `firefox-policy`: `lib/install/tests/firefox-policy.sh`, the Firefox policy installer. Needs jq.
+- `pacman-tweaks`: `lib/install/tests/pacman-tweaks.sh`, the pacman and makepkg tuning (`lib/install/pacman.sh`, `system/etc/makepkg.conf.d/`).
 - `greeter-keyring`: `lib/install/tests/greeter-keyring.sh` (the greetd keyring unlock installer), `greeter-log.sh` (the greeter log file and the `qs-greeter` wrapper's choice of it) and `greeter-monitors.sh` (the greeter's `monitors.lua`).
 - `migrate-lock`: the `migrate-quickshell-*` and `migrate-lock-assets` tests in `lib/install/tests/`.
 - `install-load`: `lib/install/tests/load.sh`, that sourcing the install libraries prints nothing and never exits.
