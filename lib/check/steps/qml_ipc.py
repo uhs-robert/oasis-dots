@@ -299,9 +299,11 @@ CELL_SPLIT = re.compile(r"(?<!\\)\|")
 
 def table_rows(readme_lines):
     """[(line, [targets], [functions])] for the rows of the IPC section's table."""
-    rows, in_section = [], False
+    rows, in_section, in_fence = [], False, False
     for number, line in enumerate(readme_lines, 1):
-        if line.startswith("## "):
+        if line.lstrip().startswith(("```", "~~~")):
+            in_fence = not in_fence
+        if line.startswith("## ") and not in_fence:  # a "## " in a code sample is not a heading
             in_section = line.strip() == TABLE_SECTION
         cells = [cell.strip() for cell in CELL_SPLIT.split(line)[1:-1]] if in_section and line.startswith("| `") else []
         if len(cells) < 2:
@@ -339,7 +341,7 @@ def readme_findings(repo, readme_path, handlers, shell_dir):
                 if function not in handler.functions:
                     findings.append(Finding(readme_path, number, f'IPC table row "{target}" names "{function}", which is not a typed function (has: {", ".join(sorted(handler.functions))})'))
     for target, handler in sorted(handlers.items()):
-        if handler.path.startswith(shell_dir) and target not in documented:
+        if handler.path.startswith(shell_dir + "/") and target not in documented:
             findings.append(Finding(handler.path, handler.line, f'target "{target}" has no row in the IPC table of {readme_path}'))
     return findings
 
