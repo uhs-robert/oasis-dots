@@ -36,6 +36,9 @@ Scope {
     property bool watch: true
     property bool block_loading: true
     property bool read_only: false
+    // Saves indented with a trailing newline, for a file people also edit by hand. Only the written format changes: the
+    // unchanged-text skip compares the text in that same format, and a load of the other format is just an edit.
+    property bool pretty: false
     // The file's top level is a JSON array, not an object (a user's list of entries); `validate` is then required.
     property bool array_root: false
     // (values) -> argv or null, called when a write starts and never for a load. The argv runs once that write is on disk, so it describes the values that write carried.
@@ -150,7 +153,8 @@ Scope {
     }
 
     function write_now() {
-        const text = JSON.stringify(Object.assign({}, root.extras, root.values));
+        const merged = Object.assign({}, root.extras, root.values);
+        const text = root.pretty ? JSON.stringify(merged, null, 2) + "\n" : JSON.stringify(merged);
         // FileView skips a setText equal to its cached text, silently, so a write of text that failed to save needs a
         // load first (any load drops the cache). Only an explicit write gets here; a failure never retries by itself.
         if (root.view_text_unwritten && text === root.view_text && !root.retrying) {

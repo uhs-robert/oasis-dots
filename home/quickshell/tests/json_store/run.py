@@ -285,6 +285,25 @@ def scenario_dropped_known(state_home):
     return problems
 
 
+def scenario_pretty(state_home):
+    result, store_dir, problems = store_run("pretty", state_home)
+    if problems:
+        return problems
+    expect(problems, "indented with a trailing newline", read(store_dir), '{\n  "a": 1,\n  "b": 2\n}\n')
+    # The repeated set of a=1 matches the text on disk and completes without a write.
+    expect(problems, "saved signals", result["saved_count"], 3)
+    expect(problems, "dirty/writing cleared", (result["dirty"], result["writing"]), (False, False))
+    return problems
+
+
+def scenario_pretty_from_compact(state_home):
+    result, store_dir, problems = store_run("pretty_from_compact", state_home, seed='{"a":1,"b":0}')
+    if problems:
+        return problems
+    expect(problems, "compact file rewritten indented", read(store_dir), '{\n  "a": 1,\n  "b": 0\n}\n')
+    return problems
+
+
 def scenario_after_save(state_home):
     result, store_dir, problems = store_run("after_save", state_home)
     if problems:
@@ -559,6 +578,8 @@ SCENARIOS = {
     "external_dirty": scenario_external_dirty,
     "unknown_keys": scenario_unknown_keys,
     "dropped_known": scenario_dropped_known,
+    "pretty": scenario_pretty,
+    "pretty_from_compact": scenario_pretty_from_compact,
     "after_save": scenario_after_save,
     "revert": scenario_revert,
     "recreate": scenario_recreate,

@@ -149,6 +149,22 @@ ShellRoot {
             steps: [[200, () => store.set_key("week_start", "sunday")]],
             end: 800
         },
+        // pretty saves indented JSON with a newline; setting the value the file already holds in that format writes nothing.
+        pretty: {
+            pretty: true,
+            steps: [
+                [100, () => store.set_key("a", 1)],
+                [400, () => store.set_key("a", 1)],
+                [700, () => store.set_key("b", 2)]
+            ],
+            end: 1200
+        },
+        // A compact file with the same content is rewritten indented by the first set, not skipped as unchanged.
+        pretty_from_compact: {
+            pretty: true,
+            steps: [[200, () => store.set_key("a", 1)]],
+            end: 800
+        },
         // A key the store drops itself stays dropped only when it is listed in known_keys.
         dropped_known: {
             known_keys: ["a", "b"],
@@ -387,6 +403,7 @@ ShellRoot {
         debounce_ms: root.plan.debounce_ms || 0
         block_loading: root.plan.block_loading !== false
         read_only: root.plan.read_only === true
+        pretty: root.plan.pretty === true
         array_root: root.plan.array_root === true
         after_save: root.plan.after_save || null
         onLoaded: {

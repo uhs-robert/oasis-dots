@@ -122,8 +122,8 @@ Singleton {
     readonly property int min_refresh_gap_ms: 60000
     readonly property int retry_gap_ms: 120000
 
-    property var base_settings: ({})
-    property var local_settings: ({})
+    readonly property var base_settings: defaults_store.values
+    readonly property var local_settings: overrides_store.values
 
     function apply_settings() {
         const merged = Object.assign({}, root.default_settings, root.base_settings, root.local_settings);
@@ -139,54 +139,30 @@ Singleton {
             if (changes[key] === null) delete next[key];
             else next[key] = changes[key];
         }
-        root.local_settings = next;
+        overrides_store.replace(next);
         root.apply_settings();
-        local_settings_file.setText(JSON.stringify(next, null, 2) + "\n");
     }
 
-    function parse_settings(file, name) {
-        try {
-            return JSON.parse(file.text());
-        } catch (e) {
-            console.warn("Weather: invalid " + name + " (" + e + ")");
-            return null;
-        }
-    }
-
-    FileView {
-        id: settings_file
+    // A missing or broken file gives {}, so `default_settings` still apply.
+    JsonStore {
+        id: defaults_store
         path: Quickshell.shellDir + "/weather.json"
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            const parsed = root.parse_settings(settings_file, "weather.json");
-            if (parsed) root.base_settings = parsed;
-            root.apply_settings();
-        }
-        onLoadFailed: error => console.warn("Weather: failed to load weather.json (" + error + "), using defaults")
+        read_only: true
+        onLoaded: root.apply_settings()
     }
 
-    // Untracked per-machine overrides, e.g. real coordinates kept out of the public repo.
-    FileView {
-        id: local_settings_file
+    // Untracked per-machine overrides, e.g. real coordinates kept out of the public repo. Empty defaults, so a key
+    // missing here falls through to the tracked file. Saved at once and indented: people edit this file by hand.
+    JsonStore {
+        id: overrides_store
         path: Paths.state_dir + "/weather.local.json"
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
+        pretty: true
         onLoaded: {
-            const parsed = root.parse_settings(local_settings_file, "weather.local.json");
-            if (parsed) root.local_settings = parsed;
             root.apply_settings();
-            if (parsed && parsed.time_format !== undefined) {
-                ClockSettings.migrate_time_format(parsed.time_format);
+            if (overrides_store.raw.time_format !== undefined) {
+                ClockSettings.migrate_time_format(overrides_store.raw.time_format);
                 root.set_settings({ time_format: null });
             }
-        }
-        onLoadFailed: error => {
-            root.local_settings = {};
-            root.apply_settings();
         }
     }
 
@@ -217,8 +193,8 @@ Singleton {
 
     Component.onCompleted: {
         ensure_cache_dir.running = true;
-        settings_file.reload();
-        local_settings_file.reload();
+        // The cache is only usable for the settings it was saved under, so they must be merged before it loads.
+        root.apply_settings();
         cache_file.reload();
         root.refresh_if_due();
     }
