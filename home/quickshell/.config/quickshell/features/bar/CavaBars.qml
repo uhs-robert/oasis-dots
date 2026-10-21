@@ -3,11 +3,13 @@ import QtQuick.Shapes
 import qs.theme
 import qs.features.media
 
-// Cava drawn inside an island's bottom edge, as bars or a smoothed line, on the island's own color.
+// Cava drawn inside an island's open edge, as bars or a smoothed line, on the island's own color.
 Item {
     id: root
 
     property bool active: MediaState.playing
+    // Under a bottom bar: hangs from the island's top edge and grows down toward the screen edge.
+    property bool flipped: false
     readonly property int bar_count: CavaState.bar_count
     readonly property bool line: Style.cava_line
 
@@ -23,6 +25,10 @@ Item {
     readonly property var fill_points: root.top_points.length ? root.top_points.concat([Qt.point(root.width, root.height), Qt.point(0, root.height)]) : []
 
     height: root.line ? 10 : 6
+    transform: Scale {
+        origin.y: root.height / 2
+        yScale: root.flipped ? -1 : 1
+    }
     opacity: root.active ? 1 : 0
     visible: opacity > 0
 

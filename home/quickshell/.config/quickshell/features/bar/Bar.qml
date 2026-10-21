@@ -164,6 +164,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 3
             height: parent.height - 6
+            flipped: root.position === "bottom"
             active: lualine_cava.shown
         }
 
@@ -226,11 +227,15 @@ Item {
         parent: center_island.body_item
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        // Sits on the island's open edge: the bottom one, or the top one under a bottom bar.
+        readonly property real open_edge_margin: center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
+        anchors.top: center_island.flipped ? parent.top : undefined
+        anchors.bottom: center_island.flipped ? undefined : parent.bottom
         anchors.leftMargin: center_island.capsule ? center_island.capsule_radius : 6
         anchors.rightMargin: center_island.capsule ? center_island.capsule_radius : 6
-        // Under a bottom bar the inset line moves to the top edge, while the capsule lifts off the bottom one.
-        anchors.bottomMargin: center_island.capsule ? center_island.border_width + 1 + (center_island.flipped ? center_island.capsule_inset : 0) : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.flipped ? 0 : center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
+        anchors.topMargin: open_edge_margin
+        anchors.bottomMargin: open_edge_margin
+        flipped: center_island.flipped
         active: MediaState.playing && root.has_center
     }
 
