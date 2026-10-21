@@ -2,7 +2,7 @@
 # Tests for voxcmd's sequences, several steps in one phrase joined by "and then": order and waiting, what stops the
 # rest, the one toast it sends, Stop Voice, the dry run; also what an action learns from a yes on the confirm card.
 # run.sh runs this beside its own checks, in a sandbox of its own; run alone: home/voxcmd/tests/run-sequences.sh.
-# Sequences inside voice sessions are in run-sessions.sh.
+# Sequences inside voice sessions are in run-sessions.sh; the modes are in run-modes.sh.
 #
 # voxcmd runs for real against the sandbox's stubs and a copy of the package whose card and picker are stubs that
 # answer from files. A wait is observed by what its condition logs, never by sleeping.

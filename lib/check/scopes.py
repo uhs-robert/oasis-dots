@@ -86,12 +86,14 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/*-goldens.tsv", "rust"),
     ("home/voxcmd/tests/fixtures/legacy-dump.jsonl", "rust"),
     # The bash suites by what each reads (found by following their source/read lines; run.sh stands for voxcmd-click and
-    # carries run-sessions, run-sequences, run-overview and run-monitors). Ahead of the fixture catch-all below.
+    # carries run-sessions, run-modes, run-sequences, run-overview and run-monitors). Ahead of the fixture catch-all below.
     ("home/voxcmd/tests/run-phrases.sh", VOX_PHRASES),
     ("home/voxcmd/tests/phrases.tsv", VOX_PHRASES),
     ("home/voxcmd/tests/phrase-fixtures.sh", VOX_PHRASES),
     ("home/voxcmd/tests/run.sh", VOX_CLICK),
     ("home/voxcmd/tests/run-sessions.sh", VOX_CLICK),
+    ("home/voxcmd/tests/run-modes.sh", VOX_CLICK),
+    ("home/voxcmd/tests/session-harness.sh", VOX_CLICK),
     ("home/voxcmd/tests/run-sequences.sh", VOX_CLICK),
     ("home/voxcmd/tests/run-overview.sh", VOX_CLICK),
     ("home/voxcmd/tests/lib.sh", VOX_CLICK),

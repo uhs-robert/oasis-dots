@@ -55,7 +55,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `shaders`: each tracked Quickshell `.frag` rebuilds (qsb) to its committed `.frag.qsb` byte for byte, and its `// Rebuild:` header matches the command used; `just shaders` rewrites them (`lib/check/steps/shaders.sh`). Needs qsb (qt6-shadertools).
 - `json-store`: `home/quickshell/tests/json_store/run.sh`, the lifecycle tests of `core/JsonStore.qml` in a headless qs. Needs qs, python3.
 - `voxcmd-phrases`: each phrase in `home/voxcmd/tests/phrases.tsv` routes as recorded (`run-phrases.sh`). Needs jq, fzf.
-- `voxcmd-click`: voxcmd's click support (`run.sh`, with `run-sessions.sh`, `run-sequences.sh`, `run-overview.sh` and `run-monitors.sh` beside it). Needs jq, fzf.
+- `voxcmd-click`: voxcmd's click support (`run.sh`, with `run-sessions.sh`, `run-modes.sh`, `run-sequences.sh`, `run-overview.sh` and `run-monitors.sh` beside it). Needs jq, fzf.
 - `voxcmd-calendar`: the calendar phrases against stubs (`run-calendar.sh`). Needs jq, fzf.
 - `voxcmd-wake`: the wake word listener (`run-wake.sh`). Needs jq, fzf.
 - `voxcmd-firefox`: the Firefox extension and its native-messaging host (`run-firefox-extension.sh`). Needs jq, fzf; the extension's script runs under node when present.
