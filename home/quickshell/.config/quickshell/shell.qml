@@ -29,6 +29,7 @@ import qs.features.updates
 import qs.features.voice
 import qs.features.popups
 import qs.features.audio
+import qs.features.style
 
 ShellRoot {
     id: root
