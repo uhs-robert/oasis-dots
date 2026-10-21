@@ -191,6 +191,14 @@ firefox-host:
     source lib/install/load.sh
     register_firefox_host
 
+# Tune pacman.conf and makepkg, enable the paccache timer (asks first; needs sudo)
+pacman-tweaks:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
+    setup_pacman_tweaks
+
 # Opt in to an SSH server reachable only over Tailscale, key login only (needs sudo)
 ssh-server:
     #!/usr/bin/env bash
