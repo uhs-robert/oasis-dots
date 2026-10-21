@@ -15,7 +15,12 @@ Singleton {
 
     readonly property bool installed: stream.available
 
-    // The service restarts on right-click, which ends the follow stream; reconnect after it.
+    // Right-click on the bar module: the service restart ends the follow stream, which is planned, not a crash.
+    function restart() {
+        stream.expect_exit();
+        Quickshell.execDetached(["systemctl", "--user", "restart", "voxtype"]);
+    }
+
     RestartingStream {
         id: stream
         command: ["voxtype", "status", "--follow", "--format", "json"]

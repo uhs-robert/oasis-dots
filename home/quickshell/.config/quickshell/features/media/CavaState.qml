@@ -61,6 +61,8 @@ Singleton {
         id: cava_proc
         wanted: root.wanted
         command: ["cava", "-p", root.config_path]
+        probe_command: ["sh", "-c", "command -v cava"]
+        missing_text: "cava: not installed, border strip stays flat"
         initial_delay_ms: 2000
         max_delay_ms: 60000
         warn_text: "cava: exits quickly, backing off"
