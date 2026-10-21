@@ -58,7 +58,7 @@ function clean_last(raw) {
 
 // Clean copy of a state file's contents; throws on the wrong shape.
 function normalize(raw) {
-    if (raw === null || raw === undefined) return { shared: { place: {}, order: [], last_side: {} }, monitors: {} };
+    if (raw === null || raw === undefined) return { shared: { place: {}, order: [], last_side: {} }, monitors: {}, positions: {} };
     if (!is_object(raw)) throw new Error("bars.json state must be a JSON object");
     const shared = is_object(raw.shared) ? raw.shared : {};
     const place = {};
@@ -75,10 +75,21 @@ function normalize(raw) {
             if (!is_object(m)) continue;
             monitors[k] = { left: unique(m.left), center: unique(m.center), right: unique(m.right), last_side: clean_last(m.last_side) };
             if (typeof m.compact === "boolean") monitors[k].compact = m.compact;
-            if (positions.indexOf(m.position) >= 0) monitors[k].position = m.position;
         }
     }
-    return { shared: { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) }, monitors: monitors };
+    // Kept apart from `monitors` so a monitor keeps its edge whether or not it has its own layout.
+    const saved_positions = {};
+    if (is_object(raw.positions)) {
+        for (const k of Object.keys(raw.positions)) {
+            if (positions.indexOf(raw.positions[k]) >= 0) saved_positions[k] = raw.positions[k];
+        }
+    }
+    // Before `positions`, a pre-release build saved the position inside the monitor's own layout.
+    for (const k of Object.keys(monitors)) {
+        const nested_position = raw.monitors[k].position;
+        if (!(k in saved_positions) && positions.indexOf(nested_position) >= 0) saved_positions[k] = nested_position;
+    }
+    return { shared: { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) }, monitors: monitors, positions: saved_positions };
 }
 
 function layout_of(rule) {
@@ -102,15 +113,15 @@ function sort_side(list, order) {
     return out;
 }
 
-// The tracked rule with the shared layout, or the monitor's own override, applied. `state` must be normalized.
+// The tracked rule with the shared layout, or the monitor's own override, and its saved position applied. `state` must be normalized.
 function effective(rule, state, key) {
     if (!rule) return null;
     const out = Object.assign({}, rule, layout_of(rule));
+    if (key && state.positions[key]) out.position = state.positions[key];
     const own = key && state.monitors[key];
     if (own) {
         for (const s of sides) out[s] = own[s].slice();
         if (own.compact !== undefined) out.compact = own.compact;
-        if (own.position !== undefined) out.position = own.position;
         return out;
     }
     const place = state.shared.place;
@@ -124,12 +135,13 @@ function effective(rule, state, key) {
     return out;
 }
 
-// Stable override key: an exact match, else the only saved key for the same description whose connector is not a live screen with that description.
+// Stable override key (own layout or position): an exact match, else the only saved key for the same description whose connector is not a live screen with that description.
 function resolve_key(state, description, name, connected) {
     const fresh = description ? description + " @ " + name : name;
-    if (state.monitors[fresh]) return fresh;
+    const saved_keys = Object.keys(state.monitors).concat(Object.keys(state.positions).filter(k => !(k in state.monitors)));
+    if (saved_keys.indexOf(fresh) >= 0) return fresh;
     if (!description) return fresh;
-    const found = Object.keys(state.monitors).filter(k => {
+    const found = saved_keys.filter(k => {
         if (k === description) return true;
         if (k.indexOf(description + " @ ") !== 0) return false;
         const connector = k.slice(description.length + 3);
@@ -267,15 +279,15 @@ function edit(rule, state, key, op) {
     return next;
 }
 
-function set_own(state, key, layout, compact, position) {
+function set_own(state, key, layout, compact) {
     const next = normalize(state);
-    next.monitors[key] = Object.assign({}, layout_of(layout), { compact: compact, position: position_of({ position: position }) });
+    next.monitors[key] = Object.assign({}, layout_of(layout), { compact: compact });
     return next;
 }
 
 function set_position(state, key, position) {
     const next = normalize(state);
-    if (next.monitors[key] && positions.indexOf(position) >= 0) next.monitors[key].position = position;
+    if (key && positions.indexOf(position) >= 0) next.positions[key] = position;
     return next;
 }
 

@@ -29,10 +29,11 @@ While voxcmd's wake word listener holds the microphone (`$XDG_RUNTIME_DIR/voxcmd
 ]
 ```
 
-Settings > Bar modules edits the layout without touching the tracked file. It saves to `quickshell/bars.json` in the state folder (see [Settings panel](../settings/README.md)), with two kinds of override over the matching rule:
+Settings > Bar modules edits the layout without touching the tracked file. It saves to `quickshell/bars.json` in the state folder (see [Settings panel](../settings/README.md)), with three kinds of override over the matching rule:
 
 - `shared` applies to every monitor without its own layout. `place` maps a module to `left`, `center`, `right` or `hidden`, and `order` lists modules that swap among the slots they already fill on each side, and the rest do not move.
-- `monitors` holds one full `left`/`center`/`right` layout (and `compact` and `position`) per monitor, keyed by `<description> @ <connector>`, or by the connector alone when the monitor has no description. After a connector change, the only saved key with the same description is reused. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule, and so does `position` until the Position row (shown with Own layout on) saves one.
+- `monitors` holds one full `left`/`center`/`right` layout (and `compact`) per monitor, keyed by `<description> @ <connector>`, or by the connector alone when the monitor has no description. After a connector change, the only saved key with the same description is reused. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule.
+- `positions` maps a monitor key (as in `monitors`) to `top` or `bottom`, set by the Position row and applied over the rule's `position`. It is kept apart from `monitors`, so a monitor needs no layout of its own to move its bar, and turning Own layout on or off leaves its position alone.
 
 Delete the state file to go back to the tracked layout.
 
