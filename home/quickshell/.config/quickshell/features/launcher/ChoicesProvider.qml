@@ -111,19 +111,24 @@ PickerProvider {
                     console.warn("ChoicesProvider: invalid spec (" + e + ")");
                     parsed = null;
                 }
+                // Stale: a later open is queued behind it, or the picker was cancelled while it loaded. Only an id
+                // caller is answered (as Escape does); a shell caller's own cleanup would close the newer picker.
+                const stale = parsed !== null && (root.queued_args.length > 0 || !root.session);
+                const was_live = root.session;
+                if (stale && parsed.id) {
+                    root.spec = parsed;
+                    root.session = true;
+                    root.finish("");
+                }
                 if (root.queued_args.length > 0) {
-                    // Superseded before it showed: only its caller is owed an answer.
-                    if (parsed) {
-                        root.spec = parsed;
-                        root.finish("");
-                    }
                     const next = root.queued_args[0];
                     root.queued_args = root.queued_args.slice(1);
-                    root.session = true;
+                    // A cancelled session stays cancelled: queued callers are read only to be answered.
+                    root.session = was_live;
                     root.start_load(next);
                     return;
                 }
-                if (!parsed) return;
+                if (!parsed || stale) return;
                 root.spec = parsed;
                 root.items = root.top_items();
             }
