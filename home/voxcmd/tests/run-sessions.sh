@@ -484,13 +484,13 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/debug.log"
 # starts dies before its trap is set, and one handing over to a successor that is starting leaves the session to it.
 sess_start HOLD
 owner_is_listening
-pkill -TERM -f "$sess_watcher"
+signal_watchers TERM
 sess_wait
 check "a killed listener ends the session" "session_gone"
 # SIGKILL runs no trap, so the file stays, but the owner check reads it as no session.
 sess_start HOLD
 owner_is_listening
-pkill -KILL -f "$sess_watcher"
+signal_watchers KILL
 sess_wait
 check "a SIGKILLed listener leaves its file behind" "! session_gone"
 printf '%s\n' "tap hello" >"$sess_turns"

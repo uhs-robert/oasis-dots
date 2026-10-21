@@ -27,6 +27,7 @@ expect warn 'bash home/voxcmd/tests/run-calendar.sh 2>&1 | tail' '' voxcmd-calen
 expect warn 'home/voxcmd/tests/sandbox.sh home/voxcmd/tests/run-wake.sh' '' voxcmd-wake
 expect warn 'VOXCMD_BIN=rs home/voxcmd/tests/run-firefox-extension.sh' '' voxcmd-firefox
 expect warn 'timeout 900 home/voxcmd/tests/run-sessions.sh' '' 'none of its own'
+expect warn 'home/voxcmd/tests/run-modes.sh' '' 'none of its own'
 expect warn 'cd home/voxcmd && tests/run.sh' '' voxcmd-click
 expect warn 'cd home/voxcmd && cargo test' '' voxcmd-rust
 expect warn 'cargo clippy --manifest-path home/voxcmd/Cargo.toml --all-targets' '' voxcmd-rust

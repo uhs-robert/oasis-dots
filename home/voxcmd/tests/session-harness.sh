@@ -157,6 +157,16 @@ taps() { grep -c '^tap ' "$log"; }
 record_starts() { grep -c '^voxtype record start' "$log"; }
 session_gone() { [[ ! -e $XDG_RUNTIME_DIR/voxcmd/session.json ]]; }
 ended_because() { grep -q "^notify-send .*Test mode ended $1" "$log"; }
+# signal_watchers <signal>: signals this sandbox's watchers only. With VOXCMD_BIN=rs every sandbox's watcher has the same
+# command line, so a plain pkill -f would reach the watchers of scripts running beside this one; their environment carries
+# this sandbox's SANDBOX_DIR.
+signal_watchers() {
+  local pid
+  for pid in $(pgrep -f -- "$sess_watcher"); do
+    grep -qzxF "SANDBOX_DIR=$SANDBOX_DIR" "/proc/$pid/environ" 2>/dev/null && kill "-$1" "$pid" 2>/dev/null
+  done
+  return 0
+}
 start_time_of() { sed 's/.*) //' "/proc/$1/stat" | awk '{print $20}'; }
 # Waits until the session's owner is a watcher that has seen its recording start, so its traps are set.
 owner_is_listening() { wait_until owner_saw_recording; }
