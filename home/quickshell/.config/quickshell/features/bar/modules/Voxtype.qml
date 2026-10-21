@@ -103,7 +103,7 @@ BarModule {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: mouse => {
-            if (mouse.button === Qt.RightButton) Quickshell.execDetached(["systemctl", "--user", "restart", "voxtype"]);
+            if (mouse.button === Qt.RightButton) VoxtypeState.restart();
             else Quickshell.execDetached(["sh", "-c", "exec ~/.config/hypr/scripts/voxtype-with-media-pause.sh"]);
         }
     }

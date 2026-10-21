@@ -261,6 +261,7 @@ STEPS = [
     Step("json-store", "qml", "bash ./home/quickshell/tests/json_store/run.sh", ("qs", "python3"), skip_reason="the json-store tests need qs and python3"),
     Step("polled-command", "polledcmd", "bash ./home/quickshell/tests/polled_command/run.sh", ("qs", "python3"), skip_reason="the polled-command tests need qs and python3"),
     Step("polled-file", "polledfile", "bash ./home/quickshell/tests/polled_file/run.sh", ("qs", "python3"), skip_reason="the polled-file tests need qs and python3"),
+    Step("restarting-stream", "qml", "bash ./home/quickshell/tests/restarting_stream/run.sh", ("qs", "python3"), skip_reason="the restarting-stream tests need qs and python3"),
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
     Step("packages", "tree", "sh ./lib/check/steps/packages.sh"),
     Step("symlinks", "tree", "sh ./lib/check/steps/symlinks.sh"),
