@@ -125,6 +125,13 @@ Singleton {
             }
         }
         onExited: {
+            // The module hides while the stream is down (available follows runs), so a dead stream never shows frozen counts or a stale tooltip.
+            root.runs = [];
+            root.state_class = "idle";
+            root.tooltip = "";
+            root.done_count = 0;
+            root.running_count = 0;
+            root.waiting_count = 0;
             root.primed = false;
             root.last_line = "";
         }
