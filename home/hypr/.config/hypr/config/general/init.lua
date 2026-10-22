@@ -77,3 +77,5 @@ hl.config({
     new_status = "master",
   },
 })
+
+require("config.general.frame")
