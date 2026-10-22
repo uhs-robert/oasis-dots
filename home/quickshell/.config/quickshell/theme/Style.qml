@@ -37,7 +37,7 @@ Singleton {
             materia: {}
         })
     // Bar island shapes any style without lualine can borrow (Theme options); "slant" is the plain look.
-    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "none", "underline", "brackets", "full"]
+    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "rect", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "none", "underline", "brackets", "full"]
     // What a shape brings to a style that does not own it, in place of that style's own shape sizes: `sizes` copied from
     // the owner, a border at least `min_border` wide (in the palette's muted text colour where the host has none), and
     // with `fg_border` the host's bar_fg as its colour so a pixel window's outline shows on every palette. Never the
@@ -47,6 +47,7 @@ Singleton {
             octagon: { min_border: 1 },
             watch: { owner: "goldeneye", min_border: 1 },
             window: { owner: "nes", min_border: 2, fg_border: true },
+            rect: { min_border: 1 },
             capsule: { owner: "modern", sizes: ["bar_capsule", "bar_capsule_pad"] },
             visor: { owner: "metroid" },
             chevron: { min_border: 1 },
@@ -104,7 +105,7 @@ Singleton {
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
             bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle", modern: "Modern", terminal: "Terminal" },
             bar_meeting_marker: MarkerTokens.labels,
-            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar" },
+            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", rect: "Rectangle", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" },
             screen_frame: { "": "Off", plain: "Plain" }
         })
