@@ -7,12 +7,13 @@ description: Put unmerged Quickshell, Hyprland, voxcmd or voxtype/systemd-unit b
 
 ## Scripts
 
-Run bare from the main checkout; never by hand, and never for an agent's own checks (use `shadow`).
+Run from any worktree (only `rs-swap` needs the main checkout); never by hand, and never for an agent's own checks (use `shadow`).
 
 - `.claude/skills/owner-test-bar/owner-test-bar.sh up <name> <branch>...`, then `probe "<ipc call>"` and read its output before telling the owner it is ready.
 - `.claude/skills/owner-test-bar/owner-test-bar.sh try "<phrase>"...` on every voxcmd phrase before handing it to the owner; never hand over one that gives `no match`.
 - A fix goes on the branch, then `rebuild <name>`. When done, `restore`, then `remove <name>`.
-- One session owns the live test bar; `up`, `swap`, `rebuild` and `restore` refuse while another's claim is live.
+- One session owns the live test bar; `up`, `swap`, `rebuild` and `restore` refuse while another's claim is live; `--take` only with the owner's approval.
+- After `rs-swap`, `up`, `swap` and `rebuild` refuse until `restore`, and `try` refuses; run `try` before `rs-swap`.
 
 ## Details
 

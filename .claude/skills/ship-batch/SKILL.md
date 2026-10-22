@@ -7,6 +7,7 @@ description: The only way to merge PRs in this repo. Open and merge the PRs for 
 
 ## Scripts
 
+- Before running it, every branch is rebased on `origin/main`, pushed and has an open PR (step 1); afterwards tick the finished items in `review.md` if one exists (step 4).
 - `.claude/skills/ship-batch/ship-batch.sh <n>...` with the PRs in merge order, as that bare command: a prefixed variable no longer matches the owner's allow rule and is blocked.
 - `--skip-review-gate` goes before the PR numbers, only when the owner waived Codex or named another reviewer; say so in the PR.
 - Merge only through this script, never `merge-prs.sh <n>` or `gh` directly.
