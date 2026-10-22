@@ -102,6 +102,29 @@ pub fn read_pending() -> Option<PendingPick> {
     (is_fifo && still_asking(state.pid)).then_some(state)
 }
 
+/// `voxcmd util pending-pick`: the pending pick's file text, as the bash `pending_pick` printed it, so a hook can
+/// `jq` it. The text is passed through unparsed: the bash checked only that `.pid` and `.fifo` are there, so a state
+/// `read_pending` cannot parse (a choice of the wrong type) still prints. Exit 1, silent, when nothing is pending.
+pub fn run_pending_pick() -> Result<String, CliError> {
+    pending_pick_text(&paths::pending_pick()).ok_or_else(|| CliError::quiet("util pending-pick"))
+}
+
+fn pending_pick_text(file: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(file).ok()?;
+    let state: serde_json::Value = serde_json::from_str(&text).ok()?;
+    // Numeric text is a pid too, as the bash used whatever `.pid` held in the /proc path.
+    let pid = match state.get("pid")? {
+        serde_json::Value::Number(number) => number.to_string(),
+        serde_json::Value::String(text) => text.clone(),
+        _ => return None,
+    };
+    let fifo = state.get("fifo")?.as_str()?;
+    let is_fifo = std::fs::metadata(fifo).is_ok_and(|meta| meta.file_type().is_fifo());
+    let asking = pid.parse().is_ok_and(still_asking);
+    // The bash printed through `$(...)`, which drops trailing newlines; main adds the one.
+    (is_fifo && asking).then(|| text.trim_end_matches('\n').to_string())
+}
+
 /// Whether the pick read earlier is still the one waiting: Stop Voice may have cancelled it since.
 pub fn still_pending(earlier: &PendingPick) -> bool {
     read_pending().is_some_and(|now| now.pid == earlier.pid && now.fifo == earlier.fifo)
@@ -774,5 +797,46 @@ pub(crate) mod tests {
         assert!(!write_answer(&unread, "x"));
         assert!(started.elapsed() >= Duration::from_secs(2));
         assert!(!write_answer(&dir.path().join("gone"), "x"));
+    }
+
+    #[test]
+    fn pending_pick_text_follows_the_bash_pending_pick() {
+        let dir = tempfile::tempdir().unwrap();
+        let fifo = dir.path().join("result");
+        let fifo_c = CString::new(fifo.as_os_str().as_bytes()).unwrap();
+        // SAFETY: mkfifo on a NUL-terminated path.
+        assert_eq!(unsafe { libc::mkfifo(fifo_c.as_ptr(), 0o600) }, 0);
+        let mut asker = Command::new("sh")
+            .args(["-c", "sleep 30", "voxcmd-pick"])
+            .spawn()
+            .unwrap();
+        let mut bystander = Command::new("sleep").arg("30").spawn().unwrap();
+        let state_file = dir.path().join("pending-pick.json");
+        let text_of = |state: &str| {
+            std::fs::write(&state_file, state).unwrap();
+            pending_pick_text(&state_file)
+        };
+        let state = |pid: u32, fifo: &Path| format!(r#"{{"pid":{pid},"fifo":"{}","choices":"odd"}}"#, fifo.display());
+
+        // Passed through unparsed (even a shape read_pending rejects), trailing newlines dropped.
+        let asking = state(asker.id(), &fifo);
+        assert_eq!(text_of(&format!("{asking}\n\n")), Some(asking.clone()));
+        let numeric_text = format!(r#"{{"pid":"{}","fifo":"{}"}}"#, asker.id(), fifo.display());
+        assert_eq!(text_of(&numeric_text), Some(numeric_text.clone()));
+
+        assert_eq!(text_of(&state(bystander.id(), &fifo)), None, "pid is not an asker");
+        assert_eq!(text_of(&state(asker.id(), &dir.path().join("gone"))), None, "no fifo");
+        assert_eq!(text_of(&state(asker.id(), dir.path())), None, "fifo is a directory");
+        assert_eq!(text_of(r#"{"fifo":"/x"}"#), None, "no pid");
+        assert_eq!(text_of(&format!(r#"{{"pid":{}}}"#, asker.id())), None, "no fifo field");
+        assert_eq!(text_of("not json"), None);
+        assert_eq!(text_of(""), None);
+        assert_eq!(pending_pick_text(&dir.path().join("absent.json")), None, "no file");
+
+        asker.kill().unwrap();
+        asker.wait().unwrap();
+        bystander.kill().unwrap();
+        bystander.wait().unwrap();
+        assert_eq!(text_of(&asking), None, "asker exited");
     }
 }
