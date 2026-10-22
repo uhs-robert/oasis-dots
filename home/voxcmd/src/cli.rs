@@ -236,6 +236,8 @@ pub enum UtilCommand {
         ignore: Option<String>,
         target: String,
     },
+    /// Print the pending pick's state while its asker waits; exit 1 when none does
+    PendingPick,
     /// Print a voice setting from the environment or voice.env; exit 1 when unset
     VoiceEnv { key: String },
 }

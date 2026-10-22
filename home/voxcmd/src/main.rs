@@ -132,6 +132,7 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
             route::resolve::run_word_match(ignore.as_deref(), &target).map(Some)
         }
         Command::Util(UtilCommand::Speech(speech)) => text::speech::run(speech).map(Some),
+        Command::Util(UtilCommand::PendingPick) => ask::run_pending_pick().map(Some),
         Command::Util(UtilCommand::VoiceEnv { key }) => config::voice_env::run(&key).map(Some),
         Command::Internal(InternalCommand::Watch(args)) => voice::watch::run(&args.args).map(|()| None),
         Command::Internal(InternalCommand::Settle(_)) => voice::settle::run().map(|()| None),
