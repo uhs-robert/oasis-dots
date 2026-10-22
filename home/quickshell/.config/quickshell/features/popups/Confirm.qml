@@ -5,21 +5,24 @@ import qs.features.voice
 
 // The yes/no question the confirm card asks for a shell caller (voxcmd-confirm), which blocks reading result_path.
 // Every way the card ends writes one answer there: "yes", or "no" for No, Esc, the scrim, the timeout or another popup.
+// A QML caller passes on_answer(yes) instead, and an empty result_path.
 Singleton {
     id: root
 
     property string question: ""
     property string result_path: ""
+    property var on_answer: null
     property bool asking: false
     // Voice replies keep the card waiting: the countdown runs only while voxtype is neither recording nor transcribing.
     readonly property bool listening: VoxtypeState.recording || VoxtypeState.transcribing
     readonly property int timeout_ms: 10000
 
-    function ask(question, result_path) {
+    function ask(question, result_path, on_answer) {
         // A newer question replaces an unanswered one, whose caller then reads a no.
         root.answer(false);
         root.question = question;
         root.result_path = result_path;
+        root.on_answer = on_answer || null;
         root.asking = true;
         Popups.open("confirm", undefined);
     }
@@ -28,8 +31,12 @@ Singleton {
         if (!root.asking) return;
         root.asking = false;
         // timeout: with no reader left on the FIFO the redirect would block forever.
-        Quickshell.execDetached(["timeout", "2", "sh", "-c", "printf '%s\\n' \"$1\" > \"$2\"", "sh", yes ? "yes" : "no", root.result_path]);
+        if (root.result_path !== "") Quickshell.execDetached(["timeout", "2", "sh", "-c", "printf '%s\\n' \"$1\" > \"$2\"", "sh", yes ? "yes" : "no", root.result_path]);
         if (Popups.open_name === "confirm") Popups.close();
+        // After the close, so a callback that opens another popup is not closed by it.
+        const callback = root.on_answer;
+        root.on_answer = null;
+        if (callback) callback(yes);
     }
 
     // For a caller already answered another way (a voice reply into its FIFO): closes its card without writing.

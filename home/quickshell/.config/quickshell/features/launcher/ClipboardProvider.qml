@@ -1,9 +1,10 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.features.popups
 import qs.theme
 
-// cliphist history, newest first: Enter copies an entry back, `d` deletes it in place.
+// cliphist history, newest first: Enter copies an entry back, `d` deletes it in place, `C` clears the lot after a yes/no.
 PickerProvider {
     id: root
 
@@ -13,7 +14,7 @@ PickerProvider {
     verb: "copy"
     rank_by_usage: false
     keep_order: true
-    actions: [{ key: "d", desc: "delete" }]
+    actions: [{ key: "d", desc: "delete" }, { key: "C", desc: "clear all" }]
 
     readonly property string cache_dir: (Quickshell.env("XDG_RUNTIME_DIR") || Quickshell.cacheDir) + "/quickshell-cliphist"
     readonly property string text_icon: Quickshell.iconPath("text-x-generic", "edit-paste")
@@ -131,6 +132,10 @@ PickerProvider {
 
     // The row goes at once; the history is re-read after the last queued delete lands.
     function run_action(key, item) {
+        if (key === "C") {
+            if (root.ready) Confirm.ask("Clear all clipboard history?", "", root.clear_answered);
+            return;
+        }
         if (key !== "d" || !root.ready || root.deleting[item.id] !== undefined) return;
         const d = Object.assign({}, root.deleting);
         d[item.id] = -1;
@@ -138,6 +143,12 @@ PickerProvider {
         root.items = root.items.filter(e => e.id !== item.id);
         root.delete_queue = root.delete_queue.concat([item]);
         root.flush_deletes();
+    }
+
+    // The confirm card replaced the picker, so either answer brings it back; a yes waits for the wipe so it lists empty.
+    function clear_answered(yes) {
+        if (yes) wipe_proc.running = true;
+        else Pickers.open(root.name, null);
     }
 
     function flush_deletes() {
@@ -172,6 +183,12 @@ PickerProvider {
             root.pending = null;
             if (next) Qt.callLater(root.request, next);
         }
+    }
+
+    Process {
+        id: wipe_proc
+        command: ["cliphist", "wipe"]
+        onExited: Pickers.open(root.name, null)
     }
 
     Process {
