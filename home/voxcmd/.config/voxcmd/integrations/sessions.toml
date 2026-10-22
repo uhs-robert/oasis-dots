@@ -1,0 +1,38 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Launches the auto-launcher sessions by name, as picking one in the Session Launcher does. Format: ~/.config/voxcmd/README.md
+name = "Sessions"
+
+# Word matching with the articles ignored still finds "work" in "open a work session".
+target_match = "words"
+match_ignore_words = ["a", "an", "any", "some", "new"]
+
+# "open the session launcher" never ends in "session" after a target, so it stays with the keybinds. The "skip" verb
+# matches first and offers nothing, so "open the work tmux session" falls through to Tmux instead of naming a session
+# called "work tmux".
+# "open a session" and "open a new session" name none, so they open the Session Launcher to pick one, as its bind does.
+verbs = [
+  { action = "skip",     match = '{open} (.* )?tmux {target}' },
+  { action = "launcher", match = '{open} ((a|an|any|some)( new)?|new) session' },
+  { action = "open",     match = '{open} (the )?{target} session' },
+]
+
+examples = ["open the <name> session", "open a session"]
+
+[actions]
+# The session's windows appearing is the feedback.
+launcher = { run = 'hyprctl_eval "$launcher_module.show_picker()"', silent = true }
+skip = { run = "true", candidates = "true" }
+
+[actions.open]
+run = 'launch_session "$VOXCMD_ID"'
+silent = true
+candidates = "session_candidates"
+# An unknown name must not fall through to the keybinds fallback and open a picker.
+no_match = "not_found"
+
+[actions.not_found]
+run = 'echo "no session called \"$VOXCMD_ARG_TARGET\""; false'
+
+# Tab on the example in Voice Help lists every session, and picking one launches it.
+[[help]]
+action = "open"

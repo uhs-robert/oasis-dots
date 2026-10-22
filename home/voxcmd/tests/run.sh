@@ -1853,6 +1853,7 @@ section "near misses"
 near_config=$root/config-near
 mkdir -p "$near_config/integrations.d" "$near_config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/apps.sh" "$package/.config/voxcmd/integrations.d/devices.sh" "$package/.config/voxcmd/integrations.d/sessions.sh" "$near_config/integrations.d/"
+copy_shipped_integrations "$near_config" sessions
 near_actions=$root/near-actions.log
 {
   cat <<'STUB'
@@ -1975,6 +1976,7 @@ section "sessions.sh launches by name"
 sessions_config=$root/sessions-config
 mkdir -p "$sessions_config/integrations.d" "$sessions_config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/sessions.sh" "$package/.config/voxcmd/integrations.d/tmux.sh" "$sessions_config/integrations.d/"
+copy_shipped_integrations "$sessions_config" sessions tmux
 export SANDBOX_LAUNCHER_SESSIONS=$'work\n🌐 Browsing'
 : >"$log"
 VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the browsing session" >/dev/null 2>&1
@@ -1985,6 +1987,8 @@ check "an unknown name launches nothing, but still asks Hyprland for the names" 
 : >"$log"
 VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the work tmux session" >/dev/null 2>&1
 check "a tmux phrase launches no launcher session" "! grep -Fq '.launch(' '$log'"
+# Sessions' "skip" verb offers nothing, so the phrase passes on to Tmux rather than stopping at Sessions.
+check "Sessions yields a tmux phrase to Tmux" "VOXCMD_CONFIG_DIR='$sessions_config' '$voxcmd' explain 'open the work tmux session' 2>&1 | grep -q '^option 1: *Tmux'"
 unset SANDBOX_LAUNCHER_SESSIONS
 
 section "voice help"
