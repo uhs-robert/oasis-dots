@@ -29,7 +29,7 @@ When a shot needs the owner's decision (comparing look options, or a check the t
 
 Scripts: do not load a repo skill just to run its script. When the repo has them, run these bare from the main checkout (here):
 - `.claude/skills/owner-test-bar/owner-test-bar.sh up <name> <branch>...`, `probe "<ipc call>"`, `restore`, `remove <name>`, `rebuild <name>`.
-- `try "<phrase>"...`: for a voxcmd branch the owner will say out loud, run every phrase through it before handing the phrase over, and never hand over one that gives `no match`.
+- `.claude/skills/owner-test-bar/owner-test-bar.sh try "<phrase>"...`: for a voxcmd branch the owner will say out loud, run every phrase through it before handing the phrase over, and never hand over one that gives `no match`.
 - `.claude/skills/ship-batch/ship-batch.sh <n>...`: PRs in merge order; it gates, checks, merges and restarts the bar.
 
 Load the owning skill only when its script fails or a case it does not cover comes up.
