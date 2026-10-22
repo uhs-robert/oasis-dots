@@ -24,8 +24,16 @@ session_names() {
 }
 
 # id<TAB>label per session, both the name. A name holding a tab or newline splits the row, as it never did in JSON.
+# When the names cannot be read (Hyprland down, or a reply that is not a JSON list) bash had no hook answer and
+# launched the spoken target as the name, so the target is offered as the one session, and the action reports the failure.
 session_candidates() {
-  session_names | jq -r '.[] | [., .] | join("\t")' 2>/dev/null
+  local names rows
+  names=$(session_names)
+  if [ -n "$names" ] && rows=$(jq -r '.[] | [., .] | join("\t")' <<<"$names" 2>/dev/null); then
+    [ -z "$rows" ] || printf '%s\n' "$rows"
+  elif [ -n "${VOXCMD_ARG_TARGET:-}" ]; then
+    printf '%s\t%s\n' "$VOXCMD_ARG_TARGET" "$VOXCMD_ARG_TARGET"
+  fi
 }
 
 # The name goes to Lua as a JSON string, which Lua reads the same for anything but \u escapes jq only writes for control
