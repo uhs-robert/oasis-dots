@@ -1,6 +1,10 @@
 # Bar
 
-`bar/` holds the bar and its islands, the submap and voice-mode tabs, the hot corner, one file per module in `modules/`, `BarSettings` with `BarLayout.js` and `BarModules.js` (the layout and module registry), `LualineState`, `SubmapState`, the command-status state and IPC handler, the badged glyph and done/wait pulses the modules draw, and the neovim style's mode chip, buffer line, lualine sections and window segment in `neovim/`.
+`bar/` holds the bar and its islands (`Island.qml`, with the one-polygon shapes' geometry in `IslandOutlines.js`), the submap and voice-mode tabs, the hot corner, one file per module in `modules/`, `BarSettings` with `BarLayout.js` and `BarModules.js` (the layout and module registry), `LualineState`, `SubmapState`, the command-status state and IPC handler, the badged glyph and done/wait pulses the modules draw, and the neovim style's mode chip, buffer line, lualine sections and window segment in `neovim/`.
+
+## Island shapes
+
+Settings > Theme options > Island shape (`bar_island_shape`) picks the islands' outline. Slant, octagon, watch, window, capsule and visor have their own layers in `Island.qml`; chevron, lean, hex, ticket, tab, pixel and notch are each one polygon from `IslandOutlines.js`, which gives an open end's profile from the screen edge to the open edge and derives the fill, the rim (inset by half the border, open on the screen edge and on an end flush with the screen's side) and `fill_span`'s clipping from it. A new outline shape is a profile and a `cap_width` there, plus its entries in `Style.island_shapes`, `island_shape_kits` and `borrow_names`.
 
 ## Island fills
 

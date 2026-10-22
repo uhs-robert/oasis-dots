@@ -6,6 +6,7 @@ import qs.ui.gauges
 import qs.styles.metroid.widgets as Metroid
 import qs.theme
 import qs.features.popups
+import "IslandOutlines.js" as Outlines
 
 Item {
     id: root
@@ -56,9 +57,10 @@ Item {
     property color cap_right_fill: "transparent"
     property color cap_left_fill: "transparent"
     readonly property bool center: root.cap_left && root.cap_right
-    // goldeneye: chamfered watch islands, the center one with case lugs, and a white tick at each end.
-    readonly property bool octagon: root.shape === "octagon"
-    readonly property real lug: root.octagon && root.center ? 4 : 0
+    // Chamfered corners on the open ends; goldeneye's "watch" adds case lugs on the center island and a white tick at each end.
+    readonly property bool watch: root.shape === "watch"
+    readonly property bool octagon: root.shape === "octagon" || root.watch
+    readonly property real lug: root.watch && root.center ? 4 : 0
     readonly property color tick_color: Style.bar_tick_color
     // nes: a floating Dragon Quest window, its corners cut by one pixel step.
     readonly property bool window: root.shape === "window"
@@ -67,7 +69,12 @@ Item {
     readonly property real window_width: root.width - root.window_x * 2
     readonly property real window_top: 1
     readonly property real window_bottom: root.height - 1
-    readonly property int cap_width: root.window ? 0 : root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
+    // One of IslandOutlines' shapes: a single polygon and its rim, sized and traced there.
+    readonly property bool outlined: Outlines.has(root.shape)
+    readonly property var outline_rim: root.outlined ? Outlines.rim_path(root.shape, root.width, root.height, root.cap_width, root.cap_left, root.cap_right) : []
+    // The rim path moved in by the border: where the fill's effects stop.
+    readonly property var outline_inner: root.outlined ? Outlines.inset(root.outline_rim, root.border_width) : []
+    readonly property int cap_width: root.outlined ? Outlines.cap_width(root.shape, height) : root.window ? 0 : root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
     readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.window ? root.window_x + (root.center ? 16 : 6) : root.octagon ? 10 : 8
 
     readonly property real oct_x0: root.lug
@@ -106,6 +113,7 @@ Item {
             const dx = y < y0 + top_r ? corner(top_r, y0 + top_r - y) : y > y1 - bottom_r ? corner(bottom_r, y - y1 + bottom_r) : 0;
             return [x0 + dx, x1 - dx];
         }
+        if (root.outlined) return Outlines.span_at(root.outline_inner, y);
         if (root.octagon) {
             const c = root.oct_c;
             const cut = y < c ? c - y : y > h - c ? y - h + c : 0;
@@ -201,7 +209,7 @@ Item {
     // The popup style's shade and dither, behind the modules and clipped to the slants.
     Loader {
         anchors.fill: parent
-        active: root.shaded && !root.visor && !root.capsule && !root.octagon && !root.window
+        active: root.shaded && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -304,13 +312,13 @@ Item {
             height: 14
             color: root.border_color
             opacity: 0.9
-            visible: root.octagon
+            visible: root.watch
         }
     }
 
     // The bezel's hour mark at each open end, inside the rim; none on an end that meets the screen edge.
     Repeater {
-        model: root.octagon ? [0, 1] : []
+        model: root.watch ? [0, 1] : []
 
         Rectangle {
             required property int modelData
@@ -322,6 +330,37 @@ Item {
             width: 2
             height: 12
             color: root.tick_color
+        }
+    }
+
+    // An outlined shape's fill, one polygon so a translucent fill never stacks. The pixel shape skips the curve
+    // renderer's antialiasing so its steps stay crisp.
+    Loader {
+        anchors.fill: parent
+        active: root.outlined
+        transform: mirror
+        sourceComponent: Shape {
+            preferredRendererType: root.shape === "pixel" ? Shape.GeometryRenderer : Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: -1
+                fillColor: root.faded(root.bg_color)
+                // A style's frame shade, laid out as on the slant.
+                fillGradient: root.shade_color.a > 0 ? outline_shade : null
+                PathPolyline {
+                    path: Outlines.fill_path(root.outline_rim, root.width, root.cap_left, root.cap_right).map(p => Qt.point(p[0], p[1]))
+                }
+            }
+
+            LinearGradient {
+                id: outline_shade
+                x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.width : 0
+                y1: 0
+                x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.width
+                y2: root.height
+                GradientStop { position: 0; color: root.faded(root.shade_color) }
+                GradientStop { position: 1; color: root.faded(root.bg_color) }
+            }
         }
     }
 
@@ -374,7 +413,7 @@ Item {
         x: root.capsule ? root.capsule_inset : root.lug + (cap_left ? root.cap_width : 0)
         height: root.height
         width: Math.ceil(layout.implicitWidth) + root.pad * 2
-        color: root.shaded || root.octagon || root.window || root.lualine && root.translucent ? "transparent" : root.faded(root.bg_color)
+        color: root.shaded || root.octagon || root.window || root.outlined || root.lualine && root.translucent ? "transparent" : root.faded(root.bg_color)
 
         // Translucent lualine: the island's colour goes only behind modules that draw no section fill of their own
         // (`lualine_fill`), since those fills over this one would show both.
@@ -430,7 +469,7 @@ Item {
     Loader {
         width: root.cap_width + root.cap_overlap
         height: root.height
-        active: root.cap_left && !root.capsule && !root.octagon && !root.window
+        active: root.cap_left && !root.capsule && !root.octagon && !root.window && !root.outlined
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -454,7 +493,7 @@ Item {
         x: root.width - root.cap_width - root.cap_overlap
         width: root.cap_width + root.cap_overlap
         height: root.height
-        active: root.cap_right && !root.capsule && !root.octagon && !root.window
+        active: root.cap_right && !root.capsule && !root.octagon && !root.window && !root.outlined
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -506,7 +545,7 @@ Item {
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
     Loader {
         anchors.fill: parent
-        active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon && !root.window
+        active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -535,7 +574,7 @@ Item {
 
     Loader {
         anchors.fill: parent
-        active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon && !root.window
+        active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon && !root.window && !root.outlined
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -559,6 +598,28 @@ Item {
                         else pts.push(Qt.point(w, h - off));
                         return pts;
                     }
+                }
+            }
+        }
+    }
+
+    // An outlined shape's rim, above the content like the octagon's, on every side but the screen's.
+    Loader {
+        anchors.fill: parent
+        z: 2
+        active: root.outlined && root.border_width > 0
+        transform: mirror
+        sourceComponent: Shape {
+            preferredRendererType: root.shape === "pixel" ? Shape.GeometryRenderer : Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: root.border_width
+                strokeColor: root.border_color
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                PathPolyline {
+                    path: Outlines.inset(root.outline_rim, root.border_width / 2).map(p => Qt.point(p[0], p[1]))
                 }
             }
         }
