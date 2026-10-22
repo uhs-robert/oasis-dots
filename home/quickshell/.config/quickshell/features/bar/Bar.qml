@@ -249,8 +249,8 @@ Item {
         parent: center_island.body_item
         anchors.left: parent.left
         anchors.right: parent.right
-        // Sits on the island's open edge: the bottom one, or the top one under a bottom bar.
-        readonly property real open_edge_margin: center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
+        // Sits on the island's open edge: the bottom one, or the top one under a bottom bar, clear of its underline.
+        readonly property real open_edge_margin: center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.shape === "underline" ? center_island.stroke_width : center_island.filled && center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
         anchors.top: center_island.flipped ? parent.top : undefined
         anchors.bottom: center_island.flipped ? undefined : parent.bottom
         anchors.leftMargin: center_island.capsule ? center_island.capsule_radius : 6

@@ -71,9 +71,9 @@ Item {
     readonly property real window_bottom: root.height - 1
     // One of IslandOutlines' shapes: a single polygon and its rim, sized and traced there.
     readonly property bool outlined: Outlines.has(root.shape)
-    // none, underline and brackets: no plate, so no fill, shade, slant caps, dither or scanlines (Style.island_filled).
-    readonly property bool stroke_only: Outlines.stroke_only(root.shape)
-    readonly property bool filled: !root.stroke_only
+    // False for none, underline and brackets: no plate, so no fill, shade, slant caps, dither or scanlines.
+    readonly property bool filled: Style.island_filled
+    readonly property bool stroke_only: !root.filled
     // Style's min_border already raised border_width to at least this; max() keeps a bare island visible if it was not.
     readonly property real stroke_width: Math.max(root.border_width, root.shape === "underline" ? 2 : 1)
     readonly property var outline_rim: root.outlined ? Outlines.rim_path(root.shape, root.width, root.height, root.cap_width, root.cap_left, root.cap_right) : []
