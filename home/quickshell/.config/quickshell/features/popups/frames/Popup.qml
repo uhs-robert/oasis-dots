@@ -56,7 +56,7 @@ PanelWindow {
     // Holds the keyboard while wanted (not through the close animation, which would starve the next popup of focus): Hyprland refocuses the window under the pointer whenever a layer maps, such as hyprpaper's surface on every wallpaper change, which an on-demand popup loses its keys to.
     property bool hold_keyboard: false
     property real anim_scale: root.passive ? 0.6 : 1
-    // Small popups inside the style's handheld shell (DeviceShell), and the room it keeps around the content.
+    // Popups inside the style's handheld shell (DeviceShell), and the room it keeps around the content.
     readonly property bool device: root.st.device_shell && !root.passive
     readonly property int device_side: root.device ? 20 : 0
     readonly property int device_top: root.device ? 30 : 0
@@ -254,8 +254,8 @@ PanelWindow {
         onActivated: Popups.walk(1)
     }
 
-    // Never narrower than the island's bottom edge (its body, between the slants).
-    implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, island_floor_width, root.st.popup_min_width)
+    // Never narrower than the island's bottom edge (its body, between the slants); a fit_island popup adds the shell's side room on top so the content keeps the island's width.
+    implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width + root.device_side * 2 : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, island_floor_width, root.st.popup_min_width)
     implicitHeight: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.st.frame_drop
     default property alias content: content_scope.data
 
