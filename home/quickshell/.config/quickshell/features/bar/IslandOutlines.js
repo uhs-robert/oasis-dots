@@ -19,6 +19,9 @@ function pixel_step(h) {
 
 const PIXEL_STEPS = 3;
 
+// The share of the height the hex's flat tip takes. A cut under a quarter vanishes into the rim at 1x.
+const HEX_FLAT = 0.3;
+
 function notch_flare(h) {
     return Math.round(h * 0.2);
 }
@@ -27,8 +30,8 @@ function notch_flare(h) {
 function cap_width(shape, h) {
     switch (shape) {
     case "chevron": return Math.round(h * 0.5);
-    // A true hexagon's 120 degree corners: the point reaches h/2 / tan(60) in.
-    case "hex": return Math.round(h * 0.2887);
+    // The hexagon's 120 degree corners, their tip cut flat: the slanted edge reaches (1 - HEX_FLAT) / 2 * h / tan(60) in.
+    case "hex": return Math.round(h * (1 - HEX_FLAT) / 2 / Math.tan(Math.PI / 3));
     case "lean": return Math.round(h * 0.4);
     case "ticket": return Math.round(h * 0.27);
     case "tab": return Math.round(h * 0.4);
@@ -53,8 +56,9 @@ function arc(cx, cy, r, a0, a1) {
 function end_profile(shape, h, c, trailing) {
     switch (shape) {
     case "chevron":
-    case "hex":
         return [[c, 0], [0, h / 2], [c, h]];
+    case "hex":
+        return [[c, 0], [0, h * (1 - HEX_FLAT) / 2], [0, h * (1 + HEX_FLAT) / 2], [c, h]];
     case "lean":
         return trailing ? [[0, 0], [c, h]] : [[c, 0], [0, h]];
     // Concave quarter circles cut into all four corners of the end.
