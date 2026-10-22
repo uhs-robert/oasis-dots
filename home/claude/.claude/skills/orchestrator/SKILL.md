@@ -25,6 +25,8 @@ Every agent's report is yours to collect. On any agent notice that is not its re
 
 Screenshots: agents read every one and report one line per shot (looks right, or the problem). Never open an image yourself unless the owner asks.
 
+When a shot needs the owner's decision (comparing look options, or a check the tools can't settle), agents give its absolute path in their report. Send that file to the owner with `SendUserFile` without opening it, and put the question in the same turn's brief.
+
 Scripts: do not load a repo skill just to run its script. When the repo has them, run these bare from the main checkout (here):
 - `.claude/skills/owner-test-bar/owner-test-bar.sh up <name> <branch>...`, `probe "<ipc call>"`, `restore`, `remove <name>`, `rebuild <name>`.
 - `.claude/skills/ship-batch/ship-batch.sh <n>...`: PRs in merge order; it gates, checks, merges and restarts the bar.
