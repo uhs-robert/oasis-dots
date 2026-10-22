@@ -41,7 +41,7 @@ Singleton {
     // What a shape brings to a style that does not own it, in place of that style's own shape sizes: `sizes` copied from
     // the owner, a border at least `min_border` wide (in the palette's muted text colour where the host has none), and
     // with `fg_border` the host's bar_fg as its colour so a pixel window's outline shows on every palette. Never the
-    // owner's colours. A shape without an owner is drawn by no style on its own.
+    // owner's colours. A shape without an owner is no style's own outline, though a style may still default to it (gameboy and snes use pixel).
     readonly property var island_shape_kits: ({
             slant: {},
             octagon: { min_border: 1 },
