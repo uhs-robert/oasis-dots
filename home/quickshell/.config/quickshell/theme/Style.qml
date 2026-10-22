@@ -37,17 +37,30 @@ Singleton {
             materia: {}
         })
     // Bar island shapes any style without lualine can borrow (Theme options); "slant" is the plain look.
-    readonly property var island_shapes: ["slant", "octagon", "window", "capsule", "visor"]
+    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch"]
     // What a shape brings to a style that does not own it, in place of that style's own shape sizes: `sizes` copied from
-    // the owner, a border at least `min_border` wide, and with `fg_border` the host's bar_fg as its colour so a pixel
-    // window's outline shows on every palette. Never the owner's colours.
+    // the owner, a border at least `min_border` wide (in the palette's muted text colour where the host has none), and
+    // with `fg_border` the host's bar_fg as its colour so a pixel window's outline shows on every palette. Never the
+    // owner's colours. A shape without an owner is drawn by no style on its own.
     readonly property var island_shape_kits: ({
             slant: {},
-            octagon: { owner: "goldeneye", min_border: 1 },
+            octagon: { min_border: 1 },
+            watch: { owner: "goldeneye", min_border: 1 },
             window: { owner: "nes", min_border: 2, fg_border: true },
             capsule: { owner: "modern", sizes: ["bar_capsule", "bar_capsule_pad"] },
-            visor: { owner: "metroid" }
+            visor: { owner: "metroid" },
+            chevron: { min_border: 1 },
+            lean: { min_border: 1 },
+            hex: { min_border: 1 },
+            ticket: { min_border: 1 },
+            tab: { min_border: 1 },
+            pixel: { min_border: 1 },
+            notch: { min_border: 1 }
         })
+    // Saved shapes renamed since, applied once to a theme_options.json older than options_version: "octagon" drew
+    // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
+    readonly property var renamed_island_shapes: ({ octagon: "watch" })
+    readonly property int options_version: 2
     // Shape sizes every kit resets before laying its own on, so leaving the capsule drops its inset.
     readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0 })
     // OSD layouts any style can borrow (Theme options); "" is the plain OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
@@ -77,7 +90,7 @@ Singleton {
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
             bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle", modern: "Modern", terminal: "Terminal" },
             bar_meeting_marker: MarkerTokens.labels,
-            bar_island_shape: { slant: "Slant", octagon: "Octagon", window: "Window", capsule: "Capsule", visor: "Visor" },
+            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
@@ -672,24 +685,35 @@ Singleton {
         for (const k of kit.sizes || []) out[k] = owner[k];
         if (kit.min_border) out.bar_border_width = Math.max(host.bar_border_width, kit.min_border);
         if (kit.fg_border) out.bar_border_color = host.bar_fg;
+        // A borderless style's transparent border would hide the outline the min_border is there to show.
+        else if (kit.min_border && Qt.color(host.bar_border_color).a === 0) out.bar_border_color = Theme.fg_muted;
         return out;
     }
 
+    // `version` sits beside the style names; settings_for finds no style by that name, so loading skips it.
     function save_options() {
-        options_file.setText(JSON.stringify(root.theme_values));
+        options_file.setText(JSON.stringify(Object.assign({ version: root.options_version }, root.theme_values)));
     }
 
     function load_options(data) {
         const all = {};
+        const outdated = !(data.version >= root.options_version);
+        let migrated = false;
         for (const style_name in data) {
             const mine = {};
             for (const def of root.settings_for(style_name)) {
-                const v = data[style_name] ? data[style_name][def.key] : undefined;
+                let v = data[style_name] ? data[style_name][def.key] : undefined;
+                if (outdated && def.key === "bar_island_shape" && root.renamed_island_shapes[v]) {
+                    v = root.renamed_island_shapes[v];
+                    migrated = true;
+                }
                 if (v !== undefined && root.valid_option(def, v) && v !== (def.type === "bool" ? true : def.default)) mine[def.key] = v;
             }
             if (Object.keys(mine).length > 0) all[style_name] = mine;
         }
         root.theme_values = all;
+        // Written back at once so the stamped version keeps a later plain "octagon" from being renamed.
+        if (migrated) root.save_options();
     }
 
     function set_cava_line(on) {

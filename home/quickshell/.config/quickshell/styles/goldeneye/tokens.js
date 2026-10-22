@@ -56,7 +56,7 @@ function overrides(t, ctx) {
         bar_border_color: Qt.tint(t.bg_crust, Qt.alpha(t.fg_muted, 0.5)),
         bar_hover_bg: Qt.tint(t.bg_crust, Qt.alpha(t.fg_muted, 0.25)),
         bar_separator: "tick",
-        bar_island_shape: "octagon",
+        bar_island_shape: "watch",
         bar_clock_font: Watch.digit_font,
         watch_colors: "Theme",
         watch_classic: ctx.classic_tokens
