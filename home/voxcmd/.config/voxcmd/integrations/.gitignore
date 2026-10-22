@@ -2,3 +2,7 @@
 !.gitignore
 !notifications.toml
 !notifications.sh
+!screenshot.toml
+!screenshot.sh
+!recording.toml
+!recording.sh
