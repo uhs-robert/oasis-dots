@@ -145,13 +145,14 @@ PickerProvider {
         root.flush_deletes();
     }
 
-    // The confirm card replaced the picker, so either answer brings it back; a yes waits for the wipe so it lists empty.
+    // The confirm card replaced the picker, so either explicit answer brings it back (q or another popup does not); a yes waits for the wipe so it lists empty.
     function reopen() {
         // "delete" opens in NORMAL, so a second `C` is a command, not search text.
         Pickers.open(root.name, null, undefined, undefined, undefined, "delete");
     }
 
-    function clear_answered(yes) {
+    function clear_answered(yes, explicit) {
+        if (!explicit) return;
         if (yes) wipe_proc.running = true;
         else root.reopen();
     }
