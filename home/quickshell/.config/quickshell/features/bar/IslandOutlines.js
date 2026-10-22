@@ -10,6 +10,14 @@ function has(shape) {
     return names.indexOf(shape) >= 0;
 }
 
+// Shapes with no plate: `none` draws nothing, `underline` and `brackets` only a stroke. `has` stays false for them,
+// since an outline here is a filled polygon.
+const stroke_names = ["none", "underline", "brackets"];
+
+function stroke_only(shape) {
+    return stroke_names.indexOf(shape) >= 0;
+}
+
 // Points per quarter circle; enough that the antialiased polygon reads as a curve at bar sizes.
 const ARC_STEPS = 10;
 
@@ -29,6 +37,10 @@ function notch_flare(h) {
 // How far each open end reaches in from the island's side: the content starts past it.
 function cap_width(shape, h) {
     switch (shape) {
+    // No outline to clear, so a pad that keeps the modules off the bare edge (the brackets' arm plus a gap).
+    case "none":
+    case "underline": return Math.round(h * 0.3);
+    case "brackets": return bracket_arm(h) + Math.round(h * 0.1);
     case "chevron": return Math.round(h * 0.5);
     // The hexagon's 120 degree corners, their tip cut flat: the slanted edge reaches (1 - HEX_FLAT) / 2 * h / tan(60) in.
     case "hex": return Math.round(h * (1 - HEX_FLAT) / 2 / Math.tan(Math.PI / 3));
@@ -39,6 +51,26 @@ function cap_width(shape, h) {
     case "notch": return notch_flare(h) + Math.round(h * 0.33);
     }
     return 0;
+}
+
+function bracket_arm(h) {
+    return Math.max(4, Math.round(h * 0.3));
+}
+
+// The underline as an open polyline along the open edge (y = h), `t` thick, centred so the stroke lies inside the island.
+function underline_path(w, h, t) {
+    return [[0, h - t / 2], [w, h - t / 2]];
+}
+
+// The four corner brackets as 3-point polylines with arms `arm` long, inset by half of `t` so the stroke lies inside the box.
+function bracket_paths(w, h, arm, t) {
+    const i = t / 2;
+    return [
+        [[i, i + arm], [i, i], [i + arm, i]],
+        [[w - i - arm, i], [w - i, i], [w - i, i + arm]],
+        [[w - i, h - i - arm], [w - i, h - i], [w - i - arm, h - i]],
+        [[i + arm, h - i], [i, h - i], [i, h - i - arm]]
+    ];
 }
 
 // Points on the circle around (cx, cy) from angle a0 to a1 in degrees, y down.
@@ -93,6 +125,8 @@ function rim_path(shape, w, h, c, cap_left, cap_right) {
 
 // The closed fill: the rim path, then back along the screen edge (and the screen's sides for uncapped ends).
 function fill_path(path, w, cap_left, cap_right) {
+    // A Loader's component still binds for a moment after the shape changes away, with an empty rim.
+    if (path.length === 0) return [];
     const out = path.slice();
     if (!cap_right) out.push([w, 0]);
     if (!cap_left) out.push([0, 0]);
