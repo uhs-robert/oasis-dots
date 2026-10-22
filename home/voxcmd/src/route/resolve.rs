@@ -480,9 +480,10 @@ pub fn judge(target: &str, candidates: &[Candidate], ignore: &[String]) -> Optio
 /// How many weak matches go to the picker.
 const WEAK_KEPT: usize = 10;
 
-/// `voxcmd util word-match [--ignore <words>] <target>`: the `id<TAB>label<TAB>match_text` lines on stdin that the
-/// target names, in `word_match`'s order. Exit 1 when none does.
-pub fn run_word_match(ignore: Option<&str>, target: &str) -> Result<String, CliError> {
+/// `voxcmd util word-match [--ignore <words>] [--strong] <target>`: the `id<TAB>label<TAB>match_text` lines on stdin
+/// that the target names, in `word_match`'s order. Exit 1 when none does. With `strong_only`, the weak matches
+/// (`Candidate::weak`, as `word_match` marks them) are dropped first, so a near miss is exit 1, not a line.
+pub fn run_word_match(ignore: Option<&str>, strong_only: bool, target: &str) -> Result<String, CliError> {
     let mut input = String::new();
     let _ = std::io::stdin().read_to_string(&mut input);
     let candidates: Vec<Candidate> = input
@@ -505,7 +506,10 @@ pub fn run_word_match(ignore: Option<&str>, target: &str) -> Result<String, CliE
         .split_whitespace()
         .map(str::to_string)
         .collect();
-    let found = word_match(target, &candidates, &ignore).unwrap_or_default();
+    let mut found = word_match(target, &candidates, &ignore).unwrap_or_default();
+    if strong_only {
+        found.retain(|candidate| !candidate.weak);
+    }
     if found.is_empty() {
         return Err(CliError::failed("util word-match", "no candidate matches"));
     }

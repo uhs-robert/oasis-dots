@@ -234,6 +234,9 @@ pub enum UtilCommand {
         /// Words to leave out of the comparison
         #[arg(long, value_name = "WORDS")]
         ignore: Option<String>,
+        /// Print only strong matches (the same words), dropping weak near misses
+        #[arg(long)]
+        strong: bool,
         target: String,
     },
     /// Print the pending pick's state while its asker waits; exit 1 when none does
