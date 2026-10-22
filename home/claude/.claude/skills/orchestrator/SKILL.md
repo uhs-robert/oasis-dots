@@ -27,12 +27,7 @@ Screenshots: agents read every one and report one line per shot (looks right, or
 
 When a shot needs the owner's decision (comparing look options, or a check the tools can't settle), agents give its absolute path in their report. Send that file to the owner with `SendUserFile` without opening it, and put the question in the same turn's brief.
 
-Scripts: do not load a repo skill just to run its script. When the repo has them, run these bare from the main checkout (here):
-- `.claude/skills/owner-test-bar/owner-test-bar.sh up <name> <branch>...`, `probe "<ipc call>"`, `restore`, `remove <name>`, `rebuild <name>`.
-- `.claude/skills/owner-test-bar/owner-test-bar.sh try "<phrase>"...`: for a voxcmd branch the owner will say out loud, run every phrase through it before handing the phrase over, and never hand over one that gives `no match`.
-- `.claude/skills/ship-batch/ship-batch.sh <n>...`: PRs in merge order; it gates, checks, merges and restarts the bar.
-
-Load the owning skill only when its script fails or a case it does not cover comes up.
+Skills that only wrap a script: when you just need to run the script, read only that skill's `## Scripts` section (`awk '/^## Scripts/{f=1;next} /^#/{f=0} f' <SKILL.md>`) instead of loading the skill; load the whole skill when it has no such section, or when the script fails or the case isn't covered.
 
 Review dimensions, used by every review below: correctness and regressions, missed requirements, scope (unrelated changes), reuse and unnecessary complexity, weak tests.
 

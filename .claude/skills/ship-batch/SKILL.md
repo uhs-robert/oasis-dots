@@ -5,6 +5,16 @@ description: The only way to merge PRs in this repo. Open and merge the PRs for 
 
 # Ship a batch
 
+## Scripts
+
+- `.claude/skills/ship-batch/ship-batch.sh <n>...` with the PRs in merge order, as that bare command: a prefixed variable no longer matches the owner's allow rule and is blocked.
+- `--skip-review-gate` goes before the PR numbers, only when the owner waived Codex or named another reviewer; say so in the PR.
+- Merge only through this script, never `merge-prs.sh <n>` or `gh` directly.
+- `ship-batch.sh --wait-main-check`, in the background, is the only way to know main is green. A failed main check warns and never blocks; fix it with a small follow-up PR first.
+- With no PR numbers it resumes an interrupted run.
+
+## Details
+
 The only way to merge PRs in this repo, never `merge-prs.sh <n>` or the `gh` merge command directly. Use it once merging is approved: the owner said to merge, or a standing approval covers the PR (e.g. merge without asking when Codex approves with no revisions).
 
 1. For each branch: rebase on `origin/main` if it is behind, push, and `gh pr create` written with the global `pr-descriptions` skill, plus a note if Codex could not run.
