@@ -72,6 +72,8 @@ hl.config({ general = { gaps_in = 8, gaps_out = 16 } })
 
 See `custom/README.md` for the layout and more examples, including sessions for the launcher.
 
+While Quickshell's screen frame is on (Settings > Theme options > Screen frame), `config/general/frame.lua` sets `decoration.rounding` to match the frame's corners and puts your value back when the frame goes; a rounding you set from `custom/` is the one it restores.
+
 ## HyprVim
 
 A vim-modal navigation layer for Hyprland. Activate with `SUPER + V`, exit with `SUPER + ESCAPE`.
