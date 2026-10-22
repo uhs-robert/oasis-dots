@@ -1,6 +1,6 @@
 .pragma library
 
-// A Game Boy screen; `small` popups sit in the handheld's shell. The original is four shades of the primary, the Color shows the palette.
+// A Game Boy screen; popups sit in the handheld's shell. The original is four shades of the primary, the Color shows the palette.
 function overrides(t, ctx) {
     const build = (model, shades, colors) => {
         const [g0, g1, g2, g3] = shades;
@@ -95,9 +95,7 @@ function overrides(t, ctx) {
             bar_workspace_ring: g2,
             bar_pill_square: true,
             bar_hover_bg: Qt.alpha(g3, 0.25),
-            small: {
-                device_shell: true
-            }
+            device_shell: true
         }, colors);
     };
     const mono = [

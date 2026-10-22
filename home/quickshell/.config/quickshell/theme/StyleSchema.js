@@ -217,7 +217,7 @@ var tokens = [
     tok("shade_2", "color", "transparent", ""),
     tok("shade_3", "color", "transparent", ""),
     tok("pixel_border", "color", "transparent", "Frames get a 2px pixel double border with this middle ring (PixelFrame); keys and meters get 2px pixel rings."),
-    tok("device_shell", "bool", false, "Small popups sit inside a handheld's shell (DeviceShell); hover shelves never do."),
+    tok("device_shell", "bool", false, "Popups sit inside a handheld's shell (DeviceShell); hover shelves never do."),
     tok("device_model", "string", "", "Which handheld the shell draws: dmg or color."),
     tok("window_gradient", "var", () => [], "Diagonal [position, color] stops filling window frames inside their border (WindowGradient); empty keeps frame_color."),
     tok("materia", "var", () => ({}), "Orb colors (MateriaOrb) by role (key, section, workspace, alert), weather kind and daily slot color; a role left out draws no orb."),
