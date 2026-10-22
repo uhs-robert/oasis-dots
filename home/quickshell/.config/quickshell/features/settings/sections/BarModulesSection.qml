@@ -24,10 +24,13 @@ SettingsPane {
     readonly property bool has_own: root.monitor_key !== "" && !!BarSettings.state.monitors[root.monitor_key]
     readonly property var tracked: root.view_screen ? BarSettings.tracked_rule_for(root.view_screen) : null
     readonly property var view_layout: BarLayout.layout_of(BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key))
-    readonly property int top_count: root.target_screen ? (root.has_own ? 4 : 3) : 1
+    readonly property int top_count: root.target_screen ? (root.has_own ? 4 : 3) : 2
     readonly property bool own_compact: root.has_own && BarSettings.compact_for(BarSettings.state.monitors[root.monitor_key])
     // Saved per monitor apart from the own layout, so the row shows and keeps its value with Own layout off.
     readonly property string bar_position: BarLayout.position_of(BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key))
+    // All monitors has no monitor key, so it reads the shared value, else the focused monitor's rule.
+    readonly property string position_source: BarLayout.position_source(root.tracked, BarSettings.state, root.monitor_key)
+    readonly property bool position_set_here: root.position_source === (root.target_screen ? "monitor" : "global")
     readonly property var entries: {
         const out = [];
         for (const side of BarLayout.sides) {
@@ -63,7 +66,7 @@ SettingsPane {
         })
 
     footer_hint: "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"
-    search_rows: ["Editing target"].concat(root.target_screen ? ["Position", "Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
+    search_rows: ["Editing target", "Position"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
     search_cursor: root.cursor
     described: true
     description: root.describe(root.described_index)
@@ -72,7 +75,8 @@ SettingsPane {
 
     function describe(index) {
         if (index === 0) return "The monitor whose bar you edit. All monitors edits the layout they share.";
-        if (index === 1 && root.target_screen) return "The screen edge this monitor's bar sits on, with or without its own layout. Popups and the submap tab rise from a bottom bar.";
+        if (index === 1 && root.target_screen) return "The screen edge this monitor's bar sits on, with or without its own layout. Until set here it follows the global position, else bars.json.";
+        if (index === 1) return "The screen edge every bar sits on, unless a monitor sets its own. Popups and the submap tab rise from a bottom bar.";
         if (index === 2 && root.target_screen) return "On gives this monitor its own copy of the layout. Off goes back to the shared one.";
         if (index === 3 && root.has_own) return "A tighter bar that hides the system modules on this monitor.";
         const item = root.entries[index - root.top_count];
@@ -83,6 +87,7 @@ SettingsPane {
 
     function keys_for(index) {
         if (index === 0) return "H/L change · Enter list";
+        if (index === 1 && root.position_set_here) return "Enter toggle · x " + (root.target_screen ? "follow global" : "follow bars.json");
         if (index < root.top_count) return "Enter toggle";
         const item = root.entries[index - root.top_count];
         if (!item) return "";
@@ -136,8 +141,20 @@ SettingsPane {
     }
 
     function toggle_position() {
-        if (!root.target_screen) return;
-        BarSettings.set_state(BarLayout.set_position(BarSettings.state, root.monitor_key, root.bar_position === "bottom" ? "top" : "bottom"));
+        const next = root.bar_position === "bottom" ? "top" : "bottom";
+        if (root.target_screen) BarSettings.set_state(BarLayout.set_position(BarSettings.state, root.monitor_key, next));
+        else BarSettings.set_state(BarLayout.set_shared_position(BarSettings.state, next));
+    }
+
+    // Not asked first: it drops one setting and the row shows what it falls back to.
+    function clear_position() {
+        if (root.target_screen) BarSettings.set_state(BarLayout.clear_position(BarSettings.state, root.monitor_key));
+        else BarSettings.set_state(BarLayout.clear_shared_position(BarSettings.state));
+    }
+
+    function position_text() {
+        const note = { global: " (global)", "bars.json": " (bars.json)", default: " (default)" }[root.position_source];
+        return root.bar_position + (root.position_set_here ? "" : note);
     }
 
     function add_argument() {
@@ -230,7 +247,8 @@ SettingsPane {
         else if (root.cursor === 0 && ((shift && event.key === Qt.Key_H) || event.key === Qt.Key_L)) root.cycle_target(event.key === Qt.Key_H ? -1 : 1);
         else if (root.cursor === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) root.open_target_picker();
         else if (root.cursor === 0 && event.key === Qt.Key_Space) root.cycle_target(1);
-        else if (root.target_screen && root.cursor === 1 && toggles) root.toggle_position();
+        else if (root.cursor === 1 && toggles) root.toggle_position();
+        else if (root.cursor === 1 && !shift && event.key === Qt.Key_X) root.clear_position();
         else if (root.target_screen && root.cursor === 2 && toggles) root.toggle_own();
         else if (root.has_own && root.cursor === 3 && toggles) root.toggle_compact();
         else if (on_module && !shift && event.key === Qt.Key_A) root.add_argument();
@@ -269,10 +287,10 @@ SettingsPane {
         }
 
         ChoiceRow {
-            visible: !!root.target_screen && !root.picking
+            visible: !root.picking
             selected: root.live && root.cursor === 1
             label: "Position"
-            value_text: root.bar_position
+            value_text: root.position_text()
             onHoveredChanged: root.hover(1, hovered)
             onStepped: {
                 root.focus_pane();

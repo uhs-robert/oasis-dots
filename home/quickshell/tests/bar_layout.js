@@ -1,4 +1,4 @@
-// Runs BarLayout.js under node: the bar position a rule or a monitor's saved position picks, and how the state file keeps it.
+// Runs BarLayout.js under node: the bar position a rule, the global setting or a monitor's saved position picks, and how the state file keeps it.
 // Both scripts are QML `.pragma library` files; BarLayout's `.import` of BarModules is stood in by loading that first.
 "use strict";
 const fs = require("fs");
@@ -40,6 +40,22 @@ const cases = [
   ["set_own writes no position", () => "position" in L.set_own(L.normalize(null), key, rule, false).monitors[key], false],
   ["a position key is reused after a connector change", () => L.resolve_key(L.normalize({ positions: { "Dell @ DP-1": "bottom" } }), "Dell", "DP-2", [{ name: "DP-2", description: "Dell" }]), "Dell @ DP-1"],
   ["position survives a round trip", () => L.normalize(plain(L.set_position(L.normalize(null), key, "bottom"))).positions, { [key]: "bottom" }],
+  ["normalize keeps a shared position", () => L.normalize({ shared: { position: "bottom" } }).shared.position, "bottom"],
+  ["normalize drops a bad shared position", () => "position" in L.normalize({ shared: { position: "left" } }).shared, false],
+  ["shared position wins over the rule", () => L.effective(Object.assign({ position: "top" }, rule), L.set_shared_position(L.normalize(null), "bottom"), key).position, "bottom"],
+  ["shared position applies with no key", () => L.effective(rule, L.set_shared_position(L.normalize(null), "bottom"), "").position, "bottom"],
+  ["shared position applies with an own layout", () => L.effective(rule, L.normalize({ shared: { position: "bottom" }, monitors: { [key]: {} } }), key).position, "bottom"],
+  ["monitor position wins over the shared one", () => L.effective(rule, L.normalize({ shared: { position: "bottom" }, positions: { [key]: "top" } }), key).position, "top"],
+  ["source is monitor", () => L.position_source(rule, L.normalize({ shared: { position: "bottom" }, positions: { [key]: "top" } }), key), "monitor"],
+  ["source is global", () => L.position_source(Object.assign({ position: "top" }, rule), L.normalize({ shared: { position: "bottom" } }), key), "global"],
+  ["source is bars.json", () => L.position_source(Object.assign({ position: "bottom" }, rule), L.normalize(null), key), "bars.json"],
+  ["source is default", () => L.position_source(rule, L.normalize(null), key), "default"],
+  ["clearing a monitor follows the shared one", () => L.effective(rule, L.clear_position(L.normalize({ shared: { position: "bottom" }, positions: { [key]: "top" } }), key), key).position, "bottom"],
+  ["clearing a monitor leaves the others", () => L.clear_position(L.normalize({ positions: { [key]: "top", other: "bottom" } }), key).positions, { other: "bottom" }],
+  ["clearing the shared one follows the rule", () => L.effective(Object.assign({ position: "bottom" }, rule), L.clear_shared_position(L.set_shared_position(L.normalize(null), "top")), key).position, "bottom"],
+  ["set_shared_position refuses left", () => L.set_shared_position(L.normalize({ shared: { position: "bottom" } }), "left").shared.position, "bottom"],
+  ["layout edits keep the shared position", () => L.edit(rule, L.normalize({ shared: { position: "bottom" } }), "", { type: "hide", entry: "clock" }).shared.position, "bottom"],
+  ["shared position survives a round trip", () => L.normalize(plain(L.set_shared_position(L.normalize(null), "bottom"))).shared, { place: {}, order: [], last_side: {}, position: "bottom" }],
 ];
 
 let failed = 0;
