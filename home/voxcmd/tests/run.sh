@@ -1712,6 +1712,7 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
 firefox_config=$root/firefox-config
 mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
 cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
+copy_shipped_integrations "$firefox_config" firefox-sites
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to inbox mailbox" 2>&1)
 check "a tab shown in a second window is one tab, not also that window" "[[ \$(grep -c '^option' <<<\"\$out\") == 1 ]] && grep -q 'action=focus_tab' <<<\"\$out\""
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to private notes" 2>&1)

@@ -16,3 +16,5 @@
 !tmux.sh
 !system.toml
 !system.sh
+!firefox-sites.toml
+!firefox-sites.sh

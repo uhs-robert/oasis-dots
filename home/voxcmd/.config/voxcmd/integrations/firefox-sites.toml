@@ -1,0 +1,18 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Opens a bookmark, a site from history or a domain when "open X" names no app: "open example", "open example.com".
+# A fallback, so apps, keybinds and every other integration's "open" come first. Format: ~/.config/voxcmd/README.md
+name = "Firefox"
+fallback = true
+silent = true
+target_match = "words"
+action_labels = false
+
+verbs = [
+  { action = "open_site", match = "{open} {target}" },
+]
+
+examples = ["open <bookmark or site>"]
+
+[actions.open_site]
+run = '"$VOXCMD_SHARE_DIR/firefox-tab" open "$VOXCMD_ID"'
+candidates = "site_candidates"
