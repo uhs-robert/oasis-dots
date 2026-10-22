@@ -104,11 +104,11 @@ Scope {
                     FrameStrokes {
                         y: -root.layout.near
                         layout: root.layout
-                        rim_width: Style.screen_frame_rim
-                        rim_color: Style.bar_border_color
+                        rim_width: Style.bar_border_width
+                        rim_color: Style.screen_frame_rim_color
                         inset_gap: Style.bar_inset_gap
                         inset_width: Style.bar_inset_width
-                        inset_color: Style.bar_inset_color
+                        inset_color: Style.screen_frame_inset_color
                     }
                 }
 

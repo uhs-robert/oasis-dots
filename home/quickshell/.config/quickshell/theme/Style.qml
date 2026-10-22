@@ -71,9 +71,9 @@ Singleton {
     readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0 })
     // Screen frames any style can borrow (Theme options); "" is none.
     readonly property var screen_frames: ["", "plain"]
-    // What each frame draws (FrameGeometry.frame_layout): `thickness` px bands on the edges the bar is not on, the hole's
-    // `corner` profile of `radius`, and a rim round the hole at least `rim` px wide in the bar's border colour.
-    // `ornament` names extra drawing in the frame's ornament slot, none so far.
+    // What each frame draws (FrameGeometry.frame_layout): `thickness` px bands on the edges the bar is not on and the
+    // hole's `corner` profile of `radius`. `rim` is not drawn: the rim round the hole stays at the bar's border width
+    // (screen_frame_rim_color). `ornament` names extra drawing in the frame's ornament slot, none so far.
     readonly property var screen_frame_kits: ({
             plain: { corner: "round", radius: 12, thickness: 6, rim: 0, ornament: "" }
         })
@@ -163,8 +163,14 @@ Singleton {
     // The screen frame the shell draws, from `active` so the style picker previews it; null when there is none.
     readonly property var screen_frame_kit: root.frame_kit_for(root.active)
     readonly property bool screen_frame_on: root.screen_frame_kit !== null
-    // The rim round the frame's hole and along the strip under it: the bar's border, at least the kit's rim.
-    readonly property int screen_frame_rim: root.screen_frame_on ? Math.max(root.bar_border_width, root.screen_frame_kit.rim) : root.bar_border_width
+    // The rim and inset line round the frame's hole, at the bar's border width: a bright line hugging every window read
+    // as Hyprland's active border, so they are mixed most of the way into the strip. Only the bar's own straight rim
+    // lights up, on the focused monitor (StripBackground).
+    readonly property color screen_frame_rim_color: root.frame_dimmed(root.bar_border_color)
+    readonly property color screen_frame_inset_color: root.frame_dimmed(root.bar_inset_color)
+    function frame_dimmed(c) {
+        return c.a > 0 ? Qt.tint(root.strip_color, Qt.alpha(c, c.a * 0.4)) : c;
+    }
 
     // The frame kit a token set asks for, or null: lualine draws its own statusline edge, and a style can opt out.
     function frame_kit_for(tokens) {

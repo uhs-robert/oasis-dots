@@ -121,6 +121,7 @@ Item {
             length: root.width
             thickness: root.bar_height
             frame: root.frame
+            screen_name: root.screen_name
         }
     }
 
