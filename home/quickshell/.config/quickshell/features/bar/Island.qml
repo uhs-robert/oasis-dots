@@ -71,10 +71,15 @@ Item {
     readonly property real window_bottom: root.height - 1
     // One of IslandOutlines' shapes: a single polygon and its rim, sized and traced there.
     readonly property bool outlined: Outlines.has(root.shape)
+    // none, underline and brackets: no plate, so no fill, shade, slant caps, dither or scanlines (Style.island_filled).
+    readonly property bool stroke_only: Outlines.stroke_only(root.shape)
+    readonly property bool filled: !root.stroke_only
+    // Style's min_border already raised border_width to at least this; max() keeps a bare island visible if it was not.
+    readonly property real stroke_width: Math.max(root.border_width, root.shape === "underline" ? 2 : 1)
     readonly property var outline_rim: root.outlined ? Outlines.rim_path(root.shape, root.width, root.height, root.cap_width, root.cap_left, root.cap_right) : []
     // The rim path moved in by the border: where the fill's effects stop.
     readonly property var outline_inner: root.outlined ? Outlines.inset(root.outline_rim, root.border_width) : []
-    readonly property int cap_width: root.outlined ? Outlines.cap_width(root.shape, height) : root.window ? 0 : root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
+    readonly property int cap_width: root.outlined || root.stroke_only ? Outlines.cap_width(root.shape, height) : root.window ? 0 : root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
     readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.window ? root.window_x + (root.center ? 16 : 6) : root.octagon ? 10 : 8
 
     readonly property real oct_x0: root.lug
@@ -113,6 +118,7 @@ Item {
             const dx = y < y0 + top_r ? corner(top_r, y0 + top_r - y) : y > y1 - bottom_r ? corner(bottom_r, y - y1 + bottom_r) : 0;
             return [x0 + dx, x1 - dx];
         }
+        if (root.stroke_only) return [0, 0];
         if (root.outlined) return Outlines.span_at(root.outline_inner, y);
         if (root.octagon) {
             const c = root.oct_c;
@@ -209,7 +215,7 @@ Item {
     // The popup style's shade and dither, behind the modules and clipped to the slants.
     Loader {
         anchors.fill: parent
-        active: root.shaded && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined
+        active: root.shaded && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -396,7 +402,7 @@ Item {
 
     Loader {
         anchors.fill: parent
-        active: root.dither_color.a > 0
+        active: root.dither_color.a > 0 && root.filled
         transform: mirror
         sourceComponent: Dither {
             // The slant keeps Dither's own slant edges (the same line as fill_span's, computed in another order), so slanted styles draw exactly as before.
@@ -413,7 +419,7 @@ Item {
         x: root.capsule ? root.capsule_inset : root.lug + (cap_left ? root.cap_width : 0)
         height: root.height
         width: Math.ceil(layout.implicitWidth) + root.pad * 2
-        color: root.shaded || root.octagon || root.window || root.outlined || root.lualine && root.translucent ? "transparent" : root.faded(root.bg_color)
+        color: root.shaded || root.octagon || root.window || root.outlined || root.stroke_only || root.lualine && root.translucent ? "transparent" : root.faded(root.bg_color)
 
         // Translucent lualine: the island's colour goes only behind modules that draw no section fill of their own
         // (`lualine_fill`), since those fills over this one would show both.
@@ -469,7 +475,7 @@ Item {
     Loader {
         width: root.cap_width + root.cap_overlap
         height: root.height
-        active: root.cap_left && !root.capsule && !root.octagon && !root.window && !root.outlined
+        active: root.cap_left && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -493,7 +499,7 @@ Item {
         x: root.width - root.cap_width - root.cap_overlap
         width: root.cap_width + root.cap_overlap
         height: root.height
-        active: root.cap_right && !root.capsule && !root.octagon && !root.window && !root.outlined
+        active: root.cap_right && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -515,7 +521,7 @@ Item {
     // Static scanlines clipped to the slants; nothing animates them.
     Item {
         id: scanlines
-        visible: root.scanline_color.a > 0
+        visible: root.scanline_color.a > 0 && root.filled
         x: root.window ? root.window_x + root.window_edge : 0
         y: root.window ? root.window_top + root.window_edge : 0
         width: root.window ? root.window_width - root.window_edge * 2 : root.width
@@ -545,7 +551,7 @@ Item {
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
     Loader {
         anchors.fill: parent
-        active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined
+        active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -574,7 +580,7 @@ Item {
 
     Loader {
         anchors.fill: parent
-        active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon && !root.window && !root.outlined
+        active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: mirror
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -621,6 +627,60 @@ Item {
                 PathPolyline {
                     path: Outlines.inset(root.outline_rim, root.border_width / 2).map(p => Qt.point(p[0], p[1]))
                 }
+            }
+        }
+    }
+
+    // Stroke `i` of the underline (one) or brackets (four) as points; empty past the last.
+    function stroke_points(i) {
+        const all = root.shape === "underline" ? [Outlines.underline_path(root.width, root.height, root.stroke_width)] : Outlines.bracket_paths(root.width, root.height, Outlines.bracket_arm(root.height), root.stroke_width);
+        return i < all.length ? all[i].map(p => Qt.point(p[0], p[1])) : [];
+    }
+
+    // The fill-less shapes' strokes, above the content. `none` has no layer.
+    Loader {
+        anchors.fill: parent
+        z: 2
+        active: root.stroke_only && root.shape !== "none"
+        transform: mirror
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
+
+            // A Repeater cannot add ShapePaths, so four fixed ones; the underline leaves the last three empty.
+            ShapePath {
+                strokeWidth: root.stroke_width
+                strokeColor: root.border_color
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                PathPolyline { path: root.stroke_points(0) }
+            }
+
+            ShapePath {
+                strokeWidth: root.stroke_width
+                strokeColor: root.border_color
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                PathPolyline { path: root.stroke_points(1) }
+            }
+
+            ShapePath {
+                strokeWidth: root.stroke_width
+                strokeColor: root.border_color
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                PathPolyline { path: root.stroke_points(2) }
+            }
+
+            ShapePath {
+                strokeWidth: root.stroke_width
+                strokeColor: root.border_color
+                fillColor: "transparent"
+                capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                PathPolyline { path: root.stroke_points(3) }
             }
         }
     }

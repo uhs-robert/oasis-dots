@@ -37,7 +37,7 @@ Singleton {
             materia: {}
         })
     // Bar island shapes any style without lualine can borrow (Theme options); "slant" is the plain look.
-    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch"]
+    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "none", "underline", "brackets"]
     // What a shape brings to a style that does not own it, in place of that style's own shape sizes: `sizes` copied from
     // the owner, a border at least `min_border` wide (in the palette's muted text colour where the host has none), and
     // with `fg_border` the host's bar_fg as its colour so a pixel window's outline shows on every palette. Never the
@@ -55,7 +55,11 @@ Singleton {
             ticket: { min_border: 1 },
             tab: { min_border: 1 },
             pixel: { min_border: 1 },
-            notch: { min_border: 1 }
+            notch: { min_border: 1 },
+            // No plate: the opacity row, dither and scanlines have nothing to act on (`filled: false`, see island_filled).
+            none: { filled: false },
+            underline: { filled: false, min_border: 2 },
+            brackets: { filled: false, min_border: 1 }
         })
     // Saved shapes renamed since, applied once to a theme_options.json older than options_version: "octagon" drew
     // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
@@ -90,7 +94,7 @@ Singleton {
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
             bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle", modern: "Modern", terminal: "Terminal" },
             bar_meeting_marker: MarkerTokens.labels,
-            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch" },
+            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
@@ -607,7 +611,9 @@ Singleton {
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes) });
-        out.push({ key: "bar_island_opacity", label: "Island opacity", type: "number", default: b.bar_island_opacity, min: 0, max: 1, step: 0.05, percent: true });
+        // The shape in force is the saved one, so the row follows the choice live; the saved opacity is kept for when a filled shape returns.
+        const shape = (root.theme_values[style_name] || {}).bar_island_shape || b.bar_island_shape;
+        if (b.bar_lualine || root.island_shape_filled(shape)) out.push({ key: "bar_island_opacity", label: "Island opacity", type: "number", default: b.bar_island_opacity, min: 0, max: 1, step: 0.05, percent: true });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.borrow_labels("workspace_art", root.workspace_arts) });
         out.push({ key: "bar_icon_set", label: "Icons", type: "choice", default: b.bar_icon_set || "", choices: root.bar_icon_sets, labels: root.borrow_labels("bar_icon_set", root.bar_icon_sets) });
         out.push({ key: "bar_meeting_marker", label: "Meeting marker", type: "choice", default: b.bar_meeting_marker || "", choices: root.bar_meeting_markers, labels: root.borrow_labels("bar_meeting_marker", root.bar_meeting_markers) });
@@ -675,6 +681,12 @@ Singleton {
         // Saved only when it differs from the style's own, so the style's own shape never passes here.
         if (opts.bar_island_shape !== undefined) Object.assign(o, root.island_shape_tokens(opts.bar_island_shape, o));
         return o;
+    }
+
+    // False for the shapes that draw no plate; the one predicate for hiding the opacity row and skipping dither and scanlines. Lualine draws its own sections whatever the shape.
+    readonly property bool island_filled: root.bar.bar_lualine || root.island_shape_filled(root.bar.bar_island_shape)
+    function island_shape_filled(shape) {
+        return (root.island_shape_kits[shape] || {}).filled !== false;
     }
 
     // The shape sizes `shape` lays over the bar tokens `host`, from island_shape_kits.

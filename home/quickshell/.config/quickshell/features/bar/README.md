@@ -4,7 +4,7 @@
 
 ## Island shapes
 
-Settings > Theme options > Island shape (`bar_island_shape`) picks the islands' outline. Slant, octagon, watch, window, capsule and visor have their own layers in `Island.qml`; chevron, lean, hex, ticket, tab, pixel and notch are each one polygon from `IslandOutlines.js`, which gives an open end's profile from the screen edge to the open edge and derives the fill, the rim (inset by half the border, open on the screen edge and on an end flush with the screen's side) and `fill_span`'s clipping from it. A new outline shape is a profile and a `cap_width` there, plus its entries in `Style.island_shapes`, `island_shape_kits` and `borrow_names`.
+Settings > Theme options > Island shape (`bar_island_shape`) picks the islands' outline. Slant, octagon, watch, window, capsule and visor have their own layers in `Island.qml`; chevron, lean, hex, ticket, tab, pixel and notch are each one polygon from `IslandOutlines.js`, which gives an open end's profile from the screen edge to the open edge and derives the fill, the rim (inset by half the border, open on the screen edge and on an end flush with the screen's side) and `fill_span`'s clipping from it. None, underline and brackets (`IslandOutlines.stroke_only`, `Style.island_filled`) draw no plate: `Island.qml` skips the fill, shade, slant caps, dither and scanlines (`filled`), `cap_width` is only a content pad, and underline and brackets add one stroke layer in `border_color`, mirrored under a bottom bar. A popup or tab hung from such an island keeps the style's bar colour. A new outline shape is a profile and a `cap_width` there, plus its entries in `Style.island_shapes`, `island_shape_kits` and `borrow_names`.
 
 ## Island fills
 
