@@ -284,26 +284,54 @@ fn explain_reads_a_legacy_dump_file_without_bash() {
     );
 }
 
-#[test]
-fn util_word_match_filters_the_lines_on_stdin() {
+fn word_match_with(args: &[&str], stdin_lines: &[u8]) -> std::process::Output {
     use std::io::Write;
     let mut child = Command::new(env!("CARGO_BIN_EXE_voxcmd"))
-        .args(["util", "word-match", "--ignore", "window", "firefox window"])
+        .args(["util", "word-match"])
+        .args(args)
         .env_clear()
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
         .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(b"1\tFirefox\tfirefox\n2\tKitty\n")
-        .unwrap();
-    let output = child.wait_with_output().unwrap();
+    child.stdin.take().unwrap().write_all(stdin_lines).unwrap();
+    child.wait_with_output().unwrap()
+}
+
+#[test]
+fn util_word_match_filters_the_lines_on_stdin() {
+    let output = word_match_with(
+        &["--ignore", "window", "firefox window"],
+        b"1\tFirefox\tfirefox\n2\tKitty\n",
+    );
     assert_eq!(output.status.code(), Some(0));
     assert_eq!(stdout(&output), "1\tFirefox\tfirefox\n");
+}
+
+#[test]
+fn util_word_match_strong_drops_weak_matches_only() {
+    let weak_only = b"1\tSettings Page Home\n";
+    // "settings page" covers two of three words: weak, so kept without --strong and a miss with it.
+    let output = word_match_with(&["settings page"], weak_only);
+    assert_eq!(
+        (output.status.code(), stdout(&output)),
+        (Some(0), "1\tSettings Page Home\t\n".to_string())
+    );
+    let output = word_match_with(&["--strong", "settings page"], weak_only);
+    assert_eq!((output.status.code(), stdout(&output)), (Some(1), String::new()));
+
+    let strong = b"1\tSettings Page\n";
+    for args in [&["settings page"][..], &["--strong", "settings page"]] {
+        let output = word_match_with(args, strong);
+        assert_eq!(
+            (output.status.code(), stdout(&output)),
+            (Some(0), "1\tSettings Page\t\n".to_string())
+        );
+    }
+
+    let output = word_match_with(&["--strong", "zebra"], strong);
+    assert_eq!(output.status.code(), Some(1));
 }
 
 #[test]

@@ -128,8 +128,8 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Timer(TimerCommand::Ring { summary, body }) => timer::ring(&summary, &body).map(|()| None),
         Command::Util(UtilCommand::Notify { level, title, body }) => notify::run(&level, &title, &body).map(|()| None),
         Command::Util(UtilCommand::Intents { name }) => config::intents::run(&name).map(Some),
-        Command::Util(UtilCommand::WordMatch { ignore, target }) => {
-            route::resolve::run_word_match(ignore.as_deref(), &target).map(Some)
+        Command::Util(UtilCommand::WordMatch { ignore, strong, target }) => {
+            route::resolve::run_word_match(ignore.as_deref(), strong, &target).map(Some)
         }
         Command::Util(UtilCommand::Speech(speech)) => text::speech::run(speech).map(Some),
         Command::Util(UtilCommand::PendingPick) => ask::run_pending_pick().map(Some),
