@@ -72,7 +72,7 @@ Singleton {
     // Screen frames any style can borrow (Theme options); "" is none.
     readonly property var screen_frames: ["", "plain"]
     // What each frame draws (FrameGeometry.frame_layout): `thickness` px bands on the edges the bar is not on and the
-    // hole's `corner` profile of `radius`. `rim` is not drawn: the rim round the hole stays at the bar's border width
+    // hole's `corner` profile of `radius`. `rim` is not drawn: the line round the hole stays at the bar's border width
     // (screen_frame_rim_color). `ornament` names extra drawing in the frame's ornament slot, none so far.
     readonly property var screen_frame_kits: ({
             plain: { corner: "round", radius: 12, thickness: 6, rim: 0, ornament: "" }
@@ -163,11 +163,15 @@ Singleton {
     // The screen frame the shell draws, from `active` so the style picker previews it; null when there is none.
     readonly property var screen_frame_kit: root.frame_kit_for(root.active)
     readonly property bool screen_frame_on: root.screen_frame_kit !== null
-    // The rim and inset line round the frame's hole, at the bar's border width: a bright line hugging every window read
-    // as Hyprland's active border, so they are mixed most of the way into the strip. Only the bar's own straight rim
-    // lights up, on the focused monitor (StripBackground).
-    readonly property color screen_frame_rim_color: root.frame_dimmed(root.bar_border_color)
-    readonly property color screen_frame_inset_color: root.frame_dimmed(root.bar_inset_color)
+    // A frame's rim and inset line, the whole line round the hole: in the bar's colours on the focused monitor, mixed
+    // most of the way into the strip on the others, so the frame marks the focused screen the way Hyprland's active
+    // border marks the focused window.
+    function screen_frame_rim_color(focused) {
+        return focused ? root.bar_border_color : root.frame_dimmed(root.bar_border_color);
+    }
+    function screen_frame_inset_color(focused) {
+        return focused ? root.bar_inset_color : root.frame_dimmed(root.bar_inset_color);
+    }
     function frame_dimmed(c) {
         return c.a > 0 ? Qt.tint(root.strip_color, Qt.alpha(c, c.a * 0.4)) : c;
     }

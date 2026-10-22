@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Wayland
 import qs.theme
 import qs.theme.transitions
@@ -15,6 +16,16 @@ Scope {
 
     required property ShellScreen screen
     required property var layout
+    // The line round the hole is lit on the focused monitor only, switching with the strip's (StripBackground).
+    readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen.name
+    property color rim_color: Style.screen_frame_rim_color(root.focused)
+    property color inset_color: Style.screen_frame_inset_color(root.focused)
+    Behavior on rim_color {
+        ColorAnimation { duration: 200 }
+    }
+    Behavior on inset_color {
+        ColorAnimation { duration: 200 }
+    }
 
     // A positive remainder, so a pattern's tiles start on the canonical origin's grid.
     function wrap(v, period) {
@@ -105,10 +116,10 @@ Scope {
                         y: -root.layout.near
                         layout: root.layout
                         rim_width: Style.bar_border_width
-                        rim_color: Style.screen_frame_rim_color
+                        rim_color: root.rim_color
                         inset_gap: Style.bar_inset_gap
                         inset_width: Style.bar_inset_width
-                        inset_color: Style.screen_frame_inset_color
+                        inset_color: root.inset_color
                     }
                 }
 
