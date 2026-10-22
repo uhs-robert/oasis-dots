@@ -18,6 +18,7 @@ Popup {
 
     popup_name: "hyprvim_prompt"
     size_class: "large"
+    shell_allowed: false
     dock_bottom: true
     anim_scale: 0.3
     title: String(root.spec.title || "Prompt").toUpperCase()
