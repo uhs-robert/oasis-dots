@@ -10,5 +10,9 @@
 !keys.sh
 !media.toml
 !media.sh
+!sessions.toml
+!sessions.sh
+!tmux.toml
+!tmux.sh
 !system.toml
 !system.sh

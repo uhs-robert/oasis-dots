@@ -1,0 +1,36 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Focuses, attaches or creates tmux sessions, tmuxifier layouts included. Format: ~/.config/voxcmd/README.md
+name = "Tmux"
+# The session's terminal taking focus is the feedback.
+silent = true
+
+# Every phrase says "tmux" and names a session ("the X tmux session", "tmux session X", "attach tmux X"), so "open the
+# work session" and "open the session launcher" stay with the keybinds and apps.
+# "new" comes first so "open a new tmux session X" is not read as opening a session called "new tmux session X".
+verbs = [
+  { action = "new",    match = '(start |create |open )?(a )?new tmux session( called| named)? {target}' },
+  { action = "switch", match = '{focus} (the )?tmux session {target}' },
+  { action = "switch", match = '{focus} (the )?{target} tmux session' },
+  { action = "switch", match = 'attach( to)?( the)? {target} tmux session' },
+  { action = "switch", match = 'attach( to)?( the)? tmux session {target}' },
+  { action = "switch", match = 'attach( to)?( the)? tmux {target}' },
+  { action = "switch", match = '{open} (the )?tmux session {target}' },
+  { action = "switch", match = '{open} (the )?{target} tmux session' },
+]
+
+examples = ["go to the <name> tmux session", "open the tmux session <name>", "new tmux session <name>", "attach tmux <name>"]
+
+[actions]
+new = 'open_terminal tmux new-session -A -s "$VOXCMD_ARG_TARGET"'
+not_found = { run = 'echo "no tmux session or layout matches \"$VOXCMD_ARG_TARGET\""; false', silent = false }
+
+# Only "switch" has candidates; a new session's name is free text.
+[actions.switch]
+run = 'focus_or_attach "$VOXCMD_ID"'
+candidates = "switch_candidates"
+# Without it, an unmatched "attach X" falls through to the keybinds fallback and could run an unrelated bind.
+no_match = "not_found"
+
+# Tab on these examples in Voice Help lists every running session and layout, and picking one switches to it.
+[[help]]
+action = "switch"
