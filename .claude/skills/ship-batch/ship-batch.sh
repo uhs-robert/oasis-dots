@@ -200,9 +200,9 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     done
     # The last answer is named so a false "locked" or a bar that never settled can be diagnosed afterwards.
     case $state in
-      unlocked) ;;
-      secure) die "Quickshell changed but the screen is locked (lock state '$state'); restart the bar once unlocked" ;;
-      *) die "Quickshell changed but the lock state never settled (last answer '${state:-none}'); restart the bar once unlocked" ;;
+    unlocked) ;;
+    secure) die "Quickshell changed but the screen is locked (lock state '$state'); restart the bar once unlocked" ;;
+    *) die "Quickshell changed but the lock state never settled (last answer '${state:-none}'); restart the bar once unlocked" ;;
     esac
     use_live_hypr "restart the bar by hand"
     pkill -x qs || true
