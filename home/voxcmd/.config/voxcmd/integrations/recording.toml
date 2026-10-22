@@ -1,0 +1,28 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Screen recording through the screenshot tool's own wf-recorder flags (hypr/scripts/screenshot.sh), so the bar's
+# recording chip, the file names under ~/Videos/Recordings and the "Recording Saved!" notification stay the same as
+# from the Print key. Format: ~/.config/voxcmd/README.md
+name = "Recording"
+# A started recording shows on the bar's recording chip, or screenshot.sh says so when no bar shows it; a stopped one
+# gets screenshot.sh's "Recording Saved!". Only the status answers in words.
+silent = true
+
+# "stop" alone is left to Media; "stop recording" there would look for a player named "recording" and find none.
+verbs = [
+  { action = "status",        match = '(is it|is the screen|are we|am i|is something) (still )?recording|(is there a|any) (screen )?recording( running| going)?|recording status' },
+  { action = "stop",          match = '{stop}( the| my)?( screen)? recording|stop recording( the screen)?' },
+  { action = "record_window", match = 'record (this|the|my) window|record (the )?(current|focused|active) window' },
+  { action = "pick_window",   match = 'record a window' },
+  { action = "record_region", match = 'record (a |an |the )?(region|area|selection|part of the screen)' },
+  { action = "record_screen", match = '{start}( a| the)?( screen)? recording( the screen)?|record (the |my |this )?(screen|display|monitor)' },
+]
+
+examples = ["start recording", "record this window", "record a region", "is it recording", "stop recording"]
+
+[actions]
+record_screen = 'start_recording --record-geometry "$(focused_monitor_geometry)"'
+record_window = "start_recording --record-focused"
+pick_window = "start_recording --record-window"
+record_region = "start_recording --record-region"
+stop = "stop_recording"
+status = { run = "recording_status", silent = false }
