@@ -58,8 +58,8 @@ Singleton {
             notch: { min_border: 1 },
             // No plate: the opacity row, dither and scanlines have nothing to act on (`filled: false`, see island_filled).
             none: { filled: false },
-            underline: { filled: false, min_border: 2 },
-            brackets: { filled: false, min_border: 1 }
+            underline: { filled: false, min_border: 2, fg_border: true },
+            brackets: { filled: false, min_border: 1, fg_border: true }
         })
     // Saved shapes renamed since, applied once to a theme_options.json older than options_version: "octagon" drew
     // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
