@@ -1,11 +1,10 @@
 .pragma library
 .import "IslandOutlines.js" as Outlines
 
-// A band: a strip along one screen edge, drawn by BandFill. It knows no bar or islands, so the full-bar strip and
-// a screen frame's side bands share it. Everything is drawn in the band frame, which IslandOutlines' top-bar frame
-// generalises: x runs along the edge from 0 to `length`, y = 0 lies on the screen edge and y = thickness on the open
-// edge. band_frame and band_affine place that frame on any of the four edges.
-// The screen frame will add corner_profile(kind, r) here: the outline of a corner joining two bands.
+// A band: a strip along one screen edge, drawn by BandFill. It knows no bar or islands; the full-bar strip is one,
+// and a screen frame (FrameGeometry.js) draws in the band frame of the bar's edge. Everything is drawn in the band
+// frame, which IslandOutlines' top-bar frame generalises: x runs along the edge from 0 to `length`, y = 0 lies on the
+// screen edge and y = thickness on the open edge. band_frame and band_affine place that frame on any of the four edges.
 
 // The band's rectangle on a screen_w x screen_h screen, as { x, y, width, height }.
 function band_rect(edge, screen_w, screen_h, thickness) {
