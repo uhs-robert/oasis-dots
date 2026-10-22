@@ -30,7 +30,6 @@ import qs.features.voice
 import qs.features.popups
 import qs.features.audio
 import qs.features.style
-import "features/bar/FrameGeometry.js" as FrameGeometry
 
 ShellRoot {
     id: root
@@ -54,7 +53,7 @@ ShellRoot {
                 readonly property bool has_bar: screen_scope.rule !== null && screen_scope.rule.bar !== false
                 readonly property bool bar_bottom: screen_scope.has_bar && BarSettings.position_for(screen_scope.rule) === "bottom"
                 readonly property int bar_height: BarSettings.height_for(screen_scope.rule)
-                readonly property var frame: Style.screen_frame_on ? FrameGeometry.frame_layout(screen_scope.modelData.width, screen_scope.modelData.height, screen_scope.has_bar ? (screen_scope.bar_bottom ? "bottom" : "top") : "", screen_scope.bar_height, Style.screen_frame_kit) : null
+                readonly property var frame: ScreenFrames.layout_for(screen_scope.modelData)
                 // The last frame, held so the frame's bindings never see null while its loader drops it.
                 property var drawn_frame: null
                 onFrameChanged: if (screen_scope.frame) screen_scope.drawn_frame = screen_scope.frame
