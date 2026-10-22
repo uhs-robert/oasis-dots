@@ -7,12 +7,15 @@ import qs.theme
 import "../../bar/BarLayout.js" as BarLayout
 import qs.features.settings
 import qs.features.bar
+import qs.features.audio
 
 SettingsPane {
     id: root
 
     property int cursor: 0
     property string target: ""
+    // The y/n prompt before forgetting a saved position: { question, run }, or null.
+    property var pending: null
     // Row under the pointer, in cursor numbering; -1 when none.
     property int hovered_index: -1
 
@@ -65,12 +68,12 @@ SettingsPane {
             media: "Now playing; opens the media popup."
         })
 
-    footer_hint: "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"
+    footer_hint: root.pending ? "y forget · n keep · q close" : "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"
     search_rows: ["Editing target", "Position"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
     search_cursor: root.cursor
     described: true
     description: root.describe(root.described_index)
-    description_keys: root.keys_for(root.described_index)
+    description_keys: root.pending ? "y forget · n keep" : root.keys_for(root.described_index)
     implicitHeight: col.implicitHeight + root.description_space
 
     function describe(index) {
@@ -87,7 +90,7 @@ SettingsPane {
 
     function keys_for(index) {
         if (index === 0) return "H/L change · Enter list";
-        if (index === 1 && root.position_set_here) return "Enter toggle · x " + (root.target_screen ? "follow global" : "follow bars.json");
+        if (index === 1 && root.position_set_here) return "Enter toggle · x forget";
         if (index < root.top_count) return "Enter toggle";
         const item = root.entries[index - root.top_count];
         if (!item) return "";
@@ -141,15 +144,24 @@ SettingsPane {
     }
 
     function toggle_position() {
+        root.pending = null;
         const next = root.bar_position === "bottom" ? "top" : "bottom";
         if (root.target_screen) BarSettings.set_state(BarLayout.set_position(BarSettings.state, root.monitor_key, next));
         else BarSettings.set_state(BarLayout.set_shared_position(BarSettings.state, next));
     }
 
-    // Not asked first: it drops one setting and the row shows what it falls back to.
-    function clear_position() {
-        if (root.target_screen) BarSettings.set_state(BarLayout.clear_position(BarSettings.state, root.monitor_key));
-        else BarSettings.set_state(BarLayout.clear_shared_position(BarSettings.state));
+    function cleared_position_state() {
+        return root.target_screen ? BarLayout.clear_position(BarSettings.state, root.monitor_key) : BarLayout.clear_shared_position(BarSettings.state);
+    }
+
+    function ask_clear_position() {
+        if (!root.position_set_here) return;
+        const after = root.cleared_position_state();
+        const edge = BarLayout.position_of(BarLayout.effective(root.tracked, after, root.monitor_key));
+        const fallback = { global: "the global position", "bars.json": "bars.json", default: "the default" }[BarLayout.position_source(root.tracked, after, root.monitor_key)];
+        const question = root.target_screen ? "Forget " + root.target + "'s bar position? It will follow " + fallback + " (" + edge + "). y/n" : "Forget the global bar position? Bars follow " + fallback + " (" + edge + "). y/n";
+        root.pending = { question: question, run: () => BarSettings.set_state(root.cleared_position_state()) };
+        ThemeAudio.play("confirm");
     }
 
     function position_text() {
@@ -231,9 +243,29 @@ SettingsPane {
     }
 
     onTotalChanged: root.cursor = Math.min(root.cursor, root.total - 1)
+    // A pointer click can move off the row or change the target while the prompt is up; the question would then name the wrong thing.
+    onCursorChanged: root.pending = null
+    onTargetChanged: root.pending = null
 
     Keys.onPressed: event => {
         if (root.picking || (event.modifiers & Qt.ControlModifier)) return;
+        // The prompt holds every key but q, which still closes Settings, as in the Sessions, Network and Bluetooth prompts.
+        if (root.pending) {
+            if (event.key === Qt.Key_Q) {
+                root.pending = null;
+                return;
+            }
+            if (event.key === Qt.Key_Y) {
+                const run = root.pending.run;
+                root.pending = null;
+                run();
+            } else if (event.key === Qt.Key_N || event.key === Qt.Key_Escape) {
+                root.pending = null;
+                ThemeAudio.play("cancel");
+            }
+            event.accepted = true;
+            return;
+        }
         const shift = !!(event.modifiers & Qt.ShiftModifier);
         const on_module = root.cursor >= root.top_count;
         // A two-valued row steps either way to the other value; plain h stays free for going back to the sidebar.
@@ -248,7 +280,7 @@ SettingsPane {
         else if (root.cursor === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) root.open_target_picker();
         else if (root.cursor === 0 && event.key === Qt.Key_Space) root.cycle_target(1);
         else if (root.cursor === 1 && toggles) root.toggle_position();
-        else if (root.cursor === 1 && !shift && event.key === Qt.Key_X) root.clear_position();
+        else if (root.cursor === 1 && !shift && event.key === Qt.Key_X) root.ask_clear_position();
         else if (root.target_screen && root.cursor === 2 && toggles) root.toggle_own();
         else if (root.has_own && root.cursor === 3 && toggles) root.toggle_compact();
         else if (on_module && !shift && event.key === Qt.Key_A) root.add_argument();
@@ -297,6 +329,16 @@ SettingsPane {
                 root.cursor = 1;
                 root.toggle_position();
             }
+        }
+
+        Text {
+            visible: !!root.pending && !root.picking
+            Layout.fillWidth: true
+            text: root.pending ? root.pending.question : ""
+            wrapMode: Text.WordWrap
+            color: Style.pal.error
+            font.family: root.st.font_family
+            font.pixelSize: root.st.fs(-2)
         }
 
         ChoiceRow {
