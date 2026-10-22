@@ -118,9 +118,12 @@ PanelWindow {
         id: tabs
         y: root.bottom ? 0 : line.height
         anchors.horizontalCenter: parent.horizontalCenter
+        // A Row counts only visible children, so without this its height (and the window's) jumps when a tab first shows.
+        height: Math.max(submap_tab.height, voice_tab.height)
         spacing: 6
 
         ModeTab {
+            id: submap_tab
             name: root.submap_name
             tint: root.submap_color
             progress: root.submap_progress
@@ -128,6 +131,7 @@ PanelWindow {
         }
 
         ModeTab {
+            id: voice_tab
             name: root.voice_name
             tint: root.voice_color
             progress: root.voice_progress
