@@ -56,8 +56,10 @@ PanelWindow {
     // Holds the keyboard while wanted (not through the close animation, which would starve the next popup of focus): Hyprland refocuses the window under the pointer whenever a layer maps, such as hyprpaper's surface on every wallpaper change, which an on-demand popup loses its keys to.
     property bool hold_keyboard: false
     property real anim_scale: root.passive ? 0.6 : 1
+    // The full-width strips (Picker, HyprvimPrompt) opt out: stretched across the screen the handheld's buttons land at the screen edges.
+    property bool shell_allowed: true
     // Popups inside the style's handheld shell (DeviceShell), and the room it keeps around the content.
-    readonly property bool device: root.st.device_shell && !root.passive
+    readonly property bool device: root.st.device_shell && root.shell_allowed && !root.passive
     readonly property int device_side: root.device ? 20 : 0
     readonly property int device_top: root.device ? 30 : 0
     readonly property int device_bottom: root.device ? 80 : 0

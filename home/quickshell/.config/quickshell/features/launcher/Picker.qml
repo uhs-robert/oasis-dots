@@ -14,6 +14,7 @@ Popup {
 
     popup_name: "picker"
     size_class: "large"
+    shell_allowed: false
     dock_bottom: root.held_anchor === null
     fit_island: !root.dock_bottom
     anim_scale: 0.3
