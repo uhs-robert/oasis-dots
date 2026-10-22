@@ -1,0 +1,101 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Bare key presses in the focused window: "press enter", "hit escape", "press down three times". Format:
+# ~/.config/voxcmd/README.md
+name = "Keys"
+# The key press is its own feedback.
+silent = true
+
+# "press" and "hit" always come first and there is no bare "enter" or "send": a misheard Enter can submit a form or run
+# a shell line, and "send firefox to workspace 3" belongs to Apps. {target} holds the count ("three times").
+verbs = [
+  { action = "enter",     match = 'send it|send (the )?message|(press|hit) (enter|return)( {target})?' },
+  { action = "escape",    match = '(press|hit) escape( {target})?' },
+  { action = "shift_tab", match = '(press|hit) shift tab( {target})?' },
+  { action = "tab",       match = '(press|hit) tab( {target})?' },
+  { action = "up",        match = '(press|hit) up( arrow)?( {target})?' },
+  { action = "down",      match = '(press|hit) down( arrow)?( {target})?' },
+  { action = "left",      match = '(press|hit) left( arrow)?( {target})?' },
+  { action = "right",     match = '(press|hit) right( arrow)?( {target})?' },
+  { action = "page_up",   match = '(press|hit) page up( {target})?' },
+  { action = "page_down", match = '(press|hit) page down( {target})?' },
+  { action = "home",      match = '(press|hit) home( key)?( {target})?' },
+  { action = "end",       match = '(press|hit) end( key)?( {target})?' },
+  { action = "backspace", match = '(press|hit) backspace( {target})?' },
+  { action = "delete",    match = '(press|hit) delete( key)?( {target})?' },
+  { action = "space",     match = '(press|hit) (the )?space( ?bar)?( {target})?' },
+  # A verb captures only the count as {target}, so each letter is a verb of its own, with the letter in its action
+  # name. Letters take no count: "a" is also an article, and with a count "press a button" would be a press of "a"
+  # with a count it cannot read, refused instead of going on to the keybinds. Whisper hears a spoken "y" as "why".
+  { action = "letter_a", match = '(press|hit) (the )?(letter )?(a)( key)?' },
+  { action = "letter_b", match = '(press|hit) (the )?(letter )?(b)( key)?' },
+  { action = "letter_c", match = '(press|hit) (the )?(letter )?(c)( key)?' },
+  { action = "letter_d", match = '(press|hit) (the )?(letter )?(d)( key)?' },
+  { action = "letter_e", match = '(press|hit) (the )?(letter )?(e)( key)?' },
+  { action = "letter_f", match = '(press|hit) (the )?(letter )?(f)( key)?' },
+  { action = "letter_g", match = '(press|hit) (the )?(letter )?(g)( key)?' },
+  { action = "letter_h", match = '(press|hit) (the )?(letter )?(h)( key)?' },
+  { action = "letter_i", match = '(press|hit) (the )?(letter )?(i)( key)?' },
+  { action = "letter_j", match = '(press|hit) (the )?(letter )?(j)( key)?' },
+  { action = "letter_k", match = '(press|hit) (the )?(letter )?(k)( key)?' },
+  { action = "letter_l", match = '(press|hit) (the )?(letter )?(l)( key)?' },
+  { action = "letter_m", match = '(press|hit) (the )?(letter )?(m)( key)?' },
+  { action = "letter_n", match = '(press|hit) (the )?(letter )?(n)( key)?' },
+  { action = "letter_o", match = '(press|hit) (the )?(letter )?(o)( key)?' },
+  { action = "letter_p", match = '(press|hit) (the )?(letter )?(p)( key)?' },
+  { action = "letter_q", match = '(press|hit) (the )?(letter )?(q)( key)?' },
+  { action = "letter_r", match = '(press|hit) (the )?(letter )?(r)( key)?' },
+  { action = "letter_s", match = '(press|hit) (the )?(letter )?(s)( key)?' },
+  { action = "letter_t", match = '(press|hit) (the )?(letter )?(t)( key)?' },
+  { action = "letter_u", match = '(press|hit) (the )?(letter )?(u)( key)?' },
+  { action = "letter_v", match = '(press|hit) (the )?(letter )?(v)( key)?' },
+  { action = "letter_w", match = '(press|hit) (the )?(letter )?(w)( key)?' },
+  { action = "letter_x", match = '(press|hit) (the )?(letter )?(x)( key)?' },
+  { action = "letter_y", match = '(press|hit) (the )?(letter )?(y|why)( key)?' },
+  { action = "letter_z", match = '(press|hit) (the )?(letter )?(z)( key)?' },
+]
+
+examples = ["press enter", "send it", "press down three times", "hit escape", "press shift tab", "press y"]
+
+[actions]
+enter = 'press_key Return "$VOXCMD_ARG_TARGET"'
+escape = 'press_key Escape "$VOXCMD_ARG_TARGET"'
+tab = 'press_key Tab "$VOXCMD_ARG_TARGET"'
+shift_tab = 'press_key Shift+Tab "$VOXCMD_ARG_TARGET"'
+up = 'press_key Up "$VOXCMD_ARG_TARGET"'
+down = 'press_key Down "$VOXCMD_ARG_TARGET"'
+left = 'press_key Left "$VOXCMD_ARG_TARGET"'
+right = 'press_key Right "$VOXCMD_ARG_TARGET"'
+page_up = 'press_key Prior "$VOXCMD_ARG_TARGET"'
+page_down = 'press_key Next "$VOXCMD_ARG_TARGET"'
+home = 'press_key Home "$VOXCMD_ARG_TARGET"'
+end = 'press_key End "$VOXCMD_ARG_TARGET"'
+backspace = 'press_key BackSpace "$VOXCMD_ARG_TARGET"'
+delete = 'press_key Delete "$VOXCMD_ARG_TARGET"'
+space = 'press_key space "$VOXCMD_ARG_TARGET"'
+
+letter_a = "press_key a"
+letter_b = "press_key b"
+letter_c = "press_key c"
+letter_d = "press_key d"
+letter_e = "press_key e"
+letter_f = "press_key f"
+letter_g = "press_key g"
+letter_h = "press_key h"
+letter_i = "press_key i"
+letter_j = "press_key j"
+letter_k = "press_key k"
+letter_l = "press_key l"
+letter_m = "press_key m"
+letter_n = "press_key n"
+letter_o = "press_key o"
+letter_p = "press_key p"
+letter_q = "press_key q"
+letter_r = "press_key r"
+letter_s = "press_key s"
+letter_t = "press_key t"
+letter_u = "press_key u"
+letter_v = "press_key v"
+letter_w = "press_key w"
+letter_x = "press_key x"
+letter_y = "press_key y"
+letter_z = "press_key z"

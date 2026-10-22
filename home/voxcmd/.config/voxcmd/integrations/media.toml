@@ -1,0 +1,45 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Media playback (playerctl) and output volume (pamixer). Format: ~/.config/voxcmd/README.md
+name = "Media"
+
+# Tried in order against the normalized transcript, so the specific forms come before the {target} catch-alls.
+verbs = [
+  { action = "toggle",      match = 'play pause|toggle (the )?(music|media|playback)' },
+  { action = "play",        match = '(play|resume|unpause)( (the )?(music|song|track|media|playback))?' },
+  { action = "pause",       match = '(pause|stop)( (the )?(music|song|track|media|playback))?' },
+  { action = "next",        match = '(play )?(the )?next( (song|track))?|skip( (this|the))?( (song|track))?' },
+  { action = "previous",    match = '(play )?(the )?(previous|last)( (song|track))?|go back( (a|one) (song|track))?' },
+  { action = "volume_up",   match = '(turn )?(the )?(volume|sound) up( by {number}( percent)?)?|louder|turn it up' },
+  { action = "volume_down", match = '(turn )?(the )?(volume|sound) down( by {number}( percent)?)?|quieter|turn it down' },
+  { action = "volume_set",  match = '({set} )?(the )?(volume|sound)( to| at)? {number}( percent)?' },
+  { action = "toggle_mute", match = 'toggle mute' },
+  { action = "mute",        match = 'mute( (the )?(sound|audio|volume))?' },
+  { action = "unmute",      match = 'unmute( (the )?(sound|audio|volume))?' },
+  { action = "play_on",     match = '(play|resume) {target}' },
+  { action = "pause_on",    match = '(pause|stop) {target}' },
+]
+
+examples = ["play pause", "next track", "previous track", "volume up by <number>", "set volume to <number>", "mute", "pause <player>"]
+
+[actions]
+toggle = "playerctl play-pause"
+play = "playerctl play"
+pause = "playerctl pause"
+next = "playerctl next"
+previous = "playerctl previous"
+# The bar's volume OSD already shows the change; playback actions keep their toast.
+volume_up = { run = 'pamixer --increase "${VOXCMD_ARG_NUMBER:-5}"', silent = true }
+volume_down = { run = 'pamixer --decrease "${VOXCMD_ARG_NUMBER:-5}"', silent = true }
+volume_set = { run = 'pamixer --set-volume "$VOXCMD_ARG_NUMBER"', silent = true }
+toggle_mute = { run = "pamixer --toggle-mute", silent = true }
+mute = { run = "pamixer --mute", silent = true }
+unmute = { run = "pamixer --unmute", silent = true }
+
+# Players for "play spotify" / "pause firefox": the full instance name is the id, its app name the label.
+[actions.play_on]
+run = 'playerctl --player="$VOXCMD_ID" play'
+candidates = "player_candidates"
+
+[actions.pause_on]
+run = 'playerctl --player="$VOXCMD_ID" pause'
+candidates = "player_candidates"
