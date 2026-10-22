@@ -292,6 +292,7 @@ open zebra crossing in firefox	Firefox/search_site	nothing found: searched
 open code hub here	Firefox/open_here
 open code hub	Firefox/open_site	no app is called that: the site fallback
 open tubesite	Firefox/open_site	no app is called that: the site fallback
+open tubesite please	Firefox/open_site	the filler tail is dropped by the word match, the site fallback still runs
 open zebra crossing	none	no app, keybind or site
 open firefox	Apps/open	an app wins over sites
 click link 3	Click/no_text	click keeps its verb
