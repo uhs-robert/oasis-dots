@@ -25,10 +25,11 @@ function cover_depth(rim_width, inset_gap, inset_width) {
 const LEAD = 2;
 
 // spec: { edge, body_length, body_depth, extent, radius, fillet, start_kind, end_kind, cover }. `radius` rounds the
-// body's free corners and `fillet` the concave arcs; both shrink with the extent so nothing inverts.
+// body's free corners and `fillet` the concave arcs; both shrink with the extent and the body's width, so nothing
+// inverts and a pocket's two arcs never cross.
 function drawer_layout(spec) {
     const extent = Math.max(0, Math.min(spec.extent, spec.body_depth));
-    const fillet_eff = Math.min(spec.fillet, extent / 2);
+    const fillet_eff = Math.min(spec.fillet, extent / 2, spec.body_length / 2);
     const radius_eff = Math.min(spec.radius, extent / 2, spec.body_length / 2);
     const start_room = spec.start_kind === "pocket" ? spec.cover : spec.fillet;
     const end_room = spec.end_kind === "pocket" ? spec.cover : spec.fillet;

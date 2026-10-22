@@ -42,6 +42,12 @@ const fill_area = lay => {
 };
 // The polyline's chords cut each arc's sector short by about 0.0033 r^2 (ARC_STEPS 10), so the area is checked to that.
 const chord_slack = lay => 0.1 + 0.0035 * (2 * lay.fillet_eff ** 2 + 2 * lay.radius_eff ** 2);
+// Whether any two non-adjacent segments of a polyline cross, which a drawer's loop or line must never do.
+const segments_cross = (a, b, c, d) => {
+  const side = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  return side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0;
+};
+const self_intersects = pts => pts.some((p, i) => i + 1 < pts.length && pts.some((q, j) => j > i + 1 && j + 1 < pts.length && segments_cross(p, pts[i + 1], q, pts[j + 1])));
 const in_polygon = (pt, poly) => {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -210,6 +216,17 @@ for (const [start_kind, end_kind] of KINDS) {
     cases.push([`fractional ${start_kind}/${end_kind} extent ${extent}`, () => {
       const lay = lay_of(over);
       return finite(D.fill_loop(lay)) && finite(D.stroke_path(lay, 0.75)) && Math.abs(loop_area(D.fill_loop(lay)) - fill_area(lay)) < chord_slack(lay);
+    }, true]);
+  }
+}
+
+// A body narrower than two fillets must shrink the arcs, not cross them.
+for (const [start_kind, end_kind] of KINDS) {
+  for (const body_length of [4, 10, 23]) {
+    const over = { start_kind, end_kind, body_length };
+    cases.push([`narrow ${body_length} px ${start_kind}/${end_kind} does not self-intersect`, () => {
+      const lay = lay_of(over);
+      return !self_intersects(D.fill_loop(lay)) && !self_intersects(D.outline_path(lay)) && lay.fillet_eff <= body_length / 2;
     }, true]);
   }
 }
