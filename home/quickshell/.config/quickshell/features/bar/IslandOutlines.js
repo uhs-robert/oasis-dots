@@ -4,7 +4,7 @@
 // at a height, all from each open end's profile. Everything is in the top-bar frame (y = 0 on the screen edge,
 // y = h on the open edge); Island mirrors the drawing under a bottom bar.
 
-const names = ["chevron", "lean", "hex", "ticket", "tab", "pixel", "notch"];
+const names = ["chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "rect"];
 
 function has(shape) {
     return names.indexOf(shape) >= 0;
@@ -49,6 +49,7 @@ function cap_width(shape, h) {
     case "tab": return Math.round(h * 0.4);
     case "pixel": return pixel_step(h) * PIXEL_STEPS;
     case "notch": return notch_flare(h) + Math.round(h * 0.33);
+    case "rect": return Math.round(h * 0.3);
     }
     return 0;
 }
