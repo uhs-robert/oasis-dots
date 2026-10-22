@@ -23,6 +23,14 @@ Agents run in the background: after dispatching, end the turn and let the comple
 
 Every agent's report is yours to collect. On any agent notice that is not its report (interim, "waiting on its own background work", or silence), check its branch and worktree at once and tell the owner the state; never call an agent still working without checking.
 
+Screenshots: agents read every one and report one line per shot (looks right, or the problem). Never open an image yourself unless the owner asks.
+
+Scripts: do not load a repo skill just to run its script. When the repo has them, run these bare from the main checkout (here):
+- `.claude/skills/owner-test-bar/owner-test-bar.sh up <name> <branch>...`, `probe "<ipc call>"`, `restore`, `remove <name>`, `rebuild <name>`.
+- `.claude/skills/ship-batch/ship-batch.sh <n>...`: PRs in merge order; it gates, checks, merges and restarts the bar.
+
+Load the owning skill only when its script fails or a case it does not cover comes up.
+
 Review dimensions, used by every review below: correctness and regressions, missed requirements, scope (unrelated changes), reuse and unnecessary complexity, weak tests.
 
 When the owner asks you to hand off, pass the baton or wind down, load `orchestrator-handoff`; a request to hand over from another session goes to the owner.
@@ -61,7 +69,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
    - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement.
 
-6. Review the diff yourself against the review dimensions and repository conventions. Confirm the commit messages follow `commit-messages`. For a large diff (more than a few hundred lines or many files), brief a read-only reviewer agent with the same checks and read its findings instead of the diff.
+6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
 7. Get an external review of the issue and diff against the review dimensions. Codex first; an Opus subagent when Codex is unavailable.
@@ -77,7 +85,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when its context is under 150k tokens, judged from the token count its completion reports, and the fix is in code it already read.
    - Otherwise brief a fresh agent with the diff, the finding and the file paths. Also start fresh when the finding shows the approach itself was wrong.
    - Tell the fixer to make the smallest change that fixes the finding, with a test for it. If the fix needs a new mechanism, it reports that before building it.
-   - Re-run the external review only for a material fix (a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic); a targeted fix gets your own diff review and its test.
+   - Re-run the external review only for a material fix (a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic); a targeted fix gets a reviewer agent's diff review (step 6) and its test.
 
 9. Final validation: your check passed on the final head, the tree is clean, and the diff has nothing unrelated.
 

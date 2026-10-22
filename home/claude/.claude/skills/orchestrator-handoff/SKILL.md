@@ -57,7 +57,7 @@ Send it, with `SendMessage`:
 ```
 BATON: <your session name> hands you the orchestrator role for <repo>; you are the Nth orchestrator.
 Load the orchestrator-handoff skill and follow its "Take over" part.
-Docs, in order: <doc paths, and any handoff draft to read first>.
+Docs, in order: <doc paths, and any handoff draft to read first>. Shared orchestrator rules live in `orchestrator-rules.md` at the main checkout's root (git-ignored), never inside a track's doc; read the track doc's Resume here plus that file, extracting only the sections needed.
 Offered now: <pieces handed now>. Suggested first: <what to start on>. Reply "TAKEN <those pieces>" once the owner agrees; they stay mine until then.
 Held by me until their break: <pieces, and where each will stop>. Leave them alone; each comes to you in a PIECE message.
 Time-sensitive: <owner tests pending, PRs awaiting review, or "nothing">.
