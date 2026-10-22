@@ -21,17 +21,17 @@ Item {
     property color dither_color: "transparent"
     property color scanline_color: "transparent"
     property int scanline_period: 3
-    // A line along the open edge, inset_gap in from it, the band's whole length.
+    // A line along the open edge, inset_gap in from it, between the same insets as the rim.
     property real inset_gap: 0
     property real inset_width: 0
     property color inset_color: "transparent"
-    // Where the rim stops short of the band's ends, for corners drawn by someone else.
+    // Where the rim and inset line stop short of the band's ends, for corners drawn by someone else.
     property real inset_start: 0
     property real inset_end: 0
     // The band's offset in a pattern shared with neighbouring bands, so their dither and scanlines line up.
     property real phase_x: 0
     property real phase_y: 0
-    // Drawn above the rim, in the band frame.
+    // Drawn above the rim, in the band frame, clipped to the band.
     property Component ornament: null
 
     readonly property bool vertical: root.edge === "left" || root.edge === "right"
@@ -136,9 +136,9 @@ Item {
                     strokeColor: root.inset_color
                     fillColor: "transparent"
                     capStyle: ShapePath.FlatCap
-                    startX: 0
+                    startX: root.inset_start
                     startY: root.inset_line_y
-                    PathLine { x: root.length; y: root.inset_line_y }
+                    PathLine { x: root.length - root.inset_end; y: root.inset_line_y }
                 }
             }
         }
@@ -163,6 +163,7 @@ Item {
 
         Loader {
             anchors.fill: parent
+            clip: true
             active: root.ornament !== null
             sourceComponent: root.ornament
         }

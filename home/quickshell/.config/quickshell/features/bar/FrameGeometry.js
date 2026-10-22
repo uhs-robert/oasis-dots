@@ -79,10 +79,11 @@ function frame_region(lay) {
     return [[[0, lay.near], [0, h], [w, h], [w, lay.near]].concat(hole_path(lay), [[0, lay.near]])];
 }
 
-// A line round the hole d px out into the bands (a rim at its half width, the inset line at its gap), drawn by both
-// windows with complementary clips: the frame window below `near`, the strip above it.
+// A line round the hole d px out into the bands (a rim at its half width, the inset line at its gap). With a bar both
+// windows draw it with complementary clips, the frame window below `near` and the strip above it, and the strip's own
+// rim draws the straight stretch; without one the frame window draws the whole loop.
 function frame_stroke(lay, d) {
-    return Outlines.inset(hole_path(lay), d);
+    return Outlines.inset(lay.has_bar ? hole_path(lay) : hole_loop(lay), d);
 }
 
 // Where a corner's band edge sits in a row at local height y (0 to r): how far the band reaches in from the hole's side.
