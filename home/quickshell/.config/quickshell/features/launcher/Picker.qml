@@ -286,7 +286,7 @@ Popup {
         } else if (k === Qt.Key_A) {
             root.set_insert(true);
             query_input.cursorPosition = query_input.text.length;
-        } else if (root.provider && root.selected_item && root.provider.actions.some(a => a.key === event.text)) {
+        } else if (root.provider && root.provider.actions.some(a => a.key === event.text && (root.selected_item || a.needs_item === false))) {
             root.provider.run_action(event.text, root.selected_item);
             ThemeAudio.play("confirm");
         } else {

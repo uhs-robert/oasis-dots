@@ -14,7 +14,7 @@ PickerProvider {
     verb: "copy"
     rank_by_usage: false
     keep_order: true
-    actions: [{ key: "d", desc: "delete" }, { key: "C", desc: "clear all" }]
+    actions: [{ key: "d", desc: "delete" }, { key: "C", desc: "clear all", needs_item: false }]
 
     readonly property string cache_dir: (Quickshell.env("XDG_RUNTIME_DIR") || Quickshell.cacheDir) + "/quickshell-cliphist"
     readonly property string text_icon: Quickshell.iconPath("text-x-generic", "edit-paste")
@@ -146,9 +146,14 @@ PickerProvider {
     }
 
     // The confirm card replaced the picker, so either answer brings it back; a yes waits for the wipe so it lists empty.
+    function reopen() {
+        // "delete" opens in NORMAL, so a second `C` is a command, not search text.
+        Pickers.open(root.name, null, undefined, undefined, undefined, "delete");
+    }
+
     function clear_answered(yes) {
         if (yes) wipe_proc.running = true;
-        else Pickers.open(root.name, null);
+        else root.reopen();
     }
 
     function flush_deletes() {
@@ -188,7 +193,7 @@ PickerProvider {
     Process {
         id: wipe_proc
         command: ["cliphist", "wipe"]
-        onExited: Pickers.open(root.name, null)
+        onExited: root.reopen()
     }
 
     Process {

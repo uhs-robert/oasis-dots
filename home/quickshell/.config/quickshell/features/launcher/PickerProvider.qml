@@ -24,7 +24,7 @@ Scope {
     property string verb: "open"
     // Shown in place of the list when there are no items.
     property string empty_text: "Nothing to pick"
-    // Normal-mode keys run on the selected item: [{ key, desc }] handled by run_action.
+    // Normal-mode keys run on the selected item: [{ key, desc }] handled by run_action. `needs_item: false` runs it with no row selected (item is null).
     property var actions: []
     // Drawn beside the list with `entry` set to the selected item.
     property Component preview: null
