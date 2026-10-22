@@ -1,0 +1,19 @@
+import QtQuick
+import qs.theme
+
+// The full-bar strip (Island shape "Full bar"): one band across the bar carrying the style's island look, with the
+// islands drawing nothing over it. Under the modules, so cava and module fills sit on top of it.
+BandFill {
+    color: Style.strip_color
+    shade_color: Style.frame_shade
+    fill_opacity: Style.bar_island_opacity
+    border_width: Style.bar_border_width
+    border_color: Style.bar_border_color
+    // As the islands boost it, so the strip's dither reads as theirs did.
+    dither_color: Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2))
+    scanline_color: Style.bar_scanline_color
+    scanline_period: Style.scanline_period
+    inset_gap: Style.bar_inset_gap
+    inset_width: Style.bar_inset_width
+    inset_color: Style.bar_inset_color
+}
