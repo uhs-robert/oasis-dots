@@ -5,7 +5,8 @@ import qs.features.voice
 
 // The yes/no question the confirm card asks for a shell caller (voxcmd-confirm), which blocks reading result_path.
 // Every way the card ends writes one answer there: "yes", or "no" for No, Esc, the scrim, the timeout or another popup.
-// A QML caller passes on_answer(yes) instead, and an empty result_path.
+// A QML caller passes on_answer(yes, explicit) instead, and an empty result_path; explicit is false when the card
+// ended some other way (q, another popup, a newer question, the timeout), so the caller must not open anything.
 Singleton {
     id: root
 
@@ -27,7 +28,7 @@ Singleton {
         Popups.open("confirm", undefined);
     }
 
-    function answer(yes) {
+    function answer(yes, explicit) {
         if (!root.asking) return;
         root.asking = false;
         // timeout: with no reader left on the FIFO the redirect would block forever.
@@ -36,7 +37,7 @@ Singleton {
         // After the close, so a callback that opens another popup is not closed by it.
         const callback = root.on_answer;
         root.on_answer = null;
-        if (callback) callback(yes);
+        if (callback) callback(yes, explicit === true);
     }
 
     // For a caller already answered another way (a voice reply into its FIFO): closes its card without writing.

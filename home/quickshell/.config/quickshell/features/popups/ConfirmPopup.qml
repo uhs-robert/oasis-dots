@@ -47,8 +47,8 @@ Popup {
                 Layout.fillWidth: true
                 st: root.st
                 question: Confirm.question
-                onConfirmed: Confirm.answer(true)
-                onCancelled: Confirm.answer(false)
+                onConfirmed: Confirm.answer(true, true)
+                onCancelled: Confirm.answer(false, true)
             }
 
             Text {
