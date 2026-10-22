@@ -1,0 +1,55 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Screen brightness, power profile, do not disturb and auto-lock, through the same scripts and bar IPC the keybinds
+# use, so the OSD and the bar stay in sync. Format: ~/.config/voxcmd/README.md
+name = "System"
+
+# Tried in order against the normalized transcript ("set brightness to 40%" arrives as "set brightness to 40").
+verbs = [
+  { action = "brightness_max",  match = '({set} )?(the )?(screen )?brightness( to)? (max|maximum|full)|(max|maximum|full) brightness' },
+  { action = "brightness_min",  match = '({set} )?(the )?(screen )?brightness( to)? (min|minimum|lowest)|(min|minimum|lowest) brightness' },
+  { action = "brightness_up",   match = 'brighter|(increase|raise) (the )?(screen )?brightness|(turn )?(the )?(screen )?brightness up( by {number}( percent)?)?' },
+  { action = "brightness_down", match = 'dimmer|darker|(decrease|lower) (the )?(screen )?brightness|(turn )?(the )?(screen )?brightness down( by {number}( percent)?)?' },
+  { action = "brightness_set",  match = '({set} )?(the )?(screen )?brightness( to| at)? {number}( percent)?' },
+  { action = "power_saver",     match = '((switch|change) to |use |{activate} )?(the )?(power|battery) sav(er|ing)( mode)?( on)?|low power mode' },
+  # Leaving power saver or performance has nowhere to go but the middle profile.
+  { action = "balanced",        match = '((switch|change) to |use |{activate} )?(the )?balanced( power)?( mode| profile)?|{deactivate} (the )?((power|battery) sav(er|ing)|(high )?performance|low power)( mode| profile)?' },
+  { action = "performance",     match = '((switch|change) to |use |{activate} )?(the )?(high )?performance( mode| profile)?( on)?' },
+  { action = "profile",         match = '(({set}|switch) )?(the )?power (profile|mode) to {target}' },
+  # The notifications phrases keep their own words: their verbs run the other way round ("disable notifications" turns
+  # do not disturb on), and {deactivate}'s "exit" or "leave" the notifications asks for no silence.
+  { action = "dnd_off",         match = '{deactivate} (the )?(do not disturb|dnd)( mode)?|(do not disturb|dnd)( mode)? off|(unsilence|unmute|enable) (the )?notifications|(turn |switch )?(the )?notifications (back )?on' },
+  { action = "dnd_on",          match = '({activate} )?(the )?(do not disturb|dnd)( mode)?( on)?|(silence|mute|disable) (the )?notifications|(turn |switch )?(the )?notifications off' },
+  { action = "autolock_on",     match = 'caffeine( mode)? off|{deactivate} (the )?caffeine( mode)?|{activate} (the )?(auto ?lock|idle lock)|auto ?lock on|let (the )?(screen|computer) (sleep|lock)' },
+  { action = "autolock_off",    match = 'keep (the )?(screen|display|computer|system) (awake|on)|stay awake|({activate} )?(the )?caffeine( mode)?( on)?|{deactivate} (the )?(auto ?lock|idle lock)|auto ?lock off|dont (auto ?)?lock( the screen)?' },
+]
+
+examples = [
+  "set brightness to <number>",
+  "brightness up",
+  "power saver mode",
+  "performance mode",
+  "do not disturb on",
+  "do not disturb off",
+  "activate caffeine",
+  "keep the screen awake",
+]
+
+[actions]
+# The brightness OSD and the bar's DND indicator already show these; power profile and auto-lock have no such cue.
+brightness_max = { run = "set_brightness 100%", silent = true }
+brightness_min = { run = "set_brightness 1%", silent = true }
+brightness_up = { run = 'set_brightness "${VOXCMD_ARG_NUMBER:-10}%+"', silent = true }
+brightness_down = { run = 'set_brightness "${VOXCMD_ARG_NUMBER:-10}%-"', silent = true }
+brightness_set = { run = 'set_brightness "$(clamp_percent "$VOXCMD_ARG_NUMBER")%"', silent = true }
+power_saver = "set_power_profile power-saver"
+balanced = "set_power_profile balanced"
+performance = "set_power_profile performance"
+dnd_on = { run = "set_dnd true", silent = true }
+dnd_off = { run = "set_dnd false", silent = true }
+autolock_on = "set_autolock on"
+autolock_off = "set_autolock off"
+
+# Profiles for "set power profile to <name>", the ones this machine offers; performance needs hardware support.
+[actions.profile]
+run = 'set_power_profile "$VOXCMD_ID"'
+candidates = "profile_candidates"
