@@ -585,7 +585,8 @@ Singleton {
         return out;
     }
 
-    function settings_for(style_name) {
+    // `all_rows` keeps rows hidden by another option (the opacity under a fill-less shape), so loading never drops their saved values.
+    function settings_for(style_name, all_rows) {
         const b = root.styles[style_name];
         if (!b) return [];
         const out = [];
@@ -611,9 +612,9 @@ Singleton {
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes) });
-        // The shape in force is the saved one, so the row follows the choice live; the saved opacity is kept for when a filled shape returns.
+        // The shape in force is the saved one, so the row follows the choice live. Hiding is only presentation: the saved opacity stays in theme_values.
         const shape = (root.theme_values[style_name] || {}).bar_island_shape || b.bar_island_shape;
-        if (b.bar_lualine || root.island_shape_filled(shape)) out.push({ key: "bar_island_opacity", label: "Island opacity", type: "number", default: b.bar_island_opacity, min: 0, max: 1, step: 0.05, percent: true });
+        if (all_rows || b.bar_lualine || root.island_shape_filled(shape)) out.push({ key: "bar_island_opacity", label: "Island opacity", type: "number", default: b.bar_island_opacity, min: 0, max: 1, step: 0.05, percent: true });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.borrow_labels("workspace_art", root.workspace_arts) });
         out.push({ key: "bar_icon_set", label: "Icons", type: "choice", default: b.bar_icon_set || "", choices: root.bar_icon_sets, labels: root.borrow_labels("bar_icon_set", root.bar_icon_sets) });
         out.push({ key: "bar_meeting_marker", label: "Meeting marker", type: "choice", default: b.bar_meeting_marker || "", choices: root.bar_meeting_markers, labels: root.borrow_labels("bar_meeting_marker", root.bar_meeting_markers) });
@@ -713,7 +714,7 @@ Singleton {
         let migrated = false;
         for (const style_name in data) {
             const mine = {};
-            for (const def of root.settings_for(style_name)) {
+            for (const def of root.settings_for(style_name, true)) {
                 let v = data[style_name] ? data[style_name][def.key] : undefined;
                 if (outdated && def.key === "bar_island_shape" && root.renamed_island_shapes[v]) {
                     v = root.renamed_island_shapes[v];
