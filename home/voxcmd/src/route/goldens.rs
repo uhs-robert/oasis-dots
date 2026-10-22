@@ -26,6 +26,10 @@ fn config_with_shipped_toml() -> Config {
     let mut shipped = 0;
     for entry in std::fs::read_dir(&dir).expect("integrations dir").map(Result::unwrap) {
         let path = entry.path();
+        // Symlinks are private integrations linked in from outside the repo (like sandbox.sh): not shipped, no goldens.
+        if !entry.file_type().unwrap().is_file() {
+            continue;
+        }
         if path.extension().is_none_or(|extension| extension != "toml") {
             continue;
         }
