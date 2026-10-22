@@ -339,11 +339,11 @@ done
 
 echo "== only an owner test bar blocks the bar restart"
 # pgrep greps the command lines in STUB_QS_PROCS with the pattern ship-batch passes. A restart would pkill the real qs,
-# so the stub qs-ipc reports a locked screen: reaching that failure shows the test-bar check let the restart proceed.
+# so the stub qs-ipc reports a locked screen ("secure"): reaching that failure shows the test-bar check let the restart proceed.
 mkdir -p "$fake_home/.config/hypr/scripts" "$e2e/cache"
 # shellcheck disable=SC2016 # expanded by the stub
 printf '#!/bin/sh\ngrep -E -- "$2" "$STUB_QS_PROCS"\n' >"$stubs/pgrep"
-printf '#!/bin/sh\necho locked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 chmod +x "$stubs/pgrep" "$fake_home/.config/hypr/scripts/qs-ipc"
 export STUB_QS_PROCS=$e2e/qs_procs XDG_CACHE_HOME=$e2e/cache
 bar_ship() {
@@ -356,7 +356,7 @@ bar_ship() {
 }
 echo "qs -p /tmp/json_store_x/cfg" >"$STUB_QS_PROCS"
 bar_ship
-check "an unrelated qs -p instance does not block the restart" "grep -q \"lock state is 'locked'\" '$e2e/out'"
+check "an unrelated qs -p instance does not block the restart" "grep -q \"lock state 'secure'\" '$e2e/out'"
 echo "qs -n -p $e2e/cache/dotfiles/test-bars/x/home/quickshell/.config/quickshell" >"$STUB_QS_PROCS"
 bar_ship
 check "an owner test bar still blocks it" "grep -q 'a test bar is running' '$e2e/out'"
@@ -468,7 +468,27 @@ survive_rc=$?
 rm -f "$e2e/pkill_survives"
 check "a bar that survives pkill skips the second pass, says so and does not fail" "[[ $survive_rc == 0 && \$(migrate_count) == 1 ]] && ! logged 'migrate bar down' && grep -q 'the old bar was still running, so migration cleanup was skipped' '$e2e/out'"
 check "and the bar is still relaunched" "(( \$(dispatch_line) > 0 )) && grep -q 'restarted the stowed bar' '$e2e/out'"
-printf '#!/bin/sh\necho locked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+
+echo "== the bar restart reads the lock state"
+# The stub qs-ipc answers with line N of $e2e/answers on its Nth call and repeats the last line after that. ship-batch
+# waits a second between calls, so the case that never settles takes the whole 15 s budget.
+# shellcheck disable=SC2016 # expanded by the stub
+printf '#!/bin/sh\nn=$(cat "%s/calls" 2>/dev/null || echo 0)\nn=$((n+1))\necho $n >"%s/calls"\nsed -n "${n}p" "%s/answers" | grep . || tail -n1 "%s/answers"\n' "$e2e" "$e2e" "$e2e" "$e2e" >"$fake_home/.config/hypr/scripts/qs-ipc"
+# shellcheck disable=SC2329 # called by the checks below
+answers_ship() {
+  rm -f "$e2e/calls"
+  printf '%s\n' "$@" >"$e2e/answers"
+  migrate_ship home/quickshell/bar
+}
+answers_ship "Not ready to accept queries yet." weird unlocked
+check "an odd answer, then unlocked, restarts the bar" "[[ $? == 0 ]] && logged 'pkill -x qs' && [[ \$(<$e2e/calls) == 3 ]]"
+answers_ship secure
+check "secure skips the restart and prints the answer" "[[ $? != 0 ]] && ! logged 'pkill -x qs' && grep -q \"screen is locked (lock state 'secure')\" '$e2e/out'"
+answers_ship pending
+check "pending skips it too" "[[ $? != 0 ]] && ! logged 'pkill -x qs' && grep -q \"lock state 'pending'\" '$e2e/out'"
+answers_ship weird
+check "an odd answer that never settles gives up after the budget, naming the last answer" "[[ $? != 0 ]] && ! logged 'pkill -x qs' && grep -q \"never settled (last answer 'weird')\" '$e2e/out' && [[ \$(<$e2e/calls) == 15 ]]"
+printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 
 echo "== the check of main in the background"
 # The default path: ship-batch returns after the merge and the check runs detached. systemd-run is stubbed to fail, so the
@@ -607,7 +627,7 @@ check "the old check was stopped before the bar was killed" "logged 'pkill idle'
 check "the new check started after the restart" "checking"
 stop_all
 rm -f "$stubs/pkill"
-printf '#!/bin/sh\necho locked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 
 echo "== two batches racing to start the check"
 e2e_setup

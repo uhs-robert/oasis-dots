@@ -191,13 +191,19 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     echo "ship-batch: a test bar is running; restore it with the owner-test-bar skill"
   else
     # The pull just changed the bar's files, so the running bar is often mid-reload and answers nothing, or "Not ready to
-    # accept queries yet.", for a few seconds. Only a settled answer says whether the lock is up.
+    # accept queries yet.", or something else odd, for a few seconds. Only "unlocked" or an explicit locked answer
+    # ("secure", or "pending" while a lock starts; see Lock.state()) settles it: any other answer is retried.
     for _ in $(seq 15); do
       state=$(timeout 3 "$ipc" call lock state 9>&- 2>/dev/null || true)
-      [[ -z $state || $state == "Not ready"* ]] || break
+      [[ $state == unlocked || $state == secure || $state == pending ]] && break
       sleep 1
     done
-    [[ $state == unlocked ]] || die "Quickshell changed but the lock state is '${state:-unknown}'; restart the bar once unlocked"
+    # The last answer is named so a false "locked" or a bar that never settled can be diagnosed afterwards.
+    case $state in
+      unlocked) ;;
+      secure | pending) die "Quickshell changed but the screen is locked (lock state '$state'); restart the bar once unlocked" ;;
+      *) die "Quickshell changed but the lock state never settled (last answer '${state:-none}'); restart the bar once unlocked" ;;
+    esac
     use_live_hypr "restart the bar by hand"
     pkill -x qs || true
     for _ in $(seq 20); do
