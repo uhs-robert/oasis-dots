@@ -108,13 +108,25 @@ Item {
         }
     }
 
+    Loader {
+        width: root.width
+        height: root.bar_height
+        anchors.verticalCenter: parent.verticalCenter
+        active: Style.strip_shape
+        sourceComponent: StripBackground {
+            edge: root.position
+            length: root.width
+            thickness: root.bar_height
+        }
+    }
+
     Island {
         height: root.bar_height
         id: left_island
         cap_right_fill: Style.bar_lualine && LualineState.last_fill[root.screen_name] ? LualineState.last_fill[root.screen_name] : "transparent"
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
-        bg_color: Style.bar_side_bg
+        bg_color: Style.strip_shape ? Style.strip_color : Style.bar_side_bg
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
         scanline_color: Style.bar_scanline_color
@@ -201,7 +213,7 @@ Item {
         id: center_island
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
-        bg_color: Style.bar_center_bg
+        bg_color: Style.strip_shape ? Style.strip_color : Style.bar_center_bg
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
         scanline_color: Style.bar_scanline_color
@@ -250,7 +262,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         // Sits on the island's open edge: the bottom one, or the top one under a bottom bar, clear of its underline.
-        readonly property real open_edge_margin: center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.shape === "underline" ? center_island.stroke_width : center_island.filled && center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
+        readonly property real open_edge_margin: Style.strip_shape ? root.strip_open_edge_margin : center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.shape === "underline" ? center_island.stroke_width : center_island.filled && center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
         anchors.top: center_island.flipped ? parent.top : undefined
         anchors.bottom: center_island.flipped ? undefined : parent.bottom
         anchors.leftMargin: center_island.capsule ? center_island.capsule_radius : 6
@@ -267,7 +279,7 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         // Lualine x shares section c's mantle, so the idle cap melts into the bar like lualine's c|x boundary.
-        bg_color: Style.bar_lualine ? Theme.bg_mantle : Style.bar_side_bg
+        bg_color: Style.bar_lualine ? Theme.bg_mantle : Style.strip_shape ? Style.strip_color : Style.bar_side_bg
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
         scanline_color: Style.bar_scanline_color
@@ -346,6 +358,9 @@ Item {
             }
         }
     }
+
+    // Clear of the strip's rim and, where the style has one, its inset line.
+    readonly property real strip_open_edge_margin: Math.max(Style.bar_border_width + 1, Style.bar_inset_width > 0 && Style.bar_inset_color.a > 0 ? Style.bar_inset_gap + Style.bar_inset_width : 0)
 
     // The clock has no module item of its own, so its popup anchor follows whichever island lists it.
     function sync_clock_anchor() {

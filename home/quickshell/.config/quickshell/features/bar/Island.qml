@@ -30,8 +30,9 @@ Item {
     readonly property bool translucent: Style.islands_translucent
     // A translucent cap cannot overlap the body, or the overlap shows as a darker line.
     readonly property int cap_overlap: root.translucent ? 0 : 1
-    // One of Style.island_shapes; lualine draws its own sections whatever the shape.
-    readonly property string shape: root.lualine ? "lualine" : Style.bar_island_shape
+    // One of Style.island_shapes; lualine draws its own sections whatever the shape. Over the full-bar strip
+    // (StripBackground) an island draws nothing, as `none`.
+    readonly property string shape: root.lualine ? "lualine" : Style.strip_shape ? "none" : Style.bar_island_shape
     // Metroid Prime visor glass cut into notched bracket ends (VisorIsland) instead of slants.
     readonly property bool visor: root.shape === "visor"
     // A capsule this many px inside the island's top and ends, resting on its bottom edge; sheen_color lights its top edge.
@@ -71,8 +72,8 @@ Item {
     readonly property real window_bottom: root.height - 1
     // One of IslandOutlines' shapes: a single polygon and its rim, sized and traced there.
     readonly property bool outlined: Outlines.has(root.shape)
-    // False for none, underline and brackets: no plate, so no fill, shade, slant caps, dither or scanlines.
-    readonly property bool filled: Style.island_filled
+    // False for none, underline, brackets and the full bar: no plate, so no fill, shade, slant caps, dither or scanlines.
+    readonly property bool filled: Style.island_plate
     readonly property bool stroke_only: !root.filled
     // Style's min_border already raised border_width to at least this; max() keeps a bare island visible if it was not.
     readonly property real stroke_width: Math.max(root.border_width, root.shape === "underline" ? 2 : 1)

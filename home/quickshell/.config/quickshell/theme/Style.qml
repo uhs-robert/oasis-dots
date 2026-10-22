@@ -37,7 +37,7 @@ Singleton {
             materia: {}
         })
     // Bar island shapes any style without lualine can borrow (Theme options); "slant" is the plain look.
-    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "none", "underline", "brackets"]
+    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "none", "underline", "brackets", "full"]
     // What a shape brings to a style that does not own it, in place of that style's own shape sizes: `sizes` copied from
     // the owner, a border at least `min_border` wide (in the palette's muted text colour where the host has none), and
     // with `fg_border` the host's bar_fg as its colour so a pixel window's outline shows on every palette. Never the
@@ -59,7 +59,9 @@ Singleton {
             // No plate: the opacity row, dither and scanlines have nothing to act on (`filled: false`, see island_filled).
             none: { filled: false },
             underline: { filled: false, min_border: 2, fg_border: true },
-            brackets: { filled: false, min_border: 1, fg_border: true }
+            brackets: { filled: false, min_border: 1, fg_border: true },
+            // One strip across the bar in place of the islands' plates (`strip`, see strip_shape); the border is its rim.
+            full: { strip: true, min_border: 1 }
         })
     // Saved shapes renamed since, applied once to a theme_options.json older than options_version: "octagon" drew
     // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
@@ -94,7 +96,7 @@ Singleton {
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
             bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle", modern: "Modern", terminal: "Terminal" },
             bar_meeting_marker: MarkerTokens.labels,
-            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets" },
+            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
@@ -684,8 +686,16 @@ Singleton {
         return o;
     }
 
-    // False for the shapes that draw no plate; the one predicate for hiding the opacity row and skipping dither and scanlines. Lualine draws its own sections whatever the shape.
+    // False for the shapes that draw no plate, so nothing for the opacity row, dither or scanlines to act on; the full
+    // bar is filled, its strip carrying them (island_plate). Lualine draws its own sections whatever the shape.
     readonly property bool island_filled: root.bar.bar_lualine || root.island_shape_filled(root.bar.bar_island_shape)
+    // The bar draws one full-width strip (StripBackground) and the islands only hold the modules. The one predicate
+    // for it: a later shape turns it on by giving its kit `strip: true`.
+    readonly property bool strip_shape: !root.bar.bar_lualine && (root.island_shape_kits[root.bar.bar_island_shape] || {}).strip === true
+    // Whether each island draws its own plate: its shape has one and no strip carries it instead.
+    readonly property bool island_plate: root.island_filled && !root.strip_shape
+    // The strip's fill, which popups, tooltips and the submap tab hung from an island over it take too.
+    readonly property color strip_color: root.bar.bar_side_bg
     function island_shape_filled(shape) {
         return (root.island_shape_kits[shape] || {}).filled !== false;
     }
