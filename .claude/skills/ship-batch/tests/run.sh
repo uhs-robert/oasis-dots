@@ -484,8 +484,10 @@ answers_ship "Not ready to accept queries yet." weird unlocked
 check "an odd answer, then unlocked, restarts the bar" "[[ $? == 0 ]] && logged 'pkill -x qs' && [[ \$(<$e2e/calls) == 3 ]]"
 answers_ship secure
 check "secure skips the restart and prints the answer" "[[ $? != 0 ]] && ! logged 'pkill -x qs' && grep -q \"screen is locked (lock state 'secure')\" '$e2e/out'"
-answers_ship pending
-check "pending skips it too" "[[ $? != 0 ]] && ! logged 'pkill -x qs' && grep -q \"lock state 'pending'\" '$e2e/out'"
+answers_ship pending secure
+check "pending is retried, then secure skips" "[[ $? != 0 ]] && ! logged 'pkill -x qs' && grep -q \"lock state 'secure'\" '$e2e/out' && [[ \$(<$e2e/calls) == 2 ]]"
+answers_ship pending unlocked
+check "pending is retried, then unlocked restarts" "[[ $? == 0 ]] && logged 'pkill -x qs' && [[ \$(<$e2e/calls) == 2 ]]"
 answers_ship weird
 check "an odd answer that never settles gives up after the budget, naming the last answer" "[[ $? != 0 ]] && ! logged 'pkill -x qs' && grep -q \"never settled (last answer 'weird')\" '$e2e/out' && [[ \$(<$e2e/calls) == 15 ]]"
 printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
