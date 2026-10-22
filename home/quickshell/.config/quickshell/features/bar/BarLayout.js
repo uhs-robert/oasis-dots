@@ -89,7 +89,9 @@ function normalize(raw) {
         const nested_position = raw.monitors[k].position;
         if (!(k in saved_positions) && positions.indexOf(nested_position) >= 0) saved_positions[k] = nested_position;
     }
-    return { shared: { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) }, monitors: monitors, positions: saved_positions };
+    const out_shared = { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) };
+    if (positions.indexOf(shared.position) >= 0) out_shared.position = shared.position;
+    return { shared: out_shared, monitors: monitors, positions: saved_positions };
 }
 
 function layout_of(rule) {
@@ -113,11 +115,20 @@ function sort_side(list, order) {
     return out;
 }
 
+// Where a monitor's position comes from: "monitor" (its own saved value), "global" (the shared one), "bars.json" (the rule names one) or "default" (top).
+function position_source(rule, state, key) {
+    if (key && state.positions[key]) return "monitor";
+    if (state.shared.position) return "global";
+    return rule && rule.position !== undefined ? "bars.json" : "default";
+}
+
 // The tracked rule with the shared layout, or the monitor's own override, and its saved position applied. `state` must be normalized.
 function effective(rule, state, key) {
     if (!rule) return null;
     const out = Object.assign({}, rule, layout_of(rule));
     if (key && state.positions[key]) out.position = state.positions[key];
+    // A Settings override like the shared layout, so it wins over the tracked rule; unlike that layout it also reaches monitors with their own.
+    else if (state.shared.position) out.position = state.shared.position;
     const own = key && state.monitors[key];
     if (own) {
         for (const s of sides) out[s] = own[s].slice();
@@ -288,6 +299,24 @@ function set_own(state, key, layout, compact) {
 function set_position(state, key, position) {
     const next = normalize(state);
     if (key && positions.indexOf(position) >= 0) next.positions[key] = position;
+    return next;
+}
+
+function clear_position(state, key) {
+    const next = normalize(state);
+    delete next.positions[key];
+    return next;
+}
+
+function set_shared_position(state, position) {
+    const next = normalize(state);
+    if (positions.indexOf(position) >= 0) next.shared.position = position;
+    return next;
+}
+
+function clear_shared_position(state) {
+    const next = normalize(state);
+    delete next.shared.position;
     return next;
 }
 

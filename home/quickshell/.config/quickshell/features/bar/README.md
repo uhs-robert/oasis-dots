@@ -35,9 +35,11 @@ While voxcmd's wake word listener holds the microphone (`$XDG_RUNTIME_DIR/voxcmd
 
 Settings > Bar modules edits the layout without touching the tracked file. It saves to `quickshell/bars.json` in the state folder (see [Settings panel](../settings/README.md)), with three kinds of override over the matching rule:
 
-- `shared` applies to every monitor without its own layout. `place` maps a module to `left`, `center`, `right` or `hidden`, and `order` lists modules that swap among the slots they already fill on each side, and the rest do not move.
+- `shared` applies to every monitor without its own layout. `place` maps a module to `left`, `center`, `right` or `hidden`, and `order` lists modules that swap among the slots they already fill on each side, and the rest do not move. `position` (`top` or `bottom`, set by the Position row with All monitors as the target) is the global position: it applies to every monitor, own layout or not, and wins over the rule's `position`.
 - `monitors` holds one full `left`/`center`/`right` layout (and `compact`) per monitor, keyed by `<description> @ <connector>`, or by the connector alone when the monitor has no description. After a connector change, the only saved key with the same description is reused. It replaces the rule's lists outright, so later edits to the tracked file no longer reach that monitor. `height` and `bar` always come from the rule.
-- `positions` maps a monitor key (as in `monitors`) to `top` or `bottom`, set by the Position row and applied over the rule's `position`. It is kept apart from `monitors`, so a monitor needs no layout of its own to move its bar, and turning Own layout on or off leaves its position alone.
+- `positions` maps a monitor key (as in `monitors`) to `top` or `bottom`, set by the Position row with that monitor as the target and applied over the global position and the rule's `position`. It is kept apart from `monitors`, so a monitor needs no layout of its own to move its bar, and turning Own layout on or off leaves its position alone.
+
+A bar's position is therefore the monitor's entry in `positions`, else `shared.position`, else the rule's `position`, else `top`. The Position row names what a value follows when it is not saved at that level, as in `bottom (global)`, `top (bars.json)` or `top (default)`; `x` on the row drops the saved value, so a monitor follows the global position again and All monitors follows `bars.json`.
 
 Delete the state file to go back to the tracked layout.
 
