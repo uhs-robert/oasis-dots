@@ -30,6 +30,7 @@ import qs.features.voice
 import qs.features.popups
 import qs.features.audio
 import qs.features.style
+import "features/bar/FrameGeometry.js" as FrameGeometry
 
 ShellRoot {
     id: root
@@ -52,6 +53,12 @@ ShellRoot {
                 readonly property var rule: BarSettings.rule_for(screen_scope.modelData)
                 readonly property bool has_bar: screen_scope.rule !== null && screen_scope.rule.bar !== false
                 readonly property bool bar_bottom: screen_scope.has_bar && BarSettings.position_for(screen_scope.rule) === "bottom"
+                readonly property int bar_height: BarSettings.height_for(screen_scope.rule)
+                readonly property var frame: Style.screen_frame_on ? FrameGeometry.frame_layout(screen_scope.modelData.width, screen_scope.modelData.height, screen_scope.has_bar ? (screen_scope.bar_bottom ? "bottom" : "top") : "", screen_scope.bar_height, Style.screen_frame_kit) : null
+                // The last frame, held so the frame's bindings never see null while its loader drops it.
+                property var drawn_frame: null
+                onFrameChanged: if (screen_scope.frame) screen_scope.drawn_frame = screen_scope.frame
+                Component.onCompleted: screen_scope.drawn_frame = screen_scope.frame
 
                 LazyLoader {
                     id: bar_loader
@@ -62,8 +69,10 @@ ShellRoot {
 
                         screen: screen_scope.modelData
                         color: "transparent"
-                        implicitHeight: BarSettings.height_for(screen_scope.rule)
-                        exclusiveZone: implicitHeight
+                        implicitHeight: screen_scope.bar_height
+                        // Under a frame its zone windows reserve the bar's edge too, so the bar ignores them all
+                        // instead of shrinking between the side zones.
+                        exclusiveZone: screen_scope.frame ? -1 : implicitHeight
 
                         anchors {
                             top: !screen_scope.bar_bottom
@@ -77,6 +86,7 @@ ShellRoot {
                             anchors.fill: parent
                             screen_name: screen_scope.modelData.name
                             rule: screen_scope.rule
+                            frame: screen_scope.frame
                         }
 
                         StyleTransition {
@@ -87,8 +97,18 @@ ShellRoot {
                     }
                 }
 
+                LazyLoader {
+                    active: screen_scope.frame !== null && screen_scope.drawn_frame !== null
+
+                    ScreenFrame {
+                        screen: screen_scope.modelData
+                        layout: screen_scope.drawn_frame
+                    }
+                }
+
                 PopupScrim {
                     screen: screen_scope.modelData
+                    frame: screen_scope.frame
                 }
 
                 HotCorner {
@@ -237,6 +257,7 @@ ShellRoot {
     SettingsIpc {}
     GreeterSync {}
     ScreenShare {}
+    ScreenFrameSync {}
     PowerIpc {}
     ConfirmIpc {}
     ScreenshotIpc {}

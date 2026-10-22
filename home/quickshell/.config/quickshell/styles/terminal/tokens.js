@@ -8,6 +8,7 @@ function overrides(t, ctx) {
         weather_header: "wttr",
         keeptabs_layout: "wttr",
         picker_skin: "tmux",
-        picker_hint_keys: "123456789"
+        picker_hint_keys: "123456789",
+        screen_frame_offered: false
     };
 }

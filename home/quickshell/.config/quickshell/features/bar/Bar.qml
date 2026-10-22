@@ -18,6 +18,9 @@ Item {
 
     property string screen_name: ""
     property var rule: null
+    // The screen frame's layout (FrameGeometry.frame_layout) while one is on: the side islands move in to the hole's
+    // sides, where the frame's side zones put the side popups too.
+    property var frame: null
     readonly property bool compact: BarSettings.compact_for(root.rule)
     readonly property int bar_height: BarSettings.height_for(root.rule)
     readonly property string position: BarSettings.position_for(root.rule)
@@ -117,6 +120,7 @@ Item {
             edge: root.position
             length: root.width
             thickness: root.bar_height
+            frame: root.frame
         }
     }
 
@@ -125,6 +129,7 @@ Item {
         id: left_island
         cap_right_fill: Style.bar_lualine && LualineState.last_fill[root.screen_name] ? LualineState.last_fill[root.screen_name] : "transparent"
         anchors.left: parent.left
+        anchors.leftMargin: root.frame ? root.frame.start : 0
         anchors.verticalCenter: parent.verticalCenter
         bg_color: Style.strip_shape ? Style.strip_color : Style.bar_side_bg
         border_width: Style.bar_border_width
@@ -277,6 +282,7 @@ Item {
         height: root.bar_height
         id: right_island
         anchors.right: parent.right
+        anchors.rightMargin: root.frame ? root.frame.end : 0
         anchors.verticalCenter: parent.verticalCenter
         // Lualine x shares section c's mantle, so the idle cap melts into the bar like lualine's c|x boundary.
         bg_color: Style.bar_lualine ? Theme.bg_mantle : Style.strip_shape ? Style.strip_color : Style.bar_side_bg

@@ -38,6 +38,7 @@ RowsSection {
             done_anim: "The keeptabs celebration when a session finishes, from any style.",
             wait_anim: "The keeptabs cue when a session waits on you, from any style.",
             toast_enter: "How notification toasts arrive, from any style.",
+            screen_frame: "Bands in the bar's colour round the rest of the screen, joined to the bar. Windows round to match while it is on.",
             bar_island_shape: "The outline of the bar's islands, or one strip across the full bar, from any style, drawn in your palette.",
             bar_island_opacity: "How see-through the bar islands' (or the full bar's) backgrounds are; text, icons and borders stay solid.",
             workspace_art: "The bar's workspace indicator, from any style, drawn in your palette.",
@@ -48,7 +49,10 @@ RowsSection {
             font_size: "Base text size in pixels; other sizes scale from it."
         })
 
+    readonly property string locked_note: "Set by Screen frame, which needs the full bar; your choice comes back when the frame is off."
+
     function row_for(def) {
+        if (def.locked !== undefined) return root.locked_row(def);
         const kind = def.type;
         return {
             label: def.label,
@@ -60,10 +64,26 @@ RowsSection {
         };
     }
 
+    // Shows the fixed text and neither steps nor opens a list.
+    function locked_row(def) {
+        return {
+            label: def.label,
+            desc: root.locked_note,
+            keys: "",
+            values: () => [def.locked],
+            text: v => v,
+            value: () => def.locked,
+            set: v => {},
+            cycle: false,
+            pick: false
+        };
+    }
+
     onExtra_key: event => {
         if (event.key !== Qt.Key_R) return;
+        const def = Style.settings[root.cursor];
         if (event.modifiers & Qt.ShiftModifier) Style.reset_options();
-        else if (Style.settings[root.cursor]) Style.reset_option(Style.settings[root.cursor].key);
+        else if (def && def.locked === undefined) Style.reset_option(def.key);
         event.accepted = true;
     }
 

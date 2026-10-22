@@ -1,5 +1,5 @@
 // Runs IslandOutlines.js's fill-less helpers, BandGeometry.js and FrameGeometry.js under node, and checks every Style.island_shapes
-// entry has a kit and a label.
+// entry and Style.screen_frames entry has a kit and a label.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -96,6 +96,7 @@ const cases = [
     const w = 2, rim = B.band_rim_stroke(1920, 30, top_frame.straight[0], 1920 - top_frame.straight[1], w), stroke = F.frame_stroke(top_frame, w / 2);
     return near_point(stroke[0], rim[1]) && near_point(stroke.slice(-1)[0], rim[0]);
   }, true],
+  ["frame stroke with no bar closes round the hole", () => { const s = F.frame_stroke(bare_frame, 1); return near_point(s[0], s.slice(-1)[0]) && Math.abs(s[0][1] - 5) < 0.1; }, true],
   ["frame stroke stays out of the hole", () => F.frame_stroke(top_frame, 1).every(p => p[0] <= 6 || p[0] >= 1914 || p[1] <= 30 || p[1] >= 1074 || (p[0] < 18 || p[0] > 1902) && (p[1] < 42 || p[1] > 1062)), true],
   ["frame blocks disjoint (bar)", () => blocks_disjoint(F.frame_blocks(top_frame)), true],
   ["frame blocks disjoint (no bar)", () => blocks_disjoint(F.frame_blocks(bare_frame)), true],
@@ -139,5 +140,15 @@ for (const s of strip_kits) {
   if (shapes.indexOf(s) < 0) { failed++; console.log("FAIL strip kit " + s + " is not in island_shapes"); }
 }
 
+// Every screen frame but "" (none) has a kit frame_layout can measure, and every one has a settings label.
+const frames = JSON.parse(style.match(/screen_frames: (\[[^\]]*\])/)[1]);
+const frame_kits = vm.runInNewContext(style.match(/screen_frame_kits: (\(\{[\s\S]*?\}\))/)[1]);
+const frame_labels = style.slice(style.indexOf("borrow_names")).match(/screen_frame: \{([^}]*)\}/)[1];
+for (const f of frames) {
+  const kit = frame_kits[f];
+  if (f !== "" && !(kit && ["radius", "thickness", "rim"].every(k => typeof kit[k] === "number") && typeof kit.corner === "string")) { failed++; console.log("FAIL no usable kit for screen frame " + f); }
+  if (!new RegExp((f === "" ? '""' : "\\b" + f) + ": \"").test(frame_labels)) { failed++; console.log("FAIL no label for screen frame " + JSON.stringify(f)); }
+}
+
 if (failed) process.exit(1);
-console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1) + " checks passed");
+console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frames.length * 2) + " checks passed");

@@ -69,6 +69,14 @@ Singleton {
     readonly property int options_version: 2
     // Shape sizes every kit resets before laying its own on, so leaving the capsule drops its inset.
     readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0 })
+    // Screen frames any style can borrow (Theme options); "" is none.
+    readonly property var screen_frames: ["", "plain"]
+    // What each frame draws (FrameGeometry.frame_layout): `thickness` px bands on the edges the bar is not on, the hole's
+    // `corner` profile of `radius`, and a rim round the hole at least `rim` px wide in the bar's border colour.
+    // `ornament` names extra drawing in the frame's ornament slot, none so far.
+    readonly property var screen_frame_kits: ({
+            plain: { corner: "round", radius: 12, thickness: 6, rim: 0, ornament: "" }
+        })
     // OSD layouts any style can borrow (Theme options); "" is the plain OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
     readonly property var osd_layouts: ["", "ring", "hud", "rpg", "alert", "glow", "horizon", "tile", "watch"]
     // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, battle, scan and hev also reword the alert banner and the Alerts tab in their style's fiction, which comes along when borrowed.
@@ -97,7 +105,8 @@ Singleton {
             bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle", modern: "Modern", terminal: "Terminal" },
             bar_meeting_marker: MarkerTokens.labels,
             bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar" },
-            toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" }
+            toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" },
+            screen_frame: { "": "Off", plain: "Plain" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
@@ -146,7 +155,21 @@ Singleton {
     readonly property var base_active: root.styles[root.name] || root.styles["oasis"]
     readonly property var active: {
         const opts = root.theme_values[root.styles[root.name] ? root.name : "oasis"];
-        return opts ? root.with_options(root.base_active, opts) : root.base_active;
+        const chosen = opts ? root.with_options(root.base_active, opts) : root.base_active;
+        // A frame's bar edge is the full strip, whatever shape is saved; the saved shape stays for when it goes.
+        if (root.frame_kit_for(chosen) === null || chosen.bar_island_shape === "full") return chosen;
+        return root.with_options(root.base_active, Object.assign({}, opts, { bar_island_shape: "full" }));
+    }
+    // The screen frame the shell draws, from `active` so the style picker previews it; null when there is none.
+    readonly property var screen_frame_kit: root.frame_kit_for(root.active)
+    readonly property bool screen_frame_on: root.screen_frame_kit !== null
+    // The rim round the frame's hole and along the strip under it: the bar's border, at least the kit's rim.
+    readonly property int screen_frame_rim: root.screen_frame_on ? Math.max(root.bar_border_width, root.screen_frame_kit.rim) : root.bar_border_width
+
+    // The frame kit a token set asks for, or null: lualine draws its own statusline edge, and a style can opt out.
+    function frame_kit_for(tokens) {
+        if (tokens.bar_lualine || tokens.screen_frame_offered === false) return null;
+        return root.screen_frame_kits[tokens.screen_frame] || null;
     }
     // Small popups read this token set; it is the singleton itself unless the style has a `small` block.
     readonly property var small: root.active.small ? root.resolve(Object.assign({}, root.active, root.active.small)) : root
@@ -397,6 +420,7 @@ Singleton {
     readonly property string bar_separator: root.bar.bar_separator
     readonly property color bar_tick_color: root.bar.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
     readonly property string bar_island_shape: root.bar.bar_island_shape
+    readonly property string screen_frame: root.bar.screen_frame
     readonly property real bar_island_opacity: root.bar.bar_island_opacity
     readonly property color hairline: root.active.hairline
     readonly property color hairline_dim: root.active.hairline_dim
@@ -613,9 +637,13 @@ Singleton {
         out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.borrow_labels("done_anim", root.done_anims) });
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
-        if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes) });
-        // The shape in force is the saved one, so the row follows the choice live. Hiding is only presentation: the saved opacity stays in theme_values.
-        const shape = (root.theme_values[style_name] || {}).bar_island_shape || b.bar_island_shape;
+        const saved = root.theme_values[style_name] || {};
+        if (!b.bar_lualine && b.screen_frame_offered !== false) out.push({ key: "screen_frame", label: "Screen frame", type: "choice", default: b.screen_frame || "", choices: root.screen_frames, labels: root.borrow_labels("screen_frame", root.screen_frames) });
+        // `locked` is the text a row shows while another option fixes its value; the saved value stays underneath.
+        const framed = root.frame_kit_for(Object.assign({}, b, saved)) !== null;
+        if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes), locked: framed ? "Full bar (frame)" : undefined });
+        // The shape in force is the saved one (the full bar under a frame), so the row follows the choice live. Hiding is only presentation: the saved opacity stays in theme_values.
+        const shape = framed ? "full" : saved.bar_island_shape || b.bar_island_shape;
         if (all_rows || b.bar_lualine || root.island_shape_filled(shape)) out.push({ key: "bar_island_opacity", label: "Island opacity", type: "number", default: b.bar_island_opacity, min: 0, max: 1, step: 0.05, percent: true });
         out.push({ key: "workspace_art", label: "Workspaces", type: "choice", default: b.workspace_art || "", choices: root.workspace_arts, labels: root.borrow_labels("workspace_art", root.workspace_arts) });
         out.push({ key: "bar_icon_set", label: "Icons", type: "choice", default: b.bar_icon_set || "", choices: root.bar_icon_sets, labels: root.borrow_labels("bar_icon_set", root.bar_icon_sets) });
