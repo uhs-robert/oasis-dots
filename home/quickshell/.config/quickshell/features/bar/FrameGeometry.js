@@ -122,3 +122,21 @@ function frame_blocks(lay) {
 function to_screen(lay) {
     return lay.edge === "bottom" ? [1, 0, 0, -1, 0, lay.depth] : [1, 0, 0, 1, 0, 0];
 }
+
+// The hole as a screen rect { x, y, w, h }, for placing surfaces that attach to it (drawers).
+function hole_rect(lay) {
+    const h = lay.far - lay.near;
+    return { x: lay.start, y: lay.edge === "bottom" ? lay.depth - lay.far : lay.near, w: lay.length - lay.start - lay.end, h: h };
+}
+
+// The screen coordinate of the hole's edge on `edge` ("top", "bottom", "left" or "right"): y for the first two, x for
+// the others. With a bottom bar the hole's bar side is its bottom edge.
+function seam_of(lay, edge) {
+    const r = hole_rect(lay);
+    switch (edge) {
+    case "bottom": return r.y + r.h;
+    case "left": return r.x;
+    case "right": return r.x + r.w;
+    }
+    return r.y;
+}

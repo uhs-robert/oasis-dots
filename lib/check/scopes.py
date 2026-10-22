@@ -275,6 +275,7 @@ STEPS = [
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
     Step("bar-layout", "node", "node ./home/quickshell/tests/bar_layout.js", ("node",), skip_reason="the bar layout tests need node"),
     Step("island-shapes", "node", "node ./home/quickshell/tests/island_shapes.js", ("node",), skip_reason="the island shape tests need node"),
+    Step("drawer-shapes", "node", "node ./home/quickshell/tests/drawer_shapes.js", ("node",), skip_reason="the drawer shape tests need node"),
     Step("packages", "tree", "sh ./lib/check/steps/packages.sh"),
     Step("symlinks", "tree", "sh ./lib/check/steps/symlinks.sh"),
     Step("git-diff-check", "tree", "git diff --check HEAD"),
