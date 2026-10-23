@@ -14,8 +14,8 @@ SCRIPT = os.path.join(ROOT, "home/quickshell/.config/quickshell/scripts/frame-ap
 gen = SourceFileLoader("frame_app_corners", SCRIPT).load_module()
 
 
-def frame(corner, radius=12, step=0):
-    return {"on": True, "corner": corner, "radius": radius, "step": step}
+def frame(corner, radius=12):
+    return {"on": True, "corner": corner, "radius": radius}
 
 
 class YaziBorder(unittest.TestCase):
@@ -36,7 +36,7 @@ class FirefoxCss(unittest.TestCase):
 
     def test_square_and_pixel_have_no_rounding(self):
         for corner in ("square", "pixel"):
-            css = gen.firefox_css(frame(corner, 8, 2))
+            css = gen.firefox_css(frame(corner, 8))
             self.assertIn("--tf-rounding: 0px;", css, corner)
             self.assertNotIn("clip-path", css, corner)
 
@@ -85,6 +85,58 @@ class Run(unittest.TestCase):
             result = subprocess.run([sys.executable, "-I", SCRIPT, os.path.join(tmp, "none.json"), "--yazi-dir", tmp + "/y", "--firefox-dirs"], capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertFalse(os.path.exists(tmp + "/y"))
+
+    def test_malformed_json_fails_without_writing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "frame.json")
+            with open(path, "w") as f:
+                f.write("{not json")
+            result = subprocess.run([sys.executable, "-I", SCRIPT, path, "--yazi-dir", tmp + "/y", "--firefox-dirs"], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("cannot read", result.stderr)
+            self.assertFalse(os.path.exists(tmp + "/y"))
+
+    def test_chrome_dirs_come_from_the_environment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "frame.json")
+            with open(path, "w") as f:
+                json.dump(frame("round", 10), f)
+            env = dict(os.environ, FIREFOX_CHROME_DIRS=f"{tmp}/a:{tmp}/b")
+            subprocess.run([sys.executable, "-I", SCRIPT, path, "--yazi-dir", tmp + "/y"], env=env, check=True)
+            for name in ("a", "b"):
+                self.assertTrue(os.path.exists(f"{tmp}/{name}/frame.css"), name)
+
+
+class YaziInit(unittest.TestCase):
+    """init.lua reads the generated border from $XDG_CONFIG_HOME and falls back to plain when it is missing."""
+
+    LUA = os.path.join(ROOT, "home/yazi/.config/yazi/init.lua")
+
+    def border_after_init(self, env):
+        # Run only the frame-border head of init.lua, with full-border stubbed to print its setup value.
+        head = open(self.LUA).read().split("-- Fuse Archive")[0]
+        stub = 'package.preload["full-border"] = function() return { setup = function(_, o) print(o.set) end } end\n'
+        result = subprocess.run(["lua", "-e", stub + head], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.strip()
+
+    def setUp(self):
+        if subprocess.run(["which", "lua"], capture_output=True).returncode != 0:
+            self.skipTest("no lua interpreter")
+
+    def test_reads_xdg_config_home(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(tmp + "/yazi")
+            with open(tmp + "/yazi/frame-border.lua", "w") as f:
+                f.write('return "rounded"\n')
+            self.assertEqual(self.border_after_init({"HOME": "/nonexistent", "XDG_CONFIG_HOME": tmp}), "rounded")
+
+    def test_missing_file_falls_back_to_plain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(self.border_after_init({"HOME": tmp, "XDG_CONFIG_HOME": tmp}), "plain")
+
+    def test_unset_home_still_falls_back(self):
+        self.assertEqual(self.border_after_init({}), "plain")
 
 
 if __name__ == "__main__":

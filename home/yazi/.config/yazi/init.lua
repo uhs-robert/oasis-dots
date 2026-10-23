@@ -3,7 +3,14 @@
 
 -- Plugins
 -- Full border around the window; frame-border.lua is generated from the Quickshell screen frame (round -> "rounded")
-local frame_ok, frame_border = pcall(dofile, os.getenv("HOME") .. "/.config/yazi/frame-border.lua")
+-- into the same $XDG_CONFIG_HOME/yazi that scripts/frame-app-corners writes to.
+local frame_ok, frame_border = pcall(function()
+	local config = os.getenv("XDG_CONFIG_HOME")
+	if not config or config == "" then
+		config = os.getenv("HOME") .. "/.config"
+	end
+	return dofile(config .. "/yazi/frame-border.lua")
+end)
 require("full-border"):setup({
 	-- Available values: "plain", "rounded"
 	set = frame_ok and frame_border or "plain",

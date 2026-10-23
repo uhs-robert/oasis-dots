@@ -3,7 +3,9 @@
 
 Usage: frame-app-corners [frame.json] [--yazi-dir DIR] [--firefox-dirs DIR...]
 
-Reads frame.json ({ "on", "corner", "radius", "step" }, written by FrameExport.qml) and writes
+FIREFOX_CHROME_DIRS (colon-separated chrome directories) replaces the default profile search.
+
+Reads frame.json ({ "on", "corner", "radius" }, written by FrameExport.qml) and writes
 yazi's frame-border.lua and each Firefox profile's chrome/frame.css. Both apps read them at start-up only.
 """
 import glob
@@ -79,7 +81,8 @@ def main(argv):
         else:
             frame_path = arg
     if firefox_dirs is None:
-        firefox_dirs = default_firefox_dirs(home)
+        listed = os.environ.get("FIREFOX_CHROME_DIRS")
+        firefox_dirs = [d for d in listed.split(":") if d] if listed else default_firefox_dirs(home)
     try:
         with open(frame_path) as f:
             frame = json.load(f)
