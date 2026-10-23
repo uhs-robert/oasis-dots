@@ -106,7 +106,7 @@ Keep keys consistent across surfaces; new popups, pickers and skins follow these
 
 ## Quickshell structure
 
-`QS` is `home/quickshell/.config/quickshell`; `QS/README.md` indexes the folders and per-feature docs. Each rule points to where it is enforced or explained.
+`QS` is `home/quickshell/.config/quickshell`; `QS/README.md` indexes the folders and per-feature docs. Each rule points to where it is enforced or explained. Reviewers check Quickshell diffs against this section.
 
 - Layers: a file imports its own layer or a lower one, in the order of `LAYERS` in `lib/check/steps/qml_layers.py` (`qml-layers`; the ranks change there, not here). `core/` imports nothing outside `core/`. A kept upward edge goes in `lib/check/qml-layers.allow`; delete the line in the PR that removes the edge.
 - Imports: folders as `import qs.<path>`, JS relative (`import "Tints.js" as Tints`). Feature-to-feature and style-to-style imports are unchecked: go through a singleton.

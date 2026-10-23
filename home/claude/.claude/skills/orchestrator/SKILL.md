@@ -29,7 +29,7 @@ When a shot needs the owner's decision (comparing look options, or a check the t
 
 Skills that only wrap a script: when you just need to run the script, read only that skill's `## Scripts` section (`awk '/^## Scripts/{f=1;next} /^#/{f=0} f' <SKILL.md>`) instead of loading the skill; load the whole skill when it has no such section, or when the script fails or the case isn't covered.
 
-Review dimensions, used by every review below: correctness and regressions, missed requirements, scope (unrelated changes), reuse and unnecessary complexity, weak tests. When the diff touches Quickshell code, also check it against the repo's AGENTS.md "Quickshell structure" section (layers, imports, feature-to-feature only via a singleton).
+Review dimensions, used by every review below: correctness and regressions, missed requirements, scope (unrelated changes), reuse and unnecessary complexity, weak tests.
 
 When the owner asks you to hand off, pass the baton or wind down, load `orchestrator-handoff`; a request to hand over from another session goes to the owner.
 
