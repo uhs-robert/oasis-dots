@@ -27,14 +27,16 @@ Item {
     property bool sheen_on: root.st.frame_float > 0
     property color tint_color: root.st.pal.primary_light
     property bool device: false
+    // The surface is a frame drawer, whose fill and rim are drawn under it: every layer that paints a panel fill, an outer border or glow, or a dither/scanline texture stays off; content decor stays.
+    property bool drawer: false
 
     default property alias content: glow_layer.data
     property alias decor: decor_item.data
     property alias overlay: overlay_item.data
     readonly property alias layer_item: glow_layer
 
-    readonly property color fill_color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.clear_fill ? "transparent" : root.st.frame_follows_island ? root.island_color : root.st.frame_color
-    readonly property real border_width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame || root.clear_border ? 0 : root.st.frame_border_width
+    readonly property color fill_color: root.st.frame_chamfer > 0 || root.st.frame_visor || root.st.custom_frame || root.clear_fill || root.drawer ? "transparent" : root.st.frame_follows_island ? root.island_color : root.st.frame_color
+    readonly property real border_width: root.st.frame_visor || root.st.frame_chamfer > 0 || root.st.custom_frame || root.clear_border || root.drawer ? 0 : root.st.frame_border_width
     // Explicit corner radii antialias differently from `radius` at fractional scales.
     property bool corner_radii: root.top_left_radius !== root.radius || root.top_right_radius !== root.radius || root.bottom_left_radius !== root.radius || root.bottom_right_radius !== root.radius
 
@@ -59,62 +61,69 @@ Item {
         border.color: root.st.frame_border_color
     }
 
-    VisorGlass {
+    // Panel layers stack in one item so a drawer hides them together, whatever each decides for itself.
+    Item {
+        id: panel_layers
+        visible: !root.drawer
         anchors.fill: parent
-        top_cut: root.visor_top_cut
-    }
 
-    Shape {
-        id: frame_glow
-        visible: root.st.frame_glow.a > 0
-        anchors.fill: parent
-        anchors.margins: root.st.frame_border_width
-
-        ShapePath {
-            strokeWidth: -1
-            fillGradient: RadialGradient {
-                centerX: frame_glow.width / 2
-                centerY: 0
-                focalX: frame_glow.width / 2
-                focalY: 0
-                centerRadius: root.glow_fit_height ? Math.max(frame_glow.width * 0.6, Math.min(frame_glow.height, 420)) : frame_glow.width * 0.6
-                focalRadius: 0
-                GradientStop { position: 0; color: root.st.frame_glow }
-                GradientStop { position: 0.72; color: root.st.frame_color }
-            }
-            PathRectangle { width: frame_glow.width; height: frame_glow.height }
+        VisorGlass {
+            anchors.fill: parent
+            top_cut: root.visor_top_cut
         }
-    }
 
-    FrameShade {
-        anchors.fill: parent
-        anchors.margins: root.st.frame_border_width
-        st: root.st
-        top_left_radius: Math.max(0, root.top_left_radius - root.st.frame_border_width)
-        top_right_radius: Math.max(0, root.top_right_radius - root.st.frame_border_width)
-        bottom_radius: Math.max(0, Math.min(root.bottom_left_radius, root.bottom_right_radius) - root.st.frame_border_width)
-        chamfer: root.st.frame_chamfer
-    }
+        Shape {
+            id: frame_glow
+            visible: root.st.frame_glow.a > 0
+            anchors.fill: parent
+            anchors.margins: root.st.frame_border_width
 
-    CustomFrame {
-        anchors.fill: parent
-        st: root.st
-        device: root.device
-        top_radius: root.inner_top_radius
-        bottom_radius: root.bottom_radius
-    }
+            ShapePath {
+                strokeWidth: -1
+                fillGradient: RadialGradient {
+                    centerX: frame_glow.width / 2
+                    centerY: 0
+                    focalX: frame_glow.width / 2
+                    focalY: 0
+                    centerRadius: root.glow_fit_height ? Math.max(frame_glow.width * 0.6, Math.min(frame_glow.height, 420)) : frame_glow.width * 0.6
+                    focalRadius: 0
+                    GradientStop { position: 0; color: root.st.frame_glow }
+                    GradientStop { position: 0.72; color: root.st.frame_color }
+                }
+                PathRectangle { width: frame_glow.width; height: frame_glow.height }
+            }
+        }
 
-    FrameInset {
-        st: root.st
-        top_radius: root.inner_top_radius
-        bottom_radius: root.bottom_radius
-        top_offset: root.inset_top_offset
-    }
+        FrameShade {
+            anchors.fill: parent
+            anchors.margins: root.st.frame_border_width
+            st: root.st
+            top_left_radius: Math.max(0, root.top_left_radius - root.st.frame_border_width)
+            top_right_radius: Math.max(0, root.top_right_radius - root.st.frame_border_width)
+            bottom_radius: Math.max(0, Math.min(root.bottom_left_radius, root.bottom_right_radius) - root.st.frame_border_width)
+            chamfer: root.st.frame_chamfer
+        }
 
-    Sheen {
-        color_top: root.sheen_on ? root.st.sheen : "transparent"
-        corner: root.top_left_radius
-        edge: root.st.frame_border_width
+        CustomFrame {
+            anchors.fill: parent
+            st: root.st
+            device: root.device
+            top_radius: root.inner_top_radius
+            bottom_radius: root.bottom_radius
+        }
+
+        FrameInset {
+            st: root.st
+            top_radius: root.inner_top_radius
+            bottom_radius: root.bottom_radius
+            top_offset: root.inset_top_offset
+        }
+
+        Sheen {
+            color_top: root.sheen_on ? root.st.sheen : "transparent"
+            corner: root.top_left_radius
+            edge: root.st.frame_border_width
+        }
     }
 
     Item {
@@ -173,20 +182,26 @@ Item {
         }
     }
 
-    Scanlines {
-        visible: root.st.scanlines && root.st.frame_octagon <= 0
+    // Textures wait for a drawer until screenshots show a mismatch with the frame.
+    Item {
+        visible: !root.drawer
         anchors.fill: parent
-        anchors.margins: root.radius > 0 ? root.st.frame_border_width : 0
-        color: root.st.scanline_color
-        period: root.st.scanline_period
-    }
 
-    Dither {
-        anchors.fill: parent
-        anchors.margins: root.st.frame_border_width
-        color: root.st.dither
-        radius: root.bottom_radius
-        top_radius: root.inner_top_radius
+        Scanlines {
+            visible: root.st.scanlines && root.st.frame_octagon <= 0
+            anchors.fill: parent
+            anchors.margins: root.radius > 0 ? root.st.frame_border_width : 0
+            color: root.st.scanline_color
+            period: root.st.scanline_period
+        }
+
+        Dither {
+            anchors.fill: parent
+            anchors.margins: root.st.frame_border_width
+            color: root.st.dither
+            radius: root.bottom_radius
+            top_radius: root.inner_top_radius
+        }
     }
 
     Item {

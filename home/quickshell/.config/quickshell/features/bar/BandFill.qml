@@ -33,6 +33,8 @@ Item {
     property real phase_y: 0
     // Drawn above the rim, in the band frame, clipped to the band.
     property Component ornament: null
+    // { x, y, w, h } in the band frame where the inset line, rim and ornament are left out, for a drawer's mouth.
+    property var line_gaps: []
 
     readonly property bool vertical: root.edge === "left" || root.edge === "right"
     readonly property var affine: Band.band_affine(root.edge, root.thickness)
@@ -125,47 +127,57 @@ Item {
             }
         }
 
-        Loader {
-            anchors.fill: parent
-            active: root.inset_width > 0 && root.inset_color.a > 0
-            sourceComponent: Shape {
-                preferredRendererType: Shape.CurveRenderer
+        Component {
+            id: inset_line
+            Loader {
+                active: root.inset_width > 0 && root.inset_color.a > 0
+                sourceComponent: Shape {
+                    preferredRendererType: Shape.CurveRenderer
 
-                ShapePath {
-                    strokeWidth: root.inset_width
-                    strokeColor: root.inset_color
-                    fillColor: "transparent"
-                    capStyle: ShapePath.FlatCap
-                    startX: root.inset_start
-                    startY: root.inset_line_y
-                    PathLine { x: root.length - root.inset_end; y: root.inset_line_y }
-                }
-            }
-        }
-
-        Loader {
-            anchors.fill: parent
-            active: root.border_width > 0 && root.border_color.a > 0
-            sourceComponent: Shape {
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    strokeWidth: root.border_width
-                    strokeColor: root.border_color
-                    fillColor: "transparent"
-                    capStyle: ShapePath.FlatCap
-                    PathPolyline {
-                        path: Band.band_rim_stroke(root.length, root.thickness, root.inset_start, root.inset_end, root.border_width).map(p => Qt.point(p[0], p[1]))
+                    ShapePath {
+                        strokeWidth: root.inset_width
+                        strokeColor: root.inset_color
+                        fillColor: "transparent"
+                        capStyle: ShapePath.FlatCap
+                        startX: root.inset_start
+                        startY: root.inset_line_y
+                        PathLine { x: root.length - root.inset_end; y: root.inset_line_y }
                     }
                 }
             }
         }
 
-        Loader {
-            anchors.fill: parent
-            clip: true
-            active: root.ornament !== null
-            sourceComponent: root.ornament
+        Component {
+            id: rim_line
+            Loader {
+                active: root.border_width > 0 && root.border_color.a > 0
+                sourceComponent: Shape {
+                    preferredRendererType: Shape.CurveRenderer
+
+                    ShapePath {
+                        strokeWidth: root.border_width
+                        strokeColor: root.border_color
+                        fillColor: "transparent"
+                        capStyle: ShapePath.FlatCap
+                        PathPolyline {
+                            path: Band.band_rim_stroke(root.length, root.thickness, root.inset_start, root.inset_end, root.border_width).map(p => Qt.point(p[0], p[1]))
+                        }
+                    }
+                }
+            }
         }
+
+        Component {
+            id: ornament_layer
+            Loader {
+                clip: true
+                active: root.ornament !== null
+                sourceComponent: root.ornament
+            }
+        }
+
+        GapClip { w: root.length; h: root.thickness; gaps: root.line_gaps; source: inset_line }
+        GapClip { w: root.length; h: root.thickness; gaps: root.line_gaps; source: rim_line }
+        GapClip { w: root.length; h: root.thickness; gaps: root.line_gaps; source: ornament_layer }
     }
 }

@@ -6,6 +6,8 @@ import qs.core
 import qs.theme
 import "../../../ui/Search.js" as Search
 import "fuzzy_rows.js" as FuzzyRows
+import "../../bar/DrawerGeometry.js" as Drawer
+import "../../bar/FrameGeometry.js" as FrameGeometry
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui
 import qs.ui.frames
@@ -33,7 +35,9 @@ PanelWindow {
         enabled: root.reserving && root.visible && root.drop_progress === 1
         NumberAnimation { id: body_grow; duration: 150; easing.type: Easing.OutCubic }
     }
-    readonly property real panel_height: root.reserving ? Math.min(root.height, root.drawn_body_height + root.header_height + root.footer_height + root.st.frame_drop) : root.height
+    // A drawer sizes its panel from the content, not from its window, which also holds the cover strip and the fillets.
+    readonly property real panel_limit: root.drawer ? root.base_height : root.height
+    readonly property real panel_height: root.reserving ? Math.min(root.panel_limit, root.drawn_body_height + root.header_height + root.footer_height + root.drop_room) : root.panel_limit
     property string title: popup_name.toUpperCase()
     // A live value after the style's title readout, e.g. unread counts.
     property string title_value: ""
@@ -226,18 +230,75 @@ PanelWindow {
     property bool fit_island: false
     // Full width along the bottom of the screen, rising from its edge; the frame loses its rounded corners.
     property bool dock_bottom: false
-    readonly property real frame_radius: root.dock_bottom ? 0 : root.st.frame_radius
+    readonly property real frame_radius: root.dock_bottom ? 0 : root.drawer ? root.drawer_fillet : root.st.frame_radius
     // Over a bottom bar the popup rises from it: everything named for the bar side ("top" below) lands on the frame's
     // bottom edge instead, and the drop room and shadow go above the frame.
     readonly property bool rises: !root.dock_bottom && BarSettings.position_on(root.held_screen_name) === "bottom"
-    readonly property bool floating: root.st.frame_float > 0 && !root.dock_bottom && !root.island_capsule
+    readonly property bool floating: root.st.frame_float > 0 && !root.dock_bottom && !root.island_capsule && !root.drawer
     readonly property real top_radius: root.floating ? root.frame_radius : 0
     // Hung flush from a capsule: square under it, rounded where the frame reaches past its ends.
-    readonly property real overhang: root.island_capsule && !root.dock_bottom ? root.width - root.island_width : 0
+    readonly property real overhang: root.island_capsule && !root.dock_bottom && !root.drawer ? root.width - root.island_width : 0
     readonly property real top_left_radius: root.overhang > 0 && root.side !== "left" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
     readonly property real top_right_radius: root.overhang > 0 && root.side !== "right" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
     // Where the frame's body starts inside the reveal, which grows from the bar side.
-    readonly property real body_shift: root.rises ? reveal.height - (root.panel_height - root.line_height) : 0
+    // A drawer's content rides out with its far edge instead of staying put while the body uncovers it.
+    readonly property real body_shift: root.drawer ? (root.rises ? 0 : reveal.height - root.panel_height) : root.rises ? reveal.height - (root.panel_height - root.line_height) : 0
+
+    // With the screen frame on, a bar-hung popup is a drawer: DrawerShape draws it in the frame's material, grown out of
+    // the seam with a concave fillet at each end, and the accent line and drop shadow give way to it.
+    readonly property var screen_frame: !root.passive && !root.dock_bottom && root.screen ? ScreenFrames.layout_for(root.screen) : null
+    readonly property bool drawer: root.screen_frame !== null
+    readonly property real drop_room: root.drawer ? 0 : root.st.frame_drop
+    readonly property real drawer_fillet: root.drawer ? Style.screen_frame_kit.radius : 0
+    readonly property real drawer_cover: Drawer.cover_depth(Style.bar_border_width, Style.bar_inset_gap, Style.bar_inset_width)
+    readonly property var drawer_hole: root.screen_frame ? FrameGeometry.hole_rect(root.screen_frame) : null
+    // A side island's end against its side band is a pocket, flush down the band; its other end, like a centre popup's, a fillet.
+    readonly property string drawer_start_kind: root.side === "left" ? "pocket" : "fillet"
+    readonly property string drawer_end_kind: root.side === "right" ? "pocket" : "fillet"
+    readonly property real drawer_body_width: root.drawer_hole ? Drawer.body_length(root.side, root.base_width, root.drawer_hole.w, root.drawer_fillet) : 0
+    function drawer_spec(extent) {
+        return {
+            edge: root.rises ? "bottom" : "top",
+            body_length: root.drawer_body_width,
+            body_depth: root.base_height,
+            extent: extent,
+            radius: root.drawer_fillet,
+            fillet: root.drawer_fillet,
+            start_kind: root.drawer_start_kind,
+            end_kind: root.drawer_end_kind,
+            cover: root.drawer_cover
+        };
+    }
+    // The window's size follows the full drawer, so it never resizes while the shape grows inside it.
+    // None of the three is ever null, so a frame switched off under an open popup cannot leave DrawerShape without a layout.
+    readonly property var drawer_full: Drawer.drawer_layout(root.drawer_spec(root.base_height))
+    readonly property var drawer_layout: Drawer.drawer_layout(root.drawer_spec(root.drawer ? root.panel_height * root.drop_progress : 0))
+    readonly property var drawer_body: Drawer.body_rect(root.drawer_layout)
+    // Layer margins are integers; the cover absorbs the rounding.
+    readonly property real drawer_seam: root.screen_frame ? FrameGeometry.seam_of(root.screen_frame, root.rises ? "bottom" : "top") : 0
+    readonly property real drawer_margin_x: root.drawer_hole ? Drawer.margin_along(root.side, root.drawer_hole, root.screen.width, root.drawer_cover, root.drawer_full.length) : 0
+    readonly property real drawer_margin_y: root.screen_frame ? Drawer.margin_across(root.rises, root.drawer_seam, root.screen.height, root.drawer_cover) : 0
+    // The depth the drawer has drawn, not the window's reserved one: a popup with a reserve_height is a taller window than its shape.
+    readonly property real drawn_depth: root.drawer_layout.drawn_depth
+    // Translucent islands make the drawer translucent too, so the frame and the strip leave their lines out under its window.
+    readonly property bool drawer_translucent: root.drawer && Style.islands_translucent
+    readonly property var drawer_window: root.drawer_translucent && root.visible ? {
+        x: root.side === "right" ? root.screen.width - root.drawer_margin_x - root.width : root.drawer_margin_x,
+        y: root.rises ? root.screen.height - root.drawer_margin_y - root.drawn_depth : root.drawer_margin_y,
+        w: root.width,
+        h: root.drawn_depth
+    } : null
+    // Names this popup's entry in ScreenFrames.drawer_windows, so it only ever clears its own.
+    readonly property string drawer_key: String(root)
+    property string published_screen_name: ""
+    function publish_drawer_window() {
+        const name = root.drawer_window ? root.held_screen_name : "";
+        if (root.published_screen_name !== "" && root.published_screen_name !== name) ScreenFrames.set_drawer_window(root.published_screen_name, root.drawer_key, null);
+        root.published_screen_name = name;
+        if (name !== "") ScreenFrames.set_drawer_window(name, root.drawer_key, root.drawer_window);
+    }
+    onDrawer_windowChanged: root.publish_drawer_window()
+    Component.onDestruction: if (root.published_screen_name !== "") ScreenFrames.set_drawer_window(root.published_screen_name, root.drawer_key, null)
     // Shortcuts fire before the focused item, so popups that bind h/l themselves still walk.
     function walk_allowed() {
         const f = content_scope.Window.activeFocusItem;
@@ -257,8 +318,10 @@ PanelWindow {
     }
 
     // Never narrower than the island's bottom edge (its body, between the slants); a fit_island popup adds the shell's side room on top so the content keeps the island's width.
-    implicitWidth: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width + root.device_side * 2 : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, island_floor_width, root.st.popup_min_width)
-    implicitHeight: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.st.frame_drop
+    implicitWidth: root.drawer ? root.drawer_full.surface.width : root.base_width
+    readonly property real base_width: root.passive ? root.island_width : root.fit_island && root.island_width > 0 && root.side !== "center" ? root.island_width + root.device_side * 2 : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, island_floor_width, root.st.popup_min_width)
+    implicitHeight: root.drawer ? root.drawer_full.surface.height : root.base_height
+    readonly property real base_height: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.drop_room
     default property alias content: content_scope.data
 
     // Open with every entrance animation done, including the body growing to fit late-loading content; Popups reports it
@@ -293,21 +356,23 @@ PanelWindow {
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
     anchors.top: !dock_bottom && !rises
     anchors.bottom: dock_bottom || rises
-    anchors.left: side === "left" || dock_bottom
-    anchors.right: side === "right" || dock_bottom
-    margins.top: root.floating && !root.rises ? root.st.frame_float : 0
-    margins.bottom: root.floating && root.rises ? root.st.frame_float : 0
-    margins.left: root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : 0
-    margins.right: root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : 0
+    anchors.left: root.drawer ? root.side !== "right" : side === "left" || dock_bottom
+    anchors.right: root.drawer ? root.side === "right" : side === "right" || dock_bottom
+    // A drawer places itself against the frame's seam, so it ignores the exclusive zones the bands reserve.
+    margins.top: root.drawer ? (root.rises ? 0 : root.drawer_margin_y) : root.floating && !root.rises ? root.st.frame_float : 0
+    margins.bottom: root.drawer ? (root.rises ? root.drawer_margin_y : 0) : root.floating && root.rises ? root.st.frame_float : 0
+    margins.left: root.drawer ? (root.side === "right" ? 0 : root.drawer_margin_x) : root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : 0
+    margins.right: root.drawer ? (root.side === "right" ? root.drawer_margin_x : 0) : root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : 0
+    exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
     exclusiveZone: 0
     color: "transparent"
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.passive || root.held_hands_off ? WlrKeyboardFocus.None : root.wanted && (root.hold_keyboard || Popups.grab_keyboard) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
-    mask: root.passive || root.held_hands_off ? no_input : root.reserving || root.shadow_room > 0 ? panel_input : null
+    mask: root.passive || root.held_hands_off ? no_input : root.drawer || root.reserving || root.shadow_room > 0 ? panel_input : null
     // The soft shadow's room under the frame; it passes clicks through to the scrim like the reserve does.
-    readonly property real shadow_room: !root.dock_bottom && root.st.frame_shadow.a > 0 ? root.st.frame_drop : 0
+    readonly property real shadow_room: !root.dock_bottom && !root.drawer && root.st.frame_shadow.a > 0 ? root.st.frame_drop : 0
 
     Region {
         id: no_input
@@ -331,12 +396,13 @@ PanelWindow {
 
     Item {
         id: panel_area
-        y: root.dock_bottom ? root.height - root.panel_height : root.rises ? root.height - root.panel_height + root.shadow_room : 0
-        width: root.width
-        height: root.panel_height - root.shadow_room
+        x: root.drawer ? root.drawer_body.x : 0
+        y: root.drawer ? root.drawer_body.y : root.dock_bottom ? root.height - root.panel_height : root.rises ? root.height - root.panel_height + root.shadow_room : 0
+        width: root.drawer ? root.drawer_body.width : root.width
+        height: root.drawer ? root.drawer_body.height : root.panel_height - root.shadow_room
     }
 
-    readonly property int line_height: root.st.accent_height
+    readonly property int line_height: root.drawer ? 0 : root.st.accent_height
     readonly property bool has_title: root.st.show_title && title !== ""
     readonly property bool has_footer: root.st.show_footer && footer_hint !== ""
     readonly property bool lcd: root.st.lcd_top.a > 0
@@ -432,14 +498,14 @@ PanelWindow {
 
     SequentialAnimation {
         id: open_anim
-        NumberAnimation { target: root; property: "line_progress"; to: 1; duration: 180 * root.anim_scale; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "line_progress"; to: 1; duration: root.drawer ? 0 : 180 * root.anim_scale; easing.type: Easing.OutCubic }
         NumberAnimation { target: root; property: "drop_progress"; to: 1; duration: 190 * root.anim_scale; easing.type: Easing.OutCubic }
     }
 
     SequentialAnimation {
         id: close_anim
         NumberAnimation { target: root; property: "drop_progress"; to: 0; duration: 120 * root.anim_scale; easing.type: Easing.InCubic }
-        NumberAnimation { target: root; property: "line_progress"; to: 0; duration: 90 * root.anim_scale; easing.type: Easing.InCubic }
+        NumberAnimation { target: root; property: "line_progress"; to: 0; duration: root.drawer ? 0 : 90 * root.anim_scale; easing.type: Easing.InCubic }
         ScriptAction {
             script: {
                 root.visible = false;
@@ -463,7 +529,7 @@ PanelWindow {
         onPressed: mouse => {
             const px = mouse.x + outside_catch.x;
             const py = mouse.y + outside_catch.y;
-            if (px >= 0 && py >= panel_area.y && px < root.width && py < panel_area.y + panel_area.height) mouse.accepted = false;
+            if (px >= panel_area.x && py >= panel_area.y && px < panel_area.x + panel_area.width && py < panel_area.y + panel_area.height) mouse.accepted = false;
             else if (root.wanted) Popups.close();
         }
     }
@@ -472,8 +538,20 @@ PanelWindow {
         return side === "right" ? width - w : side === "left" ? 0 : (width - w) / 2;
     }
 
+    Loader {
+        active: root.drawer
+        sourceComponent: DrawerShape {
+            layout: root.drawer_layout
+            screen_name: root.held_screen_name
+            translucent: root.drawer_translucent
+            // The handheld shell's own edge is enough round the body.
+            lines_depth: root.device ? Drawer.mouth_depth(root.drawer_layout) : -1
+        }
+    }
+
     Rectangle {
         id: accent_line
+        visible: !root.drawer
         readonly property real w: (root.st.accent_full_width || root.dock_bottom ? root.width : root.island_width) * root.line_progress
         x: root.edge_x(w)
         y: root.dock_bottom ? reveal.y - root.line_height : root.rises ? root.height - root.line_height : 0
@@ -490,13 +568,14 @@ PanelWindow {
         readonly property string size_class: root.size_class
         // Lets MenuFooter and RowLabel inside draw this popup's search.
         readonly property var search_popup: root
-        y: root.dock_bottom ? root.height - reveal.height : root.rises ? root.height - root.line_height - reveal.height : root.line_height
-        width: root.width
+        x: root.drawer ? root.drawer_body.x : 0
+        y: root.drawer ? root.drawer_body.y : root.dock_bottom ? root.height - reveal.height : root.rises ? root.height - root.line_height - reveal.height : root.line_height
+        width: root.drawer ? root.drawer_body.width : root.width
         height: (root.panel_height - root.line_height) * root.drop_progress
         clip: true
 
         Rectangle {
-            visible: !root.dock_bottom && root.st.frame_drop > 0 && root.st.frame_shadow.a === 0
+            visible: !root.dock_bottom && !root.drawer && root.st.frame_drop > 0 && root.st.frame_shadow.a === 0
             y: root.body_shift + (root.rises ? 0 : root.st.frame_drop)
             width: root.width
             height: root.panel_height - root.line_height - root.st.frame_drop
@@ -508,7 +587,7 @@ PanelWindow {
         }
 
         Loader {
-            active: !root.dock_bottom && root.st.frame_shadow.a > 0
+            active: !root.dock_bottom && !root.drawer && root.st.frame_shadow.a > 0
             x: root.frame_radius
             y: root.body_shift + root.st.frame_drop / 2
             width: root.width - root.frame_radius * 2
@@ -523,9 +602,9 @@ PanelWindow {
         StyledFrame {
             id: frame
             st: root.st
-            y: root.body_shift + (root.rises ? root.st.frame_drop : 0)
-            width: root.width
-            height: root.panel_height - root.line_height - (root.dock_bottom ? 0 : root.st.frame_drop)
+            y: root.body_shift + (root.rises ? root.drop_room : 0)
+            width: root.drawer ? root.drawer_body.width : root.width
+            height: root.panel_height - root.line_height - (root.dock_bottom ? 0 : root.drop_room)
             radius: root.frame_radius
             top_left_radius: root.rises ? root.frame_radius : root.top_left_radius
             top_right_radius: root.rises ? root.frame_radius : root.top_right_radius
@@ -537,6 +616,7 @@ PanelWindow {
             island_color: root.held_color
             clear_fill: root.device || root.st.border_title
             clear_border: root.st.border_title
+            drawer: root.drawer
             visor_top_cut: root.top_radius > 0 || root.rises ? 6 : 0
             sheen_on: root.floating
             tint_color: Theme.theme_primary_light
@@ -592,9 +672,9 @@ PanelWindow {
                 anchors.bottom: parent.bottom
                 anchors.margins: root.st.frame_border_width
                 height: base_footer.implicitHeight + 8
-                color: root.st.frame_follows_island ? root.held_color : root.st.frame_color
-                bottomLeftRadius: root.st.frame_radius
-                bottomRightRadius: root.st.frame_radius
+                color: root.drawer ? Style.strip_color : root.st.frame_follows_island ? root.held_color : root.st.frame_color
+                bottomLeftRadius: root.drawer ? root.frame_radius : root.st.frame_radius
+                bottomRightRadius: root.drawer ? root.frame_radius : root.st.frame_radius
             }
 
             MenuFooter {

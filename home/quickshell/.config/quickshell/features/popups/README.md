@@ -2,6 +2,10 @@
 
 `popups/` holds the popup framework: `Popups` (which popup is open) and its IPC handler, the `Popup` base window with its title, keys, decor, key help, footer, title strip, style frames and `Slider` in `frames/`, `Tooltip` and `TooltipShelf`, `Confirm`, its IPC handler and `ConfirmPopup`, `LazyPopup`, `PopupScrim` and the `WhichKey` overlay.
 
+## Frame drawers
+
+With the screen frame on (`features/bar/README.md`, "Drawers"), a bar-hung popup is a drawer instead of a hung panel: `Popup.qml` places its window against the frame's seam (ignoring the exclusive zones), draws it with `DrawerShape` in the frame's material, and slides the body out of the seam with the content riding along. A centre popup has a fillet at each end; a left or right island's popup has a pocket against that side band. The accent line, drop shadow and the style's own panel fill and border give way; the title, LCD and other inner decor stay, and dither and scanlines are off. With translucent islands the drawer takes their opacity too: it fills only the hole, and the frame and the bar's strip leave their rim and inset line out under the drawer's window (`ScreenFrames.drawer_windows`, drawn round it by `GapClip`) so the join is one fill, not two stacked. A drawer in a style with the handheld shell keeps its rim and inset line only along the mouth and fillets, not round the body. The gameboy handheld shell inside a drawer is interim: it still covers the rim and its rounded top corners leave notches at the mouth, until the gameboy drawer look is decided from screenshots. Clicks outside the visible body, fillet corners included, pass through. `settled` and `closing` keep their meaning: the slide is the same `drop_progress` run, and the accent-line step takes no time. Passive tooltips and the docked pickers are not drawers yet, and with the frame off nothing changes.
+
 ## Keys
 
 Every popup uses the same keys. `?` shows the full list for the popup you're in.

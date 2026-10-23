@@ -86,8 +86,8 @@ const cases = [
 // Surface size: fixed for the whole animation, swapped on the vertical edges.
 for (const [start_kind, end_kind] of KINDS) {
   const pockets = (start_kind === "pocket") + (end_kind === "pocket");
-  const length = 400 + (start_kind === "pocket" ? cover : 12) + (end_kind === "pocket" ? cover : 12);
-  const depth = cover + 200 + (pockets ? 12 : 0);
+  const length = 400 + (start_kind === "pocket" ? cover : 12 + 2) + (end_kind === "pocket" ? cover : 12 + 2);
+  const depth = cover + 200 + (pockets ? 12 + 2 : 0);
   for (const edge of EDGES) {
     const vertical = edge === "left" || edge === "right";
     for (const extent of [0, 50, 200]) {
@@ -185,11 +185,11 @@ cases.push(["fillet end fills the corner against the band", () => in_polygon([11
 
 // Rects in window coordinates exclude the cover and the fillets.
 const rect_of = (edge, over) => { const lay = lay_of(Object.assign({ edge }, over)); return plain(D.body_rect(lay)); };
-cases.push(["body_rect top", () => rect_of("top"), { x: 12, y: cover, width: 400, height: 200 }]);
-cases.push(["body_rect bottom", () => rect_of("bottom"), { x: 12, y: 0, width: 400, height: 200 }]);
-cases.push(["body_rect left", () => rect_of("left"), { x: cover, y: 12, width: 200, height: 400 }]);
-cases.push(["body_rect right", () => rect_of("right"), { x: 0, y: 12, width: 200, height: 400 }]);
-cases.push(["body_rect follows the extent", () => rect_of("top", { extent: 80 }), { x: 12, y: cover, width: 400, height: 80 }]);
+cases.push(["body_rect top", () => rect_of("top"), { x: 14, y: cover, width: 400, height: 200 }]);
+cases.push(["body_rect bottom", () => rect_of("bottom"), { x: 14, y: 0, width: 400, height: 200 }]);
+cases.push(["body_rect left", () => rect_of("left"), { x: cover, y: 14, width: 200, height: 400 }]);
+cases.push(["body_rect right", () => rect_of("right"), { x: 0, y: 14, width: 200, height: 400 }]);
+cases.push(["body_rect follows the extent", () => rect_of("top", { extent: 80 }), { x: 14, y: cover, width: 400, height: 80 }]);
 cases.push(["body_rect pocket start", () => rect_of("top", { start_kind: "pocket" }).x, cover]);
 cases.push(["input_rect equals the body", () => EDGES.every(e => { const lay = lay_of({ edge: e }); return JSON.stringify(D.input_rect(lay)) === JSON.stringify(D.body_rect(lay)); }), true]);
 cases.push(["body_rect excludes the cover strip and the fillets", () => {
@@ -230,6 +230,69 @@ for (const [start_kind, end_kind] of KINDS) {
     }, true]);
   }
 }
+
+// Placement on a 1920x1080 screen with a 6 px band: the hole is 1908 wide from x 6, the cover 3 px, the top seam at 30 and the bottom seam at 1050.
+const hole = F.hole_rect(top_frame);
+const full_length = 600;
+cases.push(["body length keeps a narrower popup's width", () => D.body_length("center", 400, hole.w, 12), 400]);
+cases.push(["centre body clips to the hole less two fillets", () => D.body_length("center", 5000, hole.w, 12), 1884]);
+cases.push(["left body clips to the hole less one fillet", () => D.body_length("left", 5000, hole.w, 12), 1896]);
+cases.push(["right body clips to the hole less one fillet", () => D.body_length("right", 5000, hole.w, 12), 1896]);
+cases.push(["left margin starts under the band by the cover", () => D.margin_along("left", hole, 1920, cover, full_length), 3]);
+cases.push(["right margin counts from the right screen edge", () => D.margin_along("right", hole, 1920, cover, full_length), 3]);
+cases.push(["centre margin centres the window on the hole", () => D.margin_along("center", hole, 1920, cover, full_length), 660]);
+cases.push(["centre margin rounds a fractional origin", () => D.margin_along("center", { x: 10.4, w: 100 }, 1920, cover, 51), 35]);
+cases.push(["top margin is the seam less the cover", () => D.margin_across(false, F.seam_of(top_frame, "top"), 1080, cover), 27]);
+cases.push(["bottom margin counts from the bottom screen edge", () => D.margin_across(true, F.seam_of(bottom_frame, "bottom"), 1080, cover), 27]);
+cases.push(["margins are integers at fractional seams", () => Number.isInteger(D.margin_across(true, 36.4, 1079.5, 3)) && Number.isInteger(D.margin_across(false, 36.4, 1079.5, 3)), true]);
+
+// An outline, lead included, must stay inside the window at the first and last extent, along and across the drawer.
+for (const edge of EDGES) {
+  for (const [start_kind, end_kind] of KINDS) {
+    for (const extent of [0, 200]) {
+      cases.push([`outline inside the window: ${edge} ${start_kind}/${end_kind} extent ${extent}`, () => {
+        const lay = D.drawer_layout(spec({ edge, start_kind, end_kind, extent }));
+        return D.outline_path(lay).every(p => p[1] <= lay.depth + 1e-9 && p[0] >= -1e-9 && p[0] <= lay.length + 1e-9);
+      }, true]);
+    }
+  }
+}
+
+// Translucent drawers: the fill stays in the hole, and the frame's lines are left out under the window.
+const area_of = loop => { let a = 0; for (let k = 0; k + 1 < loop.length; k++) a += loop[k][0] * loop[k + 1][1] - loop[k + 1][0] * loop[k][1]; return Math.abs(a) / 2; };
+for (const [start_kind, end_kind] of KINDS) {
+  for (const extent of [0, 50, 200]) {
+    const lay = () => lay_of({ start_kind, end_kind, extent });
+    cases.push([`hole fill stays in the hole ${start_kind}/${end_kind} extent ${extent}`, () => {
+      const l = lay(), lo = l.cover - 0.5;
+      return D.hole_fill_loop(l).every(p => p[1] >= lo - 1e-9 && p[0] >= (l.start_kind === "pocket" ? l.start_room : 0) - 1e-9 && p[0] <= l.length - (l.end_kind === "pocket" ? l.end_room : 0) + 1e-9);
+    }, true]);
+    cases.push([`hole fill is smaller than the opaque fill ${start_kind}/${end_kind} extent ${extent}`, () => area_of(D.hole_fill_loop(lay())) < area_of(D.fill_loop(lay())), true]);
+  }
+}
+cases.push(["hole fill is the body at full extent, no fillets", () => plain(D.hole_fill_loop(D.drawer_layout(spec({ fillet: 0, radius: 0, extent: 200, cover: 3 })))), [[2, 2.5], [2, 3], [2, 203], [402, 203], [402, 3], [402, 2.5], [2, 2.5]]]);
+cases.push(["mouth depth is the cover and the fillet", () => D.mouth_depth(D.drawer_layout(spec({ extent: 200 }))), cover + 12]);
+cases.push(["mouth depth follows a shrunk fillet", () => D.mouth_depth(D.drawer_layout(spec({ extent: 8 }))), cover + 4]);
+cases.push(["drawn depth follows the extent, not the reserved body depth", () => [100, 400].map(e => D.drawer_layout(spec({ body_depth: 400, extent: e })).drawn_depth), [cover + 100, cover + 400]]);
+cases.push(["a pocket drawer's drawn depth keeps the pocket room", () => D.drawer_layout(spec({ body_depth: 400, extent: 100, start_kind: "pocket" })).drawn_depth - cover - 100, 14]);
+cases.push(["drawn depth at full extent is the window's", () => KINDS.map(k => { const l = D.drawer_layout(spec({ start_kind: k[0], end_kind: k[1] })); return l.drawn_depth === l.depth; }), [true, true, true, true]]);
+cases.push(["gap regions without a gap", () => B.gap_regions(100, 20, []), [{ x: 0, y: 0, w: 100, h: 20 }]]);
+cases.push(["gap regions round a gap", () => B.gap_regions(100, 20, [{ x: 30, y: 5, w: 40, h: 10 }]), [{ x: 0, y: 0, w: 30, h: 20 }, { x: 30, y: 0, w: 40, h: 5 }, { x: 30, y: 15, w: 40, h: 5 }, { x: 70, y: 0, w: 30, h: 20 }]]);
+cases.push(["gap regions drop an empty side and clamp", () => B.gap_regions(100, 20, [{ x: -10, y: -5, w: 60, h: 100 }]), [{ x: 50, y: 0, w: 50, h: 20 }]]);
+cases.push(["gap regions cover everything but the gap", () => { const g = { x: 30, y: 5, w: 40, h: 10 }; return B.gap_regions(100, 20, [g]).reduce((a, r) => a + r.w * r.h, 0) + g.w * g.h; }, 2000]);
+const area_left = (gaps) => B.gap_regions(100, 20, gaps).reduce((a, r) => a + r.w * r.h, 0);
+cases.push(["two apart gaps leave two cut-outs", () => area_left([{ x: 10, y: 0, w: 10, h: 10 }, { x: 60, y: 0, w: 20, h: 10 }]), 2000 - 100 - 200]);
+cases.push(["overlapping gaps merge, nothing is counted twice", () => area_left([{ x: 10, y: 0, w: 30, h: 10 }, { x: 30, y: 0, w: 30, h: 10 }]), 2000 - 500]);
+cases.push(["gaps past the cap are folded in, never dropped", () => B.gap_regions(100, 20, [0, 1, 2, 3, 4].map(i => ({ x: i * 20, y: 0, w: 10, h: 10 }))).length <= B.region_slots(), true]);
+cases.push(["a folded gap still covers every drawer", () => area_left([0, 1, 2, 3, 4].map(i => ({ x: i * 20, y: 0, w: 10, h: 10 }))) <= 2000 - 5 * 100, true]);
+const reg_ab = F.drawer_windows_with(F.drawer_windows_with({}, "DP-1", "a", { x: 0, y: 0, w: 5, h: 5 }), "DP-1", "b", { x: 9, y: 0, w: 5, h: 5 });
+cases.push(["both popups' windows are held on a screen", () => F.drawer_window_rects(reg_ab, "DP-1"), [{ x: 0, y: 0, w: 5, h: 5 }, { x: 9, y: 0, w: 5, h: 5 }]]);
+cases.push(["a switch: the closing popup clears only its own window", () => F.drawer_window_rects(F.drawer_windows_with(reg_ab, "DP-1", "a", null), "DP-1"), [{ x: 9, y: 0, w: 5, h: 5 }]]);
+cases.push(["an unload of a popup that never published changes nothing", () => F.drawer_window_rects(F.drawer_windows_with(reg_ab, "DP-1", "c", null), "DP-1").length, 2]);
+cases.push(["the last window clearing drops the screen", () => F.drawer_windows_with(F.drawer_windows_with({}, "DP-1", "a", { x: 0, y: 0, w: 1, h: 1 }), "DP-1", "a", null), {}]);
+cases.push(["a publish leaves other screens' entries alone", () => F.drawer_windows_with(reg_ab, "DP-2", "a", null)["DP-1"] === reg_ab["DP-1"], true]);
+cases.push(["canonical rect is unchanged under a top bar", () => F.to_canonical_rect(top_frame, { x: 10, y: 20, w: 30, h: 40 }), { x: 10, y: 20, w: 30, h: 40 }]);
+cases.push(["canonical rect mirrors under a bottom bar", () => F.to_canonical_rect(bottom_frame, { x: 10, y: 20, w: 30, h: 40 }), { x: 10, y: bottom_frame.depth - 60, w: 30, h: 40 }]);
 
 let failed = 0;
 for (const [name, fn, expected] of cases) {

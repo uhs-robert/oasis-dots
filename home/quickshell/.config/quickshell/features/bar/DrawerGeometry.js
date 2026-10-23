@@ -31,16 +31,21 @@ function drawer_layout(spec) {
     const extent = Math.max(0, Math.min(spec.extent, spec.body_depth));
     const fillet_eff = Math.min(spec.fillet, extent / 2, spec.body_length / 2);
     const radius_eff = Math.min(spec.radius, extent / 2, spec.body_length / 2);
-    const start_room = spec.start_kind === "pocket" ? spec.cover : spec.fillet;
-    const end_room = spec.end_kind === "pocket" ? spec.cover : spec.fillet;
+    // A fillet end also reserves the LEAD its outline runs on along the frame's line; a pocket reserves its own in `depth`.
+    const start_room = spec.start_kind === "pocket" ? spec.cover : spec.fillet + LEAD;
+    const end_room = spec.end_kind === "pocket" ? spec.cover : spec.fillet + LEAD;
     const any_pocket = spec.start_kind === "pocket" || spec.end_kind === "pocket";
     const length = start_room + spec.body_length + end_room;
-    const depth = spec.cover + spec.body_depth + (any_pocket ? spec.fillet : 0);
+    // A pocket's outline runs LEAD px on down the side band past its arc, so the window reserves that too.
+    const pocket_room = any_pocket ? spec.fillet + LEAD : 0;
+    const depth = spec.cover + spec.body_depth + pocket_room;
     const vertical = spec.edge === "left" || spec.edge === "right";
     return {
         edge: spec.edge,
         length: length,
         depth: depth,
+        // How deep the shape has drawn so far; `depth` is the window's, which stays at the popup's full reserve.
+        drawn_depth: spec.cover + extent + pocket_room,
         cover: spec.cover,
         radius_eff: radius_eff,
         fillet_eff: fillet_eff,
@@ -81,6 +86,17 @@ function fill_loop(lay) {
     return without_repeats([[0, 0], first].concat(hole_side(lay), [last, [lay.length, 0], [0, 0]]));
 }
 
+// The fill for a translucent drawer: only what lies in the hole, so it never stacks on the translucent frame under the
+// cover strip and a pocket's column. It starts SEAM_OVERLAP px into the band so a fractional seam leaves no hairline.
+const SEAM_OVERLAP = 0.5;
+function hole_fill_loop(lay) {
+    const c = lay.cover, f = lay.fillet_eff, far = c + lay.body.d, top = c - SEAM_OVERLAP;
+    const hole = hole_side(lay);
+    const first = lay.start_kind === "pocket" ? [[lay.start_room, top], [lay.start_room, far + f]] : [[hole[0][0], top]];
+    const last = lay.end_kind === "pocket" ? [[lay.length - lay.end_room, far + f], [lay.length - lay.end_room, top]] : [[hole[hole.length - 1][0], top]];
+    return without_repeats(first.concat(hole, last, [first[0]]));
+}
+
 // The line round the material against the hole, open on the attached side. It runs LEAD px on past each end along the
 // frame's own line, so it overlaps that line's rim.
 function outline_path(lay) {
@@ -114,4 +130,29 @@ function body_rect(lay) {
 // Where clicks land: the body, so the band and the transparent fillet corners pass them through.
 function input_rect(lay) {
     return body_rect(lay);
+}
+
+// The body's length: the popup's own width, clipped to what the hole leaves once each fillet has its room (a centre drawer
+// has one at both ends, a side drawer's pocket needs none).
+function body_length(side, base_width, hole_width, fillet) {
+    return Math.min(base_width, hole_width - fillet * (side === "center" ? 2 : 1));
+}
+
+// The window's layer margin along the seam, an integer, from the screen edge it is anchored to: the left for a left or centre
+// drawer, the right for a right one. The cover pushes a side drawer's window out over its band; a centre one sits on the hole.
+function margin_along(side, hole, screen_width, cover, window_length) {
+    if (side === "left") return Math.round(hole.x - cover);
+    if (side === "right") return Math.round(screen_width - (hole.x + hole.w) - cover);
+    return Math.round(hole.x + (hole.w - window_length) / 2);
+}
+
+// The window's layer margin from the screen edge the drawer hangs from, an integer: the seam, less the cover under the bar.
+function margin_across(rises, seam, screen_height, cover) {
+    return rises ? Math.round(screen_height - seam - cover) : Math.round(seam - cover);
+}
+
+// How deep from the attached edge a drawer's rim and inset line are kept when its body draws its own edge: the mouth
+// and its fillets, no further.
+function mouth_depth(lay) {
+    return lay.cover + lay.fillet_eff;
 }
