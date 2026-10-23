@@ -38,6 +38,8 @@ check "fires for Write" fires '{"tool_name":"Write","tool_input":{"file_path":"'
 check "fires for NotebookEdit" fires '{"tool_name":"NotebookEdit","tool_input":{"notebook_path":"'"$tmp"'/home/.claude/skills/n.ipynb"}}'
 check "fires for the global CLAUDE.md" fires "$(edit "$tmp/home/.claude/CLAUDE.md")"
 check "silent for local settings" silent "$(edit "$tmp/home/.claude/settings.local.json")"
+check "silent for a CLAUDE.md at a project root" silent "$(edit "$tmp/checkout/CLAUDE.md")"
+check "silent for a CLAUDE.md in a project .claude" silent "$(edit "$tmp/project/.claude/CLAUDE.md")"
 check "silent for runtime state through the symlink" silent "$(edit "$tmp/home/.claude/projects/p/memory/m.md")"
 check "silent for runtime state in the source tree" silent "$(edit "$tmp/checkout/home/claude/.claude/todos/t.json")"
 check "silent for a skill outside the shared tree" silent "$(edit "$tmp/checkout/.claude/skills/y/SKILL.md")"
