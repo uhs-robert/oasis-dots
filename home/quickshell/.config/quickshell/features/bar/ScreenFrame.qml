@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.theme
 import qs.theme.transitions
 import qs.ui.effects
+import "BandGeometry.js" as Band
 import "FrameGeometry.js" as Frame
 
 // A screen frame on one screen (FrameGeometry.js): one click-through window drawing every band but the bar's, and a
@@ -25,11 +26,6 @@ Scope {
     }
     Behavior on inset_color {
         ColorAnimation { duration: 200 }
-    }
-
-    // A positive remainder, so a pattern's tiles start on the canonical origin's grid.
-    function wrap(v, period) {
-        return ((v % period) + period) % period;
     }
 
     PanelWindow {
@@ -88,15 +84,15 @@ Scope {
                         clip: true
 
                         Dither {
-                            x: -root.wrap(parent.x, 4)
-                            y: -root.wrap(parent.y, 4)
+                            x: -Band.phase_wrap(parent.x, 4)
+                            y: -Band.phase_wrap(parent.y, 4)
                             width: parent.width + 4
                             height: parent.height + 4
                             color: Style.island_fill(Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2)))
                         }
 
                         Scanlines {
-                            y: -root.wrap(parent.y, Style.scanline_period)
+                            y: -Band.phase_wrap(parent.y, Style.scanline_period)
                             width: parent.width
                             height: parent.height + Style.scanline_period
                             period: Style.scanline_period

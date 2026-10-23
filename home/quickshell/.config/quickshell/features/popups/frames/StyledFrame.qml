@@ -182,7 +182,7 @@ Item {
         }
     }
 
-    // Textures wait for a drawer until screenshots show a mismatch with the frame.
+    // A drawer's own texture is DrawerShape's, tiled from the frame's origin; this one tiles from the panel's.
     Item {
         visible: !root.drawer
         anchors.fill: parent

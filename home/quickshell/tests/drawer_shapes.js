@@ -445,6 +445,58 @@ cases.push(["pixel body rounds up to whole pixels", () => { const l = D.drawer_l
 cases.push(["a spec with no corner or step is round", () => [D.drawer_layout(spec({})).corner, D.drawer_layout(spec({ corner: "bogus" })).corner], ["round", "round"]]);
 cases.push(["fillet_of fits the profile", () => [D.fillet_of({ corner: "pixel", radius: 12, step: 4 }), D.fillet_of({ corner: "square", radius: 12, step: 2 }), D.fillet_of({ corner: "chamfer", radius: 20, step: 2 })], [12, 0, 12]]);
 
+// Texture phase: whatever the bar's edge, the drawer's edge and the side, the dither and scanlines a drawer tiles from
+// texture_phase must fall on the pixels the frame's own tiling (from the canonical origin, mirrored for a bottom bar) does.
+cases.push(["phase_wrap is a positive remainder", () => [B.phase_wrap(7, 4), B.phase_wrap(-1, 4), B.phase_wrap(-8, 3), B.phase_wrap(0, 3)], [3, 3, 1, 0]]);
+for (const [bar, frame] of [["top", top_frame], ["bottom", bottom_frame]]) {
+  for (const from_bottom of [false, true]) {
+    for (const side of ["left", "center", "right"]) {
+      for (const period of [2, 3]) {
+        cases.push([`${bar} bar, drawer from the ${from_bottom ? "bottom" : "top"}, ${side}, period ${period}: dither and scanlines land on the frame's`, () => {
+          const hole = F.hole_rect(frame), seam = F.seam_of(frame, from_bottom ? "bottom" : "top");
+          const lay = lay_of({ edge: from_bottom ? "bottom" : "top", body_length: 400, extent: 150 });
+          const place = D.place(side, from_bottom, hole, seam, 1920, 1080, cover, lay.length);
+          const origin = D.texture_origin(side, from_bottom, bar === "bottom", place, 1920, 1080, lay.length);
+          const phase = D.texture_phase(origin, period);
+          const win_x = side === "right" ? 1920 - place.along - lay.length : place.along;
+          const win_y = from_bottom ? 1080 - place.across - lay.depth : place.across;
+          const bad = [];
+          for (let u = 0; u < lay.length; u += 7) {
+            for (let v = 0; v < lay.depth; v++) {
+              // The pixel at drawer (u, v) is the screen pixel its centre lands on; the frame's canonical pixel is that, mirrored for a bottom bar.
+              const at = apply(D.drawer_affine(lay), [u + 0.5, v + 0.5]);
+              const sx = Math.floor(win_x + at[0]), sy = Math.floor(win_y + at[1]);
+              const cx = sx, cy = bar === "bottom" ? 1079 - sy : sy;
+              const frame_dither = (Math.floor(cx / 2) + Math.floor(cy / 2)) % 2 === 0;
+              const frame_line = cy % period === 0;
+              const drawer_dither = (Math.floor((u + phase.dither_x) / 2) + Math.floor((v + phase.dither_y) / 2)) % 2 === 0;
+              const drawer_line = v >= phase.first_scanline && (v - phase.first_scanline) % period === 0;
+              if (frame_dither !== drawer_dither || frame_line !== drawer_line) bad.push([u, v]);
+            }
+          }
+          return bad.length;
+        }, 0]);
+      }
+    }
+  }
+}
+{
+  const lay = lay_of({ extent: 150 });
+  const loop = D.fill_loop(lay);
+  const body_mid = lay.cover + lay.body.d / 2;
+  cases.push(["fill_row_span: the cover strip is the whole length, a body row is the body, below the fill is empty", () => [
+    D.fill_row_span(loop, 0, 2),
+    D.fill_row_span(loop, body_mid - 1, body_mid + 1),
+    D.fill_row_span(loop, lay.cover + lay.body.d + 4, lay.cover + lay.body.d + 6)
+  ], [{ x: 0, w: lay.length }, { x: lay.start_room, w: lay.body.w }, { x: 0, w: 0 }]]);
+  cases.push(["fill_row_span: a fillet row is wider than the body, a pocket drawer's row starts at the side band", () => {
+    const row = D.fill_row_span(loop, lay.cover + 1, lay.cover + 3);
+    const pocket = lay_of({ extent: 150, start_kind: "pocket" });
+    const p = D.fill_row_span(D.fill_loop(pocket), pocket.cover + pocket.body.d / 2 - 1, pocket.cover + pocket.body.d / 2 + 1);
+    return [row.w > lay.body.w && row.x < lay.start_room, p.x];
+  }, [true, 0]]);
+}
+
 
 let failed = 0;
 for (const [name, fn, expected] of cases) {

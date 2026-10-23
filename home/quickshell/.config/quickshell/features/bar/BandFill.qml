@@ -38,16 +38,11 @@ Item {
 
     readonly property bool vertical: root.edge === "left" || root.edge === "right"
     readonly property var affine: Band.band_affine(root.edge, root.thickness)
-    readonly property real first_scanline: root.wrap(-root.phase_y, root.scanline_period)
+    readonly property real first_scanline: Band.phase_wrap(-root.phase_y, root.scanline_period)
     readonly property real inset_line_y: root.thickness - root.inset_gap - root.inset_width / 2
 
     function faded(c) {
         return Qt.alpha(c, c.a * root.fill_opacity);
-    }
-
-    // A positive remainder, so a negative phase still starts the pattern inside the band.
-    function wrap(v, period) {
-        return ((v % period) + period) % period;
     }
 
     function span(y0, y1) {
@@ -97,8 +92,8 @@ Item {
         // Dither tiles from its own origin, so it starts up to one 4px tile before the band to take the phase.
         Loader {
             id: dither_layer
-            readonly property real shift_x: root.wrap(root.phase_x, 4)
-            readonly property real shift_y: root.wrap(root.phase_y, 4)
+            readonly property real shift_x: Band.phase_wrap(root.phase_x, 4)
+            readonly property real shift_y: Band.phase_wrap(root.phase_y, 4)
             x: -shift_x
             y: -shift_y
             width: root.length + shift_x

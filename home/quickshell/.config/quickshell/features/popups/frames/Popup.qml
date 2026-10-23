@@ -280,6 +280,8 @@ PanelWindow {
     // Layer margins are integers; the cover absorbs the rounding.
     readonly property real drawer_seam: root.screen_frame ? FrameGeometry.seam_of(root.screen_frame, root.from_bottom ? "bottom" : "top") : 0
     readonly property var drawer_place: Drawer.place(root.side, root.from_bottom, root.drawer_hole, root.drawer_seam, root.screen ? root.screen.width : 0, root.screen ? root.screen.height : 0, root.drawer_cover, root.drawer_full.length)
+    // Where the drawer's texture tiles from, so it runs on from the frame's (DrawerShape).
+    readonly property var drawer_texture_origin: Drawer.texture_origin(root.side, root.from_bottom, !!root.screen_frame && root.screen_frame.edge === "bottom", root.drawer_place, root.screen ? root.screen.width : 0, root.screen ? root.screen.height : 0, root.drawer_full.length)
     // The depth the drawer has drawn, not the window's reserved one: a popup with a reserve_height is a taller window than its shape.
     readonly property real drawn_depth: root.drawer_layout.drawn_depth
     // Translucent islands make the drawer translucent too, so the frame and the strip leave their lines out under its window.
@@ -540,6 +542,7 @@ PanelWindow {
             layout: root.drawer_layout
             screen_name: root.held_screen_name
             translucent: root.drawer_translucent
+            texture_origin: root.drawer_texture_origin
             // The handheld shell's own edge is enough round the body.
             lines_depth: root.device ? Drawer.mouth_depth(root.drawer_layout) : -1
         }

@@ -153,6 +153,8 @@ PanelWindow {
     readonly property var drawer_layout: Drawer.drawer_layout(root.drawer_spec(root.drawer ? root.panel_height * root.reveal : 0))
     readonly property var drawer_body: Drawer.body_rect(root.drawer_layout)
     readonly property var drawer_place: Drawer.place("center", root.from_bottom, root.drawer_hole, root.screen_frame ? FrameGeometry.seam_of(root.screen_frame, root.from_bottom ? "bottom" : "top") : 0, root.screen_width, root.screen_height, root.drawer_cover, root.drawer_full.length)
+    // Where the drawer's texture tiles from, so it runs on from the frame's (DrawerShape).
+    readonly property var drawer_texture_origin: Drawer.texture_origin("center", root.from_bottom, !!root.screen_frame && root.screen_frame.edge === "bottom", root.drawer_place, root.screen_width, root.screen_height, root.drawer_full.length)
     readonly property bool drawer_translucent: root.drawer && Style.islands_translucent
     // Lets the frame and the strip leave their lines out under the window, while it is mapped.
     DrawerWindowPublisher {
@@ -361,6 +363,7 @@ PanelWindow {
             layout: root.drawer_layout
             screen_name: root.screen ? root.screen.name : ""
             translucent: root.drawer_translucent
+            texture_origin: root.drawer_texture_origin
         }
     }
 

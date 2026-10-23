@@ -223,3 +223,57 @@ function window_rect(side, from_bottom, placement, screen_width, screen_height, 
         h: drawn_depth
     };
 }
+
+// Where a drawer's rows lie in the canonical frame of the screen frame (FrameGeometry.js), which a bottom bar mirrors: the
+// frame's dither and scanlines tile from there, so a drawer tiling from the same rows continues them across the join.
+// Drawer row v is canonical row `y + dir * v`: dir is +1 when the drawer hangs from the bar's own edge and -1 from the
+// opposite one (which-key at the bottom under a top bar, the OSD at the top over a bottom bar), where the rows run the
+// other way. `flipped` says dir is -1. `across` is the window's distance from the screen edge it hangs from.
+function texture_origin(side, from_bottom, bar_bottom, placement, screen_width, screen_height, window_width) {
+    const flipped = from_bottom !== bar_bottom;
+    return {
+        x: side === "right" ? screen_width - placement.along - window_width : placement.along,
+        y: flipped ? screen_height - 1 - placement.across : placement.across,
+        flipped: flipped
+    };
+}
+
+// How far the 4 px dither tile and the first scanline lie from the drawer's own origin, so the tiles land on the canonical
+// frame's: `dither_x` and `dither_y` are how far before the drawer a tile grid starting on the canonical origin begins
+// (0 to 3), `first_scanline` the first scanline's row in the drawer (0 to period - 1).
+function texture_phase(origin, period) {
+    const wrap = Band.phase_wrap;
+    // A flipped drawer reads the checker's row pairs backwards, so no plain wrap of its origin matches: search the four
+    // offsets for the one whose pairs coincide.
+    const fills = (cy) => Math.floor(cy / 2) % 2;
+    let dither_y = wrap(origin.y, 4);
+    if (origin.flipped) {
+        for (let s = 0; s < 4; s++) {
+            if ([0, 1, 2, 3].every(v => fills(v + s) === fills(origin.y - v))) {
+                dither_y = s;
+                break;
+            }
+        }
+    }
+    return {
+        dither_x: wrap(origin.x, 4),
+        dither_y: dither_y,
+        first_scanline: wrap(origin.flipped ? origin.y : -origin.y, period)
+    };
+}
+
+// The span { x, w } a fill loop keeps in the row from y0 to y1, sampled at the row's middle as FrameGeometry.frame_blocks
+// does, for the dither's rows. A loop's row is one stretch (fillets and pockets widen it, never split it); a row the
+// loop does not reach has width 0.
+function fill_row_span(loop, y0, y1) {
+    const y = (y0 + y1) / 2;
+    let lo = Infinity, hi = -Infinity;
+    for (let k = 0; k + 1 < loop.length; k++) {
+        const a = loop[k], b = loop[k + 1];
+        if (a[1] === b[1] || y < Math.min(a[1], b[1]) || y >= Math.max(a[1], b[1])) continue;
+        const x = a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]);
+        lo = Math.min(lo, x);
+        hi = Math.max(hi, x);
+    }
+    return hi > lo ? { x: lo, w: hi - lo } : { x: 0, w: 0 };
+}
