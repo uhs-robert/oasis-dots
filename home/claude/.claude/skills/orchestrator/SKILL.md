@@ -29,7 +29,7 @@ When a shot needs the owner's decision (comparing look options, or a check the t
 
 Skills that only wrap a script: when you just need to run the script, read only that skill's `## Scripts` section (`awk '/^## Scripts/{f=1;next} /^#/{f=0} f' <SKILL.md>`) instead of loading the skill; load the whole skill when it has no such section, or when the script fails or the case isn't covered.
 
-Review dimensions, used by every review below: correctness and regressions, missed requirements, scope (unrelated changes), reuse and unnecessary complexity, weak tests.
+Review dimensions, used by every review below: correctness and regressions, missed requirements, scope (unrelated changes), reuse and unnecessary complexity, weak tests, and, when the diff touches Quickshell code, the repo's AGENTS.md "Quickshell structure" section (layers, imports, feature-to-feature only via a singleton).
 
 When the owner asks you to hand off, pass the baton or wind down, load `orchestrator-handoff`; a request to hand over from another session goes to the owner.
 
@@ -67,7 +67,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
    - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement.
 
-6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
+6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions (name the repo's AGENTS.md "Quickshell structure" section when the diff touches Quickshell code) and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
 7. Get an external review of the issue and diff against the review dimensions. Codex first; an Opus subagent when Codex is unavailable.
