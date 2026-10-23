@@ -7,8 +7,6 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.theme
-import "../../ui/frames/DrawerGeometry.js" as Drawer
-import "../../ui/frames/FrameGeometry.js" as FrameGeometry
 import qs.styles.neovim.widgets as Neovim
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui.effects
@@ -66,17 +64,17 @@ PanelWindow {
     color: "transparent"
     // No explicit exclusiveZone: even 0 overrides Ignore, so the frame's zones would push a drawer inward.
     exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
-    anchors.top: root.drawer ? root.drawer_place.anchor_top : root.position.startsWith("top")
-    anchors.bottom: root.drawer ? root.drawer_place.anchor_bottom : root.position.startsWith("bottom")
-    anchors.left: root.drawer ? root.drawer_place.anchor_left : root.position.endsWith("left")
-    anchors.right: root.drawer ? root.drawer_place.anchor_right : root.position.endsWith("right")
-    margins.top: root.drawer ? root.drawer_place.margin_top : root.gap - root.shadow_pad
-    margins.bottom: root.drawer ? root.drawer_place.margin_bottom : root.gap - root.shadow_pad
-    margins.left: root.drawer ? root.drawer_place.margin_left : root.gap - root.shadow_pad
-    margins.right: root.drawer ? root.drawer_place.margin_right : root.gap - root.shadow_pad
+    anchors.top: root.drawer ? scaffold.place.anchor_top : root.position.startsWith("top")
+    anchors.bottom: root.drawer ? scaffold.place.anchor_bottom : root.position.startsWith("bottom")
+    anchors.left: root.drawer ? scaffold.place.anchor_left : root.position.endsWith("left")
+    anchors.right: root.drawer ? scaffold.place.anchor_right : root.position.endsWith("right")
+    margins.top: root.drawer ? scaffold.place.margin_top : root.gap - root.shadow_pad
+    margins.bottom: root.drawer ? scaffold.place.margin_bottom : root.gap - root.shadow_pad
+    margins.left: root.drawer ? scaffold.place.margin_left : root.gap - root.shadow_pad
+    margins.right: root.drawer ? scaffold.place.margin_right : root.gap - root.shadow_pad
     // Room on every side for a soft shadow, taken out of the gap so the frame stays put.
     readonly property int shadow_pad: !root.drawer && Style.frame_shadow.a > 0 ? Math.min(Style.frame_drop, root.gap) : 0
-    implicitWidth: root.drawer ? root.drawer_full.surface.width : frame.width + root.shadow_pad * 2
+    implicitWidth: root.drawer ? scaffold.full.surface.width : frame.width + root.shadow_pad * 2
     // The header takes the bar's submap colour: fills get it under dark ink, plain titles take it as text.
     readonly property bool tinted: SubmapState.active || Style.bar_lualine
     readonly property color header_color: SubmapState.bar_color
@@ -85,50 +83,40 @@ PanelWindow {
     // Floating frames set the title chip into the top border, half of it above the frame.
     readonly property bool float_title: !root.drawer && Style.border_title && Style.show_title
     readonly property real float_top: root.float_title ? Math.round(title_tab.height / 2) : 0
-    implicitHeight: root.drawer ? root.drawer_full.surface.height : frame.height + (root.shadow_pad > 0 ? root.shadow_pad * 2 : Style.frame_drop) + root.float_top
+    implicitHeight: root.drawer ? scaffold.full.surface.height : frame.height + (root.shadow_pad > 0 ? root.shadow_pad * 2 : Style.frame_drop) + root.float_top
 
     // With the frame on, the payload's vertical part names the edge the drawer hangs from and its horizontal part the end
     // that is a pocket against the side band (the other end is a fillet; "center" fillets at both).
     readonly property string drawer_position: root.position === "center" ? "bottom-center" : root.position
     readonly property var screen_frame: root.screen && (root.drawer_position.startsWith("top") || root.drawer_position.startsWith("bottom")) ? ScreenFrames.layout_for(root.screen) : null
-    readonly property bool drawer: root.screen_frame !== null
+    readonly property bool drawer: scaffold.active
     readonly property bool from_bottom: root.drawer_position.startsWith("bottom")
     readonly property string side: root.drawer_position.endsWith("left") ? "left" : root.drawer_position.endsWith("right") ? "right" : "center"
-    readonly property var drawer_profile: root.drawer ? Style.screen_frame_profile : null
-    readonly property real drawer_fillet: root.drawer ? Drawer.fillet_of(root.drawer_profile) : 0
-    readonly property real drawer_cover: Drawer.cover_depth(Style.bar_border_width, Style.bar_inset_gap, Style.bar_inset_width)
-    readonly property var drawer_hole: root.screen_frame ? FrameGeometry.hole_rect(root.screen_frame) : null
-    readonly property var drawer_kinds: Drawer.end_kinds(root.side, false)
     readonly property real panel_width: frame.natural_width
     readonly property real panel_height: frame.natural_height
-    function drawer_spec(extent) {
-        return Object.assign({
-            edge: root.from_bottom ? "bottom" : "top",
-            body_length: root.drawer_hole ? Drawer.body_length(root.side, root.panel_width, root.drawer_hole.w, root.drawer_fillet) : root.panel_width,
-            body_depth: root.panel_height,
-            extent: extent,
-            start_kind: root.drawer_kinds.start,
-            end_kind: root.drawer_kinds.end,
-            cover: root.drawer_cover
-        }, Drawer.profile_fields(root.drawer_profile));
-    }
-    // The window follows the full drawer, so it never resizes while the shape grows inside it. Never null, so a frame
-    // switched off under an open window cannot leave DrawerShape without a layout.
-    readonly property var drawer_full: Drawer.drawer_layout(root.drawer_spec(root.panel_height))
-    readonly property var drawer_layout: Drawer.drawer_layout(root.drawer_spec(root.drawer ? root.panel_height * root.progress : 0))
-    readonly property var drawer_body: Drawer.body_rect(root.drawer_layout)
-    readonly property var drawer_place: Drawer.place(root.side, root.from_bottom, root.drawer_hole, root.screen_frame ? FrameGeometry.seam_of(root.screen_frame, root.from_bottom ? "bottom" : "top") : 0, root.screen_width, root.screen_height, root.drawer_cover, root.drawer_full.length)
-    // Where the drawer's texture tiles from, so it runs on from the frame's (DrawerShape).
-    readonly property var drawer_texture_origin: Drawer.texture_origin(root.side, root.from_bottom, !!root.screen_frame && root.screen_frame.edge === "bottom", root.drawer_place, root.screen_width, root.screen_height, root.drawer_full.length)
-    readonly property bool drawer_translucent: root.drawer && Style.islands_translucent
     // Lets the frame and the strip leave their lines out under the window, while it is mapped.
     DrawerWindowPublisher {
         screen_name: root.screen ? root.screen.name : ""
-        rect: root.drawer_translucent && root.visible ? Drawer.window_rect(root.side, root.from_bottom, root.drawer_place, root.screen_width, root.screen_height, root.width, root.drawer_layout.drawn_depth) : null
+        rect: scaffold.window_rect
+    }
+
+    TransientDrawer {
+        id: scaffold
+        screen_frame: root.screen_frame
+        screen_name: root.screen ? root.screen.name : ""
+        screen_width: root.screen_width
+        screen_height: root.screen_height
+        side: root.side
+        from_bottom: root.from_bottom
+        panel_width: root.panel_width
+        panel_height: root.panel_height
+        shown: root.visible
+        window_width: root.width
+        onClosed: if (!root.wanted) root.visible = false
     }
 
     // How far the drawer has grown out of the frame, 0 to 1.
-    property real progress: 0
+    property alias progress: scaffold.progress
     // The place the drawer hangs from; a change of any part restarts it from closed rather than sliding across.
     readonly property string place_key: root.drawer ? (root.screen ? root.screen.name : "") + "/" + root.drawer_position : ""
     // Set while a payload is applied, whose open_now follows; any other change of place (focus moving the screen under a
@@ -136,8 +124,8 @@ PanelWindow {
     property bool loading_payload: false
     onPlace_keyChanged: {
         if (root.place_key === "" || !root.visible) return;
-        open_anim.stop();
-        close_anim.stop();
+        scaffold.open_anim.stop();
+        scaffold.close_anim.stop();
         root.progress = 0;
         if (root.loading_payload) return;
         // A drawer folding back has nothing to reopen for.
@@ -158,21 +146,21 @@ PanelWindow {
     // Instant without the frame; with it the drawer folds back, and a show arriving first reverses it.
     function hide_now(): void {
         root.wanted = false;
-        open_anim.stop();
+        scaffold.open_anim.stop();
         if (root.drawer && root.visible) {
-            close_anim.restart();
+            scaffold.close_anim.restart();
         } else {
-            close_anim.stop();
+            scaffold.close_anim.stop();
             root.progress = 0;
             root.visible = false;
         }
     }
 
     function open_now(): void {
-        const was_open = root.visible && !close_anim.running;
-        close_anim.stop();
+        const was_open = root.visible && !scaffold.close_anim.running;
+        scaffold.close_anim.stop();
         root.visible = true;
-        if (root.drawer) open_anim.restart();
+        if (root.drawer) scaffold.open_anim.restart();
         else root.progress = 1;
         if (!was_open && burst_loader.item) burst_loader.item.play();
     }
@@ -198,21 +186,6 @@ PanelWindow {
             }
         }
         onLoadFailed: root.hide_now()
-    }
-
-    NumberAnimation {
-        id: open_anim
-        target: root
-        property: "progress"
-        to: 1
-        duration: 190
-        easing.type: Easing.OutCubic
-    }
-
-    SequentialAnimation {
-        id: close_anim
-        NumberAnimation { target: root; property: "progress"; to: 0; duration: 120; easing.type: Easing.InCubic }
-        ScriptAction { script: if (!root.wanted) root.visible = false }
     }
 
     TextMetrics {
@@ -248,24 +221,13 @@ PanelWindow {
         }
     }
 
-    Loader {
-        active: root.drawer
-        sourceComponent: DrawerShape {
-            layout: root.drawer_layout
-            screen_name: root.screen ? root.screen.name : ""
-            translucent: root.drawer_translucent
-            texture_origin: root.drawer_texture_origin
-            frame: root.screen_frame
-        }
-    }
-
     // The drawer's body uncovers the content as it grows; floating, this is the whole window and clips nothing.
     Item {
         id: reveal
-        x: root.drawer ? root.drawer_body.x : 0
-        y: root.drawer ? root.drawer_body.y : 0
-        width: root.drawer ? root.drawer_body.width : root.width
-        height: root.drawer ? root.drawer_body.height : root.height
+        x: root.drawer ? scaffold.body.x : 0
+        y: root.drawer ? scaffold.body.y : 0
+        width: root.drawer ? scaffold.body.width : root.width
+        height: root.drawer ? scaffold.body.height : root.height
         clip: root.drawer
 
         Rectangle {
@@ -316,7 +278,7 @@ PanelWindow {
                 : title_text.implicitWidth + 20 + title_x * 2 + Style.inset_pad * 2 + frame.watch_room * 2 + (readout.visible ? readout.implicitWidth + 16 : 0)
             readonly property real natural_width: Math.max(body.implicitWidth + pad_x * 2, frame.header_min) + Style.slant_room
             readonly property real natural_height: top_edge + header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
-            width: root.drawer ? root.drawer_body.width : frame.natural_width
+            width: root.drawer ? scaffold.body.width : frame.natural_width
             height: frame.natural_height
             radius: Style.frame_radius
             island_color: Style.pal.bg_mantle
