@@ -118,6 +118,16 @@ class SiblingTest(LayersCase):
         self.assertEqual(len(found), 1)
         self.assertTrue(found[0].startswith('qs/features/a/A.qml:1: import "../b/G.js" reaches into another feature (features/b/G.js).'), found)
 
+    def test_a_nested_file_reaching_a_sibling_feature_fails(self):
+        found = self.run_siblings({"qs/features/a/sub/A.qml": 'import "../../b/G.js" as G\n', "qs/features/b/G.js": ""})
+        self.assertEqual(len(found), 1)
+        self.assertIn('import "../../b/G.js" reaches into another feature (features/b/G.js)', found[0])
+
+    def test_a_js_import_across_features_fails(self):
+        found = self.run_siblings({"qs/features/a/x.js": '.import "../b/G.js" as G\n', "qs/features/b/G.js": ""})
+        self.assertEqual(len(found), 1)
+        self.assertIn('qs/features/a/x.js:1: import "../b/G.js" reaches into another feature', found[0])
+
     def test_a_same_feature_import_passes(self):
         files = {"qs/features/a/A.qml": 'import "sub"\nimport "sub/G.js" as G\n', "qs/features/a/sub/G.js": "", "qs/features/a/sub/B.qml": 'import "../H.js" as H\n', "qs/features/a/H.js": ""}
         self.assertEqual(self.run_siblings(files), [])
