@@ -17,6 +17,11 @@ local watchdog = nil
 -- One window rule per rounding value and match, made on first use: a rule's values cannot change, and only the enabled
 -- ones apply. Enabling and disabling re-applies to open windows.
 local window_rules = {}
+-- Workspaces whose lone window the owner took out of the flush look, workspace id -> that window's address, with the
+-- per-workspace rule that gives the gaps back and the tag the lone-window rounding rule skips.
+local gapped_lones = {}
+local gap_rules = {}
+local GAPPED_TAG = "frame_gapped"
 
 --- The smallest gap between tiled windows and the usable area's edge.
 --- @return number
@@ -61,6 +66,7 @@ local function use_window_rules(wanted)
       if spec.kind == "lone" then
         match.workspace = "w[tv1]"
         match.float = false
+        match.tag = "negative:" .. GAPPED_TAG
       elseif spec.kind == "maximized" then
         match.fullscreen_state_internal = "1"
       end
@@ -78,7 +84,56 @@ local function use_window_rules(wanted)
   end
 end
 
+--- The tiled windows on a workspace, the ones the `w[tv1]` selector counts.
+--- @param workspace_id integer
+--- @return table[]
+local function tiled_windows(workspace_id)
+  local tiled = {}
+  for _, window in ipairs(hl.get_workspace_windows(workspace_id) or {}) do
+    if window.mapped and not window.floating then table.insert(tiled, window) end
+  end
+  return tiled
+end
+
+local function has_gapped_tag(window)
+  local tags = window.tags
+  if type(tags) ~= "table" then return tostring(tags):find(GAPPED_TAG, 1, true) ~= nil end
+  for _, tag in pairs(tags) do
+    if tostring(tag):find(GAPPED_TAG, 1, true) then return true end
+  end
+  return false
+end
+
+local function tag_window(address, on)
+  hl.dispatch(hl.dsp.window.tag({ tag = (on and "+" or "-") .. GAPPED_TAG, window = "address:" .. address }))
+end
+
+local function release_gapped_lone(workspace_id)
+  local address = gapped_lones[workspace_id]
+  if address == nil then return end
+  gapped_lones[workspace_id] = nil
+  if gap_rules[workspace_id] then gap_rules[workspace_id]:set_enabled(false) end
+  tag_window(address, false)
+end
+
+--- Gives every opted-out lone window its flush look back once it is no longer alone on its workspace (a second tiled
+--- window arrived, it closed, moved or floated), and drops a tag whose opt-out this Lua state no longer holds (a
+--- config reload rebuilds the state but not the tags).
+local function release_stale_gapped_lones()
+  for workspace_id, address in pairs(gapped_lones) do
+    local tiled = tiled_windows(workspace_id)
+    if #tiled ~= 1 or tiled[1].address ~= address then release_gapped_lone(workspace_id) end
+  end
+  for _, window in ipairs(hl.get_windows() or {}) do
+    local held = window.workspace and gapped_lones[window.workspace.id] == window.address
+    if not held and has_gapped_tag(window) then tag_window(window.address, false) end
+  end
+end
+
 local function restore()
+  for workspace_id in pairs(gapped_lones) do
+    release_gapped_lone(workspace_id)
+  end
   lone_window_rule:set_enabled(false)
   if watchdog then watchdog:set_enabled(false) end
   if saved == nil then return end
@@ -164,12 +219,49 @@ local function set(corner, radius, border_size, active, inactive)
   end
   use_window_rules(rules)
   lone_window_rule:set_enabled(true)
+  release_stale_gapped_lones()
   missed_checks = 0
   if watchdog then
     watchdog:set_enabled(true)
   else
     watchdog = hl.timer(check_frame, { timeout = WATCHDOG_MS, type = "repeat" })
   end
+end
+
+--- SUPER+M on a lone tiled window, while the frame is on: takes it out of the flush look (the owner's gaps and the gapped
+--- rounding) or puts it back. The opt-out is held for that workspace and window only, and release_stale_gapped_lones
+--- ends it as soon as the window is no longer alone, so it cannot outlive the situation it was asked for.
+--- @return boolean handled false when the caller should maximize as usual
+local function toggle_lone_flush()
+  local window = hl.get_active_window()
+  if saved == nil or window == nil or window.floating or window.fullscreen ~= 0 or window.workspace == nil then
+    return false
+  end
+  local workspace_id = window.workspace.id
+  local tiled = tiled_windows(workspace_id)
+  if #tiled ~= 1 or tiled[1].address ~= window.address then return false end
+  if gapped_lones[workspace_id] then
+    release_gapped_lone(workspace_id)
+    return true
+  end
+  if not gap_rules[workspace_id] then
+    gap_rules[workspace_id] =
+      hl.workspace_rule({ workspace = tostring(workspace_id), gaps_out = hl.get_config("general.gaps_out") })
+  end
+  gap_rules[workspace_id]:set_enabled(true)
+  gapped_lones[workspace_id] = window.address
+  tag_window(window.address, true)
+  return true
+end
+
+for _, event in ipairs({
+  "window.open",
+  "window.close",
+  "window.destroy",
+  "window.move_to_workspace",
+  "window.fullscreen",
+}) do
+  hl.on(event, function() release_stale_gapped_lones() end)
 end
 
 -- Global functions which are accessible externally via `hyprctl dispatch "ScreenFrame"`
@@ -179,6 +271,7 @@ _G.ScreenFrame = {
 
     return hl.dsp.no_op()
   end,
+  toggle_lone_flush = toggle_lone_flush,
   clear = function()
     restore()
 
