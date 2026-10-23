@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Tests for remind-global-neutral.sh: it reminds for global agent file paths (direct, via the ~/.claude symlink, and in
-# any checkout) and stays silent and successful for project files and malformed input.
+# Tests for remind-global-neutral.sh: it reminds for shared agent definition paths (direct and through the config
+# directory's symlink) and stays silent and successful for runtime state, other files and malformed input.
+# shellcheck disable=SC2329 # run, fires and silent are called by name through check
 set -u
 hook="$(dirname "$0")/../remind-global-neutral.sh"
 failures=0
@@ -27,15 +28,17 @@ silent() {
 }
 edit() { printf '{"tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$1"; }
 
-check "fires for a skill in a checkout's home/claude/.claude" fires "$(edit "$tmp/checkout/home/claude/.claude/skills/x/SKILL.md")"
+check "fires for a skill under the source tree" fires "$(edit "$tmp/checkout/home/claude/.claude/skills/x/SKILL.md")"
 check "fires for a new file there" fires "$(edit "$tmp/checkout/home/claude/.claude/skills/new/SKILL.md")"
-check "fires for a settings file there" fires "$(edit "$tmp/checkout/home/claude/.claude/settings.json")"
-check "fires through the ~/.claude symlink" fires "$(edit "$tmp/home/.claude/skills/x/SKILL.md")"
+check "fires for settings there" fires "$(edit "$tmp/checkout/home/claude/.claude/settings.json")"
+check "fires through the config symlink" fires "$(edit "$tmp/home/.claude/skills/x/SKILL.md")"
 check "fires for a hook through the symlink" fires "$(edit "$tmp/home/.claude/hooks/h.sh")"
-check "fires for a worktree checkout" fires "$(edit "$tmp/checkout/.claude/worktrees/w/home/claude/.claude/agents/a.md")"
+check "fires for a nested checkout" fires "$(edit "$tmp/checkout/.claude/worktrees/w/home/claude/.claude/agents/a.md")"
 check "fires for Write" fires '{"tool_name":"Write","tool_input":{"file_path":"'"$tmp"'/home/.claude/commands/c.md"}}'
 check "fires for NotebookEdit" fires '{"tool_name":"NotebookEdit","tool_input":{"notebook_path":"'"$tmp"'/home/.claude/skills/n.ipynb"}}'
-check "silent for a project skill" silent "$(edit "$tmp/checkout/.claude/skills/y/SKILL.md")"
+check "silent for runtime state through the symlink" silent "$(edit "$tmp/home/.claude/projects/p/memory/m.md")"
+check "silent for runtime state in the source tree" silent "$(edit "$tmp/checkout/home/claude/.claude/todos/t.json")"
+check "silent for a skill outside the shared tree" silent "$(edit "$tmp/checkout/.claude/skills/y/SKILL.md")"
 check "silent for an ordinary file" silent "$(edit "$tmp/checkout/README.md")"
 check "silent for a path missing from the input" silent '{"tool_name":"Edit","tool_input":{}}'
 check "empty input succeeds silently" silent ''
