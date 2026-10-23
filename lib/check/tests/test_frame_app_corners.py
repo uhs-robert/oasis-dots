@@ -40,11 +40,16 @@ class FirefoxCss(unittest.TestCase):
             self.assertIn("--tf-rounding: 0px;", css, corner)
             self.assertNotIn("clip-path", css, corner)
 
-    def test_chamfer_clips_with_the_radius(self):
+    def test_chamfer_bevels_textfox_panes_only(self):
         css = gen.firefox_css(frame("chamfer", 12))
         self.assertIn("--tf-rounding: 0px;", css)
-        self.assertIn("polygon(12px 0, calc(100% - 12px) 0, 100% 12px", css)
-        self.assertIn("clip-path: var(--tf-frame-clip);", css)
+        self.assertIn("polygon(0 12px, 12px 0,", css)
+        # Only the panes' own boxes are clipped, never `browser` (page, sidebar and devtools content).
+        for block in css.split("}"):
+            if "clip-path" in block:
+                selectors = [x.strip() for x in block.split("{")[0].split(",")]
+                self.assertEqual(selectors, gen.TEXTFOX_PANES)
+        self.assertIn("var(--tf-bevel-line)", css)
 
     def test_zero_radius_chamfer_does_not_clip(self):
         self.assertNotIn("clip-path", gen.firefox_css(frame("chamfer", 0)))
