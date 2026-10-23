@@ -26,6 +26,6 @@ Singleton {
         const rule = BarSettings.rule_for(screen);
         const has_bar = rule !== null && rule.bar !== false;
         const bar_edge = has_bar ? (BarSettings.position_for(rule) === "bottom" ? "bottom" : "top") : "";
-        return FrameGeometry.frame_layout(screen.width, screen.height, bar_edge, BarSettings.height_for(rule), Object.assign({}, Style.screen_frame_kit, Style.screen_frame_profile));
+        return FrameGeometry.frame_layout(screen.width, screen.height, bar_edge, BarSettings.height_for(rule), Object.assign({}, Style.screen_frame_kit, Style.screen_frame_profile, { fill_overlap: Style.islands_translucent ? 0 : 1 }));
     }
 }

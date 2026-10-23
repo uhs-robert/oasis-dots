@@ -30,6 +30,7 @@ function frame_layout(screen_w, screen_h, bar_edge, bar_height, kit) {
         depth: screen_h,
         thickness: t,
         near: near,
+        overlap: has_bar ? (kit.fill_overlap === undefined ? default_fill_overlap : kit.fill_overlap) : 0,
         far: far,
         start: start,
         end: end,
@@ -74,16 +75,18 @@ function hole_loop(lay) {
     return path.concat([path[0]]);
 }
 
-// How far the frame window's fill reaches up under the strip. At a fractional scale the strip's edge at `near` lands
-// mid-pixel and neither surface fully covers that pixel row; 1 px is at least a whole physical pixel at any scale >= 1.
-const fill_overlap = 1;
+// How far the frame window's fill reaches up under the strip when the kit does not say (`fill_overlap`). At a fractional
+// scale the strip's edge at `near` lands mid-pixel and neither surface fully covers that pixel row; 1 px is at least a
+// whole physical pixel at any scale >= 1. Translucent islands pass 0: the overlap would be filled twice and show darker.
+const default_fill_overlap = 1;
 
 // The frame window's fill as closed loops for one OddEvenFill PathMultiline: with a bar, the U past the strip (one
-// loop, open along the straight stretch where the strip takes over, reaching fill_overlap under the strip as far as it); without one, the screen minus the hole.
+// loop, open along the straight stretch where the strip takes over; its top edge reaches `overlap` under the strip);
+// without one, the screen minus the hole.
 function frame_region(lay) {
     const w = lay.length, h = lay.depth;
     if (!lay.has_bar) return [[[0, 0], [w, 0], [w, h], [0, h], [0, 0]], hole_loop(lay)];
-    const top = lay.near - fill_overlap, path = hole_path(lay), first = path[0], last = path[path.length - 1];
+    const top = lay.near - lay.overlap, path = hole_path(lay), first = path[0], last = path[path.length - 1];
     return [without_repeats([[0, top], [0, h], [w, h], [w, top], [first[0], top]].concat(path, [[last[0], top], [0, top]]))];
 }
 
@@ -118,13 +121,13 @@ function profile_x(profile, y) {
 function frame_blocks(lay) {
     const w = lay.length, h = lay.depth, r = lay.radius;
     const left = lay.start, right = w - lay.end;
-    const top = lay.has_bar ? lay.near - fill_overlap : lay.near;
+    const top = lay.near - lay.overlap;
     const out = [
         { x: 0, y: top, w: left, h: h - top },
         { x: right, y: top, w: w - right, h: h - top },
         { x: left, y: lay.far, w: right - left, h: h - lay.far }
     ];
-    if (lay.has_bar) out.push({ x: left, y: top, w: lay.straight[0] - left, h: fill_overlap }, { x: lay.straight[1], y: top, w: right - lay.straight[1], h: fill_overlap });
+    if (lay.has_bar) out.push({ x: left, y: top, w: lay.straight[0] - left, h: lay.overlap }, { x: lay.straight[1], y: top, w: right - lay.straight[1], h: lay.overlap });
     else out.push({ x: 0, y: 0, w: w, h: lay.near });
     const profile = corner_profile(lay.corner, r, lay.step);
     const row = lay.corner === "pixel" && lay.step > 0 ? lay.step : 2;
