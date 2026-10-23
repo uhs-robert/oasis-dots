@@ -14,9 +14,9 @@ local MAX_ROUNDING = 20
 local saved = nil
 local missed_checks = 0
 local watchdog = nil
--- One window rule per rounding value, made on first use: a rule's values cannot change, and only the enabled one
--- applies. Enabling and disabling re-applies to open windows.
-local chamfer_rules = {}
+-- One window rule per rounding value and match, made on first use: a rule's values cannot change, and only the enabled
+-- ones apply. Enabling and disabling re-applies to open windows.
+local window_rules = {}
 
 --- The smallest gap between tiled windows and the usable area's edge.
 --- @return number
@@ -42,33 +42,47 @@ end
 -- Workspace rules that drop the outer gaps so a window sits flush against the frame. `f[1]` matches a workspace with a
 -- maximized window and `w[tv1]` one with a single tiled window; Hyprland re-evaluates the selectors on every layout
 -- pass, so the gaps come back by themselves when the window unmaximizes, closes, moves away or gets a tiled neighbour.
--- Maximizing is flush with or without a frame; a lone tiled window is flush only inside one. A flush window keeps the
--- rounding set for the frame (radius - gaps_out), so its corners sit slightly inside the hole's.
+-- Maximizing is flush with or without a frame; a lone tiled window is flush only inside one. A flush window has no gap
+-- to shrink its corner by, so use_window_rules gives it the frame's own radius instead of the gapped windows' smaller one.
 hl.workspace_rule({ workspace = "f[1]", gaps_out = 0 })
 local lone_window_rule = hl.workspace_rule({ workspace = "w[tv1]", gaps_out = 0 })
 lone_window_rule:set_enabled(false)
 
-local function use_chamfer_rule(rounding)
-  for value, rule in pairs(chamfer_rules) do
-    if value ~= rounding then rule:set_enabled(false) end
+--- Enables exactly the rules in `wanted` (made on first use), disabling every other.
+--- @param wanted table[] each { rounding, power, kind }; kind says which windows: "gapped" (all), "lone" (the only tiled
+---   window on its workspace) or "maximized"
+local function use_window_rules(wanted)
+  local wanted_names = {}
+  for _, spec in ipairs(wanted) do
+    local name = "quickshell-frame-" .. spec.kind .. "-" .. spec.rounding .. "-" .. spec.power
+    wanted_names[name] = true
+    if not window_rules[name] then
+      local match = { class = ".*" }
+      if spec.kind == "lone" then
+        match.workspace = "w[tv1]"
+        match.float = false
+      elseif spec.kind == "maximized" then
+        match.fullscreen_state_internal = "1"
+      end
+      window_rules[name] = hl.window_rule({
+        name = name,
+        match = match,
+        rounding = spec.rounding,
+        rounding_power = spec.power,
+      })
+    end
+    window_rules[name]:set_enabled(true)
   end
-  if rounding == nil then return end
-  if not chamfer_rules[rounding] then
-    chamfer_rules[rounding] = hl.window_rule({
-      name = "quickshell-frame-chamfer-" .. rounding,
-      match = { class = ".*" },
-      rounding = rounding,
-      rounding_power = 1,
-    })
+  for name, rule in pairs(window_rules) do
+    if not wanted_names[name] then rule:set_enabled(false) end
   end
-  chamfer_rules[rounding]:set_enabled(true)
 end
 
 local function restore()
   lone_window_rule:set_enabled(false)
   if watchdog then watchdog:set_enabled(false) end
   if saved == nil then return end
-  use_chamfer_rule(nil)
+  use_window_rules({})
   hl.config({
     decoration = { rounding = saved.rounding, rounding_power = saved.rounding_power },
     general = {
@@ -125,7 +139,9 @@ local function set(corner, radius, border_size, active, inactive)
       inactive_border = hl.get_config("general.col.inactive_border"),
     }
   end
-  local rounding, chamfered = window_rounding(corner, tonumber(radius) or 0, gaps_out())
+  local gap = gaps_out()
+  local rounding, chamfered = window_rounding(corner, tonumber(radius) or 0, gap)
+  local flush_rounding = window_rounding(corner, tonumber(radius) or 0, 0)
   -- A chamfered window's own rounding comes from its rule, so the global one only matters for windows the rule misses.
   -- Power 2 keeps a squircle rounding of the owner's from drawing a round window's arc off the frame's circle.
   local width = tonumber(border_size)
@@ -139,7 +155,14 @@ local function set(corner, radius, border_size, active, inactive)
       },
     },
   })
-  use_chamfer_rule(chamfered and rounding or nil)
+  local power = chamfered and 1 or 2
+  local rules = {}
+  if chamfered then table.insert(rules, { rounding = rounding, power = 1, kind = "gapped" }) end
+  if flush_rounding ~= rounding then
+    table.insert(rules, { rounding = flush_rounding, power = power, kind = "lone" })
+    table.insert(rules, { rounding = flush_rounding, power = power, kind = "maximized" })
+  end
+  use_window_rules(rules)
   lone_window_rule:set_enabled(true)
   missed_checks = 0
   if watchdog then
