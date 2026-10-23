@@ -259,23 +259,29 @@ local function flush_workspace_rule_enabled()
 	end
 	return nil
 end
+local function lone_rounding_rules_enabled()
+	for _, rule in ipairs(rule_log) do
+		if rule.kind == "window" and rule.enabled and rule.spec.name:find("^quickshell%-frame%-lone") then
+			return true
+		end
+	end
+	return false
+end
+-- A 5-argument call (an older Quickshell) must mean on, even straight after an off.
 gaps_out = 6
+_G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)", false)
+check("flush default: starts off", flush_workspace_rule_enabled() == false)
 _G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
-check("flush default: workspace rule on", flush_workspace_rule_enabled() == true)
+check("flush default: 5 args means on", flush_workspace_rule_enabled() == true)
 _G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)", true)
 check("flush on: workspace rule on", flush_workspace_rule_enabled() == true)
+check("flush on: lone rounding rule on", lone_rounding_rules_enabled())
 active = first
 check("flush on: key opts out", _G.ScreenFrame.toggle_lone_flush() == true and tagged(first))
 _G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)", false)
 check("flush off: workspace rule off", flush_workspace_rule_enabled() == false)
 check("flush off: held opt-out released", not tagged(first) and not gap_rule_enabled(1))
-local lone_enabled = false
-for _, rule in ipairs(rule_log) do
-	if rule.kind == "window" and rule.enabled and rule.spec.name:find("^quickshell%-frame%-lone") then
-		lone_enabled = true
-	end
-end
-check("flush off: lone rounding rule off", not lone_enabled)
+check("flush off: lone rounding rule off", not lone_rounding_rules_enabled())
 check("flush off: key maximizes", _G.ScreenFrame.toggle_lone_flush() == false and not tagged(first))
 _G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)", true)
 check("flush back on: workspace rule on", flush_workspace_rule_enabled() == true)
