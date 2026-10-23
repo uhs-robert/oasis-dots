@@ -4,8 +4,8 @@
 -- Plugins
 -- Full border around the window
 require("full-border"):setup({
-	-- Available values: ui.Border.PLAIN, ui.Border.ROUNDED
-	type = ui.Border.PLAIN,
+	-- Available values: "plain", "rounded"
+	set = "plain",
 })
 
 -- Fuse Archive
