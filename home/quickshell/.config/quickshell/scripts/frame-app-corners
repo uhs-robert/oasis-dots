@@ -47,6 +47,14 @@ def chamfer_css(radius):
   --tf-bevel-outside: var(--tf-bg);
 }}
 
+{hovered},
+#nav-bar:focus,
+#PersonalToolbar:focus,
+#TabsToolbar:focus,
+box#vertical-tabs:focus {{
+  --tf-bevel-line: var(--tf-accent);
+}}
+
 /* The toolbars and the sidebar's tabs and tools sit on the toolbox, a different grey from --tf-bg when no Firefox theme is set. */
 #nav-bar,
 #PersonalToolbar,

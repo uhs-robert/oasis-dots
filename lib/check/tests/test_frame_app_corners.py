@@ -53,7 +53,14 @@ class FirefoxCss(unittest.TestCase):
         self.assertIn("pointer-events: none;", css)
         self.assertIn("position: relative;", css)
         self.assertIn("findbar {\n  padding: 8px !important;", css)
-        self.assertIn("--toolbox-background-color", css)
+        self.assertIn("--tf-bevel-line: var(--tf-accent);", css)
+        self.assertIn("#nav-bar:hover", css)
+        self.assertIn("#nav-bar:focus", css)
+        cover = css.split("--tf-bevel-outside: var(--toolbox-background-color")[0].rsplit("\n\n", 1)[1]
+        covered = [x.strip() for x in cover.split("{")[0].split(",")]
+        self.assertEqual(covered, ["#nav-bar", "#PersonalToolbar", "#TabsToolbar", "box#vertical-tabs", ".buttons-wrapper"])
+        for pane in ("#sidebar-box", "#tabbrowser-tabbox", "findbar"):
+            self.assertNotIn(pane, covered)
 
     def test_round_has_no_bevel_rules(self):
         css = gen.firefox_css(frame("round", 12))
