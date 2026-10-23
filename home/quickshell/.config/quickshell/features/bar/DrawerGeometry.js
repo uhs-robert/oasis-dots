@@ -243,18 +243,9 @@ function texture_origin(side, from_bottom, bar_bottom, placement, screen_width, 
 // (0 to 3), `first_scanline` the first scanline's row in the drawer (0 to period - 1).
 function texture_phase(origin, period) {
     const wrap = Band.phase_wrap;
-    // A flipped drawer reads the checker's row pairs backwards, so no plain wrap of its origin matches: search the four
-    // offsets for the one whose pairs coincide.
-    const fills = (cy) => Math.floor(cy / 2) % 2;
-    let dither_y = wrap(origin.y, 4);
-    if (origin.flipped) {
-        for (let s = 0; s < 4; s++) {
-            if ([0, 1, 2, 3].every(v => fills(v + s) === fills(origin.y - v))) {
-                dither_y = s;
-                break;
-            }
-        }
-    }
+    // A flipped drawer reads the checker's rows backwards (canonical row y - v), which pairs rows as (y-1, y-2), not
+    // (y, y-1): the tile grid then starts 1 - y before the drawer.
+    const dither_y = origin.flipped ? wrap(1 - origin.y, 4) : wrap(origin.y, 4);
     return {
         dither_x: wrap(origin.x, 4),
         dither_y: dither_y,
