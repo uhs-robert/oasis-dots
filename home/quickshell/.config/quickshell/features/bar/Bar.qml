@@ -235,7 +235,7 @@ Item {
         edge: root.position
         cap_left: true
         cap_right: true
-        tab_joined: (SubmapState.active && !root.has_mode_chip) || VoxSessionState.active
+        tab_joined: (SubmapState.indicator_shown && !Style.screen_frame_on && !root.has_mode_chip) || VoxSessionState.active
         visible: root.has_center
 
         onClicked: if (root.center_entries.some(e => e.base === "clock")) Popups.toggle("clock", center_island.body_item, center_island.bg_color, root.screen_name)
@@ -249,6 +249,27 @@ Item {
                 visible: !item || item.shown === undefined || item.shown
                 Component.onCompleted: setSource(modelData.url, root.module_props)
                 onLoaded: root.wire_module(item, modelData, center_island)
+            }
+        }
+
+        // Frame mode has no dropdown tab, so the submap shows here beside the clock; lualine styles keep their own mode chip.
+        Rectangle {
+            visible: Style.screen_frame_on && !root.has_mode_chip && SubmapState.indicator_shown
+            Layout.alignment: Qt.AlignVCenter
+            implicitWidth: chip_text.implicitWidth + 16
+            implicitHeight: chip_text.implicitHeight + 6
+            radius: Style.radius(4)
+            color: SubmapState.bar_color
+
+            Text {
+                id: chip_text
+                anchors.centerIn: parent
+                text: SubmapState.submap_name.toUpperCase()
+                color: Theme.bg_core
+                font.family: Style.font_family
+                font.pixelSize: Style.bar_font_size - 1
+                font.bold: true
+                font.letterSpacing: 1
             }
         }
     }
