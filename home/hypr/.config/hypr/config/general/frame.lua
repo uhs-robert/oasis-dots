@@ -135,7 +135,8 @@ end
 
 --- The workspace switch animation as the config defines it (`_G.WorkspacesAnimation`, from config/rules) or, with the
 --- frame on, a plain slide on a bezier that does not overshoot: flush windows would visibly bounce past the frame and
---- snap back. The curve is registered by config/rules, which runs before any frame is set.
+--- snap back. The curve and `_G.WorkspacesAnimation` come from config/rules at load; if a frame is set before that
+--- (`_G.WorkspacesAnimation` still nil), this returns early and leaves Hyprland's animation untouched.
 --- Hyprland cannot read an animation back, so the restore replays the config's own spec.
 --- @param frame_on boolean
 local function apply_workspaces_animation(frame_on)

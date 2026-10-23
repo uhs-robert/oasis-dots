@@ -145,6 +145,10 @@ check("no frame: not handled", _G.ScreenFrame.toggle_lone_flush() == false)
 _G.WorkspacesAnimation = { leaf = "workspaces", enabled = true, speed = 5, bezier = "smooth", style = "slidefade 20%" }
 _G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
 check("frame on: plain slide on no-overshoot curve", animation.style == "slide" and animation.speed == 3.5 and animation.bezier == "easeOutQuint")
+local rules_file = assert(io.open(here .. "/../.config/hypr/config/rules/init.lua"))
+local rules_source = rules_file:read("a")
+rules_file:close()
+check("frame on: curve is defined by config/rules", rules_source:find('hl.curve("easeOutQuint"', 1, true) ~= nil)
 
 check("lone: handled", _G.ScreenFrame.toggle_lone_flush() == true)
 check("lone: tag set", tagged(first))
@@ -190,7 +194,13 @@ _G.ScreenFrame.toggle_lone_flush()
 _G.ScreenFrame.clear()
 check("clear: tag cleared", not tagged(first))
 check("clear: gaps rule off", not gap_rule_enabled(1))
-check("clear: animation restored", animation.bezier == "smooth")
+check("clear: animation restored", animation.style == "slidefade 20%" and animation.speed == 5 and animation.bezier == "smooth")
+
+-- The frame can come back after a clear, and the slide applies again.
+_G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
+check("on again: slide", animation.style == "slide" and animation.speed == 3.5 and animation.bezier == "easeOutQuint")
+_G.ScreenFrame.clear()
+check("off again: restored", animation.style == "slidefade 20%" and animation.speed == 5 and animation.bezier == "smooth")
 
 -- A tag left by an earlier Lua state (config reload) is dropped when the frame is set again.
 first.tag_set = { frame_gapped = true }
