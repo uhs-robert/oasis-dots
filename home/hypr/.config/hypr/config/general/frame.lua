@@ -14,6 +14,9 @@ local MAX_ROUNDING = 20
 local saved = nil
 local missed_checks = 0
 local watchdog = nil
+-- Whether a lone tiled window sits flush with the frame (the Settings "Flush single windows" row). Off, it keeps the
+-- gaps and rounding of any other window; maximizing stays flush either way.
+local flush_lone_windows = true
 -- One window rule per rounding value and match, made on first use: a rule's values cannot change, and only the enabled
 -- ones apply. Enabling and disabling re-applies to open windows.
 local window_rules = {}
@@ -125,7 +128,7 @@ end
 local function release_stale_gapped_lones()
   for workspace_id, address in pairs(gapped_lones) do
     local tiled = tiled_windows(workspace_id)
-    if #tiled ~= 1 or tiled[1].address ~= address then release_gapped_lone(workspace_id) end
+    if not flush_lone_windows or #tiled ~= 1 or tiled[1].address ~= address then release_gapped_lone(workspace_id) end
   end
   for _, window in ipairs(hl.get_windows() or {}) do
     local held = window.workspace and gapped_lones[window.workspace.id] == window.address
@@ -209,7 +212,9 @@ end
 --- @param border_size number
 --- @param active string a colour Hyprland parses, e.g. "rgba(33ccffee)"
 --- @param inactive string
-local function set(corner, radius, border_size, active, inactive)
+--- @param flush? boolean whether a lone tiled window goes flush with the frame; anything but false means it does
+local function set(corner, radius, border_size, active, inactive, flush)
+  flush_lone_windows = flush ~= false
   if saved == nil then
     saved = {
       rounding = hl.get_config("decoration.rounding"),
@@ -240,11 +245,11 @@ local function set(corner, radius, border_size, active, inactive)
   local rules = {}
   if chamfered then table.insert(rules, { rounding = rounding, power = 1, kind = "gapped" }) end
   if flush_rounding ~= rounding then
-    table.insert(rules, { rounding = flush_rounding, power = power, kind = "lone" })
+    if flush_lone_windows then table.insert(rules, { rounding = flush_rounding, power = power, kind = "lone" }) end
     table.insert(rules, { rounding = flush_rounding, power = power, kind = "maximized" })
   end
   use_window_rules(rules)
-  lone_window_rule:set_enabled(true)
+  lone_window_rule:set_enabled(flush_lone_windows)
   apply_workspaces_animation(true)
   release_stale_gapped_lones()
   missed_checks = 0
@@ -255,13 +260,21 @@ local function set(corner, radius, border_size, active, inactive)
   end
 end
 
---- SUPER+M on a lone tiled window, while the frame is on: takes it out of the flush look (the owner's gaps and the gapped
+--- SUPER+M on a lone tiled window, while the frame is on and lone windows are flush: takes it out of the flush look (the owner's gaps and the gapped
 --- rounding) or puts it back. The opt-out is held for that workspace and window only, and release_stale_gapped_lones
 --- ends it as soon as the window is no longer alone, so it cannot outlive the situation it was asked for.
 --- @return boolean handled false when the caller should maximize as usual
 local function toggle_lone_flush()
   local window = hl.get_active_window()
-  if saved == nil or window == nil or window.floating or window.fullscreen ~= 0 or window.workspace == nil then
+  -- With flush off a lone window is already gapped, so there is nothing to opt out of and the key maximizes.
+  if
+    saved == nil
+    or not flush_lone_windows
+    or window == nil
+    or window.floating
+    or window.fullscreen ~= 0
+    or window.workspace == nil
+  then
     return false
   end
   local workspace_id = window.workspace.id
@@ -298,8 +311,8 @@ end
 
 -- Global functions which are accessible externally via `hyprctl dispatch "ScreenFrame"`
 _G.ScreenFrame = {
-  set = function(corner, radius, border_size, active, inactive)
-    set(corner, radius, border_size, active, inactive)
+  set = function(corner, radius, border_size, active, inactive, flush)
+    set(corner, radius, border_size, active, inactive, flush)
 
     return hl.dsp.no_op()
   end,

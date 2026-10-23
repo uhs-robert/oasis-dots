@@ -39,6 +39,7 @@ RowsSection {
             wait_anim: "The keeptabs cue when a session waits on you, from any style.",
             toast_enter: "How notification toasts arrive, from any style.",
             screen_frame: "Bands in the bar's colour round the rest of the screen, joined to the bar, with the corner shape you pick. Window corners and borders follow it (Pixel's windows are chamfered).",
+            screen_frame_flush: "A lone window sits flush against the screen frame. Off, it keeps the gaps and rounding of any other window.",
             bar_island_shape: "The outline of the bar's islands, or one strip across the full bar, from any style, drawn in your palette.",
             bar_island_opacity: "How see-through the bar islands' (or the full bar's) backgrounds are; text, icons and borders stay solid.",
             workspace_art: "The bar's workspace indicator, from any style, drawn in your palette.",
