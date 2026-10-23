@@ -57,7 +57,7 @@ class FirefoxCss(unittest.TestCase):
         self.assertIn("#nav-bar:hover", css)
         self.assertIn("#nav-bar:focus", css)
         cover = css.split("--tf-bevel-outside: var(--toolbox-background-color")[0].rsplit("\n\n", 1)[1]
-        covered = [x.strip() for x in cover.split("{")[0].split(",")]
+        covered = [x.strip() for x in cover.split("*/")[-1].split("{")[0].split(",")]
         self.assertEqual(covered, ["#nav-bar", "#PersonalToolbar", "#TabsToolbar", "box#vertical-tabs", ".buttons-wrapper"])
         for pane in ("#sidebar-box", "#tabbrowser-tabbox", "findbar"):
             self.assertNotIn(pane, covered)
