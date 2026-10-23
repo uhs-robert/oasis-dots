@@ -28,4 +28,13 @@ Singleton {
         const bar_edge = has_bar ? (BarSettings.position_for(rule) === "bottom" ? "bottom" : "top") : "";
         return FrameGeometry.frame_layout(screen.width, screen.height, bar_edge, BarSettings.height_for(rule), Object.assign({}, Style.screen_frame_kit, Style.screen_frame_profile, { fill_overlap: Style.islands_translucent ? 0 : 1 }));
     }
+
+    // The hole's outline as points in the hole's own coordinates (its top-left corner at 0, 0), for a surface that fills
+    // the hole and must keep the frame's corner profile. Empty with no frame.
+    function hole_outline(screen) {
+        const lay = root.layout_for(screen);
+        if (!lay) return [];
+        const hole = FrameGeometry.hole_rect(lay), flip = lay.edge === "bottom";
+        return FrameGeometry.hole_loop(lay).map(p => Qt.point(p[0] - hole.x, (flip ? lay.depth - p[1] : p[1]) - hole.y));
+    }
 }
