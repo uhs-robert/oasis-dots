@@ -12,6 +12,10 @@ Item {
 
     property bool running: false
     readonly property bool live: root.running && PowerSource.on_ac
+    // Zone and 12h/24h rules live in features/clock, which styles may not import, so the host passes them in.
+    property var shift_zone: d => d
+    property var format_digits: d => Qt.formatTime(d, "HH:mm")
+    readonly property date now: root.shift_zone(clock.date)
     readonly property real dial: 124
     readonly property real k: face.panel_item.height / 485
 
@@ -32,7 +36,7 @@ Item {
             y: face.panel_item.height / 2 - 360 * root.k
             scale: root.k
             transformOrigin: Item.TopLeft
-            now: clock.date
+            now: root.now
             show_seconds: root.live
         }
     }
@@ -43,7 +47,7 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         horizontalAlignment: Text.AlignHCenter
-        text: Qt.formatTime(clock.date, "HH:mm")
+        text: root.format_digits(root.now)
         color: Style.wk.lit
         font.family: W.digit_font
         font.pixelSize: 60
