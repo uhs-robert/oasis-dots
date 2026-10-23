@@ -7,8 +7,8 @@ import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import qs.core
 import qs.theme
-import "../bar/DrawerGeometry.js" as Drawer
-import "../bar/FrameGeometry.js" as FrameGeometry
+import "../../ui/frames/DrawerGeometry.js" as Drawer
+import "../../ui/frames/FrameGeometry.js" as FrameGeometry
 import qs.features.bar
 import qs.features.display
 import qs.styles.snes.widgets as Snes

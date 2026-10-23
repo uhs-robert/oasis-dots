@@ -1,5 +1,5 @@
 import QtQuick
-import "BandGeometry.js" as Band
+import "../../ui/frames/BandGeometry.js" as Band
 
 // Draws `source` over w by h except inside `gaps` (each { x, y, w, h }), by drawing it again clipped to each of the rects
 // round them. A path cannot be cut open, and a drawer must hide the frame's line along its mouth without painting over it.

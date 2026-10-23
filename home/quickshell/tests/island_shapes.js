@@ -9,11 +9,11 @@ const assert = require("assert");
 const root = path.join(__dirname, "../.config/quickshell");
 const read = rel => fs.readFileSync(path.join(root, rel), "utf8");
 const O = vm.createContext({});
-vm.runInContext(read("features/bar/IslandOutlines.js").replace(/^\.pragma.*$/gm, ""), O);
+vm.runInContext(read("ui/frames/IslandOutlines.js").replace(/^\.pragma.*$/gm, ""), O);
 const run = code => vm.runInContext(code, O);
 // BandGeometry `.import`s IslandOutlines as Outlines, which QML resolves and node cannot.
 const B = vm.createContext({ Outlines: O });
-vm.runInContext(read("features/bar/BandGeometry.js").replace(/^\.(pragma|import).*$/gm, ""), B);
+vm.runInContext(read("ui/frames/BandGeometry.js").replace(/^\.(pragma|import).*$/gm, ""), B);
 // A band's corners in band-frame order (start of the screen edge, its end, end of the open edge, its start), placed
 // by band_affine inside band_rect; each must land on the screen corner of the band that matches.
 const placed_corners = (edge, sw, sh, t) => {
@@ -22,9 +22,9 @@ const placed_corners = (edge, sw, sh, t) => {
 };
 const plain = v => JSON.parse(JSON.stringify(v));
 const C = vm.createContext({ Outlines: O });
-vm.runInContext(read("features/bar/Corners.js").replace(/^\.(pragma|import).*$/gm, ""), C);
+vm.runInContext(read("ui/frames/Corners.js").replace(/^\.(pragma|import).*$/gm, ""), C);
 const F = vm.createContext({ Outlines: O, Corners: C });
-vm.runInContext(read("features/bar/FrameGeometry.js").replace(/^\.(pragma|import).*$/gm, ""), F);
+vm.runInContext(read("ui/frames/FrameGeometry.js").replace(/^\.(pragma|import).*$/gm, ""), F);
 const kit = { corner: "round", radius: 12, thickness: 6, ornament: "" };
 const top_frame = F.frame_layout(1920, 1080, "top", 30, kit);
 const bottom_frame = F.frame_layout(1920, 1080, "bottom", 30, kit);

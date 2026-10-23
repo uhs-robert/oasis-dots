@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import qs.theme
-import "Corners.js" as Corners
+import "../../ui/frames/Corners.js" as Corners
 
 // Tells Hyprland the screen frame's corner profile, rim and whether a lone window goes flush, so window corners and
 // borders follow it (ScreenFrame.set in config/general/frame.lua, which keeps the user's values and restores them on clear or when the frame layer goes).

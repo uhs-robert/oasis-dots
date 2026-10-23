@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.ui.effects
-import "BandGeometry.js" as Band
+import qs.ui.frames
+import "../../ui/frames/BandGeometry.js" as Band
 
 // One band along a screen edge (BandGeometry.js): fill, vertical shade, dither, scanlines, inset line and rim, drawn
 // in the band frame and placed on `edge`. It knows nothing of the bar or its islands; callers pass the tokens.

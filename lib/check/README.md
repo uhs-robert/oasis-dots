@@ -79,8 +79,8 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `frame-lone-flush`: `home/hypr/tests/frame_lone_flush.lua` runs `config/general/frame.lua` against a stubbed `hl` and checks the lone-window flush opt-out (when it starts and ends) and the workspace animation swap. Needs lua.
 - `input-vectors-lua`, `input-vectors-js`: `home/quickshell/tests/input_settings/vectors.tsv` through the Lua validator Hyprland uses (`config/input`) and the bar's (`HyprInputValidation.js`), so the two cannot drift apart. Need lua and node.
 - `notification-markup`: `home/quickshell/tests/notification_markup.js`, the notification body sanitizer. Needs node.
-- `island-shapes`: `home/quickshell/tests/island_shapes.js`, the fill-less island helpers in `features/bar/IslandOutlines.js` and that every `Style.island_shapes` entry has a kit and a label. Needs node.
-- `drawer-shapes`: `home/quickshell/tests/drawer_shapes.js`, the drawer geometry in `features/bar/DrawerGeometry.js` (layout, fill, outline, rim continuity with the screen frame) and `FrameGeometry.hole_rect`/`seam_of`. Needs node.
+- `island-shapes`: `home/quickshell/tests/island_shapes.js`, the fill-less island helpers in `ui/frames/IslandOutlines.js` and that every `Style.island_shapes` entry has a kit and a label. Needs node.
+- `drawer-shapes`: `home/quickshell/tests/drawer_shapes.js`, the drawer geometry in `ui/frames/DrawerGeometry.js` (layout, fill, outline, rim continuity with the screen frame) and `FrameGeometry.hole_rect`/`seam_of`. Needs node.
 - `bar-layout`: `home/quickshell/tests/bar_layout.js`, the bar position in `features/bar/BarLayout.js` (rules, per-monitor overrides, the state file). Needs node.
 - `check-scope`, `check-cache`: which steps `--changed` picks (`lib/check/tests/scope.sh`), and the runner's scopes, keys, pass records and slot lock (`lib/check/tests/test_*.py`, `cache.sh`, `lock.sh`), and `shaders.sh`, the shaders step's tests. Any file under `lib/check/` reaches them, this README included.
 - `packages`: duplicate package names across the manifests (`lib/check/steps/packages.sh`).
