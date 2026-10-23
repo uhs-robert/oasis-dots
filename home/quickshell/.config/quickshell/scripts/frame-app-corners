@@ -41,6 +41,13 @@ def chamfer_css(radius):
     corner = lambda angle, at: f"linear-gradient({angle}deg, var(--tf-bevel-outside) 50%, var(--tf-bevel-line) 50%, var(--tf-bevel-line) calc(50% + {w}), transparent calc(50% + {w})) {at} / {r} {r} no-repeat"
     corners = ", ".join([corner(135, "left top"), corner(225, "right top"), corner(315, "right bottom"), corner(45, "left bottom")])
     return f"""
+/* Registered so the stroke colour interpolates; a plain custom property would flip at once while the border fades. */
+@property --tf-bevel-line {{
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}}
+
 {panes} {{
   position: relative;
   --tf-bevel-line: var(--tf-border);
@@ -70,6 +77,8 @@ box#vertical-tabs,
   inset: calc(-1 * {w});
   pointer-events: none;
   background: {corners};
+  /* The same timing as TextFox's own border-color transition. */
+  transition: --tf-bevel-line var(--tf-border-transition);
 }}
 
 /* TextFox gives the find bar no side padding, so its first and last controls would sit under a corner. */
