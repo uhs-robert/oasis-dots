@@ -98,7 +98,8 @@ local function window_rounding(corner, radius, gap)
 end
 
 --- Shapes windows to the frame: `corner` and `radius` give the corner, `border_size` and the two colours the window
---- borders. Saves the owner's values first, and keeps them until `clear`.
+--- borders. Saves the owner's values first, and keeps them until `clear`. A style with no border (width 0, or "" for
+--- an invisible colour) leaves the owner's own border size and colour in place instead of drawing an invisible one.
 --- @param corner string round, chamfer, pixel or square
 --- @param radius number
 --- @param border_size number
@@ -117,11 +118,15 @@ local function set(corner, radius, border_size, active, inactive)
   local rounding, chamfered = window_rounding(corner, tonumber(radius) or 0, gaps_out())
   -- A chamfered window's own rounding comes from its rule, so the global one only matters for windows the rule misses.
   -- Power 2 keeps a squircle rounding of the owner's from drawing a round window's arc off the frame's circle.
+  local width = tonumber(border_size)
   hl.config({
     decoration = { rounding = chamfered and 0 or rounding, rounding_power = 2 },
     general = {
-      border_size = tonumber(border_size) or saved.border_size,
-      col = { active_border = active, inactive_border = inactive },
+      border_size = (width and width > 0) and width or saved.border_size,
+      col = {
+        active_border = (active and active ~= "") and active or saved.active_border,
+        inactive_border = (inactive and inactive ~= "") and inactive or saved.inactive_border,
+      },
     },
   })
   use_chamfer_rule(chamfered and rounding or nil)

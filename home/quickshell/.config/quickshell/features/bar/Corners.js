@@ -39,6 +39,12 @@ function hypr_color(c) {
     return "rgba(" + hex(c.r) + hex(c.g) + hex(c.b) + hex(c.a) + ")";
 }
 
+// hypr_color for a window border, "" when the colour is invisible: ScreenFrame.set then keeps the owner's own colour
+// rather than drawing a transparent border.
+function hypr_border_color(c) {
+    return c.a > 0 ? hypr_color(c) : "";
+}
+
 // The corner between two edges as a polyline, from the point where the first edge ends to where the second begins.
 // (cx, cy), r, a0 and a1 are the quarter circle a round corner draws (IslandOutlines.arc); the other profiles use its
 // two ends and the square corner opposite its centre, so a caller swaps profiles without moving a join. `r` must

@@ -349,6 +349,7 @@ cases.push(["fit pixel rounds the radius down to whole steps", () => fit("pixel"
 cases.push(["fit pixel below one step is square, a missing step is 1 px", () => [fit("pixel", 1, 2), fit("pixel", 3, undefined)], [{ radius: 0, step: 0, stairs: 0 }, { radius: 3, step: 1, stairs: 3 }]]);
 cases.push(["fit chamfer caps at 12, square is 0, round is untouched", () => [fit("chamfer", 30).radius, fit("chamfer", 7).radius, fit("square", 12).radius, fit("round", 30).radius, fit("nonsense", 9).radius], [12, 7, 0, 30, 9]]);
 cases.push(["hypr_color is rgba hex with clamped channels", () => [C.hypr_color({ r: 1, g: 0.5, b: 0, a: 0.8 }), C.hypr_color({ r: 2, g: -1, b: 0, a: 1 })], ["rgba(ff8000cc)", "rgba(ff0000ff)"]]);
+cases.push(["hypr_border_color is empty for an invisible colour", () => [C.hypr_border_color({ r: 1, g: 0, b: 0, a: 0 }), C.hypr_border_color({ r: 0, g: 0, b: 0, a: 1 })], ["", "rgba(000000ff)"]]);
 
 for (const step of [2, 3, 4]) for (const r of [12, 18]) {
   const f = C.fit("pixel", r, step);

@@ -72,7 +72,7 @@ hl.config({ general = { gaps_in = 8, gaps_out = 16 } })
 
 See `custom/README.md` for the layout and more examples, including sessions for the launcher.
 
-While Quickshell's screen frame is on (Settings > Theme options > Screen frame), `config/general/frame.lua` sets `decoration.rounding` to match the frame's corners and puts your value back when the frame goes; a rounding you set from `custom/` is the one it restores.
+While Quickshell's screen frame is on (Settings > Theme options > Screen frame), `config/general/frame.lua` sets `decoration.rounding`, `decoration.rounding_power`, `general.border_size` and the border colours to match the frame, and puts your values back when the frame goes; values you set from `custom/` are the ones it restores. For the chamfer, pixel-art corners it adds a window rule matching every window, made when the frame is first applied, so it sorts after your own rules and overrides a `rounding` or `rounding_power` rule of yours on those windows while the frame is on. A style with no border leaves your border size and colours alone.
 
 ## HyprVim
 
