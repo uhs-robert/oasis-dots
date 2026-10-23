@@ -103,6 +103,7 @@ PanelWindow {
     readonly property bool on_top: BarSettings.position_on(root.held_screen_name) === "bottom"
     readonly property real screen_width: root.screen ? root.screen.width : 1920
     readonly property real screen_height: root.screen ? root.screen.height : 1080
+    // No explicit exclusiveZone: even 0 overrides Ignore, so the frame's zones would push a drawer inward.
     exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
     anchors.top: root.drawer ? root.drawer_place.anchor_top : root.on_top
     anchors.bottom: root.drawer ? root.drawer_place.anchor_bottom : !root.on_top
@@ -112,7 +113,6 @@ PanelWindow {
     margins.left: root.drawer ? root.drawer_place.margin_left : 0
     // Room around the frame for a soft shadow, so the window never clips it.
     readonly property int shadow_pad: !root.drawer && Style.frame_shadow.a > 0 ? Style.frame_drop : 0
-    exclusiveZone: 0
     color: "transparent"
     implicitWidth: root.drawer ? root.drawer_full.surface.width : frame.width + root.shadow_pad * 2
     // Floating frames set the title chip into the top border, half of it above the frame.
