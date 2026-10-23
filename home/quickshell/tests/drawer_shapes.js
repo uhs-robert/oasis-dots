@@ -298,6 +298,10 @@ cases.push(["a top strip ignores a bottom-docked drawer", () => F.strip_gaps([bo
 cases.push(["a bottom strip gaps a bottom-docked drawer", () => F.strip_gaps([bottom_win], "bottom", 30, 1080), [{ x: 100, y: 0, w: 300, h: 30 }]]);
 cases.push(["a bottom strip ignores a top-hung drawer", () => F.strip_gaps([strip_win], "bottom", 30, 1080), []]);
 cases.push(["without a frame every window gaps the strip", () => F.strip_gaps([bottom_win], "top", 30, 0).length, 1]);
+cases.push(["a window that only touches the strip's band is left out", () => F.strip_gaps([{ x: 0, y: 30, w: 50, h: 100 }], "top", 30, 1080), []]);
+cases.push(["a window that only touches a bottom strip's band is left out", () => F.strip_gaps([{ x: 0, y: 900, w: 50, h: 120 }], "bottom", 30, 1080), []]);
+cases.push(["a mixed list keeps only the windows that overlap the strip", () => F.strip_gaps([bottom_win, strip_win, { x: 500, y: 400, w: 10, h: 10 }], "top", 30, 1080), [{ x: 100, y: 0, w: 300, h: 30 }]]);
+cases.push(["a bar-hung window whose cover overlaps the band by 1px is kept", () => F.strip_gaps([{ x: 700, y: 29, w: 200, h: 300 }], "top", 30, 1080), [{ x: 700, y: 0, w: 200, h: 30 }]]);
 cases.push(["the last window clearing drops the screen", () => F.drawer_windows_with(F.drawer_windows_with({}, "DP-1", "a", { x: 0, y: 0, w: 1, h: 1 }), "DP-1", "a", null), {}]);
 cases.push(["a publish leaves other screens' entries alone", () => F.drawer_windows_with(reg_ab, "DP-2", "a", null)["DP-1"] === reg_ab["DP-1"], true]);
 cases.push(["canonical rect is unchanged under a top bar", () => F.to_canonical_rect(top_frame, { x: 10, y: 20, w: 30, h: 40 }), { x: 10, y: 20, w: 30, h: 40 }]);
