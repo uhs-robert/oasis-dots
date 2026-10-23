@@ -18,7 +18,7 @@ Popup {
     // The pane keeps 450; the sidebar grows to fit the widest section label in the active style.
     preferred_width: 467 + nav.width / Style.scale
     body_height: Math.min(root.natural_content, root.content_cap) + 24
-    reserve_height: root.max_body
+    reserve_height: Math.min(root.max_body, root.free_height)
     jumps_enabled: true
     // Only on the section list: panes hold sliders and fields with wheel behavior of their own.
     wheel_steps: !root.in_pane
@@ -338,6 +338,11 @@ Popup {
                 id: pane_loader
                 width: pane_flick.width
                 height: Math.max(body.height, pane_loader.implicitHeight)
+                // The flickable is reused across sections: start the new one at the top, then at its selected row (its cursor was set before the Connections attached).
+                onLoaded: {
+                    pane_flick.contentY = 0;
+                    Qt.callLater(root.reveal_selected, pane_flick, pane_loader);
+                }
             }
         }
 
