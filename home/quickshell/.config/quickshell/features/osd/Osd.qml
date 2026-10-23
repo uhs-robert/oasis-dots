@@ -7,6 +7,8 @@ import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import qs.core
 import qs.theme
+import "../bar/DrawerGeometry.js" as Drawer
+import "../bar/FrameGeometry.js" as FrameGeometry
 import qs.features.bar
 import qs.features.display
 import qs.styles.snes.widgets as Snes
@@ -41,6 +43,7 @@ PanelWindow {
     property string vox_phase: "recording"
     property real vox_started_ms: 0
     property real now_ms: 0
+    // How far the OSD has come in, 0 to 1: the slide and fade floating, the drawer's growth out of the frame.
     property real reveal: 0
     property string held_screen_name: ""
 
@@ -98,29 +101,104 @@ PanelWindow {
     visible: root.wanted || root.reveal > 0
     // Opposite the bar, clear of the popups that grow from it.
     readonly property bool on_top: BarSettings.position_on(root.held_screen_name) === "bottom"
-    anchors.top: root.on_top
-    anchors.bottom: !root.on_top
-    margins.top: Style.px(72)
-    margins.bottom: Style.px(72) - root.shadow_pad
+    readonly property real screen_width: root.screen ? root.screen.width : 1920
+    readonly property real screen_height: root.screen ? root.screen.height : 1080
+    exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
+    anchors.top: root.drawer ? root.drawer_place.anchor_top : root.on_top
+    anchors.bottom: root.drawer ? root.drawer_place.anchor_bottom : !root.on_top
+    anchors.left: root.drawer && root.drawer_place.anchor_left
+    margins.top: root.drawer ? root.drawer_place.margin_top : Style.px(72)
+    margins.bottom: root.drawer ? root.drawer_place.margin_bottom : Style.px(72) - root.shadow_pad
+    margins.left: root.drawer ? root.drawer_place.margin_left : 0
     // Room around the frame for a soft shadow, so the window never clips it.
-    readonly property int shadow_pad: Style.frame_shadow.a > 0 ? Style.frame_drop : 0
+    readonly property int shadow_pad: !root.drawer && Style.frame_shadow.a > 0 ? Style.frame_drop : 0
     exclusiveZone: 0
     color: "transparent"
-    implicitWidth: frame.width + root.shadow_pad * 2
+    implicitWidth: root.drawer ? root.drawer_full.surface.width : frame.width + root.shadow_pad * 2
     // Floating frames set the title chip into the top border, half of it above the frame.
-    readonly property real float_top: Style.border_title && Style.show_title ? Math.round(title_tab.height / 2) : 0
-    implicitHeight: frame.height + root.slide + root.shadow_pad + root.float_top
+    readonly property bool float_title: !root.drawer && Style.border_title && Style.show_title
+    readonly property real float_top: root.float_title ? Math.round(title_tab.height / 2) : 0
+    implicitHeight: root.drawer ? root.drawer_full.surface.height : frame.height + root.slide + root.shadow_pad + root.float_top
     mask: Region {}
     WlrLayershell.namespace: "quickshell-osd"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+    // With the screen frame on the OSD is a plain-centre drawer on the edge opposite the bar (like a centre which-key,
+    // which it stacks above), flush on the seam; a screen without a frame layout keeps the floating pill and its gap.
+    readonly property var screen_frame: root.screen ? ScreenFrames.layout_for(root.screen) : null
+    readonly property bool drawer: root.screen_frame !== null
+    readonly property bool from_bottom: !root.on_top
+    readonly property real drawer_fillet: root.drawer ? Style.screen_frame_kit.radius : 0
+    readonly property real drawer_cover: Drawer.cover_depth(Style.bar_border_width, Style.bar_inset_gap, Style.bar_inset_width)
+    readonly property var drawer_hole: root.screen_frame ? FrameGeometry.hole_rect(root.screen_frame) : null
+    readonly property var drawer_kinds: Drawer.end_kinds("center", false)
+    readonly property real panel_width: frame.natural_width
+    readonly property real panel_height: frame.natural_height
+    function drawer_spec(extent) {
+        return {
+            edge: root.from_bottom ? "bottom" : "top",
+            body_length: root.drawer_hole ? Drawer.body_length("center", root.panel_width, root.drawer_hole.w, root.drawer_fillet) : root.panel_width,
+            body_depth: root.panel_height,
+            extent: extent,
+            radius: root.drawer_fillet,
+            fillet: root.drawer_fillet,
+            start_kind: root.drawer_kinds.start,
+            end_kind: root.drawer_kinds.end,
+            cover: root.drawer_cover
+        };
+    }
+    // The window follows the full drawer, so it never resizes while the shape grows inside it. Never null, so a frame
+    // switched off under an open window cannot leave DrawerShape without a layout.
+    readonly property var drawer_full: Drawer.drawer_layout(root.drawer_spec(root.panel_height))
+    readonly property var drawer_layout: Drawer.drawer_layout(root.drawer_spec(root.drawer ? root.panel_height * root.reveal : 0))
+    readonly property var drawer_body: Drawer.body_rect(root.drawer_layout)
+    readonly property var drawer_place: Drawer.place("center", root.from_bottom, root.drawer_hole, root.screen_frame ? FrameGeometry.seam_of(root.screen_frame, root.from_bottom ? "bottom" : "top") : 0, root.screen_width, root.screen_height, root.drawer_cover, root.drawer_full.length)
+    readonly property bool drawer_translucent: root.drawer && Style.islands_translucent
+    // Lets the frame and the strip leave their lines out under the window, while it is mapped.
+    DrawerWindowPublisher {
+        screen_name: root.screen ? root.screen.name : ""
+        rect: root.drawer_translucent && root.visible ? Drawer.window_rect("center", root.from_bottom, root.drawer_place, root.screen_width, root.screen_height, root.width, root.drawer_layout.drawn_depth) : null
+    }
+
+    // Floating, the slide and fade ease on their own; a drawer runs the animations below, so a re-trigger mid-fold
+    // reverses from where it is.
     Behavior on reveal {
+        enabled: !root.drawer
         NumberAnimation { id: reveal_anim; duration: 140; easing.type: Easing.OutCubic }
     }
 
+    NumberAnimation {
+        id: open_anim
+        target: root
+        property: "reveal"
+        to: 1
+        duration: 190
+        easing.type: Easing.OutCubic
+    }
+
+    NumberAnimation {
+        id: close_anim
+        target: root
+        property: "reveal"
+        to: 0
+        duration: 120
+        easing.type: Easing.InCubic
+    }
+
+    // A change of edge or of frame while shown restarts from closed instead of sliding across.
+    onDrawerChanged: root.restart_reveal()
+    onFrom_bottomChanged: root.restart_reveal()
+
+    function restart_reveal() {
+        open_anim.stop();
+        close_anim.stop();
+        root.reveal = 0;
+        if (root.wanted) root.refresh();
+    }
+
     // Showing with its slide-in and any console art's entrance (the alert "!" pop) done, for scripts that act once it is drawn.
-    readonly property bool settled: root.wanted && root.reveal === 1 && !reveal_anim.running
+    readonly property bool settled: root.wanted && root.reveal === 1 && !reveal_anim.running && !open_anim.running
         && !(console_osd_loader.item && console_osd_loader.item.busy)
     readonly property string shown_what: root.showing_vox ? "voxtype" : root.kind
 
@@ -133,7 +211,15 @@ PanelWindow {
     function refresh() {
         if (root.level_wanted) root.content = "level";
         else if (root.vox_wanted) root.content = "voxtype";
-        root.reveal = root.wanted ? 1 : 0;
+        if (!root.drawer) {
+            root.reveal = root.wanted ? 1 : 0;
+        } else if (root.wanted) {
+            close_anim.stop();
+            if (root.reveal < 1 && !open_anim.running) open_anim.start();
+        } else {
+            open_anim.stop();
+            if (root.reveal > 0 && !close_anim.running) close_anim.start();
+        }
     }
 
     function show(new_kind, new_level, new_muted) {
@@ -270,9 +356,18 @@ PanelWindow {
         text: "100%"
     }
 
+    Loader {
+        active: root.drawer
+        sourceComponent: DrawerShape {
+            layout: root.drawer_layout
+            screen_name: root.screen ? root.screen.name : ""
+            translucent: root.drawer_translucent
+        }
+    }
+
     // Fits in the slide room under the frame, so the window keeps its size.
     Rectangle {
-        visible: Style.frame_drop > 0 && Style.frame_shadow.a === 0
+        visible: !root.drawer && Style.frame_drop > 0 && Style.frame_shadow.a === 0
         x: frame.x
         y: frame.y + Style.frame_drop
         width: frame.width
@@ -283,7 +378,7 @@ PanelWindow {
     }
 
     Loader {
-        active: Style.frame_shadow.a > 0
+        active: !root.drawer && Style.frame_shadow.a > 0
         x: frame.x + 4
         y: frame.y + 4
         width: frame.width - 8
@@ -296,265 +391,280 @@ PanelWindow {
         }
     }
 
-    StyledFrame {
-        id: frame
-        st: Style
+    // The drawer's body uncovers the content as it grows; floating, this is the whole window and clips nothing.
+    Item {
+        id: clip_box
+        x: root.drawer ? root.drawer_body.x : 0
+        y: root.drawer ? root.drawer_body.y : 0
+        width: root.drawer ? root.drawer_body.width : root.width
+        height: root.drawer ? root.drawer_body.height : root.height
+        clip: root.drawer
 
-        readonly property int pad_x: Style.px(16)
-        readonly property int pad_y: Style.px(10)
-        readonly property real top_rule: Style.frame_top_rule ? Style.accent_height : 0
-        readonly property real band_height: Math.max(26, title_tab.height + 4)
-        readonly property real header_height: !title_tab.visible ? 0 : root.banded ? frame.band_height + 4 + Style.inset_pad : Style.border_title ? root.float_top : title_tab.height + frame.top_rule + Style.inset_pad
+        StyledFrame {
+            id: frame
+            st: Style
 
-        x: root.shadow_pad
-        y: root.float_top + root.slide * (1 - root.reveal)
-        opacity: root.reveal
-        width: Math.max(body.implicitWidth + pad_x * 2, title_tab.visible ? title_tab.width + Style.inset_pad * 2 : 0)
-        height: header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
-        // Sized console art makes the frame near square, where a pill radius would round it into a circle; framed art keeps the frame radius.
-        radius: Style.rounded && !Style.frame_visor && !(root.console_osd && (root.console_osd.size || root.console_osd.framed)) ? height / 2 : Style.frame_radius
-        island_color: Style.pal.bg_core
-        glow_fit_height: false
+            readonly property int pad_x: Style.px(16)
+            readonly property int pad_y: Style.px(10)
+            readonly property real top_rule: Style.frame_top_rule ? Style.accent_height : 0
+            readonly property real band_height: Math.max(26, title_tab.height + 4)
+            readonly property real header_height: !title_tab.visible ? 0 : root.banded ? frame.band_height + 4 + Style.inset_pad : root.float_title ? root.float_top : title_tab.height + frame.top_rule + Style.inset_pad
 
-        Loader {
-            active: root.banded
-            x: Style.inset_pad + Style.frame_border_width
-            y: x
-            width: frame.width - x * 2
-            height: frame.band_height
-            sourceComponent: TitleStrip {
-                title: root.title
-                closable: false
-            }
-        }
-
-        Rectangle {
-            id: title_tab
-            visible: Style.show_title && !(root.console_osd && root.console_osd.untitled)
-            opacity: root.banded || Style.border_title ? 0 : 1
-            x: (Style.fade_fills || Style.rounded ? frame.radius : 0) + Style.inset_pad
-            y: (Style.fade_fills ? Style.frame_border_width : 0) + frame.top_rule + Style.inset_pad
-            width: Style.fade_fills ? Math.max(title_text.implicitWidth + 20 + title_index.space, body.implicitWidth + frame.pad_x * 2 - frame.radius * 2) : title_text.implicitWidth + 20 + title_index.space
-            height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
-            color: Style.fade_fills ? "transparent" : Style.title_bg
-
-            FadeFill {
-                visible: Style.fade_fills
-                fill: Style.title_bg
-            }
-
-            TitleIndex {
-                id: title_index
-                x: 10
-                anchors.verticalCenter: parent.verticalCenter
-                name: root.showing_vox ? "" : root.kind
-            }
-
-            Text {
-                id: title_text
-                anchors.centerIn: Style.fade_fills ? undefined : parent
-                anchors.horizontalCenterOffset: title_index.space / 2
-                x: 10 + title_index.space
-                y: (parent.height - height) / 2
-                text: Style.title_prefix + Style.title_text(root.title) + Style.title_suffix
-                color: Style.title_fg
-                font.family: Style.title_font_family
-                font.pixelSize: Style.title_size > 0 ? Style.title_size : Style.fs(-2)
-                font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
-                font.letterSpacing: Style.title_spacing
-            }
-        }
-
-        Loader {
-            active: Style.border_title && Style.show_title
-            x: 12
-            y: -root.float_top
-            sourceComponent: Neovim.BorderTitle {
-                title: Style.title_text(root.title)
-            }
-        }
-
-        RowLayout {
-            id: body
-            x: frame.pad_x
-            y: frame.header_height + frame.pad_y
-            spacing: Style.px(10)
+            // A drawer's content rides out with its far edge instead of staying put while the body uncovers it.
+            x: root.drawer ? 0 : root.shadow_pad
+            y: root.drawer ? (root.from_bottom ? 0 : clip_box.height - root.panel_height) : root.float_top + root.slide * (1 - root.reveal)
+            // A drawer cannot fade: the frame and its fillets would show through.
+            opacity: root.drawer ? 1 : root.reveal
+            drawer: root.drawer
+            readonly property real natural_width: Math.max(body.implicitWidth + pad_x * 2, title_tab.visible ? title_tab.width + Style.inset_pad * 2 : 0)
+            readonly property real natural_height: header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
+            width: root.drawer ? root.drawer_body.width : frame.natural_width
+            height: frame.natural_height
+            // Sized console art makes the frame near square, where a pill radius would round it into a circle; framed art keeps the frame radius.
+            radius: Style.rounded && !Style.frame_visor && !(root.console_osd && (root.console_osd.size || root.console_osd.framed)) ? height / 2 : Style.frame_radius
+            island_color: Style.pal.bg_core
+            glow_fit_height: false
 
             Loader {
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: Style.px(84)
-                Layout.preferredHeight: Style.px(84)
-                Layout.rightMargin: Style.px(6)
-                active: root.ring_layout
-                visible: root.ring_layout
-                sourceComponent: RingGauge {
-                    value: root.level
-                    label: String(root.percent)
-                    unit: "%"
+                active: root.banded
+                x: Style.inset_pad + Style.frame_border_width
+                y: x
+                width: frame.width - x * 2
+                height: frame.band_height
+                sourceComponent: TitleStrip {
+                    title: root.title
+                    closable: false
+                }
+            }
+
+            Rectangle {
+                id: title_tab
+                visible: Style.show_title && !(root.console_osd && root.console_osd.untitled)
+                opacity: root.banded || root.float_title ? 0 : 1
+                x: (Style.fade_fills || Style.rounded ? frame.radius : 0) + Style.inset_pad
+                y: (Style.fade_fills ? Style.frame_border_width : 0) + frame.top_rule + Style.inset_pad
+                width: Style.fade_fills ? Math.max(title_text.implicitWidth + 20 + title_index.space, body.implicitWidth + frame.pad_x * 2 - frame.radius * 2) : title_text.implicitWidth + 20 + title_index.space
+                height: Math.max(title_text.implicitHeight, title_index.space > 0 ? title_index.implicitHeight : 0) + 4
+                color: Style.fade_fills ? "transparent" : Style.title_bg
+
+                FadeFill {
+                    visible: Style.fade_fills
+                    fill: Style.title_bg
+                }
+
+                TitleIndex {
+                    id: title_index
+                    x: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: root.showing_vox ? "" : root.kind
+                }
+
+                Text {
+                    id: title_text
+                    anchors.centerIn: Style.fade_fills ? undefined : parent
+                    anchors.horizontalCenterOffset: title_index.space / 2
+                    x: 10 + title_index.space
+                    y: (parent.height - height) / 2
+                    text: Style.title_prefix + Style.title_text(root.title) + Style.title_suffix
+                    color: Style.title_fg
+                    font.family: Style.title_font_family
+                    font.pixelSize: Style.title_size > 0 ? Style.title_size : Style.fs(-2)
+                    font.weight: Style.title_weight > 0 ? Style.title_weight : Style.title_font_family === Style.font_family ? Font.Bold : Font.Normal
+                    font.letterSpacing: Style.title_spacing
+                }
+            }
+
+            Loader {
+                active: root.float_title
+                x: 12
+                y: -root.float_top
+                sourceComponent: Neovim.BorderTitle {
+                    title: Style.title_text(root.title)
+                }
+            }
+
+            RowLayout {
+                id: body
+                x: frame.pad_x
+                y: frame.header_height + frame.pad_y
+                spacing: Style.px(10)
+
+                Loader {
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: Style.px(84)
+                    Layout.preferredHeight: Style.px(84)
+                    Layout.rightMargin: Style.px(6)
+                    active: root.ring_layout
+                    visible: root.ring_layout
+                    sourceComponent: RingGauge {
+                        value: root.level
+                        label: String(root.percent)
+                        unit: "%"
+                        opacity: root.muted ? 0.5 : 1
+                    }
+                }
+
+                Loader {
+                    id: console_osd_loader
+                    active: !!root.console_osd
+                    visible: active
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
+                    Layout.preferredHeight: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
+                    sourceComponent: root.console_osd ? root.console_osd.art : null
+                }
+
+                Text {
+                    visible: !root.replaced("glyph")
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: Theme.glyph_size + 4
+                    horizontalAlignment: Text.AlignHCenter
+                    text: root.glyph
+                    color: !root.showing_vox ? Style.pal.primary : root.vox_recording ? Style.pal.label : Style.pal.warning
+                    opacity: !root.showing_vox && root.muted ? 0.5 : 1
+                    font.family: Theme.font_family
+                    font.pixelSize: Theme.glyph_size
+                }
+
+                Item {
+                    visible: !root.replaced("meter")
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: root.showing_vox ? Style.px(260) : Style.px(180)
+                    Layout.preferredHeight: root.showing_vox ? Style.px(44) : root.visor_wave ? Style.px(24) : meter.implicitHeight
+
+                    Modern.CapsuleSlider {
+                        visible: root.visor_wave
+                        width: parent.width
+                        height: parent.height
+                        value: root.level
+                        muted: root.muted
+                        interactive: false
+                        show_readout: false
+                        node: root.sink
+                        peaks_on: root.visor_wave && root.wanted && root.visible && PowerSource.on_ac
+                    }
+
+                    Meter {
+                        id: meter
+                        // Volume OSD matches the Volume popup's art (hearts on NES); brightness keeps its own.
+                        art_key: root.kind === "volume" ? "volume" : "osd"
+                        visible: !root.showing_vox && !root.visor_wave
+                        width: parent.width
+                        anchors.verticalCenter: parent.verticalCenter
+                        value: root.showing_vox ? 0 : root.level
+                        hot_from: root.showing_vox ? 1 : 0.9
+                        opacity: !root.showing_vox && root.muted ? 0.35 : 1
+                    }
+
+                    Waveform {
+                        id: waveform
+                        visible: root.showing_vox
+                        anchors.fill: parent
+                        frozen: !root.vox_recording
+                        running: root.showing_vox && root.visible && !root.replaced("meter")
+                        sample: n => VoxtypeAudioState.averages(n)
+                        gain: VoxtypeAudioState.gain
+                    }
+                }
+
+                Text {
+                    visible: !root.ring_layout && !root.replaced("percent")
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: percent_metrics.width
+                    horizontalAlignment: Text.AlignRight
+                    text: root.showing_vox ? root.elapsed : root.percent + "%"
+                    color: root.showing_vox && !root.vox_recording ? Style.pal.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Style.pal.fg
+                    font.family: Style.number_font
+                    font.pixelSize: percent_metrics.font.pixelSize
+                    font.bold: Style.number_font !== Style.font_family
+                }
+            }
+
+            Component {
+                id: rpg_osd
+                Snes.SnesOsd {
+                    level: root.level
+                    percent: root.percent
+                    muted: root.muted
+                }
+            }
+
+            Component {
+                id: alert_osd
+                Ps1.AlertMark {
+                    size: Theme.glyph_size + 10
                     opacity: root.muted ? 0.5 : 1
                 }
             }
 
-            Loader {
-                id: console_osd_loader
-                active: !!root.console_osd
-                visible: active
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
-                Layout.preferredHeight: root.console_osd && root.console_osd.size ? root.console_osd.size : -1
-                sourceComponent: root.console_osd ? root.console_osd.art : null
-            }
-
-            Text {
-                visible: !root.replaced("glyph")
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: Theme.glyph_size + 4
-                horizontalAlignment: Text.AlignHCenter
-                text: root.glyph
-                color: !root.showing_vox ? Style.pal.primary : root.vox_recording ? Style.pal.label : Style.pal.warning
-                opacity: !root.showing_vox && root.muted ? 0.5 : 1
-                font.family: Theme.font_family
-                font.pixelSize: Theme.glyph_size
-            }
-
-            Item {
-                visible: !root.replaced("meter")
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: root.showing_vox ? Style.px(260) : Style.px(180)
-                Layout.preferredHeight: root.showing_vox ? Style.px(44) : root.visor_wave ? Style.px(24) : meter.implicitHeight
-
-                Modern.CapsuleSlider {
-                    visible: root.visor_wave
-                    width: parent.width
-                    height: parent.height
-                    value: root.level
+            Component {
+                id: horizon_osd
+                Oasis.HorizonOsd {
+                    level: root.level
+                    percent: root.percent
                     muted: root.muted
-                    interactive: false
-                    show_readout: false
+                    glyph: root.glyph
+                    label: root.kind === "brightness" ? "Brightness" : root.muted ? "Muted" : "Volume"
+                    detail: root.kind === "brightness" ? "Backlight" : root.sink ? root.sink.description || root.sink.name : ""
+                    wave: root.kind === "volume"
                     node: root.sink
-                    peaks_on: root.visor_wave && root.wanted && root.visible && PowerSource.on_ac
+                    peaks_on: root.wanted && root.visible && PowerSource.on_ac
                 }
+            }
 
-                Meter {
-                    id: meter
-                    // Volume OSD matches the Volume popup's art (hearts on NES); brightness keeps its own.
-                    art_key: root.kind === "volume" ? "volume" : "osd"
-                    visible: !root.showing_vox && !root.visor_wave
-                    width: parent.width
-                    anchors.verticalCenter: parent.verticalCenter
-                    value: root.showing_vox ? 0 : root.level
-                    hot_from: root.showing_vox ? 1 : 0.9
-                    opacity: !root.showing_vox && root.muted ? 0.35 : 1
+            Component {
+                id: watch_osd
+                Goldeneye.GaugeDial {
+                    size: Style.px(96)
+                    value: root.raw_level
+                    muted: root.muted
+                    label: root.kind === "brightness" ? "LIGHT" : "VOLUME"
                 }
+            }
 
-                Waveform {
-                    id: waveform
-                    visible: root.showing_vox
-                    anchors.fill: parent
-                    frozen: !root.vox_recording
-                    running: root.showing_vox && root.visible && !root.replaced("meter")
+            Component {
+                id: tile_osd
+                Modern.TileOsd {
+                    kind: root.kind
+                    level: root.level
+                    percent: root.percent
+                    muted: root.muted
+                    glyph: root.glyph
+                    device: root.kind === "volume" && root.sink ? root.sink.description || root.sink.name : ""
+                    node: root.sink
+                    peaks_on: root.wanted && root.visible && PowerSource.on_ac
+                }
+            }
+
+            Component {
+                id: tile_vox_osd
+                Modern.VoxTileOsd {
+                    recording: root.vox_recording
+                    elapsed: root.elapsed
+                    glyph: "󰍬"
+                    running: root.showing_vox && root.visible
                     sample: n => VoxtypeAudioState.averages(n)
                     gain: VoxtypeAudioState.gain
                 }
             }
 
-            Text {
-                visible: !root.ring_layout && !root.replaced("percent")
-                Layout.alignment: Qt.AlignVCenter
-                Layout.preferredWidth: percent_metrics.width
-                horizontalAlignment: Text.AlignRight
-                text: root.showing_vox ? root.elapsed : root.percent + "%"
-                color: root.showing_vox && !root.vox_recording ? Style.pal.warning : !root.showing_vox && root.muted ? Style.text_muted : root.hud_layout ? Style.text_primary : Style.pal.fg
-                font.family: Style.number_font
-                font.pixelSize: percent_metrics.font.pixelSize
-                font.bold: Style.number_font !== Style.font_family
+            Component {
+                id: glow_osd
+                Ps2.GlowRing {
+                    value: root.level
+                    label: String(root.percent)
+                    caption: root.muted ? "Muted" : ""
+                    dimmed: root.muted
+                }
             }
-        }
 
-        Component {
-            id: rpg_osd
-            Snes.SnesOsd {
-                level: root.level
-                percent: root.percent
-                muted: root.muted
+            overlay: Rectangle {
+                visible: Style.frame_top_rule && !root.drawer
+                x: frame.radius
+                width: frame.width - frame.radius * 2
+                height: frame.top_rule
+                color: Style.accent_color
             }
-        }
-
-        Component {
-            id: alert_osd
-            Ps1.AlertMark {
-                size: Theme.glyph_size + 10
-                opacity: root.muted ? 0.5 : 1
-            }
-        }
-
-        Component {
-            id: horizon_osd
-            Oasis.HorizonOsd {
-                level: root.level
-                percent: root.percent
-                muted: root.muted
-                glyph: root.glyph
-                label: root.kind === "brightness" ? "Brightness" : root.muted ? "Muted" : "Volume"
-                detail: root.kind === "brightness" ? "Backlight" : root.sink ? root.sink.description || root.sink.name : ""
-                wave: root.kind === "volume"
-                node: root.sink
-                peaks_on: root.wanted && root.visible && PowerSource.on_ac
-            }
-        }
-
-        Component {
-            id: watch_osd
-            Goldeneye.GaugeDial {
-                size: Style.px(96)
-                value: root.raw_level
-                muted: root.muted
-                label: root.kind === "brightness" ? "LIGHT" : "VOLUME"
-            }
-        }
-
-        Component {
-            id: tile_osd
-            Modern.TileOsd {
-                kind: root.kind
-                level: root.level
-                percent: root.percent
-                muted: root.muted
-                glyph: root.glyph
-                device: root.kind === "volume" && root.sink ? root.sink.description || root.sink.name : ""
-                node: root.sink
-                peaks_on: root.wanted && root.visible && PowerSource.on_ac
-            }
-        }
-
-        Component {
-            id: tile_vox_osd
-            Modern.VoxTileOsd {
-                recording: root.vox_recording
-                elapsed: root.elapsed
-                glyph: "󰍬"
-                running: root.showing_vox && root.visible
-                sample: n => VoxtypeAudioState.averages(n)
-                gain: VoxtypeAudioState.gain
-            }
-        }
-
-        Component {
-            id: glow_osd
-            Ps2.GlowRing {
-                value: root.level
-                label: String(root.percent)
-                caption: root.muted ? "Muted" : ""
-                dimmed: root.muted
-            }
-        }
-
-        overlay: Rectangle {
-            visible: Style.frame_top_rule
-            x: frame.radius
-            width: frame.width - frame.radius * 2
-            height: frame.top_rule
-            color: Style.accent_color
         }
     }
 }
