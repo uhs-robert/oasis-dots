@@ -157,3 +157,42 @@ function margin_across(rises, seam, screen_height, cover) {
 function mouth_depth(lay) {
     return lay.cover + lay.fillet_eff;
 }
+
+// The two end kinds of a drawer on `side` of its hole ("left", "right", "center"): a side drawer pockets at the end
+// against its band and fillets at the other; a centre one fillets at both; a "dock" drawer fills the hole and pockets at both.
+function end_kinds(side, dock) {
+    return {
+        start: side === "left" || dock ? "pocket" : "fillet",
+        end: side === "right" || dock ? "pocket" : "fillet"
+    };
+}
+
+// The layer-shell placement of a drawer's window, from the frame's hole and the seam it hangs from: which screen edges
+// it anchors to and its margins from them, integers. Without a hole (no frame) every margin is 0 and nothing is
+// anchored beyond the side. `along` and `across` are the margins that place the window against the seam.
+function place(side, from_bottom, hole, seam, screen_width, screen_height, cover, window_length) {
+    const along = hole ? margin_along(side, hole, screen_width, cover, window_length) : 0;
+    const across = hole ? margin_across(from_bottom, seam, screen_height, cover) : 0;
+    return {
+        anchor_top: !from_bottom,
+        anchor_bottom: from_bottom,
+        anchor_left: side !== "right",
+        anchor_right: side === "right",
+        margin_top: from_bottom ? 0 : across,
+        margin_bottom: from_bottom ? across : 0,
+        margin_left: side === "right" ? 0 : along,
+        margin_right: side === "right" ? along : 0,
+        along: along,
+        across: across
+    };
+}
+
+// The drawn part of a drawer's window in screen coordinates, as the rect the frame and the strip leave their lines out under.
+function window_rect(side, from_bottom, placement, screen_width, screen_height, window_width, drawn_depth) {
+    return {
+        x: side === "right" ? screen_width - placement.along - window_width : placement.along,
+        y: from_bottom ? screen_height - placement.across - drawn_depth : placement.across,
+        w: window_width,
+        h: drawn_depth
+    };
+}

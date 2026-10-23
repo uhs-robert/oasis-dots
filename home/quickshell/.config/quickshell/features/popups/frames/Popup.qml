@@ -258,8 +258,7 @@ PanelWindow {
     readonly property var drawer_hole: root.screen_frame ? FrameGeometry.hole_rect(root.screen_frame) : null
     // A side island's end against its side band is a pocket, flush down the band; its other end, like a centre popup's, a fillet.
     // A docked popup fills the whole hole width, so both its ends are pockets.
-    readonly property string drawer_start_kind: root.side === "left" || root.dock_bottom ? "pocket" : "fillet"
-    readonly property string drawer_end_kind: root.side === "right" || root.dock_bottom ? "pocket" : "fillet"
+    readonly property var drawer_kinds: Drawer.end_kinds(root.side, root.dock_bottom)
     readonly property real drawer_body_width: root.drawer_hole ? Drawer.body_length(root.dock_bottom ? "dock" : root.side, root.base_width, root.drawer_hole.w, root.drawer_fillet) : 0
     function drawer_spec(extent) {
         return {
@@ -269,8 +268,8 @@ PanelWindow {
             extent: extent,
             radius: root.drawer_fillet,
             fillet: root.drawer_fillet,
-            start_kind: root.drawer_start_kind,
-            end_kind: root.drawer_end_kind,
+            start_kind: root.drawer_kinds.start,
+            end_kind: root.drawer_kinds.end,
             cover: root.drawer_cover
         };
     }
@@ -281,29 +280,16 @@ PanelWindow {
     readonly property var drawer_body: Drawer.body_rect(root.drawer_layout)
     // Layer margins are integers; the cover absorbs the rounding.
     readonly property real drawer_seam: root.screen_frame ? FrameGeometry.seam_of(root.screen_frame, root.from_bottom ? "bottom" : "top") : 0
-    readonly property real drawer_margin_x: root.drawer_hole ? Drawer.margin_along(root.side, root.drawer_hole, root.screen.width, root.drawer_cover, root.drawer_full.length) : 0
-    readonly property real drawer_margin_y: root.screen_frame ? Drawer.margin_across(root.from_bottom, root.drawer_seam, root.screen.height, root.drawer_cover) : 0
+    readonly property var drawer_place: Drawer.place(root.side, root.from_bottom, root.drawer_hole, root.drawer_seam, root.screen ? root.screen.width : 0, root.screen ? root.screen.height : 0, root.drawer_cover, root.drawer_full.length)
     // The depth the drawer has drawn, not the window's reserved one: a popup with a reserve_height is a taller window than its shape.
     readonly property real drawn_depth: root.drawer_layout.drawn_depth
     // Translucent islands make the drawer translucent too, so the frame and the strip leave their lines out under its window.
     readonly property bool drawer_translucent: root.drawer && Style.islands_translucent
-    readonly property var drawer_window: root.drawer_translucent && root.visible ? {
-        x: root.side === "right" ? root.screen.width - root.drawer_margin_x - root.width : root.drawer_margin_x,
-        y: root.from_bottom ? root.screen.height - root.drawer_margin_y - root.drawn_depth : root.drawer_margin_y,
-        w: root.width,
-        h: root.drawn_depth
-    } : null
-    // Names this popup's entry in ScreenFrames.drawer_windows, so it only ever clears its own.
-    readonly property string drawer_key: String(root)
-    property string published_screen_name: ""
-    function publish_drawer_window() {
-        const name = root.drawer_window ? root.held_screen_name : "";
-        if (root.published_screen_name !== "" && root.published_screen_name !== name) ScreenFrames.set_drawer_window(root.published_screen_name, root.drawer_key, null);
-        root.published_screen_name = name;
-        if (name !== "") ScreenFrames.set_drawer_window(name, root.drawer_key, root.drawer_window);
+    readonly property var drawer_window: root.drawer_translucent && root.visible ? Drawer.window_rect(root.side, root.from_bottom, root.drawer_place, root.screen.width, root.screen.height, root.width, root.drawn_depth) : null
+    DrawerWindowPublisher {
+        screen_name: root.held_screen_name
+        rect: root.drawer_window
     }
-    onDrawer_windowChanged: root.publish_drawer_window()
-    Component.onDestruction: if (root.published_screen_name !== "") ScreenFrames.set_drawer_window(root.published_screen_name, root.drawer_key, null)
     // Shortcuts fire before the focused item, so popups that bind h/l themselves still walk.
     function walk_allowed() {
         const f = content_scope.Window.activeFocusItem;
@@ -359,15 +345,15 @@ PanelWindow {
 
     // A layer surface pinned to the screen edge: xdg popups landed a few px short of it.
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
-    anchors.top: !dock_bottom && !rises
-    anchors.bottom: dock_bottom || rises
-    anchors.left: root.drawer ? root.side !== "right" : side === "left" || dock_bottom
-    anchors.right: root.drawer ? root.side === "right" : side === "right" || dock_bottom
+    anchors.top: root.drawer ? root.drawer_place.anchor_top : !dock_bottom && !rises
+    anchors.bottom: root.drawer ? root.drawer_place.anchor_bottom : dock_bottom || rises
+    anchors.left: root.drawer ? root.drawer_place.anchor_left : side === "left" || dock_bottom
+    anchors.right: root.drawer ? root.drawer_place.anchor_right : side === "right" || dock_bottom
     // A drawer places itself against the frame's seam, so it ignores the exclusive zones the bands reserve.
-    margins.top: root.drawer ? (root.from_bottom ? 0 : root.drawer_margin_y) : root.floating && !root.rises ? root.st.frame_float : 0
-    margins.bottom: root.drawer ? (root.from_bottom ? root.drawer_margin_y : 0) : root.floating && root.rises ? root.st.frame_float : 0
-    margins.left: root.drawer ? (root.side === "right" ? 0 : root.drawer_margin_x) : root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : 0
-    margins.right: root.drawer ? (root.side === "right" ? root.drawer_margin_x : 0) : root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : 0
+    margins.top: root.drawer ? root.drawer_place.margin_top : root.floating && !root.rises ? root.st.frame_float : 0
+    margins.bottom: root.drawer ? root.drawer_place.margin_bottom : root.floating && root.rises ? root.st.frame_float : 0
+    margins.left: root.drawer ? root.drawer_place.margin_left : root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : 0
+    margins.right: root.drawer ? root.drawer_place.margin_right : root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : 0
     exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
     exclusiveZone: 0
     color: "transparent"
