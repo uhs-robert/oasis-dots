@@ -129,6 +129,19 @@ PanelWindow {
     property real progress: 0
     // The place the drawer hangs from; a change of any part restarts it from closed rather than sliding across.
     readonly property string place_key: root.drawer ? (root.screen ? root.screen.name : "") + "/" + root.drawer_position : ""
+    // Set while a payload is applied, whose open_now follows; any other change of place (focus moving the screen under a
+    // payload that names none) is handled here.
+    property bool loading_payload: false
+    onPlace_keyChanged: {
+        if (root.place_key === "" || !root.visible) return;
+        open_anim.stop();
+        close_anim.stop();
+        root.progress = 0;
+        if (root.loading_payload) return;
+        // A drawer folding back has nothing to reopen for.
+        if (root.wanted) root.open_now();
+        else root.visible = false;
+    }
     mask: Region {}
     WlrLayershell.namespace: "quickshell-whichkey"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -174,13 +187,9 @@ PanelWindow {
                     root.hide_now();
                     return;
                 }
-                const before = root.place_key;
+                root.loading_payload = true;
                 root.payload = next;
-                if (root.place_key !== before) {
-                    open_anim.stop();
-                    close_anim.stop();
-                    root.progress = 0;
-                }
+                root.loading_payload = false;
                 root.open_now();
             } catch (e) {
                 console.warn("WhichKey: invalid payload (" + e + ")");
