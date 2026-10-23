@@ -214,7 +214,8 @@ Singleton {
     // Fills fade one by one, so translucent fills must not overlap: islands_translucent switches to geometry that never
     // fills a pixel twice, and at 1 the overlapping opaque geometry, which hides fractional-scaling seams, is kept.
     function island_fill(c) {
-        return Qt.alpha(c, c.a * root.bar_island_opacity);
+        // A kit token can arrive as a bare name such as "transparent", whose .a is undefined and would make the alpha nan.
+        return Qt.alpha(c, Qt.color(c).a * root.bar_island_opacity);
     }
     readonly property bool islands_translucent: root.bar_island_opacity < 1
 
