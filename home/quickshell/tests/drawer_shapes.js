@@ -292,6 +292,12 @@ const reg_ab = F.drawer_windows_with(F.drawer_windows_with({}, "DP-1", "a", { x:
 cases.push(["both popups' windows are held on a screen", () => F.drawer_window_rects(reg_ab, "DP-1"), [{ x: 0, y: 0, w: 5, h: 5 }, { x: 9, y: 0, w: 5, h: 5 }]]);
 cases.push(["a switch: the closing popup clears only its own window", () => F.drawer_window_rects(F.drawer_windows_with(reg_ab, "DP-1", "a", null), "DP-1"), [{ x: 9, y: 0, w: 5, h: 5 }]]);
 cases.push(["an unload of a popup that never published changes nothing", () => F.drawer_window_rects(F.drawer_windows_with(reg_ab, "DP-1", "c", null), "DP-1").length, 2]);
+const strip_win = { x: 100, y: 0, w: 300, h: 200 }, bottom_win = { x: 100, y: 800, w: 300, h: 280 };
+cases.push(["a top strip gaps a drawer hung from the top", () => F.strip_gaps([strip_win], "top", 30, 1080), [{ x: 100, y: 0, w: 300, h: 30 }]]);
+cases.push(["a top strip ignores a bottom-docked drawer", () => F.strip_gaps([bottom_win], "top", 30, 1080), []]);
+cases.push(["a bottom strip gaps a bottom-docked drawer", () => F.strip_gaps([bottom_win], "bottom", 30, 1080), [{ x: 100, y: 0, w: 300, h: 30 }]]);
+cases.push(["a bottom strip ignores a top-hung drawer", () => F.strip_gaps([strip_win], "bottom", 30, 1080), []]);
+cases.push(["without a frame every window gaps the strip", () => F.strip_gaps([bottom_win], "top", 30, 0).length, 1]);
 cases.push(["the last window clearing drops the screen", () => F.drawer_windows_with(F.drawer_windows_with({}, "DP-1", "a", { x: 0, y: 0, w: 1, h: 1 }), "DP-1", "a", null), {}]);
 cases.push(["a publish leaves other screens' entries alone", () => F.drawer_windows_with(reg_ab, "DP-2", "a", null)["DP-1"] === reg_ab["DP-1"], true]);
 cases.push(["canonical rect is unchanged under a top bar", () => F.to_canonical_rect(top_frame, { x: 10, y: 20, w: 30, h: 40 }), { x: 10, y: 20, w: 30, h: 40 }]);

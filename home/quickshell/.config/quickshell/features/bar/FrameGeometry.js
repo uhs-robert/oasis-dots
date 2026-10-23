@@ -163,3 +163,12 @@ function drawer_windows_with(reg, screen_name, key, rect) {
 function drawer_window_rects(reg, screen_name) {
     return Object.values(reg[screen_name] || {});
 }
+
+// The strip's line gaps (strip-local, x and w only) for the drawer windows that reach the strip's band: a bottom-docked
+// drawer under a top bar leaves the strip's lines whole. screen_h is 0 without a frame, where nothing says which edge a
+// window sits on, so every window counts.
+function strip_gaps(rects, edge, thickness, screen_h) {
+    return rects
+        .filter(r => screen_h <= 0 || (edge === "bottom" ? r.y + r.h > screen_h - thickness : r.y < thickness))
+        .map(r => ({ x: r.x, y: 0, w: r.w, h: thickness }));
+}
