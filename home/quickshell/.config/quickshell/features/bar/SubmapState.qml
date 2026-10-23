@@ -47,6 +47,11 @@ Singleton {
     property bool indicator_clear: true
     readonly property bool indicator_shown: root.active && root.indicator_clear
 
+    // The frame's line takes the submap colour on the focused monitor; one place, so the tint is easy to drop.
+    function frame_tint(base, focused) {
+        return root.active && focused ? root.bar_color : base;
+    }
+
     onWhichkey_openChanged: {
         if (root.whichkey_open) {
             reappear.stop();

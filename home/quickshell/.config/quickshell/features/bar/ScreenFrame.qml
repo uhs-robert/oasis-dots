@@ -19,10 +19,8 @@ Scope {
     required property var layout
     // The line round the hole is lit on the focused monitor only, switching with the strip's (StripBackground).
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen.name
-    // The active submap tints the line on the focused monitor, also while which-key is open.
-    readonly property bool submap_tint: SubmapState.active && root.focused
-    property color rim_color: root.submap_tint ? SubmapState.bar_color : Style.screen_frame_rim_color(root.focused)
-    property color inset_color: root.submap_tint ? SubmapState.bar_color : Style.screen_frame_inset_color(root.focused)
+    property color rim_color: SubmapState.frame_tint(Style.screen_frame_rim_color(root.focused), root.focused)
+    property color inset_color: SubmapState.frame_tint(Style.screen_frame_inset_color(root.focused), root.focused)
     Behavior on rim_color {
         ColorAnimation { duration: 200 }
     }

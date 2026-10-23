@@ -21,7 +21,7 @@ PanelWindow {
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
     property string voice_name: ""
     property color voice_color: Theme.theme_secondary
-    readonly property bool want_submap: SubmapState.indicator_shown && !root.chip_shown && !Style.screen_frame_on && root.focused
+    readonly property bool want_submap: SubmapState.indicator_shown && !root.chip_shown && root.focused
     readonly property bool want_voice: VoxSessionState.active && root.focused
     property real line_progress: 0
     // Tabs drop once the line has drawn and lift before it retracts.
