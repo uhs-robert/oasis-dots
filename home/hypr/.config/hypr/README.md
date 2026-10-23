@@ -74,6 +74,8 @@ See `custom/README.md` for the layout and more examples, including sessions for 
 
 While Quickshell's screen frame is on (Settings > Theme options > Screen frame), `config/general/frame.lua` sets `decoration.rounding`, `decoration.rounding_power`, `general.border_size` and the border colours to match the frame, and puts your values back when the frame goes; values you set from `custom/` are the ones it restores. For the chamfer, pixel-art corners it adds a window rule matching every window, made when the frame is first applied, so it sorts after your own rules and overrides a `rounding` or `rounding_power` rule of yours on those windows while the frame is on. A style with no border leaves your border size and colours alone.
 
+With the frame on, a workspace with a single tiled window drops its outer gaps so the window sits flush inside the frame, and the gaps return with a second tiled window. `SUPER + M` maximizes the focused window inside the frame and bar with no outer gaps, and again restores it; `SUPER + F` stays true fullscreen. The Move submap is on `SUPER + SHIFT + M`.
+
 ## HyprVim
 
 A vim-modal navigation layer for Hyprland. Activate with `SUPER + V`, exit with `SUPER + ESCAPE`.
