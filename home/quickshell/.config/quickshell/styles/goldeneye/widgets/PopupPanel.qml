@@ -6,6 +6,7 @@ Item {
     id: root
 
     required property var st
+    property real cut: 12
     property real edge: root.st.inset_pad + root.st.lcd_margin
 
     Watch.PanelShape {
@@ -13,7 +14,7 @@ Item {
         y: root.edge
         width: root.width - root.edge * 2
         height: root.height - root.edge * 2
-        cut: 12
+        cut: root.cut
         notches: false
         top_color: root.st.lcd_top
         edge: root.st.wk.edge
