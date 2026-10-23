@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import qs.theme
+import qs.features.settings
 import "../../styles/neovim/widgets/Modes.js" as Modes
 
 Singleton {
@@ -43,27 +44,38 @@ Singleton {
 
     // Set from the which-key window in shell.qml.
     property bool whichkey_open: false
-    // False at once when which-key opens, true again 250 ms after it closes, so a quick reopen does not flicker the indicator.
+    // Which-key's own open delay (HyprVim's which_key.delay_ms, via Settings > Input), 0 when unset.
+    readonly property int whichkey_delay: HyprInputSettings.value("which_key_delay_ms") || 0
+    // A little past the delay, so a HUD that opens on schedule beats the indicator instead of flashing under it.
+    readonly property int delay_slack: 60
+    // False from entering a submap until the which-key delay passes without the HUD opening, and from the HUD opening until 250 ms after it closes; a quick reopen then does not flicker the indicator.
     property bool indicator_clear: true
     readonly property bool indicator_shown: root.active && root.indicator_clear
 
-    // The frame's line takes the submap colour on the focused monitor; one place, so the tint is easy to drop.
-    function frame_tint(base, focused) {
-        return root.active && focused ? root.bar_color : base;
+    onSubmap_nameChanged: {
+        // Not root.active: that binding may not have followed the new name yet.
+        if (root.submap_name === "") {
+            settle.stop();
+            root.indicator_clear = true;
+        } else if (!root.whichkey_open) {
+            root.indicator_clear = false;
+            settle.interval = root.whichkey_delay + root.delay_slack;
+            settle.restart();
+        }
     }
 
     onWhichkey_openChanged: {
         if (root.whichkey_open) {
-            reappear.stop();
+            settle.stop();
             root.indicator_clear = false;
         } else {
-            reappear.restart();
+            settle.interval = 250;
+            settle.restart();
         }
     }
 
     Timer {
-        id: reappear
-        interval: 250
+        id: settle
         onTriggered: root.indicator_clear = true
     }
 
