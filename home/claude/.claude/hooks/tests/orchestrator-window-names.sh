@@ -89,6 +89,36 @@ TMUX=$(t display-message -p '#{socket_path},#{pid},0') TMUX_PANE=$pane "$skill/r
 check "a background caller's own window is the one renamed" has_name orch-20-done
 check "the active window kept its name" test "$(t display-message -p -t "$main_window" "#{window_name}")" != orch-20-done
 
+# A failed spawn leaves the caller's name alone: a tmux wrapper that refuses new-window
+mkdir "$work/failbin"
+real_tmux=$(command -v tmux)
+# shellcheck disable=SC2016 # $1 is for the wrapper to expand
+printf '#!/bin/sh\n[ "$1" = new-window ] && exit 1\nexec %s "$@"\n' "$real_tmux" >"$work/failbin/tmux"
+chmod +x "$work/failbin/tmux"
+pane=$(t new-window -d -P -F '#{pane_id}' -n orch-30 "sleep 60")
+(cd "$work" && PATH=$work/failbin:$PATH TMUX=$(t display-message -p '#{socket_path},#{pid},0') TMUX_PANE=$pane "$skill/spawn-successor.sh" pred >/dev/null 2>&1)
+check "a failed spawn does not rename the caller" has_name orch-30
+
+# Two concurrent spawns get distinct -next numbers, and the launch prompt carries its number
+before_nexts=$(t list-windows -F '#{window_name}' | grep -c -- '-next$')
+pane_a=$(t new-window -d -P -F '#{pane_id}' -n orch-31 "sleep 60")
+pane_b=$(t new-window -d -P -F '#{pane_id}' -n orch-32 "sleep 60")
+tmux_env=$(t display-message -p '#{socket_path},#{pid},0')
+(cd "$work" && PATH=$work/bin:$PATH TMUX=$tmux_env TMUX_PANE=$pane_a "$skill/spawn-successor.sh" pred >/dev/null) &
+(cd "$work" && PATH=$work/bin:$PATH TMUX=$tmux_env TMUX_PANE=$pane_b "$skill/spawn-successor.sh" pred >/dev/null) &
+wait
+nexts=$(t list-windows -F '#{window_name}' | grep -- '-next$')
+check "two concurrent spawns open two -next windows" test "$(grep -c . <<<"$nexts")" -eq $((before_nexts + 2))
+check "the concurrent -next numbers are distinct" test "$(grep -- '-next$' <<<"$nexts" | sort -u | wc -l)" -eq $((before_nexts + 2))
+# the launch prompt is the pane's command; every -next window's must carry its own name
+prompts_match() {
+  local name
+  while read -r name; do
+    t list-panes -a -F '#{window_name} #{pane_start_command}' | grep "^$name " | grep -q "is.*${name}" || return 1
+  done <<<"$nexts"
+}
+check "each launch prompt carries its window's number" prompts_match
+
 # Concurrent allocation hands out distinct numbers
 rm -rf "$XDG_STATE_HOME"
 # shellcheck source=/dev/null
