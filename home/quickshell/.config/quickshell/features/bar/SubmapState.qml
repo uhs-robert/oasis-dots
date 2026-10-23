@@ -41,6 +41,27 @@ Singleton {
     // The colour the bar shows for the current submap: the lualine mode colour (chip, z, buffers), else the submap tab's.
     readonly property color bar_color: Style.bar_lualine ? Modes.color(root.submap_name, Theme, root.submap_color) : root.submap_color
 
+    // Set from the which-key window in shell.qml.
+    property bool whichkey_open: false
+    // False at once when which-key opens, true again 250 ms after it closes, so a quick reopen does not flicker the indicator.
+    property bool indicator_clear: true
+    readonly property bool indicator_shown: root.active && root.indicator_clear
+
+    onWhichkey_openChanged: {
+        if (root.whichkey_open) {
+            reappear.stop();
+            root.indicator_clear = false;
+        } else {
+            reappear.restart();
+        }
+    }
+
+    Timer {
+        id: reappear
+        interval: 250
+        onTriggered: root.indicator_clear = true
+    }
+
     Connections {
         target: Hyprland
 

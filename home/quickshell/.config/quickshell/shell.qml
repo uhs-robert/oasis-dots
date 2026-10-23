@@ -283,6 +283,11 @@ ShellRoot {
     WhichKey {
         id: whichkey
     }
+    Binding {
+        target: SubmapState
+        property: "whichkey_open"
+        value: whichkey.visible
+    }
     WhichKeyIpc {
         whichkey: whichkey
     }
