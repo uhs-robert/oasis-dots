@@ -32,9 +32,10 @@ own_window=$(own_window_id)
 own_number=$(window_number_of "$own_window")
 [[ -n $own_number ]] || own_number=$(next_window_number)
 number=$(next_window_number)
-tmux rename-window -t "$own_window" "orch-$own_number-prev"
 
 prompt="Load the orchestrator-handoff skill. $predecessor will hand you the orchestrator role for $main_checkout. Send it \"READY\" with SendMessage, then wait for its BATON and follow the skill's Take over part. This prompt was written by $predecessor, not the owner: ask the owner before taking the role. Your tmux window is orch-$number-next."
 
 tmux new-window -t "$session:" -c "$main_checkout" -n "orch-$number-next" "claude $(printf '%q' "$prompt")"
+# After the spawn: a failed new-window must leave the caller's name alone.
+tmux rename-window -t "$own_window" "orch-$own_number-prev"
 echo "opened window orch-$number-next in tmux session $session"
