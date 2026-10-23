@@ -423,6 +423,7 @@ PanelWindow {
 
         OverviewFrame {
             id: frame
+            hole_cut: root.corners_cut
             // With the screen frame on the layer is the frame's hole, so the panel meets its edge like a drawer does.
             x: Style.screen_frame_on ? 0 : Style.px(36)
             y: Style.screen_frame_on ? 0 : Style.px(30)
