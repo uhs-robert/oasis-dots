@@ -1,0 +1,203 @@
+-- Runs config/general/frame.lua against a stubbed `hl` and checks the lone-window opt-out (SUPER+M on a lone tiled
+-- window) and the workspace animation swap: when the opt-out starts, ends and stays ended, and what the animation is.
+local here = arg[0]:match("^(.*)/[^/]*$") or "."
+local frame_path = here .. "/../.config/hypr/config/general/frame.lua"
+
+local windows, active, handlers = {}, nil, {}
+local rule_log, animation, config_calls = {}, nil, {}
+
+local function new_rule(kind, spec)
+	local rule = { kind = kind, spec = spec, enabled = true }
+	function rule:set_enabled(on)
+		self.enabled = on
+	end
+	table.insert(rule_log, rule)
+	return rule
+end
+
+local function tagged(window)
+	return window.tag_set ~= nil and window.tag_set["frame_gapped"] == true
+end
+
+_G.hl = {
+	get_config = function(key)
+		if key == "general.gaps_out" then
+			return 6
+		end
+		return 0
+	end,
+	get_layers = function()
+		return { { mapped = true } }
+	end,
+	workspace_rule = function(spec)
+		return new_rule("workspace", spec)
+	end,
+	window_rule = function(spec)
+		return new_rule("window", spec)
+	end,
+	config = function(values)
+		table.insert(config_calls, values)
+	end,
+	curve = function() end,
+	animation = function(spec)
+		animation = spec
+	end,
+	timer = function()
+		return { set_enabled = function() end }
+	end,
+	on = function(event, fn)
+		handlers[event] = handlers[event] or {}
+		table.insert(handlers[event], fn)
+	end,
+	get_active_window = function()
+		return active
+	end,
+	get_windows = function()
+		local copy = {}
+		for _, w in ipairs(windows) do
+			w.tags = tagged(w) and { "frame_gapped" } or {}
+			table.insert(copy, w)
+		end
+		return copy
+	end,
+	get_workspace_windows = function(id)
+		local found = {}
+		for _, w in ipairs(windows) do
+			if w.workspace.id == id then
+				table.insert(found, w)
+			end
+		end
+		return found
+	end,
+	dsp = {
+		no_op = function()
+			return {}
+		end,
+		window = {
+			tag = function(args)
+				return { tag = args.tag, window = args.window }
+			end,
+		},
+	},
+	dispatch = function(action)
+		local address = action.window:gsub("^address:", "")
+		for _, w in ipairs(windows) do
+			if w.address == address then
+				w.tag_set = w.tag_set or {}
+				w.tag_set["frame_gapped"] = action.tag:sub(1, 1) == "+"
+			end
+		end
+	end,
+}
+
+dofile(frame_path)
+
+local failures = 0
+local function check(name, ok)
+	if not ok then
+		failures = failures + 1
+		print("FAIL " .. name)
+	end
+end
+
+local function window(address, workspace_id)
+	local w = {
+		address = address,
+		mapped = true,
+		floating = false,
+		fullscreen = 0,
+		workspace = { id = workspace_id },
+		tags = {},
+	}
+	table.insert(windows, w)
+	return w
+end
+
+local function fire(event)
+	for _, fn in ipairs(handlers[event] or {}) do
+		fn()
+	end
+end
+
+local function gap_rule_enabled(workspace_id)
+	for _, rule in ipairs(rule_log) do
+		if rule.kind == "workspace" and rule.spec.workspace == tostring(workspace_id) and rule.enabled then
+			return true
+		end
+	end
+	return false
+end
+
+local function remove(w)
+	for i, other in ipairs(windows) do
+		if other == w then
+			table.remove(windows, i)
+		end
+	end
+end
+
+-- Without a frame the key is not ours.
+local first = window("a", 1)
+active = first
+check("no frame: not handled", _G.ScreenFrame.toggle_lone_flush() == false)
+
+_G.WorkspacesAnimation = { leaf = "workspaces", enabled = true, speed = 5, bezier = "smooth", style = "slidefade 20%" }
+_G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
+check("frame on: no overshoot curve", animation.bezier ~= "smooth" and animation.speed == 5)
+
+check("lone: handled", _G.ScreenFrame.toggle_lone_flush() == true)
+check("lone: tag set", tagged(first))
+check("lone: gaps rule on", gap_rule_enabled(1))
+check("lone: toggle back handled", _G.ScreenFrame.toggle_lone_flush() == true)
+check("lone: tag cleared", not tagged(first))
+check("lone: gaps rule off", not gap_rule_enabled(1))
+
+-- A second tiled window ends the opt-out, and it stays ended when that window leaves.
+_G.ScreenFrame.toggle_lone_flush()
+local second = window("b", 1)
+fire("window.open")
+check("second window: tag cleared", not tagged(first))
+check("second window: gaps rule off", not gap_rule_enabled(1))
+check(
+	"two tiled: key maximizes",
+	(function()
+		active = first
+		return _G.ScreenFrame.toggle_lone_flush() == false
+	end)()
+)
+remove(second)
+fire("window.close")
+check("second gone: still flush", not tagged(first) and not gap_rule_enabled(1))
+
+-- Floating it ends the opt-out too, and re-tiling does not bring it back.
+_G.ScreenFrame.toggle_lone_flush()
+first.floating = true
+fire("window.update_rules")
+check("floated: tag cleared", not tagged(first))
+check("floated: gaps rule off", not gap_rule_enabled(1))
+first.floating = false
+fire("window.update_rules")
+check("re-tiled: still flush", not tagged(first) and not gap_rule_enabled(1))
+
+-- A maximized window is not a lone window to opt out.
+first.fullscreen = 1
+check("maximized: key maximizes", _G.ScreenFrame.toggle_lone_flush() == false)
+first.fullscreen = 0
+
+-- Clearing the frame releases the opt-out and restores the animation.
+_G.ScreenFrame.toggle_lone_flush()
+_G.ScreenFrame.clear()
+check("clear: tag cleared", not tagged(first))
+check("clear: gaps rule off", not gap_rule_enabled(1))
+check("clear: animation restored", animation.bezier == "smooth")
+
+-- A tag left by an earlier Lua state (config reload) is dropped when the frame is set again.
+first.tag_set = { frame_gapped = true }
+_G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
+check("reload: stale tag dropped", not tagged(first))
+
+if failures > 0 then
+	print(failures .. " failed")
+	os.exit(1)
+end
+print("frame lone flush: all passed")

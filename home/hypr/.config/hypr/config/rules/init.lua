@@ -21,7 +21,10 @@ local set_animations = function()
   hl.animation({ leaf = "windowsMove", enabled = true, speed = 3, bezier = "quick" })
 
   -- WORKSPACES
-  hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "smooth", style = "slidefade 20%" })
+  -- Published so config/general/frame.lua can swap in a non-overshooting curve with the frame on and put this back.
+  _G.WorkspacesAnimation =
+    { leaf = "workspaces", enabled = true, speed = 5, bezier = "smooth", style = "slidefade 20%" }
+  hl.animation(_G.WorkspacesAnimation)
   hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 3, bezier = "smooth", style = "slidefadevert 5%" })
 
   -- LAYERS
