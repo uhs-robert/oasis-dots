@@ -17,8 +17,8 @@ import qs.features.bar
 import qs.features.popups.frames
 
 // HyprVim's which-key HUD over its `hyprvim_whichkey` IPC target, drawn in the active style. With the screen frame on it
-// is a drawer: it grows out of the frame edge its position names and folds back on hide (a plain "center" has no edge
-// and stays floating).
+// is a drawer: it grows out of the frame edge its position names and folds back on hide (a plain "center" names no edge
+// and hangs from the bottom, as "bottom-center").
 PanelWindow {
     id: root
 
@@ -88,10 +88,11 @@ PanelWindow {
 
     // With the frame on, the payload's vertical part names the edge the drawer hangs from and its horizontal part the end
     // that is a pocket against the side band (the other end is a fillet; "center" fillets at both).
-    readonly property var screen_frame: root.screen && (root.position.startsWith("top") || root.position.startsWith("bottom")) ? ScreenFrames.layout_for(root.screen) : null
+    readonly property string drawer_position: root.position === "center" ? "bottom-center" : root.position
+    readonly property var screen_frame: root.screen && (root.drawer_position.startsWith("top") || root.drawer_position.startsWith("bottom")) ? ScreenFrames.layout_for(root.screen) : null
     readonly property bool drawer: root.screen_frame !== null
-    readonly property bool from_bottom: root.position.startsWith("bottom")
-    readonly property string side: root.position.endsWith("left") ? "left" : root.position.endsWith("right") ? "right" : "center"
+    readonly property bool from_bottom: root.drawer_position.startsWith("bottom")
+    readonly property string side: root.drawer_position.endsWith("left") ? "left" : root.drawer_position.endsWith("right") ? "right" : "center"
     readonly property real drawer_fillet: root.drawer ? Style.screen_frame_kit.radius : 0
     readonly property real drawer_cover: Drawer.cover_depth(Style.bar_border_width, Style.bar_inset_gap, Style.bar_inset_width)
     readonly property var drawer_hole: root.screen_frame ? FrameGeometry.hole_rect(root.screen_frame) : null
@@ -127,7 +128,7 @@ PanelWindow {
     // How far the drawer has grown out of the frame, 0 to 1.
     property real progress: 0
     // The place the drawer hangs from; a change of any part restarts it from closed rather than sliding across.
-    readonly property string place_key: root.drawer ? (root.screen ? root.screen.name : "") + "/" + root.position : ""
+    readonly property string place_key: root.drawer ? (root.screen ? root.screen.name : "") + "/" + root.drawer_position : ""
     mask: Region {}
     WlrLayershell.namespace: "quickshell-whichkey"
     WlrLayershell.layer: WlrLayer.Overlay
