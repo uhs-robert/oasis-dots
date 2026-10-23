@@ -197,6 +197,29 @@ first.tag_set = { frame_gapped = true }
 _G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
 check("reload: stale tag dropped", not tagged(first))
 
+-- A hidden group member is not counted by w[tv1], so the lone window still opts out and a new hidden member keeps it.
+gaps_out = 6
+_G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
+local hidden = window("h", 1)
+hidden.visible = false
+first.visible = true
+active = first
+check("hidden member: lone window handled", _G.ScreenFrame.toggle_lone_flush() == true and tagged(first))
+fire("window.open")
+check("hidden member: opt-out kept", tagged(first))
+_G.ScreenFrame.toggle_lone_flush()
+remove(hidden)
+
+-- The opt-out rule keeps a per-edge gaps table whole.
+local edges = { top = 4, right = 8, bottom = 6, left = 10 }
+gaps_out = edges
+_G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
+local before = #rule_log
+_G.ScreenFrame.toggle_lone_flush()
+local edge_rule = rule_log[before + 1]
+check("css gaps: rule keeps the table", edge_rule ~= nil and edge_rule.spec.gaps_out == edges)
+_G.ScreenFrame.toggle_lone_flush()
+
 -- A gap wide enough to flatten the gapped chamfer corner still leaves the flush windows a chamfer.
 gaps_out = 24
 _G.ScreenFrame.set("chamfer", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
