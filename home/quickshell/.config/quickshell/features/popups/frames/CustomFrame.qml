@@ -14,10 +14,12 @@ Item {
     property var st: Style.for_item(root)
     property color octagon_edge: root.st.frame_border_color
     property color chamfer_edge: root.st.frame_border_color
-    property real octagon_cut: root.st.frame_octagon
+    property real octagon_cut: root.corner_cuts ? root.st.frame_octagon : 0
     property bool struts: true
     // False where the screen frame's own rim already outlines the panel, which the style's pixel frame would double.
     property bool pixel_outline: true
+    // False where the screen frame's hole corners are the panel's, which the octagon and slant cuts would leave notched.
+    property bool corner_cuts: true
     // Set while a DeviceShell draws the frame instead.
     property bool device: false
     // The frame's outer radii; the window gradient sits inside its border.
@@ -39,6 +41,7 @@ Item {
         active: root.st.slant_frame && !root.device
         sourceComponent: Oasis.SlantFrame {
             edge_color: root.chamfer_edge
+            cut_corners: root.corner_cuts
         }
     }
 

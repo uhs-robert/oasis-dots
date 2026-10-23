@@ -10,6 +10,8 @@ Item {
     property color edge_color: root.st.frame_border_color
     property color fill_top: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
     property color fill_bottom: root.st.frame_color
+    // False for a straight foot, where a host's own corners (the screen frame's) are the panel's.
+    property bool cut_corners: true
 
     readonly property real bw: root.st.frame_border_width
     readonly property color sand: Theme.theme_secondary
@@ -18,7 +20,7 @@ Item {
     function bottom_edge(i) {
         const x0 = i, x1 = root.width - i, y1 = root.height - i, cap = Math.max(1, root.height * 0.45);
         const cut = depth => Math.max(0, Math.min(depth, cap) - i * 0.6);
-        const l = cut(10), r = cut(36);
+        const l = root.cut_corners ? cut(10) : 0, r = root.cut_corners ? cut(36) : 0;
         return [Qt.point(x0, y1 - l), Qt.point(x0 + l / 2, y1), Qt.point(x1 - r / 2, y1), Qt.point(x1, y1 - r)];
     }
 

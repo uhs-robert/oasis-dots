@@ -32,11 +32,11 @@ Rectangle {
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
     readonly property color text_glow: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
 
-    // Against the screen frame the panel's corners are the frame's: a square profile leaves none to round, and the
-    // others are cut by the mask in OverviewBase.
-    readonly property bool flush_square: Style.screen_frame_on && Style.screen_frame_profile.corner === "square"
+    // Set by OverviewBase when it masks the panel to the screen frame's hole corners. Against the frame those corners
+    // are the frame's, so with no mask (a square profile) the panel has none of its own to round either.
+    property bool hole_cut: false
 
-    radius: root.flush_square ? 0 : Style.frame_radius
+    radius: Style.screen_frame_on && !root.hole_cut ? 0 : Style.frame_radius
     color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Theme.bg_mantle : Style.frame_color
     border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
     border.color: Style.frame_border_color
@@ -83,6 +83,7 @@ Rectangle {
     CustomFrame {
         anchors.fill: parent
         pixel_outline: !Style.screen_frame_on
+        corner_cuts: !Style.screen_frame_on
     }
 
     FrameInset {
