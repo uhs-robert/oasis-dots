@@ -38,7 +38,7 @@ Popup {
     readonly property real tabs_space: tab_rows.visible ? tab_rows.height + 8 : 0
     readonly property real anchored_height: root.tabs_space + query_bar.height + 8 + root.cell_height * Math.max(1, Math.min(10, root.results.length)) + detail.height + 6 + 24
 
-    body_height: root.dock_bottom ? Math.round(root.screen_height * 0.4) - root.header_height - root.footer_height - root.st.frame_drop : root.anchored_height
+    body_height: root.dock_bottom ? Math.round(root.screen_height * 0.4) - root.header_height - root.footer_height - root.drop_room : root.anchored_height
 
     property string query: ""
     property int selected: 0
