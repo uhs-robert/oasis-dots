@@ -13,7 +13,7 @@ local frame_ok, frame_border = pcall(function()
 end)
 require("full-border"):setup({
 	-- Available values: "plain", "rounded"
-	set = frame_ok and frame_border or "plain",
+	set = frame_ok and type(frame_border) == "string" and frame_border or "plain",
 })
 
 -- Fuse Archive

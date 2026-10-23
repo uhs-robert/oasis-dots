@@ -43,12 +43,12 @@ class FirefoxCss(unittest.TestCase):
     def test_chamfer_bevels_textfox_panes_only(self):
         css = gen.firefox_css(frame("chamfer", 12))
         self.assertIn("--tf-rounding: 0px;", css)
-        self.assertIn("polygon(0 12px, 12px 0,", css)
-        # Only the panes' own boxes are clipped, never `browser` (page, sidebar and devtools content).
+        # A clip or mask would cut the URL bar's results and TextFox's title labels, so the bevel is only painted.
+        self.assertNotIn("clip-path", css)
+        self.assertNotIn("mask", css)
         for block in css.split("}"):
-            if "clip-path" in block:
-                selectors = [x.strip() for x in block.split("{")[0].split(",")]
-                self.assertEqual(selectors, gen.TEXTFOX_PANES)
+            if "::after" in block:
+                self.assertEqual([x.strip() for x in block.split("{")[0].split(",")], [p + "::after" for p in gen.TEXTFOX_PANES])
         self.assertIn("var(--tf-bevel-line)", css)
 
     def test_zero_radius_chamfer_does_not_clip(self):
@@ -83,7 +83,7 @@ class Run(unittest.TestCase):
                 json.dump(frame("chamfer", 12), f)
             subprocess.run([sys.executable, "-I", SCRIPT, path, "--yazi-dir", os.path.join(tmp, "yazi"), "--firefox-dirs", os.path.join(tmp, "ff/chrome")], check=True)
             self.assertEqual(open(os.path.join(tmp, "yazi/frame-border.lua")).read(), 'return "plain"\n')
-            self.assertIn("clip-path", open(os.path.join(tmp, "ff/chrome/frame.css")).read())
+            self.assertIn("--tf-bevel-line", open(os.path.join(tmp, "ff/chrome/frame.css")).read())
 
     def test_missing_input_fails_without_writing(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -110,6 +110,16 @@ class Run(unittest.TestCase):
             subprocess.run([sys.executable, "-I", SCRIPT, path, "--yazi-dir", tmp + "/y"], env=env, check=True)
             for name in ("a", "b"):
                 self.assertTrue(os.path.exists(f"{tmp}/{name}/frame.css"), name)
+
+    def test_profile_without_chrome_dir_gets_one(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(tmp + "/.mozilla/firefox/abc.default-release")
+            os.makedirs(tmp + "/.local/state/quickshell")
+            with open(tmp + "/.local/state/quickshell/frame.json", "w") as f:
+                json.dump(frame("round", 10), f)
+            env = {"HOME": tmp, "PATH": os.environ["PATH"]}
+            subprocess.run([sys.executable, "-I", SCRIPT], env=env, check=True)
+            self.assertIn("--tf-rounding: 10px;", open(tmp + "/.mozilla/firefox/abc.default-release/chrome/frame.css").read())
 
 
 class YaziInit(unittest.TestCase):
