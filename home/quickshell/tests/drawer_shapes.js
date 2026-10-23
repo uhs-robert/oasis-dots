@@ -307,6 +307,20 @@ cases.push(["a publish leaves other screens' entries alone", () => F.drawer_wind
 cases.push(["canonical rect is unchanged under a top bar", () => F.to_canonical_rect(top_frame, { x: 10, y: 20, w: 30, h: 40 }), { x: 10, y: 20, w: 30, h: 40 }]);
 cases.push(["canonical rect mirrors under a bottom bar", () => F.to_canonical_rect(bottom_frame, { x: 10, y: 20, w: 30, h: 40 }), { x: 10, y: bottom_frame.depth - 60, w: 30, h: 40 }]);
 
+const wk_hole = F.hole_rect(top_frame);
+const wk_seam = F.seam_of(top_frame, "top");
+const wk_left = D.place("left", false, wk_hole, wk_seam, 1920, 1080, cover, full_length);
+const wk_right = D.place("right", true, wk_hole, F.seam_of(bottom_frame, "bottom"), 1920, 1080, cover, full_length);
+cases.push(["a side drawer pockets at its band and fillets at the other end", () => [D.end_kinds("left", false), D.end_kinds("right", false)], [{ start: "pocket", end: "fillet" }, { start: "fillet", end: "pocket" }]]);
+cases.push(["a centre drawer fillets at both ends, a docked one pockets at both", () => [D.end_kinds("center", false), D.end_kinds("center", true)], [{ start: "fillet", end: "fillet" }, { start: "pocket", end: "pocket" }]]);
+cases.push(["a left top drawer anchors top-left with margins from the left and the seam", () => [wk_left.anchor_top, wk_left.anchor_bottom, wk_left.anchor_left, wk_left.anchor_right, wk_left.margin_top, wk_left.margin_left, wk_left.margin_right, wk_left.margin_bottom], [true, false, true, false, wk_seam - cover, D.margin_along("left", wk_hole, 1920, cover, full_length), 0, 0]]);
+cases.push(["a right bottom drawer anchors bottom-right", () => [wk_right.anchor_top, wk_right.anchor_bottom, wk_right.anchor_left, wk_right.anchor_right, wk_right.margin_top, wk_right.margin_left, wk_right.margin_bottom > 0, wk_right.margin_right > 0], [false, true, false, true, 0, 0, true, true]]);
+cases.push(["a centre drawer anchors on the left and uses the along margin there", () => { const p = D.place("center", false, wk_hole, wk_seam, 1920, 1080, cover, full_length); return [p.anchor_left, p.anchor_right, p.margin_left === p.along, p.margin_right]; }, [true, false, true, 0]]);
+cases.push(["without a hole the placement has no margins", () => { const p = D.place("left", false, null, 0, 0, 0, cover, 0); return [p.margin_top, p.margin_left, p.along, p.across]; }, [0, 0, 0, 0]]);
+cases.push(["a top-left window rect starts at the margins and spans the drawn depth", () => D.window_rect("left", false, wk_left, 1920, 1080, 200, 50), { x: wk_left.along, y: wk_left.across, w: 200, h: 50 }]);
+cases.push(["a bottom-right window rect counts from the right and bottom screen edges", () => D.window_rect("right", true, wk_right, 1920, 1080, 200, 50), { x: 1920 - wk_right.along - 200, y: 1080 - wk_right.across - 50, w: 200, h: 50 }]);
+cases.push(["a top window rect reaches the strip, so it gaps a top strip", () => F.strip_gaps([D.window_rect("left", false, wk_left, 1920, 1080, 200, 50)], "top", 30, 1080).length, 1]);
+
 let failed = 0;
 for (const [name, fn, expected] of cases) {
   try {

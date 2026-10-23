@@ -309,6 +309,8 @@ for style in "${styles[@]}"; do
     shoot "$style" whichkey quickshell-whichkey
   } || missing+=("MISS $style whichkey")
   q hyprvim_whichkey close >/dev/null
+  # A frame drawer folds back over ~120 ms before its layer unmaps.
+  sleep 0.3
   check_blank "$style" whichkey quickshell-whichkey
   sleep 0.3
 
