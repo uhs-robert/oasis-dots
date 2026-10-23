@@ -25,6 +25,8 @@ Item {
                 strokeColor: root.inset_color
                 fillColor: "transparent"
                 capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                miterLimit: 4
                 PathPolyline {
                     path: Frame.frame_stroke(root.layout, root.inset_gap + root.inset_width / 2).map(p => Qt.point(p[0], p[1]))
                 }
@@ -42,6 +44,8 @@ Item {
                 strokeColor: root.rim_color
                 fillColor: "transparent"
                 capStyle: ShapePath.FlatCap
+                joinStyle: ShapePath.MiterJoin
+                miterLimit: 4
                 PathPolyline {
                     path: Frame.frame_stroke(root.layout, root.rim_width / 2).map(p => Qt.point(p[0], p[1]))
                 }

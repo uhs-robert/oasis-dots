@@ -52,6 +52,8 @@ local function check_frame()
 end
 
 --- Rounds windows to sit concentric with a frame corner of `radius`, or restores the user's rounding for -1.
+--- Quickshell sends 0 for a chamfer, pixel or square corner, which stores the user's rounding and sets none: only a round
+--- corner has curved windows to match. 0 and -1 differ, so the user's rounding is restored only by -1.
 --- @param radius number
 local function set_rounding(radius)
   radius = tonumber(radius) or -1

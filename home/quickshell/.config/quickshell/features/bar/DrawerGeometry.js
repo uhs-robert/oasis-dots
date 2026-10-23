@@ -1,6 +1,7 @@
 .pragma library
 .import "IslandOutlines.js" as Outlines
 .import "BandGeometry.js" as Band
+.import "Corners.js" as Corners
 
 // A drawer: a surface that grows out of a screen frame's edge (FrameGeometry.js) and joins it with a concave fillet
 // at each end, drawn in the surface's own window. It is drawn in a band frame like BandGeometry's: u runs along the
@@ -24,21 +25,29 @@ function cover_depth(rim_width, inset_gap, inset_width) {
 // a slightly fuller line, not a break.
 const LEAD = 2;
 
-// spec: { edge, body_length, body_depth, extent, radius, fillet, start_kind, end_kind, cover }. `radius` rounds the
-// body's free corners and `fillet` the concave arcs; both shrink with the extent and the body's width, so nothing
-// inverts and a pocket's two arcs never cross.
+// spec: { edge, body_length, body_depth, extent, radius, fillet, start_kind, end_kind, cover, corner, step }. `radius`
+// rounds the body's free corners and `fillet` the concave arcs; both shrink with the extent and the body's width, so
+// nothing inverts and a pocket's two arcs never cross. `corner` is the profile of both (Corners.js, "round" when
+// missing) and `step` the pixel profile's stair step; a spec without them draws round corners, as before them.
 function drawer_layout(spec) {
-    const extent = Math.max(0, Math.min(spec.extent, spec.body_depth));
-    const fillet_eff = Math.min(spec.fillet, extent / 2, spec.body_length / 2);
-    const radius_eff = Math.min(spec.radius, extent / 2, spec.body_length / 2);
+    const corner = Corners.valid(spec.corner);
+    // A pixel drawer keeps every join on a whole pixel: the body rounds up (never smaller than its content) and the
+    // extent to the nearest pixel, so a stair never lands between two.
+    const whole = v => corner === "pixel" ? Math.ceil(v) : v;
+    const body_length = whole(spec.body_length), body_depth = whole(spec.body_depth);
+    const extent = Math.max(0, Math.min(corner === "pixel" ? Math.round(spec.extent) : spec.extent, body_depth));
+    // The fillet's full size is what the window reserves; the one drawn shrinks with the extent.
+    const fillet_full = Corners.fit(corner, spec.fillet, spec.step).radius;
+    const fillet_fit = Corners.fit(corner, Math.min(fillet_full, extent / 2, body_length / 2), spec.step);
+    const radius_fit = Corners.fit(corner, Math.min(spec.radius, extent / 2, body_length / 2), spec.step);
     // A fillet end also reserves the LEAD its outline runs on along the frame's line; a pocket reserves its own in `depth`.
-    const start_room = spec.start_kind === "pocket" ? spec.cover : spec.fillet + LEAD;
-    const end_room = spec.end_kind === "pocket" ? spec.cover : spec.fillet + LEAD;
+    const start_room = spec.start_kind === "pocket" ? spec.cover : fillet_full + LEAD;
+    const end_room = spec.end_kind === "pocket" ? spec.cover : fillet_full + LEAD;
     const any_pocket = spec.start_kind === "pocket" || spec.end_kind === "pocket";
-    const length = start_room + spec.body_length + end_room;
+    const length = start_room + body_length + end_room;
     // A pocket's outline runs LEAD px on down the side band past its arc, so the window reserves that too.
-    const pocket_room = any_pocket ? spec.fillet + LEAD : 0;
-    const depth = spec.cover + spec.body_depth + pocket_room;
+    const pocket_room = any_pocket ? fillet_full + LEAD : 0;
+    const depth = spec.cover + body_depth + pocket_room;
     const vertical = spec.edge === "left" || spec.edge === "right";
     return {
         edge: spec.edge,
@@ -47,15 +56,24 @@ function drawer_layout(spec) {
         // How deep the shape has drawn so far; `depth` is the window's, which stays at the popup's full reserve.
         drawn_depth: spec.cover + extent + pocket_room,
         cover: spec.cover,
-        radius_eff: radius_eff,
-        fillet_eff: fillet_eff,
+        corner: corner,
+        radius_eff: radius_fit.radius,
+        radius_step: radius_fit.step,
+        fillet_eff: fillet_fit.radius,
+        fillet_step: fillet_fit.step,
         start_kind: spec.start_kind,
         end_kind: spec.end_kind,
         start_room: start_room,
         end_room: end_room,
-        body: { u: start_room, v: spec.cover, w: spec.body_length, d: extent },
+        body: { u: start_room, v: spec.cover, w: body_length, d: extent },
         surface: vertical ? { width: depth, height: length } : { width: length, height: depth }
     };
+}
+
+// The fillet a frame's corner profile ({ corner, radius, step }, Style.screen_frame_profile) draws at full size, which
+// body_length makes room for.
+function fillet_of(profile) {
+    return Corners.fit(profile.corner, profile.radius, profile.step).radius;
 }
 
 // Drops points that repeat the one before, which would leave a zero-length segment for inset to mitre.
@@ -69,12 +87,13 @@ function without_repeats(points) {
 function hole_side(lay) {
     const c = lay.cover, f = lay.fillet_eff, r = lay.radius_eff, far = c + lay.body.d;
     const left = lay.start_room, right = lay.length - lay.end_room;
+    const k = lay.corner, fs = lay.fillet_step, rs = lay.radius_step;
     const start = lay.start_kind === "pocket"
-        ? Outlines.arc(left + f, far + f, f, 180, 270)
-        : [].concat(Outlines.arc(left - f, c + f, f, 270, 360), Outlines.arc(left + r, far - r, r, 180, 90));
+        ? Corners.corner_points(k, f, fs, left + f, far + f, 180, 270)
+        : [].concat(Corners.corner_points(k, f, fs, left - f, c + f, 270, 360), Corners.corner_points(k, r, rs, left + r, far - r, 180, 90));
     const end = lay.end_kind === "pocket"
-        ? Outlines.arc(right - f, far + f, f, 270, 360)
-        : [].concat(Outlines.arc(right - r, far - r, r, 90, 0), Outlines.arc(right + f, c + f, f, 180, 270));
+        ? Corners.corner_points(k, f, fs, right - f, far + f, 270, 360)
+        : [].concat(Corners.corner_points(k, r, rs, right - r, far - r, 90, 0), Corners.corner_points(k, f, fs, right + f, c + f, 180, 270));
     return without_repeats(start.concat(end));
 }
 

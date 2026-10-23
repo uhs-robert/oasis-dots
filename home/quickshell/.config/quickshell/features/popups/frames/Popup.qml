@@ -253,7 +253,8 @@ PanelWindow {
     readonly property var screen_frame: !root.passive && root.screen ? ScreenFrames.layout_for(root.screen) : null
     readonly property bool drawer: root.screen_frame !== null
     readonly property real drop_room: root.drawer ? 0 : root.st.frame_drop
-    readonly property real drawer_fillet: root.drawer ? Style.screen_frame_kit.radius : 0
+    readonly property var drawer_profile: root.drawer ? Style.screen_frame_profile : null
+    readonly property real drawer_fillet: root.drawer ? Drawer.fillet_of(root.drawer_profile) : 0
     readonly property real drawer_cover: Drawer.cover_depth(Style.bar_border_width, Style.bar_inset_gap, Style.bar_inset_width)
     readonly property var drawer_hole: root.screen_frame ? FrameGeometry.hole_rect(root.screen_frame) : null
     // A side island's end against its side band is a pocket, flush down the band; its other end, like a centre popup's, a fillet.
@@ -268,6 +269,8 @@ PanelWindow {
             extent: extent,
             radius: root.drawer_fillet,
             fillet: root.drawer_fillet,
+            corner: root.drawer ? root.drawer_profile.corner : "round",
+            step: root.drawer ? root.drawer_profile.step : 0,
             start_kind: root.drawer_kinds.start,
             end_kind: root.drawer_kinds.end,
             cover: root.drawer_cover
