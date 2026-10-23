@@ -123,6 +123,11 @@ function to_screen(lay) {
     return lay.edge === "bottom" ? [1, 0, 0, -1, 0, lay.depth] : [1, 0, 0, 1, 0, 0];
 }
 
+// A screen rect { x, y, w, h } in the canonical frame (to_screen is its own inverse).
+function to_canonical_rect(lay, r) {
+    return lay.edge === "bottom" ? { x: r.x, y: lay.depth - r.y - r.h, w: r.w, h: r.h } : { x: r.x, y: r.y, w: r.w, h: r.h };
+}
+
 // The hole as a screen rect { x, y, w, h }, for placing surfaces that attach to it (drawers).
 function hole_rect(lay) {
     const h = lay.far - lay.near;
@@ -139,4 +144,22 @@ function seam_of(lay, edge) {
     case "right": return r.x + r.w;
     }
     return r.y;
+}
+
+// The translucent drawers' windows, as { screen_name: { popup_key: rect } }. Each popup sets and clears only its own key,
+// so a popup closing never clears the one that replaced it on the screen. Both return a new registry (the old one is
+// left alone) that shares every other screen's entry.
+function drawer_windows_with(reg, screen_name, key, rect) {
+    const screen = Object.assign({}, reg[screen_name]);
+    if (rect) screen[key] = rect;
+    else delete screen[key];
+    const next = Object.assign({}, reg);
+    if (Object.keys(screen).length > 0) next[screen_name] = screen;
+    else delete next[screen_name];
+    return next;
+}
+
+// A screen's drawer windows as screen rects, in the order they were published.
+function drawer_window_rects(reg, screen_name) {
+    return Object.values(reg[screen_name] || {});
 }

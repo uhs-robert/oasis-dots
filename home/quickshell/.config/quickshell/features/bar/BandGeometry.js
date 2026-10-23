@@ -56,3 +56,46 @@ function band_fill(length, thickness) {
 function band_span(length, thickness, border, y) {
     return Outlines.span_at(Outlines.inset(band_rim(length, thickness, 0, 0), border), y);
 }
+
+// Gaps GapClip keeps apart; any beyond are folded into the last one's bounding box (an over-wide gap, never a line left
+// under a drawer). Two drawers overlap while one closes and another opens, so three is already generous.
+const MAX_GAPS = 3;
+
+// How many rects gap_regions can return: a column before each gap and one after, and a rect above and below each gap.
+function region_slots() {
+    return MAX_GAPS * 3 + 1;
+}
+
+// The rects covering a w by h area but for `gaps` (each { x, y, w, h }, clamped to the area), left to right: the column
+// before each gap, then the rects above and below it between its columns, and the last column. Gaps that overlap along x
+// merge into their bounding box. With no gap, the whole area.
+function gap_regions(w, h, gaps) {
+    const cut = [];
+    for (const g of gaps || []) {
+        const x0 = Math.max(0, Math.min(w, g.x)), x1 = Math.max(x0, Math.min(w, g.x + g.w));
+        const y0 = Math.max(0, Math.min(h, g.y)), y1 = Math.max(y0, Math.min(h, g.y + g.h));
+        if (x1 > x0 && y1 > y0) cut.push({ x0: x0, x1: x1, y0: y0, y1: y1 });
+    }
+    cut.sort((a, b) => a.x0 - b.x0);
+    const merged = [];
+    for (const c of cut) {
+        const last = merged[merged.length - 1];
+        if (last && (merged.length >= MAX_GAPS || c.x0 <= last.x1)) {
+            last.x1 = Math.max(last.x1, c.x1);
+            last.y0 = Math.min(last.y0, c.y0);
+            last.y1 = Math.max(last.y1, c.y1);
+        } else {
+            merged.push(c);
+        }
+    }
+    const out = [];
+    let cursor = 0;
+    for (const m of merged) {
+        out.push({ x: cursor, y: 0, w: m.x0 - cursor, h: h });
+        out.push({ x: m.x0, y: 0, w: m.x1 - m.x0, h: m.y0 });
+        out.push({ x: m.x0, y: m.y1, w: m.x1 - m.x0, h: h - m.y1 });
+        cursor = m.x1;
+    }
+    out.push({ x: cursor, y: 0, w: w - cursor, h: h });
+    return out.filter(r => r.w > 0 && r.h > 0);
+}

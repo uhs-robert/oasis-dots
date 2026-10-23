@@ -13,8 +13,13 @@ Item {
     property string screen_name: ""
     // The line is lit on the focused monitor only, switching with the frame's (ScreenFrame).
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
-    // Opaque even when the islands are translucent, so a fillet and the cover strip may overlap the band freely.
-    property color fill_color: Style.strip_color
+    // With translucent islands the fill takes their opacity and covers only the hole, so it never stacks on the frame's
+    // own fill; the frame and the strip leave their lines out under the window (ScreenFrames.drawer_windows). Otherwise it
+    // is opaque and the cover strip hides the lines.
+    property bool translucent: false
+    property color fill_color: root.translucent ? Style.island_fill(Style.strip_color) : Style.strip_color
+    // How far from the attached edge the rim and inset line run, for a body that draws its own edge; negative for all.
+    property real lines_depth: -1
     property int rim_width: Style.bar_border_width
     property color rim_color: Style.screen_frame_rim_color(root.focused)
     property real inset_gap: Style.bar_inset_gap
@@ -54,40 +59,46 @@ Item {
                 strokeWidth: -1
                 fillColor: root.fill_color
                 PathPolyline {
-                    path: Drawer.fill_loop(root.layout).map(p => Qt.point(p[0], p[1]))
+                    path: (root.translucent ? Drawer.hole_fill_loop(root.layout) : Drawer.fill_loop(root.layout)).map(p => Qt.point(p[0], p[1]))
                 }
             }
         }
 
-        Loader {
-            active: root.inset_width > 0 && root.inset_color.a > 0
-            sourceComponent: Shape {
-                preferredRendererType: Shape.CurveRenderer
+        Item {
+            width: root.layout.length
+            height: root.lines_depth < 0 ? root.layout.depth : root.lines_depth
+            clip: true
 
-                ShapePath {
-                    strokeWidth: root.inset_width
-                    strokeColor: root.inset_color
-                    fillColor: "transparent"
-                    capStyle: ShapePath.FlatCap
-                    PathPolyline {
-                        path: Drawer.stroke_path(root.layout, root.inset_gap + root.inset_width / 2).map(p => Qt.point(p[0], p[1]))
+            Loader {
+                active: root.inset_width > 0 && root.inset_color.a > 0
+                sourceComponent: Shape {
+                    preferredRendererType: Shape.CurveRenderer
+
+                    ShapePath {
+                        strokeWidth: root.inset_width
+                        strokeColor: root.inset_color
+                        fillColor: "transparent"
+                        capStyle: ShapePath.FlatCap
+                        PathPolyline {
+                            path: Drawer.stroke_path(root.layout, root.inset_gap + root.inset_width / 2).map(p => Qt.point(p[0], p[1]))
+                        }
                     }
                 }
             }
-        }
 
-        Loader {
-            active: root.rim_width > 0 && root.rim_color.a > 0
-            sourceComponent: Shape {
-                preferredRendererType: Shape.CurveRenderer
+            Loader {
+                active: root.rim_width > 0 && root.rim_color.a > 0
+                sourceComponent: Shape {
+                    preferredRendererType: Shape.CurveRenderer
 
-                ShapePath {
-                    strokeWidth: root.rim_width
-                    strokeColor: root.rim_color
-                    fillColor: "transparent"
-                    capStyle: ShapePath.FlatCap
-                    PathPolyline {
-                        path: Drawer.stroke_path(root.layout, root.rim_width / 2).map(p => Qt.point(p[0], p[1]))
+                    ShapePath {
+                        strokeWidth: root.rim_width
+                        strokeColor: root.rim_color
+                        fillColor: "transparent"
+                        capStyle: ShapePath.FlatCap
+                        PathPolyline {
+                            path: Drawer.stroke_path(root.layout, root.rim_width / 2).map(p => Qt.point(p[0], p[1]))
+                        }
                     }
                 }
             }

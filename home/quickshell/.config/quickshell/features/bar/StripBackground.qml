@@ -22,6 +22,9 @@ BandFill {
         ColorAnimation { duration: 200 }
     }
 
+    // A drawer's window over the strip, while it is translucent: the strip leaves its lines out there (the drawer draws its own).
+    line_gaps: ScreenFrames.drawer_rects(root.screen_name).map(r => ({ x: r.x, y: 0, w: r.w, h: root.thickness }))
+
     color: Style.strip_color
     shade_color: Style.frame_shade
     fill_opacity: Style.bar_island_opacity

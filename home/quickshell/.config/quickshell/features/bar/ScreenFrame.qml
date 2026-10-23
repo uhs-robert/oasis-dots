@@ -112,14 +112,21 @@ Scope {
                     height: root.layout.depth - root.layout.near
                     clip: root.layout.has_bar
 
-                    FrameStrokes {
+                    GapClip {
                         y: -root.layout.near
-                        layout: root.layout
-                        rim_width: Style.bar_border_width
-                        rim_color: root.rim_color
-                        inset_gap: Style.bar_inset_gap
-                        inset_width: Style.bar_inset_width
-                        inset_color: root.inset_color
+                        w: root.layout.length
+                        h: root.layout.depth
+                        gaps: ScreenFrames.drawer_rects(root.screen.name).map(r => Frame.to_canonical_rect(root.layout, r))
+                        source: Component {
+                            FrameStrokes {
+                                layout: root.layout
+                                rim_width: Style.bar_border_width
+                                rim_color: root.rim_color
+                                inset_gap: Style.bar_inset_gap
+                                inset_width: Style.bar_inset_width
+                                inset_color: root.inset_color
+                            }
+                        }
                     }
                 }
 
