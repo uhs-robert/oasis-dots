@@ -364,6 +364,7 @@ PanelWindow {
             screen_name: root.screen ? root.screen.name : ""
             translucent: root.drawer_translucent
             texture_origin: root.drawer_texture_origin
+            frame: root.screen_frame
         }
     }
 

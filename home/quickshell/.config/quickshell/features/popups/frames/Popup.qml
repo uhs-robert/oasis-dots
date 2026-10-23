@@ -543,6 +543,7 @@ PanelWindow {
             screen_name: root.held_screen_name
             translucent: root.drawer_translucent
             texture_origin: root.drawer_texture_origin
+            frame: root.screen_frame
             // The handheld shell's own edge is enough round the body.
             lines_depth: root.device ? Drawer.mouth_depth(root.drawer_layout) : -1
         }

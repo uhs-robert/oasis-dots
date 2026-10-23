@@ -19,6 +19,10 @@ Item {
     // own fill; the frame and the strip leave their lines out under the window (ScreenFrames.drawer_windows). Otherwise it
     // is opaque and the cover strip hides the lines.
     property bool translucent: false
+    // The screen frame's layout (FrameGeometry.frame_layout). A drawer hung from the bar's own edge continues the strip's
+    // shade; on any other edge the frame is flat strip_color, so it stays flat.
+    property var frame: null
+    readonly property real strip_thickness: root.frame && root.frame.has_bar && Style.strip_shape && Style.frame_shade.a > 0 && root.frame.edge === root.layout.edge ? root.frame.near : 0
     property color fill_color: root.translucent ? Style.island_fill(Style.strip_color) : Style.strip_color
     // Where the drawer's rows lie in the screen frame's canonical frame (Drawer.texture_origin); the dither and
     // scanlines tile from there so they run on from the bands across the join.
@@ -67,9 +71,20 @@ Item {
             ShapePath {
                 strokeWidth: -1
                 fillColor: root.fill_color
+                fillGradient: root.strip_thickness > 0 ? shade : null
                 PathPolyline {
                     path: root.fill_points.map(p => Qt.point(p[0], p[1]))
                 }
+            }
+
+            // The window's top lies `cover` px inside the strip, so the shade starts that far down it and reaches fill_color
+            // at the seam, where the strip's own shade ends.
+            BandShade {
+                id: shade
+                shade_color: root.translucent ? Style.island_fill(Style.frame_shade) : Style.frame_shade
+                color: root.fill_color
+                thickness: root.strip_thickness
+                offset: root.strip_thickness - root.layout.cover
             }
         }
 

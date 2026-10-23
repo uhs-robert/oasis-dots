@@ -78,14 +78,11 @@ Item {
                 }
             }
 
-            LinearGradient {
+            BandShade {
                 id: shade
-                x1: 0
-                y1: 0
-                x2: 0
-                y2: root.thickness
-                GradientStop { position: 0; color: root.faded(root.shade_color) }
-                GradientStop { position: 1; color: root.faded(root.color) }
+                shade_color: root.faded(root.shade_color)
+                color: root.faded(root.color)
+                thickness: root.thickness
             }
         }
 
