@@ -72,6 +72,7 @@ function overrides(t, ctx) {
         toggle_off: Qt.alpha(vec, 0.45),
         scanlines: true,
         scanline_color: Qt.alpha(vec, 0.05),
+        bar_scanline_color: Qt.alpha(vec, 0.05),
         chart_fill: Qt.alpha(vec, 0.09),
         chart_outline: vec,
         weather_icon_tint: vec,

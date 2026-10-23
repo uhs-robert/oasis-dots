@@ -42,14 +42,16 @@ Item {
     visible: root.color.a > 0
 
     Repeater {
-        model: root.visible ? root.bands : []
+        // Counted, so a changing row_span moves the rows it has rather than rebuilding them.
+        model: root.visible ? root.bands.length : 0
 
         Item {
-            required property var modelData
-            x: modelData.x
-            y: modelData.y
-            width: Math.max(0, modelData.w)
-            height: Math.max(0, modelData.h)
+            required property int index
+            readonly property var band: root.bands[index]
+            x: band.x
+            y: band.y
+            width: Math.max(0, band.w)
+            height: Math.max(0, band.h)
             clip: true
 
             Image {
@@ -58,6 +60,10 @@ Item {
                 width: root.width
                 height: root.height
                 fillMode: Image.Tile
+                // Tiles start at the corner. Centred, the default, shifts them by half the size's remainder of the tile, so two
+                // dithers of different sizes tiled from the same origin would not line up.
+                horizontalAlignment: Image.AlignLeft
+                verticalAlignment: Image.AlignTop
                 smooth: false
                 source: root.tile
             }

@@ -36,6 +36,12 @@ function band_affine(edge, thickness) {
     return [1, 0, 0, vy, 0, ty];
 }
 
+// A positive remainder of v by `period`: where a pattern tiled from the canonical origin starts inside a band or drawer
+// whose own origin sits at v, so every surface shows the same tiles.
+function phase_wrap(v, period) {
+    return ((v % period) + period) % period;
+}
+
 // The rim along the open edge, as IslandOutlines' rim paths; the ends stop inset_start and inset_end short of the
 // band's ends, where a frame's corners take over.
 function band_rim(length, thickness, inset_start, inset_end) {
