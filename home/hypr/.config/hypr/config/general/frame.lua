@@ -24,7 +24,6 @@ local gapped_lones = {}
 local gap_rules = {}
 local active_gap_rules = {}
 local GAPPED_TAG = "frame_gapped"
-local SLIDE_CURVE = "quickshell-frame-slide"
 
 --- The smallest gap between tiled windows and the usable area's edge.
 --- @return number
@@ -135,7 +134,8 @@ local function release_stale_gapped_lones()
 end
 
 --- The workspace switch animation as the config defines it (`_G.WorkspacesAnimation`, from config/rules) or, with the
---- frame on, on a bezier that does not overshoot: flush windows would visibly bounce past the frame and snap back.
+--- frame on, a plain slide on a bezier that does not overshoot: flush windows would visibly bounce past the frame and
+--- snap back. The curve is registered by config/rules, which runs before any frame is set.
 --- Hyprland cannot read an animation back, so the restore replays the config's own spec.
 --- @param frame_on boolean
 local function apply_workspaces_animation(frame_on)
@@ -146,8 +146,9 @@ local function apply_workspaces_animation(frame_on)
     spec[key] = value
   end
   if frame_on then
-    hl.curve(SLIDE_CURVE, { type = "bezier", points = { { 0.23, 1 }, { 0.32, 1 } } })
-    spec.bezier = SLIDE_CURVE
+    spec.style = "slide"
+    spec.speed = 3.5
+    spec.bezier = "easeOutQuint"
   end
   hl.animation(spec)
 end
