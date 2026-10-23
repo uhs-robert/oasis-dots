@@ -133,8 +133,9 @@ function input_rect(lay) {
 }
 
 // The body's length: the popup's own width, clipped to what the hole leaves once each fillet has its room (a centre drawer
-// has one at both ends, a side drawer's pocket needs none).
+// has one at both ends, a side drawer's pocket needs none). A "dock" drawer pockets at both ends and takes the whole hole.
 function body_length(side, base_width, hole_width, fillet) {
+    if (side === "dock") return hole_width;
     return Math.min(base_width, hole_width - fillet * (side === "center" ? 2 : 1));
 }
 
