@@ -98,7 +98,7 @@ const cases = [
   ["frame region with no bar is screen and hole", () => plain(F.frame_region(bare_frame).map(l => near_point(l[0], l.slice(-1)[0]))), [true, true]],
   ["frame region area with a bar", () => Math.abs(loop_area(F.frame_region(top_frame)[0]) - frame_area(top_frame)) < 0.01 * frame_area(top_frame), true],
   ["frame region reaches exactly 1 px under the strip, no further", () => { const ys = F.frame_region(top_frame)[0].map(p => p[1]); return Math.min(...ys) === top_frame.near - 1; }, true],
-  ["frame region's overlap is only over the side bands", () => F.frame_region(top_frame)[0].filter(p => p[1] < top_frame.near).every(p => p[0] <= top_frame.start || p[0] >= top_frame.length - top_frame.end), true],
+  ["frame region's overlap is only over the side bands and corners", () => F.frame_region(top_frame)[0].filter(p => p[1] < top_frame.near).every(p => p[0] <= top_frame.straight[0] + 1e-9 || p[0] >= top_frame.straight[1] - 1e-9), true],
   // The strip's rim and the frame's stroke meet at the same depth, the stroke starting exactly where the rim stops, so
   // the two neither leave a notch nor draw over each other.
   ["frame stroke picks up the strip rim", () => {

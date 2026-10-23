@@ -74,20 +74,17 @@ function hole_loop(lay) {
     return path.concat([path[0]]);
 }
 
-// How far the frame window's side bands reach up under the strip. At a fractional scale the strip's edge at `near` lands
+// How far the frame window's fill reaches up under the strip. At a fractional scale the strip's edge at `near` lands
 // mid-pixel and neither surface fully covers that pixel row; 1 px is at least a whole physical pixel at any scale >= 1.
 const fill_overlap = 1;
 
 // The frame window's fill as closed loops for one OddEvenFill PathMultiline: with a bar, the U past the strip (one
-// loop, open along the straight stretch where the strip takes over, its side bands reaching fill_overlap under the
-// strip); without one, the screen minus the hole.
+// loop, open along the straight stretch where the strip takes over, reaching fill_overlap under the strip as far as it); without one, the screen minus the hole.
 function frame_region(lay) {
     const w = lay.length, h = lay.depth;
     if (!lay.has_bar) return [[[0, 0], [w, 0], [w, h], [0, h], [0, 0]], hole_loop(lay)];
     const top = lay.near - fill_overlap, path = hole_path(lay), first = path[0], last = path[path.length - 1];
-    const right = w - lay.end;
-    return [without_repeats([[0, top], [0, h], [w, h], [w, top], [right, top], [right, lay.near], [first[0], lay.near]]
-        .concat(path, [[last[0], lay.near], [lay.start, lay.near], [lay.start, top], [0, top]]))];
+    return [without_repeats([[0, top], [0, h], [w, h], [w, top], [first[0], top]].concat(path, [[last[0], top], [0, top]]))];
 }
 
 // A line round the hole d px out into the bands (a rim at its half width, the inset line at its gap). With a bar both
@@ -127,7 +124,8 @@ function frame_blocks(lay) {
         { x: right, y: top, w: w - right, h: h - top },
         { x: left, y: lay.far, w: right - left, h: h - lay.far }
     ];
-    if (!lay.has_bar) out.push({ x: 0, y: 0, w: w, h: lay.near });
+    if (lay.has_bar) out.push({ x: left, y: top, w: lay.straight[0] - left, h: fill_overlap }, { x: lay.straight[1], y: top, w: right - lay.straight[1], h: fill_overlap });
+    else out.push({ x: 0, y: 0, w: w, h: lay.near });
     const profile = corner_profile(lay.corner, r, lay.step);
     const row = lay.corner === "pixel" && lay.step > 0 ? lay.step : 2;
     for (let y0 = 0; y0 < r; y0 += row) {
