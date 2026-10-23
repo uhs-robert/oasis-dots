@@ -21,9 +21,11 @@ const placed_corners = (edge, sw, sh, t) => {
   return [[0, 0], [len, 0], [len, t], [0, t]].map(([u, v]) => [m[0] * u + m[2] * v + m[4] + r.x, m[1] * u + m[3] * v + m[5] + r.y]);
 };
 const plain = v => JSON.parse(JSON.stringify(v));
-const F = vm.createContext({ Outlines: O });
+const C = vm.createContext({ Outlines: O });
+vm.runInContext(read("features/bar/Corners.js").replace(/^\.(pragma|import).*$/gm, ""), C);
+const F = vm.createContext({ Outlines: O, Corners: C });
 vm.runInContext(read("features/bar/FrameGeometry.js").replace(/^\.(pragma|import).*$/gm, ""), F);
-const kit = { corner: "round", radius: 12, thickness: 6, rim: 0, ornament: "" };
+const kit = { corner: "round", radius: 12, thickness: 6, ornament: "" };
 const top_frame = F.frame_layout(1920, 1080, "top", 30, kit);
 const bottom_frame = F.frame_layout(1920, 1080, "bottom", 30, kit);
 const bare_frame = F.frame_layout(1920, 1080, "", 30, kit);
@@ -151,7 +153,7 @@ const frame_kits = vm.runInNewContext(style.match(/screen_frame_kits: (\(\{[\s\S
 const frame_labels = style.slice(style.indexOf("borrow_names")).match(/screen_frame: \{([^}]*)\}/)[1];
 for (const f of frames) {
   const kit = frame_kits[f];
-  if (f !== "" && !(kit && ["radius", "thickness", "rim"].every(k => typeof kit[k] === "number") && typeof kit.corner === "string")) { failed++; console.log("FAIL no usable kit for screen frame " + f); }
+  if (f !== "" && !(kit && ["radius", "thickness"].every(k => typeof kit[k] === "number"))) { failed++; console.log("FAIL no usable kit for screen frame " + f); }
   if (!new RegExp((f === "" ? '""' : "\\b" + f) + ": \"").test(frame_labels)) { failed++; console.log("FAIL no label for screen frame " + JSON.stringify(f)); }
 }
 

@@ -84,6 +84,8 @@ function overrides(t, ctx) {
             bar_clock_fg: g3,
             bar_border_width: 2,
             bar_island_shape: "pixel",
+            screen_frame_corners: "pixel",
+            screen_frame_step: 2,
             // The lightest shade: g0 hides the pixel steps against the bar.
             bar_border_color: g3,
             bar_inset_gap: 0,

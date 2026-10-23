@@ -1,5 +1,6 @@
 .pragma library
 .import "IslandOutlines.js" as Outlines
+.import "Corners.js" as Corners
 
 // A screen frame: bands round the screen's usable area, joined to the bar's full strip, with a rounded hole for the
 // windows. Everything is drawn in the canonical frame, which is the bar's band frame (BandGeometry.js): u runs along
@@ -8,7 +9,8 @@
 // two never fill the same pixel.
 
 // The frame's measurements on a screen_w x screen_h screen whose bar (bar_height tall) is on bar_edge, "top",
-// "bottom" or "" for none; `kit` is a Style.screen_frame_kits entry. The hole runs from `start` to length - `end`
+// "bottom" or "" for none; `kit` is a Style.screen_frame_kits entry with the style's corner profile laid over it
+// (Style.screen_frame_profile: corner, radius, step). The hole runs from `start` to length - `end`
 // along u and from `near` to `far` along v; `straight` is the stretch of its near edge between the corners, which the
 // strip's rim draws. `zones` are the exclusive zones per screen edge.
 function frame_layout(screen_w, screen_h, bar_edge, bar_height, kit) {
@@ -17,7 +19,8 @@ function frame_layout(screen_w, screen_h, bar_edge, bar_height, kit) {
     const t = kit.thickness;
     const near = has_bar ? bar_height : t, far = screen_h - t;
     const start = t, end = t;
-    const radius = Math.max(0, Math.min(kit.radius, (screen_w - start - end) / 2, (far - near) / 2));
+    const room = Math.max(0, Math.min(kit.radius, (screen_w - start - end) / 2, (far - near) / 2));
+    const fitted = Corners.fit(kit.corner, room, kit.step);
     const zones = { top: t, right: t, bottom: t, left: t };
     if (has_bar) zones[edge] = bar_height;
     return {
@@ -30,19 +33,19 @@ function frame_layout(screen_w, screen_h, bar_edge, bar_height, kit) {
         far: far,
         start: start,
         end: end,
-        radius: radius,
+        radius: fitted.radius,
         corner: kit.corner,
-        rim: kit.rim,
+        step: fitted.step,
         zones: zones,
-        straight: [start + radius, screen_w - end - radius]
+        straight: [start + fitted.radius, screen_w - end - fitted.radius]
     };
 }
 
 // A hole corner from its horizontal edge to its vertical one, as offsets from the square corner of a top-left
-// corner: from [r, 0] to [0, r]. Only "round" so far; the other kinds fall back to it.
-function corner_profile(kind, r) {
+// corner: from [r, 0] to [0, r]. `r` and `step` come fit() from frame_layout.
+function corner_profile(kind, r, step) {
     if (r <= 0) return [[0, 0]];
-    return Outlines.arc(r, r, r, 270, 180);
+    return Corners.corner_points(kind, r, step, r, r, 270, 180);
 }
 
 // Drops points that repeat the one before, which would leave a zero-length segment for inset to mitre.
@@ -54,7 +57,7 @@ function without_repeats(points) {
 // round the far side to its near end (start + radius). Travel keeps the hole on the right, so IslandOutlines.inset
 // moves it out into the bands.
 function hole_path(lay) {
-    const p = corner_profile(lay.corner, lay.radius);
+    const p = corner_profile(lay.corner, lay.radius, lay.step);
     const left = lay.start, right = lay.length - lay.end;
     const reversed = p.slice().reverse();
     return without_repeats([].concat(
@@ -96,7 +99,8 @@ function profile_x(profile, y) {
 }
 
 // The frame window's fill as disjoint rectangles { x, y, w, h }, for effects that clip to rectangles (dither,
-// scanlines): the bands whole, and the band side of each corner in 2 px rows taken at their middles.
+// scanlines): the bands whole, and the band side of each corner in 2 px rows taken at their middles (a stair's own
+// step tall, so a row never straddles two stairs).
 function frame_blocks(lay) {
     const w = lay.length, h = lay.depth, r = lay.radius;
     const left = lay.start, right = w - lay.end;
@@ -106,9 +110,10 @@ function frame_blocks(lay) {
         { x: left, y: lay.far, w: right - left, h: h - lay.far }
     ];
     if (!lay.has_bar) out.push({ x: 0, y: 0, w: w, h: lay.near });
-    const profile = corner_profile(lay.corner, r);
-    for (let y0 = 0; y0 < r; y0 += 2) {
-        const y1 = Math.min(r, y0 + 2), reach = profile_x(profile, (y0 + y1) / 2);
+    const profile = corner_profile(lay.corner, r, lay.step);
+    const row = lay.corner === "pixel" && lay.step > 0 ? lay.step : 2;
+    for (let y0 = 0; y0 < r; y0 += row) {
+        const y1 = Math.min(r, y0 + row), reach = profile_x(profile, (y0 + y1) / 2);
         if (reach <= 0) continue;
         out.push({ x: left, y: lay.near + y0, w: reach, h: y1 - y0 },
             { x: right - reach, y: lay.near + y0, w: reach, h: y1 - y0 },

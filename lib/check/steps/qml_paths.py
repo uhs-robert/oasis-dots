@@ -165,10 +165,12 @@ OUTSIDE_REFS = [
     ("home/quickshell/tests/bar_layout.js", "features/bar/BarModules.js"),
     ("home/quickshell/tests/island_shapes.js", "features/bar/IslandOutlines.js"),
     ("home/quickshell/tests/island_shapes.js", "theme/Style.qml"),
+    ("home/quickshell/tests/island_shapes.js", "features/bar/Corners.js"),
     ("home/quickshell/tests/drawer_shapes.js", "features/bar/IslandOutlines.js"),
     ("home/quickshell/tests/drawer_shapes.js", "features/bar/BandGeometry.js"),
     ("home/quickshell/tests/drawer_shapes.js", "features/bar/FrameGeometry.js"),
     ("home/quickshell/tests/drawer_shapes.js", "features/bar/DrawerGeometry.js"),
+    ("home/quickshell/tests/drawer_shapes.js", "features/bar/Corners.js"),
 ]
 
 # A relative string on these QML keys is a path; other keys hold prose, glyphs or SVG data.

@@ -1,5 +1,5 @@
-// Runs DrawerGeometry.js and FrameGeometry's hole_rect/seam_of under node: the drawer's layout, fill, outline and
-// placement on every edge, and that its rim lands where the screen frame's own line is.
+// Runs DrawerGeometry.js, Corners.js and FrameGeometry's hole_rect/seam_of under node: the drawer's layout, fill, outline and
+// placement on every edge, that its rim lands where the screen frame's own line is, and each corner profile's joins.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -16,11 +16,12 @@ const load = (rel, imports) => {
   return ctx;
 };
 const B = load("features/bar/BandGeometry.js", { Outlines: O });
-const F = load("features/bar/FrameGeometry.js", { Outlines: O });
-const D = load("features/bar/DrawerGeometry.js", { Outlines: O, Band: B });
+const C = load("features/bar/Corners.js", { Outlines: O });
+const F = load("features/bar/FrameGeometry.js", { Outlines: O, Corners: C });
+const D = load("features/bar/DrawerGeometry.js", { Outlines: O, Band: B, Corners: C });
 const plain = v => JSON.parse(JSON.stringify(v));
 
-const kit = { corner: "round", radius: 12, thickness: 6, rim: 0, ornament: "" };
+const kit = { corner: "round", radius: 12, thickness: 6, ornament: "" };
 const top_frame = F.frame_layout(1920, 1080, "top", 30, kit);
 const bottom_frame = F.frame_layout(1920, 1080, "bottom", 30, kit);
 const bare_frame = F.frame_layout(1920, 1080, "", 30, kit);
@@ -320,6 +321,89 @@ cases.push(["without a hole the placement has no margins", () => { const p = D.p
 cases.push(["a top-left window rect starts at the margins and spans the drawn depth", () => D.window_rect("left", false, wk_left, 1920, 1080, 200, 50), { x: wk_left.along, y: wk_left.across, w: 200, h: 50 }]);
 cases.push(["a bottom-right window rect counts from the right and bottom screen edges", () => D.window_rect("right", true, wk_right, 1920, 1080, 200, 50), { x: 1920 - wk_right.along - 200, y: 1080 - wk_right.across - 50, w: 200, h: 50 }]);
 cases.push(["a top window rect reaches the strip, so it gaps a top strip", () => F.strip_gaps([D.window_rect("left", false, wk_left, 1920, 1080, 200, 50)], "top", 30, 1080).length, 1]);
+
+// Corner profiles: every join in every layout, per profile.
+const PROFILES = ["round", "chamfer", "pixel", "square"];
+const SIZES = [0, 1, 3, 5, 13, 24, 60, 200];
+const is_int = pts => pts.every(p => Number.isInteger(p[0]) && Number.isInteger(p[1]));
+const axis_aligned = pts => pts.every((p, k) => k === 0 || p[0] === pts[k - 1][0] || p[1] === pts[k - 1][1]);
+const monotone = pts => [0, 1].every(a => pts.every((p, k) => k < 2 || Math.sign(p[a] - pts[k - 1][a]) * Math.sign(pts[k - 1][a] - pts[k - 2][a]) >= 0));
+const has_repeats = pts => pts.some((p, k) => k > 0 && p[0] === pts[k - 1][0] && p[1] === pts[k - 1][1]);
+
+// The round output is what it was before profiles existed (a digest of the old code's loops, rounded to 1e-6).
+cases.push(["round layouts are unchanged by profiles", () => {
+  const out = [];
+  for (const k of KINDS) for (const e of [0, 5, 13, 24, 60, 200]) {
+    const l = D.drawer_layout({ edge: "top", body_length: 400, body_depth: 200, extent: e, radius: 12, fillet: 12, start_kind: k[0], end_kind: k[1], cover: 4 });
+    out.push(D.fill_loop(l), D.hole_fill_loop(l), D.outline_path(l), D.stroke_path(l, 1));
+  }
+  const lay = F.frame_layout(1920, 1080, "top", 30, { corner: "round", radius: 12, thickness: 6 });
+  out.push(F.hole_path(lay), F.frame_blocks(lay), F.frame_region(lay));
+  return require("crypto").createHash("sha1").update(JSON.stringify(plain(out), (k, v) => typeof v === "number" ? Math.round(v * 1e6) / 1e6 : v)).digest("hex");
+}, "15d5e36cb46abd6e4440fe18d7ec26a7c95dce47"]);
+
+const fit = (kind, r, step) => plain(C.fit(kind, r, step));
+cases.push(["fit pixel at r 12 gives 6, 4 and 3 stairs for steps 2, 3 and 4", () => [2, 3, 4].map(s => fit("pixel", 12, s)), [{ radius: 12, step: 2, stairs: 6 }, { radius: 12, step: 3, stairs: 4 }, { radius: 12, step: 4, stairs: 3 }]]);
+cases.push(["fit pixel caps the radius at 18 and the stairs at 8", () => [fit("pixel", 30, 2), fit("pixel", 12, 1)], [{ radius: 18, step: 3, stairs: 6 }, { radius: 12, step: 2, stairs: 6 }]]);
+cases.push(["fit pixel rounds the radius down to whole steps", () => fit("pixel", 11, 4), { radius: 8, step: 4, stairs: 2 }]);
+cases.push(["fit pixel below one step is square, a missing step is 1 px", () => [fit("pixel", 1, 2), fit("pixel", 3, undefined)], [{ radius: 0, step: 0, stairs: 0 }, { radius: 3, step: 1, stairs: 3 }]]);
+cases.push(["fit chamfer caps at 12, square is 0, round is untouched", () => [fit("chamfer", 30).radius, fit("chamfer", 7).radius, fit("square", 12).radius, fit("round", 30).radius, fit("nonsense", 9).radius], [12, 7, 0, 30, 9]]);
+cases.push(["Hyprland rounds windows only for a round corner", () => PROFILES.map(k => C.window_rounding(k, 12)), [12, 0, 0, 0]]);
+
+for (const step of [2, 3, 4]) for (const r of [12, 18]) {
+  const f = C.fit("pixel", r, step);
+  const pts = C.corner_points("pixel", f.radius, f.step, f.radius, f.radius, 270, 180);
+  cases.push([`pixel stair r ${r} step ${step}: whole pixels, axis-aligned, monotone, ends on the legs`, () => is_int(pts) && axis_aligned(pts) && monotone(pts) && pts.length === 2 * f.stairs + 1
+    && pts.every((p, k) => k === 0 || Math.abs(p[0] - pts[k - 1][0]) + Math.abs(p[1] - pts[k - 1][1]) === f.step)
+    && near(pts[0], [f.radius, 0], 1e-9) && near(pts[pts.length - 1], [0, f.radius], 1e-9) && pts[1][0] === pts[0][0] && pts[pts.length - 2][1] === pts[pts.length - 1][1], true]);
+}
+cases.push(["a chamfer is two points at 45 degrees", () => { const p = C.corner_points("chamfer", 12, 0, 12, 12, 270, 180); return [p.length, Math.abs(p[1][0] - p[0][0]) === Math.abs(p[1][1] - p[0][1])]; }, [2, true]]);
+cases.push(["a square corner is its one outer point", () => plain(C.corner_points("square", 12, 0, 12, 12, 270, 180)), [[0, 0]]]);
+
+for (const corner of PROFILES) {
+  const kit_c = Object.assign({}, kit, { corner: corner, step: 2 });
+  for (const [name, bar_edge] of [["top", "top"], ["bottom", "bottom"], ["no bar", ""]]) {
+    const lay = F.frame_layout(1920, 1080, bar_edge, 30, kit_c);
+    cases.push([`hole ${corner}, ${name}: ends on the straight stretch, loop clean`, () => {
+      const path = F.hole_path(lay), loop = F.hole_loop(lay);
+      return finite(path) && !self_intersects(loop) && (lay.radius === 0 || (path[0][0] === lay.straight[1] && path[path.length - 1][0] === lay.straight[0] && path[0][1] === lay.near && path[path.length - 1][1] === lay.near)) && !has_repeats(path) && (corner !== "pixel" || (is_int(path) && axis_aligned(path)));
+    }, true]);
+    cases.push([`frame blocks ${corner}, ${name}: disjoint and finite`, () => {
+      const b = F.frame_blocks(lay);
+      return b.every(r => [r.x, r.y, r.w, r.h].every(Number.isFinite)) && b.every((r, i) => b.every((q, j) => j <= i || r.x + r.w <= q.x + 1e-9 || q.x + q.w <= r.x + 1e-9 || r.y + r.h <= q.y + 1e-9 || q.y + q.h <= r.y + 1e-9));
+    }, true]);
+  }
+  cases.push([`hole radius ${corner}: capped to its profile and the room`, () => [F.frame_layout(1920, 1080, "top", 30, Object.assign({}, kit_c, { radius: 40 })).radius, F.frame_layout(200, 40, "top", 30, kit_c).radius <= 2], [{ round: 40, chamfer: 12, pixel: 18, square: 0 }[corner], true]]);
+
+  for (const [start_kind, end_kind] of KINDS) for (const extent of SIZES) {
+    const lay = lay_of({ corner, step: 2, start_kind, end_kind, extent });
+    const label = `${corner} ${start_kind}/${end_kind} extent ${extent}`;
+    const side = D.hole_side(lay);
+    const f = lay.fillet_eff, r = lay.radius_eff, c = lay.cover, far = c + lay.body.d;
+    const left = lay.start_room, right = lay.length - lay.end_room;
+    cases.push([`joins ${label}: the ends sit on the seam and the band edge`, () => {
+      const a = side[0], z = side[side.length - 1];
+      const start_ok = start_kind === "pocket" ? a[0] === left && Math.abs(a[1] - (far + f)) < 1e-9 : Math.abs(a[0] - (left - f)) < 1e-9 && a[1] === c;
+      const end_ok = end_kind === "pocket" ? z[0] === right && Math.abs(z[1] - (far + f)) < 1e-9 : Math.abs(z[0] - (right + f)) < 1e-9 && z[1] === c;
+      return start_ok && end_ok;
+    }, true]);
+    cases.push([`loops ${label}: finite, closed, no crossing, no repeats, no NaN`, () => {
+      const fl = D.fill_loop(lay), hl = D.hole_fill_loop(lay);
+      return finite(side) && finite(fl) && finite(hl) && near(fl[0], fl[fl.length - 1], 1e-9) && !self_intersects(fl) && !self_intersects(hl) && !has_repeats(side) && finite(D.stroke_path(lay, 1));
+    }, true]);
+    cases.push([`profile ${label}: radii follow the profile`, () => corner === "square" ? f === 0 && r === 0 : corner === "pixel" ? (f % lay.fillet_step === 0 || f === 0) && (r % lay.radius_step === 0 || r === 0) : f >= 0 && r >= 0, true]);
+    if (corner === "pixel") {
+      cases.push([`pixel ${label}: whole pixels, axis-aligned, nothing between two pixels`, () => is_int(side) && axis_aligned(side) && is_int(D.fill_loop(lay)) && is_int(D.hole_fill_loop(lay).filter(p => p[1] !== c - 0.5)), true]);
+      if (f > 0 && start_kind === "pocket") cases.push([`pixel ${label}: the pocket's stair leaves the band edge with a step across it`, () => side[0][0] === left && side[1][1] === side[0][1] && side[1][0] > left, true]);
+    }
+    if (corner === "chamfer" && f > 0) cases.push([`chamfer ${label}: the first fillet is a straight 45 degree cut`, () => Math.abs(Math.abs(side[1][0] - side[0][0]) - Math.abs(side[1][1] - side[0][1])) < 1e-9, true]);
+    if (corner === "square") cases.push([`square ${label}: the outline is the plain box`, () => side.every(p => p[0] === left || p[0] === right || p[1] === c) && D.fill_loop(lay).every(p => Number.isInteger(p[0]) && Number.isInteger(p[1])), true]);
+  }
+}
+cases.push(["pixel body rounds up to whole pixels", () => { const l = D.drawer_layout(spec({ corner: "pixel", step: 2, body_length: 400.4, body_depth: 200.2, extent: 100.6 })); return [l.body.w, l.body.d, l.length, l.depth]; }, [401, 101, 401 + 2 * 14, cover + 201 + 0]]);
+cases.push(["a spec with no corner or step is round", () => [D.drawer_layout(spec({})).corner, D.drawer_layout(spec({ corner: "bogus" })).corner], ["round", "round"]]);
+cases.push(["fillet_of fits the profile", () => [D.fillet_of({ corner: "pixel", radius: 12, step: 4 }), D.fillet_of({ corner: "square", radius: 12, step: 2 }), D.fillet_of({ corner: "chamfer", radius: 20, step: 2 })], [12, 0, 12]]);
+
 
 let failed = 0;
 for (const [name, fn, expected] of cases) {
