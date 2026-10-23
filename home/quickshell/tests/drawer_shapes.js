@@ -136,6 +136,18 @@ cases.push(["radius clamps to half the body", () => lay_of({ body_length: 10 }).
 cases.push(["extent clamps to the body depth", () => lay_of({ extent: 500 }).body.d, 200]);
 cases.push(["extent never negative", () => lay_of({ extent: -4 }).body.d, 0]);
 
+// With a bar, the stroke's two ends land on the strip's own line d out from the near edge, whatever the corner and
+// however thick the line, so the corners join the straight stretch without a step.
+for (const corner of ["round", "chamfer", "pixel", "square"]) {
+  for (const d of [1, 2.5]) {
+    cases.push(["frame stroke ends on the strip's line: " + corner + ", d " + d, () => {
+      const lay = F.frame_layout(1920, 1080, "top", 34, Object.assign({}, kit, { corner, step: 2 }));
+      const s = F.frame_stroke(lay, d);
+      return [s[0][1], s[s.length - 1][1]].every(y => Math.abs(y - (lay.near - d)) < 1e-6);
+    }, true]);
+  }
+}
+
 // The rim meets the frame's own line. The window sits cover px up inside the band from the seam, so the outline's
 // seam at v = cover lands on the hole's edge and the rim a half-width in on the band side, like frame_stroke's.
 {

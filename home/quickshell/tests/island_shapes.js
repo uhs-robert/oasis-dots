@@ -98,10 +98,12 @@ const cases = [
   ["frame region with no bar is screen and hole", () => plain(F.frame_region(bare_frame).map(l => near_point(l[0], l.slice(-1)[0]))), [true, true]],
   ["frame region area with a bar", () => Math.abs(loop_area(F.frame_region(top_frame)[0]) - frame_area(top_frame)) < 0.01 * frame_area(top_frame), true],
   ["frame region never above the strip", () => F.frame_region(top_frame)[0].every(p => p[1] >= top_frame.near - 1e-9), true],
-  // The strip's rim and the frame's stroke meet where the straight stretch ends, at the same depth into the strip.
+  // The strip's rim and the frame's stroke meet at the same depth into the strip; the stroke runs w / 2 on past the end of
+  // the straight stretch so the two overlap there.
   ["frame stroke picks up the strip rim", () => {
     const w = 2, rim = B.band_rim_stroke(1920, 30, top_frame.straight[0], 1920 - top_frame.straight[1], w), stroke = F.frame_stroke(top_frame, w / 2);
-    return near_point(stroke[0], rim[1]) && near_point(stroke.slice(-1)[0], rim[0]);
+    const on_rim = p => Math.abs(p[1] - rim[0][1]) < 1e-6 && p[0] >= rim[0][0] - 1e-6 && p[0] <= rim[1][0] + 1e-6;
+    return on_rim(stroke[0]) && on_rim(stroke.slice(-1)[0]) && near_point([stroke[0][0] + w / 2, stroke[0][1]], rim[1]) && near_point([stroke.slice(-1)[0][0] - w / 2, stroke.slice(-1)[0][1]], rim[0]);
   }, true],
   ["frame stroke with no bar closes round the hole", () => { const s = F.frame_stroke(bare_frame, 1); return near_point(s[0], s.slice(-1)[0]) && Math.abs(s[0][1] - 5) < 0.1; }, true],
   ["frame stroke stays out of the hole", () => F.frame_stroke(top_frame, 1).every(p => p[0] <= 6 || p[0] >= 1914 || p[1] <= 30 || p[1] >= 1074 || (p[0] < 18 || p[0] > 1902) && (p[1] < 42 || p[1] > 1062)), true],
