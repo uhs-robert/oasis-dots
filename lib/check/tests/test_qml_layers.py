@@ -20,12 +20,12 @@ FEATURE_USER = "import qs.features.clock\nItem {}\n"
 class LayersCase(TreeCase):
     """A repository with the Quickshell tree in qs/ and the allowlist in allow."""
 
-    def check(self, files, allow=""):
+    def check(self, files, allow="", sibling_allow=()):
         for name in os.listdir(self.root):
             shutil.rmtree(os.path.join(self.root, name))
         write_tree(self.root, {**files, ALLOW: allow})
         subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
-        return [f"{f.path}:{f.line}: {f.message}" for f in qml_layers.run_checks(self.root, "qs", ALLOW)]
+        return [f"{f.path}:{f.line}: {f.message}" for f in qml_layers.run_checks(self.root, "qs", ALLOW, set(sibling_allow))]
 
     def messages(self, files, allow=""):
         return [line.split(": ", 1)[1] for line in self.check(files, allow)]
@@ -107,6 +107,40 @@ class AllowlistTest(LayersCase):
         found = self.check(files, self.ENTRY)
         self.assertEqual(len(found), 1)
         self.assertIn("import qs.features.power runs upward", found[0])
+
+
+class SiblingTest(LayersCase):
+    def run_siblings(self, files, allow=()):
+        return self.check(files, sibling_allow=allow)
+
+    def test_a_cross_feature_relative_import_fails(self):
+        found = self.run_siblings({"qs/features/a/A.qml": 'import "../b/G.js" as G\n', "qs/features/b/G.js": ""})
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0].startswith('qs/features/a/A.qml:1: import "../b/G.js" reaches into another feature (features/b/G.js).'), found)
+
+    def test_a_same_feature_import_passes(self):
+        files = {"qs/features/a/A.qml": 'import "sub"\nimport "sub/G.js" as G\n', "qs/features/a/sub/G.js": "", "qs/features/a/sub/B.qml": 'import "../H.js" as H\n', "qs/features/a/H.js": ""}
+        self.assertEqual(self.run_siblings(files), [])
+
+    def test_a_cross_style_import_fails(self):
+        found = self.run_siblings({"qs/styles/x/A.qml": 'import "../y/widgets"\n', "qs/styles/y/widgets/W.qml": ""})
+        self.assertEqual(len(found), 1)
+        self.assertIn("reaches into another style (styles/y/widgets)", found[0])
+
+    def test_a_file_directly_under_styles_may_import_each_style(self):
+        self.assertEqual(self.run_siblings({"qs/styles/index.js": '.import "x/t.js" as X\n', "qs/styles/x/t.js": ""}), [])
+
+    def test_a_qs_import_across_features_is_not_checked(self):
+        self.assertEqual(self.run_siblings({"qs/features/a/A.qml": "import qs.features.b\n"}), [])
+
+    def test_an_allowlisted_edge_passes(self):
+        files = {"qs/features/a/A.qml": 'import "../b/G.js" as G\n'}
+        self.assertEqual(self.run_siblings(files, {("features/a/A.qml", "features/b/G.js")}), [])
+
+    def test_a_stale_allowlist_entry_fails(self):
+        found = self.run_siblings({"qs/features/a/A.qml": "Item {}\n"}, {("features/a/A.qml", "features/b/G.js")})
+        self.assertEqual(len(found), 1)
+        self.assertIn("SIBLING_ALLOW entry features/a/A.qml -> features/b/G.js is stale", found[0])
 
 
 class LiveTreeTest(unittest.TestCase):
