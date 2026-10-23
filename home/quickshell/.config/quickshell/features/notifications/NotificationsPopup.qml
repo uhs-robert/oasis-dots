@@ -167,7 +167,7 @@ Popup {
     function clear_and_close() {
         if (clear_sequence.running) return;
         ThemeAudio.play("confirm");
-        const targets = NotificationState.history.concat(NotificationState.toasts.filter(e => !NotificationState.history.includes(e)));
+        const targets = NotificationState.clearable_entries();
         if (targets.length === 0) {
             Popups.close();
             return;

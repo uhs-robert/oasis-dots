@@ -202,9 +202,13 @@ Singleton {
         for (const entry of extra) root.dismiss(entry);
     }
 
+    // History plus transient toasts, which are kept out of history.
+    function clearable_entries() {
+        return root.history.concat(root.toasts.filter(e => !root.history.includes(e)));
+    }
+
     function clear_all() {
-        const all = root.history.concat(root.toasts.filter(e => !root.history.includes(e)));
-        for (const entry of all) root.dismiss(entry);
+        for (const entry of root.clearable_entries()) root.dismiss(entry);
     }
 
     function hide_toast(entry) {
