@@ -176,6 +176,15 @@ Popup {
         }
     }
 
+    // The open picker moves its own cursor, which the pane's does not follow.
+    Connections {
+        target: root.pane ? root.pane.pick_list : null
+        ignoreUnknownSignals: true
+        function onCursorChanged() {
+            Qt.callLater(root.reveal_selected, pane_flick, pane_loader);
+        }
+    }
+
     Connections {
         target: SettingsNav
         function onRequestedChanged() {
