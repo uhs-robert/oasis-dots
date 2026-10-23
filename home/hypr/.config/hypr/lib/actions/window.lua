@@ -17,9 +17,13 @@ local Window = {
   kill = function() return close_active("kill") end,
   restore_closed = function() return Closed.restore end,
   fullscreen_toggle = function() return Hypr.dispatch(hl.dsp.window.fullscreen({ action = "toggle" })) end,
-  -- Mode 1 keeps the frame and bar; the flush edges come from the workspace rules in config/general/frame.lua.
+  -- Mode 1 keeps the frame and bar; the flush edges come from the workspace rules in config/general/frame.lua. A lone
+  -- window is already flush inside the frame, so there the key toggles that flush instead.
   maximize_toggle = function()
-    return Hypr.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }))
+    return function()
+      if _G.ScreenFrame and _G.ScreenFrame.toggle_lone_flush() then return end
+      hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }))
+    end
   end,
   float_toggle = function() return Hypr.dispatch(hl.dsp.window.float({ action = "toggle" })) end,
   pseudo_toggle = function() return Hypr.dispatch(hl.dsp.window.pseudo()) end,
