@@ -93,7 +93,7 @@ end
 local function tiled_windows(workspace_id)
   local tiled = {}
   for _, window in ipairs(hl.get_workspace_windows(workspace_id) or {}) do
-    if window.mapped and not window.floating then table.insert(tiled, window) end
+    if window.mapped and window.visible ~= false and not window.floating then table.insert(tiled, window) end
   end
   return tiled
 end
@@ -272,7 +272,9 @@ local function toggle_lone_flush()
   local gap = gaps_out()
   local rule_key = workspace_id .. ":" .. gap
   if not gap_rules[rule_key] then
-    gap_rules[rule_key] = hl.workspace_rule({ workspace = tostring(workspace_id), gaps_out = gap })
+    -- The rule gets the owner's full value: a per-edge gaps table must not collapse to its smallest side.
+    gap_rules[rule_key] =
+      hl.workspace_rule({ workspace = tostring(workspace_id), gaps_out = hl.get_config("general.gaps_out") })
   end
   gap_rules[rule_key]:set_enabled(true)
   active_gap_rules[workspace_id] = gap_rules[rule_key]
