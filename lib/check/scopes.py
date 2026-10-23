@@ -183,6 +183,7 @@ PATH_SCOPES = [
     ("lib/common/*.sh", "loader"),
     ("home/calendar/*", "calendar"),
     ("home/claude/.claude/hooks/*", "hooks"),
+    ("home/claude/.claude/skills/orchestrator-handoff/*", "hooks"),
     (".claude/hooks/live-hypr.sh", "hooks ship"),
     (".claude/hooks/*", "hooks"),
     (".claude/skills/owner-test-bar/*", "bar"),
@@ -264,7 +265,7 @@ STEPS = [
     Step("time-format", "qml", "sh ./lib/check/steps/time-format.sh"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
     Step("calendar-sync-syntax", "calendar", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
-    Step("agent-hooks", "hooks", "bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh && bash ./.claude/hooks/tests/check-before-pr.sh && bash ./.claude/hooks/tests/restart-qs-after-git.sh && bash ./.claude/hooks/tests/guard-gh-merge.sh && bash ./.claude/hooks/tests/warn-direct-voxcmd-suite.sh && bash ./home/claude/.claude/hooks/tests/guard-tmux-socket.sh && bash ./.claude/hooks/tests/guard-check-full.sh && bash ./home/claude/.claude/hooks/tests/context-budget.sh && bash ./.claude/hooks/tests/report-failed-main-check.sh", ("jq",), skip_reason=HOOKS_SKIP),
+    Step("agent-hooks", "hooks", "bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh && bash ./.claude/hooks/tests/check-before-pr.sh && bash ./.claude/hooks/tests/restart-qs-after-git.sh && bash ./.claude/hooks/tests/guard-gh-merge.sh && bash ./.claude/hooks/tests/warn-direct-voxcmd-suite.sh && bash ./home/claude/.claude/hooks/tests/guard-tmux-socket.sh && bash ./.claude/hooks/tests/guard-check-full.sh && bash ./home/claude/.claude/hooks/tests/context-budget.sh && bash ./home/claude/.claude/hooks/tests/orchestrator-window-names.sh && bash ./.claude/hooks/tests/report-failed-main-check.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("stale-shells-hook", "hooks", "bash ./home/claude/.claude/hooks/tests/stale-shells.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("json-store", "qml", "bash ./home/quickshell/tests/json_store/run.sh", ("qs", "python3"), skip_reason="the json-store tests need qs and python3"),
     Step("polled-command", "polledcmd", "bash ./home/quickshell/tests/polled_command/run.sh", ("qs", "python3"), skip_reason="the polled-command tests need qs and python3"),
