@@ -113,6 +113,7 @@ const cases = [
   ["frame blocks disjoint (no bar)", () => blocks_disjoint(F.frame_blocks(bare_frame)), true],
   ["frame blocks area (bar)", () => Math.abs(blocks_area(F.frame_blocks(top_frame)) - frame_area(top_frame)) < 0.01 * frame_area(top_frame), true],
   ["frame blocks area (no bar)", () => Math.abs(blocks_area(F.frame_blocks(bare_frame)) - frame_area(bare_frame)) < 0.01 * frame_area(bare_frame), true],
+  ["translucent islands: region and blocks start at near, no overlap", () => { const l = F.frame_layout(1920, 1080, "top", 30, Object.assign({}, kit, { fill_overlap: 0 })); return Math.min(...F.frame_region(l)[0].map(p => p[1])) === l.near && F.frame_blocks(l).every(b => b.y >= l.near); }, true],
   ["frame blocks reach 1 px under the strip, no further", () => F.frame_blocks(top_frame).every(b => b.y >= top_frame.near - 1) && F.frame_blocks(top_frame).some(b => b.y === top_frame.near - 1), true],
   ["frame to_screen top is the band frame", () => plain(F.to_screen(top_frame)), plain(B.band_affine("top", 1080))],
   ["frame to_screen bottom is the band frame", () => plain(F.to_screen(bottom_frame)), plain(B.band_affine("bottom", 1080))],
