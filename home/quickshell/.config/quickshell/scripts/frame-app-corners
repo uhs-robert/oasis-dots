@@ -24,8 +24,9 @@ def yazi_border(frame):
 
 
 # TextFox's bordered panes, the only things a chamfer touches. Their own border-radius is --tf-rounding, so a chamfer
-# is --tf-rounding 0 plus a clipped corner and a drawn diagonal on each of these, never a clip on the page, sidebar or
-# devtools content inside them (Firefox 158 has no `corner-shape: bevel`).
+# is --tf-rounding 0 plus a bevel drawn over each corner of these. It is painted by an ::after rather than cut with
+# clip-path or mask, because those also clip what overflows the pane: the URL bar's results, TextFox's title labels.
+# (Firefox 158 has no `corner-shape: bevel`.)
 TEXTFOX_PANES = ["#tabbrowser-tabbox", "#sidebar-box", ".buttons-wrapper", "findbar", "#nav-bar", "#PersonalToolbar", "#TabsToolbar", "box#vertical-tabs"]
 
 
@@ -35,20 +36,15 @@ def chamfer_css(radius):
     panes = ",\n".join(TEXTFOX_PANES)
     hovered = ",\n".join(f"{pane}:hover" for pane in TEXTFOX_PANES)
     after = ",\n".join(f"{pane}::after" for pane in TEXTFOX_PANES)
-    # The polygon also reaches above the pane so TextFox's title label, which sits on the top border, is not cut.
-    clip = (
-        f"polygon(0 {r}, {r} 0, {r} -2rem, calc(100% - {r}) -2rem, calc(100% - {r}) 0, 100% {r}, "
-        f"100% calc(100% - {r}), calc(100% - {r}) 100%, {r} 100%, 0 calc(100% - {r}))"
-    )
-    # One diagonal stroke per corner, on the pane's side of the cut: the gradient runs across the corner square and its
-    # 50% mark is the cut itself.
-    stroke = lambda angle, at: f"linear-gradient({angle}deg, transparent 50%, var(--tf-bevel-line) 50%, var(--tf-bevel-line) calc(50% + {w}), transparent calc(50% + {w})) {at} / {r} {r} no-repeat"
-    strokes = ", ".join([stroke(135, "left top"), stroke(225, "right top"), stroke(315, "right bottom"), stroke(45, "left bottom")])
+    # Each corner square is the window's background up to the diagonal, then the border-coloured stroke on the pane's
+    # side of it. The gradient's 50% mark is the diagonal.
+    corner = lambda angle, at: f"linear-gradient({angle}deg, var(--tf-bevel-outside) 50%, var(--tf-bevel-line) 50%, var(--tf-bevel-line) calc(50% + {w}), transparent calc(50% + {w})) {at} / {r} {r} no-repeat"
+    corners = ", ".join([corner(135, "left top"), corner(225, "right top"), corner(315, "right bottom"), corner(45, "left bottom")])
     return f"""
 {panes} {{
   position: relative;
   --tf-bevel-line: var(--tf-border);
-  clip-path: {clip};
+  --tf-bevel-outside: var(--tf-bg);
 }}
 
 {hovered},
@@ -64,7 +60,12 @@ box#vertical-tabs:focus {{
   position: absolute;
   inset: calc(-1 * {w});
   pointer-events: none;
-  background: {strokes};
+  background: {corners};
+}}
+
+/* TextFox gives the find bar no side padding, so its first and last controls would sit under a corner. */
+findbar {{
+  padding: 8px !important;
 }}
 """
 
@@ -99,7 +100,8 @@ def write_if_changed(path, text):
 def default_firefox_dirs(home):
     found = []
     for base in (home + "/.config/mozilla/firefox", home + "/.mozilla/firefox"):
-        found += glob.glob(base + "/*.default-release/chrome")
+        # The profile is what exists; its chrome/ is created on write, since a profile that never had one still needs the file.
+        found += [profile + "/chrome" for profile in glob.glob(base + "/*.default-release")]
     return found
 
 
