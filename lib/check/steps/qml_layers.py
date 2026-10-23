@@ -3,8 +3,12 @@
 
 Layers are the top folders of the Quickshell tree, ranked by LAYERS: a file may reach its own rank and below. The
 imports are read with qml_imports.imports and the URL loads with qml_paths.call_sites, so a path this step cannot
-see (a table-driven load, a URL whose head is not a literal) is the same blind spot qml-paths documents. Edges between
-two features, or two styles, are not checked: the Target tree allows them only through a singleton, which needs types.
+see (a table-driven load, a URL whose head is not a literal) is the same blind spot qml-paths documents.
+
+Two features, or two styles, may only meet through a singleton (`import qs.<path>`), which needs types to follow, so
+the check reads only the relative imports between them: `import "../other/X.js"` from features/<x>/ into features/<y>/,
+likewise styles/<x>/ into styles/<y>/. The kept ones are in SIBLING_ALLOW; an entry whose import is gone fails as stale.
+`import qs.features.<y>` and URL loads across siblings are not checked.
 
 lib/check/qml-layers.allow lists the upward edges that exist today, one per line:
 
@@ -35,6 +39,20 @@ ALLOW_PATH = "lib/check/qml-layers.allow"
 # keeps rank 3 as a placeholder until its two files have a destination.
 LAYERS = {"core": 0, "theme": 1, "ui": 2, "services": 3, "styles": 4, "features": 5}
 UNRANKED = {"scripts", "assets", "sounds", "custom"}
+
+# (importer, target) pairs, both tree paths. The geometry edges go away when the drawer scaffolding refactor moves
+# the geometry files to a shared lower layer; the BarLayout and DisplayLayout ones need the same move for those files.
+SIBLING_ALLOW = {
+    ("features/popups/WhichKey.qml", "features/bar/DrawerGeometry.js"),
+    ("features/popups/WhichKey.qml", "features/bar/FrameGeometry.js"),
+    ("features/osd/Osd.qml", "features/bar/DrawerGeometry.js"),
+    ("features/osd/Osd.qml", "features/bar/FrameGeometry.js"),
+    ("features/popups/frames/Popup.qml", "features/bar/DrawerGeometry.js"),
+    ("features/popups/frames/Popup.qml", "features/bar/FrameGeometry.js"),
+    ("features/settings/sections/BarModulesSection.qml", "features/bar/BarLayout.js"),
+    ("features/settings/sections/DisplaysSection.qml", "features/display/DisplayLayout.js"),
+}
+SIBLING_LAYERS = ("features", "styles")
 
 ENTRY = re.compile(r"^(\S+) -> (\S+)\s+#\s*(\S.*\S)\s+\(([^()]+)\)\s*$")
 
@@ -71,6 +89,27 @@ def edges_of(repo, qs_dir, rel):
     ]
 
 
+def sibling_of(rel):
+    """The (layer, sibling folder) a file belongs to, or None for a file outside features/<x>/ and styles/<x>/."""
+    parts = rel.split("/")
+    return (parts[0], parts[1]) if parts[0] in SIBLING_LAYERS and len(parts) > 2 else None
+
+
+def sibling_edges(repo, qs_dir, rel):
+    """Yields (resolved target, line, import text) for each relative import from the file into another sibling."""
+    own = sibling_of(rel)
+    if own is None:
+        return
+    here = posixpath.dirname(rel)
+    for kind, target, line in imports(os.path.join(repo, qs_dir, rel)):
+        if kind == "qs":
+            continue
+        resolved = norm(posixpath.join(here, target))
+        parts = resolved.split("/")
+        if parts[0] == own[0] and len(parts) > 1 and parts[1] != own[1]:
+            yield resolved, line, f'import "{target}"'
+
+
 def is_upward(file_layer, edge):
     return edge.layer in LAYERS and LAYERS[edge.layer] > LAYERS[file_layer]
 
@@ -96,12 +135,12 @@ def read_allowlist(repo, allow_path):
     return entries, findings
 
 
-def run_checks(repo, qs_dir=QS_DIR, allow_path=ALLOW_PATH):
+def run_checks(repo, qs_dir=QS_DIR, allow_path=ALLOW_PATH, sibling_allow=SIBLING_ALLOW):
     """Every finding for the checkout at repo, sorted."""
     prefix = qs_dir + "/"
     files = sorted(path.removeprefix(prefix) for path in git_listing(repo, [qs_dir]) if path.startswith(prefix))
     allowed, findings = read_allowlist(repo, allow_path)
-    seen, upward_seen = set(), set()
+    seen, upward_seen, sibling_seen = set(), set(), set()
     reported_dirs = set()
     for rel in files:
         top = rel.split("/")[0]
@@ -112,6 +151,14 @@ def run_checks(repo, qs_dir=QS_DIR, allow_path=ALLOW_PATH):
                 reported_dirs.add(top)
                 findings.append(Finding(prefix + rel, 1, f'top folder "{top}" has no rank; add it to LAYERS (or UNRANKED) in lib/check/steps/qml_layers.py'))
             continue
+        for resolved, line, text in sibling_edges(repo, qs_dir, rel):
+            sibling_seen.add((rel, resolved))
+            if (rel, resolved) not in sibling_allow:
+                findings.append(Finding(prefix + rel, line, (
+                    f"{text} reaches into another {top.removesuffix('s')} ({resolved}). "
+                    "Go through a singleton, or move the shared code to a lower layer (ui/ or core/); "
+                    f"a deliberate seam goes in SIBLING_ALLOW in lib/check/steps/qml_layers.py."
+                )))
         for edge in edges_of(repo, qs_dir, rel):
             seen.add((rel, edge.target))
             if not is_upward(top, edge):
@@ -128,6 +175,8 @@ def run_checks(repo, qs_dir=QS_DIR, allow_path=ALLOW_PATH):
             continue
         reason = "is not an upward edge" if (file, target) in seen else "is stale: the file no longer reaches it"
         findings.append(Finding(allow_path, number, f"{file} -> {target} {reason}. Delete the line."))
+    for file, target in sorted(sibling_allow - sibling_seen):
+        findings.append(Finding("lib/check/steps/qml_layers.py", 1, f"SIBLING_ALLOW entry {file} -> {target} is stale: the file no longer imports it. Delete it."))
     return sorted(set(findings))
 
 
