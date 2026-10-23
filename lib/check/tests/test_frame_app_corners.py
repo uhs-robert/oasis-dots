@@ -50,6 +50,15 @@ class FirefoxCss(unittest.TestCase):
             if "::after" in block:
                 self.assertEqual([x.strip() for x in block.split("{")[0].split(",")], [p + "::after" for p in gen.TEXTFOX_PANES])
         self.assertIn("var(--tf-bevel-line)", css)
+        self.assertIn("pointer-events: none;", css)
+        self.assertIn("position: relative;", css)
+        self.assertIn("findbar {\n  padding: 8px !important;", css)
+        self.assertIn("--toolbox-background-color", css)
+
+    def test_round_has_no_bevel_rules(self):
+        css = gen.firefox_css(frame("round", 12))
+        for text in ("pointer-events", "position: relative", "padding: 8px"):
+            self.assertNotIn(text, css)
 
     def test_zero_radius_chamfer_does_not_clip(self):
         self.assertNotIn("clip-path", gen.firefox_css(frame("chamfer", 0)))
