@@ -55,6 +55,9 @@ class FirefoxCss(unittest.TestCase):
         self.assertIn("findbar {\n  padding: 8px !important;", css)
         self.assertIn("--tf-bevel-line: var(--tf-accent);", css)
         self.assertIn("#nav-bar:hover", css)
+        # The stroke must fade with TextFox's border (border-color var(--tf-border-transition)), not jump.
+        self.assertIn('@property --tf-bevel-line {\n  syntax: "<color>";', css)
+        self.assertIn("transition: --tf-bevel-line var(--tf-border-transition);", css)
         self.assertIn("#nav-bar:focus", css)
         cover = css.split("--tf-bevel-outside: var(--toolbox-background-color")[0].rsplit("\n\n", 1)[1]
         covered = [x.strip() for x in cover.split("*/")[-1].split("{")[0].split(",")]
