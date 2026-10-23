@@ -105,15 +105,15 @@ Scope {
                     }
                 }
 
-                // Below the strip's open edge only; the strip draws the rest of the line (StripBackground).
+                // From Frame.stroke_clip_top down; the strip draws the rest of the line (StripBackground).
                 Item {
-                    y: root.layout.near
+                    y: Frame.stroke_clip_top(root.layout)
                     width: root.layout.length
-                    height: root.layout.depth - root.layout.near
+                    height: root.layout.depth - y
                     clip: root.layout.has_bar
 
                     GapClip {
-                        y: -root.layout.near
+                        y: -parent.y
                         w: root.layout.length
                         h: root.layout.depth
                         gaps: ScreenFrames.drawer_rects(root.screen.name).map(r => Frame.to_canonical_rect(root.layout, r))

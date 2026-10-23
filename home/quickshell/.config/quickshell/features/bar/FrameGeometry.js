@@ -90,9 +90,18 @@ function frame_region(lay) {
     return [without_repeats([[0, top], [0, h], [w, h], [w, top], [first[0], top]].concat(path, [[last[0], top], [0, top]]))];
 }
 
+// Where the frame window's own stroke clip starts. The frame window may stack above the strip, and then its fill's
+// overlap row hides the strip's half of the corner's rim and inset line unless it draws them again itself, so the clip
+// starts 1 px above the fill: a clip snaps to whole device pixels, and at a fractional scale the fill's top edge lands
+// mid-pixel. With no overlap it stays at `near`, so a translucent rim is never drawn twice.
+function stroke_clip_top(lay) {
+    return lay.overlap > 0 ? lay.near - lay.overlap - 1 : lay.near;
+}
+
 // A line round the hole d px out into the bands (a rim at its half width, the inset line at its gap). With a bar both
 // windows draw it with complementary clips, the frame window below `near` and the strip above it, and the strip's own
-// rim draws the straight stretch; without one the frame window draws the whole loop.
+// rim draws the straight stretch; without one the frame window draws the whole loop. The frame window's clip starts at
+// stroke_clip_top, a little above `near` when its fill overlaps the strip.
 function frame_stroke(lay, d) {
     if (!lay.has_bar) return Outlines.inset(hole_loop(lay), d);
     // Lead-ins of d along the near edge make inset mitre each open end onto the straight stretch's line (d out, in the
