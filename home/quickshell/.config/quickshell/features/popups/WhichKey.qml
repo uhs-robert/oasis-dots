@@ -63,7 +63,7 @@ PanelWindow {
     }
     visible: false
     color: "transparent"
-    exclusiveZone: 0
+    // No explicit exclusiveZone: even 0 overrides Ignore, so the frame's zones would push a drawer inward.
     exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
     anchors.top: root.drawer ? root.drawer_place.anchor_top : root.position.startsWith("top")
     anchors.bottom: root.drawer ? root.drawer_place.anchor_bottom : root.position.startsWith("bottom")

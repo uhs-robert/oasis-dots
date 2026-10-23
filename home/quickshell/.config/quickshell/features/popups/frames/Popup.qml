@@ -353,8 +353,8 @@ PanelWindow {
     margins.bottom: root.drawer ? root.drawer_place.margin_bottom : root.floating && root.rises ? root.st.frame_float : 0
     margins.left: root.drawer ? root.drawer_place.margin_left : root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : 0
     margins.right: root.drawer ? root.drawer_place.margin_right : root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : 0
+    // No explicit exclusiveZone: even 0 overrides Ignore, so the frame's zones would push a drawer inward.
     exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
-    exclusiveZone: 0
     color: "transparent"
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
