@@ -72,7 +72,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `greeter-keyring`: `lib/install/tests/greeter-keyring.sh` (the greetd keyring unlock installer), `greeter-log.sh` (the greeter log file and the `qs-greeter` wrapper's choice of it) and `greeter-monitors.sh` (the greeter's `monitors.lua`).
 - `migrate-lock`: the `migrate-quickshell-*` and `migrate-lock-assets` tests in `lib/install/tests/`.
 - `install-load`: `lib/install/tests/load.sh`, that sourcing the install libraries prints nothing and never exits.
-- `agent-hooks`: the tests of `guard-masked-checks.sh`, `check-before-pr.sh`, `restart-qs-after-git.sh`, `guard-gh-merge.sh`, `warn-direct-voxcmd-suite.sh`, `guard-tmux-socket.sh`, `guard-check-full.sh`, `context-budget.sh` and `report-failed-main-check.sh`. Needs jq.
+- `agent-hooks`: the tests of `guard-masked-checks.sh`, `check-before-pr.sh`, `restart-qs-after-git.sh`, `guard-gh-merge.sh`, `warn-direct-voxcmd-suite.sh`, `guard-tmux-socket.sh`, `guard-check-full.sh`, `context-budget.sh`, `orchestrator-window-names.sh` (a private tmux server) and `report-failed-main-check.sh`. Needs jq, tmux and flock.
 - `stale-shells-hook`: the test of `stale-shells.sh`. Needs jq.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.
