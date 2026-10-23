@@ -145,6 +145,10 @@ Tracked files must reach external repos only through `repos/`: theme files are r
 
 `install_nvim_config` links `~/.config/nvim` to `repos/<name>` for `$NVIM_CONFIG_REPO` (default `uhs-robert/neovim`, also accepts a git URL), leaving any existing `~/.config/nvim` untouched.
 
+## Global agent files
+
+Everything tracked under `home/claude/.claude/` (skills, agents, commands, hooks, `status.d`) is symlinked to `~/.claude/` and loaded in every project, so each line must hold in an unrelated repository (a Python web app, a Rust CLI). Project-specific guidance goes in this file or in `.claude/skills/`. Reviewers of any diff touching `home/claude/.claude/` flag every line that fails this test, whatever its subject.
+
 ## Gitignore
 
 `.gitignore` is aggressive by design — credentials, AI assistant state, and generated config. `home/claude/**`, `home/gemini/**`, `home/codex/**` are ignored except for explicitly negated subpaths (agents, commands, skills, settings). Adding a new tracked file under those trees requires a matching `!` negation.
