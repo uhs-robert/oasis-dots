@@ -624,9 +624,8 @@ Singleton {
         const out = {};
         choices.forEach((v, i) => {
             const name = root.borrow_names[key][v];
-            // The screen frame's value is a corner, which a style names as a hint (its own token) rather than by the row's key.
-            const owner_key = key === "screen_frame" ? "screen_frame_corners" : key;
-            const owners = i === 0 ? "" : root.names.filter(n => root.styles[n][owner_key] === v).map(n => root.label(n)).join(", ");
+            // The screen frame's values are plain corner names: no style owns a corner, so none is listed beside it.
+            const owners = i === 0 || key === "screen_frame" ? "" : root.names.filter(n => root.styles[n][key] === v).map(n => root.label(n)).join(", ");
             out[v] = owners === "" || owners === name ? name : name + " (" + owners + ")";
         });
         return out;
