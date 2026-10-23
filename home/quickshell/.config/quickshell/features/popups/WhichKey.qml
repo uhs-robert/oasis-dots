@@ -298,6 +298,8 @@ PanelWindow {
             readonly property int pad_y: Style.px(8)
             readonly property real top_edge: Math.max(Style.accent_height, Style.frame_border_width)
             readonly property real title_x: Style.fade_fills || Style.rounded && !Style.title_case ? frame.radius : 0
+            // The watch panel's corner bevels; header text stays inside them.
+            readonly property real watch_room: root.watch ? 12 : 0
             // The inner ring's room below the accent line, which already covers the border.
             readonly property real ring_pad: Style.inset_pad > 0 ? Style.inset_pad - Style.frame_border_width : 0
             readonly property bool banded: Style.show_title && Style.title_strip.a > 0
@@ -307,7 +309,7 @@ PanelWindow {
             // Wide enough for the whole title in the header variant the style draws.
             readonly property real header_min: frame.banded ? (band_loader.item ? band_loader.item.min_width : 0) + (Style.inset_pad + Style.frame_border_width) * 2
                 : root.float_title ? (border_loader.item ? border_loader.item.implicitWidth : 0) + 24
-                : title_text.implicitWidth + 20 + title_x * 2 + Style.inset_pad * 2 + (readout.visible ? readout.implicitWidth + 16 : 0)
+                : title_text.implicitWidth + 20 + title_x * 2 + Style.inset_pad * 2 + frame.watch_room * 2 + (readout.visible ? readout.implicitWidth + 16 : 0)
             readonly property real natural_width: Math.max(body.implicitWidth + pad_x * 2, frame.header_min) + Style.slant_room
             readonly property real natural_height: top_edge + header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
             width: root.drawer ? root.drawer_body.width : frame.natural_width
@@ -331,6 +333,7 @@ PanelWindow {
                     sourceComponent: Goldeneye.PopupPanel {
                         st: Style
                         edge: 5
+                        cut: frame.watch_room
                     }
                 }
             ]
@@ -352,9 +355,9 @@ PanelWindow {
             Rectangle {
                 id: title_tab
                 opacity: frame.banded || root.float_title ? 0 : 1
-                x: frame.title_x + Style.inset_pad
+                x: frame.title_x + Style.inset_pad + frame.watch_room
                 y: frame.top_edge + frame.ring_pad
-                width: Style.fade_fills ? frame.width - frame.title_x * 2 : title_text.implicitWidth + 20
+                width: Style.fade_fills ? frame.width - frame.title_x * 2 : title_text.width + 20
                 height: title_text.implicitHeight + 4
                 color: !Style.show_title || Style.fade_fills ? "transparent" : root.tinted && root.filled_title ? root.header_color : Style.title_bg
 
@@ -367,6 +370,8 @@ PanelWindow {
                     id: title_text
                     x: 10
                     y: (parent.height - height) / 2
+                    width: Math.min(implicitWidth, frame.width - title_tab.x - x - frame.title_x - frame.watch_room - 10 - (readout.visible ? readout.implicitWidth + 16 : 0))
+                    elide: Text.ElideRight
                     text: Style.title_prefix + Style.title_text(root.title) + (Style.caret_phase ? Style.title_suffix : " ".repeat(Style.title_suffix.length))
                     color: !root.tinted ? (Style.show_title ? Style.title_fg : Style.accent_color) : !Style.show_title || !root.filled_title ? root.header_color : Style.fade_fills ? Style.title_fg : Style.pal.bg_crust
                     font.family: Style.title_font_family
@@ -392,7 +397,7 @@ PanelWindow {
                 id: readout
                 visible: Style.show_title && Style.title_readout !== ""
                 anchors.right: parent.right
-                anchors.rightMargin: frame.title_x + 10
+                anchors.rightMargin: frame.title_x + 10 + frame.watch_room
                 y: title_tab.y + (title_tab.height - height) / 2
                 text: Style.title_readout.replace("{code}", root.title.slice(0, 3))
                 color: Style.title_readout_fg.a > 0 ? Style.title_readout_fg : Style.text_muted
