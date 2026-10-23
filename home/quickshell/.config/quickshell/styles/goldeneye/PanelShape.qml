@@ -11,12 +11,12 @@ Item {
     property real notch_h: 22
     property bool notches: true
     property color edge: "transparent"
-    // A 1px stroke centred on the item's own edge straddles two pixel columns and the curve renderer dithers it row by row
-    // (a dotted right edge); with an edge drawn the outline runs half a pixel inside so the stroke fills one column.
+    // Half a pixel inside, so the 1px edge stroke fills one pixel column instead of dithering across two.
     readonly property real inset: root.edge.a > 0 ? 0.5 : 0
     readonly property var outline: {
-        const o = root.inset, w = root.width - o, h = root.height - o, c = Math.min(root.cut, w / 2, h / 2);
-        return [Qt.point(c, o), Qt.point(w - c, o), Qt.point(w, c), Qt.point(w, h - c), Qt.point(w - c, h), Qt.point(c, h), Qt.point(o, h - c), Qt.point(o, c), Qt.point(c, o)];
+        const x0 = root.inset, y0 = root.inset, x1 = root.width - root.inset, y1 = root.height - root.inset;
+        const c = Math.min(root.cut, (x1 - x0) / 2, (y1 - y0) / 2);
+        return [Qt.point(x0 + c, y0), Qt.point(x1 - c, y0), Qt.point(x1, y0 + c), Qt.point(x1, y1 - c), Qt.point(x1 - c, y1), Qt.point(x0 + c, y1), Qt.point(x0, y1 - c), Qt.point(x0, y0 + c), Qt.point(x0 + c, y0)];
     }
     property color top_color: Qt.rgba(Watch.panel_top[0], Watch.panel_top[1], Watch.panel_top[2], Watch.panel_top[3])
     property color bottom_color: Qt.rgba(Watch.panel_bottom[0], Watch.panel_bottom[1], Watch.panel_bottom[2], Watch.panel_bottom[3])
