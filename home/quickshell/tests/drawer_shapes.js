@@ -480,6 +480,17 @@ for (const [bar, frame] of [["top", top_frame], ["bottom", bottom_frame]]) {
     }
   }
 }
+cases.push(["a flipped drawer's dither rows mirror the frame's for every origin row, including those near the screen edge", () => {
+  const bad = [];
+  for (let y = -3; y < 12; y++) {
+    const phase = D.texture_phase({ x: 0, y: y, flipped: true }, 2);
+    for (let v = 0; v < 8; v++) {
+      const cy = y - v, want = ((Math.floor(cy / 2) % 2) + 2) % 2;
+      if ((Math.floor((v + phase.dither_y) / 2)) % 2 !== want) bad.push([y, v]);
+    }
+  }
+  return bad.length;
+}, 0]);
 {
   const lay = lay_of({ extent: 150 });
   const loop = D.fill_loop(lay);

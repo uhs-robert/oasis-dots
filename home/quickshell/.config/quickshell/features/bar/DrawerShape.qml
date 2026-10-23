@@ -37,7 +37,7 @@ Item {
         ColorAnimation { duration: 200 }
     }
 
-    readonly property var fill_points: (root.translucent ? Drawer.hole_fill_loop(root.layout) : Drawer.fill_loop(root.layout)).map(p => [p[0], p[1]])
+    readonly property var fill_points: (root.translucent ? Drawer.hole_fill_loop(root.layout) : Drawer.fill_loop(root.layout))
     readonly property real scanline_period: Style.scanline_period
     readonly property var texture_phase: Drawer.texture_phase(root.texture_origin, root.scanline_period)
 
