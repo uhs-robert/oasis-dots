@@ -501,15 +501,21 @@ PanelWindow {
         onRunningChanged: Style.caret_phase = true
     }
 
+    // A bottom-docked picker slides further than a bar-hung popup drops, so it opens and closes more slowly and gently.
+    readonly property bool slow_drop: root.drawer && root.dock_bottom
+    readonly property real drop_open_ms: root.slow_drop ? 300 : 190
+    readonly property real drop_close_ms: root.slow_drop ? 180 : 120
+    readonly property int drop_open_easing: root.slow_drop ? Easing.OutQuint : Easing.OutCubic
+
     SequentialAnimation {
         id: open_anim
         NumberAnimation { target: root; property: "line_progress"; to: 1; duration: root.drawer ? 0 : 180 * root.anim_scale; easing.type: Easing.OutCubic }
-        NumberAnimation { target: root; property: "drop_progress"; to: 1; duration: 190 * root.anim_scale; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "drop_progress"; to: 1; duration: root.drop_open_ms * root.anim_scale; easing.type: root.drop_open_easing }
     }
 
     SequentialAnimation {
         id: close_anim
-        NumberAnimation { target: root; property: "drop_progress"; to: 0; duration: 120 * root.anim_scale; easing.type: Easing.InCubic }
+        NumberAnimation { target: root; property: "drop_progress"; to: 0; duration: root.drop_close_ms * root.anim_scale; easing.type: Easing.InCubic }
         NumberAnimation { target: root; property: "line_progress"; to: 0; duration: root.drawer ? 0 : 90 * root.anim_scale; easing.type: Easing.InCubic }
         ScriptAction {
             script: {
