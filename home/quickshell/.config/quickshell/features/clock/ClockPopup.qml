@@ -485,6 +485,8 @@ exit 0
                     id: watch_clock
                     Goldeneye.ClockFace {
                         running: root.is_open
+                        shift_zone: d => Timezones.shift(d)
+                        format_digits: d => TimeFormat.digits(d, false)
                     }
                 }
 
