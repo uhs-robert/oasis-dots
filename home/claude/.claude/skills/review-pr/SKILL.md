@@ -22,7 +22,7 @@ Role: orchestrator, not implementer. Delegate implementation; keep your own cont
 4. Report findings before changing anything: which Copilot comments are valid/invalid and why. Ask user only for decisions that need product/architecture/preference info not inferable from repo or PR.
 5. If changes needed: delegate to a sub-agent with the smallest well-defined task for the validated findings. Don't implement yourself unless it's a trivial orchestration-level tweak.
 6. Review delegated diff yourself: confirms it fixes the finding, no unnecessary changes, run relevant tests/lint/typecheck.
-7. For substantive changes (runtime behavior, architecture, interfaces, state, persistence, security, regression risk): get independent Codex review. Skip for trivial/mechanical/formatting/doc changes. Brief it to check the diff against the repo's AGENTS.md structure rules when present (for Quickshell code, its "Quickshell structure" section: layers, imports, feature-to-feature only via a singleton). Treat Codex findings like Copilot's — verify independently, don't auto-implement. Valid issue → delegate smallest fix, re-review.
+7. For substantive changes (runtime behavior, architecture, interfaces, state, persistence, security, regression risk): get independent Codex review. Skip for trivial/mechanical/formatting/doc changes. Treat Codex findings like Copilot's — verify independently, don't auto-implement. Valid issue → delegate smallest fix, re-review.
 8. Resolve Copilot conversations only once fixed or conclusively invalid/obsolete. Never resolve unaddressed legitimate concerns.
 
 ## Principles
