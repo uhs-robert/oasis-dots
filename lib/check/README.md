@@ -76,6 +76,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `stale-shells-hook`: the test of `stale-shells.sh`. Needs jq.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.
+- `frame-lone-flush`: `home/hypr/tests/frame_lone_flush.lua` runs `config/general/frame.lua` against a stubbed `hl` and checks the lone-window flush opt-out (when it starts and ends) and the workspace animation swap. Needs lua.
 - `input-vectors-lua`, `input-vectors-js`: `home/quickshell/tests/input_settings/vectors.tsv` through the Lua validator Hyprland uses (`config/input`) and the bar's (`HyprInputValidation.js`), so the two cannot drift apart. Need lua and node.
 - `notification-markup`: `home/quickshell/tests/notification_markup.js`, the notification body sanitizer. Needs node.
 - `island-shapes`: `home/quickshell/tests/island_shapes.js`, the fill-less island helpers in `features/bar/IslandOutlines.js` and that every `Style.island_shapes` entry has a kit and a label. Needs node.

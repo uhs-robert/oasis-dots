@@ -20,8 +20,11 @@ local window_rules = {}
 -- Workspaces whose lone window the owner took out of the flush look, workspace id -> that window's address, with the
 -- per-workspace rule that gives the gaps back and the tag the lone-window rounding rule skips.
 local gapped_lones = {}
+-- One rule per workspace id and gap, since a rule's values cannot change; only the one for the gap in force is enabled.
 local gap_rules = {}
+local active_gap_rules = {}
 local GAPPED_TAG = "frame_gapped"
+local SLIDE_CURVE = "quickshell-frame-slide"
 
 --- The smallest gap between tiled windows and the usable area's edge.
 --- @return number
@@ -112,7 +115,8 @@ local function release_gapped_lone(workspace_id)
   local address = gapped_lones[workspace_id]
   if address == nil then return end
   gapped_lones[workspace_id] = nil
-  if gap_rules[workspace_id] then gap_rules[workspace_id]:set_enabled(false) end
+  if active_gap_rules[workspace_id] then active_gap_rules[workspace_id]:set_enabled(false) end
+  active_gap_rules[workspace_id] = nil
   tag_window(address, false)
 end
 
@@ -130,6 +134,24 @@ local function release_stale_gapped_lones()
   end
 end
 
+--- The workspace switch animation as the config defines it (`_G.WorkspacesAnimation`, from config/rules) or, with the
+--- frame on, on a bezier that does not overshoot: flush windows would visibly bounce past the frame and snap back.
+--- Hyprland cannot read an animation back, so the restore replays the config's own spec.
+--- @param frame_on boolean
+local function apply_workspaces_animation(frame_on)
+  local base = _G.WorkspacesAnimation
+  if base == nil then return end
+  local spec = {}
+  for key, value in pairs(base) do
+    spec[key] = value
+  end
+  if frame_on then
+    hl.curve(SLIDE_CURVE, { type = "bezier", points = { { 0.23, 1 }, { 0.32, 1 } } })
+    spec.bezier = SLIDE_CURVE
+  end
+  hl.animation(spec)
+end
+
 local function restore()
   for workspace_id in pairs(gapped_lones) do
     release_gapped_lone(workspace_id)
@@ -138,6 +160,7 @@ local function restore()
   if watchdog then watchdog:set_enabled(false) end
   if saved == nil then return end
   use_window_rules({})
+  apply_workspaces_animation(false)
   hl.config({
     decoration = { rounding = saved.rounding, rounding_power = saved.rounding_power },
     general = {
@@ -219,6 +242,7 @@ local function set(corner, radius, border_size, active, inactive)
   end
   use_window_rules(rules)
   lone_window_rule:set_enabled(true)
+  apply_workspaces_animation(true)
   release_stale_gapped_lones()
   missed_checks = 0
   if watchdog then
@@ -244,11 +268,13 @@ local function toggle_lone_flush()
     release_gapped_lone(workspace_id)
     return true
   end
-  if not gap_rules[workspace_id] then
-    gap_rules[workspace_id] =
-      hl.workspace_rule({ workspace = tostring(workspace_id), gaps_out = hl.get_config("general.gaps_out") })
+  local gap = gaps_out()
+  local rule_key = workspace_id .. ":" .. gap
+  if not gap_rules[rule_key] then
+    gap_rules[rule_key] = hl.workspace_rule({ workspace = tostring(workspace_id), gaps_out = gap })
   end
-  gap_rules[workspace_id]:set_enabled(true)
+  gap_rules[rule_key]:set_enabled(true)
+  active_gap_rules[workspace_id] = gap_rules[rule_key]
   gapped_lones[workspace_id] = window.address
   tag_window(window.address, true)
   return true
@@ -256,6 +282,7 @@ end
 
 for _, event in ipairs({
   "window.open",
+  "window.update_rules", -- fires when a window floats or tiles; Hyprland has no float event
   "window.close",
   "window.destroy",
   "window.move_to_workspace",
