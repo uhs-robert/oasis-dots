@@ -5,7 +5,7 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 
 # Shadow bar
 
-`shadow.sh` runs a copy of the bar inside a nested Hyprland on a headless host compositor. Nothing appears on the owner's screen, and nothing reaches their Hyprland, bar, input or session bus. It is the only way for agents to look at or drive a surface. Reading the owner's live session needs no permission (`hyprctl -j` queries, the bar's state JSON and logs); changing it (`hyprctl dispatch`/`eval`/`reload`, `qs ipc`, sending keys, restarting the bar) needs the shadow, a test bar or the owner, and screenshots of the owner's real screen need the owner, as they show private content. `owner-test-bar` is for putting a branch on the owner's real screen for the owner to try.
+`shadow.sh` runs a copy of the bar inside a nested Hyprland on a headless host compositor. Nothing appears on the owner's screen, and nothing reaches their Hyprland, bar, input or session bus. It is the only way for agents to look at or drive a surface or take a screenshot. Reading the owner's live session (`hyprctl -j` queries, state JSON, logs) needs no permission; see `owner-test-bar` for what changing it needs. `owner-test-bar` is for putting a branch on the owner's real screen for the owner to try.
 
 ```
 .claude/skills/shadow/shadow.sh up <name> [--size WxH] [--desktop] [<branch>...]   # default 1920x1080; bar from the main checkout, or from branches merged on origin/main
