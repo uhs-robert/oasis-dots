@@ -46,22 +46,32 @@ Singleton {
     property bool whichkey_open: false
     // Which-key's own open delay (HyprVim's which_key.delay_ms, via Settings > Input), 0 when unset.
     readonly property int whichkey_delay: HyprInputSettings.value("which_key_delay_ms") || 0
-    // A little past the delay, so a HUD that opens on schedule beats the indicator instead of flashing under it.
-    readonly property int delay_slack: 60
+    // Past the delay by more than the qs-ipc hop and the payload read that put the HUD on screen, so a HUD that opens on schedule beats the indicator instead of flashing under it.
+    readonly property int delay_slack: 300
     // False from entering a submap until the which-key delay passes without the HUD opening, and from the HUD opening until 250 ms after it closes; a quick reopen then does not flicker the indicator.
     property bool indicator_clear: true
     readonly property bool indicator_shown: root.active && root.indicator_clear
+    // When the hold that began at the last entry ends; a HUD closing sooner than that must not reveal the indicator early.
+    property double hold_ends: 0
 
-    onSubmap_nameChanged: {
-        // Not root.active: that binding may not have followed the new name yet.
-        if (root.submap_name === "") {
+    // The one place submap_name is set. Entering starts the hold first and leaving drops it last, so no binding or handler that follows the name sees an entered submap with the indicator still clear.
+    function enter(name) {
+        if (name === "") {
+            root.submap_name = "";
             settle.stop();
             root.indicator_clear = true;
-        } else if (!root.whichkey_open) {
-            root.indicator_clear = false;
-            settle.interval = root.whichkey_delay + root.delay_slack;
+            return;
+        }
+        root.indicator_clear = false;
+        root.hold_ends = Date.now() + root.whichkey_delay + root.delay_slack;
+        // An open HUD keeps the hold; its close restarts the timer.
+        if (root.whichkey_open) {
+            settle.stop();
+        } else {
+            settle.interval = root.hold_ends - Date.now();
             settle.restart();
         }
+        root.submap_name = name;
     }
 
     onWhichkey_openChanged: {
@@ -69,7 +79,7 @@ Singleton {
             settle.stop();
             root.indicator_clear = false;
         } else {
-            settle.interval = 250;
+            settle.interval = Math.max(250, root.hold_ends - Date.now());
             settle.restart();
         }
     }
@@ -83,7 +93,7 @@ Singleton {
         target: Hyprland
 
         function onRawEvent(event) {
-            if (event.name === "submap") root.submap_name = event.data;
+            if (event.name === "submap") root.enter(event.data);
         }
     }
 }
