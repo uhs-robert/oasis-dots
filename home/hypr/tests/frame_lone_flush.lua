@@ -144,7 +144,7 @@ check("no frame: not handled", _G.ScreenFrame.toggle_lone_flush() == false)
 
 _G.WorkspacesAnimation = { leaf = "workspaces", enabled = true, speed = 5, bezier = "smooth", style = "slidefade 20%" }
 _G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
-check("frame on: no overshoot curve", animation.bezier ~= "smooth" and animation.speed == 5)
+check("frame on: plain slide on no-overshoot curve", animation.style == "slide" and animation.speed == 3.5 and animation.bezier == "easeOutQuint")
 
 check("lone: handled", _G.ScreenFrame.toggle_lone_flush() == true)
 check("lone: tag set", tagged(first))
