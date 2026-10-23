@@ -1,16 +1,22 @@
---- Matches window rounding to the screen frame Quickshell draws round the usable area, and restores it when the
---- frame goes. Self-contained (no requires), so the shadow harness can dofile it on its own.
+--- Matches window corners and borders to the screen frame Quickshell draws round the usable area, and restores the
+--- owner's own values when the frame goes. Self-contained (no requires), so the shadow harness can dofile it on its own.
 
 local FRAME_NAMESPACE = "quickshell-frame"
 local WATCHDOG_MS = 2000
 -- About 6 s without a frame layer: longer than a Quickshell reload takes to map the new one.
 local MISSES_BEFORE_RESTORE = 3
+-- Hyprland caps `rounding` at 20, and the rounding of a rounding_power 1 window is twice its chamfer leg.
+local MAX_ROUNDING = 20
 
--- The rounding in force before a frame took over, nil while none does. Held here rather than in Quickshell, so a
--- Quickshell restart never mistakes the frame's rounding for the user's own.
-local saved_rounding = nil
+-- What was in force before a frame took over, nil while none does. Held here rather than in Quickshell, so a
+-- Quickshell restart never mistakes the frame's values for the owner's own. A reload rebuilds this Lua state and
+-- the config, which is why Quickshell re-sends on configreloaded.
+local saved = nil
 local missed_checks = 0
 local watchdog = nil
+-- One window rule per rounding value, made on first use: a rule's values cannot change, and only the enabled one
+-- applies. Enabling and disabling re-applies to open windows.
+local chamfer_rules = {}
 
 --- The smallest gap between tiled windows and the usable area's edge.
 --- @return number
@@ -33,14 +39,37 @@ local function frame_mapped()
   return false
 end
 
-local function restore()
-  if watchdog then watchdog:set_enabled(false) end
-  if saved_rounding == nil then return end
-  hl.config({ decoration = { rounding = saved_rounding } })
-  saved_rounding = nil
+local function use_chamfer_rule(rounding)
+  for value, rule in pairs(chamfer_rules) do
+    if value ~= rounding then rule:set_enabled(false) end
+  end
+  if rounding == nil then return end
+  if not chamfer_rules[rounding] then
+    chamfer_rules[rounding] = hl.window_rule({
+      name = "quickshell-frame-chamfer-" .. rounding,
+      match = { class = ".*" },
+      rounding = rounding,
+      rounding_power = 1,
+    })
+  end
+  chamfer_rules[rounding]:set_enabled(true)
 end
 
--- Quickshell sends -1 when the frame goes, but a crashed or quit Quickshell sends nothing, so the frame's layer
+local function restore()
+  if watchdog then watchdog:set_enabled(false) end
+  if saved == nil then return end
+  use_chamfer_rule(nil)
+  hl.config({
+    decoration = { rounding = saved.rounding, rounding_power = saved.rounding_power },
+    general = {
+      border_size = saved.border_size,
+      col = { active_border = saved.active_border, inactive_border = saved.inactive_border },
+    },
+  })
+  saved = nil
+end
+
+-- Quickshell sends clear when the frame goes, but a crashed or quit Quickshell sends nothing, so the frame's layer
 -- going missing restores too.
 local function check_frame()
   if frame_mapped() then
@@ -51,19 +80,51 @@ local function check_frame()
   if missed_checks >= MISSES_BEFORE_RESTORE then restore() end
 end
 
---- Rounds windows to sit concentric with a frame corner of `radius`, or restores the user's rounding for -1.
---- Quickshell sends 0 for a chamfer, pixel or square corner, which stores the user's rounding and sets none: only a round
---- corner has curved windows to match. 0 and -1 differ, so the user's rounding is restored only by -1.
---- @param radius number
-local function set_rounding(radius)
-  radius = tonumber(radius) or -1
-  if radius < 0 then
-    restore()
-    return
+--- The rounding for a window sitting `gaps_out` inside a frame corner of `radius`, in the profile's own shape.
+--- Round: a concentric arc. Chamfer and pixel: the chamfer leg shrinks by gap * (2 - sqrt 2) to stay concentric, and
+--- a power-1 window's rounding is twice its leg. Square: none.
+--- @param corner string
+--- @param radius number the corner as drawn (already fitted), px
+--- @param gap number
+--- @return integer rounding, boolean chamfered
+local function window_rounding(corner, radius, gap)
+  if corner == "round" then return math.max(0, math.floor(radius - gap)), false end
+  if corner == "chamfer" or corner == "pixel" then
+    local leg = radius - gap * (2 - math.sqrt(2))
+    local rounding = math.min(MAX_ROUNDING, math.floor(2 * leg + 0.5))
+    if rounding > 0 then return rounding, true end
   end
-  if saved_rounding == nil then saved_rounding = hl.get_config("decoration.rounding") end
-  -- Tiled windows sit gaps_out inside the frame's hole, so a corner of radius - gaps_out keeps the gap even round it.
-  hl.config({ decoration = { rounding = math.max(0, math.floor(radius - gaps_out())) } })
+  return 0, false
+end
+
+--- Shapes windows to the frame: `corner` and `radius` give the corner, `border_size` and the two colours the window
+--- borders. Saves the owner's values first, and keeps them until `clear`.
+--- @param corner string round, chamfer, pixel or square
+--- @param radius number
+--- @param border_size number
+--- @param active string a colour Hyprland parses, e.g. "rgba(33ccffee)"
+--- @param inactive string
+local function set(corner, radius, border_size, active, inactive)
+  if saved == nil then
+    saved = {
+      rounding = hl.get_config("decoration.rounding"),
+      rounding_power = hl.get_config("decoration.rounding_power"),
+      border_size = hl.get_config("general.border_size"),
+      active_border = hl.get_config("general.col.active_border"),
+      inactive_border = hl.get_config("general.col.inactive_border"),
+    }
+  end
+  local rounding, chamfered = window_rounding(corner, tonumber(radius) or 0, gaps_out())
+  -- A chamfered window's own rounding comes from its rule, so the global one only matters for windows the rule misses.
+  -- Power 2 keeps a squircle rounding of the owner's from drawing a round window's arc off the frame's circle.
+  hl.config({
+    decoration = { rounding = chamfered and 0 or rounding, rounding_power = 2 },
+    general = {
+      border_size = tonumber(border_size) or saved.border_size,
+      col = { active_border = active, inactive_border = inactive },
+    },
+  })
+  use_chamfer_rule(chamfered and rounding or nil)
   missed_checks = 0
   if watchdog then
     watchdog:set_enabled(true)
@@ -74,8 +135,13 @@ end
 
 -- Global functions which are accessible externally via `hyprctl dispatch "ScreenFrame"`
 _G.ScreenFrame = {
-  set_rounding = function(radius)
-    set_rounding(radius)
+  set = function(corner, radius, border_size, active, inactive)
+    set(corner, radius, border_size, active, inactive)
+
+    return hl.dsp.no_op()
+  end,
+  clear = function()
+    restore()
 
     return hl.dsp.no_op()
   end,

@@ -4,21 +4,27 @@ import Quickshell.Hyprland
 import qs.theme
 import "Corners.js" as Corners
 
-// Tells Hyprland the screen frame's corner radius, so window rounding follows it (ScreenFrame.set_rounding in
-// config/general/frame.lua, which keeps the user's rounding and restores it for -1 or when the frame layer goes).
+// Tells Hyprland the screen frame's corner profile and rim, so window corners and borders follow it (ScreenFrame.set
+// in config/general/frame.lua, which keeps the user's values and restores them on clear or when the frame layer goes).
 Scope {
     id: root
 
-    // Only a round corner has curved windows to match; the other profiles send 0 so windows stay square (0 is a radius,
-    // -1 the "frame is off" that restores the user's rounding).
-    readonly property int wanted_radius: Style.screen_frame_on ? Corners.window_rounding(Style.screen_frame_profile.corner, Style.screen_frame_profile.radius) : -1
-
-    function send() {
-        Hyprland.dispatch("ScreenFrame.set_rounding(" + root.wanted_radius + ")");
+    readonly property var profile: Style.screen_frame_profile
+    // The whole dispatch, so the debounce restarts on any change; "" with no frame. The radius is the corner as
+    // drawn (fitted to its profile's cap), which frame.lua turns into the windows' own rounding.
+    readonly property string command: {
+        if (!Style.screen_frame_on) return "ScreenFrame.clear()";
+        const drawn = Corners.fit(root.profile.corner, root.profile.radius, root.profile.step).radius;
+        const args = [JSON.stringify(root.profile.corner), drawn, Style.bar_border_width, JSON.stringify(Corners.hypr_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_color(Style.screen_frame_rim_color(false)))];
+        return "ScreenFrame.set(" + args.join(", ") + ")";
     }
 
-    // The style picker previews frames as it moves, so only the radius it settles on reaches Hyprland.
-    onWanted_radiusChanged: debounce.restart()
+    function send() {
+        Hyprland.dispatch(root.command);
+    }
+
+    // The style picker previews frames as it moves, so only the frame it settles on reaches Hyprland.
+    onCommandChanged: debounce.restart()
 
     Timer {
         id: debounce
@@ -26,9 +32,9 @@ Scope {
         onTriggered: root.send()
     }
 
-    // A Hyprland reload rebuilds the config with the user's rounding and forgets the saved one. No teardown on
+    // A Hyprland reload rebuilds the config with the user's values and forgets the saved ones. No teardown on
     // destruction: a Quickshell reload would land it after the new generation's send, and frame.lua's watchdog
-    // restores the rounding after a quit.
+    // restores after a quit.
     Component.onCompleted: root.send()
 
     Connections {

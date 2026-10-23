@@ -147,15 +147,42 @@ for (const s of strip_kits) {
   if (shapes.indexOf(s) < 0) { failed++; console.log("FAIL strip kit " + s + " is not in island_shapes"); }
 }
 
-// Every screen frame but "" (none) has a kit frame_layout can measure, and every one has a settings label.
-const frames = JSON.parse(style.match(/screen_frames: (\[[^\]]*\])/)[1]);
-const frame_kits = vm.runInNewContext(style.match(/screen_frame_kits: (\(\{[\s\S]*?\}\))/)[1]);
+// Every screen frame but "" (none) is one of the corner profiles and has a settings label; they share one kit frame_layout can measure.
+
+const frame_corners = JSON.parse(style.match(/frame_corners: (\[[^\]]*\])/)[1]);
+const frame_kit = vm.runInNewContext(style.match(/plain_frame_kit: (\(\{[^}]*\}\))/)[1]);
 const frame_labels = style.slice(style.indexOf("borrow_names")).match(/screen_frame: \{([^}]*)\}/)[1];
-for (const f of frames) {
-  const kit = frame_kits[f];
-  if (f !== "" && !(kit && ["radius", "thickness"].every(k => typeof kit[k] === "number"))) { failed++; console.log("FAIL no usable kit for screen frame " + f); }
+if (!(["radius", "thickness"].every(k => typeof frame_kit[k] === "number"))) { failed++; console.log("FAIL no usable plain_frame_kit"); }
+if (!/screen_frames: \[""\]\.concat\(root\.frame_corners\)/.test(style)) { failed++; console.log("FAIL screen_frames is not Off plus the corner profiles"); }
+for (const f of [""].concat(frame_corners)) {
   if (!new RegExp((f === "" ? '""' : "\\b" + f) + ": \"").test(frame_labels)) { failed++; console.log("FAIL no label for screen frame " + JSON.stringify(f)); }
 }
+// Each style's corner hint is a profile.
+for (const dir of fs.readdirSync(path.join(root, "styles"), { withFileTypes: true }).filter(d => d.isDirectory())) {
+  const tokens_path = path.join(root, "styles", dir.name, "tokens.js");
+  if (!fs.existsSync(tokens_path)) continue;
+  for (const m of fs.readFileSync(tokens_path, "utf8").matchAll(/screen_frame_corners: "(\w+)"/g)) {
+    if (frame_corners.indexOf(m[1]) < 0) { failed++; console.log("FAIL " + dir.name + " hints the unknown corner " + m[1]); }
+  }
+}
+
+// Style.load_options turns a v2 "plain" frame into a corner before checking the row's choices, and stamps version 3.
+const M = vm.createContext({});
+vm.runInContext(read("theme/OptionMigrations.js").replace(/^\.pragma.*$/gm, ""), M);
+const plain_to = (saved, hint) => M.screen_frame_from_plain(saved, hint, frame_corners);
+for (const [name, got, want] of [
+  ["saved corner wins over the hint", plain_to("chamfer", "pixel"), "chamfer"],
+  ["no saved corner takes the style's hint", plain_to(undefined, "pixel"), "pixel"],
+  ["neither falls back to round", plain_to(undefined, undefined), "round"],
+  ["an unknown saved corner takes the hint", plain_to("octagon", "square"), "square"],
+  ["an unknown saved corner and hint fall back to round", plain_to("octagon", "blob"), "round"],
+  ["round saved stays round over a hint", plain_to("round", "pixel"), "round"],
+]) {
+  if (got !== want) { failed++; console.log("FAIL migration: " + name + ": got " + got + ", want " + want); }
+}
+const load = style.slice(style.indexOf("function load_options"));
+if (!/options_version: 3/.test(style)) { failed++; console.log("FAIL options_version is not 3"); }
+if (!(load.indexOf("screen_frame_from_plain") > 0 && load.indexOf("screen_frame_from_plain") < load.indexOf("valid_option"))) { failed++; console.log("FAIL the frame migration does not run before valid_option"); }
 
 if (failed) process.exit(1);
-console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frames.length * 2) + " checks passed");
+console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + 20) + " checks passed");

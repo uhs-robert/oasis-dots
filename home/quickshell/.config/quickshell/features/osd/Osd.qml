@@ -129,24 +129,23 @@ PanelWindow {
     readonly property var screen_frame: root.screen ? ScreenFrames.layout_for(root.screen) : null
     readonly property bool drawer: root.screen_frame !== null
     readonly property bool from_bottom: !root.on_top
-    readonly property real drawer_fillet: root.drawer ? Style.screen_frame_kit.radius : 0
+    readonly property var drawer_profile: root.drawer ? Style.screen_frame_profile : null
+    readonly property real drawer_fillet: root.drawer ? Drawer.fillet_of(root.drawer_profile) : 0
     readonly property real drawer_cover: Drawer.cover_depth(Style.bar_border_width, Style.bar_inset_gap, Style.bar_inset_width)
     readonly property var drawer_hole: root.screen_frame ? FrameGeometry.hole_rect(root.screen_frame) : null
     readonly property var drawer_kinds: Drawer.end_kinds("center", false)
     readonly property real panel_width: frame.natural_width
     readonly property real panel_height: frame.natural_height
     function drawer_spec(extent) {
-        return {
+        return Object.assign({
             edge: root.from_bottom ? "bottom" : "top",
             body_length: root.drawer_hole ? Drawer.body_length("center", root.panel_width, root.drawer_hole.w, root.drawer_fillet) : root.panel_width,
             body_depth: root.panel_height,
             extent: extent,
-            radius: root.drawer_fillet,
-            fillet: root.drawer_fillet,
             start_kind: root.drawer_kinds.start,
             end_kind: root.drawer_kinds.end,
             cover: root.drawer_cover
-        };
+        }, Drawer.profile_fields(root.drawer_profile));
     }
     // The window follows the full drawer, so it never resizes while the shape grows inside it. Never null, so a frame
     // switched off under an open window cannot leave DrawerShape without a layout.

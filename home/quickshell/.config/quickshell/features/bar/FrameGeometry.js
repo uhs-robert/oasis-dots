@@ -9,7 +9,7 @@
 // two never fill the same pixel.
 
 // The frame's measurements on a screen_w x screen_h screen whose bar (bar_height tall) is on bar_edge, "top",
-// "bottom" or "" for none; `kit` is a Style.screen_frame_kits entry with the style's corner profile laid over it
+// "bottom" or "" for none; `kit` is Style.plain_frame_kit with the style's corner profile laid over it
 // (Style.screen_frame_profile: corner, radius, step). The hole runs from `start` to length - `end`
 // along u and from `near` to `far` along v; `straight` is the stretch of its near edge between the corners, which the
 // strip's rim draws. `zones` are the exclusive zones per screen edge.

@@ -28,7 +28,7 @@ const LEAD = 2;
 // spec: { edge, body_length, body_depth, extent, radius, fillet, start_kind, end_kind, cover, corner, step }. `radius`
 // rounds the body's free corners and `fillet` the concave arcs; both shrink with the extent and the body's width, so
 // nothing inverts and a pocket's two arcs never cross. `corner` is the profile of both (Corners.js, "round" when
-// missing) and `step` the pixel profile's stair step; a spec without them draws round corners, as before them.
+// missing) and `step` the pixel profile's stair step; a spec without them draws round corners.
 function drawer_layout(spec) {
     const corner = Corners.valid(spec.corner);
     // A pixel drawer keeps every join on a whole pixel: the body rounds up (never smaller than its content) and the
@@ -74,6 +74,14 @@ function drawer_layout(spec) {
 // body_length makes room for.
 function fillet_of(profile) {
     return Corners.fit(profile.corner, profile.radius, profile.step).radius;
+}
+
+// The corner fields of a drawer_layout spec for a frame profile: the fillet size that body_length makes room for, and
+// the profile's corner and step. A null profile (no frame) is a round, zero-size corner, so a spec built while the frame
+// goes away stays valid.
+function profile_fields(profile) {
+    const fillet = profile ? fillet_of(profile) : 0;
+    return { radius: fillet, fillet: fillet, corner: profile ? profile.corner : "round", step: profile ? profile.step : 0 };
 }
 
 // Drops points that repeat the one before, which would leave a zero-length segment for inset to mitre.
