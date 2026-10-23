@@ -14,8 +14,8 @@ case $resolved in
 esac
 source_root=${resolved%%/home/claude/.claude/*}/home/claude/.claude
 
-# Edits through the installed symlink already got the global hook's reminder.
-installed=$(readlink -f -m -- "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" 2>/dev/null) || exit 0
-[[ $source_root == "$installed" ]] && exit 0
+# An edit the installed config already covers (whole-directory or per-entry symlinks) got the global hook's reminder.
+global_hook=$(dirname "$0")/../../home/claude/.claude/hooks/remind-global-neutral.sh
+[[ -z $(bash "$global_hook" <<<"$input") ]] || exit 0
 
-CLAUDE_CONFIG_DIR=$source_root bash "$(dirname "$0")/../../home/claude/.claude/hooks/remind-global-neutral.sh" <<<"$input"
+CLAUDE_CONFIG_DIR=$source_root bash "$global_hook" <<<"$input"
