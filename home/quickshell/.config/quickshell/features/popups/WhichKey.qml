@@ -317,7 +317,7 @@ PanelWindow {
 
                 Loader {
                     anchors.fill: parent
-                    active: root.watch && !root.drawer
+                    active: root.watch
                     sourceComponent: Goldeneye.PopupPanel {
                         st: Style
                         edge: 5
