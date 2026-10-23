@@ -98,13 +98,13 @@ const cases = [
   ["frame region with no bar is screen and hole", () => plain(F.frame_region(bare_frame).map(l => near_point(l[0], l.slice(-1)[0]))), [true, true]],
   ["frame region area with a bar", () => Math.abs(loop_area(F.frame_region(top_frame)[0]) - frame_area(top_frame)) < 0.01 * frame_area(top_frame), true],
   ["frame region never above the strip", () => F.frame_region(top_frame)[0].every(p => p[1] >= top_frame.near - 1e-9), true],
-  // The strip's rim and the frame's stroke meet at the same depth, the stroke starting where the rim stops (up to w / 2
-  // past it, where a corner's mitre lands) so the two never draw over each other.
+  // The strip's rim and the frame's stroke meet at the same depth, the stroke starting exactly where the rim stops, so
+  // the two neither leave a notch nor draw over each other.
   ["frame stroke picks up the strip rim", () => {
     const w = 2, rim = B.band_rim_stroke(1920, 30, top_frame.straight[0], 1920 - top_frame.straight[1], w), stroke = F.frame_stroke(top_frame, w / 2);
     const a = stroke[0], z = stroke.slice(-1)[0], e = 1e-6;
     return Math.abs(a[1] - rim[1][1]) < e && Math.abs(z[1] - rim[0][1]) < e
-      && a[0] >= rim[1][0] - e && a[0] <= rim[1][0] + w / 2 + e && z[0] <= rim[0][0] + e && z[0] >= rim[0][0] - w / 2 - e;
+      && Math.abs(a[0] - rim[1][0]) < e && Math.abs(z[0] - rim[0][0]) < e;
   }, true],
   ["frame stroke with no bar closes round the hole", () => { const s = F.frame_stroke(bare_frame, 1); return near_point(s[0], s.slice(-1)[0]) && Math.abs(s[0][1] - 5) < 0.1; }, true],
   ["frame stroke stays out of the hole", () => F.frame_stroke(top_frame, 1).every(p => p[0] <= 6 || p[0] >= 1914 || p[1] <= 30 || p[1] >= 1074 || (p[0] < 18 || p[0] > 1902) && (p[1] < 42 || p[1] > 1062)), true],
