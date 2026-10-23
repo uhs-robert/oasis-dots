@@ -43,6 +43,9 @@ Popup {
         root.selected = 0;
         root.action_index = -1;
         NotificationState.mark_read();
+    } else {
+        // Leaving mid-clear still finishes the clear, so no stale close lands on a later open.
+        clear_sequence.complete();
     }
     onCurrent_tabChanged: root.selected = 0
     onSelectedChanged: root.action_index = -1
@@ -153,6 +156,20 @@ Popup {
         if (sel) NotificationState.dismiss(sel.entry);
     }
 
+    // Clear all, seen first: the list fades out, the history empties, then the panel closes after a short beat.
+    readonly property int clear_fade_ms: 180
+    readonly property int clear_close_delay_ms: 150
+
+    function clear_and_close() {
+        ThemeAudio.play("confirm");
+        if (clear_sequence.running) return;
+        if (NotificationState.history.length === 0) {
+            Popups.close();
+            return;
+        }
+        clear_sequence.start();
+    }
+
     function actions_of(entry) {
         const all = entry && entry.notification && entry.notification.actions ? entry.notification.actions : [];
         const list = [];
@@ -207,13 +224,31 @@ Popup {
             ThemeAudio.play("confirm");
             event.accepted = true;
         } else if (event.key === Qt.Key_C && (event.modifiers & Qt.ShiftModifier)) {
-            NotificationState.clear_all();
-            ThemeAudio.play("confirm");
+            root.clear_and_close();
             event.accepted = true;
         } else if (event.key === Qt.Key_D || event.key === Qt.Key_X) {
             root.dismiss_selected();
             event.accepted = true;
         }
+    }
+
+    SequentialAnimation {
+        id: clear_sequence
+        NumberAnimation {
+            target: row_list
+            property: "opacity"
+            to: 0
+            duration: root.clear_fade_ms
+            easing.type: Easing.InQuad
+        }
+        ScriptAction {
+            script: {
+                NotificationState.clear_all();
+                row_list.opacity = 1;
+            }
+        }
+        PauseAnimation { duration: root.clear_close_delay_ms }
+        ScriptAction { script: if (root.is_open) Popups.close() }
     }
 
     Item {
@@ -315,10 +350,7 @@ Popup {
                     icon: "\u{f0a7a}"
                     label: "Clear all"
                     key_hint: "C"
-                    onActivated: {
-                        NotificationState.clear_all();
-                        ThemeAudio.play("confirm");
-                    }
+                    onActivated: root.clear_and_close()
                 }
             }
 
