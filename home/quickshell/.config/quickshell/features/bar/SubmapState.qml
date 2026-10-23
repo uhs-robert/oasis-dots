@@ -51,6 +51,8 @@ Singleton {
     // False from entering a submap until the which-key delay passes without the HUD opening, and from the HUD opening until 250 ms after it closes; a quick reopen then does not flicker the indicator.
     property bool indicator_clear: true
     readonly property bool indicator_shown: root.active && root.indicator_clear
+    // Submaps whose HUD HyprVim does not open on entry: `which_key.auto_show.disabled` in hypr/hyprland.lua, which this list must follow. They need no hold.
+    readonly property var no_auto_hud: ["NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor"]
     // When the hold that began at the last entry ends; a HUD closing sooner than that must not reveal the indicator early.
     property double hold_ends: 0
 
@@ -60,6 +62,14 @@ Singleton {
             root.submap_name = "";
             settle.stop();
             root.indicator_clear = true;
+            return;
+        }
+        if (root.no_auto_hud.includes(name)) {
+            settle.stop();
+            root.hold_ends = 0;
+            // An open HUD from the previous submap still hides it; its close restarts the timer.
+            root.indicator_clear = !root.whichkey_open;
+            root.submap_name = name;
             return;
         }
         root.indicator_clear = false;
