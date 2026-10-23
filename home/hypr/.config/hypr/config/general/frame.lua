@@ -260,8 +260,8 @@ local function set(corner, radius, border_size, active, inactive, flush)
   end
 end
 
---- SUPER+M on a lone tiled window, while the frame is on and lone windows are flush: takes it out of the flush look (the owner's gaps and the gapped
---- rounding) or puts it back. The opt-out is held for that workspace and window only, and release_stale_gapped_lones
+--- SUPER+M on a lone tiled window, while the frame is on and lone windows are flush: takes it out of the flush look
+--- (the owner's gaps and the gapped rounding) or puts it back. The opt-out is held for that workspace and window only, and release_stale_gapped_lones
 --- ends it as soon as the window is no longer alone, so it cannot outlive the situation it was asked for.
 --- @return boolean handled false when the caller should maximize as usual
 local function toggle_lone_flush()
