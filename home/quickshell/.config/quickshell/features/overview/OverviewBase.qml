@@ -1,5 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
@@ -11,6 +13,7 @@ import qs.features.popups
 import qs.features.audio
 import qs.features.windows
 import qs.features.popups.frames
+import qs.features.bar
 import "Layout.js" as Layout
 import "../../core/Fuzzy.js" as Fuzzy
 
@@ -370,183 +373,217 @@ PanelWindow {
         onTriggered: WindowState.focus(focus_timer.address)
     }
 
-    Rectangle {
-        id: scrim
-        anchors.fill: parent
-        color: Qt.alpha(Theme.bg_crust, 0.6)
-        opacity: root.reveal
+    // With the screen frame on, the layer is the frame's hole, whose corners are cut in the frame's own profile. The
+    // scrim and panel are masked to that outline so the frame's corners show through instead of being painted over.
+    readonly property var hole_outline: Style.screen_frame_on && root.screen ? ScreenFrames.hole_outline(root.screen) : []
+    readonly property bool corners_cut: root.hole_outline.length > 0 && Style.screen_frame_profile.corner !== "square" && Style.screen_frame_profile.radius > 0
 
-        MouseArea {
+    Item {
+        id: hole_mask
+        anchors.fill: parent
+        visible: false
+        layer.enabled: root.corners_cut
+
+        Shape {
             anchors.fill: parent
-            onClicked: {
-                ThemeAudio.play("cancel");
-                root.dismiss();
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: -1
+                fillColor: "black"
+                PathPolyline { path: root.hole_outline }
             }
         }
     }
 
-    OverviewFrame {
-        id: frame
-        // With the screen frame on the layer is the frame's hole, so the panel meets its edge like a drawer does.
-        x: Style.screen_frame_on ? 0 : Style.px(36)
-        y: Style.screen_frame_on ? 0 : Style.px(30)
-        width: parent.width - x * 2
-        height: parent.height - y * 2
-        opacity: root.reveal
-        scale: 0.97 + 0.03 * root.reveal
-        title: root.title
-        status: root.status_text
-        status_color: root.status_accent ? Style.text_accent : Style.text_muted
-        footer: root.footer_text
+    Item {
+        anchors.fill: parent
+        layer.enabled: root.corners_cut
+        layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: hole_mask
+            maskThresholdMin: 0.5
+            maskSpreadAtMin: 1
+        }
 
-        FocusScope {
-            id: keys
+        Rectangle {
+            id: scrim
             anchors.fill: parent
-            focus: true
-            Keys.onPressed: event => root.handle_key(event)
-        }
+            color: Qt.alpha(Theme.bg_crust, 0.6)
+            opacity: root.reveal
 
-        TextInput {
-            id: filter_input
-            width: 0
-            height: 0
-            opacity: 0
-            maximumLength: 64
-            onTextChanged: {
-                root.query = text;
-                if (root.typing) root.reset_hit();
-            }
-            Keys.onPressed: event => {
-                const before = root.cursor_key();
-                const k = event.key;
-                if (root.is_help_key(event)) {
-                    root.show_help();
-                } else if (k === Qt.Key_Escape) {
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
                     ThemeAudio.play("cancel");
-                    if (root.from_search && root.query === "") root.dismiss();
-                    else root.clear_filter();
-                } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
-                    ThemeAudio.play("confirm");
-                    root.accept_hit();
-                } else if (k === Qt.Key_Tab || k === Qt.Key_Down) {
-                    root.step_hit(1);
-                    root.play_if_moved(before);
-                } else if (k === Qt.Key_Backtab || k === Qt.Key_Up) {
-                    root.step_hit(-1);
-                    root.play_if_moved(before);
-                } else if (k === Qt.Key_Backspace && filter_input.text === "") {
-                    ThemeAudio.play("cancel");
-                    root.clear_filter();
-                } else {
-                    return;
+                    root.dismiss();
                 }
-                event.accepted = true;
             }
         }
 
-        Repeater {
-            model: root.groups
+        OverviewFrame {
+            id: frame
+            // With the screen frame on the layer is the frame's hole, so the panel meets its edge like a drawer does.
+            x: Style.screen_frame_on ? 0 : Style.px(36)
+            y: Style.screen_frame_on ? 0 : Style.px(30)
+            width: parent.width - x * 2
+            height: parent.height - y * 2
+            opacity: root.reveal
+            scale: 0.97 + 0.03 * root.reveal
+            title: root.title
+            status: root.status_text
+            status_color: root.status_accent ? Style.text_accent : Style.text_muted
+            footer: root.footer_text
 
-            Item {
-                id: group
-                required property var modelData
-                required property int index
-                readonly property var rect: root.layout.group_rects[group.index] || ({ x: 0, y: 0, w: 0, h: 0 })
-                readonly property bool holds_selection: !!root.selected_tile && root.selected_tile.group === group.index
+            FocusScope {
+                id: keys
+                anchors.fill: parent
+                focus: true
+                Keys.onPressed: event => root.handle_key(event)
+            }
 
-                x: group.rect.x
-                y: group.rect.y
-                width: group.rect.w
-                height: group.rect.h
-
-                Behavior on x {
-                    enabled: root.animate_moves
-                    NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+            TextInput {
+                id: filter_input
+                width: 0
+                height: 0
+                opacity: 0
+                maximumLength: 64
+                onTextChanged: {
+                    root.query = text;
+                    if (root.typing) root.reset_hit();
                 }
-
-                Rectangle {
-                    visible: !root.filmstrip
-                    anchors.fill: parent
-                    radius: Style.radius(8)
-                    color: Qt.alpha(Theme.bg_mantle, 0.5)
-                    border.width: 1
-                    border.color: group.holds_selection ? Qt.alpha(Style.caret_color, 0.6) : Qt.alpha(Theme.ui_border, 0.6)
+                Keys.onPressed: event => {
+                    const before = root.cursor_key();
+                    const k = event.key;
+                    if (root.is_help_key(event)) {
+                        root.show_help();
+                    } else if (k === Qt.Key_Escape) {
+                        ThemeAudio.play("cancel");
+                        if (root.from_search && root.query === "") root.dismiss();
+                        else root.clear_filter();
+                    } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+                        ThemeAudio.play("confirm");
+                        root.accept_hit();
+                    } else if (k === Qt.Key_Tab || k === Qt.Key_Down) {
+                        root.step_hit(1);
+                        root.play_if_moved(before);
+                    } else if (k === Qt.Key_Backtab || k === Qt.Key_Up) {
+                        root.step_hit(-1);
+                        root.play_if_moved(before);
+                    } else if (k === Qt.Key_Backspace && filter_input.text === "") {
+                        ThemeAudio.play("cancel");
+                        root.clear_filter();
+                    } else {
+                        return;
+                    }
+                    event.accepted = true;
                 }
+            }
 
-                Dither {
-                    visible: !root.filmstrip && color.a > 0
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    color: Style.dither
-                    radius: Style.radius(8)
-                    top_radius: Style.radius(8)
-                }
-
-                Rectangle {
-                    visible: root.filmstrip
-                    y: root.metrics.label - Style.px(4)
-                    width: parent.width
-                    height: 1
-                    color: group.holds_selection ? Style.caret_color : Theme.ui_border
-                }
+            Repeater {
+                model: root.groups
 
                 Item {
-                    x: root.metrics.pad
-                    y: root.filmstrip ? 0 : Style.px(6)
-                    width: parent.width - root.metrics.pad * 2
-                    height: section.implicitHeight
-                    clip: true
+                    id: group
+                    required property var modelData
+                    required property int index
+                    readonly property var rect: root.layout.group_rects[group.index] || ({ x: 0, y: 0, w: 0, h: 0 })
+                    readonly property bool holds_selection: !!root.selected_tile && root.selected_tile.group === group.index
 
-                    MenuSection {
-                        id: section
-                        label: root.group_label(group.modelData, group.index)
-                        color: group.holds_selection ? Style.text_primary : Style.section_fg
+                    x: group.rect.x
+                    y: group.rect.y
+                    width: group.rect.w
+                    height: group.rect.h
+
+                    Behavior on x {
+                        enabled: root.animate_moves
+                        NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                    }
+
+                    Rectangle {
+                        visible: !root.filmstrip
+                        anchors.fill: parent
+                        radius: Style.radius(8)
+                        color: Qt.alpha(Theme.bg_mantle, 0.5)
+                        border.width: 1
+                        border.color: group.holds_selection ? Qt.alpha(Style.caret_color, 0.6) : Qt.alpha(Theme.ui_border, 0.6)
+                    }
+
+                    Dither {
+                        visible: !root.filmstrip && color.a > 0
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        color: Style.dither
+                        radius: Style.radius(8)
+                        top_radius: Style.radius(8)
+                    }
+
+                    Rectangle {
+                        visible: root.filmstrip
+                        y: root.metrics.label - Style.px(4)
+                        width: parent.width
+                        height: 1
+                        color: group.holds_selection ? Style.caret_color : Theme.ui_border
+                    }
+
+                    Item {
+                        x: root.metrics.pad
+                        y: root.filmstrip ? 0 : Style.px(6)
+                        width: parent.width - root.metrics.pad * 2
+                        height: section.implicitHeight
+                        clip: true
+
+                        MenuSection {
+                            id: section
+                            label: root.group_label(group.modelData, group.index)
+                            color: group.holds_selection ? Style.text_primary : Style.section_fg
+                        }
                     }
                 }
             }
-        }
 
-        Item {
-            id: under_slot
-            anchors.fill: parent
-        }
-
-        Item {
-            id: content_slot
-            anchors.fill: parent
-        }
-
-        SearchList {
-            visible: root.typing
-            x: frame.body.width - width
-            width: root.list_width
-            height: frame.body.height
-            entries: root.ranked
-            current: root.hit_index
-            onChosen: index => {
-                root.set_hit(index);
-                root.accept_hit();
-            }
-        }
-
-        Item {
-            id: overlay_slot
-            anchors.fill: parent
-        }
-
-        // The full key list for the current mode, drawn over the tiles.
-        Rectangle {
-            visible: root.help_open
-            anchors.fill: parent
-            color: Style.frame_color.a > 0.5 ? Style.frame_color : Theme.bg_crust
-
-            KeyHelp {
-                id: key_help
+            Item {
+                id: under_slot
                 anchors.fill: parent
-                text: root.help_text
-                general: [{ key: "?", desc: "back" }, { key: "Esc", desc: "back" }, { key: "q", desc: root.help_close_desc }]
-                onBack: root.hide_help()
-                onClose_requested: root.dismiss()
+            }
+
+            Item {
+                id: content_slot
+                anchors.fill: parent
+            }
+
+            SearchList {
+                visible: root.typing
+                x: frame.body.width - width
+                width: root.list_width
+                height: frame.body.height
+                entries: root.ranked
+                current: root.hit_index
+                onChosen: index => {
+                    root.set_hit(index);
+                    root.accept_hit();
+                }
+            }
+
+            Item {
+                id: overlay_slot
+                anchors.fill: parent
+            }
+
+            // The full key list for the current mode, drawn over the tiles.
+            Rectangle {
+                visible: root.help_open
+                anchors.fill: parent
+                color: Style.frame_color.a > 0.5 ? Style.frame_color : Theme.bg_crust
+
+                KeyHelp {
+                    id: key_help
+                    anchors.fill: parent
+                    text: root.help_text
+                    general: [{ key: "?", desc: "back" }, { key: "Esc", desc: "back" }, { key: "q", desc: root.help_close_desc }]
+                    onBack: root.hide_help()
+                    onClose_requested: root.dismiss()
+                }
             }
         }
     }
