@@ -10,7 +10,7 @@ local Window = require("lib.actions.window") ---@class WindowActions
 Submap.define({
   name = "Move",
   desc = "+Move",
-  enter = Config.leader .. " + M",
+  enter = Config.leader .. " + SHIFT + M",
 
   escape = "reset",
   catchall = "stay",

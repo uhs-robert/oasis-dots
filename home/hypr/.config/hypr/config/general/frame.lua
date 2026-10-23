@@ -39,6 +39,15 @@ local function frame_mapped()
   return false
 end
 
+-- Workspace rules that drop the outer gaps so a window sits flush against the frame. `f[1]` matches a workspace with a
+-- maximized window and `w[tv1]` one with a single tiled window; Hyprland re-evaluates the selectors on every layout
+-- pass, so the gaps come back by themselves when the window unmaximizes, closes, moves away or gets a tiled neighbour.
+-- Maximizing is flush with or without a frame; a lone tiled window is flush only inside one. A flush window keeps the
+-- rounding set for the frame (radius - gaps_out), so its corners sit slightly inside the hole's.
+hl.workspace_rule({ workspace = "f[1]", gaps_out = 0 })
+local lone_window_rule = hl.workspace_rule({ workspace = "w[tv1]", gaps_out = 0 })
+lone_window_rule:set_enabled(false)
+
 local function use_chamfer_rule(rounding)
   for value, rule in pairs(chamfer_rules) do
     if value ~= rounding then rule:set_enabled(false) end
@@ -56,6 +65,7 @@ local function use_chamfer_rule(rounding)
 end
 
 local function restore()
+  lone_window_rule:set_enabled(false)
   if watchdog then watchdog:set_enabled(false) end
   if saved == nil then return end
   use_chamfer_rule(nil)
@@ -130,6 +140,7 @@ local function set(corner, radius, border_size, active, inactive)
     },
   })
   use_chamfer_rule(chamfered and rounding or nil)
+  lone_window_rule:set_enabled(true)
   missed_checks = 0
   if watchdog then
     watchdog:set_enabled(true)

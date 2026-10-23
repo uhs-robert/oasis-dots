@@ -17,6 +17,10 @@ local Window = {
   kill = function() return close_active("kill") end,
   restore_closed = function() return Closed.restore end,
   fullscreen_toggle = function() return Hypr.dispatch(hl.dsp.window.fullscreen({ action = "toggle" })) end,
+  -- Mode 1 keeps the frame and bar; the flush edges come from the workspace rules in config/general/frame.lua.
+  maximize_toggle = function()
+    return Hypr.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }))
+  end,
   float_toggle = function() return Hypr.dispatch(hl.dsp.window.float({ action = "toggle" })) end,
   pseudo_toggle = function() return Hypr.dispatch(hl.dsp.window.pseudo()) end,
   layout_toggle = function() return Hypr.dispatch(hl.dsp.layout("togglesplit")) end,

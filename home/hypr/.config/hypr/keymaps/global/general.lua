@@ -15,6 +15,7 @@ Bind.leader_fn("SLASH",  Menu.keybinds(), OPTS.universal("Keybind Help"))
 -- Window Actions
 Bind.leader_key("X",   Window.close(),             "Close Window")
 Bind.leader_key("F",   Window.fullscreen_toggle(), "Toggle Fullscreen")
+Bind.leader_key("M",   Window.maximize_toggle(),   "Toggle Maximize")
 Bind.leader_key("U",   Window.restore_closed(),    "Restore Closed Window")
 
 -- Window Focus/Movement
