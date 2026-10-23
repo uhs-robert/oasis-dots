@@ -2,9 +2,10 @@
 # Tests for remind-global-neutral-source.sh: the reminder fires for this repo's source of the global agent files in any
 # checkout or worktree, and stays silent for runtime-style paths, project files and paths behind the installed symlink
 # (the global hook covers those).
-# shellcheck disable=SC2329 # run, fires and silent are called by name through check
+# shellcheck disable=SC2329 # run, fires, silent and both_hooks_once are called by name through check
 set -u
 hook=$(cd "$(dirname "$0")" && pwd)/../remind-global-neutral-source.sh
+global=$(cd "$(dirname "$0")" && pwd)/../../../home/claude/.claude/hooks/remind-global-neutral.sh
 failures=0
 
 check() {
@@ -18,8 +19,9 @@ check() {
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/main/home/claude/.claude/skills/x" "$tmp/main/.claude/worktrees/w/home/claude/.claude/agents" "$tmp/home"
+mkdir -p "$tmp/main/home/claude/.claude/skills/x" "$tmp/main/.claude/worktrees/w/home/claude/.claude/agents" "$tmp/home" "$tmp/entry_home/.claude"
 ln -s "$tmp/main/home/claude/.claude" "$tmp/home/.claude"
+ln -s "$tmp/main/home/claude/.claude/skills" "$tmp/entry_home/.claude/skills"
 
 run() { HOME=$tmp/home bash "$hook" <<<"$1"; }
 fires() { [[ $(run "$1") == *'"additionalContext"'*'unrelated repository'* ]]; }
@@ -27,6 +29,10 @@ silent() {
   local out
   out=$(run "$1") && [[ -z $out ]]
 }
+both_hooks_once() { [[ $({
+  HOME=$tmp/entry_home bash "$hook" <<<"$1"
+  HOME=$tmp/entry_home bash "$global" <<<"$1"
+} | grep -c additionalContext) == 1 ]]; }
 edit() { printf '{"tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$1"; }
 
 check "fires for a skill in another worktree" fires "$(edit "$tmp/main/.claude/worktrees/w/home/claude/.claude/skills/x/SKILL.md")"
@@ -39,6 +45,7 @@ check "silent for a project skill" silent "$(edit "$tmp/main/.claude/skills/y/SK
 check "silent for an ordinary file" silent "$(edit "$tmp/main/README.md")"
 check "silent behind the installed symlink" silent "$(edit "$tmp/home/.claude/skills/x/SKILL.md")"
 check "silent behind the symlink's target" silent "$(edit "$tmp/main/home/claude/.claude/skills/x/SKILL.md")"
+check "exactly one reminder with per-entry symlinks" both_hooks_once "$(edit "$tmp/main/home/claude/.claude/skills/x/SKILL.md")"
 check "silent for a path missing from the input" silent '{"tool_name":"Edit","tool_input":{}}'
 check "empty input succeeds silently" silent ''
 check "malformed JSON succeeds silently" silent 'not json {'
