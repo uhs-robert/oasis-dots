@@ -157,7 +157,7 @@ def run_checks(repo, qs_dir=QS_DIR, allow_path=ALLOW_PATH, sibling_allow=SIBLING
                 findings.append(Finding(prefix + rel, line, (
                     f"{text} reaches into another {top.removesuffix('s')} ({resolved}). "
                     "Go through a singleton, or move the shared code to a lower layer (ui/ or core/); "
-                    f"a deliberate seam goes in SIBLING_ALLOW in lib/check/steps/qml_layers.py."
+                    "a deliberate seam goes in SIBLING_ALLOW in lib/check/steps/qml_layers.py."
                 )))
         for edge in edges_of(repo, qs_dir, rel):
             seen.add((rel, edge.target))
