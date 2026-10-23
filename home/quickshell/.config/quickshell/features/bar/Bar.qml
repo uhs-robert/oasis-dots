@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
+import Quickshell.Hyprland
 import qs.core
 import qs.theme
 import "BarLayout.js" as BarLayout
@@ -17,6 +18,8 @@ Item {
     id: root
 
     property string screen_name: ""
+    // Only the focused monitor's bar shows the submap chip, as only its tab shows.
+    readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
     property var rule: null
     // The screen frame's layout (FrameGeometry.frame_layout) while one is on: the side islands move in to the hole's
     // sides, where the frame's side zones put the side popups too.
@@ -256,7 +259,7 @@ Item {
 
         // With a frame and a center island the submap shows here beside the clock instead of as a dropdown tab; lualine styles keep their own mode chip.
         Rectangle {
-            visible: root.has_frame_chip && SubmapState.indicator_shown
+            visible: root.has_frame_chip && SubmapState.indicator_shown && root.focused
             Layout.alignment: Qt.AlignVCenter
             implicitWidth: chip_text.implicitWidth + 16
             implicitHeight: chip_text.implicitHeight + 6
