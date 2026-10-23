@@ -14,9 +14,8 @@ BandFill {
     property var frame: null
     property string screen_name: ""
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
-    readonly property bool submap_tint: SubmapState.active && root.focused
-    property color frame_rim_color: root.submap_tint ? SubmapState.bar_color : Style.screen_frame_rim_color(root.focused)
-    property color frame_inset_color: root.submap_tint ? SubmapState.bar_color : Style.screen_frame_inset_color(root.focused)
+    property color frame_rim_color: SubmapState.frame_tint(Style.screen_frame_rim_color(root.focused), root.focused)
+    property color frame_inset_color: SubmapState.frame_tint(Style.screen_frame_inset_color(root.focused), root.focused)
     Behavior on frame_rim_color {
         ColorAnimation { duration: 200 }
     }
