@@ -21,7 +21,9 @@ Rectangle {
     // With the screen frame on the content is inset as in a frame drawer (Popup): inset_pad plus the lcd margin.
     readonly property int pad_x: Style.screen_frame_on ? Style.lcd_margin : Style.px(18)
     readonly property int pad_y: Style.screen_frame_on ? Style.lcd_margin : Style.px(12)
-    readonly property real top_edge: Math.max(Style.accent_height, Style.frame_border_width)
+    // The accent line is left off against the screen frame, where it would be a thicker edge than the other three.
+    readonly property real accent_edge: Style.screen_frame_on ? 0 : Style.accent_height
+    readonly property real top_edge: Math.max(root.accent_edge, Style.frame_border_width)
     readonly property bool banded: Style.show_title && Style.title_strip.a > 0
     readonly property bool float_title: Style.border_title && Style.show_title
     readonly property real band_height: Math.max(26, title_tab.height + 4)
@@ -30,7 +32,11 @@ Rectangle {
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
     readonly property color text_glow: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
 
-    radius: Style.frame_radius
+    // Against the screen frame the panel's corners are the frame's: a square profile leaves none to round, and the
+    // others are cut by the mask in OverviewBase.
+    readonly property bool flush_square: Style.screen_frame_on && Style.screen_frame_profile.corner === "square"
+
+    radius: root.flush_square ? 0 : Style.frame_radius
     color: Style.frame_chamfer > 0 || Style.frame_visor || Style.custom_frame ? "transparent" : Style.frame_follows_island ? Theme.bg_mantle : Style.frame_color
     border.width: Style.frame_visor || Style.frame_chamfer > 0 || Style.custom_frame ? 0 : Style.frame_border_width
     border.color: Style.frame_border_color
@@ -76,6 +82,7 @@ Rectangle {
 
     CustomFrame {
         anchors.fill: parent
+        pixel_outline: !Style.screen_frame_on
     }
 
     FrameInset {
@@ -93,7 +100,7 @@ Rectangle {
     Rectangle {
         x: root.radius
         width: root.width - root.radius * 2
-        height: Style.accent_height
+        height: root.accent_edge
         color: Style.accent_color
     }
 

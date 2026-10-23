@@ -16,6 +16,8 @@ Item {
     property color chamfer_edge: root.st.frame_border_color
     property real octagon_cut: root.st.frame_octagon
     property bool struts: true
+    // False where the screen frame's own rim already outlines the panel, which the style's pixel frame would double.
+    property bool pixel_outline: true
     // Set while a DeviceShell draws the frame instead.
     property bool device: false
     // The frame's outer radii; the window gradient sits inside its border.
@@ -52,7 +54,7 @@ Item {
 
     Loader {
         anchors.fill: parent
-        active: root.st.pixel_border.a > 0 && !root.device
+        active: root.st.pixel_border.a > 0 && !root.device && root.pixel_outline
         sourceComponent: PixelFrame {
             middle: Qt.colorEqual(root.chamfer_edge, root.st.frame_border_color) ? root.st.pixel_border : root.st.shade_3
         }
