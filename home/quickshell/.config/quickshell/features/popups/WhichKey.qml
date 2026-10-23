@@ -411,17 +411,6 @@ PanelWindow {
                 y: frame.top_edge + frame.header_height + frame.pad_y
                 spacing: Style.px(6)
 
-                Text {
-                    visible: root.watch
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                    text: "MODE: " + (SubmapState.submap_name !== "" ? SubmapState.submap_name : root.payload.title || "").toUpperCase()
-                    color: Style.text_muted
-                    font.family: Style.title_font_family
-                    font.pixelSize: Style.fs(-6)
-                    font.letterSpacing: 1
-                }
-
                 GridLayout {
                     columns: root.columns
                     columnSpacing: Style.px(24)
