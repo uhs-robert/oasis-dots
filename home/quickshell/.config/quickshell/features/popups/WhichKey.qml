@@ -7,11 +7,12 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.theme
-import "../bar/DrawerGeometry.js" as Drawer
-import "../bar/FrameGeometry.js" as FrameGeometry
+import "../../ui/frames/DrawerGeometry.js" as Drawer
+import "../../ui/frames/FrameGeometry.js" as FrameGeometry
 import qs.styles.neovim.widgets as Neovim
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui.effects
+import qs.ui.frames
 import qs.ui.keys
 import qs.features.bar
 import qs.features.popups.frames

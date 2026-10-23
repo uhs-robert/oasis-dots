@@ -6,8 +6,8 @@ import Quickshell.Wayland
 import qs.theme
 import qs.theme.transitions
 import qs.ui.effects
-import "BandGeometry.js" as Band
-import "FrameGeometry.js" as Frame
+import "../../ui/frames/BandGeometry.js" as Band
+import "../../ui/frames/FrameGeometry.js" as Frame
 
 // A screen frame on one screen (FrameGeometry.js): one click-through window drawing every band but the bar's, and a
 // 1x1 window per screen edge reserving that edge's zone. The bar window reserves nothing while a frame is on, so the

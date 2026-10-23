@@ -40,15 +40,9 @@ ALLOW_PATH = "lib/check/qml-layers.allow"
 LAYERS = {"core": 0, "theme": 1, "ui": 2, "services": 3, "styles": 4, "features": 5}
 UNRANKED = {"scripts", "assets", "sounds", "custom"}
 
-# (importer, target) pairs, both tree paths. The geometry edges go away when the drawer scaffolding refactor moves
-# the geometry files to a shared lower layer; the BarLayout and DisplayLayout ones need the same move for those files.
+# (importer, target) pairs, both tree paths. Permanent: a settings section reads the layout rules of the thing it
+# configures from that feature's own JS.
 SIBLING_ALLOW = {
-    ("features/popups/WhichKey.qml", "features/bar/DrawerGeometry.js"),
-    ("features/popups/WhichKey.qml", "features/bar/FrameGeometry.js"),
-    ("features/osd/Osd.qml", "features/bar/DrawerGeometry.js"),
-    ("features/osd/Osd.qml", "features/bar/FrameGeometry.js"),
-    ("features/popups/frames/Popup.qml", "features/bar/DrawerGeometry.js"),
-    ("features/popups/frames/Popup.qml", "features/bar/FrameGeometry.js"),
     ("features/settings/sections/BarModulesSection.qml", "features/bar/BarLayout.js"),
     ("features/settings/sections/DisplaysSection.qml", "features/display/DisplayLayout.js"),
 }

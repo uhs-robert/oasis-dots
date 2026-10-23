@@ -6,8 +6,8 @@ import qs.core
 import qs.theme
 import "../../../ui/Search.js" as Search
 import "fuzzy_rows.js" as FuzzyRows
-import "../../bar/DrawerGeometry.js" as Drawer
-import "../../bar/FrameGeometry.js" as FrameGeometry
+import "../../../ui/frames/DrawerGeometry.js" as Drawer
+import "../../../ui/frames/FrameGeometry.js" as FrameGeometry
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui
 import qs.ui.frames

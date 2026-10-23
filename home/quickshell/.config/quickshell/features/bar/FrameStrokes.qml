@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
-import "FrameGeometry.js" as Frame
+import "../../ui/frames/FrameGeometry.js" as Frame
 
 // The rim and inset line round a screen frame's hole (FrameGeometry.frame_stroke), in the canonical frame. Both the
 // frame window and the bar's strip draw it, each clipped to its own side of `near`, so it reads as one line.

@@ -6,7 +6,7 @@ import qs.ui.gauges
 import qs.styles.metroid.widgets as Metroid
 import qs.theme
 import qs.features.popups
-import "IslandOutlines.js" as Outlines
+import "../../ui/frames/IslandOutlines.js" as Outlines
 
 Item {
     id: root

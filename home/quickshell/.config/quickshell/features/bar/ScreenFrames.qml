@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import qs.theme
-import "FrameGeometry.js" as FrameGeometry
+import "../../ui/frames/FrameGeometry.js" as FrameGeometry
 
 // Each screen's screen frame layout (FrameGeometry.frame_layout), or null with no frame, for whoever places something
 // against the frame: the frame itself and, by screen, the drawers.

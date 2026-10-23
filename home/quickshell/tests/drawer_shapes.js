@@ -9,16 +9,16 @@ const assert = require("assert");
 const root = path.join(__dirname, "../.config/quickshell");
 const read = rel => fs.readFileSync(path.join(root, rel), "utf8").replace(/^\.(pragma|import).*$/gm, "");
 const O = vm.createContext({});
-vm.runInContext(fs.readFileSync(path.join(root, "features/bar/IslandOutlines.js"), "utf8").replace(/^\.pragma.*$/gm, ""), O);
+vm.runInContext(fs.readFileSync(path.join(root, "ui/frames/IslandOutlines.js"), "utf8").replace(/^\.pragma.*$/gm, ""), O);
 const load = (rel, imports) => {
   const ctx = vm.createContext(imports);
   vm.runInContext(read(rel), ctx);
   return ctx;
 };
-const B = load("features/bar/BandGeometry.js", { Outlines: O });
-const C = load("features/bar/Corners.js", { Outlines: O });
-const F = load("features/bar/FrameGeometry.js", { Outlines: O, Corners: C });
-const D = load("features/bar/DrawerGeometry.js", { Outlines: O, Band: B, Corners: C });
+const B = load("ui/frames/BandGeometry.js", { Outlines: O });
+const C = load("ui/frames/Corners.js", { Outlines: O });
+const F = load("ui/frames/FrameGeometry.js", { Outlines: O, Corners: C });
+const D = load("ui/frames/DrawerGeometry.js", { Outlines: O, Band: B, Corners: C });
 const plain = v => JSON.parse(JSON.stringify(v));
 
 const kit = { corner: "round", radius: 12, thickness: 6, ornament: "" };

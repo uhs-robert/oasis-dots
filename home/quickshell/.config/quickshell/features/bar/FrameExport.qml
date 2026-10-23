@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import qs.core
 import qs.theme
-import "Corners.js" as Corners
+import "../../ui/frames/Corners.js" as Corners
 
 // Writes the screen frame's corner (frame.json in the state dir) and then runs scripts/frame-app-corners, which turns it
 // into yazi's border and Firefox's chrome/frame.css. Those apps read them at start-up, so a change shows after a restart.

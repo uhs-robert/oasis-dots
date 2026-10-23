@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell.Hyprland
 import qs.theme
-import "FrameGeometry.js" as FrameGeometry
+import "../../ui/frames/FrameGeometry.js" as FrameGeometry
 
 // The full-bar strip (Island shape "Full bar"): one band across the bar carrying the style's island look, with the
 // islands drawing nothing over it. Under the modules, so cava and module fills sit on top of it.
