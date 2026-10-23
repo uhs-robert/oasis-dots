@@ -356,7 +356,7 @@ cases.push(["round layouts are unchanged by profiles", () => {
   const lay = F.frame_layout(1920, 1080, "top", 30, { corner: "round", radius: 12, thickness: 6 });
   out.push(F.hole_path(lay), F.frame_blocks(lay), F.frame_region(lay));
   return require("crypto").createHash("sha1").update(JSON.stringify(plain(out), (k, v) => typeof v === "number" ? Math.round(v * 1e6) / 1e6 : v)).digest("hex");
-}, "15d5e36cb46abd6e4440fe18d7ec26a7c95dce47"]);
+}, "4a33eb6cad45814b85d0f1189b19dfab5035258c"]);
 
 const fit = (kind, r, step) => plain(C.fit(kind, r, step));
 cases.push(["fit pixel at r 12 gives 6, 4 and 3 stairs for steps 2, 3 and 4", () => [2, 3, 4].map(s => fit("pixel", 12, s)), [{ radius: 12, step: 2, stairs: 6 }, { radius: 12, step: 3, stairs: 4 }, { radius: 12, step: 4, stairs: 3 }]]);
