@@ -12,6 +12,7 @@ GREETER_QS_FILES=(
   theme/StyleSchema.js
   core/Paths.qml
   theme/MarkerTokens.js
+  theme/OptionMigrations.js
   styles/index.js
   styles/IconSets.js
   # One entry per file, not styles/*/tokens.js: qmllint's greeter copy (lib/check/steps/qml.py) takes QML and JS entries literally.

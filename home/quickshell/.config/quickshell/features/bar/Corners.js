@@ -33,10 +33,10 @@ function fit(kind, r, step) {
     return { radius: stairs * s, step: s, stairs: stairs };
 }
 
-// The radius Hyprland should round windows to for a frame corner, or 0: only a round corner has curved windows to match;
-// the other profiles leave windows square.
-function window_rounding(kind, radius) {
-    return valid(kind) === "round" ? radius : 0;
+// A colour as the "rgba(rrggbbaa)" string Hyprland parses, from Qt's 0 to 1 channels.
+function hypr_color(c) {
+    const hex = v => ("0" + Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16)).slice(-2);
+    return "rgba(" + hex(c.r) + hex(c.g) + hex(c.b) + hex(c.a) + ")";
 }
 
 // The corner between two edges as a polyline, from the point where the first edge ends to where the second begins.

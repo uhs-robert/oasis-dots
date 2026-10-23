@@ -262,19 +262,15 @@ PanelWindow {
     readonly property var drawer_kinds: Drawer.end_kinds(root.side, root.dock_bottom)
     readonly property real drawer_body_width: root.drawer_hole ? Drawer.body_length(root.dock_bottom ? "dock" : root.side, root.base_width, root.drawer_hole.w, root.drawer_fillet) : 0
     function drawer_spec(extent) {
-        return {
+        return Object.assign({
             edge: root.from_bottom ? "bottom" : "top",
             body_length: root.drawer_body_width,
             body_depth: root.base_height,
             extent: extent,
-            radius: root.drawer_fillet,
-            fillet: root.drawer_fillet,
-            corner: root.drawer ? root.drawer_profile.corner : "round",
-            step: root.drawer ? root.drawer_profile.step : 0,
             start_kind: root.drawer_kinds.start,
             end_kind: root.drawer_kinds.end,
             cover: root.drawer_cover
-        };
+        }, Drawer.profile_fields(root.drawer_profile));
     }
     // The window's size follows the full drawer, so it never resizes while the shape grows inside it.
     // None of the three is ever null, so a frame switched off under an open popup cannot leave DrawerShape without a layout.

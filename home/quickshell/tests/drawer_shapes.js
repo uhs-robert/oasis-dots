@@ -348,7 +348,7 @@ cases.push(["fit pixel caps the radius at 18 and the stairs at 8", () => [fit("p
 cases.push(["fit pixel rounds the radius down to whole steps", () => fit("pixel", 11, 4), { radius: 8, step: 4, stairs: 2 }]);
 cases.push(["fit pixel below one step is square, a missing step is 1 px", () => [fit("pixel", 1, 2), fit("pixel", 3, undefined)], [{ radius: 0, step: 0, stairs: 0 }, { radius: 3, step: 1, stairs: 3 }]]);
 cases.push(["fit chamfer caps at 12, square is 0, round is untouched", () => [fit("chamfer", 30).radius, fit("chamfer", 7).radius, fit("square", 12).radius, fit("round", 30).radius, fit("nonsense", 9).radius], [12, 7, 0, 30, 9]]);
-cases.push(["Hyprland rounds windows only for a round corner", () => PROFILES.map(k => C.window_rounding(k, 12)), [12, 0, 0, 0]]);
+cases.push(["hypr_color is rgba hex with clamped channels", () => [C.hypr_color({ r: 1, g: 0.5, b: 0, a: 0.8 }), C.hypr_color({ r: 2, g: -1, b: 0, a: 1 })], ["rgba(ff8000cc)", "rgba(ff0000ff)"]]);
 
 for (const step of [2, 3, 4]) for (const r of [12, 18]) {
   const f = C.fit("pixel", r, step);
@@ -367,6 +367,13 @@ for (const corner of PROFILES) {
     cases.push([`hole ${corner}, ${name}: ends on the straight stretch, loop clean`, () => {
       const path = F.hole_path(lay), loop = F.hole_loop(lay);
       return finite(path) && !self_intersects(loop) && (lay.radius === 0 || (path[0][0] === lay.straight[1] && path[path.length - 1][0] === lay.straight[0] && path[0][1] === lay.near && path[path.length - 1][1] === lay.near)) && !has_repeats(path) && (corner !== "pixel" || (is_int(path) && axis_aligned(path)));
+    }, true]);
+    cases.push([`frame blocks ${corner}, ${name}: cover the band area the region fills`, () => {
+      const area = F.frame_blocks(lay).reduce((a, r) => a + r.w * r.h, 0);
+      const region = F.frame_region(lay);
+      const want = lay.has_bar ? loop_area(region[0]) : lay.length * lay.depth - loop_area(region[1]);
+      // Rows are sampled at their middles: exact for straight profiles, within a sliver for an arc.
+      return Math.abs(area - want) < (corner === "round" ? 0.02 * lay.radius * lay.radius * 4 : 1e-6);
     }, true]);
     cases.push([`frame blocks ${corner}, ${name}: disjoint and finite`, () => {
       const b = F.frame_blocks(lay);
@@ -396,10 +403,27 @@ for (const corner of PROFILES) {
       cases.push([`pixel ${label}: whole pixels, axis-aligned, nothing between two pixels`, () => is_int(side) && axis_aligned(side) && is_int(D.fill_loop(lay)) && is_int(D.hole_fill_loop(lay).filter(p => p[1] !== c - 0.5)), true]);
       if (f > 0 && start_kind === "pocket") cases.push([`pixel ${label}: the pocket's stair leaves the band edge with a step across it`, () => side[0][0] === left && side[1][1] === side[0][1] && side[1][0] > left, true]);
     }
-    if (corner === "chamfer" && f > 0) cases.push([`chamfer ${label}: the first fillet is a straight 45 degree cut`, () => Math.abs(Math.abs(side[1][0] - side[0][0]) - Math.abs(side[1][1] - side[0][1])) < 1e-9, true]);
-    if (corner === "square") cases.push([`square ${label}: the outline is the plain box`, () => side.every(p => p[0] === left || p[0] === right || p[1] === c) && D.fill_loop(lay).every(p => Number.isInteger(p[0]) && Number.isInteger(p[1])), true]);
+    if (corner === "chamfer") cases.push([`chamfer ${label}: every corner is one straight 45 degree cut`, () => {
+      const diagonals = side.slice(1).map((p, k) => [p[0] - side[k][0], p[1] - side[k][1]]).filter(d => d[0] !== 0 && d[1] !== 0);
+      const corners = [[start_kind, lay.start_kind], [end_kind, lay.end_kind]].reduce((n, [kind]) => n + (f > 0 ? 1 : 0) + (kind === "fillet" && r > 0 ? 1 : 0), 0);
+      return diagonals.length === corners && diagonals.every(d => Math.abs(Math.abs(d[0]) - Math.abs(d[1])) < 1e-9);
+    }, true]);
+    if (corner === "square") cases.push([`square ${label}: the outline is the plain box, far edge included`, () => {
+      const far_run = side.filter(p => p[1] === far);
+      return side.every(p => p[0] === left || p[0] === right || p[1] === c || p[1] === far) && D.fill_loop(lay).every(p => Number.isInteger(p[0]) && Number.isInteger(p[1]))
+        && (lay.body.d === 0 || (far_run.length >= 2 && far_run[0][0] === left && far_run[far_run.length - 1][0] === right));
+    }, true]);
   }
 }
+// A drawer big enough for its full corners follows each profile's own size, not just a bound.
+for (const [corner, want_size, want_step] of [["round", 12, 0], ["chamfer", 12, 0], ["pixel", 12, 2], ["square", 0, 0]]) {
+  cases.push([`${corner}: a roomy drawer draws the profile's own radius and fillet`, () => {
+    const l = lay_of({ corner, step: 2, radius: 12, fillet: 12 });
+    return [l.radius_eff, l.fillet_eff, l.radius_step, l.fillet_step];
+  }, [want_size, want_size, want_step, want_step]]);
+}
+cases.push(["a chamfer drawer asked for more than 12 draws 12; a pixel one rounds to whole steps", () => [lay_of({ corner: "chamfer", radius: 20, fillet: 20 }).fillet_eff, lay_of({ corner: "pixel", step: 4, radius: 18, fillet: 18 }).fillet_eff], [12, 16]]);
+cases.push(["profile_fields hands the fitted fillet and the profile, round and zero with no frame", () => [D.profile_fields({ corner: "pixel", radius: 12, step: 4 }), D.profile_fields(null)], [{ radius: 12, fillet: 12, corner: "pixel", step: 4 }, { radius: 0, fillet: 0, corner: "round", step: 0 }]]);
 cases.push(["pixel body rounds up to whole pixels", () => { const l = D.drawer_layout(spec({ corner: "pixel", step: 2, body_length: 400.4, body_depth: 200.2, extent: 100.6 })); return [l.body.w, l.body.d, l.length, l.depth]; }, [401, 101, 401 + 2 * 14, cover + 201 + 0]]);
 cases.push(["a spec with no corner or step is round", () => [D.drawer_layout(spec({})).corner, D.drawer_layout(spec({ corner: "bogus" })).corner], ["round", "round"]]);
 cases.push(["fillet_of fits the profile", () => [D.fillet_of({ corner: "pixel", radius: 12, step: 4 }), D.fillet_of({ corner: "square", radius: 12, step: 2 }), D.fillet_of({ corner: "chamfer", radius: 20, step: 2 })], [12, 0, 12]]);

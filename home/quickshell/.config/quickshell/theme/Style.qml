@@ -7,6 +7,7 @@ import "../styles/goldeneye/Watch.js" as Watch
 import "../styles/index.js" as Styles
 import "../styles/IconSets.js" as IconSets
 import "MarkerTokens.js" as MarkerTokens
+import "OptionMigrations.js" as Migrations
 
 Singleton {
     id: root
@@ -67,19 +68,18 @@ Singleton {
     // Saved shapes renamed since, applied once to a theme_options.json older than options_version: "octagon" drew
     // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
     readonly property var renamed_island_shapes: ({ octagon: "watch" })
-    readonly property int options_version: 2
+    readonly property int options_version: 3
     // Shape sizes every kit resets before laying its own on, so leaving the capsule drops its inset.
     readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0 })
-    // Screen frames any style can borrow (Theme options); "" is none.
-    readonly property var screen_frames: ["", "plain"]
-    // What each frame draws (FrameGeometry.frame_layout): `thickness` px bands on the edges the bar is not on and the
-    // hole's corners of `radius`, in the profile screen_frame_profile picks. The line round the hole stays at the bar's
-    // border width (screen_frame_rim_color). `ornament` names extra drawing in the frame's ornament slot, none so far.
-    readonly property var screen_frame_kits: ({
-            plain: { radius: 12, thickness: 6, ornament: "" }
-        })
-    // The corner profiles a frame offers (Corners.js), the first the default.
+    // The corner profiles a frame offers (Corners.js).
     readonly property var frame_corners: ["round", "chamfer", "pixel", "square"]
+    // Screen frames any style can borrow (Theme options); "" is none, and each other value is the frame's corner profile.
+    readonly property var screen_frames: [""].concat(root.frame_corners)
+    // What every frame draws (FrameGeometry.frame_layout): `thickness` px bands on the edges the bar is not on and the
+    // hole's corners of `radius`, in the profile screen_frame_profile reads from the choice. The line round the hole
+    // stays at the bar's border width (screen_frame_rim_color). `ornament` names extra drawing in the frame's ornament
+    // slot, none so far.
+    readonly property var plain_frame_kit: ({ radius: 12, thickness: 6, ornament: "" })
     // OSD layouts any style can borrow (Theme options); "" is the plain OSD. "watch" also brings the dial header to the Volume and Battery popups, which read the same token.
     readonly property var osd_layouts: ["", "ring", "hud", "rpg", "alert", "glow", "horizon", "tile", "watch"]
     // Weather layouts any style can borrow; the header token picks the header and every Daily view that goes with it, so one choice cannot mismatch. watch, battle, scan and hev also reword the alert banner and the Alerts tab in their style's fiction, which comes along when borrowed.
@@ -109,8 +109,7 @@ Singleton {
             bar_meeting_marker: MarkerTokens.labels,
             bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", rect: "Rectangle", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" },
-            screen_frame: { "": "Off", plain: "Plain" },
-            screen_frame_corners: { round: "Round", chamfer: "Chamfer", pixel: "Pixel", square: "Square" }
+            screen_frame: { "": "Off", round: "Round", chamfer: "Chamfer", pixel: "Pixel", square: "Square" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
@@ -167,9 +166,9 @@ Singleton {
     // The screen frame the shell draws, from `active` so the style picker previews it; null when there is none.
     readonly property var screen_frame_kit: root.frame_kit_for(root.active)
     readonly property bool screen_frame_on: root.screen_frame_kit !== null
-    // The frame's corner profile as asked for: the hole and the drawers fit it to their room (Corners.fit), and Hyprland
-    // rounds windows to it only when it is "round" (ScreenFrameSync). Null with no frame.
-    readonly property var screen_frame_profile: root.screen_frame_on ? { corner: root.bar.screen_frame_corners || "round", radius: root.screen_frame_kit.radius, step: root.bar.screen_frame_step } : null
+    // The frame's corner profile as asked for: the hole and the drawers fit it to their room (Corners.fit), and
+    // Hyprland shapes windows to it (ScreenFrameSync). Null with no frame.
+    readonly property var screen_frame_profile: root.screen_frame_on ? { corner: root.active.screen_frame, radius: root.screen_frame_kit.radius, step: root.bar.screen_frame_step } : null
     // A frame's rim and inset line, the whole line round the hole: in the bar's colours on the focused monitor, mixed
     // most of the way into the strip on the others, so the frame marks the focused screen the way Hyprland's active
     // border marks the focused window.
@@ -186,7 +185,7 @@ Singleton {
     // The frame kit a token set asks for, or null: lualine draws its own statusline edge, and a style can opt out.
     function frame_kit_for(tokens) {
         if (tokens.bar_lualine || tokens.screen_frame_offered === false) return null;
-        return root.screen_frame_kits[tokens.screen_frame] || null;
+        return root.frame_corners.indexOf(tokens.screen_frame) >= 0 ? root.plain_frame_kit : null;
     }
     // Small popups read this token set; it is the singleton itself unless the style has a `small` block.
     readonly property var small: root.active.small ? root.resolve(Object.assign({}, root.active, root.active.small)) : root
@@ -625,7 +624,9 @@ Singleton {
         const out = {};
         choices.forEach((v, i) => {
             const name = root.borrow_names[key][v];
-            const owners = i === 0 ? "" : root.names.filter(n => root.styles[n][key] === v).map(n => root.label(n)).join(", ");
+            // The screen frame's value is a corner, which a style names as a hint (its own token) rather than by the row's key.
+            const owner_key = key === "screen_frame" ? "screen_frame_corners" : key;
+            const owners = i === 0 ? "" : root.names.filter(n => root.styles[n][owner_key] === v).map(n => root.label(n)).join(", ");
             out[v] = owners === "" || owners === name ? name : name + " (" + owners + ")";
         });
         return out;
@@ -661,7 +662,6 @@ Singleton {
         if (!b.bar_lualine && b.screen_frame_offered !== false) out.push({ key: "screen_frame", label: "Screen frame", type: "choice", default: b.screen_frame || "", choices: root.screen_frames, labels: root.borrow_labels("screen_frame", root.screen_frames) });
         // `locked` is the text a row shows while another option fixes its value; the saved value stays underneath.
         const framed = root.frame_kit_for(Object.assign({}, b, saved)) !== null;
-        if (all_rows || framed) out.push({ key: "screen_frame_corners", label: "Corners", type: "choice", default: b.screen_frame_corners || "round", choices: root.frame_corners, labels: root.borrow_labels("screen_frame_corners", root.frame_corners) });
         if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes), locked: framed ? "Full bar (frame)" : undefined });
         // The shape in force is the saved one (the full bar under a frame), so the row follows the choice live. Hiding is only presentation: the saved opacity stays in theme_values.
         const shape = framed ? "full" : saved.bar_island_shape || b.bar_island_shape;
@@ -777,6 +777,10 @@ Singleton {
                 let v = data[style_name] ? data[style_name][def.key] : undefined;
                 if (outdated && def.key === "bar_island_shape" && root.renamed_island_shapes[v]) {
                     v = root.renamed_island_shapes[v];
+                    migrated = true;
+                }
+                if (outdated && def.key === "screen_frame" && v === "plain") {
+                    v = Migrations.screen_frame_from_plain(data[style_name].screen_frame_corners, root.styles[style_name].screen_frame_corners, root.frame_corners);
                     migrated = true;
                 }
                 if (v !== undefined && root.valid_option(def, v) && v !== (def.type === "bool" ? true : def.default)) mine[def.key] = v;
