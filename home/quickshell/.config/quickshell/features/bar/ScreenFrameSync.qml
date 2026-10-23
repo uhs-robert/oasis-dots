@@ -4,7 +4,7 @@ import Quickshell.Hyprland
 import qs.theme
 import "Corners.js" as Corners
 
-// Tells Hyprland the screen frame's corner profile and rim, so window corners and borders follow it (ScreenFrame.set
+// Tells Hyprland the screen frame's corner profile, rim and whether a lone window goes flush, so window corners and borders follow it (ScreenFrame.set
 // in config/general/frame.lua, which keeps the user's values and restores them on clear or when the frame layer goes).
 Scope {
     id: root
@@ -15,7 +15,7 @@ Scope {
     readonly property string command: {
         if (!Style.screen_frame_on) return "ScreenFrame.clear()";
         const drawn = Corners.fit(root.profile.corner, root.profile.radius, root.profile.step).radius;
-        const args = [JSON.stringify(root.profile.corner), drawn, Style.bar_border_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false)))];
+        const args = [JSON.stringify(root.profile.corner), drawn, Style.bar_border_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false))), Style.option("screen_frame_flush") !== false];
         return "ScreenFrame.set(" + args.join(", ") + ")";
     }
 

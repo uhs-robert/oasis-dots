@@ -659,6 +659,7 @@ Singleton {
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         const saved = root.theme_values[style_name] || {};
         if (!b.bar_lualine && b.screen_frame_offered !== false) out.push({ key: "screen_frame", label: "Screen frame", type: "choice", default: b.screen_frame || "", choices: root.screen_frames, labels: root.borrow_labels("screen_frame", root.screen_frames) });
+        if (!b.bar_lualine && b.screen_frame_offered !== false) flag("screen_frame_flush", "Flush single windows");
         // `locked` is the text a row shows while another option fixes its value; the saved value stays underneath.
         const framed = root.frame_kit_for(Object.assign({}, b, saved)) !== null;
         if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes), locked: framed ? "Full bar (frame)" : undefined });
