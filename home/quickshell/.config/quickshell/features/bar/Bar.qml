@@ -254,7 +254,7 @@ Item {
             }
         }
 
-        // Frame mode has no dropdown tab, so the submap shows here beside the clock; lualine styles keep their own mode chip.
+        // With a frame and a center island the submap shows here beside the clock instead of as a dropdown tab; lualine styles keep their own mode chip.
         Rectangle {
             visible: root.has_frame_chip && SubmapState.indicator_shown
             Layout.alignment: Qt.AlignVCenter
