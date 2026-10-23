@@ -5,6 +5,7 @@ local frame_path = here .. "/../.config/hypr/config/general/frame.lua"
 
 local windows, active, handlers = {}, nil, {}
 local rule_log, animation, config_calls = {}, nil, {}
+local gaps_out = 6
 
 local function new_rule(kind, spec)
 	local rule = { kind = kind, spec = spec, enabled = true }
@@ -22,7 +23,7 @@ end
 _G.hl = {
 	get_config = function(key)
 		if key == "general.gaps_out" then
-			return 6
+			return gaps_out
 		end
 		return 0
 	end,
@@ -195,6 +196,17 @@ check("clear: animation restored", animation.bezier == "smooth")
 first.tag_set = { frame_gapped = true }
 _G.ScreenFrame.set("round", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
 check("reload: stale tag dropped", not tagged(first))
+
+-- A gap wide enough to flatten the gapped chamfer corner still leaves the flush windows a chamfer.
+gaps_out = 24
+_G.ScreenFrame.set("chamfer", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")
+local flush_powers = {}
+for _, rule in ipairs(rule_log) do
+	if rule.kind == "window" and rule.enabled and rule.spec.name:find("^quickshell%-frame%-lone") then
+		table.insert(flush_powers, rule.spec.rounding_power)
+	end
+end
+check("big gap chamfer: flush power chamfered", #flush_powers == 1 and flush_powers[1] == 1)
 
 if failures > 0 then
 	print(failures .. " failed")

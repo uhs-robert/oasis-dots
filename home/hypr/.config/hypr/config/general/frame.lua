@@ -219,7 +219,7 @@ local function set(corner, radius, border_size, active, inactive)
   end
   local gap = gaps_out()
   local rounding, chamfered = window_rounding(corner, tonumber(radius) or 0, gap)
-  local flush_rounding = window_rounding(corner, tonumber(radius) or 0, 0)
+  local flush_rounding, flush_chamfered = window_rounding(corner, tonumber(radius) or 0, 0)
   -- A chamfered window's own rounding comes from its rule, so the global one only matters for windows the rule misses.
   -- Power 2 keeps a squircle rounding of the owner's from drawing a round window's arc off the frame's circle.
   local width = tonumber(border_size)
@@ -233,7 +233,8 @@ local function set(corner, radius, border_size, active, inactive)
       },
     },
   })
-  local power = chamfered and 1 or 2
+  -- The flush power follows the flush corner: a large gap can flatten the gapped corner while the flush one stays cut.
+  local power = flush_chamfered and 1 or 2
   local rules = {}
   if chamfered then table.insert(rules, { rounding = rounding, power = 1, kind = "gapped" }) end
   if flush_rounding ~= rounding then
