@@ -5,6 +5,7 @@ import qs.theme
 import qs.features.popups
 import qs.features.popups.frames
 import qs.features.audio
+import qs.features.bar
 import "Sections.js" as Sections
 
 Popup {
@@ -16,7 +17,7 @@ Popup {
     size_class: "large"
     // The pane keeps 450; the sidebar grows to fit the widest section label in the active style.
     preferred_width: 467 + nav.width / Style.scale
-    body_height: Math.max(nav.implicitHeight, root.pane_height) + 24
+    body_height: Math.min(root.natural_content, root.content_cap) + 24
     reserve_height: root.max_body
     jumps_enabled: true
     // Only on the section list: panes hold sliders and fields with wheel behavior of their own.
@@ -38,6 +39,19 @@ Popup {
     // Last valid pane height, held while a section loads; max_body is the tallest body this open.
     property real pane_height: 0
     property real max_body: 0
+    // Pane-pinned text (SettingsPane's description block) lives here, outside the scrolling area, so it stays on screen while rows scroll.
+    readonly property Item description_host: description_overlay
+    readonly property real pinned_height: root.pane ? root.pane.description_space : 0
+    readonly property real natural_content: Math.max(nav.implicitHeight, root.pane_height)
+    // Screen height left for the panel's body once the bar and the popup's own chrome are taken out; no cap before the screen is known.
+    readonly property real free_height: {
+        if (root.drawer) return root.drawer_hole.h - root.header_height - root.footer_height;
+        if (!root.screen) return Infinity;
+        const bar = BarSettings.height_for(BarSettings.rule_for(root.screen));
+        return root.screen.height - bar - (root.floating ? root.st.frame_float : 0) - root.header_height - root.footer_height - root.drop_room;
+    }
+    // The body adds a 12px margin on each side.
+    readonly property real content_cap: Math.max(0, root.free_height - 24)
     readonly property real pane_implicit: pane_loader.status === Loader.Ready ? pane_loader.implicitHeight : NaN
     onPane_implicitChanged: if (isFinite(root.pane_implicit) && root.pane_implicit > 0) root.pane_height = root.pane_implicit
     onBody_heightChanged: if (isFinite(root.body_height)) root.max_body = Math.max(root.max_body, root.body_height)
@@ -54,6 +68,7 @@ Popup {
         if (!root.is_open) return;
         load_timer.restart();
         ThemeAudio.play("cursor");
+        Qt.callLater(root.reveal_selected, nav_flick, nav_col);
     }
 
     Timer {
@@ -130,6 +145,37 @@ Popup {
         else if (name === "activate" && typeof pane.activate === "function") pane.activate(pane.cursor, 1);
     }
 
+    // The first visible row flagged selected under `item`, or null.
+    function selected_under(item) {
+        for (const child of item.children) {
+            if (!child.visible) continue;
+            if (child.selected === true) return child;
+            const found = root.selected_under(child);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    // Scrolls `flick` the least that shows the selected row under `scope`; a few px of lead keep a group heading with its first row.
+    function reveal_selected(flick, scope) {
+        const row = root.selected_under(scope);
+        if (!row) return;
+        const top = row.mapToItem(flick.contentItem, 0, 0).y;
+        const lead = Style.px(24);
+        let target = flick.contentY;
+        if (top - lead < target) target = top - lead;
+        else if (top + row.height > target + flick.height) target = top + row.height - flick.height;
+        flick.contentY = Math.max(0, Math.min(target, flick.contentHeight - flick.height));
+    }
+
+    Connections {
+        target: root.pane
+        ignoreUnknownSignals: true
+        function onCursorChanged() {
+            Qt.callLater(root.reveal_selected, pane_flick, pane_loader);
+        }
+    }
+
     Connections {
         target: SettingsNav
         function onRequestedChanged() {
@@ -146,7 +192,7 @@ Popup {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        implicitHeight: Math.max(nav.implicitHeight, root.pane_height)
+        implicitHeight: Math.min(root.natural_content, root.content_cap)
         focus: true
 
         // Runs after the section: Esc, h and Tab it did not use go back to the sidebar.
@@ -158,95 +204,106 @@ Popup {
             event.accepted = true;
         }
 
-        Item {
-            id: nav
-            readonly property real fit: {
-                let w = 0;
-                for (let i = 0; i < nav_repeater.count; i++) {
-                    const item = nav_repeater.itemAt(i);
-                    if (item) w = Math.max(w, item.need);
+        Flickable {
+            id: nav_flick
+            width: nav.width
+            height: body.height
+            // Only while scrolling: a selected row's glow reaches past the viewport edge, which fitting panels keep.
+            clip: nav_flick.contentHeight > nav_flick.height
+            contentWidth: width
+            contentHeight: nav.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+
+            Item {
+                id: nav
+                readonly property real fit: {
+                    let w = 0;
+                    for (let i = 0; i < nav_repeater.count; i++) {
+                        const item = nav_repeater.itemAt(i);
+                        if (item) w = Math.max(w, item.need);
+                    }
+                    return w;
                 }
-                return w;
-            }
-            width: Math.max(Style.px(150), Math.ceil(nav.fit))
-            implicitHeight: nav_col.implicitHeight
-            focus: true
+                width: Math.max(Style.px(150), Math.ceil(nav.fit))
+                implicitHeight: nav_col.implicitHeight
+                focus: true
 
-            Keys.onPressed: event => {
-                if (event.modifiers & Qt.ControlModifier) return;
-                const count = Sections.list.length;
-                if (event.key === Qt.Key_J) root.nav_index = root.wrap_index(root.nav_index, 1, 0, count);
-                else if (event.key === Qt.Key_K) root.nav_index = root.wrap_index(root.nav_index, -1, 0, count);
-                else if (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Tab) root.enter_pane();
-                else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < count) root.nav_index = event.key - Qt.Key_1;
-                else return;
-                event.accepted = true;
-            }
+                Keys.onPressed: event => {
+                    if (event.modifiers & Qt.ControlModifier) return;
+                    const count = Sections.list.length;
+                    if (event.key === Qt.Key_J) root.nav_index = root.wrap_index(root.nav_index, 1, 0, count);
+                    else if (event.key === Qt.Key_K) root.nav_index = root.wrap_index(root.nav_index, -1, 0, count);
+                    else if (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Tab) root.enter_pane();
+                    else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < count) root.nav_index = event.key - Qt.Key_1;
+                    else return;
+                    event.accepted = true;
+                }
 
-            Column {
-                id: nav_col
-                width: parent.width
-                spacing: 4
+                Column {
+                    id: nav_col
+                    width: parent.width
+                    spacing: 4
 
-                Repeater {
-                    id: nav_repeater
-                    model: Sections.list
+                    Repeater {
+                        id: nav_repeater
+                        model: Sections.list
 
-                    Column {
-                        id: entry
-                        required property int index
-                        required property var modelData
-                        readonly property bool first: entry.index === 0 || Sections.list[entry.index - 1].group !== entry.modelData.group
-                        readonly property real need: 16 + nav_row.inset + nav_row.key_space + nav_layout.implicitWidth
+                        Column {
+                            id: entry
+                            required property int index
+                            required property var modelData
+                            readonly property bool first: entry.index === 0 || Sections.list[entry.index - 1].group !== entry.modelData.group
+                            readonly property real need: 16 + nav_row.inset + nav_row.key_space + nav_layout.implicitWidth
 
-                        width: nav_col.width
-                        spacing: 4
+                            width: nav_col.width
+                            spacing: 4
 
-                        MenuSection {
-                            visible: entry.first
-                            width: entry.width
-                            topPadding: entry.index === 0 ? 0 : 6
-                            label: entry.modelData.group
-                        }
-
-                        MenuRow {
-                            id: nav_row
-                            width: entry.width
-                            height: Style.px(28)
-                            base_radius: 6
-                            selected: entry.index === root.nav_index
-                            key: entry.index < 9 ? String(entry.index + 1) : ""
-
-                            RowLayout {
-                                id: nav_layout
-                                anchors.left: parent.left
-                                anchors.leftMargin: 8 + nav_row.inset
-                                anchors.right: parent.right
-                                anchors.rightMargin: 8 + nav_row.key_space
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 8
-
-                                Text {
-                                    text: entry.modelData.glyph
-                                    color: nav_row.fg(root.st.text_accent)
-                                    font.family: root.st.font_family
-                                    font.pixelSize: root.st.font_size
-                                }
-
-                                RowLabel {
-                                    Layout.fillWidth: true
-                                    label: entry.modelData.label
-                                    color: nav_row.fg(root.st.text_fg)
-                                    font.family: root.st.font_family
-                                    font.pixelSize: root.st.font_size
-                                }
+                            MenuSection {
+                                visible: entry.first
+                                width: entry.width
+                                topPadding: entry.index === 0 ? 0 : 6
+                                label: entry.modelData.group
                             }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    root.nav_index = entry.index;
-                                    root.enter_pane();
+                            MenuRow {
+                                id: nav_row
+                                width: entry.width
+                                height: Style.px(28)
+                                base_radius: 6
+                                selected: entry.index === root.nav_index
+                                key: entry.index < 9 ? String(entry.index + 1) : ""
+
+                                RowLayout {
+                                    id: nav_layout
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8 + nav_row.inset
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 8 + nav_row.key_space
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 8
+
+                                    Text {
+                                        text: entry.modelData.glyph
+                                        color: nav_row.fg(root.st.text_accent)
+                                        font.family: root.st.font_family
+                                        font.pixelSize: root.st.font_size
+                                    }
+
+                                    RowLabel {
+                                        Layout.fillWidth: true
+                                        label: entry.modelData.label
+                                        color: nav_row.fg(root.st.text_fg)
+                                        font.family: root.st.font_family
+                                        font.pixelSize: root.st.font_size
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        root.nav_index = entry.index;
+                                        root.enter_pane();
+                                    }
                                 }
                             }
                         }
@@ -263,9 +320,29 @@ Popup {
             color: Qt.alpha(root.st.text_muted, 0.4)
         }
 
-        // Spans the body's full height so a section can pin content, such as row descriptions, to the bottom.
-        Loader {
-            id: pane_loader
+        // The loader is at least the body tall, as sections were laid out before scrolling; a taller section scrolls above its pinned description.
+        Flickable {
+            id: pane_flick
+            anchors.left: divider.right
+            anchors.leftMargin: 8
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: root.pinned_height
+            clip: pane_flick.contentHeight > pane_flick.height
+            contentWidth: width
+            contentHeight: pane_loader.height - root.pinned_height
+            boundsBehavior: Flickable.StopAtBounds
+
+            Loader {
+                id: pane_loader
+                width: pane_flick.width
+                height: Math.max(body.height, pane_loader.implicitHeight)
+            }
+        }
+
+        Item {
+            id: description_overlay
             anchors.left: divider.right
             anchors.leftMargin: 8
             anchors.right: parent.right

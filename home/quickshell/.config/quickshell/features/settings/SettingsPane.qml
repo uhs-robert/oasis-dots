@@ -76,6 +76,7 @@ FocusScope {
     ColumnLayout {
         id: description_block
         visible: root.described && !root.picking
+        parent: root.popup && root.popup.description_host ? root.popup.description_host : root
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
