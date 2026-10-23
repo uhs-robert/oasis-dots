@@ -65,7 +65,7 @@ Singleton {
             // One strip across the bar in place of the islands' plates (`strip`, see strip_shape); the border is its rim.
             full: { strip: true, min_border: 1 }
         })
-    // Saved shapes renamed since, applied once to a theme_options.json older than options_version: "octagon" drew
+    // Saved shapes renamed since, applied once to a theme_options.json older than version 2: "octagon" drew
     // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
     readonly property var renamed_island_shapes: ({ octagon: "watch" })
     readonly property int options_version: 3
@@ -768,17 +768,20 @@ Singleton {
 
     function load_options(data) {
         const all = {};
-        const outdated = !(data.version >= root.options_version);
+        // Each migration runs only on a file older than the version that introduced it; a file stamped 2 chose its shape after the rename.
+        const stored = data.version >= 0 ? data.version : 0;
+        const renames_shapes = stored < 2;
+        const reads_plain_frame = stored < 3;
         let migrated = false;
         for (const style_name in data) {
             const mine = {};
             for (const def of root.settings_for(style_name, true)) {
                 let v = data[style_name] ? data[style_name][def.key] : undefined;
-                if (outdated && def.key === "bar_island_shape" && root.renamed_island_shapes[v]) {
+                if (renames_shapes && def.key === "bar_island_shape" && root.renamed_island_shapes[v]) {
                     v = root.renamed_island_shapes[v];
                     migrated = true;
                 }
-                if (outdated && def.key === "screen_frame" && v === "plain") {
+                if (reads_plain_frame && def.key === "screen_frame" && v === "plain") {
                     v = Migrations.screen_frame_from_plain(data[style_name].screen_frame_corners, root.styles[style_name].screen_frame_corners, root.frame_corners);
                     migrated = true;
                 }

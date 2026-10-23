@@ -192,5 +192,25 @@ const load = style.slice(style.indexOf("function load_options"));
 expect(/options_version: 3/.test(style), "options_version is not 3");
 expect(load.indexOf("screen_frame_from_plain") > 0 && load.indexOf("screen_frame_from_plain") < load.indexOf("valid_option"), "the frame migration does not run before valid_option");
 
+// Runs the real load_options on saved files: each migration applies only below the version that introduced it.
+const load_saved = data => {
+  const root = { theme_values: null, frame_corners, renamed_island_shapes: { octagon: "watch" }, styles: { modern: {} },
+    settings_for: () => [{ key: "bar_island_shape", default: "slant" }, { key: "screen_frame", default: "" }],
+    valid_option: () => true, save_options: () => {} };
+  const body = load.slice(0, load.indexOf("\n    }\n") + 6).replace(/^function load_options/, "(function");
+  vm.runInNewContext(body + ")", { root, Migrations: M })(data);
+  return plain(root.theme_values.modern || {});
+};
+const saved_modern = (version, values) => load_saved({ version, modern: values });
+for (const [name, got, want] of [
+  ["a version 2 file keeps a chosen octagon", saved_modern(2, { bar_island_shape: "octagon" }).bar_island_shape, "octagon"],
+  ["a version 1 file renames octagon to watch", saved_modern(1, { bar_island_shape: "octagon" }).bar_island_shape, "watch"],
+  ["a file without a version renames octagon to watch", saved_modern(undefined, { bar_island_shape: "octagon" }).bar_island_shape, "watch"],
+  ["a version 2 file turns plain into a corner", saved_modern(2, { screen_frame: "plain", screen_frame_corners: "chamfer" }).screen_frame, "chamfer"],
+  ["a version 3 file leaves plain alone", saved_modern(3, { screen_frame: "plain" }).screen_frame, "plain"],
+]) {
+  expect(got === want, "load_options: " + name + ": got " + got + ", want " + want);
+}
+
 if (failed) process.exit(1);
 console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frame_checks) + " checks passed");
