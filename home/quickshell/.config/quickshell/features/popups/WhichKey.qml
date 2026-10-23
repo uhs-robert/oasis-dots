@@ -370,7 +370,7 @@ PanelWindow {
                     id: title_text
                     x: 10
                     y: (parent.height - height) / 2
-                    width: Math.min(implicitWidth, frame.width - title_tab.x - x - frame.title_x - frame.watch_room - 10 - (readout.visible ? readout.implicitWidth + 16 : 0))
+                    width: Math.max(0, Math.min(implicitWidth, frame.width - title_tab.x - x - frame.title_x - frame.watch_room - 10 - (readout.visible ? readout.implicitWidth + 16 : 0)))
                     elide: Text.ElideRight
                     text: Style.title_prefix + Style.title_text(root.title) + (Style.caret_phase ? Style.title_suffix : " ".repeat(Style.title_suffix.length))
                     color: !root.tinted ? (Style.show_title ? Style.title_fg : Style.accent_color) : !Style.show_title || !root.filled_title ? root.header_color : Style.fade_fills ? Style.title_fg : Style.pal.bg_crust
