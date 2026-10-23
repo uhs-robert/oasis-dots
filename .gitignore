@@ -182,6 +182,7 @@ home/*/.config/systemd/user/*.wants/*
 home/rofi/.config/rofi/colors.rasi
 home/foot/.config/foot/foot.ini
 home/yazi/.config/yazi/theme.toml
+home/yazi/.config/yazi/frame-border.lua
 home/kitty/.config/kitty/oasis-theme.conf
 home/ghostty/.config/ghostty/oasis-theme.conf
 

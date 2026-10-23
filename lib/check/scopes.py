@@ -70,6 +70,8 @@ PATH_SCOPES = [
     ("lib/check/steps/shaders.sh", "shaders"),
     # Ahead of the Quickshell rule below. Only the shader step reads a .frag; QML names the compiled .qsb by path, which
     # qml-paths checks, so a renamed or deleted .qsb reaches it too.
+    # The app-corner generator's tests are unittest cases in lib/check/tests, so the script reaches check-cache.
+    ("home/quickshell/.config/quickshell/scripts/frame-app-corners", "checkscope qml"),
     ("home/quickshell/*.frag", "shaders"),
     ("home/quickshell/*.frag.qsb", "shaders qml"),
     ("system/etc/greetd/quickshell/*", "qml"),

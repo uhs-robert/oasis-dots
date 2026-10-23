@@ -257,6 +257,7 @@ ShellRoot {
     GreeterSync {}
     ScreenShare {}
     ScreenFrameSync {}
+    FrameExport {}
     PowerIpc {}
     ConfirmIpc {}
     ScreenshotIpc {}

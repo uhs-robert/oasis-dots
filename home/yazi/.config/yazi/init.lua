@@ -2,10 +2,11 @@
 ---@diagnostic disable: undefined-global, redundant-parameter
 
 -- Plugins
--- Full border around the window
+-- Full border around the window; frame-border.lua is generated from the Quickshell screen frame (round -> "rounded")
+local frame_ok, frame_border = pcall(dofile, os.getenv("HOME") .. "/.config/yazi/frame-border.lua")
 require("full-border"):setup({
 	-- Available values: "plain", "rounded"
-	set = "plain",
+	set = frame_ok and frame_border or "plain",
 })
 
 -- Fuse Archive
