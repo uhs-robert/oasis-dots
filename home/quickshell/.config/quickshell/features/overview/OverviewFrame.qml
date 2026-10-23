@@ -18,8 +18,9 @@ Rectangle {
     default property alias content: body_area.data
     readonly property alias body: body_area
 
-    readonly property int pad_x: Style.px(18)
-    readonly property int pad_y: Style.px(12)
+    // With the screen frame on the content is inset as in a frame drawer (Popup): inset_pad plus the lcd margin.
+    readonly property int pad_x: Style.screen_frame_on ? Style.lcd_margin : Style.px(18)
+    readonly property int pad_y: Style.screen_frame_on ? Style.lcd_margin : Style.px(12)
     readonly property real top_edge: Math.max(Style.accent_height, Style.frame_border_width)
     readonly property bool banded: Style.show_title && Style.title_strip.a > 0
     readonly property bool float_title: Style.border_title && Style.show_title

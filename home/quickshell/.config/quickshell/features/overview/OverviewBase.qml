@@ -387,8 +387,9 @@ PanelWindow {
 
     OverviewFrame {
         id: frame
-        x: Style.px(36)
-        y: Style.px(30)
+        // With the screen frame on the layer is the frame's hole, so the panel meets its edge like a drawer does.
+        x: Style.screen_frame_on ? 0 : Style.px(36)
+        y: Style.screen_frame_on ? 0 : Style.px(30)
         width: parent.width - x * 2
         height: parent.height - y * 2
         opacity: root.reveal
