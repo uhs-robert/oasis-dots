@@ -151,22 +151,28 @@ Popup {
     }
 
     function dismiss_selected() {
+        if (clear_sequence.running) return;
         ThemeAudio.play("confirm");
         const sel = root.entry_rows[root.selected];
         if (sel) NotificationState.dismiss(sel.entry);
     }
 
-    // Clear all, seen first: the list fades out, the history empties, then the panel closes after a short beat.
+    // Fade the list, dismiss what was there when clear was asked for, then close after a beat.
     readonly property int clear_fade_ms: 180
     readonly property int clear_close_delay_ms: 150
 
+    // Notifications arriving during the fade are not in this snapshot, so they survive.
+    property var clear_targets: []
+
     function clear_and_close() {
-        ThemeAudio.play("confirm");
         if (clear_sequence.running) return;
-        if (NotificationState.history.length === 0) {
+        ThemeAudio.play("confirm");
+        const targets = NotificationState.history.concat(NotificationState.toasts.filter(e => !NotificationState.history.includes(e)));
+        if (targets.length === 0) {
             Popups.close();
             return;
         }
+        root.clear_targets = targets;
         clear_sequence.start();
     }
 
@@ -184,6 +190,7 @@ Popup {
     }
 
     function invoke_selected() {
+        if (clear_sequence.running) return;
         ThemeAudio.play("confirm");
         const sel = root.entry_rows[root.selected];
         if (!sel) return;
@@ -243,7 +250,8 @@ Popup {
         }
         ScriptAction {
             script: {
-                NotificationState.clear_all();
+                for (const entry of root.clear_targets) NotificationState.dismiss(entry);
+                root.clear_targets = [];
                 row_list.opacity = 1;
             }
         }
@@ -396,6 +404,7 @@ Popup {
                 ListView {
                     id: row_list
                     anchors.fill: parent
+                    enabled: !clear_sequence.running
                     visible: root.rows.length > 0
                     clip: true
                     spacing: 6
