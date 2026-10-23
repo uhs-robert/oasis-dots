@@ -88,9 +88,10 @@ function frame_region(lay) {
 function frame_stroke(lay, d) {
     if (!lay.has_bar) return Outlines.inset(hole_loop(lay), d);
     // Lead-ins of d along the near edge make inset mitre each open end onto the straight stretch's line (d out, in the
-    // strip) rather than cut it square at the near edge.
+    // strip) rather than cut it square at the near edge. The lead-ins' own points are dropped again: they lie on the
+    // strip's rim, which would draw over it twice (a translucent rim shows the overlap).
     const path = hole_path(lay), first = path[0], last = path[path.length - 1];
-    return Outlines.inset([[first[0] - d, first[1]]].concat(path, [[last[0] + d, last[1]]]), d);
+    return Outlines.inset([[first[0] - d, first[1]]].concat(path, [[last[0] + d, last[1]]]), d).slice(1, -1);
 }
 
 // Where a corner's band edge sits in a row at local height y (0 to r): how far the band reaches in from the hole's side.
