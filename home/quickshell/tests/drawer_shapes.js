@@ -136,17 +136,18 @@ cases.push(["radius clamps to half the body", () => lay_of({ body_length: 10 }).
 cases.push(["extent clamps to the body depth", () => lay_of({ extent: 500 }).body.d, 200]);
 cases.push(["extent never negative", () => lay_of({ extent: -4 }).body.d, 0]);
 
-// With a bar, the stroke's two ends land on the strip's own line d out from the near edge, just past the straight
-// stretch's ends, whatever the corner and however thick the line: the corners join it without a step or an overlap.
+// With a bar, the stroke starts and ends on the strip's own line d out from the near edge, exactly at the straight
+// stretch's ends where the strip's line takes over, and runs along that line to each corner's mitre: whatever the
+// corner and however thick the line, the corners join it without a notch, a step or an overlap.
 for (const corner of ["round", "chamfer", "pixel", "square"]) {
   for (const d of [1, 2.5]) {
     cases.push(["frame stroke ends on the strip's line: " + corner + ", d " + d, () => {
       const lay = F.frame_layout(1920, 1080, "top", 34, Object.assign({}, kit, { corner, step: 2 }));
-      const s = F.frame_stroke(lay, d);
-      const [a, z] = [s[0], s[s.length - 1]], [lo, hi] = lay.straight;
-      // On the strip's line, and just past the straight stretch's ends (by at most d), never inside it.
-      return [a[1], z[1]].every(y => Math.abs(y - (lay.near - d)) < 1e-6)
-        && a[0] >= hi - 1e-6 && a[0] <= hi + d + 1e-6 && z[0] <= lo + 1e-6 && z[0] >= lo - d - 1e-6;
+      const s = F.frame_stroke(lay, d), n = s.length;
+      const [lo, hi] = lay.straight, on_line = p => Math.abs(p[1] - (lay.near - d)) < 1e-6;
+      return [s[0], s[1], s[n - 2], s[n - 1]].every(on_line)
+        && Math.abs(s[0][0] - hi) < 1e-6 && Math.abs(s[n - 1][0] - lo) < 1e-6
+        && s[1][0] >= hi && s[1][0] <= hi + d + 1e-6 && s[n - 2][0] <= lo && s[n - 2][0] >= lo - d - 1e-6;
     }, true]);
   }
 }
