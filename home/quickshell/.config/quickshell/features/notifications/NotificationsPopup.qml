@@ -161,7 +161,8 @@ Popup {
     readonly property int clear_fade_ms: 180
     readonly property int clear_close_delay_ms: 150
 
-    // Notifications arriving during the fade are not in this snapshot, so they survive.
+    // Notifications arriving during the fade are not in this snapshot, so they survive. So does a replacement of a
+    // snapshotted id: dismiss resolves by id, so it is skipped when the live entry is no longer the snapshotted object.
     property var clear_targets: []
 
     function clear_and_close() {
@@ -250,7 +251,7 @@ Popup {
         }
         ScriptAction {
             script: {
-                for (const entry of root.clear_targets) NotificationState.dismiss(entry);
+                for (const entry of root.clear_targets) if (NotificationState.resolve(entry) === entry) NotificationState.dismiss(entry);
                 root.clear_targets = [];
                 row_list.opacity = 1;
             }
