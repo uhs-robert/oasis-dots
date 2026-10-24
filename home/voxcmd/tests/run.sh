@@ -1514,6 +1514,125 @@ for phrase in stop close cancel "exit settings" "stop recording" "turn off" "cli
   check "'$phrase' stays a click mode target" "! click_mode_exits '$phrase'"
 done
 
+# ---- Timers and reminders ----------------------------------------------------------------------------------------
+
+section "timers by voice"
+# Nothing here starts a real timer: systemd-run and systemctl are the sandbox's stubs, which log their calls, and
+# SANDBOX_TIMERS_JSON stands in for the running timers. Durations are relative to the clock the action reads, so a run
+# compares the logged --on-calendar with now plus the spoken length, loosely.
+timers_config=$root/timers-config
+mkdir -p "$timers_config/integrations.d" "$timers_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/timers.sh" "$timers_config/integrations.d/"
+copy_shipped_integrations "$timers_config" timers
+[ -z "$rust_matcher" ] || check "explain names timers.toml" "VOXCMD_CONFIG_DIR='$timers_config' '$routed' explain 'list my timers' 2>&1 | grep -q 'Timers (timers\\.toml)'"
+if [ -n "$rust_matcher" ]; then
+  timers_toast() { grep '^notify-send ' "$log" | tail -n1; }
+  timers_run() {
+    : >"$log"
+    VOXCMD_CONFIG_DIR=$timers_config "$routed" run "$1" >/dev/null 2>&1
+  }
+  # The seconds from now at which the last systemd-run call is due, and its description.
+  timers_scheduled_in() {
+    local when
+    when=$(grep '^systemd-run ' "$log" | tail -n1 | sed -E 's/.*--on-calendar=([0-9-]+ [0-9:]+) .*/\1/')
+    echo $(($(date -d "$when" +%s) - $(date +%s)))
+  }
+  timers_near() { [ "$1" -ge "$(($2 - 5))" ] && [ "$1" -le "$(($2 + 5))" ]; }
+  timers_systemd_run_count() { grep -c '^systemd-run ' "$log" || true; }
+
+  # Start by duration, with and without a label.
+  timers_run "set a timer for 5 minutes"
+  check "a timer for a duration schedules a voxcmd-timer- unit about that far ahead" "grep -q '^systemd-run --user --quiet --collect --unit=voxcmd-timer-[0-9]* --description=Timer: 5 minutes ' '$log' && timers_near \$(timers_scheduled_in) 300"
+  check "its reply says the timer is set and when it rings" "timers_toast | grep -Eq 'Timer set: 5 minutes, rings '"
+  timers_run "set a timer for 5 minutes for the pasta"
+  check "a label after the duration is kept, capitalised" "grep -q -- '--description=Timer: Pasta, 5 minutes ' '$log' && timers_near \$(timers_scheduled_in) 300"
+  timers_run "start a timer for twenty five minutes to call the bank"
+  check "a spoken number and a to-label split like a digit one" "grep -q -- '--description=Timer: To call the bank, 25 minutes ' '$log'"
+  timers_run "set a timer for half an hour for the oven"
+  check "half an hour with a label is 30 minutes" "grep -q -- '--description=Timer: Oven, 30 minutes ' '$log' && timers_near \$(timers_scheduled_in) 1800"
+  timers_run "set a timer for an hour and a half"
+  check "an hour and a half is 90 minutes" "timers_near \$(timers_scheduled_in) 5400"
+  timers_run "set a timer for 1 hour 30 minutes tea"
+  check "digits split from the label like words" "grep -q -- '--description=Timer: Tea, ' '$log' && timers_near \$(timers_scheduled_in) 5400"
+
+  # Start by clock: VOXCMD_NOW pins the parser, but the action compares with the real clock, so a future clock reads
+  # the real time and a past one pins an old date.
+  now_epoch=$(date +%s)
+  : >"$log"
+  VOXCMD_NOW=$now_epoch VOXCMD_CONFIG_DIR=$timers_config "$routed" run "set a timer for tomorrow at 9 am" >/dev/null 2>&1
+  check "a timer for a clock time schedules a timer with the time of day as its description" "grep -Eq -- '--description=Timer: 9:00am ' '$log' && [[ \$(timers_scheduled_in) -gt 0 ]]"
+  : >"$log"
+  VOXCMD_NOW=1577880000 VOXCMD_CONFIG_DIR=$timers_config "$routed" run "set a timer for tomorrow at 9 am" >/dev/null 2>&1
+  check "a clock time already past schedules nothing and says so" "[[ \$(timers_systemd_run_count) == 0 ]] && timers_toast | grep -q 'is in the past'"
+
+  # Reminders in the four orderings.
+  timers_run "remind me in 20 minutes to call the bank"
+  check "remind: time, then to and the text" "grep -q -- '--description=Reminder: Call the bank ' '$log' && timers_near \$(timers_scheduled_in) 1200"
+  timers_run "remind me to stretch in 10 minutes"
+  check "remind: text, then the time" "grep -q -- '--description=Reminder: Stretch ' '$log' && timers_near \$(timers_scheduled_in) 600"
+  timers_run "remind me about the oven in 5 minutes"
+  check "remind: about the text, then the time" "grep -q -- '--description=Reminder: The oven ' '$log' && timers_near \$(timers_scheduled_in) 300"
+  : >"$log"
+  VOXCMD_NOW=$now_epoch VOXCMD_CONFIG_DIR=$timers_config "$routed" run "remind me tomorrow at 9 am to stretch" >/dev/null 2>&1
+  check "remind: a clock time, then to and the text" "grep -q -- '--description=Reminder: Stretch ' '$log' && [[ \$(timers_scheduled_in) -gt 0 ]]"
+  timers_run "remind me to stretch"
+  check "a reminder with no time in it schedules nothing and says so" "[[ \$(timers_systemd_run_count) == 0 ]] && timers_toast | grep -q 'no time in'"
+  timers_run "remind me in 5 minutes"
+  check "a reminder with only a time rings with the default text" "grep -q -- '--description=Reminder: Time is up ' '$log'"
+
+  # A target that names no time is left to others.
+  check "a timer for a name that is no time offers no candidate, so the phrase stays unmatched" "VOXCMD_CONFIG_DIR='$timers_config' '$routed' explain 'start a timer for 5 minutes' 2>&1 | grep -q 'Timers (timers\\.toml) action=timer' && VOXCMD_CONFIG_DIR='$timers_config' '$routed' explain 'start a timer for acme' 2>&1 | grep -q 'result:      no match'"
+
+  # What is running.
+  timers_due=$(($(date +%s) + 600))
+  timers_due_us=$((timers_due * 1000000))
+  timers_two='[{"unit":"voxcmd-timer-1000.timer","next":'$timers_due_us'},{"unit":"voxcmd-timer-2000.timer","next":'$((timers_due_us + 60000000))'}]'
+  timers_two_units='[{"unit":"voxcmd-timer-1000.timer","description":"Timer: Pasta, 10 minutes"},{"unit":"voxcmd-timer-2000.timer","description":"Reminder: Call the bank"}]'
+  timers_one='[{"unit":"voxcmd-timer-1000.timer","next":'$timers_due_us'}]'
+  timers_one_units='[{"unit":"voxcmd-timer-1000.timer","description":"Timer: Pasta, 10 minutes"}]'
+  # The sandbox answers list-timers and list-units from one variable, so each fixture holds both: every row carries the
+  # due time list-timers is read for and the description list-units is read for.
+  timers_both() { jq -c -n --argjson due "$1" --argjson units "$2" '[$due, $units] | transpose | map(.[0] + .[1])'; }
+  timers_state_two=$(timers_both "$timers_two" "$timers_two_units")
+  timers_state_one=$(timers_both "$timers_one" "$timers_one_units")
+  timers_run_with() {
+    : >"$log"
+    SANDBOX_TIMERS_JSON=$1 VOXCMD_CONFIG_DIR=$timers_config "$routed" run "$2" >/dev/null 2>&1
+  }
+  timers_run_with '[]' "list my timers"
+  check "list with nothing running says so" "timers_toast | grep -q 'No timers or reminders\$'"
+  timers_run_with "$timers_state_two" "list my timers"
+  check "list reads every running timer on one line" "timers_toast | grep -q 'Timer: Pasta, 10 minutes, rings .*; Reminder .*: Call the bank'"
+  timers_run_with '[]' "cancel all timers"
+  check "cancel all with nothing running says so and stops nothing" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
+  timers_run_with "$timers_state_two" "cancel all timers"
+  check "cancel all stops every running unit in one call" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer voxcmd-timer-2000.timer' '$log' && timers_toast | grep -q 'Cancelled 2 timers'"
+
+  # Cancel one.
+  timers_run_with '[]' "cancel the timer"
+  check "a bare cancel with nothing running says so and stops nothing" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
+  timers_run_with '[]' "cancel the pasta timer"
+  check "a named cancel with nothing running says so too" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
+  timers_run_with "$timers_state_one" "cancel the timer"
+  check "one running timer is cancelled by a bare cancel" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer' '$log' && timers_toast | grep -q 'Cancelled'"
+  timers_run_with "$timers_state_one" "cancel the pasta timer"
+  check "one running timer is cancelled by its label" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer' '$log'"
+  out=$(SANDBOX_TIMERS_JSON=$timers_state_two VOXCMD_CONFIG_DIR=$timers_config "$routed" explain "cancel the timer" 2>&1)
+  check "a bare cancel with two running timers offers both to pick from" "[[ \$(grep -c '^option' <<<\"\$out\") == 2 ]]"
+  timers_run_with "$timers_state_two" "cancel the bank reminder"
+  check "a named cancel with two running picks the one the words name" "grep -Fxq 'systemctl --user stop voxcmd-timer-2000.timer' '$log' && ! grep -q 'voxcmd-timer-1000' '$log'"
+  timers_run_with "$timers_state_one" "cancel the laundry timer"
+  check "a name no running timer has reports no match and stops nothing" "timers_toast | grep -q 'No timer or reminder matches \"laundry\"' && ! grep -q '^systemctl --user stop' '$log'"
+  # cancel_timer is the action's own guard, run through the hook library as an action does.
+  timers_guard() (
+    VOXCMD_SHARE_DIR=$share_dir VOXCMD_SELF=$routed
+    # shellcheck disable=SC1091
+    source "$package/.config/voxcmd/integrations/timers.sh"
+    cancel_timer "$1"
+  )
+  check "a unit that is not a voxcmd timer is refused" "[[ \$(timers_guard other.timer 2>&1) == 'not a voxcmd timer: other.timer' ]] && ! timers_guard other.timer >/dev/null 2>&1"
+fi
+
 # ---- Firefox: firefox-tab and firefox.sh, on a made-up profile -----------------------------------------------------
 
 section "firefox"

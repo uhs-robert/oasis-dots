@@ -1,0 +1,50 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Timers and reminders as transient systemd user timers. Format: ~/.config/voxcmd/README.md
+name = "Timers"
+
+# "stop" is left out of the cancel verbs: Media's "stop {target}" would claim "stop the timer" as a player name.
+# "{target} timer" breaks the README's put-it-last advice safely: voxcmd still finds the group by counting "(".
+verbs = [
+  { action = "list",       match = '((list|show|check)( me)?|what are)( all)?( the| my)? (active |running )?(timers|reminders)( and (timers|reminders))?' },
+  { action = "list",       match = 'what (timers|reminders)( and (timers|reminders))?( do i have| are (there|running|set|active)| are there)?' },
+  { action = "list",       match = '(are there |do i have )?any (timers|reminders)( running| set)?|(how much )?time( is)? left( on (the|my) timer)?' },
+  { action = "cancel_all", match = '(cancel|delete|remove|clear)( all)?( of)?( the| my)? (timers|reminders)( and (timers|reminders))?' },
+  { action = "cancel",     match = '(cancel|delete|remove|dismiss)( the| my| that)? (timer|reminder)( (about|for|to|called|named) {target})?' },
+  { action = "cancel",     match = '(cancel|delete|remove|dismiss)( the| my| that)? {target} (timer|reminder)' },
+  { action = "timer",      match = '((set|start|make|create|add)( me)? )?(a |an |the )?(new )?timer( for)? {target}' },
+  { action = "timer",      match = '(set|start|make|create|add)( me)? (a |an )?{target} timer' },
+  { action = "remind",     match = 'remind me {target}' },
+  { action = "remind",     match = '((set|add|create|make)( me)? )?(a |an )?(new )?reminder {target}' },
+]
+
+examples = [
+  "set a timer for <minutes> minutes",
+  "remind me in <minutes> minutes to <text>",
+  "list my timers",
+  "what timers do i have",
+  "cancel the <name> timer",
+]
+
+[actions]
+list = 'list_timers'
+cancel_all = 'cancel_all_timers'
+cancel_unmatched = 'cancel_unmatched "$VOXCMD_ARG_TARGET"'
+
+# A timer that names no time offers no candidate, leaving the phrase to other integrations: "start a timer for acme"
+# is a time tracker's client.
+[actions.timer]
+run = 'start_timer "$VOXCMD_ARG_TARGET"'
+candidates = "timer_candidates"
+
+# A reminder's text is free text that may say "and then", so a sequence hands it the rest of the phrase. A timer's
+# target is a duration, so "set a timer for 5 minutes and then ..." is two steps.
+[actions.remind]
+run = 'start_reminder "$VOXCMD_ARG_TARGET"'
+free_text = true
+
+# With nothing running the hook offers one placeholder (id "none") so that "cancel the timer" still reaches the action,
+# which says so, instead of ending as "no match". One running timer that the words do not name reaches cancel_unmatched.
+[actions.cancel]
+run = 'cancel_timer "$VOXCMD_ID"'
+candidates = "cancel_candidates"
+no_match = "cancel_unmatched"
