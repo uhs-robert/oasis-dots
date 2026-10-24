@@ -129,7 +129,7 @@ class SiblingTest(LayersCase):
         self.assertIn('qs/features/a/x.js:1: import "../b/G.js" reaches into another feature', found[0])
 
     def test_a_same_feature_import_passes(self):
-        files = {"qs/features/a/A.qml": 'import "sub"\nimport "sub/G.js" as G\n', "qs/features/a/sub/G.js": "", "qs/features/a/sub/B.qml": 'import "../H.js" as H\n', "qs/features/a/H.js": ""}
+        files = {"qs/features/a/A.qml": 'import "sub"\nimport "sub/G.js" as G\n', "qs/features/a/sub/G.js": "", "qs/features/a/sub/B.qml": 'import "../../../ui/H.js" as H\n', "qs/ui/H.js": ""}
         self.assertEqual(self.run_siblings(files), [])
 
     def test_a_cross_style_import_fails(self):
@@ -151,6 +151,49 @@ class SiblingTest(LayersCase):
         found = self.run_siblings({"qs/features/a/A.qml": "Item {}\n"}, {("features/a/A.qml", "features/b/G.js")})
         self.assertEqual(len(found), 1)
         self.assertIn("SIBLING_ALLOW entry features/a/A.qml -> features/b/G.js is stale", found[0])
+
+
+class ScriptFolderTest(LayersCase):
+    def test_own_folder_subfolder_and_lower_layer_imports_pass(self):
+        files = {
+            "qs/features/a/A.qml": 'import "G.js" as G\nimport "sub/H.js" as H\nimport "../../ui/frames/F.js" as F\nimport "../../core/C.js" as C\n',
+            "qs/features/a/x.js": '.import "sub/H.js" as H\n.import "../../core/C.js" as C\n',
+            "qs/ui/Box.qml": 'import "../core/C.js" as C\n',
+        }
+        self.assertEqual(self.check(files), [])
+
+    def test_a_parent_folder_script_fails_with_the_fix(self):
+        found = self.check({"qs/features/a/sub/A.qml": 'import "../G.js" as G\n'})
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0].startswith('qs/features/a/sub/A.qml:1: import "../G.js" leaves its folder for features/a/G.js.'), found)
+
+    def test_a_sibling_folder_script_within_a_layer_fails(self):
+        found = self.check({"qs/ui/menu/R.qml": 'import "../keys/K.js" as K\n'})
+        self.assertEqual(len(found), 1)
+        self.assertIn("leaves its folder for ui/keys/K.js", found[0])
+
+    def test_a_cross_feature_script_is_reported_once(self):
+        found = self.check({"qs/features/a/A.qml": 'import "../b/G.js" as G\n'})
+        self.assertEqual(len(found), 1)
+        self.assertIn("reaches into another feature", found[0])
+
+    def test_an_upward_script_is_the_layer_rules_alone(self):
+        found = self.check({"qs/ui/Box.qml": 'import "../styles/Data.js" as D\n'})
+        self.assertEqual(len(found), 1)
+        self.assertIn("runs upward", found[0])
+
+    def test_a_folder_import_is_not_a_script_import(self):
+        self.assertEqual(self.check({"qs/features/a/sub/A.qml": 'import ".."\n'}), [])
+
+    def test_an_allowlisted_script_passes(self):
+        files = {"qs/features/a/sub/A.qml": 'import "../G.js" as G\n'}
+        entry = {("features/a/sub/A.qml", "features/a/G.js")}
+        self.assertEqual(self.check(files, sibling_allow=entry), [])
+
+    def test_a_stale_script_entry_fails(self):
+        entry = {("features/a/sub/A.qml", "features/a/G.js")}
+        found = self.check({"qs/features/a/sub/A.qml": "Item {}\n"}, sibling_allow=entry)
+        self.assertIn("SIBLING_ALLOW entry features/a/sub/A.qml -> features/a/G.js is stale", found[0])
 
 
 class LiveTreeTest(unittest.TestCase):
