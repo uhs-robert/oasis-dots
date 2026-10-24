@@ -97,36 +97,40 @@ PanelWindow {
 
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
     visible: root.wanted || root.reveal > 0
-    // Opposite the bar, clear of the popups that grow from it.
-    readonly property bool on_top: BarSettings.position_on(root.held_screen_name) === "bottom"
+    // Opposite the bar, clear of the popups that grow from it, unless Settings > On-screen display pins a side edge.
+    readonly property string edge: OsdSettings.edge_for(BarSettings.position_on(root.held_screen_name))
+    readonly property bool vertical: root.edge === "left" || root.edge === "right"
     readonly property real screen_width: root.screen ? root.screen.width : 1920
     readonly property real screen_height: root.screen ? root.screen.height : 1080
     // No explicit exclusiveZone: even 0 overrides Ignore, so the frame's zones would push a drawer inward.
     exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
-    anchors.top: root.drawer ? scaffold.place.anchor_top : root.on_top
-    anchors.bottom: root.drawer ? scaffold.place.anchor_bottom : !root.on_top
-    anchors.left: root.drawer && scaffold.place.anchor_left
+    // Floating, a side edge anchors to that side alone, which centres the pill along it.
+    anchors.top: root.drawer ? scaffold.place.anchor_top : root.edge === "top"
+    anchors.bottom: root.drawer ? scaffold.place.anchor_bottom : root.edge === "bottom"
+    anchors.left: root.drawer ? scaffold.place.anchor_left : root.edge === "left"
+    anchors.right: root.drawer ? scaffold.place.anchor_right : root.edge === "right"
     margins.top: root.drawer ? scaffold.place.margin_top : Style.px(72)
     margins.bottom: root.drawer ? scaffold.place.margin_bottom : Style.px(72) - root.shadow_pad
-    margins.left: root.drawer ? scaffold.place.margin_left : 0
+    margins.left: root.drawer ? scaffold.place.margin_left : Style.px(72) - root.shadow_pad
+    margins.right: root.drawer ? scaffold.place.margin_right : Style.px(72) - root.shadow_pad
     // Room around the frame for a soft shadow, so the window never clips it.
     readonly property int shadow_pad: !root.drawer && Style.frame_shadow.a > 0 ? Style.frame_drop : 0
     color: "transparent"
-    implicitWidth: root.drawer ? scaffold.full.surface.width : frame.width + root.shadow_pad * 2
+    implicitWidth: root.drawer ? scaffold.full.surface.width : frame.width + root.shadow_pad * 2 + (root.vertical ? root.slide : 0)
     // Floating frames set the title chip into the top border, half of it above the frame.
     readonly property bool float_title: !root.drawer && Style.border_title && Style.show_title
     readonly property real float_top: root.float_title ? Math.round(title_tab.height / 2) : 0
-    implicitHeight: root.drawer ? scaffold.full.surface.height : frame.height + root.slide + root.shadow_pad + root.float_top
+    implicitHeight: root.drawer ? scaffold.full.surface.height : frame.height + (root.vertical ? 0 : root.slide) + root.shadow_pad + root.float_top
     mask: Region {}
     WlrLayershell.namespace: "quickshell-osd"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-    // With the screen frame on the OSD is a plain-centre drawer on the edge opposite the bar (like a centre which-key,
-    // which it stacks above), flush on the seam; a screen without a frame layout keeps the floating pill and its gap.
+    // With the screen frame on the OSD is a plain-centre drawer on its edge (by default opposite the bar, like a centre
+    // which-key, which it stacks above), flush on the seam; a screen without a frame layout keeps the floating pill and its gap.
     readonly property var screen_frame: root.screen ? ScreenFrames.layout_for(root.screen) : null
     readonly property bool drawer: scaffold.active
-    readonly property bool from_bottom: !root.on_top
+    readonly property bool from_bottom: root.edge === "bottom"
     readonly property real panel_width: frame.natural_width
     readonly property real panel_height: frame.natural_height
     // Lets the frame and the strip leave their lines out under the window, while it is mapped.
@@ -142,11 +146,12 @@ PanelWindow {
         screen_width: root.screen_width
         screen_height: root.screen_height
         side: "center"
-        from_bottom: root.from_bottom
+        edge: root.edge
         panel_width: root.panel_width
         panel_height: root.panel_height
         shown: root.visible
         window_width: root.width
+        window_height: root.height
     }
 
     // Floating, the slide and fade ease on their own; a drawer runs the scaffold's animations, so a re-trigger mid-fold
@@ -158,7 +163,7 @@ PanelWindow {
 
     // A change of edge or of frame while shown restarts from closed instead of sliding across.
     onDrawerChanged: root.restart_reveal()
-    onFrom_bottomChanged: root.restart_reveal()
+    onEdgeChanged: root.restart_reveal()
 
     function restart_reveal() {
         scaffold.open_anim.stop();
@@ -372,14 +377,14 @@ PanelWindow {
             readonly property real header_height: !title_tab.visible ? 0 : root.banded ? frame.band_height + 4 + Style.inset_pad : root.float_title ? root.float_top : title_tab.height + frame.top_rule + Style.inset_pad
 
             // A drawer's content rides out with its far edge instead of staying put while the body uncovers it.
-            x: root.drawer ? 0 : root.shadow_pad
-            y: root.drawer ? (root.from_bottom ? 0 : clip_box.height - root.panel_height) : root.float_top + root.slide * (1 - root.reveal)
+            x: root.drawer ? (root.edge === "left" ? clip_box.width - root.panel_width : 0) : root.shadow_pad + (root.edge === "left" ? root.slide * root.reveal : root.edge === "right" ? root.slide * (1 - root.reveal) : 0)
+            y: root.drawer ? (root.vertical || root.from_bottom ? 0 : clip_box.height - root.panel_height) : root.float_top + (root.vertical ? 0 : root.slide * (1 - root.reveal))
             // A drawer cannot fade: the frame and its fillets would show through.
             opacity: root.drawer ? 1 : root.reveal
             drawer: root.drawer
             readonly property real natural_width: Math.max(body.implicitWidth + pad_x * 2, title_tab.visible ? title_tab.width + Style.inset_pad * 2 : 0)
             readonly property real natural_height: header_height + body.implicitHeight + pad_y * 2 + Style.slant_room
-            width: root.drawer ? scaffold.body.width : frame.natural_width
+            width: root.drawer && !root.vertical ? scaffold.body.width : frame.natural_width
             height: frame.natural_height
             // Sized console art makes the frame near square, where a pill radius would round it into a circle; framed art keeps the frame radius.
             radius: Style.rounded && !Style.frame_visor && !(root.console_osd && (root.console_osd.size || root.console_osd.framed)) ? height / 2 : Style.frame_radius

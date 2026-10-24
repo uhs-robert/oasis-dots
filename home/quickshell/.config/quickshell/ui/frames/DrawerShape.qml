@@ -42,6 +42,11 @@ Item {
     }
 
     readonly property var fill_points: (root.translucent ? Drawer.hole_fill_loop(root.layout) : Drawer.fill_loop(root.layout))
+    // The fill as the textures lay it out: in the drawer's frame, but in window coordinates on a side edge so the
+    // scanlines stay horizontal like the frame's.
+    readonly property var texture_points: Drawer.texture_loop(root.layout, root.fill_points)
+    readonly property var drawer_matrix: root.matrix_of(Drawer.drawer_affine(root.layout))
+    readonly property var texture_matrix: root.matrix_of(Drawer.texture_affine(root.layout))
     readonly property real scanline_period: Style.scanline_period
     readonly property var texture_phase: Drawer.texture_phase(root.texture_origin, root.scanline_period)
 
@@ -51,18 +56,17 @@ Item {
         return Qt.rect(r.x, r.y, r.width, r.height);
     }
 
+    function matrix_of(m) {
+        return Qt.matrix4x4(m[0], m[2], 0, m[4], m[1], m[3], 0, m[5], 0, 0, 1, 0, 0, 0, 0, 1);
+    }
+
     implicitWidth: root.layout.surface.width
     implicitHeight: root.layout.surface.height
 
     Item {
         width: root.layout.length
         height: root.layout.depth
-        transform: Matrix4x4 {
-            matrix: {
-                const m = Drawer.drawer_affine(root.layout);
-                return Qt.matrix4x4(m[0], m[2], 0, m[4], m[1], m[3], 0, m[5], 0, 0, 1, 0, 0, 0, 0, 1);
-            }
-        }
+        transform: Matrix4x4 { matrix: root.drawer_matrix }
 
         Shape {
             anchors.fill: parent
@@ -87,21 +91,27 @@ Item {
                 offset: root.strip_thickness - root.layout.cover
             }
         }
+    }
 
-        // The bands' texture (ScreenFrame), cut to the fill row by row since the fill is not a rectangle. Under the
-        // lines. It tiles from its own origin, so it starts up to one 4 px tile before the drawer to take the phase.
+    // The bands' texture (ScreenFrame), cut to the fill row by row since the fill is not a rectangle. Under the lines.
+    // It tiles from its own origin, so it starts up to one 4 px tile before the drawer to take the phase.
+    Item {
+        width: root.layout.surface.width
+        height: root.layout.surface.height
+        transform: Matrix4x4 { matrix: root.texture_matrix }
+
         Loader {
             id: dither_layer
             readonly property real shift_x: root.texture_phase.dither_x
             readonly property real shift_y: root.texture_phase.dither_y
             x: -shift_x
             y: -shift_y
-            width: root.layout.length + shift_x
-            height: root.layout.depth + shift_y
+            width: root.layout.surface.width + shift_x
+            height: root.layout.surface.height + shift_y
             active: Style.dither.a > 0
             sourceComponent: Dither {
                 row_span: (y0, y1) => {
-                    const spans = Drawer.fill_row_spans(root.fill_points, y0 - dither_layer.shift_y, y1 - dither_layer.shift_y);
+                    const spans = Drawer.fill_row_spans(root.texture_points, y0 - dither_layer.shift_y, y1 - dither_layer.shift_y);
                     return spans.map(s => ({ x: s.x + dither_layer.shift_x, w: s.w }));
                 }
                 color: Style.island_fill(Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2)))
@@ -113,8 +123,8 @@ Item {
             readonly property var segments: {
                 if (Style.bar_scanline_color.a <= 0) return [];
                 const pieces = [];
-                for (let y = root.texture_phase.first_scanline; y < root.layout.depth; y += root.scanline_period) {
-                    for (const s of Drawer.fill_row_spans(root.fill_points, y, y + 1))
+                for (let y = root.texture_phase.first_scanline; y < root.layout.surface.height; y += root.scanline_period) {
+                    for (const s of Drawer.fill_row_spans(root.texture_points, y, y + 1))
                         pieces.push({ x: s.x, y: y, w: s.w });
                 }
                 return pieces;
@@ -131,6 +141,12 @@ Item {
                 color: Style.island_fill(Style.bar_scanline_color)
             }
         }
+    }
+
+    Item {
+        width: root.layout.length
+        height: root.layout.depth
+        transform: Matrix4x4 { matrix: root.drawer_matrix }
 
         Item {
             width: root.layout.length

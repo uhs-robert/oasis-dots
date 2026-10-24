@@ -19,6 +19,10 @@ Every section ends with a block that describes the selected (or hovered) setting
 
 Settings > Clock sets the time format and the calendar's first day of week. Time format is the locale's convention (the default), 12-hour or 24-hour, and every clock follows it: the bar clock in each style, the clock popup, weather hours and the Updates, Keeptabs and notification times. Lock-screen skins with a fixed game-style clock keep their own format. First day of week follows the locale (the default), or is Monday or Sunday. An old `time_format` in `weather.local.json` is carried over once and then removed. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
 
+## On-screen display settings
+
+Settings > On-screen display picks the edge the volume, brightness and voice OSD comes out of: opposite the bar (the default), the left edge or the right edge, the same on every monitor. On a side edge it sits centred, with the same panel as on top or bottom. It saves to `osd.json` in the Quickshell state folder.
+
 ## Input settings
 
 Settings > Input > Typing picks the mode pickers, settings lists and type-to-search popups open in: INSERT (the default) to start typing at once, or NORMAL to start on the vim keys, where `i` or `/` starts typing. The HyprVim prompt always opens in INSERT, the clipboard's delete mode always in NORMAL, and the lock and greeter keep their own model. Remember last search refills each picker and settings list with its last query until the shell restarts. These save to `typing.json` in the Quickshell state folder (older versions called it `input.json`; the installer copies it). Which-key delay sets how long a leader key waits before its overlay shows; it is HyprVim's `which_key.delay_ms`, read once at setup, so changing it reloads Hyprland.
@@ -53,6 +57,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/picker_usage.json`            | Picker ranking by use                            |
 | `quickshell/timezones.json`               | Extra clock zones, a JSON array of IANA names    |
 | `quickshell/clock.json`                   | Time format and first day of week                |
+| `quickshell/osd.json`                     | The OSD's screen edge                            |
 | `quickshell/typing.json`                  | Start mode for pickers and search popups         |
 | `voxcmd/voice.env`                        | Voice choices (listener sensitivity, music ducking, type-mode pause), read by voxcmd, voxcmd-wake and voxtype-duck |
 | `hypr/monitors.json`                      | Display settings, read by Hyprland               |

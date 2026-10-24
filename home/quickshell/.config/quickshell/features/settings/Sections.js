@@ -6,6 +6,7 @@ var list = [
     { id: "colors", group: "Appearance", label: "Colors", glyph: "󰸌", keywords: "color scheme palette oasis theme swatch", source: "sections/ColorsSection.qml" },
     { id: "wallpaper", group: "Appearance", label: "Wallpaper", glyph: "󰋩", keywords: "background image rotate rotation interval pin pinned monitor season time of day weather hyprpaper", source: "sections/WallpaperSection.qml" },
     { id: "theme", group: "Appearance", label: "Theme options", glyph: "󰒓", keywords: "scanlines glow dither font effects style options opacity transparency islands", source: "sections/ThemeOptionsSection.qml" },
+    { id: "osd", group: "Appearance", label: "On-screen display", glyph: "󰕾", keywords: "osd volume brightness popup edge left right side", source: "sections/OsdSection.qml" },
     { id: "bar", group: "Bar", label: "Bar modules", glyph: "󰕮", keywords: "modules hide show order reorder monitor layout panel", source: "sections/BarModulesSection.qml" },
     { id: "clock", group: "Bar", label: "Clock", glyph: "󰥔", keywords: "calendar week first day monday sunday locale time", source: "sections/ClockSection.qml" },
     { id: "calendar", group: "Bar", label: "Calendar", glyph: "󰃭", keywords: "connect sync google meetings events account ical feed calendar-sync rbw keyring", source: "sections/CalendarSection.qml" },
