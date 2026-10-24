@@ -344,6 +344,9 @@ PanelWindow {
     // cap_right-only = a left island, flush with the screen's left edge; cap_left-only = a right island.
     readonly property string side: (island_cap_left && island_cap_right) ? "center" : island_cap_right ? "left" : island_cap_left ? "right" : "center"
 
+    // The floating strip moves the side islands in by this (Bar.strip_side), so their popups and tooltips follow.
+    readonly property real strip_side: Style.strip_floats ? Style.bar_strip_side : 0
+
     // A layer surface pinned to the screen edge: xdg popups landed a few px short of it.
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
     anchors.top: root.drawer ? root.drawer_place.anchor_top : !dock_bottom && !rises
@@ -353,8 +356,8 @@ PanelWindow {
     // A drawer places itself against the frame's seam, so it ignores the exclusive zones the bands reserve.
     margins.top: root.drawer ? root.drawer_place.margin_top : root.floating && !root.rises ? root.st.frame_float : 0
     margins.bottom: root.drawer ? root.drawer_place.margin_bottom : root.floating && root.rises ? root.st.frame_float : 0
-    margins.left: root.drawer ? root.drawer_place.margin_left : root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : 0
-    margins.right: root.drawer ? root.drawer_place.margin_right : root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : 0
+    margins.left: root.drawer ? root.drawer_place.margin_left : root.island && root.island_capsule && root.side === "left" ? root.island.capsule_inset : FrameGeometry.side_popup_inset(root.strip_side, root.side, "left")
+    margins.right: root.drawer ? root.drawer_place.margin_right : root.island && root.island_capsule && root.side === "right" ? root.island.capsule_inset : FrameGeometry.side_popup_inset(root.strip_side, root.side, "right")
     // No explicit exclusiveZone: even 0 overrides Ignore, so the frame's zones would push a drawer inward.
     exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
     color: "transparent"
