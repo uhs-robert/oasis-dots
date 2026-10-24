@@ -808,9 +808,10 @@ pub(crate) mod tests {
         // SAFETY: mkfifo on a NUL-terminated path.
         assert_eq!(unsafe { libc::mkfifo(fifo_c.as_ptr(), 0o600) }, 0);
         // Waits for the shell's first output: until it has exec'd, /proc/<pid>/cmdline is still the test binary's. The
-        // trailing `:` keeps the shell from exec-ing `sleep` in its place, which would drop the `voxcmd-pick` argument.
+        // shell then blocks on the `read` builtin (stdin stays open) instead of a child, so killing it leaks nothing.
         let mut asker = Command::new("sh")
-            .args(["-c", "echo up; sleep 30; :", "voxcmd-pick"])
+            .args(["-c", "echo up; read _", "voxcmd-pick"])
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
             .unwrap();
