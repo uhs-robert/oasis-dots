@@ -1,0 +1,53 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Focuses a monitor, or moves the active window to one, by where it sits, its slot or "laptop". Format: ~/.config/voxcmd/README.md
+name = "Monitors"
+# The monitor taking focus, or the window leaving, is the feedback; a name that fits no monitor still toasts as a failure.
+silent = true
+
+# A position or slot needs the noun, since "go to two" is a workspace and "move window to the left" a keybind. The
+# built-in panel alone is a monitor without one, so the *_laptop verbs drop it, and the candidate hooks offer nothing for
+# any other words, which leaves "go to firefox" to the apps.
+# Moving takes only the active window ("this window", "it"); "move two and four to the left monitor" belongs to the
+# overview.
+verbs = [
+  { action = "focus",        match = '{focus} (the )?(monitor|screen|display) {target}' },
+  { action = "focus",        match = '{focus} (the )?{target} (monitor|screen|display)' },
+  { action = "move",         match = '(move|send|put|take|bring) {moved_window}( over)? (to|onto|on) (the )?(monitor|screen|display) {target}' },
+  { action = "move",         match = '(move|send|put|take|bring) {moved_window}( over)? (to|onto|on) (the )?{target} (monitor|screen|display)' },
+  { action = "focus_laptop", match = '{focus} (the )?{target}' },
+  { action = "move_laptop",  match = '(move|send|put|take|bring) {moved_window}( over)? (to|onto|on) (the )?{target}' },
+]
+
+examples = [
+  "go to the left monitor",
+  "focus the center monitor",
+  "switch to the top right screen",
+  "go to monitor two",
+  "go to the second screen",
+  "focus the laptop display",
+  "move this window to the right monitor",
+  "move it to monitor three",
+  "move this window to the 4th monitor",
+  "send the window to the laptop screen",
+  "go to the laptop",
+  "send window to laptop",
+]
+
+[define]
+moved_window = '((this|the|that) )?((active|current|focused) )?window|it|this|that'
+
+[actions.focus]
+run = 'focus_monitor "$VOXCMD_ID"'
+candidates = "monitor_candidates focus"
+
+[actions.move]
+run = 'move_window_to_monitor "$VOXCMD_ID"'
+candidates = "monitor_candidates move"
+
+[actions.focus_laptop]
+run = 'focus_monitor "$VOXCMD_ID"'
+candidates = "monitor_candidates focus_laptop"
+
+[actions.move_laptop]
+run = 'move_window_to_monitor "$VOXCMD_ID"'
+candidates = "monitor_candidates move_laptop"
