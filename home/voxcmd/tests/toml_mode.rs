@@ -718,6 +718,71 @@ fn the_click_conversion_runs_as_a_mode() {
     assert!(rig.session().is_none());
 }
 
+#[test]
+fn the_shipped_rapid_toml_answers_a_leave_word_with_the_hint_and_an_exit_phrase_with_not_understood() {
+    let rig = Rig::new();
+    let shipped = Path::new(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations");
+    for file in ["rapid.toml", "rapid.sh"] {
+        std::fs::copy(shipped.join(file), rig.path().join("config/integrations").join(file)).unwrap();
+    }
+    assert!(
+        rig.command(&["run", "rapid mode"]).status().unwrap().success(),
+        "{}",
+        rig.debug_log()
+    );
+    let state = rig.session().expect("rapid mode opened");
+    assert_eq!(
+        (state["kind"].as_str(), state["label"].as_str()),
+        (Some("rapid"), Some("Rapid mode"))
+    );
+    assert_eq!(state["exit_hint"], "say cortana done to stop");
+    assert!(
+        state["integration"].as_str().unwrap().ends_with("rapid.toml"),
+        "{state}"
+    );
+    // One leave word, or voxtype's repeats of it, is a missed turn with the hint; none of them pauses the music.
+    for words in ["stop", "stop stop stop", "im done", "done with rapid mode"] {
+        let before = rig.calls().matches("say cortana done to leave").count();
+        rig.hear("rapid", json!({}), words);
+        assert!(rig.session().is_some(), "{words}");
+        assert_eq!(rig.session().unwrap()["unclear"], 1, "{words}");
+        assert_eq!(
+            rig.calls().matches("say cortana done to leave").count(),
+            before + 1,
+            "{words}"
+        );
+    }
+    // The exit phrases that name the mode are not exits inside it and give the generic answer, not the hint.
+    let hints = rig.calls().matches("say cortana done to leave").count();
+    for words in [
+        "please stop the rapid mode",
+        "stop rapid mode",
+        "ok quit rapid mode now",
+        "rapid mode off",
+        "turn off rapid fire mode",
+    ] {
+        rig.hear("rapid", json!({}), words);
+        assert_eq!(rig.session().unwrap()["unclear"], 1, "{words}");
+        let heard = format!("Not understood: \"{words}\"");
+        assert!(rig.calls().contains(&heard), "{words}: {}", rig.calls());
+    }
+    assert_eq!(rig.calls().matches("say cortana done to leave").count(), hints);
+    // Any other phrase is routed as spoken.
+    let hook = |words: &str| {
+        let script = format!("source '{}/rapid.sh'; rapid_rewrite \"$1\"", shipped.display());
+        let output = Command::new("bash")
+            .args(["-c", &script, "bash", words])
+            .output()
+            .unwrap();
+        String::from_utf8(output.stdout).unwrap()
+    };
+    for words in ["volume up", "stop the music", "pause", "tap alpha", "stopping"] {
+        assert_eq!(hook(words), words);
+    }
+    rig.hear("rapid", json!({}), "cortana done");
+    assert!(rig.session().is_none());
+}
+
 // ---- handle_turn (voxcmd-port 2.4d-3) -------------------------------------------------------------------------------
 
 /// A mode that takes its turns' words itself: the hook writes what it got, `-` for a variable that is unset.
