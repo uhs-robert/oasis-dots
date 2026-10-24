@@ -703,54 +703,58 @@ mod tests {
         assert_eq!(parse_duration(""), None);
     }
 
-    fn split(text: &str) -> Option<(i64, &str)> {
-        // Leaked only in tests, to hand back a borrowed label.
-        split_duration(text).map(|(seconds, label)| (seconds, &*Box::leak(label.into_boxed_str())))
-    }
-
     #[test]
     fn a_phrase_splits_into_its_leading_duration_and_a_label() {
-        assert_eq!(split("5 minutes for the pasta"), Some((300, "for the pasta")));
-        assert_eq!(split("five minutes pasta"), Some((300, "pasta")));
         assert_eq!(
-            split("twenty five minutes to call the bank"),
-            Some((1500, "to call the bank"))
+            split_duration("5 minutes for the pasta"),
+            Some((300, "for the pasta".to_string()))
         );
-        assert_eq!(split("half an hour for the oven"), Some((1800, "for the oven")));
-        assert_eq!(split("  5   minutes   tea  "), Some((300, "tea")));
+        assert_eq!(split_duration("five minutes pasta"), Some((300, "pasta".to_string())));
+        assert_eq!(
+            split_duration("twenty five minutes to call the bank"),
+            Some((1500, "to call the bank".to_string()))
+        );
+        assert_eq!(
+            split_duration("half an hour for the oven"),
+            Some((1800, "for the oven".to_string()))
+        );
+        assert_eq!(split_duration("  5   minutes   tea  "), Some((300, "tea".to_string())));
     }
 
     #[test]
     fn the_longest_leading_duration_wins() {
         // "an hour" parses alone, but so does the whole run.
-        assert_eq!(split("an hour and a half for the roast"), Some((5400, "for the roast")));
-        assert_eq!(split("1 hour 30 minutes tea"), Some((5400, "tea")));
+        assert_eq!(
+            split_duration("an hour and a half for the roast"),
+            Some((5400, "for the roast".to_string()))
+        );
+        assert_eq!(split_duration("1 hour 30 minutes tea"), Some((5400, "tea".to_string())));
         // A bare number after a unit counts in the next unit down, so "30" is part of the duration.
-        assert_eq!(split("1 hour 30"), Some((5400, "")));
-        assert_eq!(split("2 minutes 15 tea"), Some((135, "tea")));
+        assert_eq!(split_duration("1 hour 30"), Some((5400, "".to_string())));
+        assert_eq!(split_duration("2 minutes 15 tea"), Some((135, "tea".to_string())));
         // "and a half" only follows a unit, so "5 minutes and" leaves "and" in the label.
-        assert_eq!(split("5 minutes and tea"), Some((300, "and tea")));
+        assert_eq!(split_duration("5 minutes and tea"), Some((300, "and tea".to_string())));
     }
 
     #[test]
     fn a_duration_alone_leaves_an_empty_label() {
-        assert_eq!(split("an hour and a half"), Some((5400, "")));
-        assert_eq!(split("90 seconds"), Some((90, "")));
+        assert_eq!(split_duration("an hour and a half"), Some((5400, "".to_string())));
+        assert_eq!(split_duration("90 seconds"), Some((90, "".to_string())));
     }
 
     #[test]
     fn a_phrase_not_led_by_a_duration_does_not_split() {
-        assert_eq!(split("the pasta in 5 minutes"), None);
-        assert_eq!(split("banana"), None);
-        assert_eq!(split("90"), None);
-        assert_eq!(split(""), None);
-        assert_eq!(split("   "), None);
+        assert_eq!(split_duration("the pasta in 5 minutes"), None);
+        assert_eq!(split_duration("banana"), None);
+        assert_eq!(split_duration("90"), None);
+        assert_eq!(split_duration(""), None);
+        assert_eq!(split_duration("   "), None);
     }
 
     #[test]
     fn a_zero_duration_fails_without_trying_a_shorter_prefix() {
-        assert_eq!(split("0 seconds tea"), None);
-        assert_eq!(split("zero minutes"), None);
+        assert_eq!(split_duration("0 seconds tea"), None);
+        assert_eq!(split_duration("zero minutes"), None);
     }
 
     #[test]
