@@ -817,6 +817,7 @@ pub(crate) mod tests {
             .unwrap();
         let mut up = String::new();
         BufReader::new(asker.stdout.take().unwrap()).read_line(&mut up).unwrap();
+        assert_eq!(up, "up\n", "the asker shell did not start");
         let mut bystander = Command::new("sleep").arg("30").spawn().unwrap();
         let state_file = dir.path().join("pending-pick.json");
         let text_of = |state: &str| {
