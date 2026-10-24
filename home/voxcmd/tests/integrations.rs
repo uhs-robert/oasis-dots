@@ -854,3 +854,13 @@ list = "sleep 2; echo never"
         "the lists ran one after the other"
     );
 }
+
+#[test]
+fn the_shipped_click_toml_is_the_fixture_the_other_tests_read() {
+    let shipped = concat!(env!("CARGO_MANIFEST_DIR"), "/.config/voxcmd/integrations/click.toml");
+    assert_eq!(
+        std::fs::read_to_string(shipped).unwrap(),
+        std::fs::read_to_string(format!("{FIXTURES}/integrations/click.toml")).unwrap(),
+        "click.toml and tests/fixtures/integrations/click.toml must stay the same file: copy one over the other"
+    );
+}

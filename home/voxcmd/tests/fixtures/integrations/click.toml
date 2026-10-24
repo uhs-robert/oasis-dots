@@ -1,5 +1,4 @@
 #:schema ../../../.local/share/voxcmd/integration.schema.json
-# Test fixture: the worked conversion of the bash integration in voxcmd-port 1.1 (section 3), not installed.
 # Clicks visible text in the focused window by OCR: "click sign in", "right click settings", "double click readme".
 # "click mode" opens a voice session where each spoken target is clicked without repeating "click".
 name = "Click"
@@ -15,7 +14,7 @@ picker = "hints"
 match_ignore_words = ["left", "right", "middle", "here", "and", "drag", "hold"]
 
 # The mode verbs come first, or "click mode" would be a click on the text "mode". "stop clicking" is here because Media's
-# "stop {target}" and System's "turn off {target}" would otherwise hear it.
+# "stop {target}" would otherwise hear it.
 verbs = [
   { action = "click_mode",    match = '((start|enter|begin) )?(click|clicking) mode|start clicking' },
   { action = "stop_clicking", match = '{mode_exit}' },
@@ -72,7 +71,7 @@ mode_switch = true
 label = "Click mode"
 # No bare word leaves: "done", "stop", "exit" and "close" are button labels and stay targets; only "cortana ..." leaves.
 exit_object = '(the )?(clicking|click mode|clicking mode)'
-exit_phrases = 'done clicking|im done clicking|done with {mode_object}|{mode_exit}'
+exit_phrases = 'done clicking|im done clicking|done with {mode_object}|{mode_exit}|exit|quit'
 exit_hint = "say cortana done to stop"
 default_exits = false
 allows_switches = false
