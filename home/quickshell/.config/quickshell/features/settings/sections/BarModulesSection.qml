@@ -79,7 +79,7 @@ SettingsPane {
     function describe(index) {
         if (index === 0) return "The monitor whose bar you edit. All monitors edits the layout they share.";
         if (index === 1 && root.target_screen) return "The screen edge this monitor's bar sits on, with or without its own layout. Until set here it follows the global position, else bars.json.";
-        if (index === 1) return "The screen edge every bar sits on, unless a monitor sets its own. Top, bottom, left or right; a side bar is a column the bar height wide; the clock, weather and system modules do not fit one yet. Popups and the submap tab rise from a bottom bar.";
+        if (index === 1) return "The screen edge every bar sits on, unless a monitor sets its own. Top or bottom. Popups and the submap tab rise from a bottom bar.";
         if (index === 2 && root.target_screen) return "On gives this monitor its own copy of the layout. Off goes back to the shared one.";
         if (index === 3 && root.has_own) return "A tighter bar that hides the system modules on this monitor.";
         const item = root.entries[index - root.top_count];
@@ -144,7 +144,7 @@ SettingsPane {
         BarSettings.set_state(BarLayout.set_compact(BarSettings.state, root.monitor_key, !root.own_compact));
     }
 
-    // Top, bottom, left, right in turn (BarLayout.positions), wrapping.
+    // Top and bottom in turn (BarLayout.settings_positions).
     function step_position(delta) {
         root.pending = null;
         const next = BarLayout.step_position(root.bar_position, delta);
