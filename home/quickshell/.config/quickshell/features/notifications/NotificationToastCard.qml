@@ -20,8 +20,8 @@ Rectangle {
     property var entry: null
     property bool selected: false
     property int focused_action: -1
-    // Set when the card sits in the toast drawer (NotificationToasts.qml): the drawer's own growth is the entrance and
-    // the exit, so the card skips its arrival art and fades and shows at once.
+    // Set when the card sits in the toast drawer (NotificationToasts.qml): the drawer's own growth is the entrance, so
+    // the card skips its arrival art and shows at once.
     property bool in_drawer: false
     // The drawer is growing or folding; see `reconcile_hover`.
     property bool moving: false
@@ -92,9 +92,13 @@ Rectangle {
     border.color: root.highlighted ? Style.pal.secondary : root.notify ? Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7)) : Style.boxed_cards ? root.accent : Style.pal.border
     clip: true
 
-    opacity: root.in_drawer ? 1 : 0
+    // Not bound to in_drawer: a card made in the drawer must stay shown when the frame goes off.
+    opacity: 0
     Component.onCompleted: {
-        if (root.in_drawer) return;
+        if (root.in_drawer) {
+            root.opacity = 1;
+            return;
+        }
         enter_anim.start();
         if (Style.toast_enter === "type") root.typed = 0;
         const arrival = ({ type: type_enter, mode7: mode7_enter, wobble: wobble_enter })[Style.toast_enter];
@@ -197,8 +201,7 @@ Rectangle {
     // Closes with a short fade, then tells the state to actually drop the entry.
     function close_animated(action) {
         exit_anim.action = action;
-        if (root.in_drawer) root.finish_close();
-        else exit_anim.start();
+        exit_anim.start();
     }
 
     function finish_close() {
