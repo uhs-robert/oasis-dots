@@ -610,6 +610,16 @@ pub fn format_at(due: i64, clock: &Clock, twelve_hour: bool) -> Option<String> {
     })
 }
 
+/// The seconds of the longest leading run of words that reads as a duration, and the words after it joined by single
+/// spaces. None when no run does or it is zero seconds; a zero run does not fall back to a shorter one.
+pub fn split_duration(text: &str) -> Option<(i64, String)> {
+    let words = split_words(text);
+    let (count, seconds) = (1..=words.len())
+        .rev()
+        .find_map(|count| parse_duration(&words[..count].join(" ")).map(|seconds| (count, seconds)))?;
+    (seconds > 0).then(|| (seconds, words[count..].join(" ")))
+}
+
 /// `voxcmd util speech ...`: prints the value; exit 1 when the words do not parse.
 pub fn run(command: SpeechCommand) -> Result<String, CliError> {
     let name = |operation: &str| format!("util speech {operation}");
@@ -645,6 +655,13 @@ pub fn run(command: SpeechCommand) -> Result<String, CliError> {
             parse_duration(&text)
                 .map(|seconds| seconds.to_string())
                 .ok_or_else(|| unparsed("parse-duration", "a duration", &text))
+        }
+        SpeechCommand::SplitDuration { words } => {
+            let text = words.join(" ");
+            // The trailing space with an empty label is bash's `echo "$seconds ${label}"`.
+            split_duration(&text)
+                .map(|(seconds, label)| format!("{seconds} {label}"))
+                .ok_or_else(|| unparsed("split-duration", "led by a duration", &text))
         }
         SpeechCommand::ParseDay { words } => {
             let text = words.join(" ");
@@ -684,6 +701,56 @@ mod tests {
         assert_eq!(parse_duration("90"), None);
         assert_eq!(parse_duration("5 minutes banana"), None);
         assert_eq!(parse_duration(""), None);
+    }
+
+    fn split(text: &str) -> Option<(i64, &str)> {
+        // Leaked only in tests, to hand back a borrowed label.
+        split_duration(text).map(|(seconds, label)| (seconds, &*Box::leak(label.into_boxed_str())))
+    }
+
+    #[test]
+    fn a_phrase_splits_into_its_leading_duration_and_a_label() {
+        assert_eq!(split("5 minutes for the pasta"), Some((300, "for the pasta")));
+        assert_eq!(split("five minutes pasta"), Some((300, "pasta")));
+        assert_eq!(
+            split("twenty five minutes to call the bank"),
+            Some((1500, "to call the bank"))
+        );
+        assert_eq!(split("half an hour for the oven"), Some((1800, "for the oven")));
+        assert_eq!(split("  5   minutes   tea  "), Some((300, "tea")));
+    }
+
+    #[test]
+    fn the_longest_leading_duration_wins() {
+        // "an hour" parses alone, but so does the whole run.
+        assert_eq!(split("an hour and a half for the roast"), Some((5400, "for the roast")));
+        assert_eq!(split("1 hour 30 minutes tea"), Some((5400, "tea")));
+        // A bare number after a unit counts in the next unit down, so "30" is part of the duration.
+        assert_eq!(split("1 hour 30"), Some((5400, "")));
+        assert_eq!(split("2 minutes 15 tea"), Some((135, "tea")));
+        // "and a half" only follows a unit, so "5 minutes and" leaves "and" in the label.
+        assert_eq!(split("5 minutes and tea"), Some((300, "and tea")));
+    }
+
+    #[test]
+    fn a_duration_alone_leaves_an_empty_label() {
+        assert_eq!(split("an hour and a half"), Some((5400, "")));
+        assert_eq!(split("90 seconds"), Some((90, "")));
+    }
+
+    #[test]
+    fn a_phrase_not_led_by_a_duration_does_not_split() {
+        assert_eq!(split("the pasta in 5 minutes"), None);
+        assert_eq!(split("banana"), None);
+        assert_eq!(split("90"), None);
+        assert_eq!(split(""), None);
+        assert_eq!(split("   "), None);
+    }
+
+    #[test]
+    fn a_zero_duration_fails_without_trying_a_shorter_prefix() {
+        assert_eq!(split("0 seconds tea"), None);
+        assert_eq!(split("zero minutes"), None);
     }
 
     #[test]

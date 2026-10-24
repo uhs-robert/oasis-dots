@@ -275,6 +275,11 @@ pub enum SpeechCommand {
         #[arg(required = true, num_args = 1..)]
         words: Vec<String>,
     },
+    /// "<seconds> <label>" from the longest leading duration of a phrase ("5 minutes for the pasta"); exit 1 when none leads
+    SplitDuration {
+        #[arg(required = true, num_args = 1..)]
+        words: Vec<String>,
+    },
     /// The date (YYYY-MM-DD) a day word names ("today", "tomorrow", "friday", "next friday")
     ParseDay {
         #[arg(required = true, num_args = 1..)]

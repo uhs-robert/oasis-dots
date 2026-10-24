@@ -4766,3 +4766,25 @@ VOXCMD_VOICE_ENV_FILE=@speech/voice-env-absent	voice-env	VOXCMD_MISSING	1
 VOXCMD_VOICE_ENV_FILE=@speech/voice-env-main VOXCMD_MISSING=77	voice-env	VOXCMD_MISSING	0	77
 VOXCMD_VOICE_ENV_FILE=@speech/voice-env-main VOXCMD_MISSING=500	voice-env	VOXCMD_MISSING	0	500
 XDG_STATE_HOME=@speech/state-12h	voice-env	VOXCMD_DUCK_MEDIA_VOLUME	1	
+-	split-duration	5 minutes for the pasta	0	300 for the pasta
+-	split-duration	five minutes pasta	0	300 pasta
+-	split-duration	twenty five minutes to call the bank	0	1500 to call the bank
+-	split-duration	half an hour for the oven	0	1800 for the oven
+-	split-duration	an hour and a half for the roast	0	5400 for the roast
+-	split-duration	an hour and a half	0	5400 
+-	split-duration	1 hour 30	0	5400 
+-	split-duration	1 hour 30 minutes tea	0	5400 tea
+-	split-duration	2 minutes 15 tea	0	135 tea
+-	split-duration	5 minutes and tea	0	300 and tea
+-	split-duration	5 minutes and a half tea	0	330 tea
+-	split-duration	90 seconds	0	90 
+-	split-duration	0 seconds tea	1	
+-	split-duration	zero minutes	1	
+-	split-duration	pasta for 5 minutes	1	
+-	split-duration	banana	1	
+-	split-duration	90	1	
+-	split-duration		1	
+-	split-duration	  5   minutes   tea  	0	300 tea
+-	split-duration	a quarter of an hour for the eggs	0	900 for the eggs
+-	split-duration	10 minutes then 5 minutes	0	600 then 5 minutes
+-	split-duration	1 hour and a half minutes	0	3630 

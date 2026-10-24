@@ -54,6 +54,8 @@ for function_name in normalize apply_replacements name_workspace_ordinals init_w
   }
   eval "$source_text"
 done
+# split_duration lives in an integration, which cannot be sourced (it runs hooks); it needs only parse_duration.
+eval "$(awk '/^split_duration\(\) \{/ { printing = 1 } printing { print } printing && /^}/ { exit }' "$package_dir/.config/voxcmd/integrations.d/timers.sh")"
 # The settings those functions read, lifted the same way.
 lifted_settings=$(grep -E '^(correction_phrases|leading_filler|wake_word|wake_aliases|wake_regex|wake_rest|wake_before)=' "$package_dir/.local/bin/voxcmd")
 # wake_rest and wake_before are set by the lifted split functions and read by the wrappers below.
@@ -183,6 +185,17 @@ duration_phrases=(
 )
 for phrase in "${duration_phrases[@]}"; do
   row "$speech_file" - parse-duration "$phrase" parse_duration "$phrase"
+done
+
+# Leading durations with labels, filler, nothing leading, zero, and prefixes that parse short of the longest run.
+split_phrases=(
+  "5 minutes for the pasta" "five minutes pasta" "twenty five minutes to call the bank" "half an hour for the oven"
+  "an hour and a half for the roast" "an hour and a half" "1 hour 30" "1 hour 30 minutes tea" "2 minutes 15 tea"
+  "5 minutes and tea" "5 minutes and a half tea" "90 seconds" "0 seconds tea" "zero minutes" "pasta for 5 minutes" "banana"
+  "90" "" "  5   minutes   tea  " "a quarter of an hour for the eggs" "10 minutes then 5 minutes" "1 hour and a half minutes"
+)
+for phrase in "${split_phrases[@]}"; do
+  row "$speech_file" - split-duration "$phrase" split_duration "$phrase"
 done
 
 # ---- phrases.tsv: every phrase that mentions a number, time, duration, day, position or monitor word -----------------

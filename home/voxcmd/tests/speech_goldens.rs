@@ -30,7 +30,7 @@ fn arguments(operation: &str, input: &str) -> Vec<String> {
     let (subcommand, flags): (&[&str], &[&str]) = match operation {
         "parse-time" => (&["util", "speech", "parse-time"], &[]),
         "parse-time-today" => (&["util", "speech", "parse-time"], &["--today"]),
-        "parse-duration" | "parse-day" | "format-at" | "format-due" | "format-length" => {
+        "parse-duration" | "split-duration" | "parse-day" | "format-at" | "format-due" | "format-length" => {
             (&["util", "speech", operation], &[])
         }
         "voice-env" => (&["util", "voice-env"], &[]),
