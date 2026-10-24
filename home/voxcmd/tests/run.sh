@@ -1811,6 +1811,61 @@ for entry in "${keys_bar_surface_cases[@]}"; do
 done
 rm -f "$SANDBOX_DIR/popup-state" "$SANDBOX_DIR/popup-keyboard" "$SANDBOX_DIR/overview-state" "$SANDBOX_DIR/tmux_overview-state"
 
+section "devices by voice"
+# The volume, mute and default-device actions run for real against the wpctl and bluetoothctl stubs, which log each
+# call. Firefox has two streams, so one phrase must reach both; mpv has one.
+devices_config=$root/devices-config
+mkdir -p "$devices_config/integrations.d" "$devices_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/"{devices,media,system}.sh "$devices_config/integrations.d/"
+copy_shipped_integrations "$devices_config" devices media system
+devices_pw_dump=$(jq -c '. + [
+  {id: 70, type: "PipeWire:Interface:Node", info: {props: {"media.class": "Stream/Output/Audio", "application.name": "Firefox", "application.process.binary": "firefox"}}},
+  {id: 71, type: "PipeWire:Interface:Node", info: {props: {"media.class": "Stream/Output/Audio", "application.name": "Firefox", "application.process.binary": "firefox"}}},
+  {id: 72, type: "PipeWire:Interface:Node", info: {props: {"media.class": "Stream/Output/Audio", "application.name": "mpv", "application.process.binary": "mpv"}}}]' "$here/fixtures/pw-dump.json")
+# Fields: phrase, then the wpctl set calls and bluetoothctl calls it must log, in order, joined by "; ".
+devices_calls=(
+  "turn firefox down by 20|wpctl set-volume -l 1.0 70 20%-; wpctl set-volume -l 1.0 71 20%-"
+  "turn up mpv|wpctl set-volume -l 1.0 72 5%+"
+  "mpv volume up|wpctl set-volume -l 1.0 72 5%+"
+  "set firefox volume to 30|wpctl set-volume 70 30%; wpctl set-volume 71 30%"
+  "set firefox volume to 250 percent|wpctl set-volume 70 100%; wpctl set-volume 71 100%"
+  "mute firefox|wpctl set-mute 70 1; wpctl set-mute 71 1"
+  "unmute mpv|wpctl set-mute 72 0"
+  "switch output to headphones|wpctl set-default 51"
+  "use the microphone|wpctl set-default 52"
+  "turn bluetooth on|bluetoothctl power on"
+  "turn bluetooth off|bluetoothctl power off"
+  "connect my headphones|bluetoothctl power on; bluetoothctl connect AA:BB:CC:DD:EE:FF"
+  "reconnect my headphones|bluetoothctl power on; bluetoothctl connect AA:BB:CC:DD:EE:FF"
+  "disconnect my headphones|bluetoothctl disconnect AA:BB:CC:DD:EE:FF"
+)
+# One paired device whose name holds a tab, which its candidate row must carry as a space.
+export SANDBOX_BT_DEVICES=$'Device AA:BB:CC:DD:EE:FF Head\tphones'
+[ -z "$rust_matcher" ] || check "a tab in a device name reaches the candidate as a space" "SANDBOX_PW_DUMP_JSON='$devices_pw_dump' VOXCMD_CONFIG_DIR='$devices_config' '$routed' explain 'connect my headphones' 2>&1 | grep -q \"label='Head phones (Headphones)'\""
+for entry in "${devices_calls[@]}"; do
+  : >"$log"
+  SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$routed" run "${entry%%|*}" >/dev/null 2>&1
+  check "'${entry%%|*}' logs ${entry#*|}" "[[ \$(grep -E '^(wpctl set-|bluetoothctl (power|connect|disconnect))' '$log' | paste -sd'|' | sed 's/|/; /g') == '${entry#*|}' ]]"
+done
+# An app name that plays nothing and is no command leaves the phrase to Media and System: no per-app call, and their
+# own command runs instead. Fields: phrase, then the call that proves who took it.
+devices_yields=(
+  "set the volume to 20|pamixer --set-volume 20"
+  "make the volume 40|pamixer --set-volume 40"
+  "turn the volume up|pamixer --increase 5"
+  "turn brightness down|brightnessctl -n1 set 10%-"
+)
+for entry in "${devices_yields[@]}"; do
+  : >"$log"
+  SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$routed" run "${entry%%|*}" >/dev/null 2>&1
+  check "'${entry%%|*}' is left to Media or System: ${entry#*|}" "! grep -q '^wpctl set-' '$log' && grep -Fxq '${entry#*|}' '$log'"
+done
+# A command that plays nothing is reported, not silently unmatched: bash is on PATH but has no stream.
+: >"$log"
+SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$routed" run "mute bash" >/dev/null 2>&1
+check "an app that is not playing is reported" "grep -q 'bash (not playing)\|not playing anything' '$log' && ! grep -q '^wpctl set-' '$log'"
+unset SANDBOX_BT_DEVICES
+
 section "screenshot.sh beside a recording"
 # The real script, with the sandbox's stub for qs-ipc beside it and a pidof that names a harmless process as the recorder.
 recorder_work=$root/recorder-work
