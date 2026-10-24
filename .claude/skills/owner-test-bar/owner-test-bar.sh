@@ -782,12 +782,14 @@ request_codex_reviews() {
 }
 
 copy_assets() {
-  local dest=$1 path
-  while read -r path; do
+  local dest=$1 path rel
+  while IFS= read -r -d '' path; do
+    rel=${path#"$qs_rel"/}
     [[ $path == *__pycache__* ]] && continue
-    mkdir -p "$(dirname "$dest/$path")"
-    cp -a "$repo/$path" "$dest/$path"
-  done < <(git -C "$repo" status --short --ignored "$qs_rel" | awk '$1 == "!!" { sub(/\/$/, "", $2); print $2 }')
+    mkdir -p "$(dirname "$dest/$rel")"
+    # Per file and never over an existing one, so a partly filled ignored directory still gets what it lacks.
+    cp -naL "$repo/$path" "$dest/$rel"
+  done < <(git -C "$repo" ls-files -z --others --ignored --exclude-standard "$qs_rel")
 }
 
 # True when the branch already contains origin/main (so the merged tree is the branch's own tree) and that head has a
@@ -808,7 +810,7 @@ build() {
   for branch in "$@"; do
     git -C "$dir" merge -q --no-edit "$branch" || die "merging $branch conflicted in $dir; resolve it there or drop the branch"
   done
-  copy_assets "$dir"
+  copy_assets "$dir/$qs_rel"
   printf '%s\n' "$@" >"$dir.branches"
   # The merged tree is fresh, so a recorded tree pass never matches it. A lone branch that already contains origin/main
   # merges to its own tree, so its recorded pass stands in; any other merge was never checked, so it runs. CHECK_NO_LOCK: this
@@ -842,6 +844,7 @@ main() {
     shift
     build "$@"
     ;;
+  copy-assets) copy_assets "${2:?usage: owner-test-bar.sh copy-assets <quickshell config dir>}" ;;
   swap)
     require_no_rs_swap
     dir="$bars/${2:?usage: owner-test-bar.sh swap <name>}"
@@ -903,7 +906,7 @@ main() {
     fi
     git -C "$repo" worktree remove --force "$dir"
     git -C "$repo" worktree prune
-    rm -f "$dir.branches"
+    rm -f "$dir.branches" "$dir.check.log"
     if [[ -f $owner_file && $(owner_field bar) == "$2" ]]; then rm -f "$owner_file"; fi
     echo "owner-test-bar: removed $dir"
     ;;
@@ -937,7 +940,7 @@ main() {
     try_phrases "$@"
     ;;
   *)
-    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace] [--take]|build <name> <branch>...|swap <name> [--replace] [--take]|restore [--take]|rs-swap [minutes]|rebuild <name> [--take]|remove <name>|status|probe <ipc call>...|try <phrase>...}"
+    die "usage: owner-test-bar.sh {up <name> <branch>... [--replace] [--take]|build <name> <branch>...|copy-assets <dir>|swap <name> [--replace] [--take]|restore [--take]|rs-swap [minutes]|rebuild <name> [--take]|remove <name>|status|probe <ipc call>...|try <phrase>...}"
     ;;
   esac
 }

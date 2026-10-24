@@ -595,5 +595,40 @@ vtx voxtype_swap duck "$bars_dir/duck" >/dev/null
 vtx voxtype_restore >/dev/null
 check "swap and restore never use a plain restart, which would start it" "[[ ! -e $root/voxtype_started ]] && grep -q 'try-restart voxtype' '$vt_calls' && ! grep -qx 'systemctl --user restart voxtype' '$vt_calls'"
 
+echo "== shadow source and ignored assets"
+shadow_sh=$here/../../shadow/shadow.sh
+other=$root/other
+git init -q "$other"
+out=$(cd "$other" && bash -c 'source "$1"; from=; worktree_source' _ "$shadow_sh" 2>&1)
+code=$?
+show "$out"
+check "up without --from inside an unrelated repo falls back to the main checkout" "[[ $code == 0 && \$out == */home/quickshell/.config/quickshell ]] && [[ \$out != $other* ]]"
+out=$(cd "$other" && bash -c 'f=$2; source "$1"; from=$f; worktree_source' _ "$shadow_sh" "$other" 2>&1)
+code=$?
+check "an explicit --from in another repo is still refused" "[[ $code != 0 ]] && grep -q 'another repository' <<<\"\$out\""
+
+fake=$root/fake
+qs=home/quickshell/.config/quickshell
+git init -q "$fake"
+mkdir -p "$fake/$qs/assets" "$fake/$qs/__pycache__"
+printf 'assets/\ntheme.json\n__pycache__/\n' >"$fake/.gitignore"
+echo a >"$fake/$qs/assets/a.ogg"
+echo b >"$fake/$qs/assets/b c.ogg"
+echo t >"$fake/$qs/theme.json"
+echo p >"$fake/$qs/__pycache__/x.pyc"
+git -C "$fake" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+dest=$root/dest
+mkdir -p "$dest/assets"
+echo mine >"$dest/assets/a.ogg"
+bash -c 'source "$1"; repo=$2; copy_assets "$3"' _ "$here/../owner-test-bar.sh" "$fake" "$dest"
+check "copy_assets fills the files a partly filled ignored directory lacks, spaces included" "[[ -f '$dest/assets/b c.ogg' && -f '$dest/theme.json' ]]"
+check "copy_assets never overwrites an existing file" "[[ \$(cat $dest/assets/a.ogg) == mine ]]"
+check "copy_assets skips __pycache__" "[[ ! -e $dest/__pycache__ ]]"
+
+git -C "$fake" worktree add -q --detach "$root/bars/tb"
+touch "$root/bars/tb.branches" "$root/bars/tb.check.log"
+bash -c 'source "$1"; repo=$2; bars=$3; main remove tb' _ "$here/../owner-test-bar.sh" "$fake" "$root/bars" >/dev/null 2>&1
+check "remove deletes the build's branches record and check log" "[[ ! -e $root/bars/tb && ! -e $root/bars/tb.branches && ! -e $root/bars/tb.check.log ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))

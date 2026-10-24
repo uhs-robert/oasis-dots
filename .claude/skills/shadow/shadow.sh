@@ -3,7 +3,7 @@
 # isolated from the owner's session: own runtime dir, HOME, session bus and Hyprland instance.
 set -euo pipefail
 
-skill_dir=$(cd "$(dirname "$0")" && pwd)
+skill_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # The main checkout holds the gitignored bar assets, which a linked worktree lacks.
 repo=$(dirname "$(git -C "$skill_dir" rev-parse --path-format=absolute --git-common-dir)")
 qs_rel=home/quickshell/.config/quickshell
@@ -255,28 +255,23 @@ output_listed() { shadow_hyprctl monitors "$@" -j 2>/dev/null | grep -q '"WAYLAN
 # With no branches the bar comes from the caller's worktree (or --from DIR) as it is on disk, uncommitted edits
 # included; outside any checkout of this repo it falls back to the main checkout.
 worktree_source() {
-  local dir=${from:-.} top
+  local dir=${from:-.} top common repo_common
   top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || top=
-  if [[ -z $top ]]; then
-    [[ -z $from ]] || die "--from $from is not inside a git checkout"
+  [[ -z $top && -n $from ]] && die "--from $from is not inside a git checkout"
+  repo_common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)
+  [[ -n $top ]] && common=$(git -C "$top" rev-parse --path-format=absolute --git-common-dir)
+  if [[ -z $top || $common != "$repo_common" ]]; then
+    # An unrelated repository around the cwd is no reason to fail when the caller named no checkout.
+    [[ -z $from ]] || die "$top is a checkout of another repository, not this one"
     top=$repo
   fi
-  [[ $(git -C "$top" rev-parse --path-format=absolute --git-common-dir) == "$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)" ]] ||
-    die "$top is a checkout of another repository, not this one"
   [[ -d $top/$qs_rel ]] || die "$top has no $qs_rel"
   echo "$top/$qs_rel"
 }
 
 # Gitignored assets (theme.json, FF7 audio) exist only in the main checkout; fill in what the source lacks.
 overlay_ignored_assets() {
-  local src_top=${1%/"$qs_rel"} path rel
-  [[ $src_top == "$repo" ]] && return 0
-  while read -r path; do
-    rel=${path#"$qs_rel"/}
-    [[ $path == *__pycache__* || -e $qs_dir/$rel ]] && continue
-    mkdir -p "$(dirname "$qs_dir/$rel")"
-    cp -aL "$repo/$path" "$qs_dir/$rel"
-  done < <(git -C "$repo" status --short --ignored "$qs_rel" | awk '$1 == "!!" { sub(/\/$/, "", $2); print $2 }')
+  [[ ${1%/"$qs_rel"} == "$repo" ]] || "$test_bar" copy-assets "$qs_dir"
 }
 
 resolve_source() {
@@ -635,6 +630,8 @@ down() {
 usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
+# Sourced by the tests, it only defines the functions.
+[[ ${BASH_SOURCE[0]} == "$0" ]] || return 0
 case $cmd in
 up) up "$@" ;;
 ipc) ipc "$@" ;;
