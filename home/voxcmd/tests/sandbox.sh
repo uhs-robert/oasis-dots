@@ -37,6 +37,7 @@
 #                                     -T when SANDBOX_GRIM_NO_TOPLEVEL is set; magick cuts empty strips and reports
 #                                     a light image (SANDBOX_IMAGE_MEAN, default 1)
 #   pw-dump                           SANDBOX_PW_DUMP_JSON
+#   bluetoothctl devices Paired       SANDBOX_BT_DEVICES ("Device <mac> <name>" lines); info answers an audio-headset icon
 #   keeptabs-pick --json              SANDBOX_AGENTS_JSON
 #   systemctl list-timers|list-units  SANDBOX_TIMERS_JSON
 #   tmux list-sessions|has-session    SANDBOX_TMUX_SESSIONS (one name per line)
@@ -377,6 +378,14 @@ qs-ipc)
   *"call overview act"*) echo "${SANDBOX_OVERVIEW_ACT:-ok}" ;;
   *"call tmux_overview state"*) cat "$SANDBOX_DIR/tmux_overview-state" 2>/dev/null || echo closed ;;
   *"confirm ask"* | *"sound play"*) echo ok ;;
+  esac
+  ;;
+bluetoothctl)
+  log "$@"
+  # SANDBOX_BT_DEVICES: "Device <mac> <name>" lines, listed by `devices Paired`; `info` answers an audio-headset icon.
+  case "${1-}" in
+  devices) printenv SANDBOX_BT_DEVICES || true ;;
+  info) printf '\tIcon: audio-headset\n' ;;
   esac
   ;;
 wpctl)

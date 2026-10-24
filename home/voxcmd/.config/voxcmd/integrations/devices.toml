@@ -1,0 +1,96 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Default audio output and input and per-app volume (wpctl), and Bluetooth devices (bluetoothctl).
+# Format: ~/.config/voxcmd/README.md
+name = "Devices"
+
+# "switch to X" belongs to app switching, so output switching always names the output: "switch audio to X",
+# "use X", "output to X". Input verbs come first so "use the X microphone" never reads as an output.
+verbs = [
+  { action = "bluetooth_on",  match = '(turn )?bluetooth on|{activate} (the )?bluetooth' },
+  { action = "bluetooth_off", match = '(turn )?bluetooth off|{deactivate} (the )?bluetooth' },
+  { action = "input",         match = '(use|switch to) (the |my )?{target} (microphone|mic)' },
+  { action = "input",         match = '(switch|{set}|use) (the |my )?(microphone|mic|input)( to)? (the |my )?{target}' },
+  { action = "output",        match = '(switch|{set}) (the |my )?(audio|sound|output|speakers?)( output)? to (the |my )?{target}' },
+  { action = "output",        match = '(use|(audio |sound )?output to) (the |my )?{target}' },
+  { action = "disconnect",    match = 'disconnect( from)? (the |my )?{target}' },
+  { action = "connect",       match = '(re)?connect( to)? (the |my )?{target}' },
+  # Plain "turn it up", "mute" and "volume 40" stay with Media's system volume: these all need an app name, and a
+  # name that is no running app gets no candidates. The actions read the level and the "by N" step back from
+  # VOXCMD_RAW_TRANSCRIPT.
+  { action = "app_mute",        match = 'mute (the )?{target}' },
+  { action = "app_unmute",      match = 'unmute (the )?{target}' },
+  { action = "app_volume_up",   match = 'turn (the )?{target} (up|louder)( by [0-9]+( percent)?)?' },
+  { action = "app_volume_up",   match = 'turn up (the )?{target}( by [0-9]+( percent)?)?' },
+  { action = "app_volume_up",   match = '(turn )?(the )?{target} (volume|sound) up( by [0-9]+( percent)?)?' },
+  { action = "app_volume_down", match = 'turn (the )?{target} (down|quieter)( by [0-9]+( percent)?)?' },
+  { action = "app_volume_down", match = 'turn down (the )?{target}( by [0-9]+( percent)?)?' },
+  { action = "app_volume_down", match = '(turn )?(the )?{target} (volume|sound) down( by [0-9]+( percent)?)?' },
+  { action = "app_volume_set",  match = '({set} )?(the )?{target} (volume|sound)( to| at)? [0-9]+( percent)?' },
+]
+
+examples = [
+  "turn bluetooth on",
+  "turn bluetooth off",
+  "connect <device>",
+  "disconnect <device>",
+  "switch output to <device>",
+  "use the <device> mic",
+  "turn <app> down",
+  "set <app> volume to <number> percent",
+  "mute <app>",
+]
+
+# set-default moves only the streams following the default (WirePlumber's linking.follow-default-target), never
+# one an app pinned to a device. connect powers the adapter on first, so "connect my headphones" works while it is off.
+[actions]
+bluetooth_on = "bluetoothctl power on"
+bluetooth_off = "bluetoothctl power off"
+
+[actions.input]
+run = 'wpctl set-default "$VOXCMD_ID"'
+candidates = "input_candidates"
+
+[actions.output]
+run = 'wpctl set-default "$VOXCMD_ID"'
+candidates = "output_candidates"
+
+# bluetooth_candidates runs one `bluetoothctl info` (up to 3 s) per paired device in turn, so the 3 s hook default
+# would kill it on one slow device; 15 s leaves room for a few.
+[actions.connect]
+run = 'bluetoothctl power on >/dev/null && bluetoothctl connect "$VOXCMD_ID"'
+candidates = "bluetooth_candidates"
+timeout_secs = 15
+
+[actions.disconnect]
+run = 'bluetoothctl disconnect "$VOXCMD_ID"'
+candidates = "bluetooth_candidates"
+timeout_secs = 15
+
+[actions.app_volume_up]
+run = 'step_app_volume "$VOXCMD_ID" "$VOXCMD_ARG_TARGET" +'
+candidates = "app_candidates"
+
+[actions.app_volume_down]
+run = 'step_app_volume "$VOXCMD_ID" "$VOXCMD_ARG_TARGET" -'
+candidates = "app_candidates"
+
+[actions.app_volume_set]
+run = 'set_app_volume "$VOXCMD_ID" "$VOXCMD_ARG_TARGET"'
+candidates = "app_candidates"
+
+[actions.app_mute]
+run = 'mute_app "$VOXCMD_ID" "$VOXCMD_ARG_TARGET" 1'
+candidates = "app_candidates"
+
+[actions.app_unmute]
+run = 'mute_app "$VOXCMD_ID" "$VOXCMD_ARG_TARGET" 0'
+candidates = "app_candidates"
+
+# Tab on these examples in Voice Help lists every output and input, and picking one makes it the default.
+[[help]]
+action = "output"
+list = "output_help"
+
+[[help]]
+action = "input"
+list = "input_help"
