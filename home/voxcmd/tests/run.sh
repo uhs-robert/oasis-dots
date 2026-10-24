@@ -1719,13 +1719,16 @@ out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to private notes" 
 check "a private window is found by its title" "grep -q \"action=focus_tab .* id='0x3003 Private notes'\" <<<\"\$out\""
 rm -f "$firefox_config/integrations.d/firefox.sh" "$firefox_config/integrations/firefox.toml" "$firefox_config/integrations/firefox.sh"
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
-check "without firefox.toml, Apps still focuses the window by its title" "grep -q 'Apps (apps.sh) action=focus' <<<\"\$out\""
+check "without firefox.toml, Apps still focuses the window by its title and Firefox no longer answers" "grep -q 'Apps (apps.sh) action=focus' <<<\"\$out\" && ! grep -q 'Firefox (firefox\.toml' <<<\"\$out\""
 if [ -n "$rust_matcher" ]; then
-  # The hook yields what Apps, Keybinds, Sessions and Keeptabs own; it carries its own copy of Apps' checks.
-  firefox_yields() { VOXCMD_SELF=$routed bash -c '. "$1"; "$2" "$3"' _ "$package/.config/voxcmd/integrations/firefox.sh" "$@"; }
+  # The hook yields what Apps, Keybinds, Sessions and Keeptabs own; it carries its own copy of Apps' checks. This
+  # section's binds are click binds only, so the keybind checks bring their own.
+  firefox_binds='[{"description": "Go to Workspace 2", "has_description": true, "submap": "", "key": "2"}]'
+  firefox_yields() { SANDBOX_BINDS_JSON=$firefox_binds VOXCMD_SELF=$routed bash -c '. "$1"; "$2" "$3"' _ "$package/.config/voxcmd/integrations/firefox.sh" "$@"; }
   check "firefox yields a described keybind" "firefox_yields spoken_as_keybind 'workspace 2'"
   check "firefox yields a keybind said with a plural and a digit word" "firefox_yields spoken_as_keybind 'workspaces two'"
-  check "firefox does not yield a tab title that is no keybind" "! firefox_yields spoken_as_keybind 'weekly sync notes'"
+  # Both only mean something while the binds above are readable, which the positive checks just showed.
+  check "firefox does not yield a tab title that is no keybind" "firefox_yields spoken_as_keybind 'workspace 2' && ! firefox_yields spoken_as_keybind 'weekly sync notes'"
   check "firefox yields a session or an agent" "firefox_yields names_session_or_agent 'work session' && firefox_yields names_session_or_agent 'the beta agent'"
   check "firefox does not yield a plain tab" "! firefox_yields names_session_or_agent 'weekly sync notes'"
 fi

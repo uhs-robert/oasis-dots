@@ -167,9 +167,9 @@ action_verbs() {
   esac
 }
 
-# firefox.sh in integrations/ keeps its own copy of this and names_session_or_agent: keep them in step until Apps converts.
 # True when "<verb> <target>" names a described keybind ("close browsers", "focus left", "go to workspace 2", "start
 # menu"): those belong to the keybinds fallback, which only gets a turn when this integration offers nothing.
+# integrations/firefox.sh keeps its own copy of this: change both until Apps converts.
 spoken_as_keybind() {
   local action="$1" target="$2" verb phrases=()
   while IFS= read -r verb; do phrases+=("$verb $target"); done < <(action_verbs "$action")
@@ -178,6 +178,7 @@ spoken_as_keybind() {
 
 # "switch to the X session", "go to the X agent": a session or agent integration owns those, and a window whose
 # name X happens to match would otherwise share a picker with it, or take the phrase when X matches no session.
+# integrations/firefox.sh keeps its own copy of this: change both until Apps converts.
 names_session_or_agent() {
   [[ " $1 " =~ \ (session|sessions|agent|agents)\  ]]
 }

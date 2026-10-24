@@ -14,7 +14,7 @@ firefox_rows() {
       | select((.id // "") != "")
       | (.match_text // .label // "") as $match
       | select($match != "")
-      | [.id, .label, $match] | map(gsub("[\t\n\r]"; " ")) | join("\t")' |
+      | [.id, (.label // ""), $match] | map(gsub("[\t\n\r]"; " ")) | join("\t")' |
     "$VOXCMD_SELF" util word-match --ignore "$VOXCMD_MATCH_IGNORE_WORDS" "$VOXCMD_ARG_TARGET" 2>/dev/null |
     awk -F'\t' '!seen[$1]++'
 }
@@ -64,8 +64,8 @@ spoken_as_keybind() {
 # Tab in Voice Help lists every tab, once each, by title.
 tab_help() {
   "$firefox_tab" candidates tabs "" 2>/dev/null |
-    jq -r 'unique_by(.id) | sort_by(.label | ascii_downcase) | .[]
-      | select((.id // "") != "") | [.id, .label] | map(gsub("[\t\n\r]"; " ")) | join("\t")'
+    jq -r 'unique_by(.id) | sort_by((.label // "") | ascii_downcase) | .[]
+      | select((.id // "") != "") | [.id, (.label // "")] | map(gsub("[\t\n\r]"; " ")) | join("\t")'
 }
 
 # The id is "<window address> <tab title>" or "goto <url>".
