@@ -6,6 +6,7 @@ use crate::config::Config;
 use crate::config::intents::Intents;
 use crate::config::{legacy, schema};
 use crate::text::normalize::Replacements;
+use crate::text::speech::{Clock, parse_day};
 use std::path::PathBuf;
 
 fn config() -> Config {
@@ -87,15 +88,36 @@ fn columns(matcher: &Matcher, phrase: &str) -> [String; 3] {
 
 #[test]
 fn rust_matches_the_bash_goldens() {
-    matches_the_goldens(&config());
+    matches_the_goldens(&config(), &[]);
 }
 
 #[test]
 fn shipped_toml_matches_the_bash_goldens() {
-    matches_the_goldens(&config_with_shipped_toml());
+    matches_the_goldens(&config_with_shipped_toml(), TYPED_DAY_VERBS);
 }
 
-fn matches_the_goldens(config: &Config) {
+/// calendar's two `day` verbs, as `stem:verb:action=` prefixes of golden entries. In bash they matched any words and a
+/// candidate hook declined the non-days afterwards; `{target:day}` does not match those, so the goldens hold match
+/// entries these verbs rightly lack. Near misses skip typed verbs altogether, so every near entry of them is ignored.
+const TYPED_DAY_VERBS: &[&str] = &["calendar:5:day=", "calendar:7:day="];
+
+/// `column` without the golden entries of `ignored` verbs that Rust cannot have: all of a near column's, and a match
+/// column's whose target is no day (a valid day must still match).
+fn without_entries(column_name: &str, column: &str, ignored: &[&str]) -> String {
+    let clock = Clock::from_env().expect("clock");
+    column
+        .split("; ")
+        .filter(|entry| {
+            let Some(prefix) = ignored.iter().find(|prefix| entry.starts_with(**prefix)) else {
+                return true;
+            };
+            column_name == "match" && parse_day(&entry[prefix.len()..], &clock).is_some()
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn matches_the_goldens(config: &Config, ignored: &[&str]) {
     let goldens = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/match-goldens.tsv"))
         .expect("run gen-match-goldens.sh");
     let matcher = Matcher::new(config);
@@ -112,7 +134,7 @@ fn matches_the_goldens(config: &Config) {
             .iter()
             .zip([forced, matches, near].iter().zip(&got))
         {
-            if expected != got {
+            if without_entries(column, expected, ignored) != without_entries(column, got, ignored) {
                 mismatches.push(format!("{phrase:?} {column}:\n  bash {expected}\n  rust {got}"));
             }
         }

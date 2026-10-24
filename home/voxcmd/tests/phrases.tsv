@@ -492,3 +492,7 @@ go to the weekly sync notes tab please	Firefox/focus_tab	a tail word after a tab
 go to the tubesite please	picker	a tail word after a site name still asks which tab, as in bash
 close window please	Keybinds/run	a tail word after a bind description still runs it, as in bash
 toggle fullscreen please	Keybinds/run	the same for a bind with a word of its own
+show my calendar for friday	Calendar/day	the second day verb
+what's on my calendar for friday please	none	a tail word after a day is not a day, as in bash
+join my call	Calendar/open_meeting	call is a meeting noun
+new meeting tomorrow at 3 pm called sync please	Calendar/new	free text takes the tail word too
