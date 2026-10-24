@@ -4,21 +4,29 @@
 
 var sides = ["left", "center", "right"];
 var known = BarModules.names;
-var positions = ["top", "bottom"];
-// Vertical bars are planned; until they draw, these fall back to top with a warning that does not call them typos.
-var planned_positions = ["left", "right"];
+// In the order Settings steps through them.
+var positions = ["top", "bottom", "left", "right"];
 
-// The screen edge a rule puts its bar on; anything unsupported falls back to top.
+// The screen edge a rule puts its bar on; anything unknown falls back to top.
 function position_of(rule) {
     const p = rule && rule.position;
     return positions.indexOf(p) >= 0 ? p : "top";
+}
+
+function is_vertical(position) {
+    return position === "left" || position === "right";
+}
+
+// The position `delta` steps on from `position` in `positions`, wrapping.
+function step_position(position, delta) {
+    const at = Math.max(0, positions.indexOf(position));
+    return positions[(at + delta + positions.length) % positions.length];
 }
 
 // Why a rule's position falls back to top, or "" when it is fine.
 function position_problem(rule) {
     const p = rule ? rule.position : undefined;
     if (p === undefined || positions.indexOf(p) >= 0) return "";
-    if (planned_positions.indexOf(p) >= 0) return "bar position \"" + p + "\" is not supported yet; using top";
     return "unknown bar position " + JSON.stringify(p) + " in bars.json; using top";
 }
 
