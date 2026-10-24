@@ -1,0 +1,45 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Google Calendar by voice: join or open the current meeting, say what is next, show a day in the bar's clock popup,
+# prefill a new event in Google's form, open the calendar. Events come from the cache calendar-sync writes.
+# Format: ~/.config/voxcmd/README.md
+name = "Calendar"
+
+# Written out rather than with `define`: near misses compare the words of the verb text, which a placeholder would hide.
+# `{target:day}` yields YYYY-MM-DD, and a day other than today, tomorrow or a weekday does not match, leaving the phrase to
+# the other integrations. Bare "what's on my calendar" has no day to parse, so it reaches day_today.
+verbs = [
+  { action = "open_current", match = '(open|join|launch|start) (my|the) current (meeting|call)( now)?' },
+  { action = "open_next",    match = '(open|join|launch|start) (my|the) next (meeting|call)( now)?' },
+  { action = "open_meeting", match = '(open|join|launch|start) (my|the) (meeting|call)( now)?' },
+  { action = "next",         match = '(whats|what is|when is) (my )?next (meeting|call)' },
+  { action = "next",         match = '(whats|what is) next on (my|the) calendar' },
+  { action = "day",          match = '(whats|what is)( going)? on (my|the) calendar( for| on)? {target:day}' },
+  { action = "day_today",    match = '(whats|what is)( going)? on (my|the) calendar' },
+  { action = "day",          match = '(show|open)( me)? (my|the) calendar (for|on) {target:day}' },
+  { action = "new",          match = '(new|create|schedule|add|make|set up)( me)?( a| an)?( new)? (meeting|event|appointment) {target}' },
+  { action = "new_blank",    match = '(new|create|schedule|add|make|set up)( me)?( a| an)?( new)? (meeting|event|appointment)' },
+  { action = "calendar",     match = '(open|go to|take me to|show|launch) (my|the) calendar' },
+]
+
+examples = [
+  "join my meeting",
+  "what's my next meeting",
+  "what's on my calendar tomorrow",
+  "new meeting tomorrow at <time> for an hour called <title> with <email>",
+  "open my calendar",
+]
+
+# The browser tab and the bar popup are the answer, so day, new and calendar are silent: a toast would cover them.
+# Joining a meeting still says which. A sequence's next step waits for the day view to be drawn.
+[actions]
+open_meeting = 'open_meeting any'
+open_current = 'open_meeting current'
+open_next = 'open_meeting next'
+next = 'next_meeting'
+day = { run = 'show_day "$VOXCMD_ARG_TARGET"', silent = true, wait = "popup_open:clock" }
+day_today = { run = 'show_day "$(today_date)"', silent = true, wait = "popup_open:clock" }
+# A new event's title is free text that may say "and then", so a sequence hands it the rest of the phrase. The target
+# gives the time; the title comes from the raw transcript, which keeps its casing and "@".
+new = { run = 'new_event "$VOXCMD_ARG_TARGET" "$VOXCMD_RAW_TRANSCRIPT"', silent = true, free_text = true }
+new_blank = { run = 'open_url "$(create_url)"', silent = true }
+calendar = { run = 'open_page https://calendar.google.com', silent = true }
