@@ -333,6 +333,15 @@ cases.push(["a centre drawer fillets at both ends, a docked one pockets at both"
 cases.push(["a left top drawer anchors top-left with margins from the left and the seam", () => [wk_left.anchor_top, wk_left.anchor_bottom, wk_left.anchor_left, wk_left.anchor_right, wk_left.margin_top, wk_left.margin_left, wk_left.margin_right, wk_left.margin_bottom], [true, false, true, false, wk_seam - cover, D.margin_along("left", wk_hole, 1920, cover, full_length), 0, 0]]);
 cases.push(["a right bottom drawer anchors bottom-right", () => [wk_right.anchor_top, wk_right.anchor_bottom, wk_right.anchor_left, wk_right.anchor_right, wk_right.margin_top, wk_right.margin_left, wk_right.margin_bottom > 0, wk_right.margin_right > 0], [false, true, false, true, 0, 0, true, true]]);
 cases.push(["a centre drawer anchors on the left and uses the along margin there", () => { const p = D.place("center", false, wk_hole, wk_seam, 1920, 1080, cover, full_length); return [p.anchor_left, p.anchor_right, p.margin_left === p.along, p.margin_right]; }, [true, false, true, 0]]);
+// The toast drawer: top-right, so it anchors top and right with the seam as its top margin and the hole's right edge as its right one.
+const toast_right = D.place("right", false, wk_hole, wk_seam, 1920, 1080, cover, full_length);
+cases.push(["a right top drawer anchors top-right with no left anchor", () => [toast_right.anchor_top, toast_right.anchor_bottom, toast_right.anchor_left, toast_right.anchor_right, toast_right.margin_top, toast_right.margin_right, toast_right.margin_left, toast_right.margin_bottom], [true, false, false, true, wk_seam - cover, D.margin_along("right", wk_hole, 1920, cover, full_length), 0, 0]]);
+cases.push(["a right top drawer pockets at its end and fillets at its start", () => D.end_kinds("right", false), { start: "fillet", end: "pocket" }]);
+cases.push(["a top-right drawer's input rect grows with the extent from the seam and stops short of the fillet corner", () => [0, 100, 200].map(e => {
+  const lay = lay_of({ start_kind: "fillet", end_kind: "pocket", extent: e });
+  const r = D.input_rect(lay);
+  return [r.height, r.y, r.x >= lay.start_room, r.x + r.width <= lay.length - lay.end_room];
+}), [[0, cover, true, true], [100, cover, true, true], [200, cover, true, true]]]);
 cases.push(["without a hole the placement has no margins", () => { const p = D.place("left", false, null, 0, 0, 0, cover, 0); return [p.margin_top, p.margin_left, p.along, p.across]; }, [0, 0, 0, 0]]);
 cases.push(["a top-left window rect starts at the margins and spans the drawn depth", () => D.window_rect("left", false, wk_left, 1920, 1080, 200, 50), { x: wk_left.along, y: wk_left.across, w: 200, h: 50 }]);
 cases.push(["a bottom-right window rect counts from the right and bottom screen edges", () => D.window_rect("right", true, wk_right, 1920, 1080, 200, 50), { x: 1920 - wk_right.along - 200, y: 1080 - wk_right.across - 50, w: 200, h: 50 }]);

@@ -81,6 +81,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `frame-lone-flush`: `home/hypr/tests/frame_lone_flush.lua` runs `config/general/frame.lua` against a stubbed `hl` and checks the lone-window flush opt-out (when it starts and ends) and the workspace animation swap. Needs lua.
 - `input-vectors-lua`, `input-vectors-js`: `home/quickshell/tests/input_settings/vectors.tsv` through the Lua validator Hyprland uses (`config/input`) and the bar's (`HyprInputValidation.js`), so the two cannot drift apart. Need lua and node.
 - `notification-markup`: `home/quickshell/tests/notification_markup.js`, the notification body sanitizer. Needs node.
+- `toast-extent`: `home/quickshell/tests/toast_extent.js`, the toast drawer's window depth, stack height and hover settling in `features/notifications/ToastExtent.js`. Needs node.
 - `island-shapes`: `home/quickshell/tests/island_shapes.js`, the fill-less island helpers in `ui/frames/IslandOutlines.js` and that every `Style.island_shapes` entry has a kit and a label. Needs node.
 - `drawer-shapes`: `home/quickshell/tests/drawer_shapes.js`, the drawer geometry in `ui/frames/DrawerGeometry.js` (layout, fill, outline, rim continuity with the screen frame) and `FrameGeometry.hole_rect`/`seam_of`. Needs node.
 - `bar-layout`: `home/quickshell/tests/bar_layout.js`, the bar position in `features/bar/BarLayout.js` (rules, per-monitor overrides, the state file). Needs node.

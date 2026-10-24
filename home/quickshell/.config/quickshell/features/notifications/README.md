@@ -11,3 +11,12 @@ Notification history is kept in memory only (the last 100) and is gone when the 
 ```
 
 Transient notifications (`notify-send --transient`) are shown as toasts but never kept, so the history holds only notifications sent without that hint; voxcmd, for one, sends only its errors that way. Notifications an app closes or replaces leave the history too.
+
+## Toasts
+
+`NotificationToasts.qml` shows the newest five toasts at the top right of the screen focused when the stack opens; the screen stays through the show.
+
+- **Frame on:** the stack is one drawer (`ui/frames/TransientDrawer.qml`, pocketed against the right band) that grows to the stack's height over 190 ms and folds over 120 ms. A card added or removed, or one arriving mid-fold, retargets the same depth (`Behavior on extent`) rather than restarting it. Cards take no arrival art and no fade (`in_drawer` in `NotificationToastCard.qml`) and share the drawer's material, split by a rule. The window is five tall cards deep, or what the frame leaves; a stack taller than that clips its last card and drops none. It may overlap the OSD at the top right, with no offset. A switch of the frame or the bar edge while shown restarts the drawer from closed.
+- **Frame off:** floating cards at 8 px from the corner, each with its own arrival and fade, as before.
+- **Input:** the window's mask is the drawer body, so clicks and hover reach the cards while the rest of the window is click-through. Cards slide under a still cursor while the drawer moves, so hover is ignored then and settled once afterwards (`ToastExtent.hover_action`): a card still hovered pauses its countdown, and one the cursor has left resumes it from the full interval.
+- **Keys:** `toast_focus` holds the keyboard only while the window is shown; the fold ends it.

@@ -161,6 +161,7 @@ OUTSIDE_REFS = [
     ("home/voxcmd/tests/run-monitors.sh", "features/overview/Voice.js"),
     ("home/quickshell/tests/input_settings/run_js.js", "features/settings/HyprInputValidation.js"),
     ("home/quickshell/tests/notification_markup.js", "features/notifications/NotificationMarkup.js"),
+    ("home/quickshell/tests/toast_extent.js", "features/notifications/ToastExtent.js"),
     ("home/quickshell/tests/bar_layout.js", "features/bar/BarLayout.js"),
     ("home/quickshell/tests/bar_layout.js", "features/bar/BarModules.js"),
     ("home/quickshell/tests/island_shapes.js", "ui/frames/IslandOutlines.js"),

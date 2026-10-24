@@ -10,6 +10,8 @@ The which-key HUD (`WhichKey.qml`) is a drawer too, from the edge its payload `p
 
 The volume, brightness and voxtype OSD (`features/osd/Osd.qml`) is a plain-centre drawer on the edge opposite the bar (bottom with a top bar, top with a bottom bar), flush on the seam with no gap. It grows out over 190 ms and folds back over 120 ms, with no fade (the frame would show through); a trigger during the fold reverses it from where it is, and a voxtype OSD holds the drawer open until recording and transcribing end. Its content (volume, brightness, voxtype) sets the drawer's width, so the window resizes when the content switches mid-show. It stacks above a centre which-key on the same slot, and with translucent islands the which-key shows through. A monitor without the frame keeps the floating pill, its 72 px gap and 140 ms fade. `settled` and `closing` keep their meaning.
 
+The notification toasts (`features/notifications/NotificationToasts.qml`) are one drawer for the whole stack, pocketed against the right band at the top. Unlike the OSD and which-key, whose windows take no input, its body takes clicks and hover, and the rest of the window (fillet corners, the depth not yet grown) passes them through. Its depth eases to the stack's height, so adds and removals never restart it; see the notifications README, "Toasts".
+
 ## Keys
 
 Every popup uses the same keys. `?` shows the full list for the popup you're in.
