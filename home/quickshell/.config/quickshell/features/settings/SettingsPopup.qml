@@ -45,7 +45,7 @@ Popup {
     readonly property real natural_content: Math.max(nav.implicitHeight, root.pane_height)
     // Screen height left for the panel's body once the bar and the popup's own chrome are taken out; no cap before the screen is known.
     readonly property real free_height: {
-        if (root.drawer) return root.drawer_hole.h - root.header_height - root.footer_height;
+        if (root.drawer && root.drawer_hole) return root.drawer_hole.h - root.header_height - root.footer_height;
         if (!root.screen) return Infinity;
         const bar = BarSettings.height_for(BarSettings.rule_for(root.screen));
         return root.screen.height - bar - (root.floating ? root.st.frame_float : 0) - root.header_height - root.footer_height - root.drop_room;
