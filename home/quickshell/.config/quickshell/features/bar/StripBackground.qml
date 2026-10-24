@@ -6,7 +6,7 @@ import "../../ui/frames/IslandOutlines.js" as Outlines
 
 // The strip (Island shapes "Full bar" and "Floating strip"): one band across the bar carrying the style's island look,
 // with the islands drawing nothing over it. Under the modules, so cava and module fills sit on top of it. The floating
-// one is shorter than the bar, set in from its sides by Bar, and takes its ends from bar_strip_ends.
+// one is shorter than the bar, set in from its sides by Bar, and takes its ends from the style (Style.strip_ends).
 BandFill {
     id: root
 
@@ -28,8 +28,8 @@ BandFill {
     // A drawer's window over the strip, while it is translucent and reaches the strip: the strip leaves its lines out there (the drawer draws its own).
     line_gaps: FrameGeometry.strip_gaps(ScreenFrames.drawer_rects(root.screen_name), root.edge, root.thickness, root.frame ? root.frame.depth : 0)
 
-    ends: Style.strip_floats ? Style.bar_strip_ends : ""
-    ends_cap: Outlines.cap_width(Style.bar_strip_ends, root.thickness)
+    ends: Style.strip_floats ? Style.strip_ends : ""
+    ends_cap: Outlines.cap_width(Style.strip_ends, root.thickness)
 
     color: Style.strip_color
     shade_color: Style.frame_shade

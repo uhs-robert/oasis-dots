@@ -42,7 +42,8 @@ function cap_width(shape, h) {
     case "underline": return Math.round(h * 0.3);
     case "brackets": return bracket_arm(h) + Math.round(h * 0.1);
     case "chevron": return Math.round(h * 0.5);
-    case "round": return Math.round(h * 0.3);
+    case "round":
+    case "chamfer": return Math.round(h * 0.3);
     // The hexagon's 120 degree corners, their tip cut flat: the slanted edge reaches (1 - HEX_FLAT) / 2 * h / tan(60) in.
     case "hex": return Math.round(h * (1 - HEX_FLAT) / 2 / Math.tan(Math.PI / 3));
     case "lean": return Math.round(h * 0.4);
@@ -92,6 +93,9 @@ function end_profile(shape, h, c, trailing) {
     // Both corners rounded, for the floating strip's plate; not an island shape, so `names` leaves it out.
     case "round":
         return arc(c, c, c, -90, -180).concat(arc(c, h - c, c, 180, 90));
+    // Both corners cut at 45 degrees, for the floating strip's plate; not an island shape either.
+    case "chamfer":
+        return [[c, 0], [0, c], [0, h - c], [c, h]];
     case "chevron":
         return [[c, 0], [0, h / 2], [c, h]];
     case "hex":
