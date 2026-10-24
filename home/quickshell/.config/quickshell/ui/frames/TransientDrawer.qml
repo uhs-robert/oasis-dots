@@ -3,7 +3,7 @@ import qs.theme
 import "DrawerGeometry.js" as Drawer
 import "FrameGeometry.js" as FrameGeometry
 
-// The scaffolding a transient surface (OSD, which-key HUD) shares to be a screen-frame drawer: the geometry from its
+// The scaffolding a transient surface (OSD, which-key HUD, toasts) shares to be a screen-frame drawer: the geometry from its
 // panel size, the placement for its window, the shape drawn under its content and the open and close animations. The
 // host window keeps its own anchors, lifecycle and content, and publishes `window_rect` itself
 // (features/bar/DrawerWindowPublisher.qml needs ScreenFrames, which a ui/ file may not import).
@@ -35,7 +35,7 @@ Item {
 
     readonly property bool active: root.screen_frame !== null
     readonly property var profile: root.active ? Style.screen_frame_profile : null
-    readonly property real fillet: root.active ? Drawer.fillet_of(root.profile) : 0
+    readonly property real fillet: root.profile ? Drawer.fillet_of(root.profile) : 0
     readonly property real cover: Drawer.cover_depth(Style.bar_border_width, Style.bar_inset_gap, Style.bar_inset_width)
     readonly property var hole: root.screen_frame ? FrameGeometry.hole_rect(root.screen_frame) : null
     readonly property var kinds: Drawer.end_kinds(root.side, false)

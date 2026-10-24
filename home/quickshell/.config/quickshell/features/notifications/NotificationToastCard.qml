@@ -12,6 +12,7 @@ import qs.ui.effects
 import qs.ui.frames
 import qs.ui.menu
 import qs.features.popups.frames
+import "ToastExtent.js" as ToastExtent
 
 Rectangle {
     id: root
@@ -19,6 +20,12 @@ Rectangle {
     property var entry: null
     property bool selected: false
     property int focused_action: -1
+    // Set when the card sits in the toast drawer (NotificationToasts.qml): the drawer's own growth is the entrance and
+    // the exit, so the card skips its arrival art and fades and shows at once.
+    property bool in_drawer: false
+    // The drawer is growing or folding; see `reconcile_hover`.
+    property bool moving: false
+    property bool hover_held: false
     readonly property bool highlighted: root.selected || hover_handler.hovered
     readonly property var notification: root.entry ? root.entry.notification : null
     // A Dragon Quest window; toast_enter "type" types its summary out once.
@@ -77,16 +84,17 @@ Rectangle {
     }
 
     implicitHeight: layout.implicitHeight + (root.tile ? 28 : 16) + Style.inset_pad * 2 + Style.slant_room
-    radius: root.tile ? Style.frame_radius : root.notify ? 6 : Style.radius(8)
-    color: Style.frame_visor || Style.custom_frame || root.own_surface ? "transparent" : Style.boxed_cards
+    radius: root.in_drawer ? 0 : root.tile ? Style.frame_radius : root.notify ? 6 : Style.radius(8)
+    color: root.in_drawer ? (root.selected ? Qt.alpha(Style.pal.bg_surface, 0.6) : "transparent") : Style.frame_visor || Style.custom_frame || root.own_surface ? "transparent" : Style.boxed_cards
         ? (root.selected ? Qt.tint(Style.frame_color, Qt.alpha(Style.caret_color, 0.08)) : Style.frame_color)
         : (root.selected ? Style.pal.bg_surface : Style.pal.bg_mantle)
-    border.width: Style.frame_visor || Style.custom_frame || root.own_surface ? 0 : root.highlighted && !Style.boxed_cards ? 2 : 1
+    border.width: root.in_drawer ? 0 : Style.frame_visor || Style.custom_frame || root.own_surface ? 0 : root.highlighted && !Style.boxed_cards ? 2 : 1
     border.color: root.highlighted ? Style.pal.secondary : root.notify ? Qt.tint(Style.frame_color, Qt.alpha(root.accent, 0.7)) : Style.boxed_cards ? root.accent : Style.pal.border
     clip: true
 
-    opacity: 0
+    opacity: root.in_drawer ? 1 : 0
     Component.onCompleted: {
+        if (root.in_drawer) return;
         enter_anim.start();
         if (Style.toast_enter === "type") root.typed = 0;
         const arrival = ({ type: type_enter, mode7: mode7_enter, wobble: wobble_enter })[Style.toast_enter];
@@ -140,7 +148,7 @@ Rectangle {
     }
 
     Loader {
-        active: root.tile
+        active: root.tile && !root.in_drawer
         anchors.fill: parent
         sourceComponent: Modern.CardSurface {
             floating: true
@@ -149,7 +157,7 @@ Rectangle {
     }
 
     Loader {
-        active: root.dq
+        active: root.dq && !root.in_drawer
         anchors.fill: parent
         sourceComponent: Nes.DqWindow {
             border.color: root.highlighted ? Style.pal.secondary : Style.pal.fg_strong
@@ -168,7 +176,7 @@ Rectangle {
 
     // The PS2 bloom: a soft light that swells in with the card and fades once.
     Loader {
-        active: Style.toast_enter === "bloom"
+        active: Style.toast_enter === "bloom" && !root.in_drawer
         anchors.fill: parent
         z: 2
         sourceComponent: Rectangle {
@@ -189,7 +197,15 @@ Rectangle {
     // Closes with a short fade, then tells the state to actually drop the entry.
     function close_animated(action) {
         exit_anim.action = action;
-        exit_anim.start();
+        if (root.in_drawer) root.finish_close();
+        else exit_anim.start();
+    }
+
+    function finish_close() {
+        if (!root.entry) return;
+        if (exit_anim.action === "dismiss") NotificationState.dismiss(root.entry);
+        else if (exit_anim.action === "default") NotificationState.invoke_default(root.entry);
+        else NotificationState.hide_toast(root.entry);
     }
 
     NumberAnimation {
@@ -200,21 +216,17 @@ Rectangle {
         to: 0
         duration: 150
         easing.type: Easing.InCubic
-        onFinished: {
-            if (!root.entry) return;
-            if (exit_anim.action === "dismiss") NotificationState.dismiss(root.entry);
-            else if (exit_anim.action === "default") NotificationState.invoke_default(root.entry);
-            else NotificationState.hide_toast(root.entry);
-        }
+        onFinished: root.finish_close()
     }
 
     VisorGlass {
+        visible: !root.in_drawer
         anchors.fill: parent
         border_color: root.highlighted ? Style.pal.secondary : Qt.alpha(root.accent, 0.5)
     }
 
     FrameShade {
-        visible: Style.boxed_cards && Style.frame_shade.a > 0 && !Style.custom_frame
+        visible: !root.in_drawer && Style.boxed_cards && Style.frame_shade.a > 0 && !Style.custom_frame
         anchors.fill: parent
         anchors.margins: root.border.width
         top_radius: Math.max(0, root.radius - root.border.width)
@@ -223,7 +235,7 @@ Rectangle {
 
     Loader {
         anchors.fill: parent
-        active: Style.frame_watch && !root.own_surface
+        active: Style.frame_watch && !root.own_surface && !root.in_drawer
         sourceComponent: Goldeneye.PopupPanel {
             st: Style
             edge: 4
@@ -231,6 +243,7 @@ Rectangle {
     }
 
     CustomFrame {
+        visible: !root.in_drawer
         anchors.fill: parent
         chamfer_edge: root.highlighted ? Style.pal.secondary : Style.frame_border_color
         octagon_edge: root.highlighted ? Style.pal.secondary : root.accent
@@ -244,7 +257,7 @@ Rectangle {
     }
 
     FrameInset {
-        visible: Style.boxed_cards && Style.frame_inset_width > 0 && !root.dq
+        visible: !root.in_drawer && Style.boxed_cards && Style.frame_inset_width > 0 && !root.dq
         edge: root.border.width
         top_radius: root.radius
         bottom_radius: root.radius
@@ -314,7 +327,7 @@ Rectangle {
     }
 
     Dither {
-        visible: Style.boxed_cards && Style.dither.a > 0
+        visible: !root.in_drawer && Style.boxed_cards && Style.dither.a > 0
         anchors.fill: parent
         anchors.margins: root.border.width
         color: Style.dither
@@ -527,7 +540,7 @@ Rectangle {
     }
 
     Rectangle {
-        visible: root.highlighted && (root.tile || root.oasis) && !Style.frame_visor && !Style.custom_frame
+        visible: root.highlighted && (root.tile || root.oasis) && !Style.frame_visor && !Style.custom_frame && !root.in_drawer
         anchors.fill: parent
         z: 3
         radius: root.radius
@@ -536,13 +549,41 @@ Rectangle {
         border.color: Style.pal.secondary
     }
 
+    // Cards share the drawer's material, so a rule between them stands in for each one's own border; a hovered card
+    // gets its outline back.
+    Rectangle {
+        visible: root.in_drawer
+        anchors.fill: parent
+        z: 3
+        color: "transparent"
+        border.width: root.highlighted ? 1 : 0
+        border.color: Style.pal.secondary
+    }
+
+    Rectangle {
+        visible: root.in_drawer && !root.highlighted
+        anchors.bottom: parent.bottom
+        width: parent.width
+        height: 1
+        color: Style.hairline.a > 0 ? Style.hairline : Qt.alpha(Style.frame_border_color, 0.5)
+    }
+
     HoverHandler {
         id: hover_handler
-        onHoveredChanged: {
-            if (!root.entry) return;
-            if (hovered) NotificationState.pause_toast(root.entry);
-            else NotificationState.resume_toast(root.entry);
-        }
+        onHoveredChanged: root.reconcile_hover()
+    }
+
+    onMovingChanged: root.reconcile_hover()
+
+    // Pauses or resumes the countdown to match the cursor, but only once the drawer has settled: cards slide under a
+    // still cursor while it moves, and each false enter or leave would restart the full interval.
+    function reconcile_hover() {
+        if (!root.entry) return;
+        const action = ToastExtent.hover_action(root.moving, hover_handler.hovered, root.hover_held);
+        if (action === "pause") NotificationState.pause_toast(root.entry);
+        else if (action === "resume") NotificationState.resume_toast(root.entry);
+        else return;
+        root.hover_held = action === "pause";
     }
 
     MouseArea {
