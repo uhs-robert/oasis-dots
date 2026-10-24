@@ -690,7 +690,8 @@ SANDBOX_ACTIVEWINDOW_JSON=$default_window
 section "routing with --dry-run"
 config=$root/config
 mkdir -p "$config/integrations.d" "$config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/click.sh" "$config/integrations.d/"
+# The bash build loads integrations.d only; the Rust build takes the shipped TOML over the bash copy.
+cp "$package/.config/voxcmd/integrations.d/click.sh" "$package/.config/voxcmd/integrations.d/keybinds.sh" "$config/integrations.d/"
 copy_shipped_integrations "$config" keybinds
 # A bash integration of its own for the logger checks below to find: every shipped one is TOML or click, whose lookups
 # the Rust build does itself, so without it nothing would show that the logger records the bash voxcmd's calls.
@@ -735,21 +736,21 @@ check "left click is a click" "grep -q \"action=click .*,left$box'\" <<<\"\$out\
 out=$(route "click nowhere to be found")
 check "text not on screen reports it instead of falling through" "grep -q 'action=no_text' <<<\"\$out\" && ! grep -q Keybinds <<<\"\$out\""
 out=$(route "right click")
-check "bare 'right click' stays with the Cursor submap bind" "grep -q 'Keybinds (keybinds.toml)' <<<\"\$out\" && ! grep -q 'Click (click.sh)' <<<\"\$out\""
+check "bare 'right click' stays with the Cursor submap bind" "grep -Eq 'Keybinds \(keybinds\.(sh|toml)\)' <<<\"\$out\" && ! grep -q 'Click (click.sh)' <<<\"\$out\""
 out=$(route "click")
 check "bare 'click' stays with the keybinds" "! grep -q 'Click (click.sh)' <<<\"\$out\""
 # "click left", "click it" and the like are no click target: phrases.tsv records that they route as they did without
 # Click. Here, that they do not even capture the screen.
 : >"$log"
 out=$(route "click left")
-check "'click left' stays with the keybinds without capturing the screen" "grep -q 'Keybinds (keybinds.toml)' <<<\"\$out\" && ! grep -q '^grim' '$log'"
+check "'click left' stays with the keybinds without capturing the screen" "grep -Eq 'Keybinds \(keybinds\.(sh|toml)\)' <<<\"\$out\" && ! grep -q '^grim' '$log'"
 out=$(route "show hints")
 check "'show hints' launches wl-kbptr" "grep -q 'action=show_hints' <<<\"\$out\" && grep -q 'show_hints' <<<\"\$out\""
 check "'show hints' is silent" "grep -q 'silent: true' <<<\"\$out\""
 out=$(route "show click hints")
 check "'show click hints' is the same" "grep -q 'action=show_hints' <<<\"\$out\""
 out=$(route "keybind enter")
-check "'keybind' still forces the keybinds" "grep -q 'forced to:   keybinds.toml' <<<\"\$out\""
+check "'keybind' still forces the keybinds" "grep -Eq 'forced to:   keybinds\.(sh|toml)' <<<\"\$out\""
 
 # Two matches and a weak one go to the picker; a lone strong one runs.
 SANDBOX_TESSERACT_TSV=$({
@@ -1175,6 +1176,7 @@ if [ -n "$rust_matcher" ]; then
   check "none of click.sh's lookups, actions or box placing was asked of the bash voxcmd" "! grep -Eq '^_legacy-hook (candidates|run|pick-boxes) [^ ]*/click\.sh ' '$legacy_calls'"
   route "stubprobe anything" >/dev/null
   check "while the bash voxcmd was still asked for the integrations that stay on it" "grep -Eq '^_legacy-hook candidates [^ ]*/stub-probe\.sh ' '$legacy_calls'"
+  rm -f "$config/integrations.d/stub-probe.sh"
 fi
 
 # ---- numbered on-screen picks: the integration hook, voxcmd-hints and its replies ---------------------------------------
@@ -1722,7 +1724,7 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
 
 firefox_config=$root/firefox-config
 mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
-cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites}.sh "$firefox_config/integrations.d/"
+cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
 copy_shipped_integrations "$firefox_config" firefox firefox-sites keybinds
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
 check "a tab shown in a second window is one tab, not also that window" "[[ \$(grep -c '^option' <<<\"\$out\") == 1 ]] && grep -q 'action=focus_tab' <<<\"\$out\""
@@ -2194,6 +2196,29 @@ rm -f "$help_config/integrations.d/aaa-fallback.sh"
 printf 'name="Lamp"\nverbs=("on lamp on")\ndeclare -A actions=([on]=true)\n' >"$help_config/integrations.d/lamp.sh"
 help_run "say:lamp on"
 check "with no examples declared it toasts, asks nothing and exits 1" "grep -q '^notify-send .*voxcmd No integration declares examples\$' '$log' && ! grep -q '^voxcmd-pick' '$log' && [[ \$help_status == 1 ]]"
+if [ -n "$rust_matcher" ]; then
+  # The shipped keybinds.toml, against binds of its own: a Delete submap, a Delete Line bind for the delete confirm
+  # regex, and a password bind that must never be offered.
+  keybinds_help_config=$root/config-help-keybinds
+  mkdir -p "$keybinds_help_config/integrations.d" "$keybinds_help_config/replacements.d"
+  copy_shipped_integrations "$keybinds_help_config" keybinds
+  keybinds_help_binds='[
+    {"description": "Delete Line", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "D", "arg": "601"},
+    {"description": "Show Password", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "P", "arg": "602"},
+    {"description": "Open Notes", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "N", "arg": "603"},
+    {"description": "Wipe", "submap": "Delete", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "W", "arg": "604"}]'
+  rm -f "$help_answer"
+  : >"$log"
+  SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" help >/dev/null 2>&1
+  check "Keybinds' Tab lists the submaps, then Exit submap, then the binds" "grep -qF '\"choices\":[{\"id\":\"run:0\",\"label\":\"Submap: Delete\"},{\"id\":\"run:1\",\"label\":\"Exit submap\"},{\"id\":\"run:2\",\"label\":\"Delete Line\"},{\"id\":\"run:3\",\"label\":\"Open Notes\"},{\"id\":\"run:4\",\"label\":\"Wipe (Delete)\"}]' '$log'"
+  check "a password bind is never offered" "! grep -qi 'password' '$log'"
+  out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "show password" 2>&1)
+  check "and saying its description runs nothing" "grep -q '^result: *no match' <<<\"\$out\""
+  out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "delete line" 2>&1)
+  check "a bind named Delete asks before it runs" "grep -q 'id=.601.' <<<\"\$out\" && grep -q 'confirm: true' <<<\"\$out\""
+  out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "delete submap" 2>&1)
+  check "entering the Delete submap does not" "grep -q 'id=.submap:Delete.' <<<\"\$out\" && grep -q 'confirm: false' <<<\"\$out\""
+fi
 unset VOXCMD_LEGACY_BIN
 
 finish

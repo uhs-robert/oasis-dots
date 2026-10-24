@@ -26,10 +26,10 @@ mkdir -p "$ov_pkg" "$ov_config/integrations.d" "$ov_config/replacements.d" "$XDG
 cp -r "$package/.local" "$ov_pkg/.local"
 link_voxcmd_shim "$ov_pkg"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$ov_pkg/.local/bin/voxcmd-autostop"
-for integration in apps overview; do
+for integration in apps keybinds overview rapid; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$ov_config/integrations.d/"
 done
-# Rapid and Keybinds are TOML now: copying only the bash files would test the legacy ones.
+# Rapid and Keybinds are TOML too: the Rust build takes the shipped file over the bash copy the bash build needs.
 copy_shipped_integrations "$ov_config" keybinds rapid
 # The confirm card answers yes unless $root/confirm-no exists.
 cat >"$ov_pkg/.local/bin/voxcmd-confirm" <<STUB

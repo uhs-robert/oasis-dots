@@ -63,17 +63,13 @@ bind_lists() {
 machine_verbs='lock|suspend|sleep|hibernate|reboot|log ?out|log off|power off|shut ?down'
 machine_words='computer|pc|laptop|machine|screen|system|session|desktop'
 
-# A machine verb said with a machine word matches a bind named for that verb alone, or for it and a machine word, as if
-# the bind said what was spoken. The verbs are compared without spaces, so "log out" is a Logout bind.
-# A {focus} form said first ("focus workspace 3", "switch to workspace 3") likewise matches a bind starting with any
-# other {focus} form ("Go to Workspace 3"): the forms are one intent, and bind authors pick whichever they like.
-# id<TAB>label<TAB>match_text per candidate, from a JSON array on stdin. Tabs and newlines in a description would split
-# the row, and an empty id is no candidate. Prints nothing when the list is empty, which is how an unreachable Hyprland
-# or a missing bind yields; the spoken text never becomes an id.
+# id<TAB>label<TAB>match_text per candidate, from a JSON array on stdin. Ids are stringified because a bind's `arg` may
+# be a number. Tabs and newlines in a description would split the row, and an empty id is no candidate. Prints nothing
+# for an empty list, which is how an unreachable Hyprland or a missing bind yields: the spoken text never becomes an id.
 candidate_rows() {
   jq -r '.[]
-    | select((.id // "") != "")
-    | [.id, (.label // ""), (.match_text // .label // "")] | map(gsub("[\t\n\r]"; " ")) | join("\t")' 2>/dev/null
+    | select((.id // "" | tostring) != "")
+    | [(.id | tostring), (.label // ""), (.match_text // .label // "")] | map(gsub("[\t\n\r]"; " ")) | join("\t")' 2>/dev/null
 }
 
 submap_candidates() {
@@ -113,7 +109,7 @@ submap_help() {
 }
 
 bind_help() {
-  bind_lists | jq -r '(.binds // [])[] | select((.id // "") != "") | [.id, .label] | map(gsub("[\t\n\r]"; " ")) | join("\t")'
+  bind_lists | jq -r '(.binds // [])[] | select((.id // "" | tostring) != "") | [(.id | tostring), .label] | map(gsub("[\t\n\r]"; " ")) | join("\t")'
 }
 
 # A bind is dispatched like Keybind Help does: leave any active submap first, then call the bind through the Lua
