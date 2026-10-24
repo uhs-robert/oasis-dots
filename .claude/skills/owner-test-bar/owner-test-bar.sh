@@ -813,9 +813,14 @@ build() {
   # The merged tree is fresh, so a recorded tree pass never matches it. A lone branch that already contains origin/main
   # merges to its own tree, so its recorded pass stands in; any other merge was never checked, so it runs. CHECK_NO_LOCK: this
   # must not queue behind other sessions' voxcmd suites.
+  # Kept in a log beside the build, since a bare "check fails" leaves the caller no way to tell which step broke.
   (cd "$dir" && {
     lib/check/passed.sh is-passed || { (($# == 1)) && branch_passed "$1"; } || CHECK_NO_LOCK=1 lib/check.sh --changed origin/main
-  } >/dev/null) || die "the check fails on the combined build in $dir"
+  } >"$dir.check.log" 2>&1) || {
+    tail -n 25 "$dir.check.log" >&2
+    die "the check fails on the combined build in $dir (full output $dir.check.log)"
+  }
+  rm -f "$dir.check.log"
   echo "owner-test-bar: built $dir from $*"
 }
 

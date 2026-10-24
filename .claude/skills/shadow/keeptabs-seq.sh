@@ -3,7 +3,7 @@
 # line (the priming line) must not fire waiting_started and the next waiting rise must, even when that first line
 # repeats the old last line. Fails on a bar that keeps last_line across the restart, passes with it cleared.
 # It also asserts that a stream exit empties runs, tooltip and the counts, so the module hides instead of freezing.
-# Usage: keeptabs-seq.sh [--name SHADOW] [<branch>...]   (branches as for `shadow.sh up`; none tests the main checkout)
+# Usage: keeptabs-seq.sh [--name SHADOW] [<branch>...]   (branches as for `shadow.sh up`; none tests the current worktree)
 # The shadow's PATH hides ~/.local/bin, so a stub keeptabs-status is installed in the shadow HOME and fed from
 # files, and the shadow's copy of KeeptabsState.qml is patched to log each waiting_started; the repo is untouched.
 set -euo pipefail

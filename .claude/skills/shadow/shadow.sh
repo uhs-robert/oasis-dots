@@ -4,7 +4,7 @@
 set -euo pipefail
 
 skill_dir=$(cd "$(dirname "$0")" && pwd)
-# The main checkout even when run from a linked worktree, since only it holds the gitignored bar assets.
+# The main checkout holds the gitignored bar assets, which a linked worktree lacks.
 repo=$(dirname "$(git -C "$skill_dir" rev-parse --path-format=absolute --git-common-dir)")
 qs_rel=home/quickshell/.config/quickshell
 test_bar="$skill_dir/../owner-test-bar/owner-test-bar.sh"
@@ -252,9 +252,36 @@ hypr_socket_ready() { compgen -G "$runtime/hypr/*/.socket.sock" >/dev/null; }
 output_listed() { shadow_hyprctl monitors "$@" -j 2>/dev/null | grep -q '"WAYLAND-1"'; }
 
 # owner-test-bar.sh build only makes a worktree, merges and runs just check; it never stops or swaps the live bar.
+# With no branches the bar comes from the caller's worktree (or --from DIR) as it is on disk, uncommitted edits
+# included; outside any checkout of this repo it falls back to the main checkout.
+worktree_source() {
+  local dir=${from:-.} top
+  top=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || top=
+  if [[ -z $top ]]; then
+    [[ -z $from ]] || die "--from $from is not inside a git checkout"
+    top=$repo
+  fi
+  [[ $(git -C "$top" rev-parse --path-format=absolute --git-common-dir) == "$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)" ]] ||
+    die "$top is a checkout of another repository, not this one"
+  [[ -d $top/$qs_rel ]] || die "$top has no $qs_rel"
+  echo "$top/$qs_rel"
+}
+
+# Gitignored assets (theme.json, FF7 audio) exist only in the main checkout; fill in what the source lacks.
+overlay_ignored_assets() {
+  local src_top=${1%/"$qs_rel"} path rel
+  [[ $src_top == "$repo" ]] && return 0
+  while read -r path; do
+    rel=${path#"$qs_rel"/}
+    [[ $path == *__pycache__* || -e $qs_dir/$rel ]] && continue
+    mkdir -p "$(dirname "$qs_dir/$rel")"
+    cp -aL "$repo/$path" "$qs_dir/$rel"
+  done < <(git -C "$repo" status --short --ignored "$qs_rel" | awk '$1 == "!!" { sub(/\/$/, "", $2); print $2 }')
+}
+
 resolve_source() {
   (($# == 0)) && {
-    echo "$repo/$qs_rel"
+    worktree_source
     return
   }
   # Prefixed so a shadow's bar can never share a name with one the owner is testing.
@@ -287,7 +314,7 @@ abort_up() {
 up() {
   set_name "${1:-}"
   shift
-  local size=1920x1080 desktop=0
+  local size=1920x1080 desktop=0 from=
   local branches=()
   while (($# > 0)); do
     case $1 in
@@ -299,6 +326,10 @@ up() {
       desktop=1
       shift
       ;;
+    --from)
+      from=${2:?--from needs a worktree directory}
+      shift 2
+      ;;
     -*) die "unknown argument: $1" ;;
     *)
       branches+=("$1")
@@ -306,6 +337,7 @@ up() {
       ;;
     esac
   done
+  [[ -z $from || ${#branches[@]} -eq 0 ]] || die "--from and branches are exclusive"
   [[ $size =~ ^[1-9][0-9]*x[1-9][0-9]*$ ]] || die "--size must be WxH, like 1080x1920"
   [[ -z $(shadow_pids) ]] || die "shadow '$name' is already running; run: shadow.sh down $name"
   local t0 src render_node host_socket
@@ -318,6 +350,8 @@ up() {
   local t_src=$(($(now_ms) - t0))
   # A plain copy with links resolved, so later edits or removal of a worktree cannot change the running bar.
   cp -rL "$src" "$qs_dir"
+  overlay_ignored_assets "$src"
+  echo "${src%/"$qs_rel"}" >"$base/source"
   seed_home
   ln -sfn "$(command -v qs)" "$bin_dir/qs-shadow"
   write_shims
@@ -508,7 +542,8 @@ status_one() {
     echo "$name: down"
     return
   fi
-  local source="main checkout"
+  local source
+  source="worktree $(cat "$base/source" 2>/dev/null || echo unknown)"
   [[ -f $base/branches ]] && source="test bar $(<"$base/test-bar") ($(paste -sd ' ' "$base/branches"))"
   echo "$name: up, ${#pids[@]} processes, $(pss_mb "${pids[@]}") MB PSS, size $(cat "$base/size" 2>/dev/null || echo unknown), source $source"
   echo "  runtime $runtime, signature $(cat "$base/signature" 2>/dev/null || echo none)"
@@ -597,7 +632,7 @@ down() {
   fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
+usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 case $cmd in
