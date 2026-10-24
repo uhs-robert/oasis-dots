@@ -604,6 +604,7 @@ pub fn exec(mut command: Command) -> CliError {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use std::io::{BufRead, BufReader};
     use std::os::unix::fs::PermissionsExt;
 
     /// An executable file whose exec is known to work (see `settle_exec`); `VOXCMD_TEST_PROBE` makes it exit at once.
@@ -806,10 +807,15 @@ pub(crate) mod tests {
         let fifo_c = CString::new(fifo.as_os_str().as_bytes()).unwrap();
         // SAFETY: mkfifo on a NUL-terminated path.
         assert_eq!(unsafe { libc::mkfifo(fifo_c.as_ptr(), 0o600) }, 0);
+        // Waits for the shell's first output: until it has exec'd, /proc/<pid>/cmdline is still the test binary's. The
+        // trailing `:` keeps the shell from exec-ing `sleep` in its place, which would drop the `voxcmd-pick` argument.
         let mut asker = Command::new("sh")
-            .args(["-c", "sleep 30", "voxcmd-pick"])
+            .args(["-c", "echo up; sleep 30; :", "voxcmd-pick"])
+            .stdout(Stdio::piped())
             .spawn()
             .unwrap();
+        let mut up = String::new();
+        BufReader::new(asker.stdout.take().unwrap()).read_line(&mut up).unwrap();
         let mut bystander = Command::new("sleep").arg("30").spawn().unwrap();
         let state_file = dir.path().join("pending-pick.json");
         let text_of = |state: &str| {
