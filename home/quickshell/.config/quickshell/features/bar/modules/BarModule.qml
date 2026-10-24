@@ -10,6 +10,8 @@ Item {
     property bool compact: false
     property string screen_name: ""
     property int bar_height: 30
+    // On a left or right bar. Modules still lay out horizontally (their content is not rotated); this is for those that need to know.
+    property bool vertical: false
     property Item island: null
     property color island_color: Theme.bg_core
     property bool shown: true

@@ -143,6 +143,22 @@ const cases = [
   ["translucent islands: frame stroke clip stays at near", () => F.stroke_clip_top(F.frame_layout(1920, 1080, "top", 30, Object.assign({}, kit, { fill_overlap: 0 }))), 30],
   ["frame to_screen top is the band frame", () => plain(F.to_screen(top_frame)), plain(B.band_affine("top", 1080))],
   ["frame to_screen bottom is the band frame", () => plain(F.to_screen(bottom_frame)), plain(B.band_affine("bottom", 1080))],
+  // A side bar's islands draw in the same top-bar frame, turned onto the edge by band_affine (Island.qml's deco_frame).
+  ["a vertical bar keeps the shapes that have a vertical form", () => ["slant", "rect", "chevron", "tab", "none", "underline", "brackets"].map(O.vertical_shape), ["slant", "rect", "chevron", "tab", "none", "underline", "brackets"]],
+  ["a shape without a vertical form draws as rect for now", () => ["lualine", "window", "capsule", "hex"].map(O.vertical_shape), ["rect", "rect", "rect", "rect"]],
+  ...["rect", "chevron", "tab"].flatMap(shape => ["left", "right"].flatMap(edge => {
+    const depth = 40, length = 300, cap = O.cap_width(shape, depth);
+    const fill = O.fill_path(O.rim_path(shape, length, depth, cap, true, true), length, true, true);
+    const placed = fill.map(([u, v]) => { const m = B.band_affine(edge, depth); return [m[0] * u + m[2] * v + m[4], m[1] * u + m[3] * v + m[5]]; });
+    const on_screen_edge = edge === "left" ? 0 : depth;
+    return [
+      ["a " + edge + " " + shape + " island is as big as the horizontal one", () => Math.abs(loop_area(placed) - loop_area(fill)) < 1e-6, true],
+      ["a " + edge + " " + shape + " island is a column depth wide and length tall", () => placed.every(p => p[0] >= -1e-9 && p[0] <= depth + 1e-9 && p[1] >= -1e-9 && p[1] <= length + 1e-9), true],
+      ["a " + edge + " " + shape + " island rests on the screen edge", () => placed.some(p => Math.abs(p[0] - on_screen_edge) < 1e-9), true],
+    ];
+  })),
+  ["a left island's open edge faces right", () => { const m = B.band_affine("left", 40); return [m[0] * 0 + m[2] * 40 + m[4], m[1] * 7 + m[3] * 0 + m[5]]; }, [40, 7]],
+  ["a right island's open edge faces left", () => { const m = B.band_affine("right", 40); return [m[2] * 40 + m[4], m[1] * 7 + m[5]]; }, [0, 7]],
 ];
 
 let failed = 0;

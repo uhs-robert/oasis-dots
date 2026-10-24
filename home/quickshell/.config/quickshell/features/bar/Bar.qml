@@ -27,14 +27,21 @@ Item {
     readonly property bool compact: BarSettings.compact_for(root.rule)
     readonly property int bar_height: BarSettings.height_for(root.rule)
     readonly property string position: BarSettings.position_for(root.rule)
+    // A left or right bar is a column: the islands stack top, center, bottom and `bar_height` is its width.
+    readonly property bool vertical: BarLayout.is_vertical(root.position)
+    // Lualine's sections are horizontal only, so a side bar draws the style's islands instead.
+    readonly property bool lualine: Style.bar_lualine && !root.vertical
     readonly property real center_width: center_island.body_item.width
     // The floating strip (Style.strip_floats): the plate sits strip_inset in from the screen edge and strip_side in from
-    // each side, so the bar window is that much taller and the islands and plate shift toward the open edge by half of it.
+    // each end of the bar (the sides of a top bar, the top and bottom of a column), so the bar window is strip_inset
+    // thicker and the islands and plate shift toward the open edge by half of it.
     readonly property real strip_inset: Style.strip_floats ? Style.bar_strip_inset : 0
     readonly property real strip_side: Style.strip_floats ? Style.bar_strip_side : 0
-    readonly property real strip_shift: (root.position === "bottom" ? -1 : 1) * root.strip_inset / 2
+    readonly property real strip_shift: (root.position === "bottom" || root.position === "right" ? -1 : 1) * root.strip_inset / 2
+    // Where an island sits across the bar: centred in its window, moved by strip_shift.
+    readonly property real cross_center: ((root.vertical ? root.width : root.height) - root.bar_height) / 2 + root.strip_shift
     // Lualine has no center island; its modules move into the right island's sections.
-    readonly property bool has_center: !Style.bar_lualine && root.center_entries.length > 0
+    readonly property bool has_center: !root.lualine && root.center_entries.length > 0
 
     // Resolves a bars.json module list into loadable entries, skipping unknown names.
     function build_entries(names) {
@@ -62,17 +69,17 @@ Item {
     readonly property bool lists_media: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "media"))
     // Everything the lualine right island holds: center modules, then right ones.
     readonly property var lualine_entries: root.center_entries.concat(root.right_entries)
-    readonly property var right_side: Style.bar_lualine ? root.lualine_entries : root.right_entries
+    readonly property var right_side: root.lualine ? root.lualine_entries : root.right_entries
     // Right-island entries in drawn order.
-    readonly property var right_drawn: Style.bar_lualine ? ["x", "y", "z"].reduce((out, k) => out.concat(root.lualine_entries.filter(e => root.lualine_section(e.base) === k)), []) : root.right_entries
+    readonly property var right_drawn: root.lualine ? ["x", "y", "z"].reduce((out, k) => out.concat(root.lualine_entries.filter(e => root.lualine_section(e.base) === k)), []) : root.right_entries
 
     // The start button draws the HyprVim mode chip on a lualine bar.
     // With no left modules the left island is hidden, so a frame has no chip and the dropdown tab shows instead.
-    readonly property bool has_frame_chip: Style.screen_frame_on && !Style.bar_lualine && root.left_entries.length > 0
-    readonly property bool has_mode_chip: Style.bar_lualine && [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "start"))
+    readonly property bool has_frame_chip: Style.screen_frame_on && !root.vertical && !root.lualine && root.left_entries.length > 0
+    readonly property bool has_mode_chip: root.lualine && [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "start"))
 
     // The oasis horizon decorates the center island when it holds the clock; that clock makes room for it and lends it the time.
-    readonly property bool clock_horizon: Style.bar_clock_layout === "horizon" && root.center_entries.some(e => e.base === "clock")
+    readonly property bool clock_horizon: !root.vertical && Style.bar_clock_layout === "horizon" && root.center_entries.some(e => e.base === "clock")
     property var horizon_clock: null
     readonly property var module_props: ({ compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
 
@@ -81,6 +88,7 @@ Item {
         item.compact = Qt.binding(() => root.compact);
         item.screen_name = Qt.binding(() => root.screen_name);
         item.bar_height = Qt.binding(() => root.bar_height);
+        if (item.hasOwnProperty("vertical")) item.vertical = Qt.binding(() => root.vertical);
         if (entry.base === "clock" && island === center_island) {
             root.horizon_clock = item;
             item.horizon = Qt.binding(() => root.clock_horizon);
@@ -93,7 +101,7 @@ Item {
 
     // Lualine is one full-width statusline: section c's fill runs behind the islands.
     Rectangle {
-        visible: Style.bar_lualine && !Style.islands_translucent
+        visible: root.lualine && !Style.islands_translucent
         width: root.width
         height: root.bar_height
         anchors.verticalCenter: parent.verticalCenter
@@ -102,7 +110,7 @@ Item {
 
     // Translucent, section c fills only between the islands, beside their arrow caps, so no fill stacks on it.
     Shape {
-        visible: Style.bar_lualine && Style.islands_translucent
+        visible: root.lualine && Style.islands_translucent
         width: root.width
         height: root.bar_height
         anchors.verticalCenter: parent.verticalCenter
@@ -122,15 +130,14 @@ Item {
     }
 
     Loader {
-        x: root.strip_side
-        width: root.width - root.strip_side * 2
-        height: root.bar_height
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: root.strip_shift
+        x: root.vertical ? root.cross_center : root.strip_side
+        y: root.vertical ? root.strip_side : root.cross_center
+        width: root.vertical ? root.bar_height : root.width - root.strip_side * 2
+        height: root.vertical ? root.height - root.strip_side * 2 : root.bar_height
         active: Style.strip_shape
         sourceComponent: StripBackground {
             edge: root.position
-            length: parent.width
+            length: root.vertical ? parent.height : parent.width
             thickness: root.bar_height
             frame: root.frame
             screen_name: root.screen_name
@@ -138,13 +145,11 @@ Item {
     }
 
     Island {
-        height: root.bar_height
+        thickness: root.bar_height
         id: left_island
-        cap_right_fill: Style.bar_lualine && LualineState.last_fill[root.screen_name] ? LualineState.last_fill[root.screen_name] : "transparent"
-        anchors.left: parent.left
-        anchors.leftMargin: root.frame ? root.frame.start : root.strip_side
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: root.strip_shift
+        cap_right_fill: root.lualine && LualineState.last_fill[root.screen_name] ? LualineState.last_fill[root.screen_name] : "transparent"
+        x: root.vertical ? root.cross_center : root.frame ? root.frame.start : root.strip_side
+        y: root.vertical ? root.strip_side : root.cross_center
         bg_color: Style.strip_shape ? Style.strip_color : Style.bar_side_bg
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
@@ -172,7 +177,9 @@ Item {
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
                 // Keeps the start button close to the workspace pills it launches into.
-                Layout.rightMargin: modelData.base === "start" && !Style.bar_lualine ? -8 : 0
+                Layout.rightMargin: modelData.base === "start" && !root.lualine && !root.vertical ? -8 : 0
+                Layout.bottomMargin: modelData.base === "start" && !root.lualine && root.vertical ? -8 : 0
+                Layout.alignment: root.vertical ? Qt.AlignHCenter : 0
                 Component.onCompleted: setSource(modelData.url, root.module_props)
                 onLoaded: root.wire_module(item, modelData, left_island)
             }
@@ -181,7 +188,7 @@ Item {
         // With a frame the submap shows as the left island's last item instead of a dropdown tab (lualine styles keep their own mode chip). The left island holds few items, and the centered island does not move when it grows.
         Rectangle {
             visible: root.has_frame_chip && SubmapState.indicator_shown && root.focused
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
             implicitWidth: chip_text.implicitWidth + 16
             implicitHeight: chip_text.implicitHeight + 6
             radius: Style.radius(4)
@@ -203,7 +210,7 @@ Item {
     // Lualine section c after the buffers: the focused app and a terminal's directory.
     Loader {
         id: segment_loader
-        active: Style.bar_lualine && root.left_entries.length > 0
+        active: root.lualine && root.left_entries.length > 0
         x: left_island.width
         anchors.verticalCenter: parent.verticalCenter
         sourceComponent: Neovim.WindowSegment {
@@ -221,7 +228,7 @@ Item {
     Item {
         id: lualine_cava
         readonly property real room: root.section_c - (segment_loader.item ? segment_loader.item.min_width : 0) - 16
-        readonly property bool shown: Style.bar_lualine && right_island.visible && MediaState.playing && PowerSource.on_ac && lualine_cava.room >= 48
+        readonly property bool shown: root.lualine && right_island.visible && MediaState.playing && PowerSource.on_ac && lualine_cava.room >= 48
         visible: lualine_cava.shown
         x: right_island.x - width - 8
         width: Math.max(0, Math.min(120, lualine_cava.room))
@@ -249,11 +256,10 @@ Item {
     }
 
     Island {
-        height: root.bar_height
+        thickness: root.bar_height
         id: center_island
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: root.strip_shift
+        x: root.vertical ? root.cross_center : (root.width - width) / 2
+        y: root.vertical ? (root.height - height) / 2 : root.cross_center
         bg_color: Style.strip_shape ? Style.strip_color : Style.bar_center_bg
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
@@ -282,6 +288,7 @@ Item {
                 required property var modelData
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
+                Layout.alignment: root.vertical ? Qt.AlignHCenter : 0
                 Component.onCompleted: setSource(modelData.url, root.module_props)
                 onLoaded: root.wire_module(item, modelData, center_island)
             }
@@ -311,18 +318,16 @@ Item {
         anchors.topMargin: open_edge_margin
         anchors.bottomMargin: open_edge_margin
         flipped: center_island.flipped
-        active: MediaState.playing && root.has_center
+        active: MediaState.playing && root.has_center && !root.vertical
     }
 
     Island {
-        height: root.bar_height
+        thickness: root.bar_height
         id: right_island
-        anchors.right: parent.right
-        anchors.rightMargin: root.frame ? root.frame.end : root.strip_side
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.verticalCenterOffset: root.strip_shift
+        x: root.vertical ? root.cross_center : root.width - width - (root.frame ? root.frame.end : root.strip_side)
+        y: root.vertical ? root.height - height - root.strip_side : root.cross_center
         // Lualine x shares section c's mantle, so the idle cap melts into the bar like lualine's c|x boundary.
-        bg_color: Style.bar_lualine ? Theme.bg_mantle : Style.strip_shape ? Style.strip_color : Style.bar_side_bg
+        bg_color: root.lualine ? Theme.bg_mantle : Style.strip_shape ? Style.strip_color : Style.bar_side_bg
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
         scanline_color: Style.bar_scanline_color
@@ -336,19 +341,20 @@ Item {
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
         edge: root.position
-        cap_left_fill: Style.bar_lualine && LualineState.right_first_fill[root.screen_name] ? LualineState.right_first_fill[root.screen_name] : "transparent"
+        cap_left_fill: root.lualine && LualineState.right_first_fill[root.screen_name] ? LualineState.right_first_fill[root.screen_name] : "transparent"
         cap_left: true
         visible: root.right_side.length > 0
 
-        onClicked: if (!Style.bar_lualine && root.right_entries.some(e => e.base === "clock")) Popups.toggle("clock", right_island.body_item, right_island.bg_color, root.screen_name)
+        onClicked: if (!root.lualine && root.right_entries.some(e => e.base === "clock")) Popups.toggle("clock", right_island.body_item, right_island.bg_color, root.screen_name)
 
         Repeater {
-            model: Style.bar_lualine ? [] : root.right_entries
+            model: root.lualine ? [] : root.right_entries
 
             Loader {
                 required property var modelData
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
+                Layout.alignment: root.vertical ? Qt.AlignHCenter : 0
                 Component.onCompleted: setSource(modelData.url, root.module_props)
                 onLoaded: root.wire_module(item, modelData, right_island)
             }
@@ -356,7 +362,7 @@ Item {
 
         // Lualine x, y and z sections (lualine_section).
         Loader {
-            active: Style.bar_lualine
+            active: root.lualine
             visible: active
             Layout.fillHeight: true
             sourceComponent: Row {
@@ -416,14 +422,14 @@ Item {
         Popups.register_default("power", power_island.body_item, power_island.bg_color, root.screen_name);
         Popups.register_default("confirm", power_island.body_item, power_island.bg_color, root.screen_name);
         // Settings drops from the screen's center even under lualine, whose center island is hidden but still centered.
-        const settings_island = root.has_center || Style.bar_lualine ? center_island : power_island;
+        const settings_island = root.has_center || root.lualine ? center_island : power_island;
         Popups.register_default("settings", settings_island.body_item, settings_island.bg_color, root.screen_name);
         // Without a media module in bars.json, the media popup drops from the center island.
         Popups.unregister("media", root.screen_name, center_island.body_item);
         Popups.unregister("media", root.screen_name, right_island.body_item);
         if (root.has_center && !root.lists_media) Popups.register_default("media", center_island.body_item, center_island.bg_color, root.screen_name);
         // Lualine has no center island, so the media popup drops from the right one.
-        else if (Style.bar_lualine && !root.lists_media) Popups.register_default("media", right_island.body_item, right_island.bg_color, root.screen_name);
+        else if (root.lualine && !root.lists_media) Popups.register_default("media", right_island.body_item, right_island.bg_color, root.screen_name);
     }
 
     // Popup names in bar order for Ctrl+H/L walking.
@@ -433,10 +439,10 @@ Item {
 
     function sync_popup_order() {
         const center_names = root.has_center ? root.popup_names(root.center_entries) : [];
-        if ((root.has_center || Style.bar_lualine) && !root.lists_media) center_names.push("media");
+        if ((root.has_center || root.lualine) && !root.lists_media) center_names.push("media");
         const right_names = root.popup_names(root.right_drawn);
         // Settings drops from the center; with no center it drops from the right end, so it walks last.
-        const has_center_slot = root.has_center || Style.bar_lualine;
+        const has_center_slot = root.has_center || root.lualine;
         if (has_center_slot) center_names.push("settings");
         else right_names.push("settings");
         Popups.register_order(root.screen_name, root.popup_names(root.left_entries).concat(center_names, right_names));
