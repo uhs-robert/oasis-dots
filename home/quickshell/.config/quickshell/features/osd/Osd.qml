@@ -104,7 +104,7 @@ PanelWindow {
     readonly property real screen_height: root.screen ? root.screen.height : 1080
     // No explicit exclusiveZone: even 0 overrides Ignore, so the frame's zones would push a drawer inward.
     exclusionMode: root.drawer ? ExclusionMode.Ignore : ExclusionMode.Normal
-    // Floating, a side edge anchors to that side alone, which centres the pill along it.
+    // Floating, a side edge anchors to that side alone, which centres the pill along it; it rests the margin plus the slide in, as on top and bottom.
     anchors.top: root.drawer ? scaffold.place.anchor_top : root.edge === "top"
     anchors.bottom: root.drawer ? scaffold.place.anchor_bottom : root.edge === "bottom"
     anchors.left: root.drawer ? scaffold.place.anchor_left : root.edge === "left"
@@ -120,7 +120,9 @@ PanelWindow {
     // Floating frames set the title chip into the top border, half of it above the frame.
     readonly property bool float_title: !root.drawer && Style.border_title && Style.show_title
     readonly property real float_top: root.float_title ? Math.round(title_tab.height / 2) : 0
-    implicitHeight: root.drawer ? scaffold.full.surface.height : frame.height + (root.vertical ? 0 : root.slide) + root.shadow_pad + root.float_top
+    // A hard shadow hangs below the frame: the slide room holds it on top/bottom, a side edge reserves it itself.
+    readonly property int hard_drop: !root.drawer && Style.frame_drop > 0 && Style.frame_shadow.a === 0 ? Style.frame_drop : 0
+    implicitHeight: root.drawer ? scaffold.full.surface.height : frame.height + (root.vertical ? root.hard_drop : root.slide) + root.shadow_pad + root.float_top
     mask: Region {}
     WlrLayershell.namespace: "quickshell-osd"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -331,9 +333,8 @@ PanelWindow {
         text: "100%"
     }
 
-    // Fits in the slide room under the frame, so the window keeps its size.
     Rectangle {
-        visible: !root.drawer && Style.frame_drop > 0 && Style.frame_shadow.a === 0
+        visible: root.hard_drop > 0
         x: frame.x
         y: frame.y + Style.frame_drop
         width: frame.width

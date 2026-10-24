@@ -599,13 +599,28 @@ cases.push(["a flipped drawer's dither rows mirror the frame's for every origin 
   cases.push(["top and bottom texture origins are unchanged by the edge name", () => {
     const hole = F.hole_rect(top_frame), seam = F.seam_of(top_frame, "top");
     const placement = D.place("center", "top", hole, seam, 1920, 1080, cover, 300);
-    return [D.texture_origin("center", false, false, placement, 1920, 1080, 300), D.texture_origin("center", "top", false, placement, 1920, 1080, 300, 99), D.texture_origin("center", "bottom", false, placement, 1920, 1080, 300)];
-  }, (() => {
-    const hole = F.hole_rect(top_frame), seam = F.seam_of(top_frame, "top");
-    const placement = D.place("center", "top", hole, seam, 1920, 1080, cover, 300);
-    const base = { x: placement.along, y: placement.across, flipped: false };
-    return [base, base, { x: placement.along, y: 1079 - placement.across, flipped: true }];
-  })()]);
+    return [placement.along, placement.across, D.texture_origin("center", false, false, placement, 1920, 1080, 300), D.texture_origin("center", "top", false, placement, 1920, 1080, 300, 99), D.texture_origin("center", "bottom", false, placement, 1920, 1080, 300)];
+  }, [810, 27, { x: 810, y: 27, flipped: false }, { x: 810, y: 27, flipped: false }, { x: 810, y: 1052, flipped: true }]]);
+  cases.push(["a bottom-end side drawer's window and texture origin count from the bottom edge", () => {
+    const left = at("left", "right"), right = at("right", "right");
+    const origin = (d, edge, bar_bottom) => D.texture_origin("right", edge, bar_bottom, d.placement, 1920, 1080, d.lay.length, d.lay.depth);
+    return [left.rect, right.rect, origin(left, "left", false), origin(right, "right", false), origin(left, "left", true)].map(plain);
+  }, [{ x: 3, y: 800, w: 317, h: 277 }, { x: 1600, y: 800, w: 317, h: 277 }, { x: 3, y: 800, flipped: false }, { x: 1600, y: 800, flipped: false }, { x: 3, y: 279, flipped: true }]]);
+  // OsdSettings is a QML singleton; its pure edge_for is cut out of the source and run against a stand-in `root`.
+  const edge_for = pinned => new Function("root", "return " + fs.readFileSync(path.join(root, "features/osd/OsdSettings.qml"), "utf8").match(/function edge_for\(bar_edge\) (\{[\s\S]*?\n    \})/)[1].replace(/^\{/, "(bar_edge) => {") + ";")({ edge: pinned });
+  cases.push(["the OSD edge is opposite the bar unless pinned to a side", () => [edge_for("opposite")("top"), edge_for("opposite")("bottom"), edge_for("left")("top"), edge_for("right")("bottom")], ["bottom", "top", "left", "right"]]);
+  cases.push(["a side drawer's window gaps nothing on a strip it does not reach", () => {
+    const { rect } = at("left", "center");
+    return [F.strip_gaps([rect], "top", 30, 1080), F.strip_gaps([rect], "bottom", 30, 1080)];
+  }, [[], []]]);
+  cases.push(["a side drawer reaching one strip gaps only that strip, over its own columns", () => {
+    const rect = { x: 0, y: 100, w: 100, h: 980 };
+    return [F.strip_gaps([rect], "top", 30, 1080), F.strip_gaps([rect], "bottom", 30, 1080)];
+  }, [[], [{ x: 0, y: 0, w: 100, h: 30 }]]]);
+  cases.push(["a side drawer's frame gap mirrors in y under a bottom bar and reaches into the side band", () => {
+    const { rect } = at("left", "center");
+    return [F.to_canonical_rect(top_frame, rect), F.to_canonical_rect(bottom_frame, rect)];
+  }, [{ x: 3, y: 408, w: 303, h: 288 }, { x: 3, y: 384, w: 303, h: 288 }]]);
 }
 
 
