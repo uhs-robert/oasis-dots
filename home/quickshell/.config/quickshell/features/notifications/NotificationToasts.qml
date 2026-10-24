@@ -83,8 +83,7 @@ PanelWindow {
     onBar_edgeChanged: root.reset_extent()
 
     function reset_extent() {
-        // Stopped first: a running animation would carry on past the snap.
-        extent_move.stop();
+        // No stop() on extent_move: Qt refuses to stop a Behavior's animation. The rebind below writes through the Behavior, which ends it.
         root.snapping = true;
         root.extent = 0;
         root.snapping = false;
