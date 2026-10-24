@@ -1712,14 +1712,23 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
 firefox_config=$root/firefox-config
 mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
 cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
-copy_shipped_integrations "$firefox_config" firefox-sites
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to inbox mailbox" 2>&1)
+copy_shipped_integrations "$firefox_config" firefox firefox-sites
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
 check "a tab shown in a second window is one tab, not also that window" "[[ \$(grep -c '^option' <<<\"\$out\") == 1 ]] && grep -q 'action=focus_tab' <<<\"\$out\""
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to private notes" 2>&1)
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to private notes" 2>&1)
 check "a private window is found by its title" "grep -q \"action=focus_tab .* id='0x3003 Private notes'\" <<<\"\$out\""
-rm -f "$firefox_config/integrations.d/firefox.sh"
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to inbox mailbox" 2>&1)
-check "without firefox.sh, Apps still focuses the window by its title" "grep -q 'Apps (apps.sh) action=focus' <<<\"\$out\""
+rm -f "$firefox_config/integrations.d/firefox.sh" "$firefox_config/integrations/firefox.toml" "$firefox_config/integrations/firefox.sh"
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
+check "without firefox.toml, Apps still focuses the window by its title" "grep -q 'Apps (apps.sh) action=focus' <<<\"\$out\""
+if [ -n "$rust_matcher" ]; then
+  # The hook yields what Apps, Keybinds, Sessions and Keeptabs own; it carries its own copy of Apps' checks.
+  firefox_yields() { VOXCMD_SELF=$routed bash -c '. "$1"; "$2" "$3"' _ "$package/.config/voxcmd/integrations/firefox.sh" "$@"; }
+  check "firefox yields a described keybind" "firefox_yields spoken_as_keybind 'workspace 2'"
+  check "firefox yields a keybind said with a plural and a digit word" "firefox_yields spoken_as_keybind 'workspaces two'"
+  check "firefox does not yield a tab title that is no keybind" "! firefox_yields spoken_as_keybind 'weekly sync notes'"
+  check "firefox yields a session or an agent" "firefox_yields names_session_or_agent 'work session' && firefox_yields names_session_or_agent 'the beta agent'"
+  check "firefox does not yield a plain tab" "! firefox_yields names_session_or_agent 'weekly sync notes'"
+fi
 
 section "screenshot menu by voice"
 # Each phrase runs for real and must hand screenshot.sh the flag of the menu row it names.

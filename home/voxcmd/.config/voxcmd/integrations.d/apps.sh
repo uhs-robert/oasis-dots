@@ -167,6 +167,7 @@ action_verbs() {
   esac
 }
 
+# firefox.sh in integrations/ keeps its own copy of this and names_session_or_agent: keep them in step until Apps converts.
 # True when "<verb> <target>" names a described keybind ("close browsers", "focus left", "go to workspace 2", "start
 # menu"): those belong to the keybinds fallback, which only gets a turn when this integration offers nothing.
 spoken_as_keybind() {
