@@ -249,6 +249,11 @@ Singleton {
     property bool caret_phase: true
 
     property bool cava_line: true
+    readonly property var cava_visuals: ["wave", "rim", "island"]
+    // wave and rim draw on the screen frame; island is today's cava in the clock island. A frame-less bar has nothing
+    // for the first two to follow, so it falls back to the island whatever is chosen.
+    property string cava_visual: "wave"
+    readonly property string cava_visual_effective: root.screen_frame_on ? root.cava_visual : "island"
     readonly property var bar: root.active
 
     // BEGIN generated: scripts/gen-style-exports writes these lines from StyleSchema.js
@@ -802,8 +807,15 @@ Singleton {
         root.save();
     }
 
+    function set_cava_visual(v) {
+        if (root.cava_visuals.indexOf(v) < 0) return false;
+        root.cava_visual = v;
+        root.save();
+        return true;
+    }
+
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line }));
+        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line, cava_visual: root.cava_visual }));
     }
 
     function save_lock() {
@@ -846,6 +858,7 @@ Singleton {
                 const data = JSON.parse(text());
                 const saved = data.style;
                 root.cava_line = data.cava_line !== false;
+                root.cava_visual = root.cava_visuals.indexOf(data.cava_visual) >= 0 ? data.cava_visual : "wave";
                 root.legacy_lock = data;
                 if (typeof saved === "string" && saved in root.styles) {
                     root.name = saved;

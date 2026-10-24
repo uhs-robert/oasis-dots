@@ -130,6 +130,19 @@ Item {
         }
     }
 
+    // The frame cava looks need this screen's frame; without one the island plays whatever is chosen.
+    readonly property string cava_look: root.frame ? Style.cava_visual : "island"
+
+    Loader {
+        width: root.width
+        height: root.bar_height
+        anchors.verticalCenter: parent.verticalCenter
+        active: root.cava_look === "wave"
+        sourceComponent: CavaWave {
+            flipped: root.position === "bottom"
+        }
+    }
+
     Island {
         height: root.bar_height
         id: left_island
@@ -302,7 +315,7 @@ Item {
         anchors.topMargin: open_edge_margin
         anchors.bottomMargin: open_edge_margin
         flipped: center_island.flipped
-        active: MediaState.playing && root.has_center
+        active: MediaState.playing && root.has_center && root.cava_look === "island"
     }
 
     Island {

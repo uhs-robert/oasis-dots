@@ -19,8 +19,17 @@ RowsSection {
             cycle: false
         },
         {
+            label: "Cava look",
+            desc: "Where the audio visualizer plays: a wave along the bar's open edge, the screen frame's rim pulsing with the bass, or the clock island. Wave and rim need a screen frame; without one the island plays.",
+            keys: "H/L change · Enter list",
+            values: () => Style.cava_visuals,
+            text: v => v,
+            value: () => Style.cava_visual,
+            set: v => Style.set_cava_visual(v)
+        },
+        {
             label: "Cava line",
-            desc: "Draw the bar's audio visualizer as a smooth line. Off draws separate bars.",
+            desc: "Draw the island, lualine and media popup visualizer as a smooth line. Off draws separate bars. The wave and rim are always smooth.",
             keys: "H/L or c toggle · Enter list",
             values: () => ["on", "off"],
             text: v => v,

@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.core
 import qs.theme
+import "../../ui/CavaMath.js" as CavaMath
 
 // One shared cava process for every screen's border strip, running only while media is
 // playing on AC power. Parses "n;n;...;" stdout lines into a 0..1 levels array.
@@ -18,7 +19,14 @@ Singleton {
     property double last_ms: 0
     // Lualine bars count the screens showing their strip; with none, cava does not run.
     property int lualine_viewers: 0
-    readonly property bool wanted: MediaState.playing && PowerSource.on_ac && (!Style.bar_lualine || root.lualine_viewers > 0)
+    // The frame cava (CavaWave, CavaRim) counts the same way: one per surface that is showing.
+    property int frame_viewers: 0
+    readonly property bool wanted: MediaState.playing && PowerSource.on_ac && (!Style.bar_lualine || root.lualine_viewers > 0 || root.frame_viewers > 0)
+    // The rim's drive: the lowest bars, rising fast and falling slowly.
+    property real bass: 0
+    // Playing but silent for CavaMath.FOLD_MS: the frame cava hides until sound returns. cava keeps running to hear it.
+    property bool silent_folded: false
+    property real quiet_ms: 0
 
     function zeros() {
         const a = [];
@@ -49,12 +57,27 @@ Singleton {
         Component.onCompleted: config_file.setText(root.config_text)
     }
 
-    onLevelsChanged: if (Style.cava_line) root.smooth_levels()
+    onLevelsChanged: if (CavaMath.smoothing_wanted(Style.cava_line, Style.cava_visual_effective)) root.smooth_levels()
     onWantedChanged: root.sync()
     Component.onCompleted: Qt.callLater(root.sync)
 
+    // Runs while cava runs or the bass is still falling; the tick is the bass's time base, as levels stop arriving at exit.
+    Timer {
+        interval: 33
+        repeat: true
+        running: root.wanted || root.bass > 0.001
+        onTriggered: {
+            root.bass = CavaMath.step_bass(root.bass, CavaMath.bass_of(root.levels), interval / 1000);
+            root.quiet_ms = root.wanted ? CavaMath.quiet_after(root.quiet_ms, root.levels, interval) : 0;
+            root.silent_folded = root.quiet_ms >= CavaMath.FOLD_MS;
+        }
+    }
+
     function sync() {
-        if (!root.wanted) root.levels = root.zeros();
+        if (root.wanted) return;
+        root.levels = root.zeros();
+        root.quiet_ms = 0;
+        root.silent_folded = false;
     }
 
     RestartingStream {

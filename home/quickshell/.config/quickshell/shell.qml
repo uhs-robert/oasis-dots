@@ -105,6 +105,15 @@ ShellRoot {
                     }
                 }
 
+                LazyLoader {
+                    active: screen_scope.frame !== null && screen_scope.drawn_frame !== null && Style.cava_visual === "rim"
+
+                    CavaRim {
+                        screen: screen_scope.modelData
+                        layout: screen_scope.drawn_frame
+                    }
+                }
+
                 PopupScrim {
                     screen: screen_scope.modelData
                     frame: screen_scope.frame

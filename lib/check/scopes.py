@@ -79,6 +79,7 @@ PATH_SCOPES = [
     # either runs that test; the files are QML too, so the qml step still reads them.
     ("home/quickshell/tests/input_settings/*", "inputvec qml"),
     ("home/quickshell/.config/quickshell/features/settings/HyprInputValidation.js", "inputvec qml node"),
+    ("home/quickshell/.config/quickshell/ui/CavaMath.js", "qml node"),
     ("home/quickshell/.config/quickshell/features/settings/HyprInputSettings.qml", "inputvec qml node"),
     ("home/quickshell/tests/polled_command/*", "polledcmd qml"),
     ("home/quickshell/.config/quickshell/core/PolledCommand.qml", "polledcmd qml node"),

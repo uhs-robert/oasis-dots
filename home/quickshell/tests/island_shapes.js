@@ -221,5 +221,43 @@ for (const [name, got, want] of [
   expect(got === want, "load_options: " + name + ": got " + got + ", want " + want);
 }
 
+// The frame cava: CavaMath.js (bass, smoothing gate, silence fold, wave points) and the rim's stroke on every corner.
+const M2 = vm.createContext({});
+vm.runInContext(read("ui/CavaMath.js").replace(/^\.pragma.*$/gm, "") + "\nthis.api = { SILENT, FOLD_MS, bass_of, step_bass, quiet_after, smoothing_wanted, rim_width, rim_alpha, wave_points };", M2);
+const cava = M2.api;
+const bars = (n, v) => new Array(n).fill(v);
+expect(cava.bass_of(bars(48, 0)) === 0, "cava: silence has no bass");
+expect(cava.bass_of(bars(48, 1)) === 1, "cava: bass clamps to 1");
+expect(Math.abs(cava.bass_of(bars(6, 0.5).concat(bars(42, 1))) - 0.575) < 1e-9, "cava: bass is the lowest six bars times 1.15, not the treble");
+expect(cava.step_bass(0, 1, 0.033) > 1 - cava.step_bass(1, 0, 0.033), "cava: bass rises faster than it falls");
+expect(cava.step_bass(0.5, 0.5, 0.033) === 0.5, "cava: bass at its target stays");
+expect(cava.smoothing_wanted(false, "wave") && cava.smoothing_wanted(true, "island") && cava.smoothing_wanted(true, "rim"), "cava: smoothing runs for the wave or the line");
+expect(!cava.smoothing_wanted(false, "rim") && !cava.smoothing_wanted(false, "island"), "cava: smoothing is off for rim and island without the line");
+let quiet = 0;
+for (let t = 0; t < 8000; t += 100) quiet = cava.quiet_after(quiet, bars(48, 0.02), 100);
+expect(quiet >= cava.FOLD_MS && cava.FOLD_MS === 8000, "cava: eight seconds under the threshold fold");
+expect(cava.quiet_after(quiet, bars(48, 0).map((v, i) => i === 40 ? 0.03 : v), 100) === 0, "cava: sound at the threshold resets the silence");
+expect(cava.SILENT === 0.03, "cava: the silent threshold is 0.03");
+expect(cava.rim_width(0) === 2 && cava.rim_width(1) === 9 && cava.rim_alpha(0) === 0.5 && cava.rim_alpha(1) === 1, "cava: rim width 2 to 9 px, alpha 0.5 to 1");
+const top_wave = cava.wave_points([0, 1, 0.5], 100, 40, 18, false);
+expect(JSON.stringify(top_wave.line) === JSON.stringify([[0, 39], [50, 21], [100, 30]]), "cava: wave of a top bar rises from the bottom edge");
+expect(JSON.stringify(top_wave.fill.slice(3)) === JSON.stringify([[100, 40], [0, 40]]), "cava: wave fill closes to the bottom edge");
+const bottom_wave = cava.wave_points([0, 1, 0.5], 100, 40, 18, true);
+expect(JSON.stringify(bottom_wave.line) === JSON.stringify([[0, 1], [50, 19], [100, 10]]) && bottom_wave.fill[3][1] === 0, "cava: wave of a bottom bar hangs from the top edge");
+for (const corner of ["round", "chamfer", "pixel", "square"]) {
+  for (const bar_edge of ["top", "bottom", ""]) {
+    const lay = F.frame_layout(1920, 1080, bar_edge, 30, { corner, radius: 12, thickness: 6, ornament: "", step: 3 });
+    for (const bass of [0.03, 0.5, 1]) {
+      const stroke = F.frame_stroke(lay, cava.rim_width(bass) / 2);
+      const where = "cava rim: " + corner + " " + (bar_edge || "no bar") + " bass " + bass;
+      expect(stroke.length >= 2 && stroke.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])), where + " has a finite path");
+      expect(stroke.every(p => p[0] >= 0 && p[0] <= lay.length && p[1] >= 0 && p[1] <= lay.depth), where + " stays on the screen");
+    }
+  }
+}
+expect(/property string cava_visual: "wave"/.test(style), "cava: the look defaults to wave");
+expect(/cava_visuals\.indexOf\(data\.cava_visual\) >= 0 \? data\.cava_visual : "wave"/.test(style), "cava: a style.json without the key loads as wave");
+expect(/cava_visual_effective: root\.screen_frame_on \? root\.cava_visual : "island"/.test(style), "cava: without a frame the island plays");
+
 if (failed) process.exit(1);
 console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frame_checks) + " checks passed");

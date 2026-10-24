@@ -70,4 +70,12 @@ IpcHandler {
     function get_cava_line(): bool {
         return Style.cava_line;
     }
+
+    function set_cava_visual(v: string): string {
+        return Style.set_cava_visual(v) ? "ok" : "unknown";
+    }
+
+    function get_cava_visual(): string {
+        return Style.cava_visual;
+    }
 }
