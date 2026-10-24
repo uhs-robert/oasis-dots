@@ -693,7 +693,7 @@ mkdir -p "$config/integrations.d" "$config/replacements.d"
 # The bash build loads integrations.d only; the Rust build takes the shipped TOML over the bash copy.
 cp "$package/.config/voxcmd/integrations.d/click.sh" "$package/.config/voxcmd/integrations.d/keybinds.sh" "$config/integrations.d/"
 copy_shipped_integrations "$config" click keybinds
-# A bash integration of its own for the logger checks below to find: every shipped one is TOML or click, whose lookups
+# A bash integration of its own for the logger checks below to find: every shipped one here is TOML, whose lookups
 # the Rust build does itself, so without it nothing would show that the logger records the bash voxcmd's calls.
 cat >"$config/integrations.d/stub-probe.sh" <<'STUB'
 name="Stub probe"
@@ -1070,7 +1070,7 @@ if [ -n "$rust_matcher" ]; then
   out=$(explain "sign in")
   check "the Rust trace prints the routing text first, then the click section" "[[ \$(head -1 <<<\"\$out\") == 'transcript:  click sign in' ]] && [[ \$(grep -n '^window   ' <<<\"\$out\" | head -1 | cut -d: -f1) -gt \$(grep -n '^why:' <<<\"\$out\" | head -1 | cut -d: -f1) ]]"
   check "every capture of the click-explain checks came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
-  check "the click-explain trace came from the click.toml build" "grep -Eq 'Click \(click\.toml\)' <<<\"\$(route 'click sign in')\""
+  check "the click-explain trace names click.toml" "grep -Eq 'Click \(click\.toml\)' <<<\"\$out\""
   check "bash's click-explain was never asked, and the logger that would show it sees the bash voxcmd" "[[ -s '$legacy_calls' ]] && ! grep -Eq 'click-explain|^_legacy-hook candidates [^ ]*/click\.sh ' '$legacy_calls'"
 fi
 
@@ -1442,14 +1442,19 @@ done
 out=$(route_all "stop clicking")
 check "'stop clicking' ends click mode instead of pausing media" "grep -Eq 'Click \($click_file\) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
 if [ -n "$rust_matcher" ]; then
-  # Run for real (stop clicking opens no session): click.toml's mode action is Rust's own, so the bash voxcmd is asked
-  # about the integrations that stay on it (Overview hears "stop clicking" too, which proves the logger sees its calls)
-  # and never about click.
-  : >"$legacy_calls"
+  # Run for real: click mode opens, then "stop clicking" ends it, which shows the action ran. click.toml's mode action is
+  # Rust's own, so the bash voxcmd is asked about the integrations that stay on it (Overview hears "stop clicking" too,
+  # which proves the logger sees its calls) and never about click.
   # The "numbered picks" section pointed VOXCMD_LEGACY_BIN at its own copy, past the logger.
+  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "click mode" >/dev/null 2>&1
+  session_file=$XDG_RUNTIME_DIR/voxcmd/session.json
+  opened=0
+  [ ! -e "$session_file" ] || opened=1
+  : >"$legacy_calls"
   stop_status=0
   VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1 || stop_status=$?
-  check "a mode action of click.toml runs natively, with the bash voxcmd asked about others but never about click" "[[ $stop_status == 0 ]] && grep -Eq '^_legacy-hook candidates [^ ]*/overview\\.sh ' '$legacy_calls' && ! grep -Eq '^_legacy-hook [a-z-]+ [^ ]*/click\\.' '$legacy_calls'"
+  check "'click mode' opens a session and 'stop clicking' ends it" "[[ $opened == 1 && $stop_status == 0 && ! -e '$session_file' ]]"
+  check "a mode action of click.toml runs natively, with the bash voxcmd asked about others but never about click" "grep -Eq '^_legacy-hook candidates [^ ]*/overview\\.sh ' '$legacy_calls' && ! grep -Eq '^_legacy-hook [a-z-]+ [^ ]*/click\\.' '$legacy_calls'"
 fi
 out=$(route_all "click mode on")
 check "'click' followed by other text is still a click on that text" "! grep -q 'action=click_mode' <<<\"\$out\""
@@ -1471,7 +1476,7 @@ stray=$(cat "$strays_dir"/* 2>/dev/null)
 check "no other example routes to click mode ($stray)" "[[ -z '$stray' ]]"
 
 # The pick_box, session_rewrite and exit-phrase checks below read the bash click.sh, which stays until the bash loader goes.
-# click.toml's counterparts are cargo tests: click/pick.rs (a box from an id), session/mode.rs (the rewrite and the 27
+# click.toml's counterparts are cargo tests: click/pick.rs (a box from an id), session/mode.rs (the rewrite and the
 # exit and target phrases) and tests/toml_mode.rs (the whole mode run); this one only checks the TOML declares the picker.
 if [ -n "$rust_matcher" ]; then
   check "click.toml numbers several matches on screen" "grep -q '^picker = \"hints\"' '$package/.config/voxcmd/integrations/click.toml'"
