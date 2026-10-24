@@ -57,6 +57,7 @@ fn usage_errors_exit_2() {
         &["ask", "pick"],
         &["util", "speech"],
         &["util", "speech", "parse-duration"],
+        &["util", "speech", "split-duration"],
         &["session"],
     ];
     for args in cases {
@@ -112,6 +113,24 @@ fn util_speech_joins_the_remaining_words_into_one_phrase() {
     let single = voxcmd(&["util", "speech", "parse-duration", "an hour and a half"]);
     assert_eq!((stdout(&joined), joined.status.code()), ("5400\n".to_string(), Some(0)));
     assert_eq!(stdout(&joined), stdout(&single));
+}
+
+#[test]
+fn util_speech_split_duration_prints_seconds_and_label_like_bash() {
+    let split = voxcmd(&["util", "speech", "split-duration", "5", "minutes", "for the pasta"]);
+    assert_eq!(
+        (stdout(&split), split.status.code()),
+        ("300 for the pasta\n".to_string(), Some(0))
+    );
+    // bash echoes "$seconds $label", so a duration alone keeps the space.
+    let alone = voxcmd(&["util", "speech", "split-duration", "an hour and a half"]);
+    assert_eq!((stdout(&alone), alone.status.code()), ("5400 \n".to_string(), Some(0)));
+    let none = voxcmd(&["util", "speech", "split-duration", "pasta for 5 minutes"]);
+    assert_eq!((stdout(&none), none.status.code()), (String::new(), Some(1)));
+    assert_eq!(
+        stderr(&none),
+        "voxcmd: util speech split-duration: \"pasta for 5 minutes\" is not led by a duration\n"
+    );
 }
 
 #[test]
