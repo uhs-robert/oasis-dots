@@ -18,3 +18,5 @@
 !system.sh
 !firefox-sites.toml
 !firefox-sites.sh
+!devices.toml
+!devices.sh
