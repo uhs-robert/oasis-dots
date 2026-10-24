@@ -197,6 +197,12 @@ function drawer_window_rects(reg, screen_name) {
     return Object.values(reg[screen_name] || {});
 }
 
+// The margin a popup or tooltip keeps from the `edge` ("left"/"right") screen side: the floating strip's side inset when
+// it hangs from that side's island (`popup_side`), else none.
+function side_popup_inset(strip_side, popup_side, edge) {
+    return popup_side === edge ? strip_side : 0;
+}
+
 // The strip's line gaps (strip-local, x and w only) for the drawer windows that reach the strip's band: a bottom-docked
 // drawer under a top bar leaves the strip's lines whole. screen_h is 0 without a frame, where nothing says which edge a
 // window sits on, so every window counts.
