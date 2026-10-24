@@ -29,6 +29,8 @@ ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$ov_pkg/.local/bin/voxcmd-autostop"
 for integration in apps keybinds overview rapid; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$ov_config/integrations.d/"
 done
+# Rapid is TOML now: without this copy the check below would still run the bash file.
+copy_shipped_integrations "$ov_config" rapid
 # The confirm card answers yes unless $root/confirm-no exists.
 cat >"$ov_pkg/.local/bin/voxcmd-confirm" <<STUB
 #!/bin/sh
