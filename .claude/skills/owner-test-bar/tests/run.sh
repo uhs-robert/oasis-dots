@@ -607,6 +607,15 @@ out=$(cd "$other" && bash -c 'f=$2; source "$1"; from=$f; worktree_source' _ "$s
 code=$?
 check "an explicit --from in another repo is still refused" "[[ $code != 0 ]] && grep -q 'another repository' <<<\"\$out\""
 
+out=$(cd "$root" && bash -c 'source "$1"; from=; worktree_source' _ "$shadow_sh" 2>&1)
+check "outside any repo the main checkout is used" "[[ $? == 0 && \$out == */home/quickshell/.config/quickshell && \$out != $root* ]]"
+main_repo=$(bash -c 'source "$1"; echo "$repo"' _ "$shadow_sh")
+git -C "$main_repo" worktree add -q --detach "$root/linked" HEAD
+out=$(cd "$root/linked" && bash -c 'source "$1"; from=; worktree_source' _ "$shadow_sh" 2>&1)
+code=$?
+git -C "$main_repo" worktree remove --force "$root/linked"
+check "inside a linked worktree of this repo that worktree is the source" "[[ $code == 0 && \$out == $root/linked/home/quickshell/.config/quickshell ]]"
+
 fake=$root/fake
 qs=home/quickshell/.config/quickshell
 git init -q "$fake"
@@ -620,7 +629,13 @@ git -C "$fake" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
 dest=$root/dest
 mkdir -p "$dest/assets"
 echo mine >"$dest/assets/a.ogg"
-bash -c 'source "$1"; repo=$2; copy_assets "$3"' _ "$here/../owner-test-bar.sh" "$fake" "$dest"
+echo target >"$root/target.ogg"
+ln -s "$root/target.ogg" "$fake/$qs/assets/link.ogg"
+ln -s "$root/missing.ogg" "$fake/$qs/assets/dangling.ogg"
+out=$(bash -c 'source "$1"; repo=$2; copy_assets "$3"' _ "$here/../owner-test-bar.sh" "$fake" "$dest" 2>&1)
+code=$?
+check "copy_assets skips a dangling ignored link with a warning and succeeds" "[[ $code == 0 && ! -e $dest/assets/dangling.ogg && ! -L $dest/assets/dangling.ogg ]] && grep -q 'skipping dangling asset' <<<\"\$out\""
+check "copy_assets dereferences a valid linked asset" "[[ -f $dest/assets/link.ogg && ! -L $dest/assets/link.ogg && \$(cat $dest/assets/link.ogg) == target ]]"
 check "copy_assets fills the files a partly filled ignored directory lacks, spaces included" "[[ -f '$dest/assets/b c.ogg' && -f '$dest/theme.json' ]]"
 check "copy_assets never overwrites an existing file" "[[ \$(cat $dest/assets/a.ogg) == mine ]]"
 check "copy_assets skips __pycache__" "[[ ! -e $dest/__pycache__ ]]"

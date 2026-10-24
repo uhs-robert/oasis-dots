@@ -786,6 +786,11 @@ copy_assets() {
   while IFS= read -r -d '' path; do
     rel=${path#"$qs_rel"/}
     [[ $path == *__pycache__* ]] && continue
+    # cp -L fails on a dangling link, which would abort the whole build.
+    [[ -e $repo/$path ]] || {
+      echo "owner-test-bar: skipping dangling asset $path" >&2
+      continue
+    }
     mkdir -p "$(dirname "$dest/$rel")"
     # Per file and never over an existing one, so a partly filled ignored directory still gets what it lacks.
     cp -naL "$repo/$path" "$dest/$rel"
