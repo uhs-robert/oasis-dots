@@ -43,28 +43,29 @@ Singleton {
     // the owner, a border at least `min_border` wide (in the palette's muted text colour where the host has none), and
     // with `fg_border` the host's bar_fg as its colour so a pixel window's outline shows on every palette. Never the
     // owner's colours. A shape without an owner is no style's own outline, though a style may still default to it (gameboy and snes use pixel).
+    // `ends` is the corner profile (an IslandOutlines end_profile) the floating strip's plate takes when a style's own shape is this one.
     readonly property var island_shape_kits: ({
-            slant: {},
-            octagon: { min_border: 1 },
-            watch: { owner: "goldeneye", min_border: 1 },
-            window: { owner: "nes", min_border: 2, fg_border: true },
-            rect: { min_border: 1 },
-            capsule: { owner: "modern", sizes: ["bar_capsule", "bar_capsule_pad"] },
-            visor: { owner: "metroid" },
-            chevron: { min_border: 1 },
-            lean: { min_border: 1 },
-            hex: { min_border: 1 },
-            ticket: { min_border: 1 },
-            tab: { min_border: 1 },
-            pixel: { min_border: 1 },
-            notch: { min_border: 1 },
+            slant: { ends: "round" },
+            octagon: { min_border: 1, ends: "chamfer" },
+            watch: { owner: "goldeneye", min_border: 1, ends: "chamfer" },
+            window: { owner: "nes", min_border: 2, fg_border: true, ends: "pixel" },
+            rect: { min_border: 1, ends: "rect" },
+            capsule: { owner: "modern", sizes: ["bar_capsule", "bar_capsule_pad"], ends: "round" },
+            visor: { owner: "metroid", ends: "chamfer" },
+            chevron: { min_border: 1, ends: "chevron" },
+            lean: { min_border: 1, ends: "lean" },
+            hex: { min_border: 1, ends: "hex" },
+            ticket: { min_border: 1, ends: "ticket" },
+            tab: { min_border: 1, ends: "tab" },
+            pixel: { min_border: 1, ends: "pixel" },
+            notch: { min_border: 1, ends: "notch" },
             // No plate: the opacity row, dither and scanlines have nothing to act on (`filled: false`, see island_filled).
             none: { filled: false },
             underline: { filled: false, min_border: 2, fg_border: true },
             brackets: { filled: false, min_border: 1, fg_border: true },
             // One strip across the bar in place of the islands' plates (`strip`, see strip_shape); the border is its rim.
             full: { strip: true, min_border: 1 },
-            // The strip as one plate set in from the screen edge and both sides, its ends drawn from bar_strip_ends.
+            // The strip as one plate set in from the screen edge and both sides, its ends drawn from strip_ends.
             // The insets are fixed here so leaving the shape drops them (plain_island_shape).
             strip: { strip: true, min_border: 1, set: { bar_strip_inset: 4, bar_strip_side: 18 } }
         })
@@ -496,7 +497,6 @@ Singleton {
     readonly property int bar_capsule_pad: root.bar.bar_capsule_pad
     readonly property int bar_strip_inset: root.bar.bar_strip_inset
     readonly property int bar_strip_side: root.bar.bar_strip_side
-    readonly property string bar_strip_ends: root.bar.bar_strip_ends
     readonly property int bar_height: root.bar.bar_height
     readonly property int bar_module_gap: root.bar.bar_module_gap
     readonly property int bar_pill_height: root.bar.bar_pill_height
@@ -751,6 +751,8 @@ Singleton {
     readonly property bool strip_shape: !root.bar.bar_lualine && (root.island_shape_kits[root.bar.bar_island_shape] || {}).strip === true
     // The strip is a plate set in from the screen (bar_strip_inset and bar_strip_side) with shaped ends, not flush.
     readonly property bool strip_floats: root.strip_shape && root.bar.bar_strip_inset > 0
+    // The plate's end profile: the corners of the style's own island shape, not the borrowed "strip" now chosen.
+    readonly property string strip_ends: (root.island_shape_kits[root.base_active.bar_island_shape] || {}).ends || "round"
     // Whether each island draws its own plate: its shape has one and no strip carries it instead.
     readonly property bool island_plate: root.island_filled && !root.strip_shape
     // The strip's fill, which popups, tooltips and the submap tab hung from an island over it take too.

@@ -248,5 +248,25 @@ for (const [name, got, want] of [
   expect(got === want, "load_options: " + name + ": got " + got + ", want " + want);
 }
 
+// The floating strip's end profile is the kit `ends` of the style's own island shape (Style.strip_ends), so each
+// style gets the corners its islands have.
+const kit_ends = shape => (kits.match(new RegExp("\\b" + shape + ": \\{[^}]*\\bends: \"(\\w+)\"")) || [])[1];
+const own_shape = style_name => (read("styles/" + style_name + "/tokens.js").match(/bar_island_shape: "(\w+)"/) || [])[1] || "slant";
+let end_checks = 0;
+for (const [style_name, want] of [["gameboy", "pixel"], ["snes", "pixel"], ["nes", "pixel"], ["goldeneye", "chamfer"], ["metroid", "chamfer"], ["modern", "round"]]) {
+  end_checks++;
+  expect(kit_ends(own_shape(style_name)) === want, "strip ends of " + style_name + ": got " + kit_ends(own_shape(style_name)) + ", want " + want);
+}
+for (const shape of shapes) {
+  end_checks++;
+  const ends = kit_ends(shape);
+  expect(shape === "none" || shape === "underline" || shape === "brackets" || shape === "full" || shape === "strip" || ends !== undefined, "island shape " + shape + " has no strip ends");
+  expect(ends === undefined || ends === "round" || ends === "chamfer" || O.has(ends), "island shape " + shape + " names ends " + ends + ", which IslandOutlines cannot draw");
+}
+const chamfer = O.end_profile("chamfer", 40, 12, false);
+expect(JSON.stringify(plain(chamfer)) === JSON.stringify([[12, 0], [0, 12], [0, 28], [12, 40]]), "chamfer end profile: " + JSON.stringify(chamfer));
+expect(O.cap_width("chamfer", 40) === 12 && !O.has("chamfer"), "chamfer is a 0.3 h pad and not an island shape");
+end_checks += 2;
+
 if (failed) process.exit(1);
-console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frame_checks) + " checks passed");
+console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frame_checks + end_checks) + " checks passed");
