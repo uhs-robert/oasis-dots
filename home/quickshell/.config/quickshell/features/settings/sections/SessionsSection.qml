@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.features.display
 import qs.features.overview
-import "../Choices.js" as Choices
+import "Choices.js" as Choices
 import qs.features.settings
 import qs.features.popups
 import qs.features.audio

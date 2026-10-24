@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
 import qs.features.settings
-import "../Choices.js" as Choices
-import "../Keyd.js" as Keyd
+import "Choices.js" as Choices
+import "Keyd.js" as Keyd
 
 RowsSection {
     id: root

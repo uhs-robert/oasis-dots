@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import qs.features.settings
-import "../Choices.js" as Choices
+import "Choices.js" as Choices
 import qs.features.voice
 
 RowsSection {

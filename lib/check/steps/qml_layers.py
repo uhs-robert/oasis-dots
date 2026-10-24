@@ -10,10 +10,11 @@ the check reads only the relative imports between them: `import "../other/X.js"`
 likewise styles/<x>/ into styles/<y>/. The kept ones are in SIBLING_ALLOW; an entry whose import is gone fails as stale.
 `import qs.features.<y>` and URL loads across siblings are not checked.
 
-JS imports stay in their own folder: a relative `.js`/`.mjs` import (`import "x.js"` in QML, `.import "x.js"` in JS)
-may name a file in the importing file's own folder, in a folder below it, or in a lower layer's folder (core/, theme/,
-ui/, ... by LAYERS rank). Anything else, a parent or sibling folder of the same layer, fails unless it is in
-SIBLING_ALLOW (the same list, stale-checked the same way). An upward JS import is the layer rule's, not this one's.
+JS imports stay on their own branch: a relative `.js`/`.mjs` import (`import "x.js"` in QML, `.import "x.js"` in JS)
+may name a file in the importing file's own folder, a folder below it, an ancestor folder in the same layer (a shared
+helper of the feature), or a lower layer's folder. In ui/, a flat shared library, any folder of ui/ will do. A sibling
+folder of the same layer fails unless it is in SIBLING_ALLOW (the same list, stale-checked the same way). An upward JS
+import is the layer rule's, and a target outside the ranked layers (scripts/, assets/) is neither's.
 
 lib/check/qml-layers.allow lists the upward edges that exist today, one per line:
 
@@ -45,31 +46,14 @@ ALLOW_PATH = "lib/check/qml-layers.allow"
 LAYERS = {"core": 0, "theme": 1, "ui": 2, "services": 3, "styles": 4, "features": 5}
 UNRANKED = {"scripts", "assets", "sounds", "custom"}
 
-# (importer, target) pairs, both tree paths. Permanent: a settings section reads the layout rules of the thing it
-# configures from that feature's own JS.
+# (importer, target) pairs, both tree paths: a settings section reads the layout rules of the thing it configures
+# from that feature's own JS. Both are permanent.
 SIBLING_ALLOW = {
     ("features/settings/sections/BarModulesSection.qml", "features/bar/BarLayout.js"),
     ("features/settings/sections/DisplaysSection.qml", "features/display/DisplayLayout.js"),
-    # JS imports into a parent folder of the same layer; each moves with the JS file it names (a later cleanup).
-    ("features/bar/neovim/LualineSection.qml", "features/bar/BarModules.js"),
-    ("features/settings/sections/InputSection.qml", "features/settings/Choices.js"),
-    ("features/settings/sections/KeyboardSection.qml", "features/settings/Choices.js"),
-    ("features/settings/sections/KeyboardSection.qml", "features/settings/Keyd.js"),
-    ("features/settings/sections/MouseSection.qml", "features/settings/Choices.js"),
-    ("features/settings/sections/SessionsSection.qml", "features/settings/Choices.js"),
-    ("features/settings/sections/VoiceSection.qml", "features/settings/Choices.js"),
-    ("styles/goldeneye/widgets/ClockFace.qml", "styles/goldeneye/Watch.js"),
-    ("styles/goldeneye/widgets/DialFace.qml", "styles/goldeneye/Watch.js"),
-    ("styles/goldeneye/widgets/GaugeDial.qml", "styles/goldeneye/Watch.js"),
-    ("styles/goldeneye/widgets/ReadoutLine.qml", "styles/goldeneye/Watch.js"),
-    ("styles/goldeneye/widgets/SegmentStrip.qml", "styles/goldeneye/Watch.js"),
-    ("styles/goldeneye/widgets/SizeText.qml", "styles/goldeneye/Watch.js"),
-    ("styles/goldeneye/widgets/WatchDial.qml", "styles/goldeneye/Watch.js"),
-    ("styles/goldeneye/widgets/WatchReadout.qml", "styles/goldeneye/Watch.js"),
-    ("ui/menu/RowLabel.qml", "ui/Search.js"),
-    ("ui/menu/TabRows.qml", "ui/keys/KeyHints.js"),
 }
 SIBLING_LAYERS = ("features", "styles")
+FLAT_LAYERS = {"ui"}
 
 ENTRY = re.compile(r"^(\S+) -> (\S+)\s+#\s*(\S.*\S)\s+\(([^()]+)\)\s*$")
 
@@ -128,8 +112,10 @@ def sibling_edges(repo, qs_dir, rel):
 
 
 def script_edges(repo, qs_dir, rel):
-    """Yields (resolved target, line, import text) for each relative JS import that leaves the file's folder tree for
-    a folder of the same layer. Imports into a lower layer are fine; upward ones are the layer rule's."""
+    """Yields (resolved target, line, import text) for each relative JS import that reaches a sibling folder of the
+    same layer. Own, lower and ancestor folders pass, a lower layer passes, and so does any folder of ui/ from ui/, a
+    flat shared library. Upward imports are the layer rule's, and a target outside LAYERS (scripts/, assets/) is not
+    a layer's code, so it is not judged here."""
     here = posixpath.dirname(rel)
     top = rel.split("/")[0]
     for kind, target, line in imports(os.path.join(repo, qs_dir, rel)):
@@ -137,9 +123,10 @@ def script_edges(repo, qs_dir, rel):
             continue
         resolved = norm(posixpath.join(here, target))
         target_top = resolved.split("/")[0]
-        if resolved.startswith("..") or (target_top != top and target_top in LAYERS):
+        if resolved.startswith("..") or target_top != top or top in FLAT_LAYERS:
             continue
-        if posixpath.dirname(resolved) == here or posixpath.dirname(resolved).startswith(here + "/"):
+        there = posixpath.dirname(resolved)
+        if there == here or there.startswith(here + "/") or here.startswith(there + "/"):
             continue
         yield resolved, line, f'import "{target}"'
 
@@ -199,8 +186,8 @@ def run_checks(repo, qs_dir=QS_DIR, allow_path=ALLOW_PATH, sibling_allow=SIBLING
             sibling_seen.add((rel, resolved))
             if (rel, resolved) not in sibling_allow:
                 findings.append(Finding(prefix + rel, line, (
-                    f"{text} leaves its folder for {resolved}. JS imports stay in their own folder, a folder below it, "
-                    "or a lower layer's (core/, theme/, ui/); move the file or the import, "
+                    f"{text} reaches a sibling folder ({resolved}). JS imports go to their own folder, a folder below or above it "
+                    "in the layer, or a lower layer's (core/, theme/, ui/); move the file or the import, "
                     "or a deliberate seam goes in SIBLING_ALLOW in lib/check/steps/qml_layers.py."
                 )))
         for edge in edges_of(repo, qs_dir, rel):
