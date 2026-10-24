@@ -308,6 +308,8 @@ check "but not for a popup that is open" "[[ \$(ran) == one,two ]]"
 section "a confirmed keybind"
 # Keybinds alone, so no other integration takes the phrases.
 keybinds_config=$root/config-keybinds
+mkdir -p "$keybinds_config/integrations.d"
+cp "$package/.config/voxcmd/integrations.d/keybinds.sh" "$keybinds_config/integrations.d/"
 copy_shipped_integrations "$keybinds_config" keybinds
 keybind_voxcmd() { env VOXCMD_CONFIG_DIR="$keybinds_config" "$seq_bin" run "$@" >/dev/null 2>&1; }
 skips_power_prompt() { grep -q "call power run" "$log"; }
