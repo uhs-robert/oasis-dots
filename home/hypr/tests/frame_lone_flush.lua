@@ -239,6 +239,15 @@ local edge_rule = rule_log[before + 1]
 check("css gaps: rule keeps the table", edge_rule ~= nil and edge_rule.spec.gaps_out == edges)
 _G.ScreenFrame.toggle_lone_flush()
 
+-- Same smallest edge, another edge edited with no reload: the rule must carry the new edges, not the cached old ones.
+local edited = { top = 4, right = 12, bottom = 6, left = 10 }
+gaps_out = edited
+before = #rule_log
+_G.ScreenFrame.toggle_lone_flush()
+local edited_rule = rule_log[before + 1]
+check("css gaps edited: new rule carries the new edges", edited_rule ~= nil and edited_rule.spec.gaps_out == edited)
+_G.ScreenFrame.toggle_lone_flush()
+
 -- A gap wide enough to flatten the gapped chamfer corner still leaves the flush windows a chamfer.
 gaps_out = 24
 _G.ScreenFrame.set("chamfer", 12, 1, "rgba(33ccffee)", "rgba(595959aa)")

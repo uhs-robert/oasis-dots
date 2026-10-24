@@ -23,7 +23,7 @@ local window_rules = {}
 -- Workspaces whose lone window the owner took out of the flush look, workspace id -> that window's address, with the
 -- per-workspace rule that gives the gaps back and the tag the lone-window rounding rule skips.
 local gapped_lones = {}
--- One rule per workspace id and gap, since a rule's values cannot change; only the one for the gap in force is enabled.
+-- One rule per workspace id and gaps_out value, since a rule's values cannot change; only the one for the gap in force is enabled.
 local gap_rules = {}
 local active_gap_rules = {}
 local GAPPED_TAG = "frame_gapped"
@@ -40,6 +40,19 @@ local function gaps_out()
     end
   end
   return smallest or 0
+end
+
+--- A string that differs whenever any edge of the owner's gaps_out does, for keying rules made from the full value.
+--- @param gaps number|table
+--- @return string
+local function gaps_key(gaps)
+  if type(gaps) ~= "table" then return tostring(gaps) end
+  local sides = {}
+  for side, value in pairs(gaps) do
+    table.insert(sides, tostring(side) .. "=" .. tostring(value))
+  end
+  table.sort(sides)
+  return table.concat(sides, ",")
 end
 
 local function frame_mapped()
@@ -284,12 +297,12 @@ local function toggle_lone_flush()
     release_gapped_lone(workspace_id)
     return true
   end
-  local gap = gaps_out()
-  local rule_key = workspace_id .. ":" .. gap
+  -- The rule gets the owner's full value: a per-edge gaps table must not collapse to its smallest side, so the cache
+  -- is keyed on every edge too (a per-edge edit without a reload would otherwise reuse a rule with the old edges).
+  local gaps = hl.get_config("general.gaps_out")
+  local rule_key = workspace_id .. ":" .. gaps_key(gaps)
   if not gap_rules[rule_key] then
-    -- The rule gets the owner's full value: a per-edge gaps table must not collapse to its smallest side.
-    gap_rules[rule_key] =
-      hl.workspace_rule({ workspace = tostring(workspace_id), gaps_out = hl.get_config("general.gaps_out") })
+    gap_rules[rule_key] = hl.workspace_rule({ workspace = tostring(workspace_id), gaps_out = gaps })
   end
   gap_rules[rule_key]:set_enabled(true)
   active_gap_rules[workspace_id] = gap_rules[rule_key]
