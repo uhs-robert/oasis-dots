@@ -1,0 +1,50 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Type mode: one dictation into the focused window. It is one voxtype recording, typed once it ends: on "cortana stop"
+# and the other endings below, said before a pause, the voice key or Stop Voice, at voxtype's recording limit, or after
+# 10 s of quiet once something was said. "cortana cancel", or 10 s with nothing said at all, ends it typing nothing.
+# Format: ~/.config/voxcmd/README.md
+name = "Type"
+silent = true
+
+verbs = [
+  { action = "type_mode",   match = '((start|enter|begin) )?(type|typing|dictation) mode' },
+  { action = "type_start",  match = '(start|begin) typing' },
+  { action = "stop_typing", match = '{mode_exit}|(im )?done (typing|with {mode_object})' },
+]
+
+examples = ["type mode", "cortana stop typing"]
+
+[actions]
+type_mode = { run = "type_mode_hint", enter_mode = true, mode_switch = true }
+# "start typing" is not a mode switch: inside click mode it stays a click target (a search box may be labelled "Start
+# typing"), and only "cortana start typing" switches from there. It still opens a mode, so a sequence may only end with it.
+type_start = { run = "type_mode_hint", enter_mode = true, mode_entry = true }
+stop_typing = { leave_mode = "done", mode_switch = true }
+
+[mode]
+label = "Type mode"
+exit_object = '(the )?(typing|typing mode|type mode|dictation|dictation mode)'
+exit_hint = "say cortana stop, or cortana cancel"
+# What is said is text: only the wake word gives a command, so "done" or "stop typing" are typed.
+default_exits = false
+# Dictation is private: no text in the debug log, a toast or the session file.
+private = true
+# Long by design, and bounded by its recording instead of the session's turn and time caps.
+open_ended = true
+one_recording = true
+# The endings are heard at the recording's pauses (voxcmd-autostop's pause checks), not by voxcmd-wake, whose detector
+# misses a "cortana stop" said in one breath; it pauses through the recording as through any other.
+wake_listens = false
+# The idle bound: 10 s of quiet after speech stop the recording and type it, as "cortana stop" would, and 10 s with no
+# speech at all end the mode. The cap stops it before voxtype's max_duration_secs (300), whose own cut would lose the
+# transcript's end.
+listen = { silence_secs = 10, max_secs = 295, no_speech_secs = 10 }
+# How the recording ends, after the wake word: the first row whose regex matches the whole of the words wins. discard
+# and end_session are voxcmd's; handle_turn gets the others. Whisper writes "never mind" both ways.
+endings = [
+  { action = "type",        match = 'stop|stop typing|stop recording|exit|quit|done|im done|thats all|{mode_exit}|(im )?done typing|done with {mode_object}' },
+  { action = "send",        match = 'send|send it|send (the |a )?message|press enter' },
+  { action = "discard",     match = 'cancel|never ?mind' },
+  { action = "end_session", match = 'stop listening|stop everything|end session|end the session' },
+]
+handle_turn = 'type_text'

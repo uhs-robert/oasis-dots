@@ -18,7 +18,7 @@ source "$here/lib.sh"
 source "$here/session-harness.sh"
 
 # ---- modes: rapid, type, and the stack they share ----------------------------------------------------------------------
-# rapid.sh, typing.sh and click.sh for real beside the test mode, Media (a routed "stop"), Keys (whose "send it" and
+# rapid, typing and click for real beside the test mode, Media (a routed "stop"), Keys (whose "send it" and
 # "press enter" type mode's endings must win over) and two
 # integrations that ask: a yes/no card and a picker of two. The card and the picker are logging stubs.
 section "modes"
@@ -49,6 +49,8 @@ printf '[ ! -e "%s" ]\n' "$root/confirm-no" >>"$sess_pkg/.local/bin/voxcmd-confi
 sess_config=$modes_config
 focused_window='{"address":"0x1","class":"kitty","size":[800,600]}'
 session_json=$XDG_RUNTIME_DIR/voxcmd/session.json
+# A session's kind is the stem of the mode's TOML file ("typing"); bash type mode's was "type".
+if [ "${VOXCMD_BIN:-bash}" = rs ]; then type_kind=typing; else type_kind="type"; fi
 mode_is() { [[ $(jq -r '[.kind, (.stack | map(.kind) | join("/"))] | join(" ")' "$session_json" 2>/dev/null) == "$1" ]]; }
 toast_has() { grep -q "^notify-send .*$1" "$log"; }
 no_clicks() { ! grep -qE '^(wlrctl|grim|tesseract)' "$log"; }
@@ -184,8 +186,8 @@ sess_wait
 sess_run "click mode" "cortana rapid mode" "cortana done"
 check "'cortana rapid mode' in click mode goes back to rapid mode, clicking nothing" "session_gone && no_clicks && [[ \$(record_starts) == 3 ]]"
 sess_start "click mode" "cortana type mode" HOLD
-hold_in 'type rapid/click' 3
-check "'cortana type mode' in click mode opens type mode over it, clicking nothing" "mode_is 'type rapid/click' && no_clicks"
+hold_in "$type_kind rapid/click" 3
+check "'cortana type mode' in click mode opens type mode over it, clicking nothing" "mode_is '$type_kind rapid/click' && no_clicks"
 sess_voxcmd_env session end
 sess_wait
 sess_start "click mode" "cortana done" HOLD
@@ -221,8 +223,8 @@ check "click mode's hint names the wake word" "[[ \$(jq -r .exit_hint '$session_
 sess_voxcmd_env session end
 sess_wait
 sess_start "cortana start typing" HOLD
-hold_in 'type click' 2
-check "'cortana start typing' in click mode switches to type mode, clicking nothing" "mode_is 'type click' && no_clicks"
+hold_in "$type_kind click" 2
+check "'cortana start typing' in click mode switches to type mode, clicking nothing" "mode_is '$type_kind click' && no_clicks"
 sess_voxcmd_env session end
 sess_wait
 sess_start "cortana rapid mode" HOLD
@@ -238,8 +240,8 @@ sess_voxcmd_env session end
 sess_wait
 # The mode-entering verbs are commands, so rapid mode runs them bare.
 sess_start "type mode" HOLD
-hold_in 'type rapid' 2
-check "'type mode' in rapid mode still opens type mode bare" "mode_is 'type rapid'"
+hold_in "$type_kind rapid" 2
+check "'type mode' in rapid mode still opens type mode bare" "mode_is '$type_kind rapid'"
 sess_voxcmd_env session end
 sess_wait
 
@@ -277,7 +279,7 @@ hooks_done() { wait_until ended_hooks_gone; }
 
 sess_start "UNTIL_STOP Hello world. Cortana, stop."
 owner_is_listening
-check "type mode's session file names it, its hint, and that it is one recording the wake listener does not hear through" "[[ \$(jq -c '[.kind, .label, .exit_hint, .one_recording, .wake_listens, .stack]' '$session_json') == '[\"type\",\"Type mode\",\"say cortana stop, or cortana cancel\",true,false,[]]' ]]"
+check "type mode's session file names it, its hint, and that it is one recording the wake listener does not hear through" "[[ \$(jq -c '[.kind, .label, .exit_hint, .one_recording, .wake_listens, .stack]' '$session_json') == '[\"$type_kind\",\"Type mode\",\"say cortana stop, or cortana cancel\",true,false,[]]' ]]"
 check "its one recording ends after 10 s of quiet or of no speech, and at 295 s" "log_has_soon 'no_speech_secs=10\$' && log_has_soon 'autostop min_speech_secs=0.4 silence_secs=10\$' && log_has_soon 'autostop max_secs=295\$'"
 check "once its watcher owns the session, the hand-over is over" "! jq -e '.owner_handover' '$session_json' >/dev/null"
 check "its one recording is watched by the binary under test" "owner_is_the_binary_under_test"
@@ -600,18 +602,28 @@ sess_phrase="type mode"
 
 sess_run "CAP A long talk."
 check "at the length limit it types what was said, ends the mode with a toast, and records nothing more" "session_gone && wtype_is 'wtype -- A long talk.' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended it reached its recording limit (295 s)'"
+# type_bounds <idle secs> <max secs>: the TOML listen of type mode is static, so a copy of it with other numbers stands
+# in for what bash's VOXCMD_TYPE_* variables set (still passed below for the bash file, which reads them live).
+type_bounds() {
+  sed "s/^listen = .*/listen = { silence_secs = $1, max_secs = $2, no_speech_secs = $1 }/" \
+    "$package/.config/voxcmd/integrations/typing.toml" >"$modes_config/integrations/typing.toml"
+}
+type_bounds 10 60
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_MAX_SECS=60)
 sess_run "CAP A long talk."
 check "the limit toast names the limit that was set" "session_gone && wtype_is 'wtype -- A long talk.' && toast_has 'Type mode ended it reached its recording limit (1 min)'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+copy_shipped_integrations "$modes_config" typing
 sess_run "IDLE Words, then quiet."
 check "10 s of quiet after speech type what was said, as a stop would" "session_gone && wtype_is 'wtype -- Words, then quiet.' && toast_has 'Type mode ended typed after 10 s of quiet'"
 sess_run SILENCE
 check "10 s with no speech end the mode, typing nothing" "session_gone && ! grep -q '^wtype' '$log' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended nothing was said for 10 s'"
+type_bounds 30 60
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_IDLE_SECS=30 VOXCMD_TYPE_MAX_SECS=60)
 sess_run SILENCE
-check "VOXCMD_TYPE_IDLE_SECS and VOXCMD_TYPE_MAX_SECS set the bounds" "every_detector_logged no_speech_secs= no_speech_secs=30 && grep -q 'silence_secs=30\$' '$log' && grep -q 'max_secs=60\$' '$log'"
+check "type mode's listen bounds set the detector's" "every_detector_logged no_speech_secs= no_speech_secs=30 && grep -q 'silence_secs=30\$' '$log' && grep -q 'max_secs=60\$' '$log'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
+copy_shipped_integrations "$modes_config" typing
 
 # What is typed.
 for heard in "Thank you." "Cortana, stop." "Cortana cancel"; do
@@ -640,13 +652,13 @@ check "without the wake word 'done', 'stop typing' and 'click mode' are text" "w
 # Inside rapid mode.
 sess_phrase="rapid mode"
 sess_start "type mode" "UNTIL_STOP Back again. Cortana stop." "tap beta" "cortana done"
-hold_in 'type rapid' 2
+hold_in "$type_kind rapid" 2
 check "type mode's hint says where it returns to" "[[ \$(jq -r .exit_hint '$session_json') == 'say cortana stop, or cortana cancel (back to Rapid mode)' ]]"
 wake_heard "Cortana stop."
 sess_wait
 check "cortana stop leaves only type mode, back to rapid mode" "session_gone && wtype_is 'wtype -- Back again.' && [[ \$(taps) == 1 && \$(record_starts) == 4 ]]"
 sess_start "type mode" "UNTIL_STOP All done. Cortana, stop listening." "tap beta"
-hold_in 'type rapid' 2
+hold_in "$type_kind rapid" 2
 wake_heard "Cortana, stop listening."
 sess_wait
 check "cortana stop listening types it and ends the whole session" "session_gone && wtype_is 'wtype -- All done.' && [[ \$(taps) == 0 && \$(record_starts) == 2 ]] && toast_has 'Rapid mode ended stopped'"
@@ -657,7 +669,7 @@ check "a mode that is not one recording is never ended by a confirmation" "[[ \$
 sess_voxcmd_env session end
 sess_wait
 sess_start "type mode" "UNTIL_STOP Stopped words." "tap beta"
-hold_in 'type rapid' 2
+hold_in "$type_kind rapid" 2
 sess_voxcmd_env stop
 sess_wait
 check "Stop Voice types the dictation, then ends the session" "session_gone && wtype_is 'wtype -- Stopped words.' && [[ \$(taps) == 0 && \$(record_starts) == 2 ]] && toast_has 'Rapid mode ended stopped' && ! grep -q '^voxtype record cancel' '$log'"
@@ -678,7 +690,7 @@ age_session() {
 }
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" "VOXCMD_SESSION_MAX_SECS=$session_cap_secs")
 sess_start "type mode" "UNTIL_STOP Long dictation." "tap beta" "done"
-hold_in 'type rapid' 2
+hold_in "$type_kind rapid" 2
 age_session $((session_cap_secs + 1))
 sess_voxcmd_env listen
 sess_wait
@@ -731,7 +743,7 @@ jq -c '.frame_id = "recreated"' "$session_json" >"$session_json.new"
 mv "$session_json.new" "$session_json"
 : >"$root/frame-block.release"
 sess_wait
-check "a recording whose type mode was re-created while it was handled is not typed" "! grep -q '^wtype' '$log' && grep -q 'type: not typed' '$debug_log'"
+check "a recording whose type mode was re-created while it was handled is not typed" "! grep -q '^wtype' '$log' && grep -qE 'type: not typed|handle_turn not run: the session ended' '$debug_log'"
 
 # Refusals: nothing is typed, and the toast has no text.
 sess_env=()
@@ -770,7 +782,7 @@ owner_is_listening
 wake_heard "private words. Cortana, stop."
 check "the ending is recorded without the words" "[[ \$(jq -c .ending '$session_json' 2>/dev/null) == '{\"action\":\"type\",\"by\":\"voice\"}' ]] || session_gone"
 sess_wait
-check "type mode logs lengths, never the text" "! grep -q 'private' '$debug_log' && grep -q 'a transcript of 35 characters goes to session_turn' '$debug_log' && grep -q 'typed 20 characters' '$debug_log' && ! grep -v '^wtype ' '$log' | grep -q private"
+check "type mode logs lengths, never the text" "wtype_is 'wtype -- Hello private words.' && ! grep -q 'private' '$debug_log' && grep -q 'a transcript of 35 characters goes to session_turn' '$debug_log' && ! grep -v '^wtype ' '$log' | grep -q private"
 check "and the transcript is not left on disk" "[[ ! -e '$XDG_RUNTIME_DIR/voxcmd/transcript.txt' ]]"
 
 # The ended hook runs in the background, taking the session lock rather than assuming the caller's.
