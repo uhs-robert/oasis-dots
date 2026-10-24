@@ -10,17 +10,20 @@ import "../../ui/frames/FrameGeometry.js" as Frame
 
 // The "rim" cava look: the line round the screen frame's hole brightens and thickens with the bass, above the frame.
 // One click-through full-screen window drawn in the canonical frame, as ScreenFrame is, so the rim follows every
-// corner (Frame.frame_stroke) without corner code of its own.
+// corner (CavaMath.rim_path) without corner code of its own.
 Scope {
     id: root
 
     required property ShellScreen screen
     required property var layout
     readonly property bool watching: MediaState.playing && PowerSource.on_ac
-    readonly property bool shown: root.watching && !CavaState.silent_folded && CavaState.bass >= CavaMath.SILENT
+    // Hysteresis, not a bare threshold: bass hovering at CavaMath.SILENT would flap the fade.
+    property bool lit: CavaMath.rim_lit(false, CavaState.bass)
+    readonly property bool shown: root.watching && !CavaState.silent_folded && root.lit
     readonly property real bass: CavaState.bass
     readonly property real width_px: CavaMath.rim_width(root.bass)
     readonly property color rim_color: Qt.alpha(Qt.lighter(Theme.theme_primary, 1 + root.bass * 0.8), CavaMath.rim_alpha(root.bass))
+    onBassChanged: root.lit = CavaMath.rim_lit(root.lit, root.bass)
     property real fade: root.shown ? 1 : 0
 
     Behavior on fade {
@@ -67,7 +70,7 @@ Scope {
                     fillColor: "transparent"
                     capStyle: ShapePath.FlatCap
                     joinStyle: ShapePath.MiterJoin
-                    PathPolyline { path: Frame.frame_stroke(root.layout, root.width_px / 2).map(p => Qt.point(p[0], p[1])) }
+                    PathPolyline { path: CavaMath.rim_path(root.layout, root.bass).map(p => Qt.point(p[0], p[1])) }
                 }
             }
 

@@ -1,9 +1,12 @@
 .pragma library
+.import "frames/FrameGeometry.js" as Frame
 
 // Pure helpers for CavaState and the frame cava (CavaWave, CavaRim), kept apart so tests/island_shapes.js can run them.
 
 // Below this bass the rim is hidden, and below this peak a level counts as silence.
 var SILENT = 0.03;
+// A hidden rim shows again only above this, so a bass hovering at SILENT does not flap the fade.
+var RIM_SHOW = 0.04;
 // Playing but silent this long folds the frame cava away; any sound unfolds it.
 var FOLD_MS = 8000;
 var BASS_BARS = 6;
@@ -39,6 +42,16 @@ function smoothing_wanted(cava_line, cava_visual_effective) {
 
 function rim_width(bass) {
     return 2 + bass * 7;
+}
+
+// Whether the rim is lit after this bass: hysteresis between RIM_SHOW and SILENT, hiding the moment it drops below SILENT.
+function rim_lit(was_lit, bass) {
+    return was_lit ? bass >= SILENT : bass >= RIM_SHOW;
+}
+
+// The rim's path is the frame's own stroke, widened with the bass.
+function rim_path(layout, bass) {
+    return Frame.frame_stroke(layout, rim_width(bass) / 2);
 }
 
 function rim_alpha(bass) {

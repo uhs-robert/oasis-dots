@@ -222,8 +222,8 @@ for (const [name, got, want] of [
 }
 
 // The frame cava: CavaMath.js (bass, smoothing gate, silence fold, wave points) and the rim's stroke on every corner.
-const M2 = vm.createContext({});
-vm.runInContext(read("ui/CavaMath.js").replace(/^\.pragma.*$/gm, "") + "\nthis.api = { SILENT, FOLD_MS, bass_of, step_bass, quiet_after, smoothing_wanted, rim_width, rim_alpha, wave_points };", M2);
+const M2 = vm.createContext({ Frame: F });
+vm.runInContext(read("ui/CavaMath.js").replace(/^\.(pragma|import).*$/gm, "") + "\nthis.api = { SILENT, RIM_SHOW, FOLD_MS, rim_lit, rim_path, bass_of, step_bass, quiet_after, smoothing_wanted, rim_width, rim_alpha, wave_points };", M2);
 const cava = M2.api;
 const bars = (n, v) => new Array(n).fill(v);
 expect(cava.bass_of(bars(48, 0)) === 0, "cava: silence has no bass");
@@ -239,6 +239,8 @@ expect(quiet >= cava.FOLD_MS && cava.FOLD_MS === 8000, "cava: eight seconds unde
 expect(cava.quiet_after(quiet, bars(48, 0).map((v, i) => i === 40 ? 0.03 : v), 100) === 0, "cava: sound at the threshold resets the silence");
 expect(cava.SILENT === 0.03, "cava: the silent threshold is 0.03");
 expect(cava.rim_width(0) === 2 && cava.rim_width(1) === 9 && cava.rim_alpha(0) === 0.5 && cava.rim_alpha(1) === 1, "cava: rim width 2 to 9 px, alpha 0.5 to 1");
+expect(!cava.rim_lit(false, 0.035) && cava.rim_lit(false, cava.RIM_SHOW), "cava: a hidden rim needs RIM_SHOW to light");
+expect(cava.rim_lit(true, 0.035) && cava.rim_lit(true, cava.SILENT) && !cava.rim_lit(true, 0.0299), "cava: a lit rim holds down to SILENT and hides below it");
 const top_wave = cava.wave_points([0, 1, 0.5], 100, 40, 18, false);
 expect(JSON.stringify(top_wave.line) === JSON.stringify([[0, 39], [50, 21], [100, 30]]), "cava: wave of a top bar rises from the bottom edge");
 expect(JSON.stringify(top_wave.fill.slice(3)) === JSON.stringify([[100, 40], [0, 40]]), "cava: wave fill closes to the bottom edge");
@@ -250,6 +252,7 @@ for (const corner of ["round", "chamfer", "pixel", "square"]) {
     for (const bass of [0.03, 0.5, 1]) {
       const stroke = F.frame_stroke(lay, cava.rim_width(bass) / 2);
       const where = "cava rim: " + corner + " " + (bar_edge || "no bar") + " bass " + bass;
+      expect(JSON.stringify(cava.rim_path(lay, bass)) === JSON.stringify(stroke), where + " is the frame stroke at the rim width");
       expect(stroke.length >= 2 && stroke.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1])), where + " has a finite path");
       expect(stroke.every(p => p[0] >= 0 && p[0] <= lay.length && p[1] >= 0 && p[1] <= lay.depth), where + " stays on the screen");
     }
