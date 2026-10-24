@@ -1992,6 +1992,64 @@ check "a tmux phrase launches no launcher session" "! grep -Fq '.launch(' '$log'
 check "Sessions yields a tmux phrase to Tmux" "VOXCMD_CONFIG_DIR='$sessions_config' '$voxcmd' explain 'open the work tmux session' 2>&1 | grep -q '^option 1: *Tmux'"
 unset SANDBOX_LAUNCHER_SESSIONS
 
+section "keeptabs.toml jumps to agents"
+# Three agents in keeptabs-pick's order (waiting, done, then idle), with a stub keeptabs-pick of our own first on PATH:
+# it lists SANDBOX_AGENTS_JSON, logs --focus calls, and sits beside a lib.sh whose session_focused is true for the pids
+# in KEEPTABS_FOCUSED_PIDS, as keeptabs' own lib.sh decides which agents the user is looking at.
+keeptabs_config=$root/keeptabs-config
+keeptabs_stub=$root/keeptabs-stub
+mkdir -p "$keeptabs_config/integrations.d" "$keeptabs_config/replacements.d" "$keeptabs_stub/bin" "$keeptabs_stub/share/keeptabs"
+cp "$package/.config/voxcmd/integrations.d/keeptabs.sh" "$keeptabs_config/integrations.d/"
+copy_shipped_integrations "$keeptabs_config" keeptabs
+# shellcheck disable=SC2016 # the stub expands its own variables
+printf '#!/bin/sh\ncase "$*" in\n*--json*) printf "%%s" "$SANDBOX_AGENTS_JSON" ;;\n*) echo "keeptabs-pick $*" >> "%s" ;;\nesac\n' "$log" >"$keeptabs_stub/bin/keeptabs-pick"
+chmod +x "$keeptabs_stub/bin/keeptabs-pick"
+# shellcheck disable=SC2016 # lib.sh is sourced by the hook, which expands it
+printf 'session_focused() { case " $KEEPTABS_FOCUSED_PIDS " in *" $1 "*) return 0 ;; esac; return 1; }\n' >"$keeptabs_stub/share/keeptabs/lib.sh"
+# shellcheck disable=SC2089,SC2090 # the \t is JSON's escape, meant literally
+SANDBOX_AGENTS_JSON='[{"id":"w","title":"Wait","project":"pw","state":"waiting","pid":1},{"id":"d","title":"Fin","project":"pd","state":"done","pid":2},{"id":"i","title":"Idle one","project":"pi","state":"idle","pid":3},{"id":"j","title":"Idle\ttwo","project":"pj","state":"idle","pid":4}]'
+# shellcheck disable=SC2090 # see above
+export SANDBOX_AGENTS_JSON
+keeptabs_say() {
+  : >"$log"
+  PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "$1" >/dev/null 2>&1
+}
+keeptabs_say "go to the waiting agent"
+check "the waiting agent is focused and named in a toast" "grep -q '^keeptabs-pick --focus w\$' '$log' && grep -q '^notify-send .*Wait (pw)\$' '$log'"
+keeptabs_say "go to the done agent"
+check "the done agent is focused silently" "grep -q '^keeptabs-pick --focus d\$' '$log' && ! grep -q '^notify-send' '$log'"
+keeptabs_say "go to the beta agent"
+check "an unknown agent name focuses nothing and fails loudly" "! grep -q -- '--focus' '$log' && grep -q '^notify-send .*no tracked agent matches \"beta\"' '$log'"
+keeptabs_say "go to the idle one agent"
+check "a named agent is focused silently, matched on its title" "grep -q '^keeptabs-pick --focus i\$' '$log' && ! grep -q '^notify-send' '$log'"
+keeptabs_say "go to the agent that needs me"
+check "the spoken alternative of the waiting jump works too" "grep -q '^keeptabs-pick --focus w\$' '$log'"
+keeptabs_say "next agent"
+check "next with none focused starts at the first agent" "grep -q '^keeptabs-pick --focus w\$' '$log'"
+keeptabs_say "go to the previous agent"
+check "previous with none focused starts at the last agent" "grep -q '^keeptabs-pick --focus j\$' '$log'"
+: >"$log"
+KEEPTABS_FOCUSED_PIDS="4" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "next agent" >/dev/null 2>&1
+check "next from the last agent wraps to the first" "grep -q '^keeptabs-pick --focus w\$' '$log'"
+: >"$log"
+KEEPTABS_FOCUSED_PIDS="2" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "previous agent" >/dev/null 2>&1
+check "previous steps back one agent" "grep -q '^keeptabs-pick --focus w\$' '$log'"
+: >"$log"
+KEEPTABS_FOCUSED_PIDS="2 3" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "next agent" >/dev/null 2>&1
+check "next steps over agents that share the focused pane" "grep -q '^keeptabs-pick --focus j\$' '$log'"
+: >"$log"
+KEEPTABS_FOCUSED_PIDS="1 2 3 4" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "next agent" >/dev/null 2>&1
+check "with every agent focused it says so and moves nothing" "! grep -q -- '--focus' '$log' && grep -q '^notify-send .*no other agent to go to' '$log'"
+SANDBOX_AGENTS_JSON='[{"id":"i","title":"Idle","project":"pi","state":"idle","pid":3}]' keeptabs_say "go to the waiting agent"
+check "no waiting agent toasts that and focuses nothing" "! grep -q -- '--focus' '$log' && grep -q '^notify-send .*no agent is waiting' '$log'"
+SANDBOX_AGENTS_JSON='[{"id":"i","title":"Idle","project":"pi","state":"idle","pid":3}]' keeptabs_say "next done agent"
+check "no done agent toasts that despite the silent action" "! grep -q -- '--focus' '$log' && grep -q '^notify-send .*no agent is done' '$log'"
+SANDBOX_AGENTS_JSON='[]' keeptabs_say "next agent"
+check "no tracked agents toasts that" "grep -q '^notify-send .*no agents are tracked' '$log'"
+keeptabs_say "go to the idle two agent"
+check "a tab in a title is blanked, so the agent still matches by its title" "grep -q '^keeptabs-pick --focus j\$' '$log'"
+unset SANDBOX_AGENTS_JSON
+
 section "voice help"
 # Voice Help lists every integration's examples, the fallbacks last, and Tab on one lists what it offers to run. The
 # package copy's voxcmd-pick answers what $help_answer holds and logs its arguments; no such file makes it exit 1, as a

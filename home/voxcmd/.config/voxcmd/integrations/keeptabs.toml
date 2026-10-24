@@ -1,0 +1,44 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Jumps to coding agents tracked by keeptabs, through keeptabs-pick like the bar's popup. Format: ~/.config/voxcmd/README.md
+name = "Agents"
+
+# The fixed phrases come before "go to the {target} agent", which would otherwise take "go to the next agent".
+verbs = [
+  { action = "jump_waiting",  match = '{focus} (the )?(waiting|blocked) agent|{focus} the agent that (needs|wants) (me|my attention|attention|input)' },
+  { action = "jump_done",     match = '{focus} (the )?(done|finished) agent|({focus} )?(the )?next (done|finished) agent|{focus} the agent that (finished|is done)' },
+  { action = "jump_next",     match = '({focus} )?(the )?next agent' },
+  { action = "jump_previous", match = '({focus} )?(the )?(previous|prior) agent' },
+  { action = "focus",         match = '{focus} (the )?agent {target}' },
+  { action = "focus",         match = '{focus} (the )?{target} agent' },
+]
+
+examples = [
+  "go to the waiting agent",
+  "go to the agent that needs me",
+  "go to the done agent",
+  "next done agent",
+  "next agent",
+  "go to the previous agent",
+  "go to the <name> agent",
+]
+
+# The other jumps keep their toast: "no agent is waiting" is their only reply when nothing moves, and silent would drop
+# it. jump_done is silent and sends that reply itself.
+[actions]
+jump_waiting = 'focus_first_in_state waiting'
+jump_done = { run = 'focus_oldest_done', silent = true }
+jump_next = 'focus_cycled_agent 1'
+jump_previous = 'focus_cycled_agent -1'
+not_found = 'echo "no tracked agent matches \"$VOXCMD_ARG_TARGET\""; false'
+
+# The focused agent is the feedback.
+[actions.focus]
+run = 'focus_agent "$VOXCMD_ID"'
+silent = true
+candidates = "focus_candidates"
+# Without it, an unmatched "go to agent X" falls through to the keybinds fallback and could run an unrelated bind.
+no_match = "not_found"
+
+# Tab on these examples in Voice Help lists every tracked agent, and picking one jumps to it.
+[[help]]
+action = "focus"
