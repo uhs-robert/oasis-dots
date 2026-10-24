@@ -51,7 +51,9 @@ ShellRoot {
 
                 readonly property var rule: BarSettings.rule_for(screen_scope.modelData)
                 readonly property bool has_bar: screen_scope.rule !== null && screen_scope.rule.bar !== false
-                readonly property bool bar_bottom: screen_scope.has_bar && BarSettings.position_for(screen_scope.rule) === "bottom"
+                readonly property string bar_position: screen_scope.has_bar ? BarSettings.position_for(screen_scope.rule) : "top"
+                readonly property bool bar_bottom: screen_scope.bar_position === "bottom"
+                readonly property bool bar_vertical: screen_scope.bar_position === "left" || screen_scope.bar_position === "right"
                 readonly property int bar_height: BarSettings.height_for(screen_scope.rule)
                 readonly property var frame: ScreenFrames.layout_for(screen_scope.modelData)
                 // The last frame, held so the frame's bindings never see null while its loader drops it.
@@ -69,16 +71,20 @@ ShellRoot {
                         screen: screen_scope.modelData
                         color: "transparent"
                         // The floating strip's set-in from the screen edge is part of the window, so it is reserved too.
-                        implicitHeight: screen_scope.bar_height + (Style.strip_floats ? Style.bar_strip_inset : 0)
+                        // A side bar is that thick as a column; its length is the screen's (top and bottom both anchored).
+                        readonly property real thickness: screen_scope.bar_height + (Style.strip_floats ? Style.bar_strip_inset : 0)
+                        implicitHeight: screen_scope.bar_vertical ? 0 : thickness
+                        implicitWidth: screen_scope.bar_vertical ? thickness : 0
                         // Under a frame its zone windows reserve the bar's edge too, so the bar ignores them all
                         // instead of shrinking between the side zones.
-                        exclusiveZone: screen_scope.frame ? -1 : implicitHeight
+                        exclusiveZone: screen_scope.frame ? -1 : thickness
 
+                        // Each position anchors the three edges it spans: the screen edge and both neighbours.
                         anchors {
-                            top: !screen_scope.bar_bottom
-                            bottom: screen_scope.bar_bottom
-                            left: true
-                            right: true
+                            top: screen_scope.bar_position !== "bottom"
+                            bottom: screen_scope.bar_position !== "top"
+                            left: screen_scope.bar_position !== "right"
+                            right: screen_scope.bar_position !== "left"
                         }
 
                         Bar {
@@ -120,7 +126,7 @@ ShellRoot {
                 SubmapTab {
                     screen: screen_scope.modelData
                     screen_name: screen_scope.modelData.name
-                    line_width: bar_loader.item && bar_loader.item.bar_item.has_center ? bar_loader.item.bar_item.center_width : 260
+                    line_width: bar_loader.item && bar_loader.item.bar_item.has_center && !screen_scope.bar_vertical ? bar_loader.item.bar_item.center_width : 260
                     bar_present: screen_scope.has_bar
                     bottom: screen_scope.bar_bottom
                     chip_shown: !!bar_loader.item && (bar_loader.item.bar_item.has_mode_chip || bar_loader.item.bar_item.has_frame_chip)

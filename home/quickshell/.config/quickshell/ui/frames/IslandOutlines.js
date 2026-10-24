@@ -10,6 +10,15 @@ function has(shape) {
     return names.indexOf(shape) >= 0;
 }
 
+// The shapes with a true vertical form on a left or right bar: BandGeometry.band_affine turns the same top-bar frame
+// onto the side, so a shape is vertical-ready when everything it draws lies in that frame (the "full" and "strip" bands
+// draw as "none" islands). The rest are still to come and meanwhile draw as `rect`.
+const vertical_names = ["slant", "rect", "chevron", "tab", "none", "underline", "brackets"];
+
+function vertical_shape(shape) {
+    return vertical_names.indexOf(shape) >= 0 ? shape : "rect";
+}
+
 // Shapes with no plate: `none` draws nothing, `underline` and `brackets` only a stroke. `has` stays false for them,
 // since an outline here is a filled polygon.
 const stroke_names = ["none", "underline", "brackets"];

@@ -6,6 +6,7 @@ import qs.ui.gauges
 import qs.styles.metroid.widgets as Metroid
 import qs.theme
 import qs.features.popups
+import "../../ui/frames/BandGeometry.js" as Band
 import "../../ui/frames/IslandOutlines.js" as Outlines
 
 Item {
@@ -32,7 +33,8 @@ Item {
     readonly property int cap_overlap: root.translucent ? 0 : 1
     // One of Style.island_shapes; lualine draws its own sections whatever the shape. Over the full-bar strip
     // (StripBackground) an island draws nothing, as `none`.
-    readonly property string shape: root.lualine ? "lualine" : Style.strip_shape ? "none" : Style.bar_island_shape
+    readonly property string shape: root.vertical ? Outlines.vertical_shape(root.base_shape) : root.base_shape
+    readonly property string base_shape: root.lualine ? "lualine" : Style.strip_shape ? "none" : Style.bar_island_shape
     // Metroid Prime visor glass cut into notched bracket ends (VisorIsland) instead of slants.
     readonly property bool visor: root.shape === "visor"
     // A capsule this many px inside the island's top and ends, resting on its bottom edge; sheen_color lights its top edge.
@@ -53,7 +55,7 @@ Item {
     // Width the clock's meeting chip adds, which the clock popup leaves out when it sizes from this island.
     property real popup_trim: 0
     // Lualine: side islands end in arrows, the center one leans; content brings its own padding.
-    readonly property bool lualine: Style.bar_lualine
+    readonly property bool lualine: Style.bar_lualine && !root.vertical
     // Fill for the right cap when the content's last segment runs into it.
     property color cap_right_fill: "transparent"
     property color cap_left_fill: "transparent"
@@ -77,10 +79,10 @@ Item {
     readonly property bool stroke_only: !root.filled
     // Style's min_border already raised border_width to at least this; max() keeps a bare island visible if it was not.
     readonly property real stroke_width: Math.max(root.border_width, root.shape === "underline" ? 2 : 1)
-    readonly property var outline_rim: root.outlined ? Outlines.rim_path(root.shape, root.width, root.height, root.cap_width, root.cap_left, root.cap_right) : []
+    readonly property var outline_rim: root.outlined ? Outlines.rim_path(root.shape, root.length, root.thickness, root.cap_width, root.cap_left, root.cap_right) : []
     // The rim path moved in by the border: where the fill's effects stop.
     readonly property var outline_inner: root.outlined ? Outlines.inset(root.outline_rim, root.border_width) : []
-    readonly property int cap_width: root.outlined || root.stroke_only ? Outlines.cap_width(root.shape, height) : root.window ? 0 : root.octagon ? Math.round(height * 0.3) : root.lualine ? Math.round(height * 0.4) : root.visor ? Math.round(height * 0.8) : height / 2
+    readonly property int cap_width: root.outlined || root.stroke_only ? Outlines.cap_width(root.shape, root.thickness) : root.window ? 0 : root.octagon ? Math.round(root.thickness * 0.3) : root.lualine ? Math.round(root.thickness * 0.4) : root.visor ? Math.round(root.thickness * 0.8) : root.thickness / 2
     readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.window ? root.window_x + (root.center ? 16 : 6) : root.octagon ? 10 : 8
 
     readonly property real oct_x0: root.lug
@@ -92,12 +94,12 @@ Item {
 
     // The fill a row from y0 to y1 lies on, as { x, w }; scanlines, and dither off the slant, clip to it so they follow every shape.
     // The slant samples only y0, as it always has; the other shapes take the narrower end so no row spills past them.
-    // y is in the top-bar frame, so a layer clipping to this under a bottom bar must be mirrored with the rest (`mirror`).
+    // y is in the top-bar frame, so a layer clipping to this is placed with `deco_frame`.
     function fill_span(y0, y1) {
         if (root.slanted) {
-            const s = y0 * root.cap_width / root.height;
+            const s = y0 * root.cap_width / root.thickness;
             const x = root.cap_left ? s : 0;
-            return { x: x, w: root.width - x - (root.cap_right ? s : 0) };
+            return { x: x, w: root.length - x - (root.cap_right ? s : 0) };
         }
         const a = root.fill_edges(y0), b = root.fill_edges(y1);
         const x = Math.max(a[0], b[0]);
@@ -106,7 +108,7 @@ Item {
 
     // The left and right x of the fill at height y, inside any border that the effects would otherwise cover; [0, 0] outside it.
     function fill_edges(y) {
-        const h = root.height, w = root.width, e = root.border_width;
+        const h = root.thickness, w = root.length, e = root.border_width;
         if (root.window) {
             if (y < root.window_top + e || y > root.window_bottom - e) return [0, 0];
             return [root.window_x + e, root.window_x + root.window_width - e];
@@ -133,15 +135,29 @@ Item {
         return [root.cap_left ? cut : 0, w - (root.cap_right ? cut : 0)];
     }
 
-    // The screen edge the bar sits on. The decoration below is drawn for "top" (open side down) and mirrored for
-    // "bottom"; the modules never flip.
+    // The screen edge the bar sits on. The decoration is drawn for "top" (open side down, x along the bar) in a
+    // `length` by `thickness` item turned onto the edge by `deco_frame`; the modules never turn. On a left or right
+    // bar the island is a column: `length` runs down the screen and `thickness` across it.
     property string edge: "top"
+    readonly property bool vertical: root.edge === "left" || root.edge === "right"
     readonly property bool flipped: root.edge === "bottom"
-    // Shared by the decoration layers that span the island's full height.
+    property real thickness: 30
+    readonly property real body_span: root.vertical ? body.height : body.width
+    readonly property real length: root.capsule ? root.body_span + root.capsule_inset * 2 : root.body_span + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0) + root.lug * 2
+    // The visor and the octagon's rim are horizontal-only and mirror under a bottom bar with this; every other layer uses deco_frame.
     Scale {
         id: mirror
         origin.y: root.height / 2
         yScale: root.flipped ? -1 : 1
+    }
+
+    // Places a layer drawn in the top-bar frame onto the edge. Shared by the layers; each is at 0, 0 and `length` by `thickness`.
+    Matrix4x4 {
+        id: deco_frame
+        matrix: {
+            const m = Band.band_affine(root.edge, root.thickness);
+            return Qt.matrix4x4(m[0], m[2], 0, m[4], m[1], m[3], 0, m[5], 0, 0, 1, 0, 0, 0, 0, 1);
+        }
     }
 
     signal clicked
@@ -150,8 +166,8 @@ Item {
         return Style.island_fill(c);
     }
 
-    height: 30
-    width: root.capsule ? body.width + root.capsule_inset * 2 : body.width + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0) + root.lug * 2
+    width: root.vertical ? root.thickness : root.length
+    height: root.vertical ? root.length : root.thickness
 
     onJoinedChanged: {
         join_anim.stop();
@@ -215,9 +231,10 @@ Item {
 
     // The popup style's shade and dither, behind the modules and clipped to the slants.
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         active: root.shaded && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -225,18 +242,18 @@ Item {
                 strokeWidth: -1
                 // The left island mirrors the shade so its light edge faces the screen centre like the right one.
                 fillGradient: LinearGradient {
-                    x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.width : 0
+                    x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.length : 0
                     y1: 0
-                    x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.width
-                    y2: root.height
+                    x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.length
+                    y2: root.thickness
                     GradientStop { position: 0; color: root.faded(root.shade_color) }
                     GradientStop { position: 1; color: root.faded(root.bg_color) }
                 }
                 startX: 0
                 startY: 0
-                PathLine { x: root.width; y: 0 }
-                PathLine { x: root.width - (root.cap_right ? root.cap_width : 0); y: root.height }
-                PathLine { x: root.cap_left ? root.cap_width : 0; y: root.height }
+                PathLine { x: root.length; y: 0 }
+                PathLine { x: root.length - (root.cap_right ? root.cap_width : 0); y: root.thickness }
+                PathLine { x: root.cap_left ? root.cap_width : 0; y: root.thickness }
                 PathLine { x: 0; y: 0 }
             }
         }
@@ -343,9 +360,10 @@ Item {
     // An outlined shape's fill, one polygon so a translucent fill never stacks. The pixel shape skips the curve
     // renderer's antialiasing so its steps stay crisp.
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         active: root.outlined
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: root.shape === "pixel" ? Shape.GeometryRenderer : Shape.CurveRenderer
 
@@ -355,16 +373,16 @@ Item {
                 // A style's frame shade, laid out as on the slant.
                 fillGradient: root.shade_color.a > 0 ? outline_shade : null
                 PathPolyline {
-                    path: Outlines.fill_path(root.outline_rim, root.width, root.cap_left, root.cap_right).map(p => Qt.point(p[0], p[1]))
+                    path: Outlines.fill_path(root.outline_rim, root.length, root.cap_left, root.cap_right).map(p => Qt.point(p[0], p[1]))
                 }
             }
 
             LinearGradient {
                 id: outline_shade
-                x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.width : 0
+                x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.length : 0
                 y1: 0
-                x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.width
-                y2: root.height
+                x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.length
+                y2: root.thickness
                 GradientStop { position: 0; color: root.faded(root.shade_color) }
                 GradientStop { position: 1; color: root.faded(root.bg_color) }
             }
@@ -402,9 +420,10 @@ Item {
     }
 
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         active: root.dither_color.a > 0 && root.filled
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Dither {
             // The slant keeps Dither's own slant edges (the same line as fill_span's, computed in another order), so slanted styles draw exactly as before.
             slant_left: root.cap_left ? root.cap_width : 0
@@ -417,9 +436,10 @@ Item {
     Rectangle {
         id: body
 
-        x: root.capsule ? root.capsule_inset : root.lug + (cap_left ? root.cap_width : 0)
-        height: root.height
-        width: Math.ceil(layout.implicitWidth) + root.pad * 2
+        x: root.vertical ? 0 : root.capsule ? root.capsule_inset : root.lug + (cap_left ? root.cap_width : 0)
+        y: root.vertical ? root.lug + (cap_left ? root.cap_width : 0) : 0
+        height: root.vertical ? Math.ceil(layout.implicitHeight) + root.pad * 2 : root.thickness
+        width: root.vertical ? root.thickness : Math.ceil(layout.implicitWidth) + root.pad * 2
         color: root.shaded || root.octagon || root.window || root.outlined || root.stroke_only || root.lualine && root.translucent ? "transparent" : root.faded(root.bg_color)
 
         // Translucent lualine: the island's colour goes only behind modules that draw no section fill of their own
@@ -446,7 +466,7 @@ Item {
             anchors.topMargin: root.border_width
             anchors.bottomMargin: root.border_width
             height: 5
-            active: Style.bar_ticks.a > 0
+            active: Style.bar_ticks.a > 0 && !root.vertical
             sourceComponent: TickScale {
                 from_end: !root.flipped
                 step: 12
@@ -462,22 +482,27 @@ Item {
             onClicked: root.clicked()
         }
 
-        RowLayout {
+        // One row, or one column on a side bar; the modules inside keep their horizontal content.
+        GridLayout {
             id: layout
-            x: root.pad
-            // A window's content centres on the window rather than the bar.
-            y: root.capsule && !root.flipped ? root.capsule_inset : 0
-            height: parent.height - (root.capsule ? root.capsule_inset : 0)
-            spacing: root.lualine && !root.center ? 0 : Style.bar_module_gap
+            flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+            rows: root.vertical ? -1 : 1
+            columns: root.vertical ? 1 : -1
+            x: root.vertical ? 0 : root.pad
+            y: root.vertical ? root.pad : root.capsule && !root.flipped ? root.capsule_inset : 0
+            width: root.vertical ? parent.width : implicitWidth
+            height: root.vertical ? implicitHeight : parent.height - (root.capsule ? root.capsule_inset : 0)
+            rowSpacing: root.lualine && !root.center ? 0 : Style.bar_module_gap
+            columnSpacing: root.lualine && !root.center ? 0 : Style.bar_module_gap
         }
     }
 
     // Caps overlap the body by 1px so fractional scaling (1.6 on the laptop) leaves no seam.
     Loader {
-        width: root.cap_width + root.cap_overlap
-        height: root.height
+        width: root.length
+        height: root.thickness
         active: root.cap_left && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -486,7 +511,7 @@ Item {
                 fillColor: root.faded(root.cap_left_fill.a > 0 ? root.cap_left_fill : root.shaded ? "transparent" : root.bg_color)
                 PathPolyline {
                     path: {
-                        const c = root.cap_width, h = root.height, o = root.cap_overlap;
+                        const c = root.cap_width, h = root.thickness, o = root.cap_overlap;
                         if (!root.lualine) return [Qt.point(0, 0), Qt.point(c + o, 0), Qt.point(c + o, h), Qt.point(c, h), Qt.point(0, 0)];
                         if (root.center) return [Qt.point(c, 0), Qt.point(c + o, 0), Qt.point(c + o, h), Qt.point(0, h), Qt.point(c, 0)];
                         return [Qt.point(c, 0), Qt.point(c + o, 0), Qt.point(c + o, h), Qt.point(c, h), Qt.point(0, h / 2), Qt.point(c, 0)];
@@ -497,11 +522,10 @@ Item {
     }
 
     Loader {
-        x: root.width - root.cap_width - root.cap_overlap
-        width: root.cap_width + root.cap_overlap
-        height: root.height
+        width: root.length
+        height: root.thickness
         active: root.cap_right && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -510,9 +534,9 @@ Item {
                 fillColor: root.faded(root.cap_right_fill.a > 0 ? root.cap_right_fill : root.shaded ? "transparent" : root.bg_color)
                 PathPolyline {
                     path: {
-                        const c = root.cap_width, h = root.height, o = root.cap_overlap;
-                        if (!root.lualine || root.center) return [Qt.point(0, 0), Qt.point(c + o, 0), Qt.point(o, h), Qt.point(0, h), Qt.point(0, 0)];
-                        return [Qt.point(0, 0), Qt.point(o, 0), Qt.point(c + o, h / 2), Qt.point(o, h), Qt.point(0, h), Qt.point(0, 0)];
+                        const c = root.cap_width, h = root.thickness, o = root.cap_overlap, x = root.length - c - o;
+                        if (!root.lualine || root.center) return [[0, 0], [c + o, 0], [o, h], [0, h], [0, 0]].map(p => Qt.point(x + p[0], p[1]));
+                        return [[0, 0], [o, 0], [c + o, h / 2], [o, h], [0, h], [0, 0]].map(p => Qt.point(x + p[0], p[1]));
                     }
                 }
             }
@@ -522,26 +546,24 @@ Item {
     // Static scanlines clipped to the slants; nothing animates them.
     Item {
         id: scanlines
+        // Where the lines start and how tall their area is: a window's are inside its border.
+        readonly property real first_y: root.window ? root.window_top + root.window_edge : 0
+        readonly property real extent: root.window ? root.window_bottom - root.window_top - root.window_edge * 2 : root.thickness
         visible: root.scanline_color.a > 0 && root.filled
-        x: root.window ? root.window_x + root.window_edge : 0
-        y: root.window ? root.window_top + root.window_edge : 0
-        width: root.window ? root.window_width - root.window_edge * 2 : root.width
-        height: root.window ? root.window_bottom - root.window_top - root.window_edge * 2 : root.height
-        transform: Scale {
-            origin.y: scanlines.height / 2
-            yScale: root.flipped ? -1 : 1
-        }
+        width: root.length
+        height: root.thickness
+        transform: [deco_frame]
 
         Repeater {
-            model: root.scanline_color.a > 0 ? Math.ceil(scanlines.height / root.scanline_period) : 0
+            model: root.scanline_color.a > 0 ? Math.ceil(scanlines.extent / root.scanline_period) : 0
 
             Rectangle {
                 required property int index
-                readonly property real island_y: scanlines.y + y
+                readonly property real island_y: scanlines.first_y + index * root.scanline_period
                 readonly property var span: root.fill_span(island_y, island_y + 1)
 
-                x: span.x - scanlines.x
-                y: index * root.scanline_period
+                x: span.x
+                y: island_y
                 width: Math.max(0, span.w)
                 height: 1
                 color: root.faded(root.scanline_color)
@@ -551,9 +573,10 @@ Item {
 
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -566,7 +589,7 @@ Item {
 
                 PathPolyline {
                     path: {
-                        const w = root.width, h = root.height, c = root.cap_width, i = root.border_width / 2;
+                        const w = root.length, h = root.thickness, c = root.cap_width, i = root.border_width / 2;
                         const pts = [];
                         pts.push(root.cap_left ? Qt.point(i, 0) : Qt.point(0, h - i));
                         if (root.cap_left) pts.push(Qt.point(c + i, h - i));
@@ -580,9 +603,10 @@ Item {
     }
 
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -595,7 +619,7 @@ Item {
 
                 PathPolyline {
                     path: {
-                        const w = root.width, h = root.height, off = root.inset_gap + root.inset_width / 2;
+                        const w = root.length, h = root.thickness, off = root.inset_gap + root.inset_width / 2;
                         const slope = root.cap_width / h;
                         const shift = off * Math.sqrt(1 + slope * slope);
                         const pts = [];
@@ -612,10 +636,11 @@ Item {
 
     // An outlined shape's rim, above the content like the octagon's, on every side but the screen's.
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         z: 2
         active: root.outlined && root.border_width > 0
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: root.shape === "pixel" ? Shape.GeometryRenderer : Shape.CurveRenderer
 
@@ -634,16 +659,17 @@ Item {
 
     // Stroke `i` of the underline (one) or brackets (four) as points; empty past the last.
     function stroke_points(i) {
-        const all = root.shape === "underline" ? [Outlines.underline_path(root.width, root.height, root.stroke_width)] : Outlines.bracket_paths(root.width, root.height, Outlines.bracket_arm(root.height), root.stroke_width);
+        const all = root.shape === "underline" ? [Outlines.underline_path(root.length, root.thickness, root.stroke_width)] : Outlines.bracket_paths(root.length, root.thickness, Outlines.bracket_arm(root.thickness), root.stroke_width);
         return i < all.length ? all[i].map(p => Qt.point(p[0], p[1])) : [];
     }
 
     // The fill-less shapes' strokes, above the content. `none` has no layer.
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         z: 2
         active: root.stroke_only && root.shape !== "none"
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
