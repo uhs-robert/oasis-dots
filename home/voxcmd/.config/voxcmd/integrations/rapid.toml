@@ -1,0 +1,31 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Rapid mode: a voice session where every turn is routed as a normal command, so a run of commands needs no key press
+# between them. "click mode" and "type mode" open inside it and return to it. Format: ~/.config/voxcmd/README.md
+name = "Rapid"
+silent = true
+
+# "stop rapid mode" is here because Media's "stop {target}" would otherwise hear it. Outside a session the exit forms
+# name the mode, so a bare "stop" there still pauses the music; the verbs stay in the mode so that "cortana ..." forms
+# and the hint keep running before Media's and System's.
+verbs = [
+  { action = "rapid_mode",       match = '((start|enter|begin) )?rapid( fire)? mode' },
+  { action = "stop_rapid",       match = '{mode_exit}' },
+  { action = "rapid_leave_hint", match = 'say cortana done to leave' },
+]
+
+examples = ["rapid mode", "cortana done"]
+
+[actions]
+rapid_mode = { enter_mode = true, mode_switch = true }
+stop_rapid = { leave_mode = "done", mode_switch = true }
+# A bare leave word is a missed turn that answers with the hint, since only "cortana ..." leaves.
+rapid_leave_hint = { run = "rapid_leave_hint", miss = true }
+
+[mode]
+label = "Rapid mode"
+exit_object = '(the )?(rapid|rapid mode|rapid fire mode)'
+# Inside the session bare done and exit words are not exits (default exits are off), so only "cortana ..." leaves.
+exit_phrases = 'done with {mode_object}|{mode_exit}|exit|quit'
+exit_hint = "say cortana done to stop"
+default_exits = false
+rewrite_hook = 'rapid_rewrite "$VOXCMD_PHRASE"'
