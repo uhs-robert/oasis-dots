@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Repro for #1067 on a shadow bar: a second `choices` picker opened before the first has read its spec file
 # must still answer the first caller. Fails on a bar without the ChoicesProvider load queue, passes with it.
-# Usage: picker-race.sh [--name SHADOW] [<branch>...]   (branches as for `shadow.sh up`; none tests the main checkout)
+# Usage: picker-race.sh [--name SHADOW] [<branch>...]   (branches as for `shadow.sh up`; none tests the current worktree)
 set -euo pipefail
 
 shadow="$(dirname "$0")/shadow.sh"
