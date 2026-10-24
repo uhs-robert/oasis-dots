@@ -22,6 +22,10 @@
 -	ordinal	11th monitor	1	
 -	cardinal	11th monitor	1	
 -	words-known	11th monitor	0	
+-	position	12	0	12
+-	ordinal	12	1	
+-	cardinal	12	0	12
+-	words-known	12	0	
 -	position	1200 by 800	1	
 -	ordinal	1200 by 800	1	
 -	cardinal	1200 by 800	1	
@@ -110,6 +114,10 @@
 -	ordinal	400 pixels tall	1	
 -	cardinal	400 pixels tall	1	
 -	words-known	400 pixels tall	1	
+-	position	5	0	5
+-	ordinal	5	1	
+-	cardinal	5	0	5
+-	words-known	5	0	
 -	position	5 miles to kilometers	1	
 -	ordinal	5 miles to kilometers	1	
 -	cardinal	5 miles to kilometers	1	
@@ -278,6 +286,22 @@
 -	ordinal	brightness up	1	
 -	cardinal	brightness up	1	
 -	words-known	brightness up	1	
+-	position	bring firefox to the third workspace	1	
+-	ordinal	bring firefox to the third workspace	1	
+-	cardinal	bring firefox to the third workspace	1	
+-	words-known	bring firefox to the third workspace	1	
+-	position	bring it to monitor three	1	
+-	ordinal	bring it to monitor three	1	
+-	cardinal	bring it to monitor three	1	
+-	words-known	bring it to monitor three	1	
+-	position	bring it to workspace 12	1	
+-	ordinal	bring it to workspace 12	1	
+-	cardinal	bring it to workspace 12	1	
+-	words-known	bring it to workspace 12	1	
+-	position	bring to workspace 5	1	
+-	ordinal	bring to workspace 5	1	
+-	cardinal	bring to workspace 5	1	
+-	words-known	bring to workspace 5	1	
 -	position	bring up the workspace overview	1	
 -	ordinal	bring up the workspace overview	1	
 -	cardinal	bring up the workspace overview	1	
@@ -338,6 +362,10 @@
 -	ordinal	capture the screen	1	
 -	cardinal	capture the screen	1	
 -	words-known	capture the screen	1	
+-	position	carry to workspace 5	1	
+-	ordinal	carry to workspace 5	1	
+-	cardinal	carry to workspace 5	1	
+-	words-known	carry to workspace 5	1	
 -	position	center monitor	1	
 -	ordinal	center monitor	1	
 -	cardinal	center monitor	1	
@@ -394,6 +422,10 @@
 -	ordinal	convert 5 miles to kilometers	1	
 -	cardinal	convert 5 miles to kilometers	1	
 -	words-known	convert 5 miles to kilometers	1	
+-	position	cortana done to leave	1	
+-	ordinal	cortana done to leave	1	
+-	cardinal	cortana done to leave	1	
+-	words-known	cortana done to leave	1	
 -	position	current window	1	
 -	ordinal	current window	1	
 -	cardinal	current window	1	
@@ -422,6 +454,10 @@
 -	ordinal	done agent	1	
 -	cardinal	done agent	1	
 -	words-known	done agent	1	
+-	position	done to leave	1	
+-	ordinal	done to leave	1	
+-	cardinal	done to leave	1	
+-	words-known	done to leave	1	
 -	position	done typing	1	
 -	ordinal	done typing	1	
 -	cardinal	done typing	1	
@@ -490,6 +526,10 @@
 -	ordinal	firefox to workspace 3rd	1	
 -	cardinal	firefox to workspace 3rd	1	
 -	words-known	firefox to workspace 3rd	1	
+-	position	firefox to workspace 5	1	
+-	ordinal	firefox to workspace 5	1	
+-	cardinal	firefox to workspace 5	1	
+-	words-known	firefox to workspace 5	1	
 -	position	firefox to workspace third	1	
 -	ordinal	firefox to workspace third	1	
 -	cardinal	firefox to workspace third	1	
@@ -618,6 +658,10 @@
 -	ordinal	fullscreen	1	
 -	cardinal	fullscreen	1	
 -	words-known	fullscreen	1	
+-	position	fullscreen please	1	
+-	ordinal	fullscreen please	1	
+-	cardinal	fullscreen please	1	
+-	words-known	fullscreen please	1	
 -	position	general acme slack	1	
 -	ordinal	general acme slack	1	
 -	cardinal	general acme slack	1	
@@ -762,6 +806,18 @@
 -	ordinal	it to the 3rd screen	1	
 -	cardinal	it to the 3rd screen	1	
 -	words-known	it to the 3rd screen	1	
+-	position	it to the second workspace	1	
+-	ordinal	it to the second workspace	1	
+-	cardinal	it to the second workspace	1	
+-	words-known	it to the second workspace	1	
+-	position	it to the third workspace	1	
+-	ordinal	it to the third workspace	1	
+-	cardinal	it to the third workspace	1	
+-	words-known	it to the third workspace	1	
+-	position	it to workspace 12	1	
+-	ordinal	it to workspace 12	1	
+-	cardinal	it to workspace 12	1	
+-	words-known	it to workspace 12	1	
 -	position	it wider by 200	1	
 -	ordinal	it wider by 200	1	
 -	cardinal	it wider by 200	1	
@@ -806,6 +862,10 @@
 -	ordinal	laptop send the window to	1	
 -	cardinal	laptop send the window to	1	
 -	words-known	laptop send the window to	1	
+-	position	leave	1	
+-	ordinal	leave	1	
+-	cardinal	leave	1	
+-	words-known	leave	1	
 -	position	left	1	
 -	ordinal	left	1	
 -	cardinal	left	1	
@@ -862,6 +922,10 @@
 -	ordinal	me to monitor two	1	
 -	cardinal	me to monitor two	1	
 -	words-known	me to monitor two	1	
+-	position	me to workspace 2	1	
+-	ordinal	me to workspace 2	1	
+-	cardinal	me to workspace 2	1	
+-	words-known	me to workspace 2	1	
 -	position	meeting	1	
 -	ordinal	meeting	1	
 -	cardinal	meeting	1	
@@ -954,6 +1018,10 @@
 -	ordinal	move firefox to workspace 3rd	1	
 -	cardinal	move firefox to workspace 3rd	1	
 -	words-known	move firefox to workspace 3rd	1	
+-	position	move firefox to workspace 5	1	
+-	ordinal	move firefox to workspace 5	1	
+-	cardinal	move firefox to workspace 5	1	
+-	words-known	move firefox to workspace 5	1	
 -	position	move firefox to workspace third	1	
 -	ordinal	move firefox to workspace third	1	
 -	cardinal	move firefox to workspace third	1	
@@ -970,10 +1038,38 @@
 -	ordinal	move it to the 3rd screen	1	
 -	cardinal	move it to the 3rd screen	1	
 -	words-known	move it to the 3rd screen	1	
+-	position	move it to workspace 12	1	
+-	ordinal	move it to workspace 12	1	
+-	cardinal	move it to workspace 12	1	
+-	words-known	move it to workspace 12	1	
+-	position	move that to special workspace notes	1	
+-	ordinal	move that to special workspace notes	1	
+-	cardinal	move that to special workspace notes	1	
+-	words-known	move that to special workspace notes	1	
+-	position	move this window to workspace 5	1	
+-	ordinal	move this window to workspace 5	1	
+-	cardinal	move this window to workspace 5	1	
+-	words-known	move this window to workspace 5	1	
+-	position	move to the third workspace	1	
+-	ordinal	move to the third workspace	1	
+-	cardinal	move to the third workspace	1	
+-	words-known	move to the third workspace	1	
+-	position	move to workspace 2	1	
+-	ordinal	move to workspace 2	1	
+-	cardinal	move to workspace 2	1	
+-	words-known	move to workspace 2	1	
+-	position	move to workspace 5	1	
+-	ordinal	move to workspace 5	1	
+-	cardinal	move to workspace 5	1	
+-	words-known	move to workspace 5	1	
 -	position	move window to the left	1	
 -	ordinal	move window to the left	1	
 -	cardinal	move window to the left	1	
 -	words-known	move window to the left	1	
+-	position	move window to workspace 5	1	
+-	ordinal	move window to workspace 5	1	
+-	cardinal	move window to workspace 5	1	
+-	words-known	move window to workspace 5	1	
 -	position	my calendar	1	
 -	ordinal	my calendar	1	
 -	cardinal	my calendar	1	
@@ -1098,6 +1194,14 @@
 -	ordinal	pixels tall	1	
 -	cardinal	pixels tall	1	
 -	words-known	pixels tall	1	
+-	position	place it to workspace 12	1	
+-	ordinal	place it to workspace 12	1	
+-	cardinal	place it to workspace 12	1	
+-	words-known	place it to workspace 12	1	
+-	position	place to workspace 5	1	
+-	ordinal	place to workspace 5	1	
+-	cardinal	place to workspace 5	1	
+-	words-known	place to workspace 5	1	
 -	position	places with firefox	1	
 -	ordinal	places with firefox	1	
 -	cardinal	places with firefox	1	
@@ -1106,6 +1210,10 @@
 -	ordinal	places with slack	1	
 -	cardinal	places with slack	1	
 -	words-known	places with slack	1	
+-	position	please	1	
+-	ordinal	please	1	
+-	cardinal	please	1	
+-	words-known	please	1	
 -	position	pm	1	
 -	ordinal	pm	1	
 -	cardinal	pm	1	
@@ -1142,6 +1250,34 @@
 -	ordinal	press toggle fullscreen	1	
 -	cardinal	press toggle fullscreen	1	
 -	words-known	press toggle fullscreen	1	
+-	position	push that to special workspace notes	1	
+-	ordinal	push that to special workspace notes	1	
+-	cardinal	push that to special workspace notes	1	
+-	words-known	push that to special workspace notes	1	
+-	position	push to workspace 5	1	
+-	ordinal	push to workspace 5	1	
+-	cardinal	push to workspace 5	1	
+-	words-known	push to workspace 5	1	
+-	position	put it to the second workspace	1	
+-	ordinal	put it to the second workspace	1	
+-	cardinal	put it to the second workspace	1	
+-	words-known	put it to the second workspace	1	
+-	position	put it to workspace 12	1	
+-	ordinal	put it to workspace 12	1	
+-	cardinal	put it to workspace 12	1	
+-	words-known	put it to workspace 12	1	
+-	position	put that to special workspace notes	1	
+-	ordinal	put that to special workspace notes	1	
+-	cardinal	put that to special workspace notes	1	
+-	words-known	put that to special workspace notes	1	
+-	position	put this window to workspace 5	1	
+-	ordinal	put this window to workspace 5	1	
+-	cardinal	put this window to workspace 5	1	
+-	words-known	put this window to workspace 5	1	
+-	position	put to workspace 5	1	
+-	ordinal	put to workspace 5	1	
+-	cardinal	put to workspace 5	1	
+-	words-known	put to workspace 5	1	
 -	position	rapid mode	1	
 -	ordinal	rapid mode	1	
 -	cardinal	rapid mode	1	
@@ -1158,6 +1294,10 @@
 -	ordinal	region screenshot	1	
 -	cardinal	region screenshot	1	
 -	words-known	region screenshot	1	
+-	position	relocate to workspace 5	1	
+-	ordinal	relocate to workspace 5	1	
+-	cardinal	relocate to workspace 5	1	
+-	words-known	relocate to workspace 5	1	
 -	position	resize firefox to 1000 by 700	1	
 -	ordinal	resize firefox to 1000 by 700	1	
 -	cardinal	resize firefox to 1000 by 700	1	
@@ -1198,6 +1338,10 @@
 -	ordinal	right twice	1	
 -	cardinal	right twice	1	
 -	words-known	right twice	1	
+-	position	say cortana done to leave	1	
+-	ordinal	say cortana done to leave	1	
+-	cardinal	say cortana done to leave	1	
+-	words-known	say cortana done to leave	1	
 -	position	scratch pad	1	
 -	ordinal	scratch pad	1	
 -	cardinal	scratch pad	1	
@@ -1298,14 +1442,34 @@
 -	ordinal	send firefox to workspace 3	1	
 -	cardinal	send firefox to workspace 3	1	
 -	words-known	send firefox to workspace 3	1	
+-	position	send it to workspace 12	1	
+-	ordinal	send it to workspace 12	1	
+-	cardinal	send it to workspace 12	1	
+-	words-known	send it to workspace 12	1	
+-	position	send that to special workspace notes	1	
+-	ordinal	send that to special workspace notes	1	
+-	cardinal	send that to special workspace notes	1	
+-	words-known	send that to special workspace notes	1	
 -	position	send the window to	1	
 -	ordinal	send the window to	1	
 -	cardinal	send the window to	1	
 -	words-known	send the window to	1	
+-	position	send this window to workspace 2	1	
+-	ordinal	send this window to workspace 2	1	
+-	cardinal	send this window to workspace 2	1	
+-	words-known	send this window to workspace 2	1	
+-	position	send this window to workspace 5	1	
+-	ordinal	send this window to workspace 5	1	
+-	cardinal	send this window to workspace 5	1	
+-	words-known	send this window to workspace 5	1	
 -	position	send to laptop monitor	1	
 -	ordinal	send to laptop monitor	1	
 -	cardinal	send to laptop monitor	1	
 -	words-known	send to laptop monitor	1	
+-	position	send to workspace 5	1	
+-	ordinal	send to workspace 5	1	
+-	cardinal	send to workspace 5	1	
+-	words-known	send to workspace 5	1	
 -	position	send window to laptop	1	
 -	ordinal	send window to laptop	1	
 -	cardinal	send window to laptop	1	
@@ -1374,6 +1538,14 @@
 -	ordinal	seventeen trombones	1	
 -	cardinal	seventeen trombones	1	
 -	words-known	seventeen trombones	1	
+-	position	shift this window to workspace 5	1	
+-	ordinal	shift this window to workspace 5	1	
+-	cardinal	shift this window to workspace 5	1	
+-	words-known	shift this window to workspace 5	1	
+-	position	shift to workspace 5	1	
+-	ordinal	shift to workspace 5	1	
+-	cardinal	shift to workspace 5	1	
+-	words-known	shift to workspace 5	1	
 -	position	shot of the region	1	
 -	ordinal	shot of the region	1	
 -	cardinal	shot of the region	1	
@@ -1486,6 +1658,14 @@
 -	ordinal	swap workspaces two and five	1	
 -	cardinal	swap workspaces two and five	1	
 -	words-known	swap workspaces two and five	1	
+-	position	switch firefox to workspace 5	1	
+-	ordinal	switch firefox to workspace 5	1	
+-	cardinal	switch firefox to workspace 5	1	
+-	words-known	switch firefox to workspace 5	1	
+-	position	switch it to the third workspace	1	
+-	ordinal	switch it to the third workspace	1	
+-	cardinal	switch it to the third workspace	1	
+-	words-known	switch it to the third workspace	1	
 -	position	switch output to headphones	1	
 -	ordinal	switch output to headphones	1	
 -	cardinal	switch output to headphones	1	
@@ -1494,6 +1674,14 @@
 -	ordinal	switch places with slack	1	
 -	cardinal	switch places with slack	1	
 -	words-known	switch places with slack	1	
+-	position	switch this window to workspace 5	1	
+-	ordinal	switch this window to workspace 5	1	
+-	cardinal	switch this window to workspace 5	1	
+-	words-known	switch this window to workspace 5	1	
+-	position	switch to the second workspace	1	
+-	ordinal	switch to the second workspace	1	
+-	cardinal	switch to the second workspace	1	
+-	words-known	switch to the second workspace	1	
 -	position	switch to the top right screen	1	
 -	ordinal	switch to the top right screen	1	
 -	cardinal	switch to the top right screen	1	
@@ -1514,10 +1702,22 @@
 -	ordinal	take a scrolling screenshot	1	
 -	cardinal	take a scrolling screenshot	1	
 -	words-known	take a scrolling screenshot	1	
+-	position	take firefox to workspace 5	1	
+-	ordinal	take firefox to workspace 5	1	
+-	cardinal	take firefox to workspace 5	1	
+-	words-known	take firefox to workspace 5	1	
 -	position	take me to monitor two	1	
 -	ordinal	take me to monitor two	1	
 -	cardinal	take me to monitor two	1	
 -	words-known	take me to monitor two	1	
+-	position	take me to workspace 2	1	
+-	ordinal	take me to workspace 2	1	
+-	cardinal	take me to workspace 2	1	
+-	words-known	take me to workspace 2	1	
+-	position	take to workspace 5	1	
+-	ordinal	take to workspace 5	1	
+-	cardinal	take to workspace 5	1	
+-	words-known	take to workspace 5	1	
 -	position	tall	1	
 -	ordinal	tall	1	
 -	cardinal	tall	1	
@@ -1530,6 +1730,10 @@
 -	ordinal	tenth monitor	1	
 -	cardinal	tenth monitor	1	
 -	words-known	tenth monitor	0	
+-	position	that to special workspace notes	1	
+-	ordinal	that to special workspace notes	1	
+-	cardinal	that to special workspace notes	1	
+-	words-known	that to special workspace notes	1	
 -	position	the 10th monitor	1	
 -	ordinal	the 10th monitor	1	
 -	cardinal	the 10th monitor	1	
@@ -1702,6 +1906,10 @@
 -	ordinal	the window to the laptop screen	1	
 -	cardinal	the window to the laptop screen	1	
 -	words-known	the window to the laptop screen	1	
+-	position	the window to the third workspace	1	
+-	ordinal	the window to the third workspace	1	
+-	cardinal	the window to the third workspace	1	
+-	words-known	the window to the third workspace	1	
 -	position	the window with slack	1	
 -	ordinal	the window with slack	1	
 -	cardinal	the window with slack	1	
@@ -1758,6 +1966,14 @@
 -	ordinal	this window to the second monitor	1	
 -	cardinal	this window to the second monitor	1	
 -	words-known	this window to the second monitor	1	
+-	position	this window to workspace 2	1	
+-	ordinal	this window to workspace 2	1	
+-	cardinal	this window to workspace 2	1	
+-	words-known	this window to workspace 2	1	
+-	position	this window to workspace 5	1	
+-	ordinal	this window to workspace 5	1	
+-	cardinal	this window to workspace 5	1	
+-	words-known	this window to workspace 5	1	
 -	position	this window with firefox	1	
 -	ordinal	this window with firefox	1	
 -	cardinal	this window with firefox	1	
@@ -1858,6 +2074,10 @@
 -	ordinal	to laptop monitor	1	
 -	cardinal	to laptop monitor	1	
 -	words-known	to laptop monitor	1	
+-	position	to leave	1	
+-	ordinal	to leave	1	
+-	cardinal	to leave	1	
+-	words-known	to leave	1	
 -	position	to monitor laptop	1	
 -	ordinal	to monitor laptop	1	
 -	cardinal	to monitor laptop	1	
@@ -1962,6 +2182,10 @@
 -	ordinal	to the second screen	1	
 -	cardinal	to the second screen	1	
 -	words-known	to the second screen	1	
+-	position	to the second workspace	1	
+-	ordinal	to the second workspace	1	
+-	cardinal	to the second workspace	1	
+-	words-known	to the second workspace	1	
 -	position	to the special workspace scratch pad	1	
 -	ordinal	to the special workspace scratch pad	1	
 -	cardinal	to the special workspace scratch pad	1	
@@ -1994,6 +2218,10 @@
 -	ordinal	to two	1	
 -	cardinal	to two	1	
 -	words-known	to two	1	
+-	position	to workspace 12	1	
+-	ordinal	to workspace 12	1	
+-	cardinal	to workspace 12	1	
+-	words-known	to workspace 12	1	
 -	position	to workspace 2	1	
 -	ordinal	to workspace 2	1	
 -	cardinal	to workspace 2	1	
@@ -2010,6 +2238,10 @@
 -	ordinal	to workspace 3rd	1	
 -	cardinal	to workspace 3rd	1	
 -	words-known	to workspace 3rd	1	
+-	position	to workspace 5	1	
+-	ordinal	to workspace 5	1	
+-	cardinal	to workspace 5	1	
+-	words-known	to workspace 5	1	
 -	position	to workspace third	1	
 -	ordinal	to workspace third	1	
 -	cardinal	to workspace third	1	
@@ -2026,6 +2258,10 @@
 -	ordinal	toggle fullscreen	1	
 -	cardinal	toggle fullscreen	1	
 -	words-known	toggle fullscreen	1	
+-	position	toggle fullscreen please	1	
+-	ordinal	toggle fullscreen please	1	
+-	cardinal	toggle fullscreen please	1	
+-	words-known	toggle fullscreen please	1	
 -	position	tokyo	1	
 -	ordinal	tokyo	1	
 -	cardinal	tokyo	1	
@@ -2222,6 +2458,18 @@
 -	ordinal	window to the second monitor	1	
 -	cardinal	window to the second monitor	1	
 -	words-known	window to the second monitor	1	
+-	position	window to the third workspace	1	
+-	ordinal	window to the third workspace	1	
+-	cardinal	window to the third workspace	1	
+-	words-known	window to the third workspace	1	
+-	position	window to workspace 2	1	
+-	ordinal	window to workspace 2	1	
+-	cardinal	window to workspace 2	1	
+-	words-known	window to workspace 2	1	
+-	position	window to workspace 5	1	
+-	ordinal	window to workspace 5	1	
+-	cardinal	window to workspace 5	1	
+-	words-known	window to workspace 5	1	
 -	position	window with firefox	1	
 -	ordinal	window with firefox	1	
 -	cardinal	window with firefox	1	
@@ -2278,6 +2526,10 @@
 -	ordinal	workspace 1 with 2	1	
 -	cardinal	workspace 1 with 2	1	
 -	words-known	workspace 1 with 2	1	
+-	position	workspace 12	1	
+-	ordinal	workspace 12	1	
+-	cardinal	workspace 12	1	
+-	words-known	workspace 12	1	
 -	position	workspace 2	1	
 -	ordinal	workspace 2	1	
 -	cardinal	workspace 2	1	
@@ -2294,6 +2546,10 @@
 -	ordinal	workspace 3rd	1	
 -	cardinal	workspace 3rd	1	
 -	words-known	workspace 3rd	1	
+-	position	workspace 5	1	
+-	ordinal	workspace 5	1	
+-	cardinal	workspace 5	1	
+-	words-known	workspace 5	1	
 -	position	workspace notes	1	
 -	ordinal	workspace notes	1	
 -	cardinal	workspace notes	1	
@@ -3959,6 +4215,101 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	brightness up	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	brightness up	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	brightness up	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	brightness up	1	
+-	normalize	bring firefox to the third workspace	0	bring firefox to the third workspace
+-	apply-replacements	bring firefox to the third workspace	0	bring firefox to workspace 3
+-	workspace-ordinals	bring firefox to the third workspace	0	bring firefox to workspace 3
+-	correction-tails	bring firefox to the third workspace	0	
+-	leading-wake	bring firefox to the third workspace	1	
+-	trailing-wake	bring firefox to the third workspace	1	
+-	heard-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	bring firefox to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	bring firefox to the third workspace	1	
+-	normalize	bring it to monitor three	0	bring it to monitor three
+-	apply-replacements	bring it to monitor three	0	bring it to monitor three
+-	workspace-ordinals	bring it to monitor three	0	bring it to monitor three
+-	correction-tails	bring it to monitor three	0	
+-	leading-wake	bring it to monitor three	1	
+-	trailing-wake	bring it to monitor three	1	
+-	heard-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	bring it to monitor three	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	bring it to monitor three	1	
+-	normalize	bring it to workspace 12	0	bring it to workspace 12
+-	apply-replacements	bring it to workspace 12	0	bring it to workspace 12
+-	workspace-ordinals	bring it to workspace 12	0	bring it to workspace 12
+-	correction-tails	bring it to workspace 12	0	
+-	leading-wake	bring it to workspace 12	1	
+-	trailing-wake	bring it to workspace 12	1	
+-	heard-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	bring it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	bring it to workspace 12	1	
+-	normalize	bring to workspace 5	0	bring to workspace 5
+-	apply-replacements	bring to workspace 5	0	bring to workspace 5
+-	workspace-ordinals	bring to workspace 5	0	bring to workspace 5
+-	correction-tails	bring to workspace 5	0	
+-	leading-wake	bring to workspace 5	1	
+-	trailing-wake	bring to workspace 5	1	
+-	heard-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	bring to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	bring to workspace 5	1	
+-	normalize	bring up firefox	0	bring up firefox
+-	apply-replacements	bring up firefox	0	bring up firefox
+-	workspace-ordinals	bring up firefox	0	bring up firefox
+-	correction-tails	bring up firefox	0	
+-	leading-wake	bring up firefox	1	
+-	trailing-wake	bring up firefox	1	
+-	heard-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	bring up firefox	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	bring up firefox	1	
 -	normalize	bring up the workspace overview	0	bring up the workspace overview
 -	apply-replacements	bring up the workspace overview	0	bring up the workspace overview
 -	workspace-ordinals	bring up the workspace overview	0	bring up the workspace overview
@@ -4111,6 +4462,44 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	capture the window	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	capture the window	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	capture the window	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	capture the window	1	
+-	normalize	carry the window to the third workspace	0	carry the window to the third workspace
+-	apply-replacements	carry the window to the third workspace	0	carry the window to workspace 3
+-	workspace-ordinals	carry the window to the third workspace	0	carry the window to workspace 3
+-	correction-tails	carry the window to the third workspace	0	
+-	leading-wake	carry the window to the third workspace	1	
+-	trailing-wake	carry the window to the third workspace	1	
+-	heard-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	carry the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	carry the window to the third workspace	1	
+-	normalize	carry to workspace 5	0	carry to workspace 5
+-	apply-replacements	carry to workspace 5	0	carry to workspace 5
+-	workspace-ordinals	carry to workspace 5	0	carry to workspace 5
+-	correction-tails	carry to workspace 5	0	
+-	leading-wake	carry to workspace 5	1	
+-	trailing-wake	carry to workspace 5	1	
+-	heard-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	carry to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	carry to workspace 5	1	
 -	normalize	clear notifications	0	clear notifications
 -	apply-replacements	clear notifications	0	clear notifications
 -	workspace-ordinals	clear notifications	0	clear notifications
@@ -4852,6 +5241,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	close window	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	close window	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	close window	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	close window	1	
+-	normalize	close window please	0	close window please
+-	apply-replacements	close window please	0	close window please
+-	workspace-ordinals	close window please	0	close window please
+-	correction-tails	close window please	0	
+-	leading-wake	close window please	1	
+-	trailing-wake	close window please	1	
+-	heard-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	close window please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	close window please	1	
 -	normalize	color picker	0	color picker
 -	apply-replacements	color picker	0	color picker
 -	workspace-ordinals	color picker	0	color picker
@@ -6049,6 +6457,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	go to the tenth monitor	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	go to the tenth monitor	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	go to the tenth monitor	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	go to the tenth monitor	1	
+-	normalize	go to the tubesite please	0	go to the tubesite please
+-	apply-replacements	go to the tubesite please	0	go to the tubesite please
+-	workspace-ordinals	go to the tubesite please	0	go to the tubesite please
+-	correction-tails	go to the tubesite please	0	
+-	leading-wake	go to the tubesite please	1	
+-	trailing-wake	go to the tubesite please	1	
+-	heard-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	go to the tubesite please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	go to the tubesite please	1	
 -	normalize	go to the waiting agent	0	go to the waiting agent
 -	apply-replacements	go to the waiting agent	0	go to the waiting agent
 -	workspace-ordinals	go to the waiting agent	0	go to the waiting agent
@@ -6068,6 +6495,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	go to the waiting agent	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	go to the waiting agent	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	go to the waiting agent	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	go to the waiting agent	1	
+-	normalize	go to the weekly sync notes tab please	0	go to the weekly sync notes tab please
+-	apply-replacements	go to the weekly sync notes tab please	0	go to the weekly sync notes tab please
+-	workspace-ordinals	go to the weekly sync notes tab please	0	go to the weekly sync notes tab please
+-	correction-tails	go to the weekly sync notes tab please	0	
+-	leading-wake	go to the weekly sync notes tab please	1	
+-	trailing-wake	go to the weekly sync notes tab please	1	
+-	heard-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	go to the weekly sync notes tab please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	go to the weekly sync notes tab please	1	
 -	normalize	go to tubesite	0	go to tubesite
 -	apply-replacements	go to tubesite	0	go to tubesite
 -	workspace-ordinals	go to tubesite	0	go to tubesite
@@ -7029,6 +7475,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	move firefox to workspace 3rd	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	move firefox to workspace 3rd	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	move firefox to workspace 3rd	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	move firefox to workspace 3rd	1	
+-	normalize	move firefox to workspace 5	0	move firefox to workspace 5
+-	apply-replacements	move firefox to workspace 5	0	move firefox to workspace 5
+-	workspace-ordinals	move firefox to workspace 5	0	move firefox to workspace 5
+-	correction-tails	move firefox to workspace 5	0	
+-	leading-wake	move firefox to workspace 5	1	
+-	trailing-wake	move firefox to workspace 5	1	
+-	heard-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move firefox to workspace 5	1	
 -	normalize	move firefox to workspace third	0	move firefox to workspace third
 -	apply-replacements	move firefox to workspace third	0	move firefox to workspace third
 -	workspace-ordinals	move firefox to workspace third	0	move firefox to workspace third
@@ -7124,6 +7589,63 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	move it to the scratchpad	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	move it to the scratchpad	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	move it to the scratchpad	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	move it to the scratchpad	1	
+-	normalize	move it to workspace 12	0	move it to workspace 12
+-	apply-replacements	move it to workspace 12	0	move it to workspace 12
+-	workspace-ordinals	move it to workspace 12	0	move it to workspace 12
+-	correction-tails	move it to workspace 12	0	
+-	leading-wake	move it to workspace 12	1	
+-	trailing-wake	move it to workspace 12	1	
+-	heard-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move it to workspace 12	1	
+-	normalize	move that to special workspace notes	0	move that to special workspace notes
+-	apply-replacements	move that to special workspace notes	0	move that to special workspace notes
+-	workspace-ordinals	move that to special workspace notes	0	move that to special workspace notes
+-	correction-tails	move that to special workspace notes	0	
+-	leading-wake	move that to special workspace notes	1	
+-	trailing-wake	move that to special workspace notes	1	
+-	heard-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move that to special workspace notes	1	
+-	normalize	move the window to the third workspace	0	move the window to the third workspace
+-	apply-replacements	move the window to the third workspace	0	move the window to workspace 3
+-	workspace-ordinals	move the window to the third workspace	0	move the window to workspace 3
+-	correction-tails	move the window to the third workspace	0	
+-	leading-wake	move the window to the third workspace	1	
+-	trailing-wake	move the window to the third workspace	1	
+-	heard-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move the window to the third workspace	1	
 -	normalize	move this window to the right monitor	0	move this window to the right monitor
 -	apply-replacements	move this window to the right monitor	0	move this window to the right monitor
 -	workspace-ordinals	move this window to the right monitor	0	move this window to the right monitor
@@ -7162,6 +7684,82 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	move this window to the second monitor	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	move this window to the second monitor	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	move this window to the second monitor	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	move this window to the second monitor	1	
+-	normalize	move this window to workspace 5	0	move this window to workspace 5
+-	apply-replacements	move this window to workspace 5	0	move this window to workspace 5
+-	workspace-ordinals	move this window to workspace 5	0	move this window to workspace 5
+-	correction-tails	move this window to workspace 5	0	
+-	leading-wake	move this window to workspace 5	1	
+-	trailing-wake	move this window to workspace 5	1	
+-	heard-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move this window to workspace 5	1	
+-	normalize	move to the third workspace	0	move to the third workspace
+-	apply-replacements	move to the third workspace	0	move to workspace 3
+-	workspace-ordinals	move to the third workspace	0	move to workspace 3
+-	correction-tails	move to the third workspace	0	
+-	leading-wake	move to the third workspace	1	
+-	trailing-wake	move to the third workspace	1	
+-	heard-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move to the third workspace	1	
+-	normalize	move to workspace 2	0	move to workspace 2
+-	apply-replacements	move to workspace 2	0	move to workspace 2
+-	workspace-ordinals	move to workspace 2	0	move to workspace 2
+-	correction-tails	move to workspace 2	0	
+-	leading-wake	move to workspace 2	1	
+-	trailing-wake	move to workspace 2	1	
+-	heard-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move to workspace 2	1	
+-	normalize	move to workspace 5	0	move to workspace 5
+-	apply-replacements	move to workspace 5	0	move to workspace 5
+-	workspace-ordinals	move to workspace 5	0	move to workspace 5
+-	correction-tails	move to workspace 5	0	
+-	leading-wake	move to workspace 5	1	
+-	trailing-wake	move to workspace 5	1	
+-	heard-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move to workspace 5	1	
 -	normalize	move two and four to the left monitor	0	move two and four to the left monitor
 -	apply-replacements	move two and four to the left monitor	0	move two and four to the left monitor
 -	workspace-ordinals	move two and four to the left monitor	0	move two and four to the left monitor
@@ -7200,6 +7798,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	move window to the left	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	move window to the left	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	move window to the left	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	move window to the left	1	
+-	normalize	move window to workspace 5	0	move window to workspace 5
+-	apply-replacements	move window to workspace 5	0	move window to workspace 5
+-	workspace-ordinals	move window to workspace 5	0	move window to workspace 5
+-	correction-tails	move window to workspace 5	0	
+-	leading-wake	move window to workspace 5	1	
+-	trailing-wake	move window to workspace 5	1	
+-	heard-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	move window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	move window to workspace 5	1	
 -	normalize	mute	0	mute
 -	apply-replacements	mute	0	mute
 -	workspace-ordinals	mute	0	mute
@@ -8376,6 +8993,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	open tubesite	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	open tubesite	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	open tubesite	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	open tubesite	1	
+-	normalize	open tubesite please	0	open tubesite please
+-	apply-replacements	open tubesite please	0	open tubesite please
+-	workspace-ordinals	open tubesite please	0	open tubesite please
+-	correction-tails	open tubesite please	0	
+-	leading-wake	open tubesite please	1	
+-	trailing-wake	open tubesite please	1	
+-	heard-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	open tubesite please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	open tubesite please	1	
 -	normalize	open website daily planet	0	open website daily planet
 -	apply-replacements	open website daily planet	0	open website daily planet
 -	workspace-ordinals	open website daily planet	0	open website daily planet
@@ -8509,6 +9145,44 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	pick a color	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	pick a color	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	pick a color	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	pick a color	1	
+-	normalize	place it to workspace 12	0	place it to workspace 12
+-	apply-replacements	place it to workspace 12	0	place it to workspace 12
+-	workspace-ordinals	place it to workspace 12	0	place it to workspace 12
+-	correction-tails	place it to workspace 12	0	
+-	leading-wake	place it to workspace 12	1	
+-	trailing-wake	place it to workspace 12	1	
+-	heard-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	place it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	place it to workspace 12	1	
+-	normalize	place to workspace 5	0	place to workspace 5
+-	apply-replacements	place to workspace 5	0	place to workspace 5
+-	workspace-ordinals	place to workspace 5	0	place to workspace 5
+-	correction-tails	place to workspace 5	0	
+-	leading-wake	place to workspace 5	1	
+-	trailing-wake	place to workspace 5	1	
+-	heard-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	place to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	place to workspace 5	1	
 -	normalize	play pause	0	play pause
 -	apply-replacements	play pause	0	play pause
 -	workspace-ordinals	play pause	0	play pause
@@ -9223,6 +9897,44 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	purple elephants dancing	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	purple elephants dancing	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	purple elephants dancing	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	purple elephants dancing	1	
+-	normalize	push that to special workspace notes	0	push that to special workspace notes
+-	apply-replacements	push that to special workspace notes	0	push that to special workspace notes
+-	workspace-ordinals	push that to special workspace notes	0	push that to special workspace notes
+-	correction-tails	push that to special workspace notes	0	
+-	leading-wake	push that to special workspace notes	1	
+-	trailing-wake	push that to special workspace notes	1	
+-	heard-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	push that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	push that to special workspace notes	1	
+-	normalize	push to workspace 5	0	push to workspace 5
+-	apply-replacements	push to workspace 5	0	push to workspace 5
+-	workspace-ordinals	push to workspace 5	0	push to workspace 5
+-	correction-tails	push to workspace 5	0	
+-	leading-wake	push to workspace 5	1	
+-	trailing-wake	push to workspace 5	1	
+-	heard-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	push to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	push to workspace 5	1	
 -	normalize	put firefox to the special workspace scratchpad	0	put firefox to the special workspace scratchpad
 -	apply-replacements	put firefox to the special workspace scratchpad	0	put firefox to the special workspace scratchpad
 -	workspace-ordinals	put firefox to the special workspace scratchpad	0	put firefox to the special workspace scratchpad
@@ -9242,6 +9954,120 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	put firefox to the special workspace scratchp
 VOXCMD_WAKE_ALIASES=hey	leading-wake	put firefox to the special workspace scratchpad	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	put firefox to the special workspace scratchpad	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	put firefox to the special workspace scratchpad	1	
+-	normalize	put it to the second workspace	0	put it to the second workspace
+-	apply-replacements	put it to the second workspace	0	put it to workspace 2
+-	workspace-ordinals	put it to the second workspace	0	put it to workspace 2
+-	correction-tails	put it to the second workspace	0	
+-	leading-wake	put it to the second workspace	1	
+-	trailing-wake	put it to the second workspace	1	
+-	heard-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	put it to the second workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	put it to the second workspace	1	
+-	normalize	put it to workspace 12	0	put it to workspace 12
+-	apply-replacements	put it to workspace 12	0	put it to workspace 12
+-	workspace-ordinals	put it to workspace 12	0	put it to workspace 12
+-	correction-tails	put it to workspace 12	0	
+-	leading-wake	put it to workspace 12	1	
+-	trailing-wake	put it to workspace 12	1	
+-	heard-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	put it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	put it to workspace 12	1	
+-	normalize	put that to special workspace notes	0	put that to special workspace notes
+-	apply-replacements	put that to special workspace notes	0	put that to special workspace notes
+-	workspace-ordinals	put that to special workspace notes	0	put that to special workspace notes
+-	correction-tails	put that to special workspace notes	0	
+-	leading-wake	put that to special workspace notes	1	
+-	trailing-wake	put that to special workspace notes	1	
+-	heard-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	put that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	put that to special workspace notes	1	
+-	normalize	put the window to the third workspace	0	put the window to the third workspace
+-	apply-replacements	put the window to the third workspace	0	put the window to workspace 3
+-	workspace-ordinals	put the window to the third workspace	0	put the window to workspace 3
+-	correction-tails	put the window to the third workspace	0	
+-	leading-wake	put the window to the third workspace	1	
+-	trailing-wake	put the window to the third workspace	1	
+-	heard-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	put the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	put the window to the third workspace	1	
+-	normalize	put this window to workspace 5	0	put this window to workspace 5
+-	apply-replacements	put this window to workspace 5	0	put this window to workspace 5
+-	workspace-ordinals	put this window to workspace 5	0	put this window to workspace 5
+-	correction-tails	put this window to workspace 5	0	
+-	leading-wake	put this window to workspace 5	1	
+-	trailing-wake	put this window to workspace 5	1	
+-	heard-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	put this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	put this window to workspace 5	1	
+-	normalize	put to workspace 5	0	put to workspace 5
+-	apply-replacements	put to workspace 5	0	put to workspace 5
+-	workspace-ordinals	put to workspace 5	0	put to workspace 5
+-	correction-tails	put to workspace 5	0	
+-	leading-wake	put to workspace 5	1	
+-	trailing-wake	put to workspace 5	1	
+-	heard-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	put to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	put to workspace 5	1	
 -	normalize	quit click mode	0	quit click mode
 -	apply-replacements	quit click mode	0	quit click mode
 -	workspace-ordinals	quit click mode	0	quit click mode
@@ -9413,6 +10239,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	region screenshot	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	region screenshot	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	region screenshot	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	region screenshot	1	
+-	normalize	relocate to workspace 5	0	relocate to workspace 5
+-	apply-replacements	relocate to workspace 5	0	relocate to workspace 5
+-	workspace-ordinals	relocate to workspace 5	0	relocate to workspace 5
+-	correction-tails	relocate to workspace 5	0	
+-	leading-wake	relocate to workspace 5	1	
+-	trailing-wake	relocate to workspace 5	1	
+-	heard-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	relocate to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	relocate to workspace 5	1	
 -	normalize	remind me in 10 minutes to stretch	0	remind me in 10 minutes to stretch
 -	apply-replacements	remind me in 10 minutes to stretch	0	remind me in 10 minutes to stretch
 -	workspace-ordinals	remind me in 10 minutes to stretch	0	remind me in 10 minutes to stretch
@@ -9565,6 +10410,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	right click settings	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	right click settings	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	right click settings	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	right click settings	1	
+-	normalize	say cortana done to leave	0	say cortana done to leave
+-	apply-replacements	say cortana done to leave	0	say cortana done to leave
+-	workspace-ordinals	say cortana done to leave	0	say cortana done to leave
+-	correction-tails	say cortana done to leave	0	
+-	leading-wake	say cortana done to leave	1	
+-	trailing-wake	say cortana done to leave	0	say|done to leave
+-	heard-wake	say cortana done to leave	0	done to leave
+VOXCMD_WAKE_ALIASES=	leading-wake	say cortana done to leave	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	say cortana done to leave	0	say|done to leave
+VOXCMD_WAKE_ALIASES=	heard-wake	say cortana done to leave	0	done to leave
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	say cortana done to leave	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	say cortana done to leave	0	say|done to leave
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	say cortana done to leave	0	done to leave
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	say cortana done to leave	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	say cortana done to leave	0	say|done to leave
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	say cortana done to leave	0	done to leave
+VOXCMD_WAKE_ALIASES=hey	leading-wake	say cortana done to leave	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	say cortana done to leave	0	say|done to leave
+VOXCMD_WAKE_ALIASES=hey	heard-wake	say cortana done to leave	0	done to leave
 -	normalize	screen screenshot	0	screen screenshot
 -	apply-replacements	screen screenshot	0	screen screenshot
 -	workspace-ordinals	screen screenshot	0	screen screenshot
@@ -9888,6 +10752,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	send it	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	send it	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	send it	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	send it	1	
+-	normalize	send it to workspace 12	0	send it to workspace 12
+-	apply-replacements	send it to workspace 12	0	send it to workspace 12
+-	workspace-ordinals	send it to workspace 12	0	send it to workspace 12
+-	correction-tails	send it to workspace 12	0	
+-	leading-wake	send it to workspace 12	1	
+-	trailing-wake	send it to workspace 12	1	
+-	heard-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	send it to workspace 12	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	send it to workspace 12	1	
 -	normalize	send message	0	send message
 -	apply-replacements	send message	0	send message
 -	workspace-ordinals	send message	0	send message
@@ -9907,6 +10790,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	send message	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	send message	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	send message	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	send message	1	
+-	normalize	send that to special workspace notes	0	send that to special workspace notes
+-	apply-replacements	send that to special workspace notes	0	send that to special workspace notes
+-	workspace-ordinals	send that to special workspace notes	0	send that to special workspace notes
+-	correction-tails	send that to special workspace notes	0	
+-	leading-wake	send that to special workspace notes	1	
+-	trailing-wake	send that to special workspace notes	1	
+-	heard-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	send that to special workspace notes	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	send that to special workspace notes	1	
 -	normalize	send the message	0	send the message
 -	apply-replacements	send the message	0	send the message
 -	workspace-ordinals	send the message	0	send the message
@@ -9945,6 +10847,63 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	send the window to the laptop screen	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	send the window to the laptop screen	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	send the window to the laptop screen	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	send the window to the laptop screen	1	
+-	normalize	send the window to the third workspace	0	send the window to the third workspace
+-	apply-replacements	send the window to the third workspace	0	send the window to workspace 3
+-	workspace-ordinals	send the window to the third workspace	0	send the window to workspace 3
+-	correction-tails	send the window to the third workspace	0	
+-	leading-wake	send the window to the third workspace	1	
+-	trailing-wake	send the window to the third workspace	1	
+-	heard-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	send the window to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	send the window to the third workspace	1	
+-	normalize	send this window to workspace 2	0	send this window to workspace 2
+-	apply-replacements	send this window to workspace 2	0	send this window to workspace 2
+-	workspace-ordinals	send this window to workspace 2	0	send this window to workspace 2
+-	correction-tails	send this window to workspace 2	0	
+-	leading-wake	send this window to workspace 2	1	
+-	trailing-wake	send this window to workspace 2	1	
+-	heard-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	send this window to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	send this window to workspace 2	1	
+-	normalize	send this window to workspace 5	0	send this window to workspace 5
+-	apply-replacements	send this window to workspace 5	0	send this window to workspace 5
+-	workspace-ordinals	send this window to workspace 5	0	send this window to workspace 5
+-	correction-tails	send this window to workspace 5	0	
+-	leading-wake	send this window to workspace 5	1	
+-	trailing-wake	send this window to workspace 5	1	
+-	heard-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	send this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	send this window to workspace 5	1	
 -	normalize	send to laptop monitor	0	send to laptop monitor
 -	apply-replacements	send to laptop monitor	0	send to laptop monitor
 -	workspace-ordinals	send to laptop monitor	0	send to laptop monitor
@@ -9964,6 +10923,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	send to laptop monitor	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	send to laptop monitor	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	send to laptop monitor	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	send to laptop monitor	1	
+-	normalize	send to workspace 5	0	send to workspace 5
+-	apply-replacements	send to workspace 5	0	send to workspace 5
+-	workspace-ordinals	send to workspace 5	0	send to workspace 5
+-	correction-tails	send to workspace 5	0	
+-	leading-wake	send to workspace 5	1	
+-	trailing-wake	send to workspace 5	1	
+-	heard-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	send to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	send to workspace 5	1	
 -	normalize	send window to laptop	0	send window to laptop
 -	apply-replacements	send window to laptop	0	send window to laptop
 -	workspace-ordinals	send window to laptop	0	send window to laptop
@@ -10306,6 +11284,44 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	seventeen trombones	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	seventeen trombones	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	seventeen trombones	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	seventeen trombones	1	
+-	normalize	shift this window to workspace 5	0	shift this window to workspace 5
+-	apply-replacements	shift this window to workspace 5	0	shift this window to workspace 5
+-	workspace-ordinals	shift this window to workspace 5	0	shift this window to workspace 5
+-	correction-tails	shift this window to workspace 5	0	
+-	leading-wake	shift this window to workspace 5	1	
+-	trailing-wake	shift this window to workspace 5	1	
+-	heard-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	shift this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	shift this window to workspace 5	1	
+-	normalize	shift to workspace 5	0	shift to workspace 5
+-	apply-replacements	shift to workspace 5	0	shift to workspace 5
+-	workspace-ordinals	shift to workspace 5	0	shift to workspace 5
+-	correction-tails	shift to workspace 5	0	
+-	leading-wake	shift to workspace 5	1	
+-	trailing-wake	shift to workspace 5	1	
+-	heard-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	shift to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	shift to workspace 5	1	
 -	normalize	show hints	0	show hints
 -	apply-replacements	show hints	0	show hints
 -	workspace-ordinals	show hints	0	show hints
@@ -10914,6 +11930,44 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	swap workspaces two and five	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	swap workspaces two and five	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	swap workspaces two and five	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	swap workspaces two and five	1	
+-	normalize	switch firefox to workspace 5	0	switch firefox to workspace 5
+-	apply-replacements	switch firefox to workspace 5	0	switch firefox to workspace 5
+-	workspace-ordinals	switch firefox to workspace 5	0	switch firefox to workspace 5
+-	correction-tails	switch firefox to workspace 5	0	
+-	leading-wake	switch firefox to workspace 5	1	
+-	trailing-wake	switch firefox to workspace 5	1	
+-	heard-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	switch firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	switch firefox to workspace 5	1	
+-	normalize	switch it to the third workspace	0	switch it to the third workspace
+-	apply-replacements	switch it to the third workspace	0	switch it to workspace 3
+-	workspace-ordinals	switch it to the third workspace	0	switch it to workspace 3
+-	correction-tails	switch it to the third workspace	0	
+-	leading-wake	switch it to the third workspace	1	
+-	trailing-wake	switch it to the third workspace	1	
+-	heard-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	switch it to the third workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	switch it to the third workspace	1	
 -	normalize	switch off clicking mode	0	switch off clicking mode
 -	apply-replacements	switch off clicking mode	0	switch off clicking mode
 -	workspace-ordinals	switch off clicking mode	0	switch off clicking mode
@@ -10971,6 +12025,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	switch places with slack	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	switch places with slack	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	switch places with slack	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	switch places with slack	1	
+-	normalize	switch this window to workspace 5	0	switch this window to workspace 5
+-	apply-replacements	switch this window to workspace 5	0	switch this window to workspace 5
+-	workspace-ordinals	switch this window to workspace 5	0	switch this window to workspace 5
+-	correction-tails	switch this window to workspace 5	0	
+-	leading-wake	switch this window to workspace 5	1	
+-	trailing-wake	switch this window to workspace 5	1	
+-	heard-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	switch this window to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	switch this window to workspace 5	1	
 -	normalize	switch to the example docs tab	0	switch to the example docs tab
 -	apply-replacements	switch to the example docs tab	0	switch to the example docs tab
 -	workspace-ordinals	switch to the example docs tab	0	switch to the example docs tab
@@ -10990,6 +12063,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	switch to the example docs tab	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	switch to the example docs tab	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	switch to the example docs tab	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	switch to the example docs tab	1	
+-	normalize	switch to the second workspace	0	switch to the second workspace
+-	apply-replacements	switch to the second workspace	0	switch to workspace 2
+-	workspace-ordinals	switch to the second workspace	0	switch to workspace 2
+-	correction-tails	switch to the second workspace	0	
+-	leading-wake	switch to the second workspace	1	
+-	trailing-wake	switch to the second workspace	1	
+-	heard-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	switch to the second workspace	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	switch to the second workspace	1	
 -	normalize	switch to the top right screen	0	switch to the top right screen
 -	apply-replacements	switch to the top right screen	0	switch to the top right screen
 -	workspace-ordinals	switch to the top right screen	0	switch to the top right screen
@@ -11180,6 +12272,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	take a scrolling screenshot	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	take a scrolling screenshot	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	take a scrolling screenshot	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	take a scrolling screenshot	1	
+-	normalize	take firefox to workspace 5	0	take firefox to workspace 5
+-	apply-replacements	take firefox to workspace 5	0	take firefox to workspace 5
+-	workspace-ordinals	take firefox to workspace 5	0	take firefox to workspace 5
+-	correction-tails	take firefox to workspace 5	0	
+-	leading-wake	take firefox to workspace 5	1	
+-	trailing-wake	take firefox to workspace 5	1	
+-	heard-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	take firefox to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	take firefox to workspace 5	1	
 -	normalize	take me to firefox	0	take me to firefox
 -	apply-replacements	take me to firefox	0	take me to firefox
 -	workspace-ordinals	take me to firefox	0	take me to firefox
@@ -11237,6 +12348,63 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	take me to the browser	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	take me to the browser	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	take me to the browser	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	take me to the browser	1	
+-	normalize	take me to workspace 2	0	take me to workspace 2
+-	apply-replacements	take me to workspace 2	0	take me to workspace 2
+-	workspace-ordinals	take me to workspace 2	0	take me to workspace 2
+-	correction-tails	take me to workspace 2	0	
+-	leading-wake	take me to workspace 2	1	
+-	trailing-wake	take me to workspace 2	1	
+-	heard-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	take me to workspace 2	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	take me to workspace 2	1	
+-	normalize	take this window to the right monitor	0	take this window to the right monitor
+-	apply-replacements	take this window to the right monitor	0	take this window to the right monitor
+-	workspace-ordinals	take this window to the right monitor	0	take this window to the right monitor
+-	correction-tails	take this window to the right monitor	0	
+-	leading-wake	take this window to the right monitor	1	
+-	trailing-wake	take this window to the right monitor	1	
+-	heard-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	take this window to the right monitor	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	take this window to the right monitor	1	
+-	normalize	take to workspace 5	0	take to workspace 5
+-	apply-replacements	take to workspace 5	0	take to workspace 5
+-	workspace-ordinals	take to workspace 5	0	take to workspace 5
+-	correction-tails	take to workspace 5	0	
+-	leading-wake	take to workspace 5	1	
+-	trailing-wake	take to workspace 5	1	
+-	heard-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	take to workspace 5	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	take to workspace 5	1	
 -	normalize	the quick brown fox jumps	0	the quick brown fox jumps
 -	apply-replacements	the quick brown fox jumps	0	the quick brown fox jumps
 -	workspace-ordinals	the quick brown fox jumps	0	the quick brown fox jumps
@@ -11294,6 +12462,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	toggle fullscreen	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	toggle fullscreen	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	toggle fullscreen	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	toggle fullscreen	1	
+-	normalize	toggle fullscreen please	0	toggle fullscreen please
+-	apply-replacements	toggle fullscreen please	0	toggle fullscreen please
+-	workspace-ordinals	toggle fullscreen please	0	toggle fullscreen please
+-	correction-tails	toggle fullscreen please	0	
+-	leading-wake	toggle fullscreen please	1	
+-	trailing-wake	toggle fullscreen please	1	
+-	heard-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	toggle fullscreen please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	toggle fullscreen please	1	
 -	normalize	triple click it	0	triple click it
 -	apply-replacements	triple click it	0	triple click it
 -	workspace-ordinals	triple click it	0	triple click it
