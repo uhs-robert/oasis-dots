@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.features.settings
 import qs.features.launcher
-import "../Choices.js" as Choices
+import "Choices.js" as Choices
 
 RowsSection {
     id: root
