@@ -10,7 +10,8 @@ Item {
     // Edges that slope inward toward the bottom, like the bar's island caps.
     property real slant_left: 0
     property real slant_right: 0
-    // Replaces the edges above for outlines they cannot describe: (y0, y1) => { x, w }, the span a 2px row keeps.
+    // Replaces the edges above for outlines they cannot describe: (y0, y1) => { x, w }, the span a 2px row keeps, or an
+    // array of them for a row the outline splits.
     property var row_span: null
 
     readonly property string tile: "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><path d='M0 0h2v2H0zM2 2h2v2H2z' fill='" + Qt.rgba(root.color.r, root.color.g, root.color.b, 1) + "' fill-opacity='" + root.color.a + "'/></svg>")
@@ -18,8 +19,8 @@ Item {
         if (root.row_span) {
             const rows = [];
             for (let y = 0; y < root.height; y += 2) {
-                const span = root.row_span(y, y + 2);
-                rows.push({ x: span.x, y: y, w: span.w, h: 2 });
+                for (const span of [].concat(root.row_span(y, y + 2)))
+                    rows.push({ x: span.x, y: y, w: span.w, h: 2 });
             }
             return rows;
         }
