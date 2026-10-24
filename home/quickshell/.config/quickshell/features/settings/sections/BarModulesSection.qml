@@ -79,7 +79,7 @@ SettingsPane {
     function describe(index) {
         if (index === 0) return "The monitor whose bar you edit. All monitors edits the layout they share.";
         if (index === 1 && root.target_screen) return "The screen edge this monitor's bar sits on, with or without its own layout. Until set here it follows the global position, else bars.json.";
-        if (index === 1) return "The screen edge every bar sits on, unless a monitor sets its own. Popups and the submap tab rise from a bottom bar.";
+        if (index === 1) return "The screen edge every bar sits on, unless a monitor sets its own. Top, bottom, left or right; a side bar is a column the bar height wide. Popups and the submap tab rise from a bottom bar.";
         if (index === 2 && root.target_screen) return "On gives this monitor its own copy of the layout. Off goes back to the shared one.";
         if (index === 3 && root.has_own) return "A tighter bar that hides the system modules on this monitor.";
         const item = root.entries[index - root.top_count];
@@ -90,7 +90,8 @@ SettingsPane {
 
     function keys_for(index) {
         if (index === 0) return "H/L change · Enter list";
-        if (index === 1 && root.position_set_here) return "Enter toggle · x forget";
+        if (index === 1 && root.position_set_here) return "Enter next · Shift+H back · x forget";
+        if (index === 1) return "Enter next · Shift+H back";
         if (index < root.top_count) return "Enter toggle";
         const item = root.entries[index - root.top_count];
         if (!item) return "";
@@ -143,9 +144,10 @@ SettingsPane {
         BarSettings.set_state(BarLayout.set_compact(BarSettings.state, root.monitor_key, !root.own_compact));
     }
 
-    function toggle_position() {
+    // Top, bottom, left, right in turn (BarLayout.positions), wrapping.
+    function step_position(delta) {
         root.pending = null;
-        const next = root.bar_position === "bottom" ? "top" : "bottom";
+        const next = BarLayout.step_position(root.bar_position, delta);
         if (root.target_screen) BarSettings.set_state(BarLayout.set_position(BarSettings.state, root.monitor_key, next));
         else BarSettings.set_state(BarLayout.set_shared_position(BarSettings.state, next));
     }
@@ -268,7 +270,7 @@ SettingsPane {
         }
         const shift = !!(event.modifiers & Qt.ShiftModifier);
         const on_module = root.cursor >= root.top_count;
-        // A two-valued row steps either way to the other value; plain h stays free for going back to the sidebar.
+        // A row steps either way through its values; plain h stays free for going back to the sidebar.
         const toggles = event.key === Qt.Key_L || (shift && event.key === Qt.Key_H) || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space;
         if (event.key === Qt.Key_J && !(shift && on_module)) root.cursor = root.wrap_index(root.cursor, 1, root.total);
         else if (event.key === Qt.Key_K && !(shift && on_module)) root.cursor = root.wrap_index(root.cursor, -1, root.total);
@@ -279,7 +281,7 @@ SettingsPane {
         else if (root.cursor === 0 && ((shift && event.key === Qt.Key_H) || event.key === Qt.Key_L)) root.cycle_target(event.key === Qt.Key_H ? -1 : 1);
         else if (root.cursor === 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) root.open_target_picker();
         else if (root.cursor === 0 && event.key === Qt.Key_Space) root.cycle_target(1);
-        else if (root.cursor === 1 && toggles) root.toggle_position();
+        else if (root.cursor === 1 && toggles) root.step_position(shift && event.key === Qt.Key_H ? -1 : 1);
         else if (root.cursor === 1 && !shift && event.key === Qt.Key_X) root.ask_clear_position();
         else if (root.target_screen && root.cursor === 2 && toggles) root.toggle_own();
         else if (root.has_own && root.cursor === 3 && toggles) root.toggle_compact();
@@ -327,7 +329,7 @@ SettingsPane {
             onStepped: {
                 root.focus_pane();
                 root.cursor = 1;
-                root.toggle_position();
+                root.step_position(1);
             }
         }
 
