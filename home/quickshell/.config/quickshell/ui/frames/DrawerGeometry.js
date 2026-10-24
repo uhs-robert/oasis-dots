@@ -48,7 +48,7 @@ function drawer_layout(spec) {
     // A pocket's outline runs LEAD px on down the side band past its arc, so the window reserves that too.
     const pocket_room = any_pocket ? fillet_full + LEAD : 0;
     const depth = spec.cover + body_depth + pocket_room;
-    const vertical = spec.edge === "left" || spec.edge === "right";
+    const vertical = is_vertical(spec.edge);
     return {
         edge: spec.edge,
         length: length,
@@ -194,10 +194,26 @@ function end_kinds(side, dock) {
     };
 }
 
+// A drawer's attached edge as a name: `edge` is "top", "bottom", "left" or "right", or the older from_bottom flag.
+function edge_of(edge) {
+    if (typeof edge === "string") return edge;
+    return edge ? "bottom" : "top";
+}
+
+// Whether the edge runs down the screen. On one the drawer's body_length is the panel's height and its depth the
+// panel's width, and `side` names the ends along the edge: "left" is the top one, "right" the bottom one.
+function is_vertical(edge) {
+    const name = edge_of(edge);
+    return name === "left" || name === "right";
+}
+
 // The layer-shell placement of a drawer's window, from the frame's hole and the seam it hangs from: which screen edges
 // it anchors to and its margins from them, integers. Without a hole (no frame) every margin is 0 and nothing is
 // anchored beyond the side. `along` and `across` are the margins that place the window against the seam.
-function place(side, from_bottom, hole, seam, screen_width, screen_height, cover, window_length) {
+function place(side, edge, hole, seam, screen_width, screen_height, cover, window_length) {
+    const name = edge_of(edge);
+    if (is_vertical(name)) return place_vertical(side, name, hole, seam, screen_width, screen_height, cover, window_length);
+    const from_bottom = name === "bottom";
     const along = hole ? margin_along(side, hole, screen_width, cover, window_length) : 0;
     const across = hole ? margin_across(from_bottom, seam, screen_height, cover) : 0;
     return {
@@ -214,12 +230,42 @@ function place(side, from_bottom, hole, seam, screen_width, screen_height, cover
     };
 }
 
-// The drawn part of a drawer's window in screen coordinates, as the rect the frame and the strip leave their lines out under.
-function window_rect(side, from_bottom, placement, screen_width, screen_height, window_width, drawn_depth) {
+// place for a drawer on the left or right edge: the same margins turned a quarter, with the hole's y range standing in
+// for the x range.
+function place_vertical(side, name, hole, seam, screen_width, screen_height, cover, window_length) {
+    const along = hole ? margin_along(side, { x: hole.y, w: hole.h }, screen_height, cover, window_length) : 0;
+    const across = hole ? margin_across(name === "right", seam, screen_width, cover) : 0;
+    const to_end = side === "right";
     return {
-        x: side === "right" ? screen_width - placement.along - window_width : placement.along,
-        y: from_bottom ? screen_height - placement.across - drawn_depth : placement.across,
-        w: window_width,
+        anchor_top: !to_end,
+        anchor_bottom: to_end,
+        anchor_left: name === "left",
+        anchor_right: name === "right",
+        margin_top: to_end ? 0 : along,
+        margin_bottom: to_end ? along : 0,
+        margin_left: name === "left" ? across : 0,
+        margin_right: name === "right" ? across : 0,
+        along: along,
+        across: across
+    };
+}
+
+// The drawn part of a drawer's window in screen coordinates, as the rect the frame and the strip leave their lines out under.
+// `window_length` is the window's size along the edge.
+function window_rect(side, edge, placement, screen_width, screen_height, window_length, drawn_depth) {
+    const name = edge_of(edge);
+    if (is_vertical(name)) {
+        return {
+            x: name === "right" ? screen_width - placement.across - drawn_depth : placement.across,
+            y: side === "right" ? screen_height - placement.along - window_length : placement.along,
+            w: drawn_depth,
+            h: window_length
+        };
+    }
+    return {
+        x: side === "right" ? screen_width - placement.along - window_length : placement.along,
+        y: name === "bottom" ? screen_height - placement.across - drawn_depth : placement.across,
+        w: window_length,
         h: drawn_depth
     };
 }
@@ -229,13 +275,40 @@ function window_rect(side, from_bottom, placement, screen_width, screen_height, 
 // Drawer row v is canonical row `y + dir * v`: dir is +1 when the drawer hangs from the bar's own edge and -1 from the
 // opposite one (which-key at the bottom under a top bar, the OSD at the top over a bottom bar), where the rows run the
 // other way. `flipped` says dir is -1. `across` is the window's distance from the screen edge it hangs from.
-function texture_origin(side, from_bottom, bar_bottom, placement, screen_width, screen_height, window_width) {
-    const flipped = from_bottom !== bar_bottom;
+//
+// A drawer on a side edge is drawn in its window's own orientation, not the edge's (DrawerShape: the frame's scanlines
+// stay horizontal there), so its rows are the window's rows: it starts at the window's top-left corner and is flipped
+// when a bottom bar mirrors the canonical rows. `window_depth` is the window's size across the edge, which a right
+// drawer needs to find its left side.
+function texture_origin(side, edge, bar_bottom, placement, screen_width, screen_height, window_length, window_depth) {
+    const name = edge_of(edge);
+    if (is_vertical(name)) {
+        const top = side === "right" ? screen_height - placement.along - window_length : placement.along;
+        return {
+            x: name === "right" ? screen_width - placement.across - window_depth : placement.across,
+            y: bar_bottom ? screen_height - 1 - top : top,
+            flipped: bar_bottom
+        };
+    }
+    const flipped = (name === "bottom") !== bar_bottom;
     return {
-        x: side === "right" ? screen_width - placement.along - window_width : placement.along,
+        x: side === "right" ? screen_width - placement.along - window_length : placement.along,
         y: flipped ? screen_height - 1 - placement.across : placement.across,
         flipped: flipped
     };
+}
+
+// The affine that places the texture layers (dither, scanlines) in the window: the drawer's own on a top or bottom edge,
+// none on a side edge, where they are laid out in window coordinates (see texture_origin).
+function texture_affine(lay) {
+    return is_vertical(lay.edge) ? [1, 0, 0, 1, 0, 0] : drawer_affine(lay);
+}
+
+// A loop of drawer points in the frame texture_affine lays the textures out in.
+function texture_loop(lay, loop) {
+    if (!is_vertical(lay.edge)) return loop;
+    const m = drawer_affine(lay);
+    return loop.map(p => [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]]);
 }
 
 // How far the 4 px dither tile and the first scanline lie from the drawer's own origin, so the tiles land on the canonical

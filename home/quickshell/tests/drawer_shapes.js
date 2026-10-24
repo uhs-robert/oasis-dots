@@ -530,6 +530,85 @@ cases.push(["a flipped drawer's dither rows mirror the frame's for every origin 
 }
 
 
+// A drawer on a left or right edge: the same drawer turned a quarter, its length down the screen.
+{
+  const side_hole = F.hole_rect(top_frame);
+  const side_len = 260, side_depth = 300;
+  const side_spec = (edge, over) => spec(Object.assign({ edge, body_length: side_len, body_depth: side_depth, extent: side_depth }, over));
+  const at = (edge, side, frame = top_frame) => {
+    const lay = D.drawer_layout(side_spec(edge, { start_kind: side === "left" ? "pocket" : "fillet", end_kind: side === "right" ? "pocket" : "fillet" }));
+    const hole = F.hole_rect(frame), seam = F.seam_of(frame, edge);
+    const placement = D.place(side, edge, hole, seam, 1920, 1080, cover, lay.length);
+    return { lay, hole, seam, placement, rect: D.window_rect(side, edge, placement, 1920, 1080, lay.length, lay.drawn_depth) };
+  };
+  cases.push(["edge_of reads the legacy flag and a name alike", () => [D.edge_of(false), D.edge_of(true), D.edge_of("left"), D.edge_of("top")], ["top", "bottom", "left", "top"]]);
+  cases.push(["place takes a top or bottom name as the old flag", () => {
+    const hole = F.hole_rect(top_frame), seam = F.seam_of(top_frame, "top");
+    return [["left", "center", "right"].every(side => [false, true].every(flag => JSON.stringify(D.place(side, flag, hole, seam, 1920, 1080, cover, 300)) === JSON.stringify(D.place(side, flag ? "bottom" : "top", hole, seam, 1920, 1080, cover, 300))))];
+  }, [true]]);
+  cases.push(["a centre left drawer anchors left and top, centred on the hole's height", () => {
+    const { lay, hole, seam, placement } = at("left", "center");
+    return [placement.anchor_left, placement.anchor_right, placement.anchor_top, placement.anchor_bottom, placement.margin_left, placement.margin_right, placement.margin_top === Math.round(hole.y + (hole.h - lay.length) / 2), placement.margin_bottom, placement.across === Math.round(seam - cover)];
+  }, [true, false, true, false, F.seam_of(top_frame, "left") - cover, 0, true, 0, true]]);
+  cases.push(["a centre right drawer measures its margin from the right edge", () => {
+    const { seam, placement } = at("right", "center");
+    return [placement.anchor_right, placement.anchor_left, placement.margin_right, placement.margin_left];
+  }, [true, false, 1920 - F.seam_of(top_frame, "right") - cover, 0]]);
+  cases.push(["a bottom-end drawer on a side edge anchors bottom", () => {
+    const { placement, hole } = at("left", "right");
+    return [placement.anchor_top, placement.anchor_bottom, placement.margin_top, placement.margin_bottom === Math.round(1080 - (hole.y + hole.h) - cover)];
+  }, [false, true, 0, true]]);
+  for (const edge of ["left", "right"]) {
+    for (const [frame_name, frame] of [["top", top_frame], ["bottom", bottom_frame]]) {
+      cases.push([`${edge} drawer's rim lies on the hole's edge (${frame_name} bar)`, () => {
+        const { lay, seam, rect } = at(edge, "center", frame);
+        const m = D.drawer_affine(lay);
+        // The seam is v = cover in the drawer frame; in the window it lands cover px in from the attached side.
+        const x = rect.x + apply(m, [0, lay.cover])[0];
+        return [x, seam, rect.w === lay.depth, rect.h === lay.length];
+      }, [F.seam_of(frame, edge), F.seam_of(frame, edge), true, true]]);
+      cases.push([`${edge} drawer's window fits on the screen (${frame_name} bar)`, () => {
+        const { rect } = at(edge, "center", frame);
+        return [rect.x >= 0, rect.y >= 0, rect.x + rect.w <= 1920, rect.y + rect.h <= 1080];
+      }, [true, true, true, true]]);
+    }
+  }
+  cases.push(["a left drawer's body grows rightwards from the seam and a right one's leftwards", () => {
+    const l = at("left", "center").lay, r = at("right", "center").lay;
+    const lb = D.body_rect(l), rb = D.body_rect(r);
+    return [lb.x, lb.width, lb.height, rb.x + rb.width, rb.width, rb.height];
+  }, [cover, side_depth, side_len, at("right", "center").lay.depth - cover, side_depth, side_len]]);
+  cases.push(["the surface of a side drawer is depth wide and length tall", () => plain(at("left", "center").lay.surface), (() => { const l = at("left", "center").lay; return { width: l.depth, height: l.length }; })()]);
+  cases.push(["a side drawer's fill stays inside its surface", () => ["left", "right"].every(edge => ["left", "center", "right"].every(side => {
+    const { lay } = at(edge, side), m = D.drawer_affine(lay);
+    return D.fill_loop(lay).map(p => apply(m, p)).every(p => p[0] >= -1e-9 && p[0] <= lay.surface.width + 1e-9 && p[1] >= -1e-9 && p[1] <= lay.surface.height + 1e-9);
+  })), true]);
+  cases.push(["texture_loop is the identity on a top or bottom edge and the window-space fill on a side edge", () => {
+    const top = lay_of({ edge: "top" }), left = lay_of({ edge: "left" });
+    const m = D.drawer_affine(left);
+    return [JSON.stringify(D.texture_loop(top, D.fill_loop(top))) === JSON.stringify(D.fill_loop(top)), JSON.stringify(D.texture_loop(left, D.fill_loop(left))) === JSON.stringify(D.fill_loop(left).map(p => apply(m, p))), D.texture_affine(top).join() === D.drawer_affine(top).join(), D.texture_affine(left).join()];
+  }, [true, true, true, "1,0,0,1,0,0"]]);
+  cases.push(["a side drawer's textures start at its window's corner, flipped under a bottom bar", () => {
+    const left = at("left", "center"), right = at("right", "center");
+    const origin = (d, edge, bar_bottom) => D.texture_origin("center", edge, bar_bottom, d.placement, 1920, 1080, d.lay.length, d.lay.depth);
+    return [origin(left, "left", false), origin(right, "right", false), origin(left, "left", true)].map(o => [o.x, o.y, o.flipped]);
+  }, (() => {
+    const left = at("left", "center"), right = at("right", "center");
+    return [[left.rect.x, left.rect.y, false], [right.rect.x, right.rect.y, false], [left.rect.x, 1079 - left.rect.y, true]];
+  })()]);
+  cases.push(["top and bottom texture origins are unchanged by the edge name", () => {
+    const hole = F.hole_rect(top_frame), seam = F.seam_of(top_frame, "top");
+    const placement = D.place("center", "top", hole, seam, 1920, 1080, cover, 300);
+    return [D.texture_origin("center", false, false, placement, 1920, 1080, 300), D.texture_origin("center", "top", false, placement, 1920, 1080, 300, 99), D.texture_origin("center", "bottom", false, placement, 1920, 1080, 300)];
+  }, (() => {
+    const hole = F.hole_rect(top_frame), seam = F.seam_of(top_frame, "top");
+    const placement = D.place("center", "top", hole, seam, 1920, 1080, cover, 300);
+    const base = { x: placement.along, y: placement.across, flipped: false };
+    return [base, base, { x: placement.along, y: 1079 - placement.across, flipped: true }];
+  })()]);
+}
+
+
 let failed = 0;
 for (const [name, fn, expected] of cases) {
   try {
