@@ -35,6 +35,14 @@ PanelWindow {
     // onWantedChanged does not fire for toasts already present at load.
     Component.onCompleted: if (root.wanted) root.hold_screen()
 
+    // The held screen is stale (or empty) if the frame was off when the stack opened.
+    Connections {
+        target: Style
+        function onScreen_frame_onChanged() {
+            if (Style.screen_frame_on && root.wanted) root.hold_screen();
+        }
+    }
+
     // Only a fully folded window picks up the focused screen; a toast arriving mid-fold stays where it is.
     onWantedChanged: if (root.wanted && root.extent <= 0) root.hold_screen()
 
