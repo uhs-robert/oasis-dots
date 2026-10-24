@@ -277,7 +277,8 @@ Rectangle {
     }
 
     Rectangle {
-        visible: Style.frame_top_rule
+        // Not in the drawer: the rule between cards and the frame's own edge already close each card.
+        visible: Style.frame_top_rule && !root.in_drawer
         x: root.border.width
         y: root.border.width
         width: root.width - root.border.width * 2
@@ -477,6 +478,9 @@ Rectangle {
                 textFormat: Text.StyledText
                 text: root.notification ? NotificationState.clean_body(root.notification.body) : ""
                 color: Style.text_muted
+                // The NES pixel font's own line height leaves wrapped lines touching.
+                lineHeight: root.in_drawer && root.dq ? 1.3 : 1
+                lineHeightMode: Text.ProportionalHeight
                 font.family: Style.font_family
                 font.pixelSize: Style.font_size
             }
