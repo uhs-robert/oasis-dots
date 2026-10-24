@@ -692,7 +692,7 @@ config=$root/config
 mkdir -p "$config/integrations.d" "$config/replacements.d"
 # The bash build loads integrations.d only; the Rust build takes the shipped TOML over the bash copy.
 cp "$package/.config/voxcmd/integrations.d/click.sh" "$package/.config/voxcmd/integrations.d/keybinds.sh" "$config/integrations.d/"
-copy_shipped_integrations "$config" keybinds
+copy_shipped_integrations "$config" click keybinds
 # A bash integration of its own for the logger checks below to find: every shipped one is TOML or click, whose lookups
 # the Rust build does itself, so without it nothing would show that the logger records the bash voxcmd's calls.
 cat >"$config/integrations.d/stub-probe.sh" <<'STUB'
@@ -703,8 +703,12 @@ candidates() { echo '[{"id": "1", "label": "probe"}]'; }
 STUB
 export VOXCMD_CONFIG_DIR=$config
 # Both files are in the config; the Rust build must pick the TOML, the bash build can only load the .sh.
+click_file='click\.sh'
 keybinds_file='keybinds\.sh'
-[ -z "$rust_matcher" ] || keybinds_file='keybinds\.toml'
+[ -z "$rust_matcher" ] || {
+  click_file='click\.toml'
+  keybinds_file='keybinds\.toml'
+}
 # The bash form of the new CLI, for the sections 2.5 has not moved to the Rust build.
 voxcmd=$package/tests/bin/voxcmd
 # What routes and runs the phrases: the same, or under VOXCMD_BIN=rs the Rust build, which asks the bash voxcmd only for
@@ -724,7 +728,7 @@ route() { "$routed" explain "$1" 2>&1; }
 : >"$log"
 out=$(route "click sign in")
 check "a single strong match runs" "grep -q '^result:      run' <<<\"\$out\""
-check "it is the Click integration's click" "grep -q 'Click (click.sh).* action=click ' <<<\"\$out\""
+check "it is the Click integration's click" "grep -Eq 'Click \($click_file\).* action=click ' <<<\"\$out\""
 box=',[0-9]*,[0-9]*,[0-9]*,[0-9]*'
 check "the id carries the mapped point, button and box" "grep -q \"id='[0-9]*,[0-9]*,left$box'\" <<<\"\$out\""
 check "click is silent" "grep -q 'silent: true' <<<\"\$out\""
@@ -739,9 +743,9 @@ check "left click is a click" "grep -q \"action=click .*,left$box'\" <<<\"\$out\
 out=$(route "click nowhere to be found")
 check "text not on screen reports it instead of falling through" "grep -q 'action=no_text' <<<\"\$out\" && ! grep -q Keybinds <<<\"\$out\""
 out=$(route "right click")
-check "bare 'right click' stays with the Cursor submap bind" "grep -Eq 'Keybinds \($keybinds_file\)' <<<\"\$out\" && ! grep -q 'Click (click.sh)' <<<\"\$out\""
+check "bare 'right click' stays with the Cursor submap bind" "grep -Eq 'Keybinds \($keybinds_file\)' <<<\"\$out\" && ! grep -Eq 'Click \($click_file\)' <<<\"\$out\""
 out=$(route "click")
-check "bare 'click' stays with the keybinds" "! grep -q 'Click (click.sh)' <<<\"\$out\""
+check "bare 'click' stays with the keybinds" "! grep -Eq 'Click \($click_file\)' <<<\"\$out\""
 # "click left", "click it" and the like are no click target: phrases.tsv records that they route as they did without
 # Click. Here, that they do not even capture the screen.
 : >"$log"
@@ -835,7 +839,7 @@ SANDBOX_TESSERACT_TSV=$({
 out=$(route "triple click on settings")
 check "triple click, with the filler 'on'" "grep -q \"action=triple_click .*,triple$box'\" <<<\"\$out\" && grep -q 'silent: true' <<<\"\$out\""
 out=$(route "triple click")
-check "bare 'triple click' needs a target and is not the Click integration's" "! grep -q 'Click (click.sh)' <<<\"\$out\""
+check "bare 'triple click' needs a target and is not the Click integration's" "! grep -Eq 'Click \($click_file\)' <<<\"\$out\""
 
 # The words one edit away route in phrases.tsv; the joined spans need a screen of their own.
 while IFS=: read -r spoken shown; do
@@ -945,6 +949,8 @@ if [ -n "$rust_matcher" ]; then
   # The routes above captured through the Rust binary: the hook that did it was the built-in, not click.sh's candidates().
   rust_real=$(realpath "$rust_matcher")
   check "every capture of the routes and covered text came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
+  # Without proof that the TOML is what ran, the absence below would hold for any file at all.
+  check "explain names the shipped click.toml for the click" "grep -Eq 'Click \(click\.toml\).* action=click ' <<<\"\$(route 'click sign in')\""
   check "no lookup went through click.sh's candidates()" "! grep -Eq '^_legacy-hook candidates [^ ]*/click\.sh ' '$legacy_calls'"
   route "stubprobe anything" >/dev/null
   check "the logger sees the bash voxcmd's calls, so that absence means something" "grep -Eq '^_legacy-dump\$' '$legacy_calls' && grep -Eq '^_legacy-hook candidates [^ ]*/stub-probe\.sh ' '$legacy_calls'"
@@ -1064,6 +1070,7 @@ if [ -n "$rust_matcher" ]; then
   out=$(explain "sign in")
   check "the Rust trace prints the routing text first, then the click section" "[[ \$(head -1 <<<\"\$out\") == 'transcript:  click sign in' ]] && [[ \$(grep -n '^window   ' <<<\"\$out\" | head -1 | cut -d: -f1) -gt \$(grep -n '^why:' <<<\"\$out\" | head -1 | cut -d: -f1) ]]"
   check "every capture of the click-explain checks came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
+  check "the click-explain trace came from the click.toml build" "grep -Eq 'Click \(click\.toml\)' <<<\"\$(route 'click sign in')\""
   check "bash's click-explain was never asked, and the logger that would show it sees the bash voxcmd" "[[ -s '$legacy_calls' ]] && ! grep -Eq 'click-explain|^_legacy-hook candidates [^ ]*/click\.sh ' '$legacy_calls'"
 fi
 
@@ -1176,6 +1183,7 @@ if [ -n "$rust_matcher" ]; then
   rust_real=$(realpath "$rust_matcher")
   check "every pointer move, click and toast came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/click-callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/click-callers.log' && grep -q '^wlrctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^hyprctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^notify-send ' '$SANDBOX_DIR/click-callers.log'"
   check "so did every capture" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
+  check "the click phrases ran from click.toml" "grep -Eq 'Click \(click\.toml\).* action=click ' <<<\"\$(route 'click sign in')\""
   check "none of click.sh's lookups, actions or box placing was asked of the bash voxcmd" "! grep -Eq '^_legacy-hook (candidates|run|pick-boxes) [^ ]*/click\.sh ' '$legacy_calls'"
   route "stubprobe anything" >/dev/null
   check "while the bash voxcmd was still asked for the integrations that stay on it" "grep -Eq '^_legacy-hook candidates [^ ]*/stub-probe\.sh ' '$legacy_calls'"
@@ -1429,16 +1437,19 @@ copy_shipped_integrations "$all_config"
 route_all() { VOXCMD_CONFIG_DIR=$all_config "$routed" explain "$1" 2>&1; }
 for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; do
   out=$(route_all "$phrase")
-  check "'$phrase' opens click mode, alone" "grep -q 'result:      run' <<<\"\$out\" && grep -q 'Click (click.sh) action=click_mode' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
+  check "'$phrase' opens click mode, alone" "grep -q 'result:      run' <<<\"\$out\" && grep -Eq 'Click \($click_file\) action=click_mode' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
 done
 out=$(route_all "stop clicking")
-check "'stop clicking' ends click mode instead of pausing media" "grep -q 'Click (click.sh) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
+check "'stop clicking' ends click mode instead of pausing media" "grep -Eq 'Click \($click_file\) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
 if [ -n "$rust_matcher" ]; then
-  # The mode actions are not click built-ins; run for real (stop clicking opens no session), one reaches the bash voxcmd.
+  # Run for real (stop clicking opens no session): click.toml's mode action is Rust's own, so the bash voxcmd is asked
+  # about the integrations that stay on it (Overview hears "stop clicking" too, which proves the logger sees its calls)
+  # and never about click.
   : >"$legacy_calls"
   # The "numbered picks" section pointed VOXCMD_LEGACY_BIN at its own copy, past the logger.
-  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1
-  check "a mode action of click.sh still runs through the bash bridge" "grep -Eq '^_legacy-hook run [^ ]*/click\\.sh stop_clicking' '$legacy_calls'"
+  stop_status=0
+  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1 || stop_status=$?
+  check "a mode action of click.toml runs natively, with the bash voxcmd asked about others but never about click" "[[ $stop_status == 0 ]] && grep -Eq '^_legacy-hook candidates [^ ]*/overview\\.sh ' '$legacy_calls' && ! grep -Eq '^_legacy-hook [a-z-]+ [^ ]*/click\\.' '$legacy_calls'"
 fi
 out=$(route_all "click mode on")
 check "'click' followed by other text is still a click on that text" "! grep -q 'action=click_mode' <<<\"\$out\""
@@ -1459,6 +1470,12 @@ wait
 stray=$(cat "$strays_dir"/* 2>/dev/null)
 check "no other example routes to click mode ($stray)" "[[ -z '$stray' ]]"
 
+# The pick_box, session_rewrite and exit-phrase checks below read the bash click.sh, which stays until the bash loader goes.
+# click.toml's counterparts are cargo tests: click/pick.rs (a box from an id), session/mode.rs (the rewrite and the 27
+# exit and target phrases) and tests/toml_mode.rs (the whole mode run); this one only checks the TOML declares the picker.
+if [ -n "$rust_matcher" ]; then
+  check "click.toml numbers several matches on screen" "grep -q '^picker = \"hints\"' '$package/.config/voxcmd/integrations/click.toml'"
+fi
 session_rewrite_of() (
   # shellcheck disable=SC2034 # read by click.sh
   voxcmd_share_dir=$share_dir

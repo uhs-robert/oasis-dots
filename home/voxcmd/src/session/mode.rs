@@ -687,8 +687,8 @@ mod tests {
     }
 
     #[test]
-    fn the_click_conversion_loads_as_mode_settings() {
-        let file = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/integrations/click.toml");
+    fn the_shipped_click_toml_loads_as_mode_settings() {
+        let file = concat!(env!("CARGO_MANIFEST_DIR"), "/.config/voxcmd/integrations/click.toml");
         let settings = ModeSettings::of(file);
         assert!(!settings.allows_switches && !settings.default_exits && settings.has_rewrite);
         assert_eq!(settings.miss_actions, ["no_text"]);
@@ -699,5 +699,54 @@ mod tests {
         assert_eq!(rewriting.apply("click"), "");
         assert_eq!(rewriting.apply("right click settings"), "right click settings");
         assert_eq!(rewriting.apply("sign in"), "click sign in");
+        assert_eq!(rewriting.apply("double click on readme"), "double click on readme");
+        assert_eq!(rewriting.apply("right click"), "");
+        // The entry phrases are not read as targets.
+        assert_eq!(rewriting.apply("clicking mode"), "clicking mode");
+        assert_eq!(rewriting.apply("click mode"), "click mode");
+        assert_eq!(rewriting.apply("click mode off please"), "");
+    }
+
+    /// What click.sh's `session_exit_phrases` ended click mode on, and what it left a target.
+    #[test]
+    fn the_shipped_click_toml_ends_click_mode_on_the_phrases_click_sh_did() {
+        let file = concat!(env!("CARGO_MANIFEST_DIR"), "/.config/voxcmd/integrations/click.toml");
+        let settings = ModeSettings::of(file);
+        let exits = settings.exit_phrases.as_ref().unwrap();
+        for phrase in [
+            "stop clicking",
+            "exit click mode",
+            "done clicking",
+            "im done clicking",
+            "done with click mode",
+            "okay exit click mode",
+            "quit click mode",
+            "stop click mode",
+            "exit clicking mode",
+            "leave the click mode",
+            "end clicking",
+            "close click mode",
+            "turn off click mode",
+            "click mode off",
+            "exit",
+            "quit",
+            "exit click mode please",
+            "alright please finish clicking now",
+            "now exit click mode",
+            "stop clicking okay",
+        ] {
+            assert!(exits.is_match(phrase), "{phrase:?} should end click mode");
+        }
+        for phrase in [
+            "stop",
+            "close",
+            "cancel",
+            "exit settings",
+            "stop recording",
+            "turn off",
+            "click mode",
+        ] {
+            assert!(!exits.is_match(phrase), "{phrase:?} should stay a click target");
+        }
     }
 }
