@@ -101,23 +101,32 @@ Item {
             active: Style.dither.a > 0
             sourceComponent: Dither {
                 row_span: (y0, y1) => {
-                    const s = Drawer.fill_row_span(root.fill_points, y0 - dither_layer.shift_y, y1 - dither_layer.shift_y);
-                    return { x: s.x + dither_layer.shift_x, w: s.w };
+                    const spans = Drawer.fill_row_spans(root.fill_points, y0 - dither_layer.shift_y, y1 - dither_layer.shift_y);
+                    return spans.map(s => ({ x: s.x + dither_layer.shift_x, w: s.w }));
                 }
                 color: Style.island_fill(Qt.alpha(Style.dither, Math.min(1, Style.dither.a * 2.2)))
             }
         }
 
         Repeater {
-            model: Style.bar_scanline_color.a > 0 ? Math.max(0, Math.ceil((root.layout.depth - root.texture_phase.first_scanline) / root.scanline_period)) : 0
+            id: scanlines
+            readonly property var segments: {
+                if (Style.bar_scanline_color.a <= 0) return [];
+                const pieces = [];
+                for (let y = root.texture_phase.first_scanline; y < root.layout.depth; y += root.scanline_period) {
+                    for (const s of Drawer.fill_row_spans(root.fill_points, y, y + 1))
+                        pieces.push({ x: s.x, y: y, w: s.w });
+                }
+                return pieces;
+            }
+            model: scanlines.segments.length
 
             Rectangle {
                 required property int index
-                readonly property real line_y: root.texture_phase.first_scanline + index * root.scanline_period
-                readonly property var row_span: Drawer.fill_row_span(root.fill_points, line_y, line_y + 1)
-                x: row_span.x
-                y: line_y
-                width: row_span.w
+                readonly property var segment: scanlines.segments[index]
+                x: segment.x
+                y: segment.y
+                width: segment.w
                 height: 1
                 color: Style.island_fill(Style.bar_scanline_color)
             }

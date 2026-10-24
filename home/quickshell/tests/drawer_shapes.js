@@ -495,17 +495,29 @@ cases.push(["a flipped drawer's dither rows mirror the frame's for every origin 
   const lay = lay_of({ extent: 150 });
   const loop = D.fill_loop(lay);
   const body_mid = lay.cover + lay.body.d / 2;
-  cases.push(["fill_row_span: the cover strip is the whole length, a body row is the body, below the fill is empty", () => [
-    D.fill_row_span(loop, 0, 2),
-    D.fill_row_span(loop, body_mid - 1, body_mid + 1),
-    D.fill_row_span(loop, lay.cover + lay.body.d + 4, lay.cover + lay.body.d + 6)
-  ], [{ x: 0, w: lay.length }, { x: lay.start_room, w: lay.body.w }, { x: 0, w: 0 }]]);
-  cases.push(["fill_row_span: a fillet row is wider than the body, a pocket drawer's row starts at the side band", () => {
-    const row = D.fill_row_span(loop, lay.cover + 1, lay.cover + 3);
+  cases.push(["fill_row_spans: the cover strip is the whole length, a body row is the body, below the fill is empty", () => [
+    D.fill_row_spans(loop, 0, 2),
+    D.fill_row_spans(loop, body_mid - 1, body_mid + 1),
+    D.fill_row_spans(loop, lay.cover + lay.body.d + 4, lay.cover + lay.body.d + 6)
+  ], [[{ x: 0, w: lay.length }], [{ x: lay.start_room, w: lay.body.w }], []]]);
+  cases.push(["fill_row_spans: a fillet row is wider than the body, a pocket drawer's row starts at the side band", () => {
+    const [row] = D.fill_row_spans(loop, lay.cover + 1, lay.cover + 3);
     const pocket = lay_of({ extent: 150, start_kind: "pocket" });
-    const p = D.fill_row_span(D.fill_loop(pocket), pocket.cover + pocket.body.d / 2 - 1, pocket.cover + pocket.body.d / 2 + 1);
+    const [p] = D.fill_row_spans(D.fill_loop(pocket), pocket.cover + pocket.body.d / 2 - 1, pocket.cover + pocket.body.d / 2 + 1);
     return [row.w > lay.body.w && row.x < lay.start_room, p.x];
   }, [true, 0]]);
+  // A docked popup (Popup.qml) pockets at both ends: past its far edge a row holds the two pockets' columns, not the
+  // hole between them, for the opaque and the translucent fill alike.
+  for (const translucent of [false, true]) {
+    cases.push(["fill_row_spans: past a docked drawer's far edge the row is two pocket columns" + (translucent ? ", translucent" : ""), () => {
+      const dock = lay_of({ extent: 150, start_kind: "pocket", end_kind: "pocket" });
+      const far = dock.cover + dock.body.d;
+      const spans = D.fill_row_spans(translucent ? D.hole_fill_loop(dock) : D.fill_loop(dock), far + 4, far + 6);
+      const left = dock.start_room, right = dock.length - dock.end_room;
+      return [spans.length, spans[0].x === (translucent ? left : 0), spans[0].x + spans[0].w < left + dock.fillet_eff,
+        spans[1].x > right - dock.fillet_eff, spans[1].x + spans[1].w === (translucent ? right : dock.length)];
+    }, [2, true, true, true, true]]);
+  }
 }
 
 

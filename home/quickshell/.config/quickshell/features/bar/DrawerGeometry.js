@@ -253,18 +253,23 @@ function texture_phase(origin, period) {
     };
 }
 
-// The span { x, w } a fill loop keeps in the row from y0 to y1, sampled at the row's middle as FrameGeometry.frame_blocks
-// does, for the dither's rows. A loop's row is one stretch (fillets and pockets widen it, never split it); a row the
-// loop does not reach has width 0.
-function fill_row_span(loop, y0, y1) {
+// The spans [{ x, w }, ...] a fill loop keeps in the row from y0 to y1, sampled at the row's middle as
+// FrameGeometry.frame_blocks does, for the dither's rows. Most rows are one stretch, but past the far edge of a drawer
+// pocketed at both ends a row crosses the two pockets' columns with the hole between them; a row the loop does not
+// reach has none.
+function fill_row_spans(loop, y0, y1) {
     const y = (y0 + y1) / 2;
-    let lo = Infinity, hi = -Infinity;
+    const crossings = [];
     for (let k = 0; k + 1 < loop.length; k++) {
         const a = loop[k], b = loop[k + 1];
         if (a[1] === b[1] || y < Math.min(a[1], b[1]) || y >= Math.max(a[1], b[1])) continue;
-        const x = a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]);
-        lo = Math.min(lo, x);
-        hi = Math.max(hi, x);
+        crossings.push(a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]));
     }
-    return hi > lo ? { x: lo, w: hi - lo } : { x: 0, w: 0 };
+    // Sorted, the row's crossings of the loop pair up as where it enters the fill and where it leaves.
+    crossings.sort((p, q) => p - q);
+    const spans = [];
+    for (let k = 0; k + 1 < crossings.length; k += 2) {
+        if (crossings[k + 1] > crossings[k]) spans.push({ x: crossings[k], w: crossings[k + 1] - crossings[k] });
+    }
+    return spans;
 }
