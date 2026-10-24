@@ -68,7 +68,8 @@ ShellRoot {
 
                         screen: screen_scope.modelData
                         color: "transparent"
-                        implicitHeight: screen_scope.bar_height
+                        // The floating strip's set-in from the screen edge is part of the window, so it is reserved too.
+                        implicitHeight: screen_scope.bar_height + (Style.strip_floats ? Style.bar_strip_inset : 0)
                         // Under a frame its zone windows reserve the bar's edge too, so the bar ignores them all
                         // instead of shrinking between the side zones.
                         exclusiveZone: screen_scope.frame ? -1 : implicitHeight

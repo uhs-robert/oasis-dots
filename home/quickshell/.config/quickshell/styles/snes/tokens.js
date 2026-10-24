@@ -70,6 +70,7 @@ function overrides(t, ctx) {
         bar_side_bg: t.bg_core,
         bar_center_bg: t.bg_core,
         bar_island_shape: "pixel",
+        bar_strip_ends: "pixel",
         bar_border_width: 2,
         bar_border_color: t.theme_primary,
         bar_workspace_idle: t.bg_mantle,

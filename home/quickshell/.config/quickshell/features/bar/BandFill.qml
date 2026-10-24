@@ -29,6 +29,10 @@ Item {
     // Where the rim and inset line stop short of the band's ends, for corners drawn by someone else.
     property real inset_start: 0
     property real inset_end: 0
+    // An IslandOutlines profile for a plate set in from the screen edge ("" is a band flush with it): the ends are drawn
+    // `ends_cap` deep, the rim runs all the way round, and the inset line stops where the ends begin.
+    property string ends: ""
+    property real ends_cap: 0
     // The band's offset in a pattern shared with neighbouring bands, so their dither and scanlines line up.
     property real phase_x: 0
     property real phase_y: 0
@@ -47,7 +51,7 @@ Item {
     }
 
     function span(y0, y1) {
-        const a = Band.band_span(root.length, root.thickness, root.border_width, y0), b = Band.band_span(root.length, root.thickness, root.border_width, y1);
+        const a = Band.band_span(root.length, root.thickness, root.border_width, y0, root.ends, root.ends_cap), b = Band.band_span(root.length, root.thickness, root.border_width, y1, root.ends, root.ends_cap);
         const x = Math.max(a[0], b[0]);
         return { x: x, w: Math.min(a[1], b[1]) - x };
     }
@@ -75,7 +79,7 @@ Item {
                 fillColor: root.faded(root.color)
                 fillGradient: root.shade_color.a > 0 ? shade : null
                 PathPolyline {
-                    path: Band.band_fill(root.length, root.thickness).map(p => Qt.point(p[0], p[1]))
+                    path: Band.band_fill(root.length, root.thickness, root.ends, root.ends_cap).map(p => Qt.point(p[0], p[1]))
                 }
             }
 
@@ -132,9 +136,9 @@ Item {
                         strokeColor: root.inset_color
                         fillColor: "transparent"
                         capStyle: ShapePath.FlatCap
-                        startX: root.inset_start
+                        startX: root.ends ? root.ends_cap : root.inset_start
                         startY: root.inset_line_y
-                        PathLine { x: root.length - root.inset_end; y: root.inset_line_y }
+                        PathLine { x: root.length - (root.ends ? root.ends_cap : root.inset_end); y: root.inset_line_y }
                     }
                 }
             }
@@ -153,7 +157,7 @@ Item {
                         fillColor: "transparent"
                         capStyle: ShapePath.FlatCap
                         PathPolyline {
-                            path: Band.band_rim_stroke(root.length, root.thickness, root.inset_start, root.inset_end, root.border_width).map(p => Qt.point(p[0], p[1]))
+                            path: (root.ends ? Band.plate_rim_stroke(root.ends, root.length, root.thickness, root.ends_cap, root.border_width) : Band.band_rim_stroke(root.length, root.thickness, root.inset_start, root.inset_end, root.border_width)).map(p => Qt.point(p[0], p[1]))
                         }
                     }
                 }

@@ -38,7 +38,7 @@ Singleton {
             materia: {}
         })
     // Bar island shapes any style without lualine can borrow (Theme options); "slant" is the plain look.
-    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "rect", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "none", "underline", "brackets", "full"]
+    readonly property var island_shapes: ["slant", "octagon", "watch", "window", "rect", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "none", "underline", "brackets", "full", "strip"]
     // What a shape brings to a style that does not own it, in place of that style's own shape sizes: `sizes` copied from
     // the owner, a border at least `min_border` wide (in the palette's muted text colour where the host has none), and
     // with `fg_border` the host's bar_fg as its colour so a pixel window's outline shows on every palette. Never the
@@ -63,14 +63,17 @@ Singleton {
             underline: { filled: false, min_border: 2, fg_border: true },
             brackets: { filled: false, min_border: 1, fg_border: true },
             // One strip across the bar in place of the islands' plates (`strip`, see strip_shape); the border is its rim.
-            full: { strip: true, min_border: 1 }
+            full: { strip: true, min_border: 1 },
+            // The strip as one plate set in from the screen edge and both sides, its ends drawn from bar_strip_ends.
+            // The insets are fixed here so leaving the shape drops them (plain_island_shape).
+            strip: { strip: true, min_border: 1, set: { bar_strip_inset: 4, bar_strip_side: 18 } }
         })
     // Saved shapes renamed since, applied once to a theme_options.json older than version 2: "octagon" drew
     // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
     readonly property var renamed_island_shapes: ({ octagon: "watch" })
     readonly property int options_version: 3
     // Shape sizes every kit resets before laying its own on, so leaving the capsule drops its inset.
-    readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0 })
+    readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0, bar_strip_inset: 0, bar_strip_side: 0 })
     // The corner profiles a frame offers (Corners.js).
     readonly property var frame_corners: ["round", "chamfer", "pixel", "square"]
     // Screen frames any style can borrow (Theme options); "" is none, and each other value is the frame's corner profile.
@@ -107,7 +110,7 @@ Singleton {
             wait_anim: { bubble: "Bubble", cursor: "Blinking Cursor", pressanykey: "Press Any Key", advance: "Text Advance", hand: "Pointing Hand", alert: "Alert", rumble: "Rumble", transmission: "Transmission", scan: "Scan", comms: "Comms", ping: "Radar Ping", hev_alert: "HEV Alert", exclaim: "Exclamation", atb: "ATB Gauge", mirage: "Mirage" },
             bar_icon_set: { "": "Nerd Font", gameboy: "Game Boy", nes: "NES", snes: "SNES", ps1: "PS1", oasis: "Oasis", goldeneye: "GoldenEye", metroid: "Metroid", ff7: "FF7", crt: "CRT", ps2: "PS2", halflife: "Half-Life", tie: "TIE", reticle: "Reticle", modern: "Modern", terminal: "Terminal" },
             bar_meeting_marker: MarkerTokens.labels,
-            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", rect: "Rectangle", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar" },
+            bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", rect: "Rectangle", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar", strip: "Floating strip" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" },
             screen_frame: { "": "Off", round: "Round", chamfer: "Chamfer", pixel: "Pixel", square: "Square" }
         })
@@ -491,6 +494,9 @@ Singleton {
     readonly property color chip_fg: root.active.chip_fg
     readonly property int bar_capsule: root.bar.bar_capsule
     readonly property int bar_capsule_pad: root.bar.bar_capsule_pad
+    readonly property int bar_strip_inset: root.bar.bar_strip_inset
+    readonly property int bar_strip_side: root.bar.bar_strip_side
+    readonly property string bar_strip_ends: root.bar.bar_strip_ends
     readonly property int bar_height: root.bar.bar_height
     readonly property int bar_module_gap: root.bar.bar_module_gap
     readonly property int bar_pill_height: root.bar.bar_pill_height
@@ -743,6 +749,8 @@ Singleton {
     // The bar draws one full-width strip (StripBackground) and the islands only hold the modules. The one predicate
     // for it: a later shape turns it on by giving its kit `strip: true`.
     readonly property bool strip_shape: !root.bar.bar_lualine && (root.island_shape_kits[root.bar.bar_island_shape] || {}).strip === true
+    // The strip is a plate set in from the screen (bar_strip_inset and bar_strip_side) with shaped ends, not flush.
+    readonly property bool strip_floats: root.strip_shape && root.bar.bar_strip_inset > 0
     // Whether each island draws its own plate: its shape has one and no strip carries it instead.
     readonly property bool island_plate: root.island_filled && !root.strip_shape
     // The strip's fill, which popups, tooltips and the submap tab hung from an island over it take too.
@@ -757,6 +765,7 @@ Singleton {
         const owner = root.styles[kit.owner] || {};
         const out = Object.assign({}, root.plain_island_shape);
         for (const k of kit.sizes || []) out[k] = owner[k];
+        Object.assign(out, kit.set);
         if (kit.min_border) out.bar_border_width = Math.max(host.bar_border_width, kit.min_border);
         if (kit.fg_border) out.bar_border_color = host.bar_fg;
         // A borderless style's transparent border would hide the outline the min_border is there to show.

@@ -47,7 +47,7 @@ Popup {
     readonly property real free_height: {
         if (root.drawer && root.drawer_hole) return root.drawer_hole.h - root.header_height - root.footer_height;
         if (!root.screen) return Infinity;
-        const bar = BarSettings.height_for(BarSettings.rule_for(root.screen));
+        const bar = BarSettings.height_for(BarSettings.rule_for(root.screen)) + (Style.strip_floats ? Style.bar_strip_inset : 0);
         return root.screen.height - bar - (root.floating ? root.st.frame_float : 0) - root.header_height - root.footer_height - root.drop_room;
     }
     // The body adds a 12px margin on each side.

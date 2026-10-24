@@ -42,6 +42,7 @@ function cap_width(shape, h) {
     case "underline": return Math.round(h * 0.3);
     case "brackets": return bracket_arm(h) + Math.round(h * 0.1);
     case "chevron": return Math.round(h * 0.5);
+    case "round": return Math.round(h * 0.3);
     // The hexagon's 120 degree corners, their tip cut flat: the slanted edge reaches (1 - HEX_FLAT) / 2 * h / tan(60) in.
     case "hex": return Math.round(h * (1 - HEX_FLAT) / 2 / Math.tan(Math.PI / 3));
     case "lean": return Math.round(h * 0.4);
@@ -88,6 +89,9 @@ function arc(cx, cy, r, a0, a1) {
 // `trailing` is the right end, which mirrors the left one except on the lean, whose ends run parallel.
 function end_profile(shape, h, c, trailing) {
     switch (shape) {
+    // Both corners rounded, for the floating strip's plate; not an island shape, so `names` leaves it out.
+    case "round":
+        return arc(c, c, c, -90, -180).concat(arc(c, h - c, c, 180, 90));
     case "chevron":
         return [[c, 0], [0, h / 2], [c, h]];
     case "hex":
@@ -161,6 +165,21 @@ function inset(path, d) {
         out.push([x, y]);
     }
     return out;
+}
+
+// The closed outline `path` (its last point joins its first) moved d px inward, every corner mitred; `inset` leaves a
+// path's two ends open to the screen edge, which a plate set in from it has no use for.
+function inset_ring(path, d) {
+    const n = path.length;
+    const normal = k => {
+        const a = path[k], b = path[(k + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        return [(b[1] - a[1]) / len, -(b[0] - a[0]) / len];
+    };
+    return path.map((p, k) => {
+        const na = normal((k + n - 1) % n), nb = normal(k);
+        const mitre = d / (1 + na[0] * nb[0] + na[1] * nb[1]);
+        return [p[0] + (na[0] + nb[0]) * mitre, p[1] + (na[1] + nb[1]) * mitre];
+    });
 }
 
 // The left and right x where the row at y crosses `inner` (an inset rim path) closed above the screen edge; [0, 0]

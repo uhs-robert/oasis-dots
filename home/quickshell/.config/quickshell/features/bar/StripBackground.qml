@@ -2,9 +2,11 @@ import QtQuick
 import Quickshell.Hyprland
 import qs.theme
 import "../../ui/frames/FrameGeometry.js" as FrameGeometry
+import "../../ui/frames/IslandOutlines.js" as Outlines
 
-// The full-bar strip (Island shape "Full bar"): one band across the bar carrying the style's island look, with the
-// islands drawing nothing over it. Under the modules, so cava and module fills sit on top of it.
+// The strip (Island shapes "Full bar" and "Floating strip"): one band across the bar carrying the style's island look,
+// with the islands drawing nothing over it. Under the modules, so cava and module fills sit on top of it. The floating
+// one is shorter than the bar, set in from its sides by Bar, and takes its ends from bar_strip_ends.
 BandFill {
     id: root
 
@@ -25,6 +27,9 @@ BandFill {
 
     // A drawer's window over the strip, while it is translucent and reaches the strip: the strip leaves its lines out there (the drawer draws its own).
     line_gaps: FrameGeometry.strip_gaps(ScreenFrames.drawer_rects(root.screen_name), root.edge, root.thickness, root.frame ? root.frame.depth : 0)
+
+    ends: Style.strip_floats ? Style.bar_strip_ends : ""
+    ends_cap: Outlines.cap_width(Style.bar_strip_ends, root.thickness)
 
     color: Style.strip_color
     shade_color: Style.frame_shade

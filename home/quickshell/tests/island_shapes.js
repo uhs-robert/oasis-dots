@@ -80,6 +80,21 @@ const cases = [
   ["band span inside the rim", () => plain(B.band_span(1920, 30, 2, 10)), [0, 1920]],
   ["band span at the screen edge", () => plain(B.band_span(1920, 30, 2, 0)), [0, 1920]],
   ["band span past the rim", () => plain(B.band_span(1920, 30, 2, 29)), [0, 0]],
+  // The floating strip's plate: a band with shaped ends, set in from the screen edge by Bar.
+  ["round pad", () => O.cap_width("round", 40), 12],
+  ["round end starts on the screen edge and ends on the open edge", () => { const p = O.end_profile("round", 40, 12, false); return near_point(p[0], [12, 0]) && near_point(p[p.length - 1], [12, 40]); }, true],
+  ["round end reaches the side between its corners", () => { const p = O.end_profile("round", 40, 12, false); return p.some(q => Math.abs(q[0]) < 1e-9 && Math.abs(q[1] - 12) < 1e-9); }, true],
+  ["round is not an island shape", () => O.has("round") || O.stroke_only("round"), false],
+  ["inset_ring of a rectangle", () => plain(O.inset_ring([[0, 0], [0, 10], [20, 10], [20, 0]], 1)), [[1, 1], [1, 9], [19, 9], [19, 1]]],
+  ["plate rim stroke closes", () => { const r = B.plate_rim_stroke("pixel", 200, 40, O.cap_width("pixel", 40), 2); return near_point(r[0], r[r.length - 1]); }, true],
+  ["plate rim stroke stays inside the plate", () => ["round", "pixel"].every(e => B.plate_rim_stroke(e, 200, 40, O.cap_width(e, 40), 2).every(p => p[0] >= 1 - 1e-9 && p[0] <= 199 + 1e-9 && p[1] >= 1 - 1e-9 && p[1] <= 39 + 1e-9)), true],
+  ["plate rim stroke runs along the top edge", () => { const r = B.plate_rim_stroke("round", 200, 40, 12, 2); return Math.abs(r[0][1] - 1) < 1e-9 && Math.abs(r[r.length - 2][1] - 1) < 1e-9; }, true],
+  ["plate fill is closed", () => { const f = B.band_fill(200, 40, "pixel", O.cap_width("pixel", 40)); return near_point(f[0], f[f.length - 1]); }, true],
+  ["plate fill stays inside the plate", () => ["round", "pixel"].every(e => B.band_fill(200, 40, e, O.cap_width(e, 40)).every(p => p[0] >= 0 && p[0] <= 200 && p[1] >= 0 && p[1] <= 40)), true],
+  ["plate fill area is the rectangle less its four corners", () => loop_area(B.band_fill(200, 40, "pixel", O.cap_width("pixel", 40))) < 200 * 40, true],
+  ["plate span narrows at the corners and is full between them", () => { const c = O.cap_width("pixel", 40), top = B.band_span(200, 40, 2, 3, "pixel", c), mid = B.band_span(200, 40, 2, 20, "pixel", c); return top[0] > mid[0] && top[1] < mid[1] && near_point(mid, [2, 198]); }, true],
+  ["plate span is empty on the top rim and past the open edge", () => plain([B.band_span(200, 40, 2, 1, "round", 12), B.band_span(200, 40, 2, 39, "round", 12)]), [[0, 0], [0, 0]]],
+  ["band_fill without ends stays the plain band", () => plain(B.band_fill(1920, 30, "", 0)), [[0, 30], [1920, 30], [1920, 0], [0, 0], [0, 30]]],
   ["full is no outline or stroke", () => O.has("full") || O.stroke_only("full"), false],
   ["bracket arms stay inside", () => O.bracket_paths(100, 30, 9, 2).every(p => p.every(q => q[0] >= 0 && q[0] <= 100 && q[1] >= 0 && q[1] <= 30)), true],
   ["frame zones top bar", () => plain(top_frame.zones), { top: 30, right: 6, bottom: 6, left: 6 }],
@@ -150,6 +165,14 @@ for (const s of shapes) {
 for (const s of shapes) {
   const kit_says_fill_less = new RegExp("\\b" + s + ": \\{ filled: false").test(kits);
   if (kit_says_fill_less !== O.stroke_only(s)) { failed++; console.log("FAIL kit flag and stroke_only disagree for " + s); }
+}
+
+// A kit's fixed sizes (`set`) must be in plain_island_shape, or leaving the shape would keep them.
+const plain_keys = [...style.match(/plain_island_shape: \(\{([^}]*)\}\)/)[1].matchAll(/(\w+):/g)].map(m => m[1]);
+for (const m of kits.matchAll(/set: \{([^}]*)\}/g)) {
+  for (const k of [...m[1].matchAll(/(\w+):/g)].map(x => x[1])) {
+    if (plain_keys.indexOf(k) < 0) { failed++; console.log("FAIL kit size " + k + " is not reset by plain_island_shape"); }
+  }
 }
 
 // Style.strip_shape turns on for any kit with `strip: true`, so each must be a shape the settings row offers.
