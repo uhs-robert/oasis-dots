@@ -27,6 +27,11 @@ function opening(target, extent) {
     return target > extent;
 }
 
+// How long the drawer takes to move: opening is slower than folding.
+function duration(target, extent) {
+    return opening(target, extent) ? 190 : 120;
+}
+
 // Whether a card's hover changes its timer. Cards slide under a still cursor while the drawer moves, so hover is
 // ignored then and settled once: pause a hovered card not yet held, resume a held one the cursor has left.
 function hover_action(moving, hovered, held) {

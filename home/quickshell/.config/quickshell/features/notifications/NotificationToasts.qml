@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import qs.features.bar
+import qs.theme
 import qs.features.popups
 import qs.ui.frames
 import "ToastExtent.js" as ToastExtent
@@ -12,10 +13,15 @@ import "ToastExtent.js" as ToastExtent
 PanelWindow {
     id: root
 
-    // The screen focused when the stack last opened; it stays through the show, so a focus change never moves a drawer
-    // that is on screen. Same pattern as Osd.
+    // The screen focused when the stack last opened; with the screen frame on it stays through the show, so a focus
+    // change never moves a drawer that is on screen (same pattern as Osd). Floating cards follow the focused screen.
+    // Keyed on the global setting, not `drawer`, which is derived from the screen.
     property string held_screen_name: ""
-    screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
+    readonly property var focused_screen: {
+        const mon = Hyprland.focusedMonitor;
+        return mon ? Quickshell.screens.find(s => s.name === mon.name) || null : null;
+    }
+    screen: Style.screen_frame_on ? Quickshell.screens.find(s => s.name === root.held_screen_name) || null : root.focused_screen
 
     readonly property var visible_toasts: NotificationState.visible_toasts
     readonly property bool wanted: root.visible_toasts.length > 0
@@ -25,6 +31,9 @@ PanelWindow {
         const mon = Hyprland.focusedMonitor;
         root.held_screen_name = mon ? mon.name : "";
     }
+
+    // onWantedChanged does not fire for toasts already present at load.
+    Component.onCompleted: if (root.wanted) root.hold_screen()
 
     // Only a fully folded window picks up the focused screen; a toast arriving mid-fold stays where it is.
     onWantedChanged: if (root.wanted && root.extent <= 0) root.hold_screen()
@@ -50,7 +59,7 @@ PanelWindow {
         enabled: !root.snapping
         NumberAnimation {
             id: extent_move
-            duration: ToastExtent.opening(root.target, root.extent) ? 190 : 120
+            duration: ToastExtent.duration(root.target, root.extent)
             easing.type: ToastExtent.opening(root.target, root.extent) ? Easing.OutCubic : Easing.InCubic
             // A folded window must not hold the keyboard.
             onRunningChanged: if (!extent_move.running && !root.wanted && root.extent <= 0) NotificationState.leave_toast_focus()
@@ -66,6 +75,8 @@ PanelWindow {
     onBar_edgeChanged: root.reset_extent()
 
     function reset_extent() {
+        // Stopped first: a running animation would carry on past the snap.
+        extent_move.stop();
         root.snapping = true;
         root.extent = 0;
         root.snapping = false;

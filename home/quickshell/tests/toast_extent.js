@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/notifications/ToastExtent.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { window_depth, stack_height, opening, hover_action };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { window_depth, stack_height, opening, duration, hover_action };", T);
 const X = T.api;
 
 const cases = [
@@ -17,8 +17,9 @@ const cases = [
   ["stack_height: follows the content", () => X.stack_height(300, 2, 10, 900), 300],
   ["stack_height: capped, the last card clips", () => X.stack_height(1200, 7, 10, 900), 900],
   ["stack_height: an empty stack holds the last height", () => X.stack_height(0, 0, 240, 900), 240],
-  ["stack_height: growth re-targets", () => [X.stack_height(100, 1, 0, 900), X.stack_height(220, 2, 100, 900)], [100, 220]],
-  ["opening: grows toward a larger target", () => [X.opening(100, 0), X.opening(0, 100), X.opening(50, 50)], [true, false, false]],
+  ["stack_height: a removed card shrinks it below the last height", () => X.stack_height(100, 1, 220, 900), 100],
+  ["stack_height: the cap holds at the exact boundary", () => [X.stack_height(900, 5, 0, 900), X.stack_height(901, 5, 0, 900)], [900, 900]],
+  ["duration: opening takes longer than folding or holding", () => [X.duration(100, 0), X.duration(0, 100), X.duration(50, 50)], [190, 120, 120]],
   ["hover_action: ignored while moving", () => [X.hover_action(true, true, false), X.hover_action(true, false, true)], ["none", "none"]],
   ["hover_action: settles after the move", () => [X.hover_action(false, true, false), X.hover_action(false, false, true)], ["pause", "resume"]],
   ["hover_action: nothing to do when already in step", () => [X.hover_action(false, true, true), X.hover_action(false, false, false)], ["none", "none"]],
