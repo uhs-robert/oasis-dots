@@ -702,6 +702,9 @@ declare -A actions=([probe]=true)
 candidates() { echo '[{"id": "1", "label": "probe"}]'; }
 STUB
 export VOXCMD_CONFIG_DIR=$config
+# Both files are in the config; the Rust build must pick the TOML, the bash build can only load the .sh.
+keybinds_file='keybinds\.sh'
+[ -z "$rust_matcher" ] || keybinds_file='keybinds\.toml'
 # The bash form of the new CLI, for the sections 2.5 has not moved to the Rust build.
 voxcmd=$package/tests/bin/voxcmd
 # What routes and runs the phrases: the same, or under VOXCMD_BIN=rs the Rust build, which asks the bash voxcmd only for
@@ -736,21 +739,21 @@ check "left click is a click" "grep -q \"action=click .*,left$box'\" <<<\"\$out\
 out=$(route "click nowhere to be found")
 check "text not on screen reports it instead of falling through" "grep -q 'action=no_text' <<<\"\$out\" && ! grep -q Keybinds <<<\"\$out\""
 out=$(route "right click")
-check "bare 'right click' stays with the Cursor submap bind" "grep -Eq 'Keybinds \(keybinds\.(sh|toml)\)' <<<\"\$out\" && ! grep -q 'Click (click.sh)' <<<\"\$out\""
+check "bare 'right click' stays with the Cursor submap bind" "grep -Eq 'Keybinds \($keybinds_file\)' <<<\"\$out\" && ! grep -q 'Click (click.sh)' <<<\"\$out\""
 out=$(route "click")
 check "bare 'click' stays with the keybinds" "! grep -q 'Click (click.sh)' <<<\"\$out\""
 # "click left", "click it" and the like are no click target: phrases.tsv records that they route as they did without
 # Click. Here, that they do not even capture the screen.
 : >"$log"
 out=$(route "click left")
-check "'click left' stays with the keybinds without capturing the screen" "grep -Eq 'Keybinds \(keybinds\.(sh|toml)\)' <<<\"\$out\" && ! grep -q '^grim' '$log'"
+check "'click left' stays with the keybinds without capturing the screen" "grep -Eq 'Keybinds \($keybinds_file\)' <<<\"\$out\" && ! grep -q '^grim' '$log'"
 out=$(route "show hints")
 check "'show hints' launches wl-kbptr" "grep -q 'action=show_hints' <<<\"\$out\" && grep -q 'show_hints' <<<\"\$out\""
 check "'show hints' is silent" "grep -q 'silent: true' <<<\"\$out\""
 out=$(route "show click hints")
 check "'show click hints' is the same" "grep -q 'action=show_hints' <<<\"\$out\""
 out=$(route "keybind enter")
-check "'keybind' still forces the keybinds" "grep -Eq 'forced to:   keybinds\.(sh|toml)' <<<\"\$out\""
+check "'keybind' still forces the keybinds" "grep -Eq 'forced to:   $keybinds_file' <<<\"\$out\""
 
 # Two matches and a weak one go to the picker; a lone strong one runs.
 SANDBOX_TESSERACT_TSV=$({
