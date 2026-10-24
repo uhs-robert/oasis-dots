@@ -690,12 +690,21 @@ SANDBOX_ACTIVEWINDOW_JSON=$default_window
 section "routing with --dry-run"
 config=$root/config
 mkdir -p "$config/integrations.d" "$config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/click.sh" "$package/.config/voxcmd/integrations.d/keybinds.sh" "$config/integrations.d/"
+cp "$package/.config/voxcmd/integrations.d/click.sh" "$config/integrations.d/"
+copy_shipped_integrations "$config" keybinds
+# A bash integration of its own for the logger checks below to find: every shipped one is TOML or click, whose lookups
+# the Rust build does itself, so without it nothing would show that the logger records the bash voxcmd's calls.
+cat >"$config/integrations.d/stub-probe.sh" <<'STUB'
+name="Stub probe"
+verbs=("probe stubprobe {target}")
+declare -A actions=([probe]=true)
+candidates() { echo '[{"id": "1", "label": "probe"}]'; }
+STUB
 export VOXCMD_CONFIG_DIR=$config
 # The bash form of the new CLI, for the sections 2.5 has not moved to the Rust build.
 voxcmd=$package/tests/bin/voxcmd
 # What routes and runs the phrases: the same, or under VOXCMD_BIN=rs the Rust build, which asks the bash voxcmd only for
-# the integrations it has not taken over (keybinds.sh, click mode). That bash voxcmd sits behind a logger, so a check can
+# the integrations it has not taken over (the stub probe, click mode). That bash voxcmd sits behind a logger, so a check can
 # show which of click.sh's functions it was still asked to run.
 routed=$voxcmd
 legacy_calls=$root/legacy-calls.log
@@ -726,21 +735,21 @@ check "left click is a click" "grep -q \"action=click .*,left$box'\" <<<\"\$out\
 out=$(route "click nowhere to be found")
 check "text not on screen reports it instead of falling through" "grep -q 'action=no_text' <<<\"\$out\" && ! grep -q Keybinds <<<\"\$out\""
 out=$(route "right click")
-check "bare 'right click' stays with the Cursor submap bind" "grep -q 'Keybinds (keybinds.sh)' <<<\"\$out\" && ! grep -q 'Click (click.sh)' <<<\"\$out\""
+check "bare 'right click' stays with the Cursor submap bind" "grep -q 'Keybinds (keybinds.toml)' <<<\"\$out\" && ! grep -q 'Click (click.sh)' <<<\"\$out\""
 out=$(route "click")
 check "bare 'click' stays with the keybinds" "! grep -q 'Click (click.sh)' <<<\"\$out\""
 # "click left", "click it" and the like are no click target: phrases.tsv records that they route as they did without
 # Click. Here, that they do not even capture the screen.
 : >"$log"
 out=$(route "click left")
-check "'click left' stays with the keybinds without capturing the screen" "grep -q 'Keybinds (keybinds.sh)' <<<\"\$out\" && ! grep -q '^grim' '$log'"
+check "'click left' stays with the keybinds without capturing the screen" "grep -q 'Keybinds (keybinds.toml)' <<<\"\$out\" && ! grep -q '^grim' '$log'"
 out=$(route "show hints")
 check "'show hints' launches wl-kbptr" "grep -q 'action=show_hints' <<<\"\$out\" && grep -q 'show_hints' <<<\"\$out\""
 check "'show hints' is silent" "grep -q 'silent: true' <<<\"\$out\""
 out=$(route "show click hints")
 check "'show click hints' is the same" "grep -q 'action=show_hints' <<<\"\$out\""
 out=$(route "keybind enter")
-check "'keybind' still forces the keybinds" "grep -q 'forced to:   keybinds.sh' <<<\"\$out\""
+check "'keybind' still forces the keybinds" "grep -q 'forced to:   keybinds.toml' <<<\"\$out\""
 
 # Two matches and a weak one go to the picker; a lone strong one runs.
 SANDBOX_TESSERACT_TSV=$({
@@ -933,7 +942,8 @@ if [ -n "$rust_matcher" ]; then
   rust_real=$(realpath "$rust_matcher")
   check "every capture of the routes and covered text came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
   check "no lookup went through click.sh's candidates()" "! grep -Eq '^_legacy-hook candidates [^ ]*/click\.sh ' '$legacy_calls'"
-  check "the logger sees the bash voxcmd's calls, so that absence means something" "grep -Eq '^_legacy-dump\$' '$legacy_calls' && grep -Eq '^_legacy-hook candidates [^ ]*/keybinds\.sh ' '$legacy_calls'"
+  route "stubprobe anything" >/dev/null
+  check "the logger sees the bash voxcmd's calls, so that absence means something" "grep -Eq '^_legacy-dump\$' '$legacy_calls' && grep -Eq '^_legacy-hook candidates [^ ]*/stub-probe\.sh ' '$legacy_calls'"
 fi
 
 section "click-explain"
@@ -1163,7 +1173,8 @@ if [ -n "$rust_matcher" ]; then
   check "every pointer move, click and toast came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/click-callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/click-callers.log' && grep -q '^wlrctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^hyprctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^notify-send ' '$SANDBOX_DIR/click-callers.log'"
   check "so did every capture" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
   check "none of click.sh's lookups, actions or box placing was asked of the bash voxcmd" "! grep -Eq '^_legacy-hook (candidates|run|pick-boxes) [^ ]*/click\.sh ' '$legacy_calls'"
-  check "while the bash voxcmd was still asked for the integrations that stay on it" "grep -Eq '^_legacy-hook candidates [^ ]*/keybinds\.sh ' '$legacy_calls'"
+  route "stubprobe anything" >/dev/null
+  check "while the bash voxcmd was still asked for the integrations that stay on it" "grep -Eq '^_legacy-hook candidates [^ ]*/stub-probe\.sh ' '$legacy_calls'"
 fi
 
 # ---- numbered on-screen picks: the integration hook, voxcmd-hints and its replies ---------------------------------------
@@ -1711,8 +1722,8 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
 
 firefox_config=$root/firefox-config
 mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
-cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
-copy_shipped_integrations "$firefox_config" firefox firefox-sites
+cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites}.sh "$firefox_config/integrations.d/"
+copy_shipped_integrations "$firefox_config" firefox firefox-sites keybinds
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
 check "a tab shown in a second window is one tab, not also that window" "[[ \$(grep -c '^option' <<<\"\$out\") == 1 ]] && grep -q 'action=focus_tab' <<<\"\$out\""
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to private notes" 2>&1)

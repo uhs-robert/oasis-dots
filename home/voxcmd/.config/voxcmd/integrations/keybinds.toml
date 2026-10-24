@@ -1,0 +1,83 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Runs any described Hyprland keybind by saying its description. Format: ~/.config/voxcmd/README.md
+name = "Keybinds"
+# Tried only when no other integration can run the phrase, so "close window" works without a verb.
+fallback = true
+# A bind's own effect is the feedback, often a bar popup that a success toast would cover.
+silent = true
+target_match = "words"
+# "keybind toggle fullscreen" comes straight here even when another integration has a verb for "toggle fullscreen".
+# "press" is only an ignored word, not a prefix: "press enter" is a key press (keys.toml), and "press <description>" still
+# lands here, since no other integration's verb starts with "press".
+force_prefixes = ["keybind", "key bind"]
+# Words that only say "run a keybind", ignored on both sides: "run close window" is "close window". "open" and
+# "launch" are here because launcher binds are named for what they open ("Terminal"), so "open terminal" is that bind.
+# "activate" and "engage" are the one-word {activate} forms that never start a description the way "start" or "enable" can.
+match_ignore_words = ["run", "press", "keybind", "key", "bind", "shortcut", "do", "trigger", "open", "launch", "activate", "engage", "a", "an", "any", "some", "new"]
+# Candidate labels name what runs ("Close Window", "Submap: Cursor"), so pickers leave the action word out.
+action_labels = false
+
+# Regexes (case-insensitive) on the label; a match asks Yes/No before the bind runs.
+confirm_labels = [
+  '\bclose\b',
+  '\bkill',
+  '\b(exit|quit) hyprland\b',
+  '\blog ?out\b',
+  '\bshut ?down\b',
+  '\bpower (off|button)\b',
+  '\breboot\b',
+  '\b(suspend|hibernate|sleep)\b',
+  '^lock\b',
+  '\block (screen|session)\b',
+  # Not the Delete submaps, whose entry deletes nothing: "delete" in a label that does not start with "Submap: ". Spelled
+  # without look-around, which the Rust router's regex engine lacks: the first alternatives are a label starting with
+  # "delete" (the prefix test below would eat its first letter) or with "Submap:delete", then one that differs from
+  # "submap: " at its first differing character.
+  '^delete\b|^submap:delete\b|^(?:[^s\n]|s[^u\n]|su[^b\n]|sub[^m\n]|subm[^a\n]|subma[^p\n]|submap[^:\n]|submap:[^ \n]).*\bdelete\b',
+  '\bclear\b',
+]
+
+# Submap phrases before the catch-all, so "cursor mode" enters the Cursor submap rather than matching binds.
+verbs = [
+  { action = "exit_submap",  match = '({deactivate}|reset|quit) (the )?(current )?submap( mode)?' },
+  { action = "enter_submap", match = '(({activate}|{focus}|open) )?(the )?submap {target}' },
+  { action = "enter_submap", match = '(({activate}|{focus}|open) )?(the )?{target} (submap|mode)' },
+  { action = "run",          match = '{target}' },
+]
+
+# A few common binds rather than the whole list, which "<any keybind description>" stands for.
+examples = [
+  "toggle fullscreen",
+  "close window",
+  "go to workspace <number>",
+  "cursor mode",
+  "activate <submap name> submap",
+  "exit submap",
+  "<any keybind description>",
+  "press <keybind description>",
+]
+
+[actions]
+exit_submap = 'exit_submap'
+
+[actions.run]
+run = 'run_keybind "$VOXCMD_ID"'
+candidates = "bind_candidates"
+
+[actions.enter_submap]
+run = 'run_keybind "$VOXCMD_ID"'
+candidates = "submap_candidates"
+
+# Tab on these examples in Voice Help lists every submap and every bind, and picking one runs it.
+[[help]]
+action = "enter_submap"
+list = "submap_help"
+
+[[help]]
+action = "exit_submap"
+id = ""
+label = "Exit submap"
+
+[[help]]
+action = "run"
+list = "bind_help"
