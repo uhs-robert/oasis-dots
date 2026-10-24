@@ -28,6 +28,11 @@ Item {
     readonly property int bar_height: BarSettings.height_for(root.rule)
     readonly property string position: BarSettings.position_for(root.rule)
     readonly property real center_width: center_island.body_item.width
+    // The floating strip (Style.strip_floats): the plate sits strip_inset in from the screen edge and strip_side in from
+    // each side, so the bar window is that much taller and the islands and plate shift toward the open edge by half of it.
+    readonly property real strip_inset: Style.strip_floats ? Style.bar_strip_inset : 0
+    readonly property real strip_side: Style.strip_floats ? Style.bar_strip_side : 0
+    readonly property real strip_shift: (root.position === "bottom" ? -1 : 1) * root.strip_inset / 2
     // Lualine has no center island; its modules move into the right island's sections.
     readonly property bool has_center: !Style.bar_lualine && root.center_entries.length > 0
 
@@ -117,13 +122,15 @@ Item {
     }
 
     Loader {
-        width: root.width
+        x: root.strip_side
+        width: root.width - root.strip_side * 2
         height: root.bar_height
         anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: root.strip_shift
         active: Style.strip_shape
         sourceComponent: StripBackground {
             edge: root.position
-            length: root.width
+            length: parent.width
             thickness: root.bar_height
             frame: root.frame
             screen_name: root.screen_name
@@ -135,8 +142,9 @@ Item {
         id: left_island
         cap_right_fill: Style.bar_lualine && LualineState.last_fill[root.screen_name] ? LualineState.last_fill[root.screen_name] : "transparent"
         anchors.left: parent.left
-        anchors.leftMargin: root.frame ? root.frame.start : 0
+        anchors.leftMargin: root.frame ? root.frame.start : root.strip_side
         anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: root.strip_shift
         bg_color: Style.strip_shape ? Style.strip_color : Style.bar_side_bg
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
@@ -245,6 +253,7 @@ Item {
         id: center_island
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: root.strip_shift
         bg_color: Style.strip_shape ? Style.strip_color : Style.bar_center_bg
         border_width: Style.bar_border_width
         border_color: Style.bar_border_color
@@ -309,8 +318,9 @@ Item {
         height: root.bar_height
         id: right_island
         anchors.right: parent.right
-        anchors.rightMargin: root.frame ? root.frame.end : 0
+        anchors.rightMargin: root.frame ? root.frame.end : root.strip_side
         anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: root.strip_shift
         // Lualine x shares section c's mantle, so the idle cap melts into the bar like lualine's c|x boundary.
         bg_color: Style.bar_lualine ? Theme.bg_mantle : Style.strip_shape ? Style.strip_color : Style.bar_side_bg
         border_width: Style.bar_border_width

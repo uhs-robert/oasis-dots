@@ -48,18 +48,32 @@ function band_rim(length, thickness, inset_start, inset_end) {
     return [[inset_start, thickness], [length - inset_end, thickness]];
 }
 
+// A plate (a band set in from the screen edge, `ends` an IslandOutlines profile, "" for an ordinary band): its outline
+// from the left end round the open edge to the right end, the ends `cap` px deep. The top edge closes it.
+function plate_rim(ends, length, thickness, cap) {
+    return Outlines.rim_path(ends, length, thickness, cap, true, true);
+}
+
+// The plate's rim stroke `width` wide as a closed loop, so the stroke lies inside the outline all the way round.
+function plate_rim_stroke(ends, length, thickness, cap, width) {
+    const loop = Outlines.inset_ring(plate_rim(ends, length, thickness, cap), width / 2);
+    return loop.concat([loop[0]]);
+}
+
 // The rim's centre line for a stroke `width` wide, so the stroke lies inside the band.
 function band_rim_stroke(length, thickness, inset_start, inset_end, width) {
     return Outlines.inset(band_rim(length, thickness, inset_start, inset_end), width / 2);
 }
 
 // The closed fill, always the band's whole length whatever the rim's insets.
-function band_fill(length, thickness) {
+function band_fill(length, thickness, ends, cap) {
+    if (ends) return Outlines.fill_path(plate_rim(ends, length, thickness, cap), length, true, true);
     return Outlines.fill_path(band_rim(length, thickness, 0, 0), length, false, false);
 }
 
 // The left and right x of the fill at height y inside a rim `border` wide; [0, 0] past it.
-function band_span(length, thickness, border, y) {
+function band_span(length, thickness, border, y, ends, cap) {
+    if (ends) return y < border ? [0, 0] : Outlines.span_at(Outlines.inset(plate_rim(ends, length, thickness, cap), border), y);
     return Outlines.span_at(Outlines.inset(band_rim(length, thickness, 0, 0), border), y);
 }
 
