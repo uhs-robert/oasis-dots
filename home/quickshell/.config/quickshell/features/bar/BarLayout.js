@@ -17,6 +17,16 @@ function is_vertical(position) {
     return position === "left" || position === "right";
 }
 
+// Whether a screen draws the screen frame: the frame is laid out for a top or bottom bar only, so a side bar goes without.
+function draws_frame(frame_on, position) {
+    return frame_on && !is_vertical(position);
+}
+
+// Whether any screen draws the frame, which is when Hyprland should shape windows to it.
+function any_draws_frame(frame_on, screen_positions) {
+    return screen_positions.some(p => draws_frame(frame_on, p));
+}
+
 // The position `delta` steps on from `position` in `positions`, wrapping.
 function step_position(position, delta) {
     const at = Math.max(0, positions.indexOf(position));

@@ -3,6 +3,7 @@ import QtQuick.Shapes
 import qs.ui.effects
 import qs.ui.frames
 import "../../ui/frames/BandGeometry.js" as Band
+import "BarLayout.js" as BarLayout
 
 // One band along a screen edge (BandGeometry.js): fill, vertical shade, dither, scanlines, inset line and rim, drawn
 // in the band frame and placed on `edge`. It knows nothing of the bar or its islands; callers pass the tokens.
@@ -41,7 +42,7 @@ Item {
     // { x, y, w, h } in the band frame where the inset line, rim and ornament are left out, for a drawer's mouth.
     property var line_gaps: []
 
-    readonly property bool vertical: root.edge === "left" || root.edge === "right"
+    readonly property bool vertical: BarLayout.is_vertical(root.edge)
     readonly property var affine: Band.band_affine(root.edge, root.thickness)
     readonly property real first_scanline: Band.phase_wrap(-root.phase_y, root.scanline_period)
     readonly property real inset_line_y: root.thickness - root.inset_gap - root.inset_width / 2

@@ -8,6 +8,7 @@ import qs.theme
 import qs.features.popups
 import "../../ui/frames/BandGeometry.js" as Band
 import "../../ui/frames/IslandOutlines.js" as Outlines
+import "BarLayout.js" as BarLayout
 
 Item {
     id: root
@@ -139,12 +140,12 @@ Item {
     // `length` by `thickness` item turned onto the edge by `deco_frame`; the modules never turn. On a left or right
     // bar the island is a column: `length` runs down the screen and `thickness` across it.
     property string edge: "top"
-    readonly property bool vertical: root.edge === "left" || root.edge === "right"
+    readonly property bool vertical: BarLayout.is_vertical(root.edge)
     readonly property bool flipped: root.edge === "bottom"
     property real thickness: 30
     readonly property real body_span: root.vertical ? body.height : body.width
     readonly property real length: root.capsule ? root.body_span + root.capsule_inset * 2 : root.body_span + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0) + root.lug * 2
-    // The visor and the octagon's rim are horizontal-only and mirror under a bottom bar with this; every other layer uses deco_frame.
+    // The visor and the octagon rim are horizontal-only (a side bar never draws them) and mirror under a bottom bar with this; the capsule has its own scale; every other layer uses deco_frame.
     Scale {
         id: mirror
         origin.y: root.height / 2

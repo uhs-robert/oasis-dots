@@ -30,6 +30,7 @@ import qs.features.voice
 import qs.features.popups
 import qs.features.audio
 import qs.features.style
+import "features/bar/BarLayout.js" as BarLayout
 
 ShellRoot {
     id: root
@@ -53,7 +54,7 @@ ShellRoot {
                 readonly property bool has_bar: screen_scope.rule !== null && screen_scope.rule.bar !== false
                 readonly property string bar_position: screen_scope.has_bar ? BarSettings.position_for(screen_scope.rule) : "top"
                 readonly property bool bar_bottom: screen_scope.bar_position === "bottom"
-                readonly property bool bar_vertical: screen_scope.bar_position === "left" || screen_scope.bar_position === "right"
+                readonly property bool bar_vertical: BarLayout.is_vertical(screen_scope.bar_position)
                 readonly property int bar_height: BarSettings.height_for(screen_scope.rule)
                 readonly property var frame: ScreenFrames.layout_for(screen_scope.modelData)
                 // The last frame, held so the frame's bindings never see null while its loader drops it.

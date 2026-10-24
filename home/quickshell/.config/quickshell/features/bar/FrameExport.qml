@@ -9,7 +9,7 @@ import "../../ui/frames/Corners.js" as Corners
 Scope {
     id: root
 
-    readonly property var profile: Style.screen_frame_profile
+    readonly property var profile: ScreenFrames.any_frame ? Style.screen_frame_profile : null
     // The corner as drawn (fitted to its cap), like ScreenFrameSync sends Hyprland.
     readonly property var drawn: root.profile ? Corners.fit(root.profile.corner, root.profile.radius, root.profile.step) : null
     readonly property var snapshot: root.profile ? { on: true, corner: root.profile.corner, radius: root.drawn.radius } : { on: false, corner: "", radius: 0 }
