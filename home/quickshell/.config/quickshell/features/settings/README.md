@@ -19,9 +19,9 @@ Every section ends with a block that describes the selected (or hovered) setting
 
 Settings > Clock sets the time format and the calendar's first day of week. Time format is the locale's convention (the default), 12-hour or 24-hour, and every clock follows it: the bar clock in each style, the clock popup, weather hours and the Updates, Keeptabs and notification times. Lock-screen skins with a fixed game-style clock keep their own format. First day of week follows the locale (the default), or is Monday or Sunday. An old `time_format` in `weather.local.json` is carried over once and then removed. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
 
-## On-screen display settings
+## OSD edge
 
-Settings > On-screen display picks the edge the volume, brightness and voice OSD comes out of: opposite the bar (the default), the left edge or the right edge, the same on every monitor. On a side edge it sits centred, with the same panel as on top or bottom. It saves to `osd.json` in the Quickshell state folder.
+Settings > Style > OSD edge picks the edge the volume, brightness and voice OSD comes out of: opposite the bar (the default), the left edge or the right edge, the same on every monitor. On a side edge it sits centred, with the same panel as on top or bottom. It saves to `osd.json` in the Quickshell state folder.
 
 ## Input settings
 
