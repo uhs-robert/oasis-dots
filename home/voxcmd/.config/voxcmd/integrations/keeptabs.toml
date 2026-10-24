@@ -23,9 +23,10 @@ examples = [
 ]
 
 # The other jumps keep their toast: "no agent is waiting" is their only reply when nothing moves, and silent would drop
-# it. jump_done is silent and sends that reply itself.
+# it.
 [actions]
 jump_waiting = 'focus_first_in_state waiting'
+# Silent, so it sends its own "no agent is done" reply.
 jump_done = { run = 'focus_oldest_done', silent = true }
 jump_next = 'focus_cycled_agent 1'
 jump_previous = 'focus_cycled_agent -1'
