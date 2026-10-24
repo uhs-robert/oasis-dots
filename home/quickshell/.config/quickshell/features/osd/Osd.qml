@@ -97,7 +97,7 @@ PanelWindow {
 
     screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
     visible: root.wanted || root.reveal > 0
-    // Opposite the bar, clear of the popups that grow from it, unless Settings > On-screen display pins a side edge.
+    // Opposite the bar, clear of the popups that grow from it, unless Settings > Style > OSD edge pins a side edge.
     readonly property string edge: OsdSettings.edge_for(BarSettings.position_on(root.held_screen_name))
     readonly property bool vertical: root.edge === "left" || root.edge === "right"
     readonly property real screen_width: root.screen ? root.screen.width : 1920

@@ -3,9 +3,12 @@ import QtQuick.Layouts
 import qs.theme
 import qs.theme.transitions
 import qs.features.settings
+import qs.features.osd
 
 RowsSection {
     id: root
+
+    readonly property var osd_edge_names: ({ opposite: "Opposite the bar", left: "Left edge", right: "Right edge" })
 
     footer_hint: "j/k move · Enter list · c cava line · h/Esc sections · q close"
     rows: [
@@ -34,6 +37,14 @@ RowsSection {
             text: v => v,
             value: () => HotCornersSettings.enabled ? "on" : "off",
             set: v => HotCornersSettings.set_enabled(v === "on")
+        },
+        {
+            label: "OSD edge",
+            desc: "The screen edge the volume, brightness and voice OSD comes out of, on every monitor. On a side edge it sits centred, with the same panel as on top or bottom.",
+            values: () => OsdSettings.choices.edge,
+            text: v => root.osd_edge_names[v] || String(v),
+            value: () => OsdSettings.edge,
+            set: v => OsdSettings.set("edge", v)
         }
     ]
 
