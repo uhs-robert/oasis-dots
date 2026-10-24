@@ -1446,6 +1446,8 @@ if [ -n "$rust_matcher" ]; then
   # Rust's own, so the bash voxcmd is asked about the integrations that stay on it (Overview hears "stop clicking" too,
   # which proves the logger sees its calls) and never about click.
   # The "numbered picks" section pointed VOXCMD_LEGACY_BIN at its own copy, past the logger.
+  # Opening a mode looks for voxcmd-autostop beside the legacy binary, here the logger.
+  ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$root/voxcmd-autostop"
   VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "click mode" >/dev/null 2>&1
   session_file=$XDG_RUNTIME_DIR/voxcmd/session.json
   opened=0
