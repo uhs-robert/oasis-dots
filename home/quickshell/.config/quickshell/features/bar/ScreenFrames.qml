@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import qs.theme
 import "../../ui/frames/FrameGeometry.js" as FrameGeometry
+import "BarLayout.js" as BarLayout
 
 // Each screen's screen frame layout (FrameGeometry.frame_layout), or null with no frame (or a side bar), for whoever places something
 // against the frame: the frame itself and, by screen, the drawers.
@@ -21,16 +22,23 @@ Singleton {
         return FrameGeometry.drawer_window_rects(root.drawer_windows, screen_name);
     }
 
-    function layout_for(screen) {
-        if (!Style.screen_frame_on) return null;
+    // The screen's bar edge, "" with no bar.
+    function position_for_screen(screen) {
         const rule = BarSettings.rule_for(screen);
-        const has_bar = rule !== null && rule.bar !== false;
-        const position = has_bar ? BarSettings.position_for(rule) : "";
-        // The frame is laid out for a top or bottom bar only, so a screen with a side bar goes without one.
-        if (position === "left" || position === "right") return null;
+        return rule !== null && rule.bar !== false ? BarSettings.position_for(rule) : "";
+    }
+
+    function layout_for(screen) {
+        const rule = BarSettings.rule_for(screen);
+        const position = root.position_for_screen(screen);
+        const has_bar = position !== "";
+        if (!BarLayout.draws_frame(Style.screen_frame_on, position)) return null;
         const bar_edge = position === "bottom" ? "bottom" : has_bar ? "top" : "";
         return FrameGeometry.frame_layout(screen.width, screen.height, bar_edge, BarSettings.height_for(rule), Object.assign({}, Style.screen_frame_kit, Style.screen_frame_profile, { fill_overlap: Style.islands_translucent ? 0 : 1 }));
     }
+
+    // Whether any screen draws a frame, for what shapes the system around it (Hyprland's window rules, app corners).
+    readonly property bool any_frame: BarLayout.any_draws_frame(Style.screen_frame_on, Quickshell.screens.map(s => root.position_for_screen(s)))
 
     // The hole's outline as points in the hole's own coordinates (its top-left corner at 0, 0), for a surface that fills
     // the hole and must keep the frame's corner profile. Empty with no frame.

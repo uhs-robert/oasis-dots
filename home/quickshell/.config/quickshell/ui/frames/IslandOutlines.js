@@ -2,7 +2,7 @@
 
 // The island shapes Island.qml draws as one outline: a fill polygon, a rim traced inside it and the fill's span
 // at a height, all from each open end's profile. Everything is in the top-bar frame (y = 0 on the screen edge,
-// y = h on the open edge); Island mirrors the drawing under a bottom bar.
+// y = h on the open edge); Island places the drawing on its edge with `deco_frame`.
 
 const names = ["chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "rect"];
 
@@ -11,8 +11,8 @@ function has(shape) {
 }
 
 // The shapes with a true vertical form on a left or right bar: BandGeometry.band_affine turns the same top-bar frame
-// onto the side, so a shape is vertical-ready when everything it draws lies in that frame (the "full" and "strip" bands
-// draw as "none" islands). The rest are still to come and meanwhile draw as `rect`.
+// onto the side, so a shape is vertical-ready when everything it draws lies in that frame (the "full" and "strip" bands are not islands and
+// draw as "none"). The rest are still to come and meanwhile draw as `rect`.
 const vertical_names = ["slant", "rect", "chevron", "tab", "none", "underline", "brackets"];
 
 function vertical_shape(shape) {
