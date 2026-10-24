@@ -1,0 +1,62 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Focuses Firefox tabs and opens sites: "go to <tab>", "open <site> in firefox".
+# Opening a site without saying where is firefox-sites.toml, a fallback after the apps. Format: ~/.config/voxcmd/README.md
+name = "Firefox"
+# The tab or page that appears is the feedback; a failure still says why.
+silent = true
+# Tab titles and site names are matched by their words: a fuzzy hit on scattered letters would switch to the wrong tab.
+target_match = "words"
+# Candidate labels name the tab or page, which says what runs.
+action_labels = false
+# The hooks hand the same list to voxcmd's word matching, so these never count as a match.
+match_ignore_words = ["tab", "tabs", "website", "site", "page"]
+
+# Specific before general: "go to the X tab" before "go to X", "open X in firefox" before nothing.
+verbs = [
+  { action = "new_tab",   match = '({open} )?(a )?new tab' },
+  { action = "close_tab", match = '{close} (the |this |current |this current )?tab' },
+  { action = "open_here", match = '{open} {target} (here|in this tab|in the current tab|in the same tab)' },
+  { action = "open_site", match = '{open} {target} (in|on|with) (firefox|the browser|a new tab|new tab)' },
+  { action = "open_site", match = '{open} (the )?(website|web site|site|url|page|web page) {target}' },
+  { action = "open_site", match = '{open} (the )?{target} (website|web site|site)' },
+  { action = "focus_tab", match = '(find|{focus}) (the |my )?{target} tab' },
+  { action = "focus_tab", match = '{focus} (the )?tab {target}' },
+  { action = "focus_tab", match = '{focus} {target}' },
+]
+
+examples = [
+  "go to <tab>",
+  "find the <tab> tab",
+  "go to <site>.com",
+  "open <site> in firefox",
+  "open website <site>",
+  "open <site> here",
+  "new tab",
+  "close tab",
+]
+
+[actions]
+new_tab = '"$VOXCMD_SHARE_DIR/firefox-tab" new-tab'
+close_tab = '"$VOXCMD_SHARE_DIR/firefox-tab" close-tab'
+search_site = '"$VOXCMD_SHARE_DIR/firefox-tab" search "$VOXCMD_ARG_TARGET"'
+search_here = '"$VOXCMD_SHARE_DIR/firefox-tab" open --here "$VOXCMD_ARG_TARGET"'
+
+[actions.focus_tab]
+run = 'focus_tab "$VOXCMD_ID"'
+candidates = "tab_candidates"
+
+# A site found nowhere is searched for: the phrase said Firefox, so a search is what is left to do.
+[actions.open_site]
+run = '"$VOXCMD_SHARE_DIR/firefox-tab" open "$VOXCMD_ID"'
+candidates = "site_candidates"
+no_match = "search_site"
+
+[actions.open_here]
+run = '"$VOXCMD_SHARE_DIR/firefox-tab" open --here "$VOXCMD_ID"'
+candidates = "site_candidates"
+no_match = "search_here"
+
+# Tab on these examples in Voice Help lists every tab; picking one focuses it.
+[[help]]
+action = "focus_tab"
+list = "tab_help"
