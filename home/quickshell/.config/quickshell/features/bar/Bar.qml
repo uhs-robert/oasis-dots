@@ -235,9 +235,9 @@ Item {
         height: root.bar_height
         anchors.verticalCenter: parent.verticalCenter
 
-        onShownChanged: CavaState.lualine_viewers += lualine_cava.shown ? 1 : -1
-        Component.onCompleted: if (lualine_cava.shown) CavaState.lualine_viewers += 1
-        Component.onDestruction: if (lualine_cava.shown) CavaState.lualine_viewers -= 1
+        onShownChanged: if (lualine_cava.shown) CavaState.register(lualine_cava); else CavaState.unregister(lualine_cava)
+        Component.onCompleted: if (lualine_cava.shown) CavaState.register(lualine_cava)
+        Component.onDestruction: CavaState.unregister(lualine_cava)
 
         CavaBars {
             anchors.left: parent.left
@@ -306,7 +306,13 @@ Item {
     }
 
     CavaBars {
+        id: island_cava
         parent: center_island.body_item
+        // Outside lualine every bar keeps cava running while media plays, drawn or not: the media popup's strip reads the same feed.
+        readonly property bool viewing: !Style.bar_lualine
+        onViewingChanged: if (island_cava.viewing) CavaState.register(island_cava); else CavaState.unregister(island_cava)
+        Component.onCompleted: if (island_cava.viewing) CavaState.register(island_cava)
+        Component.onDestruction: CavaState.unregister(island_cava)
         anchors.left: parent.left
         anchors.right: parent.right
         // Sits on the island's open edge: the bottom one, or the top one under a bottom bar, clear of its underline.
