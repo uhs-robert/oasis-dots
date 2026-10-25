@@ -22,8 +22,8 @@ Item {
     property real bar_height: 24
     property string screen_name: ""
     // Islands hold the a/b modules and the x/y/z sections, so the strip follows them rather than owning them.
-    property Item left_island: null
-    property Item right_island: null
+    property Island left_island: null
+    property Island right_island: null
     // The cava module is listed in bars.json.
     property bool lists_cava: false
     property var lualine_entries: []

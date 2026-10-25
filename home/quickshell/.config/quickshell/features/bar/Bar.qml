@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import Quickshell.Hyprland
 import qs.core
 import qs.theme
