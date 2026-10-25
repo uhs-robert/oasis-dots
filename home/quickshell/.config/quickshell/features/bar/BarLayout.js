@@ -33,11 +33,10 @@ function any_draws_frame(frame_on, screen_positions) {
     return screen_positions.some(p => draws_frame(frame_on, p));
 }
 
-// What Settings steps through. Left and right stay valid when saved but are not offered until the side bar looks
-// right (popups, the remaining shapes, module fitting); re-enable them by making this `positions`.
-var settings_positions = ["top", "bottom"];
+// What Settings steps through.
+var settings_positions = positions;
 
-// The position `delta` steps on from `position` in `settings_positions`, wrapping; a saved side position steps as from the first.
+// The position `delta` steps on from `position` in `settings_positions`, wrapping.
 function step_position(position, delta) {
     const at = Math.max(0, settings_positions.indexOf(position));
     return settings_positions[(at + delta + settings_positions.length) % settings_positions.length];
