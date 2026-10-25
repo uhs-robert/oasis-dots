@@ -1,0 +1,130 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Opens installed apps and focuses, moves, resizes or closes Hyprland windows. Format: ~/.config/voxcmd/README.md
+name = "Apps"
+# App names and window classes are short, so a fuzzy hit on scattered letters would run the wrong thing.
+target_match = "words"
+# "close the firefox window" is "close firefox"; a target of only these words ("close window", "open application")
+# matches nothing and is left to the keybinds fallback. apps.sh reads the list back as VOXCMD_MATCH_IGNORE_WORDS.
+match_ignore_words = ["window", "app", "application", "program"]
+# Only close labels read "<app> window: <title>", so only closing asks first.
+confirm_labels = ['^[^:]+ window(:|$)']
+
+# What this integration leaves to others is decided in the candidates hooks (none printed = nothing offered), not in
+# `yield` verbs: the matcher goldens count a yielding verb as no match, where the bash original matched and offered
+# nothing. Moving has no shared intent, so its words are written out; apps.sh repeats them for the keybind check.
+# move's target is "<window> to workspace <n>" and a resize's "<window> to 1200 by 800": one placeholder carries
+# both and the hook splits it. A resize target that names no size ("resize left") offers nothing, which leaves it to
+# the Resize submap's keybinds.
+verbs = [
+  { action = "open_new",         match = '{open} (a )?new {target}' },
+  { action = "open",             match = '{open} {target}' },
+  { action = "swap",             match = '(swap( places)?|switch places) {target}' },
+  { action = "focus",            match = '{focus} {target}' },
+  { action = "move",             match = '(move|send|put|take|bring|shift|push|carry|relocate|place) {target}' },
+  { action = "move_with_window", match = '(switch) {target}' },
+  { action = "close",            match = '{close} {target}' },
+  { action = "resize",           match = '(resize|{set}) {target}' },
+  { action = "grow",             match = '(grow|enlarge|increase|expand|extend|raise|add) {target}' },
+  { action = "shrink",           match = '(shrink|decrease|reduce|lower) {target}' },
+  { action = "resize_spoken_size", match = '[0-9]+( [0-9]{3})?( (by|x) |x)[0-9]+( [0-9]{3})?( pixels?| px)?' },
+]
+
+examples = [
+  "open <app>",
+  "open a new <app>",
+  "focus <window>",
+  "move <window> to workspace <number>",
+  "move <window> to the third workspace",
+  "move <window> to special workspace <name>",
+  "move this window to workspace <number>",
+  "send it to the third workspace",
+  "put to special workspace <name>",
+  "switch <window> to workspace <number>",
+  "swap this window with <window>",
+  "close <window>",
+  "resize the window to <width> by <height>",
+  "make it <number> pixels tall",
+  "set the width to <number>",
+  "make it wider by <number>",
+  "increase the width by <number>",
+  "decrease the height by <number>",
+  "grow horizontally by <number>",
+  "shrink it by <number> pixels",
+  "resize <window> to <width> by <height>",
+]
+
+# The window that opens, takes focus or changes size is the feedback; moving and closing keep their toast. Hooks that
+# list windows or apps get 10 s: the bash original had no limit, and a desktop-file scan plus hyprctl can pass 3 s.
+
+# An app that already has a window is focused rather than started again; "open new" always starts one. Starting an app
+# returns at the fork, so a sequence waits until its window has focus, or, for an app whose window class is not its
+# desktop id, until focus has moved off the window it started from.
+[actions.open]
+run = 'open_app "$VOXCMD_ID"'
+candidates = "apps_candidates open"
+silent = true
+wait_hook = 'app_window_focused "$VOXCMD_ID" || { [ -n "$(active_window_address)" ] && [ "$(active_window_address)" != "$VOXCMD_ACTIVE_BEFORE" ]; }'
+timeout_secs = 10
+
+[actions.open_new]
+run = 'start_app "$VOXCMD_ID"'
+candidates = "apps_candidates open_new"
+silent = true
+wait = "active_window_changed"
+timeout_secs = 10
+
+[actions.focus]
+run = 'focus_window "$VOXCMD_ID"'
+candidates = "apps_candidates focus"
+silent = true
+wait = "active_window_is_id"
+timeout_secs = 10
+
+[actions.move]
+run = 'move_window "$VOXCMD_ID"'
+candidates = "apps_candidates move"
+timeout_secs = 10
+
+[actions.move_with_window]
+run = 'move_window "$VOXCMD_ID"'
+candidates = "apps_candidates move_with_window"
+timeout_secs = 10
+
+[actions.swap]
+run = 'swap_window "$VOXCMD_ID"'
+candidates = "apps_candidates swap"
+silent = true
+timeout_secs = 10
+
+[actions.close]
+run = 'close_window "$VOXCMD_ID"'
+candidates = "apps_candidates close"
+wait = "window_gone"
+timeout_secs = 10
+
+[actions.resize]
+run = 'resize_option "$VOXCMD_ID"'
+candidates = "apps_candidates resize"
+silent = true
+timeout_secs = 10
+
+[actions.grow]
+run = 'resize_option "$VOXCMD_ID"'
+candidates = "apps_candidates grow"
+silent = true
+timeout_secs = 10
+
+[actions.shrink]
+run = 'resize_option "$VOXCMD_ID"'
+candidates = "apps_candidates shrink"
+silent = true
+timeout_secs = 10
+
+# The verb has no target to carry the size, so the action reads it from the transcript.
+[actions.resize_spoken_size]
+run = 'resize_active_to_spoken_size "$VOXCMD_RAW_TRANSCRIPT"'
+silent = true
+
+[[help]]
+action = "open"
+list = "help_apps"

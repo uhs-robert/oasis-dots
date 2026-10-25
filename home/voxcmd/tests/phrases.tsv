@@ -501,3 +501,10 @@ cancel the reminder about the oven please	Timers/cancel	a tail word after a canc
 hide the workspace overview	Overview/overview_close	hide is a close verb of the overview
 how far ahead is tokyo thanks	Answers/zone_offset	a tail word after a zone is not part of its name
 what time is it in tokyo please	Answers/zone_now	a tail word after a zone is not part of its name
+switch firefox to workspace 4	Apps/move_with_window	switch moves only a window it is given
+shift firefox to workspace 4	Apps/move
+bring slack to workspace 3	Apps/move
+resize the window to 1200 by 800	Apps/resize
+1200 by 800	Apps/resize_spoken_size	no target: the size is read from the transcript
+make it wider	Apps/resize	no amount: answered with a hint
+swap this window with firefox	Apps/swap

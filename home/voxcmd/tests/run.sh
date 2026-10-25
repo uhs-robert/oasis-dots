@@ -1917,14 +1917,14 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
 firefox_config=$root/firefox-config
 mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
 cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
-copy_shipped_integrations "$firefox_config" firefox firefox-sites keybinds
+copy_shipped_integrations "$firefox_config" apps firefox firefox-sites keybinds
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
 check "a tab shown in a second window is one tab, not also that window" "[[ \$(grep -c '^option' <<<\"\$out\") == 1 ]] && grep -q 'action=focus_tab' <<<\"\$out\""
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to private notes" 2>&1)
 check "a private window is found by its title" "grep -q \"action=focus_tab .* id='0x3003 Private notes'\" <<<\"\$out\""
 rm -f "$firefox_config/integrations.d/firefox.sh" "$firefox_config/integrations/firefox.toml" "$firefox_config/integrations/firefox.sh"
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
-check "without firefox.toml, Apps still focuses the window by its title and Firefox no longer answers" "grep -q 'Apps (apps.sh) action=focus' <<<\"\$out\" && ! grep -q 'Firefox (firefox\.toml' <<<\"\$out\""
+check "without firefox.toml, Apps still focuses the window by its title and Firefox no longer answers" "grep -Eq 'Apps \(apps\.(sh|toml)\) action=focus' <<<\"\$out\" && ! grep -q 'Firefox (firefox\.toml' <<<\"\$out\""
 if [ -n "$rust_matcher" ]; then
   # The hook yields what Apps, Keybinds, Sessions and Keeptabs own; it carries its own copy of Apps' checks. This
   # section's binds are click binds only, so the keybind checks bring their own.
@@ -2126,7 +2126,7 @@ section "near misses"
 near_config=$root/config-near
 mkdir -p "$near_config/integrations.d" "$near_config/replacements.d"
 cp "$package/.config/voxcmd/integrations.d/apps.sh" "$package/.config/voxcmd/integrations.d/devices.sh" "$package/.config/voxcmd/integrations.d/sessions.sh" "$near_config/integrations.d/"
-copy_shipped_integrations "$near_config" sessions
+copy_shipped_integrations "$near_config" apps sessions
 near_actions=$root/near-actions.log
 {
   cat <<'STUB'
@@ -2177,7 +2177,7 @@ check "of two alternatives that fit, the one leaving fewer words wins" "[[ \$out
 out=$(near_dry "open session notes")
 check "a target naming no candidate offers no 'not found' report" "grep -q 'result:      no match' <<<\"\$out\""
 out=$(near_dry "firefox open")
-check "other integrations' verbs reorder too: Apps" "grep -q 'Apps (apps.sh) \[near miss\] action=open target=.firefox.' <<<\"\$out\""
+check "other integrations' verbs reorder too: Apps" "grep -Eq 'Apps \(apps\.(sh|toml)\) \[near miss\] action=open target=.firefox.' <<<\"\$out\""
 out=$(near_dry "bluetooth turn on")
 check "other integrations' verbs reorder too: Devices" "grep -q 'Devices (devices.sh) \[near miss\] action=bluetooth_on' <<<\"\$out\""
 out=$(near_dry "force.. kitchen blinds raise")
@@ -2323,6 +2323,48 @@ check "no tracked agents toasts that" "grep -q '^notify-send .*no agents are tra
 keeptabs_say "go to the idle two agent"
 check "a tab in a title is blanked, so the agent still matches by its title" "grep -q '^keeptabs-pick --focus j\$' '$log'"
 unset SANDBOX_AGENTS_JSON
+
+section "apps by voice"
+# Apps runs for real against the sandbox's hyprctl and notify-send stubs, over the fixture desktop: kitty is focused
+# (700x1000, workspace 1), Firefox is beside it, Slack is on workspace 2.
+apps_config=$root/apps-config
+mkdir -p "$apps_config/integrations.d" "$apps_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/apps.sh" "$apps_config/integrations.d/"
+copy_shipped_integrations "$apps_config" apps
+if [ -n "$rust_matcher" ]; then
+  apps_fixtures=$package/tests/fixtures
+  apps_env=(XDG_DATA_HOME="$apps_fixtures" XDG_DATA_DIRS="$apps_fixtures" VOXCMD_CONFIG_DIR="$apps_config"
+    SANDBOX_CLIENTS_JSON="$(cat "$apps_fixtures/clients.json")" SANDBOX_MONITORS_JSON="$(cat "$apps_fixtures/monitors.json")"
+    SANDBOX_ACTIVEWINDOW_JSON="$(jq -c '.[] | select(.focusHistoryID == 0)' "$apps_fixtures/clients.json")"
+    SANDBOX_BINDS_JSON="$(cat "$apps_fixtures/binds.json")")
+  apps_run() {
+    : >"$log"
+    env "${apps_env[@]}" "$routed" run "$1" >/dev/null 2>&1
+  }
+  apps_dispatches() { sed -n 's/^hyprctl dispatch //p' "$log"; }
+  apps_explain() { env "${apps_env[@]}" "$routed" explain "$1" 2>&1; }
+  # shellcheck disable=SC2016 # the single quotes are bash -c's own script, expanded by the child
+  apps_help() { env "${apps_env[@]}" VOXCMD_SHARE_DIR="$package/.local/share/voxcmd" bash -c '. "$1"; help_apps' _ "$apps_config/integrations/apps.sh"; }
+  out=$(apps_explain "close slack")
+  check "explain names apps.toml" "grep -q 'Apps (apps\\.toml)' <<<\"\$out\""
+  check "closing a window asks first" "grep -q 'confirm: true' <<<\"\$out\" && grep -q \"id='0x1002'\" <<<\"\$out\""
+  out=$(apps_explain "open play the song thanks")
+  check "a target ending in a tail word stays whole" "grep -q 'Apps (apps.toml, normal): matched verb .* action=open target=play the song thanks' <<<\"\$out\""
+
+  apps_run "resize the window to 1200 by 800"
+  check "a resize to an exact size moves the width first, by the difference" "[[ \$(apps_dispatches | head -n1) == \"hl.dsp.window.resize({ window = 'address:0x1003', x = 500, y = 0, relative = true })\" ]]"
+  apps_run "1200 by 800"
+  check "a size said alone, read from the transcript, resizes the active window" "[[ \$(apps_dispatches | head -n1) == \"hl.dsp.window.resize({ window = 'address:0x1003', x = 500, y = 0, relative = true })\" ]]"
+  apps_run "make it wider"
+  check "a direction with no amount says how much, and resizes nothing" "grep -q '^notify-send .*Say how much' '$log' && [[ -z \$(apps_dispatches) ]]"
+  apps_run "swap this window with firefox"
+  check "swap names the focused window as the source" "[[ \$(apps_dispatches) == \"hl.dsp.window.swap({ window = 'address:0x1003', target = 'address:0x1001' })\" ]]"
+  apps_run "swap this window with slack"
+  check "and refuses a window on another workspace" "[[ -z \$(apps_dispatches) ]] && grep -q 'another workspace' '$log'"
+  apps_run "focus firefox"
+  check "focus dispatches the window's address" "[[ \$(apps_dispatches) == \"hl.dsp.focus({ window = 'address:0x1001' })\" ]]"
+  check "Tab in Voice Help lists every installed app once, by name" "[[ \$(apps_help | cut -f2 | paste -sd,) == 'Calendar,Firefox,kitty,Slack' ]]"
+fi
 
 section "voice help"
 # Voice Help lists every integration's examples, the fallbacks last, and Tab on one lists what it offers to run. The
