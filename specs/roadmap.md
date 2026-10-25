@@ -26,39 +26,33 @@ Out of scope: parity scorecards, a large docs/ tree, a shared cross-repo rules o
 
 ## Global vs this project
 
-Each idea is sorted by where it lives. Global means the Claude setup in `home/claude/.claude/`, loaded in every repo, so it must hold in an unrelated project.
+Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so it must hold in an unrelated project.
 
 **Global** (item G):
-- `plans/` and `logs/` replace the orchestrator scratch dir (today `~/.cache/dotfiles/orch/`) in the `orchestrator` and `orchestrator-handoff` skills, keeping the rule that anything durable moves to the repo's tracked docs in the last PR before the files are deleted.
-- Parallel briefs: "new work goes in a new file; only small, surgical edits to shared registries". It reduces sibling conflicts.
+- `plans/` and `logs/` replace the orchestrator scratch dir in the `orchestrator` and `orchestrator-handoff` skills; anything durable moves to tracked docs before they are deleted.
+- Parallel briefs: "new work in a new file; only small edits to shared registries".
 - Every fix ships a test that failed before the fix.
 
-**This project:**
-- The bad-input check (item 7).
-- The registry's `enabled` returns a reason, not a bool (item 1).
-- The generated-docs drift check (item 2).
-- Optional rising count floors (item 1).
-- Audience rules for `docs/` in AGENTS.md (item 0).
-- The decisions log format: dated, PR-linked, "chose X over Y because" (item 3).
+**This project:** the bad-input check (7); `enabled` returning a reason, not a bool (1); the generated-docs drift check (2); optional rising count floors (1); audience rules for `docs/` (0); the decisions log format (3).
 
 **Skip:**
-- A devlog: the trackers and the handoff skill already hand work between sessions.
-- Scorecards, parity checklists, perf budgets: upkeep with no dotfiles analogue (out of scope).
-- Corpus pins and an mdBook: no file corpus to pin, and `docs/` stays small.
-- A layering tool: `qml-layers` already does this.
-- Free-form params text: the manifest uses typed params, so they can be checked and fuzzed.
-- A flat `docs/` mixing developer and user pages: it is what the split in item 0 avoids.
+- A devlog: the trackers and handoff skill already do this.
+- Scorecards, parity checklists, perf budgets: out of scope, no analogue here.
+- Corpus pins, an mdBook: no corpus to pin; `docs/` stays small.
+- A layering tool: `qml-layers` exists.
+- Free-form params text: typed params can be checked and fuzzed.
+- A flat mixed `docs/`: item 0's split avoids it.
 
 ## 0. docs/ vs specs/, and local plans/ and logs/
 
-**Today.** `docs/` holds `keybinds.md` (204 lines) and `sounds.md` (128 lines), both user guides. Feature docs live beside the code (`QS/README.md`, 8 `features/*/README.md`, the Hyprland and voxcmd READMEs). Plans live in `.planning/` (excluded through `.git/info/exclude`: 4 project folders and a `roadmap.md`; some trackers span many sessions, like the parked voxcmd port) and the orchestrator's scratch in `~/.cache/dotfiles/orch/` (200 files: PR bodies, commit drafts, review and check evidence).
+**Today.** `docs/` holds `keybinds.md` (204 lines) and `sounds.md` (128 lines), both user guides. Feature docs live beside the code (`QS/README.md`, 8 `features/*/README.md`, the Hyprland and voxcmd READMEs). Plans live in `.planning/` (in `.git/info/exclude`; 4 project folders and a `roadmap.md`, some spanning many sessions) and the orchestrator's scratch in `~/.cache/dotfiles/orch/` (200 files: PR bodies, commit drafts, review evidence).
 
 **Scope.**
 - AGENTS.md "Docs" rule: "`docs/` is for users: written for someone who has not read the code, leading with what to do. `specs/` is for agents and developers: the roadmap, durable plans, surface specs and the decisions log. A feature's README stays beside its code. Neither repeats a rule from this file; link to it." Moves: none; `docs/` fits. Items 3 to 5 add `specs/decisions.md`, `specs/voxcmd-port.md`, `specs/surfaces/`.
 - `plans/` and `logs/` at the main checkout's root, for work in progress. `specs/` is tracked and durable; these are local and temporary. AGENTS.md wording: "`plans/<topic>.md` holds the plan for work in progress (drafts, batch order, open points); `logs/<topic>/` holds its evidence (check output, review notes, PR bodies). Whoever owns the topic deletes both once it is merged or dropped, after moving anything durable (a decision, a status) into `specs/` in the last PR. They exist in the main checkout only; briefs give their absolute paths."
-- Main checkout only, with absolute paths, over a copy per worktree: worktrees do not see ignored files, and one copy means a reviewer and the orchestrator read the same evidence. The orchestrator already briefs by absolute path. An agent with no brief can find the main checkout with `git rev-parse --path-format=absolute --git-common-dir` (its parent).
-- `.gitignore` here, `.git/info/exclude` in the global skill. In this repo, `/plans/` and `/logs/` go in `.gitignore`: every clone and every contributor's agent gets the rule, and it is reviewed like any rule. The global skill cannot commit to an unrelated repo, so where a repo has no such lines it adds them to `.git/info/exclude`, which needs no commit. Both are honoured by git's standard excludes, which `readme-links` reads.
-- How they meet what exists. Recommendation: `plans/` replaces `.planning/` (move the folders, drop the exclude line) and `logs/` absorbs the scratch, one home for each; the cost is updating the skills (item G) and the trackers that name the old paths. Later, ship-batch can delete a merged topic.
+- Main checkout only, with absolute paths, over a copy per worktree: worktrees do not see ignored files, and one copy means everyone reads the same evidence. The orchestrator already briefs by absolute path; an agent without one finds the main checkout as the parent of `git rev-parse --path-format=absolute --git-common-dir`.
+- `.gitignore` here, `.git/info/exclude` in the global skill. Here `/plans/` and `/logs/` go in `.gitignore`, so every clone and agent gets the rule and it is reviewed. The global skill cannot commit to an unrelated repo, so it falls back to `.git/info/exclude`. Git's standard excludes, which `readme-links` reads, honour both.
+- What exists. Recommendation: `plans/` replaces `.planning/` and `logs/` absorbs the scratch; the cost is updating the skills (item G) and trackers that name the old paths.
 - readme-links: `lib/check/steps/readme_links.py` reads only `*.md` under the Quickshell tree (`run_checks`), so `docs/` is unchecked today. Extend it to `docs/` and `specs/` for links and anchors, and add `"specs"` to `REPO_FOLDERS` (it lists `docs` already) so backticked `specs/` paths resolve. Check backticked paths in `docs/` and `specs/decisions.md`, not in plans, which name files that do not exist yet (this roadmap does).
 
 **Dependencies.** None.
@@ -67,30 +61,30 @@ Each idea is sorted by where it lives. Global means the Claude setup in `home/cl
 
 **Checks.** `readme-links` always runs ("tree" step) and `*.md` maps to scope `""`, so `scopes.py` is unchanged; its `lib/check/README.md` line changes.
 
-**Risks.** Dead links already in `docs/` surface; fix them in 0b. Local files never reach another machine or a reviewer; the move-to-`specs/` rule is the guard. `git clean -X` deletes both folders.
+**Risks.** Dead links in `docs/` surface; fix them in 0b. Local files never reach a reviewer; the move-to-`specs/` rule guards that. `git clean -X` deletes them.
 
 ## G. Global skill rules
 
-**Scope.** In `home/claude/.claude/skills/orchestrator/SKILL.md`, the "scratch dir" (named for briefs, reports and `codex-review.sh`) becomes `<main checkout>/logs/<topic>/`, and plan drafts go in `<main checkout>/plans/`. `orchestrator-handoff/SKILL.md` reads trackers from `plans/` where it reads `.planning/` today. Step 5's parallel bullet gains the new-file sentence; its fixer bullet says the test must fail before the fix.
+**Scope.** In `home/claude/.claude/skills/orchestrator/SKILL.md` the "scratch dir" (reports, `codex-review.sh`) becomes `<main checkout>/logs/<topic>/` and plan drafts go in `<main checkout>/plans/`; `orchestrator-handoff/SKILL.md` reads trackers from `plans/`, not `.planning/`. Step 5 gains the new-file sentence and the failed-before test rule.
 
 **Dependencies.** 0a (this repo's rule and `.gitignore` lines come first).
 
 **PRs.** G1: plans/ and logs/ in both skills, with the `.git/info/exclude` fallback. G2: the two brief sentences.
 
-**Checks.** `agent-hooks` and `shfmt` cover any skill scripts touched. Every line must pass the AGENTS.md "Global agent files" test (holds in an unrelated repo).
+**Checks.** `agent-hooks` and `shfmt` cover touched skill scripts; every line must pass the AGENTS.md "Global agent files" test.
 
-**Risks.** Moving paths mid-work strands a running session's drafts; ship G1 between batches, after the active trackers are moved.
+**Risks.** Moving paths mid-work strands a session's drafts; ship G1 between batches.
 
 ## 1. One command registry
 
 **Today.** One action is declared up to three times:
-- Quickshell: 22 `IpcHandler` files (list in the appendix) with 102 `function` declarations, called from 72 tracked non-Markdown files, mostly voxcmd and Hyprland scripts. `qml-ipc` (`lib/check/steps/qml_ipc.py`) already ties callers to handlers both ways, with exceptions in `lib/check/qml-ipc.allow`.
-- Hyprland: 7 `keymaps/global/*.lua` files call `Bind.*` from `lib/key/bind.lua` (76 call sites); 11 submaps use `Submap.define` row tables. Each bind has its own label (`desc`) and action, often a `qs ipc` string. hyprvim (a separate repo) and the keybinds picker read the descs back from Hyprland.
+- Quickshell: 22 `IpcHandler` files (appendix) with 102 `function` declarations, called from 72 tracked non-Markdown files. `qml-ipc` (`lib/check/steps/qml_ipc.py`) ties callers to handlers both ways.
+- Hyprland: 7 `keymaps/global/*.lua` files call `Bind.*` from `lib/key/bind.lua` (76 call sites); 11 submaps use `Submap.define` row tables. Each bind has its own `desc` and action, often a `qs ipc` string; hyprvim (a separate repo) and the keybinds picker read the descs back.
 - voxcmd: 19 TOML and 18 bash integrations in `integrations/`, 22 in `integrations.d/`, each with its own `run` lines. `integrations/keybinds.toml` already runs any bind by its desc. `tests/phrases.tsv` has 499 rows.
 
 **Proposal.** One JSON manifest of actions. Each entry: `id` (`zoom.toggle`), `label` (bind desc and picker text), `key` (default bind and submap), `params` (typed: name, type, allowed values), `enabled` and `run` (an IPC call, a dispatcher or a script). `enabled` returns a reason when the action is unavailable ("bar not running"), not a bool, so pickers and voxcmd can say why. JSON, not TOML: Hyprland's Lua has `lib/json.lua` and QML has `JSON.parse`; TOML needs a new parser in both. The IpcHandlers stay the transport; the manifest says which functions are public actions.
 
-**No leaks around it.** An action outside the manifest must be listed in `lib/check/registry.allow` with a reason, as `qml-ipc.allow` does for handlers: a tracked bind whose action is not a manifest id, or a public handler function with no entry. A stale line fails. Without it, additions grow around the registry: photocraft's `menus.rs::is_live` ORs seven sources besides its registry.
+**No leaks around it.** A tracked bind whose action is not a manifest id, or a public handler function with no entry, must be listed with a reason in `lib/check/registry.allow` (like `qml-ipc.allow`); a stale line fails. Otherwise additions grow around the registry, as photocraft's `menus.rs::is_live` ORs seven other sources.
 
 **How each surface consumes it.**
 - Hyprland: `Bind.action(id, opts)` reads label, key and run from the manifest and calls `Bind.key`; `Submap.define` rows accept an id. `Bind.key`, `Bind.unbind` and `Bind.submap` keep their signatures (public API for `custom/`). hyprvim needs no change: it reads descs from Hyprland.
@@ -107,13 +101,13 @@ Each idea is sorted by where it lives. Global means the Claude setup in `home/cl
 - 1d: `registry.allow`, with the step failing unlisted binds and handler functions.
 - 1e: the command picker. 1f: `shadow.sh action`. 1g: voxcmd `action = "<id>"`.
 
-**Checks.** A new `registry` step (scope `lua qml`, with a `PATH_SCOPES` line for the manifest and `registry.allow` ahead of the `home/hypr/*` and Quickshell rules); `stylua` and `luacheck` cover `Bind.action`; the voxcmd suites cover 1g. Optional: a floor the action count may not drop below, raised by hand ("never lower it"); low value, so only if counts start slipping.
+**Checks.** A new `registry` step (scope `lua qml`, with a `PATH_SCOPES` line for the manifest and `registry.allow` ahead of the `home/hypr/*` and Quickshell rules); `stylua` and `luacheck` cover `Bind.action`; the voxcmd suites cover 1g. Optional: a floor the action count may not drop below ("never lower it"); low value.
 
 **Risks.** Moving binds can change which-key order or drop an option such as `submap_universal`. Every new feature edits one more file. Whether the greeter must stage the manifest (`lib/common/greeter-files.sh`) depends on whether lock actions are listed.
 
 ## 2. Docs generated from code, with a drift check
 
-**Scope.** `docs/keybinds.md` is a hand-written guide, so generate one section: a table of shipped keys (key, submap, label, action id) between `BEGIN generated` and `END generated` markers, written from the manifest. Precedent: the generated block in `home/quickshell/.config/quickshell/theme/Style.qml`, written by `home/quickshell/.config/quickshell/scripts/gen-style-exports` and checked by the `style-exports` step.
+**Scope.** `docs/keybinds.md` is a hand-written guide, so generate one section from the manifest: a table of shipped keys (key, submap, label, id) between `BEGIN generated` and `END generated` markers. Precedent: the generated block in `home/quickshell/.config/quickshell/theme/Style.qml`, written by `home/quickshell/.config/quickshell/scripts/gen-style-exports` and checked by the `style-exports` step.
 
 **Dependencies.** 1a to 1c: before 1c the table would list only migrated binds.
 
@@ -121,12 +115,12 @@ Each idea is sorted by where it lives. Global means the Claude setup in `home/cl
 
 **Checks.** New `docs-generated` step, with `PATH_SCOPES` lines for the manifest and `docs/keybinds.md`, and its `lib/check/README.md` line.
 
-**Risks.** `custom/` binds are not in the table, which is right for shipped docs but may surprise a user; say so above it.
+**Risks.** `custom/` binds are not in the table; say so above it.
 
 ## 3. AGENTS.md rules only, reasons in a decisions log
 
 **Scope.** AGENTS.md is 23,610 bytes. Reasons behind past choices move to `specs/decisions.md`, linked from the rule. Each entry: a date, the PR, and "chose X over Y because", plus any footgun. Date from `git log -S`, else the move date. Candidates:
-- Overview: why systemd packages are stowed `--no-folding`, and the `migrate-systemd` history. The rule left: units go in `NO_FOLD_PACKAGES`, stowed with `just stow`.
+- Overview: why systemd packages are stowed `--no-folding`, and the `migrate-systemd` history.
 - Commands: why branches cut before the check-runner port do not share passes (the last sentence of the `just check` paragraph).
 - Hyprland config: the hyprwm/Hyprland#15040 reason behind `Bind.unbind`.
 - Quickshell key conventions: why `Popups.after_close` (the focus hand-back).
@@ -140,9 +134,9 @@ Kept inline: a one-clause reason that tells you when the rule applies.
 
 ## 4. voxcmd port status out of AGENTS.md
 
-**Scope.** AGENTS.md's second voxcmd paragraph is port status: the crate is not what runs yet, `VOXCMD_BIN=rs`, the goldens and their generators, `internal click-match` and friends, the click bridge's dump details, `_legacy-dump`, items 2.3, 3.1 and 3.2. Move it to a tracked `specs/voxcmd-port.md`; AGENTS.md keeps the rules: test through `sandbox.sh`, add a phrase to `phrases.tsv`, regenerate goldens only with the owner's sign-off, run suites as check steps.
+**Scope.** AGENTS.md's second voxcmd paragraph is port status: `VOXCMD_BIN=rs`, the goldens, `internal click-match` and friends, the click bridge, `_legacy-dump`, items 2.3, 3.1 and 3.2. Move it to a tracked `specs/voxcmd-port.md`; AGENTS.md keeps the rules: test through `sandbox.sh`, add a phrase to `phrases.tsv`, regenerate goldens only with the owner's sign-off, run suites as check steps.
 
-**Relation to `.planning/projects/voxcmd-port/voxcmd-port.md`.** That local tracker (26,647 bytes) keeps session state: "Resume here", agents, lessons, owner-only and private items. It stays local (in `plans/` once item 0 moves it). The tracked spec holds what a fresh clone needs: what runs today, how to run the Rust binary, the phase table (3.1 to 4.2) with statuses, the legacy-dump behaviour. The tracker links to the spec for phases, so status has one home.
+**Relation to `.planning/projects/voxcmd-port/voxcmd-port.md`.** That local tracker (26,647 bytes) keeps session state ("Resume here", agents, lessons, private items) and stays local, in `plans/` once item 0 moves it. The tracked spec holds what a fresh clone needs: what runs today, how to run the Rust binary, the phase table (3.1 to 4.2), the legacy dump. The tracker links to it, so status has one home.
 
 **Dependencies.** 0a. **PRs.** 1. **Checks.** None new; `readme-links` covers the spec once 0b lands.
 
@@ -188,7 +182,7 @@ What a new user sees; guided setup if a tool is needed.
 **Today.** The style exists: `home/voxcmd/tests/phrases.tsv` (phrase, expected action, note), the voxcmd goldens in `home/voxcmd/tests/fixtures/*-goldens.tsv`, and `home/quickshell/tests/input_settings/vectors.tsv`, read by a Lua and a JS runner.
 
 **Areas that would gain** (candidates, not measured coverage):
-- Popup and picker keys: key, state, expected action per surface, driven through the shadow; pins the key conventions, which no check reads today.
+- Popup and picker keys: key, state, expected action, via the shadow; no check reads the key conventions today.
 - Lock and greeter input: NORMAL/INSERT transitions of `Lock.key` and `Greeter.key` as key-sequence rows.
 - voxcmd's `confirm_labels` (`integrations/keybinds.toml`): label and whether it asks first; the regexes are hard to read.
 - The registry: action id, params, expected IPC call (reused by item 7).
@@ -201,9 +195,9 @@ What a new user sees; guided setup if a tool is needed.
 
 ## 7. One bad-input test across every command
 
-**Scope.** Call every command with bad input and require a clean error and a live bar: no crash, QML error or hang. This goes further than photocraft's `panic_hunt`, which runs the same 4 fixed bad-param sets for every command (empty; zeros and 999999; huge and negative; empty arrays and strings), each on a fresh session with a 4 s timeout. Here, 7b derives values from each action's typed `params` (wrong type, out of range, unknown enum, shell metacharacters). Two of its rules are copied:
+**Scope.** Call every command with bad input and require a clean error and a live bar: no crash, QML error or hang. This goes further than photocraft's `panic_hunt`, which runs the same 4 fixed bad-param sets for every command (empty; zeros and 999999; huge and negative; empty arrays and strings) with a 4 s timeout: 7b derives values from each action's typed `params`. Two rules are copied:
 - A timeout is rerun once before it fails, so a cold start is not a failure.
-- Side-effect actions run as a dry run, chosen by id prefix (`power.`, `lock.`, `screenshot.`): passed a dry-run flag where the handler has one, otherwise skipped with the reason logged. panic_hunt does the same for its print commands.
+- Side-effect actions run as a dry run, chosen by id prefix (`power.`, `lock.`, `screenshot.`): given a dry-run flag where the handler has one, else skipped with the reason logged (panic_hunt's print rule).
 
 **Dependencies.** 7a none: it reads the 102 IPC functions from `qml_ipc.py`'s handler parser. 7b needs 1a (typed params) and 1f (`shadow.sh action`).
 
@@ -211,7 +205,7 @@ What a new user sees; guided setup if a tool is needed.
 
 **Checks.** A new `bad-input` step (needs `qs`), scoped to the Quickshell tree and later the manifest.
 
-**Risks.** A missed side-effect prefix runs a real power or lock call; 7a runs in a throwaway instance and the list starts broad. Slow; may need the serial lane.
+**Risks.** A missed side-effect prefix makes a real call; 7a's throwaway instance and a broad starting list limit that. Slow; may need the serial lane.
 
 ## Open questions for the owner
 
@@ -222,7 +216,7 @@ What a new user sees; guided setup if a tool is needed.
 
 ## Inspiration
 
-storytold/photocraft, read at 528491f (2026-10-25), a Rust image editor built by many contributors each driving an agent. Taken: one registry every surface iterates (its `CommandSpec`), `enabled` with a reason, the bad-input sweep and its timeout and dry-run rules, local `plan/` and `log/` folders, checked generated docs, and the decisions log format. Each is a small mechanism that keeps one fact in one place. Left: its large hand-kept docs, whose numbers drift from the generated ones, and the escape hatches around its registry, which item 1's allow list prevents.
+storytold/photocraft at 528491f (2026-10-25), a Rust image editor built by many contributors each driving an agent. Taken: one registry every surface iterates (`CommandSpec`), `enabled` with a reason, the bad-input sweep with its timeout and dry-run rules, local `plan/` and `log/`, checked generated docs, the decisions log format: small mechanisms that keep one fact in one place. Left: its large hand-kept docs, whose numbers drift, and the escape hatches around its registry.
 
 ## Appendix: IpcHandler files
 
