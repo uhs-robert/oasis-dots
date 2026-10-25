@@ -18,7 +18,9 @@ Who uses it, from where, to do what.
 
 ## Requirements
 <!-- One per line: the id is the spec id in capitals, a dash and two digits. Ids are never reused. State what the user
-sees or can do in plain words, never a tool. A known gap carries [gap: untested] or [gap: unmet] after the id. -->
+sees or can do in plain words, never a tool. A known gap carries [gap: untested] or [gap: unmet] after the id.
+A test proves a requirement by carrying `req: <ID>` in a comment, its name or a vectors.tsv note. After editing run
+python3 -B lib/check/steps/specs.py --write to regenerate specs/gaps.md. -->
 - **EXAMPLE-01** One testable statement of behaviour, in plain words.
 - **EXAMPLE-02** [gap: untested] A known gap is marked inline.
 
