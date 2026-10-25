@@ -387,7 +387,11 @@ Item {
         Popups.register_order(root.screen_name, root.popup_names(root.left_entries).concat(center_names, right_names));
     }
 
+    // Syncing earlier reads bindings that are still mid-evaluation (undefined); onCompleted does the first sync.
+    property bool popups_ready: false
+
     function sync_popups() {
+        if (!root.popups_ready) return;
         sync_clock_anchor();
         sync_popup_order();
     }
@@ -396,6 +400,9 @@ Item {
     onCenter_entriesChanged: sync_popups()
     onHas_centerChanged: sync_popups()
     onRight_drawnChanged: sync_popups()
-    Component.onCompleted: sync_popups()
+    Component.onCompleted: {
+        root.popups_ready = true;
+        sync_popups();
+    }
     Component.onDestruction: Popups.unregister_screen(root.screen_name)
 }
