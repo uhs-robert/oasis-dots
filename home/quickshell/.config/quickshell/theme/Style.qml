@@ -165,7 +165,7 @@ Singleton {
         const opts = root.theme_values[root.styles[root.name] ? root.name : "oasis"];
         const chosen = opts ? root.with_options(root.base_active, opts) : root.base_active;
         // A frame's bar edge is the full strip, whatever shape is saved; the saved shape stays for when it goes.
-        if (root.frame_kit_for(chosen) === null || chosen.bar_island_shape === "full") return chosen;
+        if (root.frame_kit_for(chosen) === null || !FrameTokens.forces_full_bar(chosen)) return chosen;
         return root.with_options(root.base_active, Object.assign({}, opts, { bar_island_shape: "full" }));
     }
     // The screen frame the shell draws, from `active` so the style picker previews it; null when there is none.
@@ -189,9 +189,9 @@ Singleton {
         return c.a > 0 ? Qt.tint(root.strip_color, Qt.alpha(c, c.a * 0.4)) : c;
     }
 
-    // The frame kit a token set asks for, or null: lualine draws its own statusline edge, and a style can opt out.
+    // The frame kit a token set asks for, or null when a style opts out.
     function frame_kit_for(tokens) {
-        if (tokens.bar_lualine || tokens.screen_frame_offered === false) return null;
+        if (!FrameTokens.offered(tokens)) return null;
         return root.frame_corners.indexOf(tokens.screen_frame) >= 0 ? root.plain_frame_kit : null;
     }
     // Small popups read this token set; it is the singleton itself unless the style has a `small` block.
@@ -667,7 +667,7 @@ Singleton {
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         const saved = root.theme_values[style_name] || {};
-        if (!b.bar_lualine && b.screen_frame_offered !== false) {
+        if (FrameTokens.offered(b)) {
             const screen_choices = FrameTokens.row_choices(b.screen_frame_only, root.screen_frames);
             out.push({ key: "screen_frame", label: "Screen frame", type: "choice", default: b.screen_frame || "", choices: screen_choices, labels: root.borrow_labels("screen_frame", screen_choices) });
             flag("screen_frame_flush", "Flush single windows");
