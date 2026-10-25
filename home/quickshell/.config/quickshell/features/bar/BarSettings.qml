@@ -161,6 +161,11 @@ Singleton {
         return BarLayout.position_of(rule);
     }
 
+    // The screen height a bar on `position` takes; none for a side bar.
+    function vertical_reserve(position, bar_thickness, float_gap) {
+        return BarLayout.vertical_reserve(position, bar_thickness, float_gap);
+    }
+
     // The edge of the bar on a screen, for surfaces that place themselves against it; "top" when it has none.
     function position_on(screen_name) {
         const screen = Quickshell.screens.find(s => s.name === screen_name);

@@ -28,6 +28,11 @@ function draws_frame(frame_on, position) {
     return frame_on && !is_vertical(position);
 }
 
+// The screen height a top or bottom bar takes (its thickness plus the float gap above a floating popup); a side bar takes width instead, so none.
+function vertical_reserve(position, bar_thickness, float_gap) {
+    return is_vertical(position) ? 0 : bar_thickness + float_gap;
+}
+
 // Whether any screen draws the frame, which is when Hyprland should shape windows to it.
 function any_draws_frame(frame_on, screen_positions) {
     return screen_positions.some(p => draws_frame(frame_on, p));

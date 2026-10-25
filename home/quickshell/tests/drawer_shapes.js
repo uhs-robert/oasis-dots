@@ -637,6 +637,13 @@ cases.push(["a flipped drawer's dither rows mirror the frame's for every origin 
   cases.push(["beside: clamps to the screen's bottom", () => top_of("left", "left", 1800, 100, 400), 1520]);
   cases.push(["beside: a popup taller than the screen sits at the top", () => top_of("center", "left", 800, 320, 2500), 0]);
   cases.push(["beside: margins are whole pixels", () => top_of("center", "left", 800, 321, 200), 861]);
+  const line = (side, y, h, len) => D.beside_line_offset(y, top_of(side, "left", y, h, len), Math.min(h, len), len);
+  cases.push(["beside line: unclamped top island starts at the popup's top", () => line("left", 18, 300, 500), 0]);
+  cases.push(["beside line: unclamped centre island is centred in the popup", () => line("center", 800, 320, 600), 140]);
+  cases.push(["beside line: unclamped bottom island sits at the popup's bottom", () => line("right", 1500, 400, 700), 300]);
+  cases.push(["beside line: a popup clamped to the screen's bottom has the line at the island, below the popup's top", () => line("left", 1800, 100, 400), 280]);
+  cases.push(["beside line: clamped to the top, the line stays on the popup", () => D.beside_line_offset(0, 0, 100, 400), 0]);
+  cases.push(["beside line: never past the popup's end", () => D.beside_line_offset(1900, 1520, 100, 400), 300]);
   cases.push(["beside: a left bar anchors the popup's left, a right bar its right", () => [place("left", "left", 0, 0, 10), place("left", "right", 0, 0, 10)].map(p => [p.anchor_left, p.anchor_right, p.anchor_top, p.anchor_bottom]), [[true, false, true, false], [false, true, true, false]]]);
   cases.push(["beside: only the top margin is set", () => { const p = place("right", "right", 1500, 400, 200); return [p.margin_bottom, p.margin_left, p.margin_right]; }, [0, 0, 0]]);
   cases.push(["beside: the corners against the bar are square and swap with the edge", () => [D.beside_corners("left"), D.beside_corners("right")], [

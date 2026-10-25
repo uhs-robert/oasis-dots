@@ -273,6 +273,12 @@ function beside_place(side, edge, island_y, island_height, popup_length, screen_
     };
 }
 
+// Where the accent line starts down a popup beside a side bar: on the island's own top, which is not the popup's when the
+// screen clamp moved the popup. Kept inside the popup.
+function beside_line_offset(island_y, popup_top, line_length, popup_length) {
+    return Math.max(0, Math.min(island_y - popup_top, popup_length - line_length));
+}
+
 // Which corners of a popup beside a left or right bar are rounded: the two on the side away from the bar, as a popup
 // under a top bar rounds its bottom two. The side against the bar stays square.
 function beside_corners(edge) {
