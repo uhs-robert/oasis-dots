@@ -1,0 +1,8 @@
+# Stow-default ignores, which a local list replaces, plus what stays in the repo: the tests and the Rust crate.
+\.gitignore
+^/README.*
+^/tests
+^/src
+^/Cargo\..*
+^/target
+^/rustfmt\.toml
