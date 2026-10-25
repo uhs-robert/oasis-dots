@@ -13,6 +13,9 @@ Item {
     readonly property int bar_count: 28
     readonly property bool active: MediaState.playing
 
+    // The popup can open on a screen with no bar, so nothing else is guaranteed to be feeding cava.
+    CavaViewer { active: root.visible }
+
     RowLayout {
         anchors.fill: parent
         spacing: 3
