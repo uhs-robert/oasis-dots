@@ -88,12 +88,12 @@ fn columns(matcher: &Matcher, phrase: &str) -> [String; 3] {
 
 #[test]
 fn rust_matches_the_bash_goldens() {
-    matches_the_goldens(&config(), &[]);
+    matches_the_goldens(&config(), &[], false);
 }
 
 #[test]
 fn shipped_toml_matches_the_bash_goldens() {
-    matches_the_goldens(&config_with_shipped_toml(), TYPED_DAY_VERBS);
+    matches_the_goldens(&config_with_shipped_toml(), TYPED_DAY_VERBS, true);
 }
 
 /// answers' name verbs, as `stem:verb:action=` prefixes. Bash captured a trailing "please", "thanks" or "thank you" in the
@@ -134,7 +134,6 @@ fn without_entries(column_name: &str, column: &str, ignored: &[&str]) -> String 
     let clock = Clock::from_env().expect("clock");
     column
         .split("; ")
-        .map(without_tail_words)
         .filter(|entry| {
             let Some(prefix) = ignored.iter().find(|prefix| entry.starts_with(**prefix)) else {
                 return true;
@@ -145,7 +144,9 @@ fn without_entries(column_name: &str, column: &str, ignored: &[&str]) -> String 
         .join("; ")
 }
 
-fn matches_the_goldens(config: &Config, ignored: &[&str]) {
+/// `strip_golden_tails` loosens only the golden side: the Rust side is never stripped, so a Rust target that keeps a
+/// tail word still fails.
+fn matches_the_goldens(config: &Config, ignored: &[&str], strip_golden_tails: bool) {
     let goldens = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/match-goldens.tsv"))
         .expect("run gen-match-goldens.sh");
     let matcher = Matcher::new(config);
@@ -162,7 +163,16 @@ fn matches_the_goldens(config: &Config, ignored: &[&str]) {
             .iter()
             .zip([forced, matches, near].iter().zip(&got))
         {
-            if without_entries(column, expected, ignored) != without_entries(column, got, ignored) {
+            let expected = if strip_golden_tails {
+                expected
+                    .split("; ")
+                    .map(without_tail_words)
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            } else {
+                expected.to_string()
+            };
+            if without_entries(column, &expected, ignored) != without_entries(column, got, ignored) {
                 mismatches.push(format!("{phrase:?} {column}:\n  bash {expected}\n  rust {got}"));
             }
         }
