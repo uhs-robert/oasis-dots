@@ -20,7 +20,7 @@ Spec-driven, spec-enforced design. Plain-English specs in `specs/` say what each
 | 1   | Spec format and requirement-to-test link check      | 2   | 0a                |
 | 2   | One action registry and `act`                       | 6   | none              |
 | 3   | Core specs                                          | 5   | 1b, 2c            |
-| 4   | Generated "bad params are rejected" tests           | 2   | 1b, 2a; 4b 2e     |
+| 4   | Generated "bad params are rejected" tests           | 2   | 3b, 2a; 4b 2e     |
 | 5   | Docs generated from code, with a drift check        | 2   | 2a to 2c          |
 | 6   | AGENTS.md rules only; decisions log                 | 1   | 0a                |
 | 7   | voxcmd port status out of AGENTS.md                 | 1   | 0a                |
@@ -31,8 +31,9 @@ Batches. The owner approves a batch's plan; its PRs merge when the reviewer and 
 - B2 = G1, G2. They edit global skills, which the owner reads before merge, so they ship alone.
 - B3 = 0b, 2a, 2b.
 - B4 = 2c, 2d, then 5a. 5a merges after 2c, so its table lists every bind.
-- B5 = 2e, 4a, 4b, 5b.
+- B5 = 2e, 5b.
 - B6 = 3a (keys), 3b (actions), then 3c (bar), 3d (lock), 3e (notifications); split in two if the owner prefers to approve fewer specs at once.
+- B7 = 4a, 4b. They tag the actions spec's requirement ids, so they follow 3b.
 - 2f goes in the first batch after the voxcmd 3.2 swap.
 
 Out of scope: parity scorecards, a large docs/ tree, a shared cross-repo rules or CI repo, specs for system setup.
@@ -47,8 +48,6 @@ Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so i
 - Every fix ships a test that failed before the fix.
 
 **This project:** spec format and link check (1); the registry (2); generated-docs drift check (5); audience rules for `docs/` (0); the decisions log format (6).
-
-**Skip:** a devlog (trackers and handoff do this); scorecards and perf budgets; an mdBook; a layering tool (`qml-layers` exists); free-form params text (typed params can be checked); a flat mixed `docs/`.
 
 ## 0. docs/ vs specs/, and local .plans/ and .logs/
 
@@ -114,7 +113,7 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **Schemas.** Both are JSON Schema files written in YAML, in `specs/schema/` (`spec.yaml`, `plan.yaml`), validated by the repo check (for example `check-jsonschema`). The action registry (item 2) is validated in the same schema language. Editors get completion through yaml-language-server.
 
-**Link check.** A `specs` step validates each spec against its schema, that requirement ids match the file's prefix and are unique, and that every id appears as a tag in at least one test. The tag syntax (a `req: BAR-03` comment or test name) is fixed in 1b, in the test styles that exist today: `lib/check/tests` Python cases, voxcmd and Quickshell `vectors.tsv` rows, shadow scripts. It also fails a tag naming a missing requirement. `actions` ids are checked against the registry once 2a lands.
+**Link check.** A `specs` step scans only `specs/core/*.md` (skipping `TEMPLATE.md`); `roadmap.md`, `decisions.md` and `voxcmd-port.md` carry no spec front matter. It validates each spec against its schema, that requirement ids match the file's prefix and are unique, and that every id appears as a tag in at least one test. The tag syntax (a `req: BAR-03` comment or test name) is fixed in 1b, in the test styles that exist today: `lib/check/tests` Python cases, voxcmd and Quickshell `vectors.tsv` rows, shadow scripts. It also fails a tag naming a missing requirement. Untagged tests in a spec'd area are allowed: the check lists them as info and never fails on them. `actions` ids are checked against the registry once 2a lands.
 
 **PRs.** 1a: the template at `specs/core/TEMPLATE.md`, the two schemas, the AGENTS.md sentence, and schema and heading checks. 1b: the requirement-to-test link check.
 
@@ -157,7 +156,9 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **Scope.** One spec per area, in this order: keys, actions, bar, lock, notifications. Each describes the system as it is, in the item 1 format. The `actions` spec states the registry's behaviour (one action from any context, one default key plus extras, custom overrides). A feature's README gains a link to its spec.
 
-**Authoring.** An agent drafts the spec from the code. The orchestrator asks the owner only what the code cannot answer. The owner approves in the PR; `status` becomes `approved` and the PR is added to `prs`. Each requirement needs a tagged test in the same PR, using the existing runtime tests, the shadow, and table rows; a requirement that cannot be tested yet is rewritten or moved to "Not covered".
+**Authoring.** An agent drafts the spec from the code. The orchestrator asks the owner only what the code cannot answer. The owner approves in the PR; `status` becomes `approved` and the PR is added to `prs`. Each core-spec PR includes a pass over that area's existing tests, migrated by tagging, not rewriting: a test that proves a requirement gets its id tag and stays in its current framework; implementation tests (parsers, helpers) stay untagged; a test that disagrees with the draft is a conflict. Tooling tests (`lib/check`, install, hooks) are out of scope, and the voxcmd goldens come with voice later. A requirement with no test gets a new one in the same PR (runtime tests, the shadow, table rows); a requirement that cannot be tested yet is rewritten or moved to "Not covered".
+
+**Conflicts.** While drafting, a spec/test conflict becomes an owner question. Once a spec is approved the spec wins, and an intended behaviour change goes spec (owner-approved), then test, then code.
 
 **Dependencies.** 1b (the check), 2c (so `actions` ids exist).
 
@@ -171,7 +172,7 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 - A timeout is rerun once before it fails, so a cold start is not a failure.
 - Side-effect actions (`power.`, `lock.`, `screenshot.`) run as a dry run where the handler has one, else are skipped with the reason logged.
 
-**Dependencies.** 1b, 2a (typed params); 4b needs 2e.
+**Dependencies.** 3b (the requirement ids they carry), 2a (typed params); 4b needs 2e.
 
 **PRs.** 4a: generation for actions against a throwaway `qs` (like `home/quickshell/tests/json_store/`). 4b: actions that need a compositor, through the shadow.
 
@@ -214,7 +215,7 @@ Kept inline: a one-clause reason that tells you when the rule applies.
 
 ## 8. Scenario runner (gated)
 
-Not scheduled. Build it only after 2 or 3 core specs use the link check and regressions still slip through it; the owner decides then. Each requirement gets given/when/then scenarios; a runner executes them, and its step functions (Quickshell and Hyprland via the shadow) are the only tool-specific code. Tests port to scenarios one core area at a time, and the generated bad-params tests become scenarios. If the link check keeps regressions out, this is never built.
+Not scheduled. Build it only after 2 or 3 core specs use the link check and regressions still slip through it; the owner decides then. Requirements get given/when/then scenarios; a runner executes them, and its step functions (Quickshell and Hyprland via the shadow) are the only tool-specific code. Tests port one core area at a time; the generated bad-params tests become scenarios.
 
 ## Inspiration
 
