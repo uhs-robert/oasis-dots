@@ -231,13 +231,13 @@ PanelWindow {
     // Full width along the bottom of the screen, rising from its edge; the frame loses its rounded corners.
     property bool dock_bottom: false
     readonly property real frame_radius: root.drawer ? root.drawer_fillet : root.dock_bottom ? 0 : root.st.frame_radius
+    // The screen edge this popup hangs from: the bar's, or the bottom for a docked one. Drawer geometry takes it by name.
+    readonly property string edge: root.dock_bottom ? "bottom" : BarSettings.position_on(root.held_screen_name)
     // Over a bottom bar the popup rises from it: everything named for the bar side ("top" below) lands on the frame's
     // bottom edge instead, and the drop room and shadow go above the frame.
-    readonly property bool rises: !root.dock_bottom && BarSettings.position_on(root.held_screen_name) === "bottom"
-    // A drawer on the bottom edge: a popup rising over a bottom bar, or a docked one, which hangs from the bar strip's seam or the bottom band.
-    readonly property bool from_bottom: root.rises || root.dock_bottom
+    readonly property bool rises: root.edge === "bottom" && !root.dock_bottom
     // Which way the frame's corners face: a docked popup keeps its flat bottom unless the frame turned it into a drawer.
-    readonly property bool frame_rises: root.drawer ? root.from_bottom : root.rises
+    readonly property bool frame_rises: root.drawer ? root.edge === "bottom" : root.rises
     readonly property bool floating: root.st.frame_float > 0 && !root.dock_bottom && !root.island_capsule && !root.drawer
     readonly property real top_radius: root.floating ? root.frame_radius : 0
     // Hung flush from a capsule: square under it, rounded where the frame reaches past its ends.
@@ -246,7 +246,7 @@ PanelWindow {
     readonly property real top_right_radius: root.overhang > 0 && root.side !== "right" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
     // Where the frame's body starts inside the reveal, which grows from the bar side.
     // A drawer's content rides out with its far edge instead of staying put while the body uncovers it.
-    readonly property real body_shift: root.drawer ? (root.from_bottom ? 0 : reveal.height - root.panel_height) : root.rises ? reveal.height - (root.panel_height - root.line_height) : 0
+    readonly property real body_shift: root.drawer ? (root.edge === "bottom" ? 0 : reveal.height - root.panel_height) : root.rises ? reveal.height - (root.panel_height - root.line_height) : 0
 
     // With the screen frame on, a bar-hung popup is a drawer: DrawerShape draws it in the frame's material, grown out of
     // the seam with a concave fillet at each end, and the accent line and drop shadow give way to it.
@@ -263,7 +263,7 @@ PanelWindow {
     readonly property real drawer_body_width: root.drawer_hole ? Drawer.body_length(root.dock_bottom ? "dock" : root.side, root.base_width, root.drawer_hole.w, root.drawer_fillet) : 0
     function drawer_spec(extent) {
         return Object.assign({
-            edge: root.from_bottom ? "bottom" : "top",
+            edge: root.edge,
             body_length: root.drawer_body_width,
             body_depth: root.base_height,
             extent: extent,
@@ -278,15 +278,15 @@ PanelWindow {
     readonly property var drawer_layout: Drawer.drawer_layout(root.drawer_spec(root.drawer ? root.panel_height * root.drop_progress : 0))
     readonly property var drawer_body: Drawer.body_rect(root.drawer_layout)
     // Layer margins are integers; the cover absorbs the rounding.
-    readonly property real drawer_seam: root.screen_frame ? FrameGeometry.seam_of(root.screen_frame, root.from_bottom ? "bottom" : "top") : 0
-    readonly property var drawer_place: Drawer.place(root.side, root.from_bottom, root.drawer_hole, root.drawer_seam, root.screen ? root.screen.width : 0, root.screen ? root.screen.height : 0, root.drawer_cover, root.drawer_full.length)
+    readonly property real drawer_seam: root.screen_frame ? FrameGeometry.seam_of(root.screen_frame, root.edge) : 0
+    readonly property var drawer_place: Drawer.place(root.side, root.edge, root.drawer_hole, root.drawer_seam, root.screen ? root.screen.width : 0, root.screen ? root.screen.height : 0, root.drawer_cover, root.drawer_full.length)
     // Where the drawer's texture tiles from, so it runs on from the frame's (DrawerShape).
-    readonly property var drawer_texture_origin: Drawer.texture_origin(root.side, root.from_bottom, !!root.screen_frame && root.screen_frame.edge === "bottom", root.drawer_place, root.screen ? root.screen.width : 0, root.screen ? root.screen.height : 0, root.drawer_full.length)
+    readonly property var drawer_texture_origin: Drawer.texture_origin(root.side, root.edge, !!root.screen_frame && root.screen_frame.edge === "bottom", root.drawer_place, root.screen ? root.screen.width : 0, root.screen ? root.screen.height : 0, root.drawer_full.length)
     // The depth the drawer has drawn, not the window's reserved one: a popup with a reserve_height is a taller window than its shape.
     readonly property real drawn_depth: root.drawer_layout.drawn_depth
     // Translucent islands make the drawer translucent too, so the frame and the strip leave their lines out under its window.
     readonly property bool drawer_translucent: root.drawer && Style.islands_translucent
-    readonly property var drawer_window: root.drawer_translucent && root.visible ? Drawer.window_rect(root.side, root.from_bottom, root.drawer_place, root.screen.width, root.screen.height, root.width, root.drawn_depth) : null
+    readonly property var drawer_window: root.drawer_translucent && root.visible ? Drawer.window_rect(root.side, root.edge, root.drawer_place, root.screen.width, root.screen.height, root.width, root.drawn_depth) : null
     DrawerWindowPublisher {
         screen_name: root.held_screen_name
         rect: root.drawer_window
