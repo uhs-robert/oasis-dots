@@ -75,6 +75,8 @@ const cases = [
   ["normalize drops non-boolean switches", () => L.directory_switches(L.normalize({ directory: { path: "no", app_name: false } })), { app_name: false, path: true, file_name: true }],
   ["layout edits keep the switches", () => L.directory_switches(L.edit(rule, L.set_directory_switch(L.normalize(null), "app_name", false), "", { type: "hide", entry: "clock" })).app_name, false],
   ["lualine draws the directory itself, with or without an argument", () => [L.lualine_draws_itself("directory"), L.lualine_draws_itself("directory:x"), L.lualine_draws_itself("clock")], [true, true, false]],
+  ["lualine draws cava itself too", () => L.lualine_draws_itself("cava"), true],
+  ["a rule lists cava on any side, so lualine still shows it", () => [L.rule_lists({ left: [], center: ["clock"], right: ["cava"] }, "cava"), L.rule_lists({ left: ["cava"] }, "cava"), L.rule_lists(rule, "cava"), L.rule_lists(null, "cava")], [true, true, false, false]],
   ["a state without switches has no directory key", () => "directory" in L.normalize(null), false],
   ["cava is a registered module", () => L.known.indexOf("cava") >= 0, true],
   ["cava sits in the lualine x section", () => L.lualine_section("cava"), "x"],
@@ -85,6 +87,8 @@ const cases = [
   ["migrate runs once: a removed cava stays removed", () => L.migrate_cava({ cava_migrated: true, monitors: { [key]: { left: ["workspaces"], center: [], right: [] } } }).monitors[key].left, ["workspaces"]],
   ["normalize without the flag adds none", () => "cava_migrated" in L.normalize(null), false],
   ["shared layouts are untouched by migrate", () => L.migrate_cava({ shared: { place: { clock: "left" } } }).shared.place, { clock: "left" }],
+  ["migrate keeps the directory switches", () => L.directory_switches(L.migrate_cava(L.normalize({ directory: { path: false }, monitors: { [key]: { left: ["workspaces"], center: [], right: [] } } }))), { app_name: true, path: false, file_name: true }],
+  ["migrate covers every monitor with its own layout", () => Object.values(L.migrate_cava({ monitors: { a: { left: ["workspaces"], center: [], right: [] }, b: { left: ["start"], center: [], right: ["cava"] }, c: { left: [], center: [], right: [] } } }).monitors).map(m => m.left.concat(m.right)), [["workspaces", "cava"], ["start", "cava"], ["cava"]]],
 ];
 
 let failed = 0;
