@@ -35,6 +35,7 @@ const cases = [
   ["only left and right are vertical", () => ["top", "bottom", "left", "right", "x"].map(L.is_vertical), [false, false, true, true, false]],
   ["step_position toggles top and bottom either way", () => [L.step_position("top", 1), L.step_position("bottom", 1), L.step_position("top", -1), L.step_position("bottom", -1)], ["bottom", "top", "bottom", "top"]],
   ["step_position from a saved side position still lands on top or bottom", () => [L.step_position("left", 1), L.step_position("right", -1)], ["bottom", "bottom"]],
+  ["popups walk with Ctrl+H/L along a row and Ctrl+K/J down a column", () => ["top", "bottom", "left", "right"].map(L.walk_keys), [{ back: "H", forward: "L" }, { back: "H", forward: "L" }, { back: "K", forward: "J" }, { back: "K", forward: "J" }]],
   ["unknown named", () => L.position_problem({ position: 3 }), "unknown bar position 3 in bars.json; using top"],
   ["normalize keeps a saved position", () => L.normalize({ positions: { [key]: "bottom" } }).positions, { [key]: "bottom" }],
   ["normalize keeps a side position", () => L.normalize({ positions: { [key]: "left", other: 3 } }).positions, { [key]: "left" }],

@@ -308,15 +308,32 @@ PanelWindow {
         return root.wanted && !root.passive && !(f && "cursorPosition" in f);
     }
 
+    // Along a row Ctrl+H/L walk, down a column Ctrl+J/K; the pair that does not match the bar stays inert. As shortcuts they
+    // beat a popup's own bare j/k handlers, which therefore need no Ctrl guard.
+    readonly property var walk_keys: BarSettings.walk_keys_on(root.held_screen_name)
+    readonly property bool walk_column: root.walk_keys.forward === "J"
+
     Shortcut {
         sequences: ["Ctrl+H"]
-        enabled: root.visible && root.walk_allowed()
+        enabled: root.visible && !root.walk_column && root.walk_allowed()
         onActivated: Popups.walk(-1)
     }
 
     Shortcut {
         sequences: ["Ctrl+L"]
-        enabled: root.visible && root.walk_allowed()
+        enabled: root.visible && !root.walk_column && root.walk_allowed()
+        onActivated: Popups.walk(1)
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+K"]
+        enabled: root.visible && root.walk_column && root.walk_allowed() && Popups.walkable()
+        onActivated: Popups.walk(-1)
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+J"]
+        enabled: root.visible && root.walk_column && root.walk_allowed() && Popups.walkable()
         onActivated: Popups.walk(1)
     }
 

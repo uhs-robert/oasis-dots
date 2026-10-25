@@ -93,6 +93,12 @@ Singleton {
         return island && island.bg_color !== undefined ? island.bg_color : found.color;
     }
 
+    // Whether the open popup is one the bar order reaches, so a walk key has somewhere to go (the picker is not).
+    function walkable() {
+        const order = root.popup_order[root.open_screen_name] || [];
+        return order.indexOf(root.open_name) !== -1 || (root.back_name !== "" && order.indexOf(root.back_name) !== -1);
+    }
+
     // Steps to the next (delta 1) or previous (delta -1) module's popup in that screen's bar order, wrapping.
     function walk(delta) {
         const screen_name = root.open_screen_name;
