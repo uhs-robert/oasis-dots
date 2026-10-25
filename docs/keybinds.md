@@ -94,7 +94,7 @@ Bind.leader_cmd("F9", "qalculate-gtk", "Calculator")
 Bind.cmd("CTRL + ALT + N", "kitty -e nvim ~/notes.md", "Notes")
 ```
 
-The third argument is the description shown in search and which-key. The built-in actions live in `lib/actions/`, grouped by subject (`window.lua`, `workspace.lua`, `apps.lua`, `cmd.lua`, `menu.lua`, `media.lua` and others). The ones you will reach for most:
+The third argument is the description shown in search and which-key. The built-in actions live in `home/hypr/.config/hypr/lib/actions/`, grouped by subject (`window.lua`, `workspace.lua`, `apps.lua`, `cmd.lua`, `menu.lua`, `media.lua` and others). The ones you will reach for most:
 
 | Action | Does |
 | --- | --- |
