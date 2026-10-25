@@ -26,7 +26,7 @@ Why AGENTS.md rules are the way they are. AGENTS.md keeps the rule and a one-cla
 - Chose: `Bind` keeps each handle under its submap and unbinds those alone (`Bind.unbind`).
 - Over: calling `hl.unbind` directly.
 - Because: `hl.unbind` drops a key from the global map and every submap (hyprwm/Hyprland#15040). `Bind.unbind` removes the bind on Hyprland 0.57 and later and disables it on older releases.
-- Footgun: a raw `hl.bind` or `hl.define_submap` has no handle, so `Bind.unbind` cannot reach it. Register through `lib/key/bind.lua`. `Bind.unbind` and `Bind.submap` are public API for `custom/`.
+- Footgun: a raw `hl.bind` or `hl.define_submap` has no handle, so `Bind.unbind` cannot reach it. Register through `home/hypr/.config/hypr/lib/key/bind.lua`. `Bind.unbind` and `Bind.submap` are public API for `custom/`.
 
 ## Launch windows from popups after the popup closes
 

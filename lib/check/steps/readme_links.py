@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Fails a Quickshell README that links to or cites a file that is not there.
+"""Fails a README or doc that links to or cites a file that is not there.
 
-Moving a folder or a section leaves the READMEs pointing at the old place, and nothing else reads them. For every
-`*.md` under the Quickshell tree:
+Moving a folder or a section leaves the docs pointing at the old place, and nothing else reads them. For every
+`*.md` under the Quickshell tree, docs/ and specs/:
 
   - `[text](path)` must name a file or folder that exists, relative to the README; `[text](file.md#anchor)` and
     `[text](#anchor)` must also name a heading of that file, by GitHub's anchor rules. URLs are not followed.
   - reference links (`[text][ref]`, `[ref]: target`) are held to the same: each definition's target is checked, and a use
     whose reference is undefined fails.
   - a backticked path whose first folder is one of QS_FOLDERS (resolved against the Quickshell tree) or REPO_FOLDERS
-    (against the repository root) must exist, as a path in the Quickshell tree, from the README's own folder, from the
+    (against the repository root) must exist, as a path in the Quickshell tree, from the file's own folder, from the
     repository root or inside a stow package under home/. A path with a glob, placeholder or variable is prose.
+    Not held to this: UNCITED, the specs that name files that do not exist yet or no longer do. Their links are checked.
 
 Existence is read from git's listing (tracked and untracked-but-not-ignored). A cited path that is missing but that git
 ignores is a machine-local file (custom/sessions.lua, a generated asset folder) and passes.
@@ -29,7 +30,10 @@ from qml_paths import QS_DIR, REPO_DIR, Finding, git_listing, make_ignored  # no
 
 # Spelled out, not read from the tree: a folder derived from the tree would stop being checked the day it is renamed away.
 QS_FOLDERS = ("core", "theme", "ui", "services", "styles", "features", "custom", "assets", "scripts", "sounds")
-REPO_FOLDERS = ("lib", "home", "system", "docs", "packages", "extras", "demo")
+REPO_FOLDERS = ("lib", "home", "system", "docs", "packages", "extras", "demo", "specs")
+# The roadmap names files its items will add, and the port plan files it has already moved.
+UNCITED = ("specs/roadmap.md", "specs/voxcmd-port.md")
+DOC_TREES = ("docs/", "specs/")
 
 REF_USE = re.compile(r"(?<!!)\[([^\]]*)\]\[([^\]]*)\]")
 REF_DEFINITION = re.compile(r"^ {0,3}\[([^\]]+)\]:\s*<?([^\s>]+)>?(?:\s.*)?$")
@@ -101,7 +105,7 @@ def cited_path_exists(tree, ignored, qs_dir, readme_dir, token):
     return any(tree.has(candidate) or ignored(candidate) for candidate in candidates)
 
 
-def check_readme(repo, tree, ignored, qs_dir, readme):
+def check_readme(repo, tree, ignored, qs_dir, readme, cite_paths=True):
     findings = []
     readme_dir = os.path.dirname(readme)
     with open(os.path.join(repo, readme), encoding="utf-8") as file:
@@ -141,23 +145,24 @@ def check_readme(repo, tree, ignored, qs_dir, readme):
             label = (match.group(2) or match.group(1)).lower()
             if label not in definitions:
                 findings.append(Finding(readme, number, f"reference [{label}] has no definition"))
-        for span in CODE_SPAN.finditer(LINK.sub(r"\1", line)):
+        for span in CODE_SPAN.finditer(LINK.sub(r"\1", line)) if cite_paths else ():
             token = span.group(1)
             if "/" not in token or not PATH_TOKEN.match(token):
                 continue
             if not cited_path_exists(tree, ignored, qs_dir, readme_dir, token):
-                findings.append(Finding(readme, number, f"`{token}` does not exist (relative to the Quickshell tree, this README, the repository root or home/)"))
+                findings.append(Finding(readme, number, f"`{token}` does not exist (relative to the Quickshell tree, this file, the repository root or home/)"))
     return findings
 
 
 def run_checks(repo, qs_dir=QS_DIR):
     """Every finding for the checkout at repo, sorted."""
     tree = Tree(git_listing(repo, ["."]))
-    readmes = sorted(path for path in tree.files if path.startswith(qs_dir + "/") and path.endswith(".md") and os.path.isfile(os.path.join(repo, path)))
+    trees = (qs_dir + "/", *DOC_TREES)
+    readmes = sorted(path for path in tree.files if path.startswith(trees) and path.endswith(".md") and os.path.isfile(os.path.join(repo, path)))
     ignored = make_ignored(repo)
     findings = []
     for readme in readmes:
-        findings.extend(check_readme(repo, tree, ignored, qs_dir, readme))
+        findings.extend(check_readme(repo, tree, ignored, qs_dir, readme, readme not in UNCITED))
     return sorted(set(findings))
 
 
