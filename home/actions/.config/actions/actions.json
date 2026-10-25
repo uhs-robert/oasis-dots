@@ -1,0 +1,36 @@
+{
+  "actions": [
+    {
+      "id": "zoom.toggle",
+      "label": "Zoom",
+      "intent": "Start the screen magnifier, or stop it when it is running.",
+      "params": [],
+      "key": {"key": "Z", "leader": true, "universal": false},
+      "extra_keys": []
+    },
+    {
+      "id": "screenshot.take",
+      "label": "Screenshot",
+      "intent": "Open the screenshot and recording menu.",
+      "params": [],
+      "key": {"key": "Print", "leader": false, "universal": true},
+      "extra_keys": [{"key": "I", "leader": true, "universal": false}]
+    },
+    {
+      "id": "screenshot.pixel",
+      "label": "Color Picker",
+      "intent": "Pick a color from the screen and copy it.",
+      "params": [],
+      "key": {"key": "P", "leader": true, "universal": false},
+      "extra_keys": []
+    },
+    {
+      "id": "overview.open",
+      "label": "Workspace overview",
+      "intent": "Open the workspace overview.",
+      "params": [],
+      "key": {"key": "ALT + TAB", "leader": false, "universal": false},
+      "extra_keys": [{"key": "TAB", "leader": true, "universal": false}]
+    }
+  ]
+}
