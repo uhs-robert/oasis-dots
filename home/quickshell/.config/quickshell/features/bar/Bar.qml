@@ -104,33 +104,21 @@ Item {
     }
 
     // Lualine is one full-width statusline: section c's fill runs behind the islands.
-    Rectangle {
-        visible: root.lualine && !Style.islands_translucent
-        width: root.width
-        height: root.bar_height
+    Neovim.LualineStrip {
+        id: lualine_strip
         anchors.verticalCenter: parent.verticalCenter
-        color: Theme.bg_mantle
-    }
-
-    // Translucent, section c fills only between the islands, beside their arrow caps, so no fill stacks on it.
-    Shape {
-        visible: root.lualine && Style.islands_translucent
-        width: root.width
-        height: root.bar_height
-        anchors.verticalCenter: parent.verticalCenter
-        preferredRendererType: Shape.CurveRenderer
-
-        ShapePath {
-            strokeWidth: -1
-            fillColor: Style.island_fill(Theme.bg_mantle)
-            PathPolyline {
-                path: {
-                    const h = root.bar_height, l = left_island.visible ? left_island.width : 0, lc = left_island.visible ? left_island.cap_width : 0;
-                    const r = right_island.visible ? right_island.x : root.width, rc = right_island.visible ? right_island.cap_width : 0;
-                    return [Qt.point(l - lc, 0), Qt.point(r + rc, 0), Qt.point(r, h / 2), Qt.point(r + rc, h), Qt.point(l - lc, h), Qt.point(l, h / 2), Qt.point(l - lc, 0)];
-                }
-            }
-        }
+        active: root.lualine
+        edge: root.position
+        start: 0
+        end: root.width
+        bar_height: root.bar_height
+        screen_name: root.screen_name
+        left_island: left_island
+        right_island: right_island
+        lists_cava: root.lists_cava
+        lualine_entries: root.lualine_entries
+        module_props: root.module_props
+        wire: (item, entry) => root.wire_module(item, entry, right_island)
     }
 
     Loader {
@@ -208,52 +196,6 @@ Item {
                 font.bold: true
                 font.letterSpacing: 1
             }
-        }
-    }
-
-    // Lualine section c after the buffers: the focused app and a terminal's directory.
-    Loader {
-        id: segment_loader
-        active: root.lualine && root.left_entries.length > 0
-        x: left_island.width
-        anchors.verticalCenter: parent.verticalCenter
-        sourceComponent: WindowSegment {
-            screen_name: root.screen_name
-            bar_height: root.bar_height
-            max_width: Math.max(0, root.section_c - 8 - (lualine_cava.shown ? lualine_cava.width + 16 : 0))
-        }
-    }
-
-    // Lualine section c: from the left island's end to the right island's cap.
-    readonly property real section_c: (right_island.visible ? right_island.x : root.width) - (left_island.visible ? left_island.width : 0)
-
-    // Lualine has no center island: cava plays at the end of section c, left of the right island's cap,
-    // in whatever room the window segment's minimum leaves; under 48px it hides on this screen.
-    Item {
-        id: lualine_cava
-        readonly property real room: root.section_c - (segment_loader.item ? segment_loader.item.min_width : 0) - 16
-        readonly property bool shown: root.lualine && root.lists_cava && right_island.visible && MediaState.playing && PowerSource.on_ac && lualine_cava.room >= 48
-        visible: lualine_cava.shown
-        x: right_island.x - width - 8
-        width: Math.max(0, Math.min(120, lualine_cava.room))
-        height: root.bar_height
-        anchors.verticalCenter: parent.verticalCenter
-
-        CavaViewer { active: lualine_cava.shown }
-
-        CavaBars {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 3
-            height: parent.height - 6
-            flipped: root.position === "bottom"
-            active: lualine_cava.shown
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: Popups.toggle("media", right_island.body_item, right_island.bg_color, root.screen_name)
         }
     }
 
@@ -371,46 +313,7 @@ Item {
             active: root.lualine
             visible: active
             Layout.fillHeight: true
-            sourceComponent: Row {
-                readonly property var wire: (item, entry) => root.wire_module(item, entry, right_island)
-                // The sections draw their own fills, so a translucent island leaves its colour out from behind them.
-                readonly property bool lualine_fill: true
-
-                Neovim.LualineSection {
-                    id: x_section
-                    height: right_island.height
-                    entries: root.lualine_entries.filter(e => root.lualine_section(e.base) === "x")
-                    wire: parent.wire
-                    module_props: root.module_props
-                    fill: Theme.bg_mantle
-                    screen_name: root.screen_name
-                }
-
-                Neovim.LualineSection {
-                    id: y_section
-                    height: right_island.height
-                    entries: root.lualine_entries.filter(e => root.lualine_section(e.base) === "y")
-                    wire: parent.wire
-                    module_props: root.module_props
-                    fill: Theme.ui_visual_bg
-                    hover_fill: Qt.tint(Theme.ui_visual_bg, Qt.alpha(Theme.theme_primary, 0.3))
-                    lead_bg: x_section.shown ? x_section.end_fill : "transparent"
-                    separators: false
-                }
-
-                Neovim.LualineSection {
-                    height: right_island.height
-                    entries: root.lualine_entries.filter(e => root.lualine_section(e.base) === "z")
-                    wire: parent.wire
-                    module_props: root.module_props
-                    fill: SubmapState.bar_color
-                    accent: true
-                    // The mode chip's hover tint.
-                    hover_fill: Qt.tint(fill, Qt.alpha(Theme.fg_strong, 0.15))
-                    separators: false
-                    lead_bg: y_section.shown ? y_section.end_fill : x_section.shown ? x_section.end_fill : "transparent"
-                }
-            }
+            sourceComponent: lualine_strip.sections
         }
     }
 
