@@ -65,9 +65,10 @@ PATH_SCOPES = [
     ("lib/check/steps/qml_singleton_names.py", "qml"),
     ("lib/check/qml-singleton-names.allow", "qml"),
     ("lib/check/steps/lock-skins.sh", "qml"),
-    # The schemas, every spec and the roadmap beside them, ahead of the `*.md` rule below.
-    ("lib/check/steps/specs.py", "specs"),
-    ("specs/*", "specs"),
+    # The specs step is a tree step, so these files need no scope of their own; the schemas are named so that they do
+    # not fall to the final "all" rule.
+    ("lib/check/steps/specs.py", ""),
+    ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),
     ("lib/check/steps/shaders.sh", "shaders"),
@@ -263,8 +264,9 @@ STEPS = [
     Step("qml-singleton-names", "qml", "python3 -B ./lib/check/steps/qml_singleton_names.py"),
     Step("qml-ipc", "tree", "python3 -B ./lib/check/steps/qml_ipc.py"),
     Step("readme-links", "tree", "python3 -B ./lib/check/steps/readme_links.py"),
-    # No `needs`: a missing check-jsonschema must fail the step, not skip it.
-    Step("specs", "specs", "python3 -B ./lib/check/steps/specs.py"),
+    # "tree" so that an edit of an ignored .plans/ file, which no path rule can see, still selects it. No `needs`: a
+    # missing check-jsonschema must fail the step, not skip it.
+    Step("specs", "tree", "python3 -B ./lib/check/steps/specs.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
