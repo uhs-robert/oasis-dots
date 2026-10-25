@@ -1634,6 +1634,51 @@ if [ -n "$rust_matcher" ]; then
   check "a unit that is not a voxcmd timer is refused" "[[ \$(timers_guard other.timer 2>&1) == 'not a voxcmd timer: other.timer' ]] && ! timers_guard other.timer >/dev/null 2>&1"
 fi
 
+# ---- Answers: time zones, math and the weather popup --------------------------------------------------------------
+
+section "answers by voice"
+answers_config=$root/answers-config
+mkdir -p "$answers_config/integrations.d" "$answers_config/replacements.d"
+cp "$package/.config/voxcmd/integrations.d/answers.sh" "$answers_config/integrations.d/"
+copy_shipped_integrations "$answers_config" answers
+[ -z "$rust_matcher" ] || check "explain names answers.toml" "VOXCMD_CONFIG_DIR='$answers_config' '$routed' explain 'what time is it' 2>&1 | grep -q 'Answers (answers\\.toml)'"
+if [ -n "$rust_matcher" ]; then
+  answers_toast() { grep '^notify-send ' "$log" | tail -n1; }
+  answers_run() {
+    : >"$log"
+    VOXCMD_CONFIG_DIR=$answers_config "$routed" run "$1" >/dev/null 2>&1
+  }
+  answers_explain() { VOXCMD_CONFIG_DIR=$answers_config "$routed" explain "$1" 2>&1; }
+
+  # A name that ends in a tail word keeps the bare name: the verbs' tail takes "thanks", the lazy target stops before it.
+  for phrase in "what time is it in tokyo thanks" "how far ahead is tokyo please" "what is the time difference with tokyo thank you"; do
+    out=$(answers_explain "$phrase")
+    check "'$phrase' captures the bare zone name" "grep -q 'Answers (answers\\.toml) action=zone_' <<<\"\$out\" && grep -q \"target='tokyo'\" <<<\"\$out\""
+  done
+  answers_run "what time is it in tokyo thanks"
+  check "a zone with a trailing tail word is still found" "answers_toast | grep -q 'in Tokyo' && ! answers_toast | grep -q 'No time zone'"
+  answers_run "how far ahead is tokyo please"
+  check "its offset question is answered too" "answers_toast | grep -Eq 'Tokyo is .* (ahead|behind)|Tokyo is on the same time'"
+  answers_run "what time is it in nowhereville"
+  check "an unknown zone says so" "answers_toast | grep -q 'No time zone called Nowhereville'"
+  answers_run "what is 1 pm eastern in pacific thanks"
+  check "a conversion reads the raw transcript and drops its tail word" "answers_toast | grep -Eq 'Eastern.* is .*Pacific'"
+  out=$(answers_explain "what is 1 pm eastern in pacific")
+  check "a conversion routes to zone_convert, not calculate" "grep -q 'Answers (answers\\.toml) action=zone_convert' <<<\"\$out\""
+
+  # Math reads the raw transcript, which keeps "%" and decimal points.
+  answers_run "what's 15 percent of 80 please"
+  check "a spoken percentage is calculated and its tail word dropped" "answers_toast | grep -q '15% of 80 = 12'"
+  answers_run "what's 2.5% of 40"
+  check "a symbol and a decimal point survive to qalc" "answers_toast | grep -q '2.5% of 40 = 1'"
+  answers_run "convert 5 miles to kilometers"
+  check "a unit conversion is answered" "answers_toast | grep -q 'kilometer\|km'"
+
+  # The weather popup is the answer: no toast, and the popup opens.
+  answers_run "what's the weather"
+  check "the weather opens its popup and sends no toast" "grep -q '^qs-ipc call popup open weather' '$log' && ! grep -q '^notify-send ' '$log'"
+fi
+
 # ---- Firefox: firefox-tab and firefox.sh, on a made-up profile -----------------------------------------------------
 
 section "firefox"

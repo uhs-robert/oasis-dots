@@ -17,9 +17,20 @@ function is_vertical(position) {
     return position === "left" || position === "right";
 }
 
+// The Ctrl+letters that walk the popups along a bar: H and L along a row, K and J down a column. The other pair is
+// left to the popups, so a list's own Ctrl+J/K (the picker) is not taken on a bar it cannot mean.
+function walk_keys(position) {
+    return is_vertical(position) ? { back: "K", forward: "J" } : { back: "H", forward: "L" };
+}
+
 // Whether a screen draws the screen frame: the frame is laid out for a top or bottom bar only, so a side bar goes without.
 function draws_frame(frame_on, position) {
     return frame_on && !is_vertical(position);
+}
+
+// The screen height a top or bottom bar takes (its thickness plus the float gap above a floating popup); a side bar takes width instead, so none.
+function vertical_reserve(position, bar_thickness, float_gap) {
+    return is_vertical(position) ? 0 : bar_thickness + float_gap;
 }
 
 // Whether any screen draws the frame, which is when Hyprland should shape windows to it.
@@ -27,11 +38,10 @@ function any_draws_frame(frame_on, screen_positions) {
     return screen_positions.some(p => draws_frame(frame_on, p));
 }
 
-// What Settings steps through. Left and right stay valid when saved but are not offered until the side bar looks
-// right (popups, the remaining shapes, module fitting); re-enable them by making this `positions`.
-var settings_positions = ["top", "bottom"];
+// What Settings steps through.
+var settings_positions = positions;
 
-// The position `delta` steps on from `position` in `settings_positions`, wrapping; a saved side position steps as from the first.
+// The position `delta` steps on from `position` in `settings_positions`, wrapping.
 function step_position(position, delta) {
     const at = Math.max(0, settings_positions.indexOf(position));
     return settings_positions[(at + delta + settings_positions.length) % settings_positions.length];

@@ -88,12 +88,39 @@ fn columns(matcher: &Matcher, phrase: &str) -> [String; 3] {
 
 #[test]
 fn rust_matches_the_bash_goldens() {
-    matches_the_goldens(&config(), &[]);
+    matches_the_goldens(&config(), &[], false);
 }
 
 #[test]
 fn shipped_toml_matches_the_bash_goldens() {
-    matches_the_goldens(&config_with_shipped_toml(), TYPED_DAY_VERBS);
+    matches_the_goldens(&config_with_shipped_toml(), TYPED_DAY_VERBS, true);
+}
+
+/// answers' name verbs, as `stem:verb:action=` prefixes. Bash captured a trailing "please", "thanks" or "thank you" in the
+/// target and its action stripped it again; the TOML captures lazily, so the target is already bare (owner decision, 3.1
+/// plan). A golden's target is compared without those tail words.
+const TAIL_STRIPPED_TARGETS: &[&str] = &[
+    "answers:4:zone_now=",
+    "answers:5:zone_offset=",
+    "answers:6:zone_offset=",
+];
+
+fn without_tail_words(entry: &str) -> String {
+    let Some(prefix) = TAIL_STRIPPED_TARGETS.iter().find(|prefix| entry.starts_with(**prefix)) else {
+        return entry.to_string();
+    };
+    let (target, rest) = match entry[prefix.len()..].split_once('~') {
+        Some((target, rest)) => (target, format!("~{rest}")),
+        None => (&entry[prefix.len()..], String::new()),
+    };
+    let mut target = target;
+    while let Some(bare) = [" please", " thanks", " thank you"]
+        .iter()
+        .find_map(|tail| target.strip_suffix(tail))
+    {
+        target = bare;
+    }
+    format!("{prefix}{target}{rest}")
 }
 
 /// calendar's two `day` verbs, as `stem:verb:action=` prefixes of golden entries. In bash they matched any words and a
@@ -117,7 +144,9 @@ fn without_entries(column_name: &str, column: &str, ignored: &[&str]) -> String 
         .join("; ")
 }
 
-fn matches_the_goldens(config: &Config, ignored: &[&str]) {
+/// `strip_golden_tails` loosens only the golden side: the Rust side is never stripped, so a Rust target that keeps a
+/// tail word still fails.
+fn matches_the_goldens(config: &Config, ignored: &[&str], strip_golden_tails: bool) {
     let goldens = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/match-goldens.tsv"))
         .expect("run gen-match-goldens.sh");
     let matcher = Matcher::new(config);
@@ -134,7 +163,16 @@ fn matches_the_goldens(config: &Config, ignored: &[&str]) {
             .iter()
             .zip([forced, matches, near].iter().zip(&got))
         {
-            if without_entries(column, expected, ignored) != without_entries(column, got, ignored) {
+            let expected = if strip_golden_tails {
+                expected
+                    .split("; ")
+                    .map(without_tail_words)
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            } else {
+                expected.to_string()
+            };
+            if without_entries(column, &expected, ignored) != without_entries(column, got, ignored) {
                 mismatches.push(format!("{phrase:?} {column}:\n  bash {expected}\n  rust {got}"));
             }
         }

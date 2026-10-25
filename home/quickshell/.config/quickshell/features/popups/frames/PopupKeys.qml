@@ -8,6 +8,13 @@ QtObject {
     required property var popup
     property double last_g_ms: 0
 
+    // 1 or -1 for the walk key of this popup's bar (Ctrl+L/J forward, Ctrl+H/K back), else 0.
+    function walk_step(key) {
+        const keys = root.popup.walk_keys;
+        const letter = key >= Qt.Key_A && key <= Qt.Key_Z ? String.fromCharCode(key) : "";
+        return letter === "" ? 0 : letter === keys.forward ? 1 : letter === keys.back ? -1 : 0;
+    }
+
     // Runs after the popup's own handlers: keys reach it only when nothing deeper accepted them.
     function handle(event, focus_item) {
         if (focus_item && "cursorPosition" in focus_item) return;
@@ -25,8 +32,8 @@ QtObject {
         } else if (event.key === Qt.Key_Backspace && Popups.back_name !== "") {
             ThemeAudio.play("cancel");
             Popups.back();
-        } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_H || event.key === Qt.Key_L)) {
-            Popups.walk(event.key === Qt.Key_L ? 1 : -1);
+        } else if ((event.modifiers & Qt.ControlModifier) && root.walk_step(event.key) !== 0) {
+            Popups.walk(root.walk_step(event.key));
         } else if (event.key === Qt.Key_Q) {
             ThemeAudio.play("cancel");
             Popups.close();

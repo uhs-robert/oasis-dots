@@ -13,9 +13,9 @@ Act as the orchestrator: delegate all hands-on work, however small. Every edit, 
 
 Your context is the session's scarce resource: keep skill loads, file dumps, long diffs and logs out of it. Read summaries, reports and targeted excerpts, not whole files or outputs.
 
-Every brief ends with its report rule as its last line, where agents least often drop it: lead with the result, stay under 2,000 characters, and put anything longer (logs, full finding lists) in a file in the scratch dir whose path the report gives. A reviewer writes its full findings to that file and reports its verdict plus one line per material finding (severity, file:line, the failure in a sentence), under 1,500 characters; open the file only for a finding you act on.
+Every brief ends with its report rule as its last line, where agents least often drop it: lead with the result, stay under 2,000 characters, and put anything longer (logs, full finding lists) in a file under `<main checkout>/.logs/<topic>/<item>/` (`<topic>` is the tracker's name, `<item>` the piece; create the dir if missing) whose absolute path the report gives. A reviewer writes its full findings to that file and reports its verdict plus one line per material finding (severity, file:line, the failure in a sentence), under 1,500 characters; open the file only for a finding you act on.
 
-Briefs go by reference: write each piece's plan, constraints and context once, in its plan draft (`<doc>-<item>-plan-draft.md` beside its tracker doc, with its front matter), and have each brief name that file by absolute path (worktrees do not see it) and add only what this agent needs beyond it (its task, owned files, any "Do NOT" line, the report rule). Fix briefs, reviewers and siblings reuse the same file.
+Briefs go by reference: write each piece's plan, constraints and context once, in its plan draft (`<main checkout>/.plans/<topic>/<topic>-<item>-plan-draft.md`, beside its tracker, with its front matter), and have each brief name that file by absolute path (worktrees do not see it) and add only what this agent needs beyond it (its task, owned files, any "Do NOT" line, the report rule). Fix briefs, reviewers and siblings reuse the same file. `.plans/` and `.logs/` live in the main checkout only, because worktrees do not see ignored files; briefs give absolute paths. If the repo's `.gitignore` does not list `/.plans/` and `/.logs/`, add both to `<git-common-dir>/info/exclude` (it covers every worktree) rather than committing to a repo you do not own.
 
 Tracker doc edits go to a Haiku agent: give it the doc path and the change in a line or two, and take its one-line confirmation. When a piece merges, that agent deletes the piece's drafts, cuts its tracker row to status and PR (and its roadmap line, if any), and moves any decision worth keeping into the decisions log. Read a tracker yourself only for the section you are about to act on.
 
@@ -65,13 +65,14 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
    - For concurrency or lifecycle work (signals, locks, processes that hand over or race), name those risks in the brief and require tests that drive each risky path before review. Review rounds otherwise find these bugs one at a time.
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
-   - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement.
+   - Every fix ships a test that failed before the fix; the agent shows it failing on the unfixed code and passing on the fix, or says why none is possible.
+   - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement. Work that stands alone goes in a new file; where siblings must share a file (a list, table, index or config), keep each edit a small addition, or run those agents one after another.
 
 6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
 7. Get an external review of the issue and diff against the review dimensions. Codex first; an Opus subagent when Codex is unavailable.
-   - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call.
+   - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <main checkout>/.logs/<topic>/<item>` as one background Bash call.
    - Commit first (it exits 3 on uncommitted changes).
    - Request it the moment the work is handed to the owner for hands-on testing, so the two overlap; with no hands-on testing, as soon as the branch is committed.
    - When the owner will try a change by hand before merging, build it on one branch until they have, and split it into PRs only after their verdict, so a fix never has to be rebased up a stack.
@@ -82,7 +83,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 8. Evaluate and resolve findings. Classify each material finding as valid, partially valid, invalid, or out of scope; do not blindly apply reviewer suggestions. Fix valid ones using the model policy from step 4.
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when its context is under 150k tokens, judged from the token count its completion reports, and the fix is in code it already read.
    - Otherwise brief a fresh agent with the diff range, the finding and the file paths. Also start fresh when the finding shows the approach itself was wrong.
-   - Tell the fixer to make the smallest change that fixes the finding, with a test for it. If the fix needs a new mechanism, it reports that before building it.
+   - Tell the fixer to make the smallest change that fixes the finding, with a test per step 5. If the fix needs a new mechanism, it reports that before building it.
    - Re-run the external review only for a material fix (a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic); a targeted fix gets a reviewer agent's diff review (step 6) and its test.
 
 9. Final validation: your check passed on the final head, the tree is clean, and a reviewer agent confirms the diff has nothing unrelated.
