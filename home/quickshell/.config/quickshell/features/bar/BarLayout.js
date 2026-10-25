@@ -113,7 +113,32 @@ function normalize(raw) {
     }
     const out_shared = { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) };
     if (positions.indexOf(shared.position) >= 0) out_shared.position = shared.position;
-    return { shared: out_shared, monitors: monitors, positions: saved_positions };
+    const out = { shared: out_shared, monitors: monitors, positions: saved_positions };
+    // Written only once a switch is flipped, so a state file without one reads as all on.
+    if (is_object(raw.directory)) {
+        const switches = {};
+        for (const k of directory_switch_names) {
+            if (typeof raw.directory[k] === "boolean") switches[k] = raw.directory[k];
+        }
+        if (Object.keys(switches).length > 0) out.directory = switches;
+    }
+    return out;
+}
+
+// The directory module's global on/off switches: the app name, the path, and the file name Neovim has open.
+var directory_switch_names = ["app_name", "path", "file_name"];
+
+function directory_switches(state) {
+    const out = {};
+    for (const k of directory_switch_names) out[k] = !(state && state.directory && state.directory[k] === false);
+    return out;
+}
+
+function set_directory_switch(state, name, on) {
+    const next = normalize(state);
+    if (directory_switch_names.indexOf(name) < 0) return next;
+    next.directory = Object.assign({}, next.directory, { [name]: !!on });
+    return next;
 }
 
 function layout_of(rule) {

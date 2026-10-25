@@ -27,7 +27,15 @@ SettingsPane {
     readonly property bool has_own: root.monitor_key !== "" && !!BarSettings.state.monitors[root.monitor_key]
     readonly property var tracked: root.view_screen ? BarSettings.tracked_rule_for(root.view_screen) : null
     readonly property var view_layout: BarLayout.layout_of(BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key))
-    readonly property int top_count: root.target_screen ? (root.has_own ? 4 : 3) : 2
+    // Rows above the switches: target, position, and with a target the own-layout and compact rows.
+    readonly property int base_count: root.target_screen ? (root.has_own ? 4 : 3) : 2
+    // The Directory module's global switches follow, one row each, then the module list.
+    readonly property var directory_rows: [
+        { name: "app_name", label: "Directory: app name" },
+        { name: "path", label: "Directory: path" },
+        { name: "file_name", label: "Directory: Neovim file name" }
+    ]
+    readonly property int top_count: root.base_count + root.directory_rows.length
     readonly property bool own_compact: root.has_own && BarSettings.compact_for(BarSettings.state.monitors[root.monitor_key])
     // Saved per monitor apart from the own layout, so the row shows and keeps its value with Own layout off.
     readonly property string bar_position: BarLayout.position_of(BarLayout.effective(root.tracked, BarSettings.state, root.monitor_key))
@@ -65,11 +73,12 @@ SettingsPane {
             voxtype: "Dictation status.",
             recording: "A chip shown while the screen is recording.",
             notifications: "Notification center and Do Not Disturb.",
-            media: "Now playing; opens the media popup."
+            media: "Now playing; opens the media popup.",
+            directory: "The focused window's app and a terminal's directory. NeoVim always shows it in its statusline; here it is opt-in. The switches above apply."
         })
 
     footer_hint: root.pending ? "y forget · n keep · q close" : "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"
-    search_rows: ["Editing target", "Position"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact"] : [], root.entries.map(e => e.entry))
+    search_rows: ["Editing target", "Position"].concat(root.target_screen ? ["Own layout"] : [], root.has_own ? ["Compact"] : [], root.directory_rows.map(r => r.label), root.entries.map(e => e.entry))
     search_cursor: root.cursor
     described: true
     description: root.describe(root.described_index)
@@ -82,11 +91,18 @@ SettingsPane {
         if (index === 1) return "The screen edge every bar sits on, unless a monitor sets its own. Top or bottom. Popups and the submap tab rise from a bottom bar.";
         if (index === 2 && root.target_screen) return "On gives this monitor its own copy of the layout. Off goes back to the shared one.";
         if (index === 3 && root.has_own) return "A tighter bar that hides the system modules on this monitor.";
+        if (index >= root.base_count && index < root.top_count) return root.directory_notes[root.directory_rows[index - root.base_count].name];
         const item = root.entries[index - root.top_count];
         if (!item) return "";
         const note = root.module_notes[item.entry] || root.module_notes[BarSettings.parse_module(item.entry).base] || "";
         return note + (item.side === "hidden" ? " Hidden." : "");
     }
+
+    readonly property var directory_notes: ({
+            app_name: "Show the focused window's app name in the Directory module and the NeoVim statusline. Applies to every monitor and style.",
+            path: "Show a terminal's working directory. Off keeps only a Neovim file name, if that is on.",
+            file_name: "Show the file open in Neovim, not just its directory."
+        })
 
     function keys_for(index) {
         if (index === 0) return "H/L change · Enter list";
@@ -100,6 +116,11 @@ SettingsPane {
         if (BarLayout.module_args[base]) keys.push("a add argument");
         if (item.entry.indexOf(":") >= 0) keys.push("x remove");
         return keys.join(" · ");
+    }
+
+    function toggle_directory(index) {
+        const name = root.directory_rows[index - root.base_count].name;
+        BarSettings.set_directory_switch(name, !BarSettings.directory_switches[name]);
     }
 
     function hover(index, on) {
@@ -285,6 +306,7 @@ SettingsPane {
         else if (root.cursor === 1 && !shift && event.key === Qt.Key_X) root.ask_clear_position();
         else if (root.target_screen && root.cursor === 2 && toggles) root.toggle_own();
         else if (root.has_own && root.cursor === 3 && toggles) root.toggle_compact();
+        else if (root.cursor >= root.base_count && !on_module && toggles) root.toggle_directory(root.cursor);
         else if (on_module && !shift && event.key === Qt.Key_A) root.add_argument();
         else if (on_module && !shift && event.key === Qt.Key_X) root.remove_argument();
         else if (on_module && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) root.toggle_module();
@@ -377,6 +399,24 @@ SettingsPane {
             color: root.st.text_dim
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-3)
+        }
+
+        Repeater {
+            model: root.picking ? [] : root.directory_rows
+
+            ChoiceRow {
+                required property int index
+                required property var modelData
+                selected: root.live && root.cursor === root.base_count + index
+                label: modelData.label
+                value_text: BarSettings.directory_switches[modelData.name] ? "on" : "off"
+                onHoveredChanged: root.hover(root.base_count + index, hovered)
+                onStepped: {
+                    root.focus_pane();
+                    root.cursor = root.base_count + index;
+                    root.toggle_directory(root.cursor);
+                }
+            }
         }
 
         Repeater {

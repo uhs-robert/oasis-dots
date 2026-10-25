@@ -66,6 +66,15 @@ const cases = [
   ["set_shared_position refuses a typo", () => L.set_shared_position(L.normalize({ shared: { position: "bottom" } }), "diagonal").shared.position, "bottom"],
   ["layout edits keep the shared position", () => L.edit(rule, L.normalize({ shared: { position: "bottom" } }), "", { type: "hide", entry: "clock" }).shared.position, "bottom"],
   ["shared position survives a round trip", () => L.normalize(plain(L.set_shared_position(L.normalize(null), "bottom"))).shared, { place: {}, order: [], last_side: {}, position: "bottom" }],
+  ["directory is a known module", () => L.known.indexOf("directory") >= 0 && modules.find("directory").file, "Directory.qml"],
+  ["directory switches default to all on", () => L.directory_switches(L.normalize(null)), { app_name: true, path: true, file_name: true }],
+  ["a flipped switch is saved and the others stay on", () => L.directory_switches(L.set_directory_switch(L.normalize(null), "path", false)), { app_name: true, path: false, file_name: true }],
+  ["a switch turns back on", () => L.directory_switches(L.set_directory_switch(L.set_directory_switch(L.normalize(null), "path", false), "path", true)).path, true],
+  ["an unknown switch is ignored", () => "bogus" in (L.set_directory_switch(L.normalize(null), "bogus", false).directory || {}), false],
+  ["switches survive a round trip", () => L.directory_switches(L.normalize(plain(L.set_directory_switch(L.normalize(null), "file_name", false)))).file_name, false],
+  ["normalize drops non-boolean switches", () => L.directory_switches(L.normalize({ directory: { path: "no", app_name: false } })), { app_name: false, path: true, file_name: true }],
+  ["layout edits keep the switches", () => L.directory_switches(L.edit(rule, L.set_directory_switch(L.normalize(null), "app_name", false), "", { type: "hide", entry: "clock" })).app_name, false],
+  ["a state without switches has no directory key", () => "directory" in L.normalize(null), false],
 ];
 
 let failed = 0;

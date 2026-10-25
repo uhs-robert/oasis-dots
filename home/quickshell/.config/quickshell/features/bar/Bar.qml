@@ -213,7 +213,7 @@ Item {
         active: root.lualine && root.left_entries.length > 0
         x: left_island.width
         anchors.verticalCenter: parent.verticalCenter
-        sourceComponent: Neovim.WindowSegment {
+        sourceComponent: WindowSegment {
             screen_name: root.screen_name
             bar_height: root.bar_height
             max_width: Math.max(0, root.section_c - 8 - (lualine_cava.shown ? lualine_cava.width + 16 : 0))
