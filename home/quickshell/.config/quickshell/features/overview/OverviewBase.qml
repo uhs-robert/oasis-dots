@@ -376,7 +376,7 @@ PanelWindow {
     // With the screen frame on, the layer is the frame's hole, whose corners are cut in the frame's own profile. The
     // scrim and panel are masked to that outline so the frame's corners show through instead of being painted over.
     readonly property var hole_outline: Style.screen_frame_on && root.screen ? ScreenFrames.hole_outline(root.screen) : []
-    readonly property bool corners_cut: root.hole_outline.length > 0 && Style.screen_frame_profile.corner !== "square" && Style.screen_frame_profile.radius > 0
+    readonly property bool corners_cut: root.hole_outline.length > 0 && Style.screen_frame_profile !== null && Style.screen_frame_profile.corner !== "square" && Style.screen_frame_profile.radius > 0
 
     Item {
         id: hole_mask

@@ -453,6 +453,7 @@ cases.push(["profile_fields hands the fitted fillet and the profile, round and z
 cases.push(["pixel body rounds up to whole pixels", () => { const l = D.drawer_layout(spec({ corner: "pixel", step: 2, body_length: 400.4, body_depth: 200.2, extent: 100.6 })); return [l.body.w, l.body.d, l.length, l.depth]; }, [401, 101, 401 + 2 * 14, cover + 201 + 0]]);
 cases.push(["a spec with no corner or step is round", () => [D.drawer_layout(spec({})).corner, D.drawer_layout(spec({ corner: "bogus" })).corner], ["round", "round"]]);
 cases.push(["fillet_of fits the profile", () => [D.fillet_of({ corner: "pixel", radius: 12, step: 4 }), D.fillet_of({ corner: "square", radius: 12, step: 2 }), D.fillet_of({ corner: "chamfer", radius: 20, step: 2 })], [12, 0, 12]]);
+cases.push(["fillet_of is zero with no frame", () => D.fillet_of(null), 0]);
 
 // Texture phase: whatever the bar's edge, the drawer's edge and the side, the dither and scanlines a drawer tiles from
 // texture_phase must fall on the pixels the frame's own tiling (from the canonical origin, mirrored for a bottom bar) does.
