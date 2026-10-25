@@ -45,8 +45,9 @@
 #   qs-ipc call overview open|close|state|act
 #                                     the workspace overview. state prints what $SANDBOX_DIR/overview-state holds
 #                                     ("closed" when absent), which open sets to "open" and close to "closed"; act
-#                                     answers SANDBOX_OVERVIEW_ACT ("ok" by default). Its snapshot is the test's own
-#                                     $XDG_RUNTIME_DIR/voxcmd/overview.json.
+#                                     answers SANDBOX_OVERVIEW_ACT ("ok" by default); an ok focus or workspace act also
+#                                     sets the state to "closed", as the bar's overview closes itself. Its snapshot is
+#                                     the test's own $XDG_RUNTIME_DIR/voxcmd/overview.json.
 #   qs-ipc call tmux_overview state   what $SANDBOX_DIR/tmux_overview-state holds ("closed" when absent)
 #   qs-ipc call popup keyboard        what $SANDBOX_DIR/popup-keyboard holds ("no" when absent): "yes" when the open
 #                                     popup takes the keyboard, "no" when it is hands-off or none is open
@@ -375,7 +376,13 @@ qs-ipc)
     echo ok
     ;;
   *"call overview state"*) cat "$SANDBOX_DIR/overview-state" 2>/dev/null || echo closed ;;
-  *"call overview act"*) echo "${SANDBOX_OVERVIEW_ACT:-ok}" ;;
+  *"call overview act"*)
+    # As the bar does, a focus or a workspace jump closes the overview (a failed act does not).
+    case "${SANDBOX_OVERVIEW_ACT:-ok}:$*" in
+    ok:*"call overview act focus "* | ok:*"call overview act workspace "*) echo closed >"$SANDBOX_DIR/overview-state" ;;
+    esac
+    echo "${SANDBOX_OVERVIEW_ACT:-ok}"
+    ;;
   *"call tmux_overview state"*) cat "$SANDBOX_DIR/tmux_overview-state" 2>/dev/null || echo closed ;;
   *"confirm ask"* | *"sound play"*) echo ok ;;
   esac
