@@ -4,9 +4,10 @@ import Quickshell
 import Quickshell.Io
 import qs.core
 import qs.theme
+import "CavaViewers.js" as Viewers
 
-// One shared cava process for every screen's border strip, running only while media is
-// playing on AC power. Parses "n;n;...;" stdout lines into a 0..1 levels array.
+// One shared cava process for every screen, running only while media is playing on AC power
+// and something is drawing it (a registered viewer). Parses "n;n;...;" stdout lines into a 0..1 levels array.
 Singleton {
     id: root
 
@@ -16,9 +17,12 @@ Singleton {
     property var line_levels: root.zeros()
     property var smoothed: root.zeros()
     property double last_ms: 0
-    // Lualine bars count the screens showing their strip; with none, cava does not run.
-    property int lualine_viewers: 0
-    readonly property bool wanted: MediaState.playing && PowerSource.on_ac && (!Style.bar_lualine || root.lualine_viewers > 0)
+    // Whatever is drawing cava registers itself here while it is shown and unregisters when it hides or is destroyed.
+    property var viewers: []
+    readonly property bool wanted: MediaState.playing && PowerSource.on_ac && Viewers.any(root.viewers)
+
+    function register(viewer) { root.viewers = Viewers.register(root.viewers, viewer); }
+    function unregister(viewer) { root.viewers = Viewers.unregister(root.viewers, viewer); }
 
     function zeros() {
         const a = [];
