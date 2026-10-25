@@ -15,7 +15,7 @@ A plan only. Counts measured on main at 6a7ed8924 (2026-10-25). Items are in pri
 | 7   | One bad-input test across every command           | 2              | 7a none; 7b 1a, 1f |
 
 Ship batches:
-- B1 = 0a, 3, 4, 5.
+- B1 = 0a, 3, 4, 5a.
 - B2 = G1, G2. They edit global skills, which the owner reads before merge, so they ship alone.
 - B3 = 0b, 1a, 1b, 5b, 7a.
 - B4 = 1c, 1d, then 2a. 2a merges after 1c, so its table lists every bind.
