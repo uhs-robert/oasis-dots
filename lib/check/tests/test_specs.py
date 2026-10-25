@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import subprocess
 import sys
 import unittest
 from unittest import mock
@@ -60,6 +59,29 @@ class SpecFrontMatterTest(SpecsCase):
     def test_a_badly_typed_field_fails(self):
         self.assert_one_mentions(self.spec(spec_text(GOOD_FRONT + "prs: [abc]\n")), "bar.md", "prs")
 
+    def test_quoted_ids_compare_by_value(self):
+        for quoted in ('"bar"', "'bar'"):
+            self.assertEqual(self.spec(spec_text(GOOD_FRONT.replace("id: bar", f"id: {quoted}"))), [], quoted)
+        found = self.spec(spec_text(GOOD_FRONT.replace("id: bar", 'id: "baz"')))
+        self.assertIn("specs/core/bar.md:1: id baz is not the file name bar", found)
+
+    def test_an_impossible_date_fails(self):
+        self.assert_one_mentions(self.spec(spec_text("id: bar\ntitle: Bar\nstatus: approved\napproved: 2026-99-99\n")), "bar.md", "approved")
+
+    def test_crlf_line_endings_pass(self):
+        text = spec_text().replace("\n", "\r\n")
+        self.check({"specs/core/.keep": ""})
+        with open(os.path.join(self.root, "specs/core/bar.md"), "w", newline="") as handle:
+            handle.write(text)
+        self.assertEqual(specs.run_checks(self.root), [])
+
+    def test_a_rule_inside_the_body_does_not_end_the_front_matter_early(self):
+        self.assertEqual(self.spec(spec_text(body=GOOD_BODY + "\n---\n\nmore\n")), [])
+
+    def test_empty_front_matter_fails(self):
+        found = self.spec(spec_text("", GOOD_BODY))
+        self.assertTrue(found and all("bar.md" in line or line.startswith("  ") for line in found), found)
+
     def test_an_id_that_is_not_the_file_name_fails(self):
         self.assertEqual(self.spec(spec_text(), name="baz"), ["specs/core/baz.md:1: id bar is not the file name baz"])
 
@@ -82,6 +104,9 @@ class SpecBodyTest(SpecsCase):
     def test_a_requirement_with_another_prefix_fails(self):
         found = self.spec(spec_text(body=GOOD_BODY.replace("BAR-01", "LOCK-01")))
         self.assertEqual(found, ["specs/core/bar.md:12: requirement LOCK-.. does not start with BAR, the prefix of spec bar"])
+
+    def test_a_one_digit_number_is_not_a_requirement_id(self):
+        self.assertEqual(self.spec(spec_text(body=GOOD_BODY + "- **LOCK-1** not an id\n")), [])
 
     def test_a_requirement_in_a_code_fence_is_not_read(self):
         self.assertEqual(self.spec(spec_text(body=GOOD_BODY + "\n```\n- **LOCK-01** shown\n```\n")), [])
@@ -112,6 +137,15 @@ class PlanTest(SpecsCase):
     def test_no_plans_folder_passes(self):
         self.assertEqual(self.check({}), [])
 
+    def test_plans_and_handoffs_need_a_branch_but_trackers_do_not(self):
+        no_branch = GOOD_PLAN.replace("branch: none\n", "")
+        self.assert_one_mentions(self.plan(no_branch), "tracker.md", "branch")
+        self.assert_one_mentions(self.plan(no_branch.replace("kind: plan", "kind: handoff")), "tracker.md", "branch")
+        self.assertEqual(self.plan(no_branch.replace("kind: plan", "kind: tracker")), [])
+
+    def test_an_impossible_date_fails(self):
+        self.assert_one_mentions(self.plan(GOOD_PLAN.replace("2026-10-25", "2026-02-30")), "tracker.md", "updated")
+
     def test_a_bad_kind_fails(self):
         self.assert_one_mentions(self.plan(GOOD_PLAN.replace("kind: plan", "kind: note")), "tracker.md", "kind")
 
@@ -129,9 +163,9 @@ class MissingToolTest(SpecsCase):
 
 
 class RealTreeTest(unittest.TestCase):
-    def test_the_step_passes_on_this_checkout(self):
-        done = subprocess.run([sys.executable, "-B", os.path.join(CHECK_DIR, "steps", "specs.py")], capture_output=True, text=True)
-        self.assertEqual((done.returncode, done.stderr), (0, ""))
+    def test_the_tracked_specs_pass(self):
+        # Not run_checks: a local .plans/ on the machine is not part of the tracked tree.
+        self.assertEqual(specs.check_specs(REPO_DIR), [])
 
 
 if __name__ == "__main__":
