@@ -13,9 +13,9 @@ Act as the orchestrator: delegate all hands-on work, however small. Every edit, 
 
 Your context is the session's scarce resource: keep skill loads, file dumps, long diffs and logs out of it. Read summaries, reports and targeted excerpts, not whole files or outputs.
 
-Every brief ends with its report rule as its last line, where agents least often drop it: lead with the result, stay under 2,000 characters, and put anything longer (logs, full finding lists) in a file in the scratch dir whose path the report gives. A reviewer writes its full findings to that file and reports its verdict plus one line per material finding (severity, file:line, the failure in a sentence), under 1,500 characters; open the file only for a finding you act on.
+Every brief ends with its report rule as its last line, where agents least often drop it: lead with the result, stay under 2,000 characters, and put anything longer (logs, full finding lists) in a file under `<main checkout>/.logs/<topic>/` whose absolute path the report gives. A reviewer writes its full findings to that file and reports its verdict plus one line per material finding (severity, file:line, the failure in a sentence), under 1,500 characters; open the file only for a finding you act on.
 
-Briefs go by reference: write each piece's plan, constraints and context once, in its plan draft (`<doc>-<item>-plan-draft.md` beside its tracker doc, with its front matter), and have each brief name that file by absolute path (worktrees do not see it) and add only what this agent needs beyond it (its task, owned files, any "Do NOT" line, the report rule). Fix briefs, reviewers and siblings reuse the same file.
+Briefs go by reference: write each piece's plan, constraints and context once, in its plan draft (`<main checkout>/.plans/<topic>/<topic>-<item>-plan-draft.md`, beside its tracker, with its front matter), and have each brief name that file by absolute path (worktrees do not see it) and add only what this agent needs beyond it (its task, owned files, any "Do NOT" line, the report rule). Fix briefs, reviewers and siblings reuse the same file. `.plans/` and `.logs/` live in the main checkout only, because worktrees do not see ignored files; briefs give absolute paths. If the repo's `.gitignore` does not list `/.plans/` and `/.logs/`, add both to `<git-common-dir>/info/exclude` (it covers every worktree) rather than committing to a repo you do not own.
 
 Tracker doc edits go to a Haiku agent: give it the doc path and the change in a line or two, and take its one-line confirmation. When a piece merges, that agent deletes the piece's drafts, cuts its tracker row to status and PR (and its roadmap line, if any), and moves any decision worth keeping into the decisions log. Read a tracker yourself only for the section you are about to act on.
 
@@ -71,7 +71,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
 7. Get an external review of the issue and diff against the review dimensions. Codex first; an Opus subagent when Codex is unavailable.
-   - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <scratch dir outside the worktree>` as one background Bash call.
+   - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <main checkout>/.logs/<topic>` as one background Bash call.
    - Commit first (it exits 3 on uncommitted changes).
    - Request it the moment the work is handed to the owner for hands-on testing, so the two overlap; with no hands-on testing, as soon as the branch is committed.
    - When the owner will try a change by hand before merging, build it on one branch until they have, and split it into PRs only after their verdict, so a fix never has to be rebased up a stack.
