@@ -53,6 +53,9 @@ watchers_and_hooks_gone() { watchers_gone && ended_hooks_gone; }
 # ov_run <turn>... -- <phrase>: the overview is open on the fixture, the turns are what a session hears, the phrase is said.
 ov_state=open
 ov_run() {
+  # A skipped section's checks never read this run, and its waits return at once (wait_until), so a run there would leave
+  # its session's watchers to land their calls in the log of the first run of a section that is kept.
+  [ "$skipping_section" = 0 ] || return 0
   local turns=()
   while [ "$1" != -- ]; do
     turns+=("$1")
