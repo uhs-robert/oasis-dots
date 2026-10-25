@@ -1443,8 +1443,8 @@ out=$(route_all "stop clicking")
 check "'stop clicking' ends click mode instead of pausing media" "grep -Eq 'Click \($click_file\) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
 if [ -n "$rust_matcher" ]; then
   # Run for real: click mode opens, then "stop clicking" ends it, which shows the action ran. click.toml's mode action is
-  # Rust's own, so the bash voxcmd is asked about the integrations that stay on it (Overview hears "stop clicking" too,
-  # which proves the logger sees its calls) and never about click.
+  # Rust's own, so the bash voxcmd is asked about the integrations that stay on it (a phrase for Apps proves the logger sees
+  # its calls) and never about click.
   # The "numbered picks" section pointed VOXCMD_LEGACY_BIN at its own copy, past the logger.
   # Opening a mode looks for voxcmd-autostop beside the legacy binary, here the logger.
   ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$root/voxcmd-autostop"
@@ -1456,7 +1456,8 @@ if [ -n "$rust_matcher" ]; then
   stop_status=0
   VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1 || stop_status=$?
   check "'click mode' opens a session and 'stop clicking' ends it" "[[ $opened == 1 && $stop_status == 0 && ! -e '$session_file' ]]"
-  check "a mode action of click.toml runs natively, with the bash voxcmd asked about others but never about click" "grep -Eq '^_legacy-hook candidates [^ ]*/overview\\.sh ' '$legacy_calls' && ! grep -Eq '^_legacy-hook [a-z-]+ [^ ]*/click\\.' '$legacy_calls'"
+  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" explain "open firefox" >/dev/null 2>&1
+  check "a mode action of click.toml runs natively, with the bash voxcmd asked about others but never about click" "grep -Eq '^_legacy-hook candidates [^ ]*/apps\\.sh ' '$legacy_calls' && ! grep -Eq '^_legacy-hook [a-z-]+ [^ ]*/click\\.' '$legacy_calls'"
 fi
 out=$(route_all "click mode on")
 check "'click' followed by other text is still a click on that text" "! grep -q 'action=click_mode' <<<\"\$out\""
