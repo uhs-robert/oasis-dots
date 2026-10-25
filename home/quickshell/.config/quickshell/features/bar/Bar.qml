@@ -68,7 +68,8 @@ Item {
         return BarLayout.lualine_section(base);
     }
 
-    readonly property bool lists_cava: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "cava"))
+    // From the rule, not the built entries: lualine drops the cava entry from its islands but still draws cava in section c.
+    readonly property bool lists_cava: BarLayout.rule_lists(root.rule, "cava")
     readonly property bool lists_media: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "media"))
     // Everything the lualine right island holds: center modules, then right ones.
     readonly property var lualine_entries: root.center_entries.concat(root.right_entries)
@@ -323,7 +324,7 @@ Item {
         anchors.topMargin: open_edge_margin
         anchors.bottomMargin: open_edge_margin
         flipped: center_island.flipped
-        active: MediaState.playing && center_cava.island_cava
+        active: MediaState.playing && PowerSource.on_ac && center_cava.island_cava
     }
 
     Island {

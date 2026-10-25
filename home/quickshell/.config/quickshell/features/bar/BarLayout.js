@@ -50,9 +50,15 @@ function lualine_section(entry) {
     return m ? m.section : "x";
 }
 
-// Modules a lualine bar leaves out of its islands because it draws them itself (the directory in section c).
+// Modules a lualine bar leaves out of its islands because it draws them itself in section c (the directory, cava).
 function lualine_draws_itself(entry) {
-    return entry.split(":")[0] === "directory";
+    return ["directory", "cava"].indexOf(entry.split(":")[0]) >= 0;
+}
+
+// Whether a rule lists the module on any side, with or without an argument.
+function rule_lists(rule, base) {
+    if (!rule) return false;
+    return [rule.left, rule.center, rule.right].some(list => (list || []).some(e => e.split(":")[0] === base));
 }
 
 function section_sorted(list) {
