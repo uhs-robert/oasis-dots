@@ -10,12 +10,14 @@ Scope {
     id: root
 
     readonly property var profile: Style.screen_frame_profile
+    // tmux draws its pane borders one cell wide, whatever the bar's border is.
+    readonly property int border_width: Style.active.screen_frame_panes ? 1 : Style.bar_border_width
     // The whole dispatch, so the debounce restarts on any change; a clear when no screen draws a frame (a side bar draws none). The radius is the corner as
     // drawn (fitted to its profile's cap), which frame.lua turns into the windows' own rounding.
     readonly property string command: {
         if (!ScreenFrames.any_frame || !root.profile) return "ScreenFrame.clear()";
         const drawn = Corners.fit(root.profile.corner, root.profile.radius, root.profile.step).radius;
-        const args = [JSON.stringify(root.profile.corner), drawn, Style.bar_border_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false))), Style.active.screen_frame_flush !== false];
+        const args = [JSON.stringify(root.profile.corner), drawn, root.border_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false))), Style.active.screen_frame_flush !== false];
         return "ScreenFrame.set(" + args.join(", ") + ")";
     }
 
