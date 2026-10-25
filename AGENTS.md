@@ -37,6 +37,8 @@ just update-repos     # pull non-linked clones in repos/
 
 `just check` runs everything; `lib/check/README.md` lists the steps and how the options, the heavy-step slots and the pass records work (keep step docs there, not in `lib/check.sh`: an edit to the shim reruns every step). `lib/check.sh` is a shim for `lib/check/runner.py` (stdlib Python 3.11+, always run with `-B`). A new step, or a path that should reach one, goes in the tables of `lib/check/scopes.py`; `lib/check/keys.py` builds the pass-record keys from each step's definition and the files it reads; `scopes.py` is left out of the other steps' keys, so a new `Step` field that can change a pass must be added to `keys.DEFINITION_FIELDS` (a guard test fails otherwise). Branches cut before the port run the shell runner, whose keys differ, so they do not share passes with this one.
 
+A spec is `specs/core/<id>.md`, copied from `specs/core/TEMPLATE.md`; its front matter and any `.plans/` file's are validated by the `specs` step against `specs/schema/` (`check-jsonschema`, from `packages/pipx.ini`; the step fails without it).
+
 Formatting scope is deliberately narrow — whitespace and stylua checks only cover `install.sh`, `uninstall.sh`, `justfile`, `lib/`, `packages/`, `home/hypr/`, and shfmt covers the Quickshell audio importers (`scripts/*-audio`, `scripts/lib/`) and the agent tooling's tracked shell scripts under `.claude/` and `home/claude/.claude/` (skills, hooks, `status.d`; written here, not vendored). Everything else under `home/` is vendored or hand-maintained upstream config; do not reformat it.
 
 ## Installer architecture
