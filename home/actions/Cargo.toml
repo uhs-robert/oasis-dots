@@ -1,0 +1,25 @@
+[package]
+name = "actions"
+version = "0.1.0"
+edition = "2024"
+description = "The action manifest reader and the `act` command of the dotfiles' actions package"
+publish = false
+
+# The library is what voxcmd depends on by path; `act` is a thin shell over it.
+[lib]
+name = "actions"
+path = "src/lib.rs"
+
+[[bin]]
+name = "act"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+
+[profile.dev]
+incremental = false
+
+[profile.dev.package."*"]
+debug = false
