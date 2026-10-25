@@ -37,6 +37,12 @@ CASES = [
     ("lib/check/qml-ipc.allow", "checkscope"),
     ("lib/check/steps/lua.sh", "checkscope lua"),
     ("lib/check/steps/symlinks.sh", "checkscope"),
+    # Specs and their schemas reach the specs step; a plain Markdown file still reaches only the steps that always run.
+    ("lib/check/steps/specs.py", "checkscope specs"),
+    ("specs/core/bar.md", " specs"),
+    ("specs/schema/spec.yaml", " specs"),
+    ("specs/roadmap.md", " specs"),
+    ("docs/keybinds.md", ""),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.
     ("system/etc/greetd/quickshell/init.lua", " lua qml"),
     ("system/etc/greetd/quickshell/Greeter.qml", " qml"),
