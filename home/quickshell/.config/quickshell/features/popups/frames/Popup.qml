@@ -666,11 +666,16 @@ PanelWindow {
             radius: root.frame_radius
             top_left_radius: root.frame_rises ? root.frame_radius : root.top_left_radius
             top_right_radius: root.frame_rises ? root.frame_radius : root.top_right_radius
-            // The inner layers (inset ring, custom frame, dither) take one radius per side, so beside a bar they round all four.
             bottom_radius: root.frame_rises ? 0 : root.frame_radius
             bottom_left_radius: root.frame_rises ? root.top_left_radius : root.bottom_left_corner
             bottom_right_radius: root.frame_rises ? root.top_right_radius : root.bottom_right_corner
             inner_top_radius: root.frame_rises || root.beside ? root.frame_radius : 0
+            // The inner layers (inset ring, custom frame, dither) follow the outline's own corners beside a bar, so the
+            // side against it stays square as the outline does.
+            inner_top_left_radius: root.beside ? root.top_left_radius : root.frame_rises ? root.frame_radius : 0
+            inner_top_right_radius: root.beside ? root.top_right_radius : root.frame_rises ? root.frame_radius : 0
+            inner_bottom_left_radius: root.beside ? root.bottom_left_corner : root.frame_rises ? 0 : root.frame_radius
+            inner_bottom_right_radius: root.beside ? root.bottom_right_corner : root.frame_rises ? 0 : root.frame_radius
             corner_radii: true
             island_color: root.held_color
             clear_fill: root.device || root.st.border_title

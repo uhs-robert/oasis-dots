@@ -127,9 +127,10 @@ ShellRoot {
                 SubmapTab {
                     screen: screen_scope.modelData
                     screen_name: screen_scope.modelData.name
-                    line_width: bar_loader.item && bar_loader.item.bar_item.has_center && !screen_scope.bar_vertical ? bar_loader.item.bar_item.center_width : 260
+                    line_width: bar_loader.item && bar_loader.item.bar_item.has_center ? bar_loader.item.bar_item.center_span : 260
                     bar_present: screen_scope.has_bar
                     bottom: screen_scope.bar_bottom
+                    side: screen_scope.bar_vertical ? screen_scope.bar_position : ""
                     chip_shown: !!bar_loader.item && (bar_loader.item.bar_item.has_mode_chip || bar_loader.item.bar_item.has_frame_chip)
                 }
             }

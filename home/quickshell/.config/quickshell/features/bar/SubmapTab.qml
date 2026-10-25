@@ -8,10 +8,16 @@ import qs.features.voice
 PanelWindow {
     id: root
 
+    // How long the line is: the center island's extent along the bar.
     property real line_width: 260
     property bool bar_present: true
     // The bar sits on the bottom edge: the line and tabs rise above it instead of hanging below.
     property bool bottom: false
+    // "left" or "right" when the bar is a column: the line runs down the bar's open edge (the layer sits beside the bar,
+    // as a top bar's sits below it) and the tabs, turned a quarter, hang from it. Empty on a top or bottom bar.
+    property string side: ""
+    readonly property bool vertical: root.side !== ""
+    readonly property real line_thickness: 3
     // The bar on this screen shows the submap in a lualine mode chip instead.
     property bool chip_shown: false
     property string submap_name: ""
@@ -33,10 +39,12 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-submap"
-    anchors.top: !root.bottom
-    anchors.bottom: root.bottom
-    implicitWidth: Math.max(line_width, tabs.width)
-    implicitHeight: line.height + tabs.height
+    anchors.top: !root.vertical && !root.bottom
+    anchors.bottom: !root.vertical && root.bottom
+    anchors.left: root.side === "left"
+    anchors.right: root.side === "right"
+    implicitWidth: root.vertical ? root.line_thickness + tabs.height : Math.max(line_width, tabs.width)
+    implicitHeight: root.vertical ? Math.max(line_width, tabs.width) : root.line_thickness + tabs.height
     mask: Region {}
 
     onWant_submapChanged: root.sync()
@@ -105,10 +113,11 @@ PanelWindow {
 
     Rectangle {
         id: line
-        y: root.bottom ? tabs.height : 0
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: root.line_width * root.line_progress
-        height: 3
+        // Placed by x and y, not anchors: an anchor switched off leaves its last x or y behind.
+        x: root.vertical ? (root.side === "right" ? tabs.height : 0) : (root.width - line.width) / 2
+        y: root.vertical ? (root.height - line.height) / 2 : root.bottom ? tabs.height : 0
+        width: root.vertical ? root.line_thickness : root.line_width * root.line_progress
+        height: root.vertical ? root.line_width * root.line_progress : root.line_thickness
         // The submap owns the line while both tabs show.
         color: root.submap_progress > 0 || root.want_submap ? root.submap_color : root.voice_color
     }
@@ -116,8 +125,12 @@ PanelWindow {
     // The voice mode sits beside the submap tab, so both stay readable when a submap is open during a session.
     Row {
         id: tabs
-        y: root.bottom ? 0 : line.height
-        anchors.horizontalCenter: parent.horizontalCenter
+        // Turned about its top-left corner, so x and y name the corner the turned row grows from: its top edge (where
+        // it hangs from the line) faces the bar, so the text reads upward on a left bar and downward on a right one.
+        transformOrigin: Item.TopLeft
+        rotation: root.side === "left" ? -90 : root.side === "right" ? 90 : 0
+        x: root.side === "left" ? root.line_thickness : root.side === "right" ? tabs.height : (root.width - tabs.width) / 2
+        y: root.vertical ? (root.side === "left" ? (root.height + tabs.width) / 2 : (root.height - tabs.width) / 2) : root.bottom ? 0 : root.line_thickness
         // A Row counts only visible children, so without this its height (and the window's) jumps when a tab first shows.
         height: Math.max(submap_tab.height, voice_tab.height)
         spacing: 6

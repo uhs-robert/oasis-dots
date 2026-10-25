@@ -10,6 +10,8 @@ Item {
     property real top_radius: 0
     property real top_left_radius: root.top_radius
     property real top_right_radius: root.top_radius
+    property real bottom_left_radius: root.bottom_radius
+    property real bottom_right_radius: root.bottom_radius
     property real chamfer: 0
     property var st: Style.for_item(root)
     readonly property color start_color: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
@@ -38,8 +40,8 @@ Item {
                 height: root.height
                 topLeftRadius: root.top_left_radius
                 topRightRadius: root.top_right_radius
-                bottomLeftRadius: root.bottom_radius
-                bottomRightRadius: root.bottom_radius
+                bottomLeftRadius: root.bottom_left_radius
+                bottomRightRadius: root.bottom_right_radius
             }
         }
     }

@@ -1,12 +1,17 @@
 import QtQuick
 
-// A static 2x2 checker; the corner squares stay clear so it never spills past rounded corners.
+// A static 2x2 checker; the corner squares stay clear so it never spills past rounded corners (one radius for the top
+// pair and one for the bottom pair, or each corner's own).
 Item {
     id: root
 
     property color color: "transparent"
     property real radius: 0
     property real top_radius: 0
+    property real top_left_radius: root.top_radius
+    property real top_right_radius: root.top_radius
+    property real bottom_left_radius: root.radius
+    property real bottom_right_radius: root.radius
     // Edges that slope inward toward the bottom, like the bar's island caps.
     property real slant_left: 0
     property real slant_right: 0
@@ -33,10 +38,11 @@ Item {
             }
             return rows;
         }
+        const top = Math.max(root.top_left_radius, root.top_right_radius), bottom = Math.max(root.bottom_left_radius, root.bottom_right_radius);
         return [
-            { x: root.top_radius, y: 0, w: root.width - root.top_radius * 2, h: root.top_radius },
-            { x: 0, y: root.top_radius, w: root.width, h: root.height - root.top_radius - root.radius },
-            { x: root.radius, y: root.height - root.radius, w: root.width - root.radius * 2, h: root.radius }
+            { x: root.top_left_radius, y: 0, w: root.width - root.top_left_radius - root.top_right_radius, h: top },
+            { x: 0, y: top, w: root.width, h: root.height - top - bottom },
+            { x: root.bottom_left_radius, y: root.height - bottom, w: root.width - root.bottom_left_radius - root.bottom_right_radius, h: bottom }
         ];
     }
 
