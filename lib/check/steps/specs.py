@@ -49,7 +49,7 @@ TAG = re.compile(rf"\breq: ({REQUIREMENT_ID}(?:, ?{REQUIREMENT_ID})*)\b")
 # A tag counts only in a comment: after the file type's comment marker, outside a string literal, so a string that happens
 # to hold a tag is not coverage. The marker follows the extension, since `--flag` and `http://` are code in other
 # languages. A file of any other type is not scanned rather than guessed at. A .tsv takes a tag on a whole-line `#` comment
-# or in its note column (the fourth).
+# or in its note column: the one the header row names `note`, else the fourth.
 HASH_MARKERS = ("#",)
 SLASH_MARKERS = ("//", "/*")
 COMMENT_MARKERS_BY_EXTENSION = {
@@ -58,10 +58,13 @@ COMMENT_MARKERS_BY_EXTENSION = {
     ".lua": ("--",),
 }
 SHELL_OR_PYTHON_SHEBANG = re.compile(r"\A#!.*\b(?:sh|bash|python3?)\b")
-TSV_NOTE_COLUMN = 3
+DEFAULT_TSV_NOTE_COLUMN = 3
 QUOTES = "'\"`"
 # Directories whose test files may carry tags. Docs are not scanned, so prose cannot be mistaken for a tag.
-SCAN_ROOTS = ("lib/check/tests", "home/voxcmd/tests", "home/quickshell/tests", ".claude/skills/shadow", "home/hypr/tests")
+SCAN_ROOTS = (
+    "lib/check/tests", "home/voxcmd/tests", "home/quickshell/tests", ".claude/skills/shadow", "home/hypr/tests",
+    "home/calendar/tests", "home/voxtype/tests",
+)
 SKIPPED_DIRS = frozenset({".git", "node_modules", "target", "__pycache__"})
 GAPS_FILE = "specs/gaps.md"
 GAPS_HEADER = (
@@ -167,11 +170,18 @@ def comment_markers(path, first_line):
     return HASH_MARKERS if SHELL_OR_PYTHON_SHEBANG.match(first_line) else None
 
 
-def tags_in_line(line, markers, is_tsv=False):
-    """The requirement ids tagged in a line of a test file; see COMMENT_MARKERS_BY_EXTENSION for where a tag counts."""
-    if is_tsv:
+def tsv_note_column(lines):
+    """Index of the note column: where the first non-comment row, if a header, has a field `note`, else the default."""
+    header = next((line.split("\t") for line in lines if not line.startswith("#")), [])
+    return header.index("note") if "note" in header else DEFAULT_TSV_NOTE_COLUMN
+
+
+def tags_in_line(line, markers, note_column=None):
+    """The requirement ids tagged in a line of a test file; see COMMENT_MARKERS_BY_EXTENSION for where a tag counts.
+    note_column is given for a .tsv."""
+    if note_column is not None:
         fields = line.split("\t")
-        scanned = line if line.startswith("#") else fields[TSV_NOTE_COLUMN] if len(fields) > TSV_NOTE_COLUMN else ""
+        scanned = line if line.startswith("#") else fields[note_column] if len(fields) > note_column else ""
     else:
         comment = comment_start(line, markers)
         scanned = "" if comment is None else line[comment:]
@@ -195,12 +205,13 @@ def scan_tests(root):
                 except (UnicodeDecodeError, OSError):
                     continue
                 is_tsv = path.endswith(".tsv")
+                note_column = tsv_note_column(lines) if is_tsv else None
                 markers = comment_markers(path, lines[0] if lines else "")
                 if markers is None and not is_tsv:
                     continue
                 before = len(tags)
                 for number, line in enumerate(lines, 1):
-                    tags.extend((tag, path, number) for tag in tags_in_line(line, markers, is_tsv))
+                    tags.extend((tag, path, number) for tag in tags_in_line(line, markers, note_column))
                 if len(tags) == before:
                     untagged.append(path)
     return tags, untagged

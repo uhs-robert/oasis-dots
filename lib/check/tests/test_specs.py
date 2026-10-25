@@ -212,6 +212,23 @@ class LinkTest(SpecsCase):
         for row in ("k#\tx -- req: BAR-01\taccept\tnote\n", "k\t1\taccept\tnote\n"):
             self.assert_one_mentions(self.linked({tsv: row}, body=body), "BAR-01 has no test tagged")
 
+    def test_a_tsv_header_naming_note_picks_the_note_column(self):
+        body = GOOD_BODY.replace(" [gap: untested]", "")
+        tsv = "home/voxcmd/tests/phrases.tsv"
+        self.assertEqual(self.linked({tsv: "phrase\texpected\tnote\nplay\tMedia/toggle\treq: BAR-01\n"}, body=body), [])
+        wrong = "phrase\texpected\tnote\nplay\tMedia/toggle\tnote\treq: BAR-01\n"
+        self.assert_one_mentions(self.linked({tsv: wrong}, body=body), "BAR-01 has no test tagged")
+
+    def test_a_tsv_without_a_note_header_uses_the_fourth_column(self):
+        body = GOOD_BODY.replace(" [gap: untested]", "")
+        tsv = "home/quickshell/tests/input_settings/vectors.tsv"
+        self.assertEqual(self.linked({tsv: "# key\tvalue\tverdict\tnote\nk\t1\taccept\treq: BAR-01\n"}, body=body), [])
+
+    def test_the_product_test_roots_are_scanned(self):
+        body = GOOD_BODY.replace(" [gap: untested]", "")
+        for path in ("home/calendar/tests/run.sh", "home/voxtype/tests/duck_test.py"):
+            self.assertEqual(self.linked({path: "# req: BAR-01\n"}, body=body), [], path)
+
     def test_a_one_letter_prefix_id_is_not_a_requirement(self):
         self.assertEqual(self.linked({}, body=GOOD_BODY + "- **B-01** x\n- **B-01** x\n"), [])
 
