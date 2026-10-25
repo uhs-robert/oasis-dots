@@ -590,10 +590,6 @@ PanelWindow {
         return side === "right" ? width - w : side === "left" ? 0 : (width - w) / 2;
     }
 
-    function edge_y(h) {
-        return side === "right" ? height - h : side === "left" ? 0 : (height - h) / 2;
-    }
-
     Loader {
         active: root.drawer
         sourceComponent: DrawerShape {
