@@ -217,6 +217,13 @@ expect(/screen_frames: \[""\]\.concat\(root\.frame_corners\)/.test(style), "scre
 for (const f of [""].concat(frame_corners)) {
   expect(new RegExp((f === "" ? '""' : "\\b" + f) + ": \"").test(frame_labels), "no label for screen frame " + JSON.stringify(f));
 }
+// Lualine takes the frame like any style: frame_kit_for evaluated from the QML source.
+const FT = vm.createContext({});
+vm.runInContext(read("theme/FrameTokens.js").replace(/^\.pragma.*$/gm, ""), FT);
+const kit_for = vm.runInNewContext("(function(root) { return function" + style.match(/function frame_kit_for(\([^)]*\) \{[^}]*\})/)[1] + "; })", { FrameTokens: FT })({ frame_corners, plain_frame_kit: frame_kit });
+expect(kit_for({ bar_lualine: true, screen_frame: "pixel" }) !== null, "a lualine style with a frame corner gets no frame kit");
+expect(kit_for({ bar_lualine: true, screen_frame: "" }) === null, "a lualine style with no frame corner gets a kit");
+expect(kit_for({ screen_frame: "round", screen_frame_offered: false }) === null, "screen_frame_offered false does not opt out");
 // Each style's corner hint is a profile.
 for (const dir of fs.readdirSync(path.join(root, "styles"), { withFileTypes: true }).filter(d => d.isDirectory())) {
   const tokens_path = path.join(root, "styles", dir.name, "tokens.js");
@@ -285,11 +292,12 @@ expect(O.cap_width("chamfer", 40) === 12 && !O.has("chamfer"), "chamfer is a 0.3
 end_checks += 2;
 
 // The Terminal screen frame: its tmux pane colours replace the bar border, it is fixed to Square, and its line is 1 px.
-const FT = vm.createContext({});
-vm.runInContext(read("theme/FrameTokens.js").replace(/^\.pragma.*$/gm, ""), FT);
 const TT = vm.createContext({});
 vm.runInContext(read("styles/terminal/tokens.js").replace(/^\.pragma.*$/gm, ""), TT);
 const terminal = plain(TT.overrides({ theme_primary: "PRIMARY", fg_muted: "MUTED" }, {}));
+const NT = vm.createContext({ Qt: { tint: a => a, alpha: c => c, rgba: () => "RGBA", darker: c => c, lighter: c => c } });
+vm.runInContext(read("styles/neovim/tokens.js").replace(/^\.pragma.*$/gm, ""), NT);
+const neovim = Object.assign({ bar_island_shape: "slant" }, plain(NT.overrides(new Proxy({}, { get: () => "COLOR" }), {})));
 const rim = (panes, focused) => FT.rim_color(panes, focused, "BAR", "BAR_DIM");
 let pane_checks = 0;
 for (const [name, got, want] of [
@@ -301,7 +309,12 @@ for (const [name, got, want] of [
   ["panes draw 1 px whatever the bar border is", FT.rim_width(terminal.screen_frame_panes, 3), 1],
   ["no panes draws the bar border width", FT.rim_width(null, 3), 3],
   ["terminal is fixed to square", terminal.screen_frame_only, "square"],
-  ["terminal still offers the frame", terminal.screen_frame_offered, undefined],
+  ["terminal still offers the frame", FT.offered(terminal), true],
+  ["neovim (lualine) is offered the frame", FT.offered(neovim), true],
+  ["a style with screen_frame_offered false is not offered it", FT.offered({ screen_frame_offered: false }), false],
+  ["a frame forces a slant bar to the full bar", FT.forces_full_bar({ bar_island_shape: "slant" }), true],
+  ["a frame leaves a full bar alone", FT.forces_full_bar({ bar_island_shape: "full" }), false],
+  ["a frame leaves lualine's sections alone", FT.forces_full_bar(neovim), false],
   ["the row offers Off or Square for terminal", JSON.stringify(FT.row_choices(terminal.screen_frame_only, frame_corners.concat())), JSON.stringify(["", "square"])],
   ["the row offers Off and every corner otherwise", JSON.stringify(FT.row_choices("", ["", ...frame_corners])), JSON.stringify(["", ...frame_corners])],
   ["the row offers Off and every corner for an unset only", JSON.stringify(FT.row_choices(undefined, ["", ...frame_corners])), JSON.stringify(["", ...frame_corners])],
@@ -309,7 +322,7 @@ for (const [name, got, want] of [
   pane_checks++;
   expect(got === want, "terminal frame: " + name + ": got " + got + ", want " + want);
 }
-expect(/FrameTokens\.rim_width/.test(style) && /FrameTokens\.rim_color/.test(style) && /FrameTokens\.row_choices/.test(style), "Style.qml does not use FrameTokens");
+expect(/FrameTokens\.rim_width/.test(style) && /FrameTokens\.rim_color/.test(style) && /FrameTokens\.row_choices/.test(style) && /FrameTokens\.offered/.test(style) && /FrameTokens\.forces_full_bar/.test(style), "Style.qml does not use FrameTokens");
 expect(/Style\.screen_frame_rim_width/.test(read("features/bar/ScreenFrame.qml")) && /Style\.screen_frame_rim_width/.test(read("features/bar/ScreenFrameSync.qml")), "the drawn rim and Hyprland's border do not share screen_frame_rim_width");
 pane_checks += 2;
 

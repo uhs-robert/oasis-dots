@@ -61,6 +61,11 @@ function rule_lists(rule, base) {
     return [rule.left, rule.center, rule.right].some(list => (list || []).some(e => e.split(":")[0] === base));
 }
 
+// The stretches of a framed lualine bar's edge outside the strip, as [from, to] pairs: where the frame's own band shows. The strip fills `start` to `end` itself, so a translucent band under it would stack alpha on the strip's non-overlapping fills.
+function lualine_side_spans(start, end, width) {
+    return [[0, start], [end, width]].filter(span => span[1] > span[0]);
+}
+
 function section_sorted(list) {
     return ["x", "y", "z"].reduce((out, k) => out.concat(list.filter(e => lualine_section(e) === k)), []);
 }

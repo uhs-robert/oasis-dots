@@ -102,22 +102,20 @@ Item {
         if (entry.arg && item.hasOwnProperty("stat")) item.stat = entry.arg;
     }
 
-    // Lualine is one full-width statusline: section c's fill runs behind the islands.
-    Neovim.LualineStrip {
-        id: lualine_strip
-        anchors.verticalCenter: parent.verticalCenter
-        active: root.lualine
-        edge: root.position
-        start: 0
-        end: root.width
-        bar_height: root.bar_height
-        screen_name: root.screen_name
-        left_island: left_island
-        right_island: right_island
-        lists_cava: root.lists_cava
-        lualine_entries: root.lualine_entries
-        module_props: root.module_props
-        wire: (item, entry) => root.wire_module(item, entry, right_island)
+    // Under a frame the statusline is a strip along the bar edge between the frame's sides, not out to the screen edges, so
+    // the side bands keep the frame's colour. The corners of the hole start below the bar, so nothing here clips an arrow.
+    readonly property real lualine_start: root.frame ? root.frame.start : 0
+    readonly property real lualine_end: root.frame ? root.width - root.frame.end : root.width
+
+    Component {
+        id: strip_band
+        StripBackground {
+            edge: root.position
+            length: root.vertical ? parent.height : parent.width
+            thickness: root.bar_height
+            frame: root.frame
+            screen_name: root.screen_name
+        }
     }
 
     Loader {
@@ -126,13 +124,46 @@ Item {
         width: root.vertical ? root.bar_height : root.width - root.strip_side * 2
         height: root.vertical ? root.height - root.strip_side * 2 : root.bar_height
         active: Style.strip_shape
-        sourceComponent: StripBackground {
-            edge: root.position
-            length: root.vertical ? parent.height : parent.width
-            thickness: root.bar_height
-            frame: root.frame
-            screen_name: root.screen_name
+        sourceComponent: strip_band
+    }
+
+    // A framed lualine bar keeps the frame's plain edge band only outside the strip, as the strip draws its own fills
+    // there and a translucent band under them would stack alpha. Each side is the whole band clipped, so the rim and the
+    // corner ornaments keep their geometry.
+    Repeater {
+        model: root.lualine && root.frame ? BarLayout.lualine_side_spans(root.lualine_start, root.lualine_end, root.width) : []
+        Item {
+            required property var modelData
+            x: modelData[0]
+            y: root.cross_center
+            width: modelData[1] - modelData[0]
+            height: root.bar_height
+            clip: true
+            Loader {
+                x: -parent.x
+                width: root.width
+                height: root.bar_height
+                sourceComponent: strip_band
+            }
         }
+    }
+
+    // Lualine is one statusline: section c's fill runs behind the islands.
+    Neovim.LualineStrip {
+        id: lualine_strip
+        anchors.verticalCenter: parent.verticalCenter
+        active: root.lualine
+        edge: root.position
+        start: root.lualine_start
+        end: root.lualine_end
+        bar_height: root.bar_height
+        screen_name: root.screen_name
+        left_island: left_island
+        right_island: right_island
+        lists_cava: root.lists_cava
+        lualine_entries: root.lualine_entries
+        module_props: root.module_props
+        wire: (item, entry) => root.wire_module(item, entry, right_island)
     }
 
     Island {

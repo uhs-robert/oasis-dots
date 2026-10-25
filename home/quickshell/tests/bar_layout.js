@@ -12,11 +12,14 @@ const layout = vm.createContext({ BarModules: modules });
 vm.runInContext(script("features/bar/BarLayout.js"), layout);
 const L = layout;
 
+const side_spans = (start, end, width) => L.lualine_side_spans(start, end, width);
 const rule = { match: "*", left: ["start"], center: ["clock"], right: ["tray"] };
 const key = "Dell @ DP-1";
 const plain = obj => JSON.parse(JSON.stringify(obj));
 
 const cases = [
+  ["a framed lualine bar leaves its two sides to the frame band", () => side_spans(40, 960, 1000), [[0, 40], [960, 1000]]],
+  ["a lualine bar with the frame at the screen edges has no side", () => side_spans(0, 1000, 1000), []],
   ["no position is top", () => L.position_of(rule), "top"],
   ["null rule is top", () => L.position_of(null), "top"],
   ["bottom kept", () => L.position_of({ position: "bottom" }), "bottom"],
