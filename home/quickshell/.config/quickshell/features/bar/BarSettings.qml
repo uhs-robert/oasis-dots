@@ -170,6 +170,11 @@ Singleton {
         return rule && rule.bar !== false ? root.position_for(rule) : "top";
     }
 
+    // The Ctrl+letters that walk popups on a screen's bar (BarLayout.walk_keys).
+    function walk_keys_on(screen_name) {
+        return BarLayout.walk_keys(root.position_on(screen_name));
+    }
+
     // Splits "system:temperature" into { base: "system", arg: "temperature" }.
     function parse_module(entry) {
         const idx = entry.indexOf(":");

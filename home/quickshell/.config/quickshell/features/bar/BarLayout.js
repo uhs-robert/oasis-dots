@@ -17,6 +17,12 @@ function is_vertical(position) {
     return position === "left" || position === "right";
 }
 
+// The Ctrl+letters that walk the popups along a bar: H and L along a row, K and J down a column. The other pair is
+// left to the popups, so a list's own Ctrl+J/K (the picker) is not taken on a bar it cannot mean.
+function walk_keys(position) {
+    return is_vertical(position) ? { back: "K", forward: "J" } : { back: "H", forward: "L" };
+}
+
 // Whether a screen draws the screen frame: the frame is laid out for a top or bottom bar only, so a side bar goes without.
 function draws_frame(frame_on, position) {
     return frame_on && !is_vertical(position);
