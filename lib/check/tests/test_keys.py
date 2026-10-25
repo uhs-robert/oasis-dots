@@ -73,7 +73,7 @@ GOLDEN_KEYS = {
     ("packages", "run"): "dd87c70483085cf25e9fdd1680b7bf2110a4d718",
     ("git-diff-check", "run"): "86e4ebb106131abaa213f246c8780a5ae26bf33f",
     ("ignored-integrations", "run"): "184275857b6a2b4417eebf76e1a047e335b80444",
-    ("specs", "run"): "a968724bb8b0a6dd88a8e2d23b8126dff13d563f",
+    ("specs", "run"): "4704504d053614489e2c9f5c159071a203f90b98",
     ("shellcheck", "run"): "c1294268a8c0b90ec44d9865084d57ca04e113d6",
     ("shfmt", "fmt"): "b088898f0fdc23abaa8a4f78078f223de03e6aea",
     ("shellcheck", "unkeyable"): None,
@@ -163,7 +163,7 @@ FROZEN_STEPS = {
         ("packages", "tree"),
         ("git-diff-check", "tree"),
         ("ignored-integrations", "tree"),
-        ("specs", "specs"),
+        ("specs", "tree"),
         ("shellcheck", "shell"),
         ("shfmt", "shell"),
     )
@@ -249,14 +249,14 @@ class StepKeys(unittest.TestCase):
         before = self.all_keys()
         write_files(self.repo, {"lib/check/scopes.py": "scopes, edited\n"})
         # check-scope reads scopes.py through its own scope; the tree steps key on the whole tree.
-        self.assertEqual(self.moved_since(before) - {"packages", "git-diff-check", "ignored-integrations"}, {"check-scope"})
+        self.assertEqual(self.moved_since(before) - {"packages", "git-diff-check", "ignored-integrations", "specs"}, {"check-scope"})
 
     def test_widening_a_steps_scope_moves_the_keys_of_the_steps_that_read_the_file(self):
         before = self.all_keys()
         widened = [("home/quickshell/.config/quickshell/shell.qml", "qml voxcmd")] + FROZEN_PATH_SCOPES
         with mock.patch.object(scopes, "PATH_SCOPES", widened):
             moved = self.moved_since(before)
-        self.assertEqual(moved - {"packages", "git-diff-check", "ignored-integrations"}, {"voxcmd-click", "qmllint", "notification-markup"})
+        self.assertEqual(moved - {"packages", "git-diff-check", "ignored-integrations", "specs"}, {"voxcmd-click", "qmllint", "notification-markup"})
 
     def test_editing_a_steps_command_moves_that_steps_key_only(self):
         before = self.all_keys()
