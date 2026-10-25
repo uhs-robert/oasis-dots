@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.theme
 import qs.ui.frames
+import "../../../ui/frames/PanelCuts.js" as Cuts
 import qs.styles.oasis.widgets as Oasis
 import qs.styles.ff7.widgets
 import qs.styles.gameboy.widgets
@@ -20,6 +21,8 @@ Item {
     property bool pixel_outline: true
     // False where the screen frame's hole corners are the panel's, which the octagon and slant cuts would leave notched.
     property bool corner_cuts: true
+    // The corners that touch the bar: the octagon and slant cuts leave them square.
+    property var square: Cuts.none
     // Set while a DeviceShell draws the frame instead.
     property bool device: false
     // The frame's outer radii; the window gradient sits inside its border.
@@ -48,6 +51,7 @@ Item {
         sourceComponent: Oasis.SlantFrame {
             edge_color: root.chamfer_edge
             cut_corners: root.corner_cuts
+            square: root.square
         }
     }
 
@@ -56,6 +60,7 @@ Item {
         active: root.st.frame_octagon > 0
         sourceComponent: OctagonFrame {
             cut: root.octagon_cut
+            square: root.square
             edge_color: root.octagon_edge
             strut_color: root.struts ? root.st.frame_struts : "transparent"
         }

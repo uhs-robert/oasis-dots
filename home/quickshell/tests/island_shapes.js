@@ -334,5 +334,42 @@ expect(/FrameTokens\.rim_width/.test(style) && /FrameTokens\.rim_color/.test(sty
 expect(/Style\.screen_frame_rim_width/.test(read("features/bar/ScreenFrame.qml")) && /Style\.screen_frame_rim_width/.test(read("features/bar/ScreenFrameSync.qml")), "the drawn rim and Hyprland's border do not share screen_frame_rim_width");
 pane_checks += 2;
 
+// A popup's cut-corner outline leaves the corners against the bar square, on every bar position: no outline point may
+// sit on the diagonal of a corner that touches the bar, and the far corners keep their cut.
+const P = vm.createContext({});
+vm.runInContext(read("ui/frames/PanelCuts.js").replace(/^\.pragma.*$/gm, ""), P);
+const popup = read("features/popups/frames/Popup.qml");
+const sides = { top_left: [0, 0], top_right: [1, 0], bottom_right: [1, 1], bottom_left: [0, 1] };
+const both = (a, b) => Object.fromEntries(Object.keys(sides).map(k => [k, k === a || k === b]));
+const bar_sides = { top: both("top_left", "top_right"), bottom: both("bottom_left", "bottom_right"), left: both("top_left", "bottom_left"), right: both("top_right", "bottom_right") };
+const W = 200, H = 120;
+// Whether a corner is cut: the box's corner point itself is not on the outline.
+const corner_is_cut = (pts, name) => !pts.some(p => Math.abs(p[0] - sides[name][0] * W) < 0.01 && Math.abs(p[1] - sides[name][1] * H) < 0.01);
+const outlines = {
+  octagon: sq => P.octagon(W, H, 0, 20, sq),
+  visor: sq => P.visor(W, H, 0, 18, 6, H - 18 * 0.52, sq),
+  chamfer: sq => P.chamfer(W, H, 12, 0, sq),
+  slant: sq => P.slant_foot(W, H, 0, sq).concat([[0, 0], [W, 0]]),
+};
+for (const [shape, draw] of Object.entries(outlines)) {
+  for (const [bar, sq] of Object.entries(bar_sides)) {
+    for (const name of Object.keys(sides)) {
+      const cut = corner_is_cut(draw(sq), name);
+      const want = shape === "chamfer" || shape === "slant" ? name.startsWith("bottom") && !sq[name] : !sq[name];
+      expect(cut === want, shape + " beside a " + bar + " bar: " + name + " corner " + (cut ? "is cut" : "is square") + ", want " + (want ? "cut" : "square"));
+    }
+  }
+}
+// Nothing is squared by default, so the overview and toasts keep their cuts.
+expect(Object.values(vm.runInContext("none", P)).every(v => v === false), "PanelCuts.none squares a corner");
+// Each outline reaches the popup's bar side through `square`.
+expect(/square: root\.bar_square/.test(popup) && /bar_square[\s\S]*beside_corners/.test(popup), "Popup.qml does not hand its bar-side corners to the frame");
+for (const f of ["features/popups/frames/StyledFrame.qml", "features/popups/frames/CustomFrame.qml", "styles/oasis/widgets/SlantFrame.qml", "styles/tie/widgets/OctagonFrame.qml", "ui/frames/VisorGlass.qml", "ui/frames/FrameShade.qml"]) {
+  expect(/square/.test(read(f)) && /PanelCuts\.js/.test(read(f)), f + " does not draw through PanelCuts with a square set");
+}
+for (const f of ["features/popups/frames/StyledFrame.qml", "features/popups/frames/CustomFrame.qml"]) {
+  expect((read(f).match(/square: root\.square/g) || []).length >= 2, f + " does not pass square on to every outline");
+}
+
 if (failed) process.exit(1);
 console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frame_checks + end_checks + pane_checks) + " checks passed");

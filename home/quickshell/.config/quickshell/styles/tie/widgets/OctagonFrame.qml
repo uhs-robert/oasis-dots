@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
+import "../../../ui/frames/PanelCuts.js" as Cuts
 
 // A viewport cut to an octagon: gradient edge line, glass fill, clipped scan rows, corner struts and edge ticks.
 Item {
@@ -10,6 +11,8 @@ Item {
     property var st: Style.for_item(root)
     property real cut: root.st.frame_octagon
     property real edge: 1.5
+    // The corners that touch the bar stay square.
+    property var square: Cuts.none
     property color edge_color: root.st.frame_border_color
     property color strut_color: root.st.frame_struts
     readonly property real c: Math.max(0, Math.min(root.cut, root.width / 2, root.height / 2))
@@ -17,8 +20,13 @@ Item {
     readonly property real strut_length: root.c * 1.5
 
     function octagon(i, k) {
-        const w = root.width - i, h = root.height - i;
-        return [Qt.point(i + k, i), Qt.point(w - k, i), Qt.point(w, i + k), Qt.point(w, h - k), Qt.point(w - k, h), Qt.point(i + k, h), Qt.point(i, h - k), Qt.point(i, i + k), Qt.point(i + k, i)];
+        return Cuts.octagon(root.width, root.height, i, k, root.square).map(p => Qt.point(p[0], p[1]));
+    }
+
+    // How far the cut at a side's end reaches into a row: top rows meet the top corners, bottom rows the bottom ones.
+    function corner_cut(left, row_y) {
+        const top = left ? !root.square.top_left : !root.square.top_right, bottom = left ? !root.square.bottom_left : !root.square.bottom_right;
+        return Math.max(top ? root.c + root.edge - row_y : 0, bottom ? root.c + root.edge - (root.height - row_y - 1) : 0, 0);
     }
 
     Shape {
@@ -61,18 +69,17 @@ Item {
         Rectangle {
             required property int index
             readonly property real row_y: root.edge + index * 3
-            readonly property real trim: Math.max(0, root.c + root.edge - Math.min(row_y, root.height - row_y - 1))
 
-            x: Math.max(root.edge, trim)
+            x: Math.max(root.edge, root.corner_cut(true, row_y))
             y: row_y
-            width: Math.max(0, root.width - x * 2)
+            width: Math.max(0, root.width - Math.max(root.edge, root.corner_cut(false, row_y)) - x)
             height: 1
             color: root.st.scanline_color
         }
     }
 
     Repeater {
-        model: root.strut_color.a > 0 && root.c > 0 ? [[0, 0, 45], [1, 0, 135], [0, 1, -45], [1, 1, -135]] : []
+        model: root.strut_color.a > 0 && root.c > 0 ? [[0, 0, 45, root.square.top_left], [1, 0, 135, root.square.top_right], [0, 1, -45, root.square.bottom_left], [1, 1, -135, root.square.bottom_right]].filter(s => !s[3]) : []
 
         Rectangle {
             required property var modelData
