@@ -46,9 +46,9 @@ REQUIREMENT = re.compile(r"^- \*\*([A-Z]{2,})-\d{2,}\*\*")
 GAP_LINE = re.compile(r"^- \*\*([A-Z]{2,}-\d{2,})\*\*[ \t]*(?:\[gap: (untested|unmet)\])?[ \t]*(.*)$")
 REQUIREMENT_ID = r"[A-Z]{2,}-\d{2,}"
 TAG = re.compile(rf"\breq: ({REQUIREMENT_ID}(?:, ?{REQUIREMENT_ID})*)\b")
-# A tag counts only in a comment: a comment marker with no quote before it, so a string literal that happens to hold a tag is
-# not coverage. In a .tsv only the note column (the fourth) carries a tag, besides comment lines.
-COMMENT_START = re.compile(r"#|//|--|/\*|^\s*\*")
+# A tag counts only in a comment: after a comment marker that is outside a string literal, so a string that happens to
+# hold a tag is not coverage. In a .tsv only the note column (the fourth) carries a tag, besides comment lines.
+COMMENT_MARKERS = ("#", "//", "--", "/*")
 TSV_NOTE_COLUMN = 3
 QUOTES = "'\"`"
 # Directories whose test files may carry tags. Docs are not scanned, so prose cannot be mistaken for a tag.
@@ -128,11 +128,32 @@ def read_requirements(root):
     return found
 
 
+def comment_start(line):
+    """Index where the line's comment begins, or None. Quotes are skipped with their backslash escapes."""
+    if line.lstrip().startswith("*"):
+        return line.index("*")
+    quote = None
+    index = 0
+    while index < len(line):
+        char = line[index]
+        if quote:
+            if char == "\\":
+                index += 1
+            elif char == quote:
+                quote = None
+        elif char in QUOTES:
+            quote = char
+        elif line.startswith(COMMENT_MARKERS, index):
+            return index
+        index += 1
+    return None
+
+
 def tags_in_line(line, is_tsv):
-    """The requirement ids tagged in a line of a test file; see COMMENT_START for where a tag counts."""
-    comment = COMMENT_START.search(line)
-    if comment and not any(quote in line[:comment.start()] for quote in QUOTES):
-        scanned = line[comment.start():]
+    """The requirement ids tagged in a line of a test file; see COMMENT_MARKERS for where a tag counts."""
+    comment = comment_start(line)
+    if comment is not None:
+        scanned = line[comment:]
     elif is_tsv:
         fields = line.split("\t")
         scanned = fields[TSV_NOTE_COLUMN] if len(fields) > TSV_NOTE_COLUMN else ""
