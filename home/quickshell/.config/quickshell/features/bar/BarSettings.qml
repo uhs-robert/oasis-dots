@@ -48,7 +48,9 @@ Singleton {
         onFileChanged: reload()
         onLoaded: {
             try {
-                root.state = BarLayout.normalize(text().trim() === "" ? null : JSON.parse(text()));
+                const loaded = BarLayout.normalize(text().trim() === "" ? null : JSON.parse(text()));
+                root.state = loaded;
+                if (!loaded.cava_migrated && text().trim() !== "") root.set_state(BarLayout.migrate_cava(loaded));
             } catch (e) {
                 if (!root.warned_state) console.warn("BarSettings: invalid state bars.json, ignoring it (" + e + ")");
                 root.warned_state = true;
@@ -71,7 +73,8 @@ Singleton {
     }
 
     function set_state(next) {
-        root.state = BarLayout.normalize(next);
+        // Anything this build writes is past the one-time cava migration.
+        root.state = Object.assign(BarLayout.normalize(next), { cava_migrated: true });
         state_file.setText(JSON.stringify(root.state));
     }
 

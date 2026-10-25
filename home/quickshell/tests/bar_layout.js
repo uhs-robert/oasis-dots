@@ -76,6 +76,15 @@ const cases = [
   ["layout edits keep the switches", () => L.directory_switches(L.edit(rule, L.set_directory_switch(L.normalize(null), "app_name", false), "", { type: "hide", entry: "clock" })).app_name, false],
   ["lualine draws the directory itself, with or without an argument", () => [L.lualine_draws_itself("directory"), L.lualine_draws_itself("directory:x"), L.lualine_draws_itself("clock")], [true, true, false]],
   ["a state without switches has no directory key", () => "directory" in L.normalize(null), false],
+  ["cava is a registered module", () => L.known.indexOf("cava") >= 0, true],
+  ["cava sits in the lualine x section", () => L.lualine_section("cava"), "x"],
+  ["migrate adds cava after workspaces", () => L.migrate_cava({ monitors: { [key]: { left: ["start", "workspaces", "cmdstatus"], center: ["clock"], right: [] } } }).monitors[key].left, ["start", "workspaces", "cava", "cmdstatus"]],
+  ["migrate appends to left without workspaces", () => L.migrate_cava({ monitors: { [key]: { left: ["start"], center: [], right: [] } } }).monitors[key].left, ["start", "cava"]],
+  ["migrate keeps a cava already listed, in any side", () => L.migrate_cava({ monitors: { [key]: { left: ["workspaces"], center: [], right: ["cava"] } } }).monitors[key], { left: ["workspaces"], center: [], right: ["cava"], last_side: {} }],
+  ["migrate sets the flag, and normalize keeps it", () => L.normalize(plain(L.migrate_cava(L.normalize(null)))).cava_migrated, true],
+  ["migrate runs once: a removed cava stays removed", () => L.migrate_cava({ cava_migrated: true, monitors: { [key]: { left: ["workspaces"], center: [], right: [] } } }).monitors[key].left, ["workspaces"]],
+  ["normalize without the flag adds none", () => "cava_migrated" in L.normalize(null), false],
+  ["shared layouts are untouched by migrate", () => L.migrate_cava({ shared: { place: { clock: "left" } } }).shared.place, { clock: "left" }],
 ];
 
 let failed = 0;
