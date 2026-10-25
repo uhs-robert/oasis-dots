@@ -75,6 +75,12 @@ Singleton {
         state_file.setText(JSON.stringify(root.state));
     }
 
+    readonly property var directory_switches: BarLayout.directory_switches(root.state)
+
+    function set_directory_switch(name, on) {
+        root.set_state(BarLayout.set_directory_switch(root.state, name, on));
+    }
+
     function monitor_key(screen) {
         return BarLayout.resolve_key(root.state, root.description_for(screen), screen.name, Quickshell.screens.map(s => ({ name: s.name, description: root.description_for(s) })));
     }
