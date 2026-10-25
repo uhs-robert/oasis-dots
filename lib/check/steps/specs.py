@@ -46,9 +46,18 @@ REQUIREMENT = re.compile(r"^- \*\*([A-Z]{2,})-\d{2,}\*\*")
 GAP_LINE = re.compile(r"^- \*\*([A-Z]{2,}-\d{2,})\*\*[ \t]*(?:\[gap: (untested|unmet)\])?[ \t]*(.*)$")
 REQUIREMENT_ID = r"[A-Z]{2,}-\d{2,}"
 TAG = re.compile(rf"\breq: ({REQUIREMENT_ID}(?:, ?{REQUIREMENT_ID})*)\b")
-# A tag counts only in a comment: after a comment marker that is outside a string literal, so a string that happens to
-# hold a tag is not coverage. In a .tsv only the note column (the fourth) carries a tag, besides comment lines.
-COMMENT_MARKERS = ("#", "//", "--", "/*")
+# A tag counts only in a comment: after the file type's comment marker, outside a string literal, so a string that happens
+# to hold a tag is not coverage. The marker follows the extension, since `--flag` and `http://` are code in other
+# languages. A file of any other type is not scanned rather than guessed at. A .tsv takes a tag on a whole-line `#` comment
+# or in its note column (the fourth).
+HASH_MARKERS = ("#",)
+SLASH_MARKERS = ("//", "/*")
+COMMENT_MARKERS_BY_EXTENSION = {
+    ".py": HASH_MARKERS, ".sh": HASH_MARKERS, ".bash": HASH_MARKERS,
+    ".js": SLASH_MARKERS, ".qml": SLASH_MARKERS, ".rs": SLASH_MARKERS,
+    ".lua": ("--",),
+}
+SHELL_OR_PYTHON_SHEBANG = re.compile(r"\A#!.*\b(?:sh|bash|python3?)\b")
 TSV_NOTE_COLUMN = 3
 QUOTES = "'\"`"
 # Directories whose test files may carry tags. Docs are not scanned, so prose cannot be mistaken for a tag.
@@ -128,9 +137,10 @@ def read_requirements(root):
     return found
 
 
-def comment_start(line):
-    """Index where the line's comment begins, or None. Quotes are skipped with their backslash escapes."""
-    if line.lstrip().startswith("*"):
+def comment_start(line, markers):
+    """Index where the line's comment begins, or None. Quotes are skipped with their backslash escapes. For the
+    slash markers a leading `*` is a block comment's continuation line."""
+    if markers is SLASH_MARKERS and line.lstrip().startswith("*"):
         return line.index("*")
     quote = None
     index = 0
@@ -143,22 +153,28 @@ def comment_start(line):
                 quote = None
         elif char in QUOTES:
             quote = char
-        elif line.startswith(COMMENT_MARKERS, index):
+        elif line.startswith(markers, index):
             return index
         index += 1
     return None
 
 
-def tags_in_line(line, is_tsv):
-    """The requirement ids tagged in a line of a test file; see COMMENT_MARKERS for where a tag counts."""
-    comment = comment_start(line)
-    if comment is not None:
-        scanned = line[comment:]
-    elif is_tsv:
+def comment_markers(path, first_line):
+    """The comment markers of a test file, or None for a type that is not scanned."""
+    extension = os.path.splitext(path)[1]
+    if extension:
+        return COMMENT_MARKERS_BY_EXTENSION.get(extension)
+    return HASH_MARKERS if SHELL_OR_PYTHON_SHEBANG.match(first_line) else None
+
+
+def tags_in_line(line, markers, is_tsv=False):
+    """The requirement ids tagged in a line of a test file; see COMMENT_MARKERS_BY_EXTENSION for where a tag counts."""
+    if is_tsv:
         fields = line.split("\t")
-        scanned = fields[TSV_NOTE_COLUMN] if len(fields) > TSV_NOTE_COLUMN else ""
+        scanned = line if line.startswith("#") else fields[TSV_NOTE_COLUMN] if len(fields) > TSV_NOTE_COLUMN else ""
     else:
-        return []
+        comment = comment_start(line, markers)
+        scanned = "" if comment is None else line[comment:]
     return [tag for found in TAG.finditer(scanned) for tag in re.findall(REQUIREMENT_ID, found.group(1))]
 
 
@@ -178,9 +194,13 @@ def scan_tests(root):
                         lines = handle.read().splitlines()
                 except (UnicodeDecodeError, OSError):
                     continue
+                is_tsv = path.endswith(".tsv")
+                markers = comment_markers(path, lines[0] if lines else "")
+                if markers is None and not is_tsv:
+                    continue
                 before = len(tags)
                 for number, line in enumerate(lines, 1):
-                    tags.extend((tag, path, number) for tag in tags_in_line(line, path.endswith(".tsv")))
+                    tags.extend((tag, path, number) for tag in tags_in_line(line, markers, is_tsv))
                 if len(tags) == before:
                     untagged.append(path)
     return tags, untagged
