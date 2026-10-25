@@ -388,8 +388,18 @@ for (const bar of ["left", "right"]) {
 }
 // Nothing is squared by default, so the overview and toasts keep their cuts.
 expect(Object.values(vm.runInContext("none", P)).every(v => v === false), "PanelCuts.none squares a corner");
-// The center island's cava on a side bar stands in a tail below the modules, not over them.
-expect(/tail_span: center_cava\.tail_span/.test(read("features/bar/Bar.qml")) && /width: root\.vertical \? center_cava\.tail_length/.test(read("features/bar/Bar.qml")) && /root\.tail_span/.test(read("features/bar/Island.qml")), "the center island's side-bar cava does not get its own tail");
+// The center island's cava on a side bar stands in a tail below the modules, not over them: none on a top or bottom
+// bar or with cava off, cut to the room above the bottom island on a short screen, and the modules never move.
+const T = vm.createContext({});
+vm.runInContext(read("features/bar/CavaTail.js").replace(/^\.pragma.*$/gm, ""), T);
+const wanted = 108, roomy = T.free_space(1080, 200, 300, 0, 6), short = T.free_space(600, 200, 300, 0, 6);
+expect(T.tail_span(T.tail_target(false, wanted, roomy), 1) === 0, "a top or bottom bar gets a cava tail");
+expect(T.tail_span(T.tail_target(true, wanted, roomy), 0) === 0, "the tail stays with cava off");
+expect(T.tail_span(T.tail_target(true, wanted, roomy), 1) === wanted, "the tail is not full with room to spare");
+expect(short < wanted && T.tail_span(T.tail_target(true, wanted, short), 1) === Math.max(0, short), "the tail is not cut to the free room on a short screen");
+expect(T.tail_target(true, wanted, -40) === 0, "a negative free room gives a negative tail");
+expect(T.tail_span(T.tail_target(true, wanted, roomy), 0.5) === wanted / 2, "the tail does not follow the bars' fade");
+expect(/CavaTail\.tail_span\(center_cava\.tail_target, center_cava\.opacity\)/.test(read("features/bar/Bar.qml")) && /\(root\.height - module_length\) \/ 2/.test(read("features/bar/Bar.qml")), "the center island is centred by its tail or the tail ignores the fade");
 // The popup hands that derivation to the frame, and the radii read the same rounded set; each outline draws through PanelCuts.
 expect(/square: root\.bar_square/.test(popup) && /Cuts\.bar_square\(root\.beside \? root\.beside_round : null/.test(popup) && /beside_round\.top_left/.test(popup), "Popup.qml does not derive its bar-side corners once");
 expect(/Cuts\.corner_cut/.test(read("styles/tie/widgets/OctagonFrame.qml")) && /Cuts\.struts/.test(read("styles/tie/widgets/OctagonFrame.qml")), "OctagonFrame does not trim and strut through PanelCuts");
