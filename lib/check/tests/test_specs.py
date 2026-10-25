@@ -163,6 +163,26 @@ class LinkTest(SpecsCase):
     def test_a_tag_outside_the_scan_roots_is_not_read(self):
         self.assertEqual(self.linked({"docs/x.md": "req: BAR-09\n"}, body=GOOD_BODY), [])
 
+    def test_a_tag_inside_a_string_literal_is_not_coverage(self):
+        body = GOOD_BODY.replace(" [gap: untested]", "")
+        for text in ('fixture = "# req: BAR-01"\n', "x = 'req: BAR-01'\n", 'echo "-- req: BAR-01"\n', "call(1)  # ok\nsend(\"req: BAR-01\")\n"):
+            found = self.linked({"lib/check/tests/test_x.py": text}, body=body)
+            self.assert_one_mentions(found, "BAR-01 has no test tagged")
+
+    def test_a_trailing_comment_tag_counts(self):
+        body = GOOD_BODY.replace(" [gap: untested]", "")
+        self.assertEqual(self.linked({"lib/check/tests/test_x.py": "run()  # req: BAR-01\n"}, body=body), [])
+
+    def test_only_the_tsv_note_column_and_comment_lines_carry_a_tag(self):
+        body = GOOD_BODY.replace(" [gap: untested]", "")
+        tsv = "home/quickshell/tests/input_settings/vectors.tsv"
+        self.assert_one_mentions(self.linked({tsv: "req: BAR-01\t1\taccept\tnote\n"}, body=body), "BAR-01 has no test tagged")
+        self.assert_one_mentions(self.linked({tsv: "k\t1\taccept\n"}, body=body), "BAR-01 has no test tagged")
+        self.assertEqual(self.linked({tsv: "# req: BAR-01\nk\t1\taccept\tnote\n"}, body=body), [])
+
+    def test_a_one_letter_prefix_id_is_not_a_requirement(self):
+        self.assertEqual(self.linked({}, body=GOOD_BODY + "- **B-01** x\n- **B-01** x\n"), [])
+
     def test_a_word_ending_in_req_is_not_a_tag(self):
         self.assertEqual(self.linked({"lib/check/tests/test_x.py": "# freq: BAR-09\n"}, body=GOOD_BODY), [])
 
