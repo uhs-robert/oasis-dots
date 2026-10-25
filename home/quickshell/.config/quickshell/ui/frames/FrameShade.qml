@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
+import "PanelCuts.js" as Cuts
 
 // The style's frame shade into frame_color, diagonal or vertical; it also paints chamfered frames.
 Item {
@@ -13,6 +14,8 @@ Item {
     property real bottom_left_radius: root.bottom_radius
     property real bottom_right_radius: root.bottom_radius
     property real chamfer: 0
+    // The corners that touch the bar are not cut.
+    property var square: Cuts.none
     property var st: Style.for_item(root)
     readonly property color start_color: root.st.frame_shade.a > 0 ? root.st.frame_shade : root.st.frame_color
     // Chamfered frames trace their border here, just outside the fill where a Rectangle border would sit.
@@ -62,10 +65,7 @@ Item {
                 GradientStop { position: 1; color: root.st.frame_color }
             }
             PathPolyline {
-                path: {
-                    const w = root.width, h = root.height, c = Math.min(root.chamfer, h / 2, w / 2);
-                    return [Qt.point(0, 0), Qt.point(w, 0), Qt.point(w, h - c), Qt.point(w - c, h), Qt.point(c, h), Qt.point(0, h - c), Qt.point(0, 0)];
-                }
+                path: Cuts.chamfer(root.width, root.height, Math.min(root.chamfer, root.height / 2, root.width / 2), 0, root.square).map(p => Qt.point(p[0], p[1]))
             }
         }
 
@@ -76,8 +76,8 @@ Item {
             joinStyle: ShapePath.MiterJoin
             PathPolyline {
                 path: {
-                    const o = root.stroke / 2, w = root.width + o, h = root.height + o, c = Math.min(root.chamfer, root.height / 2, root.width / 2);
-                    return [Qt.point(-o, -o), Qt.point(w, -o), Qt.point(w, h - c), Qt.point(w - c, h), Qt.point(c - o, h), Qt.point(-o, h - c), Qt.point(-o, -o)];
+                    const o = root.stroke / 2;
+                    return Cuts.chamfer(root.width + o, root.height + o, Math.min(root.chamfer, root.height / 2, root.width / 2), o, root.square).map(p => Qt.point(p[0], p[1]));
                 }
             }
         }

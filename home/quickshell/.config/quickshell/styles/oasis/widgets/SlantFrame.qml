@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
+import "../../../ui/frames/PanelCuts.js" as Cuts
 
 // An oasis panel: a flat top, bottom corners cut at the bar islands' slant, filled sky to night, a sand horizon along the foot.
 Item {
@@ -12,16 +13,16 @@ Item {
     property color fill_bottom: root.st.frame_color
     // False for a straight foot, where a host's own corners (the screen frame's) are the panel's.
     property bool cut_corners: true
+    // The corners that touch the bar stay square.
+    property var square: Cuts.none
 
     readonly property real bw: root.st.frame_border_width
     readonly property color sand: Theme.theme_secondary
 
     // The bottom edge from its left end to its right end, for the box inset by i.
     function bottom_edge(i) {
-        const x0 = i, x1 = root.width - i, y1 = root.height - i, cap = Math.max(1, root.height * 0.45);
-        const cut = depth => Math.max(0, Math.min(depth, cap) - i * 0.6);
-        const l = root.cut_corners ? cut(10) : 0, r = root.cut_corners ? cut(36) : 0;
-        return [Qt.point(x0, y1 - l), Qt.point(x0 + l / 2, y1), Qt.point(x1 - r / 2, y1), Qt.point(x1, y1 - r)];
+        const square = root.cut_corners ? root.square : { bottom_left: true, bottom_right: true };
+        return Cuts.slant_foot(root.width, root.height, i, square).map(p => Qt.point(p[0], p[1]));
     }
 
     function outline(i) {

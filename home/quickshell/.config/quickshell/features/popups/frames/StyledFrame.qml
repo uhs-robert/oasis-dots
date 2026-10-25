@@ -3,6 +3,7 @@ import QtQuick.Effects
 import QtQuick.Shapes
 import qs.ui.effects
 import qs.ui.frames
+import "../../../ui/frames/PanelCuts.js" as Cuts
 
 // The style's frame stack: fill, glass, glow, shade, custom frame, inset, sheen, effects layer, scanlines and dither.
 Item {
@@ -23,6 +24,8 @@ Item {
     property real inner_top_right_radius: root.inner_top_radius
     property real inner_bottom_left_radius: root.bottom_radius
     property real inner_bottom_right_radius: root.bottom_radius
+    // The corners that touch the bar: every cut-corner outline leaves them square (PanelCuts.js).
+    property var square: Cuts.none
     property real inset_top_offset: 0
     property color island_color: root.st.frame_color
     property bool clear_fill: false
@@ -75,6 +78,7 @@ Item {
         VisorGlass {
             anchors.fill: parent
             top_cut: root.visor_top_cut
+            square: root.square
         }
 
         Shape {
@@ -108,12 +112,14 @@ Item {
             bottom_left_radius: Math.max(0, root.bottom_left_radius - root.st.frame_border_width)
             bottom_right_radius: Math.max(0, root.bottom_right_radius - root.st.frame_border_width)
             chamfer: root.st.frame_chamfer
+            square: root.square
         }
 
         CustomFrame {
             anchors.fill: parent
             st: root.st
             device: root.device
+            square: root.square
             top_left_radius: root.inner_top_left_radius
             top_right_radius: root.inner_top_right_radius
             bottom_left_radius: root.inner_bottom_left_radius

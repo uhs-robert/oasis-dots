@@ -254,6 +254,16 @@ PanelWindow {
     function beside_radius(round) {
         return round || root.floating ? root.frame_radius : 0;
     }
+    // The frame's corners that touch the bar, for the cut-corner outlines to leave whole. A floating style rounds them instead.
+    readonly property var bar_square: {
+        const flush = !root.floating && !root.dock_bottom;
+        if (root.beside) {
+            const round = root.beside_corners;
+            return { top_left: flush && !round.top_left, top_right: flush && !round.top_right, bottom_left: flush && !round.bottom_left, bottom_right: flush && !round.bottom_right };
+        }
+        const rises = flush && root.frame_rises;
+        return { top_left: flush && !rises, top_right: flush && !rises, bottom_left: rises, bottom_right: rises };
+    }
     // Where the frame's body starts inside the reveal, which grows from the bar side.
     // A drawer's content rides out with its far edge instead of staying put while the body uncovers it.
     readonly property real body_shift_x: root.beside && root.edge === "right" ? reveal.width - root.frame_width : 0
@@ -664,6 +674,7 @@ PanelWindow {
             width: root.frame_width
             height: root.panel_height - root.frame_line_room - (root.dock_bottom ? 0 : root.drop_room)
             radius: root.frame_radius
+            square: root.bar_square
             top_left_radius: root.frame_rises ? root.frame_radius : root.top_left_radius
             top_right_radius: root.frame_rises ? root.frame_radius : root.top_right_radius
             bottom_radius: root.frame_rises ? 0 : root.frame_radius

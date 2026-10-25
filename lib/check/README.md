@@ -84,7 +84,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `notification-markup`: `home/quickshell/tests/notification_markup.js`, the notification body sanitizer. Needs node.
 - `toast-extent`: `home/quickshell/tests/toast_extent.js`, the toast drawer's window depth, stack height and hover settling in `features/notifications/ToastExtent.js`. Needs node.
 - `directory-format`: `home/quickshell/tests/directory_format.js`, the directory segment's path shortening and app/path/file-name switches in `features/bar/DirectoryFormat.js`. Needs node.
-- `island-shapes`: `home/quickshell/tests/island_shapes.js`, the fill-less island helpers in `ui/frames/IslandOutlines.js` and that every `Style.island_shapes` entry has a kit and a label. Needs node.
+- `island-shapes`: `home/quickshell/tests/island_shapes.js`, the fill-less island helpers in `ui/frames/IslandOutlines.js`, the popup cut-corner outlines in `ui/frames/PanelCuts.js` and that every `Style.island_shapes` entry has a kit and a label. Needs node.
 - `drawer-shapes`: `home/quickshell/tests/drawer_shapes.js`, the drawer geometry in `ui/frames/DrawerGeometry.js` (layout, fill, outline, rim continuity with the screen frame) and `FrameGeometry.hole_rect`/`seam_of`. Needs node.
 - `cava-viewers`: `home/quickshell/tests/cava_viewers.js`, the registry of what is drawing cava in `features/media/CavaViewers.js` (double register, destroy while shown, zero viewers). Needs node.
 - `bar-layout`: `home/quickshell/tests/bar_layout.js`, the bar position in `features/bar/BarLayout.js` (rules, per-monitor overrides, the state file, the directory switches). Needs node.

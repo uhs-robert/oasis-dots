@@ -169,6 +169,7 @@ OUTSIDE_REFS = [
     ("home/quickshell/tests/island_shapes.js", "ui/frames/IslandOutlines.js"),
     ("home/quickshell/tests/island_shapes.js", "theme/Style.qml"),
     ("home/quickshell/tests/island_shapes.js", "ui/frames/Corners.js"),
+    ("home/quickshell/tests/island_shapes.js", "ui/frames/PanelCuts.js"),
     ("home/quickshell/tests/drawer_shapes.js", "ui/frames/IslandOutlines.js"),
     ("home/quickshell/tests/drawer_shapes.js", "ui/frames/BandGeometry.js"),
     ("home/quickshell/tests/drawer_shapes.js", "ui/frames/FrameGeometry.js"),
