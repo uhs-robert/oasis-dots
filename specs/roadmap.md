@@ -10,14 +10,14 @@ A plan only. Counts measured on main at 6a7ed8924 (2026-10-25). Items are in pri
 | 2   | Docs generated from code, with a drift check      | 2              | 1a to 1c        |
 | 3   | AGENTS.md rules only; decisions log               | 1              | 0a              |
 | 4   | voxcmd port status out of AGENTS.md               | 1              | 0a              |
-| 5   | A short spec per new interactive surface          | 1              | 0a; 1a for ids  |
+| 5   | A short spec per new interactive surface          | 2              | 5a 0a; 5b 1a    |
 | 6   | More executable specs (tables, goldens)           | 1 per area     | none; one on 1a |
 | 7   | One bad-input test across every command           | 2              | 7a none; 7b 1a, 1f |
 
 Ship batches:
 - B1 = 0a, 3, 4, 5.
 - B2 = G1, G2. They edit global skills, which the owner reads before merge, so they ship alone.
-- B3 = 0b, 1a, 1b, 7a.
+- B3 = 0b, 1a, 1b, 5b, 7a.
 - B4 = 1c, 1d, then 2a. 2a merges after 1c, so its table lists every bind.
 - B5 = 1e, 1f, 2b. B6 = 7b.
 - 1g goes in the first batch after the voxcmd 3.2 swap. Item 6 PRs fit any batch.
@@ -69,7 +69,7 @@ Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so i
 
 **Dependencies.** 0a (this repo's rule and `.gitignore` lines come first).
 
-**PRs.** G1: .plans/ and .logs/ in both skills, with the `.git/info/exclude` fallback. G2: the two brief sentences.
+**PRs.** G1: `.plans/` and `.logs/` in both skills, with the `.git/info/exclude` fallback. G2: the two brief sentences.
 
 **Checks.** `agent-hooks` and `shfmt` cover touched skill scripts; every line must pass the AGENTS.md "Global agent files" test.
 
@@ -95,7 +95,7 @@ Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so i
 **Dependencies.** None to start. 1g waits for the voxcmd 3.2 swap: before it, both the bash and the Rust voxcmd would need the feature.
 
 **PRs, one surface at a time.**
-- 1a: the manifest, a JSON schema, a few actions (zoom, screenshot, overview); a `registry` step that validates it and fails a `run` naming a missing IPC function (reusing `qml_ipc.py`'s parser).
+- 1a: the manifest, a JSON schema, a few actions (zoom, screenshot, overview); a `registry` step that validates it and fails a `run` naming a missing IPC function (reusing `qml_ipc.py`'s parser). The manifest sits at `home/actions/.config/actions/actions.json`, and `actions` goes in `packages/stow.ini` (or the `unstowed` list), which the `packages` step requires.
 - 1b: `Bind.action`, and `keymaps/global/tools.lua` moved to it.
 - 1c: the other global files, then the submaps.
 - 1d: `registry.allow`, with the step failing unlisted binds and handler functions.
@@ -146,7 +146,7 @@ Kept inline: a one-clause reason that tells you when the rule applies.
 
 **Scope.** AGENTS.md "Interaction conventions" says: agree a new surface's keys, look and first run with the owner before building it. Make that a file, `specs/surfaces/<name>.md`, from the template below, approved by the owner before the build PR. The build PR moves it into the feature folder as its README (`git mv`), where `readme-links` checks it. A spec is needed for a new popup, picker, mode or skin; not for a row in an existing pane.
 
-Format: Markdown with YAML front matter. A `surface-specs` check validates the front matter fields, the required headings, and that every id in `actions` exists in the registry (so it needs 1a).
+Format: Markdown with YAML front matter. A `surface-specs` check validates the front matter and the required headings (the template's six: What it is for, Keys, States, Config keys, First run, Acceptance checks); 5b adds that every id in `actions` exists in the registry. Keys are written `mod+z`. `status` is always required; `approved` is required once approved or built, `pr` once built; `actions` and `keys` may be empty lists.
 
 ```markdown
 ---
@@ -179,7 +179,7 @@ What a new user sees; guided setup if a tool is needed.
 - [ ] The tests or table rows it adds (item 6).
 ```
 
-**Dependencies.** 0a; the id check needs 1a. **PRs.** 1: the template at `specs/surfaces/TEMPLATE.md`, the AGENTS.md sentence and the `surface-specs` step. **Checks.** New `surface-specs` step (with a `PATH_SCOPES` line for `specs/surfaces/`), and its `lib/check/README.md` line. The template and built specs are exempt from the id check once moved.
+**Dependencies.** 5a 0a; 5b 1a (the id check needs the registry). **PRs.** 5a, in B1: the template at `specs/surfaces/TEMPLATE.md`, the AGENTS.md sentence and the `surface-specs` step for front matter and headings. 5b, in B3: the action-id check. **Checks.** New `surface-specs` step (with a `PATH_SCOPES` line for `specs/surfaces/`), and its `lib/check/README.md` line. It covers only `specs/surfaces/`: on `git mv` the spec becomes a feature README the check never sees, so delete its front matter in that move (the status then lives in the PR).
 
 **Risks.** Ceremony for small surfaces; the threshold above limits it.
 
