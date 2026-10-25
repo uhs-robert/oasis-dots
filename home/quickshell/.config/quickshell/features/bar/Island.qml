@@ -34,16 +34,14 @@ Item {
     readonly property int cap_overlap: root.translucent ? 0 : 1
     // One of Style.island_shapes; lualine draws its own sections whatever the shape. Over the full-bar strip
     // (StripBackground) an island draws nothing, as `none`.
-    readonly property string shape: root.vertical ? Outlines.vertical_shape(root.base_shape) : root.base_shape
-    readonly property string base_shape: root.lualine ? "lualine" : Style.strip_shape ? "none" : Style.bar_island_shape
+    readonly property string shape: root.lualine ? "lualine" : Style.strip_shape ? "none" : Style.bar_island_shape
     // Metroid Prime visor glass cut into notched bracket ends (VisorIsland) instead of slants.
     readonly property bool visor: root.shape === "visor"
     // A capsule this many px inside the island's top and ends, resting on its bottom edge; sheen_color lights its top edge.
     property real capsule_inset: 0
     property color sheen_color: "transparent"
     readonly property bool capsule: root.shape === "capsule"
-    readonly property real capsule_width: body.width
-    readonly property real capsule_radius: (root.height - root.capsule_inset) / 2
+    readonly property real capsule_radius: (root.thickness - root.capsule_inset) / 2
     // The submap tab hangs from this island.
     property bool tab_joined: false
     readonly property bool joined: root.capsule && (root.tab_joined || (Popups.open_name !== "" && Popups.open_anchor === body) || (Popups.open_name === "" && Tooltip.visible && Tooltip.island === body))
@@ -70,9 +68,9 @@ Item {
     readonly property bool window: root.shape === "window"
     readonly property int window_edge: root.border_width
     readonly property real window_x: 4
-    readonly property real window_width: root.width - root.window_x * 2
+    readonly property real window_width: root.length - root.window_x * 2
     readonly property real window_top: 1
-    readonly property real window_bottom: root.height - 1
+    readonly property real window_bottom: root.thickness - 1
     // One of IslandOutlines' shapes: a single polygon and its rim, sized and traced there.
     readonly property bool outlined: Outlines.has(root.shape)
     // False for none, underline, brackets and the full bar: no plate, so no fill, shade, slant caps, dither or scanlines.
@@ -87,7 +85,7 @@ Item {
     readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.window ? root.window_x + (root.center ? 16 : 6) : root.octagon ? 10 : 8
 
     readonly property real oct_x0: root.lug
-    readonly property real oct_x1: root.width - root.lug
+    readonly property real oct_x1: root.length - root.lug
     readonly property real oct_c: root.cap_width
     readonly property real oct_i: root.border_width / 2
 
@@ -115,7 +113,7 @@ Item {
             return [root.window_x + e, root.window_x + root.window_width - e];
         }
         if (root.capsule) {
-            const x0 = root.capsule_inset + e, x1 = root.capsule_inset + body.width - e, y0 = root.capsule_inset + e, y1 = h - e;
+            const x0 = root.capsule_inset + e, x1 = root.capsule_inset + root.body_span - e, y0 = root.capsule_inset + e, y1 = h - e;
             if (y < y0 || y > y1) return [0, 0];
             const top_r = Math.max(0, root.capsule_radius - e), bottom_r = Math.max(0, root.capsule_radius * (1 - root.join) - e);
             const corner = (r, dy) => r - Math.sqrt(Math.max(0, r * r - dy * dy));
@@ -142,17 +140,12 @@ Item {
     property string edge: "top"
     readonly property bool vertical: BarLayout.is_vertical(root.edge)
     readonly property bool flipped: root.edge === "bottom"
+    // The screen edge is at the far side of the island's box (the right bar, the bottom bar): the capsule's inset sits there.
+    readonly property bool edge_far: root.edge === "bottom" || root.edge === "right"
     property real thickness: 30
     readonly property real body_span: root.vertical ? body.height : body.width
     readonly property real length: root.capsule ? root.body_span + root.capsule_inset * 2 : root.body_span + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0) + root.lug * 2
-    // The visor and the octagon rim are horizontal-only (a side bar never draws them) and mirror under a bottom bar with this; the capsule has its own scale; every other layer uses deco_frame.
-    Scale {
-        id: mirror
-        origin.y: root.height / 2
-        yScale: root.flipped ? -1 : 1
-    }
-
-    // Places a layer drawn in the top-bar frame onto the edge. Shared by the layers; each is at 0, 0 and `length` by `thickness`.
+    // Places a layer drawn in the top-bar frame onto the edge. Shared by every layer; each is at 0, 0 and `length` by `thickness`.
     Matrix4x4 {
         id: deco_frame
         matrix: {
@@ -185,48 +178,50 @@ Item {
         NumberAnimation { target: root; property: "join"; to: 0; duration: 90; easing.type: Easing.InCubic }
     }
 
-    Rectangle {
-        id: capsule_shape
+    Item {
+        width: root.length
+        height: root.thickness
         visible: root.capsule
-        x: root.capsule_inset
-        y: root.flipped ? 0 : root.capsule_inset
-        width: body.width
-        height: root.height - root.capsule_inset
-        transform: Scale {
-            origin.y: capsule_shape.height / 2
-            yScale: root.flipped ? -1 : 1
-        }
-        topLeftRadius: root.capsule_radius
-        topRightRadius: root.capsule_radius
-        bottomLeftRadius: root.capsule_radius * (1 - root.join)
-        bottomRightRadius: root.capsule_radius * (1 - root.join)
-        border.width: root.border_width
-        border.color: root.border_color
-        gradient: Gradient {
-            GradientStop { position: 0; color: root.faded(capsule_fill.top_color) }
-            GradientStop { position: 1; color: capsule_fill.bottom_fill }
-        }
+        transform: deco_frame
 
-        // Joined, the bottom takes the popup's top shade and drops its border so the fills run on unbroken.
         Rectangle {
-            id: capsule_fill
-            readonly property color top_color: root.shade_color.a > 0 ? root.shade_color : root.bg_color
-            readonly property color bottom_color: Qt.tint(root.bg_color, Qt.alpha(capsule_fill.top_color, root.join))
-            // Opaque again as it joins, so a translucent capsule meets the opaque frame without a seam.
-            readonly property color bottom_fill: Qt.alpha(capsule_fill.bottom_color, capsule_fill.bottom_color.a * (root.fill_opacity + (1 - root.fill_opacity) * root.join))
-            visible: root.join > 0 && root.border_width > 0
-            x: root.border_width
-            y: parent.height - root.border_width
-            width: parent.width - root.border_width * 2
-            height: root.border_width
-            color: capsule_fill.bottom_fill
-            opacity: root.join
-        }
+            id: capsule_shape
+            x: root.capsule_inset
+            y: root.capsule_inset
+            width: root.body_span
+            height: root.thickness - root.capsule_inset
+            topLeftRadius: root.capsule_radius
+            topRightRadius: root.capsule_radius
+            bottomLeftRadius: root.capsule_radius * (1 - root.join)
+            bottomRightRadius: root.capsule_radius * (1 - root.join)
+            border.width: root.border_width
+            border.color: root.border_color
+            gradient: Gradient {
+                GradientStop { position: 0; color: root.faded(capsule_fill.top_color) }
+                GradientStop { position: 1; color: capsule_fill.bottom_fill }
+            }
 
-        Sheen {
-            color_top: root.sheen_color
-            corner: root.capsule_radius
-            edge: root.border_width
+            // Joined, the bottom takes the popup's top shade and drops its border so the fills run on unbroken.
+            Rectangle {
+                id: capsule_fill
+                readonly property color top_color: root.shade_color.a > 0 ? root.shade_color : root.bg_color
+                readonly property color bottom_color: Qt.tint(root.bg_color, Qt.alpha(capsule_fill.top_color, root.join))
+                // Opaque again as it joins, so a translucent capsule meets the opaque frame without a seam.
+                readonly property color bottom_fill: Qt.alpha(capsule_fill.bottom_color, capsule_fill.bottom_color.a * (root.fill_opacity + (1 - root.fill_opacity) * root.join))
+                visible: root.join > 0 && root.border_width > 0
+                x: root.border_width
+                y: parent.height - root.border_width
+                width: parent.width - root.border_width * 2
+                height: root.border_width
+                color: capsule_fill.bottom_fill
+                opacity: root.join
+            }
+
+            Sheen {
+                color_top: root.sheen_color
+                corner: root.capsule_radius
+                edge: root.border_width
+            }
         }
     }
 
@@ -261,9 +256,10 @@ Item {
     }
 
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         active: root.visor
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Metroid.VisorIsland {
             cap_left: root.cap_left
             cap_right: root.cap_right
@@ -277,8 +273,10 @@ Item {
 
     // The octagon: chamfered corners on the open ends, the screen-edge ends square; fill, rim and the case lugs.
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         active: root.octagon
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
@@ -286,7 +284,7 @@ Item {
                 fillColor: root.faded(root.bg_color)
                 PathPolyline {
                     path: {
-                        const x0 = root.oct_x0, x1 = root.oct_x1, c = root.oct_c, h = root.height;
+                        const x0 = root.oct_x0, x1 = root.oct_x1, c = root.oct_c, h = root.thickness;
                         const l = root.cap_left, r = root.cap_right;
                         return [l ? Qt.point(x0 + c, 0) : Qt.point(x0, 0), r ? Qt.point(x1 - c, 0) : Qt.point(x1, 0), r ? Qt.point(x1, c) : Qt.point(x1, 0), r ? Qt.point(x1, h - c) : Qt.point(x1, h), r ? Qt.point(x1 - c, h) : Qt.point(x1, h), l ? Qt.point(x0 + c, h) : Qt.point(x0, h), l ? Qt.point(x0, h - c) : Qt.point(x0, h), l ? Qt.point(x0, c) : Qt.point(x0, 0)];
                     }
@@ -297,10 +295,11 @@ Item {
 
     // The rim sits above the island's content so a module that fills the height cannot cover it.
     Loader {
-        anchors.fill: parent
+        width: root.length
+        height: root.thickness
         z: 2
         active: root.octagon
-        transform: mirror
+        transform: deco_frame
         sourceComponent: Shape {
             preferredRendererType: Shape.CurveRenderer
 
@@ -312,7 +311,7 @@ Item {
                 joinStyle: ShapePath.MiterJoin
                 PathPolyline {
                     path: {
-                        const x0 = root.oct_x0, x1 = root.oct_x1, c = root.oct_c, h = root.height, i = root.oct_i;
+                        const x0 = root.oct_x0, x1 = root.oct_x1, c = root.oct_c, h = root.thickness, i = root.oct_i;
                         const pts = [];
                         if (root.cap_left) pts.push(Qt.point(x0 + c, i), Qt.point(x0 + i, c), Qt.point(x0 + i, h - c), Qt.point(x0 + c, h - i));
                         else pts.push(Qt.point(x0, h - i));
@@ -325,36 +324,42 @@ Item {
         }
     }
 
-    // Case lugs on the center island: short tabs in the rim colour, centred on the ends.
-    Repeater {
-        model: root.lug > 0 ? [0, 1] : []
+    // Case lugs on the center island, short tabs in the rim colour centred on the ends, and the bezel's hour mark at
+    // each open end inside the rim (none on an end that meets the screen edge).
+    Item {
+        width: root.length
+        height: root.thickness
+        // Above a borrowing style's dither and scanlines, which would hatch the marks.
+        z: 1
+        visible: root.watch
+        transform: deco_frame
 
-        Rectangle {
-            required property int modelData
-            x: modelData === 0 ? 0 : root.width - root.lug
-            y: root.height / 2 - 7
-            width: root.lug + 1
-            height: 14
-            color: root.border_color
-            opacity: 0.9
-            visible: root.watch
+        Repeater {
+            model: root.lug > 0 ? [0, 1] : []
+
+            Rectangle {
+                required property int modelData
+                x: modelData === 0 ? 0 : root.length - root.lug
+                y: root.thickness / 2 - 7
+                width: root.lug + 1
+                height: 14
+                color: root.border_color
+                opacity: 0.9
+            }
         }
-    }
 
-    // The bezel's hour mark at each open end, inside the rim; none on an end that meets the screen edge.
-    Repeater {
-        model: root.watch ? [0, 1] : []
+        Repeater {
+            model: root.watch ? [0, 1] : []
 
-        Rectangle {
-            required property int modelData
-            // Above a borrowing style's dither and scanlines, which would hatch it.
-            z: 1
-            visible: modelData === 0 ? root.cap_left : root.cap_right
-            x: modelData === 0 ? root.lug + 5 : root.width - root.lug - 7
-            y: (root.height - height) / 2
-            width: 2
-            height: 12
-            color: root.tick_color
+            Rectangle {
+                required property int modelData
+                visible: modelData === 0 ? root.cap_left : root.cap_right
+                x: modelData === 0 ? root.lug + 5 : root.length - root.lug - 7
+                y: (root.thickness - height) / 2
+                width: 2
+                height: 12
+                color: root.tick_color
+            }
         }
     }
 
@@ -393,29 +398,35 @@ Item {
     // The window's fill; its corner pixels stay clear.
     Item {
         visible: root.window
-        x: root.window_x
-        y: root.window_top
-        width: root.window_width
-        height: root.window_bottom - root.window_top
+        width: root.length
+        height: root.thickness
+        transform: deco_frame
 
-        Rectangle {
-            x: root.window_edge
-            width: parent.width - root.window_edge * 2
-            height: parent.height
-            color: root.faded(root.bg_color)
-        }
-
-        // The side strips beside the centre column; overlapping it would fill those pixels twice.
-        Repeater {
-            model: [0, 1]
+        Item {
+            x: root.window_x
+            y: root.window_top
+            width: root.window_width
+            height: root.window_bottom - root.window_top
 
             Rectangle {
-                required property int modelData
-                x: modelData === 0 ? 0 : parent.width - root.window_edge
-                y: root.window_edge
-                width: root.window_edge
-                height: parent.height - root.window_edge * 2
+                x: root.window_edge
+                width: parent.width - root.window_edge * 2
+                height: parent.height
                 color: root.faded(root.bg_color)
+            }
+
+            // The side strips beside the centre column; overlapping it would fill those pixels twice.
+            Repeater {
+                model: [0, 1]
+
+                Rectangle {
+                    required property int modelData
+                    x: modelData === 0 ? 0 : parent.width - root.window_edge
+                    y: root.window_edge
+                    width: root.window_edge
+                    height: parent.height - root.window_edge * 2
+                    color: root.faded(root.bg_color)
+                }
             }
         }
     }
@@ -437,8 +448,9 @@ Item {
     Rectangle {
         id: body
 
-        x: root.vertical ? 0 : root.capsule ? root.capsule_inset : root.lug + (cap_left ? root.cap_width : 0)
-        y: root.vertical ? root.lug + (cap_left ? root.cap_width : 0) : 0
+        readonly property real along: root.capsule ? root.capsule_inset : root.lug + (root.cap_left ? root.cap_width : 0)
+        x: root.vertical ? 0 : body.along
+        y: root.vertical ? body.along : 0
         height: root.vertical ? Math.ceil(layout.implicitHeight) + root.pad * 2 : root.thickness
         width: root.vertical ? root.thickness : Math.ceil(layout.implicitWidth) + root.pad * 2
         color: root.shaded || root.octagon || root.window || root.outlined || root.stroke_only || root.lualine && root.translucent ? "transparent" : root.faded(root.bg_color)
@@ -460,16 +472,15 @@ Item {
 
         // A tick scale rising from the open edge.
         Loader {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: root.flipped ? parent.top : undefined
-            anchors.bottom: root.flipped ? undefined : parent.bottom
-            anchors.topMargin: root.border_width
-            anchors.bottomMargin: root.border_width
-            height: 5
-            active: Style.bar_ticks.a > 0 && !root.vertical
+            readonly property real ticks_length: 5
+            x: root.vertical ? (root.edge_far ? root.border_width : parent.width - ticks_length - root.border_width) : 0
+            y: root.vertical ? 0 : root.flipped ? root.border_width : parent.height - ticks_length - root.border_width
+            width: root.vertical ? ticks_length : parent.width
+            height: root.vertical ? parent.height : ticks_length
+            active: Style.bar_ticks.a > 0
             sourceComponent: TickScale {
-                from_end: !root.flipped
+                vertical: root.vertical
+                from_end: root.vertical ? !root.edge_far : !root.flipped
                 step: 12
                 major_length: 5
                 minor_length: 3
@@ -489,9 +500,9 @@ Item {
             flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
             rows: root.vertical ? -1 : 1
             columns: root.vertical ? 1 : -1
-            x: root.vertical ? 0 : root.pad
+            x: root.vertical ? (root.capsule && !root.edge_far ? root.capsule_inset : 0) : root.pad
             y: root.vertical ? root.pad : root.capsule && !root.flipped ? root.capsule_inset : 0
-            width: root.vertical ? parent.width : implicitWidth
+            width: root.vertical ? parent.width - (root.capsule ? root.capsule_inset : 0) : implicitWidth
             height: root.vertical ? implicitHeight : parent.height - (root.capsule ? root.capsule_inset : 0)
             rowSpacing: root.lualine && !root.center ? 0 : Style.bar_module_gap
             columnSpacing: root.lualine && !root.center ? 0 : Style.bar_module_gap
@@ -717,22 +728,28 @@ Item {
     Item {
         visible: root.window
         z: 2
-        x: root.window_x
-        y: root.window_top
-        width: root.window_width
-        height: root.window_bottom - root.window_top
+        width: root.length
+        height: root.thickness
+        transform: deco_frame
 
-        // Top, bottom, left and right edges as [x, y, width, height], each stopping short of the corners.
-        Repeater {
-            model: [[root.window_edge, 0, parent.width - root.window_edge * 2, root.window_edge], [root.window_edge, parent.height - root.window_edge, parent.width - root.window_edge * 2, root.window_edge], [0, root.window_edge, root.window_edge, parent.height - root.window_edge * 2], [parent.width - root.window_edge, root.window_edge, root.window_edge, parent.height - root.window_edge * 2]]
+        Item {
+            x: root.window_x
+            y: root.window_top
+            width: root.window_width
+            height: root.window_bottom - root.window_top
 
-            Rectangle {
-                required property var modelData
-                x: modelData[0]
-                y: modelData[1]
-                width: modelData[2]
-                height: modelData[3]
-                color: root.border_color
+            // Top, bottom, left and right edges as [x, y, width, height], each stopping short of the corners.
+            Repeater {
+                model: [[root.window_edge, 0, parent.width - root.window_edge * 2, root.window_edge], [root.window_edge, parent.height - root.window_edge, parent.width - root.window_edge * 2, root.window_edge], [0, root.window_edge, root.window_edge, parent.height - root.window_edge * 2], [parent.width - root.window_edge, root.window_edge, root.window_edge, parent.height - root.window_edge * 2]]
+
+                Rectangle {
+                    required property var modelData
+                    x: modelData[0]
+                    y: modelData[1]
+                    width: modelData[2]
+                    height: modelData[3]
+                    color: root.border_color
+                }
             }
         }
     }

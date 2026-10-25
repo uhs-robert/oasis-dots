@@ -25,14 +25,20 @@ Item {
     // The frame's outer radii; the window gradient sits inside its border.
     property real top_radius: root.parent && typeof root.parent.radius === "number" ? root.parent.radius : 0
     property real bottom_radius: root.top_radius
+    property real top_left_radius: root.top_radius
+    property real top_right_radius: root.top_radius
+    property real bottom_left_radius: root.bottom_radius
+    property real bottom_right_radius: root.bottom_radius
 
     Loader {
         anchors.fill: parent
         anchors.margins: root.st.frame_border_width
         active: root.st.window_gradient.length > 0
         sourceComponent: WindowGradient {
-            top_radius: Math.max(0, root.top_radius - root.st.frame_border_width)
-            bottom_radius: Math.max(0, root.bottom_radius - root.st.frame_border_width)
+            top_left_radius: Math.max(0, root.top_left_radius - root.st.frame_border_width)
+            top_right_radius: Math.max(0, root.top_right_radius - root.st.frame_border_width)
+            bottom_left_radius: Math.max(0, root.bottom_left_radius - root.st.frame_border_width)
+            bottom_right_radius: Math.max(0, root.bottom_right_radius - root.st.frame_border_width)
         }
     }
 

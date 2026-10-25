@@ -144,9 +144,7 @@ const cases = [
   ["frame to_screen top is the band frame", () => plain(F.to_screen(top_frame)), plain(B.band_affine("top", 1080))],
   ["frame to_screen bottom is the band frame", () => plain(F.to_screen(bottom_frame)), plain(B.band_affine("bottom", 1080))],
   // A side bar's islands draw in the same top-bar frame, turned onto the edge by band_affine (Island.qml's deco_frame).
-  ["a vertical bar keeps the shapes that have a vertical form", () => ["slant", "rect", "chevron", "tab", "none", "underline", "brackets"].map(O.vertical_shape), ["slant", "rect", "chevron", "tab", "none", "underline", "brackets"]],
-  ["a shape without a vertical form draws as rect for now", () => ["lualine", "window", "capsule", "hex"].map(O.vertical_shape), ["rect", "rect", "rect", "rect"]],
-  ...["rect", "chevron", "tab"].flatMap(shape => ["left", "right"].flatMap(edge => {
+  ...plain(run("names")).concat(["slant"]).flatMap(shape => ["left", "right"].flatMap(edge => {
     const depth = 40, length = 300, cap = O.cap_width(shape, depth);
     const fill = O.fill_path(O.rim_path(shape, length, depth, cap, true, true), length, true, true);
     const placed = fill.map(([u, v]) => { const m = B.band_affine(edge, depth); return [m[0] * u + m[2] * v + m[4], m[1] * u + m[3] * v + m[5]]; });
@@ -186,6 +184,16 @@ for (const s of shapes) {
   const kit_says_fill_less = new RegExp("\\b" + s + ": \\{ filled: false").test(kits);
   if (kit_says_fill_less !== O.stroke_only(s)) { failed++; console.log("FAIL kit flag and stroke_only disagree for " + s); }
 }
+
+// Every island shape has a vertical form: an outline or stroke shape is drawn in the top-bar frame and turned onto the
+// side by Island's deco_frame, and the hand-drawn ones (listed here, so a new shape must be added knowingly) place their
+// layers through it too. Island may not keep a fallback shape or a layer mirrored only for a bottom bar.
+const hand_drawn = ["slant", "octagon", "watch", "window", "capsule", "visor", "full", "strip"];
+const island_src = read("features/bar/Island.qml");
+for (const s of shapes) {
+  if (!O.has(s) && !O.stroke_only(s) && hand_drawn.indexOf(s) < 0) { failed++; console.log("FAIL island shape " + s + " has no vertical form"); }
+}
+if (/vertical_shape|transform: mirror/.test(island_src)) { failed++; console.log("FAIL Island.qml keeps a horizontal-only layer or a shape fallback"); }
 
 // A kit's fixed sizes (`set`) must be in plain_island_shape, or leaving the shape would keep them.
 const plain_keys = [...style.match(/plain_island_shape: \(\{([^}]*)\}\)/)[1].matchAll(/(\w+):/g)].map(m => m[1]);

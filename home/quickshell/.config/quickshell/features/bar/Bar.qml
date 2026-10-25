@@ -30,7 +30,8 @@ Item {
     readonly property bool vertical: BarLayout.is_vertical(root.position)
     // Lualine's sections are horizontal only, so a side bar draws the style's islands instead.
     readonly property bool lualine: Style.bar_lualine && !root.vertical
-    readonly property real center_width: center_island.body_item.width
+    // The center island's extent along the bar: its width on a top or bottom bar, its height on a side one.
+    readonly property real center_span: root.vertical ? center_island.body_item.height : center_island.body_item.width
     // The floating strip (Style.strip_floats): the plate sits strip_inset in from the screen edge and strip_side in from
     // each end of the bar (the sides of a top bar, the top and bottom of a column), so the bar window is strip_inset
     // thicker and the islands and plate shift toward the open edge by half of it.
@@ -283,18 +284,27 @@ Item {
         id: center_cava
         parent: center_island.body_item
         // Island styles only: strip styles draw cava through the cava module, in its own slot.
-        readonly property bool island_cava: root.lists_cava && root.has_center && !root.vertical && !Style.strip_shape
+        readonly property bool island_cava: root.lists_cava && root.has_center && !Style.strip_shape
         CavaViewer { active: center_cava.island_cava }
-        anchors.left: parent.left
-        anchors.right: parent.right
         // Sits on the island's open edge: the bottom one, or the top one under a bottom bar, clear of its underline.
-        readonly property real open_edge_margin: Style.strip_shape ? root.strip_open_edge_margin : center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.height - center_island.window_bottom + center_island.window_edge : center_island.shape === "underline" ? center_island.stroke_width : center_island.filled && center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
-        anchors.top: center_island.flipped ? parent.top : undefined
-        anchors.bottom: center_island.flipped ? undefined : parent.bottom
-        anchors.leftMargin: center_island.capsule ? center_island.capsule_radius : 6
-        anchors.rightMargin: center_island.capsule ? center_island.capsule_radius : 6
+        readonly property real open_edge_margin: Style.strip_shape ? root.strip_open_edge_margin : center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.thickness - center_island.window_bottom + center_island.window_edge : center_island.shape === "underline" ? center_island.stroke_width : center_island.filled && center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
+        readonly property real along_margin: center_island.capsule ? center_island.capsule_radius : 6
+        // On a side bar the bars are turned a quarter and stand on the open edge: -90 on a left bar (the open edge on the
+        // right, bars growing left), 90 on a right one. The box below is the turned bars' own, so x/y name its corner.
+        readonly property bool leftward: root.position === "left"
+        anchors.left: root.vertical ? undefined : parent.left
+        anchors.right: root.vertical ? undefined : parent.right
+        anchors.top: root.vertical || !center_island.flipped ? undefined : parent.top
+        anchors.bottom: root.vertical || center_island.flipped ? undefined : parent.bottom
+        anchors.leftMargin: center_cava.along_margin
+        anchors.rightMargin: center_cava.along_margin
         anchors.topMargin: open_edge_margin
         anchors.bottomMargin: open_edge_margin
+        transformOrigin: Item.TopLeft
+        rotation: root.vertical ? (center_cava.leftward ? -90 : 90) : 0
+        width: root.vertical ? parent.height - center_cava.along_margin * 2 : implicitWidth
+        x: root.vertical ? (center_cava.leftward ? parent.width - center_cava.open_edge_margin - height : center_cava.open_edge_margin + height) : 0
+        y: root.vertical ? (center_cava.leftward ? parent.height - center_cava.along_margin : center_cava.along_margin) : 0
         flipped: center_island.flipped
         active: MediaState.playing && PowerSource.on_ac && center_cava.island_cava
     }

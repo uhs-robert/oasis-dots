@@ -18,6 +18,11 @@ Item {
     property real bottom_right_radius: root.bottom_radius
     // The top radius of the inset ring, custom frame and dither.
     property real inner_top_radius: root.radius
+    // Their own corners where those differ: a popup beside a side bar squares the corners against the bar.
+    property real inner_top_left_radius: root.inner_top_radius
+    property real inner_top_right_radius: root.inner_top_radius
+    property real inner_bottom_left_radius: root.bottom_radius
+    property real inner_bottom_right_radius: root.bottom_radius
     property real inset_top_offset: 0
     property color island_color: root.st.frame_color
     property bool clear_fill: false
@@ -100,7 +105,8 @@ Item {
             st: root.st
             top_left_radius: Math.max(0, root.top_left_radius - root.st.frame_border_width)
             top_right_radius: Math.max(0, root.top_right_radius - root.st.frame_border_width)
-            bottom_radius: Math.max(0, Math.min(root.bottom_left_radius, root.bottom_right_radius) - root.st.frame_border_width)
+            bottom_left_radius: Math.max(0, root.bottom_left_radius - root.st.frame_border_width)
+            bottom_right_radius: Math.max(0, root.bottom_right_radius - root.st.frame_border_width)
             chamfer: root.st.frame_chamfer
         }
 
@@ -108,14 +114,18 @@ Item {
             anchors.fill: parent
             st: root.st
             device: root.device
-            top_radius: root.inner_top_radius
-            bottom_radius: root.bottom_radius
+            top_left_radius: root.inner_top_left_radius
+            top_right_radius: root.inner_top_right_radius
+            bottom_left_radius: root.inner_bottom_left_radius
+            bottom_right_radius: root.inner_bottom_right_radius
         }
 
         FrameInset {
             st: root.st
-            top_radius: root.inner_top_radius
-            bottom_radius: root.bottom_radius
+            top_left_radius: root.inner_top_left_radius
+            top_right_radius: root.inner_top_right_radius
+            bottom_left_radius: root.inner_bottom_left_radius
+            bottom_right_radius: root.inner_bottom_right_radius
             top_offset: root.inset_top_offset
         }
 
@@ -199,8 +209,10 @@ Item {
             anchors.fill: parent
             anchors.margins: root.st.frame_border_width
             color: root.st.dither
-            radius: root.bottom_radius
-            top_radius: root.inner_top_radius
+            top_left_radius: root.inner_top_left_radius
+            top_right_radius: root.inner_top_right_radius
+            bottom_left_radius: root.inner_bottom_left_radius
+            bottom_right_radius: root.inner_bottom_right_radius
         }
     }
 

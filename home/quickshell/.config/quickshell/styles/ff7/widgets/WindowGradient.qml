@@ -10,6 +10,10 @@ Shape {
     property var stops: root.st.window_gradient
     property real top_radius: 0
     property real bottom_radius: 0
+    property real top_left_radius: root.top_radius
+    property real top_right_radius: root.top_radius
+    property real bottom_left_radius: root.bottom_radius
+    property real bottom_right_radius: root.bottom_radius
     readonly property real reach: (root.width + root.height) / 4
 
     function stop(i) {
@@ -33,10 +37,10 @@ Shape {
         PathRectangle {
             width: root.width
             height: root.height
-            topLeftRadius: root.top_radius
-            topRightRadius: root.top_radius
-            bottomLeftRadius: root.bottom_radius
-            bottomRightRadius: root.bottom_radius
+            topLeftRadius: root.top_left_radius
+            topRightRadius: root.top_right_radius
+            bottomLeftRadius: root.bottom_left_radius
+            bottomRightRadius: root.bottom_right_radius
         }
     }
 }
