@@ -251,6 +251,35 @@ function place_vertical(side, name, hole, seam, screen_width, screen_height, cov
     };
 }
 
+// The layer-shell placement of a popup beside a left or right bar, which has no frame and so no hole to hang from: the
+// window anchors to the screen edge the bar's own window reserves, and only its y needs working out. `side` is the
+// island it opens from in the vocabulary of place_vertical ("left" the top end of the column, "right" the bottom one);
+// the popup lines up with that island's extent (`island_y`, `island_height`, screen coordinates), not with the hovered
+// module, and is clamped into the screen so a tall one never leaves it. Margins are integers.
+function beside_place(side, edge, island_y, island_height, popup_length, screen_height) {
+    const aligned = side === "right" ? island_y + island_height - popup_length
+        : side === "center" ? island_y + (island_height - popup_length) / 2
+        : island_y;
+    const top = Math.round(Math.max(0, Math.min(aligned, screen_height - popup_length)));
+    return {
+        anchor_top: true,
+        anchor_bottom: false,
+        anchor_left: edge === "left",
+        anchor_right: edge === "right",
+        margin_top: top,
+        margin_bottom: 0,
+        margin_left: 0,
+        margin_right: 0
+    };
+}
+
+// Which corners of a popup beside a left or right bar are rounded: the two on the side away from the bar, as a popup
+// under a top bar rounds its bottom two. The side against the bar stays square.
+function beside_corners(edge) {
+    const against_left = edge === "left";
+    return { top_left: !against_left, bottom_left: !against_left, top_right: against_left, bottom_right: against_left };
+}
+
 // The drawn part of a drawer's window in screen coordinates, as the rect the frame and the strip leave their lines out under.
 // `window_length` is the window's size along the edge.
 function window_rect(side, edge, placement, screen_width, screen_height, window_length, drawn_depth) {
