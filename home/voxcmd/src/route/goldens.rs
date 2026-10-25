@@ -96,6 +96,33 @@ fn shipped_toml_matches_the_bash_goldens() {
     matches_the_goldens(&config_with_shipped_toml(), TYPED_DAY_VERBS);
 }
 
+/// answers' name verbs, as `stem:verb:action=` prefixes. Bash captured a trailing "please", "thanks" or "thank you" in the
+/// target and its action stripped it again; the TOML captures lazily, so the target is already bare (owner decision, 3.1
+/// plan). A golden's target is compared without those tail words.
+const TAIL_STRIPPED_TARGETS: &[&str] = &[
+    "answers:4:zone_now=",
+    "answers:5:zone_offset=",
+    "answers:6:zone_offset=",
+];
+
+fn without_tail_words(entry: &str) -> String {
+    let Some(prefix) = TAIL_STRIPPED_TARGETS.iter().find(|prefix| entry.starts_with(**prefix)) else {
+        return entry.to_string();
+    };
+    let (target, rest) = match entry[prefix.len()..].split_once('~') {
+        Some((target, rest)) => (target, format!("~{rest}")),
+        None => (&entry[prefix.len()..], String::new()),
+    };
+    let mut target = target;
+    while let Some(bare) = [" please", " thanks", " thank you"]
+        .iter()
+        .find_map(|tail| target.strip_suffix(tail))
+    {
+        target = bare;
+    }
+    format!("{prefix}{target}{rest}")
+}
+
 /// calendar's two `day` verbs, as `stem:verb:action=` prefixes of golden entries. In bash they matched any words and a
 /// candidate hook declined the non-days afterwards; `{target:day}` does not match those, so the goldens hold match
 /// entries these verbs rightly lack. Near misses skip typed verbs altogether, so every near entry of them is ignored.
@@ -107,6 +134,7 @@ fn without_entries(column_name: &str, column: &str, ignored: &[&str]) -> String 
     let clock = Clock::from_env().expect("clock");
     column
         .split("; ")
+        .map(without_tail_words)
         .filter(|entry| {
             let Some(prefix) = ignored.iter().find(|prefix| entry.starts_with(**prefix)) else {
                 return true;
