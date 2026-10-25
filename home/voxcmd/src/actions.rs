@@ -199,8 +199,11 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
     if succeeded {
         // A new session listens only now: its mode's `alive` checks what `run` just opened. When it cannot, the
         // session's own ending toast says why.
+        // An action that closes the screen its mode drives (the overview's focus) ends the session it just started,
+        // which is what it was for: only a session that failed with its screen still up is a failure.
         if opened == Some(Opened::Session)
             && crate::session::turn::listen_for_turn(std::process::id()) == crate::session::turn::Listen::Failed
+            && crate::session::mode::alive(&integration.file.display().to_string(), "")
         {
             result.detail = "its session could not listen".to_string();
             debug(&format!("action failed: {toast}: its session could not listen"));
