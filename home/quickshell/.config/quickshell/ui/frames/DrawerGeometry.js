@@ -71,8 +71,9 @@ function drawer_layout(spec) {
 }
 
 // The fillet a frame's corner profile ({ corner, radius, step }, Style.screen_frame_profile) draws at full size, which
-// body_length makes room for.
+// body_length makes room for. A null profile (no frame) draws none.
 function fillet_of(profile) {
+    if (!profile) return 0;
     return Corners.fit(profile.corner, profile.radius, profile.step).radius;
 }
 
