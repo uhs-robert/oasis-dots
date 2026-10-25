@@ -24,7 +24,7 @@ import sys
 import tempfile
 
 sys.dont_write_bytecode = True
-REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 SPEC_SCHEMA = "specs/schema/spec.yaml"
 PLAN_SCHEMA = "specs/schema/plan.yaml"
