@@ -143,6 +143,9 @@ Item {
     // The screen edge is at the far side of the island's box (the right bar, the bottom bar): the capsule's inset sits there.
     readonly property bool edge_far: root.edge === "bottom" || root.edge === "right"
     property real thickness: 30
+    // Extra length after the modules on a column, for something drawn over it (the center island's cava bars) that
+    // must not sit on the modules. Ignored on a top or bottom bar, whose modules already span the island.
+    property real tail_span: 0
     readonly property real body_span: root.vertical ? body.height : body.width
     readonly property real length: root.capsule ? root.body_span + root.capsule_inset * 2 : root.body_span + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0) + root.lug * 2
     // Places a layer drawn in the top-bar frame onto the edge. Shared by every layer; each is at 0, 0 and `length` by `thickness`.
@@ -451,7 +454,7 @@ Item {
         readonly property real along: root.capsule ? root.capsule_inset : root.lug + (root.cap_left ? root.cap_width : 0)
         x: root.vertical ? 0 : body.along
         y: root.vertical ? body.along : 0
-        height: root.vertical ? Math.ceil(layout.implicitHeight) + root.pad * 2 : root.thickness
+        height: root.vertical ? Math.ceil(layout.implicitHeight) + root.pad * 2 + root.tail_span : root.thickness
         width: root.vertical ? root.thickness : Math.ceil(layout.implicitWidth) + root.pad * 2
         color: root.shaded || root.octagon || root.window || root.outlined || root.stroke_only || root.lualine && root.translucent ? "transparent" : root.faded(root.bg_color)
 

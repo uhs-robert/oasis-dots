@@ -39,3 +39,29 @@ function chamfer(w, h, c, o, sq) {
     const l = sq.bottom_left ? 0 : c, r = sq.bottom_right ? 0 : c;
     return [[-o, -o], [w, -o], [w, h - r], [w - r, h], [l - o, h], [-o, h - l], [-o, -o]];
 }
+
+// How far the cut at one side's end of the octagon reaches into a scanline row at row_y: top rows meet the top
+// corners, bottom rows the bottom ones, and a square corner cuts nothing. c is the cut, edge the border's inset.
+function corner_cut(sq, left, row_y, c, edge, h) {
+    const top = left ? !sq.top_left : !sq.top_right, bottom = left ? !sq.bottom_left : !sq.bottom_right;
+    return Math.max(top ? c + edge - row_y : 0, bottom ? c + edge - (h - row_y - 1) : 0, 0);
+}
+
+// The octagon's corner struts as [x_at_right, y_at_bottom, rotation], none for a square corner.
+function struts(sq) {
+    return [[0, 0, 45, sq.top_left], [1, 0, 135, sq.top_right], [0, 1, -45, sq.bottom_left], [1, 1, -135, sq.bottom_right]].filter(s => !s[3]).map(s => s.slice(0, 3));
+}
+
+// The x ranges of the visor's teeth under its notch steps: the right one, then the left, none for a square corner.
+function visor_teeth(w, k, sq) {
+    return (sq.bottom_right ? [] : [[w - k * 0.58, w - k * 0.36]]).concat(sq.bottom_left ? [] : [[k * 0.36, k * 0.58]]);
+}
+
+// The corners of a popup frame that touch the bar. `round` names the corners that stay round when the popup opens out
+// beside a left or right bar, null under a top or bottom bar, where `rises` (the bar is below the frame) picks the
+// pair. `flush` is false for a popup that floats clear of the bar or docks to the screen's bottom.
+function bar_square(round, flush, rises) {
+    if (round) return { top_left: !round.top_left, top_right: !round.top_right, bottom_left: !round.bottom_left, bottom_right: !round.bottom_right };
+    const up = flush && rises;
+    return { top_left: flush && !up, top_right: flush && !up, bottom_left: up, bottom_right: up };
+}

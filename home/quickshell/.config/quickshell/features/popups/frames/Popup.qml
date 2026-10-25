@@ -8,6 +8,7 @@ import "../../../ui/Search.js" as Search
 import "fuzzy_rows.js" as FuzzyRows
 import "../../../ui/frames/DrawerGeometry.js" as Drawer
 import "../../../ui/frames/FrameGeometry.js" as FrameGeometry
+import "../../../ui/frames/PanelCuts.js" as Cuts
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui
 import qs.ui.frames
@@ -246,24 +247,18 @@ PanelWindow {
     readonly property real top_radius: root.floating ? root.frame_radius : 0
     // Hung flush from a capsule: square under it, rounded where the frame reaches past its ends.
     readonly property real overhang: root.island_capsule && !root.dock_bottom && !root.drawer ? root.width - root.island_width : 0
-    readonly property real top_left_radius: root.beside ? root.beside_radius(root.beside_corners.top_left) : root.overhang > 0 && root.side !== "left" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
-    readonly property real top_right_radius: root.beside ? root.beside_radius(root.beside_corners.top_right) : root.overhang > 0 && root.side !== "right" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
-    readonly property real bottom_left_corner: root.beside ? root.beside_radius(root.beside_corners.bottom_left) : root.frame_radius
-    readonly property real bottom_right_corner: root.beside ? root.beside_radius(root.beside_corners.bottom_right) : root.frame_radius
-    // A floating style rounds every corner, the one against the bar too; the others keep that side square.
+    // Beside a bar, which corners are rounded; the others touch the bar. A floating style rounds them all. The radii and
+    // `bar_square` both read this.
+    readonly property var beside_round: root.floating ? { top_left: true, top_right: true, bottom_left: true, bottom_right: true } : root.beside_corners
     function beside_radius(round) {
-        return round || root.floating ? root.frame_radius : 0;
+        return round ? root.frame_radius : 0;
     }
+    readonly property real top_left_radius: root.beside ? root.beside_radius(root.beside_round.top_left) : root.overhang > 0 && root.side !== "left" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
+    readonly property real top_right_radius: root.beside ? root.beside_radius(root.beside_round.top_right) : root.overhang > 0 && root.side !== "right" ? Math.min(root.frame_radius, root.side === "center" ? root.overhang / 2 : root.overhang) : root.top_radius
+    readonly property real bottom_left_corner: root.beside ? root.beside_radius(root.beside_round.bottom_left) : root.frame_radius
+    readonly property real bottom_right_corner: root.beside ? root.beside_radius(root.beside_round.bottom_right) : root.frame_radius
     // The frame's corners that touch the bar, for the cut-corner outlines to leave whole. A floating style rounds them instead.
-    readonly property var bar_square: {
-        const flush = !root.floating && !root.dock_bottom;
-        if (root.beside) {
-            const round = root.beside_corners;
-            return { top_left: flush && !round.top_left, top_right: flush && !round.top_right, bottom_left: flush && !round.bottom_left, bottom_right: flush && !round.bottom_right };
-        }
-        const rises = flush && root.frame_rises;
-        return { top_left: flush && !rises, top_right: flush && !rises, bottom_left: rises, bottom_right: rises };
-    }
+    readonly property var bar_square: Cuts.bar_square(root.beside ? root.beside_round : null, !root.floating && !root.dock_bottom, root.frame_rises)
     // Where the frame's body starts inside the reveal, which grows from the bar side.
     // A drawer's content rides out with its far edge instead of staying put while the body uncovers it.
     readonly property real body_shift_x: root.beside && root.edge === "right" ? reveal.width - root.frame_width : 0

@@ -25,8 +25,7 @@ Item {
 
     // How far the cut at a side's end reaches into a row: top rows meet the top corners, bottom rows the bottom ones.
     function corner_cut(left, row_y) {
-        const top = left ? !root.square.top_left : !root.square.top_right, bottom = left ? !root.square.bottom_left : !root.square.bottom_right;
-        return Math.max(top ? root.c + root.edge - row_y : 0, bottom ? root.c + root.edge - (root.height - row_y - 1) : 0, 0);
+        return Cuts.corner_cut(root.square, left, row_y, root.c, root.edge, root.height);
     }
 
     Shape {
@@ -79,7 +78,7 @@ Item {
     }
 
     Repeater {
-        model: root.strut_color.a > 0 && root.c > 0 ? [[0, 0, 45, root.square.top_left], [1, 0, 135, root.square.top_right], [0, 1, -45, root.square.bottom_left], [1, 1, -135, root.square.bottom_right]].filter(s => !s[3]) : []
+        model: root.strut_color.a > 0 && root.c > 0 ? Cuts.struts(root.square) : []
 
         Rectangle {
             required property var modelData

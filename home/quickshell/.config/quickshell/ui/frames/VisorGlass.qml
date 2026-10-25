@@ -75,7 +75,7 @@ Shape {
             path: {
                 const w = root.width, k = root.k, y = root.step_y;
                 const tooth = (a, b) => "M " + a + " " + y + " L " + b + " " + y + " L " + b + " " + (y + 3) + " L " + a + " " + (y + 3) + " Z";
-                return (root.square.bottom_right ? "" : tooth(w - k * 0.58, w - k * 0.36)) + " " + (root.square.bottom_left ? "" : tooth(k * 0.36, k * 0.58));
+                return Cuts.visor_teeth(w, k, root.square).map(t => tooth(t[0], t[1])).join(" ");
             }
         }
     }

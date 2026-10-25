@@ -249,6 +249,7 @@ Item {
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
         edge: root.position
+        tail_span: center_cava.tail_span
         cap_left: true
         cap_right: true
         tab_joined: (SubmapState.indicator_shown && !root.has_frame_chip && !root.has_mode_chip) || VoxSessionState.active
@@ -289,6 +290,11 @@ Item {
         // Sits on the island's open edge: the bottom one, or the top one under a bottom bar, clear of its underline.
         readonly property real open_edge_margin: Style.strip_shape ? root.strip_open_edge_margin : center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.thickness - center_island.window_bottom + center_island.window_edge : center_island.shape === "underline" ? center_island.stroke_width : center_island.filled && center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
         readonly property real along_margin: center_island.capsule ? center_island.capsule_radius : 6
+        // On a side bar the island grows by a tail below its modules and the bars fill that tail, so they have a length
+        // of their own (the clock is a few px tall) and stay clear of the modules.
+        readonly property real tail_length: 96
+        readonly property real tail_gap: 6
+        readonly property real tail_span: root.vertical && center_cava.active ? center_cava.tail_length + center_cava.tail_gap + center_cava.along_margin : 0
         // On a side bar the bars are turned a quarter and stand on the open edge: -90 on a left bar (the open edge on the
         // right, bars growing left), 90 on a right one. The box below is the turned bars' own, so x/y name its corner.
         readonly property bool leftward: root.position === "left"
@@ -302,9 +308,9 @@ Item {
         anchors.bottomMargin: open_edge_margin
         transformOrigin: Item.TopLeft
         rotation: root.vertical ? (center_cava.leftward ? -90 : 90) : 0
-        width: root.vertical ? parent.height - center_cava.along_margin * 2 : implicitWidth
+        width: root.vertical ? center_cava.tail_length : implicitWidth
         x: root.vertical ? (center_cava.leftward ? parent.width - center_cava.open_edge_margin - height : center_cava.open_edge_margin + height) : 0
-        y: root.vertical ? (center_cava.leftward ? parent.height - center_cava.along_margin : center_cava.along_margin) : 0
+        y: root.vertical ? parent.height - center_cava.along_margin - (center_cava.leftward ? 0 : center_cava.tail_length) : 0
         flipped: center_island.flipped
         active: MediaState.playing && PowerSource.on_ac && center_cava.island_cava
     }

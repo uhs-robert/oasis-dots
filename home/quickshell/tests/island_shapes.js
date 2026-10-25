@@ -334,36 +334,66 @@ expect(/FrameTokens\.rim_width/.test(style) && /FrameTokens\.rim_color/.test(sty
 expect(/Style\.screen_frame_rim_width/.test(read("features/bar/ScreenFrame.qml")) && /Style\.screen_frame_rim_width/.test(read("features/bar/ScreenFrameSync.qml")), "the drawn rim and Hyprland's border do not share screen_frame_rim_width");
 pane_checks += 2;
 
-// A popup's cut-corner outline leaves the corners against the bar square, on every bar position: no outline point may
-// sit on the diagonal of a corner that touches the bar, and the far corners keep their cut.
+// A popup's cut-corner outline leaves the corners against the bar square, on every bar position. The square set is
+// the one Popup.qml derives (PanelCuts.bar_square, fed the corners DrawerGeometry.beside_corners rounds), and each
+// outline and its decorations (scanline trim, struts, visor teeth) are drawn from it.
 const P = vm.createContext({});
 vm.runInContext(read("ui/frames/PanelCuts.js").replace(/^\.pragma.*$/gm, ""), P);
+const D = vm.createContext({ Outlines: O, Band: B, Corners: C });
+vm.runInContext(read("ui/frames/DrawerGeometry.js").replace(/^\.(pragma|import).*$/gm, ""), D);
 const popup = read("features/popups/frames/Popup.qml");
 const sides = { top_left: [0, 0], top_right: [1, 0], bottom_right: [1, 1], bottom_left: [0, 1] };
 const both = (a, b) => Object.fromEntries(Object.keys(sides).map(k => [k, k === a || k === b]));
-const bar_sides = { top: both("top_left", "top_right"), bottom: both("bottom_left", "bottom_right"), left: both("top_left", "bottom_left"), right: both("top_right", "bottom_right") };
+// The corners each bar position touches, written out by hand as the reference.
+const touching = { top: both("top_left", "top_right"), bottom: both("bottom_left", "bottom_right"), left: both("top_left", "bottom_left"), right: both("top_right", "bottom_right") };
+// What Popup.qml passes: beside a side bar the rounded corners, else null and whether the popup rises from a bottom bar.
+const same = (a, b) => Object.keys(sides).every(k => a[k] === b[k]);
+const derive = (bar, flush = true) => plain(P.bar_square(bar === "left" || bar === "right" ? D.beside_corners(bar) : null, flush, bar === "bottom"));
+const none = { top_left: false, top_right: false, bottom_left: false, bottom_right: false };
 const W = 200, H = 120;
 // Whether a corner is cut: the box's corner point itself is not on the outline.
 const corner_is_cut = (pts, name) => !pts.some(p => Math.abs(p[0] - sides[name][0] * W) < 0.01 && Math.abs(p[1] - sides[name][1] * H) < 0.01);
+// The slant foot and the chamfer only shape the bottom corners; their top corners are the plain frame's.
 const outlines = {
-  octagon: sq => P.octagon(W, H, 0, 20, sq),
-  visor: sq => P.visor(W, H, 0, 18, 6, H - 18 * 0.52, sq),
-  chamfer: sq => P.chamfer(W, H, 12, 0, sq),
-  slant: sq => P.slant_foot(W, H, 0, sq).concat([[0, 0], [W, 0]]),
+  octagon: { names: Object.keys(sides), draw: sq => P.octagon(W, H, 0, 20, sq) },
+  visor: { names: Object.keys(sides), draw: sq => P.visor(W, H, 0, 18, 6, H - 18 * 0.52, sq) },
+  chamfer: { names: ["bottom_left", "bottom_right"], draw: sq => P.chamfer(W, H, 12, 0, sq) },
+  slant: { names: ["bottom_left", "bottom_right"], draw: sq => P.slant_foot(W, H, 0, sq) },
 };
-for (const [shape, draw] of Object.entries(outlines)) {
-  for (const [bar, sq] of Object.entries(bar_sides)) {
-    for (const name of Object.keys(sides)) {
+for (const bar of Object.keys(touching)) {
+  const sq = derive(bar);
+  expect(same(sq, touching[bar]), "bar_square under a " + bar + " bar: " + JSON.stringify(sq));
+  if (bar === "top" || bar === "bottom") expect(same(derive(bar, false), none), "bar_square of a floating or docked popup under a " + bar + " bar: " + JSON.stringify(derive(bar, false)));
+  for (const [shape, { names, draw }] of Object.entries(outlines)) {
+    for (const name of names) {
       const cut = corner_is_cut(draw(sq), name);
-      const want = shape === "chamfer" || shape === "slant" ? name.startsWith("bottom") && !sq[name] : !sq[name];
-      expect(cut === want, shape + " beside a " + bar + " bar: " + name + " corner " + (cut ? "is cut" : "is square") + ", want " + (want ? "cut" : "square"));
+      expect(cut === !sq[name], shape + " beside a " + bar + " bar: " + name + " corner " + (cut ? "is cut" : "is square") + ", want " + (sq[name] ? "square" : "cut"));
     }
   }
+  // Scanline rows: a row at the top or bottom edge is trimmed at a side only where that side's corner is cut.
+  for (const [name, [x, y]] of Object.entries(sides)) {
+    const trimmed = P.corner_cut(sq, x === 0, y === 0 ? 0 : H - 1, 20, 2, H) > 0;
+    expect(trimmed === !sq[name], "tie scanline trim beside a " + bar + " bar: " + name + (trimmed ? " is trimmed" : " is not trimmed") + ", want the opposite");
+  }
+  // Struts: one per cut corner, none on a square one.
+  const strut_corners = P.struts(sq).map(t => (t[1] === 0 ? "top_" : "bottom_") + (t[0] === 0 ? "left" : "right")).sort();
+  expect(JSON.stringify(strut_corners) === JSON.stringify(Object.keys(sides).filter(k => !sq[k]).sort()), "tie struts beside a " + bar + " bar: " + strut_corners);
+  // Visor teeth: one under each cut bottom corner, on its own side.
+  const teeth = P.visor_teeth(W, 18, sq).map(t => t[0] < W / 2 ? "bottom_left" : "bottom_right").sort();
+  expect(JSON.stringify(teeth) === JSON.stringify(["bottom_left", "bottom_right"].filter(k => !sq[k])), "visor teeth beside a " + bar + " bar: " + teeth);
+}
+// A floating style rounds the corner against the bar too, beside a side bar as under a top one.
+for (const bar of ["left", "right"]) {
+  expect(same(P.bar_square(Object.fromEntries(Object.keys(sides).map(k => [k, true])), false, false), none), "a floating popup beside a " + bar + " bar squares a corner");
 }
 // Nothing is squared by default, so the overview and toasts keep their cuts.
 expect(Object.values(vm.runInContext("none", P)).every(v => v === false), "PanelCuts.none squares a corner");
-// Each outline reaches the popup's bar side through `square`.
-expect(/square: root\.bar_square/.test(popup) && /bar_square[\s\S]*beside_corners/.test(popup), "Popup.qml does not hand its bar-side corners to the frame");
+// The center island's cava on a side bar stands in a tail below the modules, not over them.
+expect(/tail_span: center_cava\.tail_span/.test(read("features/bar/Bar.qml")) && /width: root\.vertical \? center_cava\.tail_length/.test(read("features/bar/Bar.qml")) && /root\.tail_span/.test(read("features/bar/Island.qml")), "the center island's side-bar cava does not get its own tail");
+// The popup hands that derivation to the frame, and the radii read the same rounded set; each outline draws through PanelCuts.
+expect(/square: root\.bar_square/.test(popup) && /Cuts\.bar_square\(root\.beside \? root\.beside_round : null/.test(popup) && /beside_round\.top_left/.test(popup), "Popup.qml does not derive its bar-side corners once");
+expect(/Cuts\.corner_cut/.test(read("styles/tie/widgets/OctagonFrame.qml")) && /Cuts\.struts/.test(read("styles/tie/widgets/OctagonFrame.qml")), "OctagonFrame does not trim and strut through PanelCuts");
+expect(/Cuts\.visor_teeth/.test(read("ui/frames/VisorGlass.qml")), "VisorGlass does not draw its teeth through PanelCuts");
 for (const f of ["features/popups/frames/StyledFrame.qml", "features/popups/frames/CustomFrame.qml", "styles/oasis/widgets/SlantFrame.qml", "styles/tie/widgets/OctagonFrame.qml", "ui/frames/VisorGlass.qml", "ui/frames/FrameShade.qml"]) {
   expect(/square/.test(read(f)) && /PanelCuts\.js/.test(read(f)), f + " does not draw through PanelCuts with a square set");
 }
