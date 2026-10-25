@@ -33,8 +33,8 @@ const cases = [
   ["no frame style draws no frame", () => L.draws_frame(false, "top"), false],
   ["Hyprland gets the frame while any screen draws one", () => [L.any_draws_frame(true, ["left", "top"]), L.any_draws_frame(true, ["left", "right"]), L.any_draws_frame(true, []), L.any_draws_frame(false, ["top"])], [true, false, false, false]],
   ["only left and right are vertical", () => ["top", "bottom", "left", "right", "x"].map(L.is_vertical), [false, false, true, true, false]],
-  ["step_position toggles top and bottom either way", () => [L.step_position("top", 1), L.step_position("bottom", 1), L.step_position("top", -1), L.step_position("bottom", -1)], ["bottom", "top", "bottom", "top"]],
-  ["step_position from a saved side position still lands on top or bottom", () => [L.step_position("left", 1), L.step_position("right", -1)], ["bottom", "bottom"]],
+  ["step_position walks top, bottom, left, right and wraps", () => [L.step_position("top", 1), L.step_position("bottom", 1), L.step_position("left", 1), L.step_position("right", 1), L.step_position("top", -1)], ["bottom", "left", "right", "top", "right"]],
+  ["popups walk with Ctrl+H/L along a row and Ctrl+K/J down a column", () => ["top", "bottom", "left", "right"].map(L.walk_keys), [{ back: "H", forward: "L" }, { back: "H", forward: "L" }, { back: "K", forward: "J" }, { back: "K", forward: "J" }]],
   ["unknown named", () => L.position_problem({ position: 3 }), "unknown bar position 3 in bars.json; using top"],
   ["normalize keeps a saved position", () => L.normalize({ positions: { [key]: "bottom" } }).positions, { [key]: "bottom" }],
   ["normalize keeps a side position", () => L.normalize({ positions: { [key]: "left", other: 3 } }).positions, { [key]: "left" }],
@@ -92,6 +92,10 @@ const cases = [
   ["shared layouts are untouched by migrate", () => L.migrate_cava({ shared: { place: { clock: "left" } } }).shared.place, { clock: "left" }],
   ["migrate keeps the directory switches", () => L.directory_switches(L.migrate_cava(L.normalize({ directory: { path: false }, monitors: { [key]: { left: ["workspaces"], center: [], right: [] } } }))), { app_name: true, path: false, file_name: true }],
   ["migrate covers every monitor with its own layout", () => Object.values(L.migrate_cava({ monitors: { a: { left: ["workspaces"], center: [], right: [] }, b: { left: ["start"], center: [], right: ["cava"] }, c: { left: [], center: [], right: [] } } }).monitors).map(m => m.left.concat(m.right)), [["workspaces", "cava"], ["start", "cava"], ["cava"]]],
+
+  // How much screen height a bar takes: a side bar takes width instead.
+  ["a top or bottom bar takes its thickness and the float gap from the height", () => ["top", "bottom"].map(p => L.vertical_reserve(p, 34, 8)), [42, 42]],
+  ["a side bar takes none of the height", () => ["left", "right"].map(p => L.vertical_reserve(p, 34, 8)), [0, 0]],
 ];
 
 let failed = 0;
