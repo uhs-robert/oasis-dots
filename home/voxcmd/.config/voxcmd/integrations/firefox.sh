@@ -39,8 +39,8 @@ left_to_others() {
   names_session_or_agent "$1" || spoken_as_keybind "$1"
 }
 
-# Duplicated from apps.sh (names_session_or_agent, spoken_as_keybind) until Apps converts to TOML and one copy can
-# serve both. Keep the two in step: a drift lets a tab and a session or keybind answer the same phrase.
+# Duplicated in apps.sh (names_session_or_agent, spoken_as_keybind): each integration's library is sourced alone. Keep
+# the two in step: a drift lets a tab and a session or keybind answer the same phrase.
 names_session_or_agent() {
   [[ " $1 " =~ \ (session|sessions|agent|agents)\  ]]
 }
