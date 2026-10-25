@@ -498,3 +498,5 @@ join my call	Calendar/open_meeting	call is a meeting noun
 new meeting tomorrow at 3 pm called sync please	Calendar/new	free text takes the tail word too
 remind me in 10 minutes to stretch please	Timers/remind	a tail word after a reminder still sets it
 cancel the reminder about the oven please	Timers/cancel	a tail word after a cancelled reminder's name stays part of the name
+how far ahead is tokyo thanks	Answers/zone_offset	a tail word after a zone is not part of its name
+what time is it in tokyo please	Answers/zone_now	a tail word after a zone is not part of its name

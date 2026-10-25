@@ -1,0 +1,56 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Quick answers: spoken math through qalc, the time and date here and in other time zones; weather questions open
+# the bar's weather popup. Format: ~/.config/voxcmd/README.md
+name = "Answers"
+
+# Written out where a placeholder or a define would sit inside parentheses, which drops near-miss hints for the verb.
+# `tail` is part of every question that ends in a name, so the lazy {target} stops before "please" and a zone keeps its
+# bare name. Zone verbs go before calculate: "what is 1 pm ..." and "convert 3 30 pm ..." read as math too.
+verbs = [
+  { action = "time",         match = '{lead}((what is|whats|what s) the( current)? time|the time|what time is it|do you (have|know) the time){today}{tail}' },
+  { action = "date",         match = '{lead}(((what is|whats|what s) )?(the|todays|today s)( current)? date|what (day|date|day of the week|month|year) is (it|today)|(what is|whats|what s) today|which day is (it|today)){today}{tail}' },
+  { action = "weather",      match = '{lead}((is|will|does) it (going to |gonna )?(rain|snow|be (rainy|wet|snowy|stormy))|(do|should) i (need|take|bring) an umbrella|(any|chance of) (rain|snow))( (today|tonight|later|this (morning|afternoon|evening)))*{tail}' },
+  { action = "weather",      match = '{lead}(((what is|whats|what s)|how is|hows|how s) (the )?(weather|forecast|temperature)( (like|report))?|weather( (report|forecast))?|how (hot|cold|warm) is it){today}{tail}' },
+  { action = "zone_now",     match = '{lead}(what time is it|(what is|whats|what s) the( current)? time|(the )?time)( right)?( now)? (in|over in) {target}{tail}' },
+  { action = "zone_offset",  match = '{lead}how (far|many hours) (ahead|behind)( of (us|me|here))? is {target}{tail}' },
+  { action = "zone_offset",  match = '{lead}((what is|whats|what s) )?the time difference (with|to|for|from|between (us|me|here) and) {target}{tail}' },
+  { action = "zone_convert", match = '{lead}((what is|whats|what s)|what time is|convert) {when}( [a-z]+( [a-z]+){0,3})? (in|to) [a-z]+( [a-z]+){0,3}{tail}' },
+  { action = "calculate",    match = '{lead}((what is|whats|what s)|how much is|what does) {math_start}' },
+  { action = "calculate",    match = '{lead}how many [a-z]+( [a-z]+)? (are )?(in|is|make) (a|an|one|[0-9]).*' },
+  { action = "calculate",    match = '{lead}(calculate|compute|evaluate|work out|solve|convert) .+' },
+]
+
+# Math and conversions read $VOXCMD_RAW_TRANSCRIPT rather than a {target}: normalizing drops "%", "×", "/" and decimal
+# points, so "2.5%" would reach qalc as "2 5".
+examples = [
+  "what time is it",
+  "what's the date",
+  "what time is it in <city>",
+  "what is <time> <zone> in <zone>",
+  "how far ahead is <city>",
+  "what's the weather",
+  "will it rain today",
+  "what's <number> percent of <number>",
+  "convert <amount> <unit> to <unit>",
+]
+
+[define]
+# Spoken lead-ins and tails that carry no meaning, allowed around every question.
+lead = '((hey|hi|ok|okay|um|umm|uh|er|erm|hmm|so|well|please|quick question) )*((can|could|would) you (please )?)?((tell|show) me )?'
+tail = '( (please|thanks|thank you))*'
+today = '( (today|right now|now|currently|outside|out there))*'
+# A clock time the way a conversion says it, kept strict so math keeps its numbers: an hour with am, pm or o'clock
+# ("1 pm", "three thirty pm", "1pm"), noon or midnight, or hours and minutes in digits ("15 30"), with a day around it.
+when = '((today|tomorrow|tonight) (at )?)?(noon|midday|midnight|([0-9]{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)( (oh |o )?[a-z]+( [a-z]+)?| [0-9]{2})?( ?(am|pm)| a m| p m| oclock| o clock)|[0-9]{1,2} [0-5][0-9])( (today|tomorrow|tonight|this (morning|afternoon|evening)))?'
+# What a calculation has to start with when it is asked with "what's", so "what's up" stays out of qalc.
+math_start = '(the )?((square|cube) root of |(minus|negative) )?([0-9].*|(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a hundred|a thousand|half|a half|a third|a quarter|pi)( .*)?)'
+
+# The popup is the answer, so the weather action is silent; a sequence's next step waits for it to be drawn.
+[actions]
+time = 'answer_time'
+date = 'date "+%A, %B %-d, %Y"'
+weather = { run = 'open_weather_popup', silent = true, wait = "popup_open:weather" }
+zone_now = 'answer_zone_now "$VOXCMD_ARG_TARGET"'
+zone_offset = 'answer_zone_offset "$VOXCMD_ARG_TARGET"'
+zone_convert = 'answer_zone_conversion "$VOXCMD_RAW_TRANSCRIPT"'
+calculate = 'answer_calculation "$VOXCMD_RAW_TRANSCRIPT"'
