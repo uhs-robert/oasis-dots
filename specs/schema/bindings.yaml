@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
-# home/actions/.config/actions/bindings/quickshell.json: how the bar performs each action id. `ipc` calls a typed
+# home/oasis-djinn/.config/oasis-djinn/bindings/quickshell.json: how the bar performs each action id. `ipc` calls a typed
 # IpcHandler function through qs-ipc; `command` runs a program for what has no IPC function. A word may hold `{param}`.
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Quickshell bindings

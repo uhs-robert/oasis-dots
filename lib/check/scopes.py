@@ -95,13 +95,13 @@ PATH_SCOPES = [
     ("home/quickshell/tests/*", "node qml"),
     ("home/quickshell/*", "qml node"),
     ("lib/check/steps/voxcmd-rust.sh", "rust"),
-    # The actions crate and the manifest its tests run the binary against (the registry step reads the manifest too).
-    ("lib/check/steps/actions-rust.sh", "actionsrust"),
-    ("home/actions/src/*", "actionsrust"),
-    ("home/actions/tests/*", "actionsrust"),
-    ("home/actions/Cargo.*", "actionsrust"),
-    ("home/actions/rustfmt.toml", "actionsrust"),
-    ("home/actions/.config/*", "actionsrust"),
+    # The oasis-djinn crate and the manifest its tests run the binary against (the registry step reads the manifest too).
+    ("lib/check/steps/djinn-rust.sh", "djinnrust"),
+    ("home/oasis-djinn/src/*", "djinnrust"),
+    ("home/oasis-djinn/tests/*", "djinnrust"),
+    ("home/oasis-djinn/Cargo.*", "djinnrust"),
+    ("home/oasis-djinn/rustfmt.toml", "djinnrust"),
+    ("home/oasis-djinn/.config/*", "djinnrust"),
     # Only the Rust step: the voxcmd suites run with VOXCMD_BIN unset, so they exercise the bash voxcmd and never the
     # crate. Snapshots and the generated goldens are read only by cargo test; the other fixtures are read by both. An
     # integration file also reaches the bash voxcmd, and the crate through tests/integrations.rs.
@@ -251,7 +251,7 @@ STEPS = [
     Step("voxtype-duck", "voxtype", "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
     Step("voxcmd-firefox", VOX_FIREFOX, "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-rust", "rust", "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
-    Step("actions-rust", "actionsrust", "sh ./lib/check/steps/actions-rust.sh", ("cargo",), skip_reason="the actions crate needs cargo"),
+    Step("djinn-rust", "djinnrust", "sh ./lib/check/steps/djinn-rust.sh", ("cargo",), skip_reason="the oasis-djinn crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     Step("firefox-policy", "policy", "bash ./lib/install/tests/firefox-policy.sh", ("jq",), skip_reason="the firefox policy test needs jq"),

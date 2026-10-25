@@ -2,7 +2,7 @@
 """Fails an action manifest that breaks its schema, repeats an id, lacks or has a stray binding, or whose binding
 names something that does not exist.
 
-  - actions.json and bindings/quickshell.json (home/actions/.config/actions) validate against specs/schema/actions.yaml
+  - actions.json and bindings/quickshell.json (home/oasis-djinn/.config/oasis-djinn) validate against specs/schema/actions.yaml
     and bindings.yaml. The step fails, not skips, without check-jsonschema, so a manifest is never passed unread.
   - action ids and param names are unique; every action has a binding and every binding an action.
   - an `ipc` binding names a typed function of a real IpcHandler (read by qml_ipc.declared, the parser of `qml-ipc`),
@@ -27,7 +27,7 @@ REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.pa
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import qml_ipc  # noqa: E402
 
-MANIFEST_DIR = "home/actions/.config/actions"
+MANIFEST_DIR = "home/oasis-djinn/.config/oasis-djinn"
 ACTIONS_SCHEMA = "specs/schema/actions.yaml"
 BINDINGS_SCHEMA = "specs/schema/bindings.yaml"
 BINDINGS_FILE = "bindings/quickshell.json"

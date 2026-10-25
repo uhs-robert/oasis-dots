@@ -8,7 +8,7 @@ Spec-driven, spec-enforced design. Plain-English specs in `specs/` say what each
 
 - **Scope.** Core specs first: keys, actions, bar, lock, notifications, as the system is today (codify; redesign later by changing a spec). Desktop behaviour only; packages, stow, services and the greeter stay scripts. Specs state behaviour, the look in words where it matters, and an optional reference screenshot. Features still being experimented with (styles, bar looks) stay spec-free until settled. Other features get a spec when touched.
 - **Enforcement.** Each spec has numbered requirements (`BAR-03`). Phase 1: a check that every requirement has a test tagged with its id. Phase 2, gated: a given/when/then scenario runner (item 8).
-- **Registry.** Tool-free actions (id, label, params, intent) with separate per-tool bindings, and one `act <id>` CLI that works anywhere inside the logged-in desktop session. Swapping tools rewrites bindings and, later, step functions only.
+- **Registry.** Tool-free actions (id, label, params, intent) with separate per-tool bindings, and one `oasis-djinn <id>` CLI that works anywhere inside the logged-in desktop session. Swapping tools rewrites bindings and, later, step functions only.
 - **Authoring.** An agent drafts each core spec from the code; the orchestrator asks the owner only what the code cannot answer; the owner approves in the PR.
 
 ## Order
@@ -18,7 +18,7 @@ Spec-driven, spec-enforced design. Plain-English specs in `specs/` say what each
 | 0   | docs/ vs specs/, plus local .plans/ and .logs/      | 2   | none              |
 | G   | Global skill rules (orchestrator, handoff)          | 2   | 0a                |
 | 1   | Spec format and requirement-to-test link check      | 2   | 0a                |
-| 2   | One action registry and `act`                       | 6   | none              |
+| 2   | One action registry and `oasis-djinn`                       | 6   | none              |
 | 3   | Core specs                                          | 5   | 1b, 2c            |
 | 4   | Generated "bad params are rejected" tests           | 2   | 3b, 2a; 4b 2e     |
 | 5   | Docs generated from code, with a drift check        | 2   | 2a to 2c          |
@@ -125,28 +125,28 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **Risks.** Tests that exist only to satisfy the tag; the owner's PR review of each spec guards that. Ceremony for small features; only core specs are required.
 
-## 2. One action registry and `act`
+## 2. One action registry and `oasis-djinn`
 
 **Today.** One action is declared up to three times:
 - Quickshell: 22 `IpcHandler` files (appendix) with 102 `function` declarations, called from 72 tracked non-Markdown files. `qml-ipc` (`lib/check/steps/qml_ipc.py`) ties callers to handlers both ways.
 - Hyprland: 7 `keymaps/global/*.lua` files call `Bind.*` from `lib/key/bind.lua` (76 call sites); 11 submaps use `Submap.define` row tables. Each bind has its own `desc` and action, often a `qs ipc` string; hyprvim (a separate repo) and the keybinds picker read the descs back.
 - voxcmd: 19 TOML and 18 bash integrations in `integrations/`, 22 in `integrations.d/`, each with its own `run` lines. `integrations/keybinds.toml` already runs any bind by its desc. `tests/phrases.tsv` has 499 rows.
 
-**Proposal.** A tool-free JSON manifest in its own stow package, `home/actions/.config/actions/actions.json`. Each action: `id` (`zoom.toggle`), `label` (bind desc and picker text), `params` (typed: name, type, allowed values), `intent` (one sentence of what it does), and `key` (one default plus optional extras). Per-tool bindings are separate: which Quickshell IPC call or Hyprland dispatcher or script performs the id. A tool swap rewrites the bindings, not the actions. No `enabled` field in v1; it arrives with the command picker later. JSON, not TOML: Hyprland's Lua has `lib/json.lua` and QML has `JSON.parse`.
+**Proposal.** A tool-free JSON manifest in its own stow package, `home/oasis-djinn/.config/oasis-djinn/actions.json`. Each action: `id` (`zoom.toggle`), `label` (bind desc and picker text), `params` (typed: name, type, allowed values), `intent` (one sentence of what it does), and `key` (one default plus optional extras). Per-tool bindings are separate: which Quickshell IPC call or Hyprland dispatcher or script performs the id. A tool swap rewrites the bindings, not the actions. No `enabled` field in v1; it arrives with the command picker later. JSON, not TOML: Hyprland's Lua has `lib/json.lua` and QML has `JSON.parse`.
 
-`act <id> [params]` is the one CLI entry, usable from a terminal, the bar, a key or (later) voice, inside the logged-in desktop session only (not over SSH or across machines). Submaps list actions by id.
+`oasis-djinn <id> [params]` is the one CLI entry, usable from a terminal, the bar, a key or (later) voice, inside the logged-in desktop session only (not over SSH or across machines). Submaps list actions by id.
 
 **All of it migrates.** Every tracked bind, submap row and person-facing IPC function becomes an action, early. Only internal plumbing (`osd`, `cmdstatus refresh`) stays out, listed with a reason in `lib/check/registry.allow` (like `qml-ipc.allow`); a stale line fails. Otherwise additions grow around the registry, as photocraft's `menus.rs::is_live` ORs seven other sources.
 
 **How each surface consumes it.**
 - Hyprland: `Bind.action(id, opts)` reads label and key from the manifest and calls `Bind.key`; `Submap.define` rows accept an id. `Bind.key`, `Bind.unbind` and `Bind.submap` keep their signatures (public API for `custom/`). `custom/` overrides a key both ways: `Bind.unbind` and `Bind.key` as today, or `Bind.action(id)` to name the action; the manifest key stays the default. hyprvim needs no change.
-- voxcmd: a TOML action gains `action = "<id>"` in place of a `run` line, resolved by the Rust binary, which calls `act`. Phrases stay in TOML.
+- voxcmd: a TOML action gains `action = "<id>"` in place of a `run` line, resolved by the Rust binary, which calls `oasis-djinn`. Phrases stay in TOML.
 - Shadow skill: `shadow.sh action <name> <id> [params]` makes by id the call `shadow.sh ipc` makes today.
 
 **Dependencies.** None to start. 2f waits for the voxcmd 3.2 swap, with no Bash interim.
 
 **PRs.**
-- 2a: the manifest, its JSON Schema (YAML, in `specs/schema/`), `act`, a few actions (zoom, screenshot, overview); a `registry` step that validates it and fails a binding naming a missing IPC function (reusing `qml_ipc.py`'s parser). `actions` goes in `packages/stow.ini` (or the `unstowed` list), which the `packages` step requires.
+- 2a: the manifest, its JSON Schema (YAML, in `specs/schema/`), `oasis-djinn`, a few actions (zoom, screenshot, overview); a `registry` step that validates it and fails a binding naming a missing IPC function (reusing `qml_ipc.py`'s parser). `actions` goes in `packages/stow.ini` (or the `unstowed` list), which the `packages` step requires.
 - 2b: `Bind.action`, and `keymaps/global/tools.lua` moved to it.
 - 2c: the other global files, the submaps, and the remaining person-facing IPC functions.
 - 2d: `registry.allow`, with the step failing unlisted binds and handler functions.

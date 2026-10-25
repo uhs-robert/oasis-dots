@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(CHECK_DIR, "steps"))
 import registry  # noqa: E402
 from test_qml import TreeCase, write_tree  # noqa: E402
 
-DIR = "home/actions/.config/actions"
+DIR = "home/oasis-djinn/.config/oasis-djinn"
 ZOOM_QML = 'IpcHandler { target: "zoom"; function toggle(): void {}; function untyped(x) {} }\n'
 GOOD_ACTIONS = {"actions": [
     {"id": "zoom.toggle", "label": "Zoom", "intent": "Toggle zoom.", "params": [],
