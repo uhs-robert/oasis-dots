@@ -32,8 +32,9 @@ Batches. The owner approves a batch's plan; its PRs merge when the reviewer and 
 - B3 = 0b, 2a, 2b.
 - B4 = 2c, 2d, then 5a. 5a merges after 2c, so its table lists every bind.
 - B5 = 2e, 5b.
-- B6 = 3a (keys), 3b (actions), then 3c (bar), 3d (lock), 3e (notifications); split in two if the owner prefers to approve fewer specs at once.
-- B7 = 4a, 4b. They tag the actions spec's requirement ids, so they follow 3b.
+- B6 = 3a (keys), 3b (actions).
+- B7 = 3c (bar), 3d (lock), 3e (notifications).
+- B8 = 4a, 4b. They tag the actions spec's requirement ids, so they follow 3b.
 - 2f goes in the first batch after the voxcmd 3.2 swap.
 
 Out of scope: parity scorecards, a large docs/ tree, a shared cross-repo rules or CI repo, specs for system setup.
@@ -114,7 +115,7 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **Plan front matter** (`.plans/`): `kind` (tracker | plan | handoff), `status` (active | parked | done), `owner_session` (or none), `updated` (date), `specs` (spec ids it touches), `branch` (plan and handoff only, or none), `pr` (or none).
 
-**Schemas.** Both are JSON Schema files written in YAML, in `specs/schema/` (`spec.yaml`, `plan.yaml`), validated by the repo check (for example `check-jsonschema`). The action registry (item 2) is validated in the same schema language. Editors get completion through yaml-language-server.
+**Schemas.** Both are JSON Schema files written in YAML, in `specs/schema/` (`spec.yaml`, `plan.yaml`), validated by the repo check by `check-jsonschema`, added to `packages/` (`pipx.ini`) as a new dependency. The action registry (item 2) is validated in the same schema language. Editors get completion through yaml-language-server.
 
 **Link check.** A `specs` step scans only `specs/core/*.md` (skipping `TEMPLATE.md`); `roadmap.md`, `decisions.md` and `voxcmd-port.md` carry no spec front matter. It validates each spec against its schema, that requirement ids match the file's prefix and are unique, and that every id appears as a tag in at least one test. The tag syntax (a `req: BAR-03` comment or test name) is fixed in 1b, in the test styles that exist today: `lib/check/tests` Python cases, voxcmd and Quickshell `vectors.tsv` rows, shadow scripts. It also fails a tag naming a missing requirement. **Gaps** are tracked inline and committed: a requirement line may carry `[gap: untested]` or `[gap: unmet]`. The check fails an untested requirement unless it is marked `[gap: untested]`; a `[gap: unmet]` requirement needs no test tag. A generated `specs/gaps.md` lists every gap across specs, with a `docs-generated`-style drift check. Undecided questions found while drafting go to the owner and never become lasting gaps; there is no gaps folder and no local `.gaps/`. Untagged tests in a spec'd area are allowed: the check lists them as info and never fails on them. `actions` ids are checked against the registry once 2a lands.
 
