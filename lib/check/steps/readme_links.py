@@ -11,7 +11,7 @@ Moving a folder or a section leaves the docs pointing at the old place, and noth
   - a backticked path whose first folder is one of QS_FOLDERS (resolved against the Quickshell tree) or REPO_FOLDERS
     (against the repository root) must exist, as a path in the Quickshell tree, from the file's own folder, from the
     repository root or inside a stow package under home/. A path with a glob, placeholder or variable is prose.
-    Not held to this: UNCITED, the specs that name files that do not exist yet or no longer do. Their links are checked.
+    Not held to this: UNCITED, the roadmap, which names files that do not exist yet. Its links are checked.
 
 Existence is read from git's listing (tracked and untracked-but-not-ignored). A cited path that is missing but that git
 ignores is a machine-local file (custom/sessions.lua, a generated asset folder) and passes.
@@ -31,8 +31,8 @@ from qml_paths import QS_DIR, REPO_DIR, Finding, git_listing, make_ignored  # no
 # Spelled out, not read from the tree: a folder derived from the tree would stop being checked the day it is renamed away.
 QS_FOLDERS = ("core", "theme", "ui", "services", "styles", "features", "custom", "assets", "scripts", "sounds")
 REPO_FOLDERS = ("lib", "home", "system", "docs", "packages", "extras", "demo", "specs")
-# The roadmap names files its items will add, and the port plan files it has already moved.
-UNCITED = ("specs/roadmap.md", "specs/voxcmd-port.md")
+# The roadmap names files its items will add.
+UNCITED = ("specs/roadmap.md",)
 DOC_TREES = ("docs/", "specs/")
 
 REF_USE = re.compile(r"(?<!!)\[([^\]]*)\]\[([^\]]*)\]")
@@ -145,7 +145,9 @@ def check_readme(repo, tree, ignored, qs_dir, readme, cite_paths=True):
             label = (match.group(2) or match.group(1)).lower()
             if label not in definitions:
                 findings.append(Finding(readme, number, f"reference [{label}] has no definition"))
-        for span in CODE_SPAN.finditer(LINK.sub(r"\1", line)) if cite_paths else ():
+        if not cite_paths:
+            continue
+        for span in CODE_SPAN.finditer(LINK.sub(r"\1", line)):
             token = span.group(1)
             if "/" not in token or not PATH_TOKEN.match(token):
                 continue

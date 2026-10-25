@@ -153,9 +153,12 @@ class DocsAndSpecsTest(LinksCase):
             self.assertEqual(len(found), 1, path)
             self.assertTrue(found[0].startswith(f"{path}:1: `specs/gone.md` does not exist"), found)
 
-    def test_a_missing_backticked_path_passes_in_the_roadmap_and_the_port_plan(self):
-        for path in ("specs/roadmap.md", "specs/voxcmd-port.md"):
-            self.assertEqual(self.check({path: self.MISSING}), [], path)
+    def test_a_missing_backticked_path_passes_in_the_roadmap(self):
+        self.assertEqual(self.check({"specs/roadmap.md": self.MISSING}), [])
+
+    def test_a_missing_backticked_path_fails_in_the_port_plan(self):
+        found = self.check({"specs/voxcmd-port.md": self.MISSING})
+        self.assertTrue(found and found[0].startswith("specs/voxcmd-port.md:1: `specs/gone.md` does not exist"), found)
 
     def test_links_in_the_roadmap_are_still_checked(self):
         self.assertEqual(len(self.check({"specs/roadmap.md": "[x](gone.md)\n"})), 1)
