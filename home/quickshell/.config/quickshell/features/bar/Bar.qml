@@ -53,6 +53,8 @@ Item {
                 BarSettings.warn_unknown_module(parsed.base);
                 continue;
             }
+            // Dropped here, not just hidden, so a lone one leaves no empty island and runs no second segment.
+            if (root.lualine && BarLayout.lualine_draws_itself(parsed.base)) continue;
             list.push({ base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file) });
         }
         return list;

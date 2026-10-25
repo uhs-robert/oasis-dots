@@ -74,7 +74,7 @@ SettingsPane {
             recording: "A chip shown while the screen is recording.",
             notifications: "Notification center and Do Not Disturb.",
             media: "Now playing; opens the media popup.",
-            directory: "The focused window's app and a terminal's directory. NeoVim always shows it in its statusline; here it is opt-in. The switches above apply."
+            directory: "The focused window's app and a terminal's directory. NeoVim shows it in its statusline whenever the left island has modules; here it is opt-in. The switches above apply."
         })
 
     footer_hint: root.pending ? "y forget · n keep · q close" : "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"

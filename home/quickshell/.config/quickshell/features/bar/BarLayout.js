@@ -50,6 +50,11 @@ function lualine_section(entry) {
     return m ? m.section : "x";
 }
 
+// Modules a lualine bar leaves out of its islands because it draws them itself (the directory in section c).
+function lualine_draws_itself(entry) {
+    return entry.split(":")[0] === "directory";
+}
+
 function section_sorted(list) {
     return ["x", "y", "z"].reduce((out, k) => out.concat(list.filter(e => lualine_section(e) === k)), []);
 }

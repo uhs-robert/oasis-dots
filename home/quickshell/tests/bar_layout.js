@@ -74,6 +74,7 @@ const cases = [
   ["switches survive a round trip", () => L.directory_switches(L.normalize(plain(L.set_directory_switch(L.normalize(null), "file_name", false)))).file_name, false],
   ["normalize drops non-boolean switches", () => L.directory_switches(L.normalize({ directory: { path: "no", app_name: false } })), { app_name: false, path: true, file_name: true }],
   ["layout edits keep the switches", () => L.directory_switches(L.edit(rule, L.set_directory_switch(L.normalize(null), "app_name", false), "", { type: "hide", entry: "clock" })).app_name, false],
+  ["lualine draws the directory itself, with or without an argument", () => [L.lualine_draws_itself("directory"), L.lualine_draws_itself("directory:x"), L.lualine_draws_itself("clock")], [true, true, false]],
   ["a state without switches has no directory key", () => "directory" in L.normalize(null), false],
 ];
 
