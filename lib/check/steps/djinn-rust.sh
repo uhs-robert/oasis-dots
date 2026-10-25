@@ -1,5 +1,5 @@
 #!/bin/sh
-# Formats, lints and tests the actions Rust crate (`act` and its library): cargo fmt --check, clippy with warnings
+# Formats, lints and tests the actions Rust crate (`oasis-djinn` and its library): cargo fmt --check, clippy with warnings
 # denied, then cargo test. Like voxcmd-rust.sh it takes no heavy-step slot and the target dir stays per-checkout.
 set -u
 
@@ -15,5 +15,5 @@ command -v cargo >/dev/null 2>&1 || {
 . "$repo_dir/lib/check/lock.sh"
 check_lower_priority
 
-cd "$repo_dir/home/actions" || exit 1
+cd "$repo_dir/home/oasis-djinn" || exit 1
 cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings && cargo test --locked

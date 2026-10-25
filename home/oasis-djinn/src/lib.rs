@@ -10,7 +10,7 @@ use std::process::Command;
 
 use serde::Deserialize;
 
-/// A problem with the request or the manifest, reported as one line. `act` exits 2 on it.
+/// A problem with the request or the manifest, reported as one line. `oasis-djinn` exits 2 on it.
 #[derive(Debug, PartialEq)]
 pub struct ActionError(pub String);
 
@@ -81,17 +81,17 @@ pub struct Manifest {
     bindings: HashMap<String, Binding>,
 }
 
-/// The manifest folder: `ACT_CONFIG_DIR` (tests, running from a checkout), else `$XDG_CONFIG_HOME/actions`.
+/// The manifest folder: `OASIS_DJINN_CONFIG_DIR` (tests, running from a checkout), else `$XDG_CONFIG_HOME/oasis-djinn`.
 pub fn config_dir() -> PathBuf {
     let from_env = |name: &str| {
         std::env::var_os(name)
             .filter(|value| !value.is_empty())
             .map(PathBuf::from)
     };
-    from_env("ACT_CONFIG_DIR")
-        .or_else(|| from_env("XDG_CONFIG_HOME").map(|dir| dir.join("actions")))
-        .or_else(|| from_env("HOME").map(|dir| dir.join(".config/actions")))
-        .unwrap_or_else(|| PathBuf::from("actions"))
+    from_env("OASIS_DJINN_CONFIG_DIR")
+        .or_else(|| from_env("XDG_CONFIG_HOME").map(|dir| dir.join("oasis-djinn")))
+        .or_else(|| from_env("HOME").map(|dir| dir.join(".config/oasis-djinn")))
+        .unwrap_or_else(|| PathBuf::from("oasis-djinn"))
 }
 
 fn read<T: for<'a> Deserialize<'a>>(path: &Path) -> Result<T, ActionError> {

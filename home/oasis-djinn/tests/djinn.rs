@@ -1,4 +1,4 @@
-//! Runs the built `act` against a temp manifest and a stub qs-ipc that records its arguments.
+//! Runs the built `oasis-djinn` against a temp manifest and a stub qs-ipc that records its arguments.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -26,7 +26,7 @@ const BINDINGS: &str = r#"{"bindings": {
 fn stub() -> &'static Path {
     static STUB: OnceLock<PathBuf> = OnceLock::new();
     STUB.get_or_init(|| {
-        let path = std::env::temp_dir().join(format!("act-stub-{}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("djinn-stub-{}", std::process::id()));
         std::fs::write(
             &path,
             "#!/bin/sh\necho \"$@\" >> \"$STUB_LOG\"\n[ -z \"$STUB_FAIL\" ]\n",
@@ -45,8 +45,8 @@ struct Sandbox {
 
 impl Sandbox {
     fn new(name: &str) -> Sandbox {
-        let root = std::env::temp_dir().join(format!("act-test-{}-{name}", std::process::id()));
-        let manifest = root.join("actions");
+        let root = std::env::temp_dir().join(format!("djinn-test-{}-{name}", std::process::id()));
+        let manifest = root.join("oasis-djinn");
         std::fs::create_dir_all(manifest.join("bindings")).unwrap();
         std::fs::write(manifest.join("actions.json"), ACTIONS).unwrap();
         let bindings = BINDINGS.replace("{stub}", stub().to_str().unwrap());
@@ -58,11 +58,11 @@ impl Sandbox {
         self.root.join("log")
     }
 
-    fn act_in(&self, manifest: &Path, env: &[(&str, &str)], args: &[&str]) -> (i32, String) {
-        let done = Command::new(env!("CARGO_BIN_EXE_act"))
+    fn run_in(&self, manifest: &Path, env: &[(&str, &str)], args: &[&str]) -> (i32, String) {
+        let done = Command::new(env!("CARGO_BIN_EXE_oasis-djinn"))
             .args(args)
-            .env("ACT_CONFIG_DIR", manifest)
-            .env("ACT_QS_IPC", stub())
+            .env("OASIS_DJINN_CONFIG_DIR", manifest)
+            .env("OASIS_DJINN_QS_IPC", stub())
             .env("STUB_LOG", self.log())
             .envs(env.iter().copied())
             .output()
@@ -73,8 +73,8 @@ impl Sandbox {
         )
     }
 
-    fn act(&self, args: &[&str]) -> (i32, String) {
-        self.act_in(&self.manifest, &[], args)
+    fn run(&self, args: &[&str]) -> (i32, String) {
+        self.run_in(&self.manifest, &[], args)
     }
 
     fn calls(&self) -> Vec<String> {
@@ -85,7 +85,7 @@ impl Sandbox {
 
     /// Exits 2 with `needle` in the message and no call made.
     fn rejected(&self, args: &[&str], needle: &str) {
-        let (code, message) = self.act(args);
+        let (code, message) = self.run(args);
         assert_eq!(code, 2, "{message}");
         assert!(message.contains(needle), "{needle:?} not in {message:?}");
         assert!(self.calls().is_empty());
@@ -99,27 +99,27 @@ impl Drop for Sandbox {
 }
 
 fn real_manifest() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join(".config/actions")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join(".config/oasis-djinn")
 }
 
 #[test]
 fn an_ipc_action_calls_qs_ipc_with_its_params() {
     let sandbox = Sandbox::new("ipc");
-    assert_eq!(sandbox.act(&["t.go", "3", "b", "true"]).0, 0);
+    assert_eq!(sandbox.run(&["t.go", "3", "b", "true"]).0, 0);
     assert_eq!(sandbox.calls(), ["call thing go 3 b true"]);
 }
 
 #[test]
 fn defaults_fill_the_params_left_out() {
     let sandbox = Sandbox::new("defaults");
-    sandbox.act(&["t.go", "3"]);
+    sandbox.run(&["t.go", "3"]);
     assert_eq!(sandbox.calls(), ["call thing go 3 a false"]);
 }
 
 #[test]
 fn a_command_action_runs_its_argv() {
     let sandbox = Sandbox::new("command");
-    assert_eq!(sandbox.act(&["t.run"]).0, 0);
+    assert_eq!(sandbox.run(&["t.run"]).0, 0);
     assert_eq!(sandbox.calls(), ["ran --x"]);
 }
 
@@ -127,7 +127,7 @@ fn a_command_action_runs_its_argv() {
 fn a_failing_performer_exits_1() {
     let sandbox = Sandbox::new("failing");
     assert_eq!(
-        sandbox.act_in(&sandbox.manifest, &[("STUB_FAIL", "1")], &["t.run"]).0,
+        sandbox.run_in(&sandbox.manifest, &[("STUB_FAIL", "1")], &["t.run"]).0,
         1
     );
 }
@@ -139,7 +139,7 @@ fn a_missing_program_exits_1() {
         .unwrap()
         .replace(stub().to_str().unwrap(), "/nonexistent/prog");
     std::fs::write(sandbox.manifest.join("bindings/quickshell.json"), missing).unwrap();
-    assert_eq!(sandbox.act(&["t.run"]).0, 1);
+    assert_eq!(sandbox.run(&["t.run"]).0, 1);
 }
 
 #[test]
@@ -185,7 +185,7 @@ fn an_action_without_a_binding_exits_2() {
 #[test]
 fn a_missing_manifest_exits_2() {
     let sandbox = Sandbox::new("nomanifest");
-    let (code, message) = sandbox.act_in(&sandbox.root.join("none"), &[], &["t.run"]);
+    let (code, message) = sandbox.run_in(&sandbox.root.join("none"), &[], &["t.run"]);
     assert_eq!(code, 2, "{message}");
 }
 
@@ -196,7 +196,7 @@ fn the_real_manifest_performs_the_ipc_actions() {
         ("zoom.toggle", "call zoom toggle"),
         ("overview.open", "call overview open"),
     ] {
-        assert_eq!(sandbox.act_in(&real_manifest(), &[], &[action]).0, 0);
+        assert_eq!(sandbox.run_in(&real_manifest(), &[], &[action]).0, 0);
         assert_eq!(sandbox.calls().last().unwrap(), call);
     }
 }
@@ -206,7 +206,7 @@ fn the_real_screenshot_actions_name_the_script_under_home() {
     let sandbox = Sandbox::new("real-shot");
     let home = sandbox.root.to_str().unwrap();
     for action in ["screenshot.take", "screenshot.pixel"] {
-        let (code, message) = sandbox.act_in(&real_manifest(), &[("HOME", home)], &[action]);
+        let (code, message) = sandbox.run_in(&real_manifest(), &[("HOME", home)], &[action]);
         assert_eq!(code, 1, "{message}"); // no script in the fake home: the command was built and tried
         assert!(
             message.contains(&format!("{home}/.config/hypr/scripts/screenshot.sh")),

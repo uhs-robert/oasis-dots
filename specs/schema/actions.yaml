@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
-# home/actions/.config/actions/actions.json: the tool-free actions. Which tool performs one is bindings.yaml's business.
+# home/oasis-djinn/.config/oasis-djinn/actions.json: the tool-free actions. Which tool performs one is bindings.yaml's business.
 # What a schema cannot say (unique ids and param names, a binding for every action) the registry step checks.
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Action manifest
@@ -35,7 +35,7 @@ $defs:
       key: {type: string, minLength: 1}
       leader: {type: boolean}
       universal: {type: boolean}
-  # Params are positional on the `act` command line, in this order; one with a default may be left out.
+  # Params are positional on the `oasis-djinn` command line, in this order; one with a default may be left out.
   param:
     type: object
     additionalProperties: false

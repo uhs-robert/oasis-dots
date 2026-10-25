@@ -184,6 +184,11 @@ alias lla='ls -la'
 alias lt='ls --tree'
 # Lsd end
 
+# oasis-djinn
+# Optional shorthand for typing; binds, the bar and voxcmd call oasis-djinn, so this alias can be deleted.
+alias djinn='oasis-djinn'
+# oasis-djinn end
+
 
 # tdf, oasis moonlight dark
 alias tdf='tdf -w 1E2A38 -b F5F5DC'

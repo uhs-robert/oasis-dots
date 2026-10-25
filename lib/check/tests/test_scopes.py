@@ -43,15 +43,15 @@ CASES = [
     ("specs/schema/spec.yaml", ""),
     ("specs/roadmap.md", ""),
     # The registry step is a tree step: the manifest, its schemas and the step itself reach only the always-run steps.
-    ("home/actions/README.md", ""),
+    ("home/oasis-djinn/README.md", ""),
     ("specs/schema/actions.yaml", ""),
     ("lib/check/steps/registry.py", "checkscope"),
-    # The actions crate and the manifest its tests read reach its own step.
-    ("home/actions/.config/actions/actions.json", " actionsrust"),
-    ("home/actions/src/lib.rs", " actionsrust"),
-    ("home/actions/tests/act.rs", " actionsrust"),
-    ("home/actions/Cargo.lock", " actionsrust"),
-    ("lib/check/steps/actions-rust.sh", "checkscope actionsrust"),
+    # The oasis-djinn crate and the manifest its tests read reach its own step.
+    ("home/oasis-djinn/.config/oasis-djinn/actions.json", " djinnrust"),
+    ("home/oasis-djinn/src/lib.rs", " djinnrust"),
+    ("home/oasis-djinn/tests/djinn.rs", " djinnrust"),
+    ("home/oasis-djinn/Cargo.lock", " djinnrust"),
+    ("lib/check/steps/djinn-rust.sh", "checkscope djinnrust"),
     ("docs/keybinds.md", ""),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.
     ("system/etc/greetd/quickshell/init.lua", " lua qml"),

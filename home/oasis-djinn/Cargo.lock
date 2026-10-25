@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "actions"
+name = "oasis-djinn"
 version = "0.1.0"
 dependencies = [
  "serde",

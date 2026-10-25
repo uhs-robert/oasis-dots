@@ -121,13 +121,13 @@ voxcmd-build:
     ln -sf "$root/bin/voxcmd" "$HOME/.local/bin/voxcmd-rs"
     "$HOME/.local/bin/voxcmd-rs" --version
 
-# Build `act` (home/actions) and link it as ~/.local/bin/act; the installer does the same after stowing
-act-build:
+# Build `oasis-djinn` (home/oasis-djinn) and link it as ~/.local/bin/oasis-djinn; the installer does the same after stowing
+djinn-build:
     #!/usr/bin/env bash
     set -euo pipefail
     export DOTFILES_DIR="$PWD"
     source lib/install/load.sh
-    build_act
+    build_djinn
 
 # Rewrite the committed integration JSON Schema from the Rust types; it fails until `voxcmd integrations schema` exists (voxcmd-port 2.6)
 voxcmd-schema:
