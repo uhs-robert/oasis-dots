@@ -19,7 +19,8 @@ var modules = [
     { name: "recording", file: "Recording.qml", popup: false, section: "y", args: [] },
     { name: "notifications", file: "Notifications.qml", popup: true, section: "z", args: [] },
     { name: "media", file: "Media.qml", popup: true, section: "x", args: [] },
-    { name: "directory", file: "Directory.qml", popup: false, section: "x", args: [] }
+    { name: "directory", file: "Directory.qml", popup: false, section: "x", args: [] },
+    { name: "cava", file: "Cava.qml", popup: false, section: "x", args: [] }
 ];
 
 var names = modules.map(m => m.name);

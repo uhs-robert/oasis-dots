@@ -127,6 +127,7 @@ function normalize(raw) {
         }
         if (Object.keys(switches).length > 0) out.directory = switches;
     }
+    if (raw.cava_migrated === true) out.cava_migrated = true;
     return out;
 }
 
@@ -143,6 +144,19 @@ function set_directory_switch(state, name, on) {
     const next = normalize(state);
     if (directory_switch_names.indexOf(name) < 0) return next;
     next.directory = Object.assign({}, next.directory, { [name]: !!on });
+    return next;
+}
+
+// One-time: a monitor with its own saved layout predates the `cava` module, so it gets the entry after workspaces
+// (else at the end of left). The flag keeps a later removal from being undone; BarSettings stamps every write with it.
+function migrate_cava(state) {
+    const next = normalize(state);
+    if (next.cava_migrated) return next;
+    for (const m of Object.values(next.monitors)) {
+        if (sides.some(s => m[s].some(e => e.split(":")[0] === "cava"))) continue;
+        m.left.splice(m.left.indexOf("workspaces") + 1 || m.left.length, 0, "cava");
+    }
+    next.cava_migrated = true;
     return next;
 }
 

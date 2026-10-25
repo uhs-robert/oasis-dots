@@ -68,6 +68,7 @@ Item {
         return BarLayout.lualine_section(base);
     }
 
+    readonly property bool lists_cava: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "cava"))
     readonly property bool lists_media: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "media"))
     // Everything the lualine right island holds: center modules, then right ones.
     readonly property var lualine_entries: root.center_entries.concat(root.right_entries)
@@ -230,7 +231,7 @@ Item {
     Item {
         id: lualine_cava
         readonly property real room: root.section_c - (segment_loader.item ? segment_loader.item.min_width : 0) - 16
-        readonly property bool shown: root.lualine && right_island.visible && MediaState.playing && PowerSource.on_ac && lualine_cava.room >= 48
+        readonly property bool shown: root.lualine && root.lists_cava && right_island.visible && MediaState.playing && PowerSource.on_ac && lualine_cava.room >= 48
         visible: lualine_cava.shown
         x: right_island.x - width - 8
         width: Math.max(0, Math.min(120, lualine_cava.room))
@@ -306,9 +307,11 @@ Item {
     }
 
     CavaBars {
+        id: center_cava
         parent: center_island.body_item
-        // Outside lualine every bar keeps cava running while media plays, drawn or not, as it did before the registry.
-        CavaViewer { active: !Style.bar_lualine }
+        // Island styles only: strip styles draw cava through the cava module, in its own slot.
+        readonly property bool island_cava: root.lists_cava && root.has_center && !root.vertical && !Style.strip_shape
+        CavaViewer { active: center_cava.island_cava }
         anchors.left: parent.left
         anchors.right: parent.right
         // Sits on the island's open edge: the bottom one, or the top one under a bottom bar, clear of its underline.
@@ -320,7 +323,7 @@ Item {
         anchors.topMargin: open_edge_margin
         anchors.bottomMargin: open_edge_margin
         flipped: center_island.flipped
-        active: MediaState.playing && root.has_center && !root.vertical
+        active: MediaState.playing && center_cava.island_cava
     }
 
     Island {
