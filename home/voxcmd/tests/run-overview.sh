@@ -243,6 +243,9 @@ ov_run "close two" -- "mark two"
 check "the confirm card works inside the session" "grep -q '^voxcmd-confirm .*Close 1 window?' '$log' && [[ \$(acts | paste -sd,) == 'mark aaa2,close aaa2' ]]"
 ov_run "focus two" four -- "two"
 check "focusing a window ends the session with the overview" "session_gone && [[ \$(acts | paste -sd,) == 'mark aaa2,focus aaa2' ]]"
+# The bar is still hiding when the act returns: only overview_act's wait for it ends the session before the next turn.
+SANDBOX_OVERVIEW_CLOSE_LAG=3 ov_run "focus two" four -- "two"
+check "a focus act waits for the bar to hide, so the session ends before the next turn" "session_gone && [[ \$(acts | paste -sd,) == 'mark aaa2,focus aaa2' ]]"
 
 # The owner closes the overview by key while the session listens: the next listen ends it.
 printf '%s\n' four five >"$ov_turns"

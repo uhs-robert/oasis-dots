@@ -46,8 +46,9 @@
 #                                     the workspace overview. state prints what $SANDBOX_DIR/overview-state holds
 #                                     ("closed" when absent), which open sets to "open" and close to "closed"; act
 #                                     answers SANDBOX_OVERVIEW_ACT ("ok" by default); an ok focus or workspace act also
-#                                     sets the state to "closed", as the bar's overview closes itself. Its snapshot is
-#                                     the test's own $XDG_RUNTIME_DIR/voxcmd/overview.json.
+#                                     sets the state to "closed", as the bar's overview closes itself, though state keeps
+#                                     answering "open" SANDBOX_OVERVIEW_CLOSE_LAG more times. Its snapshot is the test's own
+#                                     $XDG_RUNTIME_DIR/voxcmd/overview.json.
 #   qs-ipc call tmux_overview state   what $SANDBOX_DIR/tmux_overview-state holds ("closed" when absent)
 #   qs-ipc call popup keyboard        what $SANDBOX_DIR/popup-keyboard holds ("no" when absent): "yes" when the open
 #                                     popup takes the keyboard, "no" when it is hands-off or none is open
@@ -375,11 +376,24 @@ qs-ipc)
     echo closed >"$SANDBOX_DIR/overview-state"
     echo ok
     ;;
-  *"call overview state"*) cat "$SANDBOX_DIR/overview-state" 2>/dev/null || echo closed ;;
+  *"call overview state"*)
+    # With SANDBOX_OVERVIEW_CLOSE_LAG=<n> a closing overview still answers "open" to n more questions, as a bar that has
+    # not finished hiding does.
+    lag_left=$(cat "$SANDBOX_DIR/overview-lag" 2>/dev/null || echo 0)
+    if [ "$lag_left" -gt 0 ]; then
+      echo $((lag_left - 1)) >"$SANDBOX_DIR/overview-lag"
+      echo open
+    else
+      cat "$SANDBOX_DIR/overview-state" 2>/dev/null || echo closed
+    fi
+    ;;
   *"call overview act"*)
     # As the bar does, a focus or a workspace jump closes the overview (a failed act does not).
     case "${SANDBOX_OVERVIEW_ACT:-ok}:$*" in
-    ok:*"call overview act focus "* | ok:*"call overview act workspace "*) echo closed >"$SANDBOX_DIR/overview-state" ;;
+    ok:*"call overview act focus "* | ok:*"call overview act workspace "*)
+      echo closed >"$SANDBOX_DIR/overview-state"
+      echo "${SANDBOX_OVERVIEW_CLOSE_LAG:-0}" >"$SANDBOX_DIR/overview-lag"
+      ;;
     esac
     echo "${SANDBOX_OVERVIEW_ACT:-ok}"
     ;;
