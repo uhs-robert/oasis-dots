@@ -1,6 +1,6 @@
 # Bar
 
-`bar/` holds the bar and its islands (`Island.qml`, with the one-polygon shapes' geometry in `ui/frames/IslandOutlines.js`), the submap and voice-mode tabs, the hot corner, one file per module in `modules/`, `BarSettings` with `BarLayout.js` and `BarModules.js` (the layout and module registry), `LualineState`, `SubmapState`, the command-status state and IPC handler, the badged glyph and done/wait pulses the modules draw, `WindowSegment` (the focused app and directory, shown by the `directory` module and in lualine's section c) with `DirectoryFormat.js`, and the neovim style's mode chip, buffer line and lualine sections in `neovim/`.
+`bar/` holds the bar and its islands (`Island.qml`, with the one-polygon shapes' geometry in `ui/frames/IslandOutlines.js`), the submap and voice-mode tabs, the hot corner, one file per module in `modules/`, `BarSettings` with `BarLayout.js` and `BarModules.js` (the layout and module registry), `LualineState`, `SubmapState`, the command-status state and IPC handler, the badged glyph and done/wait pulses the modules draw, `WindowSegment` (the focused app and directory, shown by the `directory` module and in lualine's section c) with `DirectoryFormat.js`, and the neovim style's mode chip, buffer line, lualine sections and `LualineStrip` (section c's fill, window segment and cava slot, and the x/y/z sections) in `neovim/`.
 
 ## Island shapes
 
