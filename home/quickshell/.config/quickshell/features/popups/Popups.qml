@@ -93,8 +93,10 @@ Singleton {
         return island && island.bg_color !== undefined ? island.bg_color : found.color;
     }
 
-    // Whether the open popup is one the bar order reaches, so a walk key has somewhere to go (the picker is not).
+    // Whether the open popup is one the bar order reaches, so a walk key has somewhere to go. The picker is not, even when
+    // it was opened from a bar popup (back_name), because Ctrl+J/K are its own row keys.
     function walkable() {
+        if (root.open_name === "picker") return false;
         const order = root.popup_order[root.open_screen_name] || [];
         return order.indexOf(root.open_name) !== -1 || (root.back_name !== "" && order.indexOf(root.back_name) !== -1);
     }
