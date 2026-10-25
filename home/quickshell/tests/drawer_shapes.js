@@ -624,6 +624,27 @@ cases.push(["a flipped drawer's dither rows mirror the frame's for every origin 
   }, [{ x: 3, y: 408, w: 303, h: 288 }, { x: 3, y: 384, w: 303, h: 288 }]]);
 }
 
+// A popup beside a left or right bar: lined up with its island's extent, clamped into the screen.
+{
+  const place = (side, edge, y, h, len) => D.beside_place(side, edge, y, h, len, 1920);
+  const top_of = (...a) => place(...a).margin_top;
+  cases.push(["beside: the top island's popup is top-aligned with it", () => top_of("left", "left", 18, 300, 200), 18]);
+  cases.push(["beside: the centre island's popup is centred on it", () => top_of("center", "left", 800, 320, 200), 860]);
+  cases.push(["beside: the bottom island's popup is bottom-aligned with it", () => top_of("right", "left", 1500, 400, 200), 1700]);
+  cases.push(["beside: a popup taller than the island hangs past the top island's end", () => top_of("left", "left", 18, 100, 500), 18]);
+  cases.push(["beside: the bottom island's tall popup grows upward", () => top_of("right", "right", 1500, 400, 700), 1200]);
+  cases.push(["beside: clamps to the screen's top", () => top_of("center", "left", 0, 100, 400), 0]);
+  cases.push(["beside: clamps to the screen's bottom", () => top_of("left", "left", 1800, 100, 400), 1520]);
+  cases.push(["beside: a popup taller than the screen sits at the top", () => top_of("center", "left", 800, 320, 2500), 0]);
+  cases.push(["beside: margins are whole pixels", () => top_of("center", "left", 800, 321, 200), 861]);
+  cases.push(["beside: a left bar anchors the popup's left, a right bar its right", () => [place("left", "left", 0, 0, 10), place("left", "right", 0, 0, 10)].map(p => [p.anchor_left, p.anchor_right, p.anchor_top, p.anchor_bottom]), [[true, false, true, false], [false, true, true, false]]]);
+  cases.push(["beside: only the top margin is set", () => { const p = place("right", "right", 1500, 400, 200); return [p.margin_bottom, p.margin_left, p.margin_right]; }, [0, 0, 0]]);
+  cases.push(["beside: the corners against the bar are square and swap with the edge", () => [D.beside_corners("left"), D.beside_corners("right")], [
+    { top_left: false, bottom_left: false, top_right: true, bottom_right: true },
+    { top_left: true, bottom_left: true, top_right: false, bottom_right: false }
+  ]]);
+}
+
 
 let failed = 0;
 for (const [name, fn, expected] of cases) {
