@@ -15,11 +15,12 @@ properties:
     minLength: 1
   updated:
     type: string
+    format: date
     pattern: "^\\d{4}-\\d{2}-\\d{2}$"
   specs:
     type: array
     items: {type: string, pattern: "^[a-z]{2,}$"}
-  # Plans and handoffs only; "none" when there is no branch.
+  # Required for plans and handoffs (below), absent for trackers; "none" when there is no branch.
   branch:
     type: string
     minLength: 1
@@ -27,3 +28,9 @@ properties:
     oneOf:
       - {type: integer, minimum: 1}
       - {const: none}
+if:
+  properties:
+    kind: {enum: [plan, handoff]}
+  required: [kind]
+then:
+  required: [branch]

@@ -33,8 +33,9 @@ REQUIRED_HEADINGS = ("What it is for", "Requirements", "Not covered")
 MISSING_TOOL = "check-jsonschema is not installed (pipx install check-jsonschema); the specs step fails without it rather than pass unread"
 
 FRONT_MATTER = re.compile(r"\A---\n(.*?\n)?---[ \t]*(?:\n|\Z)", re.DOTALL)
-TOP_LEVEL_ID = re.compile(r"^id:[ \t]*([^\s#]*)", re.MULTILINE)
-REQUIREMENT = re.compile(r"^- \*\*([A-Z]+)-\d+\*\*")
+# The id as YAML reads it: `id: bar`, `id: "bar"` and `id: 'bar'` are the same value.
+TOP_LEVEL_ID = re.compile(r"""^id:[ \t]*(?:"([^"\n]*)"|'([^'\n]*)'|([^\s#]*))""", re.MULTILINE)
+REQUIREMENT = re.compile(r"^- \*\*([A-Z]+)-\d{2,}\*\*")
 FENCE = re.compile(r"^ {0,3}(```|~~~)")
 
 
@@ -114,7 +115,7 @@ def check_specs(root):
         front_matters[path] = front
         is_template = os.path.basename(path) == TEMPLATE
         found = TOP_LEVEL_ID.search(front)
-        spec_id = found.group(1) if found else ""
+        spec_id = next((group for group in found.groups() if group is not None), "") if found else ""
         stem = os.path.basename(path)[:-3]
         if not is_template and spec_id and spec_id != stem:
             findings.append(f"{path}:1: id {spec_id} is not the file name {stem}")
