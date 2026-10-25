@@ -151,8 +151,6 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/match/*", "rust"),
     ("home/voxcmd/tests/fixtures/ask/*", "rust"),
     ("home/voxcmd/tests/fixtures/click/*", "rust"),
-    # click.toml is the click suite's shipped config, so it sits before the glob (first match wins).
-    ("home/voxcmd/tests/fixtures/integrations/click.toml", "rust " + VOX_CLICK),
     ("home/voxcmd/tests/fixtures/integrations/*", "rust"),
     ("home/voxcmd/tests/fixtures/gen-*.sh", "rust"),
     # The suites' own config for these is the sandbox's copy of the package, so a real integration reaches all of them.

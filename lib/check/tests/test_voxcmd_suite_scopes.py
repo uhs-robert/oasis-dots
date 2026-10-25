@@ -28,8 +28,11 @@ SUITE_ENTRIES = {
 
 EXTENSIONLESS_SCRIPTS = ("firefox-profile", "firefox-fake-host", "firefox-host-test")
 
-# Named in a suite's code but not read by it (a comment-free mention, such as a path in a string it only prints).
+# Named in a suite's code but not read by it (a comment-free mention, such as a path in a string it only prints; or a
+# same-named file elsewhere: the click suite reads the shipped integrations/click.toml, not the crate's fixture of that
+# name).
 NOT_READ = {
+    (scopes.VOX_CLICK, "click.toml"),
     (scopes.VOX_PHRASES, "bench.sh"),
     (scopes.VOX_PHRASES, "run-live-diff.sh"),
 }
