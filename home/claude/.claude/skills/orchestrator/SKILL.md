@@ -65,7 +65,8 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
    - For concurrency or lifecycle work (signals, locks, processes that hand over or race), name those risks in the brief and require tests that drive each risky path before review. Review rounds otherwise find these bugs one at a time.
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
-   - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement.
+   - Every fix ships a test that failed before the fix; the agent shows it failing on the unfixed code and passing on the fix (where the repo has a test suite).
+   - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement. New work goes in a new file; edit a shared registry (a list, table, index or config that several agents add to) only with small additions, so parallel branches merge without conflicts.
 
 6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
@@ -82,7 +83,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 8. Evaluate and resolve findings. Classify each material finding as valid, partially valid, invalid, or out of scope; do not blindly apply reviewer suggestions. Fix valid ones using the model policy from step 4.
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when its context is under 150k tokens, judged from the token count its completion reports, and the fix is in code it already read.
    - Otherwise brief a fresh agent with the diff range, the finding and the file paths. Also start fresh when the finding shows the approach itself was wrong.
-   - Tell the fixer to make the smallest change that fixes the finding, with a test for it. If the fix needs a new mechanism, it reports that before building it.
+   - Tell the fixer to make the smallest change that fixes the finding, with a test that failed before the fix. If the fix needs a new mechanism, it reports that before building it.
    - Re-run the external review only for a material fix (a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic); a targeted fix gets a reviewer agent's diff review (step 6) and its test.
 
 9. Final validation: your check passed on the final head, the tree is clean, and a reviewer agent confirms the diff has nothing unrelated.
