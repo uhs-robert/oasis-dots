@@ -89,11 +89,13 @@ const cases = [
   ["migrate sets the flag, and normalize keeps it", () => L.normalize(plain(L.migrate_cava(L.normalize(null)))).cava_migrated, true],
   ["migrate runs once: a removed cava stays removed", () => L.migrate_cava({ cava_migrated: true, monitors: { [key]: { left: ["workspaces"], center: [], right: [] } } }).monitors[key].left, ["workspaces"]],
   ["normalize without the flag adds none", () => "cava_migrated" in L.normalize(null), false],
-  ["a top or bottom bar takes its thickness and the float gap from the height", () => ["top", "bottom"].map(p => L.vertical_reserve(p, 34, 8)), [42, 42]],
-  ["a side bar takes none of the height", () => ["left", "right"].map(p => L.vertical_reserve(p, 34, 8)), [0, 0]],
   ["shared layouts are untouched by migrate", () => L.migrate_cava({ shared: { place: { clock: "left" } } }).shared.place, { clock: "left" }],
   ["migrate keeps the directory switches", () => L.directory_switches(L.migrate_cava(L.normalize({ directory: { path: false }, monitors: { [key]: { left: ["workspaces"], center: [], right: [] } } }))), { app_name: true, path: false, file_name: true }],
   ["migrate covers every monitor with its own layout", () => Object.values(L.migrate_cava({ monitors: { a: { left: ["workspaces"], center: [], right: [] }, b: { left: ["start"], center: [], right: ["cava"] }, c: { left: [], center: [], right: [] } } }).monitors).map(m => m.left.concat(m.right)), [["workspaces", "cava"], ["start", "cava"], ["cava"]]],
+
+  // How much screen height a bar takes: a side bar takes width instead.
+  ["a top or bottom bar takes its thickness and the float gap from the height", () => ["top", "bottom"].map(p => L.vertical_reserve(p, 34, 8)), [42, 42]],
+  ["a side bar takes none of the height", () => ["left", "right"].map(p => L.vertical_reserve(p, 34, 8)), [0, 0]],
 ];
 
 let failed = 0;
