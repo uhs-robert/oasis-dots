@@ -116,7 +116,7 @@ Scope {
                         source: Component {
                             FrameStrokes {
                                 layout: root.layout
-                                rim_width: Style.bar_border_width
+                                rim_width: Style.screen_frame_rim_width
                                 rim_color: root.rim_color
                                 inset_gap: Style.bar_inset_gap
                                 inset_width: Style.bar_inset_width

@@ -284,5 +284,34 @@ expect(JSON.stringify(plain(chamfer)) === JSON.stringify([[12, 0], [0, 12], [0, 
 expect(O.cap_width("chamfer", 40) === 12 && !O.has("chamfer"), "chamfer is a 0.3 h pad and not an island shape");
 end_checks += 2;
 
+// The Terminal screen frame: its tmux pane colours replace the bar border, it is fixed to Square, and its line is 1 px.
+const FT = vm.createContext({});
+vm.runInContext(read("theme/FrameTokens.js").replace(/^\.pragma.*$/gm, ""), FT);
+const TT = vm.createContext({});
+vm.runInContext(read("styles/terminal/tokens.js").replace(/^\.pragma.*$/gm, ""), TT);
+const terminal = plain(TT.overrides({ theme_primary: "PRIMARY", fg_muted: "MUTED" }, {}));
+const rim = (panes, focused) => FT.rim_color(panes, focused, "BAR", "BAR_DIM");
+let pane_checks = 0;
+for (const [name, got, want] of [
+  ["terminal's panes carry the palette colours", JSON.stringify(terminal.screen_frame_panes), JSON.stringify({ active: "PRIMARY", inactive: "MUTED" })],
+  ["panes colour the focused rim", rim(terminal.screen_frame_panes, true), "PRIMARY"],
+  ["panes colour the other monitors' rim", rim(terminal.screen_frame_panes, false), "MUTED"],
+  ["no panes keeps the bar border when focused", rim(null, true), "BAR"],
+  ["no panes keeps the dimmed bar border elsewhere", rim(undefined, false), "BAR_DIM"],
+  ["panes draw 1 px whatever the bar border is", FT.rim_width(terminal.screen_frame_panes, 3), 1],
+  ["no panes draws the bar border width", FT.rim_width(null, 3), 3],
+  ["terminal is fixed to square", terminal.screen_frame_only, "square"],
+  ["terminal still offers the frame", terminal.screen_frame_offered, undefined],
+  ["the row offers Off or Square for terminal", JSON.stringify(FT.row_choices(terminal.screen_frame_only, frame_corners.concat())), JSON.stringify(["", "square"])],
+  ["the row offers Off and every corner otherwise", JSON.stringify(FT.row_choices("", ["", ...frame_corners])), JSON.stringify(["", ...frame_corners])],
+  ["the row offers Off and every corner for an unset only", JSON.stringify(FT.row_choices(undefined, ["", ...frame_corners])), JSON.stringify(["", ...frame_corners])],
+]) {
+  pane_checks++;
+  expect(got === want, "terminal frame: " + name + ": got " + got + ", want " + want);
+}
+expect(/FrameTokens\.rim_width/.test(style) && /FrameTokens\.rim_color/.test(style) && /FrameTokens\.row_choices/.test(style), "Style.qml does not use FrameTokens");
+expect(/Style\.screen_frame_rim_width/.test(read("features/bar/ScreenFrame.qml")) && /Style\.screen_frame_rim_width/.test(read("features/bar/ScreenFrameSync.qml")), "the drawn rim and Hyprland's border do not share screen_frame_rim_width");
+pane_checks += 2;
+
 if (failed) process.exit(1);
-console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frame_checks + end_checks) + " checks passed");
+console.log("island shapes: " + (cases.length + shapes.length * 3 + strip_kits.length + 1 + frame_checks + end_checks + pane_checks) + " checks passed");
