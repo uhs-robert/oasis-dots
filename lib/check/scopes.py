@@ -68,6 +68,8 @@ PATH_SCOPES = [
     # The specs step is a tree step, so these files need no scope of their own; the schemas are named so that they do
     # not fall to the final "all" rule.
     ("lib/check/steps/specs.py", ""),
+    # The registry step is a tree step too: it reads the manifest, its schemas and the IpcHandlers.
+    ("lib/check/steps/registry.py", ""),
     ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),
@@ -267,6 +269,9 @@ STEPS = [
     # "tree" so that an edit of an ignored .plans/ file, which no path rule can see, still selects it. No `needs`: a
     # missing check-jsonschema must fail the step, not skip it.
     Step("specs", "tree", "python3 -B ./lib/check/steps/specs.py"),
+    # "tree" because it reads the manifest package, its schemas and the Quickshell IpcHandlers: no single scope covers
+    # them. check-jsonschema is required, as for specs.
+    Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.

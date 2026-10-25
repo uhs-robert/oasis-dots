@@ -1,0 +1,8 @@
+{
+  "bindings": {
+    "zoom.toggle": {"kind": "ipc", "target": "zoom", "function": "toggle", "args": []},
+    "screenshot.take": {"kind": "command", "argv": ["~/.config/hypr/scripts/screenshot.sh"]},
+    "screenshot.pixel": {"kind": "command", "argv": ["~/.config/hypr/scripts/screenshot.sh", "--pixel"]},
+    "overview.open": {"kind": "ipc", "target": "overview", "function": "open", "args": []}
+  }
+}

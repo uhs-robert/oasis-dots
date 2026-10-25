@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
+# home/actions/.config/actions/bindings/quickshell.json: how the bar performs each action id. `ipc` calls a typed
+# IpcHandler function through qs-ipc; `command` runs a program for what has no IPC function. A word may hold `{param}`.
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Quickshell bindings
+type: object
+additionalProperties: false
+required: [bindings]
+properties:
+  bindings:
+    type: object
+    propertyNames: {pattern: "^[a-z][a-z0-9]*\\.[a-z][a-z0-9_]*$"}
+    additionalProperties:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, target, function, args]
+          properties:
+            kind: {const: ipc}
+            target: {type: string, minLength: 1}
+            function: {type: string, minLength: 1}
+            args:
+              type: array
+              items: {type: string}
+        - type: object
+          additionalProperties: false
+          required: [kind, argv]
+          properties:
+            kind: {const: command}
+            argv:
+              type: array
+              minItems: 1
+              items: {type: string, minLength: 1}
