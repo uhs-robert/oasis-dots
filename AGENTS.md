@@ -151,7 +151,7 @@ Tracked files must reach external repos only through `repos/`: theme files are r
 
 `.plans/<topic>.md` holds the plan for work in progress (drafts, batch order, open points); `.logs/<topic>/` holds its evidence (check output, review notes, PR bodies). Whoever owns the topic deletes both once it is merged or dropped, after moving anything durable (a decision, a status) into `specs/` in the last PR. They exist in the main checkout only (both are gitignored, so worktrees do not see them); briefs give their absolute paths. An agent without a path finds the main checkout as the parent of `git rev-parse --path-format=absolute --git-common-dir`.
 
-Until batch B2 moves the skills, the old paths still apply: plans in `.planning/` and the orchestrator's scratch in `~/.cache/dotfiles/orch/`. B2 deletes this paragraph.
+Until the orchestrator skills move to `.plans/` (roadmap item G), the old paths still apply: plans in `.planning/` and the orchestrator's scratch in `~/.cache/dotfiles/orch/`. Those are main-checkout-only too (`.planning/` is excluded locally, not through `.gitignore`), so worktrees do not see them either. Item G deletes this paragraph.
 
 ## Global agent files
 
