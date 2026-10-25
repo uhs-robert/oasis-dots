@@ -4,13 +4,13 @@ A plan only. Counts measured on main at 6a7ed8924 (2026-10-25). Items are in pri
 
 | #   | Item                                              | PRs (estimate) | Depends on      |
 | --- | ------------------------------------------------- | -------------- | --------------- |
-| 0   | docs/ vs specs/, plus local plans/ and logs/      | 2              | none            |
+| 0   | docs/ vs specs/, plus local .plans/ and .logs/    | 2              | none            |
 | G   | Global skill rules (orchestrator, handoff)        | 2              | 0a              |
 | 1   | One command registry                              | 7              | none            |
 | 2   | Docs generated from code, with a drift check      | 2              | 1a to 1c        |
 | 3   | AGENTS.md rules only; decisions log               | 1              | 0a              |
 | 4   | voxcmd port status out of AGENTS.md               | 1              | 0a              |
-| 5   | A short spec per new interactive surface          | 1              | 0a              |
+| 5   | A short spec per new interactive surface          | 1              | 0a; 1a for ids  |
 | 6   | More executable specs (tables, goldens)           | 1 per area     | none; one on 1a |
 | 7   | One bad-input test across every command           | 2              | 7a none; 7b 1a, 1f |
 
@@ -29,7 +29,7 @@ Out of scope: parity scorecards, a large docs/ tree, a shared cross-repo rules o
 Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so it must hold in an unrelated project.
 
 **Global** (item G):
-- `plans/` and `logs/` replace the orchestrator scratch dir in the `orchestrator` and `orchestrator-handoff` skills; anything durable moves to tracked docs before they are deleted.
+- `.plans/` and `.logs/` replace the orchestrator scratch dir in the `orchestrator` and `orchestrator-handoff` skills; anything durable moves to tracked docs before they are deleted.
 - Parallel briefs: "new work in a new file; only small edits to shared registries".
 - Every fix ships a test that failed before the fix.
 
@@ -43,16 +43,16 @@ Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so i
 - Free-form params text: typed params can be checked and fuzzed.
 - A flat mixed `docs/`: item 0's split avoids it.
 
-## 0. docs/ vs specs/, and local plans/ and logs/
+## 0. docs/ vs specs/, and local .plans/ and .logs/
 
 **Today.** `docs/` holds `keybinds.md` (204 lines) and `sounds.md` (128 lines), both user guides. Feature docs live beside the code (`QS/README.md`, 8 `features/*/README.md`, the Hyprland and voxcmd READMEs). Plans live in `.planning/` (in `.git/info/exclude`; 4 project folders and a `roadmap.md`, some spanning many sessions) and the orchestrator's scratch in `~/.cache/dotfiles/orch/` (200 files: PR bodies, commit drafts, review evidence).
 
 **Scope.**
 - AGENTS.md "Docs" rule: "`docs/` is for users: written for someone who has not read the code, leading with what to do. `specs/` is for agents and developers: the roadmap, durable plans, surface specs and the decisions log. A feature's README stays beside its code. Neither repeats a rule from this file; link to it." Moves: none; `docs/` fits. Items 3 to 5 add `specs/decisions.md`, `specs/voxcmd-port.md`, `specs/surfaces/`.
-- `plans/` and `logs/` at the main checkout's root, for work in progress. `specs/` is tracked and durable; these are local and temporary. AGENTS.md wording: "`plans/<topic>.md` holds the plan for work in progress (drafts, batch order, open points); `logs/<topic>/` holds its evidence (check output, review notes, PR bodies). Whoever owns the topic deletes both once it is merged or dropped, after moving anything durable (a decision, a status) into `specs/` in the last PR. They exist in the main checkout only; briefs give their absolute paths."
+- `.plans/` and `.logs/` at the main checkout's root, for work in progress; they replace `.planning/` and absorb `~/.cache/dotfiles/orch/`. `specs/` is tracked and durable; these are local and temporary. AGENTS.md wording: "`.plans/<topic>.md` holds the plan for work in progress (drafts, batch order, open points); `.logs/<topic>/` holds its evidence (check output, review notes, PR bodies). Whoever owns the topic deletes both once it is merged or dropped, after moving anything durable (a decision, a status) into `specs/` in the last PR. They exist in the main checkout only; briefs give their absolute paths."
 - Main checkout only, with absolute paths, over a copy per worktree: worktrees do not see ignored files, and one copy means everyone reads the same evidence. The orchestrator already briefs by absolute path; an agent without one finds the main checkout as the parent of `git rev-parse --path-format=absolute --git-common-dir`.
-- `.gitignore` here, `.git/info/exclude` in the global skill. Here `/plans/` and `/logs/` go in `.gitignore`, so every clone and agent gets the rule and it is reviewed. The global skill cannot commit to an unrelated repo, so it falls back to `.git/info/exclude`. Git's standard excludes, which `readme-links` reads, honour both.
-- What exists. Recommendation: `plans/` replaces `.planning/` and `logs/` absorbs the scratch; the cost is updating the skills (item G) and trackers that name the old paths.
+- `.gitignore` here, `.git/info/exclude` in the global skill. Here `/.plans/` and `/.logs/` go in `.gitignore`, so every clone and agent gets the rule and it is reviewed. The global skill cannot commit to an unrelated repo, so it falls back to `.git/info/exclude`. Git's standard excludes, which `readme-links` reads, honour both.
+- What exists: `.plans/` replaces `.planning/` and `.logs/` absorbs the scratch. The cost is updating the skills (item G) and trackers that name the old paths.
 - readme-links: `lib/check/steps/readme_links.py` reads only `*.md` under the Quickshell tree (`run_checks`), so `docs/` is unchecked today. Extend it to `docs/` and `specs/` for links and anchors, and add `"specs"` to `REPO_FOLDERS` (it lists `docs` already) so backticked `specs/` paths resolve. Check backticked paths in `docs/` and `specs/decisions.md`, not in plans, which name files that do not exist yet (this roadmap does).
 
 **Dependencies.** None.
@@ -65,11 +65,11 @@ Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so i
 
 ## G. Global skill rules
 
-**Scope.** In `home/claude/.claude/skills/orchestrator/SKILL.md` the "scratch dir" (reports, `codex-review.sh`) becomes `<main checkout>/logs/<topic>/` and plan drafts go in `<main checkout>/plans/`; `orchestrator-handoff/SKILL.md` reads trackers from `plans/`, not `.planning/`. Step 5 gains the new-file sentence and the failed-before test rule.
+**Scope.** In `home/claude/.claude/skills/orchestrator/SKILL.md` the "scratch dir" (reports, `codex-review.sh`) becomes `<main checkout>/.logs/<topic>/` and plan drafts go in `<main checkout>/.plans/`; `orchestrator-handoff/SKILL.md` reads trackers from `.plans/`, not `.planning/`. Step 5 gains the new-file sentence and the failed-before test rule.
 
 **Dependencies.** 0a (this repo's rule and `.gitignore` lines come first).
 
-**PRs.** G1: plans/ and logs/ in both skills, with the `.git/info/exclude` fallback. G2: the two brief sentences.
+**PRs.** G1: .plans/ and .logs/ in both skills, with the `.git/info/exclude` fallback. G2: the two brief sentences.
 
 **Checks.** `agent-hooks` and `shfmt` cover touched skill scripts; every line must pass the AGENTS.md "Global agent files" test.
 
@@ -82,12 +82,12 @@ Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so i
 - Hyprland: 7 `keymaps/global/*.lua` files call `Bind.*` from `lib/key/bind.lua` (76 call sites); 11 submaps use `Submap.define` row tables. Each bind has its own `desc` and action, often a `qs ipc` string; hyprvim (a separate repo) and the keybinds picker read the descs back.
 - voxcmd: 19 TOML and 18 bash integrations in `integrations/`, 22 in `integrations.d/`, each with its own `run` lines. `integrations/keybinds.toml` already runs any bind by its desc. `tests/phrases.tsv` has 499 rows.
 
-**Proposal.** One JSON manifest of actions. Each entry: `id` (`zoom.toggle`), `label` (bind desc and picker text), `key` (default bind and submap), `params` (typed: name, type, allowed values), `enabled` and `run` (an IPC call, a dispatcher or a script). `enabled` returns a reason when the action is unavailable ("bar not running"), not a bool, so pickers and voxcmd can say why. JSON, not TOML: Hyprland's Lua has `lib/json.lua` and QML has `JSON.parse`; TOML needs a new parser in both. The IpcHandlers stay the transport; the manifest says which functions are public actions.
+**Proposal.** One JSON manifest of actions, in its own stow package (`home/actions/`), so no consumer reaches into another's tree. Each entry: `id` (`zoom.toggle`), `label` (bind desc and picker text), `key` (default bind and submap), `params` (typed: name, type, allowed values), `enabled` and `run` (an IPC call, a dispatcher or a script). `enabled` returns a reason when the action is unavailable ("bar not running"), not a bool, so pickers and voxcmd can say why. JSON, not TOML: Hyprland's Lua has `lib/json.lua` and QML has `JSON.parse`; TOML needs a new parser in both. The IpcHandlers stay the transport; the manifest holds only person-facing functions. Internal plumbing (`osd`, `cmdstatus refresh`) is not an action; it is listed with a reason in `registry.allow`.
 
-**No leaks around it.** A tracked bind whose action is not a manifest id, or a public handler function with no entry, must be listed with a reason in `lib/check/registry.allow` (like `qml-ipc.allow`); a stale line fails. Otherwise additions grow around the registry, as photocraft's `menus.rs::is_live` ORs seven other sources.
+**No leaks around it.** A tracked bind whose action is not a manifest id, or a handler function with no entry, must be listed with a reason in `lib/check/registry.allow` (like `qml-ipc.allow`); a stale line fails. Otherwise additions grow around the registry, as photocraft's `menus.rs::is_live` ORs seven other sources.
 
 **How each surface consumes it.**
-- Hyprland: `Bind.action(id, opts)` reads label, key and run from the manifest and calls `Bind.key`; `Submap.define` rows accept an id. `Bind.key`, `Bind.unbind` and `Bind.submap` keep their signatures (public API for `custom/`). hyprvim needs no change: it reads descs from Hyprland.
+- Hyprland: `Bind.action(id, opts)` reads label, key and run from the manifest and calls `Bind.key`; `Submap.define` rows accept an id. `Bind.key`, `Bind.unbind` and `Bind.submap` keep their signatures (public API for `custom/`). `custom/` overrides a key both ways: `Bind.unbind` and `Bind.key` as today, or `Bind.action(id)` to name the action (photocraft keys user shortcuts by command id); the manifest key stays the default. hyprvim needs no change: it reads descs from Hyprland.
 - voxcmd: a TOML action gains `action = "<id>"` in place of a `run` line, resolved by the Rust binary. Phrases stay in TOML.
 - Pickers: a command picker lists actions by label, greying out disabled ones with their reason.
 - Shadow skill: `shadow.sh action <name> <id> [params]` makes the call `shadow.sh ipc` makes today, by id.
@@ -101,7 +101,7 @@ Global is the Claude setup in `home/claude/.claude/`, loaded in every repo, so i
 - 1d: `registry.allow`, with the step failing unlisted binds and handler functions.
 - 1e: the command picker. 1f: `shadow.sh action`. 1g: voxcmd `action = "<id>"`.
 
-**Checks.** A new `registry` step (scope `lua qml`, with a `PATH_SCOPES` line for the manifest and `registry.allow` ahead of the `home/hypr/*` and Quickshell rules); `stylua` and `luacheck` cover `Bind.action`; the voxcmd suites cover 1g. Optional: a floor the action count may not drop below ("never lower it"); low value.
+**Checks.** A new `registry` step (scope `lua qml`, with a `PATH_SCOPES` line for the manifest package and `registry.allow` ahead of the `home/hypr/*` and Quickshell rules); `stylua` and `luacheck` cover `Bind.action`; the voxcmd suites cover 1g. Optional: a floor the action count may not drop below ("never lower it"); low value.
 
 **Risks.** Moving binds can change which-key order or drop an option such as `submap_universal`. Every new feature edits one more file. Whether the greeter must stage the manifest (`lib/common/greeter-files.sh`) depends on whether lock actions are listed.
 
@@ -136,7 +136,7 @@ Kept inline: a one-clause reason that tells you when the rule applies.
 
 **Scope.** AGENTS.md's second voxcmd paragraph is port status: `VOXCMD_BIN=rs`, the goldens, `internal click-match` and friends, the click bridge, `_legacy-dump`, items 2.3, 3.1 and 3.2. Move it to a tracked `specs/voxcmd-port.md`; AGENTS.md keeps the rules: test through `sandbox.sh`, add a phrase to `phrases.tsv`, regenerate goldens only with the owner's sign-off, run suites as check steps.
 
-**Relation to `.planning/projects/voxcmd-port/voxcmd-port.md`.** That local tracker (26,647 bytes) keeps session state ("Resume here", agents, lessons, private items) and stays local, in `plans/` once item 0 moves it. The tracked spec holds what a fresh clone needs: what runs today, how to run the Rust binary, the phase table (3.1 to 4.2), the legacy dump. The tracker links to it, so status has one home.
+**Relation to `.planning/projects/voxcmd-port/voxcmd-port.md`.** That local tracker (26,647 bytes) keeps session state ("Resume here", agents, lessons, private items) and stays local, in `.plans/` once item 0 moves it. The tracked spec holds what a fresh clone needs: what runs today, how to run the Rust binary, the phase table (3.1 to 4.2), the legacy dump. The tracker links to it, so status has one home.
 
 **Dependencies.** 0a. **PRs.** 1. **Checks.** None new; `readme-links` covers the spec once 0b lands.
 
@@ -146,10 +146,17 @@ Kept inline: a one-clause reason that tells you when the rule applies.
 
 **Scope.** AGENTS.md "Interaction conventions" says: agree a new surface's keys, look and first run with the owner before building it. Make that a file, `specs/surfaces/<name>.md`, from the template below, approved by the owner before the build PR. The build PR moves it into the feature folder as its README (`git mv`), where `readme-links` checks it. A spec is needed for a new popup, picker, mode or skin; not for a row in an existing pane.
 
-```markdown
-# <Surface name>
+Format: Markdown with YAML front matter. A `surface-specs` check validates the front matter fields, the required headings, and that every id in `actions` exists in the registry (so it needs 1a).
 
-Status: draft | approved <date> | built (<PR>)
+```markdown
+---
+status: draft          # draft | approved | built
+approved: 2026-10-25   # date; omit while draft
+pr: 1234               # build PR; omit until built
+actions: [zoom.toggle] # registry ids it adds (item 1)
+keys: [mod+z]          # keys it adds
+---
+# <Surface name>
 
 ## What it is for
 Who opens it, from where, to do what.
@@ -169,11 +176,10 @@ What a new user sees; guided setup if a tool is needed.
 
 ## Acceptance checks
 - [ ] Each key works in the shadow, with a screenshot per state.
-- [ ] The registry actions it adds (item 1), with ids.
 - [ ] The tests or table rows it adds (item 6).
 ```
 
-**Dependencies.** 0a. **PRs.** 1: the template at `specs/surfaces/TEMPLATE.md` and the AGENTS.md sentence. **Checks.** None.
+**Dependencies.** 0a; the id check needs 1a. **PRs.** 1: the template at `specs/surfaces/TEMPLATE.md`, the AGENTS.md sentence and the `surface-specs` step. **Checks.** New `surface-specs` step (with a `PATH_SCOPES` line for `specs/surfaces/`), and its `lib/check/README.md` line. The template and built specs are exempt from the id check once moved.
 
 **Risks.** Ceremony for small surfaces; the threshold above limits it.
 
@@ -206,13 +212,6 @@ What a new user sees; guided setup if a tool is needed.
 **Checks.** A new `bad-input` step (needs `qs`), scoped to the Quickshell tree and later the manifest.
 
 **Risks.** A missed side-effect prefix makes a real call; 7a's throwaway instance and a broad starting list limit that. Slow; may need the serial lane.
-
-## Open questions for the owner
-
-1. Do `plans/` and `logs/` replace `.planning/` and absorb `~/.cache/dotfiles/orch/`, or coexist with them? Recommended: replace and absorb (items 0, G).
-2. Where the action manifest lives: the Quickshell tree, `home/hypr/`, or a stow package of its own. Recommended: its own package, so no consumer reaches into another's tree (item 1).
-3. Do `custom/` users override an action's key in the manifest, or only through `Bind.unbind` and `Bind.key` as today? Recommended: as today, and let `Bind.action` take an id from `custom/` too, so an override can name the action (photocraft keys user shortcuts by command id) (item 1).
-4. Is every handler function an action, or only the ones a person would call? Internal calls (`osd`, `cmdstatus refresh`) argue for "only some" (item 1).
 
 ## Inspiration
 
