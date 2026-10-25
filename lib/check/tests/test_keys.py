@@ -73,6 +73,7 @@ GOLDEN_KEYS = {
     ("packages", "run"): "dd87c70483085cf25e9fdd1680b7bf2110a4d718",
     ("git-diff-check", "run"): "86e4ebb106131abaa213f246c8780a5ae26bf33f",
     ("ignored-integrations", "run"): "184275857b6a2b4417eebf76e1a047e335b80444",
+    ("specs", "run"): "a968724bb8b0a6dd88a8e2d23b8126dff13d563f",
     ("shellcheck", "run"): "c1294268a8c0b90ec44d9865084d57ca04e113d6",
     ("shfmt", "fmt"): "b088898f0fdc23abaa8a4f78078f223de03e6aea",
     ("shellcheck", "unkeyable"): None,
@@ -162,6 +163,7 @@ FROZEN_STEPS = {
         ("packages", "tree"),
         ("git-diff-check", "tree"),
         ("ignored-integrations", "tree"),
+        ("specs", "specs"),
         ("shellcheck", "shell"),
         ("shfmt", "shell"),
     )
@@ -271,6 +273,17 @@ class StepKeys(unittest.TestCase):
         for field, value in changes.items():
             with self.subTest(field=field):
                 self.assertNotEqual(self.key_of(step), self.key_of(step._replace(**{field: value})))
+
+    def test_the_specs_key_moves_with_an_ignored_plan_file_and_no_other_step_does(self):
+        with open(os.path.join(self.repo, ".git", "info", "exclude"), "a") as handle:
+            handle.write("/.plans/\n")
+        before = self.all_keys()
+        write_files(self.repo, {".plans/p/tracker.md": "plan\n"})
+        added = self.all_keys()
+        self.assertEqual({name for name in before if before[name] != added[name]}, {"specs"})
+        write_files(self.repo, {".plans/p/tracker.md": "plan, edited\n"})
+        edited = self.all_keys()
+        self.assertEqual({name for name in added if added[name] != edited[name]}, {"specs"})
 
     def test_the_ignored_integrations_step_reads_the_toml_directory_too(self):
         """The step script, run in the scratch repository: an ignored integrations/*.toml is reported, a symlink is not."""
