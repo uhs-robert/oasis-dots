@@ -171,11 +171,11 @@ class LinkTest(SpecsCase):
 
     def test_a_trailing_comment_tag_counts(self):
         body = GOOD_BODY.replace(" [gap: untested]", "")
-        for text in ("run()  # req: BAR-01\n", 'assert value == "x"  # req: BAR-01\n', "a = 'it\\'s'  // req: BAR-01\n"):
+        for text in ("run()  # req: BAR-01\n", 'assert value == "x"  # req: BAR-01\n', "a = 'it\\'s'  # req: BAR-01\n"):
             self.assertEqual(self.linked({"lib/check/tests/test_x.py": text}, body=body), [], text)
 
     def test_a_marker_inside_a_string_then_a_real_comment_tags_once(self):
-        self.assertEqual(specs.tags_in_line('x = "a # b"  # req: BAR-01', False), ["BAR-01"])
+        self.assertEqual(specs.tags_in_line('x = "a # b"  # req: BAR-01', specs.HASH_MARKERS), ["BAR-01"])
 
     def test_only_the_tsv_note_column_and_comment_lines_carry_a_tag(self):
         body = GOOD_BODY.replace(" [gap: untested]", "")
@@ -183,6 +183,34 @@ class LinkTest(SpecsCase):
         self.assert_one_mentions(self.linked({tsv: "req: BAR-01\t1\taccept\tnote\n"}, body=body), "BAR-01 has no test tagged")
         self.assert_one_mentions(self.linked({tsv: "k\t1\taccept\n"}, body=body), "BAR-01 has no test tagged")
         self.assertEqual(self.linked({tsv: "# req: BAR-01\nk\t1\taccept\tnote\n"}, body=body), [])
+
+    def test_the_comment_marker_follows_the_file_type(self):
+        body = GOOD_BODY.replace(" [gap: untested]", "")
+        uncounted = {
+            "lib/check/tests/run.sh": 'cmd --flag "req: BAR-01"\n',
+            "home/voxcmd/tests/run.sh": 'curl http://x "req: BAR-01"\n',
+            "lib/check/tests/test_x.py": '# a\nx = f(1) -- req: BAR-01\n',
+            "home/quickshell/tests/a.js": "# req: BAR-01\n",
+            "home/hypr/tests/a.lua": "// req: BAR-01\n",
+            "home/hypr/tests/a.txt": "# req: BAR-01\n",
+            "home/voxcmd/tests/a": "# req: BAR-01\n",
+        }
+        for path, text in uncounted.items():
+            self.assert_one_mentions(self.linked({path: text}, body=body), "BAR-01 has no test tagged")
+        counted = {
+            "home/quickshell/tests/a.js": "f(); // req: BAR-01\n",
+            "home/quickshell/tests/a.qml": " * req: BAR-01\n",
+            "home/voxcmd/tests/tests.rs": "fn t() {} // req: BAR-01\n",
+            "home/voxcmd/tests/a": "#!/bin/sh\n# req: BAR-01\n",
+        }
+        for path, text in counted.items():
+            self.assertEqual(self.linked({path: text}, body=body), [], path)
+
+    def test_a_tsv_comment_marker_in_an_early_column_is_not_a_comment(self):
+        body = GOOD_BODY.replace(" [gap: untested]", "")
+        tsv = "home/quickshell/tests/input_settings/vectors.tsv"
+        for row in ("k#\tx -- req: BAR-01\taccept\tnote\n", "k\t1\taccept\tnote\n"):
+            self.assert_one_mentions(self.linked({tsv: row}, body=body), "BAR-01 has no test tagged")
 
     def test_a_one_letter_prefix_id_is_not_a_requirement(self):
         self.assertEqual(self.linked({}, body=GOOD_BODY + "- **B-01** x\n- **B-01** x\n"), [])
