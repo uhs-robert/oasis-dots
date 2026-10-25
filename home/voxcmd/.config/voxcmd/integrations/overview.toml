@@ -1,0 +1,81 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# Drives the Quickshell workspace overview by voice: "show workspaces" opens it, then windows are named by the numbers it
+# draws on them. "two and four" marks, "move two to workspace three" moves, "close the marked windows" closes (after a count).
+# The overview publishes what it shows in overview.json and takes every action through `qs-ipc call overview act`; the
+# contract is in the README (Overview) and the Quickshell overview README (`features/overview/README.md`).
+name = "Overview"
+# Every action is visible on the overview itself; only a failure shows a toast.
+silent = true
+# A candidate's label says what runs ("close 3 windows"), which is also the confirm question.
+action_labels = false
+# The text a session turn is rewritten to, so Apps' "close {target}" and Keybinds' "go to workspace N" never hear it.
+force_prefixes = ["overview"]
+confirm_labels = ['^close ']
+
+# The ways in and out come first: the last verb takes any other phrase, and its hook keeps it only when it can read it.
+verbs = [
+  { action = "overview_close",   match = '(close|hide|dismiss|exit) {mode_object}' },
+  { action = "overview_open",    match = '({show}|{open}) {mode_object}|workspace overview' },
+  { action = "overview_numbers", match = '(show|display|turn on) (the )?(window )?numbers|number (the )?windows' },
+  { action = "act",              match = '{target}' },
+]
+
+examples = [
+  "show workspaces",
+  "two and four",
+  "mark one, three and five",
+  "unmark two",
+  "clear",
+  "move two to workspace three",
+  "move two and four to the left monitor",
+  "move the marked windows to workspace 5",
+  "move to workspace 7",
+  "close them",
+  "close two",
+  "close the marked windows",
+  "focus two",
+  "focus the second window",
+  "close the third one",
+  "mark first and third",
+  "go to workspace three",
+  "go to the first workspace",
+  "move workspace three to the right monitor",
+  "swap workspaces two and five",
+  "close overview",
+]
+
+# Closing the overview also leaves the mode, whose `ended` hook closes the bar's side when the session is not already gone.
+[actions.overview_close]
+run = "overview_close"
+leave_mode = "done"
+
+[actions.overview_open]
+run = "overview_open"
+enter_mode = true
+
+# "Show numbers" means something only while the overview is up; closed, the hook offers nothing and the phrase is left
+# unmatched.
+[actions.overview_numbers]
+candidates = "overview_candidates numbers"
+enter_mode = true
+
+# Also opens the mode, so a phrase spoken while the overview was opened by key attaches the session.
+[actions.act]
+run = 'overview_act "$VOXCMD_ID"'
+candidates = "overview_candidates act"
+enter_mode = true
+
+[mode]
+label = "Overview"
+exit_object = '(the )?(workspace )?(overview|workspaces)'
+exit_phrases = '(close|hide|dismiss) {mode_object}|done with {mode_object}|{mode_exit}'
+exit_hint = "say done to close the overview"
+# A longer pause than other modes: the numbers on screen are read before a command is spoken.
+listen = { no_speech_secs = 20 }
+rewrite = { prefix = "overview " }
+alive = "overview_alive"
+ended = "overview_ended"
+
+# Phrases go to the overview first while it is up. Only the file is read here; the hooks ask the bar before offering anything.
+[surface]
+state_file = "overview.json"
