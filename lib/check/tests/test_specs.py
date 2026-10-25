@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import subprocess
 import sys
 import unittest
 from unittest import mock
@@ -160,6 +161,23 @@ class MissingToolTest(SpecsCase):
     def test_a_missing_check_jsonschema_fails_even_with_no_specs(self):
         with mock.patch.object(specs.shutil, "which", return_value=None):
             self.assertEqual(self.check({}), [specs.MISSING_TOOL])
+
+
+class RunnerInvocationTest(SpecsCase):
+    """The runner runs the script with no root argument, so it finds the checkout from its own location."""
+
+    def test_repo_dir_is_the_checkout_root(self):
+        self.assertTrue(os.path.isfile(os.path.join(specs.REPO_DIR, specs.SPEC_SCHEMA)))
+        self.assertTrue(os.path.isfile(os.path.join(specs.REPO_DIR, "specs/core/TEMPLATE.md")))
+
+    def test_the_script_run_in_a_checkout_fails_that_checkouts_bad_spec(self):
+        self.check({"specs/core/bar.md": spec_text("id: bar\ntitle: Bar\nstatus: done\n")})
+        step_dir = os.path.join(self.root, "lib", "check", "steps")
+        os.makedirs(step_dir)
+        shutil.copy(os.path.join(CHECK_DIR, "steps", "specs.py"), step_dir)
+        done = subprocess.run([sys.executable, "-B", os.path.join(step_dir, "specs.py")], capture_output=True, text=True, cwd=self.root)
+        self.assertEqual(done.returncode, 1, done.stderr)
+        self.assertIn("specs/core/bar.md", done.stderr)
 
 
 class RealTreeTest(unittest.TestCase):
