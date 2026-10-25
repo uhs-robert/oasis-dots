@@ -8,6 +8,7 @@ import "../styles/index.js" as Styles
 import "../styles/IconSets.js" as IconSets
 import "MarkerTokens.js" as MarkerTokens
 import "OptionMigrations.js" as Migrations
+import "FrameTokens.js" as FrameTokens
 
 Singleton {
     id: root
@@ -172,15 +173,15 @@ Singleton {
     readonly property bool screen_frame_on: root.screen_frame_kit !== null
     // The frame's corner profile as asked for: the hole and the drawers fit it to their room (Corners.fit), and
     // Hyprland shapes windows to it (ScreenFrameSync). Null with no frame.
-    readonly property var screen_frame_profile: root.screen_frame_on ? { corner: root.active.screen_frame_only || root.active.screen_frame, radius: root.screen_frame_kit.radius, step: root.bar.screen_frame_step } : null
+    readonly property var screen_frame_profile: root.screen_frame_on ? { corner: root.active.screen_frame, radius: root.screen_frame_kit.radius, step: root.bar.screen_frame_step } : null
     // A frame's rim and inset line, the whole line round the hole: in the bar's colours on the focused monitor, mixed
     // most of the way into the strip on the others, so the frame marks the focused screen the way Hyprland's active
     // border marks the focused window.
     function screen_frame_rim_color(focused) {
-        const panes = root.active.screen_frame_panes;
-        if (panes) return focused ? panes.active : panes.inactive;
-        return focused ? root.bar_border_color : root.frame_dimmed(root.bar_border_color);
+        return FrameTokens.rim_color(root.active.screen_frame_panes, focused, root.bar_border_color, root.frame_dimmed(root.bar_border_color));
     }
+    // The rim's width, drawn by ScreenFrame and sent to Hyprland as its border size, so the two cannot drift.
+    readonly property int screen_frame_rim_width: FrameTokens.rim_width(root.active.screen_frame_panes, root.bar_border_width)
     function screen_frame_inset_color(focused) {
         return focused ? root.bar_inset_color : root.frame_dimmed(root.bar_inset_color);
     }
@@ -667,7 +668,7 @@ Singleton {
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         const saved = root.theme_values[style_name] || {};
         if (!b.bar_lualine && b.screen_frame_offered !== false) {
-            const screen_choices = b.screen_frame_only ? ["", b.screen_frame_only] : root.screen_frames;
+            const screen_choices = FrameTokens.row_choices(b.screen_frame_only, root.screen_frames);
             out.push({ key: "screen_frame", label: "Screen frame", type: "choice", default: b.screen_frame || "", choices: screen_choices, labels: root.borrow_labels("screen_frame", screen_choices) });
             flag("screen_frame_flush", "Flush single windows");
         }

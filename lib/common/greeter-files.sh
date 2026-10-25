@@ -11,6 +11,7 @@ GREETER_QS_FILES=(
   theme/Style.qml
   theme/StyleSchema.js
   core/Paths.qml
+  theme/FrameTokens.js
   theme/MarkerTokens.js
   theme/OptionMigrations.js
   styles/index.js
