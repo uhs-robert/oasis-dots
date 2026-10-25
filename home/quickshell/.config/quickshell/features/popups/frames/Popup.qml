@@ -614,7 +614,7 @@ PanelWindow {
         // Beside a side bar the line runs down the bar's open edge, for the island's length.
         readonly property real h: Math.min(root.st.accent_full_width ? root.height : root.island_length, root.height) * root.line_progress
         x: root.beside ? (root.edge === "right" ? root.width - root.line_height : 0) : root.edge_x(w)
-        y: root.beside ? root.edge_y(h) : root.dock_bottom ? reveal.y - root.line_height : root.rises ? root.height - root.line_height : 0
+        y: root.beside ? Drawer.beside_line_offset(root.island_top, root.beside_at.margin_top, h, root.height) : root.dock_bottom ? reveal.y - root.line_height : root.rises ? root.height - root.line_height : 0
         width: root.beside ? root.line_height : w
         height: root.beside ? h : root.line_height
         color: root.st.accent_color
