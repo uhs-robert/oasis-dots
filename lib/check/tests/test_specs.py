@@ -171,7 +171,11 @@ class LinkTest(SpecsCase):
 
     def test_a_trailing_comment_tag_counts(self):
         body = GOOD_BODY.replace(" [gap: untested]", "")
-        self.assertEqual(self.linked({"lib/check/tests/test_x.py": "run()  # req: BAR-01\n"}, body=body), [])
+        for text in ("run()  # req: BAR-01\n", 'assert value == "x"  # req: BAR-01\n', "a = 'it\\'s'  // req: BAR-01\n"):
+            self.assertEqual(self.linked({"lib/check/tests/test_x.py": text}, body=body), [], text)
+
+    def test_a_marker_inside_a_string_then_a_real_comment_tags_once(self):
+        self.assertEqual(specs.tags_in_line('x = "a # b"  # req: BAR-01', False), ["BAR-01"])
 
     def test_only_the_tsv_note_column_and_comment_lines_carry_a_tag(self):
         body = GOOD_BODY.replace(" [gap: untested]", "")
