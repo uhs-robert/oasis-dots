@@ -145,6 +145,14 @@ Tracked files must reach external repos only through `repos/`: theme files are r
 
 `install_nvim_config` links `~/.config/nvim` to `repos/<name>` for `$NVIM_CONFIG_REPO` (default `uhs-robert/neovim`, also accepts a git URL), leaving any existing `~/.config/nvim` untouched.
 
+## Docs
+
+`docs/` is for users: written for someone who has not read the code, leading with what to do. `specs/` is for agents and developers: the roadmap, the specs, durable plans and the decisions log. A feature's README stays beside its code and links to its spec. Neither repeats a rule from this file; link to it.
+
+`.plans/<topic>.md` holds the plan for work in progress (drafts, batch order, open points); `.logs/<topic>/` holds its evidence (check output, review notes, PR bodies). Whoever owns the topic deletes both once it is merged or dropped, after moving anything durable (a decision, a status) into `specs/` in the last PR. They exist in the main checkout only (both are gitignored, so worktrees do not see them); briefs give their absolute paths. An agent without a path finds the main checkout as the parent of `git rev-parse --path-format=absolute --git-common-dir`.
+
+Until the orchestrator skills move to `.plans/` (roadmap item G), the old paths still apply: plans in `.planning/` and the orchestrator's scratch in `~/.cache/dotfiles/orch/`. Those are main-checkout-only too (`.planning/` is excluded locally, not through `.gitignore`), so worktrees do not see them either. Item G deletes this paragraph.
+
 ## Global agent files
 
 Everything tracked under `home/claude/.claude/` (skills, agents, commands, hooks, `status.d`) is symlinked to `~/.claude/` and loaded in every project, so each line must hold in an unrelated repository (a Python web app, a Rust CLI). Project-specific guidance goes in this file or in `.claude/skills/`. Reviewers of any diff touching `home/claude/.claude/` flag every line that fails this test, whatever its subject.

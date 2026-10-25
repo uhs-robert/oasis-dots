@@ -197,3 +197,7 @@ home/ghostty/.config/ghostty/oasis-theme.conf
 
 # web-ext sign keeps its pending upload here
 extras/voxcmd-firefox/.amo-upload-uuid
+
+# Local plans and evidence for work in progress (see AGENTS.md "Docs")
+/.plans/
+/.logs/
