@@ -34,11 +34,11 @@ Why AGENTS.md rules are the way they are. AGENTS.md keeps the rule and a one-cla
 - Chose: `Popups.after_close(fn)`, which closes the popup and queues `fn` until the `closelayer` event for the popup's namespace. A one-second fallback runs the queue if the event never arrives, and with no popup open `fn` runs at once.
 - Over: `Popups.close()` followed by a launch, and per-caller workarounds (Updates tagged the topgrade window with a class, watched for it and refocused it).
 - Because: the popup's layer still held the keyboard when the new window mapped, so Hyprland did not focus it, and when the layer finished closing Hyprland handed focus back to the window that had it before the popup opened. Launching once `closelayer>>quickshell-popup` arrived (about 0.2 s later) focused the window.
-- Footgun: the one-second fallback keeps the action working but loses the focus guarantee. Updates keeps its `quickshell-upgrade` class because `scripts/focus-topgrade.sh` finds the window by it. `Screenshot.run_after_close` is a separate fixed 350 ms wait so the popup is gone from the captured pixels, not a focus fix.
+- Footgun: the one-second fallback keeps the action working but loses the focus guarantee. Updates keeps its `quickshell-upgrade` class because `home/hypr/.config/hypr/scripts/focus-topgrade.sh` finds the window by it. `Screenshot.run_after_close` is a separate fixed 350 ms wait so the popup is gone from the captured pixels, not a focus fix.
 
 ## Gitignore ignores by default
 
 - Date: 2026-09-09. Commit fd33b05d3 (no PR found).
 - Chose: a blanket ignore of credentials, AI assistant state and generated config, with explicit `!` negations for the tracked subpaths of `home/claude/**`, `home/gemini/**` and `home/codex/**`, and `!/CLAUDE.md` and `!/AGENTS.md` at the repository root only.
-- Because: the blanket rule exists to keep AI state out of `home/claude`. The root agent files are the exception so every agent reads the same instructions; a nested `AGENTS.md` under `home/` stays ignored.
+- Because (from the commit message): the blanket rule exists to keep AI state out of `home/claude`, so the root `CLAUDE.md` and `AGENTS.md` are unignored explicitly; a nested `AGENTS.md` under `home/` stays ignored. The commit records no alternative that was weighed.
 - Footgun: a new tracked file under an ignored tree needs a matching `!` negation, or it silently never gets added.
