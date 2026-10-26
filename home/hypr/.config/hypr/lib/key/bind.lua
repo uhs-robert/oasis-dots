@@ -49,6 +49,25 @@ local function track(key, handle)
   table.insert(keys[name], handle)
 end
 
+--- Action ids by the function a bind runs, so a check can tell a bind that performs an action from a plain one. Weak:
+--- it never keeps a closure alive.
+--- @type table<function, string>
+local action_ids = setmetatable({}, { __mode = "k" })
+
+--- Record that `run` performs the action `id`; returns `run`.
+--- @param run function
+--- @param id  string|nil  nil leaves it untagged
+--- @return function
+function Bind.tag_action(run, id)
+  if id ~= nil then action_ids[run] = id end
+  return run
+end
+
+--- The action id a bind's function was tagged with, if any.
+--- @param run any
+--- @return string|nil
+function Bind.action_id(run) return action_ids[run] end
+
 --- @param value string|string[]  Multiple keys produce one hl.bind call each, all wired to the same action
 --- @return string[]
 local function as_list(value)

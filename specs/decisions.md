@@ -51,3 +51,12 @@ Why AGENTS.md rules are the way they are. AGENTS.md keeps the rule and a one-cla
 - Because: nothing at runtime read the manifest, so it had to be kept in step with the Lua by hand for no consumer, and the Rust runner needed its own build, install order and check step beside the Lua path keys already use. The owner always runs Hyprland, so a list that exists only while it runs costs nothing, and a committed list could drift from a `custom/` override anyway.
 - Cost: with no Hyprland, `hypr-act list` prints nothing and exits 3 (4 when Hyprland runs but the list cannot be read), and no action can run. A key or the bar is dead then too.
 - Footgun: machines that had `oasis-djinn` stowed run `stow -D oasis-djinn` before checking out this change, or `~/.config/oasis-djinn` dangles; then remove `~/.local/bin/oasis-djinn` and `~/.local/share/oasis-djinn-rs`.
+
+## Binds and IPC functions need an action or a reasoned allow line
+
+- Date: 2026-10-26. Branch `feat/djinn-2d`, on #1309.
+- Chose: the `registry` step fails on a bind that performs no action and on a typed IPC function that no action calls, unless `lib/check/registry.allow` lists it with a reason; a line that matches nothing, or whose bind or function has an action now, fails as stale. The binds come from `home/hypr/tests/registry_binds.lua`, which loads `keymaps` under stubs and reads the action id that `Bind.tag_action` recorded on each bind's function.
+- Over: leaving the unmigrated binds and functions unlisted, as the registry check did before (it checked only that what an action names exists).
+- Because: the aim is every person-facing command in one registry, and nothing noticed a new key or IPC function added beside it. A reasoned list makes the exceptions (mouse, lid and power keys, the submap plumbing, bar-internal IPC) visible and shrinking, and the stale check means an entry cannot outlive its reason.
+- Cost: a new `Bind.key` needs a line, and the step needs `lua`: it fails, not skips, without it, or a machine without lua would pass the registry unread. The owner's `custom/` binds are never loaded and so not checked.
+- Footgun: a bind wrapped in a new closure loses its action id unless the wrapper calls `Bind.tag_action(wrapper, Bind.action_id(inner))`, as `home/hypr/.config/hypr/lib/key/submap.lua`'s one-shot wrappers do; it then shows as a plain bind and fails with a bind line to add.

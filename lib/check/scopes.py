@@ -70,6 +70,7 @@ PATH_SCOPES = [
     ("lib/check/steps/specs.py", ""),
     # The registry step is a tree step too: it loads the Lua definitions headlessly and reads the IpcHandlers.
     ("lib/check/steps/registry.py", ""),
+    ("lib/check/registry.allow", ""),
     ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
     ("lib/check/steps/time-format.sh", "qml"),
@@ -269,9 +270,9 @@ STEPS = [
     # "tree" so that an edit of an ignored .plans/ file, which no path rule can see, still selects it. No `needs`: a
     # missing check-jsonschema must fail the step, not skip it.
     Step("specs", "tree", "python3 -B ./lib/check/steps/specs.py"),
-    # "tree" because it reads the manifest package, its schemas and the Quickshell IpcHandlers: no single scope covers
-    # them. check-jsonschema is required, as for specs.
-    Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py", ("lua",), skip_reason="the action reference check needs lua"),
+    # "tree" because it reads the Lua keymaps and definitions, lib/check/registry.allow and the Quickshell IpcHandlers: no
+    # single scope covers them. No `needs`: a missing lua must fail the step, not skip it.
+    Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.

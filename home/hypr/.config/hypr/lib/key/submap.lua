@@ -214,10 +214,10 @@ local function apply_individual_oneshots(rows, exit_fn)
     if type(opts) == "table" and opts.oneshot then
       table.insert(result, {
         row[1],
-        function()
+        Bind.tag_action(function()
           run(row[2])
           exit_fn()
-        end,
+        end, Bind.action_id(row[2])),
         row[3],
         { keep = true },
       })
@@ -242,10 +242,10 @@ local function wrap_oneshot(rows, exit_fn)
     else
       table.insert(wrapped, {
         row[1],
-        function()
+        Bind.tag_action(function()
           run(row[2])
           exit_fn()
-        end,
+        end, Bind.action_id(row[2])),
         row[3],
         opts,
       })
