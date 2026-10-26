@@ -299,6 +299,7 @@ STEPS = [
     Step("toast-extent", "node", "node ./home/quickshell/tests/toast_extent.js", ("node",), skip_reason="the toast extent tests need node"),
     Step("cava-viewers", "node", "node ./home/quickshell/tests/cava_viewers.js", ("node",), skip_reason="the cava viewer tests need node"),
     Step("hover-popup", "node", "node ./home/quickshell/tests/hover_popup.js", ("node",), skip_reason="the hover popup tests need node"),
+    Step("media-settings", "node", "node ./home/quickshell/tests/media_settings.js", ("node",), skip_reason="the media settings tests need node"),
     Step("bar-layout", "node", "node ./home/quickshell/tests/bar_layout.js", ("node",), skip_reason="the bar layout tests need node"),
     Step("bar-vertical", "node", "node ./home/quickshell/tests/bar_vertical.js", ("node",), skip_reason="the bar vertical tests need node"),
     Step("directory-format", "node", "node ./home/quickshell/tests/directory_format.js", ("node",), skip_reason="the directory format tests need node"),
