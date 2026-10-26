@@ -14,7 +14,8 @@ Scope {
     // The corner as drawn (fitted to its cap), like ScreenFrameSync sends Hyprland.
     readonly property var drawn: Corners.fit(root.profile.corner, root.profile.radius, root.profile.step)
     // `on` is whether a frame is drawn; the corner is always set.
-    readonly property var snapshot: ({ on: ScreenFrames.any_frame, corner: root.profile.corner, radius: root.drawn.radius })
+    // Without a frame and without a picked Corner style the corner is empty, which leaves Firefox and yazi at their own.
+    readonly property var snapshot: Style.corner_sent ? { on: ScreenFrames.any_frame, corner: root.profile.corner, radius: root.drawn.radius } : { on: false, corner: "", radius: 0 }
 
     onSnapshotChanged: if (store.loaded_once) store.replace(root.snapshot)
 

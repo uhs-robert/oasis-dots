@@ -30,6 +30,12 @@ function corner_of(tokens, corners) {
     return corners.indexOf(tokens.corner_style) >= 0 ? tokens.corner_style : natural_corner(tokens, corners);
 }
 
+// Whether the Corner style reaches Hyprland and the apps: always with the frame on, with it off only once the user has
+// picked one, so an untouched style leaves the owner's own window rounding as it is.
+function corner_applies(frame_on, corner_chosen) {
+    return frame_on || corner_chosen;
+}
+
 // Whether a token set draws the screen frame: a style that offers it, with it switched on.
 function frame_on(tokens) {
     return offered(tokens) && tokens.screen_frame === true;

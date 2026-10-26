@@ -176,6 +176,8 @@ Singleton {
     // Whether the Corner style was picked rather than the style's natural one: the strip's ends keep the style's own
     // island ends until then.
     readonly property bool corner_style_chosen: root.corner_style !== FrameTokens.natural_corner(root.base_active, root.frame_corners)
+    // Whether the corner goes to Hyprland and the apps (FrameTokens.corner_applies): with the frame on, or once picked.
+    readonly property bool corner_sent: FrameTokens.corner_applies(root.screen_frame_on, root.corner_style_chosen)
     // The corner as asked for, always set: the hole and the drawers fit it to their room (Corners.fit), Hyprland
     // shapes windows to it (ScreenFrameSync) and the media well's plate takes it.
     readonly property var corner_profile: ({ corner: root.corner_style, radius: root.plain_frame_kit.radius, step: root.bar.screen_frame_step })
