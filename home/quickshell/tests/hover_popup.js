@@ -267,11 +267,11 @@ t("disabled while pending (nothing to show) drops the open and never opens", () 
 // The QML wiring has no compositor test, so pin which modules opt in and how the base routes a click.
 const bar_dir = path.join(__dirname, "../.config/quickshell/features/bar/modules");
 const module_source = name => fs.readFileSync(path.join(bar_dir, name + ".qml"), "utf8");
-t("the click-to-open modules opt in; Start and Media do not", () => {
-  for (const m of ["Battery", "Bluetooth", "Network", "Volume", "Updates", "System", "Weather", "Keeptabs", "Tray", "Notifications"]) {
+t("the click-to-open modules opt in; Start, Tray and Media do not", () => {
+  for (const m of ["Battery", "Bluetooth", "Network", "Volume", "Updates", "System", "Weather", "Keeptabs", "Notifications"]) {
     assert.match(module_source(m), /^\s+hover_popup: true$/m, m);
   }
-  for (const m of ["StartButton", "Media"]) assert.doesNotMatch(module_source(m), /hover_popup: true/, m);
+  for (const m of ["StartButton", "Tray", "Media"]) assert.doesNotMatch(module_source(m), /hover_popup: true/, m);
 });
 t("Notifications hover-opens only with notifications", () => {
   assert.match(module_source("Notifications"), /hover_ready: NotificationState\.history\.length > 0/);
