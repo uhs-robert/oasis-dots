@@ -362,6 +362,7 @@ Popup {
                 // The flickable is reused across sections: start the new one at the top, then at its selected row.
                 onLoaded: {
                     pane_flick.contentY = 0;
+                    panel.reset_help_scroll();
                     Qt.callLater(root.reveal_selected, pane_flick, pane_loader);
                 }
             }
