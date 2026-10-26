@@ -40,12 +40,12 @@ BarModule {
         return label + " // " + Math.round(root.volume * 100) + "%";
     }
 
-    RowLayout {
+    ModuleRow {
         id: row
-        spacing: 6
+        spacing: root.vertical ? 2 : 6
 
         BarIcon {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
             name: "volume"
             fixed_slot: true
             variant: root.level_variant
@@ -54,17 +54,14 @@ BarModule {
             opacity: root.muted ? 0.5 : 1
         }
 
-        Text {
-            Layout.alignment: Qt.AlignVCenter
+        VerticalText {
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
             visible: !root.compact
-            text: Math.round(root.volume * 100) + "%"
+            vertical: root.vertical
+            cross: root.cross
+            full_text: Math.round(root.volume * 100) + "%"
+            short_text: Math.round(root.volume * 100) + ""
             color: Style.bar_fg
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_font_size
-            font.capitalization: Style.bar_capitalization
-            font.letterSpacing: Style.bar_letter_spacing
         }
     }
 

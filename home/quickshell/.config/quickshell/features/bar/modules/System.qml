@@ -36,28 +36,27 @@ BarModule {
     implicitHeight: row.implicitHeight
     opacity: root.dim ? 0.4 : 1
 
-    RowLayout {
+    readonly property string short_value_text: root.show_temp ? SysStats.temp_c + "°" : (root.show_mem ? SysStats.mem_percent : SysStats.cpu_percent) + ""
+
+    ModuleRow {
         id: row
-        spacing: 4
+        spacing: root.vertical ? 2 : 4
 
         BarIcon {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
             name: "system"
             variant: root.show_temp ? "temp" : root.show_mem ? "mem" : "cpu"
             glyph: root.glyph
             tint: root.show_temp ? root.value_color : Theme.theme_primary
         }
 
-        Text {
-            Layout.alignment: Qt.AlignVCenter
-            text: root.value_text
+        VerticalText {
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            vertical: root.vertical
+            cross: root.cross
+            full_text: root.value_text
+            short_text: root.short_value_text
             color: root.value_color
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_font_size
-            font.capitalization: Style.bar_capitalization
-            font.letterSpacing: Style.bar_letter_spacing
         }
     }
 

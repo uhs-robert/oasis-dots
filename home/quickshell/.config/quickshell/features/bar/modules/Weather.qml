@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.theme
+import qs.features.bar
 import qs.features.weather
 
 BarModule {
@@ -24,12 +25,12 @@ BarModule {
         return lines.join("\n");
     }
 
-    RowLayout {
+    ModuleRow {
         id: row
-        spacing: 4
+        spacing: root.vertical ? 2 : 4
 
         Item {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
             implicitWidth: icon.visible ? icon.implicit_size : 0
             implicitHeight: icon.implicit_size
 
@@ -54,20 +55,17 @@ BarModule {
             }
         }
 
-        Text {
-            Layout.alignment: Qt.AlignVCenter
-            text: root.has_data ? Math.round(root.current.temp) + "°" + WeatherState.unit_symbol() : WeatherState.failed ? "n/a" : "--°"
+        VerticalText {
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            vertical: root.vertical
+            cross: root.cross
+            full_text: root.has_data ? Math.round(root.current.temp) + "°" + WeatherState.unit_symbol() : WeatherState.failed ? "n/a" : "--°"
+            short_text: root.has_data ? Math.round(root.current.temp) + "°" : ""
             color: root.has_data ? WeatherState.temp_color(root.current.temp) : WeatherState.failed ? Theme.warning : Theme.fg_dim
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_font_size
-            font.capitalization: Style.bar_capitalization
-            font.letterSpacing: Style.bar_letter_spacing
         }
 
         Text {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
             visible: WeatherState.stale
             text: "\u{f002a}"
             color: Theme.warning

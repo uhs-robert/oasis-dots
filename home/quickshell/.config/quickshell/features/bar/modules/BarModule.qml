@@ -1,6 +1,7 @@
 import QtQuick
 import qs.theme
 import qs.features.popups
+import "../VerticalLayout.js" as VerticalLayout
 
 Item {
     id: root
@@ -10,7 +11,7 @@ Item {
     property bool compact: false
     property string screen_name: ""
     property int bar_height: 30
-    // On a left or right bar. Modules still lay out horizontally (their content is not rotated); this is for those that need to know.
+    // On a left or right bar. A module lays its content out in a column with ModuleRow and VerticalText; one that does not still draws horizontally.
     property bool vertical: false
     property Item island: null
     property color island_color: Theme.bg_core
@@ -18,6 +19,8 @@ Item {
     property string tooltip_text: ""
     property string tooltip_title: module_name
     property bool wash: true
+    // The width the content may use on a side bar: the bar's thickness less the island's inset (capsule, floating strip), its border on both sides and 4 px of air.
+    readonly property real cross: VerticalLayout.cross_width(root.bar_height, Style.bar_capsule + (Style.strip_floats ? Style.bar_strip_inset : 0) + Style.bar_border_width * 2 + 4)
     readonly property alias hovered: hover_handler.hovered
 
     visible: shown
