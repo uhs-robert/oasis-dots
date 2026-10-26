@@ -14,6 +14,12 @@ function tail_target(vertical, wanted, free, least) {
     return vertical && target > least ? target : 0;
 }
 
+// The bars' length inside a tail of `span` (the tail now, not at full growth): the tail less the gap before the bars and
+// the margin after them, so the bars never reach past the plate while it grows or shrinks with the fade.
+function bars_length(span, gap, margin) {
+    return Math.max(0, span - gap - margin);
+}
+
 // The tail now: follows the bars' fade (`fade` 0..1, the bars' own animated opacity) so both start and stop together.
 function tail_span(target, fade) {
     return target * Math.max(0, Math.min(1, fade));

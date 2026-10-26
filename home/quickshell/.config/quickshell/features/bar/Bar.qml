@@ -301,8 +301,9 @@ Item {
         readonly property real tail_target: CavaTail.tail_target(root.vertical, 96 + center_cava.tail_gap + center_cava.along_margin,
             CavaTail.free_space(root.height, center_island.module_length, root.right_side.length > 0 ? right_island.height : 0, root.strip_side, center_cava.tail_gap),
             center_cava.tail_gap + center_cava.along_margin)
-        readonly property real tail_length: Math.max(0, center_cava.tail_target - center_cava.tail_gap - center_cava.along_margin)
         readonly property real tail_span: CavaTail.tail_span(center_cava.tail_target, center_cava.opacity)
+        // Follows the tail as it fades, so the bars stay inside the plate the whole time.
+        readonly property real tail_length: CavaTail.bars_length(center_cava.tail_span, center_cava.tail_gap, center_cava.along_margin)
         // On a side bar the bars are turned a quarter and stand on the open edge: -90 on a left bar (the open edge on the
         // right, bars growing left), 90 on a right one. The box below is the turned bars' own, so x/y name its corner.
         readonly property bool leftward: root.position === "left"
@@ -318,7 +319,7 @@ Item {
         rotation: root.vertical ? (center_cava.leftward ? -90 : 90) : 0
         width: root.vertical ? center_cava.tail_length : implicitWidth
         x: root.vertical ? (center_cava.leftward ? parent.width - center_cava.open_edge_margin - height : center_cava.open_edge_margin + height) : 0
-        y: root.vertical ? center_island.module_span + center_cava.tail_target - center_cava.along_margin - (center_cava.leftward ? 0 : center_cava.tail_length) : 0
+        y: root.vertical ? center_island.module_span + center_cava.tail_span - center_cava.along_margin - (center_cava.leftward ? 0 : center_cava.tail_length) : 0
         flipped: center_island.flipped
         active: MediaState.playing && PowerSource.on_ac && center_cava.island_cava
     }
