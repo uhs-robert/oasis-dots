@@ -2,9 +2,9 @@
 
 `settings/` holds the Settings panel (`SettingsPopup`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings` and `HyprInputSettings`.
 
-Settings takes 80% of the screen each way: with the screen frame on it grows out of the frame as a drawer, otherwise it drops from the centre of the bar like the other popups. It holds the section list on the left, the selected section in the middle and a help column on the right that explains the selected setting in full. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
+Settings takes 80% of the screen each way: with the screen frame on it grows out of the frame as a drawer, otherwise it drops from the centre of the bar like the other popups. It holds the section list on the left, the selected section in the middle and a docked panel on the right (under the rows on a portrait or small screen) that explains the selected setting in full. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
 
-The help column describes the selected (or hovered) setting and lists the keys that work on it. A section sets `description` and `description_keys` on `SettingsPane`; `RowsSection` fills them from a row's `desc`, optional `help` (a longer explanation shown after it) and optional `keys`, and a custom pane such as Bar modules does it for its own items.
+The panel (`SettingsPanel`) holds the help card on top, describing the selected (or hovered) setting and listing the keys that work on it, and a section's preview below it; a section with no preview gives the card the whole panel. A section docks a preview with `RowsSection.preview`, never among its rows. A section sets `description` and `description_keys` on `SettingsPane`; `RowsSection` fills them from a row's `desc`, optional `help` (a longer explanation shown after it) and optional `keys`, and a custom pane such as Bar modules does it for its own items.
 
 | Group        | Sections                           |
 | ------------ | ---------------------------------- |
