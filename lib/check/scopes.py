@@ -15,8 +15,8 @@ where an edit here that matters to the step shows up.
 
 from typing import NamedTuple
 
-# One scope per bash voxcmd suite, so an edit to a file only one suite reads runs only that suite. VOXCMD_SUITES is for
-# what every suite runs (the bash voxcmd itself, its integrations); runner.py reads VOXCMD_SUITE_SCOPES to tell a suite
+# One scope per voxcmd shell suite, so an edit to a file only one suite reads runs only that suite. VOXCMD_SUITES is for
+# what every suite runs (the crate they build, the integrations); runner.py reads VOXCMD_SUITE_SCOPES to tell a suite
 # from the crate.
 VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE, VOX_FIREFOX = "voxphrases", "voxclick", "voxcalendar", "voxwake", "voxfirefox"
 VOXCMD_SUITE_SCOPES = (VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE, VOX_FIREFOX)
@@ -44,7 +44,7 @@ PATH_SCOPES = [
     (".luacheckrc", "lua"),
     # The files outside the Quickshell tree that OUTSIDE_REFS in lib/check/steps/qml_paths.py names, ahead of their folders.
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", "lua qml"),
-    ("home/voxcmd/.local/bin/voxcmd-alarm", VOXCMD_SUITES + " qml"),
+    ("home/voxcmd/src/timer.rs", "rust " + VOXCMD_SUITES + " qml"),
     ("home/voxcmd/tests/run-monitors.sh", VOX_CLICK + " qml"),
     # The input vectors run the Lua validator and the bar's, so the files either reads reach them, ahead of the folders.
     ("home/hypr/.config/hypr/config/input/init.lua", "lua inputvec"),
@@ -95,19 +95,17 @@ PATH_SCOPES = [
     ("home/quickshell/tests/*", "node qml"),
     ("home/quickshell/*", "qml node"),
     ("lib/check/steps/voxcmd-rust.sh", "rust"),
-    # Only the Rust step: the voxcmd suites run with VOXCMD_BIN unset, so they exercise the bash voxcmd and never the
-    # crate. Snapshots and the generated goldens are read only by cargo test; the other fixtures are read by both. An
-    # integration file also reaches the bash voxcmd, and the crate through tests/integrations.rs.
-    # VOXCMD_BIN=rs becomes the suites' default at voxcmd 3.2: then src/*, Cargo.*, tests/*.rs, snapshots and goldens
-    # must also reach the voxcmd suites; test_rust_edits_skip_bash_suites_until_3_2 fails at that point as a reminder.
-    ("home/voxcmd/src/*", "rust"),
-    ("home/voxcmd/Cargo.*", "rust"),
+    # The suites build and run the crate, so its sources reach them as well as cargo's own tests. Snapshots, the generated
+    # goldens and the crate's test sources are read only by cargo test; the other fixtures are read by both. An
+    # integration file reaches the suites, and the crate through tests/integrations.rs.
+    ("home/voxcmd/src/*", "rust " + VOXCMD_SUITES),
+    ("home/voxcmd/Cargo.*", "rust " + VOXCMD_SUITES),
     ("home/voxcmd/rustfmt.toml", "rust"),
     ("home/voxcmd/tests/*.rs", "rust"),
     ("home/voxcmd/tests/snapshots/*", "rust"),
     ("home/voxcmd/tests/fixtures/*-goldens.tsv", "rust"),
     ("home/voxcmd/tests/fixtures/legacy-dump.jsonl", "rust"),
-    # The bash suites by what each reads (found by following their source/read lines; run.sh stands for voxcmd-click and
+    # The shell suites by what each reads (found by following their source/read lines; run.sh stands for voxcmd-click and
     # carries run-sessions, run-modes, run-sequences, run-overview and run-monitors). Ahead of the fixture catch-all below.
     ("home/voxcmd/tests/run-phrases.sh", VOX_PHRASES),
     ("home/voxcmd/tests/phrases.tsv", VOX_PHRASES),
@@ -127,13 +125,12 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/run-firefox-extension.sh", VOX_FIREFOX),
     ("home/voxcmd/tests/firefox-host-test", VOX_FIREFOX),
     ("home/voxcmd/tests/firefox-background.test.js", VOX_FIREFOX),
-    # Every suite but the Firefox one runs inside sandbox.sh, whose tests/bin shim and ask-stub they reach voxcmd through.
+    # Every suite but the Firefox one runs inside sandbox.sh, whose tests/bin ask-stub they reach the ask stubs through.
     ("home/voxcmd/tests/sandbox.sh", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE])),
     ("home/voxcmd/tests/bin/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE])),
     # Builds the fixture Firefox profile (places.sql, sessionstore.json) for the phrases, click and calendar suites.
     ("home/voxcmd/tests/firefox-profile", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
-    # Run by hand (live diff, benchmark, wake sampling), by no step.
-    ("home/voxcmd/tests/run-live-diff.sh", ""),
+    # Run by hand (benchmark, wake sampling), by no step.
     ("home/voxcmd/tests/bench.sh", ""),
     ("home/voxcmd/tests/bench-phrases.tsv", ""),
     ("home/voxcmd/tests/wake-sample.sh", ""),
@@ -150,7 +147,7 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/ocr.tsv", VOX_PHRASES),
     ("home/voxcmd/tests/fixtures/overview.json", VOX_CLICK),
     ("home/voxcmd/tests/fixtures/monitors/*", VOX_CLICK),
-    # Only the crate's tests and the generators of its goldens read these (no bash suite names them). A fixture added
+    # Only the crate's tests read these (no shell suite names them). A fixture added
     # without a rule here falls to home/voxcmd/*, which test_voxcmd_suite_scopes.py's tripwire rejects.
     ("home/voxcmd/tests/fixtures/monitor-places/*", "rust"),
     ("home/voxcmd/tests/fixtures/speech/*", "rust"),
@@ -158,7 +155,6 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/ask/*", "rust"),
     ("home/voxcmd/tests/fixtures/click/*", "rust"),
     ("home/voxcmd/tests/fixtures/integrations/*", "rust"),
-    ("home/voxcmd/tests/fixtures/gen-*.sh", "rust"),
     # The suites' own config for these is the sandbox's copy of the package, so a real integration reaches all of them.
     ("home/voxcmd/.config/voxcmd/integrations/*", "rust " + VOXCMD_SUITES),
     ("home/voxcmd/*", VOXCMD_SUITES),

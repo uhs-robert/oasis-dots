@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for voxcmd's overview integration (overview.sh): phrases read against a fixture overview.json, the actions sent
+# Tests for voxcmd's overview integration (overview.toml): phrases read against a fixture overview.json, the actions sent
 # to the bar's `overview act`, the count before a close, the session that attaches while the overview is open and the one
 # that ends with it. run.sh runs this beside its own checks, in a sandbox of its own; run alone:
 # home/voxcmd/tests/run-overview.sh
@@ -22,14 +22,10 @@ ov_pkg=$root/ov-pkg
 ov_config=$root/config-ov
 ov_voxcmd=$ov_pkg/tests/bin/voxcmd
 ov_turns=$root/turns
-mkdir -p "$ov_pkg" "$ov_config/integrations.d" "$ov_config/replacements.d" "$XDG_RUNTIME_DIR/voxcmd" "$XDG_RUNTIME_DIR/voxtype"
+mkdir -p "$ov_pkg" "$ov_config/replacements.d" "$XDG_RUNTIME_DIR/voxcmd" "$XDG_RUNTIME_DIR/voxtype"
 cp -r "$package/.local" "$ov_pkg/.local"
-link_voxcmd_shim "$ov_pkg"
+link_voxcmd_build "$ov_pkg"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$ov_pkg/.local/bin/voxcmd-autostop"
-for integration in apps keybinds overview rapid; do
-  cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$ov_config/integrations.d/"
-done
-# Apps, Keybinds, Overview and Rapid are TOML too: the Rust build takes the shipped file over the bash copy the bash build needs.
 copy_shipped_integrations "$ov_config" apps keybinds overview rapid
 # The confirm card answers yes unless $root/confirm-no exists.
 cat >"$ov_pkg/.local/bin/voxcmd-confirm" <<STUB

@@ -16,7 +16,7 @@ go to the center monitor	yes	Monitors: a live lookup
 show workspaces	no	Overview: live it opens a voice session
 go to weekly sync notes	no	Firefox: a tab lookup; live it needs the host
 join my meeting	no	Calendar
-click sign in	no	Click: OCR and click-match.awk
+click sign in	no	Click: OCR and matcher
 start recording	no	Recording: live it starts a recording
 rapid mode	no	Rapid: live it opens a voice session
 never mind	yes	built-in

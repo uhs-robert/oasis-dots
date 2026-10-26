@@ -111,15 +111,18 @@ check:
 voxcmd-bench *ARGS:
     home/voxcmd/tests/bench.sh {{ARGS}}
 
-# Build the Rust voxcmd and install it as ~/.local/bin/voxcmd-rs, beside the stowed bash voxcmd that stays live until the swap (voxcmd-port 3.2)
+# Build the Rust voxcmd from this checkout and link it as ~/.local/bin/voxcmd (and the voxcmd-rs alias, kept one release)
 voxcmd-build:
     #!/usr/bin/env bash
     set -euo pipefail
+    # The binary bakes in the checkout it was built from (its share dir and auto-stop), which a worktree may outlive.
+    [ "$(git rev-parse --git-dir)" = "$(git rev-parse --git-common-dir)" ] || { echo "voxcmd-build: run it in the main checkout, not a worktree" >&2; exit 1; }
     root="${XDG_DATA_HOME:-$HOME/.local/share}/voxcmd-rs"
     VOXCMD_GIT_HASH="$(git describe --always --dirty --abbrev=9 --exclude='*')" cargo install --path home/voxcmd --locked --root "$root"
     mkdir -p "$HOME/.local/bin"
     ln -sf "$root/bin/voxcmd" "$HOME/.local/bin/voxcmd-rs"
-    "$HOME/.local/bin/voxcmd-rs" --version
+    ln -sf "$root/bin/voxcmd" "$HOME/.local/bin/voxcmd"
+    "$HOME/.local/bin/voxcmd" --version
 
 # Rewrite the committed integration JSON Schema from the Rust types; it fails until `voxcmd integrations schema` exists (voxcmd-port 2.6)
 voxcmd-schema:
@@ -131,16 +134,16 @@ voxcmd-schema:
     cargo run --quiet --release --locked --manifest-path home/voxcmd/Cargo.toml -- integrations schema >"$tmp"
     mv "$tmp" "$schema"
 
-# The Rust crate's tests, then the voxcmd suites against this checkout's Rust build (they fail until the router lands in it, voxcmd-port 2.2)
+# The Rust crate's tests, then the voxcmd suites against this checkout's Rust build
 voxcmd-test:
     #!/usr/bin/env bash
     set -euo pipefail
     cargo test --locked --manifest-path home/voxcmd/Cargo.toml
     failed=()
     for suite in run-phrases run run-calendar run-wake run-firefox-extension; do
-        VOXCMD_BIN=rs "home/voxcmd/tests/$suite.sh" || failed+=("$suite")
+        "home/voxcmd/tests/$suite.sh" || failed+=("$suite")
     done
-    [ "${#failed[@]}" = 0 ] || { echo "suites failed under VOXCMD_BIN=rs: ${failed[*]}" >&2; exit 1; }
+    [ "${#failed[@]}" = 0 ] || { echo "suites failed: ${failed[*]}" >&2; exit 1; }
 
 # Sample the running wake word listener's memory and CPU for N minutes; run it on an idle machine
 voxcmd-wake-sample minutes="60":

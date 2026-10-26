@@ -1,5 +1,5 @@
 //! the bash integrations (`integrations.d/*.sh`), read through the bash voxcmd's `_legacy-dump` and mapped onto
-//! `Integration` with `Format::Bash`; deleted in 3.2 with the bash voxcmd
+//! `Integration` with `Format::Bash`; dead since the swap (no bash voxcmd ships), deleted by voxcmd-port PR 4
 //!
 //! Sourcing a bash file is the only way to read its settings, so the dump costs one bash start plus a subshell and a
 //! `jq` per file. Its output is cached under the cache dir, keyed on every file it depends on (path, mtime, size) and
@@ -56,9 +56,9 @@ struct DumpedVerb {
     pattern: String,
 }
 
-/// The legacy files of `config_dir/integrations.d`, as `integration_files` globs them: `*.sh`, not hidden, regular
-/// files or links to one.
-pub fn legacy_files(config_dir: &Path) -> Vec<PathBuf> {
+/// Every `*.sh` of `config_dir/integrations.d` as `integration_files` globbed them: not hidden, regular files or links
+/// to one.
+pub fn stray_files(config_dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(config_dir.join("integrations.d")) else {
         return Vec::new();
     };
@@ -72,6 +72,20 @@ pub fn legacy_files(config_dir: &Path) -> Vec<PathBuf> {
         .collect();
     files.sort();
     files
+}
+
+/// The files of `integrations.d` that are read: none once the bash voxcmd that would source them is gone, so a
+/// leftover private `.sh` neither fails every phrase nor loads (`integrations check` reports it as `stray_files`).
+pub fn legacy_files(config_dir: &Path) -> Vec<PathBuf> {
+    files_read_by(&paths::legacy_bin(), config_dir)
+}
+
+fn files_read_by(bash_voxcmd: &Path, config_dir: &Path) -> Vec<PathBuf> {
+    if bash_voxcmd.exists() {
+        stray_files(config_dir)
+    } else {
+        Vec::new()
+    }
 }
 
 /// Every legacy integration of `config_dir`, from the cache when it is fresh, else from a new dump.
@@ -340,6 +354,19 @@ mod tests {
             parse_dump(&entries).unwrap()[0].verbs[0].listed.as_deref(),
             Some("time    aligned")
         );
+    }
+
+    #[test]
+    fn integrations_d_is_not_read_without_the_bash_voxcmd() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("integrations.d")).unwrap();
+        let leftover = dir.path().join("integrations.d/peak.sh");
+        std::fs::write(&leftover, "").unwrap();
+        let bash = dir.path().join("voxcmd");
+        assert!(files_read_by(&bash, dir.path()).is_empty());
+        std::fs::write(&bash, "").unwrap();
+        assert_eq!(files_read_by(&bash, dir.path()), std::slice::from_ref(&leftover));
+        assert_eq!(stray_files(dir.path()), [leftover]);
     }
 
     #[test]

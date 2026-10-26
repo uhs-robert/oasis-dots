@@ -28,8 +28,8 @@ pub fn cache_dir() -> PathBuf {
         .join("voxcmd")
 }
 
-/// The bash voxcmd that `_legacy-dump` runs from, until 3.2 deletes it: `$VOXCMD_LEGACY_BIN`, else the one in the
-/// checkout this binary was built from, which is the copy stow links into `~/.local/bin`.
+/// Where the bash voxcmd that `_legacy-dump` runs from would be: `$VOXCMD_LEGACY_BIN`, else the checkout's
+/// `.local/bin/voxcmd`. The swap deleted that script, so only a test's stand-in exists; PR 4 removes the bridge.
 pub fn legacy_bin() -> PathBuf {
     env_dir("VOXCMD_LEGACY_BIN")
         .unwrap_or_else(|| PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/.local/bin/voxcmd")))

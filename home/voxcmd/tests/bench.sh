@@ -9,10 +9,10 @@
 #                                                    10 slowest
 #
 # VOXCMD_DRY_RUN_CMD (default "voxcmd explain") and VOXCMD_RUN_CMD (default "voxcmd run") are the commands a phrase is
-# appended to. `voxcmd` is the sandbox's: the new CLI, through the bash shim until the Rust build is a VOXCMD_BIN. Another
+# appended to. `voxcmd` is the sandbox's: this checkout's Rust build. Another
 # build is timed with the same phrases by setting both. The `click-ocr stub` row times VOXCMD_CLICK_OCR_CMD (default
 # "voxcmd internal click-ocr") against the sandbox's instant grim, magick and tesseract stubs, so it is the driver's own
-# overhead; it is left out when that command fails, as the bash shim's does. Needs hyperfine (not for --all) and jq.
+# overhead; it is left out when that command fails. Needs hyperfine (not for --all) and jq.
 set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)

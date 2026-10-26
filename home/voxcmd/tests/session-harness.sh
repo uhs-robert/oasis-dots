@@ -15,22 +15,15 @@ sess_pkg=$root/sess-pkg
 mkdir -p "$sess_stubs" "$sess_pkg"
 cp -r "$package/.local" "$sess_pkg/.local"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$sess_pkg/.local/bin/voxcmd-autostop"
-link_voxcmd_shim "$sess_pkg"
-# sess_voxcmd is the new CLI, over this copy's bash voxcmd, which is the process name the tests look for.
+link_voxcmd_build "$sess_pkg"
+# sess_voxcmd is the build under test, linked into the copy; its session turns' watchers are the process name the tests
+# look for.
 sess_voxcmd=$sess_pkg/tests/bin/voxcmd
-sess_real_voxcmd=$sess_pkg/.local/bin/voxcmd
-# A session turn's watcher, as the binary under test names it: the bash `_watch`, or the Rust build's `internal watch`.
-if [ "${VOXCMD_BIN:-bash}" = rs ]; then
-  sess_rust_voxcmd=$(readlink -f "$sess_voxcmd")
-  sess_watcher="$sess_rust_voxcmd internal watch"
-  # The voxcmd a type-mode recording's detector has check its pauses: the binary that listened.
-  sess_pause_voxcmd=$sess_rust_voxcmd
-  sess_chain_stopper="$sess_rust_voxcmd internal chain-stop"
-else
-  sess_watcher="$sess_real_voxcmd _watch"
-  sess_pause_voxcmd=$sess_real_voxcmd
-  sess_chain_stopper="$sess_real_voxcmd _chain-stop"
-fi
+sess_rust_voxcmd=$(readlink -f "$sess_voxcmd")
+sess_watcher="$sess_rust_voxcmd internal watch"
+# The voxcmd a type-mode recording's detector has check its pauses: the binary that listened.
+sess_pause_voxcmd=$sess_rust_voxcmd
+sess_chain_stopper="$sess_rust_voxcmd internal chain-stop"
 # The stub detector's long sleep, under its own name so the tests can end the ones a killed watcher leaves behind.
 stub_sleep=$root/stub-sleep
 cp "$(command -v sleep)" "$stub_sleep"
@@ -48,48 +41,62 @@ answer=\$(head -n 1 "\$STUB_PICKS"); sed -i 1d "\$STUB_PICKS"
 echo "\$answer"
 STUB
 chmod +x "$sess_stubs/sess-hints"
+# The Test integration's picker is the built-in hints overlay, which asks through ask-stub: this stub is its answer.
+ln -sf "$sess_stubs/sess-hints" "$sess_pkg/.local/bin/voxcmd-hints"
 hints_state=$SANDBOX_DIR/clickhints-state popup_state_file=$SANDBOX_DIR/popup-state
 
-# "both" is two targets, which the overlay asks about.
+# The "Test" integration (kind "test"). "both" is two targets, which the overlay asks about: their ids carry a box, as
+# click's do.
 sess_config=$root/config-sess
-mkdir -p "$sess_config/integrations.d" "$sess_config/replacements.d"
-cat >"$sess_config/integrations.d/sess.sh" <<STUB
-name="Sess"
-verbs=("begin_it start testing" "stop_it stop testing" "tap tap {target}" "calc calculate {target}")
-session_miss_actions=(none)
-session_exit_phrases="(okay )?stop testing|done testing"
+mkdir -p "$sess_config/integrations" "$sess_config/replacements.d"
+cat >"$sess_config/integrations/test.toml" <<'STUB'
+name = "Sess"
+picker = "hints"
+verbs = [
+  { action = "begin_it", match = 'start testing' },
+  { action = "stop_it", match = 'stop testing' },
+  { action = "tap", match = 'tap {target}' },
+  { action = "calc", match = 'calculate {target}' },
+]
+
+[actions]
+begin_it = { enter_mode = true, mode_switch = true }
+stop_it = { leave_mode = "done", mode_switch = true }
+# The candidates hook of "slow" waits for the test's release, far past the hook default.
+tap = { run = 'test_tap', candidates = 'test_candidates', no_match = 'none', timeout_secs = 60 }
+calc = { run = 'echo "calc $VOXCMD_RAW_TRANSCRIPT" >> "$TEST_LOG"', candidates = 'test_candidates' }
+none = { run = 'echo "tap nothing" >> "$TEST_LOG"', miss = true }
+
+[mode]
+label = "Test mode"
+exit_phrases = '(okay )?stop testing|done testing'
 # As click mode: a bare exit word is a button label.
-session_bare_exits=0
-pick_command=$sess_stubs/sess-hints
-candidates() {
-  case "\$2" in
-  missing) echo '[{"id": "zz", "label": "zz"}]' ;;
-  both) echo '[{"id": "both left", "label": "both left"}, {"id": "both right", "label": "both right"}]' ;;
+bare_exits = false
+rewrite_hook = 'test_rewrite "$VOXCMD_PHRASE"'
+ended = 'test_ended'
+STUB
+cat >"$sess_config/integrations/test.sh" <<STUB
+# shellcheck shell=bash
+TEST_LOG="$log"
+export TEST_LOG
+test_candidates() {
+  case "\$VOXCMD_ARG_TARGET" in
+  missing) printf 'zz\tzz\n' ;;
+  both) printf '1,1,left,0,0,10,10\tboth left\n2,2,left,0,0,10,10\tboth right\n' ;;
   slow)
     # A route that is still working when the test presses Stop.
     touch "$root/routing"
     while [ ! -e "$root/route-release" ]; do sleep 0.02; done
-    echo '[{"id": "slow left", "label": "slow left"}, {"id": "slow right", "label": "slow right"}]'
+    printf '1,1,left,0,0,10,10\tslow left\n2,2,left,0,0,10,10\tslow right\n'
     ;;
-  *) jq -n -c --arg t "\$2" '[{id: \$t, label: \$t}]' ;;
+  *) printf '%s\t%s\n' "\$VOXCMD_ARG_TARGET" "\$VOXCMD_ARG_TARGET" ;;
   esac
 }
-pick_box() { echo "0 0 10 10"; }
-declare -A no_match_actions=([tap]=none)
-declare -A actions=(
-  [begin_it]='session_begin test "\$file" "Test mode"'
-  [stop_it]='session_end done'
-  [tap]='echo "tap \$id" >> "$log"'
-  [calc]='echo "calc \$raw_transcript" >> "$log"'
-  [none]='echo "tap nothing" >> "$log"'
-)
-session_ended() {
-  # A test holds the hook here with \$root/hook-gate, to see it take the session lock once let go.
-  if [ -e "$root/hook-gate" ]; then until [ -e "$root/hook-go" ]; do sleep 0.02; done; fi
-  session_state >/dev/null || true
+test_tap() { echo "tap \$VOXCMD_LABEL" >> "$log"; }
+test_ended() {
   echo "ended-hook" >> "$log"
 }
-session_rewrite() {
+test_rewrite() {
   [ "\$1" != noise ] || return 0
   printf 'tap %s' "\$1"
 }
@@ -157,9 +164,9 @@ taps() { grep -c '^tap ' "$log"; }
 record_starts() { grep -c '^voxtype record start' "$log"; }
 session_gone() { [[ ! -e $XDG_RUNTIME_DIR/voxcmd/session.json ]]; }
 ended_because() { grep -q "^notify-send .*Test mode ended $1" "$log"; }
-# signal_watchers <signal>: signals this sandbox's watchers only. With VOXCMD_BIN=rs every sandbox's watcher has the same
-# command line, so a plain pkill -f would reach the watchers of scripts running beside this one; their environment carries
-# this sandbox's SANDBOX_DIR.
+# signal_watchers <signal>: signals this sandbox's watchers only. Every sandbox's watcher has the same command line, so a
+# plain pkill -f would reach the watchers of scripts running beside this one; their environment carries this sandbox's
+# SANDBOX_DIR.
 signal_watchers() {
   local pid
   for pid in $(pgrep -f -- "$sess_watcher"); do
@@ -175,14 +182,13 @@ owner_saw_recording() {
   owner=$(jq -r .owner "$XDG_RUNTIME_DIR/voxcmd/session.json" 2>/dev/null)
   [ -n "$owner" ] && grep -q "voxcmd\[$owner\] watch: voxtype recording\$" "$debug_log"
 }
-# The session's owner is a session turn's watcher of the binary under test, so a passing run under VOXCMD_BIN=rs is one
-# whose turns the Rust build heard, not one it handed to the bash voxcmd.
+# The session's owner is a session turn's watcher of the binary under test, which these checks prove ran.
 owner_is_the_binary_under_test() {
   local owner cmdline
   owner=$(jq -r .owner "$XDG_RUNTIME_DIR/voxcmd/session.json" 2>/dev/null)
   cmdline=$(tr '\0' ' ' <"/proc/$owner/cmdline" 2>/dev/null) || return 1
   [[ $cmdline == *"$sess_watcher session_turn "* ]] || return 1
-  [ "${VOXCMD_BIN:-bash}" != rs ] || [[ $(readlink -f "/proc/$owner/exe") == "$sess_rust_voxcmd" ]]
+  [[ $(readlink -f "/proc/$owner/exe") == "$sess_rust_voxcmd" ]]
 }
 
 # every_detector_logged <setting> <line>: each session listen's detector logged its <setting> as <line>, and at least one

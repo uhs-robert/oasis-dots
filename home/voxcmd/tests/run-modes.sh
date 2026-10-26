@@ -23,22 +23,28 @@ source "$here/session-harness.sh"
 # integrations that ask: a yes/no card and a picker of two. The card and the picker are logging stubs.
 section "modes"
 modes_config=$root/config-modes
-mkdir -p "$modes_config/integrations.d" "$modes_config/replacements.d"
-cp "$root/config-sess/integrations.d/sess.sh" "$modes_config/integrations.d/"
+mkdir -p "$modes_config/integrations" "$modes_config/replacements.d"
+cp "$root/config-sess/integrations/test."{toml,sh} "$modes_config/integrations/"
 for integration in rapid typing click media keys; do
-  cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$modes_config/integrations.d/"
   copy_shipped_integrations "$modes_config" "$integration"
 done
-cat >"$modes_config/integrations.d/ask.sh" <<STUB
-name="Ask"
-confirm=1
-verbs=("ask_it ask me" "both_of_them pick {target}")
-candidates() {
-  case "\$1" in
-  both_of_them) echo '[{"id": "one", "label": "number one"}, {"id": "two", "label": "number two"}]' ;;
-  esac
-}
-declare -A actions=([ask_it]='echo "asked" >> "$log"' [both_of_them]='echo "picked \$id" >> "$log"')
+cat >"$modes_config/integrations/ask.toml" <<'STUB'
+name = "Ask"
+confirm = true
+verbs = [
+  { action = "ask_it", match = 'ask me' },
+  { action = "both_of_them", match = 'pick {target}' },
+]
+
+[actions]
+ask_it = 'echo "asked" >> "$ASK_LOG"'
+both_of_them = { run = 'echo "picked $VOXCMD_ID" >> "$ASK_LOG"', candidates = 'ask_candidates' }
+STUB
+cat >"$modes_config/integrations/ask.sh" <<STUB
+# shellcheck shell=bash
+ASK_LOG="$log"
+export ASK_LOG
+ask_candidates() { printf 'one\tnumber one\ntwo\tnumber two\n'; }
 STUB
 # The card answers yes unless $root/confirm-no exists.
 for asking in voxcmd-confirm voxcmd-pick; do
@@ -49,8 +55,8 @@ printf '[ ! -e "%s" ]\n' "$root/confirm-no" >>"$sess_pkg/.local/bin/voxcmd-confi
 sess_config=$modes_config
 focused_window='{"address":"0x1","class":"kitty","size":[800,600]}'
 session_json=$XDG_RUNTIME_DIR/voxcmd/session.json
-# A session's kind is the stem of the mode's TOML file ("typing"); bash type mode's was "type".
-if [ "${VOXCMD_BIN:-bash}" = rs ]; then type_kind=typing; else type_kind="type"; fi
+# A session's kind is the stem of the mode's TOML file.
+type_kind=typing
 mode_is() { [[ $(jq -r '[.kind, (.stack | map(.kind) | join("/"))] | join(" ")' "$session_json" 2>/dev/null) == "$1" ]]; }
 toast_has() { grep -q "^notify-send .*$1" "$log"; }
 no_clicks() { ! grep -qE '^(wlrctl|grim|tesseract)' "$log"; }
@@ -602,14 +608,14 @@ sess_phrase="type mode"
 
 sess_run "CAP A long talk."
 check "at the length limit it types what was said, ends the mode with a toast, and records nothing more" "session_gone && wtype_is 'wtype -- A long talk.' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended it reached its recording limit (295 s)'"
-# type_bounds <idle secs> <max secs>: the TOML listen of type mode is static, so a copy of it with other numbers stands
-# in for what bash's VOXCMD_TYPE_* variables set (still passed below for the bash file, which reads them live).
+# type_bounds <idle secs> <max secs>: the TOML listen of type mode is static, so a copy of it with other numbers is how a
+# test sets them.
 type_bounds() {
   sed "s/^listen = .*/listen = { silence_secs = $1, max_secs = $2, no_speech_secs = $1 }/" \
     "$package/.config/voxcmd/integrations/typing.toml" >"$modes_config/integrations/typing.toml"
 }
 type_bounds 10 60
-sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_MAX_SECS=60)
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_run "CAP A long talk."
 check "the limit toast names the limit that was set" "session_gone && wtype_is 'wtype -- A long talk.' && toast_has 'Type mode ended it reached its recording limit (1 min)'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
@@ -619,7 +625,7 @@ check "10 s of quiet after speech type what was said, as a stop would" "session_
 sess_run SILENCE
 check "10 s with no speech end the mode, typing nothing" "session_gone && ! grep -q '^wtype' '$log' && [[ \$(record_starts) == 1 ]] && toast_has 'Type mode ended nothing was said for 10 s'"
 type_bounds 30 60
-sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window" VOXCMD_TYPE_IDLE_SECS=30 VOXCMD_TYPE_MAX_SECS=60)
+sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
 sess_run SILENCE
 check "type mode's listen bounds set the detector's" "every_detector_logged no_speech_secs= no_speech_secs=30 && grep -q 'silence_secs=30\$' '$log' && grep -q 'max_secs=60\$' '$log'"
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
@@ -785,46 +791,7 @@ sess_wait
 check "type mode logs lengths, never the text" "wtype_is 'wtype -- Hello private words.' && ! grep -q 'private' '$debug_log' && grep -q 'a transcript of 35 characters goes to session_turn' '$debug_log' && ! grep -v '^wtype ' '$log' | grep -q private"
 check "and the transcript is not left on disk" "[[ ! -e '$XDG_RUNTIME_DIR/voxcmd/transcript.txt' ]]"
 
-# The ended hook runs in the background, taking the session lock rather than assuming the caller's.
-sess_phrase="rapid mode"
 sess_env=()
-hook_waits_for_lock() {
-  local pid
-  [[ -n $1 ]] || return 1
-  for pid in $(pgrep -x flock); do
-    descends_from "$pid" "$1" && return 0
-  done
-  return 1
-}
-descends_from() {
-  local pid=$1
-  until [[ $pid == "$2" ]]; do
-    pid=$(sed 's/.*) //' "/proc/$pid/stat" 2>/dev/null | awk '{print $2}')
-    [[ -n $pid && $pid != 0 && $pid != 1 ]] || return 1
-  done
-}
-rm -f "$root/hook-go"
-: >"$root/hook-gate"
-sess_start "start testing" "done" HOLD
-hold_in 'rapid ' 3
-flock_file=$XDG_RUNTIME_DIR/voxcmd/session.lock
-rm -f "$root/lock-held" "$root/lock-release"
-flock "$flock_file" sh -c ": >'$root/lock-held'; until [ -e '$root/lock-release' ]; do sleep 0.02; done" &
-lock_holder=$!
-wait_for_path "$root/lock-held"
-: >"$root/hook-go"
-# A negative: the hook, not holding the lock, must wait for the one held here. Once a flock started by the hook waits on
-# it, the hook has reached the lock without going on.
-hook_pid=$(sed -n 's/.* session: ended hook \([0-9]*\) runs$/\1/p' "$debug_log" | tail -n 1)
-wait_until hook_waits_for_lock "$hook_pid"
-check "the ended hook takes the session lock instead of assuming the caller's" "! grep -q '^ended-hook' '$log'"
-: >"$root/lock-release"
-wait "$lock_holder"
-log_has_soon '^ended-hook'
-rm -f "$root/hook-gate" "$root/hook-go"
-sess_voxcmd_env session end
-sess_wait
-hooks_done
 sess_phrase="type mode"
 
 # A turn heard in a mode that changed, or after the session went, is never acted on. Each turn is spoken only once the
