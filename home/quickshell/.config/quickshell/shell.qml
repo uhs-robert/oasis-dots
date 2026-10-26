@@ -188,7 +188,7 @@ ShellRoot {
     }
     LazyPopup {
         name: "settings"
-        SettingsPopup {
+        SettingsView {
             previewer: lock_preview
         }
     }

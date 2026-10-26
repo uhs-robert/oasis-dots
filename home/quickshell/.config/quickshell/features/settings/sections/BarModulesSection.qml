@@ -84,7 +84,7 @@ SettingsPane {
     described: true
     description: root.describe(root.described_index)
     description_keys: root.pending ? "y forget · n keep" : root.keys_for(root.described_index)
-    implicitHeight: col.implicitHeight + root.description_space
+    implicitHeight: col.implicitHeight
 
     function describe(index) {
         if (index === 0) return "The monitor whose bar you edit. All monitors edits the layout they share.";
