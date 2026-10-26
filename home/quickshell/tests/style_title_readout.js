@@ -1,4 +1,4 @@
-// Checks the title_readout_size token: it defaults to 0 (the popup title keeps its fs(-5) size) and only GoldenEye sets it.
+// Checks the title_readout_size token: it defaults to 0 (the popup title keeps its fs(-5) size) and a style that sets it sets a positive size.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -17,10 +17,16 @@ const cases = [
   ["default is 0, the fs(-5) size", () => token && token.value, 0],
   ["PopupTitle falls back to fs(-5) on 0", () => /title_readout_size > 0 \? [^:]+ : root\.st\.fs\(-5\)/.test(read("features/popups/frames/PopupTitle.qml")), true],
 ];
+// A style may set the token, but a literal must be a positive int (0 is the unset default; a computed value is taken as given).
+// Every *tokens.js file in a style folder is scanned, so goldeneye/watch_tokens.js is covered too.
 for (const style of fs.readdirSync(path.join(qs, "styles"))) {
-  const file = path.join(qs, "styles", style, "tokens.js");
-  if (!fs.existsSync(file)) continue;
-  cases.push([style + " sets it only if GoldenEye", () => /title_readout_size/.test(fs.readFileSync(file, "utf8")), style === "goldeneye"]);
+  const dir = path.join(qs, "styles", style);
+  if (!fs.statSync(dir).isDirectory()) continue;
+  for (const file of fs.readdirSync(dir).filter(f => f.endsWith("tokens.js"))) {
+    const set = fs.readFileSync(path.join(dir, file), "utf8").match(/title_readout_size:\s*([^,\n]+)/);
+    if (!set) continue;
+    cases.push([style + "/" + file + " sets a positive size", () => !/^-?\d+(\.\d+)?$/.test(set[1].trim()) || /^[1-9]\d*$/.test(set[1].trim()), true]);
+  }
 }
 
 let failed = 0;
