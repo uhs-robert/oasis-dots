@@ -460,6 +460,18 @@ code=$?
 check "a build that produces no binary dies before anything swaps" "[[ $code != 0 ]] && grep -q 'cargo built no' <<<\"\$out\" && ! grep -q '_swap' '$rr_calls' && rr_link_is voxcmd '$rr_main_bin'"
 rm -f "$bars_dir/.owner"
 
+# A binary left by an earlier build must not pass for this build's output.
+mkdir -p "$rr_dir/home/voxcmd/target/release"
+printf '#!/usr/bin/env bash\necho stale\n' >"$rr_dir/home/voxcmd/target/release/voxcmd"
+chmod +x "$rr_dir/home/voxcmd/target/release/voxcmd"
+rm -f "$rr_calls"
+out=$(FAKE_CARGO_NO_BIN=1 rr_swap_cmd)
+code=$?
+check "a stale binary from an earlier build does not pass for a build that produced none" "[[ $code != 0 ]] && grep -q 'cargo built no' <<<\"\$out\" && ! grep -q '_swap' '$rr_calls' && rr_link_is voxcmd '$rr_main_bin'"
+rm -rf "$rr_dir/home/voxcmd/target"
+rrx voxcmd_restore >/dev/null
+rm -f "$bars_dir/.owner"
+
 # A failed build must not leave a claim for a bar that was never swapped in.
 check "a failed build leaves no owner claim" "[[ ! -e $bars_dir/.owner ]]"
 
