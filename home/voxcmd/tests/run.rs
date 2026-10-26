@@ -805,3 +805,106 @@ verbs = [{ action = "choose", match = 'choose {target}' }]
 run = "true"
 candidates = "printf '1,1,left,0,0,1,1\\tThing One\\n2,2,left,2,2,1,1\\tThing Two\\n'"
 "#;
+
+// ---- a closed bar surface is not asked ----
+
+const DIAL: &str = r#"
+name = "Dial"
+verbs = [{ action = "turn", match = '{target}' }]
+[actions.turn]
+run = 'echo dialed $VOXCMD_ID'
+candidates = "echo asked >> $WORK/dial_asked; printf 'one\\tOne\\n'"
+[surface]
+state_file = "dial.json"
+"#;
+
+const OTHER: &str = r#"
+name = "Other"
+verbs = [{ action = "pick", match = 'other {target}' }]
+[actions.pick]
+run = 'echo other picked $VOXCMD_ID'
+candidates = "echo asked >> $WORK/other_asked; printf 'one\\tOne\\n'"
+"#;
+
+impl Setup {
+    fn with_dial() -> Self {
+        let setup = Self::new(OTHER);
+        std::fs::write(setup.path().join("config/integrations/dial.toml"), DIAL).unwrap();
+        setup
+    }
+
+    fn runtime_file(&self, name: &str, text: &str) {
+        let dir = self.path().join("runtime/voxcmd");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(name), text).unwrap();
+    }
+
+    /// How many times the named hook was started, by the line it appends to its log.
+    fn asked(&self, log: &str) -> usize {
+        std::fs::read_to_string(self.path().join("work").join(log)).map_or(0, |text| text.lines().count())
+    }
+}
+
+#[test]
+fn a_closed_surface_does_not_start_its_candidates_hook() {
+    let setup = Setup::with_dial();
+    setup.run("one");
+    assert_eq!(setup.asked("dial_asked"), 0);
+    // A closed state file and a missing one are the same.
+    setup.runtime_file("dial.json", r#"{"open":false}"#);
+    setup.run("one");
+    assert_eq!(setup.asked("dial_asked"), 0);
+}
+
+#[test]
+fn an_open_surface_starts_its_hook_and_takes_the_phrase() {
+    let setup = Setup::with_dial();
+    setup.runtime_file("dial.json", r#"{"open":true}"#);
+    assert_eq!(code(&setup.run("one")), Some(0));
+    assert_eq!(setup.asked("dial_asked"), 1);
+    assert!(
+        setup.texts().iter().any(|(_, body)| body.contains("dialed one")),
+        "{:?}",
+        setup.texts()
+    );
+}
+
+#[test]
+fn a_session_in_the_surface_s_mode_starts_the_hook_before_the_state_file_is_written() {
+    let setup = Setup::with_dial();
+    setup.runtime_file("session.json", r#"{"kind":"dial","stack":[]}"#);
+    assert_eq!(code(&setup.run("one")), Some(0));
+    assert_eq!(setup.asked("dial_asked"), 1);
+}
+
+#[test]
+fn a_session_in_another_mode_does_not_start_a_closed_surface_s_hook() {
+    let setup = Setup::with_dial();
+    setup.runtime_file("session.json", r#"{"kind":"rapid","stack":[{"kind":"typing"}]}"#);
+    setup.run("one");
+    assert_eq!(setup.asked("dial_asked"), 0);
+}
+
+#[test]
+fn a_garbage_state_file_counts_as_closed() {
+    let setup = Setup::with_dial();
+    setup.runtime_file("dial.json", "{not json");
+    setup.run("one");
+    assert_eq!(setup.asked("dial_asked"), 0);
+    setup.runtime_file("dial.json", r#"{"open":"yes"}"#);
+    setup.run("one");
+    assert_eq!(setup.asked("dial_asked"), 0);
+}
+
+#[test]
+fn a_closed_surface_leaves_other_integrations_hooks_running() {
+    let setup = Setup::with_dial();
+    assert_eq!(code(&setup.run("other one")), Some(0));
+    assert_eq!(setup.asked("dial_asked"), 0);
+    assert_eq!(setup.asked("other_asked"), 1);
+    assert!(
+        setup.texts().iter().any(|(_, body)| body.contains("other picked one")),
+        "{:?}",
+        setup.texts()
+    );
+}

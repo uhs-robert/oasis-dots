@@ -68,6 +68,15 @@ pub fn state(_lock: &SessionLock) -> Option<Value> {
     None
 }
 
+/// Whether a session has that mode open, read without the lock for the router's hot path: the file is replaced whole,
+/// so a read sees a complete state, and a dead owner's leftover is not cleared here (it only costs a hook run).
+pub fn mode_open(kind: &str) -> bool {
+    std::fs::read_to_string(paths::session_file())
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .is_some_and(|state| frame_index(&state, kind).is_some())
+}
+
 /// `state` under a lock of its own, released on return.
 pub fn read_state() -> Option<Value> {
     state(&SessionLock::take())
