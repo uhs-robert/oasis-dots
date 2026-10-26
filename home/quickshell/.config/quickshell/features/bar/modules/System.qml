@@ -40,6 +40,7 @@ BarModule {
 
     ModuleRow {
         id: row
+        vertical: root.vertical
         spacing: root.vertical ? 2 : 4
 
         BarIcon {
@@ -56,6 +57,8 @@ BarModule {
             cross: root.cross
             full_text: root.value_text
             short_text: root.short_value_text
+            full_template: root.show_temp ? "100°C" : "100%"
+            short_template: root.show_temp ? "100°" : "100"
             color: root.value_color
         }
     }

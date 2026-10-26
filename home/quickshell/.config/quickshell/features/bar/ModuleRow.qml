@@ -7,8 +7,8 @@ GridLayout {
     id: root
 
     property real spacing: 0
-    // Taken from the BarModule this sits in.
-    property bool vertical: !!parent && !!parent.vertical
+    // Set by the module (`vertical: root.vertical`): reading it from the parent would silently give a horizontal row when a module wraps this in another Item.
+    property bool vertical: false
 
     flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
     rows: root.vertical ? -1 : 1
