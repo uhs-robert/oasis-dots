@@ -36,6 +36,9 @@ PanelWindow {
     readonly property bool closing: !root.wanted && root.visible
     onClosingChanged: Popups.mark_closing(root.popup_name, root.closing)
 
+    // The panel's share of the screen in each direction, centred over a dimmed desktop.
+    readonly property real panel_fraction: 0.8
+
     // The lock's full-screen preview (LockPreview), for the lock section's p key.
     property var previewer: null
 
@@ -132,6 +135,16 @@ PanelWindow {
             reveal_anim.start();
         } else {
             root.conceal();
+        }
+    }
+
+    // Popups.open_on sets hands_off after open_name, so the open above read the previous flag; take the final one here.
+    Connections {
+        target: Popups
+        function onHands_offChanged() {
+            if (!root.wanted) return;
+            root.held_hands_off = Popups.hands_off;
+            root.held_screen_name = root.pick_screen();
         }
     }
 
@@ -381,7 +394,7 @@ PanelWindow {
         Rectangle {
             id: scrim
             anchors.fill: parent
-            color: Theme.bg_crust
+            color: Qt.alpha(Theme.bg_crust, 0.6)
             opacity: root.reveal
 
             MouseArea {
@@ -395,11 +408,10 @@ PanelWindow {
 
         OverviewFrame {
             id: frame
-            hole_cut: root.corners_cut
-            x: Style.screen_frame_on ? 0 : Style.px(36)
-            y: Style.screen_frame_on ? 0 : Style.px(30)
-            width: parent.width - x * 2
-            height: parent.height - y * 2
+            width: Math.round(parent.width * root.panel_fraction)
+            height: Math.round(parent.height * root.panel_fraction)
+            x: Math.round((parent.width - width) / 2)
+            y: Math.round((parent.height - height) / 2)
             opacity: root.reveal
             scale: 0.97 + 0.03 * root.reveal
             title: "SETTINGS"
