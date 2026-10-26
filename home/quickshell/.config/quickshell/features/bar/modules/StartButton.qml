@@ -14,6 +14,7 @@ Item {
     property Item island: null
     property color island_color: "transparent"
     property int bar_height: 30
+    property bool vertical: false
 
     // Styles with a start well seat a smaller logo in a recessed circle.
     readonly property bool well: Style.bar_start_well.a > 0
@@ -23,14 +24,17 @@ Item {
     // The chip draws its own section fill, so a translucent island leaves its colour out from behind it.
     readonly property bool lualine_fill: root.lualine
 
-    implicitWidth: root.lualine && chip_loader.item ? chip_loader.item.implicitWidth : root.well ? root.well_size : icon.implicitSize
-    implicitHeight: root.lualine ? root.bar_height : root.well ? root.well_size : icon.implicitSize
+    // In a column the chip is a square tile that fits the island; the strip's full-height chip would be the bar's width.
+    readonly property real chip_side: root.bar_height - 8
+    implicitWidth: root.lualine && chip_loader.item ? (root.vertical ? root.chip_side : chip_loader.item.implicitWidth) : root.well ? root.well_size : icon.implicitSize
+    implicitHeight: root.lualine ? (root.vertical ? root.chip_side : root.bar_height) : root.well ? root.well_size : icon.implicitSize
 
     Loader {
         id: chip_loader
         active: root.lualine
         anchors.fill: parent
         sourceComponent: Neovim.ModeChip {
+            vertical: root.vertical
             // Start, and Style which drops from it, keep the chip lit while open.
             hovered: hover_handler.hovered || (Popups.open_name === "start" && Popups.open_screen_name === root.screen_name)
             next_bg: { const c = LualineState.first_fill[root.screen_name]; return c && c.a > 0 ? c : Style.bar_side_bg; }

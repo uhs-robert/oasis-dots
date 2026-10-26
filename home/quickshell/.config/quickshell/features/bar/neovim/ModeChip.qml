@@ -4,17 +4,19 @@ import qs.theme
 import "../../../styles/neovim/widgets/Modes.js" as Modes
 import qs.features.bar
 
-// Lualine's section a: the HyprVim mode from the Hyprland submap, with an arrow into the next section.
+// Lualine's section a: the HyprVim mode from the Hyprland submap, with an arrow into the next section. In a column
+// (`vertical`) there is no room for the label or the arrow, so it is a square tile with only the glyph.
 Item {
     id: root
 
     property color next_bg: Style.bar_side_bg
     property bool hovered: false
+    property bool vertical: false
     readonly property color mode_color: SubmapState.bar_color
     readonly property color fill: root.hovered ? Qt.tint(root.mode_color, Qt.alpha(Theme.fg_strong, 0.15)) : root.mode_color
-    readonly property real arrow: Math.round(root.height * 0.4)
+    readonly property real arrow: root.vertical ? 0 : Math.round(root.height * 0.4)
 
-    implicitWidth: Math.ceil(content.width) + 20 + root.arrow
+    implicitWidth: root.vertical ? root.height : Math.ceil(content.width) + 20 + root.arrow
 
     TextMetrics {
         id: normal_metrics
@@ -30,7 +32,7 @@ Item {
 
     Row {
         id: content
-        x: 10
+        x: root.vertical ? Math.round((root.width - width) / 2) : 10
         anchors.verticalCenter: parent.verticalCenter
         spacing: 7
 
@@ -44,6 +46,7 @@ Item {
 
         Text {
             id: label
+            visible: !root.vertical
             anchors.verticalCenter: parent.verticalCenter
             width: Math.max(implicitWidth, Math.ceil(normal_metrics.advanceWidth))
             text: Modes.label(SubmapState.submap_name)
@@ -55,6 +58,7 @@ Item {
     }
 
     Shape {
+        visible: !root.vertical
         x: root.width - root.arrow
         width: root.arrow
         height: root.height
