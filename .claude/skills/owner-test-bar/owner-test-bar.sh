@@ -426,7 +426,7 @@ voxcmd_require_link_slot() {
 
 # Run by `swap` before anything moves: a compile error must leave the desktop on main, and a build can take minutes.
 voxcmd_build_rust() {
-  local dir=$1 hash
+  local dir=$1 hash bin
   voxcmd_changed "$dir" && voxcmd_is_rust_build "$dir" || return 0
   voxcmd_require_link_slot
   command -v cargo >/dev/null || die "cargo is not installed; cannot build the Rust voxcmd in $dir"
@@ -434,14 +434,22 @@ voxcmd_build_rust() {
   echo "voxcmd: building the Rust crate in $dir"
   # The target dir is pinned (CLI flag beats CARGO_TARGET_DIR and any cargo config) and CARGO_BUILD_TARGET is unset. A
   # config `build.target` is not neutralised: it moves the binary to target/<triple>/release, which the -x check below
-  # catches. The old binary goes first so only this build can satisfy that check.
-  rm -f "$(voxcmd_rust_bin "$dir")"
+  # catches. The old binary is moved aside so only this build can satisfy that check, and put back if the build fails:
+  # for a rerun on the live bar it is what ~/.local/bin/voxcmd points at.
+  bin=$(voxcmd_rust_bin "$dir")
+  rm -f "$bin.prev"
+  [[ ! -e $bin ]] || mv "$bin" "$bin.prev"
   env -u CARGO_TARGET_DIR -u CARGO_BUILD_TARGET VOXCMD_GIT_HASH="$hash" cargo build --release --locked \
     --manifest-path "$dir/$voxcmd_rel/Cargo.toml" --target-dir "$dir/$voxcmd_rel/target" >"$dir.cargo.log" 2>&1 || {
+    [[ ! -e $bin.prev ]] || mv "$bin.prev" "$bin"
     tail -n 25 "$dir.cargo.log" >&2
     die "cargo build fails in $dir (full output $dir.cargo.log); nothing was swapped"
   }
-  [[ -x $(voxcmd_rust_bin "$dir") ]] || die "cargo built no $(voxcmd_rust_bin "$dir") (see $dir.cargo.log); nothing was swapped"
+  [[ -x $bin ]] || {
+    [[ ! -e $bin.prev ]] || mv "$bin.prev" "$bin"
+    die "cargo built no $bin (see $dir.cargo.log); nothing was swapped"
+  }
+  rm -f "$bin.prev"
   rm -f "$dir.cargo.log"
 }
 
@@ -1002,9 +1010,16 @@ main() {
     guard_owner "$take"
     guard_live_bar "$2" "$replace"
     mapfile -t branches < <(cat "$dir.branches" 2>/dev/null)
-    # Before the claim is recorded: a failed build must not leave a claim for a bar that was never swapped in.
-    voxcmd_build_rust "$dir"
+    # The claim is taken before the build, which takes minutes: a second session must meet it at its own guard. A failed
+    # build gives the claim back, so none is left for a bar that was never swapped in.
+    previous_claim=
+    [[ ! -f $owner_file ]] || previous_claim=$(<"$owner_file")
     record_owner "$2" "${branches[@]}"
+    tolerate voxcmd_build_rust "$dir"
+    if ((tolerated_status != 0)); then
+      if [[ -n $previous_claim ]]; then printf '%s\n' "$previous_claim" >"$owner_file"; else rm -f "$owner_file"; fi
+      exit 1
+    fi
     require_unlocked
     djinn_swap "$2" "$dir"
     # A subshell, since die exits: the manifest must not stay on the test build when the hypr swap fails. Its status
