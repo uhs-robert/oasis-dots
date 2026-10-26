@@ -1,0 +1,50 @@
+// Runs SettingsScale.js under node: the text bump over the screen height, the row pitch it adds and the color lift.
+"use strict";
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+const assert = require("assert");
+
+const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/settings/SettingsScale.js"), "utf8");
+const T = vm.createContext({});
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { text_bump, pitch_extra, bump_of, lifted, fitted_bump };", T);
+const S = T.api;
+
+const rgb = hex => ({ r: ((hex >> 16) & 255) / 255, g: ((hex >> 8) & 255) / 255, b: (hex & 255) / 255, a: 1 });
+// Game Boy: text_dim and section_fg are both the second-brightest shade, text_fg the next.
+const gb_dim = rgb(0x306230);
+const gb_fg = rgb(0x0f380f);
+const mid = (a, b) => [(a.r + b.r) / 2, (a.g + b.g) / 2, (a.b + b.b) / 2, 1];
+
+const cases = [
+  ["no bump at 1080p", () => S.text_bump(1080), 0],
+  ["no bump below 1080p", () => [S.text_bump(1024), S.text_bump(720), S.text_bump(0), S.text_bump(undefined), S.text_bump(NaN)], [0, 0, 0, 0, 0]],
+  ["no pitch change without a bump", () => S.pitch_extra(0), 0],
+  ["one pixel over 1080p already rounds to none", () => S.text_bump(1081), 0],
+  ["1440p gets +2", () => S.text_bump(1440), 2],
+  ["portrait 1920 and 4K stay at the +3 ceiling", () => [S.text_bump(1920), S.text_bump(2160), S.text_bump(4320)], [3, 3, 3]],
+  ["the bump never shrinks as the screen grows", () => { let prev = 0; for (let h = 0; h <= 4320; h += 10) { const b = S.text_bump(h); if (b < prev) return h; prev = b; } return "ok"; }, "ok"],
+  ["a bump adds two pitch px per font px", () => S.pitch_extra(3), 6],
+  ["bump_of reads the nearest ancestor", () => S.bump_of({ parent: { text_bump: 2, parent: { text_bump: 9 } } }), 2],
+  ["bump_of outside Settings is 0", () => [S.bump_of({ parent: { parent: null } }), S.bump_of(null)], [0, 0]],
+  ["a roomy list keeps the wanted bump", () => S.fitted_bump(3, 22, 6, 30, 16, 2000), 3],
+  ["a tight list steps the bump down until it fits", () => S.fitted_bump(3, 22, 6, 30, 16, 925), 1],
+  ["a list too tall even unbumped gets no bump", () => S.fitted_bump(3, 22, 6, 30, 16, 100), 0],
+  ["lift leaves the base untouched without a bump", () => S.lifted(gb_dim, gb_fg, 0.6, 0), [gb_dim.r, gb_dim.g, gb_dim.b, 1]],
+  ["Game Boy group label: halfway to text_fg when bumped", () => S.lifted(gb_dim, gb_fg, 0.5, 2), mid(gb_dim, gb_fg)],
+  ["Game Boy value: 60% of the way to text_fg", () => S.lifted(gb_dim, gb_fg, 0.6, 2).map(v => +v.toFixed(6)), [gb_dim.r + (gb_fg.r - gb_dim.r) * 0.6, gb_dim.g + (gb_fg.g - gb_dim.g) * 0.6, gb_dim.b + (gb_fg.b - gb_dim.b) * 0.6, 1].map(v => +v.toFixed(6))],
+  ["the Game Boy blend differs from both inputs", () => { const c = S.lifted(gb_dim, gb_fg, 0.5, 2); return c[0] !== gb_dim.r && c[0] !== gb_fg.r; }, true],
+  ["alpha blends too", () => S.lifted({ r: 0, g: 0, b: 0, a: 0.5 }, { r: 1, g: 1, b: 1, a: 1 }, 0.5, 1), [0.5, 0.5, 0.5, 0.75]],
+];
+
+let failed = 0;
+for (const [name, run, want] of cases) {
+  try {
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(run())), want);
+  } catch (e) {
+    failed++;
+    console.error("FAIL " + name + ": " + e.message.split("\n")[0]);
+  }
+}
+if (failed) process.exit(1);
+console.log("settings scale: " + cases.length + " checks passed");

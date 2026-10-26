@@ -8,13 +8,16 @@ Text {
     readonly property var st: Style.for_item(root)
 
     property string label: ""
+    // Opt-in for Settings: extra font pixels and a replacement color (transparent keeps section_fg). The defaults leave every other popup as it was.
+    property int size_bump: 0
+    property color fg_override: "transparent"
 
     width: (root.st.section_rule || root.st.section_fade.a > 0 || root.st.section_fold) && parent ? parent.width : undefined
     clip: root.st.section_rule
     text: root.st.section_rule ? "── " + root.label + " " + "─".repeat(160) : root.st.section_fold ? "\u25be " + root.label : root.label
-    color: root.st.section_fg
+    color: root.fg_override.a > 0 ? root.fg_override : root.st.section_fg
     font.family: root.st.label_font_family
-    font.pixelSize: root.st.fs(-3)
+    font.pixelSize: root.st.fs(-3) + root.size_bump
     font.capitalization: root.st.label_caps || root.st.caps_tracking > 0 ? Font.AllUppercase : Font.MixedCase
     font.letterSpacing: root.st.caps_tracking > 0 ? root.st.caps_tracking : root.st.label_spacing
     font.bold: root.st.caps_tracking > 0

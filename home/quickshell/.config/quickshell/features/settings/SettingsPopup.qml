@@ -7,6 +7,7 @@ import qs.features.popups.frames
 import qs.features.audio
 import qs.features.bar
 import "Sections.js" as Sections
+import "SettingsScale.js" as SScale
 
 Popup {
     id: root
@@ -22,6 +23,15 @@ Popup {
     // The pane stops here, so a row's value stays near its name; the help panel takes the rest. Stacked (portrait) panes keep the full width.
     readonly property real row_cap: Style.px(640)
     readonly property real max_width: Style.px(1900)
+    // Extra font pixels on screens taller than 1080p; the panes and rows below read it through SScale.bump_of.
+    readonly property int text_bump: SScale.fitted_bump(SScale.text_bump(root.screen ? root.screen.height : 0), Sections.list.length, root.group_count, Style.px(28), root.st.fs(-3) * 1.4 + 6, root.body_height - 24)
+    readonly property int group_count: new Set(Sections.list.map(s => s.group)).size
+    readonly property real row_extra: SScale.pitch_extra(root.text_bump)
+    // Group headings move halfway to the text color (the style's own section_fg is the dimmest tier, and Game Boy's equals text_dim).
+    readonly property color group_fg: {
+        const c = SScale.lifted(root.st.section_fg, root.st.text_fg, 0.5, root.text_bump);
+        return Qt.rgba(c[0], c[1], c[2], c[3]);
+    }
     // The section list, the pane and help column at their widest, their gaps and the body's 12px margins.
     // The 740 is the help panel's share at full width: the old 860 pane and 520 help, less the narrower pane, so the drawer keeps its width.
     readonly property real natural_width: nav.width + Style.px(12 + 24 + 48 + 740) + root.row_cap + 24
@@ -163,7 +173,7 @@ Popup {
         const row = root.selected_under(scope);
         if (!row) return;
         const top = row.mapToItem(flick.contentItem, 0, 0).y;
-        const lead = Style.px(24);
+        const lead = Style.px(24) + root.row_extra;
         let target = flick.contentY;
         if (top - lead < target) target = top - lead;
         else if (top + row.height > target + flick.height) target = top + row.height - flick.height;
@@ -283,12 +293,14 @@ Popup {
                                 width: entry.width
                                 topPadding: entry.index === 0 ? 0 : 6
                                 label: entry.modelData.group
+                                size_bump: root.text_bump
+                                fg_override: root.group_fg
                             }
 
                             MenuRow {
                                 id: nav_row
                                 width: entry.width
-                                height: Style.px(28)
+                                height: Style.px(28) + root.row_extra
                                 base_radius: 6
                                 selected: entry.index === root.nav_index
                                 key: entry.index < 9 ? String(entry.index + 1) : ""
@@ -306,7 +318,7 @@ Popup {
                                         text: entry.modelData.glyph
                                         color: nav_row.fg(root.st.text_accent)
                                         font.family: root.st.font_family
-                                        font.pixelSize: root.st.font_size
+                                        font.pixelSize: root.st.font_size + root.text_bump
                                     }
 
                                     RowLabel {
@@ -314,7 +326,7 @@ Popup {
                                         label: entry.modelData.label
                                         color: nav_row.fg(root.st.text_fg)
                                         font.family: root.st.font_family
-                                        font.pixelSize: root.st.font_size
+                                        font.pixelSize: root.st.font_size + root.text_bump
                                     }
                                 }
 

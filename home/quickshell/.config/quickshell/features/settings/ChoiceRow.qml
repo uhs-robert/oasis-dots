@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.ui.menu
 import qs.theme
+import "SettingsScale.js" as SScale
 
 // A setting shown as its label and current value; a click on the left or right half steps it.
 MenuRow {
@@ -10,11 +11,17 @@ MenuRow {
     property string label: ""
     property string value_text: ""
     readonly property bool hovered: mouse_area.containsMouse
+    readonly property int bump: SScale.bump_of(root)
+    // Unselected values lean toward the label color so they read on dark panels.
+    readonly property color value_fg: {
+        const c = SScale.lifted(root.st.text_dim, root.st.text_fg, 0.6, root.bump);
+        return Qt.rgba(c[0], c[1], c[2], c[3]);
+    }
 
     signal stepped(int delta)
 
     Layout.fillWidth: true
-    Layout.preferredHeight: Style.px(28)
+    Layout.preferredHeight: Style.px(28) + SScale.pitch_extra(root.bump)
     base_radius: 6
 
     RowLayout {
@@ -32,7 +39,7 @@ MenuRow {
             label: root.label
             color: root.fg(root.st.text_fg)
             font.family: root.st.font_family
-            font.pixelSize: root.st.font_size
+            font.pixelSize: root.st.font_size + root.bump
         }
 
         Text {
@@ -40,9 +47,9 @@ MenuRow {
             Layout.maximumWidth: Math.max(0, Math.min(root.width * 0.65, row_layout.width - row_label.implicitWidth - row_layout.spacing))
             elide: Text.ElideMiddle
             text: root.st.toggle_brackets ? "[" + root.value_text.toUpperCase() + "]" : root.selected ? "‹ " + root.value_text + " ›" : root.value_text
-            color: root.fg(root.selected ? root.st.toggle_on : root.st.text_dim)
+            color: root.fg(root.selected ? root.st.toggle_on : root.value_fg)
             font.family: root.st.font_family
-            font.pixelSize: root.st.fs(-2)
+            font.pixelSize: root.st.fs(-2) + root.bump
         }
     }
 
