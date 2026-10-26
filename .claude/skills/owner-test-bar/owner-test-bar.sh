@@ -432,13 +432,10 @@ voxcmd_build_rust() {
   command -v cargo >/dev/null || die "cargo is not installed; cannot build the Rust voxcmd in $dir"
   hash=$(git -C "$dir" describe --always --dirty --abbrev=9 --exclude='*')
   echo "voxcmd: building the Rust crate in $dir"
-  # The target dir is pinned (CLI flag beats CARGO_TARGET_DIR and any cargo config) and CARGO_BUILD_TARGET is unset. A
-  # config `build.target` is not neutralised: it moves the binary to target/<triple>/release, which the -x check below
-  # catches. The old binary is moved aside so only this build can satisfy that check, and put back if the build fails:
-  # for a rerun on the live bar it is what ~/.local/bin/voxcmd points at.
+  # The target dir is pinned: a CLI flag beats CARGO_TARGET_DIR and any cargo config. The old binary is moved aside
+  # so only this build can satisfy the -x check below; a leftover .prev from a killed run is the live copy, so it stays.
   bin=$(voxcmd_rust_bin "$dir")
-  rm -f "$bin.prev"
-  [[ ! -e $bin ]] || mv "$bin" "$bin.prev"
+  [[ ! -e $bin ]] || mv -f "$bin" "$bin.prev"
   env -u CARGO_TARGET_DIR -u CARGO_BUILD_TARGET VOXCMD_GIT_HASH="$hash" cargo build --release --locked \
     --manifest-path "$dir/$voxcmd_rel/Cargo.toml" --target-dir "$dir/$voxcmd_rel/target" >"$dir.cargo.log" 2>&1 || {
     [[ ! -e $bin.prev ]] || mv "$bin.prev" "$bin"
@@ -984,6 +981,23 @@ build() {
   echo "owner-test-bar: built $dir from $*"
 }
 
+# Puts back what a failed or interrupted Rust build in `swap` moved: the live binary and the previous claim.
+rust_build_rollback() {
+  [[ ! -e $rust_bin.prev ]] || mv -f "$rust_bin.prev" "$rust_bin"
+  if [[ -n $previous_claim ]]; then printf '%s\n' "$previous_claim" >"$owner_file"; else rm -f "$owner_file"; fi
+}
+
+rust_build_interrupted() {
+  trap - INT TERM
+  if [[ -n $build_pid ]]; then
+    pkill -P "$build_pid" 2>/dev/null || true
+    kill "$build_pid" 2>/dev/null || true
+    wait "$build_pid" 2>/dev/null || true
+  fi
+  rust_build_rollback
+  exit 143
+}
+
 main() {
   replace=0
   take=0
@@ -1011,13 +1025,26 @@ main() {
     guard_live_bar "$2" "$replace"
     mapfile -t branches < <(cat "$dir.branches" 2>/dev/null)
     # The claim is taken before the build, which takes minutes: a second session must meet it at its own guard. A failed
-    # build gives the claim back, so none is left for a bar that was never swapped in.
+    # or interrupted build gives the claim and the live binary back, so a bar that was never swapped in leaves nothing.
     previous_claim=
     [[ ! -f $owner_file ]] || previous_claim=$(<"$owner_file")
+    rust_bin=$(voxcmd_rust_bin "$dir")
+    build_pid=
+    trap rust_build_interrupted INT TERM
     record_owner "$2" "${branches[@]}"
-    tolerate voxcmd_build_rust "$dir"
+    # In the background so that a signal reaches the trap while the build runs; a foreground build would delay it.
+    set +e
+    (
+      set -e
+      voxcmd_build_rust "$dir"
+    ) &
+    build_pid=$!
+    wait "$build_pid"
+    tolerated_status=$?
+    set -e
+    trap - INT TERM
     if ((tolerated_status != 0)); then
-      if [[ -n $previous_claim ]]; then printf '%s\n' "$previous_claim" >"$owner_file"; else rm -f "$owner_file"; fi
+      rust_build_rollback
       exit 1
     fi
     require_unlocked
