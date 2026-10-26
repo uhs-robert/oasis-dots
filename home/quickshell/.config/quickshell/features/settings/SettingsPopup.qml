@@ -40,8 +40,9 @@ Popup {
     property string loaded_id: ""
     readonly property var pane: pane_loader.item
     readonly property bool is_open: Popups.open_name === "settings"
-    // Where SettingsPane puts its description block: the help column beside the rows.
-    readonly property Item description_host: help_column
+    // Where SettingsPane puts its description block, and where a section docks its preview: the panel beside the rows.
+    readonly property Item description_host: panel.help_host
+    readonly property Item preview_host: panel.preview_host
     // Screen height left for the panel's body once the bar and the popup's own chrome are taken out; no cap before the screen is known.
     readonly property real free_height: {
         if (root.drawer && root.drawer_hole) return root.drawer_hole.h - root.header_height - root.footer_height;
@@ -365,8 +366,10 @@ Popup {
             color: Qt.alpha(root.st.text_muted, 0.4)
         }
 
-        Item {
-            id: help_column
+        SettingsPanel {
+            id: panel
+            st: root.st
+            stacked: body.help_below
             x: body.width - body.help_width
             y: body.height - body.help_height
             width: body.help_width

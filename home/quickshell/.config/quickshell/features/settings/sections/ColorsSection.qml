@@ -30,7 +30,7 @@ RowsSection {
         }
     ]
 
-    side: Rectangle {
+    preview: Rectangle {
         id: card
         objectName: "card"
         readonly property var c: Palettes.colors[root.card_name] || ({})
