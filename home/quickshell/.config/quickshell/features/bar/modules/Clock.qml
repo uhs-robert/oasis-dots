@@ -8,13 +8,18 @@ import qs.styles.modern.widgets as Modern
 import qs.features.clock
 import qs.features.weather
 import qs.features.popups
+import "../VerticalLayout.js" as VerticalLayout
 
 Row {
     id: root
 
     property bool compact: false
+    // On a left or right bar the clock is a stack (ClockStack): hours over minutes, no seconds, zone or date.
+    property bool vertical: false
     property string screen_name: ""
     property int bar_height: 30
+    // The width the stack may use: the bar's thickness less the island's capsule inset, its border and the air (as BarModule.cross).
+    readonly property real cross: VerticalLayout.cross_width(root.bar_height, Style.bar_capsule + Style.bar_border_width * 2 + VerticalLayout.air_px)
     property Item island: null
     property color island_color: "transparent"
     // Set by a lualine section with a strong fill (lualine_z); the clock then opens its own popup.
@@ -45,16 +50,18 @@ Row {
         const later = next ? "Next: " + next.title + "\n" + span(next) + " (in " + CalendarState.minutes_to(next) + " min)" : "";
         return now !== "" && later !== "" ? now + "\n" + later : now + later;
     }
-    onAgenda_tipChanged: {
+    // A side bar drops the date from the clock, so the tooltip leads with it.
+    readonly property string tip_text: !root.vertical ? root.agenda_tip : Qt.formatDateTime(root.shifted, "dddd, MMMM d") + (root.agenda_tip !== "" ? "\n" + root.agenda_tip : "")
+    onTip_textChanged: {
         if (!hover.hovered) return;
-        if (root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar", true);
+        if (root.tip_text !== "") Tooltip.show(root, root.tip_text, "calendar", true);
         else Tooltip.hide(root);
     }
 
     HoverHandler {
         id: hover
         onHoveredChanged: {
-            if (hovered && root.agenda_tip !== "") Tooltip.show(root, root.agenda_tip, "calendar", true);
+            if (hovered && root.tip_text !== "") Tooltip.show(root, root.tip_text, "calendar", true);
             else Tooltip.hide(root);
         }
     }
@@ -81,6 +88,9 @@ Row {
 
     // nes: a Dragon Quest window holding a pixel sun or moon, the time, and the date in the secondary colour.
     readonly property bool dq: Style.console_views === "nes" && !root.capsule
+
+    readonly property var sprite_colors: [Theme.theme_secondary_strong, Theme.theme_secondary]
+    readonly property var sprite_rows: root.daytime ? [".....11.....", ".1...11...1.", "..1......1..", "....0000....", "...011110...", "11.011110.11", "11.011110.11", "...011110...", "....0000....", "..1......1..", ".1...11...1.", ".....11....."] : ["....0000....", "..00111100..", ".0111110000.", ".0111100....", "011110......", "011110......", "011110......", "011110......", ".0111100....", ".0111110000.", "..00111100..", "....0000...."]
 
     function minute_of(hhmm) {
         const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || "");
@@ -110,7 +120,7 @@ Row {
 
     Loader {
         id: capsule_loader
-        active: root.capsule
+        active: root.capsule && !root.vertical
         visible: active
         anchors.verticalCenter: parent.verticalCenter
         sourceComponent: Modern.CapsuleClock {
@@ -123,7 +133,7 @@ Row {
     }
 
     Text {
-        visible: Style.bar_clock_brackets.a > 0 && !root.capsule
+        visible: Style.bar_clock_brackets.a > 0 && !root.capsule && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: "["
         color: Style.bar_clock_brackets
@@ -131,7 +141,7 @@ Row {
     }
 
     Text {
-        visible: root.lualine
+        visible: root.lualine && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: "\u{f0954}"
         color: root.on_accent ? root.ink : Theme.theme_primary
@@ -140,15 +150,30 @@ Row {
     }
 
     PixelSprite {
-        visible: root.dq
+        visible: root.dq && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         pixel: 1
-        colors: [Theme.theme_secondary_strong, Theme.theme_secondary]
-        rows: root.daytime ? [".....11.....", ".1...11...1.", "..1......1..", "....0000....", "...011110...", "11.011110.11", "11.011110.11", "...011110...", "....0000....", "..1......1..", ".1...11...1.", ".....11....."] : ["....0000....", "..00111100..", ".0111110000.", ".0111100....", "011110......", "011110......", "011110......", "011110......", ".0111100....", ".0111110000.", "..00111100..", "....0000...."]
+        colors: root.sprite_colors
+        rows: root.sprite_rows
+    }
+
+    ClockStack {
+        visible: root.vertical
+        shifted: root.shifted
+        cross: root.cross
+        chip: root.chip
+        capsule: root.capsule
+        lualine: root.lualine
+        on_accent: root.on_accent
+        ink: root.ink
+        sprite_shown: root.dq
+        sprite_rows: root.sprite_rows
+        sprite_colors: root.sprite_colors
+        marker_font: marker_font.font
     }
 
     Rectangle {
-        visible: !root.capsule
+        visible: !root.capsule && !root.vertical
         readonly property real pad: root.chip ? 5 : 0
         anchors.verticalCenter: parent.verticalCenter
         width: time_label.width + pad * 2
@@ -175,7 +200,7 @@ Row {
     }
 
     Text {
-        visible: (root.chip || root.lualine) && root.zone_text !== "" && !root.capsule && !root.on_accent
+        visible: (root.chip || root.lualine) && root.zone_text !== "" && !root.capsule && !root.on_accent && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: root.zone_text
         color: root.lualine ? Style.text_dim : Style.bar_fg
@@ -224,7 +249,7 @@ Row {
         }
     }
 
-    readonly property bool date_shown: !root.compact && !root.capsule && !root.on_accent
+    readonly property bool date_shown: !root.compact && !root.capsule && !root.on_accent && !root.vertical
 
     Divider {
         shown: root.date_shown
@@ -233,7 +258,7 @@ Row {
     }
 
     Text {
-        visible: !root.compact && !root.capsule && !root.on_accent && !root.dq
+        visible: !root.compact && !root.capsule && !root.on_accent && !root.dq && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: root.date_text
         color: root.on_accent ? Qt.alpha(root.ink, 0.75) : root.lualine || root.horizon ? Style.text_dim : Style.bar_fg
@@ -257,7 +282,7 @@ Row {
     }
 
     Text {
-        visible: root.dq && !root.compact
+        visible: root.dq && !root.compact && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: "  " + Qt.formatDateTime(root.shifted, "MMM d").toUpperCase()
         color: Theme.theme_secondary
@@ -267,7 +292,7 @@ Row {
     // nes: the marker would otherwise sit against the Dragon Quest date.
     Item {
         id: dq_gap
-        visible: root.dq && !root.compact && meeting_marker.visible
+        visible: root.dq && !root.compact && !root.vertical && meeting_marker.visible
         width: Math.ceil(dq_gap_metrics.advanceWidth)
         height: 1
     }
@@ -287,7 +312,7 @@ Row {
 
     Marker.MeetingMarker {
         id: meeting_marker
-        visible: CalendarState.in_meeting || root.chip_shown
+        visible: (CalendarState.in_meeting || root.chip_shown) && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         minutes: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) : 0
         in_meeting: CalendarState.in_meeting
@@ -299,7 +324,7 @@ Row {
     }
 
     Text {
-        visible: Style.bar_clock_brackets.a > 0 && !root.capsule
+        visible: Style.bar_clock_brackets.a > 0 && !root.capsule && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: "]"
         color: Style.bar_clock_brackets
