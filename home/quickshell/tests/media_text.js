@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/MediaText.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle, stacked_sizes };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle, stacked_sizes, side_inset };", T);
 const M = T.api;
 const plain = v => JSON.parse(JSON.stringify(v));
 
@@ -33,6 +33,10 @@ const cases = [
   ["no overflow or a zero speed never gives a negative or infinite slide", () => [M.marquee_cycle(-5, 30, 100).travel, M.marquee_cycle(50, 0, 100).travel], [0, 50000]],
   ["marquee runs only when wanted, visible and overflowing", () => [M.marquee_running(true, true, 10), M.marquee_running(false, true, 10), M.marquee_running(true, false, 10), M.marquee_running(true, true, 0)], [true, false, false, false]],
   ["stacked lines fit the inner height for every inner height from 20 up", () => { const bad = []; for (let h = 20; h <= 40; h++) { const z = M.stacked_sizes(h, 13); if ((z.title + z.artist) * 1.3 > h + 1e-9) bad.push(h); } return bad; }, []],
+  ["stacked lines fit with a tall face (line height 1.7 times its size) from 24 px up", () => { const bad = []; for (let h = 24; h <= 40; h++) { const z = M.stacked_sizes(h, 13, 1.7); if ((z.title + z.artist) * 1.7 > h + 1e-9) bad.push(h); } return bad; }, []],
+  ["a round corner keeps the square art inside the arc: the art corner is within the circle", () => { const bad = []; for (const h of [24, 26, 30]) { const r = Math.min(10, h / 2), s = M.side_inset("round", 10, 2, h); if ((r - s) ** 2 + (r - 2) ** 2 > r * r) bad.push(h); } return bad; }, []],
+  ["a round corner needs more than the bare padding at the stacked pad", () => M.side_inset("round", 10, 2, 30) > 2, true],
+  ["a chamfer clears its diagonal and a square corner needs only the padding", () => [M.side_inset("chamfer", 8, 2, 30), M.side_inset("square", 8, 2, 30)], [8, 2]],
   ["the stacked title is the larger line and never above the bar font", () => { const z = M.stacked_sizes(26, 13); return [z.title > z.artist, z.title <= 13]; }, [true, true]],
   ["the old 16px inner height did not fit two legible lines", () => { const z = M.stacked_sizes(16, 13); return (z.title + z.artist) * 1.3 > 16; }, true],
 ];

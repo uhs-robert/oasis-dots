@@ -14,12 +14,15 @@ RowsSection {
         inset: "Inset", border: "Border", raised: "Raised"
     })
 
+    // Labels for a value whose shared name is wrong for one setting ("none" is "Nothing" for the scroll action only).
+    readonly property var key_names: ({ container_style: { none: "No container" } })
+
     function on_off(key) {
         return { values: () => ["on", "off"], text: v => v, value: () => MediaSettings[key] ? "on" : "off", set: v => MediaSettings.set(key, v === "on") };
     }
 
     function choice(key) {
-        return { values: () => MediaSettings.choices[key], text: v => root.names[v] || String(v), value: () => MediaSettings[key], set: v => MediaSettings.set(key, v) };
+        return { values: () => MediaSettings.choices[key], text: v => (root.key_names[key] && root.key_names[key][v]) || root.names[v] || String(v), value: () => MediaSettings[key], set: v => MediaSettings.set(key, v) };
     }
 
     function count(key, first, last, step) {

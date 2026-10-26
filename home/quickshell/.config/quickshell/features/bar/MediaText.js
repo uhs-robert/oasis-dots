@@ -26,12 +26,12 @@ function lines(title, artist, show_title, show_artist, layout, identity) {
 }
 
 // Pixel sizes of a stacked title and artist whose two text lines fit `inner` px. A line is taller than its pixel size
-// (`LINE` times it), so sizing by the pixel size alone let the block overflow the plate. The title keeps up to `base`
-// and the larger share; the artist is smaller and never below 6 px, so an `inner` too small to fit both is the caller's
-// to enlarge.
+// (`ratio` times it, measured from the font; `LINE` when unknown), so sizing by the pixel size alone let the block
+// overflow the plate. The title keeps up to `base` and the larger share; the artist is smaller and never
+// below 6 px, so an `inner` too small to fit both is the caller's to enlarge.
 const LINE = 1.3;
-function stacked_sizes(inner, base) {
-    const room = Math.floor(inner / LINE);
+function stacked_sizes(inner, base, ratio) {
+    const room = Math.floor(inner / Math.max(1, ratio || LINE));
     const title = Math.max(6, Math.min(base, Math.ceil(room * 0.56)));
     const artist = Math.max(6, Math.min(base - 3, room - title));
     return { title: title, artist: artist };
@@ -60,4 +60,17 @@ function marquee_cycle(overflow, speed, pause_ms) {
 // Whether the marquee should run: wanted, visible and the text really overflows its window.
 function marquee_running(wanted, visible, overflow) {
     return !!wanted && !!visible && overflow > 0;
+}
+
+// Horizontal room the contents keep from the plate's side so a square corner of the art (at `pad` px from the top and
+// bottom) stays inside the plate's corner. A chamfer or pixel corner cuts `size` px off, so the art clears the diagonal;
+// a round corner is a circle of radius min(size, height / 2), so the art clears the arc at its height, plus a pixel for the 1px outline drawn inside it. Other corners are
+// square and need only `pad`.
+function side_inset(corner, size, pad, height) {
+    if (corner === "chamfer" || corner === "pixel") return Math.max(pad, size - pad + 2);
+    if (corner !== "round") return pad;
+    const r = Math.min(size, height / 2);
+    if (!(r > pad)) return pad;
+    const x_on_arc = r - Math.sqrt(r * r - (r - pad) * (r - pad));
+    return Math.max(pad, Math.ceil(x_on_arc) + 2);
 }
