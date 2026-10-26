@@ -73,6 +73,14 @@ class ListTest(ListCase):
         found = self.broken(lambda actions: actions[1]["perform"].update(argv=["~/.config/hypr/scripts/none.sh"]))
         self.assertFinding(found, "~/.config/hypr/scripts/none.sh, which no home/<package>/ ships")
 
+    def test_an_installer_built_executable_is_not_looked_up_in_home(self):
+        found = self.broken(lambda actions: actions[1]["perform"].update(argv=["~/.local/bin/voxcmd", "session", "rapid"]))
+        self.assertEqual(found, [])
+
+    def test_a_built_executable_is_only_the_named_ones(self):
+        found = self.broken(lambda actions: actions[1]["perform"].update(argv=["~/.local/bin/voxcmd-other"]))
+        self.assertFinding(found, "~/.local/bin/voxcmd-other, which no home/<package>/ ships")
+
     def test_a_program_on_the_path_is_not_looked_up(self):
         self.assertEqual(self.broken(lambda actions: actions[1]["perform"].update(argv=["rofi-rbw"])), [])
 

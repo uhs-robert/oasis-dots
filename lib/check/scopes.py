@@ -147,14 +147,14 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/ocr.tsv", VOX_PHRASES),
     ("home/voxcmd/tests/fixtures/overview.json", VOX_CLICK),
     ("home/voxcmd/tests/fixtures/monitors/*", VOX_CLICK),
-    # Only the crate's tests read these (no shell suite names them). A fixture added
-    # without a rule here falls to home/voxcmd/*, which test_voxcmd_suite_scopes.py's tripwire rejects.
+    # Only the crate's tests read these (no shell suite names them), except integrations/, which the click suite also reads.
+    # A fixture added without a rule here falls to home/voxcmd/*, which test_voxcmd_suite_scopes.py's tripwire rejects.
     ("home/voxcmd/tests/fixtures/monitor-places/*", "rust"),
     ("home/voxcmd/tests/fixtures/speech/*", "rust"),
     ("home/voxcmd/tests/fixtures/match/*", "rust"),
     ("home/voxcmd/tests/fixtures/ask/*", "rust"),
     ("home/voxcmd/tests/fixtures/click/*", "rust"),
-    ("home/voxcmd/tests/fixtures/integrations/*", "rust"),
+    ("home/voxcmd/tests/fixtures/integrations/*", "rust " + VOX_CLICK),
     # The suites' own config for these is the sandbox's copy of the package, so a real integration reaches all of them.
     ("home/voxcmd/.config/voxcmd/integrations/*", "rust " + VOXCMD_SUITES),
     ("home/voxcmd/*", VOXCMD_SUITES),

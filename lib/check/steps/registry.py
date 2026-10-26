@@ -8,7 +8,8 @@ JSON, reads that list in memory and throws it away: no list is committed, so not
   - an id that is repeated or does not look like `area.name`;
   - an `ipc` action naming a function that is not a typed function of a real IpcHandler (read by qml_ipc.declared, the
     parser of `qml-ipc`). Arity is not checked: declared() keeps function names only;
-  - a `command` action whose program is `~/<path>` that no stow package ships as `home/<pkg>/<path>`.
+  - a `command` action whose program is `~/<path>` that no stow package ships as `home/<pkg>/<path>`, except the
+    executables in BUILT_EXECUTABLES, which an installer recipe creates.
 
 Skips, with a reason, when `lua` is not installed.
 
@@ -31,6 +32,8 @@ import qml_ipc  # noqa: E402
 
 REFS_SCRIPT = "home/hypr/tests/act_refs.lua"
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9]*\.[a-z][a-z0-9_]*$")
+# Executables a recipe builds and links into ~/, so no home/<package>/ ships them. Add one only with the recipe that makes it.
+BUILT_EXECUTABLES = {"~/.local/bin/voxcmd": "just voxcmd-build"}
 SKIP_REASON = "the action reference check needs lua"
 
 
@@ -58,6 +61,8 @@ def action_findings(repo, action, handlers):
         if perform["function"] not in handler.functions:
             return [f'{name} calls "{perform["target"]} {perform["function"]}", which is not a typed function (has: {", ".join(sorted(handler.functions))})']
     elif perform["kind"] == "command" and perform["argv"][0].startswith("~/"):
+        if perform["argv"][0] in BUILT_EXECUTABLES:
+            return []
         if not glob.glob(os.path.join(repo, "home", "*", perform["argv"][0][2:])):
             return [f"{name} runs {perform['argv'][0]}, which no home/<package>/ ships"]
     return []
