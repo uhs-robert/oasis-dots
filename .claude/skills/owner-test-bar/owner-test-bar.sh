@@ -210,6 +210,31 @@ hypr_restore() {
   restart_rotator
 }
 
+# Runs a command with set -e live inside it and leaves its status in tolerated_status, always returning 0, so a caller
+# can run the next step even after a failure. Read the status, not `||`: that would switch set -e off inside the command.
+tolerate() {
+  set +e
+  (
+    set -e
+    "$@"
+  )
+  tolerated_status=$?
+  set -e
+}
+
+# The manifest goes back before Hyprland reloads, since the reload reads it; a failure of one does not skip the other.
+# Always returns 0 and sets restore_failed, because calling it left of `||` or `&&` would switch set -e off inside it.
+restore_hypr_and_djinn() {
+  restore_failed=0
+  tolerate djinn_restore
+  ((tolerated_status == 0)) || restore_failed=1
+  tolerate hypr_restore
+  ((tolerated_status == 0)) || restore_failed=1
+  if ((restore_failed)); then
+    echo "owner-test-bar: restore did not finish; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore" >&2
+  fi
+}
+
 # Copies the gitignored files under <rel> of the main checkout into the same place in the test build at <dest>.
 copy_ignored_files() {
   local dest=$1 rel=$2 path
@@ -253,6 +278,8 @@ hypr_swap() {
   hypr_point "$dir/$hypr_rel"
   errors=$(hypr_errors)
   if [[ -n $errors ]]; then
+    # The reload reads the manifest, so main's goes back first.
+    djinn_restore
     hypr_point "$orig"
     rm -f "$hypr_orig" "$hypr_bar"
     echo "$errors" >&2
@@ -296,6 +323,9 @@ djinn_restore() {
     # -d and -t absolute: stow run from inside home/ would target the repo itself.
     stow -d "$repo/home" -t "$HOME" -R oasis-djinn
     rm -f "$djinn_bar"
+  elif [[ ! -e $djinn_link && ! -L $djinn_link ]]; then
+    echo "oasis-djinn: not stowed here"
+    return 0
   fi
   echo "oasis-djinn: main"
 }
@@ -927,15 +957,10 @@ main() {
     # A subshell, since die exits: the manifest must not stay on the test build when the hypr swap fails. Its status
     # is read after the subshell, not through `||`: bash turns set -e off inside anything left of `||`, so a failing
     # cp or ln partway would carry on and report a half-swapped desktop as done.
-    set +e
-    (
-      set -e
-      hypr_swap "$2" "$dir"
-    )
-    swap_status=$?
-    set -e
-    if ((swap_status != 0)); then
-      djinn_restore
+    tolerate hypr_swap "$2" "$dir"
+    if ((tolerated_status != 0)); then
+      # The link may have moved before the failure, so Hyprland goes back too.
+      restore_hypr_and_djinn
       exit 1
     fi
     voxcmd_swap "$2" "$dir"
@@ -966,25 +991,29 @@ main() {
   restore)
     guard_owner "$take"
     require_unlocked
-    # The manifest goes back first: the reload in hypr_restore reads it.
-    djinn_restore
-    hypr_restore
+    restore_hypr_and_djinn
+    hypr_djinn_failed=$restore_failed
     voxcmd_restore
     voxtype_restore
     launch "qs -n"
     verify "qs log"
+    # Kept while Hyprland or the manifest is still on a test build, so the claim still names whom to ask.
+    ((hypr_djinn_failed == 0)) || exit 1
     rm -f "$owner_file"
     ;;
   remove)
     dir="$bars/${2:?usage: owner-test-bar.sh remove <name>}"
     pgrep -af "^qs .*-p $dir/" >/dev/null && die "that test bar is running; run owner-test-bar.sh restore first"
+    remove_failed=0
     if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
       require_unlocked
-      hypr_restore
-    fi
-    if [[ -f $djinn_bar && $(<"$djinn_bar") == "$2" ]] || { djinn_linked && [[ $(readlink -m "$djinn_link") == "$dir"/* ]]; }; then
+      # The manifest goes back first, as in restore; djinn_restore alone when only the manifest is on this bar.
+      restore_hypr_and_djinn
+      remove_failed=$restore_failed
+    elif [[ -f $djinn_bar && $(<"$djinn_bar") == "$2" ]] || { djinn_linked && [[ $(readlink -m "$djinn_link") == "$dir"/* ]]; }; then
       djinn_restore
     fi
+    ((remove_failed == 0)) || die "restore did not finish; not removing $dir"
     # The links decide too: a swap stopped halfway may have moved them for this bar under another bar's record.
     if [[ -f $voxcmd_bar && $(<"$voxcmd_bar") == "$2" ]] || grep -qxF "$2" <<<"$(voxcmd_linked_bars)"; then
       voxcmd_restore

@@ -755,5 +755,51 @@ dj_restore_order() {
 out=$(dj_restore_order)
 check "restore swaps the manifest back before reloading Hyprland" "[[ \$(head -1 <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]]"
 
+echo "== swap command: hypr swap fails after the link moved"
+hl_main=$root/hl_main
+hl_bar=$root/hl_bar
+mkdir -p "$hl_main" "$hl_bar"
+# Hyprland itself is stubbed: only the link, the records and the call order are real.
+# shellcheck disable=SC2016
+hl_env='source "$1"; repo=$2; bars=$3; hypr_link=$4; hypr_orig=$bars/.hypr_orig; hypr_bar=$bars/.hypr_bar
+  require_unlocked() { :; }; launch() { :; }; verify() { :; }; hyprctl() { :; }; sleep() { :; }; restart_rotator() { :; }
+  voxcmd_swap() { :; }; voxtype_swap() { :; }'
+ln -sfn "$hl_main" "$root/hl_link"
+dj_swap_moved() {
+  HOME=$dj_home bash -c "$hl_env"'
+    hypr_swap() { echo "$hypr_link_main" >"$hypr_orig"; echo djinn >"$hypr_bar"; ln -sfn "'"$hl_bar"'" "$hypr_link"; false; }
+    hypr_link_main='"$hl_main"'; main swap djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" 2>&1
+}
+out=$(dj_swap_moved)
+code=$?
+show "$out"
+check "a swap that fails after the link moved puts Hyprland and the manifest back, says how to finish, and fails" "[[ $code != 0 && \$(readlink $root/hl_link) == $hl_main && ! -e $bars_dir/.hypr_orig ]] && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+
+echo "== restore and remove: a failing manifest restore does not skip Hyprland"
+dj_restore_fails() {
+  HOME=$dj_home bash -c "$hl_env"'
+    guard_owner() { :; }; djinn_restore() { echo djinn_restore; false; }; hypr_restore() { echo hypr_restore; }
+    voxcmd_restore() { :; }; voxtype_restore() { :; }; main "$5"' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" "$1" 2>&1
+}
+out=$(dj_restore_fails restore)
+code=$?
+show "$out"
+check "restore still restores Hyprland after a failing manifest restore, and exits non-zero" "[[ $code != 0 ]] && [[ \$(sed -n 1p <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]] && grep -q 'restore did not finish' <<<\"\$out\""
+echo djinn >"$bars_dir/.hypr_bar"
+dj_remove_order() {
+  HOME=$dj_home bash -c "$hl_env"'
+    git() { :; }; djinn_restore() { echo djinn_restore; }; hypr_restore() { echo hypr_restore; }
+    main remove djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" 2>&1
+}
+out=$(dj_remove_order)
+check "remove restores the manifest before Hyprland" "[[ \$(sed -n 1p <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]]"
+rm -f "$bars_dir/.hypr_bar"
+
+echo "== restore prints not stowed when there is nothing to restore"
+mv "$dj_home/.config/oasis-djinn" "$root/dj_link_aside"
+out=$(djx djinn_restore)
+check "djinn_restore says not stowed here, like status" "[[ \$out == 'oasis-djinn: not stowed here' ]]"
+mv "$root/dj_link_aside" "$dj_home/.config/oasis-djinn"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
