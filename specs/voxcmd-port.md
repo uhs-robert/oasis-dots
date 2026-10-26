@@ -4,21 +4,17 @@ Status of the rewrite of voxcmd (`home/voxcmd/`) as one Rust binary. It carries 
 
 ## What runs today
 
-The bash `voxcmd` stays installed and live until item 3.2 swaps it. The Rust port is the crate in `home/voxcmd/` (`Cargo.toml`, `src/`; stow ignores it). `just voxcmd-build` installs it as `voxcmd-rs`.
+The Rust crate in `home/voxcmd/` (`Cargo.toml`, `src/`; stow ignores it) is `voxcmd`. `just voxcmd-build` (run by the installer and by ship-batch after a merge that touches the crate) builds it from the main checkout into `~/.local/share/voxcmd-rs` and links `~/.local/bin/voxcmd` to it; `voxcmd-rs` is an alias for the same binary, kept one release. The build bakes in its checkout (share dir, auto-stop), so `voxcmd-build` refuses to run in a worktree. The wake listener (`voxcmd-wake`) and auto-stop stay Python until 4.1 and 4.2, and call `~/.local/bin/voxcmd`.
 
-Until 3.1 converts the bash integrations to TOML, the Rust binary reads them through the bash voxcmd's hidden `_legacy-dump` (`src/config/legacy.rs`, cached under `~/.cache/voxcmd`; `VOXCMD_LEGACY_BIN` names the script). An `integrations/<stem>.toml` wins over `integrations.d/<stem>.sh`.
+Integrations are the TOML files in `~/.config/voxcmd/integrations/`. The bash voxcmd, its helpers (`voxcmd-pick`, `-confirm`, `-hints`, `-wake-switch`) and the bash `integrations.d/*.sh` are gone; `voxcmd-alarm` stays as a shim over `timer ring` for timer units scheduled before the swap. A leftover `integrations.d/*.sh` is not read, and `voxcmd integrations check` warns about it. The bridge that would read it (`src/config/legacy.rs`, `session/bridge.rs`, `click/bridge_map.rs`, the `_legacy-*` entry points) is dead code until PR 4 deletes it; `VOXCMD_LEGACY_BIN` now only names where the tests' stand-ins put the share dir and auto-stop.
 
-The click actions are Rust built-ins. A TOML action with `provider = "screen_text"` (and `run = "click_at <button>"`) reads the focused window. The bridge hands the shipped `integrations.d/click.sh` to them, with `picker = "hints"` for the numbered boxes. The bridge recognises that file by its hooks, action commands and `pick_command` in the dump, so an edit to those keeps the copy on bash. Edits inside function bodies, or to variables the dump lacks (`filler_words`, `click_target_max_age`, `click_ocr`), are not seen.
-
-The hidden `voxcmd internal click-match` (stdin, `CLICK_TARGET`) is the click matcher, which run.sh's matcher sections call under `VOXCMD_BIN=rs`. `internal click-ocr` and `internal click-at` (the click itself, which prints the reason and exits 1 on failure) are likewise reachable. All of these go with the bash matcher in 3.2.
+The hidden `voxcmd internal click-match`, `click-ocr` and `click-at` are the click matcher, OCR and click that run.sh's matcher sections call; they go with the bridge in PR 4.
 
 ## Running the Rust binary
 
-- `VOXCMD_BIN=rs` makes `home/voxcmd/tests/sandbox.sh` build this checkout and put the Rust binary first on PATH. The default is `bash`.
-- `just voxcmd-test` runs `cargo test` and then the suites that way.
-- `tests/run-phrases.sh` passes under `rs`. `VOXCMD_ROUTE_DIFF=1` explains every phrase with both binaries and reports each difference.
-- The other suites fail under `rs` until their items (2.3 and later) land.
-- `cargo test` compares the ported text parsers, the verb matcher and the click matcher with goldens made from the bash and awk by `tests/fixtures/gen-speech-goldens.sh`, `gen-match-goldens.sh` and `gen-click-goldens.sh`. Regenerate them only with the owner's sign-off.
+- `home/voxcmd/tests/sandbox.sh` builds this checkout and puts the Rust binary first on PATH; every suite runs through it.
+- `just voxcmd-test` runs `cargo test` and then the suites.
+- `cargo test` compares the ported text parsers, the verb matcher and the click matcher with goldens (`tests/fixtures/*-goldens.tsv`) made from the bash and awk before the swap. Their generators are deleted, so the goldens are frozen: the Rust code is the reference, and a change is a hand edit with the owner's sign-off.
 
 ## Phases
 
@@ -27,7 +23,7 @@ Status values: `todo`, `planning`, `approved`, `in progress`, `in review`, `owne
 | #   | Item | Status | Notes |
 | --- | ---- | ------ | ----- |
 | 3.1 | Convert integrations to TOML | in progress | Batches of about five, smallest first, suites green against `voxcmd-rs` each time. TOML text placeholders capture lazily (`.+?`) while the legacy dialect stays greedy. Update the `.gitignore` allowlists in `integrations.d/` and the README's Integrations section. |
-| 3.2 | Swap the installed binary | todo | `voxcmd` becomes the Rust binary; the bash script, folded helpers and hidden `internal` entry points are deleted; every caller moves to the new CLI. Owner test before merge. |
+| 3.2 | Swap the installed binary | owner test | `voxcmd` becomes the Rust binary; the bash script, folded helpers and hidden `internal` entry points are deleted; every caller moves to the new CLI. Owner test before merge. |
 | 3.3 | Built-in providers | todo | Move hot `candidates()` lookups (windows, workspaces, monitors, devices) into Rust, one provider per PR. |
 | 3.4 | README rewrite | todo | `home/voxcmd/.config/voxcmd/README.md` rebuilt around the new format; the schema and `voxcmd integrations examples` as the reference. |
 | 3.5 | Simplify after the swap | todo | Until 3.2 the port keeps strict bash parity. After it, one design-gated PR per subsystem: in-process ask with a single IPC answer path from the bar; table-driven reply parsing proven by reply goldens; removal of test-coupled choices; cleanup of the kept awk quirks. Each is planned with the owner first. |

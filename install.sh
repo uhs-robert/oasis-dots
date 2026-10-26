@@ -134,6 +134,7 @@ main() {
   fi
 
   setup_git_identity
+  if [[ $OPT_SERVER -eq 0 ]]; then install_voxcmd || warn "voxcmd was not built; fix the error above, then run: just voxcmd-build"; fi
   install_nvim_config
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_root_symlinks; fi
   bootstrap_neovim

@@ -61,5 +61,8 @@ PATH=$base_path
 check "without cargo it warns and succeeds" "[[ $status == 0 && $names_recipe == 1 ]]"
 check "and links nothing" "[[ ! -e '$HOME/.local/bin/voxcmd' && ! -L '$HOME/.local/bin/voxcmd' ]]"
 
+# The swap made the build the only thing that creates the voxcmd link, so a desktop install must call it.
+check "install.sh builds voxcmd on a desktop install" "grep -Eq '^ *if \\[\\[ \\\$OPT_SERVER -eq 0 \\]\\]; then install_voxcmd' '$repo_dir/install.sh'"
+
 ((failures == 0)) || exit 1
 echo "voxcmd-install: ok"

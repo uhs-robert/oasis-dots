@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Runs a command with voxcmd cut off from the live desktop: its own runtime dir, a config dir holding this checkout's
 # integrations and replacements, this checkout's voxcmd first on PATH, and stubs in place of everything that acts.
-# `voxcmd` there is the new CLI: VOXCMD_BIN=bash (the default) reaches the bash voxcmd through the shim in tests/bin;
-# VOXCMD_BIN=rs builds this checkout's Rust crate (cargo build --release, once per sandbox start) and puts its binary
-# first on PATH instead. run-phrases.sh passes under rs; the other suites fail until their items land (voxcmd-port 2.3 and later).
+# `voxcmd` there is this checkout's Rust crate, built here (cargo build --release, once per sandbox start) and put first
+# on PATH.
 #
 #   home/voxcmd/tests/sandbox.sh <command...>
 #   home/voxcmd/tests/sandbox.sh voxcmd explain "close firefox"
@@ -71,9 +70,10 @@
 #                                       SANDBOX_CLICKHINTS_BLOCK=<path>  open blocks before answering: it creates
 #                                                                  <path>.entered, then waits for <path>.release
 #                                       SANDBOX_CLICKHINTS_STATE_BLOCK=<path>  state blocks the same way
-#   voxcmd-pick, voxcmd-autostop      voxcmd finds these beside itself, not on PATH, so a test copies the package (with the
-#                                     shim, see lib.sh) and symlinks its two onto $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first
-#                                     choice's id. voxcmd-autostop gives no verdict (exit 1) unless a voxtype turn is
+#   voxcmd-pick, voxcmd-autostop      voxcmd finds the auto-stop beside the binary the suite names with VOXCMD_LEGACY_BIN, not on
+#                                     PATH, and asks through bin/ask-stub, which runs voxcmd-<kind> beside it, so a test
+#                                     copies the package (see link_voxcmd_build in lib.sh) and symlinks its two onto
+#                                     $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first choice's id. voxcmd-autostop gives no verdict (exit 1) unless a voxtype turn is
 #                                     being recorded (see below); --check passes unless SANDBOX_AUTOSTOP_OFF holds the
 #                                     reason it is off
 #   setsid                            logs "setsid owner=$VOXCMD_RECORDING_OWNER_FILE <args>" and starts nothing
@@ -118,7 +118,7 @@
 # Hyprland's dispatch, eval and keyword are logged and never sent. The eval that asks for monitor slots is answered from
 # SANDBOX_MONITOR_SLOTS (the slot lookup's file contents, e.g. "DP-8 HDMI-A-1 - eDP-1"); without it the file stays absent.
 #
-#   VOXCMD_EXTRA_INTEGRATIONS  colon-separated integration files to load too, e.g. a private one
+#   VOXCMD_EXTRA_INTEGRATIONS  colon-separated integration files (TOML, and the .sh library beside it) to load too, e.g. a private one
 #   SANDBOX_EXTRA_STUBS        space-separated commands to stub as well, such as the ones an extra integration calls
 #   SANDBOX_SHOW_CALLS=1       print the stub call log to stderr when the command ends
 #   SANDBOX_STUB_DELAY=<secs>  every stub call first sleeps that long: a slow machine, the same on every run, for
@@ -132,19 +132,10 @@ set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 package_dir=$(dirname "$tests_dir")
-case "${VOXCMD_BIN:-bash}" in
-bash) voxcmd_path_dirs="$tests_dir/bin:$package_dir/.local/bin" ;;
-rs)
-  # Always build, nested sandboxes too: run.sh checks only the binary's path, and cargo is a no-op when it is current,
-  # so this is the one place a stale release binary is refused.
-  cargo build --release --quiet --manifest-path "$package_dir/Cargo.toml" >&2 || exit 1
-  voxcmd_path_dirs="$package_dir/target/release"
-  ;;
-*)
-  echo "sandbox: VOXCMD_BIN=$VOXCMD_BIN is not bash or rs" >&2
-  exit 2
-  ;;
-esac
+# Always build, nested sandboxes too: run.sh checks only the binary's path, and cargo is a no-op when it is current, so
+# this is the one place a stale release binary is refused.
+cargo build --release --quiet --manifest-path "$package_dir/Cargo.toml" >&2 || exit 1
+voxcmd_path_dirs="$package_dir/target/release"
 [ "$#" -gt 0 ] || {
   sed -n '2,/^set -euo/{/^set -euo/d;s/^# \{0,1\}//;p}' "$0" >&2
   exit 2
@@ -154,20 +145,18 @@ sandbox_dir=$(mktemp -d "${TMPDIR:-/tmp}/voxcmd-sandbox.XXXXXX")
 trap 'rm -rf "$sandbox_dir"' EXIT
 stub_dir="$sandbox_dir/bin"
 config_home="$sandbox_dir/config"
-mkdir -p "$stub_dir" "$config_home/voxcmd/integrations.d" "$config_home/voxcmd/replacements.d" \
+mkdir -p "$stub_dir" "$config_home/voxcmd/integrations" "$config_home/voxcmd/replacements.d" \
   "$config_home/hypr/scripts" "$sandbox_dir/runtime" "$sandbox_dir/home"
 chmod 700 "$sandbox_dir/runtime"
 : >"$sandbox_dir/calls.log"
 
 # Regular files only: a private dotfiles repo links its own integrations and replacements in here per file, and those
 # would change the routes. VOXCMD_EXTRA_INTEGRATIONS loads one on purpose.
-find "$package_dir"/.config/voxcmd/integrations.d -maxdepth 1 -type f -name '*.sh' -exec cp -t "$config_home/voxcmd/integrations.d/" {} +
-mkdir -p "$config_home/voxcmd/integrations"
 find "$package_dir"/.config/voxcmd/integrations -maxdepth 1 -type f ! -name '.*' -exec cp -t "$config_home/voxcmd/integrations/" {} +
 find "$package_dir"/.config/voxcmd/replacements.d -maxdepth 1 -type f ! -name '.*' -exec cp -t "$config_home/voxcmd/replacements.d/" {} +
 if [ -n "${VOXCMD_EXTRA_INTEGRATIONS:-}" ]; then
   IFS=: read -ra extra_integrations <<<"$VOXCMD_EXTRA_INTEGRATIONS"
-  cp -L "${extra_integrations[@]}" "$config_home/voxcmd/integrations.d/"
+  cp -L "${extra_integrations[@]}" "$config_home/voxcmd/integrations/"
 fi
 
 # One stub for every command, dispatched on the name it is called by. Passing through restores the real PATH and

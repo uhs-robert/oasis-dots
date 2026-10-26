@@ -211,8 +211,8 @@ case_voxcmd_rust_source() {
   source=$(first_tracked 'home/voxcmd/src/cli.rs') || return 0
   echo '// x' >>"$source"
   plan
-  expect_ran voxcmd-rust
-  expect_skipped voxcmd-click voxcmd-phrases luacheck qmllint
+  expect_ran voxcmd-rust voxcmd-click voxcmd-phrases voxcmd-calendar voxcmd-wake voxcmd-firefox
+  expect_skipped luacheck qmllint
 }
 
 case_voxcmd_rust_snapshot() {
@@ -226,8 +226,8 @@ case_voxcmd_rust_snapshot() {
 }
 
 case_voxcmd_bash_script() {
-  start_case 'bash voxcmd script'
-  echo '# x' >>home/voxcmd/.local/bin/voxcmd
+  start_case 'voxcmd-alarm shim'
+  echo '# x' >>home/voxcmd/.local/bin/voxcmd-alarm
   plan
   expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox
   expect_skipped voxcmd-rust

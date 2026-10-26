@@ -76,8 +76,7 @@ expect_absent() {
 }
 
 # The suite is only a proof of the TOML if the TOML is what routes: explain names the file that matched.
-file_name=calendar.sh
-[ "${VOXCMD_BIN:-bash}" != rs ] || file_name=calendar.toml
+file_name=calendar.toml
 total=$((total + 1))
 if ! voxcmd explain "what's on my calendar tomorrow" 2>/dev/null | grep -Fq "Calendar ($file_name)"; then
   printf 'explain does not name Calendar (%s)\n' "$file_name"

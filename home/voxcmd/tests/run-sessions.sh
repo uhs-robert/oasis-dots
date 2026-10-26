@@ -105,7 +105,7 @@ sess_env=(VOXCMD_SESSION_MAX_SECS=0)
 sess_run alpha alpha
 check "and after VOXCMD_SESSION_MAX_SECS" "session_gone && [[ \$(taps) == 1 && \$(record_starts) == 1 ]] && ended_because 'it reached its time limit'"
 sess_env=()
-check "by default it is 40 turns or 5 minutes" "grep -q 'VOXCMD_SESSION_MAX_SECS:-300}' '$package/.local/bin/voxcmd' && grep -q 'VOXCMD_SESSION_MAX_TURNS:-40}' '$package/.local/bin/voxcmd'"
+check "by default it is 40 turns or 5 minutes" "grep -q 'setting(\"VOXCMD_SESSION_MAX_SECS\", 300)' '$package/src/session/turn.rs' && grep -q 'setting(\"VOXCMD_SESSION_MAX_TURNS\", 40)' '$package/src/session/turn.rs'"
 
 # Without auto-stop nothing would end an idle session.
 export SANDBOX_AUTOSTOP_OFF="auto-stop is turned off (enabled = false)"
@@ -519,13 +519,13 @@ echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 : >"$log"
 "$sess_voxcmd" listen >/dev/null 2>&1
 log_has_soon 'setsid '
-check "a pending picker's reply wins over the open session" "grep -qE 'setsid .*(_watch|internal watch) reply' '$log' && ! grep -qE 'setsid .*(_watch|internal watch) session_turn' '$log'"
+check "a pending picker's reply wins over the open session" "grep -qE 'setsid .*internal watch reply' '$log' && ! grep -qE 'setsid .*internal watch session_turn' '$log'"
 rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 : >"$log"
 echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
 "$sess_voxcmd" listen >/dev/null 2>&1
 log_has_soon 'setsid '
-check "with nothing pending, a live session's listen goes to the session" "grep -qE 'setsid .*(_watch|internal watch) session_turn' '$log'"
+check "with nothing pending, a live session's listen goes to the session" "grep -qE 'setsid .*internal watch session_turn' '$log'"
 # The detector each listen starts: a reply's lower speech minimum, the session's settings, nothing for a command.
 sess_env=(VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.5)
 jq -n -c --argjson owner "$owner_pid" --arg owner_start "$(start_time_of "$owner_pid")" \

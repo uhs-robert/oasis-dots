@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Voice input: voxtype setup, plus voxcmd's Firefox host and the signed extension installed through an enterprise policy.
 
-# Builds the voxcmd crate under ~/.local/share/voxcmd-rs and links ~/.local/bin/voxcmd (and voxcmd-rs) to it, as `just voxcmd-build`
-# does for voxcmd-rs alone. Define-only until the swap (voxcmd-port 3.2) calls it after stowing: the link replaces the one
-# stow made to the bash script, so a failed build leaves the old link in place.
+# Builds the voxcmd crate under ~/.local/share/voxcmd-rs and links ~/.local/bin/voxcmd (and voxcmd-rs) to it, as `just
+# voxcmd-build` does. install.sh calls it after stowing: a build, not stow, makes the voxcmd link now, so a failed build
+# leaves whatever link was there (a stow link from before the swap) in place.
 install_voxcmd() {
   if ! command -v cargo &>/dev/null; then
     warn "cargo not found, so voxcmd was not built; install Rust, then run: just voxcmd-build"

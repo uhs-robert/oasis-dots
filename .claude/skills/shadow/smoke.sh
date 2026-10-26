@@ -248,7 +248,7 @@ cat >"$whichkey_payload" <<'JSON'
 }
 JSON
 
-# Numbered boxes as voxcmd-hints sends them; the answer goes to /dev/null since nothing waits on it.
+# Numbered boxes as `voxcmd ask hints` sends them; the answer goes to /dev/null since nothing waits on it.
 hints_spec="$out/clickhints.json"
 cat >"$hints_spec" <<'JSON'
 {

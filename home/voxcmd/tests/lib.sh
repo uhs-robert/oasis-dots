@@ -72,16 +72,26 @@ logged_processes_gone() {
   # Read again once they are seen gone: the last one may have logged another and exited in between.
   [[ $(sed -n "s/$1/\\1/p" "$debug_log") == "$logged" ]]
 }
+# sandbox_process_running <path>...: a process started as one of these paths (a link and the binary it resolves to) whose
+# environment names this sandbox is running. Every sandbox runs the same release binary, so its path alone would also
+# match the suites running beside this one.
+sandbox_process_running() {
+  local path pid
+  for path; do
+    for pid in $(pgrep -f -- "$path( |\$)"); do
+      process_running "$pid" && grep -qzxF "SANDBOX_DIR=$SANDBOX_DIR" "/proc/$pid/environ" 2>/dev/null && return 0
+    done
+  done
+  return 1
+}
 # Stubs run as "/bin/sh $SANDBOX_DIR/bin/<name>", so once none is running no stub call is still to be logged: what a
 # check that a call was never made waits for.
 stub_calls_done() { ! pgrep -f -- "^/bin/sh $SANDBOX_DIR/bin/" >/dev/null; }
 watchers_gone() { logged_processes_gone '.* listen: recording started, watcher \([0-9]*\) .*'; }
 ended_hooks_gone() { logged_processes_gone '.* session: ended hook \([0-9]*\) runs$'; }
 
-# copy_shipped_integrations <config dir> [stem...]: the converted integrations (integrations/<stem>.toml and its <stem>.sh
-# library) of $package into <config dir>/integrations, all of them without a stem. The bash original beside it in
-# integrations.d is copied too, as in a real config, and loses to the TOML of the same stem under VOXCMD_BIN=rs; a suite
-# that copied only integrations.d would pass on the bash files without ever reading the TOML.
+# copy_shipped_integrations <config dir> [stem...]: the shipped integrations (integrations/<stem>.toml and its <stem>.sh
+# hook library) of $package into <config dir>/integrations, all of them without a stem.
 copy_shipped_integrations() {
   local dest=$1/integrations stem file
   # shellcheck disable=SC2154 # the suites set $package
@@ -99,20 +109,16 @@ copy_shipped_integrations() {
   done
 }
 
-# link_voxcmd_shim <package copy>: the new CLI for a copied package, whose stubbed siblings sit beside its own bash voxcmd.
-# A suite then runs <copy>/tests/bin/voxcmd. With VOXCMD_BIN=bash (the default) that is the shim, which execs the copy's
-# voxcmd by its real path; with VOXCMD_BIN=rs it is a link to this checkout's Rust build, which sandbox.sh made, and the
-# Rust build bridges to the copy's bash voxcmd and asks through the copy's helpers (tests/bin/ask-stub).
-link_voxcmd_shim() {
+# link_voxcmd_build <package copy>: this checkout's Rust build for a copied package, whose stubbed auto-stop and ask
+# helpers sit in its .local/bin. A suite then runs <copy>/tests/bin/voxcmd. The copy has no voxcmd of its own;
+# VOXCMD_LEGACY_BIN only names where the binary looks for its neighbours (share dir, auto-stop), and VOXCMD_ASK_CMD routes
+# every question through tests/bin/ask-stub to the copy's voxcmd-<kind> stubs.
+link_voxcmd_build() {
   local tests_dir
   tests_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
   mkdir -p "$1/tests/bin"
-  if [ "${VOXCMD_BIN:-bash}" = rs ]; then
-    ln -sf "$tests_dir/../target/release/voxcmd" "$1/tests/bin/voxcmd"
-    export VOXCMD_LEGACY_BIN=$1/.local/bin/voxcmd VOXCMD_ASK_CMD=$tests_dir/bin/ask-stub
-  else
-    ln -sf "$tests_dir/bin/voxcmd" "$1/tests/bin/voxcmd"
-  fi
+  ln -sf "$tests_dir/../target/release/voxcmd" "$1/tests/bin/voxcmd"
+  export VOXCMD_LEGACY_BIN=$1/.local/bin/voxcmd VOXCMD_ASK_CMD=$tests_dir/bin/ask-stub
 }
 
 root=$(mktemp -d)

@@ -46,7 +46,6 @@ if [ -z "${SANDBOX_DIR:-}" ]; then
   exit
 fi
 share_dir=$package/.local/share/voxcmd
-matcher=$share_dir/click-match.awk
 # shellcheck source-path=SCRIPTDIR source=lib.sh
 source "$here/lib.sh"
 
@@ -62,37 +61,16 @@ window() { printf '#window %s %s %s %s %s %s\n' "$@"; }
 # strip <i> <y0> <own_top> <own_bottom>
 strip() { printf '#strip %s %s %s %s\n' "$@"; }
 
-# click_matcher <fixture> <target> <spans>: the matcher's candidates, one per line: the awk, or under VOXCMD_BIN=rs the
-# Rust build, which must be what the sandbox put first on PATH. CLICK_CASES_DUMP=<dir> also keeps each call's page,
-# target and mode there, for gen-click-goldens.sh (a call with the same inputs overwrites its files).
-rust_matcher=
-if [ "${VOXCMD_BIN:-bash}" = rs ]; then
-  rust_matcher=$(command -v voxcmd)
-  [[ $rust_matcher == "$package/target/release/voxcmd" ]] || {
-    echo "run.sh: voxcmd is not this checkout's Rust build: $rust_matcher" >&2
-    exit 2
-  }
-  # Tripwire: a call that fell through to the awk under rs would find no matcher and fail its check.
-  matcher=/nonexistent/under-rs/click-match.awk
-fi
-click_matcher() {
-  if [ -n "${CLICK_CASES_DUMP:-}" ]; then
-    local id
-    id=$(printf '%s\0%s\0%s' "$1" "$2" "$3" | md5sum | cut -c1-12)
-    printf '%s\n' "$1" >"$CLICK_CASES_DUMP/$id.page"
-    printf '%s' "$2" >"$CLICK_CASES_DUMP/$id.target"
-    printf '%s' "$3" >"$CLICK_CASES_DUMP/$id.spans"
-  fi
-  if [ -n "$rust_matcher" ]; then
-    CLICK_TARGET="$2" "$rust_matcher" internal click-match ${3:+--spans} <<<"$1"
-  else
-    CLICK_TARGET="$2" CLICK_SPANS="$3" awk -f "$matcher" <<<"$1"
-  fi
+# voxcmd_bin is what the sandbox put first on PATH, which must be this checkout's Rust build.
+voxcmd_bin=$(command -v voxcmd)
+[[ $voxcmd_bin == "$package/target/release/voxcmd" ]] || {
+  echo "run.sh: voxcmd is not this checkout's Rust build: $voxcmd_bin" >&2
+  exit 2
 }
-# click_ocr: what the click-ocr checks run, the bash script or under rs the Rust build's hidden entry point (the same
-# tripwire as the matcher's: bash's script is not reached under rs). click_ocr_cmd is the same, quoted for a check's eval.
-click_ocr=("$share_dir/click-ocr")
-[ -z "$rust_matcher" ] || click_ocr=("$rust_matcher" internal click-ocr)
+# click_matcher <fixture> <target> <spans>: the matcher's candidates, one per line.
+click_matcher() { CLICK_TARGET="$2" "$voxcmd_bin" internal click-match ${3:+--spans} <<<"$1"; }
+# click_ocr: what the click-ocr checks run; click_ocr_cmd is the same, quoted for a check's eval.
+click_ocr=("$voxcmd_bin" internal click-ocr)
 click_ocr_cmd=$(printf '%q ' "${click_ocr[@]}")
 # match <fixture> <target>: the matcher's candidates, one per line.
 match() { click_matcher "$1" "$2" ""; }
@@ -633,12 +611,8 @@ rm -f "$root/failing/tesseract"
 SANDBOX_ACTIVEWINDOW_JSON=$default_window
 
 # Which program drove the tools, and with what.
-if [ -n "$rust_matcher" ]; then
-  rust_real=$(realpath "$rust_matcher")
-  check "every grim, magick and tesseract call came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
-else
-  check "every grim, magick and tesseract call came from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv 'bash\$' '$SANDBOX_DIR/callers.log'"
-fi
+voxcmd_real=$(realpath "$voxcmd_bin")
+check "every grim, magick and tesseract call came from the Rust binary" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $voxcmd_real\$' '$SANDBOX_DIR/callers.log'"
 ocr_calls() { sed "s#$XDG_RUNTIME_DIR/voxcmd-click\.[A-Za-z0-9]*#<work>#g" "$SANDBOX_DIR/ocr-calls.log"; }
 : >"$SANDBOX_DIR/ocr-calls.log"
 "${click_ocr[@]}" >/dev/null
@@ -689,43 +663,15 @@ SANDBOX_ACTIVEWINDOW_JSON=$default_window
 
 section "routing with --dry-run"
 config=$root/config
-mkdir -p "$config/integrations.d" "$config/replacements.d"
-# The bash build loads integrations.d only; the Rust build takes the shipped TOML over the bash copy.
-cp "$package/.config/voxcmd/integrations.d/click.sh" "$package/.config/voxcmd/integrations.d/keybinds.sh" "$config/integrations.d/"
+mkdir -p "$config/replacements.d"
 copy_shipped_integrations "$config" click keybinds
-# A bash integration of its own for the logger checks below to find: every shipped one here is TOML, whose lookups
-# the Rust build does itself, so without it nothing would show that the logger records the bash voxcmd's calls.
-cat >"$config/integrations.d/stub-probe.sh" <<'STUB'
-name="Stub probe"
-verbs=("probe stubprobe {target}")
-declare -A actions=([probe]=true)
-candidates() { echo '[{"id": "1", "label": "probe"}]'; }
-STUB
 export VOXCMD_CONFIG_DIR=$config
-# Both files are in the config; the Rust build must pick the TOML, the bash build can only load the .sh.
-click_file='click\.sh'
-keybinds_file='keybinds\.sh'
-apps_file='apps\.sh'
-[ -z "$rust_matcher" ] || {
-  click_file='click\.toml'
-  keybinds_file='keybinds\.toml'
-  apps_file='apps\.toml'
-}
-# The bash form of the new CLI, for the sections 2.5 has not moved to the Rust build.
-voxcmd=$package/tests/bin/voxcmd
-# What routes and runs the phrases: the same, or under VOXCMD_BIN=rs the Rust build, which asks the bash voxcmd only for
-# the integrations it has not taken over (the stub probe, click mode). That bash voxcmd sits behind a logger, so a check can
-# show which of click.sh's functions it was still asked to run.
-routed=$voxcmd
-legacy_calls=$root/legacy-calls.log
-if [ -n "$rust_matcher" ]; then
-  routed=$rust_matcher
-  : >"$legacy_calls"
-  printf '#!/bin/sh\necho "$*" >> "%s"\nexec "%s" "$@"\n' "$legacy_calls" "$package/.local/bin/voxcmd" >"$root/legacy-logger"
-  chmod +x "$root/legacy-logger"
-  export VOXCMD_LEGACY_BIN=$root/legacy-logger
-fi
-route() { "$routed" explain "$1" 2>&1; }
+click_file='click\.toml'
+keybinds_file='keybinds\.toml'
+apps_file='apps\.toml'
+# What routes and runs the phrases.
+voxcmd=$voxcmd_bin
+route() { "$voxcmd" explain "$1" 2>&1; }
 
 : >"$log"
 out=$(route "click sign in")
@@ -947,30 +893,16 @@ SANDBOX_TESSERACT_TSV=$({
   word 1 1 1 80 40 48 24 95 Sign
   word 1 1 2 136 40 24 24 95 in
 })
-if [ -n "$rust_matcher" ]; then
-  # The routes above captured through the Rust binary: the hook that did it was the built-in, not click.sh's candidates().
-  rust_real=$(realpath "$rust_matcher")
-  check "every capture of the routes and covered text came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
-  # Without proof that the TOML is what ran, the absence below would hold for any file at all.
-  check "explain names the shipped click.toml for the click" "grep -Eq 'Click \(click\.toml\).* action=click ' <<<\"\$(route 'click sign in')\""
-  check "no lookup went through click.sh's candidates()" "! grep -Eq '^_legacy-hook candidates [^ ]*/click\.sh ' '$legacy_calls'"
-  route "stubprobe anything" >/dev/null
-  check "the logger sees the bash voxcmd's calls, so that absence means something" "grep -Eq '^_legacy-dump\$' '$legacy_calls' && grep -Eq '^_legacy-hook candidates [^ ]*/stub-probe\.sh ' '$legacy_calls'"
-fi
+# The routes above captured through the Rust binary: the click is the built-in, not a hook.
+check "every capture of the routes and covered text came from the Rust binary" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $voxcmd_real\$' '$SANDBOX_DIR/callers.log'"
+check "explain names the shipped click.toml for the click" "grep -Eq 'Click \(click\.toml\).* action=click ' <<<\"\$(route 'click sign in')\""
 
 section "click-explain"
 # `voxcmd explain --window focused click` runs the same candidates() as a click, tracing; these check each reason line, and that it only
 # reads. The window is the covered-text section's: "Sign in" centred at 175,82 and "Settings" at 230,132.
-# The shim spells the focused window "--window focused" (see tests/bin/voxcmd); the Rust build takes it as it is, and
-# prints the routing text before the click section.
-explain_bin=$voxcmd
-if [ -n "$rust_matcher" ]; then
-  explain_bin=$rust_matcher
-  # The numbered picks of an earlier run of this file re-export the legacy binary past the logger; name it here.
-  export VOXCMD_LEGACY_BIN=$root/legacy-logger
-fi
-explain() { "$explain_bin" explain --window focused click "$@" 2>&1; }
-explain_window() { "$explain_bin" explain --window "$1" click "${@:2}" 2>&1; }
+# The trace follows the routing text, which the click section's checks look past.
+explain() { "$voxcmd" explain --window focused click "$@" 2>&1; }
+explain_window() { "$voxcmd" explain --window "$1" click "${@:2}" 2>&1; }
 : >"$SANDBOX_DIR/callers.log"
 SANDBOX_CLIENTS_JSON='[]'
 SANDBOX_TESSERACT_TSV=$({
@@ -1059,39 +991,16 @@ out=$(explain_window 99999 "sign in")
 check "an unknown --window says so" "grep -q 'no such window' <<<\"\$out\""
 check "--window never read the focused window's buffer" "! grep -q '^grim .*-T 18000004' '$log'"
 SANDBOX_CLIENTS_JSON='[]'
-# The trace must cap weak matches at ten the way the real pick does, or explain would call the eleventh kept.
-word_match_source=$(sed -n '/^word_match() {/,/^}/p' "$package/.local/bin/voxcmd")
-twelve_weak=$(jq -nc '[range(12) | {id: "i\(.)", label: "Open Settings"}]')
-traced=$(bash -c "$word_match_source"'
-word_match_trace=1 word_match settings "$1"' _ "$twelve_weak")
-check "the trace keeps only the ten weak matches the real pick keeps" "[[ \$(jq '[.[] | select(.kept)] | length' <<<\"\$traced\") == 10 && \$(jq '[.[] | select(.verdict == \"dropped: past the ten best weak matches\")] | length' <<<\"\$traced\") == 2 ]]"
 check "explain never clicked or moved across all of the above" "! grep -q 'wlrctl\|hyprctl dispatch\|hyprctl eval\|notify-send' '$log'"
-if [ -n "$rust_matcher" ]; then
-  rust_real=$(realpath "$rust_matcher")
-  # The shim form prints no routing text: a trace that starts at the window line came from the bash click-explain.
-  out=$(explain "sign in")
-  check "the Rust trace prints the routing text first, then the click section" "[[ \$(head -1 <<<\"\$out\") == 'transcript:  click sign in' ]] && [[ \$(grep -n '^window   ' <<<\"\$out\" | head -1 | cut -d: -f1) -gt \$(grep -n '^why:' <<<\"\$out\" | head -1 | cut -d: -f1) ]]"
-  check "every capture of the click-explain checks came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
-  check "the click-explain trace names click.toml" "grep -Eq 'Click \(click\.toml\)' <<<\"\$out\""
-  check "bash's click-explain was never asked, and the logger that would show it sees the bash voxcmd" "[[ -s '$legacy_calls' ]] && ! grep -Eq 'click-explain|^_legacy-hook candidates [^ ]*/click\.sh ' '$legacy_calls'"
-fi
+out=$(explain "sign in")
+check "the trace prints the routing text first, then the click section" "[[ \$(head -1 <<<\"\$out\") == 'transcript:  click sign in' ]] && [[ \$(grep -n '^window   ' <<<\"\$out\" | head -1 | cut -d: -f1) -gt \$(grep -n '^why:' <<<\"\$out\" | head -1 | cut -d: -f1) ]]"
+check "every capture of the click-explain checks came from the Rust binary" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $voxcmd_real\$' '$SANDBOX_DIR/callers.log'"
+check "the click-explain trace names click.toml" "grep -Eq 'Click \(click\.toml\)' <<<\"\$out\""
 
 section "failures and toasts"
-# click_at as voxcmd would eval it, with the stubs logging instead of acting.
-# Under VOXCMD_BIN=rs it is the Rust build's hidden `internal click-at`, which prints the reason and exits 1 the same way.
-run_click_at() {
-  if [ -n "$rust_matcher" ]; then
-    "$rust_matcher" internal click-at --target "sign in" "$1"
-    return
-  fi
-  (
-    # shellcheck disable=SC2034 # read by click.sh
-    voxcmd_share_dir=$share_dir target="sign in"
-    # shellcheck source=/dev/null
-    source "$package/.config/voxcmd/integrations.d/click.sh"
-    click_at "$1"
-  )
-}
+# click_at as voxcmd runs it, with the stubs logging instead of acting: the build's hidden `internal click-at` prints the
+# reason and exits 1 on failure.
+run_click_at() { "$voxcmd" internal click-at --target "sign in" "$1"; }
 : >"$SANDBOX_DIR/click-callers.log"
 : >"$SANDBOX_DIR/callers.log"
 # A route reads the window, which records it for click_at.
@@ -1124,18 +1033,18 @@ check "click itself sends no toast for a failure" "! grep -q 'voxcmd failed' '$l
 # The whole path: a failed click reaches the engine as a failure and its error toast leaves the screen text out.
 : >"$log"
 real_status=0
-PATH="$root/nowlrctl:$PATH" "$routed" run "click sign in" >/dev/null 2>&1 || real_status=$?
+PATH="$root/nowlrctl:$PATH" "$voxcmd" run "click sign in" >/dev/null 2>&1 || real_status=$?
 check "the engine sees a failed click as a failure" "[[ $real_status != 0 ]]"
 check "the failed click is one error toast with the reason" "[[ \$(grep -c '^notify-send .*voxcmd failed' '$log') == 1 ]] && grep -q '^notify-send -a voxcmd voxcmd failed Click: click: wlrctl: no seat\$' '$log'"
 check "no toast holds the screen text" "! grep -q -i 'sign' '$log'"
 
 # An integration that does not declare private labels keeps its label in the failure toast.
 public_config=$root/config-public
-mkdir -p "$public_config/integrations.d" "$public_config/replacements.d"
-printf 'name="Plain"\nverbs=("break {target}")\ndeclare -A actions=([break]=%s)\n' "'false'" >"$public_config/integrations.d/plain.sh"
+mkdir -p "$public_config/integrations" "$public_config/replacements.d"
+printf 'name = "Plain"\nverbs = [{ action = "break", match = %s }]\n\n[actions]\nbreak = "false"\n' "'break {target}'" >"$public_config/integrations/plain.toml"
 : >"$log"
-VOXCMD_CONFIG_DIR=$public_config "$routed" run "break widget" >/dev/null 2>&1
-check "an ordinary integration's failure toast names its label" "grep -q '^notify-send -a voxcmd voxcmd failed Plain: break widget\$' '$log'"
+VOXCMD_CONFIG_DIR=$public_config "$voxcmd" run "break widget" >/dev/null 2>&1
+check "an ordinary integration's failure toast names its label" "grep -q '^notify-send -a voxcmd voxcmd failed Plain: widget\$' '$log'"
 
 section "the window changed before the click"
 target_file=$XDG_RUNTIME_DIR/voxcmd/click-target
@@ -1179,22 +1088,15 @@ printf '#!/bin/sh\necho "grim: warning" >&2\nexec "%s/bin/grim" "$@"\n' "$SANDBO
 chmod +x "$root/noisy/grim"
 out=$(SANDBOX_GRIM_NO_TOPLEVEL=1 PATH="$root/noisy:$PATH" route "click sign in")
 check "stderr of the capture is not mixed into the OCR data" "grep -q '^result:      run' <<<\"\$out\" && ! grep -q 'warning' <<<\"\$out\""
-if [ -n "$rust_matcher" ]; then
-  # Proof Rust ran: the two sections above clicked, toasted and captured from the Rust binary, with no function of
-  # click.sh asked of the bash voxcmd (the toasts, the pointer, the lookups and the actions all were the built-ins).
-  rust_real=$(realpath "$rust_matcher")
-  check "every pointer move, click and toast came from the Rust binary, none from bash" "[[ -s '$SANDBOX_DIR/click-callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/click-callers.log' && grep -q '^wlrctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^hyprctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^notify-send ' '$SANDBOX_DIR/click-callers.log'"
-  check "so did every capture" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $rust_real\$' '$SANDBOX_DIR/callers.log'"
-  check "the click phrases ran from click.toml" "grep -Eq 'Click \(click\.toml\).* action=click ' <<<\"\$(route 'click sign in')\""
-  check "none of click.sh's lookups, actions or box placing was asked of the bash voxcmd" "! grep -Eq '^_legacy-hook (candidates|run|pick-boxes) [^ ]*/click\.sh ' '$legacy_calls'"
-  route "stubprobe anything" >/dev/null
-  check "while the bash voxcmd was still asked for the integrations that stay on it" "grep -Eq '^_legacy-hook candidates [^ ]*/stub-probe\.sh ' '$legacy_calls'"
-  rm -f "$config/integrations.d/stub-probe.sh"
-fi
+# Proof Rust ran: the two sections above clicked, toasted and captured from the Rust binary, whose built-ins do the toasts,
+# the pointer, the lookups and the actions.
+check "every pointer move, click and toast came from the Rust binary" "[[ -s '$SANDBOX_DIR/click-callers.log' ]] && ! grep -qv ' $voxcmd_real\$' '$SANDBOX_DIR/click-callers.log' && grep -q '^wlrctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^hyprctl ' '$SANDBOX_DIR/click-callers.log' && grep -q '^notify-send ' '$SANDBOX_DIR/click-callers.log'"
+check "so did every capture" "[[ -s '$SANDBOX_DIR/callers.log' ]] && ! grep -qv ' $voxcmd_real\$' '$SANDBOX_DIR/callers.log'"
+check "the click phrases ran from click.toml" "grep -Eq 'Click \(click\.toml\).* action=click ' <<<\"\$(route 'click sign in')\""
 
-# ---- numbered on-screen picks: the integration hook, voxcmd-hints and its replies ---------------------------------------
+# ---- numbered on-screen picks: an integration's hints picker, `ask hints` and its replies ----------------------------------
 # A copy of the package whose voxcmd-pick and voxcmd-autostop are the sandbox's stubs, so nothing asks a real picker or
-# records audio; voxcmd-hints is the real one and finds the stub voxcmd-pick beside itself.
+# records audio; `ask hints` is the real one and falls back to the stub voxcmd-pick.
 
 section "numbered picks"
 pkg=$root/pkg
@@ -1202,63 +1104,60 @@ mkdir -p "$pkg"
 cp -r "$package/.local" "$pkg/.local"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-pick" "$pkg/.local/bin/voxcmd-pick"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$pkg/.local/bin/voxcmd-autostop"
-link_voxcmd_shim "$pkg"
+link_voxcmd_build "$pkg"
 pkg_voxcmd=$pkg/tests/bin/voxcmd
-# The Rust voxcmd finds voxcmd-pick, voxcmd-confirm and the share files beside the bash voxcmd it falls back on; the
-# bash one ignores this.
-export VOXCMD_LEGACY_BIN=$pkg/.local/bin/voxcmd
 action_log=$root/actions.log
 fake_pick=$root/fake-pick
 # shellcheck disable=SC2016 # the stub expands its own arguments
 printf '#!/bin/sh\necho "fake-pick $*" >> "%s"\necho 1\n' "$log" >"$fake_pick"
 chmod +x "$fake_pick"
+# What a run's question to the hints overlay reaches (through ask-stub) instead of the overlay.
+ln -sf "$fake_pick" "$pkg/.local/bin/voxcmd-hints"
 
-# new_config <name> <extra integration lines>: a config dir holding one integration whose two candidates have boxes in
-# their ids.
+# new_config <name> <top id> <bottom id>: a config dir holding one integration with the hints picker, whose two
+# candidates carry their boxes in their ids ("x,y,button,left,top,width,height").
 new_config() {
   local dir=$root/config-$1
-  mkdir -p "$dir/integrations.d" "$dir/replacements.d"
-  cat >"$dir/integrations.d/hinted.sh" <<STUB
-name="Hinted"
-verbs=("tap tap {target}")
-candidates() {
-  jq -n -c '[{id: "1,2,left,100,50,60,20", label: "Next - top"}, {id: "3,4,left,300,200,70,22", label: "Next - bottom"}]'
-}
-declare -A actions=([tap]='echo "\$id" >> "$action_log"')
-pick_command=$fake_pick
-$2
+  mkdir -p "$dir/integrations" "$dir/replacements.d"
+  cat >"$dir/integrations/hinted.toml" <<STUB
+name = "Hinted"
+picker = "hints"
+verbs = [{ action = "tap", match = 'tap {target}' }]
+
+[actions.tap]
+run = 'echo "\$VOXCMD_ID" >> "$action_log"'
+candidates = "hinted_candidates"
+STUB
+  cat >"$dir/integrations/hinted.sh" <<STUB
+# shellcheck shell=bash
+hinted_candidates() { printf '%s\\t%s\\n' '$2' 'Next - top' '$3' 'Next - bottom'; }
 STUB
   echo "$dir"
 }
-# shellcheck disable=SC2016 # integration source, expanded when the integration runs
-box_function='pick_box() { IFS=, read -r _ _ _ left top width height <<<"$1"; [ -n "${height:-}" ] || return 1; echo "$left $top $width $height"; }'
+box_top=1,2,left,100,50,60,20
+box_bottom=3,4,left,300,200,70,22
 
 : >"$log"
 : >"$action_log"
 export VOXCMD_CONFIG_DIR
-VOXCMD_CONFIG_DIR=$(new_config boxed "$box_function")
+VOXCMD_CONFIG_DIR=$(new_config boxed "$box_top" "$box_bottom")
 "$pkg_voxcmd" run tap next >/dev/null 2>&1
-check "several matches ask the integration's pick command" "grep -q '^fake-pick Which one? ' '$log' && ! grep -q 'voxcmd-pick' '$log'"
+check "several matches ask the integration's hints picker" "grep -q '^fake-pick Which one? ' '$log' && ! grep -q 'voxcmd-pick' '$log'"
 check "its choices carry each option's box" "grep -q '\"box\":\[100,50,60,20\]' '$log' && grep -q '\"box\":\[300,200,70,22\]' '$log'"
 check "a typed command does not listen" "! grep -q 'fake-pick --listen' '$log'"
 check "the pick's answer runs that option" "[[ \$(cat '$action_log') == '3,4,left,300,200,70,22' ]]"
 
-VOXCMD_CONFIG_DIR=$(new_config unboxed 'pick_box() { return 1; }')
+VOXCMD_CONFIG_DIR=$(new_config unboxed 1,2,left 3,4,left)
 : >"$log"
 "$pkg_voxcmd" run tap next >/dev/null 2>&1
 check "an option without a box falls back to the text picker" "grep -q '^voxcmd-pick Which command?' '$log' && ! grep -q fake-pick '$log'"
-# shellcheck disable=SC2016 # integration source, expanded when the integration runs
-VOXCMD_CONFIG_DIR=$(new_config garbled 'pick_box() { case "$1" in 3,*) echo "not a box" ;; *) echo "1 2 3 4" ;; esac; }')
+VOXCMD_CONFIG_DIR=$(new_config garbled "$box_top" 3,4,left,300,200,70,tall)
 : >"$log"
 "$pkg_voxcmd" run tap next >/dev/null 2>&1
-check "a pick_box that prints garbage for one option falls back to the text picker" "grep -q '^voxcmd-pick Which command?' '$log' && ! grep -q fake-pick '$log'"
-VOXCMD_CONFIG_DIR=$(new_config nofunction "")
-: >"$log"
-"$pkg_voxcmd" run tap next >/dev/null 2>&1
-check "pick_command without pick_box falls back too" "grep -q '^voxcmd-pick ' '$log' && ! grep -q fake-pick '$log'"
+check "an id whose box is no numbers falls back to the text picker" "grep -q '^voxcmd-pick Which command?' '$log' && ! grep -q fake-pick '$log'"
 
 # A spoken command: `internal watch` routes the transcript voxtype wrote, as `voxcmd listen` leaves it to do.
-VOXCMD_CONFIG_DIR=$(new_config boxed2 "$box_function")
+VOXCMD_CONFIG_DIR=$(new_config boxed2 "$box_top" "$box_bottom")
 : >"$log"
 mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
 echo recording >"$XDG_RUNTIME_DIR/voxtype/state"
@@ -1271,10 +1170,10 @@ echo "tap next" >"$XDG_RUNTIME_DIR/voxcmd/transcript.txt"
 VOXCMD_DEBUG=1 "$pkg_voxcmd" internal watch route >/dev/null 2>&1
 wait
 rm -f "$debug_log"
-check "a spoken command passes --listen to the pick command" "grep -q '^fake-pick --listen Which one? ' '$log'"
+check "a spoken command passes --listen to the hints picker" "grep -q '^fake-pick --listen Which one? ' '$log'"
 rm -f "$XDG_RUNTIME_DIR/voxtype/state"
 
-# voxcmd-hints: the sandbox's qs-ipc logs the pending state as it is when the overlay opens, then answers through the
+# `ask hints`: the sandbox's qs-ipc logs the pending state as it is when the overlay opens, then answers through the
 # result FIFO as the bar would, with SANDBOX_CLICKHINTS_ANSWER: a number, a label or nothing.
 hint_choices='[{"id":"a","label":"Next - top","box":[100,50,60,20]},{"id":"b","label":"Next - bottom","box":[300,200,70,22]}]'
 run_hints() { "$pkg_voxcmd" ask hints "$@"; }
@@ -1391,18 +1290,6 @@ kill "$waiter_pid" 2>/dev/null
 wait "$waiter_pid" 2>/dev/null
 rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 
-# click.sh's own pick_box, on the id format of its candidates.
-click_box() (
-  # shellcheck disable=SC2034 # read by click.sh
-  voxcmd_share_dir=$share_dir
-  # shellcheck disable=SC1091
-  source "$package/.config/voxcmd/integrations.d/click.sh"
-  pick_box "$1"
-)
-check "click.sh places an option from its id" "[[ \$(click_box '150,75,left,100,50,60,20') == '100 50 60 20' ]]"
-check "click.sh has no box for an id without one" "! click_box '150,75,left' >/dev/null"
-check "click.sh asks voxcmd-hints" "grep -q '^pick_command=voxcmd-hints' '$package/.config/voxcmd/integrations.d/click.sh'"
-
 # ---- narrowing replies by box position ------------------------------------------------------------------------------
 
 section "direction replies"
@@ -1433,42 +1320,24 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 
 section "click mode routing"
 all_config=$root/config-all
-mkdir -p "$all_config/integrations.d" "$all_config/replacements.d"
-find "$package/.config/voxcmd/integrations.d" -maxdepth 1 -type f -name '*.sh' -exec cp -t "$all_config/integrations.d/" {} +
+mkdir -p "$all_config/replacements.d"
 copy_shipped_integrations "$all_config"
-# Every shipped integration is TOML by now, so the witness that the bash voxcmd is still asked about its own kind needs
-# a bash integration that is not shipped.
-cat >"$all_config/integrations.d/click-witness.sh" <<'STUB'
-name="Click witness"
-verbs=("witness clickwitness {target}")
-declare -A actions=([witness]=true)
-candidates() { echo '[{"id": "1", "label": "witness"}]'; }
-STUB
-route_all() { VOXCMD_CONFIG_DIR=$all_config "$routed" explain "$1" 2>&1; }
+route_all() { VOXCMD_CONFIG_DIR=$all_config "$voxcmd" explain "$1" 2>&1; }
 for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; do
   out=$(route_all "$phrase")
   check "'$phrase' opens click mode, alone" "grep -q 'result:      run' <<<\"\$out\" && grep -Eq 'Click \($click_file\) action=click_mode' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
 done
 out=$(route_all "stop clicking")
 check "'stop clicking' ends click mode instead of pausing media" "grep -Eq 'Click \($click_file\) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
-if [ -n "$rust_matcher" ]; then
-  # Run for real: click mode opens, then "stop clicking" ends it, which shows the action ran. click.toml's mode action is
-  # Rust's own, so the bash voxcmd is asked about the integrations that stay on it (a phrase for Apps proves the logger sees
-  # its calls) and never about click.
-  # The "numbered picks" section pointed VOXCMD_LEGACY_BIN at its own copy, past the logger.
-  # Opening a mode looks for voxcmd-autostop beside the legacy binary, here the logger.
-  ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$root/voxcmd-autostop"
-  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "click mode" >/dev/null 2>&1
-  session_file=$XDG_RUNTIME_DIR/voxcmd/session.json
-  opened=0
-  [ ! -e "$session_file" ] || opened=1
-  : >"$legacy_calls"
-  stop_status=0
-  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1 || stop_status=$?
-  check "'click mode' opens a session and 'stop clicking' ends it" "[[ $opened == 1 && $stop_status == 0 && ! -e '$session_file' ]]"
-  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" explain "clickwitness anything" >/dev/null 2>&1
-  check "a mode action of click.toml runs natively, with the bash voxcmd asked about others but never about click" "grep -Eq '^_legacy-hook candidates [^ ]*/click-witness\\.sh ' '$legacy_calls' && ! grep -Eq '^_legacy-hook [a-z-]+ [^ ]*/click\\.' '$legacy_calls'"
-fi
+# Run for real: click mode opens, then "stop clicking" ends it, which shows the action ran. Opening a mode looks for
+# voxcmd-autostop beside the binary VOXCMD_LEGACY_BIN names, here the "numbered picks" copy's stub.
+VOXCMD_CONFIG_DIR=$all_config "$voxcmd" run "click mode" >/dev/null 2>&1
+session_file=$XDG_RUNTIME_DIR/voxcmd/session.json
+opened=0
+[ ! -e "$session_file" ] || opened=1
+stop_status=0
+VOXCMD_CONFIG_DIR=$all_config "$voxcmd" run "stop clicking" >/dev/null 2>&1 || stop_status=$?
+check "'click mode' opens a session and 'stop clicking' ends it" "[[ $opened == 1 && $stop_status == 0 && ! -e '$session_file' ]]"
 out=$(route_all "click mode on")
 check "'click' followed by other text is still a click on that text" "! grep -q 'action=click_mode' <<<\"\$out\""
 # Every example that needs no screen text still goes where it did: nothing but Click's own examples reaches its mode verbs.
@@ -1483,47 +1352,15 @@ while IFS= read -r phrase; do
     if grep -q 'action=\(click_mode\|stop_clicking\)' <<<"$out"; then printf '%s; ' "$phrase" >"$strays_dir/$example_index"; fi
   ) &
   example_index=$((example_index + 1))
-done < <(grep -h -o '^  "[^"<]*"$' "$all_config"/integrations.d/*.sh | tr -d '"' | sed 's/^ *//' | grep -v -e 'click mode' -e 'stop clicking' -e '^click_mode' -e '^stop_clicking' | sort -u)
+done < <(VOXCMD_CONFIG_DIR=$all_config "$voxcmd" integrations examples | sed -n 's/^  //p' | grep -v -e '<' -e 'click mode' -e 'stop clicking' | sort -u)
 wait
 stray=$(cat "$strays_dir"/* 2>/dev/null)
 check "no other example routes to click mode ($stray)" "[[ -z '$stray' ]]"
 
-# The pick_box, session_rewrite and exit-phrase checks below read the bash click.sh, which stays until the bash loader goes.
-# click.toml's counterparts are cargo tests: click/pick.rs (a box from an id), session/mode.rs (the rewrite and the
-# exit and target phrases) and tests/toml_mode.rs (the whole mode run); this one only checks the TOML declares the picker.
-if [ -n "$rust_matcher" ]; then
-  check "click.toml numbers several matches on screen" "grep -q '^picker = \"hints\"' '$package/.config/voxcmd/integrations/click.toml'"
-fi
-session_rewrite_of() (
-  # shellcheck disable=SC2034 # read by click.sh
-  voxcmd_share_dir=$share_dir
-  # shellcheck disable=SC1091
-  source "$package/.config/voxcmd/integrations.d/click.sh"
-  session_rewrite "$1"
-)
-check "a bare target becomes a click" "[[ \$(session_rewrite_of 'sign in') == 'click sign in' ]]"
-check "a click phrase is routed as spoken" "[[ \$(session_rewrite_of 'right click settings') == 'right click settings' && \$(session_rewrite_of 'double click on readme') == 'double click on readme' ]]"
-check "a bare click names no target" "[[ -z \$(session_rewrite_of 'right click') && -z \$(session_rewrite_of click) ]]"
-check "the entry phrases are not read as targets" "[[ \$(session_rewrite_of 'clicking mode') == 'clicking mode' && \$(session_rewrite_of 'click mode') == 'click mode' ]]"
-
-# As voxcmd's session_turn matches them, after its own "done", "I'm done" and "that's all". Bare "exit" and "quit" are here
-# because only "cortana exit" reaches this regex (default exits are off); run-sessions covers them bare, as targets.
-click_mode_exits() (
-  # shellcheck disable=SC2034 # read by click.sh
-  voxcmd_share_dir=$share_dir
-  # shellcheck disable=SC1091
-  source "$package/.config/voxcmd/integrations.d/click.sh"
-  # shellcheck disable=SC2154 # set by click.sh
-  [[ "$1" =~ ^($session_exit_phrases)$ ]]
-)
-for phrase in "stop clicking" "exit click mode" "done clicking" "im done clicking" "done with click mode" "okay exit click mode" \
-  "quit click mode" "stop click mode" "exit clicking mode" "leave the click mode" "end clicking" "close click mode" "turn off click mode" \
-  "click mode off" "exit" "quit" "exit click mode please" "alright please finish clicking now" "now exit click mode" "stop clicking okay"; do
-  check "'$phrase' ends click mode" "click_mode_exits '$phrase'"
-done
-for phrase in stop close cancel "exit settings" "stop recording" "turn off" "click mode"; do
-  check "'$phrase' stays a click mode target" "! click_mode_exits '$phrase'"
-done
+# click.toml's pick box, rewrite and exit phrases are cargo tests: click/pick.rs (a box from an id), session/mode.rs (the
+# rewrite and the exit and target phrases) and tests/toml_mode.rs (the whole mode run); this only checks the TOML
+# declares the picker.
+check "click.toml numbers several matches on screen" "grep -q '^picker = \"hints\"' '$package/.config/voxcmd/integrations/click.toml'"
 
 # ---- Timers and reminders ----------------------------------------------------------------------------------------
 
@@ -1532,167 +1369,161 @@ section "timers by voice"
 # SANDBOX_TIMERS_JSON stands in for the running timers. Durations are relative to the clock the action reads, so a run
 # compares the logged --on-calendar with now plus the spoken length, loosely.
 timers_config=$root/timers-config
-mkdir -p "$timers_config/integrations.d" "$timers_config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/timers.sh" "$timers_config/integrations.d/"
+mkdir -p "$timers_config/replacements.d"
 copy_shipped_integrations "$timers_config" timers
-[ -z "$rust_matcher" ] || check "explain names timers.toml" "VOXCMD_CONFIG_DIR='$timers_config' '$routed' explain 'list my timers' 2>&1 | grep -q 'Timers (timers\\.toml)'"
-if [ -n "$rust_matcher" ]; then
-  timers_toast() { grep '^notify-send ' "$log" | tail -n1; }
-  timers_run() {
-    : >"$log"
-    VOXCMD_CONFIG_DIR=$timers_config "$routed" run "$1" >/dev/null 2>&1
-  }
-  # The seconds from now at which the last systemd-run call is due, and its description.
-  timers_scheduled_in() {
-    local when
-    when=$(grep '^systemd-run ' "$log" | tail -n1 | sed -E 's/.*--on-calendar=([0-9-]+ [0-9:]+) .*/\1/')
-    echo $(($(date -d "$when" +%s) - $(date +%s)))
-  }
-  timers_near() { [ "$1" -ge "$(($2 - 5))" ] && [ "$1" -le "$(($2 + 5))" ]; }
-  timers_systemd_run_count() { grep -c '^systemd-run ' "$log" || true; }
-
-  # Start by duration, with and without a label.
-  timers_run "set a timer for 5 minutes"
-  check "a timer for a duration schedules a voxcmd-timer- unit about that far ahead" "grep -q '^systemd-run --user --quiet --collect --unit=voxcmd-timer-[0-9]* --description=Timer: 5 minutes ' '$log' && timers_near \$(timers_scheduled_in) 300"
-  check "its unit rings through this voxcmd's timer ring, by absolute path" "grep '^systemd-run ' '$log' | tail -n1 | grep -qF -- ' -- $routed timer ring Timer '"
-  check "its reply says the timer is set and when it rings" "timers_toast | grep -Eq 'Timer set: 5 minutes, rings '"
-  timers_run "set a timer for 5 minutes for the pasta"
-  check "a label after the duration is kept, capitalised" "grep -q -- '--description=Timer: Pasta, 5 minutes ' '$log' && timers_near \$(timers_scheduled_in) 300"
-  timers_run "start a timer for twenty five minutes to call the bank"
-  check "a spoken number and a to-label split like a digit one" "grep -q -- '--description=Timer: To call the bank, 25 minutes ' '$log'"
-  timers_run "set a timer for half an hour for the oven"
-  check "half an hour with a label is 30 minutes" "grep -q -- '--description=Timer: Oven, 30 minutes ' '$log' && timers_near \$(timers_scheduled_in) 1800"
-  timers_run "set a timer for an hour and a half"
-  check "an hour and a half is 90 minutes" "timers_near \$(timers_scheduled_in) 5400"
-  timers_run "set a timer for 1 hour 30 minutes tea"
-  check "digits split from the label like words" "grep -q -- '--description=Timer: Tea, ' '$log' && timers_near \$(timers_scheduled_in) 5400"
-
-  # Start by clock: VOXCMD_NOW pins the parser, but the action compares with the real clock, so a future clock reads
-  # the real time and a past one pins an old date.
-  now_epoch=$(date +%s)
+check "explain names timers.toml" "VOXCMD_CONFIG_DIR='$timers_config' '$voxcmd' explain 'list my timers' 2>&1 | grep -q 'Timers (timers\\.toml)'"
+timers_toast() { grep '^notify-send ' "$log" | tail -n1; }
+timers_run() {
   : >"$log"
-  VOXCMD_NOW=$now_epoch VOXCMD_CONFIG_DIR=$timers_config "$routed" run "set a timer for tomorrow at 9 am" >/dev/null 2>&1
-  check "a timer for a clock time schedules a timer with the time of day as its description" "grep -Eq -- '--description=Timer: 9:00am ' '$log' && [[ \$(timers_scheduled_in) -gt 0 ]]"
+  VOXCMD_CONFIG_DIR=$timers_config "$voxcmd" run "$1" >/dev/null 2>&1
+}
+# The seconds from now at which the last systemd-run call is due, and its description.
+timers_scheduled_in() {
+  local when
+  when=$(grep '^systemd-run ' "$log" | tail -n1 | sed -E 's/.*--on-calendar=([0-9-]+ [0-9:]+) .*/\1/')
+  echo $(($(date -d "$when" +%s) - $(date +%s)))
+}
+timers_near() { [ "$1" -ge "$(($2 - 5))" ] && [ "$1" -le "$(($2 + 5))" ]; }
+timers_systemd_run_count() { grep -c '^systemd-run ' "$log" || true; }
+
+# Start by duration, with and without a label.
+timers_run "set a timer for 5 minutes"
+check "a timer for a duration schedules a voxcmd-timer- unit about that far ahead" "grep -q '^systemd-run --user --quiet --collect --unit=voxcmd-timer-[0-9]* --description=Timer: 5 minutes ' '$log' && timers_near \$(timers_scheduled_in) 300"
+check "its unit rings through this voxcmd's timer ring, by absolute path" "grep '^systemd-run ' '$log' | tail -n1 | grep -qF -- ' -- $voxcmd timer ring Timer '"
+check "its reply says the timer is set and when it rings" "timers_toast | grep -Eq 'Timer set: 5 minutes, rings '"
+timers_run "set a timer for 5 minutes for the pasta"
+check "a label after the duration is kept, capitalised" "grep -q -- '--description=Timer: Pasta, 5 minutes ' '$log' && timers_near \$(timers_scheduled_in) 300"
+timers_run "start a timer for twenty five minutes to call the bank"
+check "a spoken number and a to-label split like a digit one" "grep -q -- '--description=Timer: To call the bank, 25 minutes ' '$log'"
+timers_run "set a timer for half an hour for the oven"
+check "half an hour with a label is 30 minutes" "grep -q -- '--description=Timer: Oven, 30 minutes ' '$log' && timers_near \$(timers_scheduled_in) 1800"
+timers_run "set a timer for an hour and a half"
+check "an hour and a half is 90 minutes" "timers_near \$(timers_scheduled_in) 5400"
+timers_run "set a timer for 1 hour 30 minutes tea"
+check "digits split from the label like words" "grep -q -- '--description=Timer: Tea, ' '$log' && timers_near \$(timers_scheduled_in) 5400"
+
+# Start by clock: VOXCMD_NOW pins the parser, but the action compares with the real clock, so a future clock reads
+# the real time and a past one pins an old date.
+now_epoch=$(date +%s)
+: >"$log"
+VOXCMD_NOW=$now_epoch VOXCMD_CONFIG_DIR=$timers_config "$voxcmd" run "set a timer for tomorrow at 9 am" >/dev/null 2>&1
+check "a timer for a clock time schedules a timer with the time of day as its description" "grep -Eq -- '--description=Timer: 9:00am ' '$log' && [[ \$(timers_scheduled_in) -gt 0 ]]"
+: >"$log"
+VOXCMD_NOW=1577880000 VOXCMD_CONFIG_DIR=$timers_config "$voxcmd" run "set a timer for tomorrow at 9 am" >/dev/null 2>&1
+check "a clock time already past schedules nothing and says so" "[[ \$(timers_systemd_run_count) == 0 ]] && timers_toast | grep -q 'is in the past'"
+
+# Reminders in the four orderings.
+timers_run "remind me in 20 minutes to call the bank"
+check "remind: time, then to and the text" "grep -q -- '--description=Reminder: Call the bank ' '$log' && timers_near \$(timers_scheduled_in) 1200"
+timers_run "remind me to stretch in 10 minutes"
+check "remind: text, then the time" "grep -q -- '--description=Reminder: Stretch ' '$log' && timers_near \$(timers_scheduled_in) 600"
+timers_run "remind me about the oven in 5 minutes"
+check "remind: about the text, then the time" "grep -q -- '--description=Reminder: The oven ' '$log' && timers_near \$(timers_scheduled_in) 300"
+: >"$log"
+VOXCMD_NOW=$now_epoch VOXCMD_CONFIG_DIR=$timers_config "$voxcmd" run "remind me tomorrow at 9 am to stretch" >/dev/null 2>&1
+check "remind: a clock time, then to and the text" "grep -q -- '--description=Reminder: Stretch ' '$log' && [[ \$(timers_scheduled_in) -gt 0 ]]"
+timers_run "remind me to stretch"
+check "a reminder with no time in it schedules nothing and says so" "[[ \$(timers_systemd_run_count) == 0 ]] && timers_toast | grep -q 'no time in'"
+timers_run "remind me in 5 minutes"
+check "a reminder with only a time rings with the default text" "grep -q -- '--description=Reminder: Time is up ' '$log'"
+
+# A target that names no time is left to others.
+check "a timer for a name that is no time offers no candidate, so the phrase stays unmatched" "VOXCMD_CONFIG_DIR='$timers_config' '$voxcmd' explain 'start a timer for 5 minutes' 2>&1 | grep -q 'Timers (timers\\.toml) action=timer' && VOXCMD_CONFIG_DIR='$timers_config' '$voxcmd' explain 'start a timer for acme' 2>&1 | grep -q 'result:      no match'"
+
+# What is running.
+timers_due=$(($(date +%s) + 600))
+timers_due_us=$((timers_due * 1000000))
+timers_two='[{"unit":"voxcmd-timer-1000.timer","next":'$timers_due_us'},{"unit":"voxcmd-timer-2000.timer","next":'$((timers_due_us + 60000000))'}]'
+timers_two_units='[{"unit":"voxcmd-timer-1000.timer","description":"Timer: Pasta, 10 minutes"},{"unit":"voxcmd-timer-2000.timer","description":"Reminder: Call the bank"}]'
+timers_one='[{"unit":"voxcmd-timer-1000.timer","next":'$timers_due_us'}]'
+timers_one_units='[{"unit":"voxcmd-timer-1000.timer","description":"Timer: Pasta, 10 minutes"}]'
+# The sandbox answers list-timers and list-units from one variable, so each fixture holds both: every row carries the
+# due time list-timers is read for and the description list-units is read for.
+timers_both() { jq -c -n --argjson due "$1" --argjson units "$2" '[$due, $units] | transpose | map(.[0] + .[1])'; }
+timers_state_two=$(timers_both "$timers_two" "$timers_two_units")
+timers_state_one=$(timers_both "$timers_one" "$timers_one_units")
+timers_run_with() {
   : >"$log"
-  VOXCMD_NOW=1577880000 VOXCMD_CONFIG_DIR=$timers_config "$routed" run "set a timer for tomorrow at 9 am" >/dev/null 2>&1
-  check "a clock time already past schedules nothing and says so" "[[ \$(timers_systemd_run_count) == 0 ]] && timers_toast | grep -q 'is in the past'"
+  SANDBOX_TIMERS_JSON=$1 VOXCMD_CONFIG_DIR=$timers_config "$voxcmd" run "$2" >/dev/null 2>&1
+}
+timers_run_with '[]' "list my timers"
+check "list with nothing running says so" "timers_toast | grep -q 'No timers or reminders\$'"
+timers_run_with "$timers_state_two" "list my timers"
+check "list reads every running timer on one line" "timers_toast | grep -q 'Timer: Pasta, 10 minutes, rings .*; Reminder .*: Call the bank'"
+timers_run_with '[]' "cancel all timers"
+check "cancel all with nothing running says so and stops nothing" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
+timers_run_with "$timers_state_two" "cancel all timers"
+check "cancel all stops every running unit in one call" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer voxcmd-timer-2000.timer' '$log' && timers_toast | grep -q 'Cancelled 2 timers'"
 
-  # Reminders in the four orderings.
-  timers_run "remind me in 20 minutes to call the bank"
-  check "remind: time, then to and the text" "grep -q -- '--description=Reminder: Call the bank ' '$log' && timers_near \$(timers_scheduled_in) 1200"
-  timers_run "remind me to stretch in 10 minutes"
-  check "remind: text, then the time" "grep -q -- '--description=Reminder: Stretch ' '$log' && timers_near \$(timers_scheduled_in) 600"
-  timers_run "remind me about the oven in 5 minutes"
-  check "remind: about the text, then the time" "grep -q -- '--description=Reminder: The oven ' '$log' && timers_near \$(timers_scheduled_in) 300"
-  : >"$log"
-  VOXCMD_NOW=$now_epoch VOXCMD_CONFIG_DIR=$timers_config "$routed" run "remind me tomorrow at 9 am to stretch" >/dev/null 2>&1
-  check "remind: a clock time, then to and the text" "grep -q -- '--description=Reminder: Stretch ' '$log' && [[ \$(timers_scheduled_in) -gt 0 ]]"
-  timers_run "remind me to stretch"
-  check "a reminder with no time in it schedules nothing and says so" "[[ \$(timers_systemd_run_count) == 0 ]] && timers_toast | grep -q 'no time in'"
-  timers_run "remind me in 5 minutes"
-  check "a reminder with only a time rings with the default text" "grep -q -- '--description=Reminder: Time is up ' '$log'"
-
-  # A target that names no time is left to others.
-  check "a timer for a name that is no time offers no candidate, so the phrase stays unmatched" "VOXCMD_CONFIG_DIR='$timers_config' '$routed' explain 'start a timer for 5 minutes' 2>&1 | grep -q 'Timers (timers\\.toml) action=timer' && VOXCMD_CONFIG_DIR='$timers_config' '$routed' explain 'start a timer for acme' 2>&1 | grep -q 'result:      no match'"
-
-  # What is running.
-  timers_due=$(($(date +%s) + 600))
-  timers_due_us=$((timers_due * 1000000))
-  timers_two='[{"unit":"voxcmd-timer-1000.timer","next":'$timers_due_us'},{"unit":"voxcmd-timer-2000.timer","next":'$((timers_due_us + 60000000))'}]'
-  timers_two_units='[{"unit":"voxcmd-timer-1000.timer","description":"Timer: Pasta, 10 minutes"},{"unit":"voxcmd-timer-2000.timer","description":"Reminder: Call the bank"}]'
-  timers_one='[{"unit":"voxcmd-timer-1000.timer","next":'$timers_due_us'}]'
-  timers_one_units='[{"unit":"voxcmd-timer-1000.timer","description":"Timer: Pasta, 10 minutes"}]'
-  # The sandbox answers list-timers and list-units from one variable, so each fixture holds both: every row carries the
-  # due time list-timers is read for and the description list-units is read for.
-  timers_both() { jq -c -n --argjson due "$1" --argjson units "$2" '[$due, $units] | transpose | map(.[0] + .[1])'; }
-  timers_state_two=$(timers_both "$timers_two" "$timers_two_units")
-  timers_state_one=$(timers_both "$timers_one" "$timers_one_units")
-  timers_run_with() {
-    : >"$log"
-    SANDBOX_TIMERS_JSON=$1 VOXCMD_CONFIG_DIR=$timers_config "$routed" run "$2" >/dev/null 2>&1
-  }
-  timers_run_with '[]' "list my timers"
-  check "list with nothing running says so" "timers_toast | grep -q 'No timers or reminders\$'"
-  timers_run_with "$timers_state_two" "list my timers"
-  check "list reads every running timer on one line" "timers_toast | grep -q 'Timer: Pasta, 10 minutes, rings .*; Reminder .*: Call the bank'"
-  timers_run_with '[]' "cancel all timers"
-  check "cancel all with nothing running says so and stops nothing" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
-  timers_run_with "$timers_state_two" "cancel all timers"
-  check "cancel all stops every running unit in one call" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer voxcmd-timer-2000.timer' '$log' && timers_toast | grep -q 'Cancelled 2 timers'"
-
-  # Cancel one.
-  timers_run_with '[]' "cancel the timer"
-  check "a bare cancel with nothing running says so and stops nothing" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
-  check "a bare cancel with nothing running titles the toast with the spoken target" "timers_toast | grep -q 'Timers: cancel timer: No timers'"
-  timers_run_with '[]' "cancel the reminder"
-  check "a bare reminder cancel with nothing running titles the toast with reminder" "timers_toast | grep -q 'Timers: cancel reminder: No timers'"
-  timers_run_with '[]' "cancel the pasta timer"
-  check "a named cancel with nothing running says so too" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
-  check "a named cancel with nothing running titles the toast with the spoken target" "timers_toast | grep -q 'Timers: cancel pasta: No timers'"
-  timers_run_with "$timers_state_one" "cancel the timer"
-  check "one running timer is cancelled by a bare cancel" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer' '$log' && timers_toast | grep -q 'Cancelled'"
-  timers_run_with "$timers_state_one" "cancel the pasta timer"
-  check "one running timer is cancelled by its label" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer' '$log'"
-  out=$(SANDBOX_TIMERS_JSON=$timers_state_two VOXCMD_CONFIG_DIR=$timers_config "$routed" explain "cancel the timer" 2>&1)
-  check "a bare cancel with two running timers offers both to pick from" "[[ \$(grep -c '^option' <<<\"\$out\") == 2 ]]"
-  timers_run_with "$timers_state_two" "cancel the bank reminder"
-  check "a named cancel with two running picks the one the words name" "grep -Fxq 'systemctl --user stop voxcmd-timer-2000.timer' '$log' && ! grep -q 'voxcmd-timer-1000' '$log'"
-  timers_run_with "$timers_state_one" "cancel the laundry timer"
-  check "a name no running timer has reports no match and stops nothing" "timers_toast | grep -q 'No timer or reminder matches \"laundry\"' && ! grep -q '^systemctl --user stop' '$log'"
-  # cancel_timer is the action's own guard, run through the hook library as an action does.
-  timers_guard() (
-    VOXCMD_SHARE_DIR=$share_dir VOXCMD_SELF=$routed
-    # shellcheck disable=SC1091
-    source "$package/.config/voxcmd/integrations/timers.sh"
-    cancel_timer "$1"
-  )
-  check "a unit that is not a voxcmd timer is refused" "[[ \$(timers_guard other.timer 2>&1) == 'not a voxcmd timer: other.timer' ]] && ! timers_guard other.timer >/dev/null 2>&1"
-fi
+# Cancel one.
+timers_run_with '[]' "cancel the timer"
+check "a bare cancel with nothing running says so and stops nothing" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
+check "a bare cancel with nothing running titles the toast with the spoken target" "timers_toast | grep -q 'Timers: cancel timer: No timers'"
+timers_run_with '[]' "cancel the reminder"
+check "a bare reminder cancel with nothing running titles the toast with reminder" "timers_toast | grep -q 'Timers: cancel reminder: No timers'"
+timers_run_with '[]' "cancel the pasta timer"
+check "a named cancel with nothing running says so too" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
+check "a named cancel with nothing running titles the toast with the spoken target" "timers_toast | grep -q 'Timers: cancel pasta: No timers'"
+timers_run_with "$timers_state_one" "cancel the timer"
+check "one running timer is cancelled by a bare cancel" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer' '$log' && timers_toast | grep -q 'Cancelled'"
+timers_run_with "$timers_state_one" "cancel the pasta timer"
+check "one running timer is cancelled by its label" "grep -Fxq 'systemctl --user stop voxcmd-timer-1000.timer' '$log'"
+out=$(SANDBOX_TIMERS_JSON=$timers_state_two VOXCMD_CONFIG_DIR=$timers_config "$voxcmd" explain "cancel the timer" 2>&1)
+check "a bare cancel with two running timers offers both to pick from" "[[ \$(grep -c '^option' <<<\"\$out\") == 2 ]]"
+timers_run_with "$timers_state_two" "cancel the bank reminder"
+check "a named cancel with two running picks the one the words name" "grep -Fxq 'systemctl --user stop voxcmd-timer-2000.timer' '$log' && ! grep -q 'voxcmd-timer-1000' '$log'"
+timers_run_with "$timers_state_one" "cancel the laundry timer"
+check "a name no running timer has reports no match and stops nothing" "timers_toast | grep -q 'No timer or reminder matches \"laundry\"' && ! grep -q '^systemctl --user stop' '$log'"
+# cancel_timer is the action's own guard, run through the hook library as an action does.
+timers_guard() (
+  VOXCMD_SHARE_DIR=$share_dir VOXCMD_SELF=$voxcmd
+  # shellcheck disable=SC1091
+  source "$package/.config/voxcmd/integrations/timers.sh"
+  cancel_timer "$1"
+)
+check "a unit that is not a voxcmd timer is refused" "[[ \$(timers_guard other.timer 2>&1) == 'not a voxcmd timer: other.timer' ]] && ! timers_guard other.timer >/dev/null 2>&1"
 
 # ---- Answers: time zones, math and the weather popup --------------------------------------------------------------
 
 section "answers by voice"
 answers_config=$root/answers-config
-mkdir -p "$answers_config/integrations.d" "$answers_config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/answers.sh" "$answers_config/integrations.d/"
+mkdir -p "$answers_config/replacements.d"
 copy_shipped_integrations "$answers_config" answers
-[ -z "$rust_matcher" ] || check "explain names answers.toml" "VOXCMD_CONFIG_DIR='$answers_config' '$routed' explain 'what time is it' 2>&1 | grep -q 'Answers (answers\\.toml)'"
-if [ -n "$rust_matcher" ]; then
-  answers_toast() { grep '^notify-send ' "$log" | tail -n1; }
-  answers_run() {
-    : >"$log"
-    VOXCMD_CONFIG_DIR=$answers_config "$routed" run "$1" >/dev/null 2>&1
-  }
-  answers_explain() { VOXCMD_CONFIG_DIR=$answers_config "$routed" explain "$1" 2>&1; }
+check "explain names answers.toml" "VOXCMD_CONFIG_DIR='$answers_config' '$voxcmd' explain 'what time is it' 2>&1 | grep -q 'Answers (answers\\.toml)'"
+answers_toast() { grep '^notify-send ' "$log" | tail -n1; }
+answers_run() {
+  : >"$log"
+  VOXCMD_CONFIG_DIR=$answers_config "$voxcmd" run "$1" >/dev/null 2>&1
+}
+answers_explain() { VOXCMD_CONFIG_DIR=$answers_config "$voxcmd" explain "$1" 2>&1; }
 
-  # A name that ends in a tail word keeps the bare name: the verbs' tail takes "thanks", the lazy target stops before it.
-  for phrase in "what time is it in tokyo thanks" "how far ahead is tokyo please" "what is the time difference with tokyo thank you"; do
-    out=$(answers_explain "$phrase")
-    check "'$phrase' captures the bare zone name" "grep -q 'Answers (answers\\.toml) action=zone_' <<<\"\$out\" && grep -q \"target='tokyo'\" <<<\"\$out\""
-  done
-  answers_run "what time is it in tokyo thanks"
-  check "a zone with a trailing tail word is still found" "answers_toast | grep -q 'in Tokyo' && ! answers_toast | grep -q 'No time zone'"
-  answers_run "how far ahead is tokyo please"
-  check "its offset question is answered too" "answers_toast | grep -Eq 'Tokyo is .* (ahead|behind)|Tokyo is on the same time'"
-  answers_run "what time is it in nowhereville"
-  check "an unknown zone says so" "answers_toast | grep -q 'No time zone called Nowhereville'"
-  answers_run "what is 1 pm eastern in pacific thanks"
-  check "a conversion reads the raw transcript and drops its tail word" "answers_toast | grep -Eq 'Eastern.* is .*Pacific'"
-  out=$(answers_explain "what is 1 pm eastern in pacific")
-  check "a conversion routes to zone_convert, not calculate" "grep -q 'Answers (answers\\.toml) action=zone_convert' <<<\"\$out\""
+# A name that ends in a tail word keeps the bare name: the verbs' tail takes "thanks", the lazy target stops before it.
+for phrase in "what time is it in tokyo thanks" "how far ahead is tokyo please" "what is the time difference with tokyo thank you"; do
+  out=$(answers_explain "$phrase")
+  check "'$phrase' captures the bare zone name" "grep -q 'Answers (answers\\.toml) action=zone_' <<<\"\$out\" && grep -q \"target='tokyo'\" <<<\"\$out\""
+done
+answers_run "what time is it in tokyo thanks"
+check "a zone with a trailing tail word is still found" "answers_toast | grep -q 'in Tokyo' && ! answers_toast | grep -q 'No time zone'"
+answers_run "how far ahead is tokyo please"
+check "its offset question is answered too" "answers_toast | grep -Eq 'Tokyo is .* (ahead|behind)|Tokyo is on the same time'"
+answers_run "what time is it in nowhereville"
+check "an unknown zone says so" "answers_toast | grep -q 'No time zone called Nowhereville'"
+answers_run "what is 1 pm eastern in pacific thanks"
+check "a conversion reads the raw transcript and drops its tail word" "answers_toast | grep -Eq 'Eastern.* is .*Pacific'"
+out=$(answers_explain "what is 1 pm eastern in pacific")
+check "a conversion routes to zone_convert, not calculate" "grep -q 'Answers (answers\\.toml) action=zone_convert' <<<\"\$out\""
 
-  # Math reads the raw transcript, which keeps "%" and decimal points.
-  answers_run "what's 15 percent of 80 please"
-  check "a spoken percentage is calculated and its tail word dropped" "answers_toast | grep -q '15% of 80 = 12'"
-  answers_run "what's 2.5% of 40"
-  check "a symbol and a decimal point survive to qalc" "answers_toast | grep -q '2.5% of 40 = 1'"
-  answers_run "convert 5 miles to kilometers"
-  check "a unit conversion is answered" "answers_toast | grep -q 'kilometer\|km'"
+# Math reads the raw transcript, which keeps "%" and decimal points.
+answers_run "what's 15 percent of 80 please"
+check "a spoken percentage is calculated and its tail word dropped" "answers_toast | grep -q '15% of 80 = 12'"
+answers_run "what's 2.5% of 40"
+check "a symbol and a decimal point survive to qalc" "answers_toast | grep -q '2.5% of 40 = 1'"
+answers_run "convert 5 miles to kilometers"
+check "a unit conversion is answered" "answers_toast | grep -q 'kilometer\|km'"
 
-  # The weather popup is the answer: no toast, and the popup opens.
-  answers_run "what's the weather"
-  check "the weather opens its popup and sends no toast" "grep -q '^qs-ipc call popup open weather' '$log' && ! grep -q '^notify-send ' '$log'"
-fi
+# The weather popup is the answer: no toast, and the popup opens.
+answers_run "what's the weather"
+check "the weather opens its popup and sends no toast" "grep -q '^qs-ipc call popup open weather' '$log' && ! grep -q '^notify-send ' '$log'"
 
 # ---- Firefox: firefox-tab and firefox.sh, on a made-up profile -----------------------------------------------------
 
@@ -1930,34 +1761,30 @@ check "and candidates keep the old id form" "[[ \$(jq -r '[.[] | select(.match_t
 rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
 
 firefox_config=$root/firefox-config
-mkdir -p "$firefox_config/integrations.d" "$firefox_config/replacements.d"
-cp "$package"/.config/voxcmd/integrations.d/{apps,firefox,firefox-sites,keybinds}.sh "$firefox_config/integrations.d/"
+mkdir -p "$firefox_config/replacements.d"
 copy_shipped_integrations "$firefox_config" apps firefox firefox-sites keybinds
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to inbox mailbox" 2>&1)
 check "a tab shown in a second window is one tab, not also that window" "[[ \$(grep -c '^option' <<<\"\$out\") == 1 ]] && grep -q 'action=focus_tab' <<<\"\$out\""
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to private notes" 2>&1)
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to private notes" 2>&1)
 check "a private window is found by its title" "grep -q \"action=focus_tab .* id='0x3003 Private notes'\" <<<\"\$out\""
-rm -f "$firefox_config/integrations.d/firefox.sh" "$firefox_config/integrations/firefox.toml" "$firefox_config/integrations/firefox.sh"
-out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
+rm -f "$firefox_config/integrations/firefox.toml" "$firefox_config/integrations/firefox.sh"
+out=$(VOXCMD_CONFIG_DIR=$firefox_config "$voxcmd" explain "go to inbox mailbox" 2>&1)
 check "without firefox.toml, Apps still focuses the window by its title and Firefox no longer answers" "grep -Eq 'Apps \($apps_file\) action=focus' <<<\"\$out\" && ! grep -q 'Firefox (firefox\.toml' <<<\"\$out\""
-if [ -n "$rust_matcher" ]; then
-  # The hook yields what Apps, Keybinds, Sessions and Keeptabs own; it carries its own copy of Apps' checks. This
-  # section's binds are click binds only, so the keybind checks bring their own.
-  firefox_binds='[{"description": "Go to Workspace 2", "has_description": true, "submap": "", "key": "2"}]'
-  firefox_yields() { SANDBOX_BINDS_JSON=$firefox_binds VOXCMD_SELF=$routed bash -c '. "$1"; "$2" "$3"' _ "$package/.config/voxcmd/integrations/firefox.sh" "$@"; }
-  check "firefox yields a described keybind" "firefox_yields spoken_as_keybind 'workspace 2'"
-  check "firefox yields a keybind said with a plural and a digit word" "firefox_yields spoken_as_keybind 'workspaces two'"
-  # Both only mean something while the binds above are readable, which the positive checks just showed.
-  check "firefox does not yield a tab title that is no keybind" "firefox_yields spoken_as_keybind 'workspace 2' && ! firefox_yields spoken_as_keybind 'weekly sync notes'"
-  check "firefox yields a session or an agent" "firefox_yields names_session_or_agent 'work session' && firefox_yields names_session_or_agent 'the beta agent'"
-  check "firefox does not yield a plain tab" "! firefox_yields names_session_or_agent 'weekly sync notes'"
-fi
+# The hook yields what Apps, Keybinds, Sessions and Keeptabs own; it carries its own copy of Apps' checks. This
+# section's binds are click binds only, so the keybind checks bring their own.
+firefox_binds='[{"description": "Go to Workspace 2", "has_description": true, "submap": "", "key": "2"}]'
+firefox_yields() { SANDBOX_BINDS_JSON=$firefox_binds VOXCMD_SELF=$voxcmd bash -c '. "$1"; "$2" "$3"' _ "$package/.config/voxcmd/integrations/firefox.sh" "$@"; }
+check "firefox yields a described keybind" "firefox_yields spoken_as_keybind 'workspace 2'"
+check "firefox yields a keybind said with a plural and a digit word" "firefox_yields spoken_as_keybind 'workspaces two'"
+# Both only mean something while the binds above are readable, which the positive checks just showed.
+check "firefox does not yield a tab title that is no keybind" "firefox_yields spoken_as_keybind 'workspace 2' && ! firefox_yields spoken_as_keybind 'weekly sync notes'"
+check "firefox yields a session or an agent" "firefox_yields names_session_or_agent 'work session' && firefox_yields names_session_or_agent 'the beta agent'"
+check "firefox does not yield a plain tab" "! firefox_yields names_session_or_agent 'weekly sync notes'"
 
 section "screenshot menu by voice"
 # Each phrase runs for real and must hand screenshot.sh the flag of the menu row it names.
 screenshot_config=$root/screenshot-config
-mkdir -p "$screenshot_config/integrations.d" "$screenshot_config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/screenshot.sh" "$screenshot_config/integrations.d/"
+mkdir -p "$screenshot_config/replacements.d"
 copy_shipped_integrations "$screenshot_config" screenshot
 screenshot_flags=(
   "screenshot region|--region"
@@ -1979,8 +1806,7 @@ done
 section "keys by voice"
 # Each phrase runs for real and must press the keys it names, as many times as it counts, capped at 20.
 keys_config=$root/keys-config
-mkdir -p "$keys_config/integrations.d" "$keys_config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/keys.sh" "$keys_config/integrations.d/"
+mkdir -p "$keys_config/replacements.d"
 copy_shipped_integrations "$keys_config" keys
 keys_pressed=(
   "press enter|wtype -k Return"
@@ -2047,8 +1873,7 @@ section "devices by voice"
 # The volume, mute and default-device actions run for real against the wpctl and bluetoothctl stubs, which log each
 # call. Firefox has two streams, so one phrase must reach both; mpv has one.
 devices_config=$root/devices-config
-mkdir -p "$devices_config/integrations.d" "$devices_config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/"{devices,media,system}.sh "$devices_config/integrations.d/"
+mkdir -p "$devices_config/replacements.d"
 copy_shipped_integrations "$devices_config" devices media system
 devices_pw_dump=$(jq -c '. + [
   {id: 70, type: "PipeWire:Interface:Node", info: {props: {"media.class": "Stream/Output/Audio", "application.name": "Firefox", "application.process.binary": "firefox"}}},
@@ -2073,10 +1898,10 @@ devices_calls=(
 )
 # One paired device whose name holds a tab, which its candidate row must carry as a space.
 export SANDBOX_BT_DEVICES=$'Device AA:BB:CC:DD:EE:FF Head\tphones'
-[ -z "$rust_matcher" ] || check "a tab in a device name reaches the candidate as a space" "SANDBOX_PW_DUMP_JSON='$devices_pw_dump' VOXCMD_CONFIG_DIR='$devices_config' '$routed' explain 'connect my headphones' 2>&1 | grep -q \"label='Head phones (Headphones)'\""
+check "a tab in a device name reaches the candidate as a space" "SANDBOX_PW_DUMP_JSON='$devices_pw_dump' VOXCMD_CONFIG_DIR='$devices_config' '$voxcmd' explain 'connect my headphones' 2>&1 | grep -q \"label='Head phones (Headphones)'\""
 for entry in "${devices_calls[@]}"; do
   : >"$log"
-  SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$routed" run "${entry%%|*}" >/dev/null 2>&1
+  SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$voxcmd" run "${entry%%|*}" >/dev/null 2>&1
   check "'${entry%%|*}' logs ${entry#*|}" "[[ \$(grep -E '^(wpctl set-|bluetoothctl (power|connect|disconnect))' '$log' | paste -sd'|' | sed 's/|/; /g') == '${entry#*|}' ]]"
 done
 # An app name that plays nothing and is no command leaves the phrase to Media and System: no per-app call, and their
@@ -2089,12 +1914,12 @@ devices_yields=(
 )
 for entry in "${devices_yields[@]}"; do
   : >"$log"
-  SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$routed" run "${entry%%|*}" >/dev/null 2>&1
+  SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$voxcmd" run "${entry%%|*}" >/dev/null 2>&1
   check "'${entry%%|*}' is left to Media or System: ${entry#*|}" "! grep -q '^wpctl set-' '$log' && grep -Fxq '${entry#*|}' '$log'"
 done
 # A command that plays nothing is reported, not silently unmatched: bash is on PATH but has no stream.
 : >"$log"
-SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$routed" run "mute bash" >/dev/null 2>&1
+SANDBOX_PW_DUMP_JSON=$devices_pw_dump VOXCMD_CONFIG_DIR=$devices_config "$voxcmd" run "mute bash" >/dev/null 2>&1
 check "an app that is not playing is reported" "grep -q 'bash (not playing)\|not playing anything' '$log' && ! grep -q '^wpctl set-' '$log'"
 unset SANDBOX_BT_DEVICES
 
@@ -2139,33 +1964,34 @@ section "near misses"
 # pick. The stub integration's verbs stand for any integration's: a target verb, a verb with no placeholder, one with a
 # digit slot and twelve verbs of the same words, for the cap.
 near_config=$root/config-near
-mkdir -p "$near_config/integrations.d" "$near_config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/apps.sh" "$package/.config/voxcmd/integrations.d/devices.sh" "$package/.config/voxcmd/integrations.d/sessions.sh" "$near_config/integrations.d/"
-copy_shipped_integrations "$near_config" apps sessions
+mkdir -p "$near_config/integrations" "$near_config/replacements.d"
+copy_shipped_integrations "$near_config" apps devices sessions
 near_actions=$root/near-actions.log
 {
   cat <<'STUB'
-name="Near"
-verbs=(
-  "raise raise the (blinds|shades) {target}"
-  "lock lock all doors"
-  "dim dim the lights"
-  "level set the level to {number}"
-  "zoom zoom {target}"
+name = "Near"
+verbs = [
+  { action = "raise", match = 'raise the (blinds|shades) {target}' },
+  { action = "lock", match = 'lock all doors' },
+  { action = "dim", match = 'dim the lights' },
+  { action = "level", match = 'set the level to {number}' },
+  { action = "zoom", match = 'zoom {target}' },
+  { action = "focus", match = '(go to|take me to|focus) tab {target}' },
 STUB
-  for number in $(seq 1 12); do printf '  "note%s note {target}"\n' "$number"; done
-  echo ')'
-  printf 'declare -A actions=([raise]=%s [lock]=%s [dim]=%s [level]=%s [zoom]=%s' "'echo \"raise \$id\" >> $near_actions'" "'echo lock >> $near_actions'" "'echo dim >> $near_actions'" "'echo level >> $near_actions'" "'echo zoom >> $near_actions'"
-  for number in $(seq 1 12); do printf ' [note%s]=%s' "$number" "'echo note$number >> $near_actions'"; done
-  echo ')'
-} >"$near_config/integrations.d/near.sh"
+  for number in $(seq 1 12); do printf '  { action = "note%s", match = '"'"'note {target}'"'"' },\n' "$number"; done
+  printf ']\n\n[actions]\n'
+  # shellcheck disable=SC2016 # TOML, expanded by the hook that runs it
+  printf 'raise = '"'"'echo "raise $VOXCMD_ID" >> %s'"'"'\n' "$near_actions"
+  for action in lock dim level zoom focus; do printf '%s = '"'"'echo %s >> %s'"'"'\n' "$action" "$action" "$near_actions"; done
+  for number in $(seq 1 12); do printf 'note%s = '"'"'echo note%s >> %s'"'"'\n' "$number" "$number" "$near_actions"; done
+} >"$near_config/integrations/near.toml"
 near_dry() { VOXCMD_CONFIG_DIR=$near_config "$voxcmd" explain "$1" 2>&1; }
 near_live() { VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" run "$1" >/dev/null 2>&1; }
 near_miss_log=$XDG_STATE_HOME/voxcmd/no-match.log
 rm -f "$near_miss_log"
 
 out=$(near_dry "kitchen blinds raise")
-check "a reordered phrase is a near miss, never a run" "grep -q 'result:      ask with the picker (1 options' <<<\"\$out\" && grep -q 'Near (near.sh) \[near miss\] action=raise target=.kitchen.' <<<\"\$out\""
+check "a reordered phrase is a near miss, never a run" "grep -q 'result:      ask with the picker (1 options' <<<\"\$out\" && grep -q 'Near (near.toml) \[near miss\] action=raise target=.kitchen.' <<<\"\$out\""
 check "it is a weak match, so a spoken one listens for the reply" "grep -q 'weak: true' <<<\"\$out\" && grep -q 'listens for the reply when spoken' <<<\"\$out\""
 out=$(near_dry "raise the blinds kitchen")
 check "a phrase that matches as spoken is no near miss" "grep -q 'result:      run' <<<\"\$out\" && ! grep -q 'near miss' <<<\"\$out\""
@@ -2187,15 +2013,14 @@ out=$(near_dry "big zoom view")
 check "a target split by a slot's word stays no match" "grep -q 'result:      no match' <<<\"\$out\""
 out=$(near_dry "view big zoom")
 check "a target in one run is a near miss" "grep -q 'action=zoom target=.view big.' <<<\"\$out\""
-out=$(printf 'focus\t(go to|take me to|focus) tab {target}\n' | NEAR_MISS_PHRASE="tab focus firefox take me to" awk -f "$package/.local/share/voxcmd/near-miss.awk")
-check "of two alternatives that fit, the one leaving fewer words wins" "[[ \$out == \$'focus\\tfocus firefox\\ttrue\\t3' ]]"
+out=$(near_dry "tab focus firefox take me to")
+check "of two alternatives that fit, the one leaving fewer words wins" "grep -q \"action=focus target='focus firefox'\" <<<\"\$out\""
 out=$(near_dry "open session notes")
 check "a target naming no candidate offers no 'not found' report" "grep -q 'result:      no match' <<<\"\$out\""
-# near_dry runs the bash voxcmd, which can only load apps.sh
 out=$(near_dry "firefox open")
-check "other integrations' verbs reorder too: Apps" "grep -Eq 'Apps \(apps\.sh\) \[near miss\] action=open target=.firefox.' <<<\"\$out\""
+check "other integrations' verbs reorder too: Apps" "grep -Eq 'Apps \(apps\.toml\) \[near miss\] action=open target=.firefox.' <<<\"\$out\""
 out=$(near_dry "bluetooth turn on")
-check "other integrations' verbs reorder too: Devices" "grep -q 'Devices (devices.sh) \[near miss\] action=bluetooth_on' <<<\"\$out\""
+check "other integrations' verbs reorder too: Devices" "grep -q 'Devices (devices.toml) \[near miss\] action=bluetooth_on' <<<\"\$out\""
 out=$(near_dry "force.. kitchen blinds raise")
 check "a phrase that no prefix forces is still a near miss" "grep -q 'near miss' <<<\"\$out\""
 
@@ -2225,14 +2050,7 @@ VOXCMD_CONFIG_DIR=$near_config "$voxcmd" explain "nothing matches this at all" >
 check "a dry run logs nothing" "[[ \$(wc -l <'$near_miss_log') == 2 ]]"
 out=$(VOXCMD_CONFIG_DIR=$near_config "$pkg_voxcmd" log misses 1)
 check "voxcmd misses prints the last lines" "grep -qP '\\tlock doors\$' <<<\"\$out\" && [[ \$(wc -l <<<\"\$out\") == 1 ]]"
-if [ "${VOXCMD_BIN:-bash}" = rs ]; then
-  # The bash voxcmd also answers `misses`, so show the Rust build did: `voxcmd` is the release binary and the logger in
-  # front of the bash voxcmd saw no call.
-  check "voxcmd is the Rust build" "[[ \$(readlink -f '$pkg_voxcmd') == '$package/target/release/voxcmd' ]]"
-  : >"$legacy_calls"
-  VOXCMD_LEGACY_BIN=$root/legacy-logger "$pkg_voxcmd" log misses 1 >/dev/null
-  check "and the bash voxcmd was not asked for the log" "[[ ! -s '$legacy_calls' ]]"
-fi
+check "voxcmd is the Rust build" "[[ \$(readlink -f '$pkg_voxcmd') == '$package/target/release/voxcmd' ]]"
 near_live $'lock doors\nquickly'
 check "a transcript over two lines is one record" "[[ \$(wc -l <'$near_miss_log') == 3 ]] && tail -n 1 '$near_miss_log' | grep -qP '\\tlock doors\$'"
 
@@ -2263,8 +2081,7 @@ check "the log keeps its last 1000 lines" "[[ \$(wc -l <'$near_miss_log') == 100
 
 section "sessions.sh launches by name"
 sessions_config=$root/sessions-config
-mkdir -p "$sessions_config/integrations.d" "$sessions_config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/sessions.sh" "$package/.config/voxcmd/integrations.d/tmux.sh" "$sessions_config/integrations.d/"
+mkdir -p "$sessions_config/replacements.d"
 copy_shipped_integrations "$sessions_config" sessions tmux
 export SANDBOX_LAUNCHER_SESSIONS=$'work\n🌐 Browsing'
 : >"$log"
@@ -2286,8 +2103,7 @@ section "keeptabs.toml jumps to agents"
 # in KEEPTABS_FOCUSED_PIDS, as keeptabs' own lib.sh decides which agents the user is looking at.
 keeptabs_config=$root/keeptabs-config
 keeptabs_stub=$root/keeptabs-stub
-mkdir -p "$keeptabs_config/integrations.d" "$keeptabs_config/replacements.d" "$keeptabs_stub/bin" "$keeptabs_stub/share/keeptabs"
-cp "$package/.config/voxcmd/integrations.d/keeptabs.sh" "$keeptabs_config/integrations.d/"
+mkdir -p "$keeptabs_config/replacements.d" "$keeptabs_stub/bin" "$keeptabs_stub/share/keeptabs"
 copy_shipped_integrations "$keeptabs_config" keeptabs
 # shellcheck disable=SC2016 # the stub expands its own variables
 printf '#!/bin/sh\ncase "$*" in\n*--json*) printf "%%s" "$SANDBOX_AGENTS_JSON" ;;\n*) echo "keeptabs-pick $*" >> "%s" ;;\nesac\n' "$log" >"$keeptabs_stub/bin/keeptabs-pick"
@@ -2300,7 +2116,7 @@ SANDBOX_AGENTS_JSON='[{"id":"w","title":"Wait","project":"pw","state":"waiting",
 export SANDBOX_AGENTS_JSON
 keeptabs_say() {
   : >"$log"
-  PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$routed" run "$1" >/dev/null 2>&1
+  PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "$1" >/dev/null 2>&1
 }
 keeptabs_say "go to the waiting agent"
 check "the waiting agent is focused and named in a toast" "grep -q '^keeptabs-pick --focus w\$' '$log' && grep -q '^notify-send .*Wait (pw)\$' '$log'"
@@ -2317,18 +2133,18 @@ check "next with none focused starts at the first agent" "grep -q '^keeptabs-pic
 keeptabs_say "go to the previous agent"
 check "previous with none focused starts at the last agent" "grep -q '^keeptabs-pick --focus j\$' '$log'"
 : >"$log"
-KEEPTABS_FOCUSED_PIDS="4" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$routed" run "next agent" >/dev/null 2>&1
+KEEPTABS_FOCUSED_PIDS="4" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "next agent" >/dev/null 2>&1
 check "next from the last agent wraps to the first" "grep -q '^keeptabs-pick --focus w\$' '$log'"
 : >"$log"
-KEEPTABS_FOCUSED_PIDS="2" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$routed" run "previous agent" >/dev/null 2>&1
+KEEPTABS_FOCUSED_PIDS="2" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "previous agent" >/dev/null 2>&1
 check "previous steps back one agent" "grep -q '^keeptabs-pick --focus w\$' '$log'"
 check "session_focused gets pid, socket, pane and nvim, empty fields kept in place" "[[ \$(sort -u '$keeptabs_stub/focus-args' | tr '\\n' ' ') == '1|sock|%1|nv 2||| 3||| 4||| ' ]]"
-check "a failing jump exits non-zero and a good one zero" "! PATH='$keeptabs_stub/bin:'\$PATH VOXCMD_CONFIG_DIR='$keeptabs_config' '$routed' run 'go to the beta agent' >/dev/null 2>&1 && PATH='$keeptabs_stub/bin:'\$PATH VOXCMD_CONFIG_DIR='$keeptabs_config' '$routed' run 'go to the waiting agent' >/dev/null 2>&1"
+check "a failing jump exits non-zero and a good one zero" "! PATH='$keeptabs_stub/bin:'\$PATH VOXCMD_CONFIG_DIR='$keeptabs_config' '$voxcmd' run 'go to the beta agent' >/dev/null 2>&1 && PATH='$keeptabs_stub/bin:'\$PATH VOXCMD_CONFIG_DIR='$keeptabs_config' '$voxcmd' run 'go to the waiting agent' >/dev/null 2>&1"
 : >"$log"
-KEEPTABS_FOCUSED_PIDS="2 3" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$routed" run "next agent" >/dev/null 2>&1
+KEEPTABS_FOCUSED_PIDS="2 3" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "next agent" >/dev/null 2>&1
 check "next steps over agents that share the focused pane" "grep -q '^keeptabs-pick --focus j\$' '$log'"
 : >"$log"
-KEEPTABS_FOCUSED_PIDS="1 2 3 4" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$routed" run "next agent" >/dev/null 2>&1
+KEEPTABS_FOCUSED_PIDS="1 2 3 4" PATH="$keeptabs_stub/bin:$PATH" VOXCMD_CONFIG_DIR=$keeptabs_config "$voxcmd" run "next agent" >/dev/null 2>&1
 check "with every agent focused it says so and moves nothing" "! grep -q -- '--focus' '$log' && grep -q '^notify-send .*no other agent to go to' '$log'"
 SANDBOX_AGENTS_JSON='[{"id":"i","title":"Idle","project":"pi","state":"idle","pid":3}]' keeptabs_say "go to the waiting agent"
 check "no waiting agent toasts that and focuses nothing" "! grep -q -- '--focus' '$log' && grep -q '^notify-send .*no agent is waiting' '$log'"
@@ -2344,71 +2160,68 @@ section "apps by voice"
 # Apps runs for real against the sandbox's hyprctl and notify-send stubs, over the fixture desktop: kitty is focused
 # (700x1000, workspace 1), Firefox is beside it, Slack is on workspace 2.
 apps_config=$root/apps-config
-mkdir -p "$apps_config/integrations.d" "$apps_config/replacements.d"
-cp "$package/.config/voxcmd/integrations.d/apps.sh" "$apps_config/integrations.d/"
+mkdir -p "$apps_config/replacements.d"
 copy_shipped_integrations "$apps_config" apps
-if [ -n "$rust_matcher" ]; then
-  apps_fixtures=$package/tests/fixtures
-  # The confirm card answers yes, and the asks it was given are logged.
-  apps_ask=$root/apps-ask
-  printf '#!/bin/sh\necho "ask $*" >> "%s"\n' "$log" >"$apps_ask"
-  chmod +x "$apps_ask"
-  apps_env=(XDG_DATA_HOME="$apps_fixtures" XDG_DATA_DIRS="$apps_fixtures" VOXCMD_CONFIG_DIR="$apps_config" VOXCMD_ASK_CMD="$apps_ask"
-    SANDBOX_CLIENTS_JSON="$(cat "$apps_fixtures/clients.json")"
-    SANDBOX_CLIENTS_AFTER_CLOSE_JSON="$(jq -c 'map(select(.address != "0x1002"))' "$apps_fixtures/clients.json")" SANDBOX_MONITORS_JSON="$(cat "$apps_fixtures/monitors.json")"
-    SANDBOX_ACTIVEWINDOW_JSON="$(jq -c '.[] | select(.focusHistoryID == 0)' "$apps_fixtures/clients.json")"
-    SANDBOX_BINDS_JSON="$(cat "$apps_fixtures/binds.json")")
-  apps_run() {
-    : >"$log"
-    env "${apps_env[@]}" "$routed" run "$1" >/dev/null 2>&1
-  }
-  apps_dispatches() { sed -n 's/^hyprctl dispatch //p' "$log"; }
-  apps_explain() { env "${apps_env[@]}" "$routed" explain "$1" 2>&1; }
-  # shellcheck disable=SC2016 # the single quotes are bash -c's own script, expanded by the child
-  apps_help() { env "${apps_env[@]}" VOXCMD_SHARE_DIR="$package/.local/share/voxcmd" bash -c '. "$1"; help_apps' _ "$apps_config/integrations/apps.sh"; }
-  out=$(apps_explain "close slack")
-  check "explain names apps.toml" "grep -q 'Apps (apps\\.toml)' <<<\"\$out\""
-  check "closing a window asks first" "grep -q 'confirm: true' <<<\"\$out\" && grep -q \"id='0x1002'\" <<<\"\$out\""
-  out=$(apps_explain "open play the song thanks")
-  check "a target ending in a tail word stays whole" "grep -q 'Apps (apps.toml, normal): matched verb .* action=open target=play the song thanks' <<<\"\$out\""
+apps_fixtures=$package/tests/fixtures
+# The confirm card answers yes, and the asks it was given are logged.
+apps_ask=$root/apps-ask
+printf '#!/bin/sh\necho "ask $*" >> "%s"\n' "$log" >"$apps_ask"
+chmod +x "$apps_ask"
+apps_env=(XDG_DATA_HOME="$apps_fixtures" XDG_DATA_DIRS="$apps_fixtures" VOXCMD_CONFIG_DIR="$apps_config" VOXCMD_ASK_CMD="$apps_ask"
+  SANDBOX_CLIENTS_JSON="$(cat "$apps_fixtures/clients.json")"
+  SANDBOX_CLIENTS_AFTER_CLOSE_JSON="$(jq -c 'map(select(.address != "0x1002"))' "$apps_fixtures/clients.json")" SANDBOX_MONITORS_JSON="$(cat "$apps_fixtures/monitors.json")"
+  SANDBOX_ACTIVEWINDOW_JSON="$(jq -c '.[] | select(.focusHistoryID == 0)' "$apps_fixtures/clients.json")"
+  SANDBOX_BINDS_JSON="$(cat "$apps_fixtures/binds.json")")
+apps_run() {
+  : >"$log"
+  env "${apps_env[@]}" "$voxcmd" run "$1" >/dev/null 2>&1
+}
+apps_dispatches() { sed -n 's/^hyprctl dispatch //p' "$log"; }
+apps_explain() { env "${apps_env[@]}" "$voxcmd" explain "$1" 2>&1; }
+# shellcheck disable=SC2016 # the single quotes are bash -c's own script, expanded by the child
+apps_help() { env "${apps_env[@]}" VOXCMD_SHARE_DIR="$package/.local/share/voxcmd" bash -c '. "$1"; help_apps' _ "$apps_config/integrations/apps.sh"; }
+out=$(apps_explain "close slack")
+check "explain names apps.toml" "grep -q 'Apps (apps\\.toml)' <<<\"\$out\""
+check "closing a window asks first" "grep -q 'confirm: true' <<<\"\$out\" && grep -q \"id='0x1002'\" <<<\"\$out\""
+out=$(apps_explain "open play the song thanks")
+check "a target ending in a tail word stays whole" "grep -q 'Apps (apps.toml, normal): matched verb .* action=open target=play the song thanks' <<<\"\$out\""
 
-  # The candidate hooks decide what Apps offers; the veto checks show what it leaves to the keybinds.
-  out=$(apps_explain "open firefox")
-  check "open offers the installed app by its desktop entry" "grep -q \"action=open target='firefox' id='firefox.desktop'\" <<<\"\$out\""
-  out=$(apps_explain "move firefox to workspace 3")
-  check "move offers the window and the workspace as one id" "grep -q \"action=move .* id='0x1001 3'\" <<<\"\$out\""
-  out=$(apps_explain "switch firefox to workspace 4")
-  check "move_with_window offers the same pair, under its own action" "grep -q \"action=move_with_window .* id='0x1001 4'\" <<<\"\$out\""
-  out=$(apps_explain "open terminal")
-  check "a phrase that names a keybind is left to the keybinds: Apps offers nothing" "grep -q 'result: *no match' <<<\"\$out\" && grep -q 'hook Apps open: 0 line' <<<\"\$out\""
+# The candidate hooks decide what Apps offers; the veto checks show what it leaves to the keybinds.
+out=$(apps_explain "open firefox")
+check "open offers the installed app by its desktop entry" "grep -q \"action=open target='firefox' id='firefox.desktop'\" <<<\"\$out\""
+out=$(apps_explain "move firefox to workspace 3")
+check "move offers the window and the workspace as one id" "grep -q \"action=move .* id='0x1001 3'\" <<<\"\$out\""
+out=$(apps_explain "switch firefox to workspace 4")
+check "move_with_window offers the same pair, under its own action" "grep -q \"action=move_with_window .* id='0x1001 4'\" <<<\"\$out\""
+out=$(apps_explain "open terminal")
+check "a phrase that names a keybind is left to the keybinds: Apps offers nothing" "grep -q 'result: *no match' <<<\"\$out\" && grep -q 'hook Apps open: 0 line' <<<\"\$out\""
 
-  apps_run "resize the window to 1200 by 800"
-  check "a resize to an exact size moves the width first, by the difference" "[[ \$(apps_dispatches | head -n1) == \"hl.dsp.window.resize({ window = 'address:0x1003', x = 500, y = 0, relative = true })\" ]]"
-  apps_run "1200 by 800"
-  check "a size said alone, read from the transcript, resizes the active window" "[[ \$(apps_dispatches | head -n1) == \"hl.dsp.window.resize({ window = 'address:0x1003', x = 500, y = 0, relative = true })\" ]]"
-  apps_run "make it wider"
-  check "a direction with no amount says how much, and resizes nothing" "grep -q '^notify-send .*Say how much' '$log' && [[ -z \$(apps_dispatches) ]]"
-  apps_run "swap this window with firefox"
-  check "swap names the focused window as the source" "[[ \$(apps_dispatches) == \"hl.dsp.window.swap({ window = 'address:0x1003', target = 'address:0x1001' })\" ]]"
-  apps_run "swap this window with slack"
-  check "and refuses a window on another workspace" "[[ -z \$(apps_dispatches) ]] && grep -q 'another workspace' '$log'"
-  apps_run "focus firefox"
-  check "focus dispatches the window's address" "[[ \$(apps_dispatches) == \"hl.dsp.focus({ window = 'address:0x1001' })\" ]]"
-  # Written twice (the TOML verb, and apps.sh's keybind veto); a verb in only one lets Apps take a phrase naming a keybind.
-  toml_move_verbs=$(sed -n "s/.*action = \"move\", *match = '(\\([^)]*\\)) {target}'.*/\\1/p" "$package/.config/voxcmd/integrations/apps.toml")
-  sh_move_verbs=$(sed -n 's/^move_verbs="\(.*\)"$/\1/p' "$package/.config/voxcmd/integrations/apps.sh")
-  check "apps.toml and apps.sh list the same move verbs" "[[ -n '$toml_move_verbs' && '$toml_move_verbs' == '$sh_move_verbs' ]]"
-  apps_run "move firefox to workspace 3"
-  check "move dispatches the window to the workspace, without following" "[[ \$(apps_dispatches) == \"hl.dsp.window.move({ window = 'address:0x1001', workspace = 3, follow = false })\" ]]"
-  apps_run "switch firefox to workspace 4"
-  check "switch moves the window the same way" "[[ \$(apps_dispatches) == \"hl.dsp.window.move({ window = 'address:0x1001', workspace = 4, follow = false })\" ]]"
-  apps_run "close slack"
-  check "close asks first, then dispatches the window's close" "grep -q '^ask confirm' '$log' && [[ \$(apps_dispatches) == \"hl.dsp.window.close({ window = 'address:0x1002' })\" ]]"
-  # Slack leaves the fixture's clients once closed, which is what close's window_gone wait polls for before the next step.
-  apps_run "close slack and then focus firefox"
-  check "a step after a close runs once the window is gone" "[[ \$(apps_dispatches | wc -l) == 2 && \$(apps_dispatches | tail -n1) == \"hl.dsp.focus({ window = 'address:0x1001' })\" ]]"
-  check "Tab in Voice Help lists every installed app once, by name" "[[ \$(apps_help | cut -f2 | paste -sd,) == 'Calendar,Firefox,kitty,Slack' ]]"
-fi
+apps_run "resize the window to 1200 by 800"
+check "a resize to an exact size moves the width first, by the difference" "[[ \$(apps_dispatches | head -n1) == \"hl.dsp.window.resize({ window = 'address:0x1003', x = 500, y = 0, relative = true })\" ]]"
+apps_run "1200 by 800"
+check "a size said alone, read from the transcript, resizes the active window" "[[ \$(apps_dispatches | head -n1) == \"hl.dsp.window.resize({ window = 'address:0x1003', x = 500, y = 0, relative = true })\" ]]"
+apps_run "make it wider"
+check "a direction with no amount says how much, and resizes nothing" "grep -q '^notify-send .*Say how much' '$log' && [[ -z \$(apps_dispatches) ]]"
+apps_run "swap this window with firefox"
+check "swap names the focused window as the source" "[[ \$(apps_dispatches) == \"hl.dsp.window.swap({ window = 'address:0x1003', target = 'address:0x1001' })\" ]]"
+apps_run "swap this window with slack"
+check "and refuses a window on another workspace" "[[ -z \$(apps_dispatches) ]] && grep -q 'another workspace' '$log'"
+apps_run "focus firefox"
+check "focus dispatches the window's address" "[[ \$(apps_dispatches) == \"hl.dsp.focus({ window = 'address:0x1001' })\" ]]"
+# Written twice (the TOML verb, and apps.sh's keybind veto); a verb in only one lets Apps take a phrase naming a keybind.
+toml_move_verbs=$(sed -n "s/.*action = \"move\", *match = '(\\([^)]*\\)) {target}'.*/\\1/p" "$package/.config/voxcmd/integrations/apps.toml")
+sh_move_verbs=$(sed -n 's/^move_verbs="\(.*\)"$/\1/p' "$package/.config/voxcmd/integrations/apps.sh")
+check "apps.toml and apps.sh list the same move verbs" "[[ -n '$toml_move_verbs' && '$toml_move_verbs' == '$sh_move_verbs' ]]"
+apps_run "move firefox to workspace 3"
+check "move dispatches the window to the workspace, without following" "[[ \$(apps_dispatches) == \"hl.dsp.window.move({ window = 'address:0x1001', workspace = 3, follow = false })\" ]]"
+apps_run "switch firefox to workspace 4"
+check "switch moves the window the same way" "[[ \$(apps_dispatches) == \"hl.dsp.window.move({ window = 'address:0x1001', workspace = 4, follow = false })\" ]]"
+apps_run "close slack"
+check "close asks first, then dispatches the window's close" "grep -q '^ask confirm' '$log' && [[ \$(apps_dispatches) == \"hl.dsp.window.close({ window = 'address:0x1002' })\" ]]"
+# Slack leaves the fixture's clients once closed, which is what close's window_gone wait polls for before the next step.
+apps_run "close slack and then focus firefox"
+check "a step after a close runs once the window is gone" "[[ \$(apps_dispatches | wc -l) == 2 && \$(apps_dispatches | tail -n1) == \"hl.dsp.focus({ window = 'address:0x1001' })\" ]]"
+check "Tab in Voice Help lists every installed app once, by name" "[[ \$(apps_help | cut -f2 | paste -sd,) == 'Calendar,Firefox,kitty,Slack' ]]"
 
 section "voice help"
 # Voice Help lists every integration's examples, the fallbacks last, and Tab on one lists what it offers to run. The
@@ -2417,32 +2230,42 @@ section "voice help"
 help_pkg=$root/help-pkg
 mkdir -p "$help_pkg"
 cp -r "$package/.local" "$help_pkg/.local"
-link_voxcmd_shim "$help_pkg"
+link_voxcmd_build "$help_pkg"
 help_voxcmd=$help_pkg/tests/bin/voxcmd
 help_answer=$root/help-answer
 rm -f "$help_pkg/.local/bin/voxcmd-pick"
 # shellcheck disable=SC2016 # the stub expands its own arguments
 printf '#!/bin/sh\necho "voxcmd-pick $*" >> "%s"\n[ -f "%s" ] || exit 1\ncat "%s"\n' "$log" "$help_answer" "$help_answer" >"$help_pkg/.local/bin/voxcmd-pick"
 chmod +x "$help_pkg/.local/bin/voxcmd-pick"
-export VOXCMD_LEGACY_BIN=$help_pkg/.local/bin/voxcmd
-[ -z "$rust_matcher" ] || check "the Rust build is what runs under rs" "[[ \$(readlink -f '$help_voxcmd') == '$package/target/release/voxcmd' ]]"
+check "the Rust build is what runs" "[[ \$(readlink -f '$help_voxcmd') == '$package/target/release/voxcmd' ]]"
 help_actions=$root/help-actions.log
 help_config=$root/config-help
-mkdir -p "$help_config/integrations.d" "$help_config/replacements.d"
-cat >"$help_config/integrations.d/lamp.sh" <<STUB
-name="Lamp"
-verbs=("on lamp on")
-examples=("lamp on" "lamp dim to <level>")
-declare -A actions=([on]='echo lit >> $help_actions' [set]='echo "set \$id" >> $help_actions')
-help_action=set
-candidates() { printf '[{"id":"low","label":"Low"},{"id":"high","label":"High"}]'; }
+mkdir -p "$help_config/integrations" "$help_config/replacements.d"
+cat >"$help_config/integrations/lamp.toml" <<'STUB'
+name = "Lamp"
+verbs = [{ action = "on", match = 'lamp on' }]
+examples = ["lamp on", "lamp dim to <level>"]
+
+[actions]
+on = 'echo lit >> "$HELP_ACTIONS"'
+set = { run = 'echo "set $VOXCMD_ID" >> "$HELP_ACTIONS"', candidates = "lamp_levels" }
+
+[[help]]
+action = "set"
 STUB
-cat >"$help_config/integrations.d/aaa-fallback.sh" <<STUB
-name="Zed"
-fallback=1
-verbs=("any anything at all")
-examples=("fallback phrase")
-declare -A actions=([any]='true')
+cat >"$help_config/integrations/lamp.sh" <<'STUB'
+# shellcheck shell=bash
+lamp_levels() { printf 'low\tLow\nhigh\tHigh\n'; }
+STUB
+export HELP_ACTIONS=$help_actions
+cat >"$help_config/integrations/aaa-fallback.toml" <<'STUB'
+name = "Zed"
+fallback = true
+verbs = [{ action = "any", match = 'anything at all' }]
+examples = ["fallback phrase"]
+
+[actions]
+any = "true"
 STUB
 help_run() {
   printf '%s' "$1" >"$help_answer"
@@ -2467,36 +2290,47 @@ rm -f "$help_answer"
 VOXCMD_CONFIG_DIR=$help_config "$help_voxcmd" help >/dev/null 2>&1
 help_status=$?
 check "a cancelled picker runs nothing and is not a failure" "[[ ! -s '$help_actions' && \$help_status == 0 ]] && ! grep -q '^notify-send' '$log'"
-# The bash routes an empty phrase; the Rust build cancels, on purpose.
+# An empty phrase cancels, on purpose.
 help_run ""
-[ -z "$rust_matcher" ] || check "an empty answer with exit 0 cancels the same way" "[[ ! -s '$help_actions' && \$help_status == 0 ]] && ! grep -q '^notify-send' '$log'"
-rm -f "$help_config/integrations.d/aaa-fallback.sh"
-printf 'name="Lamp"\nverbs=("on lamp on")\ndeclare -A actions=([on]=true)\n' >"$help_config/integrations.d/lamp.sh"
+check "an empty answer with exit 0 cancels the same way" "[[ ! -s '$help_actions' && \$help_status == 0 ]] && ! grep -q '^notify-send' '$log'"
+rm -f "$help_config/integrations/aaa-fallback.toml"
+printf 'name = "Lamp"\nverbs = [{ action = "on", match = %s }]\n\n[actions]\non = "true"\n' "'lamp on'" >"$help_config/integrations/lamp.toml"
 help_run "say:lamp on"
 check "with no examples declared it toasts, asks nothing and exits 1" "grep -q '^notify-send .*voxcmd No integration declares examples\$' '$log' && ! grep -q '^voxcmd-pick' '$log' && [[ \$help_status == 1 ]]"
-if [ -n "$rust_matcher" ]; then
-  # The shipped keybinds.toml, against binds of its own: a Delete submap, a Delete Line bind for the delete confirm
-  # regex, and a password bind that must never be offered.
-  keybinds_help_config=$root/config-help-keybinds
-  mkdir -p "$keybinds_help_config/integrations.d" "$keybinds_help_config/replacements.d"
-  copy_shipped_integrations "$keybinds_help_config" keybinds
-  keybinds_help_binds='[
-    {"description": "Delete Line", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "D", "arg": "601"},
-    {"description": "Show Password", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "P", "arg": "602"},
-    {"description": "Open Notes", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "N", "arg": "603"},
-    {"description": "Wipe", "submap": "Delete", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "W", "arg": "604"}]'
-  rm -f "$help_answer"
-  : >"$log"
-  SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" help >/dev/null 2>&1
-  check "Keybinds' Tab lists the submaps, then Exit submap, then the binds" "grep -qF '\"choices\":[{\"id\":\"run:0\",\"label\":\"Submap: Delete\"},{\"id\":\"run:1\",\"label\":\"Exit submap\"},{\"id\":\"run:2\",\"label\":\"Delete Line\"},{\"id\":\"run:3\",\"label\":\"Open Notes\"},{\"id\":\"run:4\",\"label\":\"Wipe (Delete)\"}]' '$log'"
-  check "a password bind is never offered" "! grep -qi 'password' '$log'"
-  out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "show password" 2>&1)
-  check "and saying its description runs nothing" "grep -q '^result: *no match' <<<\"\$out\""
-  out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "delete line" 2>&1)
-  check "a bind named Delete asks before it runs" "grep -q 'id=.601.' <<<\"\$out\" && grep -q 'confirm: true' <<<\"\$out\""
-  out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "delete submap" 2>&1)
-  check "entering the Delete submap does not" "grep -q 'id=.submap:Delete.' <<<\"\$out\" && grep -q 'confirm: false' <<<\"\$out\""
-fi
-unset VOXCMD_LEGACY_BIN
+# The shipped keybinds.toml, against binds of its own: a Delete submap, a Delete Line bind for the delete confirm
+# regex, and a password bind that must never be offered.
+keybinds_help_config=$root/config-help-keybinds
+mkdir -p "$keybinds_help_config/replacements.d"
+copy_shipped_integrations "$keybinds_help_config" keybinds
+keybinds_help_binds='[
+  {"description": "Delete Line", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "D", "arg": "601"},
+  {"description": "Show Password", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "P", "arg": "602"},
+  {"description": "Open Notes", "submap": "", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "N", "arg": "603"},
+  {"description": "Wipe", "submap": "Delete", "dispatcher": "__lua", "has_description": true, "mouse": false, "key": "W", "arg": "604"}]'
+rm -f "$help_answer"
+: >"$log"
+SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" help >/dev/null 2>&1
+check "Keybinds' Tab lists the submaps, then Exit submap, then the binds" "grep -qF '\"choices\":[{\"id\":\"run:0\",\"label\":\"Submap: Delete\"},{\"id\":\"run:1\",\"label\":\"Exit submap\"},{\"id\":\"run:2\",\"label\":\"Delete Line\"},{\"id\":\"run:3\",\"label\":\"Open Notes\"},{\"id\":\"run:4\",\"label\":\"Wipe (Delete)\"}]' '$log'"
+check "a password bind is never offered" "! grep -qi 'password' '$log'"
+out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "show password" 2>&1)
+check "and saying its description runs nothing" "grep -q '^result: *no match' <<<\"\$out\""
+out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "delete line" 2>&1)
+check "a bind named Delete asks before it runs" "grep -q 'id=.601.' <<<\"\$out\" && grep -q 'confirm: true' <<<\"\$out\""
+out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_config "$help_voxcmd" explain "delete submap" 2>&1)
+check "entering the Delete submap does not" "grep -q 'id=.submap:Delete.' <<<\"\$out\" && grep -q 'confirm: false' <<<\"\$out\""
+section "a stray integrations.d"
+# The bash voxcmd that read integrations.d is gone, so a leftover file there (an outside user's, or a private link) must
+# neither load nor take the other integrations down; `integrations check` says why it is ignored.
+stray_config=$root/stray-config
+mkdir -p "$stray_config/replacements.d" "$stray_config/integrations.d"
+copy_shipped_integrations "$stray_config" media
+printf 'name="Stray"\nverbs=("stray stray {target}")\ndeclare -A actions=([stray]=true)\n' >"$stray_config/integrations.d/stray.sh"
+out=$(VOXCMD_CONFIG_DIR=$stray_config "$voxcmd" integrations check 2>&1)
+code=$?
+check "check warns that the file is no longer read, and still passes" "[[ $code == 0 ]] && grep -q 'integrations.d/stray.sh is no longer read; convert it to TOML' <<<\"\$out\""
+out=$(VOXCMD_CONFIG_DIR=$stray_config "$voxcmd" explain "stray thing" 2>&1)
+check "its verbs route nowhere" "grep -q 'result: *no match' <<<\"\$out\" && ! grep -q Stray <<<\"\$out\""
+out=$(VOXCMD_CONFIG_DIR=$stray_config "$voxcmd" explain "play pause" 2>&1)
+check "and the other integrations still route" "grep -q 'Media (media.toml)' <<<\"\$out\""
 
 finish

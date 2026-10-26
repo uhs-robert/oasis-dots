@@ -81,6 +81,19 @@ fn check(dir: &Path, args: &[String]) -> (Report, usize) {
     if args.is_empty() {
         toml = toml_files(dir);
         legacy_wanted = legacy::legacy_files(dir);
+        if legacy_wanted.is_empty() {
+            problems.extend(legacy::stray_files(dir).iter().map(|file| Problem {
+                file: relative(dir, file),
+                line: 1,
+                column: 1,
+                severity: Severity::Warning,
+                code: "stray-integration",
+                message: format!(
+                    "integrations.d/{} is no longer read; convert it to TOML",
+                    file.file_name().unwrap_or_default().to_string_lossy()
+                ),
+            }));
+        }
     }
     for arg in args {
         let given = PathBuf::from(arg);

@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # Spoken clock times, durations and days, and the bar's clock format, shared by integrations that source it from "$voxcmd_share_dir".
-# Integrations sit in integrations.d/, where every file is loaded as one, so this lives beside voxcmd instead.
+# Integrations sit in integrations/, where every file is loaded as one, so this lives beside voxcmd instead.
 #
 # Transcripts arrive normalized: lowercase, no punctuation, so "1.5 hours" is "1 5 hours" and "3:30 p.m." is
 # "3 30 p m". Amounts are kept in thousandths so halves and quarters stay integer arithmetic.

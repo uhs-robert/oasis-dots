@@ -3,10 +3,11 @@
 //! A TOML integration's hook is a shell string run by `ShellHooks` (1.1 section 2.5): `bash -c` over the integration's
 //! `<stem>.sh` library, the match handed over in `VOXCMD_*` variables, a 3 s deadline, exit 3 meaning "yield". A bash
 //! integration's hook is reached through the bash voxcmd's hidden `_legacy-hook` (a bash start plus sourcing per
-//! call); `Dispatch` picks by the integration's format. The legacy half is deleted in 3.2.
+//! call); `Dispatch` picks by the integration's format. The legacy half goes with the bridge (voxcmd-port PR 4); no bash
+//! voxcmd ships any more, so it runs only under a test's stand-in.
 //!
 //! `VOXCMD_INTEGRATION` is the integration's file stem. `VOXCMD_SELF` is the path of the voxcmd that runs the hook: a
-//! hook calls `"$VOXCMD_SELF" util ...` and never a name on PATH, which until 3.2 is the bash voxcmd with no `util`.
+//! hook calls `"$VOXCMD_SELF" util ...` and never a name on PATH.
 //! A hook output line with four or more tab fields fails the hook.
 //! Background children a `candidates` hook leaves behind are killed when it exits.
 use crate::click::driver::WindowSel;

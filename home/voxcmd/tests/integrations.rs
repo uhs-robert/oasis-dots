@@ -224,6 +224,24 @@ fn legacy_files_are_loaded_and_counted_but_not_checked_in_depth() {
 }
 
 #[test]
+fn a_stray_integrations_d_file_is_ignored_and_reported_without_the_bash_voxcmd() {
+    let sandbox = Sandbox::with(&["media"]);
+    std::fs::remove_file(sandbox.root.path().join("bash-voxcmd")).unwrap();
+    std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
+    sandbox.write("integrations.d/peak.sh", "verbs=('x y')\n");
+    let output = sandbox.voxcmd(&["integrations", "check"], &[]);
+    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
+    assert_eq!(
+        stdout(&output),
+        "integrations.d/peak.sh:1:1: warning: integrations.d/peak.sh is no longer read; convert it to TOML\n\
+         1 TOML files checked, 1 problems; 0 legacy files only loaded and compiled, not checked in depth\n"
+    );
+    let listed = sandbox.voxcmd(&["integrations", "list"], &[]);
+    assert!(!stdout(&listed).contains("peak"), "{}", stdout(&listed));
+    sandbox.no_bash_ran();
+}
+
+#[test]
 fn a_shadowed_verb_is_a_warning_and_leaves_the_check_clean() {
     let sandbox = Sandbox::with(&[]);
     sandbox.write(
