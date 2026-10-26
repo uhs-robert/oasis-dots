@@ -421,6 +421,7 @@ out_dir=\$manifest_dir/target
 [[ -z \${CARGO_TARGET_DIR:-} ]] || out_dir=\$CARGO_TARGET_DIR
 [[ \$all_args != *--target-dir* ]] || { out_dir=\${all_args#*--target-dir }; out_dir=\${out_dir%% *}; }
 [[ -z \${FAKE_CARGO_NO_BIN:-} ]] || exit 0
+[[ -z \${FAKE_CARGO_BAD_JSON:-} ]] || { echo '{"reason": not json'; exit 0; }
 [[ \$out_dir == "$root"/* ]] || { echo "stub cargo: refusing \$out_dir" >&2; exit 1; }
 # A Cargo config build.target puts the binary under a triple dir.
 [[ -z \${FAKE_CARGO_TRIPLE:-} ]] || out_dir=\$out_dir/\$FAKE_CARGO_TRIPLE
@@ -505,6 +506,26 @@ check "a stale staged binary does not pass for a build that produced none, and t
 rm -rf "$rr_dir/home/voxcmd/target"
 rrx voxcmd_restore >/dev/null
 rm -f "$bars_dir/.owner"
+
+# A build that fails, or whose record cannot be read, leaves no .cargo.json (the log stays), and a failed copy leaves no .new.
+rm -f "$rr_calls"
+out=$(FAKE_CARGO_FAIL=1 rr_swap_cmd)
+check "a failed build removes its .cargo.json and keeps the .cargo.log" "[[ ! -e $rr_dir.cargo.json && -f $rr_dir.cargo.log ]]"
+rm -f "$rr_dir.cargo.log"
+out=$(FAKE_CARGO_BAD_JSON=1 rr_swap_cmd)
+code=$?
+show "$out"
+check "an unreadable artifact record says no binary was built, removes the .cargo.json, and swaps nothing" "[[ $code != 0 ]] && grep -q 'cargo built no' <<<\"\$out\" && [[ ! -e $rr_dir.cargo.json && -f $rr_dir.cargo.log ]] && rr_link_is voxcmd '$rr_main_bin'"
+rm -f "$rr_dir.cargo.log"
+mkdir -p "$rr_dir/home/voxcmd/target/release"
+: >"$rr_dir/home/voxcmd/target/release/voxcmd.new"
+chmod 000 "$rr_dir/home/voxcmd/target/release/voxcmd.new"
+out=$(rr_swap_cmd)
+code=$?
+show "$out"
+check "a failed copy dies, removes the stale .new and the .cargo.json, and swaps nothing" "[[ $code != 0 ]] && grep -q 'could not copy' <<<\"\$out\" && [[ ! -e $rr_dir/home/voxcmd/target/release/voxcmd.new && ! -e $rr_dir.cargo.json ]] && rr_link_is voxcmd '$rr_main_bin'"
+rm -rf "$rr_dir/home/voxcmd/target"
+rm -f "$bars_dir/.owner" "$rr_dir.cargo.log"
 
 # A failed build must not leave a claim for a bar that was never swapped in.
 check "a failed build leaves no owner claim" "[[ ! -e $bars_dir/.owner ]]"

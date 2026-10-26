@@ -440,13 +440,20 @@ voxcmd_build_rust() {
     --manifest-path "$dir/$voxcmd_rel/Cargo.toml" --target-dir "$dir/$voxcmd_rel/target/stage" \
     --message-format=json-render-diagnostics >"$dir.cargo.json" 2>"$dir.cargo.log" || {
     tail -n 25 "$dir.cargo.log" >&2
+    rm -f "$dir.cargo.json"
     die "cargo build fails in $dir (full output $dir.cargo.log); nothing was swapped"
   }
-  built=$(jq -r 'select(.reason == "compiler-artifact" and .target.name == "voxcmd" and (.target.kind | index("bin")) and .executable != null) | .executable' "$dir.cargo.json" | tail -n 1)
-  [[ -n $built && -x $built ]] || die "cargo built no voxcmd binary (see $dir.cargo.log); nothing was swapped"
+  built=$(jq -r 'select(.reason == "compiler-artifact" and .target.name == "voxcmd" and (.target.kind | index("bin")) and .executable != null) | .executable' "$dir.cargo.json" | tail -n 1) || built=
+  [[ -n $built && -x $built ]] || {
+    rm -f "$dir.cargo.json"
+    die "cargo built no voxcmd binary (see $dir.cargo.log); nothing was swapped"
+  }
   mkdir -p "$(dirname "$bin")"
   # A copy, not a rename: the staged file is hard-linked into cargo's deps dir, which a later build must not change.
-  cp "$built" "$bin.new"
+  cp "$built" "$bin.new" || {
+    rm -f "$bin.new" "$dir.cargo.json"
+    die "could not copy the built voxcmd to $bin.new (see $dir.cargo.log); nothing was swapped"
+  }
   mv -f "$bin.new" "$bin"
   rm -f "$dir.cargo.json"
   rm -f "$dir.cargo.log"
