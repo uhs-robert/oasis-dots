@@ -2429,6 +2429,10 @@ VOXCMD_NOW=1792006200	parse-time	10 minutes to stretch	1
 VOXCMD_NOW=1792006200	parse-time-today	10 minutes to stretch	1	
 VOXCMD_NOW=1792006200	parse-day	10 minutes to stretch	1	
 -	parse-duration	10 minutes to stretch	1	
+VOXCMD_NOW=1792006200	parse-time	10 minutes to stretch please	1	
+VOXCMD_NOW=1792006200	parse-time-today	10 minutes to stretch please	1	
+VOXCMD_NOW=1792006200	parse-day	10 minutes to stretch please	1	
+-	parse-duration	10 minutes to stretch please	1	
 VOXCMD_NOW=1792006200	parse-time	1000 by 700	1	
 VOXCMD_NOW=1792006200	parse-time-today	1000 by 700	1	
 VOXCMD_NOW=1792006200	parse-day	1000 by 700	1	
@@ -2489,6 +2493,10 @@ VOXCMD_NOW=1792006200	parse-day	3	1
 -	parse-duration	3	1	
 VOXCMD_NOW=1792006200	parse-day	3 pm	1	
 -	parse-duration	3 pm	1	
+VOXCMD_NOW=1792006200	parse-time	3 pm called sync please	1	
+VOXCMD_NOW=1792006200	parse-time-today	3 pm called sync please	1	
+VOXCMD_NOW=1792006200	parse-day	3 pm called sync please	1	
+-	parse-duration	3 pm called sync please	1	
 VOXCMD_NOW=1792006200	parse-time	3 pm eastern in tokyo	1	
 VOXCMD_NOW=1792006200	parse-time-today	3 pm eastern in tokyo	1	
 VOXCMD_NOW=1792006200	parse-day	3 pm eastern in tokyo	1	
@@ -2517,6 +2525,10 @@ VOXCMD_NOW=1792006200	parse-time	3rd screen	1
 VOXCMD_NOW=1792006200	parse-time-today	3rd screen	1	
 VOXCMD_NOW=1792006200	parse-day	3rd screen	1	
 -	parse-duration	3rd screen	1	
+VOXCMD_NOW=1792006200	parse-time	4	0	1792008000
+VOXCMD_NOW=1792006200	parse-time-today	4	0	1792008000
+VOXCMD_NOW=1792006200	parse-day	4	1	
+-	parse-duration	4	1	
 VOXCMD_NOW=1792006200	parse-time	40	1	
 VOXCMD_NOW=1792006200	parse-time-today	40	1	
 VOXCMD_NOW=1792006200	parse-day	40	1	
@@ -2679,6 +2691,10 @@ VOXCMD_NOW=1792006200	parse-time	arrow	1
 VOXCMD_NOW=1792006200	parse-time-today	arrow	1	
 VOXCMD_NOW=1792006200	parse-day	arrow	1	
 -	parse-duration	arrow	1	
+VOXCMD_NOW=1792006200	parse-time	at 3 pm called sync please	1	
+VOXCMD_NOW=1792006200	parse-time-today	at 3 pm called sync please	1	
+VOXCMD_NOW=1792006200	parse-day	at 3 pm called sync please	1	
+-	parse-duration	at 3 pm called sync please	1	
 VOXCMD_NOW=1792006200	parse-time	bluetooth on	1	
 VOXCMD_NOW=1792006200	parse-time-today	bluetooth on	1	
 VOXCMD_NOW=1792006200	parse-day	bluetooth on	1	
@@ -2711,6 +2727,10 @@ VOXCMD_NOW=1792006200	parse-time	bring it to workspace 12	1
 VOXCMD_NOW=1792006200	parse-time-today	bring it to workspace 12	1	
 VOXCMD_NOW=1792006200	parse-day	bring it to workspace 12	1	
 -	parse-duration	bring it to workspace 12	1	
+VOXCMD_NOW=1792006200	parse-time	bring slack to workspace 3	1	
+VOXCMD_NOW=1792006200	parse-time-today	bring slack to workspace 3	1	
+VOXCMD_NOW=1792006200	parse-day	bring slack to workspace 3	1	
+-	parse-duration	bring slack to workspace 3	1	
 VOXCMD_NOW=1792006200	parse-time	bring to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-time-today	bring to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-day	bring to workspace 5	1	
@@ -2755,6 +2775,14 @@ VOXCMD_NOW=1792006200	parse-time	calendar	1
 VOXCMD_NOW=1792006200	parse-time-today	calendar	1	
 VOXCMD_NOW=1792006200	parse-day	calendar	1	
 -	parse-duration	calendar	1	
+VOXCMD_NOW=1792006200	parse-time	calendar for friday	1	
+VOXCMD_NOW=1792006200	parse-time-today	calendar for friday	1	
+VOXCMD_NOW=1792006200	parse-day	calendar for friday	1	
+-	parse-duration	calendar for friday	1	
+VOXCMD_NOW=1792006200	parse-time	calendar for friday please	1	
+VOXCMD_NOW=1792006200	parse-time-today	calendar for friday please	1	
+VOXCMD_NOW=1792006200	parse-day	calendar for friday please	1	
+-	parse-duration	calendar for friday please	1	
 VOXCMD_NOW=1792006200	parse-time	calendar today	1	
 VOXCMD_NOW=1792006200	parse-time-today	calendar today	1	
 VOXCMD_NOW=1792006200	parse-day	calendar today	1	
@@ -2771,6 +2799,10 @@ VOXCMD_NOW=1792006200	parse-time	called design review and then lunch	1
 VOXCMD_NOW=1792006200	parse-time-today	called design review and then lunch	1	
 VOXCMD_NOW=1792006200	parse-day	called design review and then lunch	1	
 -	parse-duration	called design review and then lunch	1	
+VOXCMD_NOW=1792006200	parse-time	called sync please	1	
+VOXCMD_NOW=1792006200	parse-time-today	called sync please	1	
+VOXCMD_NOW=1792006200	parse-day	called sync please	1	
+-	parse-duration	called sync please	1	
 VOXCMD_NOW=1792006200	parse-time	capture the screen	1	
 VOXCMD_NOW=1792006200	parse-time-today	capture the screen	1	
 VOXCMD_NOW=1792006200	parse-day	capture the screen	1	
@@ -2939,6 +2971,10 @@ VOXCMD_NOW=1792006200	parse-time	firefox to workspace 3rd	1
 VOXCMD_NOW=1792006200	parse-time-today	firefox to workspace 3rd	1	
 VOXCMD_NOW=1792006200	parse-day	firefox to workspace 3rd	1	
 -	parse-duration	firefox to workspace 3rd	1	
+VOXCMD_NOW=1792006200	parse-time	firefox to workspace 4	1	
+VOXCMD_NOW=1792006200	parse-time-today	firefox to workspace 4	1	
+VOXCMD_NOW=1792006200	parse-day	firefox to workspace 4	1	
+-	parse-duration	firefox to workspace 4	1	
 VOXCMD_NOW=1792006200	parse-time	firefox to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-time-today	firefox to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-day	firefox to workspace 5	1	
@@ -3026,6 +3062,14 @@ VOXCMD_NOW=1792006200	parse-time	for five minutes	1
 VOXCMD_NOW=1792006200	parse-time-today	for five minutes	1	
 VOXCMD_NOW=1792006200	parse-day	for five minutes	1	
 -	parse-duration	for five minutes	1	
+VOXCMD_NOW=1792006200	parse-time	for friday	1	
+VOXCMD_NOW=1792006200	parse-time-today	for friday	1	
+VOXCMD_NOW=1792006200	parse-day	for friday	1	
+-	parse-duration	for friday	1	
+VOXCMD_NOW=1792006200	parse-time	for friday please	1	
+VOXCMD_NOW=1792006200	parse-time-today	for friday please	1	
+VOXCMD_NOW=1792006200	parse-day	for friday please	1	
+-	parse-duration	for friday please	1	
 VOXCMD_NOW=1792006200	parse-time	for one minute	1	
 VOXCMD_NOW=1792006200	parse-time-today	for one minute	1	
 VOXCMD_NOW=1792006200	parse-day	for one minute	1	
@@ -3050,6 +3094,11 @@ VOXCMD_NOW=1792006200	parse-time	freeze screenshot	1
 VOXCMD_NOW=1792006200	parse-time-today	freeze screenshot	1	
 VOXCMD_NOW=1792006200	parse-day	freeze screenshot	1	
 -	parse-duration	freeze screenshot	1	
+-	parse-duration	friday	1	
+VOXCMD_NOW=1792006200	parse-time	friday please	1	
+VOXCMD_NOW=1792006200	parse-time-today	friday please	1	
+VOXCMD_NOW=1792006200	parse-day	friday please	1	
+-	parse-duration	friday please	1	
 VOXCMD_NOW=1792006200	parse-time	frontend agent	1	
 VOXCMD_NOW=1792006200	parse-time-today	frontend agent	1	
 VOXCMD_NOW=1792006200	parse-day	frontend agent	1	
@@ -3162,6 +3211,10 @@ VOXCMD_NOW=1792006200	parse-time	height by 300	1
 VOXCMD_NOW=1792006200	parse-time-today	height by 300	1	
 VOXCMD_NOW=1792006200	parse-day	height by 300	1	
 -	parse-duration	height by 300	1	
+VOXCMD_NOW=1792006200	parse-time	hide the workspace overview	1	
+VOXCMD_NOW=1792006200	parse-time-today	hide the workspace overview	1	
+VOXCMD_NOW=1792006200	parse-day	hide the workspace overview	1	
+-	parse-duration	hide the workspace overview	1	
 VOXCMD_NOW=1792006200	parse-time	hit enter 2 times	1	
 VOXCMD_NOW=1792006200	parse-time-today	hit enter 2 times	1	
 VOXCMD_NOW=1792006200	parse-day	hit enter 2 times	1	
@@ -3182,6 +3235,10 @@ VOXCMD_NOW=1792006200	parse-time	in 10 minutes to stretch	1
 VOXCMD_NOW=1792006200	parse-time-today	in 10 minutes to stretch	1	
 VOXCMD_NOW=1792006200	parse-day	in 10 minutes to stretch	1	
 -	parse-duration	in 10 minutes to stretch	1	
+VOXCMD_NOW=1792006200	parse-time	in 10 minutes to stretch please	1	
+VOXCMD_NOW=1792006200	parse-time-today	in 10 minutes to stretch please	1	
+VOXCMD_NOW=1792006200	parse-day	in 10 minutes to stretch please	1	
+-	parse-duration	in 10 minutes to stretch please	1	
 VOXCMD_NOW=1792006200	parse-time	in screen	1	
 VOXCMD_NOW=1792006200	parse-time-today	in screen	1	
 VOXCMD_NOW=1792006200	parse-day	in screen	1	
@@ -3369,6 +3426,10 @@ VOXCMD_NOW=1792006200	parse-time	minutes to stretch	1
 VOXCMD_NOW=1792006200	parse-time-today	minutes to stretch	1	
 VOXCMD_NOW=1792006200	parse-day	minutes to stretch	1	
 -	parse-duration	minutes to stretch	1	
+VOXCMD_NOW=1792006200	parse-time	minutes to stretch please	1	
+VOXCMD_NOW=1792006200	parse-time-today	minutes to stretch please	1	
+VOXCMD_NOW=1792006200	parse-day	minutes to stretch please	1	
+-	parse-duration	minutes to stretch please	1	
 VOXCMD_NOW=1792006200	parse-time	mode	1	
 VOXCMD_NOW=1792006200	parse-time-today	mode	1	
 VOXCMD_NOW=1792006200	parse-day	mode	1	
@@ -3485,6 +3546,14 @@ VOXCMD_NOW=1792006200	parse-time	my calendar	1
 VOXCMD_NOW=1792006200	parse-time-today	my calendar	1	
 VOXCMD_NOW=1792006200	parse-day	my calendar	1	
 -	parse-duration	my calendar	1	
+VOXCMD_NOW=1792006200	parse-time	my calendar for friday	1	
+VOXCMD_NOW=1792006200	parse-time-today	my calendar for friday	1	
+VOXCMD_NOW=1792006200	parse-day	my calendar for friday	1	
+-	parse-duration	my calendar for friday	1	
+VOXCMD_NOW=1792006200	parse-time	my calendar for friday please	1	
+VOXCMD_NOW=1792006200	parse-time-today	my calendar for friday please	1	
+VOXCMD_NOW=1792006200	parse-day	my calendar for friday please	1	
+-	parse-duration	my calendar for friday please	1	
 VOXCMD_NOW=1792006200	parse-time	my calendar today	1	
 VOXCMD_NOW=1792006200	parse-time-today	my calendar today	1	
 VOXCMD_NOW=1792006200	parse-day	my calendar today	1	
@@ -3561,6 +3630,10 @@ VOXCMD_NOW=1792006200	parse-time	on my calendar	1
 VOXCMD_NOW=1792006200	parse-time-today	on my calendar	1	
 VOXCMD_NOW=1792006200	parse-day	on my calendar	1	
 -	parse-duration	on my calendar	1	
+VOXCMD_NOW=1792006200	parse-time	on my calendar for friday please	1	
+VOXCMD_NOW=1792006200	parse-time-today	on my calendar for friday please	1	
+VOXCMD_NOW=1792006200	parse-day	on my calendar for friday please	1	
+-	parse-duration	on my calendar for friday please	1	
 VOXCMD_NOW=1792006200	parse-time	on my calendar today	1	
 VOXCMD_NOW=1792006200	parse-time-today	on my calendar today	1	
 VOXCMD_NOW=1792006200	parse-day	on my calendar today	1	
@@ -3629,6 +3702,10 @@ VOXCMD_NOW=1792006200	parse-time	pm	1
 VOXCMD_NOW=1792006200	parse-time-today	pm	1	
 VOXCMD_NOW=1792006200	parse-day	pm	1	
 -	parse-duration	pm	1	
+VOXCMD_NOW=1792006200	parse-time	pm called sync please	1	
+VOXCMD_NOW=1792006200	parse-time-today	pm called sync please	1	
+VOXCMD_NOW=1792006200	parse-day	pm called sync please	1	
+-	parse-duration	pm called sync please	1	
 VOXCMD_NOW=1792006200	parse-time	pm eastern in tokyo	1	
 VOXCMD_NOW=1792006200	parse-time-today	pm eastern in tokyo	1	
 VOXCMD_NOW=1792006200	parse-day	pm eastern in tokyo	1	
@@ -3949,6 +4026,10 @@ VOXCMD_NOW=1792006200	parse-time	seventeen trombones	1
 VOXCMD_NOW=1792006200	parse-time-today	seventeen trombones	1	
 VOXCMD_NOW=1792006200	parse-day	seventeen trombones	1	
 -	parse-duration	seventeen trombones	1	
+VOXCMD_NOW=1792006200	parse-time	shift firefox to workspace 4	1	
+VOXCMD_NOW=1792006200	parse-time-today	shift firefox to workspace 4	1	
+VOXCMD_NOW=1792006200	parse-day	shift firefox to workspace 4	1	
+-	parse-duration	shift firefox to workspace 4	1	
 VOXCMD_NOW=1792006200	parse-time	shift this window to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-time-today	shift this window to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-day	shift this window to workspace 5	1	
@@ -3965,6 +4046,10 @@ VOXCMD_NOW=1792006200	parse-time	shot this window	1
 VOXCMD_NOW=1792006200	parse-time-today	shot this window	1	
 VOXCMD_NOW=1792006200	parse-day	shot this window	1	
 -	parse-duration	shot this window	1	
+VOXCMD_NOW=1792006200	parse-time	show my calendar for friday	1	
+VOXCMD_NOW=1792006200	parse-time-today	show my calendar for friday	1	
+VOXCMD_NOW=1792006200	parse-day	show my calendar for friday	1	
+-	parse-duration	show my calendar for friday	1	
 VOXCMD_NOW=1792006200	parse-time	show workspaces	1	
 VOXCMD_NOW=1792006200	parse-time-today	show workspaces	1	
 VOXCMD_NOW=1792006200	parse-day	show workspaces	1	
@@ -3989,6 +4074,10 @@ VOXCMD_NOW=1792006200	parse-time	slack four	1
 VOXCMD_NOW=1792006200	parse-time-today	slack four	1	
 VOXCMD_NOW=1792006200	parse-day	slack four	1	
 -	parse-duration	slack four	1	
+VOXCMD_NOW=1792006200	parse-time	slack to workspace 3	1	
+VOXCMD_NOW=1792006200	parse-time-today	slack to workspace 3	1	
+VOXCMD_NOW=1792006200	parse-day	slack to workspace 3	1	
+-	parse-duration	slack to workspace 3	1	
 VOXCMD_NOW=1792006200	parse-time	special workspace notes	1	
 VOXCMD_NOW=1792006200	parse-time-today	special workspace notes	1	
 VOXCMD_NOW=1792006200	parse-day	special workspace notes	1	
@@ -4029,6 +4118,10 @@ VOXCMD_NOW=1792006200	parse-time	stretch	1
 VOXCMD_NOW=1792006200	parse-time-today	stretch	1	
 VOXCMD_NOW=1792006200	parse-day	stretch	1	
 -	parse-duration	stretch	1	
+VOXCMD_NOW=1792006200	parse-time	stretch please	1	
+VOXCMD_NOW=1792006200	parse-time-today	stretch please	1	
+VOXCMD_NOW=1792006200	parse-day	stretch please	1	
+-	parse-duration	stretch please	1	
 VOXCMD_NOW=1792006200	parse-time	swap it with slack	1	
 VOXCMD_NOW=1792006200	parse-time-today	swap it with slack	1	
 VOXCMD_NOW=1792006200	parse-day	swap it with slack	1	
@@ -4069,6 +4162,10 @@ VOXCMD_NOW=1792006200	parse-time	swap workspaces two and five	1
 VOXCMD_NOW=1792006200	parse-time-today	swap workspaces two and five	1	
 VOXCMD_NOW=1792006200	parse-day	swap workspaces two and five	1	
 -	parse-duration	swap workspaces two and five	1	
+VOXCMD_NOW=1792006200	parse-time	switch firefox to workspace 4	1	
+VOXCMD_NOW=1792006200	parse-time-today	switch firefox to workspace 4	1	
+VOXCMD_NOW=1792006200	parse-day	switch firefox to workspace 4	1	
+-	parse-duration	switch firefox to workspace 4	1	
 VOXCMD_NOW=1792006200	parse-time	switch firefox to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-time-today	switch firefox to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-day	switch firefox to workspace 5	1	
@@ -4101,6 +4198,10 @@ VOXCMD_NOW=1792006200	parse-time	switch to workspace 2	1
 VOXCMD_NOW=1792006200	parse-time-today	switch to workspace 2	1	
 VOXCMD_NOW=1792006200	parse-day	switch to workspace 2	1	
 -	parse-duration	switch to workspace 2	1	
+VOXCMD_NOW=1792006200	parse-time	sync please	1	
+VOXCMD_NOW=1792006200	parse-time-today	sync please	1	
+VOXCMD_NOW=1792006200	parse-day	sync please	1	
+-	parse-duration	sync please	1	
 VOXCMD_NOW=1792006200	parse-time	system monitor	1	
 VOXCMD_NOW=1792006200	parse-time-today	system monitor	1	
 VOXCMD_NOW=1792006200	parse-day	system monitor	1	
@@ -4516,6 +4617,10 @@ VOXCMD_NOW=1792006200	parse-time	to stretch	1
 VOXCMD_NOW=1792006200	parse-time-today	to stretch	1	
 VOXCMD_NOW=1792006200	parse-day	to stretch	1	
 -	parse-duration	to stretch	1	
+VOXCMD_NOW=1792006200	parse-time	to stretch please	1	
+VOXCMD_NOW=1792006200	parse-time-today	to stretch please	1	
+VOXCMD_NOW=1792006200	parse-day	to stretch please	1	
+-	parse-duration	to stretch please	1	
 VOXCMD_NOW=1792006200	parse-time	to the 10th monitor	1	
 VOXCMD_NOW=1792006200	parse-time-today	to the 10th monitor	1	
 VOXCMD_NOW=1792006200	parse-day	to the 10th monitor	1	
@@ -4648,6 +4753,10 @@ VOXCMD_NOW=1792006200	parse-time	to workspace 3rd	1
 VOXCMD_NOW=1792006200	parse-time-today	to workspace 3rd	1	
 VOXCMD_NOW=1792006200	parse-day	to workspace 3rd	1	
 -	parse-duration	to workspace 3rd	1	
+VOXCMD_NOW=1792006200	parse-time	to workspace 4	1	
+VOXCMD_NOW=1792006200	parse-time-today	to workspace 4	1	
+VOXCMD_NOW=1792006200	parse-day	to workspace 4	1	
+-	parse-duration	to workspace 4	1	
 VOXCMD_NOW=1792006200	parse-time	to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-time-today	to workspace 5	1	
 VOXCMD_NOW=1792006200	parse-day	to workspace 5	1	
@@ -4949,6 +5058,10 @@ VOXCMD_NOW=1792006200	parse-time	workspace 3rd	1
 VOXCMD_NOW=1792006200	parse-time-today	workspace 3rd	1	
 VOXCMD_NOW=1792006200	parse-day	workspace 3rd	1	
 -	parse-duration	workspace 3rd	1	
+VOXCMD_NOW=1792006200	parse-time	workspace 4	1	
+VOXCMD_NOW=1792006200	parse-time-today	workspace 4	1	
+VOXCMD_NOW=1792006200	parse-day	workspace 4	1	
+-	parse-duration	workspace 4	1	
 VOXCMD_NOW=1792006200	parse-time	workspace 5	1	
 VOXCMD_NOW=1792006200	parse-time-today	workspace 5	1	
 VOXCMD_NOW=1792006200	parse-day	workspace 5	1	
