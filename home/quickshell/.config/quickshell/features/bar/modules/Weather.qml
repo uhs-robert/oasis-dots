@@ -27,6 +27,7 @@ BarModule {
 
     ModuleRow {
         id: row
+        vertical: root.vertical
         spacing: root.vertical ? 2 : 4
 
         Item {
@@ -61,6 +62,8 @@ BarModule {
             cross: root.cross
             full_text: root.has_data ? Math.round(root.current.temp) + "°" + WeatherState.unit_symbol() : WeatherState.failed ? "n/a" : "--°"
             short_text: root.has_data ? Math.round(root.current.temp) + "°" : ""
+            full_template: "-88°" + WeatherState.unit_symbol()
+            short_template: "-88°"
             color: root.has_data ? WeatherState.temp_color(root.current.temp) : WeatherState.failed ? Theme.warning : Theme.fg_dim
         }
 

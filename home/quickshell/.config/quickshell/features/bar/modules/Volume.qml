@@ -42,6 +42,7 @@ BarModule {
 
     ModuleRow {
         id: row
+        vertical: root.vertical
         spacing: root.vertical ? 2 : 6
 
         BarIcon {
@@ -61,6 +62,8 @@ BarModule {
             cross: root.cross
             full_text: Math.round(root.volume * 100) + "%"
             short_text: Math.round(root.volume * 100) + ""
+            full_template: "100%"
+            short_template: "100"
             color: Style.bar_fg
         }
     }

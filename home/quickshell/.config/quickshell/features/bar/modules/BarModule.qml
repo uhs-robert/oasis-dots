@@ -19,8 +19,8 @@ Item {
     property string tooltip_text: ""
     property string tooltip_title: module_name
     property bool wash: true
-    // The width the content may use on a side bar: the bar's thickness less the island's inset (capsule, floating strip), its border on both sides and 4 px of air.
-    readonly property real cross: VerticalLayout.cross_width(root.bar_height, Style.bar_capsule + (Style.strip_floats ? Style.bar_strip_inset : 0) + Style.bar_border_width * 2 + 4)
+    // The width the content may use on a side bar: the bar's thickness less the island's capsule inset, its border on both sides and the air. The floating strip's inset is not taken off: it grows the bar window, the plate stays bar_height thick.
+    readonly property real cross: VerticalLayout.cross_width(root.bar_height, Style.bar_capsule + Style.bar_border_width * 2 + VerticalLayout.air_px)
     readonly property alias hovered: hover_handler.hovered
 
     visible: shown
