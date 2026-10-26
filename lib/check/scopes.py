@@ -286,6 +286,7 @@ STEPS = [
     Step("bind-action", "lua", "lua ./home/hypr/tests/bind_action.lua", ("lua",), skip_reason="the bind tests need lua"),
     Step("hypr-act", "lua", "bash ./home/hypr/tests/hypr-act.sh"),
     Step("act-lib", "lua", "lua ./home/hypr/tests/act.lua", ("lua",), skip_reason="the action tests need lua"),
+    Step("act-global", "lua", "bash ./home/hypr/tests/act-global.sh", ("lua",), skip_reason="the global action tests need lua"),
     Step("input-vectors-lua", "inputvec", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
     Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),

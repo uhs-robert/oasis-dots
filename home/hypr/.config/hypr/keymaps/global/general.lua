@@ -1,41 +1,60 @@
-local Bind = require("lib.key.bind") ---@class BindLib
+local Act = require("lib.act") ---@class ActionLib
 local Config = require("config") ---@class Config
-local Menu = require("lib.actions.menu") ---@class Menu
 local Direction = require("lib.key.direction") ---@class Direction
-local Window = require("lib.actions.window") ---@class WindowActions
 
--- stylua: ignore start
-local OPTS = {
-  universal = function(description) return { submap_universal = true, desc = description } end,
+-- Help, close, fullscreen, maximize, restore and the scratchpad bind their own keys when this loads.
+require("lib.actions.defs.windows")
+
+-- Focus and Move Window: the keys follow Config.vim_mode (the letter or the arrow carries the which-key label).
+local DIRECTIONS = {
+  { name = "left", title = "Left", letter = "H", arrow = "LEFT" },
+  { name = "down", title = "Down", letter = "J", arrow = "DOWN" },
+  { name = "up", title = "Up", letter = "K", arrow = "UP" },
+  { name = "right", title = "Right", letter = "L", arrow = "RIGHT" },
 }
 
--- Utility
-Bind.leader_fn("SLASH",  Menu.keybinds(), OPTS.universal("Keybind Help"))
+--- @param id     string  An action with one `dir` param
+--- @param prefix string  Modifier before the key, "" or "SHIFT + "
+--- @param label  string  Which-key label before the direction
+local function bind_directions(id, prefix, label)
+  for _, direction in ipairs(DIRECTIONS) do
+    local shown, hidden = Direction.keys(direction.letter, direction.arrow)
+    local args = { direction.name }
+    Act.bind(id, {
+      key = { key = prefix .. shown, leader = true, universal = true },
+      args = args,
+      desc = label .. " " .. direction.title,
+    })
+    Act.bind(id, { key = { key = prefix .. hidden, leader = true, universal = true }, args = args, desc = false })
+  end
+end
 
--- Window Actions
-Bind.leader_key("X",   Window.close(),             "Close Window")
-Bind.leader_key("F",   Window.fullscreen_toggle(), "Toggle Fullscreen")
-Bind.leader_key("M",   Window.maximize_toggle(),   "Toggle Maximize")
-Bind.leader_key("U",   Window.restore_closed(),    "Restore Closed Window")
-
--- Window Focus/Movement
-local shift_leader = Bind.leader ~= "" and (Bind.leader .. " + SHIFT") or "SHIFT"
-local focus_actions = { left = Window.focus_dir("l"), down = Window.focus_dir("d"), up = Window.focus_dir("u"), right = Window.focus_dir("r") }
-local move_actions  = { left = Window.move_dir("l"),  down = Window.move_dir("d"),  up = Window.move_dir("u"),  right = Window.move_dir("r") }
-Bind.keys(Direction.binds(focus_actions, "Focus",       Bind.leader,  { submap_universal = true }))
-Bind.keys(Direction.binds(move_actions,  "Move Window", shift_leader, { submap_universal = true }))
+bind_directions("window.focus", "", "Focus")
+bind_directions("window.move", "SHIFT + ", "Move Window")
 
 -- Float Cycle (notification toasts first)
-Bind.leader_key("BRACKETLEFT",  Window.focus_toast_popup_or_float("prev"), "Prev Toast/Popup/Float")
-Bind.leader_key("BRACKETRIGHT", Window.focus_toast_popup_or_float("next"), "Next Toast/Popup/Float")
-
--- Window Special
-Bind.leader_key("S",         Window.toggle_special("scratchpad"),  OPTS.universal("Toggle Scratchpad"))
-Bind.leader_key("SHIFT + S", Window.move_to_special("scratchpad"), OPTS.universal("Move to Scratchpad"))
+Act.bind("window.cycle_float", {
+  key = { key = "BRACKETLEFT", leader = true },
+  args = { "prev" },
+  desc = "Prev Toast/Popup/Float",
+})
+Act.bind("window.cycle_float", {
+  key = { key = "BRACKETRIGHT", leader = true },
+  args = { "next" },
+  desc = "Next Toast/Popup/Float",
+})
 
 -- Monitor Focus/Movement
-for i = 1, #Config.monitors > 0 and math.min(#Config.monitors, 10) or 10 do
-  local key = i % 10
-  Bind.leader_key("CTRL + " .. key,         Window.focus_monitor(i),   { desc = "Focus Monitor " .. i })
-  Bind.leader_key("CTRL + SHIFT + " .. key, Window.move_to_monitor(i), { desc = "Move to Monitor " .. i })
+for slot = 1, #Config.monitors > 0 and math.min(#Config.monitors, 10) or 10 do
+  local key = slot % 10
+  Act.bind("monitor.focus", {
+    key = { key = "CTRL + " .. key, leader = true },
+    args = { slot },
+    desc = "Focus Monitor " .. slot,
+  })
+  Act.bind("monitor.move_window", {
+    key = { key = "CTRL + SHIFT + " .. key, leader = true },
+    args = { slot },
+    desc = "Move to Monitor " .. slot,
+  })
 end
