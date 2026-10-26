@@ -232,6 +232,27 @@ packages_to_restow() {
   done < <(git -C "$repo" diff --name-only --diff-filter=ADR "$before" "$after" -- home/ | awk -F/ 'NF > 2 { print $2 }' | sort -u)
 }
 
+# Prints "voxcmd-build" when the changed paths (one per line, on stdin) touch the voxcmd crate. Its tests, TOML and
+# scripts do not need a rebuild: the installed binary reads those from the checkout at run time.
+crate_rebuilds() {
+  ! grep -Eq '^home/voxcmd/(src/|Cargo\.(toml|lock)$)' || echo voxcmd-build
+}
+
+# Runs each `just` recipe crate_rebuilds names, in the main checkout. The merge is already done, so a failure warns
+# (stderr, and a desktop notification when there is one) and never stops the run: the live binary is only stale.
+rebuild_crates() {
+  local repo=$1 changed=$2 recipe
+  while IFS= read -r recipe; do
+    if (cd "$repo" && just "$recipe") 9>&-; then
+      echo "ship-batch: ran just $recipe (the merge changed its crate)"
+    else
+      echo "ship-batch: WARNING: just $recipe failed; the installed binary is stale. Fix it and run: just $recipe" >&2
+      notify-send --urgency=critical --app-name=ship-batch "ship-batch: just $recipe failed" \
+        "The merge changed its crate but the rebuild failed; run: just $recipe" 9>&- 2>/dev/null || true
+    fi
+  done < <(crate_rebuilds <<<"$changed")
+}
+
 # A PR whose branch has no local worktree (pushed from a cloud session) is checked in a temporary one. The caller traps
 # EXIT, INT and TERM to remove_temp_worktree, so every way out of the script removes it.
 temp_worktree='' temp_repo=''

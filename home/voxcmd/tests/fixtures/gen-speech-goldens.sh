@@ -54,8 +54,18 @@ for function_name in normalize apply_replacements name_workspace_ordinals init_w
   }
   eval "$source_text"
 done
-# split_duration lives in an integration, which cannot be sourced (it runs hooks); it needs only parse_duration.
-eval "$(awk '/^split_duration\(\) \{/ { printing = 1 } printing { print } printing && /^}/ { exit }' "$package_dir/.config/voxcmd/integrations.d/timers.sh")"
+# The bash split_duration the goldens were made from, kept here: timers.toml's copy now asks the Rust splitter, which a
+# golden must not be generated from. It needs only parse_duration.
+split_duration() {
+  local -a words
+  read -ra words <<<"$1"
+  local count seconds
+  for ((count = ${#words[@]}; count > 0; count--)); do
+    seconds=$(parse_duration "${words[*]:0:count}") && break
+  done
+  [ "$count" -gt 0 ] && [ "$seconds" -gt 0 ] || return 1
+  echo "$seconds ${words[*]:count}"
+}
 # The settings those functions read, lifted the same way.
 lifted_settings=$(grep -E '^(correction_phrases|leading_filler|wake_word|wake_aliases|wake_regex|wake_rest|wake_before)=' "$package_dir/.local/bin/voxcmd")
 # wake_rest and wake_before are set by the lifted split functions and read by the wrappers below.

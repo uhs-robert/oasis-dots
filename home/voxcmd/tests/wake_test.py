@@ -1033,6 +1033,62 @@ class StubbedCommandsTest(unittest.TestCase):
         self.assertIn("playerctl --all-players status", self.recorded())
 
 
+class DefaultVoxcmdTest(unittest.TestCase):
+    """With no override, the wake listener and auto-stop run ~/.local/bin/voxcmd: the bash script's stow link today, the
+    Rust binary's link after the swap. Neither may look beside its own file, where the swap leaves nothing."""
+
+    def setUp(self):
+        self.home = tempfile.TemporaryDirectory()
+        self.addCleanup(self.home.cleanup)
+        os.makedirs(os.path.join(self.home.name, ".local", "bin"))
+        self.link = os.path.join(self.home.name, ".local", "bin", "voxcmd")
+        self.calls = os.path.join(self.home.name, "calls")
+        saved = {key: os.environ.get(key) for key in ("HOME", "VOXCMD_WAKE_VOXCMD")}
+        self.addCleanup(lambda: [os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v) for k, v in saved.items()])
+        os.environ["HOME"] = self.home.name
+        os.environ.pop("VOXCMD_WAKE_VOXCMD", None)
+        autostop_loader = importlib.machinery.SourceFileLoader("voxcmd_autostop", os.path.join(os.path.dirname(WAKE_PATH), "voxcmd-autostop"))
+        self.autostop = importlib.util.module_from_spec(importlib.util.spec_from_loader("voxcmd_autostop", autostop_loader))
+        autostop_loader.exec_module(self.autostop)
+
+    def link_to_script(self):
+        script = os.path.join(self.home.name, "bash-voxcmd")
+        write_stub(script, f'echo "$*" >>"{self.calls}"\n')
+        os.symlink(script, self.link)
+
+    def test_the_wake_listener_runs_the_installed_voxcmd_through_a_link_to_a_script(self):
+        self.link_to_script()
+        logs = []
+        wake.make_run_listen(logs.append)()
+        self.assertEqual(logs, ["listen exit 0"])
+        with open(self.calls) as calls:
+            self.assertEqual(calls.read().splitlines(), ["listen --start-only"])
+
+    def test_the_wake_listener_runs_the_installed_voxcmd_through_a_link_to_a_binary(self):
+        os.symlink("/bin/true", self.link)
+        logs = []
+        wake.make_run_listen(logs.append)()
+        self.assertEqual(logs, ["listen exit 0"])
+
+    def test_the_override_still_wins(self):
+        self.link_to_script()
+        os.environ["VOXCMD_WAKE_VOXCMD"] = "/override/voxcmd"
+        self.assertEqual(wake.voxcmd_command(), "/override/voxcmd")
+
+    def test_the_wake_listener_does_not_look_beside_its_own_file(self):
+        self.assertEqual(wake.voxcmd_command(), self.link)
+
+    def pause_checks(self, pause_check_voxcmd=""):
+        settings = {**self.autostop.DEFAULT_SETTINGS, "pause_check_recording": "1:a:2", "pause_check_voxcmd": pause_check_voxcmd}
+        return self.autostop.PauseChecks(settings, lambda message: None)
+
+    def test_the_auto_stop_pause_check_defaults_to_the_installed_voxcmd(self):
+        self.assertEqual(self.pause_checks().voxcmd, self.link)
+
+    def test_the_auto_stop_pause_check_setting_still_wins(self):
+        self.assertEqual(self.pause_checks("/set/voxcmd").voxcmd, "/set/voxcmd")
+
+
 class FetchModelsTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

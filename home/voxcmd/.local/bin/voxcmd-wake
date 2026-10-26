@@ -800,8 +800,9 @@ class StateFile:
 
 
 def voxcmd_command():
-    override = os.environ.get("VOXCMD_WAKE_VOXCMD")
-    return override or os.path.join(os.path.dirname(os.path.realpath(__file__)), "voxcmd")
+    """The installed voxcmd, whatever it is (the bash script now, the Rust binary after the swap), never a neighbour of
+    this file: the swap deletes the neighbour."""
+    return os.environ.get("VOXCMD_WAKE_VOXCMD") or os.path.expanduser("~/.local/bin/voxcmd")
 
 
 def make_run_listen(log):

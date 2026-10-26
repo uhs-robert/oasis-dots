@@ -61,7 +61,7 @@ DEFAULT_SETTINGS = {
     # measure the room itself (voxcmd's chain after a type-mode ending). Set by voxcmd, not meant for autostop.conf.
     "threshold_file": "",
     # Type mode's endings (PauseChecks): the recording "<frame_id>:<owner>:<owner_start>" whose pauses are checked, set by
-    # voxcmd, and the voxcmd that checks them (default: the one beside this file). Unset, no pause is checked.
+    # voxcmd, and the voxcmd that checks them (default: ~/.local/bin/voxcmd). Unset, no pause is checked.
     "pause_check_recording": "",
     "pause_check_voxcmd": "",
     "pause_check_secs": "0.6",
@@ -375,9 +375,7 @@ class PauseChecks:
 
     def __init__(self, settings, trace):
         self.recording = settings["pause_check_recording"]
-        self.voxcmd = settings["pause_check_voxcmd"] or os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "voxcmd"
-        )
+        self.voxcmd = settings["pause_check_voxcmd"] or os.path.expanduser("~/.local/bin/voxcmd")
         self.pause_secs = float(settings["pause_check_secs"])
         self.wait_secs = float(settings["pause_check_wait_secs"])
         self.recent_frames = collections.deque(maxlen=round(float(settings["pause_check_clip_secs"]) / FRAME_SECS))
