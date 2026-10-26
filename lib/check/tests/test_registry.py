@@ -115,6 +115,7 @@ class HeadlessLoadTest(TreeCase):
         self.assertEqual(findings, [])
         lua_ids = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "lua")
         self.assertEqual(lua_ids, [
+            "apps.focus", "apps.open",
             "files.open",
             "help.keybinds", "hyprvim.edit_selection", "hyprvim.jump_mark", "hyprvim.terminal",
             "media.brightness_down", "media.brightness_up", "media.mute", "media.mute_mic", "media.next",
@@ -123,12 +124,15 @@ class HeadlessLoadTest(TreeCase):
             "monitor.focus", "monitor.move_window", "picker.clipboard", "picker.clipboard_delete",
             "picker.directory", "picker.emoji", "scratchpad.move", "scratchpad.toggle",
             "submap.enter",
-            "terminal.bottom", "terminal.open", "terminal.task_manager", "terminal.tui_files", "terminal.yazi",
-            "window.close", "window.cycle_float", "window.focus", "window.fullscreen", "window.maximize",
-            "window.move", "window.restore_closed",
-            "workspace.cycle", "workspace.focus", "workspace.move", "workspace.move_window",
+            "system.display_manager", "system.edit_keymaps", "system.next_wallpaper", "system.replay_autostart",
+            "system.restart_bar", "system.theme_switch", "system.voxtype_restart", "system.voxtype_settings",
+            "terminal.bottom", "terminal.editor", "terminal.open", "terminal.task_manager", "terminal.tool",
+            "terminal.tui_files", "terminal.yazi",
+            "window.close", "window.cycle_float", "window.focus", "window.focus_match", "window.fullscreen",
+            "window.maximize", "window.move", "window.restore_closed",
+            "workspace.cycle", "workspace.focus", "workspace.focus_last", "workspace.move", "workspace.move_window",
         ])
-        self.assertEqual(len(listing["actions"]), 14 + len(lua_ids))
+        self.assertEqual(len(listing["actions"]), 23 + len(lua_ids))
 
     def test_a_planted_good_definition_passes(self):
         self.assertEqual(self.planted('Act.define("zoom.again", { label = "Z", run = Act.Ipc("zoom", "toggle") })'), [])

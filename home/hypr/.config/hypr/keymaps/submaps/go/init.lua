@@ -2,19 +2,14 @@
 --- Each bind navigates to a window, workspace, or monitor
 
 local Config = require("config") --- @class Config
-local Apps = require("lib.actions.apps") --- @class Apps
-local Menu = require("lib.actions.menu") --- @class Menu
 local Submap = require("lib.key.submap") --- @class Submap
 local Window = require("lib.actions.window") --- @class WindowActions
-local Workspace = require("lib.actions.workspace") --- @class WorkspaceActions
 local Workspaces = require("lib.workspaces") --- @class Workspaces
 
-local APP = Apps.map
+-- The actions the rows name.
+require("lib.actions.defs.apps")
 
-local SELECTORS = {
-  youtube = { window = "title:(?i).*youtube.*" },
-  meeting = { window = "title:(?i).*Meet.*" },
-}
+local function focus_app(app) return { "apps.focus", { app } } end
 
 Submap.define({
   name = "Go",
@@ -27,22 +22,22 @@ Submap.define({
   binds = function()
     local rows = {
       -- stylua: ignore start
-      { "TAB",       Workspace.focus_last(),                "Last Workspace" },
-      { "A",         Menu.agents(),                         "Agent Sessions" },
-      { "B",         Apps.focus_or_launch(APP.firefox),     "Browser" },
-      { "C",         Apps.focus_or_launch(APP.tmux_config), "Tmuxifier Config" },
-      { "F",         Apps.focus_or_launch(APP.yazi),        "Files" },
-      { "SHIFT + F", Apps.focus_or_launch(APP.thunar),      "Thunar" },
-      { "H",         Apps.focus_or_launch(APP.hyprconfig),  "Hypr Config" },
-      { "M",         Apps.focus_or_launch(APP.betterbird),  "Mail" },
-      { "SHIFT + M", Window.focus_by(SELECTORS.meeting),    "Meeting" },
-      { "P",         Menu.tmux(),                           "Project" },
-      { "Q",         Apps.focus_or_launch(APP.qutebrowser), "QuteBrowser" },
-      { "S",         Apps.focus_or_launch(APP.slack),       "Slack" },
-      { "SHIFT + S", Apps.focus_or_launch(APP.steam),       "Steam" },
-      { "T",         Apps.focus_or_launch(APP.terminal),    "Terminal" },
-      { "W",         Menu.overview_search(),                "Search Windows" },
-      { "Y",         Window.focus_by(SELECTORS.youtube),    "Youtube" },
+      { "TAB",       "workspace.focus_last" },
+      { "A",         "menu.agents" },
+      { "B",         focus_app("firefox"),                  "Browser" },
+      { "C",         focus_app("tmux_config"),              "Tmuxifier Config" },
+      { "F",         focus_app("yazi"),                     "Files" },
+      { "SHIFT + F", focus_app("thunar"),                   "Thunar" },
+      { "H",         focus_app("hyprconfig"),               "Hypr Config" },
+      { "M",         focus_app("betterbird"),               "Mail" },
+      { "SHIFT + M", { "window.focus_match", { "meeting" } }, "Meeting" },
+      { "P",         "menu.tmux",                           "Project" },
+      { "Q",         focus_app("qutebrowser"),              "QuteBrowser" },
+      { "S",         focus_app("slack"),                    "Slack" },
+      { "SHIFT + S", focus_app("steam"),                    "Steam" },
+      { "T",         focus_app("terminal"),                 "Terminal" },
+      { "W",         "overview.search",                     "Search Windows" },
+      { "Y",         { "window.focus_match", { "youtube" } }, "Youtube" },
       -- stylua: ignore end
     }
 

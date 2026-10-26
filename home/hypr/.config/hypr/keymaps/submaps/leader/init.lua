@@ -3,12 +3,9 @@
 
 local Config = require("config") --- @class Config
 local Cmd = require("lib.actions.cmd") --- @class Cmd
-local Menu = require("lib.actions.menu") --- @class Menu
 local Popups = require("lib.actions.popups") --- @class Popups
 local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
-local Window = require("lib.actions.window") --- @class WindowActions
-local Workspace = require("lib.actions.workspace") --- @class WorkspaceActions
 local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
 
 local KEEP = { keep = true }
@@ -22,34 +19,34 @@ Submap.define({
   catchall = "reset",
 
   binds = function()
+    -- Rows name actions by id; a label here replaces the action's own, as the submap labels are shorter.
     local binds = {
       -- stylua: ignore start
       -- Pickers
-      { "SLASH",         Menu.zoxide(),                                   "Directory" },
-      { "O",             Menu.drun(),                                     "Open Application" },
+      { "SLASH",         "picker.directory",                              "Directory" },
+      { "O",             "menu.drun" },
       { "SHIFT + O",     Launcher.show_picker,                            "Session Launcher" },
-      { "CTRL + V",      Menu.clipboard(),                                "Clipboard" },
-      { "TAB",           Menu.overview(),                                 "Workspace Overview" },
-      { "SHIFT + TAB",   Menu.tmux_overview(),                            "Tmux Overview" },
-      { "E",             Menu.emoji(),                                    "Emoji" },
+      { "CTRL + V",      "picker.clipboard",                              "Clipboard" },
+      { "TAB",           "overview.open",                                 "Workspace Overview" },
+      { "SHIFT + TAB",   "tmux.overview",                                 "Tmux Overview" },
+      { "E",             "picker.emoji",                                  "Emoji" },
 
       -- Commands
-      { "PERIOD",        Cmd.run(Scripts.voxtype),                        "Speech to Text" },
-      { "COMMA",         Cmd.run(Scripts.voxcmd_listen),                  "Voice Command" },
-      { "SHIFT + COMMA", Cmd.run(Scripts.voxcmd_stop),                    "Stop Voice" },
-      { "CTRL + COMMA",  Cmd.run(Scripts.voxcmd_rapid),                   "Rapid Mode" },
-      { "CTRL + PERIOD", Cmd.run(Scripts.voxcmd_wake),                    "Wake Word" },
+      { "PERIOD",        "voice.dictate" },
+      { "COMMA",         "voice.command" },
+      { "SHIFT + COMMA", "voice.stop" },
+      { "CTRL + COMMA",  "voice.rapid" },
+      { "CTRL + PERIOD", "voice.wake" },
       -- SHIFT + SLASH would read as help, but every submap keeps it for the which-key toggle.
       { "CTRL + SLASH",  Cmd.run(Scripts.voxcmd_help),                    "Voice Help" },
 
       -- Submaps
-      { "G",             Submap.switch("Groups"),                         "+Groups",        KEEP },
+      { "G",             { "submap.enter", { "Groups" } },                "+Groups",        KEEP },
       -- stylua: ignore end
     }
 
-    table.insert(binds, { "SPACE", Popups.open("start"), "Start Menu" })
-    local settings = { "S", Popups.open("settings"), "Settings" }
-    for _, row in ipairs(Popups.binds({ S = settings })) do
+    table.insert(binds, Popups.row("SPACE", "start", "Start Menu"))
+    for _, row in ipairs(Popups.binds({ S = Popups.row("S", "settings", "Settings") })) do
       table.insert(binds, row)
     end
     return binds

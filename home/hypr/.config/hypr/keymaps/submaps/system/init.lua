@@ -6,20 +6,12 @@ local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
 local Cmd = require("lib.actions.cmd") ---@class Cmd
 
-local TERM_CMD = Config.app.term_cmd
-local TUI_FILES = Config.app.tui_file_manager
+-- The actions the rows name.
+require("lib.actions.defs.apps")
+require("lib.actions.defs.popups")
+require("lib.actions.defs.system")
 
-local CMD = {
-  edit_keymaps = TERM_CMD .. " -e " .. TUI_FILES .. " ~/.config/hypr/keymaps/",
-  theme_switch = Scripts.qs_ipc
-    .. " call settings open colors >/dev/null 2>&1 || ~/.config/hypr/theme/switch.lua '"
-    .. Config.app.dmenu_cmd
-    .. "'",
-  next_wallpaper = "lua ~/.config/hypr/extensions/wallpaper/init.lua --once",
-  restart_voxtype = "systemctl --user restart voxtype",
-  restart_bar = "pkill -f '^qs -n'; qs -n",
-}
-
+-- Not actions yet: the power rows wait for their own.
 local POWER = {
   logout = Scripts.qs_ipc .. " call power confirm logout",
   lock = Scripts.qs_ipc .. " call power confirm lock",
@@ -37,27 +29,27 @@ Submap.define({
 
   -- stylua: ignore start
   binds = {
-    { "SLASH",     Cmd.run(CMD.edit_keymaps),           "Edit Keymaps" },
-    { "SPACE",     Cmd.term("btop"),                    "Task Manager" },
-    { "A",         Cmd.term("abtop"),                   "AI Manager" },
-    { "B",         Cmd.run(CMD.restart_bar),            "Restart Bar" },
-    { "D",         Cmd.run(Config.app.display_manager), "Display Manager" },
+    { "SLASH",     "system.edit_keymaps" },
+    { "SPACE",     "terminal.task_manager" },
+    { "A",         { "terminal.tool", { "abtop" } },    "AI Manager" },
+    { "B",         "system.restart_bar" },
+    { "D",         "system.display_manager" },
     { "E",         Cmd.run(POWER.logout),               "Logout" },
-    { "H",         Cmd.run("hyprctl reload"),           "Reload Hyprland" },
-    { "SHIFT + H", Cmd.run("hyprpm reload -n"),         "Reload Hyprpm Plugins" },
-    { "I",         Cmd.run(Scripts.nmtui),              "Internet (nmtui)" },
-    { "K",         Cmd.run("hyprctl kill"),             "Kill App (Click)" },
+    { "H",         "system.reload_hyprland" },
+    { "SHIFT + H", "system.reload_plugins" },
+    { "I",         "system.network" },
+    { "K",         "system.kill_app" },
     { "L",         Cmd.run(POWER.lock),                 "Lock" },
-    { "SHIFT + L", Cmd.run(Scripts.toggle_autolock),    "Toggle Auto-Lock" },
-    { "N",         Cmd.run(Scripts.qs_ipc .. " call popup open notifications"), "Notification Center" },
+    { "SHIFT + L", "system.toggle_autolock" },
+    { "N",         { "popup.open", { "notifications" } }, "Notification Center" },
     { "R",         Cmd.run(POWER.reboot),               "Reboot" },
-    { "SHIFT + R", require("config.autostart"),         "Replay Autostart" },
+    { "SHIFT + R", "system.replay_autostart" },
     { "P",         Cmd.run(POWER.off),                  "Power Off" },
-    { "T",         Cmd.run(CMD.theme_switch),           "Theme Switch" },
-    { "U",         Cmd.run(Scripts.focus_topgrade), "Update System" },
-    { "V",         Cmd.term("voxtype configure"),       "Voxtype Settings" },
-    { "SHIFT + V", Cmd.term(CMD.restart_voxtype),       "Voxtype Restart" },
-    { "W",         Cmd.run(CMD.next_wallpaper),         "Next Wallpaper" },
-    { "X",         Cmd.run("hyprctl seterror disable"), "Disabled Hypr Errors" },
+    { "T",         "system.theme_switch" },
+    { "U",         "system.update" },
+    { "V",         "system.voxtype_settings" },
+    { "SHIFT + V", "system.voxtype_restart" },
+    { "W",         "system.next_wallpaper" },
+    { "X",         "system.disable_errors" },
   },
 }).setup()
