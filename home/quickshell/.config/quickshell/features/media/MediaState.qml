@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
+import "CavaViewers.js" as Viewers
 
 // Shared MPRIS state for the media bar module and popup. The active player is
 // whichever one most recently started playing; ties broken by falling back to
@@ -170,11 +171,22 @@ Singleton {
         else root.active.loopState = MprisLoopState.None;
     }
 
-    // MprisPlayer.position doesn't push updates on its own; poll it while a popup is open.
+    // Whatever shows the position (a PositionViewer) registers here while it is visible.
+    property var position_viewers: []
+    function register_position(viewer) { root.position_viewers = Viewers.register(root.position_viewers, viewer); }
+    function unregister_position(viewer) { root.position_viewers = Viewers.unregister(root.position_viewers, viewer); }
+
+    // MprisPlayer.position doesn't push updates on its own; poll it only while something shows it and a track plays.
+    readonly property bool polling: (root.tracking || Viewers.any(root.position_viewers)) && root.playing
     Timer {
         interval: 1000
-        running: root.tracking && !!root.active
+        running: root.polling
         repeat: true
+        triggeredOnStart: true
         onTriggered: if (root.active) root.active.positionChanged()
     }
+
+    // A paused player's position does not move, but a freshly shown view still needs one read.
+    onTrackingChanged: if (root.tracking && root.active) root.active.positionChanged()
+    onPosition_viewersChanged: if (Viewers.any(root.position_viewers) && root.active) root.active.positionChanged()
 }

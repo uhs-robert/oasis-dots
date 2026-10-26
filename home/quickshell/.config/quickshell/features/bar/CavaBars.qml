@@ -11,7 +11,7 @@ Item {
     // Under a bottom bar: hangs from the island's top edge and grows down toward the screen edge.
     property bool flipped: false
     readonly property int bar_count: CavaState.bar_count
-    readonly property bool line: Style.cava_line
+    readonly property bool line: MediaSettings.cava_line
 
     readonly property bool drawing: root.visible && root.width > 0
     readonly property var top_points: {

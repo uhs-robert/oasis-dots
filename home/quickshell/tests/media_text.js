@@ -1,0 +1,36 @@
+// Runs MediaText.js under node: the media well's text rules and its marquee gate.
+"use strict";
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+const assert = require("assert");
+
+const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/MediaText.js"), "utf8");
+const T = vm.createContext({});
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running };", T);
+const M = T.api;
+const plain = v => JSON.parse(JSON.stringify(v));
+
+const cases = [
+  ["short text is not cut", () => M.clip("abc", 5), "abc"],
+  ["text at the cap is not cut", () => M.clip("abcde", 5), "abcde"],
+  ["long text is cut with an ellipsis within the cap", () => M.clip("abcdefgh", 5), "abcd…"],
+  ["trailing space before the ellipsis is dropped", () => M.clip("ab cdefgh", 4), "ab…"],
+  ["inline is Artist - Title", () => plain(M.lines("T", "A", true, true, "inline")), [{ text: "A - T", small: false }]],
+  ["inline with the artist hidden", () => plain(M.lines("T", "A", true, false, "inline")), [{ text: "T", small: false }]],
+  ["inline with no artist known", () => plain(M.lines("T", "", true, true, "inline")), [{ text: "T", small: false }]],
+  ["stacked puts the title over a small artist", () => plain(M.lines("T", "A", true, true, "stacked")), [{ text: "T", small: false }, { text: "A", small: true }]],
+  ["stacked artist alone is not small", () => plain(M.lines("T", "A", false, true, "stacked")), [{ text: "A", small: false }]],
+  ["both hidden leaves no lines", () => M.lines("T", "A", false, false, "inline").length, 0],
+  ["time under an hour", () => M.format_time(75), "1:15"],
+  ["time over an hour", () => M.format_time(3725), "1:02:05"],
+  ["time of nothing", () => M.format_time(undefined), "0:00"],
+  ["ratio clamps", () => [M.ratio(5, 10), M.ratio(20, 10), M.ratio(-1, 10), M.ratio(3, 0)], [0.5, 1, 0, 0]],
+  ["marquee runs only when wanted, visible and overflowing", () => [M.marquee_running(true, true, 10), M.marquee_running(false, true, 10), M.marquee_running(true, false, 10), M.marquee_running(true, true, 0)], [true, false, false, false]],
+];
+
+let failed = 0;
+for (const [name, fn, want] of cases) {
+  try { assert.deepStrictEqual(fn(), want); console.log("ok   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n  " + e.message); }
+}
+process.exit(failed ? 1 : 0);
