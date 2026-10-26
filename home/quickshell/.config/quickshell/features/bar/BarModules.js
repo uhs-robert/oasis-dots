@@ -20,7 +20,8 @@ var modules = [
     { name: "notifications", file: "Notifications.qml", popup: true, section: "z", args: [] },
     { name: "media", file: "Media.qml", popup: true, section: "x", args: [] },
     { name: "directory", file: "Directory.qml", popup: false, section: "x", args: [] },
-    { name: "cava", file: "Cava.qml", popup: false, section: "x", args: [] }
+    // The old name of `media`: still accepted so old configs load, but not offered in the module picker.
+    { name: "cava", file: "Cava.qml", popup: false, section: "x", args: [], alias_of: "media" }
 ];
 
 var names = modules.map(m => m.name);
