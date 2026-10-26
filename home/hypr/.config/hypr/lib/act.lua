@@ -375,8 +375,13 @@ local function register_key(handle, key, opts, args)
     bind_opts[k] = v
   end
   if bind_opts.submap_universal == nil and key.universal then bind_opts.submap_universal = true end
+  -- A key shown under its own name ("Focus Left") or hidden from which-key (`desc = false`, a second key for the same
+  -- thing) says so in `desc`; the label names the action.
+  local desc = handle.label
+  if bind_opts.desc ~= nil then desc = bind_opts.desc or nil end
+  bind_opts.desc = nil
   local register = key.leader and Bind.leader_key or Bind.key
-  local made = register(key.key, function() Act.run(handle.id, table.unpack(args)) end, handle.label, bind_opts)
+  local made = register(key.key, function() Act.run(handle.id, table.unpack(args)) end, desc, bind_opts)
   -- Recorded only after the bind succeeded, so list never shows a key that failed to register.
   local bound = key.leader and Bind.leader and Bind.leader ~= "" and (Bind.leader .. " + " .. key.key) or key.key
   table.insert(
@@ -398,7 +403,8 @@ end
 
 --- Bind a key to an action that is already defined.
 --- @param id   string
---- @param opts { key: string|table, args: any[]|nil }  Any other field goes to hl.bind
+--- @param opts { key: string|table, args: any[]|nil, desc: string|false|nil }  `desc` replaces the label on this key,
+---             false leaves it undescribed; any other field goes to hl.bind
 function Act.bind(id, opts)
   local handle = registry[tostring(id)]
   if not handle then

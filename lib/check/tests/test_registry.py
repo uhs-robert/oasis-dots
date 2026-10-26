@@ -110,15 +110,21 @@ class HeadlessLoadTest(TreeCase):
     def test_the_real_tree_passes(self):
         self.assertEqual(registry.run_checks(REPO_DIR), [])
 
-    def test_the_real_tree_defines_the_six_picker_and_hyprvim_actions(self):
+    def test_the_real_tree_defines_the_lua_actions(self):
         listing, findings = registry.load_list(REPO_DIR)
         self.assertEqual(findings, [])
         lua_ids = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "lua")
         self.assertEqual(lua_ids, [
-            "hyprvim.jump_mark", "hyprvim.terminal", "picker.clipboard", "picker.clipboard_delete",
-            "picker.directory", "picker.emoji",
+            "help.keybinds", "hyprvim.jump_mark", "hyprvim.terminal",
+            "media.brightness_down", "media.brightness_up", "media.mute", "media.mute_mic", "media.next",
+            "media.play_pause", "media.prev", "media.volume_down", "media.volume_up",
+            "monitor.focus", "monitor.move_window", "picker.clipboard", "picker.clipboard_delete",
+            "picker.directory", "picker.emoji", "scratchpad.move", "scratchpad.toggle",
+            "window.close", "window.cycle_float", "window.focus", "window.fullscreen", "window.maximize",
+            "window.move", "window.restore_closed",
+            "workspace.cycle", "workspace.focus", "workspace.move", "workspace.move_window",
         ])
-        self.assertEqual(len(listing["actions"]), 20)
+        self.assertEqual(len(listing["actions"]), 14 + len(lua_ids))
 
     def test_a_planted_good_definition_passes(self):
         self.assertEqual(self.planted('Act.define("zoom.again", { label = "Z", run = Act.Ipc("zoom", "toggle") })'), [])

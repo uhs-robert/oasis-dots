@@ -46,6 +46,8 @@ CASES = [
     ("lib/check/steps/registry.py", "checkscope"),
     ("home/hypr/tests/act_refs.lua", " lua"),
     ("home/hypr/tests/hypr-act.sh", " lua"),
+    ("home/hypr/tests/act-global.sh", " lua"),
+    ("home/hypr/tests/act_global.lua", " lua"),
     ("home/hypr/.local/bin/hypr-act", " lua"),
     ("docs/keybinds.md", ""),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.

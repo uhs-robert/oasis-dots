@@ -1,13 +1,10 @@
+local Act = require("lib.act") ---@class ActionLib
 local Bind = require("lib.key.bind") ---@class BindLib
 local Window = require("lib.actions.window") ---@class WindowActions
-local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
-local Config = require("config") ---@class Config
 
-local PERSISTENT_WS = Config.persistent_workspaces
-
--- Mouse Keys
--- stylua: ignore start
-Bind.leader_key("mouse_down", PERSISTENT_WS and Workspace.cycle_local("next") or Workspace.cycle_next())
-Bind.leader_key("mouse_up",   PERSISTENT_WS and Workspace.cycle_local("prev") or Workspace.cycle_prev())
-Bind.leader_key("mouse:272",  Window.drag())
-Bind.leader_key("mouse:273",  Window.resize_mouse())
+-- The wheel cycles workspaces. Drag and resize stay binds: they need the mouse dispatchers, which an action
+-- performed from a script cannot start.
+Act.bind("workspace.cycle", { key = { key = "mouse_down", leader = true }, args = { "next" }, desc = false })
+Act.bind("workspace.cycle", { key = { key = "mouse_up", leader = true }, args = { "prev" }, desc = false })
+Bind.leader_key("mouse:272", Window.drag())
+Bind.leader_key("mouse:273", Window.resize_mouse())

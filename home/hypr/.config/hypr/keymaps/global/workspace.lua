@@ -1,48 +1,49 @@
-local Bind = require("lib.key.bind") ---@class BindLib
+local Act = require("lib.act") ---@class ActionLib
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
-local Workspace = require("lib.actions.workspace") ---@class WorkspaceActions
 
-local OPTS = {
-  universal = function(description) return { desc = description, submap_universal = true } end,
-}
+require("lib.actions.defs.workspaces")
+
+-- The ids are the same with persistent workspaces; only their wording and the slot count change.
 local persistent_ws = Config.persistent_workspaces
 local WS_COUNT = type(persistent_ws) == "number" and math.min(persistent_ws, 10) or 10
--- stylua: ignore start
+local ON_MONITOR = persistent_ws and " on Monitor" or ""
+
+for slot = 1, WS_COUNT do
+  local key = slot % 10
+  Act.bind("workspace.focus", {
+    key = { key = "" .. key, leader = true, universal = true },
+    args = { slot },
+    desc = "Go to Workspace " .. slot,
+  })
+  Act.bind("workspace.move", {
+    key = { key = "SHIFT + " .. key, leader = true },
+    args = { slot },
+    desc = "Move to Workspace " .. slot,
+  })
+end
 
 --- Bind CTRL + a letter/arrow pair; only the key shown for Config.vim_mode gets the description.
-local ctrl_dir = function(letter, arrow, action, desc, repeating)
+--- @param id        string
+--- @param letter    string
+--- @param arrow     string
+--- @param dir       "prev"|"next"
+--- @param desc      string
+--- @param repeating boolean|nil
+local function ctrl_dir(id, letter, arrow, dir, desc, repeating)
   local shown, hidden = Direction.keys(letter, arrow)
-  Bind.leader_key("CTRL + " .. shown,  action, { desc = desc, repeating = repeating })
-  Bind.leader_key("CTRL + " .. hidden, action, { repeating = repeating })
+  repeating = repeating or nil -- an absent option, not false, as before
+  Act.bind(
+    id,
+    { key = { key = "CTRL + " .. shown, leader = true }, args = { dir }, desc = desc, repeating = repeating }
+  )
+  Act.bind(
+    id,
+    { key = { key = "CTRL + " .. hidden, leader = true }, args = { dir }, desc = false, repeating = repeating }
+  )
 end
 
---- Bind monitor-local workspace keys using `Config.persistent_workspaces` slot count.
-local bind_local_ws = function()
-  for i = 1, WS_COUNT do
-    local key = i % 10
-    Bind.leader_key("" .. key,         Workspace.focus_local(i), OPTS.universal("Go to Workspace " .. i))
-    Bind.leader_key("SHIFT + " .. key, Workspace.move_local(i),  "Move to Workspace " .. i)
-  end
-
-  ctrl_dir("H", "LEFT",  Workspace.cycle_local("prev"),       "Prev WS on Monitor", true)
-  ctrl_dir("L", "RIGHT", Workspace.cycle_local("next"),       "Next WS on Monitor", true)
-  ctrl_dir("J", "DOWN",  Workspace.move_window_local("prev"), "Move window to prev WS")
-  ctrl_dir("K", "UP",    Workspace.move_window_local("next"), "Move window to next WS")
-end
-
---- Bind global workspaces with cycle and move keys.
-local bind_global_ws = function()
-  for i = 1, WS_COUNT do
-    local key = i % 10
-    Bind.leader_key("" .. key,         Workspace.focus(i), OPTS.universal("Go to Workspace " .. i))
-    Bind.leader_key("SHIFT + " .. key, Workspace.move(i),  "Move to Workspace " .. i)
-  end
-
-  ctrl_dir("H", "LEFT",  Workspace.cycle_prev(), "Prev WS", true)
-  ctrl_dir("L", "RIGHT", Workspace.cycle_next(), "Next WS", true)
-  ctrl_dir("J", "DOWN",  Workspace.move_prev(),  "Move window to prev WS")
-  ctrl_dir("K", "UP",    Workspace.move_next(),  "Move window to next WS")
-end
-
-if Config.persistent_workspaces then bind_local_ws() else bind_global_ws() end
+ctrl_dir("workspace.cycle", "H", "LEFT", "prev", "Prev WS" .. ON_MONITOR, true)
+ctrl_dir("workspace.cycle", "L", "RIGHT", "next", "Next WS" .. ON_MONITOR, true)
+ctrl_dir("workspace.move_window", "J", "DOWN", "prev", "Move window to prev WS")
+ctrl_dir("workspace.move_window", "K", "UP", "next", "Move window to next WS")
