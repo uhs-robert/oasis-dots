@@ -111,14 +111,14 @@ copy_shipped_integrations() {
 
 # link_voxcmd_build <package copy>: this checkout's Rust build for a copied package, whose stubbed auto-stop and ask
 # helpers sit in its .local/bin. A suite then runs <copy>/tests/bin/voxcmd. The copy has no voxcmd of its own;
-# VOXCMD_LEGACY_BIN only names where the binary looks for its neighbours (share dir, auto-stop), and VOXCMD_ASK_CMD routes
+# VOXCMD_STAND_IN_BIN only names where the binary looks for its neighbours (share dir, auto-stop), and VOXCMD_ASK_CMD routes
 # every question through tests/bin/ask-stub to the copy's voxcmd-<kind> stubs.
 link_voxcmd_build() {
   local tests_dir
   tests_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
   mkdir -p "$1/tests/bin"
   ln -sf "$tests_dir/../target/release/voxcmd" "$1/tests/bin/voxcmd"
-  export VOXCMD_LEGACY_BIN=$1/.local/bin/voxcmd VOXCMD_ASK_CMD=$tests_dir/bin/ask-stub
+  export VOXCMD_STAND_IN_BIN=$1/.local/bin/voxcmd VOXCMD_ASK_CMD=$tests_dir/bin/ask-stub
 }
 
 root=$(mktemp -d)

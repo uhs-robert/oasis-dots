@@ -1,5 +1,5 @@
 //! `listen`, `internal watch`, `stop`, `session end` and `internal settle` end to end: the binary against a runtime dir
-//! of its own, with stubs for voxtype, setsid, the toasts, the auto-stop detector and the bash voxcmd (which logs what
+//! of its own, with stubs for voxtype, setsid, the toasts, the auto-stop detector and the stand-in voxcmd (which logs what
 //! it was asked to do). voxtype's state is a file the test writes, as voxtype would.
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -30,7 +30,7 @@ impl Voice {
             "runtime/voxcmd",
             "state",
             "bin",
-            "legacy",
+            "stand-in",
             "xdg",
             "work",
         ] {
@@ -60,8 +60,8 @@ impl Voice {
             &format!("echo \"notify-send $*\" >> '{}'", calls.display()),
         );
         voice.script(
-            "legacy/voxcmd",
-            &format!("echo \"bash voxcmd $*\" >> '{}'", calls.display()),
+            "stand-in/voxcmd",
+            &format!("echo \"stand-in voxcmd $*\" >> '{}'", calls.display()),
         );
         voice
     }
@@ -104,7 +104,7 @@ impl Voice {
     /// The auto-stop detector the watcher starts: writes its pid and the threshold file, then runs `body`.
     fn detector(&self, body: &str) {
         self.script(
-            "legacy/voxcmd-autostop",
+            "stand-in/voxcmd-autostop",
             &format!(
                 ": > \"$VOXCMD_AUTOSTOP_THRESHOLD_FILE\"\necho $$ > '{}'\n{body}",
                 self.work("detector").display()
@@ -122,7 +122,7 @@ impl Voice {
             .env("LC_ALL", "C")
             .env("WORK", self.path().join("work"))
             .env("VOXCMD_CONFIG_DIR", self.path().join("config"))
-            .env("VOXCMD_LEGACY_BIN", self.path().join("legacy/voxcmd"))
+            .env("VOXCMD_STAND_IN_BIN", self.path().join("stand-in/voxcmd"))
             .env("XDG_RUNTIME_DIR", self.path().join("runtime"))
             .env("XDG_STATE_HOME", self.path().join("state"))
             .env("XDG_CONFIG_HOME", self.path().join("xdg"))
@@ -523,7 +523,7 @@ fn listen_hands_an_open_session_s_next_turn_to_a_session_turn_watcher() {
         "{}",
         voice.calls()
     );
-    assert!(!voice.calls().contains("bash voxcmd"));
+    assert!(!voice.calls().contains("stand-in voxcmd"));
     let state: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(voice.runtime().join("session.json")).unwrap()).unwrap();
     let watcher = voice

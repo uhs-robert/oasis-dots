@@ -1,5 +1,5 @@
-//! `voxcmd util speech|voice-env` against what the bash helpers printed for the same inputs (golden files made by
-//! tests/fixtures/gen-speech-goldens.sh). A failure here means the Rust binary no longer behaves like the bash it replaces.
+//! `voxcmd util speech|voice-env` against what the bash helpers printed for the same inputs (golden files in
+//! tests/fixtures, frozen; the generator is gone). A failure here means the Rust binary no longer behaves like the bash it replaces.
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -80,7 +80,8 @@ fn mismatch(fixtures: &Path, line: &str) -> Option<String> {
 #[test]
 fn rust_matches_the_bash_goldens() {
     let fixtures = fixtures_dir();
-    let goldens = std::fs::read_to_string(fixtures.join("speech-goldens.tsv")).expect("run gen-speech-goldens.sh");
+    let goldens = std::fs::read_to_string(fixtures.join("speech-goldens.tsv"))
+        .expect("the golden file is missing; goldens are frozen, restore it from git");
     let rows: Vec<&str> = goldens.lines().collect();
     assert!(
         rows.len() > 1000,

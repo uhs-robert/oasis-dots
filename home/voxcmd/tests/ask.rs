@@ -1,6 +1,6 @@
 //! `voxcmd ask` and `voxcmd reply`: parity with what the bash `voxcmd-pick`, `-confirm`, `-hints` and the bash reply did
-//! for the same questions and answers (golden files made by tests/fixtures/gen-ask-goldens.sh), and the handshake
-//! through the answer FIFO. The bar is the same two stub scripts on both sides (tests/fixtures/ask), which copy what
+//! for the same questions and answers (golden files in tests/fixtures/ask-goldens.tsv, frozen; the generator is gone),
+//! and the handshake through the answer FIFO. The bar is the same two stub scripts on both sides (tests/fixtures/ask), which copy what
 //! they were shown and answer as the bar would.
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -72,7 +72,7 @@ fn finish(mut child: Child) -> (i32, String, String) {
     )
 }
 
-/// What the stubs copied, one line per file, with the pid and the private directories made fixed as the generator does.
+/// What the stubs copied, one line per file, with the pid and the private directories made fixed, as when the goldens were made.
 fn shown(dumps: &Path, runtime: &Path) -> String {
     let mut files: Vec<PathBuf> = std::fs::read_dir(dumps)
         .unwrap()

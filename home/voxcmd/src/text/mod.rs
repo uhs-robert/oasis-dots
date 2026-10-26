@@ -11,8 +11,8 @@ pub mod speech;
 )]
 pub mod wake_word;
 
-/// The bash functions this module replaces, run over a corpus once (tests/fixtures/gen-speech-goldens.sh) and compared
-/// row by row. The CLI-visible half is tests/speech_goldens.rs.
+/// The bash functions this module replaces, run over a corpus once (tests/fixtures/text-goldens.tsv, frozen; the generator
+/// is gone) and compared row by row. The CLI-visible half is tests/speech_goldens.rs.
 #[cfg(test)]
 mod goldens {
     use super::monitors::{self, Place};
@@ -100,7 +100,8 @@ mod goldens {
     #[test]
     fn rust_matches_the_bash_goldens() {
         let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
-        let goldens = std::fs::read_to_string(fixtures.join("text-goldens.tsv")).expect("run gen-speech-goldens.sh");
+        let goldens = std::fs::read_to_string(fixtures.join("text-goldens.tsv"))
+            .expect("the golden file is missing; goldens are frozen, restore it from git");
         let mut context = Context::new(fixtures);
         let mut checked = 0;
         let mut mismatches = Vec::new();

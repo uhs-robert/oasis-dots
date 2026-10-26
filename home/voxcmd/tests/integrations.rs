@@ -186,6 +186,20 @@ fn a_stray_integrations_d_file_is_ignored_and_reported() {
 }
 
 #[test]
+fn a_named_sh_file_is_refused_with_a_message_instead_of_a_toml_parse_error() {
+    let sandbox = Sandbox::with(&["media"]);
+    sandbox.write("integrations/media.sh", "verbs=('x y')\n");
+    let output = sandbox.voxcmd(&["integrations", "check", "integrations/media.sh"], &[]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert_eq!(
+        stdout(&output),
+        "integrations/media.sh:1:1: error: integrations/media.sh is not an integration: integrations are TOML, \
+         and a hook library is checked with its <stem>.toml\n\
+         0 TOML files checked, 1 problems\n"
+    );
+}
+
+#[test]
 fn a_shadowed_verb_is_a_warning_and_leaves_the_check_clean() {
     let sandbox = Sandbox::with(&[]);
     sandbox.write(

@@ -1,5 +1,4 @@
-//! `log misses`, `log errors` and `timer ring` against stub `qs-ipc`, `notify-send` and players, with the bash
-//! `voxcmd` and `voxcmd-alarm` beside them as tripwires that must never run.
+//! `log misses`, `log errors` and `timer ring` against stub `qs-ipc`, `notify-send` and players.
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::{Command, Output};
@@ -16,15 +15,9 @@ struct Sandbox {
 
 impl Sandbox {
     fn new() -> Self {
-        let root = tempfile::tempdir().unwrap();
-        let sandbox = Self { root };
-        let bin = sandbox.root.path().join("bin");
-        // The tripwires: the bash siblings these subcommands replaced.
-        write_stub(
-            &bin.join("voxcmd-alarm"),
-            &format!("#!/bin/sh\necho 'BASH-RAN voxcmd-alarm' >> {}\n", sandbox.calls_path()),
-        );
-        sandbox
+        Self {
+            root: tempfile::tempdir().unwrap(),
+        }
     }
 
     fn calls_path(&self) -> String {
@@ -65,14 +58,6 @@ impl Sandbox {
     fn calls(&self) -> String {
         std::fs::read_to_string(self.root.path().join("calls.log")).unwrap_or_default()
     }
-
-    fn no_bash_ran(&self) {
-        assert!(
-            !self.calls().contains("BASH-RAN"),
-            "a bash sibling ran:\n{}",
-            self.calls()
-        );
-    }
 }
 
 fn stdout(output: &Output) -> String {
@@ -104,7 +89,6 @@ fn misses_prints_the_last_lines_as_logged() {
     );
     assert_eq!(stdout(&sandbox.voxcmd(&["log", "misses", "0"], &[])), "");
     assert_eq!(stdout(&sandbox.voxcmd(&["log", "misses"], &[])).lines().count(), 3);
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -159,7 +143,6 @@ fn errors_formats_the_bars_history_in_the_clock_format() {
         serde_json::from_str::<serde_json::Value>(&stdout(&json)).unwrap(),
         expected
     );
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -205,7 +188,6 @@ fn ring_asks_the_bar_to_play_the_alarm_and_closes_the_notification_at_the_end() 
     assert!(calls.contains("notify-send --wait --urgency=critical --app-name=voxcmd Tea Steeped\n"));
     assert_eq!(calls.matches("qs-ipc call sound play alarm\n").count(), 3);
     assert_eq!(stderr(&output), "");
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -252,5 +234,4 @@ fn ring_without_the_bar_plays_the_shipped_file_through_pw_play() {
             .count(),
         2
     );
-    sandbox.no_bash_ran();
 }

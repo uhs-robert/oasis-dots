@@ -124,16 +124,6 @@ voxcmd-build:
     ln -sf "$root/bin/voxcmd" "$HOME/.local/bin/voxcmd"
     "$HOME/.local/bin/voxcmd" --version
 
-# Rewrite the committed integration JSON Schema from the Rust types; it fails until `voxcmd integrations schema` exists (voxcmd-port 2.6)
-voxcmd-schema:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    schema=home/voxcmd/.local/share/voxcmd/integration.schema.json
-    tmp="$(mktemp)"
-    trap 'rm -f "$tmp"' EXIT
-    cargo run --quiet --release --locked --manifest-path home/voxcmd/Cargo.toml -- integrations schema >"$tmp"
-    mv "$tmp" "$schema"
-
 # The Rust crate's tests, then the voxcmd suites against this checkout's Rust build
 voxcmd-test:
     #!/usr/bin/env bash

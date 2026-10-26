@@ -226,8 +226,8 @@ case_voxcmd_rust_snapshot() {
 }
 
 case_voxcmd_bash_script() {
-  start_case 'voxcmd-alarm shim'
-  echo '# x' >>home/voxcmd/.local/bin/voxcmd-alarm
+  start_case 'voxcmd-autostop script'
+  echo '# x' >>home/voxcmd/.local/bin/voxcmd-autostop
   plan
   expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox
   expect_skipped voxcmd-rust

@@ -193,7 +193,7 @@ rg() { git -C "$rr_repo" -c user.name=t -c user.email=t@t "$@"; }
 # shellcheck disable=SC2016 # the stub's own variables
 printf 'echo "main voxcmd $*" >>"%s"\necho "result: main"\n' "$rr_calls" >"$rr_main_bin"
 chmod +x "$rr_main_bin"
-echo main >"$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm"
+echo main >"$rr_repo/home/voxcmd/.local/bin/voxcmd-autostop"
 echo main >"$rr_repo/home/voxcmd/.config/voxcmd/keybinds.sh"
 ln -s "$here/../owner-test-bar.sh" "$rr_repo/.claude/skills/owner-test-bar/owner-test-bar.sh"
 rg add -A
@@ -202,7 +202,7 @@ rg update-ref refs/remotes/origin/main HEAD
 rg switch -q -c rust
 mkdir -p "$rr_repo/home/voxcmd/src"
 echo '[package]' >"$rr_repo/home/voxcmd/Cargo.toml"
-echo rust >"$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm"
+echo rust >"$rr_repo/home/voxcmd/.local/bin/voxcmd-autostop"
 rg add -A
 rg commit -q -m rust
 rg switch -q main
@@ -364,7 +364,7 @@ check "voxcmd links into the bar's built binary" "rr_link_is voxcmd '$rr_dir/hom
 mv "$rr_dir/home/voxcmd/target/release/voxcmd" "$root/rr_bin_aside"
 check "status does not report a test build whose voxcmd binary is gone" "[[ \$(rrx voxcmd_status) != 'voxcmd: test build rustbar' ]]"
 mv "$root/rr_bin_aside" "$rr_dir/home/voxcmd/target/release/voxcmd"
-check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-alarm '$rr_dir/home/voxcmd/.local/bin/voxcmd-alarm' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"
+check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-autostop '$rr_dir/home/voxcmd/.local/bin/voxcmd-autostop' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"
 check "status reads test build" "[[ \$(rrx voxcmd_status) == 'voxcmd: test build rustbar' ]]"
 
 # A failed rebuild of the live bar must leave the binary the voxcmd link points at, and the previous owner's claim.
@@ -407,7 +407,7 @@ check "try runs explain on a Rust test build and reads its result" "[[ $code == 
 
 out=$(rrx voxcmd_restore)
 code=$?
-check "restore relinks main's built voxcmd and restows the rest" "[[ $code == 0 ]] && rr_link_is voxcmd '$rr_main_bin' && rr_link_is voxcmd-alarm '$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm' && [[ ! -e $bars_dir/.voxcmd_bar ]] && [[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
+check "restore relinks main's built voxcmd and restows the rest" "[[ $code == 0 ]] && rr_link_is voxcmd '$rr_main_bin' && rr_link_is voxcmd-autostop '$rr_repo/home/voxcmd/.local/bin/voxcmd-autostop' && [[ ! -e $bars_dir/.voxcmd_bar ]] && [[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
 rm -f "$rr_calls"
 out=$(rrx try_phrases "go home")
 check "try runs explain on main's build" "grep -q 'main voxcmd explain go home' '$rr_calls' && ! grep -q -- '--dry-run' '$rr_calls'"

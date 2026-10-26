@@ -1,6 +1,5 @@
 //! the no-match log: one `<date>\t<phrase>` line per phrase nothing matched, kept to the last 1000 (was `log_no_match`)
 //!
-//! The bash voxcmd appends to the same file under the same lock, so either binary may write while both are installed.
 //! `log misses` reads it back; `log errors` reads the bar's notification history instead.
 use crate::exit::CliError;
 use crate::{paths, process, text};

@@ -1,7 +1,7 @@
 //! A TOML integration's `[mode]` end to end (voxcmd-port 2.4c2): `enter_mode`/`leave_mode` actions, a turn heard in the
 //! mode (`internal watch session_turn` on a transcript), its rewrite, `alive` and `ended` hooks, exits and misses. The
-//! binary runs against a runtime dir of its own with stubs for voxtype, setsid and the toasts; the bash voxcmd is
-//! never involved.
+//! binary runs against a runtime dir of its own with stubs for voxtype, setsid and the toasts; the stand-in voxcmd must
+//! never be called.
 use serde_json::{Value, json};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -64,7 +64,7 @@ impl Rig {
             "runtime/voxtype",
             "runtime/voxcmd",
             "bin",
-            "legacy",
+            "stand-in",
             "work",
         ] {
             std::fs::create_dir_all(root.path().join(dir)).unwrap();
@@ -93,10 +93,10 @@ impl Rig {
             &format!("echo \"notify-send $*\" >> '{}'", calls.display()),
         );
         rig.script(
-            "legacy/voxcmd",
-            &format!("echo \"legacy voxcmd $*\" >> '{}'", calls.display()),
+            "stand-in/voxcmd",
+            &format!("echo \"stand-in voxcmd $*\" >> '{}'", calls.display()),
         );
-        rig.script("legacy/voxcmd-autostop", "exit 0");
+        rig.script("stand-in/voxcmd-autostop", "exit 0");
         std::fs::write(&state, "idle\n").unwrap();
         rig
     }
@@ -154,7 +154,7 @@ impl Rig {
             .env("LC_ALL", "C")
             .env("WORK", self.path().join("work"))
             .env("VOXCMD_CONFIG_DIR", self.path().join("config"))
-            .env("VOXCMD_LEGACY_BIN", self.path().join("legacy/voxcmd"))
+            .env("VOXCMD_STAND_IN_BIN", self.path().join("stand-in/voxcmd"))
             .env("XDG_RUNTIME_DIR", self.path().join("runtime"))
             .env("XDG_STATE_HOME", self.path().join("state"))
             .env("XDG_CONFIG_HOME", self.path().join("xdg"))
@@ -385,13 +385,13 @@ fn a_failing_run_leaves_alone_a_mode_it_went_back_to() {
 fn a_mode_that_cannot_open_fails_its_action_without_running_it() {
     let rig = Rig::new();
     rig.integration("demo", "");
-    rig.script("legacy/voxcmd-autostop", "echo 'no silence detection'; exit 1");
+    rig.script("stand-in/voxcmd-autostop", "echo 'no silence detection'; exit 1");
     assert!(!rig.command(&["run", "demo mode"]).status().unwrap().success());
     assert!(rig.session().is_none());
     assert_eq!(rig.read_work("ran"), "");
     assert!(rig.calls().contains("needs auto-stop"), "{}", rig.calls());
     // A session another process owns refuses it too.
-    rig.script("legacy/voxcmd-autostop", "exit 0");
+    rig.script("stand-in/voxcmd-autostop", "exit 0");
     let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
     let mut session = rig.frame_under("other");
     session["owner"] = json!(owner.id());
@@ -458,7 +458,7 @@ fn a_session_another_process_opens_while_auto_stop_is_probed_refuses_with_the_us
     let taken = rig.work("taken.json");
     std::fs::write(&taken, session_owned_by(&rig, "other", owner.id()).to_string()).unwrap();
     rig.script(
-        "legacy/voxcmd-autostop",
+        "stand-in/voxcmd-autostop",
         "cp \"$WORK/taken.json\" \"$XDG_RUNTIME_DIR/voxcmd/session.json\"",
     );
     let refused = rig.command(&["run", "demo mode"]).status().unwrap();
@@ -623,7 +623,7 @@ fn a_toml_mode_that_stops_loading_keeps_its_last_settings_and_never_reaches_bash
     assert!(rig.session().is_none());
     std::thread::sleep(Duration::from_millis(300));
     assert_eq!(rig.read_work("ended"), "");
-    assert!(!rig.calls().contains("legacy voxcmd"), "{}", rig.calls());
+    assert!(!rig.calls().contains("stand-in voxcmd"), "{}", rig.calls());
 }
 
 // ---- exits and misses -----------------------------------------------------------------------------------------------
@@ -782,7 +782,7 @@ fn a_mode_with_handle_turn_gets_each_turn_s_words_in_voxcmd_text_with_no_ending(
     // The words went to the hook, not the router.
     assert_eq!(rig.read_work("ran"), "");
     assert!(rig.session().is_some());
-    assert!(!rig.calls().contains("legacy voxcmd"), "{}", rig.calls());
+    assert!(!rig.calls().contains("stand-in voxcmd"), "{}", rig.calls());
 }
 
 #[test]

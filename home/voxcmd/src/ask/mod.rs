@@ -27,8 +27,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// The state of the open ask, which a reply reads. Written by `ask`, read by `reply`, `stop` and the bash voxcmd's
-/// `pending_pick`; the field order is the bash helpers', which the suites match on.
+/// The state of the open ask, which a reply reads. Written by `ask`, read by `reply`, `stop` and `util pending-pick`;
+/// the field order is the bash helpers', which the suites match on.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PendingPick {
     #[serde(deserialize_with = "number_or_numeric_text")]
@@ -562,7 +562,7 @@ fn without_deleted_mark(exe: PathBuf) -> PathBuf {
     }
 }
 
-/// click.sh's `pick_command=voxcmd-hints` (a path beside the bash voxcmd by now) is this binary's `ask hints`.
+/// click.sh's `pick_command=voxcmd-hints` (a path beside voxcmd by now) is this binary's `ask hints`.
 fn names_hints(command: &str) -> bool {
     Path::new(command)
         .file_name()

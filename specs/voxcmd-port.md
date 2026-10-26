@@ -6,7 +6,7 @@ Status of the rewrite of voxcmd (`home/voxcmd/`) as one Rust binary. It carries 
 
 The Rust crate in `home/voxcmd/` (`Cargo.toml`, `src/`; stow ignores it) is `voxcmd`. `just voxcmd-build` (run by the installer and by ship-batch after a merge that touches the crate) builds it from the main checkout into `~/.local/share/voxcmd-rs` and links `~/.local/bin/voxcmd` to it; `voxcmd-rs` is an alias for the same binary, kept one release. The build bakes in its checkout (share dir, auto-stop), so `voxcmd-build` refuses to run in a worktree. The wake listener (`voxcmd-wake`) and auto-stop stay Python until 4.1 and 4.2, and call `~/.local/bin/voxcmd`.
 
-Integrations are the TOML files in `~/.config/voxcmd/integrations/`. The bash voxcmd, its helpers (`voxcmd-pick`, `-confirm`, `-hints`, `-wake-switch`) and the bash `integrations.d/*.sh` are gone; `voxcmd-alarm` stays as a shim over `timer ring` for timer units scheduled before the swap. A leftover `integrations.d/*.sh` is not read, and `voxcmd integrations check` warns about it. `VOXCMD_LEGACY_BIN` only names where the tests' stand-ins put the share dir and auto-stop.
+Integrations are the TOML files in `~/.config/voxcmd/integrations/`. The bash voxcmd, its helpers (`voxcmd-pick`, `-confirm`, `-hints`, `-wake-switch`) and the bash `integrations.d/*.sh` are gone; `voxcmd timer ring` replaces `voxcmd-alarm`. A leftover `integrations.d/*.sh` is not read, and `voxcmd integrations check` warns about it. `VOXCMD_STAND_IN_BIN` only names where the tests' stand-ins put the share dir and auto-stop.
 
 The hidden `voxcmd internal click-match`, `click-ocr` and `click-at` are the click matcher, OCR and click that run.sh's matcher sections and the click tests call; they stay as test entry points.
 

@@ -70,7 +70,7 @@
 #                                       SANDBOX_CLICKHINTS_BLOCK=<path>  open blocks before answering: it creates
 #                                                                  <path>.entered, then waits for <path>.release
 #                                       SANDBOX_CLICKHINTS_STATE_BLOCK=<path>  state blocks the same way
-#   voxcmd-pick, voxcmd-autostop      voxcmd finds the auto-stop beside the binary the suite names with VOXCMD_LEGACY_BIN, not on
+#   voxcmd-pick, voxcmd-autostop      voxcmd finds the auto-stop beside the binary the suite names with VOXCMD_STAND_IN_BIN, not on
 #                                     PATH, and asks through bin/ask-stub, which runs voxcmd-<kind> beside it, so a test
 #                                     copies the package (see link_voxcmd_build in lib.sh) and symlinks its two onto
 #                                     $SANDBOX_DIR/bin's. voxcmd-pick logs and "picks" the first choice's id. voxcmd-autostop gives no verdict (exit 1) unless a voxtype turn is
