@@ -1,5 +1,5 @@
 -- Runs lib/key/bind.lua against a stubbed `hl` and the real action manifest: Bind.action registers an action's
--- key, extra keys and label from the manifest, honours overrides, fails loudly on an unknown id, and its binds
+-- key, extra keys and label from the manifest, honours overrides, warns and skips an unknown id, and its binds
 -- can be removed with Bind.unbind.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local hypr_dir = here .. "/../.config/hypr"
@@ -7,7 +7,7 @@ package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.pa
 
 package.loaded["config"] = { leader = "SUPER" }
 
-local binds, removed = {}, {}
+local binds, removed, timers, notices = {}, {}, {}, {}
 _G.hl = {
 	version = function()
 		return "0.57.0"
@@ -20,6 +20,14 @@ _G.hl = {
 		binds[#binds + 1] = entry
 		return entry
 	end,
+	timer = function(fn)
+		timers[#timers + 1] = fn
+	end,
+	notification = {
+		create = function(opts)
+			notices[#notices + 1] = opts.text
+		end,
+	},
 	dsp = {
 		exec_cmd = function(cmd)
 			return "exec:" .. cmd
@@ -99,16 +107,38 @@ reset()
 Bind.action("screenshot.take", { submap_universal = false })
 check("opts beat manifest universal", binds[1] and binds[1].opts.submap_universal == false)
 
--- An unknown id raises, naming the id.
-local ok, err = pcall(Bind.action, "nope.missing")
-check("unknown id raises", not ok and tostring(err):find("nope.missing", 1, true) ~= nil)
+-- An unknown id between two valid ones warns and skips only itself; the rest of the file still binds.
+reset()
+Bind.warnings = {}
+local ok = pcall(function()
+	Bind.action("zoom.toggle")
+	Bind.action("nope.missing")
+	Bind.action("overview.open")
+end)
+check("unknown id does not raise", ok)
+check("unknown id: both valid actions registered", find("SUPER + Z") ~= nil and find("ALT + TAB") ~= nil)
+check("unknown id: no bind for it", #binds == 3)
+check("unknown id: warning names it", #Bind.warnings == 1 and Bind.warnings[1]:find("nope.missing", 1, true) ~= nil)
+check("unknown id: one notification scheduled", #timers == 1)
+timers[1]()
+check("unknown id: notification carries the warning", #notices == 1 and notices[1]:find("nope.missing", 1, true) ~= nil)
 
--- An unreadable manifest raises too, rather than dropping every bind.
+-- An unreadable manifest warns once and skips every bind, rather than aborting the config.
 local saved = Bind.manifest_dir
 Bind.manifest_dir = here .. "/no-such-dir"
 Bind.reload_manifest()
-ok, err = pcall(Bind.action, "zoom.toggle")
-check("missing manifest raises", not ok and tostring(err):find("actions.json", 1, true) ~= nil)
+Bind.warnings = {}
+reset()
+ok = pcall(function()
+	Bind.action("zoom.toggle")
+	Bind.action("overview.open")
+end)
+check("missing manifest does not raise", ok)
+check("missing manifest: no binds", #binds == 0)
+check(
+	"missing manifest: one warning naming the file",
+	#Bind.warnings == 1 and Bind.warnings[1]:find("actions.json", 1, true) ~= nil
+)
 Bind.manifest_dir = saved
 Bind.reload_manifest()
 
@@ -166,14 +196,18 @@ local used = 0
 for id in tools:gmatch('Bind%.action%("([^"]+)"') do
 	used = used + 1
 	reset()
-	check("tools.lua id exists: " .. id, pcall(Bind.action, id))
+	Bind.warnings = {}
+	Bind.action(id)
+	check("tools.lua id exists: " .. id, #binds > 0 and #Bind.warnings == 0)
 end
 check("tools.lua ids found", used > 0)
 Bind.djinn_bin = here .. "/no-such-runner"
 Bind.reload_manifest()
 for id in tools:gmatch('Bind%.action%("([^"]+)"') do
 	reset()
-	check("tools.lua id has a direct performer: " .. id, pcall(Bind.action, id))
+	Bind.warnings = {}
+	Bind.action(id)
+	check("tools.lua id has a direct performer: " .. id, #binds > 0 and #Bind.warnings == 0)
 end
 Bind.djinn_bin = "/bin/sh"
 Bind.reload_manifest()

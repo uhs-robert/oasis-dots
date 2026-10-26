@@ -150,6 +150,26 @@ local bindings
 --- @type boolean|nil whether the oasis-djinn binary was executable at the first Bind.action
 local djinn_present
 
+--- @type string[] every Bind.action problem so far, in order; tests read it
+Bind.warnings = {}
+
+local warning_scheduled = false
+
+--- Record a config-time problem and show one notification for all of them. Lua config errors would abort the
+--- rest of the file, so a bad action id is reported here instead and only its own bind is skipped.
+--- @param message string
+local function warn(message)
+  table.insert(Bind.warnings, message)
+  if warning_scheduled then return end
+  warning_scheduled = true
+  -- Deferred like lib/missing_repos.lua: the notification daemon is not up while the config loads, and the
+  -- one-shot lets every bind in the file add its warning first.
+  hl.timer(function()
+    warning_scheduled = false
+    hl.notification.create({ text = table.concat(Bind.warnings, "\n"), timeout = 20000 })
+  end, { timeout = 2000, type = "oneshot" })
+end
+
 --- Forget the cached manifest so the next Bind.action rereads it.
 function Bind.reload_manifest()
   manifest, bindings, djinn_present = nil, nil, nil
@@ -163,7 +183,6 @@ local function read_manifest_file(name)
     or ((os.getenv("HOME") or "") .. "/.config/oasis-djinn")
   local path = dir .. "/" .. name
   local file, open_err = io.open(path, "r")
-  -- Raise rather than skip: a quietly missing bind is worse than a config that says why it did not load.
   if not file then
     error("Bind.action: cannot read " .. path .. " (" .. tostring(open_err) .. "); is oasis-djinn stowed?", 0)
   end
@@ -175,13 +194,21 @@ local function read_manifest_file(name)
   return parsed
 end
 
+--- An unreadable manifest warns once and yields an empty one, so every Bind.action skips quietly after that
+--- rather than repeating the same warning per bind.
 --- @return table<string, table>
 local function load_manifest()
   if manifest then return manifest end
 
-  local parsed = read_manifest_file("actions.json")
-  if type(parsed.actions) ~= "table" then error("Bind.action: actions.json holds no actions", 0) end
+  local read_ok, parsed = pcall(read_manifest_file, "actions.json")
+  if read_ok and type(parsed.actions) ~= "table" then
+    read_ok, parsed = false, "Bind.action: actions.json holds no actions"
+  end
   manifest = {}
+  if not read_ok then
+    warn(tostring(parsed) .. "; no manifest binds were registered")
+    return manifest
+  end
   for _, entry in ipairs(parsed.actions) do
     manifest[entry.id] = entry
   end
@@ -200,12 +227,23 @@ local function shell_word(word)
 end
 
 --- The command that performs an action without the runner: what oasis-djinn would run from bindings/quickshell.json.
+--- Nil, after a warning, when the binding file is unreadable or has no entry for the id.
 --- @param id string
---- @return string
+--- @return string|nil
 local function direct_command(id)
-  if not bindings then bindings = read_manifest_file("bindings/quickshell.json").bindings or {} end
+  if not bindings then
+    local read_ok, parsed = pcall(read_manifest_file, "bindings/quickshell.json")
+    if not read_ok then
+      warn(tostring(parsed))
+      parsed = {}
+    end
+    bindings = parsed.bindings or {}
+  end
   local binding = bindings[id]
-  if not binding then error("Bind.action: no binding for action '" .. id .. "' in bindings/quickshell.json", 0) end
+  if not binding then
+    warn("Bind.action: no binding for action '" .. id .. "' in bindings/quickshell.json")
+    return nil
+  end
 
   local words
   if binding.kind == "ipc" then
@@ -238,14 +276,18 @@ end
 
 --- Register an action from the oasis-djinn manifest: its key, extra keys and label come from there, and the
 --- bind runs `oasis-djinn <id>`, or the same command the runner would run when the binary is not installed.
---- Raises on an unknown id.
+--- An unknown id, or an action the runner-less fallback cannot perform, warns and skips only that bind.
 --- @param id   string
 --- @param opts table|nil  `key` replaces the manifest's main key (a key string, or `{key, leader?, universal?}`); the
 ---                        extra keys and label stay. Everything else (e.g. `submap_universal`) goes to hl.bind and
 ---                        beats the manifest's `universal` flag.
 function Bind.action(id, opts)
   local entry = load_manifest()[id]
-  if not entry then error("Bind.action: unknown action id '" .. tostring(id) .. "'", 0) end
+  if not entry then
+    -- An empty manifest was already reported by load_manifest.
+    if next(manifest) ~= nil then warn("Bind.action: unknown action id '" .. tostring(id) .. "'") end
+    return
+  end
 
   opts = opts or {}
   local main_key = entry.key
@@ -260,7 +302,9 @@ function Bind.action(id, opts)
     table.insert(keys, extra)
   end
 
-  local run = hl.dsp.exec_cmd(runner_installed() and (Scripts.djinn .. " " .. id) or direct_command(id))
+  local command = runner_installed() and (Scripts.djinn .. " " .. id) or direct_command(id)
+  if not command then return end
+  local run = hl.dsp.exec_cmd(command)
   for _, spec in ipairs(keys) do
     local bind_opts = {}
     for k, v in pairs(opts) do
