@@ -175,6 +175,14 @@ check(
 	"warn-skip: notification carries the warnings",
 	#notices == 1 and has(notices[1], "nope.missing") and has(notices[1], "already defined")
 )
+check("warn-skip: shown warnings are cleared", #Action.warnings == 0)
+Action.bind("later.missing", { key = "F8" })
+check("warn-skip: a later warning schedules a new notification", #timers == 2)
+timers[2]()
+check(
+	"warn-skip: the later notification lists only the new warning",
+	#notices == 2 and has(notices[2], "later.missing") and not has(notices[2], "nope.missing")
+)
 
 -- A handler or definition that raises inside define is caught.
 fresh()
