@@ -19,12 +19,11 @@ Popup {
     // not resize between sections.
     readonly property real max_width_fraction: 0.9
     readonly property real height_fraction: 0.8
-    // A row stops here so its value stays near its name; the pane is no wider, and the help panel takes the rest.
+    // The pane stops here, so a row's value stays near its name; the help panel takes the rest. Stacked (portrait) panes keep the full width.
     readonly property real row_cap: Style.px(640)
     readonly property real max_width: Style.px(1900)
-    readonly property bool help_below: body.help_below
     // The section list, the pane and help column at their widest, their gaps and the body's 12px margins.
-    // The panel's 740 is the 860 pane plus 520 help of before minus the narrower pane, so the drawer keeps its width.
+    // The 740 is the help panel's share at full width: the old 860 pane and 520 help, less the narrower pane, so the drawer keeps its width.
     readonly property real natural_width: nav.width + Style.px(12 + 24 + 48 + 740) + root.row_cap + 24
     preferred_width: (root.screen ? Math.min(root.natural_width, root.screen.width * root.max_width_fraction, root.max_width) : Math.min(root.natural_width, root.max_width)) / Style.scale
     body_height: root.screen ? Math.min(root.screen.height * root.height_fraction - root.header_height - root.footer_height, root.content_cap + 24) : 600
