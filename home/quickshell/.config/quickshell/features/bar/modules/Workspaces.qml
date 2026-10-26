@@ -26,19 +26,21 @@ Item {
     property string screen_name: ""
     property bool compact: false
     property int bar_height: 30
+    // Set by Bar.qml on a left or right bar: the pills stack as a column. The art styles that draw their own row (listed below) fall back to the plain pill column, since they have no vertical art.
+    property bool vertical: false
 
     // Final Fantasy Tactics map: an isometric tile per workspace, stretching so every app stands on it.
-    readonly property bool slots: Style.workspace_art === "slots"
+    readonly property bool slots: !root.vertical && Style.workspace_art === "slots"
     // Super Mario World overworld: level dots on a dotted trail, app icons above them.
-    readonly property bool map: Style.workspace_art === "map"
+    readonly property bool map: !root.vertical && Style.workspace_art === "map"
     // Pokemon party: a Poke Ball per workspace, the shown ones open into a party box under a cursor, the active app hopping.
-    readonly property bool party: Style.workspace_art === "party"
+    readonly property bool party: !root.vertical && Style.workspace_art === "party"
     // GoldenEye watch dial: workspace ticks on one arc replace the pills.
-    readonly property bool dial: Style.workspace_art === "dial"
+    readonly property bool dial: !root.vertical && Style.workspace_art === "dial"
     // Oasis night sky: a star per workspace on a low constellation, apps under their star.
-    readonly property bool stars: Style.workspace_art === "constellation"
+    readonly property bool stars: !root.vertical && Style.workspace_art === "constellation"
     // Dragon Quest slime party: a slime leads each workspace's apps, a crowned king on the focused one.
-    readonly property bool slimes: Style.workspace_art === "slimes"
+    readonly property bool slimes: !root.vertical && Style.workspace_art === "slimes"
     // Pixel art drops to 1x on a bar too short for the 2x pill, e.g. Neovim's fixed 24px bar borrowing it.
     readonly property bool small_art: compact || (Style.bar_height > 0 && Style.bar_height < 32)
     readonly property int slime_pixel: small_art ? 1 : 2
@@ -54,12 +56,12 @@ Item {
     }
     readonly property int party_gap: 8
     // FF7 weapon slot bar: apps are materia orbs in sockets linked in pairs.
-    readonly property bool materia: Style.workspace_art === "materia"
+    readonly property bool materia: !root.vertical && Style.workspace_art === "materia"
     readonly property int slot_size: compact ? 22 : 24
     // Metroid door hatches: closed doors show their app count, the active one opens onto its apps.
-    readonly property bool doors: Style.workspace_art === "doors"
+    readonly property bool doors: !root.vertical && Style.workspace_art === "doors"
     // Lualine buffers: numbered tabs with their apps, full bar height.
-    readonly property bool buffers: Style.workspace_art === "buffers"
+    readonly property bool buffers: !root.vertical && Style.workspace_art === "buffers"
     readonly property int icon_size: materia ? (compact ? 10 : 12) : doors ? (compact ? 12 : 14) : party ? (compact ? 14 : 16) : slimes ? (small_art ? 14 : 16) : slots ? (compact ? 15 : 17) : compact ? 16 : 19
     readonly property int pill_height: materia ? slot_size : doors ? (compact ? 26 : 30) : map ? 34 : slots ? (compact ? 26 : 30) : party ? (compact ? 22 : 26) : slimes ? (small_art ? 22 : 30) : root.pill_tokens.bar_pill_height > 0 ? root.pill_tokens.bar_pill_height - (compact ? 4 : 0) : compact ? 20 : 22
     readonly property int tile_face: compact ? 8 : 10
@@ -69,7 +71,7 @@ Item {
     // The buffers draw their own section fill, so a translucent island leaves its colour out from behind them.
     readonly property bool lualine_fill: root.buffers
     // Dots are shorter than pills; the row keeps the pill height so it stays centered.
-    implicitHeight: root.pill_tokens.bar_workspace_dot.a > 0 ? Math.max(row.implicitHeight, root.pill_height) : row.implicitHeight
+    implicitHeight: root.pill_tokens.bar_workspace_dot.a > 0 && !root.vertical ? Math.max(row.implicitHeight, root.pill_height) : row.implicitHeight
 
     // Workspace ids Hyprland reports on this screen, read with hyprctl.
     readonly property var hypr_ids: WindowState.hypr_workspaces.filter(w => w.monitor === root.screen_name).map(w => w.id)
@@ -190,8 +192,13 @@ Item {
         DialDropTarget {}
     }
 
-    Row {
+    // A Grid, not a Row, so one tree serves both orientations: a single row, or a single column with every pill centred across it. Horizontal sets rows: 1 and leaves columns at -1; a large columns value adds phantom column spacing.
+    Grid {
         id: row
+        columns: root.vertical ? 1 : -1
+        rows: root.vertical ? -1 : 1
+        horizontalItemAlignment: Grid.AlignHCenter
+        verticalItemAlignment: Grid.AlignVCenter
         x: root.materia ? 6 : 0
         spacing: root.materia ? (root.compact ? 10 : 12) : root.doors ? 2 : root.map ? 8 : root.slots || root.party ? 6 : root.pill_tokens.bar_workspace_gap > 0 ? root.pill_tokens.bar_workspace_gap - (root.compact ? 2 : 0) : root.compact ? 6 : 8
 
@@ -267,9 +274,10 @@ Item {
                     NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
                 }
 
-                height: pill.dot ? 11 : root.pill_height
-                y: (root.pill_height - height) / 2
-                width: root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (pill.ball ? 16 : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slimes ? pill.icon_lead + (is_empty ? 2 : icons.implicitWidth + 4) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12) + root.pill_tokens.bar_pill_pad * 2
+                // Vertical pills are as wide as a round pill is tall and grow along the bar with their icons.
+                readonly property int along_padding: (modelData.active ? 22 : 12) + root.pill_tokens.bar_pill_pad * 2
+                height: root.vertical ? (pill.dot ? 11 : is_empty ? root.pill_height : icons.implicitHeight + pill.along_padding) : pill.dot ? 11 : root.pill_height
+                width: root.vertical ? (pill.dot ? 11 : root.pill_height) : root.materia ? (is_empty ? root.slot_size : icons.implicitWidth) : root.doors ? (modelData.active && !is_empty ? icons.implicitWidth + height - 4 : height) : root.party ? cursor_gap + (pill.ball ? 16 : icons.implicitWidth + 10) : pill.map ? Math.max(22, icons.implicitWidth + 8) : root.slimes ? pill.icon_lead + (is_empty ? 2 : icons.implicitWidth + 4) : root.slots ? (is_empty ? root.tile_face * 2 + 4 : icons.implicitWidth + root.tile_face + 6) : is_empty ? height : icons.implicitWidth + (modelData.active ? 22 : 12) + root.pill_tokens.bar_pill_pad * 2
                 radius: pill.map || root.party || root.slots || root.slimes ? 0 : (root.pill_tokens.bar_pill_square && !pill.art) || pill.qblock ? 0 : height / 2
                 rotation: pill.diamond ? 45 : 0
                 scale: pill.diamond ? 0.75 : 1
@@ -279,6 +287,10 @@ Item {
                 border.color: root.pill_tokens.bar_workspace_ring
 
                 Behavior on width {
+                    NumberAnimation { duration: 280; easing.type: Easing.InOutCubic }
+                }
+                Behavior on height {
+                    enabled: root.vertical
                     NumberAnimation { duration: 280; easing.type: Easing.InOutCubic }
                 }
                 Behavior on color {
@@ -493,9 +505,9 @@ Item {
                 // A dot is dropped on through its full hit area, not just the 11px slot.
                 WorkspaceDropTarget {
                     anchors.fill: parent
-                    anchors.leftMargin: pill.dot ? -row.spacing / 2 : 0
+                    anchors.leftMargin: pill.dot ? (root.vertical ? -(root.bar_height - Style.bar_capsule - pill.width) / 2 : -row.spacing / 2) : 0
                     anchors.rightMargin: anchors.leftMargin
-                    anchors.topMargin: pill.dot ? -(root.bar_height - Style.bar_capsule - pill.height) / 2 : 0
+                    anchors.topMargin: pill.dot ? (root.vertical ? -row.spacing / 2 : -(root.bar_height - Style.bar_capsule - pill.height) / 2) : 0
                     anchors.bottomMargin: anchors.topMargin
                     z: 2
                     workspace_id: pill.modelData.id
@@ -517,10 +529,10 @@ Item {
                 // A dot's hit area: the capsule's height, out to half the gap on each side.
                 Item {
                     visible: pill.dot
-                    x: -row.spacing / 2
-                    y: (pill.height - height) / 2
-                    width: pill.width + row.spacing
-                    height: root.bar_height - Style.bar_capsule
+                    x: root.vertical ? (pill.width - width) / 2 : -row.spacing / 2
+                    y: root.vertical ? -row.spacing / 2 : (pill.height - height) / 2
+                    width: root.vertical ? root.bar_height - Style.bar_capsule : pill.width + row.spacing
+                    height: root.vertical ? pill.height + row.spacing : root.bar_height - Style.bar_capsule
 
                     HoverHandler {
                         id: dot_hover
@@ -532,8 +544,10 @@ Item {
                     }
                 }
 
-                Row {
+                Grid {
                     id: icons
+                    columns: root.vertical ? 1 : -1
+                    rows: root.vertical ? -1 : 1
                     visible: (!root.doors || pill.modelData.active) && !pill.ball
                     anchors.centerIn: pill.map || root.slots ? undefined : parent
                     anchors.horizontalCenter: pill.map || root.slots ? parent.horizontalCenter : undefined
