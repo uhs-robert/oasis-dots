@@ -418,6 +418,15 @@ out=$(rrx voxcmd_restore)
 check "restore without a built voxcmd warns and names the build recipe" "grep -q 'just voxcmd-build' <<<\"\$out\" && [[ ! -e $rr_home/.local/bin/voxcmd ]]"
 mv "$root/rr_main_aside" "$rr_main_bin"
 rrx voxcmd_restore >/dev/null
+# While main still ships a bash voxcmd (this script run from an unmerged worktree, or after a revert), stow links it and the
+# restore must leave that link alone rather than point it at the Rust build.
+echo '#!/usr/bin/env bash' >"$rr_repo/home/voxcmd/.local/bin/voxcmd"
+chmod +x "$rr_repo/home/voxcmd/.local/bin/voxcmd"
+rrx voxcmd_swap rustbar "$rr_dir" >/dev/null
+rrx voxcmd_restore >/dev/null
+check "restore keeps the link stow made to a bash voxcmd main ships" "rr_link_is voxcmd '$rr_repo/home/voxcmd/.local/bin/voxcmd'"
+rm -f "$rr_repo/home/voxcmd/.local/bin/voxcmd" "$rr_home/.local/bin/voxcmd"
+ln -s "$rr_main_bin" "$rr_home/.local/bin/voxcmd"
 rm -f "$bars_dir/.owner" "$bars_dir/rustbar.branches"
 
 # A throwaway HOME and git repo with a stowed voxtype and systemd package; the real stow runs, and systemctl is a fake that

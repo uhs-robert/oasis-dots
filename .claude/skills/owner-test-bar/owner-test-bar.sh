@@ -599,8 +599,11 @@ voxcmd_restore() {
     [[ -z $links ]] || xargs -d '\n' rm -f <<<"$links"
     # -d and -t absolute: stow run from inside home/ would target the repo itself.
     stow -d "$repo/home" -t "$HOME" -R voxcmd
-    # Main's voxcmd is the build, not a stowed file, so the sweep above removed it and stow cannot bring it back.
-    if [[ -x $voxcmd_rs_bin ]]; then
+    # Main's voxcmd is the build, not a stowed file, so the sweep above removed it and stow cannot bring it back. When main
+    # still ships a voxcmd (run from an unmerged worktree, or after a revert) stow just made the link: leave it.
+    if [[ -e $voxcmd_bin_dir/voxcmd || -L $voxcmd_bin_dir/voxcmd ]]; then
+      echo "voxcmd: main ships its own voxcmd, so the build link is not made"
+    elif [[ -x $voxcmd_rs_bin ]]; then
       mkdir -p "$voxcmd_bin_dir"
       ln -sfn "$voxcmd_rs_bin" "$voxcmd_bin_dir/voxcmd"
     else
