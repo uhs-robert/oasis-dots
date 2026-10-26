@@ -19,7 +19,7 @@ Scope {
         if (frame && !ScreenFrames.any_frame) return "ScreenFrame.clear()";
         if (!Style.corner_sent) return "ScreenFrame.clear()";
         const drawn = Corners.fit(root.profile.corner, root.profile.radius, root.profile.step).radius;
-        const args = [JSON.stringify(root.profile.corner), drawn, Style.screen_frame_rim_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false))), Style.flush_single, frame];
+        const args = [JSON.stringify(root.profile.corner), drawn, Style.screen_frame_rim_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false))), Style.flush_single, frame, Quickshell.processId];
         return "ScreenFrame.set(" + args.join(", ") + ")";
     }
 
