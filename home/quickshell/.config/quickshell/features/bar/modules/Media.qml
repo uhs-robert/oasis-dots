@@ -1,83 +1,106 @@
 import QtQuick
-import QtQuick.Layouts
+import Quickshell.Services.Pipewire
+import qs.core
 import qs.theme
-import qs.features.media
 import qs.ui
+import qs.features.media
+import qs.features.popups
 import qs.features.bar
 
+// The one media module: a well with art, play/pause, text and a right side of cava or the track position. Hover opens
+// the media popup, a click pins it. The `cava` entry (Cava.qml) is this module too: the right-side setting decides for both.
 BarModule {
     id: root
     module_name: "media"
+    wash: false
 
-    WheelStepper {
-        id: wheel_stepper
-    }
+    // Set by Cava.qml: the `cava` entry is this same module under its old name; it differs only in having no slot on a side bar.
+    property bool cava_entry: false
+    // Set by Bar.qml in the split island mode, where the strip already draws the cava: overrides everything.
+    property string forced_right_side: ""
 
     readonly property var player: MediaState.active
-    shown: !!root.player
-    implicitWidth: shown ? row.implicitWidth : 0
-    implicitHeight: row.implicitHeight
+    readonly property string right_mode: MediaSettings.right_side(root.forced_right_side, PowerSource.on_ac)
 
-    readonly property string label_text: {
-        if (!root.player) return "";
-        const title = root.player.trackTitle || "";
-        const artist = root.player.trackArtist || "";
-        return artist ? artist + " — " + title : title;
+    // A side bar keeps its cava as the tail on the clock island, so the cava entry has no slot there; media shows as art and a button.
+    shown: MediaSettings.well_shown(!!root.player, root.vertical, root.cava_entry)
+    implicitWidth: shown ? well.implicitWidth : 0
+    implicitHeight: shown ? well.implicitHeight : 0
+
+    HoverPopup {
+        id: hover_popup
+        popup_name: "media"
+        module: root
+        enabled: root.shown
+        open_delay: 300
+        close_grace: 250
     }
 
-    tooltip_text: {
-        if (!root.player) return "";
-        const lines = [root.player.trackTitle || "Unknown title"];
-        if (root.player.trackArtist) lines.push(root.player.trackArtist);
-        if (root.player.trackAlbum) lines.push(root.player.trackAlbum);
-        lines.push(root.player.identity || "");
-        return lines.join("\n");
+    WheelStepper {
+        id: volume_stepper
     }
 
-    RowLayout {
-        id: row
-        spacing: 6
+    WheelStepper {
+        id: seek_stepper
+    }
 
-        BarIcon {
-            Layout.alignment: Qt.AlignVCenter
-            name: "media"
-            variant: "normal"
-            glyph: "\u{f001}"
-            tint: Theme.theme_primary
-            opacity: root.player && root.player.isPlaying ? 1 : 0.5
+    PwObjectTracker {
+        objects: MediaSettings.scroll_action === "volume_seek" ? [Pipewire.defaultAudioSink].filter(o => o) : []
+    }
+
+    readonly property var sink: Pipewire.defaultAudioSink
+
+    readonly property int seek_seconds_per_notch: 5
+
+    function scroll(wheel) {
+        const effect = MediaSettings.scroll_effect(wheel.x >= well.right_left);
+        if (effect === "seek") {
+            const notches = seek_stepper.consume_event(wheel);
+            if (notches !== 0) MediaState.seek_by(notches * root.seek_seconds_per_notch);
+        } else if (effect === "skip") {
+            const notches = volume_stepper.consume_event(wheel);
+            if (notches > 0) MediaState.next();
+            else if (notches < 0) MediaState.previous();
+        } else if (effect === "volume" && root.sink && root.sink.ready && root.sink.audio) {
+            const current = Math.round(root.sink.audio.volume * 100);
+            const pct = volume_stepper.step_level(wheel, null, current, 0, 100);
+            if (pct !== current) root.sink.audio.volume = pct / 100;
         }
-
-        Text {
-            Layout.alignment: Qt.AlignVCenter
-            Layout.maximumWidth: 240
-            elide: Text.ElideRight
-            visible: !root.compact
-            text: root.label_text
-            color: Style.bar_fg
-            font.family: Style.bar_font_family
-            style: Style.bar_text_style
-            styleColor: Style.bar_glow_color
-            font.pixelSize: Style.bar_font_size
-            font.capitalization: Style.bar_capitalization
-            font.letterSpacing: Style.bar_letter_spacing
-        }
     }
 
+    // Under the well's own button, so the button's click wins.
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         onClicked: mouse => {
-            if (mouse.button === Qt.MiddleButton) {
-                MediaState.toggle();
-            } else {
-                root.toggle_popup();
-            }
+            if (mouse.button === Qt.MiddleButton) MediaState.toggle();
+            else hover_popup.click();
         }
-        onWheel: wheel => {
-            const notches = wheel_stepper.consume_event(wheel);
-            if (notches === 0) return;
-            if (notches > 0) MediaState.next();
-            else MediaState.previous();
-        }
+        onWheel: wheel => root.scroll(wheel)
+    }
+
+    MediaWell {
+        id: well
+        vertical: root.vertical
+        cell: Math.max(16, Math.min(root.cross - 8, 28))
+        width: root.vertical ? implicitWidth : parent.width
+        // A capsule inset 5px from the bar edge above and below, like the approved mockups (28px in a 40px bar). Stacked
+        // text needs the room, so it takes a 2px inset.
+        height: root.vertical ? implicitHeight : well.stacked ? Math.max(24, Math.min(root.bar_height - 4, 30)) : Math.max(20, Math.min(root.bar_height - 10, 28))
+        anchors.centerIn: parent
+        player: root.player
+        active: root.shown
+        right_mode: root.right_mode
+        container_style: MediaSettings.container_style
+        show_art: MediaSettings.show_art
+        show_button: MediaSettings.show_button
+        show_title: MediaSettings.show_title
+        show_artist: MediaSettings.show_artist
+        text_layout: MediaSettings.text_layout
+        max_chars: MediaSettings.max_chars
+        text_scroll: MediaSettings.text_scroll
+        text_scroll_speed: MediaSettings.text_scroll_speed
+        compact: root.compact
+        onToggle_requested: MediaState.toggle()
     }
 }
