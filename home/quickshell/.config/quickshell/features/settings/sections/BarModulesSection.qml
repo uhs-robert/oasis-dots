@@ -73,9 +73,9 @@ SettingsPane {
             voxtype: "Dictation status.",
             recording: "A chip shown while the screen is recording.",
             notifications: "Notification center and Do Not Disturb.",
-            media: "Now playing; opens the media popup.",
+            media: "Now playing: album art, play/pause, the title and a right side of audio bars or the track position. Opens the media popup. Settings > Media sets what it shows.",
             directory: "The focused window's app and a terminal's directory. NeoVim shows it in its statusline whenever the left island has modules; here it is opt-in. The switches above apply.",
-            cava: "Audio bars while media plays on AC power. Island styles draw them in the clock island whenever it is listed; other styles draw them where it is placed."
+            cava: "The old name of Media, kept so old configs load."
         })
 
     footer_hint: root.pending ? "y forget · n keep · q close" : "j/k move · Enter target list · Space show/hide · J/K reorder · H/L side · a add argument · x remove · l/H target · / find · h/Esc sections · q close"
