@@ -381,19 +381,21 @@ PanelWindow {
     readonly property real strip_side: Style.strip_floats ? Style.bar_strip_side : 0
 
     // The island's extent down the screen, which a popup beside a side bar lines up with. mapToItem is not reactive, so it
-    // is read again when the island is latched, opens, moves or resizes.
+    // is read again when the island is latched, opens, moves or resizes. The cava tail is not part of it: a centre popup
+    // stays on the modules when the tail grows.
     property real island_top: 0
     property real island_length: 0
     function read_island() {
         if (!root.island) return;
         root.island_top = root.island.mapToItem(null, 0, 0).y;
-        root.island_length = root.island.height;
+        root.island_length = root.island.height - (root.island.tail_span || 0);
     }
     onIslandChanged: root.read_island()
     onVisibleChanged: if (root.visible) root.read_island()
     Connections {
         target: root.island
         function onHeightChanged() { root.read_island(); }
+        function onTail_spanChanged() { root.read_island(); }
         function onYChanged() { root.read_island(); }
     }
     readonly property var beside_at: Drawer.beside_place(root.side, root.edge, root.island_top, root.island_length, root.base_height, root.screen ? root.screen.height : 0)
