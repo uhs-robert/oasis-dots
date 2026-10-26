@@ -315,6 +315,144 @@ t("Media's helper honours the global hover switch", () => {
   assert.match(module_source("Media"), /enabled: root\.shown && Popups\.hover_popups/);
 });
 
+// Piece B: two adjacent hover zones (two lualine cells, or a cell and the clock) each own a helper over the one shared
+// popup slot. The model plays the QML wiring: a helper's "inside" is its own zone or (its popup is open and the pointer
+// is on the popup), and every helper hears nothing_open when the slot empties.
+function pair() {
+  const names = ["a", "b"];
+  const h = { open_name: "", popup: false, pointer: null, opened: [], helpers: {} };
+  for (const n of names) h.helpers[n] = { mode: "idle", open_timer: false, close_timer: false };
+  const inside = n => h.pointer === n || (h.popup && h.open_name === n);
+  const apply = (n, r) => {
+    const x = h.helpers[n];
+    x.mode = r.mode;
+    if (r.open_timer === "start") x.open_timer = true;
+    if (r.open_timer === "stop") x.open_timer = false;
+    if (r.close_timer === "start") x.close_timer = true;
+    if (r.close_timer === "stop") x.close_timer = false;
+    if (r.action === "open") set_open(n);
+    if (r.action === "close" && h.open_name === n) set_open("");
+  };
+  const set_open = name => {
+    const before = h.open_name;
+    h.open_name = name;
+    if (name === "") h.popup = false;
+    if (name !== "") h.opened.push(name);
+    for (const n of names) {
+      if ((before === n) !== (name === n)) apply(n, P.popup_changed(h.helpers[n].mode, name === n, inside(n)));
+      if (name === "") apply(n, P.nothing_open_now(h.helpers[n].mode, inside(n)));
+    }
+  };
+  h.move = (zone, on_popup) => {
+    const before = Object.fromEntries(names.map(n => [n, inside(n)]));
+    h.pointer = zone;
+    h.popup = !!on_popup && h.open_name !== "";
+    for (const n of names) if (inside(n) !== before[n]) apply(n, P.inside_changed(h.helpers[n].mode, inside(n), h.open_name === ""));
+  };
+  h.open_fire = n => { const x = h.helpers[n]; if (x.open_timer) { x.open_timer = false; apply(n, P.open_elapsed(x.mode, inside(n), h.open_name === "")); } };
+  h.close_fire = n => { const x = h.helpers[n]; if (x.close_timer) { x.close_timer = false; apply(n, P.close_elapsed(x.mode, inside(n))); } };
+  h.click = n => apply(n, P.clicked(h.helpers[n].mode, h.open_name === n));
+  return h;
+}
+
+t("the gap between a zone and its popup stays open inside the 250 ms grace", () => {
+  const h = pair();
+  h.move("a");
+  h.open_fire("a");
+  h.move(null); // in the gap: on neither the zone nor the popup
+  assert.ok(h.helpers.a.close_timer);
+  h.move(null, true); // reaches the popup before the grace runs out
+  assert.ok(!h.helpers.a.close_timer);
+  h.close_fire("a");
+  assert.deepStrictEqual([h.helpers.a.mode, h.open_name], ["hover_open", "a"]);
+  h.move(null);
+  h.close_fire("a"); // the grace runs out with the pointer away
+  assert.strictEqual(h.open_name, "");
+});
+
+t("sweeping from one zone to its neighbour hands over once, with no stuck or double popup", () => {
+  const h = pair();
+  h.move("a");
+  h.open_fire("a");
+  h.move("b"); // adjacent zones: no gap, a leaves and b enters at once
+  assert.deepStrictEqual([h.open_name, h.helpers.b.mode], ["a", "idle"]);
+  assert.ok(!h.helpers.b.open_timer, "b waits for the slot to empty");
+  h.close_fire("a");
+  assert.strictEqual(h.open_name, "");
+  assert.strictEqual(h.helpers.b.mode, "pending");
+  h.open_fire("b");
+  assert.deepStrictEqual([h.open_name, h.helpers.a.mode, h.helpers.b.mode, h.opened], ["b", "idle", "hover_open", ["a", "b"]]);
+});
+
+t("a quick pass over a neighbour opens nothing and leaves the first popup to close", () => {
+  const h = pair();
+  h.move("a");
+  h.open_fire("a");
+  h.move("b");
+  h.move("a"); // back before a's grace ends
+  h.close_fire("a");
+  assert.deepStrictEqual([h.open_name, h.helpers.a.mode, h.helpers.b.mode], ["a", "hover_open", "idle"]);
+  h.move(null);
+  h.close_fire("a");
+  assert.deepStrictEqual([h.open_name, h.helpers.b.open_timer, h.helpers.b.close_timer], ["", false, false]);
+});
+
+t("a click on a neighbour while the first is hover-open does not open a second popup or leave one stuck", () => {
+  const h = pair();
+  h.move("a");
+  h.open_fire("a");
+  h.move("b");
+  h.close_fire("a");
+  h.click("b"); // b's pending open is replaced by a pin
+  assert.deepStrictEqual([h.open_name, h.helpers.b.mode], ["b", "pinned"]);
+  h.move(null);
+  h.close_fire("b");
+  assert.strictEqual(h.open_name, "b");
+});
+
+t("a click in a zone's lead or padding while hover-open pins; the next click closes without a reopen", () => {
+  const h = pair();
+  h.move("a");
+  h.open_fire("a");
+  h.click("a");
+  assert.strictEqual(h.helpers.a.mode, "pinned");
+  h.move(null);
+  h.close_fire("a");
+  assert.strictEqual(h.open_name, "a");
+  h.move("a");
+  h.click("a");
+  assert.deepStrictEqual([h.open_name, h.helpers.a.mode], ["", "suppressed"]);
+  h.open_fire("a");
+  assert.strictEqual(h.open_name, "");
+});
+
+// The QML wiring for piece B.
+const bar_root = path.join(__dirname, "../.config/quickshell/features/bar");
+const bar_source = rel => fs.readFileSync(path.join(bar_root, rel), "utf8");
+t("a lualine cell lends its whole hover zone to the module and routes its click through the module", () => {
+  const cell = bar_source("neovim/LualineSection.qml");
+  assert.match(cell, /item\.cell_hovered = Qt\.binding\(\(\) => cell_hover\.hovered\)/);
+  assert.match(cell, /if \(it\.toggle_popup\) it\.toggle_popup\(\);\n\s+else if \(it\.click_popup\) it\.click_popup\(\);/);
+  assert.match(module_source("BarModule"), /readonly property bool hovered: hover_handler\.hovered \|\| root\.cell_hovered/);
+  assert.match(module_source("BarModule"), /if \(root\.popup_helper\) root\.popup_helper\.click\(\);/);
+  assert.match(module_source("Media"), /popup_helper: hover_popup/);
+});
+t("the clock opens its popup on hover over the entry and pins on every click path", () => {
+  const clock = module_source("Clock");
+  assert.match(clock, /HoverPopup \{\n\s+id: hover_popup\n\s+popup_name: "clock"/);
+  assert.match(clock, /onTapped: root\.click_popup\(\)/);
+  assert.match(clock, /if \(root\.hover_active\) hover_popup\.click\(\);/);
+  assert.match(clock, /!root\.hover_active\) Tooltip\.show/);
+  const bar = bar_source("Bar.qml");
+  assert.doesNotMatch(bar, /Popups\.toggle\("clock"/);
+  assert.strictEqual((bar.match(/root\.clock_item && root\.clock_item\.click_popup\(\)/g) || []).length, 3);
+});
+t("the lualine cava slot hovers and pins the media popup, and only while shown", () => {
+  const strip = bar_source("neovim/LualineStrip.qml");
+  assert.match(strip, /HoverPopup \{\n\s+id: slot_popup\n\s+popup_name: "media"\n\s+module: cava_slot\n\s+enabled: cava_slot\.shown/);
+  assert.match(strip, /onClicked: slot_popup\.click\(\)/);
+});
+
 let failed = 0;
 for (const [name, fn] of cases) {
   try { fn(); console.log("ok   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n  " + e.message); }

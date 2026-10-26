@@ -26,13 +26,18 @@ Item {
     property bool wash: true
     // The width the content may use on a side bar: the bar's thickness less the island's capsule inset, its border on both sides and the air. The floating strip's inset is not taken off: it grows the bar window, the plate stays bar_height thick.
     readonly property real cross: VerticalLayout.cross_width(root.bar_height, Style.bar_capsule + Style.bar_border_width * 2 + VerticalLayout.air_px)
-    readonly property alias hovered: hover_handler.hovered
+    // Set by a lualine cell: the pointer is anywhere on the cell (lead arrow and padding included), not only on the module.
+    property bool cell_hovered: false
+    // A module with a helper of its own (Media) points this at it so a cell click goes through that helper.
+    property var popup_helper: null
+    readonly property bool hovered: hover_handler.hovered || root.cell_hovered
 
     visible: shown
 
     // The click entry: with hover-open active it goes through the helper so a click pins, or closes without a reopen under the pointer.
     function toggle_popup() {
-        if (root.hover_active) hover.click();
+        if (root.popup_helper) root.popup_helper.click();
+        else if (root.hover_active) hover.click();
         else Popups.toggle(root.module_name, root.island, root.island_color, root.screen_name);
     }
 

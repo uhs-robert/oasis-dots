@@ -95,6 +95,8 @@ Item {
     // The oasis horizon decorates the center island when it holds the clock; that clock makes room for it and lends it the time.
     readonly property bool clock_horizon: !root.vertical && Style.bar_clock_layout === "horizon" && root.center_entries.some(e => e.base === "clock")
     property var horizon_clock: null
+    // The clock module's item, for the island backgrounds' click: it opens or pins the clock popup through the clock's helper.
+    property var clock_item: null
     readonly property var module_props: ({ compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
 
     // Sets island/screen/stat properties a module declares, after the Loader instantiates it.
@@ -103,6 +105,7 @@ Item {
         item.screen_name = Qt.binding(() => root.screen_name);
         item.bar_height = Qt.binding(() => root.bar_height);
         if (item.hasOwnProperty("vertical")) item.vertical = Qt.binding(() => root.vertical);
+        if (entry.base === "clock") root.clock_item = item;
         if (entry.base === "clock" && island === center_island) {
             root.horizon_clock = item;
             item.horizon = Qt.binding(() => root.clock_horizon);
@@ -202,7 +205,7 @@ Item {
         cap_right: true
         visible: root.left_entries.length > 0
 
-        onClicked: if (root.left_entries.some(e => e.base === "clock")) Popups.toggle("clock", left_island.body_item, left_island.bg_color, root.screen_name)
+        onClicked: if (root.left_entries.some(e => e.base === "clock")) root.clock_item && root.clock_item.click_popup()
 
         Repeater {
             model: root.left_entries
@@ -268,7 +271,7 @@ Item {
         tab_joined: (SubmapState.indicator_shown && !root.has_frame_chip && !root.has_mode_chip) || VoxSessionState.active
         visible: root.has_center
 
-        onClicked: if (root.center_entries.some(e => e.base === "clock")) Popups.toggle("clock", center_island.body_item, center_island.bg_color, root.screen_name)
+        onClicked: if (root.center_entries.some(e => e.base === "clock")) root.clock_item && root.clock_item.click_popup()
 
         Repeater {
             model: root.has_center ? root.center_entries : []
@@ -374,7 +377,7 @@ Item {
         cap_left: true
         visible: root.right_side.length > 0
 
-        onClicked: if (!root.lualine && root.right_entries.some(e => e.base === "clock")) Popups.toggle("clock", right_island.body_item, right_island.bg_color, root.screen_name)
+        onClicked: if (!root.lualine && root.right_entries.some(e => e.base === "clock")) root.clock_item && root.clock_item.click_popup()
 
         Repeater {
             model: root.lualine ? [] : root.right_entries
