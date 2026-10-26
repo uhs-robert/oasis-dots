@@ -68,6 +68,10 @@ Singleton {
         return Logic.edge_cava_allowed(island_style, root.island_mode);
     }
 
+    function edge_strip(island_style, on_ac) {
+        return Logic.edge_strip(island_style, root.island_mode, on_ac, root.battery_fallback);
+    }
+
     function module_position_only(island_style) {
         return Logic.module_position_only(island_style, root.island_mode);
     }

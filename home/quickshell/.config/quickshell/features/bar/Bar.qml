@@ -296,7 +296,9 @@ Item {
         parent: center_island.body_item
         // Island styles only: strip styles draw cava through the cava module, in its own slot.
         readonly property bool island_cava: root.lists_cava && root.has_center && !Style.strip_shape && MediaSettings.edge_cava_allowed(root.island_style)
-        CavaViewer { active: center_cava.island_cava }
+        // On battery the strip shows the track position or nothing, per battery_fallback.
+        readonly property string edge_kind: center_cava.island_cava ? MediaSettings.edge_strip(root.island_style, PowerSource.on_ac) : "none"
+        CavaViewer { active: center_cava.edge_kind === "cava" && MediaState.playing }
         // Sits on the island's open edge: the bottom one, or the top one under a bottom bar, clear of its underline.
         readonly property real open_edge_margin: Style.strip_shape ? root.strip_open_edge_margin : center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.thickness - center_island.window_bottom + center_island.window_edge : center_island.shape === "underline" ? center_island.stroke_width : center_island.filled && center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
         readonly property real along_margin: center_island.capsule ? center_island.capsule_radius : 6
@@ -327,7 +329,22 @@ Item {
         x: root.vertical ? (center_cava.leftward ? parent.width - center_cava.open_edge_margin - height : center_cava.open_edge_margin + height) : 0
         y: root.vertical ? center_island.module_span + center_cava.tail_span - center_cava.along_margin - (center_cava.leftward ? 0 : center_cava.tail_length) : 0
         flipped: center_island.flipped
-        active: MediaState.playing && PowerSource.on_ac && center_cava.island_cava
+        active: MediaState.playing && center_cava.edge_kind === "cava"
+    }
+
+    // The battery stand-in for the cava strip: same place, a progress line instead.
+    PositionLine {
+        parent: center_island.body_item
+        visible: MediaState.playing && center_cava.edge_kind === "position"
+        line_only: true
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: center_island.flipped ? parent.top : undefined
+        anchors.bottom: center_island.flipped ? undefined : parent.bottom
+        anchors.leftMargin: center_cava.along_margin
+        anchors.rightMargin: center_cava.along_margin
+        anchors.topMargin: center_cava.open_edge_margin
+        anchors.bottomMargin: center_cava.open_edge_margin
     }
 
     Island {

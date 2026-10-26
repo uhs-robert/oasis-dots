@@ -24,3 +24,11 @@ function edge_cava_allowed(island_style, mode) {
 function module_position_only(island_style, mode) {
     return island_style && mode === "split";
 }
+
+// What the strip under the clock island draws: "cava", "position" (a progress line) or "none". On battery cava is too
+// costly, so island styles follow `battery_fallback`; any other layout draws nothing there, as before.
+function edge_strip(island_style, mode, on_ac, fallback) {
+    if (!edge_cava_allowed(island_style, mode)) return "none";
+    if (on_ac) return "cava";
+    return island_style && fallback === "position" ? "position" : "none";
+}

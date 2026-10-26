@@ -15,13 +15,17 @@ Item {
     readonly property real position: root.player ? root.player.position : 0
     readonly property bool watching: root.visible && root.width > 0
 
-    implicitWidth: label.implicitWidth
-    implicitHeight: label.implicitHeight + 4
+    // Only the progress line, for the strip under the clock island where text has no room.
+    property bool line_only: false
+
+    implicitWidth: root.line_only ? 0 : label.implicitWidth
+    implicitHeight: root.line_only ? 3 : label.implicitHeight + 4
 
     PositionViewer { active: root.watching && MediaState.playing }
 
     Text {
         id: label
+        visible: !root.line_only
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         text: MediaText.format_time(root.position) + (root.length > 0 ? " / " + MediaText.format_time(root.length) : "")

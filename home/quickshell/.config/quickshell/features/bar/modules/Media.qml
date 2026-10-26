@@ -21,12 +21,10 @@ BarModule {
 
     readonly property var player: MediaState.active
     readonly property bool has_track: !!root.player && ((root.player.trackTitle || "") !== "" || (root.player.trackArtist || "") !== "")
-    // Island styles show the well only when their island_mode asks for it; strip and frame styles always do.
-    readonly property bool island_wants: Style.strip_shape || MediaSettings.island_mode !== "cava_under_island"
     readonly property string wanted_right: root.forced_right_side !== "" ? root.forced_right_side : root.alias_mode !== "" ? root.alias_mode : MediaSettings.right_side_mode
     readonly property string right_mode: root.wanted_right === "cava" && !PowerSource.on_ac ? MediaSettings.battery_fallback : root.wanted_right
 
-    shown: !root.vertical && root.has_track && root.island_wants
+    shown: !root.vertical && root.has_track
     implicitWidth: shown ? well.implicitWidth : 0
     implicitHeight: shown ? well.implicitHeight : 0
 

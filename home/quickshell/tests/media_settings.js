@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/media/MediaSettings.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { migrated_cava_line, module_listed, edge_cava_allowed, module_position_only };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { migrated_cava_line, module_listed, edge_cava_allowed, module_position_only, edge_strip };", T);
 const M = T.api;
 
 const cases = [
@@ -30,6 +30,10 @@ const cases = [
   ["strip/frame styles never gain or lose edge cava from the mode", () => ["cava_under_island", "module_only", "split"].map(m => M.edge_cava_allowed(false, m)), [true, true, true]],
   ["split forces position on the module in an island style", () => M.module_position_only(true, "split"), true],
   ["other modes and non-island styles leave the module's side alone", () => [M.module_position_only(true, "module_only"), M.module_position_only(false, "split"), M.module_position_only(true, "cava_under_island")], [false, false, false]],
+  ["on AC the edge strip is cava in an island style", () => ["cava_under_island", "split"].map(m => M.edge_strip(true, m, true, "hide")), ["cava", "cava"]],
+  ["on battery the edge strip follows battery_fallback in an island style", () => [M.edge_strip(true, "cava_under_island", false, "position"), M.edge_strip(true, "split", false, "hide")], ["position", "none"]],
+  ["module_only never draws the edge strip, on AC or battery", () => [M.edge_strip(true, "module_only", true, "position"), M.edge_strip(true, "module_only", false, "position")], ["none", "none"]],
+  ["outside island styles battery draws nothing at the edge", () => M.edge_strip(false, "cava_under_island", false, "position"), "none"],
   ["an unknown mode behaves as cava_under_island", () => [M.module_listed(true, "bogus"), M.edge_cava_allowed(true, "bogus")], [false, true]],
 ];
 
