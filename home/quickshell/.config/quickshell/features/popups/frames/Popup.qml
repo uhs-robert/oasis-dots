@@ -419,7 +419,7 @@ PanelWindow {
     visible: false
     WlrLayershell.namespace: "quickshell-popup"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: root.passive || root.held_hands_off ? WlrKeyboardFocus.None : root.wanted && (root.hold_keyboard || Popups.grab_keyboard) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: root.passive || root.held_hands_off || Popups.keyboard_off ? WlrKeyboardFocus.None : root.wanted && (root.hold_keyboard || Popups.grab_keyboard) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
     mask: root.passive || root.held_hands_off ? no_input : root.drawer || root.reserving || root.shadow_room > 0 ? panel_input : null
     // The soft shadow's room under the frame; it passes clicks through to the scrim like the reserve does.
     readonly property real shadow_room: !root.dock_bottom && !root.drawer && root.st.frame_shadow.a > 0 ? root.st.frame_drop : 0
@@ -450,6 +450,11 @@ PanelWindow {
         y: root.drawer ? root.drawer_body.y : root.dock_bottom ? root.height - root.panel_height : root.rises ? root.height - root.panel_height + root.shadow_room : 0
         width: root.drawer ? root.drawer_body.width : root.width
         height: root.drawer ? root.drawer_body.height : root.panel_height - root.shadow_room
+
+        HoverHandler {
+            enabled: !root.passive
+            onHoveredChanged: Popups.set_popup_hover(root.popup_name, hovered)
+        }
     }
 
     readonly property int line_height: root.drawer ? 0 : root.st.accent_height
@@ -851,6 +856,22 @@ PanelWindow {
                 active: root.st.open_fx === "static" && !root.passive
                 sourceComponent: Goldeneye.StaticBurst {}
             }
+        }
+    }
+
+    // Reports every press in the panel and hands it on: a child that takes the press (a button, the seek bar) hides it
+    // from a handler on a parent, so this sits above the content and refuses what it sees.
+    MouseArea {
+        enabled: !root.passive
+        x: panel_area.x
+        y: panel_area.y
+        width: panel_area.width
+        height: panel_area.height
+        z: 1000
+        acceptedButtons: Qt.AllButtons
+        onPressed: mouse => {
+            Popups.popup_pressed(root.popup_name);
+            mouse.accepted = false;
         }
     }
 
