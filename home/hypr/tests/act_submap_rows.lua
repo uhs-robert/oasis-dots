@@ -17,6 +17,7 @@ local MODULES = {
 	"keymaps.submaps.go",
 	"keymaps.submaps.system",
 	"keymaps.submaps.bar",
+	"keymaps.submaps.groups", -- entered by a Leader row
 }
 local SUBMAPS = { Leader = true, Applications = true, Go = true, System = true, Bar = true }
 local function in_listed_submap(submap)
@@ -75,6 +76,13 @@ check(
 	"apps.focus takes every Apps.map name: " .. table.concat(sorted_listed, ","),
 	table.concat(names, ",") == table.concat(sorted_listed, ",")
 )
+
+-- Each submap loaded on its own, without the global keys first, names only actions its file requires.
+for _, module in ipairs({ "keymaps.submaps.leader", "keymaps.submaps.apps", "keymaps.submaps.go" }) do
+	Stubs.load(Stubs.VARIANTS[1], { module })
+	local warnings = require("lib.act").warnings
+	check(module .. " alone: no warnings: " .. table.concat(warnings, "; "), #warnings == 0)
+end
 
 -- The row form, on its own submap in a fresh load.
 local function row_binds(rows, catchall)

@@ -94,5 +94,10 @@ Act.define("submap.enter", {
   label = "Enter Submap",
   intent = "Switch to a key submap such as Bar or Groups.",
   params = { { name = "name", type = "string" } },
-  run = function(name) require("lib.key.submap").enter(name) end,
+  run = function(name)
+    local Submap = require("lib.key.submap")
+    -- Submap.enter ignores an unknown name; here it must fail, or `hypr-act submap.enter Typo` exits 0 doing nothing.
+    if not Submap.registry[name] then error("unknown submap '" .. name .. "'", 0) end
+    Submap.enter(name)
+  end,
 })

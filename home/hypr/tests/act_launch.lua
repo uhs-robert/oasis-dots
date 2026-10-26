@@ -8,14 +8,18 @@
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local Stubs = dofile(here .. "/act_stubs.lua")
 
-local MODULES = { "keymaps.global.shortcuts", "keymaps.global.tools" }
+-- Bar is loaded because pressing a key that enters a submap fails while it is unknown; only the global binds are compared.
+local MODULES = { "keymaps.global.shortcuts", "keymaps.global.tools", "keymaps.submaps.bar" }
+local function in_global_map(submap)
+	return submap == ""
+end
 
 if arg[1] == "--dump" then
-	print(table.concat(Stubs.dump_lines(MODULES), "\n"))
+	print(table.concat(Stubs.dump_lines(MODULES, in_global_map), "\n"))
 	os.exit(0)
 end
 
-local failures = Stubs.compare(MODULES, here .. "/fixtures/act_launch_binds.tsv")
+local failures = Stubs.compare(MODULES, here .. "/fixtures/act_launch_binds.tsv", in_global_map)
 local function check(name, ok)
 	if not ok then
 		failures = failures + 1
@@ -66,7 +70,9 @@ package.loaded["config"].app.tui_file_manager = "ranger"
 package.loaded["config"].app.gui_file_manager = "nautilus"
 check("run terminal.tui_files follows Config", ran("terminal.tui_files") == "exec_cmd(kitty --single-instance -e ranger)")
 check("run files.open follows Config", ran("files.open") == "exec_cmd(nautilus)")
-check("run submap.enter", ran("submap.enter", "Bar") == "")
+-- Only a loaded submap can be entered: an unknown name raises, which is what makes `hypr-act` exit 5.
+check("submap.enter unknown name raises", ran("submap.enter", "Typo"):match("^ERROR.*unknown submap 'Typo'") ~= nil)
+check("run submap.enter", ran("submap.enter", "Bar") == "submap(Bar)")
 check("submap.enter needs a name", ran("submap.enter"):match("^ERROR") ~= nil)
 
 if failures > 0 then

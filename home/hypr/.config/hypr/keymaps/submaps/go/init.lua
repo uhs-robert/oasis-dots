@@ -8,6 +8,9 @@ local Workspaces = require("lib.workspaces") --- @class Workspaces
 
 -- The actions the rows name.
 require("lib.actions.defs.apps")
+require("lib.actions.defs.launch")
+require("lib.actions.defs.tools")
+require("lib.actions.defs.workspaces")
 
 local function focus_app(app) return { "apps.focus", { app } } end
 

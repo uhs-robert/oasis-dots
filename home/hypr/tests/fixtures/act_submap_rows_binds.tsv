@@ -86,7 +86,7 @@ default	Leader	CTRL + SLASH	Voice Help	-	exec_cmd(~/.local/bin/voxcmd help);subm
 default	Leader	CTRL + V	Clipboard	-	exec_cmd(~/.config/hypr/scripts/qs-picker clipboard 'cliphist list | rofi -name rofiDmenu -i -dmenu -p '\''Clipboard'\'' | cliphist decode | wl-copy');submap(reset)
 default	Leader	E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimoji --action type --selector-args '\''-name rofiDmenu'\''');submap(reset)
 default	Leader	ESCAPE	Exit Leader	-	submap(reset)
-default	Leader	G	+Groups	keep=true	-
+default	Leader	G	+Groups	keep=true	submap(Groups)
 default	Leader	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
 default	Leader	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
 default	Leader	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
@@ -228,7 +228,7 @@ no-leader	Leader	CTRL + SLASH	Voice Help	-	exec_cmd(~/.local/bin/voxcmd help);su
 no-leader	Leader	CTRL + V	Clipboard	-	exec_cmd(~/.config/hypr/scripts/qs-picker clipboard 'cliphist list | rofi -name rofiDmenu -i -dmenu -p '\''Clipboard'\'' | cliphist decode | wl-copy');submap(reset)
 no-leader	Leader	E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimoji --action type --selector-args '\''-name rofiDmenu'\''');submap(reset)
 no-leader	Leader	ESCAPE	Exit Leader	-	submap(reset)
-no-leader	Leader	G	+Groups	keep=true	-
+no-leader	Leader	G	+Groups	keep=true	submap(Groups)
 no-leader	Leader	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
 no-leader	Leader	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
 no-leader	Leader	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
