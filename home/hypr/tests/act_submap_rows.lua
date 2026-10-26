@@ -141,6 +141,27 @@ Stubs.performed = {}
 found.B.action()
 check("row: keep stays after an id row", table.concat(Stubs.performed, ";") == "submap(Probe)")
 
+-- The System submap's power rows are the power.confirm action, not a command line of their own, so they need no entry
+-- in lib/check/registry.allow. The fixture comparison above already proves the effect is unchanged.
+Stubs.load(Stubs.VARIANTS[1], MODULES)
+local ran = {}
+local PowerAct = require("lib.act")
+local real_run = PowerAct.run
+PowerAct.run = function(id, ...)
+	ran[#ran + 1] = id .. "(" .. table.concat({ ... }, ",") .. ")"
+	return real_run(id, ...)
+end
+for key, kind in pairs({ E = "logout", L = "lock", R = "reboot", P = "poweroff" }) do
+	ran = {}
+	for _, entry in ipairs(Stubs.binds) do
+		if entry.submap == "System" and entry.key == key then
+			pcall(entry.action)
+		end
+	end
+	check("power row " .. key .. " runs power.confirm " .. kind, ran[1] == "power.confirm(" .. kind .. ")")
+end
+PowerAct.run = real_run
+
 if failures > 0 then
 	print(failures .. " failed")
 	os.exit(1)

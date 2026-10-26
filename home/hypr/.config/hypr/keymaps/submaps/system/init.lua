@@ -2,22 +2,13 @@
 --- Each bind runs a system command
 
 local Config = require("config") --- @class Config
-local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
-local Cmd = require("lib.actions.cmd") ---@class Cmd
 
 -- The actions the rows name.
 require("lib.actions.defs.apps")
 require("lib.actions.defs.popups")
+require("lib.actions.defs.power")
 require("lib.actions.defs.system")
-
--- Not actions yet: the power rows wait for their own.
-local POWER = {
-  logout = Scripts.qs_ipc .. " call power confirm logout",
-  lock = Scripts.qs_ipc .. " call power confirm lock",
-  reboot = Scripts.qs_ipc .. " call power confirm reboot",
-  off = Scripts.qs_ipc .. " call power confirm poweroff",
-}
 
 Submap.define({
   name = "System",
@@ -34,17 +25,17 @@ Submap.define({
     { "A",         { "terminal.tool", { "abtop" } },    "AI Manager" },
     { "B",         "system.restart_bar" },
     { "D",         "system.display_manager" },
-    { "E",         Cmd.run(POWER.logout),               "Logout" },
+    { "E",         { "power.confirm", { "logout" } }, "Logout" },
     { "H",         "system.reload_hyprland" },
     { "SHIFT + H", "system.reload_plugins" },
     { "I",         "system.network" },
     { "K",         "system.kill_app" },
-    { "L",         Cmd.run(POWER.lock),                 "Lock" },
+    { "L",         { "power.confirm", { "lock" } }, "Lock" },
     { "SHIFT + L", "system.toggle_autolock" },
     { "N",         { "popup.open", { "notifications" } }, "Notification Center" },
-    { "R",         Cmd.run(POWER.reboot),               "Reboot" },
+    { "R",         { "power.confirm", { "reboot" } }, "Reboot" },
     { "SHIFT + R", "system.replay_autostart" },
-    { "P",         Cmd.run(POWER.off),                  "Power Off" },
+    { "P",         { "power.confirm", { "poweroff" } }, "Power Off" },
     { "T",         "system.theme_switch" },
     { "U",         "system.update" },
     { "V",         "system.voxtype_settings" },
