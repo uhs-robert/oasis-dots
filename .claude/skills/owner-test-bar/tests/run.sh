@@ -773,7 +773,7 @@ dj_swap_moved() {
 out=$(dj_swap_moved)
 code=$?
 show "$out"
-check "a swap that fails after the link moved puts Hyprland and the manifest back, says how to finish, and fails" "[[ $code != 0 && \$(readlink $root/hl_link) == $hl_main && ! -e $bars_dir/.hypr_orig ]] && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+check "a swap that fails after the link moved puts Hyprland and the manifest back, says it failed and how to finish, and fails" "grep -q 'hypr swap failed' <<<\"\$out\" && grep -q 'run: .*owner-test-bar.sh restore' <<<\"\$out\" && [[ $code != 0 && \$(readlink $root/hl_link) == $hl_main && ! -e $bars_dir/.hypr_orig ]] && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
 
 echo "== restore and remove: a failing manifest restore does not skip Hyprland"
 dj_restore_fails() {
@@ -781,9 +781,12 @@ dj_restore_fails() {
     guard_owner() { :; }; djinn_restore() { echo djinn_restore; false; }; hypr_restore() { echo hypr_restore; }
     voxcmd_restore() { :; }; voxtype_restore() { :; }; main "$5"' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" "$1" 2>&1
 }
+touch "$bars_dir/.owner"
 out=$(dj_restore_fails restore)
 code=$?
 show "$out"
+check "a failed restore keeps the owner claim" "[[ -e $bars_dir/.owner ]]"
+rm -f "$bars_dir/.owner"
 check "restore still restores Hyprland after a failing manifest restore, and exits non-zero" "[[ $code != 0 ]] && [[ \$(sed -n 1p <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]] && grep -q 'restore did not finish' <<<\"\$out\""
 echo djinn >"$bars_dir/.hypr_bar"
 dj_remove_order() {
@@ -793,6 +796,15 @@ dj_remove_order() {
 }
 out=$(dj_remove_order)
 check "remove restores the manifest before Hyprland" "[[ \$(sed -n 1p <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]]"
+dj_remove_fails() {
+  HOME=$dj_home bash -c "$hl_env"'
+    git() { echo "git $*"; }; djinn_restore() { false; }; hypr_restore() { echo hypr_restore; }
+    main remove djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" 2>&1
+}
+out=$(dj_remove_fails)
+code=$?
+show "$out"
+check "remove stops before git worktree remove when a restore fails" "[[ $code != 0 ]] && ! grep -q '^git ' <<<\"\$out\" && grep -q 'hypr_restore' <<<\"\$out\""
 rm -f "$bars_dir/.hypr_bar"
 
 echo "== restore prints not stowed when there is nothing to restore"

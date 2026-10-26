@@ -959,8 +959,11 @@ main() {
     # cp or ln partway would carry on and report a half-swapped desktop as done.
     tolerate hypr_swap "$2" "$dir"
     if ((tolerated_status != 0)); then
+      echo "owner-test-bar: hypr swap failed (status $tolerated_status); putting Hyprland and the manifest back" >&2
       # The link may have moved before the failure, so Hyprland goes back too.
       restore_hypr_and_djinn
+      # Printed even after a clean restore: with --replace, the bar that was live keeps its qs, voxcmd and voxtype.
+      ((restore_failed)) || echo "owner-test-bar: swap failed; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore" >&2
       exit 1
     fi
     voxcmd_swap "$2" "$dir"
