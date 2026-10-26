@@ -2,7 +2,7 @@
   {
     "match": "*",
     "compact": false,
-    "left": ["start", "workspaces", "cava", "cmdstatus"],
+    "left": ["start", "workspaces", "media", "cmdstatus"],
     "center": ["clock"],
     "right": ["tray", "keeptabs", "updates", "weather", "volume", "battery", "system", "network", "bluetooth", "recording", "voxtype", "notifications"]
   }
