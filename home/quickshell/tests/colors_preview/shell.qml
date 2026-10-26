@@ -6,8 +6,8 @@ import qs.features.settings
 import qs.features.settings.sections
 
 // Harness for run.sh: opens the Palette list in ColorsSection beside a SettingsPanel at several sizes and writes one
-// PASS or FAIL line per size to $RESULT. FAIL when the preview card is not in the panel, intersects the list or the
-// pane or moves when the list opens, or (no preview) when the help card does not get the whole panel.
+// PASS or FAIL line per size to $RESULT. FAIL when the preview card is not in the panel, intersects the list, moves when
+// the list opens, has a blank band above it, or (no preview) when the help card does not get the whole panel.
 ShellRoot {
     id: root
 
@@ -137,9 +137,11 @@ ShellRoot {
             || b.x < panel_box.x || b.y < panel_box.y || b.x + b.w > panel_box.x + panel_box.w + 1 || b.y + b.h > panel_box.y + panel_box.h + 1;
         // Opening the list must not move the card the owner browses palettes against.
         const moved = JSON.stringify(b) !== JSON.stringify(root.closed_card);
-        detail += " card " + JSON.stringify(b) + (moved ? " MOVED from " + JSON.stringify(root.closed_card) : "");
+        // No blank band above the preview: it is pinned to the panel's top.
+        const band = b && b.y - panel_box.y > 2;
+        detail += " card " + JSON.stringify(b) + (moved ? " MOVED from " + JSON.stringify(root.closed_card) : "") + (band ? " BAND " + (b.y - panel_box.y) : "");
         section.hide_picker();
-        root.finish(bad || moved, detail);
+        root.finish(bad || moved || band, detail);
     }
 
     function judge_closed() {

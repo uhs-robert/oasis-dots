@@ -23,9 +23,8 @@ Item {
     readonly property real preview_height: root.shown_height(preview_slot)
     readonly property bool has_preview: root.preview_height > 0
 
-    // The help area keeps its size while a preview exists, whatever the focused row's text or an open list hiding the
-    // card, so the preview the owner is browsing against never moves.
-    readonly property real help_share: 0.4
+    // A preview is pinned to the panel's top (or its right half when stacked) and the help card takes the rest, so
+    // neither the focused row's text nor an open list hiding the card moves the preview.
     readonly property bool help_beside: root.stacked && root.has_preview
 
     function reset_help_scroll() {
@@ -36,9 +35,9 @@ Item {
         id: help_flick
         objectName: "help"
         x: 0
-        y: 0
+        y: root.stacked || !root.has_preview ? 0 : root.preview_height + root.gap
         width: root.help_beside ? Math.round((root.width - root.gap) / 2) : root.width
-        height: root.stacked || !root.has_preview ? root.height : Math.max(0, Math.min(Math.round(root.height * root.help_share), root.height - root.preview_height - root.gap))
+        height: Math.max(0, root.height - help_flick.y)
         clip: true
         contentWidth: width
         contentHeight: root.help_content
@@ -54,7 +53,7 @@ Item {
     Item {
         id: preview_slot
         x: root.help_beside ? help_flick.width + root.gap : 0
-        y: root.stacked ? 0 : help_flick.height + root.gap
+        y: 0
         width: root.width - x
         // An oversized preview is cut at the panel's edge rather than drawn past the drawer.
         height: Math.min(root.preview_height, root.height - y)
