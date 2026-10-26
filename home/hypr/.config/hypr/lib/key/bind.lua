@@ -354,13 +354,19 @@ local function bind_target(entry, args)
   local id = entry.id
   local binding = binding_of(id)
   if not binding then return nil end
+  local values = param_values(entry, args)
+  if not values then return nil end
   if binding.kind == "lua" then
     local perform = performer_of(id)
     if not perform then return nil end
-    return function() perform(table.unpack(args)) end
+    -- Positional, with manifest defaults filled in, so a performer sees the same params as `oasis-djinn <id>`.
+    local filled = {}
+    for index, param in ipairs(entry.params or {}) do
+      filled[index] = values[param.name]
+    end
+    local count = #(entry.params or {})
+    return function() perform(table.unpack(filled, 1, count)) end
   end
-  local values = param_values(entry, args)
-  if not values then return nil end
   if runner_installed() then
     local words = { Scripts.djinn, id }
     for _, arg in ipairs(args) do

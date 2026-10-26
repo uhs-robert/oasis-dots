@@ -300,6 +300,8 @@ write_lua_fixture(
 		.. action_json("t.after", "F4", "[]")
 		.. ","
 		.. action_json("t.cmd", "F5", '[{"name":"n","type":"int"},{"name":"m","type":"string","default":"d"}]')
+		.. ","
+		.. action_json("t.cmd2", "F7", '[{"name":"n","type":"int"},{"name":"m","type":"string","default":"d"}]')
 		.. ',{"id":"t.keyless","label":"Keyless","intent":"x","params":[],"extra_keys":[]}'
 		.. "]}"
 )
@@ -309,7 +311,7 @@ write_lua_fixture(
 )
 write_lua_fixture(
 	"bindings/hyprland.json",
-	'{"bindings":{"t.lua":{"kind":"lua"},"t.lost":{"kind":"lua"},"t.after":{"kind":"lua"},"t.keyless":{"kind":"lua"}}}'
+	'{"bindings":{"t.lua":{"kind":"lua"},"t.lost":{"kind":"lua"},"t.after":{"kind":"lua"},"t.keyless":{"kind":"lua"},"t.cmd2":{"kind":"lua"}}}'
 )
 local real_performers = package.loaded["lib.actions.performers"]
 local performed = {}
@@ -344,6 +346,21 @@ check(
 	"lua args: performer gets opts.args in order",
 	performed[1] and performed[1].id == "t.lua" and performed[1].args[1] == 7 and performed[1].args[2] == "x"
 )
+
+-- A lua action's required param is checked at bind time too.
+reset()
+Bind.warnings = {}
+Bind.action("t.lua")
+check("lua args: a missing required param warns and skips", #binds == 0 and #Bind.warnings == 1)
+
+-- A lua performer is handed the manifest default for a param opts.args leaves out.
+reset()
+performed = {}
+Bind.action("t.cmd2", { args = { 4 } })
+if find("F7") and type(find("F7").action) == "function" then
+	find("F7").action()
+end
+check("lua args: manifest default filled", performed[1] and performed[1].args[1] == 4 and performed[1].args[2] == "d")
 
 -- An action with no key binds only where opts.key gives one.
 reset()
@@ -382,7 +399,7 @@ Bind.reload_manifest()
 reset()
 Bind.warnings = {}
 ok = pcall(function()
-	Bind.action("t.lua")
+	Bind.action("t.lua", { args = { 1, "x" } })
 	Bind.action("t.cmd", { args = { 1 } })
 end)
 check("broken performers module does not raise", ok)
@@ -393,8 +410,8 @@ check(
 )
 reset()
 Bind.warnings = {}
-Bind.action("t.lua")
-Bind.action("t.lua")
+Bind.action("t.lua", { args = { 1, "x" } })
+Bind.action("t.lua", { args = { 1, "x" } })
 check("broken performers module: every lua bind warns, not just the first", #Bind.warnings == 2)
 package.preload["lib.actions.performers"] = nil
 package.loaded["lib.actions.performers"] = real_performers

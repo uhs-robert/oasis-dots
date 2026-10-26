@@ -5,8 +5,9 @@
 
 use std::collections::HashMap;
 use std::fmt;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use serde::Deserialize;
 
@@ -328,5 +329,16 @@ fn expand_home(word: &str, home: &Path) -> String {
 
 /// Runs a planned command and waits: true when it exited 0. A program that cannot start is an `Err`.
 pub fn perform(argv: &[String]) -> std::io::Result<bool> {
-    Ok(Command::new(&argv[0]).args(&argv[1..]).status()?.success())
+    // Output is captured because `hyprctl eval` prints a Lua error to stdout and exits non-zero; on failure it is
+    // forwarded to stderr, where a caller looks for the reason.
+    let done = Command::new(&argv[0])
+        .args(&argv[1..])
+        .stderr(Stdio::inherit())
+        .output()?;
+    if done.status.success() {
+        std::io::stdout().write_all(&done.stdout)?;
+    } else {
+        std::io::stderr().write_all(&done.stdout)?;
+    }
+    Ok(done.status.success())
 }

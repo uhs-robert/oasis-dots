@@ -29,7 +29,7 @@ fn stub() -> &'static Path {
         let path = std::env::temp_dir().join(format!("djinn-stub-{}", std::process::id()));
         std::fs::write(
             &path,
-            "#!/bin/sh\necho \"$@\" >> \"$STUB_LOG\"\n[ -z \"$STUB_FAIL\" ]\n",
+            "#!/bin/sh\necho \"$@\" >> \"$STUB_LOG\"\n[ -z \"$STUB_OUT\" ] || echo \"$STUB_OUT\"\n[ -z \"$STUB_FAIL\" ]\n",
         )
         .unwrap();
         use std::os::unix::fs::PermissionsExt;
@@ -372,6 +372,19 @@ fn a_failing_lua_performer_exits_1() {
         sandbox.run_in(&sandbox.manifest, &[("STUB_FAIL", "1")], &["t.bare"]).0,
         1
     );
+}
+
+#[test]
+fn a_failing_performer_forwards_its_stdout_to_stderr() {
+    // hyprctl eval reports the Lua error on stdout, so a bare exit 1 would leave the caller without the reason.
+    let sandbox = lua_sandbox("lua-fail-output");
+    let (code, stderr) = sandbox.run_in(
+        &sandbox.manifest,
+        &[("STUB_FAIL", "1"), ("STUB_OUT", "lua error: boom")],
+        &["t.bare"],
+    );
+    assert_eq!(code, 1);
+    assert!(stderr.contains("lua error: boom"), "stderr was: {stderr}");
 }
 
 #[test]

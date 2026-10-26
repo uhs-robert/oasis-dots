@@ -1,4 +1,17 @@
-# Stow-default ignores, which a local list replaces, plus the tests, which stay in the repo.
+# Stow's default ignores, which a local list replaces, plus the tests, which stay in the repo.
+RCS
+.+,v
+CVS
+\.\#.+
+\.cvsignore
+\.svn
+_darcs
+\.hg
+\.git
 \.gitignore
+.+~
+\#.*\#
 ^/README.*
+^/LICENSE.*
+^/COPYING
 ^/tests
