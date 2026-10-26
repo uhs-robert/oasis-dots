@@ -52,6 +52,7 @@ Item {
     }
 
     onInsideChanged: if (root.enabled) root.apply(Policy.inside_changed(root._mode, root.inside, root.nothing_open))
+    onNothing_openChanged: if (root.enabled && root.nothing_open) root.apply(Policy.nothing_open_now(root._mode, root.inside))
     onOpen_hereChanged: root.apply(Policy.popup_changed(root._mode, root.open_here, root.inside))
     onEnabledChanged: if (!root.enabled) root.apply(Policy.disabled(root._mode, root.open_here))
     Component.onCompleted: if (root.open_here) root.apply(Policy.popup_changed(root._mode, true, root.inside))

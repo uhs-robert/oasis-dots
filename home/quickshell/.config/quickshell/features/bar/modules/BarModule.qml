@@ -56,10 +56,13 @@ Item {
 
     HoverHandler {
         id: hover_handler
-        onHoveredChanged: {
-            // The popup replaces the tooltip where hover opens it.
-            if (hovered && !root.hover_active) Tooltip.show(root, root.tooltip_text, root.tooltip_title);
-            else Tooltip.hide(root);
-        }
+        onHoveredChanged: root.sync_tooltip()
     }
+
+    // The popup replaces the tooltip where hover opens it; also rerun when that eligibility changes under a still pointer.
+    function sync_tooltip() {
+        if (hover_handler.hovered && !root.hover_active) Tooltip.show(root, root.tooltip_text, root.tooltip_title);
+        else Tooltip.hide(root);
+    }
+    onHover_activeChanged: root.sync_tooltip()
 }

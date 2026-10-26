@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPolicy.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, popup_pressed, disabled, open_here };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here };", T);
 const P = T.api;
 
 // A model of the world around the helper: the pointer, which popup is open, and the two timers.
@@ -279,8 +279,29 @@ t("Notifications hover-opens only with notifications", () => {
 t("the base routes toggle_popup through the helper and drops the tooltip when hover opens", () => {
   const base = module_source("BarModule");
   assert.match(base, /if \(root\.hover_active\) hover\.click\(\);/);
-  assert.match(base, /hovered && !root\.hover_active\) Tooltip\.show/);
+  assert.match(base, /hover_handler\.hovered && !root\.hover_active\) Tooltip\.show/);
+  assert.match(base, /onHover_activeChanged: root\.sync_tooltip\(\)/);
   assert.match(base, /&& Popups\.hover_popups$/m);
+});
+
+t("pointer arrives while another popup is open: the open starts once nothing is open", () => {
+  const w = world();
+  w.open_name = "other";
+  w.pointer(true, false);
+  assert.deepStrictEqual([w.mode, w.open_timer], ["idle", false]);
+  w.open_name = "";
+  w.apply(P.nothing_open_now(w.mode, w.inside()));
+  assert.strictEqual(w.mode, "pending");
+  w.fire_open();
+  assert.deepStrictEqual([w.mode, w.open_name], ["hover_open", "media"]);
+});
+t("nothing_open_now changes nothing outside idle-and-inside", () => {
+  for (const m of ["pending", "hover_open", "pinned", "suppressed", "settling"]) assert.strictEqual(P.nothing_open_now(m, true).mode, m);
+  assert.strictEqual(P.nothing_open_now("idle", false).mode, "idle");
+});
+t("HoverPopup reacts to nothing_open", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  assert.match(src, /onNothing_openChanged: if \(root\.enabled && root\.nothing_open\)/);
 });
 
 let failed = 0;
