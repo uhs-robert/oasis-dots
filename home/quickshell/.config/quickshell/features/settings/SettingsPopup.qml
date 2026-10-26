@@ -183,6 +183,15 @@ Popup {
         }
     }
 
+    // A new row's text starts at its top, not where the last one was scrolled to.
+    Connections {
+        target: root.pane
+        ignoreUnknownSignals: true
+        function onDescriptionChanged() {
+            panel.reset_help_scroll();
+        }
+    }
+
     Connections {
         target: SettingsNav
         function onRequestedChanged() {

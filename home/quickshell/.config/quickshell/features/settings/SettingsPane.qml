@@ -15,7 +15,7 @@ FocusScope {
     property var pick_done: null
     readonly property string shown_hint: root.picking ? (root.pick_list && !root.pick_list.insert ? "Enter pick · j/k move · gg/G first/last · i insert · Esc close" : "Enter pick · Up/Down or Ctrl+n/p move · Esc normal") : root.footer_hint
     // A section that sets `described` shows `description` and `description_keys` for its selected or hovered item in
-    // the view's help column, beside the rows.
+    // the popup's docked panel (help card).
     property bool described: false
     property string description: ""
     property string description_keys: ""

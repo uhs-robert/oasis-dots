@@ -23,14 +23,22 @@ Item {
     readonly property real preview_height: root.shown_height(preview_slot)
     readonly property bool has_preview: root.preview_height > 0
 
+    // The help area keeps its size while a preview exists, whatever the focused row's text or an open list hiding the
+    // card, so the preview the owner is browsing against never moves.
+    readonly property real help_share: 0.4
+    readonly property bool help_beside: root.stacked && root.has_preview
+
+    function reset_help_scroll() {
+        help_flick.contentY = 0;
+    }
+
     Flickable {
         id: help_flick
         objectName: "help"
         x: 0
         y: 0
-        width: root.stacked && root.has_preview && root.help_content > 0 ? Math.round((root.width - root.gap) / 2) : root.width
-        // Above the preview the card takes what its text needs, but never pushes the preview out of the panel.
-        height: root.stacked || !root.has_preview ? root.height : Math.max(0, Math.min(root.help_content, root.height - root.preview_height - root.gap))
+        width: root.help_beside ? Math.round((root.width - root.gap) / 2) : root.width
+        height: root.stacked || !root.has_preview ? root.height : Math.max(0, Math.min(Math.round(root.height * root.help_share), root.height - root.preview_height - root.gap))
         clip: true
         contentWidth: width
         contentHeight: root.help_content
@@ -45,9 +53,11 @@ Item {
 
     Item {
         id: preview_slot
-        x: root.stacked && root.help_content > 0 ? help_flick.width + root.gap : 0
-        y: root.stacked ? 0 : help_flick.height + (help_flick.height > 0 ? root.gap : 0)
-        width: root.stacked ? root.width - x : root.width
-        height: root.preview_height
+        x: root.help_beside ? help_flick.width + root.gap : 0
+        y: root.stacked ? 0 : help_flick.height + root.gap
+        width: root.width - x
+        // An oversized preview is cut at the panel's edge rather than drawn past the drawer.
+        height: Math.min(root.preview_height, root.height - y)
+        clip: true
     }
 }

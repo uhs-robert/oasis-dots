@@ -7,7 +7,7 @@ import qs.features.settings.sections
 
 // Harness for run.sh: opens the Palette list in ColorsSection beside a SettingsPanel at several sizes and writes one
 // PASS or FAIL line per size to $RESULT. FAIL when the preview card is not in the panel, intersects the list or the
-// pane, or (no preview) when the help card does not get the whole panel.
+// pane or moves when the list opens, or (no preview) when the help card does not get the whole panel.
 ShellRoot {
     id: root
 
@@ -43,6 +43,7 @@ ShellRoot {
         return { x: p.x, y: p.y, w: item.width, h: h };
     }
 
+    // Sets up size `at` with the list closed; the closed measurements are taken once the layout stops moving.
     function check() {
         const size = root.sizes[root.at];
         const plain = size[2] === "plain";
@@ -57,45 +58,91 @@ ShellRoot {
         panel.height = size[4];
         panel.x = size[5] ? 0 : size[0] + 24;
         panel.y = size[5] ? size[1] + 24 : 0;
+        root.phase = "closed";
+        root.last_layout = "";
+        root.waited = 0;
+        settle.restart();
+    }
+
+    property string phase: "closed"
+    property string last_layout: ""
+    property int waited: 0
+    property var closed_card: null
+    property string pending_detail: ""
+
+    function section_now() {
+        return (root.sizes[root.at][2] === "plain" ? bare : holder).item;
+    }
+
+    // What the layout looks like now; two equal snapshots in a row mean it has settled.
+    function layout_snapshot() {
+        const section = root.section_now();
+        const card = root.find(panel, "card");
+        const list = root.find(section, "picker");
+        return JSON.stringify([card ? root.box(card) : null, list && list.visible ? root.box(list) : null, panel.width, panel.height]);
+    }
+
+    function tick() {
+        const section = root.section_now();
+        const now = root.layout_snapshot();
+        const open = root.phase === "open";
+        const list = root.find(section, "picker");
+        // An open list is ready when the section reports it and the list has drawn its rows.
+        const ready = open ? section.picking && list && list.visible && list.results.length > 0 : !section.picking;
+        root.waited++;
+        if (!(ready && now === root.last_layout) && root.waited < 60) {
+            root.last_layout = now;
+            settle.restart();
+            return;
+        }
+        if (open) root.judge();
+        else root.measure_closed();
+    }
+
+    function measure_closed() {
+        const card = root.find(panel, "card");
+        root.closed_card = card ? root.box(card) : null;
+        const section = root.section_now();
         const labels = [];
         for (let i = 0; i < 30; i++) labels.push("palette " + i);
-        active.item.open_list("Palette", labels, labels, labels[0], v => {});
+        root.phase = "open";
+        root.last_layout = "";
+        root.waited = 0;
+        section.open_list("Palette", labels, labels, labels[0], v => {});
         settle.restart();
     }
 
     function judge() {
         const size = root.sizes[root.at];
         const plain = size[2] === "plain";
-        const section = (plain ? bare : holder).item;
+        const section = root.section_now();
         const list = root.find(section, "picker");
         const a = root.box(list);
-        const pane = root.box(section);
-        const pane_box = { x: pane.x, y: pane.y, w: section.width, h: section.height };
-        let bad = false;
+        let bad = !section.picking;
         let detail = " list " + JSON.stringify(a);
         if (plain) {
             // No preview: the list still fills the pane, and the help card (hidden while the list is open) gets the whole panel once closed.
-            bad = a.h <= list.default_height + list.row_height;
+            bad = bad || a.h <= list.default_height + list.row_height;
             section.hide_picker();
-            panel_settle.restart();
             root.pending_detail = detail;
+            root.phase = "after";
+            root.waited = 0;
+            panel_settle.restart();
             return;
         }
         const card = root.find(panel, "card");
         const b = card ? root.box(card) : null;
         const panel_box = { x: panel.x, y: panel.y, w: panel.width, h: panel.height };
-        bad = !card || !card.visible || !root.within(card, panel) || b.w <= 0 || b.h <= 0 || root.overlaps(a, b) || root.overlaps(pane_box, b)
+        bad = bad || !card || !card.visible || !root.within(card, panel) || b.w <= 0 || b.h <= 0 || root.overlaps(a, b)
             || b.x < panel_box.x || b.y < panel_box.y || b.x + b.w > panel_box.x + panel_box.w + 1 || b.y + b.h > panel_box.y + panel_box.h + 1;
-        detail += " card " + JSON.stringify(b);
-        root.finish(bad, detail);
+        // Opening the list must not move the card the owner browses palettes against.
+        const moved = JSON.stringify(b) !== JSON.stringify(root.closed_card);
+        detail += " card " + JSON.stringify(b) + (moved ? " MOVED from " + JSON.stringify(root.closed_card) : "");
         section.hide_picker();
+        root.finish(bad || moved, detail);
     }
 
-    property string pending_detail: ""
-
     function judge_closed() {
-        const size = root.sizes[root.at];
-        const panel_box = { x: panel.x, y: panel.y, w: panel.width, h: panel.height };
         const help = root.find(panel, "help");
         const bad = panel.has_preview || Math.abs(help.height - panel.height) > 1 || help.width !== panel.width || help.height <= 0;
         root.finish(bad, root.pending_detail + " help " + help.width + "x" + help.height + " panel " + panel.width + "x" + panel.height);
@@ -111,13 +158,13 @@ ShellRoot {
 
     Timer {
         id: settle
-        interval: 400
-        onTriggered: root.judge()
+        interval: 50
+        onTriggered: root.tick()
     }
 
     Timer {
         id: panel_settle
-        interval: 400
+        interval: 200
         onTriggered: root.judge_closed()
     }
 
