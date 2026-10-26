@@ -23,11 +23,22 @@ site_candidates() { firefox_rows sites; }
 
 # Yields (prints nothing) for what other integrations own: the browser window itself, a keybind's description ("go to
 # workspace 2"), a tmux session or an agent.
+#
+# The tabs are read while the keybind check runs, since firefox-tab takes most of the time and does not depend on it.
+# Their stderr is dropped: on a yield the reader is left to finish alone, and holding the hook's stderr open would keep
+# voxcmd waiting for it.
 tab_candidates() {
-  if names_the_browser "$VOXCMD_ARG_TARGET" || left_to_others "$VOXCMD_ARG_TARGET"; then
+  local tabs_fd
+  if names_the_browser "$VOXCMD_ARG_TARGET"; then
     return 0
   fi
-  firefox_rows tabs
+  exec {tabs_fd}< <(firefox_rows tabs 2>/dev/null)
+  if left_to_others "$VOXCMD_ARG_TARGET"; then
+    exec {tabs_fd}<&-
+    return 0
+  fi
+  cat <&"$tabs_fd"
+  exec {tabs_fd}<&-
 }
 
 # "go to firefox" is the browser window, which Apps focuses.
@@ -48,17 +59,17 @@ names_session_or_agent() {
 # True when "<focus form> <target>" is a described Hyprland keybind, compared as word sets: filler and Apps' ignored
 # words dropped, number words as digits, plurals singular.
 spoken_as_keybind() {
-  local phrases form
-  phrases=$("$VOXCMD_SELF" util intents focus | while IFS= read -r form; do printf '%s\n' "$form $1"; done)
-  hyprctl binds -j 2>/dev/null | jq -e --rawfile phrases <(printf '%s' "$phrases") '
+  local phrases=() form
+  while IFS= read -r form; do phrases+=("$form $1"); done < <("$VOXCMD_SELF" util intents focus)
+  hyprctl binds -j 2>/dev/null | jq -e --args '
     {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10"} as $digits
     | (["the", "a", "an", "my", "this", "that", "please", "to", "of", "on", "in", "for", "it", "window", "app", "application", "program"]) as $ignored
     | def singular: if length > 3 and endswith("s") and (endswith("ss") | not) then .[:-1] else . end;
       def words: ascii_downcase | gsub("\u0027"; "") | [splits("[^a-z0-9]+") | select(. != "") | ($digits[.] // .) | singular]
         | map(select(IN($ignored[]) | not)) | unique;
-    ($phrases | split("\n") | map(select(. != "") | words)) as $spoken
-    | any(.[] | select(.has_description) | .description | words; . as $bind | any($spoken[]; . == $bind))
-  ' >/dev/null
+    ($ARGS.positional | map(words)) as $spoken
+    | any([.[] | select(.has_description) | .description] | unique | .[] | words; . as $bind | any($spoken[]; . == $bind))
+  ' "${phrases[@]}" >/dev/null
 }
 
 # Tab in Voice Help lists every tab, once each, by title.
