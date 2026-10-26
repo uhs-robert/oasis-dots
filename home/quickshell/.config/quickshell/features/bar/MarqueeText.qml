@@ -49,7 +49,14 @@ Item {
         textFormat: Text.PlainText
     }
 
+    // A running animation keeps the travel it started with, so a new cycle (text or width changed) restarts it.
+    onCycleChanged: if (slide.running) {
+        slide.stop();
+        slide.start();
+    }
+
     SequentialAnimation {
+        id: slide
         running: root.sliding
         loops: Animation.Infinite
         onRunningChanged: if (!running) label.x = 0
