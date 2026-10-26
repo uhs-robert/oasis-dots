@@ -419,11 +419,6 @@ voxcmd_rust_bin() {
   echo "$1/$voxcmd_rel/target/release/voxcmd"
 }
 
-# Where a build writes: the live binary, which ~/.local/bin/voxcmd points at, is replaced only once a build succeeds.
-voxcmd_rust_stage_bin() {
-  echo "$1/$voxcmd_rel/target/stage/release/voxcmd"
-}
-
 # The bash build's own loop never sees the Rust link, since the branch has no script of that name.
 voxcmd_require_link_slot() {
   [[ ! -e $voxcmd_bin_dir/voxcmd || -L $voxcmd_bin_dir/voxcmd ]] || die "$voxcmd_bin_dir/voxcmd is not a symlink; refusing the voxcmd swap"
@@ -431,25 +426,29 @@ voxcmd_require_link_slot() {
 
 # Run by `swap` before anything moves: a compile error must leave the desktop on main, and a build can take minutes.
 voxcmd_build_rust() {
-  local dir=$1 hash bin stage_bin
+  local dir=$1 hash bin built
   voxcmd_changed "$dir" && voxcmd_is_rust_build "$dir" || return 0
   voxcmd_require_link_slot
   command -v cargo >/dev/null || die "cargo is not installed; cannot build the Rust voxcmd in $dir"
   hash=$(git -C "$dir" describe --always --dirty --abbrev=9 --exclude='*')
   echo "voxcmd: building the Rust crate in $dir"
-  # The target dir is pinned: a CLI flag beats CARGO_TARGET_DIR and any cargo config. It is a staging dir, emptied of
-  # the binary first, so only this build can satisfy the -x check, and the live binary stays put until it has.
+  # The target dir is a staging dir pinned by a CLI flag, which beats CARGO_TARGET_DIR and any cargo config, so the live
+  # binary stays put until a build succeeds. Where the binary lands still depends on a config `build.target`, so the path
+  # comes from cargo's own artifact record and never from a leftover file.
   bin=$(voxcmd_rust_bin "$dir")
-  stage_bin=$(voxcmd_rust_stage_bin "$dir")
-  rm -f "$stage_bin"
   env -u CARGO_TARGET_DIR -u CARGO_BUILD_TARGET VOXCMD_GIT_HASH="$hash" cargo build --release --locked \
-    --manifest-path "$dir/$voxcmd_rel/Cargo.toml" --target-dir "$dir/$voxcmd_rel/target/stage" >"$dir.cargo.log" 2>&1 || {
+    --manifest-path "$dir/$voxcmd_rel/Cargo.toml" --target-dir "$dir/$voxcmd_rel/target/stage" \
+    --message-format=json-render-diagnostics >"$dir.cargo.json" 2>"$dir.cargo.log" || {
     tail -n 25 "$dir.cargo.log" >&2
     die "cargo build fails in $dir (full output $dir.cargo.log); nothing was swapped"
   }
-  [[ -x $stage_bin ]] || die "cargo built no $stage_bin (see $dir.cargo.log); nothing was swapped"
+  built=$(jq -r 'select(.reason == "compiler-artifact" and .target.name == "voxcmd" and (.target.kind | index("bin")) and .executable != null) | .executable' "$dir.cargo.json" | tail -n 1)
+  [[ -n $built && -x $built ]] || die "cargo built no voxcmd binary (see $dir.cargo.log); nothing was swapped"
   mkdir -p "$(dirname "$bin")"
-  mv -f "$stage_bin" "$bin"
+  # A copy, not a rename: the staged file is hard-linked into cargo's deps dir, which a later build must not change.
+  cp "$built" "$bin.new"
+  mv -f "$bin.new" "$bin"
+  rm -f "$dir.cargo.json"
   rm -f "$dir.cargo.log"
 }
 
@@ -752,7 +751,7 @@ voxcmd_fully_linked() {
     [[ $(readlink -m "$voxcmd_bin_dir/${file##*/}") == "$file" ]] || return 1
   done
   if voxcmd_is_rust_build "$bars/$1"; then
-    [[ $(readlink -m "$voxcmd_bin_dir/voxcmd") == "$(voxcmd_rust_bin "$bars/$1")" ]] || return 1
+    [[ $(readlink -m "$voxcmd_bin_dir/voxcmd") == "$(voxcmd_rust_bin "$bars/$1")" && -x $voxcmd_bin_dir/voxcmd ]] || return 1
   fi
 }
 
@@ -984,9 +983,8 @@ build() {
   echo "owner-test-bar: built $dir from $*"
 }
 
-# Discards the output of a failed or interrupted Rust build and gives the previous claim back; the live binary is untouched.
+# Gives the previous claim back after a failed or interrupted Rust build; the live binary was never touched.
 rust_build_rollback() {
-  rm -f "$rust_stage_bin"
   if [[ -n $previous_claim ]]; then printf '%s\n' "$previous_claim" >"$owner_file"; else rm -f "$owner_file"; fi
 }
 
@@ -994,7 +992,8 @@ rust_build_rollback() {
 # down with it; the claim is restored only once nothing of the build is left to write it again.
 rust_build_interrupted() {
   local status=$1 waited=0
-  trap - INT TERM
+  # Ignored, not cleared: a second Ctrl-C during the wait below must not skip the claim restore.
+  trap '' INT TERM
   if [[ -n $build_pid ]]; then
     kill -TERM -- "-$build_pid" 2>/dev/null || true
     wait "$build_pid" 2>/dev/null || true
@@ -1037,7 +1036,6 @@ main() {
     # or interrupted build gives the claim back, so a bar that was never swapped in leaves nothing.
     previous_claim=
     [[ ! -f $owner_file ]] || previous_claim=$(<"$owner_file")
-    rust_stage_bin=$(voxcmd_rust_stage_bin "$dir")
     build_pid=
     trap 'rust_build_interrupted 130' INT
     trap 'rust_build_interrupted 143' TERM
@@ -1132,7 +1130,7 @@ main() {
     fi
     git -C "$repo" worktree remove --force "$dir"
     git -C "$repo" worktree prune
-    rm -f "$dir.branches" "$dir.check.log" "$dir.cargo.log"
+    rm -f "$dir.branches" "$dir.check.log" "$dir.cargo.log" "$dir.cargo.json"
     if [[ -f $owner_file && $(owner_field bar) == "$2" ]]; then rm -f "$owner_file"; fi
     echo "owner-test-bar: removed $dir"
     ;;
