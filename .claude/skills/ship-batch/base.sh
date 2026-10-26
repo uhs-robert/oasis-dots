@@ -246,6 +246,19 @@ crate_rebuilds() {
   ! grep -Eq '^home/voxcmd/(src/|Cargo\.(toml|lock)$)' || echo voxcmd-build
 }
 
+# The restow before the rebuild removed ~/.local/bin/voxcmd when the merge deleted the package's file, so a failed build
+# would leave voice control with no voxcmd at all: link the previous build (voxcmd-rs) back, or say there is none.
+keep_a_voxcmd() {
+  local bin=$HOME/.local/bin
+  [[ ! -x $bin/voxcmd ]] || return 0
+  if [[ -x $bin/voxcmd-rs ]]; then
+    ln -sfn "$(readlink -f "$bin/voxcmd-rs")" "$bin/voxcmd"
+    echo "ship-batch: WARNING: linked ~/.local/bin/voxcmd to the previous build; it is older than main until just voxcmd-build succeeds" >&2
+  else
+    echo "ship-batch: WARNING: voice control has no voxcmd and there is no previous build to link; run: just voxcmd-build" >&2
+  fi
+}
+
 # Runs each `just` recipe crate_rebuilds names, in the main checkout. The merge is already done, so a failure warns
 # (stderr, and a desktop notification when there is one) and never stops the run: the live binary is only stale.
 rebuild_crates() {
@@ -255,6 +268,7 @@ rebuild_crates() {
       echo "ship-batch: ran just $recipe (the merge changed its crate)"
     else
       echo "ship-batch: WARNING: just $recipe failed; the installed binary is stale. Fix it and run: just $recipe" >&2
+      [[ $recipe != voxcmd-build ]] || keep_a_voxcmd
       notify-send --urgency=critical --app-name=ship-batch "ship-batch: just $recipe failed" \
         "The merge changed its crate but the rebuild failed; run: just $recipe" 9>&- 2>/dev/null || true
     fi
