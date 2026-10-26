@@ -10,7 +10,7 @@ RowsSection {
 
     readonly property var osd_edge_names: ({ opposite: "Opposite the bar", left: "Left edge", right: "Right edge" })
 
-    footer_hint: "j/k move · Enter list · c cava line · h/Esc sections · q close"
+    footer_hint: "j/k move · Enter list · h/Esc sections · q close"
     rows: [
         {
             label: "Style",
@@ -20,15 +20,6 @@ RowsSection {
             value: () => Style.saved_name,
             set: v => Transitions.commit(v),
             cycle: false
-        },
-        {
-            label: "Cava line",
-            desc: "Draw the bar's audio visualizer as a smooth line. Off draws separate bars.",
-            keys: "H/L or c toggle · Enter list",
-            values: () => ["on", "off"],
-            text: v => v,
-            value: () => Style.cava_line ? "on" : "off",
-            set: v => Style.set_cava_line(v === "on")
         },
         {
             label: "Hot corners",
@@ -47,10 +38,4 @@ RowsSection {
             set: v => OsdSettings.set("edge", v)
         }
     ]
-
-    onExtra_key: event => {
-        if (event.key !== Qt.Key_C) return;
-        Style.set_cava_line(!Style.cava_line);
-        event.accepted = true;
-    }
 }
