@@ -50,7 +50,10 @@ Singleton {
             try {
                 const loaded = BarLayout.normalize(text().trim() === "" ? null : JSON.parse(text()));
                 root.state = loaded;
-                if (!loaded.cava_migrated && text().trim() !== "") root.set_state(BarLayout.migrate_cava(loaded));
+                let next = loaded;
+                if (!loaded.cava_migrated && text().trim() !== "") next = BarLayout.migrate_cava(next);
+                next = BarLayout.migrate_cava_to_media(next);
+                if (next !== loaded) root.set_state(next);
             } catch (e) {
                 if (!root.warned_state) console.warn("BarSettings: invalid state bars.json, ignoring it (" + e + ")");
                 root.warned_state = true;
