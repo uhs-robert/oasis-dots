@@ -718,6 +718,8 @@ out=$(djx djinn_swap djinn "$bars_dir/djinn")
 code=$?
 check "a real directory is refused and left alone" "[[ $code != 0 ]] && grep -q 'not a symlink' <<<\"\$out\" && [[ -d $dj_home/.config/oasis-djinn && ! -L $dj_home/.config/oasis-djinn && ! -e $bars_dir/.djinn_bar ]]"
 rmdir "$dj_home/.config/oasis-djinn"
+out=$(djx djinn_status)
+check "status says not stowed, not main, when there is no link" "[[ \$out == 'oasis-djinn: not stowed here' ]]"
 mv "$root/dj_link_aside" "$dj_home/.config/oasis-djinn"
 
 echo "== oasis-djinn: swap command with a failing hypr swap"
@@ -731,6 +733,27 @@ out=$(dj_swap_cmd)
 code=$?
 show "$out"
 check "a failed hypr swap restores the manifest and fails" "[[ $code != 0 ]] && grep -q 'hypr failed' <<<\"\$out\" && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+
+echo "== swap command: a plain failing command inside the hypr swap"
+# Not `exit`: a failed cp or ln is a bare failing command, which set -e must still stop (it is off left of `||`).
+dj_swap_plain_fail() {
+  HOME=$dj_home bash -c 'source "$1"; repo=$2; bars=$3; require_unlocked() { :; }; launch() { :; }; verify() { :; }
+    voxcmd_swap() { echo voxcmd swap ran; }; voxtype_swap() { :; }
+    hypr_swap() { false; echo hypr carried on; }; main swap djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" 2>&1
+}
+out=$(dj_swap_plain_fail)
+code=$?
+show "$out"
+check "a failing command in the hypr swap aborts, restores the manifest and fails" "[[ $code != 0 ]] && ! grep -q 'carried on\|voxcmd swap ran' <<<\"\$out\" && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+
+echo "== restore: manifest back before the hypr reload"
+dj_restore_order() {
+  HOME=$dj_home bash -c 'source "$1"; repo=$2; bars=$3; require_unlocked() { :; }; launch() { :; }; verify() { :; }
+    guard_owner() { :; }; hypr_restore() { echo hypr_restore; }; djinn_restore() { echo djinn_restore; }
+    voxcmd_restore() { :; }; voxtype_restore() { :; }; main restore' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" 2>&1
+}
+out=$(dj_restore_order)
+check "restore swaps the manifest back before reloading Hyprland" "[[ \$(head -1 <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]]"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))
