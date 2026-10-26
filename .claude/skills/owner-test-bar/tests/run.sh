@@ -447,7 +447,7 @@ rrx() {
 rr_swap_cmd() {
   PATH="$rr_stubs:$PATH" HOME=$rr_home XDG_RUNTIME_DIR=$root/rr_run bash -c 'source "$1"; repo=$2; shift 2
     require_unlocked() { :; }; launch() { :; }; verify() { :; }; guard_owner() { :; }; guard_live_bar() { :; }
-    djinn_swap() { echo "djinn_swap" >>"$RR_CALLS"; }; hypr_swap() { echo "hypr_swap" >>"$RR_CALLS"; }
+    hypr_swap() { echo "hypr_swap" >>"$RR_CALLS"; }
     voxtype_swap() { :; }; main swap rustbar' _ "$rr_repo/.claude/skills/owner-test-bar/owner-test-bar.sh" "$rr_repo" 2>&1
 }
 # The same swap as a background process whose $! is the bash itself, so a signal sent to it is the one swap receives.
@@ -458,7 +458,7 @@ rr_swap_exec() {
     'import os, signal, sys; signal.signal(signal.SIGINT, signal.SIG_DFL); os.execvp(sys.argv[1], sys.argv[1:])' \
     bash -c 'source "$1"; repo=$2; shift 2
     require_unlocked() { :; }; launch() { :; }; verify() { :; }; guard_owner() { :; }; guard_live_bar() { :; }
-    djinn_swap() { echo "djinn_swap" >>"$RR_CALLS"; }; hypr_swap() { echo "hypr_swap" >>"$RR_CALLS"; }
+    hypr_swap() { echo "hypr_swap" >>"$RR_CALLS"; }
     voxtype_swap() { :; }; main swap rustbar' _ "$rr_repo/.claude/skills/owner-test-bar/owner-test-bar.sh" "$rr_repo"
 }
 rr_link_is() { [[ $(readlink -m "$rr_home/.local/bin/$1") == "$2" ]]; }
@@ -470,7 +470,7 @@ out=$(FAKE_CARGO_FAIL=1 rr_swap_cmd)
 code=$?
 show "$out"
 check "a failed build dies, says nothing was swapped, and leaves main linked" "[[ $code != 0 ]] && grep -q 'cargo build fails' <<<\"\$out\" && rr_link_is voxcmd '$rr_main_bin' && [[ ! -e $bars_dir/.voxcmd_bar && ! -e $bars_dir/.hypr_bar ]]"
-check "the failed build ran before Hyprland and the manifest were touched" "! grep -q '_swap' '$rr_calls'"
+check "the failed build ran before Hyprland was touched" "! grep -q '_swap' '$rr_calls'"
 check "the failed build leaves the voxcmd status on main" "[[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
 
 # A cargo that builds elsewhere (CARGO_TARGET_DIR in the environment) must not leave a dangling link.
@@ -546,7 +546,7 @@ code=$?
 show "$out"
 check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml --target-dir $rr_dir/home/voxcmd/target/stage --message-format=json-render-diagnostics hash=.+' '$rr_calls'"
 check "the claim is taken before the long build, so a second session meets it" "grep -q '^owner_claimed_during_build' '$rr_calls'"
-check "the build runs before the Hyprland and manifest swap" "[[ \$(grep -n '^cargo' '$rr_calls' | head -1 | cut -d: -f1) -lt \$(grep -n '_swap' '$rr_calls' | head -1 | cut -d: -f1) ]]"
+check "the build runs before the Hyprland swap" "[[ \$(grep -n '^cargo' '$rr_calls' | head -1 | cut -d: -f1) -lt \$(grep -n '_swap' '$rr_calls' | head -1 | cut -d: -f1) ]]"
 check "a successful build copies the staged binary over the live path, leaving cargo's output alone" "[[ -x $rr_dir/home/voxcmd/target/stage/release/voxcmd && -x $rr_dir/home/voxcmd/target/release/voxcmd && ! $rr_dir/home/voxcmd/target/stage/release/voxcmd -ef $rr_dir/home/voxcmd/target/release/voxcmd && ! -e $rr_dir/home/voxcmd/target/release/voxcmd.new ]]"
 check "voxcmd links into the bar's built binary" "rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd'"
 mv "$rr_dir/home/voxcmd/target/release/voxcmd" "$root/rr_bin_aside"
@@ -880,173 +880,86 @@ touch "$root/bars/tb.branches" "$root/bars/tb.check.log"
 bash -c 'source "$1"; repo=$2; bars=$3; main remove tb' _ "$here/../owner-test-bar.sh" "$fake" "$root/bars" >/dev/null 2>&1
 check "remove deletes the build's branches record and check log" "[[ ! -e $root/bars/tb && ! -e $root/bars/tb.branches && ! -e $root/bars/tb.check.log ]]"
 
-echo "== oasis-djinn swap and restore"
-# A throwaway HOME and git repo with a stowed oasis-djinn package (folded, like the real one); the real stow runs.
-dj_repo=$root/dj_repo
-dj_home=$root/dj_home
-dj_dir=$bars_dir/djinn
-dj_rel=home/oasis-djinn/.config/oasis-djinn
-dj_main=$dj_repo/$dj_rel
-mkdir -p "$dj_home/.config" "$dj_repo/$dj_rel" "$dj_repo/home/hypr/.config/hypr" "$dj_repo/home/voxtype"
-git init -q -b main "$dj_repo"
-djg() { git -C "$dj_repo" -c user.name=t -c user.email=t@t "$@"; }
-echo main >"$dj_repo/$dj_rel/actions.json"
-echo main >"$dj_repo/home/hypr/.config/hypr/init.lua"
-echo main >"$dj_repo/home/voxtype/x"
-djg add -A
-djg commit -q -m main
-djg update-ref refs/remotes/origin/main HEAD
-djg switch -q -c dj-action
-echo dictate >"$dj_repo/$dj_rel/actions.json"
-djg commit -q -am action
-djg switch -q -c dj-hypr main
-echo hypr >"$dj_repo/home/hypr/.config/hypr/init.lua"
-djg commit -q -am hypr
-djg switch -q -c dj-other main
-echo other >"$dj_repo/home/voxtype/x"
-djg commit -q -am other
-djg switch -q main
-djg worktree add -q --detach "$bars_dir/djinn" dj-action
-djg worktree add -q --detach "$bars_dir/djhypr" dj-hypr
-djg worktree add -q --detach "$bars_dir/djother" dj-other
-stow -d "$dj_repo/home" -t "$dj_home" oasis-djinn
-# djx <function> <args>...: the sourced script against the fake repo and HOME.
-djx() {
-  HOME=$dj_home bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ "$here/../owner-test-bar.sh" "$dj_repo" "$@" 2>&1
+echo "== swap command with a failing hypr swap"
+# A throwaway HOME and git repo; Hyprland itself is stubbed, only the link, the records and the call order are real.
+hy_repo=$root/hy_repo
+hy_home=$root/hy_home
+mkdir -p "$hy_home/.config" "$hy_repo"
+git init -q -b main "$hy_repo"
+# The swap command, with hypr_swap failing the way a config error does.
+hy_swap_cmd() {
+  HOME=$hy_home bash -c 'source "$1"; repo=$2; bars=$3; require_unlocked() { :; }; launch() { :; }; verify() { :; }
+    hypr_swap() { echo hypr failed >&2; exit 1; }; hypr_restore() { echo hypr_restore; }; main swap hyprbar' _ "$here/../owner-test-bar.sh" "$hy_repo" "$bars_dir" 2>&1
 }
-dj_link_is() { [[ $(readlink -m "$dj_home/.config/oasis-djinn") == "$1" ]]; }
-
-out=$(djx djinn_swap other "$bars_dir/djother")
-check "a branch touching neither oasis-djinn nor hypr leaves main's link" "[[ \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
-out=$(djx djinn_swap djinn "$bars_dir/djinn")
+mkdir -p "$bars_dir/hyprbar"
+echo hyprbar >"$bars_dir/hyprbar.branches"
+out=$(hy_swap_cmd)
 code=$?
 show "$out"
-check "swap points the link at the test build's manifest and says so" "[[ $code == 0 && \$out == 'oasis-djinn: test build djinn' ]] && dj_link_is $dj_dir/$dj_rel && [[ \$(cat $dj_home/.config/oasis-djinn/actions.json) == dictate ]]"
-out=$(djx djinn_status)
-check "status shows the test build" "[[ \$out == 'oasis-djinn: test build djinn' ]]"
-out=$(djx djinn_restore)
-code=$?
-show "$out"
-check "restore restows main's link" "[[ $code == 0 && \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
-out=$(djx djinn_status)
-check "status is main again" "[[ \$out == 'oasis-djinn: main' ]]"
-out=$(djx djinn_swap djhypr "$bars_dir/djhypr")
-check "a hypr-only branch swaps too, since hypr reads the manifest" "[[ \$out == 'oasis-djinn: test build djhypr' ]] && dj_link_is $bars_dir/djhypr/$dj_rel"
-out=$(djx djinn_swap other "$bars_dir/djother")
-check "swapping to a build with neither change restores main" "[[ \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main"
-djx djinn_swap djinn "$bars_dir/djinn" >/dev/null
-rm "$bars_dir/.djinn_bar"
-out=$(djx djinn_status)
-check "status says half swapped when the record is gone" "grep -q 'half swapped' <<<\"\$out\""
-djx djinn_restore >/dev/null
-check "restore recovers from the link with no record" "dj_link_is $dj_main"
-out=$(djx djinn_restore)
-check "a second restore is a no-op" "[[ \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main"
-
-echo "== oasis-djinn: absent or unstowed link"
-mv "$dj_home/.config/oasis-djinn" "$root/dj_link_aside"
-out=$(djx djinn_swap djinn "$bars_dir/djinn")
-code=$?
-check "an absent link is skipped with a note, not a failure" "[[ $code == 0 && \$out == 'oasis-djinn: not stowed here, skipped' && ! -e $bars_dir/.djinn_bar && ! -e $dj_home/.config/oasis-djinn ]]"
-mkdir "$dj_home/.config/oasis-djinn"
-out=$(djx djinn_swap djinn "$bars_dir/djinn")
-code=$?
-check "a real directory is refused and left alone" "[[ $code != 0 ]] && grep -q 'not a symlink' <<<\"\$out\" && [[ -d $dj_home/.config/oasis-djinn && ! -L $dj_home/.config/oasis-djinn && ! -e $bars_dir/.djinn_bar ]]"
-rmdir "$dj_home/.config/oasis-djinn"
-out=$(djx djinn_status)
-check "status says not stowed, not main, when there is no link" "[[ \$out == 'oasis-djinn: not stowed here' ]]"
-mv "$root/dj_link_aside" "$dj_home/.config/oasis-djinn"
-
-echo "== oasis-djinn: swap command with a failing hypr swap"
-# The swap command, with hypr_swap failing the way a config error does; the manifest must go back to main.
-dj_swap_cmd() {
-  HOME=$dj_home bash -c 'source "$1"; repo=$2; bars=$3; require_unlocked() { :; }; launch() { :; }; verify() { :; }
-    hypr_swap() { echo hypr failed >&2; exit 1; }; main swap djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" 2>&1
-}
-echo djinn >"$bars_dir/djinn.branches"
-out=$(dj_swap_cmd)
-code=$?
-show "$out"
-check "a failed hypr swap restores the manifest and fails" "[[ $code != 0 ]] && grep -q 'hypr failed' <<<\"\$out\" && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+check "a failed hypr swap restores Hyprland and fails" "[[ $code != 0 ]] && grep -q 'hypr failed' <<<\"\$out\" && grep -q '^hypr_restore\$' <<<\"\$out\""
 
 echo "== swap command: a plain failing command inside the hypr swap"
 # Not `exit`: a failed cp or ln is a bare failing command, which set -e must still stop (it is off left of `||`).
-dj_swap_plain_fail() {
-  HOME=$dj_home bash -c 'source "$1"; repo=$2; bars=$3; require_unlocked() { :; }; launch() { :; }; verify() { :; }
-    voxcmd_swap() { echo voxcmd swap ran; }; voxtype_swap() { :; }
-    hypr_swap() { false; echo hypr carried on; }; main swap djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" 2>&1
+hy_swap_plain_fail() {
+  HOME=$hy_home bash -c 'source "$1"; repo=$2; bars=$3; require_unlocked() { :; }; launch() { :; }; verify() { :; }
+    voxcmd_swap() { echo voxcmd swap ran; }; voxtype_swap() { :; }; hypr_restore() { echo hypr_restore; }
+    hypr_swap() { false; echo hypr carried on; }; main swap hyprbar' _ "$here/../owner-test-bar.sh" "$hy_repo" "$bars_dir" 2>&1
 }
-out=$(dj_swap_plain_fail)
+out=$(hy_swap_plain_fail)
 code=$?
 show "$out"
-check "a failing command in the hypr swap aborts, restores the manifest and fails" "[[ $code != 0 ]] && ! grep -q 'carried on\|voxcmd swap ran' <<<\"\$out\" && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
-
-echo "== restore: manifest back before the hypr reload"
-dj_restore_order() {
-  HOME=$dj_home bash -c 'source "$1"; repo=$2; bars=$3; require_unlocked() { :; }; launch() { :; }; verify() { :; }
-    guard_owner() { :; }; hypr_restore() { echo hypr_restore; }; djinn_restore() { echo djinn_restore; }
-    voxcmd_restore() { :; }; voxtype_restore() { :; }; main restore' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" 2>&1
-}
-out=$(dj_restore_order)
-check "restore swaps the manifest back before reloading Hyprland" "[[ \$(head -1 <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]]"
+check "a failing command in the hypr swap aborts, restores Hyprland and fails" "[[ $code != 0 ]] && ! grep -q 'carried on\|voxcmd swap ran' <<<\"\$out\" && grep -q '^hypr_restore\$' <<<\"\$out\""
 
 echo "== swap command: hypr swap fails after the link moved"
 hl_main=$root/hl_main
 hl_bar=$root/hl_bar
 mkdir -p "$hl_main" "$hl_bar"
-# Hyprland itself is stubbed: only the link, the records and the call order are real.
 # shellcheck disable=SC2016
 hl_env='source "$1"; repo=$2; bars=$3; hypr_link=$4; hypr_orig=$bars/.hypr_orig; hypr_bar=$bars/.hypr_bar
   require_unlocked() { :; }; launch() { :; }; verify() { :; }; hyprctl() { :; }; sleep() { :; }; restart_rotator() { :; }
   voxcmd_swap() { :; }; voxtype_swap() { :; }'
 ln -sfn "$hl_main" "$root/hl_link"
-dj_swap_moved() {
-  HOME=$dj_home bash -c "$hl_env"'
-    hypr_swap() { echo "$hypr_link_main" >"$hypr_orig"; echo djinn >"$hypr_bar"; ln -sfn "'"$hl_bar"'" "$hypr_link"; false; }
-    hypr_link_main='"$hl_main"'; main swap djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" 2>&1
+hy_swap_moved() {
+  HOME=$hy_home bash -c "$hl_env"'
+    hypr_swap() { echo "$hypr_link_main" >"$hypr_orig"; echo hyprbar >"$hypr_bar"; ln -sfn "'"$hl_bar"'" "$hypr_link"; false; }
+    hypr_link_main='"$hl_main"'; main swap hyprbar' _ "$here/../owner-test-bar.sh" "$hy_repo" "$bars_dir" "$root/hl_link" 2>&1
 }
-out=$(dj_swap_moved)
+out=$(hy_swap_moved)
 code=$?
 show "$out"
-check "a swap that fails after the link moved puts Hyprland and the manifest back, says it failed and how to finish, and fails" "grep -q 'hypr swap failed' <<<\"\$out\" && grep -q 'run: .*owner-test-bar.sh restore' <<<\"\$out\" && [[ $code != 0 && \$(readlink $root/hl_link) == $hl_main && ! -e $bars_dir/.hypr_orig ]] && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+check "a swap that fails after the link moved puts Hyprland back, says it failed and how to finish, and fails" "grep -q 'hypr swap failed' <<<\"\$out\" && grep -q 'run: .*owner-test-bar.sh restore' <<<\"\$out\" && [[ $code != 0 && \$(readlink $root/hl_link) == $hl_main && ! -e $bars_dir/.hypr_orig ]]"
 
-echo "== restore and remove: a failing manifest restore does not skip Hyprland"
-dj_restore_fails() {
-  HOME=$dj_home bash -c "$hl_env"'
-    guard_owner() { :; }; djinn_restore() { echo djinn_restore; false; }; hypr_restore() { echo hypr_restore; }
-    voxcmd_restore() { :; }; voxtype_restore() { :; }; main "$5"' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" "$1" 2>&1
+echo "== restore and remove: a failing Hyprland restore is reported and keeps the claim"
+hy_restore_fails() {
+  HOME=$hy_home bash -c "$hl_env"'
+    guard_owner() { :; }; hypr_restore() { echo hypr_restore; false; }
+    voxcmd_restore() { echo voxcmd_restore; }; voxtype_restore() { :; }; main "$5"' _ "$here/../owner-test-bar.sh" "$hy_repo" "$bars_dir" "$root/hl_link" "$1" 2>&1
 }
 touch "$bars_dir/.owner"
-out=$(dj_restore_fails restore)
+out=$(hy_restore_fails restore)
 code=$?
 show "$out"
 check "a failed restore keeps the owner claim" "[[ -e $bars_dir/.owner ]]"
 rm -f "$bars_dir/.owner"
-check "restore still restores Hyprland after a failing manifest restore, and exits non-zero" "[[ $code != 0 ]] && [[ \$(sed -n 1p <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]] && grep -q 'restore did not finish' <<<\"\$out\""
-echo djinn >"$bars_dir/.hypr_bar"
-dj_remove_order() {
-  HOME=$dj_home bash -c "$hl_env"'
-    git() { :; }; djinn_restore() { echo djinn_restore; }; hypr_restore() { echo hypr_restore; }
-    main remove djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" 2>&1
+check "restore still restores voxcmd after a failing Hyprland restore, and exits non-zero" "[[ $code != 0 ]] && [[ \$(grep -n '^hypr_restore\$' <<<\"\$out\" | cut -d: -f1) -lt \$(grep -n '^voxcmd_restore\$' <<<\"\$out\" | cut -d: -f1) ]] && grep -q 'restore did not finish' <<<\"\$out\""
+echo hyprbar >"$bars_dir/.hypr_bar"
+hy_remove_restores() {
+  HOME=$hy_home bash -c "$hl_env"'
+    git() { :; }; hypr_restore() { echo hypr_restore; }
+    main remove hyprbar' _ "$here/../owner-test-bar.sh" "$hy_repo" "$bars_dir" "$root/hl_link" 2>&1
 }
-out=$(dj_remove_order)
-check "remove restores the manifest before Hyprland" "[[ \$(sed -n 1p <<<\"\$out\") == djinn_restore && \$(sed -n 2p <<<\"\$out\") == hypr_restore ]]"
-dj_remove_fails() {
-  HOME=$dj_home bash -c "$hl_env"'
-    git() { echo "git $*"; }; djinn_restore() { false; }; hypr_restore() { echo hypr_restore; }
-    main remove djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" "$root/hl_link" 2>&1
+out=$(hy_remove_restores)
+check "remove restores Hyprland when it is on that bar" "grep -q '^hypr_restore\$' <<<\"\$out\""
+hy_remove_fails() {
+  HOME=$hy_home bash -c "$hl_env"'
+    git() { echo "git $*"; }; hypr_restore() { echo hypr_restore; false; }
+    main remove hyprbar' _ "$here/../owner-test-bar.sh" "$hy_repo" "$bars_dir" "$root/hl_link" 2>&1
 }
-out=$(dj_remove_fails)
+out=$(hy_remove_fails)
 code=$?
 show "$out"
-check "remove stops before git worktree remove when a restore fails" "[[ $code != 0 ]] && ! grep -q '^git ' <<<\"\$out\" && grep -q 'hypr_restore' <<<\"\$out\""
+check "remove stops before git worktree remove when the Hyprland restore fails" "[[ $code != 0 ]] && ! grep -q '^git ' <<<\"\$out\" && grep -q 'hypr_restore' <<<\"\$out\""
 rm -f "$bars_dir/.hypr_bar"
-
-echo "== restore prints not stowed when there is nothing to restore"
-mv "$dj_home/.config/oasis-djinn" "$root/dj_link_aside"
-out=$(djx djinn_restore)
-check "djinn_restore says not stowed here, like status" "[[ \$out == 'oasis-djinn: not stowed here' ]]"
-mv "$root/dj_link_aside" "$dj_home/.config/oasis-djinn"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))

@@ -11,11 +11,6 @@ hypr_link="$HOME/.config/hypr"
 hypr_rel=home/hypr/.config/hypr
 hypr_orig="$bars/.hypr_orig"
 hypr_bar="$bars/.hypr_bar"
-# Hyprland's Bind.action reads this manifest, so a test build that adds an action id fails with "unknown action id"
-# unless the manifest is the build's own. The binary is not rebuilt: only the files the config reads move.
-djinn_rel=home/oasis-djinn
-djinn_link="$HOME/.config/oasis-djinn"
-djinn_bar="$bars/.djinn_bar"
 voxcmd_rel=home/voxcmd
 voxcmd_bin_dir="$HOME/.local/bin"
 voxcmd_config_link="$HOME/.config/voxcmd"
@@ -222,12 +217,9 @@ tolerate() {
   set -e
 }
 
-# The manifest goes back before Hyprland reloads, since the reload reads it; a failure of one does not skip the other.
 # Always returns 0 and sets restore_failed, because calling it left of `||` or `&&` would switch set -e off inside it.
-restore_hypr_and_djinn() {
+restore_hypr() {
   restore_failed=0
-  tolerate djinn_restore
-  ((tolerated_status == 0)) || restore_failed=1
   tolerate hypr_restore
   ((tolerated_status == 0)) || restore_failed=1
   if ((restore_failed)); then
@@ -278,8 +270,6 @@ hypr_swap() {
   hypr_point "$dir/$hypr_rel"
   errors=$(hypr_errors)
   if [[ -n $errors ]]; then
-    # The reload reads the manifest, so main's goes back first.
-    djinn_restore
     hypr_point "$orig"
     rm -f "$hypr_orig" "$hypr_bar"
     echo "$errors" >&2
@@ -287,67 +277,6 @@ hypr_swap() {
   fi
   echo "hypr: swapped"
   restart_rotator
-}
-
-# Swapped when the branches touch the manifest or hypr: a hypr-only branch may use ids the manifest gains in a branch
-# it is merged with, and swapping on either keeps the config and the manifest from the same build.
-djinn_swap() {
-  local name=$1 dir=$2
-  if [[ -z $(git -C "$dir" diff --name-only origin/main...HEAD -- "$djinn_rel" home/hypr) ]]; then
-    djinn_restore
-    return 0
-  fi
-  # Never stowed on this machine: nothing reads a manifest, so a hypr test must not be blocked on it.
-  if [[ ! -e $djinn_link && ! -L $djinn_link ]]; then
-    echo "oasis-djinn: not stowed here, skipped"
-    return 0
-  fi
-  [[ -L $djinn_link ]] || die "$djinn_link is not a symlink (stow unfolded it?); refusing the oasis-djinn swap"
-  [[ -d $dir/$djinn_rel/.config/oasis-djinn ]] || die "$dir has no $djinn_rel/.config/oasis-djinn; refusing the oasis-djinn swap"
-  # Recorded before the link moves, so restore knows to restow even if this stops halfway.
-  echo "$name" >"$djinn_bar"
-  ln -sfn "$dir/$djinn_rel/.config/oasis-djinn" "$djinn_link"
-  echo "oasis-djinn: test build $name"
-}
-
-djinn_linked() {
-  [[ -L $djinn_link && $(readlink -m "$djinn_link") == "$bars"/* ]]
-}
-
-# Safe to rerun: the record goes only once stow has relinked main.
-djinn_restore() {
-  if djinn_linked || [[ -f $djinn_bar ]]; then
-    command -v stow >/dev/null || die "stow is not installed; cannot relink oasis-djinn from main"
-    # stow refuses to replace a link it does not own, so the test link goes first.
-    if djinn_linked; then rm -f "$djinn_link"; fi
-    # -d and -t absolute: stow run from inside home/ would target the repo itself.
-    stow -d "$repo/home" -t "$HOME" -R oasis-djinn
-    rm -f "$djinn_bar"
-  elif [[ ! -e $djinn_link && ! -L $djinn_link ]]; then
-    echo "oasis-djinn: not stowed here"
-    return 0
-  fi
-  echo "oasis-djinn: main"
-}
-
-djinn_status() {
-  local target name
-  if djinn_linked; then
-    target=$(readlink -m "$djinn_link")
-    name=${target#"$bars"/}
-    name=${name%%/*}
-    if [[ -f $djinn_bar && $(<"$djinn_bar") == "$name" ]]; then
-      echo "oasis-djinn: test build $name"
-    else
-      echo "oasis-djinn: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
-    fi
-  elif [[ -f $djinn_bar ]]; then
-    echo "oasis-djinn: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
-  elif [[ ! -e $djinn_link && ! -L $djinn_link ]]; then
-    echo "oasis-djinn: not stowed here"
-  else
-    echo "oasis-djinn: main"
-  fi
 }
 
 # Every voxcmd link in ~ that resolves into a test bar or the Rust build, from a swap or a half-done one. The Rust link
@@ -876,7 +805,6 @@ status() {
   else
     echo "hypr: stowed ($(readlink "$hypr_link"))"
   fi
-  djinn_status
   voxcmd_status
   voxtype_status
 }
@@ -1064,15 +992,13 @@ main() {
       exit 1
     fi
     require_unlocked
-    djinn_swap "$2" "$dir"
-    # A subshell, since die exits: the manifest must not stay on the test build when the hypr swap fails. Its status
-    # is read after the subshell, not through `||`: bash turns set -e off inside anything left of `||`, so a failing
-    # cp or ln partway would carry on and report a half-swapped desktop as done.
+    # Its status is read after the call, not through `||`: bash turns set -e off inside anything left of `||`, so a
+    # failing cp or ln partway would carry on and report a half-swapped desktop as done.
     tolerate hypr_swap "$2" "$dir"
     if ((tolerated_status != 0)); then
-      echo "owner-test-bar: hypr swap failed (status $tolerated_status); putting Hyprland and the manifest back" >&2
+      echo "owner-test-bar: hypr swap failed (status $tolerated_status); putting Hyprland back" >&2
       # The link may have moved before the failure, so Hyprland goes back too.
-      restore_hypr_and_djinn
+      restore_hypr
       # Printed even after a clean restore: with --replace, the bar that was live keeps its qs, voxcmd and voxtype.
       ((restore_failed)) || echo "owner-test-bar: swap failed; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore" >&2
       exit 1
@@ -1105,14 +1031,14 @@ main() {
   restore)
     guard_owner "$take"
     require_unlocked
-    restore_hypr_and_djinn
-    hypr_djinn_failed=$restore_failed
+    restore_hypr
+    hypr_failed=$restore_failed
     voxcmd_restore
     voxtype_restore
     launch "qs -n"
     verify "qs log"
-    # Kept while Hyprland or the manifest is still on a test build, so the claim still names whom to ask.
-    ((hypr_djinn_failed == 0)) || exit 1
+    # Kept while Hyprland is still on a test build, so the claim still names whom to ask.
+    ((hypr_failed == 0)) || exit 1
     rm -f "$owner_file"
     ;;
   remove)
@@ -1121,11 +1047,8 @@ main() {
     remove_failed=0
     if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
       require_unlocked
-      # The manifest goes back first, as in restore; djinn_restore alone when only the manifest is on this bar.
-      restore_hypr_and_djinn
+      restore_hypr
       remove_failed=$restore_failed
-    elif [[ -f $djinn_bar && $(<"$djinn_bar") == "$2" ]] || { djinn_linked && [[ $(readlink -m "$djinn_link") == "$dir"/* ]]; }; then
-      djinn_restore
     fi
     ((remove_failed == 0)) || die "restore did not finish; not removing $dir"
     # The links decide too: a swap stopped halfway may have moved them for this bar under another bar's record.
