@@ -29,7 +29,7 @@ Popup {
     readonly property real row_extra: SScale.pitch_extra(root.text_bump)
     // Group headings move halfway to the text color (the style's own section_fg is the dimmest tier, and Game Boy's equals text_dim).
     readonly property color group_fg: {
-        const c = SScale.lifted(root.st.section_fg, root.st.text_fg, 0.5, root.text_bump);
+        const c = SScale.lifted(root.st.section_fg, root.st.text_fg, 0.5);
         return Qt.rgba(c[0], c[1], c[2], c[3]);
     }
     // The section list, the pane and help column at their widest, their gaps and the body's 12px margins.
