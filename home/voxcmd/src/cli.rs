@@ -301,18 +301,16 @@ pub enum InternalCommand {
     WakeConfirm(InternalArgs),
     #[command(alias = "_chain-stop")]
     ChainStop(InternalArgs),
-    /// The session as a bash integration's hooks reach it (begin, leave, end, end-all, state)
-    Session(InternalArgs),
-    /// The click matcher on click-ocr's output (stdin); the target is in CLICK_TARGET. Deleted with the bash matcher
+    /// The click matcher on click-ocr's output (stdin); the target is in CLICK_TARGET. A test entry point
     #[command(hide = true)]
     ClickMatch(ClickMatchArgs),
     /// Captures a window and prints its word boxes for click-match: `[--window <stableId>] [--explain]`, read by hand so
-    /// the usage line is click-ocr's. Deleted with the bash script
+    /// the usage line is click-ocr's. A test entry point
     #[command(hide = true)]
     ClickOcr(InternalArgs),
     /// Clicks the candidate id (`x,y,button,left,top,width,height`, or `error:<why>` or `covered:`) as an action does:
-    /// prints the reason and exits 1 when it fails. `--target` is the spoken text a covered-text toast names. Deleted
-    /// with the bash click.sh (3.2)
+    /// prints the reason and exits 1 when it fails. `--target` is the spoken text a covered-text toast names. A test entry
+    /// point
     #[command(hide = true)]
     ClickAt(ClickAtArgs),
 }
@@ -339,7 +337,7 @@ pub struct ClickMatchArgs {
 
 #[derive(Args, Debug)]
 pub struct InternalArgs {
-    /// Arguments as the bash entry point took them
+    /// The arguments, positional
     #[arg(num_args = 0.., allow_hyphen_values = true, trailing_var_arg = true)]
     pub args: Vec<String>,
 }

@@ -137,14 +137,6 @@ pub fn classify<T>(
     Heard::Words
 }
 
-/// Opens a mode and, when no session is open, the session, which listens for its first turn at once (a bash mode's
-/// `session_begin`, called once its screen is up).
-pub fn begin(kind: &str, file: &str, label: &str, me: u32) {
-    if open(kind, file, label, me) == Opened::Session {
-        listen_for_turn(me);
-    }
-}
-
 /// Opens a mode and, when no session is open, the session; a new session's first listen is the caller's, once what
 /// the mode drives is up (its `alive` would end it before). From a turn of the session `me` owns it enters the mode
 /// (the turn's own listen follows); from anything else (a terminal, a key) an open session is left as it is and the
@@ -360,7 +352,7 @@ pub fn session_turn(runner: &Runner, transcript: &str, heard_mode: &str, heard_p
     let file = text_of(&state["integration"]);
     let kind = text_of(&state["kind"]);
     let mode = ModeSettings::of(&file);
-    if mode.has_alive && !mode::alive(&file, heard_mode) {
+    if mode.has_alive && !mode::alive(&file) {
         // What was said was heard for a mode whose screen has closed: it goes where it would without the mode.
         debug(&format!("session: {kind}'s screen is gone"));
         super::leave(&SessionLock::take(), &kind, "its screen closed", me);
@@ -537,7 +529,7 @@ impl TurnRun<'_> {
         } else {
             let text = replaced(&split.steps[0]);
             let rewritten = if self.mode.has_rewrite {
-                mode::rewrite(self.mode, self.file, &[text], self.heard_mode)
+                mode::rewrite(self.mode, self.file, &[text])
                     .and_then(|mut rewritten| rewritten.pop())
                     .unwrap_or_default()
             } else {
@@ -570,7 +562,7 @@ impl TurnRun<'_> {
             return Some(steps.to_vec());
         }
         let texts: Vec<String> = steps.iter().map(|step| replaced(step)).collect();
-        let rewritten = mode::rewrite(self.mode, self.file, &texts, self.heard_mode)?;
+        let rewritten = mode::rewrite(self.mode, self.file, &texts)?;
         let router = self.runner.router;
         let steps: Vec<String> = texts
             .into_iter()

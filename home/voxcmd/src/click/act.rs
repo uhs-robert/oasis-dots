@@ -1,5 +1,4 @@
-//! What the click integration does once an option is chosen: the port of click.sh's `click_at`, `no_text` and
-//! `show_hints`.
+//! What the click integration does once an option is chosen: `click_at`.
 //!
 //! The suites grep the argv of the tools, so the toasts use `notify-send`'s long options and bare text (not the
 //! `notify` module, which spawns `-a voxcmd`), and the pointer moves through `hyprctl dispatch`, because Hyprland's Lua
@@ -18,8 +17,6 @@ use std::process::{Command, ExitStatus};
 pub fn run(builtin: &Builtin, id: &str, spoken_target: &str) -> std::io::Result<Outcome> {
     let finished = match builtin {
         Builtin::ClickAt(_) => click_at(id, spoken_target)?.map(|()| String::new()),
-        Builtin::NoText => no_text(spoken_target)?,
-        Builtin::ShowHints => show_hints()?,
     };
     Ok(as_process(finished))
 }
@@ -145,36 +142,6 @@ fn click(button: &str) -> Done {
         }
     }
     Ok(Ok(()))
-}
-
-/// The target was seen nowhere on screen. The toast's own failure is the action's.
-fn no_text(spoken_target: &str) -> Done<String> {
-    Ok(match toast(&format!("No \"{spoken_target}\" on screen"))? {
-        Ok(outcome) if outcome.code() == Some(0) => Ok(outcome.stdout),
-        Ok(outcome) => Err(last_line(&format!("{}{}", outcome.stdout, outcome.stderr)).to_string()),
-        Err(reason) => Err(reason),
-    })
-}
-
-/// The same invocation as the Cursor submap's Floating Click (hypr/lib/actions/cursor.lua), detached because it waits
-/// for a key: `setsid -f` forks and returns, so only setsid is waited for.
-fn show_hints() -> Done<String> {
-    let mut command = Command::new("setsid");
-    command.args([
-        "-f",
-        "wl-kbptr",
-        "-o",
-        "modes=floating,click",
-        "-o",
-        "mode_floating.source=detect",
-    ]);
-    Ok(match process::run_to_end_discarding_output(&mut command) {
-        Ok(outcome) if outcome.code() == Some(0) => Ok(String::new()),
-        // bash sends setsid's output to /dev/null, so the failure toast carries no reason.
-        Ok(_) => Err(String::new()),
-        Err(error) if process::refused_while_stopping(&error) => return Err(error),
-        Err(_) => Err(String::new()),
-    })
 }
 
 #[cfg(test)]

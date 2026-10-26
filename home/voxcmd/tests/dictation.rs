@@ -70,9 +70,9 @@ if [ -e "$WORK/turn-hang" ]; then
   printf 'partial|' >> "$WORK/handled"
   sleep 30
 fi
-by=$("$VOXCMD_LEGACY_RS_BIN" internal session state | jq -r .ending.by)
-printf '%s|%s|%s|%s
-' "$VOXCMD_TEXT" "${VOXCMD_ENDING--}" "$XDG_RUNTIME_DIR/voxcmd/discard.$VOXCMD_LEGACY_PID" "$by" >> "$WORK/handled"
+by=$(jq -r .ending.by "$XDG_RUNTIME_DIR/voxcmd/session.json")
+printf '%s|%s|%s
+' "$VOXCMD_TEXT" "${VOXCMD_ENDING--}" "$by" >> "$WORK/handled"
 exit "$(cat "$WORK/turn-exit" 2>/dev/null || echo 0)"
 '''
 "#;
@@ -454,11 +454,7 @@ fn a_voice_ending_types_the_dictation_without_it_and_logs_only_lengths() {
         serde_json::json!({"action": "send", "by": "voice"})
     );
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    let discard_flag = setup.runtime().join(format!("discard.{}", watcher.id()));
-    assert_eq!(
-        setup.handled(),
-        format!("Hello private words.|send|{}|voice\n", discard_flag.display())
-    );
+    assert_eq!(setup.handled(), "Hello private words.|send|voice\n");
     assert!(setup.state().is_none(), "the bottom mode left ends the session");
     assert!(
         setup
@@ -816,7 +812,7 @@ fn stop_voice_during_the_hand_over_waits_for_no_hook_and_the_hook_reads_the_sess
     assert_eq!(setup.state().unwrap()["ending"]["by"], "key");
     std::fs::write(setup.work("turn-release"), "").unwrap();
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    // The hook's session read, through the bridge, took the lock after Stop Voice had let it go.
+    // The hook read the session after Stop Voice had set the ending.
     assert!(setup.handled().ends_with("|key\n"), "{}", setup.handled());
     assert!(setup.state().is_none());
     assert_eq!(setup.debug_log().matches("session ended: stopped").count(), 1);
@@ -1055,12 +1051,8 @@ fn a_chained_ending_records_until_its_pause_then_the_text_is_handled_and_the_cha
     std::fs::write(setup.work("chain-verdict"), "0").unwrap();
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
     assert_eq!(setup.record_calls(), ["voxtype record stop"]);
-    let discard_flag = setup.runtime().join(format!("discard.{}", watcher.id()));
     // The router splits what follows the ending into its steps, after the dictation was handed over without either.
-    assert_eq!(
-        setup.handled(),
-        format!("Ship it.|send|{}|voice\ntap beta\ntap alpha\n", discard_flag.display())
-    );
+    assert_eq!(setup.handled(), "Ship it.|send|voice\ntap beta\ntap alpha\n");
     assert!(setup.calls().contains("Dictate mode ended done\n"));
     assert!(setup.state().is_none());
     let log = setup.debug_log();
@@ -1202,9 +1194,9 @@ fn the_stopper_is_detached_hearing_stop_signals_without_the_lock_and_its_detecto
     let recording = setup.open_session(owner.id(), serde_json::json!({}));
     // The room threshold the recording's own detector measured.
     std::fs::write(setup.runtime().join(format!("threshold.{}", owner.id())), "-45.0\n").unwrap();
-    // A caller that blocks TERM and ignores HUP, as an ask holding its stop signals might, and that ran as a hook.
+    // A caller that blocks TERM and ignores HUP, as an ask holding its stop signals might.
     let mut confirm = setup.confirm_command("Cortana stop and then tap beta", &recording);
-    confirm.env("SETSID_RUN", "1").env("VOXCMD_LEGACY_PID", "4242");
+    confirm.env("SETSID_RUN", "1");
     // SAFETY: sigprocmask and signal are async-signal-safe and touch only the child.
     unsafe {
         std::os::unix::process::CommandExt::pre_exec(&mut confirm, || {
@@ -1260,15 +1252,13 @@ fn the_stopper_is_detached_hearing_stop_signals_without_the_lock_and_its_detecto
             .calls()
             .contains("chain-detector threshold=-45.0 no_speech=10 min_speech=0 silence=1.5 max=10\n")
     );
-    // The stopper waits for its pause holding neither the session lock nor the hook's identity.
+    // The stopper waits for its pause holding no session lock.
     let fds = std::fs::read_dir(format!("/proc/{stopper}/fd")).unwrap();
     assert!(
         fds.flatten()
             .filter_map(|fd| std::fs::read_link(fd.path()).ok())
             .all(|target| !target.ends_with("session.lock"))
     );
-    let environ = std::fs::read(format!("/proc/{stopper}/environ")).unwrap();
-    assert!(!String::from_utf8_lossy(&environ).contains("VOXCMD_LEGACY_PID"));
     let lock = std::fs::File::open(setup.runtime().join("session.lock")).unwrap();
     // SAFETY: flock only locks the open file this test owns.
     let locked = unsafe { libc::flock(std::os::fd::AsRawFd::as_raw_fd(&lock), libc::LOCK_EX | libc::LOCK_NB) };
@@ -1378,11 +1368,7 @@ fn a_toml_mode_s_hook_gets_the_text_and_ending_in_its_environment_and_logs_only_
         Some(0)
     );
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    let discard_flag = setup.runtime().join(format!("discard.{}", watcher.id()));
-    assert_eq!(
-        setup.handled(),
-        format!("Hello \"$(private)\" words.|send|{}|voice\n", discard_flag.display())
-    );
+    assert_eq!(setup.handled(), "Hello \"$(private)\" words.|send|voice\n");
     assert!(setup.state().is_none(), "the bottom mode left ends the session");
     assert!(
         setup.calls().contains("voxcmd: Dictate mode ended done\n"),

@@ -283,26 +283,6 @@ fn explain_json_is_one_document_of_steps() {
     assert!(steps[0]["millis"].as_f64().unwrap() >= 0.0);
 }
 
-#[test]
-fn explain_reads_a_legacy_dump_file_without_bash() {
-    let dump = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/legacy-dump.jsonl");
-    let config = toml_config(&[]);
-    let output = Command::new(env!("CARGO_BIN_EXE_voxcmd"))
-        .args(["explain", "volume", "up"])
-        .env_clear()
-        .env("HOME", "/nonexistent")
-        .env("VOXCMD_CONFIG_DIR", config.path())
-        .env("VOXCMD_LEGACY_DUMP_FILE", dump)
-        .output()
-        .unwrap();
-    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert!(
-        stdout(&output).contains("option 1:    Media (media.sh) action=volume_up"),
-        "{}",
-        stdout(&output)
-    );
-}
-
 fn word_match_with(args: &[&str], stdin_lines: &[u8]) -> std::process::Output {
     use std::io::Write;
     let mut child = Command::new(env!("CARGO_BIN_EXE_voxcmd"))

@@ -1,4 +1,4 @@
-//! The hidden entry points the suites reach the click code through; deleted with the bash matcher (3.2).
+//! The hidden entry points the suites reach the click code through; test entry points, not used by any action.
 use super::act;
 use super::capture::Tools;
 use super::driver::{self, Mode, WindowSel};

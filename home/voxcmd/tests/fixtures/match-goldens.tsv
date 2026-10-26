@@ -3830,13 +3830,13 @@ how far ahead is	-	keybinds:3:run=how far ahead is; overview:3:act=how far ahead
 how far ahead is 3	-	answers:5:zone_offset=3; keybinds:3:run=how far ahead is 3; overview:3:act=how far ahead is 3	
 how far ahead is 3 3	-	answers:5:zone_offset=3 3; keybinds:3:run=how far ahead is 3 3; overview:3:act=how far ahead is 3 3	
 how far ahead is 3 now	-	answers:5:zone_offset=3 now; keybinds:3:run=how far ahead is 3 now; overview:3:act=how far ahead is 3 now	
-how far ahead is 3 please	-	answers:5:zone_offset=3 please; keybinds:3:run=how far ahead is 3 please; overview:3:act=how far ahead is 3 please	
-how far ahead is 3 thanks	-	answers:5:zone_offset=3 thanks; keybinds:3:run=how far ahead is 3 thanks; overview:3:act=how far ahead is 3 thanks	
+how far ahead is 3 please	-	answers:5:zone_offset=3; keybinds:3:run=how far ahead is 3 please; overview:3:act=how far ahead is 3 please	
+how far ahead is 3 thanks	-	answers:5:zone_offset=3; keybinds:3:run=how far ahead is 3 thanks; overview:3:act=how far ahead is 3 thanks	
 how far ahead is firefox	-	answers:5:zone_offset=firefox; keybinds:3:run=how far ahead is firefox; overview:3:act=how far ahead is firefox	
 how far ahead is firefox firefox	-	answers:5:zone_offset=firefox firefox; keybinds:3:run=how far ahead is firefox firefox; overview:3:act=how far ahead is firefox firefox	
 how far ahead is firefox now	-	answers:5:zone_offset=firefox now; keybinds:3:run=how far ahead is firefox now; overview:3:act=how far ahead is firefox now	
-how far ahead is firefox please	-	answers:5:zone_offset=firefox please; keybinds:3:run=how far ahead is firefox please; overview:3:act=how far ahead is firefox please	
-how far ahead is firefox thanks	-	answers:5:zone_offset=firefox thanks; keybinds:3:run=how far ahead is firefox thanks; overview:3:act=how far ahead is firefox thanks	
+how far ahead is firefox please	-	answers:5:zone_offset=firefox; keybinds:3:run=how far ahead is firefox please; overview:3:act=how far ahead is firefox please	
+how far ahead is firefox thanks	-	answers:5:zone_offset=firefox; keybinds:3:run=how far ahead is firefox thanks; overview:3:act=how far ahead is firefox thanks	
 how far ahead is five	-	answers:5:zone_offset=five; keybinds:3:run=how far ahead is five; overview:3:act=how far ahead is five	
 how far ahead is five twenty	-	answers:5:zone_offset=five twenty; keybinds:3:run=how far ahead is five twenty; overview:3:act=how far ahead is five twenty	
 how far ahead is is 3	-	answers:5:zone_offset=is 3; keybinds:3:run=how far ahead is is 3; overview:3:act=how far ahead is is 3	
@@ -3847,16 +3847,16 @@ how far ahead is is twenty five	-	answers:5:zone_offset=is twenty five; keybinds
 how far ahead is london	-	answers:5:zone_offset=london; keybinds:3:run=how far ahead is london; overview:3:act=how far ahead is london	
 how far ahead is london london	-	answers:5:zone_offset=london london; keybinds:3:run=how far ahead is london london; overview:3:act=how far ahead is london london	
 how far ahead is london now	-	answers:5:zone_offset=london now; keybinds:3:run=how far ahead is london now; overview:3:act=how far ahead is london now	
-how far ahead is london please	-	answers:5:zone_offset=london please; keybinds:3:run=how far ahead is london please; overview:3:act=how far ahead is london please	
-how far ahead is london thanks	-	answers:5:zone_offset=london thanks; keybinds:3:run=how far ahead is london thanks; overview:3:act=how far ahead is london thanks	
+how far ahead is london please	-	answers:5:zone_offset=london; keybinds:3:run=how far ahead is london please; overview:3:act=how far ahead is london please	
+how far ahead is london thanks	-	answers:5:zone_offset=london; keybinds:3:run=how far ahead is london thanks; overview:3:act=how far ahead is london thanks	
 how far ahead is slack the window	-	answers:5:zone_offset=slack the window; keybinds:3:run=how far ahead is slack the window; overview:3:act=how far ahead is slack the window	
 how far ahead is slack window	-	answers:5:zone_offset=slack window; keybinds:3:run=how far ahead is slack window; overview:3:act=how far ahead is slack window	
 how far ahead is the slack	-	answers:5:zone_offset=the slack; keybinds:3:run=how far ahead is the slack; overview:3:act=how far ahead is the slack	
 how far ahead is the slack slack window	-	answers:5:zone_offset=the slack slack window; keybinds:3:run=how far ahead is the slack slack window; overview:3:act=how far ahead is the slack slack window	
 how far ahead is the slack window	-	answers:5:zone_offset=the slack window; keybinds:3:run=how far ahead is the slack window; overview:3:act=how far ahead is the slack window	
 how far ahead is the slack window now	-	answers:5:zone_offset=the slack window now; keybinds:3:run=how far ahead is the slack window now; overview:3:act=how far ahead is the slack window now	
-how far ahead is the slack window please	-	answers:5:zone_offset=the slack window please; keybinds:3:run=how far ahead is the slack window please; overview:3:act=how far ahead is the slack window please	
-how far ahead is the slack window thanks	-	answers:5:zone_offset=the slack window thanks; keybinds:3:run=how far ahead is the slack window thanks; overview:3:act=how far ahead is the slack window thanks	
+how far ahead is the slack window please	-	answers:5:zone_offset=the slack window; keybinds:3:run=how far ahead is the slack window please; overview:3:act=how far ahead is the slack window please	
+how far ahead is the slack window thanks	-	answers:5:zone_offset=the slack window; keybinds:3:run=how far ahead is the slack window thanks; overview:3:act=how far ahead is the slack window thanks	
 how far ahead is the slack window window	-	answers:5:zone_offset=the slack window window; keybinds:3:run=how far ahead is the slack window window; overview:3:act=how far ahead is the slack window window	
 how far ahead is the the slack window	-	answers:5:zone_offset=the the slack window; keybinds:3:run=how far ahead is the the slack window; overview:3:act=how far ahead is the the slack window	
 how far ahead is the window	-	answers:5:zone_offset=the window; keybinds:3:run=how far ahead is the window; overview:3:act=how far ahead is the window	
@@ -3865,8 +3865,8 @@ how far ahead is twenty	-	answers:5:zone_offset=twenty; keybinds:3:run=how far a
 how far ahead is twenty five	-	answers:5:zone_offset=twenty five; keybinds:3:run=how far ahead is twenty five; overview:3:act=how far ahead is twenty five	
 how far ahead is twenty five five	-	answers:5:zone_offset=twenty five five; keybinds:3:run=how far ahead is twenty five five; overview:3:act=how far ahead is twenty five five	
 how far ahead is twenty five now	-	answers:5:zone_offset=twenty five now; keybinds:3:run=how far ahead is twenty five now; overview:3:act=how far ahead is twenty five now	
-how far ahead is twenty five please	-	answers:5:zone_offset=twenty five please; keybinds:3:run=how far ahead is twenty five please; overview:3:act=how far ahead is twenty five please	
-how far ahead is twenty five thanks	-	answers:5:zone_offset=twenty five thanks; keybinds:3:run=how far ahead is twenty five thanks; overview:3:act=how far ahead is twenty five thanks	
+how far ahead is twenty five please	-	answers:5:zone_offset=twenty five; keybinds:3:run=how far ahead is twenty five please; overview:3:act=how far ahead is twenty five please	
+how far ahead is twenty five thanks	-	answers:5:zone_offset=twenty five; keybinds:3:run=how far ahead is twenty five thanks; overview:3:act=how far ahead is twenty five thanks	
 how far ahead is twenty twenty five	-	answers:5:zone_offset=twenty twenty five; keybinds:3:run=how far ahead is twenty twenty five; overview:3:act=how far ahead is twenty twenty five	
 how far ahead london	-	keybinds:3:run=how far ahead london; overview:3:act=how far ahead london	
 how far ahead london is	-	keybinds:3:run=how far ahead london is; overview:3:act=how far ahead london is	
@@ -5706,7 +5706,7 @@ my my time	-	keybinds:3:run=my my time; overview:3:act=my my time
 my next meeting	-	keybinds:3:run=my next meeting; overview:3:act=my next meeting	
 my open calendar	-	keybinds:3:run=my open calendar; overview:3:act=my open calendar	apps:1:open=calendar~2; calendar:10:calendar~1; firefox-sites:0:open_site=calendar~2
 my open meeting	-	keybinds:3:run=my open meeting; overview:3:act=my open meeting	apps:1:open=meeting~2; calendar:2:open_meeting~1; firefox-sites:0:open_site=meeting~2
-my show calendar for friday	-	keybinds:3:run=my show calendar for friday; overview:3:act=my show calendar for friday	calendar:7:day=friday~2
+my show calendar for friday	-	keybinds:3:run=my show calendar for friday; overview:3:act=my show calendar for friday	
 my time	-	keybinds:3:run=my time; overview:3:act=my time	
 my time now	-	keybinds:3:run=my time now; overview:3:act=my time now	
 my time please	-	keybinds:3:run=my time please; overview:3:act=my time please	
@@ -5883,7 +5883,7 @@ next track now	-	keybinds:3:run=next track now; overview:3:act=next track now
 next track please	-	keybinds:3:run=next track please; overview:3:act=next track please	
 next track thanks	-	keybinds:3:run=next track thanks; overview:3:act=next track thanks	
 next track track	-	keybinds:3:run=next track track; overview:3:act=next track track	
-next whats on my calendar	-	keybinds:3:run=next whats on my calendar; overview:3:act=next whats on my calendar	calendar:4:next~2; calendar:5:day=next~3
+next whats on my calendar	-	keybinds:3:run=next whats on my calendar; overview:3:act=next whats on my calendar	calendar:4:next~2
 nine	-	keybinds:3:run=nine; overview:3:act=nine	
 nine monitor	-	keybinds:3:run=nine monitor; overview:3:act=nine monitor	
 no	-	keybinds:3:run=no; overview:3:act=no	
@@ -6060,9 +6060,9 @@ on my calendar tomorrow	-	keybinds:3:run=on my calendar tomorrow; overview:3:act
 on notifications	-	keybinds:3:run=on notifications; overview:3:act=on notifications	system:9:dnd_off~1
 on sign in	-	keybinds:3:run=on sign in; overview:3:act=on sign in	
 on whats my calendar	-	keybinds:3:run=on whats my calendar; overview:3:act=on whats my calendar	calendar:6:day_today~2
-on whats my calendar banana	-	keybinds:3:run=on whats my calendar banana; overview:3:act=on whats my calendar banana	calendar:5:day=banana~3
-on whats my calendar today	-	keybinds:3:run=on whats my calendar today; overview:3:act=on whats my calendar today	calendar:5:day=today~3
-on whats my calendar tomorrow	-	keybinds:3:run=on whats my calendar tomorrow; overview:3:act=on whats my calendar tomorrow	calendar:5:day=tomorrow~3
+on whats my calendar banana	-	keybinds:3:run=on whats my calendar banana; overview:3:act=on whats my calendar banana	
+on whats my calendar today	-	keybinds:3:run=on whats my calendar today; overview:3:act=on whats my calendar today	
+on whats my calendar tomorrow	-	keybinds:3:run=on whats my calendar tomorrow; overview:3:act=on whats my calendar tomorrow	
 one	-	keybinds:3:run=one; overview:3:act=one	
 one and then two and then three and then four and then five and then six	-	keybinds:3:run=one and then two and then three and then four and then five and then six; overview:3:act=one and then two and then three and then four and then five and then six	
 one mark three and five	-	keybinds:3:run=one mark three and five; overview:3:act=one mark three and five	
@@ -9300,8 +9300,8 @@ shift tab	-	apps:4:move=tab; keybinds:3:run=shift tab; overview:3:act=shift tab	
 shot screen this window	-	keybinds:3:run=shot screen this window; overview:3:act=shot screen this window	
 shot this window	-	keybinds:3:run=shot this window; overview:3:act=shot this window	
 show	-	keybinds:3:run=show; overview:3:act=show	
-show calendar for friday	-	keybinds:3:run=show calendar for friday; overview:3:act=show calendar for friday	calendar:7:day=friday~1
-show calendar my for friday	-	keybinds:3:run=show calendar my for friday; overview:3:act=show calendar my for friday	calendar:7:day=friday~2
+show calendar for friday	-	keybinds:3:run=show calendar for friday; overview:3:act=show calendar for friday	
+show calendar my for friday	-	keybinds:3:run=show calendar my for friday; overview:3:act=show calendar my for friday	
 show commands	-	keybinds:3:run=show commands; overview:3:act=show commands	
 show commands voice	-	keybinds:3:run=show commands voice; overview:3:act=show commands voice	
 show hints	-	click:6:show_hints; keybinds:3:run=show hints; overview:3:act=show hints	click:6:show_hints~0
@@ -9311,17 +9311,17 @@ show hints please	-	keybinds:3:run=show hints please; overview:3:act=show hints 
 show hints thanks	-	keybinds:3:run=show hints thanks; overview:3:act=show hints thanks	
 show my calendar calendar for friday	-	keybinds:3:run=show my calendar calendar for friday; overview:3:act=show my calendar calendar for friday	
 show my calendar for	-	keybinds:3:run=show my calendar for; overview:3:act=show my calendar for	
-show my calendar for for friday	-	calendar:7:day=for friday; keybinds:3:run=show my calendar for for friday; overview:3:act=show my calendar for for friday	calendar:7:day=for friday~3
-show my calendar for friday	-	calendar:7:day=friday; keybinds:3:run=show my calendar for friday; overview:3:act=show my calendar for friday	calendar:7:day=friday~2
-show my calendar for friday friday	-	calendar:7:day=friday friday; keybinds:3:run=show my calendar for friday friday; overview:3:act=show my calendar for friday friday	calendar:7:day=friday friday~3
-show my calendar for friday now	-	calendar:7:day=friday now; keybinds:3:run=show my calendar for friday now; overview:3:act=show my calendar for friday now	calendar:7:day=friday now~3
-show my calendar for friday please	-	calendar:7:day=friday please; keybinds:3:run=show my calendar for friday please; overview:3:act=show my calendar for friday please	calendar:7:day=friday~3
-show my calendar for friday thanks	-	calendar:7:day=friday thanks; keybinds:3:run=show my calendar for friday thanks; overview:3:act=show my calendar for friday thanks	calendar:7:day=friday thanks~3
+show my calendar for for friday	-	keybinds:3:run=show my calendar for for friday; overview:3:act=show my calendar for for friday	
+show my calendar for friday	-	calendar:7:day=friday; keybinds:3:run=show my calendar for friday; overview:3:act=show my calendar for friday	
+show my calendar for friday friday	-	keybinds:3:run=show my calendar for friday friday; overview:3:act=show my calendar for friday friday	
+show my calendar for friday now	-	keybinds:3:run=show my calendar for friday now; overview:3:act=show my calendar for friday now	
+show my calendar for friday please	-	keybinds:3:run=show my calendar for friday please; overview:3:act=show my calendar for friday please	
+show my calendar for friday thanks	-	keybinds:3:run=show my calendar for friday thanks; overview:3:act=show my calendar for friday thanks	
 show my calendar friday	-	keybinds:3:run=show my calendar friday; overview:3:act=show my calendar friday	
-show my calendar friday for	-	keybinds:3:run=show my calendar friday for; overview:3:act=show my calendar friday for	calendar:7:day=friday~2
-show my for calendar friday	-	keybinds:3:run=show my for calendar friday; overview:3:act=show my for calendar friday	calendar:7:day=friday~2
+show my calendar friday for	-	keybinds:3:run=show my calendar friday for; overview:3:act=show my calendar friday for	
+show my for calendar friday	-	keybinds:3:run=show my for calendar friday; overview:3:act=show my for calendar friday	
 show my for friday	-	keybinds:3:run=show my for friday; overview:3:act=show my for friday	
-show my my calendar for friday	-	keybinds:3:run=show my my calendar for friday; overview:3:act=show my my calendar for friday	calendar:7:day=friday~3
+show my my calendar for friday	-	keybinds:3:run=show my my calendar for friday; overview:3:act=show my my calendar for friday	
 show overview	-	keybinds:3:run=show overview; overview:1:overview_open	
 show overview the	-	keybinds:3:run=show overview the; overview:3:act=show overview the	
 show show hints	-	keybinds:3:run=show show hints; overview:3:act=show show hints	
@@ -12026,13 +12026,13 @@ what time is it in	-	keybinds:3:run=what time is it in; overview:3:act=what time
 what time is it in 3	-	answers:4:zone_now=3; keybinds:3:run=what time is it in 3; overview:3:act=what time is it in 3	
 what time is it in 3 3	-	answers:4:zone_now=3 3; keybinds:3:run=what time is it in 3 3; overview:3:act=what time is it in 3 3	
 what time is it in 3 now	-	answers:4:zone_now=3 now; keybinds:3:run=what time is it in 3 now; overview:3:act=what time is it in 3 now	
-what time is it in 3 please	-	answers:4:zone_now=3 please; keybinds:3:run=what time is it in 3 please; overview:3:act=what time is it in 3 please	
-what time is it in 3 thanks	-	answers:4:zone_now=3 thanks; keybinds:3:run=what time is it in 3 thanks; overview:3:act=what time is it in 3 thanks	
+what time is it in 3 please	-	answers:4:zone_now=3; keybinds:3:run=what time is it in 3 please; overview:3:act=what time is it in 3 please	
+what time is it in 3 thanks	-	answers:4:zone_now=3; keybinds:3:run=what time is it in 3 thanks; overview:3:act=what time is it in 3 thanks	
 what time is it in firefox	-	answers:4:zone_now=firefox; keybinds:3:run=what time is it in firefox; overview:3:act=what time is it in firefox	
 what time is it in firefox firefox	-	answers:4:zone_now=firefox firefox; keybinds:3:run=what time is it in firefox firefox; overview:3:act=what time is it in firefox firefox	
 what time is it in firefox now	-	answers:4:zone_now=firefox now; keybinds:3:run=what time is it in firefox now; overview:3:act=what time is it in firefox now	
-what time is it in firefox please	-	answers:4:zone_now=firefox please; keybinds:3:run=what time is it in firefox please; overview:3:act=what time is it in firefox please	
-what time is it in firefox thanks	-	answers:4:zone_now=firefox thanks; keybinds:3:run=what time is it in firefox thanks; overview:3:act=what time is it in firefox thanks	
+what time is it in firefox please	-	answers:4:zone_now=firefox; keybinds:3:run=what time is it in firefox please; overview:3:act=what time is it in firefox please	
+what time is it in firefox thanks	-	answers:4:zone_now=firefox; keybinds:3:run=what time is it in firefox thanks; overview:3:act=what time is it in firefox thanks	
 what time is it in five	-	answers:4:zone_now=five; keybinds:3:run=what time is it in five; overview:3:act=what time is it in five	
 what time is it in five twenty	-	answers:4:zone_now=five twenty; keybinds:3:run=what time is it in five twenty; overview:3:act=what time is it in five twenty	
 what time is it in in 3	-	answers:4:zone_now=in 3; keybinds:3:run=what time is it in in 3; overview:3:act=what time is it in in 3	
@@ -12046,23 +12046,23 @@ what time is it in the slack	-	answers:4:zone_now=the slack; keybinds:3:run=what
 what time is it in the slack slack window	-	answers:4:zone_now=the slack slack window; keybinds:3:run=what time is it in the slack slack window; overview:3:act=what time is it in the slack slack window	
 what time is it in the slack window	-	answers:4:zone_now=the slack window; keybinds:3:run=what time is it in the slack window; overview:3:act=what time is it in the slack window	
 what time is it in the slack window now	-	answers:4:zone_now=the slack window now; keybinds:3:run=what time is it in the slack window now; overview:3:act=what time is it in the slack window now	
-what time is it in the slack window please	-	answers:4:zone_now=the slack window please; keybinds:3:run=what time is it in the slack window please; overview:3:act=what time is it in the slack window please	
-what time is it in the slack window thanks	-	answers:4:zone_now=the slack window thanks; keybinds:3:run=what time is it in the slack window thanks; overview:3:act=what time is it in the slack window thanks	
+what time is it in the slack window please	-	answers:4:zone_now=the slack window; keybinds:3:run=what time is it in the slack window please; overview:3:act=what time is it in the slack window please	
+what time is it in the slack window thanks	-	answers:4:zone_now=the slack window; keybinds:3:run=what time is it in the slack window thanks; overview:3:act=what time is it in the slack window thanks	
 what time is it in the slack window window	-	answers:4:zone_now=the slack window window; keybinds:3:run=what time is it in the slack window window; overview:3:act=what time is it in the slack window window	
 what time is it in the the slack window	-	answers:4:zone_now=the the slack window; keybinds:3:run=what time is it in the the slack window; overview:3:act=what time is it in the the slack window	
 what time is it in the window	-	answers:4:zone_now=the window; keybinds:3:run=what time is it in the window; overview:3:act=what time is it in the window	
 what time is it in the window slack	-	answers:4:zone_now=the window slack; keybinds:3:run=what time is it in the window slack; overview:3:act=what time is it in the window slack	
 what time is it in tokyo	-	answers:4:zone_now=tokyo; keybinds:3:run=what time is it in tokyo; overview:3:act=what time is it in tokyo	
 what time is it in tokyo now	-	answers:4:zone_now=tokyo now; keybinds:3:run=what time is it in tokyo now; overview:3:act=what time is it in tokyo now	
-what time is it in tokyo please	-	answers:4:zone_now=tokyo please; keybinds:3:run=what time is it in tokyo please; overview:3:act=what time is it in tokyo please	
-what time is it in tokyo thanks	-	answers:4:zone_now=tokyo thanks; keybinds:3:run=what time is it in tokyo thanks; overview:3:act=what time is it in tokyo thanks	
+what time is it in tokyo please	-	answers:4:zone_now=tokyo; keybinds:3:run=what time is it in tokyo please; overview:3:act=what time is it in tokyo please	
+what time is it in tokyo thanks	-	answers:4:zone_now=tokyo; keybinds:3:run=what time is it in tokyo thanks; overview:3:act=what time is it in tokyo thanks	
 what time is it in tokyo tokyo	-	answers:4:zone_now=tokyo tokyo; keybinds:3:run=what time is it in tokyo tokyo; overview:3:act=what time is it in tokyo tokyo	
 what time is it in twenty	-	answers:4:zone_now=twenty; keybinds:3:run=what time is it in twenty; overview:3:act=what time is it in twenty	
 what time is it in twenty five	-	answers:4:zone_now=twenty five; keybinds:3:run=what time is it in twenty five; overview:3:act=what time is it in twenty five	
 what time is it in twenty five five	-	answers:4:zone_now=twenty five five; keybinds:3:run=what time is it in twenty five five; overview:3:act=what time is it in twenty five five	
 what time is it in twenty five now	-	answers:4:zone_now=twenty five now; keybinds:3:run=what time is it in twenty five now; overview:3:act=what time is it in twenty five now	
-what time is it in twenty five please	-	answers:4:zone_now=twenty five please; keybinds:3:run=what time is it in twenty five please; overview:3:act=what time is it in twenty five please	
-what time is it in twenty five thanks	-	answers:4:zone_now=twenty five thanks; keybinds:3:run=what time is it in twenty five thanks; overview:3:act=what time is it in twenty five thanks	
+what time is it in twenty five please	-	answers:4:zone_now=twenty five; keybinds:3:run=what time is it in twenty five please; overview:3:act=what time is it in twenty five please	
+what time is it in twenty five thanks	-	answers:4:zone_now=twenty five; keybinds:3:run=what time is it in twenty five thanks; overview:3:act=what time is it in twenty five thanks	
 what time is it in twenty twenty five	-	answers:4:zone_now=twenty twenty five; keybinds:3:run=what time is it in twenty twenty five; overview:3:act=what time is it in twenty twenty five	
 what time is it it	-	keybinds:3:run=what time is it it; overview:3:act=what time is it it	
 what time is it it in 3	-	keybinds:3:run=what time is it it in 3; overview:3:act=what time is it it in 3	
@@ -12214,9 +12214,9 @@ whats five twenty percent of twenty five	-	answers:8:calculate; keybinds:3:run=w
 whats in 15 hex	-	keybinds:3:run=whats in 15 hex; overview:3:act=whats in 15 hex	
 whats in hex	-	keybinds:3:run=whats in hex; overview:3:act=whats in hex	
 whats my calendar	-	keybinds:3:run=whats my calendar; overview:3:act=whats my calendar	calendar:6:day_today~1
-whats my calendar banana	-	keybinds:3:run=whats my calendar banana; overview:3:act=whats my calendar banana	calendar:5:day=banana~2
-whats my calendar today	-	keybinds:3:run=whats my calendar today; overview:3:act=whats my calendar today	calendar:5:day=today~2
-whats my calendar tomorrow	-	keybinds:3:run=whats my calendar tomorrow; overview:3:act=whats my calendar tomorrow	calendar:5:day=tomorrow~2
+whats my calendar banana	-	keybinds:3:run=whats my calendar banana; overview:3:act=whats my calendar banana	
+whats my calendar today	-	keybinds:3:run=whats my calendar today; overview:3:act=whats my calendar today	
+whats my calendar tomorrow	-	keybinds:3:run=whats my calendar tomorrow; overview:3:act=whats my calendar tomorrow	
 whats my meeting	-	keybinds:3:run=whats my meeting; overview:3:act=whats my meeting	
 whats my meeting next	-	keybinds:3:run=whats my meeting next; overview:3:act=whats my meeting next	calendar:3:next~1
 whats my my next meeting	-	keybinds:3:run=whats my my next meeting; overview:3:act=whats my my next meeting	calendar:3:next~2
@@ -12228,72 +12228,72 @@ whats my next meeting please	-	keybinds:3:run=whats my next meeting please; over
 whats my next meeting thanks	-	keybinds:3:run=whats my next meeting thanks; overview:3:act=whats my next meeting thanks	
 whats my next next meeting	-	keybinds:3:run=whats my next next meeting; overview:3:act=whats my next next meeting	
 whats my on calendar	-	keybinds:3:run=whats my on calendar; overview:3:act=whats my on calendar	calendar:6:day_today~2
-whats my on calendar banana	-	keybinds:3:run=whats my on calendar banana; overview:3:act=whats my on calendar banana	calendar:5:day=banana~3
-whats my on calendar today	-	keybinds:3:run=whats my on calendar today; overview:3:act=whats my on calendar today	calendar:5:day=today~3
-whats my on calendar tomorrow	-	keybinds:3:run=whats my on calendar tomorrow; overview:3:act=whats my on calendar tomorrow	calendar:5:day=tomorrow~3
+whats my on calendar banana	-	keybinds:3:run=whats my on calendar banana; overview:3:act=whats my on calendar banana	
+whats my on calendar today	-	keybinds:3:run=whats my on calendar today; overview:3:act=whats my on calendar today	
+whats my on calendar tomorrow	-	keybinds:3:run=whats my on calendar tomorrow; overview:3:act=whats my on calendar tomorrow	
 whats next meeting	-	calendar:3:next; keybinds:3:run=whats next meeting; overview:3:act=whats next meeting	calendar:3:next~0
-whats next my calendar	-	keybinds:3:run=whats next my calendar; overview:3:act=whats next my calendar	calendar:4:next~1; calendar:5:day=next~2
+whats next my calendar	-	keybinds:3:run=whats next my calendar; overview:3:act=whats next my calendar	calendar:4:next~1
 whats next my meeting	-	keybinds:3:run=whats next my meeting; overview:3:act=whats next my meeting	calendar:3:next~1
-whats next my on calendar	-	keybinds:3:run=whats next my on calendar; overview:3:act=whats next my on calendar	calendar:4:next~2; calendar:5:day=next~3
-whats next next on my calendar	-	keybinds:3:run=whats next next on my calendar; overview:3:act=whats next next on my calendar	calendar:5:day=next next~4
-whats next on calendar	-	keybinds:3:run=whats next on calendar; overview:3:act=whats next on calendar	calendar:4:next~1; calendar:5:day=next~2
-whats next on calendar my	-	keybinds:3:run=whats next on calendar my; overview:3:act=whats next on calendar my	calendar:4:next~2; calendar:5:day=next~3
+whats next my on calendar	-	keybinds:3:run=whats next my on calendar; overview:3:act=whats next my on calendar	calendar:4:next~2
+whats next next on my calendar	-	keybinds:3:run=whats next next on my calendar; overview:3:act=whats next next on my calendar	
+whats next on calendar	-	keybinds:3:run=whats next on calendar; overview:3:act=whats next on calendar	calendar:4:next~1
+whats next on calendar my	-	keybinds:3:run=whats next on calendar my; overview:3:act=whats next on calendar my	calendar:4:next~2
 whats next on my	-	keybinds:3:run=whats next on my; overview:3:act=whats next on my	
-whats next on my calendar	-	calendar:4:next; keybinds:3:run=whats next on my calendar; overview:3:act=whats next on my calendar	calendar:4:next~2; calendar:5:day=next~3
-whats next on my calendar calendar	-	keybinds:3:run=whats next on my calendar calendar; overview:3:act=whats next on my calendar calendar	calendar:5:day=next on my calendar~4
+whats next on my calendar	-	calendar:4:next; keybinds:3:run=whats next on my calendar; overview:3:act=whats next on my calendar	calendar:4:next~2
+whats next on my calendar calendar	-	keybinds:3:run=whats next on my calendar calendar; overview:3:act=whats next on my calendar calendar	
 whats next on my calendar now	-	keybinds:3:run=whats next on my calendar now; overview:3:act=whats next on my calendar now	
-whats next on my calendar please	-	keybinds:3:run=whats next on my calendar please; overview:3:act=whats next on my calendar please	calendar:4:next~3; calendar:5:day=next~4
+whats next on my calendar please	-	keybinds:3:run=whats next on my calendar please; overview:3:act=whats next on my calendar please	calendar:4:next~3
 whats next on my calendar thanks	-	keybinds:3:run=whats next on my calendar thanks; overview:3:act=whats next on my calendar thanks	
-whats next on my my calendar	-	keybinds:3:run=whats next on my my calendar; overview:3:act=whats next on my my calendar	calendar:4:next~3; calendar:5:day=next~4
-whats next on on my calendar	-	keybinds:3:run=whats next on on my calendar; overview:3:act=whats next on on my calendar	calendar:4:next~3; calendar:5:day=next~4
+whats next on my my calendar	-	keybinds:3:run=whats next on my my calendar; overview:3:act=whats next on my my calendar	calendar:4:next~3
+whats next on on my calendar	-	keybinds:3:run=whats next on on my calendar; overview:3:act=whats next on on my calendar	calendar:4:next~3
 whats now	-	keybinds:3:run=whats now; overview:3:act=whats now	
 whats on calendar	-	keybinds:3:run=whats on calendar; overview:3:act=whats on calendar	calendar:6:day_today~1
-whats on calendar banana	-	keybinds:3:run=whats on calendar banana; overview:3:act=whats on calendar banana	calendar:5:day=banana~2
+whats on calendar banana	-	keybinds:3:run=whats on calendar banana; overview:3:act=whats on calendar banana	
 whats on calendar my	-	keybinds:3:run=whats on calendar my; overview:3:act=whats on calendar my	calendar:6:day_today~2
-whats on calendar my banana	-	keybinds:3:run=whats on calendar my banana; overview:3:act=whats on calendar my banana	calendar:5:day=banana~3
-whats on calendar my today	-	keybinds:3:run=whats on calendar my today; overview:3:act=whats on calendar my today	calendar:5:day=today~3
-whats on calendar my tomorrow	-	keybinds:3:run=whats on calendar my tomorrow; overview:3:act=whats on calendar my tomorrow	calendar:5:day=tomorrow~3
-whats on calendar today	-	keybinds:3:run=whats on calendar today; overview:3:act=whats on calendar today	calendar:5:day=today~2
-whats on calendar tomorrow	-	keybinds:3:run=whats on calendar tomorrow; overview:3:act=whats on calendar tomorrow	calendar:5:day=tomorrow~2
+whats on calendar my banana	-	keybinds:3:run=whats on calendar my banana; overview:3:act=whats on calendar my banana	
+whats on calendar my today	-	keybinds:3:run=whats on calendar my today; overview:3:act=whats on calendar my today	
+whats on calendar my tomorrow	-	keybinds:3:run=whats on calendar my tomorrow; overview:3:act=whats on calendar my tomorrow	
+whats on calendar today	-	keybinds:3:run=whats on calendar today; overview:3:act=whats on calendar today	
+whats on calendar tomorrow	-	keybinds:3:run=whats on calendar tomorrow; overview:3:act=whats on calendar tomorrow	
 whats on my	-	keybinds:3:run=whats on my; overview:3:act=whats on my	
 whats on my banana	-	keybinds:3:run=whats on my banana; overview:3:act=whats on my banana	
-whats on my banana calendar	-	keybinds:3:run=whats on my banana calendar; overview:3:act=whats on my banana calendar	calendar:5:day=banana~3
+whats on my banana calendar	-	keybinds:3:run=whats on my banana calendar; overview:3:act=whats on my banana calendar	
 whats on my calendar	-	calendar:6:day_today; keybinds:3:run=whats on my calendar; overview:3:act=whats on my calendar	calendar:6:day_today~2
-whats on my calendar banana	-	calendar:5:day=banana; keybinds:3:run=whats on my calendar banana; overview:3:act=whats on my calendar banana	calendar:5:day=banana~3
-whats on my calendar banana banana	-	calendar:5:day=banana banana; keybinds:3:run=whats on my calendar banana banana; overview:3:act=whats on my calendar banana banana	calendar:5:day=banana banana~4
-whats on my calendar banana now	-	calendar:5:day=banana now; keybinds:3:run=whats on my calendar banana now; overview:3:act=whats on my calendar banana now	calendar:5:day=banana now~4
-whats on my calendar banana please	-	calendar:5:day=banana please; keybinds:3:run=whats on my calendar banana please; overview:3:act=whats on my calendar banana please	calendar:5:day=banana~4
-whats on my calendar banana thanks	-	calendar:5:day=banana thanks; keybinds:3:run=whats on my calendar banana thanks; overview:3:act=whats on my calendar banana thanks	calendar:5:day=banana thanks~4
-whats on my calendar calendar	-	calendar:5:day=calendar; keybinds:3:run=whats on my calendar calendar; overview:3:act=whats on my calendar calendar	calendar:5:day=calendar~3
-whats on my calendar calendar banana	-	calendar:5:day=calendar banana; keybinds:3:run=whats on my calendar calendar banana; overview:3:act=whats on my calendar calendar banana	calendar:5:day=calendar banana~4
-whats on my calendar calendar today	-	calendar:5:day=calendar today; keybinds:3:run=whats on my calendar calendar today; overview:3:act=whats on my calendar calendar today	calendar:5:day=calendar today~4
-whats on my calendar calendar tomorrow	-	calendar:5:day=calendar tomorrow; keybinds:3:run=whats on my calendar calendar tomorrow; overview:3:act=whats on my calendar calendar tomorrow	calendar:5:day=calendar tomorrow~4
-whats on my calendar now	-	calendar:5:day=now; keybinds:3:run=whats on my calendar now; overview:3:act=whats on my calendar now	calendar:5:day=now~3
-whats on my calendar please	-	calendar:5:day=please; keybinds:3:run=whats on my calendar please; overview:3:act=whats on my calendar please	calendar:6:day_today~3
-whats on my calendar thanks	-	calendar:5:day=thanks; keybinds:3:run=whats on my calendar thanks; overview:3:act=whats on my calendar thanks	calendar:5:day=thanks~3
-whats on my calendar today	-	calendar:5:day=today; keybinds:3:run=whats on my calendar today; overview:3:act=whats on my calendar today	calendar:5:day=today~3
-whats on my calendar today now	-	calendar:5:day=today now; keybinds:3:run=whats on my calendar today now; overview:3:act=whats on my calendar today now	calendar:5:day=today now~4
-whats on my calendar today please	-	calendar:5:day=today please; keybinds:3:run=whats on my calendar today please; overview:3:act=whats on my calendar today please	calendar:5:day=today~4
-whats on my calendar today thanks	-	calendar:5:day=today thanks; keybinds:3:run=whats on my calendar today thanks; overview:3:act=whats on my calendar today thanks	calendar:5:day=today thanks~4
-whats on my calendar today today	-	calendar:5:day=today today; keybinds:3:run=whats on my calendar today today; overview:3:act=whats on my calendar today today	calendar:5:day=today today~4
-whats on my calendar tomorrow	-	calendar:5:day=tomorrow; keybinds:3:run=whats on my calendar tomorrow; overview:3:act=whats on my calendar tomorrow	calendar:5:day=tomorrow~3
-whats on my calendar tomorrow now	-	calendar:5:day=tomorrow now; keybinds:3:run=whats on my calendar tomorrow now; overview:3:act=whats on my calendar tomorrow now	calendar:5:day=tomorrow now~4
-whats on my calendar tomorrow please	-	calendar:5:day=tomorrow please; keybinds:3:run=whats on my calendar tomorrow please; overview:3:act=whats on my calendar tomorrow please	calendar:5:day=tomorrow~4
-whats on my calendar tomorrow thanks	-	calendar:5:day=tomorrow thanks; keybinds:3:run=whats on my calendar tomorrow thanks; overview:3:act=whats on my calendar tomorrow thanks	calendar:5:day=tomorrow thanks~4
-whats on my calendar tomorrow tomorrow	-	calendar:5:day=tomorrow tomorrow; keybinds:3:run=whats on my calendar tomorrow tomorrow; overview:3:act=whats on my calendar tomorrow tomorrow	calendar:5:day=tomorrow tomorrow~4
+whats on my calendar banana	-	keybinds:3:run=whats on my calendar banana; overview:3:act=whats on my calendar banana	
+whats on my calendar banana banana	-	keybinds:3:run=whats on my calendar banana banana; overview:3:act=whats on my calendar banana banana	
+whats on my calendar banana now	-	keybinds:3:run=whats on my calendar banana now; overview:3:act=whats on my calendar banana now	
+whats on my calendar banana please	-	keybinds:3:run=whats on my calendar banana please; overview:3:act=whats on my calendar banana please	
+whats on my calendar banana thanks	-	keybinds:3:run=whats on my calendar banana thanks; overview:3:act=whats on my calendar banana thanks	
+whats on my calendar calendar	-	keybinds:3:run=whats on my calendar calendar; overview:3:act=whats on my calendar calendar	
+whats on my calendar calendar banana	-	keybinds:3:run=whats on my calendar calendar banana; overview:3:act=whats on my calendar calendar banana	
+whats on my calendar calendar today	-	keybinds:3:run=whats on my calendar calendar today; overview:3:act=whats on my calendar calendar today	
+whats on my calendar calendar tomorrow	-	keybinds:3:run=whats on my calendar calendar tomorrow; overview:3:act=whats on my calendar calendar tomorrow	
+whats on my calendar now	-	keybinds:3:run=whats on my calendar now; overview:3:act=whats on my calendar now	
+whats on my calendar please	-	keybinds:3:run=whats on my calendar please; overview:3:act=whats on my calendar please	calendar:6:day_today~3
+whats on my calendar thanks	-	keybinds:3:run=whats on my calendar thanks; overview:3:act=whats on my calendar thanks	
+whats on my calendar today	-	calendar:5:day=today; keybinds:3:run=whats on my calendar today; overview:3:act=whats on my calendar today	
+whats on my calendar today now	-	keybinds:3:run=whats on my calendar today now; overview:3:act=whats on my calendar today now	
+whats on my calendar today please	-	keybinds:3:run=whats on my calendar today please; overview:3:act=whats on my calendar today please	
+whats on my calendar today thanks	-	keybinds:3:run=whats on my calendar today thanks; overview:3:act=whats on my calendar today thanks	
+whats on my calendar today today	-	keybinds:3:run=whats on my calendar today today; overview:3:act=whats on my calendar today today	
+whats on my calendar tomorrow	-	calendar:5:day=tomorrow; keybinds:3:run=whats on my calendar tomorrow; overview:3:act=whats on my calendar tomorrow	
+whats on my calendar tomorrow now	-	keybinds:3:run=whats on my calendar tomorrow now; overview:3:act=whats on my calendar tomorrow now	
+whats on my calendar tomorrow please	-	keybinds:3:run=whats on my calendar tomorrow please; overview:3:act=whats on my calendar tomorrow please	
+whats on my calendar tomorrow thanks	-	keybinds:3:run=whats on my calendar tomorrow thanks; overview:3:act=whats on my calendar tomorrow thanks	
+whats on my calendar tomorrow tomorrow	-	keybinds:3:run=whats on my calendar tomorrow tomorrow; overview:3:act=whats on my calendar tomorrow tomorrow	
 whats on my my calendar	-	keybinds:3:run=whats on my my calendar; overview:3:act=whats on my my calendar	calendar:6:day_today~3
-whats on my my calendar banana	-	keybinds:3:run=whats on my my calendar banana; overview:3:act=whats on my my calendar banana	calendar:5:day=banana~4
-whats on my my calendar today	-	keybinds:3:run=whats on my my calendar today; overview:3:act=whats on my my calendar today	calendar:5:day=today~4
-whats on my my calendar tomorrow	-	keybinds:3:run=whats on my my calendar tomorrow; overview:3:act=whats on my my calendar tomorrow	calendar:5:day=tomorrow~4
+whats on my my calendar banana	-	keybinds:3:run=whats on my my calendar banana; overview:3:act=whats on my my calendar banana	
+whats on my my calendar today	-	keybinds:3:run=whats on my my calendar today; overview:3:act=whats on my my calendar today	
+whats on my my calendar tomorrow	-	keybinds:3:run=whats on my my calendar tomorrow; overview:3:act=whats on my my calendar tomorrow	
 whats on my today	-	keybinds:3:run=whats on my today; overview:3:act=whats on my today	
-whats on my today calendar	-	keybinds:3:run=whats on my today calendar; overview:3:act=whats on my today calendar	calendar:5:day=today~3
+whats on my today calendar	-	keybinds:3:run=whats on my today calendar; overview:3:act=whats on my today calendar	
 whats on my tomorrow	-	keybinds:3:run=whats on my tomorrow; overview:3:act=whats on my tomorrow	
-whats on my tomorrow calendar	-	keybinds:3:run=whats on my tomorrow calendar; overview:3:act=whats on my tomorrow calendar	calendar:5:day=tomorrow~3
-whats on next my calendar	-	keybinds:3:run=whats on next my calendar; overview:3:act=whats on next my calendar	calendar:4:next~2; calendar:5:day=next~3
+whats on my tomorrow calendar	-	keybinds:3:run=whats on my tomorrow calendar; overview:3:act=whats on my tomorrow calendar	
+whats on next my calendar	-	keybinds:3:run=whats on next my calendar; overview:3:act=whats on next my calendar	calendar:4:next~2
 whats on on my calendar	-	keybinds:3:run=whats on on my calendar; overview:3:act=whats on on my calendar	calendar:6:day_today~3
-whats on on my calendar banana	-	keybinds:3:run=whats on on my calendar banana; overview:3:act=whats on on my calendar banana	calendar:5:day=banana~4
-whats on on my calendar today	-	keybinds:3:run=whats on on my calendar today; overview:3:act=whats on on my calendar today	calendar:5:day=today~4
-whats on on my calendar tomorrow	-	keybinds:3:run=whats on on my calendar tomorrow; overview:3:act=whats on on my calendar tomorrow	calendar:5:day=tomorrow~4
+whats on on my calendar banana	-	keybinds:3:run=whats on on my calendar banana; overview:3:act=whats on on my calendar banana	
+whats on on my calendar today	-	keybinds:3:run=whats on on my calendar today; overview:3:act=whats on on my calendar today	
+whats on on my calendar tomorrow	-	keybinds:3:run=whats on on my calendar tomorrow; overview:3:act=whats on on my calendar tomorrow	
 whats percent 15 of 230	-	keybinds:3:run=whats percent 15 of 230; overview:3:act=whats percent 15 of 230	
 whats percent 15 of 80	-	keybinds:3:run=whats percent 15 of 80; overview:3:act=whats percent 15 of 80	
 whats percent 3 of 3	-	keybinds:3:run=whats percent 3 of 3; overview:3:act=whats percent 3 of 3	
@@ -12358,8 +12358,8 @@ whats whats 15 percent of 80	-	keybinds:3:run=whats whats 15 percent of 80; over
 whats whats 3 percent of 3	-	keybinds:3:run=whats whats 3 percent of 3; overview:3:act=whats whats 3 percent of 3	
 whats whats firefox percent of firefox	-	keybinds:3:run=whats whats firefox percent of firefox; overview:3:act=whats whats firefox percent of firefox	
 whats whats my next meeting	-	keybinds:3:run=whats whats my next meeting; overview:3:act=whats whats my next meeting	
-whats whats next on my calendar	-	keybinds:3:run=whats whats next on my calendar; overview:3:act=whats whats next on my calendar	calendar:5:day=whats next~4
-whats whats on my calendar	-	keybinds:3:run=whats whats on my calendar; overview:3:act=whats whats on my calendar	calendar:5:day=whats~3
+whats whats next on my calendar	-	keybinds:3:run=whats whats next on my calendar; overview:3:act=whats whats next on my calendar	
+whats whats on my calendar	-	keybinds:3:run=whats whats on my calendar; overview:3:act=whats whats on my calendar	
 whats whats on my calendar banana	-	keybinds:3:run=whats whats on my calendar banana; overview:3:act=whats whats on my calendar banana	
 whats whats on my calendar today	-	keybinds:3:run=whats whats on my calendar today; overview:3:act=whats whats on my calendar today	
 whats whats on my calendar tomorrow	-	keybinds:3:run=whats whats on my calendar tomorrow; overview:3:act=whats whats on my calendar tomorrow	

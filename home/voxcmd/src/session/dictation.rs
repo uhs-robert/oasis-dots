@@ -12,8 +12,7 @@
 //! handed to the mode's `handle_turn` with the text. A voice ending followed by "and then" also has `chain: true`, and
 //! the commands after it, found in the final transcript, run once the text is handled (`chain_text`).
 //!
-//! Nothing here holds the lock while a mode hook runs: typing.sh's `handle_turn` reads the session through the bridge,
-//! which takes the lock.
+//! Nothing here holds the lock while a mode hook runs: a `handle_turn` that reads the session takes the lock itself.
 use super::mode::{self, ModeSettings};
 use super::turn::{self, NOISE, Outcome, TRANSCRIBER_NOISE, duration_words};
 use super::{SessionLock, is_mine, mode_token, text_of};
@@ -47,14 +46,6 @@ pub struct Ending {
 const CHAIN_TAIL: &str = "(?: and then(?: .*)?| then .+)";
 
 impl Ending {
-    /// A bash `ending=` row, `<action> <regex>`, split as `read -r action regex` splits it. None when the regex does
-    /// not compile, which bash would have matched nothing with either.
-    pub fn from_row(row: &str) -> Option<Self> {
-        let row = row.trim();
-        let (action, body) = row.split_once(char::is_whitespace).unwrap_or((row, ""));
-        Self::new(action, body.trim_start())
-    }
-
     /// An ending from its action and its regex body (a TOML ending's `match`, expanded). None when it does not compile.
     pub fn new(action: &str, body: &str) -> Option<Self> {
         Some(Self {
@@ -379,15 +370,22 @@ fn secs_words(secs: &str) -> String {
 mod tests {
     use super::*;
 
-    /// typing.sh's rows as `_legacy-hook mode-settings` prints them.
+    /// typing's endings as `<action> <regex>` rows.
     const TYPING_ROWS: &str = "\
 type        stop|stop typing|stop recording|done|im done|thats all|((okay|ok|alright|please|now) )*((stop|exit|quit|end|leave|finish|close|turn off|switch off) (the )?(typing|typing mode|type mode|dictation|dictation mode)|(the )?(typing|typing mode|type mode|dictation|dictation mode) off)( (okay|ok|alright|please|now))*|(im )?done typing|done with (the )?(typing|typing mode|type mode|dictation|dictation mode)
 send        send|send it|send (the |a )?message|press enter
 discard     cancel|never ?mind
 end_session stop listening|stop everything|end session|end the session";
 
+    /// A row `<action> <regex>`, split at the first whitespace. None when the regex does not compile.
+    fn from_row(row: &str) -> Option<Ending> {
+        let row = row.trim();
+        let (action, body) = row.split_once(char::is_whitespace).unwrap_or((row, ""));
+        Ending::new(action, body.trim_start())
+    }
+
     fn typing_endings() -> Vec<Ending> {
-        TYPING_ROWS.lines().map(|row| Ending::from_row(row).unwrap()).collect()
+        TYPING_ROWS.lines().map(|row| from_row(row).unwrap()).collect()
     }
 
     #[test]
@@ -418,21 +416,18 @@ end_session stop listening|stop everything|end session|end the session";
             assert_eq!(ending_action(&endings, words), action, "{words:?}");
         }
         // The first row wins where two match.
-        let both = [
-            Ending::from_row("first stop|go").unwrap(),
-            Ending::from_row("second stop").unwrap(),
-        ];
+        let both = [from_row("first stop|go").unwrap(), from_row("second stop").unwrap()];
         assert_eq!(ending_action(&both, "stop"), Some("first"));
     }
 
     #[test]
-    fn a_row_splits_as_bash_read_splits_it() {
-        let ending = Ending::from_row("  send   send it  ").unwrap();
+    fn a_row_splits_at_its_first_whitespace() {
+        let ending = from_row("  send   send it  ").unwrap();
         assert_eq!(ending.action, "send");
         assert!(ending.whole.is_match("send it"));
         // A row with no regex matches only nothing; one that does not compile is dropped.
-        assert!(Ending::from_row("type").unwrap().whole.is_match(""));
-        assert!(Ending::from_row("type stop(").is_none());
+        assert!(from_row("type").unwrap().whole.is_match(""));
+        assert!(from_row("type stop(").is_none());
     }
 
     #[test]

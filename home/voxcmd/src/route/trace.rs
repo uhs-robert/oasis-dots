@@ -8,11 +8,9 @@ use super::sequence;
 use crate::cli::ExplainArgs;
 use crate::click::driver::WindowSel;
 use crate::click::explain::{self, ClickTrace, ExplainSink};
-use crate::click::provider::BuiltinHooks;
 use crate::config::Config;
-use crate::config::schema::{Candidates, Integration};
 use crate::exit::CliError;
-use crate::hooks::{Dispatch, HookQuery, HookRun, Hooks, LegacyHooks, NoHooks, ShellHooks};
+use crate::hooks::{Dispatch, HookRun, Hooks, ShellHooks};
 use serde::Serialize;
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -421,26 +419,6 @@ fn window_of(name: &str) -> Result<WindowSel, CliError> {
     }
 }
 
-/// Hooks for a dump given as a file: every external hook is off, TOML ones too (the latency test routes phrases that
-/// reach TOML hooks, and a bash start per hook would measure bash, not routing). The built-in providers still run,
-/// because they are voxcmd's own and `--window` needs their capture.
-struct DumpHooks {
-    builtin: BuiltinHooks,
-}
-
-impl Hooks for DumpHooks {
-    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
-        match integration.candidates_for(query.action) {
-            Some(Candidates::Builtin(_)) => self.builtin.candidates(integration, query),
-            _ => NoHooks.candidates(integration, query),
-        }
-    }
-
-    fn surface_open(&self, _integration: &Integration) -> bool {
-        false
-    }
-}
-
 /// `voxcmd explain <phrase>`.
 pub fn run(args: ExplainArgs) -> Result<String, CliError> {
     if args.reply {
@@ -453,25 +431,17 @@ pub fn run(args: ExplainArgs) -> Result<String, CliError> {
     let config_dir = crate::paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("explain", message))?;
     let sink = ExplainSink::default();
-    let hooks: Box<dyn Hooks> = if crate::paths::legacy_dump_override().is_some() {
-        let builtin = match window {
-            Some(window) => BuiltinHooks::tracing(window, ExplainSink::clone(&sink)),
-            None => BuiltinHooks::default(),
-        };
-        Box::new(DumpHooks { builtin })
-    } else {
-        // A dry run: a hook that toasts prints it to stderr instead.
-        let shell = ShellHooks::new(
-            &config_dir,
-            config.integrations.iter().map(|integration| integration.stem.clone()),
-            true,
-        );
-        let dispatch = Dispatch::new(shell, Box::new(LegacyHooks::new(config_dir)));
-        match window {
-            // The click section comes from the capture the routing makes, so there is one capture, not two.
-            Some(window) => Box::new(dispatch.tracing(window, ExplainSink::clone(&sink))),
-            None => Box::new(dispatch),
-        }
+    // A dry run: a hook that toasts prints it to stderr instead.
+    let shell = ShellHooks::new(
+        &config_dir,
+        config.integrations.iter().map(|integration| integration.stem.clone()),
+        true,
+    );
+    let dispatch = Dispatch::new(shell);
+    let hooks: Box<dyn Hooks> = match window {
+        // The click section comes from the capture the routing makes, so there is one capture, not two.
+        Some(window) => Box::new(dispatch.tracing(window, ExplainSink::clone(&sink))),
+        None => Box::new(dispatch),
     };
     let router = Router::new(&config, hooks.as_ref());
     let mut explain = sequence::explain_phrase(&router, &args.phrase.join(" "));

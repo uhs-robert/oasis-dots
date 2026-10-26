@@ -7,7 +7,7 @@
 use super::near_miss::{NearMiss, Readings};
 use super::pattern::{self, CompiledPattern, Placeholder, PlaceholderType};
 use crate::config::Config;
-use crate::config::schema::{self, Format, Tier};
+use crate::config::schema::{self, Tier};
 use crate::text::normalize::normalize;
 use crate::text::speech::{self, Anchor, Clock};
 use regex::bytes::Regex;
@@ -176,15 +176,12 @@ impl<'c> Matcher<'c> {
             }
             let regex = match self.regex(integration, index) {
                 Ok(regex) => regex,
-                // Bash skips a pattern its regex engine rejects without a word, and the legacy dialect must equal it.
-                // A TOML verb says why, so `explain` shows the broken regex instead of an unexplained no-match.
+                // Said why, so `explain` shows the broken regex instead of an unexplained no-match.
                 Err(error) => {
-                    if config.format == Format::Toml {
-                        rejections.push(Rejection {
-                            verb: index,
-                            reason: format!("bad regex: {error}"),
-                        });
-                    }
+                    rejections.push(Rejection {
+                        verb: index,
+                        reason: format!("bad regex: {error}"),
+                    });
                     continue;
                 }
             };
@@ -202,14 +199,14 @@ impl<'c> Matcher<'c> {
             let pattern = self
                 .pattern(integration, index)
                 .expect("a compiled regex has a pattern");
-            let args = match self.arguments(config.format, &pattern.placeholders, &captures) {
+            let args = match self.arguments(&pattern.placeholders, &captures) {
                 Ok(args) => args,
                 Err(reason) => {
                     rejections.push(Rejection { verb: index, reason });
                     continue;
                 }
             };
-            let outcome = if config.format == Format::Toml && verb.action == "yield" {
+            let outcome = if verb.action == "yield" {
                 Outcome::Yielded { verb: index }
             } else {
                 Outcome::Matched(Match {
@@ -232,30 +229,20 @@ impl<'c> Matcher<'c> {
             .filter(|required| !self.config.integrations.iter().any(|loaded| loaded.stem == *required))
     }
 
-    /// Whether an exact match of the verb would offer something: a TOML `yield` verb only hands the phrase on, and a
-    /// verb whose required integration is not loaded is rejected. Legacy verbs have neither.
-    fn offers_options(&self, format: Format, verb: &schema::Verb) -> bool {
-        !(format == Format::Toml && verb.action == "yield") && self.unmet_requirement(verb).is_none()
+    /// Whether an exact match of the verb would offer something: a `yield` verb only hands the phrase on, and a verb
+    /// whose required integration is not loaded is rejected.
+    fn offers_options(&self, verb: &schema::Verb) -> bool {
+        verb.action != "yield" && self.unmet_requirement(verb).is_none()
     }
 
-    fn arguments(
-        &self,
-        format: Format,
-        placeholders: &[Placeholder],
-        captures: &regex::bytes::Captures,
-    ) -> Result<Vec<Arg>, String> {
+    fn arguments(&self, placeholders: &[Placeholder], captures: &regex::bytes::Captures) -> Result<Vec<Arg>, String> {
         placeholders
             .iter()
             .map(|placeholder| {
                 let words = captures
                     .name(&placeholder.name)
                     .map(|capture| String::from_utf8_lossy(capture.as_bytes()).into_owned());
-                // A legacy verb's capture is its target whatever it holds: the bash integration parsed it.
-                let value = match (&words, format) {
-                    (None, _) => None,
-                    (Some(words), Format::Bash) => Some(words.clone()),
-                    (Some(words), Format::Toml) => Some(self.parse(placeholder, words)?),
-                };
+                let value = words.as_ref().map(|words| self.parse(placeholder, words)).transpose()?;
                 Ok(Arg {
                     name: placeholder.name.clone(),
                     kind: placeholder.kind,
@@ -295,21 +282,15 @@ impl<'c> Matcher<'c> {
     pub fn near_misses(&self, integration: usize, text: &str) -> Vec<(usize, NearMiss)> {
         let config = &self.config.integrations[integration];
         (0..config.verbs.len())
-            .filter(|&index| self.offers_options(config.format, &config.verbs[index]))
+            .filter(|&index| self.offers_options(&config.verbs[index]))
             .filter_map(|index| {
-                let readings = self.verbs[integration][index]
-                    .near_miss
-                    .get_or_init(|| match config.format {
-                        Format::Bash => {
-                            let (source, placeholders) =
-                                pattern::legacy_near_miss_source(&config.verbs[index].pattern, &self.config.intents);
-                            Readings::new(&source, &placeholders)
-                        }
-                        Format::Toml => match self.pattern(integration, index) {
+                let readings =
+                    self.verbs[integration][index]
+                        .near_miss
+                        .get_or_init(|| match self.pattern(integration, index) {
                             Ok(pattern) => Readings::new(&pattern.body, &pattern.placeholders),
                             Err(_) => Readings::unreadable(),
-                        },
-                    });
+                        });
                 readings.best(text).map(|found| (index, found))
             })
             .collect()
@@ -409,7 +390,6 @@ mod tests {
                 line: None,
                 column: None,
                 requires: None,
-                listed: None,
             },
         );
         let matcher = Matcher::new(&config);
@@ -481,7 +461,6 @@ mod tests {
                 line: None,
                 column: None,
                 requires: None,
-                listed: None,
             },
         );
         let matcher = Matcher::new(&config);
@@ -521,7 +500,6 @@ mod tests {
             line: None,
             column: None,
             requires: None,
-            listed: None,
         });
         let matcher = Matcher::new(&config);
         let misses = matcher.near_misses(0, "10 close");

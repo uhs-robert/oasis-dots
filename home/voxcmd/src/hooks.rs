@@ -1,10 +1,8 @@
 //! asking an integration's hooks what a phrase names: a `candidates` lookup and a `surface_open` check
 //!
-//! A TOML integration's hook is a shell string run by `ShellHooks` (1.1 section 2.5): `bash -c` over the integration's
-//! `<stem>.sh` library, the match handed over in `VOXCMD_*` variables, a 3 s deadline, exit 3 meaning "yield". A bash
-//! integration's hook is reached through the bash voxcmd's hidden `_legacy-hook` (a bash start plus sourcing per
-//! call); `Dispatch` picks by the integration's format. The legacy half goes with the bridge (voxcmd-port PR 4); no bash
-//! voxcmd ships any more, so it runs only under a test's stand-in.
+//! An integration's hook is a shell string run by `ShellHooks` (1.1 section 2.5): `bash -c` over the integration's
+//! `<stem>.sh` library, the match handed over in `VOXCMD_*` variables, a 3 s deadline, exit 3 meaning "yield".
+//! `Dispatch` sends an action with a built-in provider to voxcmd's own instead.
 //!
 //! `VOXCMD_INTEGRATION` is the integration's file stem. `VOXCMD_SELF` is the path of the voxcmd that runs the hook: a
 //! hook calls `"$VOXCMD_SELF" util ...` and never a name on PATH.
@@ -13,7 +11,7 @@
 use crate::click::driver::WindowSel;
 use crate::click::explain::ExplainSink;
 use crate::click::provider::BuiltinHooks;
-use crate::config::schema::{Candidates, Format, HelpRows, Integration, Surface};
+use crate::config::schema::{Candidates, HelpRows, Integration, Surface};
 use crate::debug::debug;
 use crate::paths;
 use crate::process;
@@ -23,7 +21,7 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -128,117 +126,6 @@ pub trait Hooks: Sync {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun;
     /// Whether the integration's bar surface is open and takes the phrase before any other integration.
     fn surface_open(&self, integration: &Integration) -> bool;
-}
-
-/// The hooks of the bash integrations, through the bash voxcmd.
-pub struct LegacyHooks {
-    bin: PathBuf,
-    config_dir: PathBuf,
-}
-
-impl LegacyHooks {
-    pub fn new(config_dir: PathBuf) -> Self {
-        Self::with_bin(paths::legacy_bin(), config_dir)
-    }
-
-    pub fn with_bin(bin: PathBuf, config_dir: PathBuf) -> Self {
-        Self { bin, config_dir }
-    }
-
-    pub(crate) fn call(&self, kind: &str, integration: &Integration) -> Command {
-        let mut command = Command::new(&self.bin);
-        command
-            .args(["_legacy-hook", kind])
-            .arg(&integration.file)
-            .env("VOXCMD_CONFIG_DIR", &self.config_dir)
-            .stdin(Stdio::null());
-        command
-    }
-
-    /// What Tab lists in Voice Help for a legacy file: `(action, id, label)` of each entry. A file that lists nothing,
-    /// or a hook that fails, gives none (bash `help_listed ... || true`).
-    pub fn help_entries(&self, integration: &Integration) -> Vec<(String, Candidate)> {
-        let Ok(output) = self.call("help", integration).stderr(Stdio::null()).output() else {
-            return Vec::new();
-        };
-        let Ok(Value::Array(entries)) = serde_json::from_slice::<Value>(&output.stdout) else {
-            return Vec::new();
-        };
-        let field = |entry: &Value, name: &str| entry.get(name).and_then(Value::as_str).unwrap_or_default().to_string();
-        entries
-            .iter()
-            .map(|entry| {
-                let (id, label) = (field(entry, "id"), field(entry, "label"));
-                (field(entry, "action"), Candidate::plain(&id, &label))
-            })
-            .collect()
-    }
-}
-
-impl Hooks for LegacyHooks {
-    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
-        let HookQuery {
-            action,
-            target,
-            raw_transcript,
-            ..
-        } = *query;
-        let shown = format!(
-            "voxcmd _legacy-hook candidates {} {action} {target}",
-            integration.file.display()
-        );
-        if integration.format != Format::Bash {
-            return HookRun::unhooked(integration, action, &shown);
-        }
-        let started = Instant::now();
-        let output = self
-            .call("candidates", integration)
-            .args([action, target])
-            .env("VOXCMD_LEGACY_RAW_TRANSCRIPT", raw_transcript)
-            .stderr(Stdio::piped())
-            .output();
-        let millis = started.elapsed().as_secs_f64() * 1000.0;
-        let mut run = HookRun::unhooked(integration, action, &shown);
-        run.millis = millis;
-        match output {
-            Ok(output) => {
-                run.exit = output.status.code();
-                run.stderr_tail = tail_lines(&String::from_utf8_lossy(&output.stderr), 3);
-                run.lookup = if output.status.success() {
-                    parse_legacy_output(&String::from_utf8_lossy(&output.stdout))
-                } else {
-                    Lookup::Broken
-                };
-            }
-            Err(error) => {
-                run.stderr_tail = vec![format!("{}: {error}", self.bin.display())];
-                run.lookup = Lookup::Broken;
-            }
-        }
-        if let Lookup::Candidates(lines) = &run.lookup {
-            run.lines.clone_from(lines);
-        }
-        if run.lookup == Lookup::Broken {
-            let how = run
-                .exit
-                .map_or_else(|| "did not run".to_string(), |code| format!("exit {code}"));
-            log_failure(integration, &run, run.problem.as_deref().unwrap_or(&how));
-        }
-        run
-    }
-
-    fn surface_open(&self, integration: &Integration) -> bool {
-        match &integration.surface {
-            Some(Surface::LegacyHook) if integration.format == Format::Bash => self
-                .call("surface", integration)
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .is_ok_and(|status| status.success()),
-            Some(Surface::StateFile(path)) => state_file_open(path),
-            _ => false,
-        }
-    }
 }
 
 /// Asks each distinct query once per phrase: routing resolves the same match again in the near-miss pass, and an
@@ -633,19 +520,17 @@ fn shell_quote(text: &str) -> String {
     format!("'{}'", text.replace('\'', r"'\''"))
 }
 
-/// Each integration's hooks by its format: the shell runner for TOML, the bash voxcmd for the bash files. An action
-/// whose candidates come from a built-in provider goes to voxcmd's own, whatever the file's format.
+/// Each integration's hooks: the shell runner, except that an action whose candidates come from a built-in provider
+/// goes to voxcmd's own.
 pub struct Dispatch {
     shell: ShellHooks,
-    legacy: Box<dyn Hooks>,
     builtin: BuiltinHooks,
 }
 
 impl Dispatch {
-    pub fn new(shell: ShellHooks, legacy: Box<dyn Hooks>) -> Self {
+    pub fn new(shell: ShellHooks) -> Self {
         Self {
             shell,
-            legacy,
             builtin: BuiltinHooks::default(),
         }
     }
@@ -655,48 +540,18 @@ impl Dispatch {
         self.builtin = BuiltinHooks::tracing(window, sink);
         self
     }
-
-    fn for_format(&self, integration: &Integration) -> &dyn Hooks {
-        match integration.format {
-            Format::Toml => &self.shell,
-            Format::Bash => self.legacy.as_ref(),
-        }
-    }
 }
 
 impl Hooks for Dispatch {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         match integration.candidates_for(query.action) {
             Some(Candidates::Builtin(_)) => self.builtin.candidates(integration, query),
-            _ => self.for_format(integration).candidates(integration, query),
+            _ => self.shell.candidates(integration, query),
         }
     }
 
     fn surface_open(&self, integration: &Integration) -> bool {
-        self.for_format(integration).surface_open(integration)
-    }
-}
-
-/// Hooks that are never run: the legacy dump was given as a file (`VOXCMD_LEGACY_DUMP_FILE`), so there is no bash
-/// integration to source, and the latency test must not wait on bash.
-pub struct NoHooks;
-
-impl Hooks for NoHooks {
-    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
-        let mut run = HookRun::unhooked(
-            integration,
-            query.action,
-            &format!("(hooks off) candidates {} {}", integration.file.display(), query.target),
-        );
-        if let Some(Candidates::Shell(shell)) = integration.candidates_for(query.action) {
-            run.command.clone_from(shell);
-            run.stderr_tail = vec!["not run: hooks are off".to_string()];
-        }
-        run
-    }
-
-    fn surface_open(&self, _integration: &Integration) -> bool {
-        false
+        self.shell.surface_open(integration)
     }
 }
 
@@ -721,59 +576,9 @@ pub(crate) fn tail_lines(text: &str, count: usize) -> Vec<String> {
         .collect()
 }
 
-/// jq's `tostring`: a string as it is, anything else as compact JSON.
-fn tostring(value: &Value) -> String {
-    match value {
-        Value::String(text) => text.clone(),
-        other => other.to_string(),
-    }
-}
-
-/// jq's truthiness: everything but null and false.
-fn truthy(value: &Value) -> bool {
-    !matches!(value, Value::Null | Value::Bool(false))
-}
-
-/// What the bash router made of a `candidates` function's output: nothing at all is "no hook" (the target is the
-/// id), `[]` is "nothing matches", and a JSON array is read as `map({id, label, match_text})`.
-pub fn parse_legacy_output(stdout: &str) -> Lookup {
-    let text = stdout.trim_end_matches('\n');
-    if text.is_empty() {
-        return Lookup::Unhooked;
-    }
-    let Ok(Value::Array(entries)) = serde_json::from_str::<Value>(text) else {
-        return Lookup::Broken;
-    };
-    let mut candidates = Vec::with_capacity(entries.len());
-    for entry in &entries {
-        let Value::Object(fields) = entry else {
-            return Lookup::Broken;
-        };
-        let id = fields.get("id").unwrap_or(&Value::Null);
-        let label = fields.get("label").filter(|label| truthy(label)).unwrap_or(id);
-        let match_text = fields.get("match_text").filter(|text| truthy(text)).map(tostring);
-        candidates.push(Candidate {
-            id: tostring(id),
-            label: tostring(label),
-            match_text,
-            weak: false,
-        });
-    }
-    Lookup::Candidates(candidates)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn empty_output_is_no_hook_and_brackets_are_no_candidates() {
-        assert_eq!(parse_legacy_output(""), Lookup::Unhooked);
-        assert_eq!(parse_legacy_output("\n\n"), Lookup::Unhooked);
-        assert_eq!(parse_legacy_output("[]\n"), Lookup::Candidates(Vec::new()));
-        assert_eq!(parse_legacy_output("not json"), Lookup::Broken);
-        assert_eq!(parse_legacy_output("{}"), Lookup::Broken);
-    }
 
     #[test]
     fn a_help_list_allows_an_empty_id_and_skips_a_whitespace_only_line() {
@@ -783,34 +588,6 @@ mod tests {
             vec![Candidate::plain("", "Exit submap"), Candidate::plain("real", "Real")]
         );
         assert!(parse_lines("\tExit submap\n").is_err());
-    }
-
-    #[test]
-    fn the_bridge_passes_the_action_target_and_raw_transcript_to_the_bash_voxcmd() {
-        let dir = tempfile::tempdir().unwrap();
-        let bin = crate::ask::tests::script(
-            dir.path(),
-            "voxcmd",
-            "[ \"$1 $2\" = '_legacy-hook candidates' ] || exit 9\n\
-             printf '[{\"id\": \"%s|%s\", \"label\": \"%s\"}]' \"$4\" \"$5\" \"$VOXCMD_LEGACY_RAW_TRANSCRIPT\"",
-        );
-        let hooks = LegacyHooks::with_bin(bin, dir.path().to_path_buf());
-        let toml = "name = \"Search\"\nverbs = []\n";
-        let mut integration = crate::config::schema::parse_toml(std::path::Path::new("search.toml"), toml).unwrap();
-        integration.format = Format::Bash;
-        let query = HookQuery {
-            action: "find",
-            target: "tea cup",
-            args: &[],
-            phrase: "find tea cup",
-            raw_transcript: "Find Tea Cup",
-        };
-        let run = hooks.candidates(&integration, &query);
-        assert_eq!(run.exit, Some(0));
-        assert_eq!(
-            run.lookup,
-            Lookup::Candidates(vec![Candidate::plain("find|tea cup", "Find Tea Cup")])
-        );
     }
 
     // ---- the shell runner ----
@@ -1140,28 +917,5 @@ mod tests {
         let run = fixture(r"sleep 3 & printf 'a\tA\n'", None, None).ask("go tea");
         assert_eq!(run.lookup, Lookup::Candidates(vec![Candidate::plain("a", "A")]));
         assert!(run.millis < 1000.0, "{}", run.millis);
-    }
-
-    #[test]
-    fn candidates_are_read_as_the_bash_jq_read_them() {
-        let lookup = parse_legacy_output(
-            r#"[{"id": 8, "label": "Help"}, {"id": "a"}, {"id": "b", "label": false, "match_text": "bee"}, {"label": "x", "match_text": null}]"#,
-        );
-        let Lookup::Candidates(found) = lookup else {
-            panic!("{lookup:?}")
-        };
-        let flat: Vec<(&str, &str, Option<&str>)> = found
-            .iter()
-            .map(|c| (c.id.as_str(), c.label.as_str(), c.match_text.as_deref()))
-            .collect();
-        assert_eq!(
-            flat,
-            [
-                ("8", "Help", None),
-                ("a", "a", None),
-                ("b", "b", Some("bee")),
-                ("null", "x", None)
-            ]
-        );
     }
 }

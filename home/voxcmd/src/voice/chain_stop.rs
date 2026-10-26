@@ -13,7 +13,7 @@ use crate::debug::debug;
 use crate::exit::CliError;
 use crate::paths;
 use crate::process;
-use crate::session::{SessionLock, bridge, dictation, text_of};
+use crate::session::{SessionLock, dictation, text_of};
 use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, Stdio};
 
@@ -69,7 +69,6 @@ pub fn start(recording: &str, settings: &str) {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
-    bridge::clear_hook_env(&mut command);
     process::hear_stop_signals(&mut command);
     // Not waited for, as bash's `&` was not: this process exits right after.
     if let Err(error) = command.spawn() {

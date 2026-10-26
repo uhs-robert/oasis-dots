@@ -1,6 +1,6 @@
 //! `integrations list`: every integration and its verbs, in routing order
 use super::Config;
-use super::schema::{Format, Integration, Surface};
+use super::schema::{Integration, Surface};
 use crate::exit::CliError;
 use crate::route::pattern;
 use serde::Serialize;
@@ -46,8 +46,7 @@ pub fn run(json: bool) -> Result<Option<String>, CliError> {
     Ok(Some(text(&config.integrations)))
 }
 
-/// Byte for byte what the bash `voxcmd list` prints, including its blank verb line for a file with no verbs (printf
-/// with an empty array still prints its format once).
+/// One line per integration, then one per verb; a file with no verbs gets a blank verb line.
 fn text(integrations: &[Integration]) -> String {
     let mut lines = Vec::new();
     for integration in integrations {
@@ -64,14 +63,12 @@ fn text(integrations: &[Integration]) -> String {
         if integration.verbs.is_empty() {
             lines.push("  ".to_string());
         }
-        lines.extend(integration.verbs.iter().map(|verb| {
-            format!(
-                "  {}",
-                verb.listed
-                    .clone()
-                    .unwrap_or_else(|| format!("{} {}", verb.action, verb.pattern))
-            )
-        }));
+        lines.extend(
+            integration
+                .verbs
+                .iter()
+                .map(|verb| format!("  {} {}", verb.action, verb.pattern)),
+        );
     }
     lines.join("\n")
 }
@@ -82,12 +79,11 @@ fn summary(dir: &Path, integration: &Integration, config: &Config) -> Integratio
         name: integration.name.clone(),
         stem: integration.stem.clone(),
         file: relative(dir, &integration.file),
-        hook_file: (integration.format == Format::Toml && hook_file.is_file()).then(|| relative(dir, &hook_file)),
+        hook_file: hook_file.is_file().then(|| relative(dir, &hook_file)),
         fallback: integration.tier == super::schema::Tier::Fallback,
         force_prefixes: integration.force_prefixes.clone(),
         surface: integration.surface.as_ref().map(|surface| match surface {
             Surface::StateFile(path) => path.display().to_string(),
-            Surface::LegacyHook => "surface_open".to_string(),
         }),
         mode: integration.mode.as_ref().map(|mode| mode.label.clone()),
         verbs: integration

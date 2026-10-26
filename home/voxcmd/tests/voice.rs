@@ -557,10 +557,28 @@ fn listen_clears_a_session_whose_owner_died_and_routes() {
 
 // ---- stop and session end ---------------------------------------------------------------------------------------
 
+/// A mode `stem` whose `ended` hook is `ended`; returns its file, as a session names it.
+fn mode_file(voice: &Voice, stem: &str, ended: &str) -> String {
+    let file = voice.path().join(format!("config/integrations/{stem}.toml"));
+    std::fs::write(
+        &file,
+        format!("verbs = []\n[mode]\nlabel = \"{stem}\"\nended = '{ended}'\n"),
+    )
+    .unwrap();
+    file.display().to_string()
+}
+
+/// A click mode over a rapid mode, whose `ended` hooks log `reason frame continues` to `work/ended`.
 fn open_session(voice: &Voice, owner: &Child, extra: serde_json::Value) {
-    let mut session = serde_json::json!({"kind": "click", "integration": "/i/click.sh", "label": "Click mode",
+    let log = r#"echo "$VOXCMD_MODE_END_REASON $VOXCMD_MODE_FRAME_ID $VOXCMD_MODE_CONTINUES" >> "$WORK/ended""#;
+    open_session_with(voice, owner, extra, log);
+}
+
+fn open_session_with(voice: &Voice, owner: &Child, extra: serde_json::Value, ended: &str) {
+    let (click, rapid) = (mode_file(voice, "click", ended), mode_file(voice, "rapid", ended));
+    let mut session = serde_json::json!({"kind": "click", "integration": click, "label": "Click mode",
         "frame_id": "2", "owner": owner.id(), "owner_start": start_time_of(owner.id()),
-        "stack": [{"kind": "rapid", "integration": "/i/rapid.sh", "label": "Rapid mode", "frame_id": "1"}]});
+        "stack": [{"kind": "rapid", "integration": rapid, "label": "Rapid mode", "frame_id": "1"}]});
     session
         .as_object_mut()
         .unwrap()
@@ -601,22 +619,16 @@ fn stop_ends_the_session_the_sequences_the_ask_and_the_recording() {
         "{calls}"
     );
     assert!(calls.contains("voxtype record cancel\n"));
-    assert!(wait_for(|| voice.calls().contains("_legacy-hook ended /i/rapid.sh")));
-    let hooks: Vec<_> = voice
-        .calls()
+    assert!(wait_for(|| {
+        std::fs::read_to_string(voice.work("ended")).is_ok_and(|ended| ended.lines().count() == 2)
+    }));
+    let mut ended: Vec<_> = std::fs::read_to_string(voice.work("ended"))
+        .unwrap()
         .lines()
-        .filter(|line| line.contains("_legacy-hook"))
         .map(str::to_string)
         .collect();
-    let mut hooks_sorted = hooks.clone();
-    hooks_sorted.sort();
-    assert_eq!(
-        hooks_sorted,
-        [
-            "bash voxcmd _legacy-hook ended /i/click.sh stopped 2 0",
-            "bash voxcmd _legacy-hook ended /i/rapid.sh stopped 1 0"
-        ]
-    );
+    ended.sort();
+    assert_eq!(ended, ["stopped 1 0", "stopped 2 0"]);
     assert_eq!(voice.debug_log().matches("session: ended hook ").count(), 2);
     assert!(voice.debug_log().contains("session ended: stopped"));
 }
@@ -650,12 +662,13 @@ fn stop_with_nothing_open_does_nothing() {
 #[test]
 fn an_ended_hook_never_gets_the_caller_s_stdin() {
     let voice = Voice::new();
-    voice.script(
-        "legacy/voxcmd",
-        &format!("readlink /proc/$$/fd/0 >> '{}'", voice.work("hook-stdin").display()),
-    );
     let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
-    open_session(&voice, &owner, serde_json::json!({}));
+    open_session_with(
+        &voice,
+        &owner,
+        serde_json::json!({}),
+        r#"readlink /proc/$$/fd/0 >> "$WORK/hook-stdin""#,
+    );
     let mut ending = voice
         .command(&["session", "end"])
         .stdin(Stdio::piped())
