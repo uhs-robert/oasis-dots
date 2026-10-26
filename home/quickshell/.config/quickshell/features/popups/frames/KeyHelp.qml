@@ -20,8 +20,6 @@ Item {
     property var general: null
     // Off outside popups (the screenshot selector): no popup keys listed, and q/Esc only close the help.
     property bool popup_keys: true
-    // False for a surface outside the bar's popup order (Settings), where Ctrl+H/L walk nowhere.
-    property bool walks: true
     signal back()
     signal close_requested()
 
@@ -37,7 +35,7 @@ Item {
         }
         if (root.has_views) e.push({ key: "Tab", desc: "views" });
         if (root.searchable) e.push({ key: "/", desc: "search" }, { key: "n/N", desc: "next/prev match" });
-        if (root.walks) e.push({ key: "Ctrl+h/l", desc: "prev/next module" });
+        e.push({ key: "Ctrl+h/l", desc: "prev/next module" });
         e.push({ key: "?", desc: "help" }, { key: "Backspace", desc: Popups.back_name !== "" ? "back to " + Popups.back_name : "back" }, { key: "q/Esc", desc: "close" });
         return e.filter(g => root.own_keys.indexOf(g.key) < 0);
     }
