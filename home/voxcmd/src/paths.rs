@@ -60,15 +60,26 @@ pub fn voxtype_state() -> PathBuf {
     user_runtime_dir().join("voxtype/state")
 }
 
-/// The directory of voxcmd's shared scripts (`spoken-time.sh` and the like), which hooks find as `$VOXCMD_SHARE_DIR`:
-/// `$VOXCMD_SHARE_DIR`, else `share/voxcmd` beside the `bin` of the legacy voxcmd, as the bash script finds it.
+/// The checkout this binary was built from: where its shared scripts and the Python helpers live, so the live build
+/// finds them whatever else is (or is not) installed in `~/.local/bin`.
+const BUILT_FROM: &str = env!("CARGO_MANIFEST_DIR");
+
+/// The directory of voxcmd's shared scripts (`spoken-time.sh` and the like), which hooks find as `$VOXCMD_SHARE_DIR`.
 pub fn share_dir() -> PathBuf {
-    env_dir("VOXCMD_SHARE_DIR").unwrap_or_else(|| {
-        legacy_bin()
+    share_dir_from(env_dir("VOXCMD_SHARE_DIR"), env_dir("VOXCMD_LEGACY_BIN"))
+}
+
+/// `share_override`, else `share/voxcmd` beside the `bin` of `legacy_override`, else the built-from checkout's. The
+/// suites set `VOXCMD_LEGACY_BIN` to a stand-in so its neighbours are found; nothing live does, so nothing live needs
+/// the bash script to exist.
+fn share_dir_from(share_override: Option<PathBuf>, legacy_override: Option<PathBuf>) -> PathBuf {
+    share_override.unwrap_or_else(|| match legacy_override {
+        Some(bin) => bin
             .parent()
             .and_then(std::path::Path::parent)
             .unwrap_or(std::path::Path::new("/"))
-            .join("share/voxcmd")
+            .join("share/voxcmd"),
+        None => PathBuf::from(BUILT_FROM).join(".local/share/voxcmd"),
     })
 }
 
@@ -140,10 +151,51 @@ pub fn threshold_file(pid: u32) -> PathBuf {
     runtime_dir().join(format!("threshold.{pid}"))
 }
 
-/// The speech detector that ends a recording after a pause (Python until voxcmd-port 4.2), beside the bash voxcmd.
+/// The speech detector that ends a recording after a pause (Python until voxcmd-port 4.2).
 pub fn autostop() -> PathBuf {
-    legacy_bin()
-        .parent()
-        .unwrap_or(std::path::Path::new("/"))
-        .join("voxcmd-autostop")
+    autostop_from(env_dir("VOXCMD_LEGACY_BIN"))
+}
+
+/// Beside `legacy_override` (the suites' stand-in), else in the built-from checkout.
+fn autostop_from(legacy_override: Option<PathBuf>) -> PathBuf {
+    match legacy_override {
+        Some(bin) => bin
+            .parent()
+            .unwrap_or(std::path::Path::new("/"))
+            .join("voxcmd-autostop"),
+        None => PathBuf::from(BUILT_FROM).join(".local/bin/voxcmd-autostop"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn share_dir_and_autostop_come_from_the_checkout_not_the_bash_script() {
+        let root = PathBuf::from(BUILT_FROM);
+        assert_eq!(share_dir_from(None, None), root.join(".local/share/voxcmd"));
+        assert_eq!(autostop_from(None), root.join(".local/bin/voxcmd-autostop"));
+    }
+
+    #[test]
+    fn a_stand_in_legacy_bin_still_places_its_neighbours() {
+        let legacy = Some(PathBuf::from("/copy/.local/bin/voxcmd"));
+        assert_eq!(
+            share_dir_from(None, legacy.clone()),
+            PathBuf::from("/copy/.local/share/voxcmd")
+        );
+        assert_eq!(autostop_from(legacy), PathBuf::from("/copy/.local/bin/voxcmd-autostop"));
+    }
+
+    #[test]
+    fn an_explicit_share_dir_wins() {
+        assert_eq!(
+            share_dir_from(
+                Some(PathBuf::from("/share")),
+                Some(PathBuf::from("/copy/.local/bin/voxcmd"))
+            ),
+            PathBuf::from("/share")
+        );
+    }
 }

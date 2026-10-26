@@ -166,6 +166,9 @@ if grep -q '^home/systemd/\.config/systemd/user/' <<<"$changed"; then
   systemctl --user daemon-reload 9>&- || die "systemctl --user daemon-reload failed"
   echo "ship-batch: reloaded the user units"
 fi
+# After the restows (the rebuild reads the stowed checkout) and before any restart, a warning in the run's output rather
+# than a failure: the merge has landed either way.
+rebuild_crates "$repo" "$changed"
 # A pull that only edits files restows nothing, so a migration the merge added or changed would never run on its own. Run
 # before the restart and, when the bar is restarted, again with the old bar gone: a migration that deletes an old file
 # waits for a run with no bar up (see lib/install/migrate.sh), and the relaunched bar would count as one.

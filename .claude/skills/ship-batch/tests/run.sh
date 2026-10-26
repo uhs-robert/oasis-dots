@@ -221,6 +221,7 @@ if [[ \$1 == migrate-quickshell-state ]]; then
   echo "migrate bar \$bar" >>"\$SHIP_LOG"
   [[ -z \${STUB_MIGRATE_STATUS:-} || ( -n \${STUB_MIGRATE_ONLY_DOWN:-} && \$bar == up ) ]] || exit "\$STUB_MIGRATE_STATUS"
 fi
+[[ \$1 != voxcmd-build || -z \${STUB_VOXCMD_BUILD_STATUS:-} ]] || exit "\$STUB_VOXCMD_BUILD_STATUS"
 exit \${STUB_JUST_STATUS:-0}
 STUB
 cat >"$stubs/notify-send" <<STUB
@@ -468,6 +469,34 @@ survive_rc=$?
 rm -f "$e2e/pkill_survives"
 check "a bar that survives pkill skips the second pass, says so and does not fail" "[[ $survive_rc == 0 && \$(migrate_count) == 1 ]] && ! logged 'migrate bar down' && grep -q 'the old bar was still running, so migration cleanup was skipped' '$e2e/out'"
 check "and the bar is still relaunched" "(( \$(dispatch_line) > 0 )) && grep -q 'restarted the stowed bar' '$e2e/out'"
+
+echo "== a merge that touches the voxcmd crate rebuilds the installed voxcmd"
+build_count() { grep -c '^just voxcmd-build' "$SHIP_LOG"; }
+migrate_ship home/voxcmd/src/paths.rs
+check "a source edit runs just voxcmd-build, under the lock" "[[ $? == 0 && \$(build_count) == 1 ]] && logged 'just voxcmd-build held' && grep -q 'ran just voxcmd-build' '$e2e/out'"
+check "without the ship lock's descriptor" "! logged 'just fd9 leaked'"
+for path in home/voxcmd/Cargo.toml home/voxcmd/Cargo.lock; do
+  migrate_ship "$path"
+  check "$path runs it too" "[[ $? == 0 && \$(build_count) == 1 ]]"
+done
+for path in home/voxcmd/tests/run.sh home/voxcmd/.config/voxcmd/integrations/timers.sh home/voxcmd/.local/bin/voxcmd-wake home/voxcmdish/src/x.rs home/oasis-djinn/src/main.rs; do
+  migrate_ship "$path"
+  check "$path does not" "[[ $? == 0 && \$(build_count) == 0 ]]"
+done
+e2e_setup
+echo changed >"$e2e/wt-1/README.md"
+g -C "$e2e/wt-1" add -A
+g -C "$e2e/wt-1" commit -q -m docs
+env XDG_RUNTIME_DIR="$owner_run" HOME="$fake_home" PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/out" 2>&1
+check "a merge touching no crate builds nothing" "[[ \$(build_count) == 0 ]] && ! grep -q 'voxcmd-build' '$e2e/out'"
+env XDG_RUNTIME_DIR="$owner_run" HOME="$fake_home" PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" >"$e2e/out" 2>&1
+check "a run with nothing merged builds nothing" "[[ \$(build_count) == 0 ]]"
+STUB_VOXCMD_BUILD_STATUS=1 migrate_ship home/voxcmd/src/paths.rs
+build_rc=$?
+check "a failing build does not fail the merge" "[[ $build_rc == 0 ]] && grep -q 'merge ' '$SHIP_LOG'"
+check "it warns loudly with the command to rerun" "grep -q 'WARNING: just voxcmd-build failed' '$e2e/out' && grep -q 'run: just voxcmd-build' '$e2e/out'"
+check "and sends a critical notification" "grep -q 'notify-send --urgency=critical.*just voxcmd-build failed' '$SHIP_LOG'"
+check "the rest of the run still happens: base settled, lock free" "[[ ! -e \$(base_file '$e2e/main') ]] && flock -n '$SHIP_LOCK' true"
 
 echo "== the bar restart reads the lock state"
 # The stub qs-ipc answers with line N of $e2e/answers on its Nth call and repeats the last line after that. ship-batch

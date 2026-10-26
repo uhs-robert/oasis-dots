@@ -53,23 +53,14 @@ cancel_candidates() {
 # Every timer is due at a wall-clock time, timers included: --on-active counts on the monotonic clock, which stops
 # while the machine sleeps, so a 20 minute timer across a suspend would ring late. A calendar time already past on
 # resume fires at once.
-# The unit runs voxcmd-alarm (a critical notification and the style's alarm sound) by absolute path, resolved
-# here, so the user manager's PATH does not matter. Without it (voxcmd not restowed) the notification still
-# shows, silently.
+# The unit rings through `timer ring` of the voxcmd running this hook (a critical notification and the style's alarm
+# sound), by absolute path, so the user manager's PATH does not matter.
 schedule() {
-  local kind="$1" text="$2" due="$3" path unit ringer=()
-  if path=$(command -v voxcmd-alarm); then
-    ringer=("$path")
-  elif path=$(command -v notify-send); then
-    ringer=("$path" --urgency=critical --app-name=voxcmd)
-  else
-    echo "notify-send is not installed"
-    return 1
-  fi
+  local kind="$1" text="$2" due="$3" unit
   unit="$unit_prefix$(date +%s%N | cut -c1-13)"
   systemd-run --user --quiet --collect --unit="$unit" --description="$kind: $text" \
     --on-calendar="$(date -d "@$due" '+%Y-%m-%d %H:%M:%S')" --timer-property=AccuracySec=1s \
-    -- "${ringer[@]}" "$kind" "$text"
+    -- "$VOXCMD_SELF" timer ring "$kind" "$text"
 }
 
 # A duration ("5 minutes for the pasta", "in 5 minutes"), or else a clock time ("3 pm", "noon tomorrow") to ring at.
