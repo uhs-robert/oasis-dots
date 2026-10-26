@@ -62,8 +62,9 @@ BarModule {
             cross: root.cross
             full_text: root.has_data ? Math.round(root.current.temp) + "°" + WeatherState.unit_symbol() : WeatherState.failed ? "n/a" : "--°"
             short_text: root.has_data ? Math.round(root.current.temp) + "°" : ""
-            full_template: "-88°" + WeatherState.unit_symbol()
-            short_template: "-88°"
+            // Three digits are wider than "-88" in a proportional font; 104°F is real.
+            full_template: "100°" + WeatherState.unit_symbol()
+            short_template: "100°"
             color: root.has_data ? WeatherState.temp_color(root.current.temp) : WeatherState.failed ? Theme.warning : Theme.fg_dim
         }
 

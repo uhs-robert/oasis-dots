@@ -15,13 +15,13 @@ Text {
     property string full_text: ""
     property string short_text: ""
     property string full_template: ""
-    // Empty when there is no short form: the text then only shrinks.
+    // Empty when there is no short form: the text then only shrinks. So does a short_text that is empty right now (weather with no data), which keeps its placeholder.
     property string short_template: ""
     property int base_size: Style.bar_font_size
     property int min_size: VerticalLayout.min_text_px
 
     // Sized by hand rather than fontSizeMode: Fit would need a height to fit and never reports which text it settled on.
-    readonly property var fit: VerticalLayout.fit_text(root.metric(full_probe, root.full_template), root.short_template !== "" ? root.metric(short_probe, root.short_template) : null, root.cross, root.base_size, root.min_size)
+    readonly property var fit: VerticalLayout.fit_text(root.metric(full_probe, root.full_template), root.short_template !== "" && root.short_text !== "" ? root.metric(short_probe, root.short_template) : null, root.cross, root.base_size, root.min_size)
     readonly property bool shows_short: root.vertical && root.fit.short
     readonly property string shown_text: root.shows_short ? root.short_text : root.full_text
 
