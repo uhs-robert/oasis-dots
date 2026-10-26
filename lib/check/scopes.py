@@ -297,6 +297,7 @@ STEPS = [
     Step("cava-viewers", "node", "node ./home/quickshell/tests/cava_viewers.js", ("node",), skip_reason="the cava viewer tests need node"),
     Step("hover-popup", "node", "node ./home/quickshell/tests/hover_popup.js", ("node",), skip_reason="the hover popup tests need node"),
     Step("position-poll", "node", "node ./home/quickshell/tests/position_poll.js", ("node",), skip_reason="the position poll tests need node"),
+    Step("media-text", "node", "node ./home/quickshell/tests/media_text.js", ("node",), skip_reason="the media text tests need node"),
     Step("media-settings", "node", "node ./home/quickshell/tests/media_settings.js", ("node",), skip_reason="the media settings tests need node"),
     Step("bar-layout", "node", "node ./home/quickshell/tests/bar_layout.js", ("node",), skip_reason="the bar layout tests need node"),
     Step("bar-vertical", "node", "node ./home/quickshell/tests/bar_vertical.js", ("node",), skip_reason="the bar vertical tests need node"),
