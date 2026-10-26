@@ -23,6 +23,10 @@ Settings > Clock sets the time format and the calendar's first day of week. Time
 
 Settings > Style > OSD edge picks the edge the volume, brightness and voice OSD comes out of: opposite the bar (the default), the left edge or the right edge, the same on every monitor. On a side edge it sits centred, with the same panel as on top or bottom. It saves to `osd.json` in the Quickshell state folder.
 
+## Flush single windows
+
+Settings > Style > Flush single windows decides whether a lone window sits flush against the screen frame (off, it keeps the gaps and rounding of any other window). It is one setting for every style, saved as `flush_single` in `style.json`, and only applies while the current style's Screen frame is on; with it off the row says so and keeps its value. Hyprland gets it through `ScreenFrameSync`.
+
 ## Input settings
 
 Settings > Input > Typing picks the mode pickers, settings lists and type-to-search popups open in: INSERT (the default) to start typing at once, or NORMAL to start on the vim keys, where `i` or `/` starts typing. The HyprVim prompt always opens in INSERT, the clipboard's delete mode always in NORMAL, and the lock and greeter keep their own model. Remember last search refills each picker and settings list with its last query until the shell restarts. These save to `typing.json` in the Quickshell state folder (older versions called it `input.json`; the installer copies it). Which-key delay sets how long a leader key waits before its overlay shows; it is HyprVim's `which_key.delay_ms`, read once at setup, so changing it reloads Hyprland.

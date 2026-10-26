@@ -1,5 +1,5 @@
 // Runs IslandOutlines.js's fill-less helpers, BandGeometry.js and FrameGeometry.js under node, and checks every Style.island_shapes
-// entry and Style.screen_frames entry has a kit and a label.
+// entry and Style.frame_corners entry has a kit and a label.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -210,7 +210,7 @@ for (const s of strip_kits) {
   if (shapes.indexOf(s) < 0) { failed++; console.log("FAIL strip kit " + s + " is not in island_shapes"); }
 }
 
-// Every screen frame but "" (none) is one of the corner profiles and has a settings label; they share one kit frame_layout can measure.
+// Every corner profile has a settings label; they share one kit frame_layout can measure.
 
 let frame_checks = 0;
 const expect = (ok, message) => {
@@ -219,19 +219,20 @@ const expect = (ok, message) => {
 };
 const frame_corners = JSON.parse(style.match(/frame_corners: (\[[^\]]*\])/)[1]);
 const frame_kit = vm.runInNewContext(style.match(/plain_frame_kit: (\(\{[^}]*\}\))/)[1]);
-const frame_labels = style.slice(style.indexOf("borrow_names")).match(/screen_frame: \{([^}]*)\}/)[1];
+const frame_labels = style.slice(style.indexOf("borrow_names")).match(/corner_style: \{([^}]*)\}/)[1];
 expect(["radius", "thickness"].every(k => typeof frame_kit[k] === "number"), "no usable plain_frame_kit");
-expect(/screen_frames: \[""\]\.concat\(root\.frame_corners\)/.test(style), "screen_frames is not Off plus the corner profiles");
-for (const f of [""].concat(frame_corners)) {
-  expect(new RegExp((f === "" ? '""' : "\\b" + f) + ": \"").test(frame_labels), "no label for screen frame " + JSON.stringify(f));
+expect(!/screen_frames/.test(style), "Style still has the old screen_frames list");
+for (const f of frame_corners) {
+  expect(new RegExp("\\b" + f + ": \"").test(frame_labels), "no label for corner style " + JSON.stringify(f));
 }
 // Lualine takes the frame like any style: frame_kit_for evaluated from the QML source.
 const FT = vm.createContext({});
 vm.runInContext(read("theme/FrameTokens.js").replace(/^\.pragma.*$/gm, ""), FT);
 const kit_for = vm.runInNewContext("(function(root) { return function" + style.match(/function frame_kit_for(\([^)]*\) \{[^}]*\})/)[1] + "; })", { FrameTokens: FT })({ frame_corners, plain_frame_kit: frame_kit });
-expect(kit_for({ bar_lualine: true, screen_frame: "pixel" }) !== null, "a lualine style with a frame corner gets no frame kit");
-expect(kit_for({ bar_lualine: true, screen_frame: "" }) === null, "a lualine style with no frame corner gets a kit");
-expect(kit_for({ screen_frame: "round", screen_frame_offered: false }) === null, "screen_frame_offered false does not opt out");
+expect(kit_for({ bar_lualine: true, screen_frame: true }) !== null, "a lualine style with the frame on gets no frame kit");
+expect(kit_for({ bar_lualine: true, screen_frame: false }) === null, "a lualine style with the frame off gets a kit");
+expect(kit_for({ screen_frame: true, screen_frame_offered: false }) === null, "screen_frame_offered false does not opt out");
+expect(kit_for({ screen_frame: false, corner_style: "chamfer" }) === null, "a corner style alone gives a frame kit");
 // Each style's corner hint is a profile.
 for (const dir of fs.readdirSync(path.join(root, "styles"), { withFileTypes: true }).filter(d => d.isDirectory())) {
   const tokens_path = path.join(root, "styles", dir.name, "tokens.js");
@@ -241,7 +242,8 @@ for (const dir of fs.readdirSync(path.join(root, "styles"), { withFileTypes: tru
   }
 }
 
-// Style.load_options turns a v2 "plain" frame into a corner before checking the row's choices, and stamps version 3.
+// Style.load_options turns a v2 "plain" frame into a corner before checking the row's choices, then (version 4) splits a
+// saved corner into frame On plus a Corner style, and moves the per-style flush to the global setting.
 const M = vm.createContext({});
 vm.runInContext(read("theme/OptionMigrations.js").replace(/^\.pragma.*$/gm, ""), M);
 const plain_to = (saved, hint) => M.screen_frame_from_plain(saved, hint, frame_corners);
@@ -256,27 +258,144 @@ for (const [name, got, want] of [
   expect(got === want, "migration: " + name + ": got " + got + ", want " + want);
 }
 const load = style.slice(style.indexOf("function load_options"));
-expect(/options_version: 3/.test(style), "options_version is not 3");
+expect(/options_version: 4/.test(style), "options_version is not 4");
 expect(load.indexOf("screen_frame_from_plain") > 0 && load.indexOf("screen_frame_from_plain") < load.indexOf("valid_option"), "the frame migration does not run before valid_option");
+expect(load.indexOf("frame_to_bool") > load.indexOf("screen_frame_from_plain") && load.indexOf("frame_to_bool") < load.indexOf("valid_option"), "the frame split does not run after plain and before valid_option");
 
-// Runs the real load_options on saved files: each migration applies only below the version that introduced it.
-const load_saved = data => {
-  const root = { theme_values: null, frame_corners, renamed_island_shapes: { octagon: "watch" }, styles: { modern: {} },
-    settings_for: () => [{ key: "bar_island_shape", default: "slant" }, { key: "screen_frame", default: "" }],
-    valid_option: () => true, save_options: () => {} };
-  const body = load.slice(0, load.indexOf("\n    }\n") + 6).replace(/^function load_options/, "(function");
-  vm.runInNewContext(body + ")", { root, Migrations: M })(data);
-  return plain(root.theme_values.modern || {});
+// The settings rows load_options checks values against: the real settings_for source, so the bool Screen frame (default
+// off) and the Corner style row are the ones the app builds. Stubbed styles carry the natural corners of the real ones.
+const natural = { goldeneye: "round", ps2: "round", ff7: "round", gameboy: "pixel", tie: "chamfer", reticle: "square", terminal: "round", modern: "round" };
+const style_tokens = name => ({ screen_frame_corners: natural[name], screen_frame_only: name === "terminal" ? "square" : "" });
+const settings_src = style.slice(style.indexOf("    function settings_for"), style.indexOf("    // The value of option `key`"));
+const option_default_src = style.match(/function option_default(\(def\) \{[^}]*\})/)[1];
+const make_root = () => {
+  const r = { theme_values: {}, frame_corners, renamed_island_shapes: { octagon: "watch" }, flush_single: true, saves: 0, options_saves: 0,
+    styles: Object.fromEntries(Object.keys(natural).map(n => [n, Object.assign({ bar_island_shape: "slant", bar_lualine: false }, style_tokens(n))])),
+    state_read: true, flush_unsaved: false, island_shape_filled: () => true, island_shapes: ["slant", "octagon", "watch", "full"], picker_skins: [], overview_skins: [], osd_layouts: [], weather_layouts: [], keeptabs_layouts: [], done_anims: [], wait_anims: [], toast_enters: [], workspace_arts: [], bar_icon_sets: [], bar_meeting_markers: [], font_choices: [],
+    borrow_labels: () => ({}), frame_kit_for: t => (FT.frame_on(t) ? frame_kit : null), plain_frame_kit: frame_kit };
+  r.save = () => { r.saves++; };
+  r.save_options = () => { r.options_saves++; };
+  const fns = vm.runInNewContext("(function(root, FrameTokens, Qt) { return { settings_for: function" + settings_src.match(/function settings_for(\([^]*)/)[1].replace(/\n    \}\n[^]*$/, "\n    }") + ", option_default: function" + option_default_src + ", valid_option: function" + style.match(/function valid_option(\([^]*?\n    \})/)[1] + " }; })", {})(r, FT, { color: () => ({ a: 1 }) });
+  Object.assign(r, fns);
+  r.carry_flush_off = () => { r.flush_single = false; r.save(); };
+  return r;
 };
-const saved_modern = (version, values) => load_saved({ version, modern: values });
+// Runs the real load_options on saved files.
+const run_load = data => {
+  const r = make_root();
+  const body = load.slice(0, load.indexOf("\n    }\n") + 6).replace(/^function load_options/, "(function");
+  vm.runInNewContext(body + ")", { root: r, Migrations: M })(data);
+  return r;
+};
+const load_saved = data => plain(run_load(data).theme_values);
+const saved_of = (data, name) => load_saved(data)[name] || {};
+// What the shell then draws: the saved options laid over the style, as Style.active does.
+const effective = (data, name) => {
+  const r = run_load(data);
+  const tokens = Object.assign({}, r.styles[name], r.theme_values[name] || {});
+  return { frame: FT.frame_on(tokens), corner: FT.corner_of(tokens, frame_corners) };
+};
 for (const [name, got, want] of [
-  ["a version 2 file keeps a chosen octagon", saved_modern(2, { bar_island_shape: "octagon" }).bar_island_shape, "octagon"],
-  ["a version 1 file renames octagon to watch", saved_modern(1, { bar_island_shape: "octagon" }).bar_island_shape, "watch"],
-  ["a file without a version renames octagon to watch", saved_modern(undefined, { bar_island_shape: "octagon" }).bar_island_shape, "watch"],
-  ["a version 2 file turns plain into a corner", saved_modern(2, { screen_frame: "plain", screen_frame_corners: "chamfer" }).screen_frame, "chamfer"],
-  ["a version 3 file leaves plain alone", saved_modern(3, { screen_frame: "plain" }).screen_frame, "plain"],
+  ["a version 2 file keeps a chosen octagon", saved_of({ version: 2, modern: { bar_island_shape: "octagon" } }, "modern").bar_island_shape, "octagon"],
+  ["a version 1 file renames octagon to watch", saved_of({ version: 1, modern: { bar_island_shape: "octagon" } }, "modern").bar_island_shape, "watch"],
+  ["a file without a version renames octagon to watch", saved_of({ modern: { bar_island_shape: "octagon" } }, "modern").bar_island_shape, "watch"],
+  ["a version 2 file turns plain into a corner", effective({ version: 2, modern: { screen_frame: "plain", screen_frame_corners: "chamfer" } }, "modern").corner, "chamfer"],
+  ["a version 2 plain frame is on", effective({ version: 2, modern: { screen_frame: "plain" } }, "modern").frame, true],
+  ["a version 3 file leaves plain alone", effective({ version: 3, modern: { screen_frame: "plain" } }, "modern").frame, false],
 ]) {
   expect(got === want, "load_options: " + name + ": got " + got + ", want " + want);
+}
+
+// The owner's saved v3 file (theme_options.json) migrates with every corner kept and every frame on, and the file is
+// rewritten at version 4 with nothing of the old keys left.
+const owner_v3 = () => ({ version: 3, goldeneye: { screen_frame: "chamfer" }, ps2: { screen_frame: "round" }, ff7: { screen_frame: "round" }, gameboy: { screen_frame: "pixel" }, tie: { screen_frame: "chamfer" } });
+for (const [name, corner] of [["goldeneye", "chamfer"], ["ps2", "round"], ["ff7", "round"], ["gameboy", "pixel"], ["tie", "chamfer"]]) {
+  const got = effective(owner_v3(), name);
+  expect(got.frame === true, "owner v3 " + name + ": frame is off after migrating");
+  expect(got.corner === corner, "owner v3 " + name + ": corner " + got.corner + ", want " + corner);
+}
+expect(run_load(owner_v3()).options_saves === 1, "owner v3: migrated file not written back at version 4");
+expect(JSON.stringify(Object.keys(saved_of(owner_v3(), "goldeneye"))) === JSON.stringify(["screen_frame", "corner_style"]), "goldeneye keeps frame on and a corner that is not its natural one");
+expect(!("corner_style" in saved_of(owner_v3(), "gameboy")) && effective(owner_v3(), "gameboy").corner === "pixel", "a corner equal to the natural one is the default, not stored, and still pixel");
+expect(!Object.values(load_saved(owner_v3())).some(v => typeof v.screen_frame === "string" || "screen_frame_flush" in v), "old frame or flush keys survive the migration");
+expect(run_load(owner_v3()).flush_single === true, "owner v3: no style saved flush off, so the global stays on");
+
+// A corner is never lost, whatever the style: every corner on every style, frame on, and frame off ("" saved is the default).
+for (const n of Object.keys(natural)) {
+  for (const c of frame_corners) {
+    if (n === "terminal" && c !== "square") continue;
+    const got = effective({ version: 3, [n]: { screen_frame: c } }, n);
+    expect(got.frame === true && got.corner === c, "migration: " + n + " saved " + c + " became " + JSON.stringify(got));
+  }
+  const off = effective({ version: 3, [n]: { screen_frame_flush: true } }, n);
+  expect(off.frame === false && off.corner === (n === "terminal" ? "square" : natural[n]), "migration: " + n + " with no frame turned the frame on or moved its corner");
+}
+// A style's frame never flips: no saved frame stays off, a saved one stays on, in a mixed file.
+const mixed = effective({ version: 3, modern: { bar_island_shape: "chamfer" }, ps2: { screen_frame: "round" } }, "modern");
+expect(mixed.frame === false && mixed.corner === "round", "a style without a saved frame turned it on or lost its corner");
+expect(effective({ version: 3, ps2: { screen_frame: "round" } }, "ps2").frame === true, "a saved frame went off");
+expect(effective({ version: 3, ps2: { screen_frame: "" } }, "ps2").frame === false, "an empty saved frame turned on");
+expect(effective({ version: 3, ps2: { screen_frame: "blob" } }, "ps2").frame === false, "an unknown saved frame turned on");
+expect(effective({ version: 3, terminal: { screen_frame: "square" } }, "terminal").frame === true, "terminal's saved square frame went off");
+
+// The per-style flush becomes one global: off if any style had it off, on otherwise, and a version 4 file is not read for it.
+expect(run_load({ version: 3, ps2: { screen_frame: "round", screen_frame_flush: false }, ff7: { screen_frame_flush: true } }).flush_single === false, "one style's flush off did not turn the global off");
+expect(run_load({ version: 3, ff7: { screen_frame_flush: false } }).flush_single === false, "a flush off on a frame-less style was dropped");
+expect(run_load({ version: 3, ps2: { screen_frame_flush: true }, ff7: { screen_frame: "round" } }).flush_single === true, "no flush off turned the global off");
+expect(run_load({ version: 3, ps2: { screen_frame_flush: false } }).saves === 1, "turning the global flush off did not save style.json");
+expect(run_load({ version: 3, ps2: { screen_frame: "round" } }).saves === 0, "an unchanged global flush rewrote style.json");
+expect(run_load({ version: 4, ps2: { screen_frame: true, corner_style: "pixel" }, ff7: { screen_frame_flush: false } }).flush_single === true, "a version 4 file was read for the old flush key");
+expect(!("screen_frame_flush" in saved_of({ version: 3, ps2: { screen_frame: "round", screen_frame_flush: false } }, "ps2")), "the per-style flush key survived");
+
+// Idempotent: the migrated file, loaded again, gives the same values and does not migrate or save again.
+const once = run_load(owner_v3());
+const again = run_load(Object.assign({ version: 4 }, plain(once.theme_values)));
+expect(JSON.stringify(plain(again.theme_values)) === JSON.stringify(plain(once.theme_values)), "loading the migrated file changed it");
+expect(again.options_saves === 0 && again.saves === 0, "the migrated file saved again on load");
+expect(effective(Object.assign({ version: 4 }, plain(once.theme_values)), "tie").corner === "chamfer", "tie lost its corner on the second load");
+// A new version 4 file with the frame on and a corner loads as saved.
+const v4 = effective({ version: 4, ps2: { screen_frame: true, corner_style: "pixel" } }, "ps2");
+expect(v4.frame === true && v4.corner === "pixel", "a version 4 file did not load as saved");
+// The unknown "version" key and a style no longer shipped are skipped without error.
+expect(JSON.stringify(load_saved({ version: 3, gone: { screen_frame: "round" } })) === "{}", "a removed style kept its values");
+
+// Corner resolution, frame on or off: the choice, else the natural corner, and terminal is always square.
+for (const [name, tokens, want] of [
+  ["a choice wins", { corner_style: "pixel", screen_frame_corners: "chamfer" }, "pixel"],
+  ["no choice takes the natural corner", { corner_style: "", screen_frame_corners: "chamfer" }, "chamfer"],
+  ["no hint is round", {}, "round"],
+  ["an unknown choice is the natural corner", { corner_style: "blob", screen_frame_corners: "pixel" }, "pixel"],
+  ["terminal is square whatever is saved", { corner_style: "round", screen_frame_only: "square" }, "square"],
+  ["the frame does not change the corner", { screen_frame: true, corner_style: "chamfer" }, "chamfer"],
+]) {
+  const got = FT.corner_of(tokens, frame_corners);
+  expect(got === want, "corner_of: " + name + ": got " + got + ", want " + want);
+}
+expect(FT.natural_corner({ screen_frame_corners: "pixel" }, frame_corners) === "pixel" && FT.natural_corner({}, frame_corners) === "round", "natural_corner");
+// The pixel step reaches the profile with the frame off (gameboy 2): Style.corner_profile reads the style's own.
+expect(/corner_profile: \(\{ corner: root\.corner_style, radius: root\.plain_frame_kit\.radius, step: root\.bar\.screen_frame_step \}\)/.test(style), "corner_profile does not carry the style's pixel step");
+expect(/screen_frame_profile: root\.screen_frame_on \? root\.corner_profile : null/.test(style), "screen_frame_profile is not corner_profile with the frame on, null off");
+expect(/gameboy[^]*screen_frame_step: 2/.test(read("styles/gameboy/tokens.js")), "gameboy lost its pixel step");
+// The Corner style row exists on every style that has a settings list, with the frame on or off, and its default is the natural corner.
+for (const n of Object.keys(natural)) {
+  const rows = make_root().settings_for(n, true);
+  const corner_row = rows.find(r => r.key === "corner_style");
+  expect(corner_row && corner_row.default === (n === "terminal" ? "square" : natural[n]), "Corner style row of " + n + " is missing or has the wrong default");
+  const frame_row = rows.find(r => r.key === "screen_frame");
+  expect(frame_row && frame_row.type === "bool" && frame_row.default === false, "Screen frame row of " + n + " is not an Off-by-default bool");
+  expect(!rows.some(r => r.key === "screen_frame_flush"), "the per-style flush row of " + n + " is still there");
+}
+expect(JSON.stringify(make_root().settings_for("terminal", true).find(r => r.key === "corner_style").choices) === JSON.stringify(["square"]), "terminal's Corner style row offers more than square");
+{
+  const r = make_root();
+  r.styles.modern.screen_frame_offered = false;
+  const rows = r.settings_for("modern", true);
+  expect(!rows.some(x => x.key === "screen_frame") && rows.some(x => x.key === "corner_style"), "a style without a frame option lost its Corner style row or kept the frame row");
+}
+// A bool row that defaults off is "off" until set, and setting it on is stored.
+{
+  const r = make_root();
+  expect(r.option_default({ type: "bool", default: false }) === false && r.option_default({ type: "bool", default: true }) === true && r.option_default({ type: "choice", default: "x" }) === "x", "option_default");
 }
 
 // The floating strip's end profile is the kit `ends` of the style's own island shape (Style.strip_ends), so each
@@ -317,15 +436,16 @@ for (const [name, got, want] of [
   ["panes draw 1 px whatever the bar border is", FT.rim_width(terminal.screen_frame_panes, 3), 1],
   ["no panes draws the bar border width", FT.rim_width(null, 3), 3],
   ["terminal is fixed to square", terminal.screen_frame_only, "square"],
+  ["terminal's corner is square", FT.corner_of(terminal, frame_corners), "square"],
   ["terminal still offers the frame", FT.offered(terminal), true],
   ["neovim (lualine) is offered the frame", FT.offered(neovim), true],
   ["a style with screen_frame_offered false is not offered it", FT.offered({ screen_frame_offered: false }), false],
   ["a frame forces a slant bar to the full bar", FT.forces_full_bar({ bar_island_shape: "slant" }), true],
   ["a frame leaves a full bar alone", FT.forces_full_bar({ bar_island_shape: "full" }), false],
   ["a frame leaves lualine's sections alone", FT.forces_full_bar(neovim), false],
-  ["the row offers Off or Square for terminal", JSON.stringify(FT.row_choices(terminal.screen_frame_only, frame_corners.concat())), JSON.stringify(["", "square"])],
-  ["the row offers Off and every corner otherwise", JSON.stringify(FT.row_choices("", ["", ...frame_corners])), JSON.stringify(["", ...frame_corners])],
-  ["the row offers Off and every corner for an unset only", JSON.stringify(FT.row_choices(undefined, ["", ...frame_corners])), JSON.stringify(["", ...frame_corners])],
+  ["the row offers Square only for terminal", JSON.stringify(FT.row_choices(terminal.screen_frame_only, frame_corners.concat())), JSON.stringify(["square"])],
+  ["the row offers every corner otherwise", JSON.stringify(FT.row_choices("", frame_corners)), JSON.stringify(frame_corners)],
+  ["the row offers every corner for an unset only", JSON.stringify(FT.row_choices(undefined, frame_corners)), JSON.stringify(frame_corners)],
 ]) {
   pane_checks++;
   expect(got === want, "terminal frame: " + name + ": got " + got + ", want " + want);

@@ -6,6 +6,10 @@ local frame_path = here .. "/../.config/hypr/config/general/frame.lua"
 local windows, active, handlers = {}, nil, {}
 local rule_log, animation, config_calls = {}, nil, {}
 local gaps_out = 6
+-- The owner's own values for every other key get_config is asked for, and the layers Hyprland reports.
+local owner = {}
+local layers = { { mapped = true, namespace = "quickshell-frame" } }
+local timer_fn, watchdog_on = nil, false
 
 local function new_rule(kind, spec)
 	local rule = { kind = kind, spec = spec, enabled = true }
@@ -25,10 +29,19 @@ _G.hl = {
 		if key == "general.gaps_out" then
 			return gaps_out
 		end
+		if owner[key] ~= nil then
+			return owner[key]
+		end
 		return 0
 	end,
-	get_layers = function()
-		return { { mapped = true } }
+	get_layers = function(filter)
+		local found = {}
+		for _, layer in ipairs(layers) do
+			if filter == nil or filter.namespace == layer.namespace then
+				table.insert(found, layer)
+			end
+		end
+		return found
 	end,
 	workspace_rule = function(spec)
 		return new_rule("workspace", spec)
@@ -43,8 +56,13 @@ _G.hl = {
 	animation = function(spec)
 		animation = spec
 	end,
-	timer = function()
-		return { set_enabled = function() end }
+	timer = function(fn)
+		timer_fn = fn
+		return {
+			set_enabled = function(_, on)
+				watchdog_on = on
+			end,
+		}
 	end,
 	on = function(event, fn)
 		handlers[event] = handlers[event] or {}
@@ -298,6 +316,100 @@ check("flush back on: key opts out", _G.ScreenFrame.toggle_lone_flush() == true 
 _G.ScreenFrame.toggle_lone_flush()
 _G.ScreenFrame.clear()
 check("clear: workspace rule off", flush_workspace_rule_enabled() == false)
+
+-- Corner style with the frame off: only the rounding follows, and clear returns exactly the owner's values.
+owner = {
+	["decoration.rounding"] = 9,
+	["decoration.rounding_power"] = 3,
+	["general.border_size"] = 4,
+	["general.col.active_border"] = "owner-active",
+	["general.col.inactive_border"] = "owner-inactive",
+}
+local function last_config()
+	return config_calls[#config_calls]
+end
+local function enabled_window_rules()
+	local names = {}
+	for _, rule in ipairs(rule_log) do
+		if rule.kind == "window" and rule.enabled then
+			table.insert(names, rule.spec.name)
+		end
+	end
+	return names
+end
+local function owner_restored()
+	local cfg = last_config()
+	return cfg.decoration.rounding == 9
+		and cfg.decoration.rounding_power == 3
+		and cfg.general.border_size == 4
+		and cfg.general.col.active_border == "owner-active"
+		and cfg.general.col.inactive_border == "owner-inactive"
+end
+gaps_out = 6
+animation = nil
+_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false)
+check("frame off: round window rounding is the radius minus the gap", last_config().decoration.rounding == 6)
+check("frame off: owner's border size kept", last_config().general.border_size == 4)
+check(
+	"frame off: owner's border colours kept",
+	last_config().general.col.active_border == "owner-active"
+		and last_config().general.col.inactive_border == "owner-inactive"
+)
+check("frame off: no lone window flush rule", flush_workspace_rule_enabled() == false)
+check("frame off: no lone or maximized rounding rules", #enabled_window_rules() == 0)
+check("frame off: workspace animation untouched", animation == nil or animation.style ~= "slide")
+active = first
+check("frame off: key maximizes", _G.ScreenFrame.toggle_lone_flush() == false and not tagged(first))
+_G.ScreenFrame.clear()
+check("frame off: clear returns the owner's values", owner_restored())
+
+-- A chamfer without the frame still gets its gapped rule, and the flush argument is ignored.
+_G.ScreenFrame.set("chamfer", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false)
+local off_rules = enabled_window_rules()
+check("frame off chamfer: only the gapped rule", #off_rules == 1 and off_rules[1]:find("gapped", 1, true) ~= nil)
+check("frame off chamfer: flush stays off", flush_workspace_rule_enabled() == false)
+check("frame off chamfer: global rounding 0 for the rule", last_config().decoration.rounding == 0)
+_G.ScreenFrame.set("square", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false)
+check("frame off square: windows square", last_config().decoration.rounding == 0)
+_G.ScreenFrame.clear()
+check("frame off chamfer: clear returns the owner's values", owner_restored() and #enabled_window_rules() == 0)
+
+-- The frame going on, then off again, then cleared never lets the frame's values reach the restore.
+_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, true)
+check("on: frame border applies", last_config().general.border_size == 2)
+check("on: slide animation", animation ~= nil and animation.style == "slide")
+_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false)
+check("on then off: border back to the owner's", last_config().general.border_size == 4 and last_config().general.col.active_border == "owner-active")
+check("on then off: flush rules off", flush_workspace_rule_enabled() == false and #enabled_window_rules() == 0)
+check("on then off: animation back to the config's", animation ~= nil and animation.style ~= "slide")
+_G.ScreenFrame.clear()
+check("on then off: clear returns the owner's values", owner_restored())
+
+-- A 6-argument call from an older Quickshell still means the frame is on.
+_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true)
+check("six arguments: frame on", last_config().general.border_size == 2 and flush_workspace_rule_enabled() == true)
+_G.ScreenFrame.clear()
+
+-- The watchdog: with the frame off it waits on any Quickshell layer, not the frame's.
+layers = { { mapped = true, namespace = "quickshell" } }
+_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false)
+check("watchdog: armed with the frame off", watchdog_on == true)
+for _ = 1, 5 do
+	timer_fn()
+end
+check("watchdog: frame off keeps the corners while the bar is mapped", last_config().decoration.rounding == 6)
+layers = {}
+for _ = 1, 3 do
+	timer_fn()
+end
+check("watchdog: no Quickshell layer restores the owner's values", owner_restored() and watchdog_on == false)
+layers = { { mapped = true, namespace = "quickshell" } }
+_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, true)
+for _ = 1, 3 do
+	timer_fn()
+end
+check("watchdog: frame on still needs the frame's layer", owner_restored())
+layers = { { mapped = true, namespace = "quickshell-frame" } }
 
 if failures > 0 then
 	print(failures .. " failed")

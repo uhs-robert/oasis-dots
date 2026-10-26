@@ -4,18 +4,21 @@ import Quickshell.Hyprland
 import qs.theme
 import "../../ui/frames/Corners.js" as Corners
 
-// Tells Hyprland the screen frame's corner profile, rim and whether a lone window goes flush, so window corners and
-// borders follow it (ScreenFrame.set in config/general/frame.lua, which keeps the user's values and restores them on clear or when the frame layer goes).
+// Tells Hyprland the Corner style, and with the frame on its rim and whether a lone window goes flush, so window corners
+// (and with the frame, borders) follow it (ScreenFrame.set in config/general/frame.lua, which keeps the user's values and
+// restores them on clear or when Quickshell goes).
 Scope {
     id: root
 
-    readonly property var profile: Style.screen_frame_profile
-    // The whole dispatch, so the debounce restarts on any change; a clear when no screen draws a frame (a side bar draws none). The radius is the corner as
-    // drawn (fitted to its profile's cap), which frame.lua turns into the windows' own rounding.
+    readonly property var profile: Style.corner_profile
+    // The whole dispatch, so the debounce restarts on any change. A clear when the frame is on but no screen draws it
+    // (a side bar draws none). The radius is the corner as drawn (fitted to its profile's cap), which frame.lua turns
+    // into the windows' own rounding; Flush is the Style page's setting.
     readonly property string command: {
-        if (!ScreenFrames.any_frame || !root.profile) return "ScreenFrame.clear()";
+        const frame = Style.screen_frame_on;
+        if (frame && !ScreenFrames.any_frame) return "ScreenFrame.clear()";
         const drawn = Corners.fit(root.profile.corner, root.profile.radius, root.profile.step).radius;
-        const args = [JSON.stringify(root.profile.corner), drawn, Style.screen_frame_rim_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false))), Style.active.screen_frame_flush !== false];
+        const args = [JSON.stringify(root.profile.corner), drawn, Style.screen_frame_rim_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false))), Style.flush_single, frame];
         return "ScreenFrame.set(" + args.join(", ") + ")";
     }
 

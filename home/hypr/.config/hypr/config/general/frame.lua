@@ -1,5 +1,5 @@
---- Matches window corners and borders to the screen frame Quickshell draws round the usable area, and restores the
---- owner's own values when the frame goes. Self-contained (no requires), so the shadow harness can dofile it on its own.
+--- Matches window corners to the Corner style Quickshell draws and, while its screen frame is on, borders, gaps and flush
+--- lone windows to the frame; restores the owner's own values when Quickshell sends clear or goes. Self-contained (no requires), so the shadow harness can dofile it on its own.
 
 local FRAME_NAMESPACE = "quickshell-frame"
 local WATCHDOG_MS = 2000
@@ -14,6 +14,9 @@ local MAX_ROUNDING = 20
 local saved = nil
 local missed_checks = 0
 local watchdog = nil
+-- Whether the frame is drawn (set's `frame`), as opposed to Quickshell only asking for its Corner style: the watchdog
+-- then looks for the frame's layer or, with no frame, for any Quickshell layer.
+local frame_drawn = true
 -- Whether a lone tiled window sits flush with the frame (the Settings "Flush single windows" row). Off, it keeps the
 -- gaps and rounding of any other window; maximizing stays flush either way.
 local flush_lone_windows = true
@@ -58,6 +61,14 @@ end
 local function frame_mapped()
   for _, layer in ipairs(hl.get_layers({ namespace = FRAME_NAMESPACE }) or {}) do
     if layer.mapped then return true end
+  end
+  return false
+end
+
+--- Whether any Quickshell layer (the bar's included) is mapped, the sign that Quickshell is still there to take the corners back.
+local function shell_mapped()
+  for _, layer in ipairs(hl.get_layers() or {}) do
+    if layer.mapped and tostring(layer.namespace or ""):sub(1, 10) == "quickshell" then return true end
   end
   return false
 end
@@ -190,9 +201,9 @@ local function restore()
 end
 
 -- Quickshell sends clear when the frame goes, but a crashed or quit Quickshell sends nothing, so the frame's layer
--- going missing restores too.
+-- (or, with no frame, every Quickshell layer) going missing restores too.
 local function check_frame()
-  if frame_mapped() then
+  if (frame_drawn and frame_mapped()) or (not frame_drawn and shell_mapped()) then
     missed_checks = 0
     return
   end
@@ -217,17 +228,21 @@ local function window_rounding(corner, radius, gap)
   return 0, false
 end
 
---- Shapes windows to the frame: `corner` and `radius` give the corner, `border_size` and the two colours the window
---- borders. Saves the owner's values first, and keeps them until `clear`. A style with no border (width 0, or "" for
---- an invisible colour) leaves the owner's own border size and colour in place instead of drawing an invisible one.
+--- Shapes windows to the Corner style: `corner` and `radius` give the corner. With the frame on, `border_size` and the
+--- two colours set the window borders, the animation becomes the plain slide and a lone window may go flush. With it
+--- off only the rounding changes: the owner's borders, gaps and animation stay and no window goes flush. Saves the
+--- owner's values first, and keeps them until `clear`. A style with no border (width 0, or "" for an invisible
+--- colour) leaves the owner's own border size and colour in place instead of drawing an invisible one.
 --- @param corner string round, chamfer, pixel or square
 --- @param radius number
 --- @param border_size number
 --- @param active string a colour Hyprland parses, e.g. "rgba(33ccffee)"
 --- @param inactive string
 --- @param flush? boolean whether a lone tiled window goes flush with the frame; anything but false means it does
-local function set(corner, radius, border_size, active, inactive, flush)
-  flush_lone_windows = flush ~= false
+--- @param frame? boolean whether the frame is drawn; anything but false means it is (an older Quickshell sends no such argument)
+local function set(corner, radius, border_size, active, inactive, flush, frame)
+  frame_drawn = frame ~= false
+  flush_lone_windows = frame_drawn and flush ~= false
   if saved == nil then
     saved = {
       rounding = hl.get_config("decoration.rounding"),
@@ -243,6 +258,10 @@ local function set(corner, radius, border_size, active, inactive, flush)
   -- A chamfered window's own rounding comes from its rule, so the global one only matters for windows the rule misses.
   -- Power 2 keeps a squircle rounding of the owner's from drawing a round window's arc off the frame's circle.
   local width = tonumber(border_size)
+  -- Without the frame the borders go back to the owner's, which also undoes a frame that was on a moment ago.
+  if not frame_drawn then
+    width, active, inactive = nil, nil, nil
+  end
   hl.config({
     decoration = { rounding = chamfered and 0 or rounding, rounding_power = 2 },
     general = {
@@ -257,13 +276,13 @@ local function set(corner, radius, border_size, active, inactive, flush)
   local power = flush_chamfered and 1 or 2
   local rules = {}
   if chamfered then table.insert(rules, { rounding = rounding, power = 1, kind = "gapped" }) end
-  if flush_rounding ~= rounding then
+  if frame_drawn and flush_rounding ~= rounding then
     if flush_lone_windows then table.insert(rules, { rounding = flush_rounding, power = power, kind = "lone" }) end
     table.insert(rules, { rounding = flush_rounding, power = power, kind = "maximized" })
   end
   use_window_rules(rules)
   lone_window_rule:set_enabled(flush_lone_windows)
-  apply_workspaces_animation(true)
+  apply_workspaces_animation(frame_drawn)
   release_stale_gapped_lones()
   missed_checks = 0
   if watchdog then
@@ -324,8 +343,8 @@ end
 
 -- Global functions which are accessible externally via `hyprctl dispatch "ScreenFrame"`
 _G.ScreenFrame = {
-  set = function(corner, radius, border_size, active, inactive, flush)
-    set(corner, radius, border_size, active, inactive, flush)
+  set = function(corner, radius, border_size, active, inactive, flush, frame)
+    set(corner, radius, border_size, active, inactive, flush, frame)
 
     return hl.dsp.no_op()
   end,

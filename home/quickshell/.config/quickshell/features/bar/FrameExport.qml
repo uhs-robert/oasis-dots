@@ -4,15 +4,17 @@ import qs.core
 import qs.theme
 import "../../ui/frames/Corners.js" as Corners
 
-// Writes the screen frame's corner (frame.json in the state dir) and then runs scripts/frame-app-corners, which turns it
-// into yazi's border and Firefox's chrome/frame.css. Those apps read them at start-up, so a change shows after a restart.
+// Writes the Corner style (frame.json in the state dir) and then runs scripts/frame-app-corners, which turns it into
+// yazi's border and Firefox's chrome/frame.css, with the frame on or off. Those apps read them at start-up, so a change
+// shows after a restart.
 Scope {
     id: root
 
-    readonly property var profile: ScreenFrames.any_frame ? Style.screen_frame_profile : null
+    readonly property var profile: Style.corner_profile
     // The corner as drawn (fitted to its cap), like ScreenFrameSync sends Hyprland.
-    readonly property var drawn: root.profile ? Corners.fit(root.profile.corner, root.profile.radius, root.profile.step) : null
-    readonly property var snapshot: root.profile ? { on: true, corner: root.profile.corner, radius: root.drawn.radius } : { on: false, corner: "", radius: 0 }
+    readonly property var drawn: Corners.fit(root.profile.corner, root.profile.radius, root.profile.step)
+    // `on` is whether a frame is drawn; the corner is always set.
+    readonly property var snapshot: ({ on: ScreenFrames.any_frame, corner: root.profile.corner, radius: root.drawn.radius })
 
     onSnapshotChanged: if (store.loaded_once) store.replace(root.snapshot)
 
