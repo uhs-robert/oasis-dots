@@ -34,6 +34,14 @@ function edge_strip(island_style, mode, on_ac, fallback) {
     return island_style && fallback === "position" ? "position" : "none";
 }
 
+// What a wheel notch over the media module does. The right side (cava or position) always seeks, so seeking needs no
+// modifier key: a layer-shell bar never holds keyboard focus and so never sees Shift. Anywhere else the wheel follows
+// `scroll_action`: "volume", "skip" or "none".
+function scroll_effect(over_right_side, scroll_action) {
+    if (over_right_side) return "seek";
+    return scroll_action === "skip" ? "skip" : scroll_action === "none" ? "none" : "volume";
+}
+
 // Whether the clock-island strip is asked for: a `cava` entry always did, and a `media` entry does too, since in the
 // default island mode that entry is dropped and would otherwise leave nothing at all.
 function strip_listed(lists_cava, lists_media) {

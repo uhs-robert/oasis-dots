@@ -68,6 +68,10 @@ Singleton {
         return Logic.edge_cava_allowed(island_style, root.island_mode);
     }
 
+    function scroll_effect(over_right_side) {
+        return Logic.scroll_effect(over_right_side, root.scroll_action);
+    }
+
     function strip_listed(lists_cava, lists_media) {
         return Logic.strip_listed(lists_cava, lists_media);
     }

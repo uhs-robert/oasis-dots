@@ -20,6 +20,8 @@ Item {
     property bool text_scroll: false
     property int text_scroll_speed: 30
     // On a side bar: art over the play/pause button, no text and no right side, each `cell` square.
+    // A compact monitor: art, button and right side, no text, close to the old 120 px cava slot.
+    property bool compact: false
     property bool vertical: false
     property real cell: 24
     // False while the module is off screen, so cava and the position poll are not asked for.
@@ -39,9 +41,11 @@ Item {
     }
     readonly property bool cava_on: root.active && !root.vertical && root.right_mode === "cava"
     readonly property real base_width: 170
+    // Where the right side starts in the well's own coordinates, for the wheel: past the edge when it is not shown.
+    readonly property real right_left: right.visible ? content.x + right.x : root.width + 1
     readonly property real right_width: root.right_mode === "hide" ? 0 : root.right_mode === "cava" ? 64 : 76
 
-    implicitWidth: root.vertical ? root.cell + root.pad * 2 : Math.max(root.base_width, content.implicitWidth + root.pad * 2)
+    implicitWidth: root.vertical ? root.cell + root.pad * 2 : Math.max(root.compact ? 0 : root.base_width, content.implicitWidth + root.pad * 2)
     implicitHeight: root.vertical ? root.cell * 2 + content.rowSpacing + root.pad * 2 : 24
 
     property font font
@@ -122,7 +126,7 @@ Item {
 
         Column {
             Layout.alignment: Qt.AlignVCenter
-            visible: !root.vertical && root.text_lines.length > 0
+            visible: !root.vertical && !root.compact && root.text_lines.length > 0
             spacing: 0
 
             Repeater {

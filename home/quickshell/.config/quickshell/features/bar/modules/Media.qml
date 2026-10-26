@@ -52,22 +52,21 @@ BarModule {
 
     readonly property var sink: Pipewire.defaultAudioSink
 
+    readonly property int seek_seconds_per_notch: 5
+
     function scroll(wheel) {
-        const action = MediaSettings.scroll_action;
-        if (action === "skip") {
+        const effect = MediaSettings.scroll_effect(wheel.x >= well.right_left);
+        if (effect === "seek") {
+            const notches = seek_stepper.consume_event(wheel);
+            if (notches !== 0) MediaState.seek_by(notches * root.seek_seconds_per_notch);
+        } else if (effect === "skip") {
             const notches = volume_stepper.consume_event(wheel);
             if (notches > 0) MediaState.next();
             else if (notches < 0) MediaState.previous();
-        } else if (action === "volume_seek") {
-            if (wheel.modifiers & Qt.ShiftModifier) {
-                // Shift turns the wheel horizontal on some compositors.
-                const notches = seek_stepper.consume(wheel.angleDelta.y || wheel.angleDelta.x);
-                if (notches !== 0) MediaState.seek_by(notches * 5);
-            } else if (root.sink && root.sink.ready && root.sink.audio) {
-                const current = Math.round(root.sink.audio.volume * 100);
-                const pct = volume_stepper.step_level(wheel, null, current, 0, 100);
-                if (pct !== current) root.sink.audio.volume = pct / 100;
-            }
+        } else if (effect === "volume" && root.sink && root.sink.ready && root.sink.audio) {
+            const current = Math.round(root.sink.audio.volume * 100);
+            const pct = volume_stepper.step_level(wheel, null, current, 0, 100);
+            if (pct !== current) root.sink.audio.volume = pct / 100;
         }
     }
 
@@ -98,6 +97,7 @@ BarModule {
         max_chars: MediaSettings.max_chars
         text_scroll: MediaSettings.text_scroll
         text_scroll_speed: MediaSettings.text_scroll_speed
+        compact: root.compact
         onToggle_requested: MediaState.toggle()
     }
 }

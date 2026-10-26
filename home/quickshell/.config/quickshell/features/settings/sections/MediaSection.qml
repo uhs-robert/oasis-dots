@@ -31,7 +31,7 @@ RowsSection {
     rows: [
         Object.assign({ label: "Right side", desc: "What the media module shows on its right: the audio visualizer, or the track position." }, root.choice("right_side_mode")),
         Object.assign({ label: "On battery", desc: "The visualizer costs power, so on battery the right side shows the track position or is hidden." }, root.choice("battery_fallback")),
-        Object.assign({ label: "Scroll", desc: "What the mouse wheel does over the media module. Volume and seek: scroll sets the volume, Shift+scroll seeks." }, root.choice("scroll_action")),
+        Object.assign({ label: "Scroll", desc: "What the mouse wheel does over the media module. Volume: scroll sets the volume. Whatever you pick, scrolling over the cava or position area seeks." }, root.choice("scroll_action")),
         Object.assign({ label: "Cava line", desc: "Draw the audio visualizer as a smooth line. Off draws separate bars.", keys: "H/L or c toggle · Enter list" }, root.on_off("cava_line")),
         Object.assign({ label: "Island styles", desc: "Where media shows in island bar styles. Strip and frame styles always show the module." }, root.choice("island_mode")),
         Object.assign({ label: "Show title", desc: "Show the track title in the media module." }, root.on_off("show_title")),
