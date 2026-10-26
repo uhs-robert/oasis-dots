@@ -101,7 +101,7 @@ PATH_SCOPES = [
     ("home/oasis-djinn/tests/*", "djinnrust"),
     ("home/oasis-djinn/Cargo.*", "djinnrust"),
     ("home/oasis-djinn/rustfmt.toml", "djinnrust"),
-    # Hyprland binds read actions.json through Bind.action, so a manifest edit reaches the Lua steps too.
+    # bind_action.lua reads the manifest as its expected values, so a manifest edit reaches the Lua steps too.
     ("home/oasis-djinn/.config/*", "djinnrust lua"),
     # Only the Rust step: the voxcmd suites run with VOXCMD_BIN unset, so they exercise the bash voxcmd and never the
     # crate. Snapshots and the generated goldens are read only by cargo test; the other fixtures are read by both. An

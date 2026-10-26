@@ -89,21 +89,42 @@ for _, entry in ipairs(manifest) do
 end
 check("no other binds", #binds == expected_binds)
 
--- The keys perform through argv: no shell word is split, and ~/ stays for the shell to expand.
+-- Every key performs the manifest's performer: argv joined for a command, `qs-ipc call` for an IPC function. None
+-- of these words needs quoting, and ~/ stays for the shell to expand.
 local function performed(key)
 	executed = {}
 	find(key).action()
 	return executed[1]
 end
-check("zoom: ipc call", performed("SUPER + Z") == "~/.config/hypr/scripts/qs-ipc call zoom toggle")
-check("pixel: argv", performed("SUPER + P") == "~/.config/hypr/scripts/screenshot.sh --pixel")
-check("wake: argv", performed("SUPER + CTRL + PERIOD") == "~/.local/bin/voxcmd wake toggle")
-check("passwords: bare program", performed("SUPER + CTRL + P") == "rofi-rbw")
-check(
-	"overview move: ipc function",
-	performed("SUPER + SHIFT + T") == "~/.config/hypr/scripts/qs-ipc call overview move_follow"
-)
-check("extra key runs the same action", performed("SUPER + I") == performed("Print"))
+local bindings_file = assert(io.open(manifest_dir .. "/bindings/quickshell.json"))
+local performers = Json.decode(bindings_file:read("a")).bindings
+bindings_file:close()
+
+local function expected_command(performer)
+	if performer.kind == "ipc" then
+		local words = { "~/.config/hypr/scripts/qs-ipc", "call", performer.target, performer["function"] }
+		for _, arg in ipairs(performer.args) do
+			words[#words + 1] = arg
+		end
+		return table.concat(words, " ")
+	end
+	return table.concat(performer.argv, " ")
+end
+
+for _, entry in ipairs(manifest) do
+	local performer = performers[entry.id]
+	check(entry.id .. ": has a performer", performer ~= nil)
+	check(
+		entry.id .. ": performs " .. (performer and expected_command(performer) or "?"),
+		performer ~= nil and performed(bound_key(entry.key)) == expected_command(performer)
+	)
+	for _, extra in ipairs(entry.extra_keys) do
+		check(
+			entry.id .. ": extra key performs the same",
+			performed(bound_key(extra)) == performed(bound_key(entry.key))
+		)
+	end
+end
 
 -- The same ids run by name, as the bar and voice will.
 executed = {}
