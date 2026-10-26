@@ -21,8 +21,9 @@ function edge_cava_allowed(island_style, mode) {
 }
 
 // Split keeps the strip under the clock, so the module shows the position instead of a second visualizer.
-function module_position_only(island_style, mode) {
-    return island_style && mode === "split";
+// Lualine draws its own cava at the end of section c, so a listed media module never adds a second one there.
+function module_position_only(island_style, mode, lualine) {
+    return !!lualine || (island_style && mode === "split");
 }
 
 // What the strip under the clock island draws: "cava", "position" (a progress line) or "none". On battery cava is too
@@ -31,4 +32,10 @@ function edge_strip(island_style, mode, on_ac, fallback) {
     if (!edge_cava_allowed(island_style, mode)) return "none";
     if (on_ac) return "cava";
     return island_style && fallback === "position" ? "position" : "none";
+}
+
+// Whether the clock-island strip is asked for: a `cava` entry always did, and a `media` entry does too, since in the
+// default island mode that entry is dropped and would otherwise leave nothing at all.
+function strip_listed(lists_cava, lists_media) {
+    return !!lists_cava || !!lists_media;
 }

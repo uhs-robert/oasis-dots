@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/media/MediaSettings.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { migrated_cava_line, module_listed, edge_cava_allowed, module_position_only, edge_strip };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { migrated_cava_line, module_listed, edge_cava_allowed, module_position_only, edge_strip, strip_listed };", T);
 const M = T.api;
 
 const cases = [
@@ -34,6 +34,8 @@ const cases = [
   ["on battery the edge strip follows battery_fallback in an island style", () => [M.edge_strip(true, "cava_under_island", false, "position"), M.edge_strip(true, "split", false, "hide")], ["position", "none"]],
   ["module_only never draws the edge strip, on AC or battery", () => [M.edge_strip(true, "module_only", true, "position"), M.edge_strip(true, "module_only", false, "position")], ["none", "none"]],
   ["outside island styles battery draws nothing at the edge", () => M.edge_strip(false, "cava_under_island", false, "position"), "none"],
+  ["lualine forces position on the module whatever the mode", () => ["cava_under_island", "module_only", "split"].map(m => M.module_position_only(false, m, true)), [true, true, true]],
+  ["a media entry alone asks for the clock-island strip", () => [M.strip_listed(false, true), M.strip_listed(true, false), M.strip_listed(false, false)], [true, true, false]],
   ["an unknown mode behaves as cava_under_island", () => [M.module_listed(true, "bogus"), M.edge_cava_allowed(true, "bogus")], [false, true]],
 ];
 

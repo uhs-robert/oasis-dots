@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPolicy.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, popup_pressed, disabled };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, popup_pressed, disabled, open_here };", T);
 const P = T.api;
 
 // A model of the world around the helper: the pointer, which popup is open, and the two timers.
@@ -246,6 +246,13 @@ t("no timer is left running once idle", () => {
   w.pointer(false, false);
   w.fire_close();
   assert.deepStrictEqual([w.open_timer, w.close_timer], [false, false]);
+});
+
+t("another monitor's popup of the same name is not this module's own", () => {
+  assert.strictEqual(P.open_here("media", "DP-1", "media", "DP-1"), true);
+  assert.strictEqual(P.open_here("media", "DP-2", "media", "DP-1"), false);
+  assert.strictEqual(P.open_here("clock", "DP-1", "media", "DP-1"), false);
+  assert.strictEqual(P.open_here("media", "DP-2", "media", ""), true, "a module with no screen name matches any");
 });
 
 let failed = 0;

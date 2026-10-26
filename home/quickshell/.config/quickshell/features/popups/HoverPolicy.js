@@ -72,3 +72,9 @@ function disabled(mode, open_here) {
 function popup_pressed(mode) {
     return mode === "hover_open" ? result("pinned", "stop", "stop", "none") : result(mode, "keep", "keep", "none");
 }
+
+// Whether the open popup is this module's own: the same name and, when the module knows its screen, the same screen,
+// so another monitor's hover-opened popup does not read as an outside open here.
+function open_here(open_name, open_screen, popup_name, screen_name) {
+    return open_name === popup_name && (!screen_name || open_screen === screen_name);
+}

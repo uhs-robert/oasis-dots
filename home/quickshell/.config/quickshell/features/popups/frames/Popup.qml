@@ -455,12 +455,6 @@ PanelWindow {
             enabled: !root.passive
             onHoveredChanged: Popups.set_popup_hover(root.popup_name, hovered)
         }
-
-        TapHandler {
-            enabled: !root.passive
-            acceptedButtons: Qt.AllButtons
-            onPressedChanged: if (pressed) Popups.popup_pressed(root.popup_name)
-        }
     }
 
     readonly property int line_height: root.drawer ? 0 : root.st.accent_height
@@ -862,6 +856,22 @@ PanelWindow {
                 active: root.st.open_fx === "static" && !root.passive
                 sourceComponent: Goldeneye.StaticBurst {}
             }
+        }
+    }
+
+    // Reports every press in the panel and hands it on: a child that takes the press (a button, the seek bar) hides it
+    // from a handler on a parent, so this sits above the content and refuses what it sees.
+    MouseArea {
+        enabled: !root.passive
+        x: panel_area.x
+        y: panel_area.y
+        width: panel_area.width
+        height: panel_area.height
+        z: 1000
+        acceptedButtons: Qt.AllButtons
+        onPressed: mouse => {
+            Popups.popup_pressed(root.popup_name);
+            mouse.accepted = false;
         }
     }
 

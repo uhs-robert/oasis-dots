@@ -14,10 +14,14 @@ Item {
     property bool enabled: true
     property int open_delay: 300
     property int close_grace: 250
+    // How long after a close under the pointer the bar may still regain the hover it lost (HoverPolicy "settling").
+    // Hyprland handed focus back within ~10 ms in the shadow; this is far above that, and the price of the margin is
+    // only that a deliberate re-entry inside it needs one more move out and in.
+    property int settle_ms: 600
 
     readonly property string mode: root._mode
-    readonly property bool inside: root.enabled && !!root.module && (root.module.hovered || Popups.hover_name === root.popup_name && Popups.open_name === root.popup_name)
-    readonly property bool open_here: Popups.open_name === root.popup_name
+    readonly property bool inside: root.enabled && !!root.module && (root.module.hovered || Popups.hover_name === root.popup_name && root.open_here)
+    readonly property bool open_here: Policy.open_here(Popups.open_name, Popups.open_screen_name, root.popup_name, root.module ? root.module.screen_name : "")
     readonly property bool nothing_open: Popups.open_name === ""
 
     property string _mode: "idle"
@@ -32,7 +36,10 @@ Item {
         root._mode = r.mode;
         if (r.open_timer === "start") open_timer.restart();
         else if (r.open_timer === "stop") open_timer.stop();
-        if (r.close_timer === "start") close_timer.restart();
+        if (r.close_timer === "start") {
+            close_timer.interval = r.mode === "settling" ? root.settle_ms : root.close_grace;
+            close_timer.restart();
+        }
         else if (r.close_timer === "stop") close_timer.stop();
         if (r.mode === "pinned" && root.open_here) Popups.keyboard_off = false;
         // The mode is set first, so the open_name change this causes reads as ours, not as an outside open.

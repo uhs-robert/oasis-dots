@@ -68,19 +68,31 @@ Singleton {
         return Logic.edge_cava_allowed(island_style, root.island_mode);
     }
 
+    function strip_listed(lists_cava, lists_media) {
+        return Logic.strip_listed(lists_cava, lists_media);
+    }
+
     function edge_strip(island_style, on_ac) {
         return Logic.edge_strip(island_style, root.island_mode, on_ac, root.battery_fallback);
     }
 
-    function module_position_only(island_style) {
-        return Logic.module_position_only(island_style, root.island_mode);
+    function module_position_only(island_style, lualine) {
+        return Logic.module_position_only(island_style, root.island_mode, lualine);
     }
 
     // Moved here from style.json: Style still reads the old key but no longer writes it. A value already in media.json wins.
+    // Runs once per session, after the first load whatever it found (a missing or corrupt file too: a saved "off" must
+    // not be lost with the next style save), so a later hand edit of media.json is never overwritten from style.json.
+    property bool cava_line_migrated: false
     function migrate_cava_line() {
+        if (root.cava_line_migrated) return;
+        root.cava_line_migrated = true;
         const value = Logic.migrated_cava_line(store.raw, Style.cava_line);
         if (value !== null) root.set("cava_line", value);
     }
+
+    // The store may have finished loading before its change handler was connected.
+    Component.onCompleted: if (store.loaded_once) Qt.callLater(root.migrate_cava_line)
 
     JsonStore {
         id: store
@@ -88,6 +100,7 @@ Singleton {
         defaults: root.defaults
         debounce_ms: 300
         validate: raw => Validated.validated(root.defaults, raw, root.valid)
-        onLoaded: root.migrate_cava_line()
+        // loaded_once is set before the file's keys are adopted, so migrate on the next turn, once `raw` is filled.
+        onLoaded_onceChanged: if (loaded_once) Qt.callLater(root.migrate_cava_line)
     }
 }

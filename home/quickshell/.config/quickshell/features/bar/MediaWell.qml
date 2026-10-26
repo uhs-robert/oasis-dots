@@ -19,13 +19,16 @@ Item {
     property int max_chars: 24
     property bool text_scroll: false
     property int text_scroll_speed: 30
+    // On a side bar: art over the play/pause button, no text and no right side, each `cell` square.
+    property bool vertical: false
+    property real cell: 24
     // False while the module is off screen, so cava and the position poll are not asked for.
     property bool active: true
 
     signal toggle_requested()
 
     readonly property int pad: 4
-    readonly property real art_size: root.height - root.pad * 2
+    readonly property real art_size: root.vertical ? root.cell : root.height - root.pad * 2
     readonly property var text_lines: MediaText.lines(root.player ? root.player.trackTitle || "" : "", root.player ? root.player.trackArtist || "" : "", root.show_title, root.show_artist, root.text_layout)
     // Two stacked lines must fit the well's inner height, so they shrink with it.
     function line_size(small) {
@@ -34,12 +37,12 @@ Item {
         if (small) return Math.max(7, Math.min(root.font.pixelSize - 3, Math.floor(inner * 0.36)));
         return stacked ? Math.max(8, Math.min(root.font.pixelSize, Math.floor(inner * 0.5))) : root.font.pixelSize;
     }
-    readonly property bool cava_on: root.active && root.right_mode === "cava"
+    readonly property bool cava_on: root.active && !root.vertical && root.right_mode === "cava"
     readonly property real base_width: 170
     readonly property real right_width: root.right_mode === "hide" ? 0 : root.right_mode === "cava" ? 64 : 76
 
-    implicitWidth: Math.max(root.base_width, content.implicitWidth + root.pad * 2)
-    implicitHeight: 24
+    implicitWidth: root.vertical ? root.cell + root.pad * 2 : Math.max(root.base_width, content.implicitWidth + root.pad * 2)
+    implicitHeight: root.vertical ? root.cell * 2 + content.rowSpacing + root.pad * 2 : 24
 
     property font font
     font.family: Style.bar_font_family
@@ -47,14 +50,12 @@ Item {
     font.capitalization: Style.bar_capitalization
     font.letterSpacing: Style.bar_letter_spacing
 
-    // Darker than the island plate whatever its fill, with a faint shadow along the top edge.
+    // Darker than the island plate, with a faint shadow along the top edge.
     Rectangle {
         id: plate
         anchors.fill: parent
         radius: Style.radius(8)
-        // Black rather than a palette tint: a recess has to read darker on every bar color, and the strip styles' own
-        // shadow token is close to the bar itself.
-        color: Qt.rgba(0, 0, 0, 0.38)
+        color: Qt.alpha(Style.pal.bg_shadow, 0.85)
         border.width: 1
         border.color: Qt.alpha(Style.pal.fg, 0.1)
         clip: true
@@ -65,17 +66,21 @@ Item {
             anchors.top: parent.top
             height: 4
             gradient: Gradient {
-                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0.35) }
+                GradientStop { position: 0; color: Qt.alpha(Style.pal.bg_shadow, 0.9) }
                 GradientStop { position: 1; color: "transparent" }
             }
         }
     }
 
-    RowLayout {
+    GridLayout {
         id: content
+        flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: root.vertical ? -1 : 1
+        columns: root.vertical ? 1 : -1
         anchors.fill: parent
         anchors.margins: root.pad
-        spacing: 6
+        rowSpacing: 6
+        columnSpacing: 6
 
         AlbumArt {
             Layout.preferredWidth: root.art_size
@@ -94,7 +99,7 @@ Item {
             Layout.preferredHeight: root.art_size
             Layout.alignment: Qt.AlignVCenter
             radius: width / 2
-            color: button_area.containsMouse ? Style.pal.bg_surface : Qt.rgba(0, 0, 0, 0.45)
+            color: button_area.containsMouse ? Style.pal.bg_surface : Style.pal.bg_shadow
             border.width: 1
             border.color: Qt.alpha(Style.pal.fg, 0.18)
             opacity: root.player && root.player.canTogglePlaying ? 1 : 0.4
@@ -117,7 +122,7 @@ Item {
 
         Column {
             Layout.alignment: Qt.AlignVCenter
-            visible: root.text_lines.length > 0
+            visible: !root.vertical && root.text_lines.length > 0
             spacing: 0
 
             Repeater {
@@ -145,7 +150,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumWidth: root.right_width
-            visible: root.right_mode !== "hide"
+            visible: !root.vertical && root.right_mode !== "hide"
 
             Rectangle {
                 visible: root.right_mode === "cava"

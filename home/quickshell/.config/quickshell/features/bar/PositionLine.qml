@@ -21,7 +21,9 @@ Item {
     implicitWidth: root.line_only ? 0 : label.implicitWidth
     implicitHeight: root.line_only ? 3 : label.implicitHeight + 4
 
-    PositionViewer { active: root.watching && MediaState.playing }
+    // Registered while watched, paused or not: the viewer set triggers one position read, and MediaState.polling alone
+    // limits the periodic polling to playback.
+    PositionViewer { active: root.watching }
 
     Text {
         id: label
