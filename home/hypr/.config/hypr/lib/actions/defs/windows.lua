@@ -37,6 +37,12 @@ Act.define("window.kill", {
   run = window("kill"),
 })
 
+Act.define("window.float_toggle", {
+  label = "Toggle Floating",
+  intent = "Float the focused window, or tile it again.",
+  run = window("float_toggle"),
+})
+
 Act.define("window.fullscreen", {
   label = "Toggle Fullscreen",
   intent = "Make the focused window fullscreen, or put it back.",

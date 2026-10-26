@@ -7,6 +7,7 @@ local Submap = require("lib.key.submap") ---@class Submap
 
 -- The actions the rows name.
 require("lib.actions.defs.move")
+require("lib.actions.defs.windows")
 
 --- The four directions as actions that nudge by `amount` pixels.
 --- @param amount number
