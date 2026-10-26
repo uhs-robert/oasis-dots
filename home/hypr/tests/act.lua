@@ -619,6 +619,37 @@ check("custom keys: unbound default dropped, added key kept", #after == 1 and af
 Bind.unbind("ALT + X")
 check("custom keys: all unbound gives no keys", #Json.decode(Act.list_json()).actions[1].keys == 0)
 
+-- A key unbound and then bound again must not revive the old association.
+local function keys_of(action_id)
+	for _, action in ipairs(Json.decode(Act.list_json()).actions) do
+		if action.id == action_id then
+			return action.keys
+		end
+	end
+end
+fresh()
+Bind = require("lib.key.bind")
+Act.define("a.one", { label = "One", key = { key = "ALT + Q" }, run = function() end })
+Act.define("a.two", { label = "Two", run = function() end })
+Bind.unbind("ALT + Q")
+Act.bind("a.two", { key = "ALT + Q" })
+check("rebind: key moved to another action leaves the old one", #keys_of("a.one") == 0)
+check("rebind: key moved to another action lists on the new one", #keys_of("a.two") == 1)
+
+fresh()
+Bind = require("lib.key.bind")
+Act.define("a.one", { label = "One", key = { key = "ALT + Q" }, run = function() end })
+Bind.unbind("ALT + Q")
+Bind.key("ALT + Q", function() end, "plain callback")
+check("rebind: key reused by a plain callback leaves the action", #keys_of("a.one") == 0)
+
+fresh()
+Bind = require("lib.key.bind")
+Act.define("a.one", { label = "One", key = { key = "ALT + Q" }, run = function() end })
+Bind.unbind("ALT + Q")
+Act.bind("a.one", { key = "ALT + Q" })
+check("rebind: same action lists the key once", #keys_of("a.one") == 1)
+
 local list_path = os.tmpname()
 local write_chunk = assert(load('require("lib.act").write_list([=====[' .. list_path .. "]=====])"))
 write_chunk()

@@ -376,12 +376,12 @@ local function register_key(handle, key, opts, args)
   end
   if bind_opts.submap_universal == nil and key.universal then bind_opts.submap_universal = true end
   local register = key.leader and Bind.leader_key or Bind.key
-  register(key.key, function() Act.run(handle.id, table.unpack(args)) end, handle.label, bind_opts)
+  local made = register(key.key, function() Act.run(handle.id, table.unpack(args)) end, handle.label, bind_opts)
   -- Recorded only after the bind succeeded, so list never shows a key that failed to register.
   local bound = key.leader and Bind.leader and Bind.leader ~= "" and (Bind.leader .. " + " .. key.key) or key.key
   table.insert(
     handle.bound_keys,
-    { key = bound, leader = key.leader, universal = key.universal, submap = Bind.current_submap() }
+    { key = bound, leader = key.leader, universal = key.universal, submap = Bind.current_submap(), bind = made[1] }
   )
 end
 
@@ -585,7 +585,7 @@ local function list_entry(handle)
   local keys = Json.array()
   for _, entry in ipairs(handle.bound_keys) do
     -- A key removed with Bind.unbind is no longer a key of the action. The submap field is left out for the global map.
-    if Bind.is_bound(entry.key, entry.submap) then
+    if Bind.is_bound(entry.key, entry.submap, entry.bind) then
       table.insert(keys, {
         key = entry.key,
         leader = entry.leader,
