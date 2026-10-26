@@ -73,38 +73,6 @@
       "extra_keys": []
     },
     {
-      "id": "clipboard.history",
-      "label": "Clipboard History",
-      "intent": "Pick an entry from the clipboard history and copy it back.",
-      "params": [],
-      "key": {"key": "CTRL + V", "leader": true, "universal": false},
-      "extra_keys": []
-    },
-    {
-      "id": "clipboard.delete",
-      "label": "Delete Clipboard Entry",
-      "intent": "Pick an entry from the clipboard history and delete it.",
-      "params": [],
-      "key": {"key": "CTRL + SHIFT + V", "leader": true, "universal": false},
-      "extra_keys": []
-    },
-    {
-      "id": "picker.dirs",
-      "label": "Jump to Directory",
-      "intent": "Pick a frequently used directory and open it in the file manager.",
-      "params": [],
-      "key": {"key": "CTRL + SPACE", "leader": true, "universal": false},
-      "extra_keys": []
-    },
-    {
-      "id": "picker.emoji",
-      "label": "Emoji Picker",
-      "intent": "Pick a character and type it into the focused window.",
-      "params": [],
-      "key": {"key": "CTRL + E", "leader": true, "universal": false},
-      "extra_keys": []
-    },
-    {
       "id": "picker.passwords",
       "label": "Passwords",
       "intent": "Pick a password-manager entry.",
