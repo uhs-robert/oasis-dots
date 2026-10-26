@@ -26,6 +26,34 @@ GOOD_LIST = {"version": 1, "actions": [
 ]}
 
 
+# Actions with no key whose run is an Ipc call (lib/actions/defs/{notifications,style,lock,power,screenshot,zoom,overview,settings,launcher}.lua).
+KEYLESS_IPC_IDS = [
+    "notifications.toggle_dnd",
+    "notifications.clear_all",
+    "notifications.dismiss_latest",
+    "notifications.dismiss_all",
+    "style.cycle",
+    "style.set",
+    "lock.open",
+    "power.confirm",
+    "screenshot.menu",
+    "screenshot.select",
+    "screenshot.stop_recording",
+    "zoom.step",
+    "zoom.size",
+    "zoom.full",
+    "overview.toggle",
+    "overview.close",
+    "tmux.toggle",
+    "tmux.close",
+    "tmux.search",
+    "settings.open",
+    "settings.toggle",
+    "picker.open",
+    "picker.toggle",
+    "picker.close",
+]
+
 class ListCase(TreeCase):
     def check(self, listing=GOOD_LIST):
         write_tree(self.root, {
@@ -132,7 +160,13 @@ class HeadlessLoadTest(TreeCase):
             "window.maximize", "window.move", "window.restore_closed",
             "workspace.cycle", "workspace.focus", "workspace.focus_last", "workspace.move", "workspace.move_window",
         ])
-        self.assertEqual(len(listing["actions"]), 23 + len(lua_ids))
+        self.assertEqual(len(listing["actions"]), 23 + len(lua_ids) + len(KEYLESS_IPC_IDS))
+
+    def test_the_real_tree_defines_the_keyless_ipc_actions(self):
+        listing, findings = registry.load_list(REPO_DIR)
+        self.assertEqual(findings, [])
+        keyless = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "ipc" and not a["keys"])
+        self.assertEqual(keyless, sorted(KEYLESS_IPC_IDS))
 
     def test_a_planted_good_definition_passes(self):
         self.assertEqual(self.planted('Act.define("zoom.again", { label = "Z", run = Act.Ipc("zoom", "toggle") })'), [])
