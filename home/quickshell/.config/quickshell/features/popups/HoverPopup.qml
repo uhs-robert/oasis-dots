@@ -21,7 +21,7 @@ Item {
 
     readonly property string mode: root._mode
     readonly property bool inside: root.enabled && !!root.module && (root.module.hovered || Popups.hover_name === root.popup_name && root.open_here)
-    readonly property bool open_here: Policy.open_here(Popups.open_name, Popups.open_screen_name, root.popup_name, root.module ? root.module.screen_name : "")
+    readonly property bool open_here: Policy.open_here(Popups.open_name, Popups.open_screen_name, root.popup_name, root.module ? root.module.screen_name : "") && (!Popups.hover_owner || Popups.hover_owner === root)
     readonly property bool nothing_open: Popups.open_name === ""
 
     property string _mode: "idle"
@@ -41,9 +41,12 @@ Item {
             close_timer.restart();
         }
         else if (r.close_timer === "stop") close_timer.stop();
+        if (r.mode === "pinned") Popups.hover_owner = null;
         if (r.mode === "pinned" && root.open_here) Popups.keyboard_off = false;
         // The mode is set first, so the open_name change this causes reads as ours, not as an outside open.
         if (r.action === "open" && root.module) {
+            // Before the open, so a same-name sibling never sees the new popup without an owner and takes it for a pin.
+            Popups.hover_owner = r.mode === "hover_open" ? root : null;
             Popups.open(root.popup_name, root.module.island, root.module.island_color, root.module.screen_name);
             // Taking the keyboard makes Hyprland move pointer focus to the popup, so the bar would see the pointer leave
             // the module it is still on and close the popup. A pin (click) hands the keyboard back.

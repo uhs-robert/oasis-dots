@@ -31,7 +31,7 @@ BarModule {
         id: hover_popup
         popup_name: "media"
         module: root
-        enabled: root.shown
+        enabled: root.shown && Popups.hover_popups
         open_delay: 300
         close_grace: 250
     }
