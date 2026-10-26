@@ -159,6 +159,13 @@ out=$(as "" "" try_phrases "focus workspace 3")
 code=$?
 check "half swapped refuses and names restore" "[[ $code == 1 ]] && grep -q 'half swapped; run restore' <<<\"\$out\" && ! grep -q 'main install' <<<\"\$out\""
 
+rm -f "$HOME/.local/bin/voxcmd" "$HOME/.config/voxcmd"
+ln -s "$root/gone" "$HOME/.local/bin/voxcmd"
+out=$(as "" "" try_phrases "focus workspace 3")
+code=$?
+check "a dangling main link is named instead of reporting no result" "[[ $code == 1 ]] && grep -q 'missing or dangling' <<<\"\$out\""
+rm -f "$HOME/.local/bin/voxcmd"
+
 echo "== debug marker after a reboot"
 rm -rf "$XDG_RUNTIME_DIR"
 mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
@@ -166,220 +173,25 @@ echo owner >"$debug_log"
 as "" "" voxcmd_debug_stop >/dev/null
 check "a stale marker cannot delete the owner's later log" "[[ \$(cat $debug_log) == owner ]]"
 
-echo "== rs-swap"
-# A throwaway HOME with a stowed fake voxcmd package and stubbed systemd-run, systemctl and Rust voxcmd; the real
-# stow runs, since the risk is stow aborting on the foreign link.
-rs_home=$root/rs_home
-rs_repo=$root/rs_repo
-stubs=$root/stubs
-calls=$root/calls
 bars_dir=$XDG_CACHE_HOME/dotfiles/test-bars
-export XDG_RUNTIME_DIR=$root/rs_run
-mkdir -p "$rs_home/.local/bin" "$rs_home/.config" "$XDG_RUNTIME_DIR/voxcmd" "$stubs" \
-  "$rs_repo/home/voxcmd/.local/bin" "$rs_repo/home/voxcmd/.config/voxcmd"
-touch "$rs_repo/home/voxcmd/.local/bin/voxcmd" "$rs_repo/home/voxcmd/.config/voxcmd/keybinds.sh"
-stow -d "$rs_repo/home" -t "$rs_home" voxcmd
-# rs-swap requires the script to be the main checkout's own copy, which resolves through this symlink.
-# It is a git repo so the sourced script finds its main checkout the way it does for real.
-git init -q "$rs_repo"
-mkdir -p "$rs_repo/.claude/skills/owner-test-bar"
-rs_script=$rs_repo/.claude/skills/owner-test-bar/owner-test-bar.sh
-ln -s "$here/../owner-test-bar.sh" "$rs_script"
-rs_bin=$rs_home/.local/share/voxcmd-rs/bin/voxcmd
-stow_target=$rs_repo/home/voxcmd/.local/bin/voxcmd
-cat >"$stubs/systemd-run" <<STUB
-#!/usr/bin/env bash
-echo "systemd-run \$*" >>"$calls"
-[[ -z \${FAKE_TIMER_FAIL:-} ]] || exit 1
-touch "$root/timer_active"
-STUB
-cat >"$stubs/systemctl" <<STUB
-#!/usr/bin/env bash
-echo "systemctl \$*" >>"$calls"
-case \$* in
-*is-active*) [[ -f "$root/timer_active" ]] ;;
-*stop*) rm -f "$root/timer_active" ;;
-esac
-STUB
-chmod +x "$stubs/systemd-run" "$stubs/systemctl"
-# rsx <function> <args>...: one function of the sourced script, with the fake repo, HOME and stubs.
-rsx() {
-  PATH="$stubs:$PATH" HOME=$rs_home bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ \
-    "$rs_script" "$rs_repo" "$@" 2>&1
-}
-link_is() { [[ $(readlink -m "$rs_home/.local/bin/voxcmd") == "$1" ]]; }
-calls_count() { if [[ -f $calls ]]; then wc -l <"$calls"; else echo 0; fi; }
-reset_calls() { rm -f "$calls" "$root/timer_active"; }
-
-reset_calls
-out=$(rsx main rs-swap)
-code=$?
-show "$out"
-check "refuses while voxcmd-rs is not built" "[[ $code != 0 ]] && grep -q 'is not built' <<<\"\$out\" && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs && \$(calls_count) == 0 ]]"
-
-mkdir -p "${rs_bin%/*}"
-printf '#!/usr/bin/env bash\necho "rs voxcmd $*" >>"%s"\n' "$calls" >"$rs_bin"
-chmod +x "$rs_bin"
-touch "$XDG_RUNTIME_DIR/voxcmd/session.json"
-out=$(rsx main rs-swap)
-code=$?
-check "refuses while a voxcmd session is open" "[[ $code != 0 ]] && grep -q 'voxcmd stop' <<<\"\$out\" && link_is '$stow_target'"
-rm "$XDG_RUNTIME_DIR/voxcmd/session.json"
-
-out=$(rsx main rs-swap)
-code=$?
-show "$out"
-check "swaps with the default of 60 minutes" "[[ $code == 0 ]] && link_is '$rs_bin' && grep -q -- '--on-active=60m' '$calls' && grep -q 'rs-restore' '$calls'"
-check "leaves the helper links and the config link alone" "[[ -L $rs_home/.config/voxcmd ]] && [[ \$(readlink -m $rs_home/.config/voxcmd) == $rs_repo/home/voxcmd/.config/voxcmd ]]"
-out=$(rsx voxcmd_status)
-check "status shows Rust and the time left" "[[ \$out == 'voxcmd: Rust (restores in 60 min)' ]]"
-
-check "the timer unit gets the cache and runtime paths" "grep -qF -- '--setenv=XDG_CACHE_HOME=$XDG_CACHE_HOME' '$calls' && grep -qF -- '--setenv=XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR' '$calls'"
-
-timers_started() { grep -c '^systemd-run' "$calls" || true; }
-before=$(timers_started)
-out=$(rsx main rs-swap 5)
-code=$?
-check "a second swap is refused and starts no second timer" "[[ $code != 0 ]] && grep -q 'already swapped' <<<\"\$out\" && [[ \$(timers_started) == $before ]]"
-out=$(rsx main try 'x')
-code=$?
-check "try refuses while swapped" "[[ $code != 0 ]] && grep -q 'Rust build' <<<\"\$out\""
-
-echo "== rs restore"
-: >"$calls"
-out=$(rsx voxcmd_restore)
-code=$?
-show "$out"
-check "restore relinks the stow link despite the foreign link" "[[ $code == 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
-check "restore stops the Rust session and the timer" "grep -q 'rs voxcmd stop' '$calls' && grep -q 'systemctl --user stop voxcmd-rs-restore.timer' '$calls' && [[ ! -f $root/timer_active ]]"
-check "status is main again" "[[ \$(rsx voxcmd_status) == 'voxcmd: main' ]]"
-
-: >"$calls"
-out=$(rsx voxcmd_restore)
-code=$?
-check "restore with no swap is a no-op" "[[ $code == 0 && \$out == 'voxcmd: main' && \$(calls_count) == 0 ]] && link_is '$stow_target'"
-
-echo "== rs timer fired"
-reset_calls
-rsx main rs-swap 5 >/dev/null
-# the timer has fired: its unit is gone and the deadline is past
-rm -f "$root/timer_active"
-echo $(($(date +%s) - 10)) >"$bars_dir/.voxcmd_rs"
-out=$(rsx voxcmd_status)
-check "status says the restore is overdue" "grep -q 'Rust (restore overdue' <<<\"\$out\""
-out=$(rsx main rs-restore)
-check "the timer's restore command puts main back" "[[ \$? == 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
-out=$(rsx voxcmd_restore)
-check "restore after the timer fired is a no-op" "[[ \$? == 0 && \$out == 'voxcmd: main' ]] && link_is '$stow_target'"
-
-echo "== rs crash: link on rs, no timer"
-reset_calls
-rsx main rs-swap 5 >/dev/null
-rm -f "$root/timer_active"
-out=$(rsx voxcmd_status)
-check "status says the timer is lost" "grep -q 'Rust (restore timer lost, [45] min left' <<<\"\$out\""
-rm -f "$bars_dir/.voxcmd_rs"
-out=$(rsx voxcmd_status)
-check "status says half swapped when the marker is gone too" "grep -q 'half swapped' <<<\"\$out\""
-out=$(rsx main rs-swap 5)
-check "a new swap is refused until restore" "[[ \$? != 0 ]] && grep -q 'restore first' <<<\"\$out\""
-out=$(rsx voxcmd_restore)
-check "restore recovers it" "[[ \$? == 0 ]] && link_is '$stow_target' && [[ \$(rsx voxcmd_status) == 'voxcmd: main' ]]"
-
-echo "== rs: bare stow -R while swapped"
-reset_calls
-rsx main rs-swap 5 >/dev/null
-out=$(stow -d "$rs_repo/home" -t "$rs_home" -R voxcmd 2>&1)
-check "a bare stow -R aborts on the foreign link, which is why restore removes it first" "[[ \$? != 0 ]] && link_is '$rs_bin'"
-out=$(rsx voxcmd_restore)
-check "restore's stow -R succeeds while swapped" "[[ \$? == 0 ]] && link_is '$stow_target'"
-
-echo "== rs: the permanent voxcmd-rs alias"
-reset_calls
-ln -s "$rs_bin" "$rs_home/.local/bin/voxcmd-rs"
-check "status stays main when only the alias exists" "[[ \$(rsx voxcmd_status) == 'voxcmd: main' ]]"
-rsx voxcmd_restore >/dev/null
-check "restore with no swap keeps the alias" "[[ -L $rs_home/.local/bin/voxcmd-rs ]]"
-rsx main rs-swap 5 >/dev/null
-rsx voxcmd_restore >/dev/null
-check "restore after an rs swap keeps the alias and relinks main" "[[ -L $rs_home/.local/bin/voxcmd-rs ]] && link_is '$stow_target'"
-rm "$rs_home/.local/bin/voxcmd-rs"
-
-echo "== rs: a symlinked data dir"
-reset_calls
-ln -s "$rs_home/.local/share" "$root/data_link"
-XDG_DATA_HOME=$root/data_link rsx main rs-swap 5 >/dev/null
-out=$(XDG_DATA_HOME=$root/data_link rsx voxcmd_status)
-check "status recognises the Rust link" "[[ \$out == 'voxcmd: Rust (restores in '* ]]"
-XDG_DATA_HOME=$root/data_link rsx voxcmd_restore >/dev/null
-check "restore leaves voxcmd on main" "[[ \$? == 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
-rm "$root/data_link"
-
-echo "== rs: the data dir and the checkout"
-reset_calls
-XDG_DATA_HOME=$rs_home/.local/share rsx main rs-swap 5 >/dev/null
-check "the timer unit gets a caller's XDG_DATA_HOME" "grep -qF -- '--setenv=XDG_DATA_HOME=$rs_home/.local/share' '$calls'"
-rsx voxcmd_restore >/dev/null
-reset_calls
-ln -sfn "$root/stale/voxcmd" "$rs_home/.local/bin/voxcmd"
-out=$(rsx main rs-swap 5)
-code=$?
-check "rs-swap refuses a link that is not main's voxcmd, and leaves it" "[[ $code != 0 ]] && grep -q 'main checkout' <<<\"\$out\" && link_is '$root/stale/voxcmd' && [[ \$(calls_count) == 0 ]]"
-ln -sfn "$stow_target" "$rs_home/.local/bin/voxcmd"
-other_script=$root/worktree/owner-test-bar.sh
-mkdir -p "${other_script%/*}"
-cp "$here/../owner-test-bar.sh" "$other_script"
-out=$(PATH="$stubs:$PATH" HOME=$rs_home bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ "$other_script" "$rs_repo" main rs-swap 2>&1)
-code=$?
-check "rs-swap refuses a script outside the main checkout" "[[ $code != 0 ]] && grep -q 'from the main checkout' <<<\"\$out\" && link_is '$stow_target' && [[ \$(calls_count) == 0 && ! -e $bars_dir/.voxcmd_rs ]]"
-
-echo "== rs: test-bar commands while swapped"
-reset_calls
-rsx main rs-swap 5 >/dev/null
-for cmd in "swap clicks" "up clicks feat/x" "rebuild clicks"; do
-  rm -f "$bars_dir/.owner"
-  # shellcheck disable=SC2086
-  out=$(PATH="$stubs:$PATH" HOME=$rs_home bash "$rs_script" $cmd 2>&1)
-  code=$?
-  check "'$cmd' is refused before it claims the bar" "[[ $code != 0 ]] && grep -q 'runs the Rust build' <<<\"\$out\" && [[ ! -e $bars_dir/.owner ]] && link_is '$rs_bin'"
-done
-rsx voxcmd_restore >/dev/null
-
-echo "== rs: a voxcmd test bar is up"
-reset_calls
-bar_bin=$bars_dir/clicks/home/voxcmd/.local/bin
-mkdir -p "$bar_bin"
-touch "$bar_bin/voxcmd"
-ln -sfn "$bar_bin/voxcmd" "$rs_home/.local/bin/voxcmd"
-ln -sfn "$bars_dir/clicks/home/voxcmd/.config/voxcmd" "$rs_home/.config/voxcmd"
-echo clicks >"$bars_dir/.voxcmd_bar"
-out=$(rsx main rs-swap)
-code=$?
-show "$out"
-check "rs-swap refuses and leaves the test build linked" "[[ $code != 0 ]] && grep -q 'not on main' <<<\"\$out\" && link_is '$bar_bin/voxcmd' && [[ \$(calls_count) == 0 ]]"
-out=$(rsx voxcmd_restore)
-check "restore of the test build is unchanged" "[[ \$? == 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_bar ]]"
-
-echo "== rs: the timer cannot start"
-reset_calls
-FAKE_TIMER_FAIL=1 rsx main rs-swap 5 >/dev/null
-check "the swap is undone" "[[ \$? != 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
 
 echo "== voxtype swap and restore"
-# A fork that deleted the bash voxcmd: the swap builds the crate in the bar (stub cargo) and links the built binary.
+# Main's voxcmd is the built binary, linked by `just voxcmd-build`, not a stowed file. A branch's test build builds the
+# crate in the bar (stub cargo) and links its binary; restore must put main's build back.
 echo "== rust-only voxcmd test build"
 rr_repo=$root/rr_repo
 rr_home=$root/rr_home
 rr_stubs=$root/rr_stubs
 rr_calls=$root/rr_calls
 rr_dir=$bars_dir/rustbar
-rr_main_bin=$rr_repo/home/voxcmd/.local/bin/voxcmd
-mkdir -p "$rr_stubs" "$rr_home/.local/bin" "$rr_home/.config" "$rr_repo/home/voxcmd/.local/bin" \
+rr_main_bin=$rr_home/.local/share/voxcmd-rs/bin/voxcmd
+mkdir -p "$rr_stubs" "${rr_main_bin%/*}" "$rr_home/.local/bin" "$rr_home/.config" "$rr_repo/home/voxcmd/.local/bin" \
   "$rr_repo/home/voxcmd/.config/voxcmd" "$rr_repo/.claude/skills/owner-test-bar"
 git init -q -b main "$rr_repo"
 rg() { git -C "$rr_repo" -c user.name=t -c user.email=t@t "$@"; }
+# Main's build: no shebang, as a compiled binary has none.
 # shellcheck disable=SC2016 # the stub's own variables
-printf '#!/usr/bin/env bash\necho "bash voxcmd $*" >>"%s"\necho "result: bash"\n' "$rr_calls" >"$rr_main_bin"
+printf 'echo "main voxcmd $*" >>"%s"\necho "result: main"\n' "$rr_calls" >"$rr_main_bin"
 chmod +x "$rr_main_bin"
 echo main >"$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm"
 echo main >"$rr_repo/home/voxcmd/.config/voxcmd/keybinds.sh"
@@ -388,7 +200,6 @@ rg add -A
 rg commit -q -m main
 rg update-ref refs/remotes/origin/main HEAD
 rg switch -q -c rust
-rg rm -q home/voxcmd/.local/bin/voxcmd
 mkdir -p "$rr_repo/home/voxcmd/src"
 echo '[package]' >"$rr_repo/home/voxcmd/Cargo.toml"
 echo rust >"$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm"
@@ -397,6 +208,7 @@ rg commit -q -m rust
 rg switch -q main
 rg worktree add -q --detach "$rr_dir" rust
 stow -d "$rr_repo/home" -t "$rr_home" voxcmd
+ln -s "$rr_main_bin" "$rr_home/.local/bin/voxcmd"
 cat >"$rr_stubs/cargo" <<STUB
 #!/usr/bin/env bash
 echo "cargo \$* hash=\${VOXCMD_GIT_HASH:-}" >>"$rr_calls"
@@ -595,10 +407,17 @@ check "try runs explain on a Rust test build and reads its result" "[[ $code == 
 
 out=$(rrx voxcmd_restore)
 code=$?
-check "restore restows main's bash voxcmd" "[[ $code == 0 ]] && rr_link_is voxcmd '$rr_main_bin' && rr_link_is voxcmd-alarm '$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm' && [[ ! -e $bars_dir/.voxcmd_bar ]] && [[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
+check "restore relinks main's built voxcmd and restows the rest" "[[ $code == 0 ]] && rr_link_is voxcmd '$rr_main_bin' && rr_link_is voxcmd-alarm '$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm' && [[ ! -e $bars_dir/.voxcmd_bar ]] && [[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
 rm -f "$rr_calls"
 out=$(rrx try_phrases "go home")
-check "try keeps --dry-run for the bash voxcmd" "grep -q 'bash voxcmd --dry-run go home' '$rr_calls' && ! grep -q 'explain' '$rr_calls'"
+check "try runs explain on main's build" "grep -q 'main voxcmd explain go home' '$rr_calls' && ! grep -q -- '--dry-run' '$rr_calls'"
+# A restore with the build gone must say so rather than leave a silent hole where voxcmd was.
+rrx voxcmd_swap rustbar "$rr_dir" >/dev/null
+mv "$rr_main_bin" "$root/rr_main_aside"
+out=$(rrx voxcmd_restore)
+check "restore without a built voxcmd warns and names the build recipe" "grep -q 'just voxcmd-build' <<<\"\$out\" && [[ ! -e $rr_home/.local/bin/voxcmd ]]"
+mv "$root/rr_main_aside" "$rr_main_bin"
+rrx voxcmd_restore >/dev/null
 rm -f "$bars_dir/.owner" "$bars_dir/rustbar.branches"
 
 # A throwaway HOME and git repo with a stowed voxtype and systemd package; the real stow runs, and systemctl is a fake that
