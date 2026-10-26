@@ -7,6 +7,7 @@ import qs.features.bar
 BarModule {
     id: root
     module_name: "bluetooth"
+    hover_popup: true
 
     readonly property var adapter: QsBt.Bluetooth.defaultAdapter
     readonly property bool has_adapter: !!adapter

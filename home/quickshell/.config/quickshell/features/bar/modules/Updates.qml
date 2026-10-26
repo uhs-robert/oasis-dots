@@ -7,6 +7,7 @@ import qs.features.bar
 BarModule {
     id: root
     module_name: "updates"
+    hover_popup: true
 
     readonly property int official_count: UpdatesState.official.length
     readonly property int aur_count: UpdatesState.aur.length

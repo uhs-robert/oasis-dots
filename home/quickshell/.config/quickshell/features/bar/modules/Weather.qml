@@ -8,6 +8,7 @@ import qs.features.weather
 BarModule {
     id: root
     module_name: "weather"
+    hover_popup: true
 
     implicitWidth: row.implicitWidth
     implicitHeight: row.implicitHeight

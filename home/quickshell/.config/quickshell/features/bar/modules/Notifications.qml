@@ -7,6 +7,9 @@ import qs.features.bar
 BarModule {
     id: root
     module_name: "notifications"
+    hover_popup: true
+    // Empty, it falls back to the tooltip.
+    hover_ready: NotificationState.history.length > 0
 
     // Set by a lualine section with a strong fill.
     property bool on_accent: false
