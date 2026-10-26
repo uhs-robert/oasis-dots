@@ -15,11 +15,14 @@ Popup {
     popup_name: "settings"
     title: "SETTINGS"
     size_class: "large"
-    // Settings takes this share of the screen each way, as a drawer from the frame or a drop from the bar.
-    readonly property real screen_fraction: 0.8
-    preferred_width: root.screen ? root.screen.width * root.screen_fraction / Style.scale : 1200
-    // A fixed height, so the drawer does not resize between sections.
-    body_height: root.screen ? Math.min(root.screen.height * root.screen_fraction - root.header_height - root.footer_height, root.content_cap + 24) : 600
+    // As wide as the three columns want, up to most of the screen; a fixed share of the height, so the drawer does
+    // not resize between sections.
+    readonly property real max_width_fraction: 0.9
+    readonly property real height_fraction: 0.8
+    // The section list, the pane and help column at their widest, their gaps and the body's 12px margins.
+    readonly property real natural_width: nav.width + Style.px(12 + 24 + 860 + 48 + 520) + 24
+    preferred_width: (root.screen ? Math.min(root.natural_width, root.screen.width * root.max_width_fraction) : root.natural_width) / Style.scale
+    body_height: root.screen ? Math.min(root.screen.height * root.height_fraction - root.header_height - root.footer_height, root.content_cap + 24) : 600
     jumps_enabled: true
     // Only on the section list: panes hold sliders and fields with wheel behavior of their own.
     wheel_steps: !root.in_pane
@@ -323,15 +326,20 @@ Popup {
             color: Qt.alpha(root.st.text_muted, 0.4)
         }
 
-        // The pane keeps a readable measure on wide screens; the help column takes what is left, within bounds.
-        readonly property real help_width: Math.max(Style.px(300), Math.min(Style.px(520), (body.width - nav_divider.x) * 0.32))
-        readonly property real pane_width: Math.min(Style.px(860), body.width - nav_divider.x - body.help_width - Style.px(48))
+        // Beside the section list there is room for the rows and the help column side by side, or (a portrait or
+        // small screen) the help goes under the rows.
+        readonly property real side_room: body.width - nav_divider.x - Style.px(24)
+        readonly property bool help_below: body.side_room < Style.px(480 + 48 + 300)
+        readonly property real help_width: body.help_below ? body.side_room : Math.max(Style.px(300), Math.min(Style.px(520), body.side_room * 0.32))
+        readonly property real help_height: body.help_below ? Math.round(body.height * 0.3) : body.height
+        readonly property real pane_width: body.help_below ? body.side_room : Math.min(Style.px(860), body.side_room - body.help_width - Style.px(48))
+        readonly property real pane_height: body.help_below ? body.height - body.help_height - Style.px(24) : body.height
 
         Flickable {
             id: pane_flick
             x: nav_divider.x + Style.px(24)
             width: body.pane_width
-            height: body.height
+            height: body.pane_height
             clip: pane_flick.contentHeight > pane_flick.height
             contentWidth: width
             contentHeight: pane_loader.height
@@ -340,7 +348,7 @@ Popup {
             Loader {
                 id: pane_loader
                 width: pane_flick.width
-                height: Math.max(body.height, pane_loader.implicitHeight)
+                height: Math.max(pane_flick.height, pane_loader.implicitHeight)
                 // The flickable is reused across sections: start the new one at the top, then at its selected row.
                 onLoaded: {
                     pane_flick.contentY = 0;
@@ -350,17 +358,19 @@ Popup {
         }
 
         Rectangle {
-            x: body.width - body.help_width - Style.px(12)
-            width: 1
-            height: body.height
+            x: body.help_below ? pane_flick.x : body.width - body.help_width - Style.px(12)
+            y: body.help_below ? body.height - body.help_height - Style.px(12) : 0
+            width: body.help_below ? body.help_width : 1
+            height: body.help_below ? 1 : body.height
             color: Qt.alpha(root.st.text_muted, 0.4)
         }
 
         Item {
             id: help_column
             x: body.width - body.help_width
+            y: body.height - body.help_height
             width: body.help_width
-            height: body.height
+            height: body.help_height
         }
 
         NumberAnimation {
