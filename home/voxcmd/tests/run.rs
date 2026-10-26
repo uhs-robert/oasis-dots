@@ -908,3 +908,46 @@ fn a_closed_surface_leaves_other_integrations_hooks_running() {
         setup.texts()
     );
 }
+
+impl Setup {
+    /// The shipped Overview integration with a bar stub that answers `qs-ipc call overview state` with `state`.
+    fn with_real_overview(state: &str) -> Self {
+        let setup = Self::new(OTHER);
+        let shipped = Path::new(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations");
+        for file in ["overview.toml", "overview.sh"] {
+            std::fs::copy(shipped.join(file), setup.path().join("config/integrations").join(file)).unwrap();
+        }
+        let bar = setup.path().join("xdg/hypr/scripts");
+        std::fs::create_dir_all(&bar).unwrap();
+        std::fs::write(bar.join("qs-ipc"), format!("#!/bin/sh\necho {state}\n")).unwrap();
+        std::fs::set_permissions(bar.join("qs-ipc"), std::fs::Permissions::from_mode(0o755)).unwrap();
+        settle_exec(&bar.join("qs-ipc"));
+        setup
+    }
+}
+
+#[test]
+fn the_real_overview_hook_offers_show_numbers_in_the_race_window() {
+    // The bar says open, the session is in the Overview mode, overview.json is not written yet.
+    let setup = Setup::with_real_overview("open");
+    setup.runtime_file("session.json", r#"{"kind":"overview","stack":[]}"#);
+    let explained = setup
+        .command(&["explain", "--json", "show numbers"], &[])
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&explained.stdout).into_owned();
+    assert!(text.contains("show numbers"), "{text}");
+    assert!(
+        text.contains("\"id\": \"numbers\"") || text.contains("\"id\":\"numbers\""),
+        "{text}"
+    );
+}
+
+#[test]
+fn explain_says_a_skipped_hook_was_not_run() {
+    let setup = Setup::with_dial();
+    let explained = setup.command(&["explain", "--json", "one"], &[]).output().unwrap();
+    let text = String::from_utf8_lossy(&explained.stdout).into_owned();
+    assert!(text.contains("(not run: surface closed)"), "{text}");
+    assert_eq!(setup.asked("dial_asked"), 0);
+}

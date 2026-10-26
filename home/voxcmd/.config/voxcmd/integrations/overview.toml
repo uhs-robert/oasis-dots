@@ -77,6 +77,7 @@ alive = "overview_alive"
 ended = "overview_ended"
 
 # Phrases go to the overview first while it is up. Only the file is read here; the hooks ask the bar before offering anything.
-# Closed (file not open and no Overview session), the router does not start the candidates hooks at all.
+# Closed (file not open and no Overview session), the router does not start the candidates hooks at all; in the moment
+# before the file is written they run and ask the bar.
 [surface]
 state_file = "overview.json"

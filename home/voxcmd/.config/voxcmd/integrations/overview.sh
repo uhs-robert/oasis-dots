@@ -10,12 +10,9 @@ source "$VOXCMD_SHARE_DIR/monitor-words.sh"
 overview_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/overview.json"
 qs_ipc="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-ipc"
 
-# Whether the overview is on screen: it says so in its file, and the bar confirms (a bar that died leaves the file behind).
-# Without a bar to ask, the file is believed.
-overview_is_open() {
-  grep -q '"open":true' "$overview_file" 2>/dev/null || return 1
-  [ ! -x "$qs_ipc" ] || [ "$(timeout 2 "$qs_ipc" call overview state 2>/dev/null)" = open ]
-}
+# Whether the overview is on screen: the bar's answer (see overview_alive), which holds in the moment after it opens,
+# before its file is written.
+overview_is_open() { overview_alive; }
 
 # The mode's `alive` hook. The bar's own answer decides while it gives one: its file is rewritten a moment after the
 # overview opens, so right after "open overview" it still says closed. The file is believed only when the bar cannot be
