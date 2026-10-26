@@ -66,3 +66,15 @@ function corner_points(kind, r, step, cx, cy, a0, a1) {
     local.push([0, n * w]);
     return local.map(p => [q[0] + p[0] * ex[0] + p[1] * ey[0], q[1] + p[0] * ex[1] + p[1] * ey[1]]);
 }
+
+// A w x h box as a closed clockwise loop whose four corners are `kind`, asked for `r` and `step` and fit to the box
+// (never more than half its shorter side). Only composes corner_points, so a box follows the same profile the frame does.
+function box_loop(kind, r, step, w, h) {
+    const f = fit(kind, Math.min(r, w / 2, h / 2), step);
+    const k = valid(kind);
+    return [].concat(
+        corner_points(k, f.radius, f.step, f.radius, f.radius, 180, 270),
+        corner_points(k, f.radius, f.step, w - f.radius, f.radius, 270, 360),
+        corner_points(k, f.radius, f.step, w - f.radius, h - f.radius, 0, 90),
+        corner_points(k, f.radius, f.step, f.radius, h - f.radius, 90, 180));
+}

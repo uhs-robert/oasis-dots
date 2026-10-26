@@ -385,6 +385,9 @@ for (const step of [2, 3, 4]) for (const r of [12, 18]) {
 }
 cases.push(["a chamfer is two points at 45 degrees", () => { const p = C.corner_points("chamfer", 12, 0, 12, 12, 270, 180); return [p.length, Math.abs(p[1][0] - p[0][0]) === Math.abs(p[1][1] - p[0][1])]; }, [2, true]]);
 cases.push(["a square corner is its one outer point", () => plain(C.corner_points("square", 12, 0, 12, 12, 270, 180)), [[0, 0]]]);
+cases.push(["a square box is its four corners", () => plain(C.box_loop("square", 10, 0, 40, 20)), [[0, 0], [40, 0], [40, 20], [0, 20]]]);
+cases.push(["a chamfered box cuts every corner at 45 degrees", () => plain(C.box_loop("chamfer", 4, 0, 40, 20)), [[0, 4], [4, 0], [36, 0], [40, 4], [40, 16], [36, 20], [4, 20], [0, 16]]]);
+cases.push(["a box corner never exceeds half the shorter side", () => { const p = plain(C.box_loop("chamfer", 50, 0, 40, 20)); return [Math.min(...p.map(q => q[0])), Math.min(...p.map(q => q[1])), p.length]; }, [0, 0, 8]]);
 
 for (const corner of PROFILES) {
   const kit_c = Object.assign({}, kit, { corner: corner, step: 2 });
