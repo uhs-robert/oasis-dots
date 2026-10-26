@@ -25,6 +25,10 @@ Column {
     property var sprite_rows: []
     property var sprite_colors: []
     property font marker_font
+    // The meeting marker's state, from Clock.
+    property bool meeting_shown: false
+    property int meeting_minutes: 0
+    property real meeting_progress: 1
 
     readonly property var lines: VerticalLayout.clock_lines(root.shifted.getHours(), root.shifted.getMinutes(), TimeFormat.h24)
     readonly property real chip_pad: 3
@@ -35,7 +39,7 @@ Column {
     // Fitted from "00", the widest pair, so the size does not change as the digits do.
     readonly property int fit_px: VerticalLayout.fit_size({ glyph_per_px: probe.advanceWidth / root.base_size, fixed: 2 * root.spacing_px }, root.text_avail, root.base_size, VerticalLayout.min_text_px)
     // The capsule draws its time in a bolder, 3 px larger face than the plain text.
-    readonly property int capsule_fit_px: VerticalLayout.fit_size({ glyph_per_px: capsule_probe.advanceWidth / capsule_probe.font.pixelSize, fixed: 0 }, root.cross, Style.bar_font_size + 3, VerticalLayout.min_text_px)
+    readonly property int capsule_fit_px: VerticalLayout.fit_size({ glyph_per_px: capsule_probe.advanceWidth / capsule_probe.font.pixelSize, fixed: 0 }, root.cross, capsule_loader.item ? capsule_loader.item.time_px : root.base_size, VerticalLayout.min_text_px)
     readonly property color text_color: root.on_accent ? root.ink : root.chip || root.lualine ? Style.bar_clock_fg : Style.bar_fg
 
     spacing: 3
@@ -52,10 +56,7 @@ Column {
     TextMetrics {
         id: capsule_probe
         text: "00"
-        font.family: Style.bar_clock_font
-        font.pixelSize: Style.bar_font_size + 3
-        font.weight: Font.DemiBold
-        font.features: { "tnum": 1 }
+        font: capsule_loader.item ? capsule_loader.item.time_font : Qt.font({ pixelSize: root.base_size })
     }
 
     PixelSprite {
@@ -67,6 +68,7 @@ Column {
     }
 
     Loader {
+        id: capsule_loader
         active: root.capsule
         visible: active
         anchors.horizontalCenter: parent.horizontalCenter
@@ -114,7 +116,7 @@ Column {
 
     // A marker wider than the bar is scaled down to it rather than cut off.
     Item {
-        visible: marker.visible
+        visible: root.meeting_shown
         anchors.horizontalCenter: parent.horizontalCenter
         readonly property real fit: marker.width > 0 ? Math.min(1, root.cross / marker.width) : 1
         width: marker.width * fit
@@ -122,14 +124,12 @@ Column {
 
         Marker.MeetingMarker {
             id: marker
-            visible: CalendarState.in_meeting || CalendarState.chip_event !== null
             transformOrigin: Item.TopLeft
             scale: parent.fit
-            readonly property bool chip_shown: CalendarState.chip_event !== null
-            minutes: marker.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) : 0
+            minutes: root.meeting_minutes
             in_meeting: CalendarState.in_meeting
-            upcoming: marker.chip_shown
-            progress: marker.chip_shown ? Math.max(0, Math.min(1, 1 - marker.minutes / CalendarState.chip_window_minutes)) : 1
+            upcoming: CalendarState.chip_event !== null
+            progress: root.meeting_progress
             on_accent: root.on_accent
             ink: root.ink
             text_font: root.marker_font
