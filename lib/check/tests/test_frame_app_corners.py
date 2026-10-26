@@ -14,8 +14,8 @@ SCRIPT = os.path.join(ROOT, "home/quickshell/.config/quickshell/scripts/frame-ap
 gen = SourceFileLoader("frame_app_corners", SCRIPT).load_module()
 
 
-def frame(corner, radius=12):
-    return {"on": True, "corner": corner, "radius": radius}
+def frame(corner, radius=12, on=True):
+    return {"on": on, "corner": corner, "radius": radius}
 
 
 class YaziBorder(unittest.TestCase):
@@ -23,9 +23,13 @@ class YaziBorder(unittest.TestCase):
         for corner, expected in [("round", "rounded"), ("square", "plain"), ("pixel", "plain"), ("chamfer", "plain")]:
             self.assertEqual(gen.yazi_border(frame(corner)), expected, corner)
 
-    def test_frame_off_or_unknown_is_plain(self):
-        self.assertEqual(gen.yazi_border({"on": False, "corner": "round"}), "plain")
+    def test_unknown_or_no_corner_is_plain(self):
         self.assertEqual(gen.yazi_border(frame("blob")), "plain")
+        self.assertEqual(gen.yazi_border({"on": False, "corner": "", "radius": 0}), "plain")
+
+    def test_corner_applies_with_the_frame_off(self):
+        for corner, expected in [("round", "rounded"), ("square", "plain"), ("pixel", "plain"), ("chamfer", "plain")]:
+            self.assertEqual(gen.yazi_border(frame(corner, on=False)), expected, corner)
 
 
 class FirefoxCss(unittest.TestCase):
@@ -73,8 +77,14 @@ class FirefoxCss(unittest.TestCase):
     def test_zero_radius_chamfer_does_not_clip(self):
         self.assertNotIn("clip-path", gen.firefox_css(frame("chamfer", 0)))
 
-    def test_frame_off_leaves_firefox_alone(self):
+    def test_no_corner_leaves_firefox_alone(self):
+        self.assertNotIn("--tf-rounding", gen.firefox_css({"on": False, "corner": "", "radius": 0}))
         self.assertNotIn("--tf-rounding", gen.firefox_css({"on": False}))
+
+    def test_corner_applies_with_the_frame_off(self):
+        self.assertIn("--tf-rounding: 14px;", gen.firefox_css(frame("round", 14, on=False)))
+        self.assertIn("--tf-rounding: 0px;", gen.firefox_css(frame("square", 8, on=False)))
+        self.assertIn("--tf-bevel-line", gen.firefox_css(frame("chamfer", 12, on=False)))
 
 
 class Run(unittest.TestCase):
@@ -91,6 +101,12 @@ class Run(unittest.TestCase):
     def test_files_follow_the_corner(self):
         with tempfile.TemporaryDirectory() as tmp:
             lua, css = self.run_into(tmp, frame("round", 10))
+            self.assertEqual(lua, 'return "rounded"\n')
+            self.assertIn("--tf-rounding: 10px;", css)
+
+    def test_files_follow_the_corner_with_the_frame_off(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lua, css = self.run_into(tmp, frame("round", 10, on=False))
             self.assertEqual(lua, 'return "rounded"\n')
             self.assertIn("--tf-rounding: 10px;", css)
 

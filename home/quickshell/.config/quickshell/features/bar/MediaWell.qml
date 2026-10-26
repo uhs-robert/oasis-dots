@@ -72,9 +72,8 @@ Item {
     font.letterSpacing: Style.bar_letter_spacing
 
     // The plate takes the frame's corner profile (round, chamfer, pixel or square) through the same Corners.js the frame
-    // and drawers use. Style.screen_frame_profile is the accessor a separate corner-style setting will feed; with no
-    // frame the style's own rounding decides.
-    readonly property var corner_profile: Style.screen_frame_profile || { corner: Style.rounded ? "round" : "square", step: 2 }
+    // and drawers use. With no frame it takes a Corner style that was picked; until then the style's own rounding decides.
+    readonly property var corner_profile: Style.screen_frame_profile || (Style.corner_style_chosen ? Style.corner_profile : { corner: Style.rounded ? "round" : "square", step: 2 })
     // A round profile is the frame asking for round corners, so it rounds even where the style's own `rounded` is off; only the scale comes from the style.
     // A chamfer or pixel corner is the profile's own size.
     readonly property real corner_size: root.corner_profile.corner === "round" ? 10 * Style.corner_scale : 8

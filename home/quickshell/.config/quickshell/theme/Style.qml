@@ -73,15 +73,13 @@ Singleton {
     // Saved shapes renamed since, applied once to a theme_options.json older than version 2: "octagon" drew
     // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
     readonly property var renamed_island_shapes: ({ octagon: "watch" })
-    readonly property int options_version: 3
+    readonly property int options_version: 4
     // Shape sizes every kit resets before laying its own on, so leaving the capsule drops its inset.
     readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0, bar_strip_inset: 0, bar_strip_side: 0 })
-    // The corner profiles a frame offers (Corners.js).
+    // The corner profiles a style offers (Corners.js), the Corner style row's choices.
     readonly property var frame_corners: ["round", "chamfer", "pixel", "square"]
-    // Screen frames any style can borrow (Theme options); "" is none, and each other value is the frame's corner profile.
-    readonly property var screen_frames: [""].concat(root.frame_corners)
     // What every frame draws (FrameGeometry.frame_layout): `thickness` px bands on the edges the bar is not on and the
-    // hole's corners of `radius`, in the profile screen_frame_profile reads from the choice. The line round the hole
+    // hole's corners of `radius`, in the profile corner_profile reads from the Corner style. The line round the hole
     // stays at the bar's border width (screen_frame_rim_color). `ornament` names extra drawing in the frame's ornament
     // slot, none so far.
     readonly property var plain_frame_kit: ({ radius: 12, thickness: 6, ornament: "" })
@@ -114,7 +112,7 @@ Singleton {
             bar_meeting_marker: MarkerTokens.labels,
             bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", rect: "Rectangle", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar", strip: "Floating strip" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" },
-            screen_frame: { "": "Off", round: "Round", chamfer: "Chamfer", pixel: "Pixel", square: "Square" }
+            corner_style: { round: "Round", chamfer: "Chamfer", pixel: "Pixel", square: "Square" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
 
@@ -163,7 +161,9 @@ Singleton {
     readonly property var base_active: root.styles[root.name] || root.styles["oasis"]
     readonly property var active: {
         const opts = root.theme_values[root.styles[root.name] ? root.name : "oasis"];
-        const chosen = opts ? root.with_options(root.base_active, opts) : root.base_active;
+        const picked = opts ? root.with_options(root.base_active, opts) : root.base_active;
+        // A square corner squares the popups and panels too, whatever corner radius the style draws them with.
+        const chosen = FrameTokens.corner_of(picked, root.frame_corners) === "square" && picked.frame_radius !== 0 ? Object.assign({}, picked, { frame_radius: 0 }) : picked;
         // A frame's bar edge is the full strip, whatever shape is saved; the saved shape stays for when it goes.
         if (root.frame_kit_for(chosen) === null || !FrameTokens.forces_full_bar(chosen)) return chosen;
         return root.with_options(root.base_active, Object.assign({}, opts, { bar_island_shape: "full" }));
@@ -171,9 +171,16 @@ Singleton {
     // The screen frame the shell draws, from `active` so the style picker previews it; null when there is none.
     readonly property var screen_frame_kit: root.frame_kit_for(root.active)
     readonly property bool screen_frame_on: root.screen_frame_kit !== null
-    // The frame's corner profile as asked for: the hole and the drawers fit it to their room (Corners.fit), and
-    // Hyprland shapes windows to it (ScreenFrameSync). Null with no frame.
-    readonly property var screen_frame_profile: root.screen_frame_on ? { corner: root.active.screen_frame, radius: root.screen_frame_kit.radius, step: root.bar.screen_frame_step } : null
+    // The corner the style draws, frame on or off: the Corner style row's choice, else the style's natural corner.
+    readonly property string corner_style: FrameTokens.corner_of(root.active, root.frame_corners)
+    // Whether the Corner style was picked rather than the style's natural one: the strip's ends keep the style's own
+    // island ends until then.
+    readonly property bool corner_style_chosen: root.corner_style !== FrameTokens.natural_corner(root.base_active, root.frame_corners)
+    // The corner as asked for, always set: the hole and the drawers fit it to their room (Corners.fit), Hyprland
+    // shapes windows to it (ScreenFrameSync) and the media well's plate takes it.
+    readonly property var corner_profile: ({ corner: root.corner_style, radius: root.plain_frame_kit.radius, step: root.bar.screen_frame_step })
+    // corner_profile where the frame is drawn, null where it is not.
+    readonly property var screen_frame_profile: root.screen_frame_on ? root.corner_profile : null
     // A frame's rim and inset line, the whole line round the hole: in the bar's colours on the focused monitor, mixed
     // most of the way into the strip on the others, so the frame marks the focused screen the way Hyprland's active
     // border marks the focused window.
@@ -192,10 +199,10 @@ Singleton {
     // The frame kit a token set asks for, or null when a style opts out.
     function frame_kit_for(tokens) {
         if (!FrameTokens.offered(tokens)) return null;
-        return root.frame_corners.indexOf(tokens.screen_frame) >= 0 ? root.plain_frame_kit : null;
+        return FrameTokens.frame_on(tokens) ? root.plain_frame_kit : null;
     }
     // Small popups read this token set; it is the singleton itself unless the style has a `small` block.
-    readonly property var small: root.active.small ? root.resolve(Object.assign({}, root.active, root.active.small)) : root
+    readonly property var small: root.active.small ? root.resolve(Object.assign({}, root.active, root.active.small, root.corner_style === "square" ? { frame_radius: 0 } : {})) : root
 
     // The token set for an item: small inside a popup whose size_class is small, else this singleton.
     function for_item(item) {
@@ -257,6 +264,9 @@ Singleton {
 
     // The old home of the cava line choice, read once by MediaSettings to carry it over; never written any more.
     property bool cava_line: true
+    // Whether a lone window sits flush against the screen frame (Settings > Style); only the frame uses it, and only
+    // while one is drawn (ScreenFrameSync). Saved in style.json.
+    property bool flush_single: true
     readonly property var bar: root.active
 
     // BEGIN generated: scripts/gen-style-exports writes these lines from StyleSchema.js
@@ -445,7 +455,7 @@ Singleton {
     readonly property string bar_separator: root.bar.bar_separator
     readonly property color bar_tick_color: root.bar.bar_center_bg.hslLightness > 0.6 ? Theme.fg_core : Watch.white
     readonly property string bar_island_shape: root.bar.bar_island_shape
-    readonly property string screen_frame: root.bar.screen_frame
+    readonly property bool screen_frame: root.bar.screen_frame
     readonly property string screen_frame_corners: root.bar.screen_frame_corners
     readonly property int screen_frame_step: root.bar.screen_frame_step
     readonly property real bar_island_opacity: root.bar.bar_island_opacity
@@ -635,8 +645,8 @@ Singleton {
         const out = {};
         choices.forEach((v, i) => {
             const name = root.borrow_names[key][v];
-            // The screen frame's values are plain corner names: no style owns a corner, so none is listed beside it.
-            const owners = i === 0 || key === "screen_frame" ? "" : root.names.filter(n => root.styles[n][key] === v).map(n => root.label(n)).join(", ");
+            // The corner style's values are plain corner names: no style owns a corner, so none is listed beside it.
+            const owners = i === 0 || key === "corner_style" ? "" : root.names.filter(n => root.styles[n][key] === v).map(n => root.label(n)).join(", ");
             out[v] = owners === "" || owners === name ? name : name + " (" + owners + ")";
         });
         return out;
@@ -669,11 +679,9 @@ Singleton {
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         const saved = root.theme_values[style_name] || {};
-        if (FrameTokens.offered(b)) {
-            const screen_choices = FrameTokens.row_choices(b.screen_frame_only, root.screen_frames);
-            out.push({ key: "screen_frame", label: "Screen frame", type: "choice", default: b.screen_frame || "", choices: screen_choices, labels: root.borrow_labels("screen_frame", screen_choices) });
-            flag("screen_frame_flush", "Flush single windows");
-        }
+        if (FrameTokens.offered(b)) out.push({ key: "screen_frame", label: "Screen frame", type: "bool", default: false });
+        const corner_choices = FrameTokens.row_choices(b.screen_frame_only, root.frame_corners);
+        out.push({ key: "corner_style", label: "Corner style", type: "choice", default: FrameTokens.natural_corner(b, root.frame_corners), choices: corner_choices, labels: root.borrow_labels("corner_style", corner_choices) });
         // `locked` is the text a row shows while another option fixes its value; the saved value stays underneath.
         const framed = root.frame_kit_for(Object.assign({}, b, saved)) !== null;
         if (!b.bar_lualine) out.push({ key: "bar_island_shape", label: "Island shape", type: "choice", default: b.bar_island_shape, choices: root.island_shapes, labels: root.borrow_labels("bar_island_shape", root.island_shapes), locked: framed ? "Full bar (frame)" : undefined });
@@ -694,7 +702,12 @@ Singleton {
         const def = root.settings.find(d => d.key === key);
         if (!def) return undefined;
         const saved = (root.theme_values[root.saved_name] || {})[key];
-        return saved !== undefined ? saved : def.type === "bool" ? true : def.default;
+        return saved !== undefined ? saved : root.option_default(def);
+    }
+
+    // A bool row is on unless it says it defaults off (Screen frame).
+    function option_default(def) {
+        return def.type === "bool" ? def.default !== false : def.default;
     }
 
     function set_option(key, value) {
@@ -702,7 +715,7 @@ Singleton {
         if (!def || !root.valid_option(def, value)) return false;
         const all = Object.assign({}, root.theme_values);
         const mine = Object.assign({}, all[root.saved_name] || {});
-        if (value === (def.type === "bool" ? true : def.default)) delete mine[key];
+        if (value === root.option_default(def)) delete mine[key];
         else mine[key] = value;
         if (Object.keys(mine).length > 0) all[root.saved_name] = mine;
         else delete all[root.saved_name];
@@ -757,8 +770,9 @@ Singleton {
     readonly property bool strip_shape: !root.bar.bar_lualine && (root.island_shape_kits[root.bar.bar_island_shape] || {}).strip === true
     // The strip is a plate set in from the screen (bar_strip_inset and bar_strip_side) with shaped ends, not flush.
     readonly property bool strip_floats: root.strip_shape && root.bar.bar_strip_inset > 0
-    // The plate's end profile: the corners of the style's own island shape, not the borrowed "strip" now chosen.
-    readonly property string strip_ends: (root.island_shape_kits[root.base_active.bar_island_shape] || {}).ends || "round"
+    // The plate's end profile: the Corner style once one is picked (square is the "rect" end), else the corners of the
+    // style's own island shape, not the borrowed "strip" now chosen.
+    readonly property string strip_ends: root.corner_style_chosen ? (root.corner_style === "square" ? "rect" : root.corner_style) : (root.island_shape_kits[root.base_active.bar_island_shape] || {}).ends || "round"
     // Whether each island draws its own plate: its shape has one and no strip carries it instead.
     readonly property bool island_plate: root.island_filled && !root.strip_shape
     // The strip's fill, which popups, tooltips and the submap tab hung from an island over it take too.
@@ -792,20 +806,34 @@ Singleton {
         const stored = data.version >= 0 ? data.version : 0;
         const renames_shapes = stored < 2;
         const reads_plain_frame = stored < 3;
+        const reads_old_frame = stored < 4;
         let migrated = false;
+        if (reads_old_frame) {
+            // Saved before the per-style flush key became one setting, so a file stamped 4 never overrides it.
+            if (!Migrations.flush_from_styles(data)) root.carry_flush_off();
+            migrated = true;
+        }
         for (const style_name in data) {
+            const base = root.styles[style_name];
+            // `version` sits beside the style names, and a style since removed has no rows to check its values against.
+            if (!base) continue;
+            const saved = Object.assign({}, data[style_name]);
+            if (reads_plain_frame && saved.screen_frame === "plain") {
+                saved.screen_frame = Migrations.screen_frame_from_plain(saved.screen_frame_corners, base.screen_frame_corners, root.frame_corners);
+            }
+            if (reads_old_frame) {
+                delete saved.screen_frame_flush;
+                Object.assign(saved, Migrations.frame_to_bool(saved, root.frame_corners));
+                if (typeof saved.screen_frame === "string") delete saved.screen_frame;
+            }
             const mine = {};
             for (const def of root.settings_for(style_name, true)) {
-                let v = data[style_name] ? data[style_name][def.key] : undefined;
+                let v = saved[def.key];
                 if (renames_shapes && def.key === "bar_island_shape" && root.renamed_island_shapes[v]) {
                     v = root.renamed_island_shapes[v];
                     migrated = true;
                 }
-                if (reads_plain_frame && def.key === "screen_frame" && v === "plain") {
-                    v = Migrations.screen_frame_from_plain(data[style_name].screen_frame_corners, root.styles[style_name].screen_frame_corners, root.frame_corners);
-                    migrated = true;
-                }
-                if (v !== undefined && root.valid_option(def, v) && v !== (def.type === "bool" ? true : def.default)) mine[def.key] = v;
+                if (v !== undefined && root.valid_option(def, v) && v !== root.option_default(def)) mine[def.key] = v;
             }
             if (Object.keys(mine).length > 0) all[style_name] = mine;
         }
@@ -815,7 +843,7 @@ Singleton {
     }
 
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name }));
+        state_file.setText(JSON.stringify({ style: root.saved_name, flush_single: root.flush_single }));
     }
 
     function save_lock() {
@@ -827,6 +855,21 @@ Singleton {
         if (root.lock_tint_named(data.lock_tint) !== "") root.lock_tint = root.lock_tint_named(data.lock_tint);
         if (root.lock_backdrops.indexOf(data.lock_backdrop) >= 0) root.lock_backdrop = data.lock_backdrop;
         root.lock_music = data.lock_music !== false;
+    }
+
+    // The migration's off, kept until style.json has been read: save() writes the style name too, which is only
+    // right once the saved one is loaded.
+    property bool state_read: false
+    property bool flush_unsaved: false
+    function carry_flush_off() {
+        root.flush_single = false;
+        if (root.state_read) root.save();
+        else root.flush_unsaved = true;
+    }
+
+    function set_flush_single(on) {
+        root.flush_single = on;
+        root.save();
     }
 
     function preview(style_name) {
@@ -854,10 +897,13 @@ Singleton {
         printErrors: false
         blockLoading: true
         onLoaded: {
+            root.state_read = true;
             try {
                 const data = JSON.parse(text());
                 const saved = data.style;
                 root.cava_line = data.cava_line !== false;
+                // Only ever turns it off: load_options may already have carried an older per-style off over.
+                if (data.flush_single === false) root.flush_single = false;
                 root.legacy_lock = data;
                 if (typeof saved === "string" && saved in root.styles) {
                     root.name = saved;
@@ -866,8 +912,12 @@ Singleton {
             } catch (e) {
                 console.warn("Style: invalid style.json (" + e + ")");
             }
+            if (root.flush_unsaved) root.save();
         }
-        onLoadFailed: error => {}
+        onLoadFailed: error => {
+            root.state_read = true;
+            if (root.flush_unsaved) root.save();
+        }
     }
 
     property var legacy_lock: null

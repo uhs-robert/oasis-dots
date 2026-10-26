@@ -22,6 +22,19 @@ RowsSection {
             cycle: false
         },
         {
+            label: "Flush single windows",
+            desc: "A lone window sits flush against the screen frame. Off, it keeps the gaps and rounding of any other window. Applies to every style that has its Screen frame on (Theme options).",
+            // Fixed while the style's frame is off: the setting does nothing then, and keeps its value for when it is on.
+            values: () => Style.screen_frame_on ? ["on", "off"] : [Style.flush_single ? "on (needs the screen frame)" : "off (needs the screen frame)"],
+            text: v => v,
+            value: () => Style.screen_frame_on ? (Style.flush_single ? "on" : "off") : (Style.flush_single ? "on (needs the screen frame)" : "off (needs the screen frame)"),
+            set: v => {
+                if (Style.screen_frame_on) Style.set_flush_single(v === "on");
+            },
+            cycle: Style.screen_frame_on,
+            pick: false
+        },
+        {
             label: "Hot corners",
             desc: "Moving the pointer into the top-left screen corner opens the workspace overview.",
             values: () => ["on", "off"],

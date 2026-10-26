@@ -10,3 +10,22 @@ function screen_frame_from_plain(saved_corner, hint_corner, corners) {
     if (corners.indexOf(hint_corner) >= 0) return hint_corner;
     return "round";
 }
+
+// Version 4 split the Screen frame row: it became On/Off and its corner moved to the Corner style row. A style's saved
+// options `saved` (screen_frame already a corner, see above) give { screen_frame: true, corner_style: v } for a saved
+// corner and nothing for Off, which is the default. An unknown value is dropped as before, leaving the frame off.
+function frame_to_bool(saved, corners) {
+    const v = saved.screen_frame;
+    if (typeof v === "boolean") return {};
+    if (typeof v === "string" && corners.indexOf(v) >= 0) return { screen_frame: true, corner_style: v };
+    return {};
+}
+
+// Flush single windows moved from each style to one global setting: off if any style had saved it off, so a choice to
+// turn it off is never undone, and on otherwise.
+function flush_from_styles(data) {
+    for (const name in data) {
+        if (data[name] && typeof data[name] === "object" && data[name].screen_frame_flush === false) return false;
+    }
+    return true;
+}
