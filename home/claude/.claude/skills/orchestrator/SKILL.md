@@ -81,8 +81,8 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Exit 2, Codex at its usage limit, or a standing merge approval that hinges on the review → read `review-fallback.md` beside this skill.
 
 8. Evaluate and resolve findings. Classify each material finding as valid, partially valid, invalid, or out of scope; do not blindly apply reviewer suggestions. Fix valid ones using the model policy from step 4.
-   - Send the fix to the agent that wrote the code (`SendMessage` to its name) when its context is under 150k tokens, judged from the token count its completion reports, and the fix is in code it already read.
-   - Otherwise brief a fresh agent with the diff range, the finding and the file paths. Also start fresh when the finding shows the approach itself was wrong.
+   - Send the fix to the agent that wrote the code (`SendMessage` to its name) when the fix is in code it already read and its context, from the token count its completion reports, is under 400k; from 400k to 500k, only for a small targeted fix.
+   - Otherwise, or once it reports compacting, brief a fresh agent with the diff range, the finding and the file paths. Also start fresh when the finding shows the approach itself was wrong.
    - Tell the fixer to make the smallest change that fixes the finding, with a test per step 5. If the fix needs a new mechanism, it reports that before building it.
    - Re-run the external review only for a material fix (a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic); a targeted fix gets a reviewer agent's diff review (step 6) and its test.
 
