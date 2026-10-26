@@ -1554,6 +1554,7 @@ if [ -n "$rust_matcher" ]; then
   # Start by duration, with and without a label.
   timers_run "set a timer for 5 minutes"
   check "a timer for a duration schedules a voxcmd-timer- unit about that far ahead" "grep -q '^systemd-run --user --quiet --collect --unit=voxcmd-timer-[0-9]* --description=Timer: 5 minutes ' '$log' && timers_near \$(timers_scheduled_in) 300"
+  check "its unit rings through this voxcmd's timer ring, by absolute path" "grep '^systemd-run ' '$log' | tail -n1 | grep -qF -- ' -- $routed timer ring Timer '"
   check "its reply says the timer is set and when it rings" "timers_toast | grep -Eq 'Timer set: 5 minutes, rings '"
   timers_run "set a timer for 5 minutes for the pasta"
   check "a label after the duration is kept, capitalised" "grep -q -- '--description=Timer: Pasta, 5 minutes ' '$log' && timers_near \$(timers_scheduled_in) 300"

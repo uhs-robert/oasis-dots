@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 # Voice input: voxtype setup, plus voxcmd's Firefox host and the signed extension installed through an enterprise policy.
 
+# Builds the voxcmd crate under ~/.local/share/voxcmd-rs and links ~/.local/bin/voxcmd (and voxcmd-rs) to it, as `just voxcmd-build`
+# does for voxcmd-rs alone. Define-only until the swap (voxcmd-port 3.2) calls it after stowing: the link replaces the one
+# stow made to the bash script, so a failed build leaves the old link in place.
+install_voxcmd() {
+  if ! command -v cargo &>/dev/null; then
+    warn "cargo not found, so voxcmd was not built; install Rust, then run: just voxcmd-build"
+    return 0
+  fi
+  local root="${XDG_DATA_HOME:-$HOME/.local/share}/voxcmd-rs" hash
+  hash=$(git -C "$DOTFILES_DIR" describe --always --dirty --abbrev=9 --exclude='*' 2>/dev/null || echo unknown)
+  info "Building voxcmd..."
+  VOXCMD_GIT_HASH=$hash cargo install --path "$DOTFILES_DIR/home/voxcmd" --locked --root "$root" || return 1
+  mkdir -p "$HOME/.local/bin"
+  ln -sf "$root/bin/voxcmd" "$HOME/.local/bin/voxcmd-rs"
+  ln -sf "$root/bin/voxcmd" "$HOME/.local/bin/voxcmd"
+  success "voxcmd installed: ~/.local/bin/voxcmd"
+}
+
 setup_voxtype() {
   if ! command -v voxtype &>/dev/null; then
     warn "voxtype should have been installed via AUR, check paru output above"

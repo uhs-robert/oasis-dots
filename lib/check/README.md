@@ -72,7 +72,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `djinn-rust`: the oasis-djinn crate (`oasis-djinn` and its library, `home/oasis-djinn`): `cargo fmt --check`, clippy `-D warnings`, `cargo test` (`lib/check/steps/djinn-rust.sh`). Same footing as `voxcmd-rust`: no heavy slot, ordinary pool. Needs cargo. A manifest edit reaches it too, since its tests run `oasis-djinn` on the real manifest.
 - `calendar-sync`: `home/calendar/tests/run.sh`. Runs only when python-icalendar and python-recurring-ical-events import.
 - `calendar-sync-syntax`: the syntax check of `calendar-sync`; always runs when its scope is reached, whatever the libraries.
-- `firefox-policy`: `lib/install/tests/firefox-policy.sh`, the Firefox policy installer. Needs jq.
+- `firefox-policy`: `lib/install/tests/firefox-policy.sh`, the Firefox policy installer, and `voxcmd-install.sh`, `install_voxcmd`. Needs jq.
 - `pacman-tweaks`: `lib/install/tests/pacman-tweaks.sh`, the pacman and makepkg tuning (`lib/install/pacman.sh`, `system/etc/makepkg.conf.d/`).
 - `greeter-keyring`: `lib/install/tests/greeter-keyring.sh` (the greetd keyring unlock installer), `greeter-log.sh` (the greeter log file and the `qs-greeter` wrapper's choice of it) and `greeter-monitors.sh` (the greeter's `monitors.lua`).
 - `migrate-lock`: the `migrate-quickshell-*` and `migrate-lock-assets` tests in `lib/install/tests/`.
