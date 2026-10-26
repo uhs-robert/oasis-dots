@@ -270,6 +270,11 @@ djinn_swap() {
     djinn_restore
     return 0
   fi
+  # Never stowed on this machine: nothing reads a manifest, so a hypr test must not be blocked on it.
+  if [[ ! -e $djinn_link && ! -L $djinn_link ]]; then
+    echo "oasis-djinn: not stowed here, skipped"
+    return 0
+  fi
   [[ -L $djinn_link ]] || die "$djinn_link is not a symlink (stow unfolded it?); refusing the oasis-djinn swap"
   [[ -d $dir/$djinn_rel/.config/oasis-djinn ]] || die "$dir has no $djinn_rel/.config/oasis-djinn; refusing the oasis-djinn swap"
   # Recorded before the link moves, so restore knows to restow even if this stops halfway.
@@ -917,7 +922,11 @@ main() {
     record_owner "$2" "${branches[@]}"
     require_unlocked
     djinn_swap "$2" "$dir"
-    hypr_swap "${2}" "$dir"
+    # A subshell, since die exits: the manifest must not stay on the test build when the hypr swap fails.
+    (hypr_swap "$2" "$dir") || {
+      djinn_restore
+      exit 1
+    }
     voxcmd_swap "$2" "$dir"
     voxtype_swap "$2" "$dir"
     launch "qs -n -p $dir/$qs_rel"
