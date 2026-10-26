@@ -1,10 +1,10 @@
 # Settings panel
 
-`settings/` holds the Settings panel (`SettingsPopup`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings` and `HyprInputSettings`.
+`settings/` holds the Settings panel (`SettingsView`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings` and `HyprInputSettings`.
 
-The panel drops from the center of the bar. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
+Settings fills the focused monitor, in the same frame as the workspace overview: the section list on the left, the selected section in the middle and a help column on the right that explains the selected setting in full. It still answers to the popup system as `settings`, so it closes on a workspace switch and Ctrl+H/L do not walk to it. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
 
-Every section ends with a block that describes the selected (or hovered) setting in a line or two and lists the keys that work on it. A section sets `description` and `description_keys` on `SettingsPane`; `RowsSection` fills them from a row's `desc` and optional `keys`, and a custom pane such as Bar modules does it for its own items.
+The help column describes the selected (or hovered) setting and lists the keys that work on it. A section sets `description` and `description_keys` on `SettingsPane`; `RowsSection` fills them from a row's `desc`, optional `help` (a longer explanation shown after it) and optional `keys`, and a custom pane such as Bar modules does it for its own items.
 
 | Group        | Sections                           |
 | ------------ | ---------------------------------- |

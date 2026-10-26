@@ -385,9 +385,6 @@ Item {
         const power_island = root.has_center ? center_island : island || right_island;
         Popups.register_default("power", power_island.body_item, power_island.bg_color, root.screen_name);
         Popups.register_default("confirm", power_island.body_item, power_island.bg_color, root.screen_name);
-        // Settings drops from the screen's center even under lualine, whose center island is hidden but still centered.
-        const settings_island = root.has_center || root.lualine ? center_island : power_island;
-        Popups.register_default("settings", settings_island.body_item, settings_island.bg_color, root.screen_name);
         // Without a media module in bars.json, the media popup drops from the center island.
         Popups.unregister("media", root.screen_name, center_island.body_item);
         Popups.unregister("media", root.screen_name, right_island.body_item);
@@ -405,10 +402,6 @@ Item {
         const center_names = root.has_center ? root.popup_names(root.center_entries) : [];
         if ((root.has_center || root.lualine) && !root.lists_media) center_names.push("media");
         const right_names = root.popup_names(root.right_drawn);
-        // Settings drops from the center; with no center it drops from the right end, so it walks last.
-        const has_center_slot = root.has_center || root.lualine;
-        if (has_center_slot) center_names.push("settings");
-        else right_names.push("settings");
         Popups.register_order(root.screen_name, root.popup_names(root.left_entries).concat(center_names, right_names));
     }
 

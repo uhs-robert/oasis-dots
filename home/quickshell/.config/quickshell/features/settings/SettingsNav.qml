@@ -3,12 +3,12 @@ import QtQuick
 import Quickshell
 import qs.features.popups
 
-// Opens the settings popup, optionally on a named section, and relays hands-off commands to it.
+// Opens Settings, optionally on a named section, and relays hands-off commands to it.
 Singleton {
     id: root
 
     property string requested: ""
-    // A saved session the Sessions section opens on, set before the popup opens.
+    // A saved session the Sessions section opens on, set before Settings opens.
     property string requested_session: ""
 
     // A command for the open popup's pane: "cursor", "step", "activate" or "back"; `value` is the row index or step delta.

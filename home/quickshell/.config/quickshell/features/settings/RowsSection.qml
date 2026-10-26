@@ -4,7 +4,7 @@ import qs.features.audio
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
 // Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops H/L from stepping it, and `activate: () => void` replaces Enter or a click.
-// A row's `desc` (text) and optional `keys` (hint) fill the pane's description block for the selected or hovered row; `section_keys` follow every row's keys.
+// A row's `desc` (text), optional `help` (a longer explanation shown under it) and optional `keys` (hint) fill the pane's description block for the selected or hovered row; `section_keys` follow every row's keys.
 // The block shows once any row has a `desc`, so give every row one.
 SettingsPane {
     id: root
@@ -32,13 +32,16 @@ SettingsPane {
     footer_hint: "j/k move · H/L change · Enter list · h/Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
     search_cursor: root.cursor
-    // Layout facts a section needs to size its own content against the pinned description.
+    // Where the rows end, for a section that sizes its own content below them.
     readonly property real footer_top: footer_col.y
-    readonly property real description_height: root.description_space
     described: root.has_descriptions
-    description: root.described_row && root.described_row.desc ? root.described_row.desc : ""
+    description: {
+        const row = root.described_row;
+        if (!row || !row.desc) return "";
+        return row.help ? row.desc + "\n\n" + row.help : row.desc;
+    }
     description_keys: root.keys_of(root.described_row)
-    implicitHeight: col.implicitHeight + root.description_space
+    implicitHeight: col.implicitHeight
 
     function step(index, delta) {
         const row = root.rows[index];

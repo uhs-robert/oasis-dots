@@ -230,7 +230,7 @@ RowsSection {
             readonly property var entry: preview.monitor ? WallpaperSettings.live[preview.monitor.name] : undefined
             readonly property string path: preview.pinned ? WallpaperSettings.pins[preview.monitor.key] : preview.entry && typeof preview.entry.path === "string" ? preview.entry.path : ""
             readonly property real wanted: Math.round(width * 9 / 16)
-            readonly property real free: root.height - root.footer_top - (root.editing ? edit_box.height + 4 : 0) - root.description_height - preview_label.implicitHeight - 6
+            readonly property real free: root.height - root.footer_top - (root.editing ? edit_box.height + 4 : 0) - preview_label.implicitHeight - 6
 
             visible: !root.picking && !!preview.monitor
             Layout.fillWidth: true
