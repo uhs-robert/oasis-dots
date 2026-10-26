@@ -371,6 +371,14 @@ for (const [name, tokens, want] of [
   const got = FT.corner_of(tokens, frame_corners);
   expect(got === want, "corner_of: " + name + ": got " + got + ", want " + want);
 }
+// With the frame off the corner reaches Hyprland and the apps only once picked; with it on, always.
+expect(FT.corner_applies(true, false) === true && FT.corner_applies(true, true) === true, "the frame on does not send the corner");
+expect(FT.corner_applies(false, false) === false, "an untouched style with no frame sends its corner");
+expect(FT.corner_applies(false, true) === true, "a picked Corner style with no frame is not sent");
+for (const f of ["features/bar/ScreenFrameSync.qml", "features/bar/FrameExport.qml"]) {
+  expect(/Style\.corner_sent/.test(read(f)), f + " does not gate the corner on Style.corner_sent");
+}
+expect(/corner_sent: FrameTokens\.corner_applies\(root\.screen_frame_on, root\.corner_style_chosen\)/.test(style), "Style.corner_sent is not corner_applies of the frame and the pick");
 expect(FT.natural_corner({ screen_frame_corners: "pixel" }, frame_corners) === "pixel" && FT.natural_corner({}, frame_corners) === "round", "natural_corner");
 // The pixel step reaches the profile with the frame off (gameboy 2): Style.corner_profile reads the style's own.
 expect(/corner_profile: \(\{ corner: root\.corner_style, radius: root\.plain_frame_kit\.radius, step: root\.bar\.screen_frame_step \}\)/.test(style), "corner_profile does not carry the style's pixel step");
