@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
+import "SettingsScale.js" as SScale
 import qs.features.popups.frames
 
 // Base of a settings section; the popup loads one and hands itself in as `popup`.
@@ -88,7 +89,7 @@ FocusScope {
             lineHeight: 1.15
             color: root.st.text_fg
             font.family: root.st.font_family
-            font.pixelSize: root.st.fs(-1)
+            font.pixelSize: root.st.fs(-1) + SScale.bump_of(root.popup)
         }
 
         // The same key badges as the footer, so keys look alike everywhere in each style.

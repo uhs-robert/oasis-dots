@@ -8,6 +8,7 @@ import "../../bar/BarLayout.js" as BarLayout
 import qs.features.settings
 import qs.features.bar
 import qs.features.audio
+import "../SettingsScale.js" as SScale
 
 SettingsPane {
     id: root
@@ -436,12 +437,14 @@ SettingsPane {
                     visible: item.first
                     Layout.topMargin: 6
                     label: root.cap(item.modelData.side)
+                    size_bump: SScale.bump_of(item)
+                    fg_override: root.popup ? root.popup.group_fg : "transparent"
                 }
 
                 MenuRow {
                     id: row
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Style.px(26)
+                    Layout.preferredHeight: Style.px(26) + SScale.pitch_extra(SScale.bump_of(row))
                     base_radius: 6
                     selected: root.live && root.cursor === root.top_count + item.index
 
@@ -458,7 +461,7 @@ SettingsPane {
                             label: item.modelData.entry
                             color: row.fg(item.modelData.side === "hidden" ? root.st.text_dim : root.st.text_fg)
                             font.family: root.st.font_family
-                            font.pixelSize: root.st.font_size
+                            font.pixelSize: root.st.font_size + SScale.bump_of(row)
                         }
                     }
 
