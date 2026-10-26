@@ -705,9 +705,11 @@ export VOXCMD_CONFIG_DIR=$config
 # Both files are in the config; the Rust build must pick the TOML, the bash build can only load the .sh.
 click_file='click\.sh'
 keybinds_file='keybinds\.sh'
+apps_file='apps\.sh'
 [ -z "$rust_matcher" ] || {
   click_file='click\.toml'
   keybinds_file='keybinds\.toml'
+  apps_file='apps\.toml'
 }
 # The bash form of the new CLI, for the sections 2.5 has not moved to the Rust build.
 voxcmd=$package/tests/bin/voxcmd
@@ -1434,6 +1436,14 @@ all_config=$root/config-all
 mkdir -p "$all_config/integrations.d" "$all_config/replacements.d"
 find "$package/.config/voxcmd/integrations.d" -maxdepth 1 -type f -name '*.sh' -exec cp -t "$all_config/integrations.d/" {} +
 copy_shipped_integrations "$all_config"
+# Every shipped integration is TOML by now, so the witness that the bash voxcmd is still asked about its own kind needs
+# a bash integration that is not shipped.
+cat >"$all_config/integrations.d/click-witness.sh" <<'STUB'
+name="Click witness"
+verbs=("witness clickwitness {target}")
+declare -A actions=([witness]=true)
+candidates() { echo '[{"id": "1", "label": "witness"}]'; }
+STUB
 route_all() { VOXCMD_CONFIG_DIR=$all_config "$routed" explain "$1" 2>&1; }
 for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; do
   out=$(route_all "$phrase")
@@ -1456,8 +1466,8 @@ if [ -n "$rust_matcher" ]; then
   stop_status=0
   VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" run "stop clicking" >/dev/null 2>&1 || stop_status=$?
   check "'click mode' opens a session and 'stop clicking' ends it" "[[ $opened == 1 && $stop_status == 0 && ! -e '$session_file' ]]"
-  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" explain "open firefox" >/dev/null 2>&1
-  check "a mode action of click.toml runs natively, with the bash voxcmd asked about others but never about click" "grep -Eq '^_legacy-hook candidates [^ ]*/apps\\.sh ' '$legacy_calls' && ! grep -Eq '^_legacy-hook [a-z-]+ [^ ]*/click\\.' '$legacy_calls'"
+  VOXCMD_LEGACY_BIN=$root/legacy-logger VOXCMD_CONFIG_DIR=$all_config "$routed" explain "clickwitness anything" >/dev/null 2>&1
+  check "a mode action of click.toml runs natively, with the bash voxcmd asked about others but never about click" "grep -Eq '^_legacy-hook candidates [^ ]*/click-witness\\.sh ' '$legacy_calls' && ! grep -Eq '^_legacy-hook [a-z-]+ [^ ]*/click\\.' '$legacy_calls'"
 fi
 out=$(route_all "click mode on")
 check "'click' followed by other text is still a click on that text" "! grep -q 'action=click_mode' <<<\"\$out\""
@@ -1924,7 +1934,7 @@ out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to private notes" 
 check "a private window is found by its title" "grep -q \"action=focus_tab .* id='0x3003 Private notes'\" <<<\"\$out\""
 rm -f "$firefox_config/integrations.d/firefox.sh" "$firefox_config/integrations/firefox.toml" "$firefox_config/integrations/firefox.sh"
 out=$(VOXCMD_CONFIG_DIR=$firefox_config "$routed" explain "go to inbox mailbox" 2>&1)
-check "without firefox.toml, Apps still focuses the window by its title and Firefox no longer answers" "grep -Eq 'Apps \(apps\.(sh|toml)\) action=focus' <<<\"\$out\" && ! grep -q 'Firefox (firefox\.toml' <<<\"\$out\""
+check "without firefox.toml, Apps still focuses the window by its title and Firefox no longer answers" "grep -Eq 'Apps \($apps_file\) action=focus' <<<\"\$out\" && ! grep -q 'Firefox (firefox\.toml' <<<\"\$out\""
 if [ -n "$rust_matcher" ]; then
   # The hook yields what Apps, Keybinds, Sessions and Keeptabs own; it carries its own copy of Apps' checks. This
   # section's binds are click binds only, so the keybind checks bring their own.
@@ -2176,8 +2186,9 @@ out=$(printf 'focus\t(go to|take me to|focus) tab {target}\n' | NEAR_MISS_PHRASE
 check "of two alternatives that fit, the one leaving fewer words wins" "[[ \$out == \$'focus\\tfocus firefox\\ttrue\\t3' ]]"
 out=$(near_dry "open session notes")
 check "a target naming no candidate offers no 'not found' report" "grep -q 'result:      no match' <<<\"\$out\""
+# near_dry runs the bash voxcmd, which can only load apps.sh
 out=$(near_dry "firefox open")
-check "other integrations' verbs reorder too: Apps" "grep -Eq 'Apps \(apps\.(sh|toml)\) \[near miss\] action=open target=.firefox.' <<<\"\$out\""
+check "other integrations' verbs reorder too: Apps" "grep -Eq 'Apps \(apps\.sh\) \[near miss\] action=open target=.firefox.' <<<\"\$out\""
 out=$(near_dry "bluetooth turn on")
 check "other integrations' verbs reorder too: Devices" "grep -q 'Devices (devices.sh) \[near miss\] action=bluetooth_on' <<<\"\$out\""
 out=$(near_dry "force.. kitchen blinds raise")
@@ -2350,6 +2361,16 @@ if [ -n "$rust_matcher" ]; then
   check "closing a window asks first" "grep -q 'confirm: true' <<<\"\$out\" && grep -q \"id='0x1002'\" <<<\"\$out\""
   out=$(apps_explain "open play the song thanks")
   check "a target ending in a tail word stays whole" "grep -q 'Apps (apps.toml, normal): matched verb .* action=open target=play the song thanks' <<<\"\$out\""
+
+  # The candidate hooks decide what Apps offers; the veto checks show what it leaves to the keybinds.
+  out=$(apps_explain "open firefox")
+  check "open offers the installed app by its desktop entry" "grep -q \"action=open target='firefox' id='firefox.desktop'\" <<<\"\$out\""
+  out=$(apps_explain "move firefox to workspace 3")
+  check "move offers the window and the workspace as one id" "grep -q \"action=move .* id='0x1001 3'\" <<<\"\$out\""
+  out=$(apps_explain "switch firefox to workspace 4")
+  check "move_with_window offers the same pair, under its own action" "grep -q \"action=move_with_window .* id='0x1001 4'\" <<<\"\$out\""
+  out=$(apps_explain "open terminal")
+  check "a phrase that names a keybind is left to the keybinds: Apps offers nothing" "grep -q 'result: *no match' <<<\"\$out\" && grep -q 'hook Apps open: 0 line' <<<\"\$out\""
 
   apps_run "resize the window to 1200 by 800"
   check "a resize to an exact size moves the width first, by the difference" "[[ \$(apps_dispatches | head -n1) == \"hl.dsp.window.resize({ window = 'address:0x1003', x = 500, y = 0, relative = true })\" ]]"
