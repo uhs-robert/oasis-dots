@@ -319,8 +319,8 @@ windows() {
 }
 
 # Starts listing what the action offers from (apps, or windows) while the keybind check runs, so the two overlap
-# instead of adding up; listed() reads it once the check has not claimed the phrase. Its stderr is dropped: on a claimed phrase the reader is
-# left to finish alone, and holding the hook's stderr open would keep voxcmd waiting for it.
+# instead of adding up; listed() reads it once the check has not claimed the phrase. Its stderr is dropped: a reader
+# holding the hook's stderr open makes voxcmd wait out its 200 ms pipe drain when the phrase is claimed.
 start_listing() {
   case "$1" in
   open | open_new) exec {listing_fd}< <(app_candidates 2>/dev/null) ;;
