@@ -99,6 +99,17 @@ class RegistryTest(RegistryCase):
         found = self.broken(lambda actions, bindings: actions[1]["params"].insert(0, {"name": "n", "type": "int", "default": 1}))
         self.assertFinding(found, "requires param mode after n")
 
+    def test_an_int_default_beyond_i64_fails(self):
+        self.assertTrue(self.broken(lambda actions, bindings: actions[1]["params"].append({"name": "n", "type": "int", "default": 2**63})))
+
+    def test_an_int_default_at_the_i64_edge_passes(self):
+        found = self.broken(lambda actions, bindings: actions[1]["params"].append({"name": "n", "type": "int", "default": 2**63 - 1}))
+        self.assertEqual(found, [])
+
+    def test_an_int_default_written_as_a_float_fails(self):
+        found = self.broken(lambda actions, bindings: actions[1]["params"].append({"name": "n", "type": "int", "default": 1.0}))
+        self.assertFinding(found, "must be written as an integer")
+
     def test_a_default_that_fits_passes(self):
         found = self.broken(lambda actions, bindings: actions[1]["params"][0].update(default="a"))
         self.assertEqual(found, [])
