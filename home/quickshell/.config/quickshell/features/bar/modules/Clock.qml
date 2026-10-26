@@ -41,6 +41,10 @@ Row {
 
     // Just before a meeting the bar shows the minutes left; under way, a live mark in the style's own form. The title is on hover.
     readonly property bool chip_shown: CalendarState.chip_event !== null
+    // What the marker draws, shared by the top-bar marker here and the side-bar one in ClockStack.
+    readonly property bool meeting_shown: CalendarState.in_meeting || root.chip_shown
+    readonly property int meeting_minutes: root.meeting_minutes
+    readonly property real meeting_progress: root.chip_shown ? Math.max(0, Math.min(1, 1 - root.meeting_minutes / CalendarState.chip_window_minutes)) : 1
     readonly property string agenda_tip: {
         // Times follow the zone the clock shows, as its digits do.
         const span = e => TimeFormat.format(Timezones.shift(new Date(e.start_ms))) + " - " + TimeFormat.format(Timezones.shift(new Date(e.end_ms)));
@@ -51,7 +55,7 @@ Row {
         return now !== "" && later !== "" ? now + "\n" + later : now + later;
     }
     // A side bar drops the date from the clock, so the tooltip leads with it.
-    readonly property string tip_text: !root.vertical ? root.agenda_tip : Qt.formatDateTime(root.shifted, "dddd, MMMM d") + (root.agenda_tip !== "" ? "\n" + root.agenda_tip : "")
+    readonly property string tip_text: !root.vertical ? root.agenda_tip : Qt.formatDateTime(root.shifted, "dddd, MMMM d") + (TimeFormat.h24 ? "" : " (" + TimeFormat.meridiem(root.shifted) + ")") + (root.agenda_tip !== "" ? "\n" + root.agenda_tip : "")
     onTip_textChanged: {
         if (!hover.hovered) return;
         if (root.tip_text !== "") Tooltip.show(root, root.tip_text, "calendar", true);
@@ -170,6 +174,9 @@ Row {
         sprite_rows: root.sprite_rows
         sprite_colors: root.sprite_colors
         marker_font: marker_font.font
+        meeting_shown: root.meeting_shown
+        meeting_minutes: root.meeting_minutes
+        meeting_progress: root.meeting_progress
     }
 
     Rectangle {
@@ -312,12 +319,12 @@ Row {
 
     Marker.MeetingMarker {
         id: meeting_marker
-        visible: (CalendarState.in_meeting || root.chip_shown) && !root.vertical
+        visible: root.meeting_shown && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         minutes: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) : 0
         in_meeting: CalendarState.in_meeting
         upcoming: root.chip_shown
-        progress: root.chip_shown ? Math.max(0, Math.min(1, 1 - meeting_marker.minutes / CalendarState.chip_window_minutes)) : 1
+        progress: root.meeting_progress
         on_accent: root.on_accent
         ink: root.ink
         text_font: marker_font.font

@@ -16,7 +16,8 @@ Row {
     property bool vertical: false
     property var lines: []
     // The time's size on a side bar, fitted to the bar's width by the clock stack that hosts this.
-    property int line_px: Style.bar_font_size + 3
+    readonly property int time_px: Style.bar_font_size + 3
+    property int line_px: root.time_px
 
     spacing: 10
 
@@ -52,7 +53,7 @@ Row {
             text: root.time_text
             color: Style.bar_clock_fg
             font.family: Style.bar_clock_font
-            font.pixelSize: Style.bar_font_size + 3
+            font.pixelSize: root.time_px
             font.weight: Font.DemiBold
             font.letterSpacing: -0.3
             font.features: { "tnum": 1 }
