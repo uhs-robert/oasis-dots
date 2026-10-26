@@ -400,13 +400,15 @@ stow -d "$rr_repo/home" -t "$rr_home" voxcmd
 cat >"$rr_stubs/cargo" <<STUB
 #!/usr/bin/env bash
 echo "cargo \$* hash=\${VOXCMD_GIT_HASH:-}" >>"$rr_calls"
+[[ ! -x $rr_home/.local/bin/voxcmd ]] || echo "voxcmd_link_live_during_build" >>"$rr_calls"
 [[ -z \${FAKE_CARGO_FAIL:-} ]] || { echo "error: could not compile" >&2; exit 101; }
 [[ ! -f $bars_dir/.owner ]] || echo "owner_claimed_during_build" >>"$rr_calls"
 if [[ -n \${FAKE_CARGO_HANG:-} ]]; then
-  echo hang_started >>"$rr_calls"
-  trap 'kill \$hang_pid 2>/dev/null; exit 143' TERM
+  # Like cargo and rustc: on TERM this process exits without telling its child, which only a group signal reaches.
+  trap 'exit 143' TERM
   sleep 30 &
-  hang_pid=\$!
+  echo \$! >"$root/rr_hang.pid"
+  echo hang_started >>"$rr_calls"
   wait
 fi
 all_args="\$*"
@@ -479,26 +481,17 @@ code=$?
 check "a build that produces no binary dies before anything swaps" "[[ $code != 0 ]] && grep -q 'cargo built no' <<<\"\$out\" && ! grep -q '_swap' '$rr_calls' && rr_link_is voxcmd '$rr_main_bin'"
 rm -f "$bars_dir/.owner"
 
-# A binary left by an earlier build must not pass for this build's output.
-mkdir -p "$rr_dir/home/voxcmd/target/release"
-printf '#!/usr/bin/env bash\necho stale\n' >"$rr_dir/home/voxcmd/target/release/voxcmd"
-chmod +x "$rr_dir/home/voxcmd/target/release/voxcmd"
+# A binary left in the staging dir by an earlier build must not pass for a build that produced none.
+mkdir -p "$rr_dir/home/voxcmd/target/stage/release" "$rr_dir/home/voxcmd/target/release"
+printf '#!/usr/bin/env bash\necho stale\n' >"$rr_dir/home/voxcmd/target/stage/release/voxcmd"
+chmod +x "$rr_dir/home/voxcmd/target/stage/release/voxcmd"
+printf 'live' >"$rr_dir/home/voxcmd/target/release/voxcmd"
 rm -f "$rr_calls"
 out=$(FAKE_CARGO_NO_BIN=1 rr_swap_cmd)
 code=$?
-check "a stale binary from an earlier build does not pass for a build that produced none" "[[ $code != 0 ]] && grep -q 'cargo built no' <<<\"\$out\" && ! grep -q '_swap' '$rr_calls' && rr_link_is voxcmd '$rr_main_bin' && grep -q stale '$rr_dir/home/voxcmd/target/release/voxcmd' && [[ ! -e $rr_dir/home/voxcmd/target/release/voxcmd.prev ]]"
+check "a stale staged binary does not pass for a build that produced none, and the live one is untouched" "[[ $code != 0 ]] && grep -q 'cargo built no' <<<\"\$out\" && ! grep -q '_swap' '$rr_calls' && rr_link_is voxcmd '$rr_main_bin' && [[ \$(<$rr_dir/home/voxcmd/target/release/voxcmd) == live ]]"
 rm -rf "$rr_dir/home/voxcmd/target"
 rrx voxcmd_restore >/dev/null
-rm -f "$bars_dir/.owner"
-
-# A .prev left by a killed run is the only live copy: a failing build must restore it, not delete it.
-mkdir -p "$rr_dir/home/voxcmd/target/release"
-printf 'live' >"$rr_dir/home/voxcmd/target/release/voxcmd.prev"
-rm -f "$rr_dir/home/voxcmd/target/release/voxcmd" "$rr_calls"
-out=$(FAKE_CARGO_FAIL=1 rr_swap_cmd)
-code=$?
-check "a leftover .prev is restored when the next build fails" "[[ $code != 0 && \$(<$rr_dir/home/voxcmd/target/release/voxcmd) == live && ! -e $rr_dir/home/voxcmd/target/release/voxcmd.prev ]]"
-rm -rf "$rr_dir/home/voxcmd/target"
 rm -f "$bars_dir/.owner"
 
 # A failed build must not leave a claim for a bar that was never swapped in.
@@ -518,10 +511,10 @@ rm -f "$rr_calls"
 out=$(rr_swap_cmd)
 code=$?
 show "$out"
-check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml --target-dir $rr_dir/home/voxcmd/target hash=.+' '$rr_calls'"
+check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml --target-dir $rr_dir/home/voxcmd/target/stage hash=.+' '$rr_calls'"
 check "the claim is taken before the long build, so a second session meets it" "grep -q '^owner_claimed_during_build' '$rr_calls'"
 check "the build runs before the Hyprland and manifest swap" "[[ \$(grep -n '^cargo' '$rr_calls' | head -1 | cut -d: -f1) -lt \$(grep -n '_swap' '$rr_calls' | head -1 | cut -d: -f1) ]]"
-check "a successful build leaves no .prev behind" "[[ ! -e $rr_dir/home/voxcmd/target/release/voxcmd.prev ]]"
+check "a successful build moves the staged binary over the live path" "[[ ! -e $rr_dir/home/voxcmd/target/stage/release/voxcmd && -x $rr_dir/home/voxcmd/target/release/voxcmd ]]"
 check "voxcmd links into the bar's built binary" "rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd'"
 check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-alarm '$rr_dir/home/voxcmd/.local/bin/voxcmd-alarm' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"
 check "status reads test build" "[[ \$(rrx voxcmd_status) == 'voxcmd: test build rustbar' ]]"
@@ -533,23 +526,29 @@ rm -f "$rr_calls"
 out=$(FAKE_CARGO_FAIL=1 rr_swap_cmd)
 code=$?
 check "a failed rebuild of the live bar keeps its built binary and link working" "[[ $code != 0 ]] && [[ -x $rr_dir/home/voxcmd/target/release/voxcmd ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd' && [[ \$(rrx voxcmd_status) == 'voxcmd: test build rustbar' ]]"
+check "the live link never dangles while a rebuild runs" "grep -q '^voxcmd_link_live_during_build' '$rr_calls'"
 check "a failed rebuild gives the previous claim back" "[[ \$(jq -r .bar '$bars_dir/.owner') == previousbar ]]"
 
-# A signal mid-build: the swap must restore the binary and the claim, and take the build down with it.
-for rr_sig in TERM INT; do
+# A signal mid-build: the swap must restore the claim, take the whole build down with it (the stub leaves a child that
+# only a group signal reaches), and leave the live binary and link as they were.
+for rr_sig in TERM:143 INT:130; do
+  rr_status=${rr_sig#*:}
+  rr_sig=${rr_sig%:*}
   echo "$rr_prev_claim" >"$bars_dir/.owner"
-  rm -f "$rr_calls"
+  rm -f "$rr_calls" "$root/rr_hang.pid"
   FAKE_CARGO_HANG=1 rr_swap_exec >"$root/rr_sig.out" 2>&1 &
   rr_pid=$!
   for _ in $(seq 100); do
     grep -qs hang_started "$rr_calls" && break
     sleep 0.1
   done
-  kill -$rr_sig "$rr_pid"
+  rr_hang_pid=$(<"$root/rr_hang.pid")
+  kill -"$rr_sig" "$rr_pid"
   wait "$rr_pid"
   code=$?
-  sleep 0.3
-  check "SIG$rr_sig mid-build: swap exits, binary and link are back, claim is the previous one, no build left" "[[ $code != 0 ]] && grep -q hang_started '$rr_calls' && [[ -x $rr_dir/home/voxcmd/target/release/voxcmd && ! -e $rr_dir/home/voxcmd/target/release/voxcmd.prev ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd' && [[ \$(jq -r .bar '$bars_dir/.owner') == previousbar ]] && ! pgrep -f '^sleep 30\$' >/dev/null"
+  check "SIG$rr_sig mid-build: swap exits $rr_status, binary and link are untouched, claim is the previous one" "[[ $code == $rr_status ]] && grep -q hang_started '$rr_calls' && [[ -x $rr_dir/home/voxcmd/target/release/voxcmd && ! -e $rr_dir/home/voxcmd/target/stage/release/voxcmd ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd' && [[ \$(jq -r .bar '$bars_dir/.owner') == previousbar ]]"
+  check "SIG$rr_sig mid-build: the build's child process is gone" "! kill -0 $rr_hang_pid 2>/dev/null"
+  kill "$rr_hang_pid" 2>/dev/null || true
 done
 
 rm -f "$rr_calls"
