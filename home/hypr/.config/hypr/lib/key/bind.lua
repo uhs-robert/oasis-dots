@@ -162,7 +162,7 @@ local function warn(message)
   table.insert(Bind.warnings, message)
   if warning_scheduled then return end
   warning_scheduled = true
-  -- Deferred like lib/missing_repos.lua: the notification daemon is not up while the config loads, and the
+  -- Deferred like lib/missing_repos.lua: the notification waits until the config has finished loading, and the
   -- one-shot lets every bind in the file add its warning first.
   hl.timer(function()
     warning_scheduled = false
