@@ -650,6 +650,74 @@ Bind.unbind("ALT + Q")
 Act.bind("a.one", { key = "ALT + Q" })
 check("rebind: same action lists the key once", #keys_of("a.one") == 1)
 
+-- The picker and HyprVim actions (lib/actions/defs/pickers.lua): same keys and labels as the binds they replaced, and
+-- running one calls the Menu closure or the hyprvim module once.
+fresh()
+Bind = require("lib.key.bind")
+local menu_calls, hyprvim_calls = {}, {}
+package.loaded["lib.actions.menu"] = setmetatable({}, {
+	__index = function(_, name)
+		return function()
+			return function()
+				menu_calls[#menu_calls + 1] = name
+			end
+		end
+	end,
+})
+package.loaded["lua.plugins.hyprvim"] = {
+	command = {
+		prompt = function()
+			hyprvim_calls[#hyprvim_calls + 1] = "prompt"
+		end,
+	},
+	marks = {
+		enter_jump = function()
+			hyprvim_calls[#hyprvim_calls + 1] = "enter_jump"
+		end,
+	},
+}
+assert(loadfile(hypr_dir .. "/lib/actions/defs/pickers.lua"))()
+check("pickers: no warnings, six binds", #Act.warnings == 0 and #binds == 6)
+local picker_keys = {
+	{ "picker.clipboard", "Clipboard History", "SUPER + CTRL + V", "clipboard" },
+	{ "picker.clipboard_delete", "Delete Clipboard Entry", "SUPER + CTRL + SHIFT + V", "clipboard_delete" },
+	{ "picker.directory", "Jump to Directory", "SUPER + CTRL + SPACE", "zoxide" },
+	{ "picker.emoji", "Emoji Picker", "SUPER + CTRL + E", "emoji" },
+}
+for _, row in ipairs(picker_keys) do
+	local id, label, key, menu_name = row[1], row[2], row[3], row[4]
+	local entry = find(key)
+	check("pickers: " .. id .. " binds " .. key .. " as '" .. label .. "'", entry ~= nil and entry.opts.desc == label)
+	menu_calls = {}
+	Act.run_cli(id, {})
+	check("pickers: " .. id .. " runs Menu." .. menu_name .. " once", #menu_calls == 1 and menu_calls[1] == menu_name)
+	check("pickers: " .. id .. " takes no args", has(raises(Act.run_cli, id, { "x" }), "takes at most 0"))
+end
+check(
+	"hyprvim: terminal binds SHIFT + SEMICOLON",
+	find("SUPER + SHIFT + SEMICOLON") ~= nil and find("SUPER + SHIFT + SEMICOLON").opts.desc == "HyprVim Terminal"
+)
+check(
+	"hyprvim: jump mark binds APOSTROPHE",
+	find("SUPER + APOSTROPHE") ~= nil and find("SUPER + APOSTROPHE").opts.desc == "Jump to Mark"
+)
+Act.run("hyprvim.terminal")
+Act.run("hyprvim.jump_mark")
+check(
+	"hyprvim: each action calls its module once",
+	#hyprvim_calls == 2 and hyprvim_calls[1] == "prompt" and hyprvim_calls[2] == "enter_jump"
+)
+local picker_listed = 0
+for _, handle in ipairs(Act.list()) do
+	if handle.id:match("^picker%.") or handle.id:match("^hyprvim%.") then
+		picker_listed = picker_listed + 1
+		check("pickers: " .. handle.id .. " has an intent", handle.intent ~= nil and handle.intent ~= "")
+	end
+end
+check("pickers: six listed", picker_listed == 6)
+package.loaded["lib.actions.menu"] = nil
+package.loaded["lua.plugins.hyprvim"] = nil
+
 local list_path = os.tmpname()
 local write_chunk = assert(load('require("lib.act").write_list([=====[' .. list_path .. "]=====])"))
 write_chunk()

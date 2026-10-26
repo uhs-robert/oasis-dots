@@ -2,7 +2,6 @@
 //! provider and the click itself). The awk's
 //! function names are kept in snake_case so the two read side by side.
 pub mod act;
-pub mod bridge_map;
 pub mod capture;
 pub mod covering;
 pub mod driver;

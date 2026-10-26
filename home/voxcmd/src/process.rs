@@ -96,14 +96,8 @@ pub fn run_to_end(command: &mut Command) -> std::io::Result<Outcome> {
     run(command, None, OnStop::Kill, Capture::Yes, Leftovers::Kept)
 }
 
-/// `run_to_end` with both outputs to /dev/null, as bash ran a hook: a child the hook leaves behind never holds a pipe
-/// this call waits on, and never gets SIGPIPE when this call is gone.
-pub fn run_to_end_discarding_output(command: &mut Command) -> std::io::Result<Outcome> {
-    command.stdin(Stdio::null());
-    run(command, None, OnStop::Kill, Capture::No, Leftovers::Kept)
-}
-
-/// `run_to_end_discarding_output` with a deadline, which kills the command's whole group. A child it left running when
+/// `run_to_end` with both outputs to /dev/null and a deadline, so a child the command leaves behind never holds a
+/// pipe this call waits on. It kills the command's whole group. A child it left running when
 /// it exited in time is left alone, as `run_to_end` leaves it.
 pub fn run_discarding_output_within(command: &mut Command, timeout: Duration) -> std::io::Result<Outcome> {
     command.stdin(Stdio::null());
@@ -783,7 +777,7 @@ pub(crate) mod tests {
             err_file.display()
         );
         let started = Instant::now();
-        let outcome = run_to_end_discarding_output(&mut sh(&script)).unwrap();
+        let outcome = run_discarding_output_within(&mut sh(&script), Duration::from_secs(10)).unwrap();
         assert!(
             started.elapsed() < DRAIN_GRACE,
             "waited for the child: {:?}",

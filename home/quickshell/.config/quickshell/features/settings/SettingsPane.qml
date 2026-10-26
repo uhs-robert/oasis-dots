@@ -14,12 +14,11 @@ FocusScope {
     property var pick_list: null
     property var pick_done: null
     readonly property string shown_hint: root.picking ? (root.pick_list && !root.pick_list.insert ? "Enter pick · j/k move · gg/G first/last · i insert · Esc close" : "Enter pick · Up/Down or Ctrl+n/p move · Esc normal") : root.footer_hint
-    // A section that sets `described` shows `description` and `description_keys` for its selected or hovered item in a block pinned to the pane bottom.
-    // It reserves three lines of description and two of keys so moving between items does not resize the pane (wide pixel fonts such as NES's wrap a two-line note to three); sections add `description_space` to their implicitHeight.
+    // A section that sets `described` shows `description` and `description_keys` for its selected or hovered item in
+    // the view's help column, beside the rows.
     property bool described: false
     property string description: ""
     property string description_keys: ""
-    readonly property real description_space: description_block.visible ? description_block.implicitHeight + 12 : 0
     property var search_rows: []
     property int search_cursor: -1
     // True while the popup is open with focus in the pane; typing a search keeps it so.
@@ -79,53 +78,27 @@ FocusScope {
         parent: root.popup && root.popup.description_host ? root.popup.description_host : root
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        spacing: 2
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Qt.alpha(root.st.text_muted, 0.4)
-        }
+        anchors.top: parent.top
+        spacing: Style.px(10)
 
         Text {
             Layout.fillWidth: true
-            Layout.preferredHeight: description_three_lines.implicitHeight
             text: root.description
             wrapMode: Text.WordWrap
-            maximumLineCount: 3
-            elide: Text.ElideRight
-            verticalAlignment: Text.AlignTop
+            lineHeight: 1.15
             color: root.st.text_fg
             font.family: root.st.font_family
-            font.pixelSize: root.st.fs(-2)
-
-            // Three real lines in the same font, since a style's font can render taller than its FontMetrics say.
-            Text {
-                id: description_three_lines
-                visible: false
-                text: "x\nx\nx"
-                font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-2)
-            }
+            font.pixelSize: root.st.fs(-1)
         }
 
-        // The same key badges as the popup footer, so keys look alike everywhere in each style.
+        // The same key badges as the footer, so keys look alike everywhere in each style.
         MenuFooter {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.max(implicitHeight, keys_two_lines.implicitHeight)
+            visible: root.description_keys !== ""
             text: root.description_keys
             wrap: true
             ruled: false
             follows_search: false
-
-            Text {
-                id: keys_two_lines
-                visible: false
-                text: "x\nx"
-                font.family: root.st.font_family
-                font.pixelSize: parent.text_px
-            }
         }
     }
 }

@@ -65,8 +65,8 @@ fn setting<T: std::str::FromStr>(name: &str, default: T) -> T {
         .unwrap_or(default)
 }
 
-/// Plays the alarm once: through the bar when it answers, else a file through the first player there is. The player,
-/// when one was started, is returned to be waited for.
+/// Plays the alarm once: through the bar when it answers, else the bar's `sounds/alarm.ogg` (or the system's) through
+/// the first player there is. The player, when one was started, is returned to be waited for.
 fn play_alarm() -> Option<Child> {
     if bar_played_alarm() {
         return None;

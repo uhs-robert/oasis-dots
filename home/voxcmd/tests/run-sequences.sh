@@ -25,15 +25,13 @@ source "$here/lib.sh"
 
 seq_pkg=$root/seq-pkg
 seq_config=$root/config-seq
-# seq_bin is the new CLI, over this copy's bash voxcmd, which is the process name the tests look for.
+# seq_bin is the build under test, linked into the copy; run_finished looks for its processes by its path.
 seq_bin=$seq_pkg/tests/bin/voxcmd
-seq_real_bin=$seq_pkg/.local/bin/voxcmd
 gate=$root/gate
-mkdir -p "$seq_pkg" "$seq_config/integrations.d" "$seq_config/replacements.d"
+mkdir -p "$seq_pkg" "$seq_config/integrations" "$seq_config/replacements.d"
 cp -r "$package/.local" "$seq_pkg/.local"
-link_voxcmd_shim "$seq_pkg"
+link_voxcmd_build "$seq_pkg"
 for integration in apps calendar notifications answers rapid; do
-  cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$seq_config/integrations.d/"
   copy_shipped_integrations "$seq_config" "$integration"
 done
 # The card answers yes and the picker its first choice, unless $root/confirm-no or a $root/pick-answer says otherwise.
@@ -52,55 +50,58 @@ STUB
 chmod +x "$seq_pkg/.local/bin/voxcmd-confirm" "$seq_pkg/.local/bin/voxcmd-pick"
 
 export SEQ_LOG=$log SEQ_GATE=$gate
-cat >"$seq_config/integrations.d/seq.sh" <<'STUB'
-name="Seq"
-verbs=(
-  "one one"
-  "two two"
-  "three three"
-  "gate gate"
-  "never never"
-  "fail fail"
-  "pick pick {target}"
-  "take take {target}"
-  "note note {target}"
-)
-free_text_actions=(take note)
-candidates() {
-  case "$1" in
-  pick) echo '[{"id": "left", "label": "side left"}, {"id": "right", "label": "side right"}]' ;;
-  note) echo '[]' ;;
-  esac
-}
-declare -A actions=(
-  [one]='echo "ran one" >> "$SEQ_LOG"'
-  [two]='echo "ran two" >> "$SEQ_LOG"'
-  [three]='echo "ran three" >> "$SEQ_LOG"'
-  [gate]='echo "ran gate" >> "$SEQ_LOG"'
-  [never]='echo "ran never" >> "$SEQ_LOG"'
-  [fail]='echo "boom: the reason"; exit 1'
-  [pick]='echo "ran pick $id" >> "$SEQ_LOG"'
-  [take]='echo "ran take $target" >> "$SEQ_LOG"'
-  [note]='echo "ran note" >> "$SEQ_LOG"'
-)
+cat >"$seq_config/integrations/seq.toml" <<'STUB'
+name = "Seq"
+verbs = [
+  { action = "one", match = 'one' },
+  { action = "two", match = 'two' },
+  { action = "three", match = 'three' },
+  { action = "gate", match = 'gate' },
+  { action = "never", match = 'never' },
+  { action = "fail", match = 'fail' },
+  { action = "pick", match = 'pick {target}' },
+  { action = "take", match = 'take {target}' },
+  { action = "note", match = 'note {target}' },
+]
+
+[actions]
+one = 'echo "ran one" >> "$SEQ_LOG"'
+two = 'echo "ran two" >> "$SEQ_LOG"'
+three = 'echo "ran three" >> "$SEQ_LOG"'
+fail = 'echo "boom: the reason"; exit 1'
+pick = { run = 'echo "ran pick $VOXCMD_ID" >> "$SEQ_LOG"', candidates = 'seq_sides' }
+take = { run = 'echo "ran take $VOXCMD_ARG_TARGET" >> "$SEQ_LOG"', free_text = true }
+# Candidates that cannot match what was said.
+note = { run = 'echo "ran note" >> "$SEQ_LOG"', free_text = true, candidates = 'seq_unmatchable' }
 # The condition logs each poll, so a test waits for polls instead of sleeping.
-declare -A step_waits=(
-  [gate]='echo poll >> "$SEQ_LOG"; [ -e "$SEQ_GATE" ]'
-  [never]='echo poll >> "$SEQ_LOG"; false'
-)
+gate = { run = 'echo "ran gate" >> "$SEQ_LOG"', wait_hook = 'echo poll >> "$SEQ_LOG"; [ -e "$SEQ_GATE" ]' }
+never = { run = 'echo "ran never" >> "$SEQ_LOG"', wait_hook = 'echo poll >> "$SEQ_LOG"; false' }
 STUB
-cat >"$seq_config/integrations.d/ask.sh" <<'STUB'
-name="Ask"
-confirm=1
-verbs=("ask ask")
-declare -A actions=([ask]='echo "ran ask" >> "$SEQ_LOG"')
+cat >"$seq_config/integrations/seq.sh" <<'STUB'
+# shellcheck shell=bash
+seq_sides() { printf 'left\tside left\nright\tside right\n'; }
+seq_unmatchable() { printf 'zzz\tzzz\n'; }
 STUB
-cat >"$seq_config/integrations.d/priv.sh" <<'STUB'
-name="Priv"
-private_labels=1
-verbs=("secret {target}")
-candidates() { echo '[{"id": "x", "label": "SECRET-TEXT"}]'; }
-declare -A actions=([secret]='echo "denied"; exit 1')
+cat >"$seq_config/integrations/ask.toml" <<'STUB'
+name = "Ask"
+confirm = true
+verbs = [{ action = "ask", match = 'ask' }]
+
+[actions]
+ask = 'echo "ran ask" >> "$SEQ_LOG"'
+STUB
+cat >"$seq_config/integrations/priv.toml" <<'STUB'
+name = "Priv"
+private_labels = true
+verbs = [{ action = "secret", match = 'secret {target}' }]
+
+[actions.secret]
+run = 'echo "denied"; exit 1'
+candidates = "priv_candidates"
+STUB
+cat >"$seq_config/integrations/priv.sh" <<'STUB'
+# shellcheck shell=bash
+priv_candidates() { printf 'x\tSECRET-TEXT\n'; }
 STUB
 
 seq_env=()
@@ -124,7 +125,7 @@ toasts() { grep -c "^notify-send .*$1" "$log"; }
 # once nothing the run started is left to log it.
 detached_toast_has() { wait_for_line "^setsid .*$1" "$log"; }
 no_detached_toast() { wait_until run_finished && ! grep -q "^setsid .*$1" "$log"; }
-run_finished() { ! pgrep -f -- "$seq_real_bin( |\$)" >/dev/null && stub_calls_done; }
+run_finished() { ! sandbox_process_running "$seq_bin" "$(readlink -f "$seq_bin")" && stub_calls_done; }
 polls_reach() { wait_for_count "$1" "$log" "$2"; }
 sequence_dir=$XDG_RUNTIME_DIR/voxcmd/sequences
 sequence_files() { ls "$sequence_dir"/*.json 2>/dev/null; }
@@ -308,8 +309,6 @@ check "but not for a popup that is open" "[[ \$(ran) == one,two ]]"
 section "a confirmed keybind"
 # Keybinds alone, so no other integration takes the phrases.
 keybinds_config=$root/config-keybinds
-mkdir -p "$keybinds_config/integrations.d"
-cp "$package/.config/voxcmd/integrations.d/keybinds.sh" "$keybinds_config/integrations.d/"
 copy_shipped_integrations "$keybinds_config" keybinds
 keybind_voxcmd() { env VOXCMD_CONFIG_DIR="$keybinds_config" "$seq_bin" run "$@" >/dev/null 2>&1; }
 skips_power_prompt() { grep -q "call power run" "$log"; }

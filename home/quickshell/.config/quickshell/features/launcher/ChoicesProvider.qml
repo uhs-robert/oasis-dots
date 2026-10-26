@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Caller-supplied choices from Prompt.select or a shell caller (voxcmd-pick). The mode arg is a JSON spec path:
+// Caller-supplied choices from Prompt.select or a shell caller (`voxcmd ask pick`). The mode arg is a JSON spec path:
 // { id, label, choices, result_path, expansions, view_path }. Enter or close writes the pick (empty on cancel) to
 // result_path, then runs the Lua callback for that id once. A spec without an id is a shell caller blocking on
 // result_path, so there is no callback to run.

@@ -6,8 +6,6 @@
 # does not depend on what is open.
 #
 #   home/voxcmd/tests/run-phrases.sh
-#   VOXCMD_ROUTE_DIFF=1 home/voxcmd/tests/run-phrases.sh   explain each phrase with the bash and the Rust voxcmd side by
-#                                                          side and report every difference in the dry-run lines
 set -euo pipefail
 
 tests_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -17,7 +15,6 @@ fixtures_dir="$tests_dir/fixtures"
 check_lock_gate "voxcmd ${0##*/}" "$0" "$@"
 
 if [ -z "${SANDBOX_DIR:-}" ]; then
-  [ "${VOXCMD_ROUTE_DIFF:-}" != 1 ] || cargo build --release --quiet --manifest-path "$tests_dir/../Cargo.toml" >&2
   # shellcheck source-path=SCRIPTDIR source=phrase-fixtures.sh
   . "$tests_dir/phrase-fixtures.sh"
   exec "$tests_dir/sandbox.sh" "$0" "$@"
@@ -58,36 +55,6 @@ routes_dir="$SANDBOX_DIR/routes"
 mkdir -p "$routes_dir"
 parallel_runs=$(nproc 2>/dev/null || echo 4)
 
-# The dry-run lines of a phrase: what the bash voxcmd prints, and what the Rust one prints before its `why:` block.
-dry_run_lines() {
-  "$1" explain "$2" 2>/dev/null | awk '/^$/ { exit } { print }'
-}
-
-# VOXCMD_ROUTE_DIFF=1: every phrase through both binaries, one report of the lines that differ (all of them, not only
-# the first option's). Both read the sandbox's stubs and fixtures, and the Rust one runs the bash hooks through its
-# bridge, so a difference is the routing, not the desktop.
-if [ "${VOXCMD_ROUTE_DIFF:-}" = 1 ]; then
-  bash_bin="$tests_dir/bin/voxcmd" rs_bin="$tests_dir/../target/release/voxcmd"
-  "$rs_bin" explain "play pause" >/dev/null 2>&1 || true # builds the legacy dump cache once, not once per worker
-  for index in "${!phrases[@]}"; do
-    [ "$(jobs -rp | wc -l)" -lt "$parallel_runs" ] || wait -n
-    {
-      dry_run_lines "$bash_bin" "${phrases[index]}" >"$routes_dir/$index.bash"
-      dry_run_lines "$rs_bin" "${phrases[index]}" >"$routes_dir/$index.rs"
-    } &
-  done
-  wait
-  differing=0
-  for index in "${!phrases[@]}"; do
-    cmp -s "$routes_dir/$index.bash" "$routes_dir/$index.rs" && continue
-    printf '== %s\n' "${phrases[index]}"
-    diff -u --label bash --label rs "$routes_dir/$index.bash" "$routes_dir/$index.rs" | tail -n +3 || true
-    differing=$((differing + 1))
-  done
-  printf '%s of %s phrases explained differently\n' "$differing" "${#phrases[@]}"
-  [ "$differing" = 0 ]
-  exit
-fi
 for index in "${!phrases[@]}"; do
   [ "$(jobs -rp | wc -l)" -lt "$parallel_runs" ] || wait -n
   route_of "${phrases[index]}" >"$routes_dir/$index" &

@@ -1,12 +1,12 @@
 //! `integrations check`: validates integration files and reports `file:line:col: error: message`
 //!
 //! A TOML file is checked in depth: it parses, every verb's pattern compiles, every verb's action exists, no key is
-//! mistyped, its modes' patterns compile and its `<stem>.sh` hook library passes `bash -n`. A legacy `.sh` file is only
-//! loaded and its patterns compiled, since 3.2 deletes it; the summary says how many got only that.
+//! mistyped, its modes' patterns compile and its `<stem>.sh` hook library passes `bash -n`. A leftover
+//! `integrations.d/*.sh` is no longer read; it gets a warning.
 use super::intents::Intents;
 use super::list::relative;
-use super::schema::{self, Format, Integration};
-use super::{legacy, toml_files};
+use super::schema::{self, Integration};
+use super::toml_files;
 use crate::exit::CliError;
 use crate::route::pattern::{self, PlaceholderType};
 use serde::Serialize;
@@ -40,7 +40,7 @@ enum Severity {
 
 pub fn run(files: &[String], json: bool) -> Result<Option<String>, CliError> {
     let dir = crate::paths::config_dir();
-    let (report, legacy_loaded) = check(&dir, files);
+    let report = check(&dir, files);
     let text = if json {
         serde_json::to_string(&report).map_err(|error| CliError::failed("integrations check", error.to_string()))?
     } else {
@@ -59,7 +59,7 @@ pub fn run(files: &[String], json: bool) -> Result<Option<String>, CliError> {
             })
             .collect();
         lines.push(format!(
-            "{} TOML files checked, {} problems; {legacy_loaded} legacy files only loaded and compiled, not checked in depth",
+            "{} TOML files checked, {} problems",
             report.files,
             report.problems.len()
         ));
@@ -73,93 +73,55 @@ pub fn run(files: &[String], json: bool) -> Result<Option<String>, CliError> {
     Err(CliError::quiet("integrations check"))
 }
 
-/// The report, and how many legacy files were loaded without a deep check.
-fn check(dir: &Path, args: &[String]) -> (Report, usize) {
+/// Every `*.sh` of `config_dir/integrations.d`: not hidden, regular files or links to one.
+fn stray_files(config_dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(config_dir.join("integrations.d")) else {
+        return Vec::new();
+    };
+    let mut files: Vec<PathBuf> = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            name.ends_with(".sh") && !name.starts_with('.') && path.is_file()
+        })
+        .collect();
+    files.sort();
+    files
+}
+
+fn check(dir: &Path, args: &[String]) -> Report {
     let intents = Intents::load(dir);
     let mut problems = Vec::new();
-    let (mut toml, mut legacy_wanted): (Vec<PathBuf>, Vec<PathBuf>) = (Vec::new(), Vec::new());
+    let mut toml: Vec<PathBuf> = Vec::new();
     if args.is_empty() {
         toml = toml_files(dir);
-        legacy_wanted = legacy::legacy_files(dir);
+        problems.extend(stray_files(dir).iter().map(|file| Problem {
+            file: relative(dir, file),
+            line: 1,
+            column: 1,
+            severity: Severity::Warning,
+            code: "stray-integration",
+            message: format!(
+                "integrations.d/{} is no longer read; convert it to TOML",
+                file.file_name().unwrap_or_default().to_string_lossy()
+            ),
+        }));
     }
     for arg in args {
         let given = PathBuf::from(arg);
-        let file = if given.exists() { given } else { dir.join(arg) };
-        if file.extension().is_some_and(|extension| extension == "sh") {
-            legacy_wanted.push(file);
-        } else {
-            toml.push(file);
-        }
+        toml.push(if given.exists() { given } else { dir.join(arg) });
     }
     for file in &toml {
         check_toml(dir, file, &intents, &mut problems);
     }
-    // A legacy file whose stem has a TOML file is shadowed (Config::load drops it), so it is not loaded either.
-    let shadowed = |file: &Path| toml.iter().any(|toml| toml.file_stem() == file.file_stem());
-    legacy_wanted.retain(|file| !shadowed(file));
-    let mut legacy_loaded = 0;
-    if !legacy_wanted.is_empty() {
-        let loaded = if args.is_empty() {
-            legacy::load(dir)
-        } else {
-            // A named file is loaded itself, wherever it is: a missing one is a problem, not a file with nothing to check.
-            let (present, missing): (Vec<_>, Vec<_>) = legacy_wanted.iter().cloned().partition(|file| file.is_file());
-            for file in missing {
-                problems.push(Problem {
-                    file: relative(dir, &file),
-                    line: 1,
-                    column: 1,
-                    severity: Severity::Error,
-                    code: "unreadable",
-                    message: "not a readable file".to_string(),
-                });
-            }
-            if present.is_empty() {
-                Ok(Vec::new())
-            } else {
-                legacy::load_files(&present)
-            }
-        };
-        match loaded {
-            Ok(loaded) => {
-                for integration in loaded.iter().filter(|integration| !shadowed(&integration.file)) {
-                    legacy_loaded += 1;
-                    check_patterns(dir, integration, &intents, &mut problems);
-                }
-                for file in legacy_wanted.iter().filter(|file| {
-                    file.is_file()
-                        && !loaded
-                            .iter()
-                            .any(|integration| integration.file.file_name() == file.file_name())
-                }) {
-                    problems.push(Problem {
-                        file: relative(dir, file),
-                        line: 1,
-                        column: 1,
-                        severity: Severity::Error,
-                        code: "legacy-load",
-                        message: "the file did not load".to_string(),
-                    });
-                }
-            }
-            Err(message) => problems.push(Problem {
-                file: relative(dir, &dir.join("integrations.d")),
-                line: 1,
-                column: 1,
-                severity: Severity::Error,
-                code: "legacy-load",
-                message,
-            }),
-        }
-    }
-    let report = Report {
+    Report {
         ok: problems
             .iter()
             .all(|problem| matches!(problem.severity, Severity::Warning)),
         files: toml.len(),
         problems,
-    };
-    (report, legacy_loaded)
+    }
 }
 
 fn check_toml(dir: &Path, file: &Path, intents: &Intents, problems: &mut Vec<Problem>) {
@@ -282,18 +244,16 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
                     report(at, "bad-regex", format!("verb {:?}: {error}", verb.pattern));
                 }
                 // Within one integration the first matching verb wins. Across integrations nothing is shadowed:
-                // every one of a tier offers its option and several go to a picker. A legacy file is only loaded.
+                // every one of a tier offers its option and several go to a picker.
                 // `requires` is the one per-verb eligibility the matcher checks: a verb that needs an integration
                 // that is not loaded is skipped, so it shadows a later verb only if that verb needs the same one.
                 // The matcher also moves on when a typed capture does not parse, so only a verb whose captures take
                 // any words (text, number) can shadow: `go {value:position}` leaves `go tokyo` to a later `go {value}`.
                 let earlier_verbs = earlier_with_regex.entry(compiled.regex).or_default();
-                if integration.format == Format::Toml
-                    && let Some(&earlier) = earlier_verbs.iter().find(|&&earlier| {
-                        let required = &integration.verbs[earlier].requires;
-                        required.is_none() || *required == verb.requires
-                    })
-                {
+                if let Some(&earlier) = earlier_verbs.iter().find(|&&earlier| {
+                    let required = &integration.verbs[earlier].requires;
+                    required.is_none() || *required == verb.requires
+                }) {
                     report(
                         at,
                         "shadowed-verb",
@@ -313,9 +273,7 @@ fn check_patterns(dir: &Path, integration: &Integration, intents: &Intents, prob
             }
         }
     }
-    if integration.format == Format::Toml
-        && let Err(error) = pattern::compile_mode(integration, intents)
-    {
+    if let Err(error) = pattern::compile_mode(integration, intents) {
         let (line, message) = split_located(&integration.file, &error);
         report((line, 1), "bad-regex", message);
     }

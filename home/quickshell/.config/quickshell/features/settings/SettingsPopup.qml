@@ -15,10 +15,14 @@ Popup {
     popup_name: "settings"
     title: "SETTINGS"
     size_class: "large"
-    // The pane keeps 450; the sidebar grows to fit the widest section label in the active style.
-    preferred_width: 467 + nav.width / Style.scale
-    body_height: Math.min(root.natural_content, root.content_cap) + 24
-    reserve_height: Math.min(root.max_body, root.free_height)
+    // As wide as the three columns want, up to most of the screen; a fixed share of the height, so the drawer does
+    // not resize between sections.
+    readonly property real max_width_fraction: 0.9
+    readonly property real height_fraction: 0.8
+    // The section list, the pane and help column at their widest, their gaps and the body's 12px margins.
+    readonly property real natural_width: nav.width + Style.px(12 + 24 + 860 + 48 + 520) + 24
+    preferred_width: (root.screen ? Math.min(root.natural_width, root.screen.width * root.max_width_fraction) : root.natural_width) / Style.scale
+    body_height: root.screen ? Math.min(root.screen.height * root.height_fraction - root.header_height - root.footer_height, root.content_cap + 24) : 600
     jumps_enabled: true
     // Only on the section list: panes hold sliders and fields with wheel behavior of their own.
     wheel_steps: !root.in_pane
@@ -36,13 +40,8 @@ Popup {
     property string loaded_id: ""
     readonly property var pane: pane_loader.item
     readonly property bool is_open: Popups.open_name === "settings"
-    // Last valid pane height, held while a section loads; max_body is the tallest body this open.
-    property real pane_height: 0
-    property real max_body: 0
-    // Pane-pinned text (SettingsPane's description block) lives here, outside the scrolling area, so it stays on screen while rows scroll.
-    readonly property Item description_host: description_overlay
-    readonly property real pinned_height: root.pane ? root.pane.description_space : 0
-    readonly property real natural_content: Math.max(nav.implicitHeight, root.pane_height)
+    // Where SettingsPane puts its description block: the help column beside the rows.
+    readonly property Item description_host: help_column
     // Screen height left for the panel's body once the bar and the popup's own chrome are taken out; no cap before the screen is known.
     readonly property real free_height: {
         if (root.drawer && root.drawer_hole) return root.drawer_hole.h - root.header_height - root.footer_height;
@@ -52,9 +51,6 @@ Popup {
     }
     // The body adds a 12px margin on each side.
     readonly property real content_cap: Math.max(0, root.free_height - 24)
-    readonly property real pane_implicit: pane_loader.status === Loader.Ready ? pane_loader.implicitHeight : NaN
-    onPane_implicitChanged: if (isFinite(root.pane_implicit) && root.pane_implicit > 0) root.pane_height = root.pane_implicit
-    onBody_heightChanged: if (isFinite(root.body_height)) root.max_body = Math.max(root.max_body, root.body_height)
 
     search_rows: root.in_pane && root.pane ? root.pane.search_rows : Sections.list.map(s => s.label + " " + s.group + " " + s.keywords)
     search_cursor: root.in_pane && root.pane ? root.pane.search_cursor : root.nav_index
@@ -82,11 +78,12 @@ Popup {
             root.in_pane = false;
             return;
         }
-        root.max_body = root.body_height;
         if (!root.apply_request()) {
             root.load_section();
             root.leave_pane();
         }
+        // nav_index may not change on open, so its own handler would not scroll the list to it.
+        Qt.callLater(root.reveal_selected, nav_flick, nav_col);
     }
 
     function jump(delta) {
@@ -201,7 +198,7 @@ Popup {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        implicitHeight: Math.min(root.natural_content, root.content_cap)
+        height: root.body_height - 24
         focus: true
 
         // Runs after the section: Esc, h and Tab it did not use go back to the sidebar.
@@ -322,32 +319,37 @@ Popup {
         }
 
         Rectangle {
-            id: divider
-            x: nav.width + 8
+            id: nav_divider
+            x: nav.width + Style.px(12)
             width: 1
             height: body.height
             color: Qt.alpha(root.st.text_muted, 0.4)
         }
 
-        // The loader is at least the body tall, as sections were laid out before scrolling; a taller section scrolls above its pinned description.
+        // Beside the section list there is room for the rows and the help column side by side, or (a portrait or
+        // small screen) the help goes under the rows.
+        readonly property real side_room: body.width - nav_divider.x - Style.px(24)
+        readonly property bool help_below: body.side_room < Style.px(480 + 48 + 300)
+        readonly property real help_width: body.help_below ? body.side_room : Math.max(Style.px(300), Math.min(Style.px(520), body.side_room * 0.32))
+        readonly property real help_height: body.help_below ? Math.round(body.height * 0.3) : body.height
+        readonly property real pane_width: body.help_below ? body.side_room : Math.min(Style.px(860), body.side_room - body.help_width - Style.px(48))
+        readonly property real pane_height: body.help_below ? body.height - body.help_height - Style.px(24) : body.height
+
         Flickable {
             id: pane_flick
-            anchors.left: divider.right
-            anchors.leftMargin: 8
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: root.pinned_height
+            x: nav_divider.x + Style.px(24)
+            width: body.pane_width
+            height: body.pane_height
             clip: pane_flick.contentHeight > pane_flick.height
             contentWidth: width
-            contentHeight: pane_loader.height - root.pinned_height
+            contentHeight: pane_loader.height
             boundsBehavior: Flickable.StopAtBounds
 
             Loader {
                 id: pane_loader
                 width: pane_flick.width
-                height: Math.max(body.height, pane_loader.implicitHeight)
-                // The flickable is reused across sections: start the new one at the top, then at its selected row (its cursor was set before the Connections attached).
+                height: Math.max(pane_flick.height, pane_loader.implicitHeight)
+                // The flickable is reused across sections: start the new one at the top, then at its selected row.
                 onLoaded: {
                     pane_flick.contentY = 0;
                     Qt.callLater(root.reveal_selected, pane_flick, pane_loader);
@@ -355,13 +357,20 @@ Popup {
             }
         }
 
+        Rectangle {
+            x: body.help_below ? pane_flick.x : body.width - body.help_width - Style.px(12)
+            y: body.help_below ? body.height - body.help_height - Style.px(12) : 0
+            width: body.help_below ? body.help_width : 1
+            height: body.help_below ? 1 : body.height
+            color: Qt.alpha(root.st.text_muted, 0.4)
+        }
+
         Item {
-            id: description_overlay
-            anchors.left: divider.right
-            anchors.leftMargin: 8
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
+            id: help_column
+            x: body.width - body.help_width
+            y: body.height - body.help_height
+            width: body.help_width
+            height: body.help_height
         }
 
         NumberAnimation {

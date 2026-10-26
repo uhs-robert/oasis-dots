@@ -1,10 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.features.audio
+import qs.theme
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
 // Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops H/L from stepping it, and `activate: () => void` replaces Enter or a click.
-// A row's `desc` (text) and optional `keys` (hint) fill the pane's description block for the selected or hovered row; `section_keys` follow every row's keys.
+// A row's `desc` (text), optional `help` (a longer explanation shown under it) and optional `keys` (hint) fill the pane's description block for the selected or hovered row; `section_keys` follow every row's keys.
 // The block shows once any row has a `desc`, so give every row one.
 SettingsPane {
     id: root
@@ -21,6 +22,14 @@ SettingsPane {
     readonly property var highlighted_value: root.picking && picker.highlighted >= 0 ? root.pick_values[picker.highlighted] : undefined
     default property alias header: header_col.data
     property alias footer: footer_col.data
+    // Content shown beside the open picker list, and under the rows when none is open.
+    property alias side: side_col.data
+    readonly property real side_width: Style.px(420)
+    readonly property real side_gap: Style.px(12)
+    readonly property bool has_side: side_col.visibleChildren.length > 0
+    // Below this width the side content drops under a list that is capped at its slot, rather than squeezing the list.
+    // A section with no side content never caps its list.
+    readonly property bool side_fits: root.has_side && root.width >= root.side_width + Style.px(360) + root.side_gap
 
     // Keys the rows do not use, for sections with their own.
     signal extra_key(var event)
@@ -32,13 +41,16 @@ SettingsPane {
     footer_hint: "j/k move · H/L change · Enter list · h/Esc sections · q close"
     search_rows: root.rows.map(r => r.label)
     search_cursor: root.cursor
-    // Layout facts a section needs to size its own content against the pinned description.
+    // Where the rows end, for a section that sizes its own content below them.
     readonly property real footer_top: footer_col.y
-    readonly property real description_height: root.description_space
     described: root.has_descriptions
-    description: root.described_row && root.described_row.desc ? root.described_row.desc : ""
+    description: {
+        const row = root.described_row;
+        if (!row || !row.desc) return "";
+        return row.help ? row.desc + "\n\n" + row.help : row.desc;
+    }
     description_keys: root.keys_of(root.described_row)
-    implicitHeight: col.implicitHeight + root.description_space
+    implicitHeight: col.implicitHeight
 
     function step(index, delta) {
         const row = root.rows[index];
@@ -136,26 +148,6 @@ SettingsPane {
             spacing: 4
         }
 
-        // Reserves the list's default height; the list itself may be taller and overflows into the pane's spare height.
-        Item {
-            id: picker_slot
-            visible: root.picking
-            Layout.fillWidth: true
-            Layout.preferredHeight: picker.default_height
-
-            PickerList {
-                id: picker
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.right: parent.right
-                visible: root.picking
-                st: root.st
-                available_height: Math.max(0, root.height - picker_slot.y - 4)
-                onPicked: index => root.finish_picker(index)
-                onClosed: root.hide_picker()
-            }
-        }
-
         Repeater {
             model: root.rows
 
@@ -179,6 +171,46 @@ SettingsPane {
                     if (row.modelData.activate && row.modelData.cycle !== false) root.step(row.index, delta);
                     else root.activate(row.index, delta);
                 }
+            }
+        }
+
+        // The list fills the left and `side` sits right of it. The list overflows its slot into the pane's spare
+        // height, so `side` must not sit below it; when it cannot sit beside, the list is capped at the slot instead.
+        GridLayout {
+            id: picker_grid
+            visible: root.picking || root.has_side
+            Layout.fillWidth: true
+            columns: root.side_fits ? 2 : 1
+            columnSpacing: root.side_gap
+            rowSpacing: 4
+
+            Item {
+                id: picker_slot
+                visible: root.picking
+                Layout.fillWidth: true
+                Layout.preferredHeight: picker.default_height
+
+                PickerList {
+                    id: picker
+                    objectName: "picker"
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    visible: root.picking
+                    st: root.st
+                    available_height: root.has_side && !root.side_fits ? picker.default_height : Math.max(0, root.height - picker_grid.y - 4)
+                    onPicked: index => root.finish_picker(index)
+                    onClosed: root.hide_picker()
+                }
+            }
+
+            ColumnLayout {
+                id: side_col
+                visible: side_col.visibleChildren.length > 0
+                Layout.alignment: Qt.AlignTop
+                Layout.fillWidth: !root.picking || !root.side_fits
+                Layout.preferredWidth: root.picking && root.side_fits ? root.side_width : -1
+                spacing: 4
             }
         }
 

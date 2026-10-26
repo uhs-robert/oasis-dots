@@ -118,6 +118,24 @@ ln -s "$stow_repo/home/units/.config/units/only" "$fake_home/.config/units/only"
 g -C "$stow_repo" mv "$stow_repo/home/units/.config/units/only" "$stow_repo/home/units/.config/units/renamed"
 g -C "$stow_repo" commit -q -m rename
 check "renaming a package's only linked file restows it, though its link now dangles" "[[ \$(restow '$stow_units' HEAD) == units ]]"
+mkdir -p "$stow_repo/home/gone/.config/gone"
+echo a >"$stow_repo/home/gone/.config/gone/only"
+g -C "$stow_repo" add -A
+g -C "$stow_repo" commit -q -m gone
+stow_gone=$(git -C "$stow_repo" rev-parse HEAD)
+ln -s "$stow_repo/home/gone/.config/gone" "$fake_home/.config/gone"
+g -C "$stow_repo" rm -rq "$stow_repo/home/gone"
+g -C "$stow_repo" commit -q -m "delete gone"
+check "a package the merge deleted is skipped, not restowed" "[[ -z \$(restow '$stow_gone' HEAD 2>/dev/null) ]]"
+check "and says so" "[[ \$(restow '$stow_gone' HEAD 2>&1 >/dev/null) == *'home/gone no longer exists'* ]]"
+mkdir -p "$stow_repo/home/never/.config/never"
+echo a >"$stow_repo/home/never/.config/never/only"
+g -C "$stow_repo" add -A
+g -C "$stow_repo" commit -q -m never
+stow_never=$(git -C "$stow_repo" rev-parse HEAD)
+g -C "$stow_repo" rm -rq "$stow_repo/home/never"
+g -C "$stow_repo" commit -q -m "delete never"
+check "a deleted package never stowed here is skipped silently" "[[ -z \$(restow '$stow_never' HEAD 2>&1) ]]"
 
 echo "== a branch with no local worktree, and recording its pass"
 origin=$root/origin.git
@@ -497,6 +515,24 @@ check "a failing build does not fail the merge" "[[ $build_rc == 0 ]] && grep -q
 check "it warns loudly with the command to rerun" "grep -q 'WARNING: just voxcmd-build failed' '$e2e/out' && grep -q 'run: just voxcmd-build' '$e2e/out'"
 check "and sends a critical notification" "grep -q 'notify-send --urgency=critical.*just voxcmd-build failed' '$SHIP_LOG'"
 check "the rest of the run still happens: base settled, lock free" "[[ ! -e \$(base_file '$e2e/main') ]] && flock -n '$SHIP_LOCK' true"
+# stow -R removes ~/.local/bin/voxcmd when the merge deleted its package file, so a failed build would leave no voxcmd.
+mkdir -p "$fake_home/.local/bin" "$fake_home/rs/bin"
+printf '#!/bin/sh\n' >"$fake_home/rs/bin/voxcmd"
+chmod +x "$fake_home/rs/bin/voxcmd"
+rm -f "$fake_home/.local/bin/voxcmd"
+ln -s "$fake_home/rs/bin/voxcmd" "$fake_home/.local/bin/voxcmd-rs"
+STUB_VOXCMD_BUILD_STATUS=1 migrate_ship home/voxcmd/src/paths.rs
+check "a failed build with no voxcmd left links it to the existing voxcmd-rs build" "[[ \$(readlink -f '$fake_home/.local/bin/voxcmd') == '$fake_home/rs/bin/voxcmd' ]]"
+check "and the warning says voxcmd was relinked to the previous build" "grep -q 'WARNING: just voxcmd-build failed' '$e2e/out' && grep -q 'linked ~/.local/bin/voxcmd to the previous build' '$e2e/out'"
+rm -f "$fake_home/.local/bin/voxcmd" "$fake_home/.local/bin/voxcmd-rs"
+STUB_VOXCMD_BUILD_STATUS=1 migrate_ship home/voxcmd/src/paths.rs
+check "a failed build with no previous build to link still only warns" "[[ ! -e '$fake_home/.local/bin/voxcmd' ]] && grep -q 'WARNING: just voxcmd-build failed' '$e2e/out' && grep -q 'voice control has no voxcmd' '$e2e/out'"
+ln -s "$fake_home/rs/bin/voxcmd" "$fake_home/.local/bin/voxcmd"
+ln -s "$fake_home/rs/bin/voxcmd" "$fake_home/.local/bin/voxcmd-rs"
+printf '#!/bin/sh\n' >"$fake_home/rs/other"
+STUB_VOXCMD_BUILD_STATUS=1 migrate_ship home/voxcmd/src/paths.rs
+check "a failed build leaves a working voxcmd link alone" "[[ \$(readlink '$fake_home/.local/bin/voxcmd') == '$fake_home/rs/bin/voxcmd' ]] && ! grep -q 'linked ~/.local/bin/voxcmd' '$e2e/out'"
+rm -f "$fake_home/.local/bin/voxcmd" "$fake_home/.local/bin/voxcmd-rs" "$fake_home/rs/other"
 
 echo "== the bar restart reads the lock state"
 # The stub qs-ipc answers with line N of $e2e/answers on its Nth call and repeats the last line after that. ship-batch

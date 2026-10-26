@@ -73,6 +73,14 @@ class ListTest(ListCase):
         found = self.broken(lambda actions: actions[1]["perform"].update(argv=["~/.config/hypr/scripts/none.sh"]))
         self.assertFinding(found, "~/.config/hypr/scripts/none.sh, which no home/<package>/ ships")
 
+    def test_an_installer_built_executable_is_not_looked_up_in_home(self):
+        found = self.broken(lambda actions: actions[1]["perform"].update(argv=["~/.local/bin/voxcmd", "session", "rapid"]))
+        self.assertEqual(found, [])
+
+    def test_a_built_executable_is_only_the_named_ones(self):
+        found = self.broken(lambda actions: actions[1]["perform"].update(argv=["~/.local/bin/voxcmd-other"]))
+        self.assertFinding(found, "~/.local/bin/voxcmd-other, which no home/<package>/ ships")
+
     def test_a_program_on_the_path_is_not_looked_up(self):
         self.assertEqual(self.broken(lambda actions: actions[1]["perform"].update(argv=["rofi-rbw"])), [])
 
@@ -101,6 +109,16 @@ class HeadlessLoadTest(TreeCase):
 
     def test_the_real_tree_passes(self):
         self.assertEqual(registry.run_checks(REPO_DIR), [])
+
+    def test_the_real_tree_defines_the_six_picker_and_hyprvim_actions(self):
+        listing, findings = registry.load_list(REPO_DIR)
+        self.assertEqual(findings, [])
+        lua_ids = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "lua")
+        self.assertEqual(lua_ids, [
+            "hyprvim.jump_mark", "hyprvim.terminal", "picker.clipboard", "picker.clipboard_delete",
+            "picker.directory", "picker.emoji",
+        ])
+        self.assertEqual(len(listing["actions"]), 20)
 
     def test_a_planted_good_definition_passes(self):
         self.assertEqual(self.planted('Act.define("zoom.again", { label = "Z", run = Act.Ipc("zoom", "toggle") })'), [])

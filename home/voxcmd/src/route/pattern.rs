@@ -1,17 +1,13 @@
 //! verb pattern → anchored regex with typed named captures; define/intents/mode_exit expansion; the required literals
 //! the matcher's prefilter reads
 //!
-//! Two dialects, by the integration's format:
-//! - **Bash** (legacy): a POSIX ERE as `compile_pattern` built it: `{intent}` becomes a group of its forms, then only
-//!   the first of `{target}` (`.+`, greedy) or `{number}` (`[0-9]+`) becomes a capture. Rust's leftmost-first
-//!   captures equal bash's on the match goldens (tests/fixtures/gen-match-goldens.sh).
-//! - **TOML** (1.1 section 2): a Rust regex whose `{name}`s resolve to a placeholder (`{target}`, `{number}`,
-//!   `{name:type}`; words captured lazily), a `define`, `{mode_object}`/`{mode_exit}`, or an intent, in that order.
+//! A pattern is a Rust regex whose `{name}`s resolve to a placeholder (`{target}`, `{number}`, `{name:type}`; words
+//! captured lazily), a `define`, `{mode_object}`/`{mode_exit}`, or an intent, in that order.
 //!
-//! Both compile with `.` matching newlines and Unicode off: phrases are normalized to `[a-z0-9 ]` (a newline can
+//! It compiles with `.` matching newlines and Unicode off: phrases are normalized to `[a-z0-9 ]` (a newline can
 //! survive), and the ASCII engine builds faster.
 use crate::config::intents::Intents;
-use crate::config::schema::{Format, Integration, Verb};
+use crate::config::schema::{Integration, Verb};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlaceholderType {
@@ -51,14 +47,12 @@ impl PlaceholderType {
         }
     }
 
-    /// What the capture group matches. Bash captures words greedily ("how far ahead is tokyo please" gives "tokyo
-    /// please"), and the legacy dialect must equal it. TOML captures them lazily (1.1), so optional words after a slot,
-    /// as in `open {target}( in firefox)?`, stay out of the target; a title that really ends in one gets cut.
-    fn capture_body(self, format: Format) -> &'static str {
-        match (self, format) {
-            (Self::Number, _) => "[0-9]+",
-            (_, Format::Toml) => ".+?",
-            _ => ".+",
+    /// What the capture group matches. Words are captured lazily (1.1), so optional words after a slot, as in
+    /// `open {target}( in firefox)?`, stay out of the target; a title that really ends in one gets cut.
+    fn capture_body(self) -> &'static str {
+        match self {
+            Self::Number => "[0-9]+",
+            _ => ".+?",
         }
     }
 }
@@ -81,7 +75,7 @@ pub struct CompiledPattern {
 
 const FLAGS: &str = "(?s-u)";
 
-/// A TOML pattern's expanded body as the anchored regex source the matcher compiles.
+/// A pattern's expanded body as the anchored regex source the matcher compiles.
 fn anchored(body: &str) -> String {
     format!("{FLAGS}^(?:{body})$")
 }
@@ -114,96 +108,15 @@ impl PartialEq for WholeText {
 
 impl Eq for WholeText {}
 
-/// A verb's pattern in its integration's dialect. Errors name what does not resolve.
+/// A verb's pattern as a regex. Errors name what does not resolve.
 pub fn compile(integration: &Integration, verb: &Verb, intents: &Intents) -> Result<CompiledPattern, String> {
-    match integration.format {
-        Format::Bash => Ok(compile_legacy(&verb.pattern, intents)),
-        Format::Toml => compile_toml(integration, &verb.pattern, intents),
-    }
-}
-
-/// Every `{intent}` as a group of its forms, as bash's `expand_intents` replaces them; any other `{...}` stays.
-fn expand_legacy_intents(pattern: &str, intents: &Intents) -> String {
-    let mut expanded = String::with_capacity(pattern.len() * 2);
-    let mut rest = pattern;
-    while let Some(open) = rest.find('{') {
-        expanded.push_str(&rest[..open]);
-        let token = &rest[open..];
-        let forms = token
-            .find('}')
-            .and_then(|close| Some((close, intents.forms(&token[1..close])?)));
-        match forms {
-            Some((close, forms)) => {
-                expanded.push('(');
-                expanded.push_str(&forms.join("|"));
-                expanded.push(')');
-                rest = &token[close + 1..];
-            }
-            None => {
-                expanded.push('{');
-                rest = &token[1..];
-            }
-        }
-    }
-    expanded.push_str(rest);
-    expanded
-}
-
-fn compile_legacy(pattern: &str, intents: &Intents) -> CompiledPattern {
-    let mut body = expand_legacy_intents(pattern, intents);
     let mut placeholders = Vec::new();
-    for (token, kind) in [
-        ("{target}", PlaceholderType::Text),
-        ("{number}", PlaceholderType::Number),
-    ] {
-        if body.contains(token) {
-            let name = token.trim_matches(['{', '}']).to_string();
-            body = body.replacen(token, &format!("(?P<{name}>{})", kind.capture_body(Format::Bash)), 1);
-            placeholders.push(Placeholder { name, kind });
-            break;
-        }
-    }
-    CompiledPattern {
-        regex: format!("{FLAGS}^({body})$"),
+    let body = expand(integration, &verb.pattern, intents, &mut placeholders, 0)?;
+    Ok(CompiledPattern {
+        regex: anchored(&body),
         body,
         placeholders,
-    }
-}
-
-/// near-miss.awk's view of a legacy pattern: intents expanded, and every `{target}` and `{number}` a marker (the
-/// regex compile keeps only the first). Markers are named groups `p<index>` over `placeholders`.
-pub fn legacy_near_miss_source(pattern: &str, intents: &Intents) -> (String, Vec<Placeholder>) {
-    let expanded = expand_legacy_intents(pattern, intents);
-    let mut source = String::with_capacity(expanded.len());
-    let mut placeholders = Vec::new();
-    let mut rest = expanded.as_str();
-    while let Some(start) = rest.find('{') {
-        source.push_str(&rest[..start]);
-        let token = &rest[start..];
-        let kind = if token.starts_with("{target}") {
-            Some(PlaceholderType::Text)
-        } else if token.starts_with("{number}") {
-            Some(PlaceholderType::Number)
-        } else {
-            None
-        };
-        match kind {
-            Some(kind) => {
-                source.push_str(&format!("(?P<p{}>x)", placeholders.len()));
-                placeholders.push(Placeholder {
-                    name: format!("p{}", placeholders.len()),
-                    kind,
-                });
-                rest = &token["{target}".len()..];
-            }
-            None => {
-                source.push('{');
-                rest = &token[1..];
-            }
-        }
-    }
-    source.push_str(rest);
-    (source, placeholders)
+    })
 }
 
 /// A `[mode]`'s patterns, compiled.
@@ -218,7 +131,7 @@ pub struct ModePatterns {
 }
 
 /// Compiles the patterns of the integration's `[mode]` (`exit_phrases`, `rewrite.drop`, `rewrite.keep`, each of
-/// `endings`) in the verbs' dialect, minus placeholders: a turn's words are all there is to capture. None without a
+/// `endings`) as the verbs' are, minus placeholders: a turn's words are all there is to capture. None without a
 /// `[mode]`. The error is `file:line: message`.
 pub fn compile_mode(integration: &Integration, intents: &Intents) -> Result<Option<ModePatterns>, String> {
     let Some(mode) = &integration.mode else {
@@ -227,7 +140,7 @@ pub fn compile_mode(integration: &Integration, intents: &Intents) -> Result<Opti
     let expand_at = |key: &'static str, line: usize, pattern: &str| -> Result<String, String> {
         let fail = |message: String| format!("{}:{line}: [mode] {key}: {message}", integration.file.display());
         let mut placeholders = Vec::new();
-        let body = expand_toml(integration, pattern, intents, &mut placeholders, 0).map_err(fail)?;
+        let body = expand(integration, pattern, intents, &mut placeholders, 0).map_err(fail)?;
         if let Some(placeholder) = placeholders.first() {
             return Err(fail(format!("{{{}}} has nothing to capture here", placeholder.name)));
         }
@@ -290,17 +203,7 @@ fn brace_name(inner: &str) -> Option<(&str, Option<&str>)> {
 
 const MAX_DEFINE_DEPTH: usize = 16;
 
-fn compile_toml(integration: &Integration, pattern: &str, intents: &Intents) -> Result<CompiledPattern, String> {
-    let mut placeholders = Vec::new();
-    let body = expand_toml(integration, pattern, intents, &mut placeholders, 0)?;
-    Ok(CompiledPattern {
-        regex: anchored(&body),
-        body,
-        placeholders,
-    })
-}
-
-fn expand_toml(
+fn expand(
     integration: &Integration,
     pattern: &str,
     intents: &Intents,
@@ -363,10 +266,10 @@ fn resolve_name(
             name: name.to_string(),
             kind,
         });
-        return Ok(format!("(?P<{name}>{})", kind.capture_body(Format::Toml)));
+        return Ok(format!("(?P<{name}>{})", kind.capture_body()));
     }
     if let Some(fragment) = integration.defines.get(name) {
-        let expanded = expand_toml(integration, fragment, intents, placeholders, depth + 1)?;
+        let expanded = expand(integration, fragment, intents, placeholders, depth + 1)?;
         return Ok(format!("(?:{expanded})"));
     }
     if name == "mode_object" || name == "mode_exit" {
@@ -374,7 +277,7 @@ fn resolve_name(
             .mode_exit_object
             .as_deref()
             .ok_or_else(|| format!("{{{name}}} needs [mode] exit_object"))?;
-        let object = expand_toml(integration, object, intents, placeholders, depth + 1)?;
+        let object = expand(integration, object, intents, placeholders, depth + 1)?;
         return Ok(if name == "mode_object" {
             format!("(?:{object})")
         } else {
@@ -585,12 +488,11 @@ mod tests {
     use crate::config::schema::{MatchSettings, Tier};
     use std::collections::BTreeMap;
 
-    fn integration(format: Format) -> Integration {
+    fn integration() -> Integration {
         Integration {
             name: "Test".into(),
             stem: "test".into(),
             file: "test".into(),
-            format,
             tier: Tier::Normal,
             force_prefixes: Vec::new(),
             defines: BTreeMap::from([
@@ -602,7 +504,6 @@ mod tests {
             mode: None,
             verbs: Vec::new(),
             examples: Vec::new(),
-            legacy_help: false,
             help: Vec::new(),
             settings: MatchSettings::default(),
             actions: BTreeMap::new(),
@@ -618,39 +519,23 @@ mod tests {
             line: None,
             column: None,
             requires: None,
-            listed: None,
         }
     }
 
     #[test]
-    fn legacy_takes_the_first_placeholder_only() {
-        let intents = Intents::default();
-        let compiled = compile(&integration(Format::Bash), &verb("{close} {target}"), &intents).unwrap();
-        assert_eq!(compiled.regex, "(?s-u)^((close|quit|kill) (?P<target>.+))$");
-        let compiled = compile(&integration(Format::Bash), &verb("by {number} x {target}"), &intents).unwrap();
-        assert_eq!(compiled.placeholders[0].name, "target");
-        assert!(compiled.regex.contains("{number}"));
-    }
-
-    #[test]
-    fn words_are_greedy_in_bash_and_lazy_in_toml() {
-        let intents = Intents::default();
-        let target = |format| {
-            let compiled = compile(&integration(format), &verb("is {target}( please)*"), &intents).unwrap();
-            let captures = regex::bytes::Regex::new(&compiled.regex)
-                .unwrap()
-                .captures(b"is tokyo please")
-                .unwrap();
-            String::from_utf8_lossy(&captures["target"]).into_owned()
-        };
-        assert_eq!(target(Format::Bash), "tokyo please");
-        assert_eq!(target(Format::Toml), "tokyo");
+    fn words_are_captured_lazily() {
+        let compiled = compile(&integration(), &verb("is {target}( please)*"), &Intents::default()).unwrap();
+        let captures = regex::bytes::Regex::new(&compiled.regex)
+            .unwrap()
+            .captures(b"is tokyo please")
+            .unwrap();
+        assert_eq!(&captures["target"], b"tokyo");
     }
 
     #[test]
     fn toml_resolves_placeholders_defines_modes_and_intents() {
         let intents = Intents::default();
-        let toml = integration(Format::Toml);
+        let toml = integration();
         let compiled = compile(
             &toml,
             &verb("{names} {window:text} to {n:position}( [0-9]{3})?"),
@@ -686,7 +571,12 @@ mod tests {
     #[test]
     fn required_literals_skip_optional_parts_and_union_alternatives() {
         let intents = Intents::default();
-        let compiled = compile_legacy("(turn )?(the )?(volume|sound) up( by {number})?", &intents);
+        let compiled = compile(
+            &integration(),
+            &verb("(turn )?(the )?(volume|sound) up( by {number})?"),
+            &intents,
+        )
+        .unwrap();
         assert_eq!(
             required_literals(&compiled.regex),
             [vec!["volume", "sound"], vec![" up"]]
@@ -697,14 +587,6 @@ mod tests {
             [vec![" px"], vec![" a"], vec!["c"], vec!["d "], vec!["e"]]
         );
         assert!(required_literals("^(a|b").is_empty());
-    }
-
-    #[test]
-    fn legacy_near_miss_source_marks_every_placeholder() {
-        let (source, placeholders) =
-            legacy_near_miss_source("move {target} to {number} {number} {x}", &Intents::default());
-        assert_eq!(source, "move (?P<p0>x) to (?P<p1>x) (?P<p2>x) {x}");
-        assert_eq!(placeholders.len(), 3);
     }
 
     #[test]
@@ -759,12 +641,12 @@ mod tests {
         }
     }
 
-    /// Owner decision a: one dialect. Whatever a verb's pattern accepts and matches, a mode's pattern does too.
+    /// Whatever a verb's pattern accepts and matches, a mode's pattern does too.
     #[test]
     fn a_mode_pattern_compiles_and_matches_as_the_same_verb_pattern() {
-        let integration = integration(Format::Toml);
+        let integration = integration();
         let verb_matches = |pattern: &str, text: &str| {
-            let compiled = compile_toml(&integration, pattern, &Intents::default()).ok()?;
+            let compiled = compile(&integration, &verb(pattern), &Intents::default()).ok()?;
             let regex = regex::bytes::Regex::new(&compiled.regex).ok()?;
             Some(regex.is_match(text.as_bytes()))
         };

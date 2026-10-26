@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 
-// The numbered boxes voxcmd's click shows when several on-screen texts match (voxcmd-hints blocks reading result_path).
+// The numbered boxes voxcmd's click shows when several on-screen texts match (`voxcmd ask hints` blocks reading result_path).
 // Every way the overlay ends writes one answer there: the 1-based number of the box picked, or an empty line for Esc,
 // a click elsewhere, the timeout or a newer overlay.
 Singleton {

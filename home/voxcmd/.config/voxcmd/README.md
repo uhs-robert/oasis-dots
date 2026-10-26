@@ -22,17 +22,17 @@ Saying "never mind", "cancel", "forget it" or "nothing" as the whole command run
 ```bash
 voxcmd listen                     # start a recording that stops itself after speech and a pause; while voxtype records, stop it
 voxcmd "next track"               # route text directly
-voxcmd --dry-run "volume to 40"   # show the match, candidates and command without running anything
-voxcmd --reply "the second one"   # answer the open voxcmd picker or confirm card, as a spoken reply would
-voxcmd --dry-run --reply "two"    # show which choice a reply would pick
-voxcmd rapid                      # open rapid mode (the same as saying "rapid mode"); from a terminal or a key
+voxcmd explain "volume to 40"      # show the match, candidates and command without running anything
+voxcmd reply "the second one"       # answer the open voxcmd picker or confirm card, as a spoken reply would
+voxcmd reply --dry-run "two"       # show which choice a reply would pick
+voxcmd session rapid              # open rapid mode (the same as saying "rapid mode"); from a terminal or a key
 voxcmd end-session                # end the open voice session and every mode in it, if any
 voxcmd stop                       # stop all voice activity: session, picker or card, and any recording (see Stop Voice)
 voxcmd wake toggle                # switch the "Cortana" listener on or off (on, off, toggle, status)
-voxcmd list                       # integrations and their verbs
+voxcmd integrations list         # integrations and their verbs
 voxcmd help                       # pick from the integrations' example phrases
-voxcmd errors 5                   # the last 5 voxcmd notifications the bar kept, newest first (default 10)
-voxcmd misses 5                   # the last 5 phrases that matched nothing (default 20), from the no-match log
+voxcmd log errors 5               # the last 5 voxcmd notifications the bar kept, newest first (default 10)
+voxcmd log misses 5               # the last 5 phrases that matched nothing (default 20), from the no-match log
 ```
 
 `listen` records with `voxtype record start --file=...`, so the transcript is written to a file instead of being typed. Dictation keeps working as before.
@@ -91,11 +91,13 @@ A notification reports what ran, followed by the last line the command printed, 
 - **Limits.** At most 5 steps; more is refused, and nothing runs. A mode switch ("rapid mode", "type mode") is allowed only as the last step: anywhere else the whole phrase is refused, and nothing runs. Neither is split inside [type mode](#type-mode), whose words are text.
 - **Confirm cards and pickers** work as in any phrase, in any step, and listen for a spoken answer when the phrase was spoken.
 - **Stop Voice** ends a running sequence: it is checked before each step and on every poll of a wait, and says nothing.
-- **Dry run.** `voxcmd --dry-run "..."` prints `sequence: N steps`, then under `step i of N` the usual block, `waits for:` and a note where a free-text action took the rest; a refused phrase prints `result: refused`.
+- **Dry run.** `voxcmd explain "..."` prints `sequence: N steps`, then under `step i of N` the usual block, `waits for:` and a note where a free-text action took the rest; a refused phrase prints `result: refused`.
 
 ## Integrations
 
-Each `~/.config/voxcmd/integrations.d/*.sh` is a bash file sourced in its own subshell:
+Integrations are the TOML files in `~/.config/voxcmd/integrations/` (the shipped ones are the reference until the README is rewritten around that format). The rest of this section describes the former bash format: `integrations.d/*.sh` is no longer read, and `voxcmd integrations check` warns about a leftover file.
+
+Each `~/.config/voxcmd/integrations.d/*.sh` was a bash file sourced in its own subshell:
 
 ```bash
 name="Windows"     # shown in notifications and the picker; defaults to the file name
@@ -167,7 +169,7 @@ help_choices() {
 An integration whose options sit on screen can ask several matches to be shown there instead of listed as text:
 
 ```bash
-pick_command=voxcmd-hints   # a blocking picker called like voxcmd-pick, found beside voxcmd or on PATH
+pick_command=voxcmd-hints   # the former script; click.toml's `picker = "hints"` runs `voxcmd ask hints` instead
 
 # Prints "<left> <top> <width> <height>" in global logical pixels for an option id, or fails when it has none.
 pick_box() {
@@ -176,7 +178,7 @@ pick_box() {
 }
 ```
 
-When every option of a pick comes from one integration with both, each choice gains `box: [left, top, width, height]` and `pick_command` asks it, with `Which one?`, instead of `voxcmd-pick`. A command that came by voice passes `--listen` to it whatever the number of options, since the user is looking at the choices. If any option has no box the text picker asks as usual. The command must be named `voxcmd-hints` (or `voxcmd-pick`/`voxcmd-confirm`) to be found by `voxcmd --reply`, which looks for those in the pending-pick owner's command line.
+When every option of a pick comes from one integration with both, each choice gains `box: [left, top, width, height]` and `pick_command` asks it, with `Which one?`, instead of `voxcmd ask pick`. A command that came by voice passes `--listen` to it whatever the number of options, since the user is looking at the choices. If any option has no box the text picker asks as usual. `voxcmd --reply` trusts the pending pick only while the process that wrote it still runs as `voxcmd ask ...`.
 
 Candidates may also carry `match_text`, the text the target is matched against when it should differ from the label shown (`keybinds.sh` matches the bare description and shows the submap after it).
 
@@ -192,9 +194,9 @@ confirm_labels=('\bclose\b' '^lock\b')   # regexes (case-insensitive, jq syntax)
 
 Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the target's group by counting the `(` before the placeholder (an escaped `\(` does not count), which is why only one placeholder is allowed. Intents are expanded before that count, so they can sit anywhere in a pattern. Order verbs from specific to general, as `media.sh` does with `play` before `play {target}`. Integration files are plain shell, so helper functions defined in the file are available to its commands. voxcmd sources the file inside a function, though, so a `declare` at its top level is gone by the time a command runs: declare an array a helper reads with `declare -g`, as `spoken-time.sh` does for its number words.
 
-Helpers several integrations share live in `~/.local/share/voxcmd/`, since every file in `integrations.d/` is loaded as an integration; an integration sources one from `$voxcmd_share_dir`, which voxcmd resolves from its own real path. `spoken-time.sh` holds the spoken clock-time parser (`parse_clock`: "3 pm", "three thirty pm", "noon", "9 am tomorrow", "friday at 9"), the duration and day parsers (`parse_duration`, `parse_day`), the formatters for the times it prints (`format_at`, `format_length`) and the bar's clock format (`clock_time_format`), used by `timers.sh`, `answers.sh` and `calendar.sh`. `spoken-position.sh` reads a spoken position (`spoken_position`: "two", "twenty five", "second", "twenty first", "13th"; `spoken_ordinal` only ordinals, which need their own suffix, so "2th" is nothing) for the picker replies, workspaces, windows and monitors, never for counts and amounts, where "second" is a unit of time. `monitor-words.sh` names monitors (`monitor_places`, `monitor_named`) for `monitors.sh` and `overview.sh`; see [Monitors](#monitors).
+Helpers several integrations share live in `~/.local/share/voxcmd/`, since every file in `integrations/` is loaded as an integration; an integration sources one from `$voxcmd_share_dir`, which voxcmd resolves from its own real path. `spoken-time.sh` holds the spoken clock-time parser (`parse_clock`: "3 pm", "three thirty pm", "noon", "9 am tomorrow", "friday at 9"), the duration and day parsers (`parse_duration`, `parse_day`), the formatters for the times it prints (`format_at`, `format_length`) and the bar's clock format (`clock_time_format`), used by `timers.sh`, `answers.sh` and `calendar.sh`. `spoken-position.sh` reads a spoken position (`spoken_position`: "two", "twenty five", "second", "twenty first", "13th"; `spoken_ordinal` only ordinals, which need their own suffix, so "2th" is nothing) for the picker replies, workspaces, windows and monitors, never for counts and amounts, where "second" is a unit of time. `monitor-words.sh` names monitors (`monitor_places`, `monitor_named`) for `monitors.sh` and `overview.sh`; see [Monitors](#monitors).
 
-The tracked `integrations.d/` and `replacements.d/` ignore everything except what ships, so private integrations dropped into the stowed folders stay out of git.
+The tracked `integrations/` and `replacements.d/` ignore everything except what ships, so private integrations dropped into the stowed folders stay out of git.
 
 ### Intents
 
@@ -564,10 +566,10 @@ Every phrase ends in "session" after a name, so "open the session launcher" stil
 - A click goes only to the window that was read, where it was: when another window has focus by the time of the click (a picker answered seconds later), or the window moved or changed size, nothing is clicked and a toast says `The window changed; say it again`. The same holds when the read is more than 60 s old.
 - A failed click is a failed turn: its error toast says only `Click: click: <reason>`, never the OCR text, since the bar keeps error toasts in its history (`private_labels=1`). In [click mode](#click-mode) it counts as a turn that did nothing, like a target found nowhere.
 - A click is [silent](#silent-actions); the pointer landing on the text is the feedback.
-- **Why didn't it click?** `voxcmd explain --window focused click <text>` (or `--window <stableId>`; `--json` adds the trace as `click`; the bash voxcmd spells it `click-explain <text> [--window <stableId>]`) prints the routing trace, then runs the same capture, OCR, matcher, word matching and covering check on the focused window (or that client, as `grim -T` takes it) and prints the window, capture mode, image size and scales, inversion, strips and OCR time, then each OCR run holding a word that is, resembles or nearly equals a spoken one, with its words' confidences and the rule that decided it (kept strong, kept weak, sub-span, dropped for the confidence floor, coverage under half, near miss only, or covered by another window or a reserved edge), and last what voxcmd would do: click at a point, overlay with N, not on screen, covered. The routing and the trace share one capture. The matcher writes those reasons itself (`click-match.awk -v explain=1`), so they cannot disagree with a real click. It never clicks, moves the pointer, notifies or writes the click target; the screen text appears only on the terminal and the capture is deleted.
+- **Why didn't it click?** `voxcmd explain --window focused click <text>` (or `--window <stableId>`; `--json` adds the trace as `click`) prints the routing trace, then runs the same capture, OCR, matcher, word matching and covering check on the focused window (or that client, as `grim -T` takes it) and prints the window, capture mode, image size and scales, inversion, strips and OCR time, then each OCR run holding a word that is, resembles or nearly equals a spoken one, with its words' confidences and the rule that decided it (kept strong, kept weak, sub-span, dropped for the confidence floor, coverage under half, near miss only, or covered by another window or a reserved edge), and last what voxcmd would do: click at a point, overlay with N, not on screen, covered. The routing and the trace share one capture. The matcher writes those reasons itself, so they cannot disagree with a real click. It never clicks, moves the pointer, notifies or writes the click target; the screen text appears only on the terminal and the capture is deleted.
 - The screenshot and its text live only in a private directory under `$XDG_RUNTIME_DIR`, deleted when the command ends.
 
-The pipeline is `click-ocr` (capture, gray, invert when the window is dark, tesseract; a window taller than 1000 px is cut into 4 to 6 overlapping strips read in parallel, each owning the lines whose box is centred in its rows) feeding `click-match.awk` (matching and the mapping to global coordinates), both in `~/.local/share/voxcmd/`. Typical time from speech end to click is under a second. The capture is by toplevel (`grim -T`, from the window's `stableId`), so translucent windows are read without the wallpaper behind them; it falls back to the window's screen region when that fails. The mapping takes the x and y scales from the captured image, not the monitor, and grim returns upright images on rotated monitors. A capture whose two scales differ by more than 2% is retaken as a screen region, and fails if that differs too. A word is matched against the spoken words one by one, or by letters joined ("Newtask" for "new task", "Read me" for "readme"); the spoken words replace OCR text only for look-alike equality.
+The pipeline is the OCR step, `voxcmd internal click-ocr` (capture, gray, invert when the window is dark, tesseract; a window taller than 1000 px is cut into 4 to 6 overlapping strips read in parallel, each owning the lines whose box is centred in its rows) feeding the matcher, `internal click-match` (matching and the mapping to global coordinates). Typical time from speech end to click is under a second. The capture is by toplevel (`grim -T`, from the window's `stableId`), so translucent windows are read without the wallpaper behind them; it falls back to the window's screen region when that fails. The mapping takes the x and y scales from the captured image, not the monitor, and grim returns upright images on rotated monitors. A capture whose two scales differ by more than 2% is retaken as a screen region, and fails if that differs too. A word is matched against the spoken words one by one, or by letters joined ("Newtask" for "new task", "Read me" for "readme"); the spoken words replace OCR text only for look-alike equality.
 
 Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and `wl-kbptr` (all in `packages/`). Tests: `home/voxcmd/tests/run.sh` (a step of `just check`) runs in the test sandbox, where `grim`, `magick`, `tesseract`, `wlrctl` and `hyprctl` are stubs fed by fixtures, and runs voxcmd with `--dry-run` only.
 
@@ -583,12 +585,12 @@ Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and 
 
 ### Click hints
 
-`voxcmd-hints [--listen] <label> <choices-json>` is the picker `click.sh` uses for several matches (`pick_command`). Choices are `{id, label, box: [left, top, width, height]}`; it prints the picked id and exits 1 on cancel. The Quickshell bar draws a numbered keycap and an outline over each box (`qs-ipc call clickhints`, see the bar's README), and the other screens stay quiet. Answer by:
+`voxcmd ask hints [--listen] <label> <choices-json>` is the picker `click.sh` uses for several matches (`pick_command`). Choices are `{id, label, box: [left, top, width, height]}`; it prints the picked id and exits 1 on cancel. The Quickshell bar draws a numbered keycap and an outline over each box (`qs-ipc call clickhints`, see the bar's README), and the other screens stay quiet. Answer by:
 
 - number keys `1`-`9` and `0` (box 10), or a click on a box; `Esc`, `q` or a click anywhere else cancels, and `?` lists the keys;
 - voice, as with any [picker](#answering-by-voice): "two", "the second one", a label's words, "cancel". With `--listen` (a spoken command) the reply recording starts just before the numbers appear, and an unclear reply listens once more. The overlay shows Listening or Transcribing, and its 10 s timeout waits while voxtype records.
 
-The overlay writes the number into the pick's FIFO, a voice reply the displayed label; either maps to the choice's id. While it waits, `voxcmd-hints` keeps the same `pending-pick.json` as `voxcmd-pick`, with `kind: "hints"`, `listen_again` and numbered labels. Without the bar, with more than ten choices, or when a choice has no box, it hands the pick to `voxcmd-pick`.
+The overlay writes the number into the pick's FIFO, a voice reply the displayed label; either maps to the choice's id. While it waits, `voxcmd ask hints` keeps the same `pending-pick.json` as `voxcmd ask pick`, with `kind: "hints"`, `listen_again` and numbered labels. Without the bar, with more than ten choices, or when a choice has no box, it hands the pick to `voxcmd ask pick`.
 ### Monitors
 
 `monitors.sh` focuses a monitor, or moves the active window to one, from anywhere (no overview needed):
@@ -644,7 +646,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 
 ### Rapid mode
 
-`SUPER + CTRL + COMMA` (Leader, `CTRL + COMMA`), `voxcmd rapid`, or saying "rapid mode" (also "start rapid mode", "enter rapid fire mode") opens a [voice session](#voice-sessions) where every turn is routed as a normal command, so a run of commands needs no key press between them. Force prefixes, the LLM hook and fallbacks work as usual, a confirm card is answered by voice, and a picker of several options listens for its answer too.
+`SUPER + CTRL + COMMA` (Leader, `CTRL + COMMA`), `voxcmd session rapid`, or saying "rapid mode" (also "start rapid mode", "enter rapid fire mode") opens a [voice session](#voice-sessions) where every turn is routed as a normal command, so a run of commands needs no key press between them. Force prefixes, the LLM hook and fallbacks work as usual, a confirm card is answered by voice, and a picker of several options listens for its answer too.
 
 - **Ending it:** `cortana done` and the other [wake word](#wake-word) forms (`cortana that's all`, `cortana done with rapid mode`, `cortana exit`, `cortana quit`), silence for about 10 s (`VOXCMD_SESSION_NO_SPEECH_SECS`); three turns in a row that did nothing; the Stop Voice key; or 5 minutes or 40 turns. Bare `done`, `I'm done`, `that's all`, `exit`, `quit`, `stop` and `done with rapid mode`, also repeated ("Stop. Stop. Stop."), are not exits: a toast says `say cortana done to leave`, and the turn counts as one that did nothing. The mode-naming forms ("stop rapid mode", "quit rapid fire mode", "rapid mode off", also as the last step of a sequence) are not exits either but give "Not understood", though they still run as commands outside a session; `cancel` is the silent discard, and `pause` or `stop the music` still pause the music (a bare `stop` does only outside a session). In a [sequence](#sequences) a bare `done` or `exit` step runs the steps before it, then gives the hint.
 - **Other modes:** "click mode" and "type mode" open inside it and return to it when they end. "click mode" and "type mode" stay bare in rapid mode, as they are commands. Inside click mode "rapid mode" is clicked as text; "cortana rapid mode" comes back to it.
@@ -716,7 +718,7 @@ Settings > Input > Voice saves its choices to `${XDG_STATE_HOME:-~/.local/state}
 | `VOXCMD_WAKE_PAUSE_FOR_MIC`    | `1`          | `voxcmd-wake`                 | 1 pauses it while another app records from a microphone; 0 keeps it listening |
 | `VOXCMD_DUCK_MEDIA_VOLUME`     | `30`         | `voxtype-duck`                | percent of its current volume the default output sink keeps while voxtype records (0 to 100); the follower reads it at each duck, so a change needs no restart |
 
-The shell side is `voice-env.sh` in voxcmd's share folder (`voice_env_value KEY`), sourced, when the voxcmd package is stowed, by voxcmd; `voxcmd-wake` and `voxtype-duck` have their own Python readers. `VOXCMD_VOICE_ENV_FILE` points all of them at another file (for tests). Wake sensitivity and the pause switches (exactly 0 or 1) are read once when the listener starts, so Settings runs `systemctl --user try-restart` on it after a change. Ducking is read at the start of each duck.
+voxcmd and its hooks read it with `voxcmd util voice-env KEY`; `voxcmd-wake` and `voxtype-duck` have their own Python readers. `VOXCMD_VOICE_ENV_FILE` points all of them at another file (for tests). Wake sensitivity and the pause switches (exactly 0 or 1) are read once when the listener starts, so Settings runs `systemctl --user try-restart` on it after a change. Ducking is read at the start of each duck.
 
 `voxtype-duck.service` lowers the default output sink while voxtype records (not each app's stream, which voxtype's own `duck_media` did and is now off in `config.toml`; a machine with its own copy of that file needs `duck_media = false` by hand, or both duck). It follows `voxtype status --follow`, restores 500 ms after recording ends, keeps a volume or mute you changed during the duck, and journals the duck in `$XDG_RUNTIME_DIR/voxcmd/duck.json` so a restart, a stop or `voxtype-duck --restore` can undo it. Roll back with `systemctl --user disable --now voxtype-duck` and `duck_media = true`.
 
@@ -792,7 +794,7 @@ Off by default and a stub: voxcmd never calls a model. Set `VOXCMD_LLM_CMD` to a
 
 ## Picker
 
-`voxcmd-pick [--listen] <label> <choices-json> [<expansions-json>]` is the blocking picker voxcmd uses, usable on its own. Choices are strings or `{id, label}` objects; it prints the picked id and exits 1 on cancel. Labels are shown numbered (`1. Acme Labs`); the number never reaches the printed id.
+`voxcmd ask pick [--listen] <label> <choices-json> [<expansions-json>]` is the blocking picker voxcmd uses, usable on its own. Choices are strings or `{id, label}` objects; it prints the picked id and exits 1 on cancel. Labels are shown numbered (`1. Acme Labs`); the number never reaches the printed id.
 
 Expansions are `{key: {title, choices}}`, and a choice with `expand: key` opens that list on Tab in the Quickshell picker; its ids come back like any other. The picker writes the key it shows to a view file, so a voice reply answers from the list on screen.
 
@@ -806,21 +808,21 @@ Press the Voice Command key while a voxcmd picker is open and speak a reply; the
 - with a single choice, `yes`, `yeah`, `sure`, `that one` or `do it` to take it, and `no` or `nope` to cancel;
 - `cancel`, `never mind` or `none`, which cancel like Esc.
 
-A picker with a single choice, which a [weak match](#word-matching) opens, asked about a command that came by voice (from `voxcmd listen`) listens for the reply without the key: voxcmd passes `--listen`, and `voxcmd-pick` starts the reply recording (`voxcmd listen --start-only`, only while voxtype is idle) just before the picker shows. It stops itself like any reply, and silence cancels it and leaves the picker waiting for a key or the Voice Command key. Answering by key, click or timeout cancels it if it is still recording or transcribing, as the [confirm card](#confirm) does, and leaves alone any recording started after it.
+A picker with a single choice, which a [weak match](#word-matching) opens, asked about a command that came by voice (from `voxcmd listen`) listens for the reply without the key: voxcmd passes `--listen`, and `voxcmd ask pick` starts the reply recording (`voxcmd listen --start-only`, only while voxtype is idle) just before the picker shows. It stops itself like any reply, and silence cancels it and leaves the picker waiting for a key or the Voice Command key. Answering by key, click or timeout cancels it if it is still recording or transcribing, as the [confirm card](#confirm) does, and leaves alone any recording started after it.
 
 A recording started while a picker waits is always a reply, so `cancel` there closes the picker rather than being discarded as a command.
 
 The reply picks as if the choice had been clicked and closes the picker. A reply that matches nothing or several choices leaves the picker open and sends a notification; press the key again to retry.
 
-While it waits, `voxcmd-pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices, expansions, view}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored. The reply goes into the picker's result FIFO, so `voxcmd-pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
+While it waits, `voxcmd ask pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices, expansions, view}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored. The reply goes into the picker's result FIFO, so `voxcmd ask pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
 
 Hyprland still runs binds while the Quickshell picker or confirm card has the keyboard. rofi asks the compositor to inhibit shortcuts while it is open, and Hyprland honours that unless `binds:disable_keybind_grabbing` is set, so with the rofi fallback the key does nothing until rofi closes; pick with the keyboard or mouse there.
 
 ## Confirm
 
-`voxcmd-confirm [--listen] [--verb <verb>] <question>` asks a yes/no question and exits 0 for yes, 1 for no, cancel or no answer. voxcmd uses it before an action that needs confirming, asking the option's label without the integration name ("Close Slack window: Inbox?"), with the label's first word as the verb; it is usable on its own. With the bar running it drops a card from the center island of the focused monitor: `y` or Enter is yes, `n` or Esc is no, the buttons work too, and 10 seconds without an answer cancels. That countdown waits while voxtype records or transcribes, and starts over after. Without the bar it falls back to `rofi -dmenu` with Yes and No, which cancels after 10 seconds.
+`voxcmd ask confirm [--listen] [--verb <verb>] <question>` asks a yes/no question and exits 0 for yes, 1 for no, cancel or no answer. voxcmd uses it before an action that needs confirming, asking the option's label without the integration name ("Close Slack window: Inbox?"), with the label's first word as the verb; it is usable on its own. With the bar running it drops a card from the center island of the focused monitor: `y` or Enter is yes, `n` or Esc is no, the buttons work too, and 10 seconds without an answer cancels. That countdown waits while voxtype records or transcribes, and starts over after. Without the bar it falls back to `rofi -dmenu` with Yes and No, which cancels after 10 seconds.
 
-A command that came by voice (from `voxcmd listen`, not the command line, Voice Help or a picker click) passes `--listen`: a reply recording starts just before the card shows, so the microphone is already live when the question appears, with the same auto-stop as Voice Command, and the card shows Listening while it records. It starts only while voxtype is idle and never stops a recording already under way. Any voice key stops it early, as always. Silence ends it without an answer, so the card waits for a key. Answering the card by key, click or timeout cancels the reply recording if it is still running or transcribing, so the microphone goes off and the next voice key starts a new command. Only the recording `voxcmd-confirm` started is cancelled: its watcher holds it from start until voxtype goes idle, and a dictation or recording started after that is left alone. Without `--listen` the card does not listen, but the Voice Command key still records a reply to it.
+A command that came by voice (from `voxcmd listen`, not the command line, Voice Help or a picker click) passes `--listen`: a reply recording starts just before the card shows, so the microphone is already live when the question appears, with the same auto-stop as Voice Command, and the card shows Listening while it records. It starts only while voxtype is idle and never stops a recording already under way. Any voice key stops it early, as always. Silence ends it without an answer, so the card waits for a key. Answering the card by key, click or timeout cancels the reply recording if it is still running or transcribing, so the microphone goes off and the next voice key starts a new command. Only the recording `voxcmd ask confirm` started is cancelled: its watcher holds it from start until voxtype goes idle, and a dictation or recording started after that is left alone. Without `--listen` the card does not listen, but the Voice Command key still records a reply to it.
 
 The reply is read by its words, so a natural reply works:
 
@@ -828,7 +830,7 @@ The reply is read by its words, so a natural reply works:
 2. Otherwise a reply starting with `yes`, `yeah`, `yep`, `yup`, `sure`, `okay`, `ok`, `confirm`, `do it` or `go ahead` is a yes, whatever follows: "yes close it", "yes please", "yep go ahead". So is one starting with the verb: "close it" or "close slack" for a close.
 3. Anything else, including an empty transcript or Whisper's "you" for a short clip, keeps the card open and listens once more; after a second unclear reply it waits for a key.
 
-While it waits, `voxcmd-confirm` keeps the same `pending-pick.json` as the picker, with `kind: "confirm"`, the `verb`, and `listen_again`, the file whose presence allows the one extra listen.
+While it waits, `voxcmd ask confirm` keeps the same `pending-pick.json` as the picker, with `kind: "confirm"`, the `verb`, and `listen_again`, the file whose presence allows the one extra listen.
 
 ## Voice sessions
 
@@ -856,7 +858,7 @@ With no session, picker or recording open it does nothing and says nothing. `vox
 
 ## Debug log
 
-`VOXCMD_DEBUG=1`, or creating `$XDG_RUNTIME_DIR/voxcmd/debug.log`, makes voxcmd and `voxcmd-confirm` append a timestamped trace there: each listen and the voxtype state it found, the watcher's state changes, auto-stop's verdict and `voxcmd-autostop`'s own summary of what it heard (see [Auto-stop](#auto-stop)), the transcript and where it went (only its length for a private mode, [type mode](#type-mode)), a confirm's question, reply and answer, a cancelled reply recording, and whether the action ran. Delete the file to turn it off again.
+`VOXCMD_DEBUG=1`, or creating `$XDG_RUNTIME_DIR/voxcmd/debug.log`, makes voxcmd and `voxcmd ask confirm` append a timestamped trace there: each listen and the voxtype state it found, the watcher's state changes, auto-stop's verdict and `voxcmd-autostop`'s own summary of what it heard (see [Auto-stop](#auto-stop)), the transcript and where it went (only its length for a private mode, [type mode](#type-mode)), a confirm's question, reply and answer, a cancelled reply recording, and whether the action ran. Delete the file to turn it off again.
 
 ## No-match log
 

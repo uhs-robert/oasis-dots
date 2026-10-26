@@ -13,13 +13,12 @@ use super::trace::{
     Rejection, RouteTier, StepTrace, VerbRef,
 };
 use crate::config::Config;
-use crate::config::schema::{Format, Integration, Tier};
+use crate::config::schema::{Integration, Tier};
 use crate::hooks::{HookRun, Hooks, Lookup, Memoized};
 use crate::text::normalize::{apply_replacements, normalize};
 use crate::text::wake_word::{WakeWords, correction_tails};
 use regex::Regex;
 use std::cell::Cell;
-use std::collections::BTreeMap;
 use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
@@ -109,17 +108,12 @@ impl<'c> Router<'c> {
     }
 
     /// The options a session turn's whole text names as mode switches: entering or leaving a mode (each integration's
-    /// mode actions, bash `session_mode_options`), resolved as any match is.
+    /// mode actions), resolved as any match is.
     pub fn mode_options(&self, text: &str) -> Vec<RouteOption> {
         self.hooks.forget();
         let pending: Vec<PendingMatch> = (0..self.config.integrations.len())
             .filter_map(|index| match self.mode_action_match(index, text).outcome {
-                Outcome::Matched(matched) => Some(PendingMatch::from_args(
-                    index,
-                    self.config,
-                    &matched.action,
-                    matched.args,
-                )),
+                Outcome::Matched(matched) => Some(PendingMatch::from_args(index, &matched.action, matched.args)),
                 _ => None,
             })
             .collect();
@@ -302,17 +296,8 @@ impl<'c> Router<'c> {
     }
 
     fn option_trace(&self, option: &RouteOption) -> OptionTrace {
-        let env = match self.config.integrations[option.integration].format {
-            Format::Bash => BTreeMap::from([
-                ("id".to_string(), option.id.clone()),
-                ("target".to_string(), option.target.clone()),
-            ]),
-            Format::Toml => {
-                let mut env = resolve::arg_env(&option.args);
-                env.insert("VOXCMD_ID".to_string(), option.id.clone());
-                env
-            }
-        };
+        let mut env = resolve::arg_env(&option.args);
+        env.insert("VOXCMD_ID".to_string(), option.id.clone());
         let integration = &self.config.integrations[option.integration];
         OptionTrace {
             toast_label: toast_label(integration, option),
@@ -391,12 +376,7 @@ impl<'c> Router<'c> {
             let (trace, matched) = self.trace_match(index, tier, found);
             pass.traces[index] = Some(trace);
             if let Some(matched) = matched {
-                pending.push(PendingMatch::from_args(
-                    index,
-                    self.config,
-                    &matched.action,
-                    matched.args,
-                ));
+                pending.push(PendingMatch::from_args(index, &matched.action, matched.args));
             }
         }
         for (one, resolved) in pending.iter().zip(self.resolve(
@@ -448,12 +428,9 @@ impl<'c> Router<'c> {
         }
     }
 
-    /// The arguments a TOML verb's near miss read from the phrase, so that its command gets its number as an exact match
-    /// would. A legacy verb keeps none: the bash near miss passed only the target.
+    /// The arguments a verb's near miss read from the phrase, so that its command gets its number as an exact match
+    /// would.
     fn near_miss_args(&self, index: usize, verb: usize, miss: &NearMiss) -> Vec<Arg> {
-        if self.config.integrations[index].format == Format::Bash {
-            return Vec::new();
-        }
         let Ok(pattern) = self.matcher.pattern(index, verb) else {
             return Vec::new();
         };
@@ -595,7 +572,7 @@ impl<'c> Router<'c> {
             for (verb, miss) in misses {
                 let action = &self.config.integrations[index].verbs[verb].action;
                 let args = self.near_miss_args(index, verb, &miss);
-                let mut one = PendingMatch::from_args(index, self.config, action, args);
+                let mut one = PendingMatch::from_args(index, action, args);
                 one.target = miss.target;
                 one.has_target = miss.has_target;
                 one.near_miss = Some(miss.leftover);

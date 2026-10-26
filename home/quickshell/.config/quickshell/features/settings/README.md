@@ -2,9 +2,9 @@
 
 `settings/` holds the Settings panel (`SettingsPopup`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings` and `HyprInputSettings`.
 
-The panel drops from the center of the bar. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
+Settings takes 80% of the screen each way: with the screen frame on it grows out of the frame as a drawer, otherwise it drops from the centre of the bar like the other popups. It holds the section list on the left, the selected section in the middle and a help column on the right that explains the selected setting in full. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
 
-Every section ends with a block that describes the selected (or hovered) setting in a line or two and lists the keys that work on it. A section sets `description` and `description_keys` on `SettingsPane`; `RowsSection` fills them from a row's `desc` and optional `keys`, and a custom pane such as Bar modules does it for its own items.
+The help column describes the selected (or hovered) setting and lists the keys that work on it. A section sets `description` and `description_keys` on `SettingsPane`; `RowsSection` fills them from a row's `desc`, optional `help` (a longer explanation shown after it) and optional `keys`, and a custom pane such as Bar modules does it for its own items.
 
 | Group        | Sections                           |
 | ------------ | ---------------------------------- |

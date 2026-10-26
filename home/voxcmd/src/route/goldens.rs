@@ -1,56 +1,40 @@
-//! The matcher, force prefixes and near misses against what the bash voxcmd and near-miss.awk made of the same phrases
-//! (tests/fixtures/gen-match-goldens.sh), over the committed `_legacy-dump` of this checkout's integrations. A second run
-//! swaps in the shipped `integrations/*.toml`, since the dump comes from the bash files and never sees a conversion.
+//! The matcher, force prefixes and near misses against the committed `match-goldens.tsv`: what the shipped
+//! `integrations/*.toml` made of 12,563 phrases when the file was last written. A change in any route shows as a
+//! difference here; if it is wanted, the owner signs off a new file.
 use super::matcher::{Matcher, Outcome};
 use crate::config::Config;
 use crate::config::intents::Intents;
-use crate::config::{legacy, schema};
+use crate::config::schema;
 use crate::text::normalize::Replacements;
-use crate::text::speech::{Clock, parse_day};
 use std::path::PathBuf;
 
+/// Each shipped `integrations/<stem>.toml`, in file-name order as `Config::load` sorts, with the intents fixture.
 fn config() -> Config {
     let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
-    let dump = std::fs::read_to_string(fixtures.join("legacy-dump.jsonl")).expect("run gen-match-goldens.sh");
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations");
+    let mut integrations = Vec::new();
+    for entry in std::fs::read_dir(&dir).expect("integrations dir").map(Result::unwrap) {
+        let path = entry.path();
+        // Symlinks are private integrations linked in from outside the repo (like sandbox.sh): not shipped, no goldens.
+        if !entry.file_type().unwrap().is_file() || path.extension().is_none_or(|extension| extension != "toml") {
+            continue;
+        }
+        integrations.push(schema::load_toml(&path).unwrap());
+    }
+    assert!(
+        !integrations.is_empty(),
+        "no shipped TOML integration in {}",
+        dir.display()
+    );
+    integrations.sort_by(|a, b| a.file.file_name().cmp(&b.file.file_name()));
     Config {
-        integrations: legacy::parse_dump(&dump).unwrap(),
+        integrations,
         intents: Intents::load(&fixtures.join("match")),
         replacements: Replacements::default(),
     }
 }
 
-/// The same config with each shipped `integrations/<stem>.toml` standing in for the dump's integration of that stem,
-/// in file-name order as `Config::load` sorts. A converted file is held to the bash goldens of its stem.
-fn config_with_shipped_toml() -> Config {
-    let mut config = config();
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations");
-    let mut shipped = 0;
-    for entry in std::fs::read_dir(&dir).expect("integrations dir").map(Result::unwrap) {
-        let path = entry.path();
-        // Symlinks are private integrations linked in from outside the repo (like sandbox.sh): not shipped, no goldens.
-        if !entry.file_type().unwrap().is_file() {
-            continue;
-        }
-        if path.extension().is_none_or(|extension| extension != "toml") {
-            continue;
-        }
-        let toml = schema::load_toml(&path).unwrap();
-        let slot = config
-            .integrations
-            .iter_mut()
-            .find(|integration| integration.stem == toml.stem)
-            .unwrap_or_else(|| panic!("{} has no bash original in the dump", toml.stem));
-        *slot = toml;
-        shipped += 1;
-    }
-    assert!(shipped > 0, "no shipped TOML integration in {}", dir.display());
-    config
-        .integrations
-        .sort_by(|a, b| a.file.file_name().cmp(&b.file.file_name()));
-    config
-}
-
-/// The golden line's three result columns, as the generator writes them.
+/// The golden line's three result columns.
 fn columns(matcher: &Matcher, phrase: &str) -> [String; 3] {
     let integrations = matcher.integrations();
     let forced = match matcher.forced(phrase) {
@@ -87,69 +71,11 @@ fn columns(matcher: &Matcher, phrase: &str) -> [String; 3] {
 }
 
 #[test]
-fn rust_matches_the_bash_goldens() {
-    matches_the_goldens(&config(), &[], false);
-}
-
-#[test]
-fn shipped_toml_matches_the_bash_goldens() {
-    matches_the_goldens(&config_with_shipped_toml(), TYPED_DAY_VERBS, true);
-}
-
-/// answers' name verbs, as `stem:verb:action=` prefixes. Bash captured a trailing "please", "thanks" or "thank you" in the
-/// target and its action stripped it again; the TOML captures lazily, so the target is already bare (owner decision, 3.1
-/// plan). A golden's target is compared without those tail words.
-const TAIL_STRIPPED_TARGETS: &[&str] = &[
-    "answers:4:zone_now=",
-    "answers:5:zone_offset=",
-    "answers:6:zone_offset=",
-];
-
-fn without_tail_words(entry: &str) -> String {
-    let Some(prefix) = TAIL_STRIPPED_TARGETS.iter().find(|prefix| entry.starts_with(**prefix)) else {
-        return entry.to_string();
-    };
-    let (target, rest) = match entry[prefix.len()..].split_once('~') {
-        Some((target, rest)) => (target, format!("~{rest}")),
-        None => (&entry[prefix.len()..], String::new()),
-    };
-    let mut target = target;
-    while let Some(bare) = [" please", " thanks", " thank you"]
-        .iter()
-        .find_map(|tail| target.strip_suffix(tail))
-    {
-        target = bare;
-    }
-    format!("{prefix}{target}{rest}")
-}
-
-/// calendar's two `day` verbs, as `stem:verb:action=` prefixes of golden entries. In bash they matched any words and a
-/// candidate hook declined the non-days afterwards; `{target:day}` does not match those, so the goldens hold match
-/// entries these verbs rightly lack. Near misses skip typed verbs altogether, so every near entry of them is ignored.
-const TYPED_DAY_VERBS: &[&str] = &["calendar:5:day=", "calendar:7:day="];
-
-/// `column` without the golden entries of `ignored` verbs that Rust cannot have: all of a near column's, and a match
-/// column's whose target is no day (a valid day must still match).
-fn without_entries(column_name: &str, column: &str, ignored: &[&str]) -> String {
-    let clock = Clock::from_env().expect("clock");
-    column
-        .split("; ")
-        .filter(|entry| {
-            let Some(prefix) = ignored.iter().find(|prefix| entry.starts_with(**prefix)) else {
-                return true;
-            };
-            column_name == "match" && parse_day(&entry[prefix.len()..], &clock).is_some()
-        })
-        .collect::<Vec<_>>()
-        .join("; ")
-}
-
-/// `strip_golden_tails` loosens only the golden side: the Rust side is never stripped, so a Rust target that keeps a
-/// tail word still fails.
-fn matches_the_goldens(config: &Config, ignored: &[&str], strip_golden_tails: bool) {
+fn shipped_toml_matches_the_goldens() {
     let goldens = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/match-goldens.tsv"))
-        .expect("run gen-match-goldens.sh");
-    let matcher = Matcher::new(config);
+        .expect("tests/fixtures/match-goldens.tsv is committed");
+    let config = config();
+    let matcher = Matcher::new(&config);
     let mut checked = 0;
     let mut mismatches = Vec::new();
     for line in goldens.lines() {
@@ -163,17 +89,8 @@ fn matches_the_goldens(config: &Config, ignored: &[&str], strip_golden_tails: bo
             .iter()
             .zip([forced, matches, near].iter().zip(&got))
         {
-            let expected = if strip_golden_tails {
-                expected
-                    .split("; ")
-                    .map(without_tail_words)
-                    .collect::<Vec<_>>()
-                    .join("; ")
-            } else {
-                expected.to_string()
-            };
-            if without_entries(column, &expected, ignored) != without_entries(column, got, ignored) {
-                mismatches.push(format!("{phrase:?} {column}:\n  bash {expected}\n  rust {got}"));
+            if expected != got {
+                mismatches.push(format!("{phrase:?} {column}:\n  golden {expected}\n  got    {got}"));
             }
         }
     }

@@ -345,12 +345,8 @@ fn a_failing_run_ends_the_mode_it_opened() {
 fn a_new_session_listens_only_after_run_so_its_alive_sees_what_run_opened() {
     let rig = Rig::new();
     rig.integration("other", "");
-    // `alive` passes only once `run` has written "ran"; it reports how it was run, under the session lock.
-    rig.integration(
-        "demo",
-        "alive = '\"$VOXCMD_LEGACY_RS_BIN\" internal session state > \"$WORK/alive-state\"; env > \"$WORK/alive-env\"; \
-         test -e \"$WORK/ran\"'\n",
-    );
+    // `alive` passes only once `run` has written "ran"; it reports how it was run.
+    rig.integration("demo", "alive = 'env > \"$WORK/alive-env\"; test -e \"$WORK/ran\"'\n");
     rig.run("demo mode");
     let state = rig.session().expect("the mode outlived its first listen");
     assert_eq!(state["kind"], "demo");
@@ -359,22 +355,11 @@ fn a_new_session_listens_only_after_run_so_its_alive_sees_what_run_opened() {
         "{}",
         rig.debug_log()
     );
-    // The sweep before that listen ran `alive` as the session's owner, with the lock held and every integration listed.
+    // The sweep before that listen ran `alive` with every integration listed.
     let env = rig.read_work("alive-env");
-    for line in ["VOXCMD_SESSION_LOCK_HELD=1", "VOXCMD_INTEGRATIONS=demo other"] {
-        assert!(env.lines().any(|seen| seen == line), "{line} not in\n{env}");
-    }
-    // `voxcmd run`'s own pid: the session's owner by then is the watcher its listen started.
     assert!(
-        env.lines().any(|seen| seen
-            .strip_prefix("VOXCMD_LEGACY_PID=")
-            .is_some_and(|pid| pid.parse::<u32>().is_ok())),
-        "{env}"
-    );
-    assert!(
-        rig.read_work("alive-state").contains("\"kind\":\"demo\""),
-        "{}",
-        rig.read_work("alive-state")
+        env.lines().any(|seen| seen == "VOXCMD_INTEGRATIONS=demo other"),
+        "not in\n{env}"
     );
 }
 

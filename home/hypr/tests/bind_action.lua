@@ -69,7 +69,7 @@ local expected = {
 	{ "voice.dictate", "Speech to Text", { "SUPER + PERIOD" }, "~/.config/hypr/scripts/voxtype-with-media-pause.sh" },
 	{ "voice.command", "Voice Command", { "SUPER + COMMA" }, voxcmd .. "listen" },
 	{ "voice.stop", "Stop Voice", { "SUPER + SHIFT + COMMA" }, voxcmd .. "stop" },
-	{ "voice.rapid", "Rapid Mode", { "SUPER + CTRL + COMMA" }, voxcmd .. "rapid" },
+	{ "voice.rapid", "Rapid Mode", { "SUPER + CTRL + COMMA" }, voxcmd .. "session rapid" },
 	{ "voice.wake", "Wake Word", { "SUPER + CTRL + PERIOD" }, voxcmd .. "wake toggle" },
 	{ "picker.passwords", "Passwords", { "SUPER + CTRL + P" }, "rofi-rbw" },
 	{ "overview.search", "Search windows", { "SUPER + T" }, qs_ipc .. "overview search" },

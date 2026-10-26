@@ -1,6 +1,6 @@
 //! One-recording modes end to end (type mode's dictation): the Rust watcher, `internal wake-confirm` and Stop Voice
-//! against a runtime dir of their own, with a fake one-recording integration run by this checkout's bash voxcmd (copied
-//! beside stubs for the detector), and stubs for voxtype, setsid and the toasts. Each test drives one of the paths
+//! against a runtime dir of their own, with a fake one-recording integration and stubs for the detector, voxtype, setsid
+//! and the toasts. Each test drives one of the paths
 //! where the bash port went wrong before: the lock, endings landing at once, stale clips, stop signals, the
 //! detached watcher, the two binaries handing a recording over, voxcmd-wake as the caller, timeouts, privacy, and
 //! chains with their detached stopper.
@@ -13,48 +13,20 @@ use std::time::{Duration, Instant};
 mod common;
 use common::gone_within;
 
-/// Type mode as far as voxcmd sees it: one recording, heard through by the wake listener, ended by these rows. Its
-/// handler writes what it was handed, and blocks while `$WORK/turn-gate` exists.
-const DICTATE: &str = r#"
-name="Dictate"
-verbs=("dictate_mode dictate mode")
-declare -A actions=([dictate_mode]='session_begin dictate "$file" "Dictate mode"')
-session_default_exits=0
-session_private=1
-session_open_ended=1
-session_one_recording=1
-session_wake_listens=1
-session_endings=(
-  "type        stop|stop typing"
-  "send        send|send it"
-  "discard     cancel"
-  "end_session stop listening"
-)
-session_listen_no_speech_secs=10
-session_listen_silence_secs=10
-session_listen_max_secs=295
-session_handle_turn() {
-  echo $$ > "$WORK/turn-pid"
-  if [ -e "$WORK/turn-gate" ]; then
-    : > "$WORK/turn-entered"
-    until [ -e "$WORK/turn-release" ]; do sleep 0.02; done
-  fi
-  # Writes to stdout after the turn is over: dies of SIGPIPE if the hook's stdout was a pipe voxcmd has closed.
-  if [ -e "$WORK/turn-child" ]; then ( sleep 1; echo late; : > "$WORK/child-survived" ) & fi
-  printf '%s|%s|%s|%s\n' "$1" "${2-}" "$(discard_flag_of $$)" "$(session_state | jq -r .ending.by)" >> "$WORK/handled"
-}
-"#;
-
 /// The commands a chain runs: each writes what it is to `$WORK/handled` too, after the dictation's line. `slow tap`
 /// blocks while `$WORK/tap-gate` exists.
 const TAP: &str = r#"
-name="Tap"
-verbs=("tap_alpha tap alpha" "tap_beta tap beta" "slow_tap slow tap")
-declare -A actions=(
-  [tap_alpha]='echo "tap alpha" >> "$WORK/handled"'
-  [tap_beta]='echo "tap beta" >> "$WORK/handled"'
-  [slow_tap]='echo $$ > "$WORK/tap-pid"; : > "$WORK/tap-entered"; until [ -e "$WORK/tap-release" ]; do sleep 0.02; done; echo "slow tap" >> "$WORK/handled"'
-)
+name = "Tap"
+verbs = [
+  { action = "tap_alpha", match = 'tap alpha' },
+  { action = "tap_beta", match = 'tap beta' },
+  { action = "slow_tap", match = 'slow tap' },
+]
+
+[actions]
+tap_alpha = 'echo "tap alpha" >> "$WORK/handled"'
+tap_beta = 'echo "tap beta" >> "$WORK/handled"'
+slow_tap = { run = 'echo $$ > "$WORK/tap-pid"; : > "$WORK/tap-entered"; until [ -e "$WORK/tap-release" ]; do sleep 0.02; done; echo "slow tap" >> "$WORK/handled"', timeout_secs = 60 }
 "#;
 
 const TOKEN: &str = "1:dictate:f1";
@@ -98,9 +70,9 @@ if [ -e "$WORK/turn-hang" ]; then
   printf 'partial|' >> "$WORK/handled"
   sleep 30
 fi
-by=$("$VOXCMD_LEGACY_RS_BIN" internal session state | jq -r .ending.by)
-printf '%s|%s|%s|%s
-' "$VOXCMD_TEXT" "${VOXCMD_ENDING--}" "$XDG_RUNTIME_DIR/voxcmd/discard.$VOXCMD_LEGACY_PID" "$by" >> "$WORK/handled"
+by=$(jq -r .ending.by "$XDG_RUNTIME_DIR/voxcmd/session.json")
+printf '%s|%s|%s
+' "$VOXCMD_TEXT" "${VOXCMD_ENDING--}" "$by" >> "$WORK/handled"
 exit "$(cat "$WORK/turn-exit" 2>/dev/null || echo 0)"
 '''
 "#;
@@ -114,7 +86,7 @@ impl Setup {
     fn new() -> Self {
         let root = tempfile::tempdir().unwrap();
         for dir in [
-            "config/integrations.d",
+            "config/integrations",
             "runtime/voxtype",
             "runtime/voxcmd",
             "bin",
@@ -123,9 +95,8 @@ impl Setup {
         ] {
             std::fs::create_dir_all(root.path().join(dir)).unwrap();
         }
-        std::fs::write(root.path().join("config/integrations.d/dictate.sh"), DICTATE).unwrap();
-        std::fs::write(root.path().join("config/integrations.d/tap.sh"), TAP).unwrap();
-        let integration = root.path().join("config/integrations.d/dictate.sh");
+        std::fs::write(root.path().join("config/integrations/tap.toml"), TAP).unwrap();
+        let integration = root.path().join("config/integrations/dictate.toml");
         let setup = Self { root, integration };
         let calls = setup.path().join("calls");
         let state = setup.path().join("runtime/voxtype/state");
@@ -204,19 +175,13 @@ exit "$(cat '{work}/verdict')""#,
             setup.path().join("share/voxcmd"),
         )
         .unwrap();
-        let bash = setup.path().join("legacy/voxcmd");
-        std::fs::copy(concat!(env!("CARGO_MANIFEST_DIR"), "/.local/bin/voxcmd"), &bash).unwrap();
-        setup.settle_exec(|| setup.bash(&["list"]));
         std::fs::write(&state, "idle\n").unwrap();
         setup
     }
 
-    /// `new` with dictate as the TOML mode, `mode_extra` added to its `[mode]` table.
+    /// Dictate as the TOML mode, `mode_extra` added to its `[mode]` table.
     fn toml(mode_extra: &str) -> Self {
-        let mut setup = Self::new();
-        std::fs::remove_file(&setup.integration).unwrap();
-        std::fs::create_dir_all(setup.path().join("config/integrations")).unwrap();
-        setup.integration = setup.path().join("config/integrations/dictate.toml");
+        let setup = Self::new();
         std::fs::write(&setup.integration, format!("{DICTATE_TOML}{mode_extra}\n")).unwrap();
         setup
     }
@@ -300,13 +265,6 @@ exit "$(cat '{work}/verdict')""#,
 
     fn command(&self, args: &[&str]) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_voxcmd"));
-        command.args(args);
-        self.env(&mut command);
-        command
-    }
-
-    fn bash(&self, args: &[&str]) -> Command {
-        let mut command = Command::new(self.path().join("legacy/voxcmd"));
         command.args(args);
         self.env(&mut command);
         command
@@ -485,7 +443,7 @@ fn stdout(output: &Output) -> String {
 
 #[test]
 fn a_voice_ending_types_the_dictation_without_it_and_logs_only_lengths() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (mut watcher, recording) = setup.rust_watcher("Hello private words. Cortana, send it.");
     let output = setup.confirm("private words. Cortana, send it.", &recording);
     assert_eq!(output.status.code(), Some(0));
@@ -496,11 +454,7 @@ fn a_voice_ending_types_the_dictation_without_it_and_logs_only_lengths() {
         serde_json::json!({"action": "send", "by": "voice"})
     );
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    let discard_flag = setup.runtime().join(format!("discard.{}", watcher.id()));
-    assert_eq!(
-        setup.handled(),
-        format!("Hello private words.|send|{}|voice\n", discard_flag.display())
-    );
+    assert_eq!(setup.handled(), "Hello private words.|send|voice\n");
     assert!(setup.state().is_none(), "the bottom mode left ends the session");
     assert!(
         setup
@@ -529,7 +483,7 @@ fn a_voice_ending_types_the_dictation_without_it_and_logs_only_lengths() {
 
 #[test]
 fn a_cancel_drops_the_dictation_and_stop_listening_ends_the_whole_session() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (mut watcher, recording) = setup.rust_watcher("Secret words. Cortana cancel.");
     assert_eq!(setup.confirm("Cortana cancel.", &recording).status.code(), Some(0));
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
@@ -540,7 +494,7 @@ fn a_cancel_drops_the_dictation_and_stop_listening_ends_the_whole_session() {
     assert!(setup.calls().contains("Dictate mode ended cancelled, nothing typed"));
 
     // Over another mode: "stop listening" types the dictation, then ends both.
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let over_rapid = setup.command(&["internal", "watch", "session_turn", "2:dictate:f1", "1", ""]);
     let (mut watcher, recording) = setup.watcher(over_rapid, "All done. Cortana, stop listening.");
     let stack = serde_json::json!([{"kind": "rapid", "integration": "/i/rapid.sh", "label": "Rapid mode",
@@ -563,7 +517,7 @@ fn the_detector_s_verdicts_say_how_the_recording_ended() {
         ("0", "Dictate mode ended typed after 10 s of quiet", true),
         ("3", "Dictate mode ended nothing was said for 10 s", false),
     ] {
-        let setup = Setup::new();
+        let setup = Setup::toml("");
         let (mut watcher, _) = setup.rust_watcher("A long talk.");
         std::fs::write(setup.work("verdict"), verdict).unwrap();
         assert!(
@@ -574,7 +528,7 @@ fn the_detector_s_verdicts_say_how_the_recording_ended() {
         assert_eq!(setup.handled().starts_with("A long talk.|type|"), typed, "{verdict}");
     }
     // An ending recorded first wins over the verdict.
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (mut watcher, _) = setup.rust_watcher("Kept.");
     let recorded = serde_json::json!({"ending": {"action": "send", "by": "voice"}});
     setup.open_session(watcher.id(), recorded);
@@ -589,7 +543,7 @@ fn the_detector_s_verdicts_say_how_the_recording_ended() {
 #[test]
 fn of_endings_confirmed_at_once_exactly_one_is_recorded_and_acted_on() {
     for round in 0..4 {
-        let setup = Setup::new();
+        let setup = Setup::toml("");
         let mut owner = setup.stand_in();
         setup.set_state("recording");
         let recording = setup.open_session(owner.id(), serde_json::json!({}));
@@ -625,7 +579,7 @@ fn of_endings_confirmed_at_once_exactly_one_is_recorded_and_acted_on() {
     }
     // Stop Voice and a confirmation at once: whichever records first, the recording is stopped once and kept.
     for round in 0..4 {
-        let setup = Setup::new();
+        let setup = Setup::toml("");
         let mut owner = setup.stand_in();
         setup.set_state("recording");
         let recording = setup.open_session(owner.id(), serde_json::json!({}));
@@ -647,7 +601,7 @@ fn of_endings_confirmed_at_once_exactly_one_is_recorded_and_acted_on() {
 
 #[test]
 fn stop_voice_records_a_key_ending_but_keeps_a_recorded_one_s_action() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let mut owner = setup.stand_in();
     setup.set_state("recording");
     setup.open_session(owner.id(), serde_json::json!({}));
@@ -659,7 +613,7 @@ fn stop_voice_records_a_key_ending_but_keeps_a_recorded_one_s_action() {
     assert_eq!(setup.record_calls(), ["voxtype record stop"]);
 
     // Ended by voice already, and voxtype is transcribing: only who ended it changes.
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     setup.set_state("transcribing");
     let recorded = serde_json::json!({"ending": {"action": "send", "by": "voice"}});
     setup.open_session(owner.id(), recorded);
@@ -671,7 +625,7 @@ fn stop_voice_records_a_key_ending_but_keeps_a_recorded_one_s_action() {
     assert!(setup.record_calls().is_empty());
 
     // A recorded cancel stays a cancel, and Stop Voice ends the session as usual.
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     setup.set_state("idle");
     let recorded = serde_json::json!({"ending": {"action": "discard", "by": "voice"}});
     setup.open_session(owner.id(), recorded);
@@ -680,7 +634,7 @@ fn stop_voice_records_a_key_ending_but_keeps_a_recorded_one_s_action() {
     assert!(setup.runtime().join(format!("discard.{}", owner.id())).exists());
 
     // Before the mode's recording has a watcher (the turn that opened it still owns the session) too.
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     setup.set_state("idle");
     setup.open_session(owner.id(), serde_json::json!({"recording_owner": null}));
     assert!(setup.command(&["stop"]).status().unwrap().success());
@@ -692,7 +646,7 @@ fn stop_voice_records_a_key_ending_but_keeps_a_recorded_one_s_action() {
 
 #[test]
 fn a_clip_cut_during_another_recording_ends_nothing() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let mut owner = setup.stand_in();
     setup.set_state("recording");
     let recording = setup.open_session(owner.id(), serde_json::json!({}));
@@ -744,7 +698,7 @@ fn a_verdict_the_session_is_not_waiting_for_records_no_ending() {
         (not_mine, "a session that is not the watcher's"),
         (not_one_recording, "a mode that is not one_recording"),
     ] {
-        let setup = Setup::new();
+        let setup = Setup::toml("");
         let (mut watcher, _) = setup.rust_watcher("Words.");
         let mut stand_in = setup.stand_in();
         let mut fields = fields;
@@ -779,7 +733,7 @@ fn stop_recording_by_key(setup: &Setup) {
 
 #[test]
 fn a_recording_stopped_by_the_voice_key_is_typed_and_done() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (mut watcher, _) = setup.rust_watcher("Typed by key.");
     stop_recording_by_key(&setup);
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
@@ -797,7 +751,7 @@ fn a_recording_stopped_by_the_voice_key_is_typed_and_done() {
 #[test]
 fn a_one_recording_mode_that_heard_nothing_or_was_discarded_is_over() {
     // The recording ended with no transcript.
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (mut watcher, _) = setup.rust_watcher("");
     stop_recording_by_key(&setup);
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
@@ -812,7 +766,7 @@ fn a_one_recording_mode_that_heard_nothing_or_was_discarded_is_over() {
     assert!(setup.state().is_none());
 
     // The recording was cancelled (the discard flag, as autostop's no-speech cancel leaves it).
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (mut watcher, _) = setup.rust_watcher("Dropped.");
     std::fs::write(setup.runtime().join(format!("discard.{}", watcher.id())), "").unwrap();
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
@@ -828,7 +782,7 @@ fn a_one_recording_mode_that_heard_nothing_or_was_discarded_is_over() {
 
 #[test]
 fn a_background_child_of_the_hook_neither_holds_the_turn_nor_loses_its_output() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     std::fs::write(setup.work("turn-child"), "").unwrap();
     let (mut watcher, recording) = setup.rust_watcher("Words.");
     assert!(setup.confirm("Cortana stop.", &recording).status.success());
@@ -845,7 +799,7 @@ fn a_background_child_of_the_hook_neither_holds_the_turn_nor_loses_its_output() 
 
 #[test]
 fn stop_voice_during_the_hand_over_waits_for_no_hook_and_the_hook_reads_the_session() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     std::fs::write(setup.work("turn-gate"), "").unwrap();
     let (mut watcher, recording) = setup.rust_watcher("Words.");
     assert!(setup.confirm("Cortana stop.", &recording).status.success());
@@ -858,7 +812,7 @@ fn stop_voice_during_the_hand_over_waits_for_no_hook_and_the_hook_reads_the_sess
     assert_eq!(setup.state().unwrap()["ending"]["by"], "key");
     std::fs::write(setup.work("turn-release"), "").unwrap();
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    // The hook's session read, through the bridge, took the lock after Stop Voice had let it go.
+    // The hook read the session after Stop Voice had set the ending.
     assert!(setup.handled().ends_with("|key\n"), "{}", setup.handled());
     assert!(setup.state().is_none());
     assert_eq!(setup.debug_log().matches("session ended: stopped").count(), 1);
@@ -868,7 +822,7 @@ fn stop_voice_during_the_hand_over_waits_for_no_hook_and_the_hook_reads_the_sess
 
 #[test]
 fn a_stop_signal_mid_dictation_ends_the_session_once_and_leaves_nothing_behind() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (watcher, _) = setup.rust_watcher("Words.");
     let mut watcher = watcher;
     assert!(wait_for(|| setup.work("detector").exists()));
@@ -891,7 +845,7 @@ fn a_stop_signal_mid_dictation_ends_the_session_once_and_leaves_nothing_behind()
 
 #[test]
 fn a_stop_signal_while_the_text_is_handed_over_ends_the_hook_s_group_and_the_session_once() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     std::fs::write(setup.work("turn-gate"), "").unwrap();
     let (mut watcher, recording) = setup.rust_watcher("Words.");
     assert!(setup.confirm("Cortana stop.", &recording).status.success());
@@ -916,7 +870,7 @@ fn a_stop_signal_while_the_text_is_handed_over_ends_the_hook_s_group_and_the_ses
 
 #[test]
 fn listen_in_a_one_recording_mode_detaches_the_rust_watcher_without_the_session_lock() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let mut owner = setup.stand_in();
     setup.open_session(owner.id(), serde_json::json!({"recording_owner": null}));
     assert!(setup.command(&["listen"]).status().unwrap().success());
@@ -938,51 +892,6 @@ fn listen_in_a_one_recording_mode_detaches_the_rust_watcher_without_the_session_
     assert!(!calls.contains("_watch"), "{calls}");
 }
 
-// ---- the bash and Rust watchers handing over ------------------------------------------------------------------------
-
-#[test]
-fn a_recording_the_bash_voxcmd_watches_is_ended_by_the_rust_confirmation() {
-    let setup = Setup::new();
-    let (mut watcher, recording) = setup.watcher(setup.bash(&["_watch", "session_turn", TOKEN, "1", ""]), "Words.");
-    assert_eq!(
-        setup.confirm("Cortana, stop typing.", &recording).status.code(),
-        Some(0)
-    );
-    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    let log = setup.debug_log();
-    assert!(
-        log.contains(&format!(
-            "voxcmd[{}] session: the dictate recording ended (voice, type)",
-            watcher.id()
-        )),
-        "{log}"
-    );
-    assert!(setup.handled().starts_with("Words.|type|"), "{}", setup.handled());
-    assert!(setup.state().is_none());
-}
-
-#[test]
-fn a_recording_the_rust_port_watches_is_ended_by_the_bash_confirmation() {
-    let setup = Setup::new();
-    let (mut watcher, recording) = setup.rust_watcher("Ship it.");
-    let output = setup
-        .bash(&["_wake-confirm", "/dev/stdin", &recording])
-        .env("TRANSCRIBE_TEXT", "Cortana send it.")
-        .output()
-        .unwrap();
-    assert_eq!(stdout(&output), "wake send it\n");
-    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    let log = setup.debug_log();
-    assert!(
-        log.contains(&format!(
-            "voxcmd[{}] session: the dictate recording ended (voice, send)",
-            watcher.id()
-        )),
-        "{log}"
-    );
-    assert!(setup.handled().starts_with("Ship it.|send|"), "{}", setup.handled());
-}
-
 // ---- voxcmd-wake as the caller --------------------------------------------------------------------------------------
 
 /// `voxcmd _wake-confirm /dev/stdin`, as voxcmd-wake runs it: the top-level alias, the WAV on stdin.
@@ -1002,7 +911,7 @@ fn wake_confirm(setup: &Setup, envs: &[(&str, &str)], args: &[&str]) -> (Option<
 
 #[test]
 fn voxcmd_wake_reads_the_verdict_from_the_exit_code() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let stdin = ["/dev/stdin"];
     let heard = |text: &str| wake_confirm(&setup, &[("TRANSCRIBE_TEXT", text)], &stdin);
     assert_eq!(heard("Cortana."), (Some(0), "wake\n".into()));
@@ -1031,7 +940,7 @@ fn voxcmd_wake_reads_the_verdict_from_the_exit_code() {
 
 #[test]
 fn the_daemon_s_prompt_and_the_downloaded_model_are_passed_on() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     setup.script("bin/voxtype-prompt", "echo 'stub prompt.'");
     let models = setup.path().join("data/voxtype/models");
     std::fs::create_dir_all(&models).unwrap();
@@ -1054,7 +963,7 @@ fn the_daemon_s_prompt_and_the_downloaded_model_are_passed_on() {
 
 #[test]
 fn a_stuck_transcription_fails_in_time_and_leaves_no_voxtype_behind() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let started = Instant::now();
     let envs = [("TRANSCRIBE", "hang"), ("VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS", "1")];
     assert_eq!(
@@ -1126,7 +1035,7 @@ const CHAIN_SETTINGS: &str = "VOXCMD_AUTOSTOP_NO_SPEECH_SECS=10\nVOXCMD_AUTOSTOP
 
 #[test]
 fn a_chained_ending_records_until_its_pause_then_the_text_is_handled_and_the_chain_runs() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (mut watcher, recording) = setup.rust_watcher("Ship it. Cortana send it and then tap beta and then tap alpha.");
     confirm_running_the_stopper(&setup, "Cortana send it and then", &recording);
     assert_eq!(
@@ -1142,12 +1051,8 @@ fn a_chained_ending_records_until_its_pause_then_the_text_is_handled_and_the_cha
     std::fs::write(setup.work("chain-verdict"), "0").unwrap();
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
     assert_eq!(setup.record_calls(), ["voxtype record stop"]);
-    let discard_flag = setup.runtime().join(format!("discard.{}", watcher.id()));
     // The router splits what follows the ending into its steps, after the dictation was handed over without either.
-    assert_eq!(
-        setup.handled(),
-        format!("Ship it.|send|{}|voice\ntap beta\ntap alpha\n", discard_flag.display())
-    );
+    assert_eq!(setup.handled(), "Ship it.|send|voice\ntap beta\ntap alpha\n");
     assert!(setup.calls().contains("Dictate mode ended done\n"));
     assert!(setup.state().is_none());
     let log = setup.debug_log();
@@ -1161,7 +1066,7 @@ fn a_chained_ending_records_until_its_pause_then_the_text_is_handled_and_the_cha
 
 #[test]
 fn a_cancel_with_a_chain_stops_the_recording_instead_and_drops_only_the_dictation() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let (mut watcher, recording) = setup.rust_watcher("Secret words. Cortana cancel and then tap beta.");
     confirm_running_the_stopper(&setup, "Cortana cancel and then tap", &recording);
     assert!(!setup.runtime().join(format!("discard.{}", watcher.id())).exists());
@@ -1183,7 +1088,7 @@ fn of_chained_and_plain_endings_confirmed_at_once_exactly_one_is_recorded_and_ac
         "Cortana cancel.",
     ];
     for round in 0..6 {
-        let setup = Setup::new();
+        let setup = Setup::toml("");
         let mut owner = setup.stand_in();
         setup.set_state("recording");
         let recording = setup.open_session(owner.id(), serde_json::json!({}));
@@ -1256,7 +1161,7 @@ fn the_stopper_stops_only_its_own_recording_still_waiting_for_it_and_only_on_a_s
     ];
     for (verdict, fields, voxtype, own_recording, stopped) in cases {
         let why = format!("{verdict} {fields} {voxtype} {own_recording}");
-        let setup = Setup::new();
+        let setup = Setup::toml("");
         let mut owner = setup.stand_in();
         setup.set_state(voxtype);
         let recording = setup.open_session(owner.id(), fields);
@@ -1283,15 +1188,15 @@ fn the_stopper_stops_only_its_own_recording_still_waiting_for_it_and_only_on_a_s
 
 #[test]
 fn the_stopper_is_detached_hearing_stop_signals_without_the_lock_and_its_detector_dies_with_it() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     let mut owner = setup.stand_in();
     setup.set_state("recording");
     let recording = setup.open_session(owner.id(), serde_json::json!({}));
     // The room threshold the recording's own detector measured.
     std::fs::write(setup.runtime().join(format!("threshold.{}", owner.id())), "-45.0\n").unwrap();
-    // A caller that blocks TERM and ignores HUP, as an ask holding its stop signals might, and that ran as a hook.
+    // A caller that blocks TERM and ignores HUP, as an ask holding its stop signals might.
     let mut confirm = setup.confirm_command("Cortana stop and then tap beta", &recording);
-    confirm.env("SETSID_RUN", "1").env("VOXCMD_LEGACY_PID", "4242");
+    confirm.env("SETSID_RUN", "1");
     // SAFETY: sigprocmask and signal are async-signal-safe and touch only the child.
     unsafe {
         std::os::unix::process::CommandExt::pre_exec(&mut confirm, || {
@@ -1347,15 +1252,13 @@ fn the_stopper_is_detached_hearing_stop_signals_without_the_lock_and_its_detecto
             .calls()
             .contains("chain-detector threshold=-45.0 no_speech=10 min_speech=0 silence=1.5 max=10\n")
     );
-    // The stopper waits for its pause holding neither the session lock nor the hook's identity.
+    // The stopper waits for its pause holding no session lock.
     let fds = std::fs::read_dir(format!("/proc/{stopper}/fd")).unwrap();
     assert!(
         fds.flatten()
             .filter_map(|fd| std::fs::read_link(fd.path()).ok())
             .all(|target| !target.ends_with("session.lock"))
     );
-    let environ = std::fs::read(format!("/proc/{stopper}/environ")).unwrap();
-    assert!(!String::from_utf8_lossy(&environ).contains("VOXCMD_LEGACY_PID"));
     let lock = std::fs::File::open(setup.runtime().join("session.lock")).unwrap();
     // SAFETY: flock only locks the open file this test owns.
     let locked = unsafe { libc::flock(std::os::fd::AsRawFd::as_raw_fd(&lock), libc::LOCK_EX | libc::LOCK_NB) };
@@ -1372,7 +1275,7 @@ fn the_stopper_is_detached_hearing_stop_signals_without_the_lock_and_its_detecto
 
 #[test]
 fn stop_voice_while_the_dictation_is_handed_over_ends_the_session_once_and_runs_no_chain() {
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     std::fs::write(setup.work("turn-gate"), "").unwrap();
     let (mut watcher, recording) = setup.rust_watcher("Typed. Cortana stop and then tap beta.");
     assert!(setup.confirm("Cortana stop and then tap", &recording).status.success());
@@ -1406,7 +1309,7 @@ fn over_rapid(setup: &Setup, speech: &str) -> (Child, String) {
 #[test]
 fn a_stop_while_the_chain_runs_ends_the_session_once() {
     // A stop signal to the watcher: its chain's action goes with it.
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     std::fs::write(setup.work("tap-gate"), "").unwrap();
     let (mut watcher, recording) = over_rapid(&setup, "Words. Cortana stop and then slow tap.");
     assert!(setup.confirm("Cortana stop and then slow", &recording).status.success());
@@ -1426,7 +1329,7 @@ fn a_stop_while_the_chain_runs_ends_the_session_once() {
     assert!(log.contains("session ended: the listener stopped unexpectedly"));
 
     // Stop Voice: the session ends at once, and the watcher, once its chain is done, neither ends it again nor listens.
-    let setup = Setup::new();
+    let setup = Setup::toml("");
     std::fs::write(setup.work("tap-gate"), "").unwrap();
     let (mut watcher, recording) = over_rapid(&setup, "Words. Cortana stop and then slow tap.");
     assert!(setup.confirm("Cortana stop and then slow", &recording).status.success());
@@ -1449,53 +1352,6 @@ fn a_stop_while_the_chain_runs_ends_the_session_once() {
     );
 }
 
-#[test]
-fn a_chain_the_rust_confirmation_records_is_run_by_the_bash_watcher() {
-    let setup = Setup::new();
-    let (mut watcher, recording) = setup.watcher(
-        setup.bash(&["_watch", "session_turn", TOKEN, "1", ""]),
-        "Ship it. Cortana send it and then tap beta.",
-    );
-    assert!(setup.confirm("Cortana send it and then", &recording).status.success());
-    assert_eq!(
-        setup.state().unwrap()["ending"],
-        serde_json::json!({"action": "send", "by": "voice", "chain": true})
-    );
-    // The pause, as the stopper would stop it.
-    stop_recording_by_key(&setup);
-    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    assert!(
-        setup.handled().starts_with("Ship it.|send|") && setup.handled().ends_with("\ntap beta\n"),
-        "{}",
-        setup.handled()
-    );
-}
-
-#[test]
-fn a_chain_the_bash_confirmation_records_is_run_by_the_rust_watcher() {
-    let setup = Setup::new();
-    let (mut watcher, recording) = setup.rust_watcher("Ship it. Cortana send it and then tap beta.");
-    let output = setup
-        .bash(&["_wake-confirm", "/dev/stdin", &recording])
-        .env("TRANSCRIBE_TEXT", "Cortana send it and then")
-        .output()
-        .unwrap();
-    assert_eq!(stdout(&output), "wake send it and then\n");
-    assert_eq!(
-        setup.state().unwrap()["ending"],
-        serde_json::json!({"action": "send", "by": "voice", "chain": true})
-    );
-    // The bash confirmation detached its own stopper, under the spelling the bash voxcmd still answers to.
-    assert!(wait_for(|| setup.calls().contains(" _chain-stop ")));
-    stop_recording_by_key(&setup);
-    assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    assert!(
-        setup.handled().starts_with("Ship it.|send|") && setup.handled().ends_with("\ntap beta\n"),
-        "{}",
-        setup.handled()
-    );
-}
-
 // ---- a TOML one-recording mode (voxcmd-port 2.4d-3) -----------------------------------------------------------------
 
 /// The toast the guards give, with typing.sh's reason.
@@ -1512,11 +1368,7 @@ fn a_toml_mode_s_hook_gets_the_text_and_ending_in_its_environment_and_logs_only_
         Some(0)
     );
     assert!(exits_within(&mut watcher, Duration::from_secs(10)).is_some());
-    let discard_flag = setup.runtime().join(format!("discard.{}", watcher.id()));
-    assert_eq!(
-        setup.handled(),
-        format!("Hello \"$(private)\" words.|send|{}|voice\n", discard_flag.display())
-    );
+    assert_eq!(setup.handled(), "Hello \"$(private)\" words.|send|voice\n");
     assert!(setup.state().is_none(), "the bottom mode left ends the session");
     assert!(
         setup.calls().contains("voxcmd: Dictate mode ended done\n"),

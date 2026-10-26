@@ -21,25 +21,6 @@ pub fn config_dir() -> PathBuf {
     })
 }
 
-/// `$XDG_CACHE_HOME/voxcmd`, else `~/.cache/voxcmd`. Only derived data lives here; deleting it costs one rebuild.
-pub fn cache_dir() -> PathBuf {
-    env_dir("XDG_CACHE_HOME")
-        .unwrap_or_else(|| home().join(".cache"))
-        .join("voxcmd")
-}
-
-/// The bash voxcmd that `_legacy-dump` runs from, until 3.2 deletes it: `$VOXCMD_LEGACY_BIN`, else the one in the
-/// checkout this binary was built from, which is the copy stow links into `~/.local/bin`.
-pub fn legacy_bin() -> PathBuf {
-    env_dir("VOXCMD_LEGACY_BIN")
-        .unwrap_or_else(|| PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/.local/bin/voxcmd")))
-}
-
-/// A file of `_legacy-dump` output read in place of running bash: tests and benchmarks set it so they need no bash.
-pub fn legacy_dump_override() -> Option<PathBuf> {
-    env_dir("VOXCMD_LEGACY_DUMP_FILE")
-}
-
 /// `$XDG_RUNTIME_DIR`, else `/tmp`: where voxcmd's own directory and the asks' private ones live.
 pub fn user_runtime_dir() -> PathBuf {
     env_dir("XDG_RUNTIME_DIR").unwrap_or_else(|| PathBuf::from("/tmp"))

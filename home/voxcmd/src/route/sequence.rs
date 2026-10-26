@@ -130,7 +130,6 @@ fn describe_wait(router: &Router, option: &RouteOption) -> String {
         .get(&option.action)
         .and_then(|action| action.wait.as_ref());
     match declared {
-        Some(Wait::LegacyCondition(condition)) => condition.clone(),
         Some(Wait::Builtin(name)) => format!("the {name} wait"),
         Some(Wait::Hook(hook)) => format!("hook: {hook}"),
         None => {

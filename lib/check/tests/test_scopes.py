@@ -65,12 +65,15 @@ CASES = [
     ("home/quickshell/.config/quickshell/core/PolledCommand.qml", " polledcmd qml node"),
     ("home/quickshell/tests/polled_file/run.py", " polledfile qml"),
     ("home/quickshell/.config/quickshell/core/PolledFile.qml", " polledfile qml node"),
+    ("home/quickshell/tests/colors_preview/run.sh", " colorsprev qml node"),
+    ("home/quickshell/.config/quickshell/features/settings/RowsSection.qml", " colorsprev qml node"),
+    ("home/quickshell/.config/quickshell/features/settings/sections/ColorsSection.qml", " colorsprev qml node"),
     ("home/quickshell/tests/restarting_stream/run.py", " restartstream qml"),
     ("home/quickshell/.config/quickshell/core/RestartingStream.qml", " restartstream qml node"),
     ("home/quickshell/.config/quickshell/core/JsonStore.qml", " qml node"),
     # The consumers OUTSIDE_REFS in lib/check/steps/qml_paths.py names reach the qml scope beside their own.
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", " lua qml"),
-    ("home/voxcmd/.local/bin/voxcmd-alarm", " voxphrases voxclick voxcalendar voxwake voxfirefox qml"),
+    ("home/voxcmd/src/timer.rs", " rust voxphrases voxclick voxcalendar voxwake voxfirefox qml"),
     ("home/voxcmd/tests/run-monitors.sh", " voxclick qml"),
     ("home/quickshell/.config/quickshell/shell.qml", " qml node"),
     # A shader reaches only the shader step; its compiled output also reaches QML, which names it by path.
@@ -92,22 +95,19 @@ CASES = [
     ("home/voxcmd/tests/firefox-profile", " voxphrases voxclick voxcalendar"),
     ("home/voxcmd/tests/fixtures/binds.json", " voxphrases voxclick"),
     ("home/voxcmd/tests/fixtures/overview.json", " voxclick"),
-    # The crate's files reach only the Rust step, since the suites run the bash voxcmd. An integration file is read by
-    # the suites.
-    ("home/voxcmd/src/main.rs", " rust"),
-    ("home/voxcmd/Cargo.lock", " rust"),
+    # The crate's sources reach the suites that build it; its tests, snapshots and goldens only cargo test. An integration
+    # file is read by the suites.
+    ("home/voxcmd/src/main.rs", " rust voxphrases voxclick voxcalendar voxwake voxfirefox"),
+    ("home/voxcmd/Cargo.lock", " rust voxphrases voxclick voxcalendar voxwake voxfirefox"),
     ("home/voxcmd/rustfmt.toml", " rust"),
     ("home/voxcmd/tests/cli.rs", " rust"),
     ("home/voxcmd/tests/fixtures/x.txt", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
     ("home/voxcmd/tests/snapshots/cli__x.snap", " rust"),
     ("home/voxcmd/tests/fixtures/match-goldens.tsv", " rust"),
-    ("home/voxcmd/tests/fixtures/legacy-dump.jsonl", " rust"),
-    # The bash voxcmd and the fixtures the suites read still reach them.
-    ("home/voxcmd/.local/bin/voxcmd", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
+    # The fixtures the suites read reach them.
     ("home/voxcmd/tests/fixtures/ocr.tsv", " voxphrases"),
     ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " rust"),
     ("home/voxcmd/.config/voxcmd/integrations/x.toml", " rust voxphrases voxclick voxcalendar voxwake voxfirefox"),
-    ("home/voxcmd/.config/voxcmd/integrations.d/x.toml", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
     ("lib/check/steps/voxcmd-rust.sh", "checkscope rust"),
     ("extras/voxcmd-firefox/background.js", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
     ("extras/other/file", ""),
@@ -150,19 +150,13 @@ class PathScopes(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(keys.path_scopes(path), expected)
 
-    def test_rust_edits_skip_bash_suites_until_3_2(self):
-        """Delete this when voxcmd 3.2 makes VOXCMD_BIN=rs the suites' default: from then on a crate edit changes what
-        the voxcmd suites run. It reads the default from the files that pick it, so it fails at the flip."""
-        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        voxcmd_tests = os.path.join(repo, "home", "voxcmd", "tests")
-        for name in ("lib.sh", "sandbox.sh"):
-            with open(os.path.join(voxcmd_tests, name)) as handle:
-                source = handle.read()
-            with self.subTest(file=name):
-                self.assertIn("${VOXCMD_BIN:-bash}", source, (
-                    f"{name} no longer defaults VOXCMD_BIN to bash: widen the rust-only rules in scopes.py "
-                    "(src, Cargo, tests/*.rs, snapshots, goldens) so they reach the voxcmd suites, then delete this test"))
-        for path in ("home/voxcmd/src/cli.rs", "home/voxcmd/tests/snapshots/cli__x.snap"):
+    def test_a_crate_edit_selects_the_voxcmd_suites(self):
+        """The suites build the crate and run its binary, so editing its sources or manifest must run them; its test
+        sources, snapshots and goldens are read only by cargo test."""
+        for path in ("home/voxcmd/src/cli.rs", "home/voxcmd/Cargo.toml"):
+            with self.subTest(path=path):
+                self.assertIn("voxclick", keys.path_scopes(path).split())
+        for path in ("home/voxcmd/tests/cli.rs", "home/voxcmd/tests/snapshots/cli__x.snap"):
             with self.subTest(path=path):
                 self.assertFalse(set(scopes.VOXCMD_SUITE_SCOPES) & set(keys.path_scopes(path).split()))
 

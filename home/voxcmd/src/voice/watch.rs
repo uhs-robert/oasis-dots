@@ -94,7 +94,6 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
     let heard = route::runner::Heard {
         by_voice: true,
         private: heard_private,
-        mode: heard_mode.to_string(),
         in_session_turn: handler == Handler::SessionTurn,
     };
     let exit_code = match handler {

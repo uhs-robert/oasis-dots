@@ -216,13 +216,21 @@ wait_main_check_running() {
 # Pulling updates the files behind existing links, but a new file in a folder stow did not fold has no link until the
 # package is restowed (a merged unit or script then silently does not exist), and a deleted one leaves a dead link.
 # A package counts as installed when one of its files, before or after the merge, is reached through its link in $HOME
-# (a link to a file the merge removed still resolves to that path); a package never stowed here is left alone.
+# (a link to a file the merge removed still resolves to that path, hence `realpath -m`: without it a path behind a dead
+# link or a missing file prints nothing, so a never-stowed deleted package would match one that is installed); a package
+# never stowed here is left alone.
+# An installed package the merge deleted outright is skipped with a note: stow has nothing left to restow or unstow, so
+# its dead links stay for the owner to remove.
 packages_to_restow() {
   local repo=$1 before=$2 after=$3 package relative
   while IFS= read -r package; do
     while IFS= read -r relative; do
-      if [[ $(realpath -q "$HOME/$relative") == "$(realpath -q "$repo/home/$package/$relative")" ]]; then
-        echo "$package"
+      if [[ $(realpath -m "$HOME/$relative") == "$(realpath -m "$repo/home/$package/$relative")" ]]; then
+        if [[ -z $(git -C "$repo" ls-tree --name-only "$after" -- "home/$package/") ]]; then
+          echo "ship-batch: home/$package no longer exists; not restowing it (remove its dead links by hand)" >&2
+        else
+          echo "$package"
+        fi
         break
       fi
     done < <(
@@ -238,6 +246,19 @@ crate_rebuilds() {
   ! grep -Eq '^home/voxcmd/(src/|Cargo\.(toml|lock)$)' || echo voxcmd-build
 }
 
+# The restow before the rebuild removed ~/.local/bin/voxcmd when the merge deleted the package's file, so a failed build
+# would leave voice control with no voxcmd at all: link the previous build (voxcmd-rs) back, or say there is none.
+keep_a_voxcmd() {
+  local bin=$HOME/.local/bin
+  [[ ! -x $bin/voxcmd ]] || return 0
+  if [[ -x $bin/voxcmd-rs ]]; then
+    ln -sfn "$(readlink -f "$bin/voxcmd-rs")" "$bin/voxcmd"
+    echo "ship-batch: WARNING: linked ~/.local/bin/voxcmd to the previous build; it is older than main until just voxcmd-build succeeds" >&2
+  else
+    echo "ship-batch: WARNING: voice control has no voxcmd and there is no previous build to link; run: just voxcmd-build" >&2
+  fi
+}
+
 # Runs each `just` recipe crate_rebuilds names, in the main checkout. The merge is already done, so a failure warns
 # (stderr, and a desktop notification when there is one) and never stops the run: the live binary is only stale.
 rebuild_crates() {
@@ -247,6 +268,7 @@ rebuild_crates() {
       echo "ship-batch: ran just $recipe (the merge changed its crate)"
     else
       echo "ship-batch: WARNING: just $recipe failed; the installed binary is stale. Fix it and run: just $recipe" >&2
+      [[ $recipe != voxcmd-build ]] || keep_a_voxcmd
       notify-send --urgency=critical --app-name=ship-batch "ship-batch: just $recipe failed" \
         "The merge changed its crate but the rebuild failed; run: just $recipe" 9>&- 2>/dev/null || true
     fi
