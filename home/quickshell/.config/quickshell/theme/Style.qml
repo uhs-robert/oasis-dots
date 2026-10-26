@@ -177,9 +177,9 @@ Singleton {
     readonly property bool screen_frame_on: root.screen_frame_kit !== null
     // The corner the style draws, frame on or off: the Corner style row's choice, else the style's natural corner.
     readonly property string corner_style: FrameTokens.corner_of(root.active, root.frame_corners)
-    // Whether the Corner style was picked rather than the style's natural one: the strip's ends keep the style's own
-    // island ends until then.
-    readonly property bool corner_style_chosen: root.corner_style !== FrameTokens.natural_corner(root.base_active, root.frame_corners)
+    // Whether a Corner style was picked, even the style's natural one (saved, see drops_default): the strip's ends and
+    // the corner sent with the frame off wait for it, so an untouched style leaves the owner's own values.
+    readonly property bool corner_style_chosen: FrameTokens.corner_chosen(root.active, root.frame_corners)
     // Whether the corner goes to Hyprland and the apps (FrameTokens.corner_applies): with the frame on, or once picked.
     readonly property bool corner_sent: FrameTokens.corner_applies(root.screen_frame_on, root.corner_style_chosen)
     function sync_mode(any_frame) {
@@ -719,12 +719,18 @@ Singleton {
         return def.type === "bool" ? def.default !== false : def.default;
     }
 
+    // Whether a saved value is dropped for equalling the row's default. A Corner style is never: picking the natural
+    // corner is still a pick, and only reset_option takes it back to untouched.
+    function drops_default(def, value) {
+        return def.key !== "corner_style" && value === root.option_default(def);
+    }
+
     function set_option(key, value) {
         const def = root.settings.find(d => d.key === key);
         if (!def || !root.valid_option(def, value)) return false;
         const all = Object.assign({}, root.theme_values);
         const mine = Object.assign({}, all[root.saved_name] || {});
-        if (value === root.option_default(def)) delete mine[key];
+        if (root.drops_default(def, value)) delete mine[key];
         else mine[key] = value;
         if (Object.keys(mine).length > 0) all[root.saved_name] = mine;
         else delete all[root.saved_name];
@@ -842,7 +848,7 @@ Singleton {
                     v = root.renamed_island_shapes[v];
                     migrated = true;
                 }
-                if (v !== undefined && root.valid_option(def, v) && v !== root.option_default(def)) mine[def.key] = v;
+                if (v !== undefined && root.valid_option(def, v) && !root.drops_default(def, v)) mine[def.key] = v;
             }
             if (Object.keys(mine).length > 0) all[style_name] = mine;
         }

@@ -268,6 +268,7 @@ const natural = { goldeneye: "round", ps2: "round", ff7: "round", gameboy: "pixe
 const style_tokens = name => ({ screen_frame_corners: natural[name], screen_frame_only: name === "terminal" ? "square" : "" });
 const settings_src = style.slice(style.indexOf("    function settings_for"), style.indexOf("    // The value of option `key`"));
 const option_default_src = style.match(/function option_default(\(def\) \{[^}]*\})/)[1];
+const drops_default_src = style.match(/function drops_default(\(def, value\) \{[^}]*\})/)[1];
 const make_root = () => {
   const r = { theme_values: {}, frame_corners, renamed_island_shapes: { octagon: "watch" }, flush_single: true, saves: 0, options_saves: 0,
     styles: Object.fromEntries(Object.keys(natural).map(n => [n, Object.assign({ bar_island_shape: "slant", bar_lualine: false }, style_tokens(n))])),
@@ -275,7 +276,7 @@ const make_root = () => {
     borrow_labels: () => ({}), frame_kit_for: t => (FT.frame_on(t) ? frame_kit : null), plain_frame_kit: frame_kit };
   r.save = () => { r.saves++; };
   r.save_options = () => { r.options_saves++; };
-  const fns = vm.runInNewContext("(function(root, FrameTokens, Qt) { return { settings_for: function" + settings_src.match(/function settings_for(\([^]*)/)[1].replace(/\n    \}\n[^]*$/, "\n    }") + ", option_default: function" + option_default_src + ", valid_option: function" + style.match(/function valid_option(\([^]*?\n    \})/)[1] + " }; })", {})(r, FT, { color: () => ({ a: 1 }) });
+  const fns = vm.runInNewContext("(function(root, FrameTokens, Qt) { return { settings_for: function" + settings_src.match(/function settings_for(\([^]*)/)[1].replace(/\n    \}\n[^]*$/, "\n    }") + ", option_default: function" + option_default_src + ", drops_default: function" + drops_default_src + ", valid_option: function" + style.match(/function valid_option(\([^]*?\n    \})/)[1] + " }; })", {})(r, FT, { color: () => ({ a: 1 }) });
   Object.assign(r, fns);
   r.carry_flush_off = () => { r.flush_single = false; r.save(); };
   return r;
@@ -293,7 +294,7 @@ const saved_of = (data, name) => load_saved(data)[name] || {};
 const effective = (data, name) => {
   const r = run_load(data);
   const tokens = Object.assign({}, r.styles[name], r.theme_values[name] || {});
-  return { frame: FT.frame_on(tokens), corner: FT.corner_of(tokens, frame_corners) };
+  return { frame: FT.frame_on(tokens), corner: FT.corner_of(tokens, frame_corners), chosen: FT.corner_chosen(tokens, frame_corners) };
 };
 for (const [name, got, want] of [
   ["a version 2 file keeps a chosen octagon", saved_of({ version: 2, modern: { bar_island_shape: "octagon" } }, "modern").bar_island_shape, "octagon"],
@@ -316,7 +317,10 @@ for (const [name, corner] of [["goldeneye", "chamfer"], ["ps2", "round"], ["ff7"
 }
 expect(run_load(owner_v3()).options_saves === 1, "owner v3: migrated file not written back at version 4");
 expect(JSON.stringify(Object.keys(saved_of(owner_v3(), "goldeneye"))) === JSON.stringify(["screen_frame", "corner_style"]), "goldeneye keeps frame on and a corner that is not its natural one");
-expect(!("corner_style" in saved_of(owner_v3(), "gameboy")) && effective(owner_v3(), "gameboy").corner === "pixel", "a corner equal to the natural one is the default, not stored, and still pixel");
+expect(saved_of(owner_v3(), "gameboy").corner_style === "pixel" && effective(owner_v3(), "gameboy").corner === "pixel", "a saved corner equal to the natural one was dropped");
+// Styles the user never gave a corner stay untouched: the migration invents no pick.
+expect(!("corner_style" in saved_of({ version: 3, modern: { bar_island_shape: "full" }, ps2: { screen_frame: "round" } }, "modern")), "the migration gave an untouched style a Corner style pick");
+expect(effective({ version: 3, modern: { screen_frame_flush: true } }, "modern").chosen === false, "an untouched style reads as picked");
 expect(!Object.values(load_saved(owner_v3())).some(v => typeof v.screen_frame === "string" || "screen_frame_flush" in v), "old frame or flush keys survive the migration");
 expect(run_load(owner_v3()).flush_single === true, "owner v3: no style saved flush off, so the global stays on");
 
@@ -394,6 +398,21 @@ const active_src = style.slice(style.indexOf("readonly property var active:"), s
 expect(!/return root\.with_options\(/.test(active_src) && (active_src.match(/root\.squared\(/g) || []).length === 2, "active returns a token set that skipped squared");
 const squared = vm.runInNewContext("(function(root, FrameTokens) { return function" + style.match(/function squared(\([^)]*\) \{[^]*?\n    \})/)[1] + "; })", {})({ frame_corners }, FT);
 expect(squared({ corner_style: "square", frame_radius: 10 }).frame_radius === 0 && squared({ corner_style: "round", frame_radius: 10 }).frame_radius === 10 && squared({ screen_frame_only: "square", frame_radius: 6 }).frame_radius === 0, "squared");
+// An explicit pick of the natural corner is a pick: stored, loaded back, and sent with the frame off; reset_option is the way back.
+{
+  const r = make_root();
+  const defs = r.settings_for("modern", true);
+  const corner_def = defs.find(d => d.key === "corner_style");
+  expect(!r.drops_default(corner_def, corner_def.default), "a picked natural corner is dropped as the default");
+  expect(r.drops_default(defs.find(d => d.key === "bar_island_shape"), "slant"), "other rows no longer drop their default");
+  expect(r.valid_option(corner_def, "round"), "round is not a valid Corner style");
+  for (const [n, c] of [["modern", "round"], ["terminal", "square"]]) {
+    const got = effective({ version: 4, [n]: { corner_style: c } }, n);
+    expect(got.frame === false && got.chosen === true && FT.corner_applies(got.frame, got.chosen), n + " with " + c + " picked and no frame does not send the corner");
+    expect(saved_of({ version: 4, [n]: { corner_style: c } }, n).corner_style === c, n + ": a version 4 pick of " + c + " was dropped on load");
+  }
+  expect(!FT.corner_applies(effective({ version: 4, modern: { bar_island_shape: "full" } }, "modern").frame, effective({ version: 4, modern: { bar_island_shape: "full" } }, "modern").chosen), "an untouched style sends its corner with no frame");
+}
 expect(FT.natural_corner({ screen_frame_corners: "pixel" }, frame_corners) === "pixel" && FT.natural_corner({}, frame_corners) === "round", "natural_corner");
 // The pixel step reaches the profile with the frame off (gameboy 2): Style.corner_profile reads the style's own.
 expect(/corner_profile: \(\{ corner: root\.corner_style, radius: root\.plain_frame_kit\.radius, step: root\.bar\.screen_frame_step \}\)/.test(style), "corner_profile does not carry the style's pixel step");
