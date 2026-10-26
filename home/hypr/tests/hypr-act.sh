@@ -18,7 +18,8 @@ check() {
 }
 
 mkdir -p "$work/bin"
-# Behaviour is chosen per run by STUB_VERSION and STUB_EVAL: ok, fail or (eval only) empty.
+# Behaviour is chosen per run by STUB_VERSION and STUB_EVAL: ok, fail, empty, hang (outlasts the timeout) or late
+# (answers ok at once and writes its file a second later, after hypr-act has given up).
 cat >"$work/bin/hyprctl" <<'STUB'
 #!/usr/bin/env bash
 echo "$HYPRLAND_INSTANCE_SIGNATURE $*" >>"$STUB_LOG"
@@ -28,6 +29,15 @@ eval)
   [[ ${STUB_EVAL:-ok} != fail ]] || exit 1
   path=${2#*\[=====\[}
   path=${path%%\]=====\]*}
+  [[ ${STUB_EVAL:-ok} != hang ]] || exec sleep 5
+  if [[ ${STUB_EVAL:-ok} == late ]]; then
+    (
+      sleep 1
+      echo '{"version":1,"actions":[]}' >"$path"
+    ) &
+    echo ok
+    exit 0
+  fi
   [[ ${STUB_EVAL:-ok} == empty ]] || echo '{"version":1,"actions":[]}' >"$path"
   echo ok
   ;;
@@ -41,11 +51,11 @@ run() {
   status=$?
 }
 no_stray_files() { [[ -z $(find "$work/run" -maxdepth 1 -name 'hypr-act.*') ]]; }
-silent_failure() { [[ $status -eq 3 && ! -s $work/out && $(wc -l <"$work/err") -eq 1 ]]; }
+silent_failure() { [[ $status -eq ${1:-3} && ! -s $work/out && $(wc -l <"$work/err") -eq 1 ]]; }
 
 mkdir -p "$work/run"
 run list
-check silent_failure
+check silent_failure 3
 
 # The newest answering instance gets the eval.
 for instance in old new; do
@@ -59,13 +69,26 @@ check test "$(cat "$work/out")" = '{"version":1,"actions":[]}'
 check grep -q '^new eval ' "$work/log"
 check no_stray_files
 
+# No instance answering is "not running" (3); every failure past that point is "running but unreadable" (4).
 STUB_VERSION=fail run list
-check silent_failure
+check silent_failure 3
+check grep -q 'not running' "$work/err"
 STUB_EVAL=fail run list
-check silent_failure
+check silent_failure 4
+check grep -q 'is running' "$work/err"
 check no_stray_files
 STUB_EVAL=empty run list
-check silent_failure
+check silent_failure 4
+check no_stray_files
+HYPR_ACT_TIMEOUT=1 STUB_EVAL=hang run list
+check silent_failure 4
+check grep -q 'is running' "$work/err"
+check no_stray_files
+
+# An eval that writes after hypr-act gave up leaves nothing behind: its directory is already gone.
+STUB_EVAL=late run list
+check silent_failure 4
+sleep 1.5
 check no_stray_files
 
 # A dead newest instance falls back to the older one that answers.

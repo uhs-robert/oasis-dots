@@ -28,6 +28,7 @@ local Scripts = require("lib.scripts") ---@class Scripts
 --- @field key        ActionKey|nil
 --- @field extra_keys ActionKey[]
 --- @field opts       table
+--- @field bound_keys table[]   Every key registered so far, default or added with Act.bind; list drops the unbound ones
 --- @field run        function|table  Lua function, or an Ipc/Cmd table
 
 --- @class ActionLib
@@ -376,6 +377,12 @@ local function register_key(handle, key, opts, args)
   if bind_opts.submap_universal == nil and key.universal then bind_opts.submap_universal = true end
   local register = key.leader and Bind.leader_key or Bind.key
   register(key.key, function() Act.run(handle.id, table.unpack(args)) end, handle.label, bind_opts)
+  -- Recorded only after the bind succeeded, so list never shows a key that failed to register.
+  local bound = key.leader and Bind.leader and Bind.leader ~= "" and (Bind.leader .. " + " .. key.key) or key.key
+  table.insert(
+    handle.bound_keys,
+    { key = bound, leader = key.leader, universal = key.universal, submap = Bind.current_submap() }
+  )
 end
 
 --- Put every non-key option except those Act.bind owns into a fresh table.
@@ -442,6 +449,7 @@ local function build_handle(id, spec)
     params = params,
     extra_keys = {},
     opts = spec.opts or {},
+    bound_keys = {},
     run = spec.run,
   }
   if spec.key ~= nil then
@@ -552,14 +560,6 @@ function Act.list()
   return handles
 end
 
---- @param key ActionKey
---- @return table
-local function key_entry(key)
-  -- The key as hl.bind receives it, leader applied, so a consumer matches it against `hyprctl binds -j`.
-  local bound = key.leader and Bind.leader and Bind.leader ~= "" and (Bind.leader .. " + " .. key.key) or key.key
-  return { key = bound, leader = key.leader, universal = key.universal }
-end
-
 --- @param run function|table
 --- @return table
 local function perform_entry(run)
@@ -583,9 +583,16 @@ local function list_entry(handle)
     table.insert(params, { name = param.name, type = param.type, values = param.values, default = param.default })
   end
   local keys = Json.array()
-  if handle.key then table.insert(keys, key_entry(handle.key)) end
-  for _, key in ipairs(handle.extra_keys) do
-    table.insert(keys, key_entry(key))
+  for _, entry in ipairs(handle.bound_keys) do
+    -- A key removed with Bind.unbind is no longer a key of the action. The submap field is left out for the global map.
+    if Bind.is_bound(entry.key, entry.submap) then
+      table.insert(keys, {
+        key = entry.key,
+        leader = entry.leader,
+        universal = entry.universal,
+        submap = entry.submap ~= "" and entry.submap or nil,
+      })
+    end
   end
   return {
     id = handle.id,
