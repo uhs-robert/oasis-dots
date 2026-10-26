@@ -387,6 +387,7 @@ cases.push(["a chamfer is two points at 45 degrees", () => { const p = C.corner_
 cases.push(["a square corner is its one outer point", () => plain(C.corner_points("square", 12, 0, 12, 12, 270, 180)), [[0, 0]]]);
 cases.push(["a square box is its four corners", () => plain(C.box_loop("square", 10, 0, 40, 20)), [[0, 0], [40, 0], [40, 20], [0, 20]]]);
 cases.push(["a chamfered box cuts every corner at 45 degrees", () => plain(C.box_loop("chamfer", 4, 0, 40, 20)), [[0, 4], [4, 0], [36, 0], [40, 4], [40, 16], [36, 20], [4, 20], [0, 16]]]);
+cases.push(["a box outline returns to its first point so the left edge is stroked", () => { const p = plain(C.box_outline("chamfer", 4, 0, 40, 20)); return [p.length, p[0], p[p.length - 1]]; }, [9, [0, 4], [0, 4]]]);
 cases.push(["a box corner never exceeds half the shorter side", () => { const p = plain(C.box_loop("chamfer", 50, 0, 40, 20)); return [Math.min(...p.map(q => q[0])), Math.min(...p.map(q => q[1])), p.length]; }, [0, 0, 8]]);
 
 for (const corner of PROFILES) {

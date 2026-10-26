@@ -41,10 +41,19 @@ Item {
     readonly property int pad: root.stacked ? 2 : 4
     readonly property real art_size: root.vertical ? root.cell : root.height - root.pad * 2
     readonly property var text_lines: MediaText.lines(root.player ? root.player.trackTitle || "" : "", root.player ? root.player.trackArtist || "" : "", root.show_title, root.show_artist, root.text_layout, root.player ? root.player.identity || "" : "")
+    // A line's height over its pixel size differs per font (the GoldenEye face is much taller than most), so it is measured.
+    readonly property real line_ratio: ruler.height / ruler.font.pixelSize
+    FontMetrics {
+        id: ruler
+        font.family: root.font.family
+        font.pixelSize: 20
+        font.capitalization: root.font.capitalization
+        font.letterSpacing: root.font.letterSpacing
+    }
     // Two stacked lines must fit the well's inner height, so they shrink with it.
     function line_size(small) {
         if (root.text_lines.length < 2) return root.font.pixelSize;
-        const sizes = MediaText.stacked_sizes(root.height - root.pad * 2, root.font.pixelSize);
+        const sizes = MediaText.stacked_sizes(root.height - root.pad * 2, root.font.pixelSize, root.line_ratio);
         return small ? sizes.artist : sizes.title;
     }
     readonly property bool cava_on: root.active && !root.vertical && root.right_mode === "cava"
@@ -74,7 +83,7 @@ Item {
     // A chamfered or stepped corner cuts `corner_size` px off each corner, so the contents keep clear of the diagonal
     // (the art's corner would otherwise sit on it) on both ends alike.
     readonly property real side_inset: root.vertical ? root.pad : ["chamfer", "pixel"].indexOf(root.corner_profile.corner) >= 0 ? Math.max(root.pad, root.corner_size - root.pad + 2) : root.pad
-    readonly property var plate_points: Corners.box_loop(root.corner_profile.corner, root.corner_size, root.corner_profile.step, root.width - 1, root.height - 1).map(p => Qt.point(p[0] + 0.5, p[1] + 0.5))
+    readonly property var plate_points: Corners.box_outline(root.corner_profile.corner, root.corner_size, root.corner_profile.step, root.width - 1, root.height - 1).map(p => Qt.point(p[0] + 0.5, p[1] + 0.5))
 
     Shape {
         id: plate
@@ -195,25 +204,32 @@ Item {
             Layout.minimumWidth: root.right_width
             visible: !root.vertical && root.right_mode !== "hide"
 
-            Rectangle {
-                visible: root.right_mode === "cava"
+            // The bars and their baseline share one box, centred in the plate however tall the plate is.
+            Item {
+                id: cava_box
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 2
-                height: 1
-                color: Qt.alpha(Theme.theme_primary, 0.3)
-            }
-
-            CavaViewer { active: root.cava_on && MediaState.playing && PowerSource.on_ac }
-
-            CavaBars {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 2
+                anchors.verticalCenter: parent.verticalCenter
                 height: Math.min(parent.height - 4, 16)
-                active: root.cava_on && MediaState.playing && PowerSource.on_ac
+
+                Rectangle {
+                    visible: root.right_mode === "cava"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: 1
+                    color: Qt.alpha(Theme.theme_primary, 0.3)
+                }
+
+                CavaViewer { active: root.cava_on && MediaState.playing && PowerSource.on_ac }
+
+                CavaBars {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: parent.height
+                    active: root.cava_on && MediaState.playing && PowerSource.on_ac
+                }
             }
 
             PositionLine {

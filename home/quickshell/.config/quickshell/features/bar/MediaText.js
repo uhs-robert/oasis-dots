@@ -26,12 +26,12 @@ function lines(title, artist, show_title, show_artist, layout, identity) {
 }
 
 // Pixel sizes of a stacked title and artist whose two text lines fit `inner` px. A line is taller than its pixel size
-// (`LINE` times it), so sizing by the pixel size alone let the block overflow the plate. The title keeps up to `base`
+// (`ratio` times it, measured from the font; `LINE` when unknown), so sizing by the pixel size alone let the block overflow the plate. The title keeps up to `base`
 // and the larger share; the artist is smaller and never below 6 px, so an `inner` too small to fit both is the caller's
 // to enlarge.
 const LINE = 1.3;
-function stacked_sizes(inner, base) {
-    const room = Math.floor(inner / LINE);
+function stacked_sizes(inner, base, ratio) {
+    const room = Math.floor(inner / Math.max(1, ratio || LINE));
     const title = Math.max(6, Math.min(base, Math.ceil(room * 0.56)));
     const artist = Math.max(6, Math.min(base - 3, room - title));
     return { title: title, artist: artist };

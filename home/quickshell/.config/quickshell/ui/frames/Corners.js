@@ -78,3 +78,9 @@ function box_loop(kind, r, step, w, h) {
         corner_points(k, f.radius, f.step, w - f.radius, h - f.radius, 0, 90),
         corner_points(k, f.radius, f.step, f.radius, h - f.radius, 90, 180));
 }
+
+// box_loop with its first point repeated: a stroked polyline does not close itself, so the last edge (the left one) was never drawn.
+function box_outline(kind, r, step, w, h) {
+    const loop = box_loop(kind, r, step, w, h);
+    return loop.concat([loop[0]]);
+}
