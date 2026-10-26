@@ -422,6 +422,8 @@ out_dir=\$manifest_dir/target
 [[ \$all_args != *--target-dir* ]] || { out_dir=\${all_args#*--target-dir }; out_dir=\${out_dir%% *}; }
 [[ -z \${FAKE_CARGO_NO_BIN:-} ]] || exit 0
 [[ \$out_dir == "$root"/* ]] || { echo "stub cargo: refusing \$out_dir" >&2; exit 1; }
+# A Cargo config build.target puts the binary under a triple dir.
+[[ -z \${FAKE_CARGO_TRIPLE:-} ]] || out_dir=\$out_dir/\$FAKE_CARGO_TRIPLE
 mkdir -p "\$out_dir/release"
 {
   echo '#!/usr/bin/env bash'
@@ -429,6 +431,9 @@ mkdir -p "\$out_dir/release"
   echo 'echo "result: rust"'
 } >"\$out_dir/release/voxcmd"
 chmod +x "\$out_dir/release/voxcmd"
+# Like cargo's JSON stream: a build script artifact first, then the bin.
+echo '{"reason":"compiler-artifact","target":{"name":"build-script-build","kind":["custom-build"]},"executable":null}'
+echo '{"reason":"compiler-artifact","target":{"name":"voxcmd","kind":["bin"]},"executable":"'"\$out_dir/release/voxcmd"'"}'
 STUB
 chmod +x "$rr_stubs/cargo"
 # rrx <function> <args>...: the sourced script against the fake repo and HOME; the stubs go first on PATH.
@@ -474,6 +479,13 @@ code=$?
 check "an environment target dir does not move the build output, and the link is real" "[[ $code == 0 && -x $rr_dir/home/voxcmd/target/release/voxcmd && ! -e $root/elsewhere ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd'"
 rrx voxcmd_restore >/dev/null
 rm -rf "$rr_dir/home/voxcmd/target"
+rm -f "$bars_dir/.owner" "$rr_calls"
+# A config `build.target` moves the binary under a triple dir; the path comes from cargo's artifact record.
+out=$(FAKE_CARGO_TRIPLE=x86_64-test rr_swap_cmd)
+code=$?
+check "a config build target does not refuse the swap, and the live link is a real binary" "[[ $code == 0 && -x $rr_dir/home/voxcmd/target/release/voxcmd ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd' && [[ -x $rr_home/.local/bin/voxcmd ]]"
+rrx voxcmd_restore >/dev/null
+rm -rf "$rr_dir/home/voxcmd/target"
 rm -f "$bars_dir/.owner"
 rm -f "$rr_calls"
 out=$(FAKE_CARGO_NO_BIN=1 rr_swap_cmd)
@@ -511,11 +523,14 @@ rm -f "$rr_calls"
 out=$(rr_swap_cmd)
 code=$?
 show "$out"
-check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml --target-dir $rr_dir/home/voxcmd/target/stage hash=.+' '$rr_calls'"
+check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml --target-dir $rr_dir/home/voxcmd/target/stage --message-format=json-render-diagnostics hash=.+' '$rr_calls'"
 check "the claim is taken before the long build, so a second session meets it" "grep -q '^owner_claimed_during_build' '$rr_calls'"
 check "the build runs before the Hyprland and manifest swap" "[[ \$(grep -n '^cargo' '$rr_calls' | head -1 | cut -d: -f1) -lt \$(grep -n '_swap' '$rr_calls' | head -1 | cut -d: -f1) ]]"
-check "a successful build moves the staged binary over the live path" "[[ ! -e $rr_dir/home/voxcmd/target/stage/release/voxcmd && -x $rr_dir/home/voxcmd/target/release/voxcmd ]]"
+check "a successful build copies the staged binary over the live path, leaving cargo's output alone" "[[ -x $rr_dir/home/voxcmd/target/stage/release/voxcmd && -x $rr_dir/home/voxcmd/target/release/voxcmd && ! $rr_dir/home/voxcmd/target/stage/release/voxcmd -ef $rr_dir/home/voxcmd/target/release/voxcmd && ! -e $rr_dir/home/voxcmd/target/release/voxcmd.new ]]"
 check "voxcmd links into the bar's built binary" "rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd'"
+mv "$rr_dir/home/voxcmd/target/release/voxcmd" "$root/rr_bin_aside"
+check "status does not report a test build whose voxcmd binary is gone" "[[ \$(rrx voxcmd_status) != 'voxcmd: test build rustbar' ]]"
+mv "$root/rr_bin_aside" "$rr_dir/home/voxcmd/target/release/voxcmd"
 check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-alarm '$rr_dir/home/voxcmd/.local/bin/voxcmd-alarm' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"
 check "status reads test build" "[[ \$(rrx voxcmd_status) == 'voxcmd: test build rustbar' ]]"
 
@@ -546,7 +561,7 @@ for rr_sig in TERM:143 INT:130; do
   kill -"$rr_sig" "$rr_pid"
   wait "$rr_pid"
   code=$?
-  check "SIG$rr_sig mid-build: swap exits $rr_status, binary and link are untouched, claim is the previous one" "[[ $code == $rr_status ]] && grep -q hang_started '$rr_calls' && [[ -x $rr_dir/home/voxcmd/target/release/voxcmd && ! -e $rr_dir/home/voxcmd/target/stage/release/voxcmd ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd' && [[ \$(jq -r .bar '$bars_dir/.owner') == previousbar ]]"
+  check "SIG$rr_sig mid-build: swap exits $rr_status, binary and link are untouched, claim is the previous one" "[[ $code == $rr_status ]] && grep -q hang_started '$rr_calls' && [[ -x $rr_dir/home/voxcmd/target/release/voxcmd ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd' && [[ \$(jq -r .bar '$bars_dir/.owner') == previousbar ]]"
   check "SIG$rr_sig mid-build: the build's child process is gone" "! kill -0 $rr_hang_pid 2>/dev/null"
   kill "$rr_hang_pid" 2>/dev/null || true
 done
