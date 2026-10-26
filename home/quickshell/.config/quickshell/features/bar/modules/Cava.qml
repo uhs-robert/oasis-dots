@@ -1,7 +1,7 @@
 
-// The `cava` layout entry, kept as an alias of the media module with the right side fixed to cava.
+// The `cava` layout entry, kept for existing bars.json files: the media module, whose right-side setting decides, with no slot on a side bar.
 Media {
     module_name: "cava"
     has_popup: false
-    alias_mode: "cava"
+    cava_entry: true
 }

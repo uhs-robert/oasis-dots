@@ -42,10 +42,17 @@ function scroll_effect(over_right_side, scroll_action) {
     return scroll_action === "skip" ? "skip" : scroll_action === "none" ? "none" : "volume";
 }
 
+// Which right side the module draws. A forced one (split mode, lualine) wins; otherwise the setting decides for the
+// `media` and `cava` entries alike. On battery cava gives way to `battery_fallback`.
+function right_side(forced, setting, on_ac, battery_fallback) {
+    const wanted = forced !== "" ? forced : setting;
+    return wanted === "cava" && !on_ac ? battery_fallback : wanted;
+}
+
 // Whether the module has anything to show: any active player, with or without metadata (a radio stream has none), but
-// not as the `cava` alias on a side bar, which keeps its cava tail instead.
-function well_shown(has_player, vertical, is_cava_alias) {
-    return !!has_player && !(vertical && is_cava_alias);
+// not as the `cava` entry on a side bar, which keeps its cava tail instead.
+function well_shown(has_player, vertical, is_cava_entry) {
+    return !!has_player && !(vertical && is_cava_entry);
 }
 
 // Whether the clock-island strip is asked for: a `cava` entry always did, and a `media` entry does too, since in the

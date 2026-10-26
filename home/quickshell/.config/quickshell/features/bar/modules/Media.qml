@@ -8,23 +8,22 @@ import qs.features.popups
 import qs.features.bar
 
 // The one media module: a well with art, play/pause, text and a right side of cava or the track position. Hover opens
-// the media popup, a click pins it. Cava.qml is this module with the right side fixed to cava.
+// the media popup, a click pins it. The `cava` entry (Cava.qml) is this module too: the right-side setting decides for both.
 BarModule {
     id: root
     module_name: "media"
     wash: false
 
-    // Set by Cava.qml: the layout entry `cava` always draws cava, whatever right_side_mode says.
-    property string alias_mode: ""
+    // Set by Cava.qml: the `cava` entry is this same module under its old name; it differs only in having no slot on a side bar.
+    property bool cava_entry: false
     // Set by Bar.qml in the split island mode, where the strip already draws the cava: overrides everything.
     property string forced_right_side: ""
 
     readonly property var player: MediaState.active
-    readonly property string wanted_right: root.forced_right_side !== "" ? root.forced_right_side : root.alias_mode !== "" ? root.alias_mode : MediaSettings.right_side_mode
-    readonly property string right_mode: root.wanted_right === "cava" && !PowerSource.on_ac ? MediaSettings.battery_fallback : root.wanted_right
+    readonly property string right_mode: MediaSettings.right_side(root.forced_right_side, PowerSource.on_ac)
 
     // A side bar keeps its cava as the tail on the clock island, so the cava entry has no slot there; media shows as art and a button.
-    shown: MediaSettings.well_shown(!!root.player, root.vertical, root.alias_mode !== "")
+    shown: MediaSettings.well_shown(!!root.player, root.vertical, root.cava_entry)
     implicitWidth: shown ? well.implicitWidth : 0
     implicitHeight: shown ? well.implicitHeight : 0
 

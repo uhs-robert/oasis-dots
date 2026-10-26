@@ -72,8 +72,12 @@ Singleton {
         return Logic.scroll_effect(over_right_side, root.scroll_action);
     }
 
-    function well_shown(has_player, vertical, is_cava_alias) {
-        return Logic.well_shown(has_player, vertical, is_cava_alias);
+    function right_side(forced, on_ac) {
+        return Logic.right_side(forced, root.right_side_mode, on_ac, root.battery_fallback);
+    }
+
+    function well_shown(has_player, vertical, is_cava_entry) {
+        return Logic.well_shown(has_player, vertical, is_cava_entry);
     }
 
     function strip_listed(lists_cava, lists_media) {
