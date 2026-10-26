@@ -11,9 +11,3 @@ Act.define("move.step", {
   },
   run = function(dir, amount) require("lib.actions.move").at(amount)[dir]() end,
 })
-
-Act.define("window.float_toggle", {
-  label = "Toggle Floating",
-  intent = "Float the focused window, or tile it again.",
-  run = function() require("lib.actions.window").float_toggle()() end,
-})

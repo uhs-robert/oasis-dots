@@ -32,6 +32,14 @@ local CLICK_BUTTONS = { "left", "right", "middle" }
 --- @return CursorActions
 local function cursor() return require("lib.actions.cursor") end
 
+--- Whether a Cursor submap is active. Its release rows and exit hook are what stop a repeating scroll and restore the
+--- cursor config on leaving, so an action called from anywhere else (hypr-act, the bar, voice) must not rely on them.
+--- @return boolean
+local function in_cursor_submap()
+  local current = hl.get_current_submap()
+  return current == "Cursor" or current == "Quick Click"
+end
+
 Act.define("cursor.move", {
   label = "Move Pointer",
   intent = "Move the mouse pointer by a number of pixels in a direction, diagonals included.",
@@ -44,12 +52,19 @@ Act.define("cursor.move", {
 
 Act.define("cursor.scroll", {
   label = "Scroll",
-  intent = "Scroll by a step in a direction and keep repeating until cursor.scroll_stop runs.",
+  intent = "Scroll by a step in a direction. In the Cursor submap it keeps repeating until cursor.scroll_stop runs; anywhere else it scrolls once.",
   params = {
     { name = "dir", type = "enum", values = SCROLL_DIRECTIONS },
     { name = "step", type = "int" },
   },
-  run = function(dir, step) cursor().hold(cursor().scroll(step)[dir])() end,
+  run = function(dir, step)
+    local scroll = cursor().scroll(step)[dir]
+    if in_cursor_submap() then
+      cursor().hold(scroll)()
+    else
+      scroll()
+    end
+  end,
 })
 
 Act.define("cursor.scroll_stop", {
@@ -73,12 +88,13 @@ Act.define("cursor.click", {
 
 Act.define("cursor.pointer_mode", {
   label = "Pointer Mode",
-  intent = "Pick a screen spot with wl-kbptr (floating, tiling or split targets) and click or move there; with exit, leave the Cursor submap first.",
+  intent = "Pick a screen spot with wl-kbptr (floating, tiling or split targets) and click or move there. In the Cursor submap it returns there afterwards unless exit is set; anywhere else it never enters the submap.",
   params = {
     { name = "mode", type = "enum", values = KBPTR_MODES },
     { name = "exit", type = "bool", default = false },
   },
-  run = function(mode, exit) cursor().kbptr(mode, { exit = exit })() end,
+  -- Returning to Cursor afterwards would skip its on_enter, so outside the submap the action takes the exit path.
+  run = function(mode, exit) cursor().kbptr(mode, { exit = exit or not in_cursor_submap() })() end,
 })
 
 Act.define("cursor.send_key", {

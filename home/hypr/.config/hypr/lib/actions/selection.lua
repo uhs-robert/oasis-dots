@@ -27,6 +27,18 @@ local function set_border(addr, active, inactive)
   hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. addr, prop = "inactive_border_color", value = inactive }))
 end
 
+--- Forget selected windows that no longer exist: focusing a closed window's address fails, and the action that follows
+--- would then hit whatever is focused instead.
+local function drop_closed()
+  local open = {}
+  for _, w in ipairs(hl.get_windows() or {}) do
+    open[w.address] = true
+  end
+  for addr in pairs(SELECTED) do
+    if not open[addr] then SELECTED[addr] = nil end
+  end
+end
+
 --- @class Selection
 local Selection = {}
 
@@ -55,6 +67,7 @@ end
 
 --- Swap the focused window with the one selected window, then clear the selection.
 function Selection.swap()
+  drop_closed()
   local active = get_active_address()
   local target, count = nil, 0
   for addr in pairs(SELECTED) do
@@ -78,6 +91,7 @@ end
 --- @return fun()
 function Selection.for_selected(fn)
   return function()
+    drop_closed()
     local any = next(SELECTED)
     if not any then
       fn()

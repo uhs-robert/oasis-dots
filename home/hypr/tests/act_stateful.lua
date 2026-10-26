@@ -33,6 +33,12 @@ end
 hl.get_config = function(name)
 	return name == "input.repeat_delay" and 600 or 25
 end
+-- The submap Hyprland reports. The dump runs every row as if pressed inside its own submap, so this defaults to Cursor;
+-- the tests of actions called from outside set it to "".
+local reported_submap = "Cursor"
+hl.get_current_submap = function()
+	return reported_submap
+end
 -- Timers the tests can fire and inspect.
 local timers = {}
 hl.timer = function(fn, opts)
@@ -320,6 +326,56 @@ check(
 	"pointer: click with exit resets",
 	text_of(press("Cursor", "CTRL + SPACE")) == "exec_cmd(wlrctl pointer click left);submap(reset)"
 )
+
+-- Called from outside the Cursor submap (hypr-act, the bar, voice), nothing is left running for a release row that
+-- cannot fire: a scroll is one step with no timers, and a pointer mode leaves the submap path instead of entering Cursor.
+load_all()
+reported_submap = ""
+Stubs.performed = {}
+timers = {}
+require("lib.act").run("cursor.scroll", "down", 10)
+check("outside Cursor: scroll is one step", text_of(Stubs.performed) == "exec_cmd(wlrctl pointer scroll -10 0)")
+check("outside Cursor: scroll starts no timer", enabled_timers() == 0)
+Stubs.performed = {}
+require("lib.act").run("cursor.pointer_mode", "floating_click")
+check(
+	"outside Cursor: pointer mode never enters Cursor",
+	count_of(Stubs.performed, 'submap("Cursor")') == 0 and count_of(Stubs.performed, "submap(reset)") >= 1
+)
+reported_submap = "Cursor"
+Stubs.performed = {}
+require("lib.act").run("cursor.pointer_mode", "floating_click")
+check("inside Cursor: pointer mode returns to Cursor", count_of(Stubs.performed, 'submap("Cursor")') == 1)
+timers = {}
+require("lib.act").run("cursor.scroll", "down", 10)
+check("inside Cursor: scroll repeats", enabled_timers() == 1)
+require("lib.act").run("cursor.scroll_stop")
+
+-- A selection made from outside the Windows submap is gone when the submap is entered.
+load_all()
+active = WINDOWS[1]
+require("lib.act").run("windows.select_toggle")
+Stubs.performed = {}
+require("lib.key.submap").registry.Windows.on_enter({})
+check("enter Windows: clears a selection made outside", count_of(Stubs.performed, "set_prop") == 2)
+check("enter Windows: the first key acts on the focused window", count_of(press("Windows", "SHIFT + H"), "focus(") == 0)
+
+-- A selected window that closed is forgotten before the next action, so nothing hits the focused window by mistake.
+load_all()
+active = WINDOWS[1]
+press("Windows", "SPACE")
+active = WINDOWS[2]
+press("Windows", "SPACE")
+local gone = table.remove(WINDOWS, 1)
+moved = press("Windows", "SHIFT + H")
+check("closed selected window: only the open one is acted on", count_of(moved, "window.move({direction=l})") == 1)
+check("closed selected window: it is never focused", count_of(moved, "address:0xa1") == 0)
+active = WINDOWS[1]
+check("closed selected window: swap refuses", count_of(press("Windows", "S"), "window.swap") == 0)
+table.remove(WINDOWS, 1)
+moved = press("Windows", "SHIFT + H")
+check("every selected window closed: acts on the focused one", count_of(moved, "focus(") == 0)
+table.insert(WINDOWS, 1, gone)
 
 if failures > 0 then
 	print(failures .. " failed")
