@@ -55,7 +55,10 @@ local function warn(message)
   -- one-shot lets every define in the config add its warning first.
   hl.timer(function()
     warning_scheduled = false
-    hl.notification.create({ text = table.concat(Action.warnings, "\n"), timeout = 20000 })
+    local text = table.concat(Action.warnings, "\n")
+    -- Cleared once shown, so a later notification lists only what is new.
+    Action.warnings = {}
+    hl.notification.create({ text = text, timeout = 20000 })
   end, { timeout = 2000, type = "oneshot" })
 end
 
@@ -77,6 +80,8 @@ local function value_problem(param, value)
     if not finite then return "expects a float, got " .. tostring(value) end
   elseif kind == "string" then
     if type(value) ~= "string" then return "expects a string, got " .. tostring(value) end
+    -- exec_cmd truncates a command line at a NUL byte.
+    if value:find("\0", 1, true) then return "must not contain a NUL byte" end
   elseif kind == "bool" then
     if type(value) ~= "boolean" then return "expects a bool, got " .. tostring(value) end
   elseif kind == "enum" then
@@ -95,8 +100,10 @@ end
 local function parse_word(param, word)
   local kind = param.type
   if kind == "int" then
-    if not word:match("^[+-]?%d+$") or #word > 15 then return nil, "expects an int, got '" .. word .. "'" end
-    return tonumber(word)
+    -- Compared after parsing, so run and run_cli accept exactly the same range.
+    local value = word:match("^[+-]?%d+$") and tonumber(word)
+    if not value or math.abs(value) >= MAX_SAFE_INT then return nil, "expects an int, got '" .. word .. "'" end
+    return value
   elseif kind == "float" then
     local mantissa = word:gsub("[eE][+-]?%d+$", "")
     local shaped = mantissa:match("^[+-]?%d+%.?%d*$") or mantissa:match("^[+-]?%.%d+$")
@@ -113,6 +120,8 @@ local function parse_word(param, word)
     end
     return word
   end
+  local problem = value_problem(param, word)
+  if problem then return nil, problem end
   return word
 end
 
@@ -180,7 +189,7 @@ end
 --- @return string
 local function render_value(value)
   if type(value) == "number" then
-    if value % 1 == 0 then return string.format("%d", value) end
+    if value % 1 == 0 and math.abs(value) < MAX_SAFE_INT then return string.format("%d", value) end
     return string.format("%.14g", value)
   end
   return tostring(value)
@@ -525,45 +534,6 @@ function Action.run_cli(id, words)
     return value
   end)
   return perform(handle, values)
-end
-
----------------------------------------------------------------------------------------------------
--- lookup helpers
----------------------------------------------------------------------------------------------------
-
---- The function a submap row or Bind.key can hold for an action, given its id or the handle `define` returned.
---- An unknown action warns and yields a function that does nothing, so the surrounding rows still register.
---- @param ref  string|ActionHandle
---- @param ...  any  Args baked into the function (checked now)
---- @return fun()
-function Action.fn(ref, ...)
-  local id = type(ref) == "table" and ref.id or ref
-  local handle = registry[tostring(id)]
-  if not handle then
-    warn("Action.fn: unknown action id '" .. tostring(id) .. "'")
-    return function() end
-  end
-  local ok, args = pcall(check_values, handle, { ... }, select("#", ...))
-  if not ok then
-    warn("Action.fn: " .. tostring(args))
-    return function() end
-  end
-  return function() Action.run(handle.id, table.unpack(args)) end
-end
-
---- @param id string
---- @return ActionHandle|nil
-function Action.get(id) return registry[id] end
-
---- Every defined id, sorted.
---- @return string[]
-function Action.ids()
-  local ids = {}
-  for id in pairs(registry) do
-    table.insert(ids, id)
-  end
-  table.sort(ids)
-  return ids
 end
 
 return Action

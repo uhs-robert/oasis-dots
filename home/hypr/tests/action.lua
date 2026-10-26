@@ -109,7 +109,6 @@ check(
 )
 find("SUPER + Z").action()
 check("define: the key runs the action", #ran == 1)
-check("get and ids", Action.get("zoom.toggle") == zoom and Action.ids()[1] == "zoom.toggle")
 
 -- A keyless action binds nothing; Action.bind adds a key with args later.
 fresh()
@@ -143,22 +142,6 @@ Action.bind("workspace.focus", { args = { 1 } })
 check("bind: bad args or key skipped", #binds == before and #Action.warnings == 4)
 check("bind: warning names the problem", has(Action.warnings[1], "expects an int"))
 
--- Submap rows take the id or the handle.
-fresh()
-local row_ran = 0
-local handle = Action.define("app.browser", {
-	label = "Browser",
-	run = function()
-		row_ran = row_ran + 1
-	end,
-})
-Action.fn("app.browser")()
-Action.fn(handle)()
-check("fn: id and handle both run it", row_ran == 2)
-local no_op = Action.fn("app.nope")
-check("fn: unknown id warns and yields a no-op", type(no_op) == "function" and #Action.warnings == 1)
-check("fn: the no-op does nothing", raises(no_op) == nil)
-
 ---------------------------------------------------------------------------------------------------
 -- warn-and-skip
 ---------------------------------------------------------------------------------------------------
@@ -185,7 +168,7 @@ check("warn-skip: no bind for the rejected ones", #binds == 3 and find("F3") == 
 check("warn-skip: one warning per problem", #Action.warnings == 8)
 check("warn-skip: unknown id named", has(Action.warnings[1], "nope.missing"))
 check("warn-skip: duplicate named", has(Action.warnings[2], "already defined"))
-check("warn-skip: first definition kept", Action.get("a.dup").label == "Dup")
+check("warn-skip: first definition kept", find("F2") ~= nil and find("F3") == nil)
 check("warn-skip: one notification scheduled for all", #timers == 1)
 timers[1]()
 check(
@@ -217,8 +200,10 @@ check("pcall: a failing hl.bind warns instead", ok and #Action.warnings == 1 and
 ---------------------------------------------------------------------------------------------------
 fresh()
 local got
+local probe_count = 0
 local function define_probe(params)
-	local id = "probe.p" .. #Action.ids()
+	probe_count = probe_count + 1
+	local id = "probe.p" .. probe_count
 	Action.define(id, {
 		label = "Probe",
 		params = params,
@@ -236,9 +221,32 @@ Action.run_cli(int_id, { "-5" })
 check("int: negative with a leading dash", got[1] == -5)
 Action.run_cli(int_id, { "+7" })
 check("int: leading plus", got[1] == 7)
-for _, bad in ipairs({ "", "1.0", "1e3", "0x10", " 1", "1 ", "abc", "99999999999999999999", "--5", "٣" }) do
+Action.run_cli(int_id, { "1000000000000000" })
+check("int: sixteen digits within the safe range", got[1] == 1000000000000000)
+Action.run_cli(int_id, { "-999999999999999" })
+check("int: negative fifteen digits", got[1] == -999999999999999)
+Action.run_cli(int_id, { "0000000000000000007" })
+check("int: leading zeros", got[1] == 7)
+Action.run(int_id, 1000000000000000)
+check("int: run takes the same range", got[1] == 1000000000000000)
+Action.run_cli(int_id, { "9007199254740991" })
+check("int: the largest safe integer", got[1] == 9007199254740991)
+for _, bad in ipairs({
+	"",
+	"1.0",
+	"1e3",
+	"0x10",
+	" 1",
+	"1 ",
+	"abc",
+	"9007199254740992",
+	"99999999999999999999",
+	"--5",
+	"٣",
+}) do
 	check("int: rejects '" .. bad .. "'", has(raises(Action.run_cli, int_id, { bad }), "expects an int"))
 end
+check("int: run rejects 2^53", has(raises(Action.run, int_id, 2 ^ 53), "expects an int"))
 check("int: run rejects a float value", has(raises(Action.run, int_id, 1.5), "expects an int"))
 check("int: run rejects a string value", has(raises(Action.run, int_id, "3"), "expects an int"))
 Action.run(int_id, 3)
@@ -281,6 +289,29 @@ check(
 )
 check("enum: case matters", raises(Action.run_cli, enum_id, { "ON" }) ~= nil)
 check("enum: run rejects a non-member", has(raises(Action.run, enum_id, "maybe"), "expects one of"))
+
+-- A finite float too large for %d renders instead of raising.
+Action.define("big.float", {
+	label = "Big",
+	params = { { name = "x", type = "float" } },
+	run = Action.Cmd("echo", "{x}"),
+})
+local seen_exec = {}
+local keep_exec = Action.exec
+Action.exec = function(command)
+	seen_exec[#seen_exec + 1] = command
+end
+check("float: run renders 1e19", raises(Action.run, "big.float", 1e19) == nil and seen_exec[1] == "echo 1e+19")
+check(
+	"float: run_cli renders 1e19",
+	raises(Action.run_cli, "big.float", { "1e19" }) == nil and seen_exec[2] == "echo 1e+19"
+)
+check("float: run renders an integral float", raises(Action.run, "big.float", 3.0) == nil and seen_exec[3] == "echo 3")
+Action.exec = keep_exec
+
+-- NUL cuts a command line short in exec_cmd, so it is refused.
+check("NUL: run_cli refuses a word with NUL", has(raises(Action.run_cli, string_id, { "a\0b" }), "NUL"))
+check("NUL: run refuses a string value with NUL", has(raises(Action.run, string_id, "a\0b"), "NUL"))
 
 -- Counts and defaults.
 local two_id = define_probe({ { name = "a", type = "int" }, { name = "b", type = "int", default = 9 } })
@@ -410,18 +441,21 @@ check("render: Ipc placeholders are checked too", Action.define("say.bad2", {
 ---------------------------------------------------------------------------------------------------
 -- Every word is quoted for the shell. Prove it by running the produced command line through sh with a program
 -- that prints its argv NUL-separated, and comparing with what was passed in.
+local echo_count = 0
 local function argv_through_sh(words)
 	local quoted_cmd
 	local original_exec = Action.exec
 	Action.exec = function(command)
 		quoted_cmd = command
 	end
-	Action.define("hostile.echo" .. #Action.ids(), {
+	echo_count = echo_count + 1
+	local echo_id = "hostile.echo" .. echo_count
+	Action.define(echo_id, {
 		label = "Echo",
 		params = { { name = "w", type = "string" } },
 		run = Action.Cmd("printf", "%s\\0", "{w}"),
 	})
-	Action.run_cli("hostile.echo" .. (#Action.ids() - 1), words)
+	Action.run_cli(echo_id, words)
 	Action.exec = original_exec
 	local pipe = assert(io.popen(quoted_cmd, "r"))
 	local out = pipe:read("a")
@@ -436,6 +470,10 @@ local hostile = {
 	"a]]b",
 	"a]=]b",
 	"a]==]b",
+	"x]",
+	"]",
+	"x]=",
+	"x]==",
 	"line1\nline2",
 	"{w}",
 	"{param}",
@@ -477,7 +515,8 @@ end
 -- here, choosing a bracket level the word does not contain, and evaluate it.
 local function long_string(word)
 	local level = 0
-	while word:find("]" .. string.rep("=", level) .. "]", 1, true) do
+	-- The closer is searched in word.."]" because a trailing "]" would otherwise merge with the closing bracket.
+	while (word .. "]"):find("]" .. string.rep("=", level) .. "]", 1, true) do
 		level = level + 1
 	end
 	local equals = string.rep("=", level)
