@@ -106,7 +106,7 @@ Item {
         text: root.st.title_readout.replace("{code}", root.title.slice(0, 3))
         color: root.st.title_readout_fg.a > 0 ? root.st.title_readout_fg : root.st.text_muted
         font.family: root.st.font_family
-        font.pixelSize: root.st.fs(-5)
+        font.pixelSize: root.st.title_readout_size > 0 ? root.st.title_readout_size : root.st.fs(-5)
         font.letterSpacing: 1
     }
 

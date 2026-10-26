@@ -43,6 +43,7 @@ function overrides(t, ctx) {
         title_bg: "transparent",
         title_spacing: 2,
         title_readout: "OASIS WATCH v" + ctx.version,
+        title_readout_size: t.popup_font_size - 1,
         chip_brackets: false,
         marker_fill: false,
         bar_font_family: "Michroma",

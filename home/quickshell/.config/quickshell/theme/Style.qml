@@ -358,6 +358,7 @@ Singleton {
     readonly property real title_spacing: root.active.title_spacing
     readonly property string title_readout: root.active.title_readout
     readonly property color title_readout_fg: root.active.title_readout_fg
+    readonly property int title_readout_size: root.active.title_readout_size
     readonly property color title_rule: root.active.title_rule
     readonly property color frame_glow: root.active.frame_glow
     readonly property bool scanlines: root.active.scanlines
