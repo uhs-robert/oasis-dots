@@ -8,6 +8,11 @@ local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
 local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
 
+-- The actions the rows name.
+require("lib.actions.defs.launch")
+require("lib.actions.defs.pickers")
+require("lib.actions.defs.tools")
+
 local KEEP = { keep = true }
 
 Submap.define({
