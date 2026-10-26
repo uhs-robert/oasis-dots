@@ -303,11 +303,11 @@ pub enum InternalCommand {
     ChainStop(InternalArgs),
     /// The session as a bash integration's hooks reach it (begin, leave, end, end-all, state)
     Session(InternalArgs),
-    /// The click matcher on click-ocr's output (stdin); the target is in CLICK_TARGET. Deleted with the bash matcher (3.2)
+    /// The click matcher on click-ocr's output (stdin); the target is in CLICK_TARGET. Deleted with the bash matcher
     #[command(hide = true)]
     ClickMatch(ClickMatchArgs),
     /// Captures a window and prints its word boxes for click-match: `[--window <stableId>] [--explain]`, read by hand so
-    /// the usage line is click-ocr's. Deleted with the bash script (3.2)
+    /// the usage line is click-ocr's. Deleted with the bash script
     #[command(hide = true)]
     ClickOcr(InternalArgs),
     /// Clicks the candidate id (`x,y,button,left,top,width,height`, or `error:<why>` or `covered:`) as an action does:
