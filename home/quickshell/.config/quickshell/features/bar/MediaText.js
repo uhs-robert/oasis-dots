@@ -27,14 +27,19 @@ function lines(title, artist, show_title, show_artist, layout, identity) {
 
 // Pixel sizes of a stacked title and artist whose two text lines fit `inner` px. A line is taller than its pixel size
 // (`ratio` times it, measured from the font; `LINE` when unknown), so sizing by the pixel size alone let the block
-// overflow the plate. The title keeps up to `base` and the larger share; the artist is smaller and never
+// overflow the plate. QML rounds each Text's height up on its own, so the fit is checked on the per-line rounded heights,
+// not their unrounded sum. The title keeps up to `base` and the larger share; the artist is smaller and never
 // below 6 px, so an `inner` too small to fit both is the caller's to enlarge.
 const LINE = 1.3;
 function stacked_sizes(inner, base, ratio) {
     const room = Math.floor(inner / Math.max(1, ratio || LINE));
     const title = Math.max(6, Math.min(base, Math.ceil(room * 0.56)));
     const artist = Math.max(6, Math.min(base - 3, room - title));
-    return { title: title, artist: artist };
+    const line_ratio = Math.max(1, ratio || LINE);
+    const rounded_height = size => Math.ceil(size * line_ratio);
+    let fitted_title = title;
+    while (fitted_title > 6 && rounded_height(fitted_title) + rounded_height(artist) > inner) fitted_title--;
+    return { title: fitted_title, artist: artist };
 }
 
 function format_time(seconds) {
