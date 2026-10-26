@@ -62,16 +62,16 @@ function Direction.binds(actions, desc_prefix, mod, opts, desc_suffix, key_set)
   local function add(letter, arrow, action, dir)
     if key_set.arrows == false then
       -- Which-key lists the letter only when letters lead; with vim_mode off the arrows lead and are bound elsewhere.
-      local desc = Config.vim_mode and (desc_prefix .. " " .. dir .. s) or nil
+      local desc = Config.vim_mode and (desc_prefix .. " " .. dir .. s) or false
       rows[#rows + 1] = { p .. letter, action, desc, opts }
       return
     end
 
     local shown, hidden = Direction.keys(letter, arrow)
 
-    -- Hidden key omits desc so WhichKey skips it.
+    -- Hidden key has desc false, not nil: a row naming an action takes the action's label for nil, and WhichKey must skip it.
     rows[#rows + 1] = { p .. shown, action, desc_prefix .. " " .. dir .. s, opts }
-    rows[#rows + 1] = { p .. hidden, action, nil, opts }
+    rows[#rows + 1] = { p .. hidden, action, false, opts }
   end
 
   add(key_set.left, "LEFT", actions.left, "Left")

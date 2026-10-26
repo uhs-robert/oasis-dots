@@ -31,6 +31,12 @@ Act.define("window.close", {
   run = window("close"),
 })
 
+Act.define("window.kill", {
+  label = "Kill Window",
+  intent = "Kill the focused window's process so Restore Closed Window can bring it back.",
+  run = window("kill"),
+})
+
 Act.define("window.fullscreen", {
   label = "Toggle Fullscreen",
   intent = "Make the focused window fullscreen, or put it back.",
