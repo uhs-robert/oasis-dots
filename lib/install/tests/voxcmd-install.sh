@@ -61,6 +61,21 @@ PATH=$base_path
 check "without cargo it warns and succeeds" "[[ $status == 0 && $names_recipe == 1 ]]"
 check "and links nothing" "[[ ! -e '$HOME/.local/bin/voxcmd' && ! -L '$HOME/.local/bin/voxcmd' ]]"
 
+# The binary bakes in the checkout it was built from, which a linked worktree may outlive: skip the build there, like
+# `just voxcmd-build` refuses, and leave the install going.
+rm -f "$HOME/.local/bin/voxcmd" "$HOME/.local/bin/voxcmd-rs"
+git init -q -b main "$scratch/main_repo"
+git -C "$scratch/main_repo" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+git -C "$scratch/main_repo" worktree add -q "$scratch/linked" -b linked
+PATH=$scratch/stub:$base_path
+out=$(DOTFILES_DIR=$scratch/linked install_voxcmd 2>&1) && status=0 || status=$?
+[[ $out == *'linked worktree'* && $out == *'just voxcmd-build'* ]] && warned=1 || warned=0
+check "a linked worktree warns, names the main checkout recipe and succeeds" "[[ $status == 0 && $warned == 1 ]]"
+check "and builds and links nothing" "[[ ! -e '$HOME/.local/bin/voxcmd' && ! -L '$HOME/.local/bin/voxcmd' ]]"
+out=$(DOTFILES_DIR=$scratch/main_repo install_voxcmd 2>&1) && status=0 || status=$?
+check "the main checkout of a git repo still builds" "[[ $status == 0 && -L '$HOME/.local/bin/voxcmd' ]]"
+PATH=$base_path
+
 # The swap made the build the only thing that creates the voxcmd link, so a desktop install must call it.
 check "install.sh builds voxcmd on a desktop install" "grep -Eq '^ *if \\[\\[ \\\$OPT_SERVER -eq 0 \\]\\]; then install_voxcmd' '$repo_dir/install.sh'"
 
