@@ -120,11 +120,45 @@ local function first_exec(id)
 	return binds[1].action
 end
 Bind.djinn_bin = here .. "/no-such-runner"
-check("no runner: command binding", first_exec("screenshot.pixel") == "exec:~/.config/hypr/scripts/screenshot.sh --pixel")
+check(
+	"no runner: command binding",
+	first_exec("screenshot.pixel") == "exec:~/.config/hypr/scripts/screenshot.sh --pixel"
+)
 check("no runner: ipc binding", first_exec("zoom.toggle") == "exec:~/.config/hypr/scripts/qs-ipc call zoom toggle")
 check("no runner: multi-word argv", first_exec("voice.wake") == "exec:~/.local/bin/voxcmd wake toggle")
 Bind.djinn_bin = "/bin/sh"
 check("runner present again: djinn path", first_exec("zoom.toggle") == "exec:~/.local/bin/oasis-djinn zoom.toggle")
+
+-- The direct command quotes what the shell would otherwise interpret; only a leading `~/` is left to expand,
+-- as oasis-djinn does.
+local synthetic_dir = os.tmpname()
+os.remove(synthetic_dir)
+os.execute("mkdir -p '" .. synthetic_dir .. "/bindings'")
+local function write_synthetic(name, text)
+	local file = assert(io.open(synthetic_dir .. "/" .. name, "w"))
+	file:write(text)
+	file:close()
+end
+write_synthetic(
+	"actions.json",
+	'{"actions":[{"id":"quote.test","label":"Quote","intent":"x","params":[],'
+		.. '"key":{"key":"Q","leader":true,"universal":false},"extra_keys":[]}]}'
+)
+write_synthetic(
+	"bindings/quickshell.json",
+	'{"bindings":{"quote.test":{"kind":"command","argv":["~/bin/run","two words","it\'s","$(id)","~","~user","a~b"]}}}'
+)
+local saved_dir = Bind.manifest_dir
+Bind.manifest_dir = synthetic_dir
+Bind.djinn_bin = here .. "/no-such-runner"
+check(
+	"quoting: spaces, quote, substitution and bare tilde words are quoted",
+	first_exec("quote.test") == "exec:~/bin/run 'two words' 'it'\\''s' '$(id)' '~' '~user' 'a~b'"
+)
+Bind.manifest_dir = saved_dir
+Bind.djinn_bin = "/bin/sh"
+Bind.reload_manifest()
+os.execute("rm -rf '" .. synthetic_dir .. "'")
 
 -- Every id tools.lua binds is in the manifest, with or without the runner.
 local tools = assert(io.open(hypr_dir .. "/keymaps/global/tools.lua")):read("a")
