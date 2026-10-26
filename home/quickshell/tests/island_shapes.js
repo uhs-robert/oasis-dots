@@ -404,6 +404,12 @@ expect(tail_of(44) === 44 && tail_of(44, 0.5) === 22, "a free room of 44 gives a
 // Room that cannot hold a bar (under the gap and margin) gives no tail, not an empty one.
 expect(tail_of(least - 1) === 0 && tail_of(least) === 0 && tail_of(least + 1) === least + 1, "tails at least-1, least and least+1 are " + tail_of(least - 1) + ", " + tail_of(least) + " and " + tail_of(least + 1) + ", want 0, 0 and " + (least + 1));
 expect(T.tail_target(true, wanted, -40, least) === 0, "a negative free room gives a tail");
+// The bars stay inside the plate while it fades: at every fade the bars, their gap before and the margin after fit in the tail.
+for (const fade of [0, 0.1, 0.25, 0.5, 0.9, 1]) {
+  const span = tail_of(roomy, fade), bars = T.bars_length(span, 6, 6);
+  expect(bars >= 0 && (bars === 0 || bars + 12 === span), "bars of " + bars + " in a tail of " + span + " at fade " + fade + " do not fit it");
+}
+expect(/CavaTail\.bars_length\(center_cava\.tail_span,/.test(read("features/bar/Bar.qml")) && /module_span \+ center_cava\.tail_span - center_cava\.along_margin/.test(read("features/bar/Bar.qml")), "the cava bars are sized from the full tail, not the fading one");
 expect(tail_of(roomy, 0.5) === wanted / 2, "the tail does not follow the bars' fade");
 // A centre popup beside the bar lines up with the modules, so the cava tail must not move it: with a tail the island is
 // taller by the tail, and the popup's extent takes that back out.
