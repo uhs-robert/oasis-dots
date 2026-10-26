@@ -366,6 +366,117 @@ FAKE_TIMER_FAIL=1 rsx main rs-swap 5 >/dev/null
 check "the swap is undone" "[[ \$? != 0 ]] && link_is '$stow_target' && [[ ! -e $bars_dir/.voxcmd_rs ]]"
 
 echo "== voxtype swap and restore"
+# A fork that deleted the bash voxcmd: the swap builds the crate in the bar (stub cargo) and links the built binary.
+echo "== rust-only voxcmd test build"
+rr_repo=$root/rr_repo
+rr_home=$root/rr_home
+rr_stubs=$root/rr_stubs
+rr_calls=$root/rr_calls
+rr_dir=$bars_dir/rustbar
+rr_main_bin=$rr_repo/home/voxcmd/.local/bin/voxcmd
+mkdir -p "$rr_stubs" "$rr_home/.local/bin" "$rr_home/.config" "$rr_repo/home/voxcmd/.local/bin" \
+  "$rr_repo/home/voxcmd/.config/voxcmd" "$rr_repo/.claude/skills/owner-test-bar"
+git init -q -b main "$rr_repo"
+rg() { git -C "$rr_repo" -c user.name=t -c user.email=t@t "$@"; }
+# shellcheck disable=SC2016 # the stub's own variables
+printf '#!/usr/bin/env bash\necho "bash voxcmd $*" >>"%s"\necho "result: bash"\n' "$rr_calls" >"$rr_main_bin"
+chmod +x "$rr_main_bin"
+echo main >"$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm"
+echo main >"$rr_repo/home/voxcmd/.config/voxcmd/keybinds.sh"
+ln -s "$here/../owner-test-bar.sh" "$rr_repo/.claude/skills/owner-test-bar/owner-test-bar.sh"
+rg add -A
+rg commit -q -m main
+rg update-ref refs/remotes/origin/main HEAD
+rg switch -q -c rust
+rg rm -q home/voxcmd/.local/bin/voxcmd
+mkdir -p "$rr_repo/home/voxcmd/src"
+echo '[package]' >"$rr_repo/home/voxcmd/Cargo.toml"
+echo rust >"$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm"
+rg add -A
+rg commit -q -m rust
+rg switch -q main
+rg worktree add -q --detach "$rr_dir" rust
+stow -d "$rr_repo/home" -t "$rr_home" voxcmd
+cat >"$rr_stubs/cargo" <<STUB
+#!/usr/bin/env bash
+echo "cargo \$* hash=\${VOXCMD_GIT_HASH:-}" >>"$rr_calls"
+[[ -z \${FAKE_CARGO_FAIL:-} ]] || { echo "error: could not compile" >&2; exit 101; }
+all_args="\$*"
+manifest_dir=\${all_args#*--manifest-path }
+manifest_dir=\$(dirname "\${manifest_dir%% *}")
+# Never write outside the test's temp dir, whatever the arguments were.
+[[ \$manifest_dir == "$root"/* ]] || { echo "stub cargo: refusing \$manifest_dir" >&2; exit 1; }
+mkdir -p "\$manifest_dir/target/release"
+{
+  echo '#!/usr/bin/env bash'
+  echo 'echo "rust voxcmd \$*" >>"$rr_calls"'
+  echo 'echo "result: rust"'
+} >"\$manifest_dir/target/release/voxcmd"
+chmod +x "\$manifest_dir/target/release/voxcmd"
+STUB
+chmod +x "$rr_stubs/cargo"
+# rrx <function> <args>...: the sourced script against the fake repo and HOME; the stubs go first on PATH.
+rrx() {
+  PATH="$rr_stubs:$PATH" HOME=$rr_home XDG_RUNTIME_DIR=$root/rr_run bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ \
+    "$rr_repo/.claude/skills/owner-test-bar/owner-test-bar.sh" "$rr_repo" "$@" 2>&1
+}
+# The swap command with the desktop-touching steps stubbed to log, so the order against the build is visible.
+# shellcheck disable=SC2016
+rr_swap_cmd() {
+  PATH="$rr_stubs:$PATH" HOME=$rr_home XDG_RUNTIME_DIR=$root/rr_run bash -c 'source "$1"; repo=$2; shift 2
+    require_unlocked() { :; }; launch() { :; }; verify() { :; }; guard_owner() { :; }; guard_live_bar() { :; }
+    djinn_swap() { echo "djinn_swap" >>"$RR_CALLS"; }; hypr_swap() { echo "hypr_swap" >>"$RR_CALLS"; }
+    voxtype_swap() { :; }; main swap rustbar' _ "$rr_repo/.claude/skills/owner-test-bar/owner-test-bar.sh" "$rr_repo" 2>&1
+}
+rr_link_is() { [[ $(readlink -m "$rr_home/.local/bin/$1") == "$2" ]]; }
+export RR_CALLS=$rr_calls
+echo rustbar >"$bars_dir/rustbar.branches"
+
+rm -f "$rr_calls"
+out=$(FAKE_CARGO_FAIL=1 rr_swap_cmd)
+code=$?
+show "$out"
+check "a failed build dies, says nothing was swapped, and leaves main linked" "[[ $code != 0 ]] && grep -q 'cargo build fails' <<<\"\$out\" && rr_link_is voxcmd '$rr_main_bin' && [[ ! -e $bars_dir/.voxcmd_bar && ! -e $bars_dir/.hypr_bar ]]"
+check "the failed build ran before Hyprland and the manifest were touched" "! grep -q '_swap' '$rr_calls'"
+check "the failed build leaves the voxcmd status on main" "[[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
+
+# A failed build must not leave a claim for a bar that was never swapped in.
+check "a failed build leaves no owner claim" "[[ ! -e $bars_dir/.owner ]]"
+
+# A regular file at the link slot is never clobbered.
+mv "$rr_home/.local/bin/voxcmd" "$root/voxcmd_aside"
+echo "user file" >"$rr_home/.local/bin/voxcmd"
+rm -f "$rr_calls"
+out=$(rr_swap_cmd)
+code=$?
+check "a regular file at the voxcmd link slot is refused before the build, and kept" "[[ $code != 0 ]] && grep -q 'not a symlink' <<<\"\$out\" && [[ -f $rr_home/.local/bin/voxcmd && ! -L $rr_home/.local/bin/voxcmd && \$(<$rr_home/.local/bin/voxcmd) == 'user file' ]] && ! grep -q '^cargo' '$rr_calls' 2>/dev/null"
+rm "$rr_home/.local/bin/voxcmd"
+mv "$root/voxcmd_aside" "$rr_home/.local/bin/voxcmd"
+
+rm -f "$rr_calls"
+out=$(rr_swap_cmd)
+code=$?
+show "$out"
+check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml hash=.+' '$rr_calls'"
+check "the build runs before the Hyprland and manifest swap" "[[ \$(grep -n '^cargo' '$rr_calls' | head -1 | cut -d: -f1) -lt \$(grep -n '_swap' '$rr_calls' | head -1 | cut -d: -f1) ]]"
+check "voxcmd links into the bar's built binary" "rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd'"
+check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-alarm '$rr_dir/home/voxcmd/.local/bin/voxcmd-alarm' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"
+check "status reads test build" "[[ \$(rrx voxcmd_status) == 'voxcmd: test build rustbar' ]]"
+
+rm -f "$rr_calls"
+out=$(rrx try_phrases "go home")
+code=$?
+show "$out"
+check "try runs explain on a Rust test build and reads its result" "[[ $code == 0 ]] && grep -q 'rust voxcmd explain go home' '$rr_calls' && ! grep -q -- '--dry-run' '$rr_calls' && grep -q '\"go home\": rust' <<<\"\$out\""
+
+out=$(rrx voxcmd_restore)
+code=$?
+check "restore restows main's bash voxcmd" "[[ $code == 0 ]] && rr_link_is voxcmd '$rr_main_bin' && rr_link_is voxcmd-alarm '$rr_repo/home/voxcmd/.local/bin/voxcmd-alarm' && [[ ! -e $bars_dir/.voxcmd_bar ]] && [[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
+rm -f "$rr_calls"
+out=$(rrx try_phrases "go home")
+check "try keeps --dry-run for the bash voxcmd" "grep -q 'bash voxcmd --dry-run go home' '$rr_calls' && ! grep -q 'explain' '$rr_calls'"
+rm -f "$bars_dir/.owner" "$bars_dir/rustbar.branches"
+
 # A throwaway HOME and git repo with a stowed voxtype and systemd package; the real stow runs, and systemctl is a fake that
 # logs every call in order next to the stow calls, so the lifecycle order is checked. Nothing here reaches the user manager.
 vt_repo=$root/vt_repo

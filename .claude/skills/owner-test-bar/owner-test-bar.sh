@@ -406,9 +406,42 @@ require_no_rs_swap() {
   fi
 }
 
+voxcmd_changed() {
+  [[ -n $(git -C "$1" diff --name-only origin/main...HEAD -- "$voxcmd_rel") ]]
+}
+
+# A branch that deleted the bash entry point runs the crate's binary instead, built in the bar.
+voxcmd_is_rust_build() {
+  [[ ! -e $1/$voxcmd_rel/.local/bin/voxcmd ]]
+}
+
+voxcmd_rust_bin() {
+  echo "$1/$voxcmd_rel/target/release/voxcmd"
+}
+
+# The bash build's own loop never sees the Rust link, since the branch has no script of that name.
+voxcmd_require_link_slot() {
+  [[ ! -e $voxcmd_bin_dir/voxcmd || -L $voxcmd_bin_dir/voxcmd ]] || die "$voxcmd_bin_dir/voxcmd is not a symlink; refusing the voxcmd swap"
+}
+
+# Run by `swap` before anything moves: a compile error must leave the desktop on main, and a build can take minutes.
+voxcmd_build_rust() {
+  local dir=$1 hash
+  voxcmd_changed "$dir" && voxcmd_is_rust_build "$dir" || return 0
+  voxcmd_require_link_slot
+  command -v cargo >/dev/null || die "cargo is not installed; cannot build the Rust voxcmd in $dir"
+  hash=$(git -C "$dir" describe --always --dirty --abbrev=9 --exclude='*')
+  echo "voxcmd: building the Rust crate in $dir"
+  VOXCMD_GIT_HASH=$hash cargo build --release --locked --manifest-path "$dir/$voxcmd_rel/Cargo.toml" >"$dir.cargo.log" 2>&1 || {
+    tail -n 25 "$dir.cargo.log" >&2
+    die "cargo build fails in $dir (full output $dir.cargo.log); nothing was swapped"
+  }
+  rm -f "$dir.cargo.log"
+}
+
 voxcmd_swap() {
   local name=$1 dir=$2
-  if [[ -z $(git -C "$dir" diff --name-only origin/main...HEAD -- "$voxcmd_rel") ]]; then
+  if ! voxcmd_changed "$dir"; then
     voxcmd_restore
     return 0
   fi
@@ -420,6 +453,7 @@ voxcmd_swap() {
     target=$voxcmd_bin_dir/${file##*/}
     [[ ! -e $target || -L $target ]] || die "$target is not a symlink; refusing the voxcmd swap"
   done
+  if voxcmd_is_rust_build "$dir"; then voxcmd_require_link_slot; fi
   voxcmd_link_private "$config"
   # Recorded before any link moves, so restore knows to restow even if this stops halfway.
   echo "$name" >"$voxcmd_bar"
@@ -437,6 +471,7 @@ voxcmd_swap() {
   for file in "$bin"/*; do
     ln -sfn "$file" "$voxcmd_bin_dir/${file##*/}"
   done
+  if voxcmd_is_rust_build "$dir"; then ln -sfn "$(voxcmd_rust_bin "$dir")" "$voxcmd_bin_dir/voxcmd"; fi
   ln -sfn "$config" "$voxcmd_config_link"
   echo "voxcmd: test build $name"
   voxcmd_debug_start
@@ -702,6 +737,9 @@ voxcmd_fully_linked() {
   for file in "$voxcmd/.local/bin"/*; do
     [[ $(readlink -m "$voxcmd_bin_dir/${file##*/}") == "$file" ]] || return 1
   done
+  if voxcmd_is_rust_build "$bars/$1"; then
+    [[ $(readlink -m "$voxcmd_bin_dir/voxcmd") == "$(voxcmd_rust_bin "$bars/$1")" ]] || return 1
+  fi
 }
 
 # Minutes until the rs swap's timer fires, rounded up; 0 or less once it is due.
@@ -738,11 +776,15 @@ voxcmd_status() {
 # Dry-runs each phrase with the live voxcmd, so a phrase is checked before the owner is told to say it.
 try_phrases() {
   (($# > 0)) || die "usage: owner-test-bar.sh try <phrase>..."
-  local live voxcmd phrase output result option status=0
+  local live voxcmd phrase output result option status=0 rust=0
   live=$(voxcmd_status)
   if [[ $live == "voxcmd: test build "* ]]; then
     live=${live#"voxcmd: test build "}
     voxcmd=$bars/$live/$voxcmd_rel/.local/bin/voxcmd
+    if voxcmd_is_rust_build "$bars/$live"; then
+      rust=1
+      voxcmd=$(voxcmd_rust_bin "$bars/$live")
+    fi
     echo "try: test build $live"
     # The swap links ~/.config/voxcmd to this build's copy; set explicitly so the dry run does not depend on that link.
     export VOXCMD_CONFIG_DIR=$bars/$live/$voxcmd_rel/.config/voxcmd
@@ -753,9 +795,12 @@ try_phrases() {
   else
     voxcmd=$voxcmd_bin_dir/voxcmd
     echo "try: no voxcmd test bar is live, using the main install"
+    # The bash script starts with a shebang; the Rust binary does not.
+    if [[ -e $voxcmd && $(head -c2 "$voxcmd") != "#!" ]]; then rust=1; fi
   fi
   for phrase in "$@"; do
-    output=$("$voxcmd" --dry-run "$phrase" 2>&1) || true
+    # `explain` prints the same result: and option lines without acting; the bash script has no `explain`.
+    if ((rust)); then output=$("$voxcmd" explain "$phrase" 2>&1) || true; else output=$("$voxcmd" --dry-run "$phrase" 2>&1) || true; fi
     result=$(sed -n 's/^result: *//p' <<<"$output" | paste -sd ';')
     option=$(sed -n '0,/^option 1:/s/^option 1: *\(.*\) (.*/\1/p' <<<"$output")
     echo "\"$phrase\": ${result:-no result (voxcmd failed)}${option:+ -> $option}"
@@ -951,6 +996,8 @@ main() {
     guard_owner "$take"
     guard_live_bar "$2" "$replace"
     mapfile -t branches < <(cat "$dir.branches" 2>/dev/null)
+    # Before the claim is recorded: a failed build must not leave a claim for a bar that was never swapped in.
+    voxcmd_build_rust "$dir"
     record_owner "$2" "${branches[@]}"
     require_unlocked
     djinn_swap "$2" "$dir"
@@ -1026,7 +1073,7 @@ main() {
     fi
     git -C "$repo" worktree remove --force "$dir"
     git -C "$repo" worktree prune
-    rm -f "$dir.branches" "$dir.check.log"
+    rm -f "$dir.branches" "$dir.check.log" "$dir.cargo.log"
     if [[ -f $owner_file && $(owner_field bar) == "$2" ]]; then rm -f "$owner_file"; fi
     echo "owner-test-bar: removed $dir"
     ;;
