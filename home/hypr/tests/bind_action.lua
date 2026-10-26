@@ -1,11 +1,27 @@
 -- Runs lib/key/bind.lua against a stubbed `hl` and the real action manifest: Bind.action registers an action's
--- key, extra keys and label from the manifest, honours overrides, warns and skips an unknown id, and its binds
--- can be removed with Bind.unbind.
+-- key, extra keys and label from the manifest, honours overrides, performs `lua` actions in-process, passes
+-- opts.args on, warns and skips an unknown id or performer, and its binds can be removed with Bind.unbind.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local hypr_dir = here .. "/../.config/hypr"
 package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.path
 
 package.loaded["config"] = { leader = "SUPER" }
+
+-- The real performers.lua loads over this: each picker records that it ran instead of opening a menu.
+local menu_calls = {}
+local function recorder(name)
+	return function()
+		return function()
+			menu_calls[#menu_calls + 1] = name
+		end
+	end
+end
+package.loaded["lib.actions.menu"] = {
+	clipboard = recorder("clipboard"),
+	clipboard_delete = recorder("clipboard_delete"),
+	zoxide = recorder("zoxide"),
+	emoji = recorder("emoji"),
+}
 
 local binds, removed, timers, notices = {}, {}, {}, {}
 _G.hl = {
@@ -211,6 +227,169 @@ for id in tools:gmatch('Bind%.action%("([^"]+)"') do
 end
 Bind.djinn_bin = "/bin/sh"
 Bind.reload_manifest()
+
+-- A lua action is a function bind: no process hop, so a repeating key stays fast. The tools.lua pickers run their
+-- Menu closure in-process.
+reset()
+menu_calls = {}
+Bind.warnings = {}
+Bind.action("picker.clipboard")
+local clip = find("SUPER + CTRL + V")
+check("lua: bind registered", clip ~= nil and #binds == 1 and #Bind.warnings == 0)
+check("lua: in-process function, not exec", clip and type(clip.action) == "function")
+check("lua: label from manifest", clip and clip.opts.desc == "Clipboard History")
+if clip and type(clip.action) == "function" then
+	clip.action()
+end
+check("lua: calls the performer", menu_calls[1] == "clipboard")
+check("lua: id recorded for the dump", clip and (Bind.action_ids or {})[clip] == "picker.clipboard")
+
+-- The same holds without the runner: a lua action never goes through oasis-djinn.
+Bind.djinn_bin = here .. "/no-such-runner"
+Bind.reload_manifest()
+reset()
+Bind.action("picker.emoji")
+check("lua without runner: function bind", binds[1] and type(binds[1].action) == "function")
+Bind.djinn_bin = "/bin/sh"
+Bind.reload_manifest()
+
+-- A plain Bind.key records no action id.
+reset()
+Bind.key("SUPER + F1", "exec:x", "Plain")
+check("plain bind: no action id", binds[1] and (Bind.action_ids or {})[binds[1]] == nil)
+reset()
+Bind.action("zoom.toggle")
+check("runner bind: id recorded", binds[1] and (Bind.action_ids or {})[binds[1]] == "zoom.toggle")
+
+-- opts.args reach the runner as extra words, shell-quoted, and never reach hl.bind's opts.
+reset()
+Bind.action("zoom.toggle", { args = { "two words", 3 } })
+check(
+	"args: appended to the runner command",
+	binds[1] and binds[1].action == "exec:~/.local/bin/oasis-djinn zoom.toggle 'two words' 3"
+)
+check("args: not leaked into bind opts", binds[1] and binds[1].opts.args == nil)
+
+-- Synthetic manifest: a lua action with params, a lua action performers.lua lacks, and a command with a param.
+local lua_dir = os.tmpname()
+os.remove(lua_dir)
+os.execute("mkdir -p '" .. lua_dir .. "/bindings'")
+local function write_lua_fixture(name, text)
+	local file = assert(io.open(lua_dir .. "/" .. name, "w"))
+	file:write(text)
+	file:close()
+end
+local function action_json(id, key, params)
+	return '{"id":"'
+		.. id
+		.. '","label":"'
+		.. id
+		.. '","intent":"x","params":'
+		.. params
+		.. ',"key":{"key":"'
+		.. key
+		.. '","leader":false,"universal":false},"extra_keys":[]}'
+end
+write_lua_fixture(
+	"actions.json",
+	'{"actions":['
+		.. action_json("t.lua", "F2", '[{"name":"n","type":"int"},{"name":"s","type":"string"}]')
+		.. ","
+		.. action_json("t.lost", "F3", "[]")
+		.. ","
+		.. action_json("t.after", "F4", "[]")
+		.. ","
+		.. action_json("t.cmd", "F5", '[{"name":"n","type":"int"},{"name":"m","type":"string","default":"d"}]')
+		.. ',{"id":"t.keyless","label":"Keyless","intent":"x","params":[],"extra_keys":[]}'
+		.. "]}"
+)
+write_lua_fixture(
+	"bindings/quickshell.json",
+	'{"bindings":{"t.cmd":{"kind":"command","argv":["~/bin/run","{n}","{m}"]}}}'
+)
+write_lua_fixture(
+	"bindings/hyprland.json",
+	'{"bindings":{"t.lua":{"kind":"lua"},"t.lost":{"kind":"lua"},"t.after":{"kind":"lua"},"t.keyless":{"kind":"lua"}}}'
+)
+local real_performers = package.loaded["lib.actions.performers"]
+local performed = {}
+package.loaded["lib.actions.performers"] = {
+	get = function(id)
+		if id == "t.lost" then
+			return nil
+		end
+		return function(...)
+			performed[#performed + 1] = { id = id, args = { ... } }
+		end
+	end,
+}
+Bind.manifest_dir = lua_dir
+Bind.reload_manifest()
+
+reset()
+Bind.warnings = {}
+ok = pcall(function()
+	Bind.action("t.lua", { args = { 7, "x" } })
+	Bind.action("t.lost")
+	Bind.action("t.after")
+end)
+check("missing performer does not raise", ok)
+check("missing performer: neighbours still bind", find("F2") ~= nil and find("F4") ~= nil and find("F3") == nil)
+check("missing performer: warning names it", #Bind.warnings == 1 and Bind.warnings[1]:find("t.lost", 1, true) ~= nil)
+local lua_bind = find("F2")
+if lua_bind and type(lua_bind.action) == "function" then
+	lua_bind.action()
+end
+check(
+	"lua args: performer gets opts.args in order",
+	performed[1] and performed[1].id == "t.lua" and performed[1].args[1] == 7 and performed[1].args[2] == "x"
+)
+
+-- An action with no key binds only where opts.key gives one.
+reset()
+Bind.warnings = {}
+ok = pcall(Bind.action, "t.keyless")
+check("keyless: no bind and a warning, no error", ok and #binds == 0 and #Bind.warnings == 1)
+reset()
+Bind.action("t.keyless", { key = "F6" })
+check("keyless: opts.key binds it", find("F6") ~= nil and #binds == 1)
+
+-- Without the runner a command binding's {param} words are filled from opts.args, then the defaults.
+Bind.djinn_bin = here .. "/no-such-runner"
+Bind.reload_manifest()
+reset()
+Bind.action("t.cmd", { args = { 5 } })
+check("direct args: placeholders filled", binds[1] and binds[1].action == "exec:~/bin/run 5 d")
+reset()
+Bind.warnings = {}
+Bind.action("t.cmd")
+check("direct args: a missing required param warns and skips", #binds == 0 and #Bind.warnings == 1)
+Bind.djinn_bin = "/bin/sh"
+
+-- performers.lua failing to load warns and skips its binds; it does not abort the keymap file.
+package.loaded["lib.actions.performers"] = nil
+package.preload["lib.actions.performers"] = function()
+	error("performers broke")
+end
+Bind.reload_manifest()
+reset()
+Bind.warnings = {}
+ok = pcall(function()
+	Bind.action("t.lua")
+	Bind.action("t.cmd", { args = { 1 } })
+end)
+check("broken performers module does not raise", ok)
+check("broken performers module: other kinds still bind", find("F5") ~= nil and find("F2") == nil)
+check(
+	"broken performers module: warning says why",
+	Bind.warnings[1] ~= nil and Bind.warnings[1]:find("performers broke", 1, true) ~= nil
+)
+package.preload["lib.actions.performers"] = nil
+package.loaded["lib.actions.performers"] = real_performers
+
+Bind.manifest_dir = here .. "/../../oasis-djinn/.config/oasis-djinn"
+Bind.reload_manifest()
+os.execute("rm -rf '" .. lua_dir .. "'")
 
 -- Bind.unbind removes what Bind.action registered, extras included.
 -- A fresh module, so handles from the checks above are not counted.

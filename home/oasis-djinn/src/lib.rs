@@ -56,7 +56,8 @@ struct ActionFile {
     actions: Vec<Action>,
 }
 
-/// How the bar performs an action: a typed IpcHandler function through qs-ipc, or a program for what has none.
+/// How a tool performs an action: a typed IpcHandler function through qs-ipc, a program for what has no IPC
+/// function, or a function of hypr's `lib/actions/performers.lua` run inside Hyprland through `hyprctl eval`.
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 enum Binding {
@@ -68,12 +69,23 @@ enum Binding {
     Command {
         argv: Vec<String>,
     },
+    Lua,
 }
 
 #[derive(Debug, Deserialize)]
 struct BindingFile {
     bindings: HashMap<String, Binding>,
 }
+
+/// The programs a plan names, so tests can stand in for them.
+pub struct Tools<'a> {
+    pub qs_ipc: &'a Path,
+    pub hyprctl: &'a Path,
+    pub home: &'a Path,
+}
+
+/// The module whose `run(id, ...)` performs every `lua` binding.
+const PERFORMERS: &str = "lib.actions.performers";
 
 #[derive(Debug)]
 pub struct Manifest {
@@ -102,12 +114,33 @@ fn read<T: for<'a> Deserialize<'a>>(path: &Path) -> Result<T, ActionError> {
 }
 
 impl Manifest {
+    /// Reads `actions.json` and every `bindings/*.json`. An id bound in two files fails the whole load, as an
+    /// unreadable file does: which tool should perform it is a manifest error, not a choice to make at run time.
     pub fn load(dir: &Path) -> Result<Manifest, ActionError> {
         let actions: ActionFile = read(&dir.join("actions.json"))?;
-        let bindings: BindingFile = read(&dir.join("bindings/quickshell.json"))?;
+        let binding_dir = dir.join("bindings");
+        let listing = std::fs::read_dir(&binding_dir)
+            .map_err(|error| ActionError(format!("cannot read {}: {error}", binding_dir.display())))?;
+        let mut files: Vec<PathBuf> = listing
+            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+            .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
+            .collect();
+        files.sort();
+        let mut bindings = HashMap::new();
+        let mut bound_in: HashMap<String, String> = HashMap::new();
+        for file in files {
+            let name = format!("bindings/{}", file.file_name().unwrap_or_default().to_string_lossy());
+            let parsed: BindingFile = read(&file)?;
+            for (id, binding) in parsed.bindings {
+                if let Some(first) = bound_in.insert(id.clone(), name.clone()) {
+                    return fail(format!("{id} is bound in both {first} and {name}"));
+                }
+                bindings.insert(id, binding);
+            }
+        }
         Ok(Manifest {
             actions: actions.actions,
-            bindings: bindings.bindings,
+            bindings,
         })
     }
 
@@ -120,18 +153,30 @@ impl Manifest {
 
     /// The program and arguments that perform `id` with the given command-line words. Nothing runs: an unknown id,
     /// a missing binding or a bad param is an error here, so the caller never half-performs a request.
-    pub fn plan(&self, id: &str, words: &[String], qs_ipc: &Path, home: &Path) -> Result<Vec<String>, ActionError> {
+    pub fn plan(&self, id: &str, words: &[String], tools: &Tools) -> Result<Vec<String>, ActionError> {
         let Some(action) = self.actions.iter().find(|action| action.id == id) else {
             return fail(format!("unknown action '{id}' (known: {})", self.ids().join(", ")));
         };
         let Some(binding) = self.bindings.get(id) else {
-            return fail(format!("{id} has no quickshell binding"));
+            return fail(format!("{id} has no binding"));
         };
         let values = bind_params(action, words)?;
         let argv: Vec<String> = match binding {
+            Binding::Lua => {
+                // Each param is already canonical for its type (bind_params), so numbers and bools go in bare.
+                let mut call = vec![lua_string(id)];
+                for (param, (_, text)) in action.params.iter().zip(&values) {
+                    call.push(match param.kind {
+                        ParamKind::String | ParamKind::Enum => lua_string(text),
+                        ParamKind::Int | ParamKind::Float | ParamKind::Bool => text.clone(),
+                    });
+                }
+                let code = format!("require({}).run({})", lua_string(PERFORMERS), call.join(", "));
+                return Ok(vec![tools.hyprctl.to_string_lossy().into_owned(), "eval".into(), code]);
+            }
             Binding::Ipc { target, function, args } => {
                 let mut argv = vec![
-                    qs_ipc.to_string_lossy().into_owned(),
+                    tools.qs_ipc.to_string_lossy().into_owned(),
                     "call".into(),
                     target.clone(),
                     function.clone(),
@@ -143,7 +188,7 @@ impl Manifest {
         };
         Ok(argv
             .iter()
-            .map(|word| expand_home(&render(word, &values), home))
+            .map(|word| expand_home(&render(word, &values), tools.home))
             .collect())
     }
 }
@@ -256,6 +301,21 @@ fn render(word: &str, values: &[(String, String)]) -> String {
         }
     }
     out.push_str(rest);
+    out
+}
+
+/// A double-quoted Lua string holding exactly `text`. Every byte outside a small plain set becomes a three-digit
+/// decimal escape, so no quote, backslash, bracket or newline in a CLI word can end the literal.
+fn lua_string(text: &str) -> String {
+    let mut out = String::from("\"");
+    for byte in text.bytes() {
+        if byte.is_ascii_alphanumeric() || b" _.,:/+=@-".contains(&byte) {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("\\{byte:03}"));
+        }
+    }
+    out.push('"');
     out
 }
 

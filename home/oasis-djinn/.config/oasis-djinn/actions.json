@@ -111,6 +111,54 @@
       "params": [],
       "key": {"key": "ALT + GRAVE", "leader": false, "universal": false},
       "extra_keys": []
+    },
+    {
+      "id": "picker.clipboard",
+      "label": "Clipboard History",
+      "intent": "Pick a clipboard history entry and copy it back.",
+      "params": [],
+      "key": {"key": "CTRL + V", "leader": true, "universal": false},
+      "extra_keys": []
+    },
+    {
+      "id": "picker.clipboard_delete",
+      "label": "Delete Clipboard Entry",
+      "intent": "Pick a clipboard history entry and delete it.",
+      "params": [],
+      "key": {"key": "CTRL + SHIFT + V", "leader": true, "universal": false},
+      "extra_keys": []
+    },
+    {
+      "id": "picker.directory",
+      "label": "Jump to Directory",
+      "intent": "Pick a zoxide directory and open it in the file manager.",
+      "params": [],
+      "key": {"key": "CTRL + SPACE", "leader": true, "universal": false},
+      "extra_keys": []
+    },
+    {
+      "id": "picker.emoji",
+      "label": "Emoji Picker",
+      "intent": "Pick a character and type it into the focused window.",
+      "params": [],
+      "key": {"key": "CTRL + E", "leader": true, "universal": false},
+      "extra_keys": []
+    },
+    {
+      "id": "hyprvim.terminal",
+      "label": "HyprVim Terminal",
+      "intent": "Open the HyprVim command prompt.",
+      "params": [],
+      "key": {"key": "SHIFT + SEMICOLON", "leader": true, "universal": false},
+      "extra_keys": []
+    },
+    {
+      "id": "hyprvim.jump_mark",
+      "label": "Jump to Mark",
+      "intent": "Jump to a HyprVim window mark.",
+      "params": [],
+      "key": {"key": "APOSTROPHE", "leader": true, "universal": false},
+      "extra_keys": []
     }
   ]
 }

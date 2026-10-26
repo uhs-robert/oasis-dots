@@ -27,10 +27,13 @@ GOOD_BINDINGS = {"bindings": {
     "zoom.toggle": {"kind": "ipc", "target": "zoom", "function": "toggle", "args": []},
     "shot.take": {"kind": "command", "argv": ["~/.config/hypr/scripts/shot.sh", "--{mode}"]},
 }}
+LUA_ACTION = {"id": "window.close", "label": "Close", "intent": "Close it.", "params": [], "extra_keys": []}
+NO_PERFORMERS = "local by_id = {}\nreturn by_id\n"
+PERFORMERS_LUA = 'local by_id = {\n  ["window.close"] = function() end,\n}\nreturn by_id\n'
 
 
 class RegistryCase(TreeCase):
-    def check(self, actions=GOOD_ACTIONS, bindings=GOOD_BINDINGS, extra=None):
+    def check(self, actions=GOOD_ACTIONS, bindings=GOOD_BINDINGS, extra=None, hyprland=None):
         for name in os.listdir(self.root):
             full = os.path.join(self.root, name)
             shutil.rmtree(full) if os.path.isdir(full) else os.remove(full)
@@ -42,6 +45,8 @@ class RegistryCase(TreeCase):
             f"{DIR}/bindings/quickshell.json": json.dumps(bindings),
             "qs/Zoom.qml": ZOOM_QML,
             "home/hypr/.config/hypr/scripts/shot.sh": "#!/bin/sh\n",
+            registry.PERFORMERS: NO_PERFORMERS,
+            **({f"{DIR}/bindings/hyprland.json": json.dumps(hyprland)} if hyprland is not None else {}),
             **(extra or {}),
         })
         subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
@@ -52,6 +57,13 @@ class RegistryCase(TreeCase):
         actions, bindings = copy.deepcopy(GOOD_ACTIONS), copy.deepcopy(GOOD_BINDINGS)
         mutate(actions["actions"], bindings["bindings"])
         return self.check(actions, bindings)
+
+    def with_lua(self, hyprland=None, performers=PERFORMERS_LUA, quickshell=GOOD_BINDINGS):
+        """The findings for the good manifest plus a keyless window.close bound in hyprland.json."""
+        actions = copy.deepcopy(GOOD_ACTIONS)
+        actions["actions"].append(copy.deepcopy(LUA_ACTION))
+        hyprland = {"bindings": {"window.close": {"kind": "lua"}}} if hyprland is None else hyprland
+        return self.check(actions, quickshell, {registry.PERFORMERS: performers}, hyprland)
 
     def assertFinding(self, found, text):
         self.assertTrue(any(text in line for line in found), f"{text!r} not in {found}")
@@ -145,6 +157,33 @@ class RegistryTest(RegistryCase):
     def test_a_placeholder_that_is_no_param_fails(self):
         found = self.broken(lambda actions, bindings: bindings["shot.take"].update(argv=["~/.config/hypr/scripts/shot.sh", "{nope}"]))
         self.assertFinding(found, "{nope}, which is not one of its params")
+
+
+    def test_a_lua_binding_with_a_performer_and_no_key_passes(self):
+        self.assertEqual(self.with_lua(), [])
+
+    def test_a_lua_binding_without_a_performer_fails(self):
+        found = self.with_lua(performers=NO_PERFORMERS)
+        self.assertFinding(found, "window.close is a lua binding, but performers.lua has no function for it")
+
+    def test_a_performer_no_lua_binding_names_fails(self):
+        found = self.with_lua(performers=PERFORMERS_LUA.replace("}\nreturn", '  ["gone.now"] = function() end,\n}\nreturn'))
+        self.assertFinding(found, "gone.now, which no lua binding names")
+
+    def test_an_action_bound_in_two_files_fails(self):
+        hyprland = {"bindings": {"window.close": {"kind": "lua"}, "zoom.toggle": {"kind": "lua"}}}
+        found = self.with_lua(hyprland, PERFORMERS_LUA.replace("}\nreturn", '  ["zoom.toggle"] = function() end,\n}\nreturn'))
+        self.assertFinding(found, "zoom.toggle is bound in both bindings/hyprland.json and bindings/quickshell.json")
+
+    def test_a_lua_binding_in_the_quickshell_file_fails(self):
+        quickshell = copy.deepcopy(GOOD_BINDINGS)
+        quickshell["bindings"]["window.close"] = {"kind": "lua"}
+        found = self.with_lua({"bindings": {}}, quickshell=quickshell)
+        self.assertFinding(found, "bindings/quickshell.json: window.close is a lua binding, which this file cannot hold")
+
+    def test_an_unknown_bindings_file_fails(self):
+        found = self.check(extra={f"{DIR}/bindings/sway.json": json.dumps({"bindings": {}})})
+        self.assertFinding(found, "bindings/sway.json is not a bindings file")
 
 
 if __name__ == "__main__":

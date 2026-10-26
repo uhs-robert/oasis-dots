@@ -1,0 +1,10 @@
+{
+  "bindings": {
+    "picker.clipboard": {"kind": "lua"},
+    "picker.clipboard_delete": {"kind": "lua"},
+    "picker.directory": {"kind": "lua"},
+    "picker.emoji": {"kind": "lua"},
+    "hyprvim.terminal": {"kind": "lua"},
+    "hyprvim.jump_mark": {"kind": "lua"}
+  }
+}

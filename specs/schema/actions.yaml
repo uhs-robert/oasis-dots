@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
 # home/oasis-djinn/.config/oasis-djinn/actions.json: the tool-free actions. Which tool performs one is bindings.yaml's business.
-# What a schema cannot say (unique ids and param names, a binding for every action) the registry step checks.
+# What a schema cannot say (unique ids and param names, exactly one binding for every action) the registry step checks.
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Action manifest
 type: object
@@ -14,7 +14,7 @@ $defs:
   action:
     type: object
     additionalProperties: false
-    required: [id, label, intent, params, key, extra_keys]
+    required: [id, label, intent, params, extra_keys]
     properties:
       id: {type: string, pattern: "^[a-z][a-z0-9]*\\.[a-z][a-z0-9_]*$"}
       label: {type: string, minLength: 1}
@@ -27,6 +27,7 @@ $defs:
         type: array
         items: {$ref: "#/$defs/key"}
   # `key` is a Hyprland key string; `leader` puts it behind the leader key, `universal` keeps it live inside submaps.
+  # An action with no key (one only `oasis-djinn` reaches) leaves the action's `key` out.
   key:
     type: object
     additionalProperties: false

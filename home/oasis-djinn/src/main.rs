@@ -1,12 +1,13 @@
 //! oasis-djinn <id> [param...]: perform one action of the manifest from the logged-in desktop session.
 //!
 //! Exit 0 when the performer ran, 1 when it failed or could not start, 2 on an unknown id, a bad param or an
-//! unreadable manifest, in which case nothing runs. Bar actions call the bar through hypr's qs-ipc.
+//! unreadable manifest, in which case nothing runs. Bar actions call the bar through hypr's qs-ipc; `lua` actions
+//! run inside Hyprland through `hyprctl eval`, which exits non-zero when the Lua raises.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use oasis_djinn::{Manifest, config_dir, perform};
+use oasis_djinn::{Manifest, Tools, config_dir, perform};
 
 const QS_IPC: &str = ".config/hypr/scripts/qs-ipc";
 
@@ -20,7 +21,15 @@ fn main() -> ExitCode {
     let qs_ipc = std::env::var_os("OASIS_DJINN_QS_IPC")
         .map(PathBuf::from)
         .unwrap_or_else(|| home.join(QS_IPC));
-    let argv = match Manifest::load(&config_dir()).and_then(|manifest| manifest.plan(id, words, &qs_ipc, &home)) {
+    let hyprctl = std::env::var_os("OASIS_DJINN_HYPRCTL")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("hyprctl"));
+    let tools = Tools {
+        qs_ipc: &qs_ipc,
+        hyprctl: &hyprctl,
+        home: &home,
+    };
+    let argv = match Manifest::load(&config_dir()).and_then(|manifest| manifest.plan(id, words, &tools)) {
         Ok(argv) => argv,
         Err(error) => {
             eprintln!("oasis-djinn: {error}");

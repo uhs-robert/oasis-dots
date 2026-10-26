@@ -98,6 +98,8 @@ Press `SUPER + /` to open the Quickshell keybinds picker for the current mode. W
 >
 > The whichkey from HyprVim also displays keybinds when entering any submap.
 
+Binds that come from the action manifest use `Bind.action(id, opts)` (`lib/key/bind.lua`; the manifest is `home/oasis-djinn`, see its README). An action bound `lua` in `bindings/hyprland.json` is a function in `lib/actions/performers.lua`: the key calls it in-process, and `oasis-djinn <id>` reaches the same function through `hyprctl eval`. `opts.args` passes the action's params. `tests/bind_dump.lua` (in the repo, not stowed) prints every shipped bind with its action id, for diffing a keymap change with `--compare`.
+
 ## Workspaces
 
 Each monitor gets `persistent_workspaces` workspaces (default: 5; 5 when set to `false`). Workspaces are numbered sequentially across monitors: monitor 1 gets 1–5, monitor 2 gets 6–10, and so on.

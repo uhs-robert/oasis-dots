@@ -67,6 +67,11 @@ impl Sandbox {
         std::fs::write(self.manifest.join("bindings/quickshell.json"), bindings).unwrap();
     }
 
+    /// Adds `bindings/hyprland.json` with `text`, the lua-kind bindings performed through `hyprctl eval`.
+    fn with_hyprland(&self, text: &str) {
+        std::fs::write(self.manifest.join("bindings/hyprland.json"), text).unwrap();
+    }
+
     fn log(&self) -> PathBuf {
         self.root.join("log")
     }
@@ -76,6 +81,7 @@ impl Sandbox {
             .args(args)
             .env("OASIS_DJINN_CONFIG_DIR", manifest)
             .env("OASIS_DJINN_QS_IPC", stub())
+            .env("OASIS_DJINN_HYPRCTL", stub())
             .env("STUB_LOG", self.log())
             .envs(env.iter().copied())
             .output()
@@ -192,7 +198,7 @@ fn too_many_params_exit_2() {
 
 #[test]
 fn an_action_without_a_binding_exits_2() {
-    Sandbox::new("nobind").rejected(&["t.nobind"], "no quickshell binding");
+    Sandbox::new("nobind").rejected(&["t.nobind"], "t.nobind has no binding");
 }
 
 #[test]
@@ -287,5 +293,115 @@ fn an_int_default_that_is_not_a_whole_i64_exits_2() {
             r#"["{n}"]"#,
         );
         sandbox.rejected(&["t.x"], "default");
+    }
+}
+
+const LUA_ACTIONS: &str = r#"{"actions": [
+  {"id": "t.lua", "label": "Lua", "intent": "Lua.", "params": [
+    {"name": "text", "type": "string"},
+    {"name": "n", "type": "int", "default": 3},
+    {"name": "on", "type": "bool", "default": true},
+    {"name": "f", "type": "float", "default": 1.5}],
+   "key": {"key": "L", "leader": true, "universal": false}, "extra_keys": []},
+  {"id": "t.bare", "label": "Bare", "intent": "Bare.", "params": [], "extra_keys": []}
+]}"#;
+
+const LUA_BINDINGS: &str = r#"{"bindings": {"t.lua": {"kind": "lua"}, "t.bare": {"kind": "lua"}}}"#;
+
+fn lua_sandbox(name: &str) -> Sandbox {
+    let sandbox = Sandbox::new(name);
+    std::fs::write(sandbox.manifest.join("actions.json"), LUA_ACTIONS).unwrap();
+    std::fs::write(sandbox.manifest.join("bindings/quickshell.json"), r#"{"bindings": {}}"#).unwrap();
+    sandbox.with_hyprland(LUA_BINDINGS);
+    sandbox
+}
+
+#[test]
+fn a_lua_action_evals_its_performer_through_hyprctl() {
+    let sandbox = lua_sandbox("lua");
+    assert_eq!(sandbox.run(&["t.bare"]).0, 0);
+    assert_eq!(
+        sandbox.calls(),
+        [r#"eval require("lib.actions.performers").run("t.bare")"#]
+    );
+}
+
+#[test]
+fn lua_params_are_literals_of_their_type() {
+    let sandbox = lua_sandbox("lua-params");
+    assert_eq!(sandbox.run(&["t.lua", "hi", "007", "false"]).0, 0);
+    assert_eq!(
+        sandbox.calls(),
+        [r#"eval require("lib.actions.performers").run("t.lua", "hi", 7, false, 1.5)"#]
+    );
+}
+
+#[test]
+fn a_lua_string_param_cannot_break_out_of_its_literal() {
+    let sandbox = lua_sandbox("lua-quote");
+    let hostile = "a'b\"c]]d\\e\nf\")os.exit(1)--";
+    assert_eq!(sandbox.run(&["t.lua", hostile]).0, 0);
+    let call = sandbox.calls().join("\n");
+    let code = call.strip_prefix("eval ").unwrap();
+    // Only the literal's own two quotes remain; every risky byte is a decimal escape.
+    let literal = code
+        .strip_prefix(r#"require("lib.actions.performers").run("t.lua", "#)
+        .and_then(|rest| rest.strip_suffix(", 3, true, 1.5)"))
+        .unwrap();
+    assert!(literal.starts_with('"') && literal.ends_with('"'), "{literal}");
+    let body = &literal[1..literal.len() - 1];
+    assert!(
+        !body.contains(['"', '\'', '\n', ']']) && !body.contains("\\\\"),
+        "{body}"
+    );
+    // When lua is installed, evaluating the literal gives back the exact word.
+    let evaluated = Command::new("lua")
+        .arg("-e")
+        .arg(format!("io.write({literal})"))
+        .output();
+    if let Ok(done) = evaluated {
+        assert_eq!(String::from_utf8_lossy(&done.stdout), hostile);
+    }
+}
+
+#[test]
+fn a_failing_lua_performer_exits_1() {
+    // hyprctl eval exits non-zero (7 on Hyprland 0.5x) when the Lua raises, e.g. an id performers.lua lacks.
+    let sandbox = lua_sandbox("lua-fail");
+    assert_eq!(
+        sandbox.run_in(&sandbox.manifest, &[("STUB_FAIL", "1")], &["t.bare"]).0,
+        1
+    );
+}
+
+#[test]
+fn an_id_bound_in_two_files_exits_2() {
+    let sandbox = Sandbox::new("two-files");
+    sandbox.with_hyprland(r#"{"bindings": {"t.run": {"kind": "lua"}}}"#);
+    sandbox.rejected(&["t.go", "3"], "t.run is bound in both");
+}
+
+#[test]
+fn an_action_without_a_key_is_still_performed() {
+    let sandbox = lua_sandbox("keyless");
+    assert_eq!(sandbox.run(&["t.bare"]).0, 0);
+}
+
+#[test]
+fn the_real_lua_actions_eval_their_performer() {
+    let sandbox = Sandbox::new("real-lua");
+    for action in [
+        "picker.clipboard",
+        "picker.clipboard_delete",
+        "picker.directory",
+        "picker.emoji",
+        "hyprvim.terminal",
+        "hyprvim.jump_mark",
+    ] {
+        assert_eq!(sandbox.run_in(&real_manifest(), &[], &[action]).0, 0, "{action}");
+        assert_eq!(
+            sandbox.calls().last().unwrap(),
+            &format!(r#"eval require("lib.actions.performers").run("{action}")"#)
+        );
     }
 }

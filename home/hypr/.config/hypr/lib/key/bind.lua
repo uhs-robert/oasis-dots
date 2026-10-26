@@ -22,6 +22,14 @@ local scope = ""
 --- @type table<string, table<string, table[]>> submap -> normalized key -> bind handles
 local handles = {}
 
+--- Action id of the Bind.action call registering binds right now; nil for every other bind.
+local registering_action = nil
+
+--- Bind handle -> the action id it performs, for the bind dump (home/hypr/tests/bind_dump.lua). Weak keys, so a
+--- removed bind does not stay alive through this table.
+--- @type table<table, string>
+Bind.action_ids = setmetatable({}, { __mode = "k" })
+
 --- Hyprland compares keys ignoring case and whitespace, so "SUPER + H" and "super+h" are the same bind.
 --- @param key string
 --- @return string
@@ -53,6 +61,7 @@ local function track(key, handle)
   local name = normalize(key)
   keys[name] = keys[name] or {}
   table.insert(keys[name], handle)
+  if registering_action then Bind.action_ids[handle] = registering_action end
 end
 
 --- @param value string|string[]  Multiple keys produce one hl.bind call each, all wired to the same action
@@ -144,8 +153,15 @@ end
 --- @type table<string, table>|nil action id -> manifest entry, read on first use
 local manifest
 
---- @type table<string, table>|nil action id -> the bar's performer (bindings/quickshell.json), read on first use
+--- The per-tool binding files, read by name: Hyprland's Lua cannot list a directory. The registry check fails a
+--- bindings/*.json missing here.
+local BINDING_FILES = { "bindings/quickshell.json", "bindings/hyprland.json" }
+
+--- @type table<string, table>|nil action id -> its performer from BINDING_FILES, read on first use
 local bindings
+
+--- @type table|false|nil lib.actions.performers once required, false after it failed to load
+local performers
 
 --- @type boolean|nil whether the oasis-djinn binary was executable at the first Bind.action
 local djinn_present
@@ -172,7 +188,7 @@ end
 
 --- Forget the cached manifest so the next Bind.action rereads it.
 function Bind.reload_manifest()
-  manifest, bindings, djinn_present = nil, nil, nil
+  manifest, bindings, djinn_present, performers = nil, nil, nil, nil
 end
 
 --- @param name string  Path under the manifest folder, e.g. "actions.json"
@@ -226,25 +242,76 @@ local function shell_word(word)
   return (home or "") .. "'" .. body:gsub("'", "'\\''") .. "'"
 end
 
---- The command that performs an action without the runner: what oasis-djinn would run from bindings/quickshell.json.
---- Nil, after a warning, when the binding file is unreadable or has no entry for the id.
+--- The binding of an action id from any tool's file; nil, after a warning, when none has it. An unreadable file
+--- warns once and counts as empty.
 --- @param id string
---- @return string|nil
-local function direct_command(id)
+--- @return table|nil
+local function binding_of(id)
   if not bindings then
-    local read_ok, parsed = pcall(read_manifest_file, "bindings/quickshell.json")
-    if not read_ok then
-      warn(tostring(parsed))
-      parsed = {}
+    bindings = {}
+    for _, name in ipairs(BINDING_FILES) do
+      local read_ok, parsed = pcall(read_manifest_file, name)
+      if not read_ok then
+        warn(tostring(parsed))
+        parsed = {}
+      end
+      for bound_id, binding in pairs(parsed.bindings or {}) do
+        bindings[bound_id] = bindings[bound_id] or binding
+      end
     end
-    bindings = parsed.bindings or {}
   end
   local binding = bindings[id]
   if not binding then
-    warn("Bind.action: no binding for action '" .. id .. "' in bindings/quickshell.json")
-    return nil
+    warn("Bind.action: no binding for action '" .. id .. "' in " .. table.concat(BINDING_FILES, ", "))
   end
+  return binding
+end
 
+--- The function performing a `lua` action; nil, after a warning, when performers.lua lacks it or fails to load. The
+--- require is guarded because a load error there would otherwise abort the whole keymap file.
+--- @param id string
+--- @return function|nil
+local function performer_of(id)
+  if performers == nil then
+    local loaded, module = pcall(require, "lib.actions.performers")
+    performers = loaded and module or false
+    if not loaded then
+      warn(
+        "Bind.action: lib/actions/performers.lua failed to load (" .. tostring(module) .. "); its binds were skipped"
+      )
+    end
+  end
+  if not performers then return nil end
+  local perform = performers.get(id)
+  if not perform then warn("Bind.action: lib/actions/performers.lua has no function for action '" .. id .. "'") end
+  return perform
+end
+
+--- Each param's value by name: from args in order, else the manifest default. Nil, after a warning, when a required
+--- param has no value.
+--- @param entry table  Manifest entry
+--- @param args  table
+--- @return table<string, any>|nil
+local function param_values(entry, args)
+  local values = {}
+  for index, param in ipairs(entry.params or {}) do
+    local value = args[index]
+    if value == nil then value = param.default end
+    if value == nil then
+      warn("Bind.action: action '" .. entry.id .. "' needs param " .. param.name .. " in opts.args")
+      return nil
+    end
+    values[param.name] = value
+  end
+  return values
+end
+
+--- The command that performs an action without the runner: what oasis-djinn would run for an ipc or command binding,
+--- each `{param}` filled once from `values` (a value holding `{other}` stays literal, as in oasis-djinn).
+--- @param binding table
+--- @param values  table<string, any>
+--- @return string
+local function direct_command(binding, values)
   local words
   if binding.kind == "ipc" then
     words = { Scripts.qs_ipc, "call", binding.target, binding["function"] }
@@ -256,7 +323,10 @@ local function direct_command(id)
   end
   local quoted = {}
   for _, word in ipairs(words) do
-    table.insert(quoted, shell_word(word))
+    local filled = word:gsub("{([%w_]+)}", function(name)
+      if values[name] ~= nil then return tostring(values[name]) end
+    end)
+    table.insert(quoted, shell_word(filled))
   end
   return table.concat(quoted, " ")
 end
@@ -274,13 +344,41 @@ local function runner_installed()
   return djinn_present
 end
 
+--- The dispatcher or function a bind of `entry` runs; nil after a warning. A `lua` action calls its performer
+--- in-process, so a repeating key never waits on a process; any other runs `oasis-djinn <id> <args>`, or without the
+--- runner the command it would run.
+--- @param entry table
+--- @param args  table
+--- @return HL.Dispatcher|function|nil
+local function bind_target(entry, args)
+  local id = entry.id
+  local binding = binding_of(id)
+  if not binding then return nil end
+  if binding.kind == "lua" then
+    local perform = performer_of(id)
+    if not perform then return nil end
+    return function() perform(table.unpack(args)) end
+  end
+  if runner_installed() then
+    local words = { Scripts.djinn, id }
+    for _, arg in ipairs(args) do
+      table.insert(words, shell_word(tostring(arg)))
+    end
+    return hl.dsp.exec_cmd(table.concat(words, " "))
+  end
+  local values = param_values(entry, args)
+  if not values then return nil end
+  return hl.dsp.exec_cmd(direct_command(binding, values))
+end
+
 --- Register an action from the oasis-djinn manifest: its key, extra keys and label come from there, and the
---- bind runs `oasis-djinn <id>`, or the same command the runner would run when the binary is not installed.
---- An unknown id, or an action the runner-less fallback cannot perform, warns and skips only that bind.
+--- bind performs it (bind_target). An unknown id, a missing binding or performer, or an action the runner-less
+--- fallback cannot perform, warns and skips only that bind.
 --- @param id   string
 --- @param opts table|nil  `key` replaces the manifest's main key (a key string, or `{key, leader?, universal?}`); the
----                        extra keys and label stay. Everything else (e.g. `submap_universal`) goes to hl.bind and
----                        beats the manifest's `universal` flag.
+---                        extra keys and label stay. `args` is the action's params in order: passed to a `lua`
+---                        performer, appended to `oasis-djinn <id>`. Everything else (e.g. `submap_universal`) goes
+---                        to hl.bind and beats the manifest's `universal` flag.
 function Bind.action(id, opts)
   local entry = load_manifest()[id]
   if not entry then
@@ -292,28 +390,34 @@ function Bind.action(id, opts)
   opts = opts or {}
   local main_key = entry.key
   if type(opts.key) == "string" then
-    main_key = { key = opts.key, leader = false, universal = entry.key.universal }
+    main_key = { key = opts.key, leader = false, universal = entry.key and entry.key.universal }
   elseif opts.key ~= nil then
     main_key = opts.key
   end
 
+  -- A keyless action (one only oasis-djinn reaches) binds just its extras, or nothing without opts.key.
   local keys = { main_key }
   for _, extra in ipairs(entry.extra_keys or {}) do
     table.insert(keys, extra)
   end
+  if #keys == 0 then
+    warn("Bind.action: action '" .. id .. "' has no key; pass opts.key")
+    return
+  end
 
-  local command = runner_installed() and (Scripts.djinn .. " " .. id) or direct_command(id)
-  if not command then return end
-  local run = hl.dsp.exec_cmd(command)
+  local run = bind_target(entry, opts.args or {})
+  if not run then return end
+  registering_action = id
   for _, spec in ipairs(keys) do
     local bind_opts = {}
     for k, v in pairs(opts) do
-      if k ~= "key" then bind_opts[k] = v end
+      if k ~= "key" and k ~= "args" then bind_opts[k] = v end
     end
     if bind_opts.submap_universal == nil and spec.universal then bind_opts.submap_universal = true end
     local register = spec.leader and Bind.leader_key or Bind.key
     register(spec.key, run, entry.label, bind_opts)
   end
+  registering_action = nil
 end
 
 --- Register multiple binds from a row table.
