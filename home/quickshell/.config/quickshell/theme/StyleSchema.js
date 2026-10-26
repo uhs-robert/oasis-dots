@@ -255,6 +255,7 @@ var tokens = [
     tok("bar_strip_inset", "int", 0, "How far the floating strip (bar_island_shape \"strip\") sits in from the screen edge; the bar window grows by it and reserves it. 0 under every other shape.", {via: "bar"}),
     tok("bar_strip_side", "int", 0, "How far the floating strip sits in from each side of the screen; 0 under every other shape.", {via: "bar"}),
     tok("bar_height", "int", 0, "Bar height when bars.json sets none; 0 keeps the default.", {via: "bar"}),
+    tok("bar_height_vertical", "int", 0, "Bar thickness on a left or right bar when bars.json sets none; 0 uses bar_height.", {via: "bar"}),
     tok("bar_module_gap", "int", 16, "", {via: "bar"}),
     tok("bar_pill_height", "int", 0, "Plain workspace pills: height (0 keeps the default), extra room each side of their icons, and the gap between them.", {via: "bar"}),
     tok("bar_pill_pad", "int", 0, "", {via: "bar"}),

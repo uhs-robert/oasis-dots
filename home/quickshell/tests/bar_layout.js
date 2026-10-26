@@ -93,6 +93,11 @@ const cases = [
   ["migrate keeps the directory switches", () => L.directory_switches(L.migrate_cava(L.normalize({ directory: { path: false }, monitors: { [key]: { left: ["workspaces"], center: [], right: [] } } }))), { app_name: true, path: false, file_name: true }],
   ["migrate covers every monitor with its own layout", () => Object.values(L.migrate_cava({ monitors: { a: { left: ["workspaces"], center: [], right: [] }, b: { left: ["start"], center: [], right: ["cava"] }, c: { left: [], center: [], right: [] } } }).monitors).map(m => m.left.concat(m.right)), [["workspaces", "cava"], ["start", "cava"], ["cava"]]],
 
+  // The bar thickness: the rule's height wins, a side bar may use the style's vertical one, the top bar never does.
+  ["bars.json height beats every style value", () => [["top", 30], ["left", 30]].map(([p, h]) => L.thickness_for(h, 24, 34, p, 34)), [30, 30]],
+  ["a side bar takes the style's vertical thickness, the top bar its plain one", () => ["top", "bottom", "left", "right"].map(p => L.thickness_for(0, 24, 34, p, 40)), [24, 24, 34, 34]],
+  ["a style with no vertical thickness keeps one thickness on every edge", () => ["top", "left"].map(p => L.thickness_for(0, 24, 0, p, 40)), [24, 24]],
+  ["a style with no thickness at all falls back to the default", () => ["top", "right"].map(p => L.thickness_for(0, 0, 0, p, 40)), [40, 40]],
   // How much screen height a bar takes: a side bar takes width instead.
   ["a top or bottom bar takes its thickness and the float gap from the height", () => ["top", "bottom"].map(p => L.vertical_reserve(p, 34, 8)), [42, 42]],
   ["a side bar takes none of the height", () => ["left", "right"].map(p => L.vertical_reserve(p, 34, 8)), [0, 0]],

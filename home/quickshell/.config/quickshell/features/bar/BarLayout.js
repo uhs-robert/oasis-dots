@@ -28,6 +28,13 @@ function draws_frame(frame_on, position) {
     return frame_on && !is_vertical(position);
 }
 
+// A bar's thickness: bars.json height, else the style's (its vertical one on a side bar when it sets one), else the default.
+function thickness_for(rule_height, style_height, style_vertical_height, position, default_height) {
+    if (rule_height > 0) return rule_height;
+    if (is_vertical(position) && style_vertical_height > 0) return style_vertical_height;
+    return style_height > 0 ? style_height : default_height;
+}
+
 // The screen height a top or bottom bar takes (its thickness plus the float gap above a floating popup); a side bar takes width instead, so none.
 function vertical_reserve(position, bar_thickness, float_gap) {
     return is_vertical(position) ? 0 : bar_thickness + float_gap;

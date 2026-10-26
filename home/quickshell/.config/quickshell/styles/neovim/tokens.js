@@ -84,6 +84,8 @@ function overrides(t, ctx) {
         bar_glyph_size: 16,
         bar_clock_size: 16,
         bar_height: 24,
+        // The 24 px strip is lualine-thin; a column needs the standard width for its stacked text.
+        bar_height_vertical: 34,
         bar_side_bg: t.bg_surface,
         bar_center_bg: t.bg_surface,
         bar_fg: t.fg_core,

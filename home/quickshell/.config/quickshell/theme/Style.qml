@@ -501,6 +501,7 @@ Singleton {
     readonly property int bar_strip_inset: root.bar.bar_strip_inset
     readonly property int bar_strip_side: root.bar.bar_strip_side
     readonly property int bar_height: root.bar.bar_height
+    readonly property int bar_height_vertical: root.bar.bar_height_vertical
     readonly property int bar_module_gap: root.bar.bar_module_gap
     readonly property int bar_pill_height: root.bar.bar_pill_height
     readonly property int bar_pill_pad: root.bar.bar_pill_pad

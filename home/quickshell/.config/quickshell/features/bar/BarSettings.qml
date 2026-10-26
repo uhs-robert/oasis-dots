@@ -144,7 +144,7 @@ Singleton {
     readonly property int default_height: 34
 
     function height_for(rule) {
-        return rule && rule.height > 0 ? rule.height : Style.bar_height > 0 ? Style.bar_height : root.default_height;
+        return BarLayout.thickness_for(rule ? rule.height : 0, Style.bar_height, Style.bar_height_vertical, BarLayout.position_of(rule), root.default_height);
     }
 
     function compact_for(rule) {
