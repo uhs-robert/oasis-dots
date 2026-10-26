@@ -4,7 +4,9 @@
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
-local Cursor = require("lib.actions.cursor") ---@class CursorActions
+
+-- The actions the rows name.
+require("lib.actions.defs.cursor")
 
 --- Saved cursor config, populated on_enter and restored on_exit.
 --- @type { hide: boolean, timeout: number }
@@ -20,34 +22,51 @@ end
 --- Restore cursor config and kill wl-kbptr. Called on submap exit.
 local function exit_cursor()
   hl.config({ cursor = { inactive_timeout = DEFAULTS.timeout, hide_on_key_press = DEFAULTS.hide } })
-  Cursor.hold_stop()
+  require("lib.actions.cursor").hold_stop()
   hl.dispatch(hl.dsp.exec_cmd("pkill wl-kbptr"))
 end
 
---- Wrap `fn` so it runs then resets the submap.
---- @param fn fun()
---- @return fun()
-local function oneshot(fn)
-  return function()
-    fn()
-    Submap.reset()
-  end
+--- A row action for wl-kbptr; `exit` leaves the submap once the click is done.
+--- @param mode string
+--- @param exit boolean|nil
+--- @return table
+local function pointer(mode, exit) return { "cursor.pointer_mode", { mode, exit == true } } end
+
+--- A row action for a mouse click; `exit` leaves the submap after it.
+--- @param button string
+--- @param exit boolean|nil
+--- @return table
+local function click(button, exit) return { "cursor.click", { button, exit == true } } end
+
+--- The eight pointer directions as actions that move by `amount` pixels.
+--- @param amount number
+--- @return DirActions
+local function move_by(amount)
+  return {
+    left = { "cursor.move", { "left", amount } },
+    right = { "cursor.move", { "right", amount } },
+    up = { "cursor.move", { "up", amount } },
+    down = { "cursor.move", { "down", amount } },
+    nw = { "cursor.move", { "up_left", amount } },
+    ne = { "cursor.move", { "up_right", amount } },
+    sw = { "cursor.move", { "down_left", amount } },
+    se = { "cursor.move", { "down_right", amount } },
+  }
 end
 
---- Build scroll bind rows for a modifier tier. Scrolling repeats through Cursor.hold, whose release rows
---- come from scroll_release_binds.
+--- Build scroll bind rows for a modifier tier. Scrolling repeats until the release rows from scroll_release_binds
+--- stop it.
 --- @param mod string
 --- @param step number
 --- @param suffix string
 --- @return table[]
 local function scroll_binds(mod, step, suffix)
   local p = mod ~= "" and (mod .. " + ") or ""
-  local s = Cursor.scroll(step)
   return {
-    { p .. "E", Cursor.hold(s.up), "Scroll Up" .. suffix },
-    { p .. "Y", Cursor.hold(s.down), "Scroll Down" .. suffix },
-    { p .. "COMMA", Cursor.hold(s.left), "Scroll Left" .. suffix },
-    { p .. "PERIOD", Cursor.hold(s.right), "Scroll Right" .. suffix },
+    { p .. "E", { "cursor.scroll", { "up", step } }, "Scroll Up" .. suffix },
+    { p .. "Y", { "cursor.scroll", { "down", step } }, "Scroll Down" .. suffix },
+    { p .. "COMMA", { "cursor.scroll", { "left", step } }, "Scroll Left" .. suffix },
+    { p .. "PERIOD", { "cursor.scroll", { "right", step } }, "Scroll Right" .. suffix },
   }
 end
 
@@ -56,7 +75,7 @@ end
 local function scroll_release_binds()
   local rows = {}
   for _, key in ipairs({ "E", "Y", "COMMA", "PERIOD" }) do
-    rows[#rows + 1] = { key, Cursor.hold_stop, nil, { release = true, ignore_mods = true } }
+    rows[#rows + 1] = { key, "cursor.scroll_stop", false, { release = true, ignore_mods = true } }
   end
   return rows
 end
@@ -85,31 +104,31 @@ local cursor_mode = Submap.define({
     -- stylua: ignore start
     local keys = {
       -- quick_click
-      { "SEMICOLON",          Cursor.kbptr("floating_click",   { exit = true }),  "Floating Click (Exit)" },
-      { Config.leader .. " + SEMICOLON",  Cursor.kbptr("floating_click",   { exit = true })},
-      { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click",       { exit = true }),  "Tiling Click (Exit)" },
-      { "APOSTROPHE",         Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click"} ,
-      { "SHIFT + APOSTROPHE", Cursor.kbptr("tile_r_click",     { exit = false }), "Tiling Right Click"} ,
+      { "SEMICOLON",          pointer("floating_click", true),  "Floating Click (Exit)" },
+      { Config.leader .. " + SEMICOLON",  pointer("floating_click", true), false },
+      { "SHIFT + SEMICOLON",  pointer("tile_click", true),  "Tiling Click (Exit)" },
+      { "APOSTROPHE",         pointer("floating_r_click"), "Floating Right Click"} ,
+      { "SHIFT + APOSTROPHE", pointer("tile_r_click"), "Tiling Right Click"} ,
       -- wl-kbptr modes (bare=left, SHIFT=right, CTRL=move)
-      { "F",              Cursor.kbptr("floating_click"),                      "Floating Click" },
-      { "SHIFT + F",      Cursor.kbptr("floating_r_click", { exit = false }),  "Floating Right Click" },
-      { "CTRL + F",       Cursor.kbptr("floating_move"),                       "Floating Move" },
-      { "T",              Cursor.kbptr("tile_click"),                          "Tiling Click" },
-      { "SHIFT + T",      Cursor.kbptr("tile_r_click",     { exit = false }),  "Tiling Right Click" },
-      { "CTRL + T",       Cursor.kbptr("tile_move"),                           "Tiling Move" },
-      { "G",              Cursor.kbptr("split_click"),                         "Split Click" },
-      { "SHIFT + G",      Cursor.kbptr("split_r_click", { exit = false }),     "Split Right Click" },
-      { "CTRL + G",       Cursor.kbptr("split_move"),                          "Split Move" },
+      { "F",              pointer("floating_click"),                      "Floating Click" },
+      { "SHIFT + F",      pointer("floating_r_click"),  "Floating Right Click" },
+      { "CTRL + F",       pointer("floating_move"),                       "Floating Move" },
+      { "T",              pointer("tile_click"),                          "Tiling Click" },
+      { "SHIFT + T",      pointer("tile_r_click"),  "Tiling Right Click" },
+      { "CTRL + T",       pointer("tile_move"),                           "Tiling Move" },
+      { "G",              pointer("split_click"),                         "Split Click" },
+      { "SHIFT + G",      pointer("split_r_click"),     "Split Right Click" },
+      { "CTRL + G",       pointer("split_move"),                          "Split Move" },
       -- Clicks (CTRL=exit after), the same in every pointer_keys mode
-      { "SPACE",          Cursor.click_left(),                "Left Click" },
-      { "CTRL + SPACE",   oneshot(Cursor.click_left()),       "Left Click (Exit)" },
-      { "R",              Cursor.click_right(),               "Right Click" },
-      { "CTRL + R",       oneshot(Cursor.click_right()),      "Right Click (Exit)" },
-      { "M",              Cursor.click_middle(),              "Middle Click" },
-      { "CTRL + M",       oneshot(Cursor.click_middle()),     "Middle Click (Exit)" },
+      { "SPACE",          click("left"),                "Left Click" },
+      { "CTRL + SPACE",   click("left", true),       "Left Click (Exit)" },
+      { "R",              click("right"),               "Right Click" },
+      { "CTRL + R",       click("right", true),      "Right Click (Exit)" },
+      { "M",              click("middle"),              "Middle Click" },
+      { "CTRL + M",       click("middle", true),     "Middle Click (Exit)" },
       -- PageUp/PageDown
-      { "CTRL + U",       Cursor.send_key("prior"), "Page Up" },
-      { "CTRL + " .. page_down, Cursor.send_key("next"), "Page Down" },
+      { "CTRL + U",       { "cursor.send_key", { "prior" } }, "Page Up" },
+      { "CTRL + " .. page_down, { "cursor.send_key", { "next" } }, "Page Down" },
     }
     -- stylua: ignore end
 
@@ -122,18 +141,18 @@ local cursor_mode = Submap.define({
         { set.right, "RIGHT", "Arrow Right" },
       }
       for _, arrow in ipairs(arrow_keys) do
-        keys[#keys + 1] = { "ALT + " .. arrow[1], Cursor.send_key(arrow[2]), arrow[3], { repeating = true } }
+        keys[#keys + 1] = { "ALT + " .. arrow[1], { "cursor.send_key", { arrow[2] } }, arrow[3], { repeating = true } }
       end
 
       -- Cursor movement speed tiers with repeating
-      for _, key in ipairs(Direction.speed_binds(Cursor.move, "Cursor", nil, set)) do
+      for _, key in ipairs(Direction.speed_binds(move_by, "Cursor", nil, set)) do
         key[4] = key[4] or {}
         key[4].repeating = true
         keys[#keys + 1] = key
       end
 
       -- Diagonal (omni-direction) speed tiers with repeating
-      for _, key in ipairs(Direction.omni_binds(Cursor.move, "Cursor", nil, set)) do
+      for _, key in ipairs(Direction.omni_binds(move_by, "Cursor", nil, set)) do
         key[4] = key[4] or {}
         key[4].repeating = true
         keys[#keys + 1] = key
@@ -172,22 +191,22 @@ local quick_click = Submap.define({
     -- stylua: ignore start
     local keys = {
       -- quick_click
-      { "SEMICOLON",          Cursor.kbptr("floating_click", { exit = true }),    "Floating Click (Exit)" },
-      { "APOSTROPHE",         Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click" },
-      { "SHIFT + SEMICOLON",  Cursor.kbptr("tile_click", { exit = true }),        "Tile Click (Exit)" },
+      { "SEMICOLON",          pointer("floating_click", true),    "Floating Click (Exit)" },
+      { "APOSTROPHE",         pointer("floating_r_click"), "Floating Right Click" },
+      { "SHIFT + SEMICOLON",  pointer("tile_click", true),        "Tile Click (Exit)" },
       -- quicker_click
-      { Config.leader .. " + SEMICOLON",  Cursor.kbptr("floating_click", { exit = true })},
-      { Config.leader .. " + APOSTROPHE", Cursor.kbptr("floating_r_click", { exit = false })},
+      { Config.leader .. " + SEMICOLON",  pointer("floating_click", true), false },
+      { Config.leader .. " + APOSTROPHE", pointer("floating_r_click"), false },
       -- wl-kbptr modes
-      { "F",                  Cursor.kbptr("floating_click"),                      "Floating Click" },
-      { "SHIFT + F",          Cursor.kbptr("floating_r_click", { exit = false }), "Floating Right Click" },
-      { "CTRL + F",           Cursor.kbptr("floating_move"),                      "Floating Move" },
-      { "T",                  Cursor.kbptr("tile_click"),                         "Tiling Click" },
-      { "SHIFT + T",          Cursor.kbptr("tile_r_click", { exit = false }),     "Tile Right Click" },
-      { "CTRL + T",           Cursor.kbptr("tile_move"),                          "Tiling Move" },
-      { "G",                  Cursor.kbptr("split_click"),                        "Split Click" },
-      { "SHIFT + G",          Cursor.kbptr("split_r_click", { exit = false }),    "Split Right Click" },
-      { "CTRL + G",           Cursor.kbptr("split_move"),                         "Split Move" },
+      { "F",                  pointer("floating_click"),                      "Floating Click" },
+      { "SHIFT + F",          pointer("floating_r_click"), "Floating Right Click" },
+      { "CTRL + F",           pointer("floating_move"),                      "Floating Move" },
+      { "T",                  pointer("tile_click"),                         "Tiling Click" },
+      { "SHIFT + T",          pointer("tile_r_click"),     "Tile Right Click" },
+      { "CTRL + T",           pointer("tile_move"),                          "Tiling Move" },
+      { "G",                  pointer("split_click"),                        "Split Click" },
+      { "SHIFT + G",          pointer("split_r_click"),    "Split Right Click" },
+      { "CTRL + G",           pointer("split_move"),                         "Split Move" },
     }
     -- stylua: ignore end
 

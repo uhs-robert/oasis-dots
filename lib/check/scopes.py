@@ -293,6 +293,7 @@ STEPS = [
     Step("act-global", "lua", "bash ./home/hypr/tests/act-global.sh", ("lua",), skip_reason="the global action tests need lua"),
     Step("act-launch", "lua", "bash ./home/hypr/tests/act-launch.sh", ("lua",), skip_reason="the launch action tests need lua"),
     Step("act-submap-rows", "lua", "bash ./home/hypr/tests/act-submap-rows.sh", ("lua",), skip_reason="the submap row tests need lua"),
+    Step("act-stateful", "lua", "bash ./home/hypr/tests/act-stateful.sh", ("lua",), skip_reason="the stateful submap tests need lua"),
     Step("act-ipc", "lua", "bash ./home/hypr/tests/act-ipc.sh", ("lua",), skip_reason="the IPC action tests need lua"),
     Step("input-vectors-lua", "inputvec", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
     Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),

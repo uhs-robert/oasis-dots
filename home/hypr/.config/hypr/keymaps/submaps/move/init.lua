@@ -3,9 +3,22 @@
 
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
-local Move = require("lib.actions.move") ---@class Move
 local Submap = require("lib.key.submap") ---@class Submap
-local Window = require("lib.actions.window") ---@class WindowActions
+
+-- The actions the rows name.
+require("lib.actions.defs.move")
+
+--- The four directions as actions that nudge by `amount` pixels.
+--- @param amount number
+--- @return DirActions
+local function nudge(amount)
+  return {
+    left = { "move.step", { "left", amount } },
+    down = { "move.step", { "down", amount } },
+    up = { "move.step", { "up", amount } },
+    right = { "move.step", { "right", amount } },
+  }
+end
 
 Submap.define({
   name = "Move",
@@ -16,13 +29,11 @@ Submap.define({
   catchall = "stay",
 
   binds = function()
-    -- stylua: ignore start
     local keys = {
-      { "F", Window.float_toggle(), "Toggle Floating" },
+      { "F", "window.float_toggle" },
     }
-    -- stylua: ignore end
 
-    for _, key in ipairs(Direction.speed_binds(Move.at, "Move")) do
+    for _, key in ipairs(Direction.speed_binds(nudge, "Move")) do
       keys[#keys + 1] = key
     end
 

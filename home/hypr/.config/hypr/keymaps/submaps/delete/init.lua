@@ -3,62 +3,16 @@
 
 local Config = require("config") --- @class Config
 local Submap = require("lib.key.submap") --- @class Submap
-local Cmd = require("lib.actions.cmd") ---@class Cmd
-local Window = require("lib.actions.window") ---@class WindowActions
-local Scripts = require("lib.scripts") ---@class Scripts
-local Closed = require("lib.closed_windows") --- @class ClosedWindows
 
-local CLEAR_NOTIFICATIONS = Scripts.qs_ipc .. " call notifications clear_all"
+-- The actions the rows name.
+require("lib.actions.defs.delete")
+require("lib.actions.defs.notifications")
+require("lib.actions.defs.windows")
 
--- stylua: ignore start
-local CLASSES = {
-  browsers  = { "firefox", "qutebrowser", "chromium", "brave-browser", "vivaldi", "opera", "chrome" },
-  mail      = { "betterbird", "thunderbird" },
-  chat      = { "slack", "discord", "telegram-desktop", "signal" },
-  terminals = { "foot", "kitty", "ghostty", "alacritty", "wezterm", "xterm", "konsole" },
-  editors   = { "nvim", "neovim", "code", "codium", "vscodium", "gedit", "kate", "emacs" },
-  files     = { "thunar", "nautilus", "nemo", "dolphin", "pcmanfm" },
-  games     = { "steam", "lutris", "heroic", "bottles", "gamescope" },
-  media     = { "mpv", "vlc", "celluloid", "totem", "rhythmbox", "spotify" },
-}
--- stylua: ignore end
-
---- Close or kill every window on the active workspace.
---- @param kill boolean  true -> SIGKILL via pid, false -> graceful close
---- @param except_active boolean|nil  when true, skip the currently focused window
---- @return fun()
-local function close_workspace_windows(kill, except_active)
-  return function()
-    local ws = hl.get_active_workspace()
-    if not ws then return end
-    local active_addr = except_active and (hl.get_active_window() or {}).address
-    local targets = {}
-    for _, w in ipairs(hl.get_windows() or {}) do
-      if w.workspace and w.workspace.id == ws.id and w.address ~= active_addr then targets[#targets + 1] = w end
-    end
-    Closed.close(targets, kill and "sigkill" or "close")
-  end
-end
-
---- Close or kill windows whose class matches any entry (case-insensitive substring).
---- @param classes string[]
---- @param kill boolean|nil  true -> SIGKILL via pid, false -> graceful close
---- @return fun()
-local function close_by_class(classes, kill)
-  return function()
-    local targets = {}
-    for _, w in ipairs(hl.get_windows() or {}) do
-      local lower = w.class:lower()
-      for _, c in ipairs(classes) do
-        if lower:find(c, 1, true) then
-          targets[#targets + 1] = w
-          break
-        end
-      end
-    end
-    Closed.close(targets, kill and "sigkill" or "close")
-  end
-end
+--- A row action that closes every window of an app group.
+--- @param group string
+--- @return table
+local function close_group(group) return { "delete.close_group", { group } } end
 
 Submap.define({
   name = "Delete",
@@ -70,22 +24,22 @@ Submap.define({
 
   -- stylua: ignore start
   binds = {
-    { "B",          close_by_class(CLASSES.browsers),     "Close Browsers"           },
-    { "C",          Cmd.run("cliphist wipe"),             "Clear Clipboard"          },
-    { "D",          close_workspace_windows(false),       "Close All on WS"          },
-    { "SHIFT + D",  close_workspace_windows(true),        "Kill All on WS"           },
-    { "E",          close_by_class(CLASSES.editors),      "Close Editors"            },
-    { "F",          close_by_class(CLASSES.files),        "Close File Managers"      },
-    { "G",          close_by_class(CLASSES.games),        "Close Games"              },
-    { "M",          close_by_class(CLASSES.mail),         "Close Mail"               },
-    { "N",          Cmd.run(CLEAR_NOTIFICATIONS),         "Clear Notifications"      },
-    { "O",          close_workspace_windows(false, true), "Close Others on WS"       },
-    { "SHIFT + O",  close_workspace_windows(true, true),  "Kill Others on WS"        },
-    { "P",          close_by_class(CLASSES.media),        "Close Media Players"      },
-    { "S",          close_by_class(CLASSES.chat),         "Close Chat"               },
-    { "T",          close_by_class(CLASSES.terminals),    "Close Terminals"          },
-    { "W",          Window.close(),                       "Close Window"             },
-    { "SHIFT + W",  Window.kill(),                        "Kill Window"              },
+    { "B",          close_group("browsers"),                              "Close Browsers"           },
+    { "C",          "delete.clear_clipboard" },
+    { "D",          { "delete.close_workspace" },                         "Close All on WS"          },
+    { "SHIFT + D",  { "delete.close_workspace", { true } },               "Kill All on WS"           },
+    { "E",          close_group("editors"),                               "Close Editors"            },
+    { "F",          close_group("files"),                                 "Close File Managers"      },
+    { "G",          close_group("games"),                                 "Close Games"              },
+    { "M",          close_group("mail"),                                  "Close Mail"               },
+    { "N",          "notifications.clear_all" },
+    { "O",          { "delete.close_workspace", { false, true } },        "Close Others on WS"       },
+    { "SHIFT + O",  { "delete.close_workspace", { true, true } },         "Kill Others on WS"        },
+    { "P",          close_group("media"),                                 "Close Media Players"      },
+    { "S",          close_group("chat"),                                  "Close Chat"               },
+    { "T",          close_group("terminals"),                             "Close Terminals"          },
+    { "W",          "window.close" },
+    { "SHIFT + W",  "window.kill" },
   },
   -- stylua: ignore end
 }).setup()
