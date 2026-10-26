@@ -133,7 +133,6 @@ main() {
     seed_generated_defaults "${SELECTED_OPTIONAL[@]}"
   fi
 
-  if [[ $OPT_CARGO -eq 1 && $OPT_SERVER -eq 0 ]]; then build_djinn || warn "oasis-djinn was not built; run: just djinn-build"; fi
   setup_git_identity
   install_nvim_config
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_root_symlinks; fi

@@ -99,6 +99,9 @@ end
 --- Metatable tagging a table that must encode as a JSON array even when empty.
 local ARRAY_MT = {}
 
+--- Encodes as `null`; a nil field would be left out of the object instead.
+local NULL = setmetatable({}, {})
+
 local function is_array(tbl)
   if getmetatable(tbl) == ARRAY_MT then return true end
   local count = 0
@@ -115,7 +118,7 @@ local function encode_value(value)
     return value == math.floor(value) and string.format("%d", value) or string.format("%.14g", value)
   end
   if kind == "boolean" then return tostring(value) end
-  if kind ~= "table" then return "null" end
+  if kind ~= "table" or value == NULL then return "null" end
   local parts = {}
   if is_array(value) then
     for _, item in ipairs(value) do
@@ -133,6 +136,8 @@ local function encode_value(value)
   end
   return "{" .. table.concat(parts, ",") .. "}"
 end
+
+Json.null = NULL
 
 --- Marks `tbl` (default a new table) to encode as a JSON array, so an empty one becomes `[]` rather than `{}`.
 --- @param tbl table|nil

@@ -8,7 +8,7 @@ Spec-driven, spec-enforced design. Plain-English specs in `specs/` say what each
 
 - **Scope.** Core specs first: keys, actions, bar, lock, notifications, as the system is today (codify; redesign later by changing a spec). Desktop behaviour only; packages, stow, services and the greeter stay scripts. Specs state behaviour, the look in words where it matters, and an optional reference screenshot. Features still being experimented with (styles, bar looks) stay spec-free until settled. Other features get a spec when touched.
 - **Enforcement.** Each spec has numbered requirements (`BAR-03`). Phase 1: a check that every requirement has a test tagged with its id. Phase 2, gated: a given/when/then scenario runner (item 8).
-- **Registry.** Tool-free actions (id, label, params, intent) with separate per-tool bindings, and one `oasis-djinn <id>` CLI that works anywhere inside the logged-in desktop session. Swapping tools rewrites bindings and, later, step functions only.
+- **Registry.** Actions defined once in Lua (id, label, params, intent, keys, what they run), and one `hypr-act` CLI that works anywhere inside the logged-in desktop session. Swapping tools rewrites what an action runs and, later, step functions only.
 - **Authoring.** An agent drafts each core spec from the code; the orchestrator asks the owner only what the code cannot answer; the owner approves in the PR.
 
 ## Order
@@ -18,7 +18,7 @@ Spec-driven, spec-enforced design. Plain-English specs in `specs/` say what each
 | 0   | docs/ vs specs/, plus local .plans/ and .logs/      | 2   | none              |
 | G   | Global skill rules (orchestrator, handoff)          | 2   | 0a                |
 | 1   | Spec format and requirement-to-test link check      | 2   | 0a                |
-| 2   | One action registry and `oasis-djinn`               | 6   | none              |
+| 2   | One action registry: `Act` and `hypr-act`           | 6   | none              |
 | 3   | Core specs                                          | 5   | 1b, 2c            |
 | 4   | Generated "bad params are rejected" tests           | 2   | 3b, 2a; 4b 2e     |
 | 5   | Docs generated from code, with a drift check        | 2   | 2a to 2c          |
@@ -115,9 +115,9 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **Plan front matter** (`.plans/`): `kind` (tracker | plan | handoff), `status` (active | parked | done), `owner_session` (or none), `updated` (date), `specs` (spec ids it touches), `branch` (plan and handoff only, or none), `pr` (or none).
 
-**Schemas.** Both are JSON Schema files written in YAML, in `specs/schema/` (`spec.yaml`, `plan.yaml`), validated by the repo check by `check-jsonschema`, added to `packages/` (`pipx.ini`) as a new dependency. The action registry (item 2) is validated in the same schema language. Editors get completion through yaml-language-server.
+**Schemas.** Both are JSON Schema files written in YAML, in `specs/schema/` (`spec.yaml`, `plan.yaml`), validated by the repo check by `check-jsonschema`, added to `packages/` (`pipx.ini`) as a new dependency. The action registry (item 2) has no schema: Lua defines it and the `registry` step checks its references. Editors get completion through yaml-language-server.
 
-**Link check.** A `specs` step scans only `specs/core/*.md` (skipping `TEMPLATE.md`); `roadmap.md`, `decisions.md` and `voxcmd-port.md` carry no spec front matter. It validates each spec against its schema, that requirement ids match the file's prefix and are unique, and that every id appears as a tag in at least one test. The tag syntax (a `req: BAR-03` comment) is fixed in 1b, in the test styles that exist today: `lib/check/tests` Python cases, voxcmd and Quickshell `vectors.tsv` rows, shadow scripts. It also fails a tag naming a missing requirement. **Gaps** are tracked inline and committed: a requirement line may carry `[gap: untested]` or `[gap: unmet]`. The check fails an untested requirement unless it is marked `[gap: untested]`; a `[gap: unmet]` requirement needs no test tag. A generated `specs/gaps.md` lists every gap across specs, with a `docs-generated`-style drift check. Undecided questions found while drafting go to the owner and never become lasting gaps; there is no gaps folder and no local `.gaps/`. Untagged tests in a spec'd area are allowed: the check lists them as info and never fails on them. `actions` ids are checked against the registry once 2a lands.
+**Link check.** A `specs` step scans only `specs/core/*.md` (skipping `TEMPLATE.md`); `roadmap.md`, `decisions.md` and `voxcmd-port.md` carry no spec front matter. It validates each spec against its schema, that requirement ids match the file's prefix and are unique, and that every id appears as a tag in at least one test. The tag syntax (a `req: BAR-03` comment) is fixed in 1b, in the test styles that exist today: `lib/check/tests` Python cases, voxcmd and Quickshell `vectors.tsv` rows, shadow scripts. It also fails a tag naming a missing requirement. **Gaps** are tracked inline and committed: a requirement line may carry `[gap: untested]` or `[gap: unmet]`. The check fails an untested requirement unless it is marked `[gap: untested]`; a `[gap: unmet]` requirement needs no test tag. A generated `specs/gaps.md` lists every gap across specs, with a `docs-generated`-style drift check. Undecided questions found while drafting go to the owner and never become lasting gaps; there is no gaps folder and no local `.gaps/`. Untagged tests in a spec'd area are allowed: the check lists them as info and never fails on them. `actions` ids are checked against the registry once 2c lands.
 
 **PRs.** 1a: the template at `specs/core/TEMPLATE.md`, the two schemas, the AGENTS.md sentence, and schema and heading checks. 1b: the requirement-to-test link check, and the generator for `specs/gaps.md` with its drift check.
 
@@ -125,36 +125,39 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **Risks.** Tests that exist only to satisfy the tag; the owner's PR review of each spec guards that. Ceremony for small features; only core specs are required.
 
-## 2. One action registry and `oasis-djinn`
+## 2. One action registry: `Act` and `hypr-act`
 
-**Today.** One action is declared up to three times:
+**Today.** One action was declared up to three times:
 - Quickshell: 22 `IpcHandler` files (appendix) with 102 `function` declarations, called from 72 tracked non-Markdown files. `qml-ipc` (`lib/check/steps/qml_ipc.py`) ties callers to handlers both ways.
 - Hyprland: 7 `keymaps/global/*.lua` files call `Bind.*` from `lib/key/bind.lua` (76 call sites); 11 submaps use `Submap.define` row tables. Each bind has its own `desc` and action, often a `qs ipc` string; hyprvim (a separate repo) and the keybinds picker read the descs back.
 - voxcmd: 19 TOML and 18 bash integrations in `integrations/`, 22 in `integrations.d/`, each with its own `run` lines. `integrations/keybinds.toml` already runs any bind by its desc. `tests/phrases.tsv` has 499 rows.
 
-**Proposal.** A tool-free JSON manifest in its own stow package, `home/oasis-djinn/.config/oasis-djinn/actions.json`. Each action: `id` (`zoom.toggle`), `label` (bind desc and picker text), `params` (typed: name, type, allowed values), `intent` (one sentence of what it does), and `key` (one default plus optional extras). Per-tool bindings are separate: which Quickshell IPC call or Hyprland dispatcher or script performs the id. A tool swap rewrites the bindings, not the actions. No `enabled` field in v1; it arrives with the command picker later. JSON, not TOML: Hyprland's Lua has `lib/json.lua` and QML has `JSON.parse`.
+**Proposal.** Lua is the source: an action is defined once, beside its key, with `Act.define(id, spec)` (`lib/act.lua`). Each action has an `id` (`zoom.toggle`), a `label` (bind desc and picker text), typed `params` (name, type, allowed values, optional trailing default), an `intent` (one sentence of what it does), its keys, and what it runs: a Lua function, `Act.Ipc(target, fn, ...)` or `Act.Cmd(argv...)`. No list of actions is committed and none is generated into the repo: Hyprland is the registry, and a consumer asks the running desktop.
 
-`oasis-djinn <id> [params]` is the one CLI entry, usable from a terminal, the bar, a key or (later) voice, inside the logged-in desktop session only (not over SSH or across machines). Submaps list actions by id.
+`hypr-act list` (`home/hypr/.local/bin/hypr-act`) prints `{"version":1,"actions":[{id,label,intent,params,keys,perform}]}` sorted by id, taken from the live session (so it holds the machine's Config and `custom/`). With no Hyprland answering it prints nothing, writes one line to stderr and exits 3; callers treat that as no actions, and nothing is cached. `hypr-act <id> [args]`, which runs an action through `Act.run_cli`, comes with the next step (P3 below), and submaps list actions by id.
 
 **All of it migrates.** Every tracked bind, submap row and person-facing IPC function becomes an action, early. Only internal plumbing (`osd`, `cmdstatus refresh`) stays out, listed with a reason in `lib/check/registry.allow` (like `qml-ipc.allow`); a stale line fails. Otherwise additions grow around the registry, as photocraft's `menus.rs::is_live` ORs seven other sources.
 
 **How each surface consumes it.**
-- Hyprland: `Act.define(id, spec)` (`lib/act.lua`) declares the action and binds its default key; `Act.bind(id, opts)` adds another key, and `Submap.define` rows accept an id. `Bind.key`, `Bind.unbind` and `Bind.submap` keep their signatures (public API for `custom/`). `custom/` overrides a key both ways: `Bind.unbind` and `Bind.key` as today, or `Act.bind(id, { key = ... })`. hyprvim needs no change. (`Bind.action` is gone.)
-- voxcmd: a TOML action gains `action = "<id>"` in place of a `run` line, resolved by the Rust binary, which calls `oasis-djinn`. Phrases stay in TOML.
+- Hyprland: `Act.define` declares the action and binds its default key; `Act.bind(id, opts)` adds another key, and `Submap.define` rows accept an id. `Bind.key`, `Bind.unbind` and `Bind.submap` keep their signatures (public API for `custom/`). `custom/` overrides a key both ways: `Bind.unbind` and `Bind.key` as today, or `Act.bind(id, { key = ... })`. hyprvim needs no change.
+- Voice and the keybinds picker read `hyprctl binds -j` today, which lists only keyed binds. They move to `hypr-act list` when keyless and parameterised actions exist (2c, 2f).
+- voxcmd: a TOML action gains `action = "<id>"` in place of a `run` line, resolved by the Rust binary, which calls `hypr-act`. Phrases stay in TOML.
 - Shadow skill: `shadow.sh action <name> <id> [params]` makes by id the call `shadow.sh ipc` makes today.
 
 **Dependencies.** None to start. 2f waits for the voxcmd 3.2 swap, with no Bash interim.
 
 **PRs.**
-- 2a: the manifest, its JSON Schema (YAML, in `specs/schema/`), `oasis-djinn`, a few actions (zoom, screenshot, overview); a `registry` step that validates it and fails a binding naming a missing IPC function (reusing `qml_ipc.py`'s parser). `oasis-djinn` goes in `packages/stow.ini` (or the `unstowed` list), which the `packages` step requires.
-- 2b: `Act.define`, and the tool keys moved to it (`lib/actions/defs/tools.lua`).
+- P1 (merged): `lib/act.lua`, with its tests.
+- P2a (merged): the 14 tool actions move to `Act.define` (`lib/actions/defs/tools.lua`).
+- P2b: `Act.list`, `Act.write_list` and `hypr-act list`; the headless reference check (`home/hypr/tests/act_refs.lua`, run by the `registry` step); the old Rust `oasis-djinn`, its manifest, schemas and install steps deleted.
+- P3: `hypr-act <id> [args]`, and the pickers with a rofi fallback.
 - 2c: the other global files, the submaps, and the remaining person-facing IPC functions.
 - 2d: `registry.allow`, with the step failing unlisted binds and handler functions.
 - 2e: `shadow.sh action`. 2f: voxcmd `action = "<id>"`.
 
-**Checks.** The `registry` step (scope `lua qml`, with a `PATH_SCOPES` line for the manifest package and `registry.allow` ahead of the `home/hypr/*` and Quickshell rules); `stylua` and `luacheck` cover `Bind.action`; the voxcmd suites cover 2f.
+**Checks.** The `registry` step (a tree step: always runs, skips without lua) loads `lib/actions/defs/*.lua` under stubs, discards the list, and fails on an `Act` warning, a malformed id, an IPC function that is not a typed handler function or a `~/` script no package ships. `bind-action` pins the 14 tool actions' keys, labels and commands; `act-lib` and `hypr-act` test the library and the script; the voxcmd suites cover 2f.
 
-**Risks.** Moving binds can change which-key order or drop an option such as `submap_universal`. Every new feature edits one more file. The greeter may need the manifest staged (`lib/common/greeter-files.sh`) if lock actions are listed.
+**Risks.** Moving binds can change which-key order or drop an option such as `submap_universal`. Every new feature edits one more file. A new `require` in a definitions file needs a stub line in `act_refs.lua`, or the registry step fails with the module's name. Nothing runs through `hypr-act` while Hyprland is down or its config failed to load; keys and the bar are dead then too.
 
 ## 3. Core specs
 
@@ -180,21 +183,21 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **PRs.** 4a: generation for actions against a throwaway `qs` (like `home/quickshell/tests/json_store/`). 4b: actions that need a compositor, through the shadow.
 
-**Checks.** A `bad-params` step (needs `qs`), scoped to the Quickshell tree and the manifest. Its tests carry the `actions` spec's requirement id.
+**Checks.** A `bad-params` step (needs `qs`), scoped to the Quickshell tree and the action definitions. Its tests carry the `actions` spec's requirement id.
 
 **Risks.** A missed side-effect prefix makes a real call; the throwaway instance and a broad starting list limit that. Slow; may need the serial lane.
 
 ## 5. Docs generated from code, with a drift check
 
-**Scope.** `docs/keybinds.md` is a hand-written guide, so generate one section from the manifest: a table of shipped keys (key, submap, label, id) between `BEGIN generated` and `END generated` markers. Precedent: the generated block in `home/quickshell/.config/quickshell/theme/Style.qml`, written by `scripts/gen-style-exports` and checked by the `style-exports` step.
+**Scope.** `docs/keybinds.md` is a hand-written guide, so generate one section from the action list: a table of shipped keys (key, submap, label, id) between `BEGIN generated` and `END generated` markers. Precedent: the generated block in `home/quickshell/.config/quickshell/theme/Style.qml`, written by `scripts/gen-style-exports` and checked by the `style-exports` step.
 
 **Dependencies.** 2a to 2c: before 2c the table would list only migrated binds.
 
-**PRs.** 5a: the generator and a `docs-generated` step that regenerates and diffs. 5b: the `QS/README.md` IPC table from the same manifest; `qml-ipc` then drops its table check.
+**PRs.** 5a: the generator and a `docs-generated` step that regenerates and diffs. 5b: the `QS/README.md` IPC table from the same list; `qml-ipc` then drops its table check.
 
-**Checks.** `docs-generated` step, with `PATH_SCOPES` lines for the manifest and `docs/keybinds.md`, and its `lib/check/README.md` line.
+**Checks.** `docs-generated` step, with `PATH_SCOPES` lines for the action definitions and `docs/keybinds.md`, and its `lib/check/README.md` line.
 
-**Risks.** `custom/` binds are not in the table; say so above it.
+**Risks.** `custom/` binds are not in the table; say so above it. No action list is committed, so a table in the repo needs the owner's decision first (render on demand, or drop it).
 
 ## 6. AGENTS.md rules only, reasons in a decisions log
 

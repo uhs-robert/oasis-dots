@@ -479,7 +479,7 @@ for path in home/voxcmd/Cargo.toml home/voxcmd/Cargo.lock; do
   migrate_ship "$path"
   check "$path runs it too" "[[ $? == 0 && \$(build_count) == 1 ]]"
 done
-for path in home/voxcmd/tests/run.sh home/voxcmd/.config/voxcmd/integrations/timers.sh home/voxcmd/.local/bin/voxcmd-wake home/voxcmdish/src/x.rs home/oasis-djinn/src/main.rs; do
+for path in home/voxcmd/tests/run.sh home/voxcmd/.config/voxcmd/integrations/timers.sh home/voxcmd/.local/bin/voxcmd-wake home/voxcmdish/src/x.rs home/voxcmdish/src/y.rs; do
   migrate_ship "$path"
   check "$path does not" "[[ $? == 0 && \$(build_count) == 0 ]]"
 done
