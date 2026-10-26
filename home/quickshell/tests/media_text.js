@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/MediaText.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle };", T);
 const M = T.api;
 const plain = v => JSON.parse(JSON.stringify(v));
 
@@ -29,6 +29,8 @@ const cases = [
   ["time over an hour", () => M.format_time(3725), "1:02:05"],
   ["time of nothing", () => M.format_time(undefined), "0:00"],
   ["ratio clamps", () => [M.ratio(5, 10), M.ratio(20, 10), M.ratio(-1, 10), M.ratio(3, 0)], [0.5, 1, 0, 0]],
+  ["one marquee cycle is pause, slide, pause: no way back", () => plain(M.marquee_cycle(60, 30, 1200)), { start_pause: 1200, travel: 2000, end_pause: 1200 }],
+  ["no overflow or a zero speed never gives a negative or infinite slide", () => [M.marquee_cycle(-5, 30, 100).travel, M.marquee_cycle(50, 0, 100).travel], [0, 50000]],
   ["marquee runs only when wanted, visible and overflowing", () => [M.marquee_running(true, true, 10), M.marquee_running(false, true, 10), M.marquee_running(true, false, 10), M.marquee_running(true, true, 0)], [true, false, false, false]],
 ];
 

@@ -13,6 +13,9 @@ Item {
     property var player: MediaState.active
     // "cava", "position" or "hide" (the well stays, the right side goes).
     property string right_mode: "cava"
+    // "inset" (pressed in, darker), "border" (island fill, thin outline) or "raised" (slightly lighter, no outline).
+    property string well_style: "inset"
+    property bool show_art: true
     property bool show_title: true
     property bool show_artist: true
     property string text_layout: "inline"
@@ -46,7 +49,7 @@ Item {
     readonly property real right_width: root.right_mode === "hide" ? 0 : root.right_mode === "cava" ? 64 : 76
 
     implicitWidth: root.vertical ? root.cell + root.pad * 2 : Math.max(root.compact ? 0 : root.base_width, content.implicitWidth + root.pad * 2)
-    implicitHeight: root.vertical ? root.cell * 2 + content.rowSpacing + root.pad * 2 : 24
+    implicitHeight: root.vertical ? root.cell * (root.show_art ? 2 : 1) + (root.show_art ? content.rowSpacing : 0) + root.pad * 2 : 24
 
     property font font
     font.family: Style.bar_font_family
@@ -54,17 +57,19 @@ Item {
     font.capitalization: Style.bar_capitalization
     font.letterSpacing: Style.bar_letter_spacing
 
-    // Darker than the island plate, with a faint shadow along the top edge.
     Rectangle {
         id: plate
         anchors.fill: parent
         radius: Style.radius(8)
-        color: Qt.alpha(Style.pal.bg_shadow, 0.85)
-        border.width: 1
-        border.color: Qt.alpha(Style.pal.fg, 0.1)
+        // The island's own fill shows through for "border"; "raised" lifts it with a pale wash.
+        color: root.well_style === "inset" ? Qt.alpha(Style.pal.bg_shadow, 0.85) : root.well_style === "raised" ? Qt.alpha(Style.pal.fg, 0.09) : "transparent"
+        border.width: root.well_style === "raised" ? 0 : 1
+        border.color: Qt.alpha(Style.pal.fg, root.well_style === "border" ? 0.22 : 0.1)
         clip: true
 
+        // The faint shadow along the top edge that makes the inset read as pressed in.
         Rectangle {
+            visible: root.well_style === "inset"
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
@@ -87,6 +92,7 @@ Item {
         columnSpacing: 6
 
         AlbumArt {
+            visible: root.show_art
             Layout.preferredWidth: root.art_size
             Layout.preferredHeight: root.art_size
             Layout.alignment: Qt.AlignVCenter

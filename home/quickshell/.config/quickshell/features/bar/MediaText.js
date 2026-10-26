@@ -39,6 +39,12 @@ function ratio(position, length) {
     return Math.max(0, Math.min(1, position / length));
 }
 
+// One marquee cycle, in ms: wait at the start, slide left by `overflow` px at `speed` px/s, wait at the end, then jump
+// back to the start. One direction only, so the text is always read left to right.
+function marquee_cycle(overflow, speed, pause_ms) {
+    return { start_pause: pause_ms, travel: Math.round(Math.max(0, overflow) / Math.max(1, speed) * 1000), end_pause: pause_ms };
+}
+
 // Whether the marquee should run: wanted, visible and the text really overflows its window.
 function marquee_running(wanted, visible, overflow) {
     return !!wanted && !!visible && overflow > 0;

@@ -19,6 +19,7 @@ Item {
     readonly property string clipped: MediaText.clip(root.full_text, root.max_chars)
     readonly property real window_width: clipped_metrics.advanceWidth
     readonly property real overflow: Math.max(0, full_metrics.advanceWidth - root.window_width)
+    readonly property var cycle: MediaText.marquee_cycle(root.overflow, root.speed, root.pause_ms)
     readonly property bool sliding: MediaText.marquee_running(root.scroll, root.visible, root.overflow)
 
     implicitWidth: root.window_width
@@ -53,9 +54,10 @@ Item {
         loops: Animation.Infinite
         onRunningChanged: if (!running) label.x = 0
 
-        PauseAnimation { duration: root.pause_ms }
-        NumberAnimation { target: label; property: "x"; from: 0; to: -root.overflow; duration: root.overflow / Math.max(1, root.speed) * 1000 }
-        PauseAnimation { duration: root.pause_ms }
-        NumberAnimation { target: label; property: "x"; from: -root.overflow; to: 0; duration: root.overflow / Math.max(1, root.speed) * 1000 }
+        PauseAnimation { duration: root.cycle.start_pause }
+        NumberAnimation { target: label; property: "x"; from: 0; to: -root.overflow; duration: root.cycle.travel }
+        PauseAnimation { duration: root.cycle.end_pause }
+        // Jump back, never slide back: the text is always read left to right.
+        PropertyAction { target: label; property: "x"; value: 0 }
     }
 }

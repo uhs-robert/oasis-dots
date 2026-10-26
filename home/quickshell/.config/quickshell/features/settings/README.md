@@ -39,7 +39,7 @@ Settings > Sessions (System group) manages the layouts the launcher picker lists
 
 ## Media settings
 
-Settings > Media sets the media module: what shows on its right (the cava visualizer or the track position), the fallback on battery, what the wheel does, the cava line, which parts of the track text show and how, and for island bar styles whether media shows as the cava under the clock island (the default), as the module alone, or both. Strip and frame styles always show the module. The cava line used to be on the Style page; its old value in `style.json` is carried over once, and `media.json` wins from then on. It saves to `media.json` in the Quickshell state folder.
+Settings > Media sets the media module: what shows on its right (the cava visualizer or the track position), the fallback on battery, what the wheel does, the cava line, the well style (inset, border or raised), whether the album art shows, which parts of the track text show and how, and for island bar styles whether media shows as the cava under the clock island (the default), as the module alone, or both. Strip and frame styles always show the module. The cava line used to be on the Style page; its old value in `style.json` is carried over once, and `media.json` wins from then on. It saves to `media.json` in the Quickshell state folder.
 
 ## Wallpaper settings
 

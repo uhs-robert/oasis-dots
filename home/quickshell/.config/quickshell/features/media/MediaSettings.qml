@@ -17,16 +17,19 @@ Singleton {
         battery_fallback: ["position", "hide"],
         scroll_action: ["volume_seek", "skip", "none"],
         island_mode: ["cava_under_island", "module_only", "split"],
-        text_layout: ["inline", "stacked"]
+        text_layout: ["inline", "stacked"],
+        well_style: ["inset", "border", "raised"]
     })
     readonly property var ranges: ({ max_chars: [8, 60], text_scroll_speed: [10, 120] })
-    readonly property var bools: ["cava_line", "show_title", "show_artist", "text_scroll"]
+    readonly property var bools: ["cava_line", "show_art", "show_title", "show_artist", "text_scroll"]
     readonly property var defaults: ({
         right_side_mode: "cava",
         battery_fallback: "position",
         scroll_action: "volume_seek",
         cava_line: true,
         island_mode: "cava_under_island",
+        well_style: "inset",
+        show_art: true,
         show_title: true,
         show_artist: true,
         text_layout: "inline",
@@ -41,6 +44,8 @@ Singleton {
     readonly property string scroll_action: root.values.scroll_action
     readonly property bool cava_line: root.values.cava_line
     readonly property string island_mode: root.values.island_mode
+    readonly property string well_style: root.values.well_style
+    readonly property bool show_art: root.values.show_art
     readonly property bool show_title: root.values.show_title
     readonly property bool show_artist: root.values.show_artist
     readonly property string text_layout: root.values.text_layout

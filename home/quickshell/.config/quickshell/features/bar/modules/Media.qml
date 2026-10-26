@@ -89,6 +89,8 @@ BarModule {
         player: root.player
         active: root.shown
         right_mode: root.right_mode
+        well_style: MediaSettings.well_style
+        show_art: MediaSettings.show_art
         show_title: MediaSettings.show_title
         show_artist: MediaSettings.show_artist
         text_layout: MediaSettings.text_layout

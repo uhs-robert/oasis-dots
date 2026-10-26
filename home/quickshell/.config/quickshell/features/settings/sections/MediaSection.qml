@@ -10,7 +10,8 @@ RowsSection {
         cava: "Cava", position: "Track position", hide: "Hide",
         volume_seek: "Volume and seek", skip: "Next and previous", none: "Nothing",
         cava_under_island: "Cava under the clock island", module_only: "Media module only", split: "Both",
-        inline: "Artist - Title", stacked: "Title over artist"
+        inline: "Artist - Title", stacked: "Title over artist",
+        inset: "Inset", border: "Border", raised: "Raised"
     })
 
     function on_off(key) {
@@ -34,6 +35,8 @@ RowsSection {
         Object.assign({ label: "Scroll", desc: "What the mouse wheel does over the media module. Volume: scroll sets the volume. Whatever you pick, scrolling over the cava or position area seeks." }, root.choice("scroll_action")),
         Object.assign({ label: "Cava line", desc: "Draw the audio visualizer as a smooth line. Off draws separate bars.", keys: "H/L or c toggle · Enter list" }, root.on_off("cava_line")),
         Object.assign({ label: "Island styles", desc: "Where media shows in island bar styles. Strip and frame styles always show the module." }, root.choice("island_mode")),
+        Object.assign({ label: "Well style", desc: "How the media module sits in the bar: pressed in, outlined, or lifted." }, root.choice("well_style")),
+        Object.assign({ label: "Show album art", desc: "Show the album art thumbnail in the media module. Off leaves the play/pause button first." }, root.on_off("show_art")),
         Object.assign({ label: "Show title", desc: "Show the track title in the media module." }, root.on_off("show_title")),
         Object.assign({ label: "Show artist", desc: "Show the artist in the media module." }, root.on_off("show_artist")),
         Object.assign({ label: "Text layout", desc: "Artist and title on one line, or the title with a smaller artist line under it." }, root.choice("text_layout")),
