@@ -11,6 +11,11 @@ hypr_link="$HOME/.config/hypr"
 hypr_rel=home/hypr/.config/hypr
 hypr_orig="$bars/.hypr_orig"
 hypr_bar="$bars/.hypr_bar"
+# Hyprland's Bind.action reads this manifest, so a test build that adds an action id fails with "unknown action id"
+# unless the manifest is the build's own. The binary is not rebuilt: only the files the config reads move.
+djinn_rel=home/oasis-djinn
+djinn_link="$HOME/.config/oasis-djinn"
+djinn_bar="$bars/.djinn_bar"
 voxcmd_rel=home/voxcmd
 voxcmd_bin_dir="$HOME/.local/bin"
 voxcmd_config_link="$HOME/.config/voxcmd"
@@ -255,6 +260,57 @@ hypr_swap() {
   fi
   echo "hypr: swapped"
   restart_rotator
+}
+
+# Swapped when the branches touch the manifest or hypr: a hypr-only branch may use ids the manifest gains in a branch
+# it is merged with, and swapping on either keeps the config and the manifest from the same build.
+djinn_swap() {
+  local name=$1 dir=$2
+  if [[ -z $(git -C "$dir" diff --name-only origin/main...HEAD -- "$djinn_rel" home/hypr) ]]; then
+    djinn_restore
+    return 0
+  fi
+  [[ -L $djinn_link ]] || die "$djinn_link is not a symlink (stow unfolded it?); refusing the oasis-djinn swap"
+  [[ -d $dir/$djinn_rel/.config/oasis-djinn ]] || die "$dir has no $djinn_rel/.config/oasis-djinn; refusing the oasis-djinn swap"
+  # Recorded before the link moves, so restore knows to restow even if this stops halfway.
+  echo "$name" >"$djinn_bar"
+  ln -sfn "$dir/$djinn_rel/.config/oasis-djinn" "$djinn_link"
+  echo "oasis-djinn: test build $name"
+}
+
+djinn_linked() {
+  [[ -L $djinn_link && $(readlink -m "$djinn_link") == "$bars"/* ]]
+}
+
+# Safe to rerun: the record goes only once stow has relinked main.
+djinn_restore() {
+  if djinn_linked || [[ -f $djinn_bar ]]; then
+    command -v stow >/dev/null || die "stow is not installed; cannot relink oasis-djinn from main"
+    # stow refuses to replace a link it does not own, so the test link goes first.
+    if djinn_linked; then rm -f "$djinn_link"; fi
+    # -d and -t absolute: stow run from inside home/ would target the repo itself.
+    stow -d "$repo/home" -t "$HOME" -R oasis-djinn
+    rm -f "$djinn_bar"
+  fi
+  echo "oasis-djinn: main"
+}
+
+djinn_status() {
+  local target name
+  if djinn_linked; then
+    target=$(readlink -m "$djinn_link")
+    name=${target#"$bars"/}
+    name=${name%%/*}
+    if [[ -f $djinn_bar && $(<"$djinn_bar") == "$name" ]]; then
+      echo "oasis-djinn: test build $name"
+    else
+      echo "oasis-djinn: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
+    fi
+  elif [[ -f $djinn_bar ]]; then
+    echo "oasis-djinn: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
+  else
+    echo "oasis-djinn: main"
+  fi
 }
 
 # Every voxcmd link in ~ that resolves into a test bar or the Rust build, from a swap or a half-done one. The Rust link
@@ -718,6 +774,7 @@ status() {
   else
     echo "hypr: stowed ($(readlink "$hypr_link"))"
   fi
+  djinn_status
   voxcmd_status
   voxtype_status
 }
@@ -859,6 +916,7 @@ main() {
     mapfile -t branches < <(cat "$dir.branches" 2>/dev/null)
     record_owner "$2" "${branches[@]}"
     require_unlocked
+    djinn_swap "$2" "$dir"
     hypr_swap "${2}" "$dir"
     voxcmd_swap "$2" "$dir"
     voxtype_swap "$2" "$dir"
@@ -889,6 +947,7 @@ main() {
     guard_owner "$take"
     require_unlocked
     hypr_restore
+    djinn_restore
     voxcmd_restore
     voxtype_restore
     launch "qs -n"
@@ -901,6 +960,9 @@ main() {
     if [[ -f $hypr_bar && $(<"$hypr_bar") == "${2}" ]]; then
       require_unlocked
       hypr_restore
+    fi
+    if [[ -f $djinn_bar && $(<"$djinn_bar") == "$2" ]] || { djinn_linked && [[ $(readlink -m "$djinn_link") == "$dir"/* ]]; }; then
+      djinn_restore
     fi
     # The links decide too: a swap stopped halfway may have moved them for this bar under another bar's record.
     if [[ -f $voxcmd_bar && $(<"$voxcmd_bar") == "$2" ]] || grep -qxF "$2" <<<"$(voxcmd_linked_bars)"; then
