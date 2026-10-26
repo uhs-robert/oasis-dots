@@ -550,6 +550,67 @@ Act.define("workspace.focus", {
 })
 check("eval chunk: a bad param raises", has(raises(bad_chunk), "expects an int"))
 
+---------------------------------------------------------------------------------------------------
+-- list / write_list
+---------------------------------------------------------------------------------------------------
+fresh()
+local Json = require("lib.json")
+Act.define("zoom.toggle", {
+	label = "Zoom",
+	intent = "Toggle zoom.",
+	key = { key = "Z", leader = true },
+	extra_keys = { { key = "Print", universal = true } },
+	run = Act.Ipc("zoom", "toggle", "{n}"),
+	params = { { name = "n", type = "int", default = 1 } },
+})
+Act.define("a.first", { label = "First", run = function() end })
+Act.define("mode.set", {
+	label = "Mode",
+	params = { { name = "m", type = "enum", values = { "a", "b" } } },
+	run = Act.Cmd("~/x.sh", "{m}"),
+})
+
+local listed = Json.decode(Act.list_json())
+check("list: version 1", listed.version == 1)
+check(
+	"list: sorted by id",
+	listed.actions[1].id == "a.first" and listed.actions[2].id == "mode.set" and listed.actions[3].id == "zoom.toggle"
+)
+local first, mode, zoom = listed.actions[1], listed.actions[2], listed.actions[3]
+check(
+	"list: keyless action has no keys, no params, a null intent",
+	#first.keys == 0 and #first.params == 0 and first.intent == nil
+)
+check("list: lua perform", first.perform.kind == "lua")
+check("list: leader applied to the key", zoom.keys[1].key == "SUPER + Z" and zoom.keys[1].leader == true)
+check("list: extra key follows, universal kept", zoom.keys[2].key == "Print" and zoom.keys[2].universal == true)
+check(
+	"list: ipc perform",
+	zoom.perform.kind == "ipc"
+		and zoom.perform.target == "zoom"
+		and zoom.perform["function"] == "toggle"
+		and zoom.perform.args[1] == "{n}"
+)
+check(
+	"list: param default only when set",
+	zoom.params[1].default == 1 and zoom.params[1].values == nil and mode.params[1].default == nil
+)
+check("list: enum values", mode.params[1].values[2] == "b")
+check("list: command perform", mode.perform.kind == "command" and mode.perform.argv[1] == "~/x.sh")
+check(
+	"list: null intent and empty arrays are written out",
+	Act.list_json():find('"intent":null', 1, true) and Act.list_json():find('"keys":[]', 1, true)
+)
+
+local list_path = os.tmpname()
+local write_chunk = assert(load('require("lib.act").write_list([=====[' .. list_path .. "]=====])"))
+write_chunk()
+local list_file = assert(io.open(list_path))
+local written = list_file:read("a")
+list_file:close()
+os.remove(list_path)
+check("write_list: file holds the list from an eval-style chunk", written == Act.list_json() .. "\n")
+
 if failures > 0 then
 	print(failures .. " failed, " .. passed .. " passed")
 	os.exit(1)

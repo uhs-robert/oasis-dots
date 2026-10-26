@@ -1,6 +1,6 @@
 -- Runs lib/actions/defs/tools.lua against a stubbed `hl`: the 14 tool actions register the keys, extra keys and
--- labels the hand-written manifest has, nothing warns, they run through Cmd/Ipc argv, and their binds can be
--- removed with Bind.unbind. The hand-written manifest is read only for the expected values, until it is deleted.
+-- labels written out below, nothing warns, each key runs the command written out below, and their binds can be
+-- removed with Bind.unbind.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local hypr_dir = here .. "/../.config/hypr"
 package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.path
@@ -57,74 +57,57 @@ local function find(key)
 	end
 end
 
--- Every manifest entry: same key, extra keys, label and universal flag, in the manifest's order.
-local manifest_dir = here .. "/../../oasis-djinn/.config/oasis-djinn"
-local file = assert(io.open(manifest_dir .. "/actions.json"))
-local text = file:read("a")
-file:close()
-local Json = require("lib.json")
-local manifest = Json.decode(text).actions
-check("manifest has 14 actions", #manifest == 14)
+-- The 14 actions as the keymaps shipped them before Act: id, label, keys (the leader is SUPER here) and the command
+-- each key runs. None of the words needs quoting, and ~/ stays for the shell to expand.
+local qs_ipc = "~/.config/hypr/scripts/qs-ipc call "
+local screenshot = "~/.config/hypr/scripts/screenshot.sh"
+local voxcmd = "~/.local/bin/voxcmd "
+local expected = {
+	{ "screenshot.take", "Screenshot", { "Print", "SUPER + I" }, screenshot, universal = { Print = true } },
+	{ "screenshot.pixel", "Color Picker", { "SUPER + P" }, screenshot .. " --pixel" },
+	{ "zoom.toggle", "Zoom", { "SUPER + Z" }, qs_ipc .. "zoom toggle" },
+	{ "voice.dictate", "Speech to Text", { "SUPER + PERIOD" }, "~/.config/hypr/scripts/voxtype-with-media-pause.sh" },
+	{ "voice.command", "Voice Command", { "SUPER + COMMA" }, voxcmd .. "listen" },
+	{ "voice.stop", "Stop Voice", { "SUPER + SHIFT + COMMA" }, voxcmd .. "stop" },
+	{ "voice.rapid", "Rapid Mode", { "SUPER + CTRL + COMMA" }, voxcmd .. "rapid" },
+	{ "voice.wake", "Wake Word", { "SUPER + CTRL + PERIOD" }, voxcmd .. "wake toggle" },
+	{ "picker.passwords", "Passwords", { "SUPER + CTRL + P" }, "rofi-rbw" },
+	{ "overview.search", "Search windows", { "SUPER + T" }, qs_ipc .. "overview search" },
+	{ "overview.move", "Move window in overview", { "SUPER + SHIFT + T" }, qs_ipc .. "overview move_follow" },
+	{
+		"overview.move_silent",
+		"Silent move window in overview",
+		{ "SUPER + CTRL + SHIFT + T" },
+		qs_ipc .. "overview move_silent",
+	},
+	{ "overview.open", "Workspace overview", { "ALT + TAB", "SUPER + TAB" }, qs_ipc .. "overview open" },
+	{ "tmux.overview", "Tmux overview", { "ALT + GRAVE" }, qs_ipc .. "tmux_overview open" },
+}
+check("14 actions", #expected == 14)
 
-local function bound_key(spec)
-	return spec.leader and ("SUPER + " .. spec.key) or spec.key
-end
-
-local expected_binds = 0
-for _, entry in ipairs(manifest) do
-	local keys = { entry.key }
-	for _, extra in ipairs(entry.extra_keys) do
-		keys[#keys + 1] = extra
-	end
-	for _, spec in ipairs(keys) do
-		expected_binds = expected_binds + 1
-		local bind = find(bound_key(spec))
-		check(entry.id .. ": bound " .. bound_key(spec), bind ~= nil)
-		check(entry.id .. ": label " .. bound_key(spec), bind and bind.opts.desc == entry.label)
-		check(
-			entry.id .. ": universal " .. bound_key(spec),
-			bind and (bind.opts.submap_universal == true) == spec.universal
-		)
-	end
-end
-check("no other binds", #binds == expected_binds)
-
--- Every key performs the manifest's performer: argv joined for a command, `qs-ipc call` for an IPC function. None
--- of these words needs quoting, and ~/ stays for the shell to expand.
+-- Every key performs its action's command: argv joined for a command, `qs-ipc call` for an IPC function.
 local function performed(key)
 	executed = {}
 	find(key).action()
 	return executed[1]
 end
-local bindings_file = assert(io.open(manifest_dir .. "/bindings/quickshell.json"))
-local performers = Json.decode(bindings_file:read("a")).bindings
-bindings_file:close()
 
-local function expected_command(performer)
-	if performer.kind == "ipc" then
-		local words = { "~/.config/hypr/scripts/qs-ipc", "call", performer.target, performer["function"] }
-		for _, arg in ipairs(performer.args) do
-			words[#words + 1] = arg
-		end
-		return table.concat(words, " ")
-	end
-	return table.concat(performer.argv, " ")
-end
-
-for _, entry in ipairs(manifest) do
-	local performer = performers[entry.id]
-	check(entry.id .. ": has a performer", performer ~= nil)
-	check(
-		entry.id .. ": performs " .. (performer and expected_command(performer) or "?"),
-		performer ~= nil and performed(bound_key(entry.key)) == expected_command(performer)
-	)
-	for _, extra in ipairs(entry.extra_keys) do
+local expected_binds = 0
+for _, entry in ipairs(expected) do
+	local id, label, keys, command = entry[1], entry[2], entry[3], entry[4]
+	for _, key in ipairs(keys) do
+		expected_binds = expected_binds + 1
+		local bind = find(key)
+		check(id .. ": bound " .. key, bind ~= nil)
+		check(id .. ": label " .. key, bind and bind.opts.desc == label)
 		check(
-			entry.id .. ": extra key performs the same",
-			performed(bound_key(extra)) == performed(bound_key(entry.key))
+			id .. ": universal " .. key,
+			bind and (bind.opts.submap_universal == true) == ((entry.universal or {})[key] == true)
 		)
+		check(id .. ": " .. key .. " performs " .. command, bind and performed(key) == command)
 	end
 end
+check("no other binds", #binds == expected_binds)
 
 -- The same ids run by name, as the bar and voice will.
 executed = {}

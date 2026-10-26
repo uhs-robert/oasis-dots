@@ -42,3 +42,12 @@ Why AGENTS.md rules are the way they are. AGENTS.md keeps the rule and a one-cla
 - Chose: a blanket ignore of credentials, AI assistant state and generated config, with explicit `!` negations for the tracked subpaths of `home/claude/**`, `home/gemini/**` and `home/codex/**`, and `!/CLAUDE.md` and `!/AGENTS.md` at the repository root only.
 - Because (from the commit message): the blanket rule exists to keep AI state out of `home/claude`, so the root `CLAUDE.md` and `AGENTS.md` are unignored explicitly; a nested `AGENTS.md` under `home/` stays ignored. The commit records no alternative that was weighed.
 - Footgun: a new tracked file under an ignored tree needs a matching `!` negation, or it silently never gets added.
+
+## Lua defines actions; Hyprland is the registry
+
+- Date: 2026-10-26. Branch `feat/hypr-act-list` (PR number added when it opens); builds on #1278 and #1281.
+- Chose: define each action once in Lua with `Act.define` (`lib/act.lua`), have `hypr-act list` ask the running Hyprland for the list, and check only the definitions' references headlessly (`registry` step, `home/hypr/tests/act_refs.lua`), discarding the output.
+- Over: a hand-written `actions.json` plus per-tool bindings read by a Rust `oasis-djinn`, and over a generated, committed list with a drift check.
+- Because: nothing at runtime read the manifest, so it had to be kept in step with the Lua by hand for no consumer, and the Rust runner needed its own build, install order and check step beside the Lua path keys already use. The owner always runs Hyprland, so a list that exists only while it runs costs nothing, and a committed list could drift from a `custom/` override anyway.
+- Cost: with no Hyprland, `hypr-act list` prints nothing and exits 3, and no action can run. A key or the bar is dead then too.
+- Footgun: machines that had `oasis-djinn` stowed run `stow -D oasis-djinn` before checking out this change, or `~/.config/oasis-djinn` dangles; then remove `~/.local/bin/oasis-djinn` and `~/.local/share/oasis-djinn-rs`.

@@ -68,7 +68,7 @@ PATH_SCOPES = [
     # The specs step is a tree step, so these files need no scope of their own; the schemas are named so that they do
     # not fall to the final "all" rule.
     ("lib/check/steps/specs.py", ""),
-    # The registry step is a tree step too: it reads the manifest, its schemas and the IpcHandlers.
+    # The registry step is a tree step too: it loads the Lua definitions headlessly and reads the IpcHandlers.
     ("lib/check/steps/registry.py", ""),
     ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
@@ -95,14 +95,6 @@ PATH_SCOPES = [
     ("home/quickshell/tests/*", "node qml"),
     ("home/quickshell/*", "qml node"),
     ("lib/check/steps/voxcmd-rust.sh", "rust"),
-    # The oasis-djinn crate and the manifest its tests run the binary against (the registry step reads the manifest too).
-    ("lib/check/steps/djinn-rust.sh", "djinnrust"),
-    ("home/oasis-djinn/src/*", "djinnrust"),
-    ("home/oasis-djinn/tests/*", "djinnrust"),
-    ("home/oasis-djinn/Cargo.*", "djinnrust"),
-    ("home/oasis-djinn/rustfmt.toml", "djinnrust"),
-    # bind_action.lua reads the manifest as its expected values, so a manifest edit reaches the Lua steps too.
-    ("home/oasis-djinn/.config/*", "djinnrust lua"),
     # Only the Rust step: the voxcmd suites run with VOXCMD_BIN unset, so they exercise the bash voxcmd and never the
     # crate. Snapshots and the generated goldens are read only by cargo test; the other fixtures are read by both. An
     # integration file also reaches the bash voxcmd, and the crate through tests/integrations.rs.
@@ -253,7 +245,6 @@ STEPS = [
     Step("voxtype-duck", "voxtype", "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
     Step("voxcmd-firefox", VOX_FIREFOX, "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-rust", "rust", "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
-    Step("djinn-rust", "djinnrust", "sh ./lib/check/steps/djinn-rust.sh", ("cargo",), skip_reason="the oasis-djinn crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     Step("firefox-policy", "policy", "bash ./lib/install/tests/firefox-policy.sh && bash ./lib/install/tests/voxcmd-install.sh", ("jq",), skip_reason="the firefox policy test needs jq"),
@@ -281,7 +272,7 @@ STEPS = [
     Step("specs", "tree", "python3 -B ./lib/check/steps/specs.py"),
     # "tree" because it reads the manifest package, its schemas and the Quickshell IpcHandlers: no single scope covers
     # them. check-jsonschema is required, as for specs.
-    Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),
+    Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py", ("lua",), skip_reason="the action reference check needs lua"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
@@ -297,6 +288,7 @@ STEPS = [
     Step("restarting-stream", "restartstream", "bash ./home/quickshell/tests/restarting_stream/run.sh", ("qs", "python3"), skip_reason="the restarting-stream tests need qs and python3"),
     Step("frame-lone-flush", "lua", "lua ./home/hypr/tests/frame_lone_flush.lua", ("lua",), skip_reason="the frame tests need lua"),
     Step("bind-action", "lua", "lua ./home/hypr/tests/bind_action.lua", ("lua",), skip_reason="the bind tests need lua"),
+    Step("hypr-act", "lua", "bash ./home/hypr/tests/hypr-act.sh"),
     Step("act-lib", "lua", "lua ./home/hypr/tests/act.lua", ("lua",), skip_reason="the action tests need lua"),
     Step("input-vectors-lua", "inputvec", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
     Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
@@ -328,6 +320,8 @@ SHELL_GROUPS = {
         "lib/install/tests/*.sh",
         "demo/*.sh",
         "home/hypr/.config/hypr/scripts/state-write",
+        "home/hypr/.local/bin/hypr-act",
+        "home/hypr/tests/*.sh",
         "home/voxcmd/tests/*.sh",
         "home/calendar/tests/*.sh",
         "lib/check/*.sh",

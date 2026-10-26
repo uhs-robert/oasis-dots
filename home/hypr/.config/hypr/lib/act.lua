@@ -6,6 +6,7 @@
 --- because a Lua error would abort the rest of the config file.
 
 local Bind = require("lib.key.bind") ---@class BindLib
+local Json = require("lib.json") ---@class Json
 local Scripts = require("lib.scripts") ---@class Scripts
 
 --- @class ActionParam
@@ -534,6 +535,85 @@ function Act.run_cli(id, words)
     return value
   end)
   return perform(handle, values)
+end
+
+---------------------------------------------------------------------------------------------------
+-- list
+---------------------------------------------------------------------------------------------------
+
+--- Every defined action, sorted by id.
+--- @return ActionHandle[]
+function Act.list()
+  local handles = {}
+  for _, handle in pairs(registry) do
+    table.insert(handles, handle)
+  end
+  table.sort(handles, function(a, b) return a.id < b.id end)
+  return handles
+end
+
+--- @param key ActionKey
+--- @return table
+local function key_entry(key)
+  -- The key as hl.bind receives it, leader applied, so a consumer matches it against `hyprctl binds -j`.
+  local bound = key.leader and Bind.leader and Bind.leader ~= "" and (Bind.leader .. " + " .. key.key) or key.key
+  return { key = bound, leader = key.leader, universal = key.universal }
+end
+
+--- @param run function|table
+--- @return table
+local function perform_entry(run)
+  if type(run) == "function" then return { kind = "lua" } end
+  if run.kind == "ipc" then
+    return {
+      kind = "ipc",
+      target = run.target,
+      ["function"] = run["function"],
+      args = Json.array({ table.unpack(run.args) }),
+    }
+  end
+  return { kind = "command", argv = Json.array({ table.unpack(run.argv) }) }
+end
+
+--- @param handle ActionHandle
+--- @return table
+local function list_entry(handle)
+  local params = Json.array()
+  for _, param in ipairs(handle.params) do
+    table.insert(params, { name = param.name, type = param.type, values = param.values, default = param.default })
+  end
+  local keys = Json.array()
+  if handle.key then table.insert(keys, key_entry(handle.key)) end
+  for _, key in ipairs(handle.extra_keys) do
+    table.insert(keys, key_entry(key))
+  end
+  return {
+    id = handle.id,
+    label = handle.label,
+    intent = handle.intent == nil and Json.null or handle.intent,
+    params = params,
+    keys = keys,
+    perform = perform_entry(handle.run),
+  }
+end
+
+--- The list as the JSON `hypr-act list` prints: {"version":1,"actions":[{id,label,intent,params,keys,perform}]},
+--- sorted by id. `intent` is null when the action has none.
+--- @return string
+function Act.list_json()
+  local actions = Json.array()
+  for _, handle in ipairs(Act.list()) do
+    table.insert(actions, list_entry(handle))
+  end
+  return Json.encode({ version = 1, actions = actions })
+end
+
+--- Write the list to `path`. `hyprctl eval` returns only "ok", so the hypr-act script reads the answer from this file.
+--- @param path string
+function Act.write_list(path)
+  local file = assert(io.open(path, "w"))
+  file:write(Act.list_json(), "\n")
+  file:close()
 end
 
 return Act
