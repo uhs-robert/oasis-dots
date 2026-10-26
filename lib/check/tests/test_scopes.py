@@ -48,6 +48,9 @@ CASES = [
     ("home/hypr/tests/hypr-act.sh", " lua"),
     ("home/hypr/tests/act-global.sh", " lua"),
     ("home/hypr/tests/act_global.lua", " lua"),
+    ("home/hypr/tests/act-launch.sh", " lua"),
+    ("home/hypr/tests/act_launch.lua", " lua"),
+    ("home/hypr/tests/act_stubs.lua", " lua"),
     ("home/hypr/.local/bin/hypr-act", " lua"),
     ("docs/keybinds.md", ""),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.
