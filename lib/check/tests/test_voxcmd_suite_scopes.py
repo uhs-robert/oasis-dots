@@ -33,6 +33,7 @@ EXTENSIONLESS_SCRIPTS = ("firefox-profile", "firefox-fake-host", "firefox-host-t
 # name).
 NOT_READ = {
     (scopes.VOX_CLICK, "click.toml"),
+    (scopes.VOX_CLICK, "apps.toml"),
     (scopes.VOX_PHRASES, "bench.sh"),
     (scopes.VOX_PHRASES, "run-live-diff.sh"),
 }
