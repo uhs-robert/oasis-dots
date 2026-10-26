@@ -155,6 +155,13 @@ function Stubs.load(variant, modules)
 	Config.app.dmenu_cmd = "rofi -name rofiDmenu -i -dmenu"
 	Config.is_laptop = false
 	Config.nvidia = { enable = false, backend = "nvidia-drm", hybrid = false }
+	-- Only a variant that names them overrides these; the tests that do compare the keys that follow Config.
+	if variant.persistent_workspaces ~= nil then
+		Config.persistent_workspaces = variant.persistent_workspaces
+	end
+	if variant.vim_mode ~= nil then
+		Config.vim_mode = variant.vim_mode
+	end
 	Config.ws_per_monitor = Config.persistent_workspaces
 	Config.leader = variant.leader
 	Config.monitors = variant.monitors

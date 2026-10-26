@@ -3,7 +3,10 @@
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
-local Window = require("lib.actions.window") ---@class WindowActions
+
+-- The actions the rows name.
+require("lib.actions.defs.groups")
+require("lib.actions.defs.windows")
 
 Submap.define({
   name = "Groups",
@@ -15,26 +18,26 @@ Submap.define({
 
   binds = function()
     local focus_actions = {
-      left = Window.focus_dir("l"),
-      down = Window.focus_dir("d"),
-      up = Window.focus_dir("u"),
-      right = Window.focus_dir("r"),
+      left = { "window.focus", { "left" } },
+      down = { "window.focus", { "down" } },
+      up = { "window.focus", { "up" } },
+      right = { "window.focus", { "right" } },
     }
 
     local move_actions = {
-      left = Window.group_move_or_create("l"),
-      down = Window.group_move_or_create("d"),
-      up = Window.group_move_or_create("u"),
-      right = Window.group_move_or_create("r"),
+      left = { "groups.move", { "left" } },
+      down = { "groups.move", { "down" } },
+      up = { "groups.move", { "up" } },
+      right = { "groups.move", { "right" } },
     }
 
     -- stylua: ignore start
     local keys = {
-      { "SPACE",                          Window.group_toggle(),      "Toggle Group" },
-      { { "TAB", "BRACKETRIGHT" },        Window.group_next(),        "Next Group Window" },
-      { { "SHIFT + TAB", "BRACKETLEFT" }, Window.group_prev(),        "Previous Group Window" },
-      { "X",                              Window.group_move_out(),    "Move Out of Group" },
-      { "SHIFT + X",                      Window.group_lock_toggle(), "Toggle Group Lock" },
+      { "SPACE",                          "groups.toggle" },
+      { { "TAB", "BRACKETRIGHT" },        "groups.next" },
+      { { "SHIFT + TAB", "BRACKETLEFT" }, "groups.prev" },
+      { "X",                              "groups.move_out" },
+      { "SHIFT + X",                      "groups.lock_toggle" },
     }
     -- stylua: ignore end
 
