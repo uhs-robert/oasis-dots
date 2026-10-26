@@ -10,6 +10,10 @@
 -	ordinal	10 minutes to stretch	1	
 -	cardinal	10 minutes to stretch	1	
 -	words-known	10 minutes to stretch	1	
+-	position	10 minutes to stretch please	1	
+-	ordinal	10 minutes to stretch please	1	
+-	cardinal	10 minutes to stretch please	1	
+-	words-known	10 minutes to stretch please	1	
 -	position	1000 by 700	1	
 -	ordinal	1000 by 700	1	
 -	cardinal	1000 by 700	1	
@@ -74,6 +78,10 @@
 -	ordinal	3 pm	1	
 -	cardinal	3 pm	1	
 -	words-known	3 pm	1	
+-	position	3 pm called sync please	1	
+-	ordinal	3 pm called sync please	1	
+-	cardinal	3 pm called sync please	1	
+-	words-known	3 pm called sync please	1	
 -	position	3 pm eastern in tokyo	1	
 -	ordinal	3 pm eastern in tokyo	1	
 -	cardinal	3 pm eastern in tokyo	1	
@@ -102,6 +110,10 @@
 -	ordinal	3rd screen	1	
 -	cardinal	3rd screen	1	
 -	words-known	3rd screen	0	
+-	position	4	0	4
+-	ordinal	4	1	
+-	cardinal	4	0	4
+-	words-known	4	0	
 -	position	40	0	40
 -	ordinal	40	1	
 -	cardinal	40	0	40
@@ -266,6 +278,10 @@
 -	ordinal	arrow	1	
 -	cardinal	arrow	1	
 -	words-known	arrow	1	
+-	position	at 3 pm called sync please	1	
+-	ordinal	at 3 pm called sync please	1	
+-	cardinal	at 3 pm called sync please	1	
+-	words-known	at 3 pm called sync please	1	
 -	position	bluetooth on	1	
 -	ordinal	bluetooth on	1	
 -	cardinal	bluetooth on	1	
@@ -298,6 +314,10 @@
 -	ordinal	bring it to workspace 12	1	
 -	cardinal	bring it to workspace 12	1	
 -	words-known	bring it to workspace 12	1	
+-	position	bring slack to workspace 3	1	
+-	ordinal	bring slack to workspace 3	1	
+-	cardinal	bring slack to workspace 3	1	
+-	words-known	bring slack to workspace 3	1	
 -	position	bring to workspace 5	1	
 -	ordinal	bring to workspace 5	1	
 -	cardinal	bring to workspace 5	1	
@@ -342,6 +362,14 @@
 -	ordinal	calendar	1	
 -	cardinal	calendar	1	
 -	words-known	calendar	1	
+-	position	calendar for friday	1	
+-	ordinal	calendar for friday	1	
+-	cardinal	calendar for friday	1	
+-	words-known	calendar for friday	1	
+-	position	calendar for friday please	1	
+-	ordinal	calendar for friday please	1	
+-	cardinal	calendar for friday please	1	
+-	words-known	calendar for friday please	1	
 -	position	calendar today	1	
 -	ordinal	calendar today	1	
 -	cardinal	calendar today	1	
@@ -358,6 +386,10 @@
 -	ordinal	called design review and then lunch	1	
 -	cardinal	called design review and then lunch	1	
 -	words-known	called design review and then lunch	1	
+-	position	called sync please	1	
+-	ordinal	called sync please	1	
+-	cardinal	called sync please	1	
+-	words-known	called sync please	1	
 -	position	capture the screen	1	
 -	ordinal	capture the screen	1	
 -	cardinal	capture the screen	1	
@@ -526,6 +558,10 @@
 -	ordinal	firefox to workspace 3rd	1	
 -	cardinal	firefox to workspace 3rd	1	
 -	words-known	firefox to workspace 3rd	1	
+-	position	firefox to workspace 4	1	
+-	ordinal	firefox to workspace 4	1	
+-	cardinal	firefox to workspace 4	1	
+-	words-known	firefox to workspace 4	1	
 -	position	firefox to workspace 5	1	
 -	ordinal	firefox to workspace 5	1	
 -	cardinal	firefox to workspace 5	1	
@@ -614,6 +650,14 @@
 -	ordinal	for five minutes	1	
 -	cardinal	for five minutes	1	
 -	words-known	for five minutes	1	
+-	position	for friday	1	
+-	ordinal	for friday	1	
+-	cardinal	for friday	1	
+-	words-known	for friday	1	
+-	position	for friday please	1	
+-	ordinal	for friday please	1	
+-	cardinal	for friday please	1	
+-	words-known	for friday please	1	
 -	position	for one minute	1	
 -	ordinal	for one minute	1	
 -	cardinal	for one minute	1	
@@ -638,6 +682,14 @@
 -	ordinal	freeze screenshot	1	
 -	cardinal	freeze screenshot	1	
 -	words-known	freeze screenshot	1	
+-	position	friday	1	
+-	ordinal	friday	1	
+-	cardinal	friday	1	
+-	words-known	friday	1	
+-	position	friday please	1	
+-	ordinal	friday please	1	
+-	cardinal	friday please	1	
+-	words-known	friday please	1	
 -	position	frontend agent	1	
 -	ordinal	frontend agent	1	
 -	cardinal	frontend agent	1	
@@ -750,6 +802,10 @@
 -	ordinal	height by 300	1	
 -	cardinal	height by 300	1	
 -	words-known	height by 300	1	
+-	position	hide the workspace overview	1	
+-	ordinal	hide the workspace overview	1	
+-	cardinal	hide the workspace overview	1	
+-	words-known	hide the workspace overview	1	
 -	position	hit enter 2 times	1	
 -	ordinal	hit enter 2 times	1	
 -	cardinal	hit enter 2 times	1	
@@ -770,6 +826,10 @@
 -	ordinal	in 10 minutes to stretch	1	
 -	cardinal	in 10 minutes to stretch	1	
 -	words-known	in 10 minutes to stretch	1	
+-	position	in 10 minutes to stretch please	1	
+-	ordinal	in 10 minutes to stretch please	1	
+-	cardinal	in 10 minutes to stretch please	1	
+-	words-known	in 10 minutes to stretch please	1	
 -	position	in screen	1	
 -	ordinal	in screen	1	
 -	cardinal	in screen	1	
@@ -958,6 +1018,10 @@
 -	ordinal	minutes to stretch	1	
 -	cardinal	minutes to stretch	1	
 -	words-known	minutes to stretch	1	
+-	position	minutes to stretch please	1	
+-	ordinal	minutes to stretch please	1	
+-	cardinal	minutes to stretch please	1	
+-	words-known	minutes to stretch please	1	
 -	position	mode	1	
 -	ordinal	mode	1	
 -	cardinal	mode	1	
@@ -1074,6 +1138,14 @@
 -	ordinal	my calendar	1	
 -	cardinal	my calendar	1	
 -	words-known	my calendar	1	
+-	position	my calendar for friday	1	
+-	ordinal	my calendar for friday	1	
+-	cardinal	my calendar for friday	1	
+-	words-known	my calendar for friday	1	
+-	position	my calendar for friday please	1	
+-	ordinal	my calendar for friday please	1	
+-	cardinal	my calendar for friday please	1	
+-	words-known	my calendar for friday please	1	
 -	position	my calendar today	1	
 -	ordinal	my calendar today	1	
 -	cardinal	my calendar today	1	
@@ -1150,6 +1222,10 @@
 -	ordinal	on my calendar	1	
 -	cardinal	on my calendar	1	
 -	words-known	on my calendar	1	
+-	position	on my calendar for friday please	1	
+-	ordinal	on my calendar for friday please	1	
+-	cardinal	on my calendar for friday please	1	
+-	words-known	on my calendar for friday please	1	
 -	position	on my calendar today	1	
 -	ordinal	on my calendar today	1	
 -	cardinal	on my calendar today	1	
@@ -1218,6 +1294,10 @@
 -	ordinal	pm	1	
 -	cardinal	pm	1	
 -	words-known	pm	1	
+-	position	pm called sync please	1	
+-	ordinal	pm called sync please	1	
+-	cardinal	pm called sync please	1	
+-	words-known	pm called sync please	1	
 -	position	pm eastern in tokyo	1	
 -	ordinal	pm eastern in tokyo	1	
 -	cardinal	pm eastern in tokyo	1	
@@ -1538,6 +1618,10 @@
 -	ordinal	seventeen trombones	1	
 -	cardinal	seventeen trombones	1	
 -	words-known	seventeen trombones	1	
+-	position	shift firefox to workspace 4	1	
+-	ordinal	shift firefox to workspace 4	1	
+-	cardinal	shift firefox to workspace 4	1	
+-	words-known	shift firefox to workspace 4	1	
 -	position	shift this window to workspace 5	1	
 -	ordinal	shift this window to workspace 5	1	
 -	cardinal	shift this window to workspace 5	1	
@@ -1554,6 +1638,10 @@
 -	ordinal	shot this window	1	
 -	cardinal	shot this window	1	
 -	words-known	shot this window	1	
+-	position	show my calendar for friday	1	
+-	ordinal	show my calendar for friday	1	
+-	cardinal	show my calendar for friday	1	
+-	words-known	show my calendar for friday	1	
 -	position	show workspaces	1	
 -	ordinal	show workspaces	1	
 -	cardinal	show workspaces	1	
@@ -1578,6 +1666,10 @@
 -	ordinal	slack four	1	
 -	cardinal	slack four	1	
 -	words-known	slack four	1	
+-	position	slack to workspace 3	1	
+-	ordinal	slack to workspace 3	1	
+-	cardinal	slack to workspace 3	1	
+-	words-known	slack to workspace 3	1	
 -	position	special workspace notes	1	
 -	ordinal	special workspace notes	1	
 -	cardinal	special workspace notes	1	
@@ -1618,6 +1710,10 @@
 -	ordinal	stretch	1	
 -	cardinal	stretch	1	
 -	words-known	stretch	1	
+-	position	stretch please	1	
+-	ordinal	stretch please	1	
+-	cardinal	stretch please	1	
+-	words-known	stretch please	1	
 -	position	swap it with slack	1	
 -	ordinal	swap it with slack	1	
 -	cardinal	swap it with slack	1	
@@ -1658,6 +1754,10 @@
 -	ordinal	swap workspaces two and five	1	
 -	cardinal	swap workspaces two and five	1	
 -	words-known	swap workspaces two and five	1	
+-	position	switch firefox to workspace 4	1	
+-	ordinal	switch firefox to workspace 4	1	
+-	cardinal	switch firefox to workspace 4	1	
+-	words-known	switch firefox to workspace 4	1	
 -	position	switch firefox to workspace 5	1	
 -	ordinal	switch firefox to workspace 5	1	
 -	cardinal	switch firefox to workspace 5	1	
@@ -1690,6 +1790,10 @@
 -	ordinal	switch to workspace 2	1	
 -	cardinal	switch to workspace 2	1	
 -	words-known	switch to workspace 2	1	
+-	position	sync please	1	
+-	ordinal	sync please	1	
+-	cardinal	sync please	1	
+-	words-known	sync please	1	
 -	position	system monitor	1	
 -	ordinal	system monitor	1	
 -	cardinal	system monitor	1	
@@ -2106,6 +2210,10 @@
 -	ordinal	to stretch	1	
 -	cardinal	to stretch	1	
 -	words-known	to stretch	1	
+-	position	to stretch please	1	
+-	ordinal	to stretch please	1	
+-	cardinal	to stretch please	1	
+-	words-known	to stretch please	1	
 -	position	to the 10th monitor	1	
 -	ordinal	to the 10th monitor	1	
 -	cardinal	to the 10th monitor	1	
@@ -2238,6 +2346,10 @@
 -	ordinal	to workspace 3rd	1	
 -	cardinal	to workspace 3rd	1	
 -	words-known	to workspace 3rd	1	
+-	position	to workspace 4	1	
+-	ordinal	to workspace 4	1	
+-	cardinal	to workspace 4	1	
+-	words-known	to workspace 4	1	
 -	position	to workspace 5	1	
 -	ordinal	to workspace 5	1	
 -	cardinal	to workspace 5	1	
@@ -2546,6 +2658,10 @@
 -	ordinal	workspace 3rd	1	
 -	cardinal	workspace 3rd	1	
 -	words-known	workspace 3rd	1	
+-	position	workspace 4	1	
+-	ordinal	workspace 4	1	
+-	cardinal	workspace 4	1	
+-	words-known	workspace 4	1	
 -	position	workspace 5	1	
 -	ordinal	workspace 5	1	
 -	cardinal	workspace 5	1	
@@ -4272,6 +4388,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	bring it to workspace 12	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	bring it to workspace 12	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	bring it to workspace 12	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	bring it to workspace 12	1	
+-	normalize	bring slack to workspace 3	0	bring slack to workspace 3
+-	apply-replacements	bring slack to workspace 3	0	bring slack to workspace 3
+-	workspace-ordinals	bring slack to workspace 3	0	bring slack to workspace 3
+-	correction-tails	bring slack to workspace 3	0	
+-	leading-wake	bring slack to workspace 3	1	
+-	trailing-wake	bring slack to workspace 3	1	
+-	heard-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	bring slack to workspace 3	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	bring slack to workspace 3	1	
 -	normalize	bring to workspace 5	0	bring to workspace 5
 -	apply-replacements	bring to workspace 5	0	bring to workspace 5
 -	workspace-ordinals	bring to workspace 5	0	bring to workspace 5
@@ -4386,6 +4521,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	cancel the pasta timer	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	cancel the pasta timer	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	cancel the pasta timer	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	cancel the pasta timer	1	
+-	normalize	cancel the reminder about the oven please	0	cancel the reminder about the oven please
+-	apply-replacements	cancel the reminder about the oven please	0	cancel the reminder about the oven please
+-	workspace-ordinals	cancel the reminder about the oven please	0	cancel the reminder about the oven please
+-	correction-tails	cancel the reminder about the oven please	0	
+-	leading-wake	cancel the reminder about the oven please	1	
+-	trailing-wake	cancel the reminder about the oven please	1	
+-	heard-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	cancel the reminder about the oven please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	cancel the reminder about the oven please	1	
 -	normalize	capture a region	0	capture a region
 -	apply-replacements	capture a region	0	capture a region
 -	workspace-ordinals	capture a region	0	capture a region
@@ -6734,6 +6888,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	hey, open firefox	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	hey open firefox	0	open firefox
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	hey, open firefox	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	hey, open firefox	0	open firefox
+-	normalize	hide the workspace overview	0	hide the workspace overview
+-	apply-replacements	hide the workspace overview	0	hide the workspace overview
+-	workspace-ordinals	hide the workspace overview	0	hide the workspace overview
+-	correction-tails	hide the workspace overview	0	
+-	leading-wake	hide the workspace overview	1	
+-	trailing-wake	hide the workspace overview	1	
+-	heard-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	hide the workspace overview	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	hide the workspace overview	1	
 -	normalize	hit delete twice	0	hit delete twice
 -	apply-replacements	hit delete twice	0	hit delete twice
 -	workspace-ordinals	hit delete twice	0	hit delete twice
@@ -6905,6 +7078,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	how far ahead is london	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	how far ahead is london	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	how far ahead is london	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	how far ahead is london	1	
+-	normalize	how far ahead is tokyo thanks	0	how far ahead is tokyo thanks
+-	apply-replacements	how far ahead is tokyo thanks	0	how far ahead is tokyo thanks
+-	workspace-ordinals	how far ahead is tokyo thanks	0	how far ahead is tokyo thanks
+-	correction-tails	how far ahead is tokyo thanks	0	
+-	leading-wake	how far ahead is tokyo thanks	1	
+-	trailing-wake	how far ahead is tokyo thanks	1	
+-	heard-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	how far ahead is tokyo thanks	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	how far ahead is tokyo thanks	1	
 -	normalize	increase width by 400	0	increase width by 400
 -	apply-replacements	increase width by 400	0	increase width by 400
 -	workspace-ordinals	increase width by 400	0	increase width by 400
@@ -6943,6 +7135,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	is it recording	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	is it recording	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	is it recording	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	is it recording	1	
+-	normalize	join my call	0	join my call
+-	apply-replacements	join my call	0	join my call
+-	workspace-ordinals	join my call	0	join my call
+-	correction-tails	join my call	0	
+-	leading-wake	join my call	1	
+-	trailing-wake	join my call	1	
+-	heard-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	join my call	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	join my call	1	
 -	normalize	join my current meeting	0	join my current meeting
 -	apply-replacements	join my current meeting	0	join my current meeting
 -	workspace-ordinals	join my current meeting	0	join my current meeting
@@ -7247,6 +7458,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	make it bigger	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	make it bigger	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	make it bigger	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	make it bigger	1	
+-	normalize	make it wider	0	make it wider
+-	apply-replacements	make it wider	0	make it wider
+-	workspace-ordinals	make it wider	0	make it wider
+-	correction-tails	make it wider	0	
+-	leading-wake	make it wider	1	
+-	trailing-wake	make it wider	1	
+-	heard-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	make it wider	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	make it wider	1	
 -	normalize	make it wider by 200	0	make it wider by 200
 -	apply-replacements	make it wider by 200	0	make it wider by 200
 -	workspace-ordinals	make it wider by 200	0	make it wider by 200
@@ -7931,6 +8161,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	new meeting tomorrow at 3 pm called Design re
 VOXCMD_WAKE_ALIASES=hey	leading-wake	new meeting tomorrow at 3 pm called design review and then lunch	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	new meeting tomorrow at 3 pm called Design review and then lunch	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	new meeting tomorrow at 3 pm called Design review and then lunch	1	
+-	normalize	new meeting tomorrow at 3 pm called sync please	0	new meeting tomorrow at 3 pm called sync please
+-	apply-replacements	new meeting tomorrow at 3 pm called sync please	0	new meeting tomorrow at 3 pm called sync please
+-	workspace-ordinals	new meeting tomorrow at 3 pm called sync please	0	new meeting tomorrow at 3 pm called sync please
+-	correction-tails	new meeting tomorrow at 3 pm called sync please	0	
+-	leading-wake	new meeting tomorrow at 3 pm called sync please	1	
+-	trailing-wake	new meeting tomorrow at 3 pm called sync please	1	
+-	heard-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	new meeting tomorrow at 3 pm called sync please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	new meeting tomorrow at 3 pm called sync please	1	
 -	normalize	new meeting tomorrow at 3 pm for an hour called Design review with alice@example.com	0	new meeting tomorrow at 3 pm for an hour called design review with alice example com
 -	apply-replacements	new meeting tomorrow at 3 pm for an hour called design review with alice example com	0	new meeting tomorrow at 3 pm for an hour called design review with alice example com
 -	workspace-ordinals	new meeting tomorrow at 3 pm for an hour called design review with alice example com	0	new meeting tomorrow at 3 pm for an hour called design review with alice example com
@@ -10277,6 +10526,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	remind me in 10 minutes to stretch	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	remind me in 10 minutes to stretch	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	remind me in 10 minutes to stretch	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	remind me in 10 minutes to stretch	1	
+-	normalize	remind me in 10 minutes to stretch please	0	remind me in 10 minutes to stretch please
+-	apply-replacements	remind me in 10 minutes to stretch please	0	remind me in 10 minutes to stretch please
+-	workspace-ordinals	remind me in 10 minutes to stretch please	0	remind me in 10 minutes to stretch please
+-	correction-tails	remind me in 10 minutes to stretch please	0	
+-	leading-wake	remind me in 10 minutes to stretch please	1	
+-	trailing-wake	remind me in 10 minutes to stretch please	1	
+-	heard-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	remind me in 10 minutes to stretch please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	remind me in 10 minutes to stretch please	1	
 -	normalize	remind me in 5 minutes to call mom and then email bob	0	remind me in 5 minutes to call mom and then email bob
 -	apply-replacements	remind me in 5 minutes to call mom and then email bob	0	remind me in 5 minutes to call mom and then email bob
 -	workspace-ordinals	remind me in 5 minutes to call mom and then email bob	0	remind me in 5 minutes to call mom and then email bob
@@ -11284,6 +11552,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	seventeen trombones	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	seventeen trombones	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	seventeen trombones	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	seventeen trombones	1	
+-	normalize	shift firefox to workspace 4	0	shift firefox to workspace 4
+-	apply-replacements	shift firefox to workspace 4	0	shift firefox to workspace 4
+-	workspace-ordinals	shift firefox to workspace 4	0	shift firefox to workspace 4
+-	correction-tails	shift firefox to workspace 4	0	
+-	leading-wake	shift firefox to workspace 4	1	
+-	trailing-wake	shift firefox to workspace 4	1	
+-	heard-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	shift firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	shift firefox to workspace 4	1	
 -	normalize	shift this window to workspace 5	0	shift this window to workspace 5
 -	apply-replacements	shift this window to workspace 5	0	shift this window to workspace 5
 -	workspace-ordinals	shift this window to workspace 5	0	shift this window to workspace 5
@@ -11341,6 +11628,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	show hints	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	show hints	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	show hints	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	show hints	1	
+-	normalize	show my calendar for friday	0	show my calendar for friday
+-	apply-replacements	show my calendar for friday	0	show my calendar for friday
+-	workspace-ordinals	show my calendar for friday	0	show my calendar for friday
+-	correction-tails	show my calendar for friday	0	
+-	leading-wake	show my calendar for friday	1	
+-	trailing-wake	show my calendar for friday	1	
+-	heard-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	show my calendar for friday	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	show my calendar for friday	1	
 -	normalize	show the overview	0	show the overview
 -	apply-replacements	show the overview	0	show the overview
 -	workspace-ordinals	show the overview	0	show the overview
@@ -11930,6 +12236,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	swap workspaces two and five	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	swap workspaces two and five	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	swap workspaces two and five	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	swap workspaces two and five	1	
+-	normalize	switch firefox to workspace 4	0	switch firefox to workspace 4
+-	apply-replacements	switch firefox to workspace 4	0	switch firefox to workspace 4
+-	workspace-ordinals	switch firefox to workspace 4	0	switch firefox to workspace 4
+-	correction-tails	switch firefox to workspace 4	0	
+-	leading-wake	switch firefox to workspace 4	1	
+-	trailing-wake	switch firefox to workspace 4	1	
+-	heard-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	switch firefox to workspace 4	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	switch firefox to workspace 4	1	
 -	normalize	switch firefox to workspace 5	0	switch firefox to workspace 5
 -	apply-replacements	switch firefox to workspace 5	0	switch firefox to workspace 5
 -	workspace-ordinals	switch firefox to workspace 5	0	switch firefox to workspace 5
@@ -12861,6 +13186,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	what time is it in tokyo	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	what time is it in tokyo	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	what time is it in tokyo	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	what time is it in tokyo	1	
+-	normalize	what time is it in tokyo please	0	what time is it in tokyo please
+-	apply-replacements	what time is it in tokyo please	0	what time is it in tokyo please
+-	workspace-ordinals	what time is it in tokyo please	0	what time is it in tokyo please
+-	correction-tails	what time is it in tokyo please	0	
+-	leading-wake	what time is it in tokyo please	1	
+-	trailing-wake	what time is it in tokyo please	1	
+-	heard-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	what time is it in tokyo please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	what time is it in tokyo please	1	
 -	normalize	what's 15 percent of 80	0	whats 15 percent of 80
 -	apply-replacements	whats 15 percent of 80	0	whats 15 percent of 80
 -	workspace-ordinals	whats 15 percent of 80	0	whats 15 percent of 80
@@ -12956,6 +13300,25 @@ VOXCMD_WAKE_ALIASES=!!!	heard-wake	what's on my calendar banana	1
 VOXCMD_WAKE_ALIASES=hey	leading-wake	whats on my calendar banana	1	
 VOXCMD_WAKE_ALIASES=hey	trailing-wake	what's on my calendar banana	1	
 VOXCMD_WAKE_ALIASES=hey	heard-wake	what's on my calendar banana	1	
+-	normalize	what's on my calendar for friday please	0	whats on my calendar for friday please
+-	apply-replacements	whats on my calendar for friday please	0	whats on my calendar for friday please
+-	workspace-ordinals	whats on my calendar for friday please	0	whats on my calendar for friday please
+-	correction-tails	whats on my calendar for friday please	0	
+-	leading-wake	whats on my calendar for friday please	1	
+-	trailing-wake	what's on my calendar for friday please	1	
+-	heard-wake	what's on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=	leading-wake	whats on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=	trailing-wake	what's on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=	heard-wake	what's on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	leading-wake	whats on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	trailing-wake	what's on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=jarvis,okay	heard-wake	what's on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=!!!	leading-wake	whats on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=!!!	trailing-wake	what's on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=!!!	heard-wake	what's on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=hey	leading-wake	whats on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=hey	trailing-wake	what's on my calendar for friday please	1	
+VOXCMD_WAKE_ALIASES=hey	heard-wake	what's on my calendar for friday please	1	
 -	normalize	what's on my calendar today	0	whats on my calendar today
 -	apply-replacements	whats on my calendar today	0	whats on my calendar today
 -	workspace-ordinals	whats on my calendar today	0	whats on my calendar today
