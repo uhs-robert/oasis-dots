@@ -36,11 +36,12 @@ timer_candidates() {
 
 # Running timers as unit, label, match_text. With none running, one placeholder row with id "none" and the spoken target
 # as its match_text, so it always passes the word match and "cancel the timer" reaches cancel_timer, which says so.
+# The label is the spoken target ("timer" when bare), as the toast title, not the message cancel_timer prints.
 cancel_candidates() {
   local timers unit description next
   timers=$(running_timers)
   if [ "$(jq length <<<"$timers")" = 0 ]; then
-    printf 'none\tNo timers or reminders are running\t%s\n' "${VOXCMD_ARG_TARGET-}"
+    printf 'none\t%s\t%s\n' "${VOXCMD_ARG_TARGET:-timer}" "${VOXCMD_ARG_TARGET-}"
     return 0
   fi
   while IFS=$'\t' read -r unit description next; do
