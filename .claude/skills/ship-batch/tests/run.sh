@@ -128,6 +128,14 @@ g -C "$stow_repo" rm -rq "$stow_repo/home/gone"
 g -C "$stow_repo" commit -q -m "delete gone"
 check "a package the merge deleted is skipped, not restowed" "[[ -z \$(restow '$stow_gone' HEAD 2>/dev/null) ]]"
 check "and says so" "[[ \$(restow '$stow_gone' HEAD 2>&1 >/dev/null) == *'home/gone no longer exists'* ]]"
+mkdir -p "$stow_repo/home/never/.config/never"
+echo a >"$stow_repo/home/never/.config/never/only"
+g -C "$stow_repo" add -A
+g -C "$stow_repo" commit -q -m never
+stow_never=$(git -C "$stow_repo" rev-parse HEAD)
+g -C "$stow_repo" rm -rq "$stow_repo/home/never"
+g -C "$stow_repo" commit -q -m "delete never"
+check "a deleted package never stowed here is skipped silently" "[[ -z \$(restow '$stow_never' HEAD 2>&1) ]]"
 
 echo "== a branch with no local worktree, and recording its pass"
 origin=$root/origin.git
