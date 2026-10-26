@@ -1,16 +1,15 @@
 -- Loads the keyless IPC action definitions (lib/actions/defs/{notifications,style,lock,power,screenshot,zoom,overview,
 -- settings,launcher}.lua) under a stubbed `hl`, runs every id with sample arguments and compares the command line it
 -- would hand to Hyprland with the table below: the `qs-ipc call <target> <function> <args>` words, quoted for the shell.
--- It also checks that each of these actions has no key and that nothing else is defined in those files.
+-- It also checks that each of these actions has no key, that nothing else is defined in those files, and that
+-- requiring keymaps.global (what a live session loads) registers them all.
 --
---   lua home/hypr/tests/act_ipc.lua           compare with the table
---   lua home/hypr/tests/act_ipc.lua --targets print "id<TAB>target<TAB>function" per action, for the declared-function check
+--   lua home/hypr/tests/act_ipc.lua
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 -- Sets package.path and the stubbed `hl` shared with the other action tests.
 dofile(here .. "/act_stubs.lua")
 
-local FILES =
-	{ "notifications", "style", "lock", "power", "screenshot", "zoom", "overview", "settings", "launcher" }
+local FILES = { "notifications", "style", "lock", "power", "screenshot", "zoom", "overview", "settings", "launcher" }
 
 -- id, arguments (command-line words), what follows `qs-ipc call`.
 local CASES = {
@@ -63,15 +62,6 @@ for _, file in ipairs(FILES) do
 	require("lib.actions.defs." .. file)
 end
 
-if arg[1] == "--targets" then
-	for _, handle in ipairs(Act.list()) do
-		if handle.run.kind == "ipc" then
-			print(handle.id .. "\t" .. handle.run.target .. "\t" .. handle.run["function"])
-		end
-	end
-	os.exit(0)
-end
-
 local failures = 0
 local function check(name, ok)
 	if not ok then
@@ -94,10 +84,7 @@ for _, case in ipairs(CASES) do
 	sent = nil
 	local ok, err = pcall(Act.run_cli, id, words)
 	check("run " .. id .. " " .. table.concat(words, " ") .. (ok and "" or ": " .. tostring(err)), ok)
-	check(
-		id .. " sent " .. tostring(sent) .. ", wanted " .. expected,
-		sent == Scripts.qs_ipc .. " call " .. expected
-	)
+	check(id .. " sent " .. tostring(sent) .. ", wanted " .. expected, sent == Scripts.qs_ipc .. " call " .. expected)
 end
 for _, case in ipairs(REFUSED) do
 	sent = nil
@@ -109,6 +96,37 @@ end
 for _, handle in ipairs(Act.list()) do
 	check("covered: " .. handle.id, covered[handle.id])
 	check("keyless: " .. handle.id, handle.key == nil and #handle.extra_keys == 0)
+end
+
+-- The files above were required by name. A live session only loads what keymaps/global requires, so load that entry
+-- from a clean slate and look for every id again.
+for name in pairs(package.loaded) do
+	if name:match("^lib%.act") or name:match("^keymaps") then
+		package.loaded[name] = nil
+	end
+end
+package.loaded["config"] = {
+	leader = "SUPER",
+	vim_mode = true,
+	persistent_workspaces = false,
+	monitors = {},
+	app = { term_cmd = "kitty", gui_file_manager = "files", tui_file_manager = "yazi" },
+}
+package.loaded["lib.actions.menu"] = setmetatable({}, {
+	__index = function()
+		return function()
+			return function() end
+		end
+	end,
+})
+local ok, err = xpcall(require, debug.traceback, "keymaps.global")
+check("the real keymaps entry loads: " .. tostring(err), ok)
+local loaded = {}
+for _, handle in ipairs(require("lib.act").list()) do
+	loaded[handle.id] = true
+end
+for id in pairs(covered) do
+	check("keymaps.global registers " .. id, loaded[id])
 end
 
 if failures > 0 then

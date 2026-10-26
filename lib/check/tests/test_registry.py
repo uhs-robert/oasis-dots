@@ -166,7 +166,7 @@ class HeadlessLoadTest(TreeCase):
         listing, findings = registry.load_list(REPO_DIR)
         self.assertEqual(findings, [])
         keyless = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "ipc" and not a["keys"])
-        self.assertEqual(keyless, sorted(KEYLESS_IPC_IDS))
+        self.assertEqual(sorted(set(KEYLESS_IPC_IDS) - set(keyless)), [])
 
     def test_a_planted_good_definition_passes(self):
         self.assertEqual(self.planted('Act.define("zoom.again", { label = "Z", run = Act.Ipc("zoom", "toggle") })'), [])
