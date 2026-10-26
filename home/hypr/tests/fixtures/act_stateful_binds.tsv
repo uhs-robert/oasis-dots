@@ -610,7 +610,7 @@ default	Windows	SHIFT + LEFT	-	-	focus({window=address:0xa1});window.move({direc
 default	Windows	SHIFT + RIGHT	-	-	focus({window=address:0xa1});window.move({direction=r});focus({window=address:0xa1})
 default	Windows	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	Windows	SHIFT + UP	-	-	focus({window=address:0xa1});window.move({direction=u});focus({window=address:0xa1})
-default	Windows	SPACE	Select Window	-	os.execute(mkdir -p "/home/roberth/.local/state/quickshell");window.set_prop({prop=active_border_color,value=rgba(ffaa00ff),window=address:0xa1});window.set_prop({prop=inactive_border_color,value=rgba(ffaa00ff),window=address:0xa1})
+default	Windows	SPACE	Select Window	-	os.execute(tmux source-file ~/.tmux.conf >/dev/null 2>&1 &);window.set_prop({prop=active_border_color,value=rgba(ffaa00ff),window=address:0xa1});window.set_prop({prop=inactive_border_color,value=rgba(ffaa00ff),window=address:0xa1})
 default	Windows	UP	-	-	focus({direction=u})
 default	Windows	X	Close Window	-	window.kill({window=address:0xa1})
 default	Windows	catchall	-	ignore_mods=true,release=true	no_op

@@ -11,6 +11,13 @@ cd "$work" || exit 1
 
 # The menus name the user's shell in their commands.
 export SHELL=/bin/zsh
+# Selection.toggle() loads the theme module, which reads and writes the theme state file. A HOME under the temp dir keeps
+# that off the user's files; the file is seeded so the module takes its restore branch and the recorded effects do not
+# carry the random temp path (its first-run branch records a mkdir of it).
+export HOME="$work/home"
+export XDG_STATE_HOME="$HOME/.local/state"
+mkdir -p "$XDG_STATE_HOME/hypr"
+echo oasis_moonlight >"$XDG_STATE_HOME/hypr/theme"
 # Compared with the state before, not with empty: a checkout being edited is not clean, and a check run's is.
 before=$(git -C "$repo" status --porcelain)
 status=0
