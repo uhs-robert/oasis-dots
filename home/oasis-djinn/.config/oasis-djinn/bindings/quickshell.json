@@ -3,6 +3,20 @@
     "zoom.toggle": {"kind": "ipc", "target": "zoom", "function": "toggle", "args": []},
     "screenshot.take": {"kind": "command", "argv": ["~/.config/hypr/scripts/screenshot.sh"]},
     "screenshot.pixel": {"kind": "command", "argv": ["~/.config/hypr/scripts/screenshot.sh", "--pixel"]},
-    "overview.open": {"kind": "ipc", "target": "overview", "function": "open", "args": []}
+    "overview.open": {"kind": "ipc", "target": "overview", "function": "open", "args": []},
+    "voice.dictate": {"kind": "command", "argv": ["~/.config/hypr/scripts/voxtype-with-media-pause.sh"]},
+    "voice.command": {"kind": "command", "argv": ["~/.local/bin/voxcmd", "listen"]},
+    "voice.stop": {"kind": "command", "argv": ["~/.local/bin/voxcmd", "stop"]},
+    "voice.rapid": {"kind": "command", "argv": ["~/.local/bin/voxcmd", "rapid"]},
+    "voice.wake": {"kind": "command", "argv": ["~/.local/bin/voxcmd", "wake", "toggle"]},
+    "clipboard.history": {"kind": "ipc", "target": "picker", "function": "open", "args": ["clipboard"]},
+    "clipboard.delete": {"kind": "ipc", "target": "picker", "function": "open_with", "args": ["clipboard", "delete"]},
+    "picker.dirs": {"kind": "ipc", "target": "picker", "function": "open_with", "args": ["dirs", "yazi"]},
+    "picker.emoji": {"kind": "ipc", "target": "picker", "function": "open", "args": ["emoji"]},
+    "picker.passwords": {"kind": "command", "argv": ["rofi-rbw"]},
+    "overview.search": {"kind": "ipc", "target": "overview", "function": "search", "args": []},
+    "overview.move": {"kind": "ipc", "target": "overview", "function": "move_follow", "args": []},
+    "overview.move_silent": {"kind": "ipc", "target": "overview", "function": "move_silent", "args": []},
+    "tmux.overview": {"kind": "ipc", "target": "tmux_overview", "function": "open", "args": []}
   }
 }

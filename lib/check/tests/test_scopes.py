@@ -46,8 +46,8 @@ CASES = [
     ("home/oasis-djinn/README.md", ""),
     ("specs/schema/actions.yaml", ""),
     ("lib/check/steps/registry.py", "checkscope"),
-    # The oasis-djinn crate and the manifest its tests read reach its own step.
-    ("home/oasis-djinn/.config/oasis-djinn/actions.json", " djinnrust"),
+    # The oasis-djinn crate and the manifest its tests read reach its own step; the manifest reaches the Lua tests too.
+    ("home/oasis-djinn/.config/oasis-djinn/actions.json", " djinnrust lua"),
     ("home/oasis-djinn/src/lib.rs", " djinnrust"),
     ("home/oasis-djinn/tests/djinn.rs", " djinnrust"),
     ("home/oasis-djinn/Cargo.lock", " djinnrust"),
