@@ -2,10 +2,16 @@
 # Runs actions on the live Hyprland. Today: `hypr-act list`, the JSON list of every defined action
 # ({"version":1,"actions":[...]}, shape in lib/act.lua `Act.list_json`).
 #
-# The list comes from the running session, so it holds the machine's Config and custom/. With no Hyprland answering
-# (within 3 s) stdout stays empty, one line goes to stderr and the exit code is 3; callers treat that as "no actions".
+# The list comes from the running session, so it holds the machine's Config and custom/. On failure stdout stays
+# empty and one line goes to stderr; callers treat any non-zero code as "no actions". Exit codes:
+#   2  bad usage
+#   3  no Hyprland answered `hyprctl version` within 3 s (not running)
+#   4  Hyprland answers but the list could not be read: the eval failed, or did not finish within HYPR_ACT_TIMEOUT
+#      seconds (default 3), or wrote nothing (for example a config that failed to load)
 # Nothing is cached, so a caller never reads a list the desktop no longer has.
 set -u
+
+eval_timeout=${HYPR_ACT_TIMEOUT:-3}
 
 # Newest instance whose hyprctl answers, found by its socket and not by HYPRLAND_INSTANCE_SIGNATURE: that variable is
 # stale in a shell that outlives a login. Newest by .socket.sock, as a directory's mtime moves with its other sockets.
@@ -26,19 +32,25 @@ not_running() {
   exit 3
 }
 
+unreadable() {
+  echo "hypr-act: Hyprland is running but its action list could not be read (eval failed, wrote nothing or took over ${eval_timeout} s); is the config loaded?" >&2
+  exit 4
+}
+
 # Global, not local: the EXIT trap runs after list_actions has returned.
-list_file=
+list_dir=
 
 list_actions() {
   local instance
   instance=$(find_instance) || not_running
   export HYPRLAND_INSTANCE_SIGNATURE=$instance
-  list_file=$(mktemp "${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr-act.XXXXXX") || exit 1
-  trap 'rm -f "$list_file"' EXIT
+  # A directory, not a file: an eval that finishes after the timeout cannot recreate a file once the directory is gone.
+  list_dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/run/user/$UID}/hypr-act.XXXXXX") || exit 1
+  trap 'rm -rf "$list_dir"' EXIT
   # hyprctl eval answers only "ok", so Lua writes the list to a file. A level-5 long string cannot be closed by a path.
-  timeout 3 hyprctl eval "require('lib.act').write_list([=====[${list_file}]=====])" >/dev/null 2>&1 || not_running
-  [[ -s $list_file ]] || not_running
-  cat "$list_file"
+  timeout "$eval_timeout" hyprctl eval "require('lib.act').write_list([=====[${list_dir}/list]=====])" >/dev/null 2>&1 || unreadable
+  [[ -s $list_dir/list ]] || unreadable
+  cat "$list_dir/list"
 }
 
 if [[ ${1:-} == list && $# -eq 1 ]]; then

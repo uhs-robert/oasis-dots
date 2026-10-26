@@ -602,6 +602,23 @@ check(
 	Act.list_json():find('"intent":null', 1, true) and Act.list_json():find('"keys":[]', 1, true)
 )
 
+-- Keys changed after define, as custom/init.lua does, show in the list: an Act.bind key is added and an unbound
+-- default is dropped.
+fresh()
+local Bind = require("lib.key.bind")
+Act.define("zoom.toggle", { label = "Zoom", key = { key = "Z", leader = true }, run = function() end })
+Act.bind("zoom.toggle", { key = "ALT + X" })
+local before = Json.decode(Act.list_json()).actions[1].keys
+check(
+	"custom keys: default and added key listed",
+	#before == 2 and before[1].key == "SUPER + Z" and before[2].key == "ALT + X"
+)
+Bind.leader_unbind("Z")
+local after = Json.decode(Act.list_json()).actions[1].keys
+check("custom keys: unbound default dropped, added key kept", #after == 1 and after[1].key == "ALT + X")
+Bind.unbind("ALT + X")
+check("custom keys: all unbound gives no keys", #Json.decode(Act.list_json()).actions[1].keys == 0)
+
 local list_path = os.tmpname()
 local write_chunk = assert(load('require("lib.act").write_list([=====[' .. list_path .. "]=====])"))
 write_chunk()

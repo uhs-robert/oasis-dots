@@ -1,12 +1,15 @@
 """Tests the registry step (lib/check/steps/registry.py): the list checks on tiny git repositories with a handed-in
 list, and the headless Lua load on the real tree and on definitions planted in a temp directory."""
 
+import contextlib
 import copy
+import io
 import os
 import shutil
 import subprocess
 import sys
 import unittest
+import unittest.mock
 
 sys.dont_write_bytecode = True
 CHECK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -72,6 +75,18 @@ class ListTest(ListCase):
 
     def test_a_program_on_the_path_is_not_looked_up(self):
         self.assertEqual(self.broken(lambda actions: actions[1]["perform"].update(argv=["rofi-rbw"])), [])
+
+
+class SkipWithoutLuaTest(unittest.TestCase):
+    def test_run_checks_returns_none_without_lua(self):
+        with unittest.mock.patch.object(registry.shutil, "which", return_value=None):
+            self.assertIsNone(registry.run_checks(REPO_DIR))
+
+    def test_main_prints_the_skip_reason_and_passes_without_lua(self):
+        out = io.StringIO()
+        with unittest.mock.patch.object(registry.shutil, "which", return_value=None), contextlib.redirect_stdout(out):
+            self.assertEqual(registry.main([]), 0)
+        self.assertEqual(out.getvalue().strip(), f"skip: {registry.SKIP_REASON}")
 
 
 @unittest.skipUnless(shutil.which("lua"), "lua is not installed")

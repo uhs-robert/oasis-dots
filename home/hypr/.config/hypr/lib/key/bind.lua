@@ -201,6 +201,19 @@ function Bind.unbind(keys, submap)
   return count
 end
 
+--- Whether a bind made through Bind for `key` is still live in one submap (it was not removed by Bind.unbind).
+--- @param key    string
+--- @param submap string|nil  Submap name; nil or "reset" is the global map
+--- @return boolean
+function Bind.is_bound(key, submap)
+  local scoped = handles[scope_name(submap)]
+  return scoped ~= nil and scoped[normalize(key)] ~= nil
+end
+
+--- The submap that binds are being registered in now; "" is the global map.
+--- @return string
+function Bind.current_submap() return scope end
+
 --- Like Bind.unbind but prepends Bind.leader to every key.
 --- @param keys   string|string[]
 --- @param submap string|nil
