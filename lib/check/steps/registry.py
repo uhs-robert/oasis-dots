@@ -18,7 +18,8 @@ action id it performs. `custom/` is never loaded, so the owner's own binds are n
 
 lib/check/registry.allow, one entry per line, the reason after `#` being required:
 
-  bind <submap> <key>  # <reason>        `global` is the map outside any submap; `*` is every named submap
+  bind <submap> <key>  # <reason>        `global` is the map outside any submap; `*` is every named submap; submaps
+                                         may be a comma list (`Go,Move`)
   ipc <target> <function>...  # <reason>
 
 A key is compared the way Hyprland does, ignoring case and spaces. An entry that matches no bind or function, or whose
@@ -135,13 +136,14 @@ def allow_findings(binds, handlers, listing, entries, allow_path=ALLOW_PATH):
     plain = [(submap, key) for submap, key, action in binds if action is None]
     used = set()
     for submap, key in plain:
-        covering = [
-            entry for entry in entries
-            if entry.kind == "bind"
-            and normalize_key(entry.names[0]) == normalize_key(key)
-            and (entry.submap_or_target == submap or (entry.submap_or_target == ANY_SUBMAP and submap != GLOBAL_MAP))
-        ]
-        used.update(entry.line for entry in covering)
+        covering = []
+        for entry in entries:
+            if entry.kind != "bind" or normalize_key(entry.names[0]) != normalize_key(key):
+                continue
+            for name in entry.submap_or_target.split(","):
+                if name == submap or (name == ANY_SUBMAP and submap != GLOBAL_MAP):
+                    covering.append((entry.line, name))
+        used.update(covering)
         if not covering:
             found.append(
                 f"bind {submap} {key} performs no action; define an action for it or add "
@@ -164,11 +166,12 @@ def allow_findings(binds, handlers, listing, entries, allow_path=ALLOW_PATH):
                 )
     for entry in entries:
         if entry.kind == "bind":
-            if entry.line not in used:
-                found.append(
-                    f"{allow_path}:{entry.line}: bind {entry.submap_or_target} {entry.names[0]} is stale: no bind "
-                    "without an action matches it. Delete the line."
-                )
+            for name in entry.submap_or_target.split(","):
+                if (entry.line, name) not in used:
+                    found.append(
+                        f"{allow_path}:{entry.line}: bind {name} {entry.names[0]} is stale: no bind without an "
+                        "action matches it. Delete it from the line."
+                    )
             continue
         handler = handlers.get(entry.submap_or_target)
         for function in entry.names:
