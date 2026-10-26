@@ -2344,8 +2344,13 @@ cp "$package/.config/voxcmd/integrations.d/apps.sh" "$apps_config/integrations.d
 copy_shipped_integrations "$apps_config" apps
 if [ -n "$rust_matcher" ]; then
   apps_fixtures=$package/tests/fixtures
-  apps_env=(XDG_DATA_HOME="$apps_fixtures" XDG_DATA_DIRS="$apps_fixtures" VOXCMD_CONFIG_DIR="$apps_config"
-    SANDBOX_CLIENTS_JSON="$(cat "$apps_fixtures/clients.json")" SANDBOX_MONITORS_JSON="$(cat "$apps_fixtures/monitors.json")"
+  # The confirm card answers yes, and the asks it was given are logged.
+  apps_ask=$root/apps-ask
+  printf '#!/bin/sh\necho "ask $*" >> "%s"\n' "$log" >"$apps_ask"
+  chmod +x "$apps_ask"
+  apps_env=(XDG_DATA_HOME="$apps_fixtures" XDG_DATA_DIRS="$apps_fixtures" VOXCMD_CONFIG_DIR="$apps_config" VOXCMD_ASK_CMD="$apps_ask"
+    SANDBOX_CLIENTS_JSON="$(cat "$apps_fixtures/clients.json")"
+    SANDBOX_CLIENTS_AFTER_CLOSE_JSON="$(jq -c 'map(select(.address != "0x1002"))' "$apps_fixtures/clients.json")" SANDBOX_MONITORS_JSON="$(cat "$apps_fixtures/monitors.json")"
     SANDBOX_ACTIVEWINDOW_JSON="$(jq -c '.[] | select(.focusHistoryID == 0)' "$apps_fixtures/clients.json")"
     SANDBOX_BINDS_JSON="$(cat "$apps_fixtures/binds.json")")
   apps_run() {
@@ -2384,6 +2389,19 @@ if [ -n "$rust_matcher" ]; then
   check "and refuses a window on another workspace" "[[ -z \$(apps_dispatches) ]] && grep -q 'another workspace' '$log'"
   apps_run "focus firefox"
   check "focus dispatches the window's address" "[[ \$(apps_dispatches) == \"hl.dsp.focus({ window = 'address:0x1001' })\" ]]"
+  # Written twice (the TOML verb, and apps.sh's keybind veto); a verb in only one lets Apps take a phrase naming a keybind.
+  toml_move_verbs=$(sed -n "s/.*action = \"move\", *match = '(\\([^)]*\\)) {target}'.*/\\1/p" "$package/.config/voxcmd/integrations/apps.toml")
+  sh_move_verbs=$(sed -n 's/^move_verbs="\(.*\)"$/\1/p' "$package/.config/voxcmd/integrations/apps.sh")
+  check "apps.toml and apps.sh list the same move verbs" "[[ -n '$toml_move_verbs' && '$toml_move_verbs' == '$sh_move_verbs' ]]"
+  apps_run "move firefox to workspace 3"
+  check "move dispatches the window to the workspace, without following" "[[ \$(apps_dispatches) == \"hl.dsp.window.move({ window = 'address:0x1001', workspace = 3, follow = false })\" ]]"
+  apps_run "switch firefox to workspace 4"
+  check "switch moves the window the same way" "[[ \$(apps_dispatches) == \"hl.dsp.window.move({ window = 'address:0x1001', workspace = 4, follow = false })\" ]]"
+  apps_run "close slack"
+  check "close asks first, then dispatches the window's close" "grep -q '^ask confirm' '$log' && [[ \$(apps_dispatches) == \"hl.dsp.window.close({ window = 'address:0x1002' })\" ]]"
+  # Slack leaves the fixture's clients once closed, which is what close's window_gone wait polls for before the next step.
+  apps_run "close slack and then focus firefox"
+  check "a step after a close runs once the window is gone" "[[ \$(apps_dispatches | wc -l) == 2 && \$(apps_dispatches | tail -n1) == \"hl.dsp.focus({ window = 'address:0x1001' })\" ]]"
   check "Tab in Voice Help lists every installed app once, by name" "[[ \$(apps_help | cut -f2 | paste -sd,) == 'Calendar,Firefox,kitty,Slack' ]]"
 fi
 
