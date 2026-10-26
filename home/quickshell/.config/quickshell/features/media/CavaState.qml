@@ -53,7 +53,7 @@ Singleton {
         Component.onCompleted: config_file.setText(root.config_text)
     }
 
-    onLevelsChanged: if (Style.cava_line) root.smooth_levels()
+    onLevelsChanged: if (MediaSettings.cava_line) root.smooth_levels()
     onWantedChanged: root.sync()
     Component.onCompleted: Qt.callLater(root.sync)
 

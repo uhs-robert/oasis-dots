@@ -2,6 +2,7 @@ import Quickshell.Io
 import qs.theme
 import qs.theme.transitions
 import qs.features.audio
+import qs.features.media
 
 IpcHandler {
     target: "style"
@@ -64,10 +65,10 @@ IpcHandler {
     }
 
     function toggle_cava_line(): void {
-        Style.set_cava_line(!Style.cava_line);
+        MediaSettings.set("cava_line", !MediaSettings.cava_line);
     }
 
     function get_cava_line(): bool {
-        return Style.cava_line;
+        return MediaSettings.cava_line;
     }
 }

@@ -255,6 +255,7 @@ Singleton {
     // Toggled by the open popup's blink timer; the caret is solid whenever it rests true.
     property bool caret_phase: true
 
+    // The old home of the cava line choice, read once by MediaSettings to carry it over; never written any more.
     property bool cava_line: true
     readonly property var bar: root.active
 
@@ -813,13 +814,8 @@ Singleton {
         if (migrated) root.save_options();
     }
 
-    function set_cava_line(on) {
-        root.cava_line = on;
-        root.save();
-    }
-
     function save() {
-        state_file.setText(JSON.stringify({ style: root.saved_name, cava_line: root.cava_line }));
+        state_file.setText(JSON.stringify({ style: root.saved_name }));
     }
 
     function save_lock() {
