@@ -1,18 +1,10 @@
 //! the integration types the router reads, and the serde types of an integration TOML (1.1 section 2) that load into them
 //!
-//! `Integration` is the only shape the router sees: TOML files and the legacy bash files (config/legacy.rs) both load
-//! into it. So far it holds the subset of 1.1's schema that routing reads; unknown TOML keys are accepted until
-//! `integrations check` (2.6) reports them.
+//! `Integration` is the only shape the router sees. So far it holds the subset of 1.1's schema that routing reads;
+//! unknown TOML keys are accepted until `integrations check` (2.6) reports them.
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Format {
-    Toml,
-    /// An `integrations.d/*.sh` file read through the bash voxcmd's `_legacy-dump`. Goes in 3.2.
-    Bash,
-}
 
 /// Which pass of routing tries the integration: the normal tier first, the fallback tier only when nothing else
 /// (the LLM hook included) offered an option.
@@ -35,23 +27,19 @@ pub struct Integration {
     pub name: String,
     pub stem: String,
     pub file: PathBuf,
-    pub format: Format,
     pub tier: Tier,
     /// As written; the router normalizes them like the phrase.
     pub force_prefixes: Vec<String>,
-    /// Pattern fragments usable as `{name}` (TOML only).
+    /// Pattern fragments usable as `{name}`.
     pub defines: BTreeMap<String, String>,
-    /// `[mode] exit_object`, the `{mode_object}` of patterns and the object of `{mode_exit}` (TOML only).
+    /// `[mode] exit_object`, the `{mode_object}` of patterns and the object of `{mode_exit}`.
     pub mode_exit_object: Option<String>,
-    /// The voice-session mode this integration opens (`[mode]`, TOML only).
+    /// The voice-session mode this integration opens (`[mode]`).
     pub mode: Option<Mode>,
     pub verbs: Vec<Verb>,
     /// Phrases for Voice Help; `<name>` marks a spoken part.
     pub examples: Vec<String>,
-    /// A legacy file lists runnable choices in Voice Help (`help_choices`, or `help_action` over `candidates`), which
-    /// only the bash voxcmd can produce. A TOML file's are its `help` entries instead.
-    pub legacy_help: bool,
-    /// What Tab lists in Voice Help (TOML only), in file order.
+    /// What Tab lists in Voice Help, in file order.
     pub help: Vec<Help>,
     pub settings: MatchSettings,
     pub actions: BTreeMap<String, Action>,
@@ -61,32 +49,23 @@ pub struct Integration {
 }
 
 impl Integration {
-    /// The hook that lists candidates for the action. A legacy file has one `candidates` function for all its actions,
-    /// including a verb's action the file never declared.
+    /// The hook that lists candidates for the action.
     pub fn candidates_for(&self, action: &str) -> Option<&Candidates> {
-        match self.actions.get(action) {
-            Some(declared) => declared.candidates.as_ref(),
-            None if self.format == Format::Bash => {
-                self.actions.values().find_map(|declared| declared.candidates.as_ref())
-            }
-            None => None,
-        }
+        self.actions.get(action)?.candidates.as_ref()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Verb {
-    /// An action id, or `yield` (TOML only): the integration offers nothing for the phrase.
+    /// An action id, or `yield`: the integration offers nothing for the phrase.
     pub action: String,
     pub pattern: String,
-    /// Line in the TOML file; legacy verbs have none.
+    /// Line in the TOML file.
     pub line: Option<usize>,
     /// Column of the verb's entry in that line, for `integrations check`.
     pub column: Option<usize>,
     /// Another integration's stem that must be loaded for this verb to count.
     pub requires: Option<String>,
-    /// The legacy `verbs` entry as written, alignment spaces included, which `integrations list` prints.
-    pub listed: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -184,9 +163,7 @@ pub struct Rewrite {
 #[derive(Debug, Clone)]
 pub enum Candidates {
     Shell(String),
-    /// The legacy file's `candidates <action> <target>` function, run through `_legacy-hook`. Goes in 3.2.
-    LegacyFunction,
-    /// A source voxcmd runs itself: no shell, no bridge.
+    /// A source voxcmd runs itself, with no shell.
     Builtin(Provider),
 }
 
@@ -246,10 +223,6 @@ pub enum Builtin {
     /// Moves the pointer to the candidate id's point and clicks. The button the provider chose is in the id; the one
     /// named here (`run = "click_at right"`) is what the provider puts there.
     ClickAt(Option<Button>),
-    /// Says the spoken target is not on screen.
-    NoText,
-    /// Starts the keyboard pointer overlay.
-    ShowHints,
 }
 
 /// An integration's own way of showing several options.
@@ -283,8 +256,6 @@ impl<'a> BuiltinWait<'a> {
 pub enum Wait {
     Builtin(String),
     Hook(String),
-    /// A legacy `step_waits` shell condition. Goes in 3.2.
-    LegacyCondition(String),
 }
 
 /// One `[[help]]` entry: the runnable rows Tab shows for the integration in Voice Help, each run as `action`.
@@ -309,8 +280,6 @@ pub enum HelpRows {
 pub enum Surface {
     /// Under `$XDG_RUNTIME_DIR/voxcmd`; open while its top-level `open` is true.
     StateFile(PathBuf),
-    /// The legacy file's `surface_open` function. Goes in 3.2.
-    LegacyHook,
 }
 
 // ---- the TOML file --------------------------------------------------------------------------------------------------
@@ -569,7 +538,6 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 line: Some(line),
                 column: Some(column),
                 requires: entry.requires,
-                listed: None,
             }
         })
         .collect();
@@ -681,7 +649,6 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         name: parsed.name.unwrap_or_else(|| stem.clone()),
         stem,
         file: file.to_path_buf(),
-        format: Format::Toml,
         tier: if parsed.fallback { Tier::Fallback } else { Tier::Normal },
         force_prefixes: parsed.force_prefixes,
         defines: parsed.define,
@@ -689,7 +656,6 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
         mode,
         verbs,
         examples: parsed.examples,
-        legacy_help: false,
         help,
         settings: MatchSettings {
             target_match: parsed.target_match,

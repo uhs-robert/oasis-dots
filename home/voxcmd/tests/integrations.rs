@@ -1,7 +1,5 @@
-//! `integrations list` and `integrations check` over the fixture integrations, with the bash `voxcmd` beside them as a
-//! tripwire that must never run when there is no legacy file to load.
+//! `integrations list` and `integrations check` over the fixture integrations.
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
 use std::process::{Command, Output};
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
@@ -24,17 +22,6 @@ impl Sandbox {
             )
             .unwrap();
         }
-        // The tripwire: _legacy-dump runs this, and nothing here needs it to.
-        let bash = sandbox.root.path().join("bash-voxcmd");
-        std::fs::write(
-            &bash,
-            format!(
-                "#!/bin/sh\necho 'BASH-RAN voxcmd' >> {}\nexit 1\n",
-                sandbox.calls().display()
-            ),
-        )
-        .unwrap();
-        std::fs::set_permissions(&bash, std::fs::Permissions::from_mode(0o755)).unwrap();
         sandbox
     }
 
@@ -42,15 +29,11 @@ impl Sandbox {
         self.root.path().join("config/voxcmd")
     }
 
-    fn calls(&self) -> std::path::PathBuf {
-        self.root.path().join("calls.log")
-    }
-
     fn write(&self, relative: &str, text: &str) {
         std::fs::write(self.config().join(relative), text).unwrap();
     }
 
-    fn voxcmd(&self, args: &[&str], env: &[(&str, &Path)]) -> Output {
+    fn voxcmd(&self, args: &[&str], env: &[(&str, &std::path::Path)]) -> Output {
         let root = self.root.path();
         Command::new(env!("CARGO_BIN_EXE_voxcmd"))
             .args(args)
@@ -59,15 +42,9 @@ impl Sandbox {
             .env("HOME", root.join("home"))
             .env("XDG_CONFIG_HOME", root.join("config"))
             .env("XDG_CACHE_HOME", root.join("cache"))
-            .env("VOXCMD_LEGACY_BIN", root.join("bash-voxcmd"))
             .envs(env.iter().copied())
             .output()
             .unwrap()
-    }
-
-    fn no_bash_ran(&self) {
-        let calls = std::fs::read_to_string(self.calls()).unwrap_or_default();
-        assert!(!calls.contains("BASH-RAN"), "the bash voxcmd ran:\n{calls}");
     }
 }
 
@@ -84,12 +61,8 @@ fn the_fixture_integrations_check_clean() {
     let sandbox = Sandbox::with(&["apps", "click", "media"]);
     let output = sandbox.voxcmd(&["integrations", "check"], &[]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
-    assert_eq!(
-        stdout(&output),
-        "3 TOML files checked, 0 problems; 0 legacy files only loaded and compiled, not checked in depth\n"
-    );
+    assert_eq!(stdout(&output), "3 TOML files checked, 0 problems\n");
     assert_eq!(stderr(&output), "");
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -131,10 +104,9 @@ twice = { run = "true", colour = "red" }
          integrations/broken.toml:6:15: error: verb action \"wander\" is not declared under [actions]\n\
          integrations/hooked.sh:2:1: error: syntax error near unexpected token `then'\n\
          integrations/syntax.toml:1:9: error: invalid type: integer `3`, expected a sequence\n\
-         4 TOML files checked, 9 problems; 0 legacy files only loaded and compiled, not checked in depth\n"
+         4 TOML files checked, 9 problems\n"
     );
     assert_eq!(stderr(&output), "");
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -154,7 +126,6 @@ fn check_as_json_and_of_named_files() {
     );
     let clean = sandbox.voxcmd(&["integrations", "check", "--json", "integrations/media.toml"], &[]);
     assert_eq!(stdout(&clean), "{\"ok\":true,\"files\":1,\"problems\":[]}\n");
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -172,7 +143,6 @@ fn list_prints_name_file_and_verbs() {
         "Click ({})\n",
         sandbox.config().join("integrations/click.toml").display()
     )));
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -197,36 +167,11 @@ fn list_as_json_has_the_summary_shape() {
             .starts_with("(?s-u)^(?:play pause|")
     );
     assert!(media["actions"].as_array().unwrap().contains(&"toggle".into()));
-    sandbox.no_bash_ran();
 }
 
 #[test]
-fn legacy_files_are_loaded_and_counted_but_not_checked_in_depth() {
+fn a_stray_integrations_d_file_is_ignored_and_reported() {
     let sandbox = Sandbox::with(&["media"]);
-    std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
-    // Any content will do: the dump comes from the fixture, not from sourcing the files.
-    let dump = Path::new(FIXTURES).join("legacy-dump.jsonl");
-    for name in dumped_file_names(&dump) {
-        sandbox.write(&format!("integrations.d/{name}"), "");
-    }
-    let loaded = std::fs::read_to_string(&dump).unwrap().lines().count();
-    let output = sandbox.voxcmd(&["integrations", "check"], &[("VOXCMD_LEGACY_DUMP_FILE", &dump)]);
-    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
-    // media.sh is in the dump and media.toml shadows it.
-    assert_eq!(
-        stdout(&output),
-        format!(
-            "1 TOML files checked, 0 problems; {} legacy files only loaded and compiled, not checked in depth\n",
-            loaded - 1
-        )
-    );
-    sandbox.no_bash_ran();
-}
-
-#[test]
-fn a_stray_integrations_d_file_is_ignored_and_reported_without_the_bash_voxcmd() {
-    let sandbox = Sandbox::with(&["media"]);
-    std::fs::remove_file(sandbox.root.path().join("bash-voxcmd")).unwrap();
     std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
     sandbox.write("integrations.d/peak.sh", "verbs=('x y')\n");
     let output = sandbox.voxcmd(&["integrations", "check"], &[]);
@@ -234,11 +179,10 @@ fn a_stray_integrations_d_file_is_ignored_and_reported_without_the_bash_voxcmd()
     assert_eq!(
         stdout(&output),
         "integrations.d/peak.sh:1:1: warning: integrations.d/peak.sh is no longer read; convert it to TOML\n\
-         1 TOML files checked, 1 problems; 0 legacy files only loaded and compiled, not checked in depth\n"
+         1 TOML files checked, 1 problems\n"
     );
     let listed = sandbox.voxcmd(&["integrations", "list"], &[]);
     assert!(!stdout(&listed).contains("peak"), "{}", stdout(&listed));
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -253,39 +197,12 @@ fn a_shadowed_verb_is_a_warning_and_leaves_the_check_clean() {
     assert_eq!(
         stdout(&output),
         "integrations/twice.toml:3:3: warning: verb \"go\" can never match: verb 0 (\"a\") matches the same phrases first\n\
-         1 TOML files checked, 1 problems; 0 legacy files only loaded and compiled, not checked in depth\n"
+         1 TOML files checked, 1 problems\n"
     );
     let json = sandbox.voxcmd(&["integrations", "check", "--json"], &[]);
     assert_eq!(json.status.code(), Some(0));
     assert!(stdout(&json).starts_with("{\"ok\":true,\"files\":1,\"problems\":[{"));
     assert!(stdout(&json).contains("\"severity\":\"warning\",\"code\":\"shadowed-verb\""));
-    sandbox.no_bash_ran();
-}
-
-#[test]
-fn a_named_legacy_file_is_loaded_itself_and_a_missing_one_is_a_problem() {
-    let sandbox = Sandbox::with(&[]);
-    let dump = Path::new(FIXTURES).join("legacy-dump.jsonl");
-    let dump_env = [("VOXCMD_LEGACY_DUMP_FILE", dump.as_path())];
-    // Outside the config dir, and no integrations.d at all.
-    let outside = sandbox.root.path().join("apps.sh");
-    std::fs::write(&outside, "").unwrap();
-    let outside_arg = outside.to_str().unwrap();
-    let loaded = sandbox.voxcmd(&["integrations", "check", outside_arg], &dump_env);
-    assert_eq!(loaded.status.code(), Some(0), "{}", stdout(&loaded));
-    assert!(
-        stdout(&loaded).contains("1 legacy files only loaded"),
-        "{}",
-        stdout(&loaded)
-    );
-    let missing = sandbox.voxcmd(&["integrations", "check", "--json", "nowhere.sh"], &dump_env);
-    assert_eq!(missing.status.code(), Some(1));
-    assert!(
-        stdout(&missing).contains("\"code\":\"unreadable\""),
-        "{}",
-        stdout(&missing)
-    );
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -323,45 +240,6 @@ fn a_mistyped_surface_key_is_an_unknown_key() {
     assert_eq!(output.status.code(), Some(1));
     assert!(
         stdout(&output).contains("integrations/surf.toml:8:1: error: unknown surface key \"state_flie\""),
-        "{}",
-        stdout(&output)
-    );
-}
-
-fn dumped_file_names(dump: &Path) -> Vec<String> {
-    std::fs::read_to_string(dump)
-        .unwrap()
-        .lines()
-        .map(|line| {
-            let value: serde_json::Value = serde_json::from_str(line).unwrap();
-            let file = value["file"].as_str().unwrap().to_string();
-            file.rsplit('/').next().unwrap().to_string()
-        })
-        .collect()
-}
-
-#[test]
-fn a_legacy_file_that_fails_to_source_is_a_legacy_load_problem() {
-    let sandbox = Sandbox::with(&[]);
-    std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
-    for name in dumped_file_names(&Path::new(FIXTURES).join("legacy-dump.jsonl")) {
-        sandbox.write(&format!("integrations.d/{name}"), "");
-    }
-    // On disk but absent from the dump, as a file that fails while sourced is.
-    sandbox.write("integrations.d/broken.sh", "");
-    let dump = Path::new(FIXTURES).join("legacy-dump.jsonl");
-    let output = sandbox.voxcmd(
-        &["integrations", "check", "--json"],
-        &[("VOXCMD_LEGACY_DUMP_FILE", &dump)],
-    );
-    assert_eq!(output.status.code(), Some(1));
-    assert!(
-        stdout(&output).contains("\"code\":\"legacy-load\""),
-        "{}",
-        stdout(&output)
-    );
-    assert!(
-        stdout(&output).contains("integrations.d/broken.sh"),
         "{}",
         stdout(&output)
     );
@@ -449,7 +327,6 @@ fn examples_are_listed_by_integration() {
     let listed: serde_json::Value = serde_json::from_str(&stdout(&json)).unwrap();
     assert_eq!(listed[0]["stem"], "media");
     assert_eq!(listed[0]["examples"][0], "play pause");
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -466,7 +343,6 @@ fn route_is_clean_when_every_example_lands_on_its_integration() {
         "{}",
         stdout(&output)
     );
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -488,7 +364,6 @@ fn route_names_an_example_that_misses_or_lands_elsewhere_and_exits_1() {
     let report: serde_json::Value = serde_json::from_str(&stdout(&json)).unwrap();
     assert_eq!(json.status.code(), Some(1));
     assert_eq!(report["misrouted"][1]["routed_to"], serde_json::json!([]));
-    sandbox.no_bash_ran();
 }
 
 const PANE: &str = r#"name = "Pane"
@@ -512,7 +387,6 @@ fn route_checks_a_toml_mode_example_through_the_modes_rewrite() {
     assert_eq!((&report["skipped"], &report["in_mode"]), (&1.into(), &0.into()));
     assert_eq!(report["misrouted"].as_array().unwrap().len(), 1, "{report}");
     assert_eq!(report["misrouted"][0]["example"], "bogus");
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -646,31 +520,6 @@ fn route_skips_a_miss_of_a_surface_whose_candidates_hooks_read_its_closed_state_
 }
 
 #[test]
-fn route_still_skips_every_example_of_a_legacy_integration_with_a_surface() {
-    let sandbox = Sandbox::with(&[]);
-    let overview = std::fs::read_to_string(Path::new(FIXTURES).join("legacy-dump.jsonl"))
-        .unwrap()
-        .lines()
-        .find(|line| line.contains("\"Overview\""))
-        .unwrap()
-        .to_string();
-    let dump = sandbox.root.path().join("dump.jsonl");
-    std::fs::write(&dump, format!("{overview}\n")).unwrap();
-    std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
-    sandbox.write("integrations.d/overview.sh", "");
-    let output = sandbox.voxcmd(
-        &["integrations", "examples", "--route"],
-        &[("VOXCMD_LEGACY_DUMP_FILE", &dump)],
-    );
-    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
-    assert_eq!(
-        stdout(&output),
-        "0 examples route to their integration (0 only in their surface or mode), 0 do not; \
-         skipped 0 with a <placeholder> and 21 said inside a mode\n"
-    );
-}
-
-#[test]
 fn help_routes_a_picked_example_as_if_spoken() {
     let sandbox = Sandbox::with(&[]);
     let lit = sandbox.lamp();
@@ -686,7 +535,6 @@ fn help_routes_a_picked_example_as_if_spoken() {
         asked.trim_end().ends_with("{}"),
         "no integration lists choices: {asked}"
     );
-    sandbox.no_bash_ran();
 }
 
 #[test]
@@ -773,7 +621,6 @@ fn help_lists_the_rows_of_every_help_entry_as_runnables_without_bash() {
     let expansion = r#""scenes":{"choices":[{"id":"run:0","label":"Dusk scene"},{"id":"run:1","label":"bare"},{"id":"run:2","label":"Lights off"},{"id":"run:3","label":"Day scene"},{"id":"run:4","label":"Night scene"}],"title":"Scenes"}"#;
     assert!(asked.contains(expansion), "{asked}");
     assert!(asked.contains(r#""expand":"scenes""#), "{asked}");
-    sandbox.no_bash_ran();
 }
 
 #[test]

@@ -1,13 +1,12 @@
 //! running a chosen option: ask first when it asks, run its action, say what happened (was `run_option`)
 //!
-//! An action is the integration's `run` string: TOML ones through the same `bash -c` wrapper hooks use, bash ones
-//! through the bash voxcmd's `_legacy-hook run` (which sets the globals the real actions read). Unlike a hook an action
-//! has no deadline; it leads a process group of its own, so Stop Voice (SIGTERM to voxcmd) ends it.
+//! An action is the integration's `run` string, run through the same `bash -c` wrapper hooks use. Unlike a hook an
+//! action has no deadline; it leads a process group of its own, so Stop Voice (SIGTERM to voxcmd) ends it.
 use crate::ask::Asker;
 use crate::config::Config;
-use crate::config::schema::{Format, Integration};
+use crate::config::schema::Integration;
 use crate::debug::debug;
-use crate::hooks::{HookEnv, LegacyHooks, ShellHooks, tail_lines};
+use crate::hooks::{HookEnv, ShellHooks, tail_lines};
 use crate::notify::{Kind, Notifier};
 use crate::process::{self, Outcome};
 use crate::route::resolve::RouteOption;
@@ -20,7 +19,6 @@ use std::process::Command;
 pub struct Runtime<'a> {
     pub config: &'a Config,
     pub shell: &'a ShellHooks,
-    pub legacy: &'a LegacyHooks,
     pub asker: &'a dyn Asker,
     pub notifier: &'a dyn Notifier,
     /// The phrase was spoken: a watcher routes it, so a question it asks records the answer by voice too, and the
@@ -28,8 +26,6 @@ pub struct Runtime<'a> {
     pub came_by_voice: bool,
     /// The mode the phrase was heard in is private (type mode): nothing of it goes to the no-match log.
     pub heard_private: bool,
-    /// The session mode the phrase was heard in, for a bash action's `$heard_mode`.
-    pub heard_mode: &'a str,
     /// A voice session's turn: nobody is at the keyboard, so every picker listens.
     pub in_session_turn: bool,
 }
@@ -106,17 +102,6 @@ pub struct Spoken<'a> {
     pub active_before: &'a str,
     /// A sequence reports its steps' failures itself, in one toast.
     pub in_sequence: bool,
-}
-
-/// The variables the bash voxcmd's `_legacy-hook run|wait` turn into the globals a bash action reads.
-pub fn legacy_env(option: &RouteOption, said: &Spoken, confirmed: bool) -> [(&'static str, String); 5] {
-    [
-        ("VOXCMD_LEGACY_ID", option.id.clone()),
-        ("VOXCMD_LEGACY_TARGET", option.target.clone()),
-        ("VOXCMD_LEGACY_CONFIRMED", u8::from(confirmed).to_string()),
-        ("VOXCMD_LEGACY_RAW_TRANSCRIPT", said.raw_transcript.to_string()),
-        ("VOXCMD_LEGACY_ACTIVE_BEFORE", said.active_before.to_string()),
-    ]
 }
 
 /// "Apps: close Slack window: Inbox" asks "Close Slack window: Inbox?". Its first word is the verb a spoken "close it"
@@ -203,7 +188,7 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         // which is what it was for: only a session that failed with its screen still up is a failure.
         if opened == Some(Opened::Session)
             && crate::session::turn::listen_for_turn(std::process::id()) == crate::session::turn::Listen::Failed
-            && crate::session::mode::alive(&integration.file.display().to_string(), "")
+            && crate::session::mode::alive(&integration.file.display().to_string())
         {
             result.detail = "its session could not listen".to_string();
             debug(&format!("action failed: {toast}: its session could not listen"));
@@ -280,28 +265,18 @@ fn detail_suffix(integration: &Integration, detail: &str) -> String {
     }
 }
 
-/// What `$(...)` made of the action's output, without trailing newlines. A TOML action's wrapper already folded the
-/// action body's stderr into its stdout, so stderr holds only the `.sh` library's own diagnostics: those go to the debug
-/// log, not into the toast. The bash bridge (`_legacy-hook run`) has no such split, so both streams are the output.
+/// What `$(...)` made of the action's output, without trailing newlines. The wrapper already folded the action body's
+/// stderr into its stdout, so stderr holds only the `.sh` library's own diagnostics: those go to the debug log, not
+/// into the toast.
 fn action_output(integration: &Integration, outcome: &Outcome) -> String {
-    let both;
-    let text = match integration.format {
-        Format::Toml => {
-            if !outcome.stderr.is_empty() {
-                debug(&format!(
-                    "action {}: library stderr: {}",
-                    integration.name,
-                    outcome.stderr.trim_end_matches('\n')
-                ));
-            }
-            &outcome.stdout
-        }
-        Format::Bash => {
-            both = format!("{}{}", outcome.stdout, outcome.stderr);
-            &both
-        }
-    };
-    text.trim_end_matches('\n').to_string()
+    if !outcome.stderr.is_empty() {
+        debug(&format!(
+            "action {}: library stderr: {}",
+            integration.name,
+            outcome.stderr.trim_end_matches('\n')
+        ));
+    }
+    outcome.stdout.trim_end_matches('\n').to_string()
 }
 
 fn action_command(
@@ -311,31 +286,19 @@ fn action_command(
     said: &Spoken,
     confirmed: bool,
 ) -> Command {
-    match integration.format {
-        Format::Toml => {
-            let env = HookEnv {
-                integration,
-                action: &option.action,
-                args: &option.args,
-                phrase: said.phrase,
-                raw_transcript: said.raw_transcript,
-                id: Some(&option.id),
-                label: Some(&option.label),
-                confirmed,
-                active_before: None,
-                spoken: false,
-            };
-            rt.shell.command(&option.command, &env, true)
-        }
-        Format::Bash => {
-            let mut command = rt.legacy.call("run", integration);
-            command
-                .arg(&option.action)
-                .envs(legacy_env(option, said, confirmed))
-                .envs(crate::session::bridge::hook_env(rt.heard_mode));
-            command
-        }
-    }
+    let env = HookEnv {
+        integration,
+        action: &option.action,
+        args: &option.args,
+        phrase: said.phrase,
+        raw_transcript: said.raw_transcript,
+        id: Some(&option.id),
+        label: Some(&option.label),
+        confirmed,
+        active_before: None,
+        spoken: false,
+    };
+    rt.shell.command(&option.command, &env, true)
 }
 
 #[cfg(test)]

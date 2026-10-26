@@ -104,7 +104,6 @@ CASES = [
     ("home/voxcmd/tests/fixtures/x.txt", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
     ("home/voxcmd/tests/snapshots/cli__x.snap", " rust"),
     ("home/voxcmd/tests/fixtures/match-goldens.tsv", " rust"),
-    ("home/voxcmd/tests/fixtures/legacy-dump.jsonl", " rust"),
     # The fixtures the suites read reach them.
     ("home/voxcmd/tests/fixtures/ocr.tsv", " voxphrases"),
     ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " rust"),

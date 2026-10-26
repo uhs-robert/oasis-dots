@@ -12,13 +12,12 @@ use crate::ask::{AskWith, PickWith};
 use crate::cli::PhraseArgs;
 use crate::click::pick::boxed_choices;
 use crate::config::Config;
-use crate::config::schema::{Format, Picker};
+use crate::config::schema::Picker;
 use crate::exit::CliError;
-use crate::hooks::{Dispatch, LegacyHooks, ShellHooks};
+use crate::hooks::{Dispatch, ShellHooks};
 use crate::log::log_no_match;
 use crate::notify::{Desktop, Kind};
 use crate::paths;
-use crate::process;
 use crate::text::wake_word::WAKE_WORD;
 use std::cell::RefCell;
 use std::collections::BTreeSet;
@@ -190,30 +189,18 @@ impl<'a> Runner<'a> {
 
     /// The command and choices of an integration's own picker, when every option comes from one integration whose
     /// options can be placed on screen (click's numbered boxes); else none, and the text picker asks. A built-in
-    /// picker reads each id's box itself; a bash integration's `pick_box` is asked through the bridge.
+    /// picker reads each id's box itself.
     fn integration_pick(&self, options: &[RouteOption], choices: &str) -> Option<(String, String)> {
         let files: BTreeSet<_> = options.iter().map(|option| &option.file).collect();
         if files.len() != 1 || options.len() > MAX_BOXED_OPTIONS {
             return None;
         }
         let integration = &self.rt.config.integrations[options[0].integration];
-        if integration.picker == Some(Picker::Hints) {
-            let ids: Vec<&str> = options.iter().map(|option| option.id.as_str()).collect();
-            return Some((HINTS_COMMAND.to_string(), boxed_choices(choices, &ids)?));
-        }
-        if integration.format != Format::Bash {
+        if integration.picker != Some(Picker::Hints) {
             return None;
         }
-        let mut command = self.rt.legacy.call("pick-boxes", integration);
-        command
-            .arg(choices)
-            .args(options.iter().map(|option| option.id.as_str()));
-        let outcome = process::run_to_end(&mut command).ok()?;
-        if outcome.code() != Some(0) {
-            return None;
-        }
-        let (command_path, boxed) = outcome.stdout.split_once('\n')?;
-        Some((command_path.to_string(), boxed.trim_end().to_string()))
+        let ids: Vec<&str> = options.iter().map(|option| option.id.as_str()).collect();
+        Some((HINTS_COMMAND.to_string(), boxed_choices(choices, &ids)?))
     }
 }
 
@@ -257,8 +244,6 @@ pub struct Heard {
     pub by_voice: bool,
     /// The mode it was heard in keeps what is said out of the logs.
     pub private: bool,
-    /// The session mode it was heard in (`session::mode_token`), as the watcher was told; bash `$heard_mode`.
-    pub mode: String,
     /// A voice session's turn.
     pub in_session_turn: bool,
 }
@@ -268,22 +253,16 @@ pub fn with_runner<R>(heard: &Heard, act: impl FnOnce(&Runner) -> R) -> Result<R
     let config_dir = paths::config_dir();
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("run", message))?;
     let shell = ShellHooks::for_config_dir(&config_dir);
-    let legacy = LegacyHooks::new(config_dir);
-    let hooks = Dispatch::new(
-        shell.clone(),
-        Box::new(LegacyHooks::with_bin(paths::legacy_bin(), paths::config_dir())),
-    );
+    let hooks = Dispatch::new(shell.clone());
     let router = Router::new(&config, &hooks);
     let asker = AskWith::from_env();
     let runtime = Runtime {
         config: &config,
         shell: &shell,
-        legacy: &legacy,
         asker: &asker,
         notifier: &Desktop,
         came_by_voice: heard.by_voice,
         heard_private: heard.private,
-        heard_mode: &heard.mode,
         in_session_turn: heard.in_session_turn,
     };
     Ok(act(&Runner::new(&router, &runtime)))

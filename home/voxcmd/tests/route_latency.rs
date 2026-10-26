@@ -1,7 +1,7 @@
 //! the routing latency budget: `explain` without hooks, from process start to exit, p95 under 10 ms (voxcmd-port 0.1, 4.5)
 //!
-//! Against the TOML fixtures plus the committed `_legacy-dump` of the bash integrations, so no bash starts and no hook
-//! runs. A release build only: a debug build is several times slower and says nothing about the budget.
+//! Against the TOML fixtures with their `candidates` hooks removed, so no bash starts and no hook runs. A release build
+//! only: a debug build is several times slower and says nothing about the budget.
 use std::path::Path;
 use std::process::Command;
 use std::time::Instant;
@@ -27,11 +27,13 @@ fn explain_without_hooks_stays_under_the_budget() {
     let config = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(config.path().join("integrations")).unwrap();
     for stem in ["media", "apps", "click"] {
-        std::fs::copy(
-            fixtures.join(format!("integrations/{stem}.toml")),
-            config.path().join(format!("integrations/{stem}.toml")),
-        )
-        .unwrap();
+        let text = std::fs::read_to_string(fixtures.join(format!("integrations/{stem}.toml"))).unwrap();
+        let without_hooks: String = text
+            .lines()
+            .filter(|line| !line.starts_with("candidates = "))
+            .map(|line| format!("{line}\n"))
+            .collect();
+        std::fs::write(config.path().join(format!("integrations/{stem}.toml")), without_hooks).unwrap();
     }
     let explain = |phrase: &str| {
         let started = Instant::now();
@@ -41,7 +43,6 @@ fn explain_without_hooks_stays_under_the_budget() {
             .env("HOME", "/nonexistent")
             .env("TZ", "America/New_York")
             .env("VOXCMD_CONFIG_DIR", config.path())
-            .env("VOXCMD_LEGACY_DUMP_FILE", fixtures.join("legacy-dump.jsonl"))
             .output()
             .unwrap();
         assert!(

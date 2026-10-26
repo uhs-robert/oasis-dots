@@ -12,7 +12,7 @@ use crate::notify::{self, Kind};
 use crate::paths;
 use crate::process;
 use crate::session::mode::ModeSettings;
-use crate::session::{self, SessionLock, bridge, text_of};
+use crate::session::{self, SessionLock, text_of};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -166,7 +166,6 @@ fn start_watcher(handler: Handler, session_listen: Option<&SessionListen>, owner
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
-    bridge::clear_hook_env(&mut command);
     if let Some(owner_file) = owner_file {
         command.env("VOXCMD_RECORDING_OWNER_FILE", owner_file);
     }

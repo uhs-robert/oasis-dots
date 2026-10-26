@@ -14,9 +14,9 @@
 //! candidates hooks of a surface integration (they read its state file, which stays closed).
 use super::Config;
 use super::list::relative;
-use super::schema::{Candidates, Format};
+use super::schema::Candidates;
 use crate::exit::CliError;
-use crate::hooks::{Dispatch, Hooks, LegacyHooks, NoHooks, ShellHooks};
+use crate::hooks::{Dispatch, ShellHooks};
 use crate::route::router::{Router, StepContext};
 use crate::session::mode::declared_rewrite;
 use crate::text::normalize::normalize;
@@ -83,18 +83,10 @@ pub fn run(json: bool, route: bool) -> Result<Option<String>, CliError> {
 
 /// Exit 1 when any placeholder-free example does not route to the integration that declares it alone.
 fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
-    let hooks: Box<dyn Hooks> = if crate::paths::legacy_dump_override().is_some() {
-        // A dump given as a file stands in for bash files that are not on disk to source.
-        Box::new(NoHooks)
-    } else {
-        let dir = crate::paths::config_dir();
-        let stems = config.integrations.iter().map(|integration| integration.stem.clone());
-        Box::new(Dispatch::new(
-            ShellHooks::new(&dir, stems, true),
-            Box::new(LegacyHooks::new(dir)),
-        ))
-    };
-    let router = Router::new(config, hooks.as_ref());
+    let dir = crate::paths::config_dir();
+    let stems = config.integrations.iter().map(|integration| integration.stem.clone());
+    let hooks = Dispatch::new(ShellHooks::new(&dir, stems, true));
+    let router = Router::new(config, &hooks);
     let (mut routed, mut skipped, mut in_mode, mut routed_in_scope) = (0, 0, 0, 0);
     let mut misrouted = Vec::new();
     for (index, integration) in config.integrations.iter().enumerate() {
@@ -103,14 +95,12 @@ fn route_all(config: &Config, json: bool) -> Result<Option<String>, CliError> {
                 skipped += 1;
                 continue;
             }
-            let is_toml = integration.format == Format::Toml;
-            if (integration.surface.is_some() && !is_toml) || router.wake().split_leading(&normalize(example)).is_some()
-            {
+            if router.wake().split_leading(&normalize(example)).is_some() {
                 in_mode += 1;
                 continue;
             }
             let (mut landed, mut ok) = lands_on(&router, index, example, StepContext::default());
-            if !ok && is_toml {
+            if !ok {
                 let has_surface = integration.surface.is_some();
                 let rewriting = declared_rewrite(integration, &config.intents)
                     .map_err(|message| CliError::usage("integrations examples", message))?;

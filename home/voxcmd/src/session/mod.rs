@@ -2,12 +2,9 @@
 //! to it (was `session_locked`, `session_state`, `session_update`, `session_set_owner`, `session_create`,
 //! `session_enter/push/truncate/leave/end`, `session_end_all`, `session_end_if_mine` and `session_run_ended_hook`)
 //!
-//! The lock is the bash one's (`flock` on the same file), so either binary may hold it: until voxcmd-port 3.2 the
-//! installed bash voxcmd and voxcmd-wake still act on a session the Rust port opened, and the reverse. The file stays a
-//! `serde_json::Value`, so fields this port does not know are kept, and it is replaced whole (written beside it, then
-//! renamed), so the bar never reads half of it.
-//! "Mine" is a pid the caller names: the watcher's own, or the Rust process a bash hook was run from (`bridge.rs`).
-pub mod bridge;
+//! The file stays a `serde_json::Value`, so fields this port does not know are kept, and it is replaced whole
+//! (written beside it, then renamed), so the bar never reads half of it.
+//! "Mine" is a pid the caller names: the watcher's own, or the process that opened the session.
 pub mod dictation;
 pub mod mode;
 pub mod turn;
@@ -20,7 +17,6 @@ use mode::ModeSettings;
 use serde_json::{Map, Value, json};
 use std::fs::File;
 use std::os::fd::AsRawFd;
-use std::process::{Command, Stdio};
 
 /// The session lock, held until dropped. Every read that may clear the file and every change to it holds it. Opened
 /// close-on-exec, so nothing voxcmd starts while holding it keeps it.
@@ -47,12 +43,6 @@ impl SessionLock {
             crate::process::wait_for_last_act();
         }
         Self { _file: Some(file) }
-    }
-
-    /// The lock a hook's caller holds while the hook runs (`bridge::lock_held_by_caller`): taking it again here would
-    /// wait for the caller, which waits for the hook.
-    pub fn held_by_caller() -> Self {
-        Self { _file: None }
     }
 }
 
@@ -436,13 +426,6 @@ pub fn leave(lock: &SessionLock, kind: &str, reason: &str, me: u32) -> bool {
     }
 }
 
-/// Leaves the current mode.
-pub fn end_top(lock: &SessionLock, reason: &str, me: u32) {
-    if let Some(state) = state(lock) {
-        leave(lock, &text_of(&state["kind"]), reason, me);
-    }
-}
-
 /// Ends the session and every mode in it, saying why, under a lock the caller holds.
 pub fn end_all_locked(lock: &SessionLock, reason: &str, me: u32) {
     if let Some(popped) = truncate(lock, 0, reason, me) {
@@ -472,26 +455,9 @@ pub fn end_if_mine(reason: &str, me: u32) {
     }
 }
 
-/// Runs a popped mode's `session_ended` (a TOML mode's `ended`) in the background, a bash one through the bash voxcmd
-/// that loaded its integration. Its
-/// pid is logged: the suites wait for the hook by it. It gets no `VOXCMD_LEGACY_PID`, so a `session_state` in it takes
-/// the lock as any reader does, after the caller has let it go.
+/// Runs a popped mode's `ended` hook in the background. Its pid is logged: the suites wait for the hook by it.
 fn run_ended_hook(integration: &str, reason: &str, frame_id: &str, continues: bool) {
-    if mode::run_toml_ended(integration, reason, frame_id, continues) {
-        return;
-    }
-    let mut command = Command::new(paths::legacy_bin());
-    command
-        .args(["_legacy-hook", "ended", integration, reason, frame_id])
-        .arg(if continues { "1" } else { "0" })
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-    bridge::clear_hook_env(&mut command);
-    match command.spawn() {
-        Ok(hook) => debug(&format!("session: ended hook {} runs", hook.id())),
-        Err(error) => debug(&format!("session: cannot run the ended hook of {integration}: {error}")),
-    }
+    mode::run_toml_ended(integration, reason, frame_id, continues);
 }
 
 /// `voxcmd session end`.

@@ -6,7 +6,7 @@
 use super::resolve::RouteOption;
 use super::runner::{Routed, Runner};
 use super::sequence::{Steps, refusal};
-use crate::actions::{Spoken, StepOutcome, legacy_env};
+use crate::actions::{Spoken, StepOutcome};
 use crate::bar;
 use crate::config::schema::{BuiltinWait, Wait};
 use crate::debug::debug;
@@ -204,11 +204,6 @@ impl Runner<'_> {
                         .is_ok_and(|outcome| outcome.code() == Some(0))
                 })
             }
-            Some(Wait::LegacyCondition(_)) => poll_until(pacing, |time_left| {
-                let mut command = self.rt.legacy.call("wait", integration);
-                command.arg(&option.action).envs(legacy_env(option, said, false));
-                process::run_with_timeout(&mut command, time_left).is_ok_and(|outcome| outcome.code() == Some(0))
-            }),
         }
     }
 

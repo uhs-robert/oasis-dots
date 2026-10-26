@@ -2,25 +2,21 @@
 //! integration's `session_rewrite`, `session_alive` and `session_handle_turn` (was `load_mode_settings`,
 //! `session_mode_alive` and the `session_rewrite` and `session_handle_turn` calls of `session_turn`)
 //!
-//! A bash integration's settings may read the environment (type mode's `VOXCMD_TYPE_*`), so they are read live, by
-//! `_legacy-hook mode-settings`, at every session event that needs them, never from the cached legacy dump. A TOML
-//! integration's `[mode]` is read the same way, from the file itself, so a change to it applies to the next event and
-//! session.json carries nothing of it. Its hooks are shell strings run as `hooks.rs` runs every hook.
+//! A mode's `[mode]` is read from its TOML file at every session event that needs it, so a change to it applies to the
+//! next event and session.json carries nothing of it. Its hooks are shell strings run as `hooks.rs` runs every hook.
 //!
-//! A TOML `alive` runs under the session lock, as bash's did, so a slow one holds up every session call: it gets
-//! `[mode] timeout_secs` (3 s by default) and counts as alive when it times out or cannot run.
+//! An `alive` runs under the session lock, so a slow one holds up every session call: it gets `[mode] timeout_secs`
+//! (3 s by default) and counts as alive when it times out or cannot run.
 //!
-//! A TOML `handle_turn` gets guards a bash one keeps in its own code (typing.sh's `type_refusal` and
-//! `type_still_wanted`): it is not run while a picker or the click overlay waits on the user, or once the turn's mode
-//! is no longer the session's, and a toast says why. Its deadline grows with the text, since typing a long dictation
-//! is its job; once passed, the hook may have typed part of it.
+//! A `handle_turn` is not run while a picker or the click overlay waits on the user, or once the turn's mode is no
+//! longer the session's, and a toast says why. Its deadline grows with the text, since typing a long dictation is its
+//! job; once passed, the hook may have typed part of it.
 //!
-//! Which kind a mode is goes by its file's extension alone. A `.toml` mode that stops loading mid-session (a live edit
-//! half done, the file moved away) is never handed to the bash loader, which would source it as shell: its settings
-//! stay those of the last version that loaded, and its hooks are skipped until it loads again, but for `handle_turn`,
-//! which runs as that version has it so that a dictation is not lost.
+//! A mode that stops loading mid-session (a live edit half done, the file moved away) keeps the settings of the last
+//! version that loaded, and its hooks are skipped until it loads again, but for `handle_turn`, which runs as that
+//! version has it so that a dictation is not lost.
+use super::SessionLock;
 use super::dictation::Ending;
-use super::{SessionLock, bridge};
 use crate::ask;
 use crate::bar;
 use crate::config::intents::Intents;
@@ -61,7 +57,7 @@ pub struct ModeSettings {
     pub has_handler: bool,
     pub has_rewrite: bool,
     pub has_alive: bool,
-    /// A TOML mode's declared `rewrite`; a bash mode's, or a TOML `rewrite_hook`, is a hook.
+    /// A declared `rewrite`; a `rewrite_hook` is a hook instead.
     pub rewriting: Option<Rewriting>,
     /// Actions that ran but found nothing to act on, so the turn missed.
     pub miss_actions: Vec<String>,
@@ -101,14 +97,7 @@ impl ModeSettings {
             // No version of it ever loaded: nothing better than the defaults is known.
             return load_toml_mode(file).map_or_else(Self::default, |mode| Self::from_toml(&mode));
         }
-        if !is_legacy_file(file) {
-            return Self::default();
-        }
-        let output = legacy_hook("mode-settings", file).output();
-        match output {
-            Ok(output) if output.status.success() => Self::parse(&String::from_utf8_lossy(&output.stdout)),
-            _ => Self::default(),
-        }
+        Self::default()
     }
 
     fn from_toml(loaded: &TomlMode) -> Self {
@@ -152,42 +141,6 @@ impl ModeSettings {
                 .filter_map(|(action, body)| Ending::new(action, body))
                 .collect(),
         }
-    }
-
-    /// `print_mode_settings` output: `key=value` lines.
-    fn parse(output: &str) -> Self {
-        let mut settings = Self::default();
-        for (key, value) in output.lines().filter_map(|line| line.split_once('=')) {
-            let on = value == "1";
-            match key {
-                "default_exits" => settings.default_exits = on,
-                "bare_exits" => settings.bare_exits = on,
-                "allows_switches" => settings.allows_switches = on,
-                "exit_hint" => settings.exit_hint = value.to_string(),
-                "exit_phrases" if !value.is_empty() => {
-                    settings.exit_phrases = WholeText::new(value)
-                        .inspect_err(|error| debug(&format!("session: exit_phrases: {error}")))
-                        .ok();
-                }
-                "private" => settings.private = on,
-                "open_ended" => settings.open_ended = on,
-                "one_recording" => settings.one_recording = on,
-                "wake_listens" => settings.wake_listens = on,
-                "listen_silence_secs" => settings.listen_silence_secs = value.to_string(),
-                "listen_max_secs" => settings.listen_max_secs = value.to_string(),
-                "listen_no_speech_secs" => settings.listen_no_speech_secs = value.to_string(),
-                "has_handler" => settings.has_handler = on,
-                "has_rewrite" => settings.has_rewrite = on,
-                "has_alive" => settings.has_alive = on,
-                "miss_action" if !value.is_empty() => settings.miss_actions.push(value.to_string()),
-                "ending" => match Ending::from_row(value) {
-                    Some(ending) => settings.endings.push(ending),
-                    None => debug("session: an ending is no regex, skipped"),
-                },
-                _ => {}
-            }
-        }
-        settings
     }
 
     pub fn exit_hint_or_default(&self) -> &str {
@@ -299,10 +252,8 @@ fn last_good_copy(path: &Path) -> PathBuf {
     paths::runtime_dir().join("last-good-modes").join(name)
 }
 
-/// A mode hook's command: the integration's library sourced first, the turn's words as `VOXCMD_PHRASE`. With a
-/// `heard_mode` it runs with the identity of the Rust process, so a session call in it reaches this session; without
-/// one it has none.
-fn toml_hook(mode: &TomlMode, shell: &str, phrase: &str, heard_mode: Option<&str>) -> Command {
+/// A mode hook's command: the integration's library sourced first, the turn's words as `VOXCMD_PHRASE`.
+fn toml_hook(mode: &TomlMode, shell: &str, phrase: &str) -> Command {
     let hooks = ShellHooks::for_config_dir(&mode.config_dir);
     let env = HookEnv {
         integration: &mode.integration,
@@ -316,12 +267,7 @@ fn toml_hook(mode: &TomlMode, shell: &str, phrase: &str, heard_mode: Option<&str
         active_before: None,
         spoken: true,
     };
-    let mut command = hooks.command(shell, &env, false);
-    bridge::clear_hook_env(&mut command);
-    if let Some(heard_mode) = heard_mode {
-        command.envs(bridge::hook_env(heard_mode));
-    }
-    command
+    hooks.command(shell, &env, false)
 }
 
 fn hook_timeout(mode: &TomlMode) -> Duration {
@@ -352,9 +298,8 @@ fn bounded_by_timeout(command: &Command, limit: Duration) -> Command {
     bounded
 }
 
-/// Runs a TOML mode's `ended` hook in the background for at most `timeout_secs`, after the lock has gone; true when
-/// `file` is a TOML mode, so the bash loader never gets it. Like the bash hook it gets no session identity, so a
-/// session read in it takes the lock as any reader does.
+/// Runs a TOML mode's `ended` hook in the background for at most `timeout_secs`, after the lock has gone, so a
+/// session read in it takes the lock as any reader does. False when `file` is no TOML mode.
 pub fn run_toml_ended(file: &str, reason: &str, frame_id: &str, continues: bool) -> bool {
     if !is_toml_file(file) {
         return false;
@@ -370,15 +315,14 @@ pub fn run_toml_ended(file: &str, reason: &str, frame_id: &str, continues: bool)
     else {
         return true;
     };
-    let mut command = toml_hook(&mode, &shell, "", None);
+    let mut command = toml_hook(&mode, &shell, "");
     command
         .env("VOXCMD_MODE_END_REASON", reason)
         .env("VOXCMD_MODE_FRAME_ID", frame_id)
-        .env("VOXCMD_MODE_CONTINUES", if continues { "1" } else { "0" })
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+        .env("VOXCMD_MODE_CONTINUES", if continues { "1" } else { "0" });
     let mut command = bounded_by_timeout(&command, hook_timeout(&mode));
+    // After bounding: the wrapper is a new command, which takes none of the streams set on the hook's.
+    command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     std::os::unix::process::CommandExt::process_group(&mut command, 0);
     match command.spawn() {
         Ok(hook) => debug(&format!("session: ended hook {} runs", hook.id())),
@@ -387,55 +331,23 @@ pub fn run_toml_ended(file: &str, reason: &str, frame_id: &str, continues: bool)
     true
 }
 
-fn is_legacy_file(file: &str) -> bool {
-    let path = Path::new(file);
-    path.extension().is_some_and(|extension| extension == "sh") && path.is_file()
-}
-
-fn legacy_hook(kind: &str, file: &str) -> Command {
-    let mut command = Command::new(paths::legacy_bin());
-    command
-        .args(["_legacy-hook", kind, file])
-        .stdin(Stdio::null())
-        .stderr(Stdio::null());
-    command
-}
-
-/// Whether the mode is still wanted: its `session_alive`, when it has one, says its screen is still up. Run with
-/// `bridge::hook_env`, so a session check in the hook names this process as `$$`, not the bash child.
-pub fn alive(file: &str, heard_mode: &str) -> bool {
-    is_alive(file, heard_mode, false)
-}
-
-/// `alive` while the session lock is held, as bash ran it there. The hook's session reads skip the lock and its
-/// changes are refused (`bridge::LOCK_HELD_BY_CALLER`), so it cannot wait for this caller.
-pub fn alive_under(_lock: &SessionLock, file: &str) -> bool {
-    is_alive(file, "", true)
-}
-
-fn is_alive(file: &str, heard_mode: &str, lock_held: bool) -> bool {
-    if is_toml_file(file) {
-        return load_toml_mode(file)
-            .filter(|mode| mode.current)
-            .is_none_or(|mode| toml_alive(&mode, heard_mode, lock_held));
-    }
-    if !is_legacy_file(file) {
+/// Whether the mode is still wanted: its `alive` hook, when it has one, says its screen is still up.
+pub fn alive(file: &str) -> bool {
+    if !is_toml_file(file) {
         return true;
     }
-    let mut command = legacy_hook("alive", file);
-    command.envs(bridge::hook_env(heard_mode));
-    if lock_held {
-        command.env(bridge::LOCK_HELD_BY_CALLER, "1");
-    }
-    command
-        .stdout(Stdio::null())
-        .status()
-        // A hook that cannot run says nothing against the mode.
-        .map_or(true, |status| status.success())
+    load_toml_mode(file)
+        .filter(|mode| mode.current)
+        .is_none_or(|mode| toml_alive(&mode))
+}
+
+/// `alive` while the session lock is held.
+pub fn alive_under(_lock: &SessionLock, file: &str) -> bool {
+    alive(file)
 }
 
 /// A hook that cannot run, or runs out of time, says nothing against the mode.
-fn toml_alive(mode: &TomlMode, heard_mode: &str, lock_held: bool) -> bool {
+fn toml_alive(mode: &TomlMode) -> bool {
     let Some(shell) = mode
         .integration
         .mode
@@ -444,10 +356,7 @@ fn toml_alive(mode: &TomlMode, heard_mode: &str, lock_held: bool) -> bool {
     else {
         return true;
     };
-    let mut command = toml_hook(mode, shell, "", Some(heard_mode));
-    if lock_held {
-        command.env(bridge::LOCK_HELD_BY_CALLER, "1");
-    }
+    let mut command = toml_hook(mode, shell, "");
     match process::run_with_timeout(&mut command, hook_timeout(mode)) {
         Ok(outcome) if outcome.timed_out => {
             debug(&format!(
@@ -461,10 +370,9 @@ fn toml_alive(mode: &TomlMode, heard_mode: &str, lock_held: bool) -> bool {
     }
 }
 
-/// Each text as the mode makes it: its declared `rewrite`, or its hook (`session_rewrite` for bash, with the same
-/// `hook_env` as `alive`). None when a hook failed to give one per text. A bash hook given a single text keeps every
-/// line it printed.
-pub fn rewrite(settings: &ModeSettings, file: &str, texts: &[String], heard_mode: &str) -> Option<Vec<String>> {
+/// Each text as the mode makes it: its declared `rewrite`, or its `rewrite_hook`. None when a hook failed to give one
+/// per text.
+pub fn rewrite(settings: &ModeSettings, file: &str, texts: &[String]) -> Option<Vec<String>> {
     if is_toml_file(file) {
         if let Some(rewriting) = &settings.rewriting {
             return Some(texts.iter().map(|text| rewriting.apply(text)).collect());
@@ -475,37 +383,22 @@ pub fn rewrite(settings: &ModeSettings, file: &str, texts: &[String], heard_mode
         return texts
             .iter()
             .map(|text| {
-                let mut command = toml_hook(&mode, &shell, text, Some(heard_mode));
+                let mut command = toml_hook(&mode, &shell, text);
                 let outcome = process::run_with_timeout(&mut command, hook_timeout(&mode)).ok()?;
                 (outcome.code() == Some(0)).then(|| outcome.stdout.trim_end_matches('\n').to_string())
             })
             .collect();
     }
-    let output = legacy_hook("rewrite", file)
-        .args(texts)
-        .envs(bridge::hook_env(heard_mode))
-        .output()
-        .ok()?;
-    let printed = String::from_utf8_lossy(&output.stdout);
-    let printed = printed.trim_end_matches('\n');
-    if texts.len() == 1 {
-        return Some(vec![printed.to_string()]);
-    }
-    let lines: Vec<String> = printed.split('\n').map(str::to_string).collect();
-    (lines.len() == texts.len()).then_some(lines)
+    // Only a TOML mode has a rewrite.
+    None
 }
 
-/// Hands the turn's words to the mode's `session_handle_turn` (a TOML mode's `handle_turn`), with how a one-recording
-/// mode's recording ended; its session calls go to this process. In a process group of its own, which a stop signal
-/// ends as it does an action's (typing.sh's `wtype` with it). Its failure is ignored, as bash's subshell call ignored
-/// it.
+/// Hands the turn's words to the mode's `handle_turn`, with how a one-recording mode's recording ended. In a process
+/// group of its own, which a stop signal ends as it does an action's. Its failure is ignored.
 pub fn handle_turn(file: &str, text: &str, ending: Option<&str>, heard_mode: &str) {
     if is_toml_file(file) {
-        return toml_handle_turn(file, text, ending, heard_mode);
+        toml_handle_turn(file, text, ending, heard_mode);
     }
-    let mut command = legacy_hook("handle-turn", file);
-    command.arg(text).args(ending).envs(bridge::hook_env(heard_mode));
-    let _ = process::run_to_end_discarding_output(&mut command);
 }
 
 /// A file that stopped loading mid-session still hands its turn to the hook of the last version that loaded: the
@@ -533,7 +426,7 @@ fn toml_handle_turn(file: &str, text: &str, ending: Option<&str>, heard_mode: &s
         ));
         return;
     };
-    let mut command = toml_hook(&mode, &shell, "", Some(heard_mode));
+    let mut command = toml_hook(&mode, &shell, "");
     command.env_remove("VOXCMD_ENDING").env("VOXCMD_TEXT", text);
     if let Some(ending) = ending {
         command.env("VOXCMD_ENDING", ending);
@@ -600,40 +493,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn settings_read_from_the_bash_print_with_defaults_for_the_rest() {
-        let settings = ModeSettings::parse(
-            "default_exits=0\nbare_exits=1\nexit_hint=say cortana stop\nexit_phrases=done (clicking|with it)\n\
-             private=1\nlisten_max_secs=295\nhas_rewrite=1\nmiss_action=\nmiss_action=no_text\nending=type stop\n",
-        );
-        assert!(!settings.default_exits && settings.bare_exits && settings.private && settings.has_rewrite);
-        assert!(!settings.allows_switches && !settings.has_handler && !settings.has_alive);
-        let exit_phrases = settings.exit_phrases.as_ref().unwrap();
-        assert!(exit_phrases.is_match("done with it") && !exit_phrases.is_match("done with it now"));
-        assert_eq!(settings.listen_max_secs, "295");
-        assert_eq!(settings.miss_actions, ["no_text"]);
-        assert_eq!(settings.endings.len(), 1);
-        assert_eq!(settings.endings[0].action, "type");
-        assert_eq!(settings.exit_hint_or_default(), "say cortana stop");
-        // One that is no regex matches nothing, and the mode's other settings still apply.
-        let broken = ModeSettings::parse("exit_phrases=done (\nending=send (\nending=type stop\nbare_exits=0\n");
-        assert!(broken.exit_phrases.is_none() && !broken.bare_exits);
-        assert_eq!(
-            broken
-                .endings
-                .iter()
-                .map(|ending| ending.action.as_str())
-                .collect::<Vec<_>>(),
-            ["type"]
-        );
-    }
-
-    #[test]
-    fn a_file_that_is_no_bash_integration_has_the_defaults() {
+    fn a_file_that_is_no_toml_mode_has_the_defaults() {
         let settings = ModeSettings::of("/nonexistent/x.sh");
         assert_eq!(settings, ModeSettings::default());
         assert!(settings.default_exits && settings.bare_exits);
         assert_eq!(settings.exit_hint_or_default(), "say done to stop");
-        assert!(alive("x", ""));
+        assert!(alive("x"));
     }
 
     #[test]

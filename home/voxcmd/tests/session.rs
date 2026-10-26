@@ -1,10 +1,9 @@
-//! The session file as the Rust port writes it, and the bridge the bash integrations reach it through: `internal
-//! session` against a runtime dir of its own (stubs for voxtype, setsid, the toasts, auto-stop and the bash voxcmd),
-//! and the bash voxcmd's `_legacy-hook` shims and mode arms run for real on a fake integration.
+//! The session file as the Rust port writes it, against a runtime dir of its own (stubs for voxtype, setsid, the toasts
+//! and auto-stop).
 use serde_json::Value;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Output, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 mod common;
@@ -50,10 +49,6 @@ impl Setup {
         setup.script(
             "bin/notify-send",
             &format!("echo \"notify-send $*\" >> '{}'", calls.display()),
-        );
-        setup.script(
-            "legacy/voxcmd",
-            &format!("echo \"bash voxcmd $*\" >> '{}'", calls.display()),
         );
         setup.script("legacy/voxcmd-autostop", "exit 0");
         std::fs::write(&state, "idle\n").unwrap();
@@ -107,14 +102,6 @@ impl Setup {
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
         command
-    }
-
-    /// `internal session <args>` for the process `me`, as a bash hook run from it calls it.
-    fn session(&self, me: u32, args: &[&str]) -> Output {
-        self.command(&[&["internal", "session"][..], args].concat())
-            .env("VOXCMD_LEGACY_PID", me.to_string())
-            .output()
-            .unwrap()
     }
 
     fn state(&self) -> Option<Value> {
@@ -179,183 +166,6 @@ fn number(value: &Value) -> i64 {
 }
 
 // ---- the session file -----------------------------------------------------------------------------------------------
-
-#[test]
-fn begin_opens_a_session_whose_first_listen_owns_it() {
-    let setup = Setup::new();
-    let opener = Command::new("sleep").arg("30").spawn().unwrap();
-    let output = setup.session(opener.id(), &["begin", "rapid", "/i/rapid.sh", "Rapid mode"]);
-    assert!(output.status.success());
-    let state = setup.state().expect("a session is open");
-    for (field, expected) in [
-        ("kind", "rapid"),
-        ("integration", "/i/rapid.sh"),
-        ("label", "Rapid mode"),
-        ("exit_hint", "say done to stop"),
-    ] {
-        assert_eq!(state[field], expected, "{field}");
-    }
-    // The shapes the bar and the wake listener read: owner a number, owner_start a string, the flags real booleans.
-    let watcher = u32::try_from(number(&state["owner"])).unwrap();
-    assert_ne!(watcher, opener.id());
-    assert_eq!(state["owner_start"], start_time_of(watcher));
-    for flag in ["open_ended", "one_recording", "wake_listens"] {
-        assert_eq!(state[flag], false, "{flag}");
-    }
-    assert_eq!(state["stack"], serde_json::json!([]));
-    assert!(state.get("owner_handover").is_none());
-    assert_eq!(number(&state["started"]), number(&state["mode_started"]));
-    let token = format!("1:rapid:{}", state["frame_id"].as_str().unwrap());
-    assert!(
-        wait_for(|| {
-            setup.calls().contains(&format!(
-            "internal watch session_turn {token} 0 VOXCMD_AUTOSTOP_NO_SPEECH_SECS=10\nVOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.4\nVOXCMD_AUTOSTOP_SILENCE_SECS=1.5\n"
-        ))
-        }),
-        "{}",
-        setup.calls()
-    );
-    assert!(setup.debug_log().contains("session: rapid begins"));
-    setup.end_watchers();
-    let mut opener = opener;
-    let _ = opener.kill();
-    let _ = opener.wait();
-}
-
-#[test]
-fn a_mode_opened_in_a_turn_stacks_and_one_open_underneath_is_returned_to() {
-    let setup = Setup::new();
-    let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
-    owned_session(&setup, &owner, serde_json::json!({"custom": "kept"}));
-    assert!(
-        setup
-            .session(owner.id(), &["begin", "click", "/i/click.sh", "Click mode"])
-            .status
-            .success()
-    );
-    let state = setup.state().unwrap();
-    assert_eq!(state["kind"], "click");
-    assert_eq!(state["exit_hint"], "say done to stop (back to Rapid mode)");
-    assert_eq!(state["stack"][0]["kind"], "rapid");
-    assert_eq!(state["stack"][0]["label"], "Rapid mode");
-    assert_eq!(number(&state["turns"]), 2);
-    assert_eq!(number(&state["owner"]), i64::from(owner.id()));
-    let click_frame = state["frame_id"].as_str().unwrap().to_string();
-    // The mode that is open already changes nothing.
-    assert!(
-        setup
-            .session(owner.id(), &["begin", "click", "/i/click.sh", "Click mode"])
-            .status
-            .success()
-    );
-    assert_eq!(setup.state().unwrap()["stack"].as_array().unwrap().len(), 1);
-    assert!(
-        setup
-            .session(owner.id(), &["begin", "rapid", "/i/rapid.sh", "Rapid mode"])
-            .status
-            .success()
-    );
-    let state = setup.state().unwrap();
-    assert_eq!((state["kind"].as_str(), number(&state["resumes"])), (Some("rapid"), 1));
-    assert_eq!(state["stack"], serde_json::json!([]));
-    assert!(setup.debug_log().contains("session: back to rapid"));
-    assert!(setup.debug_log().contains("session: left click"));
-    assert!(wait_for(|| setup.calls().contains(&format!(
-        "bash voxcmd _legacy-hook ended /i/click.sh  {click_frame} 1"
-    ))));
-    // A plain update keeps a field this port does not know; a whole new frame, as bash's jq built it, does not.
-    assert!(state.get("custom").is_none());
-    let _ = owner.kill();
-    let _ = owner.wait();
-}
-
-#[test]
-fn begin_from_outside_the_session_leaves_it_alone() {
-    let setup = Setup::new();
-    let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
-    owned_session(&setup, &owner, serde_json::json!({}));
-    let before = std::fs::read_to_string(setup.runtime().join("session.json")).unwrap();
-    assert!(
-        setup
-            .session(1, &["begin", "click", "/i/click.sh", "Click mode"])
-            .status
-            .success()
-    );
-    assert_eq!(
-        std::fs::read_to_string(setup.runtime().join("session.json")).unwrap(),
-        before
-    );
-    assert!(
-        setup
-            .calls()
-            .contains("voxcmd: Click mode A voice session is already open")
-    );
-    let _ = owner.kill();
-    let _ = owner.wait();
-}
-
-#[test]
-fn leave_state_and_end_reach_the_session_from_any_process() {
-    let setup = Setup::new();
-    let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
-    owned_session(
-        &setup,
-        &owner,
-        serde_json::json!({"kind": "click", "label": "Click mode", "frame_id": "2",
-            "stack": [{"kind": "rapid", "integration": "/i/rapid.sh", "label": "Rapid mode", "frame_id": "1"}]}),
-    );
-    let printed = setup.session(1, &["state"]);
-    assert!(printed.status.success());
-    let printed: Value = serde_json::from_slice(&printed.stdout).unwrap();
-    assert_eq!(printed["kind"], "click");
-    assert!(!setup.session(1, &["leave", "type", "done"]).status.success());
-    assert!(setup.session(1, &["end", "done"]).status.success());
-    assert_eq!(setup.state().unwrap()["kind"], "rapid");
-    assert!(setup.calls().contains("voxcmd: Click mode ended done"));
-    assert!(setup.session(1, &["end-all", "stopped"]).status.success());
-    assert!(setup.state().is_none());
-    assert!(setup.calls().contains("voxcmd: Rapid mode ended stopped"));
-    // The owner, which is not the caller, is told to drop its recording.
-    assert!(setup.runtime().join(format!("discard.{}", owner.id())).exists());
-    assert!(!setup.session(1, &["state"]).status.success());
-    let _ = owner.kill();
-    let _ = owner.wait();
-}
-
-#[test]
-fn a_hook_run_under_the_session_lock_reads_the_session_without_it_and_changes_nothing() {
-    use std::os::fd::AsRawFd;
-    let setup = Setup::new();
-    let mut owner = Command::new("sleep").arg("30").spawn().unwrap();
-    owned_session(&setup, &owner, serde_json::json!({}));
-    let lock = std::fs::File::create(setup.runtime().join("session.lock")).unwrap();
-    // SAFETY: flock on a descriptor this test owns, released when it closes.
-    unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX) };
-    let under_lock = |args: &[&str]| {
-        setup
-            .command(&[&["internal", "session"][..], args].concat())
-            .env("VOXCMD_LEGACY_PID", "1")
-            .env("VOXCMD_SESSION_LOCK_HELD", "1")
-            .output()
-            .unwrap()
-    };
-    let printed = under_lock(&["state"]);
-    assert!(printed.status.success());
-    assert_eq!(
-        serde_json::from_slice::<Value>(&printed.stdout).unwrap()["kind"],
-        "rapid"
-    );
-    assert!(!under_lock(&["end-all", "stopped"]).status.success());
-    assert!(setup.state().is_some());
-    assert!(
-        setup
-            .debug_log()
-            .contains("internal session: end-all refused, called from a hook run under the session lock")
-    );
-    drop(lock);
-    let _ = owner.kill();
-    let _ = owner.wait();
-}
 
 #[test]
 fn a_voice_key_during_a_session_takes_it_over_and_keeps_its_other_fields() {

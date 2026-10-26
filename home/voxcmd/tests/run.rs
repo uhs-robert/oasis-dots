@@ -492,75 +492,6 @@ fn a_record_left_by_a_dead_sequence_does_not_stop_a_new_one() {
     assert!(setup.path().join("work/after").exists());
 }
 
-// ---- the bash integrations, through the bash voxcmd's bridge ----
-
-const DUMP: &str = r#"{"file":"FILE","name":"Old","fallback":false,"confirm":false,"silent":false,"target_match":"fuzzy","action_labels":false,"private_labels":false,"verbs":[{"action":"say","pattern":"say old"},{"action":"slow","pattern":"say slow"},{"action":"fine","pattern":"say fine"},{"action":"lag","pattern":"say lag"}],"actions":{"say":"echo bridged","slow":"true","fine":"echo fine","lag":"true"},"no_match_actions":{},"step_waits":{"slow":"test -f \"$WORK/ready\"","lag":"sleep 3"},"hooks":[],"confirm_labels":[],"match_ignore_words":[],"silent_actions":[],"force_prefixes":[],"mode_actions":[],"mode_switch_actions":[],"free_text_actions":[]}"#;
-
-/// A bash voxcmd that records how it was called and answers `_legacy-hook run|wait` as the real one would.
-fn legacy_setup() -> (Setup, Vec<(&'static str, String)>) {
-    let setup = Setup::new(INTEGRATION);
-    std::fs::remove_file(setup.path().join("config/integrations/tools.toml")).unwrap();
-    std::fs::create_dir_all(setup.path().join("config/integrations.d")).unwrap();
-    let file = setup.path().join("config/integrations.d/old.sh");
-    std::fs::write(&file, "").unwrap();
-    let dump = setup.path().join("dump.jsonl");
-    std::fs::write(&dump, DUMP.replace("FILE", &file.display().to_string())).unwrap();
-    let fake = setup.script(
-        "voxcmd-bash",
-        "echo \"$*|$VOXCMD_LEGACY_ID|$VOXCMD_LEGACY_TARGET|$VOXCMD_LEGACY_CONFIRMED\" >> \"$WORK/bridge\"\n\
-         case \"$2:$4\" in\n\
-           run:say) echo bridged; echo 'and failed' >&2; exit \"${BRIDGE_EXIT:-0}\" ;;\n\
-           run:fine) echo fine ;;\n\
-           wait:slow) test -f \"$WORK/ready\" ;;\n\
-           wait:lag) sleep 3 ;;\n\
-         esac",
-    );
-    let envs = vec![
-        ("VOXCMD_LEGACY_BIN", fake.display().to_string()),
-        ("VOXCMD_LEGACY_DUMP_FILE", dump.display().to_string()),
-    ];
-    (setup, envs)
-}
-
-#[test]
-fn a_bash_action_runs_through_the_bridge_with_its_globals() {
-    let (setup, envs) = legacy_setup();
-    assert_eq!(code(&setup.run_with("say old", &envs)), Some(0));
-    let calls = std::fs::read_to_string(setup.path().join("work/bridge")).unwrap();
-    assert!(calls.starts_with("_legacy-hook run "), "{calls}");
-    assert!(calls.trim_end().ends_with(" say|||0"), "{calls}");
-    assert_eq!(setup.texts(), [pair("voxcmd", "Old: say: and failed")]);
-}
-
-#[test]
-fn a_failing_bash_action_reports_the_bridge_output() {
-    let (setup, mut envs) = legacy_setup();
-    envs.push(("BRIDGE_EXIT", "4".to_string()));
-    assert_eq!(code(&setup.run_with("say old", &envs)), Some(1));
-    assert_eq!(setup.texts(), [pair("voxcmd failed", "Old: say: bridged\nand failed")]);
-}
-
-#[test]
-fn a_bash_wait_condition_is_polled_through_the_bridge() {
-    let (setup, mut envs) = legacy_setup();
-    let work = setup.path().join("work");
-    std::fs::create_dir_all(&work).unwrap();
-    let ready = work.join("ready");
-    let releaser = std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(300));
-        std::fs::write(ready, "").unwrap();
-    });
-    envs.push(("VOXCMD_STEP_TIMEOUT_SECS", "10".to_string()));
-    assert_eq!(code(&setup.run_with("say slow and then say fine", &envs)), Some(0));
-    releaser.join().unwrap();
-    let calls = std::fs::read_to_string(work.join("bridge")).unwrap();
-    assert!(calls.matches("_legacy-hook wait ").count() >= 2, "{calls}");
-    assert!(
-        calls.contains("_legacy-hook run ") && calls.contains(" fine|"),
-        "{calls}"
-    );
-}
-
 #[test]
 fn a_wait_past_the_step_timeout_is_cut_off_there_and_times_out() {
     let setup = Setup::new(INTEGRATION);
@@ -841,23 +772,9 @@ fn a_stop_signal_lets_the_open_ask_clean_up() {
     // As the bash voxcmd-pick, a stopped pick leaves closing the picker to the bar.
     assert_eq!(term_run_while_asking(&setup, "do pick", &envs), "qs-picker choices\n");
 
-    let (setup, mut envs) = legacy_setup();
-    let file = setup.path().join("config/integrations.d/old.sh");
-    std::fs::write(
-        setup.path().join("dump.jsonl"),
-        PICK_DUMP.replace("FILE", &file.display().to_string()),
-    )
-    .unwrap();
-    let fake = setup.script(
-        "voxcmd-bash",
-        "case \"$2\" in\n\
-           candidates) printf '[{\"id\": \"w1\", \"label\": \"Thing One\"}, {\"id\": \"w2\", \"label\": \"Thing Two\"}]' ;;\n\
-           pick-boxes) echo /opt/voxcmd-hints\n\
-             printf '[{\"id\":\"0\",\"label\":\"One\",\"box\":[0,0,1,1]},{\"id\":\"1\",\"label\":\"Two\",\"box\":[2,2,1,1]}]\\n' ;;\n\
-         esac",
-    );
-    envs[0].1 = fake.display().to_string();
-    envs.extend(bar_holding_questions(&setup));
+    // An integration with numbered boxes asks through `ask hints`, which a stop signal dismisses on the bar.
+    let setup = Setup::new(HINTED_INTEGRATION);
+    let envs = bar_holding_questions(&setup);
     let calls = term_run_while_asking(&setup, "choose thing", &envs);
     let fifo = regex::Regex::new(r"/voxcmd-hints\.[A-Za-z0-9]{6}/result").unwrap();
     assert_eq!(
@@ -877,56 +794,14 @@ fn libc_signal(name: &str) -> i32 {
     }
 }
 
-#[test]
-fn a_bash_wait_is_cut_off_at_the_step_timeout_though_shorter_than_a_hook_s() {
-    let (setup, envs) = legacy_setup();
-    let started = std::time::Instant::now();
-    // The condition would hold after 3 s; the step has 1.
-    assert_eq!(code(&setup.run_with("say lag and then say fine", &envs)), Some(0));
-    assert!(
-        started.elapsed() < std::time::Duration::from_millis(2500),
-        "{:?}",
-        started.elapsed()
-    );
-    let calls = std::fs::read_to_string(setup.path().join("work/bridge")).unwrap();
-    assert!(!calls.contains(" fine|"), "{calls}");
-    assert!(
-        setup.texts().last().unwrap().1.contains("timed out after 1s"),
-        "{:?}",
-        setup.texts()
-    );
-}
+/// Two options whose ids place a box each (`x,y,button,left,top,width,height`), so the integration's `picker = "hints"`
+/// shows numbered boxes.
+const HINTED_INTEGRATION: &str = r#"
+name = "Hinted"
+picker = "hints"
+verbs = [{ action = "choose", match = 'choose {target}' }]
 
-const PICK_DUMP: &str = r#"{"file":"FILE","name":"Click","fallback":false,"confirm":false,"silent":false,"target_match":"fuzzy","action_labels":false,"private_labels":false,"verbs":[{"action":"choose","pattern":"choose {target}"}],"actions":{"choose":"true"},"no_match_actions":{},"step_waits":{},"hooks":["candidates"],"confirm_labels":[],"match_ignore_words":[],"silent_actions":[],"force_prefixes":[],"mode_actions":[],"mode_switch_actions":[],"free_text_actions":[]}"#;
-
-#[test]
-/// click.sh names `voxcmd-hints`, which is this binary's `ask hints` (through the seam here); any other command an
-/// integration names runs as named (a unit test in ask/ covers that).
-fn a_bash_integration_with_boxes_asks_through_its_own_picker() {
-    let (setup, mut envs) = legacy_setup();
-    let file = setup.path().join("config/integrations.d/old.sh");
-    let dump = setup.path().join("dump.jsonl");
-    std::fs::write(&dump, PICK_DUMP.replace("FILE", &file.display().to_string())).unwrap();
-    let fake = setup.script(
-        "voxcmd-bash",
-        "case \"$2\" in\n\
-           candidates) printf '[{\"id\": \"w1\", \"label\": \"Thing One\"}, {\"id\": \"w2\", \"label\": \"Thing Two\"}]' ;;\n\
-           pick-boxes) echo \"$*\" > \"$WORK/boxes-asked\"; echo /opt/voxcmd-hints\n\
-             printf '[{\"id\":\"0\",\"label\":\"One\",\"box\":[0,0,1,1]},{\"id\":\"1\",\"label\":\"Two\",\"box\":[2,2,1,1]}]\\n' ;;\n\
-           run) echo \"ran $VOXCMD_LEGACY_ID\" ;;\n\
-         esac",
-    );
-    envs[0].1 = fake.display().to_string();
-    envs.push(setup.ask_stub("echo \"$@\" > \"$WORK/asked\"; echo 1"));
-    assert_eq!(code(&setup.run_with("choose thing", &envs)), Some(0));
-    let boxes_asked = std::fs::read_to_string(setup.path().join("work/boxes-asked")).unwrap();
-    assert!(boxes_asked.trim_end().ends_with(" w1 w2"), "{boxes_asked}");
-    let asked = std::fs::read_to_string(setup.path().join("work/asked")).unwrap();
-    assert!(asked.starts_with("hints Which one? [{\"id\":\"0\""), "{asked}");
-    assert!(asked.contains("\"box\":[2,2,1,1]"), "{asked}");
-    assert!(
-        setup.texts().last().unwrap().1.ends_with("ran w2"),
-        "{:?}",
-        setup.texts()
-    );
-}
+[actions.choose]
+run = "true"
+candidates = "printf '1,1,left,0,0,1,1\\tThing One\\n2,2,left,2,2,1,1\\tThing Two\\n'"
+"#;

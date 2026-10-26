@@ -31,18 +31,12 @@ pub struct PendingMatch {
 }
 
 impl PendingMatch {
-    /// A legacy verb has one capture and it is the target; a TOML verb's target is its `target` argument, else its
-    /// first free-text one.
-    pub fn from_args(integration: usize, config: &Config, verb_action: &str, args: Vec<Arg>) -> Self {
-        let legacy = config.integrations[integration].format == crate::config::schema::Format::Bash;
-        let target_arg = if legacy {
-            args.first()
-        } else {
-            args.iter().find(|arg| arg.name == "target").or_else(|| {
-                args.iter()
-                    .find(|arg| arg.kind == super::pattern::PlaceholderType::Text)
-            })
-        };
+    /// A verb's target is its `target` argument, else its first free-text one.
+    pub fn from_args(integration: usize, verb_action: &str, args: Vec<Arg>) -> Self {
+        let target_arg = args.iter().find(|arg| arg.name == "target").or_else(|| {
+            args.iter()
+                .find(|arg| arg.kind == super::pattern::PlaceholderType::Text)
+        });
         let target = target_arg.and_then(|arg| arg.value.clone()).unwrap_or_default();
         let has_target = target_arg.is_some();
         Self {
@@ -91,9 +85,7 @@ pub fn resolve(config: &Config, hooks: &dyn Hooks, pending: &PendingMatch, texts
     let integration = &config.integrations[pending.integration];
     let settings = &integration.settings;
     let mut action = pending.verb_action.clone();
-    // A bash `candidates` function is only asked about a verb that captured something; a TOML hook is asked always.
-    let asks_hook = integration.candidates_for(&action).is_some() && (pending.has_target || !is_legacy(integration));
-    let hook = asks_hook.then(|| {
+    let hook = integration.candidates_for(&action).is_some().then(|| {
         let query = HookQuery {
             action: &action,
             target: &pending.target,
@@ -145,10 +137,6 @@ fn label_matches(pattern: &str, label: &str) -> bool {
         .case_insensitive(true)
         .build()
         .is_ok_and(|regex| regex.is_match(label))
-}
-
-fn is_legacy(integration: &Integration) -> bool {
-    integration.format == crate::config::schema::Format::Bash
 }
 
 pub(crate) fn runnable(
@@ -666,10 +654,8 @@ mod tests {
 
     #[test]
     fn keybinds_delete_pattern_spares_the_submap_entries() {
-        let dump =
-            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/legacy-dump.jsonl")).unwrap();
-        let integrations = crate::config::legacy::parse_dump(&dump).unwrap();
-        let keybinds = integrations.iter().find(|i| i.stem == "keybinds").unwrap();
+        let file = concat!(env!("CARGO_MANIFEST_DIR"), "/.config/voxcmd/integrations/keybinds.toml");
+        let keybinds = crate::config::schema::load_toml(std::path::Path::new(file)).unwrap();
         let asks = |label: &str| keybinds.settings.confirm_labels.iter().any(|p| label_matches(p, label));
         assert!(asks("Delete Window") && asks("hit hit delete twice") && asks("Submap:delete") && asks("delete"));
         assert!(!asks("Submap: Delete") && !asks("SUBMAP: delete files"));
