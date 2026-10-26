@@ -1624,6 +1624,8 @@ if [ -n "$rust_matcher" ]; then
   timers_run_with '[]' "cancel the timer"
   check "a bare cancel with nothing running says so and stops nothing" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
   check "a bare cancel with nothing running titles the toast with the spoken target" "timers_toast | grep -q 'Timers: cancel timer: No timers'"
+  timers_run_with '[]' "cancel the reminder"
+  check "a bare reminder cancel with nothing running titles the toast with reminder" "timers_toast | grep -q 'Timers: cancel reminder: No timers'"
   timers_run_with '[]' "cancel the pasta timer"
   check "a named cancel with nothing running says so too" "timers_toast | grep -q 'No timers or reminders are running' && ! grep -q '^systemctl --user stop' '$log'"
   check "a named cancel with nothing running titles the toast with the spoken target" "timers_toast | grep -q 'Timers: cancel pasta: No timers'"
