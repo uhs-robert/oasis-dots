@@ -139,7 +139,7 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 **All of it migrates.** Every tracked bind, submap row and person-facing IPC function becomes an action, early. Only internal plumbing (`osd`, `cmdstatus refresh`) stays out, listed with a reason in `lib/check/registry.allow` (like `qml-ipc.allow`); a stale line fails. Otherwise additions grow around the registry, as photocraft's `menus.rs::is_live` ORs seven other sources.
 
 **How each surface consumes it.**
-- Hyprland: `Bind.action(id, opts)` reads label and key from the manifest and calls `Bind.key`; `Submap.define` rows accept an id. `Bind.key`, `Bind.unbind` and `Bind.submap` keep their signatures (public API for `custom/`). `custom/` overrides a key both ways: `Bind.unbind` and `Bind.key` as today, or `Bind.action(id)` to name the action; the manifest key stays the default. hyprvim needs no change.
+- Hyprland: `Act.define(id, spec)` (`lib/act.lua`) declares the action and binds its default key; `Act.bind(id, opts)` adds another key, and `Submap.define` rows accept an id. `Bind.key`, `Bind.unbind` and `Bind.submap` keep their signatures (public API for `custom/`). `custom/` overrides a key both ways: `Bind.unbind` and `Bind.key` as today, or `Act.bind(id, { key = ... })`. hyprvim needs no change. (`Bind.action` is gone.)
 - voxcmd: a TOML action gains `action = "<id>"` in place of a `run` line, resolved by the Rust binary, which calls `oasis-djinn`. Phrases stay in TOML.
 - Shadow skill: `shadow.sh action <name> <id> [params]` makes by id the call `shadow.sh ipc` makes today.
 
@@ -147,7 +147,7 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **PRs.**
 - 2a: the manifest, its JSON Schema (YAML, in `specs/schema/`), `oasis-djinn`, a few actions (zoom, screenshot, overview); a `registry` step that validates it and fails a binding naming a missing IPC function (reusing `qml_ipc.py`'s parser). `oasis-djinn` goes in `packages/stow.ini` (or the `unstowed` list), which the `packages` step requires.
-- 2b: `Bind.action`, and `keymaps/global/tools.lua` moved to it.
+- 2b: `Act.define`, and the tool keys moved to it (`lib/actions/defs/tools.lua`).
 - 2c: the other global files, the submaps, and the remaining person-facing IPC functions.
 - 2d: `registry.allow`, with the step failing unlisted binds and handler functions.
 - 2e: `shadow.sh action`. 2f: voxcmd `action = "<id>"`.
