@@ -1,5 +1,5 @@
 # What the registry step (lib/check/steps/registry.py) lets stand without an action, one entry per line, the reason after #:
-#   bind <submap> <key>  # <reason>          `global` is the map outside any submap; `*` is every named submap
+#   bind <submap> <key>  # <reason>          `global` is the map outside any submap; `*` is every named submap, a comma list names several
 #   ipc <target> <function>...  # <reason>
 # A new bind or IPC function needs an action (lib/actions/defs/), or a line here. A line whose bind or function has an
 # action now, or no longer exists, fails as stale: delete it in the PR that makes it so. The owner's `custom/` binds are
@@ -16,9 +16,10 @@ bind * ESCAPE                           # leaves the submap
 bind * BackSpace                        # goes back one submap
 bind * SHIFT + SLASH                    # toggles the which-key overlay
 bind * catchall                         # a release catchall that swallows or ends the submap on an unbound key
-bind * SLASH                            # no-op that claims the key-up the which-key chord leaves behind
-bind * Shift_L                          # the same, for the left Shift key-up
-bind * Shift_R                          # the same, for the right Shift key-up
+# The submaps with a "reset" or function catchall; the which-key chord leaves key-ups the catchall would otherwise take.
+bind Applications,Bar,Delete,Go,Leader,System SLASH    # no-op that claims the key-up the which-key chord leaves behind
+bind Applications,Bar,Delete,Go,Leader,System Shift_L  # the same, for the left Shift key-up
+bind Applications,Bar,Delete,Go,Leader,System Shift_R  # the same, for the right Shift key-up
 
 # Keys that enter a submap (Submap.define `enter`); the Leader menu enters the same submaps through the submap.enter action.
 bind global SUPER + SPACE               # enters Leader
@@ -36,6 +37,12 @@ bind global SUPER + SHIFT + M           # enters Move
 # Leader rows still plain functions.
 bind Leader SHIFT + O                   # the Session Launcher picker, a function of extensions/auto_launcher
 bind Leader CTRL + SLASH                # Voice Help, a shell command of the voxcmd integration
+
+# Go rows for the machine's configured monitors (one per entry of Config.monitors; the dump uses three). monitor.focus
+# picks the monitor by its connected slot, these by the configured selector, so they differ for a monitor not connected.
+bind Go 1                               # focus the first configured monitor
+bind Go 2                               # focus the second configured monitor
+bind Go 3                               # focus the third configured monitor
 
 # IPC functions that are not person-facing commands.
 ipc brightness refresh                  # the bar's brightness module refreshes after a key changes it

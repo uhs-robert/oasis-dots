@@ -162,6 +162,17 @@ class CoverageTest(ListCase):
         found = self.coverage(binds + [("global", "ESCAPE", None)], allow)
         self.assertFinding(found, "bind global ESCAPE performs no action")
 
+    def test_a_comma_list_covers_only_the_submaps_it_names(self):
+        allow = "bind Go,Move SLASH  # no-op\nipc zoom spin  # x\n"
+        found = self.coverage([("Go", "SLASH", None), ("Move", "SLASH", None), ("Delete", "SLASH", None)], allow)
+        self.assertEqual(len(found), 1)
+        self.assertFinding(found, "bind Delete SLASH performs no action")
+
+    def test_a_submap_in_a_comma_list_that_matches_nothing_is_stale(self):
+        found = self.coverage([("Go", "SLASH", None)], "bind Go,Move SLASH  # no-op\nipc zoom spin  # x\n")
+        self.assertFinding(found, "registry.allow:1: bind Move SLASH is stale")
+        self.assertEqual(len(found), 1)
+
     def test_a_stale_bind_line_fails(self):
         allow = "bind Go SUPER + Z  # gone\nipc zoom spin  # x\n"
         found = self.coverage([], allow)
@@ -299,6 +310,10 @@ class HeadlessLoadTest(TreeCase):
     def test_a_planted_plain_bind_fails_with_its_key(self):
         found = self.keymap('Bind.key("SUPER + F12", function() end, "Plain")')
         self.assertFinding(found, "bind global SUPER + F12 performs no action")
+
+    def test_a_planted_plain_bind_that_exists_only_with_monitors_fails(self):
+        found = self.keymap('if #require("config").monitors > 0 then Bind.key("SUPER + F11", function() end, "M") end')
+        self.assertFinding(found, "bind global SUPER + F11 performs no action")
 
     def test_a_planted_action_bind_needs_no_line(self):
         found = self.keymap(
