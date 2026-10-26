@@ -43,7 +43,7 @@ Row {
     readonly property bool chip_shown: CalendarState.chip_event !== null
     // What the marker draws, shared by the top-bar marker here and the side-bar one in ClockStack.
     readonly property bool meeting_shown: CalendarState.in_meeting || root.chip_shown
-    readonly property int meeting_minutes: root.meeting_minutes
+    readonly property int meeting_minutes: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) : 0
     readonly property real meeting_progress: root.chip_shown ? Math.max(0, Math.min(1, 1 - root.meeting_minutes / CalendarState.chip_window_minutes)) : 1
     readonly property string agenda_tip: {
         // Times follow the zone the clock shows, as its digits do.
@@ -321,7 +321,7 @@ Row {
         id: meeting_marker
         visible: root.meeting_shown && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
-        minutes: root.chip_shown ? CalendarState.minutes_to(CalendarState.chip_event) : 0
+        minutes: root.meeting_minutes
         in_meeting: CalendarState.in_meeting
         upcoming: root.chip_shown
         progress: root.meeting_progress
