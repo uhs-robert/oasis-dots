@@ -134,8 +134,15 @@ function Stubs.load(variant, modules)
 	Stubs.binds, Stubs.performed, current_submap = {}, {}, ""
 	package.loaded["lua.plugins.hyprvim"] = recorder("hyprvim")
 	package.loaded["config.rules"] = recorder("rules")
-	package.loaded["config.autostart"] = recorder("autostart.run")
-	package.loaded["extensions.auto_launcher.launcher"] = { show_picker = recorder("launcher.show_picker") }
+	-- Real functions, not recorders: a submap runs a function row itself and hands anything else to hl.dispatch.
+	package.loaded["config.autostart"] = function()
+		Stubs.performed[#Stubs.performed + 1] = "autostart.run()"
+	end
+	package.loaded["extensions.auto_launcher.launcher"] = {
+		show_picker = function()
+			Stubs.performed[#Stubs.performed + 1] = "launcher.show_picker()"
+		end,
+	}
 
 	-- The repo defaults with the derived fields set by hand: Config.merge would probe the machine.
 	local Config = require("config")
@@ -167,12 +174,16 @@ local function flags_of(opts)
 	return #flags > 0 and table.concat(flags, ",") or "-"
 end
 
---- One text line per bind, sorted: variant, submap, key, label, flags, what the key does.
-function Stubs.dump_lines(modules)
+--- One text line per bind, sorted: variant, submap, key, label, flags, what the key does. With `keep`, only the binds
+--- it returns true for (given the bind's submap name, "" for the global map) are listed.
+function Stubs.dump_lines(modules, keep)
 	local lines = {}
 	for _, variant in ipairs(Stubs.VARIANTS) do
 		Stubs.load(variant, modules)
 		for _, entry in ipairs(Stubs.binds) do
+			if keep and not keep(entry.submap) then
+				goto skip
+			end
 			Stubs.performed = {}
 			local ok, err
 			if type(entry.action) == "function" then
@@ -189,6 +200,7 @@ function Stubs.dump_lines(modules)
 				flags_of(entry.opts),
 				what ~= "" and what or "-",
 			}, "\t")
+			::skip::
 		end
 	end
 	table.sort(lines)
@@ -196,7 +208,7 @@ function Stubs.dump_lines(modules)
 end
 
 --- Compare the dump with a fixture file; returns the number of failures (each printed).
-function Stubs.compare(modules, fixture_path)
+function Stubs.compare(modules, fixture_path, keep)
 	local failures = 0
 	local expected_set, actual_set, expected_count = {}, {}, 0
 	for line in io.lines(fixture_path) do
@@ -205,7 +217,7 @@ function Stubs.compare(modules, fixture_path)
 			expected_count = expected_count + 1
 		end
 	end
-	local actual = Stubs.dump_lines(modules)
+	local actual = Stubs.dump_lines(modules, keep)
 	for _, line in ipairs(actual) do
 		actual_set[line] = true
 		if not expected_set[line] then

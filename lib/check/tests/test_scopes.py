@@ -50,6 +50,8 @@ CASES = [
     ("home/hypr/tests/act_global.lua", " lua"),
     ("home/hypr/tests/act-launch.sh", " lua"),
     ("home/hypr/tests/act_launch.lua", " lua"),
+    ("home/hypr/tests/act-submap-rows.sh", " lua"),
+    ("home/hypr/tests/act_submap_rows.lua", " lua"),
     ("home/hypr/tests/act_stubs.lua", " lua"),
     ("home/hypr/.local/bin/hypr-act", " lua"),
     ("docs/keybinds.md", ""),

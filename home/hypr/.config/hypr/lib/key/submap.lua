@@ -1,6 +1,7 @@
 --- Submap lifecycle manager built on top of Bind.submap (hl.define_submap) / hl.dsp.submap.
 --- Tracks current/previous submap state and fires on_enter/on_exit hooks.
 --- Use Submap.define() to declare a submap; call .setup() on the result to register binds.
+local Act = require("lib.act") ---@class ActionLib
 local Bind = require("lib.key.bind") ---@class BindLib
 
 --- @class Submap
@@ -27,7 +28,7 @@ local Submap = {
 --- @field catchall? "stay"|"reset"|false|fun(ctx: SubmapContext)    Unbound-key behaviour; defaults to false. "stay" swallows unbound keys. "reset" is oneshot — wraps all bound actions to auto-exit and resets on unbound keys.
 --- @field on_enter? fun(ctx: SubmapContext)                         Called after entering this submap
 --- @field on_exit?  fun(ctx: SubmapContext)                         Called before leaving this submap
---- @field binds?    table[]|fun(): table[]                          Rows passed to Bind.keys inside the submap, or a function returning them
+--- @field binds?    table[]|fun(): table[]                          Rows passed to Bind.keys inside the submap, or a function returning them. A row is { keys, action, desc?, opts? }; `action` may be an action id ("window.close") or { id, args } ("popup.open", { "clock" }), which takes the action's label unless `desc` is given (false for none).
 
 --- @class SubmapHandle
 --- @field enter fun()   Switch into this submap
@@ -167,6 +168,33 @@ local function resolve_binds(binds)
   return binds
 end
 
+--- Whether a row's action names an `Act` action (an id, or { id, args }) rather than a function or dispatcher.
+--- @param action any
+--- @return boolean
+local function names_action(action)
+  return type(action) == "string" or (type(action) == "table" and type(action[1]) == "string")
+end
+
+--- Replace each row that names an action with a plain row; a row whose action does not resolve is dropped.
+--- @param rows table[]
+--- @return table[]
+local function resolve_action_rows(rows)
+  local resolved = {}
+  for _, row in ipairs(rows) do
+    if not names_action(row[2]) then
+      table.insert(resolved, row)
+    else
+      local run, label = Act.row_action(row[2])
+      if run then
+        local desc = row[3]
+        if desc == nil then desc = label end
+        table.insert(resolved, { row[1], run, desc or nil, row[4] })
+      end
+    end
+  end
+  return resolved
+end
+
 --- Invoke an action: calls it directly if it is a function, otherwise dispatches it as a HL dispatcher.
 --- @param action HL.Dispatcher|function
 local function run(action)
@@ -302,7 +330,7 @@ function Submap.define(spec)
 
     Bind.submap(spec.name, function()
       local catchall = normalize_catchall(spec)
-      local raw_binds = apply_individual_oneshots(resolve_binds(spec.binds) or {}, M.exit)
+      local raw_binds = apply_individual_oneshots(resolve_action_rows(resolve_binds(spec.binds) or {}), M.exit)
       local binds = catchall == "reset" and wrap_oneshot(raw_binds, M.exit) or raw_binds
 
       Bind.keys(binds or {})

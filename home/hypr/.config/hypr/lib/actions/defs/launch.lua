@@ -3,6 +3,7 @@
 -- follows Config (the file managers) reads it when it runs.
 local Act = require("lib.act") ---@class ActionLib
 local Defer = require("lib.actions.defer") ---@class Defer
+local Scripts = require("lib.scripts") ---@class Scripts
 
 Act.define("terminal.open", {
   label = "Terminal",
@@ -65,6 +66,13 @@ Act.define("menu.agents", {
   intent = "Open the agent sessions popup.",
   key = { key = "CTRL + A", leader = true },
   run = Defer.call("lib.actions.menu", "agents"),
+})
+
+-- No default key: the Go submap binds it.
+Act.define("menu.tmux", {
+  label = "Tmux Project",
+  intent = "Pick a tmux project and open its session.",
+  run = Act.Cmd(Scripts.rofi_tmux),
 })
 
 Act.define("terminal.yazi", {

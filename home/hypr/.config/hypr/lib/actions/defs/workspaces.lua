@@ -65,3 +65,9 @@ Act.define("workspace.move_window", {
     end
   end,
 })
+
+Act.define("workspace.focus_last", {
+  label = "Last Workspace",
+  intent = "Go back to the workspace you were on before this one.",
+  run = function() require("lib.actions.workspace").focus_last()() end,
+})

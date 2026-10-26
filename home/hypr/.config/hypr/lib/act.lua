@@ -430,6 +430,29 @@ function Act.bind(id, opts)
   if not bound_ok then warn("Act.bind '" .. id .. "': " .. tostring(bound_err)) end
 end
 
+--- What a submap row names, ready for the submap to bind: a function that performs the action and the action's label.
+--- `spec` is an id, or `{ id, args }` for an action with params. The id and args are checked now, so a typo warns and
+--- skips only that row instead of failing when the key is pressed.
+--- @param spec string|table
+--- @return (fun())|nil run, string|nil label
+function Act.row_action(spec)
+  local id, given = spec, {}
+  if type(spec) == "table" then
+    id, given = spec[1], spec[2] or {}
+  end
+  local handle = registry[tostring(id)]
+  if not handle then
+    warn("Submap row: unknown action id '" .. tostring(id) .. "'")
+    return nil
+  end
+  local args_ok, args = pcall(check_values, handle, given, #given)
+  if not args_ok then
+    warn("Submap row: " .. tostring(args))
+    return nil
+  end
+  return function() Act.run(handle.id, table.unpack(args)) end, handle.label
+end
+
 --- Validate a spec into a handle, or return why it cannot be one.
 --- @param id   string
 --- @param spec table
