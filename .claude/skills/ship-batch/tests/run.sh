@@ -118,6 +118,16 @@ ln -s "$stow_repo/home/units/.config/units/only" "$fake_home/.config/units/only"
 g -C "$stow_repo" mv "$stow_repo/home/units/.config/units/only" "$stow_repo/home/units/.config/units/renamed"
 g -C "$stow_repo" commit -q -m rename
 check "renaming a package's only linked file restows it, though its link now dangles" "[[ \$(restow '$stow_units' HEAD) == units ]]"
+mkdir -p "$stow_repo/home/gone/.config/gone"
+echo a >"$stow_repo/home/gone/.config/gone/only"
+g -C "$stow_repo" add -A
+g -C "$stow_repo" commit -q -m gone
+stow_gone=$(git -C "$stow_repo" rev-parse HEAD)
+ln -s "$stow_repo/home/gone/.config/gone" "$fake_home/.config/gone"
+g -C "$stow_repo" rm -rq "$stow_repo/home/gone"
+g -C "$stow_repo" commit -q -m "delete gone"
+check "a package the merge deleted is skipped, not restowed" "[[ -z \$(restow '$stow_gone' HEAD 2>/dev/null) ]]"
+check "and says so" "[[ \$(restow '$stow_gone' HEAD 2>&1 >/dev/null) == *'home/gone no longer exists'* ]]"
 
 echo "== a branch with no local worktree, and recording its pass"
 origin=$root/origin.git

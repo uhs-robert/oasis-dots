@@ -217,9 +217,15 @@ wait_main_check_running() {
 # package is restowed (a merged unit or script then silently does not exist), and a deleted one leaves a dead link.
 # A package counts as installed when one of its files, before or after the merge, is reached through its link in $HOME
 # (a link to a file the merge removed still resolves to that path); a package never stowed here is left alone.
+# A package the merge deleted outright is skipped with a note: stow has nothing left to restow or unstow, so its dead
+# links stay for the owner to remove.
 packages_to_restow() {
   local repo=$1 before=$2 after=$3 package relative
   while IFS= read -r package; do
+    if [[ -z $(git -C "$repo" ls-tree --name-only "$after" -- "home/$package/") ]]; then
+      echo "ship-batch: home/$package no longer exists; not restowing it (remove its dead links by hand)" >&2
+      continue
+    fi
     while IFS= read -r relative; do
       if [[ $(realpath -q "$HOME/$relative") == "$(realpath -q "$repo/home/$package/$relative")" ]]; then
         echo "$package"
