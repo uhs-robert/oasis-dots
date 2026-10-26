@@ -29,7 +29,7 @@ fn stub() -> &'static Path {
         let path = std::env::temp_dir().join(format!("djinn-stub-{}", std::process::id()));
         std::fs::write(
             &path,
-            "#!/bin/sh\necho \"$@\" >> \"$STUB_LOG\"\n[ -z \"$STUB_OUT\" ] || echo \"$STUB_OUT\"\n[ -z \"$STUB_FAIL\" ]\n",
+            "#!/bin/sh\necho \"$@\" >> \"$STUB_LOG\"\n[ -z \"$STUB_OUT\" ] || echo \"$STUB_OUT\"\n[ -z \"$STUB_BACKGROUND\" ] || sleep 10 &\n[ -z \"$STUB_FAIL\" ]\n",
         )
         .unwrap();
         use std::os::unix::fs::PermissionsExt;
@@ -385,6 +385,30 @@ fn a_failing_performer_forwards_its_stdout_to_stderr() {
     );
     assert_eq!(code, 1);
     assert!(stderr.contains("lua error: boom"), "stderr was: {stderr}");
+}
+
+#[test]
+fn a_non_lua_performer_leaving_a_child_on_stdout_returns_promptly() {
+    // The test's own stdout is a file, so the lingering child cannot stall this harness, only djinn itself.
+    let sandbox = Sandbox::new("child-holds-stdout");
+    let out = std::fs::File::create(sandbox.root.join("stdout")).unwrap();
+    let started = std::time::Instant::now();
+    let status = Command::new(env!("CARGO_BIN_EXE_oasis-djinn"))
+        .arg("t.run")
+        .env("OASIS_DJINN_CONFIG_DIR", &sandbox.manifest)
+        .env("OASIS_DJINN_QS_IPC", stub())
+        .env("STUB_LOG", sandbox.log())
+        .env("STUB_BACKGROUND", "1")
+        .stdout(out)
+        .stderr(std::process::Stdio::null())
+        .status()
+        .unwrap();
+    assert!(status.success());
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(3),
+        "took {:?}",
+        started.elapsed()
+    );
 }
 
 #[test]

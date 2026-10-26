@@ -29,14 +29,16 @@ fn main() -> ExitCode {
         hyprctl: &hyprctl,
         home: &home,
     };
-    let argv = match Manifest::load(&config_dir()).and_then(|manifest| manifest.plan(id, words, &tools)) {
-        Ok(argv) => argv,
+    let planned =
+        Manifest::load(&config_dir()).and_then(|manifest| Ok((manifest.plan(id, words, &tools)?, manifest.is_lua(id))));
+    let (argv, is_lua) = match planned {
+        Ok(planned) => planned,
         Err(error) => {
             eprintln!("oasis-djinn: {error}");
             return ExitCode::from(2);
         }
     };
-    match perform(&argv) {
+    match perform(&argv, is_lua) {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::from(1),
         Err(error) => {

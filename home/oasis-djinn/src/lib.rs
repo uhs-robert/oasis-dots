@@ -152,6 +152,11 @@ impl Manifest {
         ids
     }
 
+    /// True when `id` is a `lua` action, performed through `hyprctl eval`.
+    pub fn is_lua(&self, id: &str) -> bool {
+        matches!(self.bindings.get(id), Some(Binding::Lua))
+    }
+
     /// The program and arguments that perform `id` with the given command-line words. Nothing runs: an unknown id,
     /// a missing binding or a bad param is an error here, so the caller never half-performs a request.
     pub fn plan(&self, id: &str, words: &[String], tools: &Tools) -> Result<Vec<String>, ActionError> {
@@ -327,14 +332,17 @@ fn expand_home(word: &str, home: &Path) -> String {
     }
 }
 
-/// Runs a planned command and waits: true when it exited 0. A program that cannot start is an `Err`.
-pub fn perform(argv: &[String]) -> std::io::Result<bool> {
-    // Output is captured because `hyprctl eval` prints a Lua error to stdout and exits non-zero; on failure it is
-    // forwarded to stderr, where a caller looks for the reason.
-    let done = Command::new(&argv[0])
-        .args(&argv[1..])
-        .stderr(Stdio::inherit())
-        .output()?;
+/// Runs a planned command and waits: true when it exited 0. A program that cannot start is an `Err`. With
+/// `forward_stdout_on_failure` its stdout is captured and, if it failed, written to stderr; otherwise stdin and
+/// stdout are inherited, so a performer that leaves a child holding stdout does not keep this call waiting.
+pub fn perform(argv: &[String], forward_stdout_on_failure: bool) -> std::io::Result<bool> {
+    let mut command = Command::new(&argv[0]);
+    command.args(&argv[1..]);
+    if !forward_stdout_on_failure {
+        return Ok(command.status()?.success());
+    }
+    // `hyprctl eval` prints a Lua error to stdout and exits non-zero, so the reason is only there.
+    let done = command.stderr(Stdio::inherit()).output()?;
     if done.status.success() {
         std::io::stdout().write_all(&done.stdout)?;
     } else {
