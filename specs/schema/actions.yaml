@@ -35,7 +35,9 @@ $defs:
       key: {type: string, minLength: 1}
       leader: {type: boolean}
       universal: {type: boolean}
-  # Params are positional on the `oasis-djinn` command line, in this order; one with a default may be left out.
+  # Params are positional on the `oasis-djinn` command line, in this order; a trailing run of them may have a default
+  # and be left out. What a schema cannot say (an enum default among `values`, defaults only at the end) the registry
+  # step checks.
   param:
     type: object
     additionalProperties: false
@@ -49,9 +51,19 @@ $defs:
         uniqueItems: true
         items: {type: string, minLength: 1}
       default: {}
-    if:
-      properties: {type: {const: enum}}
-    then:
-      required: [values]
-    else:
-      not: {required: [values]}
+    allOf:
+      - if:
+          properties: {type: {const: enum}}
+        then:
+          required: [values]
+        else:
+          not: {required: [values]}
+      # A default is the JSON type of its param, so omitting the param cannot run what the same word would reject.
+      - if: {properties: {type: {const: int}}}
+        then: {properties: {default: {type: integer}}}
+      - if: {properties: {type: {const: float}}}
+        then: {properties: {default: {type: number}}}
+      - if: {properties: {type: {enum: [string, enum]}}}
+        then: {properties: {default: {type: string}}}
+      - if: {properties: {type: {const: bool}}}
+        then: {properties: {default: {type: boolean}}}

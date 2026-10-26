@@ -54,6 +54,19 @@ impl Sandbox {
         Sandbox { root, manifest }
     }
 
+    /// Replaces the manifest with one action `t.x` taking `params` (a JSON array) and calling `thing x` with `args`.
+    fn with_action(&self, params: &str, args: &str) {
+        let actions = format!(
+            r#"{{"actions": [{{"id": "t.x", "label": "X", "intent": "X.", "params": {params},
+              "key": {{"key": "X", "leader": true, "universal": false}}, "extra_keys": []}}]}}"#
+        );
+        let bindings = format!(
+            r#"{{"bindings": {{"t.x": {{"kind": "ipc", "target": "thing", "function": "x", "args": {args}}}}}}}"#
+        );
+        std::fs::write(self.manifest.join("actions.json"), actions).unwrap();
+        std::fs::write(self.manifest.join("bindings/quickshell.json"), bindings).unwrap();
+    }
+
     fn log(&self) -> PathBuf {
         self.root.join("log")
     }
@@ -213,4 +226,54 @@ fn the_real_screenshot_actions_name_the_script_under_home() {
             "{message}"
         );
     }
+}
+
+#[test]
+fn a_value_holding_a_placeholder_is_not_expanded_again() {
+    let sandbox = Sandbox::new("single-pass");
+    sandbox.with_action(
+        r#"[{"name": "a", "type": "string"}, {"name": "b", "type": "string"}]"#,
+        r#"["{a}", "{b}"]"#,
+    );
+    assert_eq!(sandbox.run(&["t.x", "{b}", "end"]).0, 0);
+    assert_eq!(sandbox.calls(), ["call thing x {b} end"]);
+}
+
+#[test]
+fn a_string_starting_with_a_dash_exits_2() {
+    let sandbox = Sandbox::new("dash");
+    sandbox.with_action(r#"[{"name": "a", "type": "string"}]"#, r#"["{a}"]"#);
+    sandbox.rejected(&["t.x", "--pid"], "starts with '-'");
+}
+
+#[test]
+fn a_negative_int_is_still_accepted() {
+    let sandbox = Sandbox::new("negative");
+    sandbox.with_action(r#"[{"name": "n", "type": "int"}]"#, r#"["{n}"]"#);
+    assert_eq!(sandbox.run(&["t.x", "-5"]).0, 0);
+    assert_eq!(sandbox.calls(), ["call thing x -5"]);
+}
+
+#[test]
+fn a_default_of_the_wrong_type_exits_2_even_when_given() {
+    let sandbox = Sandbox::new("bad-default");
+    sandbox.with_action(r#"[{"name": "n", "type": "int", "default": "x"}]"#, r#"["{n}"]"#);
+    sandbox.rejected(&["t.x"], "default");
+    sandbox.rejected(&["t.x", "3"], "default");
+}
+
+#[test]
+fn an_enum_default_outside_its_values_exits_2() {
+    let sandbox = Sandbox::new("enum-default");
+    let param = r#"[{"name": "m", "type": "enum", "values": ["a", "b"], "default": "c"}]"#;
+    sandbox.with_action(param, r#"["{m}"]"#);
+    sandbox.rejected(&["t.x"], "not one of a, b");
+}
+
+#[test]
+fn a_required_param_after_a_defaulted_one_exits_2() {
+    let sandbox = Sandbox::new("suffix");
+    let params = r#"[{"name": "a", "type": "int", "default": 1}, {"name": "b", "type": "int"}]"#;
+    sandbox.with_action(params, r#"["{a}", "{b}"]"#);
+    sandbox.rejected(&["t.x", "2"], "required param b follows");
 }

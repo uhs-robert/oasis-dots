@@ -149,6 +149,7 @@ impl Manifest {
 }
 
 /// The text of each param after checking it against its type; a param with a default may be left out.
+/// Defaults are checked like words even when a word replaces them, so a bad manifest fails on every call.
 fn bind_params(action: &Action, words: &[String]) -> Result<Vec<(String, String)>, ActionError> {
     if words.len() > action.params.len() {
         return fail(format!(
@@ -158,11 +159,25 @@ fn bind_params(action: &Action, words: &[String]) -> Result<Vec<(String, String)
             words.len()
         ));
     }
+    // Params are positional, so only a trailing run can be left out; an earlier default could never be skipped.
+    let first_default = action.params.iter().position(|param| param.default.is_some());
+    let stranded = first_default.and_then(|first| action.params[first..].iter().find(|param| param.default.is_none()));
+    if let Some(required) = stranded {
+        return fail(format!(
+            "{}: required param {} follows a param with a default",
+            action.id, required.name
+        ));
+    }
     let mut values = Vec::new();
     for (index, param) in action.params.iter().enumerate() {
-        let text = match (words.get(index), &param.default) {
+        let default = param
+            .default
+            .as_ref()
+            .map(|default| default_text(param, default))
+            .transpose()?;
+        let text = match (words.get(index), default) {
             (Some(word), _) => convert(param, word)?,
-            (None, Some(default)) => default_text(default),
+            (None, Some(default)) => default,
             (None, None) => return fail(format!("{} needs param {}", action.id, param.name)),
         };
         values.push((param.name.clone(), text));
@@ -185,6 +200,10 @@ fn convert(param: &Param, word: &str) -> Result<String, ActionError> {
         },
         ParamKind::Bool if word == "true" || word == "false" => Ok(word.to_string()),
         ParamKind::Bool => Err(bad("bool")),
+        // qs-ipc and scripts would take a leading '-' as a flag; refusing it beats guessing where a `--` is understood.
+        ParamKind::String if word.starts_with('-') => Err(ActionError(format!(
+            "param {name}: '{word}' starts with '-', which a performer would read as a flag"
+        ))),
         ParamKind::String => Ok(word.to_string()),
         ParamKind::Enum if param.values.iter().any(|value| value == word) => Ok(word.to_string()),
         ParamKind::Enum => Err(ActionError(format!(
@@ -194,18 +213,50 @@ fn convert(param: &Param, word: &str) -> Result<String, ActionError> {
     }
 }
 
-fn default_text(default: &serde_json::Value) -> String {
-    match default {
-        serde_json::Value::String(text) => text.clone(),
-        other => other.to_string(),
-    }
+/// The text of a manifest default, after the same checks as a word. Its JSON type must match the param's.
+fn default_text(param: &Param, default: &serde_json::Value) -> Result<String, ActionError> {
+    use serde_json::Value;
+    let text = match (param.kind, default) {
+        (ParamKind::Int | ParamKind::Float, Value::Number(number)) => number.to_string(),
+        (ParamKind::Bool, Value::Bool(flag)) => flag.to_string(),
+        (ParamKind::String | ParamKind::Enum, Value::String(text)) => text.clone(),
+        _ => {
+            return fail(format!(
+                "param {}: default {default} does not match its type",
+                param.name
+            ));
+        }
+    };
+    convert(param, &text).map_err(|error| ActionError(format!("default of {error}")))
 }
 
-/// A binding word with each `{param}` replaced by its value.
+/// A binding word with each `{param}` replaced by its value. One pass over the word, so a value holding `{other}`
+/// stays literal, and a `{...}` naming no param is kept as written.
 fn render(word: &str, values: &[(String, String)]) -> String {
-    values.iter().fold(word.to_string(), |word, (name, value)| {
-        word.replace(&format!("{{{name}}}"), value)
-    })
+    let mut out = String::new();
+    let mut rest = word;
+    while let Some(open) = rest.find('{') {
+        out.push_str(&rest[..open]);
+        let tail = &rest[open..];
+        let named = tail.find('}').and_then(|close| {
+            values
+                .iter()
+                .find(|(name, _)| name == &tail[1..close])
+                .map(|(_, value)| (close, value))
+        });
+        match named {
+            Some((close, value)) => {
+                out.push_str(value);
+                rest = &tail[close + 1..];
+            }
+            None => {
+                out.push('{');
+                rest = &tail[1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 fn expand_home(word: &str, home: &Path) -> String {
