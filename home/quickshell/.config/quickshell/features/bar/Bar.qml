@@ -31,9 +31,9 @@ Item {
     readonly property bool vertical: BarLayout.is_vertical(root.position)
     // Lualine's sections are horizontal only, so a side bar draws the style's islands instead.
     readonly property bool lualine: Style.bar_lualine && !root.vertical
-    // The center island's extent along the bar: its width on a top or bottom bar, its height on a side one.
     // The cava tail the center island has grown below its modules (0 on a top or bottom bar).
     readonly property real center_tail: center_cava.tail_span
+    // The center island's extent along the bar: its width on a top or bottom bar, its height on a side one.
     readonly property real center_span: root.vertical ? center_island.body_item.height : center_island.body_item.width
     // The floating strip (Style.strip_floats): the plate sits strip_inset in from the screen edge and strip_side in from
     // each end of the bar (the sides of a top bar, the top and bottom of a column), so the bar window is strip_inset
