@@ -1,9 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs.core
 import qs.theme
 import qs.features.media
 import "MediaText.js" as MediaText
+import "../../ui/frames/Corners.js" as Corners
 
 // The media pocket: a recessed plate with the album art, a play/pause button, the title and artist, and a right side
 // of cava or the track position. Pure view over MediaState and the settings it is handed; Media.qml owns the clicks.
@@ -59,27 +61,45 @@ Item {
     font.capitalization: Style.bar_capitalization
     font.letterSpacing: Style.bar_letter_spacing
 
-    Rectangle {
+    // The plate takes the frame's corner profile (round, chamfer, pixel or square) through the same Corners.js the frame
+    // and drawers use. Style.screen_frame_profile is the accessor a separate corner-style setting will feed; with no
+    // frame the style's own rounding decides.
+    readonly property var corner_profile: Style.screen_frame_profile || { corner: Style.rounded ? "round" : "square", step: 2 }
+    // Only a round corner scales with the style; a chamfer or pixel corner is the profile's own size.
+    readonly property real corner_size: root.corner_profile.corner === "round" ? Style.radius(10) : 8
+    readonly property var plate_points: Corners.box_loop(root.corner_profile.corner, root.corner_size, root.corner_profile.step, root.width, root.height).map(p => Qt.point(p[0], p[1]))
+
+    Shape {
         id: plate
         anchors.fill: parent
-        radius: Style.radius(8)
+        preferredRendererType: Shape.CurveRenderer
+        visible: root.look.fill !== "none" || root.look.border !== "none"
+
         // The island's own fill shows through for "border"; "raised" lifts it with a pale wash.
-        color: root.look.fill === "shadow" ? Qt.alpha(Style.pal.bg_shadow, 0.85) : root.look.fill === "wash" ? Qt.alpha(Style.pal.fg, 0.09) : "transparent"
-        border.width: root.look.border === "none" ? 0 : 1
-        border.color: Qt.alpha(Style.pal.fg, root.look.border === "strong" ? 0.22 : 0.1)
-        clip: true
+        ShapePath {
+            strokeWidth: -1
+            fillColor: root.look.fill === "shadow" ? Qt.alpha(Style.pal.bg_shadow, 0.85) : root.look.fill === "wash" ? Qt.alpha(Style.pal.fg, 0.09) : "transparent"
+            PathPolyline { path: root.plate_points }
+        }
 
         // The faint shadow along the top edge that makes the inset read as pressed in.
-        Rectangle {
-            visible: root.look.top_shadow
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            height: 4
-            gradient: Gradient {
-                GradientStop { position: 0; color: Qt.alpha(Style.pal.bg_shadow, 0.9) }
+        ShapePath {
+            strokeWidth: -1
+            fillGradient: LinearGradient {
+                y1: 0
+                y2: 4
+                GradientStop { position: 0; color: root.look.top_shadow ? Qt.alpha(Style.pal.bg_shadow, 0.9) : "transparent" }
                 GradientStop { position: 1; color: "transparent" }
             }
+            PathPolyline { path: root.plate_points }
+        }
+
+        ShapePath {
+            strokeWidth: root.look.border === "none" ? 0 : 1
+            strokeColor: Qt.alpha(Style.pal.fg, root.look.border === "strong" ? 0.22 : 0.1)
+            fillColor: "transparent"
+            joinStyle: ShapePath.MiterJoin
+            PathPolyline { path: root.plate_points }
         }
     }
 

@@ -84,7 +84,8 @@ BarModule {
         vertical: root.vertical
         cell: Math.max(16, Math.min(root.cross - 8, 28))
         width: root.vertical ? implicitWidth : parent.width
-        height: root.vertical ? implicitHeight : Math.max(20, Math.min(root.bar_height - 6, 30))
+        // A capsule inset 5px from the bar edge above and below, like the approved mockups (28px in a 40px bar).
+        height: root.vertical ? implicitHeight : Math.max(20, Math.min(root.bar_height - 10, 28))
         anchors.centerIn: parent
         player: root.player
         active: root.shown
