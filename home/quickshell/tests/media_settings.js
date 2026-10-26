@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/media/MediaSettings.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { migrated_cava_line, module_listed, edge_cava_allowed, module_position_only, edge_strip, strip_listed, scroll_effect };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { migrated_cava_line, module_listed, edge_cava_allowed, module_position_only, edge_strip, strip_listed, scroll_effect, well_shown };", T);
 const M = T.api;
 
 const cases = [
@@ -39,6 +39,8 @@ const cases = [
   ["the right side seeks whatever scroll_action says", () => ["volume_seek", "skip", "none"].map(a => M.scroll_effect(true, a)), ["seek", "seek", "seek"]],
   ["elsewhere the wheel follows scroll_action", () => ["volume_seek", "skip", "none"].map(a => M.scroll_effect(false, a)), ["volume", "skip", "none"]],
   ["an unknown scroll_action acts as volume_seek off the right side", () => M.scroll_effect(false, "bogus"), "volume"],
+  ["a player with no metadata still shows the well", () => M.well_shown(true, false, false), true],
+  ["no player shows nothing; the cava alias on a side bar stays hidden", () => [M.well_shown(false, false, false), M.well_shown(true, true, true), M.well_shown(true, true, false)], [false, false, true]],
   ["an unknown mode behaves as cava_under_island", () => [M.module_listed(true, "bogus"), M.edge_cava_allowed(true, "bogus")], [false, true]],
 ];
 

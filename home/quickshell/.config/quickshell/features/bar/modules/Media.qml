@@ -20,12 +20,11 @@ BarModule {
     property string forced_right_side: ""
 
     readonly property var player: MediaState.active
-    readonly property bool has_track: !!root.player && ((root.player.trackTitle || "") !== "" || (root.player.trackArtist || "") !== "")
     readonly property string wanted_right: root.forced_right_side !== "" ? root.forced_right_side : root.alias_mode !== "" ? root.alias_mode : MediaSettings.right_side_mode
     readonly property string right_mode: root.wanted_right === "cava" && !PowerSource.on_ac ? MediaSettings.battery_fallback : root.wanted_right
 
     // A side bar keeps its cava as the tail on the clock island, so the cava entry has no slot there; media shows as art and a button.
-    shown: root.has_track && !(root.vertical && root.alias_mode !== "")
+    shown: MediaSettings.well_shown(!!root.player, root.vertical, root.alias_mode !== "")
     implicitWidth: shown ? well.implicitWidth : 0
     implicitHeight: shown ? well.implicitHeight : 0
 

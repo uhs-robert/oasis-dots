@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
 import "CavaViewers.js" as Viewers
+import "PositionPoll.js" as PositionPoll
 
 // Shared MPRIS state for the media bar module and popup. The active player is
 // whichever one most recently started playing; ties broken by falling back to
@@ -99,10 +100,12 @@ Singleton {
 
     function next() {
         if (root.active && root.active.canGoNext) root.active.next();
+        Qt.callLater(root.refresh_position);
     }
 
     function previous() {
         if (root.active && root.active.canGoPrevious) root.active.previous();
+        Qt.callLater(root.refresh_position);
     }
 
     // Firefox reports length only on some updates (e.g. after a pause or seek), so keep the last real one per track.
@@ -134,7 +137,10 @@ Singleton {
         target: root.active
         function onLengthChanged() { root.remember_length(root.active); }
         function onLengthSupportedChanged() { root.remember_length(root.active); }
-        function onMetadataChanged() { root.remember_length(root.active); }
+        function onMetadataChanged() {
+            root.remember_length(root.active);
+            root.refresh_position();
+        }
     }
 
     function seek_by(seconds) {
@@ -142,6 +148,7 @@ Singleton {
         const max = root.length_of(root.active) || Infinity;
         const target = Math.max(0, Math.min(max, root.active.position + seconds));
         root.active.position = target;
+        Qt.callLater(root.refresh_position);
     }
 
     function step_player(delta) {
@@ -155,6 +162,7 @@ Singleton {
         if (!root.active || !root.active.canSeek || !root.active.positionSupported) return;
         const length = root.length_of(root.active);
         root.active.position = Math.max(0, Math.min(length, ratio * length));
+        Qt.callLater(root.refresh_position);
     }
 
     function toggle_shuffle() {
@@ -176,17 +184,23 @@ Singleton {
     function register_position(viewer) { root.position_viewers = Viewers.register(root.position_viewers, viewer); }
     function unregister_position(viewer) { root.position_viewers = Viewers.unregister(root.position_viewers, viewer); }
 
-    // MprisPlayer.position doesn't push updates on its own; poll it only while something shows it and a track plays.
-    readonly property bool polling: (root.tracking || Viewers.any(root.position_viewers)) && root.playing
+    // MprisPlayer.position doesn't push updates on its own; poll it only while something shows it (see PositionPoll.js).
+    readonly property bool viewed: root.tracking || Viewers.any(root.position_viewers)
+    readonly property int poll_ms: PositionPoll.interval(root.viewed, root.playing)
+    readonly property bool polling: root.poll_ms > 0 && !!root.active
+    function refresh_position() {
+        if (root.viewed && root.active) root.active.positionChanged();
+    }
+
     Timer {
-        interval: 1000
+        interval: root.poll_ms
         running: root.polling
         repeat: true
         triggeredOnStart: true
-        onTriggered: if (root.active) root.active.positionChanged()
+        onTriggered: root.refresh_position()
     }
 
-    // A paused player's position does not move, but a freshly shown view still needs one read.
+    // A paused view still needs a read when it appears, on a track change, and after our own seek or skip.
     onTrackingChanged: if (root.tracking && root.active) root.active.positionChanged()
     onPosition_viewersChanged: if (Viewers.any(root.position_viewers) && root.active) root.active.positionChanged()
 }

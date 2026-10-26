@@ -42,6 +42,12 @@ function scroll_effect(over_right_side, scroll_action) {
     return scroll_action === "skip" ? "skip" : scroll_action === "none" ? "none" : "volume";
 }
 
+// Whether the module has anything to show: any active player, with or without metadata (a radio stream has none), but
+// not as the `cava` alias on a side bar, which keeps its cava tail instead.
+function well_shown(has_player, vertical, is_cava_alias) {
+    return !!has_player && !(vertical && is_cava_alias);
+}
+
 // Whether the clock-island strip is asked for: a `cava` entry always did, and a `media` entry does too, since in the
 // default island mode that entry is dropped and would otherwise leave nothing at all.
 function strip_listed(lists_cava, lists_media) {

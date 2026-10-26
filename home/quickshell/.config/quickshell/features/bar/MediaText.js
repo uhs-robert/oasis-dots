@@ -10,7 +10,9 @@ function clip(text, max_chars) {
 
 // The lines the well shows, from the shown fields: "inline" joins them as "Artist - Title" on one line, "stacked"
 // puts the title over a smaller artist line. Empty fields and hidden fields leave no line.
-function lines(title, artist, show_title, show_artist, layout) {
+// With neither title nor artist (a radio stream, a player that sends no metadata) it shows the player's `identity`.
+function lines(title, artist, show_title, show_artist, layout, identity) {
+    if (!title && !artist && identity && (show_title || show_artist)) return [{ text: identity, small: false }];
     const t = show_title && title ? title : "";
     const a = show_artist && artist ? artist : "";
     if (layout === "stacked") {

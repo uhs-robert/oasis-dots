@@ -31,7 +31,7 @@ Item {
 
     readonly property int pad: 4
     readonly property real art_size: root.vertical ? root.cell : root.height - root.pad * 2
-    readonly property var text_lines: MediaText.lines(root.player ? root.player.trackTitle || "" : "", root.player ? root.player.trackArtist || "" : "", root.show_title, root.show_artist, root.text_layout)
+    readonly property var text_lines: MediaText.lines(root.player ? root.player.trackTitle || "" : "", root.player ? root.player.trackArtist || "" : "", root.show_title, root.show_artist, root.text_layout, root.player ? root.player.identity || "" : "")
     // Two stacked lines must fit the well's inner height, so they shrink with it.
     function line_size(small) {
         const inner = root.height - root.pad * 2;

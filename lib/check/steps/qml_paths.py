@@ -164,6 +164,7 @@ OUTSIDE_REFS = [
     ("home/quickshell/tests/toast_extent.js", "features/notifications/ToastExtent.js"),
     ("home/quickshell/tests/cava_viewers.js", "features/media/CavaViewers.js"),
     ("home/quickshell/tests/hover_popup.js", "features/popups/HoverPolicy.js"),
+    ("home/quickshell/tests/position_poll.js", "features/media/PositionPoll.js"),
     ("home/quickshell/tests/media_text.js", "features/bar/MediaText.js"),
     ("home/quickshell/tests/media_settings.js", "features/media/MediaSettings.js"),
     ("home/quickshell/tests/bar_layout.js", "features/bar/BarLayout.js"),
