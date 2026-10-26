@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.features.popups.frames
 
-// Base of a settings section; SettingsView loads one and hands itself in as `popup`.
+// Base of a settings section; the popup loads one and hands itself in as `popup`.
 FocusScope {
     id: root
 
