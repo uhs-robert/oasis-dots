@@ -9,6 +9,7 @@ import qs.features.bar
 BarModule {
     id: root
     module_name: "keeptabs"
+    hover_popup: true
 
     shown: KeeptabsState.available
     tooltip_text: {

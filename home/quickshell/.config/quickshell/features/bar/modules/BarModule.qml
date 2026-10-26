@@ -16,6 +16,11 @@ Item {
     property Item island: null
     property color island_color: Theme.bg_core
     property bool shown: true
+    // A module opts in to hover-open by setting this; Media keeps its own HoverPopup and stays off.
+    property bool hover_popup: false
+    // The module's own gate on top of the opt-in, e.g. nothing to show yet.
+    property bool hover_ready: true
+    readonly property bool hover_active: root.shown && root.has_popup && root.hover_popup && root.hover_ready && Popups.hover_popups
     property string tooltip_text: ""
     property string tooltip_title: module_name
     property bool wash: true
@@ -25,8 +30,10 @@ Item {
 
     visible: shown
 
+    // The click entry: with hover-open active it goes through the helper so a click pins, or closes without a reopen under the pointer.
     function toggle_popup() {
-        Popups.toggle(root.module_name, root.island, root.island_color, root.screen_name);
+        if (root.hover_active) hover.click();
+        else Popups.toggle(root.module_name, root.island, root.island_color, root.screen_name);
     }
 
     onIslandChanged: if (root.has_popup && root.island) Popups.register_default(root.module_name, root.island, root.island_color, root.screen_name, root)
@@ -40,10 +47,18 @@ Item {
         opacity: root.wash && hover_handler.hovered ? 0.5 : 0
     }
 
+    HoverPopup {
+        id: hover
+        popup_name: root.module_name
+        module: root
+        enabled: root.hover_active
+    }
+
     HoverHandler {
         id: hover_handler
         onHoveredChanged: {
-            if (hovered) Tooltip.show(root, root.tooltip_text, root.tooltip_title);
+            // The popup replaces the tooltip where hover opens it.
+            if (hovered && !root.hover_active) Tooltip.show(root, root.tooltip_text, root.tooltip_title);
             else Tooltip.hide(root);
         }
     }

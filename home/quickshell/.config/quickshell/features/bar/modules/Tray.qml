@@ -9,6 +9,7 @@ import qs.features.popups
 BarModule {
     id: root
     module_name: "tray"
+    hover_popup: true
 
     readonly property int count: SystemTray.items.values.length
     readonly property bool needs_attention: SystemTray.items.values.some(i => i.status === Status.NeedsAttention)

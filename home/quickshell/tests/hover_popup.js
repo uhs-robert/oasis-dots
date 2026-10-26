@@ -255,6 +255,34 @@ t("another monitor's popup of the same name is not this module's own", () => {
   assert.strictEqual(P.open_here("media", "DP-2", "media", ""), true, "a module with no screen name matches any");
 });
 
+t("disabled while pending (nothing to show) drops the open and never opens", () => {
+  const w = world();
+  w.pointer(true, false);
+  w.apply(P.disabled(w.mode, w.open_name === "media"));
+  assert.deepStrictEqual([w.mode, w.open_timer], ["idle", false]);
+  w.fire_open();
+  assert.strictEqual(w.open_name, "");
+});
+
+// The QML wiring has no compositor test, so pin which modules opt in and how the base routes a click.
+const bar_dir = path.join(__dirname, "../.config/quickshell/features/bar/modules");
+const module_source = name => fs.readFileSync(path.join(bar_dir, name + ".qml"), "utf8");
+t("the click-to-open modules opt in; Start and Media do not", () => {
+  for (const m of ["Battery", "Bluetooth", "Network", "Volume", "Updates", "System", "Weather", "Keeptabs", "Tray", "Notifications"]) {
+    assert.match(module_source(m), /^\s+hover_popup: true$/m, m);
+  }
+  for (const m of ["StartButton", "Media"]) assert.doesNotMatch(module_source(m), /hover_popup: true/, m);
+});
+t("Notifications hover-opens only with notifications", () => {
+  assert.match(module_source("Notifications"), /hover_ready: NotificationState\.history\.length > 0/);
+});
+t("the base routes toggle_popup through the helper and drops the tooltip when hover opens", () => {
+  const base = module_source("BarModule");
+  assert.match(base, /if \(root\.hover_active\) hover\.click\(\);/);
+  assert.match(base, /hovered && !root\.hover_active\) Tooltip\.show/);
+  assert.match(base, /&& Popups\.hover_popups$/m);
+});
+
 let failed = 0;
 for (const [name, fn] of cases) {
   try { fn(); console.log("ok   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n  " + e.message); }

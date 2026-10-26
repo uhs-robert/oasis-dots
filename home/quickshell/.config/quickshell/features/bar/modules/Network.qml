@@ -8,6 +8,7 @@ import qs.features.bar
 BarModule {
     id: root
     module_name: "network"
+    hover_popup: true
     wash: false
 
     readonly property var wifi_device: {

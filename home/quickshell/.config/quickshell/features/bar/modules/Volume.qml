@@ -9,6 +9,7 @@ import qs.features.bar
 BarModule {
     id: root
     module_name: "volume"
+    hover_popup: true
 
     WheelStepper {
         id: wheel_stepper

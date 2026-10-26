@@ -8,6 +8,7 @@ import qs.features.system
 BarModule {
     id: root
     module_name: "system"
+    hover_popup: true
     wash: false
 
     property string stat: "cpu"

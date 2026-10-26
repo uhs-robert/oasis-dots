@@ -8,6 +8,8 @@ import qs.features.bar
 Singleton {
     id: root
 
+    // The one switch for hover-open on every bar module.
+    property bool hover_popups: true
     property string open_name: ""
     // The open popup once it has finished drawing in; empty while it animates, and while nothing is open.
     property string settled_name: ""

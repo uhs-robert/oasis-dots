@@ -10,6 +10,7 @@ import qs.features.display
 BarModule {
     id: root
     module_name: "battery"
+    hover_popup: true
 
     WheelStepper {
         id: wheel_stepper
