@@ -25,8 +25,8 @@ site_candidates() { firefox_rows sites; }
 # workspace 2"), a tmux session or an agent.
 #
 # The tabs are read while the keybind check runs, since firefox-tab takes most of the time and does not depend on it.
-# Their stderr is dropped: on a yield the reader is left to finish alone, and holding the hook's stderr open would keep
-# voxcmd waiting for it.
+# Their stderr is dropped: a reader holding the hook's stderr open makes voxcmd wait out its 200 ms pipe drain on a
+# yield.
 tab_candidates() {
   local tabs_fd
   if names_the_browser "$VOXCMD_ARG_TARGET"; then

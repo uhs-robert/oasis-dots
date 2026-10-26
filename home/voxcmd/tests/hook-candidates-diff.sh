@@ -47,7 +47,7 @@ share_dir="$package_dir/.local/share/voxcmd"
 run_hook() {
   local dir=$1 library=$2 hook=$3 target=$4 ignore=$5
   VOXCMD_INTEGRATION_DIR=$dir VOXCMD_SHARE_DIR=$share_dir VOXCMD_SELF=$(command -v voxcmd) \
-    VOXCMD_ARG_TARGET=$target VOXCMD_RAW_TRANSCRIPT="go to $target" VOXCMD_MATCH_IGNORE_WORDS=$ignore \
+  VOXCMD_ARG_TARGET=$target VOXCMD_RAW_TRANSCRIPT="go to $target" VOXCMD_MATCH_IGNORE_WORDS=$ignore \
     bash --noprofile --norc -c ". \"\$VOXCMD_INTEGRATION_DIR/$library\"; $hook" 2>&1 || printf 'exit %s\n' "$?"
 }
 
@@ -167,7 +167,8 @@ printf 'compared %s hook runs against %s: %s differ\n' "$cases" "$ref" "$differi
 [ "$differing" -eq 0 ] || exit 1
 
 if [ "$self_check" = 1 ]; then
-  # The current libraries with the candidates reversed: same candidates, other order. The comparison has to notice.
+  # The current libraries with the candidates reversed: same candidates, other order. The real compare() has to
+  # count it, or a reordering bug would pass the run above.
   mutated_dir="$SANDBOX_DIR/mutated-integrations"
   mkdir -p "$mutated_dir"
   cp "$current_dir/apps.sh" "$current_dir/firefox.sh" "$mutated_dir/"
@@ -178,11 +179,11 @@ apps_candidates() {
   candidates_json "$1" "$VOXCMD_ARG_TARGET" | candidate_rows | tac
 }
 EOF
-  old=$(run_hook "$reference_dir" apps.sh "apps_candidates open" firefox "$apps_ignore")
-  new=$(run_hook "$mutated_dir" apps.sh "apps_candidates open" firefox "$apps_ignore")
-  if [ "$old" = "$new" ]; then
+  current_dir=$mutated_dir cases=0 differing=0
+  compare "self-check: reversed order" apps.sh "apps_candidates open" firefox "$apps_ignore" >/dev/null
+  if [ "$differing" -eq 0 ]; then
     echo 'self-check failed: a reversed candidate order compared equal' >&2
     exit 1
   fi
-  echo 'self-check ok: a reversed candidate order is reported as a difference'
+  echo 'self-check ok: a reversed candidate order is counted as a difference'
 fi
