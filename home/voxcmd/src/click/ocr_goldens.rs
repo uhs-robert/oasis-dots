@@ -1,5 +1,5 @@
 //! The strip arithmetic, the tool command lines and the `#info` line against what the bash `click-ocr` produced over a
-//! grid of windows, scales and brightness (tests/fixtures/gen-ocr-plan-goldens.sh).
+//! grid of windows, scales and brightness (tests/fixtures/ocr-plan-goldens.tsv, frozen; the generator is gone).
 use super::capture::{CaptureMode, Geometry};
 use super::driver::{CaptureInfo, strip_line, window_line};
 use super::strips::{self, DARK_BELOW};
@@ -34,7 +34,8 @@ struct Row {
 
 fn rows() -> Vec<Row> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/ocr-plan-goldens.tsv");
-    let text = std::fs::read_to_string(path).expect("run gen-ocr-plan-goldens.sh");
+    let text =
+        std::fs::read_to_string(path).expect("the golden file is missing; goldens are frozen, restore it from git");
     text.lines()
         .map(|line| {
             let fields: Vec<&str> = line.split('\t').collect();

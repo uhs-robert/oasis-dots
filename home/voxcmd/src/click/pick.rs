@@ -1,5 +1,5 @@
 //! Where on screen each click option is, for the numbered overlay: the port of click.sh's `pick_box` and the
-//! `pick-boxes` the bash voxcmd wrapped around it.
+//! `pick-boxes` command that wrapped it.
 use serde_json::{Value, json};
 
 /// The box of a candidate id `x,y,button,left,top,width,height`, as `read -r` splits it: seven fields, the last

@@ -110,7 +110,12 @@ fn check(dir: &Path, args: &[String]) -> Report {
     }
     for arg in args {
         let given = PathBuf::from(arg);
-        toml.push(if given.exists() { given } else { dir.join(arg) });
+        let file = if given.exists() { given } else { dir.join(arg) };
+        if file.extension().is_some_and(|extension| extension == "sh") {
+            problems.push(not_an_integration(dir, &file));
+        } else {
+            toml.push(file);
+        }
     }
     for file in &toml {
         check_toml(dir, file, &intents, &mut problems);
@@ -121,6 +126,23 @@ fn check(dir: &Path, args: &[String]) -> Report {
             .all(|problem| matches!(problem.severity, Severity::Warning)),
         files: toml.len(),
         problems,
+    }
+}
+
+/// A named `.sh` file is never an integration; without this it would fail as a TOML parse error. A hook library is
+/// checked through its own `<stem>.toml`, so that is what the message points to.
+fn not_an_integration(dir: &Path, file: &Path) -> Problem {
+    let shown = relative(dir, file);
+    Problem {
+        message: format!(
+            "{} is not an integration: integrations are TOML, and a hook library is checked with its <stem>.toml",
+            shown.display()
+        ),
+        file: shown,
+        line: 1,
+        column: 1,
+        severity: Severity::Error,
+        code: "not-toml",
     }
 }
 

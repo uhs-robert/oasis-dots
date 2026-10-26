@@ -1330,7 +1330,7 @@ done
 out=$(route_all "stop clicking")
 check "'stop clicking' ends click mode instead of pausing media" "grep -Eq 'Click \($click_file\) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
 # Run for real: click mode opens, then "stop clicking" ends it, which shows the action ran. Opening a mode looks for
-# voxcmd-autostop beside the binary VOXCMD_LEGACY_BIN names, here the "numbered picks" copy's stub.
+# voxcmd-autostop beside the binary VOXCMD_STAND_IN_BIN names, here the "numbered picks" copy's stub.
 VOXCMD_CONFIG_DIR=$all_config "$voxcmd" run "click mode" >/dev/null 2>&1
 session_file=$XDG_RUNTIME_DIR/voxcmd/session.json
 opened=0

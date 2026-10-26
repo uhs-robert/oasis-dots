@@ -1,4 +1,4 @@
-//! `voxcmd internal click-match` as run.sh and gen-click-goldens.sh call it: the awk's interface (target in the
+//! `voxcmd internal click-match` as run.sh calls it: the awk's interface (target in the
 //! environment, page on stdin, candidates on stdout, trace on stderr, exit 2 where the awk dies). The matching itself is
 //! compared with the awk in src/click/goldens.rs.
 use std::io::Write;

@@ -21,7 +21,7 @@ impl Setup {
             "runtime/voxtype",
             "runtime/voxcmd",
             "bin",
-            "legacy",
+            "stand-in",
             "work",
         ] {
             std::fs::create_dir_all(root.path().join(dir)).unwrap();
@@ -50,7 +50,7 @@ impl Setup {
             "bin/notify-send",
             &format!("echo \"notify-send $*\" >> '{}'", calls.display()),
         );
-        setup.script("legacy/voxcmd-autostop", "exit 0");
+        setup.script("stand-in/voxcmd-autostop", "exit 0");
         std::fs::write(&state, "idle\n").unwrap();
         setup
     }
@@ -95,7 +95,7 @@ impl Setup {
             .env("LC_ALL", "C")
             .env("WORK", self.path().join("work"))
             .env("VOXCMD_CONFIG_DIR", self.path().join("config"))
-            .env("VOXCMD_LEGACY_BIN", self.path().join("legacy/voxcmd"))
+            .env("VOXCMD_STAND_IN_BIN", self.path().join("stand-in/voxcmd"))
             .env("XDG_RUNTIME_DIR", self.path().join("runtime"))
             .env("VOXCMD_DEBUG", "1")
             .stdin(Stdio::null())

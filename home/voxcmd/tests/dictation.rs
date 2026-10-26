@@ -90,7 +90,7 @@ impl Setup {
             "runtime/voxtype",
             "runtime/voxcmd",
             "bin",
-            "legacy",
+            "stand-in",
             "work",
         ] {
             std::fs::create_dir_all(root.path().join(dir)).unwrap();
@@ -151,7 +151,7 @@ echo "setsid-proc pid=$$ stdio=$stdio" >> '{calls}'
         // threshold in $WORK/room when there is one. A chain's detector, which is given no threshold file, logs its
         // settings and waits for $WORK/chain-verdict.
         setup.script(
-            "legacy/voxcmd-autostop",
+            "stand-in/voxcmd-autostop",
             &format!(
                 r#"if [ -z "${{VOXCMD_AUTOSTOP_THRESHOLD_FILE-}}" ]; then
   echo "chain-detector threshold=${{VOXCMD_AUTOSTOP_THRESHOLD_DB-none}} no_speech=$VOXCMD_AUTOSTOP_NO_SPEECH_SECS min_speech=$VOXCMD_AUTOSTOP_MIN_SPEECH_SECS silence=$VOXCMD_AUTOSTOP_SILENCE_SECS max=$VOXCMD_AUTOSTOP_MAX_SECS" >> '{calls}'
@@ -252,7 +252,7 @@ exit "$(cat '{work}/verdict')""#,
             .env("LC_ALL", "C")
             .env("WORK", self.path().join("work"))
             .env("VOXCMD_CONFIG_DIR", self.path().join("config"))
-            .env("VOXCMD_LEGACY_BIN", self.path().join("legacy/voxcmd"))
+            .env("VOXCMD_STAND_IN_BIN", self.path().join("stand-in/voxcmd"))
             .env("XDG_RUNTIME_DIR", self.path().join("runtime"))
             .env("XDG_DATA_HOME", self.path().join("data"))
             .env("XDG_CONFIG_HOME", self.path().join("xdg"))

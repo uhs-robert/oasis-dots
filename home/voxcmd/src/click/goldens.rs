@@ -1,4 +1,4 @@
-//! The matcher against what `click-match.awk` made of the same pages and targets (tests/fixtures/gen-click-goldens.sh),
+//! The matcher against what `click-match.awk` made of the same pages and targets (tests/fixtures/click-goldens.tsv, frozen),
 //! including the trace of an explain run and the cases where the awk dies.
 use super::matcher::{Matcher, Options};
 use std::collections::HashSet;
@@ -38,7 +38,8 @@ struct Row {
 }
 
 fn rows() -> Vec<Row> {
-    let text = std::fs::read_to_string(fixtures().join("click-goldens.tsv")).expect("run gen-click-goldens.sh");
+    let text = std::fs::read_to_string(fixtures().join("click-goldens.tsv"))
+        .expect("the golden file is missing; goldens are frozen, restore it from git");
     text.lines()
         .map(|line| {
             let fields: Vec<&str> = line.split('\t').collect();
@@ -62,7 +63,7 @@ fn rows() -> Vec<Row> {
         .collect()
 }
 
-/// stdout, trace and exit status of the matcher over the page, in the generator's formats.
+/// stdout, trace and exit status of the matcher over the page, in the golden file's formats.
 fn run(row: &Row, explain: bool) -> (String, String, String) {
     let mut matcher = Matcher::new(&row.target, Options::new(row.spans, explain));
     let mut lines: Vec<&str> = row.page.split('\n').collect();

@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# Kept for transient timer units scheduled before the swap, which name this script by absolute path. Dropped by PR 4
-# once `systemctl --user list-timers 'voxcmd-*'` shows none of them.
-exec "$HOME/.local/bin/voxcmd" timer ring "$@"

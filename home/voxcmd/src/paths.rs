@@ -47,14 +47,14 @@ const BUILT_FROM: &str = env!("CARGO_MANIFEST_DIR");
 
 /// The directory of voxcmd's shared scripts (`spoken-time.sh` and the like), which hooks find as `$VOXCMD_SHARE_DIR`.
 pub fn share_dir() -> PathBuf {
-    share_dir_from(env_dir("VOXCMD_SHARE_DIR"), env_dir("VOXCMD_LEGACY_BIN"))
+    share_dir_from(env_dir("VOXCMD_SHARE_DIR"), env_dir("VOXCMD_STAND_IN_BIN"))
 }
 
-/// `share_override`, else `share/voxcmd` beside the `bin` of `legacy_override`, else the built-from checkout's. The
-/// suites set `VOXCMD_LEGACY_BIN` to a stand-in so its neighbours are found; nothing live does, so nothing live needs
-/// the bash script to exist.
-fn share_dir_from(share_override: Option<PathBuf>, legacy_override: Option<PathBuf>) -> PathBuf {
-    share_override.unwrap_or_else(|| match legacy_override {
+/// `share_override`, else `share/voxcmd` beside the `bin` of `stand_in`, else the built-from checkout's. The
+/// suites set `VOXCMD_STAND_IN_BIN` to a stand-in binary so its neighbours are found; nothing live does, so nothing live
+/// needs one to exist.
+fn share_dir_from(share_override: Option<PathBuf>, stand_in: Option<PathBuf>) -> PathBuf {
+    share_override.unwrap_or_else(|| match stand_in {
         Some(bin) => bin
             .parent()
             .and_then(std::path::Path::parent)
@@ -117,7 +117,7 @@ pub fn session_file() -> PathBuf {
     runtime_dir().join("session.json")
 }
 
-/// The flock target for every change to the session file, shared with the bash voxcmd.
+/// The flock target for every change to the session file, taken by every writer.
 pub fn session_lock() -> PathBuf {
     runtime_dir().join("session.lock")
 }
@@ -134,12 +134,12 @@ pub fn threshold_file(pid: u32) -> PathBuf {
 
 /// The speech detector that ends a recording after a pause (Python until voxcmd-port 4.2).
 pub fn autostop() -> PathBuf {
-    autostop_from(env_dir("VOXCMD_LEGACY_BIN"))
+    autostop_from(env_dir("VOXCMD_STAND_IN_BIN"))
 }
 
-/// Beside `legacy_override` (the suites' stand-in), else in the built-from checkout.
-fn autostop_from(legacy_override: Option<PathBuf>) -> PathBuf {
-    match legacy_override {
+/// Beside `stand_in` (the suites' stand-in binary), else in the built-from checkout.
+fn autostop_from(stand_in: Option<PathBuf>) -> PathBuf {
+    match stand_in {
         Some(bin) => bin
             .parent()
             .unwrap_or(std::path::Path::new("/"))
@@ -160,13 +160,16 @@ mod tests {
     }
 
     #[test]
-    fn a_stand_in_legacy_bin_still_places_its_neighbours() {
-        let legacy = Some(PathBuf::from("/copy/.local/bin/voxcmd"));
+    fn a_stand_in_bin_still_places_its_neighbours() {
+        let stand_in = Some(PathBuf::from("/copy/.local/bin/voxcmd"));
         assert_eq!(
-            share_dir_from(None, legacy.clone()),
+            share_dir_from(None, stand_in.clone()),
             PathBuf::from("/copy/.local/share/voxcmd")
         );
-        assert_eq!(autostop_from(legacy), PathBuf::from("/copy/.local/bin/voxcmd-autostop"));
+        assert_eq!(
+            autostop_from(stand_in),
+            PathBuf::from("/copy/.local/bin/voxcmd-autostop")
+        );
     }
 
     #[test]
