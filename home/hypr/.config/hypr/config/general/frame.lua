@@ -15,8 +15,10 @@ local saved = nil
 local missed_checks = 0
 local watchdog = nil
 -- Whether the frame is drawn (set's `frame`), as opposed to Quickshell only asking for its Corner style: the watchdog
--- then looks for the frame's layer or, with no frame, for any Quickshell layer.
+-- then looks for the frame's layer or, with no frame, for Quickshell's process. Quickshell can run with no layer at
+-- all (bars off, no popup), so a layer cannot tell it from a dead one.
 local frame_drawn = true
+local quickshell_pid = nil
 -- Whether a lone tiled window sits flush with the frame (the Settings "Flush single windows" row). Off, it keeps the
 -- gaps and rounding of any other window; maximizing stays flush either way.
 local flush_lone_windows = true
@@ -65,12 +67,15 @@ local function frame_mapped()
   return false
 end
 
---- Whether any Quickshell layer (the bar's included) is mapped, the sign that Quickshell is still there to take the corners back.
-local function shell_mapped()
-  for _, layer in ipairs(hl.get_layers() or {}) do
-    if layer.mapped and tostring(layer.namespace or ""):sub(1, 10) == "quickshell" then return true end
-  end
-  return false
+--- Whether process `pid` still runs; a missing or invalid pid counts as gone, so the corner is never left stuck.
+--- @param pid number|nil
+--- @return boolean
+local function process_alive(pid)
+  if type(pid) ~= "number" or pid < 1 then return false end
+  local handle = io.open("/proc/" .. math.floor(pid) .. "/comm", "r")
+  if handle == nil then return false end
+  handle:close()
+  return true
 end
 
 -- Workspace rules that drop the outer gaps so a window sits flush against the frame. `f[1]` matches a workspace with a
@@ -187,6 +192,7 @@ local function restore()
   end
   lone_window_rule:set_enabled(false)
   if watchdog then watchdog:set_enabled(false) end
+  quickshell_pid = nil
   if saved == nil then return end
   use_window_rules({})
   apply_workspaces_animation(false)
@@ -201,9 +207,9 @@ local function restore()
 end
 
 -- Quickshell sends clear when the frame goes, but a crashed or quit Quickshell sends nothing, so the frame's layer
--- (or, with no frame, every Quickshell layer) going missing restores too.
+-- (or, with no frame, Quickshell's process) going missing restores too.
 local function check_frame()
-  if (frame_drawn and frame_mapped()) or (not frame_drawn and shell_mapped()) then
+  if (frame_drawn and frame_mapped()) or (not frame_drawn and process_alive(quickshell_pid)) then
     missed_checks = 0
     return
   end
@@ -240,8 +246,10 @@ end
 --- @param inactive string
 --- @param flush? boolean whether a lone tiled window goes flush with the frame; anything but false means it does
 --- @param frame? boolean whether the frame is drawn; anything but false means it is (an older Quickshell sends no such argument)
-local function set(corner, radius, border_size, active, inactive, flush, frame)
+--- @param pid? number Quickshell's process id, which the watchdog watches while the frame is off
+local function set(corner, radius, border_size, active, inactive, flush, frame, pid)
   frame_drawn = frame ~= false
+  quickshell_pid = (not frame_drawn) and tonumber(pid) or nil
   flush_lone_windows = frame_drawn and flush ~= false
   if saved == nil then
     saved = {
@@ -343,8 +351,8 @@ end
 
 -- Global functions which are accessible externally via `hyprctl dispatch "ScreenFrame"`
 _G.ScreenFrame = {
-  set = function(corner, radius, border_size, active, inactive, flush, frame)
-    set(corner, radius, border_size, active, inactive, flush, frame)
+  set = function(corner, radius, border_size, active, inactive, flush, frame, pid)
+    set(corner, radius, border_size, active, inactive, flush, frame, pid)
 
     return hl.dsp.no_op()
   end,

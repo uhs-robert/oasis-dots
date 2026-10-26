@@ -379,7 +379,10 @@ _G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, tru
 check("on: frame border applies", last_config().general.border_size == 2)
 check("on: slide animation", animation ~= nil and animation.style == "slide")
 _G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false)
-check("on then off: border back to the owner's", last_config().general.border_size == 4 and last_config().general.col.active_border == "owner-active")
+check(
+	"on then off: border back to the owner's",
+	last_config().general.border_size == 4 and last_config().general.col.active_border == "owner-active"
+)
 check("on then off: flush rules off", flush_workspace_rule_enabled() == false and #enabled_window_rules() == 0)
 check("on then off: animation back to the config's", animation ~= nil and animation.style ~= "slide")
 _G.ScreenFrame.clear()
@@ -390,26 +393,66 @@ _G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true)
 check("six arguments: frame on", last_config().general.border_size == 2 and flush_workspace_rule_enabled() == true)
 _G.ScreenFrame.clear()
 
--- The watchdog: with the frame off it waits on any Quickshell layer, not the frame's.
-layers = { { mapped = true, namespace = "quickshell" } }
-_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false)
-check("watchdog: armed with the frame off", watchdog_on == true)
-for _ = 1, 5 do
-	timer_fn()
+-- The watchdog: with the frame off it waits on Quickshell's process, not on any layer (Quickshell can run with none).
+local alive_pids = {}
+local real_open = io.open
+io.open = function(path, mode)
+	local pid = tostring(path):match("^/proc/(%d+)/comm$")
+	if pid then
+		return alive_pids[tonumber(pid)] and { close = function() end } or nil
+	end
+	return real_open(path, mode)
 end
-check("watchdog: frame off keeps the corners while the bar is mapped", last_config().decoration.rounding == 6)
+local function tick(times)
+	for _ = 1, times do
+		timer_fn()
+	end
+end
+local function set_off(pid)
+	_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false, pid)
+end
+alive_pids[4242] = true
 layers = {}
-for _ = 1, 3 do
-	timer_fn()
-end
-check("watchdog: no Quickshell layer restores the owner's values", owner_restored() and watchdog_on == false)
+set_off(4242)
+check("watchdog: armed with the frame off", watchdog_on == true)
+tick(6)
+check(
+	"watchdog: live pid with no layers keeps the corner",
+	last_config().decoration.rounding == 6 and watchdog_on == true
+)
+alive_pids[4242] = nil
+tick(3)
+check("watchdog: dead pid restores the owner's values", owner_restored() and watchdog_on == false)
+
+-- A restart brings a new pid, which re-arms the watch; the old one no longer matters.
+alive_pids[4242], alive_pids[5151] = true, true
+set_off(4242)
+alive_pids[4242] = nil
+set_off(5151)
+tick(6)
+check("watchdog: a new pid takes over from the old one", last_config().decoration.rounding == 6)
+alive_pids[5151] = nil
+tick(3)
+check("watchdog: the new pid dying restores", owner_restored())
+
+-- A missing or invalid pid restores rather than leaving the corner stuck.
+set_off(nil)
+tick(3)
+check("watchdog: no pid restores", owner_restored())
+set_off("junk")
+tick(3)
+check("watchdog: an invalid pid restores", owner_restored())
+
+-- Frame on after off: the pid is dropped and the frame's layer decides, whatever the old pid does.
+alive_pids[4242] = true
+set_off(4242)
 layers = { { mapped = true, namespace = "quickshell" } }
 _G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, true)
-for _ = 1, 3 do
-	timer_fn()
-end
-check("watchdog: frame on still needs the frame's layer", owner_restored())
+tick(3)
+check("watchdog: frame on after off needs the frame's layer, not the old pid", owner_restored())
 layers = { { mapped = true, namespace = "quickshell-frame" } }
+alive_pids[4242] = nil
+io.open = real_open
 
 if failures > 0 then
 	print(failures .. " failed")
