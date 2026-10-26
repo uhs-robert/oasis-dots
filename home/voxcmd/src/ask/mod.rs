@@ -28,7 +28,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 /// The state of the open ask, which a reply reads. Written by `ask`, read by `reply`, `stop` and `util pending-pick`;
-/// the field order is the bash helpers', which the suites match on.
+/// the field order is the one the suites match on.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PendingPick {
     #[serde(deserialize_with = "number_or_numeric_text")]

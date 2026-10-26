@@ -1,4 +1,4 @@
-//! `wake on|off|toggle|status` against a stub systemctl, with a bash voxcmd-wake-switch beside it that must never run.
+//! `wake on|off|toggle|status` against a stub systemctl, with a voxcmd-wake-switch script beside it that must never run.
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::{Command, Output};

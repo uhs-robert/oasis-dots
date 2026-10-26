@@ -1,7 +1,7 @@
 //! every file path voxcmd reads or writes (config, runtime, state, share), each from one fn
 use std::path::PathBuf;
 
-/// An environment variable, with empty counting as unset as `${VAR:-default}` does in the bash voxcmd.
+/// An environment variable, with empty counting as unset as shell `${VAR:-default}` does.
 fn env_dir(name: &str) -> Option<PathBuf> {
     std::env::var_os(name)
         .filter(|value| !value.is_empty())

@@ -29,8 +29,9 @@ use exit::CliError;
 use std::io::Write;
 use std::process::ExitCode;
 
-/// The bash script's underscore entry points, which callers still run at the top level (`voxcmd _wake-confirm`):
-/// each is routed to `internal`, whose subcommands take these spellings as aliases.
+/// The old underscore entry points, routed from the top level to `internal`, whose subcommands take these spellings as
+/// aliases. Only `_wake-confirm` is run that way live (`voxcmd-autostop`, `voxcmd-wake`); the rest are kept for the
+/// tests.
 const LEGACY_INTERNAL: [&str; 5] = [
     "_watch",
     "_settle",

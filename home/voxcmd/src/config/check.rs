@@ -96,23 +96,17 @@ fn check(dir: &Path, args: &[String]) -> Report {
     let mut toml: Vec<PathBuf> = Vec::new();
     if args.is_empty() {
         toml = toml_files(dir);
-        problems.extend(stray_files(dir).iter().map(|file| Problem {
-            file: relative(dir, file),
-            line: 1,
-            column: 1,
-            severity: Severity::Warning,
-            code: "stray-integration",
-            message: format!(
-                "integrations.d/{} is no longer read; convert it to TOML",
-                file.file_name().unwrap_or_default().to_string_lossy()
-            ),
-        }));
+        problems.extend(
+            stray_files(dir)
+                .iter()
+                .map(|file| stray_integration(dir, file, Severity::Warning)),
+        );
     }
     for arg in args {
         let given = PathBuf::from(arg);
         let file = if given.exists() { given } else { dir.join(arg) };
         if file.extension().is_some_and(|extension| extension == "sh") {
-            problems.push(not_an_integration(dir, &file));
+            problems.push(refuse_sh(dir, &file));
         } else {
             toml.push(file);
         }
@@ -129,10 +123,42 @@ fn check(dir: &Path, args: &[String]) -> Report {
     }
 }
 
-/// A named `.sh` file is never an integration; without this it would fail as a TOML parse error. A hook library is
-/// checked through its own `<stem>.toml`, so that is what the message points to.
-fn not_an_integration(dir: &Path, file: &Path) -> Problem {
+fn stray_integration(dir: &Path, file: &Path, severity: Severity) -> Problem {
+    Problem {
+        file: relative(dir, file),
+        line: 1,
+        column: 1,
+        severity,
+        code: "stray-integration",
+        message: format!(
+            "integrations.d/{} is no longer read; convert it to TOML",
+            file.file_name().unwrap_or_default().to_string_lossy()
+        ),
+    }
+}
+
+/// A named `.sh` file is never an integration; without this it would fail as a TOML parse error. One in
+/// `integrations.d` is a leftover the loader ignores. Any other is a hook library, checked through its own
+/// `<stem>.toml`, so that is what the message points to.
+fn refuse_sh(dir: &Path, file: &Path) -> Problem {
     let shown = relative(dir, file);
+    if !file.exists() {
+        return Problem {
+            message: format!("{} is missing", shown.display()),
+            file: shown,
+            line: 1,
+            column: 1,
+            severity: Severity::Error,
+            code: "missing-file",
+        };
+    }
+    if file
+        .parent()
+        .and_then(Path::file_name)
+        .is_some_and(|name| name == "integrations.d")
+    {
+        return stray_integration(dir, file, Severity::Error);
+    }
     Problem {
         message: format!(
             "{} is not an integration: integrations are TOML, and a hook library is checked with its <stem>.toml",

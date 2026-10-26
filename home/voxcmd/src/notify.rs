@@ -72,8 +72,8 @@ pub fn notify(kind: Kind, summary: &str, body: &str) {
         .status();
 }
 
-/// The bash voxcmd passed the text bare, and the suites match the logged call; `--` only where a leading dash would
-/// be read as an option.
+/// The text goes bare, as the suites match the logged call; `--` only where a leading dash would be read as an
+/// option.
 fn needs_end_of_options(summary: &str, body: &str) -> bool {
     summary.starts_with('-') || body.starts_with('-')
 }
