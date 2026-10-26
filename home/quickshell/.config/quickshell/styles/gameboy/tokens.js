@@ -38,6 +38,8 @@ function overrides(t, ctx) {
             frame_border_width: 0,
             frame_border_color: g2,
             frame_pad: 6,
+            // Pushes the footer rule up off the bezel (and the header and sides in by the same step).
+            lcd_margin: 4,
             accent_color: g2,
             accent_height: 0,
             selection_bg: g3,

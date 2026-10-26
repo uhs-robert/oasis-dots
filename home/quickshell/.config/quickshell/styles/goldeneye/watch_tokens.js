@@ -114,7 +114,7 @@ function tokens(pal, r) {
         meter_off: r.bar_off,
         chart_fill: r.mid,
         title_fg: r.lit,
-        title_readout_fg: r.dim,
+        title_readout_fg: r.soft,
         chip_active_bg: Qt.alpha(r.lit, 0.22),
         chip_active_fg: r.lit,
         chip_pick: r.lit,

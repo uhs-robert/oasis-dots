@@ -106,6 +106,7 @@ var tokens = [
     tok("title_spacing", "real", 2, ""),
     tok("title_readout", "string", "", "A static system readout drawn at the right end of the title row."),
     tok("title_readout_fg", "color", "transparent", "Transparent draws the readout in text_muted; {code} in the readout becomes the title's first three letters."),
+    tok("title_readout_size", "int", 0, "The title readout's text size in px; 0 keeps fs(-5)."),
     tok("title_rule", "color", "transparent", ""),
     tok("frame_glow", "color", "transparent", ""),
     tok("scanlines", "bool", false, ""),
