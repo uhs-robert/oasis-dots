@@ -432,8 +432,10 @@ voxcmd_build_rust() {
   command -v cargo >/dev/null || die "cargo is not installed; cannot build the Rust voxcmd in $dir"
   hash=$(git -C "$dir" describe --always --dirty --abbrev=9 --exclude='*')
   echo "voxcmd: building the Rust crate in $dir"
-  # The output is pinned: CARGO_TARGET_DIR, CARGO_BUILD_TARGET or a cargo config would put the binary elsewhere and
-  # leave the link dangling.
+  # The target dir is pinned (CLI flag beats CARGO_TARGET_DIR and any cargo config) and CARGO_BUILD_TARGET is unset. A
+  # config `build.target` is not neutralised: it moves the binary to target/<triple>/release, which the -x check below
+  # catches. The old binary goes first so only this build can satisfy that check.
+  rm -f "$(voxcmd_rust_bin "$dir")"
   env -u CARGO_TARGET_DIR -u CARGO_BUILD_TARGET VOXCMD_GIT_HASH="$hash" cargo build --release --locked \
     --manifest-path "$dir/$voxcmd_rel/Cargo.toml" --target-dir "$dir/$voxcmd_rel/target" >"$dir.cargo.log" 2>&1 || {
     tail -n 25 "$dir.cargo.log" >&2
