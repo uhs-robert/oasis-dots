@@ -24,9 +24,12 @@ SettingsPane {
     property alias footer: footer_col.data
     // Content shown beside the open picker list, and under the rows when none is open.
     property alias side: side_col.data
-    // Below this width the side content drops under a list that is capped at its slot, rather than squeezing the list.
     readonly property real side_width: Style.px(420)
-    readonly property bool side_fits: root.width >= root.side_width + Style.px(360) + 12
+    readonly property real side_gap: Style.px(12)
+    readonly property bool has_side: side_col.visibleChildren.length > 0
+    // Below this width the side content drops under a list that is capped at its slot, rather than squeezing the list.
+    // A section with no side content never caps its list.
+    readonly property bool side_fits: root.has_side && root.width >= root.side_width + Style.px(360) + root.side_gap
 
     // Keys the rows do not use, for sections with their own.
     signal extra_key(var event)
@@ -175,10 +178,10 @@ SettingsPane {
         // height, so `side` must not sit below it; when it cannot sit beside, the list is capped at the slot instead.
         GridLayout {
             id: picker_grid
-            visible: root.picking || side_col.visibleChildren.length > 0
+            visible: root.picking || root.has_side
             Layout.fillWidth: true
             columns: root.side_fits ? 2 : 1
-            columnSpacing: 12
+            columnSpacing: root.side_gap
             rowSpacing: 4
 
             Item {
@@ -195,7 +198,7 @@ SettingsPane {
                     anchors.right: parent.right
                     visible: root.picking
                     st: root.st
-                    available_height: root.side_fits ? Math.max(0, root.height - picker_grid.y - 4) : picker.default_height
+                    available_height: root.has_side && !root.side_fits ? picker.default_height : Math.max(0, root.height - picker_grid.y - 4)
                     onPicked: index => root.finish_picker(index)
                     onClosed: root.hide_picker()
                 }
