@@ -97,6 +97,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `drawer-shapes`: `home/quickshell/tests/drawer_shapes.js`, the drawer geometry in `ui/frames/DrawerGeometry.js` (layout, fill, outline, rim continuity with the screen frame) and `FrameGeometry.hole_rect`/`seam_of`. Needs node.
 - `cava-viewers`: `home/quickshell/tests/cava_viewers.js`, the registry of what is drawing cava in `features/media/CavaViewers.js` (double register, destroy while shown, zero viewers). Needs node.
 - `hover-popup`: `home/quickshell/tests/hover_popup.js`, the hover-open state machine in `features/popups/HoverPolicy.js` (module to popup and back, rapid enter and leave, pin against hover close, another monitor's popup). Needs node.
+- `position-poll`: `home/quickshell/tests/position_poll.js`, how often the track position is re-read (`features/media/PositionPoll.js`: off with no viewer, 1 s playing, 2 s paused). Needs node.
 - `media-settings`: `home/quickshell/tests/media_settings.js`, the cava-line migration and the `island_mode` rules in `features/media/MediaSettings.js` (existing `media.json` wins, corrupt file, strip and frame styles untouched). Needs node.
 - `bar-layout`: `home/quickshell/tests/bar_layout.js`, the bar position in `features/bar/BarLayout.js` (rules, per-monitor overrides, the state file, the directory switches). Needs node.
 - `bar-vertical`: `home/quickshell/tests/bar_vertical.js`, the side-bar column helpers in `features/bar/VerticalLayout.js` (cross width, text fit, unit drop, stacked clock). Needs node.
