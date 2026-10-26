@@ -20,7 +20,9 @@ Submap.define({
   escape = "reset",
   catchall = "stay",
 
-  -- The selection is cleared when the submap is left.
+  -- Cleared on entry too: `windows.select_toggle` run from outside the submap (hypr-act, voice) leaves a selection that
+  -- the first key here would otherwise act on.
+  on_enter = function() require("lib.actions.selection").clear() end,
   on_exit = function() require("lib.actions.selection").clear() end,
 
   binds = function()
