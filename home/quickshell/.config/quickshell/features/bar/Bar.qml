@@ -78,7 +78,7 @@ Item {
     }
 
     // From the rule, not the built entries: lualine drops the cava entry from its islands but still draws cava in section c.
-    readonly property bool lists_cava: BarLayout.rule_lists(root.rule, "cava")
+    readonly property bool lists_cava: BarLayout.rule_lists(root.rule, "cava") || BarLayout.rule_lists(root.rule, "media")
     readonly property bool rule_lists_media: BarLayout.rule_lists(root.rule, "media")
     readonly property bool lists_media: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "media"))
     // Everything the lualine right island holds: center modules, then right ones.

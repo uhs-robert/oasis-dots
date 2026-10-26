@@ -175,16 +175,50 @@ function set_directory_switch(state, name, on) {
     return next;
 }
 
-// One-time: a monitor with its own saved layout predates the `cava` module, so it gets the entry after workspaces
+// One-time: a monitor with its own saved layout predates the media module, so it gets the entry after workspaces
 // (else at the end of left). The flag keeps a later removal from being undone; BarSettings stamps every write with it.
+// `cava` is the module's old name and counts as already listed.
 function migrate_cava(state) {
     const next = normalize(state);
     if (next.cava_migrated) return next;
     for (const m of Object.values(next.monitors)) {
-        if (sides.some(s => m[s].some(e => e.split(":")[0] === "cava"))) continue;
-        m.left.splice(m.left.indexOf("workspaces") + 1 || m.left.length, 0, "cava");
+        if (sides.some(s => m[s].some(e => ["media", "cava"].indexOf(e.split(":")[0]) >= 0))) continue;
+        m.left.splice(m.left.indexOf("workspaces") + 1 || m.left.length, 0, "media");
     }
     next.cava_migrated = true;
+    return next;
+}
+
+// Whether a state file still names the old `cava` module anywhere.
+function has_cava(state) {
+    const s = normalize(state);
+    const in_list = list => list.some(e => e.split(":")[0] === "cava");
+    return "cava" in s.shared.place || "cava" in s.shared.last_side || in_list(s.shared.order)
+        || Object.values(s.monitors).some(m => sides.some(side => in_list(m[side])) || "cava" in m.last_side);
+}
+
+// `cava` was renamed `media`. A list that names both keeps the `media` one; otherwise `cava` takes `media`'s name in
+// place. Returns `state` itself, untouched, when it names no `cava`, so a caller writes the file only on a change.
+function migrate_cava_to_media(state) {
+    if (!has_cava(state)) return state;
+    const next = normalize(state);
+    const rename_list = list => {
+        const keep_media = list.indexOf("media") >= 0;
+        return unique(list.filter(e => !(keep_media && e === "cava")).map(e => e === "cava" ? "media" : e));
+    };
+    const rename_keys = map => {
+        if (!("cava" in map)) return map;
+        if (!("media" in map)) map.media = map.cava;
+        delete map.cava;
+        return map;
+    };
+    rename_keys(next.shared.place);
+    rename_keys(next.shared.last_side);
+    next.shared.order = rename_list(next.shared.order);
+    for (const m of Object.values(next.monitors)) {
+        for (const side of sides) m[side] = rename_list(m[side]);
+        rename_keys(m.last_side);
+    }
     return next;
 }
 
@@ -264,9 +298,10 @@ function side_of(layout, entry) {
 
 // Known modules plus anything a tracked rule or the state names, minus what `layout` shows.
 function hidden_entries(rules, state, layout) {
-    const all = known.slice();
+    const aliases = BarModules.modules.filter(m => m.alias_of).map(m => m.name);
+    const all = known.filter(e => aliases.indexOf(e) < 0);
     const add = e => {
-        if (all.indexOf(e) < 0) all.push(e);
+        if (all.indexOf(e) < 0 && aliases.indexOf(e) < 0) all.push(e);
     };
     for (const rule of rules) {
         for (const s of sides) unique(rule[s]).forEach(add);
