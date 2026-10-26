@@ -368,7 +368,7 @@ PanelWindow {
                 text: Style.title_readout.replace("{code}", root.title.slice(0, 3))
                 color: Style.title_readout_fg.a > 0 ? Style.title_readout_fg : Style.text_muted
                 font.family: Style.font_family
-                font.pixelSize: Style.fs(-5)
+                font.pixelSize: Style.title_readout_size > 0 ? Style.title_readout_size : Style.fs(-5)
                 font.letterSpacing: 1
             }
 
