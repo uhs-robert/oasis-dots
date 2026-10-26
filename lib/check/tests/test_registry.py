@@ -110,6 +110,16 @@ class HeadlessLoadTest(TreeCase):
     def test_the_real_tree_passes(self):
         self.assertEqual(registry.run_checks(REPO_DIR), [])
 
+    def test_the_real_tree_defines_the_six_picker_and_hyprvim_actions(self):
+        listing, findings = registry.load_list(REPO_DIR)
+        self.assertEqual(findings, [])
+        lua_ids = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "lua")
+        self.assertEqual(lua_ids, [
+            "hyprvim.jump_mark", "hyprvim.terminal", "picker.clipboard", "picker.clipboard_delete",
+            "picker.directory", "picker.emoji",
+        ])
+        self.assertEqual(len(listing["actions"]), 20)
+
     def test_a_planted_good_definition_passes(self):
         self.assertEqual(self.planted('Act.define("zoom.again", { label = "Z", run = Act.Ipc("zoom", "toggle") })'), [])
 
