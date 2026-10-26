@@ -36,6 +36,13 @@ function corner_applies(frame_on, corner_chosen) {
     return frame_on || corner_chosen;
 }
 
+// What ScreenFrameSync tells Hyprland: "frame" when a screen draws the frame, "corner" for the Corner style alone (the
+// frame off, or on but drawn on no screen, as with only side bars), else "clear" to leave the owner's own values.
+function sync_mode(frame_on, any_frame, corner_sent) {
+    if (frame_on && any_frame) return "frame";
+    return corner_sent ? "corner" : "clear";
+}
+
 // Whether a token set draws the screen frame: a style that offers it, with it switched on.
 function frame_on(tokens) {
     return offered(tokens) && tokens.screen_frame === true;

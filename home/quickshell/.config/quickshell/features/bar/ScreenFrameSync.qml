@@ -11,13 +11,13 @@ Scope {
     id: root
 
     readonly property var profile: Style.corner_profile
-    // The whole dispatch, so the debounce restarts on any change. A clear when the frame is on but no screen draws it
-    // (a side bar draws none). The radius is the corner as drawn (fitted to its profile's cap), which frame.lua turns
+    // The whole dispatch, so the debounce restarts on any change. A frame on but drawn on no screen (only side bars) goes
+    // as a frame-off corner, like FrameExport's, and a clear leaves the owner's values. The radius is the corner as drawn (fitted to its profile's cap), which frame.lua turns
     // into the windows' own rounding; Flush is the Style page's setting.
     readonly property string command: {
-        const frame = Style.screen_frame_on;
-        if (frame && !ScreenFrames.any_frame) return "ScreenFrame.clear()";
-        if (!Style.corner_sent) return "ScreenFrame.clear()";
+        const mode = Style.sync_mode(ScreenFrames.any_frame);
+        if (mode === "clear") return "ScreenFrame.clear()";
+        const frame = mode === "frame";
         const drawn = Corners.fit(root.profile.corner, root.profile.radius, root.profile.step).radius;
         const args = [JSON.stringify(root.profile.corner), drawn, Style.screen_frame_rim_width, JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(true))), JSON.stringify(Corners.hypr_border_color(Style.screen_frame_rim_color(false))), Style.flush_single, frame, Quickshell.processId];
         return "ScreenFrame.set(" + args.join(", ") + ")";

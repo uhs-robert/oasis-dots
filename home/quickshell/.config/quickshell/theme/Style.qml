@@ -162,11 +162,15 @@ Singleton {
     readonly property var active: {
         const opts = root.theme_values[root.styles[root.name] ? root.name : "oasis"];
         const picked = opts ? root.with_options(root.base_active, opts) : root.base_active;
-        // A square corner squares the popups and panels too, whatever corner radius the style draws them with.
-        const chosen = FrameTokens.corner_of(picked, root.frame_corners) === "square" && picked.frame_radius !== 0 ? Object.assign({}, picked, { frame_radius: 0 }) : picked;
+        const chosen = root.squared(picked);
         // A frame's bar edge is the full strip, whatever shape is saved; the saved shape stays for when it goes.
         if (root.frame_kit_for(chosen) === null || !FrameTokens.forces_full_bar(chosen)) return chosen;
-        return root.with_options(root.base_active, Object.assign({}, opts, { bar_island_shape: "full" }));
+        return root.squared(root.with_options(root.base_active, Object.assign({}, opts, { bar_island_shape: "full" })));
+    }
+    // A square corner squares the popups and panels too, whatever corner radius the style draws them with. Every token
+    // set `active` returns goes through it, the forced full bar included.
+    function squared(tokens) {
+        return FrameTokens.corner_of(tokens, root.frame_corners) === "square" && tokens.frame_radius !== 0 ? Object.assign({}, tokens, { frame_radius: 0 }) : tokens;
     }
     // The screen frame the shell draws, from `active` so the style picker previews it; null when there is none.
     readonly property var screen_frame_kit: root.frame_kit_for(root.active)
@@ -178,6 +182,9 @@ Singleton {
     readonly property bool corner_style_chosen: root.corner_style !== FrameTokens.natural_corner(root.base_active, root.frame_corners)
     // Whether the corner goes to Hyprland and the apps (FrameTokens.corner_applies): with the frame on, or once picked.
     readonly property bool corner_sent: FrameTokens.corner_applies(root.screen_frame_on, root.corner_style_chosen)
+    function sync_mode(any_frame) {
+        return FrameTokens.sync_mode(root.screen_frame_on, any_frame, root.corner_sent);
+    }
     // The corner as asked for, always set: the hole and the drawers fit it to their room (Corners.fit), Hyprland
     // shapes windows to it (ScreenFrameSync) and the media well's plate takes it.
     readonly property var corner_profile: ({ corner: root.corner_style, radius: root.plain_frame_kit.radius, step: root.bar.screen_frame_step })

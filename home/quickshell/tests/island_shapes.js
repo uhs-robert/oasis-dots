@@ -375,10 +375,25 @@ for (const [name, tokens, want] of [
 expect(FT.corner_applies(true, false) === true && FT.corner_applies(true, true) === true, "the frame on does not send the corner");
 expect(FT.corner_applies(false, false) === false, "an untouched style with no frame sends its corner");
 expect(FT.corner_applies(false, true) === true, "a picked Corner style with no frame is not sent");
-for (const f of ["features/bar/ScreenFrameSync.qml", "features/bar/FrameExport.qml"]) {
+for (const f of ["features/bar/FrameExport.qml"]) {
   expect(/Style\.corner_sent/.test(read(f)), f + " does not gate the corner on Style.corner_sent");
 }
 expect(/corner_sent: FrameTokens\.corner_applies\(root\.screen_frame_on, root\.corner_style_chosen\)/.test(style), "Style.corner_sent is not corner_applies of the frame and the pick");
+// ScreenFrameSync's mode: the frame only where a screen draws it; a frame on with only side bars still sends the corner.
+for (const [name, args, want] of [
+  ["frame drawn", [true, true, true], "frame"],
+  ["frame on, only side bars, corner sent", [true, false, true], "corner"],
+  ["frame off, corner picked", [false, false, true], "corner"],
+  ["frame off, untouched", [false, false, false], "clear"],
+]) {
+  expect(FT.sync_mode(...args) === want, "sync_mode: " + name + ": got " + FT.sync_mode(...args) + ", want " + want);
+}
+expect(/Style\.sync_mode\(/.test(read("features/bar/ScreenFrameSync.qml")), "ScreenFrameSync does not use Style.sync_mode");
+// Every token set `active` returns is squared, the forced full bar's too.
+const active_src = style.slice(style.indexOf("readonly property var active:"), style.indexOf("function squared"));
+expect(!/return root\.with_options\(/.test(active_src) && (active_src.match(/root\.squared\(/g) || []).length === 2, "active returns a token set that skipped squared");
+const squared = vm.runInNewContext("(function(root, FrameTokens) { return function" + style.match(/function squared(\([^)]*\) \{[^]*?\n    \})/)[1] + "; })", {})({ frame_corners }, FT);
+expect(squared({ corner_style: "square", frame_radius: 10 }).frame_radius === 0 && squared({ corner_style: "round", frame_radius: 10 }).frame_radius === 10 && squared({ screen_frame_only: "square", frame_radius: 6 }).frame_radius === 0, "squared");
 expect(FT.natural_corner({ screen_frame_corners: "pixel" }, frame_corners) === "pixel" && FT.natural_corner({}, frame_corners) === "round", "natural_corner");
 // The pixel step reaches the profile with the frame off (gameboy 2): Style.corner_profile reads the style's own.
 expect(/corner_profile: \(\{ corner: root\.corner_style, radius: root\.plain_frame_kit\.radius, step: root\.bar\.screen_frame_step \}\)/.test(style), "corner_profile does not carry the style's pixel step");
