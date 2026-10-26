@@ -379,10 +379,7 @@ _G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, tru
 check("on: frame border applies", last_config().general.border_size == 2)
 check("on: slide animation", animation ~= nil and animation.style == "slide")
 _G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false)
-check(
-	"on then off: border back to the owner's",
-	last_config().general.border_size == 4 and last_config().general.col.active_border == "owner-active"
-)
+check("on then off: border back to the owner's", last_config().general.border_size == 4 and last_config().general.col.active_border == "owner-active")
 check("on then off: flush rules off", flush_workspace_rule_enabled() == false and #enabled_window_rules() == 0)
 check("on then off: animation back to the config's", animation ~= nil and animation.style ~= "slide")
 _G.ScreenFrame.clear()
@@ -394,12 +391,27 @@ check("six arguments: frame on", last_config().general.border_size == 2 and flus
 _G.ScreenFrame.clear()
 
 -- The watchdog: with the frame off it waits on Quickshell's process, not on any layer (Quickshell can run with none).
+-- alive_pids maps a pid to its /proc stat line.
 local alive_pids = {}
+local function quickshell_stat(pid, comm, state)
+	return pid .. " (" .. (comm or "qs") .. ") " .. (state or "S") .. " 1 1"
+end
 local real_open = io.open
 io.open = function(path, mode)
-	local pid = tostring(path):match("^/proc/(%d+)/comm$")
+	-- The comm file answers too, so a check that trusts it alone is exercised.
+	local comm_pid = tostring(path):match("^/proc/(%d+)/comm$")
+	if comm_pid then
+		return alive_pids[tonumber(comm_pid)] and { read = function() end, close = function() end } or nil
+	end
+	local pid = tostring(path):match("^/proc/(%d+)/stat$")
 	if pid then
-		return alive_pids[tonumber(pid)] and { close = function() end } or nil
+		local line = alive_pids[tonumber(pid)]
+		return line and {
+			read = function()
+				return line
+			end,
+			close = function() end,
+		} or nil
 	end
 	return real_open(path, mode)
 end
@@ -411,7 +423,7 @@ end
 local function set_off(pid)
 	_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false, pid)
 end
-alive_pids[4242] = true
+alive_pids[4242] = quickshell_stat(4242)
 layers = {}
 set_off(4242)
 check("watchdog: armed with the frame off", watchdog_on == true)
@@ -425,7 +437,7 @@ tick(3)
 check("watchdog: dead pid restores the owner's values", owner_restored() and watchdog_on == false)
 
 -- A restart brings a new pid, which re-arms the watch; the old one no longer matters.
-alive_pids[4242], alive_pids[5151] = true, true
+alive_pids[4242], alive_pids[5151] = quickshell_stat(4242), quickshell_stat(5151)
 set_off(4242)
 alive_pids[4242] = nil
 set_off(5151)
@@ -443,8 +455,23 @@ set_off("junk")
 tick(3)
 check("watchdog: an invalid pid restores", owner_restored())
 
+-- A pid that is alive but is not Quickshell (reused) or is a zombie counts as gone.
+alive_pids[4242] = quickshell_stat(4242, "firefox")
+set_off(4242)
+tick(3)
+check("watchdog: a reused pid restores", owner_restored())
+alive_pids[4242] = quickshell_stat(4242, "qs", "Z")
+set_off(4242)
+tick(3)
+check("watchdog: a zombie restores", owner_restored())
+alive_pids[4242] = quickshell_stat(4242, "quickshell")
+set_off(4242)
+tick(6)
+check("watchdog: a live quickshell keeps the corner", last_config().decoration.rounding == 6)
+_G.ScreenFrame.clear()
+
 -- Frame on after off: the pid is dropped and the frame's layer decides, whatever the old pid does.
-alive_pids[4242] = true
+alive_pids[4242] = quickshell_stat(4242)
 set_off(4242)
 layers = { { mapped = true, namespace = "quickshell" } }
 _G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, true)

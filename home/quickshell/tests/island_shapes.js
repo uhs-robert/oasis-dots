@@ -374,7 +374,7 @@ for (const [name, tokens, want] of [
 // With the frame off the corner reaches Hyprland and the apps only once picked; with it on, always.
 expect(FT.corner_applies(true, false) === true && FT.corner_applies(true, true) === true, "the frame on does not send the corner");
 expect(FT.corner_applies(false, false) === false, "an untouched style with no frame sends its corner");
-expect(FT.corner_applies(false, true) === true, "a picked Corner style with no frame is not sent");
+expect(FT.corner_applies(false, true) === true, "a picked Corner style with no frame is sent");
 for (const f of ["features/bar/FrameExport.qml"]) {
   expect(/Style\.corner_sent/.test(read(f)), f + " does not gate the corner on Style.corner_sent");
 }
