@@ -67,12 +67,14 @@ BarModule {
     implicitWidth: net_row.implicitWidth
     implicitHeight: net_row.implicitHeight
 
-    RowLayout {
+    ModuleRow {
         id: net_row
+        vertical: root.vertical
         spacing: 4
 
         BarIcon {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            ink_centre: root.vertical
             name: "network"
             fixed_slot: true
             variant: root.net_variant

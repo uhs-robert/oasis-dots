@@ -22,13 +22,17 @@ BarModule {
         return lines.join("\n");
     }
 
-    RowLayout {
+    ModuleRow {
         id: row
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: 10
+        vertical: root.vertical
+        anchors.verticalCenter: root.vertical ? undefined : parent.verticalCenter
+        anchors.horizontalCenter: root.vertical ? parent.horizontalCenter : undefined
+        spacing: root.vertical ? 4 : 10
 
         BadgedGlyph {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            vertical: root.vertical
+            cross: root.cross
             visible: root.official_count > 0
             icon_name: "updates"
             icon_variant: "official"
@@ -37,7 +41,9 @@ BarModule {
         }
 
         BadgedGlyph {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            vertical: root.vertical
+            cross: root.cross
             visible: root.aur_count > 0
             icon_name: "updates"
             icon_variant: "aur"
@@ -47,7 +53,9 @@ BarModule {
 
         // A failed check with no counts would otherwise leave an empty, clickable gap.
         BadgedGlyph {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            vertical: root.vertical
+            cross: root.cross
             visible: root.official_count === 0 && root.aur_count === 0 && UpdatesState.error !== ""
             icon_name: "updates"
             icon_variant: "official"
