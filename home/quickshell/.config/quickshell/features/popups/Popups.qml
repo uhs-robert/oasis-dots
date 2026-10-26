@@ -32,6 +32,8 @@ Singleton {
     property string back_name: ""
     // The popup the pointer is over right now (Popup.qml reports it), so a module's hover helper can tell the pointer moving onto its popup from leaving.
     property string hover_name: ""
+    // The HoverPopup that hover-opened the open popup; null when nothing did or once it is pinned. Two modules can share a popup name (system:cpu and system:memory), so only this one reads the open as its own.
+    property var hover_owner: null
     // A hidden window sends no leave, so each open starts from "not over it".
     onOpen_nameChanged: {
         root.hover_name = "";
@@ -218,6 +220,7 @@ Singleton {
     }
 
     function close() {
+        hover_owner = null;
         load_name = "";
         open_name = "";
         open_anchor = null;

@@ -304,6 +304,17 @@ t("HoverPopup reacts to nothing_open", () => {
   assert.match(src, /onNothing_openChanged: if \(root\.enabled && root\.nothing_open\)/);
 });
 
+t("same-name modules: only the hover-opening helper reads the popup as its own", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  assert.match(src, /&& \(!Popups\.hover_owner \|\| Popups\.hover_owner === root\)/);
+  assert.match(src, /Popups\.hover_owner = r\.mode === "hover_open" \? root : null;\n\s+Popups\.open\(/);
+  assert.match(src, /if \(r\.mode === "pinned"\) Popups\.hover_owner = null;/);
+  assert.match(fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/Popups.qml"), "utf8"), /function close\(\) \{\n\s+hover_owner = null;/);
+});
+t("Media's helper honours the global hover switch", () => {
+  assert.match(module_source("Media"), /enabled: root\.shown && Popups\.hover_popups/);
+});
+
 let failed = 0;
 for (const [name, fn] of cases) {
   try { fn(); console.log("ok   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n  " + e.message); }
