@@ -401,6 +401,7 @@ cat >"$rr_stubs/cargo" <<STUB
 #!/usr/bin/env bash
 echo "cargo \$* hash=\${VOXCMD_GIT_HASH:-}" >>"$rr_calls"
 [[ -z \${FAKE_CARGO_FAIL:-} ]] || { echo "error: could not compile" >&2; exit 101; }
+[[ ! -f $bars_dir/.owner ]] || echo "owner_claimed_during_build" >>"$rr_calls"
 all_args="\$*"
 manifest_dir=\${all_args#*--manifest-path }
 manifest_dir=\$(dirname "\${manifest_dir%% *}")
@@ -490,10 +491,18 @@ out=$(rr_swap_cmd)
 code=$?
 show "$out"
 check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml --target-dir $rr_dir/home/voxcmd/target hash=.+' '$rr_calls'"
+check "the claim is taken before the long build, so a second session meets it" "grep -q '^owner_claimed_during_build' '$rr_calls'"
 check "the build runs before the Hyprland and manifest swap" "[[ \$(grep -n '^cargo' '$rr_calls' | head -1 | cut -d: -f1) -lt \$(grep -n '_swap' '$rr_calls' | head -1 | cut -d: -f1) ]]"
 check "voxcmd links into the bar's built binary" "rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd'"
 check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-alarm '$rr_dir/home/voxcmd/.local/bin/voxcmd-alarm' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"
 check "status reads test build" "[[ \$(rrx voxcmd_status) == 'voxcmd: test build rustbar' ]]"
+
+# A failed rebuild of the live bar must leave the binary the voxcmd link points at.
+rm -f "$rr_calls"
+out=$(FAKE_CARGO_FAIL=1 rr_swap_cmd)
+code=$?
+check "a failed rebuild of the live bar keeps its built binary and link working" "[[ $code != 0 ]] && [[ -x $rr_dir/home/voxcmd/target/release/voxcmd ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd' && [[ \$(rrx voxcmd_status) == 'voxcmd: test build rustbar' ]]"
+check "a failed rebuild keeps the existing claim" "[[ -f $bars_dir/.owner ]] && grep -q rustbar '$bars_dir/.owner'"
 
 rm -f "$rr_calls"
 out=$(rrx try_phrases "go home")
