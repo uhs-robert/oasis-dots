@@ -165,6 +165,7 @@ OUTSIDE_REFS = [
     ("home/quickshell/tests/cava_viewers.js", "features/media/CavaViewers.js"),
     ("home/quickshell/tests/bar_layout.js", "features/bar/BarLayout.js"),
     ("home/quickshell/tests/bar_layout.js", "features/bar/BarModules.js"),
+    ("home/quickshell/tests/bar_vertical.js", "features/bar/VerticalLayout.js"),
     ("home/quickshell/tests/directory_format.js", "features/bar/DirectoryFormat.js"),
     ("home/quickshell/tests/island_shapes.js", "ui/frames/IslandOutlines.js"),
     ("home/quickshell/tests/island_shapes.js", "theme/Style.qml"),
