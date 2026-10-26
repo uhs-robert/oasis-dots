@@ -34,9 +34,31 @@ Row {
     rightPadding: root.horizon ? (meeting_marker.visible ? 8 : 22) : 0
     transform: Translate { y: root.horizon ? -4 : 0 }
 
+    // The clock is not a BarModule, so it carries the three members HoverPopup reads from one. Its hover zone is the
+    // clock entry only; the island's padding and its neighbours are outside it, which the helper's close grace bridges.
+    readonly property string module_name: "clock"
+    property bool cell_hovered: false
+    readonly property bool hovered: hover.hovered || root.cell_hovered
+    // The popup replaces the agenda tooltip where hover opens it.
+    readonly property bool hover_active: !!root.island && Popups.hover_popups
+
+    // The click entry for the clock's own tap, a lualine cell and the island background: through the helper, so a click pins.
+    function click_popup() {
+        if (!root.island) return;
+        if (root.hover_active) hover_popup.click();
+        else Popups.toggle("clock", root.island, root.island_color, root.screen_name);
+    }
+
+    HoverPopup {
+        id: hover_popup
+        popup_name: "clock"
+        module: root
+        enabled: root.hover_active
+    }
+
     TapHandler {
         enabled: root.on_accent && !!root.island
-        onTapped: Popups.toggle("clock", root.island, root.island_color, root.screen_name)
+        onTapped: root.click_popup()
     }
 
     // Just before a meeting the bar shows the minutes left; under way, a live mark in the style's own form. The title is on hover.
@@ -57,7 +79,7 @@ Row {
     // A side bar drops the date from the clock, so the tooltip leads with it.
     readonly property string tip_text: !root.vertical ? root.agenda_tip : Qt.formatDateTime(root.shifted, "dddd, MMMM d") + (TimeFormat.h24 ? "" : " (" + TimeFormat.meridiem(root.shifted) + ")") + (root.agenda_tip !== "" ? "\n" + root.agenda_tip : "")
     onTip_textChanged: {
-        if (!hover.hovered) return;
+        if (!hover.hovered || root.hover_active) return;
         if (root.tip_text !== "") Tooltip.show(root, root.tip_text, "calendar", true);
         else Tooltip.hide(root);
     }
@@ -65,7 +87,7 @@ Row {
     HoverHandler {
         id: hover
         onHoveredChanged: {
-            if (hovered && root.tip_text !== "") Tooltip.show(root, root.tip_text, "calendar", true);
+            if (hovered && root.tip_text !== "" && !root.hover_active) Tooltip.show(root, root.tip_text, "calendar", true);
             else Tooltip.hide(root);
         }
     }

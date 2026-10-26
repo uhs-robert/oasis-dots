@@ -142,7 +142,10 @@ Item {
                 function activate() {
                     const it = loader.item;
                     if (!it || !it.island || !BarModules.has_popup(cell.modelData.base)) return;
-                    Popups.toggle(cell.modelData.base, it.island, it.island_color, it.screen_name || "");
+                    // Through the module's helper where it has one, so a click on a hover-open popup pins it.
+                    if (it.toggle_popup) it.toggle_popup();
+                    else if (it.click_popup) it.click_popup();
+                    else Popups.toggle(cell.modelData.base, it.island, it.island_color, it.screen_name || "");
                 }
 
                 function sync() {
@@ -258,6 +261,8 @@ Item {
                         Component.onCompleted: setSource(cell.modelData.url, root.module_props)
                         onLoaded: {
                             if (item.hasOwnProperty("on_accent")) item.on_accent = Qt.binding(() => root.accent);
+                            // The whole cell is the module's hover zone, so the lead arrow and padding open the popup too.
+                            if (item.hasOwnProperty("cell_hovered")) item.cell_hovered = Qt.binding(() => cell_hover.hovered);
                             if (root.wire) root.wire(item, cell.modelData);
                         }
                     }

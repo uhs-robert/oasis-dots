@@ -13,6 +13,7 @@ BarModule {
     id: root
     module_name: "media"
     wash: false
+    popup_helper: hover_popup
 
     // Set by Cava.qml: the `cava` entry is this same module under its old name; it differs only in having no slot on a side bar.
     property bool cava_entry: false

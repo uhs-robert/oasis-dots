@@ -108,9 +108,26 @@ Item {
             active: cava_slot.shown
         }
 
+        // The three members HoverPopup reads from a module; the slot reuses the media popup, so it has no popup of its own.
+        readonly property Item island: root.right_island.body_item
+        readonly property color island_color: root.right_island.bg_color
+        readonly property string screen_name: root.screen_name
+        readonly property bool hovered: slot_hover.hovered
+
+        HoverHandler {
+            id: slot_hover
+        }
+
+        HoverPopup {
+            id: slot_popup
+            popup_name: "media"
+            module: cava_slot
+            enabled: cava_slot.shown
+        }
+
         MouseArea {
             anchors.fill: parent
-            onClicked: Popups.toggle("media", root.right_island.body_item, root.right_island.bg_color, root.screen_name)
+            onClicked: slot_popup.click()
         }
     }
 
