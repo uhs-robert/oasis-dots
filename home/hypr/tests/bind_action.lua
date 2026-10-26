@@ -29,6 +29,7 @@ _G.hl = {
 
 local Bind = require("lib.key.bind")
 Bind.manifest_dir = here .. "/../../oasis-djinn/.config/oasis-djinn"
+Bind.djinn_bin = "/bin/sh" -- any executable file stands in for the installed runner
 
 local failures = 0
 local function check(name, ok)
@@ -111,9 +112,44 @@ check("missing manifest raises", not ok and tostring(err):find("actions.json", 1
 Bind.manifest_dir = saved
 Bind.reload_manifest()
 
+-- Without the runner (install.sh -m, --no-cargo, a failed build) the bind runs the performer directly.
+local function first_exec(id)
+	Bind.reload_manifest()
+	reset()
+	Bind.action(id)
+	return binds[1].action
+end
+Bind.djinn_bin = here .. "/no-such-runner"
+check("no runner: command binding", first_exec("screenshot.pixel") == "exec:~/.config/hypr/scripts/screenshot.sh --pixel")
+check("no runner: ipc binding", first_exec("zoom.toggle") == "exec:~/.config/hypr/scripts/qs-ipc call zoom toggle")
+check("no runner: multi-word argv", first_exec("voice.wake") == "exec:~/.local/bin/voxcmd wake toggle")
+Bind.djinn_bin = "/bin/sh"
+check("runner present again: djinn path", first_exec("zoom.toggle") == "exec:~/.local/bin/oasis-djinn zoom.toggle")
+
+-- Every id tools.lua binds is in the manifest, with or without the runner.
+local tools = assert(io.open(hypr_dir .. "/keymaps/global/tools.lua")):read("a")
+local used = 0
+for id in tools:gmatch('Bind%.action%("([^"]+)"') do
+	used = used + 1
+	reset()
+	check("tools.lua id exists: " .. id, pcall(Bind.action, id))
+end
+check("tools.lua ids found", used > 0)
+Bind.djinn_bin = here .. "/no-such-runner"
+Bind.reload_manifest()
+for id in tools:gmatch('Bind%.action%("([^"]+)"') do
+	reset()
+	check("tools.lua id has a direct performer: " .. id, pcall(Bind.action, id))
+end
+Bind.djinn_bin = "/bin/sh"
+Bind.reload_manifest()
+
 -- Bind.unbind removes what Bind.action registered, extras included.
-Bind.unbind({ "Print" })
-Bind.leader_unbind("I")
+-- A fresh module, so handles from the checks above are not counted.
+package.loaded["lib.key.bind"] = nil
+Bind = require("lib.key.bind")
+Bind.manifest_dir = here .. "/../../oasis-djinn/.config/oasis-djinn"
+Bind.djinn_bin = "/bin/sh"
 reset()
 Bind.action("screenshot.take")
 check("unbind: main key", Bind.unbind("Print") == 1)

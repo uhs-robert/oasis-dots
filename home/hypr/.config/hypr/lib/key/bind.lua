@@ -9,6 +9,8 @@ local Bind = {
   leader = Config.leader,
   --- Folder holding actions.json; nil means oasis-djinn's own lookup ($OASIS_DJINN_CONFIG_DIR, else ~/.config/oasis-djinn).
   manifest_dir = nil,
+  --- Path of the oasis-djinn binary whose presence is tested; nil means ~/.local/bin/oasis-djinn.
+  djinn_bin = nil,
 }
 
 -- hl.unbind drops a key from every submap (hyprwm/Hyprland#15040), so handles are kept per submap
@@ -142,17 +144,24 @@ end
 --- @type table<string, table>|nil action id -> manifest entry, read on first use
 local manifest
 
+--- @type table<string, table>|nil action id -> the bar's performer (bindings/quickshell.json), read on first use
+local bindings
+
+--- @type boolean|nil whether the oasis-djinn binary was executable at the first Bind.action
+local djinn_present
+
 --- Forget the cached manifest so the next Bind.action rereads it.
-function Bind.reload_manifest() manifest = nil end
+function Bind.reload_manifest()
+  manifest, bindings, djinn_present = nil, nil, nil
+end
 
---- @return table<string, table>
-local function load_manifest()
-  if manifest then return manifest end
-
+--- @param name string  Path under the manifest folder, e.g. "actions.json"
+--- @return table
+local function read_manifest_file(name)
   local dir = Bind.manifest_dir
     or os.getenv("OASIS_DJINN_CONFIG_DIR")
     or ((os.getenv("HOME") or "") .. "/.config/oasis-djinn")
-  local path = dir .. "/actions.json"
+  local path = dir .. "/" .. name
   local file, open_err = io.open(path, "r")
   -- Raise rather than skip: a quietly missing bind is worse than a config that says why it did not load.
   if not file then
@@ -162,10 +171,16 @@ local function load_manifest()
   file:close()
 
   local decoded, parsed = pcall(Json.decode, text)
-  if not decoded or type(parsed) ~= "table" or type(parsed.actions) ~= "table" then
-    error("Bind.action: " .. path .. " is not a valid actions manifest", 0)
-  end
+  if not decoded or type(parsed) ~= "table" then error("Bind.action: " .. path .. " is not valid JSON", 0) end
+  return parsed
+end
 
+--- @return table<string, table>
+local function load_manifest()
+  if manifest then return manifest end
+
+  local parsed = read_manifest_file("actions.json")
+  if type(parsed.actions) ~= "table" then error("Bind.action: actions.json holds no actions", 0) end
   manifest = {}
   for _, entry in ipairs(parsed.actions) do
     manifest[entry.id] = entry
@@ -173,8 +188,56 @@ local function load_manifest()
   return manifest
 end
 
+--- Single-quote a word for the shell unless it is plain; a leading `~/` stays outside the quotes so the shell expands it.
+--- @param word string
+--- @return string
+local function shell_word(word)
+  if word:match("^[%w_%-%./=:,+@~]+$") then return word end
+  local home, rest = word:match("^(~/)(.*)$")
+  local quoted = "'" .. (rest or word):gsub("'", "'\\''") .. "'"
+  return (home or "") .. quoted
+end
+
+--- The command that performs an action without the runner: what oasis-djinn would run from bindings/quickshell.json.
+--- @param id string
+--- @return string
+local function direct_command(id)
+  if not bindings then bindings = read_manifest_file("bindings/quickshell.json").bindings or {} end
+  local binding = bindings[id]
+  if not binding then error("Bind.action: no binding for action '" .. id .. "' in bindings/quickshell.json", 0) end
+
+  local words
+  if binding.kind == "ipc" then
+    words = { Scripts.qs_ipc, "call", binding.target, binding["function"] }
+    for _, arg in ipairs(binding.args or {}) do
+      table.insert(words, arg)
+    end
+  else
+    words = binding.argv
+  end
+  local quoted = {}
+  for _, word in ipairs(words) do
+    table.insert(quoted, shell_word(word))
+  end
+  return table.concat(quoted, " ")
+end
+
+--- True when the runner is installed; it is not on `install.sh -m`/`--no-cargo` or after a failed build.
+--- Tested once, at config load. Readable file, not an exec-bit test: Hyprland's Lua has no usable `os.execute`.
+--- @return boolean
+local function runner_installed()
+  if djinn_present == nil then
+    local path = Bind.djinn_bin or ((os.getenv("HOME") or "") .. "/.local/bin/oasis-djinn")
+    local file = io.open(path, "r")
+    djinn_present = file ~= nil
+    if file then file:close() end
+  end
+  return djinn_present
+end
+
 --- Register an action from the oasis-djinn manifest: its key, extra keys and label come from there, and the
---- bind runs `oasis-djinn <id>`. Raises on an unknown id.
+--- bind runs `oasis-djinn <id>`, or the same command the runner would run when the binary is not installed.
+--- Raises on an unknown id.
 --- @param id   string
 --- @param opts table|nil  `key` replaces the manifest's main key (a key string, or `{key, leader?, universal?}`); the
 ---                        extra keys and label stay. Everything else (e.g. `submap_universal`) goes to hl.bind and
@@ -196,7 +259,7 @@ function Bind.action(id, opts)
     table.insert(keys, extra)
   end
 
-  local run = hl.dsp.exec_cmd(Scripts.djinn .. " " .. id)
+  local run = hl.dsp.exec_cmd(runner_installed() and (Scripts.djinn .. " " .. id) or direct_command(id))
   for _, spec in ipairs(keys) do
     local bind_opts = {}
     for k, v in pairs(opts) do

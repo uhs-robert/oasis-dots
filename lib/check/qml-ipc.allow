@@ -6,7 +6,6 @@
 uncalled cmdstatus                    # the module id is also the target; nothing calls refresh yet (5.7 keeps it)
 uncalled weather                      # README-documented preview hook for fixtures (permanent)
 uncalled transition                   # a debugging hook, called by hand (permanent)
-uncalled zoom                         # performed by oasis-djinn from the action manifest, which this check does not read (permanent)
 uncalled osd                          # shadow.sh wait reaches it through a computed target (permanent)
 frozen hyprvim_prompt open close      # called by repos/hyprvim, outside this repo (permanent)
 frozen hyprvim_whichkey open close    # called by repos/hyprvim and .claude/skills/shadow/smoke.sh (permanent)
