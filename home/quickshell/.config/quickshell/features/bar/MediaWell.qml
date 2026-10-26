@@ -17,6 +17,7 @@ Item {
     property string container_style: "inset"
     readonly property var look: MediaSettings.container_look(root.container_style)
     property bool show_art: true
+    property bool show_button: true
     property bool show_title: true
     property bool show_artist: true
     property string text_layout: "inline"
@@ -50,7 +51,7 @@ Item {
     readonly property real right_width: root.right_mode === "hide" ? 0 : root.right_mode === "cava" ? 64 : 76
 
     implicitWidth: root.vertical ? root.cell + root.pad * 2 : Math.max(root.compact ? 0 : root.base_width, content.implicitWidth + root.pad * 2)
-    implicitHeight: root.vertical ? root.cell * (root.show_art ? 2 : 1) + (root.show_art ? content.rowSpacing : 0) + root.pad * 2 : 24
+    implicitHeight: root.vertical ? root.cell * MediaSettings.vertical_cells() + (MediaSettings.vertical_cells() > 1 ? content.rowSpacing : 0) + root.pad * 2 : 24
 
     property font font
     font.family: Style.bar_font_family
@@ -106,6 +107,7 @@ Item {
 
         Rectangle {
             id: button
+            visible: root.show_button
             Layout.preferredWidth: root.art_size
             Layout.preferredHeight: root.art_size
             Layout.alignment: Qt.AlignVCenter

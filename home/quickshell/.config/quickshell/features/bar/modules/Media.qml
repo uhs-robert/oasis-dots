@@ -91,6 +91,7 @@ BarModule {
         right_mode: root.right_mode
         container_style: MediaSettings.container_style
         show_art: MediaSettings.show_art
+        show_button: MediaSettings.show_button
         show_title: MediaSettings.show_title
         show_artist: MediaSettings.show_artist
         text_layout: MediaSettings.text_layout

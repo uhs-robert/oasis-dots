@@ -37,6 +37,7 @@ RowsSection {
         Object.assign({ label: "Island styles", desc: "Where media shows in island bar styles. Strip and frame styles always show the module." }, root.choice("island_mode")),
         Object.assign({ label: "Container", desc: "How the media module sits in the bar: pressed in, outlined, lifted, or none to draw it straight on the bar." }, root.choice("container_style")),
         Object.assign({ label: "Show album art", desc: "Show the album art thumbnail in the media module. Off leaves the play/pause button first." }, root.on_off("show_art")),
+        Object.assign({ label: "Show play/pause", desc: "Show the play/pause button in the media module. Off drops it and its gap; middle-click still toggles playback." }, root.on_off("show_button")),
         Object.assign({ label: "Show title", desc: "Show the track title in the media module." }, root.on_off("show_title")),
         Object.assign({ label: "Show artist", desc: "Show the artist in the media module." }, root.on_off("show_artist")),
         Object.assign({ label: "Text layout", desc: "Artist and title on one line, or the title with a smaller artist line under it." }, root.choice("text_layout")),

@@ -50,9 +50,17 @@ function right_side(forced, setting, on_ac, battery_fallback) {
 }
 
 // Whether the module has anything to show: any active player, with or without metadata (a radio stream has none), but
-// not as the `cava` entry on a side bar, which keeps its cava tail instead.
-function well_shown(has_player, vertical, is_cava_entry) {
-    return !!has_player && !(vertical && is_cava_entry);
+// not as the `cava` entry on a side bar, which keeps its cava tail instead. A side bar draws only the art and the
+// button, so with both off the entry hides rather than leave an empty island.
+function well_shown(has_player, vertical, is_cava_entry, show_art, show_button) {
+    if (!has_player) return false;
+    if (!vertical) return true;
+    return !is_cava_entry && vertical_cells(show_art, show_button) > 0;
+}
+
+// How many square cells a side bar's well stacks: the art and the play/pause button, each only when shown.
+function vertical_cells(show_art, show_button) {
+    return (show_art ? 1 : 0) + (show_button ? 1 : 0);
 }
 
 // Whether the clock-island strip is asked for: a `cava` entry always did, and a `media` entry does too, since in the
