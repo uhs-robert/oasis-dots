@@ -21,6 +21,62 @@ function edge_cava_allowed(island_style, mode) {
 }
 
 // Split keeps the strip under the clock, so the module shows the position instead of a second visualizer.
-function module_position_only(island_style, mode) {
-    return island_style && mode === "split";
+// Lualine draws its own cava at the end of section c, so a listed media module never adds a second one there.
+function module_position_only(island_style, mode, lualine) {
+    return !!lualine || (island_style && mode === "split");
+}
+
+// What the strip under the clock island draws: "cava", "position" (a progress line) or "none". On battery cava is too
+// costly, so island styles follow `battery_fallback`; any other layout draws nothing there, as before.
+function edge_strip(island_style, mode, on_ac, fallback) {
+    if (!edge_cava_allowed(island_style, mode)) return "none";
+    if (on_ac) return "cava";
+    return island_style && fallback === "position" ? "position" : "none";
+}
+
+// What a wheel notch over the media module does. The right side (cava or position) always seeks, so seeking needs no
+// modifier key: a layer-shell bar never holds keyboard focus and so never sees Shift. Anywhere else the wheel follows
+// `scroll_action`: "volume", "skip" or "none".
+function scroll_effect(over_right_side, scroll_action) {
+    if (over_right_side) return "seek";
+    return scroll_action === "skip" ? "skip" : scroll_action === "none" ? "none" : "volume";
+}
+
+// Which right side the module draws. A forced one (split mode, lualine) wins; otherwise the setting decides for the
+// `media` and `cava` entries alike. On battery cava gives way to `battery_fallback`.
+function right_side(forced, setting, on_ac, battery_fallback) {
+    const wanted = forced !== "" ? forced : setting;
+    return wanted === "cava" && !on_ac ? battery_fallback : wanted;
+}
+
+// Whether the module has anything to show: any active player, with or without metadata (a radio stream has none), but
+// not as the `cava` entry on a side bar, which keeps its cava tail instead. A side bar draws only the art and the
+// button, so with both off the entry hides rather than leave an empty island.
+function well_shown(has_player, vertical, is_cava_entry, show_art, show_button) {
+    if (!has_player) return false;
+    if (!vertical) return true;
+    return !is_cava_entry && vertical_cells(show_art, show_button) > 0;
+}
+
+// How many square cells a side bar's well stacks: the art and the play/pause button, each only when shown.
+function vertical_cells(show_art, show_button) {
+    return (show_art ? 1 : 0) + (show_button ? 1 : 0);
+}
+
+// Whether the clock-island strip is asked for: a `cava` entry always did, and a `media` entry does too, since in the
+// default island mode that entry is dropped and would otherwise leave nothing at all.
+function strip_listed(lists_cava, lists_media) {
+    return !!lists_cava || !!lists_media;
+}
+
+// How the media container is drawn: `fill` (shadow, wash or none), `border` (strong, soft or none) and whether the
+// pressed-in top shadow shows. "none" draws nothing, so the contents sit on the bar; the padding is the caller's and
+// does not change with the style. An unknown style acts as inset.
+function container_look(container_style) {
+    switch (container_style) {
+    case "border": return { fill: "none", border: "strong", top_shadow: false };
+    case "raised": return { fill: "wash", border: "none", top_shadow: false };
+    case "none": return { fill: "none", border: "none", top_shadow: false };
+    default: return { fill: "shadow", border: "soft", top_shadow: true };
+    }
 }
