@@ -9,6 +9,6 @@ One list of what the desktop can do, independent of the tool that does it, and `
 
 `oasis-djinn` is built, not stowed: the installer runs `build_djinn` (`lib/install/djinn.sh`) after stowing, which `cargo install`s the crate under `~/.local/share/oasis-djinn-rs` and links `~/.local/bin/oasis-djinn`; `just djinn-build` does the same by hand. A machine without cargo (`--no-cargo`) gets no `oasis-djinn` until Rust is installed.
 
-Add an action: an entry in `actions.json`, an entry with the same id in `bindings/quickshell.json`, then `lib/check.sh --only registry,djinn-rust`. The step fails a duplicate id, a missing or stray binding, and an IPC function or script that does not exist. Hyprland binds do not read the manifest yet.
+Add an action: an entry in `actions.json`, an entry with the same id in `bindings/quickshell.json`, then `lib/check.sh --only registry,djinn-rust`. The step fails a duplicate id, a missing or stray binding, and an IPC function or script that does not exist. `tools.lua` declares its binds with `Bind.action(id)`, which reads `actions.json` at config load (`~/.config/oasis-djinn`, so the package must be stowed) and raises on an unknown id; a key change in the manifest moves the bind.
 
 Try it: `oasis-djinn zoom.toggle`.

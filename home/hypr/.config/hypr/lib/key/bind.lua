@@ -1,10 +1,14 @@
 --- Key binding helpers built on top of hl.bind.
 
 local Config = require("config")
+local Json = require("lib.json") ---@class Json
+local Scripts = require("lib.scripts") ---@class Scripts
 
 --- @class BindLib
 local Bind = {
   leader = Config.leader,
+  --- Folder holding actions.json; nil means oasis-djinn's own lookup ($OASIS_DJINN_CONFIG_DIR, else ~/.config/oasis-djinn).
+  manifest_dir = nil,
 }
 
 -- hl.unbind drops a key from every submap (hyprwm/Hyprland#15040), so handles are kept per submap
@@ -133,6 +137,75 @@ end
 function Bind.leader_fn(keys, f, desc, opts, ...)
   local args = { ... }
   Bind.leader_key(keys, function() f(table.unpack(args)) end, desc, opts)
+end
+
+--- @type table<string, table>|nil action id -> manifest entry, read on first use
+local manifest
+
+--- Forget the cached manifest so the next Bind.action rereads it.
+function Bind.reload_manifest() manifest = nil end
+
+--- @return table<string, table>
+local function load_manifest()
+  if manifest then return manifest end
+
+  local dir = Bind.manifest_dir
+    or os.getenv("OASIS_DJINN_CONFIG_DIR")
+    or ((os.getenv("HOME") or "") .. "/.config/oasis-djinn")
+  local path = dir .. "/actions.json"
+  local file, open_err = io.open(path, "r")
+  -- Raise rather than skip: a quietly missing bind is worse than a config that says why it did not load.
+  if not file then
+    error("Bind.action: cannot read " .. path .. " (" .. tostring(open_err) .. "); is oasis-djinn stowed?", 0)
+  end
+  local text = file:read("a")
+  file:close()
+
+  local decoded, parsed = pcall(Json.decode, text)
+  if not decoded or type(parsed) ~= "table" or type(parsed.actions) ~= "table" then
+    error("Bind.action: " .. path .. " is not a valid actions manifest", 0)
+  end
+
+  manifest = {}
+  for _, entry in ipairs(parsed.actions) do
+    manifest[entry.id] = entry
+  end
+  return manifest
+end
+
+--- Register an action from the oasis-djinn manifest: its key, extra keys and label come from there, and the
+--- bind runs `oasis-djinn <id>`. Raises on an unknown id.
+--- @param id   string
+--- @param opts table|nil  `key` replaces the manifest's main key (a key string, or `{key, leader?, universal?}`); the
+---                        extra keys and label stay. Everything else (e.g. `submap_universal`) goes to hl.bind and
+---                        beats the manifest's `universal` flag.
+function Bind.action(id, opts)
+  local entry = load_manifest()[id]
+  if not entry then error("Bind.action: unknown action id '" .. tostring(id) .. "'", 0) end
+
+  opts = opts or {}
+  local main_key = entry.key
+  if type(opts.key) == "string" then
+    main_key = { key = opts.key, leader = false, universal = entry.key.universal }
+  elseif opts.key ~= nil then
+    main_key = opts.key
+  end
+
+  local keys = { main_key }
+  for _, extra in ipairs(entry.extra_keys or {}) do
+    table.insert(keys, extra)
+  end
+
+  local run = hl.dsp.exec_cmd(Scripts.djinn .. " " .. id)
+  for _, spec in ipairs(keys) do
+    local bind_opts = {}
+    for k, v in pairs(opts) do
+      if k ~= "key" then bind_opts[k] = v end
+    end
+    if bind_opts.submap_universal == nil and spec.universal then bind_opts.submap_universal = true end
+    local register = spec.leader and Bind.leader_key or Bind.key
+    register(spec.key, run, entry.label, bind_opts)
+  end
 end
 
 --- Register multiple binds from a row table.

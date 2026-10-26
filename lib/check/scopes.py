@@ -101,7 +101,8 @@ PATH_SCOPES = [
     ("home/oasis-djinn/tests/*", "djinnrust"),
     ("home/oasis-djinn/Cargo.*", "djinnrust"),
     ("home/oasis-djinn/rustfmt.toml", "djinnrust"),
-    ("home/oasis-djinn/.config/*", "djinnrust"),
+    # Hyprland binds read actions.json through Bind.action, so a manifest edit reaches the Lua steps too.
+    ("home/oasis-djinn/.config/*", "djinnrust lua"),
     # Only the Rust step: the voxcmd suites run with VOXCMD_BIN unset, so they exercise the bash voxcmd and never the
     # crate. Snapshots and the generated goldens are read only by cargo test; the other fixtures are read by both. An
     # integration file also reaches the bash voxcmd, and the crate through tests/integrations.rs.
@@ -294,6 +295,7 @@ STEPS = [
     Step("polled-file", "polledfile", "bash ./home/quickshell/tests/polled_file/run.sh", ("qs", "python3"), skip_reason="the polled-file tests need qs and python3"),
     Step("restarting-stream", "restartstream", "bash ./home/quickshell/tests/restarting_stream/run.sh", ("qs", "python3"), skip_reason="the restarting-stream tests need qs and python3"),
     Step("frame-lone-flush", "lua", "lua ./home/hypr/tests/frame_lone_flush.lua", ("lua",), skip_reason="the frame tests need lua"),
+    Step("bind-action", "lua", "lua ./home/hypr/tests/bind_action.lua", ("lua",), skip_reason="the bind tests need lua"),
     Step("input-vectors-lua", "inputvec", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
     Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
