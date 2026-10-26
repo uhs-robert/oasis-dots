@@ -35,9 +35,7 @@ function bump_of(item) {
     return 0;
 }
 
-// `base` moved `amount` of the way to `toward`, as [r, g, b, a]. Only when the screen is bumped,
-// so 1080p and smaller render the style's tokens untouched. Computed here rather than as a style token to keep it out of shared files.
-function lifted(base, toward, amount, bump) {
-    const t = bump > 0 ? amount : 0;
-    return [base.r + (toward.r - base.r) * t, base.g + (toward.g - base.g) * t, base.b + (toward.b - base.b) * t, base.a + (toward.a - base.a) * t];
+// `base` moved `amount` of the way to `toward`, as [r, g, b, a]. Computed here rather than as a style token to keep it out of shared files.
+function lifted(base, toward, amount) {
+    return [base.r + (toward.r - base.r) * amount, base.g + (toward.g - base.g) * amount, base.b + (toward.b - base.b) * amount, base.a + (toward.a - base.a) * amount];
 }

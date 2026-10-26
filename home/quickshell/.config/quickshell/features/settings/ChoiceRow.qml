@@ -14,7 +14,7 @@ MenuRow {
     readonly property int bump: SScale.bump_of(root)
     // Unselected values lean toward the label color so they read on dark panels.
     readonly property color value_fg: {
-        const c = SScale.lifted(root.st.text_dim, root.st.text_fg, 0.6, root.bump);
+        const c = SScale.lifted(root.st.text_dim, root.st.text_fg, 0.6);
         return Qt.rgba(c[0], c[1], c[2], c[3]);
     }
 
