@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# Runs actions on the live Hyprland. Today: `hypr-act list`, the JSON list of every defined action
-# ({"version":1,"actions":[...]}, shape in lib/act.lua `Act.list_json`).
+# Runs actions on the live Hyprland.
+#   hypr-act list              the JSON list of every defined action ({"version":1,"actions":[...]}, shape in
+#                              lib/act.lua `Act.list_json`)
+#   hypr-act <id> [args...]    performs the action by id (`Act.run_cli`); silent on success
 #
 # The list comes from the running session, so it holds the machine's Config and custom/. On failure stdout stays
-# empty and one line goes to stderr; callers treat any non-zero code as "no actions". Exit codes:
+# empty and a message goes to stderr; callers treat any non-zero code as "no actions". Exit codes:
 #   2  bad usage
 #   3  no Hyprland answered `hyprctl version` within 3 s (not running)
-#   4  Hyprland answers but the list could not be read: the eval failed, or did not finish within HYPR_ACT_TIMEOUT
-#      seconds (default 3), or wrote nothing (for example a config that failed to load)
+#   4  list only: Hyprland answers but the list could not be read: the eval failed, or did not finish within
+#      HYPR_ACT_TIMEOUT seconds (default 3), or wrote nothing (for example a config that failed to load)
+#   5  run only: the action failed (unknown id, bad argument, Lua error; hyprctl's message is on stderr) or did not
+#      finish within HYPR_ACT_TIMEOUT seconds. A config that failed to load is 5 too: its actions are not defined,
+#      so the id is unknown. 4 stays for a list that cannot be read, which has no action to blame.
 # Nothing is cached, so a caller never reads a list the desktop no longer has.
 set -u
 
@@ -53,9 +58,45 @@ list_actions() {
   cat "$list_dir/list"
 }
 
+# `hyprctl eval` takes Lua source, so each word becomes a long string. Its level exceeds the longest run of `=` in any
+# word, so no word can close it, and a newline follows the opener because Lua drops the first one: a word that starts
+# with a newline survives.
+long_string() {
+  local rest=$1 level=5 run bar
+  while [[ $rest =~ =+ ]]; do
+    run=${BASH_REMATCH[0]}
+    ((${#run} >= level)) && level=$((${#run} + 1))
+    rest=${rest#*"$run"}
+  done
+  printf -v bar '%*s' "$level" ''
+  printf '[%s[\n%s]%s]' "${bar// /=}" "$1" "${bar// /=}"
+}
+
+run_action() {
+  local instance chunk word out status
+  instance=$(find_instance) || not_running
+  export HYPRLAND_INSTANCE_SIGNATURE=$instance
+  chunk="require('lib.act').run_cli($(long_string "$1"), {"
+  shift
+  for word in "$@"; do
+    chunk+="$(long_string "$word"),"
+  done
+  chunk+="})"
+  # Stdin and stdout are not the caller's: a key or voice command that backgrounds this must not hang on them.
+  out=$(timeout "$eval_timeout" hyprctl eval "$chunk" </dev/null 2>&1)
+  status=$?
+  if ((status != 0)); then
+    [[ $status -eq 124 ]] && out="did not finish within ${eval_timeout} s"
+    echo "hypr-act: ${out:-the action failed}" >&2
+    exit 5
+  fi
+}
+
 if [[ ${1:-} == list && $# -eq 1 ]]; then
   list_actions
+elif [[ $# -ge 1 && -n $1 && $1 != -* && $1 != list ]]; then
+  run_action "$@"
 else
-  echo "usage: hypr-act list" >&2
+  echo "usage: hypr-act list | hypr-act <id> [args...]" >&2
   exit 2
 fi
