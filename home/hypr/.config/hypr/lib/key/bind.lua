@@ -188,14 +188,15 @@ local function load_manifest()
   return manifest
 end
 
---- Single-quote a word for the shell unless it is plain; a leading `~/` stays outside the quotes so the shell expands it.
+--- Single-quote a word for the shell unless it is plain. Only a leading `~/` stays outside the quotes so the shell
+--- expands it, as oasis-djinn does; any other `~` (`~`, `~user`) is quoted because the runner leaves it literal.
 --- @param word string
 --- @return string
 local function shell_word(word)
-  if word:match("^[%w_%-%./=:,+@~]+$") then return word end
   local home, rest = word:match("^(~/)(.*)$")
-  local quoted = "'" .. (rest or word):gsub("'", "'\\''") .. "'"
-  return (home or "") .. quoted
+  local body = rest or word
+  if body:match("^[%w_%-%./=:,+@]+$") then return word end
+  return (home or "") .. "'" .. body:gsub("'", "'\\''") .. "'"
 end
 
 --- The command that performs an action without the runner: what oasis-djinn would run from bindings/quickshell.json.
