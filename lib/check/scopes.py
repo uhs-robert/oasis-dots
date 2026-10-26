@@ -152,7 +152,7 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/applications/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
     ("home/voxcmd/tests/fixtures/firefox/live-tabs.json", VOX_CLICK),
     ("home/voxcmd/tests/fixtures/firefox/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
-    ("home/voxcmd/tests/fixtures/monitors.json", VOX_PHRASES),
+    ("home/voxcmd/tests/fixtures/monitors.json", " ".join([VOX_PHRASES, VOX_CLICK])),
     ("home/voxcmd/tests/fixtures/workspaces.json", VOX_PHRASES),
     ("home/voxcmd/tests/fixtures/pw-dump.json", " ".join([VOX_PHRASES, VOX_CLICK])),
     ("home/voxcmd/tests/fixtures/ocr.tsv", VOX_PHRASES),
