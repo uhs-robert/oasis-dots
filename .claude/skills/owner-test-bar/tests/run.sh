@@ -406,13 +406,19 @@ manifest_dir=\${all_args#*--manifest-path }
 manifest_dir=\$(dirname "\${manifest_dir%% *}")
 # Never write outside the test's temp dir, whatever the arguments were.
 [[ \$manifest_dir == "$root"/* ]] || { echo "stub cargo: refusing \$manifest_dir" >&2; exit 1; }
-mkdir -p "\$manifest_dir/target/release"
+# Like cargo: --target-dir wins over CARGO_TARGET_DIR, which wins over the crate's own target.
+out_dir=\$manifest_dir/target
+[[ -z \${CARGO_TARGET_DIR:-} ]] || out_dir=\$CARGO_TARGET_DIR
+[[ \$all_args != *--target-dir* ]] || { out_dir=\${all_args#*--target-dir }; out_dir=\${out_dir%% *}; }
+[[ -z \${FAKE_CARGO_NO_BIN:-} ]] || exit 0
+[[ \$out_dir == "$root"/* ]] || { echo "stub cargo: refusing \$out_dir" >&2; exit 1; }
+mkdir -p "\$out_dir/release"
 {
   echo '#!/usr/bin/env bash'
   echo 'echo "rust voxcmd \$*" >>"$rr_calls"'
   echo 'echo "result: rust"'
-} >"\$manifest_dir/target/release/voxcmd"
-chmod +x "\$manifest_dir/target/release/voxcmd"
+} >"\$out_dir/release/voxcmd"
+chmod +x "\$out_dir/release/voxcmd"
 STUB
 chmod +x "$rr_stubs/cargo"
 # rrx <function> <args>...: the sourced script against the fake repo and HOME; the stubs go first on PATH.
@@ -440,6 +446,20 @@ check "a failed build dies, says nothing was swapped, and leaves main linked" "[
 check "the failed build ran before Hyprland and the manifest were touched" "! grep -q '_swap' '$rr_calls'"
 check "the failed build leaves the voxcmd status on main" "[[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
 
+# A cargo that builds elsewhere (CARGO_TARGET_DIR in the environment) must not leave a dangling link.
+rm -f "$rr_calls"
+out=$(CARGO_TARGET_DIR=$root/elsewhere CARGO_BUILD_TARGET=x rr_swap_cmd)
+code=$?
+check "an environment target dir does not move the build output, and the link is real" "[[ $code == 0 && -x $rr_dir/home/voxcmd/target/release/voxcmd && ! -e $root/elsewhere ]] && rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd'"
+rrx voxcmd_restore >/dev/null
+rm -rf "$rr_dir/home/voxcmd/target"
+rm -f "$bars_dir/.owner"
+rm -f "$rr_calls"
+out=$(FAKE_CARGO_NO_BIN=1 rr_swap_cmd)
+code=$?
+check "a build that produces no binary dies before anything swaps" "[[ $code != 0 ]] && grep -q 'cargo built no' <<<\"\$out\" && ! grep -q '_swap' '$rr_calls' && rr_link_is voxcmd '$rr_main_bin'"
+rm -f "$bars_dir/.owner"
+
 # A failed build must not leave a claim for a bar that was never swapped in.
 check "a failed build leaves no owner claim" "[[ ! -e $bars_dir/.owner ]]"
 
@@ -457,7 +477,7 @@ rm -f "$rr_calls"
 out=$(rr_swap_cmd)
 code=$?
 show "$out"
-check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml hash=.+' '$rr_calls'"
+check "the swap builds with cargo release, locked, on the bar's manifest, with a git hash" "[[ $code == 0 ]] && grep -qE '^cargo build --release --locked --manifest-path $rr_dir/home/voxcmd/Cargo.toml --target-dir $rr_dir/home/voxcmd/target hash=.+' '$rr_calls'"
 check "the build runs before the Hyprland and manifest swap" "[[ \$(grep -n '^cargo' '$rr_calls' | head -1 | cut -d: -f1) -lt \$(grep -n '_swap' '$rr_calls' | head -1 | cut -d: -f1) ]]"
 check "voxcmd links into the bar's built binary" "rr_link_is voxcmd '$rr_dir/home/voxcmd/target/release/voxcmd'"
 check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-alarm '$rr_dir/home/voxcmd/.local/bin/voxcmd-alarm' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"

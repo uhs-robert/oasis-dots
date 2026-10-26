@@ -432,10 +432,14 @@ voxcmd_build_rust() {
   command -v cargo >/dev/null || die "cargo is not installed; cannot build the Rust voxcmd in $dir"
   hash=$(git -C "$dir" describe --always --dirty --abbrev=9 --exclude='*')
   echo "voxcmd: building the Rust crate in $dir"
-  VOXCMD_GIT_HASH=$hash cargo build --release --locked --manifest-path "$dir/$voxcmd_rel/Cargo.toml" >"$dir.cargo.log" 2>&1 || {
+  # The output is pinned: CARGO_TARGET_DIR, CARGO_BUILD_TARGET or a cargo config would put the binary elsewhere and
+  # leave the link dangling.
+  env -u CARGO_TARGET_DIR -u CARGO_BUILD_TARGET VOXCMD_GIT_HASH="$hash" cargo build --release --locked \
+    --manifest-path "$dir/$voxcmd_rel/Cargo.toml" --target-dir "$dir/$voxcmd_rel/target" >"$dir.cargo.log" 2>&1 || {
     tail -n 25 "$dir.cargo.log" >&2
     die "cargo build fails in $dir (full output $dir.cargo.log); nothing was swapped"
   }
+  [[ -x $(voxcmd_rust_bin "$dir") ]] || die "cargo built no $(voxcmd_rust_bin "$dir") (see $dir.cargo.log); nothing was swapped"
   rm -f "$dir.cargo.log"
 }
 
