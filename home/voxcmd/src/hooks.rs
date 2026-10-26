@@ -92,6 +92,13 @@ pub struct HookRun {
 }
 
 impl HookRun {
+    /// A lookup answered as a yield without starting the hook, since its surface is closed (`Dispatch`).
+    fn skipped_closed(integration: &Integration, action: &str) -> Self {
+        let mut run = Self::unhooked(integration, action, "(not run: surface closed)");
+        run.lookup = Lookup::Yield;
+        run
+    }
+
     /// A lookup that did not run a hook.
     pub fn unhooked(integration: &Integration, action: &str, command: &str) -> Self {
         Self {
@@ -546,12 +553,23 @@ impl Hooks for Dispatch {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         match integration.candidates_for(query.action) {
             Some(Candidates::Builtin(_)) => self.builtin.candidates(integration, query),
+            _ if surface_closed(integration) => HookRun::skipped_closed(integration, query.action),
             _ => self.shell.candidates(integration, query),
         }
     }
 
     fn surface_open(&self, integration: &Integration) -> bool {
         self.shell.surface_open(integration)
+    }
+}
+
+/// Whether the integration has a bar surface that is closed with no voice session in its mode. Its hooks read that
+/// state file and yield when it says closed, so a bash start would only learn what these two small reads know. The
+/// session counts as open because the bar writes the file a moment after the mode opens.
+fn surface_closed(integration: &Integration) -> bool {
+    match &integration.surface {
+        Some(Surface::StateFile(path)) => !state_file_open(path) && !crate::session::mode_open(&integration.stem),
+        None => false,
     }
 }
 
