@@ -28,6 +28,23 @@ Singleton {
     property bool grab_keyboard: false
     // Popup name to reopen on Backspace, e.g. "start" for popups opened from the Start menu.
     property string back_name: ""
+    // The popup the pointer is over right now (Popup.qml reports it), so a module's hover helper can tell the pointer moving onto its popup from leaving.
+    property string hover_name: ""
+    // A hidden window sends no leave, so each open starts from "not over it".
+    onOpen_nameChanged: {
+        root.hover_name = "";
+        root.keyboard_off = false;
+    }
+    // A press inside the open popup: a hover-opened popup is then pinned (HoverPopup listens).
+    signal popup_pressed(string name)
+    function set_popup_hover(name, hovered) {
+        if (hovered) root.hover_name = name;
+        else if (root.hover_name === name) root.hover_name = "";
+    }
+
+    // A hover-opened popup takes no keyboard until it is pinned (see HoverPopup); every other open takes it as before.
+    property bool keyboard_off: false
+
     // The Power action the "power" popup asks to confirm.
     property string power_action: ""
 
