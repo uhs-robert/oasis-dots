@@ -4,7 +4,7 @@ names something that does not exist.
 
   - actions.json and bindings/quickshell.json (home/oasis-djinn/.config/oasis-djinn) validate against specs/schema/actions.yaml
     and bindings.yaml. The step fails, not skips, without check-jsonschema, so a manifest is never passed unread.
-  - action ids and param names are unique; params with a default come last, and an enum default is one of its values; every action has a binding and every binding an action.
+  - action ids and param names are unique; params with a default come last, and an enum default is one of its values, an int default is a whole i64; every action has a binding and every binding an action.
   - an `ipc` binding names a typed function of a real IpcHandler (read by qml_ipc.declared, the parser of `qml-ipc`),
     and every `{param}` in a binding is a param of its action.
   - a `command` binding whose program is `~/<path>` names a file some stow package ships as `home/<pkg>/<path>`.
@@ -59,6 +59,9 @@ def param_findings(file, action):
     for param in action["params"]:
         if "default" in param:
             defaulted = defaulted or param["name"]
+            if param["type"] == "int" and isinstance(param["default"], float):
+                # JSON Schema calls 1.0 an integer; oasis-djinn parses an int as i64 and refuses "1.0".
+                found.append(f"{file}: {action['id']} param {param['name']} default {param['default']!r} must be written as an integer, without a fraction or exponent")
             if param["type"] == "enum" and param["default"] not in param["values"]:
                 found.append(f"{file}: {action['id']} param {param['name']} default {param['default']!r} is not one of its values")
             if param["type"] == "string" and param["default"].startswith("-"):

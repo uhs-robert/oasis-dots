@@ -277,3 +277,15 @@ fn a_required_param_after_a_defaulted_one_exits_2() {
     sandbox.with_action(params, r#"["{a}", "{b}"]"#);
     sandbox.rejected(&["t.x", "2"], "required param b follows");
 }
+
+#[test]
+fn an_int_default_that_is_not_a_whole_i64_exits_2() {
+    let sandbox = Sandbox::new("int-default");
+    for default in ["1.0", "9223372036854775808"] {
+        sandbox.with_action(
+            &format!(r#"[{{"name": "n", "type": "int", "default": {default}}}]"#),
+            r#"["{n}"]"#,
+        );
+        sandbox.rejected(&["t.x"], "default");
+    }
+}

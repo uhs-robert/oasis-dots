@@ -60,7 +60,7 @@ $defs:
           not: {required: [values]}
       # A default is the JSON type of its param, so omitting the param cannot run what the same word would reject.
       - if: {properties: {type: {const: int}}}
-        then: {properties: {default: {type: integer}}}
+        then: {properties: {default: {type: integer, minimum: -9223372036854775808, maximum: 9223372036854775807}}}
       - if: {properties: {type: {const: float}}}
         then: {properties: {default: {type: number}}}
       - if: {properties: {type: {enum: [string, enum]}}}
