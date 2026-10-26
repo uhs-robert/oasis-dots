@@ -17,16 +17,20 @@ Singleton {
         battery_fallback: ["position", "hide"],
         scroll_action: ["volume_seek", "skip", "none"],
         island_mode: ["cava_under_island", "module_only", "split"],
-        text_layout: ["inline", "stacked"]
+        text_layout: ["inline", "stacked"],
+        container_style: ["inset", "border", "raised", "none"]
     })
     readonly property var ranges: ({ max_chars: [8, 60], text_scroll_speed: [10, 120] })
-    readonly property var bools: ["cava_line", "show_title", "show_artist", "text_scroll"]
+    readonly property var bools: ["cava_line", "show_art", "show_button", "show_title", "show_artist", "text_scroll"]
     readonly property var defaults: ({
         right_side_mode: "cava",
         battery_fallback: "position",
         scroll_action: "volume_seek",
         cava_line: true,
         island_mode: "cava_under_island",
+        container_style: "inset",
+        show_art: true,
+        show_button: true,
         show_title: true,
         show_artist: true,
         text_layout: "inline",
@@ -41,6 +45,9 @@ Singleton {
     readonly property string scroll_action: root.values.scroll_action
     readonly property bool cava_line: root.values.cava_line
     readonly property string island_mode: root.values.island_mode
+    readonly property string container_style: root.values.container_style
+    readonly property bool show_art: root.values.show_art
+    readonly property bool show_button: root.values.show_button
     readonly property bool show_title: root.values.show_title
     readonly property bool show_artist: root.values.show_artist
     readonly property string text_layout: root.values.text_layout
@@ -68,8 +75,36 @@ Singleton {
         return Logic.edge_cava_allowed(island_style, root.island_mode);
     }
 
-    function module_position_only(island_style) {
-        return Logic.module_position_only(island_style, root.island_mode);
+    function scroll_effect(over_right_side) {
+        return Logic.scroll_effect(over_right_side, root.scroll_action);
+    }
+
+    function right_side(forced, on_ac) {
+        return Logic.right_side(forced, root.right_side_mode, on_ac, root.battery_fallback);
+    }
+
+    function vertical_cells() {
+        return Logic.vertical_cells(root.show_art, root.show_button);
+    }
+
+    function container_look(container_style) {
+        return Logic.container_look(container_style);
+    }
+
+    function well_shown(has_player, vertical, is_cava_entry) {
+        return Logic.well_shown(has_player, vertical, is_cava_entry, root.show_art, root.show_button);
+    }
+
+    function strip_listed(lists_cava, lists_media) {
+        return Logic.strip_listed(lists_cava, lists_media);
+    }
+
+    function edge_strip(island_style, on_ac) {
+        return Logic.edge_strip(island_style, root.island_mode, on_ac, root.battery_fallback);
+    }
+
+    function module_position_only(island_style, lualine) {
+        return Logic.module_position_only(island_style, root.island_mode, lualine);
     }
 
     // Moved here from style.json: Style still reads the old key but no longer writes it. A value already in media.json wins.
