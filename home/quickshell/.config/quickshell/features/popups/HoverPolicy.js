@@ -28,6 +28,13 @@ function inside_changed(mode, inside, nothing_open) {
     return result(mode, "stop", "keep", "none");
 }
 
+// The last open popup closed while the pointer is still on this module (it came straight from another module): start
+// the open delay now, since no `inside` change will follow.
+function nothing_open_now(mode, inside) {
+    if (mode === "idle" && inside) return result("pending", "start", "stop", "none");
+    return result(mode, "keep", "keep", "none");
+}
+
 // The open delay ran out: the pointer must still be there and nothing else open.
 function open_elapsed(mode, inside, nothing_open) {
     if (mode !== "pending") return result(mode, "keep", "keep", "none");
