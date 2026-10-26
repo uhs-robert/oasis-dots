@@ -18,12 +18,15 @@ BarModule {
     implicitWidth: root.shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
 
-    RowLayout {
+    ModuleRow {
         id: row
+        vertical: root.vertical
         spacing: 2
 
         BarIcon {
-            Layout.alignment: Qt.AlignVCenter
+            id: chevron
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            ink_centre: root.vertical
             name: "tray"
             variant: "chevron"
             glyph: ""
@@ -37,12 +40,24 @@ BarModule {
 
         Rectangle {
             Layout.alignment: Qt.AlignTop
-            visible: root.needs_attention
+            visible: root.needs_attention && !root.vertical
             implicitWidth: 5
             implicitHeight: 5
             radius: 2.5
             color: Theme.theme_accent
         }
+    }
+
+    // A side bar's column has no room beside the chevron, so the dot sits on its top right, inside the column.
+    // A child of the module, not of the chevron, which turns when the popup opens.
+    Rectangle {
+        visible: root.needs_attention && root.vertical
+        x: row.x + chevron.x + chevron.width - width
+        y: row.y + chevron.y
+        width: 5
+        height: 5
+        radius: 2.5
+        color: Theme.theme_accent
     }
 
     MouseArea {

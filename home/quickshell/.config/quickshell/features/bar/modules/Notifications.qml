@@ -22,12 +22,15 @@ BarModule {
         return NotificationState.dnd ? count + "\nDo not disturb" : count;
     }
 
-    RowLayout {
+    ModuleRow {
         id: row
+        vertical: root.vertical
         spacing: 4
 
         BadgedGlyph {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            vertical: root.vertical
+            cross: root.cross
             icon_name: "notifications"
             icon_variant: NotificationState.dnd ? "dnd" : "normal"
             glyph: NotificationState.dnd ? "\u{f009b}" : "\u{f009a}"

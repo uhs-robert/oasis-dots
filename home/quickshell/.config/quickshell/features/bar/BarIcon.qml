@@ -20,6 +20,8 @@ Item {
     property int glyph_size: Style.bar_glyph_size
     // For an icon whose variant flips often (volume, wifi, battery): the slot is as large as the icon's biggest sprite, so neighbours stay put.
     property bool fixed_slot: false
+    // For a column: a Nerd Font glyph's advance box is not symmetric around its ink (side bearings differ by glyph), so the glyph is shifted until its ink, not its advance box, is centred. Off on a top bar, whose glyphs stay where they were.
+    property bool ink_centre: false
 
     readonly property var rows: IconSets.sprite(Style.bar_icon_set, root.name, root.variant, root.fallback_variant)
     readonly property var vector: IconSets.vector(Style.bar_icon_set, root.name, root.variant, root.fallback_variant)
@@ -48,9 +50,17 @@ Item {
     width: implicitWidth
     height: implicitHeight
 
+    TextMetrics {
+        id: glyph_ink
+        text: root.glyph
+        font.family: root.font_family
+        font.pixelSize: root.glyph_size
+    }
+
     Text {
         id: glyph_text
         visible: !root.drawn
+        x: root.ink_centre && !root.drawn ? Math.round((root.width - glyph_ink.tightBoundingRect.width) / 2 - glyph_ink.tightBoundingRect.x) : 0
         text: root.glyph
         color: root.tint
         font.family: root.font_family

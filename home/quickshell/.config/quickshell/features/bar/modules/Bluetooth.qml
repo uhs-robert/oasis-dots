@@ -37,11 +37,13 @@ BarModule {
         return lines.join("\n");
     }
 
+    // A lone icon needs no layout: the bar's Loader centres the module either way.
     Row {
         id: row
         spacing: 6
 
         BarIcon {
+            ink_centre: root.vertical
             name: "bluetooth"
             variant: root.blocked ? "blocked" : !root.has_adapter || !root.adapter.enabled ? "off" : root.any_connected ? "connected" : "on"
             fallback_variant: "on"
