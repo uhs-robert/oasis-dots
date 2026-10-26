@@ -7,9 +7,11 @@ function free_space(screen_length, module_length, bottom_length, bottom_inset, g
     return screen_length - bottom_length - bottom_inset - gap - modules_end;
 }
 
-// The tail at full growth: what it wants, cut to the free room; none on a top or bottom bar.
-function tail_target(vertical, wanted, free) {
-    return vertical ? Math.max(0, Math.min(wanted, free)) : 0;
+// The tail at full growth: what it wants, cut to the free room; none on a top or bottom bar, and none when the room is
+// under `least`, the smallest tail that still holds a bar (anything less would be an empty tail).
+function tail_target(vertical, wanted, free, least) {
+    const target = Math.min(wanted, free);
+    return vertical && target > least ? target : 0;
 }
 
 // The tail now: follows the bars' fade (`fade` 0..1, the bars' own animated opacity) so both start and stop together.

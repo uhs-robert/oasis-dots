@@ -297,7 +297,8 @@ Item {
         // bottom island and grows with the bars' fade.
         readonly property real tail_gap: 6
         readonly property real tail_target: CavaTail.tail_target(root.vertical, 96 + center_cava.tail_gap + center_cava.along_margin,
-            CavaTail.free_space(root.height, center_island.module_length, right_island.height, root.strip_side, center_cava.tail_gap))
+            CavaTail.free_space(root.height, center_island.module_length, right_island.height, root.strip_side, center_cava.tail_gap),
+            center_cava.tail_gap + center_cava.along_margin)
         readonly property real tail_length: Math.max(0, center_cava.tail_target - center_cava.tail_gap - center_cava.along_margin)
         readonly property real tail_span: CavaTail.tail_span(center_cava.tail_target, center_cava.opacity)
         // On a side bar the bars are turned a quarter and stand on the open edge: -90 on a left bar (the open edge on the
