@@ -5,6 +5,12 @@
 # voxcmd-build` does. install.sh calls it after stowing: a build, not stow, makes the voxcmd link now, so a failed build
 # leaves whatever link was there (a stow link from before the swap) in place.
 install_voxcmd() {
+  # The binary bakes in the checkout it was built from (share dir, autostop path), which a linked worktree may outlive.
+  # Same rule as `just voxcmd-build`; a non-git DOTFILES_DIR has no worktree to refuse.
+  if [[ $(git -C "$DOTFILES_DIR" rev-parse --git-dir 2>/dev/null) != "$(git -C "$DOTFILES_DIR" rev-parse --git-common-dir 2>/dev/null)" ]]; then
+    warn "$DOTFILES_DIR is a linked worktree, so voxcmd was not built; run in the main checkout: just voxcmd-build"
+    return 0
+  fi
   if ! command -v cargo &>/dev/null; then
     warn "cargo not found, so voxcmd was not built; install Rust, then run: just voxcmd-build"
     return 0
