@@ -1,13 +1,13 @@
--- Runs lib/key/bind.lua against a stubbed `hl` and the real action manifest: Bind.action registers an action's
--- key, extra keys and label from the manifest, honours overrides, warns and skips an unknown id, and its binds
--- can be removed with Bind.unbind.
+-- Runs lib/actions/defs/tools.lua against a stubbed `hl`: the 14 tool actions register the keys, extra keys and
+-- labels the hand-written manifest has, nothing warns, they run through Cmd/Ipc argv, and their binds can be
+-- removed with Bind.unbind. The hand-written manifest is read only for the expected values, until it is deleted.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local hypr_dir = here .. "/../.config/hypr"
 package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.path
 
 package.loaded["config"] = { leader = "SUPER" }
 
-local binds, removed, timers, notices = {}, {}, {}, {}
+local binds, removed, timers, executed = {}, {}, {}, {}
 _G.hl = {
 	version = function()
 		return "0.57.0"
@@ -23,21 +23,16 @@ _G.hl = {
 	timer = function(fn)
 		timers[#timers + 1] = fn
 	end,
-	notification = {
-		create = function(opts)
-			notices[#notices + 1] = opts.text
-		end,
-	},
+	notification = { create = function() end },
 	dsp = {
 		exec_cmd = function(cmd)
-			return "exec:" .. cmd
+			return { exec = cmd }
 		end,
 	},
+	dispatch = function(dispatcher)
+		executed[#executed + 1] = dispatcher.exec
+	end,
 }
-
-local Bind = require("lib.key.bind")
-Bind.manifest_dir = here .. "/../../oasis-djinn/.config/oasis-djinn"
-Bind.djinn_bin = "/bin/sh" -- any executable file stands in for the installed runner
 
 local failures = 0
 local function check(name, ok)
@@ -47,9 +42,12 @@ local function check(name, ok)
 	end
 end
 
-local function reset()
-	binds, removed = {}, {}
-end
+local Bind = require("lib.key.bind")
+local Act = require("lib.act")
+check("Bind.action is gone", Bind.action == nil)
+
+require("lib.actions.defs.tools")
+check("no warnings", #Act.warnings == 0)
 
 local function find(key)
 	for _, entry in ipairs(binds) do
@@ -59,167 +57,60 @@ local function find(key)
 	end
 end
 
--- Key, label and command come from the manifest.
-check("Bind.action exists", type(Bind.action) == "function")
-reset()
-Bind.action("zoom.toggle")
-local zoom = find("SUPER + Z")
-check("zoom: leader key registered", zoom ~= nil and #binds == 1)
-check("zoom: label from manifest", zoom and zoom.opts.desc == "Zoom")
-check("zoom: calls the runner", zoom and zoom.action == "exec:~/.local/bin/oasis-djinn zoom.toggle")
-check("zoom: not universal", zoom and not zoom.opts.submap_universal)
+-- Every manifest entry: same key, extra keys, label and universal flag, in the manifest's order.
+local manifest_dir = here .. "/../../oasis-djinn/.config/oasis-djinn"
+local file = assert(io.open(manifest_dir .. "/actions.json"))
+local text = file:read("a")
+file:close()
+local Json = require("lib.json")
+local manifest = Json.decode(text).actions
+check("manifest has 14 actions", #manifest == 14)
 
--- A universal key stays live inside submaps; extra keys register as further binds in manifest order.
-reset()
-Bind.action("screenshot.take")
-check("extra keys: two binds", #binds == 2)
-check("extra keys: universal main key", binds[1] and binds[1].key == "Print" and binds[1].opts.submap_universal == true)
-check(
-	"extra keys: leader extra after it",
-	binds[2] and binds[2].key == "SUPER + I" and not binds[2].opts.submap_universal
-)
-check("extra keys: same label", binds[2] and binds[2].opts.desc == "Screenshot")
-check("extra keys: same command", binds[2] and binds[2].action == binds[1].action)
-
--- A plain key (no leader).
-reset()
-Bind.action("overview.open")
-check("plain key: ALT + TAB unprefixed", find("ALT + TAB") ~= nil and find("SUPER + TAB") ~= nil)
-
--- opts.key replaces the default key, not the extras or the label; other opts pass through.
-reset()
-Bind.action("zoom.toggle", { key = "CTRL + Z", submap_universal = true })
-local over = find("CTRL + Z")
-check("override: replaces the default key", over ~= nil and find("SUPER + Z") == nil and #binds == 1)
-check("override: label kept", over and over.opts.desc == "Zoom")
-check("override: submap_universal kept", over and over.opts.submap_universal == true)
-check("override: key not leaked into bind opts", over and over.opts.key == nil)
-
-reset()
-Bind.action("screenshot.take", { key = { key = "F12", leader = true } })
-check(
-	"override table: leader applied",
-	find("SUPER + F12") ~= nil and find("SUPER + I") ~= nil and find("Print") == nil
-)
-
--- opts can also drop the manifest's universal flag.
-reset()
-Bind.action("screenshot.take", { submap_universal = false })
-check("opts beat manifest universal", binds[1] and binds[1].opts.submap_universal == false)
-
--- An unknown id between two valid ones warns and skips only itself; the rest of the file still binds.
-reset()
-Bind.warnings = {}
-local ok = pcall(function()
-	Bind.action("zoom.toggle")
-	Bind.action("nope.missing")
-	Bind.action("overview.open")
-end)
-check("unknown id does not raise", ok)
-check("unknown id: both valid actions registered", find("SUPER + Z") ~= nil and find("ALT + TAB") ~= nil)
-check("unknown id: no bind for it", #binds == 3)
-check("unknown id: warning names it", #Bind.warnings == 1 and Bind.warnings[1]:find("nope.missing", 1, true) ~= nil)
-check("unknown id: one notification scheduled", #timers == 1)
-timers[1]()
-check("unknown id: notification carries the warning", #notices == 1 and notices[1]:find("nope.missing", 1, true) ~= nil)
-
--- An unreadable manifest warns once and skips every bind, rather than aborting the config.
-local saved = Bind.manifest_dir
-Bind.manifest_dir = here .. "/no-such-dir"
-Bind.reload_manifest()
-Bind.warnings = {}
-reset()
-ok = pcall(function()
-	Bind.action("zoom.toggle")
-	Bind.action("overview.open")
-end)
-check("missing manifest does not raise", ok)
-check("missing manifest: no binds", #binds == 0)
-check(
-	"missing manifest: one warning naming the file",
-	#Bind.warnings == 1 and Bind.warnings[1]:find("actions.json", 1, true) ~= nil
-)
-Bind.manifest_dir = saved
-Bind.reload_manifest()
-
--- Without the runner (install.sh -m, --no-cargo, a failed build) the bind runs the performer directly.
-local function first_exec(id)
-	Bind.reload_manifest()
-	reset()
-	Bind.action(id)
-	return binds[1].action
+local function bound_key(spec)
+	return spec.leader and ("SUPER + " .. spec.key) or spec.key
 end
-Bind.djinn_bin = here .. "/no-such-runner"
+
+local expected_binds = 0
+for _, entry in ipairs(manifest) do
+	local keys = { entry.key }
+	for _, extra in ipairs(entry.extra_keys) do
+		keys[#keys + 1] = extra
+	end
+	for _, spec in ipairs(keys) do
+		expected_binds = expected_binds + 1
+		local bind = find(bound_key(spec))
+		check(entry.id .. ": bound " .. bound_key(spec), bind ~= nil)
+		check(entry.id .. ": label " .. bound_key(spec), bind and bind.opts.desc == entry.label)
+		check(
+			entry.id .. ": universal " .. bound_key(spec),
+			bind and (bind.opts.submap_universal == true) == spec.universal
+		)
+	end
+end
+check("no other binds", #binds == expected_binds)
+
+-- The keys perform through argv: no shell word is split, and ~/ stays for the shell to expand.
+local function performed(key)
+	executed = {}
+	find(key).action()
+	return executed[1]
+end
+check("zoom: ipc call", performed("SUPER + Z") == "~/.config/hypr/scripts/qs-ipc call zoom toggle")
+check("pixel: argv", performed("SUPER + P") == "~/.config/hypr/scripts/screenshot.sh --pixel")
+check("wake: argv", performed("SUPER + CTRL + PERIOD") == "~/.local/bin/voxcmd wake toggle")
+check("passwords: bare program", performed("SUPER + CTRL + P") == "rofi-rbw")
 check(
-	"no runner: command binding",
-	first_exec("screenshot.pixel") == "exec:~/.config/hypr/scripts/screenshot.sh --pixel"
+	"overview move: ipc function",
+	performed("SUPER + SHIFT + T") == "~/.config/hypr/scripts/qs-ipc call overview move_follow"
 )
-check("no runner: ipc binding", first_exec("zoom.toggle") == "exec:~/.config/hypr/scripts/qs-ipc call zoom toggle")
-check("no runner: multi-word argv", first_exec("voice.wake") == "exec:~/.local/bin/voxcmd wake toggle")
-Bind.djinn_bin = "/bin/sh"
-check("runner present again: djinn path", first_exec("zoom.toggle") == "exec:~/.local/bin/oasis-djinn zoom.toggle")
+check("extra key runs the same action", performed("SUPER + I") == performed("Print"))
 
--- The direct command quotes what the shell would otherwise interpret; only a leading `~/` is left to expand,
--- as oasis-djinn does.
-local synthetic_dir = os.tmpname()
-os.remove(synthetic_dir)
-os.execute("mkdir -p '" .. synthetic_dir .. "/bindings'")
-local function write_synthetic(name, text)
-	local file = assert(io.open(synthetic_dir .. "/" .. name, "w"))
-	file:write(text)
-	file:close()
-end
-write_synthetic(
-	"actions.json",
-	'{"actions":[{"id":"quote.test","label":"Quote","intent":"x","params":[],'
-		.. '"key":{"key":"Q","leader":true,"universal":false},"extra_keys":[]}]}'
-)
-write_synthetic(
-	"bindings/quickshell.json",
-	'{"bindings":{"quote.test":{"kind":"command","argv":["~/bin/run","two words","it\'s","$(id)","~","~user","a~b"]}}}'
-)
-local saved_dir = Bind.manifest_dir
-Bind.manifest_dir = synthetic_dir
-Bind.djinn_bin = here .. "/no-such-runner"
-check(
-	"quoting: spaces, quote, substitution and bare tilde words are quoted",
-	first_exec("quote.test") == "exec:~/bin/run 'two words' 'it'\\''s' '$(id)' '~' '~user' 'a~b'"
-)
-Bind.manifest_dir = saved_dir
-Bind.djinn_bin = "/bin/sh"
-Bind.reload_manifest()
-os.execute("rm -rf '" .. synthetic_dir .. "'")
+-- The same ids run by name, as the bar and voice will.
+executed = {}
+Act.run("tmux.overview")
+check("run by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call tmux_overview open")
 
--- Every id tools.lua binds is in the manifest, with or without the runner.
-local tools = assert(io.open(hypr_dir .. "/keymaps/global/tools.lua")):read("a")
-local used = 0
-for id in tools:gmatch('Bind%.action%("([^"]+)"') do
-	used = used + 1
-	reset()
-	Bind.warnings = {}
-	Bind.action(id)
-	check("tools.lua id exists: " .. id, #binds > 0 and #Bind.warnings == 0)
-end
-check("tools.lua ids found", used > 0)
-Bind.djinn_bin = here .. "/no-such-runner"
-Bind.reload_manifest()
-for id in tools:gmatch('Bind%.action%("([^"]+)"') do
-	reset()
-	Bind.warnings = {}
-	Bind.action(id)
-	check("tools.lua id has a direct performer: " .. id, #binds > 0 and #Bind.warnings == 0)
-end
-Bind.djinn_bin = "/bin/sh"
-Bind.reload_manifest()
-
--- Bind.unbind removes what Bind.action registered, extras included.
--- A fresh module, so handles from the checks above are not counted.
-package.loaded["lib.key.bind"] = nil
-Bind = require("lib.key.bind")
-Bind.manifest_dir = here .. "/../../oasis-djinn/.config/oasis-djinn"
-Bind.djinn_bin = "/bin/sh"
-reset()
-Bind.action("screenshot.take")
+-- Bind.unbind removes what Act.define registered, extras included.
 check("unbind: main key", Bind.unbind("Print") == 1)
 check("unbind: leader extra", Bind.leader_unbind("I") == 1)
 check("unbind: handles removed", #removed == 2)
