@@ -251,6 +251,12 @@ function place_vertical(side, name, hole, seam, screen_width, screen_height, cov
     };
 }
 
+// The island length a popup beside a side bar lines up with: the modules, without the cava tail the center island grows
+// below them, so the tail starting or stopping does not move a popup centred on the island.
+function beside_extent(island_height, tail_span) {
+    return island_height - tail_span;
+}
+
 // The layer-shell placement of a popup beside a left or right bar, which has no frame and so no hole to hang from: the
 // window anchors to the screen edge the bar's own window reserves, and only its y needs working out. `side` is the
 // island it opens from in the vocabulary of place_vertical ("left" the top end of the column, "right" the bottom one);

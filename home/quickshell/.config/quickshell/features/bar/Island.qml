@@ -41,6 +41,7 @@ Item {
     property real capsule_inset: 0
     property color sheen_color: "transparent"
     readonly property bool capsule: root.shape === "capsule"
+    readonly property real capsule_width: root.body_span
     readonly property real capsule_radius: (root.thickness - root.capsule_inset) / 2
     // The submap tab hangs from this island.
     property bool tab_joined: false
