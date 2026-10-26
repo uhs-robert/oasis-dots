@@ -160,6 +160,8 @@ SettingsPane {
                 required property var modelData
 
                 visible: !root.picking
+                // Stacked under the rows (portrait) there is no panel beside them, so they keep the full width.
+                Layout.maximumWidth: root.popup && !root.popup.help_below ? root.popup.row_cap : Infinity
                 selected: root.live && row.index === root.cursor
                 label: row.modelData.label
                 value_text: row.modelData.text(row.modelData.value())
