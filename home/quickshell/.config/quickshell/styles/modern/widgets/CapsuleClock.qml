@@ -12,10 +12,36 @@ Row {
     // The Clock module measures zeroed digits in time_font; the floor keeps the island from resizing every second.
     property real time_floor: 0
     readonly property font time_font: time_label.font
+    // On a side bar: the time as `lines` (hours over minutes) in a column, without zone or date (the clock's tooltip has the date).
+    property bool vertical: false
+    property var lines: []
+    // The time's size on a side bar, fitted to the bar's width by the clock stack that hosts this.
+    property int line_px: Style.bar_font_size + 3
 
     spacing: 10
 
+    Column {
+        visible: root.vertical
+        anchors.verticalCenter: parent.verticalCenter
+
+        Repeater {
+            model: root.lines
+
+            Text {
+                required property string modelData
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: modelData
+                color: Style.bar_clock_fg
+                font.family: Style.bar_clock_font
+                font.pixelSize: root.line_px
+                font.weight: Font.DemiBold
+                font.features: { "tnum": 1 }
+            }
+        }
+    }
+
     Row {
+        visible: !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
 
@@ -47,7 +73,7 @@ Row {
     }
 
     Rectangle {
-        visible: !root.compact
+        visible: !root.compact && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         width: 1
         height: 14
@@ -55,7 +81,7 @@ Row {
     }
 
     Text {
-        visible: !root.compact
+        visible: !root.compact && !root.vertical
         anchors.verticalCenter: parent.verticalCenter
         text: root.date_text
         color: Style.text_dim
