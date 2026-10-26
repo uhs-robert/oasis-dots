@@ -71,6 +71,7 @@ end
 --- @param action HL.Dispatcher|function  Dispatcher or Lua function
 --- @param desc   string|HL.BindOptions|nil  Description string, or opts table (desc is then omitted)
 --- @param opts   HL.BindOptions|nil
+--- @return table[]  The handles hl.bind returned, for Bind.is_bound
 function Bind.key(keys, action, desc, opts)
   if type(desc) == "table" and opts == nil then
     opts = desc
@@ -83,9 +84,13 @@ function Bind.key(keys, action, desc, opts)
     opts.desc = desc --[[@as string]]
   end
 
+  local made = {}
   for _, key in ipairs(as_list(keys)) do
-    track(key, hl.bind(key, action, opts))
+    local handle = hl.bind(key, action, opts)
+    track(key, handle)
+    table.insert(made, handle)
   end
+  return made
 end
 
 --- Like Bind.key but automatically prepends Bind.leader to every key.
@@ -93,12 +98,13 @@ end
 --- @param action HL.Dispatcher|function
 --- @param desc   string|HL.BindOptions|nil
 --- @param opts   HL.BindOptions|nil
+--- @return table[]
 function Bind.leader_key(keys, action, desc, opts)
   local prefixed = {}
   for _, k in ipairs(as_list(keys)) do
     table.insert(prefixed, with_prefix(Bind.leader, k))
   end
-  Bind.key(prefixed, action, desc, opts)
+  return Bind.key(prefixed, action, desc, opts)
 end
 
 --- Register a key that runs a shell command.
@@ -202,12 +208,20 @@ function Bind.unbind(keys, submap)
 end
 
 --- Whether a bind made through Bind for `key` is still live in one submap (it was not removed by Bind.unbind).
+--- With `handle`, only that bind counts: a later bind on the same key does not make an unbound one live again.
 --- @param key    string
 --- @param submap string|nil  Submap name; nil or "reset" is the global map
+--- @param handle table|nil   A handle from Bind.key
 --- @return boolean
-function Bind.is_bound(key, submap)
+function Bind.is_bound(key, submap, handle)
   local scoped = handles[scope_name(submap)]
-  return scoped ~= nil and scoped[normalize(key)] ~= nil
+  local live = scoped and scoped[normalize(key)]
+  if not live then return false end
+  if handle == nil then return true end
+  for _, candidate in ipairs(live) do
+    if candidate == handle then return true end
+  end
+  return false
 end
 
 --- The submap that binds are being registered in now; "" is the global map.
