@@ -366,6 +366,13 @@ Bind.action("t.cmd")
 check("direct args: a missing required param warns and skips", #binds == 0 and #Bind.warnings == 1)
 Bind.djinn_bin = "/bin/sh"
 
+-- With the runner installed, a missing required param is also caught at bind time, not on the keypress.
+Bind.reload_manifest()
+reset()
+Bind.warnings = {}
+Bind.action("t.cmd")
+check("runner args: a missing required param warns and skips", #binds == 0 and #Bind.warnings == 1)
+
 -- performers.lua failing to load warns and skips its binds; it does not abort the keymap file.
 package.loaded["lib.actions.performers"] = nil
 package.preload["lib.actions.performers"] = function()
@@ -384,6 +391,11 @@ check(
 	"broken performers module: warning says why",
 	Bind.warnings[1] ~= nil and Bind.warnings[1]:find("performers broke", 1, true) ~= nil
 )
+reset()
+Bind.warnings = {}
+Bind.action("t.lua")
+Bind.action("t.lua")
+check("broken performers module: every lua bind warns, not just the first", #Bind.warnings == 2)
 package.preload["lib.actions.performers"] = nil
 package.loaded["lib.actions.performers"] = real_performers
 

@@ -160,7 +160,7 @@ local BINDING_FILES = { "bindings/quickshell.json", "bindings/hyprland.json" }
 --- @type table<string, table>|nil action id -> its performer from BINDING_FILES, read on first use
 local bindings
 
---- @type table|false|nil lib.actions.performers once required, false after it failed to load
+--- @type table|nil lib.actions.performers once required; a failed load is not cached, so every lua bind warns
 local performers
 
 --- @type boolean|nil whether the oasis-djinn binary was executable at the first Bind.action
@@ -274,14 +274,14 @@ end
 local function performer_of(id)
   if performers == nil then
     local loaded, module = pcall(require, "lib.actions.performers")
-    performers = loaded and module or false
     if not loaded then
       warn(
         "Bind.action: lib/actions/performers.lua failed to load (" .. tostring(module) .. "); its binds were skipped"
       )
+      return nil
     end
+    performers = module
   end
-  if not performers then return nil end
   local perform = performers.get(id)
   if not perform then warn("Bind.action: lib/actions/performers.lua has no function for action '" .. id .. "'") end
   return perform
@@ -359,6 +359,8 @@ local function bind_target(entry, args)
     if not perform then return nil end
     return function() perform(table.unpack(args)) end
   end
+  local values = param_values(entry, args)
+  if not values then return nil end
   if runner_installed() then
     local words = { Scripts.djinn, id }
     for _, arg in ipairs(args) do
@@ -366,8 +368,6 @@ local function bind_target(entry, args)
     end
     return hl.dsp.exec_cmd(table.concat(words, " "))
   end
-  local values = param_values(entry, args)
-  if not values then return nil end
   return hl.dsp.exec_cmd(direct_command(binding, values))
 end
 
