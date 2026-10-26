@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import qs.features.voice
 
-// The yes/no question the confirm card asks for a shell caller (voxcmd-confirm), which blocks reading result_path.
+// The yes/no question the confirm card asks for a shell caller (`voxcmd ask confirm`), which blocks reading result_path.
 // Every way the card ends writes one answer there: "yes", or "no" for No, Esc, the scrim, the timeout or another popup.
 // A QML caller passes on_answer(yes, explicit) instead, and an empty result_path; explicit is false when the card
 // ended some other way (q, another popup, a newer question, the timeout), so the caller must not open anything.

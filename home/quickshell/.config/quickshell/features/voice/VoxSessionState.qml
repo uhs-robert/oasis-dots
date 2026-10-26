@@ -22,8 +22,7 @@ Singleton {
     readonly property var color_map: ({
         "rapid": Theme.syntax_builtin_func,
         "click": Theme.syntax_macro,
-        "type": Theme.syntax_string,
-        // The TOML typing mode's kind is its file's stem; bash voxcmd, installed until the 3.2 swap, still writes "type".
+        // A TOML mode's kind is its file's stem, so type mode is "typing".
         "typing": Theme.syntax_string,
     })
     readonly property color mode_color: color_map[kind] || Theme.theme_secondary
