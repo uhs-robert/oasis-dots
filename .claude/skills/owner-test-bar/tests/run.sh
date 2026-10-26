@@ -708,5 +708,29 @@ check "restore recovers from the link with no record" "dj_link_is $dj_main"
 out=$(djx djinn_restore)
 check "a second restore is a no-op" "[[ \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main"
 
+echo "== oasis-djinn: absent or unstowed link"
+mv "$dj_home/.config/oasis-djinn" "$root/dj_link_aside"
+out=$(djx djinn_swap djinn "$bars_dir/djinn")
+code=$?
+check "an absent link is skipped with a note, not a failure" "[[ $code == 0 && \$out == 'oasis-djinn: not stowed here, skipped' && ! -e $bars_dir/.djinn_bar && ! -e $dj_home/.config/oasis-djinn ]]"
+mkdir "$dj_home/.config/oasis-djinn"
+out=$(djx djinn_swap djinn "$bars_dir/djinn")
+code=$?
+check "a real directory is refused and left alone" "[[ $code != 0 ]] && grep -q 'not a symlink' <<<\"\$out\" && [[ -d $dj_home/.config/oasis-djinn && ! -L $dj_home/.config/oasis-djinn && ! -e $bars_dir/.djinn_bar ]]"
+rmdir "$dj_home/.config/oasis-djinn"
+mv "$root/dj_link_aside" "$dj_home/.config/oasis-djinn"
+
+echo "== oasis-djinn: swap command with a failing hypr swap"
+# The swap command, with hypr_swap failing the way a config error does; the manifest must go back to main.
+dj_swap_cmd() {
+  HOME=$dj_home bash -c 'source "$1"; repo=$2; bars=$3; require_unlocked() { :; }; launch() { :; }; verify() { :; }
+    hypr_swap() { echo hypr failed >&2; exit 1; }; main swap djinn' _ "$here/../owner-test-bar.sh" "$dj_repo" "$bars_dir" 2>&1
+}
+echo djinn >"$bars_dir/djinn.branches"
+out=$(dj_swap_cmd)
+code=$?
+show "$out"
+check "a failed hypr swap restores the manifest and fails" "[[ $code != 0 ]] && grep -q 'hypr failed' <<<\"\$out\" && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
