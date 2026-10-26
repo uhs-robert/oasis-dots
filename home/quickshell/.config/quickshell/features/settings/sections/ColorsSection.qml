@@ -30,8 +30,9 @@ RowsSection {
         }
     ]
 
-    footer: Rectangle {
+    side: Rectangle {
         id: card
+        objectName: "card"
         readonly property var c: Palettes.colors[root.card_name] || ({})
         Layout.fillWidth: true
         Layout.preferredHeight: card_col.implicitHeight + 16
