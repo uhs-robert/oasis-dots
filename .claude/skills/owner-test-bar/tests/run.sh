@@ -645,5 +645,68 @@ touch "$root/bars/tb.branches" "$root/bars/tb.check.log"
 bash -c 'source "$1"; repo=$2; bars=$3; main remove tb' _ "$here/../owner-test-bar.sh" "$fake" "$root/bars" >/dev/null 2>&1
 check "remove deletes the build's branches record and check log" "[[ ! -e $root/bars/tb && ! -e $root/bars/tb.branches && ! -e $root/bars/tb.check.log ]]"
 
+echo "== oasis-djinn swap and restore"
+# A throwaway HOME and git repo with a stowed oasis-djinn package (folded, like the real one); the real stow runs.
+dj_repo=$root/dj_repo
+dj_home=$root/dj_home
+dj_dir=$bars_dir/djinn
+dj_rel=home/oasis-djinn/.config/oasis-djinn
+dj_main=$dj_repo/$dj_rel
+mkdir -p "$dj_home/.config" "$dj_repo/$dj_rel" "$dj_repo/home/hypr/.config/hypr" "$dj_repo/home/voxtype"
+git init -q -b main "$dj_repo"
+djg() { git -C "$dj_repo" -c user.name=t -c user.email=t@t "$@"; }
+echo main >"$dj_repo/$dj_rel/actions.json"
+echo main >"$dj_repo/home/hypr/.config/hypr/init.lua"
+echo main >"$dj_repo/home/voxtype/x"
+djg add -A
+djg commit -q -m main
+djg update-ref refs/remotes/origin/main HEAD
+djg switch -q -c dj-action
+echo dictate >"$dj_repo/$dj_rel/actions.json"
+djg commit -q -am action
+djg switch -q -c dj-hypr main
+echo hypr >"$dj_repo/home/hypr/.config/hypr/init.lua"
+djg commit -q -am hypr
+djg switch -q -c dj-other main
+echo other >"$dj_repo/home/voxtype/x"
+djg commit -q -am other
+djg switch -q main
+djg worktree add -q --detach "$bars_dir/djinn" dj-action
+djg worktree add -q --detach "$bars_dir/djhypr" dj-hypr
+djg worktree add -q --detach "$bars_dir/djother" dj-other
+stow -d "$dj_repo/home" -t "$dj_home" oasis-djinn
+# djx <function> <args>...: the sourced script against the fake repo and HOME.
+djx() {
+  HOME=$dj_home bash -c 'source "$1"; repo=$2; shift 2; "$@"' _ "$here/../owner-test-bar.sh" "$dj_repo" "$@" 2>&1
+}
+dj_link_is() { [[ $(readlink -m "$dj_home/.config/oasis-djinn") == "$1" ]]; }
+
+out=$(djx djinn_swap other "$bars_dir/djother")
+check "a branch touching neither oasis-djinn nor hypr leaves main's link" "[[ \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+out=$(djx djinn_swap djinn "$bars_dir/djinn")
+code=$?
+show "$out"
+check "swap points the link at the test build's manifest and says so" "[[ $code == 0 && \$out == 'oasis-djinn: test build djinn' ]] && dj_link_is $dj_dir/$dj_rel && [[ \$(cat $dj_home/.config/oasis-djinn/actions.json) == dictate ]]"
+out=$(djx djinn_status)
+check "status shows the test build" "[[ \$out == 'oasis-djinn: test build djinn' ]]"
+out=$(djx djinn_restore)
+code=$?
+show "$out"
+check "restore restows main's link" "[[ $code == 0 && \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main && [[ ! -e $bars_dir/.djinn_bar ]]"
+out=$(djx djinn_status)
+check "status is main again" "[[ \$out == 'oasis-djinn: main' ]]"
+out=$(djx djinn_swap djhypr "$bars_dir/djhypr")
+check "a hypr-only branch swaps too, since hypr reads the manifest" "[[ \$out == 'oasis-djinn: test build djhypr' ]] && dj_link_is $bars_dir/djhypr/$dj_rel"
+out=$(djx djinn_swap other "$bars_dir/djother")
+check "swapping to a build with neither change restores main" "[[ \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main"
+djx djinn_swap djinn "$bars_dir/djinn" >/dev/null
+rm "$bars_dir/.djinn_bar"
+out=$(djx djinn_status)
+check "status says half swapped when the record is gone" "grep -q 'half swapped' <<<\"\$out\""
+djx djinn_restore >/dev/null
+check "restore recovers from the link with no record" "dj_link_is $dj_main"
+out=$(djx djinn_restore)
+check "a second restore is a no-op" "[[ \$out == 'oasis-djinn: main' ]] && dj_link_is $dj_main"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
