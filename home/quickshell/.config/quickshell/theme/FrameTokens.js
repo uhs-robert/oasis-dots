@@ -30,6 +30,11 @@ function corner_of(tokens, corners) {
     return corners.indexOf(tokens.corner_style) >= 0 ? tokens.corner_style : natural_corner(tokens, corners);
 }
 
+// Whether a Corner style was picked (saved, even the natural corner), as opposed to the style's own left untouched.
+function corner_chosen(tokens, corners) {
+    return corners.indexOf(tokens.corner_style) >= 0;
+}
+
 // Whether the Corner style reaches Hyprland and the apps: always with the frame on, with it off only once the user has
 // picked one, so an untouched style leaves the owner's own window rounding as it is.
 function corner_applies(frame_on, corner_chosen) {
