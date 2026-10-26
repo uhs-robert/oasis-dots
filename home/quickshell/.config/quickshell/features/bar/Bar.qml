@@ -46,6 +46,9 @@ Item {
     // Lualine has no center island; its modules move into the right island's sections.
     readonly property bool has_center: !root.lualine && root.center_entries.length > 0
 
+    // Island styles only: media's island_mode leaves strip, frame, lualine and side-bar layouts as they are.
+    readonly property bool island_style: !Style.strip_shape && !root.lualine && !root.vertical
+
     // Resolves a bars.json module list into loadable entries, skipping unknown names.
     function build_entries(names) {
         const list = [];
@@ -58,6 +61,7 @@ Item {
             }
             // Dropped here, not just hidden, so a lone one leaves no empty island and runs no second segment.
             if (root.lualine && BarLayout.lualine_draws_itself(parsed.base)) continue;
+            if ((parsed.base === "media" || parsed.base === "cava") && !MediaSettings.module_listed(root.island_style)) continue;
             list.push({ base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file) });
         }
         return list;
@@ -289,7 +293,7 @@ Item {
         id: center_cava
         parent: center_island.body_item
         // Island styles only: strip styles draw cava through the cava module, in its own slot.
-        readonly property bool island_cava: root.lists_cava && root.has_center && !Style.strip_shape
+        readonly property bool island_cava: root.lists_cava && root.has_center && !Style.strip_shape && MediaSettings.edge_cava_allowed(root.island_style)
         CavaViewer { active: center_cava.island_cava }
         // Sits on the island's open edge: the bottom one, or the top one under a bottom bar, clear of its underline.
         readonly property real open_edge_margin: Style.strip_shape ? root.strip_open_edge_margin : center_island.capsule ? center_island.border_width + 1 : center_island.window ? center_island.thickness - center_island.window_bottom + center_island.window_edge : center_island.shape === "underline" ? center_island.stroke_width : center_island.filled && center_island.inset_color.a > 0 ? center_island.inset_gap + center_island.inset_width : 0
