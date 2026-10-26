@@ -769,7 +769,7 @@ fn term_run_while_asking(setup: &Setup, phrase: &str, envs: &[(&str, String)]) -
 fn a_stop_signal_lets_the_open_ask_clean_up() {
     let setup = Setup::new(INTEGRATION);
     let envs = bar_holding_questions(&setup);
-    // As the bash voxcmd-pick, a stopped pick leaves closing the picker to the bar.
+    // A stopped pick leaves closing the picker to the bar.
     assert_eq!(term_run_while_asking(&setup, "do pick", &envs), "qs-picker choices\n");
 
     // An integration with numbered boxes asks through `ask hints`, which a stop signal dismisses on the bar.

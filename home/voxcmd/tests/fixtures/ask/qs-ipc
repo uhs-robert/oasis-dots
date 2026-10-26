@@ -1,5 +1,5 @@
 #!/bin/sh
-# The bar's qs-ipc for gen-ask-goldens.sh and tests/ask.rs: copies what each call shows into $GOLDEN_DUMPS (one
+# The bar's qs-ipc for tests/ask.rs: copies what each call shows into $GOLDEN_DUMPS (one
 # numbered file per call or file, in order), then answers through the ask's FIFO with $GOLDEN_ANSWER, as the bar would.
 # GOLDEN_OPEN is what an open prints ("ok" by default; anything else is a bar that refused, and nobody answers).
 next() { printf '%s/%03d.%s' "$GOLDEN_DUMPS" "$(find "$GOLDEN_DUMPS" -type f | wc -l)" "$1"; }

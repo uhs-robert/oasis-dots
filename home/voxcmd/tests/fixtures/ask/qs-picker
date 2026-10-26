@@ -1,5 +1,5 @@
 #!/bin/sh
-# The bar's qs-picker for gen-ask-goldens.sh and tests/ask.rs: copies the pending pick and the picker's spec into
+# The bar's qs-picker for tests/ask.rs: copies the pending pick and the picker's spec into
 # $GOLDEN_DUMPS, then answers through the spec's FIFO with $GOLDEN_ANSWER, as the bar's picker would.
 next() { printf '%s/%03d.%s' "$GOLDEN_DUMPS" "$(find "$GOLDEN_DUMPS" -type f | wc -l)" "$1"; }
 printf '%s\n' "qs-picker $1" >"$(next call)"

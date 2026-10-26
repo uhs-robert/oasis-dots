@@ -200,6 +200,31 @@ fn a_named_sh_file_is_refused_with_a_message_instead_of_a_toml_parse_error() {
 }
 
 #[test]
+fn naming_a_stray_integrations_d_file_gives_the_convert_to_toml_message() {
+    let sandbox = Sandbox::with(&["media"]);
+    std::fs::create_dir_all(sandbox.config().join("integrations.d")).unwrap();
+    sandbox.write("integrations.d/peak.sh", "verbs=('x y')\n");
+    let output = sandbox.voxcmd(&["integrations", "check", "integrations.d/peak.sh"], &[]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert_eq!(
+        stdout(&output),
+        "integrations.d/peak.sh:1:1: error: integrations.d/peak.sh is no longer read; convert it to TOML\n\
+         0 TOML files checked, 1 problems\n"
+    );
+}
+
+#[test]
+fn naming_a_missing_sh_file_says_it_is_missing() {
+    let sandbox = Sandbox::with(&["media"]);
+    let output = sandbox.voxcmd(&["integrations", "check", "typo.sh"], &[]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert_eq!(
+        stdout(&output),
+        "typo.sh:1:1: error: typo.sh is missing\n0 TOML files checked, 1 problems\n"
+    );
+}
+
+#[test]
 fn a_shadowed_verb_is_a_warning_and_leaves_the_check_clean() {
     let sandbox = Sandbox::with(&[]);
     sandbox.write(
