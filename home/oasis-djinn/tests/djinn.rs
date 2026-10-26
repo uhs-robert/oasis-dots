@@ -29,7 +29,7 @@ fn stub() -> &'static Path {
         let path = std::env::temp_dir().join(format!("djinn-stub-{}", std::process::id()));
         std::fs::write(
             &path,
-            "#!/bin/sh\necho \"$@\" >> \"$STUB_LOG\"\n[ -z \"$STUB_OUT\" ] || echo \"$STUB_OUT\"\n[ -z \"$STUB_BACKGROUND\" ] || sleep 10 &\n[ -z \"$STUB_FAIL\" ]\n",
+            "#!/bin/sh\nif [ \"$1\" = monitors ]; then [ -z \"$STUB_STRICT\" ] || [ -e \"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/answers\" ]; exit $?; fi\n[ -z \"$STUB_SIG_LOG\" ] || echo \"$HYPRLAND_INSTANCE_SIGNATURE\" >> \"$STUB_SIG_LOG\"\necho \"$@\" >> \"$STUB_LOG\"\n[ -z \"$STUB_OUT\" ] || echo \"$STUB_OUT\"\n[ -z \"$STUB_BACKGROUND\" ] || sleep 10 &\n[ -z \"$STUB_FAIL\" ]\n",
         )
         .unwrap();
         use std::os::unix::fs::PermissionsExt;
@@ -83,6 +83,7 @@ impl Sandbox {
             .env("OASIS_DJINN_QS_IPC", stub())
             .env("OASIS_DJINN_HYPRCTL", stub())
             .env("STUB_LOG", self.log())
+            .env("XDG_RUNTIME_DIR", self.root.join("run"))
             .envs(env.iter().copied())
             .output()
             .unwrap();
@@ -409,6 +410,35 @@ fn a_non_lua_performer_leaving_a_child_on_stdout_returns_promptly() {
         "took {:?}",
         started.elapsed()
     );
+}
+
+#[test]
+fn a_lua_action_runs_on_the_newest_answering_hyprland_instance() {
+    // A stale environment signature, an older instance, a newer one that no longer answers, and the live one.
+    let sandbox = lua_sandbox("lua-instance");
+    let hypr = sandbox.root.join("run/hypr");
+    for (name, age_secs, answers) in [("older", 300, true), ("live", 200, true), ("dead", 100, false)] {
+        std::fs::create_dir_all(hypr.join(name)).unwrap();
+        let socket = std::fs::File::create(hypr.join(name).join(".socket.sock")).unwrap();
+        socket
+            .set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(age_secs))
+            .unwrap();
+        if answers {
+            std::fs::write(hypr.join(name).join("answers"), "").unwrap();
+        }
+    }
+    let seen = sandbox.root.join("signatures");
+    let (code, _) = sandbox.run_in(
+        &sandbox.manifest,
+        &[
+            ("HYPRLAND_INSTANCE_SIGNATURE", "stale-env"),
+            ("STUB_STRICT", "1"),
+            ("STUB_SIG_LOG", seen.to_str().unwrap()),
+        ],
+        &["t.bare"],
+    );
+    assert_eq!(code, 0);
+    assert_eq!(std::fs::read_to_string(seen).unwrap().trim(), "live");
 }
 
 #[test]

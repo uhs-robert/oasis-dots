@@ -8,6 +8,7 @@ use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
@@ -332,12 +333,66 @@ fn expand_home(word: &str, home: &Path) -> String {
     }
 }
 
-/// Runs a planned command and waits: true when it exited 0. A program that cannot start is an `Err`. With
+/// The newest Hyprland instance under `runtime_dir/hypr` whose `hyprctl monitors` answers, by its `.socket.sock`
+/// mtime (a directory's moves whenever a child socket is recreated). `HYPRLAND_INSTANCE_SIGNATURE` in a long-lived
+/// shell is stale after a re-login, so the environment's value is not trusted; this is the rule AGENTS.md gives and
+/// `.claude/hooks/live-hypr.sh` implements in shell. `None` when no instance answers.
+pub fn live_hypr_signature(hyprctl: &Path, runtime_dir: &Path) -> Option<String> {
+    let mut instances: Vec<(std::time::SystemTime, String)> = std::fs::read_dir(runtime_dir.join("hypr"))
+        .ok()?
+        .filter_map(|entry| {
+            let dir = entry.ok()?.path();
+            let modified = std::fs::metadata(dir.join(".socket.sock")).ok()?.modified().ok()?;
+            Some((modified, dir.file_name()?.to_string_lossy().into_owned()))
+        })
+        .collect();
+    instances.sort_by(|a, b| b.cmp(a));
+    instances
+        .into_iter()
+        .map(|(_, signature)| signature)
+        .find(|signature| answers(hyprctl, runtime_dir, signature))
+}
+
+/// True when `hyprctl monitors` exits 0 within 3 seconds for that instance; a hung one is killed.
+fn answers(hyprctl: &Path, runtime_dir: &Path, signature: &str) -> bool {
+    let Ok(mut probe) = Command::new(hyprctl)
+        .arg("monitors")
+        .env("XDG_RUNTIME_DIR", runtime_dir)
+        .env("HYPRLAND_INSTANCE_SIGNATURE", signature)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
+        return false;
+    };
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
+        match probe.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(10)),
+            _ => {
+                let _ = probe.kill();
+                let _ = probe.wait();
+                return false;
+            }
+        }
+    }
+}
+
+/// Runs a planned command and waits: true when it exited 0. A program that cannot start is an `Err`. `hypr_signature` replaces the inherited Hyprland instance. With
 /// `forward_stdout_on_failure` its stdout is captured and, if it failed, written to stderr; otherwise stdin and
 /// stdout are inherited, so a performer that leaves a child holding stdout does not keep this call waiting.
-pub fn perform(argv: &[String], forward_stdout_on_failure: bool) -> std::io::Result<bool> {
+pub fn perform(
+    argv: &[String],
+    forward_stdout_on_failure: bool,
+    hypr_signature: Option<&str>,
+) -> std::io::Result<bool> {
     let mut command = Command::new(&argv[0]);
     command.args(&argv[1..]);
+    if let Some(signature) = hypr_signature {
+        command.env("HYPRLAND_INSTANCE_SIGNATURE", signature);
+    }
     if !forward_stdout_on_failure {
         return Ok(command.status()?.success());
     }

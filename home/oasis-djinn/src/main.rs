@@ -4,10 +4,10 @@
 //! unreadable manifest, in which case nothing runs. Bar actions call the bar through hypr's qs-ipc; `lua` actions
 //! run inside Hyprland through `hyprctl eval`, which exits non-zero when the Lua raises.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use oasis_djinn::{Manifest, Tools, config_dir, perform};
+use oasis_djinn::{Manifest, Tools, config_dir, live_hypr_signature, perform};
 
 const QS_IPC: &str = ".config/hypr/scripts/qs-ipc";
 
@@ -38,7 +38,11 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    match perform(&argv, is_lua) {
+    // Only `hyprctl eval` needs Hyprland, and an inherited instance signature may be stale after a re-login.
+    let signature = std::env::var_os("XDG_RUNTIME_DIR")
+        .filter(|_| is_lua)
+        .and_then(|runtime| live_hypr_signature(&hyprctl, Path::new(&runtime)));
+    match perform(&argv, is_lua, signature.as_deref()) {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::from(1),
         Err(error) => {
