@@ -1,7 +1,7 @@
 --- Actions: one id, label, typed params and key per thing the desktop can do.
 ---
---- `Action.define` registers an action and binds its default key; `Action.bind` adds another key (a loop key with
---- args, a submap row, a custom/ override). `Action.run` and `Action.run_cli` perform one by id, so keys, the
+--- `Act.define` registers an action and binds its default key; `Act.bind` adds another key (a loop key with
+--- args, a submap row, a custom/ override). `Act.run` and `Act.run_cli` perform one by id, so keys, the
 --- `hypr-act` script, the bar and voice share one path. Config-time mistakes warn and skip only the bad entry,
 --- because a Lua error would abort the rest of the config file.
 
@@ -30,7 +30,7 @@ local Scripts = require("lib.scripts") ---@class Scripts
 --- @field run        function|table  Lua function, or an Ipc/Cmd table
 
 --- @class ActionLib
-local Action = {
+local Act = {
   --- Every config-time problem so far, in order; tests read it.
   warnings = {},
 }
@@ -48,16 +48,16 @@ local warning_scheduled = false
 --- Record a config-time problem and show one notification for all of them.
 --- @param message string
 local function warn(message)
-  table.insert(Action.warnings, message)
+  table.insert(Act.warnings, message)
   if warning_scheduled then return end
   warning_scheduled = true
   -- Deferred like lib/missing_repos.lua: the notification waits until the config has finished loading, and the
   -- one-shot lets every define in the config add its warning first.
   hl.timer(function()
     warning_scheduled = false
-    local text = table.concat(Action.warnings, "\n")
+    local text = table.concat(Act.warnings, "\n")
     -- Cleared once shown, so a later notification lists only what is new.
-    Action.warnings = {}
+    Act.warnings = {}
     hl.notification.create({ text = text, timeout = 20000 })
   end, { timeout = 2000, type = "oneshot" })
 end
@@ -222,7 +222,7 @@ end
 
 --- Hand a finished command line to Hyprland. Replaceable by tests.
 --- @param command string
-function Action.exec(command) hl.dispatch(hl.dsp.exec_cmd(command)) end
+function Act.exec(command) hl.dispatch(hl.dsp.exec_cmd(command)) end
 
 --- Every word quoted for the shell: arguments cannot split, expand or start a second command. Only the program, a
 --- fixed word that may start with `~/`, is left for the shell to expand; `~` anywhere else stays literal.
@@ -245,7 +245,7 @@ end
 
 local runnable = {}
 runnable.__index = runnable
-runnable.__call = function(self, values) Action.exec(self:command(values or {})) end
+runnable.__call = function(self, values) Act.exec(self:command(values or {})) end
 
 --- The shell command this performs, with `{name}` words filled from `values`.
 --- @param values table<string, any>|nil
@@ -258,7 +258,7 @@ function runnable:command(values) return command_line(self:words(), values or {}
 --- @param fn     string
 --- @param ...    string
 --- @return table
-function Action.Ipc(target, fn, ...)
+function Act.Ipc(target, fn, ...)
   local this = setmetatable({ kind = "ipc", target = target, ["function"] = fn, args = { ... } }, runnable)
   function this:words()
     local words = { Scripts.qs_ipc, "call", self.target, self["function"] }
@@ -273,7 +273,7 @@ end
 --- A program run by argv. Carries its data for the registry check. Words may hold `{param}` placeholders.
 --- @param ... string  Program, then its arguments
 --- @return table
-function Action.Cmd(...)
+function Act.Cmd(...)
   local this = setmetatable({ kind = "command", argv = { ... } }, runnable)
   function this:words() return self.argv end
   return this
@@ -374,10 +374,10 @@ local function register_key(handle, key, opts, args)
   end
   if bind_opts.submap_universal == nil and key.universal then bind_opts.submap_universal = true end
   local register = key.leader and Bind.leader_key or Bind.key
-  register(key.key, function() Action.run(handle.id, table.unpack(args)) end, handle.label, bind_opts)
+  register(key.key, function() Act.run(handle.id, table.unpack(args)) end, handle.label, bind_opts)
 end
 
---- Put every non-key option except those Action.bind owns into a fresh table.
+--- Put every non-key option except those Act.bind owns into a fresh table.
 --- @param opts table
 --- @return table
 local function passthrough_opts(opts)
@@ -391,28 +391,28 @@ end
 --- Bind a key to an action that is already defined.
 --- @param id   string
 --- @param opts { key: string|table, args: any[]|nil }  Any other field goes to hl.bind
-function Action.bind(id, opts)
+function Act.bind(id, opts)
   local handle = registry[tostring(id)]
   if not handle then
-    warn("Action.bind: unknown action id '" .. tostring(id) .. "'")
+    warn("Act.bind: unknown action id '" .. tostring(id) .. "'")
     return
   end
   opts = opts or {}
 
   local key, key_problem = normalize_key(opts.key)
   if not key then
-    warn("Action.bind '" .. id .. "': " .. key_problem)
+    warn("Act.bind '" .. id .. "': " .. key_problem)
     return
   end
   local given = opts.args or {}
   local args_ok, args = pcall(check_values, handle, given, #given)
   if not args_ok then
-    warn("Action.bind: " .. tostring(args))
+    warn("Act.bind: " .. tostring(args))
     return
   end
 
   local bound_ok, bound_err = pcall(register_key, handle, key, passthrough_opts(opts), args)
-  if not bound_ok then warn("Action.bind '" .. id .. "': " .. tostring(bound_err)) end
+  if not bound_ok then warn("Act.bind '" .. id .. "': " .. tostring(bound_err)) end
 end
 
 --- Validate a spec into a handle, or return why it cannot be one.
@@ -425,7 +425,7 @@ local function build_handle(id, spec)
   if type(spec) ~= "table" then return nil, "needs a spec table" end
   if type(spec.label) ~= "string" or spec.label == "" then return nil, "needs a label" end
   if spec.intent ~= nil and type(spec.intent) ~= "string" then return nil, "intent must be a string" end
-  if not is_runnable(spec.run) then return nil, "run must be a function, Action.Ipc(...) or Action.Cmd(...)" end
+  if not is_runnable(spec.run) then return nil, "run must be a function, Act.Ipc(...) or Act.Cmd(...)" end
 
   local params, params_problem = normalize_params(spec.params)
   if not params then return nil, params_problem end
@@ -454,7 +454,7 @@ local function build_handle(id, spec)
     table.insert(handle.extra_keys, key)
   end
   if (handle.key or #handle.extra_keys > 0) and required_count(params) > 0 then
-    return nil, "a default key cannot supply required params; define it keyless and use Action.bind with args"
+    return nil, "a default key cannot supply required params; define it keyless and use Act.bind with args"
   end
   return handle
 end
@@ -463,13 +463,13 @@ end
 --- @param id   string
 --- @param spec { label: string, intent: string|nil, params: ActionParam[]|nil, key: string|table|nil, extra_keys: table[]|nil, opts: table|nil, run: function|table }
 --- @return ActionHandle|nil
-function Action.define(id, spec)
+function Act.define(id, spec)
   local built_ok, handle, problem = pcall(build_handle, id, spec)
   if not built_ok then
     handle, problem = nil, tostring(handle)
   end
   if not handle then
-    warn("Action.define '" .. tostring(id) .. "': " .. problem)
+    warn("Act.define '" .. tostring(id) .. "': " .. problem)
     return nil
   end
 
@@ -480,7 +480,7 @@ function Action.define(id, spec)
     table.insert(default_keys, extra)
   end
   for _, key in ipairs(default_keys) do
-    Action.bind(handle.id, { key = key })
+    Act.bind(handle.id, { key = key })
   end
   return handle
 end
@@ -511,7 +511,7 @@ end
 --- Perform an action with typed Lua values. Raises on an unknown id or a bad argument.
 --- @param id  string
 --- @param ... any
-function Action.run(id, ...)
+function Act.run(id, ...)
   local handle = lookup(id)
   return perform(handle, check_values(handle, { ... }, select("#", ...)))
 end
@@ -520,7 +520,7 @@ end
 --- a bad word or the wrong count, so `hyprctl eval` exits non-zero and the message reaches the caller.
 --- @param id    string
 --- @param words string[]
-function Action.run_cli(id, words)
+function Act.run_cli(id, words)
   local handle = lookup(id)
   if type(words) ~= "table" then error("run_cli expects a list of strings", 0) end
   for index = 1, #words do
@@ -536,4 +536,4 @@ function Action.run_cli(id, words)
   return perform(handle, values)
 end
 
-return Action
+return Act
