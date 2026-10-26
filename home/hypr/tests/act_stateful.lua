@@ -168,6 +168,10 @@ for _, id in ipairs({
 }) do
 	check("defined: " .. id, ids[id] ~= nil)
 end
+-- float_toggle moved to defs/windows.lua; running it by id must still reach the float dispatcher.
+Stubs.performed = {}
+Act.run("window.float_toggle")
+check("window.float_toggle runs: " .. text_of(Stubs.performed), count_of(Stubs.performed, "float") == 1)
 local listed = {}
 for _, param in ipairs(ids["delete.close_group"] and ids["delete.close_group"].params or {}) do
 	listed = param.values or listed
