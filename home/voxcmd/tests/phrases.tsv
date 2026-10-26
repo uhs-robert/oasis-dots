@@ -88,6 +88,8 @@ set a timer for 5 minutes	Timers/timer
 remind me in 10 minutes to stretch	Timers/remind
 list my timers	Timers/list
 cancel the pasta timer	Timers/cancel
+cancel the timer	Timers/cancel
+cancel the reminder	Timers/cancel
 cancel all timers	Timers/cancel_all
 turn bluetooth on	Devices/bluetooth_on
 connect my headphones	none	no paired Bluetooth device in the sandbox
