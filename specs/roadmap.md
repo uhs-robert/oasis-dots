@@ -18,7 +18,7 @@ Spec-driven, spec-enforced design. Plain-English specs in `specs/` say what each
 | 0   | docs/ vs specs/, plus local .plans/ and .logs/      | 2   | none              |
 | G   | Global skill rules (orchestrator, handoff)          | 2   | 0a                |
 | 1   | Spec format and requirement-to-test link check      | 2   | 0a                |
-| 2   | One action registry and `oasis-djinn`                       | 6   | none              |
+| 2   | One action registry and `oasis-djinn`               | 6   | none              |
 | 3   | Core specs                                          | 5   | 1b, 2c            |
 | 4   | Generated "bad params are rejected" tests           | 2   | 3b, 2a; 4b 2e     |
 | 5   | Docs generated from code, with a drift check        | 2   | 2a to 2c          |
@@ -146,7 +146,7 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 **Dependencies.** None to start. 2f waits for the voxcmd 3.2 swap, with no Bash interim.
 
 **PRs.**
-- 2a: the manifest, its JSON Schema (YAML, in `specs/schema/`), `oasis-djinn`, a few actions (zoom, screenshot, overview); a `registry` step that validates it and fails a binding naming a missing IPC function (reusing `qml_ipc.py`'s parser). `actions` goes in `packages/stow.ini` (or the `unstowed` list), which the `packages` step requires.
+- 2a: the manifest, its JSON Schema (YAML, in `specs/schema/`), `oasis-djinn`, a few actions (zoom, screenshot, overview); a `registry` step that validates it and fails a binding naming a missing IPC function (reusing `qml_ipc.py`'s parser). `oasis-djinn` goes in `packages/stow.ini` (or the `unstowed` list), which the `packages` step requires.
 - 2b: `Bind.action`, and `keymaps/global/tools.lua` moved to it.
 - 2c: the other global files, the submaps, and the remaining person-facing IPC functions.
 - 2d: `registry.allow`, with the step failing unlisted binds and handler functions.

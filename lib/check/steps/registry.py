@@ -4,7 +4,7 @@ names something that does not exist.
 
   - actions.json and bindings/quickshell.json (home/oasis-djinn/.config/oasis-djinn) validate against specs/schema/actions.yaml
     and bindings.yaml. The step fails, not skips, without check-jsonschema, so a manifest is never passed unread.
-  - action ids and param names are unique; every action has a binding and every binding an action.
+  - action ids and param names are unique; params with a default come last, and an enum default is one of its values; every action has a binding and every binding an action.
   - an `ipc` binding names a typed function of a real IpcHandler (read by qml_ipc.declared, the parser of `qml-ipc`),
     and every `{param}` in a binding is a param of its action.
   - a `command` binding whose program is `~/<path>` names a file some stow package ships as `home/<pkg>/<path>`.
@@ -52,6 +52,22 @@ def read(repo, file):
         return None, [f"{file}: {error}"]
 
 
+def param_findings(file, action):
+    """What the schema cannot say about the defaults of one action's params."""
+    found = []
+    defaulted = None
+    for param in action["params"]:
+        if "default" in param:
+            defaulted = defaulted or param["name"]
+            if param["type"] == "enum" and param["default"] not in param["values"]:
+                found.append(f"{file}: {action['id']} param {param['name']} default {param['default']!r} is not one of its values")
+            if param["type"] == "string" and param["default"].startswith("-"):
+                found.append(f"{file}: {action['id']} param {param['name']} default starts with '-', which oasis-djinn rejects")
+        elif defaulted:
+            found.append(f"{file}: {action['id']} requires param {param['name']} after {defaulted}, which has a default and so could never be left out")
+    return found
+
+
 def binding_findings(repo, file, action, binding, handlers):
     """What is wrong with one binding of an action, given the IpcHandlers."""
     name = action["id"]
@@ -97,6 +113,7 @@ def run_checks(repo, manifest_dir=MANIFEST_DIR, qml_dirs=qml_ipc.QML_DIRS):
         for name, count in sorted(Counter(param["name"] for param in action["params"]).items()):
             if count > 1:
                 found.append(f"{actions_file}: {action['id']} repeats param {name}")
+        found += param_findings(actions_file, action)
     handlers, ipc_problems = qml_ipc.declared(repo, qml_dirs)
     found += [f"{problem.path}:{problem.line}: {problem.message}" for problem in ipc_problems]
     by_id = {action["id"]: action for action in actions}

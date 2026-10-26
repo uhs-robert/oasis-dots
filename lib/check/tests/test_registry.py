@@ -88,6 +88,25 @@ class RegistryTest(RegistryCase):
     def test_a_bad_id_fails(self):
         self.assertTrue(self.broken(lambda actions, bindings: actions[0].update(id="Zoom")))
 
+    def test_a_default_of_the_wrong_type_fails(self):
+        self.assertTrue(self.broken(lambda actions, bindings: actions[1]["params"].append({"name": "n", "type": "int", "default": "x"})))
+
+    def test_an_enum_default_outside_its_values_fails(self):
+        found = self.broken(lambda actions, bindings: actions[1]["params"][0].update(default="c"))
+        self.assertFinding(found, "default 'c' is not one of its values")
+
+    def test_a_required_param_after_a_default_fails(self):
+        found = self.broken(lambda actions, bindings: actions[1]["params"].insert(0, {"name": "n", "type": "int", "default": 1}))
+        self.assertFinding(found, "requires param mode after n")
+
+    def test_a_default_that_fits_passes(self):
+        found = self.broken(lambda actions, bindings: actions[1]["params"][0].update(default="a"))
+        self.assertEqual(found, [])
+
+    def test_a_string_default_with_a_dash_fails(self):
+        found = self.broken(lambda actions, bindings: actions[1]["params"].append({"name": "s", "type": "string", "default": "-x"}))
+        self.assertFinding(found, "default starts with '-'")
+
     def test_an_action_without_a_binding_fails(self):
         found = self.broken(lambda actions, bindings: bindings.pop("zoom.toggle"))
         self.assertFinding(found, "zoom.toggle has no binding")
