@@ -14,7 +14,8 @@ Item {
     // "cava", "position" or "hide" (the well stays, the right side goes).
     property string right_mode: "cava"
     // "inset" (pressed in, darker), "border" (island fill, thin outline) or "raised" (slightly lighter, no outline).
-    property string well_style: "inset"
+    property string container_style: "inset"
+    readonly property var look: MediaSettings.container_look(root.container_style)
     property bool show_art: true
     property bool show_title: true
     property bool show_artist: true
@@ -62,14 +63,14 @@ Item {
         anchors.fill: parent
         radius: Style.radius(8)
         // The island's own fill shows through for "border"; "raised" lifts it with a pale wash.
-        color: root.well_style === "inset" ? Qt.alpha(Style.pal.bg_shadow, 0.85) : root.well_style === "raised" ? Qt.alpha(Style.pal.fg, 0.09) : "transparent"
-        border.width: root.well_style === "raised" ? 0 : 1
-        border.color: Qt.alpha(Style.pal.fg, root.well_style === "border" ? 0.22 : 0.1)
+        color: root.look.fill === "shadow" ? Qt.alpha(Style.pal.bg_shadow, 0.85) : root.look.fill === "wash" ? Qt.alpha(Style.pal.fg, 0.09) : "transparent"
+        border.width: root.look.border === "none" ? 0 : 1
+        border.color: Qt.alpha(Style.pal.fg, root.look.border === "strong" ? 0.22 : 0.1)
         clip: true
 
         // The faint shadow along the top edge that makes the inset read as pressed in.
         Rectangle {
-            visible: root.well_style === "inset"
+            visible: root.look.top_shadow
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top

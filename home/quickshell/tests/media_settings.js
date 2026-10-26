@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/media/MediaSettings.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { migrated_cava_line, module_listed, edge_cava_allowed, module_position_only, edge_strip, strip_listed, scroll_effect, well_shown, right_side };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { migrated_cava_line, module_listed, edge_cava_allowed, module_position_only, edge_strip, strip_listed, scroll_effect, well_shown, right_side, container_look };", T);
 const M = T.api;
 
 const cases = [
@@ -44,6 +44,11 @@ const cases = [
   ["the setting decides the right side for every entry", () => ["cava", "position"].map(s => M.right_side("", s, true, "position")), ["cava", "position"]],
   ["a forced side (split, lualine) beats the setting", () => [M.right_side("position", "cava", true, "hide"), M.right_side("cava", "position", true, "hide")], ["position", "cava"]],
   ["on battery cava follows battery_fallback, position stays", () => [M.right_side("", "cava", false, "hide"), M.right_side("", "position", false, "hide")], ["hide", "position"]],
+  ["inset presses in: shadow fill, soft border, top shadow", () => M.container_look("inset"), { fill: "shadow", border: "soft", top_shadow: true }],
+  ["border outlines with no fill", () => M.container_look("border"), { fill: "none", border: "strong", top_shadow: false }],
+  ["raised washes with no border", () => M.container_look("raised"), { fill: "wash", border: "none", top_shadow: false }],
+  ["none draws no plate, border or shadow", () => M.container_look("none"), { fill: "none", border: "none", top_shadow: false }],
+  ["an unknown container style acts as inset", () => M.container_look("bogus"), { fill: "shadow", border: "soft", top_shadow: true }],
   ["an unknown mode behaves as cava_under_island", () => [M.module_listed(true, "bogus"), M.edge_cava_allowed(true, "bogus")], [false, true]],
 ];
 

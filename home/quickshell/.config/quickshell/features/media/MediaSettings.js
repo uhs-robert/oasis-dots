@@ -60,3 +60,15 @@ function well_shown(has_player, vertical, is_cava_entry) {
 function strip_listed(lists_cava, lists_media) {
     return !!lists_cava || !!lists_media;
 }
+
+// How the media container is drawn: `fill` (shadow, wash or none), `border` (strong, soft or none) and whether the
+// pressed-in top shadow shows. "none" draws nothing, so the contents sit on the bar; the padding is the caller's and
+// does not change with the style. An unknown style acts as inset.
+function container_look(container_style) {
+    switch (container_style) {
+    case "border": return { fill: "none", border: "strong", top_shadow: false };
+    case "raised": return { fill: "wash", border: "none", top_shadow: false };
+    case "none": return { fill: "none", border: "none", top_shadow: false };
+    default: return { fill: "shadow", border: "soft", top_shadow: true };
+    }
+}

@@ -18,7 +18,7 @@ Singleton {
         scroll_action: ["volume_seek", "skip", "none"],
         island_mode: ["cava_under_island", "module_only", "split"],
         text_layout: ["inline", "stacked"],
-        well_style: ["inset", "border", "raised"]
+        container_style: ["inset", "border", "raised", "none"]
     })
     readonly property var ranges: ({ max_chars: [8, 60], text_scroll_speed: [10, 120] })
     readonly property var bools: ["cava_line", "show_art", "show_title", "show_artist", "text_scroll"]
@@ -28,7 +28,7 @@ Singleton {
         scroll_action: "volume_seek",
         cava_line: true,
         island_mode: "cava_under_island",
-        well_style: "inset",
+        container_style: "inset",
         show_art: true,
         show_title: true,
         show_artist: true,
@@ -44,7 +44,7 @@ Singleton {
     readonly property string scroll_action: root.values.scroll_action
     readonly property bool cava_line: root.values.cava_line
     readonly property string island_mode: root.values.island_mode
-    readonly property string well_style: root.values.well_style
+    readonly property string container_style: root.values.container_style
     readonly property bool show_art: root.values.show_art
     readonly property bool show_title: root.values.show_title
     readonly property bool show_artist: root.values.show_artist
@@ -79,6 +79,10 @@ Singleton {
 
     function right_side(forced, on_ac) {
         return Logic.right_side(forced, root.right_side_mode, on_ac, root.battery_fallback);
+    }
+
+    function container_look(container_style) {
+        return Logic.container_look(container_style);
     }
 
     function well_shown(has_player, vertical, is_cava_entry) {
