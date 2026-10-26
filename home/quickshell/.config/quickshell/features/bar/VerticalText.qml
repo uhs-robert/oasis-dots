@@ -21,11 +21,12 @@ Text {
     property int min_size: VerticalLayout.min_text_px
 
     // Sized by hand rather than fontSizeMode: Fit would need a height to fit and never reports which text it settled on.
+    // Footgun: fit measures with the Style font family, letter spacing and capitalization, never root.font.*, because reading root.font.* inside the binding that sets font.pixelSize is a binding loop.
+    // A caller that overrides those three on a VerticalText is therefore mis-measured.
     readonly property var fit: VerticalLayout.fit_text(root.metric(full_probe, root.full_template), root.short_template !== "" && root.short_text !== "" ? root.metric(short_probe, root.short_template) : null, root.cross, root.base_size, root.min_size)
     readonly property bool shows_short: root.vertical && root.fit.short
     readonly property string shown_text: root.shows_short ? root.short_text : root.full_text
 
-    // The probes and fit read Style, never root.font: any font change (the pixelSize that fit sets) re-evaluates a binding that reads root.font.*, which is a binding loop.
     // The probes measure at base_size without letter spacing, which is added back as a fixed width per character.
     function metric(probe, template) {
         return { glyph_per_px: probe.advanceWidth / root.base_size, fixed: template.length * Style.bar_letter_spacing };
