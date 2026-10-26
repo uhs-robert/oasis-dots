@@ -4,16 +4,17 @@ import Quickshell.Hyprland
 import qs.theme
 import "../../ui/frames/Corners.js" as Corners
 
-// Tells Hyprland the Corner style, and with the frame on its rim and whether a lone window goes flush, so window corners
-// (and with the frame, borders) follow it (ScreenFrame.set in config/general/frame.lua, which keeps the user's values and
-// restores them on clear or when Quickshell goes).
+// Tells Hyprland the Corner style, and with the frame on its rim and whether a lone window goes flush, so window
+// corners (and with the frame, borders) follow it (ScreenFrame.set in config/general/frame.lua, which keeps the user's
+// values and restores them on clear or when Quickshell goes).
 Scope {
     id: root
 
     readonly property var profile: Style.corner_profile
-    // The whole dispatch, so the debounce restarts on any change. A frame on but drawn on no screen (only side bars) goes
-    // as a frame-off corner, like FrameExport's, and a clear leaves the owner's values. The radius is the corner as drawn (fitted to its profile's cap), which frame.lua turns
-    // into the windows' own rounding; Flush is the Style page's setting.
+    // The whole dispatch, so the debounce restarts on any change. A frame on but drawn on no screen (only side bars)
+    // goes as a frame-off corner, like FrameExport's, and a clear leaves the owner's values. The radius is the corner
+    // as drawn (fitted to its profile's cap), which frame.lua turns into the windows' own rounding; Flush is the
+    // Style page's setting.
     readonly property string command: {
         const mode = Style.sync_mode(ScreenFrames.any_frame);
         if (mode === "clear") return "ScreenFrame.clear()";

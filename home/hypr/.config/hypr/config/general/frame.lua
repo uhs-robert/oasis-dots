@@ -67,15 +67,20 @@ local function frame_mapped()
   return false
 end
 
---- Whether process `pid` still runs; a missing or invalid pid counts as gone, so the corner is never left stuck.
+--- Whether `pid` is still a running Quickshell (`qs` or `quickshell`, also `qs-shadow`): a pid reused by another
+--- program or a zombie counts as gone, as do a missing or invalid pid, so the corner is never left stuck.
 --- @param pid number|nil
 --- @return boolean
 local function process_alive(pid)
   if type(pid) ~= "number" or pid < 1 then return false end
-  local handle = io.open("/proc/" .. math.floor(pid) .. "/comm", "r")
+  local handle = io.open("/proc/" .. math.floor(pid) .. "/stat", "r")
   if handle == nil then return false end
+  local stat = handle:read("l") or ""
   handle:close()
-  return true
+  -- "pid (comm) state ...": comm may hold spaces and parentheses, so take the last ")" on the line.
+  local comm, state = stat:match("^%d+ %((.*)%) (%a)")
+  if comm == nil or state == "Z" then return false end
+  return comm:sub(1, 2) == "qs" or comm:sub(1, 10) == "quickshell"
 end
 
 -- Workspace rules that drop the outer gaps so a window sits flush against the frame. `f[1]` matches a workspace with a
