@@ -36,15 +36,16 @@ Item {
 
     signal toggle_requested()
 
-    readonly property int pad: 4
+    // A stacked title and artist need the plate's height, so the padding around them is thinner.
+    readonly property bool stacked: !root.vertical && !root.compact && root.text_lines.length > 1
+    readonly property int pad: root.stacked ? 2 : 4
     readonly property real art_size: root.vertical ? root.cell : root.height - root.pad * 2
     readonly property var text_lines: MediaText.lines(root.player ? root.player.trackTitle || "" : "", root.player ? root.player.trackArtist || "" : "", root.show_title, root.show_artist, root.text_layout, root.player ? root.player.identity || "" : "")
     // Two stacked lines must fit the well's inner height, so they shrink with it.
     function line_size(small) {
-        const inner = root.height - root.pad * 2;
-        const stacked = root.text_lines.length > 1;
-        if (small) return Math.max(7, Math.min(root.font.pixelSize - 3, Math.floor(inner * 0.36)));
-        return stacked ? Math.max(8, Math.min(root.font.pixelSize, Math.floor(inner * 0.5))) : root.font.pixelSize;
+        if (root.text_lines.length < 2) return root.font.pixelSize;
+        const sizes = MediaText.stacked_sizes(root.height - root.pad * 2, root.font.pixelSize);
+        return small ? sizes.artist : sizes.title;
     }
     readonly property bool cava_on: root.active && !root.vertical && root.right_mode === "cava"
     readonly property real base_width: 170
@@ -52,7 +53,7 @@ Item {
     readonly property real right_left: right.visible ? content.x + right.x : root.width + 1
     readonly property real right_width: root.right_mode === "hide" ? 0 : root.right_mode === "cava" ? 64 : 76
 
-    implicitWidth: root.vertical ? root.cell + root.pad * 2 : Math.max(root.compact ? 0 : root.base_width, content.implicitWidth + root.pad * 2)
+    implicitWidth: root.vertical ? root.cell + root.pad * 2 : Math.max(root.compact ? 0 : root.base_width, content.implicitWidth + root.side_inset * 2)
     implicitHeight: root.vertical ? root.cell * MediaSettings.vertical_cells() + (MediaSettings.vertical_cells() > 1 ? content.rowSpacing : 0) + root.pad * 2 : 24
 
     property font font
@@ -65,9 +66,15 @@ Item {
     // and drawers use. Style.screen_frame_profile is the accessor a separate corner-style setting will feed; with no
     // frame the style's own rounding decides.
     readonly property var corner_profile: Style.screen_frame_profile || { corner: Style.rounded ? "round" : "square", step: 2 }
-    // Only a round corner scales with the style; a chamfer or pixel corner is the profile's own size.
-    readonly property real corner_size: root.corner_profile.corner === "round" ? Style.radius(10) : 8
-    readonly property var plate_points: Corners.box_loop(root.corner_profile.corner, root.corner_size, root.corner_profile.step, root.width, root.height).map(p => Qt.point(p[0], p[1]))
+    // A round profile is the frame asking for round corners, so it rounds even where the style's own `rounded` is off; only the scale comes from the style.
+    // A chamfer or pixel corner is the profile's own size.
+    readonly property real corner_size: root.corner_profile.corner === "round" ? 10 * Style.corner_scale : 8
+    // The 1px outline is centred on the path, so the path runs half a pixel inside the item: on the edge itself the outer half
+    // is clipped and the left and right outlines come out faint or missing.
+    // A chamfered or stepped corner cuts `corner_size` px off each corner, so the contents keep clear of the diagonal
+    // (the art's corner would otherwise sit on it) on both ends alike.
+    readonly property real side_inset: root.vertical ? root.pad : ["chamfer", "pixel"].indexOf(root.corner_profile.corner) >= 0 ? Math.max(root.pad, root.corner_size - root.pad + 2) : root.pad
+    readonly property var plate_points: Corners.box_loop(root.corner_profile.corner, root.corner_size, root.corner_profile.step, root.width - 1, root.height - 1).map(p => Qt.point(p[0] + 0.5, p[1] + 0.5))
 
     Shape {
         id: plate
@@ -109,7 +116,10 @@ Item {
         rows: root.vertical ? -1 : 1
         columns: root.vertical ? 1 : -1
         anchors.fill: parent
-        anchors.margins: root.pad
+        anchors.topMargin: root.pad
+        anchors.bottomMargin: root.pad
+        anchors.leftMargin: root.side_inset
+        anchors.rightMargin: root.side_inset
         rowSpacing: 6
         columnSpacing: 6
 

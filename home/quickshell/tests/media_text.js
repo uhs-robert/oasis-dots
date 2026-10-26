@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/MediaText.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle, stacked_sizes };", T);
 const M = T.api;
 const plain = v => JSON.parse(JSON.stringify(v));
 
@@ -32,6 +32,9 @@ const cases = [
   ["one marquee cycle is pause, slide, pause: no way back", () => plain(M.marquee_cycle(60, 30, 1200)), { start_pause: 1200, travel: 2000, end_pause: 1200 }],
   ["no overflow or a zero speed never gives a negative or infinite slide", () => [M.marquee_cycle(-5, 30, 100).travel, M.marquee_cycle(50, 0, 100).travel], [0, 50000]],
   ["marquee runs only when wanted, visible and overflowing", () => [M.marquee_running(true, true, 10), M.marquee_running(false, true, 10), M.marquee_running(true, false, 10), M.marquee_running(true, true, 0)], [true, false, false, false]],
+  ["stacked lines fit the inner height for every inner height from 20 up", () => { const bad = []; for (let h = 20; h <= 40; h++) { const z = M.stacked_sizes(h, 13); if ((z.title + z.artist) * 1.3 > h + 1e-9) bad.push(h); } return bad; }, []],
+  ["the stacked title is the larger line and never above the bar font", () => { const z = M.stacked_sizes(26, 13); return [z.title > z.artist, z.title <= 13]; }, [true, true]],
+  ["the old 16px inner height did not fit two legible lines", () => { const z = M.stacked_sizes(16, 13); return (z.title + z.artist) * 1.3 > 16; }, true],
 ];
 
 let failed = 0;

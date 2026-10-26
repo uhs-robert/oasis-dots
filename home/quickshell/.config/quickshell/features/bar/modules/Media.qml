@@ -84,8 +84,9 @@ BarModule {
         vertical: root.vertical
         cell: Math.max(16, Math.min(root.cross - 8, 28))
         width: root.vertical ? implicitWidth : parent.width
-        // A capsule inset 5px from the bar edge above and below, like the approved mockups (28px in a 40px bar).
-        height: root.vertical ? implicitHeight : Math.max(20, Math.min(root.bar_height - 10, 28))
+        // A capsule inset 5px from the bar edge above and below, like the approved mockups (28px in a 40px bar). Stacked
+        // text needs the room, so it takes a 2px inset.
+        height: root.vertical ? implicitHeight : well.stacked ? Math.max(24, Math.min(root.bar_height - 4, 30)) : Math.max(20, Math.min(root.bar_height - 10, 28))
         anchors.centerIn: parent
         player: root.player
         active: root.shown
