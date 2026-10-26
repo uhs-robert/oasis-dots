@@ -382,7 +382,8 @@ local function register_key(handle, key, opts, args)
   if bind_opts.desc ~= nil then desc = bind_opts.desc or nil end
   bind_opts.desc = nil
   local register = key.leader and Bind.leader_key or Bind.key
-  local made = register(key.key, function() Act.run(handle.id, table.unpack(args)) end, desc, bind_opts)
+  local run = Bind.tag_action(function() Act.run(handle.id, table.unpack(args)) end, handle.id)
+  local made = register(key.key, run, desc, bind_opts)
   -- Recorded only after the bind succeeded, so list never shows a key that failed to register.
   local bound = key.leader and Bind.leader and Bind.leader ~= "" and (Bind.leader .. " + " .. key.key) or key.key
   table.insert(
@@ -450,7 +451,7 @@ function Act.row_action(spec)
     warn("Submap row: " .. tostring(args))
     return nil
   end
-  return function() Act.run(handle.id, table.unpack(args)) end, handle.label
+  return Bind.tag_action(function() Act.run(handle.id, table.unpack(args)) end, handle.id), handle.label
 end
 
 --- Validate a spec into a handle, or return why it cannot be one.

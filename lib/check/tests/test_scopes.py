@@ -44,7 +44,9 @@ CASES = [
     ("specs/roadmap.md", ""),
     # The registry step is a tree step: the step itself reaches only the always-run steps. The Lua it loads is Lua.
     ("lib/check/steps/registry.py", "checkscope"),
+    ("lib/check/registry.allow", "checkscope"),
     ("home/hypr/tests/act_refs.lua", " lua"),
+    ("home/hypr/tests/registry_binds.lua", " lua"),
     ("home/hypr/tests/hypr-act.sh", " lua"),
     ("home/hypr/tests/act-global.sh", " lua"),
     ("home/hypr/tests/act_global.lua", " lua"),

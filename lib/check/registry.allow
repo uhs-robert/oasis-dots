@@ -1,0 +1,63 @@
+# What the registry step (lib/check/steps/registry.py) lets stand without an action, one entry per line, the reason after #:
+#   bind <submap> <key>  # <reason>          `global` is the map outside any submap; `*` is every named submap
+#   ipc <target> <function>...  # <reason>
+# A new bind or IPC function needs an action (lib/actions/defs/), or a line here. A line whose bind or function has an
+# action now, or no longer exists, fails as stale: delete it in the PR that makes it so. The owner's `custom/` binds are
+# never loaded, so they need no line.
+
+# Binds that are not commands.
+bind global switch:on:Lid Switch        # a lid switch, not a key: the power script decides what closing it does
+bind global XF86PowerOff                # the power button, handled by the power script under the logind inhibitor
+bind global SUPER + mouse:272           # left mouse button: drag a window
+bind global SUPER + mouse:273           # right mouse button: resize a window
+
+# The plumbing every submap gets from Submap.define (lib/key/submap.lua).
+bind * ESCAPE                           # leaves the submap
+bind * BackSpace                        # goes back one submap
+bind * SHIFT + SLASH                    # toggles the which-key overlay
+bind * catchall                         # a release catchall that swallows or ends the submap on an unbound key
+bind * SLASH                            # no-op that claims the key-up the which-key chord leaves behind
+bind * Shift_L                          # the same, for the left Shift key-up
+bind * Shift_R                          # the same, for the right Shift key-up
+
+# Keys that enter a submap (Submap.define `enter`); the Leader menu enters the same submaps through the submap.enter action.
+bind global SUPER + SPACE               # enters Leader
+bind global SUPER + A                   # enters Applications
+bind global SUPER + G                   # enters Go
+bind global SUPER + Q                   # enters System
+bind global SUPER + D                   # enters Delete
+bind global SUPER + W                   # enters Windows
+bind global SUPER + SHIFT + G           # enters Groups
+bind global SUPER + SEMICOLON           # enters Quick Click
+bind global SUPER + C                   # enters Cursor
+bind global SUPER + R                   # enters Resize
+bind global SUPER + SHIFT + M           # enters Move
+
+# Leader rows still plain functions.
+bind Leader SHIFT + O                   # the Session Launcher picker, a function of extensions/auto_launcher
+bind Leader CTRL + SLASH                # Voice Help, a shell command of the voxcmd integration
+
+# IPC functions that are not person-facing commands.
+ipc brightness refresh                  # the bar's brightness module refreshes after a key changes it
+ipc cmdstatus refresh                   # a refresh hook nothing calls yet (see qml-ipc.allow)
+ipc calendar open_day refresh           # called by the calendar sync and by voxcmd's calendar integration, not by a person
+ipc clickhints dismiss open state       # the Quick Click overlay, driven by the Quick Click submap and the shadow tests
+ipc confirm ask dismiss                 # the confirmation prompt other surfaces raise
+ipc demo card clear keys mask           # the demo overlay for README captures
+ipc hyprvim_prompt open close           # called by the hyprvim plugin
+ipc hyprvim_whichkey open close         # called by the hyprvim plugin
+ipc lock lock_auto preview preview_close state  # idle lock and the lock-preview tooling; lock.open is the command
+ipc notifications close focus_toast get_dnd get_last has_toast history open  # queries and drivers of the notification surfaces; toggle_dnd, clear_all and the dismiss calls are actions
+ipc osd state                           # a state query
+ipc overview act save_session state     # the overview's own driver and queries; overview.toggle and close are actions
+ipc picker open_with                    # the picker launcher scripts pass a provider and arguments
+ipc popup close focus keyboard state toggle  # the bar's popup plumbing; popup.open is the action
+ipc power run                           # runs the power action without the prompt, deliberately not an action
+ipc screenshot close pick recording_started recording_stopped share toggle  # driven by the share picker, the recorder and the bar; the menu, select and stop calls are actions
+ipc settings activate back cursor hide step view  # the Settings window's keyboard driver; open and toggle are actions
+ipc sound play                          # a sound the theme audio plays
+ipc style get get_cava_line get_effects_pack get_lock get_lock_backdrop get_lock_tint get_ui_sounds set_effects_pack set_lock set_lock_backdrop set_lock_tint set_ui_sounds toggle_cava_line  # the Settings pane's getters and setters; style.set and cycle are actions
+ipc tmux_overview state                 # a state query
+ipc transition play                     # a debugging hook
+ipc weather preview previewing          # a preview hook for fixtures
+ipc zoom start stop                     # the zoom overlay's own start and stop; step, size and full are actions
