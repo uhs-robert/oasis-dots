@@ -31,7 +31,7 @@ Singleton {
             pause_mic: "VOXCMD_WAKE_PAUSE_FOR_MIC"
         })
     // Reads a value as the listener and voxcmd do, from its exact text: undefined when they would ignore it.
-    // Matching by text, not by number, keeps 0.0, 01 and 30.0 out, as voice-env.sh and voxcmd-wake do.
+    // Matching by text, not by number, keeps 0.0, 01 and 30.0 out, as voxcmd's voice env reader and voxcmd-wake do.
     readonly property var readers: ({
             sensitivity: text => root.level_ids.indexOf(text) >= 0 ? text : undefined,
             duck: text => /^[0-9]+$/.test(text) && Number(text) <= 100 ? Number(text) : undefined,

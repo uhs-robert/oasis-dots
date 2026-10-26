@@ -55,7 +55,7 @@ Act.define("voice.rapid", {
   label = "Rapid Mode",
   intent = "Toggle rapid voice-command mode.",
   key = { key = "CTRL + COMMA", leader = true },
-  run = Cmd(voxcmd, "rapid"),
+  run = Cmd(voxcmd, "session", "rapid"),
 })
 
 Act.define("voice.wake", {
