@@ -115,11 +115,15 @@ class HeadlessLoadTest(TreeCase):
         self.assertEqual(findings, [])
         lua_ids = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "lua")
         self.assertEqual(lua_ids, [
-            "help.keybinds", "hyprvim.jump_mark", "hyprvim.terminal",
+            "files.open",
+            "help.keybinds", "hyprvim.edit_selection", "hyprvim.jump_mark", "hyprvim.terminal",
             "media.brightness_down", "media.brightness_up", "media.mute", "media.mute_mic", "media.next",
             "media.play_pause", "media.prev", "media.volume_down", "media.volume_up",
+            "menu.agents", "menu.cli", "menu.drun", "menu.run_script", "menu.ssh",
             "monitor.focus", "monitor.move_window", "picker.clipboard", "picker.clipboard_delete",
             "picker.directory", "picker.emoji", "scratchpad.move", "scratchpad.toggle",
+            "submap.enter",
+            "terminal.bottom", "terminal.open", "terminal.task_manager", "terminal.tui_files", "terminal.yazi",
             "window.close", "window.cycle_float", "window.focus", "window.fullscreen", "window.maximize",
             "window.move", "window.restore_closed",
             "workspace.cycle", "workspace.focus", "workspace.move", "workspace.move_window",

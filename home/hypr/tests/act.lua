@@ -697,9 +697,14 @@ package.loaded["lua.plugins.hyprvim"] = {
 			hyprvim_calls[#hyprvim_calls + 1] = "enter_jump"
 		end,
 	},
+	editor = {
+		open = function(opts)
+			hyprvim_calls[#hyprvim_calls + 1] = "open_" .. tostring(opts.insert_mode)
+		end,
+	},
 }
 assert(loadfile(hypr_dir .. "/lib/actions/defs/pickers.lua"))()
-check("pickers: no warnings, six binds", #Act.warnings == 0 and #binds == 6)
+check("pickers: no warnings, seven binds", #Act.warnings == 0 and #binds == 7)
 local picker_keys = {
 	{ "picker.clipboard", "Clipboard History", "SUPER + CTRL + V", "clipboard" },
 	{ "picker.clipboard_delete", "Delete Clipboard Entry", "SUPER + CTRL + SHIFT + V", "clipboard_delete" },
@@ -725,9 +730,17 @@ check(
 )
 Act.run("hyprvim.terminal")
 Act.run("hyprvim.jump_mark")
+Act.run("hyprvim.edit_selection")
+check(
+	"hyprvim: edit selection binds N as 'Edit Selection in Vim'",
+	find("SUPER + N") ~= nil and find("SUPER + N").opts.desc == "Edit Selection in Vim"
+)
 check(
 	"hyprvim: each action calls its module once",
-	#hyprvim_calls == 2 and hyprvim_calls[1] == "prompt" and hyprvim_calls[2] == "enter_jump"
+	#hyprvim_calls == 3
+		and hyprvim_calls[1] == "prompt"
+		and hyprvim_calls[2] == "enter_jump"
+		and hyprvim_calls[3] == "open_true"
 )
 local picker_listed = 0
 for _, handle in ipairs(Act.list()) do
@@ -736,7 +749,7 @@ for _, handle in ipairs(Act.list()) do
 		check("pickers: " .. handle.id .. " has an intent", handle.intent ~= nil and handle.intent ~= "")
 	end
 end
-check("pickers: six listed", picker_listed == 6)
+check("pickers: seven listed", picker_listed == 7)
 package.loaded["lib.actions.menu"] = nil
 package.loaded["lua.plugins.hyprvim"] = nil
 
