@@ -133,6 +133,28 @@ Act.bind("workspace.focus", { key = "F1", args = { 1 }, repeating = true, submap
 check("bind: other opts reach hl.bind", find("F1").opts.repeating == true and find("F1").opts.submap_universal == false)
 check("bind: args and key are not leaked into hl.bind", find("F1").opts.args == nil and find("F1").opts.key == nil)
 
+-- `desc` names one key: a string replaces the label, false leaves the key undescribed, absent keeps the label.
+Act.bind("workspace.focus", { key = "F5", args = { 1 }, desc = "Go to Workspace 1" })
+Act.bind("workspace.focus", { key = "F6", args = { 1 }, desc = false })
+Act.bind("workspace.focus", { key = "F7", args = { 1 } })
+check("bind desc: a string replaces the label", find("F5").opts.desc == "Go to Workspace 1")
+check("bind desc: false leaves the key undescribed", find("F6").opts.desc == nil)
+check("bind desc: absent keeps the label", find("F7").opts.desc == "Workspace")
+check("bind desc: the key still runs the action", pcall(find("F6").action))
+
+-- A define's opts.desc is not a label for its keys: the label stays.
+fresh()
+Act.define("desc.opt", { label = "Label", key = "F1", opts = { desc = "Other", locked = true }, run = function() end })
+check("define: opts.desc does not rename the key", find("F1").opts.desc == "Label" and find("F1").opts.locked == true)
+
+fresh()
+Act.define("workspace.focus", {
+	label = "Workspace",
+	params = { { name = "n", type = "int" } },
+	run = function() end,
+})
+Act.bind("workspace.focus", { key = "F1", args = { 1 } })
+
 -- Bind failures warn and skip only that bind.
 local before = #binds
 Act.bind("workspace.focus", { key = "F2", args = { "three" } })

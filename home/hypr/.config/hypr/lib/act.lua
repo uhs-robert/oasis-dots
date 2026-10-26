@@ -369,7 +369,8 @@ end
 local function register_key(handle, key, opts, args)
   local bind_opts = {}
   for k, v in pairs(handle.opts) do
-    bind_opts[k] = v
+    -- A define's opts never rename its keys: the label does, and only Act.bind can give one key its own.
+    if k ~= "desc" then bind_opts[k] = v end
   end
   for k, v in pairs(opts) do
     bind_opts[k] = v
