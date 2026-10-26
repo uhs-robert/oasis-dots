@@ -19,9 +19,14 @@ Popup {
     // not resize between sections.
     readonly property real max_width_fraction: 0.9
     readonly property real height_fraction: 0.8
+    // A row stops here so its value stays near its name; the pane is no wider, and the help panel takes the rest.
+    readonly property real row_cap: Style.px(640)
+    readonly property real max_width: Style.px(1900)
+    readonly property bool help_below: body.help_below
     // The section list, the pane and help column at their widest, their gaps and the body's 12px margins.
-    readonly property real natural_width: nav.width + Style.px(12 + 24 + 860 + 48 + 520) + 24
-    preferred_width: (root.screen ? Math.min(root.natural_width, root.screen.width * root.max_width_fraction) : root.natural_width) / Style.scale
+    // The panel's 740 is the 860 pane plus 520 help of before minus the narrower pane, so the drawer keeps its width.
+    readonly property real natural_width: nav.width + Style.px(12 + 24 + 48 + 740) + root.row_cap + 24
+    preferred_width: (root.screen ? Math.min(root.natural_width, root.screen.width * root.max_width_fraction, root.max_width) : Math.min(root.natural_width, root.max_width)) / Style.scale
     body_height: root.screen ? Math.min(root.screen.height * root.height_fraction - root.header_height - root.footer_height, root.content_cap + 24) : 600
     jumps_enabled: true
     // Only on the section list: panes hold sliders and fields with wheel behavior of their own.
@@ -340,9 +345,9 @@ Popup {
         // small screen) the help goes under the rows.
         readonly property real side_room: body.width - nav_divider.x - Style.px(24)
         readonly property bool help_below: body.side_room < Style.px(480 + 48 + 300)
-        readonly property real help_width: body.help_below ? body.side_room : Math.max(Style.px(300), Math.min(Style.px(520), body.side_room * 0.32))
+        readonly property real help_width: body.help_below ? body.side_room : Math.max(Style.px(300), body.side_room - root.row_cap - Style.px(48))
         readonly property real help_height: body.help_below ? Math.round(body.height * 0.3) : body.height
-        readonly property real pane_width: body.help_below ? body.side_room : Math.min(Style.px(860), body.side_room - body.help_width - Style.px(48))
+        readonly property real pane_width: body.help_below ? body.side_room : Math.min(root.row_cap, body.side_room - body.help_width - Style.px(48))
         readonly property real pane_height: body.help_below ? body.height - body.help_height - Style.px(24) : body.height
 
         Flickable {
