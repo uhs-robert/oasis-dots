@@ -6,6 +6,7 @@ source "$VOXCMD_SHARE_DIR/spoken-position.sh"
 
 # apps.toml's match_ignore_words, as the word lists below need them.
 read -r -a ignored_words <<<"${VOXCMD_MATCH_IGNORE_WORDS-window app application program}"
+printf -v ignored_text '%s ' "${ignored_words[@]}"
 
 # While firefox.toml is installed, Firefox windows are not focused by the title of the tab they show.
 firefox_installed() {
@@ -54,7 +55,7 @@ help_apps() {
 # Calendar app would otherwise turn "open my calendar" into a picker. "open calendar" still opens the app, and closing
 # "the calendar" still closes its window, since calendar.sh has nothing to close.
 candidates_json() {
-  local action="$1" target="$2"
+  local action="$1" target="$2" app_list="" app_list_ready=0 target_is_keybind=false listing_fd=""
   case "$action" in
   resize | grow | shrink)
     resize_candidates "$action" "$target"
@@ -70,6 +71,7 @@ candidates_json() {
     fi
     ;;
   esac
+  start_listing "$action"
   if spoken_as_keybind "$action" "$target" || names_session_or_agent "$target" || launches_keybind "$action" "$target" ||
     { [[ "$action" =~ ^(open|open_new|focus)$ ]] && [[ "$target" =~ ^(my|the)\ calendar$ ]]; } ||
     opens_in_browser "$action" "$target"; then
@@ -77,7 +79,10 @@ candidates_json() {
     return
   fi
   case "$action" in
-  open | open_new) app_candidates ;;
+  open | open_new)
+    # launches_keybind() may have listed the apps already.
+    if [ "$app_list_ready" = 1 ]; then printf '%s\n' "$app_list"; else listed app_candidates; fi
+    ;;
   focus | close) window_candidates "$action" ;;
   move | move_with_window) move_candidates "$target" ;;
   swap) swap_candidates "$target" ;;
@@ -86,32 +91,33 @@ candidates_json() {
 
 # Words compared the way voxcmd's word matching compares them, as a set: filler and ignored_words dropped, number
 # words as digits, plurals singular, so "close the browser" names "Close Browsers". Prefix of a jq program that
-# defines `words`; the program needs `--argjson ignored`.
+# defines `words`; the program needs `--arg ignored_text "$ignored_text"`.
 word_set_jq='
   {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10"} as $digits
-  | (["the", "a", "an", "my", "this", "that", "please", "to", "of", "on", "in", "for", "it"] + $ignored) as $ignored
+  | ($ignored_text | split(" ") | map(select(. != ""))) as $listed
+  | (["the", "a", "an", "my", "this", "that", "please", "to", "of", "on", "in", "for", "it"] + $listed) as $ignored
   | def singular: if length > 3 and endswith("s") and (endswith("ss") | not) then .[:-1] else . end;
     def words: ascii_downcase | gsub("\u0027"; "") | [splits("[^a-z0-9]+") | select(. != "") | ($digits[.] // .) | singular]
       | map(select(IN($ignored[]) | not)) | unique;'
 
-ignored_words_json() {
-  printf '%s\n' "${ignored_words[@]}" | jq -R -s -c 'split("\n") | map(select(. != ""))'
-}
-
-# True when one of the phrases is a described Hyprland keybind.
-names_keybind() {
-  hyprctl binds -j 2>/dev/null | jq -e --argjson ignored "$(ignored_words_json)" --args "$word_set_jq"'
+# One line per phrase, "true" when it is a described Hyprland keybind and "false" when not; nothing when the binds
+# cannot be read. All the phrases of a hook run share one hyprctl call and one pass over the binds, which are most of
+# its time.
+keybind_hits() {
+  hyprctl binds -j 2>/dev/null | jq -r --arg ignored_text "$ignored_text" --args "$word_set_jq"'
     ($ARGS.positional | map(words)) as $phrases
-    | any(.[] | select(.has_description) | .description | words; . as $bind | any($phrases[]; . == $bind))
-  ' "$@" >/dev/null
+    | ([.[] | select(.has_description) | .description | words] | unique) as $bound
+    | $phrases[] | . as $phrase | any($bound[]; . == $phrase)
+  ' "$@"
 }
 
 # The spoken verbs of an action, one per line, as its pattern above accepts them.
 action_verbs() {
+  local form
   case "$1" in
-  open_new) intent_forms open | sed 's/$/ new/' ;;
-  move) tr '|' '\n' <<<"$move_verbs" ;;
-  move_with_window) tr '|' '\n' <<<"$move_with_window_verbs" ;;
+  open_new) while IFS= read -r form; do printf '%s new\n' "$form"; done < <(intent_forms open) ;;
+  move) printf '%s\n' "${move_verbs//|/$'\n'}" ;;
+  move_with_window) printf '%s\n' "${move_with_window_verbs//|/$'\n'}" ;;
   swap) echo swap ;;
   open | focus | close) intent_forms "$1" ;;
   esac
@@ -120,10 +126,18 @@ action_verbs() {
 # True when "<verb> <target>" names a described keybind ("close browsers", "focus left", "go to workspace 2", "start
 # menu"): those belong to the keybinds fallback, which only gets a turn when this integration offers nothing.
 # firefox.sh keeps its own copy of this: change both.
+#
+# The bare target is looked up in the same pass, for launches_keybind(): it sets target_is_keybind.
 spoken_as_keybind() {
-  local action="$1" target="$2" verb phrases=()
+  local action="$1" target="$2" verb phrases=() hits
   while IFS= read -r verb; do phrases+=("$verb $target"); done < <(action_verbs "$action")
-  names_keybind "${phrases[@]}"
+  mapfile -t hits < <(keybind_hits "${phrases[@]}" "$target")
+  target_is_keybind="${hits[${#phrases[@]}]:-false}"
+  local hit
+  for hit in "${hits[@]:0:${#phrases[@]}}"; do
+    [ "$hit" = true ] && return 0
+  done
+  return 1
 }
 
 # "switch to the X session", "go to the X agent": a session or agent integration owns those, and a window whose
@@ -145,28 +159,30 @@ opens_in_browser() {
 launches_keybind() {
   local action="$1" target="$2"
   [[ "$action" == open || "$action" == open_new ]] || return 1
-  names_keybind "$target" || return 1
-  ! app_candidates | jq -e --argjson ignored "$(ignored_words_json)" --arg target "$target" "$word_set_jq"'
-    ($target | words) as $spoken | any(.[]; (.match_text | words) == $spoken)' >/dev/null
+  [ "$target_is_keybind" = true ] || return 1
+  app_list=$(listed app_candidates) app_list_ready=1
+  ! jq -e --arg ignored_text "$ignored_text" --arg target "$target" "$word_set_jq"'
+    ($target | words) as $spoken | any(.[]; (.match_text | words) == $spoken)' <<<"$app_list" >/dev/null
 }
 
 # ---- Apps ------------------------------------------------------------------------------------------------------
 
-# Desktop files by id (the path under applications/, "/" turned to "-"), the first data dir holding an id winning
-# as the XDG spec says, so a Hidden=true copy in ~/.local/share masks the system one.
+# Desktop files as <path under applications/><TAB><path>, data dirs in order.
 desktop_files() {
   local data_dirs="${XDG_DATA_HOME:-$HOME/.local/share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" dir
   local IFS=:
   for dir in $data_dirs; do
     [ -d "$dir/applications" ] || continue
     find -L "$dir/applications" -name '*.desktop' -printf '%P\t%p\n' 2>/dev/null
-  done | awk -F'\t' '{ id = $1; gsub("/", "-", id) } !seen[id]++ { print id "\t" $2 }'
+  done
 }
 
-# Launchable apps as [{id, name, terminal, wm_class, exec, path}]: Type=Application entries that are not
-# NoDisplay or Hidden and are shown on the current desktop, read from the [Desktop Entry] group only (the
-# [Desktop Action ...] groups have their own Name and Exec).
-desktop_entries() {
+# One row per launchable app: id, name, terminal (1 or 0), wm_class, exec and path, tab separated. Type=Application
+# entries that are not NoDisplay or Hidden and are shown on the current desktop, read from the [Desktop Entry] group
+# only (the [Desktop Action ...] groups have their own Name and Exec). An app has the id of its desktop file (the path
+# under applications/, "/" turned to "-"), the first data dir holding an id winning as the XDG spec says, so a
+# Hidden=true copy in ~/.local/share masks the system one.
+desktop_entry_rows() {
   desktop_files | awk -F'\t' -v desktops="${XDG_CURRENT_DESKTOP:-Hyprland}" '
     function on_this_desktop(list,   names, count, i) {
       count = split(desktops, names, ":")
@@ -174,6 +190,9 @@ desktop_entries() {
       return 0
     }
     {
+      id = $1; gsub("/", "-", id)
+      if (id in seen) next
+      seen[id] = 1
       file = $2; group = ""; split("", entry)
       while ((getline line < file) > 0) {
         if (line ~ /^\[/) { group = line; continue }
@@ -187,16 +206,25 @@ desktop_entries() {
       if (entry["Name"] == "" || entry["Exec"] == "") next
       if (entry["OnlyShowIn"] != "" && !on_this_desktop(entry["OnlyShowIn"])) next
       if (entry["NotShowIn"] != "" && on_this_desktop(entry["NotShowIn"])) next
-      print $1 "\t" entry["Name"] "\t" (entry["Terminal"] == "true") "\t" entry["StartupWMClass"] "\t" entry["Exec"] "\t" entry["Path"]
-    }' | jq -R -s -c 'split("\n") | map(select(. != "") | split("\t")
-      | {id: .[0], name: .[1], terminal: (.[2] == "1"), wm_class: .[3], exec: .[4], path: .[5]})'
+      print id "\t" entry["Name"] "\t" (entry["Terminal"] == "true") "\t" entry["StartupWMClass"] "\t" entry["Exec"] "\t" entry["Path"]
+    }'
+}
+
+# The rows of desktop_entry_rows() as [{id, name, terminal, wm_class, exec, path}], for a jq program that reads them
+# with `-R -s`, or from `--rawfile rows` after `$rows | `.
+entries_from_rows_jq='split("\n") | map(select(. != "") | split("\t")
+  | {id: .[0], name: .[1], terminal: (.[2] == "1"), wm_class: .[3], exec: .[4], path: .[5]})'
+
+# Launchable apps as [{id, name, terminal, wm_class, exec, path}].
+desktop_entries() {
+  desktop_entry_rows | jq -R -s -c "$entries_from_rows_jq"
 }
 
 # Each app matches by its Name and, when that says something else, by its id's last part ("Files" is also
 # "nautilus", "Visual Studio Code" also "code").
 app_candidates() {
-  desktop_entries | jq -c '
-    def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
+  desktop_entry_rows | jq -R -s -c "$entries_from_rows_jq"'
+    | def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
     map((.id | sub("\\.desktop$"; "") | split(".") | last) as $short
       | {id, label: .name, match_text: .name},
         (select(($short | plain) != (.name | plain)) | {id, label: .name, match_text: $short}))'
@@ -223,7 +251,7 @@ start_app() {
 
 desktop_entry() {
   local entry
-  entry=$(desktop_entries | jq -c --arg id "$1" 'first(.[] | select(.id == $id)) // empty')
+  entry=$(desktop_entry_rows | jq -R -s -c --arg id "$1" "$entries_from_rows_jq"' | first(.[] | select(.id == $id)) // empty')
   if [ -z "$entry" ]; then
     echo "no installed app $1"
     return 1
@@ -287,9 +315,37 @@ start_entry() {
 windows() {
   local clients
   clients=$(hyprctl clients -j 2>/dev/null) || clients='[]'
-  jq -c --argjson apps "$(desktop_entries)" '
+  jq -c --rawfile rows <(desktop_entry_rows) "$windows_jq" <<<"$clients" 2>/dev/null || echo '[]'
+}
+
+# Starts listing what the action offers from (apps, or windows) while the keybind check runs, so the two overlap
+# instead of adding up; listed() reads it once the check has not claimed the phrase. Its stderr is dropped: on a claimed phrase the reader is
+# left to finish alone, and holding the hook's stderr open would keep voxcmd waiting for it.
+start_listing() {
+  case "$1" in
+  open | open_new) exec {listing_fd}< <(app_candidates 2>/dev/null) ;;
+  focus | close | move | move_with_window | swap) exec {listing_fd}< <(windows 2>/dev/null) ;;
+  esac
+}
+
+# What start_listing() started, else $1 run now.
+listed() {
+  if [ -n "$listing_fd" ]; then
+    cat <&"$listing_fd"
+    exec {listing_fd}<&-
+    listing_fd=""
+  else
+    "$1"
+  fi
+}
+
+listed_windows() { listed windows; }
+
+# Takes the rows of desktop_entry_rows() as `$rows` and prints the windows.
+windows_jq='
+    ($rows | '"$entries_from_rows_jq"') as $apps
     # wm_class keys come last so they win over an id that happens to equal another app class.
-    ($apps | map((.id | sub("\\.desktop$"; "")) as $id
+    | ($apps | map((.id | sub("\\.desktop$"; "")) as $id
         | {key: ($id | ascii_downcase), value: .name}, {key: ($id | split(".") | last | ascii_downcase), value: .name})
       + ($apps | map(select(.wm_class != "") | {key: (.wm_class | ascii_downcase), value: .name}))
       | from_entries) as $app_names
@@ -297,8 +353,7 @@ windows() {
     | sort_by(.focusHistoryID | if . < 0 then infinite else . end)
     | map({address, app: ($app_names[.class | ascii_downcase] // (.class | split(".") | last)),
         title: (if (.title | length) > 60 then .title[:57] + "..." else .title end),
-        firefox: (.class | ascii_downcase | contains("firefox"))})' <<<"$clients" 2>/dev/null || echo '[]'
-}
+        firefox: (.class | ascii_downcase | contains("firefox"))})'
 
 # A window matches by its app name ("focus firefox") and by its title ("focus tmux config"); several matching
 # windows open the picker, where the label shows each title. A Firefox window's title is its selected tab's, and
@@ -307,7 +362,7 @@ windows() {
 window_candidates() {
   local tabs_elsewhere=false
   [ "$1" != focus ] || ! firefox_installed || tabs_elsewhere=true
-  windows | jq -c --arg action "$1" --argjson tabs_elsewhere "$tabs_elsewhere" '
+  listed_windows | jq -c --arg action "$1" --argjson tabs_elsewhere "$tabs_elsewhere" '
     def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
     map((if $action == "close" then "\(.app) window" else .app end) as $app_part
       | (if .title == "" then $app_part else "\($app_part): \(.title)" end) as $label
@@ -397,7 +452,7 @@ move_candidates() {
     return
   }
   local workspace_words="$move_workspace_words" workspace="$move_workspace" label_to="$move_label_to"
-  windows | jq -c --arg suffix "$workspace_words" --arg workspace "$workspace" --arg label_to "$label_to" '
+  listed_windows | jq -c --arg suffix "$workspace_words" --arg workspace "$workspace" --arg label_to "$label_to" '
     def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
     ($workspace | gsub("%"; "%25") | gsub(" "; "%20")) as $workspace
     | map("\(.app): \(.title) \($label_to)" as $label
@@ -433,7 +488,7 @@ swap_candidates() {
     echo '[]'
     return
   }
-  windows | jq -c --arg active "$active_address" --arg prefix "$prefix" '
+  listed_windows | jq -c --arg active "$active_address" --arg prefix "$prefix" '
     def plain: ascii_downcase | [splits("[^a-z0-9]+") | select(. != "")] | join(" ");
     map(select(.address != $active)
       | "swap with \(.app): \(.title)" as $label
