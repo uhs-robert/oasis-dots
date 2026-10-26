@@ -313,6 +313,8 @@ djinn_status() {
     fi
   elif [[ -f $djinn_bar ]]; then
     echo "oasis-djinn: half swapped; run: .claude/skills/owner-test-bar/owner-test-bar.sh restore"
+  elif [[ ! -e $djinn_link && ! -L $djinn_link ]]; then
+    echo "oasis-djinn: not stowed here"
   else
     echo "oasis-djinn: main"
   fi
@@ -922,11 +924,20 @@ main() {
     record_owner "$2" "${branches[@]}"
     require_unlocked
     djinn_swap "$2" "$dir"
-    # A subshell, since die exits: the manifest must not stay on the test build when the hypr swap fails.
-    (hypr_swap "$2" "$dir") || {
+    # A subshell, since die exits: the manifest must not stay on the test build when the hypr swap fails. Its status
+    # is read after the subshell, not through `||`: bash turns set -e off inside anything left of `||`, so a failing
+    # cp or ln partway would carry on and report a half-swapped desktop as done.
+    set +e
+    (
+      set -e
+      hypr_swap "$2" "$dir"
+    )
+    swap_status=$?
+    set -e
+    if ((swap_status != 0)); then
       djinn_restore
       exit 1
-    }
+    fi
     voxcmd_swap "$2" "$dir"
     voxtype_swap "$2" "$dir"
     launch "qs -n -p $dir/$qs_rel"
@@ -955,8 +966,9 @@ main() {
   restore)
     guard_owner "$take"
     require_unlocked
-    hypr_restore
+    # The manifest goes back first: the reload in hypr_restore reads it.
     djinn_restore
+    hypr_restore
     voxcmd_restore
     voxtype_restore
     launch "qs -n"
