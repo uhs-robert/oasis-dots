@@ -29,8 +29,8 @@ ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$ov_pkg/.local/bin/voxcmd-autostop"
 for integration in apps keybinds overview rapid; do
   cp "$package/.config/voxcmd/integrations.d/$integration.sh" "$ov_config/integrations.d/"
 done
-# Overview, Rapid and Keybinds are TOML too: the Rust build takes the shipped file over the bash copy the bash build needs.
-copy_shipped_integrations "$ov_config" keybinds overview rapid
+# Apps, Keybinds, Overview and Rapid are TOML too: the Rust build takes the shipped file over the bash copy the bash build needs.
+copy_shipped_integrations "$ov_config" apps keybinds overview rapid
 # The confirm card answers yes unless $root/confirm-no exists.
 cat >"$ov_pkg/.local/bin/voxcmd-confirm" <<STUB
 #!/bin/sh

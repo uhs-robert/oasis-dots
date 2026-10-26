@@ -15,6 +15,7 @@
 #   hyprctl binds|clients|monitors|activewindow|activeworkspace|version|workspaces -j
 #                                     SANDBOX_BINDS_JSON, SANDBOX_CLIENTS_JSON, ... (the JSON itself); activewindow
 #                                     is {} (no focused window) without its fixture, never the live window;
+#                                     SANDBOX_CLIENTS_AFTER_CLOSE_JSON replaces clients once a window close has been dispatched;
 #                                     SANDBOX_ACTIVEWINDOW_AFTER_WTYPE_JSON replaces it once wtype has been called,
 #                                     SANDBOX_ACTIVEWINDOW_AFTER_LAUNCH_JSON once setsid has been (an app started),
 #                                     SANDBOX_ACTIVEWINDOW_AFTER_FOCUS_JSON once a focus dispatch has been. With
@@ -251,7 +252,15 @@ hyprctl)
       printenv SANDBOX_ACTIVEWINDOW_JSON || echo '{}'
     fi
     ;;
-  binds | clients | monitors | activeworkspace | version)
+  clients)
+    # SANDBOX_CLIENTS_AFTER_CLOSE_JSON: the windows once a window has been closed, as the close wait polls for.
+    if [ -n "${SANDBOX_CLIENTS_AFTER_CLOSE_JSON:-}" ] && grep -q '^hyprctl dispatch hl.dsp.window.close' "$SANDBOX_DIR/calls.log" 2>/dev/null; then
+      printenv SANDBOX_CLIENTS_AFTER_CLOSE_JSON
+    else
+      printenv SANDBOX_CLIENTS_JSON || fixture_missing SANDBOX_CLIENTS_JSON
+    fi
+    ;;
+  binds | monitors | activeworkspace | version)
     fixture_var="SANDBOX_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')_JSON"
     printenv "$fixture_var" || fixture_missing "$fixture_var"
     ;;
