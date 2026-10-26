@@ -32,6 +32,8 @@ Item {
     // Lualine's sections are horizontal only, so a side bar draws the style's islands instead.
     readonly property bool lualine: Style.bar_lualine && !root.vertical
     // The center island's extent along the bar: its width on a top or bottom bar, its height on a side one.
+    // The cava tail the center island has grown below its modules (0 on a top or bottom bar).
+    readonly property real center_tail: center_cava.tail_span
     readonly property real center_span: root.vertical ? center_island.body_item.height : center_island.body_item.width
     // The floating strip (Style.strip_floats): the plate sits strip_inset in from the screen edge and strip_side in from
     // each end of the bar (the sides of a top bar, the top and bottom of a column), so the bar window is strip_inset
@@ -297,7 +299,7 @@ Item {
         // bottom island and grows with the bars' fade.
         readonly property real tail_gap: 6
         readonly property real tail_target: CavaTail.tail_target(root.vertical, 96 + center_cava.tail_gap + center_cava.along_margin,
-            CavaTail.free_space(root.height, center_island.module_length, right_island.height, root.strip_side, center_cava.tail_gap),
+            CavaTail.free_space(root.height, center_island.module_length, root.right_side.length > 0 ? right_island.height : 0, root.strip_side, center_cava.tail_gap),
             center_cava.tail_gap + center_cava.along_margin)
         readonly property real tail_length: Math.max(0, center_cava.tail_target - center_cava.tail_gap - center_cava.along_margin)
         readonly property real tail_span: CavaTail.tail_span(center_cava.tail_target, center_cava.opacity)

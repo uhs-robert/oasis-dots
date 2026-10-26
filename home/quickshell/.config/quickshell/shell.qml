@@ -128,6 +128,7 @@ ShellRoot {
                     screen: screen_scope.modelData
                     screen_name: screen_scope.modelData.name
                     line_width: bar_loader.item && bar_loader.item.bar_item.has_center ? bar_loader.item.bar_item.center_span : 260
+                    line_shift: bar_loader.item && bar_loader.item.bar_item.has_center ? bar_loader.item.bar_item.center_tail / 2 : 0
                     bar_present: screen_scope.has_bar
                     bottom: screen_scope.bar_bottom
                     side: screen_scope.bar_vertical ? screen_scope.bar_position : ""

@@ -388,14 +388,13 @@ PanelWindow {
     function read_island() {
         if (!root.island) return;
         root.island_top = root.island.mapToItem(null, 0, 0).y;
-        root.island_length = root.island.height - (root.island.tail_span || 0);
+        root.island_length = Drawer.beside_extent(root.island.height, root.island.tail_span || 0);
     }
     onIslandChanged: root.read_island()
     onVisibleChanged: if (root.visible) root.read_island()
     Connections {
         target: root.island
         function onHeightChanged() { root.read_island(); }
-        function onTail_spanChanged() { root.read_island(); }
         function onYChanged() { root.read_island(); }
     }
     readonly property var beside_at: Drawer.beside_place(root.side, root.edge, root.island_top, root.island_length, root.base_height, root.screen ? root.screen.height : 0)

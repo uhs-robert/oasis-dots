@@ -392,22 +392,36 @@ expect(Object.values(vm.runInContext("none", P)).every(v => v === false), "Panel
 // bar or with cava off, cut to the room above the bottom island on a short screen, and the modules never move.
 const T = vm.createContext({});
 vm.runInContext(read("features/bar/CavaTail.js").replace(/^\.pragma.*$/gm, ""), T);
-const wanted = 108, least = 12, roomy = T.free_space(1080, 200, 300, 0, 6), short = T.free_space(600, 200, 300, 0, 6);
+const wanted = 108, least = Number(/tail_gap: (\d+)/.exec(read("features/bar/Bar.qml"))[1]) + Number(/along_margin: [^\n]*: (\d+)\n/.exec(read("features/bar/Bar.qml"))[1]), roomy = T.free_space(1080, 200, 300, 0, 6), short = T.free_space(600, 200, 300, 0, 6);
 const tail_of = (free, fade = 1) => T.tail_span(T.tail_target(true, wanted, free, least), fade);
 expect(T.tail_span(T.tail_target(false, wanted, roomy, least), 1) === 0, "a top or bottom bar gets a cava tail");
 expect(tail_of(roomy, 0) === 0, "the tail stays with cava off");
 expect(tail_of(roomy, 1) === wanted, "the tail is not full with room to spare");
 expect(short < wanted && tail_of(short) === Math.max(0, short), "the tail is not cut to the free room on a short screen");
 // Free room between none and what is wanted: 900 px leaves 44 below the modules, and a bottom inset takes from it.
-expect(T.free_space(900, 200, 300, 0, 6) === 44 && T.free_space(900, 200, 300, 10, 6) === 34 && roomy === 134, "free_space is " + T.free_space(900, 200, 300, 0, 6) + " / " + T.free_space(900, 200, 300, 10, 6) + " / " + roomy);
-expect(tail_of(44) === 44 && tail_of(44, 0.5) === 22, "a positive but short free room does not give a tail of exactly that room: " + tail_of(44));
+expect(T.free_space(900, 200, 300, 0, 6) === 44 && T.free_space(900, 200, 300, 10, 6) === 34 && roomy === 134, "free_space gives " + T.free_space(900, 200, 300, 0, 6) + ", " + T.free_space(900, 200, 300, 10, 6) + " and " + roomy + ", want 44, 34 and 134");
+expect(tail_of(44) === 44 && tail_of(44, 0.5) === 22, "a free room of 44 gives a tail of " + tail_of(44) + ", want 44 (22 at half fade)");
 // Room that cannot hold a bar (under the gap and margin) gives no tail, not an empty one.
-expect(tail_of(least - 1) === 0 && tail_of(least) === 0 && tail_of(least + 1) === least + 1, "a tail under the least a bar needs is " + tail_of(least - 1) + " / " + tail_of(least) + " / " + tail_of(least + 1));
-expect(T.tail_target(true, wanted, -40, least) === 0, "a negative free room gives a negative tail");
+expect(tail_of(least - 1) === 0 && tail_of(least) === 0 && tail_of(least + 1) === least + 1, "tails at least-1, least and least+1 are " + tail_of(least - 1) + ", " + tail_of(least) + " and " + tail_of(least + 1) + ", want 0, 0 and " + (least + 1));
+expect(T.tail_target(true, wanted, -40, least) === 0, "a negative free room gives a tail");
 expect(tail_of(roomy, 0.5) === wanted / 2, "the tail does not follow the bars' fade");
-// A centre popup beside the bar lines up with the modules, so the tail must not move it: the popup reads the island's
-// length less its tail, and re-reads when the tail grows.
-expect(/island_length = root\.island\.height - \(root\.island\.tail_span \|\| 0\)/.test(popup) && /onTail_spanChanged\(\) \{ root\.read_island/.test(popup), "Popup.qml centres a popup on the island's tail as well as its modules");
+// A centre popup beside the bar lines up with the modules, so the cava tail must not move it: with a tail the island is
+// taller by the tail, and the popup's extent takes that back out.
+for (const side of ["left", "center", "right"]) {
+  const modules = 200, top = 440, popup_length = 150, tail = 80;
+  const without = D.beside_place(side, "left", top, D.beside_extent(modules, 0), popup_length, 1080).margin_top;
+  const with_tail = D.beside_place(side, "left", top, D.beside_extent(modules + tail, tail), popup_length, 1080).margin_top;
+  expect(without === with_tail && D.beside_extent(modules + tail, tail) === modules, "a " + side + " popup moves from " + without + " to " + with_tail + " when the cava tail grows");
+}
+expect(/Drawer\.beside_extent\(root\.island\.height, root\.island\.tail_span \|\| 0\)/.test(popup), "Popup.qml does not take the tail out of the island length");
+// Every island property the popup reads must exist on the island.
+expect(/readonly property real capsule_width:/.test(read("features/bar/Island.qml")) && /island\.capsule_width/.test(popup), "Popup.qml reads a capsule_width the island does not define");
+// The bar's wiring: the least tail is the gap plus the margin the tail's bars keep clear, a hidden bottom island reserves
+// no room, and the submap line follows the island's centre (half the tail below the screen's).
+const bar_src = read("features/bar/Bar.qml");
+expect(/tail_target\([^]*?center_cava\.tail_gap \+ center_cava\.along_margin\)/.test(bar_src), "Bar.qml does not pass the gap plus margin as the least tail");
+expect(/right_side\.length > 0 \? right_island\.height : 0/.test(bar_src), "Bar.qml reserves room for a hidden bottom island");
+expect(/line_shift: [^\n]*center_tail \/ 2/.test(read("shell.qml")) && /root\.line_shift \* 2/.test(read("features/bar/SubmapTab.qml")), "the submap line is not shifted by half the cava tail");
 expect(/CavaTail\.tail_span\(center_cava\.tail_target, center_cava\.opacity\)/.test(read("features/bar/Bar.qml")) && /\(root\.height - module_length\) \/ 2/.test(read("features/bar/Bar.qml")), "the center island is centred by its tail or the tail ignores the fade");
 // The popup hands that derivation to the frame, and the radii read the same rounded set; each outline draws through PanelCuts.
 expect(/square: root\.bar_square/.test(popup) && /Cuts\.bar_square\(root\.beside \? root\.beside_round : null/.test(popup) && /beside_round\.top_left/.test(popup), "Popup.qml does not derive its bar-side corners once");

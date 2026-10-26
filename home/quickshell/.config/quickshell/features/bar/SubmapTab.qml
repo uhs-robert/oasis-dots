@@ -10,6 +10,9 @@ PanelWindow {
 
     // How long the line is: the center island's extent along the bar.
     property real line_width: 260
+    // How far down the line sits from the screen's middle on a side bar: the center island keeps its modules centred and
+    // grows its cava tail below them, so the line (which spans the tail) is centred half the tail lower.
+    property real line_shift: 0
     property bool bar_present: true
     // The bar sits on the bottom edge: the line and tabs rise above it instead of hanging below.
     property bool bottom: false
@@ -44,7 +47,7 @@ PanelWindow {
     anchors.left: root.side === "left"
     anchors.right: root.side === "right"
     implicitWidth: root.vertical ? root.line_thickness + tabs.height : Math.max(line_width, tabs.width)
-    implicitHeight: root.vertical ? Math.max(line_width, tabs.width) : root.line_thickness + tabs.height
+    implicitHeight: root.vertical ? Math.max(line_width, tabs.width) + root.line_shift * 2 : root.line_thickness + tabs.height
     mask: Region {}
 
     onWant_submapChanged: root.sync()
@@ -115,7 +118,7 @@ PanelWindow {
         id: line
         // Placed by x and y, not anchors: an anchor switched off leaves its last x or y behind.
         x: root.vertical ? (root.side === "right" ? tabs.height : 0) : (root.width - line.width) / 2
-        y: root.vertical ? (root.height - line.height) / 2 : root.bottom ? tabs.height : 0
+        y: root.vertical ? (root.height - line.height) / 2 + root.line_shift : root.bottom ? tabs.height : 0
         width: root.vertical ? root.line_thickness : root.line_width * root.line_progress
         height: root.vertical ? root.line_width * root.line_progress : root.line_thickness
         // The submap owns the line while both tabs show.
@@ -130,7 +133,7 @@ PanelWindow {
         transformOrigin: Item.TopLeft
         rotation: root.side === "left" ? -90 : root.side === "right" ? 90 : 0
         x: root.side === "left" ? root.line_thickness : root.side === "right" ? tabs.height : (root.width - tabs.width) / 2
-        y: root.vertical ? (root.side === "left" ? (root.height + tabs.width) / 2 : (root.height - tabs.width) / 2) : root.bottom ? 0 : root.line_thickness
+        y: root.vertical ? root.line_shift + (root.side === "left" ? (root.height + tabs.width) / 2 : (root.height - tabs.width) / 2) : root.bottom ? 0 : root.line_thickness
         // A Row counts only visible children, so without this its height (and the window's) jumps when a tab first shows.
         height: Math.max(submap_tab.height, voice_tab.height)
         spacing: 6
