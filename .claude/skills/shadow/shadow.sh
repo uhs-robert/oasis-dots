@@ -397,25 +397,37 @@ up() {
 # the id is resolved headlessly (act_refs.lua --resolve) and an ipc-kind action is sent through ipc(). A command or lua
 # action would act on the owner's machine or need a live Hyprland, so it is refused.
 action() {
-  set_name "${1:-}"
+  set_name "${1:-}" || return 2
   shift
-  (($# > 0)) || die "usage: shadow.sh action <name> <action id> [params...]"
-  local checkout plan kind
-  checkout=$(CDPATH='' cd -- "$skill_dir/../../.." && pwd)
-  plan=$(lua "$checkout/home/hypr/tests/act_refs.lua" --resolve "$@") || return 5
-  kind=$(jq -r .kind <<<"$plan")
+  if (($# == 0)); then
+    echo "usage: shadow.sh action <name> <action id> [params...]" >&2
+    return 2
+  fi
+  # Ids come from the checkout the shadow's bar was started from when that is known (--from), else from this script's.
+  local checkout plan status kind
+  checkout=$(<"$base/source" 2>/dev/null) || checkout=
+  [[ -f $checkout/home/hypr/tests/act_refs.lua ]] || checkout=$(CDPATH='' cd -- "$skill_dir/../../.." && pwd)
+  plan=$(lua "$checkout/home/hypr/tests/act_refs.lua" --resolve "$@")
+  status=$?
+  ((status == 0)) || return "$status"
+  kind=$(jq -r '.kind // empty' <<<"$plan")
   case $kind in
   ipc)
+    # NUL-delimited so a param holding a newline stays one word.
     local -a call
-    mapfile -t call < <(jq -r '.target, .function, .args[]' <<<"$plan")
+    mapfile -d '' call < <(jq --raw-output0 '.target, .function, .args[]' <<<"$plan")
     ipc "$name" "${call[@]}"
     ;;
   command)
     echo "shadow: action '$1' runs a command ($(jq -r '.argv | join(" ")' <<<"$plan")) that would act on this machine, not the shadow; use spawn or hyprctl instead" >&2
     return 5
     ;;
-  *)
+  lua)
     echo "shadow: action '$1' needs a live Hyprland with the repo keymaps; the shadow loads none" >&2
+    return 5
+    ;;
+  *)
+    echo "shadow: action '$1': the resolver returned no known kind: $plan" >&2
     return 5
     ;;
   esac
