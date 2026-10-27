@@ -961,7 +961,7 @@ t("only a HoverPopup's own open keeps hover_owner; key, IPC, walk and back opens
   const popups = fs.readFileSync(dir + "Popups.qml", "utf8");
   const hover = fs.readFileSync(dir + "HoverPopup.qml", "utf8");
   assert.match(popups, /function open\(name, anchor_item, color, screen_name, back_to, hands_off, swap, keep_owner\)/);
-  assert.match(popups, /open_name = name;\n\s+if \(!keep_owner\) \{[\s\S]*?root\.hover_owner = null;/);
+  assert.match(popups, /open_name = name;\n\s+if \(!keep_owner\) root\.hover_owner = null;/);
   const open_on = popups.slice(popups.indexOf("function open_on("), popups.indexOf("function focus_open("));
   assert.match(open_on, /open_name = name;\n\s+root\.hover_owner = null;/);
   const calls = hover.match(/Popups\.open\([^\n]*\);/g);
@@ -986,11 +986,11 @@ t("a key or IPC open of the popup already hover-open pins its owner, since no op
   const popups = fs.readFileSync(dir + "Popups.qml", "utf8");
   const hover = fs.readFileSync(dir + "HoverPopup.qml", "utf8");
   assert.match(popups, /const reopened_owner = name === open_name \? root\.hover_owner : null;/);
-  assert.match(popups, /if \(!keep_owner\) \{\n\s+if \(reopened_owner\) reopened_owner\.pin\(\);\n\s+root\.hover_owner = null;/);
+  assert.match(popups, /if \(!keep_owner && reopened_owner\) reopened_owner\.pin\(\);/);
   assert.match(hover, /function pin\(\) \{\n\s+root\.apply\(Policy\.popup_pressed\(root\._mode\)\);/);
-  // pin() runs before open() clears grab_keyboard, so open_with_keyboard's own grab set afterwards still stands.
+  // pin() runs after open() resets grab_keyboard: its grab is the only keyboard a plain (IPC) open of the popup gets.
   const open = popups.slice(popups.indexOf("function open("), popups.indexOf("function open_with_keyboard("));
-  assert.ok(open.indexOf("reopened_owner.pin()") < open.indexOf("grab_keyboard = false"));
+  assert.ok(open.indexOf("reopened_owner.pin()") > open.lastIndexOf("grab_keyboard = false"));
   // A hover-open popup pinned that way is pinned, owner dropped, keyboard allowed.
   assert.deepStrictEqual(Object.assign({}, P.popup_pressed("hover_open")), { mode: "pinned", open_timer: "stop", close_timer: "stop", action: "none" });
 });
