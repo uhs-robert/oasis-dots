@@ -13,7 +13,7 @@ keys: []
 # Bar editor
 
 ## What it is for
-The owner edits the bar modules on the real bars instead of in a list: a full-screen mode over every monitor that has a bar, driven from the keyboard, where the bar being edited changes as keys are pressed. It opens with `qs ipc call bareditor open` (the Settings row that opens it comes later).
+The owner edits the bar modules on the real bars instead of in a list: a full-screen mode over every monitor that has a bar, driven from the keyboard, where the bar being edited changes as keys are pressed. It opens with `qs ipc call bareditor open ""` (the Settings row that opens it comes later).
 
 ## Requirements
 - **BAREDIT-01** The editor opens over the real bars of every monitor with a bar and starts on the focused monitor's bar in NORMAL mode; monitors with no bar are skipped.
