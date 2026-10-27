@@ -333,6 +333,16 @@ reviewed_head() {
   return 1
 }
 
+# When the head reached GitHub: the earliest check suite on it, since a push opens one for every installed app. The commit
+# date is only when the commit was made, so it is the fallback and the floor.
+head_push_time() {
+  local committed suite
+  committed=$(commit_date "$1")
+  suite=$(gh api "repos/$slug/commits/$1/check-suites" --jq '[.check_suites[].created_at] | min // empty') ||
+    die "cannot read the check suites of $1"
+  if [[ -n $suite && $suite > $committed ]]; then echo "$suite"; else echo "$committed"; fi
+}
+
 epoch() {
   date -u -d "$1" +%s || die "cannot read the time $1"
 }
@@ -344,15 +354,19 @@ epoch() {
 # seconds for a review that is still coming. A cancelled run is a superseded one, so it is Pending until start_s passes.
 eval_check_run() {
   local name=$1 number=$2 head=$3 start_s settle_s now head_epoch rname rstatus rconc rstart rdone run="" run_start=""
-  local covered covers_head settled label age sort_key
+  local covered covers_head settled label age sort_key runs_out
   local -a check_names=()
   label=$(rjq "$name" .label)
   start_s=${MERGE_PRS_REVIEW_START:-$(rjq "$name" '.github.start_s // 300')}
   settle_s=${MERGE_PRS_SETTLE:-$(rjq "$name" '.github.settle_s // 180')}
   cr_state="" cr_msg="" cr_final=false
   now=$(date +%s)
-  head_epoch=$(epoch "$(commit_date "$head")")
+  head_epoch=$(epoch "$(head_push_time "$head")")
   mapfile -t check_names < <(rjq "$name" '.github.check_names // [] | .[]')
+  # Read outside the loop's process substitution, which would hide a failed call as "no runs" and let the PR through.
+  runs_out=$(gh api --paginate "repos/$slug/commits/$head/check-runs?per_page=100" \
+    --jq '.check_runs[] | [.name, .status, (.conclusion // ""), (.started_at // ""), (.completed_at // "")] | join("|")') ||
+    die "cannot read the check runs of $head"
   while IFS='|' read -r rname rstatus rconc rstart rdone; do
     [[ -n $rname ]] || continue
     [[ " ${check_names[*]} " == *" $rname "* ]] || continue
@@ -361,8 +375,7 @@ eval_check_run() {
       run="$rstatus|$rconc|$rdone"
       run_start=$sort_key
     fi
-  done < <(gh api --paginate "repos/$slug/commits/$head/check-runs?per_page=100" \
-    --jq '.check_runs[] | [.name, .status, (.conclusion // ""), (.started_at // ""), (.completed_at // "")] | join("|")')
+  done <<<"$runs_out"
   load_comments "$number"
   if [[ -z $run ]]; then
     age=$((now - head_epoch))
@@ -457,6 +470,7 @@ gate_check_run() {
         echo "merge-prs: #$number's $label review failed ($cr_msg); requesting another and waiting up to ${wait_s}s" >&2
         gh pr comment "$number" --body "$request" >/dev/null || die "cannot request a $label review on #$number"
         requested=true
+        started=$SECONDS
         continue
       else
         break
@@ -573,17 +587,29 @@ gate_summary_comment() {
 # Unresolved threads always block; --skip-review-gate drops only the reviewers' states. Threads are read after the
 # reviewers, since findings arrive while one is waited for.
 check_reviews() {
-  local pr number info open status reviewed head name
+  local pr number info open status reviewed head name gated_head mark attempts
   local -a problems=()
   ! $review_gate || resolve_gates
   for pr in "${prs[@]}"; do
     number=${pr#\#}
-    for name in "${gating[@]}"; do
-      case $(rjq "$name" .github.signal) in
-      summary_comment) gate_summary_comment "$name" "$number" ;;
-      check_run) gate_check_run "$name" "$number" ;;
-      esac
+    # The reviewers are asked one after another, so a push in between would leave one of them on an older head; every
+    # reviewer is asked again on the new head, and the merge is held to the head that passed.
+    attempts=0
+    while :; do
+      gated_head=$(gh pr view "$number" --json headRefOid --jq .headRefOid) || die "cannot read the head of #$number"
+      mark=${#problems[@]}
+      for name in "${gating[@]}"; do
+        case $(rjq "$name" .github.signal) in
+        summary_comment) gate_summary_comment "$name" "$number" ;;
+        check_run) gate_check_run "$name" "$number" ;;
+        esac
+      done
+      [[ $(gh pr view "$number" --json headRefOid --jq .headRefOid) == "$gated_head" ]] && break
+      problems=("${problems[@]:0:mark}")
+      ((++attempts < 3)) || die "#$number: the head keeps changing while the reviewers are checked; rerun when the pushes stop"
+      echo "merge-prs: #$number's head moved while its reviewers were checked; checking them again on the new head" >&2
     done
+    gated_heads[$number]=$gated_head
     info=$(read_review "$number")
     IFS=$'\t' read -r open status reviewed head <<<"$info"
     ((open == 0)) || problems+=("#$number: $open unresolved review thread(s); answer and resolve them")
@@ -606,6 +632,8 @@ known_heads=()
 # Head commits this run force-pushed, by branch. GitHub can keep reporting the old head for a moment after a push, so
 # merging a PR rebased earlier in the run waits for this commit instead of trusting the first head GitHub reports.
 declare -A pushed_heads=()
+# The head each PR had when its reviewers passed. A head this run did not push must still be that one at merge time.
+declare -A gated_heads=()
 remove_tmp() {
   [[ -n $tmp_root ]] || return 0
   git worktree remove --force "$tmp_root/wt" >/dev/null 2>&1 || true
@@ -906,6 +934,9 @@ merge_pr() {
     return 0
   fi
   [[ $state == OPEN ]] || die "PR $pr is $state"
+  if [[ -z ${pushed_heads[$head]:-} && -n ${gated_heads[${pr#\#}]:-} && $head_oid != "${gated_heads[${pr#\#}]}" ]]; then
+    die "PR $pr was pushed to (${head_oid:0:7}) after its reviewers passed on ${gated_heads[${pr#\#}]:0:7}; rerun to check the new head"
+  fi
   head_oid=${pushed_heads[$head]:-$head_oid}
   if [[ $cross != true ]]; then
     children_info=$(list_children "$head") || exit 1
