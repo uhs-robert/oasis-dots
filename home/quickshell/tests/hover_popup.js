@@ -915,6 +915,23 @@ t("a swap-out fades the window, accent line and drawer with swap_fade instead of
   assert.match(popup, /opacity: root\.line_progress > 0 \? root\.swap_fade : 0/);
   assert.match(popup, /active: root\.drawer\n\s+opacity: root\.swap_fade/);
 });
+t("a swap-in onto a window still drawn (pointer back onto a fading-out popup) keeps its opacity and extent", () => {
+  const swap_in = popup_source().match(/function swap_in\(from_extent\) \{[\s\S]*?\n    \}\n/)[0];
+  assert.match(swap_in, /if \(root\.line_progress === 0\) \{[^}]*drop_progress = [^}]*swap_fade = 0;[^}]*\}/);
+  assert.doesNotMatch(swap_in.replace(/if \(root\.line_progress === 0\) \{[^}]*\}/, ""), /swap_fade = 0|drop_progress = /);
+});
+t("a close during the swap-in fades swap_fade up with the fold-up instead of jumping it to 1", () => {
+  const popup = popup_source();
+  const plain_close = popup.slice(popup.lastIndexOf("} else if (visible) {"), popup.indexOf("// A hover swap (Popups.swap_from)"));
+  assert.doesNotMatch(plain_close, /swap_fade = 1/);
+  assert.match(popup, /id: close_anim\n\s+\/\/[^\n]*\n\s+ParallelAnimation \{\n[^\n]*"drop_progress"; to: 0[^\n]*\n[^\n]*"swap_fade"; to: 1/);
+});
+t("a popup swapped on to a third mid swap-in fades out from its current swap_fade", () => {
+  const popup = popup_source();
+  const out = popup.slice(popup.indexOf("Popups.swap_from.name === root.popup_name) {"), popup.indexOf("} else if (visible) {"));
+  assert.match(out, /swap_in_anim\.stop\(\);[\s\S]*swap_out_anim\.restart\(\);/);
+  assert.doesNotMatch(out, /swap_fade = /);
+});
 t("no style has its own swap transition: nothing of the styled swap is left", () => {
   const dir = path.join(__dirname, "../.config/quickshell");
   const read = (f) => fs.readFileSync(path.join(dir, f), "utf8");
