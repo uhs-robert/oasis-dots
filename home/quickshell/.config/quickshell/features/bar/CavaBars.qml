@@ -92,6 +92,11 @@ Item {
         onWidthChanged: bars.request()
         onHeightChanged: bars.request()
         onVisibleChanged: bars.request()
+        // A new source may hold still levels (cava stopped), so its levelsChanged would never come to clear the old bars.
+        Connections {
+            target: root
+            function onSourceChanged() { bars.request(); }
+        }
 
         function request() {
             if (bars.visible && bars.width > 0) bars.requestPaint();
