@@ -169,19 +169,14 @@ Popup {
         return null;
     }
 
-    // The cues' fade height; reveal_selected keeps the selected row out of it.
-    readonly property real cue_height: Style.px(20)
-    // What the scrolling lists sit on: the panel's gradient ends on an lcd style, else its frame (the island's color when it follows it).
-    readonly property color cue_top: root.lcd ? root.st.lcd_top : root.st.frame_follows_island ? root.held_color : root.st.frame_color
-    readonly property color cue_bottom: root.lcd ? root.st.lcd_bottom : root.cue_top
-
-    // Scrolls `flick` the least that shows the selected row under `scope`; a few px of lead keep a group heading with its first row.
+    // Scrolls `flick` the least that shows the selected row under `scope`; a few px of lead keep a group heading with its first row,
+    // and the row stays clear of the scroll fades (both lists' cues share the default fade height).
     function reveal_selected(flick, scope) {
         const row = root.selected_under(scope);
         if (!row) return;
         const top = row.mapToItem(flick.contentItem, 0, 0).y;
         const lead = Style.px(24) + root.row_extra;
-        flick.contentY = Cue.reveal_target(top, row.height, flick.contentY, flick.height, flick.contentHeight, lead, root.cue_height);
+        flick.contentY = Cue.reveal_target(top, row.height, flick.contentY, flick.height, flick.contentHeight, lead, nav_cue.fade_height);
     }
 
     Connections {
@@ -349,11 +344,9 @@ Popup {
         }
 
         ScrollCue {
+            id: nav_cue
             target: nav_flick
             st: root.st
-            top_color: root.cue_top
-            bottom_color: root.cue_bottom
-            fade_height: root.cue_height
         }
 
         Rectangle {
@@ -399,9 +392,6 @@ Popup {
         ScrollCue {
             target: pane_flick
             st: root.st
-            top_color: root.cue_top
-            bottom_color: root.cue_bottom
-            fade_height: root.cue_height
         }
 
         Rectangle {
@@ -416,9 +406,6 @@ Popup {
             id: panel
             st: root.st
             stacked: body.help_below
-            fade_top: root.cue_top
-            fade_bottom: root.cue_bottom
-            fade_height: root.cue_height
             x: body.width - body.help_width
             y: body.height - body.help_height
             width: body.help_width
