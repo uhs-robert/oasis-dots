@@ -10,6 +10,8 @@ Item {
     property var st: Style
     // Help and preview side by side instead of one above the other, for a panel docked under the rows.
     property bool stacked: false
+    // Clear space right of the panel, where the help card's scroll caret goes.
+    property real right_room: 0
     readonly property Item help_host: help_slot
     readonly property Item preview_host: preview_slot
     readonly property real gap: Style.px(12)
@@ -53,6 +55,7 @@ Item {
     ScrollCue {
         target: help_flick
         st: root.st
+        gutter: root.help_beside ? root.gap : root.right_room
     }
 
     Item {

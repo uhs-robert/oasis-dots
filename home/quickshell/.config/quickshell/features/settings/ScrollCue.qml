@@ -3,9 +3,9 @@ import QtQuick.Effects
 import qs.theme
 import "ScrollCue.js" as Cue
 
-// Fades a Flickable's content out at the edges that hide more, with a small caret at the right end (clear of the
-// left-aligned labels), so a list that continues past the panel shows it. Place it as a sibling of `target`, after
-// it; it covers the same area, passes every click through and changes nothing while the content fits.
+// Fades a Flickable's content out at the edges that hide more, with a small caret beside each such edge, so a list
+// that continues past the panel shows it. Place it as a sibling of `target`, after it; it covers the same area,
+// passes every click through and changes nothing while the content fits.
 // It fades the content's alpha instead of painting a colour over it, so it never has to know what the list sits on
 // (frame shades, drawer strips, lcd gradients, translucent islands). Only `st` tokens: no style branching here.
 Item {
@@ -15,6 +15,9 @@ Item {
     property var st: Style
     // Callers that scroll to a row keep it clear of the fades by this much (ScrollCue.js reveal_target).
     property real fade_height: Style.px(20)
+    // Clear space right of the target (up to a divider or the panel edge). The carets sit centred in it, outside the
+    // faded content and off every row's text; with no room they fall back inside the target's right end.
+    property real gutter: 0
 
     readonly property var edges: Cue.hidden_edges(root.target.contentY, root.target.height, root.target.contentHeight)
     readonly property bool active: root.edges.top || root.edges.bottom
@@ -82,9 +85,13 @@ Item {
         }
     }
 
+    function caret_x(caret_width) {
+        return root.gutter >= caret_width ? root.width + (root.gutter - caret_width) / 2 : root.width - caret_width;
+    }
+
     Text {
         visible: root.edges.top
-        anchors.right: parent.right
+        x: root.caret_x(width)
         anchors.top: parent.top
         text: "▲"
         color: root.st.text_muted
@@ -94,7 +101,7 @@ Item {
 
     Text {
         visible: root.edges.bottom
-        anchors.right: parent.right
+        x: root.caret_x(width)
         anchors.bottom: parent.bottom
         text: "▼"
         color: root.st.text_muted
