@@ -347,6 +347,7 @@ Popup {
             id: nav_cue
             target: nav_flick
             st: root.st
+            gutter: nav_divider.x - nav_flick.width
         }
 
         Rectangle {
@@ -393,9 +394,12 @@ Popup {
             id: pane_cue
             target: pane_flick
             st: root.st
+            // Up to the help column's divider, or (help below) the body's own margin at the popup's edge.
+            gutter: body.help_below ? body.anchors.rightMargin : help_divider.x - pane_flick.x - pane_flick.width
         }
 
         Rectangle {
+            id: help_divider
             x: body.help_below ? pane_flick.x : body.width - body.help_width - Style.px(12)
             y: body.help_below ? body.height - body.help_height - Style.px(12) : 0
             width: body.help_below ? body.help_width : 1
@@ -407,6 +411,7 @@ Popup {
             id: panel
             st: root.st
             stacked: body.help_below
+            right_room: body.anchors.rightMargin
             x: body.width - body.help_width
             y: body.height - body.help_height
             width: body.help_width
