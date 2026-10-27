@@ -379,7 +379,8 @@ SettingsPane {
                 height: picker.split ? picker.available_height : picker.implicitHeight
                 visible: root.picking
                 st: root.st
-                available_height: Math.max(0, root.height - picker_slot.y - 4)
+                // The visible pane, not the section's own height, which grows past it with a long section.
+                available_height: Math.max(0, (root.popup && root.popup.pane_view_height ? root.popup.pane_view_height : root.height) - picker_slot.y - 4)
                 list_height: root.popup && root.popup.help_room !== undefined ? root.popup.help_room : 0
                 onPicked: index => root.finish_picker(index)
                 onClosed: root.hide_picker()

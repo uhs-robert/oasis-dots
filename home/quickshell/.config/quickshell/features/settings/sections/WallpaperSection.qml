@@ -222,7 +222,8 @@ RowsSection {
             }
         }
 
-        // One preview of the selected monitor's image, marked when it is the pin. Its height is capped by the pane's free space, but the cap stays out of the implicit height so the pane cannot grow by it.
+        // One preview of the selected monitor's image, marked when it is the pin, at 16:9 and centered. Its height is capped
+        // by what the visible pane has left under the rows, not by the pane's own height, which grows with its content.
         Item {
             id: preview
             readonly property var monitor: root.current_monitor
@@ -230,16 +231,19 @@ RowsSection {
             readonly property var entry: preview.monitor ? WallpaperSettings.live[preview.monitor.name] : undefined
             readonly property string path: preview.pinned ? WallpaperSettings.pins[preview.monitor.key] : preview.entry && typeof preview.entry.path === "string" ? preview.entry.path : ""
             readonly property real wanted: Math.round(width * 9 / 16)
-            readonly property real free: root.height - root.footer_top - (root.editing ? edit_box.height + 4 : 0) - preview_label.implicitHeight - 6
+            readonly property real view_height: root.popup && root.popup.pane_view_height ? root.popup.pane_view_height : root.height
+            readonly property real shown: Math.max(0, Math.min(preview.wanted, preview.free))
+            readonly property real free: preview.view_height - root.footer_top - (root.editing ? edit_box.height + 4 : 0) - preview_label.implicitHeight - 6
 
             visible: !root.picking && !!preview.monitor
             Layout.fillWidth: true
-            Layout.preferredHeight: preview.wanted + preview_label.implicitHeight + 2
+            Layout.preferredHeight: preview.shown + preview_label.implicitHeight + 2
 
             Rectangle {
                 id: frame
-                width: parent.width
-                height: Math.max(0, Math.min(preview.wanted, preview.free))
+                width: Math.round(frame.height * 16 / 9)
+                height: preview.shown
+                anchors.horizontalCenter: parent.horizontalCenter
                 color: Theme.bg_shadow
                 border.width: 1
                 border.color: preview.pinned ? root.st.text_accent : Qt.alpha(root.st.text_muted, 0.4)
