@@ -64,7 +64,8 @@ function merge(base, over) {
 
 // Built-in then user entries merged by name; `enabled: false` drops one, a later layer can set it back.
 function merged_entries(builtin, user) {
-    const by_name = {};
+    // No prototype, so a reviewer named toString or constructor is an ordinary key.
+    const by_name = Object.create(null);
     const order = [];
     for (const entry of builtin.concat(user)) {
         if (!(entry.name in by_name)) order.push(entry.name);
