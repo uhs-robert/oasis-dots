@@ -40,6 +40,25 @@ expect deny "gh api graphql --input $tmp/body.json"
 expect deny "gh api graphql --input=$tmp/body.json"
 expect deny "gh api graphql -F query=@$tmp/missing.graphql"
 expect deny 'gh api graphql -F query=@$QUERY_FILE'
+# Wrappers, loops and subshells around gh still run it
+expect deny 'bash -c "gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''"'
+expect deny 'sh -c '\''gh api graphql -f query="mutation { resolveReviewThread(input: {}) { thread { id } } }"'\'''
+expect deny 'eval gh api graphql -f query="'\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''"'
+expect deny 'GH_TOKEN=x gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'env X=1 Y=2 gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'sudo -u root gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'time gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'xargs -I{} gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'command gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'exec gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'nice -n 5 gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny '/usr/bin/gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'if true; then gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''; fi'
+expect deny 'for i in 1; do gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''; done'
+expect deny '{ gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''; }'
+expect deny '! gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
+expect deny 'echo $(gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'')'
+expect deny 'true || gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
 # Reads and mentions
 expect allow 'gh api graphql -F owner=o -F name=r -F number=5 -f query='\''query { repository(owner: "o", name: "r") { pullRequest(number: 5) { reviewThreads(first: 100) { nodes { id isResolved } } } } }'\'
 expect allow "gh api graphql -f query='{viewer{login}}'"
@@ -54,7 +73,7 @@ expect allow 'gh api repos/o/r/pulls/5/comments'
 # Prose that names the call is not a call
 expect allow 'git commit -m "route gh api graphql resolveReviewThread through resolve-thread.sh"'
 expect allow 'gh pr comment 5 --body "do not run gh api graphql with resolveReviewThread by hand"'
-expect allow 'gh pr edit 5 --body "gh api graphql addPullRequestReviewThreadReply is denied"'
+expect allow 'gh pr edit 5 --body "raw gh api graphql addPullRequestReviewThreadReply is denied"'
 # A file argument of another command in the chain is not the query file
 expect allow "gh api graphql -F query=@$tmp/read.graphql && foo --input $tmp/missing.txt"
 expect deny $'echo hi\ngh api graphql -f query=\'mutation { resolveReviewThread(input: {}) { thread { id } } }\''

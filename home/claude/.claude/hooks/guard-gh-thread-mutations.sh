@@ -9,12 +9,18 @@ set -u
 cmd=$(jq -r '.tool_input.command // empty')
 [[ $cmd == *graphql* ]] || exit 0
 
-# `gh` must be the command word (start, or after ; & | ( or a newline) with only flags before `api`, so prose that
-# merely mentions the call (`git commit -m "... gh api graphql ..."`, `gh pr comment --body`) passes. The match runs to
-# the end of that command, which is the only place a file argument is read from.
+# `gh` must be run, not mentioned: only a command boundary may precede it (start, ; & | ( { ! backtick, newline, an
+# opening quote for `bash -c "gh ..."`, or the keywords then/do/else/elif), then any VAR=val assignments and wrapper
+# words with their flags, and an optional path. Prose such as `git commit -m "see gh api graphql ..."` has a plain word
+# before gh and passes; a message that begins with gh is denied, which is fail-closed. Only flags may sit between gh and
+# `api`, so `gh pr comment --body "... api graphql"` passes too. The match runs to the next ; & |, which is where file
+# arguments are read from; a ; inside quotes ends it early (left open: the mutation-name check still sees everything).
 nl=$'\n'
+boundary="(^|[;&|(\`{!'\"$nl]|[[:space:]](then|do|else|elif)[[:space:]])[[:space:]]*"
+wrapper_flags='([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*'
+wrappers="(([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|(env|sudo|time|command|exec|eval|nice|nohup|xargs|timeout)${wrapper_flags})[[:space:]]+)*"
 gh_flags='(-[^[:space:]]+[[:space:]]+([^-[:space:]][^[:space:]]*[[:space:]]+)?)*'
-gh_graphql="(^|[;&|(\`$nl])[[:space:]]*gh[[:space:]]+${gh_flags}api[[:space:]][^;&|]*graphql[^;&|]*"
+gh_graphql="${boundary}${wrappers}([^[:space:]]*/)?gh[[:space:]]+${gh_flags}api[[:space:]][^;&|]*graphql[^;&|]*"
 [[ $cmd =~ $gh_graphql ]] || exit 0
 graphql_call=${BASH_REMATCH[0]}
 
