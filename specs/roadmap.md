@@ -193,7 +193,7 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 **Dependencies.** 2a to 2c: before 2c the table would list only migrated binds.
 
-**PRs.** 5a: the generator and a `docs-generated` step that regenerates and diffs. 5b: the `QS/README.md` IPC table from the same list; `qml-ipc` then drops its table check.
+**PRs.** 5a: the generator and a `docs-generated` step that regenerates and diffs. 5b (done): the `QS/README.md` IPC table, generated from the `IpcHandler` declarations (the action list only adds the id column); `qml-ipc` dropped its table check.
 
 **Checks.** `docs-generated` step, with `PATH_SCOPES` lines for the action definitions and `docs/keybinds.md`, and its `lib/check/README.md` line.
 
