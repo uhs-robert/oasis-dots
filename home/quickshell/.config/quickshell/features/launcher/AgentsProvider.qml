@@ -7,7 +7,8 @@ import "AnsiText.js" as AnsiText
 import "../../core/Fuzzy.js" as Fuzzy
 
 // Running agent sessions from keeptabs, in its own order: Enter jumps to the session's window, the preview shows the
-// selected session's tmux pane as text, and each card its state and the last line its pane printed, refreshed while open.
+// selected session's tmux pane as text, and each card its state, how full its context is and the last line its pane printed,
+// refreshed while open.
 PickerProvider {
     id: root
 
@@ -232,10 +233,19 @@ PickerProvider {
                 run_state: card.entry.state || ""
             }
 
+            // On the badge's line, not the card's foot, where the quick-pick number sits.
+            AgentContextBar {
+                id: card_context
+                anchors.right: parent.right
+                anchors.verticalCenter: badge.verticalCenter
+                context: card.entry.context || null
+            }
+
             Text {
                 anchors.left: badge.visible ? badge.right : parent.left
                 anchors.leftMargin: badge.visible ? 8 : 0
-                anchors.right: parent.right
+                anchors.right: card_context.visible ? card_context.left : parent.right
+                anchors.rightMargin: card_context.visible ? 8 : 0
                 anchors.verticalCenter: badge.verticalCenter
                 elide: Text.ElideRight
                 text: card.entry.agent || ""
@@ -272,7 +282,7 @@ PickerProvider {
         }
     }
 
-    // One line: title, state, agent and short directory, then the pane's last line in what is left.
+    // One line: title, state, agent and short directory, the context bar at the end, then the pane's last line in what is left.
     row: Component {
         Item {
             id: line
@@ -328,10 +338,18 @@ PickerProvider {
                 font.pixelSize: Style.fs(-3)
             }
 
+            AgentContextBar {
+                id: line_context
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                context: line.entry.context || null
+            }
+
             Text {
                 anchors.left: line_where.right
                 anchors.leftMargin: 14
-                anchors.right: parent.right
+                anchors.right: line_context.visible ? line_context.left : parent.right
+                anchors.rightMargin: line_context.visible ? 14 : 0
                 anchors.verticalCenter: parent.verticalCenter
                 elide: Text.ElideRight
                 text: root.tails[line.entry.id] || ""
