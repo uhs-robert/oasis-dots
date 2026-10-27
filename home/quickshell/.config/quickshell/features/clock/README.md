@@ -7,7 +7,7 @@ The clock shows your Google Calendar from a cache that `calendar-sync` writes to
 - Bar clock: within 15 minutes of the next meeting's start (even across midnight), a hollow dot and the minutes left (`12m`) follow the date; while a meeting is in progress the dot is solid. Hovering shows the current or next event and its time. All-day events never count as meetings.
 - Clock popup: a dot under each day with events, and below the grid an agenda for the selected day (today by default). Event times follow the zone the popup is cycled to (as does the clock tooltip); events stay grouped by your local day.
 
-Settings > Calendar shows whether `calendar-sync` is connected and when it last synced. Enter offers Connect (or Reconnect), which opens your terminal on `calendar-sync setup`, and Sync now. The row asks `calendar-sync setup --check` once when the section opens, never on a timer, so a locked rbw or keyring shows as such without being prodded repeatedly.
+Settings > Date & time > Calendar shows whether `calendar-sync` is connected and when it last synced. Enter offers Connect (or Reconnect), which opens your terminal on `calendar-sync setup`, and Sync now. The row asks `calendar-sync setup --check` once when the section opens, never on a timer, so a locked rbw or keyring shows as such without being prodded repeatedly.
 
 ## Clock popup keys
 

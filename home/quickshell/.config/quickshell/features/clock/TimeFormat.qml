@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-// Clock-time text for every clock; follows the Settings > Clock time format.
+// Clock-time text for every clock; follows the Settings > Date & time time format.
 Singleton {
     id: root
 

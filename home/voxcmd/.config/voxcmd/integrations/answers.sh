@@ -35,7 +35,7 @@ apply_replacements() {
   printf '%s' "${text%" "}"
 }
 
-# Follows the bar's Settings > Clock time format, where "locale" means the locale's own 12 or 24 hour choice.
+# Follows the bar's Settings > Date & time time format, where "locale" means the locale's own 12 or 24 hour choice.
 answers_time_format() {
   local clock_file="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/clock.json" choice
   choice=$(jq -r '.time_format // "locale"' "$clock_file" 2>/dev/null) || choice="locale"
