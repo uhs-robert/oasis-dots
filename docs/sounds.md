@@ -13,7 +13,7 @@ Open Settings and go to Appearance > Theme audio.
 | Effects volume | The level of every sound above |
 | Effects pack | Which set of sounds to use |
 
-Lock and login music and its volume are under Music in System > Lock & login.
+Lock and login music and its volume are under Lock in System > Lock & login: Music, with Use my music file and Music volume under it.
 
 Press `P` on that page to hear the current pack: it plays each sound in turn.
 
@@ -99,7 +99,7 @@ No music ships. To have some, put a file named `music.ogg`, `music.wav` or `musi
 ~/.local/share/quickshell/sounds/oasis/music.ogg
 ```
 
-Then turn on Lock music (under Music) and Music (under Lock) in Settings > Lock & login. The file loops for as long as the screen is locked, so a track that loops cleanly works best.
+Then turn on Music and Use my music file under Lock in Settings > Lock & login. The file loops for as long as the screen is locked, so a track that loops cleanly works best.
 
 - Locking by hand starts the music at once. A lock that happens on its own (idle, sleep, lid close) stays quiet until you press a key.
 - Music fades out after two minutes without a key press.
