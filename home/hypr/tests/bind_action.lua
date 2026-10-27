@@ -118,6 +118,9 @@ executed = {}
 Act.run("tmux.overview")
 check("run by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call tmux_overview open")
 
+-- req: KEYS-08 (the screenshot key works in submaps)
+check("Print works in submaps", find("Print").opts.submap_universal == true)
+
 -- Bind.unbind removes what Act.define registered, extras included.
 -- req: KEYS-27, KEYS-30 (the removal count, 0 when nothing matches, the leader form)
 check("unbind: main key", Bind.unbind("Print") == 1)
