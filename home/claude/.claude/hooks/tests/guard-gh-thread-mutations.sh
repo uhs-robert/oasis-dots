@@ -11,10 +11,10 @@ printf 'mutation { resolveReviewThread(input: {threadId: "x"}) { thread { id } }
 printf '{viewer{login}}\n' >"$tmp/read.graphql"
 printf '{"query": "mutation { addPullRequestReviewThreadReply(input: {}) { clientMutationId } }"}\n' >"$tmp/body.json"
 
-# expect <allow|deny> <command>
+# expect <allow|deny> <command> [cwd field of the hook input [directory the hook process runs in]]
 expect() {
   local out got=allow
-  out=$(jq -n --arg c "$2" '{tool_input: {command: $c}}' | "$hook" | jq -r '.hookSpecificOutput.permissionDecision // empty')
+  out=$(jq -n --arg c "$2" --arg d "${3-}" '{tool_input: {command: $c}} + (if $d == "" then {} else {cwd: $d} end)' | (cd "${4:-.}" && "$hook") | jq -r '.hookSpecificOutput.permissionDecision // empty')
   [[ $out == deny ]] && got=deny
   if [[ $got == "$1" ]]; then
     echo "ok   $1: $2"
@@ -97,6 +97,21 @@ expect deny $'echo graphql "<<\'XX\'"\ngh api graphql -f query=\'mutation { reso
 expect deny $'echo graphql <<\'XX\' | bash\ngh api graphql -f query=\'mutation { resolveReviewThread(input: {}) { thread { id } } }\'\nXX'
 expect deny $'git commit -F - <<\'EOF\'\nmentions gh api graphql resolveReviewThread\nEOF'
 expect allow 'git commit -F msg.txt -m "mentions gh api graphql resolveReviewThread"'
+# Relative file paths are read from the hook input's cwd, not the hook's own
+mkdir -p "$tmp/project" "$tmp/hookcwd"
+cp "$tmp/read.graphql" "$tmp/project/q.graphql"
+cp "$tmp/read.graphql" "$tmp/hookcwd/payload.json"
+cp "$tmp/body.json" "$tmp/project/payload.json"
+expect allow 'gh api graphql -F query=@q.graphql' "$tmp/project" "$tmp/hookcwd"
+expect deny 'gh api graphql --input payload.json' "$tmp/project" "$tmp/hookcwd"
+expect deny 'cd /elsewhere && gh api graphql --input payload.json' "$tmp/project" "$tmp/hookcwd"
+expect deny 'cd /elsewhere && gh api graphql -F query=@q.graphql' "$tmp/project" "$tmp/hookcwd"
+expect deny 'pushd /elsewhere; gh api graphql -F query=@q.graphql' "$tmp/project" "$tmp/hookcwd"
+# stdin from a pipe or a file is unseen; a bare heredoc is the command's own text
+expect deny 'cat /tmp/m.json | gh api graphql --input -'
+expect deny 'gh api graphql --input - < /tmp/m.json'
+expect deny 'gh api graphql -F query=@- < /tmp/m.json'
+expect allow $'gh api graphql --input - <<\'EOF\'\n{"query":"{viewer{login}}"}\nEOF'
 # Reads and mentions
 expect allow 'gh api graphql -F owner=o -F name=r -F number=5 -f query='\''query { repository(owner: "o", name: "r") { pullRequest(number: 5) { reviewThreads(first: 100) { nodes { id isResolved } } } } }'\'
 expect allow "gh api graphql -f query='{viewer{login}}'"

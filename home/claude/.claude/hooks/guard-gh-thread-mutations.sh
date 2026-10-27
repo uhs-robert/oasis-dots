@@ -11,10 +11,13 @@
 # (-F file, --body-file). Fail-closed, so a mention in grep or echo is denied too.
 # Known limits: a mutation name built at run time (`m=resolve; ...${m}ReviewThread`) or split by quotes or ANSI-C
 # (`resolve''ReviewThread`, `$'\x72esolve...'`); case variants (GraphQL names are case-sensitive, so likely harmless);
-# a query fed from outside the command text (`-f query="$(cat f)"`, `cat q | gh api graphql --input -`); a file written
-# by an earlier call. An unreadable `--input F` / `query=@F` file is denied, since its content cannot be seen.
+# a query fed from outside the command text through `-f query="$(cat f)"`; a file written by an earlier call. An unreadable `--input F` / `query=@F` file is denied, since its content cannot be seen; so is a relative one after a cd/pushd/popd
+# word, and `--input -` / `query=@-` fed by a pipe or `<` (a bare heredoc is covered by the text checks above).
 set -u
-cmd=$(jq -r '.tool_input.command // empty')
+input=$(cat)
+cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
+base_dir=$(jq -r '.cwd // empty' <<<"$input")
+: "${base_dir:=$PWD}"
 [[ $cmd == *graphql* ]] || exit 0
 
 mutations='addPullRequestReviewThreadReply|resolveReviewThread|unresolveReviewThread'
@@ -54,17 +57,29 @@ while IFS= read -r segment; do
   fi
 done <<<"$segments"
 
-# A query read from a file (`-F query=@F`, `-f query=@F`, `--input F`) is checked by its content; `--input -` is the
-# command's own heredoc, already covered above. Only segments that mention graphql are scanned.
+# A query read from a file (`-F query=@F`, `-f query=@F`, `--input F`) is checked by its content. Only segments that
+# mention graphql are scanned. A relative F is read from the hook input's cwd, unless the command changes directory,
+# when it cannot be located and is denied. `-` reads stdin, which is the command's own heredoc unless a pipe or `<`
+# feeds it.
 quote=$'\''
 file_arg="(query=@|--input[[:space:]=]+)[$quote\"]?([^[:space:]$quote\"]+)"
+cd_word='(^|[^[:alnum:]_-])(cd|pushd|popd)([^[:alnum:]_-]|$)'
+stdin_fed=false
+[[ $unquoted == *'|'* || ${unquoted//<</} == *'<'* ]] && stdin_fed=true
 while ! $denied && IFS= read -r segment; do
   [[ $segment == *graphql* ]] || continue
   while ! $denied && [[ $segment =~ $file_arg ]]; do
     path=${BASH_REMATCH[2]}
     segment=${segment#*"${BASH_REMATCH[0]}"}
-    [[ $path == - ]] && continue
+    if [[ $path == - ]]; then
+      ! $stdin_fed || denied=true
+      continue
+    fi
     path=${path/#\~\//$HOME/}
+    if [[ $path != /* ]]; then
+      [[ ! $cmd =~ $cd_word ]] || denied=true
+      path=$base_dir/$path
+    fi
     if [[ -r $path && -f $path ]]; then
       ! grep -Eq "$mutations" "$path" || denied=true
     else

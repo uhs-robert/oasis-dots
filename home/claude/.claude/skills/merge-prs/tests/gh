@@ -19,7 +19,10 @@ if [[ -n ${GH_LOG-} ]]; then
     ;;
   *"resolveReviewThread"*) echo '{"data":{}}' ;;
   *"... on PullRequestReviewThread"*) echo "${FAKE_RESOLVED:-false}" ;;
-  *"reviewThreads(first: 100)"*) cat "$FAKE_THREADS" ;;
+  # A second page is served when the call carries an after= cursor.
+  *"reviewThreads(first: 100"*)
+    if [[ $args == *" after="* ]]; then cat "$FAKE_THREADS_2"; else cat "$FAKE_THREADS"; fi
+    ;;
   *)
     echo "fake gh: unhandled: $args" >&2
     exit 1
