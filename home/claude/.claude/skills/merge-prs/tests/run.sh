@@ -1061,6 +1061,46 @@ cr_run completed success "25 min" ""
 gate --check 7
 check "fails with a message, not a midnight timestamp" "[[ $code != 0 ]] && grep -q 'records no completion time' <<<\"\$out\""
 
+echo "== gate: a push while the reviewers are checked"
+cr_setup "30 min"
+printf 'history_logins=chatgpt-codex-connector\ncodex=Completed\ncodex_commit=%s\nreviewed_subjects=feat: c\nhead_subjects=feat: late push\nreviewed_files=c\nhead_files=c;late\npush_on_cr_read=1\n' "$(head_of | cut -c1-7)" >>"$GH_STATE"
+cr_run completed success "25 min" "20 min"
+cr_reviewed_head
+gate 7
+check "Codex is asked again on the new head and blocks it" "[[ $code != 0 ]] && grep -q 'need their own review' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
+echo "== gate: a push between the reviewers passing and the merge"
+gate_setup
+echo 'push_on_merge_read=1' >>"$GH_STATE"
+gate 7
+check "the merge is refused for the unreviewed head" "[[ $code != 0 ]] && grep -q 'after its reviewers passed' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
+echo "== gate: a failed check-runs call"
+cr_setup "30 min"
+echo 'cr_api_fail=1' >>"$GH_STATE"
+gate 7
+check "stops rather than reading it as no runs" "[[ $code != 0 ]] && grep -q 'cannot read the check runs' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
+echo "== gate: the start window counts from the push, not the commit date"
+cr_setup "30 min"
+printf 'push_date=%s\n' "$(iso '-30 sec')" >>"$GH_STATE"
+gate --check 7
+check "an old commit pushed just now is still pending" "[[ $code != 0 ]] && grep -q 'no CodeRabbit check on the head yet' <<<\"\$out\""
+cr_setup "30 min"
+gate --check 7
+check "with no suite it falls back to the commit date" "[[ $code == 0 ]] && grep -q 'has no check on the head 18' <<<\"\$out\""
+
+echo "== gate: a re-requested CodeRabbit review gets its own wait"
+cr_setup "30 min"
+cr_run completed failure "25 min" "20 min"
+printf 'cr_running_reads=4\ncr_run_running=CodeRabbit|in_progress||%s|\ncr_after=CodeRabbit|completed|success|%s|%s\ncr_after_running_reads=4\n' \
+  "$(iso '-25 min')" "$(iso '-1 min')" "$(iso '-10 min')" >>"$GH_STATE"
+cr_reviewed_head
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=1 MERGE_PRS_REVIEW_WAIT=6 timeout 60 "$script" --check --wait-review --request-review 7 2>&1)
+code=$?
+show "$out"
+check "the wait restarts at the request" "[[ $code == 0 ]] && grep -q '^ready:' <<<\"\$out\""
+
 echo "== gate: gate always on a reviewer merge-prs cannot read"
 gate_setup
 mkdir -p "$root/main/.claude"

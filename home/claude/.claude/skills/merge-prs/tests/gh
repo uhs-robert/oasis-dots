@@ -54,6 +54,18 @@ reported_oid() {
   fi
   echo "$oid"
 }
+# A new commit on the PR's branch, as a push from the author.
+push_new_commit() {
+  local w
+  w=$(mktemp -d)
+  git clone -q "$ORIGIN" "$w/c"
+  git -C "$w/c" checkout -q "$(get head)"
+  echo late >"$w/c/late"
+  git -C "$w/c" add late
+  git -C "$w/c" -c user.name=t -c user.email=t@t commit -qm "feat: late push"
+  git -C "$w/c" push -q origin "HEAD:$(get head)"
+  rm -rf "$w"
+}
 # Reads of the merge gate (the registry's installed-reviewer inference, CodeRabbit's check run, review and summary, quota
 # comments). They read the single-PR $GH_STATE, and a key a test leaves out takes the default noted here.
 gate_state() {
@@ -69,6 +81,12 @@ case "$args" in
   [[ $logins == none ]] || tr ';' '\n' <<<"$logins"
   exit 0
   ;;
+# push_date: when the head reached GitHub (its earliest check suite); no suite when a test leaves it out.
+*"/commits/"*"/check-suites"*"created_at"*)
+  gate_state
+  get push_date
+  exit 0
+  ;;
 # suites: ;-separated app slugs of the default branch head's check suites, 30 per page unless the call paginates.
 *"/check-suites"*)
   gate_state
@@ -79,6 +97,15 @@ case "$args" in
 # above 0 each read counts it down and reports cr_run_running instead.
 *"/check-runs"*)
   gate_state
+  [[ -z $(get cr_api_fail) ]] || {
+    echo "gh: HTTP 502" >&2
+    exit 1
+  }
+  # push_on_cr_read=1: someone pushes to the PR branch while the check runs are read.
+  [[ -z $(get push_on_cr_read) ]] || {
+    put push_on_cr_read ""
+    push_new_commit
+  }
   reads=$(get cr_running_reads)
   if [[ -n $reads && $reads -gt 0 ]]; then
     put cr_running_reads $((reads - 1))
@@ -105,6 +132,8 @@ case "$args" in
 "pr comment"*"@coderabbitai review"*)
   put commented_cr 1
   [[ -z $(get cr_after) ]] || put cr_run "$(get cr_after)"
+  # cr_after_running_reads=N: the new run shows as running for N reads first.
+  [[ -z $(get cr_after_running_reads) ]] || put cr_running_reads "$(get cr_after_running_reads)"
   exit 0
   ;;
 esac
@@ -172,6 +201,11 @@ case "$args" in
     awk -F'\t' -v OFS='\t' '{ if ($1 == "") $1 = 0; if ($2 == "") $2 = "none"; if ($3 == "") { $3 = "-"; if ($2 == "Completed") $2 = "Unreviewed" } print }'
   ;;
 "pr view"*"headRefName,headRefOid,baseRefName,state,isCrossRepository"*)
+  # push_on_merge_read=1: a push lands between the reviewer checks and the merge.
+  [[ -z $(get push_on_merge_read) ]] || {
+    put push_on_merge_read ""
+    push_new_commit
+  }
   printf '%s\t%s\t%s\t%s\t%s\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)" "$(get cross || true)" |
     awk -F'\t' -v OFS='\t' '{ if ($5 == "") $5 = "false"; print }'
   ;;
