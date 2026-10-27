@@ -172,6 +172,12 @@ for content in "" "   " "{\"reviewers\":[]} {\"reviewers\":[]}"; do
 done
 check "empty built-in file is fatal" ': >"$root/b.json"; out=$(REVIEWERS_BUILTIN_FILE=$root/b.json "$script" list "$root/repo" 2>/dev/null); [ $? -eq 1 ]'
 
+reset
+echo '{"reviewers":{"codex":{"local":{"command":"other-reviewer","scope":"public"}}}}' >"$REVIEWERS_SETTINGS_FILE"
+run
+check "Settings local.command cannot override the command" '[ "$(field codex ".local.command")" = codex-review.sh ] && grep -q "ignored local.command" <<<"$err"'
+check "Settings local.scope in an object is kept" '[ "$(field codex ".local.scope")" = public ]'
+
 echo "== usage"
 check "unknown subcommand exits 64" '"$script" bogus 2>/dev/null; [ $? -eq 64 ]'
 

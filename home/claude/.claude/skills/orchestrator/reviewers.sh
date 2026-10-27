@@ -59,9 +59,13 @@ else
   (if $kind == "settings" then
      [.reviewers | to_entries[] | . as $kv
       | if ($kv.value | type) != "object" then {w: ["reviewer " + $kv.key + ": value is not an object, skipped"], e: null}
-        else {w: [$kv.value | keys[] | select(IN(settings_fields[]) | not)
-                  | "reviewer " + $kv.key + ": Settings may only set local and gate, ignored " + .],
-              e: (($kv.value | with_entries(select(.key | IN(settings_fields[])))) + {name: $kv.key})} end]
+        else {w: ([$kv.value | keys[] | select(IN(settings_fields[]) | not)
+                   | "reviewer " + $kv.key + ": Settings may only set local and gate, ignored " + .]
+                  + [select(($kv.value.local | type) == "object") | $kv.value.local | keys[] | select(. != "scope")
+                     | "reviewer " + $kv.key + ": Settings may only set local.scope, ignored local." + .]),
+              e: (($kv.value | with_entries(select(.key | IN(settings_fields[]))))
+                  | (if (.local | type) == "object" then .local |= with_entries(select(.key == "scope")) else . end)
+                  | . + {name: $kv.key})} end]
    else
      [.reviewers[] | {w: [], e: .}]
    end) as $pre

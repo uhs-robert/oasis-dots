@@ -9,7 +9,7 @@
 3. Settings: `$XDG_STATE_HOME/quickshell/developer.json` (written only by Settings > Developer).
 4. Repo: `<repo root>/.claude/reviewers.json`.
 
-Layers 1, 2 and 4 are `{"reviewers": [entry, ...]}`. Settings is a map that may set only `local` (a scope) and `gate`, and only on entries that already exist:
+Layers 1, 2 and 4 are `{"reviewers": [entry, ...]}`. Settings is a map that may set only `local` (a scope, or `{"scope": ...}`; other `local.*` keys are ignored) and `gate`, and only on entries that already exist:
 
 ```json
 {"reviewers": {"codex": {"local": "all", "gate": "auto"}}}
