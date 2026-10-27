@@ -71,14 +71,14 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
-7. Get an external review of the issue and diff against the review dimensions. Codex first; an Opus subagent when Codex is unavailable.
-   - From the worktree, run `~/.claude/skills/orchestrator/codex-review.sh <base> <main checkout>/.logs/<topic>/<item>` as one background Bash call.
-   - Commit first (it exits 3 on uncommitted changes).
+7. Get an external review of the issue and diff against the review dimensions. The local reviewers (Codex, CodeRabbit, Claude, any the owner added; see `reviewers.md`) run in parallel and are advisory; an Opus subagent covers when none is available.
+   - From the worktree, run `~/.claude/skills/orchestrator/run-local-reviews.sh <base> <main checkout>/.logs/<topic>/<item>` as one background Bash call. It runs every reviewer whose scope is not off and prints one line per reviewer: `<name>: <review path>` or `<name>: <reason>` (unavailable, skipped by scope, uncommitted changes).
+   - Commit first (a reviewer exits 3 on uncommitted changes).
    - Request it the moment the work is handed to the owner for hands-on testing, so the two overlap; with no hands-on testing, as soon as the branch is committed.
    - When the owner will try a change by hand before merging, build it on one branch until they have, and split it into PRs only after their verdict, so a fix never has to be rebased up a stack.
    - Before handing the owner a hands-on test, have an agent check everything the repo's preview tools can reach (an isolated run of the app, screenshots, scripted input). Ask the owner only for what those tools cannot reach, and say why.
-   - Exit 0 → read the review path it prints.
-   - Exit 2, Codex at its usage limit, or a standing merge approval that hinges on the review → read `review-fallback.md` beside this skill.
+   - Read each review path it prints.
+   - No review path at all, Codex at its usage limit, or a standing merge approval that hinges on the review → read `review-fallback.md` beside this skill.
 
 8. Evaluate and resolve findings. Classify each material finding as valid, partially valid, invalid, or out of scope; do not blindly apply reviewer suggestions. Fix valid ones using the model policy from step 4.
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when the fix is in code it already read and its context, from the token count its completion reports, is under 400k; from 400k to 500k, only for a small targeted fix.
