@@ -10,14 +10,16 @@
     `[gap: unmet]` requirement needs no tag. A tag naming no requirement fails. Test files with no tag are listed as info,
     never as a failure; tooling tests and voxcmd goldens simply stay untagged.
   - `specs/gaps.md` equals what the `[gap: ...]` markers generate, even when there are no specs. `--write` regenerates it.
-  - every `.plans/**/*.md` has front matter that validates against specs/schema/plan.yaml. `.plans/` is local, so
-    where it does not exist (CI, a worktree) there is nothing to check.
+  - every `.plans/**/*.md` is checked against specs/schema/plan.yaml, but only warns (`warn:` lines, no failure): `.plans/`
+    is local and wholly git-ignored, so the write-time hook (`--file`) and `just plan-new` enforce, not this step. Where
+    it does not exist (CI, a worktree) there is nothing to check.
 
 Validation is check-jsonschema's, which reads whole YAML files: the front matter is written to a temp file and the
 tool run on it. The step fails, not skips, when check-jsonschema is not installed, so a machine without it cannot pass
 a spec it never read (packages/pipx.ini installs it).
 
   python3 -B lib/check/steps/specs.py [--write]
+  python3 -B lib/check/steps/specs.py --file <plan doc>   # exit 1 and print the findings for that one doc
 """
 
 import glob
@@ -313,10 +315,13 @@ def check_specs(root):
     return findings + validate(root, SPEC_SCHEMA, front_matters)
 
 
-def check_plans(root):
+def plan_findings(root, full_paths, shown_from=None):
+    """Findings for plan docs (absolute paths), shown relative to shown_from (default root): front matter present and
+    valid against the schema in root."""
+    shown_from = shown_from or root
     findings, front_matters = [], {}
-    for full in sorted(glob.glob(os.path.join(root, ".plans", "**", "*.md"), recursive=True)):
-        path = os.path.relpath(full, root)
+    for full in full_paths:
+        path = os.path.relpath(full, shown_from)
         with open(full) as handle:
             parts = split_front_matter(handle.read())
         if parts is None:
@@ -326,6 +331,11 @@ def check_plans(root):
     return findings + validate(root, PLAN_SCHEMA, front_matters)
 
 
+def check_plans(root):
+    """Findings for every .plans doc. Callers report them as warnings: see the module docstring."""
+    return plan_findings(root, sorted(glob.glob(os.path.join(root, ".plans", "**", "*.md"), recursive=True)))
+
+
 def run_checks(root, info=None):
     """Every finding for the checkout at root; info, when given, is extended with the non-failing lines."""
     if not shutil.which("check-jsonschema"):
@@ -333,12 +343,30 @@ def run_checks(root, info=None):
     links, notes = check_links(root)
     if info is not None:
         info.extend(notes)
-    return check_specs(root) + links + check_gaps_file(root) + check_plans(root)
+    if info is not None:
+        info.extend(f"warn: {finding}" for finding in check_plans(root))
+    return check_specs(root) + links + check_gaps_file(root)
+
+
+def check_one_plan(path):
+    """Print the findings for one plan doc and return the exit code; this is the write-time hook's entry."""
+    if not shutil.which("check-jsonschema"):
+        print(MISSING_TOOL, file=sys.stderr)
+        return 1
+    try:
+        findings = plan_findings(REPO_DIR, [os.path.abspath(path)], os.getcwd())
+    except OSError as error:
+        findings = [f"{path}: {error.strerror or error}"]
+    for finding in findings:
+        print(finding, file=sys.stderr)
+    return 1 if findings else 0
 
 
 def main(argv):
+    if len(argv) == 2 and argv[0] == "--file":
+        return check_one_plan(argv[1])
     if argv not in ([], ["--write"]):
-        print("usage: lib/check/steps/specs.py [--write]", file=sys.stderr)
+        print("usage: lib/check/steps/specs.py [--write | --file <plan doc>]", file=sys.stderr)
         return 2
     if argv:
         write_gaps(REPO_DIR)
