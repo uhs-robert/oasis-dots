@@ -111,3 +111,11 @@ function swap_source(swap, open_name, open_screen, name, screen_name) {
 function pin_grabs_keyboard(from_mode, to_mode, open_here) {
     return from_mode === "hover_open" && to_mode === "pinned" && open_here;
 }
+
+// How long the close timer waits. A settling timer uses `settle_ms`. Leaving a module with the pointer still over its bar
+// (crossing the gap to the next module) waits `bar_grace`, long enough for a slow sweep to arrive and swap; leaving the
+// bar waits `close_grace`.
+function close_delay(mode, over_bar, close_grace, bar_grace, settle_ms) {
+    if (mode === "settling") return settle_ms;
+    return over_bar ? Math.max(close_grace, bar_grace) : close_grace;
+}

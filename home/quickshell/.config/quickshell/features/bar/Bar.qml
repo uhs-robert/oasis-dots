@@ -18,6 +18,10 @@ Item {
     id: root
 
     property string screen_name: ""
+
+    HoverHandler {
+        onHoveredChanged: Popups.set_bar_hover(root.screen_name, hovered)
+    }
     // Only the focused monitor's bar shows the submap chip, as only its tab shows.
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
     property var rule: null
