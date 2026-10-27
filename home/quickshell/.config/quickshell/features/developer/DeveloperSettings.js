@@ -29,10 +29,29 @@ function clean_saved(raw) {
     return { reviewers };
 }
 
+// One layer entry as reviewers.sh normalizes it, so merging here gives the resolver's answer: a string `local` is
+// {scope}, any other non-object `local` is dropped (not allowed to wipe the lower layer's), an invalid scope or
+// default becomes "off", an invalid gate or enabled is dropped, a null github is dropped.
+function sanitize_entry(entry) {
+    const e = Object.assign({}, entry);
+    if (typeof e.local === "string") e.local = { scope: e.local };
+    else if (!is_object(e.local)) delete e.local;
+    else e.local = Object.assign({}, e.local);
+    if (e.local) {
+        for (const key of ["scope", "default"]) {
+            if (e.local[key] !== undefined && e.local[key] !== null && !valid("local", e.local[key])) e.local[key] = "off";
+        }
+    }
+    if ("gate" in e && !valid("gate", e.gate)) delete e.gate;
+    if ("enabled" in e && typeof e.enabled !== "boolean") delete e.enabled;
+    if ("github" in e && e.github === null) delete e.github;
+    return e;
+}
+
 // A reviewer file layer: { reviewers: [entry...] }; keeps the entries that are objects with a name.
 function clean_layer(raw) {
     const given = is_object(raw) && Array.isArray(raw.reviewers) ? raw.reviewers : [];
-    return { reviewers: given.filter(e => is_object(e) && typeof e.name === "string" && e.name !== "") };
+    return { reviewers: given.filter(e => is_object(e) && typeof e.name === "string" && e.name !== "").map(sanitize_entry) };
 }
 
 // Objects merge field by field, everything else (arrays included) is replaced, as reviewers.sh does.
@@ -61,20 +80,32 @@ function scope_of(local) {
     return valid("local", scope) ? scope : "off";
 }
 
+// Which cell a click at x lands on: the Local review cell (column 0) or the Merge gate cell (column 1), with the
+// step direction by the cell's half. Anywhere else is null, so the click only selects the row.
+function cell_click(x, local_left, gate_left, cell_width) {
+    for (const [column, left] of [[0, local_left], [1, gate_left]]) {
+        if (x >= left && x < left + cell_width) return { column, delta: x < left + cell_width / 2 ? -1 : 1 };
+    }
+    return null;
+}
+
 // One row per entry. A Settings choice beats the files' value; a reviewer without a `local.binary` can't be probed
-// and counts as installed.
+// and counts as installed. `installed` is the probed binaries, or null before the first probe: a row with a binary
+// is then `probing` (not installed, not editable) instead of flashing "no".
 function rows(entries, saved, installed) {
     return entries.map(e => {
         const mine = saved.reviewers[e.name] || {};
         const binary = is_object(e.local) && typeof e.local.binary === "string" ? e.local.binary : "";
-        const present = binary === "" || installed.indexOf(binary) >= 0;
+        const probing = binary !== "" && installed === null;
+        const present = binary === "" || (installed !== null && installed.indexOf(binary) >= 0);
         const file_gate = valid("gate", e.gate) ? e.gate : "auto";
         return {
             name: e.name,
             label: typeof e.label === "string" && e.label !== "" ? e.label : e.name,
             binary,
             installed: present,
-            local: present ? mine.local || scope_of(e.local) : "off",
+            probing,
+            local: present || probing ? mine.local || scope_of(e.local) : "off",
             gate: mine.gate || file_gate
         };
     });
