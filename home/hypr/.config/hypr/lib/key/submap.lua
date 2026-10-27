@@ -159,6 +159,10 @@ function Submap.back()
   hl.timer(function() require("lua.plugins.hyprvim").whichkey.toggle() end, { timeout = 150, type = "oneshot" })
 end
 
+--- Toggle the which-key HUD without changing submap. Public so the bind dump (home/hypr/tests/registry_binds.lua) can
+--- tell this bind from another unlabelled key.
+function Submap.toggle_whichkey() require("lua.plugins.hyprvim").whichkey.toggle() end
+
 --- Evaluate a binds value, calling it if it is a function.
 --- @param binds table[]|fun(): table[]|nil
 --- @return table[]|nil
@@ -269,10 +273,6 @@ local function bind_catchall(catchall, exit_fn, spec)
     Bind.key("catchall", function() catchall(context({ spec = spec })) end, opts)
   end
 end
-
---- Toggle the which-key HUD without changing submap. Public so the bind dump (home/hypr/tests/registry_binds.lua) can
---- tell this bind from another unlabelled key.
-function Submap.toggle_whichkey() require("lua.plugins.hyprvim").whichkey.toggle() end
 
 local whichkey_toggle_key = "SHIFT + SLASH"
 
