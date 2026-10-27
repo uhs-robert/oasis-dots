@@ -60,7 +60,9 @@ CASES = [
     ("home/hypr/tests/act-ipc.sh", " lua"),
     ("home/hypr/tests/act_ipc.lua", " lua"),
     ("home/hypr/.local/bin/hypr-act", " lua"),
-    ("docs/keybinds.md", ""),
+    ("docs/keybinds.md", " lua"),
+    ("lib/docs/gen-keybinds", " checkscope lua"),
+    ("lib/check/steps/docs-generated.sh", "checkscope lua"),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.
     ("system/etc/greetd/quickshell/init.lua", " lua qml"),
     ("system/etc/greetd/quickshell/Greeter.qml", " qml"),

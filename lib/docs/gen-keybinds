@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""Writes the every-shipped-bind table in docs/keybinds.md from the Lua bind dump; --check only compares."""
+
+import argparse
+import difflib
+import os
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+DOC = os.path.join(ROOT, "docs", "keybinds.md")
+DUMP_SCRIPT = os.path.join("home", "hypr", "tests", "registry_binds.lua")
+BEGIN = "<!-- BEGIN generated -->"
+END = "<!-- END generated -->"
+GLOBAL = "global"
+# lib/key/submap.lua binds this key in every submap to toggle which-key, with no label or action id of its own.
+WHICHKEY_TOGGLE_KEY = "SHIFT + SLASH"
+WHICHKEY_TOGGLE_LABEL = "Toggle which-key help"
+
+
+class GenError(Exception):
+    pass
+
+
+def run_dump():
+    done = subprocess.run(["lua", DUMP_SCRIPT, "--labels", "--default-config"], capture_output=True, text=True, cwd=ROOT)
+    if done.returncode != 0:
+        raise GenError(f"{DUMP_SCRIPT} failed: {(done.stderr or done.stdout).strip()}")
+    return done.stdout
+
+
+def parse_dump(text):
+    """[(submap, key, action id or '', label, event)] in the dump's order, minus the transparent passthroughs."""
+    rows = []
+    for number, line in enumerate(text.splitlines(), 1):
+        columns = line.split("\t")
+        if len(columns) != 6:
+            raise GenError(f"dump line {number}: expected 6 tab-separated columns, got {len(columns)}")
+        submap, key, action, label, event, transparent = columns
+        # The transparent no-ops (SLASH, Shift_L, Shift_R) only keep the which-key chord's key-ups from ending the submap; listed bare they would read as keys bound to nothing.
+        if transparent == "transparent":
+            continue
+        if key == WHICHKEY_TOGGLE_KEY and action == "-" and not label:
+            label = WHICHKEY_TOGGLE_LABEL
+        rows.append((submap, key, "" if action == "-" else action, label, event))
+    return rows
+
+
+def cell(text, code=False):
+    """One table cell: whitespace runs collapse to a space so a label cannot start a new row, and `|` is escaped."""
+    text = " ".join(text.split()).replace("|", "\\|")
+    return f"`{text}`" if code and text else text
+
+
+def render(rows):
+    # sorted is stable, so keys stay in registration order within a submap.
+    ordered = sorted(rows, key=lambda row: (row[0] != GLOBAL, row[0].casefold()))
+    lines = ["| Key | On | Submap | Label | Id |", "| --- | --- | --- | --- | --- |"]
+    for submap, key, action, label, event in ordered:
+        lines.append(f"| {cell(key, True)} | {event} | {cell(submap)} | {cell(label)} | {cell(action, True)} |")
+    return "\n".join(lines) + "\n"
+
+
+def splice(doc, table):
+    """doc with the text between the markers replaced by table."""
+    if doc.count(BEGIN) != 1 or doc.count(END) != 1:
+        raise GenError(f"the doc needs exactly one {BEGIN} and one {END} line")
+    head, rest = doc.split(BEGIN, 1)
+    body, tail = rest.split(END, 1)
+    return f"{head}{BEGIN}\n{table}{END}{tail}"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--write", action="store_true")
+    mode.add_argument("--check", action="store_true")
+    parser.add_argument("--dump", help="read the dump from this file instead of running lua")
+    parser.add_argument("--doc", default=DOC)
+    args = parser.parse_args()
+    try:
+        if args.dump:
+            with open(args.dump, encoding="utf-8") as file:
+                dump = file.read()
+        else:
+            dump = run_dump()
+        with open(args.doc, encoding="utf-8") as file:
+            current = file.read()
+        wanted = splice(current, render(parse_dump(dump)))
+    except (GenError, OSError) as error:
+        print(f"gen-keybinds: {error}", file=sys.stderr)
+        return 1
+    if args.write:
+        if wanted != current:
+            with open(args.doc, "w", encoding="utf-8") as file:
+                file.write(wanted)
+        return 0
+    if wanted != current:
+        sys.stdout.writelines(difflib.unified_diff(current.splitlines(True), wanted.splitlines(True), "current", "generated", n=1))
+        print("gen-keybinds: the generated keybind table is stale; run `just docs-gen`", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

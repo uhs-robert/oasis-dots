@@ -202,3 +202,574 @@ Everything in `custom/` except its README is gitignored, so updates never touch 
 - **A key does nothing:** check the key name. `SLASH` is not `/`, and `RETURN` is not `ENTER`.
 - **A global bind does nothing inside a submap:** inside a submap, its own binds apply. A global bind works there only with `submap_universal = true`.
 - **A key you added to a one-shot submap stays in it:** end its action with `Submap.reset()`.
+
+## Every shipped bind
+
+The table below lists every bind the shipped keymaps register, with the default leader (`SUPER`) and no machine settings. Binds from `custom/` and per-machine settings are not reflected. It is generated: run `just docs-gen` after changing a keymap, and the `docs-generated` check fails while it is stale.
+
+The table is read with no monitors connected. The `Go` submap gains one row per connected monitor (keys `1`, `2`, and so on, in monitor order) that is not listed. An empty Id means the bind runs no registered action (a mouse bind, a catch-all, a leader key, an `XF86` key). The same key can appear twice in a submap: `On` tells a press from a release. The no-op binds on `SLASH`, `Shift_L` and `Shift_R` that keep the which-key chord from ending a submap are not listed.
+
+<!-- BEGIN generated -->
+| Key | On | Submap | Label | Id |
+| --- | --- | --- | --- | --- |
+| `SUPER + SLASH` | press | global | Keybind Help | `help.keybinds` |
+| `SUPER + X` | press | global | Close Window | `window.close` |
+| `SUPER + F` | press | global | Toggle Fullscreen | `window.fullscreen` |
+| `SUPER + M` | press | global | Toggle Maximize | `window.maximize` |
+| `SUPER + U` | press | global | Restore Closed Window | `window.restore_closed` |
+| `SUPER + S` | press | global | Toggle Scratchpad | `scratchpad.toggle` |
+| `SUPER + SHIFT + S` | press | global | Move to Scratchpad | `scratchpad.move` |
+| `SUPER + H` | press | global | Focus Left | `window.focus` |
+| `SUPER + LEFT` | press | global |  | `window.focus` |
+| `SUPER + J` | press | global | Focus Down | `window.focus` |
+| `SUPER + DOWN` | press | global |  | `window.focus` |
+| `SUPER + K` | press | global | Focus Up | `window.focus` |
+| `SUPER + UP` | press | global |  | `window.focus` |
+| `SUPER + L` | press | global | Focus Right | `window.focus` |
+| `SUPER + RIGHT` | press | global |  | `window.focus` |
+| `SUPER + SHIFT + H` | press | global | Move Window Left | `window.move` |
+| `SUPER + SHIFT + LEFT` | press | global |  | `window.move` |
+| `SUPER + SHIFT + J` | press | global | Move Window Down | `window.move` |
+| `SUPER + SHIFT + DOWN` | press | global |  | `window.move` |
+| `SUPER + SHIFT + K` | press | global | Move Window Up | `window.move` |
+| `SUPER + SHIFT + UP` | press | global |  | `window.move` |
+| `SUPER + SHIFT + L` | press | global | Move Window Right | `window.move` |
+| `SUPER + SHIFT + RIGHT` | press | global |  | `window.move` |
+| `SUPER + BRACKETLEFT` | press | global | Prev Toast/Popup/Float | `window.cycle_float` |
+| `SUPER + BRACKETRIGHT` | press | global | Next Toast/Popup/Float | `window.cycle_float` |
+| `SUPER + CTRL + 1` | press | global | Focus Monitor 1 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 1` | press | global | Move to Monitor 1 | `monitor.move_window` |
+| `SUPER + CTRL + 2` | press | global | Focus Monitor 2 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 2` | press | global | Move to Monitor 2 | `monitor.move_window` |
+| `SUPER + CTRL + 3` | press | global | Focus Monitor 3 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 3` | press | global | Move to Monitor 3 | `monitor.move_window` |
+| `SUPER + CTRL + 4` | press | global | Focus Monitor 4 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 4` | press | global | Move to Monitor 4 | `monitor.move_window` |
+| `SUPER + CTRL + 5` | press | global | Focus Monitor 5 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 5` | press | global | Move to Monitor 5 | `monitor.move_window` |
+| `SUPER + CTRL + 6` | press | global | Focus Monitor 6 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 6` | press | global | Move to Monitor 6 | `monitor.move_window` |
+| `SUPER + CTRL + 7` | press | global | Focus Monitor 7 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 7` | press | global | Move to Monitor 7 | `monitor.move_window` |
+| `SUPER + CTRL + 8` | press | global | Focus Monitor 8 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 8` | press | global | Move to Monitor 8 | `monitor.move_window` |
+| `SUPER + CTRL + 9` | press | global | Focus Monitor 9 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 9` | press | global | Move to Monitor 9 | `monitor.move_window` |
+| `SUPER + CTRL + 0` | press | global | Focus Monitor 10 | `monitor.focus` |
+| `SUPER + CTRL + SHIFT + 0` | press | global | Move to Monitor 10 | `monitor.move_window` |
+| `SUPER + 1` | press | global | Go to Workspace 1 | `workspace.focus` |
+| `SUPER + SHIFT + 1` | press | global | Move to Workspace 1 | `workspace.move` |
+| `SUPER + 2` | press | global | Go to Workspace 2 | `workspace.focus` |
+| `SUPER + SHIFT + 2` | press | global | Move to Workspace 2 | `workspace.move` |
+| `SUPER + 3` | press | global | Go to Workspace 3 | `workspace.focus` |
+| `SUPER + SHIFT + 3` | press | global | Move to Workspace 3 | `workspace.move` |
+| `SUPER + 4` | press | global | Go to Workspace 4 | `workspace.focus` |
+| `SUPER + SHIFT + 4` | press | global | Move to Workspace 4 | `workspace.move` |
+| `SUPER + 5` | press | global | Go to Workspace 5 | `workspace.focus` |
+| `SUPER + SHIFT + 5` | press | global | Move to Workspace 5 | `workspace.move` |
+| `SUPER + CTRL + H` | press | global | Prev WS on Monitor | `workspace.cycle` |
+| `SUPER + CTRL + LEFT` | press | global |  | `workspace.cycle` |
+| `SUPER + CTRL + L` | press | global | Next WS on Monitor | `workspace.cycle` |
+| `SUPER + CTRL + RIGHT` | press | global |  | `workspace.cycle` |
+| `SUPER + CTRL + J` | press | global | Move window to prev WS | `workspace.move_window` |
+| `SUPER + CTRL + DOWN` | press | global |  | `workspace.move_window` |
+| `SUPER + CTRL + K` | press | global | Move window to next WS | `workspace.move_window` |
+| `SUPER + CTRL + UP` | press | global |  | `workspace.move_window` |
+| `SUPER + RETURN` | press | global | Terminal | `terminal.open` |
+| `SUPER + SHIFT + RETURN` | press | global | Bottom Terminal | `terminal.bottom` |
+| `SUPER + CTRL + RETURN` | press | global | SSH Select | `menu.ssh` |
+| `SUPER + ALT + RETURN` | press | global | Run Script | `menu.run_script` |
+| `SUPER + E` | press | global | File Manager | `files.open` |
+| `SUPER + SHIFT + E` | press | global | TUI File Manager | `terminal.tui_files` |
+| `SUPER + O` | press | global | Open Application | `menu.drun` |
+| `SUPER + CTRL + O` | press | global | Run CLI Tool | `menu.cli` |
+| `SUPER + CTRL + A` | press | global | Agent Sessions | `menu.agents` |
+| `SUPER + Y` | press | global | Yazi | `terminal.yazi` |
+| `CTRL + SHIFT + ESCAPE` | press | global | Task Manager | `terminal.task_manager` |
+| `SUPER + B` | press | global | +Bar | `submap.enter` |
+| `Print` | press | global | Screenshot | `screenshot.take` |
+| `SUPER + I` | press | global | Screenshot | `screenshot.take` |
+| `SUPER + P` | press | global | Color Picker | `screenshot.pixel` |
+| `SUPER + Z` | press | global | Zoom | `zoom.toggle` |
+| `SUPER + PERIOD` | press | global | Speech to Text | `voice.dictate` |
+| `SUPER + COMMA` | press | global | Voice Command | `voice.command` |
+| `SUPER + SHIFT + COMMA` | press | global | Stop Voice | `voice.stop` |
+| `SUPER + CTRL + COMMA` | press | global | Rapid Mode | `voice.rapid` |
+| `SUPER + CTRL + PERIOD` | press | global | Wake Word | `voice.wake` |
+| `SUPER + CTRL + P` | press | global | Passwords | `picker.passwords` |
+| `SUPER + T` | press | global | Search windows | `overview.search` |
+| `SUPER + SHIFT + T` | press | global | Move window in overview | `overview.move` |
+| `SUPER + CTRL + SHIFT + T` | press | global | Silent move window in overview | `overview.move_silent` |
+| `ALT + TAB` | press | global | Workspace overview | `overview.open` |
+| `SUPER + TAB` | press | global | Workspace overview | `overview.open` |
+| `ALT + GRAVE` | press | global | Tmux overview | `tmux.overview` |
+| `SUPER + CTRL + V` | press | global | Clipboard History | `picker.clipboard` |
+| `SUPER + CTRL + SHIFT + V` | press | global | Delete Clipboard Entry | `picker.clipboard_delete` |
+| `SUPER + CTRL + SPACE` | press | global | Jump to Directory | `picker.directory` |
+| `SUPER + CTRL + E` | press | global | Emoji Picker | `picker.emoji` |
+| `SUPER + CTRL + SLASH` | press | global | Agent Sessions Picker | `picker.agents` |
+| `SUPER + SHIFT + SEMICOLON` | press | global | HyprVim Terminal | `hyprvim.terminal` |
+| `SUPER + APOSTROPHE` | press | global | Jump to Mark | `hyprvim.jump_mark` |
+| `SUPER + N` | press | global | Edit Selection in Vim | `hyprvim.edit_selection` |
+| `SUPER + ALT + H` | press | global | Previous Track | `media.prev` |
+| `XF86AudioPrev` | press | global | Previous Track | `media.prev` |
+| `SUPER + ALT + L` | press | global | Next Track | `media.next` |
+| `XF86AudioNext` | press | global | Next Track | `media.next` |
+| `SUPER + ALT + SPACE` | press | global | Play/Pause Media | `media.play_pause` |
+| `XF86AudioPlay` | press | global | Play/Pause Media | `media.play_pause` |
+| `XF86AudioPause` | press | global | Play/Pause Media | `media.play_pause` |
+| `SUPER + ALT + K` | press | global | Volume Up | `media.volume_up` |
+| `XF86AudioRaiseVolume` | press | global | Volume Up | `media.volume_up` |
+| `SUPER + ALT + J` | press | global | Volume Down | `media.volume_down` |
+| `XF86AudioLowerVolume` | press | global | Volume Down | `media.volume_down` |
+| `SUPER + ALT + M` | press | global | Mute | `media.mute` |
+| `XF86AudioMute` | press | global | Mute | `media.mute` |
+| `XF86AudioMicMute` | press | global | Mute Mic | `media.mute_mic` |
+| `XF86MonBrightnessUp` | press | global | Brightness Up | `media.brightness_up` |
+| `XF86MonBrightnessDown` | press | global | Brightness Down | `media.brightness_down` |
+| `switch:on:Lid Switch` | press | global | Lid Closed |  |
+| `XF86PowerOff` | press | global | Power Button |  |
+| `SUPER + mouse_down` | press | global |  | `workspace.cycle` |
+| `SUPER + mouse_up` | press | global |  | `workspace.cycle` |
+| `SUPER + mouse:272` | press | global |  |  |
+| `SUPER + mouse:273` | press | global |  |  |
+| `SUPER + SPACE` | press | global | +Leader |  |
+| `SUPER + A` | press | global | +Applications |  |
+| `SUPER + G` | press | global | +Go |  |
+| `SUPER + Q` | press | global | +System |  |
+| `SUPER + D` | press | global | +Delete |  |
+| `SUPER + W` | press | global | +Windows |  |
+| `SUPER + SHIFT + G` | press | global | +Groups |  |
+| `SUPER + SEMICOLON` | press | global | +Quick Click |  |
+| `SUPER + C` | press | global | +Cursor |  |
+| `SUPER + R` | press | global | +Resize |  |
+| `SUPER + SHIFT + M` | press | global | +Move |  |
+| `SPACE` | press | Applications | Search Windows | `overview.search` |
+| `SLASH` | press | Applications | Search Applications | `menu.drun` |
+| `A` | press | Applications | Aria2tui | `terminal.tool` |
+| `B` | press | Applications | Bottles | `apps.open` |
+| `C` | press | Applications | Calculate (qalc) | `terminal.tool` |
+| `SHIFT + C` | press | Applications | Calculator | `apps.open` |
+| `D` | press | Applications | Discord | `apps.open` |
+| `SHIFT + D` | press | Applications | DNS (doggo) | `terminal.tool` |
+| `E` | press | Applications | Editor | `terminal.editor` |
+| `F` | press | Applications | Firefox | `apps.open` |
+| `G` | press | Applications | Gimp | `apps.open` |
+| `H` | press | Applications | HTTP (xh) | `terminal.tool` |
+| `I` | press | Applications | Inkscape | `apps.open` |
+| `J` | press | Applications | Journal (lazyjournal) | `terminal.tool` |
+| `M` | press | Applications | Mail | `apps.focus` |
+| `P` | press | Applications | ProtonPlus | `apps.focus` |
+| `SHIFT + P` | press | Applications | Ping (gping) | `terminal.tool` |
+| `Q` | press | Applications | QuteBrowser | `apps.open` |
+| `R` | press | Applications | Radio (cliamp) | `apps.focus` |
+| `S` | press | Applications | Slack | `apps.focus` |
+| `SHIFT + S` | press | Applications | Steam | `apps.focus` |
+| `T` | press | Applications | Torrent | `apps.open` |
+| `U` | press | Applications | Disk Diagnosis (gdu) | `terminal.tool` |
+| `W` | press | Applications | LibreOffice Writer | `apps.open` |
+| `X` | press | Applications | LibreOffice Calc | `apps.open` |
+| `ESCAPE` | press | Applications | Exit Applications |  |
+| `BackSpace` | release | Applications | Back |  |
+| `SHIFT + SLASH` | press | Applications | Toggle which-key help |  |
+| `catchall` | release | Applications |  |  |
+| `A` | press | Bar | Agents | `menu.agents` |
+| `B` | press | Bar | Bluetooth | `popup.open` |
+| `C` | press | Bar | Calendar | `popup.open` |
+| `I` | press | Bar | Network and Internet | `popup.open` |
+| `M` | press | Bar | Media | `popup.open` |
+| `N` | press | Bar | Notifications | `popup.open` |
+| `P` | press | Bar | Power and Brightness | `popup.open` |
+| `Q` | press | Bar | System | `popup.open` |
+| `S` | press | Bar | Start Menu | `popup.open` |
+| `T` | press | Bar | Tray | `popup.open` |
+| `U` | press | Bar | Updates | `system.update` |
+| `V` | press | Bar | Volume | `popup.open` |
+| `W` | press | Bar | Weather | `popup.open` |
+| `ESCAPE` | press | Bar | Exit Bar |  |
+| `BackSpace` | release | Bar | Back |  |
+| `SHIFT + SLASH` | press | Bar | Toggle which-key help |  |
+| `catchall` | release | Bar |  |  |
+| `SEMICOLON` | press | Cursor | Floating Click (Exit) | `cursor.pointer_mode` |
+| `SUPER + SEMICOLON` | press | Cursor |  | `cursor.pointer_mode` |
+| `SHIFT + SEMICOLON` | press | Cursor | Tiling Click (Exit) | `cursor.pointer_mode` |
+| `APOSTROPHE` | press | Cursor | Floating Right Click | `cursor.pointer_mode` |
+| `SHIFT + APOSTROPHE` | press | Cursor | Tiling Right Click | `cursor.pointer_mode` |
+| `F` | press | Cursor | Floating Click | `cursor.pointer_mode` |
+| `SHIFT + F` | press | Cursor | Floating Right Click | `cursor.pointer_mode` |
+| `CTRL + F` | press | Cursor | Floating Move | `cursor.pointer_mode` |
+| `T` | press | Cursor | Tiling Click | `cursor.pointer_mode` |
+| `SHIFT + T` | press | Cursor | Tiling Right Click | `cursor.pointer_mode` |
+| `CTRL + T` | press | Cursor | Tiling Move | `cursor.pointer_mode` |
+| `G` | press | Cursor | Split Click | `cursor.pointer_mode` |
+| `SHIFT + G` | press | Cursor | Split Right Click | `cursor.pointer_mode` |
+| `CTRL + G` | press | Cursor | Split Move | `cursor.pointer_mode` |
+| `SPACE` | press | Cursor | Left Click | `cursor.click` |
+| `CTRL + SPACE` | press | Cursor | Left Click (Exit) | `cursor.click` |
+| `R` | press | Cursor | Right Click | `cursor.click` |
+| `CTRL + R` | press | Cursor | Right Click (Exit) | `cursor.click` |
+| `M` | press | Cursor | Middle Click | `cursor.click` |
+| `CTRL + M` | press | Cursor | Middle Click (Exit) | `cursor.click` |
+| `CTRL + U` | press | Cursor | Page Up | `cursor.send_key` |
+| `CTRL + D` | press | Cursor | Page Down | `cursor.send_key` |
+| `ALT + H` | press | Cursor | Arrow Left | `cursor.send_key` |
+| `ALT + J` | press | Cursor | Arrow Down | `cursor.send_key` |
+| `ALT + K` | press | Cursor | Arrow Up | `cursor.send_key` |
+| `ALT + L` | press | Cursor | Arrow Right | `cursor.send_key` |
+| `H` | press | Cursor | Cursor Left | `cursor.move` |
+| `LEFT` | press | Cursor |  | `cursor.move` |
+| `J` | press | Cursor | Cursor Down | `cursor.move` |
+| `DOWN` | press | Cursor |  | `cursor.move` |
+| `K` | press | Cursor | Cursor Up | `cursor.move` |
+| `UP` | press | Cursor |  | `cursor.move` |
+| `L` | press | Cursor | Cursor Right | `cursor.move` |
+| `RIGHT` | press | Cursor |  | `cursor.move` |
+| `SHIFT + H` | press | Cursor | Cursor Left (Fast) | `cursor.move` |
+| `SHIFT + LEFT` | press | Cursor |  | `cursor.move` |
+| `SHIFT + J` | press | Cursor | Cursor Down (Fast) | `cursor.move` |
+| `SHIFT + DOWN` | press | Cursor |  | `cursor.move` |
+| `SHIFT + K` | press | Cursor | Cursor Up (Fast) | `cursor.move` |
+| `SHIFT + UP` | press | Cursor |  | `cursor.move` |
+| `SHIFT + L` | press | Cursor | Cursor Right (Fast) | `cursor.move` |
+| `SHIFT + RIGHT` | press | Cursor |  | `cursor.move` |
+| `CTRL + H` | press | Cursor | Cursor Left (Pixel) | `cursor.move` |
+| `CTRL + LEFT` | press | Cursor |  | `cursor.move` |
+| `CTRL + J` | press | Cursor | Cursor Down (Pixel) | `cursor.move` |
+| `CTRL + DOWN` | press | Cursor |  | `cursor.move` |
+| `CTRL + K` | press | Cursor | Cursor Up (Pixel) | `cursor.move` |
+| `CTRL + UP` | press | Cursor |  | `cursor.move` |
+| `CTRL + L` | press | Cursor | Cursor Right (Pixel) | `cursor.move` |
+| `CTRL + RIGHT` | press | Cursor |  | `cursor.move` |
+| `CTRL + SHIFT + H` | press | Cursor | Cursor Left (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + LEFT` | press | Cursor |  | `cursor.move` |
+| `CTRL + SHIFT + J` | press | Cursor | Cursor Down (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + DOWN` | press | Cursor |  | `cursor.move` |
+| `CTRL + SHIFT + K` | press | Cursor | Cursor Up (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + UP` | press | Cursor |  | `cursor.move` |
+| `CTRL + SHIFT + L` | press | Cursor | Cursor Right (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + RIGHT` | press | Cursor |  | `cursor.move` |
+| `H+K` | press | Cursor | Cursor Up-Left | `cursor.move` |
+| `K+H` | press | Cursor | Cursor Up-Left | `cursor.move` |
+| `L+K` | press | Cursor | Cursor Up-Right | `cursor.move` |
+| `K+L` | press | Cursor | Cursor Up-Right | `cursor.move` |
+| `H+J` | press | Cursor | Cursor Down-Left | `cursor.move` |
+| `J+H` | press | Cursor | Cursor Down-Left | `cursor.move` |
+| `L+J` | press | Cursor | Cursor Down-Right | `cursor.move` |
+| `J+L` | press | Cursor | Cursor Down-Right | `cursor.move` |
+| `SHIFT + H+K` | press | Cursor | Cursor Up-Left (Fast) | `cursor.move` |
+| `SHIFT + K+H` | press | Cursor | Cursor Up-Left (Fast) | `cursor.move` |
+| `SHIFT + L+K` | press | Cursor | Cursor Up-Right (Fast) | `cursor.move` |
+| `SHIFT + K+L` | press | Cursor | Cursor Up-Right (Fast) | `cursor.move` |
+| `SHIFT + H+J` | press | Cursor | Cursor Down-Left (Fast) | `cursor.move` |
+| `SHIFT + J+H` | press | Cursor | Cursor Down-Left (Fast) | `cursor.move` |
+| `SHIFT + L+J` | press | Cursor | Cursor Down-Right (Fast) | `cursor.move` |
+| `SHIFT + J+L` | press | Cursor | Cursor Down-Right (Fast) | `cursor.move` |
+| `CTRL + H+K` | press | Cursor | Cursor Up-Left (Pixel) | `cursor.move` |
+| `CTRL + K+H` | press | Cursor | Cursor Up-Left (Pixel) | `cursor.move` |
+| `CTRL + L+K` | press | Cursor | Cursor Up-Right (Pixel) | `cursor.move` |
+| `CTRL + K+L` | press | Cursor | Cursor Up-Right (Pixel) | `cursor.move` |
+| `CTRL + H+J` | press | Cursor | Cursor Down-Left (Pixel) | `cursor.move` |
+| `CTRL + J+H` | press | Cursor | Cursor Down-Left (Pixel) | `cursor.move` |
+| `CTRL + L+J` | press | Cursor | Cursor Down-Right (Pixel) | `cursor.move` |
+| `CTRL + J+L` | press | Cursor | Cursor Down-Right (Pixel) | `cursor.move` |
+| `CTRL + SHIFT + H+K` | press | Cursor | Cursor Up-Left (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + K+H` | press | Cursor | Cursor Up-Left (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + L+K` | press | Cursor | Cursor Up-Right (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + K+L` | press | Cursor | Cursor Up-Right (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + H+J` | press | Cursor | Cursor Down-Left (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + J+H` | press | Cursor | Cursor Down-Left (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + L+J` | press | Cursor | Cursor Down-Right (Ultra Fast) | `cursor.move` |
+| `CTRL + SHIFT + J+L` | press | Cursor | Cursor Down-Right (Ultra Fast) | `cursor.move` |
+| `E` | press | Cursor | Scroll Up | `cursor.scroll` |
+| `Y` | press | Cursor | Scroll Down | `cursor.scroll` |
+| `COMMA` | press | Cursor | Scroll Left | `cursor.scroll` |
+| `PERIOD` | press | Cursor | Scroll Right | `cursor.scroll` |
+| `SHIFT + E` | press | Cursor | Scroll Up (Fast) | `cursor.scroll` |
+| `SHIFT + Y` | press | Cursor | Scroll Down (Fast) | `cursor.scroll` |
+| `SHIFT + COMMA` | press | Cursor | Scroll Left (Fast) | `cursor.scroll` |
+| `SHIFT + PERIOD` | press | Cursor | Scroll Right (Fast) | `cursor.scroll` |
+| `CTRL + E` | press | Cursor | Scroll Up (Pixel) | `cursor.scroll` |
+| `CTRL + Y` | press | Cursor | Scroll Down (Pixel) | `cursor.scroll` |
+| `CTRL + COMMA` | press | Cursor | Scroll Left (Pixel) | `cursor.scroll` |
+| `CTRL + PERIOD` | press | Cursor | Scroll Right (Pixel) | `cursor.scroll` |
+| `E` | release | Cursor |  | `cursor.scroll_stop` |
+| `Y` | release | Cursor |  | `cursor.scroll_stop` |
+| `COMMA` | release | Cursor |  | `cursor.scroll_stop` |
+| `PERIOD` | release | Cursor |  | `cursor.scroll_stop` |
+| `ESCAPE` | press | Cursor | Exit Cursor |  |
+| `BackSpace` | press | Cursor | Back |  |
+| `SHIFT + SLASH` | press | Cursor | Toggle which-key help |  |
+| `catchall` | release | Cursor |  |  |
+| `B` | press | Delete | Close Browsers | `delete.close_group` |
+| `C` | press | Delete | Clear Clipboard | `delete.clear_clipboard` |
+| `D` | press | Delete | Close All on WS | `delete.close_workspace` |
+| `SHIFT + D` | press | Delete | Kill All on WS | `delete.close_workspace` |
+| `E` | press | Delete | Close Editors | `delete.close_group` |
+| `F` | press | Delete | Close File Managers | `delete.close_group` |
+| `G` | press | Delete | Close Games | `delete.close_group` |
+| `M` | press | Delete | Close Mail | `delete.close_group` |
+| `N` | press | Delete | Clear Notifications | `notifications.clear_all` |
+| `O` | press | Delete | Close Others on WS | `delete.close_workspace` |
+| `SHIFT + O` | press | Delete | Kill Others on WS | `delete.close_workspace` |
+| `P` | press | Delete | Close Media Players | `delete.close_group` |
+| `S` | press | Delete | Close Chat | `delete.close_group` |
+| `T` | press | Delete | Close Terminals | `delete.close_group` |
+| `W` | press | Delete | Close Window | `window.close` |
+| `SHIFT + W` | press | Delete | Kill Window | `window.kill` |
+| `ESCAPE` | press | Delete | Exit Delete |  |
+| `BackSpace` | release | Delete | Back |  |
+| `SHIFT + SLASH` | press | Delete | Toggle which-key help |  |
+| `catchall` | release | Delete |  |  |
+| `TAB` | press | Go | Last Workspace | `workspace.focus_last` |
+| `A` | press | Go | Agent Sessions | `menu.agents` |
+| `B` | press | Go | Browser | `apps.focus` |
+| `C` | press | Go | Tmuxifier Config | `apps.focus` |
+| `F` | press | Go | Files | `apps.focus` |
+| `SHIFT + F` | press | Go | Thunar | `apps.focus` |
+| `H` | press | Go | Hypr Config | `apps.focus` |
+| `M` | press | Go | Mail | `apps.focus` |
+| `SHIFT + M` | press | Go | Meeting | `window.focus_match` |
+| `P` | press | Go | Project | `menu.tmux` |
+| `Q` | press | Go | QuteBrowser | `apps.focus` |
+| `S` | press | Go | Slack | `apps.focus` |
+| `SHIFT + S` | press | Go | Steam | `apps.focus` |
+| `T` | press | Go | Terminal | `apps.focus` |
+| `W` | press | Go | Search Windows | `overview.search` |
+| `Y` | press | Go | Youtube | `window.focus_match` |
+| `ESCAPE` | press | Go | Exit Go |  |
+| `BackSpace` | release | Go | Back |  |
+| `SHIFT + SLASH` | press | Go | Toggle which-key help |  |
+| `catchall` | release | Go |  |  |
+| `SPACE` | press | Groups | Toggle Group | `groups.toggle` |
+| `TAB` | press | Groups | Next Group Window | `groups.next` |
+| `BRACKETRIGHT` | press | Groups | Next Group Window | `groups.next` |
+| `SHIFT + TAB` | press | Groups | Previous Group Window | `groups.prev` |
+| `BRACKETLEFT` | press | Groups | Previous Group Window | `groups.prev` |
+| `X` | press | Groups | Move Out of Group | `groups.move_out` |
+| `SHIFT + X` | press | Groups | Toggle Group Lock | `groups.lock_toggle` |
+| `H` | press | Groups | Focus Left | `window.focus` |
+| `LEFT` | press | Groups |  | `window.focus` |
+| `J` | press | Groups | Focus Down | `window.focus` |
+| `DOWN` | press | Groups |  | `window.focus` |
+| `K` | press | Groups | Focus Up | `window.focus` |
+| `UP` | press | Groups |  | `window.focus` |
+| `L` | press | Groups | Focus Right | `window.focus` |
+| `RIGHT` | press | Groups |  | `window.focus` |
+| `SHIFT + H` | press | Groups | Group Left | `groups.move` |
+| `SHIFT + LEFT` | press | Groups |  | `groups.move` |
+| `SHIFT + J` | press | Groups | Group Down | `groups.move` |
+| `SHIFT + DOWN` | press | Groups |  | `groups.move` |
+| `SHIFT + K` | press | Groups | Group Up | `groups.move` |
+| `SHIFT + UP` | press | Groups |  | `groups.move` |
+| `SHIFT + L` | press | Groups | Group Right | `groups.move` |
+| `SHIFT + RIGHT` | press | Groups |  | `groups.move` |
+| `ESCAPE` | press | Groups | Exit Groups |  |
+| `BackSpace` | press | Groups | Back |  |
+| `SHIFT + SLASH` | press | Groups | Toggle which-key help |  |
+| `catchall` | release | Groups |  |  |
+| `SLASH` | press | Leader | Directory | `picker.directory` |
+| `O` | press | Leader | Open Application | `menu.drun` |
+| `SHIFT + O` | press | Leader | Session Launcher |  |
+| `CTRL + V` | press | Leader | Clipboard | `picker.clipboard` |
+| `TAB` | press | Leader | Workspace Overview | `overview.open` |
+| `SHIFT + TAB` | press | Leader | Tmux Overview | `tmux.overview` |
+| `E` | press | Leader | Emoji | `picker.emoji` |
+| `PERIOD` | press | Leader | Speech to Text | `voice.dictate` |
+| `COMMA` | press | Leader | Voice Command | `voice.command` |
+| `SHIFT + COMMA` | press | Leader | Stop Voice | `voice.stop` |
+| `CTRL + COMMA` | press | Leader | Rapid Mode | `voice.rapid` |
+| `CTRL + PERIOD` | press | Leader | Wake Word | `voice.wake` |
+| `CTRL + SLASH` | press | Leader | Voice Help |  |
+| `G` | press | Leader | +Groups | `submap.enter` |
+| `SPACE` | press | Leader | Start Menu | `popup.open` |
+| `A` | press | Leader | Agents | `menu.agents` |
+| `B` | press | Leader | Bluetooth | `popup.open` |
+| `C` | press | Leader | Calendar | `popup.open` |
+| `I` | press | Leader | Network and Internet | `popup.open` |
+| `M` | press | Leader | Media | `popup.open` |
+| `N` | press | Leader | Notifications | `popup.open` |
+| `P` | press | Leader | Power and Brightness | `popup.open` |
+| `Q` | press | Leader | System | `popup.open` |
+| `S` | press | Leader | Settings | `popup.open` |
+| `T` | press | Leader | Tray | `popup.open` |
+| `U` | press | Leader | Updates | `system.update` |
+| `V` | press | Leader | Volume | `popup.open` |
+| `W` | press | Leader | Weather | `popup.open` |
+| `ESCAPE` | press | Leader | Exit Leader |  |
+| `BackSpace` | release | Leader | Back |  |
+| `SHIFT + SLASH` | press | Leader | Toggle which-key help |  |
+| `catchall` | release | Leader |  |  |
+| `F` | press | Move | Toggle Floating | `window.float_toggle` |
+| `H` | press | Move | Move Left | `move.step` |
+| `LEFT` | press | Move |  | `move.step` |
+| `J` | press | Move | Move Down | `move.step` |
+| `DOWN` | press | Move |  | `move.step` |
+| `K` | press | Move | Move Up | `move.step` |
+| `UP` | press | Move |  | `move.step` |
+| `L` | press | Move | Move Right | `move.step` |
+| `RIGHT` | press | Move |  | `move.step` |
+| `SHIFT + H` | press | Move | Move Left (Fast) | `move.step` |
+| `SHIFT + LEFT` | press | Move |  | `move.step` |
+| `SHIFT + J` | press | Move | Move Down (Fast) | `move.step` |
+| `SHIFT + DOWN` | press | Move |  | `move.step` |
+| `SHIFT + K` | press | Move | Move Up (Fast) | `move.step` |
+| `SHIFT + UP` | press | Move |  | `move.step` |
+| `SHIFT + L` | press | Move | Move Right (Fast) | `move.step` |
+| `SHIFT + RIGHT` | press | Move |  | `move.step` |
+| `CTRL + H` | press | Move | Move Left (Pixel) | `move.step` |
+| `CTRL + LEFT` | press | Move |  | `move.step` |
+| `CTRL + J` | press | Move | Move Down (Pixel) | `move.step` |
+| `CTRL + DOWN` | press | Move |  | `move.step` |
+| `CTRL + K` | press | Move | Move Up (Pixel) | `move.step` |
+| `CTRL + UP` | press | Move |  | `move.step` |
+| `CTRL + L` | press | Move | Move Right (Pixel) | `move.step` |
+| `CTRL + RIGHT` | press | Move |  | `move.step` |
+| `CTRL + SHIFT + H` | press | Move | Move Left (Ultra Fast) | `move.step` |
+| `CTRL + SHIFT + LEFT` | press | Move |  | `move.step` |
+| `CTRL + SHIFT + J` | press | Move | Move Down (Ultra Fast) | `move.step` |
+| `CTRL + SHIFT + DOWN` | press | Move |  | `move.step` |
+| `CTRL + SHIFT + K` | press | Move | Move Up (Ultra Fast) | `move.step` |
+| `CTRL + SHIFT + UP` | press | Move |  | `move.step` |
+| `CTRL + SHIFT + L` | press | Move | Move Right (Ultra Fast) | `move.step` |
+| `CTRL + SHIFT + RIGHT` | press | Move |  | `move.step` |
+| `ESCAPE` | press | Move | Exit Move |  |
+| `BackSpace` | press | Move | Back |  |
+| `SHIFT + SLASH` | press | Move | Toggle which-key help |  |
+| `catchall` | release | Move |  |  |
+| `SEMICOLON` | press | Quick Click | Floating Click (Exit) | `cursor.pointer_mode` |
+| `APOSTROPHE` | press | Quick Click | Floating Right Click | `cursor.pointer_mode` |
+| `SHIFT + SEMICOLON` | press | Quick Click | Tile Click (Exit) | `cursor.pointer_mode` |
+| `SUPER + SEMICOLON` | press | Quick Click |  | `cursor.pointer_mode` |
+| `SUPER + APOSTROPHE` | press | Quick Click |  | `cursor.pointer_mode` |
+| `F` | press | Quick Click | Floating Click | `cursor.pointer_mode` |
+| `SHIFT + F` | press | Quick Click | Floating Right Click | `cursor.pointer_mode` |
+| `CTRL + F` | press | Quick Click | Floating Move | `cursor.pointer_mode` |
+| `T` | press | Quick Click | Tiling Click | `cursor.pointer_mode` |
+| `SHIFT + T` | press | Quick Click | Tile Right Click | `cursor.pointer_mode` |
+| `CTRL + T` | press | Quick Click | Tiling Move | `cursor.pointer_mode` |
+| `G` | press | Quick Click | Split Click | `cursor.pointer_mode` |
+| `SHIFT + G` | press | Quick Click | Split Right Click | `cursor.pointer_mode` |
+| `CTRL + G` | press | Quick Click | Split Move | `cursor.pointer_mode` |
+| `ESCAPE` | press | Quick Click | Exit Quick Click |  |
+| `BackSpace` | press | Quick Click | Back |  |
+| `SHIFT + SLASH` | press | Quick Click | Toggle which-key help |  |
+| `catchall` | release | Quick Click |  |  |
+| `EQUAL` | press | Resize | Reset Size | `resize.reset` |
+| `H` | press | Resize | Resize Left | `resize.step` |
+| `LEFT` | press | Resize |  | `resize.step` |
+| `J` | press | Resize | Resize Down | `resize.step` |
+| `DOWN` | press | Resize |  | `resize.step` |
+| `K` | press | Resize | Resize Up | `resize.step` |
+| `UP` | press | Resize |  | `resize.step` |
+| `L` | press | Resize | Resize Right | `resize.step` |
+| `RIGHT` | press | Resize |  | `resize.step` |
+| `SHIFT + H` | press | Resize | Resize Left (Fast) | `resize.step` |
+| `SHIFT + LEFT` | press | Resize |  | `resize.step` |
+| `SHIFT + J` | press | Resize | Resize Down (Fast) | `resize.step` |
+| `SHIFT + DOWN` | press | Resize |  | `resize.step` |
+| `SHIFT + K` | press | Resize | Resize Up (Fast) | `resize.step` |
+| `SHIFT + UP` | press | Resize |  | `resize.step` |
+| `SHIFT + L` | press | Resize | Resize Right (Fast) | `resize.step` |
+| `SHIFT + RIGHT` | press | Resize |  | `resize.step` |
+| `CTRL + H` | press | Resize | Resize Left (Pixel) | `resize.step` |
+| `CTRL + LEFT` | press | Resize |  | `resize.step` |
+| `CTRL + J` | press | Resize | Resize Down (Pixel) | `resize.step` |
+| `CTRL + DOWN` | press | Resize |  | `resize.step` |
+| `CTRL + K` | press | Resize | Resize Up (Pixel) | `resize.step` |
+| `CTRL + UP` | press | Resize |  | `resize.step` |
+| `CTRL + L` | press | Resize | Resize Right (Pixel) | `resize.step` |
+| `CTRL + RIGHT` | press | Resize |  | `resize.step` |
+| `CTRL + SHIFT + H` | press | Resize | Resize Left (Ultra Fast) | `resize.step` |
+| `CTRL + SHIFT + LEFT` | press | Resize |  | `resize.step` |
+| `CTRL + SHIFT + J` | press | Resize | Resize Down (Ultra Fast) | `resize.step` |
+| `CTRL + SHIFT + DOWN` | press | Resize |  | `resize.step` |
+| `CTRL + SHIFT + K` | press | Resize | Resize Up (Ultra Fast) | `resize.step` |
+| `CTRL + SHIFT + UP` | press | Resize |  | `resize.step` |
+| `CTRL + SHIFT + L` | press | Resize | Resize Right (Ultra Fast) | `resize.step` |
+| `CTRL + SHIFT + RIGHT` | press | Resize |  | `resize.step` |
+| `ESCAPE` | press | Resize | Exit Resize |  |
+| `BackSpace` | press | Resize | Back |  |
+| `SHIFT + SLASH` | press | Resize | Toggle which-key help |  |
+| `catchall` | release | Resize |  |  |
+| `SLASH` | press | System | Edit Keymaps | `system.edit_keymaps` |
+| `SPACE` | press | System | Task Manager | `terminal.task_manager` |
+| `A` | press | System | AI Manager | `terminal.tool` |
+| `B` | press | System | Restart Bar | `system.restart_bar` |
+| `D` | press | System | Display Manager | `system.display_manager` |
+| `E` | press | System | Logout | `power.confirm` |
+| `H` | press | System | Reload Hyprland | `system.reload_hyprland` |
+| `SHIFT + H` | press | System | Reload Hyprpm Plugins | `system.reload_plugins` |
+| `I` | press | System | Internet (nmtui) | `system.network` |
+| `K` | press | System | Kill App (Click) | `system.kill_app` |
+| `L` | press | System | Lock | `power.confirm` |
+| `SHIFT + L` | press | System | Toggle Auto-Lock | `system.toggle_autolock` |
+| `N` | press | System | Notification Center | `popup.open` |
+| `R` | press | System | Reboot | `power.confirm` |
+| `SHIFT + R` | press | System | Replay Autostart | `system.replay_autostart` |
+| `P` | press | System | Power Off | `power.confirm` |
+| `T` | press | System | Theme Switch | `system.theme_switch` |
+| `U` | press | System | Update System | `system.update` |
+| `V` | press | System | Voxtype Settings | `system.voxtype_settings` |
+| `SHIFT + V` | press | System | Voxtype Restart | `system.voxtype_restart` |
+| `W` | press | System | Next Wallpaper | `system.next_wallpaper` |
+| `X` | press | System | Disabled Hypr Errors | `system.disable_errors` |
+| `ESCAPE` | press | System | Exit System |  |
+| `BackSpace` | release | System | Back |  |
+| `SHIFT + SLASH` | press | System | Toggle which-key help |  |
+| `catchall` | release | System |  |  |
+| `R` | press | Windows | +Resize | `submap.enter` |
+| `M` | press | Windows | +Move | `submap.enter` |
+| `C` | press | Windows | +Cursor | `submap.enter` |
+| `BRACKETLEFT` | press | Windows | Prev Float | `windows.step_float` |
+| `BRACKETRIGHT` | press | Windows | Next Float | `windows.step_float` |
+| `X` | press | Windows | Close Window | `windows.close_selected` |
+| `F` | press | Windows | Toggle Floating | `windows.float_selected` |
+| `P` | press | Windows | Toggle Pseudo | `windows.pseudo_selected` |
+| `MINUS` | press | Windows | Toggle Split | `windows.split_selected` |
+| `RETURN` | press | Windows | Confirm Selection | `windows.confirm` |
+| `SPACE` | press | Windows | Select Window | `windows.select_toggle` |
+| `S` | press | Windows | Swap with Selected | `windows.swap_selected` |
+| `H` | press | Windows | Focus Left | `window.focus` |
+| `LEFT` | press | Windows |  | `window.focus` |
+| `J` | press | Windows | Focus Down | `window.focus` |
+| `DOWN` | press | Windows |  | `window.focus` |
+| `K` | press | Windows | Focus Up | `window.focus` |
+| `UP` | press | Windows |  | `window.focus` |
+| `L` | press | Windows | Focus Right | `window.focus` |
+| `RIGHT` | press | Windows |  | `window.focus` |
+| `SHIFT + H` | press | Windows | Move Left | `windows.move_selected` |
+| `SHIFT + LEFT` | press | Windows |  | `windows.move_selected` |
+| `SHIFT + J` | press | Windows | Move Down | `windows.move_selected` |
+| `SHIFT + DOWN` | press | Windows |  | `windows.move_selected` |
+| `SHIFT + K` | press | Windows | Move Up | `windows.move_selected` |
+| `SHIFT + UP` | press | Windows |  | `windows.move_selected` |
+| `SHIFT + L` | press | Windows | Move Right | `windows.move_selected` |
+| `SHIFT + RIGHT` | press | Windows |  | `windows.move_selected` |
+| `CTRL + H` | press | Windows | Workspace Left | `workspace.cycle` |
+| `CTRL + LEFT` | press | Windows |  | `workspace.cycle` |
+| `CTRL + J` | press | Windows | Workspace Down | `windows.workspace_selected` |
+| `CTRL + DOWN` | press | Windows |  | `windows.workspace_selected` |
+| `CTRL + K` | press | Windows | Workspace Up | `windows.workspace_selected` |
+| `CTRL + UP` | press | Windows |  | `windows.workspace_selected` |
+| `CTRL + L` | press | Windows | Workspace Right | `workspace.cycle` |
+| `CTRL + RIGHT` | press | Windows |  | `workspace.cycle` |
+| `SHIFT + 1` | press | Windows | Move to WS 1 | `windows.workspace_move_selected` |
+| `SHIFT + 2` | press | Windows | Move to WS 2 | `windows.workspace_move_selected` |
+| `SHIFT + 3` | press | Windows | Move to WS 3 | `windows.workspace_move_selected` |
+| `SHIFT + 4` | press | Windows | Move to WS 4 | `windows.workspace_move_selected` |
+| `SHIFT + 5` | press | Windows | Move to WS 5 | `windows.workspace_move_selected` |
+| `1` | press | Windows | Monitor 1 | `monitor.focus` |
+| `2` | press | Windows | Monitor 2 | `monitor.focus` |
+| `3` | press | Windows | Monitor 3 | `monitor.focus` |
+| `4` | press | Windows | Monitor 4 | `monitor.focus` |
+| `5` | press | Windows | Monitor 5 | `monitor.focus` |
+| `6` | press | Windows | Monitor 6 | `monitor.focus` |
+| `7` | press | Windows | Monitor 7 | `monitor.focus` |
+| `8` | press | Windows | Monitor 8 | `monitor.focus` |
+| `9` | press | Windows | Monitor 9 | `monitor.focus` |
+| `0` | press | Windows | Monitor 10 | `monitor.focus` |
+| `ESCAPE` | press | Windows | Exit Windows |  |
+| `BackSpace` | press | Windows | Back |  |
+| `SHIFT + SLASH` | press | Windows | Toggle which-key help |  |
+| `catchall` | release | Windows |  |  |
+<!-- END generated -->
