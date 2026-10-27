@@ -37,7 +37,7 @@ The owner edits the bar modules on the real bars instead of in a list: a full-sc
 - **BAREDIT-19** A monitor added or removed while the editor is open updates monitor select; losing the picked monitor returns to monitor select on another one, and losing the last bar closes the editor.
 
 ## Look
-The selected module gets a line along the bar's inner edge and a caret pointing at it, in the style's accent; a monitor sharing the layout shows it fainter. The mode (`-- NORMAL --`, `-- HIDDEN --`, `-- VISUAL --`) sits in a hint bar at the screen edge the bar is not on, with whether the layout is shared by n monitors or own. VISUAL frames the whole bar. HIDDEN lists the hidden modules in a tray above the hint bar. Monitor select shows the screens as they sit, the picked one lit. The help box is the shared key help. The pointer is the style's picker cursor (blank system cursor under a skin). Everything uses style tokens.
+The selected module gets a line along the bar's inner edge and a caret pointing at it, in the style's accent; a monitor sharing the layout shows it fainter. The mode (`-- NORMAL --`, `-- HIDDEN --`, `-- VISUAL --`) sits in a hint bar at the screen edge the bar is not on, with whether the layout is shared by n monitors or own. VISUAL frames the whole bar. HIDDEN lists the hidden modules in a tray above the hint bar. Monitor select shows the screens as they sit, the picked one lit. The help box is the shared key help. The pointer keeps the system cursor: no picker skin, since the keyboard never moves it. Everything uses style tokens.
 
 ## Not covered
 - Undo restores whole saved states, so it also reverts unrelated keys changed elsewhere during the session (the Directory switches, an edit made to the file by hand).

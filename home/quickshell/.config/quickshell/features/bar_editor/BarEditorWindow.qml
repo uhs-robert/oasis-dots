@@ -15,7 +15,6 @@ PanelWindow {
     required property var modelData
     readonly property string screen_name: root.modelData.name
     readonly property bool keyboard_owner: BarEditor.keyboard_owner(root.screen_name)
-    readonly property bool skinned_cursor: cursor_loader.status === Loader.Ready
     readonly property bool has_bar: BarEditor.monitors.some(m => m.name === root.screen_name)
     // A screen showing the layout being edited, which follows every change.
     readonly property bool peer: !root.keyboard_owner && BarEditor.sharing && BarEditor.sharing_screens().indexOf(root.screen_name) >= 0
@@ -106,39 +105,10 @@ PanelWindow {
 
     // Nothing under the editor sees the pointer.
     MouseArea {
-        id: pointer_area
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.AllButtons
-        cursorShape: root.skinned_cursor ? Qt.BlankCursor : Qt.ArrowCursor
         onWheel: wheel => wheel.accepted = true
-    }
-
-    // The style's picker cursor, as RegionSelector draws it. The skins follow a point and a shown flag that the selector
-    // takes from Screenshot, so they are bound to this screen's own pointer.
-    Loader {
-        id: cursor_loader
-        readonly property string skin: Style.picker_skin
-        anchors.fill: parent
-        active: cursor_loader.skin !== ""
-        onSkinChanged: cursor_loader.load()
-        Component.onCompleted: cursor_loader.load()
-
-        function load() {
-            if (cursor_loader.skin === "") return;
-            const props = {
-                screen_name: Qt.binding(() => root.screen_name),
-                origin: Qt.binding(() => Qt.point(root.modelData.x, root.modelData.y)),
-                target_mode: false,
-                at: Qt.binding(() => Qt.point(pointer_area.mouseX, pointer_area.mouseY)),
-                shown: Qt.binding(() => pointer_area.containsMouse)
-            };
-            if (cursor_loader.skin === "scope") {
-                props.box_w = 58;
-                props.box_h = 38;
-            }
-            cursor_loader.setSource(Qt.resolvedUrl("../screen_select/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
-        }
     }
 
     Item {
