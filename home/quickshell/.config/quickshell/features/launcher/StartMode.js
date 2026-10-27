@@ -1,13 +1,13 @@
 .pragma library
 
-// The mode a picker docked at the bottom opens in: its own choice in typing.json, else its group's.
+// The mode a picker opens in from a keybind or IPC: its own choice in typing.json, else its group's.
 // A provider names its group with PickerProvider.start_group; the keys are flat so Validated.js checks them like the rest.
 
 var modes = ["insert", "normal"];
 // Group -> its default mode. Browse pickers are mostly read, search pickers mostly typed into.
 var group_defaults = { browse: "normal", search: "insert" };
 var fallback_group = "search";
-// Every picker that docks at the bottom, in the order Settings lists them under their group.
+// Every picker a keybind opens (docked at the bottom, or dropped from the center for a browse picker), in the order Settings lists them under their group.
 var bottom_pickers = ["clipboard", "agents", "apps", "dirs", "emoji", "keybinds", "choices"];
 
 function group_key(group) {

@@ -10,6 +10,8 @@ PickerProvider {
 
     name: "clipboard"
     start_group: "browse"
+    layout: "browse"
+    default_preview_size: "m"
     title: "Clipboard"
     placeholder: "Search clipboard"
     verb: "copy"
@@ -22,10 +24,13 @@ PickerProvider {
     readonly property string image_icon: Quickshell.iconPath("image-x-generic", "edit-paste")
     readonly property var image_exts: ["png", "jpeg", "jpg", "gif", "bmp", "webp"]
 
-    // id -> decoded text / image file url, filled lazily for the selected entry only.
+    // id -> decoded text / image file url, filled lazily for the preview and the cards on screen.
     property var texts: ({})
     property var images: ({})
-    property var pending: null
+    // Entries waiting for decode_proc, the preview's first.
+    property var pending: []
+    // Id of the entry decode_proc is decoding, "" when idle.
+    property string decoding_id: ""
     property var delete_queue: []
     // id -> -1 while its delete runs, then the first list seq that is sure to omit it.
     property var deleting: ({})
@@ -100,15 +105,31 @@ PickerProvider {
         root.start_list();
     }
 
-    // Output starts with "<kind> <id>", so a late result can never land on the wrong entry.
-    function request(entry) {
-        if (!entry || !entry.id || entry.kind === "binary") return;
-        if (entry.kind === "text" && root.texts[entry.id] !== undefined) return;
-        if (entry.kind === "image" && root.images[entry.id] !== undefined) return;
-        if (decode_proc.running) {
-            root.pending = entry;
-            return;
+    function needs_decode(entry) {
+        if (!entry || !entry.id || entry.kind === "binary" || entry.id === root.decoding_id) return false;
+        return entry.kind === "text" ? root.texts[entry.id] === undefined : root.images[entry.id] === undefined;
+    }
+
+    // `first` puts it ahead of the cards' requests: the preview's entry.
+    function request(entry, first) {
+        if (!root.needs_decode(entry)) return;
+        const rest = root.pending.filter(e => e.id !== entry.id);
+        root.pending = first ? [entry].concat(rest) : rest.concat([entry]);
+        root.decode_next();
+    }
+
+    // One decode at a time, skipping queued entries decoded since. Output starts with "<kind> <id>", so a late result
+    // can never land on the wrong entry.
+    function decode_next() {
+        if (root.decoding_id !== "") return;
+        let entry = null;
+        while (root.pending.length > 0 && !entry) {
+            const next = root.pending[0];
+            root.pending = root.pending.slice(1);
+            if (root.needs_decode(next)) entry = next;
         }
+        if (!entry) return;
+        root.decoding_id = entry.id;
         decode_proc.command = entry.kind === "image"
             ? ["sh", "-c", "f=\"$1/$2.$3\"; mkdir -p \"$1\" && { [ -s \"$f\" ] || { cliphist decode \"$2\" > \"$f.tmp\" && mv \"$f.tmp\" \"$f\"; }; } && printf 'image %s\\n%s' \"$2\" \"$f\"", "sh", root.cache_dir, entry.id, entry.ext]
             : ["sh", "-c", "printf 'text %s\\n' \"$1\"; cliphist decode \"$1\" | head -c 6000", "sh", entry.id];
@@ -186,9 +207,8 @@ PickerProvider {
             onStreamFinished: root.decoded(text)
         }
         onExited: {
-            const next = root.pending;
-            root.pending = null;
-            if (next) Qt.callLater(root.request, next);
+            root.decoding_id = "";
+            Qt.callLater(root.decode_next);
         }
     }
 
@@ -218,7 +238,7 @@ PickerProvider {
             readonly property string text_value: pane.entry && pane.entry.kind === "text" ? (root.texts[pane.entry.id] !== undefined ? root.texts[pane.entry.id] : pane.entry.label) : ""
             readonly property string image_source: pane.entry && pane.entry.kind === "image" ? root.images[pane.entry.id] || "" : ""
 
-            onEntryChanged: root.request(pane.entry)
+            onEntryChanged: root.request(pane.entry, true)
             clip: true
 
             Rectangle {
@@ -233,11 +253,11 @@ PickerProvider {
                 visible: !!pane.entry && pane.entry.kind !== "image"
                 text: pane.entry ? (pane.entry.kind === "text" ? pane.text_value : pane.entry.description) : ""
                 textFormat: Text.PlainText
-                wrapMode: Text.WrapAnywhere
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 elide: Text.ElideRight
                 color: pane.entry && pane.entry.kind === "text" && root.texts[pane.entry.id] !== undefined ? Style.text_fg : Style.text_muted
                 font.family: Style.font_family
-                font.pixelSize: Style.fs(-3)
+                font.pixelSize: Style.fs(-1)
             }
 
             Image {
@@ -248,6 +268,55 @@ PickerProvider {
                 sourceSize: Qt.size(width, height)
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
+            }
+        }
+    }
+
+    // An image's thumbnail, or a text clip's first lines; each card asks for its own decode as it comes on screen.
+    card: Component {
+        Item {
+            id: card
+            property var entry: ({})
+            property var positions: []
+            property bool selected: false
+            readonly property bool is_image: card.entry.kind === "image"
+            readonly property bool decoded: card.entry.kind === "text" && root.texts[card.entry.id] !== undefined
+            readonly property string image_source: card.is_image ? root.images[card.entry.id] || "" : ""
+            readonly property var lines: card.decoded ? root.texts[card.entry.id].replace(/^\s*\n/, "").split("\n").slice(0, 3) : [card.entry.kind === "text" ? card.entry.label || "" : card.entry.description || ""]
+
+            onEntryChanged: root.request(card.entry, false)
+
+            Image {
+                anchors.fill: parent
+                visible: card.is_image
+                source: card.image_source
+                sourceSize: Qt.size(width, height)
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+            }
+
+            Text {
+                visible: card.is_image && card.image_source === ""
+                anchors.centerIn: parent
+                text: card.entry.label || ""
+                textFormat: Text.PlainText
+                color: Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-3)
+            }
+
+            // A long first line wraps into the room the missing ones leave.
+            Text {
+                visible: !card.is_image
+                width: parent.width
+                text: card.lines.join("\n")
+                textFormat: Text.PlainText
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                maximumLineCount: 3
+                elide: Text.ElideRight
+                color: card.decoded ? Style.text_fg : Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-3)
             }
         }
     }

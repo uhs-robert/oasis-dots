@@ -8,3 +8,9 @@
 - **KEYS-22** (untested; [keys.md](core/keys.md)) Entering a submap shows its binds in which-key.
 - **KEYS-25** (untested; [keys.md](core/keys.md)) `custom/init.lua` runs after every shipped key is registered, so it can remove or replace any of them.
 - **KEYS-26** (untested; [keys.md](core/keys.md)) Binding a key that already has a bind keeps both; both run when it is pressed.
+- **PICKERS-01** (untested; [pickers.md](core/pickers.md)) A list picker opened from a keybind or IPC docks at the bottom of the focused monitor; opened from a bar island it drops from that island.
+- **PICKERS-02** (untested; [pickers.md](core/pickers.md)) The agent sessions and clipboard pickers always drop from the center island of the focused monitor, at about the size of the Settings panel, including when opened from a keybind or IPC. They never dock at the bottom.
+- **PICKERS-03** (untested; [pickers.md](core/pickers.md)) A browse picker shows, top to bottom, the search bar, a preview of the selected item, and a grid of fixed-size cards with as many columns as the width allows.
+- **PICKERS-06** (untested; [pickers.md](core/pickers.md)) Each open starts the preview at the picker's default size: large for agent sessions, medium for the clipboard. Nothing is remembered between opens.
+- **PICKERS-07** (untested; [pickers.md](core/pickers.md)) In a browse picker `hjkl`, `0`/`$` and `gg`/`G` move through the cards' grid, and a click on a card picks it.
+- **PICKERS-10** (untested; [pickers.md](core/pickers.md)) A clipboard card shows an image entry's thumbnail, or the first three lines of a text entry; the preview shows the whole text, wrapped, or the image fitted.

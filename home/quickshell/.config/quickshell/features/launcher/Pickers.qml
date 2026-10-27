@@ -27,6 +27,7 @@ Singleton {
     }
 
     // With an anchor it drops from that island like a popup; without one it docks at the bottom of the focused monitor.
+    // A browse provider (PickerProvider.layout) ignores the anchor and always drops from the focused monitor's center.
     // `arg` reaches the provider's refresh(), e.g. "delete" for the clipboard picker.
     function open(name, anchor_item, color, screen_name, back_to, arg) {
         const p = root.providers[name];
@@ -43,7 +44,13 @@ Singleton {
         root.provider_name = name;
         root.provider_arg = arg || "";
         p.refresh(arg || "");
-        if (anchor_item) {
+        const focused = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+        // Settings' anchor is the screen's center island; a screen without a bar opens it unanchored at the top.
+        const center = p.layout === "browse" ? Popups.find_in_screen(focused, "settings") : null;
+        if (p.layout === "browse") {
+            if (center) Popups.open("picker", center.item, Popups.anchor_color(center), focused, back_to);
+            else Popups.open("picker", null, color, focused, back_to);
+        } else if (anchor_item) {
             Popups.open("picker", anchor_item, color, screen_name, back_to);
         } else {
             const mon = Hyprland.focusedMonitor;

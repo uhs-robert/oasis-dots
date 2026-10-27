@@ -31,7 +31,7 @@ RowsSection {
         const names = root.members(group.id);
         const head = {
             label: group.label,
-            desc: "Mode " + root.listed(names.map(n => root.picker_labels[n] || n)) + " open in when docked at the bottom. Each can override it below.",
+            desc: "Mode " + root.listed(names.map(n => root.picker_labels[n] || n)) + " open in from a keybind. Each can override it below.",
             values: () => TypingSettings.choices[key],
             text: v => root.modes[v] || String(v),
             value: () => TypingSettings.values[key],
@@ -43,7 +43,7 @@ RowsSection {
             return {
                 label: label,
                 indent: 1,
-                desc: "Mode the " + label + " picker opens in at the bottom. Group follows " + group.label + "." + (root.picker_notes[name] || ""),
+                desc: "Mode the " + label + " picker opens in from a keybind. Group follows " + group.label + "." + (root.picker_notes[name] || ""),
                 values: () => TypingSettings.choices[own_key],
                 text: v => v === "group" ? "Group (" + root.modes[TypingSettings.group_mode(group.id)] + ")" : root.modes[v] || String(v),
                 value: () => TypingSettings.values[own_key],

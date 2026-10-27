@@ -15,7 +15,7 @@ Scope {
     // Keep the items' own order when nothing is typed, and on equal scores.
     property bool keep_order: false
     property bool starts_insert: true
-    // Which Settings > Input group sets its mode when docked at the bottom: "browse" (opens NORMAL by default) or "search".
+    // Which Settings > Input group sets its mode when opened from a keybind or IPC: "browse" (opens NORMAL by default) or "search".
     property string start_group: "search"
     // Most rows shown; 0 shows every match.
     property int max_results: 0
@@ -28,8 +28,17 @@ Scope {
     property string empty_text: "Nothing to pick"
     // Normal-mode keys run on the selected item: [{ key, desc }] handled by run_action. `needs_item: false` runs it with no row selected (item is null).
     property var actions: []
-    // Drawn beside the list with `entry` set to the selected item.
+    // Drawn beside the list (above the cards in the browse layout) with `entry` set to the selected item.
     property Component preview: null
+    // "list" docks at the bottom from IPC, or drops from the island it was opened on. "browse" always drops from the
+    // focused monitor's center island at about Settings' size: search, a preview whose size `=`/`-`/`p` change, then cards.
+    property string layout: "list"
+    // Preview size each browse open starts at: "off", "s", "m" or "l" (BrowseLayout.js).
+    property string default_preview_size: "m"
+    // One browse card, given `entry` (the item), `positions` (its query match) and `selected`; null draws the generic card.
+    property Component card: null
+    // Card size in unscaled pixels; the picker fits as many columns as the width allows.
+    property size card_size: Qt.size(280, 112)
     // Font for item glyphs; empty uses the style font.
     property string glyph_font: ""
     // Tab labels drawn above the query; the picker calls select_tab(i) on a switch, which must set `tab`.
