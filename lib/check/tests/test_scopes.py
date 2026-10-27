@@ -67,6 +67,9 @@ CASES = [
     ("lib/docs/gen-ipc", " checkscope docsgen"),
     ("lib/docs/docgen.py", " checkscope docsgen"),
     ("home/quickshell/.config/quickshell/features/lock/LockIpc.qml", " docsgen qml node"),
+    # A test fixture named like a handler is not read by the IPC table, so it keeps its suite's scope.
+    ("home/quickshell/tests/polled_command/FakeIpc.qml", " polledcmd qml"),
+    ("home/quickshell/tests/FakeIpc.qml", " node qml"),
     ("home/quickshell/.config/quickshell/README.md", " docsgen qml node"),
     ("lib/check/steps/docs-generated.sh", "checkscope docsgen"),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.

@@ -73,14 +73,15 @@ PATH_SCOPES = [
     ("lib/check/registry.allow", ""),
     ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
-    # The keybind table is generated from the keymaps (home/hypr/*, already lua); its generator's tests are unittest cases in lib/check/tests.
+    # The keybind table is generated from the keymaps, which reach docsgen through the home/hypr/* rule; its generator's
+    # tests are unittest cases in lib/check/tests.
     ("lib/check/steps/docs-generated.sh", "docsgen"),
     ("lib/docs/gen-keybinds", "checkscope docsgen"),
     # The IPC table is generated from the IpcHandler files and their parser, so edits to those run the same step (in the docsgen scope).
     ("lib/docs/gen-ipc", "checkscope docsgen"),
     ("lib/docs/docgen.py", "checkscope docsgen"),
     ("lib/check/steps/qml_ipc.py", "docsgen"),
-    ("home/quickshell/*Ipc.qml", "docsgen qml node"),
+    ("home/quickshell/.config/quickshell/*Ipc.qml", "docsgen qml node"),
     ("home/quickshell/.config/quickshell/README.md", "docsgen qml node"),
     ("docs/keybinds.md", "docsgen"),
     ("lib/check/steps/time-format.sh", "qml"),
