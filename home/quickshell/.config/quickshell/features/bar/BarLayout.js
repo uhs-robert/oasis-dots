@@ -503,12 +503,16 @@ function move_step(rule, state, key, entry, delta, sectioned) {
     const side = side_of(view, entry);
     if (side === "") return next;
     const is_sectioned = sectioned && side !== "left";
-    const shown = is_sectioned ? lualine_shown(view) : view[side];
-    const at = shown.indexOf(entry);
-    const neighbor = shown[at + delta];
-    if (neighbor !== undefined) {
+    // Each shown module keeps the side it came from: a module listed on both center and right shows twice, and
+    // side_of would name center for both.
+    const pairs = is_sectioned ? view.center.map(e => [e, "center"]).concat(view.right.map(e => [e, "right"])) : view[side].map(e => [e, side]);
+    const tagged = is_sectioned ? ["x", "y", "z"].reduce((out, k) => out.concat(pairs.filter(p => lualine_section(p[0]) === k)), []).filter(p => !lualine_draws_itself(p[0]) && is_known_entry(p[0])) : pairs;
+    const at = tagged.findIndex(p => p[0] === entry);
+    const neighbor_pair = tagged[at + delta];
+    if (neighbor_pair !== undefined) {
+        const neighbor = neighbor_pair[0];
         if (is_sectioned && lualine_section(neighbor) !== lualine_section(entry)) return next;
-        const neighbor_side = side_of(view, neighbor);
+        const neighbor_side = neighbor_pair[1];
         if (neighbor_side === side) return edit(rule, next, key, { type: "move", entry: entry, with: neighbor });
         // Onto the other side of the neighbor, so the two trade places in the drawn order.
         return edit(rule, next, key, { type: "side", entry: entry, side: neighbor_side, index: view[neighbor_side].indexOf(neighbor) + (delta > 0 ? 1 : 0) });

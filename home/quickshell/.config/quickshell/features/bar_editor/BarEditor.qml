@@ -16,6 +16,7 @@ Singleton {
     property var screens: Quickshell.screens
     property var tracked_of: screen => BarSettings.tracked_rule_for(screen)
     property var key_of: screen => BarSettings.monitor_key(screen)
+    property var tracked_rules: BarSettings.rules
     property string focused_name: Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
     property bool lualine: Style.bar_lualine
 
@@ -83,9 +84,11 @@ Singleton {
         }).map(m => m.name);
     }
 
-    // The tracked rules of the monitors showing the shared layout, whose own compact applies when the shared one is cleared.
+    // The tracked rules whose own compact applies when the shared one is cleared: the connected sharing monitors', plus
+    // every other tracked rule, since a disconnected monitor shares the layout too and its rule cannot be told apart.
     function sharing_rules() {
-        return root.sharing_screens().map(name => root.tracked_of(root.screens.find(s => s.name === name)));
+        const connected = root.sharing_screens().map(name => root.tracked_of(root.screens.find(s => s.name === name)));
+        return connected.concat(root.tracked_rules.filter(r => connected.indexOf(r) < 0));
     }
 
     function open(screen_name) {
