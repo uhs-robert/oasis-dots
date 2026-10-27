@@ -34,6 +34,7 @@ Item {
 
     // The click entry: with hover-open active it goes through the helper so a click pins, or closes without a reopen under the pointer.
     function toggle_popup() {
+        if (!root.has_popup) return;
         if (root.hover_active) hover.click();
         else Popups.toggle(root.module_name, root.island, root.island_color, root.screen_name);
     }

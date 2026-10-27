@@ -317,10 +317,14 @@ t("Media uses the base helper: no private HoverPopup, and a click goes through t
   assert.doesNotMatch(media, /hover_popup\.click/);
   assert.match(media, /else root\.toggle_popup\(\);/);
 });
+t("a popup-less module (the legacy cava alias) never toggles an unregistered popup name", () => {
+  assert.match(module_source("Cava"), /has_popup: false/);
+  assert.match(module_source("BarModule"), /function toggle_popup\(\) \{\n\s+if \(!root\.has_popup\) return;/);
+});
 t("the hover switch and the per-module helper pointer are gone", () => {
   const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
-  const features = path.join(__dirname, "../.config/quickshell/features");
-  for (const f of walk(features).filter(f => /\.(qml|js)$/.test(f))) {
+  const quickshell_tree = path.join(__dirname, "../.config/quickshell");
+  for (const f of walk(quickshell_tree).filter(f => /\.(qml|js)$/.test(f))) {
     const src = fs.readFileSync(f, "utf8");
     assert.doesNotMatch(src, /hover_popups/, f);
     assert.doesNotMatch(src, /popup_helper/, f);
