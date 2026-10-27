@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] [--wait-review] <pr>...
-       merge-prs.sh --check [--wait-review [--request-review]] <pr>..."
+       merge-prs.sh --check [--skip-review-gate] [--wait-review [--request-review]] <pr>..."
 
 die() {
   echo "merge-prs: $*" >&2
@@ -62,9 +62,10 @@ done
 ((${#prs[@]})) || die "$usage"
 [[ -z $method || $method =~ ^(rebase|squash|merge)$ ]] || die "$usage"
 # --check only reads, unless --request-review lets it ask for a review of a changed head (a caller waiting for reviews
-# before it merges); options that steer a merge are refused rather than silently ignored.
-! $check_only || [[ -z $method && $keep_branch == false && $review_gate == true ]] ||
-  die "--check cannot be combined with --method, --keep-branch or --skip-review-gate"
+# before it merges); options that steer a merge are refused rather than silently ignored. --skip-review-gate is not one:
+# it narrows what is read to the unresolved threads.
+! $check_only || [[ -z $method && $keep_branch == false ]] ||
+  die "--check cannot be combined with --method or --keep-branch"
 
 worktrees=$(git worktree list --porcelain) || die "not inside a git repository"
 main_dir=$(awk '/^worktree /{print substr($0, 10); exit}' <<<"$worktrees")
@@ -94,6 +95,7 @@ review_start_s=${MERGE_PRS_REVIEW_START:-300}
 [[ $review_start_s =~ ^[0-9]+$ ]] || die "MERGE_PRS_REVIEW_START must be a number of seconds, not $review_start_s"
 
 # One query per PR: unresolved review threads, and the Codex summary comment's status and reviewed commit, if the repo uses Codex.
+# The summary's machine-readable codex-review-state marker is read first, its status table as the fallback.
 # Codex posts that comment about a minute after a PR opens, so with none yet its eyes reaction counts as Running, and a
 # PR younger than review_start_s is Pending rather than "none": a repo without Codex only waits out that window.
 # A Completed summary with no commit in its table is Unreviewed: Codex writes one when it never ran a review (quota,
@@ -114,8 +116,10 @@ review_jq='.data.repository.pullRequest as $p
   | (if any($p.reactions.nodes[]; (.user.login // "") | startswith("chatgpt-codex")) then "Running"
      elif (now - ($p.createdAt | fromdateiso8601)) < '"$review_start_s"' then "Pending"
      else "none" end) as $no_summary
-  | ($codex | capture("\\*\\*(?<s>Running|Completed|Failed)\\*\\*").s // $no_summary) as $status
-  | ($codex | capture("\\| `(?<c>[0-9a-f]{7,40})` \\|").c // "-") as $commit
+  | ([$codex | capture("codex-review-state:v1 (?<j>\\{.*?\\}) -->")? | .j | fromjson? | .code_review?] | first // null) as $state
+  | ({running: "Running", completed: "Completed", failed: "Failed"}[($state.status // "" | ascii_downcase)]) as $state_status
+  | ($state_status // ($codex | capture("\\*\\*(?<s>Running|Completed|Failed)\\*\\*").s) // $no_summary) as $status
+  | ($state.commit_sha // ($codex | capture("\\| `(?<c>[0-9a-f]{7,40})` \\|").c) // "-") as $commit
   | [([$p.reviewThreads.nodes[] | select(.isResolved | not)] | length),
      (if $status == "Completed" and $commit == "-" then "Unreviewed" else $status end),
      $commit,
@@ -201,7 +205,8 @@ rereview_reason() {
   [[ -z $new_file ]] || rereview_why="$new_file was not in the reviewed changes"
 }
 
-# Polls until the Codex review stops running and, given "head", until it covers the PR's head commit.
+# Polls until the Codex review stops running and, given "head", until it covers the PR's head commit, or, given "retry",
+# until it is no longer the Failed one a re-request was made over.
 # Timed by the clock rather than by summing sleeps, so a zero poll interval still stops at the limit.
 poll_review() {
   local number=$1 until=${2:-} started=$SECONDS
@@ -209,7 +214,11 @@ poll_review() {
   waited=0
   while ((waited < review_wait_s)); do
     if [[ $status != Running && $status != Pending ]]; then
-      [[ $until == head && $status != Failed && $head != "$reviewed"* ]] || return 0
+      case $until in
+      head) [[ $status != Failed && $head != "$reviewed"* ]] || return 0 ;;
+      retry) [[ $status == Failed ]] || return 0 ;;
+      *) return 0 ;;
+      esac
     fi
     sleep "$review_poll_s"
     waited=$((SECONDS - started))
@@ -218,80 +227,354 @@ poll_review() {
   done
 }
 
+# The reviewer registry decides who gates: reviewers.sh merges the built-in file, the user's, Settings and the repo's.
+reviewers_sh=${MERGE_PRS_REVIEWERS:-$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../orchestrator/reviewers.sh}
+reviewers_json=""
+gating=()
+
+# One field of one registry entry, as raw jq output.
+rjq() {
+  jq -r --arg n "$1" ".[] | select(.name == \$n) | $2" <<<"$reviewers_json"
+}
+
+# Login forms differ by API: "app/x" and "x[bot]" are both "x".
+bare_login() {
+  local login=${1#app/}
+  printf '%s\n' "${login%\[bot\]}"
+}
+
+suite_slugs="" suites_loaded=false history_logins="" history_loaded=false
+
+# Whether a reviewer is installed on the repo, for a gate of auto. An app reviewer shows as a check suite on the default
+# branch head; the suite's own status stays queued for CodeRabbit, so only its slug counts. A reviewer that is only a
+# commenting bot (no app slug) shows as an author among the comments of the last 10 PRs. Each source is read once per run.
+infer_connected() {
+  local name=$1 app_slug=$2 login
+  if [[ -n $app_slug ]]; then
+    if ! $suites_loaded; then
+      suite_slugs=$(gh api --paginate "repos/$slug/commits/$default/check-suites?per_page=100" --jq '.check_suites[].app.slug') ||
+        die "cannot read the check suites of $default"
+      suites_loaded=true
+    fi
+    grep -qxF -- "$app_slug" <<<"$suite_slugs"
+    return
+  fi
+  if ! $history_loaded; then
+    history_logins=$(gh pr list --state all --limit 10 --json comments --jq '.[].comments[].author.login') ||
+      die "cannot read the recent PR comments"
+    history_logins=$(while IFS= read -r login; do [[ -z $login ]] || bare_login "$login"; done <<<"$history_logins")
+    history_loaded=true
+  fi
+  while IFS= read -r login; do
+    [[ -n $login ]] || continue
+    grep -qxF -- "$(bare_login "$login")" <<<"$history_logins" && return 0
+  done < <(rjq "$name" '.github.logins // [] | .[]')
+  return 1
+}
+
+# Sets gating to the reviewers this run waits for: gate always, or auto with the reviewer installed on the repo.
+# A reviewer with no github signal this script reads cannot be waited for, so it never gates.
+resolve_gates() {
+  local name gate app_slug
+  reviewers_json=$(bash "$reviewers_sh" list "$main_dir") || die "cannot resolve the reviewers with $reviewers_sh"
+  gating=()
+  while IFS=$'\t' read -r name gate app_slug; do
+    case $gate in
+    never) continue ;;
+    always) ;;
+    *) infer_connected "$name" "$app_slug" || continue ;;
+    esac
+    gating+=("$name")
+  done < <(jq -r '.[] | select(.github.signal == "summary_comment" or .github.signal == "check_run")
+    | [.name, .gate, (.github.app_slug // "")] | @tsv' <<<"$reviewers_json")
+}
+
+comments_json=""
+# The PR's issue comments as one JSON object per line, for the unavailable patterns and CodeRabbit's summary marker.
+load_comments() {
+  comments_json=$(gh api --paginate "repos/$slug/issues/$1/comments?per_page=100" \
+    --jq '.[] | {login: (.user.login // ""), created_at, body} | tojson') || die "cannot read the comments of #$1"
+}
+
+commit_date() {
+  gh api "repos/$slug/commits/$1" --jq .commit.committer.date || die "cannot read the commit $1"
+}
+
+# Whether a comment by the reviewer, created at or after $2, holds one of its unavailable patterns (case-insensitive).
+# The date cut keeps a quota comment about an older head from excusing a newer one.
+unavailable_hit() {
+  jq -ne --argjson r "$(rjq "$1" .)" --arg since "$2" '
+    def bare: sub("^app/"; "") | sub("\\[bot\\]$"; "");
+    ($r.github.logins // [] | map(bare)) as $logins
+    | ($r.github.unavailable // [] | map(ascii_downcase)) as $patterns
+    | [inputs | select((.login | bare) as $l | $logins | index($l) != null)
+        | select(.created_at >= $since)
+        | select((.body // "" | ascii_downcase) as $b | any($patterns[]; . as $p | $b | contains($p)))]
+    | length > 0' <<<"$comments_json" >/dev/null
+}
+
+# The commit CodeRabbit's summary comment says it covered, or empty; the marker is CodeRabbit-internal, so it may be absent.
+summary_covered_commit() {
+  jq -nr '[inputs | select(.login | test("^(app/)?coderabbitai(\\[bot\\])?$")) | select(.body | contains("final_review_risk_coverage"))
+    | .body | capture("coveredCommitId\\W{1,12}(?<c>[0-9a-f]{7,40})").c] | last // ""' <<<"$comments_json"
+}
+
+# Whether the reviewer posted a PR review of exactly this commit.
+reviewed_head() {
+  local number=$1 name=$2 head=$3 login commit login_pattern
+  login_pattern=$(rjq "$name" '.github.logins // [] | map(sub("^app/"; "") | sub("\\[bot\\]$"; "")) | join(" ")')
+  while IFS='|' read -r login commit; do
+    [[ $commit == "$head" && " $login_pattern " == *" $(bare_login "$login") "* ]] && return 0
+  done < <(gh api --paginate "repos/$slug/pulls/$number/reviews?per_page=100" --jq '.[] | [(.user.login // ""), (.commit_id // "")] | join("|")')
+  return 1
+}
+
+epoch() {
+  date -u -d "$1" +%s || die "cannot read the time $1"
+}
+
+# Sets cr_state (Pending, Running, Done, Failed, Unavailable or NotStarted), cr_msg (the reason, for notes and problems)
+# and cr_final (true for a Failed that asking again cannot fix) from the reviewer's check run on the PR head.
+# CodeRabbit posts findings as a PR review that can land minutes after its check turns success, and a clean pass posts
+# none, so success alone is not done: it needs a review of the head, or the summary's coverage marker and then settle_s
+# seconds for a review that is still coming. A cancelled run is a superseded one, so it is Pending until start_s passes.
+eval_check_run() {
+  local name=$1 number=$2 head=$3 start_s settle_s now head_epoch rname rstatus rconc rstart rdone run="" run_start=""
+  local covered label age sort_key
+  local -a check_names=()
+  label=$(rjq "$name" .label)
+  start_s=${MERGE_PRS_REVIEW_START:-$(rjq "$name" '.github.start_s // 300')}
+  settle_s=${MERGE_PRS_SETTLE:-$(rjq "$name" '.github.settle_s // 180')}
+  cr_state="" cr_msg="" cr_final=false
+  now=$(date +%s)
+  head_epoch=$(epoch "$(commit_date "$head")")
+  mapfile -t check_names < <(rjq "$name" '.github.check_names // [] | .[]')
+  while IFS='|' read -r rname rstatus rconc rstart rdone; do
+    [[ -n $rname ]] || continue
+    [[ " ${check_names[*]} " == *" $rname "* ]] || continue
+    sort_key=${rstart:-9999}
+    if [[ -z $run || $sort_key > $run_start ]]; then
+      run="$rstatus|$rconc|$rdone"
+      run_start=$sort_key
+    fi
+  done < <(gh api --paginate "repos/$slug/commits/$head/check-runs?per_page=100" \
+    --jq '.check_runs[] | [.name, .status, (.conclusion // ""), (.started_at // ""), (.completed_at // "")] | join("|")')
+  load_comments "$number"
+  if [[ -z $run ]]; then
+    age=$((now - head_epoch))
+    if unavailable_hit "$name" "$(date -u -d "@$head_epoch" +%FT%TZ)"; then
+      cr_state=Unavailable cr_msg="$label posted that it is unavailable"
+    elif ((age < start_s)); then
+      cr_state=Pending cr_msg="no $label check on the head yet"
+    else
+      cr_state=NotStarted cr_msg="$label has no check on the head ${age}s after the push"
+    fi
+    return
+  fi
+  IFS='|' read -r rstatus rconc rdone <<<"$run"
+  if [[ $rstatus != completed ]]; then
+    if unavailable_hit "$name" "$(date -u -d "@$head_epoch" +%FT%TZ)"; then
+      cr_state=Unavailable cr_msg="$label posted that it is unavailable"
+    else
+      cr_state=Running cr_msg="the $label check is $rstatus"
+    fi
+    return
+  fi
+  if [[ " $(rjq "$name" '(.github.done // []) | join(" ")') " == *" $rconc "* ]]; then
+    if reviewed_head "$number" "$name" "$head"; then
+      cr_state=Done
+      return
+    fi
+    covered=$(summary_covered_commit)
+    if [[ -n $covered && $head != "$covered"* && $covered != "$head"* ]]; then
+      cr_state=Running cr_msg="$label's summary covers ${covered:0:7}, not the head ${head:0:7}"
+    elif ((now < $(epoch "$rdone") + settle_s)); then
+      cr_state=Running cr_msg="the $label check finished; waiting ${settle_s}s for a review that may still be coming"
+    else
+      cr_state=Done
+    fi
+    return
+  fi
+  if [[ " $(rjq "$name" '(.github.unavailable_conclusions // []) | join(" ")') " == *" $rconc "* ]]; then
+    cr_state=Unavailable cr_msg="its check concluded $rconc"
+  elif unavailable_hit "$name" "$(date -u -d "@$head_epoch" +%FT%TZ)"; then
+    cr_state=Unavailable cr_msg="$label posted that it is unavailable"
+  else
+    case $rconc in
+    cancelled | stale)
+      now=$(date +%s)
+      age=$((now - $(epoch "$rdone")))
+      ((age >= now - head_epoch)) || age=$((now - head_epoch))
+      if ((age < start_s)); then
+        cr_state=Pending cr_msg="the $label check was $rconc; a new run should replace it"
+      else
+        cr_state=Failed cr_msg="the $label check was $rconc and no new run replaced it"
+      fi
+      ;;
+    action_required) cr_state=Failed cr_final=true cr_msg="the $label check needs owner action" ;;
+    *) cr_state=Failed cr_msg="the $label check concluded $rconc" ;;
+    esac
+  fi
+}
+
+# A check_run reviewer's gate for one PR: waits (with --wait-review) while it is pending or running, asks once again after
+# a failure, and records the problem or the note. The deadline is per reviewer, so a slow one cannot starve the next.
+gate_check_run() {
+  local name=$1 number=$2 label wait_s request started requested=false head
+  label=$(rjq "$name" .label)
+  wait_s=${MERGE_PRS_REVIEW_WAIT:-$(rjq "$name" '.github.wait_s // 1200')}
+  request=$(rjq "$name" '.github.request // ""')
+  started=$SECONDS
+  while :; do
+    head=$(gh pr view "$number" --json headRefOid --jq .headRefOid) || die "cannot read the head of #$number"
+    eval_check_run "$name" "$number" "$head"
+    case $cr_state in
+    Pending | Running) $wait_review || break ;;
+    Failed)
+      if $requested; then
+        :
+      elif $wait_review && ! $cr_final && [[ -n $request ]] && { ! $check_only || $request_review; }; then
+        echo "merge-prs: #$number's $label review failed ($cr_msg); requesting another and waiting up to ${wait_s}s" >&2
+        gh pr comment "$number" --body "$request" >/dev/null || die "cannot request a $label review on #$number"
+        requested=true
+      else
+        break
+      fi
+      ;;
+    *) break ;;
+    esac
+    ((SECONDS - started < wait_s)) || break
+    sleep "$review_poll_s"
+  done
+  case $cr_state in
+  Done) ;;
+  Unavailable | NotStarted) echo "note: #$number $cr_msg; not waiting for it" ;;
+  Pending | Running)
+    if $wait_review; then
+      problems+=("#$number: $cr_msg after $((SECONDS - started))s; rerun with --wait-review once the $label review has finished")
+    else
+      problems+=("#$number: $cr_msg; wait for the $label review, or rerun with --wait-review")
+    fi
+    ;;
+  Failed)
+    if $cr_final; then
+      problems+=("#$number: $cr_msg; resolve it on GitHub")
+    else
+      problems+=("#$number: $cr_msg; comment \"$request\" on the PR and wait for it")
+    fi
+    ;;
+  esac
+}
+
+# A summary_comment reviewer (Codex) for one PR. Its summary comment holds a status and the reviewed commit, read by
+# review_jq in the same query as the threads.
+gate_summary_comment() {
+  local name=$1 number=$2 info open status reviewed head waited reason cross rereview_why generated_skipped rerun_flags request
+  request=$(rjq "$name" '.github.request // "@codex review"')
+  info=$(read_review "$number")
+  IFS=$'\t' read -r open status reviewed head <<<"$info"
+  waited=0
+  if [[ $status == Running || $status == Pending ]] && $wait_review; then
+    echo "merge-prs: waiting up to ${review_wait_s}s for #$number's Codex review" >&2
+    poll_review "$number"
+  fi
+  # A summary that failed or reviewed nothing next to a usage-limit comment on this head is a reviewer that cannot run, not a failure.
+  if [[ $status == Failed || $status == Unreviewed ]]; then
+    load_comments "$number"
+    if unavailable_hit "$name" "$(commit_date "$head")"; then
+      echo "note: #$number Codex is unavailable (usage limit); not waiting for it"
+      return
+    fi
+  fi
+  if [[ $status == Failed ]] && $wait_review && { ! $check_only || $request_review; }; then
+    echo "merge-prs: #$number's Codex review failed at $reviewed; requesting another and waiting up to ${review_wait_s}s" >&2
+    gh pr comment "$number" --body "$request" >/dev/null || die "cannot request a Codex review on #$number"
+    poll_review "$number" retry
+  fi
+  if [[ $status == Unreviewed ]]; then
+    if $wait_review && { ! $check_only || $request_review; }; then
+      echo "merge-prs: #$number has no Codex review (its summary records no commit); requesting one and waiting up to ${review_wait_s}s" >&2
+      gh pr comment "$number" --body "$request" >/dev/null || die "cannot request a Codex review on #$number"
+      poll_review "$number" head
+      [[ $status != Unreviewed ]] ||
+        problems+=("#$number: Codex has not reviewed the head ${head:0:7} after ${waited}s; rerun with --wait-review once it has")
+    else
+      rerun_flags="--wait-review"
+      ! $check_only || rerun_flags="--check --wait-review --request-review"
+      problems+=("#$number: Codex completed without a commit, so nothing was reviewed; comment @codex review, or rerun with $rerun_flags")
+    fi
+  fi
+  # A fix that does what the review asked does not need another round; new work or new files after it do.
+  if [[ $status == Completed && $head != "$reviewed"* ]]; then
+    cross=$(gh pr view "$number" --json isCrossRepository --jq .isCrossRepository) || die "cannot read #$number"
+    rereview_reason "$reviewed" "$head" "$cross"
+    reason=$rereview_why
+    if [[ -z $reason ]]; then
+      if $generated_skipped; then
+        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed or touch generated paths"
+      else
+        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed"
+      fi
+    elif $wait_review && { ! $check_only || $request_review; }; then
+      echo "merge-prs: #$number changed since Codex reviewed $reviewed ($reason); requesting a review and waiting up to ${review_wait_s}s" >&2
+      gh pr comment "$number" --body "$request" >/dev/null || die "cannot request a Codex review on #$number"
+      poll_review "$number" head
+      [[ $status != Completed || $head == "$reviewed"* ]] ||
+        problems+=("#$number: Codex has not reviewed the head ${head:0:7} after ${waited}s; rerun with --wait-review once it has")
+    else
+      # --check alone never comments on the PR, so the rerun it needs takes --request-review as well.
+      rerun_flags="--wait-review"
+      ! $check_only || rerun_flags="--check --wait-review --request-review"
+      problems+=("#$number: commits since Codex reviewed $reviewed need their own review ($reason); rerun with $rerun_flags to request one and wait")
+    fi
+  fi
+  case $status in
+  Running)
+    if ((waited)); then
+      problems+=("#$number: the Codex review is still running after ${waited}s; rerun with --wait-review once it finishes")
+    else
+      problems+=("#$number: the Codex review is still running; wait for it to finish, or rerun with --wait-review")
+    fi
+    ;;
+  Pending)
+    if ((waited)); then
+      problems+=("#$number: still no Codex review after ${waited}s; rerun with --wait-review once one has started")
+    else
+      problems+=("#$number: opened under ${review_start_s}s ago and Codex has not started on it; wait for its review, or rerun with --wait-review")
+    fi
+    ;;
+  Failed) problems+=("#$number: the Codex review failed at $reviewed; comment \"$request\" on the PR and wait for it") ;;
+  none) echo "note: #$number Codex has not started on it; not waiting for it" ;;
+  esac
+}
+
 # Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
+# Unresolved threads always block; --skip-review-gate drops only the reviewers' states. Threads are read after the
+# reviewers, since findings arrive while one is waited for.
 check_reviews() {
-  local pr number info open status reviewed head waited reason cross rereview_why generated_skipped rerun_flags
+  local pr number info open status reviewed head name
   local -a problems=()
+  ! $review_gate || resolve_gates
   for pr in "${prs[@]}"; do
     number=${pr#\#}
+    for name in "${gating[@]}"; do
+      case $(rjq "$name" .github.signal) in
+      summary_comment) gate_summary_comment "$name" "$number" ;;
+      check_run) gate_check_run "$name" "$number" ;;
+      esac
+    done
     info=$(read_review "$number")
     IFS=$'\t' read -r open status reviewed head <<<"$info"
-    waited=0
-    if [[ $status == Running || $status == Pending ]] && $wait_review; then
-      echo "merge-prs: waiting up to ${review_wait_s}s for #$number's Codex review" >&2
-      poll_review "$number"
-    fi
-    if [[ $status == Unreviewed ]]; then
-      if $wait_review && { ! $check_only || $request_review; }; then
-        echo "merge-prs: #$number has no Codex review (its summary records no commit); requesting one and waiting up to ${review_wait_s}s" >&2
-        gh pr comment "$number" --body "@codex review" >/dev/null || die "cannot request a Codex review on #$number"
-        poll_review "$number" head
-        [[ $status != Unreviewed ]] ||
-          problems+=("#$number: Codex has not reviewed the head ${head:0:7} after ${waited}s; rerun with --wait-review once it has")
-      else
-        rerun_flags="--wait-review"
-        ! $check_only || rerun_flags="--check --wait-review --request-review"
-        problems+=("#$number: Codex completed without a commit, so nothing was reviewed; comment @codex review, or rerun with $rerun_flags")
-      fi
-    fi
-    # A fix that does what the review asked does not need another round; new work or new files after it do.
-    if [[ $status == Completed && $head != "$reviewed"* ]]; then
-      cross=$(gh pr view "$number" --json isCrossRepository --jq .isCrossRepository) || die "cannot read #$number"
-      rereview_reason "$reviewed" "$head" "$cross"
-      reason=$rereview_why
-      if [[ -z $reason ]]; then
-        if $generated_skipped; then
-          echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed or touch generated paths"
-        else
-          echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed"
-        fi
-      elif $wait_review && { ! $check_only || $request_review; }; then
-        echo "merge-prs: #$number changed since Codex reviewed $reviewed ($reason); requesting a review and waiting up to ${review_wait_s}s" >&2
-        gh pr comment "$number" --body "@codex review" >/dev/null || die "cannot request a Codex review on #$number"
-        poll_review "$number" head
-        [[ $status != Completed || $head == "$reviewed"* ]] ||
-          problems+=("#$number: Codex has not reviewed the head ${head:0:7} after ${waited}s; rerun with --wait-review once it has")
-      else
-        # --check alone never comments on the PR, so the rerun it needs takes --request-review as well.
-        rerun_flags="--wait-review"
-        ! $check_only || rerun_flags="--check --wait-review --request-review"
-        problems+=("#$number: commits since Codex reviewed $reviewed need their own review ($reason); rerun with $rerun_flags to request one and wait")
-      fi
-    fi
     ((open == 0)) || problems+=("#$number: $open unresolved review thread(s); answer and resolve them")
-    case $status in
-    Running)
-      if ((waited)); then
-        problems+=("#$number: the Codex review is still running after ${waited}s; rerun with --wait-review once it finishes")
-      else
-        problems+=("#$number: the Codex review is still running; wait for it to finish, or rerun with --wait-review")
-      fi
-      ;;
-    Pending)
-      if ((waited)); then
-        problems+=("#$number: still no Codex review after ${waited}s; rerun with --wait-review once one has started")
-      else
-        problems+=("#$number: opened under ${review_start_s}s ago and Codex has not started on it; wait for its review, or rerun with --wait-review")
-      fi
-      ;;
-    Failed) problems+=("#$number: the Codex review failed at $reviewed; comment \"@codex review\" on the PR and wait for it") ;;
-    esac
   done
   ((${#problems[@]} == 0)) && return 0
   if $check_only; then
     die "not ready:"$'\n'"$(printf '  %s\n' "${problems[@]}")"
   fi
-  die "not merging:"$'\n'"$(printf '  %s\n' "${problems[@]}")"$'\n'"Rerun with --skip-review-gate only if the owner waived the review."
+  if $review_gate; then
+    die "not merging:"$'\n'"$(printf '  %s\n' "${problems[@]}")"$'\n'"Rerun with --skip-review-gate only if the owner waived the reviewers; unresolved threads still block."
+  fi
+  die "not merging:"$'\n'"$(printf '  %s\n' "${problems[@]}")"
 }
 
 tmp_root=""
@@ -664,11 +947,15 @@ merge_pr() {
 
 if $check_only; then
   check_reviews
-  echo "ready: no unresolved review threads and no Codex review running or failed"
+  if $review_gate; then
+    echo "ready: no unresolved review threads and no gating reviewer running or failed"
+  else
+    echo "ready: no unresolved review threads (reviewer states skipped)"
+  fi
   exit 0
 fi
 
-! $review_gate || check_reviews
+check_reviews
 
 for pr in "${prs[@]}"; do
   merge_pr "$pr"

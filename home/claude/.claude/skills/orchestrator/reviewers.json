@@ -30,6 +30,7 @@
         "unavailable": ["Rate limit exceeded", "Review paused", "Review skipped"],
         "unavailable_conclusions": ["skipped", "neutral", "failure", "timed_out"],
         "request": "@coderabbitai review",
+        "settle_s": 180,
         "start_s": 300,
         "wait_s": 1200
       },

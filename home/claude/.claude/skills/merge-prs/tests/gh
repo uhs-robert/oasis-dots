@@ -54,6 +54,60 @@ reported_oid() {
   fi
   echo "$oid"
 }
+# Reads of the merge gate (the registry's installed-reviewer inference, CodeRabbit's check run, review and summary, quota
+# comments). They read the single-PR $GH_STATE, and a key a test leaves out takes the default noted here.
+gate_state() {
+  state_file=$GH_STATE
+  [[ -f $state_file ]] || state_file=/dev/null
+}
+case "$args" in
+# history_logins: ;-separated authors of the last PRs' comments, default Codex; "none" for no comments.
+"pr list"*"--state all"*)
+  gate_state
+  logins=$(get history_logins)
+  [[ -n $logins ]] || logins=chatgpt-codex-connector
+  [[ $logins == none ]] || tr ';' '\n' <<<"$logins"
+  exit 0
+  ;;
+# suites: ;-separated app slugs of the default branch head's check suites, 30 per page unless the call paginates.
+*"/check-suites"*)
+  gate_state
+  if [[ $args == *--paginate* ]]; then get suites | tr ';' '\n'; else get suites | tr ';' '\n' | head -30; fi
+  exit 0
+  ;;
+# cr_run: ;-separated "name|status|conclusion|started|completed" check runs of the head. While cr_running_reads=N is
+# above 0 each read counts it down and reports cr_run_running instead.
+*"/check-runs"*)
+  gate_state
+  reads=$(get cr_running_reads)
+  if [[ -n $reads && $reads -gt 0 ]]; then
+    put cr_running_reads $((reads - 1))
+    get cr_run_running | tr ';' '\n'
+  else
+    get cr_run | tr ';' '\n'
+  fi
+  exit 0
+  ;;
+# cr_reviews: ;-separated "login|commit" PR reviews. $GH_STATE.comments holds the issue comments, one JSON object per line.
+*"/pulls/"*"/reviews"*) gate_state && get cr_reviews | tr ';' '\n' && exit 0 ;;
+*"/issues/"*"/comments"*)
+  [[ ! -f $GH_STATE.comments ]] || cat "$GH_STATE.comments"
+  exit 0
+  ;;
+# head_date: the head commit's committer date, default long ago.
+*"/commits/"*"committer.date")
+  gate_state
+  date=$(get head_date)
+  echo "${date:-2000-01-01T00:00:00Z}"
+  exit 0
+  ;;
+# A CodeRabbit re-request replaces its check run with cr_after, if the test gives one.
+"pr comment"*"@coderabbitai review"*)
+  put commented_cr 1
+  [[ -z $(get cr_after) ]] || put cr_run "$(get cr_after)"
+  exit 0
+  ;;
+esac
 case "$args" in
 "repo view"*) printf 'me/repo\tmain\ttrue\ttrue\ttrue\n' ;;
 "pr list"*)

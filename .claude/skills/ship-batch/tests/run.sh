@@ -338,10 +338,10 @@ check "a run with nothing new and nothing owed checks nothing" "[[ $? == 0 ]] &&
 e2e_setup
 ship --skip-review-gate 1 2
 check "with --skip-review-gate the batch succeeds" "[[ $? == 0 ]] || { cat '$e2e/out'; false; }"
-check "the review gate is never called" "! grep -q '^gate' '$SHIP_LOG'"
+check "only the thread check runs before the lock, never a review wait" "logged 'gate --check --skip-review-gate 1 free' && logged 'gate --check --skip-review-gate 2 free' && ! grep -q -e '--wait-review' '$SHIP_LOG'"
 check "each branch is still checked outside the lock" "logged 'check wt-1 --changed $e2e_base free' && logged 'check wt-2 --changed $e2e_base free'"
 check "the merge gets --skip-review-gate under the lock" "logged 'merge --skip-review-gate 1 2 held'"
-check "each PR says its gate was skipped" "grep -q 'PR 1: review gate skipped by request' '$e2e/out' && grep -q 'PR 2: review gate skipped by request' '$e2e/out'"
+check "each PR says its reviewer states were skipped" "grep -q 'PR 1: reviewer states skipped by request; threads still checked' '$e2e/out' && grep -q 'PR 2: reviewer states skipped by request; threads still checked' '$e2e/out'"
 
 e2e_setup
 ship 1 2
@@ -1023,7 +1023,7 @@ check "the flag was not taken for a PR" "! grep -q 'cannot read PR' '$e2e/out'"
 e2e_setup
 ship --skip-review-gate --sync-check 1
 check "leading flags still parse" "[[ \$? == 0 ]] || { cat '$e2e/out'; false; }"
-check "the gate was skipped by request" "grep -q 'review gate skipped by request' '$e2e/out' && ! grep -q '^gate ' '$SHIP_LOG'"
+check "the reviewer states were skipped by request" "grep -q 'reviewer states skipped by request' '$e2e/out' && ! grep -q -e '--wait-review' '$SHIP_LOG'"
 check "the merge got the flag and the PR" "grep -q '^merge --skip-review-gate 1 ' '$SHIP_LOG'"
 
 if systemd-run --user --collect --quiet true 2>/dev/null; then
