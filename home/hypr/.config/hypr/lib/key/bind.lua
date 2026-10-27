@@ -195,9 +195,13 @@ function Bind.submap(name, reset, fn)
     fn, reset = reset, nil
   end
 
-  local before = {}
+  -- By handle, not count: a body that unbinds a key and binds it again leaves the same count with a different handle.
+  local bound_before = {}
   for key, list in pairs(handles[name] or {}) do
-    before[key] = #list
+    bound_before[key] = {}
+    for _, handle in ipairs(list) do
+      bound_before[key][handle] = true
+    end
   end
 
   local ok, err
@@ -218,9 +222,11 @@ function Bind.submap(name, reset, fn)
   if not ok then
     -- The failed submap is unreachable, so drop what the body bound; earlier binds of the same submap stay.
     for key, list in pairs(handles[name] or {}) do
-      for index = #list, (before[key] or 0) + 1, -1 do
-        pcall(remove_handle, list[index]) -- a failing removal must not hide the body's error
-        list[index] = nil
+      local existing = bound_before[key] or {}
+      for index = #list, 1, -1 do
+        -- A handle whose removal fails stays tracked, so Bind.is_bound and Bind.unbind still see it; the pcall keeps
+        -- that failure from hiding the body's error.
+        if not existing[list[index]] and pcall(remove_handle, list[index]) then table.remove(list, index) end
       end
       if #list == 0 then handles[name][key] = nil end
     end
