@@ -291,8 +291,13 @@ PanelWindow {
         enabled: Screenshot.phase === "select" || Screenshot.phase === "toolbar"
         cursorShape: root.skinned_cursor && Screenshot.phase === "select" && !root.target_mode && root.chrome_shown ? Qt.BlankCursor : Qt.CrossCursor
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.BackButton | Qt.ForwardButton
         onWheel: wheel => Screenshot.step_zoom(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
         onPressed: mouse => {
+            if (mouse.button !== Qt.LeftButton) {
+                Screenshot.step_lens(mouse.button === Qt.ForwardButton ? 1 : -1);
+                return;
+            }
             if (root.target_mode) {
                 const i = Screenshot.target_at(root.screen_name, mouse.x, mouse.y);
                 if (i < 0) return;
@@ -315,10 +320,12 @@ PanelWindow {
             Screenshot.set_selection(root.screen_name, mouse.x, mouse.y, 0, 0);
         }
         onPositionChanged: mouse => {
+            // A held side button sets pressed too, and must not drag a selection from a stale press point.
+            const dragging = (pressedButtons & Qt.LeftButton) !== 0;
             // Qt re-sends hover at a resting pointer when the scene changes; only real motion takes the cursor back.
             // The first report is only a baseline: it may be one of those re-sends before the pointer ever moved.
-            const first = root.last_mouse.x < 0 && !pressed;
-            if (mouse.x === root.last_mouse.x && mouse.y === root.last_mouse.y && !pressed) return;
+            const first = root.last_mouse.x < 0 && !dragging;
+            if (mouse.x === root.last_mouse.x && mouse.y === root.last_mouse.y && !dragging) return;
             root.last_mouse = Qt.point(mouse.x, mouse.y);
             if (first) return;
             Screenshot.set_cursor(root.screen_name, mouse.x, mouse.y, false);
@@ -327,14 +334,14 @@ PanelWindow {
                 if (i >= 0 && i !== Screenshot.target_index) Screenshot.highlight(i);
                 return;
             }
-            if (!pressed || root.pixel_mode) return;
+            if (!dragging || root.pixel_mode) return;
             const x = Math.max(0, Math.min(root.width, mouse.x));
             const y = Math.max(0, Math.min(root.height, mouse.y));
             const p = root.press_point;
             Screenshot.set_selection(root.screen_name, Math.min(p.x, x), Math.min(p.y, y), Math.abs(x - p.x), Math.abs(y - p.y));
         }
-        onReleased: {
-            if (root.pixel_mode || root.target_mode) return;
+        onReleased: mouse => {
+            if (mouse.button !== Qt.LeftButton || root.pixel_mode || root.target_mode) return;
             if (Screenshot.has_selection) {
                 ThemeAudio.play("confirm");
                 Screenshot.confirm();
