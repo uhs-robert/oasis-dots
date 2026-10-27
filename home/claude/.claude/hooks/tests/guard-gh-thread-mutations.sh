@@ -97,16 +97,15 @@ expect deny $'echo graphql "<<\'XX\'"\ngh api graphql -f query=\'mutation { reso
 expect deny $'echo graphql <<\'XX\' | bash\ngh api graphql -f query=\'mutation { resolveReviewThread(input: {}) { thread { id } } }\'\nXX'
 expect deny $'git commit -F - <<\'EOF\'\nmentions gh api graphql resolveReviewThread\nEOF'
 expect allow 'git commit -F msg.txt -m "mentions gh api graphql resolveReviewThread"'
-# Relative file paths are read from the hook input's cwd, not the hook's own
-mkdir -p "$tmp/project" "$tmp/hookcwd"
-cp "$tmp/read.graphql" "$tmp/project/q.graphql"
-cp "$tmp/read.graphql" "$tmp/hookcwd/payload.json"
-cp "$tmp/body.json" "$tmp/project/payload.json"
-expect allow 'gh api graphql -F query=@q.graphql' "$tmp/project" "$tmp/hookcwd"
-expect deny 'gh api graphql --input payload.json' "$tmp/project" "$tmp/hookcwd"
-expect deny 'cd /elsewhere && gh api graphql --input payload.json' "$tmp/project" "$tmp/hookcwd"
-expect deny 'cd /elsewhere && gh api graphql -F query=@q.graphql' "$tmp/project" "$tmp/hookcwd"
-expect deny 'pushd /elsewhere; gh api graphql -F query=@q.graphql' "$tmp/project" "$tmp/hookcwd"
+# Query files must be given by absolute path: a relative one cannot be located
+cp "$tmp/read.graphql" "$tmp/q.graphql"
+expect deny 'gh api graphql -F query=@q.graphql' "$tmp"
+expect deny 'gh api graphql --input payload.json' "$tmp"
+expect deny 'cd /elsewhere && gh api graphql --input payload.json' "$tmp"
+expect deny 'env -C /elsewhere gh api graphql --input payload.json' "$tmp"
+expect deny 'env --chdir=/elsewhere gh api graphql -F query=@q.graphql' "$tmp"
+expect deny 'gh api graphql -F query=@./q.graphql' "$tmp"
+expect allow "gh api graphql -F query=@$tmp/q.graphql"
 # stdin from a pipe or a file is unseen; a bare heredoc is the command's own text
 expect deny 'cat /tmp/m.json | gh api graphql --input -'
 expect deny 'gh api graphql --input - < /tmp/m.json'

@@ -95,5 +95,9 @@ sed -i 's/,"endCursor":"C1"//' "$FAKE_THREADS"
 run --list 12
 check "refuses a next page without a cursor" "[[ \$code == 1 && \$err == *'no cursor'* ]]"
 
+sed -i 's/"pageInfo":{[^}]*}/"pageInfo":{"hasNextPage":true,"endCursor":"C1"}/' "$FAKE_THREADS" "$FAKE_THREADS_2"
+run --list 12
+check "refuses a page that repeats the cursor" "[[ \$code == 1 && \$err == *'repeats cursor C1'* ]]"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
