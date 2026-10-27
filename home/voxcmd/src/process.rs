@@ -9,16 +9,18 @@
 //! (`spawn_letting_clean_up`). Once a stop signal has begun ending voxcmd, nothing new is spawned.
 use std::ffi::CString;
 use std::io::Read;
+use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicPtr, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::sync::{Once, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
+/// How often a wait without a pidfd checks whether the command has exited.
 const POLL: Duration = Duration::from_millis(5);
 
 /// How long, once the command has exited, its pipes get to deliver what is left. A child that outlived it may still
@@ -200,32 +202,30 @@ fn run(
     let stdout = Drain::start(child.stdout.take());
     let stderr = Drain::start(child.stderr.take());
     let deadline = timeout.map(|timeout| Instant::now() + timeout);
-    let (status, timed_out) = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break (Some(status), false),
-            Ok(None) => {}
-            Err(error) => {
-                kill_and_reap(&mut child);
-                return Err(error);
-            }
-        }
-        if deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+    let exit_notice = open_exit_notice(&child);
+    let (status, timed_out) = match wait_for_exit(&mut child, deadline, exit_notice.as_ref()) {
+        Ok(Some(status)) => (Some(status), false),
+        Ok(None) => {
             kill_and_reap(&mut child);
-            break (None, true);
+            (None, true)
         }
-        thread::sleep(POLL);
+        Err(error) => {
+            kill_and_reap(&mut child);
+            return Err(error);
+        }
     };
     if !timed_out {
         let grace_ends = Instant::now() + DRAIN_GRACE;
-        wait_until(grace_ends, || stdout.finished() && stderr.finished());
+        stdout.wait_for_end(grace_ends);
+        stderr.wait_for_end(grace_ends);
         if leftovers == Leftovers::Killed {
             // The command is reaped, but a child of its group may live on; the group id stays taken while it does.
             kill_group(child.id());
         }
     }
-    wait_until(Instant::now() + DRAIN_AFTER_KILL, || {
-        stdout.finished() && stderr.finished()
-    });
+    let drained_by = Instant::now() + DRAIN_AFTER_KILL;
+    stdout.wait_for_end(drained_by);
+    stderr.wait_for_end(drained_by);
     Ok(Outcome {
         status,
         stdout: stdout.text(),
@@ -240,17 +240,68 @@ fn kill_and_reap(child: &mut Child) {
     let _ = child.wait();
 }
 
-fn wait_until(deadline: Instant, done: impl Fn() -> bool) {
-    while !done() && Instant::now() < deadline {
-        thread::sleep(Duration::from_millis(2));
+/// A pidfd for the child: readable once it has exited, so a wait wakes at the exit instead of on a polling tick. None
+/// where the kernel has no pidfd_open (before 5.3) or a sandbox refuses it; the wait then polls.
+fn open_exit_notice(child: &Child) -> Option<OwnedFd> {
+    let pid = libc::pid_t::try_from(child.id()).ok()?;
+    // SAFETY: pidfd_open takes a pid and flags and returns a new descriptor (close-on-exec) or -1. Only the wait
+    // reaps a hook, so its pid is still its own. The stop handler may already have reaped an ask, its pid then free for
+    // reuse; a pidfd for that pid is never polled, as `wait_for_exit`'s first `try_wait` fails on the reaped child.
+    let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0) };
+    let fd = libc::c_int::try_from(fd).ok().filter(|fd| *fd >= 0)?;
+    // SAFETY: the descriptor was just opened and nothing else owns it.
+    Some(unsafe { OwnedFd::from_raw_fd(fd) })
+}
+
+/// Waits until the child exits (its status) or the deadline passes (None, the child left running).
+fn wait_for_exit(
+    child: &mut Child,
+    deadline: Option<Instant>,
+    exit_notice: Option<&OwnedFd>,
+) -> std::io::Result<Option<ExitStatus>> {
+    let mut exit_announced = false;
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(Some(status));
+        }
+        let remaining = match deadline {
+            Some(deadline) => match deadline.checked_duration_since(Instant::now()) {
+                Some(remaining) if !remaining.is_zero() => Some(remaining),
+                _ => return Ok(None),
+            },
+            None => None,
+        };
+        match exit_notice {
+            // However poll ends (exited, timed out, EINTR from a signal handled on this thread), the loop's own checks
+            // decide.
+            Some(notice) if !exit_announced => exit_announced = poll_announces_exit(notice, remaining),
+            // Also once the pidfd has announced an exit that `try_wait` cannot reap yet (a tracer holds the child):
+            // the pidfd stays readable, so polling it again would spin.
+            _ => thread::sleep(POLL),
+        }
     }
+}
+
+fn poll_announces_exit(fd: &OwnedFd, timeout: Option<Duration>) -> bool {
+    // Rounded up, so the wait never wakes short of the deadline only to poll again with 0.
+    let timeout_ms = timeout.map_or(-1, |timeout| {
+        libc::c_int::try_from(timeout.as_nanos().div_ceil(1_000_000)).unwrap_or(libc::c_int::MAX)
+    });
+    let mut watched = libc::pollfd {
+        fd: fd.as_raw_fd(),
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    // Any readiness counts, POLLHUP or POLLERR as much as POLLIN: each stays raised, so polling again returns at once.
+    // SAFETY: poll on one pollfd that lives on this stack for the call.
+    unsafe { libc::poll(&raw mut watched, 1, timeout_ms) > 0 }
 }
 
 /// One pipe read on a thread of its own, so that a full pipe never blocks the command. The bytes are kept as they
 /// arrive: a pipe held open by a leftover child must not cost the output already read.
 struct Drain {
     bytes: Arc<Mutex<Vec<u8>>>,
-    reached_end: Arc<AtomicBool>,
+    reached_end: Arc<(Mutex<bool>, Condvar)>,
 }
 
 impl Drain {
@@ -273,13 +324,19 @@ impl Drain {
                         .extend_from_slice(&chunk[..count]);
                 }
             }
-            reached_end.store(true, Ordering::Release);
+            let (reached, woken) = &*reached_end;
+            *reached.lock().expect("waiter holds the lock briefly") = true;
+            woken.notify_all();
         });
         drain
     }
 
-    fn finished(&self) -> bool {
-        self.reached_end.load(Ordering::Acquire)
+    fn wait_for_end(&self, deadline: Instant) {
+        let (reached, woken) = &*self.reached_end;
+        let reached = reached.lock().expect("reader holds the lock briefly");
+        let _ = woken.wait_timeout_while(reached, deadline.saturating_duration_since(Instant::now()), |reached| {
+            !*reached
+        });
     }
 
     fn text(&self) -> String {
@@ -747,6 +804,229 @@ pub(crate) mod tests {
         assert_eq!(outcome.stdout, "out\n");
         assert_eq!(outcome.stderr, "err\n");
         assert!(!outcome.timed_out);
+    }
+
+    #[test]
+    fn a_wait_ends_with_the_command_not_on_the_next_polling_tick() {
+        let mut probe = Command::new("true").spawn().unwrap();
+        let pidfds_open = open_exit_notice(&probe).is_some();
+        probe.wait().unwrap();
+        if !pidfds_open {
+            eprintln!("skipped: no pidfd here, so the wait polls");
+            return;
+        }
+        // A wait polled every 5 ms cannot return before the 10 ms tick for a 6 ms command. One fast run is enough, so
+        // that a busy machine slowing some runs does not fail it.
+        let mut slow_runs = Vec::new();
+        for _ in 0..20 {
+            let started = Instant::now();
+            let outcome = run_with_timeout(Command::new("sleep").arg("0.006"), Duration::from_secs(5)).unwrap();
+            assert_eq!(outcome.code(), Some(0));
+            if started.elapsed() < Duration::from_millis(9) {
+                return;
+            }
+            slow_runs.push(started.elapsed());
+        }
+        panic!("no run under 9 ms: {slow_runs:?}");
+    }
+
+    const WAYS_TO_WAIT: [&str; 2] = ["pidfd", "polling"];
+
+    /// What the wait called `way` is given: the child's pidfd, or nothing for the polling wait. None when there is no
+    /// pidfd here, so that the test skips only the pidfd wait.
+    fn exit_notice_for(child: &Child, way: &str) -> Option<Option<OwnedFd>> {
+        if way == "polling" {
+            return Some(None);
+        }
+        let notice = open_exit_notice(child);
+        if notice.is_none() {
+            eprintln!("skipped the pidfd wait: no pidfd here");
+        }
+        notice.map(Some)
+    }
+
+    #[test]
+    fn a_command_that_exited_before_the_wait_is_reaped_at_once() {
+        for way in WAYS_TO_WAIT {
+            let mut child = sh("exit 3").spawn().unwrap();
+            assert!(gone_within(i32::try_from(child.id()).unwrap(), Duration::from_secs(2)));
+            let Some(exit_notice) = exit_notice_for(&child, way) else {
+                child.wait().unwrap();
+                continue;
+            };
+            let started = Instant::now();
+            let status =
+                wait_for_exit(&mut child, Some(started + Duration::from_secs(5)), exit_notice.as_ref()).unwrap();
+            assert_eq!(status.and_then(|status| status.code()), Some(3), "{}", way);
+            assert!(
+                started.elapsed() < Duration::from_millis(100),
+                "{}: {:?}",
+                way,
+                started.elapsed()
+            );
+        }
+    }
+
+    #[test]
+    fn a_command_reaped_elsewhere_fails_the_wait_at_once() {
+        let mut child = sh("exit 0").spawn().unwrap();
+        let notice = open_exit_notice(&child);
+        // SAFETY: a blocking waitpid on the child this test started, as the stop handler's reaping of an ask does.
+        unsafe { libc::waitpid(i32::try_from(child.id()).unwrap(), std::ptr::null_mut(), 0) };
+        let started = Instant::now();
+        assert!(wait_for_exit(&mut child, Some(started + Duration::from_secs(5)), notice.as_ref()).is_err());
+        assert!(
+            started.elapsed() < Duration::from_millis(100),
+            "{:?}",
+            started.elapsed()
+        );
+    }
+
+    #[test]
+    fn a_wait_past_its_deadline_returns_then_and_not_before() {
+        for way in WAYS_TO_WAIT {
+            let mut child = sh("sleep 30").spawn().unwrap();
+            let Some(exit_notice) = exit_notice_for(&child, way) else {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                continue;
+            };
+            let started = Instant::now();
+            let deadline = started + Duration::from_millis(150);
+            let status = wait_for_exit(&mut child, Some(deadline), exit_notice.as_ref()).unwrap();
+            let returned = Instant::now();
+            child.kill().unwrap();
+            child.wait().unwrap();
+            assert!(status.is_none(), "{}", way);
+            assert!(returned >= deadline, "{}: returned early", way);
+            assert!(
+                returned - deadline < Duration::from_millis(100),
+                "{}: {:?} late",
+                way,
+                returned - deadline
+            );
+        }
+    }
+
+    extern "C" fn ignore_signal(_: libc::c_int) {}
+
+    #[test]
+    fn a_signal_handled_during_the_wait_neither_ends_nor_stretches_it() {
+        if is_own_process() {
+            // SAFETY: a handler that does nothing, without SA_RESTART, so that each signal breaks the poll with EINTR.
+            unsafe {
+                let mut action: libc::sigaction = std::mem::zeroed();
+                action.sa_sigaction = ignore_signal as extern "C" fn(libc::c_int) as libc::sighandler_t;
+                libc::sigaction(libc::SIGUSR1, &raw const action, std::ptr::null_mut());
+            }
+            let waits = [("sleep 0.3; exit 5", Some(5)), ("sleep 30", None)];
+            for (script, code) in waits {
+                let (waiter_tx, waiter_rx) = std::sync::mpsc::channel();
+                let waiter = thread::spawn(move || {
+                    // SAFETY: pthread_self has no preconditions.
+                    waiter_tx.send(unsafe { libc::pthread_self() }).unwrap();
+                    let mut child = sh(script).spawn().unwrap();
+                    let notice = open_exit_notice(&child);
+                    let started = Instant::now();
+                    let status = wait_for_exit(&mut child, Some(started + Duration::from_millis(600)), notice.as_ref());
+                    let waited = started.elapsed();
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    (status.unwrap().map(|status| status.code()), waited)
+                });
+                let waiter_thread = waiter_rx.recv().unwrap();
+                while !waiter.is_finished() {
+                    // SAFETY: signals the waiting thread, which is alive until it is joined below.
+                    unsafe { libc::pthread_kill(waiter_thread, libc::SIGUSR1) };
+                    thread::sleep(Duration::from_millis(5));
+                }
+                let (status, waited) = waiter.join().unwrap();
+                let expected_wait = if code.is_some() { 300..600 } else { 600..800 };
+                let fine = status == code.map(Some) && expected_wait.contains(&waited.as_millis());
+                if !fine {
+                    eprintln!("{script}: {status:?} after {waited:?}");
+                    std::process::exit(1);
+                }
+            }
+            std::process::exit(0);
+        }
+        assert!(
+            in_own_process("process::tests::a_signal_handled_during_the_wait_neither_ends_nor_stretches_it")
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+
+    #[test]
+    fn a_run_leaves_no_descriptor_open() {
+        if is_own_process() {
+            let open_fds = || std::fs::read_dir("/proc/self/fd").unwrap().count();
+            run_with_timeout(&mut sh("true"), Duration::from_secs(5)).unwrap();
+            let before = open_fds();
+            for _ in 0..20 {
+                run_with_timeout(&mut sh("echo out; echo err >&2"), Duration::from_secs(5)).unwrap();
+                run_with_timeout(&mut sh("sleep 30"), Duration::from_millis(20)).unwrap();
+            }
+            std::process::exit(i32::from(open_fds() != before));
+        }
+        assert!(
+            in_own_process("process::tests::a_run_leaves_no_descriptor_open")
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+
+    #[test]
+    fn a_stop_signal_ends_a_command_being_waited_on() {
+        let test = "process::tests::a_stop_signal_ends_a_command_being_waited_on";
+        if is_own_process() {
+            let dir = std::path::PathBuf::from(std::env::var_os("VOXCMD_TEST_DIR").unwrap());
+            let (ended, marker) = (dir.join("ended"), dir.join("marker"));
+            // The last act waits for the wait to report how the command ended, so the marker shows the wait woke.
+            run_on_stop(move || {
+                let by = Instant::now() + Duration::from_secs(2);
+                while !ended.exists() && Instant::now() < by {
+                    thread::sleep(Duration::from_millis(10));
+                }
+                std::fs::write(marker, std::fs::read_to_string(&ended).unwrap_or_default()).unwrap();
+            });
+            let pid_file = dir.join("child.pid");
+            let ended = dir.join("ended");
+            thread::spawn(move || {
+                let script = format!("sleep 30 & echo $! > '{}'; wait", pid_file.display());
+                let outcome = run_with_timeout(&mut sh(&script), Duration::from_secs(30)).unwrap();
+                std::fs::write(ended, outcome.how_it_ended()).unwrap();
+            });
+            let by = Instant::now() + Duration::from_secs(2);
+            while !dir.join("child.pid").exists() && Instant::now() < by {
+                thread::sleep(Duration::from_millis(10));
+            }
+            // SAFETY: kill only sends a signal, here to this process.
+            unsafe { libc::kill(libc::getpid(), libc::SIGTERM) };
+            thread::sleep(Duration::from_secs(30));
+            std::process::exit(0);
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let started = Instant::now();
+        let status = in_own_process(test)
+            .env("VOXCMD_TEST_DIR", dir.path())
+            .status()
+            .unwrap();
+        assert_eq!(status.signal(), Some(libc::SIGTERM), "{status:?}");
+        assert!(started.elapsed() < Duration::from_secs(3), "{:?}", started.elapsed());
+        let marker = std::fs::read_to_string(dir.path().join("marker")).unwrap_or_default();
+        assert_eq!(marker, "killed by signal 9");
+        let child: i32 = std::fs::read_to_string(dir.path().join("child.pid"))
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        assert!(
+            gone_within(child, Duration::from_secs(2)),
+            "child {child} outlived the stop"
+        );
     }
 
     #[test]
