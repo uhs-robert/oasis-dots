@@ -75,7 +75,12 @@ ShellRoot {
     }
     function run_editor(name) {
         root.install(root.standard());
-        root["scenario_" + name]();
+        // A throw would otherwise end the scenario with only the checks before it, which all pass.
+        try {
+            root["scenario_" + name]();
+        } catch (e) {
+            root.check("scenario ran to the end", String(e), "");
+        }
     }
     // req: BAREDIT-01, BAREDIT-02, BAREDIT-03, BAREDIT-04, BAREDIT-09, BAREDIT-11, BAREDIT-12, BAREDIT-13, BAREDIT-14 the key flows through the dispatcher.
     function scenario_keys() {
@@ -144,6 +149,8 @@ ShellRoot {
         root.check("c on a sharing monitor sets the shared compact", [BarSettings.state.shared.compact, Object.keys(BarSettings.state.monitors)], [true, []]);
         root.keys("c");
         root.check("c again clears the shared compact, so every rule's own compact applies again", ["compact" in BarSettings.state.shared, Object.keys(BarSettings.state.monitors)], [false, []]);
+        const portrait_scale = Math.min(520 / 1080, BarEditor.map_height(1080, 1920) / 1920);
+        root.check("monitor select's map leaves a portrait monitor's tile room for its tag", [BarEditor.map_height(5760, 1080), 1080 * portrait_scale >= 150], [130, true]);
         BarEditor.tracked_rules = [{ match: { name: "D" }, compact: true }];
         root.keys("c c");
         root.check("c keeps the shared compact when a disconnected monitor's rule gives the other value", [BarSettings.state.shared.compact], [false]);

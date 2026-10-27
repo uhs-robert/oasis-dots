@@ -72,6 +72,12 @@ Singleton {
         return s && !BarLayout.is_sharing(BarSettings.state, root.key_of(s)) ? "own layout" : "shared";
     }
 
+    // Height of monitor select's 520 px wide map of a w x h layout: 130 px for a wide one, taller for a tall one, so a
+    // portrait monitor's tile stays wide enough for its name and tag.
+    function map_height(w, h) {
+        return Math.min(320, Math.max(130, 520 * h / w));
+    }
+
     function keyboard_owner(screen_name) {
         return root.active && root.focus_screen === screen_name;
     }
