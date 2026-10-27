@@ -5,14 +5,15 @@ import qs.theme
 import qs.features.settings
 import qs.features.settings.sections
 
-// Harness for run.sh: opens the Palette list in ColorsSection beside a SettingsPanel at several sizes and writes one
-// PASS or FAIL line per size to $RESULT. FAIL when the preview card is not in the panel, intersects the list, moves when
-// the list opens, has a blank band above it, or (no preview) when the help card does not get the whole panel.
+// Harness for run.sh: opens the Palette list in StyleSection (cursor on its Colors rows) beside a SettingsPanel at
+// several sizes and writes one PASS or FAIL line per size to $RESULT. FAIL when the preview card is not in the panel,
+// intersects the list, moves when the list opens, has a blank band above it, or (no preview: a plain section, or Style
+// with the cursor off the Colors rows) when the help card does not get the whole panel.
 ShellRoot {
     id: root
 
     // [pane width, pane height, kind, panel width, panel height, stacked]; stacked puts the panel under the pane.
-    readonly property var sizes: [[860, 1100, "colors", 520, 1100, false], [500, 1100, "colors", 300, 1100, false], [1000, 900, "colors", 1000, 270, true], [700, 700, "colors", 700, 210, true], [860, 1100, "plain", 520, 1100, false], [1000, 700, "plain", 1000, 210, true]]
+    readonly property var sizes: [[860, 1100, "colors", 520, 1100, false], [500, 1100, "colors", 300, 1100, false], [1100, 900, "colors", 260, 900, false], [1000, 900, "colors", 1000, 270, true], [700, 700, "colors", 700, 210, true], [860, 1100, "plain", 520, 1100, false], [1000, 700, "plain", 1000, 210, true], [860, 1100, "screen", 520, 1100, false]]
     property int at: 0
     property string report: ""
 
@@ -48,11 +49,13 @@ ShellRoot {
         const size = root.sizes[root.at];
         const plain = size[2] === "plain";
         // An inactive loader unloads its section, so the other one's preview leaves the panel.
+        holder.active = false;
         holder.active = !plain;
         bare.active = plain;
         const active = plain ? bare : holder;
         active.width = size[0];
         active.height = size[1];
+        if (!plain) holder.item.cursor = holder.item.rows.findIndex(r => r.label === (size[2] === "colors" ? "Palette" : "Hot corners"));
         panel.stacked = size[5];
         panel.width = size[3];
         panel.height = size[4];
@@ -114,7 +117,7 @@ ShellRoot {
 
     function judge() {
         const size = root.sizes[root.at];
-        const plain = size[2] === "plain";
+        const plain = size[2] !== "colors";
         const section = root.section_now();
         const list = root.find(section, "picker");
         const a = root.box(list);
@@ -195,7 +198,7 @@ ShellRoot {
             Loader {
                 id: holder
                 active: false
-                sourceComponent: ColorsSection { popup: fake_popup }
+                sourceComponent: StyleSection { popup: fake_popup }
             }
 
             Loader {

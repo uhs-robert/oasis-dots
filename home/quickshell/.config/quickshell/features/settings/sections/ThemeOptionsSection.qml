@@ -7,8 +7,24 @@ RowsSection {
     id: root
 
     section_keys: "r reset value · R reset all"
-    footer_hint: "j/k move · H/L change · r reset value · R reset all · h/Esc sections · q close"
-    rows: Style.settings.map(def => root.row_for(def))
+    footer_hint: "j/k move · " + root.layout_hint + "H/L change · r reset value · R reset all · h/Esc sections · q close"
+    tabs: root.tab_names.map(name => ({ label: name, rows: Style.settings.filter(def => root.tab_of(def.key) === name).map(def => root.row_for(def)) }))
+
+    readonly property var tab_names: ["Effects", "Frame & bar", "Skins", "Fonts"]
+    // Which tab each option sits on. Style.settings_for offers a different set per style; an option missing here
+    // lands on Effects rather than vanishing.
+    readonly property var tab_keys: ({
+            "Frame & bar": ["screen_frame", "corner_style", "bar_island_shape", "bar_island_opacity", "workspace_art", "bar_icon_set", "bar_meeting_marker"],
+            "Skins": ["picker_skin", "overview_skin", "osd_layout", "weather_header", "keeptabs_layout", "done_anim", "wait_anim", "toast_enter"],
+            "Fonts": ["font_family", "bar_font_family", "font_size"]
+        })
+
+    function tab_of(key) {
+        for (const name in root.tab_keys) {
+            if (root.tab_keys[name].indexOf(key) >= 0) return name;
+        }
+        return "Effects";
+    }
 
     function number_values(def) {
         const out = [];
@@ -56,6 +72,7 @@ RowsSection {
         if (def.locked !== undefined) return root.locked_row(def);
         const kind = def.type;
         return {
+            key: def.key,
             label: def.label,
             desc: root.notes[def.key] || "",
             values: () => kind === "bool" ? ["on", "off"] : kind === "choice" ? def.choices : root.number_values(def),
@@ -68,6 +85,8 @@ RowsSection {
     // Shows the fixed text and neither steps nor opens a list.
     function locked_row(def) {
         return {
+            key: def.key,
+            locked: true,
             label: def.label,
             desc: root.locked_note,
             keys: "",
@@ -82,9 +101,9 @@ RowsSection {
 
     onExtra_key: event => {
         if (event.key !== Qt.Key_R) return;
-        const def = Style.settings[root.cursor];
+        const row = root.rows[root.cursor];
         if (event.modifiers & Qt.ShiftModifier) Style.reset_options();
-        else if (def && def.locked === undefined) Style.reset_option(def.key);
+        else if (row && !row.locked) Style.reset_option(row.key);
         event.accepted = true;
     }
 

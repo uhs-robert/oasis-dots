@@ -44,15 +44,17 @@ RowsSection {
 
     function build_rows() {
         const sources = PowerSettings.laptop ? ["ac", "battery"] : ["ac"];
-        const rows = [];
+        const rows = [{ heading: "Idle" }];
         for (const name of ["dim", "lock", "screen_off", "suspend"]) {
             for (const source of sources) rows.push(root.idle_row(name, source));
         }
+        rows.push({ heading: PowerSettings.laptop ? "Lid & buttons" : "Buttons" });
         if (PowerSettings.laptop) {
             rows.push(root.choice_row("Lid closed on AC", "lid_ac", PowerSettings.lid_actions, "What closing the lid does while on AC power."));
             rows.push(root.choice_row("Lid closed on battery", "lid_battery", PowerSettings.lid_actions, "What closing the lid does while on battery."));
         }
         rows.push(root.choice_row("Power button", "power_button", PowerSettings.button_actions, "What pressing the power button does."));
+        rows.push({ heading: "Profiles" });
         for (const source of sources) rows.push(root.choice_row("Power profile on " + root.source_label(source), "profile_" + source, PowerSettings.profiles, "Power profile to switch to on " + root.source_label(source) + ". Leave as is changes nothing."));
         return rows;
     }

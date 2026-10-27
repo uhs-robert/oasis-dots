@@ -20,14 +20,14 @@ RowsSection {
             directories: "Opens folders, including Wallpaper's o key."
         })
 
-    rows: DefaultAppsSettings.app_keys.map(c => ({
+    rows: [{ heading: "Apps" }].concat(DefaultAppsSettings.app_keys.map(c => ({
                 label: c.label,
                 desc: root.notes[c.key],
                 values: () => DefaultAppsSettings.app_choices(c.key),
                 text: v => v === "" ? "Machine default" : v,
                 value: () => DefaultAppsSettings.app_value(c.key),
                 set: v => DefaultAppsSettings.set_app(c.key, v)
-            })).concat(DefaultAppsSettings.mime_keys.map(c => ({
+            })), [{ heading: "File types" }], DefaultAppsSettings.mime_keys.map(c => ({
                 label: c.label,
                 desc: root.notes[c.key],
                 values: () => DefaultAppsSettings.mime_choices(c.key),
