@@ -51,12 +51,13 @@ while IFS= read -r entry; do
   scope=$(jq -r '.local.scope' <<<"$entry")
   command=$(jq -r '.local.command // ""' <<<"$entry")
   model=$(jq -r '.local.model // ""' <<<"$entry")
+  # Only enabled reviewers are worth a warning.
+  [ "$scope" != off ] || continue
   [[ $name =~ ^[a-z0-9][a-z0-9_-]*$ ]] || {
     echo "run-local-reviews: skipping reviewer with unsafe name '$name'" >&2
     echo "$name: skipped, the name is not usable in a file name"
     continue
   }
-  [ "$scope" != off ] || continue
   [ -n "$command" ] || {
     echo "$name: no local command configured"
     continue
@@ -72,6 +73,8 @@ while IFS= read -r entry; do
   pids+=("$!")
 done < <(jq -c '.[]' <<<"$registry")
 wait
+# Reaped: a later kill could hit an unrelated process that reused the pid.
+pids=()
 
 for name in "${names[@]}"; do
   code=$(<"$results/$name.code")
