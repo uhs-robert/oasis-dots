@@ -19,8 +19,8 @@ const pitch = 32;
 const last_scroll = content - view;
 
 // Every row index, from every starting scroll: after the reveal the row is in view, clear of the bottom fade unless
-// the content ends there (the fade is gone then) and clear of the top fade.
-function worst_clearance() {
+// the content ends there (the fade is gone then) and clear of the top fade unless it starts there.
+function worst_clearance(lead, foot) {
   let worst = Infinity;
   for (let start = 0; start <= last_scroll; start += 7) {
     for (let top = 40; top + row <= content; top += pitch) {
@@ -50,7 +50,9 @@ const cases = [
   ["the last row scrolls to the end", () => S.reveal_target(content - row, row, 0, view, content, lead, foot), last_scroll],
   ["the first row scrolls to the top", () => S.reveal_target(0, row, 300, view, content, lead, foot), 0],
   ["short content never scrolls", () => S.reveal_target(100, row, 0, view, 300, lead, foot), 0],
-  ["no revealed row ends under a visible fade", () => worst_clearance() >= 0, true],
+  ["a row above the view clears a fade taller than the lead", () => S.reveal_target(150, row, 300, view, content, 12, 28), 150 - 28],
+  ["no revealed row ends under a visible fade", () => worst_clearance(lead, foot) >= 0, true],
+  ["nor when the fade is taller than the lead", () => worst_clearance(12, 28) >= 0, true],
 ];
 
 let failed = 0;

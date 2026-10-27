@@ -11,12 +11,13 @@ function hidden_edges(content_y, view_height, content_height) {
     };
 }
 
-// The contentY that shows a row with the least scrolling. `lead` keeps a group heading with its first row above it;
-// `foot` is the bottom fade's height, so the row ends above the fade instead of under it. At the very end the fade
-// is gone, so the clamp to the content height needs no `foot`.
-function reveal_target(row_top, row_height, content_y, view_height, content_height, lead, foot) {
+// The contentY that shows a row with the least scrolling. `fade` is the fades' height, so the row sits clear of
+// them instead of under them; `lead` keeps a group heading with its first row above it, and the larger of the two
+// wins at the top. At either end the fade there is gone, so the clamps need no margin.
+function reveal_target(row_top, row_height, content_y, view_height, content_height, lead, fade) {
+    const head = Math.max(lead, fade);
     let target = content_y;
-    if (row_top - lead < target) target = row_top - lead;
-    else if (row_top + row_height > target + view_height - foot) target = row_top + row_height - view_height + foot;
+    if (row_top - head < target) target = row_top - head;
+    else if (row_top + row_height > target + view_height - fade) target = row_top + row_height - view_height + fade;
     return Math.max(0, Math.min(target, content_height - view_height));
 }
