@@ -3,9 +3,9 @@ import QtQuick.Effects
 import qs.theme
 import "ScrollCue.js" as Cue
 
-// Fades a Flickable's content out at the edges that hide more, with a small caret there, so a list that continues
-// past the panel shows it. Place it as a sibling of `target`, after it; it covers the same area, passes every click
-// through and changes nothing while the content fits.
+// Fades a Flickable's content out at the edges that hide more, with a small caret at the right end (clear of the
+// left-aligned labels), so a list that continues past the panel shows it. Place it as a sibling of `target`, after
+// it; it covers the same area, passes every click through and changes nothing while the content fits.
 // It fades the content's alpha instead of painting a colour over it, so it never has to know what the list sits on
 // (frame shades, drawer strips, lcd gradients, translucent islands). Only `st` tokens: no style branching here.
 Item {
@@ -42,7 +42,7 @@ Item {
         MultiEffect {
             maskEnabled: true
             maskSource: alpha_mask
-            // Maps the mask's alpha straight through (0 hides, 1 shows) instead of thresholding it.
+            // A soft mask: the gradient's alpha eases through a smoothstep S-curve instead of cutting at a threshold.
             maskThresholdMin: 0.5
             maskSpreadAtMin: 1.0
         }
@@ -84,7 +84,7 @@ Item {
 
     Text {
         visible: root.edges.top
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.right: parent.right
         anchors.top: parent.top
         text: "▲"
         color: root.st.text_muted
@@ -94,7 +94,7 @@ Item {
 
     Text {
         visible: root.edges.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.right: parent.right
         anchors.bottom: parent.bottom
         text: "▼"
         color: root.st.text_muted

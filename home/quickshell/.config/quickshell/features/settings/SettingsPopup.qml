@@ -80,7 +80,7 @@ Popup {
         if (!root.is_open) return;
         load_timer.restart();
         ThemeAudio.play("cursor");
-        Qt.callLater(root.reveal_selected, nav_flick, nav_col);
+        Qt.callLater(root.reveal_selected, nav_flick, nav_col, nav_cue);
     }
 
     Timer {
@@ -99,7 +99,7 @@ Popup {
             root.leave_pane();
         }
         // nav_index may not change on open, so its own handler would not scroll the list to it.
-        Qt.callLater(root.reveal_selected, nav_flick, nav_col);
+        Qt.callLater(root.reveal_selected, nav_flick, nav_col, nav_cue);
     }
 
     function jump(delta) {
@@ -170,20 +170,20 @@ Popup {
     }
 
     // Scrolls `flick` the least that shows the selected row under `scope`; a few px of lead keep a group heading with its first row,
-    // and the row stays clear of the scroll fades (both lists' cues share the default fade height).
-    function reveal_selected(flick, scope) {
+    // and the row stays clear of the scroll fades of `cue`, the ScrollCue over `flick`.
+    function reveal_selected(flick, scope, cue) {
         const row = root.selected_under(scope);
         if (!row) return;
         const top = row.mapToItem(flick.contentItem, 0, 0).y;
         const lead = Style.px(24) + root.row_extra;
-        flick.contentY = Cue.reveal_target(top, row.height, flick.contentY, flick.height, flick.contentHeight, lead, nav_cue.fade_height);
+        flick.contentY = Cue.reveal_target(top, row.height, flick.contentY, flick.height, flick.contentHeight, lead, cue.fade_height);
     }
 
     Connections {
         target: root.pane
         ignoreUnknownSignals: true
         function onCursorChanged() {
-            Qt.callLater(root.reveal_selected, pane_flick, pane_loader);
+            Qt.callLater(root.reveal_selected, pane_flick, pane_loader, pane_cue);
         }
     }
 
@@ -192,7 +192,7 @@ Popup {
         target: root.pane ? root.pane.pick_list : null
         ignoreUnknownSignals: true
         function onCursorChanged() {
-            Qt.callLater(root.reveal_selected, pane_flick, pane_loader);
+            Qt.callLater(root.reveal_selected, pane_flick, pane_loader, pane_cue);
         }
     }
 
@@ -384,12 +384,13 @@ Popup {
                 onLoaded: {
                     pane_flick.contentY = 0;
                     panel.reset_help_scroll();
-                    Qt.callLater(root.reveal_selected, pane_flick, pane_loader);
+                    Qt.callLater(root.reveal_selected, pane_flick, pane_loader, pane_cue);
                 }
             }
         }
 
         ScrollCue {
+            id: pane_cue
             target: pane_flick
             st: root.st
         }
