@@ -13,9 +13,6 @@ Item {
     property int start_at: 0
     // Holds at start_at until released, for the startup intro.
     property bool hold: false
-    // Where the timeline stops, and how fast it runs: a popup swap plays one half of it at half length (SwapFx).
-    property int stop_at: root.total
-    property real time_scale: 1
     property real elapsed
 
     signal finished()
@@ -97,8 +94,8 @@ Item {
 
     NumberAnimation on elapsed {
         from: root.start_at
-        to: root.stop_at
-        duration: (root.stop_at - root.start_at) * root.time_scale
+        to: root.total
+        duration: root.total - root.start_at
         running: !root.hold
         onFinished: root.finished()
     }
