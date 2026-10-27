@@ -327,8 +327,6 @@ function Submap.define(spec)
   function M.back() Submap.back() end
 
   function M.setup()
-    if spec.enter then Bind.key(spec.enter, M.enter, spec.desc or ("+" .. spec.name)) end
-
     Bind.submap(spec.name, function()
       local catchall = normalize_catchall(spec)
       local raw_binds = apply_individual_oneshots(resolve_action_rows(resolve_binds(spec.binds) or {}), M.exit)
@@ -346,6 +344,10 @@ function Submap.define(spec)
 
       bind_catchall(catchall, M.exit, spec)
     end)
+
+    -- After the body, which raises when it fails: an entry key into a half-built submap with no Escape would strand
+    -- the user there.
+    if spec.enter then Bind.key(spec.enter, M.enter, spec.desc or ("+" .. spec.name)) end
   end
 
   return M
