@@ -12,7 +12,8 @@ die() {
   exit 1
 }
 
-# The body travels as -f (a literal string), never -F, which would read a body starting with @ as a file.
+# Strings travel as -f (literal), never -F, which would read a body starting with @ as a file and turn an owner or repo
+# named 123, true or null into a non-string. Only the PR number is typed (-F).
 reply_mutation='mutation($thread: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $thread, body: $body}) { comment { id } } }'
 resolve_mutation='mutation($thread: ID!) { resolveReviewThread(input: {threadId: $thread}) { thread { id } } }'
 state_query='query($thread: ID!) { node(id: $thread) { ... on PullRequestReviewThread { isResolved } } }'
@@ -26,7 +27,7 @@ list_threads() {
   [[ $pr =~ ^[0-9]+$ ]] || die "$usage"
   slug=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || die "cannot read the repository"
   while :; do
-    page=$(gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -F number="$pr" -f query="$list_query" "${cursor_args[@]}") ||
+    page=$(gh api graphql -f owner="${slug%%/*}" -f name="${slug#*/}" -F number="$pr" -f query="$list_query" "${cursor_args[@]}") ||
       die "cannot read the review threads of #$pr"
     jq -r "$list_jq" <<<"$page" || die "cannot parse the review threads of #$pr"
     [[ $(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$page") == true ]] || break

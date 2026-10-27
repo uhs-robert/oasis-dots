@@ -9,7 +9,7 @@ args="$*"
 if [[ -n ${GH_LOG-} ]]; then
   echo "${args//$'\n'/ }" >>"$GH_LOG"
   case "$args" in
-  "repo view"*) echo me/repo ;;
+  "repo view"*) echo "${FAKE_REPO:-me/repo}" ;;
   *"addPullRequestReviewThreadReply"*)
     [[ -z ${FAKE_REPLY_FAIL-} ]] || {
       echo "reply failed" >&2

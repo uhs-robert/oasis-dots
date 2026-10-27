@@ -106,6 +106,12 @@ expect deny 'env -C /elsewhere gh api graphql --input payload.json' "$tmp"
 expect deny 'env --chdir=/elsewhere gh api graphql -F query=@q.graphql' "$tmp"
 expect deny 'gh api graphql -F query=@./q.graphql' "$tmp"
 expect allow "gh api graphql -F query=@$tmp/q.graphql"
+# A file read now may be replaced by an earlier command of the same line
+cp "$tmp/read.graphql" "$tmp/q2.graphql"
+expect deny "cp /tmp/evil.json $tmp/q2.graphql && gh api graphql --input $tmp/q2.graphql"
+expect deny "echo hi; gh api graphql -F query=@$tmp/q2.graphql"
+expect allow "gh api graphql -F query=@$tmp/q2.graphql"
+expect allow "gh api graphql -F query=@$tmp/q2.graphql 2>&1"
 # stdin from a pipe or a file is unseen; a bare heredoc is the command's own text
 expect deny 'cat /tmp/m.json | gh api graphql --input -'
 expect deny 'gh api graphql --input - < /tmp/m.json'
