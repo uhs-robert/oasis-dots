@@ -24,6 +24,8 @@ Item {
     readonly property real help_content: root.shown_height(help_slot)
     readonly property real preview_height: root.shown_height(preview_slot)
     readonly property bool has_preview: root.preview_height > 0
+    // The help card's height, for a list a pane puts there in place of the card (PickerList.list_host).
+    readonly property real help_room: help_flick.height
 
     // A preview is pinned to the panel's top (or its right half when stacked) and the help card takes the rest, so
     // neither the focused row's text nor an open list hiding the card moves the preview.
