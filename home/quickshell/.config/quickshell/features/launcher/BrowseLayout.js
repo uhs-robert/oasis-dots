@@ -59,16 +59,31 @@ function toggled_view(view) {
     return view === "list" ? "grid" : "list";
 }
 
-// The result index a NORMAL-mode digit picks: "1" is the first, up to "9"; -1 for anything else or past the end.
-function digit_index(text, count) {
-    if (!/^[1-9]$/.test(text || "")) return -1;
-    var i = parseInt(text, 10) - 1;
-    return i < count ? i : -1;
+// The items wholly on screen, as result indices [first, end): whole rows inside the view, short of the scroll cue's
+// fade at an edge that hides more, so a faded peek row never counts. The quick-pick digits number the first nine.
+function on_screen(content_y, view_height, content_height, cell_height, item_height, fade, cols, count) {
+    var c = Math.max(1, cols);
+    if (count <= 0 || view_height <= 0 || cell_height <= 0) return { first: 0, end: 0 };
+    var edges_hide = { top: content_y > 1, bottom: content_y + view_height < content_height - 1 };
+    var top = content_y + (edges_hide.top ? fade : 0) - 0.5;
+    var bottom = content_y + view_height - (edges_hide.bottom ? fade : 0) + 0.5;
+    var first_row = Math.max(0, Math.ceil(top / cell_height));
+    var end_row = Math.floor((bottom - item_height) / cell_height) + 1;
+    if (end_row <= first_row) return { first: 0, end: 0 };
+    return { first: Math.min(count, first_row * c), end: Math.min(count, end_row * c) };
 }
 
-// The corner number a card or row shows: its quick-pick digit, or "" past the ninth.
-function hint_of(index) {
-    return index >= 0 && index < 9 ? String(index + 1) : "";
+// The result index a NORMAL-mode digit picks among the items on screen (`shown`, from on_screen): "1" is the first of
+// them, up to "9"; -1 for anything else or past the last one shown.
+function digit_index(text, shown) {
+    if (!/^[1-9]$/.test(text || "")) return -1;
+    var i = shown.first + parseInt(text, 10) - 1;
+    return i < Math.min(shown.end, shown.first + 9) ? i : -1;
+}
+
+// The corner number a card or row shows: its quick-pick digit while among the first nine on screen, else "".
+function hint_of(index, shown) {
+    return index >= shown.first && index < Math.min(shown.end, shown.first + 9) ? String(index - shown.first + 1) : "";
 }
 
 // The clipboard's type filter; binary entries are neither text nor images, so only "all" keeps them.

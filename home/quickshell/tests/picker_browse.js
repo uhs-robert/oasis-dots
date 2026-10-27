@@ -8,8 +8,8 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/BrowseLayout.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels };", context);
-const { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, on_screen, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels };", context);
+const { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, on_screen, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels } = context.api;
 
 // A 1080p body: 760 tall under the title, 720 of it under the search bar; cards 112 tall with an 8 gap.
 const body = 760, area = 720, row = 120, gap = 8;
@@ -58,11 +58,21 @@ const cases = [
   // req: PICKERS-13
   ["list rows follow the room left under the preview", () => [split(area, body, "l", 38, gap).rows, split(area, body, "off", 38, gap).rows], [4, 18]],
   // req: PICKERS-14
-  ["digits 1-9 pick the nth item", () => ["1", "5", "9"].map(d => digit_index(d, 20)), [0, 4, 8]],
+  ["at the top, the rows above the faded peek are on screen", () => on_screen(0, 2 * row + 40, 5 * row, row, 112, 20, 5, 23), { first: 0, end: 10 }],
   // req: PICKERS-14
-  ["0, letters and digits past the end pick nothing", () => [digit_index("0", 20), digit_index("j", 20), digit_index("12", 20), digit_index("4", 3), digit_index(undefined, 3)], [-1, -1, -1, -1, -1]],
+  ["scrolled, a peek row at either end is not on screen", () => on_screen(row - 20, 2 * row + 40, 5 * row, row, 112, 20, 5, 23), { first: 5, end: 15 }],
   // req: PICKERS-14
-  ["only the first nine show a number", () => [0, 8, 9, -1].map(hint_of), ["1", "9", "", ""]],
+  ["at the end the last rows count, a short last row included", () => on_screen(3 * row - 40, 2 * row + 40, 5 * row, row, 112, 20, 5, 23), { first: 15, end: 23 }],
+  // req: PICKERS-14
+  ["list rows peek too: the half row under the fade does not count", () => on_screen(0, 5 * 38 + 40, 20 * 38, 38, 34, 20, 1, 20), { first: 0, end: 5 }],
+  ["everything fits: no fades, every item is on screen", () => on_screen(0, 2 * row, 2 * row, row, 112, 0, 5, 7), { first: 0, end: 7 }],
+  ["no items, nothing on screen", () => on_screen(0, 2 * row, 0, row, 112, 0, 5, 0), { first: 0, end: 0 }],
+  // req: PICKERS-14
+  ["digits 1-9 pick the nth item on screen", () => ["1", "5", "9"].map(d => digit_index(d, { first: 10, end: 30 })), [10, 14, 18]],
+  // req: PICKERS-14
+  ["0, letters and digits past what is on screen pick nothing", () => [digit_index("0", { first: 0, end: 20 }), digit_index("j", { first: 0, end: 20 }), digit_index("12", { first: 0, end: 20 }), digit_index("4", { first: 5, end: 8 }), digit_index(undefined, { first: 0, end: 3 })], [-1, -1, -1, -1, -1]],
+  // req: PICKERS-14
+  ["only the first nine on screen show a number, counted from the top of the view", () => [10, 18, 19, 9].map(i => hint_of(i, { first: 10, end: 25 })), ["1", "9", "", ""]],
   // req: PICKERS-15
   ["f cycles all, text, images and back", () => ["all", "text", "image", "bogus"].map(cycled_filter), ["text", "image", "all", "all"]],
   // req: PICKERS-15
