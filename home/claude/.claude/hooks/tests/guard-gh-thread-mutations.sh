@@ -78,7 +78,10 @@ expect deny $'git commit -F - <<\'EOF\'\nroute gh api graphql resolveReviewThrea
 expect deny $'git commit -F - <<EOF\nroute gh api graphql resolveReviewThread through the script\nEOF'
 expect deny $'cat <<\'EOF\'\ngh api graphql resolveReviewThread\nEOF'
 expect deny 'echo "$(gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'')"'
-expect allow 'GIT_AUTHOR_NAME=x git commit -m "mention gh api graphql resolveReviewThread"'
+expect deny 'GIT_AUTHOR_NAME=x git commit -m "mention gh api graphql resolveReviewThread"'
+expect deny 'GIT_EDITOR=gh${IFS}api${IFS}graphql${IFS}-f${IFS}query=mutation\{resolveReviewThread\(input:\{\}\)\{thread\{id\}\}\} git commit --allow-empty'
+expect deny 'GH_EDITOR=gh${IFS}api${IFS}graphql${IFS}-f${IFS}query=mutation\{resolveReviewThread\(input:\{\}\)\{thread\{id\}\}\} gh pr comment 5'
+
 # Bypasses of an earlier prose exception: echo and printf are no prose, and a pipe or input feed voids it
 expect deny 'echo "gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''" | bash'
 expect deny 'echo "gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''" | sh'
