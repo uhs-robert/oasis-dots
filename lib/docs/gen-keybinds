@@ -12,9 +12,6 @@ from docgen import ROOT, GenError, cell, run_lua, splice  # noqa: E402,F401
 DOC = os.path.join(ROOT, "docs", "keybinds.md")
 DUMP_SCRIPT = os.path.join("home", "hypr", "tests", "registry_binds.lua")
 GLOBAL = "global"
-# lib/key/submap.lua binds this key in every submap to toggle which-key, with no label or action id of its own.
-WHICHKEY_TOGGLE_KEY = "SHIFT + SLASH"
-WHICHKEY_TOGGLE_LABEL = "Toggle which-key help"
 
 
 def run_dump():
@@ -32,8 +29,6 @@ def parse_dump(text):
         # The transparent no-ops (SLASH, Shift_L, Shift_R) only keep the which-key chord's key-ups from ending the submap; listed bare they would read as keys bound to nothing.
         if transparent == "transparent":
             continue
-        if key == WHICHKEY_TOGGLE_KEY and action == "-" and not label:
-            label = WHICHKEY_TOGGLE_LABEL
         rows.append((submap, key, "" if action == "-" else action, label, event))
     return rows
 
