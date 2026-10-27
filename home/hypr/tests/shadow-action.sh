@@ -20,7 +20,8 @@ set +e +o pipefail
 
 calls=$work/calls
 ipc() {
-  printf '%s\n' "$*" >>"$calls"
+  printf '[%s]' "$@" >>"$calls"
+  echo >>"$calls"
 }
 
 fail() {
@@ -51,21 +52,24 @@ expect_refused() {
   [[ ! -s $calls ]] || fail "action $*: ipc was called: $(<"$calls")"
 }
 
-expect_call "x popup open weather" popup.open weather
-expect_call "x zoom step -2" zoom.step -2
-expect_call "x notifications toggle_dnd" notifications.toggle_dnd
-expect_call "x popup open a b'c \"d\"" popup.open "a b'c \"d\""
+# The recorder brackets each ipc word, so a split or merged word shows in the expected string.
+expect_call "[x][popup][open][weather]" popup.open weather
+expect_call "[x][zoom][step][-2]" zoom.step -2
+expect_call "[x][notifications][toggle_dnd]" notifications.toggle_dnd
+expect_call "[x][popup][open][a b'c \"d\"]" popup.open "a b'c \"d\""
+expect_call "[x][popup][open][two
+lines]" popup.open $'two\nlines'
 
 expect_refused "unknown action 'no.such.id'" no.such.id
 expect_refused "needs at least 1" popup.open
 expect_refused "expects an int" zoom.step abc
+expect_refused "param 1 (name)" picker.open nonsense
 expect_refused "runs a command" delete.clear_clipboard
 expect_refused "needs a live Hyprland" window.close
 
-# The test's ipc stub records words, so one-word-ness shows only through a count.
-: >"$calls"
-action x popup.open "two words" 2>/dev/null
-[[ $(wc -l <"$calls") == 1 ]] || fail "a param with spaces split across calls"
+# Usage errors exit 2 like hypr-act, apart from the refusals' 5.
+action x 2>/dev/null
+[[ $? == 2 ]] || fail "action with no id did not exit 2"
 
 [[ $(git -C "$checkout_root" status --porcelain) == "$before" ]] || fail "the test changed the repo"
 ((failures == 0)) || exit 1
