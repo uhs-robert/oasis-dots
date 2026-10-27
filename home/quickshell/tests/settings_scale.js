@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/settings/SettingsScale.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { text_bump, pitch_extra, bump_of, lifted, fitted_bump };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { text_bump, pitch_extra, bump_of, lifted, fitted_bump, fit_zoom };", T);
 const S = T.api;
 
 const rgb = hex => ({ r: ((hex >> 16) & 255) / 255, g: ((hex >> 8) & 255) / 255, b: (hex & 255) / 255, a: 1 });
@@ -38,6 +38,11 @@ const cases = [
   ["Game Boy value: 60% of the way to text_fg", () => S.lifted(gb_dim, gb_fg, 0.6).map(v => +v.toFixed(6)), [gb_dim.r + (gb_fg.r - gb_dim.r) * 0.6, gb_dim.g + (gb_fg.g - gb_dim.g) * 0.6, gb_dim.b + (gb_fg.b - gb_dim.b) * 0.6, 1].map(v => +v.toFixed(6))],
   ["the Game Boy blend differs from both inputs", () => { const c = S.lifted(gb_dim, gb_fg, 0.5); return c[0] !== gb_dim.r && c[0] !== gb_fg.r; }, true],
   ["alpha blends too", () => S.lifted({ r: 0, g: 0, b: 0, a: 0.5 }, { r: 1, g: 1, b: 1, a: 1 }, 0.5), [0.5, 0.5, 0.5, 0.75]],
+  // req: MEDIASETTINGS-08
+  ["the media preview keeps its zoom when the pane has room", () => S.fit_zoom(2, 1000, 300), 2],
+  ["the media preview shrinks to the pane's width, below half size too", () => [S.fit_zoom(2, 300, 300), S.fit_zoom(2, 90, 300)], [1, 0.3]],
+  ["a pane with no width yet shows nothing rather than spilling", () => S.fit_zoom(2, 0, 300), 0],
+  ["nothing measured yet keeps the wanted zoom", () => S.fit_zoom(2, 500, 0), 2],
 ];
 
 let failed = 0;

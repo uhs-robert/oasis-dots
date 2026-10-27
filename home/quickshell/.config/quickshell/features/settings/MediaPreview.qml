@@ -4,6 +4,7 @@ import qs.core
 import qs.theme
 import qs.features.bar
 import qs.features.media
+import "SettingsScale.js" as SScale
 
 // Settings > Media's preview: the bar's own MediaWell on a patch of island, enlarged, with the current media settings.
 // It shows the live player when one plays or is paused on a track, else a MediaSample. The right side is picked as
@@ -28,7 +29,7 @@ ColumnLayout {
     readonly property string forced_right_side: MediaSettings.module_position_only(root.island_style, Style.bar_lualine) ? "position" : ""
     readonly property real pad: Math.round(root.bar_height * 0.3)
     // Shrinks below `zoom` when the enlarged well would not fit the pane.
-    readonly property real fit_zoom: Math.max(0.5, Math.min(root.zoom, root.width / Math.max(1, island.width)))
+    readonly property real fit_zoom: SScale.fit_zoom(root.zoom, root.width, island.width)
 
     spacing: 4
 
