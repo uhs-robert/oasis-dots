@@ -21,7 +21,8 @@ var list = [
     { id: "mouse", group: "Input", label: "Mouse & touchpad", glyph: "󰍽", keywords: "pointer sensitivity speed natural scroll tap click disable while typing focus follows mouse keyboard cursor hjkl wasd wl-kbptr", source: "sections/MouseSection.qml" },
     { id: "audio", group: "Sound", label: "Theme audio", glyph: "󰕾", keywords: "sound music chiptune notification cursor confirm cancel volume music effects pack", source: "sections/AudioSection.qml" },
     { id: "lock", group: "Lock & Login", label: "Lock screen", glyph: "󰌾", keywords: "skin tint backdrop music", source: "sections/LockSection.qml" },
-    { id: "login", group: "Lock & Login", label: "Login screen", glyph: "󰍂", keywords: "greeter greetd session sync", source: "sections/LoginSection.qml" }
+    { id: "login", group: "Lock & Login", label: "Login screen", glyph: "󰍂", keywords: "greeter greetd session sync", source: "sections/LoginSection.qml" },
+    { id: "developer", group: "Developer", label: "Developer", glyph: "󰅩", keywords: "reviewer code review coderabbit codex claude gate merge local", source: "sections/DeveloperSection.qml" }
 ];
 
 function index_of(id) {

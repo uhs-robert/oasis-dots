@@ -16,6 +16,7 @@ The section list, the pane and the help card scroll when they outgrow the popup 
 | Input        | Typing, Keyboard, Mouse & touchpad |
 | Sound        | Theme audio                        |
 | Lock & Login | Lock screen, Login screen          |
+| Developer    | Developer                          |
 
 ## Clock settings
 
@@ -38,6 +39,10 @@ Settings > Input > Voice sets the "Cortana" listener (on or off now, and whether
 Settings > Input > Keyboard and Mouse & touchpad set the XKB layout and variant, key repeat, pointer speed, focus follows mouse, natural scrolling, tap to click and disable while typing, plus Pointer keys (HJKL, WASD or both), which picks the keys that move the pointer in the Hyprland Cursor submap and reloads Hyprland. They save to `hypr/input.json` with the which-key delay, win over the machine profile's `input` values, and apply live through `config/input` in the Hyprland config. A row you have not changed shows Hyprland's current value. A saved `caps_escape` from an older version is ignored.
 
 Keyboard also lists the remaps keyd applies below Hyprland, such as Caps Lock and Left Ctrl as Escape on tap and Ctrl on hold, and Tab as the vim layer on hold. They are read-only rows built at runtime from `/etc/keyd/default.conf` (installed from `system/etc/keyd/default.conf`), so they follow edits to it; Enter on the Tab row lists the vim layer's keys. They show only while the `keyd` service is active and the file is readable. To change a remap, edit that file and run `sudo keyd reload`; XKB options such as `caps:escape` do nothing for keys keyd has already remapped.
+
+## Developer settings
+
+Settings > Developer lists the code reviewers, one row each with the columns Reviewer, Installed, Local review and Merge gate. The list is the built-in `reviewers.json` (`home/claude/.claude/skills/orchestrator/`) merged with the user's `~/.config/code-reviewers/reviewers.json`; a per-repo `.claude/reviewers.json` is not shown. The hint under the table names both files. Installed is whether the reviewer's `local.binary` is on `PATH`, checked each time the section opens. Local review (off, public, all) is which repos the pre-PR review runs on; a reviewer whose binary is missing shows `off` and cannot be changed, while its merge gate (auto, always, never) stays editable, since the gate is GitHub-side. Keys are the other sections' (`j`/`k` move, `l`/Space/Enter step forward, Shift+`H`/`L` either way) plus `w`/`b` or Left/Right to switch between the two editable columns. Only a field you change is saved, to `developer.json` in the Quickshell state folder; the other field keeps the value from the reviewer files, which `reviewers.sh` (the shared resolver) layers under the repo file.
 
 ## Sessions settings
 
@@ -70,6 +75,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/media.json`                   | Media module choices, cava line                  |
 | `quickshell/osd.json`                     | The OSD's screen edge                            |
 | `quickshell/typing.json`                  | Start mode for pickers and search popups         |
+| `quickshell/developer.json`               | Per-reviewer local review scope and merge gate, read by `reviewers.sh` |
 | `voxcmd/voice.env`                        | Voice choices (listener sensitivity, music ducking, type-mode pause), read by voxcmd, voxcmd-wake and voxtype-duck |
 | `hypr/monitors.json`                      | Display settings, read by Hyprland               |
 | `hypr/wallpaper.json`                     | Wallpaper rotation settings and per-monitor pins, read by the rotator |
