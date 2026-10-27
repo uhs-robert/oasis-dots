@@ -343,6 +343,46 @@ out=$("$skill/run-local-reviews.sh" main "$repo/reviews" 2>/dev/null)
 check "reviewers writing to an unignored in-tree outdir do not dirty each other's tree" 'grep -q "^tree_a: $repo/reviews/tree_a-review.md$" <<<"$out" && grep -q "^tree_b: $repo/reviews/tree_b-review.md$" <<<"$out" && [ -e "$repo/reviews/tree_a.dat" ]'
 rm -rf "$repo/reviews"
 reset
+echo '{"reviewers":{"codex":{"local":"all"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
+"$skill/run-local-reviews.sh" main "$repo/reviews" >/dev/null 2>&1
+out=$("$skill/run-local-reviews.sh" main "$repo/reviews" 2>/dev/null)
+check "a rerun with an in-tree outdir is not blocked by the earlier run's artifacts" '[ "$out" = "codex: $repo/reviews/codex-review.md" ]'
+rm -rf "$repo/reviews"
+reset
+mkdir -p "$root/ro"
+chmod 555 "$root/ro"
+out=$("$skill/run-local-reviews.sh" main "$root/ro" 2>/dev/null)
+rc=$?
+chmod 755 "$root/ro"
+check "a failed copy into the outdir exits 1 and prints no paths" '[ $rc -eq 1 ] && [ -z "$out" ]'
+reset
+cat >"$root/custom/stubborn.sh" <<S
+#!/usr/bin/env bash
+trap '' TERM
+echo \$\$ >"$root/custom/stubborn.pid"
+sleep 60 &
+wait
+S
+chmod +x "$root/custom/stubborn.sh"
+echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
+echo "{\"reviewers\":[{\"name\":\"stubborn\",\"local\":{\"command\":\"$root/custom/stubborn.sh\",\"default\":\"all\"}}]}" >"$REVIEWERS_USER_FILE"
+rm -f "$root/custom/stubborn.pid"
+"$skill/run-local-reviews.sh" main "$root/out" >/dev/null 2>&1 </dev/null &
+runner=$!
+for _ in $(seq 1 50); do
+  [ -s "$root/custom/stubborn.pid" ] && break
+  sleep 0.1
+done
+sleep 0.3
+stubborn_pid=$(<"$root/custom/stubborn.pid")
+kill -TERM "$runner"
+wait "$runner" 2>/dev/null
+sleep 0.3
+alive=0
+kill -0 "$stubborn_pid" 2>/dev/null && alive=1
+kill -KILL "$stubborn_pid" 2>/dev/null
+check "a reviewer that ignores TERM is killed after the grace period" '[ $alive -eq 0 ]'
+reset
 cat >"$root/kill_spy.sh" <<S
 kill() { echo "\$*" >>"$root/kills"; builtin kill "\$@"; }
 S

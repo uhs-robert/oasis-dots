@@ -104,7 +104,7 @@ run_attempt() {
 }
 
 for n in $(seq 1 "$max_attempts"); do
-  dir="$outdir/attempt-$n"
+  dir="$outdir/codex-attempt-$n"
   echo "codex review: attempt $n/$max_attempts started" >&2
   if run_attempt "$dir"; then
     cp "$dir/review.md" "$outdir/codex-review.md" || exit 2
