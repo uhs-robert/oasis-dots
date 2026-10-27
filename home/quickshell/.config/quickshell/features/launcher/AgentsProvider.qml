@@ -81,8 +81,9 @@ PickerProvider {
             property int pane_columns: 0
             property bool failed: false
             readonly property real inner_width: pane.width - 20
-            // The mono font's advance per pixel of size: advances scale with the size, so one measure fits any width.
-            readonly property real advance_ratio: reference_metrics.advanceWidth("M") / reference_metrics.font.pixelSize
+            // The mono font's advance per pixel of size: advances scale with the size, so one measure fits any width. Box
+            // drawing is measured too, since a mono font without it falls back to a wider one and a TUI's full-width frame overflows.
+            readonly property real advance_ratio: Math.max(reference_metrics.advanceWidth("M"), reference_metrics.advanceWidth("─")) / reference_metrics.font.pixelSize
             // Small enough that the pane's full width fits, with 2% slack for hinting; capped so a narrow pane in a big preview stays text-sized.
             readonly property int font_px: pane.pane_columns > 0 && pane.advance_ratio > 0 ? Math.max(6, Math.min(Style.fs(1), Math.floor(pane.inner_width / (pane.pane_columns * pane.advance_ratio) * 0.98))) : Style.fs(-3)
             // A fixed pitch on the text below, so the line count that fits is exact and no half line shows at the top.
