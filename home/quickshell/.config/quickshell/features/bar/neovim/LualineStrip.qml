@@ -122,7 +122,7 @@ Item {
             id: slot_popup
             popup_name: "media"
             module: cava_slot
-            enabled: cava_slot.shown && Popups.hover_popups
+            enabled: cava_slot.shown
         }
 
         // The Media module's own helper can pin the popup this one hover-opened, and this one's pending close would then shut it. That shows as the owner dropping with the popup still open; a close or another popup's open drops it too but changes open_name in the same call, so look after the call.

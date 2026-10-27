@@ -267,11 +267,11 @@ t("disabled while pending (nothing to show) drops the open and never opens", () 
 // The QML wiring has no compositor test, so pin which modules opt in and how the base routes a click.
 const bar_dir = path.join(__dirname, "../.config/quickshell/features/bar/modules");
 const module_source = name => fs.readFileSync(path.join(bar_dir, name + ".qml"), "utf8");
-t("the click-to-open modules opt in; Start, Tray and Media do not", () => {
-  for (const m of ["Battery", "Bluetooth", "Network", "Volume", "Updates", "System", "Weather", "Keeptabs", "Notifications"]) {
+t("the click-to-open modules and Media opt in; Start and Tray do not", () => {
+  for (const m of ["Battery", "Bluetooth", "Network", "Volume", "Updates", "System", "Weather", "Keeptabs", "Notifications", "Media"]) {
     assert.match(module_source(m), /^\s+hover_popup: true$/m, m);
   }
-  for (const m of ["StartButton", "Tray", "Media"]) assert.doesNotMatch(module_source(m), /hover_popup: true/, m);
+  for (const m of ["StartButton", "Tray"]) assert.doesNotMatch(module_source(m), /hover_popup: true/, m);
 });
 t("Notifications hover-opens only with notifications", () => {
   assert.match(module_source("Notifications"), /hover_ready: NotificationState\.history\.length > 0/);
@@ -281,7 +281,7 @@ t("the base routes toggle_popup through the helper and drops the tooltip when ho
   assert.match(base, /if \(root\.hover_active\) hover\.click\(\);/);
   assert.match(base, /hover_handler\.hovered && !root\.hover_active\) Tooltip\.show/);
   assert.match(base, /onHover_activeChanged: root\.sync_tooltip\(\)/);
-  assert.match(base, /&& Popups\.hover_popups$/m);
+  assert.doesNotMatch(base, /hover_popups/);
 });
 
 t("pointer arrives while another popup is open: the open starts once nothing is open", () => {
@@ -311,8 +311,20 @@ t("same-name modules: only the hover-opening helper reads the popup as its own",
   assert.match(src, /if \(r\.mode === "pinned"\) Popups\.hover_owner = null;/);
   assert.match(fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/Popups.qml"), "utf8"), /function close\(\) \{\n\s+hover_owner = null;/);
 });
-t("Media's helper honours the global hover switch", () => {
-  assert.match(module_source("Media"), /enabled: root\.shown && Popups\.hover_popups/);
+t("Media uses the base helper: no private HoverPopup, and a click goes through toggle_popup", () => {
+  const media = module_source("Media");
+  assert.doesNotMatch(media, /HoverPopup/);
+  assert.doesNotMatch(media, /hover_popup\.click/);
+  assert.match(media, /else root\.toggle_popup\(\);/);
+});
+t("the hover switch and the per-module helper pointer are gone", () => {
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+  const features = path.join(__dirname, "../.config/quickshell/features");
+  for (const f of walk(features).filter(f => /\.(qml|js)$/.test(f))) {
+    const src = fs.readFileSync(f, "utf8");
+    assert.doesNotMatch(src, /hover_popups/, f);
+    assert.doesNotMatch(src, /popup_helper/, f);
+  }
 });
 
 // Piece B: two adjacent hover zones (two lualine cells, or a cell and the clock) each own a helper over the one shared
@@ -434,8 +446,6 @@ t("a lualine cell lends its whole hover zone to the module and routes its click 
   assert.match(cell, /item\.cell_hovered = Qt\.binding\(\(\) => cell_hover\.hovered\)/);
   assert.match(cell, /if \(it\.toggle_popup\) it\.toggle_popup\(\);\n\s+else if \(it\.click_popup\) it\.click_popup\(\);/);
   assert.match(module_source("BarModule"), /readonly property bool hovered: hover_handler\.hovered \|\| root\.cell_hovered/);
-  assert.match(module_source("BarModule"), /if \(root\.popup_helper\) root\.popup_helper\.click\(\);/);
-  assert.match(module_source("Media"), /popup_helper: hover_popup/);
 });
 t("the clock opens its popup on hover over the entry and pins on every click path", () => {
   const clock = module_source("Clock");
@@ -565,14 +575,14 @@ t("755c90cbc's shared handler pins on every close and on a click-open of another
   other.open_other();
   assert.notStrictEqual(other.h.s.mode, "idle");
 });
-t("HoverPopup has no ownership handler; the slot alone watches it, and follows the global switch", () => {
+t("HoverPopup has no ownership handler; the slot alone watches it", () => {
   const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
   assert.doesNotMatch(src, /hover_ownerChanged/);
   const strip = bar_source("neovim/LualineStrip.qml");
   assert.match(strip, /function onHover_ownerChanged\(\) \{\n\s+if \(slot_popup\.mode === "hover_open"\) Qt\.callLater\(cava_slot\.take_pin\);/);
   assert.match(strip, /!Popups\.hover_owner && slot_popup\.open_here\) Popups\.popup_pressed\(slot_popup\.popup_name\)/);
   assert.match(strip, /slot_popup\.click\(\);\n\s+\/\/[^\n]*\n\s+Popups\.popup_pressed\(slot_popup\.popup_name\);/);
-  assert.match(strip, /enabled: cava_slot\.shown && Popups\.hover_popups/);
+  assert.match(strip, /enabled: cava_slot\.shown$/m);
 });
 
 let failed = 0;
