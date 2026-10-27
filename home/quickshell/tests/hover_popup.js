@@ -450,7 +450,7 @@ t("the clock opens its popup on hover over the entry and pins on every click pat
 t("the lualine cava slot hovers and pins the media popup, and only while shown", () => {
   const strip = bar_source("neovim/LualineStrip.qml");
   assert.match(strip, /HoverPopup \{\n\s+id: slot_popup\n\s+popup_name: "media"\n\s+module: cava_slot\n\s+enabled: cava_slot\.shown/);
-  assert.match(strip, /onClicked: slot_popup\.click\(\)/);
+  assert.match(strip, /onClicked: \{\n\s+slot_popup\.click\(\);/);
 });
 
 // Two helpers on one popup name (the lualine cava slot "s" and the Media module "m") around a Popups model that keeps
@@ -494,7 +494,12 @@ function twins(rule) {
   };
   w.hover_open = n => { w.pointer = n; apply(n, P.inside_changed("idle", true, true)); w.fire_open(n); };
   w.move = n => { const was = w.pointer; w.pointer = n; if (was) apply(was, P.inside_changed(w.h[was].mode, false, false)); if (n) apply(n, P.inside_changed(w.h[n].mode, true, false)); settle(); };
-  w.click = n => { apply(n, P.clicked(w.h[n].mode, open_here(n))); settle(); };
+  w.click = n => {
+    apply(n, P.clicked(w.h[n].mode, open_here(n)));
+    // The slot's click handler tells every helper on its popup name, like a press inside the popup.
+    if (rule === "slot" && n === "s") for (const o of ["s", "m"]) apply(o, P.popup_pressed(w.h[o].mode));
+    settle();
+  };
   w.fire_open = n => { const x = w.h[n]; if (x.open_timer) { x.open_timer = false; apply(n, P.open_elapsed(x.mode, inside(n), w.open_name === "")); settle(); } };
   w.fire_close = n => { const x = w.h[n]; if (x.close_timer) { x.close_timer = false; apply(n, P.close_elapsed(x.mode, inside(n))); settle(); } };
   // Escape, an outside click and a toggle all end in Popups.close().
@@ -519,6 +524,20 @@ t("without any hand-over the slot's grace closes the pinned popup (the bug)", ()
   w.click("m");
   w.fire_close("s");
   assert.strictEqual(w.open_name, "");
+});
+t("a click on the cava slot pins the popup the Media module hover-opened; Media's close grace does not shut it", () => {
+  const w = twins("slot");
+  w.hover_open("m");
+  w.move("s");
+  w.click("s");
+  w.fire_close("m");
+  assert.deepStrictEqual(media_open_and_pinned(w), ["media", "pinned", "pinned"]);
+  const bug = twins("none");
+  bug.hover_open("m");
+  bug.move("s");
+  bug.click("s");
+  bug.fire_close("m");
+  assert.strictEqual(bug.open_name, "");
 });
 t("a hover-opened popup closed from outside goes back to idle and hover-reopens at once", () => {
   {
@@ -552,6 +571,7 @@ t("HoverPopup has no ownership handler; the slot alone watches it, and follows t
   const strip = bar_source("neovim/LualineStrip.qml");
   assert.match(strip, /function onHover_ownerChanged\(\) \{\n\s+if \(slot_popup\.mode === "hover_open"\) Qt\.callLater\(cava_slot\.take_pin\);/);
   assert.match(strip, /!Popups\.hover_owner && slot_popup\.open_here\) Popups\.popup_pressed\(slot_popup\.popup_name\)/);
+  assert.match(strip, /slot_popup\.click\(\);\n\s+\/\/[^\n]*\n\s+Popups\.popup_pressed\(slot_popup\.popup_name\);/);
   assert.match(strip, /enabled: cava_slot\.shown && Popups\.hover_popups/);
 });
 

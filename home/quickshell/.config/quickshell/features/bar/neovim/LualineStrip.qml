@@ -139,7 +139,11 @@ Item {
 
         MouseArea {
             anchors.fill: parent
-            onClicked: slot_popup.click()
+            onClicked: {
+                slot_popup.click();
+                // A click pins, but Media's helper may have hover-opened this popup and would close it after its grace.
+                Popups.popup_pressed(slot_popup.popup_name);
+            }
         }
     }
 
