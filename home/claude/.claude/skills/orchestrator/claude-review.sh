@@ -32,17 +32,21 @@ fi
 prompt='Review the diff on stdin for correctness bugs, regressions, missed requirements, unrelated changes, needless complexity and weak tests. The repository is the current directory; use Read, Grep and Glob to check callers and context. Report findings ranked by severity, each with file:line, a concrete failure scenario, confidence (confirmed or plausible) and a suggested fix. Do not edit anything. If you find nothing, say so.'
 
 # No --bare: it reads only ANTHROPIC_API_KEY, so with OAuth login it prints "Not logged in" and still exits 0.
+# --restricted ignores the reviewed tree's settings and hooks and confines file tools to the working dir;
+# --strict-mcp-config with no --mcp-config loads no MCP servers (the tree could define some).
 model_args=()
 [ -z "${REVIEW_MODEL:-}" ] || model_args=(--model "$REVIEW_MODEL")
-nice timeout "$timeout_s" claude -p --tools "Read,Grep,Glob" --permission-mode dontAsk \
+nice timeout "$timeout_s" claude -p --restricted --strict-mcp-config --tools "Read,Grep,Glob" --permission-mode dontAsk \
   --permission-prompts none --no-session-persistence "${model_args[@]}" "$prompt" \
   <"$diff_file" >"$out" 2>>"$log"
 code=$?
-if [ "$code" -ne 0 ] || [ ! -s "$out" ] || grep -qi 'not logged in' "$out"; then
+# Only a short output counts as the login notice: a real review may quote the phrase.
+not_logged_in() { [ "$(wc -l <"$out")" -le 1 ] && grep -qi 'not logged in' "$out"; }
+if [ "$code" -ne 0 ] || [ ! -s "$out" ] || not_logged_in; then
   reason="exit $code"
   if [ ! -s "$out" ]; then
     reason="$reason, empty output"
-  elif grep -qi 'not logged in' "$out"; then
+  elif not_logged_in; then
     reason="$reason, not logged in"
   fi
   detail=$(tail -n 1 "$log" 2>/dev/null)

@@ -7,31 +7,16 @@
 #   `<outdir>/<name>-skipped.txt`).
 
 review_lib_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-visibility_ttl_s=${REVIEW_VISIBILITY_TTL_S:-86400}
 
-# Repo visibility (lowercase) on stdout. A failed lookup returns 1 so `public` scope fails closed.
+# Repo visibility (lowercase) on stdout, looked up live on every call: a cached "public" would keep authorising uploads
+# after the repo went private. A failed lookup returns 1 so `public` scope fails closed.
 review_repo_visibility() {
-  local cache_dir key file now mtime vis
-  cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}/code-reviewers
-  key=$(git remote get-url origin 2>/dev/null | cksum | cut -d' ' -f1)
-  file=$cache_dir/visibility-${key:-none}
-  now=$(date +%s)
-  if [ -n "$key" ] && [ -s "$file" ]; then
-    mtime=$(stat -c %Y "$file" 2>/dev/null || echo 0)
-    if [ $((now - mtime)) -lt "$visibility_ttl_s" ]; then
-      cat "$file"
-      return 0
-    fi
-  fi
+  local vis
   vis=$(gh repo view --json visibility --jq .visibility 2>/dev/null | tr '[:upper:]' '[:lower:]')
   case $vis in
-  public | private | internal) ;;
+  public | private | internal) printf '%s\n' "$vis" ;;
   *) return 1 ;;
   esac
-  if [ -n "$key" ] && mkdir -p "$cache_dir" 2>/dev/null; then
-    printf '%s\n' "$vis" >"$file" 2>/dev/null
-  fi
-  printf '%s\n' "$vis"
 }
 
 # The reviewer's scope: $REVIEW_SCOPE (set by the runner), else the resolved registry, else $2.
