@@ -275,18 +275,22 @@ infer_connected() {
 # Sets gating to the reviewers this run waits for: gate always, or auto with the reviewer installed on the repo.
 # A reviewer with no github signal this script reads cannot be waited for, so it never gates.
 resolve_gates() {
-  local name gate app_slug
+  local name gate signal app_slug
   reviewers_json=$(bash "$reviewers_sh" list "$main_dir") || die "cannot resolve the reviewers with $reviewers_sh"
   gating=()
-  while IFS=$'\t' read -r name gate app_slug; do
+  while IFS=$'\t' read -r name gate signal app_slug; do
+    if [[ $signal != summary_comment && $signal != check_run ]]; then
+      # Fail closed: a reviewer the owner said must be waited for cannot be skipped because this script cannot read it.
+      [[ $gate != always ]] || die "reviewer $name has gate always but its signal \"$signal\" is not one merge-prs reads"
+      continue
+    fi
     case $gate in
     never) continue ;;
     always) ;;
     *) infer_connected "$name" "$app_slug" || continue ;;
     esac
     gating+=("$name")
-  done < <(jq -r '.[] | select(.github.signal == "summary_comment" or .github.signal == "check_run")
-    | [.name, .gate, (.github.app_slug // "")] | @tsv' <<<"$reviewers_json")
+  done < <(jq -r '.[] | select(.github != null) | [.name, .gate, (.github.signal // "-"), (.github.app_slug // "")] | @tsv' <<<"$reviewers_json")
 }
 
 comments_json=""
@@ -340,7 +344,7 @@ epoch() {
 # seconds for a review that is still coming. A cancelled run is a superseded one, so it is Pending until start_s passes.
 eval_check_run() {
   local name=$1 number=$2 head=$3 start_s settle_s now head_epoch rname rstatus rconc rstart rdone run="" run_start=""
-  local covered label age sort_key
+  local covered covers_head settled label age sort_key
   local -a check_names=()
   label=$(rjq "$name" .label)
   start_s=${MERGE_PRS_REVIEW_START:-$(rjq "$name" '.github.start_s // 300')}
@@ -380,20 +384,36 @@ eval_check_run() {
     fi
     return
   fi
-  if [[ " $(rjq "$name" '(.github.done // []) | join(" ")') " == *" $rconc "* ]]; then
+  if [[ -z $rdone ]]; then
+    cr_state=Failed cr_msg="the $label check is completed ($rconc) but records no completion time"
+    return
+  fi
+  # A cancelled or stale run can still have been followed by a review of the head, so it gets the done signal too.
+  if [[ " $(rjq "$name" '(.github.done // []) | join(" ")') " == *" $rconc "* || $rconc == cancelled || $rconc == stale ]]; then
     if reviewed_head "$number" "$name" "$head"; then
       cr_state=Done
       return
     fi
     covered=$(summary_covered_commit)
-    if [[ -n $covered && $head != "$covered"* && $covered != "$head"* ]]; then
+    covers_head=false
+    [[ -z $covered || ($head != "$covered"* && $covered != "$head"*) ]] || covers_head=true
+    settled=false
+    ((now < $(epoch "$rdone") + settle_s)) || settled=true
+    if [[ $rconc == cancelled || $rconc == stale ]]; then
+      if $covers_head && $settled; then
+        cr_state=Done
+        return
+      fi
+    elif [[ -n $covered ]] && ! $covers_head; then
       cr_state=Running cr_msg="$label's summary covers ${covered:0:7}, not the head ${head:0:7}"
-    elif ((now < $(epoch "$rdone") + settle_s)); then
-      cr_state=Running cr_msg="the $label check finished; waiting ${settle_s}s for a review that may still be coming"
-    else
+      return
+    elif $settled; then
       cr_state=Done
+      return
+    else
+      cr_state=Running cr_msg="the $label check finished; waiting ${settle_s}s for a review that may still be coming"
+      return
     fi
-    return
   fi
   if [[ " $(rjq "$name" '(.github.unavailable_conclusions // []) | join(" ")') " == *" $rconc "* ]]; then
     cr_state=Unavailable cr_msg="its check concluded $rconc"
@@ -437,6 +457,7 @@ gate_check_run() {
         echo "merge-prs: #$number's $label review failed ($cr_msg); requesting another and waiting up to ${wait_s}s" >&2
         gh pr comment "$number" --body "$request" >/dev/null || die "cannot request a $label review on #$number"
         requested=true
+        continue
       else
         break
       fi
