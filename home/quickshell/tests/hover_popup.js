@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPolicy.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here, swap_ok, swap_source };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here, swap_ok, swap_source, pin_grabs_keyboard, close_delay };", T);
 const P = T.api;
 
 // A model of the world around the helper: the pointer, which popup is open, and the two timers.
@@ -877,7 +877,7 @@ t("a swap that cleared the owner before moving it would show the popup ownerless
 t("HoverPopup's swap sets the owner before Popups.open(..., swap) and never closes or clears the owner", () => {
   const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
   const branch = src.slice(src.indexOf('r.action === "swap"'), src.indexOf('r.action === "close"'));
-  assert.match(branch, /Popups\.hover_owner = root;[\s\S]*Popups\.open\([^\n]*, "", false, true\);/);
+  assert.match(branch, /Popups\.hover_owner = root;[\s\S]*Popups\.open\([^\n]*, "", false, true, true\);/);
   assert.ok(branch.indexOf("Popups.hover_owner = root;") < branch.indexOf("Popups.open("), branch);
   assert.doesNotMatch(branch, /Popups\.close\(|hover_owner = null/);
   assert.match(src, /root\.hover_owner !== root && root\.hover_owner\.mode === "hover_open" && root\.hover_owner\.open_here\n\s+&& !!root\.module && Popups\.open_screen_name === root\.module\.screen_name\n\s+&& \(Popups\.open_name !== root\.popup_name \|\| Popups\.open_anchor === root\.module\.island\)/);
@@ -946,6 +946,82 @@ t("no style has its own swap transition: nothing of the styled swap is left", ()
   assert.ok(!fs.existsSync(path.join(dir, "features/popups/frames/SwapFx.qml")));
   assert.doesNotMatch(read("theme/transitions/Kinds.js"), /swap_/);
   for (const f of ["TextureFx", "CoverFx"]) assert.doesNotMatch(read("theme/transitions/" + f + ".qml"), /stop_at|time_scale/, f);
+});
+
+t("pinning a hover-opened popup asks for the keyboard, so Escape closes it before any click inside", () => {
+  assert.strictEqual(P.pin_grabs_keyboard("hover_open", "pinned", true), true);
+  assert.strictEqual(P.pin_grabs_keyboard("hover_open", "pinned", false), false);
+  for (const from of ["idle", "pending", "pinned", "swapping"]) assert.strictEqual(P.pin_grabs_keyboard(from, "pinned", true), false, from);
+  const hover = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  assert.match(hover, /if \(Policy\.pin_grabs_keyboard\(from_mode, r\.mode, root\.open_here\)\) Popups\.grab_keyboard = true;/);
+});
+
+t("only a HoverPopup's own open keeps hover_owner; key, IPC, walk and back opens clear it", () => {
+  const dir = path.join(__dirname, "../.config/quickshell/features/popups/");
+  const popups = fs.readFileSync(dir + "Popups.qml", "utf8");
+  const hover = fs.readFileSync(dir + "HoverPopup.qml", "utf8");
+  assert.match(popups, /function open\(name, anchor_item, color, screen_name, back_to, hands_off, swap, keep_owner\)/);
+  assert.match(popups, /open_name = name;\n\s+if \(!keep_owner\) root\.hover_owner = null;/);
+  const open_on = popups.slice(popups.indexOf("function open_on("), popups.indexOf("function focus_open("));
+  assert.match(open_on, /open_name = name;\n\s+root\.hover_owner = null;/);
+  const calls = hover.match(/Popups\.open\([^\n]*\);/g);
+  assert.strictEqual(calls.length, 2);
+  for (const c of calls) assert.match(c, /, true\);$/, c);
+});
+
+t("leaving a module over the bar waits the long grace; leaving the bar or settling do not", () => {
+  assert.strictEqual(P.close_delay("hover_open", true, 250, 900, 600), 900);
+  assert.strictEqual(P.close_delay("hover_open", false, 250, 900, 600), 250);
+  assert.strictEqual(P.close_delay("settling", true, 250, 900, 600), 600);
+  assert.strictEqual(P.close_delay("hover_open", true, 250, 100, 600), 250);
+  const dir = path.join(__dirname, "../.config/quickshell/features/");
+  const hover = fs.readFileSync(dir + "popups/HoverPopup.qml", "utf8");
+  assert.match(hover, /Policy\.close_delay\(r\.mode, root\.over_bar, /);
+  assert.match(hover, /onOver_barChanged: if \(!root\.over_bar && root\._mode === "hover_open" && close_timer\.running\) \{\s+close_timer\.interval = root\.close_grace;\s+close_timer\.restart\(\);/);
+  assert.match(fs.readFileSync(dir + "bar/Bar.qml", "utf8"), /HoverHandler \{\s+onHoveredChanged: Popups\.set_bar_hover\(root\.screen_name, hovered\)/);
+});
+
+t("a key or IPC open of the popup already hover-open pins its owner, since no open_name change tells it", () => {
+  const dir = path.join(__dirname, "../.config/quickshell/features/popups/");
+  const popups = fs.readFileSync(dir + "Popups.qml", "utf8");
+  const hover = fs.readFileSync(dir + "HoverPopup.qml", "utf8");
+  assert.match(popups, /const reopened_owner = name === open_name \? root\.hover_owner : null;/);
+  assert.match(popups, /if \(!keep_owner && reopened_owner\) reopened_owner\.pin\(\);/);
+  assert.match(hover, /function pin\(\) \{\n\s+root\.apply\(Policy\.popup_pressed\(root\._mode\)\);/);
+  // pin() runs after open() resets grab_keyboard: its grab is the only keyboard a plain (IPC) open of the popup gets.
+  const open = popups.slice(popups.indexOf("function open("), popups.indexOf("function open_with_keyboard("));
+  assert.ok(open.indexOf("reopened_owner.pin()") > open.lastIndexOf("grab_keyboard = false"));
+  // A hover-open popup pinned that way is pinned, owner dropped, keyboard allowed.
+  assert.deepStrictEqual(Object.assign({}, P.popup_pressed("hover_open")), { mode: "pinned", open_timer: "stop", close_timer: "stop", action: "none" });
+});
+t("the pin grab reads the mode before apply overwrites it", () => {
+  const hover = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  const apply = hover.slice(hover.indexOf("function apply(r)"));
+  const read = apply.indexOf("const from_mode = root._mode;");
+  assert.ok(read !== -1 && read < apply.indexOf("root._mode = r.mode;"));
+  assert.ok(apply.indexOf("root._mode = r.mode;") < apply.indexOf("Policy.pin_grabs_keyboard(from_mode"));
+});
+t("a bar the pointer left for another bar does not clear the other's hover", () => {
+  const popups = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/Popups.qml"), "utf8");
+  const fn = popups.match(/function set_bar_hover\(screen_name, hovered\) \{[\s\S]*?\n    \}\n/)[0];
+  const root = { bar_hover_screen: "" };
+  const set = vm.runInNewContext("(root) => (" + fn.replace("function set_bar_hover", "function") + ")", {})(root);
+  set("DP-1", true);
+  set("DP-2", true);
+  set("DP-1", false);
+  assert.strictEqual(root.bar_hover_screen, "DP-2");
+  set("DP-2", false);
+  assert.strictEqual(root.bar_hover_screen, "");
+  set("DP-1", true);
+  set("DP-1", false);
+  assert.strictEqual(root.bar_hover_screen, "");
+});
+t("a destroyed bar clears its bar hover; the handler sits after the property block", () => {
+  const bar = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/Bar.qml"), "utf8");
+  assert.match(bar, /Component\.onDestruction: \{[^}]*Popups\.set_bar_hover\(root\.screen_name, false\);/);
+  const handler = bar.indexOf("onHoveredChanged: Popups.set_bar_hover");
+  assert.ok(handler > bar.indexOf("readonly property real lualine_end"));
+  assert.ok(handler < bar.indexOf("Component {\n        id: strip_band"));
 });
 
 let failed = 0;

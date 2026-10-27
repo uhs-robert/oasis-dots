@@ -123,6 +123,10 @@ Item {
     readonly property real lualine_start: root.frame ? root.frame.start : 0
     readonly property real lualine_end: root.frame ? root.width - root.frame.end : root.width
 
+    HoverHandler {
+        onHoveredChanged: Popups.set_bar_hover(root.screen_name, hovered)
+    }
+
     Component {
         id: strip_band
         StripBackground {
@@ -458,5 +462,9 @@ Item {
         root.popups_ready = true;
         sync_popups();
     }
-    Component.onDestruction: Popups.unregister_screen(root.screen_name)
+    Component.onDestruction: {
+        // A destroyed bar (monitor unplugged under the pointer) sends no hover end.
+        Popups.set_bar_hover(root.screen_name, false);
+        Popups.unregister_screen(root.screen_name);
+    }
 }

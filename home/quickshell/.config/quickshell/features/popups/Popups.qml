@@ -32,7 +32,7 @@ Singleton {
     // The popup the pointer is over right now (Popup.qml reports it), so a module's hover helper can tell the pointer moving onto its popup from leaving.
     property string hover_name: ""
     // The HoverPopup that hover-opened the open popup; null when nothing did or once it is pinned. Two modules can share a popup name (system:cpu and system:memory), so only this one reads the open as its own.
-    // A sibling reads an open popup with no owner as an outside open and pins, so close() clears it only after open_name has moved, and a HoverPopup's pinned open only after Popups.open(). Popups.open* from a key or IPC leave it alone.
+    // A sibling reads an open popup with no owner as an outside open and pins, so close() clears it only after open_name has moved, and a HoverPopup's pinned open only after Popups.open(). Every other open (key, IPC, walk, back) clears it too, or the stale owner would make the module of a key-opened popup read it as not its own.
     property var hover_owner: null
     // A hover swap in flight (HoverPopup, `swap`): { name, to, screen_name, extent }, set by open() before open_name
     // moves and cleared once the outgoing window `name` hides. The outgoing popup fades instead of folding up and the
@@ -56,6 +56,13 @@ Singleton {
     function set_popup_hover(name, hovered) {
         if (hovered) root.hover_name = name;
         else if (root.hover_name === name) root.hover_name = "";
+    }
+
+    // The screen whose bar the pointer is over, anywhere on it (Bar reports it), so a hover helper can tell the pointer crossing the gap to the next module from leaving the bar.
+    property string bar_hover_screen: ""
+    function set_bar_hover(screen_name, hovered) {
+        if (hovered) root.bar_hover_screen = screen_name;
+        else if (root.bar_hover_screen === screen_name) root.bar_hover_screen = "";
     }
 
     // A hover-opened popup takes no keyboard until it is pinned (see HoverPopup); every other open takes it as before.
@@ -157,8 +164,11 @@ Singleton {
     }
 
     // `swap`: a hover swap from the open popup (see swap_from, HoverPolicy.swap_source).
-    function open(name, anchor_item, color, screen_name, back_to, hands_off, swap) {
+    // `keep_owner`: the caller is the HoverPopup that has just set hover_owner; any other open drops the owner.
+    function open(name, anchor_item, color, screen_name, back_to, hands_off, swap, keep_owner) {
         let back = back_to || "";
+        // A same-popup open emits no open_name change, so its hover owner has to be told (see keep_owner below).
+        const reopened_owner = name === open_name ? root.hover_owner : null;
         root.swap_from = Policy.swap_source(!!swap && !!anchor_item, open_name, open_screen_name, name, screen_name || "");
         if (root.swap_from) root.measure_swap(root.swap_from.name);
         if (anchor_item) {
@@ -175,8 +185,11 @@ Singleton {
         }
         load_name = name;
         open_name = name;
+        if (!keep_owner) root.hover_owner = null;
         back_name = back;
         grab_keyboard = false;
+        // After the grab reset above: pinning asks for the keyboard, which a plain open (IPC, no keyboard of its own) would otherwise lose.
+        if (!keep_owner && reopened_owner) reopened_owner.pin();
         // After open_name moves, so a hands-off popup being replaced keeps its latched flag through its close animation.
         root.hands_off = !!hands_off;
     }
@@ -210,6 +223,7 @@ Singleton {
         root.swap_from = null;
         load_name = name;
         open_name = name;
+        root.hover_owner = null;
         back_name = "";
         grab_keyboard = false;
         root.hands_off = !!hands_off;
