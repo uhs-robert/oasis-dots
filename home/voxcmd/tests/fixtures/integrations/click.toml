@@ -57,7 +57,7 @@ miss = true
 
 # The same invocation as the Cursor submap's Floating Click (hypr/lib/actions/cursor.lua); detached, since it waits for a key.
 [actions.show_hints]
-run = "setsid -f wl-kbptr -o modes=floating,click -o mode_floating.source=detect >/dev/null 2>&1 </dev/null"
+run = "setsid -f ~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect >/dev/null 2>&1 </dev/null"
 
 [actions.click_mode]
 enter_mode = true

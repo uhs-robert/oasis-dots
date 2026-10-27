@@ -13,17 +13,18 @@ local Submap = require("lib.key.submap") ---@class Submap
 --- @field sw    function
 --- @field se    function
 
---- wl-kbptr mode commands by name.
+--- wl-kbptr mode commands by name. They go through kbptr.sh, which does the move and click itself.
+local KBPTR = "~/.config/hypr/scripts/kbptr.sh"
 local KBPTR_CMDS = {
-  floating_click = "wl-kbptr -o modes=floating,click -o mode_floating.source=detect",
-  floating_move = "wl-kbptr -o modes=floating -o mode_floating.source=detect",
-  floating_r_click = "wl-kbptr -o modes=floating -o mode_floating.source=detect ; wlrctl pointer click right",
-  tile_click = "wl-kbptr -o modes=tile,click",
-  tile_move = "wl-kbptr -o modes=tile",
-  tile_r_click = "wl-kbptr -o modes=tile ; wlrctl pointer click right",
-  split_click = "wl-kbptr -o modes=split,click",
-  split_move = "wl-kbptr -o modes=split",
-  split_r_click = "wl-kbptr -o modes=split ; wlrctl pointer click right",
+  floating_click = KBPTR .. " -o modes=floating,click -o mode_floating.source=detect",
+  floating_move = KBPTR .. " -o modes=floating -o mode_floating.source=detect",
+  floating_r_click = KBPTR .. " -o modes=floating -o mode_floating.source=detect ; wlrctl pointer click right",
+  tile_click = KBPTR .. " -o modes=tile,click",
+  tile_move = KBPTR .. " -o modes=tile",
+  tile_r_click = KBPTR .. " -o modes=tile ; wlrctl pointer click right",
+  split_click = KBPTR .. " -o modes=split,click",
+  split_move = KBPTR .. " -o modes=split",
+  split_r_click = KBPTR .. " -o modes=split ; wlrctl pointer click right",
 }
 
 --- @class CursorActions
