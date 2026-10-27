@@ -71,7 +71,7 @@ class SpecFrontMatterTest(SpecsCase):
         found = self.spec(spec_text(GOOD_FRONT.replace("id: bar", 'id: "baz"')))
         self.assertIn("specs/core/bar.md:1: id baz is not the file name bar", found)
 
-    def test_an_impossible_date_fails(self):
+    def test_an_impossible_date_warns(self):
         self.assert_one_mentions(self.spec(spec_text("id: bar\ntitle: Bar\nstatus: approved\napproved: 2026-99-99\n")), "bar.md", "approved")
 
     def test_crlf_line_endings_pass(self):
@@ -314,8 +314,13 @@ class TemplateTest(SpecsCase):
 
 
 class PlanTest(SpecsCase):
+    def warnings(self, files):
+        """The plan warnings of a run that must not fail on them."""
+        self.assertEqual(self.check(files), [])
+        return [line for line in self.info if line.startswith("warn:")]
+
     def plan(self, front):
-        return self.check({".plans/p/tracker.md": f"---\n{front}---\n# Plan\n"})
+        return self.warnings({".plans/p/tracker.md": f"---\n{front}---\n# Plan\n"})
 
     def test_a_valid_plan_passes(self):
         self.assertEqual(self.plan(GOOD_PLAN), [])
@@ -330,17 +335,62 @@ class PlanTest(SpecsCase):
         self.assert_one_mentions(self.plan(no_branch.replace("kind: plan", "kind: handoff")), "tracker.md", "branch")
         self.assertEqual(self.plan(no_branch.replace("kind: plan", "kind: tracker")), [])
 
-    def test_an_impossible_date_fails(self):
+    def test_an_impossible_date_warns(self):
         self.assert_one_mentions(self.plan(GOOD_PLAN.replace("2026-10-25", "2026-02-30")), "tracker.md", "updated")
 
-    def test_a_bad_kind_fails(self):
+    def test_a_bad_kind_warns(self):
         self.assert_one_mentions(self.plan(GOOD_PLAN.replace("kind: plan", "kind: note")), "tracker.md", "kind")
 
-    def test_a_missing_field_fails(self):
+    def test_a_missing_field_warns(self):
         self.assert_one_mentions(self.plan(GOOD_PLAN.replace("pr: none\n", "")), "tracker.md", "pr")
 
-    def test_a_plan_without_front_matter_fails(self):
-        self.assertEqual(self.check({".plans/x.md": "# Plan\n"}), [".plans/x.md:1: no front matter (a plan starts with a `---` block)"])
+    def test_a_plan_without_front_matter_warns(self):
+        self.assertEqual(self.warnings({".plans/x.md": "# Plan\n"}), ["warn: .plans/x.md:1: no front matter (a plan starts with a `---` block)"])
+
+    def test_a_bad_plan_never_fails_the_run(self):
+        self.assertEqual(self.check({".plans/p/a.md": "---\napproved: yes\n---\n", ".plans/b.md": "x\n"}), [])
+        warned = "\n".join(line for line in self.info if line.startswith("warn:"))
+        self.assertIn(".plans/p/a.md", warned)
+        self.assertIn(".plans/b.md", warned)
+
+    def test_a_valid_plan_adds_no_warning(self):
+        self.assertEqual(self.plan(GOOD_PLAN), [])
+
+
+class PlanFileModeTest(SpecsCase):
+    """`specs.py --file <doc>`, the mode the write-time hook runs."""
+
+    def run_file(self, text):
+        self.check({".plans/p/doc.md": text})
+        step_dir = os.path.join(self.root, "lib", "check", "steps")
+        os.makedirs(step_dir)
+        shutil.copy(os.path.join(CHECK_DIR, "steps", "specs.py"), step_dir)
+        return subprocess.run([sys.executable, "-B", os.path.join(step_dir, "specs.py"), "--file", ".plans/p/doc.md"],
+                              capture_output=True, text=True, cwd=self.root)
+
+    def test_a_valid_doc_exits_zero(self):
+        done = self.run_file(f"---\n{GOOD_PLAN}---\n# P\n")
+        self.assertEqual((done.returncode, done.stderr), (0, ""))
+
+    def test_an_unknown_key_exits_one_naming_it(self):
+        done = self.run_file(f"---\n{GOOD_PLAN}approved: yes\n---\n")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("approved", done.stderr)
+        self.assertIn(".plans/p/doc.md", done.stderr)
+
+    def test_missing_front_matter_exits_one(self):
+        done = self.run_file("# P\n")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("no front matter", done.stderr)
+
+    def test_a_plan_without_a_branch_exits_one(self):
+        done = self.run_file(f"---\n{GOOD_PLAN.replace('branch: none' + chr(10), '')}---\n")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("branch", done.stderr)
+
+    def test_a_missing_tool_exits_one_with_the_install_hint(self):
+        with mock.patch.object(specs.shutil, "which", return_value=None):
+            self.assertEqual(specs.check_one_plan("x.md"), 1)
 
 
 class MissingToolTest(SpecsCase):

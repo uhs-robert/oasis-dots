@@ -166,6 +166,16 @@
             "command": "~/.claude/hooks/context-budget.sh"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/validate-plan-frontmatter.sh",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [
