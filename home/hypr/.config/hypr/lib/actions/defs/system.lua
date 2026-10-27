@@ -28,7 +28,7 @@ Act.define("system.edit_keymaps", {
 Act.define("system.restart_bar", {
   label = "Restart Bar",
   intent = "Stop the Quickshell bar and start it again.",
-  run = shell("pkill -f '^qs -n'; qs -n"),
+  run = Cmd("~/.config/hypr/scripts/restart-bar.sh"),
 })
 
 Act.define("system.display_manager", {
