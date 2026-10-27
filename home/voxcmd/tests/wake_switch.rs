@@ -1,12 +1,11 @@
 //! `wake on|off|toggle|status` against a stub systemctl, with a voxcmd-wake-switch script beside it that must never run.
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::{Command, Output};
 
+mod executable;
+
 fn write_stub(dir: &Path, name: &str, script: &str) {
-    let path = dir.join(name);
-    std::fs::write(&path, script).unwrap();
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    executable::write_executable(&dir.join(name), script);
 }
 
 struct Wake {

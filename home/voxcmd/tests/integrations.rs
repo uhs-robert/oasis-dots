@@ -1,6 +1,7 @@
 //! `integrations list` and `integrations check` over the fixture integrations.
-use std::os::unix::fs::PermissionsExt;
 use std::process::{Command, Output};
+
+mod executable;
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
 
@@ -324,9 +325,7 @@ impl Sandbox {
         let toasts = self.root.path().join("toasts.log");
         let asked = self.root.path().join("asked.log");
         let script = |name: &str, body: String| {
-            let path = bin.join(name);
-            std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
-            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+            executable::write_executable(&bin.join(name), &format!("#!/bin/sh\n{body}\n"));
         };
         script("notify-send", format!("echo \"$4: $5\" >> {}", toasts.display()));
         script("ask", format!("echo \"$@\" >> {}\n{pick}", asked.display()));

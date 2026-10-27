@@ -1,13 +1,13 @@
 //! `voxcmd internal click-ocr` with real child processes: the strip lifecycle (forked children, cleanup on failure and
 //! on a stop signal, ordering of the output). The sandbox suite (run.sh, "click-ocr") drives the same behaviour through the whole stack; the
 //! cases here add the ones it cannot see, a stop signal and the environment and pipes of the children.
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 mod common;
 use common::gone_within;
+mod executable;
 
 /// Stubs for hyprctl, grim, magick and tesseract on a PATH of their own, and a runtime dir. `tesseract` and `magick`
 /// are given per test; every stub logs the pids it ran as to `$WORK/pids` (kept across exec).
@@ -48,9 +48,7 @@ impl Rig {
     }
 
     fn stub(&self, name: &str, script: &str) {
-        let path = self.root.path().join("bin").join(name);
-        std::fs::write(&path, script).unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        executable::write_executable(&self.root.path().join("bin").join(name), script);
     }
 
     fn work(&self) -> PathBuf {
