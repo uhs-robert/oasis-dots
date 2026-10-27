@@ -83,6 +83,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `stale-shells-hook`: the test of `stale-shells.sh`. Needs jq.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.
+- `reviewers`: the orchestrator skill's `tests/run.sh` (registry resolver), when `reviewers.json`, `reviewers.sh` or its tests change.
 - `frame-lone-flush`: `home/hypr/tests/frame_lone_flush.lua` runs `config/general/frame.lua` against a stubbed `hl` and checks the lone-window flush opt-out (when it starts and ends) and the workspace animation swap. Needs lua.
 - `bind-action`: `home/hypr/tests/bind_action.lua` runs `lib/actions/defs/tools.lua` against a stubbed `hl`: the 14 tool actions register the keys, extra keys, labels and `submap_universal` flags written out in the test with no warning, perform the command written out in the test through `Ipc`/`Cmd` argv, and their binds can be unbound. Needs lua.
 - `shadow-action`: `home/hypr/tests/shadow-action.sh` sources `.claude/skills/shadow/shadow.sh` with `ipc` stubbed to a recorder. `action x <id> [params]` resolves the id headlessly (`act_refs.lua --resolve`, the parameter checks of `hypr-act`) and sends an ipc-kind action as the `ipc` call (`popup.open weather` becomes `x popup open weather`, a param with spaces stays one word); a command- or lua-kind action, an unknown id and a bad or missing param exit 5 with a message and no `ipc` call. Needs lua and jq.

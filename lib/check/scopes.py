@@ -214,6 +214,8 @@ PATH_SCOPES = [
     (".claude/skills/shadow/shadow.sh", "lua"),
     (".claude/skills/ship-batch/*", "ship"),
     ("home/claude/.claude/skills/merge-prs/*", "ship"),
+    ("home/claude/.claude/skills/orchestrator/reviewers.*", "reviewers"),
+    ("home/claude/.claude/skills/orchestrator/tests/*", "reviewers"),
     ("system/etc/greetd/*", "lua"),
     # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these, plus the
     # shell linters for the shell files among them.
@@ -276,6 +278,7 @@ STEPS = [
     Step("owner-test-bar", "bar", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("ship-batch", "ship", "bash ./.claude/skills/ship-batch/tests/run.sh"),
     Step("merge-prs", "ship", "bash ./home/claude/.claude/skills/merge-prs/tests/run.sh"),
+    Step("reviewers", "reviewers", "bash ./home/claude/.claude/skills/orchestrator/tests/run.sh", ("jq",), skip_reason="the reviewer registry test needs jq"),
     Step("shfmt", "shell", 'status=0; cat "$CHECK_LOGS/plain.fmt.list" "$CHECK_LOGS/sourcing.fmt.list" | grep . | xargs -r shfmt -i 2 -d || status=1; [ ! -s "$CHECK_LOGS/agent.fmt.list" ] || xargs shfmt -i 2 -d <"$CHECK_LOGS/agent.fmt.list" || status=1; exit $status', ("shfmt",), skip_reason="shfmt not installed"),
     Step("stylua", "lua", "stylua --respect-ignores --check home/hypr/.config/hypr", ("stylua",), skip_reason="stylua not installed"),
     Step("luacheck", "lua", "sh ./lib/check/steps/lua.sh"),
