@@ -311,12 +311,10 @@ local function bind_whichkey_toggle(catchall)
 end
 
 --- Declare a submap and return a handle with enter/exit/setup methods.
---- Call handle.setup() once during startup to register all binds.
+--- Call handle.setup() once during startup to register all binds; the submap is enterable only after it succeeds.
 --- @param spec SubmapSpec
 --- @return SubmapHandle
 function Submap.define(spec)
-  Submap.registry[spec.name] = spec
-
   local M = {}
 
   function M.enter() Submap.enter(spec.name) end
@@ -343,6 +341,10 @@ function Submap.define(spec)
 
       bind_catchall(catchall, M.exit, spec)
     end)
+
+    -- Registered only once the body succeeded: a submap whose setup raised has no Escape bind and must stay unknown
+    -- to Submap.enter and the submap.enter action.
+    Submap.registry[spec.name] = spec
 
     -- After the body, which raises when it fails: an entry key into a half-built submap with no Escape would strand
     -- the user there.

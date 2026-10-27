@@ -75,6 +75,19 @@ check("submap.enter unknown name raises", ran("submap.enter", "Typo"):match("^ER
 check("run submap.enter", ran("submap.enter", "Bar") == "submap(Bar)")
 check("submap.enter needs a name", ran("submap.enter"):match("^ERROR") ~= nil)
 
+-- A submap whose setup raised has no Escape bind, so it must stay unenterable by the action and by Submap.enter.
+local Submap = require("lib.key.submap")
+local broken = Submap.define({
+	name = "BrokenProbe",
+	binds = function() error("boom", 0) end,
+})
+check("broken submap setup raises", not pcall(broken.setup))
+check("submap.enter refuses a submap whose setup failed",
+	ran("submap.enter", "BrokenProbe"):match("^ERROR.*unknown submap 'BrokenProbe'") ~= nil)
+Stubs.performed = {}
+Submap.enter("BrokenProbe")
+check("Submap.enter ignores a submap whose setup failed", #Stubs.performed == 0)
+
 if failures > 0 then
 	print(failures .. " failed")
 	os.exit(1)
