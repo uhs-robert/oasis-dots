@@ -322,6 +322,20 @@ wait "$runner" 2>/dev/null
 sleep 0.5
 check "killing the runner leaves no reviewer or child running" '! kill -0 "$long_pid" 2>/dev/null && ! kill -0 "$child_pid" 2>/dev/null'
 reset
+cat >"$root/kill_spy.sh" <<S
+kill() { echo "\$*" >>"$root/kills"; builtin kill "\$@"; }
+S
+echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
+echo "{\"reviewers\":[{\"name\":\"one\",\"local\":{\"command\":\"$root/custom/dirty.sh\",\"default\":\"all\"}}]}" >"$REVIEWERS_USER_FILE"
+rm -f "$root/kills"
+run run-local-reviews.sh BASH_ENV="$root/kill_spy.sh"
+check "a normal run signals no (reaped) pid" '[ $rc -eq 0 ] && [ ! -s "$root/kills" ]'
+reset
+echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
+echo '{"reviewers":[{"name":"../evil","local":{"scope":"off","command":"x.sh"}}]}' >"$REVIEWERS_USER_FILE"
+run run-local-reviews.sh
+check "a disabled reviewer with an unsafe name draws no warning" '[ -z "$out" ] && ! grep -q "unsafe name" "$root/err"'
+reset
 echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
 run run-local-reviews.sh
 check "all reviewers off: no output, exit 0" '[ $rc -eq 0 ] && [ -z "$out" ] && [ ! -s "$root/calls" ]'
