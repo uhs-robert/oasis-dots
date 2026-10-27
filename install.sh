@@ -28,7 +28,7 @@ Options:
   --no-aur             Skip AUR packages
   --no-cargo           Skip Rust/rustup install
   --no-system-files    Skip system files (/etc, /usr/local) and root links
-  --no-services        Skip service setup (shell, keyd, Steam, Nvidia, voxtype, calendar timer if stowed, SSH server)
+  --no-services        Skip service setup (shell, keyd, snapper, Steam, Nvidia, voxtype, calendar timer if stowed, SSH server)
   --dev                Clone repos into $GITHUB_DIR (default ~/Development) for editing and link them
   --server             Headless install: shell/CLI/dev packages and configs only
   -y, --yes            Auto-confirm all prompts
@@ -142,12 +142,14 @@ main() {
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_pacman_tweaks; fi
   if [[ $OPT_SERVER -eq 1 && $OPT_SERVICES -eq 1 ]]; then
     set_default_shell
+    setup_snapper
     setup_tailnet_ssh
   elif [[ $OPT_SERVER -eq 0 && $OPT_SERVICES -eq 1 ]]; then
     install_greetd
     set_default_shell
     enable_keyd
     enable_power_profiles
+    setup_snapper
     install_steam
     install_nvidia
     setup_voxtype

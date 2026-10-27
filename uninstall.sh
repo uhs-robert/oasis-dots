@@ -177,7 +177,7 @@ remove_root_symlinks() {
   fi
 }
 
-# Prompts to disable greetd, keyd, sshd, voxtype and the calendar timer, and to remove the calendar cache, if they are currently enabled.
+# Prompts to disable greetd, keyd, sshd, the snapper timers, voxtype and the calendar timer, and to remove the calendar cache, if they are currently enabled.
 disable_services() {
   [[ $OPT_SERVICES -eq 0 ]] && return
 
@@ -192,6 +192,11 @@ disable_services() {
   # Only an sshd that `just ssh-server` set up: disabling one this repo never touched could cut off remote access.
   if [[ -f /etc/ssh/sshd_config.d/10-tailnet-only.conf ]] && systemctl is-enabled sshd &>/dev/null; then
     confirm "Disable the SSH server (sshd) set up by just ssh-server?" && sudo systemctl disable --now sshd && success "sshd disabled"
+  fi
+
+  # Only the timers: deleting snapshots or the config would throw away restore points.
+  if systemctl is-enabled snapper-timeline.timer &>/dev/null; then
+    confirm "Disable the snapper timers (snapshots and the config are kept)?" && sudo systemctl disable --now snapper-timeline.timer snapper-cleanup.timer && success "snapper timers disabled"
   fi
 
   if systemctl --user is-enabled voxtype &>/dev/null 2>&1; then

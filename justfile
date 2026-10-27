@@ -192,6 +192,14 @@ pacman-tweaks:
     source lib/install/load.sh
     setup_pacman_tweaks
 
+# Snapshot / with snapper and snap-pac on btrfs, with btrfs quotas off (asks first; needs sudo)
+snapper:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
+    setup_snapper
+
 # Opt in to an SSH server reachable only over Tailscale, key login only (needs sudo)
 ssh-server:
     #!/usr/bin/env bash
