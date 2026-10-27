@@ -8,20 +8,24 @@ RowsSection {
 
     section_keys: "r reset value · R reset all"
     footer_hint: "j/k move · " + root.layout_hint + "H/L change · r reset value · R reset all · h/Esc sections · q close"
-    tabs: root.tab_names.map(name => ({ label: name, rows: Style.settings.filter(def => root.tab_of(def.key) === name).map(def => root.row_for(def)) }))
+    // One list under headings; a group the current style offers nothing in has no heading.
+    rows: root.group_names.reduce((all, name) => {
+        const defs = Style.settings.filter(def => root.group_of(def.key) === name);
+        return defs.length === 0 ? all : all.concat([{ heading: name }], defs.map(def => root.row_for(def)));
+    }, [])
 
-    readonly property var tab_names: ["Effects", "Frame & bar", "Skins", "Fonts"]
-    // Which tab each option sits on. Style.settings_for offers a different set per style; an option missing here
-    // lands on Effects rather than vanishing.
-    readonly property var tab_keys: ({
+    readonly property var group_names: ["Effects", "Frame & bar", "Skins", "Fonts"]
+    // Which group each option sits in. Style.settings_for offers a different set per style; an option missing here
+    // lands in Effects rather than vanishing.
+    readonly property var group_keys: ({
             "Frame & bar": ["screen_frame", "corner_style", "bar_island_shape", "bar_island_opacity", "workspace_art", "bar_icon_set", "bar_meeting_marker"],
             "Skins": ["picker_skin", "overview_skin", "osd_layout", "weather_header", "keeptabs_layout", "done_anim", "wait_anim", "toast_enter"],
             "Fonts": ["font_family", "bar_font_family", "font_size"]
         })
 
-    function tab_of(key) {
-        for (const name in root.tab_keys) {
-            if (root.tab_keys[name].indexOf(key) >= 0) return name;
+    function group_of(key) {
+        for (const name in root.group_keys) {
+            if (root.group_keys[name].indexOf(key) >= 0) return name;
         }
         return "Effects";
     }
