@@ -2,7 +2,7 @@
 -- settings,launcher}.lua) under a stubbed `hl`, runs every id with sample arguments and compares the command line it
 -- would hand to Hyprland with the table below: the `qs-ipc call <target> <function> <args>` words, quoted for the shell.
 -- It also checks that each of these actions has no key, that nothing else is defined in those files, and that
--- requiring keymaps.global (what a live session loads) registers them all.
+-- requiring keymaps.global (what a live session loads) registers them all, even when one definition file is broken.
 --
 --   lua home/hypr/tests/act_ipc.lua
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -128,6 +128,42 @@ end
 for id in pairs(covered) do
 	check("keymaps.global registers " .. id, loaded[id])
 end
+
+-- One broken definition file costs only its own actions: keyless.lua and tools.lua load each file on its own, warn
+-- naming the broken one and carry on. style.lua raises while it runs, pickers.lua does not parse.
+for name in pairs(package.loaded) do
+	if name:match("^lib%.act") or name:match("^keymaps") then
+		package.loaded[name] = nil
+	end
+end
+package.preload["lib.actions.defs.style"] = function()
+	error("style broke")
+end
+package.preload["lib.actions.defs.pickers"] = function()
+	return assert(load("local = 1", "=lib/actions/defs/pickers.lua"))()
+end
+ok, err = xpcall(require, debug.traceback, "keymaps.global")
+check("keymaps.global loads around broken definition files: " .. tostring(err), ok)
+local act_after = require("lib.act")
+local still_loaded = {}
+for _, handle in ipairs(act_after.list()) do
+	still_loaded[handle.id] = true
+end
+for id in pairs(covered) do
+	if not id:match("^style%.") then
+		check("a broken style.lua leaves " .. id, still_loaded[id])
+	end
+end
+check("a broken pickers.lua leaves zoom.toggle from tools.lua", still_loaded["zoom.toggle"])
+check("nothing from the broken style.lua", not still_loaded["style.cycle"] and not still_loaded["style.set"])
+local warned = table.concat(act_after.warnings, "\n")
+check("warns naming style.lua: " .. warned, warned:find("lib/actions/defs/style.lua failed to load", 1, true) ~= nil)
+check(
+	"warns naming pickers.lua: " .. warned,
+	warned:find("lib/actions/defs/pickers.lua failed to load", 1, true) ~= nil
+)
+package.preload["lib.actions.defs.style"] = nil
+package.preload["lib.actions.defs.pickers"] = nil
 
 if failures > 0 then
 	print(failures .. " failed")

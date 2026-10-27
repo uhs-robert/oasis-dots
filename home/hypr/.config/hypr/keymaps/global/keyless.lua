@@ -1,5 +1,5 @@
 -- The actions with no key: reachable only by id, from `hypr-act`, voice or the bar. Nothing else requires these files.
-for _, file in ipairs({
+require("lib.act").load_defs({
   "notifications",
   "style",
   "lock",
@@ -9,6 +9,4 @@ for _, file in ipairs({
   "overview",
   "settings",
   "launcher",
-}) do
-  require("lib.actions.defs." .. file)
-end
+})
