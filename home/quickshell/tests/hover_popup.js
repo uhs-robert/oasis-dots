@@ -920,6 +920,13 @@ t("a swap-in onto a window still drawn (pointer back onto a fading-out popup) ke
   assert.match(swap_in, /if \(root\.line_progress === 0\) \{[^}]*drop_progress = [^}]*swap_fade = 0;[^}]*\}/);
   assert.doesNotMatch(swap_in.replace(/if \(root\.line_progress === 0\) \{[^}]*\}/, ""), /swap_fade = 0|drop_progress = /);
 });
+t("a swap-in onto a window whose opening line is still drawing animates the line to 1 instead of snapping it", () => {
+  const popup = popup_source();
+  const swap_in = popup.match(/function swap_in\(from_extent\) \{[\s\S]*?\n    \}\n/)[0];
+  assert.match(swap_in, /if \(root\.line_progress === 0\) \{\s+line_progress = 1;/);
+  assert.doesNotMatch(swap_in.replace(/if \(root\.line_progress === 0\) \{[^}]*\}/, ""), /line_progress = 1/);
+  assert.match(popup, /id: swap_in_anim\n[^\n]*\n\s+NumberAnimation \{ target: root; property: "line_progress"; to: 1;/);
+});
 t("a close during the swap-in fades swap_fade up with the fold-up instead of jumping it to 1", () => {
   const popup = popup_source();
   const plain_close = popup.slice(popup.lastIndexOf("} else if (visible) {"), popup.indexOf("// A hover swap (Popups.swap_from)"));
