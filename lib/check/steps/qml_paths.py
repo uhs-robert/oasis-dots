@@ -166,6 +166,7 @@ OUTSIDE_REFS = [
     ("home/quickshell/tests/style_title_readout.js", "theme/StyleSchema.js"),
     ("home/quickshell/tests/ansi_text.js", "features/launcher/AnsiText.js"),
     ("home/quickshell/tests/agent_sessions.js", "features/launcher/AgentSessions.js"),
+    ("home/quickshell/tests/developer_settings.js", "features/developer/DeveloperSettings.js"),
     ("home/quickshell/tests/hover_popup.js", "features/popups/HoverPolicy.js"),
     ("home/quickshell/tests/position_poll.js", "features/media/PositionPoll.js"),
     ("home/quickshell/tests/media_text.js", "features/bar/MediaText.js"),
