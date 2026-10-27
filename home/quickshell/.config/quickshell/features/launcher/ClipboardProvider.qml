@@ -67,7 +67,8 @@ PickerProvider {
                 kind: is_image ? "image" : bin ? "binary" : "text",
                 ext: ext,
                 label: is_image ? "Image " + (bin[3] ? bin[3] + "x" + bin[4] : ext) : bin ? "Binary data" : shown,
-                description: bin ? [ext.toUpperCase(), bin[3] ? bin[3] + "x" + bin[4] : "", bin[1]].filter(s => s !== "").join(" · ") : "",
+                // An image's label already carries its size in pixels.
+                description: bin ? [ext.toUpperCase(), bin[3] && !is_image ? bin[3] + "x" + bin[4] : "", bin[1]].filter(s => s !== "").join(" · ") : "",
                 icon_path: is_image ? root.image_icon : root.text_icon,
                 keywords: bin ? ["image", ext] : []
             });

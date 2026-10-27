@@ -28,7 +28,7 @@ Popup {
     footer_hint: "Enter " + root.verb + root.nesting_hint + " · Esc normal · q close"
     // NORMAL mode spells out the provider's actions and the browse preview keys; with neither the frame shows its own "? help · q close".
     footer_override: root.insert ? "Enter " + root.verb + root.nesting_hint + " · Esc normal" : root.action_hint !== "" || root.browse ? "Enter " + root.verb + root.nesting_hint + (root.action_hint !== "" ? " · " + root.action_hint : "") + root.browse_hint + " · ? help · q close" : ""
-    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.browse ? ["=/+ bigger preview, past large to max", "- smaller preview", "p preview on/off", "v grid/list", "1-9 select the numbered item (Enter opens)"] : []).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
+    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.browse ? ["=/+ bigger preview, past large to max", "- smaller preview", "p preview on/off", "v grid/list", "1-9 select the numbered item on screen (Enter opens)"] : []).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
     cursor_state: root.selected
     tabs: root.provider ? root.provider.tabs : []
@@ -66,6 +66,8 @@ Popup {
     // The scroll cue's fade, and the room right of the cards for its caret.
     readonly property real cue_fade: Style.px(20)
     readonly property real cue_gutter: Style.px(16)
+    // The cards or rows wholly on screen, which the 1-9 hints number; they renumber as the view scrolls.
+    readonly property var shown_items: root.items_hidden ? { first: 0, end: 0 } : BrowseLayout.on_screen(grid.contentY, grid.height, grid.contentHeight, grid.cellHeight, grid.cellHeight - root.browse_gap, root.browse_split.overflows ? root.cue_fade : 0, root.columns, root.results.length)
     readonly property var browse_split: BrowseLayout.fit(list_area.height, body.height, root.preview_size, root.browse_cell_height, root.card_gap, root.results.length, root.columns, root.cue_fade)
 
     property string query: ""
@@ -357,10 +359,10 @@ Popup {
             root.set_preview_size(BrowseLayout.toggled(root.preview_size, root.last_preview_size));
         } else if (root.browse && event.text === "v") {
             root.set_browse_view(BrowseLayout.toggled_view(root.browse_view));
-        } else if (root.browse && BrowseLayout.digit_index(event.text, root.results.length) >= 0) {
+        } else if (root.browse && BrowseLayout.digit_index(event.text, root.shown_items) >= 0) {
             // Selects only: Enter opens, so a mistyped digit costs nothing.
             const before = root.selected;
-            root.selected = BrowseLayout.digit_index(event.text, root.results.length);
+            root.selected = BrowseLayout.digit_index(event.text, root.shown_items);
             if (root.selected !== before) ThemeAudio.play("cursor");
         } else {
             return;
@@ -565,6 +567,7 @@ Popup {
                         anchors.bottom: parent.bottom
                         anchors.margins: Style.px(3)
                         index: card.index
+                        shown: root.shown_items
                     }
 
                     MouseArea {
@@ -615,6 +618,7 @@ Popup {
                         anchors.rightMargin: Style.px(8)
                         anchors.verticalCenter: parent.verticalCenter
                         index: line.index
+                        shown: root.shown_items
                     }
 
                     MouseArea {
@@ -893,11 +897,12 @@ Popup {
         }
     }
 
-    // The digit that selects the item in NORMAL mode, on the first nine; shown in INSERT too, so it can be read ahead.
+    // The digit that selects the item in NORMAL mode, on the first nine on screen; shown in INSERT too, so it can be read ahead.
     component QuickHint: Rectangle {
         id: hint
         property int index: -1
-        readonly property string digit: BrowseLayout.hint_of(hint.index)
+        property var shown: ({ first: 0, end: 0 })
+        readonly property string digit: BrowseLayout.hint_of(hint.index, hint.shown)
 
         visible: hint.digit !== ""
         width: Math.max(height, hint_text.implicitWidth + 6)
