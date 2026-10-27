@@ -122,6 +122,12 @@ check grep -q "RESTART_BAR_GRACE='0.5'" err
 check test "$(bars_started)" -eq 2
 check test "$(cat pid)" != "$old_pid"
 
+# A leading zero is still decimal: 08 must not die in octal arithmetic after the old bar was signalled.
+start_bar
+check env RESTART_BAR_GRACE=08 bash "$script" 2>err
+check test ! -s err
+check test "$(bars_started)" -eq 2
+
 # A bar that survives SIGKILL: report it, exit non-zero and do not start another.
 export STUB_BAR=immortal
 start_bar
@@ -137,6 +143,7 @@ for line in "qs -n" "/usr/bin/qs -n" "/usr/bin/qs -n -p /x" "qs -n -p /x"; do
   check grep -Eq -- "$used" <<<"$line"
 done
 for line in "qs-shadow -n" "/usr/bin/qs-shadow -n" "qs -p /x" "bash restart-bar.sh qs -n" "qsx -n"; do
+  # shellcheck disable=SC2016 # expanded by the inner shell
   check bash -c '! grep -Eq -- "$0" <<<"$1"' "$used" "$line"
 done
 

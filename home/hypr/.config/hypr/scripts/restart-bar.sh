@@ -20,7 +20,7 @@ fi
 
 # Polls in tenths of a second; returns 0 once no owner bar is left, 1 on timeout.
 wait_gone() {
-  local ticks=$(($1 * 10))
+  local ticks=$((10#$1 * 10)) # 10#: a leading zero (08) is not octal
   while ((ticks-- > 0)); do
     pgrep -u "$UID" -f "$pattern" >/dev/null || return 0
     sleep 0.1
