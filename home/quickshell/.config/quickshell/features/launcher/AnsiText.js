@@ -100,28 +100,22 @@ function mix_half(hex) {
     return rgb(((v >> 16) & 255) >> 1, ((v >> 8) & 255) >> 1, (v & 255) >> 1);
 }
 
-// StyledText has no background colour, so background codes are dropped; inverse still swaps fg with bg (or the defaults).
-// `default_fg` and `default_bg` fill what is unset.
-function wrap(text, state, default_fg, default_bg) {
+// StyledText has no background colour, so background codes are dropped and inverse cannot swap: that would paint the
+// text in the pane's own background and hide it. Inverse text (selected rows, highlighted prompts) is bold and underlined instead.
+function wrap(text, state, default_fg) {
     var fg = state.fg;
-    var bg = state.bg;
-    if (state.inverse) {
-        var swapped = bg || default_bg;
-        bg = fg || default_fg;
-        fg = swapped;
-    }
     if (state.dim) fg = mix_half(fg || default_fg);
     // StyledText collapses runs of plain spaces, which would flatten a pane's indentation and box drawing.
     var out = escape(text).replace(/ /g, "&nbsp;");
     if (fg !== "") out = "<font color=\"" + fg + "\">" + out + "</font>";
-    if (state.underline) out = "<u>" + out + "</u>";
+    if (state.underline || state.inverse) out = "<u>" + out + "</u>";
     if (state.italic) out = "<i>" + out + "</i>";
-    if (state.bold) out = "<b>" + out + "</b>";
+    if (state.bold || state.inverse) out = "<b>" + out + "</b>";
     return out;
 }
 
-// default_fg and default_bg are "#rrggbb" strings for text with no colour set (inverse and dim need them).
-function to_styled(input, default_fg, default_bg) {
+// default_fg is a "#rrggbb" string for text with no colour set (dim needs it).
+function to_styled(input, default_fg) {
     var state = blank();
     var out = "";
     var last = 0;
@@ -133,7 +127,7 @@ function to_styled(input, default_fg, default_bg) {
         var lines = chunk.split("\n");
         for (var i = 0; i < lines.length; i++) {
             if (i > 0) out += "<br/>";
-            if (lines[i] !== "") out += wrap(lines[i], state, default_fg, default_bg);
+            if (lines[i] !== "") out += wrap(lines[i], state, default_fg);
         }
     }
     while ((m = sequence_pattern.exec(input)) !== null) {

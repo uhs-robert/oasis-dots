@@ -9,7 +9,7 @@ const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/featu
 const context = vm.createContext({});
 vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { to_styled, bottom_lines };", context);
 const { to_styled, bottom_lines } = context.api;
-const styled = text => to_styled(text, "#cccccc", "#111111");
+const styled = text => to_styled(text, "#cccccc");
 
 const cases = [
   ["plain text", "hello", "hello"],
@@ -30,7 +30,8 @@ const cases = [
   ["truncated truecolor ignored", "\x1b[38;2;1mx", "x"],
   ["fg default 39", "\x1b[31mA\x1b[39mB", "<font color=\"#cd0000\">A</font>B"],
   ["background dropped", "\x1b[41mx", "x"],
-  ["inverse swaps to defaults", "\x1b[7mx", "<font color=\"#111111\">x</font>"],
+  ["inverse stays visible: bold underline, no swap", "\x1b[7mx", "<b><u>x</u></b>"],
+  ["inverse keeps the colour", "\x1b[31;7mx\x1b[27my", "<b><u><font color=\"#cd0000\">x</font></u></b><font color=\"#cd0000\">y</font>"],
   ["dim halves", "\x1b[2;38;2;200;100;50mx", "<font color=\"#643219\">x</font>"],
   ["colour kept across newline", "\x1b[32mA\nB", "<font color=\"#00cd00\">A</font><br/><font color=\"#00cd00\">B</font>"],
   ["cursor move dropped", "a\x1b[2Kb\x1b[1;1Hc", "abc"],
