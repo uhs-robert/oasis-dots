@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests scripts/restart-bar.sh against a fake bar that takes a second to exit on SIGTERM, the race that left no bar
 # after SUPER+Q b: the old kill-then-`qs -n` line must fail here and the script must succeed. pgrep, the kill command
-# and qs are stubs that only see the fake bar's own pid, so the owner's live bar is never signalled.
+# and qs are stubs that only see the fake bar's own pid, so the owner's live bar is never signalled. notify-send is a
+# stub too, or the survives-SIGKILL case would pop a real "Bar restart failed" on the owner's desktop.
 set -u
 
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -62,6 +63,10 @@ signal=TERM
 [[ $signal == KILL && ${STUB_BAR:-slow} == immortal ]] && exit 0
 [[ -s $STUB_DIR/pid ]] && kill -"$signal" "$(cat "$STUB_DIR/pid")" 2>/dev/null
 exit 0
+STUB
+cat >bin/notify-send <<'STUB'
+#!/usr/bin/env bash
+echo "$*" >>"$STUB_DIR/notified"
 STUB
 chmod +x bin/*
 export STUB_DIR=$work PATH=$work/bin:$PATH
@@ -154,6 +159,7 @@ start_bar
 env RESTART_BAR_GRACE=1 bash "$script" 2>err
 check test $? -ne 0
 check grep -q "survived SIGKILL" err
+check grep -q "Bar restart failed" notified
 check test "$(bars_started)" -eq 1
 check grep -qxF -- "-KILL -u $UID -f $pattern" pkill_args
 
