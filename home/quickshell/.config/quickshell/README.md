@@ -202,7 +202,7 @@ Structure rules (layers, imports, where a new file goes, greeter-staged files, t
 
 **A Settings section.** Write `features/settings/sections/<Name>Section.qml`, usually a `RowsSection` with a list of rows, and add an entry to `list` in `features/settings/Sections.js`. The sidebar, search and IPC pick it up from there.
 
-**A picker provider.** Subclass `features/launcher/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `home/hypr/.config/hypr/lib/actions/menu.lua`, so the bind still works without the bar.
+**A picker provider.** Subclass `features/launcher/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `home/hypr/.config/hypr/lib/actions/menu.lua`, so the bind still works without the bar. A provider that is mostly looked at rather than typed into can set `layout: "browse"` (search, a resizable preview, then a grid of cards, dropped from the center island) and supply its own `card`; the spec is [specs/core/pickers.md](../../../../specs/core/pickers.md).
 
 Adding a [style or style token](theme/README.md#adding-a-style-or-style-token) and a [lock skin](features/lock/README.md#adding-a-lock-skin) is described next to the code they touch.
 

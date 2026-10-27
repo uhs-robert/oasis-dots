@@ -7,22 +7,25 @@ import qs.features.popups
 import qs.features.popups.frames
 import qs.features.audio
 import "../../core/Fuzzy.js" as Fuzzy
+import "BrowseLayout.js" as BrowseLayout
 
-// The shared picker over Pickers.provider: docked at the bottom from IPC, or dropped from an island when opened with an anchor.
+// The shared picker over Pickers.provider: docked at the bottom from IPC, or dropped from an island when opened with an
+// anchor. A browse provider always drops from the center island, with a preview above a grid of cards.
 Popup {
     id: root
 
     popup_name: "picker"
     size_class: "large"
     shell_allowed: false
-    dock_bottom: root.held_anchor === null
-    fit_island: !root.dock_bottom
+    dock_bottom: root.held_anchor === null && !root.browse
+    fit_island: !root.dock_bottom && !root.browse
     anim_scale: 0.3
-    preferred_width: 320
+    // Settings' size: most of the screen's width up to a cap, and a fixed share of its height.
+    preferred_width: root.browse ? (root.screen ? Math.min(root.screen.width * 0.9, Style.px(1600)) : Style.px(1200)) / Style.scale : 320
     title: root.provider ? root.provider.title.toUpperCase() : "PICKER"
-    footer_hint: "Enter " + root.verb + root.nesting_hint + " · Esc normal · q close"
-    footer_override: root.insert ? "Enter " + root.verb + root.nesting_hint + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + root.nesting_hint + " · " + root.action_hint + " · ? help · q close" : ""
-    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
+    footer_hint: "Enter " + root.verb + root.nesting_hint + root.browse_hint + " · Esc normal · q close"
+    footer_override: root.insert ? "Enter " + root.verb + root.nesting_hint + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + root.nesting_hint + " · " + root.action_hint + root.browse_hint + " · ? help · q close" : ""
+    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.browse ? ["=/+ bigger preview", "- smaller preview", "p preview on/off"] : []).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
     cursor_state: root.selected
     tabs: root.provider ? root.provider.tabs : []
@@ -32,13 +35,24 @@ Popup {
     readonly property string nesting_hint: !root.provider ? "" : root.provider.expands ? " · Tab expand" : root.provider.can_go_back ? " · Backspace back" : ""
     readonly property string action_hint: root.provider ? root.provider.actions.map(a => a.key + " " + a.desc).join(" · ") : ""
     readonly property bool is_open: Popups.open_name === "picker"
-    readonly property int columns: root.dock_bottom && root.provider ? Math.max(1, root.provider.columns) : 1
+    readonly property bool browse: !!root.provider && root.provider.layout === "browse"
+    readonly property string browse_hint: root.browse ? " · =/- p preview" : ""
+    readonly property int columns: root.browse ? BrowseLayout.columns(list_area.width, root.card_width, root.card_gap) : root.dock_bottom && root.provider ? Math.max(1, root.provider.columns) : 1
     readonly property real cell_height: Style.px(30)
+    readonly property real card_gap: Style.px(8)
+    readonly property real card_width: Style.px(root.provider ? root.provider.card_size.width : 280)
+    readonly property real card_height: Style.px(root.provider ? root.provider.card_size.height : 112)
     readonly property real screen_height: root.screen ? root.screen.height : 1080
     readonly property real tabs_space: tab_rows.visible ? tab_rows.height + 8 : 0
     readonly property real anchored_height: root.tabs_space + query_bar.height + 8 + root.cell_height * Math.max(1, Math.min(10, root.results.length)) + detail.height + 6 + 24
 
-    body_height: root.dock_bottom ? Math.round(root.screen_height * 0.4) - root.header_height - root.footer_height - root.drop_room : root.anchored_height
+    body_height: root.browse ? (root.screen ? Math.round(root.screen_height * 0.8) - root.header_height - root.footer_height : 600) : root.dock_bottom ? Math.round(root.screen_height * 0.4) - root.header_height - root.footer_height - root.drop_room : root.anchored_height
+
+    // Preview size in the browse layout (BrowseLayout.sizes), reset to the provider's default on every open.
+    property string preview_size: "m"
+    // What p brings the preview back to.
+    property string last_preview_size: "m"
+    readonly property var browse_split: BrowseLayout.split(list_area.height, body.height, root.preview_size, root.card_height + root.card_gap, root.card_gap)
 
     property string query: ""
     property int selected: 0
@@ -75,11 +89,15 @@ Popup {
     onIs_openChanged: if (is_open) {
         const recalled = root.provider ? TypingSettings.recall("picker:" + root.provider.name) : "";
         if (root.provider) root.current_tab = root.provider.tab;
+        const preview_size = BrowseLayout.size_of(root.provider ? root.provider.default_preview_size : "");
+        root.preview_size = preview_size;
+        root.last_preview_size = preview_size;
         root.reset();
         query_input.text = recalled;
         // Reads Popups.open_anchor, not dock_bottom: held_anchor may still be stale when this handler runs first.
-        const docks_bottom = Popups.open_anchor === null;
-        const mode_insert = docks_bottom ? TypingSettings.docked_starts_insert(root.provider) : TypingSettings.starts_insert;
+        // A browse picker has an anchor even when opened from a keybind, so it always takes the keybind start mode.
+        const opened_by_key = Popups.open_anchor === null || root.browse;
+        const mode_insert = opened_by_key ? TypingSettings.docked_starts_insert(root.provider) : TypingSettings.starts_insert;
         root.set_insert(mode_insert && (!root.provider || root.provider.starts_insert));
     }
     Component.onCompleted: root.sync_slots()
@@ -232,6 +250,14 @@ Popup {
         if (root.selected !== before) ThemeAudio.play("cursor");
     }
 
+    function set_preview_size(size) {
+        if (size === root.preview_size) return;
+        if (size !== "off") root.last_preview_size = size;
+        root.preview_size = size;
+        ThemeAudio.play("cursor");
+        Qt.callLater(() => grid.positionViewAtIndex(root.selected, GridView.Contain));
+    }
+
     function step(delta) {
         if (root.results.length === 0) return;
         const before = root.selected;
@@ -290,6 +316,12 @@ Popup {
         } else if (root.provider && root.provider.actions.some(a => a.key === event.text && (root.selected_item || a.needs_item === false))) {
             root.provider.run_action(event.text, root.selected_item);
             ThemeAudio.play("confirm");
+        } else if (root.browse && (event.text === "=" || event.text === "+")) {
+            root.set_preview_size(BrowseLayout.grown(root.preview_size));
+        } else if (root.browse && event.text === "-") {
+            root.set_preview_size(BrowseLayout.shrunk(root.preview_size));
+        } else if (root.browse && event.text === "p") {
+            root.set_preview_size(BrowseLayout.toggled(root.preview_size, root.last_preview_size));
         } else {
             return;
         }
@@ -417,22 +449,146 @@ Popup {
             id: list_area
             y: query_bar.y + query_bar.height + 8
             width: parent.width
-            height: parent.height - y - detail.height - 6
+            height: parent.height - y - (detail.visible ? detail.height + 6 : 0)
 
+            // Browse: the cards sit under the preview, centered, in whole rows.
             GridView {
                 id: grid
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: preview_loader.active ? parent.width * 0.62 : parent.width
+                x: root.browse ? Math.round((parent.width - root.columns * (root.card_width + root.card_gap) + root.card_gap) / 2) : 0
+                y: root.browse && root.browse_split.preview_height > 0 ? root.browse_split.preview_height + root.card_gap : 0
+                height: root.browse ? root.browse_split.rows * (root.card_height + root.card_gap) : parent.height
+                width: root.browse ? root.columns * (root.card_width + root.card_gap) : preview_loader.active ? parent.width * 0.62 : parent.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                cellWidth: Math.floor(width / root.columns)
-                cellHeight: root.cell_height
+                cellWidth: root.browse ? root.card_width + root.card_gap : Math.floor(width / root.columns)
+                cellHeight: root.browse ? root.card_height + root.card_gap : root.cell_height
                 model: slots
                 reuseItems: true
+                delegate: root.browse ? card_delegate : row_delegate
+            }
 
-                delegate: MenuRow {
+            // Framed like the workspace overview's tiles; the provider's card, or generic_card, draws inside.
+            Component {
+                id: card_delegate
+
+                Item {
+                    id: card
+                    required property int index
+                    readonly property var result: root.results[card.index] || ({ item: {}, positions: [] })
+                    readonly property bool is_selected: card.index === root.selected
+
+                    width: root.card_width
+                    height: root.card_height
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Style.radius(6)
+                        color: card.is_selected ? Qt.tint(Theme.bg_crust, Qt.alpha(root.st.caret_color, 0.08)) : Theme.bg_crust
+                        border.width: card.is_selected ? 2 : 1
+                        border.color: card.is_selected ? root.st.caret_color : Theme.ui_border
+                    }
+
+                    Loader {
+                        id: card_body
+                        anchors.fill: parent
+                        anchors.margins: Style.px(8)
+                        sourceComponent: root.provider && root.provider.card ? root.provider.card : generic_card
+                    }
+
+                    Binding {
+                        target: card_body.item
+                        property: "entry"
+                        value: card.result.item
+                        when: card_body.status === Loader.Ready
+                    }
+
+                    Binding {
+                        target: card_body.item
+                        property: "positions"
+                        value: card.result.positions
+                        when: card_body.status === Loader.Ready
+                    }
+
+                    Binding {
+                        target: card_body.item
+                        property: "selected"
+                        value: card.is_selected
+                        when: card_body.status === Loader.Ready
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            root.selected = card.index;
+                            root.activate();
+                        }
+                    }
+                }
+            }
+
+            Component {
+                id: generic_card
+
+                Item {
+                    id: generic
+                    property var entry: ({})
+                    property var positions: []
+                    property bool selected: false
+
+                    IconImage {
+                        id: generic_icon
+                        visible: !generic.entry.glyph
+                        implicitSize: Style.px(20)
+                        asynchronous: true
+                        source: generic.entry.glyph ? "" : root.icon_source(generic.entry)
+                    }
+
+                    Text {
+                        visible: !!generic.entry.glyph
+                        width: Style.px(20)
+                        horizontalAlignment: Text.AlignHCenter
+                        text: generic.entry.glyph || ""
+                        textFormat: Text.PlainText
+                        color: root.st.text_fg
+                        font.family: generic.entry.glyph_font || (root.provider && root.provider.glyph_font !== "" ? root.provider.glyph_font : root.st.font_family)
+                        font.pixelSize: root.st.fs(2)
+                    }
+
+                    Text {
+                        id: generic_label
+                        anchors.left: generic_icon.right
+                        anchors.leftMargin: 8
+                        anchors.right: parent.right
+                        anchors.verticalCenter: generic_icon.verticalCenter
+                        elide: Text.ElideRight
+                        textFormat: Text.StyledText
+                        text: Fuzzy.highlight(generic.entry.label || "", generic.positions, String(root.st.text_accent))
+                        color: generic.entry.accent ? root.st.text_accent : root.st.text_fg
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-1)
+                    }
+
+                    Text {
+                        anchors.top: generic_icon.bottom
+                        anchors.topMargin: 6
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        wrapMode: Text.WordWrap
+                        elide: Text.ElideRight
+                        text: generic.entry.description || ""
+                        textFormat: Text.PlainText
+                        color: root.st.text_muted
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-3)
+                    }
+                }
+            }
+
+            Component {
+                id: row_delegate
+
+                MenuRow {
                     id: row
                     required property int index
                     readonly property var result: root.results[row.index] || ({ item: {}, positions: [] })
@@ -518,11 +674,11 @@ Popup {
 
             Loader {
                 id: preview_loader
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: parent.width * 0.38 - 8
-                active: root.visible && !!root.provider && root.provider.preview !== null
+                x: root.browse ? 0 : parent.width - width
+                width: root.browse ? parent.width : parent.width * 0.38 - 8
+                height: root.browse ? root.browse_split.preview_height : parent.height
+                // Unloaded while the browse preview is off, so a live one (the agents' pane capture) stops polling.
+                active: root.visible && !!root.provider && root.provider.preview !== null && !(root.browse && root.preview_size === "off")
                 sourceComponent: root.provider ? root.provider.preview : null
             }
 
@@ -536,6 +692,8 @@ Popup {
 
         Text {
             id: detail
+            // A browse card shows its own description.
+            visible: !root.browse
             anchors.bottom: parent.bottom
             width: parent.width
             elide: Text.ElideRight
