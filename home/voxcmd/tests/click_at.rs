@@ -578,7 +578,7 @@ fn show_hints_is_not_a_built_in_in_a_toml_integration_and_runs_its_command() {
     rig.run("show hints");
     assert_eq!(
         rig.calls_of("setsid"),
-        ["setsid -f wl-kbptr -o modes=floating,click -o mode_floating.source=detect"]
+        ["setsid -f /nonexistent/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect"]
     );
 }
 
