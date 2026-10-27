@@ -146,6 +146,8 @@ function normalize(raw) {
     }
     const out_shared = { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) };
     if (positions.indexOf(shared.position) >= 0) out_shared.position = shared.position;
+    // The compact setting of the shared layout; a monitor with its own layout has its own.
+    if (typeof shared.compact === "boolean") out_shared.compact = shared.compact;
     const out = { shared: out_shared, monitors: monitors, positions: saved_positions };
     // Written only once a switch is flipped, so a state file without one reads as all on.
     if (is_object(raw.directory)) {
@@ -263,6 +265,7 @@ function effective(rule, state, key) {
         if (own.compact !== undefined) out.compact = own.compact;
         return out;
     }
+    if (state.shared.compact !== undefined) out.compact = state.shared.compact;
     const place = state.shared.place;
     for (const entry of Object.keys(place)) {
         const to = place[entry];
@@ -459,4 +462,111 @@ function drop_own(state, key) {
     const next = normalize(state);
     delete next.monitors[key];
     return next;
+}
+
+// The bar editor's edits. Each takes the tracked `rule` of the monitor being edited and returns a new state; a monitor
+// without its own layout edits the shared one, so every monitor sharing it follows.
+
+function is_sharing(state, key) {
+    return !(key && state.monitors[key]);
+}
+
+function is_known_entry(entry) {
+    return known.indexOf(entry.split(":")[0]) >= 0;
+}
+
+// The modules in the order a bar shows them, which `h`/`l` step through. `sectioned` is a lualine bar on a row: it draws the
+// center and right modules by section and leaves out the ones it draws itself.
+function nav_order(layout, sectioned) {
+    const all = sectioned ? layout.left.concat(section_sorted(layout.center.concat(layout.right)).filter(e => !lualine_draws_itself(e))) : layout.left.concat(layout.center, layout.right);
+    return all.filter(is_known_entry);
+}
+
+// The entry `delta` places from `entry` in `order`, stopping at the ends; the first when `entry` is not in it.
+function nav_step(order, entry, delta) {
+    const at = order.indexOf(entry);
+    if (at < 0) return order[0] || "";
+    return order[Math.max(0, Math.min(order.length - 1, at + delta))];
+}
+
+// Moves `entry` one place along the bar: swaps with the neighbor on its side, or crosses to the next side at the end of
+// it (left to center to right). A sectioned (lualine) bar never swaps a module out of its section; the left side is not sectioned.
+function move_step(rule, state, key, entry, delta, sectioned) {
+    const next = normalize(state);
+    const view = layout_of(effective(rule, next, key));
+    const side = side_of(view, entry);
+    if (side === "") return next;
+    const is_sectioned = sectioned && side !== "left";
+    const shown = is_sectioned ? section_sorted(view[side]) : view[side];
+    const at = shown.indexOf(entry);
+    const neighbor = shown[at + delta];
+    if (neighbor !== undefined) {
+        if (is_sectioned && lualine_section(neighbor) !== lualine_section(entry)) return next;
+        return edit(rule, next, key, { type: "move", entry: entry, with: neighbor });
+    }
+    const to = sides[sides.indexOf(side) + delta];
+    if (to === undefined) return next;
+    return edit(rule, next, key, { type: "side", entry: entry, side: to, index: delta > 0 ? 0 : -1 });
+}
+
+// Takes the module off the bar into the hidden list. Nothing is purged, so it can come back.
+function hide_entry(rule, state, key, entry) {
+    return edit(rule, state, key, { type: "hide", entry: entry });
+}
+
+// Puts a hidden module back on the side it left (else the tracked side, else right).
+function unhide_place(rules, rule, state, key, entry) {
+    const next = normalize(state);
+    const back = restore_side(rules, next, key, entry);
+    return edit(rule, next, key, { type: "show", entry: entry, side: back.side, index: back.index });
+}
+
+// Whether `text` names a module and an argument it takes, like system:cpu.
+function valid_entry(text) {
+    const at = text.indexOf(":");
+    if (at < 0) return false;
+    return (module_args[text.slice(0, at)] || []).indexOf(text.slice(at + 1)) >= 0;
+}
+
+// The next unused `base:arg` for a module, else "".
+function suggest_entry(rule, state, key, base) {
+    const view = layout_of(effective(rule, normalize(state), key));
+    return next_entry(base, view.left.concat(view.center, view.right));
+}
+
+// Adds an argument entry just after `after` on its side (the right end when `after` is not on the bar). An invalid entry or
+// one already on the bar changes nothing.
+function add_entry(rule, state, key, text, after) {
+    const next = normalize(state);
+    const view = layout_of(effective(rule, next, key));
+    if (!valid_entry(text) || side_of(view, text) !== "") return next;
+    const side = side_of(view, after);
+    if (side === "") return edit(rule, next, key, { type: "show", entry: text, side: "right", index: -1 });
+    return edit(rule, next, key, { type: "show", entry: text, side: side, index: view[side].indexOf(after) + 1 });
+}
+
+// `o`: a sharing monitor gets a copy of what it shows now; a monitor with its own layout goes back to the shared one.
+function toggle_own(rule, state, key) {
+    const next = normalize(state);
+    if (!is_sharing(next, key)) return drop_own(next, key);
+    const view = effective(rule, next, key);
+    return set_own(next, key, view, !!(view && view.compact));
+}
+
+// `c`: flips the compact the edited layout shows: every sharing monitor on a shared layout, one monitor on its own. On a
+// shared layout the flipped value is written, or the setting removed when it equals what the rule gives, so the rule applies again.
+function toggle_compact(rule, state, key) {
+    const next = normalize(state);
+    const flipped = !(effective(rule, next, key) || {}).compact;
+    if (!is_sharing(next, key)) return set_compact(next, key, flipped);
+    if (flipped === !!(rule && rule.compact)) delete next.shared.compact;
+    else next.shared.compact = flipped;
+    return next;
+}
+
+// The bar edge follows the layout mode: a sharing monitor moves the shared edge (dropping its own saved one, which would
+// outrank it and leave the bar where it was), a monitor with its own layout moves only its own edge.
+function set_position_for_mode(state, key, position) {
+    if (!is_sharing(normalize(state), key)) return set_position(state, key, position);
+    return set_shared_position(clear_position(state, key), position);
 }

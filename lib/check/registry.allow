@@ -67,3 +67,4 @@ ipc tmux_overview state                 # a state query
 ipc transition play                     # a debugging hook
 ipc weather preview previewing          # a preview hook for fixtures
 ipc zoom start stop                     # the zoom overlay's own start and stop; step, size and full are actions
+ipc bareditor state                     # a read-only query for the shadow and the editor test

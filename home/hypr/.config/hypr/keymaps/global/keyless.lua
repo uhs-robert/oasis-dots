@@ -10,4 +10,5 @@ require("lib.act").load_defs({
   "overview",
   "settings",
   "launcher",
+  "bareditor",
 })

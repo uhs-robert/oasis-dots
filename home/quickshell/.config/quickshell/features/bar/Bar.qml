@@ -101,6 +101,7 @@ Item {
 
     // Sets island/screen/stat properties a module declares, after the Loader instantiates it.
     function wire_module(item, entry, island) {
+        BarItems.register(BarItems.key_of(root.screen_name, entry), item);
         item.compact = Qt.binding(() => root.compact);
         item.screen_name = Qt.binding(() => root.screen_name);
         item.bar_height = Qt.binding(() => root.bar_height);
@@ -460,11 +461,13 @@ Item {
     onRight_drawnChanged: sync_popups()
     Component.onCompleted: {
         root.popups_ready = true;
+        BarItems.register(root.screen_name + "|bar", root);
         sync_popups();
     }
     Component.onDestruction: {
         // A destroyed bar (monitor unplugged under the pointer) sends no hover end.
         Popups.set_bar_hover(root.screen_name, false);
         Popups.unregister_screen(root.screen_name);
+        BarItems.forget_screen(root.screen_name);
     }
 }

@@ -48,6 +48,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `updates/` holds `UpdatesState` (pending package counts), the updates popup and its NES inventory.
 - [`overview/`](features/overview/README.md): Workspace overview, voice contract and tmux tools
 - [`bar/`](features/bar/README.md): Bar layout and modules, command status
+- [`bar_editor/`](features/bar_editor/README.md): The full-screen editor for the bar's modules, opened over IPC
 - `voice/` holds `VoxSessionState` and `VoxWakeState` (the voxcmd session and wake-word files), `VoxtypeState` and `VoxtypeAudioState` (dictation state and samples), `VoiceSettings`, and the click hints: `ClickHints`, its IPC handler and `ClickHintsOverlay`.
 - [`settings/`](features/settings/README.md): The Settings panel and its saved state files
 - [`popups/`](features/popups/README.md): Popup framework and shared popup keys
@@ -74,6 +75,10 @@ Every function the shell exposes, with its typed signature and, where an action 
 <!-- BEGIN generated -->
 | Target | Signature | Action id |
 | --- | --- | --- |
+| `bareditor` | `open(monitor: string): string` | `bareditor.open` |
+| `bareditor` | `close(): string` | `bareditor.close` |
+| `bareditor` | `toggle(): string` | `bareditor.toggle` |
+| `bareditor` | `state(): string` |  |
 | `brightness` | `refresh(): void` |  |
 | `calendar` | `refresh(): void` |  |
 | `calendar` | `open_day(date: string): string` |  |
