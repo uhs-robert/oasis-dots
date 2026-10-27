@@ -349,6 +349,7 @@ SHELL_GROUPS = {
         "lib/install/tests/*.sh",
         "demo/*.sh",
         "home/hypr/.config/hypr/scripts/state-write",
+        "home/hypr/.config/hypr/scripts/restart-bar.sh",
         "home/hypr/.local/bin/hypr-act",
         "home/hypr/tests/*.sh",
         "home/voxcmd/tests/*.sh",
