@@ -536,6 +536,8 @@ PanelWindow {
             help_open = false;
             if (!root.search_starts_open || !root.search_opens_typing) clear_search();
             visible = true;
+            // A reopen during the close animation, with the pointer still inside, brings no hover change to report it.
+            root.report_hover();
             open_anim.restart();
             if (burst_loader.item) burst_loader.item.play();
             if (root.search_starts_open && root.search_opens_typing) root.open_search();
