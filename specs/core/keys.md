@@ -23,7 +23,7 @@ The owner drives the desktop from the keyboard. This spec says what pressing a k
 - **KEYS-01** A key is written as zero or more modifiers and a key name joined by ` + `, for example `CTRL + SHIFT + ESCAPE`.
 - **KEYS-02** One bind can list several keys; each of them does the same thing.
 - **KEYS-03** Most global shortcuts are the leader modifier plus a key. The leader is `SUPER` unless the machine's profile sets another.
-- **KEYS-04** Changing the leader moves every leader shortcut and every key that enters a submap, shipped or your own, to the new modifier; none keeps the old one.
+- **KEYS-04** Changing the leader moves every leader shortcut and every shipped key that enters a submap to the new modifier; none keeps the old one. A key you write out in full, such as `SUPER + SHIFT + N`, stays as written, so an entry key of your own follows the leader only if built with the leader helper.
 - **KEYS-05** [gap: untested] A global shortcut acts the moment it is pressed, wherever the keyboard focus is, except while a submap is active.
 - **KEYS-06** A submap's entry key switches the keyboard into that submap.
 - **KEYS-07** [gap: untested] While a submap is active only its own keys act. A global shortcut still acts there only if it is marked to work in submaps.
@@ -34,8 +34,8 @@ The owner drives the desktop from the keyboard. This spec says what pressing a k
 - **KEYS-12** Moving and resizing offer four step sizes on the same direction keys: the bare key, SHIFT for larger steps, CTRL for the finest, and CTRL + SHIFT for the largest. Held keys repeat.
 - **KEYS-13** ESCAPE leaves a submap the way that submap is set up: out of every submap (the default), back one level, or into a named submap. A submap may have no ESCAPE.
 - **KEYS-14** BACKSPACE returns to the submap you came from, or leaves every submap when there is none.
-- **KEYS-15** In a one-shot submap, a bound key does its action and then leaves the submap, unless its row is marked to stay.
-- **KEYS-16** In a one-shot submap, a key that is not bound just leaves the submap and does nothing else.
+- **KEYS-15** In a one-shot submap, a bound key does its action and then leaves the submap, unless its row is marked to stay or the submap has no ESCAPE.
+- **KEYS-16** In a one-shot submap, a key that is not bound just leaves the submap and does nothing else, unless the submap has no ESCAPE.
 - **KEYS-17** In a stay-until-ESCAPE submap, a key that is not bound does nothing and is not passed on to the focused application.
 - **KEYS-18** The leader modifier plus SPACE enters the Leader submap, a one-shot menu of pickers, voice commands, the start menu and settings.
 - **KEYS-19** The leader modifier plus `/` opens the keybind search.
