@@ -250,6 +250,7 @@ ShellRoot {
     HyprvimPromptIpc {
         prompt: hyprvim_prompt
     }
+    AgentsProvider {}
     AppsProvider {}
     ClipboardProvider {}
     EmojiProvider {}
