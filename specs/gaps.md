@@ -8,6 +8,10 @@
 - **KEYS-22** (untested; [keys.md](core/keys.md)) Entering a submap shows its binds in which-key.
 - **KEYS-25** (untested; [keys.md](core/keys.md)) `custom/init.lua` runs after every shipped key is registered, so it can remove or replace any of them.
 - **KEYS-26** (untested; [keys.md](core/keys.md)) Binding a key that already has a bind keeps both; both run when it is pressed.
+- **MEDIASETTINGS-01** (untested; [mediasettings.md](core/mediasettings.md)) The page is one list under the headings Visualizer, Layout and Text, in that order. `j`/`k` walk every option across the headings and `{`/`}` jump between them.
+- **MEDIASETTINGS-02** (untested; [mediasettings.md](core/mediasettings.md)) A preview of the bar's media module, at about twice its size, sits above the options and stays in view while the list scrolls. It changes as soon as an option changes: right side, cava line, container, album art, play/pause, title, artist, text layout, text width, scrolling text and its speed.
+- **MEDIASETTINGS-06** (untested; [mediasettings.md](core/mediasettings.md)) The preview picks its right side as the bar does: on battery it shows the battery fallback, and in the split island mode or the lualine style it shows the track position.
+- **MEDIASETTINGS-07** (untested; [mediasettings.md](core/mediasettings.md)) The bar's own media module looks and behaves as it did before the preview existed.
 - **PICKERS-01** (untested; [pickers.md](core/pickers.md)) A list picker opened from a keybind or IPC docks at the bottom of the focused monitor; opened from a bar island it drops from that island.
 - **PICKERS-02** (untested; [pickers.md](core/pickers.md)) The agent sessions and clipboard pickers always drop from the center island of the focused monitor, at about the size of the Settings panel, including when opened from a keybind or IPC. They never dock at the bottom.
 - **PICKERS-03** (untested; [pickers.md](core/pickers.md)) A browse picker shows, top to bottom, the search bar, a preview of the selected item, and a grid of fixed-size cards with as many columns as the width allows.

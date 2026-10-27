@@ -20,8 +20,8 @@ IpcHandler {
         return SettingsNav.show(section, screen);
     }
 
-    // Moves the open pane's row cursor; ignored by panes without one. A rows pane counts its rows across all tabs in
-    // order, headings included (a heading index lands on the row after it).
+    // Moves the open pane's row cursor; ignored by panes without one. A rows pane counts its rows in order, headings
+    // included (a heading index lands on the row after it).
     function cursor(index: int): void {
         SettingsNav.command("cursor", index);
     }

@@ -76,22 +76,11 @@ BarModule {
         vertical: root.vertical
         cell: Math.max(16, Math.min(root.cross - 8, 28))
         width: root.vertical ? implicitWidth : parent.width
-        // A capsule inset 5px from the bar edge above and below, like the approved mockups (28px in a 40px bar). Stacked
-        // text needs the room, so it takes a 2px inset.
-        height: root.vertical ? implicitHeight : well.stacked ? Math.max(24, Math.min(root.bar_height - 4, 30)) : Math.max(20, Math.min(root.bar_height - 10, 28))
+        height: root.vertical ? implicitHeight : well.bar_fit_height(root.bar_height)
         anchors.centerIn: parent
         player: root.player
         active: root.shown
         right_mode: root.right_mode
-        container_style: MediaSettings.container_style
-        show_art: MediaSettings.show_art
-        show_button: MediaSettings.show_button
-        show_title: MediaSettings.show_title
-        show_artist: MediaSettings.show_artist
-        text_layout: MediaSettings.text_layout
-        max_chars: MediaSettings.max_chars
-        text_scroll: MediaSettings.text_scroll
-        text_scroll_speed: MediaSettings.text_scroll_speed
         compact: root.compact
         onToggle_requested: MediaState.toggle()
     }

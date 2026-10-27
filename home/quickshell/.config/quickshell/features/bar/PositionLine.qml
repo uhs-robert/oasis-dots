@@ -10,6 +10,8 @@ Item {
     property var player: MediaState.active
     property color color: Style.bar_fg
     property font font
+    // Off for a player that is not an MprisPlayer (a preview's MediaSample), whose position moves by itself.
+    property bool polls: true
 
     readonly property real length: MediaState.length_of(root.player)
     readonly property real position: root.player ? root.player.position : 0
@@ -23,7 +25,7 @@ Item {
 
     // Registered while watched, paused or not: the viewer set triggers one position read, and MediaState.polling alone
     // limits the periodic polling to playback.
-    PositionViewer { active: root.watching }
+    PositionViewer { active: root.watching && root.polls }
 
     Text {
         id: label
