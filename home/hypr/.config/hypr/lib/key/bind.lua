@@ -38,6 +38,15 @@ local SCOPED_REMOVE = (function()
   return major > 0 or minor >= 57
 end)()
 
+--- @param handle table  Handle returned by hl.bind
+local function remove_handle(handle)
+  if SCOPED_REMOVE then
+    handle:remove()
+  else
+    handle:set_enabled(false)
+  end
+end
+
 --- @param key    string
 --- @param handle table|nil  Handle returned by hl.bind
 local function track(key, handle)
@@ -186,6 +195,11 @@ function Bind.submap(name, reset, fn)
     fn, reset = reset, nil
   end
 
+  local before = {}
+  for key, list in pairs(handles[name] or {}) do
+    before[key] = #list
+  end
+
   local ok, err
   local function body()
     local previous = scope
@@ -201,7 +215,17 @@ function Bind.submap(name, reset, fn)
   end
   -- Raised only once hl.define_submap has returned, so Hyprland's own current submap is restored whatever it does
   -- with an error from the body, and binds a caller makes after catching this land in the global map.
-  if not ok then error(err, 0) end
+  if not ok then
+    -- The failed submap is unreachable, so drop what the body bound; earlier binds of the same submap stay.
+    for key, list in pairs(handles[name] or {}) do
+      for index = #list, (before[key] or 0) + 1, -1 do
+        remove_handle(list[index])
+        list[index] = nil
+      end
+      if #list == 0 then handles[name][key] = nil end
+    end
+    error(err, 0)
+  end
 end
 
 --- Remove binds made through Bind from one submap only; binds made outside Bind aren't tracked.
@@ -216,11 +240,7 @@ function Bind.unbind(keys, submap)
   for _, key in ipairs(as_list(keys)) do
     local name = normalize(key)
     for _, handle in ipairs(scoped[name] or {}) do
-      if SCOPED_REMOVE then
-        handle:remove()
-      else
-        handle:set_enabled(false)
-      end
+      remove_handle(handle)
       count = count + 1
     end
     scoped[name] = nil
