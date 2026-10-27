@@ -68,29 +68,124 @@ qs-ipc show        # list every target and function
 
 `qs-picker <provider> <fallback> [mode]` in the same folder opens a picker, or runs the fallback command when no bar answers.
 
-| Target          | Functions                                                             |
-| --------------- | --------------------------------------------------------------------- |
-| `popup`         | `open <name>`, `toggle <name>`, `close`, `focus`, `keyboard`, `state` |
-| `picker`        | `open <name>`, `open_with <name> <mode>`, `toggle <name>`, `close`    |
-| `settings`      | `open <section>`, `toggle`, `view <section> <screen>`, `cursor <index>`, `step <delta>`, `activate`, `back`, `hide` |
-| `style`         | `set`, `cycle`, `get`, `set_lock`, `set_lock_tint`, `set_lock_backdrop`, `toggle_cava_line` and their getters |
-| `sound`         | `play <kind>`: a Theme audio sound if its category is on; `play alarm` always rings |
-| `overview`      | `open`, `close`, `toggle`, `search`, `move_follow`, `move_silent`, `save_session <name>`, `state` (`open` or `closed`), `act <verb> <args>` (see [Workspace overview and voice](features/overview/README.md)) |
-| `tmux_overview` | `open`, `close`, `toggle`, `search`, `state`                          |
-| `osd`           | `state`                                                               |
-| `notifications` | `open`, `close`, `toggle_dnd`, `get_dnd`, `get_last` (the newest history entry as JSON), `history <count> <app>` (see [Notifications](features/notifications/README.md)), `clear_all`, `dismiss_latest`, `dismiss_all`, `focus_toast`, `has_toast` |
-| `screenshot`    | `open`, `close`, `toggle`, `select`, `pick`, `share`, `stop_recording` and the recording callbacks |
-| `zoom`          | `start`, `stop`, `toggle`, `step <delta>`, `size <delta>`, `full`     |
-| `lock`          | `lock`, `lock_auto` (music waits for the first key), `state`, `preview <style>`, `preview_close` |
-| `power`         | `confirm <lock\|logout\|reboot\|poweroff>`, `run <action>`            |
-| `confirm`       | `ask <question> <result_path>`: drop the yes/no card from the center island; it writes `yes` or `no` to the path (No, Esc, the scrim and 10s without an answer are all `no`, the countdown waiting while voxtype records or transcribes); `dismiss <result_path>` closes that card without writing. `voxcmd ask confirm` is the shell caller |
-| `clickhints`    | `open <spec_path>`: numbered boxes over the screen from a JSON file `{label, choices: [{label, x, y, w, h}], result_path}` (global logical coordinates, at most ten); it writes the picked number, or an empty line for Esc, a click outside a box and 10s without an answer (the countdown waiting while voxtype records or transcribes), to the path, and returns `ok` (anything else means fall back to a text picker); `dismiss <result_path>` closes it without writing; `state` is `open` or `closed`. `voxcmd ask hints` is its caller |
-| `weather`       | `preview <fixture\|off>`, `previewing`: overlay a `features/weather/WeatherFixture.js` fixture on the live data (see [Weather views](features/weather/README.md)) |
-| `calendar`      | `refresh` (reread the calendar cache), `open_day <YYYY-MM-DD>` (open the clock popup on that day) |
-| `brightness`    | `refresh`                                                             |
-| `cmdstatus`     | `refresh <id>` (`""` refreshes every entry)                          |
-| `transition`    | `play <kind or style>`                                                |
-| `hyprvim_whichkey`, `hyprvim_prompt` | External API: the HyprVim which-key HUD and `:` prompt, each with `open` and `close`, called by the hyprvim plugin |
+Every function the shell exposes, with its typed signature and, where an action in `home/hypr/.config/hypr/lib/actions/defs` performs it, that action's id. The table is generated from the `IpcHandler` declarations; `just docs-gen` rewrites it.
+
+<!-- BEGIN generated -->
+| Target | Signature | Action id |
+| --- | --- | --- |
+| `brightness` | `refresh(): void` |  |
+| `calendar` | `refresh(): void` |  |
+| `calendar` | `open_day(date: string): string` |  |
+| `clickhints` | `open(spec_path: string): string` |  |
+| `clickhints` | `dismiss(result_path: string): void` |  |
+| `clickhints` | `state(): string` |  |
+| `cmdstatus` | `refresh(id: string): string` |  |
+| `confirm` | `ask(question: string, result_path: string): string` |  |
+| `confirm` | `dismiss(result_path: string): void` |  |
+| `hyprvim_prompt` | `open(path: string): string` |  |
+| `hyprvim_prompt` | `close(): void` |  |
+| `hyprvim_whichkey` | `open(path: string): void` |  |
+| `hyprvim_whichkey` | `close(): void` |  |
+| `lock` | `lock(): string` | `lock.open` |
+| `lock` | `lock_auto(): string` |  |
+| `lock` | `preview(name: string): string` |  |
+| `lock` | `preview_close(): string` |  |
+| `lock` | `state(): string` |  |
+| `notifications` | `toggle_dnd(): void` | `notifications.toggle_dnd` |
+| `notifications` | `get_dnd(): bool` |  |
+| `notifications` | `clear_all(): void` | `notifications.clear_all` |
+| `notifications` | `dismiss_latest(): void` | `notifications.dismiss_latest` |
+| `notifications` | `dismiss_all(): void` | `notifications.dismiss_all` |
+| `notifications` | `focus_toast(direction: string): string` |  |
+| `notifications` | `get_last(): string` |  |
+| `notifications` | `history(count: int, app: string): string` |  |
+| `notifications` | `has_toast(): bool` |  |
+| `notifications` | `open(): void` |  |
+| `notifications` | `close(): void` |  |
+| `osd` | `state(): string` |  |
+| `overview` | `save_session(target_name: string): string` |  |
+| `overview` | `open(): string` | `overview.open` |
+| `overview` | `close(): string` | `overview.close` |
+| `overview` | `search(): string` | `overview.search` |
+| `overview` | `move_follow(): string` | `overview.move` |
+| `overview` | `move_silent(): string` | `overview.move_silent` |
+| `overview` | `toggle(): string` | `overview.toggle` |
+| `overview` | `state(): string` |  |
+| `overview` | `act(verb: string, args: string): string` |  |
+| `picker` | `open(name: string): string` | `picker.open` |
+| `picker` | `open_with(name: string, arg: string): string` |  |
+| `picker` | `toggle(name: string): string` | `picker.toggle` |
+| `picker` | `close(): void` | `picker.close` |
+| `popup` | `open(name: string): void` | `popup.open` |
+| `popup` | `close(): void` |  |
+| `popup` | `toggle(name: string): void` |  |
+| `popup` | `focus(): string` |  |
+| `popup` | `keyboard(): string` |  |
+| `popup` | `state(): string` |  |
+| `power` | `confirm(action: string): void` | `power.confirm` |
+| `power` | `run(action: string): void` |  |
+| `screenshot` | `open(): string` | `screenshot.menu` |
+| `screenshot` | `close(): void` |  |
+| `screenshot` | `toggle(): string` |  |
+| `screenshot` | `select(frozen: bool, preset: string): string` | `screenshot.select` |
+| `screenshot` | `pick(mode: string, preset: string): string` |  |
+| `screenshot` | `share(windows: string, reply: string): string` |  |
+| `screenshot` | `stop_recording(): void` | `screenshot.stop_recording` |
+| `screenshot` | `recording_started(pid: string): string` |  |
+| `screenshot` | `recording_stopped(): void` |  |
+| `settings` | `open(section: string): void` | `settings.open` |
+| `settings` | `toggle(): void` | `settings.toggle` |
+| `settings` | `view(section: string, screen: string): bool` |  |
+| `settings` | `cursor(index: int): void` |  |
+| `settings` | `step(delta: int): void` |  |
+| `settings` | `activate(): void` |  |
+| `settings` | `back(): void` |  |
+| `settings` | `hide(): void` |  |
+| `sound` | `play(kind: string): string` |  |
+| `style` | `set(name: string): void` | `style.set` |
+| `style` | `cycle(): void` | `style.cycle` |
+| `style` | `get(): string` |  |
+| `style` | `set_effects_pack(name: string): string` |  |
+| `style` | `get_effects_pack(): string` |  |
+| `style` | `set_ui_sounds(on: bool): void` |  |
+| `style` | `get_ui_sounds(): bool` |  |
+| `style` | `set_lock(name: string): string` |  |
+| `style` | `get_lock(): string` |  |
+| `style` | `set_lock_tint(name: string): string` |  |
+| `style` | `get_lock_tint(): string` |  |
+| `style` | `set_lock_backdrop(name: string): string` |  |
+| `style` | `get_lock_backdrop(): string` |  |
+| `style` | `toggle_cava_line(): void` |  |
+| `style` | `get_cava_line(): bool` |  |
+| `tmux_overview` | `open(): string` | `tmux.overview` |
+| `tmux_overview` | `close(): string` | `tmux.close` |
+| `tmux_overview` | `search(): string` | `tmux.search` |
+| `tmux_overview` | `toggle(): string` | `tmux.toggle` |
+| `tmux_overview` | `state(): string` |  |
+| `transition` | `play(name: string): void` |  |
+| `weather` | `preview(name: string): string` |  |
+| `weather` | `previewing(): string` |  |
+| `zoom` | `start(): void` |  |
+| `zoom` | `stop(): void` |  |
+| `zoom` | `toggle(): void` | `zoom.toggle` |
+| `zoom` | `step(delta: int): void` | `zoom.step` |
+| `zoom` | `size(delta: int): void` | `zoom.size` |
+| `zoom` | `full(): void` | `zoom.full` |
+<!-- END generated -->
+
+Notes on the targets whose names do not say enough:
+
+- `sound`: `play <kind>` plays a Theme audio sound if its category is on; `play alarm` always rings.
+- `overview`: `state` is `open` or `closed`; for `act <verb> <args>` see [Workspace overview and voice](features/overview/README.md).
+- `notifications`: `get_last` returns the newest history entry as JSON; see [Notifications](features/notifications/README.md).
+- `lock`: `lock_auto` waits for the first key before the music starts.
+- `power`: `confirm` takes `lock`, `logout`, `reboot` or `poweroff`.
+- `confirm`: `ask <question> <result_path>` drops the yes/no card from the center island and writes `yes` or `no` to the path (No, Esc, the scrim and 10s without an answer are all `no`, the countdown waiting while voxtype records or transcribes); `dismiss <result_path>` closes that card without writing. `voxcmd ask confirm` is the shell caller.
+- `clickhints`: `open <spec_path>` shows numbered boxes over the screen from a JSON file `{label, choices: [{label, x, y, w, h}], result_path}` (global logical coordinates, at most ten). It writes the picked number, or an empty line for Esc, a click outside a box and 10s without an answer (the countdown waiting while voxtype records or transcribes), to the path, and returns `ok` (anything else means fall back to a text picker); `dismiss <result_path>` closes it without writing; `state` is `open` or `closed`. `voxcmd ask hints` is its caller.
+- `weather`: `preview <fixture|off>` overlays a `features/weather/WeatherFixture.js` fixture on the live data; see [Weather views](features/weather/README.md).
+- `calendar`: `refresh` rereads the calendar cache; `open_day <YYYY-MM-DD>` opens the clock popup on that day.
+- `cmdstatus`: `refresh <id>` with `""` refreshes every entry.
+- `hyprvim_whichkey`, `hyprvim_prompt`: external API, the HyprVim which-key HUD and `:` prompt, each with `open` and `close`, called by the hyprvim plugin.
 
 Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `power`, `clock`, `volume`, `battery`, `bluetooth`, `system`, `tray`, `network`, `keeptabs`, `weather`, `updates`, `media`, `screenshot`, `notifications`, `picker`.
 

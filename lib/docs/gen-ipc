@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""Writes the IPC function table in the Quickshell README from the IpcHandler declarations; --check only compares."""
+
+import argparse
+import difflib
+import json
+import os
+import subprocess
+import sys
+
+sys.dont_write_bytecode = True
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, "lib", "check", "steps"))
+import qml_ipc  # noqa: E402
+
+DOC = os.path.join(ROOT, qml_ipc.QS_DIR, "README.md")
+ACTIONS_SCRIPT = os.path.join("home", "hypr", "tests", "act_refs.lua")
+BEGIN = "<!-- BEGIN generated -->"
+END = "<!-- END generated -->"
+
+
+class GenError(Exception):
+    pass
+
+
+def run_actions():
+    done = subprocess.run(["lua", ACTIONS_SCRIPT], capture_output=True, text=True, encoding="utf-8", cwd=ROOT)
+    if done.returncode != 0:
+        raise GenError(f"{ACTIONS_SCRIPT} failed: {(done.stderr or done.stdout).strip()}")
+    return done.stdout
+
+
+def action_ids(actions_json):
+    """{(target, function): [action ids]} for the actions that perform an IPC call."""
+    try:
+        actions = json.loads(actions_json)["actions"]
+    except (ValueError, KeyError) as error:
+        raise GenError(f"{ACTIONS_SCRIPT} printed no action list: {error}")
+    ids = {}
+    for action in actions:
+        perform = action["perform"]
+        if perform["kind"] == "ipc":
+            ids.setdefault((perform["target"], perform["function"]), []).append(action["id"])
+    return ids
+
+
+def cell(text, code=False):
+    """One table cell: whitespace runs collapse to a space, and `|` is escaped."""
+    text = " ".join(text.split()).replace("|", "\\|")
+    return f"`{text}`" if code and text else text
+
+
+def render(handlers, ids):
+    """The table: targets alphabetical, functions in source order, so a regeneration never reorders rows."""
+    lines = ["| Target | Signature | Action id |", "| --- | --- | --- |"]
+    for target, handler in sorted(handlers.items()):
+        for name, parameters, returns in handler.signatures:
+            signature = f"{name}({parameters}): {returns}"
+            lines.append(f"| {cell(target, True)} | {cell(signature, True)} | {cell(', '.join(ids.get((target, name), [])), True)} |")
+    return "\n".join(lines) + "\n"
+
+
+def splice(doc, table):
+    """doc with the text between the markers replaced by table."""
+    if doc.count(BEGIN) != 1 or doc.count(END) != 1:
+        raise GenError(f"the doc needs exactly one {BEGIN} and one {END} line")
+    head, rest = doc.split(BEGIN, 1)
+    body, tail = rest.split(END, 1)
+    return f"{head}{BEGIN}\n{table}{END}{tail}"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--write", action="store_true")
+    mode.add_argument("--check", action="store_true")
+    parser.add_argument("--actions", help="read the action list JSON from this file instead of running lua")
+    parser.add_argument("--doc", default=DOC)
+    parser.add_argument("--root", default=ROOT, help="the checkout whose QML is read")
+    args = parser.parse_args()
+    try:
+        if args.actions:
+            with open(args.actions, encoding="utf-8") as file:
+                actions = file.read()
+        else:
+            actions = run_actions()
+        # Only the shell's handlers belong in its README; the demo overlay's do not.
+        handlers, findings = qml_ipc.declared(args.root, (qml_ipc.QS_DIR,))
+        if findings:
+            raise GenError("; ".join(f"{f.path}:{f.line}: {f.message}" for f in findings))
+        with open(args.doc, encoding="utf-8") as file:
+            current = file.read()
+        wanted = splice(current, render(handlers, action_ids(actions)))
+    except (GenError, OSError) as error:
+        print(f"gen-ipc: {error}", file=sys.stderr)
+        return 1
+    if args.write:
+        if wanted != current:
+            with open(args.doc, "w", encoding="utf-8") as file:
+                file.write(wanted)
+        return 0
+    if wanted != current:
+        sys.stdout.writelines(difflib.unified_diff(current.splitlines(True), wanted.splitlines(True), "current", "generated", n=1))
+        print("gen-ipc: the generated IPC table is stale; run `just docs-gen`", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

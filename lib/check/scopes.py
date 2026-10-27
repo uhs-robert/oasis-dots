@@ -76,6 +76,11 @@ PATH_SCOPES = [
     # The keybind table is generated from the keymaps (home/hypr/*, already lua); its generator's tests are unittest cases in lib/check/tests.
     ("lib/check/steps/docs-generated.sh", "lua"),
     ("lib/docs/gen-keybinds", "checkscope lua"),
+    # The IPC table is generated from the IpcHandler files and their parser, so edits to those run the same step (in the lua scope).
+    ("lib/docs/gen-ipc", "checkscope lua"),
+    ("lib/check/steps/qml_ipc.py", "lua"),
+    ("home/quickshell/*Ipc.qml", "lua qml node"),
+    ("home/quickshell/.config/quickshell/README.md", "lua qml node"),
     ("docs/keybinds.md", "lua"),
     ("lib/check/steps/time-format.sh", "qml"),
     ("lib/check/steps/shaders.sh", "shaders"),
@@ -280,7 +285,7 @@ STEPS = [
     # single scope covers them. No `needs`: a missing lua must fail the step, not skip it.
     Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
-    Step("docs-generated", "lua", "sh ./lib/check/steps/docs-generated.sh", ("lua", "python3"), skip_reason="the keybind table check needs lua and python3"),
+    Step("docs-generated", "lua", "sh ./lib/check/steps/docs-generated.sh", ("lua", "python3"), skip_reason="the generated table checks need lua and python3"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
     Step("shaders", "shaders", "sh ./lib/check/steps/shaders.sh", probe='[ -x "${QSB-}" ] || command -v qsb >/dev/null || [ -x /usr/lib/qt6/bin/qsb ]', skip_reason="the shader check needs qsb (qt6-shadertools)"),

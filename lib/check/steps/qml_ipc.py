@@ -25,10 +25,8 @@ repo depend on: the target and every listed function must stay declared and type
 caller. A line that no longer applies (an `uncalled` target that is now called or gone, a `frozen` name that is gone)
 fails as stale, so the list only shrinks.
 
-The IPC table in the Quickshell README documents the same declarations: each target declared under the Quickshell
-directory needs a row, a row for a target nobody declares fails, and so does a function a row names that the target
-does not expose. A row names a function with a backticked span that opens the cell or follows a comma, semicolon or
-"and"; other backticked spans in the cell are prose.
+The README's IPC table is generated from the same declarations by lib/docs/gen-ipc, so `declared` also keeps each
+exposed function's signature.
 
   python3 -B lib/check/steps/qml_ipc.py
 """
@@ -45,8 +43,6 @@ from qml_imports import blank_strings, read_lines, strip_code  # noqa: E402
 from qml_paths import QS_DIR, REPO_DIR, Finding, git_listing  # noqa: E402
 
 ALLOW_PATH = "lib/check/qml-ipc.allow"
-README_PATH = f"{QS_DIR}/README.md"
-TABLE_SECTION = "## IPC"
 QML_DIRS = (QS_DIR, "demo/overlay")
 SELF_DIR = "lib/check/"  # the step's own tests hold deliberately wrong calls
 SKIPPED_SUFFIXES = (".qml", ".md")
@@ -68,6 +64,7 @@ class Handler(NamedTuple):
     path: str
     line: int
     functions: frozenset  # the typed ones only
+    signatures: tuple = ()  # (name, parameters, return type) of those, in source order
 
 
 PARAM = re.compile(r"^\s*\w+\s*:\s*[\w.<>]+\s*$")
@@ -114,12 +111,14 @@ def declarations(path, rel):
         if not literal:
             findings.append(Finding(rel, line, "IpcHandler target must be a string literal"))
             continue
-        functions = set()
+        functions, signatures = set(), []
         for function in re.finditer(r"\bfunction\s+(\w+)\s*\(([^)]*)\)", body):
             after = body[function.end():function.end() + 80].split("{", 1)[0]
             if is_exposed(function.group(2), after):
                 functions.add(function.group(1))
-        found.append((literal.group(2), Handler(rel, line, frozenset(functions))))
+                parameters = ", ".join(" ".join(p.split()) for p in function.group(2).split(",") if p.strip())
+                signatures.append((function.group(1), parameters, RETURN.match(after).group(0).lstrip(" \t\n:").strip()))
+        found.append((literal.group(2), Handler(rel, line, frozenset(functions), tuple(signatures))))
     return found, findings
 
 
@@ -290,69 +289,9 @@ def read_allowlist(repo, allow_path):
     return entries, findings
 
 
-# --- README table ----------------------------------------------------------------------------------------------------
-
-SPAN = re.compile(r"`([^`]+)`")
-FUNCTION_OPENER = re.compile(r"(?:^|[,;] |\band )$")
-FENCE_MARKER = re.compile(r" {0,3}(`{3,}|~{3,})")
-CELL_SPLIT = re.compile(r"(?<!\\)\|")
-
-
-def table_rows(readme_lines):
-    """[(line, [targets], [functions])] for the rows of the IPC section's table."""
-    rows, in_section, fence = [], False, None
-    for number, line in enumerate(readme_lines, 1):
-        marker = FENCE_MARKER.match(line)
-        if marker and fence is None:
-            fence = marker.group(1)
-        elif marker and marker.group(1)[0] == fence[0] and len(marker.group(1)) >= len(fence):
-            fence = None
-        if line.startswith("## ") and fence is None:  # a "## " in a code sample is not a heading
-            in_section = line.strip() == TABLE_SECTION
-        cells = [cell.strip() for cell in CELL_SPLIT.split(line)[1:-1]] if in_section and line.startswith("| `") else []
-        if len(cells) < 2:
-            continue
-        targets = SPAN.findall(cells[0])
-        functions = [
-            span.group(1).split()[0]
-            for span in SPAN.finditer(cells[1])
-            if FUNCTION_OPENER.search(cells[1][:span.start()])
-        ]
-        rows.append((number, targets, functions))
-    return rows
-
-
-def readme_findings(repo, readme_path, handlers, shell_dir):
-    """Findings for the README's IPC table against the handlers; only those under shell_dir need a row (the demo overlay's do not)."""
-    try:
-        with open(os.path.join(repo, readme_path), encoding="utf-8") as file:
-            lines = file.read().splitlines()
-    except OSError:
-        return [Finding(readme_path, 1, "README not found, so its IPC table cannot be checked")]
-    rows = table_rows(lines)
-    if not rows:
-        return [Finding(readme_path, 1, f'no IPC table rows under "{TABLE_SECTION}"')]
-    findings, documented = [], set()
-    for number, targets, functions in rows:
-        for target in targets:
-            documented.add(target)
-            handler = handlers.get(target)
-            if handler is None:
-                findings.append(Finding(readme_path, number, f'IPC table row "{target}" is declared by no IpcHandler'))
-                continue
-            # a row that shares its cell between targets (the hyprvim pair) documents no functions
-            for function in functions if len(targets) == 1 else []:
-                if function not in handler.functions:
-                    findings.append(Finding(readme_path, number, f'IPC table row "{target}" names "{function}", which is not a typed function (has: {", ".join(sorted(handler.functions))})'))
-    for target, handler in sorted(handlers.items()):
-        if handler.path.startswith(shell_dir + "/") and target not in documented:
-            findings.append(Finding(handler.path, handler.line, f'target "{target}" has no row in the IPC table of {readme_path}'))
-    return findings
-
-
 # --- Checks ----------------------------------------------------------------------------------------------------------
 
-def run_checks(repo, qml_dirs=QML_DIRS, allow_path=ALLOW_PATH, readme_path=README_PATH):
+def run_checks(repo, qml_dirs=QML_DIRS, allow_path=ALLOW_PATH):
     """Every finding for the checkout at repo, sorted."""
     handlers, findings = declared(repo, qml_dirs)
     entries, problems = read_allowlist(repo, allow_path)
@@ -379,8 +318,6 @@ def run_checks(repo, qml_dirs=QML_DIRS, allow_path=ALLOW_PATH, readme_path=READM
             for function in entry.functions:
                 if function not in handler.functions:
                     findings.append(Finding(allow_path, entry.line, f'frozen {entry.target} is stale: it has no typed function "{function}" (has: {", ".join(sorted(handler.functions))}).'))
-    if readme_path:
-        findings += readme_findings(repo, readme_path, handlers, qml_dirs[0])
     return sorted(set(findings))
 
 

@@ -274,6 +274,7 @@ demo-beat name:
 demo-record:
     demo/showcase.sh record
 
-# Regenerate the generated sections of the docs (the keybind table in docs/keybinds.md)
+# Regenerate the generated sections of the docs (the keybind table in docs/keybinds.md, the IPC table in the Quickshell README)
 docs-gen:
     python3 -B lib/docs/gen-keybinds --write
+    python3 -B lib/docs/gen-ipc --write

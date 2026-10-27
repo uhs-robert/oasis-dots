@@ -33,7 +33,7 @@ CASES = [
     ("lib/check/qml-layers.allow", "checkscope qml"),
     ("lib/check/steps/qml_singleton_names.py", "checkscope qml"),
     ("lib/check/qml-singleton-names.allow", "checkscope qml"),
-    ("lib/check/steps/qml_ipc.py", "checkscope"),
+    ("lib/check/steps/qml_ipc.py", "checkscope lua"),
     ("lib/check/qml-ipc.allow", "checkscope"),
     ("lib/check/steps/lua.sh", "checkscope lua"),
     ("lib/check/steps/symlinks.sh", "checkscope"),
@@ -64,6 +64,9 @@ CASES = [
     ("home/hypr/.local/bin/hypr-act", " lua"),
     ("docs/keybinds.md", " lua"),
     ("lib/docs/gen-keybinds", " checkscope lua"),
+    ("lib/docs/gen-ipc", " checkscope lua"),
+    ("home/quickshell/.config/quickshell/features/lock/LockIpc.qml", " lua qml node"),
+    ("home/quickshell/.config/quickshell/README.md", " lua qml node"),
     ("lib/check/steps/docs-generated.sh", "checkscope lua"),
     # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.
     ("system/etc/greetd/quickshell/init.lua", " lua qml"),
