@@ -2,7 +2,7 @@
 # Usage: run-local-reviews.sh <base> <outdir>; run from a clean worktree.
 # Runs every reviewer whose resolved local scope is not off (see reviewers.md), in parallel, and prints one line per
 # reviewer: `<name>: <review path>` or `<name>: <why there is none>`. Results are advisory, so the exit is 0 whatever the
-# reviewers did; 1 means the registry did not resolve, 64 bad usage.
+# reviewers did; 1 means the registry did not resolve or the results could not be copied, 64 bad usage.
 set -u
 
 [ $# -eq 2 ] || {
@@ -41,7 +41,15 @@ cleanup() {
     mapfile -t found < <(descendants "$pid")
     victims+=("${found[@]}" "$pid")
   done
-  [ ${#victims[@]} -eq 0 ] || kill -TERM "${victims[@]}" 2>/dev/null
+  if [ ${#victims[@]} -gt 0 ]; then
+    kill -TERM "${victims[@]}" 2>/dev/null
+    # A reviewer that traps TERM gets a short grace period, then KILL.
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      kill -0 "${victims[@]}" 2>/dev/null || break
+      sleep 0.2
+    done
+    kill -KILL "${victims[@]}" 2>/dev/null
+  fi
   rm -rf "$results"
 }
 trap cleanup EXIT
@@ -67,8 +75,9 @@ while IFS= read -r entry; do
     continue
   }
   case $command in /*) ;; *) command=$here/$command ;; esac
-  # A stale file from an earlier run must not pass for this run's result.
-  rm -f "$outdir/$name-review.md" "$outdir/$name-skipped.txt"
+  # Everything a reviewer writes is named <name>-* or <name>.*; leftovers of an earlier run must neither pass for this
+  # run's result nor, with an in-tree outdir, make the tree dirty for the reviewer's own clean-tree check.
+  rm -rf "$outdir/$name"-* "$outdir/$name".*
   names+=("$name")
   REVIEW_SCOPE=$scope REVIEW_MODEL=$model bash -c '
     "$1" "$2" "$3" >"$4" 2>"$5" </dev/null
@@ -77,7 +86,10 @@ while IFS= read -r entry; do
   pids+=("$!")
 done < <(jq -c '.[]' <<<"$registry")
 wait
-cp -a "$stage"/. "$outdir"/
+cp -a "$stage"/. "$outdir"/ || {
+  echo "run-local-reviews: could not copy the results to $outdir" >&2
+  exit 1
+}
 # Reaped: a later kill could hit an unrelated process that reused the pid.
 pids=()
 
