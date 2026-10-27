@@ -185,12 +185,11 @@ Singleton {
         }
         load_name = name;
         open_name = name;
-        if (!keep_owner) {
-            if (reopened_owner) reopened_owner.pin();
-            root.hover_owner = null;
-        }
+        if (!keep_owner) root.hover_owner = null;
         back_name = back;
         grab_keyboard = false;
+        // After the grab reset above: pinning asks for the keyboard, which a plain open (IPC, no keyboard of its own) would otherwise lose.
+        if (!keep_owner && reopened_owner) reopened_owner.pin();
         // After open_name moves, so a hands-off popup being replaced keeps its latched flag through its close animation.
         root.hands_off = !!hands_off;
     }
