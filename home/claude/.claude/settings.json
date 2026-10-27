@@ -4,6 +4,9 @@
     "pr": "",
     "sessionUrl": false
   },
+  "env": {
+    "CLAUDE_CODE_ENABLE_FUNCTION_HOOKS": "1"
+  },
   "permissions": {
     "allow": [
       "Bash(/home/roberth/.claude/skills/orchestrator-handoff/spawn-successor.sh:*)",
@@ -243,13 +246,20 @@
   "enabledPlugins": {
     "lua-lsp@claude-plugins-official": false,
     "caveman@caveman": false,
-    "cc-plugin-plugin-authoring@builtin": true
+    "cc-plugin-plugin-authoring@builtin": true,
+    "images@claude-mod-images": true
   },
   "extraKnownMarketplaces": {
     "caveman": {
       "source": {
         "source": "github",
         "repo": "JuliusBrussee/caveman"
+      }
+    },
+    "claude-mod-images": {
+      "source": {
+        "source": "github",
+        "repo": "uhs-robert/claude-mod-images"
       }
     }
   },
