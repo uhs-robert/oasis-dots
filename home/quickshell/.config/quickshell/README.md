@@ -175,10 +175,12 @@ Every function the shell exposes, with its typed signature and, where an action 
 
 Notes on the targets whose names do not say enough:
 
+- `transition`: `play <kind or style>` takes a transition kind or a style name.
+- `picker`: `open_with <name> <mode>` opens the picker in that mode.
+- `lock`: `preview <style>` previews a lock style; `lock_auto` waits for the first key before the music starts.
 - `sound`: `play <kind>` plays a Theme audio sound if its category is on; `play alarm` always rings.
 - `overview`: `state` is `open` or `closed`; for `act <verb> <args>` see [Workspace overview and voice](features/overview/README.md).
 - `notifications`: `get_last` returns the newest history entry as JSON; see [Notifications](features/notifications/README.md).
-- `lock`: `lock_auto` waits for the first key before the music starts.
 - `power`: `confirm` takes `lock`, `logout`, `reboot` or `poweroff`.
 - `confirm`: `ask <question> <result_path>` drops the yes/no card from the center island and writes `yes` or `no` to the path (No, Esc, the scrim and 10s without an answer are all `no`, the countdown waiting while voxtype records or transcribes); `dismiss <result_path>` closes that card without writing. `voxcmd ask confirm` is the shell caller.
 - `clickhints`: `open <spec_path>` shows numbered boxes over the screen from a JSON file `{label, choices: [{label, x, y, w, h}], result_path}` (global logical coordinates, at most ten). It writes the picked number, or an empty line for Esc, a click outside a box and 10s without an answer (the countdown waiting while voxtype records or transcribes), to the path, and returns `ok` (anything else means fall back to a text picker); `dismiss <result_path>` closes it without writing; `state` is `open` or `closed`. `voxcmd ask hints` is its caller.
