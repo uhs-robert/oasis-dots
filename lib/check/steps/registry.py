@@ -7,7 +7,8 @@ JSON, reads that list in memory and throws it away: no list is committed, so not
   - the Lua failing or `Act` warning (an unknown id, a duplicate, bad params, a `{param}` that is not declared);
   - an id that is repeated or does not look like `area.name`;
   - an `ipc` action naming a function that is not a typed function of a real IpcHandler (read by qml_ipc.declared, the
-    parser of `qml-ipc`). Arity is not checked: declared() keeps function names only;
+    parser of `qml-ipc`), or passing it more or fewer arguments than it declares parameters (`qs ipc call` refuses
+    a call whose argument count differs);
   - a `command` action whose program is `~/<path>` that no stow package ships as `home/<pkg>/<path>`, except the
     executables in BUILT_EXECUTABLES, which an installer recipe creates;
   - a bind that performs no action and an IPC function that no action calls, unless lib/check/registry.allow lists it
@@ -182,6 +183,17 @@ def allow_findings(binds, handlers, listing, entries, allow_path=ALLOW_PATH):
     return found
 
 
+def arity_findings(name, perform, handler):
+    """A finding when an ipc action passes a different number of arguments than the function's parameters."""
+    for function, parameters, _ in handler.signatures:
+        if function == perform["function"]:
+            expected = len([p for p in parameters.split(",") if p.strip()])
+            given = len(perform.get("args", []))
+            if given != expected:
+                return [f'{name} calls "{perform["target"]} {function}" with {given} argument(s), but {function}({parameters}) takes {expected}']
+    return []
+
+
 def action_findings(repo, action, handlers):
     """What is wrong with what one action refers to, given the IpcHandlers."""
     name = action["id"]
@@ -192,6 +204,7 @@ def action_findings(repo, action, handlers):
             return [f'{name} calls IPC target "{perform["target"]}", which no IpcHandler declares']
         if perform["function"] not in handler.functions:
             return [f'{name} calls "{perform["target"]} {perform["function"]}", which is not a typed function (has: {", ".join(sorted(handler.functions))})']
+        return arity_findings(name, perform, handler)
     elif perform["kind"] == "command" and perform["argv"][0].startswith("~/"):
         if perform["argv"][0] in BUILT_EXECUTABLES:
             return []
