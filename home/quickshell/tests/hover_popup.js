@@ -453,6 +453,53 @@ t("the lualine cava slot hovers and pins the media popup, and only while shown",
   assert.match(strip, /onClicked: slot_popup\.click\(\)/);
 });
 
+// Two helpers, one popup name (the lualine cava slot and the Media module): hover-opened by one, pinned by the other.
+function twins(owner_rule) {
+  const w = { open_name: "", owner: null, pointer: null, h: { s: { mode: "idle", close_timer: false }, m: { mode: "idle", close_timer: false } } };
+  const open_here = n => w.open_name === "media" && (!w.owner || w.owner === n);
+  const inside = n => w.pointer === n;
+  const apply = (n, r) => {
+    const x = w.h[n];
+    x.mode = r.mode;
+    if (r.close_timer === "start") x.close_timer = true;
+    if (r.close_timer === "stop") x.close_timer = false;
+    if (r.mode === "pinned") set_owner(null);
+    if (r.action === "open") { set_owner(r.mode === "hover_open" ? n : null); w.open_name = "media"; }
+    else if (r.action === "close" && open_here(n)) w.open_name = "";
+  };
+  const set_owner = o => {
+    w.owner = o;
+    if (!owner_rule) return;
+    for (const n of ["s", "m"]) if (w.h[n].mode === "hover_open" && w.owner !== n && open_here(n)) apply(n, P.popup_pressed(w.h[n].mode));
+  };
+  w.hover_open = n => { w.pointer = n; apply(n, P.inside_changed("idle", true, true)); apply(n, P.open_elapsed(w.h[n].mode, true, true)); };
+  w.move = n => { const was = w.pointer; w.pointer = n; if (was) apply(was, P.inside_changed(w.h[was].mode, false, false)); if (n) apply(n, P.inside_changed(w.h[n].mode, true, false)); };
+  w.click = n => apply(n, P.clicked(w.h[n].mode, open_here(n)));
+  w.fire_close = n => { const x = w.h[n]; if (x.close_timer) { x.close_timer = false; apply(n, P.close_elapsed(x.mode, inside(n))); } };
+  return w;
+}
+t("a click on the Media module pins the popup the cava slot hover-opened; the slot's close grace does not shut it", () => {
+  const w = twins(true);
+  w.hover_open("s");
+  w.move("m");
+  w.click("m");
+  w.fire_close("s");
+  assert.deepStrictEqual([w.open_name, w.h.s.mode, w.h.m.mode], ["media", "pinned", "pinned"]);
+});
+t("without the ownership hand-over the slot's grace closes the pinned popup (the bug)", () => {
+  const w = twins(false);
+  w.hover_open("s");
+  w.move("m");
+  w.click("m");
+  w.fire_close("s");
+  assert.strictEqual(w.open_name, "");
+});
+t("HoverPopup treats a lost hover ownership as a pin, and the slot's helper follows the global switch", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  assert.match(src, /function onHover_ownerChanged\(\) \{\n\s+if \(root\._mode === "hover_open" && Popups\.hover_owner !== root && root\.open_here\) root\.apply\(Policy\.popup_pressed\(root\._mode\)\);/);
+  assert.match(bar_source("neovim/LualineStrip.qml"), /enabled: cava_slot\.shown && Popups\.hover_popups/);
+});
+
 let failed = 0;
 for (const [name, fn] of cases) {
   try { fn(); console.log("ok   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n  " + e.message); }
