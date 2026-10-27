@@ -55,6 +55,7 @@ ShellRoot {
     function install(screens) {
         BarEditor.tracked_of = s => Object.assign({}, root.layout_rule, s.bar === false ? { bar: false } : {});
         BarEditor.key_of = s => s.model + " @ " + s.name;
+        BarEditor.tracked_rules = [];
         BarEditor.focused_name = "B";
         BarEditor.lualine = false;
         BarEditor.screens = screens;
@@ -143,6 +144,11 @@ ShellRoot {
         root.check("c on a sharing monitor sets the shared compact", [BarSettings.state.shared.compact, Object.keys(BarSettings.state.monitors)], [true, []]);
         root.keys("c");
         root.check("c again clears the shared compact, so every rule's own compact applies again", ["compact" in BarSettings.state.shared, Object.keys(BarSettings.state.monitors)], [false, []]);
+        BarEditor.tracked_rules = [{ match: { name: "D" }, compact: true }];
+        root.keys("c c");
+        root.check("c keeps the shared compact when a disconnected monitor's rule gives the other value", [BarSettings.state.shared.compact], [false]);
+        BarEditor.tracked_rules = [];
+        root.keys("c c");
         root.keys("a");
         root.check("a opens the prompt, empty for a module with no arguments", [BarEditor.prompt_open, BarEditor.prompt_text], [true, ""]);
         root.keys("Esc");
