@@ -43,6 +43,7 @@ Item {
     }
 
     function apply(r) {
+        const from_mode = root._mode;
         root._mode = r.mode;
         if (r.open_timer === "start") {
             open_timer.interval = r.mode === "swapping" ? root.swap_delay : root.open_delay;
@@ -57,6 +58,7 @@ Item {
         // A pinned open drops the owner only after Popups.open (below), so the popup it replaces never shows ownerless.
         if (r.mode === "pinned" && r.action !== "open") Popups.hover_owner = null;
         if (r.mode === "pinned" && root.open_here) Popups.keyboard_off = false;
+        if (Policy.pin_grabs_keyboard(from_mode, r.mode, root.open_here)) Popups.grab_keyboard = true;
         // The mode is set first, so the open_name change this causes reads as ours, not as an outside open.
         if (r.action === "open" && root.module) {
             // Before the open, so a same-name sibling never sees the new popup without an owner and takes it for a pin.

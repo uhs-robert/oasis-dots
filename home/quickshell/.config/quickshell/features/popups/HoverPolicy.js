@@ -105,3 +105,9 @@ function swap_source(swap, open_name, open_screen, name, screen_name) {
     if (!swap || open_name === "" || open_name === name || open_screen !== screen_name) return null;
     return { name: open_name, to: name, screen_name: open_screen, extent: 0 };
 }
+
+// Whether a mode change pins a hover-opened popup that is still open: its window has no keyboard yet (a hover open takes
+// none), so Escape would go nowhere until the owner clicked inside it. The caller asks the popup for the keyboard.
+function pin_grabs_keyboard(from_mode, to_mode, open_here) {
+    return from_mode === "hover_open" && to_mode === "pinned" && open_here;
+}

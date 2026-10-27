@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPolicy.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here, swap_ok, swap_source };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here, swap_ok, swap_source, pin_grabs_keyboard };", T);
 const P = T.api;
 
 // A model of the world around the helper: the pointer, which popup is open, and the two timers.
@@ -946,6 +946,14 @@ t("no style has its own swap transition: nothing of the styled swap is left", ()
   assert.ok(!fs.existsSync(path.join(dir, "features/popups/frames/SwapFx.qml")));
   assert.doesNotMatch(read("theme/transitions/Kinds.js"), /swap_/);
   for (const f of ["TextureFx", "CoverFx"]) assert.doesNotMatch(read("theme/transitions/" + f + ".qml"), /stop_at|time_scale/, f);
+});
+
+t("pinning a hover-opened popup asks for the keyboard, so Escape closes it before any click inside", () => {
+  assert.strictEqual(P.pin_grabs_keyboard("hover_open", "pinned", true), true);
+  assert.strictEqual(P.pin_grabs_keyboard("hover_open", "pinned", false), false);
+  for (const from of ["idle", "pending", "pinned", "swapping"]) assert.strictEqual(P.pin_grabs_keyboard(from, "pinned", true), false, from);
+  const hover = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  assert.match(hover, /if \(Policy\.pin_grabs_keyboard\(from_mode, r\.mode, root\.open_here\)\) Popups\.grab_keyboard = true;/);
 });
 
 let failed = 0;
