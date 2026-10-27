@@ -27,7 +27,7 @@ Singleton {
     }
 
     // With an anchor it drops from that island like a popup; without one it docks at the bottom of the focused monitor.
-    // `arg` reaches the provider's refresh(), e.g. a mode like "move".
+    // `arg` reaches the provider's refresh(), e.g. "delete" for the clipboard picker.
     function open(name, anchor_item, color, screen_name, back_to, arg) {
         const p = root.providers[name];
         if (!p) {

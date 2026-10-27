@@ -176,7 +176,7 @@ Every function the shell exposes, with its typed signature and, where an action 
 Notes on the targets whose names do not say enough:
 
 - `transition`: `play <kind or style>` takes a transition kind or a style name.
-- `picker`: `open_with <name> <mode>` opens the picker in that mode.
+- `picker`: `open_with <name> <arg>` opens the picker and hands `arg` to its provider: `delete` for `clipboard`, the file manager for `dirs`, a set for `emoji`, a submap for `keybinds`, the spec path for `choices`.
 - `lock`: `preview <style>` previews a lock style; `lock_auto` waits for the first key before the music starts.
 - `sound`: `play <kind>` plays a Theme audio sound if its category is on; `play alarm` always rings.
 - `overview`: `state` is `open` or `closed`; for `act <verb> <args>` see [Workspace overview and voice](features/overview/README.md).
