@@ -926,6 +926,29 @@ impl Setup {
     }
 }
 
+/// "go to workspace three" is a candidate of the Overview and of Keybinds; the Overview offers it only while open.
+fn overview_offers_workspace_three(setup: &Setup) -> bool {
+    let explained = setup
+        .command(&["explain", "--json", "go to workspace three"], &[])
+        .output()
+        .unwrap();
+    String::from_utf8_lossy(&explained.stdout).contains("workspace 3")
+}
+
+#[test]
+fn the_real_overview_hook_yields_when_the_file_says_open_but_the_bar_says_closed() {
+    let setup = Setup::with_real_overview("closed");
+    setup.runtime_file("overview.json", r#"{"open":true,"items":[]}"#);
+    assert!(!overview_offers_workspace_three(&setup));
+}
+
+#[test]
+fn the_real_overview_hook_yields_when_the_file_says_open_but_the_bar_is_down() {
+    let setup = Setup::with_real_overview("");
+    setup.runtime_file("overview.json", r#"{"open":true,"items":[]}"#);
+    assert!(!overview_offers_workspace_three(&setup));
+}
+
 #[test]
 fn the_real_overview_hook_offers_show_numbers_in_the_race_window() {
     // The bar says open, the session is in the Overview mode, overview.json is not written yet.

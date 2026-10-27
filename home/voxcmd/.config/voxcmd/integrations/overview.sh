@@ -10,17 +10,26 @@ source "$VOXCMD_SHARE_DIR/monitor-words.sh"
 overview_file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/overview.json"
 qs_ipc="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/qs-ipc"
 
-# Whether the overview is on screen: the bar's answer (see overview_alive), which holds in the moment after it opens,
-# before its file is written.
-overview_is_open() { overview_alive; }
+# Prints the bar's answer ("open", "closed"), or nothing when there is no qs-ipc or the bar does not answer.
+overview_bar_state() {
+  local answer=""
+  [ ! -x "$qs_ipc" ] || answer=$(timeout 2 "$qs_ipc" call overview state 2>/dev/null) || answer=""
+  echo "$answer"
+}
+
+# Whether the overview is on screen, for offering candidates: the bar must say open, which holds in the moment after it
+# opens, before its file is written. A crashed bar leaves "open":true in the file, so the file counts only where there
+# is no qs-ipc to ask.
+overview_is_open() {
+  [ -x "$qs_ipc" ] || { grep -q '"open":true' "$overview_file" 2>/dev/null; return; }
+  [ "$(overview_bar_state)" = open ]
+}
 
 # The mode's `alive` hook. The bar's own answer decides while it gives one: its file is rewritten a moment after the
 # overview opens, so right after "open overview" it still says closed. The file is believed only when the bar cannot be
 # asked.
 overview_alive() {
-  local answer=""
-  [ ! -x "$qs_ipc" ] || answer=$(timeout 2 "$qs_ipc" call overview state 2>/dev/null) || answer=""
-  case "$answer" in
+  case "$(overview_bar_state)" in
   open) return 0 ;;
   closed) return 1 ;;
   *) grep -q '"open":true' "$overview_file" 2>/dev/null ;;
