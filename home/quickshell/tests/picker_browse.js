@@ -51,8 +51,9 @@ const cases = [
   // req: PICKERS-12
   ["medium keeps its two rows; the preview gives up the peek", () => { const f = fit(area, body, "m", row, gap, 9, 4, 20); return [f.rows, f.preview_height]; }, [2, 432]],
   // req: PICKERS-12
-  ["an off preview gives a row to the peek when the area has no spare", () => fit(area, body, "off", row, gap, 50, 4, 20), { rows: 5, preview_height: 0, view_height: 640, overflows: true }],
-  ["an off preview keeps its rows when the spare holds the peek", () => fit(760, body, "off", row, gap, 50, 4, 20).rows, 6],
+  ["an off preview fills the whole area, no blank band under the view", () => fit(area, body, "off", row, gap, 50, 4, 20), { rows: 5, preview_height: 0, view_height: area, overflows: true }],
+  // req: PICKERS-12
+  ["off with room for the peeks keeps every row clear of the fades", () => [fit(760, body, "off", row, gap, 50, 4, 20).rows, fit(760, body, "off", row, gap, 50, 4, 20).view_height], [6, 760]],
   // req: PICKERS-13
   ["v flips grid and list", () => [toggled_view("grid"), toggled_view("list"), toggled_view(undefined)], ["list", "grid", "list"]],
   // req: PICKERS-13

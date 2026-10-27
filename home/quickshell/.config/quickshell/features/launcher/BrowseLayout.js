@@ -42,15 +42,15 @@ function split(area, body, size, row_height, gap) {
 }
 
 // split, plus the cards' view height. When the items run past the rows, the view grows by `peek` at each end, so a
-// faded sliver of the next row shows and the selected row still has room clear of both fades. The room comes from
-// the preview, so each size keeps its rows; only an off preview, with no room to give, loses a row to it.
+// faded sliver of the next row shows and the selected row still has room clear of both fades. With a preview the room
+// comes out of it, so each size keeps its rows. With it off the view takes the whole area; `rows` is then how many sit
+// clear of both fades.
 function fit(area, body, size, row_height, gap, count, cols, peek) {
     var whole = split(area, body, size, row_height, gap);
     var overflows = whole.rows > 0 && Math.ceil(count / Math.max(1, cols)) > whole.rows;
     if (!overflows) return { rows: whole.rows, preview_height: whole.preview_height, view_height: whole.rows * row_height, overflows: false };
-    var spare = whole.preview_height > 0 ? 0 : area - whole.rows * row_height;
-    var take = Math.max(0, 2 * peek - spare);
-    var s = take === 0 || whole.preview_height >= take ? { rows: whole.rows, preview_height: whole.preview_height - take } : split(area - 2 * peek, body, size, row_height, gap);
+    if (size_of(size) === "off") return { rows: Math.max(1, Math.floor((area - 2 * peek) / row_height)), preview_height: 0, view_height: Math.max(0, area), overflows: true };
+    var s = whole.preview_height >= 2 * peek ? { rows: whole.rows, preview_height: whole.preview_height - 2 * peek } : split(area - 2 * peek, body, size, row_height, gap);
     return { rows: s.rows, preview_height: s.preview_height, view_height: s.rows * row_height + 2 * peek, overflows: true };
 }
 
