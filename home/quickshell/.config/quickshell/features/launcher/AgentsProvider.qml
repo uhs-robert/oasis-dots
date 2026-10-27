@@ -289,6 +289,9 @@ PickerProvider {
             property var entry: ({})
             property var positions: []
             property bool selected: false
+            // Where the title and directory must stop, so a long one elides before the context bar instead of under it.
+            readonly property real text_end: line_context.visible ? line_context.x - 14 : width
+            readonly property real badge_room: line_badge.visible ? line_badge.width + 10 : 0
 
             Text {
                 id: line_icon
@@ -306,7 +309,7 @@ PickerProvider {
                 anchors.left: line_icon.right
                 anchors.leftMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(implicitWidth, parent.width * 0.3)
+                width: Math.max(0, Math.min(implicitWidth, parent.width * 0.3, line.text_end - x - line.badge_room - 10))
                 elide: Text.ElideRight
                 textFormat: Text.StyledText
                 text: Fuzzy.highlight(line.entry.label || "", line.positions, String(Style.text_accent))
@@ -329,7 +332,7 @@ PickerProvider {
                 anchors.left: line_badge.visible ? line_badge.right : line_title.right
                 anchors.leftMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(implicitWidth, parent.width * 0.3)
+                width: Math.max(0, Math.min(implicitWidth, parent.width * 0.3, line.text_end - x))
                 elide: Text.ElideMiddle
                 text: [line.entry.agent || "", line.entry.cwd_short || ""].filter(s => s !== "").join(" · ")
                 textFormat: Text.PlainText
