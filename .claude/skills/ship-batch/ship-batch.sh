@@ -209,9 +209,9 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     esac
     use_live_hypr "restart the bar by hand"
     # `qs -n` refuses to start while the old bar lives, so a bar slow to exit on SIGTERM would be relaunched into
-    # nothing and leave the owner with no bar: escalate to SIGKILL before going on. Only the owner's `qs -n` bar is
-    # matched (as in restart-bar.sh): -x qs would also kill other users' or sessions' test bars.
-    bar_pattern='^qs -n'
+    # nothing and leave the owner with no bar: escalate to SIGKILL before going on. Only the owner's `qs -n` bar, bare or with
+    # an absolute path, is matched (as in restart-bar.sh): -x qs would also kill other users' or sessions' test bars.
+    bar_pattern='^(/[^ ]*/)?qs -n( |$)'
     pkill -u "$UID" -f "$bar_pattern" || true
     for _ in $(seq 20); do
       pgrep -u "$UID" -f "$bar_pattern" >/dev/null || break
