@@ -122,7 +122,7 @@ Item {
             id: slot_popup
             popup_name: "media"
             module: cava_slot
-            enabled: cava_slot.shown
+            enabled: cava_slot.shown && Popups.hover_popups
         }
 
         MouseArea {
