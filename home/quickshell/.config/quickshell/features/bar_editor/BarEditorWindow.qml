@@ -122,6 +122,18 @@ PanelWindow {
         Component.onCompleted: if (root.keyboard_owner) keys_item.forceActiveFocus()
     }
 
+    // The bar being edited, outlined so the active monitor stands out even when others share its layout.
+    Rectangle {
+        visible: root.keyboard_owner && BarEditor.mode !== "monitor" && BarEditor.mode !== "visual" && root.bar_item !== null
+        x: root.bar_rect.x
+        y: root.bar_rect.y
+        width: root.bar_rect.width
+        height: root.bar_rect.height
+        color: Qt.alpha(Theme.theme_secondary, 0.08)
+        border.width: 1
+        border.color: Theme.theme_secondary
+    }
+
     // The selected module: a line along the bar's inner edge and a caret pointing at it. A screen sharing the layout shows it fainter.
     Item {
         visible: root.shows_selection && root.placed.found && (root.keyboard_owner || root.peer)
@@ -131,15 +143,27 @@ PanelWindow {
             y: root.vertical ? root.mark_y : root.bar_rect.y + (root.bar_item && root.bar_item.position === "bottom" ? 0 : root.bar_rect.height - 3)
             width: root.vertical ? 3 : root.mark_width
             height: root.vertical ? root.mark_height : 3
-            color: Style.accent_color
+            color: Theme.theme_secondary
         }
         Text {
+            id: caret
             readonly property bool flipped: root.bar_item !== null && (root.bar_item.position === "bottom" || root.bar_item.position === "right")
             text: root.vertical ? (flipped ? "◀" : "▶") : (flipped ? "▼" : "▲")
-            color: Style.accent_color
+            color: Theme.theme_secondary
             font.pixelSize: Style.fs(-2)
             x: root.vertical ? (flipped ? root.bar_rect.x - width - 2 : root.bar_rect.x + root.bar_rect.width + 2) : root.sel.x + root.sel.width / 2 - width / 2
             y: root.vertical ? root.sel.y + root.sel.height / 2 - height / 2 : (flipped ? root.bar_rect.y - height - 1 : root.bar_rect.y + root.bar_rect.height + 1)
+        }
+        // The module's name past the caret, away from the bar.
+        Text {
+            text: BarEditor.selected
+            color: Theme.theme_secondary
+            font.family: Style.font_family
+            font.pixelSize: Style.fs(-2)
+            style: Text.Raised
+            styleColor: Style.text_shadow
+            x: root.vertical ? (caret.flipped ? caret.x - width - 4 : caret.x + caret.width + 4) : Math.max(4, Math.min(root.width - width - 4, caret.x + caret.width / 2 - width / 2))
+            y: root.vertical ? caret.y + caret.height / 2 - height / 2 : (caret.flipped ? caret.y - height : caret.y + caret.height)
         }
     }
 
@@ -321,7 +345,7 @@ PanelWindow {
         visible: root.keyboard_owner && BarEditor.mode === "monitor"
         anchors.centerIn: parent
         width: 560
-        height: 260
+        height: monitor_box.map_height + 130
         readonly property var bounds: {
             let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
             for (const m of BarEditor.monitors) {
@@ -332,7 +356,8 @@ PanelWindow {
             }
             return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
         }
-        readonly property real scale: Math.min(520 / bounds.w, 130 / bounds.h)
+        readonly property real map_height: BarEditor.map_height(monitor_box.bounds.w, monitor_box.bounds.h)
+        readonly property real scale: Math.min(520 / bounds.w, monitor_box.map_height / bounds.h)
         Rectangle {
             anchors.fill: parent
             radius: Style.frame_radius
@@ -353,7 +378,7 @@ PanelWindow {
             x: 20
             y: 44
             width: 520
-            height: 130
+            height: monitor_box.map_height
             Repeater {
                 model: BarEditor.monitors
                 Rectangle {
@@ -388,7 +413,7 @@ PanelWindow {
         }
         MenuFooter {
             x: 20
-            y: 200
+            y: monitor_box.map_height + 70
             width: 520
             wrap: false
             text: "hjkl pick monitor · Enter edit its bar · q close · ? help"
