@@ -322,6 +322,27 @@ wait "$runner" 2>/dev/null
 sleep 0.5
 check "killing the runner leaves no reviewer or child running" '! kill -0 "$long_pid" 2>/dev/null && ! kill -0 "$child_pid" 2>/dev/null'
 reset
+# Both reviewers write into the outdir, then check the tree once the other has too; outdir is inside the tree and not ignored.
+for n in a b; do
+  other=b
+  [ $n = b ] && other=a
+  cat >"$root/custom/tree_$n.sh" <<S
+#!/usr/bin/env bash
+echo data >"\$2/tree_$n.dat"
+touch "$root/custom/tree_$n.written"
+for _ in \$(seq 1 50); do [ -e "$root/custom/tree_$other.written" ] && break; sleep 0.1; done
+[ -z "\$(git status --porcelain)" ] || exit 3
+echo "\$2/tree_$n-review.md"
+S
+  chmod +x "$root/custom/tree_$n.sh"
+done
+rm -f "$root"/custom/tree_*.written
+echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
+echo "{\"reviewers\":[{\"name\":\"tree_a\",\"local\":{\"command\":\"$root/custom/tree_a.sh\",\"default\":\"all\"}},{\"name\":\"tree_b\",\"local\":{\"command\":\"$root/custom/tree_b.sh\",\"default\":\"all\"}}]}" >"$REVIEWERS_USER_FILE"
+out=$("$skill/run-local-reviews.sh" main "$repo/reviews" 2>/dev/null)
+check "reviewers writing to an unignored in-tree outdir do not dirty each other's tree" 'grep -q "^tree_a: $repo/reviews/tree_a-review.md$" <<<"$out" && grep -q "^tree_b: $repo/reviews/tree_b-review.md$" <<<"$out" && [ -e "$repo/reviews/tree_a.dat" ]'
+rm -rf "$repo/reviews"
+reset
 cat >"$root/kill_spy.sh" <<S
 kill() { echo "\$*" >>"$root/kills"; builtin kill "\$@"; }
 S
