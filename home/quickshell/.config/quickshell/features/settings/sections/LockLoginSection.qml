@@ -127,16 +127,25 @@ RowsSection {
     }
 
     // The Login rows show the login screen, the others the lock screen. Kept to its old size, so the rows below stay in view.
-    SkinThumb {
-        Layout.fillWidth: false
-        Layout.alignment: Qt.AlignHCenter
-        Layout.preferredWidth: Math.min(root.width, Style.px(640))
-        popup: root.popup
-        skin: root.on_login ? LoginSettings.resolved_screen : root.lock_skin
-        tint: root.on_login ? LoginSettings.resolved_tint : Style.lock_tint
-        music: root.on_login ? LoginSettings.resolved_music : Style.lock_music
-        login: root.on_login
-        active: root.popup ? root.popup.is_open : false
+    // Held in a full-width item to center it: a fixed-width child limits the header layout to its own width.
+    Item {
+        Layout.fillWidth: true
+        Layout.preferredHeight: lock_thumb.height
+
+        SkinThumb {
+            id: lock_thumb
+            readonly property bool portrait: lock_thumb.screen_h > lock_thumb.screen_w
+            anchors.horizontalCenter: parent.horizontalCenter
+            // On a portrait screen the thumbnail is portrait too; capped at about a third of the pane's height there.
+            width: Math.min(parent.width, Style.px(640), lock_thumb.portrait && root.popup && root.popup.pane_view_height ? Math.round(root.popup.pane_view_height * 0.35 * lock_thumb.screen_w / lock_thumb.screen_h) : Infinity)
+            height: Math.round(lock_thumb.width * lock_thumb.screen_h / lock_thumb.screen_w)
+            popup: root.popup
+            skin: root.on_login ? LoginSettings.resolved_screen : root.lock_skin
+            tint: root.on_login ? LoginSettings.resolved_tint : Style.lock_tint
+            music: root.on_login ? LoginSettings.resolved_music : Style.lock_music
+            login: root.on_login
+            active: root.popup ? root.popup.is_open : false
+        }
     }
 
     footer: Text {

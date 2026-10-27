@@ -57,6 +57,8 @@ Popup {
     readonly property Item description_host: panel.help_host
     readonly property Item preview_host: panel.preview_host
     readonly property real help_room: panel.help_room
+    // The pane's visible height, which a section's own height (it grows with its content) is not.
+    readonly property real pane_view_height: body.pane_height
     // Screen height left for the panel's body once the bar and the popup's own chrome are taken out; no cap before the screen is known.
     readonly property real free_height: {
         if (root.drawer && root.drawer_hole) return root.drawer_hole.h - root.header_height - root.footer_height;
