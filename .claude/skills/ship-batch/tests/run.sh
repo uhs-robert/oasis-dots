@@ -438,7 +438,7 @@ echo "== the install migrations run when a merge changes migration code"
 # the restart as pkill and the relaunch dispatch. The stub bar answers unlocked so the restart goes ahead.
 printf '#!/bin/sh\necho unlocked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 # shellcheck disable=SC2016 # expanded by the stub
-printf '#!/bin/sh\necho "pkill $*" >>"$SHIP_LOG"\n[ -e "%s" ] || : >"$STUB_QS_PROCS"\n' "$e2e/pkill_survives" >"$stubs/pkill"
+printf '#!/bin/sh\necho "pkill $*" >>"$SHIP_LOG"\n[ -e "%s" ] && exit 0\n[ -e "%s" ] && [ "$1" != -KILL ] && exit 0\n: >"$STUB_QS_PROCS"\n' "$e2e/pkill_survives" "$e2e/term_survives" >"$stubs/pkill"
 chmod +x "$stubs/pkill"
 printf 'live\n' >"$STUB_LIVE_SIGS"
 migrate_step='just migrate-quickshell-state held'
@@ -487,6 +487,12 @@ survive_rc=$?
 rm -f "$e2e/pkill_survives"
 check "a bar that survives pkill skips the second pass, says so and does not fail" "[[ $survive_rc == 0 && \$(migrate_count) == 1 ]] && ! logged 'migrate bar down' && grep -q 'the old bar was still running, so migration cleanup was skipped' '$e2e/out'"
 check "and the bar is still relaunched" "(( \$(dispatch_line) > 0 )) && grep -q 'restarted the stowed bar' '$e2e/out'"
+touch "$e2e/term_survives"
+migrate_ship lib/install/migrate.sh home/quickshell/bar
+term_rc=$?
+rm -f "$e2e/term_survives"
+check "a bar that ignores SIGTERM is killed with SIGKILL before the relaunch, and the second pass runs" "[[ $term_rc == 0 && \$(migrate_count) == 2 ]] && logged 'pkill -KILL -x qs' && logged 'migrate bar down' && ((\$(line_of 'pkill -KILL -x qs') < \$(dispatch_line)))"
+check "a bar that exits on SIGTERM is not sent SIGKILL" "migrate_ship lib/install/migrate.sh home/quickshell/bar && ! logged 'pkill -KILL -x qs'"
 
 echo "== a merge that touches the voxcmd crate rebuilds the installed voxcmd"
 build_count() { grep -c '^just voxcmd-build' "$SHIP_LOG"; }

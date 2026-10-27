@@ -208,11 +208,20 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     *) die "Quickshell changed but the lock state never settled (last answer '${state:-none}'); restart the bar once unlocked" ;;
     esac
     use_live_hypr "restart the bar by hand"
+    # `qs -n` refuses to start while the old bar lives, so a bar slow to exit on SIGTERM would be relaunched into
+    # nothing and leave the owner with no bar: escalate to SIGKILL before going on.
     pkill -x qs || true
     for _ in $(seq 20); do
       pgrep -x qs >/dev/null || break
       sleep 0.2
     done
+    if pgrep -x qs >/dev/null; then
+      pkill -KILL -x qs || true
+      for _ in $(seq 10); do
+        pgrep -x qs >/dev/null || break
+        sleep 0.2
+      done
+    fi
     # A failure here still relaunches the bar first: dying with the old one killed would leave the owner with none.
     migrate_status=0
     # The wait above can run out (a slow exit): migrations that see a bar keep the old state and nothing would retry.
