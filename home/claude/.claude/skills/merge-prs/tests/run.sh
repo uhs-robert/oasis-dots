@@ -1101,6 +1101,68 @@ code=$?
 show "$out"
 check "the wait restarts at the request" "[[ $code == 0 ]] && grep -q '^ready:' <<<\"\$out\""
 
+echo "== gate: a summary_comment reviewer that is not Codex"
+gate_setup
+mkdir -p "$root/main/.claude"
+echo '{"reviewers":[{"name":"other","label":"Other","gate":"always","github":{"signal":"summary_comment"}}]}' >"$root/main/.claude/reviewers.json"
+gate --check 7
+check "blocks as a format it cannot read" "[[ $code != 0 ]] && grep -q '#7: reviewer other signals by summary_comment' <<<\"\$out\""
+
+echo "== gate: check names are matched whole"
+gate_setup
+printf 'head_date=%s\ncr_run=Merge|completed|success|%s|%s\n' "$(iso '-30 sec')" "$(iso '-25 min')" "$(iso '-20 min')" >>"$GH_STATE"
+mkdir -p "$root/main/.claude"
+echo '{"reviewers":[{"name":"qodo","label":"Qodo","gate":"always","github":{"signal":"check_run","check_names":["Qodo Merge"]}}]}' >"$root/main/.claude/reviewers.json"
+gate --check 7
+check "a check named after one word of Qodo Merge is not its run" "[[ $code != 0 ]] && grep -q 'no Qodo check on the head yet' <<<\"\$out\""
+
+echo "== gate: a Codex quota comment older than the push"
+gate_setup
+printf 'history_logins=chatgpt-codex-connector\ncodex=Failed\ncodex_commit=abc1234\nhead_date=%s\npush_date=%s\n' "$(iso '-30 min')" "$(iso '-1 min')" >>"$GH_STATE"
+comment 'chatgpt-codex-connector[bot]' '-5 min' 'You have reached your Codex usage limits for code reviews.'
+gate 7
+check "does not excuse a head pushed after it" "[[ $code != 0 ]] && grep -q 'the Codex review failed' <<<\"\$out\""
+
+echo "== gate: a failed commit-date read"
+gate_setup
+printf 'history_logins=chatgpt-codex-connector\ncodex=Failed\ncodex_commit=abc1234\nhead_date_fail=1\n' >>"$GH_STATE"
+comment 'chatgpt-codex-connector[bot]' '-30 min' 'You have reached your Codex usage limits for code reviews.'
+gate 7
+check "Codex path stops instead of excusing the review" "[[ $code != 0 ]] && grep -q 'cannot read the commit' <<<\"\$out\" && ! grep -q 'is unavailable' <<<\"\$out\""
+cr_setup "30 min"
+echo 'head_date_fail=1' >>"$GH_STATE"
+gate 7
+check "check-run path stops rather than reading a bogus time" "[[ $code != 0 ]] && grep -q 'cannot read the commit' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
+echo "== stack: a child pushed to after its reviewers passed"
+root=$(mktemp -d)
+export ORIGIN=$root/origin.git GH_STATE=$root/state
+git init -q --bare -b main "$ORIGIN"
+g clone -q "$ORIGIN" "$root/main" 2>/dev/null
+cd "$root/main" || exit 1
+echo a >a
+g add a
+g commit -qm A
+g push -q origin main
+g switch -qc parent
+echo p >p
+g add p
+g commit -qm P
+g push -q origin parent
+g switch -qc child
+echo c >c
+g add c
+g commit -qm C
+g push -q origin child
+g switch -q main
+: >"$GH_STATE"
+printf 'head=parent\nbase=main\nstate=OPEN\npush_branch_on_merge_read=child\n' >"$GH_STATE.7"
+printf 'head=child\nbase=parent\nstate=OPEN\n' >"$GH_STATE.8"
+out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
+code=$?
+show "$out"
+check "the child is not rebased and merged unreviewed" "[[ $code != 0 ]] && grep -q '#8 was pushed to' <<<\"\$out\" && ! grep -q '^8 merged' <<<\"\$out\""
+
 echo "== gate: gate always on a reviewer merge-prs cannot read"
 gate_setup
 mkdir -p "$root/main/.claude"
