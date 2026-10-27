@@ -961,7 +961,7 @@ t("only a HoverPopup's own open keeps hover_owner; key, IPC, walk and back opens
   const popups = fs.readFileSync(dir + "Popups.qml", "utf8");
   const hover = fs.readFileSync(dir + "HoverPopup.qml", "utf8");
   assert.match(popups, /function open\(name, anchor_item, color, screen_name, back_to, hands_off, swap, keep_owner\)/);
-  assert.match(popups, /open_name = name;\n\s+if \(!keep_owner\) root\.hover_owner = null;/);
+  assert.match(popups, /open_name = name;\n\s+if \(!keep_owner\) \{[\s\S]*?root\.hover_owner = null;/);
   const open_on = popups.slice(popups.indexOf("function open_on("), popups.indexOf("function focus_open("));
   assert.match(open_on, /open_name = name;\n\s+root\.hover_owner = null;/);
   const calls = hover.match(/Popups\.open\([^\n]*\);/g);
@@ -979,6 +979,49 @@ t("leaving a module over the bar waits the long grace; leaving the bar or settli
   assert.match(hover, /Policy\.close_delay\(r\.mode, root\.over_bar, /);
   assert.match(hover, /onOver_barChanged: if \(!root\.over_bar && root\._mode === "hover_open" && close_timer\.running\) \{\s+close_timer\.interval = root\.close_grace;\s+close_timer\.restart\(\);/);
   assert.match(fs.readFileSync(dir + "bar/Bar.qml", "utf8"), /HoverHandler \{\s+onHoveredChanged: Popups\.set_bar_hover\(root\.screen_name, hovered\)/);
+});
+
+t("a key or IPC open of the popup already hover-open pins its owner, since no open_name change tells it", () => {
+  const dir = path.join(__dirname, "../.config/quickshell/features/popups/");
+  const popups = fs.readFileSync(dir + "Popups.qml", "utf8");
+  const hover = fs.readFileSync(dir + "HoverPopup.qml", "utf8");
+  assert.match(popups, /const reopened_owner = name === open_name \? root\.hover_owner : null;/);
+  assert.match(popups, /if \(!keep_owner\) \{\n\s+if \(reopened_owner\) reopened_owner\.pin\(\);\n\s+root\.hover_owner = null;/);
+  assert.match(hover, /function pin\(\) \{\n\s+root\.apply\(Policy\.popup_pressed\(root\._mode\)\);/);
+  // pin() runs before open() clears grab_keyboard, so open_with_keyboard's own grab set afterwards still stands.
+  const open = popups.slice(popups.indexOf("function open("), popups.indexOf("function open_with_keyboard("));
+  assert.ok(open.indexOf("reopened_owner.pin()") < open.indexOf("grab_keyboard = false"));
+  // A hover-open popup pinned that way is pinned, owner dropped, keyboard allowed.
+  assert.deepStrictEqual(Object.assign({}, P.popup_pressed("hover_open")), { mode: "pinned", open_timer: "stop", close_timer: "stop", action: "none" });
+});
+t("the pin grab reads the mode before apply overwrites it", () => {
+  const hover = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  const apply = hover.slice(hover.indexOf("function apply(r)"));
+  const read = apply.indexOf("const from_mode = root._mode;");
+  assert.ok(read !== -1 && read < apply.indexOf("root._mode = r.mode;"));
+  assert.ok(apply.indexOf("root._mode = r.mode;") < apply.indexOf("Policy.pin_grabs_keyboard(from_mode"));
+});
+t("a bar the pointer left for another bar does not clear the other's hover", () => {
+  const popups = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/Popups.qml"), "utf8");
+  const fn = popups.match(/function set_bar_hover\(screen_name, hovered\) \{[\s\S]*?\n    \}\n/)[0];
+  const root = { bar_hover_screen: "" };
+  const set = vm.runInNewContext("(root) => (" + fn.replace("function set_bar_hover", "function") + ")", {})(root);
+  set("DP-1", true);
+  set("DP-2", true);
+  set("DP-1", false);
+  assert.strictEqual(root.bar_hover_screen, "DP-2");
+  set("DP-2", false);
+  assert.strictEqual(root.bar_hover_screen, "");
+  set("DP-1", true);
+  set("DP-1", false);
+  assert.strictEqual(root.bar_hover_screen, "");
+});
+t("a destroyed bar clears its bar hover; the handler sits after the property block", () => {
+  const bar = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/Bar.qml"), "utf8");
+  assert.match(bar, /Component\.onDestruction: \{[^}]*Popups\.set_bar_hover\(root\.screen_name, false\);/);
+  const handler = bar.indexOf("onHoveredChanged: Popups.set_bar_hover");
+  assert.ok(handler > bar.indexOf("readonly property real lualine_end"));
+  assert.ok(handler < bar.indexOf("Component {\n        id: strip_band"));
 });
 
 let failed = 0;
