@@ -43,7 +43,7 @@ Popup {
         if (!horizontal) root.nav_index = root.clamp_index(root.nav_index, dir, 0, Sections.list.length);
     }
     search_enabled: true
-    footer_hint: root.in_pane && root.pane ? root.pane.shown_hint : "/ find · j/k move · l enter · 1-9 pick · gg/G first/last · q close"
+    footer_hint: root.in_pane && root.pane ? root.pane.shown_hint : "/ find · j/k move · C-d/C-u half page · l enter · 1-9 pick · gg/G first/last · q close"
 
     // The lock's full-screen preview (LockPreview), for the lock section's p key.
     property var previewer: null
@@ -56,6 +56,7 @@ Popup {
     // Where SettingsPane puts its description block, and where a section docks its preview: the panel beside the rows.
     readonly property Item description_host: panel.help_host
     readonly property Item preview_host: panel.preview_host
+    readonly property real help_room: panel.help_room
     // Screen height left for the panel's body once the bar and the popup's own chrome are taken out; no cap before the screen is known.
     readonly property real free_height: {
         if (root.drawer && root.drawer_hole) return root.drawer_hole.h - root.header_height - root.footer_height;
@@ -98,6 +99,19 @@ Popup {
         }
         // nav_index may not change on open, so its own handler would not scroll the list to it.
         Qt.callLater(root.reveal_nav);
+    }
+
+    // Rows in half the pane's height, for Ctrl+D/U.
+    readonly property int half_page_rows: Math.max(1, Math.floor(body.pane_height / 2 / (Style.px(28) + root.row_extra + 4)))
+
+    // Ctrl+D/U in a pane the section did not take: a rows pane steps its cursor, a pane with a searchable cursor list
+    // moves along it, and any other pane scrolls half a page.
+    function half_page_pane(delta) {
+        const pane = root.pane;
+        if (!pane || pane.picking) return;
+        if (typeof pane.half_page === "function") pane.half_page(delta);
+        else if (typeof pane.cursor === "number" && pane.search_rows.length > 0) pane.search_select(Math.max(0, Math.min(pane.search_rows.length - 1, pane.search_cursor + delta * root.half_page_rows)));
+        else pane_flick.contentY = Math.max(0, Math.min(pane_flick.contentHeight - pane_flick.height, pane_flick.contentY + delta * pane_flick.height / 2));
     }
 
     function jump(delta) {
@@ -239,6 +253,11 @@ Popup {
 
         // Runs after the section: Esc, h and Tab it did not use go back to the sidebar.
         Keys.onPressed: event => {
+            if (root.in_pane && (event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_D || event.key === Qt.Key_U)) {
+                root.half_page_pane(event.key === Qt.Key_D ? 1 : -1);
+                event.accepted = true;
+                return;
+            }
             if (!root.in_pane || (event.modifiers & Qt.ControlModifier)) return;
             const leave = (event.key === Qt.Key_H && !(event.modifiers & Qt.ShiftModifier)) || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab || (event.key === Qt.Key_Escape && root.search_query === "");
             if (!leave) return;
@@ -271,8 +290,14 @@ Popup {
                 focus: true
 
                 Keys.onPressed: event => {
-                    if (event.modifiers & Qt.ControlModifier) return;
                     const count = Sections.list.length;
+                    if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_D || event.key === Qt.Key_U)) {
+                        const half = Math.max(1, Math.floor(nav_flick.height / 2 / (Style.px(28) + root.row_extra + 4)));
+                        root.nav_index = Math.max(0, Math.min(count - 1, root.nav_index + (event.key === Qt.Key_D ? half : -half)));
+                        event.accepted = true;
+                        return;
+                    }
+                    if (event.modifiers & Qt.ControlModifier) return;
                     if (event.key === Qt.Key_J) root.nav_index = root.wrap_index(root.nav_index, 1, 0, count);
                     else if (event.key === Qt.Key_K) root.nav_index = root.wrap_index(root.nav_index, -1, 0, count);
                     else if (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Tab) root.enter_pane();

@@ -135,6 +135,18 @@ SettingsPane {
         else root.cursor = starts[root.wrap_index(at, delta, starts.length)];
     }
 
+    // Ctrl+D/U: about half the pane's height of rows, never past either end (no wrap, as in vim).
+    function half_page(delta) {
+        let steps = root.popup && root.popup.half_page_rows ? root.popup.half_page_rows : 8;
+        let at = root.cursor;
+        for (let i = at + delta; steps > 0 && i >= 0 && i < root.rows.length; i += delta) {
+            if (root.is_heading(root.rows[i])) continue;
+            at = i;
+            steps--;
+        }
+        root.cursor = at;
+    }
+
     function tab_offset(index) {
         let offset = 0;
         for (let i = 0; i < index && i < root.shown_tabs.length; i++) offset += root.shown_tabs[i].rows.length;
@@ -189,8 +201,10 @@ SettingsPane {
         root.open_list(row.label, values, values.map(v => row.text(v)), row.value(), v => row.set(v));
     }
 
-    // Opens the list over arbitrary values (not just a row's), with an optional image url per value.
-    function open_list(title, values, labels, current, on_pick, thumbs) {
+    // Opens the list over arbitrary values (not just a row's), with an optional image url per value. `split` puts the
+    // rows in the help column and a large preview of the highlighted thumb in the pane (PickerList.list_host).
+    function open_list(title, values, labels, current, on_pick, thumbs, split) {
+        picker.list_host = split && root.popup && root.popup.description_host ? root.popup.description_host : null;
         root.pick_values = values;
         root.show_picker(picker, title, labels, values.indexOf(current), i => {
             on_pick(values[i]);
@@ -200,7 +214,7 @@ SettingsPane {
 
     function keys_of(row) {
         const layout = root.layout_hint.replace(/ · $/, "");
-        if (!row || root.is_heading(row)) return [root.section_keys, layout].filter(k => k !== "").join(" · ");
+        if (!row || root.is_heading(row)) return [root.section_keys, layout, "C-d/C-u half page"].filter(k => k !== "").join(" · ");
         let keys = row.keys;
         if (keys === undefined) {
             const parts = [];
@@ -210,7 +224,7 @@ SettingsPane {
             if (row.activate || row.pick !== false && values.length >= root.pick_min) parts.push("Enter list");
             keys = parts.join(" · ");
         }
-        return [keys, root.section_keys, layout].filter(k => k !== "").join(" · ");
+        return [keys, root.section_keys, layout, "C-d/C-u half page"].filter(k => k !== "").join(" · ");
     }
 
     function activate(index, delta) {
@@ -361,9 +375,12 @@ SettingsPane {
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.right: parent.right
+                // Split, it fills the pane down to its bottom edge, so the filter box sits there under the preview.
+                height: picker.split ? picker.available_height : picker.implicitHeight
                 visible: root.picking
                 st: root.st
                 available_height: Math.max(0, root.height - picker_slot.y - 4)
+                list_height: root.popup && root.popup.help_room !== undefined ? root.popup.help_room : 0
                 onPicked: index => root.finish_picker(index)
                 onClosed: root.hide_picker()
             }

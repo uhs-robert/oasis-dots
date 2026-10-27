@@ -11,10 +11,11 @@ FocusScope {
     property var popup: null
     readonly property var st: root.popup ? root.popup.st : Style
     property string footer_hint: ""
+    // Every list state's hint names "j/k move"; shown_hint adds Ctrl+D/U (SettingsPopup) beside it, so sections need not.
     property bool picking: false
     property var pick_list: null
     property var pick_done: null
-    readonly property string shown_hint: root.picking ? (root.pick_list && !root.pick_list.insert ? "Enter pick · j/k move · gg/G first/last · i insert · Esc close" : "Enter pick · Up/Down or Ctrl+n/p move · Esc normal") : root.footer_hint
+    readonly property string shown_hint: root.picking ? (root.pick_list && !root.pick_list.insert ? "Enter pick · j/k move · C-d/C-u half · gg/G first/last · i insert · Esc close" : "Enter pick · Up/Down or Ctrl+n/p move · C-d half down · Esc normal") : root.footer_hint.replace("j/k move", "j/k move · C-d/C-u half page")
     // A section that sets `described` shows `description` and `description_keys` for its selected or hovered item in
     // the popup's docked panel (help card).
     property bool described: false

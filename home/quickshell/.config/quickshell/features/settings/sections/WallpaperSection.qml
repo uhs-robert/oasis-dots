@@ -137,7 +137,7 @@ RowsSection {
             WallpaperSettings.say("No images found in " + WallpaperSettings.collection);
             return;
         }
-        root.open_list("Pin image on " + m.name, images, images.map(p => WallpaperSettings.base_name(p)), WallpaperSettings.pins[m.key], p => WallpaperSettings.set_pin(m.key, p), images.map(p => WallpaperSettings.url_of(p)));
+        root.open_list("Pin image on " + m.name, images, images.map(p => WallpaperSettings.base_name(p)), WallpaperSettings.pins[m.key], p => WallpaperSettings.set_pin(m.key, p), images.map(p => WallpaperSettings.url_of(p)), true);
     }
 
     onFirst_key: event => {
