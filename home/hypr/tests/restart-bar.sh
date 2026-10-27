@@ -7,7 +7,7 @@ set -u
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 script=$here/../.config/hypr/scripts/restart-bar.sh
 work=$(mktemp -d)
-trap 'kill $(cat "$work"/pid 2>/dev/null) 2>/dev/null; rm -rf "$work"' EXIT
+trap 'kill -9 $(cat "$work"/all_pids 2>/dev/null) 2>/dev/null; rm -rf "$work"' EXIT
 failures=0
 cd "$work" || exit 1
 
@@ -35,6 +35,7 @@ else
 fi
 bash -c "trap '$handler' TERM; while :; do sleep 0.1; done" &
 echo $! >"$STUB_DIR/pid"
+echo $! >>"$STUB_DIR/all_pids"
 STUB
 cat >bin/pgrep <<'STUB'
 #!/usr/bin/env bash
