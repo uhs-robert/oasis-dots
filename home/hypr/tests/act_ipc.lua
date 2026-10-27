@@ -288,6 +288,7 @@ end
 for signature, bind in pairs(partial) do
 	check("nothing leaks out of the half-built submap: " .. signature, clean[signature] or bind.submap == "Go")
 end
+check("the failed Go body's F12 bind is not left bound", not Bind_after.is_bound("F12", "Go"))
 local entry_keys = 0
 for _, bind in pairs(clean) do
 	local desc = bind.opts.desc
