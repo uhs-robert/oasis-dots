@@ -1,12 +1,12 @@
 //! The session file as the Rust port writes it, against a runtime dir of its own (stubs for voxtype, setsid, the toasts
 //! and auto-stop).
 use serde_json::Value;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 mod common;
+mod executable;
 use common::gone_within;
 
 struct Setup {
@@ -63,25 +63,9 @@ impl Setup {
         self.path().join("runtime/voxcmd")
     }
 
-    /// An executable that is ready to exec (see tests/voice.rs: a fork on another thread may hold its write fd).
     fn script(&self, name: &str, body: &str) -> PathBuf {
         let path = self.path().join(name);
-        let temp = path.with_extension("tmp");
-        std::fs::write(
-            &temp,
-            format!("#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\n{body}\n"),
-        )
-        .unwrap();
-        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
-        std::fs::rename(&temp, &path).unwrap();
-        for _ in 0..500 {
-            match Command::new(&path).env("VOXCMD_TEST_PROBE", "1").status() {
-                Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                _ => break,
-            }
-        }
+        executable::write_executable(&path, &format!("#!/bin/sh\n{body}\n"));
         path
     }
 
