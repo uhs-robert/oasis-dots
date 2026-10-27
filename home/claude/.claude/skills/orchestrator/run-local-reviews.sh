@@ -19,6 +19,10 @@ registry=$("$here/reviewers.sh" list) || {
 }
 mkdir -p "$outdir" || exit 1
 results=$(mktemp -d)
+# Reviewers write here, outside the worktree: a file in the tree would make a sibling reviewer's clean-tree check fail.
+# It is moved into outdir after all of them finish.
+stage=$results/stage
+mkdir "$stage"
 
 # `timeout` moves its child into a process group of its own, so a group kill misses it: walk the process tree instead.
 pids=()
@@ -68,17 +72,19 @@ while IFS= read -r entry; do
   names+=("$name")
   REVIEW_SCOPE=$scope REVIEW_MODEL=$model bash -c '
     "$1" "$2" "$3" >"$4" 2>"$5" </dev/null
-    echo $? >"$6"' _ "$command" "$base" "$outdir" \
-    "$results/$name.out" "$outdir/$name.stderr.log" "$results/$name.code" &
+    echo $? >"$6"' _ "$command" "$base" "$stage" \
+    "$results/$name.out" "$stage/$name.stderr.log" "$results/$name.code" &
   pids+=("$!")
 done < <(jq -c '.[]' <<<"$registry")
 wait
+cp -a "$stage"/. "$outdir"/
 # Reaped: a later kill could hit an unrelated process that reused the pid.
 pids=()
 
 for name in "${names[@]}"; do
   code=$(<"$results/$name.code")
   line=$(tail -n 1 "$results/$name.out")
+  line=${line//"$stage"/"$outdir"}
   case $code in
   0 | 2 | 4) echo "$name: $line" ;;
   3) echo "$name: uncommitted changes; commit first" ;;
