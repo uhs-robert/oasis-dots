@@ -277,9 +277,15 @@ fn wait_for_exit(
             Some(notice) if !exit_announced => exit_announced = poll_announces_exit(notice, remaining),
             // Also once the pidfd has announced an exit that `try_wait` cannot reap yet (a tracer holds the child):
             // the pidfd stays readable, so polling it again would spin.
-            _ => thread::sleep(POLL),
+            _ => sleep_a_poll(),
         }
     }
+}
+
+fn sleep_a_poll() {
+    #[cfg(test)]
+    tests::POLL_SLEEPS.with(|sleeps| sleeps.set(sleeps.get() + 1));
+    thread::sleep(POLL);
 }
 
 fn poll_announces_exit(fd: &OwnedFd, timeout: Option<Duration>) -> bool {
@@ -806,8 +812,21 @@ pub(crate) mod tests {
         assert!(!outcome.timed_out);
     }
 
+    thread_local! {
+        /// How many `POLL` sleeps the waits on this thread have taken: a count, where timing the wait would depend on
+        /// the machine's load.
+        pub(super) static POLL_SLEEPS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    fn poll_sleeps_waiting_on(script: &str) -> usize {
+        POLL_SLEEPS.with(|sleeps| sleeps.set(0));
+        let outcome = run_with_timeout(&mut sh(script), Duration::from_secs(5)).unwrap();
+        assert_eq!(outcome.code(), Some(0));
+        POLL_SLEEPS.with(std::cell::Cell::get)
+    }
+
     #[test]
-    fn a_wait_ends_with_the_command_not_on_the_next_polling_tick() {
+    fn a_wait_wakes_at_the_exit_without_polling() {
         let mut probe = Command::new("true").spawn().unwrap();
         let pidfds_open = open_exit_notice(&probe).is_some();
         probe.wait().unwrap();
@@ -815,19 +834,17 @@ pub(crate) mod tests {
             eprintln!("skipped: no pidfd here, so the wait polls");
             return;
         }
-        // A wait polled every 5 ms cannot return before the 10 ms tick for a 6 ms command. One fast run is enough, so
-        // that a busy machine slowing some runs does not fail it.
-        let mut slow_runs = Vec::new();
-        for _ in 0..20 {
-            let started = Instant::now();
-            let outcome = run_with_timeout(Command::new("sleep").arg("0.006"), Duration::from_secs(5)).unwrap();
-            assert_eq!(outcome.code(), Some(0));
-            if started.elapsed() < Duration::from_millis(9) {
-                return;
-            }
-            slow_runs.push(started.elapsed());
-        }
-        panic!("no run under 9 ms: {slow_runs:?}");
+        // Long enough that the command is still running when the wait begins, however busy the machine.
+        assert_eq!(poll_sleeps_waiting_on("sleep 0.2"), 0);
+    }
+
+    #[test]
+    fn a_wait_without_a_pidfd_polls() {
+        let mut child = sh("sleep 0.2").spawn().unwrap();
+        POLL_SLEEPS.with(|sleeps| sleeps.set(0));
+        let status = wait_for_exit(&mut child, Some(Instant::now() + Duration::from_secs(5)), None).unwrap();
+        assert_eq!(status.and_then(|status| status.code()), Some(0));
+        assert!(POLL_SLEEPS.with(std::cell::Cell::get) > 0);
     }
 
     const WAYS_TO_WAIT: [&str; 2] = ["pidfd", "polling"];
