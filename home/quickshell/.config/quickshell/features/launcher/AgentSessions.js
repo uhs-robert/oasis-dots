@@ -57,12 +57,26 @@ function split_capture(out) {
 // Spaces, box drawing, blocks and prompt marks: the frame of a TUI's input box, which says nothing on its own.
 var frame_edge = /^[\s─-▟|>›❯]+|[\s─-▟|]+$/g;
 
-// The last line of a plain capture that has a letter or digit in it, its frame trimmed off and its column padding
-// squeezed to two spaces so a card shows the words; "" when there is none.
+// Bullets agents put before an output line: Claude Code's ⏺, codex's •.
+var output_bullet = /^[⏺•●]\s+/;
+
+// Where an agent's input area starts: the top edge of Claude Code's input box (or a permission dialog's), else codex's
+// › prompt (▌ in older versions). The prompt and the status footer under it are not output.
+var input_start = /^\s*(?:[╭┌]|[›❯▌](?:\s|$))/;
+
+function output_end(lines) {
+    for (var i = lines.length - 1; i >= 0; i--) {
+        if (input_start.test(lines[i])) return i;
+    }
+    return lines.length;
+}
+
+// The last output line of a plain capture above the agent's input area that has a letter or digit in it, its frame and
+// bullet trimmed off and its column padding squeezed to two spaces so a card shows the words; "" when there is none.
 function last_line(text) {
     var lines = text.split("\n");
-    for (var i = lines.length - 1; i >= 0; i--) {
-        var line = lines[i].replace(frame_edge, "").replace(/\s{3,}/g, "  ");
+    for (var i = output_end(lines) - 1; i >= 0; i--) {
+        var line = lines[i].replace(frame_edge, "").replace(output_bullet, "").replace(/\s{3,}/g, "  ");
         if (/[0-9A-Za-zÀ-ɏ]/.test(line)) return line;
     }
     return "";

@@ -23,8 +23,9 @@ Popup {
     // Settings' size: most of the screen's width up to a cap, and a fixed share of its height.
     preferred_width: root.browse ? (root.screen ? Math.min(root.screen.width * 0.9, Style.px(1600)) : Style.px(1200)) / Style.scale : 320
     title: root.provider ? root.provider.title.toUpperCase() : "PICKER"
-    footer_hint: "Enter " + root.verb + root.nesting_hint + root.browse_hint + " · Esc normal · q close"
-    footer_override: root.insert ? "Enter " + root.verb + root.nesting_hint + " · Esc normal" : root.action_hint !== "" ? "Enter " + root.verb + root.nesting_hint + " · " + root.action_hint + root.browse_hint + " · ? help · q close" : ""
+    footer_hint: "Enter " + root.verb + root.nesting_hint + " · Esc normal · q close"
+    // NORMAL mode spells out the provider's actions and the browse preview keys; with neither the frame shows its own "? help · q close".
+    footer_override: root.insert ? "Enter " + root.verb + root.nesting_hint + " · Esc normal" : root.action_hint !== "" || root.browse ? "Enter " + root.verb + root.nesting_hint + (root.action_hint !== "" ? " · " + root.action_hint : "") + root.browse_hint + " · ? help · q close" : ""
     key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.browse ? ["=/+ bigger preview", "- smaller preview", "p preview on/off"] : []).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
     cursor_state: root.selected

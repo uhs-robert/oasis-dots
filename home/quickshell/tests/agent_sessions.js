@@ -53,6 +53,11 @@ const cases = [
   ["last line skips blank rows below it", () => last_line("first\nDone, tests pass.\n\n  \n"), "Done, tests pass."],
   ["last line skips a TUI's input box frame", () => last_line("Edited Picker.qml\n╭───╮\n│ >            │\n╰───╯\n"), "Edited Picker.qml"],
   ["last line trims the frame around words", () => last_line("│ > fix the bar │\n"), "fix the bar"],
+  ["Claude Code's footer under the input box is not output", () => last_line("⏺ Updated Picker.qml; tests pass.\n\n╭────╮\n│ > draft │\n╰────╯\n  ? for shortcuts" + " ".repeat(30) + "ctx 55%\n"), "Updated Picker.qml; tests pass."],
+  ["a permission dialog counts as the input area", () => last_line("⏺ Bash(lib/check.sh)\n╭────╮\n│ Do you want to proceed? │\n│ ❯ 1. Yes │\n╰────╯\n"), "Bash(lib/check.sh)"],
+  ["codex's prompt and footer are not output", () => last_line("• Ran the tests, 23 passed.\n\n› Ask Codex to do anything\n\n  ⏎ send   ⌃J newline   100% context left\n"), "Ran the tests, 23 passed."],
+  ["codex's older bar prompt is the input area too", () => last_line("Edited Pickers.qml\n▌ \n  ⏎ send  ⌃C quit\n"), "Edited Pickers.qml"],
+  ["only the last input area cuts; a box earlier in the output stays", () => last_line("╭──╮\n│ old │\n╰──╯\nlater words\n› \n footer words\n"), "later words"],
   ["last line squeezes column padding", () => last_line("  ? for shortcuts" + " ".repeat(40) + "ctx 55%\n"), "? for shortcuts  ctx 55%"],
   ["a pane with no words has no last line", () => last_line("\n───\n"), ""],
   // req: PICKERS-09
