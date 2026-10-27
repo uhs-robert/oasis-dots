@@ -276,7 +276,7 @@ class HeadlessLoadTest(TreeCase):
             "menu.agents", "menu.cli", "menu.drun", "menu.run_script", "menu.ssh",
             "monitor.focus", "monitor.move_window",
             "move.step",
-            "picker.clipboard", "picker.clipboard_delete", "picker.directory", "picker.emoji",
+            "picker.agents", "picker.clipboard", "picker.clipboard_delete", "picker.directory", "picker.emoji",
             "resize.reset", "resize.step",
             "scratchpad.move", "scratchpad.toggle",
             "submap.enter",

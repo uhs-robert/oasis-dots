@@ -34,6 +34,13 @@ Act.define("picker.emoji", {
   run = picker("emoji"),
 })
 
+Act.define("picker.agents", {
+  label = "Agent Sessions Picker",
+  intent = "Pick a running agent session, with a live preview of its terminal, and jump to it.",
+  key = { key = "CTRL + SLASH", leader = true },
+  run = picker("agents_picker"),
+})
+
 Act.define("hyprvim.terminal", {
   label = "HyprVim Terminal",
   intent = "Open HyprVim's command prompt.",

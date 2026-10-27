@@ -149,6 +149,10 @@ function Menu.agents()
   )
 end
 
+--- Return an action that opens the Quickshell agent sessions picker, falling back to keeptabs' own picker.
+--- @return fun()
+function Menu.agents_picker() return Menu.picker("agents", "~/.local/bin/keeptabs-pick") end
+
 --- Return an action that picks a clipboard history entry and copies it back.
 --- @return fun()
 function Menu.clipboard()
