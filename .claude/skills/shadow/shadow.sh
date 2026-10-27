@@ -393,6 +393,34 @@ up() {
   }
 }
 
+# Drives the bar by action id, with the parameter checks hypr-act applies. The shadow's Hyprland loads no keymaps, so
+# the id is resolved headlessly (act_refs.lua --resolve) and an ipc-kind action is sent through ipc(). A command or lua
+# action would act on the owner's machine or need a live Hyprland, so it is refused.
+action() {
+  set_name "${1:-}"
+  shift
+  (($# > 0)) || die "usage: shadow.sh action <name> <action id> [params...]"
+  local checkout plan kind
+  checkout=$(CDPATH='' cd -- "$skill_dir/../../.." && pwd)
+  plan=$(lua "$checkout/home/hypr/tests/act_refs.lua" --resolve "$@") || return 5
+  kind=$(jq -r .kind <<<"$plan")
+  case $kind in
+  ipc)
+    local -a call
+    mapfile -t call < <(jq -r '.target, .function, .args[]' <<<"$plan")
+    ipc "$name" "${call[@]}"
+    ;;
+  command)
+    echo "shadow: action '$1' runs a command ($(jq -r '.argv | join(" ")' <<<"$plan")) that would act on this machine, not the shadow; use spawn or hyprctl instead" >&2
+    return 5
+    ;;
+  *)
+    echo "shadow: action '$1' needs a live Hyprland with the repo keymaps; the shadow loads none" >&2
+    return 5
+    ;;
+  esac
+}
+
 ipc() {
   set_name "${1:-}"
   shift
@@ -627,7 +655,7 @@ down() {
   fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
+usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|action <name> <action id> [params...]|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 # Sourced by the tests, it only defines the functions.
@@ -635,6 +663,7 @@ cmd=${1:-}
 case $cmd in
 up) up "$@" ;;
 ipc) ipc "$@" ;;
+action) action "$@" ;;
 keys) keys "$@" ;;
 voxtype) set_voxtype "$@" ;;
 spawn) spawn "$@" ;;

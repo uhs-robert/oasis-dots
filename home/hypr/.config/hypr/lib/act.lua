@@ -556,11 +556,15 @@ function Act.run(id, ...)
   return perform(handle, check_values(handle, { ... }, select("#", ...)))
 end
 
---- Perform an action from command-line words (all strings), parsed to each param's type. Raises on an unknown id,
---- a bad word or the wrong count, so `hyprctl eval` exits non-zero and the message reaches the caller.
+--- Parse and check command-line words (all strings) against an action's params without performing it. Raises on an
+--- unknown id, a bad word or the wrong count, so `hyprctl eval` exits non-zero and the message reaches the caller.
+--- The one parse path of `run_cli` and of the headless `act_refs.lua --resolve`.
 --- @param id    string
 --- @param words string[]
-function Act.run_cli(id, words)
+--- @return ActionHandle handle
+--- @return any[] values  Typed, defaults filled
+--- @return table plan  What performing does: `{kind="lua"}`, `{kind="ipc", target, function, args}` or `{kind="command", argv}`, with `{param}` words rendered
+function Act.resolve(id, words)
   local handle = lookup(id)
   if type(words) ~= "table" then error("run_cli expects a list of strings", 0) end
   for index = 1, #words do
@@ -573,6 +577,33 @@ function Act.run_cli(id, words)
     end
     return value
   end)
+  local named = {}
+  for index, param in ipairs(handle.params) do
+    named[param.name] = values[index]
+  end
+  local run = handle.run
+  local plan
+  if type(run) == "function" then
+    plan = { kind = "lua" }
+  else
+    local rendered = {}
+    for _, word in ipairs(run.kind == "ipc" and run.args or run.argv) do
+      table.insert(rendered, render(word, named))
+    end
+    if run.kind == "ipc" then
+      plan = { kind = "ipc", target = run.target, ["function"] = run["function"], args = rendered }
+    else
+      plan = { kind = "command", argv = rendered }
+    end
+  end
+  return handle, values, plan
+end
+
+--- Perform an action from command-line words (all strings), parsed to each param's type. Raises as `Act.resolve` does.
+--- @param id    string
+--- @param words string[]
+function Act.run_cli(id, words)
+  local handle, values = Act.resolve(id, words)
   return perform(handle, values)
 end
 

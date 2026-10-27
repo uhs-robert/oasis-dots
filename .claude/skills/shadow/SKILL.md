@@ -11,6 +11,7 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 .claude/skills/shadow/shadow.sh up <name> [--size WxH] [--desktop] [--from DIR|<branch>...]   # default 1920x1080; bar from the current worktree (uncommitted edits included), --from's worktree, or branches merged on origin/main
 .claude/skills/shadow/shadow.sh spawn <name> [<command>...]   # a client in the shadow, default foot; returns once its window maps
 .claude/skills/shadow/shadow.sh ipc <name> popup open weather   # qs ipc call; `ipc <name> show` lists targets
+.claude/skills/shadow/shadow.sh action <name> popup.open weather   # the same call by hypr-act action id, with its parameter checks
 .claude/skills/shadow/shadow.sh wait <name> popup weather    # until it is fully drawn; also `osd voxtype`, `popup closed`, or `clickhints open`/`closed`; default --timeout 5
 .claude/skills/shadow/shadow.sh keys <name> 2              # wtype args, e.g. `-k Tab`, `-M ctrl -k l -m ctrl`
 .claude/skills/shadow/shadow.sh voxtype <name> recording   # idle|recording|transcribing: the only way to raise the OSD, since there is no PipeWire
@@ -19,6 +20,8 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
 .claude/skills/shadow/shadow.sh status [<name>]
 .claude/skills/shadow/shadow.sh down <name> [--keep]
 ```
+
+`action` takes the words `hypr-act` takes and resolves the id headlessly (the shadow loads no keymaps), so it only runs actions that are a bar IPC call (about 30; `hypr-act list` shows `perform.kind = ipc`). A command action is refused because it would run on the owner's machine, a Lua action because it needs a live Hyprland; both, an unknown id and a bad param exit 5 without calling the bar.
 
 `smoke.sh [--out DIR] [--name SHADOW] [--dry-run] [--self-test] [style...]` runs one pass per style on a shadow (its own `smoke`, brought up and down unless `--name` names a running one): popup, OSD (voxtype recording), which-key, the click-hints overlay (fixture boxes) and the region selector, then a contact sheet `sheet.png` and a log check. It records `MISS <style> <surface>-blank` when a capture matches what lies behind it. The which-key HUD is fed a fixture payload through its `hyprvim_whichkey` IPC target because the shadow loads no HyprVim, so it shows the HUD's drawing in each style, not the owner's real key rows. The volume and brightness OSDs cannot be raised (no PipeWire, no backlight writes).
 

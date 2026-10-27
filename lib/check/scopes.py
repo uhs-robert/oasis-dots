@@ -200,6 +200,8 @@ PATH_SCOPES = [
     (".claude/hooks/live-hypr.sh", "hooks ship"),
     (".claude/hooks/*", "hooks"),
     (".claude/skills/owner-test-bar/*", "bar"),
+    # shadow.sh is also run by the shadow-action test, which sources it for `action`.
+    (".claude/skills/shadow/shadow.sh", "lua"),
     (".claude/skills/ship-batch/*", "ship"),
     ("home/claude/.claude/skills/merge-prs/*", "ship"),
     ("system/etc/greetd/*", "lua"),
@@ -295,6 +297,7 @@ STEPS = [
     Step("frame-lone-flush", "lua", "lua ./home/hypr/tests/frame_lone_flush.lua", ("lua",), skip_reason="the frame tests need lua"),
     Step("bind-action", "lua", "lua ./home/hypr/tests/bind_action.lua", ("lua",), skip_reason="the bind tests need lua"),
     Step("hypr-act", "lua", "bash ./home/hypr/tests/hypr-act.sh"),
+    Step("shadow-action", "lua", "bash ./home/hypr/tests/shadow-action.sh", ("lua", "jq"), skip_reason="the shadow action test needs lua and jq"),
     Step("act-lib", "lua", "lua ./home/hypr/tests/act.lua", ("lua",), skip_reason="the action tests need lua"),
     Step("act-global", "lua", "bash ./home/hypr/tests/act-global.sh", ("lua",), skip_reason="the global action tests need lua"),
     Step("act-launch", "lua", "bash ./home/hypr/tests/act-launch.sh", ("lua",), skip_reason="the launch action tests need lua"),

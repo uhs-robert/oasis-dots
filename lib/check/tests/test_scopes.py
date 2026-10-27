@@ -48,6 +48,8 @@ CASES = [
     ("home/hypr/tests/act_refs.lua", " lua"),
     ("home/hypr/tests/registry_binds.lua", " lua"),
     ("home/hypr/tests/hypr-act.sh", " lua"),
+    ("home/hypr/tests/shadow-action.sh", " lua"),
+    (".claude/skills/shadow/shadow.sh", " lua"),
     ("home/hypr/tests/act-global.sh", " lua"),
     ("home/hypr/tests/act_global.lua", " lua"),
     ("home/hypr/tests/act-launch.sh", " lua"),
