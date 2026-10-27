@@ -22,7 +22,7 @@ list_jq='.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved
   | [.id, .path, (.line // "-" | tostring), ($c.author.login // "-"), ($c.body | split("\n")[0] | gsub("\t"; " ") | .[0:80])] | @tsv'
 
 list_threads() {
-  local pr=$1 slug page cursor_args=() cursor
+  local pr=$1 slug page cursor_args=() cursor='' previous_cursor
   [[ $pr =~ ^[0-9]+$ ]] || die "$usage"
   slug=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || die "cannot read the repository"
   while :; do
@@ -30,8 +30,10 @@ list_threads() {
       die "cannot read the review threads of #$pr"
     jq -r "$list_jq" <<<"$page" || die "cannot parse the review threads of #$pr"
     [[ $(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$page") == true ]] || break
+    previous_cursor=$cursor
     cursor=$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor // empty' <<<"$page")
     [[ -n $cursor ]] || die "the review thread list of #$pr has another page but no cursor"
+    [[ $cursor != "$previous_cursor" ]] || die "the review thread list of #$pr repeats cursor $cursor"
     cursor_args=(-f after="$cursor")
   done
 }
