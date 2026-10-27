@@ -16,7 +16,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/bin"
 cp "$here/gh" "$work/bin/gh"
-export PATH=$work/bin:$PATH GH_LOG=$work/log FAKE_THREADS=$work/threads.json
+export PATH=$work/bin:$PATH GH_LOG=$work/log FAKE_THREADS=$work/threads.json FAKE_THREADS_2=$work/threads2.json
 # shellcheck disable=SC2034 # out, code and err are read by the eval in check
 run() {
   : >"$GH_LOG"
@@ -81,9 +81,19 @@ check "shows a missing line as -" "[[ \$(tail -1 <<<\"\$out\" | cut -f3) == - ]]
 check "issues no mutation" "! grep -q mutation '$GH_LOG'"
 run --list x
 check "refuses a non-numeric pr" "[[ \$code == 1 ]]"
-sed -i 's/"hasNextPage":false/"hasNextPage":true/' "$FAKE_THREADS"
+sed -i 's/"hasNextPage":false/"hasNextPage":true,"endCursor":"C1"/' "$FAKE_THREADS"
+cat >"$FAKE_THREADS_2" <<'JSON'
+{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":"C2"},"nodes":[
+{"id":"PRRT_page2","isResolved":false,"path":"d.sh","line":3,"comments":{"nodes":[{"author":{"login":"bot"},"body":"on page two"}]}}
+]}}}}}
+JSON
 run --list 12
-check "notes a truncated list on stderr" "[[ \$err == *'first 100'* ]]"
+check "follows the cursor to the next page" "[[ \$(cut -f1 <<<\"\$out\" | paste -sd,) == PRRT_open1,PRRT_open2,PRRT_page2 ]]"
+check "sends the cursor on the second call only" "[[ \$(grep -c ' after=C1' '$GH_LOG') == 1 && \$(grep -c 'reviewThreads' '$GH_LOG') == 2 ]]"
+check "no longer notes a truncated list" "[[ -z \$err ]]"
+sed -i 's/,"endCursor":"C1"//' "$FAKE_THREADS"
+run --list 12
+check "refuses a next page without a cursor" "[[ \$code == 1 && \$err == *'no cursor'* ]]"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))

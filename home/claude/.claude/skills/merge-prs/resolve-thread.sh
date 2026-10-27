@@ -16,20 +16,24 @@ die() {
 reply_mutation='mutation($thread: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $thread, body: $body}) { comment { id } } }'
 resolve_mutation='mutation($thread: ID!) { resolveReviewThread(input: {threadId: $thread}) { thread { id } } }'
 state_query='query($thread: ID!) { node(id: $thread) { ... on PullRequestReviewThread { isResolved } } }'
-list_query='query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { id isResolved path line comments(first: 1) { nodes { author { login } body } } } } } } }'
+list_query='query($owner: String!, $name: String!, $number: Int!, $after: String) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { reviewThreads(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { id isResolved path line comments(first: 1) { nodes { author { login } body } } } } } } }'
 # First line of the opening comment, tabs flattened and cut to 80 characters.
 list_jq='.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not) | .comments.nodes[0] as $c
   | [.id, .path, (.line // "-" | tostring), ($c.author.login // "-"), ($c.body | split("\n")[0] | gsub("\t"; " ") | .[0:80])] | @tsv'
 
 list_threads() {
-  local pr=$1 slug page
+  local pr=$1 slug page cursor_args=() cursor
   [[ $pr =~ ^[0-9]+$ ]] || die "$usage"
   slug=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || die "cannot read the repository"
-  page=$(gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -F number="$pr" -f query="$list_query") ||
-    die "cannot read the review threads of #$pr"
-  jq -r "$list_jq" <<<"$page" || die "cannot parse the review threads of #$pr"
-  [[ $(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$page") != true ]] ||
-    echo "resolve-thread: only the first 100 threads were read" >&2
+  while :; do
+    page=$(gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -F number="$pr" -f query="$list_query" "${cursor_args[@]}") ||
+      die "cannot read the review threads of #$pr"
+    jq -r "$list_jq" <<<"$page" || die "cannot parse the review threads of #$pr"
+    [[ $(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$page") == true ]] || break
+    cursor=$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor // empty' <<<"$page")
+    [[ -n $cursor ]] || die "the review thread list of #$pr has another page but no cursor"
+    cursor_args=(-f after="$cursor")
+  done
 }
 
 case ${1:-} in
