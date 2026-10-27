@@ -75,23 +75,24 @@ while IFS= read -r entry; do
     continue
   }
   case $command in /*) ;; *) command=$here/$command ;; esac
-  # Everything a reviewer writes is named <name>-* or <name>.*; leftovers of an earlier run must neither pass for this
-  # run's result nor, with an in-tree outdir, make the tree dirty for the reviewer's own clean-tree check.
-  rm -rf "$outdir/$name"-* "$outdir/$name".*
+  # The reviewer owns <outdir>/<name>/ alone: clearing it drops the last run's files, which must neither pass for this
+  # run's result nor (with an in-tree outdir) dirty the tree for the reviewer's own clean-tree check.
+  rm -rf "${outdir:?}/$name"
+  mkdir "$stage/$name"
   names+=("$name")
   REVIEW_SCOPE=$scope REVIEW_MODEL=$model bash -c '
     "$1" "$2" "$3" >"$4" 2>"$5" </dev/null
-    echo $? >"$6"' _ "$command" "$base" "$stage" \
-    "$results/$name.out" "$stage/$name.stderr.log" "$results/$name.code" &
+    echo $? >"$6"' _ "$command" "$base" "$stage/$name" \
+    "$results/$name.out" "$stage/$name/$name.stderr.log" "$results/$name.code" &
   pids+=("$!")
 done < <(jq -c '.[]' <<<"$registry")
 wait
+# Reaped: a later kill could hit an unrelated process that reused the pid, so drop them before anything can fail.
+pids=()
 cp -a "$stage"/. "$outdir"/ || {
   echo "run-local-reviews: could not copy the results to $outdir" >&2
   exit 1
 }
-# Reaped: a later kill could hit an unrelated process that reused the pid.
-pids=()
 
 for name in "${names[@]}"; do
   code=$(<"$results/$name.code")

@@ -213,22 +213,22 @@ echo "== run-local-reviews.sh"
 reset
 echo '{"reviewers":{"codex":{"local":"all"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
 run run-local-reviews.sh
-check "only the enabled reviewer runs" '[ $rc -eq 0 ] && [ "$out" = "codex: $root/out/codex-review.md" ] && ! called "coderabbit" && ! called "claude"'
+check "only the enabled reviewer runs" '[ $rc -eq 0 ] && [ "$out" = "codex: $root/out/codex/codex-review.md" ] && ! called "coderabbit" && ! called "claude"'
 reset
 echo '{"reviewers":{"codex":{"local":"all"},"coderabbit":{"local":"public"},"claude":{"local":"all"}}}' >"$REVIEWERS_SETTINGS_FILE"
 echo PRIVATE >"$root/state/gh_visibility"
 run run-local-reviews.sh
 check "one line per enabled reviewer, private repo skips public-scope CodeRabbit" '[ $rc -eq 0 ] && [ "$(wc -l <<<"$out")" = 3 ] &&
-  grep -q "^codex: $root/out/codex-review.md$" <<<"$out" && grep -q "^claude: $root/out/claude-review.md$" <<<"$out" &&
+  grep -q "^codex: $root/out/codex/codex-review.md$" <<<"$out" && grep -q "^claude: $root/out/claude/claude-review.md$" <<<"$out" &&
   grep -q "^coderabbit: coderabbit skipped: scope public and the repo is private$" <<<"$out"'
 check "REVIEW_SCOPE reaches the scripts (public passes on a public repo)" '
   reset; echo "{\"reviewers\":{\"codex\":{\"local\":\"off\"},\"coderabbit\":{\"local\":\"public\"}}}" >"$REVIEWERS_SETTINGS_FILE"
-  run run-local-reviews.sh; [ "$out" = "coderabbit: $root/out/coderabbit-review.md" ]'
+  run run-local-reviews.sh; [ "$out" = "coderabbit: $root/out/coderabbit/coderabbit-review.md" ]'
 reset
 echo '{"reviewers":{"codex":{"local":"all"},"claude":{"local":"all"}}}' >"$REVIEWERS_SETTINGS_FILE"
 touch "$root/state/codex_fail"
 run run-local-reviews.sh
-check "one reviewer unavailable does not stop the others" '[ $rc -eq 0 ] && grep -q "^codex: codex unavailable:" <<<"$out" && grep -q "^claude: $root/out/claude-review.md$" <<<"$out"'
+check "one reviewer unavailable does not stop the others" '[ $rc -eq 0 ] && grep -q "^codex: codex unavailable:" <<<"$out" && grep -q "^claude: $root/out/claude/claude-review.md$" <<<"$out"'
 
 # Two custom reviewers that each wait for the other's start marker prove they overlap.
 mkdir -p "$root/custom"
@@ -265,7 +265,7 @@ cat >"$REVIEWERS_USER_FILE" <<J
 J
 echo '{"reviewers":{"codex":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
 run run-local-reviews.sh
-check "reviewers run in parallel" 'grep -q "^one: $root/out/one-review.md$" <<<"$out" && grep -q "^two: $root/out/two-review.md$" <<<"$out"'
+check "reviewers run in parallel" 'grep -q "^one: $root/out/one/one-review.md$" <<<"$out" && grep -q "^two: $root/out/two/two-review.md$" <<<"$out"'
 check "a crashing reviewer is reported and the others still finish" 'grep -q "^boom: failed (exit 1) partial$" <<<"$out" && grep -q "^one: " <<<"$out"'
 check "exit 3 maps to an uncommitted-changes line" 'grep -q "^dirty: uncommitted changes" <<<"$out"'
 check "an entry without a command is reported, not run" 'grep -q "^nocmd: no local command configured$" <<<"$out"'
@@ -282,20 +282,21 @@ chmod +x "$root/odd|dir x/odd.sh"
 echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
 jq -n --arg c "$root/odd|dir x/odd.sh" '{reviewers:[{name:"odd",local:{command:$c,default:"all"}}]}' >"$REVIEWERS_USER_FILE"
 run run-local-reviews.sh
-check "a command path with a pipe and a space survives" '[ "$out" = "odd: $root/out/odd-review.md" ]'
+check "a command path with a pipe and a space survives" '[ "$out" = "odd: $root/out/odd/odd-review.md" ]'
 reset
 echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
 echo "{\"reviewers\":[{\"name\":\"../evil\",\"local\":{\"command\":\"$root/custom/one.sh\",\"default\":\"all\"}}]}" >"$REVIEWERS_USER_FILE"
 run run-local-reviews.sh
 check "an unsafe reviewer name is skipped with a warning, never run" '[ $rc -eq 0 ] && grep -q "unsafe name" "$root/err" && grep -q "^../evil: skipped" <<<"$out"'
 reset
-mkdir -p "$root/out"
-echo stale >"$root/out/claude-review.md"
-echo stale >"$root/out/claude-skipped.txt"
+mkdir -p "$root/out/claude"
+echo stale >"$root/out/claude/claude-review.md"
+echo stale >"$root/out/claude/claude-skipped.txt"
+echo mine >"$root/out/claude-notes.md"
 echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"all"}}}' >"$REVIEWERS_SETTINGS_FILE"
 echo fail >"$root/state/claude_mode"
 run run-local-reviews.sh
-check "stale review and skipped files from an earlier run are cleared" '[ ! -e "$root/out/claude-review.md" ] && [ ! -e "$root/out/claude-skipped.txt" ]'
+check "the reviewer's own old files are cleared, an unrelated claude-notes.md survives" '[ ! -e "$root/out/claude/claude-review.md" ] && [ ! -e "$root/out/claude/claude-skipped.txt" ] && [ -e "$root/out/claude-notes.md" ]'
 reset
 cat >"$root/custom/long.sh" <<S
 #!/usr/bin/env bash
@@ -340,21 +341,26 @@ rm -f "$root"/custom/tree_*.written
 echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
 echo "{\"reviewers\":[{\"name\":\"tree_a\",\"local\":{\"command\":\"$root/custom/tree_a.sh\",\"default\":\"all\"}},{\"name\":\"tree_b\",\"local\":{\"command\":\"$root/custom/tree_b.sh\",\"default\":\"all\"}}]}" >"$REVIEWERS_USER_FILE"
 out=$("$skill/run-local-reviews.sh" main "$repo/reviews" 2>/dev/null)
-check "reviewers writing to an unignored in-tree outdir do not dirty each other's tree" 'grep -q "^tree_a: $repo/reviews/tree_a-review.md$" <<<"$out" && grep -q "^tree_b: $repo/reviews/tree_b-review.md$" <<<"$out" && [ -e "$repo/reviews/tree_a.dat" ]'
+check "reviewers writing to an unignored in-tree outdir do not dirty each other's tree" 'grep -q "^tree_a: $repo/reviews/tree_a/tree_a-review.md$" <<<"$out" && grep -q "^tree_b: $repo/reviews/tree_b/tree_b-review.md$" <<<"$out" && [ -e "$repo/reviews/tree_a/tree_a.dat" ]'
 rm -rf "$repo/reviews"
 reset
 echo '{"reviewers":{"codex":{"local":"all"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
 "$skill/run-local-reviews.sh" main "$repo/reviews" >/dev/null 2>&1
 out=$("$skill/run-local-reviews.sh" main "$repo/reviews" 2>/dev/null)
-check "a rerun with an in-tree outdir is not blocked by the earlier run's artifacts" '[ "$out" = "codex: $repo/reviews/codex-review.md" ]'
+check "a rerun with an in-tree outdir is not blocked by the earlier run's artifacts" '[ "$out" = "codex: $repo/reviews/codex/codex-review.md" ]'
 rm -rf "$repo/reviews"
 reset
 mkdir -p "$root/ro"
 chmod 555 "$root/ro"
-out=$("$skill/run-local-reviews.sh" main "$root/ro" 2>/dev/null)
+cat >"$root/kill_spy.sh" <<S
+# Only the runner itself is spied on, not the reviewers it starts.
+case \$0 in *run-local-reviews.sh) kill() { echo "\$*" >>"$root/kills"; builtin kill "\$@"; } ;; esac
+S
+rm -f "$root/kills"
+out=$(BASH_ENV="$root/kill_spy.sh" "$skill/run-local-reviews.sh" main "$root/ro" 2>/dev/null)
 rc=$?
 chmod 755 "$root/ro"
-check "a failed copy into the outdir exits 1 and prints no paths" '[ $rc -eq 1 ] && [ -z "$out" ]'
+check "a failed copy into the outdir exits 1, prints no paths and signals no reaped pid" '[ $rc -eq 1 ] && [ -z "$out" ] && [ ! -s "$root/kills" ]'
 reset
 cat >"$root/custom/stubborn.sh" <<S
 #!/usr/bin/env bash
@@ -384,7 +390,8 @@ kill -KILL "$stubborn_pid" 2>/dev/null
 check "a reviewer that ignores TERM is killed after the grace period" '[ $alive -eq 0 ]'
 reset
 cat >"$root/kill_spy.sh" <<S
-kill() { echo "\$*" >>"$root/kills"; builtin kill "\$@"; }
+# Only the runner itself is spied on, not the reviewers it starts.
+case \$0 in *run-local-reviews.sh) kill() { echo "\$*" >>"$root/kills"; builtin kill "\$@"; } ;; esac
 S
 echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
 echo "{\"reviewers\":[{\"name\":\"one\",\"local\":{\"command\":\"$root/custom/dirty.sh\",\"default\":\"all\"}}]}" >"$REVIEWERS_USER_FILE"
