@@ -232,7 +232,9 @@ RowsSection {
             readonly property string path: preview.pinned ? WallpaperSettings.pins[preview.monitor.key] : preview.entry && typeof preview.entry.path === "string" ? preview.entry.path : ""
             readonly property real wanted: Math.round(width * 9 / 16)
             readonly property real view_height: root.popup && root.popup.pane_view_height ? root.popup.pane_view_height : root.height
-            readonly property real shown: Math.max(0, Math.min(preview.wanted, preview.free))
+            // Never below a usable size when many monitor rows leave no room; the pane then scrolls to it.
+            readonly property real least: Math.min(Style.px(160), preview.view_height - preview_label.implicitHeight - 6)
+            readonly property real shown: Math.max(0, Math.min(preview.wanted, Math.max(preview.free, preview.least)))
             readonly property real free: preview.view_height - root.footer_top - (root.editing ? edit_box.height + 4 : 0) - preview_label.implicitHeight - 6
 
             visible: !root.picking && !!preview.monitor

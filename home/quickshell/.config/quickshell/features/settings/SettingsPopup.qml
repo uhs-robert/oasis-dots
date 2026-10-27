@@ -110,7 +110,8 @@ Popup {
     // moves along it, and any other pane scrolls half a page.
     function half_page_pane(delta) {
         const pane = root.pane;
-        if (!pane || pane.picking) return;
+        // Not under a y/n prompt (Bar modules, Sessions), which names the selection it acts on.
+        if (!pane || pane.picking || pane.pending) return;
         if (typeof pane.half_page === "function") pane.half_page(delta);
         else if (typeof pane.cursor === "number" && pane.search_rows.length > 0) pane.search_select(Math.max(0, Math.min(pane.search_rows.length - 1, pane.search_cursor + delta * root.half_page_rows)));
         else pane_flick.contentY = Math.max(0, Math.min(pane_flick.contentHeight - pane_flick.height, pane_flick.contentY + delta * pane_flick.height / 2));
