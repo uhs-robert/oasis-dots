@@ -1,5 +1,7 @@
 # Changing keybinds
 
+The behaviour these keys promise is written down in the [keys spec](../specs/core/keys.md).
+
 The keys this setup ships are defined in Lua under `~/.config/hypr/keymaps/`. Leave those files alone: your changes go in one file of your own, `custom/keymaps.lua`, which can add binds, replace shipped ones and define new [submaps](https://wiki.hypr.land/Configuring/Basics/Binds/#submaps). It is gitignored, so `git pull` never conflicts with it, and you can track it in a repo of your own.
 
 ## Finding what a key does

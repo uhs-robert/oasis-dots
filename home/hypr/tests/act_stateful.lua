@@ -196,6 +196,7 @@ for _, module in ipairs({
 	check(module .. " alone: no warnings: " .. table.concat(warnings, "; "), #warnings == 0)
 end
 
+-- req: KEYS-17
 -- A swallowed key: a "stay" submap binds `catchall` to a no-op dispatcher, Delete (a one-shot) to a function.
 load_all()
 for _, name in ipairs({ "Windows", "Cursor", "Quick Click", "Groups", "Move", "Resize" }) do
@@ -380,6 +381,26 @@ table.remove(WINDOWS, 1)
 moved = press("Windows", "SHIFT + H")
 check("every selected window closed: acts on the focused one", count_of(moved, "focus(") == 0)
 table.insert(WINDOWS, 1, gone)
+
+-- req: KEYS-12 (four step sizes on the direction keys, held keys repeat)
+load_all()
+for _, name in ipairs({ "Move", "Resize" }) do
+	local sizes = {}
+	for _, key in ipairs({ "H", "SHIFT + H", "CTRL + H", "CTRL + SHIFT + H" }) do
+		local entry = bind(name, key)
+		check(name .. ": " .. key .. " repeats", entry.opts.repeating == true)
+		sizes[#sizes + 1] = text_of(press(name, key))
+	end
+	local distinct = {}
+	for _, text in ipairs(sizes) do
+		distinct[text] = true
+	end
+	local count = 0
+	for _ in pairs(distinct) do
+		count = count + 1
+	end
+	check(name .. ": four different step sizes: " .. table.concat(sizes, " | "), count == 4)
+end
 
 if failures > 0 then
 	print(failures .. " failed")
