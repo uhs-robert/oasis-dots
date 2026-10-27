@@ -3,43 +3,40 @@
 # `gh api graphql` mutations. Creating a review or review comment stays allowed.
 #
 # Inverted on purpose: wrappers (`timeout 5 gh`, `bash -c`, `\gh`, `$GH`, ...) cannot be enumerated, so any command that
-# names a thread mutation together with `graphql` is denied. The one exception is a segment (split on ; & | newline)
-# that is led by a command known to carry prose (git commit/tag/notes, gh pr/issue comment|edit|create, echo, printf)
-# after any VAR=val assignments, and names the mutation only inside a quoted argument or the quoted heredoc body of
-# that command. Fail-closed, so a mention in grep, a multi-line message, or an unquoted heredoc is denied too.
-# Known limits: a mutation name built at run time (`m=resolve; ...${m}ReviewThread`), a query fed from outside the
-# command text (`-f query="$(cat f)"`, `cat q | gh api graphql --input -`), and a file written by an earlier call.
-# An unreadable `--input F` / `query=@F` file is denied, since its content cannot be seen.
+# names a thread mutation together with `graphql` is denied. The one exception is trivially safe prose: a segment
+# (split on ; & | newline) led by git commit/tag/notes or gh pr|issue comment|edit|create (gh pr review too), after any
+# VAR=val assignments, that names the mutation only inside a quoted argument, in a command with no heredoc, no pipe, no
+# `<` input redirect, no `>(`, and no `$(` or backtick anywhere. echo and printf are not prose commands: their text can
+# be piped into a shell. Long messages go in by file (-F file, --body-file). Fail-closed, so a mention in grep or echo
+# is denied too.
+# Known limits: a mutation name built at run time (`m=resolve; ...${m}ReviewThread`) or split by quotes or ANSI-C
+# (`resolve''ReviewThread`, `$'\x72esolve...'`); case variants (GraphQL names are case-sensitive, so likely harmless);
+# a query fed from outside the command text (`-f query="$(cat f)"`, `cat q | gh api graphql --input -`); a file written
+# by an earlier call. An unreadable `--input F` / `query=@F` file is denied, since its content cannot be seen.
 set -u
 cmd=$(jq -r '.tool_input.command // empty')
 [[ $cmd == *graphql* ]] || exit 0
 
 mutations='addPullRequestReviewThreadReply|resolveReviewThread|unresolveReviewThread'
 assignments='([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'
-prose_lead="^[[:space:]]*${assignments}(git[[:space:]]+(commit|tag|notes)|gh[[:space:]]+pr[[:space:]]+(comment|edit|create|review)|gh[[:space:]]+issue[[:space:]]+(comment|edit|create)|echo|printf)([[:space:]]|\$)"
-quoted_heredoc=$'<<-?[[:space:]]*\'([A-Za-z_][A-Za-z0-9_]*)\''
-
-# Drops the body of a quoted heredoc fed to a prose command: its text is never expanded or run.
-scrubbed=''
-heredoc_end=''
-while IFS= read -r line; do
-  if [[ -n $heredoc_end ]]; then
-    trimmed=${line#"${line%%[![:space:]]*}"}
-    [[ $trimmed == "$heredoc_end" ]] && heredoc_end=''
-    continue
-  fi
-  scrubbed+=$line$'\n'
-  if [[ $line =~ $prose_lead && $line =~ $quoted_heredoc ]]; then
-    heredoc_end=${BASH_REMATCH[1]}
-  fi
-done <<<"$cmd"
+prose_lead="^[[:space:]]*${assignments}(git[[:space:]]+(commit|tag|notes)|gh[[:space:]]+pr[[:space:]]+(comment|edit|create|review)|gh[[:space:]]+issue[[:space:]]+(comment|edit|create))([[:space:]]|\$)"
 
 # shellcheck disable=SC2020 # three separators, each to a newline
-segments=$(tr ';&|' '\n\n\n' <<<"$scrubbed")
+segments=$(tr ';&|' '\n\n\n' <<<"$cmd")
+
+# The command as the shell sees it outside quotes: a pipe, input redirect or process substitution there can carry a
+# quoted message into a shell or gh, so such a command gets no prose exception.
+unquoted=$cmd
+while [[ $unquoted =~ \'[^\']*\' ]]; do unquoted=${unquoted/"${BASH_REMATCH[0]}"/}; done
+while [[ $unquoted =~ \"[^\"]*\" ]]; do unquoted=${unquoted/"${BASH_REMATCH[0]}"/}; done
+prose_possible=true
+# shellcheck disable=SC2016 # a literal $(
+[[ $unquoted == *'|'* || $unquoted == *'<'* || $unquoted == *'>('* || $cmd == *'$('* || $cmd == *'`'* ]] && prose_possible=false
 
 # True when the mutation name in this segment sits only inside quotes of a prose command.
 is_prose_mention() {
   local rest
+  $prose_possible || return 1
   [[ $1 =~ $prose_lead ]] || return 1
   rest=${1#"${BASH_REMATCH[0]}"}
   # Anything that expands or runs inside the message is no prose.
