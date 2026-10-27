@@ -70,23 +70,30 @@ local function expect(name, actual, wanted)
 	end
 end
 
-local config = load_theme({ [state_file] = "saved_theme\n", [legacy_file] = "legacy_theme\n" })
-expect("a saved theme is restored", config.theme, "saved_theme")
-expect("a restored state file is left as it was", read(state_file), "saved_theme\n")
+-- Under pcall so the temp dir is removed even when an assert fails or the module raises.
+local ran, err = pcall(function()
+	local config = load_theme({ [state_file] = "saved_theme\n", [legacy_file] = "legacy_theme\n" })
+	expect("a saved theme is restored", config.theme, "saved_theme")
+	expect("a restored state file is left as it was", read(state_file), "saved_theme\n")
 
-config = load_theme({ [legacy_file] = "legacy_theme\n" })
-expect("the first run takes the legacy theme", config.theme, "legacy_theme")
-expect("the first run writes the legacy theme to the state file", read(state_file), "legacy_theme")
+	config = load_theme({ [legacy_file] = "legacy_theme\n" })
+	expect("the first run takes the legacy theme", config.theme, "legacy_theme")
+	expect("the first run writes the legacy theme to the state file", read(state_file), "legacy_theme")
 
-config = load_theme({})
-expect("the first run without a legacy file keeps the default", config.theme, DEFAULT_THEME)
-expect("the first run writes the default to the state file", read(state_file), DEFAULT_THEME)
+	config = load_theme({})
+	expect("the first run without a legacy file keeps the default", config.theme, DEFAULT_THEME)
+	expect("the first run writes the default to the state file", read(state_file), DEFAULT_THEME)
 
-config = load_theme({ [state_file] = "\n", [legacy_file] = "legacy_theme\n" })
-expect("an empty state file counts as a first run", config.theme, "legacy_theme")
-expect("an empty state file is rewritten", read(state_file), "legacy_theme")
+	config = load_theme({ [state_file] = "\n", [legacy_file] = "legacy_theme\n" })
+	expect("an empty state file counts as a first run", config.theme, "legacy_theme")
+	expect("an empty state file is rewritten", read(state_file), "legacy_theme")
+end)
 
 os.execute("rm -rf '" .. work .. "'")
+if not ran then
+	io.stderr:write("FAIL " .. tostring(err) .. "\n")
+	os.exit(1)
+end
 if failures > 0 then
 	os.exit(1)
 end
