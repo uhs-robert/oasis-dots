@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPolicy.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here, swap_ok, swap_source };", T);
 const P = T.api;
 
 // A model of the world around the helper: the pointer, which popup is open, and the two timers.
@@ -487,13 +487,21 @@ t("the lualine cava slot hovers and pins the media popup, and only while shown",
 // how a helper reacts to losing the owner: "shared" is 755c90cbc's handler in every helper, immediate; "slot" is the
 // slot's deferred look; "none" is neither. `order` is when hover_owner clears around open_name: "fixed" after it (close()
 // and a pinned open today), "old" before it, which showed the popup ownerless for one assignment.
+// D: a third helper "n" (the neighbouring Network module, its own popup) lets the pointer move between modules while a
+// popup is hover-open, which HoverPopup turns into a swap ("swap" action) after a short delay. `closes` counts
+// Popups.close() calls and `ownerless` records any helper seeing an open popup with no owner during a swap.
 function twins(rule, order = "fixed") {
   const fresh = () => ({ mode: "idle", open_timer: false, close_timer: false, saw_open: false, saw_nothing: true });
-  const w = { open_name: "", owner: null, pointer: null, queued: false, h: { s: fresh(), m: fresh() } };
-  const open_here = n => w.open_name === "media" && (!w.owner || w.owner === n);
+  const names = { s: "media", m: "media", n: "network" };
+  const w = { open_name: "", owner: null, pointer: null, queued: false, closes: 0, name_moves: 0, ownerless: [], in_swap: false, h: { s: fresh(), m: fresh(), n: fresh() } };
+  const open_here = n => w.open_name === names[n] && (!w.owner || w.owner === n);
   const inside = n => w.pointer === n;
+  // HoverPopup.other_hover_open, with one screen and the shared island of the lualine strip.
+  const other_hover_open = n => !!w.owner && w.owner !== n && w.h[w.owner].mode === "hover_open" && open_here(w.owner);
+  w.other_hover_open = other_hover_open;
   const notify = () => {
-    for (const n of ["s", "m"]) {
+    if (w.in_swap && w.open_name !== "" && !w.owner) w.ownerless.push(w.open_name);
+    for (const n of ["s", "m", "n"]) {
       const x = w.h[n];
       if (x.saw_open !== open_here(n)) { x.saw_open = open_here(n); apply(n, P.popup_changed(x.mode, x.saw_open, inside(n))); }
       if (x.saw_nothing !== (w.open_name === "")) { x.saw_nothing = w.open_name === ""; if (x.saw_nothing) apply(n, P.nothing_open_now(x.mode, inside(n))); }
@@ -510,8 +518,16 @@ function twins(rule, order = "fixed") {
     if (r.action === "open") {
       if (order === "old") set_owner(r.mode === "hover_open" ? n : null);
       else if (r.mode === "hover_open") set_owner(n);
-      set_name("media");
+      set_name(names[n]);
       if (order !== "old" && r.mode !== "hover_open") set_owner(null);
+    }
+    else if (r.action === "swap") {
+      // HoverPopup's swap: the new owner first, then open_name moves (or, from a same-name sibling, stays).
+      w.in_swap = true;
+      if (order === "old") set_owner(null);
+      set_owner(n);
+      set_name(names[n]);
+      w.in_swap = false;
     }
     else if (r.action === "close" && open_here(n)) close();
   };
@@ -525,9 +541,11 @@ function twins(rule, order = "fixed") {
   const set_name = name => {
     if (w.open_name === name) return;
     w.open_name = name;
+    w.name_moves++;
     notify();
   };
   const close = () => {
+    w.closes++;
     if (order === "old") set_owner(null);
     set_name("");
     set_owner(null);
@@ -539,17 +557,25 @@ function twins(rule, order = "fixed") {
     if (w.h.s.mode === "hover_open" && !w.owner && open_here("s")) apply("s", P.popup_pressed("hover_open"));
   };
   w.hover_open = n => { w.pointer = n; apply(n, P.inside_changed("idle", true, true)); w.fire_open(n); };
-  w.move = n => { const was = w.pointer; w.pointer = n; if (was) apply(was, P.inside_changed(w.h[was].mode, false, w.open_name === "")); if (n) apply(n, P.inside_changed(w.h[n].mode, true, w.open_name === "")); settle(); };
+  w.move = n => {
+    const was = w.pointer;
+    w.pointer = n;
+    if (was) apply(was, P.inside_changed(w.h[was].mode, false, w.open_name === "", other_hover_open(was)));
+    if (n) apply(n, P.inside_changed(w.h[n].mode, true, w.open_name === "", other_hover_open(n)));
+    settle();
+  };
   w.click = n => {
     apply(n, P.clicked(w.h[n].mode, open_here(n)));
     // The slot's click handler tells every helper on its popup name, like a press inside the popup.
     if (rule === "slot" && n === "s") for (const o of ["s", "m"]) apply(o, P.popup_pressed(w.h[o].mode));
     settle();
   };
-  w.fire_open = n => { const x = w.h[n]; if (x.open_timer) { x.open_timer = false; apply(n, P.open_elapsed(x.mode, inside(n), w.open_name === "")); settle(); } };
+  w.fire_open = n => { const x = w.h[n]; if (x.open_timer) { x.open_timer = false; apply(n, P.open_elapsed(x.mode, inside(n), w.open_name === "", other_hover_open(n))); settle(); } };
   w.fire_close = n => { const x = w.h[n]; if (x.close_timer) { x.close_timer = false; apply(n, P.close_elapsed(x.mode, inside(n))); settle(); } };
   // Escape, an outside click and a toggle all end in Popups.close().
   w.close_from_outside = () => { close(); settle(); };
+  // A keybind or IPC open (Popups.open_with_keyboard, open_on): open_name moves, the owner is left alone.
+  w.open_from_key = name => { set_name(name); settle(); };
   // A click-open of another popup by its own helper: a pinned open, so the owner clears around the open_name move.
   w.open_other = () => {
     if (order === "old") set_owner(null);
@@ -676,6 +702,193 @@ t("HoverPopup has no ownership handler; the slot alone watches it", () => {
   assert.match(strip, /!Popups\.hover_owner && slot_popup\.open_here\) Popups\.popup_pressed\(slot_popup\.popup_name\)/);
   assert.match(strip, /slot_popup\.click\(\);\n\s+\/\/[^\n]*\n\s+Popups\.popup_pressed\(slot_popup\.popup_name\);/);
   assert.match(strip, /enabled: cava_slot\.shown$/m);
+});
+
+// D (#1286): moving from one module onto the next while the first one's popup is hover-open swaps the popup in place.
+t("swap_ok: only an idle module the pointer is on, and only from another module's hover-opened popup", () => {
+  for (const m of ["idle", "pending", "swapping", "hover_open", "pinned", "suppressed", "settling"])
+    for (const inside of [true, false])
+      for (const other of [true, false]) assert.strictEqual(P.swap_ok(m, inside, other), m === "idle" && inside && other, [m, inside, other].join());
+  assert.deepStrictEqual([P.inside_changed("idle", true, false, true).mode, P.inside_changed("idle", true, false, false).mode], ["swapping", "idle"]);
+  assert.deepStrictEqual([P.inside_changed("swapping", false, false, true).mode, P.inside_changed("swapping", false, false, true).open_timer], ["idle", "stop"]);
+  assert.deepStrictEqual([P.open_elapsed("swapping", true, false, true).action, P.open_elapsed("swapping", true, false, false).mode], ["swap", "idle"]);
+  assert.strictEqual(P.nothing_open_now("swapping", true).mode, "pending");
+  assert.strictEqual(P.popup_changed("swapping", true, true).mode, "pinned");
+  assert.deepStrictEqual({ ...P.disabled("swapping", false) }, { mode: "idle", open_timer: "stop", close_timer: "stop", action: "none" });
+});
+t("swap_source: a swap only from another popup on the same screen, so never across monitors or bar edges", () => {
+  assert.deepStrictEqual({ ...P.swap_source(true, "volume", "DP-1", "network", "DP-1") }, { name: "volume", to: "network", screen_name: "DP-1", extent: 0 });
+  assert.strictEqual(P.swap_source(true, "volume", "DP-1", "network", "HDMI-A-1"), null);
+  assert.strictEqual(P.swap_source(false, "volume", "DP-1", "network", "DP-1"), null);
+  assert.strictEqual(P.swap_source(true, "", "", "network", "DP-1"), null);
+  assert.strictEqual(P.swap_source(true, "network", "DP-1", "network", "DP-1"), null);
+});
+const swapped = (order = "fixed") => {
+  const w = twins("slot", order);
+  w.hover_open("m");
+  w.move("n");
+  const waiting = [w.h.n.mode, w.h.n.open_timer];
+  w.fire_open("n");
+  return [w, waiting];
+};
+t("a swap to the neighbour: the owner moves first, the old helper ends idle with no close() and never sees the popup ownerless", () => {
+  const [w, waiting] = swapped();
+  assert.deepStrictEqual(waiting, ["swapping", true]);
+  assert.deepStrictEqual([w.open_name, w.owner, w.h.n.mode, w.h.m.mode, w.h.s.mode], ["network", "n", "hover_open", "idle", "idle"]);
+  assert.deepStrictEqual([w.closes, w.ownerless, w.h.m.close_timer], [0, [], false]);
+  // The old helper's grace was stopped; a stale fire finds nothing to do.
+  w.fire_close("m");
+  assert.deepStrictEqual([w.open_name, w.closes], ["network", 0]);
+});
+t("a pointer only crossing a module (shorter than the swap delay) does not swap", () => {
+  const w = twins("slot");
+  w.hover_open("m");
+  w.move("n");
+  w.move(null);
+  w.fire_open("n");
+  assert.deepStrictEqual([w.open_name, w.h.n.mode, w.h.n.open_timer], ["media", "idle", false]);
+  w.fire_close("m");
+  assert.deepStrictEqual([w.open_name, w.h.m.mode], ["", "idle"]);
+});
+t("fast moves: there and straight back keeps the first popup; a swap there and back swaps back", () => {
+  const w = twins("slot");
+  w.hover_open("m");
+  w.move("n");
+  w.move("m");
+  w.fire_open("n");
+  assert.deepStrictEqual([w.open_name, w.owner, w.h.m.mode, w.h.m.close_timer], ["media", "m", "hover_open", false]);
+  const [back] = swapped();
+  back.move("m");
+  assert.strictEqual(back.h.m.mode, "swapping");
+  back.fire_open("m");
+  assert.deepStrictEqual([back.open_name, back.owner, back.h.m.mode, back.h.n.mode, back.closes, back.ownerless], ["media", "m", "hover_open", "idle", 0, []]);
+});
+t("no swap from a pinned popup", () => {
+  const w = twins("slot");
+  w.hover_open("m");
+  w.click("m");
+  w.move("n");
+  w.fire_open("n");
+  assert.deepStrictEqual([w.open_name, w.h.n.mode, w.h.m.mode], ["media", "idle", "pinned"]);
+});
+t("no swap from a popup a key or IPC opened, even with a stale owner left from an earlier hover", () => {
+  const w = twins("slot");
+  w.open_from_key("network");
+  assert.deepStrictEqual([w.owner, w.h.n.mode], [null, "pinned"]);
+  w.move("m");
+  w.fire_open("m");
+  assert.deepStrictEqual([w.open_name, w.h.m.mode], ["network", "idle"]);
+  const stale = twins("slot");
+  stale.hover_open("n");
+  stale.open_from_key("media");
+  assert.deepStrictEqual([stale.owner, stale.h.n.mode, stale.other_hover_open("m")], ["n", "idle", false]);
+  stale.move("m");
+  stale.fire_open("m");
+  assert.deepStrictEqual([stale.open_name, stale.h.m.mode], ["media", "idle"]);
+});
+t("a swap waiting when the open popup closes falls back to the full open delay", () => {
+  const w = twins("slot");
+  w.hover_open("m");
+  w.move("n");
+  w.close_from_outside();
+  assert.deepStrictEqual([w.open_name, w.h.n.mode, w.h.n.open_timer], ["", "pending", true]);
+  w.fire_open("n");
+  assert.deepStrictEqual([w.open_name, w.owner, w.h.n.mode], ["network", "n", "hover_open"]);
+});
+t("after a swap the new popup closes on leaving and the old module hover-reopens", () => {
+  const [w] = swapped();
+  w.move(null);
+  w.fire_close("n");
+  assert.deepStrictEqual([w.open_name, w.h.n.mode, w.closes], ["", "idle", 1]);
+  w.move("m");
+  assert.strictEqual(w.h.m.mode, "pending");
+  w.fire_open("m");
+  assert.deepStrictEqual([w.open_name, w.h.m.mode], ["media", "hover_open"]);
+});
+t("Media to the cava slot swaps by handing the owner over; the popup stays and the slot owns it", () => {
+  const w = twins("slot");
+  w.hover_open("m");
+  const moves = w.name_moves;
+  w.move("s");
+  w.fire_open("s");
+  assert.deepStrictEqual([w.open_name, w.owner, w.h.s.mode, w.h.m.mode, w.name_moves - moves, w.closes, w.ownerless], ["media", "s", "hover_open", "idle", 0, 0, []]);
+  w.fire_close("m");
+  assert.strictEqual(w.open_name, "media");
+  // ...and back.
+  w.move("m");
+  w.fire_open("m");
+  assert.deepStrictEqual([w.owner, w.h.m.mode, w.h.s.mode], ["m", "hover_open", "idle"]);
+});
+t("the cava slot swapping away to another module ends idle and the slot's owner watch does not pin", () => {
+  const w = twins("slot");
+  w.hover_open("s");
+  w.move("n");
+  w.fire_open("n");
+  assert.deepStrictEqual([w.open_name, w.h.s.mode, w.h.n.mode, w.queued], ["network", "idle", "hover_open", false]);
+});
+t("the cava/Media pin races still hold with a swap pending or done", () => {
+  // A click on the slot inside its swap delay: a pinned open of the same name; Media's grace must not close it.
+  const a = twins("slot");
+  a.hover_open("m");
+  a.move("s");
+  a.click("s");
+  a.fire_close("m");
+  assert.deepStrictEqual(media_open_and_pinned(a), ["media", "pinned", "pinned"]);
+  // A click on Media inside its swap delay from the slot's popup: the slot's owner watch takes the pin.
+  const b = twins("slot");
+  b.hover_open("s");
+  b.move("m");
+  b.click("m");
+  b.fire_close("s");
+  assert.deepStrictEqual(media_open_and_pinned(b), ["media", "pinned", "pinned"]);
+  // After a finished hand-over the click pins both.
+  const c = twins("slot");
+  c.hover_open("m");
+  c.move("s");
+  c.fire_open("s");
+  c.click("s");
+  c.fire_close("m");
+  assert.deepStrictEqual(media_open_and_pinned(c), ["media", "pinned", "pinned"]);
+});
+t("a swap that cleared the owner before moving it would show the popup ownerless and pin the same-name sibling", () => {
+  const [bug] = swapped("old");
+  assert.deepStrictEqual(bug.ownerless, ["media"]);
+  assert.strictEqual(bug.h.s.mode, "settling");
+});
+t("HoverPopup's swap sets the owner before Popups.open(..., swap) and never closes or clears the owner", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  const branch = src.slice(src.indexOf('r.action === "swap"'), src.indexOf('r.action === "close"'));
+  assert.match(branch, /Popups\.hover_owner = root;[\s\S]*Popups\.open\([^\n]*, "", false, true\);/);
+  assert.ok(branch.indexOf("Popups.hover_owner = root;") < branch.indexOf("Popups.open("), branch);
+  assert.doesNotMatch(branch, /Popups\.close\(|hover_owner = null/);
+  assert.match(src, /root\.hover_owner !== root && root\.hover_owner\.mode === "hover_open" && root\.hover_owner\.open_here\n\s+&& !!root\.module && Popups\.open_screen_name === root\.module\.screen_name/);
+  assert.match(src, /interval = r\.mode === "swapping" \? root\.swap_delay : root\.open_delay;/);
+  assert.match(src, /property int swap_delay: 60$/m);
+  assert.doesNotMatch(src, /hover_ownerChanged/);
+});
+t("Popups records swap_from before open_name moves; the popup window fades out or grows in from it", () => {
+  const popups = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/Popups.qml"), "utf8");
+  const open = popups.slice(popups.indexOf("function open(name"), popups.indexOf("function open_with_keyboard"));
+  assert.ok(open.indexOf("root.swap_from = Policy.swap_source(") >= 0 && open.indexOf("root.swap_from = Policy.swap_source(") < open.indexOf("open_name = name;"), open);
+  assert.ok(open.indexOf("root.measure_swap(") < open.indexOf("open_name = name;"), open);
+  const close = popups.match(/function close\(\) \{[^}]*\}/)[0];
+  assert.match(close, /swap_from = null;/);
+  const popup = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/frames/Popup.qml"), "utf8");
+  assert.match(popup, /if \(swap && swap\.to === root\.popup_name\) root\.swap_in\(swap\.extent\);/);
+  assert.match(popup, /\} else if \(visible && Popups\.swap_from && Popups\.swap_from\.name === root\.popup_name\) \{[^}]*swap_out_anim\.restart\(\);/);
+  assert.match(popup, /Popups\.swap_done\(root\.popup_name\);/);
+});
+t("swap_kind: the owner's eight styles swap with their own transition at half length, every other style crossfades", () => {
+  const kinds_src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/theme/transitions/Kinds.js"), "utf8");
+  const K = vm.createContext({});
+  vm.runInContext(kinds_src.replace(/^\.pragma.*$/m, "") + "\nthis.api = { by_style, swap_kind, kind_for };", K);
+  const own = ["crt", "goldeneye", "nes", "gameboy", "snes", "ps1", "ff7", "halflife"];
+  for (const style of Object.keys(K.api.by_style)) {
+    const r = K.api.swap_kind(style);
+    assert.deepStrictEqual([r.kind, r.scale], [own.includes(style) ? K.api.by_style[style] : "fade", 0.5], style);
+  }
+  for (const style of own) assert.ok(style in K.api.by_style, style);
+  assert.strictEqual(K.api.swap_kind("default").kind, "fade");
 });
 
 let failed = 0;

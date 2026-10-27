@@ -9,6 +9,7 @@ import "fuzzy_rows.js" as FuzzyRows
 import "../../../ui/frames/DrawerGeometry.js" as Drawer
 import "../../../ui/frames/FrameGeometry.js" as FrameGeometry
 import "../../../ui/frames/PanelCuts.js" as Cuts
+import "../../../theme/transitions/Kinds.js" as Kinds
 import qs.styles.goldeneye.widgets as Goldeneye
 import qs.ui
 import qs.ui.frames
@@ -351,11 +352,11 @@ PanelWindow {
 
     // Open with every entrance animation done, including the body growing to fit late-loading content; Popups reports it
     // over IPC so a script can act on a popup only once it is fully drawn.
-    readonly property bool settled: root.wanted && !root.passive && root.drop_progress === 1 && !open_anim.running && !body_grow.running
+    readonly property bool settled: root.wanted && !root.passive && root.drop_progress === 1 && !open_anim.running && !swap_in_anim.running && !body_grow.running
         && !(burst_loader.item && burst_loader.item.busy)
     onSettledChanged: Popups.mark_settled(root.popup_name, root.settled)
     // Still mapped while it animates out; Popups reports it so "closed" means the layer is really gone.
-    readonly property bool closing: !root.passive && close_anim.running
+    readonly property bool closing: !root.passive && (close_anim.running || swap_out_anim.running)
     onClosingChanged: Popups.mark_closing(root.popup_name, root.closing)
     readonly property bool wanted: root.passive ? Tooltip.visible && Tooltip.island !== null && Popups.open_name === "" : Popups.open_name === root.popup_name && Popups.open_screen_name !== ""
 
@@ -529,6 +530,8 @@ PanelWindow {
             latch_tooltip();
         } else if (wanted) {
             close_anim.stop();
+            swap_out_anim.stop();
+            swap_in_anim.stop();
             held_anchor = Popups.open_anchor;
             held_screen_name = Popups.open_screen_name;
             held_color = Popups.open_color;
@@ -538,8 +541,14 @@ PanelWindow {
             visible = true;
             // A reopen during the close animation, with the pointer still inside, brings no hover change to report it.
             root.report_hover();
-            open_anim.restart();
-            if (burst_loader.item) burst_loader.item.play();
+            const swap = Popups.swap_from;
+            if (swap && swap.to === root.popup_name) root.swap_in(swap.extent);
+            else {
+                root.swap_phase = "";
+                root.swap_fade = 1;
+                open_anim.restart();
+                if (burst_loader.item) burst_loader.item.play();
+            }
             if (root.search_starts_open && root.search_opens_typing) root.open_search();
             else content_scope.forceActiveFocus();
         } else if (visible && passive && Popups.open_name !== "") {
@@ -549,9 +558,82 @@ PanelWindow {
             drop_progress = 0;
             visible = false;
             held_anchor = null;
+        } else if (visible && Popups.swap_from && Popups.swap_from.name === root.popup_name) {
+            open_anim.stop();
+            swap_in_anim.stop();
+            root.swap_phase = "out";
+            swap_out_anim.restart();
         } else if (visible) {
             open_anim.stop();
+            swap_in_anim.stop();
+            root.swap_phase = "";
+            root.swap_fade = 1;
             close_anim.restart();
+        }
+    }
+
+    // A hover swap (Popups.swap_from) hands the panel from one popup's window to the next with no fold-up and no drop:
+    // the outgoing one fades out (or covers with the style's transition) and hides, the incoming one skips the accent
+    // line and grows from the outgoing one's extent along its drop while its content fades in (or the style reveals it).
+    // The two windows sit under different islands and the compositor places each, so neither can slide across to the
+    // other's place; the swap is along the drop only.
+    readonly property var swap_style: Kinds.swap_kind(Style.name)
+    readonly property bool swap_fx_on: root.swap_style.kind !== "fade" && PowerSource.on_ac
+    readonly property int swap_cover_ms: Math.round(Kinds.cover(root.swap_style.kind) * root.swap_style.scale)
+    // "out" or "in" while this window plays its half of a swap; SwapFx runs only then.
+    property string swap_phase: ""
+    // The swap crossfade, on everything the window draws.
+    property real swap_fade: 1
+    readonly property int swap_in_ms: 140
+    readonly property int swap_out_ms: 90
+    // How far the panel is drawn along its drop, in px, and how far it goes when fully out.
+    readonly property real full_extent: root.drawer ? root.panel_height : root.beside ? root.frame_width : root.panel_height - root.line_height
+    readonly property real drawn_extent: root.full_extent * root.drop_progress
+
+    function swap_in(from_extent) {
+        // Back in mid-way through its own swap out: SwapFx restarts on the other half.
+        root.swap_phase = "";
+        root.swap_phase = "in";
+        line_progress = 1;
+        drop_progress = root.full_extent > 0 ? Math.max(0, Math.min(1, from_extent / root.full_extent)) : 0;
+        root.swap_fade = root.swap_fx_on ? 1 : 0;
+        swap_in_anim.restart();
+    }
+
+    Connections {
+        target: Popups
+        enabled: !root.passive
+        function onMeasure_swap(name) {
+            if (name === root.popup_name && root.visible) Popups.report_swap_extent(name, root.drawn_extent);
+        }
+    }
+
+    SequentialAnimation {
+        id: swap_in_anim
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "drop_progress"; to: 1; duration: root.swap_in_ms; easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "swap_fade"; to: 1; duration: root.swap_in_ms; easing.type: Easing.OutCubic }
+        }
+        // A styled swap ends when SwapFx finishes; the crossfade ends here.
+        ScriptAction { script: if (!root.swap_fx_on) root.swap_phase = ""; }
+    }
+
+    SequentialAnimation {
+        id: swap_out_anim
+        // A styled swap holds the window for the cover half, which SwapFx draws; the crossfade fades it.
+        NumberAnimation { target: root; property: "swap_fade"; to: root.swap_fx_on ? 1 : 0; duration: root.swap_fx_on ? root.swap_cover_ms : root.swap_out_ms }
+        ScriptAction {
+            script: {
+                root.visible = false;
+                root.held_anchor = null;
+                root.held_hands_off = false;
+                root.help_open = false;
+                root.line_progress = 0;
+                root.drop_progress = 0;
+                root.swap_fade = 1;
+                root.swap_phase = "";
+                Popups.swap_done(root.popup_name);
+            }
         }
     }
 
@@ -615,6 +697,7 @@ PanelWindow {
 
     Loader {
         active: root.drawer
+        opacity: root.swap_fade
         sourceComponent: DrawerShape {
             layout: root.drawer_layout
             screen_name: root.held_screen_name
@@ -637,7 +720,7 @@ PanelWindow {
         width: root.beside ? root.line_height : w
         height: root.beside ? h : root.line_height
         color: root.st.accent_color
-        opacity: root.line_progress > 0 ? 1 : 0
+        opacity: root.line_progress > 0 ? root.swap_fade : 0
         z: 1
     }
 
@@ -652,6 +735,7 @@ PanelWindow {
         width: root.drawer ? root.drawer_body.width : root.beside ? root.frame_width * root.drop_progress : root.width
         height: root.beside ? root.panel_height : (root.panel_height - root.line_height) * root.drop_progress
         clip: true
+        opacity: root.swap_fade
 
         HoverHandler {
             id: content_hover
@@ -874,6 +958,23 @@ PanelWindow {
                 active: root.st.open_fx === "static" && !root.passive
                 sourceComponent: Goldeneye.StaticBurst {}
             }
+        }
+    }
+
+    // Over the body only, as a sibling: TextureFx hides the live body and draws it through its effect.
+    Loader {
+        active: root.swap_fx_on && root.swap_phase !== ""
+        x: reveal.x
+        y: reveal.y
+        width: reveal.width
+        height: reveal.height
+        z: 2
+        sourceComponent: SwapFx {
+            target: reveal
+            kind: root.swap_style.kind
+            time_scale: root.swap_style.scale
+            phase: root.swap_phase
+            onFinished: if (root.swap_phase === "in") root.swap_phase = "";
         }
     }
 

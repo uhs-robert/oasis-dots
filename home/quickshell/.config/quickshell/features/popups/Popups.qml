@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.theme
 import qs.features.bar
+import "HoverPolicy.js" as Policy
 
 Singleton {
     id: root
@@ -33,6 +34,18 @@ Singleton {
     // The HoverPopup that hover-opened the open popup; null when nothing did or once it is pinned. Two modules can share a popup name (system:cpu and system:memory), so only this one reads the open as its own.
     // A sibling reads an open popup with no owner as an outside open and pins, so close() clears it only after open_name has moved, and a HoverPopup's pinned open only after Popups.open(). Popups.open* from a key or IPC leave it alone.
     property var hover_owner: null
+    // A hover swap in flight (HoverPopup, `swap`): { name, to, screen_name, extent }, set by open() before open_name
+    // moves and cleared once the outgoing window `name` hides. The outgoing popup fades instead of folding up and the
+    // incoming one `to` grows from the outgoing one's drawn `extent` instead of dropping, so the panel stays out.
+    property var swap_from: null
+    // Asks the outgoing popup for its drawn extent, which only its window knows; it answers through report_swap_extent.
+    signal measure_swap(string name)
+    function report_swap_extent(name, extent) {
+        if (root.swap_from && root.swap_from.name === name) root.swap_from = Object.assign({}, root.swap_from, { extent: extent });
+    }
+    function swap_done(name) {
+        if (root.swap_from && root.swap_from.name === name) root.swap_from = null;
+    }
     // A hidden window sends no leave, so each open starts from "not over it".
     onOpen_nameChanged: {
         root.hover_name = "";
@@ -143,8 +156,11 @@ Singleton {
         }
     }
 
-    function open(name, anchor_item, color, screen_name, back_to, hands_off) {
+    // `swap`: a hover swap from the open popup (see swap_from, HoverPolicy.swap_source).
+    function open(name, anchor_item, color, screen_name, back_to, hands_off, swap) {
         let back = back_to || "";
+        root.swap_from = Policy.swap_source(!!swap && !!anchor_item, open_name, open_screen_name, name, screen_name || "");
+        if (root.swap_from) root.measure_swap(root.swap_from.name);
         if (anchor_item) {
             open_anchor = anchor_item;
             open_color = color || Theme.bg_mantle;
@@ -191,6 +207,7 @@ Singleton {
         open_anchor = null;
         open_color = Theme.bg_mantle;
         open_screen_name = screen_name;
+        root.swap_from = null;
         load_name = name;
         open_name = name;
         back_name = "";
@@ -229,6 +246,8 @@ Singleton {
         // After open_name clears, so the closing popup keeps ignoring input through its close animation.
         hands_off = false;
         grab_keyboard = false;
+        // A popup closing mid-swap folds up as usual; the outgoing one already fading finishes on its own.
+        swap_from = null;
     }
 
     // Closes the popup, then runs `fn` once Hyprland has unmapped its layer. Anything that opens a window from a popup
