@@ -9,7 +9,8 @@ git lists them) and checks that each caller's target and function exist.
 Declared: every `IpcHandler` in QML_DIRS gives its `target:` string literal and the functions at the handler's own
 depth. Quickshell exposes only a function whose parameters and return are all typed, so
 `function select(frozen: bool): string` counts and `function helper(x)` does not; calling a helper passes a
-looser scan and fails live. A target that is not a string literal, or declared twice, fails.
+looser scan and fails live. A function with some annotation that still is not exposed (`step(delta: int = 1)`) fails as
+unreadable instead of vanishing from the generated table. A target that is not a string literal, or declared twice, fails.
 
 Callers: every file except `.qml`, `.md`, binaries and lib/check/. See CALLERS for the syntaxes; a target or function
 that is computed (`$name`, `" .. x`, a quoted word with `$` in it) is skipped, a literal target beside a computed function still has its target
@@ -44,6 +45,7 @@ from qml_paths import QS_DIR, REPO_DIR, Finding, git_listing  # noqa: E402
 
 ALLOW_PATH = "lib/check/qml-ipc.allow"
 QML_DIRS = (QS_DIR, "demo/overlay")
+HANDLER_FILE_SUFFIX = "Ipc.qml"
 SELF_DIR = "lib/check/"  # the step's own tests hold deliberately wrong calls
 SKIPPED_SUFFIXES = (".qml", ".md")
 
@@ -114,7 +116,10 @@ def declarations(path, rel):
         functions, signatures = set(), []
         for function in re.finditer(r"\bfunction\s+(\w+)\s*\(([^)]*)\)", body):
             after = body[function.end():function.end() + 80].split("{", 1)[0]
-            if is_exposed(function.group(2), after):
+            if not is_exposed(function.group(2), after):
+                if ":" in function.group(2) or after.lstrip().startswith(":"):
+                    findings.append(Finding(rel, blank.count("\n", 0, offset + function.start()) + 1, f'function "{function.group(1)}" in IpcHandler "{literal.group(2)}" is partly typed or has a type this parser cannot read, so it is not exposed and would vanish from the README table'))
+            else:
                 functions.add(function.group(1))
                 parameters = ", ".join(" ".join(p.split()) for p in function.group(2).split(",") if p.strip())
                 signatures.append((function.group(1), parameters, RETURN.match(after).group(0).lstrip(" \t\n:").strip()))
@@ -304,6 +309,9 @@ def run_checks(repo, qml_dirs=QML_DIRS, allow_path=ALLOW_PATH):
             findings.append(Finding(call.path, call.line, f'qs ipc target "{call.target}" is declared by no IpcHandler (declared: {", ".join(sorted(handlers))})'))
         elif call.function and call.function not in handler.functions:
             findings.append(Finding(call.path, call.line, f'target "{call.target}" has no typed function "{call.function}" (has: {", ".join(sorted(handler.functions))})'))
+    for target, handler in sorted(handlers.items()):
+        if handler.path.startswith(qml_dirs[0] + "/") and not handler.path.endswith(HANDLER_FILE_SUFFIX):
+            findings.append(Finding(handler.path, handler.line, f'IpcHandler "{target}" must sit in a file named *{HANDLER_FILE_SUFFIX}: the scope of the docs-generated step finds the IPC table\'s sources by that name'))
     allowed = {entry.target: entry for entry in entries}
     for target, handler in sorted(handlers.items()):
         if target not in called and target not in allowed:

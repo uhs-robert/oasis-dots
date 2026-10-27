@@ -20,6 +20,12 @@ POPUP = """IpcHandler {
     function open(name: string): void {}
     function step(delta: int,  mode: list<string>): void {}
     function helper(x) { return x }
+    // function commented_out(): void {}
+    function pick(
+        kind: string,
+        at: list<int>
+    ): string { return "" }
+    function either(mode: string): string { return "" }
     function state(): string { return "closed" }
 }
 """
@@ -27,6 +33,7 @@ OSD = 'IpcHandler { target: "osd"; function state(): string { return "" } }\n'
 ACTIONS = {"actions": [
     {"id": "popup.open", "perform": {"kind": "ipc", "target": "popup", "function": "open"}},
     {"id": "popup.show", "perform": {"kind": "ipc", "target": "popup", "function": "open"}},
+    {"id": "popup.either", "perform": {"kind": "ipc", "target": "popup", "function": "either"}},
     {"id": "app.run", "perform": {"kind": "lua"}},
 ]}
 TABLE = (
@@ -35,6 +42,8 @@ TABLE = (
     "| `osd` | `state(): string` |  |\n"
     "| `popup` | `open(name: string): void` | `popup.open, popup.show` |\n"
     "| `popup` | `step(delta: int, mode: list<string>): void` |  |\n"
+    "| `popup` | `pick(kind: string, at: list<int>): string` |  |\n"
+    "| `popup` | `either(mode: string): string` | `popup.either` |\n"
     "| `popup` | `state(): string` |  |\n"
 )
 
@@ -102,10 +111,23 @@ class Fixture(unittest.TestCase):
 
 
 class Splice(unittest.TestCase):
+    def test_an_end_marker_before_the_begin_marker_is_a_gen_error_not_a_traceback(self):
+        gen = load()
+        with self.assertRaises(gen.GenError):
+            gen.splice("<!-- END generated -->\n<!-- BEGIN generated -->\n", TABLE)
+
+    def test_a_pipe_in_a_signature_is_escaped_and_multiple_ids_share_one_cell(self):
+        gen = load()
+        handlers = {"t": gen.qml_ipc.Handler("x", 1, frozenset({"f"}), (("f", "a: string", "string"), ("g", "a: int|real", "void")))}
+        table = gen.render(handlers, {("t", "f"): ["one", "two"]})
+        self.assertEqual(table.splitlines()[2], "| `t` | `f(a: string): string` | `one, two` |")
+        self.assertEqual(table.splitlines()[3], "| `t` | `g(a: int\\|real): void` |  |")
+
     def test_splice_replaces_only_the_marked_block(self):
         self.assertEqual(load().splice(doc_with("old\n"), TABLE), doc_with(TABLE))
 
 
+@unittest.skipUnless(shutil.which("lua"), "the action list needs lua")
 class RealTree(unittest.TestCase):
     def test_the_quickshell_readme_is_current(self):
         done = subprocess.run([sys.executable, "-B", SCRIPT, "--check"], capture_output=True, text=True)

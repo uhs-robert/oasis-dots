@@ -43,23 +43,23 @@ PATH_SCOPES = [
     ("lib/check/steps/lua.sh", "lua"),
     (".luacheckrc", "lua"),
     # The files outside the Quickshell tree that OUTSIDE_REFS in lib/check/steps/qml_paths.py names, ahead of their folders.
-    ("home/hypr/.config/hypr/scripts/lock-screen.sh", "lua qml"),
+    ("home/hypr/.config/hypr/scripts/lock-screen.sh", "lua qml docsgen"),
     ("home/voxcmd/src/timer.rs", "rust " + VOXCMD_SUITES + " qml"),
     ("home/voxcmd/tests/run-monitors.sh", VOX_CLICK + " qml"),
     # The input vectors run the Lua validator and the bar's, so the files either reads reach them, ahead of the folders.
-    ("home/hypr/.config/hypr/config/input/init.lua", "lua inputvec"),
-    ("home/hypr/.config/hypr/lib/state.lua", "lua inputvec"),
+    ("home/hypr/.config/hypr/config/input/init.lua", "lua inputvec docsgen"),
+    ("home/hypr/.config/hypr/lib/state.lua", "lua inputvec docsgen"),
     # The greeter monitor generator loads the session's JSON reader.
-    ("home/hypr/.config/hypr/lib/json.lua", "lua keyring inputvec"),
-    ("home/hypr/*", "lua"),
+    ("home/hypr/.config/hypr/lib/json.lua", "lua keyring inputvec docsgen"),
+    ("home/hypr/*", "lua docsgen"),
     # Ahead of the greeter's QML entry.
     ("system/etc/greetd/hyprland.lua", "lua qml keyring"),
     ("system/etc/greetd/*.lua", "lua qml"),
     # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
     ("lib/common/greeter-files.sh", "qml ship loader keyring"),
     ("lib/check/steps/qml.py", "qml"),
-    ("lib/check/qml_imports.py", "qml"),
-    ("lib/check/steps/qml_paths.py", "qml"),
+    ("lib/check/qml_imports.py", "qml docsgen"),
+    ("lib/check/steps/qml_paths.py", "qml docsgen"),
     ("lib/check/steps/qml_layers.py", "qml"),
     ("lib/check/qml-layers.allow", "qml"),
     ("lib/check/steps/qml_singleton_names.py", "qml"),
@@ -74,14 +74,15 @@ PATH_SCOPES = [
     ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
     # The keybind table is generated from the keymaps (home/hypr/*, already lua); its generator's tests are unittest cases in lib/check/tests.
-    ("lib/check/steps/docs-generated.sh", "lua"),
-    ("lib/docs/gen-keybinds", "checkscope lua"),
-    # The IPC table is generated from the IpcHandler files and their parser, so edits to those run the same step (in the lua scope).
-    ("lib/docs/gen-ipc", "checkscope lua"),
-    ("lib/check/steps/qml_ipc.py", "lua"),
-    ("home/quickshell/*Ipc.qml", "lua qml node"),
-    ("home/quickshell/.config/quickshell/README.md", "lua qml node"),
-    ("docs/keybinds.md", "lua"),
+    ("lib/check/steps/docs-generated.sh", "docsgen"),
+    ("lib/docs/gen-keybinds", "checkscope docsgen"),
+    # The IPC table is generated from the IpcHandler files and their parser, so edits to those run the same step (in the docsgen scope).
+    ("lib/docs/gen-ipc", "checkscope docsgen"),
+    ("lib/docs/docgen.py", "checkscope docsgen"),
+    ("lib/check/steps/qml_ipc.py", "docsgen"),
+    ("home/quickshell/*Ipc.qml", "docsgen qml node"),
+    ("home/quickshell/.config/quickshell/README.md", "docsgen qml node"),
+    ("docs/keybinds.md", "docsgen"),
     ("lib/check/steps/time-format.sh", "qml"),
     ("lib/check/steps/shaders.sh", "shaders"),
     # Ahead of the Quickshell rule below. Only the shader step reads a .frag; QML names the compiled .qsb by path, which
@@ -285,7 +286,7 @@ STEPS = [
     # single scope covers them. No `needs`: a missing lua must fail the step, not skip it.
     Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
-    Step("docs-generated", "lua", "sh ./lib/check/steps/docs-generated.sh", ("lua", "python3"), skip_reason="the generated table checks need lua and python3"),
+    Step("docs-generated", "docsgen", "sh ./lib/check/steps/docs-generated.sh", ("lua", "python3"), skip_reason="the generated table checks need lua and python3"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
     Step("shaders", "shaders", "sh ./lib/check/steps/shaders.sh", probe='[ -x "${QSB-}" ] || command -v qsb >/dev/null || [ -x /usr/lib/qt6/bin/qsb ]', skip_reason="the shader check needs qsb (qt6-shadertools)"),

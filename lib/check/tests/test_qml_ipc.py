@@ -42,41 +42,57 @@ class IpcCase(TreeCase):
 
     def calls(self, name, text, extra=None):
         """The findings for one caller file beside a popup handler that is called elsewhere."""
-        return self.check({"qs/Popup.qml": POPUP, name: text, "bin/keep.sh": "qs-ipc call popup state\n", **(extra or {})})
+        return self.check({"qs/PopupIpc.qml": POPUP, name: text, "bin/keep.sh": "qs-ipc call popup state\n", **(extra or {})})
 
 
 class DeclaredTest(IpcCase):
     def test_only_typed_functions_count(self):
         self.assertEqual(self.calls("bin/a.sh", "qs-ipc call popup open x\nqs-ipc call popup state\n"), [])
-        found = self.messages({"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup helper 1\nqs-ipc call popup open\n"})
+        found = self.messages({"qs/PopupIpc.qml": POPUP, "bin/a.sh": "qs-ipc call popup helper 1\nqs-ipc call popup open\n"})
         self.assertEqual(found, ['target "popup" has no typed function "helper" (has: open, state)'])
 
     def test_an_untyped_return_or_parameter_is_not_exposed(self):
         qml = 'IpcHandler { target: "t"\n function a(x: int) { }\n function b(x): int { return 1 }\n function c(): void { }\n}\n'
-        found = self.messages({"qs/T.qml": qml, "bin/a.sh": "qs-ipc call t a\nqs-ipc call t b\nqs-ipc call t c\n"})
-        self.assertEqual([m.split(" (has")[0] for m in found], ['target "t" has no typed function "a"', 'target "t" has no typed function "b"'])
+        found = self.messages({"qs/TIpc.qml": qml, "bin/a.sh": "qs-ipc call t a\nqs-ipc call t b\nqs-ipc call t c\n"})
+        self.assertEqual(sorted(m.split(" (has")[0].split(" is partly")[0] for m in found), [
+            'function "a" in IpcHandler "t"',
+            'function "b" in IpcHandler "t"',
+            'target "t" has no typed function "a"',
+            'target "t" has no typed function "b"',
+        ])
+
+    def test_an_unreadable_typed_function_fails_instead_of_vanishing(self):
+        qml = 'IpcHandler { target: "t"\n function step(delta: int = 1): void { }\n function c(): void { }\n}\n'
+        found = self.messages({"qs/TIpc.qml": qml, "bin/a.sh": "qs-ipc call t c\n"})
+        self.assertEqual(len(found), 1)
+        self.assertIn('function "step" in IpcHandler "t" is partly typed or has a type this parser cannot read', found[0])
+
+    def test_a_handler_outside_a_file_named_ipc_qml_fails(self):
+        found = self.messages({"qs/Popup.qml": POPUP, "demo/overlay/D.qml": 'IpcHandler { target: "demo"; function card(): void {} }\n', "bin/a.sh": "qs-ipc call popup state\nqs-ipc call demo card\n"})
+        self.assertEqual(len(found), 1)
+        self.assertIn('IpcHandler "popup" must sit in a file named *Ipc.qml', found[0])
 
     def test_a_multi_line_signature_and_a_dotted_type_parse(self):
         qml = 'IpcHandler {\n target: "t"\n function pick(\n   kind: string,\n   at: list<int>\n ): string { return "" }\n}\n'
-        self.assertEqual(self.check({"qs/T.qml": qml, "bin/a.sh": "qs-ipc call t pick\n"}), [])
+        self.assertEqual(self.check({"qs/TIpc.qml": qml, "bin/a.sh": "qs-ipc call t pick\n"}), [])
 
     def test_strings_and_comments_hide_functions_and_braces(self):
         qml = 'IpcHandler {\n target: "t"\n // function ghost(): void {\n property string s: "function fake(): string { }"\n function real(): void { }\n}\n'
-        found = self.messages({"qs/T.qml": qml, "bin/a.sh": "qs-ipc call t real\nqs-ipc call t ghost\nqs-ipc call t fake\n"})
+        found = self.messages({"qs/TIpc.qml": qml, "bin/a.sh": "qs-ipc call t real\nqs-ipc call t ghost\nqs-ipc call t fake\n"})
         self.assertEqual([m.split(" (has")[0] for m in found], ['target "t" has no typed function "ghost"', 'target "t" has no typed function "fake"'])
 
     def test_nested_functions_do_not_count_and_two_handlers_share_a_file(self):
         qml = 'Item {\n IpcHandler { target: "a"; function x(): void { function inner(): void {} } }\n IpcHandler { target: "b"; function y(): void {} }\n}\n'
-        found = self.messages({"qs/T.qml": qml, "bin/a.sh": "qs-ipc call a x\nqs-ipc call b y\nqs-ipc call a inner\n"})
+        found = self.messages({"qs/TIpc.qml": qml, "bin/a.sh": "qs-ipc call a x\nqs-ipc call b y\nqs-ipc call a inner\n"})
         self.assertEqual([m.split(" (has")[0] for m in found], ['target "a" has no typed function "inner"'])
 
     def test_a_non_literal_target_fails(self):
-        found = self.messages({"qs/T.qml": "IpcHandler { target: root.name }\n"})
+        found = self.messages({"qs/TIpc.qml": "IpcHandler { target: root.name }\n"})
         self.assertEqual(found, ["IpcHandler target must be a string literal"])
 
     def test_a_duplicate_target_fails_naming_both_files(self):
-        found = self.messages({"qs/A.qml": POPUP, "qs/B.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"})
-        self.assertEqual(found, ['IpcHandler target "popup" is also declared at qs/A.qml:1'])
+        found = self.messages({"qs/AIpc.qml": POPUP, "qs/BIpc.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"})
+        self.assertEqual(found, ['IpcHandler target "popup" is also declared at qs/AIpc.qml:1'])
 
     def test_the_demo_overlay_shares_the_namespace(self):
         demo = 'IpcHandler { target: "demo"; function card(on: bool): void {} }\n'
@@ -134,7 +150,7 @@ class CallerSyntaxTest(IpcCase):
     def test_wrapper_helpers_pinned_to_one_target(self):
         wrapped = 'IpcHandler { target: "screenshot"; function recording_stopped(): void {} }\n'
         path = "home/hypr/.config/hypr/scripts/screenshot.sh"
-        extra = {"qs/S.qml": wrapped, "bin/keep2.sh": "qs-ipc call screenshot recording_stopped\n"}
+        extra = {"qs/SIpc.qml": wrapped, "bin/keep2.sh": "qs-ipc call screenshot recording_stopped\n"}
         self.assertEqual(self.calls(path, "qs_call recording_stopped\n", extra), [])
         found = self.calls(path, "qs_call renamed_fn\n", extra)
         self.assertIn('target "screenshot" has no typed function "renamed_fn"', found[0])
@@ -201,7 +217,7 @@ class CallerSyntaxTest(IpcCase):
 
 
 class AllowlistTest(IpcCase):
-    FILES = {"qs/Popup.qml": POPUP_WITH_CLOSE, "qs/Overview.qml": OVERVIEW}
+    FILES = {"qs/PopupIpc.qml": POPUP_WITH_CLOSE, "qs/OverviewIpc.qml": OVERVIEW}
 
     def test_an_uncalled_target_needs_a_line_and_passes_with_one(self):
         files = {**self.FILES, "bin/a.sh": "qs-ipc call popup state\n"}
@@ -216,7 +232,7 @@ class AllowlistTest(IpcCase):
         self.assertEqual(found, ["uncalled tmux_overview is stale: something calls it now. Delete the line."])
 
     def test_an_uncalled_line_goes_stale_when_the_target_is_gone(self):
-        files = {"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
+        files = {"qs/PopupIpc.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
         found = self.messages(files, "uncalled tmux_overview  # nobody yet (permanent)\n")
         self.assertEqual(found, ["uncalled tmux_overview is stale: no IpcHandler declares it. Delete the line."])
 
@@ -229,17 +245,17 @@ class AllowlistTest(IpcCase):
         found = self.messages(files, "frozen tmux_overview state close  # called from elsewhere (permanent)\n")
         self.assertEqual(len(found), 1)
         self.assertIn('frozen tmux_overview is stale: it has no typed function "close"', found[0])
-        files = {"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
+        files = {"qs/PopupIpc.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
         found = self.messages(files, "frozen popup helper  # called from elsewhere (permanent)\n")
         self.assertIn('no typed function "helper"', found[0])
 
     def test_a_frozen_target_that_is_gone_fails(self):
-        files = {"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
+        files = {"qs/PopupIpc.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
         found = self.messages(files, "frozen tmux_overview state  # called from elsewhere (permanent)\n")
         self.assertEqual(found, ["frozen tmux_overview is stale: no IpcHandler declares it. Delete the line."])
 
     def test_malformed_and_duplicate_lines_fail(self):
-        files = {"qs/Popup.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
+        files = {"qs/PopupIpc.qml": POPUP, "bin/a.sh": "qs-ipc call popup state\n"}
         allow = "uncalled popup\nfrozen popup  # no function (permanent)\nuncalled x  # why (permanent)\nuncalled x  # why (permanent)\n"
         found = self.messages(files, allow)
         self.assertEqual([m[:9] for m in found if "malformed" in m], ["malformed", "malformed"])
@@ -274,8 +290,17 @@ class MutationTest(IpcCase):
 
 
 class SignatureTest(IpcCase):
+    def declared(self, qml):
+        write_tree(self.root, {"qs/XIpc.qml": qml})
+        subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
+        return qml_ipc.declared(self.root, ("qs",))[0]["x"]
+
+    def test_a_multi_line_signature_is_joined_and_a_commented_out_function_is_absent(self):
+        handler = self.declared('IpcHandler {\n target: "x"\n function pick(\n   kind: string,\n   at: list<int>\n ): string { return "" }\n // function gone(): void {}\n /* function gone2(): void {} */\n}\n')
+        self.assertEqual(handler.signatures, (("pick", "kind: string, at: list<int>", "string"),))
+
     def test_declared_keeps_typed_signatures_in_source_order_and_drops_helpers(self):
-        write_tree(self.root, {"qs/Popup.qml": POPUP.replace("function state", "function step(delta: int,  mode: list<string>): void {}\n    function state")})
+        write_tree(self.root, {"qs/PopupIpc.qml": POPUP.replace("function state", "function step(delta: int,  mode: list<string>): void {}\n    function state")})
         subprocess.run(("git", "init", "-q"), cwd=self.root, check=True)
         handlers, findings = qml_ipc.declared(self.root, ("qs",))
         self.assertEqual(findings, [])
