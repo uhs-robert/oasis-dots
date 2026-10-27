@@ -5,12 +5,12 @@
 //! detached watcher, the two binaries handing a recording over, voxcmd-wake as the caller, timeouts, privacy, and
 //! chains with their detached stopper.
 use serde_json::Value;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
 mod common;
+mod executable;
 use common::gone_within;
 
 /// The commands a chain runs: each writes what it is to `$WORK/handled` too, after the dictation's line. `slow tap`
@@ -213,35 +213,10 @@ exit "$(cat '{work}/verdict')""#,
         self.path().join("work").join(name)
     }
 
-    /// An executable that is ready to exec (see tests/voice.rs: a fork on another thread may hold its write fd).
     fn script(&self, name: &str, body: &str) -> PathBuf {
         let path = self.path().join(name);
-        let temp = path.with_extension("tmp");
-        std::fs::write(
-            &temp,
-            format!("#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\n{body}\n"),
-        )
-        .unwrap();
-        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
-        std::fs::rename(&temp, &path).unwrap();
-        self.settle_exec(|| {
-            let mut probe = Command::new(&path);
-            probe.env("VOXCMD_TEST_PROBE", "1");
-            probe
-        });
+        executable::write_executable(&path, &format!("#!/bin/sh\n{body}\n"));
         path
-    }
-
-    /// Runs `probe` until it execs.
-    fn settle_exec(&self, probe: impl Fn() -> Command) {
-        for _ in 0..500 {
-            match probe().output() {
-                Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                _ => break,
-            }
-        }
     }
 
     fn env(&self, command: &mut Command) {

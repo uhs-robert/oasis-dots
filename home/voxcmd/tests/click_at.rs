@@ -1,9 +1,10 @@
 //! The click integration end to end with real child processes: `screen_text`'s lookup, the covering check, the
 //! window-changed check between the capture and the click, and the clicks. The tools are stubs on a PATH of their own;
 //! `hyprctl` answers from files a test rewrites, so a test can move, close or refocus the window at any point.
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+
+mod executable;
 
 const DEFAULT_WINDOW: &str = r#"{"address": "0x2001", "at": [100, 50], "size": [160, 96], "monitor": 0, "stableId": "18000004", "floating": false, "pinned": false, "workspace": {"id": 1}}"#;
 const DEFAULT_MONITORS: &str = r#"[{"id": 0, "name": "DP-1", "width": 1920, "height": 1080, "scale": 1, "transform": 0, "x": 0, "y": 0, "reserved": [0, 0, 0, 0]}]"#;
@@ -107,16 +108,7 @@ impl Rig {
     }
 
     fn script(&self, name: &str, body: &str) {
-        let temp = self.path().join("bin").join(format!(".{name}.tmp"));
-        std::fs::write(
-            &temp,
-            format!("#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\n{body}\n"),
-        )
-        .unwrap();
-        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
-        let path = self.path().join("bin").join(name);
-        std::fs::rename(&temp, &path).unwrap();
-        settle_exec(&path);
+        executable::write_executable(&self.path().join("bin").join(name), &format!("#!/bin/sh\n{body}\n"));
     }
 
     fn command(&self, args: &[&str]) -> Command {
@@ -175,18 +167,6 @@ fn text(output: &Output) -> String {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     )
-}
-
-/// Runs the script once in probe mode until it execs; see tests/run.rs.
-fn settle_exec(path: &Path) {
-    for _ in 0..500 {
-        match Command::new(path).env("VOXCMD_TEST_PROBE", "1").status() {
-            Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                std::thread::sleep(std::time::Duration::from_millis(10));
-            }
-            _ => return,
-        }
-    }
 }
 
 fn client(address: &str, at: [i64; 2], size: [i64; 2], floating: bool, pinned: bool, workspace: i64) -> String {

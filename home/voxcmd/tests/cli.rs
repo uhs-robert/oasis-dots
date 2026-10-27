@@ -30,6 +30,7 @@ const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
 ];
 
 mod common;
+mod executable;
 
 #[test]
 fn unimplemented_subcommands_exit_1_naming_their_port_item() {
@@ -374,37 +375,18 @@ fn voxcmd_on_path(args: &[&str], path: &Path, envs: &[(&str, &str)]) -> Output {
     command.output().expect("the binary runs")
 }
 
-/// Runs the script once in probe mode until it execs. Renaming does not help (the inode is the same), but a fork on
-/// another test thread that held the write fd lets go of it at its exec, so after this no later exec is ETXTBSY.
-fn settle_exec(path: &Path) {
-    for _ in 0..500 {
-        match Command::new(path).env("VOXCMD_TEST_PROBE", "1").status() {
-            Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                std::thread::sleep(std::time::Duration::from_millis(10));
-            }
-            _ => return,
-        }
-    }
-}
-
 /// A directory holding a `notify-send` that appends its arguments, one per line, to `calls`.
 fn stub_notify_send() -> (tempfile::TempDir, std::path::PathBuf) {
-    use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     let calls = dir.path().join("calls");
     let stub = dir.path().join("notify-send");
-    let temp = dir.path().join(".notify-send.tmp");
-    std::fs::write(
-        &temp,
-        format!(
-            "#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\nprintf '%s\\n' \"$@\" >> '{}'\nprintf -- '---\\n' >> '{0}'\n",
+    executable::write_executable(
+        &stub,
+        &format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\nprintf -- '---\\n' >> '{0}'\n",
             calls.display()
         ),
-    )
-    .unwrap();
-    std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
-    std::fs::rename(&temp, &stub).unwrap();
-    settle_exec(&stub);
+    );
     (dir, calls)
 }
 

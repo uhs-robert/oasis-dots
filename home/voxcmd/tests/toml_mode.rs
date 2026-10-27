@@ -3,10 +3,11 @@
 //! binary runs against a runtime dir of its own with stubs for voxtype, setsid and the toasts; the stand-in voxcmd must
 //! never be called.
 use serde_json::{Value, json};
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
+
+mod executable;
 
 const TOOLS: &str = r#"
 name = "{name}"
@@ -113,25 +114,9 @@ impl Rig {
         std::fs::read_to_string(self.work(name)).unwrap_or_default()
     }
 
-    /// An executable that is ready to exec (see tests/voice.rs: a fork on another thread may hold its write fd).
     fn script(&self, name: &str, body: &str) {
         let path = self.path().join(name);
-        let temp = path.with_extension("tmp");
-        std::fs::write(
-            &temp,
-            format!("#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\n{body}\n"),
-        )
-        .unwrap();
-        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
-        std::fs::rename(&temp, &path).unwrap();
-        for _ in 0..500 {
-            match Command::new(&path).env("VOXCMD_TEST_PROBE", "1").status() {
-                Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                _ => break,
-            }
-        }
+        executable::write_executable(&path, &format!("#!/bin/sh\n{body}\n"));
     }
 
     /// `integrations/<stem>.toml`: the shared verbs and actions, then the `[mode]` table's extra lines. `stem` is also
