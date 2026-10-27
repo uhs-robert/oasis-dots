@@ -32,7 +32,7 @@ Singleton {
     // The popup the pointer is over right now (Popup.qml reports it), so a module's hover helper can tell the pointer moving onto its popup from leaving.
     property string hover_name: ""
     // The HoverPopup that hover-opened the open popup; null when nothing did or once it is pinned. Two modules can share a popup name (system:cpu and system:memory), so only this one reads the open as its own.
-    // A sibling reads an open popup with no owner as an outside open and pins, so close() clears it only after open_name has moved, and a HoverPopup's pinned open only after Popups.open(). Popups.open* from a key or IPC leave it alone.
+    // A sibling reads an open popup with no owner as an outside open and pins, so close() clears it only after open_name has moved, and a HoverPopup's pinned open only after Popups.open(). Every other open (key, IPC, walk, back) clears it too, or the stale owner would make the module of a key-opened popup read it as not its own.
     property var hover_owner: null
     // A hover swap in flight (HoverPopup, `swap`): { name, to, screen_name, extent }, set by open() before open_name
     // moves and cleared once the outgoing window `name` hides. The outgoing popup fades instead of folding up and the
@@ -157,7 +157,8 @@ Singleton {
     }
 
     // `swap`: a hover swap from the open popup (see swap_from, HoverPolicy.swap_source).
-    function open(name, anchor_item, color, screen_name, back_to, hands_off, swap) {
+    // `keep_owner`: the caller is the HoverPopup that has just set hover_owner; any other open drops the owner.
+    function open(name, anchor_item, color, screen_name, back_to, hands_off, swap, keep_owner) {
         let back = back_to || "";
         root.swap_from = Policy.swap_source(!!swap && !!anchor_item, open_name, open_screen_name, name, screen_name || "");
         if (root.swap_from) root.measure_swap(root.swap_from.name);
@@ -175,6 +176,7 @@ Singleton {
         }
         load_name = name;
         open_name = name;
+        if (!keep_owner) root.hover_owner = null;
         back_name = back;
         grab_keyboard = false;
         // After open_name moves, so a hands-off popup being replaced keeps its latched flag through its close animation.
@@ -210,6 +212,7 @@ Singleton {
         root.swap_from = null;
         load_name = name;
         open_name = name;
+        root.hover_owner = null;
         back_name = "";
         grab_keyboard = false;
         root.hands_off = !!hands_off;
