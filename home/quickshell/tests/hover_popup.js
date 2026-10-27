@@ -897,40 +897,55 @@ t("Popups records swap_from before open_name moves; the popup window fades out o
   assert.match(popup, /\} else if \(visible && Popups\.swap_from && Popups\.swap_from\.name === root\.popup_name\) \{[^}]*swap_out_anim\.restart\(\);/);
   assert.match(popup, /Popups\.swap_done\(root\.popup_name\);/);
 });
-// Review of D: the styled swap path in Popup.qml. These are window animations, which node cannot run; the shadow covers
-// how they look, these pin the guards.
+// The swap animations in Popup.qml are window animations, which node cannot run; the shadow covers how they look. These
+// pin the source guards: settling, the fades, and that nothing of the old per-style swap is left.
 const popup_source = () => fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/frames/Popup.qml"), "utf8");
-t("a popup swapped away mid-reveal drops its SwapFx and hides at once instead of flipping the running one to cover", () => {
+t("a popup swapped away hides without clearing swap_from, which the incoming popup may not have read yet", () => {
+  assert.doesNotMatch(popup_source().match(/function finish_swap_out\(\) \{[^}]*\}/)[0], /swap_done/);
+});
+t("a popup is not settled while its swap-in runs", () => {
+  const settled = popup_source().match(/readonly property bool settled: [^\n]*/)[0];
+  assert.match(settled, /!swap_in_anim\.running/);
+  assert.doesNotMatch(settled, /swap_phase/);
+});
+t("a swap-out fades the window, accent line and drawer with swap_fade instead of cutting them", () => {
   const popup = popup_source();
-  const out = popup.slice(popup.indexOf("Popups.swap_from.name === root.popup_name) {"), popup.indexOf("} else if (visible) {"));
-  assert.match(out, /const still_revealing = root\.swap_fx_on && root\.swap_phase === "in";\n\s+root\.swap_phase = "";\n\s+if \(still_revealing\) root\.finish_swap_out\(\);\n\s+else \{\n\s+root\.swap_phase = "out";/);
-  // The incoming popup may read swap_from after this handler, so the at-once path must not clear it.
-  assert.doesNotMatch(popup.match(/function finish_swap_out\(\) \{[^}]*\}/)[0], /swap_done/);
-});
-t("going on battery mid-reveal clears the phase SwapFx would have cleared, so the reveal never replays", () => {
-  assert.match(popup_source(), /onSwap_fx_onChanged: if \(!root\.swap_fx_on && root\.swap_phase === "in"\) root\.swap_phase = ""/);
-});
-t("a popup is not settled while its style's swap still covers or reveals it", () => {
-  assert.match(popup_source(), /readonly property bool settled: [^\n]*!swap_in_anim\.running && root\.swap_phase === ""/);
-});
-t("a styled swap-out fades the accent line and drawer at the end of its cover instead of cutting them", () => {
-  const popup = popup_source();
-  assert.match(popup, /id: swap_out_anim\n[^\n]*\n\s+PauseAnimation \{ duration: root\.swap_fx_on \? Math\.max\(0, root\.swap_cover_ms - root\.swap_out_ms\) : 0 \}\n\s+NumberAnimation \{ target: root; property: "swap_fade"; to: 0; duration: root\.swap_out_ms \}/);
-  assert.match(popup, /opacity: root\.body_in_swap_fx \? 1 : root\.swap_fade/);
+  assert.match(popup, /id: swap_out_anim\n\s+NumberAnimation \{ target: root; property: "swap_fade"; to: 0; duration: root\.swap_out_ms \}/);
+  assert.match(popup, /clip: true\n\s+opacity: root\.swap_fade/);
   assert.match(popup, /opacity: root\.line_progress > 0 \? root\.swap_fade : 0/);
   assert.match(popup, /active: root\.drawer\n\s+opacity: root\.swap_fade/);
 });
-t("swap_kind: the owner's eight styles swap with their own transition at half length, every other style crossfades", () => {
-  const kinds_src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/theme/transitions/Kinds.js"), "utf8");
-  const K = vm.createContext({});
-  vm.runInContext(kinds_src.replace(/^\.pragma.*$/m, "") + "\nthis.api = { by_style, swap_kind, kind_for };", K);
-  const own = ["crt", "goldeneye", "nes", "gameboy", "snes", "ps1", "ff7", "halflife"];
-  for (const style of Object.keys(K.api.by_style)) {
-    const r = K.api.swap_kind(style);
-    assert.deepStrictEqual([r.kind, r.scale], [own.includes(style) ? K.api.by_style[style] : "fade", 0.5], style);
-  }
-  for (const style of own) assert.ok(style in K.api.by_style, style);
-  assert.strictEqual(K.api.swap_kind("default").kind, "fade");
+t("a swap-in onto a window still drawn (pointer back onto a fading-out popup) keeps its opacity and extent", () => {
+  const swap_in = popup_source().match(/function swap_in\(from_extent\) \{[\s\S]*?\n    \}\n/)[0];
+  assert.match(swap_in, /if \(root\.line_progress === 0\) \{[^}]*drop_progress = [^}]*swap_fade = 0;[^}]*\}/);
+  assert.doesNotMatch(swap_in.replace(/if \(root\.line_progress === 0\) \{[^}]*\}/, ""), /swap_fade = 0|drop_progress = /);
+});
+t("a swap-in onto a window whose opening line is still drawing animates the line to 1 instead of snapping it", () => {
+  const popup = popup_source();
+  const swap_in = popup.match(/function swap_in\(from_extent\) \{[\s\S]*?\n    \}\n/)[0];
+  assert.match(swap_in, /if \(root\.line_progress === 0\) \{\s+line_progress = 1;/);
+  assert.doesNotMatch(swap_in.replace(/if \(root\.line_progress === 0\) \{[^}]*\}/, ""), /line_progress = 1/);
+  assert.match(popup, /id: swap_in_anim\n[^\n]*\n\s+NumberAnimation \{ target: root; property: "line_progress"; to: 1;/);
+});
+t("a close during the swap-in fades swap_fade up with the fold-up instead of jumping it to 1", () => {
+  const popup = popup_source();
+  const plain_close = popup.slice(popup.lastIndexOf("} else if (visible) {"), popup.indexOf("// A hover swap (Popups.swap_from)"));
+  assert.doesNotMatch(plain_close, /swap_fade = 1/);
+  assert.match(popup, /id: close_anim\n\s+\/\/[^\n]*\n\s+ParallelAnimation \{\n[^\n]*"drop_progress"; to: 0[^\n]*\n[^\n]*"swap_fade"; to: 1/);
+});
+t("a popup swapped on to a third mid swap-in fades out from its current swap_fade", () => {
+  const popup = popup_source();
+  const out = popup.slice(popup.indexOf("Popups.swap_from.name === root.popup_name) {"), popup.indexOf("} else if (visible) {"));
+  assert.match(out, /swap_in_anim\.stop\(\);[\s\S]*swap_out_anim\.restart\(\);/);
+  assert.doesNotMatch(out, /swap_fade = /);
+});
+t("no style has its own swap transition: nothing of the styled swap is left", () => {
+  const dir = path.join(__dirname, "../.config/quickshell");
+  const read = (f) => fs.readFileSync(path.join(dir, f), "utf8");
+  assert.doesNotMatch(read("features/popups/frames/Popup.qml"), /SwapFx|swap_phase|swap_fx_on|swap_kind/);
+  assert.ok(!fs.existsSync(path.join(dir, "features/popups/frames/SwapFx.qml")));
+  assert.doesNotMatch(read("theme/transitions/Kinds.js"), /swap_/);
+  for (const f of ["TextureFx", "CoverFx"]) assert.doesNotMatch(read("theme/transitions/" + f + ".qml"), /stop_at|time_scale/, f);
 });
 
 let failed = 0;

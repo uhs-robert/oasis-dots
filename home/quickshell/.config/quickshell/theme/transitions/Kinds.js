@@ -58,11 +58,3 @@ function reveal(kind) {
 function is_texture(kind) {
     return texture_kinds.indexOf(kind) >= 0;
 }
-
-// Styles whose popups swap (a hover moving from one module's popup to the next) with their own transition; the rest
-// resize and crossfade ("fade"). A swap plays the transition at `scale` of its length.
-const swap_styles = ["crt", "goldeneye", "nes", "gameboy", "snes", "ps1", "ff7", "halflife"];
-
-function swap_kind(style) {
-    return { kind: swap_styles.indexOf(style) >= 0 ? kind_for(style) : "fade", scale: 0.5 };
-}
