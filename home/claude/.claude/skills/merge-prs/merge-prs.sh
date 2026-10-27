@@ -354,7 +354,7 @@ epoch() {
 # seconds for a review that is still coming. A cancelled run is a superseded one, so it is Pending until start_s passes.
 eval_check_run() {
   local name=$1 number=$2 head=$3 start_s settle_s now head_epoch rname rstatus rconc rstart rdone run="" run_start=""
-  local covered covers_head settled label age sort_key runs_out push_time since check_name is_check
+  local covered covers_head settled label age sort_key runs_out push_time since check_name is_check done_epoch
   local -a check_names=()
   label=$(rjq "$name" .label)
   start_s=${MERGE_PRS_REVIEW_START:-$(rjq "$name" '.github.start_s // 300')}
@@ -409,6 +409,7 @@ eval_check_run() {
     cr_state=Failed cr_msg="the $label check is completed ($rconc) but records no completion time"
     return
   fi
+  done_epoch=$(epoch "$rdone") || exit 1
   # A cancelled or stale run can still have been followed by a review of the head, so it gets the done signal too.
   if [[ " $(rjq "$name" '(.github.done // []) | join(" ")') " == *" $rconc "* || $rconc == cancelled || $rconc == stale ]]; then
     if reviewed_head "$number" "$name" "$head"; then
@@ -419,7 +420,7 @@ eval_check_run() {
     covers_head=false
     [[ -z $covered || ($head != "$covered"* && $covered != "$head"*) ]] || covers_head=true
     settled=false
-    ((now < $(epoch "$rdone") + settle_s)) || settled=true
+    ((now < done_epoch + settle_s)) || settled=true
     if [[ $rconc == cancelled || $rconc == stale ]]; then
       if $covers_head && $settled; then
         cr_state=Done
@@ -444,7 +445,7 @@ eval_check_run() {
     case $rconc in
     cancelled | stale)
       now=$(date +%s)
-      age=$((now - $(epoch "$rdone")))
+      age=$((now - done_epoch))
       ((age >= now - head_epoch)) || age=$((now - head_epoch))
       if ((age < start_s)); then
         cr_state=Pending cr_msg="the $label check was $rconc; a new run should replace it"

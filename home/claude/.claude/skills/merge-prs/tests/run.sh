@@ -855,7 +855,8 @@ cr_setup "30 min"
 cr_run completed success "25 min" "20 min"
 cr_reviewed_head
 printf 'cr_running_reads=2\ncr_run_running=CodeRabbit|in_progress||%s|\n' "$(iso '-25 min')" >>"$GH_STATE"
-gate --check --wait-review 7
+# A wait that cannot run out under load: the reads, not the clock, end it.
+WAIT=600 gate --check --wait-review 7
 check "passes" "[[ $code == 0 ]] && grep -q '^ready:' <<<\"\$out\""
 check "polled, since the first reads were running" "grep -q '^cr_running_reads=0' '$GH_STATE'"
 
@@ -1162,6 +1163,12 @@ out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
 code=$?
 show "$out"
 check "the child is not rebased and merged unreviewed" "[[ $code != 0 ]] && grep -q '#8 was pushed to' <<<\"\$out\" && ! grep -q '^8 merged' <<<\"\$out\""
+
+echo "== gate: an unreadable completion time"
+cr_setup "30 min"
+printf 'cr_run=CodeRabbit|completed|success|%s|garbage\n' "$(iso '-25 min')" >>"$GH_STATE"
+gate 7
+check "stops rather than reading it as settled" "[[ $code != 0 ]] && grep -q 'cannot read the time garbage' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
 
 echo "== gate: gate always on a reviewer merge-prs cannot read"
 gate_setup
