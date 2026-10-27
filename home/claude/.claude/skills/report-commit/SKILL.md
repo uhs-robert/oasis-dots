@@ -1,9 +1,9 @@
 ---
 name: report-commit
-description: Generate development activity reports from git commit history for a session or timeframe, grouped into problem-and-fix sections. Optional arguments: a timeframe (defaults to since the last session-report.md) and a description of the work. Use when the user asks for a session report, commit history report, activity report, or /commit-report.
+description: "Generate development activity reports from git commit history for a session or timeframe, grouped into problem-and-fix sections. Optional arguments: a timeframe (defaults to since the last session-report.md) and a description of the work. Use when the user asks for a session report, commit history report, activity report, or /commit-report."
 argument-hint: "[timeframe] [description]"
 arguments:
-* args
+  - args
 ---
 
 # Commit Report

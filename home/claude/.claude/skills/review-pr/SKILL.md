@@ -1,13 +1,10 @@
 ---
-
 name: review-pr
 description: Review a GitHub pull request and its Copilot review comments. Independently verify whether each suggested change is valid, determine whether action is required, delegate implementation when needed, and use Codex as an independent reviewer of substantive changes.
 argument-hint: "<pull-request>"
 arguments:
-
-* pull-request
-  disable-model-invocation: true
-
+  - pull-request
+disable-model-invocation: true
 ---
 
 # Pull Request Review Orchestrator

@@ -3,7 +3,7 @@ name: report-pr
 description: Generate development activity reports from a GitHub pull request, grouped into problem-and-fix sections, optionally split into one report per work session or date range. Requires a PR number or URL argument, plus an optional work description and split point. Use when the user asks for a PR report, pull request report, a report for part of a PR's work (e.g. "just today's work"), or /pr-report.
 argument-hint: "<pr-number-or-url> [description] [--split <date>[,<date>...]] [--since <date>] [--until <date>]"
 arguments:
-* args
+  - args
 ---
 
 # PR Report
