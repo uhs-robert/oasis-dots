@@ -98,6 +98,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `input-vectors-lua`, `input-vectors-js`: `home/quickshell/tests/input_settings/vectors.tsv` through the Lua validator Hyprland uses (`config/input`) and the bar's (`HyprInputValidation.js`), so the two cannot drift apart. Need lua and node.
 - `notification-markup`: `home/quickshell/tests/notification_markup.js`, the notification body sanitizer. Needs node.
 - `toast-extent`: `home/quickshell/tests/toast_extent.js`, the toast drawer's window depth, stack height and hover settling in `features/notifications/ToastExtent.js`. Needs node.
+- `picker-start-mode`: `home/quickshell/tests/picker_start_mode.js`, the mode a bottom-docked picker opens in (its own choice, else its Browse or Search group) and the typing.json keys behind it, in `features/launcher/StartMode.js`. Needs node.
 - `directory-format`: `home/quickshell/tests/directory_format.js`, the directory segment's path shortening and app/path/file-name switches in `features/bar/DirectoryFormat.js`. Needs node.
 - `island-shapes`: `home/quickshell/tests/island_shapes.js`, the fill-less island helpers in `ui/frames/IslandOutlines.js`, the popup cut-corner outlines in `ui/frames/PanelCuts.js` and that every `Style.island_shapes` entry has a kit and a label. Needs node.
 - `drawer-shapes`: `home/quickshell/tests/drawer_shapes.js`, the drawer geometry in `ui/frames/DrawerGeometry.js` (layout, fill, outline, rim continuity with the screen frame) and `FrameGeometry.hole_rect`/`seam_of`. Needs node.

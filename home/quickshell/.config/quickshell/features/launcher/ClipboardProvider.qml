@@ -9,6 +9,7 @@ PickerProvider {
     id: root
 
     name: "clipboard"
+    start_group: "browse"
     title: "Clipboard"
     placeholder: "Search clipboard"
     verb: "copy"

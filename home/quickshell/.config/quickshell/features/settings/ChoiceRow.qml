@@ -10,6 +10,8 @@ MenuRow {
 
     property string label: ""
     property string value_text: ""
+    // Nesting depth, for a row that refines the one above it.
+    property int indent: 0
     readonly property bool hovered: mouse_area.containsMouse
     readonly property int bump: SScale.bump_of(root)
     // Unselected values lean toward the label color so they read on dark panels.
@@ -27,7 +29,7 @@ MenuRow {
     RowLayout {
         id: row_layout
         anchors.left: parent.left
-        anchors.leftMargin: 8 + root.inset
+        anchors.leftMargin: 8 + root.inset + root.indent * Style.px(14)
         anchors.right: parent.right
         anchors.rightMargin: 8 + root.key_space
         anchors.verticalCenter: parent.verticalCenter

@@ -15,6 +15,8 @@ Scope {
     // Keep the items' own order when nothing is typed, and on equal scores.
     property bool keep_order: false
     property bool starts_insert: true
+    // Which Settings > Input group sets its mode when docked at the bottom: "browse" (opens NORMAL by default) or "search".
+    property string start_group: "search"
     // Most rows shown; 0 shows every match.
     property int max_results: 0
     // Opening it again while open steps to the next row, so a held Alt+Tab cycles.

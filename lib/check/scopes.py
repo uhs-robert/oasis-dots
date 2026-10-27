@@ -324,6 +324,7 @@ STEPS = [
     Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
     Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
     Step("toast-extent", "node", "node ./home/quickshell/tests/toast_extent.js", ("node",), skip_reason="the toast extent tests need node"),
+    Step("picker-start-mode", "node", "node ./home/quickshell/tests/picker_start_mode.js", ("node",), skip_reason="the picker start mode tests need node"),
     Step("cava-viewers", "node", "node ./home/quickshell/tests/cava_viewers.js", ("node",), skip_reason="the cava viewer tests need node"),
     Step("style-title-readout", "node", "node ./home/quickshell/tests/style_title_readout.js", ("node",), skip_reason="the style title readout tests need node"),
     Step("ansi-text", "node", "node ./home/quickshell/tests/ansi_text.js", ("node",), skip_reason="the ANSI text tests need node"),
