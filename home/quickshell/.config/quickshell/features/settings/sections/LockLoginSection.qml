@@ -125,10 +125,13 @@ RowsSection {
         }
     }
 
-    // The Login rows show the login screen, the others the lock screen. Kept to its old size, so the rows below stay in view.
-    SkinThumb {
+    // The Login rows show the login screen, the others the lock screen. Capped in height, since a portrait screen's
+    // thumbnail is tall and the panel sits under the rows there.
+    preview: SkinThumb {
+        id: thumb
+        readonly property real max_height: (root.popup && root.popup.screen ? root.popup.screen.height : 1080) * 0.22
         Layout.fillWidth: false
-        Layout.preferredWidth: Math.min(root.width, Style.px(640))
+        Layout.preferredWidth: Math.min(thumb.parent ? thumb.parent.width : 0, Math.round(thumb.max_height * thumb.screen_w / thumb.screen_h))
         popup: root.popup
         skin: root.on_login ? LoginSettings.resolved_screen : root.lock_skin
         tint: root.on_login ? LoginSettings.resolved_tint : Style.lock_tint
