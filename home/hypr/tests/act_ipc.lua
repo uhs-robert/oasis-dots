@@ -289,6 +289,45 @@ for signature, bind in pairs(partial) do
 	check("nothing leaks out of the half-built submap: " .. signature, clean[signature] or bind.submap == "Go")
 end
 check("the failed Go body's F12 bind is not left bound", not Bind_after.is_bound("F12", "Go"))
+local f12_removed = false
+for _, bind in ipairs(Stubs.binds) do
+	if bind.submap == "Go" and bind.key == "F12" and bind.removed then
+		f12_removed = true
+	end
+end
+check("the failed Go body's F12 bind was removed from Hyprland", f12_removed)
+
+-- A failed body that re-binds a key bound by an earlier call loses only its own handle.
+Bind_after.submap("Rollback", function()
+	Bind_after.key("F11", function() end, "Earlier")
+end)
+local earlier_handle = Stubs.binds[#Stubs.binds]
+local rollback_ok, rollback_err = pcall(Bind_after.submap, "Rollback", function()
+	Bind_after.key("F11", function() end, "Again")
+	error("rollback body broke", 0)
+end)
+local again_handle = Stubs.binds[#Stubs.binds]
+check(
+	"a failed body's error is rethrown",
+	not rollback_ok and tostring(rollback_err):find("rollback body broke", 1, true) ~= nil
+)
+check("the failed body's re-bind was removed", again_handle.removed == true)
+check("the earlier bind of that key was not removed", not earlier_handle.removed)
+check("the earlier bind of that key is still bound", Bind_after.is_bound("F11", "Rollback", earlier_handle))
+check("the failed body's re-bind is not bound", not Bind_after.is_bound("F11", "Rollback", again_handle))
+
+-- A removal that raises during rollback must not replace the body's error.
+local broken_ok, broken_err2 = pcall(Bind_after.submap, "Rollback", function()
+	local doomed = Bind_after.key("F10", function() end, "Doomed")
+	doomed[1].remove = function()
+		error("remove broke", 0)
+	end
+	error("body broke first", 0)
+end)
+check(
+	"a raising rollback keeps the body's error",
+	not broken_ok and tostring(broken_err2):find("body broke first", 1, true) ~= nil
+)
 local entry_keys = 0
 for _, bind in pairs(clean) do
 	local desc = bind.opts.desc
