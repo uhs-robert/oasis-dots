@@ -22,6 +22,7 @@ Only after the owner has approved the merge. Run from anywhere inside the repo, 
 - A queued merge is polled for up to `MERGE_PRS_WAIT` seconds (default 600).
 - The main checkout is pulled only when it is on the default branch with no tracked changes.
 - Never append cleanup (`git branch -D`, `git push origin --delete`) after the script, and never put it behind `;` or a `| tail` pipe, which hides the merge's exit code. The script does its own cleanup; a failed merge followed by a remote branch delete closes the PR for good. Run any manual cleanup as a separate command after reading the result.
+- Review threads: reply and resolve with `~/.claude/skills/merge-prs/resolve-thread.sh <PRRT_id> "<reply>"` (`-` as the reply reads stdin), and list the unresolved ones with `--list <pr>` (id, path, line, author, first line). Run it bare, with no `VAR=x` prefix, or the allow rule no longer matches. Raw `gh api graphql` reply/resolve mutations are denied by a hook.
 
 It stops at the first failure with the reason. On a stacked-PR rebase conflict it prints the commands to rebase that PR by hand; do that, then rerun with the PRs not yet merged. Report each output line that needs the owner (skipped worktrees, skipped pull, stale local branches).
 

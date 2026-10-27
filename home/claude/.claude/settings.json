@@ -9,6 +9,7 @@
   },
   "permissions": {
     "allow": [
+      "Bash(/home/roberth/.claude/skills/merge-prs/resolve-thread.sh:*)",
       "Bash(/home/roberth/.claude/skills/orchestrator-handoff/spawn-successor.sh:*)",
       "Bash(cat:*)",
       "Bash(gh issue list:*)",
@@ -32,6 +33,7 @@
       "Bash(sed -n:*)",
       "Bash(tail:*)",
       "Bash(wc:*)",
+      "Bash(~/.claude/skills/merge-prs/resolve-thread.sh:*)",
       "Bash(~/.claude/skills/orchestrator-handoff/spawn-successor.sh:*)",
       "Read(~/.zshrc)"
     ],
@@ -138,6 +140,11 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/guard-tmux-socket.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/guard-gh-thread-mutations.sh",
             "timeout": 10
           }
         ]
