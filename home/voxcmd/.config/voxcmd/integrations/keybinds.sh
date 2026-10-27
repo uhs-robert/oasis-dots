@@ -1,6 +1,10 @@
 # shellcheck shell=bash
 # Hook library of keybinds.toml: sourced before every hook and action of the integration.
 
+# shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=hook-cache.sh
+source "$VOXCMD_SHARE_DIR/hook-cache.sh"
+keybinds_library="${BASH_SOURCE[0]}"
+
 # Binds whose description contains any of these (case-insensitive) are never offered: the voice keys themselves,
 # and anything near passwords or secrets.
 excluded_descriptions=(
@@ -25,9 +29,21 @@ excluded_descriptions=(
 # "X mode" phrase, so it offers these too or "command mode" could never run its bind.
 # An unreachable Hyprland reads as no binds, so every list is empty and the integration yields.
 bind_lists() {
-  local binds
-  binds=$(hyprctl binds -j) || binds='[]'
-  jq -c --args '
+  local binds key lists
+  if binds=$(hyprctl binds -j); then
+    # The lists are rebuilt only when the binds changed, which saves the jq pass but not the hyprctl call: Hyprland
+    # leaves no file to stat for a reload, a keyword bind or a submap change, so its raw output is the key. The key
+    # also covers this library, which holds the exclusions and the jq program, and hook-cache.sh. Those are keyed on
+    # ctime and inode as well as mtime and size, so a same-size edit with the mtime put back is not served stale.
+    key=$({
+      stat -L -c '%.9Y %.9Z %D:%i %s %n' "$keybinds_library" "$hook_cache_library" 2>/dev/null
+      printf '%s' "$binds"
+    } | sha256sum)
+    cache_read keybinds.json "$key" && return 0
+  else
+    binds='[]' key=""
+  fi
+  lists=$(jq -c --args '
     ($ARGS.positional | map(ascii_downcase)) as $excluded
     | ([.[].submap | select(. != "")] | unique) as $submap_names
     | ($submap_names | map(ascii_downcase)) as $lowered_submap_names
@@ -54,7 +70,9 @@ bind_lists() {
           | select($mode | ascii_downcase | IN($lowered_submap_names[]) | not)
           | . + {match_text: $mode}))
       }
-  ' "${excluded_descriptions[@]}" <<<"$binds" 2>/dev/null || echo '{}'
+  ' "${excluded_descriptions[@]}" <<<"$binds" 2>/dev/null) || lists='{}' key=""
+  [ -z "$key" ] || cache_write keybinds.json "$key" "$lists"
+  printf '%s\n' "$lists"
 }
 
 # Verbs that act on the whole machine, and the words that only name it: "lock the computer", "reboot the system" and
