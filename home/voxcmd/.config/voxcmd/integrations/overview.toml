@@ -78,6 +78,7 @@ ended = "overview_ended"
 
 # Phrases go to the overview first while it is up. Only the file is read here; the hooks ask the bar before offering anything.
 # Closed (file not open and no Overview session), the router does not start the candidates hooks at all; in the moment
-# before the file is written they run and ask the bar.
+# before the file is written they run and ask the bar. (After a key-opened overview the hook is still skipped for the
+# ~60 ms before the file is written; the hook it replaced yielded there too.)
 [surface]
 state_file = "overview.json"

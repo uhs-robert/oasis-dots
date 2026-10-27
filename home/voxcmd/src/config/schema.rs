@@ -276,6 +276,7 @@ pub enum HelpRows {
     Static { id: String, label: String },
 }
 
+/// Declaring a `[surface]` also means the integration's candidates hooks are skipped while it is closed.
 #[derive(Debug, Clone)]
 pub enum Surface {
     /// Under `$XDG_RUNTIME_DIR/voxcmd`; open while its top-level `open` is true.
