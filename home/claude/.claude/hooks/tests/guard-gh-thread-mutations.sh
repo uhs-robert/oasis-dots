@@ -51,6 +51,13 @@ expect allow 'echo resolveReviewThread'
 expect allow 'grep -rn resolveReviewThread ~/.claude'
 expect allow 'gh pr view 5'
 expect allow 'gh api repos/o/r/pulls/5/comments'
+# Prose that names the call is not a call
+expect allow 'git commit -m "route gh api graphql resolveReviewThread through resolve-thread.sh"'
+expect allow 'gh pr comment 5 --body "do not run gh api graphql with resolveReviewThread by hand"'
+expect allow 'gh pr edit 5 --body "gh api graphql addPullRequestReviewThreadReply is denied"'
+# A file argument of another command in the chain is not the query file
+expect allow "gh api graphql -F query=@$tmp/read.graphql && foo --input $tmp/missing.txt"
+expect deny $'echo hi\ngh api graphql -f query=\'mutation { resolveReviewThread(input: {}) { thread { id } } }\''
 # Review creation stays allowed
 expect allow 'gh api graphql -f query='\''mutation { addPullRequestReview(input: {pullRequestId: "x"}) { pullRequestReview { id } } }'\'
 
