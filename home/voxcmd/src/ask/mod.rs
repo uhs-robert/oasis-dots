@@ -601,38 +601,20 @@ pub fn exec(mut command: Command) -> CliError {
     CliError::failed("ask", format!("cannot run the text picker: {error}"))
 }
 
+// The integration tests' stub writer, shared by path since src/ cannot see tests/ as a module.
+#[cfg(test)]
+#[path = "../../tests/executable/mod.rs"]
+mod executable;
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
     use std::io::{BufRead, BufReader};
-    use std::os::unix::fs::PermissionsExt;
 
-    /// An executable file whose exec is known to work (see `settle_exec`); `VOXCMD_TEST_PROBE` makes it exit at once.
     pub(crate) fn script(dir: &std::path::Path, name: &str, body: &str) -> PathBuf {
-        let temp = dir.join(format!(".{name}.tmp"));
-        std::fs::write(
-            &temp,
-            format!("#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\n{body}\n"),
-        )
-        .unwrap();
-        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
         let path = dir.join(name);
-        std::fs::rename(&temp, &path).unwrap();
-        settle_exec(&path);
+        executable::write_executable(&path, &format!("#!/bin/sh\n{body}\n"));
         path
-    }
-
-    /// Runs the script once in probe mode until it execs: renaming does not help (the inode is the same), but a fork on
-    /// another test thread that held the write fd lets go of it at its exec, so after this no later exec is ETXTBSY.
-    fn settle_exec(path: &std::path::Path) {
-        for _ in 0..500 {
-            match std::process::Command::new(path).env("VOXCMD_TEST_PROBE", "1").status() {
-                Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                    std::thread::sleep(std::time::Duration::from_millis(10));
-                }
-                _ => return,
-            }
-        }
     }
 
     #[test]

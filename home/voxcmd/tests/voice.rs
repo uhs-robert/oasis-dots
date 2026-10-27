@@ -1,12 +1,12 @@
 //! `listen`, `internal watch`, `stop`, `session end` and `internal settle` end to end: the binary against a runtime dir
 //! of its own, with stubs for voxtype, setsid, the toasts, the auto-stop detector and the stand-in voxcmd (which logs what
 //! it was asked to do). voxtype's state is a file the test writes, as voxtype would.
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
 mod common;
+mod executable;
 use common::gone_within;
 
 const INTEGRATION: &str = r#"
@@ -78,26 +78,9 @@ impl Voice {
         self.path().join("work").join(name)
     }
 
-    /// An executable that is ready to exec: run once in probe mode until it execs, since a fork on another test thread
-    /// that held the write fd lets go of it at its exec, and after that no exec is ETXTBSY.
     fn script(&self, name: &str, body: &str) -> PathBuf {
         let path = self.path().join(name);
-        let temp = path.with_extension("tmp");
-        std::fs::write(
-            &temp,
-            format!("#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\n{body}\n"),
-        )
-        .unwrap();
-        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
-        std::fs::rename(&temp, &path).unwrap();
-        for _ in 0..500 {
-            match Command::new(&path).env("VOXCMD_TEST_PROBE", "1").status() {
-                Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                _ => break,
-            }
-        }
+        executable::write_executable(&path, &format!("#!/bin/sh\n{body}\n"));
         path
     }
 

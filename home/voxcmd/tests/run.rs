@@ -1,6 +1,5 @@
 //! `voxcmd run` end to end: the binary against a config of its own, with stubs for the toasts, the questions and the
 //! bar. Each case is a process, so the environment it sets (runtime dir, pacing) reaches no other test.
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -39,6 +38,7 @@ hold = 'sleep 30 & echo $! > "$WORK/held"; wait'
 "#;
 
 mod common;
+mod executable;
 use common::gone_within;
 
 struct Setup {
@@ -67,18 +67,9 @@ impl Setup {
         self.root.path()
     }
 
-    /// An executable that is ready to exec (see `settle_exec`).
     fn script(&self, name: &str, body: &str) -> PathBuf {
-        let temp = self.path().join("bin").join(format!(".{name}.tmp"));
-        std::fs::write(
-            &temp,
-            format!("#!/bin/sh\n[ -z \"$VOXCMD_TEST_PROBE\" ] || exit 0\n{body}\n"),
-        )
-        .unwrap();
-        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o755)).unwrap();
         let path = self.path().join("bin").join(name);
-        std::fs::rename(&temp, &path).unwrap();
-        settle_exec(&path);
+        executable::write_executable(&path, &format!("#!/bin/sh\n{body}\n"));
         path
     }
 
@@ -145,19 +136,6 @@ impl Setup {
 
     fn ask_stub(&self, body: &str) -> (&'static str, String) {
         ("VOXCMD_ASK_CMD", self.script("ask", body).display().to_string())
-    }
-}
-
-/// Runs the script once in probe mode until it execs. Renaming does not help (the inode is the same), but a fork on
-/// another test thread that held the write fd lets go of it at its exec, so after this no later exec is ETXTBSY.
-fn settle_exec(path: &Path) {
-    for _ in 0..500 {
-        match Command::new(path).env("VOXCMD_TEST_PROBE", "1").status() {
-            Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                std::thread::sleep(std::time::Duration::from_millis(10));
-            }
-            _ => return,
-        }
     }
 }
 
@@ -919,9 +897,7 @@ impl Setup {
         }
         let bar = setup.path().join("xdg/hypr/scripts");
         std::fs::create_dir_all(&bar).unwrap();
-        std::fs::write(bar.join("qs-ipc"), format!("#!/bin/sh\necho {state}\n")).unwrap();
-        std::fs::set_permissions(bar.join("qs-ipc"), std::fs::Permissions::from_mode(0o755)).unwrap();
-        settle_exec(&bar.join("qs-ipc"));
+        executable::write_executable(&bar.join("qs-ipc"), &format!("#!/bin/sh\necho {state}\n"));
         setup
     }
 }
