@@ -80,7 +80,7 @@ Popup {
         if (!root.is_open) return;
         load_timer.restart();
         ThemeAudio.play("cursor");
-        Qt.callLater(root.reveal_selected, nav_flick, nav_col, nav_cue);
+        Qt.callLater(root.reveal_nav);
     }
 
     Timer {
@@ -99,7 +99,7 @@ Popup {
             root.leave_pane();
         }
         // nav_index may not change on open, so its own handler would not scroll the list to it.
-        Qt.callLater(root.reveal_selected, nav_flick, nav_col, nav_cue);
+        Qt.callLater(root.reveal_nav);
     }
 
     function jump(delta) {
@@ -179,11 +179,21 @@ Popup {
         flick.contentY = Cue.reveal_target(top, row.height, flick.contentY, flick.height, flick.contentHeight, lead, cue.fade_height);
     }
 
+    // One function per view, not reveal_selected with arguments: Qt.callLater runs a function once per turn with the
+    // last arguments queued, so an external section switch, which loads the pane in the same turn, would lose the list's reveal.
+    function reveal_nav() {
+        root.reveal_selected(nav_flick, nav_col, nav_cue);
+    }
+
+    function reveal_pane() {
+        root.reveal_selected(pane_flick, pane_loader, pane_cue);
+    }
+
     Connections {
         target: root.pane
         ignoreUnknownSignals: true
         function onCursorChanged() {
-            Qt.callLater(root.reveal_selected, pane_flick, pane_loader, pane_cue);
+            Qt.callLater(root.reveal_pane);
         }
     }
 
@@ -192,7 +202,7 @@ Popup {
         target: root.pane ? root.pane.pick_list : null
         ignoreUnknownSignals: true
         function onCursorChanged() {
-            Qt.callLater(root.reveal_selected, pane_flick, pane_loader, pane_cue);
+            Qt.callLater(root.reveal_pane);
         }
     }
 
@@ -385,7 +395,7 @@ Popup {
                 onLoaded: {
                     pane_flick.contentY = 0;
                     panel.reset_help_scroll();
-                    Qt.callLater(root.reveal_selected, pane_flick, pane_loader, pane_cue);
+                    Qt.callLater(root.reveal_pane);
                 }
             }
         }
