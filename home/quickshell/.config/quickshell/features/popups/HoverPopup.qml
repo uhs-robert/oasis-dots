@@ -17,6 +17,8 @@ Item {
     // From one module straight onto another while the first one's hover-opened popup is open: the popup is swapped in
     // place after this much hover, short enough to feel instant and long enough to skip a module the pointer only crosses.
     property int swap_delay: 60
+    // The close grace while the pointer is still over the bar after leaving the module: a slow sweep across the gap to the next module (the swap target) takes longer than `close_grace`, and closing midway turns the swap into a close and a slow reopen. Leaving the bar cuts the wait back to `close_grace`.
+    property int bar_grace: 900
     // How long after a close under the pointer the bar may still regain the hover it lost (HoverPolicy "settling").
     // Hyprland handed focus back within ~10 ms in the shadow; this is far above that, and the price of the margin is
     // only that a deliberate re-entry inside it needs one more move out and in.
@@ -25,6 +27,7 @@ Item {
     readonly property string mode: root._mode
     readonly property bool inside: root.enabled && !!root.module && (root.module.hovered || Popups.hover_name === root.popup_name && root.open_here)
     readonly property bool open_here: Policy.open_here(Popups.open_name, Popups.open_screen_name, root.popup_name, root.module ? root.module.screen_name : "") && (!Popups.hover_owner || Popups.hover_owner === root)
+    readonly property bool over_bar: !!root.module && Popups.bar_hover_screen === root.module.screen_name
     readonly property bool nothing_open: Popups.open_name === ""
     // The open popup is another module's, opened by hover and still hover-open, on this bar: hover may swap it for this
     // one. A pinned popup has no owner; a key or IPC open leaves a stale owner whose open_here is false. A same-name
@@ -51,7 +54,7 @@ Item {
         }
         else if (r.open_timer === "stop") open_timer.stop();
         if (r.close_timer === "start") {
-            close_timer.interval = r.mode === "settling" ? root.settle_ms : root.close_grace;
+            close_timer.interval = Policy.close_delay(r.mode, root.over_bar, root.close_grace, root.bar_grace, root.settle_ms);
             close_timer.restart();
         }
         else if (r.close_timer === "stop") close_timer.stop();
@@ -79,6 +82,11 @@ Item {
     }
 
     onInsideChanged: if (root.enabled) root.apply(Policy.inside_changed(root._mode, root.inside, root.nothing_open, root.other_hover_open))
+    // Left the bar during the long grace: the pointer is going away, not to a neighbour.
+    onOver_barChanged: if (!root.over_bar && root._mode === "hover_open" && close_timer.running) {
+        close_timer.interval = root.close_grace;
+        close_timer.restart();
+    }
     onNothing_openChanged: if (root.enabled && root.nothing_open) root.apply(Policy.nothing_open_now(root._mode, root.inside))
     onOpen_hereChanged: root.apply(Policy.popup_changed(root._mode, root.open_here, root.inside))
     onEnabledChanged: if (!root.enabled) root.apply(Policy.disabled(root._mode, root.open_here))

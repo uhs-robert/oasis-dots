@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPolicy.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here, swap_ok, swap_source, pin_grabs_keyboard };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { inside_changed, open_elapsed, close_elapsed, clicked, popup_changed, nothing_open_now, popup_pressed, disabled, open_here, swap_ok, swap_source, pin_grabs_keyboard, close_delay };", T);
 const P = T.api;
 
 // A model of the world around the helper: the pointer, which popup is open, and the two timers.
@@ -967,6 +967,18 @@ t("only a HoverPopup's own open keeps hover_owner; key, IPC, walk and back opens
   const calls = hover.match(/Popups\.open\([^\n]*\);/g);
   assert.strictEqual(calls.length, 2);
   for (const c of calls) assert.match(c, /, true\);$/, c);
+});
+
+t("leaving a module over the bar waits the long grace; leaving the bar or settling do not", () => {
+  assert.strictEqual(P.close_delay("hover_open", true, 250, 900, 600), 900);
+  assert.strictEqual(P.close_delay("hover_open", false, 250, 900, 600), 250);
+  assert.strictEqual(P.close_delay("settling", true, 250, 900, 600), 600);
+  assert.strictEqual(P.close_delay("hover_open", true, 250, 100, 600), 250);
+  const dir = path.join(__dirname, "../.config/quickshell/features/");
+  const hover = fs.readFileSync(dir + "popups/HoverPopup.qml", "utf8");
+  assert.match(hover, /Policy\.close_delay\(r\.mode, root\.over_bar, /);
+  assert.match(hover, /onOver_barChanged: if \(!root\.over_bar && root\._mode === "hover_open" && close_timer\.running\) \{\s+close_timer\.interval = root\.close_grace;\s+close_timer\.restart\(\);/);
+  assert.match(fs.readFileSync(dir + "bar/Bar.qml", "utf8"), /HoverHandler \{\s+onHoveredChanged: Popups\.set_bar_hover\(root\.screen_name, hovered\)/);
 });
 
 let failed = 0;

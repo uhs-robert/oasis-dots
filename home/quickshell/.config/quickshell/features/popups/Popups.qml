@@ -58,6 +58,13 @@ Singleton {
         else if (root.hover_name === name) root.hover_name = "";
     }
 
+    // The screen whose bar the pointer is over, anywhere on it (Bar reports it), so a hover helper can tell the pointer crossing the gap to the next module from leaving the bar.
+    property string bar_hover_screen: ""
+    function set_bar_hover(screen_name, hovered) {
+        if (hovered) root.bar_hover_screen = screen_name;
+        else if (root.bar_hover_screen === screen_name) root.bar_hover_screen = "";
+    }
+
     // A hover-opened popup takes no keyboard until it is pinned (see HoverPopup); every other open takes it as before.
     property bool keyboard_off: false
 
