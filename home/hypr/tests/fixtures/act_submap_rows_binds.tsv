@@ -1,5 +1,5 @@
 # Dumped by `SHELL=/bin/zsh lua act_submap_rows.lua --dump` from the Leader, Go, System and Bar submaps before their rows named actions (origin/main 5f1d11782).
-# Since redumped only where keys were removed or moved (the Applications submap dropped, SUPER + A for the agents picker).
+# Since redumped only where keys were removed, moved or added (the Applications submap dropped, SUPER + A for the agents picker, Go V for the editor).
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Bar	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
 default	Bar	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
@@ -40,6 +40,7 @@ default	Go	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Go	Shift_R	-	ignore_mods=true,transparent=true	no_op
 default	Go	T	Terminal	-	exec_cmd(kitty);submap(reset)
 default	Go	TAB	Last Workspace	-	focus({workspace=previous});submap(reset)
+default	Go	V	Editor	-	exec_cmd(kitty --single-instance -e nvim);submap(reset)
 default	Go	W	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview search);submap(reset)
 default	Go	catchall	-	ignore_mods=true,release=true	submap(reset)
 default	Leader	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
@@ -148,6 +149,7 @@ no-leader	Go	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	Shift_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	T	Terminal	-	exec_cmd(kitty);submap(reset)
 no-leader	Go	TAB	Last Workspace	-	focus({workspace=previous});submap(reset)
+no-leader	Go	V	Editor	-	exec_cmd(kitty --single-instance -e nvim);submap(reset)
 no-leader	Go	W	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview search);submap(reset)
 no-leader	Go	catchall	-	ignore_mods=true,release=true	submap(reset)
 no-leader	Leader	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)

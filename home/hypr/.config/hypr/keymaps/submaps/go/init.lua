@@ -38,6 +38,7 @@ Submap.define({
       { "S",         focus_app("slack"),                    "Slack" },
       { "SHIFT + S", focus_app("steam"),                    "Steam" },
       { "T",         focus_app("terminal"),                 "Terminal" },
+      { "V",         "terminal.editor" },
       { "W",         "overview.search",                     "Search Windows" },
       -- stylua: ignore end
     }
