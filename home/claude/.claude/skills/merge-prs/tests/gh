@@ -56,14 +56,14 @@ reported_oid() {
 }
 # A new commit on the PR's branch, as a push from the author.
 push_new_commit() {
-  local w
+  local w branch=${1:-$(get head)}
   w=$(mktemp -d)
   git clone -q "$ORIGIN" "$w/c"
-  git -C "$w/c" checkout -q "$(get head)"
+  git -C "$w/c" checkout -q "$branch"
   echo late >"$w/c/late"
   git -C "$w/c" add late
   git -C "$w/c" -c user.name=t -c user.email=t@t commit -qm "feat: late push"
-  git -C "$w/c" push -q origin "HEAD:$(get head)"
+  git -C "$w/c" push -q origin "HEAD:$branch"
   rm -rf "$w"
 }
 # Reads of the merge gate (the registry's installed-reviewer inference, CodeRabbit's check run, review and summary, quota
@@ -121,9 +121,13 @@ case "$args" in
   [[ ! -f $GH_STATE.comments ]] || cat "$GH_STATE.comments"
   exit 0
   ;;
-# head_date: the head commit's committer date, default long ago.
+# head_date: the head commit's committer date, default long ago. head_date_fail=1: the call fails.
 *"/commits/"*"committer.date")
   gate_state
+  [[ -z $(get head_date_fail) ]] || {
+    echo "gh: HTTP 502" >&2
+    exit 1
+  }
   date=$(get head_date)
   echo "${date:-2000-01-01T00:00:00Z}"
   exit 0
@@ -205,6 +209,12 @@ case "$args" in
   [[ -z $(get push_on_merge_read) ]] || {
     put push_on_merge_read ""
     push_new_commit
+  }
+  # push_branch_on_merge_read=<branch>: the same push, to another PR's branch (a child).
+  [[ -z $(get push_branch_on_merge_read) ]] || {
+    branch=$(get push_branch_on_merge_read)
+    put push_branch_on_merge_read ""
+    push_new_commit "$branch"
   }
   printf '%s\t%s\t%s\t%s\t%s\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)" "$(get cross || true)" |
     awk -F'\t' -v OFS='\t' '{ if ($5 == "") $5 = "false"; print }'

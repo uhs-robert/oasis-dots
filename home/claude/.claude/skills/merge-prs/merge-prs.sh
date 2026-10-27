@@ -337,7 +337,7 @@ reviewed_head() {
 # date is only when the commit was made, so it is the fallback and the floor.
 head_push_time() {
   local committed suite
-  committed=$(commit_date "$1")
+  committed=$(commit_date "$1") || exit 1
   suite=$(gh api "repos/$slug/commits/$1/check-suites" --jq '[.check_suites[].created_at] | min // empty') ||
     die "cannot read the check suites of $1"
   if [[ -n $suite && $suite > $committed ]]; then echo "$suite"; else echo "$committed"; fi
@@ -354,14 +354,18 @@ epoch() {
 # seconds for a review that is still coming. A cancelled run is a superseded one, so it is Pending until start_s passes.
 eval_check_run() {
   local name=$1 number=$2 head=$3 start_s settle_s now head_epoch rname rstatus rconc rstart rdone run="" run_start=""
-  local covered covers_head settled label age sort_key runs_out
+  local covered covers_head settled label age sort_key runs_out push_time since check_name is_check
   local -a check_names=()
   label=$(rjq "$name" .label)
   start_s=${MERGE_PRS_REVIEW_START:-$(rjq "$name" '.github.start_s // 300')}
   settle_s=${MERGE_PRS_SETTLE:-$(rjq "$name" '.github.settle_s // 180')}
   cr_state="" cr_msg="" cr_final=false
   now=$(date +%s)
-  head_epoch=$(epoch "$(head_push_time "$head")")
+  # Assigned apart from the call that uses it: a failure inside "$(...)" in an argument would only end that subshell and
+  # leave an empty time that matches every comment.
+  push_time=$(head_push_time "$head") || exit 1
+  head_epoch=$(epoch "$push_time") || exit 1
+  since=$(date -u -d "@$head_epoch" +%FT%TZ) || exit 1
   mapfile -t check_names < <(rjq "$name" '.github.check_names // [] | .[]')
   # Read outside the loop's process substitution, which would hide a failed call as "no runs" and let the PR through.
   runs_out=$(gh api --paginate "repos/$slug/commits/$head/check-runs?per_page=100" \
@@ -369,7 +373,11 @@ eval_check_run() {
     die "cannot read the check runs of $head"
   while IFS='|' read -r rname rstatus rconc rstart rdone; do
     [[ -n $rname ]] || continue
-    [[ " ${check_names[*]} " == *" $rname "* ]] || continue
+    is_check=false
+    for check_name in "${check_names[@]}"; do
+      [[ $check_name != "$rname" ]] || is_check=true
+    done
+    $is_check || continue
     sort_key=${rstart:-9999}
     if [[ -z $run || $sort_key > $run_start ]]; then
       run="$rstatus|$rconc|$rdone"
@@ -379,7 +387,7 @@ eval_check_run() {
   load_comments "$number"
   if [[ -z $run ]]; then
     age=$((now - head_epoch))
-    if unavailable_hit "$name" "$(date -u -d "@$head_epoch" +%FT%TZ)"; then
+    if unavailable_hit "$name" "$since"; then
       cr_state=Unavailable cr_msg="$label posted that it is unavailable"
     elif ((age < start_s)); then
       cr_state=Pending cr_msg="no $label check on the head yet"
@@ -390,7 +398,7 @@ eval_check_run() {
   fi
   IFS='|' read -r rstatus rconc rdone <<<"$run"
   if [[ $rstatus != completed ]]; then
-    if unavailable_hit "$name" "$(date -u -d "@$head_epoch" +%FT%TZ)"; then
+    if unavailable_hit "$name" "$since"; then
       cr_state=Unavailable cr_msg="$label posted that it is unavailable"
     else
       cr_state=Running cr_msg="the $label check is $rstatus"
@@ -430,7 +438,7 @@ eval_check_run() {
   fi
   if [[ " $(rjq "$name" '(.github.unavailable_conclusions // []) | join(" ")') " == *" $rconc "* ]]; then
     cr_state=Unavailable cr_msg="its check concluded $rconc"
-  elif unavailable_hit "$name" "$(date -u -d "@$head_epoch" +%FT%TZ)"; then
+  elif unavailable_hit "$name" "$since"; then
     cr_state=Unavailable cr_msg="$label posted that it is unavailable"
   else
     case $rconc in
@@ -504,7 +512,7 @@ gate_check_run() {
 # A summary_comment reviewer (Codex) for one PR. Its summary comment holds a status and the reviewed commit, read by
 # review_jq in the same query as the threads.
 gate_summary_comment() {
-  local name=$1 number=$2 info open status reviewed head waited reason cross rereview_why generated_skipped rerun_flags request
+  local name=$1 number=$2 info open status reviewed head waited reason cross rereview_why generated_skipped rerun_flags request push_time
   request=$(rjq "$name" '.github.request // "@codex review"')
   info=$(read_review "$number")
   IFS=$'\t' read -r open status reviewed head <<<"$info"
@@ -516,7 +524,8 @@ gate_summary_comment() {
   # A summary that failed or reviewed nothing next to a usage-limit comment on this head is a reviewer that cannot run, not a failure.
   if [[ $status == Failed || $status == Unreviewed ]]; then
     load_comments "$number"
-    if unavailable_hit "$name" "$(commit_date "$head")"; then
+    push_time=$(head_push_time "$head") || exit 1
+    if unavailable_hit "$name" "$push_time"; then
       echo "note: #$number Codex is unavailable (usage limit); not waiting for it"
       return
     fi
@@ -600,7 +609,14 @@ check_reviews() {
       mark=${#problems[@]}
       for name in "${gating[@]}"; do
         case $(rjq "$name" .github.signal) in
-        summary_comment) gate_summary_comment "$name" "$number" ;;
+        summary_comment)
+          # Only Codex's summary format is parsed; reading another reviewer's as Codex's would let it pass unread.
+          if [[ $name == codex ]]; then
+            gate_summary_comment "$name" "$number"
+          else
+            problems+=("#$number: reviewer $name signals by summary_comment, a format this script reads only for codex")
+          fi
+          ;;
         check_run) gate_check_run "$name" "$number" ;;
         esac
       done
@@ -702,6 +718,10 @@ clean_local() {
 rebase_child() {
   local child=$1 child_head=$2 old_child=$3 onto=$4 label=$5 upstream=$6 grandchildren new_child line
   local number gc_head gc_oid gc_cross
+  # A child pushed to after its reviewers passed would otherwise be rebased here, and the rebase would hide the push.
+  if [[ -n ${gated_heads[$child]:-} && $old_child != "${gated_heads[$child]}" ]]; then
+    die "#$child was pushed to (${old_child:0:7}) after its reviewers passed on ${gated_heads[$child]:0:7}; rerun to check the new head"
+  fi
   git cat-file -e "$old_child^{commit}" 2>/dev/null || die "$child head $old_child is not on origin/$child_head"
   grandchildren=$(list_children "$child_head") || exit 1
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
