@@ -31,7 +31,7 @@ Singleton {
     // The popup the pointer is over right now (Popup.qml reports it), so a module's hover helper can tell the pointer moving onto its popup from leaving.
     property string hover_name: ""
     // The HoverPopup that hover-opened the open popup; null when nothing did or once it is pinned. Two modules can share a popup name (system:cpu and system:memory), so only this one reads the open as its own.
-    // A sibling reads an open popup with no owner as an outside open and pins, so it is cleared only after open_name has moved (close) or after a pinned open, never while the hover-opened popup is still showing.
+    // A sibling reads an open popup with no owner as an outside open and pins, so close() clears it only after open_name has moved, and a HoverPopup's pinned open only after Popups.open(). Popups.open* from a key or IPC leave it alone.
     property var hover_owner: null
     // A hidden window sends no leave, so each open starts from "not over it".
     onOpen_nameChanged: {

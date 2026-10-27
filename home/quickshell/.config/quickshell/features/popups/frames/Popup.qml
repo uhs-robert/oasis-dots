@@ -461,8 +461,10 @@ PanelWindow {
     // Hover delivery stops at the first item that accepts it (the seek bar, a RoundButton). The content stacks above
     // panel_area, so panel_hover reads false over those controls; content_hover sits on their common ancestor, reveal.
     // panel_hover stays for the reserve and line areas reveal does not cover.
+    // Only while wanted: the close animation shrinks reveal under a still pointer, and content_hover turning false with
+    // panel_hover still true would report the closing popup as hovered again after open_name cleared hover_name.
     function report_hover() {
-        Popups.set_popup_hover(root.popup_name, panel_hover.hovered || content_hover.hovered);
+        Popups.set_popup_hover(root.popup_name, root.wanted && (panel_hover.hovered || content_hover.hovered));
     }
 
     readonly property int line_height: root.drawer ? 0 : root.st.accent_height
