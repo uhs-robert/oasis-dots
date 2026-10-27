@@ -18,13 +18,13 @@ local KBPTR = "~/.config/hypr/scripts/kbptr.sh"
 local KBPTR_CMDS = {
   floating_click = KBPTR .. " -o modes=floating,click -o mode_floating.source=detect",
   floating_move = KBPTR .. " -o modes=floating -o mode_floating.source=detect",
-  floating_r_click = KBPTR .. " -o modes=floating -o mode_floating.source=detect ; wlrctl pointer click right",
+  floating_r_click = KBPTR .. " -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right",
   tile_click = KBPTR .. " -o modes=tile,click",
   tile_move = KBPTR .. " -o modes=tile",
-  tile_r_click = KBPTR .. " -o modes=tile ; wlrctl pointer click right",
+  tile_r_click = KBPTR .. " -o modes=tile && wlrctl pointer click right",
   split_click = KBPTR .. " -o modes=split,click",
   split_move = KBPTR .. " -o modes=split",
-  split_r_click = KBPTR .. " -o modes=split ; wlrctl pointer click right",
+  split_r_click = KBPTR .. " -o modes=split && wlrctl pointer click right",
 }
 
 --- @class CursorActions

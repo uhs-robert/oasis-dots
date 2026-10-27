@@ -6,8 +6,8 @@
 # Usage: kbptr.sh [wl-kbptr args...]
 
 out=$(wl-kbptr --only-print "$@") || exit
-# A cancelled pick prints nothing.
-[[ -n $out ]] || exit 0
+# A cancelled pick prints nothing. Fail so a chained `&& wlrctl pointer click right` doesn't click.
+[[ -n $out ]] || exit 1
 
 # Format: WxH+X+Y +OX+OY C, in logical pixels. X/Y are relative to the output at OX/OY; C is the click (l/r/m/n).
 re='^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+) \+(-?[0-9]+)\+(-?[0-9]+) ([lrmn])$'
@@ -18,7 +18,7 @@ fi
 w=${BASH_REMATCH[1]} h=${BASH_REMATCH[2]} x=${BASH_REMATCH[3]} y=${BASH_REMATCH[4]}
 ox=${BASH_REMATCH[5]} oy=${BASH_REMATCH[6]} click=${BASH_REMATCH[7]}
 
-hyprctl dispatch "hl.dsp.cursor.move({ x = $((ox + x + w / 2)), y = $((oy + y + h / 2)) })" >/dev/null
+hyprctl dispatch "hl.dsp.cursor.move({ x = $((ox + x + w / 2)), y = $((oy + y + h / 2)) })" >/dev/null || exit
 
 case $click in
   l) wlrctl pointer click left ;;
