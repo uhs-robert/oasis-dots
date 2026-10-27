@@ -434,6 +434,24 @@ Act.run_cli("zoom.size", { "3" })
 check("Ipc: renders typed params and defaults", executed[1] == "~/.config/hypr/scripts/qs-ipc call zoom size 3 in")
 Act.run("zoom.size", 4, "out")
 check("Ipc: run renders too", executed[2] == "~/.config/hypr/scripts/qs-ipc call zoom size 4 out")
+
+-- resolve is run_cli's parse path without the performing
+local before_resolve = #executed
+local _, resolved_values, resolved_plan = Act.resolve("zoom.size", { "3" })
+check("resolve: returns the typed values with defaults", resolved_values[1] == 3 and resolved_values[2] == "in")
+check(
+	"resolve: ipc plan has the rendered words",
+	resolved_plan.kind == "ipc"
+		and resolved_plan.target == "zoom"
+		and resolved_plan["function"] == "size"
+		and table.concat(resolved_plan.args, " ") == "3 in"
+)
+check("resolve: performs nothing", #executed == before_resolve)
+check("resolve: a bad word raises as run_cli does", has(raises(Act.resolve, "zoom.size", { "x" }), "expects an int"))
+check("resolve: an unknown id raises", has(raises(Act.resolve, "no.such", {}), "unknown action 'no.such'"))
+Act.run_cli("zoom.size", { "3" })
+check("resolve: run_cli still performs the same line", executed[#executed] == executed[1])
+executed[#executed] = nil -- later sections count from the first lines
 Act.define("zoom.toggle", { label = "Toggle", run = Act.Ipc("zoom", "toggle") })
 Act.run_cli("zoom.toggle", {})
 check("Ipc: no params", executed[3] == "~/.config/hypr/scripts/qs-ipc call zoom toggle")
