@@ -73,12 +73,27 @@ expect deny '\gh api graphql -f query='\''mutation { resolveReviewThread(input: 
 expect deny '"gh" api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
 expect deny '$GH api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'''
 expect deny 'grep -r "gh api graphql resolveReviewThread" .'
-# A quoted heredoc body fed to a prose command is text; an unquoted one, or one fed to anything else, is not
-expect allow $'git commit -F - <<\'EOF\'\nroute gh api graphql resolveReviewThread through the script\nEOF'
+# Any heredoc in a command naming a mutation is denied, even one fed to a prose command
+expect deny $'git commit -F - <<\'EOF\'\nroute gh api graphql resolveReviewThread through the script\nEOF'
 expect deny $'git commit -F - <<EOF\nroute gh api graphql resolveReviewThread through the script\nEOF'
 expect deny $'cat <<\'EOF\'\ngh api graphql resolveReviewThread\nEOF'
 expect deny 'echo "$(gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\'')"'
 expect allow 'GIT_AUTHOR_NAME=x git commit -m "mention gh api graphql resolveReviewThread"'
+# Bypasses of an earlier prose exception: echo and printf are no prose, and a pipe or input feed voids it
+expect deny 'echo "gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''" | bash'
+expect deny 'echo "gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''" | sh'
+expect deny 'printf '\''%s'\'' "gh api graphql -f query='\''mutation { resolveReviewThread(input: {}) { thread { id } } }'\''" | sh'
+expect deny 'echo '\''graphql mutation { resolveReviewThread(input: {}) { thread { id } } }'\'' | gh api graphql --input -'
+expect deny 'echo '\''graphql mutation { resolveReviewThread(input: {}) { thread { id } } }'\'' | gh api graphql -F query=@-'
+expect deny 'git commit -m "gh api graphql resolveReviewThread" | bash'
+expect deny 'git commit -m "gh api graphql resolveReviewThread" > >(bash)'
+expect deny 'git commit -m "gh api graphql resolveReviewThread" && bash <(echo hi)'
+expect deny 'echo "gh api graphql resolveReviewThread"'
+expect deny 'printf "gh api graphql resolveReviewThread"'
+expect deny $'echo graphql "<<\'XX\'"\ngh api graphql -f query=\'mutation { resolveReviewThread(input: {}) { thread { id } } }\'\nXX'
+expect deny $'echo graphql <<\'XX\' | bash\ngh api graphql -f query=\'mutation { resolveReviewThread(input: {}) { thread { id } } }\'\nXX'
+expect deny $'git commit -F - <<\'EOF\'\nmentions gh api graphql resolveReviewThread\nEOF'
+expect allow 'git commit -F msg.txt -m "mentions gh api graphql resolveReviewThread"'
 # Reads and mentions
 expect allow 'gh api graphql -F owner=o -F name=r -F number=5 -f query='\''query { repository(owner: "o", name: "r") { pullRequest(number: 5) { reviewThreads(first: 100) { nodes { id isResolved } } } } }'\'
 expect allow "gh api graphql -f query='{viewer{login}}'"
