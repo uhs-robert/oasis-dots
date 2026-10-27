@@ -30,6 +30,7 @@ The owner picks things from the keyboard: an app, a directory, an emoji, a clipb
 - **PICKERS-15** In the clipboard picker `f` (NORMAL) cycles the type filter through all, text and images, shown in the search bar's corner beside the mode and the count. Binary entries show only under all. Every open starts at all.
 - **PICKERS-16** `=` at large goes one step further to max, where the preview fills the body and the cards or rows are hidden, with no scroll cue or number hints; `-` steps back to large, and `p` hides max and brings it back like any other size.
 - **PICKERS-17** An agent's state badge reads working (outlined, primary colour), waiting (filled, warning), done (filled, green) or idle (outlined, dim), so a finished session no longer looks idle.
+- **PICKERS-18** An agent card and list row show how full the session's context is as tokens ("118k / 200k") and a thin bar, green below 50%, yellow from 50% and red from 80%. A session with no context data shows neither.
 
 ## Look
 The browse layout follows the workspace overview's filmstrip view: the big preview above, the cards in a strip below, framed like the overview's workspace tiles with the selected card outlined in the caret color.

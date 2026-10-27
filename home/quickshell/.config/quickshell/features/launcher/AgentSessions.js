@@ -22,6 +22,35 @@ function shorten_home(path, home) {
     return path.startsWith(home + "/") ? "~" + path.slice(home.length) : path;
 }
 
+// { pct, used, window } from a session's context fields, or null when it has none (keeptabs leaves them out until it
+// has read the session's transcript). The percent is keeptabs' own, worked out here only when it is missing.
+function parse_context(s) {
+    if (s.context_used == null || s.context_window == null) return null;
+    var used = Number(s.context_used);
+    var window = Number(s.context_window);
+    if (!isFinite(used) || !isFinite(window) || used < 0 || window <= 0) return null;
+    var pct = s.context_pct == null ? NaN : Number(s.context_pct);
+    if (!isFinite(pct)) pct = Math.round(used / window * 100);
+    return { pct: pct, used: used, window: window };
+}
+
+// The theme colour a context bar takes at `pct` percent full.
+function context_tone(pct) {
+    return pct >= 80 ? "error" : pct >= 50 ? "warning" : "ok";
+}
+
+// A token count the way the bar's label writes it: 950, 1.5k, 118k, 1M.
+function short_tokens(n) {
+    if (n < 1000) return String(Math.round(n));
+    if (n < 10000) return String(Math.round(n / 100) / 10) + "k";
+    if (n < 1000000) return Math.round(n / 1000) + "k";
+    return String(Math.round(n / 100000) / 10) + "M";
+}
+
+function context_label(context) {
+    return short_tokens(context.used) + " / " + short_tokens(context.window);
+}
+
 // Rows from `keeptabs-pick --json`; bad JSON or a non-list gives no rows.
 function parse_sessions(text, home) {
     var sessions;
@@ -44,7 +73,8 @@ function parse_sessions(text, home) {
             icon: "utilities-terminal",
             keywords: [s.agent || "", state, cwd],
             tmux_socket: s.tmux_socket || "",
-            tmux_pane: s.tmux_pane || ""
+            tmux_pane: s.tmux_pane || "",
+            context: parse_context(s)
         };
     });
 }

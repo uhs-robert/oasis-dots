@@ -9,8 +9,8 @@ const { execFileSync } = require("child_process");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/AgentSessions.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { parse_sessions, badge_style, capture_argv, split_capture, last_line, tails_argv, parse_tails };", context);
-const { parse_sessions, badge_style, capture_argv, split_capture, last_line, tails_argv, parse_tails } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { parse_sessions, parse_context, context_tone, context_label, short_tokens, badge_style, capture_argv, split_capture, last_line, tails_argv, parse_tails };", context);
+const { parse_sessions, parse_context, context_tone, context_label, short_tokens, badge_style, capture_argv, split_capture, last_line, tails_argv, parse_tails } = context.api;
 const plain = value => JSON.parse(JSON.stringify(value));
 const home = "/home/me";
 
@@ -68,6 +68,17 @@ const cases = [
   ["tails come back per session id", () => run_tails([{ id: "a", tmux_socket: "/run/t.sock", tmux_pane: "%1" }, { id: "b", tmux_socket: "", tmux_pane: "%2" }]), { a: "working on it", b: "default server" }],
   ["a gone pane or no pane gives an empty tail and keeps the rest", () => run_tails([{ id: "a", tmux_socket: "", tmux_pane: "%9" }, { id: "b", tmux_socket: "", tmux_pane: "" }, { id: "c", tmux_socket: "/s", tmux_pane: "%1" }]), { a: "", b: "", c: "working on it" }],
   ["no output gives no tails", () => parse_tails(""), {}],
+  // req: PICKERS-18
+  ["a row carries keeptabs' context use", () => parse_sessions("[{\"id\":\"a\",\"context_pct\":59,\"context_used\":118031,\"context_window\":200000}]", home)[0].context, { pct: 59, used: 118031, window: 200000 }],
+  // req: PICKERS-18
+  ["a session without context data has none", () => parse_sessions("[{\"id\":\"a\"}]", home)[0].context, null],
+  ["a zero or missing window is no context data", () => [parse_context({ context_used: 5, context_window: 0 }), parse_context({ context_used: 5 }), parse_context({ context_used: "x", context_window: 10 })], [null, null, null]],
+  ["a missing percent is worked out from the tokens", () => parse_context({ context_used: 50000, context_window: 200000 }).pct, 25],
+  // req: PICKERS-18
+  ["the bar is green below 50%, yellow from 50% and red from 80%", () => [0, 20, 49, 50, 79, 80, 100].map(context_tone), ["ok", "ok", "ok", "warning", "warning", "error", "error"]],
+  // req: PICKERS-18
+  ["the label writes tokens short", () => context_label({ used: 118031, window: 200000 }), "118k / 200k"],
+  ["small, thousands and millions of tokens", () => [950, 1500, 40000, 1000000, 1250000].map(short_tokens), ["950", "1.5k", "40k", "1M", "1.3M"]],
 ];
 
 let failed = 0;
