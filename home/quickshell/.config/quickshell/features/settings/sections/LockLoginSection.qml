@@ -40,11 +40,29 @@ RowsSection {
         },
         {
             label: "Music",
-            desc: "Play your own music file while locked. Needs Lock music (under Music) on too.",
+            desc: "Music at the lock screen: a skin's own soundtrack, and your music file when Use my music file is on. Off keeps the lock silent. Login's Music follows it by default.",
             values: () => ["on", "off"],
             text: v => v,
             value: () => Style.lock_music ? "on" : "off",
             set: v => Style.set_lock_music(v === "on")
+        },
+        {
+            label: "Use my music file",
+            indent: 1,
+            desc: "Plays your music.ogg/wav/mp3 from ~/.local/share/quickshell/sounds/<pack>/ at lock and login. Needs Music on (at login, Login's Music).",
+            values: () => ["on", "off"],
+            text: v => v,
+            value: () => ThemeAudio.music ? "on" : "off",
+            set: v => ThemeAudio.set_flag("music", v === "on")
+        },
+        {
+            label: "Music volume",
+            indent: 1,
+            desc: "Volume of the lock and login music.",
+            values: () => ThemeAudio.volumes,
+            text: v => Math.round(v * 100) + "%",
+            value: () => ThemeAudio.music_volume,
+            set: v => ThemeAudio.set_volume("music_volume", v)
         },
         { heading: "Login" },
         {
@@ -86,23 +104,6 @@ RowsSection {
             text: v => v,
             value: () => LoginSettings.session,
             set: v => LoginSettings.set_session(v)
-        },
-        { heading: "Music" },
-        {
-            label: "Lock music",
-            desc: "Plays your music.ogg/wav/mp3 from ~/.local/share/quickshell/sounds/<pack>/ at lock and login.",
-            values: () => ["on", "off"],
-            text: v => v,
-            value: () => ThemeAudio.music ? "on" : "off",
-            set: v => ThemeAudio.set_flag("music", v === "on")
-        },
-        {
-            label: "Music volume",
-            desc: "Volume of the lock and login music.",
-            values: () => ThemeAudio.volumes,
-            text: v => Math.round(v * 100) + "%",
-            value: () => ThemeAudio.music_volume,
-            set: v => ThemeAudio.set_volume("music_volume", v)
         }
     ]
 
