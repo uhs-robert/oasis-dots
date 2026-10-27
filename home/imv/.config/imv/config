@@ -8,31 +8,30 @@ overlay_font = ProFont IIx Nerd Font Mono:14
 
 [binds]
 # [NAVIGATION]
-j = next
-k = prev
+<Shift+H> = next
+<Shift+L> = prev
 
 # [ZOOM]
+i = zoom 1
 + = zoom 1
-= = reset
+o = zoom -1
 - = zoom -1
+= = reset
 0 = zoom actual
 f = fullscreen
+# r = reset
 
 # [PAN]
 h = pan 50 0
 l = pan -50 0
-<C-j> = pan 0 -50
-<C-k> = pan 0 50
 
 # [ROTATION]
-r = rotate by 90
-R = rotate by -90
+<Ctrl+r> = rotate by 90
 # c = center
 
 # [MISC]
 q = quit
 d = overlay
-i = overlay
 t = slideshow +1
 T = slideshow -1
 # p = print to stdout
