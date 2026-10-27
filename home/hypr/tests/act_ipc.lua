@@ -7,7 +7,7 @@
 --   lua home/hypr/tests/act_ipc.lua
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 -- Sets package.path and the stubbed `hl` shared with the other action tests.
-dofile(here .. "/act_stubs.lua")
+local Stubs = dofile(here .. "/act_stubs.lua")
 
 local FILES = { "notifications", "style", "lock", "power", "screenshot", "zoom", "overview", "settings", "launcher" }
 
@@ -129,41 +129,56 @@ for id in pairs(covered) do
 	check("keymaps.global registers " .. id, loaded[id])
 end
 
--- One broken definition file costs only its own actions: keyless.lua and tools.lua load each file on its own, warn
--- naming the broken one and carry on. style.lua raises while it runs, pickers.lua does not parse.
-for name in pairs(package.loaded) do
-	if name:match("^lib%.act") or name:match("^keymaps") then
-		package.loaded[name] = nil
-	end
-end
-package.preload["lib.actions.defs.style"] = function()
-	error("style broke")
-end
+-- One broken definition file costs only its own actions, across the whole keymaps load: keyless.lua and tools.lua
+-- load each file on its own and warn naming the broken one, and the submaps that require it again (Leader for pickers,
+-- System for power) must neither raise nor run it twice. pickers.lua defines its actions and then raises, power.lua
+-- does not parse.
+local pickers_path = here .. "/../.config/hypr/lib/actions/defs/pickers.lua"
 package.preload["lib.actions.defs.pickers"] = function()
-	return assert(load("local = 1", "=lib/actions/defs/pickers.lua"))()
+	assert(loadfile(pickers_path))()
+	error("pickers broke after defining")
 end
-ok, err = xpcall(require, debug.traceback, "keymaps.global")
-check("keymaps.global loads around broken definition files: " .. tostring(err), ok)
+package.preload["lib.actions.defs.power"] = function()
+	return assert(load("local = 1", "=lib/actions/defs/power.lua"))()
+end
+-- The real Config, not the cut-down one above: the submaps read more of it.
+package.loaded["config"] = nil
+ok, err = xpcall(Stubs.load, debug.traceback, Stubs.VARIANTS[1], { "keymaps.global", "keymaps.submaps" })
+check("keymaps.global and keymaps.submaps load around broken definition files: " .. tostring(err), ok)
 local act_after = require("lib.act")
 local still_loaded = {}
 for _, handle in ipairs(act_after.list()) do
 	still_loaded[handle.id] = true
 end
 for id in pairs(covered) do
-	if not id:match("^style%.") then
-		check("a broken style.lua leaves " .. id, still_loaded[id])
+	if not id:match("^power%.") then
+		check("a broken power.lua leaves " .. id, still_loaded[id])
 	end
 end
 check("a broken pickers.lua leaves zoom.toggle from tools.lua", still_loaded["zoom.toggle"])
-check("nothing from the broken style.lua", not still_loaded["style.cycle"] and not still_loaded["style.set"])
+check("nothing from the broken power.lua", not still_loaded["power.confirm"])
+local submaps_bound = {}
+for _, bind in ipairs(Stubs.binds) do
+	submaps_bound[bind.submap] = true
+end
+for _, submap in ipairs({ "Leader", "System", "Delete", "Windows" }) do
+	check("the " .. submap .. " submap still binds keys", submaps_bound[submap])
+end
+local function count_warnings(text)
+	local count = 0
+	for _, warning in ipairs(act_after.warnings) do
+		if warning:find(text, 1, true) then
+			count = count + 1
+		end
+	end
+	return count
+end
 local warned = table.concat(act_after.warnings, "\n")
-check("warns naming style.lua: " .. warned, warned:find("lib/actions/defs/style.lua failed to load", 1, true) ~= nil)
-check(
-	"warns naming pickers.lua: " .. warned,
-	warned:find("lib/actions/defs/pickers.lua failed to load", 1, true) ~= nil
-)
-package.preload["lib.actions.defs.style"] = nil
+check("warns once naming pickers.lua: " .. warned, count_warnings("lib/actions/defs/pickers.lua failed to load") == 1)
+check("warns once naming power.lua: " .. warned, count_warnings("lib/actions/defs/power.lua failed to load") == 1)
+check("no file runs twice: " .. warned, count_warnings("already defined") == 0)
 package.preload["lib.actions.defs.pickers"] = nil
+package.preload["lib.actions.defs.power"] = nil
 
 if failures > 0 then
 	print(failures .. " failed")
