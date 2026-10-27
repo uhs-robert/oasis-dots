@@ -83,6 +83,11 @@ Singleton {
         }).map(m => m.name);
     }
 
+    // The tracked rules of the monitors showing the shared layout, whose own compact applies when the shared one is cleared.
+    function sharing_rules() {
+        return root.sharing_screens().map(name => root.tracked_of(root.screens.find(s => s.name === name)));
+    }
+
     function open(screen_name) {
         // A popup (Settings included) holds the keyboard; the editor takes it, so the popup goes.
         if (Popups.open_name !== "") Popups.close();
@@ -346,7 +351,7 @@ Singleton {
         } else if (spec === "H" || spec === "L" || (root.vertical && (spec === "J" || spec === "K"))) {
             root.move_selected(spec === "H" || spec === "K" ? -1 : 1);
         } else if (spec === "c") {
-            root.commit(BarLayout.toggle_compact(root.tracked, BarSettings.state, root.screen_key));
+            root.commit(BarLayout.toggle_compact(root.tracked, BarSettings.state, root.screen_key, root.sharing_rules()));
         } else if (spec === "o") {
             root.commit(BarLayout.toggle_own(root.tracked, BarSettings.state, root.screen_key));
         } else if (spec === "a") {
