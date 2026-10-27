@@ -30,7 +30,7 @@ The owner drives the desktop from the keyboard. This spec says what pressing a k
 - **KEYS-08** The media keys, the screenshot key and the keybind search key are marked to work in submaps.
 - **KEYS-09** A bind of your own can be marked to work in submaps.
 - **KEYS-10** The media keys also work on the lock screen, and the volume keys repeat while held.
-- **KEYS-11** Every shortcut that moves or resizes in a direction works with both the letter key (H J K L) and the arrow key. The vim-mode setting only chooses which of the two which-key labels.
+- **KEYS-11** The global focus and move-window shortcuts work with both the letter key (H J K L) and the arrow key.
 - **KEYS-12** Moving and resizing offer four step sizes on the same direction keys: the bare key, SHIFT for larger steps, CTRL for the finest, and CTRL + SHIFT for the largest. Held keys repeat.
 - **KEYS-13** ESCAPE leaves a submap the way that submap is set up: out of every submap (the default), back one level, or into a named submap. A submap may have no ESCAPE.
 - **KEYS-14** BACKSPACE returns to the submap you came from, or leaves every submap when there is none.
@@ -42,7 +42,7 @@ The owner drives the desktop from the keyboard. This spec says what pressing a k
 - **KEYS-20** [gap: untested] The keybind search lists every bind of the mode you are in, submaps first and marked with `+`, and running a choice does what the key would.
 - **KEYS-21** [gap: untested] The leader modifier plus SHIFT plus `/` opens which-key from anywhere, listing the global binds or, inside a submap, that submap's.
 - **KEYS-22** [gap: untested] Entering a submap shows its binds in which-key.
-- **KEYS-23** SHIFT plus `/` in a submap hides or shows which-key without leaving it. The toggle is not itself a listed row. A submap that gives that key its own row keeps its row.
+- **KEYS-23** SHIFT plus `/` in a submap hides or shows which-key without leaving it.
 - **KEYS-24** The search and which-key show each bind's description. A bind with no description, such as the second spelling of a directional key, is not listed.
 - **KEYS-25** [gap: untested] `custom/init.lua` runs after every shipped key is registered, so it can remove or replace any of them.
 - **KEYS-26** [gap: untested] Binding a key that already has a bind keeps both; both run when it is pressed.

@@ -391,15 +391,15 @@ for _, name in ipairs({ "Move", "Resize" }) do
 		check(name .. ": " .. key .. " repeats", entry.opts.repeating == true)
 		sizes[#sizes + 1] = text_of(press(name, key))
 	end
-	local distinct = {}
-	for _, text in ipairs(sizes) do
-		distinct[text] = true
+	local steps = {}
+	for index, text in ipairs(sizes) do
+		steps[index] = math.abs(tonumber(text:match("x=(-?%d+)")) or 0)
 	end
-	local count = 0
-	for _ in pairs(distinct) do
-		count = count + 1
-	end
-	check(name .. ": four different step sizes: " .. table.concat(sizes, " | "), count == 4)
+	local bare, shift, ctrl, ctrl_shift = steps[1], steps[2], steps[3], steps[4]
+	check(
+		name .. ": CTRL finest < bare < SHIFT < CTRL + SHIFT: " .. table.concat(steps, ","),
+		ctrl > 0 and ctrl < bare and bare < shift and shift < ctrl_shift
+	)
 end
 
 if failures > 0 then
