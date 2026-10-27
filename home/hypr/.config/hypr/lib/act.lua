@@ -530,8 +530,15 @@ end
 --- @param names string[]
 function Act.load_defs(names)
   for _, name in ipairs(names) do
-    local ok, err = pcall(require, "lib.actions.defs." .. name)
-    if not ok then warn("lib/actions/defs/" .. name .. ".lua failed to load: " .. tostring(err)) end
+    local module = "lib.actions.defs." .. name
+    local ok, err = pcall(require, module)
+    if not ok then
+      warn("lib/actions/defs/" .. name .. ".lua failed to load: " .. tostring(err))
+      -- `true` is what require stores for a defs file (none returns a value), so a submap's later bare require of
+      -- the same file returns quietly instead of raising again and re-defining what ran before the error; its rows
+      -- for the missing actions then drop with "unknown action id" warnings.
+      package.loaded[module] = true
+    end
   end
 end
 
