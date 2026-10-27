@@ -129,6 +129,7 @@ RowsSection {
     // The Login rows show the login screen, the others the lock screen. Kept to its old size, so the rows below stay in view.
     SkinThumb {
         Layout.fillWidth: false
+        Layout.alignment: Qt.AlignHCenter
         Layout.preferredWidth: Math.min(root.width, Style.px(640))
         popup: root.popup
         skin: root.on_login ? LoginSettings.resolved_screen : root.lock_skin
