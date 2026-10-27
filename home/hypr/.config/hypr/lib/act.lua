@@ -525,22 +525,31 @@ function Act.define(id, spec)
   return handle
 end
 
---- Require lib/actions/defs/<name>.lua for each name. A file that raises warns, naming the file, and the rest still load:
---- for a keymap file that only loads independent definitions, one broken file must not take the others' keys with it.
---- @param names string[]
-function Act.load_defs(names)
+--- Require `<prefix>.<name>` for each name, in order. A module that raises warns, naming its file, and the rest still
+--- load: one broken file among independent ones must not take the others' keys or actions with it. Only for modules
+--- nothing needs a value from; a library whose failure should stop the config stays a bare require.
+--- @param prefix string  Module prefix, e.g. "keymaps.global"
+--- @param names  string[]
+function Act.load_each(prefix, names)
   for _, name in ipairs(names) do
-    local module = "lib.actions.defs." .. name
+    local module = prefix .. "." .. name
     local ok, err = pcall(require, module)
     if not ok then
-      warn("lib/actions/defs/" .. name .. ".lua failed to load: " .. tostring(err))
-      -- `true` is what require stores for a defs file (none returns a value), so a submap's later bare require of
-      -- the same file returns quietly instead of raising again and re-defining what ran before the error; its rows
-      -- for the missing actions then drop with "unknown action id" warnings.
+      local file = module:gsub("%.", "/")
+      local found = package.searchpath(module, package.path)
+      file = file .. ((found and found:sub(-#"/init.lua") == "/init.lua") and "/init.lua" or ".lua")
+      warn(file .. " failed to load: " .. tostring(err))
+      -- `true` is what require stores for these modules (none returns a value), so a later bare require of the same
+      -- file returns quietly instead of raising again and re-running what ran before the error. Submaps re-require
+      -- defs files for their rows, whose missing actions then drop with "unknown action id" warnings.
       package.loaded[module] = true
     end
   end
 end
+
+--- Require lib/actions/defs/<name>.lua for each name, as Act.load_each does.
+--- @param names string[]
+function Act.load_defs(names) Act.load_each("lib.actions.defs", names) end
 
 ---------------------------------------------------------------------------------------------------
 -- run
