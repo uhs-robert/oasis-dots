@@ -11,6 +11,7 @@ PickerProvider {
     id: root
 
     name: "agents"
+    start_group: "browse"
     title: "Agent sessions"
     placeholder: "Search agent sessions"
     verb: "jump"

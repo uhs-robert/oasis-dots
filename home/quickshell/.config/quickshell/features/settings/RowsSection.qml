@@ -5,6 +5,7 @@ import qs.theme
 
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
 // Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops H/L from stepping it, and `activate: () => void` replaces Enter or a click.
+// `indent: n` nests a row under the one above it.
 // A row's `desc` (text), optional `help` (a longer explanation shown under it) and optional `keys` (hint) fill the pane's description block for the selected or hovered row; `section_keys` follow every row's keys.
 // The block shows once any row has a `desc`, so give every row one.
 SettingsPane {
@@ -162,6 +163,7 @@ SettingsPane {
                 visible: !root.picking
                 selected: root.live && row.index === root.cursor
                 label: row.modelData.label
+                indent: row.modelData.indent || 0
                 value_text: row.modelData.text(row.modelData.value())
                 onHoveredChanged: {
                     if (row.hovered) root.hovered_row = row.index;
