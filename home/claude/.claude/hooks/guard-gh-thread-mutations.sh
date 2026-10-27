@@ -4,11 +4,11 @@
 #
 # Inverted on purpose: wrappers (`timeout 5 gh`, `bash -c`, `\gh`, `$GH`, ...) cannot be enumerated, so any command that
 # names a thread mutation together with `graphql` is denied. The one exception is trivially safe prose: a segment
-# (split on ; & | newline) led by git commit/tag/notes or gh pr|issue comment|edit|create (gh pr review too), after any
-# VAR=val assignments, that names the mutation only inside a quoted argument, in a command with no heredoc, no pipe, no
-# `<` input redirect, no `>(`, and no `$(` or backtick anywhere. echo and printf are not prose commands: their text can
-# be piped into a shell. Long messages go in by file (-F file, --body-file). Fail-closed, so a mention in grep or echo
-# is denied too.
+# (split on ; & | newline) that starts with git commit/tag/notes or gh pr|issue comment|edit|create (gh pr review too)
+# and names the mutation only inside a quoted argument, in a command with no heredoc, no pipe, no `<` input redirect,
+# no `>(`, and no `$(` or backtick anywhere. No VAR=val prefix is allowed: GIT_EDITOR=... would run the mutation.
+# echo and printf are not prose commands: their text can be piped into a shell. Long messages go in by file
+# (-F file, --body-file). Fail-closed, so a mention in grep or echo is denied too.
 # Known limits: a mutation name built at run time (`m=resolve; ...${m}ReviewThread`) or split by quotes or ANSI-C
 # (`resolve''ReviewThread`, `$'\x72esolve...'`); case variants (GraphQL names are case-sensitive, so likely harmless);
 # a query fed from outside the command text (`-f query="$(cat f)"`, `cat q | gh api graphql --input -`); a file written
@@ -18,8 +18,7 @@ cmd=$(jq -r '.tool_input.command // empty')
 [[ $cmd == *graphql* ]] || exit 0
 
 mutations='addPullRequestReviewThreadReply|resolveReviewThread|unresolveReviewThread'
-assignments='([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'
-prose_lead="^[[:space:]]*${assignments}(git[[:space:]]+(commit|tag|notes)|gh[[:space:]]+pr[[:space:]]+(comment|edit|create|review)|gh[[:space:]]+issue[[:space:]]+(comment|edit|create))([[:space:]]|\$)"
+prose_lead="^[[:space:]]*(git[[:space:]]+(commit|tag|notes)|gh[[:space:]]+pr[[:space:]]+(comment|edit|create|review)|gh[[:space:]]+issue[[:space:]]+(comment|edit|create))([[:space:]]|\$)"
 
 # shellcheck disable=SC2020 # three separators, each to a newline
 segments=$(tr ';&|' '\n\n\n' <<<"$cmd")
