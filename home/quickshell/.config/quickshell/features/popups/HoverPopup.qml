@@ -63,7 +63,7 @@ Item {
         if (r.action === "open" && root.module) {
             // Before the open, so a same-name sibling never sees the new popup without an owner and takes it for a pin.
             if (r.mode === "hover_open") Popups.hover_owner = root;
-            Popups.open(root.popup_name, root.module.island, root.module.island_color, root.module.screen_name);
+            Popups.open(root.popup_name, root.module.island, root.module.island_color, root.module.screen_name, "", false, false, true);
             if (r.mode !== "hover_open") Popups.hover_owner = null;
             // Taking the keyboard makes Hyprland move pointer focus to the popup, so the bar would see the pointer leave
             // the module it is still on and close the popup. A pin (click) hands the keyboard back.
@@ -73,7 +73,7 @@ Item {
             // its own, and must not close() or clear the owner, or a same-name sibling reads the instant as a pin.
             Popups.hover_owner = root;
             // From a same-name sibling the popup is already this one: only the owner moves.
-            if (Popups.open_name !== root.popup_name) Popups.open(root.popup_name, root.module.island, root.module.island_color, root.module.screen_name, "", false, true);
+            if (Popups.open_name !== root.popup_name) Popups.open(root.popup_name, root.module.island, root.module.island_color, root.module.screen_name, "", false, true, true);
             Popups.keyboard_off = true;
         } else if (r.action === "close" && root.open_here) Popups.close();
     }

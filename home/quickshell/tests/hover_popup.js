@@ -877,7 +877,7 @@ t("a swap that cleared the owner before moving it would show the popup ownerless
 t("HoverPopup's swap sets the owner before Popups.open(..., swap) and never closes or clears the owner", () => {
   const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
   const branch = src.slice(src.indexOf('r.action === "swap"'), src.indexOf('r.action === "close"'));
-  assert.match(branch, /Popups\.hover_owner = root;[\s\S]*Popups\.open\([^\n]*, "", false, true\);/);
+  assert.match(branch, /Popups\.hover_owner = root;[\s\S]*Popups\.open\([^\n]*, "", false, true, true\);/);
   assert.ok(branch.indexOf("Popups.hover_owner = root;") < branch.indexOf("Popups.open("), branch);
   assert.doesNotMatch(branch, /Popups\.close\(|hover_owner = null/);
   assert.match(src, /root\.hover_owner !== root && root\.hover_owner\.mode === "hover_open" && root\.hover_owner\.open_here\n\s+&& !!root\.module && Popups\.open_screen_name === root\.module\.screen_name\n\s+&& \(Popups\.open_name !== root\.popup_name \|\| Popups\.open_anchor === root\.module\.island\)/);
@@ -954,6 +954,19 @@ t("pinning a hover-opened popup asks for the keyboard, so Escape closes it befor
   for (const from of ["idle", "pending", "pinned", "swapping"]) assert.strictEqual(P.pin_grabs_keyboard(from, "pinned", true), false, from);
   const hover = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
   assert.match(hover, /if \(Policy\.pin_grabs_keyboard\(from_mode, r\.mode, root\.open_here\)\) Popups\.grab_keyboard = true;/);
+});
+
+t("only a HoverPopup's own open keeps hover_owner; key, IPC, walk and back opens clear it", () => {
+  const dir = path.join(__dirname, "../.config/quickshell/features/popups/");
+  const popups = fs.readFileSync(dir + "Popups.qml", "utf8");
+  const hover = fs.readFileSync(dir + "HoverPopup.qml", "utf8");
+  assert.match(popups, /function open\(name, anchor_item, color, screen_name, back_to, hands_off, swap, keep_owner\)/);
+  assert.match(popups, /open_name = name;\n\s+if \(!keep_owner\) root\.hover_owner = null;/);
+  const open_on = popups.slice(popups.indexOf("function open_on("), popups.indexOf("function focus_open("));
+  assert.match(open_on, /open_name = name;\n\s+root\.hover_owner = null;/);
+  const calls = hover.match(/Popups\.open\([^\n]*\);/g);
+  assert.strictEqual(calls.length, 2);
+  for (const c of calls) assert.match(c, /, true\);$/, c);
 });
 
 let failed = 0;
