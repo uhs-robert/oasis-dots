@@ -28,7 +28,7 @@ SettingsPane {
     function describe(r) {
         if (!r) return "No reviewers are listed. Add them in ~/.config/code-reviewers/reviewers.json.";
         const where = root.column === 0 ? "Local review: which repos the pre-PR review of " + r.label + " covers. Off skips it, Public runs it on public repos only, All on every repo (the diff goes to the provider)." : "Merge gate: whether merge waits for " + r.label + " on the PR. Auto waits when it is connected to the repo, Always always waits, Never does not wait.";
-        const missing = r.installed ? "" : "\n\n" + r.binary + " is not installed, so its local review stays off. The merge gate is GitHub-side and still applies.";
+        const missing = r.installed || r.probing ? "" : "\n\n" + r.binary + " is not installed, so its local review stays off. The merge gate is GitHub-side and still applies.";
         return where + missing;
     }
 
@@ -36,7 +36,7 @@ SettingsPane {
         const r = root.current;
         if (!r) return;
         const key = root.column_keys[root.column];
-        if (key === "local" && !r.installed) return;
+        if (key === "local" && !r.installed) return; // missing or not yet probed
         DeveloperSettings.set(r.name, key, DeveloperSettings.step(key, r[key], delta));
         ThemeAudio.play("confirm");
     }
@@ -91,7 +91,7 @@ SettingsPane {
                 selected: root.live && row.index === root.cursor
                 column: root.column
                 label: row.modelData.label
-                installed_text: row.modelData.installed ? "yes" : "no"
+                installed_text: row.modelData.probing ? "..." : row.modelData.installed ? "yes" : "no"
                 local_text: row.modelData.local
                 gate_text: row.modelData.gate
                 local_editable: row.modelData.installed
@@ -100,6 +100,10 @@ SettingsPane {
                     root.cursor = row.index;
                     root.column = column;
                     root.change(delta);
+                }
+                onPicked: {
+                    root.focus_pane();
+                    root.cursor = row.index;
                 }
             }
         }

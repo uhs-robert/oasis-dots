@@ -16,7 +16,8 @@ Singleton {
 
     readonly property var choices: Logic.choices
     readonly property var saved: store.values
-    property var installed: []
+    // Null until the first probe has answered.
+    property var installed: null
     readonly property var entries: Logic.merged_entries(builtin_layer.values.reviewers, user_layer.values.reviewers)
     readonly property var reviewers: Logic.rows(root.entries, root.saved, root.installed)
     readonly property var binaries: root.entries.map(e => e.local && typeof e.local.binary === "string" ? e.local.binary : "").filter(b => b !== "")
@@ -29,6 +30,10 @@ Singleton {
         return Logic.step(key, current, delta);
     }
 
+    function cell_click(x, local_left, gate_left, cell_width) {
+        return Logic.cell_click(x, local_left, gate_left, cell_width);
+    }
+
     function set(name, key, value) {
         if (!root.valid(key, value)) return;
         store.set_key("reviewers", Logic.with_choice(root.saved, name, key, value).reviewers);
@@ -36,10 +41,17 @@ Singleton {
 
     // Looks for each binary on PATH; called when the section opens, since an install can happen while the bar runs.
     function probe() {
-        if (probe_proc.running || root.binaries.length === 0) return;
+        if (root.binaries.length === 0) return;
+        if (probe_proc.running) {
+            probe_rerun = true;
+            return;
+        }
         probe_proc.command = ["sh", "-c", 'for b; do command -v "$b" >/dev/null 2>&1 && echo "$b"; done', "sh"].concat(root.binaries);
         probe_proc.running = true;
     }
+
+    // A request that arrived while a probe ran; its binaries may not have been in that probe.
+    property bool probe_rerun: false
 
     onBinariesChanged: Qt.callLater(root.probe)
 
@@ -71,6 +83,11 @@ Singleton {
         id: probe_proc
         stdout: StdioCollector {
             onStreamFinished: root.installed = text.split("\n").filter(l => l !== "")
+        }
+        onExited: {
+            if (!root.probe_rerun) return;
+            root.probe_rerun = false;
+            root.probe();
         }
     }
 }

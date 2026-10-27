@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.ui.menu
 import qs.theme
 import "SettingsScale.js" as SScale
+import qs.features.developer
 
 // A table row: a name and three columns (Installed, Local review, Merge gate). The two editable columns are
 // 0 (local) and 1 (gate); `column` marks the one the cursor is on. With `header` it draws the column titles instead.
@@ -27,6 +28,8 @@ MenuRow {
 
     // The column clicked (0 local, 1 gate) and the direction, by the click's half of that cell.
     signal stepped(int column, int delta)
+    // A click outside both editable cells: select the row, change nothing.
+    signal picked
 
     Layout.fillWidth: true
     Layout.preferredHeight: Style.px(28) + SScale.pitch_extra(root.bump)
@@ -92,9 +95,9 @@ MenuRow {
         onClicked: mouse => {
             const gate_left = row_layout.x + row_layout.width - root.value_width;
             const local_left = gate_left - row_layout.spacing - root.value_width;
-            const column = mouse.x >= gate_left ? 1 : mouse.x >= local_left ? 0 : root.column;
-            const left = column === 1 ? gate_left : local_left;
-            root.stepped(column, mouse.x < left + root.value_width / 2 ? -1 : 1);
+            const hit = DeveloperSettings.cell_click(mouse.x, local_left, gate_left, root.value_width);
+            if (hit) root.stepped(hit.column, hit.delta);
+            else root.picked();
         }
     }
 }
