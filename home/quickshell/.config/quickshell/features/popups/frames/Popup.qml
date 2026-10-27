@@ -582,12 +582,12 @@ PanelWindow {
 
     function swap_in(from_extent) {
         // A window still drawn (line_progress above 0), such as one the pointer came back to mid fade-out, carries on from
-        // its own opacity and extent; only a hidden window starts from the outgoing popup's.
+        // its own opacity, extent and accent line; only a hidden window starts from the outgoing popup's, with no line to draw.
         if (root.line_progress === 0) {
+            line_progress = 1;
             drop_progress = root.full_extent > 0 ? Math.max(0, Math.min(1, from_extent / root.full_extent)) : 0;
             root.swap_fade = 0;
         }
-        line_progress = 1;
         swap_in_anim.restart();
     }
 
@@ -601,6 +601,8 @@ PanelWindow {
 
     ParallelAnimation {
         id: swap_in_anim
+        // Already 1 unless the window came back while its opening line was still drawing.
+        NumberAnimation { target: root; property: "line_progress"; to: 1; duration: root.swap_in_ms; easing.type: Easing.OutCubic }
         NumberAnimation { target: root; property: "drop_progress"; to: 1; duration: root.swap_in_ms; easing.type: Easing.OutCubic }
         NumberAnimation { target: root; property: "swap_fade"; to: 1; duration: root.swap_in_ms; easing.type: Easing.OutCubic }
     }
