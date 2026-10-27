@@ -129,9 +129,9 @@ PanelWindow {
         y: root.bar_rect.y
         width: root.bar_rect.width
         height: root.bar_rect.height
-        color: Qt.alpha(Theme.theme_secondary, 0.08)
+        color: Qt.alpha(Theme.theme_primary, 0.08)
         border.width: 1
-        border.color: Theme.theme_secondary
+        border.color: Theme.theme_primary
     }
 
     // The selected module: a line along the bar's inner edge and a caret pointing at it. A screen sharing the layout shows it fainter.
@@ -154,16 +154,24 @@ PanelWindow {
             x: root.vertical ? (flipped ? root.bar_rect.x - width - 2 : root.bar_rect.x + root.bar_rect.width + 2) : root.sel.x + root.sel.width / 2 - width / 2
             y: root.vertical ? root.sel.y + root.sel.height / 2 - height / 2 : (flipped ? root.bar_rect.y - height - 1 : root.bar_rect.y + root.bar_rect.height + 1)
         }
-        // The module's name past the caret, away from the bar.
-        Text {
-            text: BarEditor.selected
-            color: Theme.theme_secondary
-            font.family: Style.font_family
-            font.pixelSize: Style.fs(-2)
-            style: Text.Raised
-            styleColor: Style.text_shadow
+        // The module's name past the caret, away from the bar, on a plate so it reads over any wallpaper.
+        Rectangle {
+            width: name_text.implicitWidth + 12
+            height: name_text.implicitHeight + 4
+            radius: Math.min(Style.frame_radius, 4)
+            color: Style.frame_color
+            border.width: 1
+            border.color: Theme.theme_secondary
             x: root.vertical ? (caret.flipped ? caret.x - width - 4 : caret.x + caret.width + 4) : Math.max(4, Math.min(root.width - width - 4, caret.x + caret.width / 2 - width / 2))
-            y: root.vertical ? caret.y + caret.height / 2 - height / 2 : (caret.flipped ? caret.y - height : caret.y + caret.height)
+            y: root.vertical ? caret.y + caret.height / 2 - height / 2 : (caret.flipped ? caret.y - height - 2 : caret.y + caret.height + 2)
+            Text {
+                id: name_text
+                anchors.centerIn: parent
+                text: BarEditor.selected
+                color: Theme.theme_secondary
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-2)
+            }
         }
     }
 
