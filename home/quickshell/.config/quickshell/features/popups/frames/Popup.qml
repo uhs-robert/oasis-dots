@@ -452,9 +452,17 @@ PanelWindow {
         height: root.drawer ? root.drawer_body.height : root.panel_height - root.shadow_room
 
         HoverHandler {
+            id: panel_hover
             enabled: !root.passive
-            onHoveredChanged: Popups.set_popup_hover(root.popup_name, hovered)
+            onHoveredChanged: root.report_hover()
         }
+    }
+
+    // Hover delivery stops at the first item that accepts it (the seek bar, a RoundButton). The content stacks above
+    // panel_area, so panel_hover reads false over those controls; content_hover sits on their common ancestor, reveal.
+    // panel_hover stays for the reserve and line areas reveal does not cover.
+    function report_hover() {
+        Popups.set_popup_hover(root.popup_name, panel_hover.hovered || content_hover.hovered);
     }
 
     readonly property int line_height: root.drawer ? 0 : root.st.accent_height
@@ -640,6 +648,12 @@ PanelWindow {
         width: root.drawer ? root.drawer_body.width : root.beside ? root.frame_width * root.drop_progress : root.width
         height: root.beside ? root.panel_height : (root.panel_height - root.line_height) * root.drop_progress
         clip: true
+
+        HoverHandler {
+            id: content_hover
+            enabled: !root.passive
+            onHoveredChanged: root.report_hover()
+        }
 
         Rectangle {
             visible: !root.dock_bottom && !root.drawer && root.st.frame_drop > 0 && root.st.frame_shadow.a === 0

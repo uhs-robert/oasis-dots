@@ -307,9 +307,21 @@ t("HoverPopup reacts to nothing_open", () => {
 t("same-name modules: only the hover-opening helper reads the popup as its own", () => {
   const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
   assert.match(src, /&& \(!Popups\.hover_owner \|\| Popups\.hover_owner === root\)/);
-  assert.match(src, /Popups\.hover_owner = r\.mode === "hover_open" \? root : null;\n\s+Popups\.open\(/);
-  assert.match(src, /if \(r\.mode === "pinned"\) Popups\.hover_owner = null;/);
-  assert.match(fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/Popups.qml"), "utf8"), /function close\(\) \{\n\s+hover_owner = null;/);
+  assert.match(src, /if \(r\.mode === "hover_open"\) Popups\.hover_owner = root;\n\s+Popups\.open\(/);
+  assert.match(src, /if \(r\.mode === "pinned" && r\.action !== "open"\) Popups\.hover_owner = null;/);
+});
+t("the open popup never shows without its owner: the owner clears after open_name moves", () => {
+  const hover_popup = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/HoverPopup.qml"), "utf8");
+  assert.match(hover_popup, /Popups\.open\([^\n]*\);\n\s+if \(r\.mode !== "hover_open"\) Popups\.hover_owner = null;/);
+  const close = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/Popups.qml"), "utf8").match(/function close\(\) \{[^}]*\}/)[0];
+  assert.ok(close.indexOf('open_name = "";') >= 0 && close.indexOf('open_name = "";') < close.indexOf("hover_owner = null;"), close);
+});
+t("hover over a popup's controls counts: a HoverHandler inside reveal also feeds set_popup_hover", () => {
+  const popup = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/frames/Popup.qml"), "utf8");
+  const reveal = popup.slice(popup.indexOf("id: reveal"));
+  assert.match(reveal.slice(0, reveal.indexOf("StyledFrame {")), /HoverHandler \{\n\s+id: content_hover\n\s+enabled: !root\.passive\n\s+onHoveredChanged: root\.report_hover\(\)/);
+  assert.match(popup, /Popups\.set_popup_hover\(root\.popup_name, panel_hover\.hovered \|\| content_hover\.hovered\)/);
+  assert.match(popup, /id: panel_hover\n\s+enabled: !root\.passive\n\s+onHoveredChanged: root\.report_hover\(\)/);
 });
 t("Media uses the base helper: no private HoverPopup, and a click goes through toggle_popup", () => {
   const media = module_source("Media");
@@ -467,13 +479,23 @@ t("the lualine cava slot hovers and pins the media popup, and only while shown",
   assert.match(strip, /onClicked: \{\n\s+slot_popup\.click\(\);/);
 });
 
-// Two helpers on one popup name (the lualine cava slot "s" and the Media module "m") around a Popups model that keeps
-// close()'s real order: hover_owner is cleared before open_name. `rule` is how a helper reacts to losing the owner:
-// "shared" is 755c90cbc's handler in every helper, immediate; "slot" is the slot's deferred look; "none" is neither.
-function twins(rule) {
-  const w = { open_name: "", owner: null, pointer: null, queued: false, h: { s: { mode: "idle", open_timer: false, close_timer: false }, m: { mode: "idle", open_timer: false, close_timer: false } } };
+// Two helpers on one popup name (the lualine cava slot "s" and the Media module "m") around a Popups model. Each helper
+// reacts when its own open_here or nothing_open flips, after every single assignment, as the QML bindings do. `rule` is
+// how a helper reacts to losing the owner: "shared" is 755c90cbc's handler in every helper, immediate; "slot" is the
+// slot's deferred look; "none" is neither. `order` is when hover_owner clears around open_name: "fixed" after it (close()
+// and a pinned open today), "old" before it, which showed the popup ownerless for one assignment.
+function twins(rule, order = "fixed") {
+  const fresh = () => ({ mode: "idle", open_timer: false, close_timer: false, saw_open: false, saw_nothing: true });
+  const w = { open_name: "", owner: null, pointer: null, queued: false, h: { s: fresh(), m: fresh() } };
   const open_here = n => w.open_name === "media" && (!w.owner || w.owner === n);
   const inside = n => w.pointer === n;
+  const notify = () => {
+    for (const n of ["s", "m"]) {
+      const x = w.h[n];
+      if (x.saw_open !== open_here(n)) { x.saw_open = open_here(n); apply(n, P.popup_changed(x.mode, x.saw_open, inside(n))); }
+      if (x.saw_nothing !== (w.open_name === "")) { x.saw_nothing = w.open_name === ""; if (x.saw_nothing) apply(n, P.nothing_open_now(x.mode, inside(n))); }
+    }
+  };
   const apply = (n, r) => {
     const x = w.h[n];
     x.mode = r.mode;
@@ -481,25 +503,32 @@ function twins(rule) {
     if (r.open_timer === "stop") x.open_timer = false;
     if (r.close_timer === "start") x.close_timer = true;
     if (r.close_timer === "stop") x.close_timer = false;
-    if (r.mode === "pinned") set_owner(null);
-    if (r.action === "open") { set_owner(r.mode === "hover_open" ? n : null); set_name("media"); }
+    if (r.mode === "pinned" && (order === "old" || r.action !== "open")) set_owner(null);
+    if (r.action === "open") {
+      if (order === "old") set_owner(r.mode === "hover_open" ? n : null);
+      else if (r.mode === "hover_open") set_owner(n);
+      set_name("media");
+      if (order !== "old" && r.mode !== "hover_open") set_owner(null);
+    }
     else if (r.action === "close" && open_here(n)) close();
   };
   const set_owner = o => {
+    if (w.owner === o) return;
     w.owner = o;
     if (rule === "shared") for (const n of ["s", "m"]) if (w.h[n].mode === "hover_open" && w.owner !== n && open_here(n)) apply(n, P.popup_pressed(w.h[n].mode));
     if (rule === "slot" && w.h.s.mode === "hover_open") w.queued = true;
+    notify();
   };
   const set_name = name => {
-    const was = w.open_name;
+    if (w.open_name === name) return;
     w.open_name = name;
-    for (const n of ["s", "m"]) {
-      const before = was === "media" && (!w.owner || w.owner === n);
-      if (before !== open_here(n)) apply(n, P.popup_changed(w.h[n].mode, open_here(n), inside(n)));
-      if (name === "" && was !== "") apply(n, P.nothing_open_now(w.h[n].mode, inside(n)));
-    }
+    notify();
   };
-  const close = () => { set_owner(null); set_name(""); };
+  const close = () => {
+    if (order === "old") set_owner(null);
+    set_name("");
+    set_owner(null);
+  };
   // Qt.callLater: runs once the call that changed the owner has finished.
   const settle = () => {
     if (!w.queued) return;
@@ -507,7 +536,7 @@ function twins(rule) {
     if (w.h.s.mode === "hover_open" && !w.owner && open_here("s")) apply("s", P.popup_pressed("hover_open"));
   };
   w.hover_open = n => { w.pointer = n; apply(n, P.inside_changed("idle", true, true)); w.fire_open(n); };
-  w.move = n => { const was = w.pointer; w.pointer = n; if (was) apply(was, P.inside_changed(w.h[was].mode, false, false)); if (n) apply(n, P.inside_changed(w.h[n].mode, true, false)); settle(); };
+  w.move = n => { const was = w.pointer; w.pointer = n; if (was) apply(was, P.inside_changed(w.h[was].mode, false, w.open_name === "")); if (n) apply(n, P.inside_changed(w.h[n].mode, true, w.open_name === "")); settle(); };
   w.click = n => {
     apply(n, P.clicked(w.h[n].mode, open_here(n)));
     // The slot's click handler tells every helper on its popup name, like a press inside the popup.
@@ -518,8 +547,13 @@ function twins(rule) {
   w.fire_close = n => { const x = w.h[n]; if (x.close_timer) { x.close_timer = false; apply(n, P.close_elapsed(x.mode, inside(n))); settle(); } };
   // Escape, an outside click and a toggle all end in Popups.close().
   w.close_from_outside = () => { close(); settle(); };
-  // A click-open of another popup: the opener pins, clearing the owner, then open_name moves.
-  w.open_other = () => { set_owner(null); set_name("other"); settle(); };
+  // A click-open of another popup by its own helper: a pinned open, so the owner clears around the open_name move.
+  w.open_other = () => {
+    if (order === "old") set_owner(null);
+    set_name("other");
+    set_owner(null);
+    settle();
+  };
   return w;
 }
 const media_open_and_pinned = w => [w.open_name, w.h.s.mode, w.h.m.mode];
@@ -569,12 +603,64 @@ t("a click-open of another popup does not pin the hover-opened one", () => {
   w.open_other();
   assert.strictEqual(w.h.s.mode, "idle");
 });
+// F (#1286): with the owner cleared before open_name, the instant between showed "media" open with no owner, and the
+// idle sibling took it for an outside open and pinned, then went suppressed or settling as the popup closed.
+const slot_after_media = order => {
+  const w = twins("slot", order);
+  w.hover_open("m");
+  w.move("s");
+  w.fire_close("m");
+  return w;
+};
+t("the cava slot hover-opens the popup Media's grace just closed with the pointer already on the slot", () => {
+  const w = slot_after_media("fixed");
+  assert.deepStrictEqual([w.open_name, w.h.s.mode], ["", "pending"]);
+  w.fire_open("s");
+  assert.deepStrictEqual([w.open_name, w.h.s.mode, w.h.m.mode], ["media", "hover_open", "idle"]);
+  assert.strictEqual(slot_after_media("old").h.s.mode, "suppressed");
+});
+const slot_after_gap = order => {
+  const w = twins("slot", order);
+  w.hover_open("m");
+  w.move(null);
+  w.fire_close("m");
+  const after_close = w.h.s.mode;
+  w.move("s");
+  return [w, after_close];
+};
+t("the cava slot hover-opens after Media's popup closed with the pointer between them", () => {
+  const [w, after_close] = slot_after_gap("fixed");
+  assert.deepStrictEqual([after_close, w.h.s.mode], ["idle", "pending"]);
+  w.fire_open("s");
+  assert.deepStrictEqual([w.open_name, w.h.s.mode], ["media", "hover_open"]);
+  const [bug, bug_after_close] = slot_after_gap("old");
+  assert.deepStrictEqual([bug_after_close, bug.h.s.mode], ["settling", "suppressed"]);
+});
+t("Media hover-opens after the slot's popup closed, the reverse way", () => {
+  const w = twins("slot");
+  w.hover_open("s");
+  w.move("m");
+  w.fire_close("s");
+  assert.strictEqual(w.h.m.mode, "pending");
+  w.fire_open("m");
+  assert.deepStrictEqual([w.open_name, w.h.m.mode], ["media", "hover_open"]);
+});
+t("an outside close of Media's hover-opened popup leaves the idle slot idle", () => {
+  const close_media = order => { const w = twins("slot", order); w.hover_open("m"); w.close_from_outside(); return w; };
+  assert.deepStrictEqual([close_media("fixed").h.s.mode, close_media("fixed").h.m.mode], ["idle", "pending"]);
+  assert.strictEqual(close_media("old").h.s.mode, "settling");
+});
+t("a click-open of another popup leaves the idle sibling idle", () => {
+  const open_other = order => { const w = twins("slot", order); w.hover_open("m"); w.open_other(); return w; };
+  assert.deepStrictEqual([open_other("fixed").h.s.mode, open_other("fixed").h.m.mode], ["idle", "idle"]);
+  assert.strictEqual(open_other("old").h.s.mode, "settling");
+});
 t("755c90cbc's shared handler pins on every close and on a click-open of another popup (why it was dropped)", () => {
-  const closed = twins("shared");
+  const closed = twins("shared", "old");
   closed.hover_open("s");
   closed.close_from_outside();
   assert.notStrictEqual(closed.h.s.mode, "pending");
-  const other = twins("shared");
+  const other = twins("shared", "old");
   other.hover_open("s");
   other.open_other();
   assert.notStrictEqual(other.h.s.mode, "idle");
