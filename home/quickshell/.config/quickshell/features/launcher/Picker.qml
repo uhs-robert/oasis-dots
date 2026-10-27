@@ -6,6 +6,8 @@ import qs.theme
 import qs.features.popups
 import qs.features.popups.frames
 import qs.features.audio
+import qs.ui.scroll
+import "../../ui/scroll/ScrollCue.js" as Cue
 import "../../core/Fuzzy.js" as Fuzzy
 import "BrowseLayout.js" as BrowseLayout
 
@@ -26,7 +28,7 @@ Popup {
     footer_hint: "Enter " + root.verb + root.nesting_hint + " · Esc normal · q close"
     // NORMAL mode spells out the provider's actions and the browse preview keys; with neither the frame shows its own "? help · q close".
     footer_override: root.insert ? "Enter " + root.verb + root.nesting_hint + " · Esc normal" : root.action_hint !== "" || root.browse ? "Enter " + root.verb + root.nesting_hint + (root.action_hint !== "" ? " · " + root.action_hint : "") + root.browse_hint + " · ? help · q close" : ""
-    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.browse ? ["=/+ bigger preview", "- smaller preview", "p preview on/off"] : []).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
+    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.browse ? ["=/+ bigger preview, past large to max", "- smaller preview", "p preview on/off", "v grid/list", "1-9 select the numbered item (Enter opens)"] : []).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
     cursor_state: root.selected
     tabs: root.provider ? root.provider.tabs : []
@@ -37,8 +39,8 @@ Popup {
     readonly property string action_hint: root.provider ? root.provider.actions.map(a => a.key + " " + a.desc).join(" · ") : ""
     readonly property bool is_open: Popups.open_name === "picker"
     readonly property bool browse: !!root.provider && root.provider.layout === "browse"
-    readonly property string browse_hint: root.browse ? " · =/- p preview" : ""
-    readonly property int columns: root.browse ? BrowseLayout.columns(list_area.width, root.card_width, root.card_gap) : root.dock_bottom && root.provider ? Math.max(1, root.provider.columns) : 1
+    readonly property string browse_hint: root.browse ? " · =/- p preview · v view · 1-9 pick" : ""
+    readonly property int columns: root.browse_list ? 1 : root.browse ? BrowseLayout.columns(list_area.width - 2 * root.cue_gutter, root.card_width, root.card_gap) : root.dock_bottom && root.provider ? Math.max(1, root.provider.columns) : 1
     readonly property real cell_height: Style.px(30)
     readonly property real card_gap: Style.px(8)
     readonly property real card_width: Style.px(root.provider ? root.provider.card_size.width : 280)
@@ -53,7 +55,18 @@ Popup {
     property string preview_size: "m"
     // What p brings the preview back to.
     property string last_preview_size: "m"
-    readonly property var browse_split: BrowseLayout.split(list_area.height, body.height, root.preview_size, root.card_height + root.card_gap, root.card_gap)
+    // "grid" of cards or one-line "list" rows; v flips it, and every open starts on the grid.
+    property string browse_view: "grid"
+    readonly property bool browse_list: root.browse && root.browse_view === "list"
+    // At the max preview size the cards or rows are hidden, so the scroll cue and the number hints go too.
+    readonly property bool items_hidden: root.browse && root.preview_size === "max"
+    readonly property real list_row_height: Style.px(34)
+    readonly property real browse_gap: root.browse_list ? Style.px(4) : root.card_gap
+    readonly property real browse_cell_height: root.browse_list ? root.list_row_height + root.browse_gap : root.card_height + root.card_gap
+    // The scroll cue's fade, and the room right of the cards for its caret.
+    readonly property real cue_fade: Style.px(20)
+    readonly property real cue_gutter: Style.px(16)
+    readonly property var browse_split: BrowseLayout.fit(list_area.height, body.height, root.preview_size, root.browse_cell_height, root.card_gap, root.results.length, root.columns, root.cue_fade)
 
     property string query: ""
     property int selected: 0
@@ -81,7 +94,7 @@ Popup {
         const same = old ? root.results.findIndex(r => r.item.id === old.item.id) : -1;
         root.selected = same >= 0 ? same : Math.max(0, Math.min(root.selected, root.results.length - 1));
     }
-    onSelectedChanged: grid.positionViewAtIndex(root.selected, GridView.Contain)
+    onSelectedChanged: root.reveal_selected()
     onJump_first: root.selected = 0
     onJump_last: root.selected = Math.max(0, root.results.length - 1)
 
@@ -93,6 +106,7 @@ Popup {
         const preview_size = BrowseLayout.size_of(root.provider ? root.provider.default_preview_size : "");
         root.preview_size = preview_size;
         root.last_preview_size = preview_size;
+        root.browse_view = "grid";
         root.reset();
         query_input.text = recalled;
         // Reads Popups.open_anchor, not dock_bottom: held_anchor may still be stale when this handler runs first.
@@ -256,7 +270,25 @@ Popup {
         if (size !== "off") root.last_preview_size = size;
         root.preview_size = size;
         ThemeAudio.play("cursor");
-        Qt.callLater(() => grid.positionViewAtIndex(root.selected, GridView.Contain));
+        Qt.callLater(root.reveal_selected);
+    }
+
+    function set_browse_view(view) {
+        root.browse_view = view;
+        ThemeAudio.play("cursor");
+        Qt.callLater(root.reveal_selected);
+    }
+
+    // A browse view keeps the selected card clear of the scroll cue's fades, which Contain alone would leave it under.
+    function reveal_selected() {
+        if (!root.browse) {
+            grid.positionViewAtIndex(root.selected, GridView.Contain);
+            return;
+        }
+        if (root.items_hidden || root.results.length === 0) return;
+        const row_top = Math.floor(root.selected / root.columns) * grid.cellHeight;
+        const fade = root.browse_split.overflows ? root.cue_fade : 0;
+        grid.contentY = Cue.reveal_target(row_top, grid.cellHeight - root.browse_gap, grid.contentY, grid.height, grid.contentHeight, 0, fade);
     }
 
     function step(delta) {
@@ -323,6 +355,13 @@ Popup {
             root.set_preview_size(BrowseLayout.shrunk(root.preview_size));
         } else if (root.browse && event.text === "p") {
             root.set_preview_size(BrowseLayout.toggled(root.preview_size, root.last_preview_size));
+        } else if (root.browse && event.text === "v") {
+            root.set_browse_view(BrowseLayout.toggled_view(root.browse_view));
+        } else if (root.browse && BrowseLayout.digit_index(event.text, root.results.length) >= 0) {
+            // Selects only: Enter opens, so a mistyped digit costs nothing.
+            const before = root.selected;
+            root.selected = BrowseLayout.digit_index(event.text, root.results.length);
+            if (root.selected !== before) ThemeAudio.play("cursor");
         } else {
             return;
         }
@@ -376,7 +415,7 @@ Popup {
                 id: query_input
                 anchors.left: search_glyph.right
                 anchors.leftMargin: 10
-                anchors.right: mode_text.left
+                anchors.right: status_label.left
                 anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 focus: true
@@ -429,6 +468,16 @@ Popup {
             }
 
             Text {
+                id: status_label
+                anchors.right: mode_text.left
+                anchors.rightMargin: text !== "" ? 10 : 0
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.provider ? root.provider.status_text : ""
+                color: root.provider && root.provider.status_active ? root.st.text_accent : root.st.text_muted
+                font: mode_text.font
+            }
+
+            Text {
                 id: mode_text
                 anchors.right: parent.right
                 anchors.rightMargin: 10
@@ -452,20 +501,34 @@ Popup {
             width: parent.width
             height: parent.height - y - (detail.visible ? detail.height + 6 : 0)
 
-            // Browse: the cards sit under the preview, centered, in whole rows.
+            // Browse: the cards sit under the preview, centered, in whole rows; the list's rows span the width, short
+            // of the scroll cue's caret.
             GridView {
                 id: grid
-                x: root.browse ? Math.round((parent.width - root.columns * (root.card_width + root.card_gap) + root.card_gap) / 2) : 0
+                x: root.browse && !root.browse_list ? Math.round((parent.width - root.columns * (root.card_width + root.card_gap) + root.card_gap) / 2) : 0
                 y: root.browse && root.browse_split.preview_height > 0 ? root.browse_split.preview_height + root.card_gap : 0
-                height: root.browse ? root.browse_split.rows * (root.card_height + root.card_gap) : parent.height
-                width: root.browse ? root.columns * (root.card_width + root.card_gap) : preview_loader.active ? parent.width * 0.62 : parent.width
+                height: root.browse ? root.browse_split.view_height : parent.height
+                width: root.browse_list ? parent.width - root.cue_gutter : root.browse ? root.columns * (root.card_width + root.card_gap) : preview_loader.active ? parent.width * 0.62 : parent.width
+                visible: !root.items_hidden
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                cellWidth: root.browse ? root.card_width + root.card_gap : Math.floor(width / root.columns)
-                cellHeight: root.browse ? root.card_height + root.card_gap : root.cell_height
+                cellWidth: root.browse_list ? width : root.browse ? root.card_width + root.card_gap : Math.floor(width / root.columns)
+                cellHeight: root.browse ? root.browse_cell_height : root.cell_height
                 model: slots
                 reuseItems: true
-                delegate: root.browse ? card_delegate : row_delegate
+                delegate: root.browse_list ? list_delegate : root.browse ? card_delegate : row_delegate
+            }
+
+            // Only a browse view: the docked and island lists keep their plain look.
+            Loader {
+                active: root.browse && !root.items_hidden
+                sourceComponent: Component {
+                    ScrollCue {
+                        target: grid
+                        fade_height: root.cue_fade
+                        gutter: root.cue_gutter
+                    }
+                }
             }
 
             // Framed like the workspace overview's tiles; the provider's card, or generic_card, draws inside.
@@ -489,32 +552,19 @@ Popup {
                         border.color: card.is_selected ? root.st.caret_color : Theme.ui_border
                     }
 
-                    Loader {
-                        id: card_body
+                    EntryBody {
                         anchors.fill: parent
                         anchors.margins: Style.px(8)
                         sourceComponent: root.provider && root.provider.card ? root.provider.card : generic_card
+                        result: card.result
+                        is_selected: card.is_selected
                     }
 
-                    Binding {
-                        target: card_body.item
-                        property: "entry"
-                        value: card.result.item
-                        when: card_body.status === Loader.Ready
-                    }
-
-                    Binding {
-                        target: card_body.item
-                        property: "positions"
-                        value: card.result.positions
-                        when: card_body.status === Loader.Ready
-                    }
-
-                    Binding {
-                        target: card_body.item
-                        property: "selected"
-                        value: card.is_selected
-                        when: card_body.status === Loader.Ready
+                    QuickHint {
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.margins: Style.px(3)
+                        index: card.index
                     }
 
                     MouseArea {
@@ -523,6 +573,115 @@ Popup {
                             root.selected = card.index;
                             root.activate();
                         }
+                    }
+                }
+            }
+
+            // One line per item in the browse list view; the provider's row, or generic_row, draws inside.
+            Component {
+                id: list_delegate
+
+                Item {
+                    id: line
+                    required property int index
+                    readonly property var result: root.results[line.index] || ({ item: {}, positions: [] })
+                    readonly property bool is_selected: line.index === root.selected
+
+                    width: grid.cellWidth
+                    height: root.list_row_height
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Style.radius(4)
+                        color: line.is_selected ? Qt.tint(Theme.bg_crust, Qt.alpha(root.st.caret_color, 0.08)) : Theme.bg_crust
+                        border.width: line.is_selected ? 2 : 1
+                        border.color: line.is_selected ? root.st.caret_color : Qt.alpha(Theme.ui_border, 0.5)
+                    }
+
+                    EntryBody {
+                        anchors.fill: parent
+                        anchors.leftMargin: Style.px(8)
+                        anchors.rightMargin: Style.px(14) + line_hint.width
+                        anchors.topMargin: Style.px(3)
+                        anchors.bottomMargin: Style.px(3)
+                        sourceComponent: root.provider && root.provider.row ? root.provider.row : generic_row
+                        result: line.result
+                        is_selected: line.is_selected
+                    }
+
+                    QuickHint {
+                        id: line_hint
+                        anchors.right: parent.right
+                        anchors.rightMargin: Style.px(8)
+                        anchors.verticalCenter: parent.verticalCenter
+                        index: line.index
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            root.selected = line.index;
+                            root.activate();
+                        }
+                    }
+                }
+            }
+
+            Component {
+                id: generic_row
+
+                Item {
+                    id: generic_line
+                    property var entry: ({})
+                    property var positions: []
+                    property bool selected: false
+
+                    IconImage {
+                        id: generic_line_icon
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !generic_line.entry.glyph
+                        implicitSize: Style.px(20)
+                        asynchronous: true
+                        source: generic_line.entry.glyph ? "" : root.icon_source(generic_line.entry)
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !!generic_line.entry.glyph
+                        width: Style.px(20)
+                        horizontalAlignment: Text.AlignHCenter
+                        text: generic_line.entry.glyph || ""
+                        textFormat: Text.PlainText
+                        color: root.st.text_fg
+                        font.family: generic_line.entry.glyph_font || (root.provider && root.provider.glyph_font !== "" ? root.provider.glyph_font : root.st.font_family)
+                        font.pixelSize: root.st.fs(1)
+                    }
+
+                    Text {
+                        id: generic_line_label
+                        anchors.left: generic_line_icon.right
+                        anchors.leftMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.min(implicitWidth, parent.width * 0.6)
+                        elide: Text.ElideRight
+                        textFormat: Text.StyledText
+                        text: Fuzzy.highlight(generic_line.entry.label || "", generic_line.positions, String(root.st.text_accent))
+                        color: generic_line.entry.accent ? root.st.text_accent : root.st.text_fg
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-1)
+                    }
+
+                    Text {
+                        anchors.left: generic_line_label.right
+                        anchors.leftMargin: 12
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight
+                        text: generic_line.entry.description || ""
+                        textFormat: Text.PlainText
+                        color: root.st.text_muted
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-3)
                     }
                 }
             }
@@ -665,7 +824,7 @@ Popup {
             }
 
             Text {
-                visible: root.results.length === 0
+                visible: root.results.length === 0 && !root.items_hidden
                 anchors.centerIn: grid
                 text: root.provider && root.provider.items.length > 0 ? "No matches" : root.provider ? root.provider.empty_text : "Nothing to pick"
                 color: root.st.text_muted
@@ -703,6 +862,57 @@ Popup {
             color: root.st.text_muted
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-3)
+        }
+    }
+
+    // A card's or list row's body: the provider's component given the item, its query match and whether it is selected.
+    component EntryBody: Loader {
+        id: entry_body
+        property var result: ({ item: {}, positions: [] })
+        property bool is_selected: false
+
+        Binding {
+            target: entry_body.item
+            property: "entry"
+            value: entry_body.result.item
+            when: entry_body.status === Loader.Ready
+        }
+
+        Binding {
+            target: entry_body.item
+            property: "positions"
+            value: entry_body.result.positions
+            when: entry_body.status === Loader.Ready
+        }
+
+        Binding {
+            target: entry_body.item
+            property: "selected"
+            value: entry_body.is_selected
+            when: entry_body.status === Loader.Ready
+        }
+    }
+
+    // The digit that selects the item in NORMAL mode, on the first nine; shown in INSERT too, so it can be read ahead.
+    component QuickHint: Rectangle {
+        id: hint
+        property int index: -1
+        readonly property string digit: BrowseLayout.hint_of(hint.index)
+
+        visible: hint.digit !== ""
+        width: Math.max(height, hint_text.implicitWidth + 6)
+        height: hint_text.implicitHeight + 2
+        radius: Style.radius(3)
+        color: Qt.alpha(Theme.bg_surface, 0.9)
+
+        Text {
+            id: hint_text
+            anchors.centerIn: parent
+            text: hint.digit
+            color: Style.text_muted
+            font.family: Style.font_family
+            font.pixelSize: Style.fs(-5)
+            font.bold: true
         }
     }
 }

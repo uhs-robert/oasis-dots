@@ -3,8 +3,10 @@ import Quickshell
 import Quickshell.Io
 import qs.features.popups
 import qs.theme
+import "BrowseLayout.js" as BrowseLayout
 
-// cliphist history, newest first: Enter copies an entry back, `d` deletes it in place, `C` clears the lot after a yes/no.
+// cliphist history, newest first: Enter copies an entry back, `d` deletes it in place, `C` clears the lot after a yes/no,
+// `f` narrows it to text or images.
 PickerProvider {
     id: root
 
@@ -17,7 +19,14 @@ PickerProvider {
     verb: "copy"
     rank_by_usage: false
     keep_order: true
-    actions: [{ key: "d", desc: "delete" }, { key: "C", desc: "clear all", needs_item: false }]
+    actions: [{ key: "d", desc: "delete" }, { key: "C", desc: "clear all", needs_item: false }, { key: "f", desc: "filter", needs_item: false }]
+    // Every listed entry; `items` is the ones the type filter keeps.
+    property var entries: []
+    // "all", "text" or "image" (BrowseLayout.filters); every open starts at "all".
+    property string filter: "all"
+    items: root.entries.filter(e => BrowseLayout.kept_by_filter(e.kind, root.filter))
+    status_text: BrowseLayout.filter_labels[root.filter]
+    status_active: root.filter !== "all"
 
     readonly property string cache_dir: (Quickshell.env("XDG_RUNTIME_DIR") || Quickshell.cacheDir) + "/quickshell-cliphist"
     readonly property string text_icon: Quickshell.iconPath("text-x-generic", "edit-paste")
@@ -82,7 +91,7 @@ PickerProvider {
         root.texts = root.keep_only(root.texts, ids);
         root.images = root.keep_only(root.images, ids);
         root.items_seq = seq;
-        root.items = next;
+        root.entries = next;
         const keep = next.filter(e => e.kind === "image").map(e => e.id);
         Quickshell.execDetached(["sh", "-c", "cd \"$1\" 2>/dev/null || exit 0; shift; keep=\" $* \"; for f in *; do [ -f \"$f\" ] || continue; case \"$keep\" in *\" ${f%%.*} \"*) ;; *) rm -f -- \"$f\" ;; esac; done", "sh", root.cache_dir].concat(keep));
     }
@@ -101,6 +110,7 @@ PickerProvider {
     // Mode "delete" opens in NORMAL, ready for `d`.
     function refresh(arg) {
         root.starts_insert = arg !== "delete";
+        root.filter = "all";
         root.ready_seq = root.list_seq + 1;
         root.start_list();
     }
@@ -154,6 +164,10 @@ PickerProvider {
 
     // The row goes at once; the history is re-read after the last queued delete lands.
     function run_action(key, item) {
+        if (key === "f") {
+            root.filter = BrowseLayout.cycled_filter(root.filter);
+            return;
+        }
         if (key === "C") {
             if (root.ready) Confirm.ask("Clear all clipboard history?", "", root.clear_answered);
             return;
@@ -162,7 +176,7 @@ PickerProvider {
         const d = Object.assign({}, root.deleting);
         d[item.id] = -1;
         root.deleting = d;
-        root.items = root.items.filter(e => e.id !== item.id);
+        root.entries = root.entries.filter(e => e.id !== item.id);
         root.delete_queue = root.delete_queue.concat([item]);
         root.flush_deletes();
     }
@@ -317,6 +331,73 @@ PickerProvider {
                 color: card.decoded ? Style.text_fg : Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-3)
+            }
+        }
+    }
+
+    // One line: a small thumbnail for an image, else the kind's icon, then the entry's first line and its details.
+    row: Component {
+        Item {
+            id: line
+            property var entry: ({})
+            property var positions: []
+            property bool selected: false
+            readonly property bool is_image: line.entry.kind === "image"
+            readonly property string image_source: line.is_image ? root.images[line.entry.id] || "" : ""
+            readonly property string first_line: line.entry.kind === "text" && root.texts[line.entry.id] !== undefined ? root.texts[line.entry.id].replace(/^\s+/, "").split("\n")[0] : line.entry.label || ""
+
+            onEntryChanged: root.request(line.entry, false)
+
+            Item {
+                id: thumb
+                width: line.is_image ? Math.round(line.height * 1.6) : Style.px(20)
+                height: line.height
+
+                Image {
+                    anchors.fill: parent
+                    visible: line.is_image
+                    source: line.image_source
+                    sourceSize: Qt.size(width, height)
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                }
+
+                // A font glyph, not the icon theme's, so the row looks the same without one installed.
+                Text {
+                    anchors.centerIn: parent
+                    visible: !line.is_image || line.image_source === ""
+                    text: line.is_image ? "\u{f03e}" : line.entry.kind === "binary" ? "\u{f471}" : "\u{f0f6}"
+                    color: Style.text_muted
+                    font.family: "JetBrainsMono Nerd Font"
+                    font.pixelSize: Style.fs(0)
+                }
+            }
+
+            Text {
+                id: line_label
+                anchors.left: thumb.right
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, parent.width - x - (line.entry.description ? Style.px(160) : 0))
+                elide: Text.ElideRight
+                text: line.first_line
+                textFormat: Text.PlainText
+                color: line.entry.kind === "text" ? Style.text_fg : Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-2)
+            }
+
+            Text {
+                anchors.left: line_label.right
+                anchors.leftMargin: 12
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                elide: Text.ElideRight
+                text: line.entry.description || ""
+                textFormat: Text.PlainText
+                color: Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-4)
             }
         }
     }

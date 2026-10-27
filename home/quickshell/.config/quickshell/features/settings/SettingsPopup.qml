@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.ui.menu
+import qs.ui.scroll
 import qs.theme
 import qs.features.popups
 import qs.features.popups.frames
@@ -8,7 +9,7 @@ import qs.features.audio
 import qs.features.bar
 import "Sections.js" as Sections
 import "SettingsScale.js" as SScale
-import "ScrollCue.js" as Cue
+import "../../ui/scroll/ScrollCue.js" as Cue
 
 Popup {
     id: root

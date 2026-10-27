@@ -1,5 +1,6 @@
 import QtQuick
 import qs.theme
+import qs.ui.scroll
 
 // The docked panel beside (or, when `stacked`, under) a settings pane. The pane's help card goes into `help_host`
 // and a section's preview into `preview_host`; a pane with no preview gives the help card the whole panel.

@@ -5,7 +5,7 @@ const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 
-const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/settings/ScrollCue.js"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/ui/scroll/ScrollCue.js"), "utf8");
 const T = vm.createContext({});
 vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { hidden_edges, reveal_target };", T);
 const S = T.api;

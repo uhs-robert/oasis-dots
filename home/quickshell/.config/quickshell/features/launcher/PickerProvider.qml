@@ -39,6 +39,12 @@ Scope {
     property Component card: null
     // Card size in unscaled pixels; the picker fits as many columns as the width allows.
     property size card_size: Qt.size(280, 112)
+    // One line of the browse list view (`v`), given what `card` gets; null draws the generic row.
+    property Component row: null
+    // Shown in the search bar's corner beside the mode, e.g. the clipboard's type filter; "" shows nothing.
+    property string status_text: ""
+    // Draws status_text in the accent colour, for a state that narrows what the list shows.
+    property bool status_active: false
     // Font for item glyphs; empty uses the style font.
     property string glyph_font: ""
     // Tab labels drawn above the query; the picker calls select_tab(i) on a switch, which must set `tab`.
