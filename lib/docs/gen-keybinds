@@ -23,7 +23,7 @@ class GenError(Exception):
 
 
 def run_dump():
-    done = subprocess.run(["lua", DUMP_SCRIPT, "--labels", "--default-config"], capture_output=True, text=True, cwd=ROOT)
+    done = subprocess.run(["lua", DUMP_SCRIPT, "--labels", "--default-config"], capture_output=True, text=True, encoding="utf-8", cwd=ROOT)
     if done.returncode != 0:
         raise GenError(f"{DUMP_SCRIPT} failed: {(done.stderr or done.stdout).strip()}")
     return done.stdout
