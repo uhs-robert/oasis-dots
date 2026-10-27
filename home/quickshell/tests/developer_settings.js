@@ -15,6 +15,7 @@ const rabbit = { name: "coderabbit", label: "CodeRabbit", local: { binary: "code
 const none = { reviewers: {} };
 
 const cases = [
+  ["a reviewer named like an Object property is kept", () => D.merged_entries([{ name: "toString", gate: "never" }, { name: "constructor" }], [{ name: "toString", label: "T" }]), [{ name: "toString", gate: "never", label: "T" }, { name: "constructor" }]],
   ["a string local in a later layer keeps the built-in binary", () => D.rows(D.merged_entries(D.clean_layer({ reviewers: [codex] }).reviewers, D.clean_layer({ reviewers: [{ name: "codex", local: "public" }] }).reviewers), none, [])[0], { name: "codex", label: "Codex", binary: "codex", installed: false, probing: false, local: "off", gate: "auto" }],
   ["a null local in a later layer is ignored", () => D.merged_entries(D.clean_layer({ reviewers: [codex] }).reviewers, D.clean_layer({ reviewers: [{ name: "codex", local: null }] }).reviewers)[0].local, codex.local],
   ["an invalid gate in a later layer keeps the earlier one", () => D.merged_entries(D.clean_layer({ reviewers: [{ name: "x", gate: "never" }] }).reviewers, D.clean_layer({ reviewers: [{ name: "x", gate: "bogus" }] }).reviewers)[0].gate, "never"],
