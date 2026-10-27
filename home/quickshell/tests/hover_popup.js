@@ -897,8 +897,8 @@ t("Popups records swap_from before open_name moves; the popup window fades out o
   assert.match(popup, /\} else if \(visible && Popups\.swap_from && Popups\.swap_from\.name === root\.popup_name\) \{[^}]*swap_out_anim\.restart\(\);/);
   assert.match(popup, /Popups\.swap_done\(root\.popup_name\);/);
 });
-// Review of D: the styled swap path in Popup.qml. These are window animations, which node cannot run; the shadow covers
-// how they look, these pin the guards.
+// The swap animations in Popup.qml are window animations, which node cannot run; the shadow covers how they look. These
+// pin the source guards: settling, the fades, and that nothing of the old per-style swap is left.
 const popup_source = () => fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/frames/Popup.qml"), "utf8");
 t("a popup swapped away hides without clearing swap_from, which the incoming popup may not have read yet", () => {
   assert.doesNotMatch(popup_source().match(/function finish_swap_out\(\) \{[^}]*\}/)[0], /swap_done/);
