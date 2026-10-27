@@ -213,7 +213,11 @@ PanelWindow {
         clip: true
         Row {
             id: tray_row
-            anchors.centerIn: parent
+            // Centered when it fits; wider than the tray it slides so the selected chip stays in view.
+            readonly property real room: parent.width - 24
+            property real selected_center: 0
+            x: tray_row.implicitWidth <= tray_row.room ? 12 + (tray_row.room - tray_row.implicitWidth) / 2 : 12 - Math.max(0, Math.min(tray_row.implicitWidth - tray_row.room, tray_row.selected_center - tray_row.room / 2))
+            anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             Text {
                 visible: BarEditor.hidden_list.length === 0
@@ -234,6 +238,12 @@ PanelWindow {
                     color: chip.current ? Qt.alpha(Style.accent_color, 0.3) : "transparent"
                     border.width: chip.current ? 2 : 1
                     border.color: chip.current ? Style.accent_color : Style.frame_border_color
+                    Binding {
+                        target: tray_row
+                        property: "selected_center"
+                        value: chip.x + chip.width / 2
+                        when: chip.current
+                    }
                     Text {
                         id: chip_text
                         anchors.centerIn: parent

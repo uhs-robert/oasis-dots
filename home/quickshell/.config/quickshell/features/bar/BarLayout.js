@@ -489,22 +489,31 @@ function nav_step(order, entry, delta) {
     return order[Math.max(0, Math.min(order.length - 1, at + delta))];
 }
 
+// The modules a sectioned (lualine) bar shows from center and right, in the order it draws them: one list sorted by section.
+function lualine_shown(layout) {
+    return section_sorted(layout.center.concat(layout.right)).filter(e => !lualine_draws_itself(e) && is_known_entry(e));
+}
+
 // Moves `entry` one place along the bar: swaps with the neighbor on its side, or crosses to the next side at the end of
-// it (left to center to right). A sectioned (lualine) bar never swaps a module out of its section; the left side is not sectioned.
+// it (left to center to right). A sectioned (lualine) bar draws center and right as one sorted list, so there the neighbor
+// is the next module shown, even on the other side, and it never swaps a module out of its section; the left side is not sectioned.
 function move_step(rule, state, key, entry, delta, sectioned) {
     const next = normalize(state);
     const view = layout_of(effective(rule, next, key));
     const side = side_of(view, entry);
     if (side === "") return next;
     const is_sectioned = sectioned && side !== "left";
-    const shown = is_sectioned ? section_sorted(view[side]) : view[side];
+    const shown = is_sectioned ? lualine_shown(view) : view[side];
     const at = shown.indexOf(entry);
     const neighbor = shown[at + delta];
     if (neighbor !== undefined) {
         if (is_sectioned && lualine_section(neighbor) !== lualine_section(entry)) return next;
-        return edit(rule, next, key, { type: "move", entry: entry, with: neighbor });
+        const neighbor_side = side_of(view, neighbor);
+        if (neighbor_side === side) return edit(rule, next, key, { type: "move", entry: entry, with: neighbor });
+        // Onto the other side of the neighbor, so the two trade places in the drawn order.
+        return edit(rule, next, key, { type: "side", entry: entry, side: neighbor_side, index: view[neighbor_side].indexOf(neighbor) + (delta > 0 ? 1 : 0) });
     }
-    const to = sides[sides.indexOf(side) + delta];
+    const to = is_sectioned ? (delta < 0 ? "left" : undefined) : sides[sides.indexOf(side) + delta];
     if (to === undefined) return next;
     return edit(rule, next, key, { type: "side", entry: entry, side: to, index: delta > 0 ? 0 : -1 });
 }
@@ -554,12 +563,14 @@ function toggle_own(rule, state, key) {
 }
 
 // `c`: flips the compact the edited layout shows: every sharing monitor on a shared layout, one monitor on its own. On a
-// shared layout the flipped value is written, or the setting removed when it equals what the rule gives, so the rule applies again.
-function toggle_compact(rule, state, key) {
+// shared layout the flipped value is written, or the setting removed when every sharing monitor's rule (`sharing_rules`, the
+// edited one by default) already gives it, so the rules apply again without changing any monitor's look.
+function toggle_compact(rule, state, key, sharing_rules) {
     const next = normalize(state);
     const flipped = !(effective(rule, next, key) || {}).compact;
     if (!is_sharing(next, key)) return set_compact(next, key, flipped);
-    if (flipped === !!(rule && rule.compact)) delete next.shared.compact;
+    const rules = sharing_rules && sharing_rules.length > 0 ? sharing_rules : [rule];
+    if (rules.every(r => flipped === !!(r && r.compact))) delete next.shared.compact;
     else next.shared.compact = flipped;
     return next;
 }
