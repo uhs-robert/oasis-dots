@@ -17,7 +17,6 @@ Singleton {
     property var warned_modules: ({})
     property var warned_positions: ({})
     property var state: BarLayout.normalize(null)
-    property bool warned_state: false
 
     FileView {
         id: config_file
@@ -39,28 +38,30 @@ Singleton {
         onLoadFailed: error => root.rules_failed("unreadable (" + error + ")")
     }
 
-    FileView {
-        id: state_file
+    // The layout state (bars.json under the state dir). The store owns writing and reloading: a set in memory beats an
+    // echo of an older write, and a burst of edits (the bar editor moving a bar edge per key) lands as one write.
+    JsonStore {
+        id: store
         path: Paths.state_dir + "/bars.json"
-        printErrors: false
-        blockLoading: true
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try {
-                const loaded = BarLayout.normalize(text().trim() === "" ? null : JSON.parse(text()));
-                root.state = loaded;
-                let next = loaded;
-                if (!loaded.cava_migrated && text().trim() !== "") next = BarLayout.migrate_cava(next);
-                next = BarLayout.migrate_cava_to_media(next);
-                if (next !== loaded) root.set_state(next);
-            } catch (e) {
-                if (!root.warned_state) console.warn("BarSettings: invalid state bars.json, ignoring it (" + e + ")");
-                root.warned_state = true;
-                root.state = BarLayout.normalize(null);
-            }
-        }
-        onLoadFailed: error => root.state = BarLayout.normalize(null)
+        defaults: BarLayout.normalize(null)
+        known_keys: ["shared", "monitors", "positions", "directory", "cava_migrated"]
+        debounce_ms: 100
+        validate: raw => BarLayout.normalize(raw)
+        onLoaded: root.adopt_loaded()
+    }
+
+    // The store may have finished loading before its change handler was connected.
+    Component.onCompleted: if (store.loaded_once) root.adopt_loaded()
+
+    // A load is the first read or an edit from outside; our own writes never come back as one.
+    function adopt_loaded() {
+        const loaded = store.values;
+        root.state = loaded;
+        let next = loaded;
+        // A missing file has nothing to migrate.
+        if (!loaded.cava_migrated && Object.keys(store.raw).length > 0) next = BarLayout.migrate_cava(next);
+        next = BarLayout.migrate_cava_to_media(next);
+        if (next !== loaded) root.set_state(next);
     }
 
     function rules_failed(reason) {
@@ -78,7 +79,7 @@ Singleton {
     function set_state(next) {
         // Anything this build writes is past the one-time cava migration.
         root.state = Object.assign(BarLayout.normalize(next), { cava_migrated: true });
-        state_file.setText(JSON.stringify(root.state));
+        store.replace(root.state);
     }
 
     readonly property var directory_switches: BarLayout.directory_switches(root.state)

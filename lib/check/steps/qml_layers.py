@@ -49,6 +49,7 @@ UNRANKED = {"scripts", "assets", "sounds", "custom"}
 # (importer, target) pairs, both tree paths: a settings section reads the layout rules of the thing it configures
 # from that feature's own JS. Both are permanent.
 SIBLING_ALLOW = {
+    ("features/bar_editor/BarEditor.qml", "features/bar/BarLayout.js"),
     ("features/settings/sections/BarModulesSection.qml", "features/bar/BarLayout.js"),
     ("features/settings/sections/DisplaysSection.qml", "features/display/DisplayLayout.js"),
 }

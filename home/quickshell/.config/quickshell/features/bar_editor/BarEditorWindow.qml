@@ -1,0 +1,459 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import Quickshell
+import Quickshell.Wayland
+import qs.theme
+import qs.features.bar
+import qs.ui.menu
+import qs.features.popups.frames
+
+// One per screen while the editor is open: draws the selection over that screen's live bar and swallows the pointer. Only
+// the screen BarEditor.focus_screen names takes the keyboard and draws the mode, hints and boxes.
+PanelWindow {
+    id: root
+
+    required property var modelData
+    readonly property string screen_name: root.modelData.name
+    readonly property bool keyboard_owner: BarEditor.keyboard_owner(root.screen_name)
+    readonly property bool skinned_cursor: cursor_loader.status === Loader.Ready
+    readonly property bool has_bar: BarEditor.monitors.some(m => m.name === root.screen_name)
+    // A screen showing the layout being edited, which follows every change.
+    readonly property bool peer: !root.keyboard_owner && BarEditor.sharing && BarEditor.sharing_screens().indexOf(root.screen_name) >= 0
+    readonly property bool carrying: BarEditor.mode === "hidden" && BarEditor.picked !== ""
+    readonly property bool shows_selection: BarEditor.mode === "normal" || root.carrying
+    readonly property var bar_item: BarItems.item_of(root.screen_name, "bar")
+
+    // The bar re-lays out a frame after an edit, so geometry is read again on a short tick.
+    property int tick: 0
+    // Where a module sits on this screen. The bar window is anchored to an edge, so its origin is not always the screen's; the Bar fills it.
+    function rect_of(item) {
+        const _ = root.tick;
+        if (!item || !root.bar_item) return Qt.rect(0, 0, 0, 0);
+        const p = item.mapToItem(root.bar_item, 0, 0);
+        const ox = root.bar_item.position === "right" ? root.width - root.bar_item.width : 0;
+        const oy = root.bar_item.position === "bottom" ? root.height - root.bar_item.height : 0;
+        return Qt.rect(p.x + ox, p.y + oy, item.width, item.height);
+    }
+    // Where `entry` sits, or where it would: a module the bar hides while it has nothing to show is zero wide and has no
+    // position of its own, so it takes the edge of the nearest shown module before it (else after it).
+    function placed_rect(entry) {
+        const own = root.rect_of(BarItems.item_of(root.screen_name, entry));
+        if (own.width >= 1 && own.height >= 1) return { rect: own, found: true };
+        const order = BarEditor.order;
+        const at = order.indexOf(entry);
+        for (let j = at - 1; j >= 0; j--) {
+            const r = root.rect_of(BarItems.item_of(root.screen_name, order[j]));
+            if (r.width >= 1 && r.height >= 1) return { rect: root.vertical ? Qt.rect(r.x, r.y + r.height, r.width, 0) : Qt.rect(r.x + r.width, r.y, 0, r.height), found: true };
+        }
+        for (let j = at + 1; at >= 0 && j < order.length; j++) {
+            const r = root.rect_of(BarItems.item_of(root.screen_name, order[j]));
+            if (r.width >= 1 && r.height >= 1) return { rect: root.vertical ? Qt.rect(r.x, r.y, r.width, 0) : Qt.rect(r.x, r.y, 0, r.height), found: true };
+        }
+        return { rect: own, found: false };
+    }
+    readonly property var placed: root.placed_rect(BarEditor.selected)
+    readonly property rect sel: root.placed.rect
+    readonly property bool vertical: root.bar_item !== null && root.bar_item.vertical
+    readonly property rect bar_rect: root.rect_of(root.bar_item)
+    // Hints go to the screen edge the bar is not on.
+    readonly property bool hints_on_top: root.bar_item !== null && root.bar_item.position === "bottom"
+    // A module the bar hides while it has nothing to show is zero wide; it still gets a mark.
+    readonly property real mark_width: Math.max(root.sel.width, 14)
+    readonly property real mark_x: root.sel.x - (root.mark_width - root.sel.width) / 2
+    readonly property real mark_height: Math.max(root.sel.height, 14)
+    readonly property real mark_y: root.sel.y - (root.mark_height - root.sel.height) / 2
+
+    function spec_of(event) {
+        const ctrl = (event.modifiers & Qt.ControlModifier) !== 0;
+        if (event.key === Qt.Key_Escape) return "Esc";
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) return "Enter";
+        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) return "Tab";
+        if (event.key === Qt.Key_Backspace) return "Backspace";
+        if (ctrl) return event.key === Qt.Key_R ? "Ctrl+r" : "";
+        return event.text.length === 1 && event.text >= " " ? event.text : "";
+    }
+
+    screen: root.modelData
+    visible: BarEditor.active
+    color: "transparent"
+    anchors {
+        top: true
+        bottom: true
+        left: true
+        right: true
+    }
+    exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.namespace: "quickshell-bareditor"
+    WlrLayershell.layer: WlrLayer.Overlay
+    // Exclusive on the owner only: with OnDemand the keyboard stays where it was when monitor select hands the editor to another
+    // screen, until the pointer enters that screen. Unlike RegionSelector this loses nothing, since every screen's pointer is swallowed anyway.
+    WlrLayershell.keyboardFocus: root.keyboard_owner ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+
+    // Hyprland skips every bind while the editor has the keyboard, so none can act on the bar being edited.
+    ShortcutInhibitor {
+        window: root
+        enabled: root.keyboard_owner
+    }
+
+    Timer {
+        interval: 80
+        repeat: true
+        running: root.visible
+        onTriggered: root.tick++
+    }
+
+    onKeyboard_ownerChanged: if (root.keyboard_owner) Qt.callLater(() => keys_item.forceActiveFocus())
+
+    // Nothing under the editor sees the pointer.
+    MouseArea {
+        id: pointer_area
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.AllButtons
+        cursorShape: root.skinned_cursor ? Qt.BlankCursor : Qt.ArrowCursor
+        onWheel: wheel => wheel.accepted = true
+    }
+
+    // The style's picker cursor, as RegionSelector draws it. The skins follow a point and a shown flag that the selector
+    // takes from Screenshot, so they are bound to this screen's own pointer.
+    Loader {
+        id: cursor_loader
+        readonly property string skin: Style.picker_skin
+        anchors.fill: parent
+        active: cursor_loader.skin !== ""
+        onSkinChanged: cursor_loader.load()
+        Component.onCompleted: cursor_loader.load()
+
+        function load() {
+            if (cursor_loader.skin === "") return;
+            const props = {
+                screen_name: Qt.binding(() => root.screen_name),
+                origin: Qt.binding(() => Qt.point(root.modelData.x, root.modelData.y)),
+                target_mode: false,
+                at: Qt.binding(() => Qt.point(pointer_area.mouseX, pointer_area.mouseY)),
+                shown: Qt.binding(() => pointer_area.containsMouse)
+            };
+            if (cursor_loader.skin === "scope") {
+                props.box_w = 58;
+                props.box_h = 38;
+            }
+            cursor_loader.setSource(Qt.resolvedUrl("../screen_select/cursors/" + cursor_loader.skin.charAt(0).toUpperCase() + cursor_loader.skin.slice(1) + ".qml"), props);
+        }
+    }
+
+    Item {
+        id: keys_item
+        focus: true
+        Keys.onPressed: event => {
+            const spec = root.spec_of(event);
+            event.accepted = true;
+            if (spec !== "") BarEditor.press(spec);
+        }
+        Component.onCompleted: if (root.keyboard_owner) keys_item.forceActiveFocus()
+    }
+
+    // The selected module: a line along the bar's inner edge and a caret pointing at it. A screen sharing the layout shows it fainter.
+    Item {
+        visible: root.shows_selection && root.placed.found && (root.keyboard_owner || root.peer)
+        opacity: root.keyboard_owner ? 1 : 0.45
+        Rectangle {
+            x: root.vertical ? root.bar_rect.x + (root.bar_item && root.bar_item.position === "right" ? 0 : root.bar_rect.width - 3) : root.mark_x
+            y: root.vertical ? root.mark_y : root.bar_rect.y + (root.bar_item && root.bar_item.position === "bottom" ? 0 : root.bar_rect.height - 3)
+            width: root.vertical ? 3 : root.mark_width
+            height: root.vertical ? root.mark_height : 3
+            color: Style.accent_color
+        }
+        Text {
+            readonly property bool flipped: root.bar_item !== null && (root.bar_item.position === "bottom" || root.bar_item.position === "right")
+            text: root.vertical ? (flipped ? "◀" : "▶") : (flipped ? "▼" : "▲")
+            color: Style.accent_color
+            font.pixelSize: Style.fs(-2)
+            x: root.vertical ? (flipped ? root.bar_rect.x - width - 2 : root.bar_rect.x + root.bar_rect.width + 2) : root.sel.x + root.sel.width / 2 - width / 2
+            y: root.vertical ? root.sel.y + root.sel.height / 2 - height / 2 : (flipped ? root.bar_rect.y - height - 1 : root.bar_rect.y + root.bar_rect.height + 1)
+        }
+    }
+
+    // VISUAL: the whole bar, framed; a screen sharing the edge shows it fainter.
+    Rectangle {
+        visible: BarEditor.mode === "visual" && root.bar_item !== null && (root.keyboard_owner || root.peer)
+        opacity: root.keyboard_owner ? 1 : 0.45
+        x: root.bar_rect.x
+        y: root.bar_rect.y
+        width: root.bar_rect.width
+        height: root.bar_rect.height
+        color: Qt.alpha(Style.accent_color, 0.12)
+        border.width: 2
+        border.color: Style.accent_color
+    }
+
+    // Monitor select: every screen with a bar gets an inset frame, the picked one in the accent.
+    Rectangle {
+        visible: BarEditor.mode === "monitor" && root.has_bar
+        anchors.fill: parent
+        anchors.margins: 4
+        color: "transparent"
+        border.width: root.keyboard_owner ? 3 : 1
+        border.color: root.keyboard_owner ? Style.accent_color : Style.frame_border_color
+    }
+
+    // HIDDEN: the hidden modules, above the hint bar.
+    Rectangle {
+        visible: root.keyboard_owner && BarEditor.mode === "hidden" && BarEditor.picked === ""
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: root.hints_on_top ? hint_box.bottom : undefined
+        anchors.bottom: root.hints_on_top ? undefined : hint_box.top
+        anchors.topMargin: 10
+        anchors.bottomMargin: 10
+        width: Math.min(parent.width - 64, tray_row.implicitWidth + 24)
+        height: tray_row.implicitHeight + 16
+        radius: Style.frame_radius
+        color: Style.frame_color
+        border.width: Style.frame_border_width
+        border.color: Style.frame_border_color
+        clip: true
+        Row {
+            id: tray_row
+            anchors.centerIn: parent
+            spacing: 8
+            Text {
+                visible: BarEditor.hidden_list.length === 0
+                text: "nothing hidden"
+                color: Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-1)
+            }
+            Repeater {
+                model: BarEditor.hidden_list
+                Rectangle {
+                    id: chip
+                    required property string modelData
+                    readonly property bool current: modelData === BarEditor.hidden_selected
+                    width: chip_text.implicitWidth + 16
+                    height: chip_text.implicitHeight + 8
+                    radius: Style.frame_radius
+                    color: chip.current ? Qt.alpha(Style.accent_color, 0.3) : "transparent"
+                    border.width: chip.current ? 2 : 1
+                    border.color: chip.current ? Style.accent_color : Style.frame_border_color
+                    Text {
+                        id: chip_text
+                        anchors.centerIn: parent
+                        text: chip.modelData
+                        color: Style.text_fg
+                        font.family: Style.font_family
+                        font.pixelSize: Style.fs(-1)
+                    }
+                }
+            }
+        }
+    }
+
+    // The add-argument prompt.
+    Rectangle {
+        visible: root.keyboard_owner && BarEditor.prompt_open
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: root.hints_on_top ? hint_box.bottom : undefined
+        anchors.bottom: root.hints_on_top ? undefined : hint_box.top
+        anchors.topMargin: 10
+        anchors.bottomMargin: 10
+        width: 360
+        height: prompt_text.implicitHeight + 16
+        radius: Style.frame_radius
+        color: Style.frame_color
+        border.width: Style.frame_border_width
+        border.color: Style.frame_border_color
+        Text {
+            id: prompt_text
+            anchors.verticalCenter: parent.verticalCenter
+            x: 12
+            text: "add: " + BarEditor.prompt_text + "█"
+            color: Style.text_fg
+            font.family: Style.font_family
+            font.pixelSize: Style.fs(-1)
+        }
+    }
+
+    // The mode and key hints, bottom-center like the region selector's hint bar.
+    Rectangle {
+        id: hint_box
+        visible: root.keyboard_owner && BarEditor.mode !== "monitor"
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: root.hints_on_top ? parent.top : undefined
+        anchors.bottom: root.hints_on_top ? undefined : parent.bottom
+        anchors.topMargin: 24
+        anchors.bottomMargin: 24
+        width: Math.min(parent.width - 32, hint_row.implicitWidth + 24)
+        height: hint_row.implicitHeight + 12
+        radius: Style.frame_radius
+        color: Style.frame_color
+        border.width: Style.frame_border_width
+        border.color: Style.frame_border_color
+        Row {
+            id: hint_row
+            anchors.centerIn: parent
+            spacing: 12
+            Rectangle {
+                width: mode_text.implicitWidth + 16
+                height: mode_text.implicitHeight + 6
+                anchors.verticalCenter: parent.verticalCenter
+                radius: Math.min(Style.frame_radius, 4)
+                color: Style.title_bg
+                Text {
+                    id: mode_text
+                    anchors.centerIn: parent
+                    text: "-- " + BarEditor.mode_label + " --"
+                    color: Style.title_fg
+                    font.family: Style.title_font_family
+                    font.pixelSize: Style.fs(-1)
+                    font.bold: true
+                }
+            }
+            Text {
+                visible: BarEditor.current_name !== ""
+                anchors.verticalCenter: parent.verticalCenter
+                text: BarEditor.current_name
+                color: Style.accent_color
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-1)
+                font.bold: true
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: BarEditor.sharing ? "shared by " + BarEditor.sharing_count + " monitor" + (BarEditor.sharing_count === 1 ? "" : "s") : "own layout"
+                color: Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-1)
+            }
+            MenuFooter {
+                anchors.verticalCenter: parent.verticalCenter
+                wrap: false
+                text: {
+                    if (BarEditor.mode === "visual") return "hjkl move bar · Enter/Esc done";
+                    if (BarEditor.mode === "hidden") return BarEditor.picked !== "" ? "h/l place · Enter drop · Esc cancel" : "h/l select · Enter pick up · Esc back";
+                    return "h/l select · H/L move · x hide · o own · c compact · ? help";
+                }
+            }
+        }
+    }
+
+    // Monitor select: the screens as they sit, the picked one lit.
+    Item {
+        id: monitor_box
+        visible: root.keyboard_owner && BarEditor.mode === "monitor"
+        anchors.centerIn: parent
+        width: 560
+        height: 260
+        readonly property var bounds: {
+            let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+            for (const m of BarEditor.monitors) {
+                x0 = Math.min(x0, m.x);
+                y0 = Math.min(y0, m.y);
+                x1 = Math.max(x1, m.x + m.w);
+                y1 = Math.max(y1, m.y + m.h);
+            }
+            return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+        }
+        readonly property real scale: Math.min(520 / bounds.w, 130 / bounds.h)
+        Rectangle {
+            anchors.fill: parent
+            radius: Style.frame_radius
+            color: Style.frame_color
+            border.width: Style.frame_border_width
+            border.color: Style.frame_border_color
+        }
+        Text {
+            x: 20
+            y: 12
+            text: "-- MONITOR --"
+            color: Style.text_primary
+            font.family: Style.title_font_family
+            font.pixelSize: Style.fs(-1)
+            font.bold: true
+        }
+        Item {
+            x: 20
+            y: 44
+            width: 520
+            height: 130
+            Repeater {
+                model: BarEditor.monitors
+                Rectangle {
+                    id: tile
+                    required property var modelData
+                    readonly property bool picked: modelData.name === BarEditor.focus_screen
+                    x: (modelData.x - monitor_box.bounds.x) * monitor_box.scale
+                    y: (modelData.y - monitor_box.bounds.y) * monitor_box.scale
+                    width: modelData.w * monitor_box.scale - 4
+                    height: modelData.h * monitor_box.scale - 4
+                    radius: Math.min(Style.frame_radius, 6)
+                    color: tile.picked ? Qt.alpha(Style.accent_color, 0.3) : "transparent"
+                    border.width: tile.picked ? 2 : 1
+                    border.color: tile.picked ? Style.accent_color : Style.frame_border_color
+                    Rectangle {
+                        width: parent.width
+                        height: 8
+                        color: tile.picked ? Style.accent_color : Style.frame_border_color
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        width: parent.width - 8
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        text: tile.modelData.name + "\n" + BarEditor.tag_of(tile.modelData.name)
+                        color: Style.text_fg
+                        font.family: Style.font_family
+                        font.pixelSize: Style.fs(-1)
+                    }
+                }
+            }
+        }
+        MenuFooter {
+            x: 20
+            y: 200
+            width: 520
+            wrap: false
+            text: "hjkl pick monitor · Enter edit its bar · q close · ? help"
+        }
+    }
+
+    // Help box.
+    Rectangle {
+        id: help_box
+        visible: root.keyboard_owner && BarEditor.help_open
+        anchors.centerIn: parent
+        width: Math.min(parent.width - 64, Style.px(520))
+        height: Math.min(parent.height - 160, Style.px(440))
+        radius: Style.frame_radius
+        color: Style.frame_color
+        border.width: Style.frame_border_width
+        border.color: Style.frame_border_color
+        Rectangle {
+            width: parent.width
+            height: Style.accent_height
+            color: Style.accent_color
+            topLeftRadius: help_box.radius
+            topRightRadius: help_box.radius
+        }
+        Rectangle {
+            y: Style.accent_height
+            width: parent.width
+            height: help_title.height + 20
+            color: Style.title_bg
+        }
+        Text {
+            id: help_title
+            x: 16
+            y: 10 + Style.accent_height
+            text: Style.title_text("Bar editor keys", Style)
+            color: Style.title_fg
+            font.family: Style.title_font_family
+            font.pixelSize: Style.fs(-2)
+        }
+        KeyHelp {
+            anchors.fill: parent
+            anchors.topMargin: help_title.y + help_title.height + 8
+            anchors.margins: 12
+            popup_keys: false
+            text: "h/l select module · H/L move module · c compact · o own layout · a add argument · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar · Esc monitor select · q close"
+        }
+    }
+}

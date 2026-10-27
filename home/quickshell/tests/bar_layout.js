@@ -15,6 +15,10 @@ const L = layout;
 const side_spans = (start, end, width) => L.lualine_side_spans(start, end, width);
 const rule = { match: "*", left: ["start"], center: ["clock"], right: ["tray"] };
 const key = "Dell @ DP-1";
+const rule3 = { match: "*", left: ["start", "workspaces"], center: ["clock"], right: ["tray", "volume"] };
+const rule_sys = { match: "*", left: [], center: [], right: ["tray", "system"] };
+const view_of = (r, state) => L.layout_of(L.effective(r, state, ""));
+const edited_layout = state => L.layout_of(L.effective(rule3, state, ""));
 const plain = obj => JSON.parse(JSON.stringify(obj));
 
 const cases = [
@@ -110,6 +114,54 @@ const cases = [
   // How much screen height a bar takes: a side bar takes width instead.
   ["a top or bottom bar takes its thickness and the float gap from the height", () => ["top", "bottom"].map(p => L.vertical_reserve(p, 34, 8)), [42, 42]],
   ["a side bar takes none of the height", () => ["left", "right"].map(p => L.vertical_reserve(p, 34, 8)), [0, 0]],
+
+  // The bar editor's pure edit steps.
+  // req: BAREDIT-04 selection order: sides in order on a plain bar; a lualine bar draws center and right by section, and leaves out what it draws itself.
+  ["nav order on a plain bar is left, center, right", () => L.nav_order({ left: ["start", "workspaces"], center: ["clock"], right: ["tray", "volume"] }, false), ["start", "workspaces", "clock", "tray", "volume"]],
+  ["nav order on a lualine bar sorts center and right by section and skips directory", () => L.nav_order({ left: ["start"], center: ["clock"], right: ["bluetooth", "tray", "directory"] }, true), ["start", "tray", "bluetooth", "clock"]],
+  ["nav order skips modules the bar does not know", () => L.nav_order({ left: ["start", "nope"], center: [], right: [] }, false), ["start"]],
+  ["nav_step clamps at both ends", () => [L.nav_step(["a", "b", "c"], "a", -1), L.nav_step(["a", "b", "c"], "c", 1), L.nav_step(["a", "b", "c"], "b", 1), L.nav_step(["a", "b"], "gone", 1)], ["a", "c", "c", "a"]],
+  // req: BAREDIT-05, BAREDIT-06 moving
+  ["move_step swaps within a side on the shared layout", () => edited_layout(L.move_step(rule3, L.normalize(null), "", "volume", -1, false)), { left: ["start", "workspaces"], center: ["clock"], right: ["volume", "tray"] }],
+  ["move_step on the shared layout writes the shared layout only", () => Object.keys(L.move_step(rule3, L.normalize(null), "", "volume", -1, false).monitors), []],
+  ["another sharing monitor sees the move", () => L.layout_of(L.effective(rule3, L.move_step(rule3, L.normalize(null), key, "volume", -1, false), "Other @ DP-2")).right, ["volume", "tray"]],
+  ["move_step crosses from the end of left into center", () => edited_layout(L.move_step(rule3, L.normalize(null), "", "workspaces", 1, false)), { left: ["start"], center: ["workspaces", "clock"], right: ["tray", "volume"] }],
+  ["move_step crosses from the end of center into right", () => edited_layout(L.move_step(rule3, L.normalize(null), "", "clock", 1, false)), { left: ["start", "workspaces"], center: [], right: ["clock", "tray", "volume"] }],
+  ["move_step crosses back from the start of right to the end of center", () => edited_layout(L.move_step(rule3, L.normalize(null), "", "tray", -1, false)), { left: ["start", "workspaces"], center: ["clock", "tray"], right: ["volume"] }],
+  ["move_step stops at the first and last side", () => [L.move_step(rule3, L.normalize(null), "", "start", -1, false), L.move_step(rule3, L.normalize(null), "", "volume", 1, false)].map(s => JSON.stringify(s) === JSON.stringify(L.normalize(null))), [true, true]],
+  ["move_step on an own layout leaves the shared layout alone", () => { const s = L.move_step(rule3, L.set_own(L.normalize(null), key, rule3, false), key, "volume", -1, false); return [s.monitors[key].right, s.shared.order]; }, [["volume", "tray"], []]],
+  ["a lualine move refuses to swap across sections", () => { const r = { left: [], center: [], right: ["tray", "bluetooth"] }; const s = L.set_own(L.normalize(null), key, r, false); return L.move_step(r, s, key, "tray", 1, true).monitors[key].right; }, ["tray", "bluetooth"]],
+  ["a lualine move swaps inside a section", () => { const r = { left: [], center: [], right: ["tray", "volume", "bluetooth"] }; const s = L.set_own(L.normalize(null), key, r, false); return L.move_step(r, s, key, "tray", 1, true).monitors[key].right; }, ["volume", "tray", "bluetooth"]],
+  ["a lualine move leaves the left side unsectioned", () => { const r = { left: ["start", "bluetooth"], center: [], right: [] }; const s = L.set_own(L.normalize(null), key, r, false); return L.move_step(r, s, key, "start", 1, true).monitors[key].left; }, ["bluetooth", "start"]],
+  ["a lualine move across sides lands in the sorted island", () => { const r = { left: [], center: ["clock"], right: ["tray"] }; const s = L.set_own(L.normalize(null), key, r, false); return L.nav_order(L.layout_of(L.effective(r, L.move_step(r, s, key, "clock", 1, true), key)), true); }, ["tray", "clock"]],
+  // req: BAREDIT-07
+  ["toggle_own copies the effective layout and compact", () => { const s = L.toggle_own(rule3, L.normalize(null), key); return [s.monitors[key].left, s.monitors[key].right, s.monitors[key].compact]; }, [["start", "workspaces"], ["tray", "volume"], false]],
+  ["toggle_own keeps the shared edits it copied", () => L.toggle_own(rule3, L.move_step(rule3, L.normalize(null), "", "volume", -1, false), key).monitors[key].right, ["volume", "tray"]],
+  ["toggle_own twice returns to the same state", () => L.toggle_own(rule3, L.toggle_own(rule3, L.normalize(null), key), key), L.normalize(null)],
+  // req: BAREDIT-08
+  ["compact on a sharing monitor sets the shared compact", () => { const s = L.toggle_compact(rule3, L.normalize(null), key); return [s.shared.compact, Object.keys(s.monitors), L.effective(rule3, s, "Other @ DP-2").compact]; }, [true, [], true]],
+  ["compact on a sharing monitor flips it back and leaves no setting behind", () => "compact" in L.toggle_compact(rule3, L.toggle_compact(rule3, L.normalize(null), key), key).shared, false],
+  ["c with a shared compact already set always flips what is shown", () => { const loud = Object.assign({}, rule3, { compact: true }); const set = L.toggle_compact(loud, L.normalize({ shared: { compact: true } }), key); const set_false = L.normalize({ shared: { compact: false } }); return [L.effective(loud, set, key).compact, L.effective(rule3, L.toggle_compact(rule3, set_false, key), key).compact]; }, [false, true]],
+  ["compact flipped back follows each rule's own compact again", () => { const loud = Object.assign({}, rule3, { compact: true }); const s = L.toggle_compact(loud, L.toggle_compact(loud, L.normalize(null), key), key); return [L.effective(loud, s, key).compact, "compact" in s.shared]; }, [true, false]],
+  ["compact on an own layout sets that layout only", () => { const s = L.toggle_compact(rule3, L.set_own(L.normalize(null), key, rule3, false), key); return [s.monitors[key].compact, "compact" in s.shared]; }, [true, false]],
+  ["shared compact reaches sharing monitors but not own layouts", () => { const s = L.set_own(L.toggle_compact(rule3, L.normalize(null), key), "Own @ DP-3", rule3, false); return [L.effective(rule3, s, key).compact, L.effective(rule3, s, "Own @ DP-3").compact]; }, [true, false]],
+  ["normalize keeps shared compact and drops a non-boolean one", () => [L.normalize({ shared: { compact: true } }).shared.compact, "compact" in L.normalize({ shared: { compact: "yes" } }).shared], [true, false]],
+  // req: BAREDIT-09
+  ["hide_entry takes the module off every side and lists it hidden", () => { const s = L.hide_entry(rule3, L.normalize(null), "", "tray"); return [edited_layout(s).right, L.hidden_entries([rule3], s, L.layout_of(L.effective(rule3, s, ""))).indexOf("tray") >= 0]; }, [["volume"], true]],
+  ["hide_entry never purges the module from the state", () => { const s = L.hide_entry(rule3, L.normalize(null), "", "tray"); return [s.shared.place.tray, s.shared.last_side.tray]; }, ["hidden", { side: "right", index: 0 }]],
+  ["hide_entry on an own layout never purges either", () => { const s = L.hide_entry(rule3, L.set_own(L.normalize(null), key, rule3, false), key, "system:cpu"); return [s.monitors[key].right, s.monitors[key].last_side["system:cpu"] === undefined]; }, [["tray", "volume"], true]],
+  ["hide then restore puts the module back where it was", () => { const s = L.hide_entry(rule3, L.normalize(null), "", "tray"); return edited_layout(L.unhide_place([rule3], rule3, s, "", "tray")); }, { left: ["start", "workspaces"], center: ["clock"], right: ["tray", "volume"] }],
+  ["unhide_place of a never-shown module goes to the right side's end", () => edited_layout(L.unhide_place([rule3], rule3, L.normalize(null), "", "battery")).right, ["tray", "volume", "battery"]],
+  // req: BAREDIT-10
+  ["valid_entry takes only a module with that argument", () => ["system:cpu", "system:gpu", "clock:x", "system", "nope:cpu"].map(L.valid_entry), [true, false, false, false, false]],
+  ["add_entry puts the argument entry after the selected module", () => view_of(rule_sys, L.add_entry(rule_sys, L.normalize(null), "", "system:cpu", "system")).right, ["tray", "system", "system:cpu"]],
+  ["add_entry refuses a duplicate or an invalid entry", () => [L.add_entry(rule_sys, L.normalize(null), "", "system:cpu", "system"), L.add_entry(rule_sys, L.normalize(null), "", "system:gpu", "system")].map((s, i) => i === 0 ? view_of(rule_sys, L.add_entry(rule_sys, s, "", "system:cpu", "system")).right : JSON.stringify(s) === JSON.stringify(L.normalize(null))), [["tray", "system", "system:cpu"], true]],
+  ["suggest_entry is the next unused argument of the module", () => [L.suggest_entry(rule_sys, L.normalize(null), "", "system"), L.suggest_entry(rule_sys, L.add_entry(rule_sys, L.normalize(null), "", "system:cpu", "system"), "", "system"), L.suggest_entry(rule_sys, L.normalize(null), "", "clock")], ["system:cpu", "system:memory", ""]],
+  // req: BAREDIT-14
+  ["a sharing monitor's bar edge is the shared position", () => { const s = L.set_position_for_mode(L.normalize(null), key, "left"); return [s.shared.position, key in s.positions]; }, ["left", false]],
+  ["a sharing monitor's own saved edge is cleared so the shared move shows", () => { const s = L.set_position_for_mode(L.set_position(L.normalize(null), key, "bottom"), key, "left"); return [s.shared.position, key in s.positions]; }, ["left", false]],
+  ["a monitor with its own layout moves only its own edge", () => { const s = L.set_position_for_mode(L.set_own(L.normalize(null), key, rule3, false), key, "right"); return [s.positions[key], "position" in s.shared]; }, ["right", false]],
+  ["is_sharing is true until the monitor has its own layout", () => [L.is_sharing(L.normalize(null), key), L.is_sharing(L.set_own(L.normalize(null), key, rule3, false), key)], [true, false]],
 ];
 
 let failed = 0;

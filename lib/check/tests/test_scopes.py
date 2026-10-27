@@ -95,7 +95,12 @@ CASES = [
     ("home/quickshell/.config/quickshell/features/settings/SettingsPanel.qml", " colorsprev qml node"),
     ("home/quickshell/tests/restarting_stream/run.py", " restartstream qml"),
     ("home/quickshell/.config/quickshell/core/RestartingStream.qml", " restartstream qml node"),
-    ("home/quickshell/.config/quickshell/core/JsonStore.qml", " qml node"),
+    ("home/quickshell/.config/quickshell/core/JsonStore.qml", " bareditor qml node"),
+    ("home/quickshell/tests/bar_editor/run.py", " bareditor qml"),
+    ("home/quickshell/.config/quickshell/features/bar_editor/BarEditorIpc.qml", " bareditor docsgen qml node"),
+    ("home/quickshell/.config/quickshell/features/bar_editor/BarEditor.qml", " bareditor qml node"),
+    ("home/quickshell/.config/quickshell/features/bar/BarSettings.qml", " bareditor qml node"),
+    ("home/quickshell/.config/quickshell/features/bar/BarItems.qml", " bareditor qml node"),
     # The consumers OUTSIDE_REFS in lib/check/steps/qml_paths.py names reach the qml scope beside their own.
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", " lua qml docsgen"),
     ("home/voxcmd/src/timer.rs", " rust voxphrases voxclick voxcalendar voxwake voxfirefox qml"),
