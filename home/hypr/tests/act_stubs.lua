@@ -81,7 +81,9 @@ _G.hl = setmetatable({
 			copy[name] = value
 		end
 		local entry = { submap = current_submap, key = key, action = action, opts = copy }
-		function entry:remove() end
+		function entry:remove()
+			self.removed = true
+		end
 		Stubs.binds[#Stubs.binds + 1] = entry
 		return entry
 	end,

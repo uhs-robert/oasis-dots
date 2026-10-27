@@ -219,7 +219,7 @@ function Bind.submap(name, reset, fn)
     -- The failed submap is unreachable, so drop what the body bound; earlier binds of the same submap stay.
     for key, list in pairs(handles[name] or {}) do
       for index = #list, (before[key] or 0) + 1, -1 do
-        remove_handle(list[index])
+        pcall(remove_handle, list[index]) -- a failing removal must not hide the body's error
         list[index] = nil
       end
       if #list == 0 then handles[name][key] = nil end
