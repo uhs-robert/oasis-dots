@@ -42,7 +42,8 @@ def problems($where):
     (select(has("enabled") and ((.enabled | type) != "boolean"))
      | $where + ": enabled must be true or false, ignored") ];
 def sanitize:
-  (if (.local | type) == "object" and (.local.scope? != null) and ((.local.scope | IN(scopes[])) | not)
+  (if has("github") and .github == null then del(.github) else . end)
+  | (if (.local | type) == "object" and (.local.scope? != null) and ((.local.scope | IN(scopes[])) | not)
    then .local.scope = "off" else . end)
   | (if (.local | type) == "object" and (.local.default? != null) and ((.local.default | IN(scopes[])) | not)
      then .local.default = "off" else . end)
@@ -67,7 +68,7 @@ else
   | [$pre[] | if .e == null then .
               elif (.e | type) != "object" or ((.e.name | type) != "string") or .e.name == ""
               then {w: (.w + ["entry without a string name skipped"]), e: null}
-              else .e as $e | {w: (.w + ($e | fix_local | problems("reviewer " + $e.name))), e: ($e | fix_local | sanitize)} end] as $r
+              else .e as $e | {w: (.w + ($e | problems("reviewer " + $e.name))), e: ($e | fix_local | sanitize)} end] as $r
   | {entries: [$r[].e | select(. != null)], warnings: [$r[].w[]]}
 end
 '

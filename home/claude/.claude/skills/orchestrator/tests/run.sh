@@ -155,6 +155,14 @@ check "built-in with an invalid gate is fatal" 'builtin_fails "{\"reviewers\":[{
 check "built-in with an invalid default is fatal" 'builtin_fails "{\"reviewers\":[{\"name\":\"x\",\"local\":{\"default\":\"all!\"}}]}"'
 check "a valid built-in file stays accepted" '! builtin_fails "{\"reviewers\":[{\"name\":\"x\"}]}" && [ $rc -eq 0 ]'
 
+reset
+echo '{"reviewers":{"claude":{"local":5}}}' >"$REVIEWERS_SETTINGS_FILE"
+echo '{"reviewers":[{"name":"n","github":null},{"name":"coderabbit","github":null}]}' >"$REVIEWERS_USER_FILE"
+run
+check "non-string, non-object local warns" 'grep -q "claude: local is neither a string nor an object" <<<"$err"'
+check "github null is dropped from output" '[ "$(field n "has(\"github\")")" = false ]'
+check "github null does not erase a lower layer github block" '[ "$(field coderabbit ".github.app_slug")" = coderabbitai ]'
+
 echo "== usage"
 check "unknown subcommand exits 64" '"$script" bogus 2>/dev/null; [ $? -eq 64 ]'
 

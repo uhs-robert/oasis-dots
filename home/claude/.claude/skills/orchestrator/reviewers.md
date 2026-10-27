@@ -21,7 +21,7 @@ Entries merge by `name`: objects field by field, arrays replaced. `"enabled": fa
 
 - `name` (required, unique), `label`.
 - `local`: `command` (`<cmd> <base> <outdir>`), `binary` (probed for "installed"), `default` and `default_when_on` (scopes), `scope` (the user's choice).
-- `github` (absent = never gates): `app_slug`, `logins`, `check_names`, `signal` (`summary_comment` or `check_run`), `running`, `done`, `unavailable`, `unavailable_conclusions`, `request`, `start_s`, `wait_s`.
+- `github` (absent or null = never gates): `app_slug`, `logins`, `check_names`, `signal` (`summary_comment` or `check_run`), `running`, `done`, `unavailable`, `unavailable_conclusions`, `request`, `start_s`, `wait_s`.
 - `gate`: `auto`, `always` or `never`.
 
 Scopes are `off`, `public`, `all`. Output always has `local.scope` (from `local.scope`, else `local.default`, else `off`, so an entry without local config gets `off`) and `gate` (default `auto`); `enabled` is removed.
