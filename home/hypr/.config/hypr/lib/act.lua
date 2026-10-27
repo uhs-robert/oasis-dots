@@ -525,6 +525,16 @@ function Act.define(id, spec)
   return handle
 end
 
+--- Require lib/actions/defs/<name>.lua for each name. A file that raises warns, naming the file, and the rest still load:
+--- for a keymap file that only loads independent definitions, one broken file must not take the others' keys with it.
+--- @param names string[]
+function Act.load_defs(names)
+  for _, name in ipairs(names) do
+    local ok, err = pcall(require, "lib.actions.defs." .. name)
+    if not ok then warn("lib/actions/defs/" .. name .. ".lua failed to load: " .. tostring(err)) end
+  end
+end
+
 ---------------------------------------------------------------------------------------------------
 -- run
 ---------------------------------------------------------------------------------------------------
