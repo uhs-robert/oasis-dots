@@ -5,6 +5,9 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+mod executable;
+use executable::write_executable;
+
 const INTEGRATIONS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/.config/voxcmd/integrations");
 const SHARE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/.local/share/voxcmd");
 
@@ -21,13 +24,10 @@ impl Sandbox {
             fs::create_dir_all(sandbox.path(dir)).unwrap();
         }
         // The stub counts its calls and prints $STUB_BINDS_FILE, or fails when STUB_FAIL is set.
-        let stub = sandbox.path("bin/hyprctl");
-        fs::write(
-            &stub,
+        write_executable(
+            &sandbox.path("bin/hyprctl"),
             "#!/bin/sh\necho x >>\"$STUB_COUNT_FILE\"\n[ -z \"$STUB_FAIL\" ] || exit 1\ncat \"$STUB_BINDS_FILE\"\n",
-        )
-        .unwrap();
-        fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+        );
         sandbox.set_binds(&[("Open Terminal", "1")]);
         sandbox
     }
@@ -347,8 +347,7 @@ fn a_corrupt_or_cut_short_cache_is_rebuilt() {
 fn a_failing_jq_is_never_cached() {
     let sandbox = Sandbox::new();
     let jq = sandbox.path("bin/jq");
-    fs::write(&jq, "#!/bin/sh\nexit 1\n").unwrap();
-    fs::set_permissions(&jq, fs::Permissions::from_mode(0o755)).unwrap();
+    write_executable(&jq, "#!/bin/sh\nexit 1\n");
     let failed = sandbox.binds(&[]);
     assert_eq!(failed.trim(), "{}");
     assert!(!sandbox.cache_dir().join("keybinds.json").exists());
