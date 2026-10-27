@@ -273,3 +273,7 @@ demo-beat name:
 # Stage the desktop, film one clip per showcase beat, and cut them into the MP4
 demo-record:
     demo/showcase.sh record
+
+# Regenerate the generated sections of the docs (the keybind table in docs/keybinds.md)
+docs-gen:
+    python3 -B lib/docs/gen-keybinds --write

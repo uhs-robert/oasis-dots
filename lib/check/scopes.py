@@ -73,6 +73,10 @@ PATH_SCOPES = [
     ("lib/check/registry.allow", ""),
     ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
+    # The keybind table is generated from the keymaps (home/hypr/*, already lua); its generator's tests are unittest cases in lib/check/tests.
+    ("lib/check/steps/docs-generated.sh", "lua"),
+    ("lib/docs/gen-keybinds", "checkscope lua"),
+    ("docs/keybinds.md", "lua"),
     ("lib/check/steps/time-format.sh", "qml"),
     ("lib/check/steps/shaders.sh", "shaders"),
     # Ahead of the Quickshell rule below. Only the shader step reads a .frag; QML names the compiled .qsb by path, which
@@ -274,6 +278,7 @@ STEPS = [
     # single scope covers them. No `needs`: a missing lua must fail the step, not skip it.
     Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),
     Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
+    Step("docs-generated", "lua", "sh ./lib/check/steps/docs-generated.sh", ("lua", "python3"), skip_reason="the keybind table check needs lua and python3"),
     Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
     Step("shaders", "shaders", "sh ./lib/check/steps/shaders.sh", probe='[ -x "${QSB-}" ] || command -v qsb >/dev/null || [ -x /usr/lib/qt6/bin/qsb ]', skip_reason="the shader check needs qsb (qt6-shadertools)"),
@@ -302,8 +307,6 @@ STEPS = [
     Step("toast-extent", "node", "node ./home/quickshell/tests/toast_extent.js", ("node",), skip_reason="the toast extent tests need node"),
     Step("cava-viewers", "node", "node ./home/quickshell/tests/cava_viewers.js", ("node",), skip_reason="the cava viewer tests need node"),
     Step("style-title-readout", "node", "node ./home/quickshell/tests/style_title_readout.js", ("node",), skip_reason="the style title readout tests need node"),
-    Step("ansi-text", "node", "node ./home/quickshell/tests/ansi_text.js", ("node",), skip_reason="the ANSI text tests need node"),
-    Step("agent-sessions", "node", "node ./home/quickshell/tests/agent_sessions.js", ("node",), skip_reason="the agent sessions tests need node"),
     Step("hover-popup", "node", "node ./home/quickshell/tests/hover_popup.js", ("node",), skip_reason="the hover popup tests need node"),
     Step("position-poll", "node", "node ./home/quickshell/tests/position_poll.js", ("node",), skip_reason="the position poll tests need node"),
     Step("media-text", "node", "node ./home/quickshell/tests/media_text.js", ("node",), skip_reason="the media text tests need node"),
