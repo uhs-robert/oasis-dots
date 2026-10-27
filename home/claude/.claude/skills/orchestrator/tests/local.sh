@@ -350,16 +350,29 @@ out=$("$skill/run-local-reviews.sh" main "$repo/reviews" 2>/dev/null)
 check "a rerun with an in-tree outdir is not blocked by the earlier run's artifacts" '[ "$out" = "codex: $repo/reviews/codex/codex-review.md" ]'
 rm -rf "$repo/reviews"
 reset
+# codex runs once in-tree, is then disabled, and a clean-tree reviewer must not see its leftovers.
+"$skill/run-local-reviews.sh" main "$repo/reviews" >/dev/null 2>&1
+echo '{"reviewers":{"codex":{"local":"off"},"coderabbit":{"local":"off"},"claude":{"local":"off"}}}' >"$REVIEWERS_SETTINGS_FILE"
+cat >"$root/custom/clean.sh" <<S
+#!/usr/bin/env bash
+[ -z "\$(git status --porcelain)" ] || exit 3
+echo "\$2/clean-review.md"
+S
+chmod +x "$root/custom/clean.sh"
+echo "{\"reviewers\":[{\"name\":\"clean\",\"local\":{\"command\":\"$root/custom/clean.sh\",\"default\":\"all\"}}]}" >"$REVIEWERS_USER_FILE"
+out=$("$skill/run-local-reviews.sh" main "$repo/reviews" 2>/dev/null)
+check "a reviewer disabled since an in-tree run leaves no artifacts to dirty the tree" '[ "$out" = "clean: $repo/reviews/clean/clean-review.md" ] && [ ! -e "$repo/reviews/codex" ]'
+rm -rf "$repo/reviews"
+reset
 mkdir -p "$root/ro"
-chmod 555 "$root/ro"
+# cp is forced to fail rather than the directory made read-only: root ignores directory permissions.
 cat >"$root/kill_spy.sh" <<S
 # Only the runner itself is spied on, not the reviewers it starts.
-case \$0 in *run-local-reviews.sh) kill() { echo "\$*" >>"$root/kills"; builtin kill "\$@"; } ;; esac
+case \$0 in *run-local-reviews.sh) kill() { echo "\$*" >>"$root/kills"; builtin kill "\$@"; }; cp() { return 1; } ;; esac
 S
 rm -f "$root/kills"
 out=$(BASH_ENV="$root/kill_spy.sh" "$skill/run-local-reviews.sh" main "$root/ro" 2>/dev/null)
 rc=$?
-chmod 755 "$root/ro"
 check "a failed copy into the outdir exits 1, prints no paths and signals no reaped pid" '[ $rc -eq 1 ] && [ -z "$out" ] && [ ! -s "$root/kills" ]'
 reset
 cat >"$root/custom/stubborn.sh" <<S
