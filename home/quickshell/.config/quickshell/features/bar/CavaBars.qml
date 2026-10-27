@@ -10,12 +10,14 @@ Item {
     property bool active: MediaState.playing
     // Under a bottom bar: hangs from the island's top edge and grows down toward the screen edge.
     property bool flipped: false
-    readonly property int bar_count: CavaState.bar_count
+    // What the levels come from: CavaState, or a preview's MediaSample, which has the same bar_count, levels and line_levels.
+    property var source: CavaState
+    readonly property int bar_count: root.source.bar_count
     readonly property bool line: MediaSettings.cava_line
 
     readonly property bool drawing: root.visible && root.width > 0
     readonly property var top_points: {
-        const src = CavaState.line_levels;
+        const src = root.source.line_levels;
         if (!root.line || !root.drawing) return [];
         const n = src.length;
         const pts = [];
@@ -74,7 +76,7 @@ Item {
         onPaint: {
             const ctx = bars.getContext("2d");
             ctx.reset();
-            const levels = CavaState.levels;
+            const levels = root.source.levels;
             const n = root.bar_count;
             const w = bars.width / n;
             ctx.fillStyle = Theme.theme_primary;
@@ -96,7 +98,7 @@ Item {
         }
 
         Connections {
-            target: CavaState
+            target: root.source
             function onLevelsChanged() { bars.request(); }
         }
 

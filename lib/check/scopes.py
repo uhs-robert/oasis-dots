@@ -337,6 +337,7 @@ STEPS = [
     Step("position-poll", "node", "node ./home/quickshell/tests/position_poll.js", ("node",), skip_reason="the position poll tests need node"),
     Step("media-text", "node", "node ./home/quickshell/tests/media_text.js", ("node",), skip_reason="the media text tests need node"),
     Step("media-settings", "node", "node ./home/quickshell/tests/media_settings.js", ("node",), skip_reason="the media settings tests need node"),
+    Step("media-sample", "node", "node ./home/quickshell/tests/media_sample.js", ("node",), skip_reason="the media sample tests need node"),
     Step("settings-scale", "node", "node ./home/quickshell/tests/settings_scale.js", ("node",), skip_reason="the settings scale tests need node"),
     Step("settings-sections", "node", "node ./home/quickshell/tests/settings_sections.js", ("node",), skip_reason="the settings sections tests need node"),
     Step("scroll-cue", "node", "node ./home/quickshell/tests/scroll_cue.js", ("node",), skip_reason="the scroll cue tests need node"),

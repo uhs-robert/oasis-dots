@@ -8,24 +8,17 @@ import "SettingsScale.js" as SScale
 // A section of ChoiceRows; each row is { label, values: () => [...], text: v => string, value: () => current, set: v => void, pick?: bool }.
 // Enter or a click opens a filterable list of a row's values; `pick: false` keeps a row cycling and `cycle: false` stops H/L from stepping it, and `activate: () => void` replaces Enter or a click.
 // `indent: n` nests a row under the one above it. `{ heading: "Name" }` is a heading row: never selected, `{`/`}` jump between them.
-// `tabs: [{ label, rows }]` instead of `rows` splits a long section into tabs `[`/`]` step; an empty tab is not shown.
 // A row's `desc` (text), optional `help` (a longer explanation shown under it) and optional `keys` (hint) fill the pane's description block for the selected or hovered row; `section_keys` follow every row's keys.
 // The block shows once any row has a `desc`, so give every row one.
 SettingsPane {
     id: root
 
-    property var tabs: []
-    readonly property var shown_tabs: root.tabs.filter(t => t.rows.some(r => !root.is_heading(r)))
-    // Kept by label, so a tab that empties and refills (the theme's options follow the style) does not move the others.
-    property string tab_label: ""
-    readonly property int tab_index: Math.max(0, root.shown_tabs.findIndex(t => t.label === root.tab_label))
-    property var tab_cursors: ({})
-    property var rows: root.shown_tabs.length > 0 ? root.shown_tabs[root.tab_index].rows : []
+    property var rows: []
     property int cursor: 0
     readonly property bool has_headings: root.rows.some(r => root.is_heading(r))
     // The heading over the cursor, "" above the first one; a section shows a preview for one group of rows by it.
     readonly property string cursor_heading: root.heading_above(root.cursor)
-    readonly property string layout_hint: (root.shown_tabs.length > 1 ? "[/] tab · " : "") + (root.has_headings ? "{/} heading · " : "")
+    readonly property string layout_hint: root.has_headings ? "{/} heading · " : ""
     property int pick_min: 2
     property var pick_values: []
     property string section_keys: ""
@@ -38,13 +31,15 @@ SettingsPane {
     property alias footer: footer_col.data
     // A section's preview, docked in the popup's panel under the help card, never among the rows or the open list.
     property alias preview: preview_col.data
+    // Pinned over the rows, out of their scroll, for what must stay in view while any row changes (Media's live preview).
+    property alias pinned: pinned_col.data
 
-    // Where every row's value starts, past the longest label of any tab, so values sit in one column near their labels
+    // Where every row's value starts, past the longest label, so values sit in one column near their labels
     // however wide the pane is; capped at 60% of the row, where a long label elides.
     readonly property real value_column: {
         const f = label_metrics.font;
         let need = 0;
-        for (const r of (root.shown_tabs.length > 0 ? root.shown_tabs.reduce((all, t) => all.concat(t.rows), []) : root.rows)) {
+        for (const r of root.rows) {
             if (!root.is_heading(r)) need = Math.max(need, (r.indent || 0) * Style.px(14) + label_metrics.advanceWidth(r.label));
         }
         return Math.min(Math.ceil(need) + Style.px(40), Math.round(root.width * 0.6));
@@ -74,9 +69,9 @@ SettingsPane {
     }
 
     footer_hint: "j/k move · " + root.layout_hint + "H/L change · Enter list · h/Esc sections · q close"
-    // Every tab's rows, so a search finds a row on a tab not shown; headings are blank and never match.
-    search_rows: (root.shown_tabs.length > 0 ? root.shown_tabs.reduce((all, t) => all.concat(t.rows), []) : root.rows).map(r => root.is_heading(r) ? "" : r.label)
-    search_cursor: root.tab_offset(root.tab_index) + root.cursor
+    // Headings are blank and never match.
+    search_rows: root.rows.map(r => root.is_heading(r) ? "" : r.label)
+    search_cursor: root.cursor
     // Where the rows end, for a section that sizes its own content below them.
     readonly property real footer_top: footer_col.y
     described: root.has_descriptions
@@ -147,31 +142,8 @@ SettingsPane {
         root.cursor = at;
     }
 
-    function tab_offset(index) {
-        let offset = 0;
-        for (let i = 0; i < index && i < root.shown_tabs.length; i++) offset += root.shown_tabs[i].rows.length;
-        return offset;
-    }
-
-    function set_tab(index, cursor) {
-        const tab = root.shown_tabs[index];
-        if (!tab || index === root.tab_index && cursor === undefined) return;
-        const saved = Object.assign({}, root.tab_cursors);
-        saved[root.shown_tabs[root.tab_index].label] = root.cursor;
-        root.tab_cursors = saved;
-        root.tab_label = tab.label;
-        const wanted = cursor !== undefined ? cursor : saved[tab.label] !== undefined ? saved[tab.label] : root.next_row(-1, 1);
-        root.cursor = Math.max(0, Math.min(wanted, root.rows.length - 1));
-    }
-
-    // Opens the tab or heading named `part` (an old section id's place in a merged section); false when there is none.
+    // Opens the heading named `part` (an old section id's place in a merged section); false when there is none.
     function focus_part(part) {
-        const tab = root.shown_tabs.findIndex(t => t.label === part);
-        if (tab >= 0) {
-            root.set_tab(tab);
-            root.cursor = root.next_row(-1, 1);
-            return true;
-        }
         const heading = root.rows.findIndex(r => root.is_heading(r) && r.heading === part);
         if (heading < 0) return false;
         root.cursor = root.next_row(heading, 1);
@@ -235,15 +207,7 @@ SettingsPane {
     }
 
     function search_select(index) {
-        if (root.shown_tabs.length === 0) {
-            root.cursor = index;
-            return;
-        }
-        for (let t = root.shown_tabs.length - 1; t >= 0; t--) {
-            if (index < root.tab_offset(t)) continue;
-            root.set_tab(t, index - root.tab_offset(t));
-            return;
-        }
+        root.cursor = index;
     }
 
     function jump(delta) {
@@ -257,7 +221,6 @@ SettingsPane {
         if (event.accepted) return;
         if (event.key === Qt.Key_J) root.cursor = root.next_row(root.cursor, 1);
         else if (event.key === Qt.Key_K) root.cursor = root.next_row(root.cursor, -1);
-        else if ((event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BracketRight) && root.shown_tabs.length > 1) root.set_tab(root.wrap_index(root.tab_index, event.key === Qt.Key_BracketLeft ? -1 : 1, root.shown_tabs.length));
         else if ((event.key === Qt.Key_BraceLeft || event.key === Qt.Key_BraceRight) && root.has_headings) root.step_heading(event.key === Qt.Key_BraceLeft ? -1 : 1);
         // Plain h is left for the popup, which goes back to the sidebar.
         else if (event.key === Qt.Key_H && (event.modifiers & Qt.ShiftModifier)) root.step(root.cursor, -1);
@@ -270,6 +233,14 @@ SettingsPane {
             return;
         }
         event.accepted = true;
+    }
+
+    ColumnLayout {
+        id: pinned_col
+        parent: root.popup && root.popup.pinned_host ? root.popup.pinned_host : root
+        width: parent.width
+        visible: pinned_col.children.length > 0
+        spacing: 4
     }
 
     ColumnLayout {
@@ -294,26 +265,6 @@ SettingsPane {
             Layout.fillWidth: true
             Layout.bottomMargin: 6
             spacing: 4
-        }
-
-        // Held at the chips' own width, since TabRows centers chips and the strip belongs over the labels, left.
-        Item {
-            visible: root.shown_tabs.length > 1 && !root.picking
-            Layout.fillWidth: true
-            Layout.preferredHeight: tab_strip.implicitHeight
-            Layout.bottomMargin: 6
-
-            TabRows {
-                id: tab_strip
-                width: Math.min(parent.width, tab_strip.label_needs.reduce((sum, w) => sum + w + tab_strip.spacing, tab_strip.well_pad * 2))
-                chips: true
-                labels: root.shown_tabs.map(t => t.label)
-                current: root.tab_index
-                onPicked: index => {
-                    root.focus_pane();
-                    root.set_tab(index);
-                }
-            }
         }
 
         Repeater {

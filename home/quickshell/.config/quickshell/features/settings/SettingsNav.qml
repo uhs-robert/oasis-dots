@@ -11,8 +11,8 @@ Singleton {
     // A saved session the Sessions section opens on, set before Settings opens.
     property string requested_session: ""
 
-    // A command for the open popup's pane: "cursor", "step", "activate" or "back"; `value` is the row index (across a
-    // rows pane's tabs, headings included) or step delta.
+    // A command for the open popup's pane: "cursor", "step", "activate" or "back"; `value` is the row index (headings
+    // included) or step delta.
     signal pane_command(string name, int value)
 
     function open(section_id) {

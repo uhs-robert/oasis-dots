@@ -57,9 +57,11 @@ Popup {
     // Where SettingsPane puts its description block, and where a section docks its preview: the panel beside the rows.
     readonly property Item description_host: panel.help_host
     readonly property Item preview_host: panel.preview_host
+    // Where a section pins what must stay in view over its rows (RowsSection.pinned); the rows scroll under it.
+    readonly property Item pinned_host: pinned_host
     readonly property real help_room: panel.help_room
     // The pane's visible height, which a section's own height (it grows with its content) is not.
-    readonly property real pane_view_height: body.pane_height
+    readonly property real pane_view_height: pane_flick.height
     // Screen height left for the panel's body once the bar and the popup's own chrome are taken out; no cap before the screen is known.
     readonly property real free_height: {
         if (root.drawer && root.drawer_hole) return root.drawer_hole.h - root.header_height - root.footer_height;
@@ -105,7 +107,7 @@ Popup {
     }
 
     // Rows in half the pane's height, for Ctrl+D/U.
-    readonly property int half_page_rows: Math.max(1, Math.floor(body.pane_height / 2 / (Style.px(28) + root.row_extra + 4)))
+    readonly property int half_page_rows: Math.max(1, Math.floor(pane_flick.height / 2 / (Style.px(28) + root.row_extra + 4)))
 
     // Ctrl+D/U in a pane the section did not take: a rows pane steps its cursor, a pane with a searchable cursor list
     // moves along it, and any other pane scrolls half a page.
@@ -170,11 +172,7 @@ Popup {
             return;
         }
         if (pane.picking || typeof pane.cursor !== "number") return;
-        // A rows pane counts rows across all its tabs, as search does, so a row on any tab can be reached.
-        if (name === "cursor") {
-            if (pane.tabs !== undefined) pane.search_select(value);
-            else pane.cursor = value;
-        }
+        if (name === "cursor") pane.cursor = value;
         else if (name === "step" && typeof pane.step === "function") pane.step(pane.cursor, value);
         else if (name === "activate" && typeof pane.activate === "function") pane.activate(pane.cursor, 1);
     }
@@ -413,11 +411,18 @@ Popup {
         readonly property real pane_width: body.help_below ? body.side_room : body.side_room - body.help_width - Style.px(48)
         readonly property real pane_height: body.help_below ? body.height - body.help_height - Style.px(24) : body.height
 
+        Column {
+            id: pinned_host
+            x: pane_flick.x
+            width: body.pane_width
+        }
+
         Flickable {
             id: pane_flick
             x: nav_divider.x + Style.px(24)
+            y: pinned_host.height > 0 ? pinned_host.height + Style.px(12) : 0
             width: body.pane_width
-            height: body.pane_height
+            height: body.pane_height - pane_flick.y
             clip: pane_flick.contentHeight > pane_flick.height
             contentWidth: width
             contentHeight: pane_loader.height

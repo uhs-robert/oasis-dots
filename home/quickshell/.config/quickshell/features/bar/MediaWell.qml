@@ -8,24 +8,29 @@ import "MediaText.js" as MediaText
 import "../../ui/frames/Corners.js" as Corners
 
 // The media pocket: a recessed plate with the album art, a play/pause button, the title and artist, and a right side
-// of cava or the track position. Pure view over MediaState and the settings it is handed; Media.qml owns the clicks.
+// of cava or the track position. Pure view over MediaState and MediaSettings, which a caller can override; Media.qml owns
+// the clicks, and Settings > Media draws it as its preview.
 Item {
     id: root
 
     property var player: MediaState.active
+    // A MediaSample shown in place of `player`, for a preview: its levels replace cava's and its position needs no poll.
+    property var sample: null
+    readonly property var shown_player: root.sample || root.player
+    readonly property bool playing: !!root.shown_player && root.shown_player.isPlaying
     // "cava", "position" or "hide" (the well stays, the right side goes).
     property string right_mode: "cava"
     // "inset" (pressed in, darker), "border" (island fill, thin outline) or "raised" (slightly lighter, no outline).
-    property string container_style: "inset"
+    property string container_style: MediaSettings.container_style
     readonly property var look: MediaSettings.container_look(root.container_style)
-    property bool show_art: true
-    property bool show_button: true
-    property bool show_title: true
-    property bool show_artist: true
-    property string text_layout: "inline"
-    property int max_chars: 24
-    property bool text_scroll: false
-    property int text_scroll_speed: 30
+    property bool show_art: MediaSettings.show_art
+    property bool show_button: MediaSettings.show_button
+    property bool show_title: MediaSettings.show_title
+    property bool show_artist: MediaSettings.show_artist
+    property string text_layout: MediaSettings.text_layout
+    property int max_chars: MediaSettings.max_chars
+    property bool text_scroll: MediaSettings.text_scroll
+    property int text_scroll_speed: MediaSettings.text_scroll_speed
     // On a side bar: art over the play/pause button, no text and no right side, each `cell` square.
     // A compact monitor: art, button and right side, no text, close to the old 120 px cava slot.
     property bool compact: false
@@ -40,7 +45,7 @@ Item {
     readonly property bool stacked: !root.vertical && !root.compact && root.text_lines.length > 1
     readonly property int pad: root.stacked ? 2 : 4
     readonly property real art_size: root.vertical ? root.cell : root.height - root.pad * 2
-    readonly property var text_lines: MediaText.lines(root.player ? root.player.trackTitle || "" : "", root.player ? root.player.trackArtist || "" : "", root.show_title, root.show_artist, root.text_layout, root.player ? root.player.identity || "" : "")
+    readonly property var text_lines: MediaText.lines(root.shown_player ? root.shown_player.trackTitle || "" : "", root.shown_player ? root.shown_player.trackArtist || "" : "", root.show_title, root.show_artist, root.text_layout, root.shown_player ? root.shown_player.identity || "" : "")
     // A line's height over its pixel size differs per font (the GoldenEye face is much taller than most), so it is measured.
     readonly property real line_ratio: ruler.height / ruler.font.pixelSize
     FontMetrics {
@@ -57,6 +62,11 @@ Item {
         return small ? sizes.artist : sizes.title;
     }
     readonly property bool cava_on: root.active && !root.vertical && root.right_mode === "cava"
+    // The well's height in a horizontal bar `bar_height` thick: a capsule inset 5px from the bar edge above and below, like
+    // the approved mockups (28px in a 40px bar). Stacked text needs the room, so it takes a 2px inset.
+    function bar_fit_height(bar_height) {
+        return root.stacked ? Math.max(24, Math.min(bar_height - 4, 30)) : Math.max(20, Math.min(bar_height - 10, 28));
+    }
     readonly property real base_width: 170
     // Where the right side starts in the well's own coordinates, for the wheel: past the edge when it is not shown.
     readonly property real right_left: right.visible ? content.x + right.x : root.width + 1
@@ -135,8 +145,8 @@ Item {
             Layout.preferredWidth: root.art_size
             Layout.preferredHeight: root.art_size
             Layout.alignment: Qt.AlignVCenter
-            source: root.player ? root.player.trackArtUrl : ""
-            has_art: !!root.player && root.player.trackArtUrl !== ""
+            source: root.shown_player ? root.shown_player.trackArtUrl : ""
+            has_art: !!root.shown_player && root.shown_player.trackArtUrl !== ""
             corner: 5
             glyph_size: Math.round(root.art_size * 0.55)
             shadowed: false
@@ -152,11 +162,11 @@ Item {
             color: button_area.containsMouse ? Style.pal.bg_surface : Style.pal.bg_shadow
             border.width: 1
             border.color: Qt.alpha(Style.pal.fg, 0.18)
-            opacity: root.player && root.player.canTogglePlaying ? 1 : 0.4
+            opacity: root.shown_player && root.shown_player.canTogglePlaying ? 1 : 0.4
 
             Text {
                 anchors.centerIn: parent
-                text: MediaState.playing ? "\u{f04c}" : "\u{f04b}"
+                text: root.playing ? "\u{f04c}" : "\u{f04b}"
                 color: Style.pal.fg
                 font.family: Style.font_family
                 font.pixelSize: Math.round(root.art_size * 0.6)
@@ -219,19 +229,22 @@ Item {
                     color: Qt.alpha(Theme.theme_primary, 0.3)
                 }
 
-                CavaViewer { active: root.cava_on && MediaState.playing && PowerSource.on_ac }
+                CavaViewer { active: !root.sample && root.cava_on && root.playing && PowerSource.on_ac }
 
                 CavaBars {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     height: parent.height
-                    active: root.cava_on && MediaState.playing && PowerSource.on_ac
+                    source: root.sample || CavaState
+                    active: root.cava_on && root.playing && PowerSource.on_ac
                 }
             }
 
             PositionLine {
                 visible: root.right_mode === "position"
+                player: root.shown_player
+                polls: !root.sample
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
                 anchors.right: parent.right
