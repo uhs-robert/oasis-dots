@@ -500,6 +500,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `S` | press | Go | Slack | `apps.focus` |
 | `SHIFT + S` | press | Go | Steam | `apps.focus` |
 | `T` | press | Go | Terminal | `apps.focus` |
+| `V` | press | Go | Editor | `terminal.editor` |
 | `W` | press | Go | Search Windows | `overview.search` |
 | `ESCAPE` | press | Go | Exit Go |  |
 | `BackSpace` | release | Go | Back |  |
