@@ -18,10 +18,6 @@ Item {
     id: root
 
     property string screen_name: ""
-
-    HoverHandler {
-        onHoveredChanged: Popups.set_bar_hover(root.screen_name, hovered)
-    }
     // Only the focused monitor's bar shows the submap chip, as only its tab shows.
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
     property var rule: null
@@ -126,6 +122,10 @@ Item {
     // the side bands keep the frame's colour. The corners of the hole start below the bar, so nothing here clips an arrow.
     readonly property real lualine_start: root.frame ? root.frame.start : 0
     readonly property real lualine_end: root.frame ? root.width - root.frame.end : root.width
+
+    HoverHandler {
+        onHoveredChanged: Popups.set_bar_hover(root.screen_name, hovered)
+    }
 
     Component {
         id: strip_band
@@ -462,5 +462,9 @@ Item {
         root.popups_ready = true;
         sync_popups();
     }
-    Component.onDestruction: Popups.unregister_screen(root.screen_name)
+    Component.onDestruction: {
+        // A destroyed bar (monitor unplugged under the pointer) sends no hover end.
+        Popups.set_bar_hover(root.screen_name, false);
+        Popups.unregister_screen(root.screen_name);
+    }
 }
