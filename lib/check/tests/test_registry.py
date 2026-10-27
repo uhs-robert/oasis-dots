@@ -19,12 +19,13 @@ sys.path.insert(0, os.path.join(CHECK_DIR, "steps"))
 import registry  # noqa: E402
 from test_qml import TreeCase, write_tree  # noqa: E402
 
-ZOOM_QML = 'IpcHandler { target: "zoom"; function toggle(): void {}; function untyped(x) {} }\n'
+ZOOM_QML = 'IpcHandler { target: "zoom"; function toggle(): void {}; function step(by: int, unit: string): void {}; function untyped(x) {} }\n'
 GOOD_LIST = {"version": 1, "actions": [
     {"id": "zoom.toggle", "perform": {"kind": "ipc", "target": "zoom", "function": "toggle", "args": []}},
     {"id": "shot.take", "perform": {"kind": "command", "argv": ["~/.config/hypr/scripts/shot.sh", "--x"]}},
     {"id": "fn.run", "perform": {"kind": "lua"}},
 ]}
+ZOOM_STEP = {"id": "zoom.step", "perform": {"kind": "ipc", "target": "zoom", "function": "step", "args": ["{by}", "px"]}}
 
 
 # Actions with no key whose run is an Ipc call (lib/actions/defs/{notifications,style,lock,power,screenshot,zoom,overview,settings,launcher}.lua).
@@ -93,6 +94,19 @@ class ListTest(ListCase):
     def test_an_untyped_ipc_function_fails(self):
         found = self.broken(lambda actions: actions[0]["perform"].update({"function": "untyped"}))
         self.assertFinding(found, 'calls "zoom untyped"')
+
+    def test_matching_ipc_arguments_pass(self):
+        self.assertEqual(self.broken(lambda actions: actions.append(dict(ZOOM_STEP))), [])
+
+    def test_too_few_ipc_arguments_fail(self):
+        short = copy.deepcopy(ZOOM_STEP)
+        short["perform"]["args"] = ["{by}"]
+        found = self.broken(lambda actions: actions.append(short))
+        self.assertFinding(found, 'zoom.step calls "zoom step" with 1 argument(s), but step(by: int, unit: string) takes 2')
+
+    def test_too_many_ipc_arguments_fail(self):
+        found = self.broken(lambda actions: actions[0]["perform"].update(args=["now"]))
+        self.assertFinding(found, 'zoom.toggle calls "zoom toggle" with 1 argument(s), but toggle() takes 0')
 
     def test_a_missing_ipc_target_fails(self):
         found = self.broken(lambda actions: actions[0]["perform"].update(target="nowhere"))
