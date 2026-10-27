@@ -564,7 +564,6 @@ PanelWindow {
         } else if (visible) {
             open_anim.stop();
             swap_in_anim.stop();
-            root.swap_fade = 1;
             close_anim.restart();
         }
     }
@@ -582,9 +581,13 @@ PanelWindow {
     readonly property real drawn_extent: root.full_extent * root.drop_progress
 
     function swap_in(from_extent) {
+        // A window still drawn (line_progress above 0), such as one the pointer came back to mid fade-out, carries on from
+        // its own opacity and extent; only a hidden window starts from the outgoing popup's.
+        if (root.line_progress === 0) {
+            drop_progress = root.full_extent > 0 ? Math.max(0, Math.min(1, from_extent / root.full_extent)) : 0;
+            root.swap_fade = 0;
+        }
         line_progress = 1;
-        drop_progress = root.full_extent > 0 ? Math.max(0, Math.min(1, from_extent / root.full_extent)) : 0;
-        root.swap_fade = 0;
         swap_in_anim.restart();
     }
 
@@ -647,7 +650,11 @@ PanelWindow {
 
     SequentialAnimation {
         id: close_anim
-        NumberAnimation { target: root; property: "drop_progress"; to: 0; duration: root.drop_close_ms * root.anim_scale; easing.type: Easing.InCubic }
+        // swap_fade is 1 unless a close lands mid swap-in, which fades the rest of the way in while folding.
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "drop_progress"; to: 0; duration: root.drop_close_ms * root.anim_scale; easing.type: Easing.InCubic }
+            NumberAnimation { target: root; property: "swap_fade"; to: 1; duration: root.drop_close_ms * root.anim_scale; easing.type: Easing.InCubic }
+        }
         NumberAnimation { target: root; property: "line_progress"; to: 0; duration: root.drawer ? 0 : 90 * root.anim_scale; easing.type: Easing.InCubic }
         ScriptAction {
             script: {
