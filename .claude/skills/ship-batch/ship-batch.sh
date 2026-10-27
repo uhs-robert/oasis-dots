@@ -209,30 +209,32 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     esac
     use_live_hypr "restart the bar by hand"
     # `qs -n` refuses to start while the old bar lives, so a bar slow to exit on SIGTERM would be relaunched into
-    # nothing and leave the owner with no bar: escalate to SIGKILL before going on.
-    pkill -x qs || true
+    # nothing and leave the owner with no bar: escalate to SIGKILL before going on. Only the owner's `qs -n` bar is
+    # matched (as in restart-bar.sh): -x qs would also kill other users' or sessions' test bars.
+    bar_pattern='^qs -n'
+    pkill -u "$UID" -f "$bar_pattern" || true
     for _ in $(seq 20); do
-      pgrep -x qs >/dev/null || break
+      pgrep -u "$UID" -f "$bar_pattern" >/dev/null || break
       sleep 0.2
     done
-    if pgrep -x qs >/dev/null; then
-      pkill -KILL -x qs || true
+    if pgrep -u "$UID" -f "$bar_pattern" >/dev/null; then
+      pkill -KILL -u "$UID" -f "$bar_pattern" || true
       for _ in $(seq 10); do
-        pgrep -x qs >/dev/null || break
+        pgrep -u "$UID" -f "$bar_pattern" >/dev/null || break
         sleep 0.2
       done
     fi
     # A failure here still relaunches the bar first: dying with the old one killed would leave the owner with none.
     migrate_status=0
     # The wait above can run out (a slow exit): migrations that see a bar keep the old state and nothing would retry.
-    if pgrep -x 'qs|quickshell' >/dev/null; then
+    if pgrep -u "$UID" -f "$bar_pattern" >/dev/null; then
       $run_migrations && echo "ship-batch: the old bar was still running, so migration cleanup was skipped; stop the bar and run: just migrate-quickshell-state"
     else
       migrate "after stopping the bar" || migrate_status=1
     fi
     hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" 9>&- >/dev/null || die "hyprctl could not relaunch qs; start it by hand: hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\""
     sleep 6
-    pgrep -x qs >/dev/null || die "qs did not come back; read 'qs log'"
+    pgrep -u "$UID" -f "$bar_pattern" >/dev/null || die "qs did not come back; read 'qs log'"
     ((migrate_status == 0)) || die "$migrate_failure (the bar was restarted)"
     echo "ship-batch: restarted the stowed bar"
   fi
