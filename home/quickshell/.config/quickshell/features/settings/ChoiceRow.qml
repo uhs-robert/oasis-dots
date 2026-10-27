@@ -12,6 +12,9 @@ MenuRow {
     property string value_text: ""
     // Nesting depth, for a row that refines the one above it.
     property int indent: 0
+    // Where the value starts, from the label's unindented left edge; below 0 the value sits at the row's right end.
+    property real value_x: -1
+    readonly property bool in_column: root.value_x >= 0
     readonly property bool hovered: mouse_area.containsMouse
     readonly property int bump: SScale.bump_of(root)
     // Unselected values lean toward the label color so they read on dark panels.
@@ -37,7 +40,10 @@ MenuRow {
 
         RowLabel {
             id: row_label
-            Layout.fillWidth: true
+            Layout.fillWidth: !root.in_column
+            // The selected value's leading arrow hangs left of the column, so the value itself does not move.
+            Layout.preferredWidth: root.in_column ? Math.max(0, root.value_x - root.indent * Style.px(14) - row_layout.spacing - (root.selected && !root.st.toggle_brackets ? arrow_metrics.advanceWidth("‹ ") : 0)) : -1
+            elide: root.in_column ? Text.ElideRight : Text.ElideNone
             label: root.label
             color: root.fg(root.st.text_fg)
             font.family: root.st.font_family
@@ -45,14 +51,21 @@ MenuRow {
         }
 
         Text {
+            id: value_label
+            Layout.fillWidth: root.in_column
             // A long value (a path, a borrowed skin shared by several styles) shortens in the middle instead of running into the label.
-            Layout.maximumWidth: Math.max(0, Math.min(root.width * 0.65, row_layout.width - row_label.implicitWidth - row_layout.spacing))
+            Layout.maximumWidth: root.in_column ? Number.POSITIVE_INFINITY : Math.max(0, Math.min(root.width * 0.65, row_layout.width - row_label.implicitWidth - row_layout.spacing))
             elide: Text.ElideMiddle
             text: root.st.toggle_brackets ? "[" + root.value_text.toUpperCase() + "]" : root.selected ? "‹ " + root.value_text + " ›" : root.value_text
             color: root.fg(root.selected ? root.st.toggle_on : root.value_fg)
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-2) + root.bump
         }
+    }
+
+    FontMetrics {
+        id: arrow_metrics
+        font: value_label.font
     }
 
     MouseArea {

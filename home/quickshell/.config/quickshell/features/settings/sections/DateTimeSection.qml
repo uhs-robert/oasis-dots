@@ -9,6 +9,10 @@ import qs.core
 RowsSection {
     id: root
 
+    readonly property var week_names: ({ locale: "Follow locale", monday: "Monday", sunday: "Sunday" })
+
+    readonly property var formats: ({ locale: "Follow locale", "12h": "12-hour", "24h": "24-hour" })
+
     // `calendar-sync setup --check` exit codes; 127 is the shell's command-not-found, -1 means no answer yet.
     readonly property int check_connected: 0
     readonly property int check_rbw_locked: 3
@@ -100,7 +104,21 @@ RowsSection {
 
     function build_rows() {
         const actionable = (root.action_ids[root.state_name] || []).length > 0;
-        return [{
+        return [{ heading: "Format" }, {
+                label: "Time format",
+                desc: "Used by every clock and popup time. Follow locale uses your system's convention.",
+                values: () => ClockSettings.choices.time_format,
+                text: v => root.formats[v] || String(v),
+                value: () => ClockSettings.time_format,
+                set: v => ClockSettings.set("time_format", v)
+            }, {
+                label: "First day of week",
+                desc: "The calendar's first column. Follow locale uses your system's convention.",
+                values: () => ClockSettings.choices.week_start,
+                text: v => root.week_names[v] || String(v),
+                value: () => ClockSettings.week_start,
+                set: v => ClockSettings.set("week_start", v)
+            }, { heading: "Calendar" }, {
                 label: "Calendar",
                 desc: root.description(),
                 keys: actionable ? "Enter actions" : "",
@@ -114,7 +132,6 @@ RowsSection {
     }
 
     rows: root.build_rows()
-    footer_hint: "Enter actions · h/Esc sections · q close"
 
     Component.onCompleted: root.run_check()
     // The pane outlives a closed popup, so reopening it (say after Connect) must check again.

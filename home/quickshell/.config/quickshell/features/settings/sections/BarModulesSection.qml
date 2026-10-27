@@ -13,6 +13,20 @@ import "../SettingsScale.js" as SScale
 SettingsPane {
     id: root
 
+    // Values start past the longest setting label, as in RowsSection, rather than at the far edge of a wide pane.
+    readonly property real value_column: {
+        const f = label_metrics.font;
+        const labels = ["Editing target", "Position", "Own layout", "Compact"].concat(root.directory_rows.map(r => r.label));
+        const need = Math.max(...labels.map(l => label_metrics.advanceWidth(l)));
+        return Math.min(Math.ceil(need) + Style.px(40), Math.round(root.width * 0.6));
+    }
+
+    FontMetrics {
+        id: label_metrics
+        font.family: root.st.font_family
+        font.pixelSize: root.st.font_size + SScale.bump_of(root)
+    }
+
     property int cursor: 0
     property string target: ""
     // The y/n prompt before forgetting a saved position: { question, run }, or null.
@@ -332,6 +346,7 @@ SettingsPane {
         }
 
         ChoiceRow {
+            value_x: root.value_column
             visible: !root.picking
             selected: root.live && root.cursor === 0
             label: "Editing target"
@@ -345,6 +360,7 @@ SettingsPane {
         }
 
         ChoiceRow {
+            value_x: root.value_column
             visible: !root.picking
             selected: root.live && root.cursor === 1
             label: "Position"
@@ -368,6 +384,7 @@ SettingsPane {
         }
 
         ChoiceRow {
+            value_x: root.value_column
             visible: !!root.target_screen && !root.picking
             selected: root.live && root.cursor === 2
             label: "Own layout"
@@ -381,6 +398,7 @@ SettingsPane {
         }
 
         ChoiceRow {
+            value_x: root.value_column
             visible: root.has_own && !root.picking
             selected: root.live && root.cursor === 3
             label: "Compact"
@@ -409,6 +427,7 @@ SettingsPane {
             ChoiceRow {
                 required property int index
                 required property var modelData
+                value_x: root.value_column
                 selected: root.live && root.cursor === root.base_count + index
                 label: modelData.label
                 value_text: BarSettings.directory_switches[modelData.name] ? "on" : "off"

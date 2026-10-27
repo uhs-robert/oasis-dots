@@ -30,22 +30,6 @@ RowsSection {
             set: v => ThemeAudio.set_flag("notify", v === "on")
         },
         {
-            label: "Lock music",
-            desc: "Plays your music.ogg/wav/mp3 from ~/.local/share/quickshell/sounds/<pack>/ at lock and login.",
-            values: () => ["on", "off"],
-            text: v => v,
-            value: () => ThemeAudio.music ? "on" : "off",
-            set: v => ThemeAudio.set_flag("music", v === "on")
-        },
-        {
-            label: "Music volume",
-            desc: "Volume of the lock and login music.",
-            values: () => ThemeAudio.volumes,
-            text: v => Math.round(v * 100) + "%",
-            value: () => ThemeAudio.music_volume,
-            set: v => ThemeAudio.set_volume("music_volume", v)
-        },
-        {
             label: "Effects volume",
             desc: "Volume of interface and notification sounds.",
             values: () => ThemeAudio.volumes,

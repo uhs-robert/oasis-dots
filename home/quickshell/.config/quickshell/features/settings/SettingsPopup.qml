@@ -21,8 +21,6 @@ Popup {
     // not resize between sections.
     readonly property real max_width_fraction: 0.9
     readonly property real height_fraction: 0.8
-    // The pane stops here, so a row's value stays near its name; the help panel takes the rest. Stacked (portrait) panes keep the full width.
-    readonly property real row_cap: Style.px(640)
     readonly property real max_width: Style.px(1900)
     // Extra font pixels on screens taller than 1080p; the panes and rows below read it through SScale.bump_of.
     readonly property int text_bump: SScale.fitted_bump(SScale.text_bump(root.screen ? root.screen.height : 0), Sections.list.length, root.group_count, Style.px(28), root.st.fs(-3) * 1.4 + 6, root.body_height - 24)
@@ -34,8 +32,8 @@ Popup {
         return Qt.rgba(c[0], c[1], c[2], c[3]);
     }
     // The section list, the pane and help column at their widest, their gaps and the body's 12px margins.
-    // The 740 is the help panel's share at full width: the old 860 pane and 520 help, less the narrower pane, so the drawer keeps its width.
-    readonly property real natural_width: nav.width + Style.px(12 + 24 + 48 + 740) + root.row_cap + 24
+    // The 1380 is the pane and help columns together, the old 860 pane and 520 help, so the drawer keeps its width.
+    readonly property real natural_width: nav.width + Style.px(12 + 24 + 48 + 1380) + 24
     preferred_width: (root.screen ? Math.min(root.natural_width, root.screen.width * root.max_width_fraction, root.max_width) : Math.min(root.natural_width, root.max_width)) / Style.scale
     body_height: root.screen ? Math.min(root.screen.height * root.height_fraction - root.header_height - root.footer_height, root.content_cap + 24) : 600
     jumps_enabled: true
@@ -132,12 +130,13 @@ Popup {
 
     // Selects the section SettingsNav names and enters it; false when none was asked for.
     function apply_request() {
-        const index = Sections.index_of(SettingsNav.requested);
+        const target = Sections.resolve(SettingsNav.requested);
         SettingsNav.requested = "";
-        if (index < 0) return false;
-        root.nav_index = index;
+        if (target.index < 0) return false;
+        root.nav_index = target.index;
         root.load_section();
         root.enter_pane();
+        if (target.part !== "" && root.pane && typeof root.pane.focus_part === "function") root.pane.focus_part(target.part);
         return true;
     }
 
@@ -372,9 +371,11 @@ Popup {
         // small screen) the help goes under the rows.
         readonly property real side_room: body.width - nav_divider.x - Style.px(24)
         readonly property bool help_below: body.side_room < Style.px(480 + 48 + 300)
-        readonly property real help_width: body.help_below ? body.side_room : Math.max(Style.px(300), body.side_room - root.row_cap - Style.px(48))
+        // Beside the rows the help column is a little wider than the section list and the pane takes the rest; the rows
+        // keep each value near its label themselves (RowsSection.value_column).
+        readonly property real help_width: body.help_below ? body.side_room : Math.max(Style.px(260), Math.round(nav.width * 1.25))
         readonly property real help_height: body.help_below ? Math.round(body.height * 0.3) : body.height
-        readonly property real pane_width: body.help_below ? body.side_room : Math.min(root.row_cap, body.side_room - body.help_width - Style.px(48))
+        readonly property real pane_width: body.help_below ? body.side_room : body.side_room - body.help_width - Style.px(48)
         readonly property real pane_height: body.help_below ? body.height - body.help_height - Style.px(24) : body.height
 
         Flickable {

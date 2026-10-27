@@ -91,7 +91,7 @@ CASES = [
     ("home/quickshell/.config/quickshell/core/PolledFile.qml", " polledfile qml node"),
     ("home/quickshell/tests/colors_preview/run.sh", " colorsprev qml node"),
     ("home/quickshell/.config/quickshell/features/settings/RowsSection.qml", " colorsprev qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/sections/ColorsSection.qml", " colorsprev qml node"),
+    ("home/quickshell/.config/quickshell/features/settings/sections/StyleSection.qml", " colorsprev qml node"),
     ("home/quickshell/.config/quickshell/features/settings/SettingsPanel.qml", " colorsprev qml node"),
     ("home/quickshell/tests/restarting_stream/run.py", " restartstream qml"),
     ("home/quickshell/.config/quickshell/core/RestartingStream.qml", " restartstream qml node"),
