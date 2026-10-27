@@ -2,7 +2,7 @@
 
 `bar/` holds the bar and its islands (`Island.qml`, with the one-polygon shapes' geometry in `ui/frames/IslandOutlines.js`), the submap and voice-mode tabs, the hot corner, one file per module in `modules/`, `BarSettings` with `BarLayout.js` and `BarModules.js` (the layout and module registry), `LualineState`, `SubmapState`, the command-status state and IPC handler, the badged glyph and done/wait pulses the modules draw, `WindowSegment` (the focused app and directory, shown by the `directory` module and in lualine's section c) with `DirectoryFormat.js`, and the neovim style's mode chip, buffer line, lualine sections and `LualineStrip` (section c's fill, window segment and cava slot, and the x/y/z sections) in `neovim/`.
 
-The layout is edited live by the bar editor (`bar_editor/`, `qs ipc call bareditor open`): `Bar.qml` publishes each module to `BarItems` and `BarSettings` writes `bars.json` through `core/JsonStore.qml`, debounced, so a burst of edits is one write.
+The layout is edited live by the bar editor (`bar_editor/`, `qs ipc call bareditor open ""`): `Bar.qml` publishes each module to `BarItems` and `BarSettings` writes `bars.json` through `core/JsonStore.qml`, debounced, so a burst of edits is one write. `shared.compact` in `bars.json` overrides a rule's `compact` on every monitor sharing the layout (monitors with their own layout keep theirs); `c` in the editor writes it, and removes it when every sharing monitor's rule already gives the flipped value.
 
 ## Island shapes
 
