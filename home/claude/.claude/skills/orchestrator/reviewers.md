@@ -31,3 +31,9 @@ Scopes are `off`, `public`, `all`. Output always has `local.scope` (from `local.
 - A layer that is not valid JSON or has the wrong shape is skipped with a warning on stderr; the other layers still resolve. An invalid scope or default becomes `off`; an invalid `gate` or `enabled` is ignored.
 - Any problem in the built-in file is fatal.
 - Exit 0 on success, 1 on a missing or invalid built-in file, 64 on bad usage.
+
+## Local runner
+
+`run-local-reviews.sh <base> <outdir>` runs every reviewer whose resolved `local.scope` is not `off`, in parallel, from the current (clean) worktree, and prints one line per reviewer. It always exits 0 (results are advisory); 1 if the registry does not resolve.
+
+Each `local.command` (relative paths resolve beside the script) is called as `<cmd> <base> <outdir>` with `REVIEW_SCOPE` (the resolved scope) and `REVIEW_MODEL` (`local.model`, optional) in the environment, and writes `<outdir>/<name>-review.md`. Exit codes: 0 path printed; 2 unavailable (reason printed); 3 uncommitted changes; 4 skipped by scope (reason printed, kept in `<outdir>/<name>-skipped.txt`). Scripts source `review-lib.sh` for the scope check: `public` needs `gh repo view --json visibility` to say public (cached 24 h under `$XDG_CACHE_HOME/code-reviewers/`); a failed lookup counts as private. Called directly without `REVIEW_SCOPE`, a script looks its scope up in the registry.
