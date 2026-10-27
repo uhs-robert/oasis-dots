@@ -1,0 +1,45 @@
+{
+  "reviewers": [
+    {
+      "name": "codex",
+      "label": "Codex",
+      "local": {"command": "codex-review.sh", "binary": "codex", "default": "all"},
+      "github": {
+        "app_slug": null,
+        "logins": ["chatgpt-codex-connector"],
+        "check_names": [],
+        "signal": "summary_comment",
+        "unavailable": ["usage limits"],
+        "request": "@codex review",
+        "start_s": 300,
+        "wait_s": 1200
+      },
+      "gate": "auto"
+    },
+    {
+      "name": "coderabbit",
+      "label": "CodeRabbit",
+      "local": {"command": "coderabbit-review.sh", "binary": "coderabbit", "default": "off", "default_when_on": "public"},
+      "github": {
+        "app_slug": "coderabbitai",
+        "logins": ["coderabbitai"],
+        "check_names": ["CodeRabbit"],
+        "signal": "check_run",
+        "running": ["in_progress", "queued"],
+        "done": ["success"],
+        "unavailable": ["Rate limit exceeded", "Review paused", "Review skipped"],
+        "unavailable_conclusions": ["skipped", "neutral", "failure", "timed_out"],
+        "request": "@coderabbitai review",
+        "start_s": 300,
+        "wait_s": 1200
+      },
+      "gate": "auto"
+    },
+    {
+      "name": "claude",
+      "label": "Claude",
+      "local": {"command": "claude-review.sh", "binary": "claude", "default": "off"},
+      "gate": "never"
+    }
+  ]
+}
