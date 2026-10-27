@@ -212,10 +212,6 @@ PickerProvider {
             property var entry: ({})
             property var positions: []
             property bool selected: false
-            readonly property string run_state: card.entry.state || ""
-            // Waiting is the one that needs the owner, so its badge is filled; the others stay outlined.
-            readonly property bool waiting: card.run_state === "waiting"
-            readonly property color state_color: card.waiting ? Theme.warning : card.run_state === "working" ? Theme.ok : Style.text_dim
 
             Text {
                 id: title
@@ -229,27 +225,11 @@ PickerProvider {
                 font.bold: true
             }
 
-            Rectangle {
+            AgentStateBadge {
                 id: badge
                 anchors.top: title.bottom
                 anchors.topMargin: 5
-                visible: card.run_state !== ""
-                width: badge_text.implicitWidth + 12
-                height: badge_text.implicitHeight + 4
-                radius: height / 2
-                color: card.waiting ? card.state_color : Qt.alpha(card.state_color, 0.14)
-                border.width: card.waiting ? 0 : 1
-                border.color: Qt.alpha(card.state_color, 0.6)
-
-                Text {
-                    id: badge_text
-                    anchors.centerIn: parent
-                    text: card.run_state.toUpperCase()
-                    color: card.waiting ? Theme.bg_crust : card.state_color
-                    font.family: Style.font_family
-                    font.pixelSize: Style.fs(-5)
-                    font.bold: true
-                }
+                run_state: card.entry.state || ""
             }
 
             Text {
@@ -284,6 +264,77 @@ PickerProvider {
                 width: parent.width
                 elide: Text.ElideRight
                 text: root.tails[card.entry.id] || ""
+                textFormat: Text.PlainText
+                color: Style.text_dim
+                font.family: Style.mono_font
+                font.pixelSize: Style.fs(-4)
+            }
+        }
+    }
+
+    // One line: title, state, agent and short directory, then the pane's last line in what is left.
+    row: Component {
+        Item {
+            id: line
+            property var entry: ({})
+            property var positions: []
+            property bool selected: false
+
+            Text {
+                id: line_icon
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.px(20)
+                horizontalAlignment: Text.AlignHCenter
+                text: "\u{f489}"
+                color: Style.text_muted
+                font.family: "JetBrainsMono Nerd Font"
+                font.pixelSize: Style.fs(0)
+            }
+
+            Text {
+                id: line_title
+                anchors.left: line_icon.right
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, parent.width * 0.3)
+                elide: Text.ElideRight
+                textFormat: Text.StyledText
+                text: Fuzzy.highlight(line.entry.label || "", line.positions, String(Style.text_accent))
+                color: Style.text_fg
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-1)
+                font.bold: true
+            }
+
+            AgentStateBadge {
+                id: line_badge
+                anchors.left: line_title.right
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                run_state: line.entry.state || ""
+            }
+
+            Text {
+                id: line_where
+                anchors.left: line_badge.visible ? line_badge.right : line_title.right
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, parent.width * 0.3)
+                elide: Text.ElideMiddle
+                text: [line.entry.agent || "", line.entry.cwd_short || ""].filter(s => s !== "").join(" · ")
+                textFormat: Text.PlainText
+                color: Style.text_muted
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-3)
+            }
+
+            Text {
+                anchors.left: line_where.right
+                anchors.leftMargin: 14
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                elide: Text.ElideRight
+                text: root.tails[line.entry.id] || ""
                 textFormat: Text.PlainText
                 color: Style.text_dim
                 font.family: Style.mono_font

@@ -106,6 +106,7 @@ PATH_SCOPES = [
     ("home/quickshell/.config/quickshell/features/settings/RowsSection.qml", "colorsprev qml node"),
     ("home/quickshell/.config/quickshell/features/settings/sections/ColorsSection.qml", "colorsprev qml node"),
     ("home/quickshell/.config/quickshell/features/settings/SettingsPanel.qml", "colorsprev qml node"),
+    ("home/quickshell/.config/quickshell/ui/scroll/ScrollCue.qml", "colorsprev qml node"),
     ("home/quickshell/tests/restarting_stream/*", "restartstream qml"),
     ("home/quickshell/.config/quickshell/core/RestartingStream.qml", "restartstream qml node"),
     ("home/quickshell/tests/*", "node qml"),

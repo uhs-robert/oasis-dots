@@ -9,8 +9,8 @@ const { execFileSync } = require("child_process");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/AgentSessions.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { parse_sessions, capture_argv, split_capture, last_line, tails_argv, parse_tails };", context);
-const { parse_sessions, capture_argv, split_capture, last_line, tails_argv, parse_tails } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { parse_sessions, badge_style, capture_argv, split_capture, last_line, tails_argv, parse_tails };", context);
+const { parse_sessions, badge_style, capture_argv, split_capture, last_line, tails_argv, parse_tails } = context.api;
 const plain = value => JSON.parse(JSON.stringify(value));
 const home = "/home/me";
 
@@ -36,7 +36,11 @@ const cases = [
   ["empty output gives no rows", () => parse_sessions("", home), []],
   ["rows without an id are dropped", () => parse_sessions("[null, {\"agent\":\"claude\"}, 3]", home), []],
   ["state running reads as working", () => parse_sessions("[{\"id\":\"a\",\"agent\":\"claude\",\"state\":\"running\",\"title\":\"T\",\"cwd\":\"/home/me/x\"}]", home).map(r => [r.label, r.description]), [["T", "claude · working · ~/x"]]],
-  ["state done reads as idle", () => parse_sessions("[{\"id\":\"a\",\"agent\":\"codex\",\"state\":\"done\",\"cwd\":\"/home/me\"}]", home).map(r => [r.label, r.description]), [["codex", "codex · idle · ~"]]],
+  // req: PICKERS-17
+  ["state done keeps its own label", () => parse_sessions("[{\"id\":\"a\",\"agent\":\"codex\",\"state\":\"done\",\"cwd\":\"/home/me\"}]", home).map(r => [r.label, r.state, r.description]), [["codex", "done", "codex · done · ~"]]],
+  // req: PICKERS-17
+  ["working and idle badges are outlined, done and waiting filled", () => ["working", "done", "waiting", "idle"].map(badge_style), [{ tone: "primary", filled: false }, { tone: "ok", filled: true }, { tone: "warning", filled: true }, { tone: "dim", filled: false }]],
+  ["an unknown state draws like idle", () => badge_style("napping"), { tone: "dim", filled: false }],
   ["cwd outside home stays whole", () => parse_sessions("[{\"id\":\"a\",\"agent\":\"c\",\"cwd\":\"/home/mexyz\"}]", home)[0].description, "c · /home/mexyz"],
   ["numeric id becomes a string", () => parse_sessions("[{\"id\":7}]", home)[0].id, "7"],
   ["missing tmux fields become empty", () => { const r = parse_sessions("[{\"id\":\"a\"}]", home)[0]; return [r.tmux_socket, r.tmux_pane]; }, ["", ""]],

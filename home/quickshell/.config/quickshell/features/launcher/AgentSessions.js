@@ -2,7 +2,20 @@
 
 // Pure helpers for AgentsProvider, kept here so node can test them.
 
-var state_labels = { running: "working", waiting: "waiting", idle: "idle", done: "idle" };
+var state_labels = { running: "working", waiting: "waiting", idle: "idle", done: "done" };
+
+// How a state's badge is drawn: the theme colour it takes and whether it is filled. Waiting needs the owner and done has
+// news, so those two are filled; working and idle stay outlined. An unknown state draws like idle.
+var badge_styles = {
+    working: { tone: "primary", filled: false },
+    done: { tone: "ok", filled: true },
+    waiting: { tone: "warning", filled: true },
+    idle: { tone: "dim", filled: false }
+};
+
+function badge_style(state) {
+    return badge_styles[state] || badge_styles.idle;
+}
 
 function shorten_home(path, home) {
     if (path === home) return "~";
