@@ -878,8 +878,10 @@ beat_palettes() {
   leader_chord S qs_ipc call popup open settings
   wait_layer quickshell-popup
   pause "$T_SETTINGS_HOLD"
-  press "2" 2
+  # Style holds the palette under its Colors heading: gg to its first row, then } to Palette.
+  press "1" 1
   press "ENTER" @Return
+  press "gg }" g g "}"
   pause "$T_SETTINGS_HOLD"
   for name in $DEMO_PALETTES; do
     press "ENTER" @Return
@@ -890,7 +892,7 @@ beat_palettes() {
   done
 }
 
-# The last palette reload can close Settings; reopen it on the Colors pane, on camera like any other key.
+# The last palette reload can close Settings; reopen it on Style's Colors rows, on camera like any other key.
 pre_turn() {
   if ((DRY)) || layer_open quickshell-popup; then return 0; fi
   # Opening on a section already focuses its pane, which is where the palettes beat leaves Settings.
@@ -902,6 +904,8 @@ beat_turn() {
   press "ESC" @Escape
   press "1" 1
   press "ENTER" @Return
+  # The palettes beat leaves Style's cursor on Palette; gg brings it back to the Style row.
+  press "gg" g g
   press "ENTER" @Return
   type_text psx
   press "ENTER" @Return
@@ -924,6 +928,7 @@ switch_style() {
   local id=$1 query=$2
   leader_chord S qs_ipc call settings open style
   wait_layer quickshell-popup
+  press "gg" g g
   press "ENTER" @Return
   type_text "$query"
   press "ENTER" @Return

@@ -40,7 +40,7 @@ SettingsPane {
     property alias preview: preview_col.data
 
     // Where every row's value starts, past the longest label of any tab, so values sit in one column near their labels
-    // however wide the pane is; at most most of the row, where a long label gives way.
+    // however wide the pane is; capped at 60% of the row, where a long label elides.
     readonly property real value_column: {
         const f = label_metrics.font;
         let need = 0;
@@ -92,14 +92,14 @@ SettingsPane {
         return !!row && row.heading !== undefined;
     }
 
-    // The next row from `from` that is not a heading, `delta` 1 or -1, wrapping; `from` itself when there is none.
+    // The next row from `from` that is not a heading, `delta` 1 or -1, wrapping; `from` (kept in range) when there is none.
     function next_row(from, delta) {
         const count = root.rows.length;
         for (let s = 1; s <= count; s++) {
             const i = root.wrap_index(from, delta * s, count);
             if (!root.is_heading(root.rows[i])) return i;
         }
-        return Math.max(0, from);
+        return Math.max(0, Math.min(from, count - 1));
     }
 
     function heading_above(index) {
@@ -156,7 +156,8 @@ SettingsPane {
     function focus_part(part) {
         const tab = root.shown_tabs.findIndex(t => t.label === part);
         if (tab >= 0) {
-            root.set_tab(tab, root.next_row(-1, 1));
+            root.set_tab(tab);
+            root.cursor = root.next_row(-1, 1);
             return true;
         }
         const heading = root.rows.findIndex(r => root.is_heading(r) && r.heading === part);
@@ -167,7 +168,7 @@ SettingsPane {
 
     function step(index, delta) {
         const row = root.rows[index];
-        if (!row || row.cycle === false) return;
+        if (!row || root.is_heading(row) || row.cycle === false) return;
         const values = row.values();
         if (values.length === 0) return;
         const at = values.indexOf(row.value());
@@ -178,7 +179,7 @@ SettingsPane {
 
     function pickable(index) {
         const row = root.rows[index];
-        return !!row && row.pick !== false && row.values().length >= root.pick_min;
+        return !!row && !root.is_heading(row) && row.pick !== false && row.values().length >= root.pick_min;
     }
 
     function open_picker(index) {
@@ -198,7 +199,8 @@ SettingsPane {
     }
 
     function keys_of(row) {
-        if (!row) return root.section_keys;
+        const layout = root.layout_hint.replace(/ · $/, "");
+        if (!row || root.is_heading(row)) return [root.section_keys, layout].filter(k => k !== "").join(" · ");
         let keys = row.keys;
         if (keys === undefined) {
             const parts = [];
@@ -208,8 +210,7 @@ SettingsPane {
             if (row.activate || row.pick !== false && values.length >= root.pick_min) parts.push("Enter list");
             keys = parts.join(" · ");
         }
-        const layout = (root.shown_tabs.length > 1 ? "[/] tab · " : "") + (root.has_headings ? "{/} heading" : "");
-        return [keys, root.section_keys, layout.replace(/ · $/, "")].filter(k => k !== "").join(" · ");
+        return [keys, root.section_keys, layout].filter(k => k !== "").join(" · ");
     }
 
     function activate(index, delta) {

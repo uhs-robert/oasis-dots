@@ -535,7 +535,7 @@ struct ClockSettings {
     time_format: Option<serde_json::Value>,
 }
 
-/// Whether the bar's Settings > Clock shows 12-hour time, the way its TimeFormat reads it: "locale" is 12-hour when
+/// Whether the bar's Settings > Date & time shows 12-hour time, the way its TimeFormat reads it: "locale" is 12-hour when
 /// the locale's time format has an AM/PM field.
 pub fn clock_is_twelve_hour() -> bool {
     let state_home = match std::env::var_os("XDG_STATE_HOME").filter(|value| !value.is_empty()) {
