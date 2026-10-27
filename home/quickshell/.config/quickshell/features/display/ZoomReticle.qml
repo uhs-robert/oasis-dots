@@ -16,7 +16,7 @@ PanelWindow {
     readonly property bool mine: Zoom.reticle_shown && Zoom.cursor_screen === root.screen_name
     property bool help_open: false
     property point last_mouse: Qt.point(-1, -1)
-    readonly property string help_text: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px · i/o or +/- or wheel zoom · [/] loupe size · m loupe · f full screen · Esc/q exit"
+    readonly property string help_text: "hjkl move 10px · H/J/K/L move 100px · C-hjkl move 1px · C-H/J/K/L move 300px · i/o or +/- or wheel zoom · [/] or mouse back/next loupe size · m loupe · f full screen · Esc/q exit"
     readonly property real margin: 2
     readonly property real hole_half: Math.ceil(Zoom.sample_half) + root.margin
 
@@ -174,7 +174,12 @@ PanelWindow {
         z: -1
         hoverEnabled: true
         cursorShape: Qt.BlankCursor
+        acceptedButtons: Qt.LeftButton | Qt.BackButton | Qt.ForwardButton
         onWheel: wheel => Zoom.step(wheel.angleDelta.y > 0 ? 1 : wheel.angleDelta.y < 0 ? -1 : 0)
+        onPressed: mouse => {
+            if (mouse.button === Qt.BackButton) Zoom.size(-1);
+            else if (mouse.button === Qt.ForwardButton) Zoom.size(1);
+        }
         onPositionChanged: mouse => {
             if (mouse.x === root.last_mouse.x && mouse.y === root.last_mouse.y) return;
             root.last_mouse = Qt.point(mouse.x, mouse.y);
