@@ -26,13 +26,6 @@ Act.define("menu.ssh", {
   run = Defer.call("lib.actions.menu", "ssh"),
 })
 
-Act.define("menu.run_script", {
-  label = "Run Script",
-  intent = "Pick a program from the PATH and run it.",
-  key = { key = "ALT + RETURN", leader = true },
-  run = Defer.call("lib.actions.menu", "run"),
-})
-
 Act.define("files.open", {
   label = "File Manager",
   intent = "Open the graphical file manager.",
@@ -40,25 +33,11 @@ Act.define("files.open", {
   run = function() require("lib.actions.cmd").run(require("config").app.gui_file_manager)() end,
 })
 
-Act.define("terminal.tui_files", {
-  label = "TUI File Manager",
-  intent = "Open the terminal file manager in a new terminal.",
-  key = { key = "SHIFT + E", leader = true },
-  run = function() require("lib.actions.cmd").term(require("config").app.tui_file_manager)() end,
-})
-
 Act.define("menu.drun", {
   label = "Open Application",
   intent = "Pick an application and start it.",
   key = { key = "O", leader = true },
   run = Defer.call("lib.actions.menu", "drun"),
-})
-
-Act.define("menu.cli", {
-  label = "Run CLI Tool",
-  intent = "Pick a program from the PATH and run it in a terminal that stays open.",
-  key = { key = "CTRL + O", leader = true },
-  run = Defer.call("lib.actions.menu", "cli"),
 })
 
 Act.define("menu.agents", {

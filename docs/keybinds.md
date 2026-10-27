@@ -31,11 +31,11 @@ keymaps/
     power.lua          lock, sleep, power
     mouse.lua          mouse binds
   submaps/             submaps: press one key to enter, then another to act
-    leader/  apps/  go/  system/  delete/  windows/
+    leader/  go/  system/  delete/  windows/
     groups/  cursor/  resize/  move/  bar/
 ```
 
-A global bind fires the moment you press it. A submap is a separate set of binds: its entry key switches the keyboard into it, where plain keys such as `F` or `SHIFT + S` do things, and which-key lists those binds as you enter it. Each submap's name, which you need for changing it, is the `name` field at the top of its file: `Applications`, `Windows`, `Leader` and so on.
+A global bind fires the moment you press it. A submap is a separate set of binds: its entry key switches the keyboard into it, where plain keys such as `F` or `SHIFT + S` do things, and which-key lists those binds as you enter it. Each submap's name, which you need for changing it, is the `name` field at the top of its file: `System`, `Windows`, `Leader` and so on.
 
 ## Setting up your keymap file
 
@@ -140,10 +140,10 @@ Bind.submap("Windows", function()
 end)
 ```
 
-Some submaps, such as Applications and Leader, are one-shot: any key leaves them. A bind you add this way does not leave the submap on its own, so finish its action with `Submap.reset()`. To add a PDF viewer to the Applications submap (`SUPER + A`) on `Z`:
+Some submaps, such as Go and Leader, are one-shot: any key leaves them. A bind you add this way does not leave the submap on its own, so finish its action with `Submap.reset()`. To add a PDF viewer to the Go submap (`SUPER + G`) on `Z`:
 
 ```lua
-Bind.submap("Applications", function()
+Bind.submap("Go", function()
   Bind.key("Z", function()
     hl.dispatch(hl.dsp.exec_cmd("zathura"))
     Submap.reset()
@@ -280,11 +280,8 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + RETURN` | press | global | Terminal | `terminal.open` |
 | `SUPER + SHIFT + RETURN` | press | global | Bottom Terminal | `terminal.bottom` |
 | `SUPER + CTRL + RETURN` | press | global | SSH Select | `menu.ssh` |
-| `SUPER + ALT + RETURN` | press | global | Run Script | `menu.run_script` |
 | `SUPER + E` | press | global | File Manager | `files.open` |
-| `SUPER + SHIFT + E` | press | global | TUI File Manager | `terminal.tui_files` |
 | `SUPER + O` | press | global | Open Application | `menu.drun` |
-| `SUPER + CTRL + O` | press | global | Run CLI Tool | `menu.cli` |
 | `SUPER + CTRL + A` | press | global | Agent Sessions | `menu.agents` |
 | `SUPER + Y` | press | global | Yazi | `terminal.yazi` |
 | `CTRL + SHIFT + ESCAPE` | press | global | Task Manager | `terminal.task_manager` |
@@ -301,15 +298,13 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + CTRL + P` | press | global | Passwords | `picker.passwords` |
 | `SUPER + T` | press | global | Search windows | `overview.search` |
 | `SUPER + SHIFT + T` | press | global | Move window in overview | `overview.move` |
-| `SUPER + CTRL + SHIFT + T` | press | global | Silent move window in overview | `overview.move_silent` |
 | `ALT + TAB` | press | global | Workspace overview | `overview.open` |
 | `SUPER + TAB` | press | global | Workspace overview | `overview.open` |
 | `ALT + GRAVE` | press | global | Tmux overview | `tmux.overview` |
 | `SUPER + CTRL + V` | press | global | Clipboard History | `picker.clipboard` |
-| `SUPER + CTRL + SHIFT + V` | press | global | Delete Clipboard Entry | `picker.clipboard_delete` |
 | `SUPER + CTRL + SPACE` | press | global | Jump to Directory | `picker.directory` |
 | `SUPER + CTRL + E` | press | global | Emoji Picker | `picker.emoji` |
-| `SUPER + CTRL + SLASH` | press | global | Agent Sessions Picker | `picker.agents` |
+| `SUPER + A` | press | global | Agent Sessions Picker | `picker.agents` |
 | `SUPER + SHIFT + SEMICOLON` | press | global | HyprVim Terminal | `hyprvim.terminal` |
 | `SUPER + APOSTROPHE` | press | global | Jump to Mark | `hyprvim.jump_mark` |
 | `SUPER + N` | press | global | Edit Selection in Vim | `hyprvim.edit_selection` |
@@ -336,7 +331,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + mouse:272` | press | global |  |  |
 | `SUPER + mouse:273` | press | global |  |  |
 | `SUPER + SPACE` | press | global | +Leader |  |
-| `SUPER + A` | press | global | +Applications |  |
 | `SUPER + G` | press | global | +Go |  |
 | `SUPER + Q` | press | global | +System |  |
 | `SUPER + D` | press | global | +Delete |  |
@@ -346,35 +340,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + C` | press | global | +Cursor |  |
 | `SUPER + R` | press | global | +Resize |  |
 | `SUPER + SHIFT + M` | press | global | +Move |  |
-| `SPACE` | press | Applications | Search Windows | `overview.search` |
-| `SLASH` | press | Applications | Search Applications | `menu.drun` |
-| `A` | press | Applications | Aria2tui | `terminal.tool` |
-| `B` | press | Applications | Bottles | `apps.open` |
-| `C` | press | Applications | Calculate (qalc) | `terminal.tool` |
-| `SHIFT + C` | press | Applications | Calculator | `apps.open` |
-| `D` | press | Applications | Discord | `apps.open` |
-| `SHIFT + D` | press | Applications | DNS (doggo) | `terminal.tool` |
-| `E` | press | Applications | Editor | `terminal.editor` |
-| `F` | press | Applications | Firefox | `apps.open` |
-| `G` | press | Applications | Gimp | `apps.open` |
-| `H` | press | Applications | HTTP (xh) | `terminal.tool` |
-| `I` | press | Applications | Inkscape | `apps.open` |
-| `J` | press | Applications | Journal (lazyjournal) | `terminal.tool` |
-| `M` | press | Applications | Mail | `apps.focus` |
-| `P` | press | Applications | ProtonPlus | `apps.focus` |
-| `SHIFT + P` | press | Applications | Ping (gping) | `terminal.tool` |
-| `Q` | press | Applications | QuteBrowser | `apps.open` |
-| `R` | press | Applications | Radio (cliamp) | `apps.focus` |
-| `S` | press | Applications | Slack | `apps.focus` |
-| `SHIFT + S` | press | Applications | Steam | `apps.focus` |
-| `T` | press | Applications | Torrent | `apps.open` |
-| `U` | press | Applications | Disk Diagnosis (gdu) | `terminal.tool` |
-| `W` | press | Applications | LibreOffice Writer | `apps.open` |
-| `X` | press | Applications | LibreOffice Calc | `apps.open` |
-| `ESCAPE` | press | Applications | Exit Applications |  |
-| `BackSpace` | release | Applications | Back |  |
-| `SHIFT + SLASH` | press | Applications | Toggle which-key help |  |
-| `catchall` | release | Applications |  |  |
 | `A` | press | Bar | Agents | `menu.agents` |
 | `B` | press | Bar | Bluetooth | `popup.open` |
 | `C` | press | Bar | Calendar | `popup.open` |
@@ -530,14 +495,12 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + F` | press | Go | Thunar | `apps.focus` |
 | `H` | press | Go | Hypr Config | `apps.focus` |
 | `M` | press | Go | Mail | `apps.focus` |
-| `SHIFT + M` | press | Go | Meeting | `window.focus_match` |
 | `P` | press | Go | Project | `menu.tmux` |
 | `Q` | press | Go | QuteBrowser | `apps.focus` |
 | `S` | press | Go | Slack | `apps.focus` |
 | `SHIFT + S` | press | Go | Steam | `apps.focus` |
 | `T` | press | Go | Terminal | `apps.focus` |
 | `W` | press | Go | Search Windows | `overview.search` |
-| `Y` | press | Go | Youtube | `window.focus_match` |
 | `ESCAPE` | press | Go | Exit Go |  |
 | `BackSpace` | release | Go | Back |  |
 | `SHIFT + SLASH` | press | Go | Toggle which-key help |  |
@@ -696,24 +659,24 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SLASH` | press | System | Edit Keymaps | `system.edit_keymaps` |
 | `SPACE` | press | System | Task Manager | `terminal.task_manager` |
 | `A` | press | System | AI Manager | `terminal.tool` |
+| `SHIFT + A` | press | System | Aria2tui | `terminal.tool` |
 | `B` | press | System | Restart Bar | `system.restart_bar` |
-| `D` | press | System | Display Manager | `system.display_manager` |
+| `C` | press | System | Calculate (qalc) | `terminal.tool` |
+| `D` | press | System | DNS (doggo) | `terminal.tool` |
 | `E` | press | System | Logout | `power.confirm` |
+| `G` | press | System | Ping (gping) | `terminal.tool` |
 | `H` | press | System | Reload Hyprland | `system.reload_hyprland` |
 | `SHIFT + H` | press | System | Reload Hyprpm Plugins | `system.reload_plugins` |
-| `I` | press | System | Internet (nmtui) | `system.network` |
+| `J` | press | System | Journal (lazyjournal) | `terminal.tool` |
 | `K` | press | System | Kill App (Click) | `system.kill_app` |
 | `L` | press | System | Lock | `power.confirm` |
-| `SHIFT + L` | press | System | Toggle Auto-Lock | `system.toggle_autolock` |
-| `N` | press | System | Notification Center | `popup.open` |
 | `R` | press | System | Reboot | `power.confirm` |
 | `SHIFT + R` | press | System | Replay Autostart | `system.replay_autostart` |
 | `P` | press | System | Power Off | `power.confirm` |
-| `T` | press | System | Theme Switch | `system.theme_switch` |
-| `U` | press | System | Update System | `system.update` |
+| `U` | press | System | Disk Usage (gdu) | `terminal.tool` |
 | `V` | press | System | Voxtype Settings | `system.voxtype_settings` |
 | `SHIFT + V` | press | System | Voxtype Restart | `system.voxtype_restart` |
-| `W` | press | System | Next Wallpaper | `system.next_wallpaper` |
+| `W` | press | System | HTTP (xh) | `terminal.tool` |
 | `X` | press | System | Disabled Hypr Errors | `system.disable_errors` |
 | `ESCAPE` | press | System | Exit System |  |
 | `BackSpace` | release | System | Back |  |

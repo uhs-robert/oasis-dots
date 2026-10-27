@@ -1,6 +1,5 @@
--- Actions for the Applications and Go submaps: focus-or-launch an app, open one, run a terminal tool, focus a window by
--- title. They take a name from a fixed list instead of a command, so `hypr-act` cannot be made to run arbitrary
--- commands. No default keys: the submap rows bind them.
+-- Actions for the Go and System submaps: focus-or-launch an app, run a terminal tool, open the editor. They take a name
+-- from a fixed list instead of a command, so `hypr-act` cannot be made to run arbitrary commands. No default keys: the submap rows bind them.
 local Act = require("lib.act") ---@class ActionLib
 
 --- The keys of `set`, sorted: the values an enum param accepts.
@@ -41,27 +40,6 @@ Act.define("apps.focus", {
   end,
 })
 
--- Apps that are only started, never focused; the value is the command.
-local OPENED_APPS = {
-  bottles = "bottles",
-  deluge = "deluge",
-  discord = "discord",
-  firefox = "firefox",
-  gimp = "gimp",
-  inkscape = "inkscape",
-  libreoffice_calc = "libreoffice --calc",
-  libreoffice_writer = "libreoffice --writer",
-  qalculate = "qalculate-gtk",
-  qutebrowser = "qutebrowser",
-}
-
-Act.define("apps.open", {
-  label = "Open App",
-  intent = "Start an app, even when it is already running.",
-  params = { { name = "app", type = "enum", values = names_of(OPENED_APPS) } },
-  run = function(app) require("lib.actions.apps").open(OPENED_APPS[app])() end,
-})
-
 -- window: "terminal" is a normal terminal window, "bottom" the half-height one; prefill types the command at the prompt
 -- instead of running it.
 local TERMINAL_TOOLS = {
@@ -94,16 +72,4 @@ Act.define("terminal.editor", {
   label = "Editor",
   intent = "Open the configured editor in a new terminal.",
   run = function() require("lib.actions.cmd").term(require("config").app.editor or "nvim")() end,
-})
-
-local WINDOW_TITLES = {
-  meeting = "title:(?i).*Meet.*",
-  youtube = "title:(?i).*youtube.*",
-}
-
-Act.define("window.focus_match", {
-  label = "Focus Window by Title",
-  intent = "Focus the window whose title matches: a video call (meeting) or YouTube.",
-  params = { { name = "name", type = "enum", values = { "meeting", "youtube" } } },
-  run = function(name) require("lib.actions.window").focus_by({ window = WINDOW_TITLES[name] })() end,
 })

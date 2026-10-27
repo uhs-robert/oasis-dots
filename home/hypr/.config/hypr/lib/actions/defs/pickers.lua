@@ -16,7 +16,6 @@ Act.define("picker.clipboard", {
 Act.define("picker.clipboard_delete", {
   label = "Delete Clipboard Entry",
   intent = "Pick an entry from the clipboard history and delete it.",
-  key = { key = "CTRL + SHIFT + V", leader = true },
   run = picker("clipboard_delete"),
 })
 
@@ -37,7 +36,7 @@ Act.define("picker.emoji", {
 Act.define("picker.agents", {
   label = "Agent Sessions Picker",
   intent = "Pick a running agent session, with a live preview of its terminal, and jump to it.",
-  key = { key = "CTRL + SLASH", leader = true },
+  key = { key = "A", leader = true },
   run = picker("agents_picker"),
 })
 

@@ -722,13 +722,12 @@ package.loaded["lua.plugins.hyprvim"] = {
 	},
 }
 assert(loadfile(hypr_dir .. "/lib/actions/defs/pickers.lua"))()
-check("pickers: no warnings, eight binds", #Act.warnings == 0 and #binds == 8)
+check("pickers: no warnings, seven binds", #Act.warnings == 0 and #binds == 7)
 local picker_keys = {
 	{ "picker.clipboard", "Clipboard History", "SUPER + CTRL + V", "clipboard" },
-	{ "picker.clipboard_delete", "Delete Clipboard Entry", "SUPER + CTRL + SHIFT + V", "clipboard_delete" },
 	{ "picker.directory", "Jump to Directory", "SUPER + CTRL + SPACE", "zoxide" },
 	{ "picker.emoji", "Emoji Picker", "SUPER + CTRL + E", "emoji" },
-	{ "picker.agents", "Agent Sessions Picker", "SUPER + CTRL + SLASH", "agents_picker" },
+	{ "picker.agents", "Agent Sessions Picker", "SUPER + A", "agents_picker" },
 }
 for _, row in ipairs(picker_keys) do
 	local id, label, key, menu_name = row[1], row[2], row[3], row[4]
@@ -739,6 +738,13 @@ for _, row in ipairs(picker_keys) do
 	check("pickers: " .. id .. " runs Menu." .. menu_name .. " once", #menu_calls == 1 and menu_calls[1] == menu_name)
 	check("pickers: " .. id .. " takes no args", has(raises(Act.run_cli, id, { "x" }), "takes at most 0"))
 end
+-- Keyless: only the clipboard picker's delete mode opens through it.
+menu_calls = {}
+Act.run_cli("picker.clipboard_delete", {})
+check(
+	"pickers: picker.clipboard_delete runs Menu.clipboard_delete",
+	#menu_calls == 1 and menu_calls[1] == "clipboard_delete"
+)
 check(
 	"hyprvim: terminal binds SHIFT + SEMICOLON",
 	find("SUPER + SHIFT + SEMICOLON") ~= nil and find("SUPER + SHIFT + SEMICOLON").opts.desc == "HyprVim Terminal"

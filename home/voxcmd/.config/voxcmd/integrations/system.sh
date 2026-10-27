@@ -41,7 +41,7 @@ set_dnd() {
   if [ "$1" = true ]; then echo "do not disturb on"; else echo "do not disturb off"; fi
 }
 
-# Auto-lock is hypridle running; toggle-autolock.sh starts or stops it the way the System submap key does.
+# Auto-lock is hypridle running; toggle-autolock.sh starts or stops it.
 set_autolock() {
   local running=off
   pgrep -x hypridle >/dev/null && running=on

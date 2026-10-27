@@ -50,7 +50,8 @@ The main binds that open things (the leader is `SUPER`):
 | `SUPER + SPACE`, then a letter        | The same popups, plus `S` Settings and `SPACE` Start |
 | `SUPER + /`                           | Keybinds picker for the current submap             |
 | `SUPER + O`                           | Apps picker                                        |
-| `SUPER + T`                           | Workspace overview with window search (`SHIFT` carries the focused window to a workspace and follows it, `CTRL + SHIFT` leaves the view where it is) |
+| `SUPER + A`                           | Agent sessions picker                              |
+| `SUPER + T`                           | Workspace overview with window search (`SHIFT` carries the focused window to a workspace and follows it) |
 | `SUPER + CTRL + V`                    | Clipboard picker                                   |
 | `SUPER + CTRL + SPACE`                | Directory picker                                   |
 | `SUPER + CTRL + E`                    | Emoji picker                                       |
@@ -62,6 +63,5 @@ The main binds that open things (the leader is `SUPER`):
 | `SUPER + P`                           | Color picker                                       |
 | `SUPER + U`                           | Restore the last closed window                     |
 | `ALT + M`                             | Mute                                               |
-| `SUPER + Q`, then `N`                 | Notification center                                |
 
 All binds live in `home/hypr/.config/hypr/keymaps/`.

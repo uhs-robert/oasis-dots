@@ -77,12 +77,7 @@ local expected = {
 	{ "picker.passwords", "Passwords", { "SUPER + CTRL + P" }, "rofi-rbw" },
 	{ "overview.search", "Search windows", { "SUPER + T" }, qs_ipc .. "overview search" },
 	{ "overview.move", "Move window in overview", { "SUPER + SHIFT + T" }, qs_ipc .. "overview move_follow" },
-	{
-		"overview.move_silent",
-		"Silent move window in overview",
-		{ "SUPER + CTRL + SHIFT + T" },
-		qs_ipc .. "overview move_silent",
-	},
+	{ "overview.move_silent", "Silent move window in overview", {}, qs_ipc .. "overview move_silent" },
 	{ "overview.open", "Workspace overview", { "ALT + TAB", "SUPER + TAB" }, qs_ipc .. "overview open" },
 	{ "tmux.overview", "Tmux overview", { "ALT + GRAVE" }, qs_ipc .. "tmux_overview open" },
 }
@@ -117,6 +112,9 @@ check("no other binds", #binds == expected_binds)
 executed = {}
 Act.run("tmux.overview")
 check("run by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call tmux_overview open")
+executed = {}
+Act.run("overview.move_silent")
+check("run keyless by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call overview move_silent")
 
 -- req: KEYS-08 (the screenshot key works in submaps)
 check("Print works in submaps", find("Print").opts.submap_universal == true)

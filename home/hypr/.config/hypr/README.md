@@ -137,7 +137,7 @@ The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it
 
 The rofi `colors.rasi`, foot `foot.ini` and yazi `theme.toml` are generated and gitignored. Edit their tracked `colors.template.rasi`, `foot.template.ini` and `theme.template.toml` instead; the installer copies each one into place when the generated file is missing. Deploy these packages with `just stow <pkg>` (or the installer), not bare `stow`, so that step runs.
 
-Pick a palette from Settings > Style in the Quickshell panel (its Colors rows), with a live preview. Right-clicking the bar's Start button or pressing `SUPER + Q` then `T` opens it there; without the bar, `SUPER + Q` then `T` falls back to the rofi picker.
+Pick a palette from Settings > Style in the Quickshell panel (its Colors rows), with a live preview. Right-clicking the bar's Start button opens it there; without the bar, run `~/.config/hypr/theme/switch.lua` for the rofi picker.
 
 ```bash
 ~/.config/hypr/theme/switch.lua                     # rofi picker (the fallback)

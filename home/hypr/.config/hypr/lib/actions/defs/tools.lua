@@ -89,7 +89,6 @@ Act.define("overview.move", {
 Act.define("overview.move_silent", {
   label = "Silent move window in overview",
   intent = "Open the overview carrying the focused window, and stay on the current workspace when it is dropped.",
-  key = { key = "CTRL + SHIFT + T", leader = true },
   run = Ipc("overview", "move_silent"),
 })
 

@@ -33,14 +33,12 @@ Submap.define({
       { "SHIFT + F", focus_app("thunar"),                   "Thunar" },
       { "H",         focus_app("hyprconfig"),               "Hypr Config" },
       { "M",         focus_app("betterbird"),               "Mail" },
-      { "SHIFT + M", { "window.focus_match", { "meeting" } }, "Meeting" },
       { "P",         "menu.tmux",                           "Project" },
       { "Q",         focus_app("qutebrowser"),              "QuteBrowser" },
       { "S",         focus_app("slack"),                    "Slack" },
       { "SHIFT + S", focus_app("steam"),                    "Steam" },
       { "T",         focus_app("terminal"),                 "Terminal" },
       { "W",         "overview.search",                     "Search Windows" },
-      { "Y",         { "window.focus_match", { "youtube" } }, "Youtube" },
       -- stylua: ignore end
     }
 

@@ -384,7 +384,7 @@ Opening, focusing and closing take every form of the `{open}`, `{focus}` and `{c
 | "brightness max" / "min", "full brightness"                                  | 100% / 1%                                                                              |
 | "power saver", "balanced", "activate performance mode", "set power profile to X" | `powerprofilesctl set`; X is matched against the profiles the machine offers; "deactivate power saver" or "performance" goes back to balanced |
 | "do not disturb on" / "off", "enable" / "disable do not disturb", "silence notifications", "notifications on" | The bar's do not disturb, over `qs-ipc` `notifications get_dnd` / `toggle_dnd` |
-| "keep the screen awake", "activate" / "deactivate caffeine", "caffeine on" / "off", "enable" / "disable autolock" | Stops or starts hypridle with `toggle-autolock.sh`, like the System submap's auto-lock key |
+| "keep the screen awake", "activate" / "deactivate caffeine", "caffeine on" / "off", "enable" / "disable autolock" | Stops or starts hypridle with `toggle-autolock.sh` |
 
 Brightness and do not disturb send no notification when they work ([silent](#silent-actions)), since the OSD and the bar's indicator show them; power profile and auto-lock still say what they set. Only the laptop backlight is driven; external monitors are not (no DDC/CI). A spoken power profile lasts until the next AC or battery change, when `power.sh` applies the one chosen in Settings, unless that is "keep".
 

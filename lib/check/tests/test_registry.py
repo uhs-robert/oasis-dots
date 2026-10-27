@@ -276,7 +276,7 @@ class HeadlessLoadTest(TreeCase):
         self.assertEqual(findings, [])
         lua_ids = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "lua")
         self.assertEqual(lua_ids, [
-            "apps.focus", "apps.open",
+            "apps.focus",
             "cursor.click", "cursor.move", "cursor.pointer_mode", "cursor.scroll", "cursor.scroll_stop",
             "cursor.send_key",
             "delete.close_group", "delete.close_workspace",
@@ -287,18 +287,17 @@ class HeadlessLoadTest(TreeCase):
             "hyprvim.edit_selection", "hyprvim.jump_mark", "hyprvim.terminal",
             "media.brightness_down", "media.brightness_up", "media.mute", "media.mute_mic", "media.next",
             "media.play_pause", "media.prev", "media.volume_down", "media.volume_up",
-            "menu.agents", "menu.cli", "menu.drun", "menu.run_script", "menu.ssh",
+            "menu.agents", "menu.drun", "menu.ssh",
             "monitor.focus", "monitor.move_window",
             "move.step",
             "picker.agents", "picker.clipboard", "picker.clipboard_delete", "picker.directory", "picker.emoji",
             "resize.reset", "resize.step",
             "scratchpad.move", "scratchpad.toggle",
             "submap.enter",
-            "system.display_manager", "system.edit_keymaps", "system.next_wallpaper", "system.replay_autostart",
-            "system.theme_switch", "system.voxtype_restart", "system.voxtype_settings",
+            "system.edit_keymaps", "system.replay_autostart", "system.voxtype_restart", "system.voxtype_settings",
             "terminal.bottom", "terminal.editor", "terminal.open", "terminal.task_manager", "terminal.tool",
-            "terminal.tui_files", "terminal.yazi",
-            "window.close", "window.cycle_float", "window.float_toggle", "window.focus", "window.focus_match",
+            "terminal.yazi",
+            "window.close", "window.cycle_float", "window.float_toggle", "window.focus",
             "window.fullscreen", "window.kill", "window.maximize", "window.move", "window.restore_closed",
             "windows.clear_selection", "windows.close_selected", "windows.confirm", "windows.float_selected",
             "windows.move_selected", "windows.pseudo_selected", "windows.select_toggle",
@@ -307,7 +306,7 @@ class HeadlessLoadTest(TreeCase):
             "workspace.cycle", "workspace.focus", "workspace.focus_last", "workspace.move",
             "workspace.move_window",
         ])
-        self.assertEqual(len(listing["actions"]), 25 + len(lua_ids) + len(KEYLESS_IPC_IDS))
+        self.assertEqual(len(listing["actions"]), 23 + len(lua_ids) + len(KEYLESS_IPC_IDS))
 
     def test_the_real_tree_defines_the_keyless_ipc_actions(self):
         listing, findings = registry.load_list(REPO_DIR)
