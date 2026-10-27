@@ -872,7 +872,7 @@ beat_resize() {
   pause "$T_RESIZE_HOLD"
 }
 
-# Settings > Colors: Enter opens the palette list, typing filters it, Enter applies (and reloads Hyprland).
+# Settings > Style > Palette: Enter opens the palette list, typing filters it, Enter applies (and reloads Hyprland).
 beat_palettes() {
   local name
   leader_chord S qs_ipc call popup open settings

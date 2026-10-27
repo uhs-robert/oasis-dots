@@ -2,7 +2,7 @@ local Config = require("config") ---@class Config
 local Utils = require("lib.utils") ---@class Utils
 local StateDir = require("lib.state")
 
---- Hands Neovim the oasis.nvim colorscheme matching the palette while Settings > Colors > Sync Neovim is on.
+--- Hands Neovim the oasis.nvim colorscheme matching the palette while Settings > Style > Sync Neovim is on.
 --- Neovim reads `nvim-colorscheme` at startup; running instances switch over their RPC sockets. With sync
 --- off the file is removed, so Neovim falls back to its own scheme.
 --- @param _c table Unused, the scheme name comes from Config.theme

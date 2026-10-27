@@ -37,7 +37,7 @@ voxcmd log misses 5               # the last 5 phrases that matched nothing (def
 
 `listen` records with `voxtype record start --file=...`, so the transcript is written to a file instead of being typed. Dictation keeps working as before.
 
-`errors` reads the bar's notification history (`qs-ipc call notifications history N voxcmd`) and prints one line per notification: local date and time (in the Settings > Clock format), summary and body. voxcmd sends what ran, answers and hints as transient notifications, which the bar never keeps, so these are its errors ("voxcmd failed", "voxcmd error", voxtype not ready). It prints "bar not running" and exits 1 when the IPC call fails.
+`errors` reads the bar's notification history (`qs-ipc call notifications history N voxcmd`) and prints one line per notification: local date and time (in the Settings > Date & time format), summary and body. voxcmd sends what ran, answers and hints as transient notifications, which the bar never keeps, so these are its errors ("voxcmd failed", "voxcmd error", voxtype not ready). It prints "bar not running" and exits 1 when the IPC call fails.
 
 ## Auto-stop
 
@@ -279,7 +279,7 @@ A phrase that matches nothing even so goes to the [no-match log](#no-match-log).
 
 ### Timers
 
-`timers.sh` sets timers and reminders as transient systemd user timers, `voxcmd-timer-<id>`, which ring through `voxcmd timer ring`: a critical notification (it stays up until dismissed and is kept in history) and the alarm sound, up to three times five seconds apart, stopping once the notification is closed. The sound is the bar's alarm for the current style (`qs-ipc call sound play alarm`), played even with Settings > Sound > Theme audio's notification sound off; without the bar it is the shipped `~/.config/quickshell/sounds/alarm.ogg` through `pw-play` or `paplay`. `VOXCMD_ALARM_RINGS` and `VOXCMD_ALARM_GAP` (seconds) change the count and spacing, in the user manager's environment (`systemctl --user set-environment`).
+`timers.sh` sets timers and reminders as transient systemd user timers, `voxcmd-timer-<id>`, which ring through `voxcmd timer ring`: a critical notification (it stays up until dismissed and is kept in history) and the alarm sound, up to three times five seconds apart, stopping once the notification is closed. The sound is the bar's alarm for the current style (`qs-ipc call sound play alarm`), played even with Settings > Theme audio's notification sound off; without the bar it is the shipped `~/.config/quickshell/sounds/alarm.ogg` through `pw-play` or `paplay`. `VOXCMD_ALARM_RINGS` and `VOXCMD_ALARM_GAP` (seconds) change the count and spacing, in the user manager's environment (`systemctl --user set-environment`).
 
 | Say | Does |
 | --- | --- |
@@ -296,7 +296,7 @@ A phrase that matches nothing even so goes to the [no-match log](#no-match-log).
 - Everything is scheduled at a wall-clock time (`--on-calendar`), timers too, so one that falls due while the machine sleeps rings on resume instead of late.
 - The label is the unit's Description (`Timer: 5 minutes`, `Timer: 3:00pm`, `Reminder: Call the bank`), which is how list and cancel find it. `systemctl --user list-timers 'voxcmd-timer-*'` shows the same set.
 - Timers live in the user's systemd manager: they outlast voxcmd, but not a logout or reboot.
-- Confirmations and the list give the time it rings, in the bar's Settings > Clock time format, with the day when it is not today: "Timer set: 1 minute, rings at 3:47pm", "Timer set for 3:00pm", "Reminder tomorrow 9:00am: Call the bank".
+- Confirmations and the list give the time it rings, in the bar's Settings > Date & time time format, with the day when it is not today: "Timer set: 1 minute, rings at 3:47pm", "Timer set for 3:00pm", "Reminder tomorrow 9:00am: Call the bank".
 
 ### Devices
 
@@ -413,7 +413,7 @@ Any of the "press" phrases takes a count after the key: "press down three times"
 | Say                                                                                                  | Answer                                                         |
 | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | "what's 15 percent of 230", "calculate 12 times 37", "convert 5 miles to km", "how many feet in a mile" | `qalc -t` result, also copied with `wl-copy`                   |
-| "what time is it", "what's the time"                                                                 | the time, in the Settings > Clock format                       |
+| "what time is it", "what's the time"                                                                 | the time, in the Settings > Date & time format                       |
 | "what time is it in Tokyo", "what's the time in London"                                             | `5:09am tomorrow in Tokyo (13 hours ahead)`                    |
 | "what is 1 pm in Pacific time", "what is 1 pm Eastern in Pacific", "convert 3:30 pm Pacific to London time" | `1:00pm Eastern is 10:00am Pacific (3 hours behind)`           |
 | "what time is 9 am tomorrow in Tokyo"                                                                | `9:00am tomorrow in Tokyo is 8:00pm today here (13 hours behind)` |
@@ -423,7 +423,7 @@ Any of the "press" phrases takes a count after the key: "press down three times"
 
 - Math is read from `$raw_transcript`, since normalizing drops `%`, `×`, `/` and decimal points. Number words become digits ("two hundred thirty point five"), and `times`, `divided by`, `plus`, `minus`, `squared`, `cubed`, `to the power of`, `square root of`, `percent of`, `half of`, `factorial` and `modulo` become qalc syntax.
 - "what's" and "how much is" count as math only when a number follows, so "what's up" is left for the other integrations. Without a `to` (from "to", "in" or "into") qalc runs with units off, so a word it cannot place fails instead of becoming a unit.
-- Time zones are computed by GNU `date` under `TZ`, so daylight saving comes from tzdata, and answered in the Settings > Clock format, also copied with `wl-copy`. "here", "local" and "my time" (or no zone) mean the system zone (`timedatectl`). A zone is any of the aliases below, a zone in the clock popup's `~/.local/state/quickshell/timezones.json`, or any city in `/usr/share/zoneinfo` by its last part ("tokyo" is Asia/Tokyo, "new york" America/New_York); a trailing "time" is dropped. Anything else answers "No time zone called X".
+- Time zones are computed by GNU `date` under `TZ`, so daylight saving comes from tzdata, and answered in the Settings > Date & time format, also copied with `wl-copy`. "here", "local" and "my time" (or no zone) mean the system zone (`timedatectl`). A zone is any of the aliases below, a zone in the clock popup's `~/.local/state/quickshell/timezones.json`, or any city in `/usr/share/zoneinfo` by its last part ("tokyo" is Asia/Tokyo, "new york" America/New_York); a trailing "time" is dropped. Anything else answers "No time zone called X".
 - "what time is <time> in <zone>" reads the time in that zone and answers here; "what is <time> in <zone>" and "convert <time> to <zone>" read it here, or in the zone named after it, and answer in the other. Days ("today", "tomorrow", a weekday) are against the local date and shown when either side is not today. A conversion needs am, pm, o'clock, noon, midnight or digit minutes ("15 30"), so "what's 15 in hex" stays math.
 
 - Weather opens the popup the Leader `W` (Weather) bind opens, with `~/.config/hypr/scripts/qs-ipc call popup open weather`, so it needs the Quickshell bar running.

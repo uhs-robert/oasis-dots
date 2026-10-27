@@ -15,7 +15,7 @@ Singleton {
     property var colors: ({})
     readonly property var names: Object.keys(root.colors)
     property string current: ""
-    // Settings > Colors > Sync Neovim; theme/generate/nvim.lua reads the same flag file.
+    // Settings > Style > Sync Neovim; theme/generate/nvim.lua reads the same flag file.
     property bool nvim_sync: false
     // True once the palette list and the active name have both been read.
     property bool settled: false

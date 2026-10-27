@@ -2,33 +2,34 @@
 
 `settings/` holds the Settings panel (`SettingsPopup`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings` and `HyprInputSettings`.
 
-Settings takes 80% of the screen each way: with the screen frame on it grows out of the frame as a drawer, otherwise it drops from the centre of the bar like the other popups. It holds the section list on the left, the selected section in the middle and a docked panel on the right (under the rows on a portrait or small screen) that explains the selected setting in full. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
+Settings takes 80% of the screen each way: with the screen frame on it grows out of the frame as a drawer, otherwise it drops from the centre of the bar like the other popups. It holds the section list on the left, sized to its labels, the selected section in the middle and a docked panel on the right (about 1.25 times the list's width; under the rows on a portrait or small screen) that explains the selected setting in full; the section gets the rest. Open it with `SUPER + SPACE` then `S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
 
 The panel (`SettingsPanel`) holds the help card on top, describing the selected (or hovered) setting and listing the keys that work on it, and a section's preview below it; a section with no preview gives the card the whole panel. A section docks a preview with `RowsSection.preview`, never among its rows. A section sets `description` and `description_keys` on `SettingsPane`; `RowsSection` fills them from a row's `desc`, optional `help` (a longer explanation shown after it) and optional `keys`, and a custom pane such as Bar modules does it for its own items.
 
 The section list, the pane and the help card scroll when they outgrow the popup (the list does at 1080p): by drag, by wheel once inside a pane (in the section list the wheel steps sections instead, over the whole popup), and `j`/`k` scroll the list or pane to the selected row, which stays clear of the fades. Each fades its content out at whichever end hides more, with a small caret in the gutter beside it (`ScrollCue`, `features/settings/ScrollCue.qml`), and shows nothing while everything fits. The help card has no scroll key, since `j`/`k` belong to the pane.
 
-| Group        | Sections                           |
-| ------------ | ---------------------------------- |
-| Appearance   | Style, Colors, Wallpaper, Theme options |
-| Bar          | Bar modules, Clock, Calendar, Weather, Media |
-| System       | Displays, Default apps, Power      |
-| Input        | Typing, Keyboard, Mouse & touchpad |
-| Sound        | Theme audio                        |
-| Lock & Login | Lock screen, Login screen          |
-| Developer    | Developer                          |
+| Group      | Sections                                                     |
+| ---------- | ------------------------------------------------------------ |
+| Appearance | Style, Wallpaper, Theme options, Theme audio                 |
+| Bar        | Bar modules, Date & time, Weather, Media                     |
+| System     | Displays, Default apps, Power, Sessions, Lock & login, Developer |
+| Input      | Typing, Keyboard, Voice, Mouse & touchpad                    |
 
-## Clock settings
+A section's rows can sit under headings (Style: Style, Colors, Screen; Date & time: Format, Calendar; Default apps: Apps, File types; Power: Idle, Lid & buttons, Profiles; Lock & login: Lock, Login, Music), which the cursor skips and `{`/`}` jump between. A long section splits into tabs instead (Theme options: Effects, Frame & bar, Skins, Fonts; Media: Visualizer, Layout, Text), stepped with `[`/`]` from a strip at the top of the pane; a tab with nothing for the current style is not shown, each tab keeps its own cursor, and `/` searches every tab, switching to the one holding the match. Rows take `{ heading }` and sections `tabs` in `RowsSection`. The panel's preview follows the cursor: Style's palette card shows on its Colors rows, and Lock & login's thumbnail shows the login screen on its Login rows. Each row's value starts in one column past the section's longest label, so values stay beside their labels however wide the pane is.
 
-Settings > Clock sets the time format and the calendar's first day of week. Time format is the locale's convention (the default), 12-hour or 24-hour, and every clock follows it: the bar clock in each style, the clock popup, weather hours and the Updates, Keeptabs and notification times. Lock-screen skins with a fixed game-style clock keep their own format. First day of week follows the locale (the default), or is Monday or Sunday. An old `time_format` in `weather.local.json` is carried over once and then removed. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
+The ids of sections since merged still open the merged one where they went (`colors` opens Style at Colors, `clock` and `calendar` open Date & time at Format and Calendar, `login` opens Lock & login at Login); `Sections.aliases` lists them.
+
+## Date & time settings
+
+Settings > Date & time sets the time format and the calendar's first day of week (under Format) and connects a calendar (under Calendar, see `features/clock/README.md`). Time format is the locale's convention (the default), 12-hour or 24-hour, and every clock follows it: the bar clock in each style, the clock popup, weather hours and the Updates, Keeptabs and notification times. Lock-screen skins with a fixed game-style clock keep their own format. First day of week follows the locale (the default), or is Monday or Sunday. An old `time_format` in `weather.local.json` is carried over once and then removed. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
 
 ## OSD edge
 
-Settings > Style > OSD edge picks the edge the volume, brightness and voice OSD comes out of: opposite the bar (the default), the left edge or the right edge, the same on every monitor. On a side edge it sits centred, with the same panel as on top or bottom. It saves to `osd.json` in the Quickshell state folder.
+Settings > Style > OSD edge (under Screen) picks the edge the volume, brightness and voice OSD comes out of: opposite the bar (the default), the left edge or the right edge, the same on every monitor. On a side edge it sits centred, with the same panel as on top or bottom. It saves to `osd.json` in the Quickshell state folder.
 
 ## Flush single windows
 
-Settings > Style > Flush single windows decides whether a lone window sits flush against the screen frame (off, it keeps the gaps and rounding of any other window). It is one setting for every style, saved as `flush_single` in `style.json`, and only applies while the current style's Screen frame is on; with it off the row says so and keeps its value. Hyprland gets it through `ScreenFrameSync`.
+Settings > Style > Flush single windows (under Screen) decides whether a lone window sits flush against the screen frame (off, it keeps the gaps and rounding of any other window). It is one setting for every style, saved as `flush_single` in `style.json`, and only applies while the current style's Screen frame is on; with it off the row says so and keeps its value. Hyprland gets it through `ScreenFrameSync`.
 
 ## Input settings
 

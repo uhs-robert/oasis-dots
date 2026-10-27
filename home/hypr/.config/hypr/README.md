@@ -137,14 +137,14 @@ The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it
 
 The rofi `colors.rasi`, foot `foot.ini` and yazi `theme.toml` are generated and gitignored. Edit their tracked `colors.template.rasi`, `foot.template.ini` and `theme.template.toml` instead; the installer copies each one into place when the generated file is missing. Deploy these packages with `just stow <pkg>` (or the installer), not bare `stow`, so that step runs.
 
-Pick a palette from Settings > Colors in the Quickshell panel, with a live preview. Right-clicking the bar's Start button or pressing `SUPER + Q` then `T` opens it there; without the bar, `SUPER + Q` then `T` falls back to the rofi picker.
+Pick a palette from Settings > Style in the Quickshell panel (its Colors rows), with a live preview. Right-clicking the bar's Start button or pressing `SUPER + Q` then `T` opens it there; without the bar, `SUPER + Q` then `T` falls back to the rofi picker.
 
 ```bash
 ~/.config/hypr/theme/switch.lua                     # rofi picker (the fallback)
 ~/.config/hypr/theme/switch.lua --set oasis_lagoon  # set one directly
 ```
 
-Neovim keeps its own colorscheme unless Settings > Colors > Sync Neovim is on (off by default). With it on, the matching oasis.nvim scheme (`oasis-lagoon` for `oasis_lagoon`) is written to `~/.local/state/hypr/nvim-colorscheme` and pushed to every running Neovim over its RPC socket. For new Neovim sessions to start in it, have your config read that file when it exists and apply it once oasis.nvim is loaded:
+Neovim keeps its own colorscheme unless Settings > Style > Sync Neovim is on (off by default). With it on, the matching oasis.nvim scheme (`oasis-lagoon` for `oasis_lagoon`) is written to `~/.local/state/hypr/nvim-colorscheme` and pushed to every running Neovim over its RPC socket. For new Neovim sessions to start in it, have your config read that file when it exists and apply it once oasis.nvim is loaded:
 
 ```lua
 local f = io.open((vim.env.XDG_STATE_HOME or vim.env.HOME .. "/.local/state") .. "/hypr/nvim-colorscheme")

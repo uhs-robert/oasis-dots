@@ -601,7 +601,7 @@ Singleton {
         return idx === -1 ? "" : iso.substr(idx + 1, 5);
     }
 
-    // Displays a stored "HH:MM" in the Settings > Clock format.
+    // Displays a stored "HH:MM" in the Settings > Date & time format.
     function fmt_hm(hm) {
         const m = /^(\d{1,2}):(\d{2})$/.exec(hm || "");
         return m ? TimeFormat.format(new Date(2000, 0, 1, Number(m[1]), Number(m[2]))) : (hm || "");

@@ -211,7 +211,7 @@ parse_clock() {
   [ "$anchor" = today ] && [ -n "$first" ] && echo "$first"
 }
 
-# The strftime time of the bar's Settings > Clock format, the way its TimeFormat reads it: "locale" is 12-hour when
+# The strftime time of the bar's Settings > Date & time format, the way its TimeFormat reads it: "locale" is 12-hour when
 # the locale's time format has an AM/PM field. 12-hour reads "3:47pm".
 clock_time_format() {
   local time_format
@@ -249,7 +249,7 @@ format_length() {
   echo "${parts[*]}"
 }
 
-# "3:47pm", "tomorrow 9:00am", "Thu 9:00am" within the week, else "Oct 20 9:00am", in the bar's Settings > Clock
+# "3:47pm", "tomorrow 9:00am", "Thu 9:00am" within the week, else "Oct 20 9:00am", in the bar's Settings > Date & time
 # time format.
 format_due() {
   local due="$1" format day=""
