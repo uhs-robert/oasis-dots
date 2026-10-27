@@ -352,7 +352,7 @@ PanelWindow {
 
     // Open with every entrance animation done, including the body growing to fit late-loading content; Popups reports it
     // over IPC so a script can act on a popup only once it is fully drawn.
-    readonly property bool settled: root.wanted && !root.passive && root.drop_progress === 1 && !open_anim.running && !swap_in_anim.running && !body_grow.running
+    readonly property bool settled: root.wanted && !root.passive && root.drop_progress === 1 && !open_anim.running && !swap_in_anim.running && root.swap_phase === "" && !body_grow.running
         && !(burst_loader.item && burst_loader.item.busy)
     onSettledChanged: Popups.mark_settled(root.popup_name, root.settled)
     // Still mapped while it animates out; Popups reports it so "closed" means the layer is really gone.
@@ -561,8 +561,16 @@ PanelWindow {
         } else if (visible && Popups.swap_from && Popups.swap_from.name === root.popup_name) {
             open_anim.stop();
             swap_in_anim.stop();
-            root.swap_phase = "out";
-            swap_out_anim.restart();
+            // Swapped away while its style still covers or reveals it: SwapFx cannot run the cover from there, and
+            // restarting it would show the body uncovered first, so it goes at once. swap_from stays: the incoming popup
+            // may not have read it yet, and the next open or close resets it.
+            const still_revealing = root.swap_fx_on && root.swap_phase === "in";
+            root.swap_phase = "";
+            if (still_revealing) root.finish_swap_out();
+            else {
+                root.swap_phase = "out";
+                swap_out_anim.restart();
+            }
         } else if (visible) {
             open_anim.stop();
             swap_in_anim.stop();
@@ -582,8 +590,12 @@ PanelWindow {
     readonly property int swap_cover_ms: Math.round(Kinds.cover(root.swap_style.kind) * root.swap_style.scale)
     // "out" or "in" while this window plays its half of a swap; SwapFx runs only then.
     property string swap_phase: ""
-    // The swap crossfade, on everything the window draws.
+    // Off battery mid-reveal SwapFx unloads without finishing, and a phase left at "in" would replay it on the next AC.
+    onSwap_fx_onChanged: if (!root.swap_fx_on && root.swap_phase === "in") root.swap_phase = ""
+    // The swap crossfade, on everything the window draws; while a style's SwapFx draws the body, on the accent line and
+    // the drawer only.
     property real swap_fade: 1
+    readonly property bool body_in_swap_fx: root.swap_fx_on && root.swap_phase !== ""
     readonly property int swap_in_ms: 140
     readonly property int swap_out_ms: 90
     // How far the panel is drawn along its drop, in px, and how far it goes when fully out.
@@ -596,7 +608,7 @@ PanelWindow {
         root.swap_phase = "in";
         line_progress = 1;
         drop_progress = root.full_extent > 0 ? Math.max(0, Math.min(1, from_extent / root.full_extent)) : 0;
-        root.swap_fade = root.swap_fx_on ? 1 : 0;
+        root.swap_fade = 0;
         swap_in_anim.restart();
     }
 
@@ -620,21 +632,26 @@ PanelWindow {
 
     SequentialAnimation {
         id: swap_out_anim
-        // A styled swap holds the window for the cover half, which SwapFx draws; the crossfade fades it.
-        NumberAnimation { target: root; property: "swap_fade"; to: root.swap_fx_on ? 1 : 0; duration: root.swap_fx_on ? root.swap_cover_ms : root.swap_out_ms }
+        // A styled swap holds the window for the cover half, which SwapFx draws, and fades the rest at its end.
+        PauseAnimation { duration: root.swap_fx_on ? Math.max(0, root.swap_cover_ms - root.swap_out_ms) : 0 }
+        NumberAnimation { target: root; property: "swap_fade"; to: 0; duration: root.swap_out_ms }
         ScriptAction {
             script: {
-                root.visible = false;
-                root.held_anchor = null;
-                root.held_hands_off = false;
-                root.help_open = false;
-                root.line_progress = 0;
-                root.drop_progress = 0;
-                root.swap_fade = 1;
-                root.swap_phase = "";
+                root.finish_swap_out();
                 Popups.swap_done(root.popup_name);
             }
         }
+    }
+
+    function finish_swap_out() {
+        root.visible = false;
+        root.held_anchor = null;
+        root.held_hands_off = false;
+        root.help_open = false;
+        root.line_progress = 0;
+        root.drop_progress = 0;
+        root.swap_fade = 1;
+        root.swap_phase = "";
     }
 
     // Plays once per open or close: the accent line draws out to the island's width from the screen edge (center: the middle),
@@ -735,7 +752,7 @@ PanelWindow {
         width: root.drawer ? root.drawer_body.width : root.beside ? root.frame_width * root.drop_progress : root.width
         height: root.beside ? root.panel_height : (root.panel_height - root.line_height) * root.drop_progress
         clip: true
-        opacity: root.swap_fade
+        opacity: root.body_in_swap_fx ? 1 : root.swap_fade
 
         HoverHandler {
             id: content_hover
