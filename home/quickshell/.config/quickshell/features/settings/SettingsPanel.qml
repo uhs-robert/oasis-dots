@@ -10,6 +10,10 @@ Item {
     property var st: Style
     // Help and preview side by side instead of one above the other, for a panel docked under the rows.
     property bool stacked: false
+    // What the help card sits on and how tall its scroll fade is (the ScrollCue over it).
+    property color fade_top: root.st.frame_color
+    property color fade_bottom: root.st.frame_color
+    property real fade_height: Style.px(20)
     readonly property Item help_host: help_slot
     readonly property Item preview_host: preview_slot
     readonly property real gap: Style.px(12)
@@ -48,6 +52,14 @@ Item {
             width: help_flick.width
             height: root.help_content
         }
+    }
+
+    ScrollCue {
+        target: help_flick
+        st: root.st
+        top_color: root.fade_top
+        bottom_color: root.fade_bottom
+        fade_height: root.fade_height
     }
 
     Item {
