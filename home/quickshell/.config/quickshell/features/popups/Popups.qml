@@ -167,6 +167,8 @@ Singleton {
     // `keep_owner`: the caller is the HoverPopup that has just set hover_owner; any other open drops the owner.
     function open(name, anchor_item, color, screen_name, back_to, hands_off, swap, keep_owner) {
         let back = back_to || "";
+        // A same-popup open emits no open_name change, so its hover owner has to be told (see keep_owner below).
+        const reopened_owner = name === open_name ? root.hover_owner : null;
         root.swap_from = Policy.swap_source(!!swap && !!anchor_item, open_name, open_screen_name, name, screen_name || "");
         if (root.swap_from) root.measure_swap(root.swap_from.name);
         if (anchor_item) {
@@ -183,7 +185,10 @@ Singleton {
         }
         load_name = name;
         open_name = name;
-        if (!keep_owner) root.hover_owner = null;
+        if (!keep_owner) {
+            if (reopened_owner) reopened_owner.pin();
+            root.hover_owner = null;
+        }
         back_name = back;
         grab_keyboard = false;
         // After open_name moves, so a hands-off popup being replaced keeps its latched flag through its close animation.

@@ -17,7 +17,9 @@ Item {
     // From one module straight onto another while the first one's hover-opened popup is open: the popup is swapped in
     // place after this much hover, short enough to feel instant and long enough to skip a module the pointer only crosses.
     property int swap_delay: 60
-    // The close grace while the pointer is still over the bar after leaving the module: a slow sweep across the gap to the next module (the swap target) takes longer than `close_grace`, and closing midway turns the swap into a close and a slow reopen. Leaving the bar cuts the wait back to `close_grace`.
+    // The close grace while the pointer is still over the bar after leaving the module. A slow sweep across the gap to
+    // the next module (the swap target) outlasts `close_grace`, and closing midway turns the swap into a close and a slow
+    // reopen. Leaving the bar cuts the wait back to `close_grace`.
     property int bar_grace: 900
     // How long after a close under the pointer the bar may still regain the hover it lost (HoverPolicy "settling").
     // Hyprland handed focus back within ~10 ms in the shadow; this is far above that, and the price of the margin is
@@ -43,6 +45,12 @@ Item {
 
     function click() {
         root.apply(Policy.clicked(root._mode, root.open_here));
+    }
+
+    // Another open took over this helper's popup without changing open_name (a key or IPC open of the same popup): it is
+    // no longer hover-owned, so it pins, and the keyboard that open asked for is not left off.
+    function pin() {
+        root.apply(Policy.popup_pressed(root._mode));
     }
 
     function apply(r) {
