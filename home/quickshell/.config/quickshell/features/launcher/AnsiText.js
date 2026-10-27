@@ -9,7 +9,7 @@ var base_colors = [
     "#7f7f7f", "#ff0000", "#00ff00", "#ffff00", "#5c5cff", "#ff00ff", "#00ffff", "#ffffff"
 ];
 var cube_levels = [0, 95, 135, 175, 215, 255];
-var sequence_pattern = /\x1b(?:\[([0-9;:?<=>]*)([ -\/]*[@-~])|\][^\x07\x1b]*(?:\x07|\x1b\\)?|[ -\/]+[0-~]|[@-Z\\-_]|.)/g;
+var sequence_pattern = /\x1b(?:\[([0-9;:?<=>]*)([ -\/]*[@-~])|\][^\x07\x1b\n]*(?:\x07|\x1b\\)?|[ -\/]+[0-~]|[@-Z\\-_]|.)/g;
 
 function hex2(n) {
     return (n < 16 ? "0" : "") + n.toString(16);
@@ -51,8 +51,24 @@ function extended(codes, i) {
     return ["", i + 1];
 }
 
+// "38:2:r:g:b" and "38:2::r:g:b" (empty colour-space slot) read like the ";" forms; other colon groups keep their
+// first number (a styled underline "4:3" is just underline, "4:0" is off).
+function sgr_codes(params) {
+    if (params === "") return [0];
+    var codes = [];
+    params.split(";").forEach(function (group) {
+        var parts = group.split(":").map(function (s) { return s === "" ? 0 : parseInt(s, 10); });
+        if (parts.length === 1) codes.push(parts[0]);
+        else if (parts[0] === 38 || parts[0] === 48) {
+            if (parts[1] === 2 && parts.length >= 6) parts.splice(2, 1);
+            codes = codes.concat(parts);
+        } else codes.push(parts[0] === 4 && parts[1] === 0 ? 24 : parts[0]);
+    });
+    return codes;
+}
+
 function apply_sgr(state, params) {
-    var codes = params === "" ? [0] : params.split(/[;:]/).map(function (s) { return s === "" ? 0 : parseInt(s, 10); });
+    var codes = sgr_codes(params);
     for (var i = 0; i < codes.length; i++) {
         var c = codes[i];
         if (c === 0) Object.assign(state, blank());
@@ -95,7 +111,8 @@ function wrap(text, state, default_fg, default_bg) {
         fg = swapped;
     }
     if (state.dim) fg = mix_half(fg || default_fg);
-    var out = escape(text);
+    // StyledText collapses runs of plain spaces, which would flatten a pane's indentation and box drawing.
+    var out = escape(text).replace(/ /g, "&nbsp;");
     if (fg !== "") out = "<font color=\"" + fg + "\">" + out + "</font>";
     if (state.underline) out = "<u>" + out + "</u>";
     if (state.italic) out = "<i>" + out + "</i>";

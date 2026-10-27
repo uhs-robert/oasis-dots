@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.theme
+import "AgentSessions.js" as AgentSessions
 import "AnsiText.js" as AnsiText
 
 // Running agent sessions from keeptabs, in its own order: Enter jumps to the session's window, and the preview shows
@@ -20,33 +21,7 @@ PickerProvider {
     readonly property string home: Quickshell.env("HOME")
     // keeptabs lives outside this repo; it also does the jumping (tmux, kitty, Hyprland), so it is called, not copied.
     readonly property string keeptabs_pick: root.home + "/.local/bin/keeptabs-pick"
-    readonly property var state_labels: ({ running: "working", waiting: "waiting", idle: "idle", done: "idle" })
     readonly property int capture_interval_ms: 1000
-
-    function parse(text) {
-        let sessions = [];
-        try {
-            sessions = JSON.parse(text);
-        } catch (e) {
-            console.warn("keeptabs-pick --json: " + e);
-            return [];
-        }
-        if (!Array.isArray(sessions)) return [];
-        return sessions.filter(s => s && s.id).map(s => {
-            const cwd = s.cwd || "";
-            const shown = cwd === root.home ? "~" : cwd.startsWith(root.home + "/") ? "~" + cwd.slice(root.home.length) : cwd;
-            const state = root.state_labels[s.state] || s.state || "";
-            return {
-                id: String(s.id),
-                label: s.title || s.agent || "session",
-                description: [s.agent || "", state, shown].filter(x => x !== "").join(" · "),
-                icon: "utilities-terminal",
-                keywords: [s.agent || "", state, cwd],
-                tmux_socket: s.tmux_socket || "",
-                tmux_pane: s.tmux_pane || ""
-            };
-        });
-    }
 
     function refresh(arg) {
         list_proc.running = false;
@@ -61,7 +36,7 @@ PickerProvider {
         id: list_proc
         command: [root.keeptabs_pick, "--json"]
         stdout: StdioCollector {
-            onStreamFinished: root.items = root.parse(text)
+            onStreamFinished: root.items = AgentSessions.parse_sessions(text, root.home)
         }
     }
 
@@ -78,19 +53,21 @@ PickerProvider {
 
             clip: true
 
-            // A new row starts blank, so the previous row's text never shows under it.
+            // A new row starts blank, so the previous row's text never shows under it. A capture still running is not
+            // killed (its exit would be read as the new row's); it finishes, is dropped as another row's, and `settle` starts the new one.
             onEntryChanged: {
                 pane.styled = "";
                 pane.text_id = "";
                 pane.failed = false;
-                capture_proc.running = false;
                 if (pane.has_pane) pane.capture();
             }
 
             function capture() {
                 if (!pane.has_pane || capture_proc.running) return;
                 capture_proc.target_id = pane.entry.id;
-                capture_proc.command = ["tmux", "-S", pane.entry.tmux_socket, "capture-pane", "-p", "-e", "-t", pane.entry.tmux_pane];
+                capture_proc.pending_text = null;
+                capture_proc.pending_code = null;
+                capture_proc.command = AgentSessions.capture_argv(pane.entry);
                 capture_proc.running = true;
             }
 
@@ -118,10 +95,31 @@ PickerProvider {
             Process {
                 id: capture_proc
                 property string target_id: ""
-                stdout: StdioCollector {
-                    id: capture_out
+                property var pending_text: null
+                property var pending_code: null
+
+                // The collector can finish after the exit signal, so the capture counts once both are in (or the
+                // process failed, when there may be no output at all).
+                function settle() {
+                    if (capture_proc.pending_code === null) return;
+                    if (capture_proc.pending_text === null && capture_proc.pending_code === 0) return;
+                    const id = capture_proc.target_id;
+                    pane.captured(id, capture_proc.pending_text || "", capture_proc.pending_code);
+                    capture_proc.pending_text = null;
+                    capture_proc.pending_code = null;
+                    if (pane.has_pane && pane.entry.id !== id) Qt.callLater(pane.capture);
                 }
-                onExited: code => pane.captured(capture_proc.target_id, capture_out.text, code)
+
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        capture_proc.pending_text = text;
+                        capture_proc.settle();
+                    }
+                }
+                onExited: code => {
+                    capture_proc.pending_code = code;
+                    capture_proc.settle();
+                }
             }
 
             Rectangle {

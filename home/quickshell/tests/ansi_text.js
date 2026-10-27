@@ -13,10 +13,11 @@ const styled = text => to_styled(text, "#cccccc", "#111111");
 
 const cases = [
   ["plain text", "hello", "hello"],
-  ["html escaped", "a <b> & </b>", "a &lt;b&gt; &amp; &lt;/b&gt;"],
+  ["html escaped", "a <b> & </b>", "a&nbsp;&lt;b&gt;&nbsp;&amp;&nbsp;&lt;/b&gt;"],
+  ["spaces kept, StyledText collapses plain runs", "  a   b ", "&nbsp;&nbsp;a&nbsp;&nbsp;&nbsp;b&nbsp;"],
   ["newline", "a\nb", "a<br/>b"],
   ["carriage return dropped", "a\r\nb", "a<br/>b"],
-  ["base fg", "\x1b[31mred\x1b[0m x", "<font color=\"#cd0000\">red</font> x"],
+  ["base fg", "\x1b[31mred\x1b[0m x", "<font color=\"#cd0000\">red</font>&nbsp;x"],
   ["bright fg", "\x1b[91mr", "<font color=\"#ff0000\">r</font>"],
   ["bold underline italic", "\x1b[1;3;4mx", "<b><i><u>x</u></i></b>"],
   ["bold off by 22", "\x1b[1mA\x1b[22mB", "<b>A</b>B"],
@@ -38,7 +39,12 @@ const cases = [
   ["osc with st dropped", "\x1b]8;;http://e\x1b\\x", "x"],
   ["two char escape dropped", "\x1b(Bx", "x"],
   ["control chars dropped", "a\x00\x07b", "ab"],
-  ["markup in coloured text escaped", "\x1b[31m<font color=red>", "<font color=\"#cd0000\">&lt;font color=red&gt;</font>"],
+  ["markup in coloured text escaped", "\x1b[31m<font color=red>", "<font color=\"#cd0000\">&lt;font&nbsp;color=red&gt;</font>"],
+  ["colon truecolor with empty colour space", "\x1b[38:2::1:2:255mx", "<font color=\"#0102ff\">x</font>"],
+  ["colon 256 colour", "\x1b[38:5:196mx", "<font color=\"#ff0000\">x</font>"],
+  ["colon colour then bold", "\x1b[38:2::1:2:255;1mx", "<b><font color=\"#0102ff\">x</font></b>"],
+  ["styled underline colon form", "\x1b[4:3mx\x1b[4:0my", "<u>x</u>y"],
+  ["unterminated osc stops at the line end", "\x1b]0;title\nnext", "<br/>next"],
   ["unterminated escape at end", "x\x1b[", "x"],
 ];
 
