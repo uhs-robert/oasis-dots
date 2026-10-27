@@ -113,7 +113,7 @@ echo '{"reviewers":[{"label":"no name"},"str",{"name":"codex","gate":"sometimes"
 run
 check "nameless entries skipped with a warning" 'grep -q "without a string name" <<<"$err"'
 check "invalid gate ignored, built-in value kept" '[ "$(field codex ".gate")" = auto ] && grep -q "invalid gate" <<<"$err"'
-check "invalid scope ignored, built-in value kept" '[ "$(field codex ".local.scope")" = all ] && grep -q "invalid local scope" <<<"$err"'
+check "invalid scope becomes off with a warning" '[ "$(field codex ".local.scope")" = off ] && grep -q "invalid local scope" <<<"$err"'
 reset
 echo '{bad' >"$REVIEWERS_SETTINGS_FILE"
 run
@@ -123,6 +123,37 @@ check "invalid built-in file is fatal" '
   echo "{bad" >"$root/b.json"; out=$(REVIEWERS_BUILTIN_FILE=$root/b.json "$script" list "$root/repo" 2>/dev/null); [ $? -eq 1 ]'
 check "missing built-in file is fatal" '
   out=$(REVIEWERS_BUILTIN_FILE=$root/none.json "$script" list "$root/repo" 2>/dev/null); [ $? -eq 1 ]'
+
+echo "== review round 1"
+reset
+echo '{"reviewers":[{"name":"a","local":{"command":"a.sh","default":"sometimes"}},{"name":"b","local":"public","enabled":"false"},{"name":"c","label":"no local"}]}' >"$REVIEWERS_USER_FILE"
+run
+check "invalid local.default becomes off with a warning" '[ "$(field a ".local.scope + \"/\" + .local.default")" = off/off ] && grep -q "invalid local default" <<<"$err"'
+check "non-boolean enabled is ignored with a warning" '[ "$(field b ".name")" = b ] && grep -q "enabled must be true or false" <<<"$err"'
+check "entry without local config gets scope off" '[ "$(field c ".local.scope")" = off ]'
+check "built-in entries without local also normalise" '[ "$(field claude ".local.scope")" = off ]'
+
+reset
+echo '{"reviewers":{"codex":{"local":"public","label":"X","github":{}},"coderabbit":"on","ghost":{"gate":"never"}}}' >"$REVIEWERS_SETTINGS_FILE"
+run
+check "Settings keeps local and gate fields" '[ "$(field codex ".local.scope")" = public ]'
+check "Settings ignores other fields with a warning" '[ "$(field codex ".label")" = Codex ] && grep -q "Settings may only set local and gate, ignored label" <<<"$err"'
+check "Settings non-object value warns" 'grep -q "coderabbit: value is not an object" <<<"$err"'
+
+# builtin_fails JSON: the built-in file holding JSON must exit 1 and say why
+builtin_fails() {
+  printf "%s" "$1" >"$root/b.json"
+  out=$(REVIEWERS_BUILTIN_FILE=$root/b.json "$script" list "$root/repo" 2>"$root/err")
+  rc=$?
+  err=$(<"$root/err")
+  [ $rc -eq 1 ] && [ -n "$err" ]
+}
+check "built-in with wrong-typed reviewers is fatal" 'builtin_fails "{\"reviewers\":\"x\"}"'
+check "built-in with no reviewers key is fatal" 'builtin_fails "{}"'
+check "built-in with a nameless entry is fatal" 'builtin_fails "{\"reviewers\":[{\"label\":\"x\"}]}"'
+check "built-in with an invalid gate is fatal" 'builtin_fails "{\"reviewers\":[{\"name\":\"x\",\"gate\":\"maybe\"}]}"'
+check "built-in with an invalid default is fatal" 'builtin_fails "{\"reviewers\":[{\"name\":\"x\",\"local\":{\"default\":\"all!\"}}]}"'
+check "a valid built-in file stays accepted" '! builtin_fails "{\"reviewers\":[{\"name\":\"x\"}]}" && [ $rc -eq 0 ]'
 
 echo "== usage"
 check "unknown subcommand exits 64" '"$script" bogus 2>/dev/null; [ $? -eq 64 ]'
