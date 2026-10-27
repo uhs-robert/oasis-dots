@@ -489,15 +489,17 @@ t("the lualine cava slot hovers and pins the media popup, and only while shown",
 // and a pinned open today), "old" before it, which showed the popup ownerless for one assignment.
 // D: a third helper "n" (the neighbouring Network module, its own popup) lets the pointer move between modules while a
 // popup is hover-open, which HoverPopup turns into a swap ("swap" action) after a short delay. `closes` counts
-// Popups.close() calls and `ownerless` records any helper seeing an open popup with no owner during a swap.
-function twins(rule, order = "fixed") {
+// Popups.close() calls and `ownerless` records any helper seeing an open popup with no owner during a swap. `islands`
+// is each helper's island; by default the lualine bar's: Media on the left island, the cava slot and Network on the right.
+function twins(rule, order = "fixed", islands = { s: "right", m: "left", n: "right" }) {
   const fresh = () => ({ mode: "idle", open_timer: false, close_timer: false, saw_open: false, saw_nothing: true });
   const names = { s: "media", m: "media", n: "network" };
-  const w = { open_name: "", owner: null, pointer: null, queued: false, closes: 0, name_moves: 0, ownerless: [], in_swap: false, h: { s: fresh(), m: fresh(), n: fresh() } };
+  const w = { open_name: "", anchor: null, owner: null, pointer: null, queued: false, closes: 0, name_moves: 0, ownerless: [], in_swap: false, h: { s: fresh(), m: fresh(), n: fresh() } };
   const open_here = n => w.open_name === names[n] && (!w.owner || w.owner === n);
   const inside = n => w.pointer === n;
-  // HoverPopup.other_hover_open, with one screen and the shared island of the lualine strip.
-  const other_hover_open = n => !!w.owner && w.owner !== n && w.h[w.owner].mode === "hover_open" && open_here(w.owner);
+  // HoverPopup.other_hover_open, on one screen: a same-name sibling's popup only from the same island.
+  const other_hover_open = n => !!w.owner && w.owner !== n && w.h[w.owner].mode === "hover_open" && open_here(w.owner)
+    && (w.open_name !== names[n] || w.anchor === islands[n]);
   w.other_hover_open = other_hover_open;
   const notify = () => {
     if (w.in_swap && w.open_name !== "" && !w.owner) w.ownerless.push(w.open_name);
@@ -518,7 +520,7 @@ function twins(rule, order = "fixed") {
     if (r.action === "open") {
       if (order === "old") set_owner(r.mode === "hover_open" ? n : null);
       else if (r.mode === "hover_open") set_owner(n);
-      set_name(names[n]);
+      open_at(n);
       if (order !== "old" && r.mode !== "hover_open") set_owner(null);
     }
     else if (r.action === "swap") {
@@ -526,7 +528,7 @@ function twins(rule, order = "fixed") {
       w.in_swap = true;
       if (order === "old") set_owner(null);
       set_owner(n);
-      set_name(names[n]);
+      if (w.open_name !== names[n]) open_at(n);
       w.in_swap = false;
     }
     else if (r.action === "close" && open_here(n)) close();
@@ -538,6 +540,8 @@ function twins(rule, order = "fixed") {
     if (rule === "slot" && w.h.s.mode === "hover_open") w.queued = true;
     notify();
   };
+  // Popups.open from helper n: anchored to its island; open_name moving last, as in Popups.open.
+  const open_at = n => { w.anchor = islands[n]; set_name(names[n]); };
   const set_name = name => {
     if (w.open_name === name) return;
     w.open_name = name;
@@ -548,6 +552,7 @@ function twins(rule, order = "fixed") {
     w.closes++;
     if (order === "old") set_owner(null);
     set_name("");
+    w.anchor = null;
     set_owner(null);
   };
   // Qt.callLater: runs once the call that changed the owner has finished.
@@ -805,8 +810,10 @@ t("after a swap the new popup closes on leaving and the old module hover-reopens
   w.fire_open("m");
   assert.deepStrictEqual([w.open_name, w.h.m.mode], ["media", "hover_open"]);
 });
-t("Media to the cava slot swaps by handing the owner over; the popup stays and the slot owns it", () => {
-  const w = twins("slot");
+// Two same-name helpers on one island (system:cpu and system:memory).
+const one_island = { s: "right", m: "right", n: "right" };
+t("a same-name sibling on the same island swaps by handing the owner over; the popup stays and the sibling owns it", () => {
+  const w = twins("slot", "fixed", one_island);
   w.hover_open("m");
   const moves = w.name_moves;
   w.move("s");
@@ -818,6 +825,18 @@ t("Media to the cava slot swaps by handing the owner over; the popup stays and t
   w.move("m");
   w.fire_open("m");
   assert.deepStrictEqual([w.owner, w.h.m.mode, w.h.s.mode], ["m", "hover_open", "idle"]);
+});
+t("Media to the cava slot (different islands) does not swap: the popup stays on Media's island, closes after the grace and the slot reopens it", () => {
+  const w = twins("slot");
+  w.hover_open("m");
+  w.move("s");
+  assert.deepStrictEqual([w.h.s.mode, w.h.s.open_timer, w.other_hover_open("s")], ["idle", false, false]);
+  w.fire_open("s");
+  assert.deepStrictEqual([w.open_name, w.owner, w.anchor], ["media", "m", "left"]);
+  w.fire_close("m");
+  assert.deepStrictEqual([w.open_name, w.h.s.mode, w.h.s.open_timer], ["", "pending", true]);
+  w.fire_open("s");
+  assert.deepStrictEqual([w.open_name, w.owner, w.anchor, w.h.s.mode, w.h.m.mode], ["media", "s", "right", "hover_open", "idle"]);
 });
 t("the cava slot swapping away to another module ends idle and the slot's owner watch does not pin", () => {
   const w = twins("slot");
@@ -841,8 +860,8 @@ t("the cava/Media pin races still hold with a swap pending or done", () => {
   b.click("m");
   b.fire_close("s");
   assert.deepStrictEqual(media_open_and_pinned(b), ["media", "pinned", "pinned"]);
-  // After a finished hand-over the click pins both.
-  const c = twins("slot");
+  // After a finished hand-over (same island) the click pins both.
+  const c = twins("slot", "fixed", one_island);
   c.hover_open("m");
   c.move("s");
   c.fire_open("s");
@@ -861,7 +880,7 @@ t("HoverPopup's swap sets the owner before Popups.open(..., swap) and never clos
   assert.match(branch, /Popups\.hover_owner = root;[\s\S]*Popups\.open\([^\n]*, "", false, true\);/);
   assert.ok(branch.indexOf("Popups.hover_owner = root;") < branch.indexOf("Popups.open("), branch);
   assert.doesNotMatch(branch, /Popups\.close\(|hover_owner = null/);
-  assert.match(src, /root\.hover_owner !== root && root\.hover_owner\.mode === "hover_open" && root\.hover_owner\.open_here\n\s+&& !!root\.module && Popups\.open_screen_name === root\.module\.screen_name/);
+  assert.match(src, /root\.hover_owner !== root && root\.hover_owner\.mode === "hover_open" && root\.hover_owner\.open_here\n\s+&& !!root\.module && Popups\.open_screen_name === root\.module\.screen_name\n\s+&& \(Popups\.open_name !== root\.popup_name \|\| Popups\.open_anchor === root\.module\.island\)/);
   assert.match(src, /interval = r\.mode === "swapping" \? root\.swap_delay : root\.open_delay;/);
   assert.match(src, /property int swap_delay: 60$/m);
   assert.doesNotMatch(src, /hover_ownerChanged/);
@@ -877,6 +896,29 @@ t("Popups records swap_from before open_name moves; the popup window fades out o
   assert.match(popup, /if \(swap && swap\.to === root\.popup_name\) root\.swap_in\(swap\.extent\);/);
   assert.match(popup, /\} else if \(visible && Popups\.swap_from && Popups\.swap_from\.name === root\.popup_name\) \{[^}]*swap_out_anim\.restart\(\);/);
   assert.match(popup, /Popups\.swap_done\(root\.popup_name\);/);
+});
+// Review of D: the styled swap path in Popup.qml. These are window animations, which node cannot run; the shadow covers
+// how they look, these pin the guards.
+const popup_source = () => fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/popups/frames/Popup.qml"), "utf8");
+t("a popup swapped away mid-reveal drops its SwapFx and hides at once instead of flipping the running one to cover", () => {
+  const popup = popup_source();
+  const out = popup.slice(popup.indexOf("Popups.swap_from.name === root.popup_name) {"), popup.indexOf("} else if (visible) {"));
+  assert.match(out, /const still_revealing = root\.swap_fx_on && root\.swap_phase === "in";\n\s+root\.swap_phase = "";\n\s+if \(still_revealing\) root\.finish_swap_out\(\);\n\s+else \{\n\s+root\.swap_phase = "out";/);
+  // The incoming popup may read swap_from after this handler, so the at-once path must not clear it.
+  assert.doesNotMatch(popup.match(/function finish_swap_out\(\) \{[^}]*\}/)[0], /swap_done/);
+});
+t("going on battery mid-reveal clears the phase SwapFx would have cleared, so the reveal never replays", () => {
+  assert.match(popup_source(), /onSwap_fx_onChanged: if \(!root\.swap_fx_on && root\.swap_phase === "in"\) root\.swap_phase = ""/);
+});
+t("a popup is not settled while its style's swap still covers or reveals it", () => {
+  assert.match(popup_source(), /readonly property bool settled: [^\n]*!swap_in_anim\.running && root\.swap_phase === ""/);
+});
+t("a styled swap-out fades the accent line and drawer at the end of its cover instead of cutting them", () => {
+  const popup = popup_source();
+  assert.match(popup, /id: swap_out_anim\n[^\n]*\n\s+PauseAnimation \{ duration: root\.swap_fx_on \? Math\.max\(0, root\.swap_cover_ms - root\.swap_out_ms\) : 0 \}\n\s+NumberAnimation \{ target: root; property: "swap_fade"; to: 0; duration: root\.swap_out_ms \}/);
+  assert.match(popup, /opacity: root\.body_in_swap_fx \? 1 : root\.swap_fade/);
+  assert.match(popup, /opacity: root\.line_progress > 0 \? root\.swap_fade : 0/);
+  assert.match(popup, /active: root\.drawer\n\s+opacity: root\.swap_fade/);
 });
 t("swap_kind: the owner's eight styles swap with their own transition at half length, every other style crossfades", () => {
   const kinds_src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/theme/transitions/Kinds.js"), "utf8");
