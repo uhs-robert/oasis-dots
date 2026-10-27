@@ -98,7 +98,6 @@ end
 
 -- Basic Action
 Menu.drun = function() return Menu.picker("apps", show_cmd("drun")) end
-Menu.run = function() return Menu.show("run") end
 Menu.ssh = function() return Menu.show("ssh") end
 Menu.window = function() return Menu.show("window") end
 
@@ -125,14 +124,6 @@ function Menu.overview_search() return Cmd.run(Scripts.qs_ipc .. " call overview
 --- @return fun()
 function Menu.overview_move(follow)
   return Cmd.run(Scripts.qs_ipc .. " call overview " .. (follow and "move_follow" or "move_silent"))
-end
-
---- Return an action that picks a $PATH executable and runs it in a terminal.
---- @return fun()
-function Menu.cli()
-  local inner = "env NO_FASTFETCH=1 " .. SHELL .. " -i -c '{cmd}; exec " .. SHELL .. " -i'"
-  local run = TERM_CMD .. " -e " .. inner
-  return Menu.show("run", { args = '-run-command "' .. run .. '"', run = "setsid -f " .. run:gsub("{cmd}", "{}") })
 end
 
 --- Return an action that opens the tmux session picker.

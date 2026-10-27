@@ -17,13 +17,12 @@ bind * BackSpace                        # goes back one submap
 bind * SHIFT + SLASH                    # toggles the which-key overlay
 bind * catchall                         # a release catchall that swallows or ends the submap on an unbound key
 # The submaps with a "reset" or function catchall; the which-key chord leaves key-ups the catchall would otherwise take.
-bind Applications,Bar,Delete,Go,Leader,System SLASH    # no-op that claims the key-up the which-key chord leaves behind
-bind Applications,Bar,Delete,Go,Leader,System Shift_L  # the same, for the left Shift key-up
-bind Applications,Bar,Delete,Go,Leader,System Shift_R  # the same, for the right Shift key-up
+bind Bar,Delete,Go,Leader,System SLASH    # no-op that claims the key-up the which-key chord leaves behind
+bind Bar,Delete,Go,Leader,System Shift_L  # the same, for the left Shift key-up
+bind Bar,Delete,Go,Leader,System Shift_R  # the same, for the right Shift key-up
 
 # Keys that enter a submap (Submap.define `enter`); the Leader menu enters the same submaps through the submap.enter action.
 bind global SUPER + SPACE               # enters Leader
-bind global SUPER + A                   # enters Applications
 bind global SUPER + G                   # enters Go
 bind global SUPER + Q                   # enters System
 bind global SUPER + D                   # enters Delete

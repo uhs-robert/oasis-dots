@@ -39,11 +39,8 @@ local EXPECTED = {
 	{ "terminal.open", "Terminal" },
 	{ "terminal.bottom", "Bottom Terminal" },
 	{ "menu.ssh", "SSH Select" },
-	{ "menu.run_script", "Run Script" },
 	{ "files.open", "File Manager" },
-	{ "terminal.tui_files", "TUI File Manager" },
 	{ "menu.drun", "Open Application" },
-	{ "menu.cli", "Run CLI Tool" },
 	{ "menu.agents", "Agent Sessions" },
 	{ "hyprvim.edit_selection", "Edit Selection in Vim" },
 	{ "terminal.yazi", "Yazi" },
@@ -63,12 +60,9 @@ local function ran(id, ...)
 end
 check("run terminal.open", ran("terminal.open") == "exec_cmd(kitty --single-instance)")
 check("run files.open", ran("files.open") == "exec_cmd(thunar)")
-check("run terminal.tui_files", ran("terminal.tui_files") == "exec_cmd(kitty --single-instance -e yazi)")
 check("run hyprvim.edit_selection", ran("hyprvim.edit_selection") == "hyprvim.editor.open({insert_mode=true})")
 -- Config is read when the action runs, not when the file loads.
-package.loaded["config"].app.tui_file_manager = "ranger"
 package.loaded["config"].app.gui_file_manager = "nautilus"
-check("run terminal.tui_files follows Config", ran("terminal.tui_files") == "exec_cmd(kitty --single-instance -e ranger)")
 check("run files.open follows Config", ran("files.open") == "exec_cmd(nautilus)")
 -- Only a loaded submap can be entered: an unknown name raises, which is what makes `hypr-act` exit 5.
 check("submap.enter unknown name raises", ran("submap.enter", "Typo"):match("^ERROR.*unknown submap 'Typo'") ~= nil)

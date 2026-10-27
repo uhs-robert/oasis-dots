@@ -1,8 +1,7 @@
---- App launcher actions for the Applications submap.
+--- App launcher actions for the Go submap.
 --- All actions dispatch a command or focus/launch a window.
 
 local Config = require("config") ---@class Config
-local Cmd = require("lib.actions.cmd") ---@class Cmd
 local Window = require("lib.window") ---@class Window
 
 local TERM = Config.app.term
@@ -46,11 +45,6 @@ Apps.map = {
   tmux_config = { program = TERM,          title = "Tmux Config",                   cmd = TERM_CMD .. " -e tmuxifier load-session config" },
   yazi        = { program = TERM,          class = "yazi",                          cmd = TERM_CMD .. " --class yazi -e yazi" },
 }
-
---- Return an action that runs a shell command.
---- @param app_command string
---- @return fun()
-Apps.open = function(app_command) return Cmd.run(app_command) end
 
 --- Return an action that focuses an existing window or launches the app.
 --- @param opts { program: string, class?: string, title?: string, exclude_title?: string, cmd?: string }
