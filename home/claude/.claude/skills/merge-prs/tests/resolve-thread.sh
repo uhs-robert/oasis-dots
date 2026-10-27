@@ -99,5 +99,10 @@ sed -i 's/"pageInfo":{[^}]*}/"pageInfo":{"hasNextPage":true,"endCursor":"C1"}/' 
 run --list 12
 check "refuses a page that repeats the cursor" "[[ \$code == 1 && \$err == *'repeats cursor C1'* ]]"
 
+echo "== --list sends owner and name as strings"
+sed -i 's/"pageInfo":{[^}]*}/"pageInfo":{"hasNextPage":false}/' "$FAKE_THREADS"
+FAKE_REPO=123/true run --list 12
+check "passes a numeric owner and a repo named true with -f" "grep -q -e '-f owner=123 -f name=true -F number=12' '$GH_LOG'"
+
 echo "$pass passed, $fail failed"
 ((fail == 0))

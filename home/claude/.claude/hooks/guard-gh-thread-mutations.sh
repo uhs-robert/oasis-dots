@@ -62,7 +62,12 @@ quote=$'\''
 file_arg="(query=@|--input[[:space:]=]+)[$quote\"]?([^[:space:]$quote\"]+)"
 stdin_fed=false
 [[ $unquoted == *'|'* || ${unquoted//<</} == *'<'* ]] && stdin_fed=true
+# A file is read now but by the call later: an earlier command in the same line (`cp evil.json q.json && gh api graphql
+# --input q.json`) may replace it, so a file-backed call preceded by any other command is denied.
+earlier_command=false
 while ! $denied && IFS= read -r segment; do
+  has_earlier_command=$earlier_command
+  [[ $segment =~ [^[:space:]] ]] && earlier_command=true
   [[ $segment == *graphql* ]] || continue
   while ! $denied && [[ $segment =~ $file_arg ]]; do
     path=${BASH_REMATCH[2]}
@@ -72,7 +77,9 @@ while ! $denied && IFS= read -r segment; do
       continue
     fi
     path=${path/#\~\//$HOME/}
-    if [[ $path == /* && -r $path && -f $path ]]; then
+    if $has_earlier_command; then
+      denied=true
+    elif [[ $path == /* && -r $path && -f $path ]]; then
       ! grep -Eq "$mutations" "$path" || denied=true
     else
       denied=true
