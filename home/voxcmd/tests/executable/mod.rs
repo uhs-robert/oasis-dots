@@ -14,6 +14,6 @@ pub fn write_executable(path: &Path, script: &str) {
         .arg(source.path())
         .arg(path)
         .status()
-        .unwrap();
+        .expect("run install (coreutils)");
     assert!(status.success(), "install {}", path.display());
 }
