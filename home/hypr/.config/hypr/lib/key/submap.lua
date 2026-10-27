@@ -270,8 +270,9 @@ local function bind_catchall(catchall, exit_fn, spec)
   end
 end
 
---- Toggle the which-key HUD without changing submap.
-local function toggle_whichkey() require("lua.plugins.hyprvim").whichkey.toggle() end
+--- Toggle the which-key HUD without changing submap. Public so the bind dump (home/hypr/tests/registry_binds.lua) can
+--- tell this bind from another unlabelled key.
+function Submap.toggle_whichkey() require("lua.plugins.hyprvim").whichkey.toggle() end
 
 local whichkey_toggle_key = "SHIFT + SLASH"
 
@@ -297,7 +298,7 @@ end
 --- @param catchall "stay"|"reset"|false|fun(ctx: SubmapContext)
 local function bind_whichkey_toggle(catchall)
   -- No description, so which-key does not list the toggle as a row in every submap.
-  Bind.key(whichkey_toggle_key, toggle_whichkey)
+  Bind.key(whichkey_toggle_key, Submap.toggle_whichkey)
 
   -- A "reset" or function catchall runs on any key-up nothing else claims, and Hyprland lets only a non-release
   -- bind claim one: a matching release bind still runs alongside the catchall. These no-ops claim both key-ups

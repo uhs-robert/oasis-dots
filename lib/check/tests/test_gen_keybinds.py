@@ -69,10 +69,32 @@ class Passthrough(unittest.TestCase):
 
 
 class WhichKeyToggle(unittest.TestCase):
-    def test_the_unlabelled_which_key_toggle_gets_a_label(self):
+    def test_an_unlabelled_shift_slash_row_keeps_its_empty_label(self):
+        # The dump labels the which-key toggle itself; the generator must not guess from the key.
         gen = load()
-        rows = gen.parse_dump("Go\tSHIFT + SLASH\t-\t\tpress\t-\nGo\tSHIFT + A\t-\t\tpress\t-\n")
-        self.assertEqual([row[3] for row in rows], ["Toggle which-key help", ""])
+        rows = gen.parse_dump("Go\tSHIFT + SLASH\t-\t\tpress\t-\n")
+        self.assertEqual([row[3] for row in rows], [""])
+
+
+@unittest.skipUnless(shutil.which("lua"), "needs lua")
+class WhichKeyToggleDump(unittest.TestCase):
+    def dump(self, source):
+        with tempfile.TemporaryDirectory() as root:
+            with open(os.path.join(root, "fixture_keymap.lua"), "w", encoding="utf-8") as file:
+                file.write(source)
+            gen = load()
+            return gen.parse_dump(gen.run_lua(gen.DUMP_SCRIPT, "--labels", "--default-config", "--module", "fixture_keymap", "--path", root))
+
+    def test_a_plain_unlabelled_shift_slash_bind_is_not_called_the_which_key_toggle(self):
+        rows = self.dump('require("lib.key.bind").key("SHIFT + SLASH", function() end)\n')
+        self.assertEqual([(row[1], row[3]) for row in rows], [("SHIFT + SLASH", "")])
+
+    def test_the_submap_which_key_toggle_is_labelled(self):
+        rows = self.dump(
+            'local Submap = require("lib.key.submap")\n'
+            'Submap.define({ name = "Fixture", binds = { { "Q", function() end, "Quit" } } }).setup()\n'
+        )
+        self.assertIn(("Fixture", "SHIFT + SLASH", "", "Toggle which-key help", "press"), rows)
 
 
 class Cells(unittest.TestCase):
