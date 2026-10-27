@@ -76,7 +76,7 @@ PickerProvider {
                 pane.failed = code !== 0;
                 if (code !== 0) return;
                 pane.text_id = id;
-                pane.styled = AnsiText.to_styled(AnsiText.bottom_lines(text, pane.max_lines), String(Style.text_fg), String(Style.pal.bg_surface));
+                pane.styled = AnsiText.to_styled(AnsiText.bottom_lines(text, pane.max_lines), String(Style.text_fg));
             }
 
             FontMetrics {
