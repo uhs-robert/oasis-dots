@@ -32,7 +32,7 @@ Popup {
         return Qt.rgba(c[0], c[1], c[2], c[3]);
     }
     // The section list, the pane and help column at their widest, their gaps and the body's 12px margins.
-    // The 1380 is the pane and help columns together, the old 860 pane and 520 help, so the drawer keeps its width.
+    // The 1380 is the pane and help columns together, which keeps the drawer at its established width.
     readonly property real natural_width: nav.width + Style.px(12 + 24 + 48 + 1380) + 24
     preferred_width: (root.screen ? Math.min(root.natural_width, root.screen.width * root.max_width_fraction, root.max_width) : Math.min(root.natural_width, root.max_width)) / Style.scale
     body_height: root.screen ? Math.min(root.screen.height * root.height_fraction - root.header_height - root.footer_height, root.content_cap + 24) : 600
@@ -152,7 +152,11 @@ Popup {
             return;
         }
         if (pane.picking || typeof pane.cursor !== "number") return;
-        if (name === "cursor") pane.cursor = value;
+        // A rows pane counts rows across all its tabs, as search does, so a row on any tab can be reached.
+        if (name === "cursor") {
+            if (pane.tabs !== undefined) pane.search_select(value);
+            else pane.cursor = value;
+        }
         else if (name === "step" && typeof pane.step === "function") pane.step(pane.cursor, value);
         else if (name === "activate" && typeof pane.activate === "function") pane.activate(pane.cursor, 1);
     }
@@ -370,10 +374,12 @@ Popup {
         // Beside the section list there is room for the rows and the help column side by side, or (a portrait or
         // small screen) the help goes under the rows.
         readonly property real side_room: body.width - nav_divider.x - Style.px(24)
-        readonly property bool help_below: body.side_room < Style.px(480 + 48 + 300)
+        readonly property real side_help_width: Math.max(Style.px(260), Math.round(nav.width * 1.25))
+        // The help goes below once the pane beside it would drop under 480 px.
+        readonly property bool help_below: body.side_room < Style.px(480 + 48) + body.side_help_width
         // Beside the rows the help column is a little wider than the section list and the pane takes the rest; the rows
         // keep each value near its label themselves (RowsSection.value_column).
-        readonly property real help_width: body.help_below ? body.side_room : Math.max(Style.px(260), Math.round(nav.width * 1.25))
+        readonly property real help_width: body.help_below ? body.side_room : body.side_help_width
         readonly property real help_height: body.help_below ? Math.round(body.height * 0.3) : body.height
         readonly property real pane_width: body.help_below ? body.side_room : body.side_room - body.help_width - Style.px(48)
         readonly property real pane_height: body.help_below ? body.height - body.help_height - Style.px(24) : body.height

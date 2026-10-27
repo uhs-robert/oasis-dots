@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The colors-preview check step: with the Palette list open in a tall Colors pane, the list and the preview card must
+# The colors-preview check step: with the Palette list open in a tall Style pane (cursor on its Colors rows), the list and the preview card must
 # not overlap (#1293). Runs shell.qml against a copy of the Quickshell tree in a headless qs.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
