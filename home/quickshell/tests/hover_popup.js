@@ -322,6 +322,8 @@ t("hover over a popup's controls counts: a HoverHandler inside reveal also feeds
   assert.match(reveal.slice(0, reveal.indexOf("StyledFrame {")), /HoverHandler \{\n\s+id: content_hover\n\s+enabled: !root\.passive\n\s+onHoveredChanged: root\.report_hover\(\)/);
   // A closing popup may only clear its own name: reveal shrinks under a still pointer as it animates out.
   assert.match(popup, /Popups\.set_popup_hover\(root\.popup_name, root\.wanted && \(panel_hover\.hovered \|\| content_hover\.hovered\)\)/);
+  // ...and a popup wanted again mid-close, under a pointer that never moved, reports itself.
+  assert.match(popup, /onWantedChanged: \{[\s\S]*?\} else if \(wanted\) \{[^}]*root\.report_hover\(\);/);
   assert.match(popup, /id: panel_hover\n\s+enabled: !root\.passive\n\s+onHoveredChanged: root\.report_hover\(\)/);
 });
 t("Media uses the base helper: no private HoverPopup, and a click goes through toggle_popup", () => {
