@@ -5,8 +5,9 @@
 # Layer files are {"reviewers": [entry...]}; the Settings file is {"reviewers": {name: {"local": scope, "gate": mode}}}.
 # Entries merge by name, object fields recursively, arrays replaced; "enabled": false drops the entry.
 # A string `local` is shorthand for local.scope. The effective scope is local.scope, else local.default, else "off".
-# A broken or non-conforming layer is skipped with a warning on stderr (the other layers still resolve); a bad
-# built-in file is fatal. Settings choices only adjust existing entries and never add one.
+# A broken or non-conforming layer, or entry field, is skipped with a warning on stderr (the other layers still
+# resolve); any warning on the built-in file is fatal, since it is ours. An entry without a local config resolves to
+# local.scope "off". Settings choices may set only local and gate, and only on existing entries.
 set -uo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -15,50 +16,66 @@ user_file=${REVIEWERS_USER_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/code-reviewer
 settings_file=${REVIEWERS_SETTINGS_FILE:-${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/developer.json}
 
 # Reads one layer file (arg 1 is its kind) and prints {entries: [...], warnings: [...]}; entries are normalized so
-# that `local` is always an object and invalid enum values are dropped.
+# that `local` is an object whenever the layer gave one, and an invalid scope or default becomes "off" (the safe side).
 # shellcheck disable=SC2016 # jq variables, not shell ones.
 normalize_jq='
 def scopes: ["off", "public", "all"];
 def gates: ["auto", "always", "never"];
+def settings_fields: ["local", "gate"];
 def fix_local:
   if has("local") then
     (if (.local | type) == "string" then .local = {scope: .local}
      elif (.local | type) == "object" then .
      else del(.local) end)
   else . end;
-def check_entry($where):
-  (if (.local.scope? != null) and ((.local.scope | IN(scopes[])) | not)
-   then {w: ($where + ": invalid local scope " + (.local.scope | tojson) + " ignored"), e: del(.local.scope)}
-   else {w: null, e: .} end) as $a
-  | ($a.e
-     | if has("gate") and ((.gate | IN(gates[])) | not)
-       then {w: ($where + ": invalid gate " + (.gate | tojson) + " ignored"), e: del(.gate)}
-       else {w: null, e: .} end) as $b
-  | {w: [$a.w, $b.w] | map(select(. != null)), e: $b.e};
+def problems($where):
+  [ (select(has("local") and ((.local | type) != "string" and (.local | type) != "object"))
+     | $where + ": local is neither a string nor an object, ignored"),
+    (select((.local | type) == "string" and ((.local | IN(scopes[])) | not))
+     | $where + ": invalid local scope " + (.local | tojson) + ", using off"),
+    (select((.local | type) == "object" and (.local.scope? != null) and ((.local.scope | IN(scopes[])) | not))
+     | $where + ": invalid local scope " + (.local.scope | tojson) + ", using off"),
+    (select((.local | type) == "object" and (.local.default? != null) and ((.local.default | IN(scopes[])) | not))
+     | $where + ": invalid local default " + (.local.default | tojson) + ", using off"),
+    (select(has("gate") and ((.gate | IN(gates[])) | not))
+     | $where + ": invalid gate " + (.gate | tojson) + " ignored"),
+    (select(has("enabled") and ((.enabled | type) != "boolean"))
+     | $where + ": enabled must be true or false, ignored") ];
+def sanitize:
+  (if (.local | type) == "object" and (.local.scope? != null) and ((.local.scope | IN(scopes[])) | not)
+   then .local.scope = "off" else . end)
+  | (if (.local | type) == "object" and (.local.default? != null) and ((.local.default | IN(scopes[])) | not)
+     then .local.default = "off" else . end)
+  | (if has("gate") and ((.gate | IN(gates[])) | not) then del(.gate) else . end)
+  | (if has("enabled") and ((.enabled | type) != "boolean") then del(.enabled) else . end);
 if type != "object" or ((.reviewers // null) == null) then
   {entries: [], warnings: ["no \"reviewers\" key, layer ignored"]}
+elif $kind == "settings" and (.reviewers | type) != "object" then
+  {entries: [], warnings: ["\"reviewers\" has the wrong type, layer ignored"]}
+elif $kind != "settings" and (.reviewers | type) != "array" then
+  {entries: [], warnings: ["\"reviewers\" has the wrong type, layer ignored"]}
 else
   (if $kind == "settings" then
-     if (.reviewers | type) != "object" then null
-     else [.reviewers | to_entries[] | select(.value | type == "object") | .value + {name: .key}] end
+     [.reviewers | to_entries[] | . as $kv
+      | if ($kv.value | type) != "object" then {w: ["reviewer " + $kv.key + ": value is not an object, skipped"], e: null}
+        else {w: [$kv.value | keys[] | select(IN(settings_fields[]) | not)
+                  | "reviewer " + $kv.key + ": Settings may only set local and gate, ignored " + .],
+              e: (($kv.value | with_entries(select(.key | IN(settings_fields[])))) + {name: $kv.key})} end]
    else
-     if (.reviewers | type) != "array" then null
-     else .reviewers end
-   end) as $raw
-  | if $raw == null then {entries: [], warnings: ["\"reviewers\" has the wrong type, layer ignored"]}
-    else
-      [$raw[] | if type != "object" or ((.name | type) != "string") or .name == ""
-                then {w: ["entry without a string name skipped"], e: null}
-                else (fix_local | check_entry("reviewer " + .name)) end] as $r
-      | {entries: [$r[].e | select(. != null)], warnings: [$r[].w[]]}
-    end
+     [.reviewers[] | {w: [], e: .}]
+   end) as $pre
+  | [$pre[] | if .e == null then .
+              elif (.e | type) != "object" or ((.e.name | type) != "string") or .e.name == ""
+              then {w: (.w + ["entry without a string name skipped"]), e: null}
+              else .e as $e | {w: (.w + ($e | fix_local | problems("reviewer " + $e.name))), e: ($e | fix_local | sanitize)} end] as $r
+  | {entries: [$r[].e | select(. != null)], warnings: [$r[].w[]]}
 end
 '
 
 # shellcheck disable=SC2016
 merge_jq='
 def finish: del(.enabled)
-  | if (.local | type) == "object" then .local.scope = (.local.scope // .local.default // "off") else . end
+  | .local = ((if (.local | type) == "object" then .local else {} end) | .scope = (.scope // .default // "off"))
   | .gate = (.gate // "auto");
 reduce $layers[] as $layer ({order: [], by_name: {}};
   reduce $layer.entries[] as $e (.;
@@ -79,9 +96,14 @@ add_layer() {
     [ "$kind" = builtin ] && exit 1
     return 0
   fi
+  local warnings
+  warnings=$(jq -r '.warnings[]' <<<"$out")
   while IFS= read -r warning; do
-    echo "reviewers.sh: $file: $warning" >&2
-  done < <(jq -r '.warnings[]' <<<"$out")
+    [ -n "$warning" ] && echo "reviewers.sh: $file: $warning" >&2
+  done <<<"$warnings"
+  if [ "$kind" = builtin ] && [ -n "$warnings" ]; then
+    exit 1
+  fi
   layers_json=$(jq -c --arg kind "$kind" --argjson layer "$out" '. + [{kind: $kind, entries: $layer.entries}]' <<<"$layers_json")
 }
 

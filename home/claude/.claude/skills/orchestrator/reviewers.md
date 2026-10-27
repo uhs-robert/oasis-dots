@@ -1,0 +1,33 @@
+# Reviewer registry
+
+`reviewers.sh list [repo_dir]` prints the merged registry as one JSON array. `repo_dir` (default: the current directory) selects the repo layer.
+
+## Layers, lowest to highest
+
+1. Built-in: `reviewers.json` beside the script.
+2. User: `~/.config/code-reviewers/reviewers.json` (`$XDG_CONFIG_HOME`).
+3. Settings: `$XDG_STATE_HOME/quickshell/developer.json` (written only by Settings > Developer).
+4. Repo: `<repo root>/.claude/reviewers.json`.
+
+Layers 1, 2 and 4 are `{"reviewers": [entry, ...]}`. Settings is a map that may set only `local` (a scope) and `gate`, and only on entries that already exist:
+
+```json
+{"reviewers": {"codex": {"local": "all", "gate": "auto"}}}
+```
+
+Entries merge by `name`: objects field by field, arrays replaced. `"enabled": false` drops an entry (a higher layer can set it back to `true`). A string `local` is shorthand for `local.scope`.
+
+## Entry fields
+
+- `name` (required, unique), `label`.
+- `local`: `command` (`<cmd> <base> <outdir>`), `binary` (probed for "installed"), `default` and `default_when_on` (scopes), `scope` (the user's choice).
+- `github` (absent = never gates): `app_slug`, `logins`, `check_names`, `signal` (`summary_comment` or `check_run`), `running`, `done`, `unavailable`, `unavailable_conclusions`, `request`, `start_s`, `wait_s`.
+- `gate`: `auto`, `always` or `never`.
+
+Scopes are `off`, `public`, `all`. Output always has `local.scope` (from `local.scope`, else `local.default`, else `off`, so an entry without local config gets `off`) and `gate` (default `auto`); `enabled` is removed.
+
+## Errors and exit codes
+
+- A layer that is not valid JSON or has the wrong shape is skipped with a warning on stderr; the other layers still resolve. An invalid scope or default becomes `off`; an invalid `gate` or `enabled` is ignored.
+- Any problem in the built-in file is fatal.
+- Exit 0 on success, 1 on a missing or invalid built-in file, 64 on bad usage.
