@@ -317,8 +317,10 @@ check("the earlier bind of that key is still bound", Bind_after.is_bound("F11", 
 check("the failed body's re-bind is not bound", not Bind_after.is_bound("F11", "Rollback", again_handle))
 
 -- A removal that raises during rollback must not replace the body's error.
+local doomed_handle
 local broken_ok, broken_err2 = pcall(Bind_after.submap, "Rollback", function()
 	local doomed = Bind_after.key("F10", function() end, "Doomed")
+	doomed_handle = doomed[1]
 	doomed[1].remove = function()
 		error("remove broke", 0)
 	end
@@ -328,6 +330,22 @@ check(
 	"a raising rollback keeps the body's error",
 	not broken_ok and tostring(broken_err2):find("body broke first", 1, true) ~= nil
 )
+check("a raising removal leaves the handle tracked", Bind_after.is_bound("F10", "Rollback", doomed_handle))
+
+-- A body that unbinds a pre-bound key and binds it again keeps the handle count; only the new handle goes.
+Bind_after.submap("Swap", function()
+	Bind_after.key("F9", function() end, "Original")
+end)
+local original_handle = Stubs.binds[#Stubs.binds]
+pcall(Bind_after.submap, "Swap", function()
+	Bind_after.unbind("F9", "Swap")
+	Bind_after.key("F9", function() end, "Replacement")
+	error("swap body broke", 0)
+end)
+local replacement_handle = Stubs.binds[#Stubs.binds]
+check("unbind then re-bind then raise removes the replacement", replacement_handle.removed == true)
+check("the replacement is not left bound", not Bind_after.is_bound("F9", "Swap", replacement_handle))
+
 local entry_keys = 0
 for _, bind in pairs(clean) do
 	local desc = bind.opts.desc
