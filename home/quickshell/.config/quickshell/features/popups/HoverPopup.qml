@@ -68,14 +68,6 @@ Item {
         }
     }
 
-    // Another helper for the same popup name (the lualine cava slot and the Media module) pinned the popup this one hover-opened: take it as a pin, or this helper's pending close would shut it.
-    Connections {
-        target: Popups
-        function onHover_ownerChanged() {
-            if (root._mode === "hover_open" && Popups.hover_owner !== root && root.open_here) root.apply(Policy.popup_pressed(root._mode));
-        }
-    }
-
     Timer {
         id: open_timer
         interval: root.open_delay

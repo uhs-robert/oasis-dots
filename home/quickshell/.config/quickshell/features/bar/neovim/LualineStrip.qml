@@ -125,6 +125,18 @@ Item {
             enabled: cava_slot.shown && Popups.hover_popups
         }
 
+        // The Media module's own helper can pin the popup this one hover-opened, and this one's pending close would then shut it. That shows as the owner dropping with the popup still open; a close or another popup's open drops it too but changes open_name in the same call, so look after the call.
+        Connections {
+            target: Popups
+            function onHover_ownerChanged() {
+                if (slot_popup.mode === "hover_open") Qt.callLater(cava_slot.take_pin);
+            }
+        }
+
+        function take_pin() {
+            if (slot_popup.mode === "hover_open" && !Popups.hover_owner && slot_popup.open_here) Popups.popup_pressed(slot_popup.popup_name);
+        }
+
         MouseArea {
             anchors.fill: parent
             onClicked: slot_popup.click()
