@@ -808,5 +808,8 @@ check "stops with an error" "[[ \$code != 0 ]]"
 check "names the branch it could not push" "grep -q 'cannot push b' <<<\"\$out\""
 check "leaves the other push in place" "[[ \$(git -C '$ORIGIN' rev-parse b) == '$moved' ]]"
 
+echo "== resolve-thread.sh"
+bash "$here/resolve-thread.sh" || fail=$((fail + 1))
+
 echo "$pass passed, $fail failed"
 ((fail == 0))

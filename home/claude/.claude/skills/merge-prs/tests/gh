@@ -4,6 +4,29 @@
 # the way GitHub can for a moment after a force-push.
 set -euo pipefail
 args="$*"
+# resolve-thread.sh tests: log every call to $GH_LOG and answer from FAKE_* variables. The thread list is raw JSON, so
+# the script's own jq filter runs; the repo name and isResolved answers stand in for gh's --jq output.
+if [[ -n ${GH_LOG-} ]]; then
+  echo "${args//$'\n'/ }" >>"$GH_LOG"
+  case "$args" in
+  "repo view"*) echo me/repo ;;
+  *"addPullRequestReviewThreadReply"*)
+    [[ -z ${FAKE_REPLY_FAIL-} ]] || {
+      echo "reply failed" >&2
+      exit 1
+    }
+    echo '{"data":{}}'
+    ;;
+  *"resolveReviewThread"*) echo '{"data":{}}' ;;
+  *"... on PullRequestReviewThread"*) echo "${FAKE_RESOLVED:-false}" ;;
+  *"reviewThreads(first: 100)"*) cat "$FAKE_THREADS" ;;
+  *)
+    echo "fake gh: unhandled: $args" >&2
+    exit 1
+    ;;
+  esac
+  exit 0
+fi
 number=""
 case "$args" in
 "pr view "* | "pr merge "* | "pr edit "* | "pr comment "*) number=$3 ;;
