@@ -111,7 +111,7 @@ SettingsPane {
         Text {
             Layout.fillWidth: true
             Layout.topMargin: 6
-            text: "The merge gate setting is saved now and takes effect once the merge gate ships. Add reviewers in ~/.config/code-reviewers/reviewers.json; per-repo overrides go in .claude/reviewers.json."
+            text: "The merge gate setting decides which reviewers merge-prs waits for. Add reviewers in ~/.config/code-reviewers/reviewers.json; per-repo overrides go in .claude/reviewers.json."
             wrapMode: Text.WordWrap
             color: root.st.text_dim
             font.family: root.st.font_family

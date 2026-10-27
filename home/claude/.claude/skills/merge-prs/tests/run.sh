@@ -289,14 +289,15 @@ check "exits 0" "[[ $code == 0 ]]"
 check "requests a review" "grep -q '^commented=1' '$GH_STATE'"
 check "does not merge" "! grep -q 'merged' <<<\"\$out\""
 
-echo "== review gate: skipped by the owner"
+echo "== review gate: reviewer states skipped by the owner, threads clean"
 setup
-echo "open_threads=1" >>"$GH_STATE"
+printf 'codex=Running\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" "$script" --skip-review-gate 7 2>&1)
 code=$?
 show "$out"
 check "exits 0" "[[ $code == 0 ]]"
-check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
+check "merges past a running review" "grep -q '^7 merged (rebase)' <<<\"\$out\""
+check "requests nothing" "! grep -q '^commented' '$GH_STATE'"
 
 echo "== --check: clean PR"
 setup
@@ -373,6 +374,7 @@ pr_json() {
 }
 # shellcheck disable=SC2154 # review_jq comes from the eval of the script's definitions.
 review_status() { (eval "$review_defs" && jq -r "$review_jq" | cut -f2); }
+review_jq_commit() { (eval "$review_defs" && jq -r "$review_jq" | cut -f3); }
 fresh=$(date -u -d '-30 sec' +%FT%TZ)
 old=$(date -u -d '-1 hour' +%FT%TZ)
 codex_eyes='[{"user": {"login": "chatgpt-codex-connector[bot]"}}]'
@@ -807,6 +809,240 @@ show "$out"
 check "stops with an error" "[[ \$code != 0 ]]"
 check "names the branch it could not push" "grep -q 'cannot push b' <<<\"\$out\""
 check "leaves the other push in place" "[[ \$(git -C '$ORIGIN' rev-parse b) == '$moved' ]]"
+
+# ---- The reviewer gate: which reviewers are waited for, and each one's state.
+# The registry is the built-in one only; a test that needs a repo layer writes .claude/reviewers.json in the main checkout.
+iso() { date -u -d "$1" +%FT%TZ; }
+head_of() { git -C "$ORIGIN" rev-parse child; }
+# Gate tests start from setup; history_logins=none leaves CodeRabbit the only reviewer inferred unless a test says more.
+gate_setup() {
+  setup
+  printf 'history_logins=none\n' >>"$GH_STATE"
+}
+# A CodeRabbit repo whose head was pushed $1 ago.
+cr_setup() {
+  gate_setup
+  printf 'suites=coderabbitai\nhead_date=%s\n' "$(iso "-$1")" >>"$GH_STATE"
+}
+# The head's CodeRabbit check run: status, conclusion, started and completed (minutes ago, empty for none).
+cr_run() {
+  printf 'cr_run=CodeRabbit|%s|%s|%s|%s\n' "$1" "$2" "$(iso "-$3")" "$([[ -z $4 ]] || iso "-$4")" >>"$GH_STATE"
+}
+cr_reviewed_head() { printf 'cr_reviews=coderabbitai[bot]|%s\n' "$(head_of)" >>"$GH_STATE"; }
+comment() { printf '{"login":"%s","created_at":"%s","body":"%s"}\n' "$1" "$(iso "$2")" "$3" >>"$GH_STATE.comments"; }
+gate() {
+  out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=${WAIT:-1} timeout 60 "$script" "$@" 2>&1)
+  code=$?
+  show "$out"
+}
+
+echo "== gate: both reviewers Done merges"
+cr_setup "30 min"
+printf 'history_logins=chatgpt-codex-connector\ncodex=Completed\ncodex_commit=%s\n' "$(head_of | cut -c1-7)" >>"$GH_STATE"
+cr_run completed success "25 min" "20 min"
+cr_reviewed_head
+gate 7
+check "merges" "[[ $code == 0 ]] && grep -q '^7 merged (rebase)' <<<\"\$out\""
+
+echo "== gate: CodeRabbit running blocks"
+cr_setup "30 min"
+cr_run in_progress "" "25 min" ""
+gate --check 7
+check "fails naming CodeRabbit" "[[ $code != 0 ]] && grep -q '#7: the CodeRabbit check is in_progress' <<<\"\$out\""
+
+echo "== gate: --wait-review passes once CodeRabbit finishes"
+cr_setup "30 min"
+cr_run completed success "25 min" "20 min"
+cr_reviewed_head
+printf 'cr_running_reads=2\ncr_run_running=CodeRabbit|in_progress||%s|\n' "$(iso '-25 min')" >>"$GH_STATE"
+gate --check --wait-review 7
+check "passes" "[[ $code == 0 ]] && grep -q '^ready:' <<<\"\$out\""
+check "polled, since the first reads were running" "grep -q '^cr_running_reads=0' '$GH_STATE'"
+
+echo "== gate: CodeRabbit rate-limited, no check run"
+cr_setup "30 min"
+comment 'coderabbitai[bot]' '-5 min' 'Rate limit exceeded, please try again later'
+gate 7
+check "notes it and merges" "[[ $code == 0 ]] && grep -q 'note: #7 CodeRabbit posted that it is unavailable' <<<\"\$out\" && grep -q '^7 merged' <<<\"\$out\""
+
+echo "== gate: CodeRabbit check concludes failure (unavailable)"
+cr_setup "30 min"
+cr_run completed failure "25 min" "20 min"
+gate --check 7
+check "noted, not blocking" "[[ $code == 0 ]] && grep -q 'its check concluded failure' <<<\"\$out\""
+
+echo "== gate: Codex failed next to a usage-limit comment"
+cr_setup "30 min"
+printf 'history_logins=chatgpt-codex-connector\ncodex=Failed\ncodex_commit=abc1234\n' >>"$GH_STATE"
+cr_run completed success "25 min" "20 min"
+cr_reviewed_head
+comment 'chatgpt-codex-connector[bot]' '-5 min' 'You have reached your Codex usage limits for code reviews.'
+gate 7
+check "Codex is skipped with a note and the PR merges" "[[ $code == 0 ]] && grep -q 'note: #7 Codex is unavailable' <<<\"\$out\" && grep -q '^7 merged' <<<\"\$out\""
+
+echo "== gate: Codex failed alone"
+gate_setup
+printf 'history_logins=chatgpt-codex-connector\ncodex=Failed\ncodex_commit=abc1234\n' >>"$GH_STATE"
+gate 7
+check "blocks" "[[ $code != 0 ]] && grep -q 'the Codex review failed' <<<\"\$out\""
+
+echo "== gate: a usage-limit comment older than the head is ignored"
+gate_setup
+printf 'history_logins=chatgpt-codex-connector\ncodex=Failed\ncodex_commit=abc1234\nhead_date=%s\n' "$(iso '-1 min')" >>"$GH_STATE"
+comment 'chatgpt-codex-connector[bot]' '-30 min' 'You have reached your Codex usage limits for code reviews.'
+gate 7
+check "still blocks" "[[ $code != 0 ]] && grep -q 'the Codex review failed' <<<\"\$out\""
+
+echo "== gate: Codex failed gets one re-request under --wait-review"
+gate_setup
+printf 'history_logins=chatgpt-codex-connector\ncodex=Failed\ncodex_commit=abc1234\n' >>"$GH_STATE"
+gate --wait-review 7
+check "comments @codex review and then merges" "[[ $code == 0 ]] && grep -q '^commented=1' '$GH_STATE' && grep -q '^7 merged' <<<\"\$out\""
+
+echo "== gate: a reviewer that never started"
+cr_setup "30 min"
+gate --check 7
+check "past start_s it is a note" "[[ $code == 0 ]] && grep -q 'note: #7 CodeRabbit has no check on the head' <<<\"\$out\""
+cr_setup "30 sec"
+gate --check 7
+check "within start_s it is pending" "[[ $code != 0 ]] && grep -q '#7: no CodeRabbit check on the head yet' <<<\"\$out\""
+gate_setup
+printf 'history_logins=chatgpt-codex-connector\ncodex=none\n' >>"$GH_STATE"
+gate --check 7
+check "Codex past its window is a note" "[[ $code == 0 ]] && grep -q 'note: #7 Codex has not started' <<<\"\$out\""
+
+echo "== gate: unresolved threads block when the reviewer states are skipped or unavailable"
+gate_setup
+echo "open_threads=2" >>"$GH_STATE"
+gate --skip-review-gate 7
+check "--skip-review-gate still stops on threads" "[[ $code != 0 ]] && grep -q '#7: 2 unresolved review thread' <<<\"\$out\""
+check "and leaves the PR open" "grep -q '^state=OPEN' '$GH_STATE'"
+cr_setup "30 min"
+comment 'coderabbitai[bot]' '-5 min' 'Review skipped: rate limit'
+echo "open_threads=1" >>"$GH_STATE"
+gate --check 7
+check "an unavailable reviewer does not excuse threads" "[[ $code != 0 ]] && grep -q '#7: 1 unresolved review thread' <<<\"\$out\" && grep -q 'unavailable' <<<\"\$out\""
+
+echo "== gate: --check --skip-review-gate is allowed"
+gate_setup
+printf 'codex=Running\n' >>"$GH_STATE"
+gate --check --skip-review-gate 7
+check "passes without reading reviewers" "[[ $code == 0 ]] && grep -q 'reviewer states skipped' <<<\"\$out\""
+gate --check --keep-branch 7
+check "--keep-branch is still refused" "[[ $code != 0 ]] && grep -q 'cannot be combined' <<<\"\$out\""
+
+echo "== gate inference: which reviewers are waited for"
+cr_setup "30 sec"
+gate --check 7
+check "an app with a check suite gates" "[[ $code != 0 ]] && grep -q 'CodeRabbit' <<<\"\$out\""
+gate_setup
+gate --check 7
+check "no suite: not waited for" "[[ $code == 0 ]]"
+gate_setup
+printf 'history_logins=chatgpt-codex-connector\ncodex=Running\n' >>"$GH_STATE"
+gate --check 7
+check "a comment-only bot seen in recent PRs gates" "[[ $code != 0 ]] && grep -q 'the Codex review is still running' <<<\"\$out\""
+gate_setup
+printf 'codex=Running\n' >>"$GH_STATE"
+gate --check 7
+check "a comment-only bot not seen is not waited for" "[[ $code == 0 ]]"
+gate_setup
+printf 'history_logins=someone;chatgpt-codex-connector[bot]\ncodex=Running\n' >>"$GH_STATE"
+gate --check 7
+check "a [bot] author name still matches" "[[ $code != 0 ]]"
+cr_setup "30 sec"
+mkdir -p "$root/main/.claude"
+echo '{"reviewers":[{"name":"coderabbit","gate":"never"}]}' >"$root/main/.claude/reviewers.json"
+gate --check 7
+check "never skips it even with the suite" "[[ $code == 0 ]]"
+gate_setup
+printf 'head_date=%s\n' "$(iso '-30 sec')" >>"$GH_STATE"
+mkdir -p "$root/main/.claude"
+echo '{"reviewers":[{"name":"coderabbit","gate":"always"}]}' >"$root/main/.claude/reviewers.json"
+gate --check 7
+check "always waits though nothing shows it installed" "[[ $code != 0 ]] && grep -q 'no CodeRabbit check on the head yet' <<<\"\$out\""
+gate_setup
+printf 'suites=claude;vercel\ncodex=Running\n' >>"$GH_STATE"
+gate --check 7
+check "the claude and vercel suites do not gate" "[[ $code == 0 ]]"
+cr_setup "30 sec"
+printf 'suites=%s;coderabbitai\n' "$(seq -f 'app%g' 1 34 | paste -sd ';')" >>"$GH_STATE"
+gate --check 7
+check "a suite on the second page is found" "[[ $code != 0 ]] && grep -q 'CodeRabbit' <<<\"\$out\""
+
+echo "== gate: CodeRabbit done signal"
+cr_setup "30 min"
+cr_run completed success "25 min" "30 sec"
+comment 'coderabbitai[bot]' '-1 min' "<!-- final_review_risk_coverage {\\\"coveredCommitId\\\":\\\"$(head_of)\\\"} -->"
+gate --check 7
+check "success inside the settle window is not done" "[[ $code != 0 ]] && grep -q 'waiting 180s for a review' <<<\"\$out\""
+cr_setup "30 min"
+cr_run completed success "25 min" "10 min"
+comment 'coderabbitai[bot]' '-9 min' "<!-- final_review_risk_coverage {\\\"coveredCommitId\\\":\\\"$(head_of)\\\"} -->"
+gate --check 7
+check "after the settle window it is done" "[[ $code == 0 ]]"
+cr_setup "30 min"
+cr_run completed success "25 min" "5 sec"
+cr_reviewed_head
+gate --check 7
+check "a review of the head ends the wait at once" "[[ $code == 0 ]]"
+cr_setup "30 min"
+cr_run completed success "25 min" "5 sec"
+cr_reviewed_head
+echo "open_threads=3" >>"$GH_STATE"
+gate --check 7
+check "findings that arrive as threads still block" "[[ $code != 0 ]] && grep -q '#7: 3 unresolved review thread' <<<\"\$out\""
+cr_setup "30 min"
+cr_run completed success "25 min" "10 min"
+comment 'coderabbitai[bot]' '-9 min' "<!-- final_review_risk_coverage {\\\"coveredCommitId\\\":\\\"1111111111111111111111111111111111111111\\\"} -->"
+gate --check 7
+check "a marker covering an older commit blocks" "[[ $code != 0 ]] && grep -q 'summary covers 1111111, not the head' <<<\"\$out\""
+cr_setup "30 min"
+cr_run completed success "25 min" "10 min"
+gate --check 7
+check "no marker at all falls back to check plus settle" "[[ $code == 0 ]]"
+cr_setup "30 min"
+cr_run completed success "25 min" "30 sec"
+gate --check 7
+check "and inside the settle window it waits" "[[ $code != 0 ]]"
+
+echo "== gate: unclassified CodeRabbit conclusions"
+cr_setup "3 min"
+cr_run completed cancelled "2 min" "1 min"
+gate --check 7
+check "a cancelled run is pending while a new one may replace it" "[[ $code != 0 ]] && grep -q 'was cancelled; a new run should replace it' <<<\"\$out\""
+cr_setup "30 min"
+cr_run completed cancelled "25 min" "20 min"
+gate --check 7
+check "after start_s it has failed" "[[ $code != 0 ]] && grep -q 'was cancelled and no new run replaced it' <<<\"\$out\""
+cr_setup "30 min"
+cr_run completed cancelled "25 min" "20 min"
+printf 'cr_after=CodeRabbit|completed|success|%s|%s\n' "$(iso '-1 min')" "$(iso '-10 sec')" >>"$GH_STATE"
+cr_reviewed_head
+gate --wait-review 7
+check "--wait-review asks once and then passes" "[[ $code == 0 ]] && grep -q '^commented_cr=1' '$GH_STATE' && grep -q '^7 merged' <<<\"\$out\""
+cr_setup "30 min"
+cr_run completed cancelled "25 min" "20 min"
+gate --check --wait-review 7
+check "--check never comments without --request-review" "[[ $code != 0 ]] && ! grep -q '^commented_cr' '$GH_STATE'"
+cr_setup "30 min"
+cr_run completed action_required "25 min" "20 min"
+gate --wait-review 7
+check "action_required needs the owner and is never re-requested" "[[ $code != 0 ]] && grep -q 'needs owner action' <<<\"\$out\" && ! grep -q '^commented_cr' '$GH_STATE'"
+cr_setup "30 min"
+cr_run completed startup_failure "25 min" "20 min"
+gate --check 7
+check "an unknown conclusion fails with its value" "[[ $code != 0 ]] && grep -q 'concluded startup_failure' <<<\"\$out\""
+
+echo "== review_jq: Codex's machine-readable state"
+codex_state_body() { printf 'codex-pull-request-review-summary\n<!-- codex-review-state:v1 {"code_review":{"commit_sha":"%s","status":"%s"},"security_review":{"status":"completed"}} -->\n%s' "$1" "$2" "$3"; }
+check "the JSON status is read" "[[ \$(pr_json '$old' '[]' \"\$(codex_state_body abc1234def running '')\" | review_status) == Running ]]"
+check "the JSON commit is read" "[[ \$(pr_json '$old' '[]' \"\$(codex_state_body abc1234def completed '')\" | review_jq_commit) == abc1234def ]]"
+check "the JSON wins over a stale table" "[[ \$(pr_json '$old' '[]' \"\$(codex_state_body abc1234def failed '| **Completed** | \`1111111\` |')\" | review_status) == Failed ]]"
+check "a null commit is Unreviewed" "[[ \$(pr_json '$old' '[]' 'codex-pull-request-review-summary <!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":null,\"status\":\"completed\"}} -->' | review_status) == Unreviewed ]]"
+# shellcheck disable=SC2016,SC2034 # Markdown backticks; used by the eval in the check below.
+broken_marker_body='codex-pull-request-review-summary <!-- codex-review-state:v1 {oops} --> | **Completed** | `abc1234` |'
+check "a broken marker falls back to the table" "[[ \$(pr_json '$old' '[]' \"\$broken_marker_body\" | review_status) == Completed ]]"
 
 echo "== resolve-thread.sh"
 bash "$here/resolve-thread.sh" || fail=$((fail + 1))

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Usage: ship-batch.sh [--skip-review-gate] [--sync-check] [<pr>...]; merges the PRs in order, then updates main, restarts
-# what changed and starts the check of main in the background (main-check.sh). --skip-review-gate skips the Codex review
-# gate for every PR, only when the owner waived Codex or named another reviewer; each PR's branch check still runs.
+# what changed and starts the check of main in the background (main-check.sh). --skip-review-gate skips the reviewers' states
+# (no waiting, no review requests) for every PR, only when the owner waived them or named another reviewer; unresolved
+# review threads still block, and each PR's branch check still runs.
 # --sync-check (or SHIP_BATCH_SYNC_CHECK=1) waits for the check of main instead and fails the run when it fails.
 # ship-batch.sh --wait-main-check waits for the background check and exits 0 when main is green, 1 when it is not.
 set -euo pipefail
@@ -86,7 +87,7 @@ stop_main_check_early() {
 }
 
 # Waiting for reviews and checking branches take minutes and touch nothing shared, so they run before the ship lock: a
-# PR still waiting for its review must not hold up another session's batch. Each PR in turn waits for its Codex review
+# PR still waiting for its review must not hold up another session's batch. Each PR in turn waits for its gating reviewers
 # (requesting one for a changed head) and passes its own scoped check, in its local worktree or, for a branch pushed from
 # elsewhere (a cloud session), in a temporary worktree at the PR head that is removed on every exit path. The first PR
 # that is not ready stops the list: the ones before it merge, in order, and it and the rest are left for a rerun.
@@ -96,8 +97,12 @@ trap 'exit 143' TERM
 ready=() not_ready=''
 for pr in "$@"; do
   if ((${#skip_gate[@]})); then
-    echo "ship-batch: PR $pr: review gate skipped by request"
-  elif ! (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" --check --wait-review --request-review "$pr"); then
+    echo "ship-batch: PR $pr: reviewer states skipped by request; threads still checked"
+    gate_flags=(--check --skip-review-gate)
+  else
+    gate_flags=(--check --wait-review --request-review)
+  fi
+  if ! (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${gate_flags[@]}" "$pr"); then
     not_ready="PR $pr does not pass the review gate"
     break
   fi
