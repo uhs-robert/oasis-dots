@@ -1,6 +1,6 @@
 -- Runs lib/actions/defs/tools.lua against a stubbed `hl`: the 14 tool actions register the keys, extra keys and
 -- labels written out below, nothing warns, each key runs the command written out below, and their binds can be
--- removed with Bind.unbind.
+-- removed with Bind.unbind. The rest covers the key helpers and Bind.unbind on keys of their own.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local hypr_dir = here .. "/../.config/hypr"
 package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.path
@@ -24,6 +24,9 @@ _G.hl = {
 		timers[#timers + 1] = fn
 	end,
 	notification = { create = function() end },
+	define_submap = function(_, a, b)
+		(b or a)()
+	end,
 	dsp = {
 		exec_cmd = function(cmd)
 			return { exec = cmd }
@@ -85,6 +88,7 @@ local expected = {
 }
 check("14 actions", #expected == 14)
 
+-- req: KEYS-02, KEYS-03 (a bind with extra keys; the keys here carry the leader SUPER)
 -- Every key performs its action's command: argv joined for a command, `qs-ipc call` for an IPC function.
 local function performed(key)
 	executed = {}
@@ -115,10 +119,108 @@ Act.run("tmux.overview")
 check("run by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call tmux_overview open")
 
 -- Bind.unbind removes what Act.define registered, extras included.
+-- req: KEYS-27, KEYS-30 (the removal count, 0 when nothing matches, the leader form)
 check("unbind: main key", Bind.unbind("Print") == 1)
 check("unbind: leader extra", Bind.leader_unbind("I") == 1)
 check("unbind: handles removed", #removed == 2)
 check("unbind: nothing left", Bind.unbind("Print") == 0)
+
+-- The key helpers and unbinding, on keys of their own. `bound_keys` lists what hl.bind received for a key.
+local function bound_keys(key)
+	local found = {}
+	for _, entry in ipairs(binds) do
+		if entry.key == key then
+			found[#found + 1] = entry
+		end
+	end
+	return found
+end
+local function was_removed(key)
+	local count = 0
+	for _, name in ipairs(removed) do
+		if name == key then
+			count = count + 1
+		end
+	end
+	return count
+end
+local function noop() end
+
+-- req: KEYS-01, KEYS-02 (key text reaches Hyprland as written; several keys share one action)
+Bind.key("CTRL + SHIFT + ESCAPE", noop, "Chord")
+check("key text is passed as written", #bound_keys("CTRL + SHIFT + ESCAPE") == 1)
+Bind.key({ "F1", "F2" }, noop, "Pair")
+check("several keys: one bind each", #bound_keys("F1") == 1 and #bound_keys("F2") == 1)
+check("several keys: the same action", bound_keys("F1")[1].action == bound_keys("F2")[1].action)
+
+-- req: KEYS-03 (leader shortcuts carry the leader)
+Bind.leader_cmd("F9", "calc", "Calculator")
+check("leader: SUPER + key", #bound_keys("SUPER + F9") == 1)
+check("leader: the command runs", bound_keys("SUPER + F9")[1].action.exec == "calc")
+
+-- req: KEYS-09 (a bind of your own can be marked to work in submaps)
+Bind.leader_cmd("F10", "calc", { submap_universal = true, desc = "Calculator" })
+check("custom bind: universal flag reaches the bind", bound_keys("SUPER + F10")[1].opts.submap_universal == true)
+check("custom bind: description reaches the bind", bound_keys("SUPER + F10")[1].opts.desc == "Calculator")
+
+-- req: KEYS-28 (case and spaces do not matter when unbinding)
+Bind.key("SUPER + F8", noop, "Spelling")
+check("unbind: other case and spacing", Bind.unbind("super+f8") == 1)
+check("unbind: the bind was removed", was_removed("SUPER + F8") == 1)
+check("unbind: no longer live", not Bind.is_bound("SUPER + F8"))
+
+-- req: KEYS-29 (a named submap, or the global map, and nothing else)
+Bind.key("H", noop, "Global H")
+Bind.submap("Windows", function()
+	Bind.key("H", noop, "Windows H")
+	Bind.key("J", noop, "Windows J")
+end)
+Bind.submap("Resize", function()
+	Bind.key("H", noop, "Resize H")
+end)
+check("unbind in one submap removes one bind", Bind.unbind("H", "Windows") == 1)
+check("unbind in one submap: that submap loses it", not Bind.is_bound("H", "Windows"))
+check("unbind in one submap: other submap keeps it", Bind.is_bound("H", "Resize"))
+check("unbind in one submap: global keeps it", Bind.is_bound("H"))
+check("unbind in one submap: its other keys stay", Bind.is_bound("J", "Windows"))
+check("unbind without a submap: only the global map", Bind.unbind("H") == 1)
+check("unbind without a submap: submaps keep theirs", Bind.is_bound("H", "Resize") and not Bind.is_bound("H"))
+
+-- req: KEYS-30 (the leader form follows the leader; here the leader is replaced for a fresh Bind)
+package.loaded["lib.key.bind"] = nil
+package.loaded["config"] = { leader = "ALT" }
+local Alt_bind = require("lib.key.bind")
+Alt_bind.leader_fn("F11", noop, "Leader moved")
+check("leader follows Config.leader", #bound_keys("ALT + F11") == 1 and Alt_bind.leader == "ALT")
+check("leader unbind follows Config.leader", Alt_bind.leader_unbind("F11") == 1)
+check("leader unbind: removed", was_removed("ALT + F11") == 1)
+package.loaded["lib.key.bind"] = Bind
+package.loaded["config"] = { leader = "SUPER" }
+
+-- req: KEYS-31 (unbind, then bind again: one live bind, the new one)
+local old = Bind.key("F7", noop, "Old")[1]
+check("rebind: unbind removes the old", Bind.unbind("F7") == 1)
+local new = Bind.key("F7", noop, "New")[1]
+check("rebind: the new bind is live", Bind.is_bound("F7", nil, new))
+check("rebind: the old bind is not", not Bind.is_bound("F7", nil, old))
+check("rebind: only the old one was removed", was_removed("F7") == 1 and #bound_keys("F7") == 2)
+
+-- req: KEYS-32 (a bind made any other way is left alone)
+hl.bind("F6", noop, {})
+check("raw bind: not counted", Bind.unbind("F6") == 0)
+check("raw bind: not removed", was_removed("F6") == 0)
+
+-- req: KEYS-33 (a named submap is created, then added to)
+local before = #binds
+Bind.submap("Notes", function()
+	Bind.key("T", noop, "Today")
+end)
+Bind.submap("Notes", function()
+	Bind.key("I", noop, "Inbox")
+end)
+check("submap: both calls added binds", #binds == before + 2)
+check("submap: both keys are in it", Bind.is_bound("T", "Notes") and Bind.is_bound("I", "Notes"))
+check("submap: neither is global", not Bind.is_bound("T") and not Bind.is_bound("I"))
 
 if failures > 0 then
 	print(failures .. " failed")

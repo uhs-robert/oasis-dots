@@ -213,6 +213,72 @@ for _, line in ipairs(actual) do
 end
 check("bind count " .. #actual .. " vs " .. #expected, #actual == #expected)
 
+-- What the shortcuts' keys and flags promise, read from the binds rather than the fixture.
+local function by_key()
+	local found = {}
+	for _, entry in ipairs(binds) do
+		found[entry.key] = entry
+	end
+	return found
+end
+-- req: KEYS-03, KEYS-04 (the leader prefixes the shortcuts; none keeps the old modifier)
+load_keymaps(CONFIGS[1])
+local default_keys = by_key()
+check("leader: SUPER + X closes", default_keys["SUPER + X"] ~= nil and default_keys["X"] == nil)
+load_keymaps({ name = "alt", leader = "ALT", vim_mode = true, persistent_workspaces = false, monitors = {} })
+local alt_keys = by_key()
+check("leader ALT: ALT + X closes", alt_keys["ALT + X"] ~= nil and alt_keys["SUPER + X"] == nil)
+
+-- req: KEYS-08, KEYS-10 (the media keys: universal and locked; volume repeats)
+load_keymaps(CONFIGS[1])
+local media = by_key()
+for _, key in ipairs({ "XF86AudioPlay", "XF86AudioMute", "XF86AudioRaiseVolume", "XF86MonBrightnessUp" }) do
+	check(key .. " works in submaps", media[key] and media[key].opts.submap_universal == true)
+	check(key .. " works locked", media[key] and media[key].opts.locked == true)
+end
+for _, key in ipairs({ "XF86AudioRaiseVolume", "XF86AudioLowerVolume" }) do
+	check(key .. " repeats", media[key] and media[key].opts.repeating == true)
+end
+-- req: KEYS-08 (the keybind search key works in submaps)
+check("SUPER + SLASH works in submaps", media["SUPER + SLASH"] and media["SUPER + SLASH"].opts.submap_universal == true)
+-- req: KEYS-19
+check(
+	"SUPER + SLASH is the keybind search",
+	media["SUPER + SLASH"] and media["SUPER + SLASH"].opts.desc == "Keybind Help"
+)
+
+-- req: KEYS-11, KEYS-24 (letter and arrow both bound; vim_mode picks the listed one)
+local function same_flags(a, b)
+	for name, value in pairs(a.opts) do
+		if name ~= "desc" and b.opts[name] ~= value then
+			return false
+		end
+	end
+	for name in pairs(b.opts) do
+		if name ~= "desc" and a.opts[name] == nil then
+			return false
+		end
+	end
+	return true
+end
+for _, config in ipairs({ CONFIGS[1], CONFIGS[2] }) do
+	load_keymaps(config)
+	local keys = by_key()
+	for _, pair in ipairs({ { "H", "LEFT" }, { "J", "DOWN" }, { "K", "UP" }, { "L", "RIGHT" } }) do
+		local letter, arrow = keys["SUPER + " .. pair[1]], keys["SUPER + " .. pair[2]]
+		check(config.name .. ": " .. pair[1] .. " and " .. pair[2] .. " both bound", letter and arrow)
+		if letter and arrow then
+			check(config.name .. ": same behaviour for " .. pair[1], letter.action ~= nil and same_flags(letter, arrow))
+			local listed, hidden = letter, arrow
+			if not config.vim_mode then
+				listed, hidden = arrow, letter
+			end
+			check(config.name .. ": " .. pair[1] .. " listed key", type(listed.opts.desc) == "string")
+			check(config.name .. ": " .. pair[1] .. " other key unlisted", hidden.opts.desc == nil)
+		end
+	end
+end
+
 -- The action ids, and that each runs by name with the same effect as its key.
 load_keymaps(CONFIGS[1])
 local Act = require("lib.act")
