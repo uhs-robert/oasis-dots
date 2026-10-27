@@ -102,7 +102,7 @@ reset
 echo '{not json' >"$REVIEWERS_USER_FILE"
 run
 check "invalid JSON layer skipped, rest resolves" '[ $rc -eq 0 ] && [ "$(jq length <<<"$out")" = 3 ]'
-check "invalid JSON layer warns with the path" 'grep -q "user.json is not valid JSON" <<<"$err"'
+check "invalid JSON layer warns with the path" 'grep -q "user.json is not a single valid JSON value" <<<"$err"'
 echo '{"reviewers":"nope"}' >"$REVIEWERS_USER_FILE"
 run
 check "wrong-typed reviewers skipped with a warning" '[ $rc -eq 0 ] && grep -q "wrong type" <<<"$err"'
@@ -162,6 +162,15 @@ run
 check "non-string, non-object local warns" 'grep -q "claude: local is neither a string nor an object" <<<"$err"'
 check "github null is dropped from output" '[ "$(field n "has(\"github\")")" = false ]'
 check "github null does not erase a lower layer github block" '[ "$(field coderabbit ".github.app_slug")" = coderabbitai ]'
+
+echo "== empty and multi-value layers"
+for content in "" "   " "{\"reviewers\":[]} {\"reviewers\":[]}"; do
+  reset
+  printf '%s\n' "$content" >"$REVIEWERS_USER_FILE"
+  run
+  check "user file [$content] is skipped, others resolve" '[ $rc -eq 0 ] && [ "$(jq length <<<"$out")" = 3 ] && grep -q "single valid JSON value" <<<"$err"'
+done
+check "empty built-in file is fatal" ': >"$root/b.json"; out=$(REVIEWERS_BUILTIN_FILE=$root/b.json "$script" list "$root/repo" 2>/dev/null); [ $? -eq 1 ]'
 
 echo "== usage"
 check "unknown subcommand exits 64" '"$script" bogus 2>/dev/null; [ $? -eq 64 ]'

@@ -92,8 +92,9 @@ reduce $layers[] as $layer ({order: [], by_name: {}};
 add_layer() {
   local kind=$1 file=$2 out
   [ -e "$file" ] || return 0
-  if ! out=$(jq -c --arg kind "$kind" "$normalize_jq" "$file" 2>/dev/null); then
-    echo "reviewers.sh: $file is not valid JSON, layer skipped" >&2
+  # Exactly one JSON value: an empty file prints nothing and two values print twice, either breaks the merge below.
+  if ! jq -e -s 'length == 1' "$file" >/dev/null 2>&1 || ! out=$(jq -c --arg kind "$kind" "$normalize_jq" "$file" 2>/dev/null); then
+    echo "reviewers.sh: $file is not a single valid JSON value, layer skipped" >&2
     [ "$kind" = builtin ] && exit 1
     return 0
   fi
