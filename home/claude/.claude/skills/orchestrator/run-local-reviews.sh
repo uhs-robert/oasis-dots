@@ -63,6 +63,11 @@ while IFS= read -r entry; do
   scope=$(jq -r '.local.scope' <<<"$entry")
   command=$(jq -r '.local.command // ""' <<<"$entry")
   model=$(jq -r '.local.model // ""' <<<"$entry")
+  # The reviewer owns <outdir>/<name>/ alone: clearing it drops the last run's files, which must neither pass for this
+  # run's result nor (with an in-tree outdir) dirty the tree for the reviewer's own clean-tree check.
+  # A reviewer disabled since its last run still has files there; in an in-tree outdir they would dirty every other
+  # reviewer's clean-tree check. Unsafe names are never removed: they could escape the outdir.
+  if [[ $name =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then rm -rf "${outdir:?}/$name"; fi
   # Only enabled reviewers are worth a warning.
   [ "$scope" != off ] || continue
   [[ $name =~ ^[a-z0-9][a-z0-9_-]*$ ]] || {
@@ -75,9 +80,6 @@ while IFS= read -r entry; do
     continue
   }
   case $command in /*) ;; *) command=$here/$command ;; esac
-  # The reviewer owns <outdir>/<name>/ alone: clearing it drops the last run's files, which must neither pass for this
-  # run's result nor (with an in-tree outdir) dirty the tree for the reviewer's own clean-tree check.
-  rm -rf "${outdir:?}/$name"
   mkdir "$stage/$name"
   names+=("$name")
   REVIEW_SCOPE=$scope REVIEW_MODEL=$model bash -c '
