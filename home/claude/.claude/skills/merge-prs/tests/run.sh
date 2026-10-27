@@ -865,11 +865,17 @@ comment 'coderabbitai[bot]' '-5 min' 'Rate limit exceeded, please try again late
 gate 7
 check "notes it and merges" "[[ $code == 0 ]] && grep -q 'note: #7 CodeRabbit posted that it is unavailable' <<<\"\$out\" && grep -q '^7 merged' <<<\"\$out\""
 
-echo "== gate: CodeRabbit check concludes failure (unavailable)"
+echo "== gate: CodeRabbit check conclusions that are unavailable or failed"
 cr_setup "30 min"
-cr_run completed failure "25 min" "20 min"
+cr_run completed skipped "25 min" "20 min"
 gate --check 7
-check "noted, not blocking" "[[ $code == 0 ]] && grep -q 'its check concluded failure' <<<\"\$out\""
+check "skipped is unavailable, a note" "[[ $code == 0 ]] && grep -q 'its check concluded skipped' <<<\"\$out\""
+for failed_conclusion in failure timed_out; do
+  cr_setup "30 min"
+  cr_run completed $failed_conclusion "25 min" "20 min"
+  gate --check 7
+  check "$failed_conclusion blocks as failed" "[[ $code != 0 ]] && grep -q 'concluded $failed_conclusion' <<<\"\$out\""
+done
 
 echo "== gate: Codex failed next to a usage-limit comment"
 cr_setup "30 min"
@@ -1017,8 +1023,7 @@ gate --check 7
 check "after start_s it has failed" "[[ $code != 0 ]] && grep -q 'was cancelled and no new run replaced it' <<<\"\$out\""
 cr_setup "30 min"
 cr_run completed cancelled "25 min" "20 min"
-printf 'cr_after=CodeRabbit|completed|success|%s|%s\n' "$(iso '-1 min')" "$(iso '-10 sec')" >>"$GH_STATE"
-cr_reviewed_head
+printf 'cr_after=CodeRabbit|completed|success|%s|%s\n' "$(iso '-15 min')" "$(iso '-10 min')" >>"$GH_STATE"
 gate --wait-review 7
 check "--wait-review asks once and then passes" "[[ $code == 0 ]] && grep -q '^commented_cr=1' '$GH_STATE' && grep -q '^7 merged' <<<\"\$out\""
 cr_setup "30 min"
@@ -1033,6 +1038,35 @@ cr_setup "30 min"
 cr_run completed startup_failure "25 min" "20 min"
 gate --check 7
 check "an unknown conclusion fails with its value" "[[ $code != 0 ]] && grep -q 'concluded startup_failure' <<<\"\$out\""
+
+echo "== gate: a cancelled run that the done signal covers"
+cr_setup "30 min"
+cr_run completed cancelled "25 min" "20 min"
+cr_reviewed_head
+gate --check 7
+check "a review of the head makes cancelled Done" "[[ $code == 0 ]]"
+cr_setup "30 min"
+cr_run completed cancelled "25 min" "20 min"
+comment 'coderabbitai[bot]' '-19 min' "<!-- final_review_risk_coverage {\\\"coveredCommitId\\\":\\\"$(head_of)\\\"} -->"
+gate --check 7
+check "a head-covering marker past settle_s makes cancelled Done" "[[ $code == 0 ]]"
+cr_setup "30 min"
+cr_run completed cancelled "25 min" "20 min"
+gate --check 7
+check "cancelled with no done signal still fails" "[[ $code != 0 ]] && grep -q 'was cancelled and no new run replaced it' <<<\"\$out\""
+
+echo "== gate: a completed run with no completion time"
+cr_setup "30 min"
+cr_run completed success "25 min" ""
+gate --check 7
+check "fails with a message, not a midnight timestamp" "[[ $code != 0 ]] && grep -q 'records no completion time' <<<\"\$out\""
+
+echo "== gate: gate always on a reviewer merge-prs cannot read"
+gate_setup
+mkdir -p "$root/main/.claude"
+echo '{"reviewers":[{"name":"codex","gate":"always","github":{"signal":"bogus"}}]}' >"$root/main/.claude/reviewers.json"
+gate --check 7
+check "blocks rather than dropping it" "[[ $code != 0 ]] && grep -q 'reviewer codex has gate always but its signal \"bogus\"' <<<\"\$out\""
 
 echo "== review_jq: Codex's machine-readable state"
 codex_state_body() { printf 'codex-pull-request-review-summary\n<!-- codex-review-state:v1 {"code_review":{"commit_sha":"%s","status":"%s"},"security_review":{"status":"completed"}} -->\n%s' "$1" "$2" "$3"; }

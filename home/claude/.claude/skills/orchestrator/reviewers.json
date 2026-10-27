@@ -28,7 +28,7 @@
         "running": ["in_progress", "queued"],
         "done": ["success"],
         "unavailable": ["Rate limit exceeded", "Review paused", "Review skipped"],
-        "unavailable_conclusions": ["skipped", "neutral", "failure", "timed_out"],
+        "unavailable_conclusions": ["skipped", "neutral"],
         "request": "@coderabbitai review",
         "settle_s": 180,
         "start_s": 300,
