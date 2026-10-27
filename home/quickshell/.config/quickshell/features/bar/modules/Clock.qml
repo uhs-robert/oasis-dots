@@ -40,7 +40,7 @@ Row {
     property bool cell_hovered: false
     readonly property bool hovered: hover.hovered || root.cell_hovered
     // The popup replaces the agenda tooltip where hover opens it.
-    readonly property bool hover_active: !!root.island && Popups.hover_popups
+    readonly property bool hover_active: !!root.island
 
     // The click entry for the clock's own tap, a lualine cell and the island background: through the helper, so a click pins.
     function click_popup() {

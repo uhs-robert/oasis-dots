@@ -13,7 +13,7 @@ BarModule {
     id: root
     module_name: "media"
     wash: false
-    popup_helper: hover_popup
+    hover_popup: true
 
     // Set by Cava.qml: the `cava` entry is this same module under its old name; it differs only in having no slot on a side bar.
     property bool cava_entry: false
@@ -27,15 +27,6 @@ BarModule {
     shown: MediaSettings.well_shown(!!root.player, root.vertical, root.cava_entry)
     implicitWidth: shown ? well.implicitWidth : 0
     implicitHeight: shown ? well.implicitHeight : 0
-
-    HoverPopup {
-        id: hover_popup
-        popup_name: "media"
-        module: root
-        enabled: root.shown && Popups.hover_popups
-        open_delay: 300
-        close_grace: 250
-    }
 
     WheelStepper {
         id: volume_stepper
@@ -75,7 +66,7 @@ BarModule {
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         onClicked: mouse => {
             if (mouse.button === Qt.MiddleButton) MediaState.toggle();
-            else hover_popup.click();
+            else root.toggle_popup();
         }
         onWheel: wheel => root.scroll(wheel)
     }

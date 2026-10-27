@@ -14,7 +14,7 @@ The notification toasts (`features/notifications/NotificationToasts.qml`) are on
 
 ## Hover-open
 
-`HoverPopup.qml` (state machine in `HoverPolicy.js`) opens a bar module's popup after 300 ms of hover and closes it 250 ms after the pointer leaves both module and popup; a click or a press inside pins it. Hover never opens while any popup is open, so it never replaces a pinned popup or one opened by key or IPC, and those count as pinned. `BarModule` owns one helper per module (`hover_popup`, `hover_ready`; `Popups.hover_popups` is the global switch) and routes `toggle_popup()` through it. A hover-opened popup takes no keyboard (`Popups.keyboard_off`), because Hyprland would move pointer focus off the bar and end the hover; Escape and the popup keys work after the first click or press pins it. Bar README lists the modules that opt in.
+`HoverPopup.qml` (state machine in `HoverPolicy.js`) opens a bar module's popup after 300 ms of hover and closes it 250 ms after the pointer leaves both module and popup; a click or a press inside pins it. Hover never opens while any popup is open, so it never replaces a pinned popup or one opened by key or IPC, and those count as pinned. `BarModule` owns one helper per module (`hover_popup`, `hover_ready`; hover is always on) and routes `toggle_popup()` through it. A hover-opened popup takes no keyboard (`Popups.keyboard_off`), because Hyprland would move pointer focus off the bar and end the hover; Escape and the popup keys work after the first click or press pins it. Bar README lists the modules that opt in.
 
 ## Keys
 

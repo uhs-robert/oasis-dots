@@ -16,11 +16,11 @@ Item {
     property Item island: null
     property color island_color: Theme.bg_core
     property bool shown: true
-    // A module opts in to hover-open by setting this; Media keeps its own HoverPopup and stays off.
+    // A module opts in to hover-open by setting this.
     property bool hover_popup: false
     // The module's own gate on top of the opt-in, e.g. nothing to show yet.
     property bool hover_ready: true
-    readonly property bool hover_active: root.shown && root.has_popup && root.hover_popup && root.hover_ready && Popups.hover_popups
+    readonly property bool hover_active: root.shown && root.has_popup && root.hover_popup && root.hover_ready
     property string tooltip_text: ""
     property string tooltip_title: module_name
     property bool wash: true
@@ -28,16 +28,13 @@ Item {
     readonly property real cross: VerticalLayout.cross_width(root.bar_height, Style.bar_capsule + Style.bar_border_width * 2 + VerticalLayout.air_px)
     // Set by a lualine cell: the pointer is anywhere on the cell (lead arrow and padding included), not only on the module.
     property bool cell_hovered: false
-    // A module with a helper of its own (Media) points this at it so a cell click goes through that helper.
-    property var popup_helper: null
     readonly property bool hovered: hover_handler.hovered || root.cell_hovered
 
     visible: shown
 
     // The click entry: with hover-open active it goes through the helper so a click pins, or closes without a reopen under the pointer.
     function toggle_popup() {
-        if (root.popup_helper) root.popup_helper.click();
-        else if (root.hover_active) hover.click();
+        if (root.hover_active) hover.click();
         else Popups.toggle(root.module_name, root.island, root.island_color, root.screen_name);
     }
 
