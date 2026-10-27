@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154 # cwd and thinking are assigned by the eval below
+# shellcheck disable=SC2154 # cwd, thinking and agent are assigned by the eval below
 input=$(cat)
 
 eval "$(printf '%s' "$input" | jq -r '
   @sh "cwd=\(.cwd // "")",
   @sh "name=\(.session_name // "")",
+  @sh "agent=\(.agent.name // "")",
   @sh "model=\(.model.display_name // "")",
   @sh "effort=\(.effort.level // "")",
   @sh "thinking=\(.thinking.enabled // false)",
@@ -72,7 +73,9 @@ printf '\033[38;5;250m%s\033[0m' "$(basename "$cwd")"
 [ -n "$name" ] && printf "$sep"'\033[38;5;110m%s\033[0m' "$(printf '%s' "$name" | head -c 40)"
 [ -n "$label" ] && printf "$sep"'\033[38;5;114m%s\033[0m' "$(printf '%s' "$label" | head -c 48)"
 if [ -n "$model" ]; then
-  printf "$sep"'\033[38;5;245m%s' "$model"
+  printf '%b' "$sep"
+  [ -n "$agent" ] && printf '\033[38;5;176m%s\033[0m ' "$(printf '%s' "$agent" | head -c 32)"
+  printf '\033[38;5;245m%s' "$model"
   [ -n "$effort" ] && printf ' %s' "$effort"
   [ "$thinking" = "false" ] && printf ' no-think'
   printf '\033[0m'
