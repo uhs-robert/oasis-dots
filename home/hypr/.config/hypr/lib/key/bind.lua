@@ -186,12 +186,12 @@ function Bind.submap(name, reset, fn)
     fn, reset = reset, nil
   end
 
+  local ok, err
   local function body()
     local previous = scope
     scope = name
-    local ok, err = xpcall(fn, debug.traceback)
+    ok, err = xpcall(fn, debug.traceback)
     scope = previous
-    if not ok then error(err, 0) end
   end
 
   if reset then
@@ -199,6 +199,9 @@ function Bind.submap(name, reset, fn)
   else
     hl.define_submap(name, body)
   end
+  -- Raised only once hl.define_submap has returned, so Hyprland's own current submap is restored whatever it does
+  -- with an error from the body, and binds a caller makes after catching this land in the global map.
+  if not ok then error(err, 0) end
 end
 
 --- Remove binds made through Bind from one submap only; binds made outside Bind aren't tracked.

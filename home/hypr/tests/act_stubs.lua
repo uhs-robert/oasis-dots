@@ -8,6 +8,7 @@ local hypr_dir = here .. "/../.config/hypr"
 package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.path
 
 Stubs.binds = {}
+Stubs.submap_body_errors = 0
 Stubs.performed = {}
 local current_submap = ""
 
@@ -88,8 +89,14 @@ _G.hl = setmetatable({
 		local body = b or a
 		local previous = current_submap
 		current_submap = name
-		body()
+		local ok, err = pcall(body)
 		current_submap = previous
+		if not ok then
+			-- Counted because real Hyprland may not restore its current submap like this; Bind.submap must not
+			-- rely on it, so no body should raise here.
+			Stubs.submap_body_errors = Stubs.submap_body_errors + 1
+			error(err, 0)
+		end
 	end,
 	timer = function() end,
 	notification = { create = function() end },
@@ -131,7 +138,7 @@ function Stubs.load(variant, modules)
 			package.loaded[name] = nil
 		end
 	end
-	Stubs.binds, Stubs.performed, current_submap = {}, {}, ""
+	Stubs.binds, Stubs.performed, current_submap, Stubs.submap_body_errors = {}, {}, "", 0
 	package.loaded["lua.plugins.hyprvim"] = recorder("hyprvim")
 	package.loaded["config.rules"] = recorder("rules")
 	-- Real functions, not recorders: a submap runs a function row itself and hands anything else to hl.dispatch.

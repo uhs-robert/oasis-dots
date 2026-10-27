@@ -202,8 +202,7 @@ end
 package.preload["keymaps.submaps.go"] = function()
 	error("go broke")
 end
-local broken, _, broken_ok, broken_err, broken_warnings =
-	bind_set({ "keymaps.global", "keymaps.submaps" })
+local broken, _, broken_ok, broken_err, broken_warnings = bind_set({ "keymaps.global", "keymaps.submaps" })
 package.preload["keymaps.global.power"] = nil
 package.preload["keymaps.submaps.go"] = nil
 check("keymaps load around a broken keymap file: " .. tostring(broken_err), broken_ok)
@@ -247,6 +246,77 @@ check(
 	count_keymap_warnings("keymaps/submaps/go/init.lua failed to load") == 1
 )
 check("warns about nothing else: " .. keymap_warned, #broken_warnings == 2)
+
+-- Failing partway is harder: global power.lua raises after all its binds, and the Go submap's body raises after one
+-- bind inside it. Hyprland's current submap must be back to global once the Go file fails, so the later submaps'
+-- entry keys stay global, and Go gets no entry key into a submap with no Escape.
+local hypr_dir = here .. "/../.config/hypr"
+package.preload["keymaps.global.power"] = function()
+	assert(loadfile(hypr_dir .. "/keymaps/global/power.lua"))()
+	error("power broke after binding")
+end
+package.preload["keymaps.submaps.go"] = function()
+	local Submap = require("lib.key.submap")
+	local Bind = require("lib.key.bind")
+	local define = Submap.define
+	Submap.define = function(spec)
+		spec.binds = function()
+			Bind.key("F12", function() end, "Half")
+			error("go broke midway")
+		end
+		return define(spec)
+	end
+	local ok_go, err_go = pcall(assert(loadfile(hypr_dir .. "/keymaps/submaps/go/init.lua")))
+	Submap.define = define
+	if not ok_go then
+		error(err_go, 0)
+	end
+end
+local partial, _, partial_ok, partial_err, partial_warnings = bind_set({ "keymaps.global", "keymaps.submaps" })
+package.preload["keymaps.global.power"] = nil
+package.preload["keymaps.submaps.go"] = nil
+local Bind_after = require("lib.key.bind")
+check("keymaps load around files that fail partway: " .. tostring(partial_err), partial_ok)
+check("Bind.submap raises only after hl.define_submap returns", Stubs.submap_body_errors == 0)
+for signature, bind in pairs(clean) do
+	if bind.submap == "Go" or bind.opts.desc == "+Go" then
+		check("the half-built Go submap loses " .. signature, not partial[signature])
+	else
+		check("a file failing partway leaves " .. signature, partial[signature])
+	end
+end
+for signature, bind in pairs(partial) do
+	check("nothing leaks out of the half-built submap: " .. signature, clean[signature] or bind.submap == "Go")
+end
+local entry_keys = 0
+for _, bind in pairs(clean) do
+	local desc = bind.opts.desc
+	if bind.submap == "" and type(desc) == "string" and desc:sub(1, 1) == "+" and desc ~= "+Go" then
+		entry_keys = entry_keys + 1
+		check("Bind tracks the " .. desc .. " entry key as global", Bind_after.is_bound(bind.key, nil))
+	end
+end
+check("later submaps have entry keys to check", entry_keys > 0)
+check("Bind has no Go entry key", not Bind_after.is_bound("SUPER + G", nil))
+local partial_warned = table.concat(partial_warnings, "\n")
+local function count_partial_warnings(text)
+	local count = 0
+	for _, warning in ipairs(partial_warnings) do
+		if warning:find(text, 1, true) then
+			count = count + 1
+		end
+	end
+	return count
+end
+check(
+	"warns once naming keymaps/global/power.lua: " .. partial_warned,
+	count_partial_warnings("keymaps/global/power.lua failed to load") == 1
+)
+check(
+	"warns once naming the half-built Go submap: " .. partial_warned,
+	count_partial_warnings("keymaps/submaps/go/init.lua failed to load") == 1
+)
+check("warns about nothing else after a partial failure: " .. partial_warned, #partial_warnings == 2)
 
 if failures > 0 then
 	print(failures .. " failed")
