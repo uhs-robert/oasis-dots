@@ -159,6 +159,10 @@ function Submap.back()
   hl.timer(function() require("lua.plugins.hyprvim").whichkey.toggle() end, { timeout = 150, type = "oneshot" })
 end
 
+--- Toggle the which-key HUD without changing submap. Public so the bind dump (home/hypr/tests/registry_binds.lua) can
+--- tell this bind from another unlabelled key.
+function Submap.toggle_whichkey() require("lua.plugins.hyprvim").whichkey.toggle() end
+
 --- Evaluate a binds value, calling it if it is a function.
 --- @param binds table[]|fun(): table[]|nil
 --- @return table[]|nil
@@ -270,9 +274,6 @@ local function bind_catchall(catchall, exit_fn, spec)
   end
 end
 
---- Toggle the which-key HUD without changing submap.
-local function toggle_whichkey() require("lua.plugins.hyprvim").whichkey.toggle() end
-
 local whichkey_toggle_key = "SHIFT + SLASH"
 
 --- Whether any bind row already uses the key, compared the way Hyprland does (case and whitespace ignored).
@@ -297,7 +298,7 @@ end
 --- @param catchall "stay"|"reset"|false|fun(ctx: SubmapContext)
 local function bind_whichkey_toggle(catchall)
   -- No description, so which-key does not list the toggle as a row in every submap.
-  Bind.key(whichkey_toggle_key, toggle_whichkey)
+  Bind.key(whichkey_toggle_key, Submap.toggle_whichkey)
 
   -- A "reset" or function catchall runs on any key-up nothing else claims, and Hyprland lets only a non-release
   -- bind claim one: a matching release bind still runs alongside the catchall. These no-ops claim both key-ups
@@ -311,12 +312,10 @@ local function bind_whichkey_toggle(catchall)
 end
 
 --- Declare a submap and return a handle with enter/exit/setup methods.
---- Call handle.setup() once during startup to register all binds.
+--- Call handle.setup() once during startup to register all binds; the submap is enterable only after it succeeds.
 --- @param spec SubmapSpec
 --- @return SubmapHandle
 function Submap.define(spec)
-  Submap.registry[spec.name] = spec
-
   local M = {}
 
   function M.enter() Submap.enter(spec.name) end
@@ -326,8 +325,6 @@ function Submap.define(spec)
   function M.back() Submap.back() end
 
   function M.setup()
-    if spec.enter then Bind.key(spec.enter, M.enter, spec.desc or ("+" .. spec.name)) end
-
     Bind.submap(spec.name, function()
       local catchall = normalize_catchall(spec)
       local raw_binds = apply_individual_oneshots(resolve_action_rows(resolve_binds(spec.binds) or {}), M.exit)
@@ -345,6 +342,14 @@ function Submap.define(spec)
 
       bind_catchall(catchall, M.exit, spec)
     end)
+
+    -- Registered only once the body succeeded: a submap whose setup raised has no Escape bind and must stay unknown
+    -- to Submap.enter and the submap.enter action.
+    Submap.registry[spec.name] = spec
+
+    -- After the body, which raises when it fails: an entry key into a half-built submap with no Escape would strand
+    -- the user there.
+    if spec.enter then Bind.key(spec.enter, M.enter, spec.desc or ("+" .. spec.name)) end
   end
 
   return M

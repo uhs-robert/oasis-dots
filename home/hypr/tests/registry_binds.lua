@@ -6,7 +6,8 @@
 --
 --   lua home/hypr/tests/registry_binds.lua [--labels] [--default-config] [--module NAME [--path DIR]]
 --
--- --labels appends the which-key label and the event (`press` or `release`) and `transparent` (a keyless passthrough, else `-`) as columns four to six, for
+-- --labels appends the which-key label (the submap which-key toggle, unlabelled so the HUD skips it, is given one here)
+-- and the event (`press` or `release`) and `transparent` (a keyless passthrough, else `-`) as columns four to six, for
 -- lib/docs/gen-keybinds; the registry step reads three. --default-config reads only the no-monitor variant, the one a
 -- doc can describe: the other variant's binds depend on the machine's monitors.
 -- --module loads NAME instead of `keymaps`, with DIR on package.path (the tests plant a fixture keymap there).
@@ -42,13 +43,14 @@ local VARIANTS = {
 if default_only then
 	VARIANTS = { VARIANTS[1] }
 end
-local Bind, Act
+local WHICHKEY_TOGGLE_LABEL = "Toggle which-key help"
+local Bind, Act, Submap
 local seen = {}
 for _, variant in ipairs(VARIANTS) do
 	-- Stubs.load clears the lib.* and keymaps.* modules but not the entry module itself.
 	package.loaded[module] = nil
 	Stubs.load(variant, { module })
-	Act, Bind = require("lib.act"), require("lib.key.bind")
+	Act, Bind, Submap = require("lib.act"), require("lib.key.bind"), require("lib.key.submap")
 	if #Act.warnings > 0 then
 		for _, warning in ipairs(Act.warnings) do
 			io.stderr:write("registry_binds: " .. warning .. "\n")
@@ -62,7 +64,11 @@ for _, variant in ipairs(VARIANTS) do
 			Bind.action_id(entry.action) or "-",
 		}
 		if with_labels then
-			columns[4] = tostring(entry.opts.desc or ""):gsub("%s", " ")
+			local label = entry.opts.desc
+			if not label and entry.action == Submap.toggle_whichkey then
+				label = WHICHKEY_TOGGLE_LABEL
+			end
+			columns[4] = tostring(label or ""):gsub("%s", " ")
 			columns[5] = entry.opts.release and "release" or "press"
 			columns[6] = entry.opts.transparent and "transparent" or "-"
 		end

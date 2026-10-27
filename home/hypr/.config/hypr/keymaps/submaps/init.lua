@@ -1,13 +1,15 @@
 --- Submap keybinds
 
-require("keymaps.submaps.leader")
-require("keymaps.submaps.apps")
-require("keymaps.submaps.go")
-require("keymaps.submaps.system")
-require("keymaps.submaps.delete")
-require("keymaps.submaps.windows")
-require("keymaps.submaps.groups")
-require("keymaps.submaps.cursor")
-require("keymaps.submaps.resize")
-require("keymaps.submaps.move")
-require("keymaps.submaps.bar")
+require("lib.act").load_each("keymaps.submaps", {
+  "leader",
+  "apps",
+  "go",
+  "system",
+  "delete",
+  "windows",
+  "groups",
+  "cursor",
+  "resize",
+  "move",
+  "bar",
+})

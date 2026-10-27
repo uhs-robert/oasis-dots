@@ -73,14 +73,15 @@ PATH_SCOPES = [
     ("lib/check/registry.allow", ""),
     ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
-    # The keybind table is generated from the keymaps (home/hypr/*, already lua); its generator's tests are unittest cases in lib/check/tests.
+    # The keybind table is generated from the keymaps, which reach docsgen through the home/hypr/* rule; its generator's
+    # tests are unittest cases in lib/check/tests.
     ("lib/check/steps/docs-generated.sh", "docsgen"),
     ("lib/docs/gen-keybinds", "checkscope docsgen"),
     # The IPC table is generated from the IpcHandler files and their parser, so edits to those run the same step (in the docsgen scope).
     ("lib/docs/gen-ipc", "checkscope docsgen"),
     ("lib/docs/docgen.py", "checkscope docsgen"),
     ("lib/check/steps/qml_ipc.py", "docsgen"),
-    ("home/quickshell/*Ipc.qml", "docsgen qml node"),
+    ("home/quickshell/.config/quickshell/*Ipc.qml", "docsgen qml node"),
     ("home/quickshell/.config/quickshell/README.md", "docsgen qml node"),
     ("docs/keybinds.md", "docsgen"),
     ("lib/check/steps/time-format.sh", "qml"),
@@ -314,6 +315,7 @@ STEPS = [
     Step("act-submap-rows", "lua", "bash ./home/hypr/tests/act-submap-rows.sh", ("lua",), skip_reason="the submap row tests need lua"),
     Step("act-stateful", "lua", "bash ./home/hypr/tests/act-stateful.sh", ("lua",), skip_reason="the stateful submap tests need lua"),
     Step("act-ipc", "lua", "bash ./home/hypr/tests/act-ipc.sh", ("lua",), skip_reason="the IPC action tests need lua"),
+    Step("theme-state", "lua", "lua ./home/hypr/tests/theme_state.lua", ("lua",), skip_reason="the theme state tests need lua"),
     Step("restart-bar", "lua", "bash ./home/hypr/tests/restart-bar.sh"),
     Step("input-vectors-lua", "inputvec", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
     Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),

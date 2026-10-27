@@ -1,10 +1,12 @@
 --- Global keybinds
 
-require("keymaps.global.general")
-require("keymaps.global.workspace")
-require("keymaps.global.shortcuts")
-require("keymaps.global.tools")
-require("keymaps.global.media")
-require("keymaps.global.keyless")
-require("keymaps.global.power")
-require("keymaps.global.mouse")
+require("lib.act").load_each("keymaps.global", {
+  "general",
+  "workspace",
+  "shortcuts",
+  "tools",
+  "media",
+  "keyless",
+  "power",
+  "mouse",
+})
