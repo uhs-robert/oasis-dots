@@ -78,7 +78,8 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - When the owner will try a change by hand before merging, build it on one branch until they have, and split it into PRs only after their verdict, so a fix never has to be rebased up a stack.
    - Before handing the owner a hands-on test, have an agent check everything the repo's preview tools can reach (an isolated run of the app, screenshots, scripted input). Ask the owner only for what those tools cannot reach, and say why.
    - Read each review path it prints.
-   - No review path at all → read `review-fallback.md` beside this skill. A standing merge approval is met by the reviewer agent's approve-with-no-revisions (step 6) plus the PR gate passing (step 11); local reviews are advisory and never required.
+   - No review path at all → read `review-fallback.md` beside this skill.
+   - For what meets a standing merge approval, see `review-fallback.md`.
 
 8. Evaluate and resolve findings. Classify each material finding as valid, partially valid, invalid, or out of scope; do not blindly apply reviewer suggestions. Fix valid ones using the model policy from step 4.
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when the fix is in code it already read and its context, from the token count its completion reports, is under 400k; from 400k to 500k, only for a small targeted fix.
