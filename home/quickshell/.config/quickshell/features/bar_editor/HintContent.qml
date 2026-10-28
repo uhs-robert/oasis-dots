@@ -48,7 +48,7 @@ Row {
             Text {
                 id: state_text
                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: root.state_label
+                text: root.state_label
                 color: Style.title_fg
                 opacity: 0.7
                 font.family: Style.font_family
