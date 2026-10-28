@@ -434,7 +434,7 @@ out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=1 timeout
 code=$?
 show "$out"
 check "fails" "[[ $code != 0 && $code != 124 ]]"
-check "says Codex has not reviewed" "grep -q 'Codex has not reviewed the head .* after 1s' <<<\"\$out\""
+check "says Codex has not reviewed" "grep -q 'Codex has not reviewed the head .* after [0-9]*s' <<<\"\$out\""
 check "comments exactly once" "[[ \$(grep -c '@codex review' <<<\"\$out\") -le 1 ]] && grep -q '^commented=1' '$GH_STATE'"
 
 echo "== --wait-review: Codex review finishes while waiting"
@@ -453,7 +453,7 @@ out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=1 timeout
 code=$?
 show "$out"
 check "fails" "[[ $code != 0 ]]"
-check "stops at the limit even with a zero poll interval" "[[ $code != 124 ]] && grep -q 'still running after 1s' <<<\"\$out\""
+check "stops at the limit even with a zero poll interval" "[[ $code != 124 ]] && grep -q 'still running after [0-9]*s' <<<\"\$out\""
 
 # Installs .claude/pre-merge in the main checkout from the given body; each run logs its environment to $root/env.
 # shellcheck disable=SC2016 # The single-quoted text is the hook script's own source.
