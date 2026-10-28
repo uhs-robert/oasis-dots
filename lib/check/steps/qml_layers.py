@@ -46,11 +46,10 @@ ALLOW_PATH = "lib/check/qml-layers.allow"
 LAYERS = {"core": 0, "theme": 1, "ui": 2, "services": 3, "styles": 4, "features": 5}
 UNRANKED = {"scripts", "assets", "sounds", "custom"}
 
-# (importer, target) pairs, both tree paths: a settings section reads the layout rules of the thing it configures
+# (importer, target) pairs, both tree paths: a settings section or the bar editor reads the layout rules of the thing it configures
 # from that feature's own JS. Both are permanent.
 SIBLING_ALLOW = {
     ("features/bar_editor/BarEditor.qml", "features/bar/BarLayout.js"),
-    ("features/settings/sections/BarModulesSection.qml", "features/bar/BarLayout.js"),
     ("features/settings/sections/DisplaysSection.qml", "features/display/DisplayLayout.js"),
 }
 SIBLING_LAYERS = ("features", "styles")
