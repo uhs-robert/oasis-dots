@@ -37,7 +37,7 @@ CASES = [
     ("lib/check/qml-ipc.allow", "checkscope"),
     ("lib/check/steps/lua.sh", "checkscope lua"),
     ("lib/check/steps/symlinks.sh", "checkscope"),
-    (".claude/hooks/plan-frontmatter.yaml", " hooks checkscope"),
+    ("lib/plan-frontmatter.yaml", " checkscope"),
     # The registry step is a tree step: the step itself reaches only the always-run steps. The Lua it loads is Lua.
     ("lib/check/steps/registry.py", "checkscope"),
     ("lib/check/registry.allow", "checkscope"),
@@ -152,7 +152,6 @@ CASES = [
     ("lib/common/README", ""),
     ("home/calendar/tests/run.sh", " calendar"),
     (".claude/hooks/check-before-commit.sh", " hooks"),
-    ("home/claude/.claude/hooks/tests/stale-shells.sh", " hooks"),
     (".claude/skills/owner-test-bar/owner-test-bar.sh", " bar"),
     (".claude/skills/ship-batch/tests/run.sh", " ship"),
     ("home/claude/.claude/skills/merge-prs/tests/run.sh", " ship"),

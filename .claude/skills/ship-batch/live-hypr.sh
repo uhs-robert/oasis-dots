@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Sourced by restart-qs-after-git.sh and ship-batch.sh. A long-lived shell's HYPRLAND_INSTANCE_SIGNATURE goes stale when
+# Sourced by ship-batch.sh. A long-lived shell's HYPRLAND_INSTANCE_SIGNATURE goes stale when
 # the owner logs in again, so these find the owner's live Hyprland instead of trusting the environment.
 
 # The owner's runtime directory. A shell started inside a shadow (see the shadow skill) has XDG_RUNTIME_DIR pointing at
