@@ -20,7 +20,6 @@ mkdir -p "$root/home" "$root/repo/.claude"
 git -C "$root/repo" init -q
 export HOME=$root/home
 export REVIEWERS_BUILTIN_FILE=$builtin_real
-unset REVIEWERS_REPO_FILE
 repo_file=$root/repo/.claude/reviewers.json
 
 reset() { rm -f "$repo_file"; }

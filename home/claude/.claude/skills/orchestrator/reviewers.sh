@@ -10,7 +10,6 @@ set -uo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 builtin_file=${REVIEWERS_BUILTIN_FILE:-$here/reviewers.json}
-repo_file_override=${REVIEWERS_REPO_FILE:-}
 
 # Reads one layer file (arg 1 is its kind, builtin or repo) and prints {entries: [...], warnings: [...]}; entries are normalized so
 # that `local` is an object whenever the layer gave one, and an invalid scope or default becomes "off" (the safe side).
