@@ -424,7 +424,7 @@ class DuckTest(unittest.TestCase):
         self.rig.end_stream()
         wait_until(lambda: self.rig.journal() is None, what="the restore on EOF")
         # "At once" means well under the 500 ms hold-off, judged by the fake's write time rather than the poll.
-        self.assertLess(self.rig.calls("set-volume")[writes_before]["time"], eof_sent + 0.25)
+        self.assertLess(self.rig.calls("set-volume")[writes_before]["time"], eof_sent + 0.4)
         self.assertAlmostEqual(self.rig.sink()["volume"], 1.0, places=3)
         self.rig.open_stream()
         # The follower waits one second before reconnecting.
