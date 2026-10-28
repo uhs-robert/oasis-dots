@@ -183,7 +183,7 @@ Singleton {
             root.focus_screen = root.monitors[0].name;
             root.mode = "monitor";
             root.help_open = false;
-            }
+        }
         root.ensure_selection();
     }
 

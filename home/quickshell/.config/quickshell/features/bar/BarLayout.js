@@ -260,8 +260,10 @@ function effective(rule, state, key) {
     const place = state.shared.place;
     for (const entry of Object.keys(place)) {
         const to = place[entry];
-        if (to !== "hidden" && out[to].indexOf(entry) >= 0) continue;
-        for (const s of sides) out[s] = out[s].filter(e => e !== entry);
+        // A plain entry's placement covers its twin too (system:cpu); a saved twin's own entry stays exact, so a stale one cannot hide the plain module.
+        const is_entry = e => e === entry || (plain_entry(entry) === entry && plain_entry(e) === entry);
+        if (to !== "hidden" && out[to].indexOf(entry) >= 0 && !sides.some(s => out[s].some(e => e !== entry && is_entry(e)))) continue;
+        for (const s of sides) out[s] = out[s].filter(e => !is_entry(e));
         if (to !== "hidden") out[to].push(entry);
     }
     for (const s of sides) out[s] = sort_side(out[s], state.shared.order);
@@ -331,7 +333,7 @@ function apply_op(layout, op) {
         list[j] = op.entry;
         return out;
     }
-    for (const s of sides) out[s] = out[s].filter(e => e !== op.entry);
+    for (const s of sides) out[s] = out[s].filter(e => plain_entry(e) !== plain_entry(op.entry));
     if (op.type === "hide") return out;
     const to = out[op.side];
     if (op.index >= 0) to.splice(Math.min(op.index, to.length), 0, op.entry);
@@ -421,10 +423,10 @@ function edit(rule, state, key, op) {
         return next;
     }
     if (op.type === "hide") {
-        next.shared.place[op.entry] = "hidden";
+        next.shared.place[plain_entry(op.entry)] = "hidden";
         if (was) next.shared.last_side[op.entry] = { side: was, index: view[was].indexOf(op.entry) };
     } else {
-        if (op.type !== "move") next.shared.place[op.entry] = op.side;
+        if (op.type !== "move") next.shared.place[plain_entry(op.entry)] = op.side;
         next.shared.order = order_from(after, next.shared.order);
     }
     return next;
