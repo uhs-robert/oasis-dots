@@ -37,7 +37,7 @@ CASES = [
     ("lib/check/steps/qml_ipc.py", " checkscope docsgen"),
     ("lib/check/steps/lua.sh", " checkscope hypr"),
     ("lib/check/steps/shaders.sh", " checkscope quickshell"),
-    ("lib/check/steps/voxcmd-rust.sh", " checkscope voxrest"),
+    ("lib/check/steps/voxcmd-rust.sh", " checkscope voxrust"),
     ("lib/check/steps/docs-generated.sh", " checkscope docsgen"),
     ("lib/docs/gen-keybinds", " checkscope docsgen"),
     ("lib/docs/gen-ipc", " checkscope docsgen"),
@@ -87,17 +87,17 @@ CASES = [
     ("home/voxcmd/tests/fixtures/ocr.tsv", " voxphrases"),
     ("home/voxcmd/tests/fixtures/x.txt", " voxphrases voxclick voxrest"),
     # The crate's sources reach the suites that build it; its tests, snapshots and goldens only cargo test (voxrest).
-    ("home/voxcmd/src/main.rs", " voxphrases voxclick voxrest"),
-    ("home/voxcmd/Cargo.lock", " voxphrases voxclick voxrest"),
-    ("home/voxcmd/.config/voxcmd/integrations/x.toml", " voxphrases voxclick voxrest"),
+    ("home/voxcmd/src/main.rs", " voxphrases voxclick voxrest voxrust"),
+    ("home/voxcmd/Cargo.lock", " voxphrases voxclick voxrest voxrust"),
+    ("home/voxcmd/.config/voxcmd/integrations/x.toml", " voxphrases voxclick voxrest voxrust"),
     ("extras/voxcmd-firefox/background.js", " voxphrases voxclick voxrest"),
-    ("home/voxcmd/rustfmt.toml", " voxrest"),
-    ("home/voxcmd/tests/cli.rs", " voxrest"),
-    ("home/voxcmd/tests/snapshots/cli__x.snap", " voxrest"),
-    ("home/voxcmd/tests/fixtures/match-goldens.tsv", " voxrest"),
-    ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " voxrest"),
+    ("home/voxcmd/rustfmt.toml", " voxrust"),
+    ("home/voxcmd/tests/cli.rs", " voxrust"),
+    ("home/voxcmd/tests/snapshots/cli__x.snap", " voxrust"),
+    ("home/voxcmd/tests/fixtures/match-goldens.tsv", " voxrust"),
+    ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " voxrust"),
     # Consumers that lib/check/steps/qml_paths.py names reach the quickshell scope beside their own.
-    ("home/voxcmd/src/timer.rs", " voxphrases voxclick voxrest quickshell"),
+    ("home/voxcmd/src/timer.rs", " voxphrases voxclick voxrest voxrust quickshell"),
     ("home/voxcmd/tests/run-monitors.sh", " voxclick quickshell"),
     # voxtype is the duck suite's; the daemon runs the voxcmd suites and the prompt is also asserted by the wake suite.
     ("home/voxtype/tests/run-duck.sh", " voxduck"),
@@ -109,15 +109,15 @@ CASES = [
     ("lib/install/fonts.sh", " install"),
     ("lib/install/tests/greeter-keyring.sh", " install"),
     ("lib/common/output.sh", " install"),
-    ("lib/common/greeter-files.sh", " quickshell install agents"),
+    ("lib/common/greeter-files.sh", " quickshell install skills"),
     ("packages/snapper.ini", " install"),
     ("home/calendar/tests/run.sh", " install"),
-    # agents: the hooks and the skills that have tests.
-    (".claude/hooks/check-before-commit.sh", " agents"),
-    ("home/claude/.claude/skills/orchestrator/reviewers.json", " agents"),
-    (".claude/skills/owner-test-bar/owner-test-bar.sh", " agents"),
-    (".claude/skills/ship-batch/tests/run.sh", " agents"),
-    ("home/claude/.claude/skills/merge-prs/tests/run.sh", " agents"),
+    # hooks: the agent hooks and the tests of the reviewers and owner-test-bar; skills: ship-batch and merge-prs.
+    (".claude/hooks/check-before-commit.sh", " hooks"),
+    ("home/claude/.claude/skills/orchestrator/reviewers.json", " hooks"),
+    (".claude/skills/owner-test-bar/owner-test-bar.sh", " hooks"),
+    (".claude/skills/ship-batch/tests/run.sh", " skills"),
+    ("home/claude/.claude/skills/merge-prs/tests/run.sh", " skills"),
     # Only the steps that always run look at these.
     ("extras/other/file", ""),
     ("home/kitty/.config/kitty/kitty.conf", ""),
@@ -140,14 +140,14 @@ class PathScopes(unittest.TestCase):
                 self.assertEqual(keys.path_scopes(path), expected)
 
     def test_a_crate_edit_selects_the_voxcmd_suites(self):
-        """The suites build the crate and run its binary, so editing its sources or manifest must run them; its test
-        sources, snapshots and goldens are read only by cargo test, in the voxrest scope."""
+        """The suites build the crate and run its binary, so editing its sources or manifest must run them and the
+        crate's own step; its test sources, snapshots and goldens are read only by cargo test, in the voxrust scope."""
         for path in ("home/voxcmd/src/cli.rs", "home/voxcmd/Cargo.toml"):
             with self.subTest(path=path):
-                self.assertEqual(set(keys.path_scopes(path).split()), set(scopes.VOXCMD_SUITE_SCOPES))
+                self.assertEqual(set(keys.path_scopes(path).split()), {*scopes.VOXCMD_SUITE_SCOPES, scopes.VOX_RUST})
         for path in ("home/voxcmd/tests/cli.rs", "home/voxcmd/tests/snapshots/cli__x.snap"):
             with self.subTest(path=path):
-                self.assertEqual(keys.path_scopes(path).split(), [scopes.VOX_REST])
+                self.assertEqual(keys.path_scopes(path).split(), [scopes.VOX_RUST])
 
     def test_a_voxcmd_click_edit_selects_only_the_click_sub_scope(self):
         for path in ("home/voxcmd/tests/run.sh", "home/voxcmd/tests/run-sessions.sh", "home/voxcmd/tests/fixtures/overview.json"):
@@ -163,11 +163,11 @@ class PathScopes(unittest.TestCase):
                 self.assertEqual(keys.path_scopes(path), "")
         # docs-generated compares these two against what the generators print.
         self.assertEqual(keys.path_scopes("docs/keybinds.md"), " docsgen")
-        self.assertEqual(keys.path_scopes("home/quickshell/.config/quickshell/README.md"), " docsgen quickshell")
+        self.assertEqual(keys.path_scopes("home/quickshell/.config/quickshell/README.md"), " docsgen")
 
     def test_there_are_few_folder_scopes(self):
         folder_scopes = {step.scope for step in scopes.STEPS} - {"tree", "shell"}
-        self.assertLessEqual(len(folder_scopes), 10, sorted(folder_scopes))
+        self.assertLessEqual(len(folder_scopes), 12, sorted(folder_scopes))
 
     def test_tests_are_found_by_naming_convention(self):
         """A tests/ file that follows a convention in scopes.py is a step without an entry of its own."""

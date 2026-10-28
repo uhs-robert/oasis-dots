@@ -146,6 +146,14 @@ case_markdown_a_test_reads() {
   expect_skipped qmllint luacheck voxcmd-click
 }
 
+case_hook_edit() {
+  start_case 'an agent hook'
+  echo '# x' >>.claude/hooks/guard-gh-merge.sh
+  plan
+  expect_ran hook-guard-gh-merge reviewers owner-test-bar shellcheck
+  expect_skipped ship-batch merge-prs voxcmd-click qmllint
+}
+
 case_home_qml() {
   start_case 'QML under home/quickshell'
   local qml
@@ -229,16 +237,16 @@ case_voxcmd_rust_snapshot() {
   snapshot=$(first_tracked 'home/voxcmd/tests/snapshots/*.snap') || return 0
   echo '# x' >>"$snapshot"
   plan
-  expect_ran voxcmd-rust voxcmd-calendar voxcmd-wake voxcmd-firefox
-  expect_skipped voxcmd-click voxcmd-phrases
+  expect_ran voxcmd-rust
+  expect_skipped voxcmd-click voxcmd-phrases voxcmd-calendar voxcmd-wake voxcmd-firefox
 }
 
 case_voxcmd_bash_script() {
   start_case 'voxcmd-autostop script'
   echo '# x' >>home/voxcmd/.local/bin/voxcmd-autostop
   plan
-  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox voxcmd-rust
-  expect_skipped voxtype-duck luacheck
+  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox
+  expect_skipped voxcmd-rust voxtype-duck luacheck
 }
 
 case_voxcmd_shared_fixture() {
@@ -253,8 +261,8 @@ case_voxcmd_small_suite() {
   start_case 'one small voxcmd suite'
   echo '# x' >>home/voxcmd/tests/run-calendar.sh
   plan
-  expect_ran voxcmd-calendar voxcmd-wake voxcmd-firefox voxcmd-rust shellcheck
-  expect_skipped voxcmd-phrases voxcmd-click
+  expect_ran voxcmd-calendar voxcmd-wake voxcmd-firefox shellcheck
+  expect_skipped voxcmd-phrases voxcmd-click voxcmd-rust
 }
 
 case_deleted_sourced_helper() {
@@ -413,7 +421,7 @@ case_only() {
   [ $? = 2 ] || fail 'an unknown step to exit 2'
 }
 
-for case_fn in case_readme case_markdown_in_a_scope case_markdown_a_test_reads case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
+for case_fn in case_hook_edit case_readme case_markdown_in_a_scope case_markdown_a_test_reads case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
   case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed case_only; do
   report "$case_fn"
