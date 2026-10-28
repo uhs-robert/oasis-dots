@@ -177,19 +177,23 @@ PanelWindow {
 
     // Modules with a compact override of their own: a dot at the module's corner, filled when forced on, a ring when forced off.
     Repeater {
-        model: (root.keyboard_owner || root.peer) && (BarEditor.mode === "normal" || BarEditor.mode === "hidden") ? BarEditor.compact_marks : []
+        model: (root.keyboard_owner || root.peer) && (BarEditor.mode === "normal" || BarEditor.mode === "hidden") ? BarEditor.compact_marks_for(root.screen_name) : []
         Rectangle {
             id: compact_mark
             required property var modelData
-            readonly property rect at: root.placed_rect(compact_mark.modelData.entry).rect
+            readonly property var placed: root.placed_rect(compact_mark.modelData.entry)
+            readonly property rect at: compact_mark.placed.rect
+            // A module drawn with nothing (compact system) is zero wide at its slot, so the mark gets a span of its own there.
+            readonly property real span_w: Math.max(compact_mark.at.width, 14)
+            readonly property real span_h: Math.max(compact_mark.at.height, 14)
             readonly property bool forced_on: compact_mark.modelData.on
-            visible: compact_mark.at.width >= 1
+            visible: compact_mark.placed.found
             opacity: root.keyboard_owner ? 1 : 0.45
             width: 7
             height: 7
             radius: 3.5
-            x: compact_mark.at.x + compact_mark.at.width - width
-            y: compact_mark.at.y
+            x: compact_mark.at.x - (compact_mark.span_w - compact_mark.at.width) / 2 + compact_mark.span_w - width
+            y: compact_mark.at.y - (compact_mark.span_h - compact_mark.at.height) / 2
             color: compact_mark.forced_on ? Theme.theme_secondary : "transparent"
             border.width: 1.5
             border.color: Theme.theme_secondary

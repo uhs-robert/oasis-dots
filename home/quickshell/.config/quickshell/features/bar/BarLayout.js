@@ -640,14 +640,16 @@ function compact_override(rule, state, key, entry) {
 }
 
 // `c` in NORMAL: steps `entry` inherit -> on -> off -> inherit from the override it draws with, writing the edited layout's
-// own. Under a rule that names the entry, inherit falls back to the rule's value, so there it steps between on and off.
-// A module with no compact form is left alone.
+// own. When the rule names the entry, inherit would only bring the rule's value back (and get stuck there), so `c` writes
+// the opposite of what is drawn instead. A module with no compact form is left alone.
 function cycle_module_compact(rule, state, key, entry) {
     const next = normalize(state);
     if (!supports_compact(entry)) return next;
     const layer = is_sharing(next, key) ? next.shared : next.monitors[key];
     const k = plain_entry(entry);
-    const after = { inherit: true, on: false, off: undefined }[compact_override(rule, next, key, entry)];
+    const drawn = compact_override(rule, next, key, entry);
+    const rule_names = k in clean_compact_modules(rule && rule.compact_modules);
+    const after = rule_names ? drawn !== "on" : { inherit: true, on: false, off: undefined }[drawn];
     const map = without(layer.compact_modules || {}, k);
     if (after !== undefined) map[k] = after;
     put_compact_modules(layer, map);

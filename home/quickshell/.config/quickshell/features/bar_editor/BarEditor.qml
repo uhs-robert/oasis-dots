@@ -67,7 +67,7 @@ Singleton {
     readonly property int sharing_count: root.sharing ? root.sharing_screens().length : 0
     readonly property var hidden_list: BarLayout.addable_entries(BarSettings.rules, BarSettings.state, root.view).filter(BarLayout.is_known_entry)
     // The shown modules with a compact override of their own, as { entry, on }, which the overlay marks on the bar.
-    readonly property var compact_marks: root.order.map(e => ({ entry: e, override: BarLayout.compact_override(root.tracked, BarSettings.state, root.screen_key, e) })).filter(m => m.override !== "inherit").map(m => ({ entry: m.entry, on: m.override === "on" }))
+    readonly property var compact_marks: root.compact_marks_for(root.focus_screen)
     // The selected module's override ("inherit", "on", "off"), or "none" when it has no compact form.
     readonly property string selected_compact: root.selected === "" || !BarLayout.supports_compact(root.selected) ? "none" : BarLayout.compact_override(root.tracked, BarSettings.state, root.screen_key, root.selected)
     readonly property bool bar_compact: !!(root.edited_rule && root.edited_rule.compact)
@@ -292,6 +292,17 @@ Singleton {
         root.pick_redo = [];
         root.picked = "";
         root.hidden_selected = entry;
+    }
+
+    // A screen's shown modules with a compact override, as { entry, on }, from its own rule and key: a sharing peer may
+    // be matched by another rule, which can name other overrides.
+    function compact_marks_for(screen_name) {
+        const s = root.screens.find(x => x.name === screen_name);
+        if (!s) return [];
+        const tracked = root.tracked_of(s);
+        const key = root.key_of(s);
+        const shown = BarLayout.nav_order(BarLayout.layout_of(BarLayout.effective(tracked, BarSettings.state, key)), root.sectioned);
+        return shown.map(e => ({ entry: e, override: BarLayout.compact_override(tracked, BarSettings.state, key, e) })).filter(m => m.override !== "inherit").map(m => ({ entry: m.entry, on: m.override === "on" }));
     }
 
     function cycle_compact_selected() {
