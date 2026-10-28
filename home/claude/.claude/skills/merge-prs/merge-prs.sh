@@ -155,6 +155,24 @@ under_prefix() {
   return 1
 }
 
+commit_rows='.commits[] | [.sha, (.commit.message | split("\n")[0])] | @tsv'
+
+# The files and line counts of one commit, sorted: what a rebase leaves unchanged.
+commit_signature() {
+  gh api --paginate "repos/$slug/commits/$1" --jq '.files[] | [.filename, .changes] | @tsv' | sort
+}
+
+# Whether a commit has the subject and signature of one of the reviewed commits (rows of "sha<TAB>subject").
+reviewed_by_content() {
+  local sha=$1 subject=$2 rows=$3 other other_subject mine
+  mine=$(commit_signature "$sha") || die "cannot read the files of $sha"
+  while IFS=$'\t' read -r other other_subject; do
+    [[ $other_subject == "$subject" ]] || continue
+    [[ $(commit_signature "$other") == "$mine" ]] && return 0
+  done <<<"$rows"
+  return 1
+}
+
 # Later commits up to this many changed lines skip re-review.
 small_fix_lines=20
 
@@ -164,18 +182,20 @@ small_fix_lines=20
 # Compares each side against the default branch, so commits picked up by a rebase after the review are not counted.
 # Not run in a subshell, so the two variables reach the caller.
 rereview_reason() {
-  local reviewed=$1 head=$2 reviewed_shas head_shas covered changed new_file sha file changes sha_files_text only_generated lines=0 unmeasured=""
+  local reviewed=$1 head=$2 reviewed_commits head_shas covered changed new_file sha file changes sha_files_text only_generated lines=0 unmeasured=""
   local -a prefixes=()
   rereview_why=""
   generated_skipped=false
   mapfile -t prefixes < <(generated_prefixes)
-  reviewed_shas=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.commits[].sha') ||
+  reviewed_commits=$(gh api "repos/$slug/compare/$default...$reviewed" --jq "$commit_rows") ||
     die "cannot compare $reviewed with $default"
-  head_shas=$(gh api "repos/$slug/compare/$default...$head" --jq '.commits[].sha') ||
+  head_shas=$(gh api "repos/$slug/compare/$default...$head" --jq "$commit_rows") ||
     die "cannot compare $head with $default"
-  while IFS= read -r sha; do
+  while IFS=$'\t' read -r sha subject; do
     [[ -n $sha ]] || continue
-    ! grep -qxF -- "$sha" <<<"$reviewed_shas" || continue
+    ! grep -q "^$sha"$'\t' <<<"$reviewed_commits" || continue
+    # A rebase gives the reviewed commits new shas; the same subject with the same files and counts is still that commit.
+    ! reviewed_by_content "$sha" "$subject" "$reviewed_commits" || continue
     # Generated files never count; a commit of only those is the hook's rebuild, not work to review.
     sha_files_text=$(gh api --paginate "repos/$slug/commits/$sha" --jq '.files[] | [.filename, .changes] | @tsv') || die "cannot read the files of $sha"
     only_generated=1
