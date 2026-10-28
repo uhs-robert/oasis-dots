@@ -205,7 +205,8 @@ case "$args" in
     put push_on_merge_read ""
     push_new_commit
   }
-  printf '%s\t%s\t%s\t%s\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)"
+  # merge_base: the base the PR reports at merge time only, as after a retarget during the run.
+  printf '%s\t%s\t%s\t%s\n' "$(get head)" "$(reported_oid)" "$(get merge_base | grep . || get base)" "$(get state)"
   ;;
 "pr view"*"headRefOid,mergeable"*)
   oid=$(reported_oid)
