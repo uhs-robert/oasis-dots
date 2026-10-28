@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scaffolds a `.plans/` doc with front matter that passes `.claude/hooks/plan-frontmatter.yaml`.
+"""Scaffolds a `.plans/` doc with front matter that passes `lib/plan-frontmatter.yaml`.
 
   just plan-new <topic> <tracker|plan|handoff> [item]
 

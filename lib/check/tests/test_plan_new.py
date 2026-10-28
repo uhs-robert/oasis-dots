@@ -23,7 +23,7 @@ def accepted(path):
     with tempfile.NamedTemporaryFile("w", suffix=".yaml") as front:
         front.write(block)
         front.flush()
-        return subprocess.run(["check-jsonschema", "--schemafile", os.path.join(REPO_DIR, ".claude/hooks/plan-frontmatter.yaml"), front.name],
+        return subprocess.run(["check-jsonschema", "--schemafile", os.path.join(REPO_DIR, "lib/plan-frontmatter.yaml"), front.name],
                               capture_output=True, text=True)
 
 

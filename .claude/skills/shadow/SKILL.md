@@ -55,7 +55,7 @@ description: Run the full Quickshell bar in an invisible, isolated nested Hyprla
   | `checkupdates`, `claude` | a database sync under `/tmp`, and the owner's Claude account | nothing |
 
   Not stubbed, because they only reach the shadow's own Wayland, session bus or HOME: `wl-copy`/`wl-paste`, `cliphist`, `notify-send`, `playerctl`, `hyprctl`, `grim`, `wf-recorder`, `wtype`, `zoxide`, `paru -Qua`, read-only `pgrep`/`pidof`/`ip`.
-- The bar runs as `qs-shadow` (a symlink to `qs`), so `pgrep -x qs`, `pkill -x qs` (owner-test-bar's `launch`, `.claude/hooks/restart-qs-after-git.sh`) and `pgrep -af '^qs '` never match it, and restarting the owner's bar leaves the shadow alone.
+- The bar runs as `qs-shadow` (a symlink to `qs`), so `pgrep -x qs`, `pkill -x qs` (owner-test-bar's `launch`) and `pgrep -af '^qs '` never match it, and restarting the owner's bar leaves the shadow alone.
 - `down` kills each component's session (bar with its `voxtype` and other children, Hyprland, host, bus), unmounts the gvfs FUSE mount, then scans `/proc/*/environ` for the runtime dir, sweeps strays once, and fails listing any process still left.
 
 ## Host

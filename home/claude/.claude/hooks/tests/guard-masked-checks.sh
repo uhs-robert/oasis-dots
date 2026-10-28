@@ -63,6 +63,9 @@ expect deny "$kill_msg" "$root" 'pgrep -f run-phrases | xargs kill'
 expect deny "$kill_msg" "$root" 'pgrep -f run-phrases | xargs -r kill -9'
 expect deny "$kill_msg" "$root" 'pkill -P 4242 sleep; pkill -f tests/run.sh'
 expect deny "$kill_msg" "$root" 'pgrep -P 4242 sleep | xargs kill; killall run.sh'
+expect deny "$kill_msg" "$root" "kill \$(pgrep -x qs)"
+expect deny "$kill_msg" "$root" "kill -9 \$(pgrep -f run-phrases)"
+expect allow "" "$root" "kill -0 \$(cat pidfile)"
 expect allow "" "$root" 'pkill -P 4242 -f tests/run.sh'
 expect allow "" "$root" 'pkill -P 4242 sleep; pkill --parent 4242 yes'
 expect allow "" "$root" 'pkill --parent=4242 sleep'
