@@ -206,6 +206,9 @@ PATH_SCOPES = [
     ("lib/install/tests/snapper.sh", "snapper"),
     ("packages/snapper.ini", "snapper"),
     ("lib/install/dev-tools.sh", "devtools loader"),
+    # The devtools test sources these two.
+    ("lib/common/output.sh", "devtools loader"),
+    ("lib/common/packages.sh", "devtools loader"),
     ("lib/install/tests/dev-tools-coderabbit.sh", "devtools"),
     ("packages/devtools.ini", "devtools"),
     ("system/etc/makepkg.conf.d/*", "pacman"),
