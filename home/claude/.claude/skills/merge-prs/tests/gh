@@ -151,7 +151,12 @@ case "$args" in
   [[ -n $(get codex_commit) && $sha == "$(get codex_commit)"* ]] && side=reviewed
   case $args in
   # Commits are listed by sha (c1, c2, ... by position in the side's subjects, with the subject).
-  *.sha*) get "${side}_subjects" | tr ';' '\n' | awk '{ printf "c%d\t%s\n", NR, $0 }' ;;
+  # With rebased=1 the head's commits are new ones (h1, h2, ...), as after a rebase.
+  *.sha*)
+    prefix=c
+    [[ $side == head && -n $(get rebased) ]] && prefix=h
+    get "${side}_subjects" | tr ';' '\n' | awk -v p="$prefix" '{ printf "%s%d\t%s\n", p, NR, $0 }'
+    ;;
   *) get "${side}_files" | tr ';' '\n' ;;
   esac
   ;;
@@ -161,7 +166,8 @@ case "$args" in
 # file, or null when commit_nopatch_<sha> is set.
 "api "*"repos/"*"/commits/"*"patch"*)
   sha=$(sed -E 's|.*/commits/([^ ]+) .*|\1|' <<<"$args")
-  patch=$(get "commit_patch_$sha"); [[ -n $patch ]] || patch=same
+  patch=$(get "commit_patch_$sha")
+  [[ -n $patch ]] || patch=same
   [[ -z $(get "commit_nopatch_$sha") ]] || patch=
   get "commit_files_$sha" | tr ';' '\n' | awk -F: -v p="$patch" 'NF { print $1 "\t" (p == "" ? "null" : "\"" p "\"") }'
   ;;
