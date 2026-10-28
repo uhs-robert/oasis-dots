@@ -9,7 +9,7 @@ Edit the bar modules on the bars themselves: a full-screen mode over every monit
 | Mode | Keys |
 | --- | --- |
 | Monitor select | `hjkl` pick a monitor by screen position, Enter edits its bar, `q` or Esc closes |
-| NORMAL | `h`/`l` select the previous or next module (`j`/`k` too on a side bar), Shift+`H`/`L` move it (crossing to the next side at the ends; on a lualine bar a module stays in its section), `x` hide, `c` compact this module (inherit, on, off), `o` own layout, `u` undo, Ctrl+R redo, Tab hidden, Shift+`V` whole bar, Esc back to monitor select |
+| NORMAL | `h`/`l` select the previous or next module (`j`/`k` too on a side bar), Shift+`H`/`L` move it (crossing to the next side at the ends; on a lualine bar a module stays in its section), `x` hide, `c` compact this module (inherit, on, off; a module a `bars.json` `compact_modules` rule names just toggles on and off), `o` own layout, `u` undo, Ctrl+R redo, Tab hidden, Shift+`V` whole bar, Esc back to monitor select |
 | HIDDEN (Tab) | `h`/`l` select a hidden module, Enter picks it up, then `h`/`l` place it and Enter drops it; Esc cancels the carry. With nothing carried, Esc or Tab leaves |
 | VISUAL (Shift+`V`) | `hjkl` move the whole bar to the left, bottom, top or right edge, `c` compact the whole bar, `x` forget the saved bar position (no prompt; offered only when one is saved), `u`/Ctrl+R undo and redo, Esc or Enter back |
 

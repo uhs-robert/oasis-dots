@@ -6,7 +6,7 @@ The launcher is a fuzzy picker with one search box and list shared by every prov
 
 Top to bottom: the search bar, a preview of the selected item, and a grid of cards. In NORMAL mode:
 
-- `hjkl`, `0`/`$` and `gg`/`G` move through the grid; a click picks a card.
+- `hjkl`, `0`/`$` and `gg`/`G` move through the grid; a click activates a card like Enter (the picker closes; a clipboard entry replaces the clipboard).
 - `=` (or `+`) makes the preview bigger, `-` smaller, `p` hides it or restores its size. Sizes are off, small, medium, large and max; max hides the cards. Each open starts at large (agents) or medium (clipboard); the size is not remembered.
 - `v` switches between the card grid and one-line rows (an agent row also shows its state badge). Every open starts on the grid.
 - The first nine cards or rows fully on screen carry a corner number. A digit 1 to 9 selects that item and never opens it; Enter does. In INSERT the digits type into the search.
