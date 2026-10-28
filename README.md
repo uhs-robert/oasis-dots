@@ -245,7 +245,7 @@ cd ~/dotfiles
 
 Installs system packages, AUR packages, fonts, and dev tools, then stows dotfiles into `~/`. Prompts for optional components (greetd, Steam, Nvidia, dev runtimes).
 
-The dev runtimes picker also offers the CodeRabbit CLI (official installer, unpinned). Update it with `coderabbit update`. To remove it, first set its local review to `off` in Settings > Developer (the row is read-only once the binary is gone, and a scope saved there overrides `~/.config/code-reviewers/reviewers.json`; see `home/claude/.claude/skills/orchestrator/reviewers.md`), then `rm ~/.local/bin/{coderabbit,cr}` and `rm -r ~/.coderabbit`. A saved scope persists, so a reinstall resumes reviewing at it.
+The dev runtimes picker also offers the CodeRabbit CLI (official installer, unpinned). Update it with `coderabbit update`. To remove it, run `rm ~/.local/bin/{coderabbit,cr}` and `rm -r ~/.coderabbit`. The reviewer list is in `home/claude/.claude/skills/orchestrator/reviewers.md`.
 
 If you installed before the systemd package was stowed unfolded (voxtype never enabled, `systemctl --user enable` writing into the checkout), run `just migrate-systemd --dry-run` and then `just migrate-systemd` once after pulling. If the pull is blocked by a local change to `home/systemd/.config/systemd/user/voxtype.service`, discard it first with `git checkout -- home/systemd/.config/systemd/user/voxtype.service`; voxtype now writes that unit itself.
 

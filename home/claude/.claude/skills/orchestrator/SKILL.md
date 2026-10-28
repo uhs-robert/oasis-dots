@@ -72,7 +72,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
-7. Get an external review of the issue and diff against the review dimensions. The local reviewers (Codex, CodeRabbit, Claude, any the owner added; see `reviewers.md`) run in parallel and are advisory; an Opus subagent covers when none is available.
+7. Get an external review of the issue and diff against the review dimensions. The local reviewers (Codex, CodeRabbit, Claude, any a repo adds in `.claude/reviewers.json`; see `reviewers.md`) run in parallel and are advisory; an Opus subagent covers when none is available.
    - From the worktree, run `~/.claude/skills/orchestrator/run-local-reviews.sh <base> <main checkout>/.logs/<topic>/<item>` as one background Bash call. It runs every reviewer whose scope is not off and prints one line per reviewer: `<name>: <review path>` or `<name>: <reason>` (unavailable, skipped by scope, uncommitted changes).
    - Commit first (a reviewer exits 3 on uncommitted changes).
    - Request it the moment the work is handed to the owner for hands-on testing, so the two overlap; with no hands-on testing, as soon as the branch is committed.

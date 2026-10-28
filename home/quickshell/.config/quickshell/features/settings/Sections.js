@@ -15,7 +15,6 @@ var list = [
     { id: "power", group: "System", label: "Power", glyph: "󰐥", keywords: "idle dim lock suspend sleep lid button battery ac profile hypridle", source: "sections/PowerSection.qml" },
     { id: "sessions", group: "System", label: "Sessions", glyph: "󰆍", keywords: "session launcher layout windows workspace save restore picker", source: "sections/SessionsSection.qml" },
     { id: "lock", group: "System", label: "Lock & login", glyph: "󰌾", keywords: "lock screen skin tint backdrop music volume login greeter greetd session sync", source: "sections/LockLoginSection.qml" },
-    { id: "developer", group: "System", label: "Developer", glyph: "󰅩", keywords: "reviewer code review coderabbit codex claude gate merge local", source: "sections/DeveloperSection.qml" },
     { id: "input", group: "Input", label: "Typing", glyph: "󰌌", keywords: "vim insert normal mode typing search picker start remember query which key delay", source: "sections/InputSection.qml" },
     { id: "keyboard", group: "Input", label: "Keyboard", glyph: "󰥻", keywords: "layout variant xkb caps lock escape repeat rate delay", source: "sections/KeyboardSection.qml" },
     { id: "voice", group: "Input", label: "Voice", glyph: "󰍬", keywords: "voice cortana wake word hey whisper listener mic call media pause microphone voxcmd voxtype duck music dictation type mode sensitivity speech", source: "sections/VoiceSection.qml" },

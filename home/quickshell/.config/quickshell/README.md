@@ -32,7 +32,6 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - [`clock/`](features/clock/README.md): Clock, calendar and time zones
 - [`weather/`](features/weather/README.md): Weather settings, alerts, fixtures and views
 - [`launcher/`](features/launcher/README.md) holds the fuzzy picker, its `Pickers` registry and IPC handler, its providers (agents, apps, clipboard, dirs, emoji, keybinds, choices), the HyprVim `:` prompt in `hyprvim/`, and `TypingSettings`.
-- `developer/` holds `DeveloperSettings` (the code reviewers and their `developer.json` choices) for Settings > Developer.
 - `screen_select/` holds `RegionSelector`, its toolbar and key overlays, and the `cursors/`, `loupe/` and `targets/` skins.
 - `display/` holds `Displays` and `DisplayLayout.js` (monitor layout), `Backlight`, the brightness and zoom IPC handlers, and the overview zoom `Zoom` with its loupe and reticle.
 - `media/` holds `MediaState` (MPRIS players), `CavaState` (the cava feed, run while a registered viewer draws it; `CavaViewers.js`), the media popup with its album art, seek bar, round buttons and cava strip, and the volume popup.
