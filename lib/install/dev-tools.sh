@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Language runtimes and developer tooling: fnm/pnpm/bun/go/deno, tmuxifier, the git identity, and the Neovim config and plugins.
+# Language runtimes and developer tooling: fnm/pnpm/bun/go/deno, the CodeRabbit CLI, tmuxifier, the git identity, and the Neovim config and plugins.
 
 install_devtool_nodejs() {
   if command -v fnm &>/dev/null; then
@@ -55,6 +55,18 @@ install_devtool_deno() {
   success "deno installed"
 }
 
+# The installer is the official unpinned one-liner. An existing install is never re-run; `coderabbit update` updates it.
+# CR_CLI_SKIP_LOGIN keeps the installer from prompting for a login mid-install.
+install_devtool_coderabbit() {
+  if command -v coderabbit &>/dev/null; then
+    warn "coderabbit already present, skipping"
+    return
+  fi
+  info "Installing the CodeRabbit CLI..."
+  curl -fsSL https://cli.coderabbit.ai/install.sh | CR_CLI_SKIP_LOGIN=1 sh
+  success "coderabbit installed, run: coderabbit auth login"
+}
+
 # Presents an fzf picker of optional runtimes and dispatches to the right installer.
 install_dev_tools() {
   echo ""
@@ -74,6 +86,7 @@ install_dev_tools() {
     bun) install_devtool_bun ;;
     go) install_devtool_go ;;
     deno) install_devtool_deno ;;
+    coderabbit) install_devtool_coderabbit ;;
     *) warn "Unknown dev tool: $tool, skipping" ;;
     esac
   done
