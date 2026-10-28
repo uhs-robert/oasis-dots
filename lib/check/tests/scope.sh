@@ -148,9 +148,9 @@ case_markdown_a_test_reads() {
 
 case_hook_edit() {
   start_case 'an agent hook'
-  echo '# x' >>.claude/hooks/guard-gh-merge.sh
+  echo '# x' >>.claude/hooks/check-before-pr.sh
   plan
-  expect_ran hook-guard-gh-merge reviewers owner-test-bar shellcheck
+  expect_ran hook-check-before-pr reviewers owner-test-bar shellcheck
   expect_skipped ship-batch merge-prs voxcmd-click qmllint
 }
 

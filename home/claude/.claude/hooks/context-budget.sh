@@ -42,10 +42,10 @@ used=$(tac "$transcript" | grep -F '"usage"' | grep -v -F '"isSidechain":true' -
 
 note=''
 if ((used >= handoff)); then
-  note="Context budget: $((used / 1000))k of the owner's 200k. Hand off now. If the orchestrator-handoff skill is already in context, do not load it again. Steps: (1) tell the owner in one line that you hand off at the context budget; (2) run ~/.claude/skills/orchestrator-handoff/spawn-successor.sh <your session name>; (3) end the turn; (4) on READY, follow the skill's Hand over from step 1."
+  note="Context budget: $((used / 1000))k of 200k. Hand off now, via ~/.claude/skills/orchestrator-handoff/spawn-successor.sh <your session name>; tell the owner in one line first, end the turn, and on READY follow the skill's Hand over from step 1."
   echo 2 >"$state"
 elif ((used >= wind_down && stage < 1)); then
-  note="Context budget: $((used / 1000))k of the owner's 200k. Size check: from here start only small pieces, under ~10k of orchestrator context, and only if current + its estimate stays under $((handoff / 1000))k (a fix round, a doc update, owner-test prep, answering a question, a gate or merge of a ready PR); start no new PR cycle. With no small piece left, ask the owner (AskUserQuestion) which open item to do next and offer to hand it to a fresh session; never end a turn idle. Costs: full PR cycle (brief, review, fix round, suites, PR, gate, merge) 30-45k; fix round, owner-test prep or a question 3-8k; the handoff itself ~20k. At $((handoff / 1000))k you will be told to hand off."
+  note="Context budget: $((used / 1000))k of 200k. Start only pieces under ~10k of orchestrator context that keep you under $((handoff / 1000))k, and no new PR cycle (30-45k; a fix round, owner-test prep or a question is 3-8k; the handoff ~20k). With none left, ask the owner (AskUserQuestion) which open item to do next; never end a turn idle. At $((handoff / 1000))k you will be told to hand off."
   echo 1 >"$state"
 fi
 [[ -n $note ]] || exit 0

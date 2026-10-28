@@ -174,7 +174,7 @@ class PathScopes(unittest.TestCase):
     def test_tests_are_found_by_naming_convention(self):
         """A tests/ file that follows a convention in scopes.py is a step without an entry of its own."""
         names = {step.name for step in scopes.STEPS}
-        for name in ("act-global", "bar-layout", "polled-command", "install-pacman-tweaks", "hook-guard-gh-merge"):
+        for name in ("act-global", "bar-layout", "polled-command", "install-pacman-tweaks", "hook-check-before-pr"):
             with self.subTest(name=name):
                 self.assertIn(name, names)
 

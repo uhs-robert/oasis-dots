@@ -5,7 +5,8 @@
     "sessionUrl": false
   },
   "env": {
-    "CLAUDE_CODE_ENABLE_FUNCTION_HOOKS": "1"
+    "CLAUDE_CODE_ENABLE_FUNCTION_HOOKS": "1",
+    "CLAUDE_CODE_SHELL": "/bin/bash"
   },
   "permissions": {
     "allow": [
@@ -127,11 +128,6 @@
       {
         "matcher": "Bash",
         "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/guard-zsh-modifiers.sh",
-            "timeout": 10
-          },
           {
             "type": "command",
             "command": "~/.claude/hooks/guard-masked-checks.sh",

@@ -36,8 +36,8 @@ check "below the threshold says nothing" test -z "$(run_hook "$t" s1)"
 
 usage_line 145000 >>"$t"
 out=$(run_hook "$t" s1)
-check "at 140k the orchestrator gets the size check" grep -q 'Size check' <<<"$out"
-check "the size check bounds a piece by the handoff threshold" grep -q 'stays under 175k' <<<"$out"
+check "at 140k the orchestrator gets the size check" grep -q 'Start only pieces' <<<"$out"
+check "the size check bounds a piece by the handoff threshold" grep -q 'under 175k' <<<"$out"
 check "the size check says to ask the owner for the next task" grep -q 'never end a turn idle' <<<"$out"
 check "the size check carries the cost table" grep -q '30-45k' <<<"$out"
 check "the note is PostToolUse context" test "$(jq -r .hookSpecificOutput.hookEventName <<<"$out")" = PostToolUse
@@ -54,7 +54,6 @@ usage_line 176000 >>"$t"
 out=$(run_hook "$t" s1)
 check "at 175k the orchestrator is told to hand off" grep -q 'Hand off now' <<<"$out"
 check "the handoff note carries the spawn step" grep -q 'spawn-successor.sh' <<<"$out"
-check "the handoff note says not to reload the skill" grep -q 'do not load it again' <<<"$out"
 check "the handoff note comes once" test -z "$(run_hook "$t" s1)"
 
 h="$tmp/handoff.jsonl"
