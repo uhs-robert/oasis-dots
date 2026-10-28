@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests for remind-global-neutral.sh: it reminds for shared agent definition paths in the installed config directory
 # (direct, through a symlink to a checkout, or with only some entries symlinked) and stays silent and successful for
-# runtime state, other files, unrelated checkouts and malformed input.
+# runtime state, other files and malformed input. The dotfiles' own source tree (home/claude/.claude) fires in any
+# checkout or worktree.
 # shellcheck disable=SC2329 # run, fires and silent are called by name through check
 set -u
 hook="$(dirname "$0")/../remind-global-neutral.sh"
@@ -51,7 +52,8 @@ check "silent for runtime state at the symlink's target" silent "$(edit "$tmp/so
 check "silent for local settings" silent "$(edit "$tmp/home/.claude/settings.local.json")"
 check "silent for a CLAUDE.md at a project root" silent "$(edit "$tmp/project/CLAUDE.md")"
 check "silent for a CLAUDE.md in a project .claude" silent "$(edit "$tmp/project/.claude/CLAUDE.md")"
-check "silent for a skill in an unrelated checkout" silent "$(edit "$tmp/lookalike/home/claude/.claude/skills/y/SKILL.md")"
+check "fires for a skill in a checkout's source tree" fires "$(edit "$tmp/lookalike/home/claude/.claude/skills/y/SKILL.md")"
+check "silent for runtime state in a checkout's source tree" silent "$(edit "$tmp/lookalike/home/claude/.claude/todos/t.json")"
 check "silent for an ordinary file" silent "$(edit "$tmp/project/README.md")"
 check "silent for a path missing from the input" silent '{"tool_name":"Edit","tool_input":{}}'
 check "empty input succeeds silently" silent ''
