@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Reply to one PR review thread and resolve it; the only thread mutation an agent is allowed to run (the raw
-# `gh api graphql` mutations are denied by hooks/guard-gh-thread-mutations.sh).
+# `gh api graphql` mutations are denied by hooks/guard-gh-thread-mutations.sh). A narrow script instead of an allow
+# rule for `gh api graphql`, which would also allow merges, deletes and any other mutation.
 # shellcheck disable=SC2016 # the $variables in the queries are GraphQL's, not the shell's
 set -euo pipefail
 

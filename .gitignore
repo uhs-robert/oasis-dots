@@ -116,6 +116,7 @@ home/yazi/.config/yazi/plugins/*
 # ────────────────────────────────────────────────
 # 🤖 AI assistant artifacts (Claude, Gemini, etc.)
 # ────────────────────────────────────────────────
+# Ignored by default; a new tracked file under these trees needs its own `!` line, or git silently never adds it.
 home/claude/**
 !home/claude/.claude/
 !home/claude/.claude/_agents/
@@ -149,6 +150,8 @@ home/codex/**
 !home/codex/.codex/skills/**
 !home/codex/.codex/hooks.json
 **/.codex/skills/.**
+# Assistant instruction files stay ignored everywhere except the repository root (and the tracked ~/.claude copy):
+# a nested AGENTS.md under home/ is an app's own state, which the blanket rules above exist to keep out.
 CLAUDE.md
 GEMINI.md
 AGENTS.md

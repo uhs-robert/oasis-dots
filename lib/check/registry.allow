@@ -3,7 +3,8 @@
 #   ipc <target> <function>...  # <reason>
 # A new bind or IPC function needs an action (lib/actions/defs/), or a line here. A line whose bind or function has an
 # action now, or no longer exists, fails as stale: delete it in the PR that makes it so. The owner's `custom/` binds are
-# never loaded, so they need no line.
+# never loaded, so they need no line. Without this list a new key or IPC function added beside the registry went
+# unnoticed; listing each exception with its reason keeps them visible and shrinking.
 
 # Binds that are not commands.
 bind global switch:on:Lid Switch        # a lid switch, not a key: the power script decides what closing it does

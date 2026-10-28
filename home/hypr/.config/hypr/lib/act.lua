@@ -4,6 +4,10 @@
 --- args, a submap row, a custom/ override). `Act.run` and `Act.run_cli` perform one by id, so keys, the
 --- `hypr-act` script, the bar and voice share one path. Config-time mistakes warn and skip only the bad entry,
 --- because a Lua error would abort the rest of the config file.
+---
+--- No list of actions is committed: `Act.list` (behind `hypr-act list`) asks the running Hyprland, so the list
+--- cannot drift from these definitions or a custom/ override. Without Hyprland there is no list, but no key or bar
+--- works then either.
 
 local Bind = require("lib.key.bind") ---@class BindLib
 local Json = require("lib.json") ---@class Json
