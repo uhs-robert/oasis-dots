@@ -37,7 +37,6 @@ const cases = [
   ["no frame style draws no frame", () => L.draws_frame(false, "top"), false],
   ["Hyprland gets the frame while any screen draws one", () => [L.any_draws_frame(true, ["left", "top"]), L.any_draws_frame(true, ["left", "right"]), L.any_draws_frame(true, []), L.any_draws_frame(false, ["top"])], [true, false, false, false]],
   ["only left and right are vertical", () => ["top", "bottom", "left", "right", "x"].map(L.is_vertical), [false, false, true, true, false]],
-  ["step_position walks top, bottom, left, right and wraps", () => [L.step_position("top", 1), L.step_position("bottom", 1), L.step_position("left", 1), L.step_position("right", 1), L.step_position("top", -1)], ["bottom", "left", "right", "top", "right"]],
   ["popups walk with Ctrl+H/L along a row and Ctrl+K/J down a column", () => ["top", "bottom", "left", "right"].map(L.walk_keys), [{ back: "H", forward: "L" }, { back: "H", forward: "L" }, { back: "K", forward: "J" }, { back: "K", forward: "J" }]],
   ["unknown named", () => L.position_problem({ position: 3 }), "unknown bar position 3 in bars.json; using top"],
   ["normalize keeps a saved position", () => L.normalize({ positions: { [key]: "bottom" } }).positions, { [key]: "bottom" }],

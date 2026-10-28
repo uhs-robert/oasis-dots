@@ -6,7 +6,7 @@ var list = [
     { id: "wallpaper", group: "Appearance", label: "Wallpaper", glyph: "󰋩", keywords: "background image rotate rotation interval pin pinned monitor season time of day weather hyprpaper", source: "sections/WallpaperSection.qml" },
     { id: "theme", group: "Appearance", label: "Theme options", glyph: "󰒓", keywords: "scanlines glow dither font effects style options opacity transparency islands frame corner skins picker overview osd workspaces icons text size", source: "sections/ThemeOptionsSection.qml" },
     { id: "audio", group: "Appearance", label: "Theme audio", glyph: "󰕾", keywords: "sound chiptune notification cursor confirm cancel volume effects pack", source: "sections/AudioSection.qml" },
-    { id: "bar", group: "Bar", label: "Bar modules", glyph: "󰕮", keywords: "modules hide show order reorder monitor layout panel", source: "sections/BarModulesSection.qml" },
+    { id: "bar", group: "Bar", label: "Bar modules", glyph: "󰕮", keywords: "edit editor bar modules directory", source: "sections/BarModulesSection.qml" },
     { id: "datetime", group: "Bar", label: "Date & time", glyph: "󰥔", keywords: "clock calendar week first day monday sunday locale time format 12 24 hour connect sync google meetings events account ical feed calendar-sync rbw keyring", source: "sections/DateTimeSection.qml" },
     { id: "weather", group: "Bar", label: "Weather", glyph: "󰖙", keywords: "forecast location latitude longitude coordinates city temperature celsius fahrenheit units days alerts ip", source: "sections/WeatherSection.qml" },
     { id: "media", group: "Bar", label: "Media", glyph: "󰎆", keywords: "cava music player visualizer line marquee scroll title artist album island battery position seek volume mpris", source: "sections/MediaSection.qml" },
