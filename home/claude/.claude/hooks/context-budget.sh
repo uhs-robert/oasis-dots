@@ -45,7 +45,7 @@ if ((used >= handoff)); then
   note="Context budget: $((used / 1000))k of 200k. Hand off now, via ~/.claude/skills/orchestrator-handoff/spawn-successor.sh <your session name>; tell the owner in one line first, end the turn, and on READY follow the skill's Hand over from step 1."
   echo 2 >"$state"
 elif ((used >= wind_down && stage < 1)); then
-  note="Context budget: $((used / 1000))k of 200k. Start only pieces under ~10k of orchestrator context that keep you under $((handoff / 1000))k, and no new PR cycle (30-45k; a fix round, owner-test prep or a question is 3-8k; the handoff ~20k). With none left, ask the owner (AskUserQuestion) which open item to do next; never end a turn idle. At $((handoff / 1000))k you will be told to hand off."
+  note="Context budget: $((used / 1000))k of 200k. Start only pieces under ~10k of orchestrator context that keep you under $((handoff / 1000))k, and no new PR cycle (30-45k; a fix round, owner-test prep or a question is 3-8k; the handoff ~20k). With none left, ask the owner (AskUserQuestion) which open item to do next and offer to hand it to a fresh session; never end a turn idle. At $((handoff / 1000))k you will be told to hand off."
   echo 1 >"$state"
 fi
 [[ -n $note ]] || exit 0
