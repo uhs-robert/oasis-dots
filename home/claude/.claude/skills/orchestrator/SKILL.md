@@ -47,9 +47,9 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 
 3. Investigate the issue or PR and repository.
    - Have an agent investigate the issue or PR, the code and its tests.
-   - Run the `interview` skill's procedure (it governs intake) to a drafted plan at 90% confidence; it stops there and does not ask for approval itself.
+   - Run the `interview` skill's procedure (it governs intake) and write its plan into the piece's plan draft; skip its approval ask and do not present the plan yet.
    - Run `~/.claude/skills/orchestrator/overlap.sh <path>...` on the files the drafted plan will touch. It lists other worktrees (committed and uncommitted work) and open PRs that change them. Settle each overlap with the session or PR owner before delegating, and put the outcome in the plan.
-   - Present the plan with the overlap outcomes and get the owner's one approval; the interview adds no second one.
+   - Present the plan with the overlap outcomes and get the owner's one approval.
    - A hands-on test the owner must do goes in its own message; ask about its result in a later turn, after the owner has acted, never in the same turn under the checklist.
    - Once building, escalate only materially ambiguous product or architectural decisions, collected into one ask rather than each as it comes up, and keep agents whose work does not depend on the answer running while you wait.
 
