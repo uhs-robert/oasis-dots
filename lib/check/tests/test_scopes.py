@@ -66,6 +66,7 @@ CASES = [
     ("lib/docs/gen-keybinds", " checkscope docsgen"),
     ("lib/docs/gen-ipc", " checkscope docsgen"),
     ("lib/docs/docgen.py", " checkscope docsgen"),
+    ("lib/plan_new.py", " checkscope"),
     ("home/quickshell/.config/quickshell/features/lock/LockIpc.qml", " docsgen qml node"),
     # A test fixture named like a handler is not read by the IPC table, so it keeps its suite's scope.
     ("home/quickshell/tests/polled_command/FakeIpc.qml", " polledcmd qml"),

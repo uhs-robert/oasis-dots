@@ -232,6 +232,8 @@ PATH_SCOPES = [
     ("system/etc/greetd/*", "lua"),
     # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these, plus the
     # shell linters for the shell files among them.
+    # Its tests are unittest cases in lib/check/tests, so the script reaches check-cache.
+    ("lib/plan_new.py", "checkscope"),
     ("lib/*", ""),
     ("install.sh", ""),
     ("uninstall.sh", ""),
@@ -314,7 +316,7 @@ STEPS = [
     Step("time-format", "qml", "sh ./lib/check/steps/time-format.sh"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
     Step("calendar-sync-syntax", "calendar", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
-    Step("agent-hooks", "hooks", "bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh && bash ./.claude/hooks/tests/check-before-pr.sh && bash ./.claude/hooks/tests/restart-qs-after-git.sh && bash ./.claude/hooks/tests/guard-gh-merge.sh && bash ./.claude/hooks/tests/warn-direct-voxcmd-suite.sh && bash ./home/claude/.claude/hooks/tests/guard-tmux-socket.sh && bash ./.claude/hooks/tests/guard-check-full.sh && bash ./home/claude/.claude/hooks/tests/context-budget.sh && bash ./home/claude/.claude/hooks/tests/remind-global-neutral.sh && bash ./.claude/hooks/tests/remind-global-neutral-source.sh && bash ./home/claude/.claude/hooks/tests/orchestrator-window-names.sh && bash ./.claude/hooks/tests/report-failed-main-check.sh && bash ./home/claude/.claude/hooks/tests/guard-gh-thread-mutations.sh", ("jq", "tmux", "flock"), skip_reason=HOOKS_SKIP),
+    Step("agent-hooks", "hooks", "bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh && bash ./.claude/hooks/tests/check-before-pr.sh && bash ./.claude/hooks/tests/restart-qs-after-git.sh && bash ./.claude/hooks/tests/guard-gh-merge.sh && bash ./.claude/hooks/tests/warn-direct-voxcmd-suite.sh && bash ./home/claude/.claude/hooks/tests/guard-tmux-socket.sh && bash ./.claude/hooks/tests/guard-check-full.sh && bash ./home/claude/.claude/hooks/tests/context-budget.sh && bash ./home/claude/.claude/hooks/tests/remind-global-neutral.sh && bash ./.claude/hooks/tests/remind-global-neutral-source.sh && bash ./home/claude/.claude/hooks/tests/orchestrator-window-names.sh && bash ./.claude/hooks/tests/report-failed-main-check.sh && bash ./home/claude/.claude/hooks/tests/guard-gh-thread-mutations.sh && bash ./.claude/hooks/tests/validate-plan-frontmatter.sh", ("jq", "tmux", "flock"), skip_reason=HOOKS_SKIP),
     Step("stale-shells-hook", "hooks", "bash ./home/claude/.claude/hooks/tests/stale-shells.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("json-store", "qml", "bash ./home/quickshell/tests/json_store/run.sh", ("qs", "python3"), skip_reason="the json-store tests need qs and python3"),
     Step("bar-editor", "bareditor", "bash ./home/quickshell/tests/bar_editor/run.sh", ("qs", "python3"), skip_reason="the bar-editor tests need qs and python3"),
