@@ -153,6 +153,43 @@ function to_styled(input, default_fg, palette, background) {
     return out;
 }
 
+// Box drawing and block elements: a line of only these (and spaces) is a TUI frame, which would read as a broken one wrapped.
+var frame_only = /^[\s\u2500-\u259f]*$/;
+
+// Breaks every line of raw pane text (escapes still in) so none shows more than `columns` characters; a frame line
+// is cut at `columns` instead. Escapes take no width and stay in place, so to_styled carries colours across the breaks.
+// Each code point counts as one column: a wide CJK or emoji character runs past by one, which the preview's clip hides.
+function wrap_lines(text, columns) {
+    if (!(columns > 0)) return text;
+    return text.split("\n").map(function (line) {
+        var cut = frame_only.test(line.replace(sequence_pattern, ""));
+        var out = "";
+        var used = 0;
+        var i = 0;
+        while (i < line.length) {
+            if (line[i] === "\x1b") {
+                sequence_pattern.lastIndex = i;
+                var m = sequence_pattern.exec(line);
+                var length = m && m.index === i ? m[0].length : 1;
+                out += line.slice(i, i + length);
+                i += length;
+                continue;
+            }
+            var ch = String.fromCodePoint(line.codePointAt(i));
+            i += ch.length;
+            if (/[\x00-\x1f\x7f]/.test(ch)) { out += ch; continue; }
+            if (used === columns) {
+                if (cut) continue;
+                out += "\n";
+                used = 0;
+            }
+            out += ch;
+            used++;
+        }
+        return out;
+    }).join("\n");
+}
+
 // The last `count` lines of `text`, trailing blank lines dropped first: a pane's prompt sits above the empty rows below it.
 function bottom_lines(text, count) {
     var lines = text.replace(/\s+$/, "").split("\n");

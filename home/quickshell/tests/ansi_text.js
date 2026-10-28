@@ -7,8 +7,8 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/AnsiText.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { to_styled, bottom_lines, hex_of };", context);
-const { to_styled, bottom_lines, hex_of } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { to_styled, bottom_lines, hex_of, wrap_lines };", context);
+const { to_styled, bottom_lines, hex_of, wrap_lines } = context.api;
 const styled = text => to_styled(text, "#cccccc");
 
 const cases = [
@@ -65,6 +65,26 @@ const bottom = [
   ["short text whole", bottom_lines("a\nb", 5), "a\nb"],
   ["empty", bottom_lines("", 3), ""],
 ];
+const wrapped = [
+  ["short line untouched", wrap_lines("abc\nde", 3), "abc\nde"],
+  ["long line breaks at the width", wrap_lines("abcdefg", 3), "abc\ndef\ng"],
+  ["escapes take no width", wrap_lines("\x1b[31mabc\x1b[0mdef", 3), "\x1b[31mabc\x1b[0m\ndef"],
+  ["colour carries across the break", to_styled(wrap_lines("\x1b[31mabcd", 2), "#cccccc"), "<font color=\"#cd0000\">ab</font><br/><font color=\"#cd0000\">cd</font>"],
+  ["frame line is cut, not wrapped", wrap_lines("\u256d\u2500\u2500\u2500\u2500\u256e", 3), "\u256d\u2500\u2500"],
+  ["coloured frame keeps its escapes", wrap_lines("\x1b[2m\u2500\u2500\u2500\u2500\x1b[0m", 2), "\x1b[2m\u2500\u2500\x1b[0m"],
+  ["text in a frame wraps", wrap_lines("\u2502 abcd", 3), "\u2502 a\nbcd"],
+  ["astral character is one column", wrap_lines("\u{1F600}ab", 2), "\u{1F600}a\nb"],
+  ["no width leaves it", wrap_lines("abcdef", 0), "abcdef"],
+];
+for (const [name, got, expected] of wrapped) {
+  try {
+    assert.strictEqual(got, expected);
+  } catch (e) {
+    failed++;
+    console.error("FAIL wrap_lines " + name + ": got " + JSON.stringify(got));
+  }
+}
+
 const oasis = ["#0c0e13", "#ff7979", "#7fcf78", "#f0e68c", "#81c0ff", "#c695ff", "#69c3aa", "#f5f5dc",
   "#4e6578", "#ffa0a0", "#a3e39a", "#f8b471", "#87ceeb", "#d2adff", "#8ad3be", "#fffff0"];
 const with_palette = [
@@ -101,4 +121,4 @@ if (failed > 0) {
   console.error(failed + " failed");
   process.exit(1);
 }
-console.log("ansi_text: " + (cases.length + with_palette.length + bottom.length) + " ok");
+console.log("ansi_text: " + (cases.length + with_palette.length + bottom.length + wrapped.length) + " ok");
