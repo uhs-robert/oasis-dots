@@ -85,14 +85,18 @@ PickerProvider {
             // The mono font's advance per pixel of size: advances scale with the size, so one measure fits any width. Box
             // drawing is measured too, since a mono font without it falls back to a wider one and a TUI's full-width frame overflows.
             readonly property real advance_ratio: Math.max(reference_metrics.advanceWidth("M"), reference_metrics.advanceWidth("─")) / reference_metrics.font.pixelSize
+            // Never smaller than this: a pane too wide to fit at it (an ultrawide's) wraps instead of shrinking out of reading size.
+            readonly property int min_font_px: Style.fs(-3)
             // Small enough that the pane's full width fits, with 2% slack for hinting; capped so a narrow pane in a big preview stays text-sized.
-            readonly property int font_px: pane.pane_columns > 0 && pane.advance_ratio > 0 ? Math.max(6, Math.min(Style.fs(1), Math.floor(pane.inner_width / (pane.pane_columns * pane.advance_ratio) * 0.98))) : Style.fs(-3)
+            readonly property int font_px: pane.pane_columns > 0 && pane.advance_ratio > 0 ? Math.max(pane.min_font_px, Math.min(Style.fs(1), Math.floor(pane.inner_width / (pane.pane_columns * pane.advance_ratio) * 0.98))) : pane.min_font_px
+            // Columns that fit at font_px, with the same slack; at least the pane's width whenever the font is not at its floor.
+            readonly property int wrap_columns: pane.advance_ratio > 0 ? Math.max(1, Math.floor(pane.inner_width / (pane.font_px * pane.advance_ratio) * 0.98)) : 0
             // A fixed pitch on the text below, so the line count that fits is exact and no half line shows at the top.
             readonly property int line_pitch: Math.ceil(metrics.lineSpacing)
             readonly property int max_lines: Math.max(1, Math.floor((pane.height - 20) / pane.line_pitch))
             // Kitty's colours, from the raw palette: a style remaps Style.pal, kitty does not follow it.
             readonly property var ansi_palette: [Theme.black, Theme.red, Theme.green, Theme.yellow, Theme.blue, Theme.magenta, Theme.cyan, Theme.white, Theme.bright_black, Theme.bright_red, Theme.bright_green, Theme.bright_yellow, Theme.bright_blue, Theme.bright_magenta, Theme.bright_cyan, Theme.bright_white].map(AnsiText.hex_of)
-            readonly property string styled: pane.pane_text === "" ? "" : AnsiText.to_styled(AnsiText.bottom_lines(pane.pane_text, pane.max_lines), AnsiText.hex_of(Theme.fg_core), pane.ansi_palette, AnsiText.hex_of(Theme.bg_core))
+            readonly property string styled: pane.pane_text === "" ? "" : AnsiText.to_styled(AnsiText.bottom_lines(AnsiText.wrap_lines(pane.pane_text, pane.wrap_columns), pane.max_lines), AnsiText.hex_of(Theme.fg_core), pane.ansi_palette, AnsiText.hex_of(Theme.bg_core))
 
             clip: true
 
