@@ -288,5 +288,6 @@ docs-gen:
     python3 -B lib/docs/gen-ipc --write
 
 # Scaffold a .plans doc with valid front matter in the main checkout: just plan-new <topic> <tracker|plan|handoff> [item]
+[positional-arguments]
 plan-new topic kind item="":
-    python3 -B lib/plan_new.py {{topic}} {{kind}} {{item}}
+    python3 -B lib/plan_new.py "$1" "$2" ${3:+"$3"}
