@@ -14,7 +14,7 @@ Use `just stow`/`restow`, not a bare `stow`, for `systemd` and `calendar` ([why]
 
 ## Where to look
 
-Before editing an area, read the `## Code` section of its README: it says which file does what and where to start. When you add, rename or remove a file there, update that map in the same PR.
+Before editing an area, read its README's code map: the `## Code` section of a feature README, or the layout and structure sections of the larger developer READMEs (Quickshell, the check runner). It says which file does what and where to start. When you add, rename or remove a file there, update that map in the same PR.
 
 | Area | README |
 | --- | --- |
