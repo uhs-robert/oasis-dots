@@ -12,7 +12,7 @@ The section list, the pane and the help card scroll when they outgrow the popup 
 | ---------- | ------------------------------------------------------------ |
 | Appearance | Style, Wallpaper, Theme options, Theme audio                 |
 | Bar        | Bar modules, Date & time, Weather, Media                     |
-| System     | Displays, Default apps, Power, Sessions, Lock & login, Developer |
+| System     | Displays, Default apps, Power, Sessions, Lock & login |
 | Input      | Typing, Keyboard, Voice, Mouse & touchpad                    |
 
 A section's rows can sit under headings (Style: Style, Colors, Screen; Date & time: Format, Calendar; Default apps: Apps, File types; Power: Idle, Lid & buttons, Profiles; Lock & login: Lock, Login; Media: Visualizer, Layout, Text; Theme options: Effects, Frame & bar, Skins, Fonts, a group the current style offers nothing in left out), which the cursor skips and `{`/`}` jump between. Rows take `{ heading }` in `RowsSection`. The panel's preview follows the cursor: Style's palette card shows on its Colors rows, and Lock & login's thumbnail (above its rows) shows the login screen on its Login rows. A section can also pin something over its rows with `RowsSection.pinned`, which stays in view while the rows scroll under it (Media's live preview). Each row's value starts in one column past the section's longest label, so values stay beside their labels however wide the pane is. `Ctrl+D`/`Ctrl+U` move half a page, as in vim: half a pane of rows (headings skipped, no wrap), half the section list, or half an open list's window; a pane without a row list scrolls half a page. In an open list's INSERT mode `Ctrl+U` still clears the filter, so the half page up is a NORMAL key there.
@@ -40,10 +40,6 @@ Settings > Input > Voice sets the "Cortana" listener (on or off now, and whether
 Settings > Input > Keyboard and Mouse & touchpad set the XKB layout and variant, key repeat, pointer speed, focus follows mouse, natural scrolling, tap to click and disable while typing, plus Pointer keys (HJKL, WASD or both), which picks the keys that move the pointer in the Hyprland Cursor submap and reloads Hyprland. They save to `hypr/input.json` with the which-key delay, win over the machine profile's `input` values, and apply live through `config/input` in the Hyprland config. A row you have not changed shows Hyprland's current value. A saved `caps_escape` from an older version is ignored.
 
 Keyboard also lists the remaps keyd applies below Hyprland, such as Caps Lock and Left Ctrl as Escape on tap and Ctrl on hold, and Tab as the vim layer on hold. They are read-only rows built at runtime from `/etc/keyd/default.conf` (installed from `system/etc/keyd/default.conf`), so they follow edits to it; Enter on the Tab row lists the vim layer's keys. They show only while the `keyd` service is active and the file is readable. To change a remap, edit that file and run `sudo keyd reload`; XKB options such as `caps:escape` do nothing for keys keyd has already remapped.
-
-## Developer settings
-
-Settings > Developer lists the code reviewers, one row each with the columns Reviewer, Installed, Local review and Merge gate. The list is the built-in `reviewers.json` (`home/claude/.claude/skills/orchestrator/`) merged with the user's `~/.config/code-reviewers/reviewers.json`; a per-repo `.claude/reviewers.json` is not shown. The hint under the table names both files and says the merge gate setting decides which reviewers merge-prs waits for. Installed is whether the reviewer's `local.binary` is on `PATH`, checked each time the section opens. Local review (off, public, all) is which repos the pre-PR review runs on; a reviewer whose binary is missing shows `off` and cannot be changed, while its merge gate (auto, always, never) stays editable, since the gate is GitHub-side. Keys are the other sections' (`j`/`k` move, `l`/Space/Enter step forward, Shift+`H`/`L` either way) plus `w`/`b` or Left/Right to switch between the two editable columns. Only a field you change is saved, to `developer.json` in the Quickshell state folder; the other field keeps what it had (a value you saved earlier, else the one from the reviewer files), and `reviewers.sh` (the shared resolver) layers under the repo file.
 
 ## Sessions settings
 
@@ -78,7 +74,6 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/media.json`                   | Media module choices, cava line                  |
 | `quickshell/osd.json`                     | The OSD's screen edge                            |
 | `quickshell/typing.json`                  | Start mode for pickers and search popups         |
-| `quickshell/developer.json`               | Per-reviewer local review scope and merge gate, read by `reviewers.sh` |
 | `voxcmd/voice.env`                        | Voice choices (listener sensitivity, music ducking, type-mode pause), read by voxcmd, voxcmd-wake and voxtype-duck |
 | `hypr/monitors.json`                      | Display settings, read by Hyprland               |
 | `hypr/wallpaper.json`                     | Wallpaper rotation settings and per-monitor pins, read by the rotator |
