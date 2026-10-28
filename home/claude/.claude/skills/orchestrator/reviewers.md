@@ -1,18 +1,18 @@
 # Reviewer registry
 
-`reviewers.sh list [repo_dir]` prints the merged registry as one JSON array. `repo_dir` (default: the current directory) selects the repo file. Tests point `REVIEWERS_BUILTIN_FILE` and `REVIEWERS_REPO_FILE` at temp files.
+`reviewers.sh list [repo_dir]` prints the merged registry as one JSON array. `repo_dir` (default: the current directory) selects the repo file.
 
 ## Layers, lowest to highest
 
 1. Built-in: `reviewers.json` beside the script.
 2. Repo: `<repo root>/.claude/reviewers.json`, optional.
 
-Both are `{"reviewers": [entry, ...]}`. Entries merge by `name`: objects field by field, arrays replaced. `"enabled": false` drops an entry (the repo file can set it back to `true`). A string `local` is shorthand for `local.scope`. To change a scope or gate for one repo, give the entry in its repo file; there is no per-machine layer.
+Both are `{"reviewers": [entry, ...]}`. Entries merge by `name`: objects field by field, arrays replaced. `"enabled": false` drops an entry. A string `local` is shorthand for `local.scope`. To change a scope or gate for one repo, give the entry in its repo file; there is no per-machine layer.
 
 ## Entry fields
 
 - `name` (required, unique), `label`.
-- `local`: `command` (`<cmd> <base> <outdir>`), `binary` (probed for "installed"), `default` and `default_when_on` (scopes), `scope` (a repo file's choice).
+- `local`: `command` (`<cmd> <base> <outdir>`), `binary` (probed for "installed"), `default` (scope), `scope` (a repo file's choice).
 - `github` (absent or null = never gates): `app_slug`, `logins`, `check_names`, `signal` (`summary_comment` or `check_run`), `running`, `done`, `unavailable`, `unavailable_conclusions`, `request`, `start_s`, `wait_s`.
 - `gate`: `auto`, `always` or `never`.
 

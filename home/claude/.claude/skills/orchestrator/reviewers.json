@@ -19,7 +19,7 @@
     {
       "name": "coderabbit",
       "label": "CodeRabbit",
-      "local": {"command": "coderabbit-review.sh", "binary": "coderabbit", "default": "off", "default_when_on": "public"},
+      "local": {"command": "coderabbit-review.sh", "binary": "coderabbit", "default": "public"},
       "github": {
         "app_slug": "coderabbitai",
         "logins": ["coderabbitai"],

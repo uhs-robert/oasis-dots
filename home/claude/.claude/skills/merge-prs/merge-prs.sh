@@ -226,7 +226,7 @@ poll_review() {
   done
 }
 
-# The reviewer registry decides who gates: reviewers.sh merges the built-in file, the user's, Settings and the repo's.
+# The reviewer registry decides who gates: reviewers.sh merges the built-in file and the repo's.
 reviewers_sh=${MERGE_PRS_REVIEWERS:-$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../orchestrator/reviewers.sh}
 reviewers_json=""
 gating=()

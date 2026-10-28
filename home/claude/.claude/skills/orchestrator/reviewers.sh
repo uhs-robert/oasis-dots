@@ -100,9 +100,7 @@ list() {
     exit 1
   }
   add_layer builtin "$builtin_file"
-  if [ -n "$repo_file_override" ]; then
-    add_layer repo "$repo_file_override"
-  elif repo_root=$(git -C "$repo_dir" rev-parse --show-toplevel 2>/dev/null); then
+  if repo_root=$(git -C "$repo_dir" rev-parse --show-toplevel 2>/dev/null); then
     add_layer repo "$repo_root/.claude/reviewers.json"
   fi
   jq -n --argjson layers "$layers_json" "$merge_jq"
