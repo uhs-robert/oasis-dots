@@ -29,7 +29,7 @@ state = json.load(open(state_path))
 args = sys.argv[1:]
 journal = os.path.exists(os.path.join(os.environ["XDG_RUNTIME_DIR"], "voxcmd", "duck.json"))
 with open(os.environ["FAKE_LOG"], "a") as log:
-    log.write(json.dumps({{"args": args, "journal": journal, "time": time.time()}}) + "\\n")
+    log.write(json.dumps({{"args": args, "journal": journal, "time": time.monotonic()}}) + "\\n")
 if state.get("fail_all") or (args[0] == "set-volume" and state.get("fail_set")):
     sys.exit(1)
 
@@ -323,7 +323,7 @@ class DuckTest(unittest.TestCase):
         self.rig.say("transcribing")
         time.sleep(0.3)
         self.rig.say("idle")
-        idle_sent = time.time()
+        idle_sent = time.monotonic()
         # Due 200 ms from now; an extended hold-off would start it 500 ms from now. The cap only bounds the wait; the
         # assertion compares the follower's own write time, which test-process scheduling cannot move.
         wait_until(lambda: len(self.rig.volume_writes()) > 5, what="the restore to start")
@@ -420,7 +420,7 @@ class DuckTest(unittest.TestCase):
     def test_voxtype_stopping_restores_at_once_and_reconnects(self):
         self.start_ducked()
         writes_before = len(self.rig.calls("set-volume"))
-        eof_sent = time.time()
+        eof_sent = time.monotonic()
         self.rig.end_stream()
         wait_until(lambda: self.rig.journal() is None, what="the restore on EOF")
         # "At once" means well under the 500 ms hold-off, judged by the fake's write time rather than the poll.
