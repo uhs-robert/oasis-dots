@@ -24,7 +24,6 @@ Item {
     // The screen frame's layout (FrameGeometry.frame_layout) while one is on: the side islands move in to the hole's
     // sides, where the frame's side zones put the side popups too.
     property var frame: null
-    readonly property bool compact: BarSettings.compact_for(root.rule)
     readonly property int bar_height: BarSettings.height_for(root.rule)
     readonly property string position: BarSettings.position_for(root.rule)
     // A left or right bar is a column: the islands stack top, center, bottom and `bar_height` is its width.
@@ -64,7 +63,7 @@ Item {
             if ((parsed.base === "media" || parsed.base === "cava") && !MediaSettings.module_listed(root.island_style)) continue;
             // A side bar has no slot for cava (it keeps its tail); media shows there as art and a button.
             if (root.vertical && parsed.base === "cava") continue;
-            list.push({ base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file) });
+            list.push({ entry: raw, base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file), compact: BarSettings.module_compact_for(root.rule, raw) });
         }
         return list;
     }
@@ -97,12 +96,16 @@ Item {
     property var horizon_clock: null
     // The clock module's item, for the island backgrounds' click: it opens or pins the clock popup through the clock's helper.
     property var clock_item: null
-    readonly property var module_props: ({ compact: root.compact, screen_name: root.screen_name, bar_height: root.bar_height })
+    // Compact is per module (`entry.compact`), so loaders add it to these; wire_module keeps it bound.
+    readonly property var module_props: ({ screen_name: root.screen_name, bar_height: root.bar_height })
+    function props_for(entry) {
+        return Object.assign({ compact: entry.compact }, root.module_props);
+    }
 
     // Sets island/screen/stat properties a module declares, after the Loader instantiates it.
     function wire_module(item, entry, island) {
         BarItems.register(BarItems.key_of(root.screen_name, entry), item);
-        item.compact = Qt.binding(() => root.compact);
+        item.compact = Qt.binding(() => BarSettings.module_compact_for(root.rule, entry.entry));
         item.screen_name = Qt.binding(() => root.screen_name);
         item.bar_height = Qt.binding(() => root.bar_height);
         if (item.hasOwnProperty("vertical")) item.vertical = Qt.binding(() => root.vertical);
@@ -223,7 +226,7 @@ Item {
                 Layout.rightMargin: modelData.base === "start" && !root.lualine && !root.vertical ? -8 : 0
                 Layout.bottomMargin: modelData.base === "start" && !root.lualine && root.vertical ? -8 : 0
                 Layout.alignment: root.vertical ? Qt.AlignHCenter : 0
-                Component.onCompleted: setSource(modelData.url, root.module_props)
+                Component.onCompleted: setSource(modelData.url, root.props_for(modelData))
                 onLoaded: root.wire_module(item, modelData, left_island)
             }
         }
@@ -286,7 +289,7 @@ Item {
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
                 Layout.alignment: root.vertical ? Qt.AlignHCenter : 0
-                Component.onCompleted: setSource(modelData.url, root.module_props)
+                Component.onCompleted: setSource(modelData.url, root.props_for(modelData))
                 onLoaded: root.wire_module(item, modelData, center_island)
             }
         }
@@ -392,7 +395,7 @@ Item {
                 // Reads the module's own `shown`, not `visible`: a hidden Loader would report its child hidden too.
                 visible: !item || item.shown === undefined || item.shown
                 Layout.alignment: root.vertical ? Qt.AlignHCenter : 0
-                Component.onCompleted: setSource(modelData.url, root.module_props)
+                Component.onCompleted: setSource(modelData.url, root.props_for(modelData))
                 onLoaded: root.wire_module(item, modelData, right_island)
             }
         }

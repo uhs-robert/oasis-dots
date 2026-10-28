@@ -102,6 +102,25 @@ function clean_last(raw) {
     return out;
 }
 
+// Per-module compact overrides, keyed by entry (`clock`, `system:memory`): booleans for known modules only.
+function clean_compact_modules(raw) {
+    const out = {};
+    if (is_object(raw)) {
+        for (const k of Object.keys(raw)) {
+            if (typeof raw[k] === "boolean" && is_known_entry(k)) out[k] = raw[k];
+        }
+    }
+    return out;
+}
+
+// Sets `holder.compact_modules` to the cleaned map, leaving the key out when it is empty so untouched state files keep their shape.
+function put_compact_modules(holder, raw) {
+    const map = clean_compact_modules(raw);
+    if (Object.keys(map).length > 0) holder.compact_modules = map;
+    else delete holder.compact_modules;
+    return holder;
+}
+
 // Clean copy of a state file's contents; throws on the wrong shape.
 function normalize(raw) {
     if (raw === null || raw === undefined) return { shared: { place: {}, order: [], last_side: {} }, monitors: {}, positions: {} };
@@ -121,6 +140,7 @@ function normalize(raw) {
             if (!is_object(m)) continue;
             monitors[k] = { left: unique(m.left), center: unique(m.center), right: unique(m.right), last_side: clean_last(m.last_side) };
             if (typeof m.compact === "boolean") monitors[k].compact = m.compact;
+            put_compact_modules(monitors[k], m.compact_modules);
         }
     }
     // Kept apart from `monitors` so a monitor keeps its edge whether or not it has its own layout.
@@ -139,6 +159,7 @@ function normalize(raw) {
     if (positions.indexOf(shared.position) >= 0) out_shared.position = shared.position;
     // The compact setting of the shared layout; a monitor with its own layout has its own.
     if (typeof shared.compact === "boolean") out_shared.compact = shared.compact;
+    put_compact_modules(out_shared, shared.compact_modules);
     const out = { shared: out_shared, monitors: monitors, positions: saved_positions };
     // Written only once a switch is flipped, so a state file without one reads as all on.
     if (is_object(raw.directory)) {
@@ -186,8 +207,9 @@ function migrate_cava(state) {
 function has_cava(state) {
     const s = normalize(state);
     const in_list = list => list.some(e => e.split(":")[0] === "cava");
-    return "cava" in s.shared.place || "cava" in s.shared.last_side || in_list(s.shared.order)
-        || Object.values(s.monitors).some(m => sides.some(side => in_list(m[side])) || "cava" in m.last_side);
+    const in_map = map => !!map && "cava" in map;
+    return "cava" in s.shared.place || "cava" in s.shared.last_side || in_list(s.shared.order) || in_map(s.shared.compact_modules)
+        || Object.values(s.monitors).some(m => sides.some(side => in_list(m[side])) || "cava" in m.last_side || in_map(m.compact_modules));
 }
 
 // `cava` was renamed `media`. A list that names both keeps the `media` one; otherwise `cava` takes `media`'s name in
@@ -207,10 +229,12 @@ function migrate_cava_to_media(state) {
     };
     rename_keys(next.shared.place);
     rename_keys(next.shared.last_side);
+    if (next.shared.compact_modules) rename_keys(next.shared.compact_modules);
     next.shared.order = rename_list(next.shared.order);
     for (const m of Object.values(next.monitors)) {
         for (const side of sides) m[side] = rename_list(m[side]);
         rename_keys(m.last_side);
+        if (m.compact_modules) rename_keys(m.compact_modules);
     }
     return next;
 }
@@ -251,12 +275,15 @@ function effective(rule, state, key) {
     // A Settings override like the shared layout, so it wins over the tracked rule; unlike that layout it also reaches monitors with their own.
     else if (state.shared.position) out.position = state.shared.position;
     const own = key && state.monitors[key];
+    // The editor's per-module overrides win over the rule's, entry by entry, like its layout compact over the rule's.
+    const with_overrides = layer => put_compact_modules(out, Object.assign(clean_compact_modules(rule.compact_modules), layer.compact_modules));
     if (own) {
         for (const s of sides) out[s] = own[s].slice();
         if (own.compact !== undefined) out.compact = own.compact;
-        return out;
+        return with_overrides(own);
     }
     if (state.shared.compact !== undefined) out.compact = state.shared.compact;
+    with_overrides(state.shared);
     const place = state.shared.place;
     for (const entry of Object.keys(place)) {
         const to = place[entry];
@@ -367,15 +394,23 @@ function restore_side(rules, state, key, entry) {
     return last[remembered_as] || { side: tracked_side(rules, entry) || "right", index: -1 };
 }
 
+function without(map, key) {
+    const out = Object.assign({}, map);
+    delete out[key];
+    return out;
+}
+
 // Forgets an entry everywhere in the state.
 function purge(state, entry) {
     const next = normalize(state);
     delete next.shared.place[entry];
     delete next.shared.last_side[entry];
     next.shared.order = next.shared.order.filter(e => e !== entry);
+    if (next.shared.compact_modules) put_compact_modules(next.shared, without(next.shared.compact_modules, entry));
     for (const m of Object.values(next.monitors)) {
         for (const s of sides) m[s] = m[s].filter(e => e !== entry);
         delete m.last_side[entry];
+        if (m.compact_modules) put_compact_modules(m, without(m.compact_modules, entry));
     }
     return next;
 }
@@ -434,9 +469,9 @@ function edit(rule, state, key, op) {
     return next;
 }
 
-function set_own(state, key, layout, compact) {
+function set_own(state, key, layout, compact, compact_modules) {
     const next = normalize(state);
-    next.monitors[key] = Object.assign({}, layout_of(layout), { compact: compact });
+    next.monitors[key] = put_compact_modules(Object.assign({}, layout_of(layout), { compact: compact }), compact_modules);
     return next;
 }
 
@@ -551,7 +586,8 @@ function toggle_own(rule, state, key) {
     const next = normalize(state);
     if (!is_sharing(next, key)) return drop_own(next, key);
     const view = effective(rule, next, key);
-    return set_own(next, key, view, !!(view && view.compact));
+    // Only the editor's overrides are copied: the rule's own still apply under an own layout.
+    return set_own(next, key, view, !!(view && view.compact), next.shared.compact_modules);
 }
 
 // `c`: flips the compact the edited layout shows: every sharing monitor on a shared layout, one monitor on its own. On a
@@ -579,4 +615,43 @@ function set_position_for_mode(state, key, position) {
 function forget_position_for_mode(state, key) {
     if (!is_sharing(normalize(state), key)) return clear_position(state, key);
     return clear_shared_position(clear_position(state, key));
+}
+
+// Whether `entry` draws compact on a bar showing `rule` (an effective one): its own override, else the layout's compact.
+// system and system:cpu are one module, so they share one override.
+function module_compact(rule, entry) {
+    const map = (rule && rule.compact_modules) || {};
+    const k = plain_entry(entry);
+    return k in map ? map[k] : !!(rule && rule.compact);
+}
+
+function supports_compact(entry) {
+    return BarModules.supports_compact(entry.split(":")[0]);
+}
+
+// The per-module overrides the edited layout saves: the shared one's, or the monitor's own.
+function compact_overrides(state, key) {
+    const s = normalize(state);
+    return (is_sharing(s, key) ? s.shared : s.monitors[key]).compact_modules || {};
+}
+
+// The override the edited layout saves for `entry`: "inherit" (none, so bars.json or the layout's compact decides), "on" or "off".
+function compact_override(state, key, entry) {
+    const map = compact_overrides(state, key);
+    const k = plain_entry(entry);
+    return k in map ? (map[k] ? "on" : "off") : "inherit";
+}
+
+// `c` in NORMAL: steps the edited layout's override for `entry` inherit -> on -> off -> inherit. A module with no compact
+// form is left alone.
+function cycle_module_compact(state, key, entry) {
+    const next = normalize(state);
+    if (!supports_compact(entry)) return next;
+    const layer = is_sharing(next, key) ? next.shared : next.monitors[key];
+    const k = plain_entry(entry);
+    const after = { inherit: true, on: false, off: undefined }[compact_override(next, key, entry)];
+    const map = without(layer.compact_modules || {}, k);
+    if (after !== undefined) map[k] = after;
+    put_compact_modules(layer, map);
+    return next;
 }
