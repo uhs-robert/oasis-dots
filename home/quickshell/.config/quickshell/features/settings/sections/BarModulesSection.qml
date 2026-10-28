@@ -26,6 +26,8 @@ SettingsPane {
     readonly property var labels: ["Edit bar"].concat(root.directory_rows.map(r => r.label))
     // Values start past the longest setting label, as in RowsSection, rather than at the far edge of a wide pane.
     readonly property real value_column: {
+        // Read so the width is measured again once the font has loaded; advanceWidth alone does not notify.
+        const font = label_metrics.font;
         const need = Math.max(...root.labels.map(l => label_metrics.advanceWidth(l)));
         return Math.min(Math.ceil(need) + Style.px(40), Math.round(root.width * 0.6));
     }
