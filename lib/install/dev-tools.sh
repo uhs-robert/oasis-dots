@@ -63,7 +63,14 @@ install_devtool_coderabbit() {
     return
   fi
   info "Installing the CodeRabbit CLI..."
-  curl -fsSL https://cli.coderabbit.ai/install.sh | CR_CLI_SKIP_LOGIN=1 sh
+  # pipefail in a subshell: without it a failed download pipes nothing into sh, which succeeds, and the install would be reported.
+  if ! (
+    set -o pipefail
+    curl -fsSL https://cli.coderabbit.ai/install.sh | CR_CLI_SKIP_LOGIN=1 sh
+  ); then
+    warn "coderabbit install failed"
+    return 1
+  fi
   success "coderabbit installed, run: coderabbit auth login"
 }
 
