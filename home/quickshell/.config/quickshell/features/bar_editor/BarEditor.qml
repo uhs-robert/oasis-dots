@@ -68,6 +68,8 @@ Singleton {
     readonly property var hidden_list: BarLayout.hidden_entries(BarSettings.rules, BarSettings.state, root.view).filter(BarLayout.is_known_entry)
     // The module the hint bar names: the one under the cursor in the hidden list, else the selected one.
     readonly property string current_name: root.mode === "hidden" && root.picked === "" ? root.hidden_selected : root.selected
+    // Look prototype: which hint bar design to draw ("caps", "dense" or "split").
+    property string hint_design: "caps"
     readonly property string mode_label: root.mode === "monitor" ? "MONITOR" : root.mode.toUpperCase()
 
     // "shared" or "own layout" for a monitor's bar.
