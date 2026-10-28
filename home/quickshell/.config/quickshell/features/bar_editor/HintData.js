@@ -7,7 +7,7 @@ function groups(mode, carrying, vertical, can_forget) {
     if (mode === "monitor") {
         return [
             { name: "pick", keys: [["hjkl", "monitor"], ["Enter", "edit bar"]] },
-            { name: "leave", keys: [["Esc", "close"], help] }
+            { name: "leave", keys: [["Esc", "close"], quit, help] }
         ];
     }
     if (mode === "hidden" && carrying) {
@@ -19,7 +19,7 @@ function groups(mode, carrying, vertical, can_forget) {
     if (mode === "hidden") {
         return [
             { name: "pick", keys: [["h/l", "select"], ["Enter", "pick up"]] },
-            { name: "leave", keys: [["Tab", "back"], quit, help] }
+            { name: "leave", keys: [["Esc/Tab", "back"], quit, help] }
         ];
     }
     if (mode === "visual") {
@@ -28,7 +28,7 @@ function groups(mode, carrying, vertical, can_forget) {
         return [
             { name: "move", keys: edit },
             { name: "history", keys: [["u", "undo"], ["^R", "redo"]] },
-            { name: "leave", keys: [["Enter", "done"], quit, help] }
+            { name: "leave", keys: [["Enter/Esc", "done"], quit, help] }
         ];
     }
     return [
@@ -38,4 +38,19 @@ function groups(mode, carrying, vertical, can_forget) {
         { name: "history", keys: [["u", "undo"], ["^R", "redo"]] },
         { name: "leave", keys: [["Esc", "back"], quit, help] }
     ];
+}
+
+// The key specs `BarEditor.press` takes that a mode's groups list: "h/l" and "h j k l" name several, "^R" is Ctrl+r.
+function keys_of(groups) {
+    const out = [];
+    for (const group of groups) {
+        for (const cap of group.keys.map(k => k[0])) {
+            for (const part of cap.split("/")) {
+                if (part === "^R") out.push("Ctrl+r");
+                else if (/^[A-Z][a-z]+$/.test(part)) out.push(part);
+                else part.replace(/ /g, "").split("").forEach(c => out.push(c));
+            }
+        }
+    }
+    return out;
 }
