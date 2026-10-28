@@ -164,33 +164,39 @@ small_fix_lines=20
 # Compares each side against the default branch, so commits picked up by a rebase after the review are not counted.
 # Not run in a subshell, so the two variables reach the caller.
 rereview_reason() {
-  local reviewed=$1 head=$2 reviewed_subjects head_commits covered changed new_file sha subject file changes sha_files_text only_generated lines=0
+  local reviewed=$1 head=$2 reviewed_shas head_shas covered changed new_file sha file changes sha_files_text only_generated lines=0 unmeasured=""
   local -a prefixes=()
   rereview_why=""
   generated_skipped=false
   mapfile -t prefixes < <(generated_prefixes)
-  reviewed_subjects=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.commits[].commit.message | split("\n")[0]') ||
+  reviewed_shas=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.commits[].sha') ||
     die "cannot compare $reviewed with $default"
-  head_commits=$(gh api "repos/$slug/compare/$default...$head" --jq '.commits[] | [.sha, (.commit.message | split("\n")[0])] | @tsv') ||
+  head_shas=$(gh api "repos/$slug/compare/$default...$head" --jq '.commits[].sha') ||
     die "cannot compare $head with $default"
-  while IFS=$'\t' read -r sha subject; do
+  while IFS= read -r sha; do
     [[ -n $sha ]] || continue
-    ! grep -qxF -- "$subject" <<<"$reviewed_subjects" || continue
+    ! grep -qxF -- "$sha" <<<"$reviewed_shas" || continue
     # Generated files never count; a commit of only those is the hook's rebuild, not work to review.
-    sha_files_text=$(gh api "repos/$slug/commits/$sha" --jq '.files[] | [.filename, .changes] | @tsv') || die "cannot read the files of $sha"
+    sha_files_text=$(gh api --paginate "repos/$slug/commits/$sha" --jq '.files[] | [.filename, .changes] | @tsv') || die "cannot read the files of $sha"
     only_generated=1
     while IFS=$'\t' read -r file changes; do
       [[ -n $file ]] || continue
       ((${#prefixes[@]})) && under_prefix "$file" "${prefixes[@]}" && continue
       only_generated=0
+      # A binary, mode-only or submodule change reports no lines, so its size is unknown.
+      ((changes > 0)) || unmeasured=$file
       lines=$((lines + changes))
     done <<<"$sha_files_text"
     if ((only_generated)) && [[ -n $sha_files_text ]]; then
       generated_skipped=true
     fi
-  done <<<"$head_commits"
+  done <<<"$head_shas"
   if ((lines > small_fix_lines)); then
     rereview_why="$lines lines changed since the review, over the $small_fix_lines-line limit"
+    return
+  fi
+  if [[ -n $unmeasured ]]; then
+    rereview_why="$unmeasured changed with no countable lines"
     return
   fi
   covered=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.files[].filename')
