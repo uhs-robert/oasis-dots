@@ -679,7 +679,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `V` | press | System | Voxtype Settings | `system.voxtype_settings` |
 | `SHIFT + V` | press | System | Voxtype Restart | `system.voxtype_restart` |
 | `W` | press | System | HTTP (xh) | `terminal.tool` |
-| `X` | press | System | Disabled Hypr Errors | `system.disable_errors` |
+| `X` | press | System | Toggle Hypr Errors | `system.toggle_errors` |
 | `ESCAPE` | press | System | Exit System |  |
 | `BackSpace` | release | System | Back |  |
 | `SHIFT + SLASH` | press | System | Toggle which-key help |  |

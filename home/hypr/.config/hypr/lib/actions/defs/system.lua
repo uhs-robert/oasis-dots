@@ -68,8 +68,8 @@ Act.define("system.voxtype_restart", {
   run = function() require("lib.actions.cmd").term("systemctl --user restart voxtype")() end,
 })
 
-Act.define("system.disable_errors", {
-  label = "Disabled Hypr Errors",
-  intent = "Hide the Hyprland configuration error banner.",
-  run = Cmd("hyprctl", "seterror", "disable"),
+Act.define("system.toggle_errors", {
+  label = "Toggle Hypr Errors",
+  intent = "Hide the Hyprland configuration error banner, or show it again when it is hidden.",
+  run = Cmd(Scripts.toggle_hypr_errors),
 })

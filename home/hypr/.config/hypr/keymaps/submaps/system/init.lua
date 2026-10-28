@@ -44,6 +44,6 @@ Submap.define({
     { "V",         "system.voxtype_settings" },
     { "SHIFT + V", "system.voxtype_restart" },
     { "W",         tool("xh"),                          "HTTP (xh)" },
-    { "X",         "system.disable_errors" },
+    { "X",         "system.toggle_errors" },
   },
 }).setup()

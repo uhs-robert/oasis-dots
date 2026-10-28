@@ -17,6 +17,7 @@ local Scripts = {
   qs_ipc                = HYPR    .. "qs-ipc",
   qs_picker             = HYPR    .. "qs-picker",
   toggle_autolock       = HYPR    .. "toggle-autolock.sh",
+  toggle_hypr_errors    = HYPR    .. "toggle-hypr-errors.sh",
   power                 = HYPR    .. "power.sh",
   rofi_tmux             = HYPR    .. "rofi-tmux.sh",
   keybind_help          = HYPR    .. "keybind-help.lua",
