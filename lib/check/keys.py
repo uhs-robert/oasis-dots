@@ -117,14 +117,6 @@ def step_key(step, entries, tree, coverage, shell_lists):
             if ignored is None:
                 return None
             parts.append(ignored)
-        if step.name == "specs":
-            # The step validates .plans/, which git ignores, so the snapshot leaves its files out: key their content.
-            plans = git_output("ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--", ".plans")
-            if plans is None:
-                return None
-            for name in sorted(filter(None, plans.split(b"\0"))):
-                with open(name, "rb") as handle:
-                    parts.append(name + b"\0" + handle.read() + b"\0")
     elif step.scope == "shell":
         for group, files in shell_lists.items():
             parts.append(f"group {group}\n".encode())

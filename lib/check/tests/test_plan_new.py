@@ -1,13 +1,11 @@
-"""Tests the .plans scaffold (lib/plan_new.py): each kind yields a doc the specs step's --file mode accepts."""
+"""Tests the .plans scaffold (lib/plan_new.py): each kind yields a doc whose front matter passes the plan schema."""
 
-import contextlib
-import io
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
-from unittest import mock
 
 sys.dont_write_bytecode = True
 CHECK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,18 +17,24 @@ from test_qml import TreeCase  # noqa: E402
 
 
 def accepted(path):
-    return subprocess.run([sys.executable, "-B", os.path.join(REPO_DIR, "lib/check/steps/specs.py"), "--file", path],
-                          capture_output=True, text=True)
+    """check-jsonschema's verdict on the doc's leading --- block."""
+    with open(path) as handle:
+        block = handle.read().split("---\n")[1]
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml") as front:
+        front.write(block)
+        front.flush()
+        return subprocess.run(["check-jsonschema", "--schemafile", os.path.join(REPO_DIR, ".claude/hooks/plan-frontmatter.yaml"), front.name],
+                              capture_output=True, text=True)
 
 
 @unittest.skipUnless(shutil.which("check-jsonschema"), "needs check-jsonschema")
 class ScaffoldTest(TreeCase):
-    def test_each_kind_passes_the_file_check_at_its_path(self):
+    def test_each_kind_passes_the_schema_at_its_path(self):
         for kind, item, name in (("tracker", None, "foo/foo.md"), ("plan", "bar", "foo/foo-bar-plan-draft.md"), ("handoff", None, "foo/foo-handoff.md")):
             path = plan_new.scaffold(self.root, "foo", kind, item, today="2026-10-27")
             self.assertEqual(path, os.path.join(self.root, ".plans", name))
             done = accepted(path)
-            self.assertEqual((done.returncode, done.stderr), (0, ""), kind)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def read(self, path):
         with open(path) as handle:
@@ -62,14 +66,6 @@ class ScaffoldTest(TreeCase):
         path = plan_new.scaffold(self.root, "foo", "handoff", "bar")
         self.assertEqual(path, os.path.join(self.root, ".plans/foo/foo-bar-handoff-draft.md"))
         self.assertEqual(accepted(path).returncode, 0)
-
-    def test_the_script_without_the_tool_prints_the_path_and_a_hint_and_exits_zero(self):
-        with mock.patch.object(plan_new.shutil, "which", return_value=None), \
-                mock.patch.object(plan_new, "main_checkout", return_value=self.root), \
-                contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
-            self.assertEqual(plan_new.main(["foo", "tracker"]), 0)
-        self.assertIn("foo.md", out.getvalue())
-        self.assertIn("check-jsonschema", err.getvalue())
 
     def test_an_item_cannot_leave_the_topic_folder(self):
         for kind in ("plan", "handoff"):

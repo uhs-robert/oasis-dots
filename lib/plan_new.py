@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Scaffolds a `.plans/` doc with front matter that passes specs/schema/plan.yaml.
+"""Scaffolds a `.plans/` doc with front matter that passes `.claude/hooks/plan-frontmatter.yaml`.
 
   just plan-new <topic> <tracker|plan|handoff> [item]
 
 The doc goes in the main checkout's `.plans/` (worktrees do not see it) and is never overwritten. `item` names a plan
-(`<topic>-<item>-plan-draft.md`) or a piece's handoff (`<topic>-<item>-handoff-draft.md`). The result is validated by the specs step's `--file`
-mode, so the scaffold cannot drift from the schema.
+(`<topic>-<item>-plan-draft.md`) or a piece's handoff (`<topic>-<item>-handoff-draft.md`). test_plan_new validates each scaffold against the schema,
+so it cannot drift.
 """
 
 import datetime
 import os
 import re
-import shutil
 import subprocess
 import sys
 
@@ -43,7 +42,7 @@ def doc_path(root, topic, kind, item):
 
 
 def front_matter(kind, today):
-    lines = [f"kind: {kind}", "status: active", "owner_session: none", f'updated: "{today}"', "specs: []"]
+    lines = [f"kind: {kind}", "status: active", "owner_session: none", f'updated: "{today}"']
     if kind != "tracker":
         lines.append("branch: none")
     lines.append("pr: none")
@@ -82,12 +81,7 @@ def main(argv):
         print(f"plan-new: {error}", file=sys.stderr)
         return 1
     print(path)
-    if not shutil.which("check-jsonschema"):
-        # Like the write-time hook: no tool, no nag.
-        print("plan-new: front matter not validated; install check-jsonschema (pipx install check-jsonschema)", file=sys.stderr)
-        return 0
-    check = subprocess.run([sys.executable, "-B", os.path.join(REPO_DIR, "lib/check/steps/specs.py"), "--file", path])
-    return check.returncode
+    return 0
 
 
 if __name__ == "__main__":
