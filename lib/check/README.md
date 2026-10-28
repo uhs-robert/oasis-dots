@@ -79,7 +79,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `greeter-keyring`: `lib/install/tests/greeter-keyring.sh` (the greetd keyring unlock installer), `greeter-log.sh` (the greeter log file and the `qs-greeter` wrapper's choice of it) and `greeter-monitors.sh` (the greeter's `monitors.lua`).
 - `migrate-lock`: the `migrate-quickshell-*` and `migrate-lock-assets` tests in `lib/install/tests/`.
 - `install-load`: `lib/install/tests/load.sh`, that sourcing the install libraries prints nothing and never exits.
-- `agent-hooks`: the tests of `guard-masked-checks.sh`, `check-before-pr.sh`, `guard-gh-merge.sh`, `guard-tmux-socket.sh`, `context-budget.sh`, `orchestrator-window-names.sh` (a private tmux server) and `report-failed-main-check.sh`. Needs jq, tmux and flock.
+- `agent-hooks`: the tests of `guard-masked-checks.sh`, `check-before-pr.sh`, `guard-gh-merge.sh`, `guard-tmux-socket.sh`, `context-budget.sh`, `orchestrator-window-names.sh` (a private tmux server), `report-failed-main-check.sh`, `remind-global-neutral.sh`, `remind-global-neutral-source.sh` and `guard-gh-thread-mutations.sh`. Needs jq, tmux and flock.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.
 - `reviewers`: the orchestrator skill's `tests/run.sh` (registry resolver), when `reviewers.json`, `reviewers.sh` or its tests change.

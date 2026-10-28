@@ -45,10 +45,13 @@ unchecked=$flat
 while [[ $unchecked =~ $pattern_kill || $unchecked =~ $pgrep_kill || $unchecked =~ $subst_kill ]]; do
   kill_cmd=${BASH_REMATCH[0]}
   unscoped=0
-  rest=$kill_cmd
-  while [[ $rest == *pgrep* ]]; do # every pgrep in a substitution needs its own -P
-    rest=${rest#*pgrep}
-    [[ ${rest%%pgrep*} =~ [[:space:]](-P|--parent)[[:space:]=] ]] || unscoped=1
+  scan=$kill_cmd
+  # Not $rest: the masked-check rule below still needs that regex.
+  while [[ $scan == *pgrep* ]]; do # every pgrep in a substitution needs its own -P
+    scan=${scan#*pgrep}
+    pgrep_args=${scan%%pgrep*}
+    pgrep_args=${pgrep_args%%[;&|]*} # a later command's -P (xargs -P) must not count
+    [[ $pgrep_args =~ [[:space:]](-P|--parent)[[:space:]=] ]] || unscoped=1
   done
   [[ $kill_cmd == *pgrep* ]] || [[ $kill_cmd =~ [[:space:]](-P|--parent)[[:space:]=] ]] || unscoped=1
   # Signal 0 only probes that a process exists.
