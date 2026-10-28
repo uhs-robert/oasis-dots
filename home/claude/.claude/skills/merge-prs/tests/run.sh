@@ -204,7 +204,7 @@ out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 show "$out"
 check "exits 0" "[[ $code == 0 ]]"
-check "notes the fixes" "grep -q 'only fix files it reviewed' <<<\"\$out\""
+check "notes the fixes" "grep -q 'are small changes to files it reviewed' <<<\"\$out\""
 check "does not request a review" "! grep -q '^commented=' '$GH_STATE'"
 
 echo "== review gate: generated-only commit since the Codex review"
@@ -216,7 +216,7 @@ out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 show "$out"
 check "exits 0" "[[ $code == 0 ]]"
-check "notes the generated paths" "grep -q 'only fix files it reviewed or touch generated paths' <<<\"\$out\""
+check "notes the generated paths" "grep -q 'are small changes to files it reviewed or touch generated paths' <<<\"\$out\""
 
 echo "== review gate: generated and other files in one commit since the Codex review"
 setup
@@ -227,7 +227,7 @@ out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 show "$out"
 check "stops with an error" "[[ $code != 0 ]]"
-check "names the commit" "grep -q '\"build: rebuild public\" is not a fix' <<<\"\$out\""
+check "names the new file" "grep -q 'was not in the reviewed changes' <<<\"\$out\""
 
 echo "== review gate: a fix that also adds generated files"
 setup
@@ -247,17 +247,31 @@ out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 show "$out"
 check "stops with an error" "[[ $code != 0 ]]"
-check "names the commit" "grep -q '\"build: rebuild public\" is not a fix' <<<\"\$out\""
+check "names the new file" "grep -q 'was not in the reviewed changes' <<<\"\$out\""
 
 echo "== review gate: new work since the Codex review"
 setup
-printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\n' >>"$GH_STATE"
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a\ncommit_changes_c2=30\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 show "$out"
 check "stops with an error" "[[ $code != 0 ]]"
-check "names the new work" "grep -q '\"feat: add z\" is not a fix' <<<\"\$out\""
+check "names the size" "grep -q '30 lines changed since the review' <<<\"\$out\""
 check "keeps the PR open" "grep -q '^state=OPEN' '$GH_STATE'"
+
+echo "== review gate: the size rule ignores the subject and counts all later commits"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a\ncommit_changes_c2=20\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "20 lines in a feat commit pass" "[[ $code == 0 ]] && grep -q 'are small changes to files it reviewed' <<<\"\$out\""
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;fix: y;fix: z\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a\ncommit_changes_c2=11\ncommit_files_c3=a\ncommit_changes_c3=10\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "11 + 10 lines in two fix commits fail" "[[ $code != 0 ]] && grep -q '21 lines changed since the review' <<<\"\$out\""
 
 echo "== review gate: a fix that reaches a new file"
 setup
@@ -272,7 +286,7 @@ check "names the --check rerun that requests one" "grep -q 'rerun with --check -
 
 echo "== --wait-review: new work gets a review requested and waited for"
 setup
-printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\n' >>"$GH_STATE"
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a\ncommit_changes_c2=30\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 timeout 30 "$script" --wait-review 7 2>&1)
 code=$?
 show "$out"
@@ -282,7 +296,7 @@ check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
 
 echo "== --check --wait-review --request-review: new work gets a review requested, nothing merged"
 setup
-printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\n' >>"$GH_STATE"
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a\ncommit_changes_c2=30\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 timeout 30 "$script" --check --wait-review --request-review 7 2>&1)
 code=$?
 show "$out"
