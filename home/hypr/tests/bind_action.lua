@@ -83,7 +83,7 @@ local expected = {
 }
 check("14 actions", #expected == 14)
 
--- req: KEYS-02, KEYS-03 (a bind with extra keys; the keys here carry the leader SUPER)
+-- a bind with extra keys; the keys here carry the leader SUPER
 -- Every key performs its action's command: argv joined for a command, `qs-ipc call` for an IPC function.
 local function performed(key)
 	executed = {}
@@ -116,11 +116,11 @@ executed = {}
 Act.run("overview.move_silent")
 check("run keyless by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call overview move_silent")
 
--- req: KEYS-08 (the screenshot key works in submaps)
+-- the screenshot key works in submaps
 check("Print works in submaps", find("Print").opts.submap_universal == true)
 
 -- Bind.unbind removes what Act.define registered, extras included.
--- req: KEYS-27, KEYS-30 (the removal count, 0 when nothing matches, the leader form)
+-- the removal count, 0 when nothing matches, the leader form
 check("unbind: main key", Bind.unbind("Print") == 1)
 check("unbind: leader extra", Bind.leader_unbind("I") == 1)
 check("unbind: handles removed", #removed == 2)
@@ -147,30 +147,30 @@ local function was_removed(key)
 end
 local function noop() end
 
--- req: KEYS-01, KEYS-02 (key text reaches Hyprland as written; several keys share one action)
+-- key text reaches Hyprland as written; several keys share one action
 Bind.key("CTRL + SHIFT + ESCAPE", noop, "Chord")
 check("key text is passed as written", #bound_keys("CTRL + SHIFT + ESCAPE") == 1)
 Bind.key({ "F1", "F2" }, noop, "Pair")
 check("several keys: one bind each", #bound_keys("F1") == 1 and #bound_keys("F2") == 1)
 check("several keys: the same action", bound_keys("F1")[1].action == bound_keys("F2")[1].action)
 
--- req: KEYS-03 (leader shortcuts carry the leader)
+-- leader shortcuts carry the leader
 Bind.leader_cmd("F9", "calc", "Calculator")
 check("leader: SUPER + key", #bound_keys("SUPER + F9") == 1)
 check("leader: the command runs", bound_keys("SUPER + F9")[1].action.exec == "calc")
 
--- req: KEYS-09 (a bind of your own can be marked to work in submaps)
+-- a bind of your own can be marked to work in submaps
 Bind.leader_cmd("F10", "calc", { submap_universal = true, desc = "Calculator" })
 check("custom bind: universal flag reaches the bind", bound_keys("SUPER + F10")[1].opts.submap_universal == true)
 check("custom bind: description reaches the bind", bound_keys("SUPER + F10")[1].opts.desc == "Calculator")
 
--- req: KEYS-28 (case and spaces do not matter when unbinding)
+-- case and spaces do not matter when unbinding
 Bind.key("SUPER + F8", noop, "Spelling")
 check("unbind: other case and spacing", Bind.unbind("super+f8") == 1)
 check("unbind: the bind was removed", was_removed("SUPER + F8") == 1)
 check("unbind: no longer live", not Bind.is_bound("SUPER + F8"))
 
--- req: KEYS-29 (a named submap, or the global map, and nothing else)
+-- a named submap, or the global map, and nothing else
 Bind.key("H", noop, "Global H")
 Bind.submap("Windows", function()
 	Bind.key("H", noop, "Windows H")
@@ -187,7 +187,7 @@ check("unbind in one submap: its other keys stay", Bind.is_bound("J", "Windows")
 check("unbind without a submap: only the global map", Bind.unbind("H") == 1)
 check("unbind without a submap: submaps keep theirs", Bind.is_bound("H", "Resize") and not Bind.is_bound("H"))
 
--- req: KEYS-30 (the leader form follows the leader; here the leader is replaced for a fresh Bind)
+-- the leader form follows the leader; here the leader is replaced for a fresh Bind
 package.loaded["lib.key.bind"] = nil
 package.loaded["config"] = { leader = "ALT" }
 local Alt_bind = require("lib.key.bind")
@@ -198,7 +198,7 @@ check("leader unbind: removed", was_removed("ALT + F11") == 1)
 package.loaded["lib.key.bind"] = Bind
 package.loaded["config"] = { leader = "SUPER" }
 
--- req: KEYS-31 (unbind, then bind again: one live bind, the new one)
+-- unbind, then bind again: one live bind, the new one
 local old = Bind.key("F7", noop, "Old")[1]
 check("rebind: unbind removes the old", Bind.unbind("F7") == 1)
 local new = Bind.key("F7", noop, "New")[1]
@@ -206,12 +206,12 @@ check("rebind: the new bind is live", Bind.is_bound("F7", nil, new))
 check("rebind: the old bind is not", not Bind.is_bound("F7", nil, old))
 check("rebind: only the old one was removed", was_removed("F7") == 1 and #bound_keys("F7") == 2)
 
--- req: KEYS-32 (a bind made any other way is left alone)
+-- a bind made any other way is left alone
 hl.bind("F6", noop, {})
 check("raw bind: not counted", Bind.unbind("F6") == 0)
 check("raw bind: not removed", was_removed("F6") == 0)
 
--- req: KEYS-33 (a named submap is created, then added to)
+-- a named submap is created, then added to
 local before = #binds
 Bind.submap("Notes", function()
 	Bind.key("T", noop, "Today")

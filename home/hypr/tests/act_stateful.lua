@@ -196,7 +196,6 @@ for _, module in ipairs({
 	check(module .. " alone: no warnings: " .. table.concat(warnings, "; "), #warnings == 0)
 end
 
--- req: KEYS-17
 -- A swallowed key: a "stay" submap binds `catchall` to a no-op dispatcher, Delete (a one-shot) to a function.
 load_all()
 for _, name in ipairs({ "Windows", "Cursor", "Quick Click", "Groups", "Move", "Resize" }) do
@@ -382,7 +381,7 @@ moved = press("Windows", "SHIFT + H")
 check("every selected window closed: acts on the focused one", count_of(moved, "focus(") == 0)
 table.insert(WINDOWS, 1, gone)
 
--- req: KEYS-12 (four step sizes on the direction keys, held keys repeat)
+-- four step sizes on the direction keys, held keys repeat
 load_all()
 for _, name in ipairs({ "Move", "Resize" }) do
 	local sizes = {}

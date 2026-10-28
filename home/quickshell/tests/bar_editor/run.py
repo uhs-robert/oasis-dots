@@ -105,7 +105,6 @@ def check_monotonic(problems, observed):
 
 
 def scenario_rapid(name, count):
-    # req: BAREDIT-17
     def run(root):
         result, out = run_qs(name, root)
         if result is None:
@@ -123,7 +122,6 @@ def scenario_rapid(name, count):
 
 
 def scenario_visual_rapid(root):
-    # req: BAREDIT-11, BAREDIT-17
     """Forty edge moves 2 ms apart: the state only ever steps forward through them and the file ends on the last."""
     result, out = run_qs("visual_rapid", root)
     if result is None:
@@ -140,7 +138,6 @@ def scenario_visual_rapid(root):
 
 
 def scenario_ipc(root):
-    # req: BAREDIT-01, BAREDIT-03
     """open, state, toggle and close through `qs ipc`, the way a key bind or the shadow drives the editor."""
     cfg = os.path.join(root, "cfg")
     shutil.copytree(QS_DIR, cfg, symlinks=False, ignore=shutil.ignore_patterns("sounds", "assets", "*.wav", "*.ogg"))

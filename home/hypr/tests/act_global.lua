@@ -221,7 +221,7 @@ local function by_key()
 	end
 	return found
 end
--- req: KEYS-03, KEYS-04 (the leader prefixes the shortcuts; none keeps the old modifier)
+-- the leader prefixes the shortcuts; none keeps the old modifier
 load_keymaps(CONFIGS[1])
 local default_keys = by_key()
 check("leader: SUPER + X closes", default_keys["SUPER + X"] ~= nil and default_keys["X"] == nil)
@@ -229,7 +229,7 @@ load_keymaps({ name = "alt", leader = "ALT", vim_mode = true, persistent_workspa
 local alt_keys = by_key()
 check("leader ALT: ALT + X closes", alt_keys["ALT + X"] ~= nil and alt_keys["SUPER + X"] == nil)
 
--- req: KEYS-08, KEYS-10 (the media keys: universal and locked; volume repeats)
+-- the media keys: universal and locked; volume repeats
 load_keymaps(CONFIGS[1])
 local media = by_key()
 for _, key in ipairs({ "XF86AudioPlay", "XF86AudioMute", "XF86AudioRaiseVolume", "XF86MonBrightnessUp" }) do
@@ -239,15 +239,14 @@ end
 for _, key in ipairs({ "XF86AudioRaiseVolume", "XF86AudioLowerVolume" }) do
 	check(key .. " repeats", media[key] and media[key].opts.repeating == true)
 end
--- req: KEYS-08 (the keybind search key works in submaps)
+-- the keybind search key works in submaps
 check("SUPER + SLASH works in submaps", media["SUPER + SLASH"] and media["SUPER + SLASH"].opts.submap_universal == true)
--- req: KEYS-19
 check(
 	"SUPER + SLASH is the keybind search",
 	media["SUPER + SLASH"] and media["SUPER + SLASH"].opts.desc == "Keybind Help"
 )
 
--- req: KEYS-11, KEYS-24 (letter and arrow both bound; vim_mode picks the listed one)
+-- letter and arrow both bound; vim_mode picks the listed one
 local function same_flags(a, b)
 	for name, value in pairs(a.opts) do
 		if name ~= "desc" and b.opts[name] ~= value then
