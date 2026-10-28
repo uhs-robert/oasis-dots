@@ -75,6 +75,8 @@ const with_palette = [
   ["no palette keeps xterm", to_styled("\x1b[31mx\x1b[38;5;4my", "#cccccc"), "<font color=\"#cd0000\">x</font><font color=\"#0000ee\">y</font>"],
   ["dim blends toward the background", to_styled("\x1b[2;38;2;200;100;50mx", "#cccccc", oasis, "#204060"), "<font color=\"#745249\">x</font>"],
   ["dim default fg toward the background", to_styled("\x1b[2mx", "#f0f0f0", oasis, "#101010"), "<font color=\"#808080\">x</font>"],
+  ["background-coloured text takes its dropped background", to_styled("\x1b[30;47mx", "#cccccc", oasis, "#0c0e13"), "<font color=\"#f5f5dc\">x</font>"],
+  ["background-coloured text with no background stays", to_styled("\x1b[30mx", "#cccccc", oasis, "#0c0e13"), "<font color=\"#0c0e13\">x</font>"],
   ["hex_of drops alpha", hex_of({ r: 1, g: 0.5, b: 0, a: 0.5 }), "#ff8000"],
 ];
 for (const [name, got, expected] of with_palette) {

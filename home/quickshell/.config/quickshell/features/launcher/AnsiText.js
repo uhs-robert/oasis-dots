@@ -112,6 +112,9 @@ function mix_half(hex, toward) {
 // text in the pane's own background and hide it. Inverse text (selected rows, highlighted prompts) is bold and underlined instead.
 function wrap(text, state, default_fg, background) {
     var fg = state.fg;
+    // Text the palette paints in the pane's own background (black on white, when black is the background) shows only
+    // because of its dropped background, so it takes that background's colour instead.
+    if (state.bg !== "" && (fg || default_fg).toLowerCase() === background.toLowerCase()) fg = state.bg;
     if (state.dim) fg = mix_half(fg || default_fg, background);
     // StyledText collapses runs of plain spaces, which would flatten a pane's indentation and box drawing.
     var out = escape(text).replace(/ /g, "&nbsp;");
