@@ -1,6 +1,6 @@
 # Review fallback and standing approvals
 
-Read when run-local-reviews.sh prints no review (every reviewer unavailable or skipped).
+Read when run-local-reviews.sh prints no review (no reviewer produced a review path, whether unavailable, skipped or failed).
 
 - No local review → spawn a read-only `general-purpose` agent with `model: opus` as the external reviewer. Give it the worktree path, the issue, the diff command (`git diff <base>...HEAD`), the root cause and design, and the review dimensions; name the risky areas to probe (ordering and races, lifecycle and reload paths, behavior the change silently dropped). It must not edit, commit, push or comment, and writes its findings, ranked by severity, each with file:line, a concrete failure scenario, confidence (confirmed/plausible) and a suggested fix, to a file under `.logs/<topic>/<item>/` in the main checkout, then reports under the skill's reviewer report rule.
 
