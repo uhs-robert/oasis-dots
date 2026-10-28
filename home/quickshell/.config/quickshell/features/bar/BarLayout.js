@@ -45,15 +45,6 @@ function any_draws_frame(frame_on, screen_positions) {
     return screen_positions.some(p => draws_frame(frame_on, p));
 }
 
-// What Settings steps through.
-var settings_positions = positions;
-
-// The position `delta` steps on from `position` in `settings_positions`, wrapping.
-function step_position(position, delta) {
-    const at = Math.max(0, settings_positions.indexOf(position));
-    return settings_positions[(at + delta + settings_positions.length) % settings_positions.length];
-}
-
 // Why a rule's position falls back to top, or "" when it is fine.
 function position_problem(rule) {
     const p = rule ? rule.position : undefined;
