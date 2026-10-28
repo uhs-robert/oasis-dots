@@ -361,6 +361,7 @@ class PlanTest(SpecsCase):
         write_tree(self.root, {".plans/b.md": "x\n"})
         with open(os.path.join(self.root, ".plans", "a.md"), "wb") as handle:
             handle.write(b"---\n\xff\xfe\n---\n")
+        write_tree(self.root, {".plans/c.md": "---\n" + GOOD_PLAN.replace("s1", "\u65e5\u672c\u8a9e") + "---\n"})
 
         def open_with_latin_1_default(path, mode="r", **options):
             return open(path, mode, **{"encoding": "latin-1", **options})
@@ -368,6 +369,7 @@ class PlanTest(SpecsCase):
         with mock.patch.object(specs, "open", open_with_latin_1_default, create=True):
             self.assertEqual(self.check({}), [])
         self.assertIn(".plans/a.md", "\n".join(line for line in self.info if "unreadable" in line))
+        self.assertNotIn(".plans/c.md", "\n".join(self.info))
 
     def test_an_unreadable_plan_warns_and_the_rest_are_still_checked(self):
         write_tree(self.root, {".plans/b.md": "x\n"})
