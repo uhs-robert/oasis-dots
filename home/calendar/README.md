@@ -90,7 +90,3 @@ calendar-sync --ics feed.ics       # read a file instead of the stored address a
 - `uid` is the feed's UID; an occurrence of a recurring event adds `#<original start>` so every entry is unique.
 - `join_url` is the link that joins the call, https only. A Google Meet link wins: `X-GOOGLE-CONFERENCE`, else a Meet link in the location, description or URL. Otherwise a Microsoft Teams link: `X-MICROSOFT-SKYPETEAMSMEETINGURL`, else a `teams.microsoft.com/l/meetup-join/` link in the description or location.
 - `event_url` is Google's event page when it can be derived from the feed's UID and calendar id, and otherwise the calendar's day view for the event's date.
-
-## Scripted setup
-
-`calendar-sync setup` reads its answers from `CALENDAR_SYNC_SETUP_ANSWERS`, a file with one answer per line that replaces the terminal. It is for scripted runs only; prompts are still printed and answers never are.
