@@ -209,10 +209,7 @@ PanelWindow {
     Rectangle {
         visible: root.keyboard_owner && BarEditor.mode === "hidden" && BarEditor.picked === ""
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: root.hints_on_top ? hint_box.bottom : undefined
-        anchors.bottom: root.hints_on_top ? undefined : hint_box.top
-        anchors.topMargin: 10
-        anchors.bottomMargin: 10
+        y: root.hints_on_top ? hint_box.y + hint_box.height + 10 : hint_box.y - height - 10
         width: Math.min(parent.width - 64, tray_row.implicitWidth + 24)
         height: tray_row.implicitHeight + 16
         radius: Style.frame_radius
@@ -270,10 +267,7 @@ PanelWindow {
     Rectangle {
         visible: root.keyboard_owner && BarEditor.prompt_open
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: root.hints_on_top ? hint_box.bottom : undefined
-        anchors.bottom: root.hints_on_top ? undefined : hint_box.top
-        anchors.topMargin: 10
-        anchors.bottomMargin: 10
+        y: root.hints_on_top ? hint_box.y + hint_box.height + 10 : hint_box.y - height - 10
         width: 360
         height: prompt_text.implicitHeight + 16
         radius: Style.frame_radius
@@ -296,61 +290,19 @@ PanelWindow {
         id: hint_box
         visible: root.keyboard_owner && BarEditor.mode !== "monitor"
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: root.hints_on_top ? parent.top : undefined
-        anchors.bottom: root.hints_on_top ? undefined : parent.bottom
-        anchors.topMargin: 24
-        anchors.bottomMargin: 24
-        width: Math.min(parent.width - 32, hint_row.implicitWidth + 24)
-        height: hint_row.implicitHeight + 12
+        // y rather than top/bottom anchors: flipping anchors between undefined and a parent edge left both set (see hint-bar-visual-bug).
+        y: root.hints_on_top ? 24 : parent.height - hint_box.height - 24
+        width: Math.min(parent.width - 32, hint_row.implicitWidth + 28)
+        height: hint_row.implicitHeight + 16
         radius: Style.frame_radius
         color: Style.frame_color
         border.width: Style.frame_border_width
         border.color: Style.frame_border_color
-        Row {
+        HintContent {
             id: hint_row
             anchors.centerIn: parent
-            spacing: 12
-            Rectangle {
-                width: mode_text.implicitWidth + 16
-                height: mode_text.implicitHeight + 6
-                anchors.verticalCenter: parent.verticalCenter
-                radius: Math.min(Style.frame_radius, 4)
-                color: Style.title_bg
-                Text {
-                    id: mode_text
-                    anchors.centerIn: parent
-                    text: "-- " + BarEditor.mode_label + " --"
-                    color: Style.title_fg
-                    font.family: Style.title_font_family
-                    font.pixelSize: Style.fs(-1)
-                    font.bold: true
-                }
-            }
-            Text {
-                visible: BarEditor.current_name !== ""
-                anchors.verticalCenter: parent.verticalCenter
-                text: BarEditor.current_name
-                color: Style.accent_color
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-1)
-                font.bold: true
-            }
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: BarEditor.sharing ? "shared by " + BarEditor.sharing_count + " monitor" + (BarEditor.sharing_count === 1 ? "" : "s") : "own layout"
-                color: Style.text_muted
-                font.family: Style.font_family
-                font.pixelSize: Style.fs(-1)
-            }
-            MenuFooter {
-                anchors.verticalCenter: parent.verticalCenter
-                wrap: false
-                text: {
-                    if (BarEditor.mode === "visual") return BarEditor.position_edge + " (" + root.position_source_label + ") · hjkl move" + (BarEditor.can_forget ? " · x forget" : "") + " · u undo · Esc done";
-                    if (BarEditor.mode === "hidden") return BarEditor.picked !== "" ? "h/l place · Enter drop · Esc cancel" : "h/l select · Enter pick up · Esc back";
-                    return "h/l select · H/L move · x hide · o own · c compact · ? help";
-                }
-            }
+            carrying: root.carrying
+            vertical: root.vertical
         }
     }
 
@@ -426,12 +378,10 @@ PanelWindow {
                 }
             }
         }
-        MenuFooter {
-            x: 20
-            y: monitor_box.map_height + 70
-            width: 520
-            wrap: false
-            text: "hjkl pick monitor · Enter edit its bar · q close · ? help"
+        HintContent {
+            x: 10
+            y: monitor_box.map_height + 62
+            width: 540
         }
     }
 
