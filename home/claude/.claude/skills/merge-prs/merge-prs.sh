@@ -594,7 +594,8 @@ gate_summary_comment() {
 }
 
 # Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
-# Unresolved threads always block; --skip-review-gate drops only the reviewers' states. Threads are read after the
+# Unresolved threads always block; --skip-review-gate drops only the reviewers' states. The waiver is for a reviewer
+# that is down or slow, not for findings it already posted. Threads are read after the
 # reviewers, since findings arrive while one is waited for.
 check_reviews() {
   local pr number info open status reviewed head name gated_head mark attempts

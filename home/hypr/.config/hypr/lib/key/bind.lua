@@ -63,7 +63,8 @@ end
 --- @type table<function, string>
 local action_ids = setmetatable({}, { __mode = "k" })
 
---- Record that `run` performs the action `id`; returns `run`.
+--- Record that `run` performs the action `id`; returns `run`. A closure wrapping a tagged function is a new function:
+--- tag it with Bind.tag_action(wrapper, Bind.action_id(inner)), or the registry check sees a plain bind.
 --- @param run function
 --- @param id  string|nil  nil leaves it untagged
 --- @return function
