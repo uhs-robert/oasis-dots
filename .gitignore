@@ -116,7 +116,8 @@ home/yazi/.config/yazi/plugins/*
 # ────────────────────────────────────────────────
 # 🤖 AI assistant artifacts (Claude, Gemini, etc.)
 # ────────────────────────────────────────────────
-# Ignored by default; a new tracked file under these trees needs its own `!` line, or git silently never adds it.
+# Ignored by default: a new tracked file needs a `!` rule covering its path (most subtrees already have a `!.../**`
+# one; skills/synced/ is re-ignored below), or git silently never adds it.
 home/claude/**
 !home/claude/.claude/
 !home/claude/.claude/_agents/

@@ -201,18 +201,7 @@ Requirement ids live in the body only, one per line (spec prefix and number); fr
 
 ## 6. AGENTS.md rules only, reasons in a decisions log
 
-**Superseded (2026-10-28).** The reasons moved again, from `specs/decisions.md` to beside the code each explains, and the file was removed: one log for every subject was hard to search and loaded unrelated history. See AGENTS.md "Docs".
-
-**Scope.** AGENTS.md is 23,610 bytes. Reasons behind past choices move to `specs/decisions.md`, linked from the rule. Each entry: a date, the PR, and "chose X over Y because", plus any footgun. Date from `git log -S`, else the move date. Candidates:
-- Overview: why systemd packages are stowed `--no-folding`, and the `migrate-systemd` history.
-- Commands: why branches cut before the check-runner port do not share passes.
-- Hyprland config: the hyprwm/Hyprland#15040 reason behind `Bind.unbind`.
-- Quickshell key conventions: why `Popups.after_close` (the focus hand-back).
-- Gitignore: the "aggressive by design" explanation.
-
-Kept inline: a one-clause reason that tells you when the rule applies.
-
-**Dependencies.** 0a. **PRs.** 1, in B1. **Risks.** A rule lost in the move; review diffs rule lines before and after.
+**Superseded (2026-10-28).** The reasons first moved from AGENTS.md to `specs/decisions.md`, then to beside the code each explains, and the file was removed: one log for every subject was hard to search and loaded unrelated history. AGENTS.md "Docs" holds the rule; there is no scope left here.
 
 ## 7. voxcmd port status out of AGENTS.md
 
