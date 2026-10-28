@@ -102,12 +102,13 @@ function clean_last(raw) {
     return out;
 }
 
-// Per-module compact overrides, keyed by entry (`clock`, `system:memory`): booleans for known modules only.
+// Per-module compact overrides, keyed by entry (`clock`, `system:memory`): booleans for known modules only. A twin's key
+// is read as its plain entry's (system:cpu as system), which is the only key module_compact looks up.
 function clean_compact_modules(raw) {
     const out = {};
     if (is_object(raw)) {
         for (const k of Object.keys(raw)) {
-            if (typeof raw[k] === "boolean" && is_known_entry(k)) out[k] = raw[k];
+            if (typeof raw[k] === "boolean" && is_known_entry(k)) out[plain_entry(k)] = raw[k];
         }
     }
     return out;
@@ -406,11 +407,12 @@ function purge(state, entry) {
     delete next.shared.place[entry];
     delete next.shared.last_side[entry];
     next.shared.order = next.shared.order.filter(e => e !== entry);
-    if (next.shared.compact_modules) put_compact_modules(next.shared, without(next.shared.compact_modules, entry));
+    const drop_override = map => without(without(map, entry), plain_entry(entry));
+    if (next.shared.compact_modules) put_compact_modules(next.shared, drop_override(next.shared.compact_modules));
     for (const m of Object.values(next.monitors)) {
         for (const s of sides) m[s] = m[s].filter(e => e !== entry);
         delete m.last_side[entry];
-        if (m.compact_modules) put_compact_modules(m, without(m.compact_modules, entry));
+        if (m.compact_modules) put_compact_modules(m, drop_override(m.compact_modules));
     }
     return next;
 }
@@ -629,27 +631,23 @@ function supports_compact(entry) {
     return BarModules.supports_compact(entry.split(":")[0]);
 }
 
-// The per-module overrides the edited layout saves: the shared one's, or the monitor's own.
-function compact_overrides(state, key) {
-    const s = normalize(state);
-    return (is_sharing(s, key) ? s.shared : s.monitors[key]).compact_modules || {};
-}
-
-// The override the edited layout saves for `entry`: "inherit" (none, so bars.json or the layout's compact decides), "on" or "off".
-function compact_override(state, key, entry) {
-    const map = compact_overrides(state, key);
+// The override `entry` draws with on the edited bar, from the rule's map and the editor's together: "inherit" (none, so the
+// layout's compact decides), "on" or "off".
+function compact_override(rule, state, key, entry) {
+    const map = (effective(rule, normalize(state), key) || {}).compact_modules || {};
     const k = plain_entry(entry);
     return k in map ? (map[k] ? "on" : "off") : "inherit";
 }
 
-// `c` in NORMAL: steps the edited layout's override for `entry` inherit -> on -> off -> inherit. A module with no compact
-// form is left alone.
-function cycle_module_compact(state, key, entry) {
+// `c` in NORMAL: steps `entry` inherit -> on -> off -> inherit from the override it draws with, writing the edited layout's
+// own. Under a rule that names the entry, inherit falls back to the rule's value, so there it steps between on and off.
+// A module with no compact form is left alone.
+function cycle_module_compact(rule, state, key, entry) {
     const next = normalize(state);
     if (!supports_compact(entry)) return next;
     const layer = is_sharing(next, key) ? next.shared : next.monitors[key];
     const k = plain_entry(entry);
-    const after = { inherit: true, on: false, off: undefined }[compact_override(next, key, entry)];
+    const after = { inherit: true, on: false, off: undefined }[compact_override(rule, next, key, entry)];
     const map = without(layer.compact_modules || {}, k);
     if (after !== undefined) map[k] = after;
     put_compact_modules(layer, map);

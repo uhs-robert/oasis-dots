@@ -283,6 +283,7 @@ SCENARIOS = {
     "editor_hidden_add": scenario_editor("editor_hidden_add"),
     "editor_hidden_empty": scenario_editor("editor_hidden_empty"),
     "editor_module_compact": scenario_editor("editor_module_compact"),
+    "editor_rule_compact": scenario_editor("editor_rule_compact"),
     "editor_hint_edge": scenario_editor("editor_hint_edge"),
     "editor_pick_redo": scenario_editor("editor_pick_redo"),
     "no_import_cycle": scenario_no_import_cycle,

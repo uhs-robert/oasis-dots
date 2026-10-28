@@ -67,9 +67,9 @@ Singleton {
     readonly property int sharing_count: root.sharing ? root.sharing_screens().length : 0
     readonly property var hidden_list: BarLayout.addable_entries(BarSettings.rules, BarSettings.state, root.view).filter(BarLayout.is_known_entry)
     // The shown modules with a compact override of their own, as { entry, on }, which the overlay marks on the bar.
-    readonly property var compact_marks: root.order.map(e => ({ entry: e, override: BarLayout.compact_override(BarSettings.state, root.screen_key, e) })).filter(m => m.override !== "inherit").map(m => ({ entry: m.entry, on: m.override === "on" }))
+    readonly property var compact_marks: root.order.map(e => ({ entry: e, override: BarLayout.compact_override(root.tracked, BarSettings.state, root.screen_key, e) })).filter(m => m.override !== "inherit").map(m => ({ entry: m.entry, on: m.override === "on" }))
     // The selected module's override ("inherit", "on", "off"), or "none" when it has no compact form.
-    readonly property string selected_compact: root.selected === "" || !BarLayout.supports_compact(root.selected) ? "none" : BarLayout.compact_override(BarSettings.state, root.screen_key, root.selected)
+    readonly property string selected_compact: root.selected === "" || !BarLayout.supports_compact(root.selected) ? "none" : BarLayout.compact_override(root.tracked, BarSettings.state, root.screen_key, root.selected)
     readonly property bool bar_compact: !!(root.edited_rule && root.edited_rule.compact)
     readonly property string mode_label: root.mode === "monitor" ? "MONITOR" : root.mode.toUpperCase()
 
@@ -300,7 +300,7 @@ Singleton {
             root.notice = root.selected + " has no compact form";
             return;
         }
-        root.commit(BarLayout.cycle_module_compact(BarSettings.state, root.screen_key, root.selected));
+        root.commit(BarLayout.cycle_module_compact(root.tracked, BarSettings.state, root.screen_key, root.selected));
     }
 
     function toggle_bar_compact() {
