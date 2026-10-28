@@ -20,6 +20,8 @@ pr: none
 printf '%s' "$good" >"$root/.plans/x/good.md"
 printf '%s' "$good" | sed 's/^pr: none$/pr: none\napproved: yes/' >"$root/.plans/x/bad.md"
 printf '# no front matter\n' >"$root/.plans/x/none.md"
+printf '%s' "${good%---*}" >"$root/.plans/x/unclosed.md"
+printf '# T\n' >>"$root/.plans/x/unclosed.md"
 printf 'approved: yes\n' >"$root/.plans/x/bad.txt"
 printf 'approved: yes\n' >"$root/src/foo.md"
 
@@ -45,6 +47,8 @@ if command -v check-jsonschema >/dev/null; then
   done
   run Write "$root/.plans/x/none.md"
   if [[ $status == 0 && $out == *'no front matter'* ]]; then ok "no front matter steers"; else bad "no front matter steers: $out"; fi
+  run Write "$root/.plans/x/unclosed.md"
+  if [[ $status == 0 && $out == *'no front matter'* ]]; then ok "unclosed front matter steers"; else bad "unclosed front matter steers: $out"; fi
   run Write "$root/.plans/x/good.md"
   if [[ $status == 0 && -z $out ]]; then ok "valid doc silent"; else bad "valid doc silent: $out"; fi
 fi
