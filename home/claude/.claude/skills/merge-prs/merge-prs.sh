@@ -155,13 +155,17 @@ under_prefix() {
   return 1
 }
 
-# Sets rereview_why to the reason the commits after Codex's review need a review of their own; empty when they only fix
-# what it covered. Sets generated_skipped when a commit was ignored for touching only generated paths.
+# Later commits up to this many changed lines skip re-review.
+small_fix_lines=20
+
+# Sets rereview_why to the reason the commits after Codex's review need a review of their own; empty when together they
+# change at most small_fix_lines lines, all in files the review covered. Sets generated_skipped when a commit was ignored
+# for touching only generated paths.
 # Compares each side against the default branch, so commits picked up by a rebase after the review are not counted.
 # Not run in a subshell, so the two variables reach the caller.
 rereview_reason() {
-  local reviewed=$1 head=$2 reviewed_subjects head_commits covered changed new_file sha subject file sha_files_text only_generated
-  local -a prefixes=() sha_files=()
+  local reviewed=$1 head=$2 reviewed_subjects head_commits covered changed new_file sha subject file changes sha_files_text only_generated lines=0
+  local -a prefixes=()
   rereview_why=""
   generated_skipped=false
   mapfile -t prefixes < <(generated_prefixes)
@@ -172,25 +176,23 @@ rereview_reason() {
   while IFS=$'\t' read -r sha subject; do
     [[ -n $sha ]] || continue
     ! grep -qxF -- "$subject" <<<"$reviewed_subjects" || continue
-    # A commit of only generated files is the hook's rebuild, not work to review. Files are fetched per post-review commit.
-    if ((${#prefixes[@]})); then
-      sha_files_text=$(gh api "repos/$slug/commits/$sha" --jq '.files[].filename') || die "cannot read the files of $sha"
-      mapfile -t sha_files <<<"$sha_files_text"
-      [[ -n $sha_files_text ]] || sha_files=()
-      only_generated=${#sha_files[@]}
-      for file in "${sha_files[@]}"; do
-        under_prefix "$file" "${prefixes[@]}" || only_generated=0
-      done
-      if ((only_generated)); then
-        generated_skipped=true
-        continue
-      fi
-    fi
-    if ! grep -Eq '^(fix|test)(\([^)]*\))?!?: ' <<<"$subject"; then
-      rereview_why="\"$subject\" is not a fix or test"
-      return
+    # Generated files never count; a commit of only those is the hook's rebuild, not work to review.
+    sha_files_text=$(gh api "repos/$slug/commits/$sha" --jq '.files[] | [.filename, .changes] | @tsv') || die "cannot read the files of $sha"
+    only_generated=1
+    while IFS=$'\t' read -r file changes; do
+      [[ -n $file ]] || continue
+      ((${#prefixes[@]})) && under_prefix "$file" "${prefixes[@]}" && continue
+      only_generated=0
+      lines=$((lines + changes))
+    done <<<"$sha_files_text"
+    if ((only_generated)) && [[ -n $sha_files_text ]]; then
+      generated_skipped=true
     fi
   done <<<"$head_commits"
+  if ((lines > small_fix_lines)); then
+    rereview_why="$lines lines changed since the review, over the $small_fix_lines-line limit"
+    return
+  fi
   covered=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.files[].filename')
   changed=$(gh api "repos/$slug/compare/$default...$head" --jq '.files[].filename')
   new_file=""
@@ -554,9 +556,9 @@ gate_summary_comment() {
     reason=$rereview_why
     if [[ -z $reason ]]; then
       if $generated_skipped; then
-        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed or touch generated paths"
+        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits are small changes to files it reviewed or touch generated paths"
       else
-        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits only fix files it reviewed"
+        echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits are small changes to files it reviewed"
       fi
     elif $wait_review && { ! $check_only || $request_review; }; then
       echo "merge-prs: #$number changed since Codex reviewed $reviewed ($reason); requesting a review and waiting up to ${review_wait_s}s" >&2

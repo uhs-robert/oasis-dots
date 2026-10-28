@@ -156,10 +156,11 @@ case "$args" in
   *) get "${side}_files" | tr ';' '\n' ;;
   esac
   ;;
-# Files of one commit: commit_files_<sha> in the state, as a ;-separated list.
+# Files of one commit as "name<TAB>changes": commit_files_<sha> in the state, as a ;-separated list, with the changes
+# commit_changes_<sha> (default 1) on the first file and 0 on the rest.
 "api repos/"*"/commits/"*)
   sha=$(sed -E 's|.*/commits/([^ ]+).*|\1|' <<<"$args")
-  get "commit_files_$sha" | tr ';' '\n'
+  get "commit_files_$sha" | tr ';' '\n' | awk -v n="$(get "commit_changes_$sha")" 'NF { print $0 "\t" (NR == 1 ? (n == "" ? 1 : n) : 0) }'
   ;;
 # An @codex review runs for one read, then completes at the head.
 "pr comment"*)
