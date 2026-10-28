@@ -91,12 +91,6 @@ calendar-sync --ics feed.ics       # read a file instead of the stored address a
 - `join_url` is the link that joins the call, https only. A Google Meet link wins: `X-GOOGLE-CONFERENCE`, else a Meet link in the location, description or URL. Otherwise a Microsoft Teams link: `X-MICROSOFT-SKYPETEAMSMEETINGURL`, else a `teams.microsoft.com/l/meetup-join/` link in the description or location.
 - `event_url` is Google's event page when it can be derived from the feed's UID and calendar id, and otherwise the calendar's day view for the event's date.
 
-## Tests
+## Scripted setup
 
-```bash
-home/calendar/tests/run.sh
-```
-
-It runs `calendar-sync` on `tests/fixtures/sample.ics` (placeholder data only) with stub `rbw`, `secret-tool`, `systemctl`, `xdg-open` and `qs-ipc` on `PATH`, so it never reaches a real vault, feed or bar. `just check` runs it when `python-icalendar` and `python-recurring-ical-events` are installed.
-
-`calendar-sync setup` is driven in tests through `CALENDAR_SYNC_SETUP_ANSWERS`, a file with one answer per line that replaces the terminal. It is for tests only; prompts are still printed and answers never are.
+`calendar-sync setup` reads its answers from `CALENDAR_SYNC_SETUP_ANSWERS`, a file with one answer per line that replaces the terminal. It is for scripted runs only; prompts are still printed and answers never are.

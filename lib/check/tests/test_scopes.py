@@ -114,7 +114,6 @@ CASES = [
     ("lib/common/output.sh", " install"),
     ("lib/common/greeter-files.sh", " quickshell install skills"),
     ("packages/snapper.ini", " install"),
-    ("home/calendar/tests/run.sh", " install"),
     # hooks: the agent hooks and the tests of the reviewers and owner-test-bar; skills: ship-batch and merge-prs.
     (".claude/hooks/check-before-commit.sh", " hooks"),
     ("home/claude/.claude/skills/orchestrator/reviewers.json", " hooks"),
@@ -175,7 +174,7 @@ class PathScopes(unittest.TestCase):
     def test_tests_are_found_by_naming_convention(self):
         """A tests/ file that follows a convention in scopes.py is a step without an entry of its own."""
         names = {step.name for step in scopes.STEPS}
-        for name in ("act-global", "bar-layout", "json-store", "install-pacman-tweaks", "hook-guard-gh-merge"):
+        for name in ("act-global", "bar-layout", "polled-command", "install-pacman-tweaks", "hook-guard-gh-merge"):
             with self.subTest(name=name):
                 self.assertIn(name, names)
 
