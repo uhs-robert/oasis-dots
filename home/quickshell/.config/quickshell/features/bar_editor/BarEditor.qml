@@ -56,11 +56,11 @@ Singleton {
     readonly property var edited_rule: root.tracked ? BarLayout.effective(root.tracked, BarSettings.state, root.screen_key) : null
     readonly property var view: BarLayout.layout_of(root.edited_rule)
     readonly property bool vertical: BarLayout.is_vertical(BarLayout.position_of(root.edited_rule))
-    // A lualine bar on a row draws its modules by section; on a column it falls back to islands.
     readonly property string position_edge: BarLayout.position_of(root.edited_rule) || "top"
     readonly property string position_source: BarLayout.position_source(root.tracked, BarSettings.state, root.screen_key)
     // False when `x` in VISUAL would change nothing, so the hint does not offer it.
     readonly property bool can_forget: JSON.stringify(BarLayout.forget_position_for_mode(BarSettings.state, root.screen_key)) !== JSON.stringify(BarSettings.state)
+    // A lualine bar on a row draws its modules by section; on a column it falls back to islands.
     readonly property bool sectioned: root.lualine && !root.vertical
     readonly property var order: BarLayout.nav_order(root.view, root.sectioned)
     readonly property bool sharing: BarLayout.is_sharing(BarSettings.state, root.screen_key)
