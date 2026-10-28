@@ -356,6 +356,17 @@ class PlanTest(SpecsCase):
     def test_a_valid_plan_adds_no_warning(self):
         self.assertEqual(self.plan(GOOD_PLAN), [])
 
+    def test_an_unreadable_plan_warns_and_the_rest_are_still_checked(self):
+        write_tree(self.root, {".plans/b.md": "x\n"})
+        os.makedirs(os.path.join(self.root, ".plans"), exist_ok=True)
+        with open(os.path.join(self.root, ".plans", "a.md"), "wb") as handle:
+            handle.write(b"---\n\xff\xfe\n---\n")
+        self.assertEqual(self.check({}), [])
+        warned = [line for line in self.info if line.startswith("warn:")]
+        self.assertEqual(len(warned), 2, warned)
+        self.assertIn(".plans/a.md", warned[0])
+        self.assertIn(".plans/b.md", warned[1])
+
 
 class PlanFileModeTest(SpecsCase):
     """`specs.py --file <doc>`, the mode the write-time hook runs."""

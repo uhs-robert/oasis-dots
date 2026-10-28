@@ -322,8 +322,13 @@ def plan_findings(root, full_paths, shown_from=None):
     findings, front_matters = [], {}
     for full in full_paths:
         path = os.path.relpath(full, shown_from)
-        with open(full) as handle:
-            parts = split_front_matter(handle.read())
+        try:
+            with open(full) as handle:
+                parts = split_front_matter(handle.read())
+        except (OSError, UnicodeError) as error:
+            # A plan that cannot be read is a finding, not a crash: .plans docs only ever warn.
+            findings.append(f"{path}: unreadable: {error}")
+            continue
         if parts is None:
             findings.append(f"{path}:1: no front matter (a plan starts with a `---` block)")
         else:
