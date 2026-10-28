@@ -13,154 +13,117 @@ import keys  # noqa: E402
 import scopes  # noqa: E402
 
 CASES = [
-    # The runner's own files run everything; lib/check/ files also reach the check's own tests.
+    # The runner's own files run everything.
     ("lib/check.sh", " all"),
-    ("lib/check/runner.py", "checkscope all"),
-    ("lib/check/keys.py", "checkscope all"),
-    ("lib/check/scopes.py", "checkscope all"),
-    ("lib/check/passed.py", "checkscope all"),
-    ("lib/check/passed.sh", "checkscope all"),
-    ("lib/check/lock.sh", "checkscope all"),
+    ("lib/check/runner.py", " checkscope all"),
+    ("lib/check/keys.py", " checkscope all"),
+    ("lib/check/scopes.py", " checkscope all"),
+    ("lib/check/passed.py", " checkscope all"),
+    ("lib/check/passed.sh", " checkscope all"),
+    ("lib/check/lock.sh", " checkscope all"),
     ("justfile", " all"),
     (".claude/check-commands", " all"),
     # Named one by one above because `*` crosses `/`: a test module is no runner file.
-    ("lib/check/tests/test_keys.py", "checkscope"),
-    ("lib/check/tests/scope.sh", "checkscope"),
-    ("lib/check/steps/qml.py", "checkscope qml"),
-    ("lib/check/qml_imports.py", "checkscope qml docsgen"),
-    ("lib/check/steps/qml_paths.py", "checkscope qml docsgen"),
-    ("lib/check/steps/qml_layers.py", "checkscope qml"),
-    ("lib/check/qml-layers.allow", "checkscope qml"),
-    ("lib/check/steps/qml_singleton_names.py", "checkscope qml"),
-    ("lib/check/qml-singleton-names.allow", "checkscope qml"),
-    ("lib/check/steps/qml_ipc.py", "checkscope docsgen"),
-    ("lib/check/qml-ipc.allow", "checkscope"),
-    ("lib/check/steps/lua.sh", "checkscope lua"),
-    ("lib/check/steps/symlinks.sh", "checkscope"),
-    # The registry step is a tree step: the step itself reaches only the always-run steps. The Lua it loads is Lua.
-    ("lib/check/steps/registry.py", "checkscope"),
-    ("lib/check/registry.allow", "checkscope"),
-    ("home/hypr/tests/act_refs.lua", " lua docsgen"),
-    ("home/hypr/tests/registry_binds.lua", " lua docsgen"),
-    ("home/hypr/tests/hypr-act.sh", " lua docsgen"),
-    ("home/hypr/tests/shadow-action.sh", " lua docsgen"),
-    (".claude/skills/shadow/shadow.sh", " lua"),
-    ("home/hypr/tests/act-global.sh", " lua docsgen"),
-    ("home/hypr/tests/act_global.lua", " lua docsgen"),
-    ("home/hypr/tests/act-launch.sh", " lua docsgen"),
-    ("home/hypr/tests/act_launch.lua", " lua docsgen"),
-    ("home/hypr/tests/act-submap-rows.sh", " lua docsgen"),
-    ("home/hypr/tests/act_submap_rows.lua", " lua docsgen"),
-    ("home/hypr/tests/act-stateful.sh", " lua docsgen"),
-    ("home/hypr/tests/act_stateful.lua", " lua docsgen"),
-    ("home/hypr/tests/act_stubs.lua", " lua docsgen"),
-    ("home/hypr/tests/act-ipc.sh", " lua docsgen"),
-    ("home/hypr/tests/act_ipc.lua", " lua docsgen"),
-    ("home/hypr/.local/bin/hypr-act", " lua docsgen"),
-    ("docs/keybinds.md", " docsgen"),
+    ("lib/check/tests/test_keys.py", " checkscope"),
+    ("lib/check/tests/scope.sh", " checkscope"),
+    ("lib/check/steps/symlinks.sh", " checkscope"),
+    ("lib/check/registry.allow", " checkscope"),
+    ("lib/check/qml-ipc.allow", " checkscope"),
+    ("lib/plan_new.py", " checkscope"),
+    # A check module or allow list that a step of another folder reads reaches that folder as well.
+    ("lib/check/steps/qml.py", " checkscope quickshell"),
+    ("lib/check/qml-layers.allow", " checkscope quickshell"),
+    ("lib/check/steps/qml_paths.py", " checkscope quickshell docsgen"),
+    ("lib/check/steps/qml_ipc.py", " checkscope docsgen"),
+    ("lib/check/steps/lua.sh", " checkscope hypr"),
+    ("lib/check/steps/shaders.sh", " checkscope quickshell"),
+    ("lib/check/steps/voxcmd-rust.sh", " checkscope voxrest"),
+    ("lib/check/steps/docs-generated.sh", " checkscope docsgen"),
     ("lib/docs/gen-keybinds", " checkscope docsgen"),
     ("lib/docs/gen-ipc", " checkscope docsgen"),
     ("lib/docs/docgen.py", " checkscope docsgen"),
-    ("lib/plan_new.py", " checkscope"),
-    ("home/quickshell/.config/quickshell/features/lock/LockIpc.qml", " docsgen qml node"),
-    # A test fixture named like a handler is not read by the IPC table, so it keeps its suite's scope.
-    ("home/quickshell/tests/polled_command/FakeIpc.qml", " polledcmd qml"),
-    ("home/quickshell/tests/FakeIpc.qml", " node qml"),
-    ("home/quickshell/.config/quickshell/README.md", " docsgen qml node"),
-    ("lib/check/steps/docs-generated.sh", "checkscope docsgen"),
-    # First match wins: the greeter's Lua ahead of its QML, the Quickshell tests ahead of the rest of Quickshell.
-    ("system/etc/greetd/quickshell/init.lua", " lua qml"),
-    ("system/etc/greetd/quickshell/Greeter.qml", " qml"),
-    ("system/etc/greetd/config.toml", " lua"),
-    # The input vectors' inputs reach their scope ahead of the folders that hold them.
-    ("home/hypr/.config/hypr/config/input/init.lua", " lua inputvec docsgen"),
-    ("home/hypr/.config/hypr/lib/state.lua", " lua inputvec docsgen"),
-    ("home/hypr/.config/hypr/lib/json.lua", " lua keyring inputvec docsgen"),
-    ("home/quickshell/tests/input_settings/vectors.tsv", " inputvec qml"),
-    ("home/quickshell/.config/quickshell/features/settings/HyprInputValidation.js", " inputvec qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/HyprInputSettings.qml", " inputvec qml node"),
-    ("home/quickshell/tests/notification_markup.js", " node qml"),
-    ("home/quickshell/tests/json_store/run.py", " node qml"),
-    ("home/quickshell/tests/polled_command/run.py", " polledcmd qml"),
-    ("home/quickshell/.config/quickshell/core/PolledCommand.qml", " polledcmd qml node"),
-    ("home/quickshell/tests/polled_file/run.py", " polledfile qml"),
-    ("home/quickshell/.config/quickshell/core/PolledFile.qml", " polledfile qml node"),
-    ("home/quickshell/tests/colors_preview/run.sh", " colorsprev qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/RowsSection.qml", " colorsprev qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/sections/StyleSection.qml", " colorsprev qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/SettingsPanel.qml", " colorsprev qml node"),
-    ("home/quickshell/tests/restarting_stream/run.py", " restartstream qml"),
-    ("home/quickshell/.config/quickshell/core/RestartingStream.qml", " restartstream qml node"),
-    ("home/quickshell/.config/quickshell/core/JsonStore.qml", " bareditor qml node"),
-    ("home/quickshell/tests/bar_editor/run.py", " bareditor qml"),
-    ("home/quickshell/.config/quickshell/features/bar_editor/BarEditorIpc.qml", " bareditor docsgen qml node"),
-    ("home/quickshell/.config/quickshell/features/bar_editor/BarEditor.qml", " bareditor qml node"),
-    ("home/quickshell/.config/quickshell/features/bar/BarSettings.qml", " bareditor qml node"),
-    ("home/quickshell/.config/quickshell/features/bar/BarItems.qml", " bareditor qml node"),
-    # The consumers OUTSIDE_REFS in lib/check/steps/qml_paths.py names reach the qml scope beside their own.
-    ("home/hypr/.config/hypr/scripts/lock-screen.sh", " lua qml docsgen"),
-    ("home/voxcmd/src/timer.rs", " rust voxphrases voxclick voxcalendar voxwake voxfirefox qml"),
-    ("home/voxcmd/tests/run-monitors.sh", " voxclick qml"),
-    ("home/quickshell/.config/quickshell/shell.qml", " qml node"),
-    # A shader reaches only the shader step; its compiled output also reaches QML, which names it by path.
-    ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag", " shaders"),
-    ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag.qsb", " shaders qml"),
-    ("lib/check/steps/shaders.sh", "checkscope shaders"),
-    ("home/hypr/.config/hypr/hyprland.lua", " lua docsgen"),
-    (".luacheckrc", " lua"),
-    # A suite's own files reach that suite only; what several read reaches each of them.
+    # hypr: the Lua config and its tests; the generated keybind table reads the keymaps.
+    ("home/hypr/tests/act-global.sh", " hypr docsgen"),
+    ("home/hypr/tests/act_stubs.lua", " hypr docsgen"),
+    ("home/hypr/.local/bin/hypr-act", " hypr docsgen"),
+    ("home/hypr/.config/hypr/hyprland.lua", " hypr docsgen"),
+    (".claude/skills/shadow/shadow.sh", " hypr"),
+    (".luacheckrc", " hypr"),
+    ("system/etc/greetd/config.toml", " hypr"),
+    # The greeter's Lua is ahead of its QML, which is ahead of nothing else under greetd.
+    ("system/etc/greetd/hyprland.lua", " hypr quickshell install"),
+    ("system/etc/greetd/quickshell/init.lua", " hypr quickshell"),
+    ("system/etc/greetd/quickshell/Greeter.qml", " quickshell"),
+    # Files a Lua file shares with another folder's steps reach both.
+    ("home/hypr/.config/hypr/config/input/init.lua", " hypr quickshell docsgen"),
+    ("home/hypr/.config/hypr/lib/state.lua", " hypr quickshell docsgen"),
+    ("home/hypr/.config/hypr/lib/json.lua", " hypr install quickshell docsgen"),
+    ("home/hypr/.config/hypr/scripts/lock-screen.sh", " hypr quickshell docsgen"),
+    ("lib/install/greeter-monitors.lua", " install hypr"),
+    # quickshell: the bar and every test of it. A handler file also feeds the generated IPC table.
+    ("home/quickshell/.config/quickshell/shell.qml", " quickshell"),
+    ("home/quickshell/.config/quickshell/core/JsonStore.qml", " quickshell"),
+    ("home/quickshell/.config/quickshell/features/lock/LockIpc.qml", " docsgen quickshell"),
+    ("home/quickshell/.config/quickshell/features/bar_editor/BarEditorIpc.qml", " docsgen quickshell"),
+    # A test fixture named like a handler is not read by the IPC table.
+    ("home/quickshell/tests/polled_command/FakeIpc.qml", " quickshell"),
+    ("home/quickshell/tests/notification_markup.js", " quickshell"),
+    ("home/quickshell/tests/input_settings/vectors.tsv", " quickshell"),
+    ("home/quickshell/tests/bar_editor/run.py", " quickshell"),
+    ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag", " quickshell"),
+    ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag.qsb", " quickshell"),
+    # voxcmd. A suite's own files reach that suite only; what several read reaches each of them.
     ("home/voxcmd/tests/run.sh", " voxclick"),
-    ("home/voxcmd/tests/run-phrases.sh", " voxphrases"),
-    ("home/voxcmd/tests/run-calendar.sh", " voxcalendar"),
-    ("home/voxcmd/tests/run-wake.sh", " voxwake"),
-    ("home/voxcmd/tests/wake_test.py", " voxwake"),
-    ("home/voxcmd/tests/run-firefox-extension.sh", " voxfirefox"),
     ("home/voxcmd/tests/lib.sh", " voxclick"),
-    ("home/voxtype/.local/bin/voxtype-prompt", " voxtype voxwake"),
-    ("home/voxcmd/tests/sandbox.sh", " voxphrases voxclick voxcalendar voxwake"),
-    ("home/voxcmd/tests/firefox-profile", " voxphrases voxclick voxcalendar"),
+    ("home/voxcmd/tests/run-phrases.sh", " voxphrases"),
+    ("home/voxcmd/tests/run-calendar.sh", " voxrest"),
+    ("home/voxcmd/tests/run-wake.sh", " voxrest"),
+    ("home/voxcmd/tests/wake_test.py", " voxrest"),
+    ("home/voxcmd/tests/run-firefox-extension.sh", " voxrest"),
+    ("home/voxcmd/tests/sandbox.sh", " voxphrases voxclick voxrest"),
+    ("home/voxcmd/tests/firefox-profile", " voxphrases voxclick voxrest"),
     ("home/voxcmd/tests/fixtures/binds.json", " voxphrases voxclick"),
     ("home/voxcmd/tests/fixtures/overview.json", " voxclick"),
-    # The crate's sources reach the suites that build it; its tests, snapshots and goldens only cargo test. An integration
-    # file is read by the suites.
-    ("home/voxcmd/src/main.rs", " rust voxphrases voxclick voxcalendar voxwake voxfirefox"),
-    ("home/voxcmd/Cargo.lock", " rust voxphrases voxclick voxcalendar voxwake voxfirefox"),
-    ("home/voxcmd/rustfmt.toml", " rust"),
-    ("home/voxcmd/tests/cli.rs", " rust"),
-    ("home/voxcmd/tests/fixtures/x.txt", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
-    ("home/voxcmd/tests/snapshots/cli__x.snap", " rust"),
-    ("home/voxcmd/tests/fixtures/match-goldens.tsv", " rust"),
-    # The fixtures the suites read reach them.
     ("home/voxcmd/tests/fixtures/ocr.tsv", " voxphrases"),
-    ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " rust"),
-    ("home/voxcmd/.config/voxcmd/integrations/x.toml", " rust voxphrases voxclick voxcalendar voxwake voxfirefox"),
-    ("lib/check/steps/voxcmd-rust.sh", "checkscope rust"),
-    ("extras/voxcmd-firefox/background.js", " voxphrases voxclick voxcalendar voxwake voxfirefox"),
+    ("home/voxcmd/tests/fixtures/x.txt", " voxphrases voxclick voxrest"),
+    # The crate's sources reach the suites that build it; its tests, snapshots and goldens only cargo test (voxrest).
+    ("home/voxcmd/src/main.rs", " voxphrases voxclick voxrest"),
+    ("home/voxcmd/Cargo.lock", " voxphrases voxclick voxrest"),
+    ("home/voxcmd/.config/voxcmd/integrations/x.toml", " voxphrases voxclick voxrest"),
+    ("extras/voxcmd-firefox/background.js", " voxphrases voxclick voxrest"),
+    ("home/voxcmd/rustfmt.toml", " voxrest"),
+    ("home/voxcmd/tests/cli.rs", " voxrest"),
+    ("home/voxcmd/tests/snapshots/cli__x.snap", " voxrest"),
+    ("home/voxcmd/tests/fixtures/match-goldens.tsv", " voxrest"),
+    ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " voxrest"),
+    # Consumers that lib/check/steps/qml_paths.py names reach the quickshell scope beside their own.
+    ("home/voxcmd/src/timer.rs", " voxphrases voxclick voxrest quickshell"),
+    ("home/voxcmd/tests/run-monitors.sh", " voxclick quickshell"),
+    # voxtype is the duck suite's; the daemon runs the voxcmd suites and the prompt is also asserted by the wake suite.
+    ("home/voxtype/tests/run-duck.sh", " voxduck"),
+    ("home/voxtype/.local/bin/voxtype-daemon", " voxphrases voxclick voxrest"),
+    ("home/voxtype/.local/bin/voxtype-prompt", " voxduck voxrest"),
+    ("home/systemd/.config/systemd/user/voxtype-duck.service", " voxduck"),
+    # install: the libraries, their tests, the common ones they load, and the host-side calendar.
+    ("lib/install/voice.sh", " install"),
+    ("lib/install/fonts.sh", " install"),
+    ("lib/install/tests/greeter-keyring.sh", " install"),
+    ("lib/common/output.sh", " install"),
+    ("lib/common/greeter-files.sh", " quickshell install agents"),
+    ("packages/snapper.ini", " install"),
+    ("home/calendar/tests/run.sh", " install"),
+    # agents: the hooks and the skills that have tests.
+    (".claude/hooks/check-before-commit.sh", " agents"),
+    ("home/claude/.claude/skills/orchestrator/reviewers.json", " agents"),
+    (".claude/skills/owner-test-bar/owner-test-bar.sh", " agents"),
+    (".claude/skills/ship-batch/tests/run.sh", " agents"),
+    ("home/claude/.claude/skills/merge-prs/tests/run.sh", " agents"),
+    # Only the steps that always run look at these.
     ("extras/other/file", ""),
-    ("lib/install/voice.sh", " policy loader"),
-    ("lib/install/tests/migrate-quickshell-input.sh", " migratelock"),
-    ("lib/install/tests/migrate-quickshell-weather.sh", " migratelock"),
-    ("lib/install/tests/firefox-policy.sh", " policy"),
-    ("lib/install/greeter.sh", " keyring loader"),
-    ("lib/install/tests/greeter-keyring.sh", " keyring"),
-    ("lib/install/fonts.sh", " loader"),
-    ("lib/install/tests/load.sh", " loader"),
-    ("lib/common/greeter-files.sh", " qml ship loader keyring"),
-    ("lib/common/output.sh", " devtools loader"),
-    ("lib/common/packages.sh", " devtools loader"),
-    ("lib/common/README", ""),
-    ("home/calendar/tests/run.sh", " calendar"),
-    (".claude/hooks/check-before-commit.sh", " hooks"),
-    (".claude/skills/owner-test-bar/owner-test-bar.sh", " bar"),
-    (".claude/skills/ship-batch/tests/run.sh", " ship"),
-    ("home/claude/.claude/skills/merge-prs/tests/run.sh", " ship"),
-    (".claude/skills/other/SKILL.md", ""),
     ("home/kitty/.config/kitty/kitty.conf", ""),
     ("install.sh", ""),
     ("demo/showcase.sh", ""),
     ("packages/stow.ini", ""),
-    ("docs/x/README.md", ""),
-    ("README.md", ""),
     ("LICENSE", ""),
     # Nothing claims these, so they run everything; nor a path git quoted (an unusual name in a diff).
     ("newdir/file", " all"),
@@ -178,13 +141,40 @@ class PathScopes(unittest.TestCase):
 
     def test_a_crate_edit_selects_the_voxcmd_suites(self):
         """The suites build the crate and run its binary, so editing its sources or manifest must run them; its test
-        sources, snapshots and goldens are read only by cargo test."""
+        sources, snapshots and goldens are read only by cargo test, in the voxrest scope."""
         for path in ("home/voxcmd/src/cli.rs", "home/voxcmd/Cargo.toml"):
             with self.subTest(path=path):
-                self.assertIn("voxclick", keys.path_scopes(path).split())
+                self.assertEqual(set(keys.path_scopes(path).split()), set(scopes.VOXCMD_SUITE_SCOPES))
         for path in ("home/voxcmd/tests/cli.rs", "home/voxcmd/tests/snapshots/cli__x.snap"):
             with self.subTest(path=path):
-                self.assertFalse(set(scopes.VOXCMD_SUITE_SCOPES) & set(keys.path_scopes(path).split()))
+                self.assertEqual(keys.path_scopes(path).split(), [scopes.VOX_REST])
+
+    def test_a_voxcmd_click_edit_selects_only_the_click_sub_scope(self):
+        for path in ("home/voxcmd/tests/run.sh", "home/voxcmd/tests/run-sessions.sh", "home/voxcmd/tests/fixtures/overview.json"):
+            with self.subTest(path=path):
+                self.assertEqual(keys.path_scopes(path).split(), [scopes.VOX_CLICK])
+        click_steps = [step.name for step in scopes.STEPS if step.scope == scopes.VOX_CLICK]
+        self.assertEqual(click_steps, ["voxcmd-click"])
+
+    def test_markdown_runs_no_step_unless_a_test_reads_it(self):
+        for path in ("README.md", "lib/check/README.md", "home/claude/.claude/skills/merge-prs/SKILL.md",
+                     ".claude/hooks/README.md", "home/voxcmd/.config/voxcmd/README.md", "home/hypr/.config/hypr/README.md"):
+            with self.subTest(path=path):
+                self.assertEqual(keys.path_scopes(path), "")
+        # docs-generated compares these two against what the generators print.
+        self.assertEqual(keys.path_scopes("docs/keybinds.md"), " docsgen")
+        self.assertEqual(keys.path_scopes("home/quickshell/.config/quickshell/README.md"), " docsgen quickshell")
+
+    def test_there_are_few_folder_scopes(self):
+        folder_scopes = {step.scope for step in scopes.STEPS} - {"tree", "shell"}
+        self.assertLessEqual(len(folder_scopes), 10, sorted(folder_scopes))
+
+    def test_tests_are_found_by_naming_convention(self):
+        """A tests/ file that follows a convention in scopes.py is a step without an entry of its own."""
+        names = {step.name for step in scopes.STEPS}
+        for name in ("act-global", "bar-layout", "json-store", "install-pacman-tweaks", "hook-guard-gh-merge"):
+            with self.subTest(name=name):
+                self.assertIn(name, names)
 
     def test_every_step_scope_is_reachable(self):
         """A step whose scope no path reaches would run only in a full check."""
