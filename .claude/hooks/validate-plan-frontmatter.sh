@@ -11,7 +11,7 @@ schema=$(dirname "$0")/plan-frontmatter.yaml
 # The leading --- block, as YAML.
 front=$(mktemp --suffix=.yaml)
 trap 'rm -f "$front"' EXIT
-if ! awk 'NR == 1 && $0 != "---" { exit 1 } NR > 1 && $0 == "---" { exit } NR > 1' "$file" >"$front"; then
+if ! awk 'NR == 1 && $0 != "---" { exit 1 } NR > 1 && $0 == "---" { closed = 1; exit } NR > 1 { print } END { exit !closed }' "$file" >"$front"; then
   errors="no front matter (a plan starts with a --- block)"
 else
   errors=$(check-jsonschema --schemafile "$schema" "$front" 2>&1) && exit 0

@@ -176,6 +176,7 @@ PanelWindow {
     }
 
     // Modules with a compact override of their own: a dot at the module's corner, filled when forced on, a ring when forced off.
+    // Marks come from this screen's own rule: a sharing peer may be matched by another rule that names other overrides.
     Repeater {
         model: (root.keyboard_owner || root.peer) && (BarEditor.mode === "normal" || BarEditor.mode === "hidden") ? BarEditor.compact_marks_for(root.screen_name) : []
         Rectangle {

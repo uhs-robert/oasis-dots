@@ -23,5 +23,5 @@ An agent card shows the session's title, agent, state badge, short directory and
 - Providers: `AppsProvider`, `DirsProvider`, `EmojiProvider`, `ClipboardProvider`, `KeybindsProvider`, `ChoicesProvider`, `AgentsProvider`. Agent session parsing is `AgentSessions.js`; its card pieces are `AgentStateBadge.qml`, `AgentContextBar.qml` and `AnsiText.js`.
 - `BrowseLayout.js` holds the preview-size and grid maths for the browse layout.
 - `StartMode.js` and `TypingSettings.qml` hold the per-picker start mode and its Settings > Input > Typing rows.
-- `hyprvim/` is the `:` prompt (`HyprvimPrompt.qml`, `HyprvimPromptIpc.qml`).
+- `HyprvimPrompt.qml` and `HyprvimPromptIpc.qml` are the `:` prompt; `hyprvim/` holds its pieces (`CompletionMenu.qml`, `OutputPane.qml`, `PromptSpec.js`, `VimMotions.js`).
 - Tests are in `home/quickshell/tests/` (`picker_browse.js`, `agent_sessions.js`, `picker_start_mode.js`).
