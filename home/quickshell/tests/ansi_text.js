@@ -7,8 +7,8 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/AnsiText.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { to_styled, bottom_lines };", context);
-const { to_styled, bottom_lines } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { to_styled, bottom_lines, hex_of };", context);
+const { to_styled, bottom_lines, hex_of } = context.api;
 const styled = text => to_styled(text, "#cccccc");
 
 const cases = [
@@ -65,6 +65,27 @@ const bottom = [
   ["short text whole", bottom_lines("a\nb", 5), "a\nb"],
   ["empty", bottom_lines("", 3), ""],
 ];
+const oasis = ["#0c0e13", "#ff7979", "#7fcf78", "#f0e68c", "#81c0ff", "#c695ff", "#69c3aa", "#f5f5dc",
+  "#4e6578", "#ffa0a0", "#a3e39a", "#f8b471", "#87ceeb", "#d2adff", "#8ad3be", "#fffff0"];
+const with_palette = [
+  ["palette remaps 31", to_styled("\x1b[31mx", "#cccccc", oasis), "<font color=\"#ff7979\">x</font>"],
+  ["palette remaps 91", to_styled("\x1b[91mx", "#cccccc", oasis), "<font color=\"#ffa0a0\">x</font>"],
+  ["palette remaps 38;5;4", to_styled("\x1b[38;5;4mx", "#cccccc", oasis), "<font color=\"#81c0ff\">x</font>"],
+  ["palette leaves the 256 cube", to_styled("\x1b[38;5;196mx", "#cccccc", oasis), "<font color=\"#ff0000\">x</font>"],
+  ["no palette keeps xterm", to_styled("\x1b[31mx\x1b[38;5;4my", "#cccccc"), "<font color=\"#cd0000\">x</font><font color=\"#0000ee\">y</font>"],
+  ["dim blends toward the background", to_styled("\x1b[2;38;2;200;100;50mx", "#cccccc", oasis, "#204060"), "<font color=\"#745249\">x</font>"],
+  ["dim default fg toward the background", to_styled("\x1b[2mx", "#f0f0f0", oasis, "#101010"), "<font color=\"#808080\">x</font>"],
+  ["hex_of drops alpha", hex_of({ r: 1, g: 0.5, b: 0, a: 0.5 }), "#ff8000"],
+];
+for (const [name, got, expected] of with_palette) {
+  try {
+    assert.strictEqual(got, expected);
+  } catch (e) {
+    failed++;
+    console.error("FAIL " + name + ": got " + JSON.stringify(got));
+  }
+}
+
 for (const [name, got, expected] of bottom) {
   try {
     assert.strictEqual(got, expected);
@@ -78,4 +99,4 @@ if (failed > 0) {
   console.error(failed + " failed");
   process.exit(1);
 }
-console.log("ansi_text: " + (cases.length + bottom.length) + " ok");
+console.log("ansi_text: " + (cases.length + with_palette.length + bottom.length) + " ok");

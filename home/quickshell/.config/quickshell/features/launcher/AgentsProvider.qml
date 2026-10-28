@@ -90,7 +90,9 @@ PickerProvider {
             // A fixed pitch on the text below, so the line count that fits is exact and no half line shows at the top.
             readonly property int line_pitch: Math.ceil(metrics.lineSpacing)
             readonly property int max_lines: Math.max(1, Math.floor((pane.height - 20) / pane.line_pitch))
-            readonly property string styled: pane.pane_text === "" ? "" : AnsiText.to_styled(AnsiText.bottom_lines(pane.pane_text, pane.max_lines), String(Style.text_fg))
+            // Kitty's colours, from the raw palette: a style remaps Style.pal, kitty does not follow it.
+            readonly property var ansi_palette: [Theme.black, Theme.red, Theme.green, Theme.yellow, Theme.blue, Theme.magenta, Theme.cyan, Theme.white, Theme.bright_black, Theme.bright_red, Theme.bright_green, Theme.bright_yellow, Theme.bright_blue, Theme.bright_magenta, Theme.bright_cyan, Theme.bright_white].map(AnsiText.hex_of)
+            readonly property string styled: pane.pane_text === "" ? "" : AnsiText.to_styled(AnsiText.bottom_lines(pane.pane_text, pane.max_lines), AnsiText.hex_of(Theme.fg_core), pane.ansi_palette, AnsiText.hex_of(Theme.bg_core))
 
             clip: true
 
@@ -174,7 +176,7 @@ PickerProvider {
             Rectangle {
                 anchors.fill: parent
                 radius: Style.radius(4)
-                color: Style.pal.bg_surface
+                color: Theme.bg_core
             }
 
             Text {
@@ -200,7 +202,7 @@ PickerProvider {
                 wrapMode: Text.NoWrap
                 lineHeightMode: Text.FixedHeight
                 lineHeight: pane.line_pitch
-                color: Style.text_fg
+                color: Theme.fg_core
                 font.family: Style.mono_font
                 font.pixelSize: pane.font_px
             }
