@@ -278,7 +278,7 @@ def validate(root, schema, front_matters):
         temp_to_path = {}
         for index, (path, text) in enumerate(sorted(front_matters.items())):
             temp = os.path.join(scratch, f"{index}.yaml")
-            with open(temp, "w") as handle:
+            with open(temp, "w", encoding="utf-8") as handle:
                 handle.write(text)
             temp_to_path[temp] = path
         done = subprocess.run(
