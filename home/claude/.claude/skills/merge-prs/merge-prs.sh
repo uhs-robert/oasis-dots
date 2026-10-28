@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Merge PRs in order, carrying stacked PRs over to each base, then clean up local worktrees and branches.
+# Merge PRs into the default branch in order, then clean up local worktrees and branches.
 set -euo pipefail
 
 usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] [--wait-review] <pr>...
@@ -160,12 +160,11 @@ under_prefix() {
 # Compares each side against the default branch, so commits picked up by a rebase after the review are not counted.
 # Not run in a subshell, so the two variables reach the caller.
 rereview_reason() {
-  local reviewed=$1 head=$2 cross=$3 reviewed_subjects head_commits covered changed new_file sha subject file sha_files_text only_generated
+  local reviewed=$1 head=$2 reviewed_subjects head_commits covered changed new_file sha subject file sha_files_text only_generated
   local -a prefixes=() sha_files=()
   rereview_why=""
   generated_skipped=false
-  # A fork PR is never rebuilt by the pre-merge step, so its generated paths are not known to be output.
-  [[ $cross == true ]] || mapfile -t prefixes < <(generated_prefixes)
+  mapfile -t prefixes < <(generated_prefixes)
   reviewed_subjects=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.commits[].commit.message | split("\n")[0]') ||
     die "cannot compare $reviewed with $default"
   head_commits=$(gh api "repos/$slug/compare/$default...$head" --jq '.commits[] | [.sha, (.commit.message | split("\n")[0])] | @tsv') ||
@@ -513,7 +512,7 @@ gate_check_run() {
 # A summary_comment reviewer (Codex) for one PR. Its summary comment holds a status and the reviewed commit, read by
 # review_jq in the same query as the threads.
 gate_summary_comment() {
-  local name=$1 number=$2 info open status reviewed head waited reason cross rereview_why generated_skipped rerun_flags request push_time
+  local name=$1 number=$2 info open status reviewed head waited reason rereview_why generated_skipped rerun_flags request push_time
   request=$(rjq "$name" '.github.request // "@codex review"')
   info=$(read_review "$number")
   IFS=$'\t' read -r open status reviewed head <<<"$info"
@@ -551,8 +550,7 @@ gate_summary_comment() {
   fi
   # A fix that does what the review asked does not need another round; new work or new files after it do.
   if [[ $status == Completed && $head != "$reviewed"* ]]; then
-    cross=$(gh pr view "$number" --json isCrossRepository --jq .isCrossRepository) || die "cannot read #$number"
-    rereview_reason "$reviewed" "$head" "$cross"
+    rereview_reason "$reviewed" "$head"
     reason=$rereview_why
     if [[ -z $reason ]]; then
       if $generated_skipped; then
@@ -593,10 +591,22 @@ gate_summary_comment() {
   esac
 }
 
-# Checks every PR before merging any, so a run never stops halfway through a stack over a review it could have seen up front.
+# Checks every PR before merging any, so a run never stops halfway through the list over a review it could have seen up front.
 # Unresolved threads always block; --skip-review-gate drops only the reviewers' states. The waiver is for a reviewer
 # that is down or slow, not for findings it already posted. Threads are read after the
 # reviewers, since findings arrive while one is waited for.
+# A PR that is not based on the default branch or comes from a fork would merge somewhere this script does not follow up.
+check_targets() {
+  local pr info base state cross
+  for pr in "${prs[@]}"; do
+    info=$(gh pr view "$pr" --json baseRefName,state,isCrossRepository \
+      --jq '[.baseRefName, .state, .isCrossRepository] | @tsv') || die "cannot read PR $pr"
+    IFS=$'\t' read -r base state cross <<<"$info"
+    [[ $state != OPEN ]] || [[ $base == "$default" ]] || die "#${pr#\#} is based on $base, not $default; merge-prs only merges PRs into $default"
+    [[ $state != OPEN || $cross != true ]] || die "#${pr#\#} is from a fork; merge-prs only merges PRs from this repository"
+  done
+}
+
 check_reviews() {
   local pr number info open status reviewed head name gated_head mark attempts
   local -a problems=()
@@ -665,11 +675,6 @@ fetch() {
   git fetch -q --prune origin || die "git fetch origin failed"
 }
 
-list_children() {
-  gh pr list --limit 1000 --base "$1" --state open --json number,headRefName,headRefOid,isCrossRepository \
-    --jq '.[] | [.number, .headRefName, .headRefOid, .isCrossRepository] | @tsv' || die "cannot list PRs based on $1"
-}
-
 # A local branch is safe to drop when all its commits came from PR heads seen before this run rewrote them.
 clean_local() {
   local pr=$1 head=$2 head_oid=$3 wt
@@ -717,47 +722,6 @@ clean_local() {
   git worktree prune
 }
 
-rebase_child() {
-  local child=$1 child_head=$2 old_child=$3 onto=$4 label=$5 upstream=$6 grandchildren new_child line
-  local number gc_head gc_oid gc_cross
-  # A child pushed to after its reviewers passed would otherwise be rebased here, and the rebase would hide the push.
-  if [[ -n ${gated_heads[$child]:-} && $old_child != "${gated_heads[$child]}" ]]; then
-    die "#$child was pushed to (${old_child:0:7}) after its reviewers passed on ${gated_heads[$child]:0:7}; rerun to check the new head"
-  fi
-  git cat-file -e "$old_child^{commit}" 2>/dev/null || die "$child head $old_child is not on origin/$child_head"
-  grandchildren=$(list_children "$child_head") || exit 1
-  tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
-  known_heads+=("$old_child")
-  git worktree add -q --detach "$tmp_root/wt" "$old_child" || die "cannot create a worktree for $child_head"
-  if ! git -C "$tmp_root/wt" rebase -q --onto "$onto" "$upstream" >/dev/null 2>&1; then
-    git -C "$tmp_root/wt" rebase --abort || true
-    remove_tmp
-    die "$child ($child_head) conflicts rebasing onto $label; rebase it and any PRs stacked on it by hand, then rerun for the remaining PRs:
-  git fetch origin && git rebase --onto $onto $upstream $old_child
-  git push --force-with-lease=$child_head:$old_child origin HEAD:$child_head"
-  fi
-  new_child=$(git -C "$tmp_root/wt" rev-parse HEAD)
-  git -C "$tmp_root/wt" push -q --force-with-lease="$child_head:$old_child" origin "HEAD:refs/heads/$child_head" ||
-    die "cannot push the rebased $child_head"
-  pushed_heads[$child_head]=$new_child
-  remove_tmp
-  echo "$child rebased onto $label"
-  if git show-ref --verify -q "refs/heads/$child_head"; then
-    echo "local branch $child_head is now behind the rebased origin/$child_head"
-  fi
-
-  local -a lines=()
-  [[ -z $grandchildren ]] || mapfile -t lines <<<"$grandchildren"
-  for line in "${lines[@]}"; do
-    IFS=$'\t' read -r number gc_head gc_oid gc_cross <<<"$line"
-    if [[ $gc_cross == true ]]; then
-      echo "child #$number is from a fork; rebase it onto $child_head by hand"
-    else
-      rebase_child "$number" "$gc_head" "$gc_oid" "$new_child" "$child_head" "$old_child"
-    fi
-  done
-}
-
 # GitHub recomputes mergeability lazily after a push; merging before it settles fails with "Head branch was modified".
 # Prints UNKNOWN unless GitHub reports the expected head with a settled state, since it can report the old head's state.
 mergeable_wait_s=${MERGE_PRS_MERGEABLE_WAIT:-60}
@@ -801,12 +765,10 @@ rebase_dropping_generated() {
   fi
 }
 
-# Rebases a PR head onto origin/$base and force-pushes it, recording the new head in rebased_oid. A PR stacked on a parent
-# that was rebase- or squash-merged outside this run still carries the parent's old commits, so GitHub reports it as
-# conflicting; rebasing drops them, because git skips commits whose changes are already there. With require_drop, a rebase
-# that drops nothing means a real conflict, which stays with the owner.
+# Rebases a PR head onto origin/$base and force-pushes it, recording the new head in rebased_oid. With require_generated,
+# a rebase that drops no generated-only commit means a real conflict, which stays with the owner.
 rebase_head() {
-  local pr=$1 head=$2 old=$3 base=$4 require_drop=$5 before after generated_dropped=0 msg
+  local pr=$1 head=$2 old=$3 base=$4 require_generated=$5 before after generated_dropped=0 msg
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
   git worktree add -q --detach "$tmp_root/wt" "$old" || die "cannot create a worktree for $head"
   before=$(git rev-list --count "origin/$base..$old")
@@ -816,9 +778,9 @@ rebase_head() {
     die "#$pr conflicts with $base; rebase $head onto origin/$base by hand, then rerun for the remaining PRs"
   fi
   after=$(git -C "$tmp_root/wt" rev-list --count "origin/$base..HEAD")
-  if $require_drop && ((after >= before)); then
+  if $require_generated && ((generated_dropped == 0)); then
     remove_tmp
-    die "#$pr conflicts with $base and carries no commits already merged there; resolve it by hand, then rerun for the remaining PRs"
+    die "#$pr conflicts with $base and carries no generated-only commits to drop; resolve it by hand, then rerun for the remaining PRs"
   fi
   rebased_oid=$(git -C "$tmp_root/wt" rev-parse HEAD)
   git -C "$tmp_root/wt" push -q --force-with-lease="$head:$old" origin "HEAD:refs/heads/$head" ||
@@ -841,70 +803,30 @@ pr_state() {
 }
 
 not_merged() {
-  local pr=$1 state=$2 base=$3 head_oid=$4 line number child_head child_oid child_cross
-  local msg="#$pr is $state, not MERGED, after waiting ${wait_s}s; stopping"
-  shift 4
-  (($#)) && msg+=". Its children were retargeted to $base and still carry its commits; once it merges, rebase them by hand:"
-  for line in "$@"; do
-    IFS=$'\t' read -r number child_head child_oid child_cross <<<"$line"
-    [[ $child_cross != true ]] || continue
-    msg+=$'\n'"$number ($child_head):"
-    msg+=$'\n'"  git fetch origin && git rebase --onto origin/$base $head_oid $child_oid"
-    msg+=$'\n'"  git push --force-with-lease=$child_head:$child_oid origin HEAD:$child_head"
-  done
-  die "$msg"
+  die "#$1 is $2, not MERGED, after waiting ${wait_s}s; stopping"
 }
 
 # An interrupted earlier run already merged it; finish its local cleanup. Everything here needs the PR's head commit
-# locally: without it the branch cannot be shown to hold nothing the PR lacks, so it is kept. Nothing is pushed:
-# the interrupted run may have retargeted the children already, so the stack is only reported, for the owner to rebase.
+# locally: without it the branch cannot be shown to hold nothing the PR lacks, so it is kept.
 merge_pr_already_merged() {
-  local pr=$1 head=$2 head_oid=$3 base=$4 cross=$5 line number child_head child_oid child_cross
+  local pr=$1 head=$2 head_oid=$3
   echo "#$pr already merged"
   fetch
-  if [[ $cross == true ]]; then
-    echo "PR #$pr is from a fork; skipped local cleanup"
-    return 0
-  fi
   if ! git cat-file -e "$head_oid^{commit}" 2>/dev/null; then
     echo "kept $head: the head of #$pr ($head_oid) is not available locally, so its local commits cannot be checked"
     return 0
   fi
   known_heads+=("$head_oid")
   $keep_branch || clean_local "$pr" "$head" "$head_oid"
-  # Open children: still based on the head, or retargeted to the base but still carrying the merged head's commits.
-  while IFS=$'\t' read -r number child_head child_oid child_cross; do
-    [[ -n $number ]] || continue
-    echo "warning: #$number ($child_head) is stacked on the merged #$pr and was not rebased; rebase it by hand:"
-    if [[ $child_cross == true ]]; then
-      echo "  it is from a fork; ask its author to rebase it onto $base"
-    else
-      echo "  git fetch origin && git rebase --onto origin/$base $head_oid $child_oid"
-      echo "  git push --force-with-lease=$child_head:$child_oid origin HEAD:$child_head"
-      echo "  gh pr edit $number --base $base"
-    fi
-  done < <(
-    list_children "$head"
-    # A head already in the base (merge commit) leaves nothing to rebase, and every later PR would match.
-    ! git merge-base --is-ancestor "$head_oid" "origin/$base" || exit 0
-    list_children "$base" | while IFS=$'\t' read -r number child_head child_oid child_cross; do
-      git merge-base --is-ancestor "$head_oid" "$child_oid" 2>/dev/null &&
-        printf '%s\t%s\t%s\t%s\n' "$number" "$child_head" "$child_oid" "$child_cross"
-    done
-  )
 }
 
 # Runs the repo's .claude/pre-merge on a detached checkout of the PR head, so build output it commits lands in the PR and
 # is merged with it. Sets head_oid to the head to merge: the script's commit, pushed and seen by GitHub, if it made one.
 # The gate has already run by now, so a commit made here is never held to it. Not run by --check.
 run_pre_merge() {
-  local pr=$1 head=$2 base=$3 cross=$4 hook new_oid pre_merge_oid=$head_oid
+  local pr=$1 head=$2 base=$3 hook new_oid pre_merge_oid=$head_oid
   hook=$main_dir/.claude/pre-merge
   [[ -x $hook ]] || return 0
-  if [[ $cross == true ]]; then
-    echo "warning: #$pr is from a fork, so the pre-merge step was skipped; its commits could not be pushed"
-    return 0
-  fi
   # Output built on a head that is behind its base would conflict with what the base already built. A merge commit keeps
   # the head as it is, so it is left alone.
   if [[ $method != merge ]] && ! git merge-base --is-ancestor "origin/$base" "$head_oid"; then
@@ -946,13 +868,12 @@ run_pre_merge() {
 }
 
 merge_pr() {
-  local pr=$1 info head base state cross head_oid children_info="" line number child_head child_oid child_cross
-  local -a lines=()
-  info=$(gh pr view "$pr" --json headRefName,headRefOid,baseRefName,state,isCrossRepository \
-    --jq '[.headRefName, .headRefOid, .baseRefName, .state, .isCrossRepository] | @tsv') || die "cannot read PR $pr"
-  IFS=$'\t' read -r head head_oid base state cross <<<"$info"
+  local pr=$1 info head base state head_oid
+  info=$(gh pr view "$pr" --json headRefName,headRefOid,baseRefName,state \
+    --jq '[.headRefName, .headRefOid, .baseRefName, .state] | @tsv') || die "cannot read PR $pr"
+  IFS=$'\t' read -r head head_oid base state <<<"$info"
   if [[ $state == MERGED ]]; then
-    merge_pr_already_merged "$pr" "$head" "$head_oid" "$base" "$cross"
+    merge_pr_already_merged "$pr" "$head" "$head_oid"
     return 0
   fi
   [[ $state == OPEN ]] || die "PR $pr is $state"
@@ -960,32 +881,20 @@ merge_pr() {
     die "PR $pr was pushed to (${head_oid:0:7}) after its reviewers passed on ${gated_heads[${pr#\#}]:0:7}; rerun to check the new head"
   fi
   head_oid=${pushed_heads[$head]:-$head_oid}
-  if [[ $cross != true ]]; then
-    children_info=$(list_children "$head") || exit 1
-  fi
-  [[ -z $children_info ]] || mapfile -t lines <<<"$children_info"
 
   fetch
   known_heads+=("$head_oid")
-  if [[ $cross != true ]]; then
-    git cat-file -e "$head_oid^{commit}" 2>/dev/null || die "PR $pr head $head_oid is not on origin/$head"
-  fi
+  git cat-file -e "$head_oid^{commit}" 2>/dev/null || die "PR $pr head $head_oid is not on origin/$head"
 
-  if [[ $(await_mergeable "$pr" "$head_oid") == CONFLICTING && $cross != true ]]; then
+  # A stale build commit makes the PR conflict with the base's newer build; rebasing without it, then rebuilding, fixes that.
+  if [[ $(await_mergeable "$pr" "$head_oid") == CONFLICTING ]]; then
     rebase_head "$pr" "$head" "$head_oid" "$base" true
     head_oid=$rebased_oid
     known_heads+=("$head_oid")
     await_mergeable "$pr" "$head_oid" >/dev/null
   fi
 
-  run_pre_merge "$pr" "$head" "$base" "$cross"
-
-  # Only now that nothing can stop the merge short of GitHub itself, so a failed step leaves the children where they were.
-  for line in "${lines[@]}"; do
-    IFS=$'\t' read -r number _ <<<"$line"
-    gh pr edit "$number" --base "$base" >/dev/null || die "cannot retarget $number to $base"
-    echo "$number retargeted to $base"
-  done
+  run_pre_merge "$pr" "$head" "$base"
 
   local merge_args=("--$method" --repo "$slug" --match-head-commit "$head_oid")
   $keep_branch || merge_args+=(--delete-branch)
@@ -999,25 +908,15 @@ merge_pr() {
       state=$(pr_state "$pr")
     done
   fi
-  [[ $state == MERGED ]] || not_merged "$pr" "$state" "$base" "$head_oid" "${lines[@]}"
+  [[ $state == MERGED ]] || not_merged "$pr" "$state"
   echo "$pr merged ($method)"
 
   fetch
-  if [[ $cross == true ]]; then
-    echo "PR #$pr is from a fork; skipped local cleanup"
-  elif ! $keep_branch; then
-    clean_local "$pr" "$head" "$head_oid"
-  fi
-  [[ $method != merge ]] || return 0
-  for line in "${lines[@]}"; do
-    IFS=$'\t' read -r number child_head child_oid child_cross <<<"$line"
-    if [[ $child_cross == true ]]; then
-      echo "child #$number is from a fork; rebase it onto $base by hand"
-    else
-      rebase_child "$number" "$child_head" "$child_oid" "origin/$base" "$base" "$head_oid"
-    fi
-  done
+  ! $keep_branch || return 0
+  clean_local "$pr" "$head" "$head_oid"
 }
+
+check_targets
 
 if $check_only; then
   check_reviews

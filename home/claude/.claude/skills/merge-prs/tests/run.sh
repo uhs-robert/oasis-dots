@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Replays the stale-stack, real-conflict and review-gate cases against merge-prs.sh with a local origin and the fake gh,
-# then restacks a local stack with restack.sh.
+# Replays the merge, refusal, conflict, pre-merge and review-gate cases against merge-prs.sh with a local origin and the
+# fake gh.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 script=${1:-$here/../merge-prs.sh}
-restack=$here/../restack.sh
 pass=0 fail=0
 check() { if eval "$2"; then
   echo "ok   $1"
@@ -26,34 +25,27 @@ setup() {
   g add a
   g commit -qm A
   g push -q origin main
-  g switch -qc parent
-  echo p >p
-  g add p
-  g commit -qm P
-  g push -q origin parent
   g switch -qc child
   echo c >c
   g add c
   g commit -qm C
   g push -q origin child
-  # The parent lands on main by rebase outside the run: same change, new commit id.
+  # Main moves on after the branch was cut, so the head is behind its base.
   g switch -q main
-  g cherry-pick "$(git rev-parse parent)" >/dev/null
-  g commit -q --amend -m "P (rebased)"
+  echo p >p
+  g add p
+  g commit -qm "P (rebased)"
   g push -q origin main
-  g push -q origin --delete parent
-  g branch -q -D parent
   g switch -q child
-  printf 'head=child\nbase=main\nstate=OPEN\nconflicting_oid=%s\n' "$(git rev-parse child)" >"$GH_STATE"
+  printf 'head=child\nbase=main\nstate=OPEN\n' >"$GH_STATE"
 }
 
-echo "== stale stack, main checkout sitting on the PR branch"
+echo "== main checkout sitting on the PR branch"
 setup
 out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 show "$out"
 check "exits 0" "[[ $code == 0 ]]"
-check "rebases and drops the merged parent commit" "grep -q 'rebased onto main, dropping 1 commit' <<<\"\$out\""
 check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
 check "switches the main checkout to main" "grep -q 'switched .* to main' <<<\"\$out\""
 check "deletes the local branch" "! git -C '$root/main' show-ref -q --verify refs/heads/child"
@@ -92,22 +84,6 @@ check "deletes the local branch" "! git -C '$root/main' show-ref -q --verify ref
 check "keeps the branch whose head is unavailable" "git -C '$root/main' show-ref -q --verify refs/heads/gone-branch"
 check "says why it kept it" "grep -q 'kept gone-branch: the head of #7' <<<\"\$out\""
 
-echo "== already-merged parent: its child is reported, not rebased"
-setup
-parent_oid=$(git rev-parse child~1)
-g push -q origin "$parent_oid:refs/heads/parent"
-printf 'head=parent\nbase=main\nstate=MERGED\n' >"$GH_STATE.7"
-mv "$GH_STATE" "$GH_STATE.8"
-printf 'head=child\nbase=main\nstate=OPEN\n' >"$GH_STATE.8"
-child_before=$(git -C "$ORIGIN" rev-parse child)
-out=$(PATH="$here:$PATH" "$script" 7 2>&1)
-code=$?
-show "$out"
-check "exits 0" "[[ $code == 0 ]]"
-check "warns about the child carrying the parent commit" "grep -q 'warning: #8 (child) is stacked on the merged #7' <<<\"\$out\""
-check "prints the manual rebase" "grep -q 'git rebase --onto origin/main $parent_oid $child_before' <<<\"\$out\""
-check "pushes nothing" "[[ \$(git -C '$ORIGIN' rev-parse child) == '$child_before' ]]"
-
 echo "== already-merged PR: an unrelated open PR is not reported"
 setup
 printf 'head=gone-branch\nbase=main\nstate=MERGED\n' >"$GH_STATE.7"
@@ -133,6 +109,26 @@ show "$out"
 check "stops with an error" "[[ $code != 0 ]]"
 check "names the state" "grep -q 'PR 7 is CLOSED' <<<\"\$out\""
 
+echo "== PR based on another branch is refused"
+setup
+sed -i 's/^base=main/base=parent/' "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "says the base is not main" "grep -q '#7 is based on parent, not main' <<<\"\$out\""
+check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
+
+echo "== fork PR is refused"
+setup
+echo cross=true >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "says it is from a fork" "grep -q '#7 is from a fork' <<<\"\$out\""
+check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
+
 echo "== main held by another worktree"
 setup
 g worktree add -q "$root/elsewhere" main
@@ -143,22 +139,9 @@ check "exits 0" "[[ $code == 0 ]]"
 check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
 check "keeps the branch with a reason" "grep -q 'kept branch child: .*could not switch' <<<\"\$out\""
 
-echo "== real conflict"
+echo "== conflict with main"
 setup
-echo other >c
-g add c
-g commit -qm "C2"
-g switch -q main
-echo clash >c
-g add c
-g commit -qm "clash"
-g push -q origin main
-g switch -q child
-g push -q origin child
-# Drop P from the child so nothing in it is already merged, leaving only the clashing change.
-g rebase -q --onto "$(git rev-parse HEAD~3)" HEAD~2 child 2>/dev/null || true
-g push -q -f origin child
-printf 'head=child\nbase=main\nstate=OPEN\nconflicting_oid=%s\n' "$(git rev-parse child)" >"$GH_STATE"
+printf 'conflicting_oid=%s\n' "$(git rev-parse child)" >>"$GH_STATE"
 before=$(git -C "$ORIGIN" rev-parse child)
 out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
@@ -513,25 +496,6 @@ check "shows the output" "grep -q '^boom' <<<\"\$out\""
 check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
 check "removes the temporary worktree" "[[ \$(git worktree list | wc -l) == 1 ]]"
 
-echo "== pre-merge: fork PR is skipped"
-setup
-# The fake merge cherry-picks the branch, so give the fork a branch that does not repeat what setup landed on main.
-g switch -q main
-g switch -qc fork-head
-echo f >f
-g add f
-g commit -qm F
-g push -q origin fork-head
-pre_merge_hook "$commit_build"
-printf 'head=fork-head\nbase=main\nstate=OPEN\ncross=true\n' >"$GH_STATE"
-out=$(PATH="$here:$PATH" "$script" 7 2>&1)
-code=$?
-show "$out"
-check "exits 0" "[[ $code == 0 ]]"
-check "warns" "grep -q 'warning: #7 is from a fork, so the pre-merge step was skipped' <<<\"\$out\""
-check "does not run the script" "[[ ! -e '$root/env' ]]"
-check "merges" "grep -q '^7 merged (rebase)' <<<\"\$out\""
-
 echo "== pre-merge: --check never runs it"
 setup
 pre_merge_hook "$commit_build"
@@ -540,40 +504,6 @@ code=$?
 show "$out"
 check "passes" "[[ $code == 0 ]]"
 check "does not run the script" "[[ ! -e '$root/env' ]]"
-
-echo "== pre-merge: stack where both PRs get a commit"
-root=$(mktemp -d)
-export ORIGIN=$root/origin.git GH_STATE=$root/state
-git init -q --bare -b main "$ORIGIN"
-g clone -q "$ORIGIN" "$root/main" 2>/dev/null
-cd "$root/main" || exit 1
-echo a >a
-g add a
-g commit -qm A
-g push -q origin main
-g switch -qc parent
-echo p >p
-g add p
-g commit -qm P
-g push -q origin parent
-g switch -qc child
-echo c >c
-g add c
-g commit -qm C
-g push -q origin child
-g switch -q main
-: >"$GH_STATE"
-printf 'head=parent\nbase=main\nstate=OPEN\n' >"$GH_STATE.7"
-printf 'head=child\nbase=parent\nstate=OPEN\n' >"$GH_STATE.8"
-pre_merge_hook "$commit_build"
-out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
-code=$?
-show "$out"
-check "exits 0" "[[ $code == 0 ]]"
-check "runs the script for both" "[[ \$(cut -d' ' -f1-3 '$root/env' | tr '\n' ',') == '7 parent main,8 child main,' ]]"
-check "rebases the child past the parent's pre-merge commit" "grep -q '^8 rebased onto main' <<<\"\$out\""
-check "merges both" "grep -q '^7 merged (rebase)' <<<\"\$out\" && grep -q '^8 merged (rebase)' <<<\"\$out\""
-check "main has each commit once, the child built on the merged parent" "[[ \$(git -C '$ORIGIN' log --format=%s main) == \$'build: child\nC\nbuild: parent\nP\nA' ]]"
 
 # A repo whose src the pre-merge step minifies into out/src.min, a generated path. Source lines 2 and 7 are far enough
 # apart for two PRs to edit them without a source conflict, while both rebuild the one line of out/src.min.
@@ -640,20 +570,6 @@ check "exits 0" "[[ $code == 0 ]]"
 check "drops the generated-only commit" "grep -q 'dropping 1 generated-only commit(s) the pre-merge step rebuilds' <<<\"\$out\""
 check "the output matches the merged source" "[[ \$(git -C '$ORIGIN' show main:out/src.min) == \$(git -C '$ORIGIN' show main:src | tr '\n' ' ') ]]"
 
-echo "== pre-merge: a failing step leaves the children where they were"
-setup
-# The setup PR becomes the parent of a second PR on a copy of its branch.
-git -C "$ORIGIN" branch -q grandchild child
-mv "$GH_STATE" "$GH_STATE.7"
-printf 'head=grandchild\nbase=child\nstate=OPEN\n' >"$GH_STATE.8"
-pre_merge_hook "exit 1"
-out=$(PATH="$here:$PATH" "$script" 7 2>&1)
-code=$?
-show "$out"
-check "stops with an error" "[[ $code != 0 ]]"
-check "names the step" "grep -q 'pre-merge step failed on #7' <<<\"\$out\""
-check "does not retarget the child" "grep -q '^base=child' '$GH_STATE.8'"
-
 echo "== pre-merge: GitHub still reporting the old head is not taken for a settled state"
 setup
 pre_merge_hook "$commit_build"
@@ -665,17 +581,6 @@ check "stops with an error" "[[ $code != 0 && $code != 124 ]]"
 check "says GitHub has not caught up" "grep -q 'GitHub has not caught up' <<<\"\$out\""
 check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
 
-echo "== review gate: generated-only commit on a fork PR still needs a review"
-setup
-mkdir -p .claude
-printf 'public/\n' >.claude/generated-paths
-printf 'cross=true\ncodex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;build: rebuild public\nreviewed_files=a\nhead_files=a;public/x.js\ncommit_files_c2=public/x.js\n' >>"$GH_STATE"
-out=$(PATH="$here:$PATH" "$script" 7 2>&1)
-code=$?
-show "$out"
-check "stops with an error" "[[ $code != 0 ]]"
-check "names the commit" "grep -q '\"build: rebuild public\" is not a fix' <<<\"\$out\""
-
 echo "== --check: refuses merge options"
 setup
 out=$(PATH="$here:$PATH" "$script" --check --keep-branch 7 2>&1)
@@ -683,132 +588,6 @@ code=$?
 show "$out"
 check "fails" "[[ $code != 0 ]]"
 check "says why" "grep -q 'cannot be combined' <<<\"\$out\""
-
-echo "== stack merged in one run, GitHub slow to report the rebased child"
-root=$(mktemp -d)
-export ORIGIN=$root/origin.git GH_STATE=$root/state
-git init -q --bare -b main "$ORIGIN"
-g clone -q "$ORIGIN" "$root/main" 2>/dev/null
-cd "$root/main" || exit 1
-echo a >a
-g add a
-g commit -qm A
-g push -q origin main
-g switch -qc parent
-echo p >p
-g add p
-g commit -qm P
-g push -q origin parent
-g switch -qc child
-echo c >c
-g add c
-g commit -qm C
-g push -q origin child
-g switch -q main
-: >"$GH_STATE"
-printf 'head=parent\nbase=main\nstate=OPEN\n' >"$GH_STATE.7"
-printf 'head=child\nbase=parent\nstate=OPEN\nstale_oid=%s\nlag_reads=3\n' "$(git rev-parse child)" >"$GH_STATE.8"
-out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
-code=$?
-show "$out"
-check "exits 0" "[[ $code == 0 ]]"
-check "rebases the child" "grep -q '^8 rebased onto main' <<<\"\$out\""
-check "merges the child" "grep -q '^8 merged (rebase)' <<<\"\$out\""
-check "main has A, P and C" "[[ \$(git -C '$ORIGIN' log --format=%s main) == \$'C\nP\nA' ]]"
-
-# Stack a <- b <- c on main, all pushed, b in its own worktree and c in none; the main checkout is left on a.
-stack_setup() {
-  root=$(mktemp -d)
-  ORIGIN=$root/origin.git
-  git init -q --bare -b main "$ORIGIN"
-  g clone -q "$ORIGIN" "$root/main" 2>/dev/null
-  cd "$root/main" || exit 1
-  echo m >m
-  g add m
-  g commit -qm A
-  g push -q origin main
-  local branch
-  for branch in a b c; do
-    g switch -qc "$branch"
-    echo "$branch" >"f$branch"
-    g add "f$branch"
-    g commit -qm "${branch}1"
-    g push -q origin "$branch"
-  done
-  g switch -q a
-  g worktree add -q "$root/wt-b" b
-}
-subjects() { git -C "$root/main" log --format=%s "$1" | paste -sd ' '; }
-
-echo "== restack: the bottom gets a new commit"
-stack_setup
-echo more >fa2
-g add fa2
-g commit -qm a2
-out=$("$restack" a b c 2>&1)
-code=$?
-show "$out"
-check "exits 0" "[[ $code == 0 ]]"
-check "uses origin/a as a's old tip" "grep -q '(origin/a)' <<<\"\$out\""
-check "c carries the whole stack once" "[[ \$(subjects c) == 'c1 b1 a2 a1 A' ]]"
-check "b's worktree follows its branch" "[[ \$(git -C '$root/wt-b' rev-parse HEAD) == \$(git rev-parse b) ]]"
-check "pushes b and c" "[[ \$(git -C '$ORIGIN' rev-parse b c) == \$(git rev-parse b c) ]]"
-check "removes the temporary worktree for c" "[[ \$(git worktree list | wc -l) == 2 ]]"
-
-echo "== restack: the bottom was amended and pushed"
-stack_setup
-g commit -q --amend -m "a1 amended"
-g push -q -f origin a
-out=$("$restack" --no-push a b c 2>&1)
-code=$?
-show "$out"
-check "exits 0" "[[ $code == 0 ]]"
-check "uses the reflog as a's old tip" "grep -q '(a@{1})' <<<\"\$out\""
-check "drops the replaced a1" "[[ \$(subjects c) == 'c1 b1 a1 amended A' ]]"
-check "--no-push leaves origin alone" "[[ \$(git -C '$ORIGIN' rev-parse c) != \$(git rev-parse c) ]]"
-
-echo "== restack: conflict"
-stack_setup
-echo clash >fb
-g add fb
-g commit -qm "a2 clash"
-before_b=$(git rev-parse b)
-before_c=$(git rev-parse c)
-out=$("$restack" a b c 2>&1)
-code=$?
-show "$out"
-check "stops with an error" "[[ $code != 0 ]]"
-check "names the file" "grep -q 'conflicts rebasing onto a in fb' <<<\"\$out\""
-check "prints how to finish" "grep -q 'git add fb && git rebase --continue' <<<\"\$out\" && grep -q 'restack.sh b c' <<<\"\$out\""
-check "leaves origin/b and c alone" "[[ \$(git -C '$ORIGIN' rev-parse b) == '$before_b' && \$(git rev-parse c) == '$before_c' ]]"
-
-echo "== restack: check fails"
-stack_setup
-echo more >fa2
-g add fa2
-g commit -qm a2
-before_c=$(git rev-parse c)
-out=$("$restack" --check 'echo checking; echo boom >&2; exit 3' a b c 2>&1)
-code=$?
-show "$out"
-check "stops with an error" "[[ $code != 0 ]]"
-check "shows the check's output" "grep -q '^boom' <<<\"\$out\""
-check "names the branch" "grep -q 'check failed on b' <<<\"\$out\""
-check "does not push b" "[[ \$(git -C '$ORIGIN' rev-parse b) != \$(git rev-parse b) ]]"
-check "does not touch c" "[[ \$(git rev-parse c) == '$before_c' ]]"
-
-echo "== restack: the remote moves after the rebase starts"
-stack_setup
-echo more >fa2
-g add fa2
-g commit -qm a2
-moved=$(git rev-parse main)
-out=$("$restack" --check "git --git-dir='$ORIGIN' update-ref refs/heads/b $moved" a b c 2>&1)
-code=$?
-show "$out"
-check "stops with an error" "[[ \$code != 0 ]]"
-check "names the branch it could not push" "grep -q 'cannot push b' <<<\"\$out\""
-check "leaves the other push in place" "[[ \$(git -C '$ORIGIN' rev-parse b) == '$moved' ]]"
 
 # ---- The reviewer gate: which reviewers are waited for, and each one's state.
 # The registry is the built-in one only; a test that needs a repo layer writes .claude/reviewers.json in the main checkout.
@@ -1134,35 +913,6 @@ cr_setup "30 min"
 echo 'head_date_fail=1' >>"$GH_STATE"
 gate 7
 check "check-run path stops rather than reading a bogus time" "[[ $code != 0 ]] && grep -q 'cannot read the commit' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
-
-echo "== stack: a child pushed to after its reviewers passed"
-root=$(mktemp -d)
-export ORIGIN=$root/origin.git GH_STATE=$root/state
-git init -q --bare -b main "$ORIGIN"
-g clone -q "$ORIGIN" "$root/main" 2>/dev/null
-cd "$root/main" || exit 1
-echo a >a
-g add a
-g commit -qm A
-g push -q origin main
-g switch -qc parent
-echo p >p
-g add p
-g commit -qm P
-g push -q origin parent
-g switch -qc child
-echo c >c
-g add c
-g commit -qm C
-g push -q origin child
-g switch -q main
-: >"$GH_STATE"
-printf 'head=parent\nbase=main\nstate=OPEN\npush_branch_on_merge_read=child\n' >"$GH_STATE.7"
-printf 'head=child\nbase=parent\nstate=OPEN\n' >"$GH_STATE.8"
-out=$(PATH="$here:$PATH" "$script" 7 8 2>&1)
-code=$?
-show "$out"
-check "the child is not rebased and merged unreviewed" "[[ $code != 0 ]] && grep -q '#8 was pushed to' <<<\"\$out\" && ! grep -q '^8 merged' <<<\"\$out\""
 
 echo "== gate: an unreadable completion time"
 cr_setup "30 min"
