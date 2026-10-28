@@ -38,6 +38,12 @@ Act.define("system.kill_app", {
   run = Cmd("hyprctl", "kill"),
 })
 
+Act.define("system.toggle_autolock", {
+  label = "Toggle Auto-Lock",
+  intent = "Turn the automatic screen lock on, or off when it is on.",
+  run = Cmd(Scripts.toggle_autolock),
+})
+
 Act.define("system.replay_autostart", {
   label = "Replay Autostart",
   intent = "Run the session start-up commands again.",

@@ -36,6 +36,7 @@ Submap.define({
     { "J",         tool("lazyjournal"),                 "Journal (lazyjournal)" },
     { "K",         "system.kill_app" },
     { "L",         { "power.confirm", { "lock" } }, "Lock" },
+    { "SHIFT + L", "system.toggle_autolock" },
     { "R",         { "power.confirm", { "reboot" } }, "Reboot" },
     { "SHIFT + R", "system.replay_autostart" },
     { "P",         { "power.confirm", { "poweroff" } }, "Power Off" },
