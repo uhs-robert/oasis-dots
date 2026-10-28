@@ -59,6 +59,7 @@ else:
 """
 
 
+# Negative checks (nothing may happen) still use a short fixed window: there is no event to poll for.
 def wait_until(condition, timeout=5.0, what="condition"):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -226,10 +227,11 @@ class DuckTest(unittest.TestCase):
     def test_restore_waits_out_the_hold_off(self):
         self.start_ducked()
         writes_before = len(self.rig.volume_writes())
+        idle_sent = time.monotonic()
         self.rig.say("idle")
-        time.sleep(0.3)
-        self.assertEqual(len(self.rig.volume_writes()), writes_before)
         wait_until(self.volume_is(1.0), what="the restore")
+        # Judged by the fake's write time: the follower cannot have received "idle" before it was sent.
+        self.assertGreaterEqual(self.rig.calls("set-volume")[writes_before]["time"], idle_sent + 0.5)
 
     def test_muted_sink_is_left_alone(self):
         self.rig.set_sink(79, muted=True)
@@ -428,10 +430,10 @@ class DuckTest(unittest.TestCase):
         self.assertAlmostEqual(self.rig.sink()["volume"], 1.0, places=3)
         self.rig.open_stream()
         # The follower waits one second before reconnecting.
-        wait_until(lambda: self.rig.proc.poll() is None)
-        time.sleep(1.3)
+        self.assertIsNone(self.rig.proc.poll())
+        # The FIFO holds the line until the follower reconnects, so there is nothing to wait for first.
         self.rig.say("recording")
-        wait_until(self.volume_is(0.3), what="a duck on the new stream")
+        wait_until(self.volume_is(0.3), timeout=10, what="a duck on the new stream")
 
     def test_wpctl_failing_does_not_duck_or_crash(self):
         self.rig.set_state(fail_all=True)
@@ -450,8 +452,8 @@ class DuckTest(unittest.TestCase):
         self.rig.start()
         self.rig.say("recording")
         wait_until(lambda: len(self.rig.calls("set-volume")) >= 1, what="the first write")
-        time.sleep(0.3)
-        self.assertIsNone(self.rig.journal())
+        self.assertTrue(self.rig.calls("set-volume")[0]["journal"])
+        wait_until(lambda: self.rig.journal() is None, what="the failed write to drop the journal")
         self.assertIsNone(self.rig.proc.poll())
         self.assertEqual(self.rig.sink()["volume"], 1.0)
 
