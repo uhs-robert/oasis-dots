@@ -245,16 +245,42 @@ ShellRoot {
         root.check("back on the shared layout, which lacks it, the tray lists it again", [BarEditor.sharing, BarEditor.hidden_list.indexOf("system:memory") >= 0], [true, true]);
     }
 
+    // What the hint bar's `c` reads now.
+    function c_label() {
+        const keys = stage_hints.content.groups.reduce((all, g) => all.concat(g.keys), []);
+        const c = keys.find(k => k[0] === "c");
+        return c ? c[1] : "";
+    }
+
+    // A real Bar for monitor B, so a module's own `compact` can be read off its live item.
+    Loader {
+        id: live_bar
+        active: false
+        sourceComponent: Bar {
+            screen_name: "B"
+            width: 1920
+            height: 34
+            rule: BarLayout.effective(root.layout_rule, BarSettings.state, "MB @ B")
+        }
+    }
+
     // req: BAREDIT-25, BAREDIT-26 `c` in NORMAL steps the selected module's own compact; one with no compact form says so.
     function scenario_module_compact() {
+        live_bar.active = true;
         BarEditor.open("B");
         BarEditor.selected = "clock";
         const steps = [BarEditor.selected_compact];
+        const labels = [root.c_label()];
+        const live = [BarItems.item_of("B", "clock").compact];
         for (let i = 0; i < 3; i++) {
             root.keys("c");
             steps.push(BarEditor.selected_compact);
+            labels.push(root.c_label());
+            live.push(BarItems.item_of("B", "clock").compact);
         }
         root.check("c steps the selected module inherit, on, off, inherit", steps, ["inherit", "on", "off", "inherit"]);
+        root.check("the hint's c names each step", labels, ["compact: inherit", "compact: on", "compact: off", "compact: inherit"]);
+        root.check("the live clock's compact follows the override, its neighbour stays", [live, BarItems.item_of("B", "tray") !== null, !!BarItems.item_of("B", "tray") && BarItems.item_of("B", "tray").compact], [[false, true, false, false], true, false]);
         root.check("each step is an undo step and the cycle ends where it began", [BarEditor.undo_stack.length, "compact_modules" in BarSettings.state.shared], [3, false]);
         root.keys("c");
         const view = () => BarLayout.effective(root.layout_rule, BarSettings.state, BarEditor.screen_key);
@@ -263,7 +289,11 @@ ShellRoot {
         root.check("u undoes it", ["compact_modules" in BarSettings.state.shared, BarEditor.selected_compact], [false, "inherit"]);
         root.keys("Ctrl+r");
         root.check("Ctrl+r redoes it", BarEditor.selected_compact, "on");
-        root.keys("V c Enter");
+        root.keys("V");
+        const visual_off = root.c_label();
+        root.keys("c");
+        root.check("in VISUAL the hint's c names the bar's compact", [visual_off, root.c_label()], ["compact: off", "compact: on"]);
+        root.keys("Enter");
         root.check("the whole bar compact does not touch the override", [BarEditor.bar_compact, BarSettings.state.shared.compact_modules, BarLayout.module_compact(view(), "tray")], [true, { clock: true }, true]);
         root.keys("c");
         root.check("an off override keeps the module out of a compact bar", [BarEditor.selected_compact, BarLayout.module_compact(view(), "clock"), BarLayout.module_compact(view(), "volume")], ["off", false, true]);
@@ -275,11 +305,23 @@ ShellRoot {
         BarEditor.selected = "tray";
         const before = JSON.stringify(BarSettings.state);
         const undo_depth = BarEditor.undo_stack.length;
-        root.check("a module with no compact form names none", BarEditor.selected_compact, "none");
+        root.check("a module with no compact form names none", [BarEditor.selected_compact, root.c_label()], ["none", "compact: none"]);
         root.keys("c");
         root.check("c on it changes nothing and says so", [JSON.stringify(BarSettings.state) === before, BarEditor.undo_stack.length, BarEditor.notice], [true, undo_depth, "tray has no compact form"]);
         root.keys("h");
         root.check("the next key clears the message", BarEditor.notice, "");
+        live_bar.active = false;
+    }
+
+    // req: BAREDIT-25 a bars.json rule's own per-module compact is what the editor shows and steps from.
+    function scenario_rule_compact() {
+        const rule = Object.assign({}, root.layout_rule, { compact_modules: { clock: true } });
+        BarEditor.tracked_of = s => rule;
+        BarEditor.open("B");
+        BarEditor.selected = "clock";
+        const shown = [BarEditor.selected_compact, BarEditor.compact_marks];
+        root.keys("c");
+        root.check("the rule's override shows and the first c turns it off", [shown, BarEditor.selected_compact, BarSettings.state.shared.compact_modules], [["on", [{ entry: "clock", on: true }]], "off", { clock: false }]);
     }
 
     // req: BAREDIT-22 nothing left to add.
@@ -518,6 +560,7 @@ ShellRoot {
         editor_popups: { steps: [[100, () => root.run_editor("popups")], [300, () => root.scenario_popups_after()], [500, () => root.scenario_popups_hover()], [700, () => root.scenario_popups_hands_off()]], end: 900 },
         editor_hint_keys: { steps: [[100, () => root.run_editor("hint_keys")]], end: 500 },
         editor_hidden_add: { steps: [[100, () => root.run_editor("hidden_add")]], end: 500 },
+        editor_rule_compact: { steps: [[100, () => root.run_editor("rule_compact")]], end: 500 },
         editor_module_compact: { steps: [[100, () => root.run_editor("module_compact")]], end: 500 },
         editor_hidden_empty: { steps: [[100, () => root.run_editor("hidden_empty")]], end: 500 },
         editor_hint_edge: { steps: [[100, () => root.run_editor("hint_edge")]], end: 500 },
