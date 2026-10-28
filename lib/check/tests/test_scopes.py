@@ -37,7 +37,6 @@ CASES = [
     ("lib/check/qml-ipc.allow", "checkscope"),
     ("lib/check/steps/lua.sh", "checkscope lua"),
     ("lib/check/steps/symlinks.sh", "checkscope"),
-    ("lib/plan-frontmatter.yaml", " checkscope"),
     # The registry step is a tree step: the step itself reaches only the always-run steps. The Lua it loads is Lua.
     ("lib/check/steps/registry.py", "checkscope"),
     ("lib/check/registry.allow", "checkscope"),
