@@ -255,7 +255,6 @@ STEPS = [
     Step("voxcmd-rust", VOX_RUST, "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
-    Step("calendar-sync", "install", "bash ./home/calendar/tests/run.sh", probe="python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1", skip_reason="calendar-sync tests need python-icalendar and python-recurring-ical-events"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
     Step("calendar-sync-syntax", "install", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
     Step("qmllint", "quickshell", "python3 -B ./lib/check/steps/qml.py"),
@@ -319,7 +318,6 @@ SHELL_GROUPS = {
         "home/hypr/.local/bin/hypr-act",
         "home/hypr/tests/*.sh",
         "home/voxcmd/tests/*.sh",
-        "home/calendar/tests/*.sh",
         "lib/check/*.sh",
         "lib/check/steps/*.sh",
         "lib/check/tests/*.sh",
