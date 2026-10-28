@@ -9,4 +9,4 @@ These `.ini` files are the single list of what gets installed; adding a package 
 - `stow.ini`: dotfile packages (`[CORE]` stowed automatically, `[OPTIONAL]` picked with fzf, `[SERVER]` instead of `[CORE]` under `--server`).
 - `repos.ini`: git repositories to clone into `repos/`.
 
-The `packages` check step (`lib/check/steps/packages.sh`) fails on a name listed in two manifests (`stow.ini` and `repos.ini` excepted, since they name directories and repos), on a `stow.ini` entry with no `home/` folder, and on a `home/` folder in neither `stow.ini` nor its `unstowed` list.
+The `packages` check step (`lib/check/steps/packages.sh`) fails on a name listed in two manifests (`stow.ini` and `repos.ini` excepted, since they name directories and repos), on a `stow.ini` entry with no `home/` folder, and on a tracked `home/` folder that `stow.ini` does not list.
