@@ -66,7 +66,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
    - For concurrency or lifecycle work (signals, locks, processes that hand over or race), name those risks in the brief and require tests that drive each risky path before review. Review rounds otherwise find these bugs one at a time.
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
-   - A fix adds a test only when the bug could come back silently and nothing else would catch it; the agent shows it failing on the unfixed code first. Otherwise it says in one line why no test.
+   - A fix adds a test when, and only when, the bug could come back silently and nothing else would catch it; the agent shows it failing on the unfixed code first. Otherwise it says in one line why no test.
    - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement. Work that stands alone goes in a new file; where siblings must share a file (a list, table, index or config), keep each edit a small addition, or run those agents one after another.
 
 6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
