@@ -322,6 +322,13 @@ ShellRoot {
         const shown = [BarEditor.selected_compact, BarEditor.compact_marks];
         root.keys("c");
         root.check("the rule's override shows and the first c turns it off", [shown, BarEditor.selected_compact, BarSettings.state.shared.compact_modules], [["on", [{ entry: "clock", on: true }]], "off", { clock: false }]);
+        root.keys("c");
+        root.check("c again turns it back on, not stuck", BarEditor.selected_compact, "on");
+        root.keys("u");
+        BarEditor.tracked_of = s => s.name === "B" ? rule : root.layout_rule;
+        root.check("a sharing peer under another rule marks from its own rule", [BarEditor.compact_marks_for("B"), BarEditor.compact_marks_for(root.real_name)], [[{ entry: "clock", on: false }], [{ entry: "clock", on: false }]]);
+        BarSettings.set_state(BarLayout.normalize(null));
+        root.check("with nothing saved only the screen whose rule names it is marked", [BarEditor.compact_marks_for("B"), BarEditor.compact_marks_for(root.real_name)], [[{ entry: "clock", on: true }], []]);
     }
 
     // req: BAREDIT-22 nothing left to add.
