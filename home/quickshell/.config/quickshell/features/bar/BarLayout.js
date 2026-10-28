@@ -576,3 +576,10 @@ function set_position_for_mode(state, key, position) {
     if (!is_sharing(normalize(state), key)) return set_position(state, key, position);
     return set_shared_position(clear_position(state, key), position);
 }
+
+// What `x` in VISUAL forgets: the saved position set_position_for_mode would write. A sharing monitor also loses its own saved
+// one, which survives `o` back to shared and would outrank the cleared shared position; an own-layout monitor never touches the shared one.
+function forget_position_for_mode(state, key) {
+    if (!is_sharing(normalize(state), key)) return clear_position(state, key);
+    return clear_shared_position(clear_position(state, key));
+}

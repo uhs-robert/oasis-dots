@@ -174,6 +174,13 @@ const cases = [
   ["a sharing monitor's own saved edge is cleared so the shared move shows", () => { const s = L.set_position_for_mode(L.set_position(L.normalize(null), key, "bottom"), key, "left"); return [s.shared.position, key in s.positions]; }, ["left", false]],
   ["a monitor with its own layout moves only its own edge", () => { const s = L.set_position_for_mode(L.set_own(L.normalize(null), key, rule3, false), key, "right"); return [s.positions[key], "position" in s.shared]; }, ["right", false]],
   ["is_sharing is true until the monitor has its own layout", () => [L.is_sharing(L.normalize(null), key), L.is_sharing(L.set_own(L.normalize(null), key, rule3, false), key)], [true, false]],
+  // req: BAREDIT-20
+  ["forgetting on a sharing monitor clears the shared position", () => { const s = L.forget_position_for_mode(L.set_shared_position(L.normalize(null), "left"), key); return ["position" in s.shared, L.position_source(rule3, s, key)]; }, [false, "default"]],
+  ["forgetting on a sharing monitor also clears its stale own position", () => { const s = L.forget_position_for_mode(L.set_shared_position(L.set_position(L.normalize(null), key, "bottom"), "left"), key); return [key in s.positions, "position" in s.shared]; }, [false, false]],
+  ["forgetting falls back to the rule position from bars.json", () => { const r = Object.assign({}, rule3, { position: "bottom" }); const s = L.forget_position_for_mode(L.set_shared_position(L.normalize(null), "left"), key); return [L.position_source(r, s, key), L.position_of(L.effective(r, s, key))]; }, ["bars.json", "bottom"]],
+  ["forgetting on an own-layout monitor clears only its own position", () => { const own = L.set_position(L.set_own(L.set_shared_position(L.normalize(null), "left"), key, rule3, false), key, "right"); const s = L.forget_position_for_mode(own, key); return [key in s.positions, s.shared.position, L.position_source(rule3, s, key)]; }, [false, "left", "global"]],
+  ["forgetting with nothing saved changes nothing", () => JSON.stringify(L.forget_position_for_mode(L.normalize(null), key)) === JSON.stringify(L.normalize(null)), true],
+  ["forgetting does not mutate its input", () => { const s = L.set_position(L.set_shared_position(L.normalize(null), "left"), key, "top"); const before = JSON.stringify(s); L.forget_position_for_mode(s, key); return JSON.stringify(s) === before; }, true],
 ];
 
 let failed = 0;

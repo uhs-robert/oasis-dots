@@ -18,6 +18,13 @@ PanelWindow {
     readonly property bool has_bar: BarEditor.monitors.some(m => m.name === root.screen_name)
     // A screen showing the layout being edited, which follows every change.
     readonly property bool peer: !root.keyboard_owner && BarEditor.sharing && BarEditor.sharing_screens().indexOf(root.screen_name) >= 0
+    // What decided the bar's edge, worded for the VISUAL hint; a monitor with its own layout only follows the shared position.
+    readonly property string position_source_label: {
+        const source = BarEditor.position_source;
+        if (source === "monitor") return "saved for this monitor";
+        if (source === "global") return BarEditor.sharing ? "shared position" : "follows the shared position";
+        return source === "bars.json" ? "follows bars.json" : "follows the default";
+    }
     readonly property bool carrying: BarEditor.mode === "hidden" && BarEditor.picked !== ""
     readonly property bool shows_selection: BarEditor.mode === "normal" || root.carrying
     readonly property var bar_item: BarItems.item_of(root.screen_name, "bar")
@@ -339,7 +346,7 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 wrap: false
                 text: {
-                    if (BarEditor.mode === "visual") return "hjkl move bar · Enter/Esc done";
+                    if (BarEditor.mode === "visual") return BarEditor.position_edge + " (" + root.position_source_label + ") · hjkl move" + (BarEditor.can_forget ? " · x forget" : "") + " · u undo · Esc done";
                     if (BarEditor.mode === "hidden") return BarEditor.picked !== "" ? "h/l place · Enter drop · Esc cancel" : "h/l select · Enter pick up · Esc back";
                     return "h/l select · H/L move · x hide · o own · c compact · ? help";
                 }
@@ -466,7 +473,7 @@ PanelWindow {
             anchors.topMargin: help_title.y + help_title.height + 8
             anchors.margins: 12
             popup_keys: false
-            text: "h/l select module · H/L move module · c compact · o own layout · a add argument · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar · Esc monitor select · q close"
+            text: "h/l select module · H/L move module · c compact · o own layout · a add argument · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar (then hjkl moves it to an edge, x forgets the saved position, u undoes) · Esc monitor select · q close"
         }
     }
 }
