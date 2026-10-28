@@ -15,16 +15,18 @@ where an edit here that matters to the step shows up.
 
 import glob
 import os
+import re
 
 from typing import NamedTuple
 
 # The scopes, one per folder of the repository except the voxcmd ones, which split by how long their tests take. The
 # crate and the integrations feed all of the voxcmd scopes, but not voxduck (voxtype's own package).
-VOX_PHRASES, VOX_CLICK, VOX_DUCK, VOX_REST = "voxphrases", "voxclick", "voxduck", "voxrest"
-# runner.py reads this to tell a suite that VOXCMD_ONLY_SECTIONS can cut short from the other steps, so voxcmd-rust,
-# which shares VOX_REST, counts as one: its pass is then withheld too, which only errs towards running it again.
+VOX_PHRASES, VOX_CLICK, VOX_DUCK, VOX_REST, VOX_RUST = "voxphrases", "voxclick", "voxduck", "voxrest", "voxrust"
+# runner.py reads this to tell a suite that VOXCMD_ONLY_SECTIONS can cut short from the other steps, so the crate's
+# scope VOX_RUST stays out of it.
 VOXCMD_SUITE_SCOPES = (VOX_PHRASES, VOX_CLICK, VOX_REST)
 VOXCMD_SUITES = " ".join(VOXCMD_SUITE_SCOPES)
+VOXCMD_SUITES_AND_CRATE = VOXCMD_SUITES + " " + VOX_RUST
 
 # Every matching entry adds its scope, ahead of the PATH_SCOPES one. Empty since markdown under lib/check maps to no steps.
 ADDITIVE_SCOPES = []
@@ -47,7 +49,7 @@ PATH_SCOPES = [
     # Markdown runs no step, ahead of every folder rule; the two tables below are generated into .md files that the
     # docs-generated step compares, so those keep it.
     ("docs/keybinds.md", "docsgen"),
-    ("home/quickshell/.config/quickshell/README.md", "docsgen quickshell"),
+    ("home/quickshell/.config/quickshell/README.md", "docsgen"),
     ("*.md", ""),
     # hypr: the Lua config and its tests. The files outside the folder that a step reads come first.
     ("lib/check/steps/lua.sh", "checkscope hypr"),
@@ -67,7 +69,7 @@ PATH_SCOPES = [
     ("system/etc/greetd/*", "hypr"),
     ("lib/install/greeter-monitors.lua", "install hypr"),
     # quickshell: the bar, its node and runtime tests, shaders and the lock skins.
-    ("lib/common/greeter-files.sh", "quickshell install agents"),
+    ("lib/common/greeter-files.sh", "quickshell install skills"),
     ("lib/check/steps/qml_ipc.py", "checkscope docsgen"),
     ("lib/check/qml_imports.py", "checkscope quickshell docsgen"),
     ("lib/check/steps/qml_paths.py", "checkscope quickshell docsgen"),
@@ -89,16 +91,16 @@ PATH_SCOPES = [
     # voxcmd. The suites build and run the crate, so its sources reach all of them as well as cargo's own tests (voxrest).
     # Snapshots, the generated goldens and the crate's test sources are read only by cargo test; the other fixtures are
     # read by both. An integration file reaches the suites, and the crate through tests/integrations.rs.
-    ("lib/check/steps/voxcmd-rust.sh", "checkscope voxrest"),
+    ("lib/check/steps/voxcmd-rust.sh", "checkscope voxrust"),
     # timer.rs and run-monitors.sh are consumers OUTSIDE_REFS names, so they reach the quickshell scope too.
-    ("home/voxcmd/src/timer.rs", VOXCMD_SUITES + " quickshell"),
+    ("home/voxcmd/src/timer.rs", VOXCMD_SUITES_AND_CRATE + " quickshell"),
     ("home/voxcmd/tests/run-monitors.sh", VOX_CLICK + " quickshell"),
-    ("home/voxcmd/src/*", VOXCMD_SUITES),
-    ("home/voxcmd/Cargo.*", VOXCMD_SUITES),
-    ("home/voxcmd/rustfmt.toml", VOX_REST),
-    ("home/voxcmd/tests/*.rs", VOX_REST),
-    ("home/voxcmd/tests/snapshots/*", VOX_REST),
-    ("home/voxcmd/tests/fixtures/*-goldens.tsv", VOX_REST),
+    ("home/voxcmd/src/*", VOXCMD_SUITES_AND_CRATE),
+    ("home/voxcmd/Cargo.*", VOXCMD_SUITES_AND_CRATE),
+    ("home/voxcmd/rustfmt.toml", VOX_RUST),
+    ("home/voxcmd/tests/*.rs", VOX_RUST),
+    ("home/voxcmd/tests/snapshots/*", VOX_RUST),
+    ("home/voxcmd/tests/fixtures/*-goldens.tsv", VOX_RUST),
     # The shell suites by what each reads (found by following their source/read lines; run.sh stands for voxcmd-click and
     # carries run-sessions, run-modes, run-sequences, run-overview and run-monitors). Ahead of the fixture catch-all below.
     ("home/voxcmd/tests/run-phrases.sh", VOX_PHRASES),
@@ -145,14 +147,14 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/monitors/*", VOX_CLICK),
     # Only the crate's tests read these (no shell suite names them), except integrations/, which the click suite also reads.
     # A fixture added without a rule here falls to home/voxcmd/*, which test_voxcmd_suite_scopes.py's tripwire rejects.
-    ("home/voxcmd/tests/fixtures/monitor-places/*", VOX_REST),
-    ("home/voxcmd/tests/fixtures/speech/*", VOX_REST),
-    ("home/voxcmd/tests/fixtures/match/*", VOX_REST),
-    ("home/voxcmd/tests/fixtures/ask/*", VOX_REST),
-    ("home/voxcmd/tests/fixtures/click/*", VOX_REST),
-    ("home/voxcmd/tests/fixtures/integrations/*", VOX_REST + " " + VOX_CLICK),
+    ("home/voxcmd/tests/fixtures/monitor-places/*", VOX_RUST),
+    ("home/voxcmd/tests/fixtures/speech/*", VOX_RUST),
+    ("home/voxcmd/tests/fixtures/match/*", VOX_RUST),
+    ("home/voxcmd/tests/fixtures/ask/*", VOX_RUST),
+    ("home/voxcmd/tests/fixtures/click/*", VOX_RUST),
+    ("home/voxcmd/tests/fixtures/integrations/*", VOX_RUST + " " + VOX_CLICK),
     # The suites' own config for these is the sandbox's copy of the package, so a real integration reaches all of them.
-    ("home/voxcmd/.config/voxcmd/integrations/*", VOXCMD_SUITES),
+    ("home/voxcmd/.config/voxcmd/integrations/*", VOXCMD_SUITES_AND_CRATE),
     ("home/voxcmd/*", VOXCMD_SUITES),
     ("home/voxtype/.local/bin/voxtype-daemon", VOXCMD_SUITES),
     # run-wake.sh puts this directory on PATH and asserts the prompt voxcmd builds through it; no other suite runs it.
@@ -168,14 +170,15 @@ PATH_SCOPES = [
     ("system/etc/makepkg.conf.d/*", "install"),
     ("system/usr/local/bin/qs-greeter", "install"),
     ("home/calendar/*", "install"),
-    # agents: the hooks and the skills whose tests have steps.
-    ("home/claude/.claude/hooks/*", "agents"),
-    ("home/claude/.claude/skills/orchestrator-handoff/*", "agents"),
-    ("home/claude/.claude/skills/orchestrator/*", "agents"),
-    ("home/claude/.claude/skills/merge-prs/*", "agents"),
-    (".claude/hooks/*", "agents"),
-    (".claude/skills/owner-test-bar/*", "agents"),
-    (".claude/skills/ship-batch/*", "agents"),
+    # hooks: the agent hooks, the owner-test-bar and orchestrator (reviewers) tests. skills: the ship-batch and merge-prs
+    # suites, which take minutes where the hook tests take seconds.
+    ("home/claude/.claude/hooks/*", "hooks"),
+    ("home/claude/.claude/skills/orchestrator-handoff/*", "hooks"),
+    ("home/claude/.claude/skills/orchestrator/*", "hooks"),
+    ("home/claude/.claude/skills/merge-prs/*", "skills"),
+    (".claude/hooks/*", "hooks"),
+    (".claude/skills/owner-test-bar/*", "hooks"),
+    (".claude/skills/ship-batch/*", "skills"),
     # checkscope: the runner's own modules and tests, and the scripts whose tests are unittest cases in lib/check/tests.
     ("lib/plan_new.py", "checkscope"),
     ("lib/check/*", "checkscope"),
@@ -212,18 +215,23 @@ class Step(NamedTuple):
     serial_lane: bool = False
 
 
-
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def discovered(pattern, scope, command, name_prefix="", needs=(), skip_reason=""):
+def discovered(pattern, scope, command, name_prefix="", always_needs=(), maybe_needs=()):
     """One step per file matching pattern (relative to the repository root), named from the file: its stem with `_` as `-`,
-    or for a `<dir>/run.sh` pattern the directory's name. Adding a test file that follows the convention needs no entry."""
+    or for a `<dir>/run.sh` pattern the directory's name. Adding a test file that follows the convention needs no entry.
+    A step needs always_needs plus those maybe_needs the file's text names, so a test is not skipped for a tool it
+    never runs."""
     steps = []
     for path in sorted(glob.glob(os.path.join(REPO, pattern))):
         rel = os.path.relpath(path, REPO)
         parts = rel.split("/")
         stem = parts[-2] if parts[-1] == "run.sh" else os.path.splitext(parts[-1])[0]
+        with open(path, errors="replace") as handle:
+            text = handle.read()
+        needs = tuple(always_needs) + tuple(tool for tool in maybe_needs if re.search(r"(?<![\w-])" + tool + r"(?![\w-])", text))
+        skip_reason = f"the {stem} test needs " + ", ".join(needs) if needs else ""
         steps.append(Step(name_prefix + stem.replace("_", "-"), scope, command % ("./" + rel), needs, skip_reason=skip_reason))
     return steps
 
@@ -239,7 +247,7 @@ STEPS = [
     Step("voxcmd-wake", VOX_REST, "bash ./home/voxcmd/tests/run-wake.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxtype-duck", VOX_DUCK, "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
     Step("voxcmd-firefox", VOX_REST, "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
-    Step("voxcmd-rust", VOX_REST, "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
+    Step("voxcmd-rust", VOX_RUST, "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     Step("calendar-sync", "install", "bash ./home/calendar/tests/run.sh", probe="python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1", skip_reason="calendar-sync tests need python-icalendar and python-recurring-ical-events"),
@@ -247,10 +255,10 @@ STEPS = [
     Step("calendar-sync-syntax", "install", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
     Step("qmllint", "quickshell", "python3 -B ./lib/check/steps/qml.py"),
     Step("shellcheck", "shell", 'status=0; [ ! -s "$CHECK_LOGS/plain.list" ] || xargs shellcheck <"$CHECK_LOGS/plain.list" || status=1; [ ! -s "$CHECK_LOGS/sourcing.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/sourcing.list" || status=1; [ ! -s "$CHECK_LOGS/agent.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/agent.list" || status=1; exit $status', ("shellcheck",), skip_reason="shellcheck not installed"),
-    Step("owner-test-bar", "agents", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),
-    Step("ship-batch", "agents", "bash ./.claude/skills/ship-batch/tests/run.sh"),
-    Step("merge-prs", "agents", "bash ./home/claude/.claude/skills/merge-prs/tests/run.sh"),
-    Step("reviewers", "agents", "bash ./home/claude/.claude/skills/orchestrator/tests/run.sh && bash ./home/claude/.claude/skills/orchestrator/tests/local.sh", ("jq", "git"), skip_reason="the reviewer tests need jq and git"),
+    Step("owner-test-bar", "hooks", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),
+    Step("ship-batch", "skills", "bash ./.claude/skills/ship-batch/tests/run.sh"),
+    Step("merge-prs", "skills", "bash ./home/claude/.claude/skills/merge-prs/tests/run.sh"),
+    Step("reviewers", "hooks", "bash ./home/claude/.claude/skills/orchestrator/tests/run.sh && bash ./home/claude/.claude/skills/orchestrator/tests/local.sh", ("jq", "git"), skip_reason="the reviewer tests need jq and git"),
     Step("shfmt", "shell", 'status=0; cat "$CHECK_LOGS/plain.fmt.list" "$CHECK_LOGS/sourcing.fmt.list" | grep . | xargs -r shfmt -i 2 -d || status=1; [ ! -s "$CHECK_LOGS/agent.fmt.list" ] || xargs shfmt -i 2 -d <"$CHECK_LOGS/agent.fmt.list" || status=1; exit $status', ("shfmt",), skip_reason="shfmt not installed"),
     Step("stylua", "hypr", "stylua --respect-ignores --check home/hypr/.config/hypr", ("stylua",), skip_reason="stylua not installed"),
     Step("luacheck", "hypr", "sh ./lib/check/steps/lua.sh"),
@@ -283,12 +291,13 @@ STEPS = [
     Step("ignored-integrations", "tree", "sh ./lib/check/steps/ignored-integrations.sh"),
 ]
 # Found by naming convention: a new test in one of these places is a step without an entry above.
-STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", needs=("lua", "jq"), skip_reason="the hypr tests need lua and jq")
-STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", needs=("node", "jq"), skip_reason="the quickshell node tests need node and jq")
-STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", needs=("qs", "python3"), skip_reason="the quickshell runtime tests need qs and python3")
-STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", needs=("jq", "zsh"), skip_reason="the install tests need jq and zsh")
-STEPS += discovered(".claude/hooks/tests/*.sh", "agents", "bash %s", "hook-", ("jq", "tmux", "flock"), HOOKS_SKIP)
-STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "agents", "bash %s", "hook-", ("jq", "tmux", "flock"), HOOKS_SKIP)
+STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua", "jq"))
+STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", always_needs=("node",), maybe_needs=("jq",))
+STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", always_needs=("qs",), maybe_needs=("python3",))
+STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", maybe_needs=("jq", "zsh"))
+STEPS += discovered(".claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
+STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
+
 
 # The shell files by the group shellcheck lints them in, as shell globs (one left unmatched stays in the list as
 # written). A group is linted whole when any member changes, since a member can source another.
