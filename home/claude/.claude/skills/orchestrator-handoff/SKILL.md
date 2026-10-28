@@ -38,7 +38,7 @@ The tracking docs are the local, git-ignored `.md` files the orchestrator has be
 - the trackers listed in `.plans/roadmap.md` at the main checkout's root, else in `.planning/roadmap.md` (an older layout);
 - root `.md` files listed in `<git-common-dir>/info/exclude` (an older convention).
 
-Edit them at the main checkout; worktrees do not see them. With none (a short task tracked only in chat), create it with `just plan-new <task> tracker` at the main checkout (it makes `.plans/<task>/<task>.md` and the dirs), add a line to `.plans/roadmap.md` (create it if absent), and make sure `/.plans/` and `/.logs/` are ignored as `~/.claude/skills/orchestrator/SKILL.md` describes; give it a Resume here and a decisions log. Delete any draft whose item has merged, then, for each doc:
+Edit them at the main checkout; worktrees do not see them. With none (a short task tracked only in chat), create `.plans/<task>/<task>.md` at the main checkout's root (create the dirs if missing; `just plan-new <task> tracker` does it where the repo has that recipe), add a line to `.plans/roadmap.md` (create it if absent), and make sure `/.plans/` and `/.logs/` are ignored as `~/.claude/skills/orchestrator/SKILL.md` describes; give it a Resume here and a decisions log. Delete any draft whose item has merged, then, for each doc:
 
 - **Resume here:** date and "handoff to the Nth orchestrator"; phase; open PRs; running agents; worktrees with branch, commit and whether pushed; standing approvals; what waits on the owner; the next steps in order. Mark each piece you keep as "held by `<your session>` until <its break>", with what the successor does once it arrives. Keep it under 3,000 characters: it holds the current state only, and settled history moves to the decisions log or the item rows.
 - Each item's row: status and PR.
@@ -48,7 +48,7 @@ Edit them at the main checkout; worktrees do not see them. With none (a short ta
 
 Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in.
 
-Docs under `.plans/` carry YAML front matter: scaffold a new tracker, draft or handoff with `just plan-new <topic> <tracker|plan|handoff> [item]` from the main checkout and fill it in; a hook reports bad front matter on write. At end of day set `owner_session` to none.
+Docs under `.plans/` carry YAML front matter: use the repo's scaffold where it has one (`just plan-new <topic> <tracker|plan|handoff> [item]` from the main checkout, if the justfile has that recipe), else write the front matter by hand: `kind` (tracker | plan | handoff), `status` (active | parked | done), `owner_session` (the owning session, or none), `updated` (date), `branch` (or none; plans and handoffs), `pr` (number or none), plus any field the repo's own rules require. At end of day set `owner_session` to none.
 
 This is your last doc edit once the successor accepts, bar setting `owner_session` to it right after its `TAKEN` reply: from then on it owns the docs, and you send it what they need instead, so two sessions never edit one file.
 

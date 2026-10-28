@@ -71,7 +71,7 @@ class SpecFrontMatterTest(SpecsCase):
         found = self.spec(spec_text(GOOD_FRONT.replace("id: bar", 'id: "baz"')))
         self.assertIn("specs/core/bar.md:1: id baz is not the file name bar", found)
 
-    def test_an_impossible_date_warns(self):
+    def test_an_impossible_date_fails(self):
         self.assert_one_mentions(self.spec(spec_text("id: bar\ntitle: Bar\nstatus: approved\napproved: 2026-99-99\n")), "bar.md", "approved")
 
     def test_crlf_line_endings_pass(self):

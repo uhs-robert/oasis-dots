@@ -221,6 +221,8 @@ PATH_SCOPES = [
     ("system/etc/greetd/*", "lua"),
     # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these, plus the
     # shell linters for the shell files among them.
+    # Its tests are unittest cases in lib/check/tests, so the script reaches check-cache.
+    ("lib/plan_new.py", "checkscope"),
     ("lib/*", ""),
     ("install.sh", ""),
     ("uninstall.sh", ""),

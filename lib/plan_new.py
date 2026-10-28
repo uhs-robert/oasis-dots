@@ -4,13 +4,14 @@
   just plan-new <topic> <tracker|plan|handoff> [item]
 
 The doc goes in the main checkout's `.plans/` (worktrees do not see it) and is never overwritten. `item` names a plan
-(`<topic>-<item>-plan-draft.md`) and is only for that kind. The result is validated by the specs step's `--file`
+(`<topic>-<item>-plan-draft.md`) or a piece's handoff (`<topic>-<item>-handoff-draft.md`). The result is validated by the specs step's `--file`
 mode, so the scaffold cannot drift from the schema.
 """
 
 import datetime
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -35,7 +36,9 @@ def doc_path(root, topic, kind, item):
     if kind == "tracker":
         return os.path.join(folder, f"{topic}.md")
     if kind == "handoff":
-        return os.path.join(folder, f"{topic}-handoff.md")
+        # orchestrator-handoff names a piece's handoff <topic>-<item>-handoff-draft.md.
+        name = f"{topic}-{item}-handoff-draft.md" if item else f"{topic}-handoff.md"
+        return os.path.join(folder, name)
     return os.path.join(folder, f"{topic}-{item}-plan-draft.md")
 
 
@@ -55,8 +58,8 @@ def scaffold(root, topic, kind, item=None, today=None):
         raise ValueError(f"topic {topic!r} must be lowercase letters, digits and dashes")
     if kind == "plan" and not (item and NAME.match(item)):
         raise ValueError("a plan needs an item name: just plan-new <topic> plan <item>")
-    if kind != "plan" and item:
-        raise ValueError(f"item applies to a plan only, not a {kind}")
+    if kind == "tracker" and item:
+        raise ValueError("a tracker takes no item")
     path = doc_path(root, topic, kind, item)
     if os.path.exists(path):
         raise ValueError(f"{path} exists; edit it instead of scaffolding over it")
@@ -77,6 +80,10 @@ def main(argv):
         print(f"plan-new: {error}", file=sys.stderr)
         return 1
     print(path)
+    if not shutil.which("check-jsonschema"):
+        # Like the write-time hook: no tool, no nag.
+        print("plan-new: front matter not validated; install check-jsonschema (pipx install check-jsonschema)", file=sys.stderr)
+        return 0
     check = subprocess.run([sys.executable, "-B", os.path.join(REPO_DIR, "lib/check/steps/specs.py"), "--file", path])
     return check.returncode
 
