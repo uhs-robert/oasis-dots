@@ -101,12 +101,19 @@ function capture_argv(entry) {
     var script = kitty_window_fn + "kitty_window \"$1\" || exit 1; "
         + "cols=$(stty size < \"/proc/$1/fd/0\" 2>/dev/null | cut -d' ' -f2); "
         + "printf '%s\\n' \"${cols:-0}\"; "
-        + "exec kitten @ --to \"$to\" get-text --match \"id:$win\" --extent screen --ansi";
+        + "exec kitten @ --to \"$to\" get-text --match \"id:$win\" --extent screen --add-wrap-markers --ansi";
     return ["sh", "-c", script, "sh", entry.pid || ""];
+}
+
+// kitty joins a soft-wrapped row to the next unless asked for wrap markers, which it writes as "\r"; each marks a row
+// break, so it becomes one here (tmux output has none).
+function rows_of(out) {
+    return out.replace(/\r\n?/g, "\n");
 }
 
 // { width, text } from capture_argv's output; width is 0 when the first line is not a number.
 function split_capture(out) {
+    out = rows_of(out);
     var nl = out.indexOf("\n");
     var head = nl >= 0 ? out.slice(0, nl) : out;
     if (!/^\d+$/.test(head)) return { width: 0, text: out };
@@ -145,7 +152,7 @@ function last_line(text) {
 function tails_argv(entries) {
     var script = kitty_window_fn + "while [ $# -ge 4 ]; do printf '\\036%s\\n' \"$1\"; "
         + "if [ -n \"$3\" ]; then if [ -n \"$2\" ]; then tmux -S \"$2\" capture-pane -p -t \"$3\"; else tmux capture-pane -p -t \"$3\"; fi 2>/dev/null; "
-        + "elif [ -n \"$4\" ] && kitty_window \"$4\"; then kitten @ --to \"$to\" get-text --match \"id:$win\" --extent screen 2>/dev/null; fi; "
+        + "elif [ -n \"$4\" ] && kitty_window \"$4\"; then kitten @ --to \"$to\" get-text --match \"id:$win\" --extent screen --add-wrap-markers 2>/dev/null; fi; "
         + "shift 4; done";
     var args = ["sh", "-c", script, "sh"];
     for (var i = 0; i < entries.length; i++) args.push(entries[i].id, entries[i].tmux_socket || "", entries[i].tmux_pane || "", entries[i].pid || "");
@@ -154,6 +161,7 @@ function tails_argv(entries) {
 
 // id -> last_line of its capture, from tails_argv's output.
 function parse_tails(out) {
+    out = rows_of(out);
     var tails = {};
     var chunks = out.split("\x1e");
     for (var i = 1; i < chunks.length; i++) {
