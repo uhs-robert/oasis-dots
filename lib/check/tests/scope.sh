@@ -129,6 +129,23 @@ case_readme() {
   expect_ran_exactly qml-ipc readme-links registry packages symlinks git-diff-check whitespace conflicts ignored-integrations
 }
 
+case_markdown_in_a_scope() {
+  start_case 'Markdown inside a scope folder'
+  echo >>home/claude/.claude/skills/merge-prs/SKILL.md
+  echo >>lib/check/README.md
+  echo >>home/voxcmd/.config/voxcmd/README.md
+  plan
+  expect_ran_exactly qml-ipc readme-links registry packages symlinks git-diff-check whitespace conflicts ignored-integrations
+}
+
+case_markdown_a_test_reads() {
+  start_case 'the Markdown file the generated-table step compares'
+  echo >>docs/keybinds.md
+  plan
+  expect_ran docs-generated
+  expect_skipped qmllint luacheck voxcmd-click
+}
+
 case_home_qml() {
   start_case 'QML under home/quickshell'
   local qml
@@ -145,8 +162,8 @@ case_shader_source() {
   frag=$(first_tracked 'home/quickshell/*.frag') || return 0
   echo '// x' >>"$frag"
   plan
-  expect_ran shaders
-  expect_skipped qmllint notification-markup voxcmd-click check-scope
+  expect_ran shaders qmllint notification-markup
+  expect_skipped voxcmd-click check-scope
 }
 
 case_layer_allowlist() {
@@ -212,16 +229,16 @@ case_voxcmd_rust_snapshot() {
   snapshot=$(first_tracked 'home/voxcmd/tests/snapshots/*.snap') || return 0
   echo '# x' >>"$snapshot"
   plan
-  expect_ran voxcmd-rust
-  expect_skipped voxcmd-click voxcmd-phrases voxcmd-calendar voxcmd-wake
+  expect_ran voxcmd-rust voxcmd-calendar voxcmd-wake voxcmd-firefox
+  expect_skipped voxcmd-click voxcmd-phrases
 }
 
 case_voxcmd_bash_script() {
   start_case 'voxcmd-autostop script'
   echo '# x' >>home/voxcmd/.local/bin/voxcmd-autostop
   plan
-  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox
-  expect_skipped voxcmd-rust
+  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox voxcmd-rust
+  expect_skipped voxtype-duck luacheck
 }
 
 case_voxcmd_shared_fixture() {
@@ -236,8 +253,8 @@ case_voxcmd_small_suite() {
   start_case 'one small voxcmd suite'
   echo '# x' >>home/voxcmd/tests/run-calendar.sh
   plan
-  expect_ran voxcmd-calendar shellcheck
-  expect_skipped voxcmd-phrases voxcmd-click voxcmd-wake voxcmd-firefox voxcmd-rust
+  expect_ran voxcmd-calendar voxcmd-wake voxcmd-firefox voxcmd-rust shellcheck
+  expect_skipped voxcmd-phrases voxcmd-click
 }
 
 case_deleted_sourced_helper() {
@@ -313,7 +330,7 @@ case_firefox_policy() {
   start_case 'Firefox policy installer'
   echo '# x' >>lib/install/voice.sh
   plan
-  expect_ran firefox-policy shellcheck
+  expect_ran install-firefox-policy shellcheck
   expect_skipped qmllint luacheck voxcmd-click check-scope
 }
 
@@ -321,8 +338,8 @@ case_greeter_keyring() {
   start_case 'greetd keyring unlock installer'
   echo '# x' >>lib/install/greeter.sh
   plan
-  expect_ran greeter-keyring greeter-stage-zsh shellcheck
-  expect_skipped firefox-policy qmllint luacheck check-scope
+  expect_ran install-greeter-keyring install-greeter-stage-zsh shellcheck
+  expect_skipped qmllint luacheck check-scope
 }
 
 case_install_loader() {
@@ -330,15 +347,15 @@ case_install_loader() {
   echo '# x' >>lib/install/fonts.sh
   plan
   expect_ran install-load shellcheck
-  expect_skipped firefox-policy greeter-keyring greeter-stage-zsh qmllint luacheck check-scope
+  expect_skipped qmllint luacheck check-scope
 }
 
 case_install_loader_reached_through_earlier_arms() {
   start_case 'install libraries claimed by earlier arms still reach the loader test'
   plan_paths "$(printf '%s\n' lib/install/voice.sh lib/install/greeter.sh)"
-  expect_ran install-load firefox-policy greeter-keyring greeter-stage-zsh
+  expect_ran install-load install-firefox-policy install-greeter-keyring install-greeter-stage-zsh
   plan_paths lib/common/greeter-files.sh
-  expect_ran install-load qmllint greeter-keyring greeter-stage-zsh
+  expect_ran install-load qmllint install-greeter-keyring ship-batch
 }
 
 case_paths_list() {
@@ -396,7 +413,7 @@ case_only() {
   [ $? = 2 ] || fail 'an unknown step to exit 2'
 }
 
-for case_fn in case_readme case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
+for case_fn in case_readme case_markdown_in_a_scope case_markdown_a_test_reads case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
   case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed case_only; do
   report "$case_fn"

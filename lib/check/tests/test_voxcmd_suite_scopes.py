@@ -21,9 +21,7 @@ FALLTHROUGH = "home/voxcmd/*"
 SUITE_ENTRIES = {
     scopes.VOX_PHRASES: ["run-phrases.sh"],
     scopes.VOX_CLICK: ["run.sh", "run-sessions.sh", "run-modes.sh", "run-sequences.sh", "run-overview.sh", "run-monitors.sh"],
-    scopes.VOX_CALENDAR: ["run-calendar.sh"],
-    scopes.VOX_WAKE: ["run-wake.sh"],
-    scopes.VOX_FIREFOX: ["run-firefox-extension.sh"],
+    scopes.VOX_REST: ["run-calendar.sh", "run-wake.sh", "run-firefox-extension.sh"],
 }
 
 EXTENSIONLESS_SCRIPTS = ("firefox-profile", "firefox-fake-host", "firefox-host-test")

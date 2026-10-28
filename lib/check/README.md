@@ -14,7 +14,7 @@ lib/check.sh --only <step>[,<step>...] only the named steps (repeatable), whatev
 lib/check.sh --plan [--changed <base>|--paths-from <file|->] [--only ...] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
 ```
 
-`--changed` always runs the "tree" steps: `git-diff-check`, `whitespace`, `conflicts`, `symlinks`, `packages`, `ignored-integrations`, `qml-ipc`, `readme-links` and `registry`. A change to `lib/check.sh`, the runner's own modules (`runner.py`, `keys.py`, `scopes.py`, `lock.sh`, `passed.sh`, `passed.py`), the `justfile`, `.claude/check-commands` or any path no rule in `scopes.py` claims runs everything.
+`--changed` always runs the "tree" steps: `git-diff-check`, `whitespace`, `conflicts`, `symlinks`, `packages`, `ignored-integrations`, `qml-ipc`, `readme-links` and `registry`. A change to `lib/check.sh`, the runner's own modules (`runner.py`, `keys.py`, `scopes.py`, `lock.sh`, `passed.sh`, `passed.py`), the `justfile`, `.claude/check-commands` or any path no rule in `scopes.py` claims runs everything. A Markdown file runs no step (see Scopes). A Markdown file runs no step (see Scopes).
 
 The parallel output of a step is buffered and a passing step prints one line; after the `FAILED:` line, the last 25 lines of each failing step follow. A step whose tool is missing prints `skip:` and passes. Run a suite through `--only` rather than by hand (a hook warns), so its pass is recorded and the final `--changed` run does not repeat it.
 
@@ -37,6 +37,32 @@ The parallel output of a step is buffered and a passing step prints one line; af
 
 Nothing runs it at the end of a turn. A commit runs it (`.claude/hooks/check-before-commit.sh`: `--paths-from` the committed files, `CHECK_NO_LOCK=1`, without the five voxcmd suites). A PR open only looks up a recorded pass (`.claude/hooks/check-before-pr.sh`). ship-batch runs it on each PR's branch, then on main. A worktree has no `repos/`, so its pass does not cover `symlinks` for the main checkout: run the check in the real checkout before merging.
 
+## Scopes
+
+A scope is a folder, and a change reaches the steps of the scopes its path falls in (`PATH_SCOPES` in `scopes.py`, first match wins). `lib/check.sh --plan --paths-from -` prints what a path reaches.
+
+| Scope | Folders | Steps |
+| --- | --- | --- |
+| `hypr` | `home/hypr`, `system/etc/greetd` (not its `quickshell/`), `.luacheckrc` | stylua, luacheck, the hypr tests |
+| `quickshell` | `home/quickshell`, `system/etc/greetd/quickshell`, the `qml*` check modules | qmllint, the qml-* checks, lock-skins, style-exports, shaders, time-format, the node and headless-qs tests, the input vectors |
+| `voxclick`, `voxphrases`, `voxduck`, `voxrest` | `home/voxcmd`, `home/voxtype`, `extras/voxcmd-firefox` | see Voxcmd scopes below |
+| `install` | `lib/install`, `lib/common`, `packages/{snapper,devtools}.ini`, `home/calendar` | the install tests, calendar-sync |
+| `agents` | the hooks and the `owner-test-bar`, `ship-batch`, `merge-prs`, `orchestrator` and `orchestrator-handoff` skills | the hook tests, those skills' tests, reviewers |
+| `checkscope` | `lib/check`, `lib/plan_new.py`, the `lib/docs` generators | check-scope, check-cache |
+| `docsgen` | the keymaps, the IpcHandler files, the `lib/docs` generators | docs-generated |
+
+A file that a step of another folder reads gets one row naming both scopes, ahead of its folder's row. Markdown reaches no scope, in any folder; the exceptions are the two files `docs-generated` compares (`docs/keybinds.md`, the Quickshell README), found by grepping the steps and tests for `.md`. Other `.md` mentions there are strings in test data.
+
+Tests are found by naming convention, so a new test file needs no entry in `STEPS` when it sits in one of these places (the step is named from the file, `_` as `-`):
+
+- `home/hypr/tests/*.sh`: `bash`, scope `hypr`. A `.lua` file there is a helper unless `scopes.py` names it as a Lua entry point.
+- `home/quickshell/tests/*.js`: `node`, scope `quickshell`.
+- `home/quickshell/tests/<name>/run.sh`: the headless-qs tests, scope `quickshell`.
+- `lib/install/tests/*.sh`: `install-<name>`, scope `install`.
+- `.claude/hooks/tests/*.sh` and `home/claude/.claude/hooks/tests/*.sh`: `hook-<name>`, scope `agents`.
+
+Everything else (the voxcmd suites, the lint steps, the skill tests) is listed in `STEPS` by hand.
+
 ## Steps
 
 The "needs" tools are optional unless stated. Each step's command and scope is in `scopes.py`.
@@ -58,28 +84,22 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `time-format`: no hand-built am/pm text in Quickshell QML/JS; clock text goes through `TimeFormat` (`lib/check/steps/time-format.sh`).
 - `shaders`: each tracked Quickshell `.frag` rebuilds (qsb) to its committed `.frag.qsb` byte for byte, and its `// Rebuild:` header matches the command used; `just shaders` rewrites them (`lib/check/steps/shaders.sh`). Needs qsb (qt6-shadertools).
 - `json-store`: `home/quickshell/tests/json_store/run.sh`, the lifecycle tests of `core/JsonStore.qml` in a headless qs. Needs qs, python3.
-- `polled-command`: `home/quickshell/tests/polled_command/run.sh`, pins that Quickshell ends a Process's stdout at the exit even when a child holds the pipe, which `core/PolledCommand.qml` relies on. Its own scope `polledcmd` covers that component and `tests/polled_command/`. Needs qs, python3.
-- `polled-file`: `home/quickshell/tests/polled_file/run.sh`, the read, failure, path-change, gating and interval tests of `core/PolledFile.qml` in a headless qs. Its own scope `polledfile` covers that component and `tests/polled_file/`. Needs qs, python3.
-- `colors-preview`: `home/quickshell/tests/colors_preview/run.sh`, which loads the Style pane with its cursor on the Colors rows (and a plain `RowsSection`, and Style with the cursor off them) beside a real `SettingsPanel` in a headless qs, wide, narrow and stacked under the rows, and fails unless the preview card sits inside the panel, never intersects the open Palette list and does not move when the list opens and sits at the panel's top with no blank band above it (#1293); a section with no preview must give the help card the whole panel. Its own scope `colorsprev` covers `RowsSection.qml`, `StyleSection.qml`, `SettingsPanel.qml` and `tests/colors_preview/`. Needs qs.
-- `restarting-stream`: `home/quickshell/tests/restarting_stream/run.sh`, the lifecycle tests of `core/RestartingStream.qml` (planned exits, re-probing, `wanted` during backoff) in a headless qs. Its own scope `restartstream` covers that component and `tests/restarting_stream/`. Needs qs, python3.
+- `polled-command`: `home/quickshell/tests/polled_command/run.sh`, pins that Quickshell ends a Process's stdout at the exit even when a child holds the pipe, which `core/PolledCommand.qml` relies on. Needs qs, python3.
+- `polled-file`: `home/quickshell/tests/polled_file/run.sh`, the read, failure, path-change, gating and interval tests of `core/PolledFile.qml` in a headless qs. Needs qs, python3.
+- `colors-preview`: `home/quickshell/tests/colors_preview/run.sh`, which loads the Style pane with its cursor on the Colors rows (and a plain `RowsSection`, and Style with the cursor off them) beside a real `SettingsPanel` in a headless qs, wide, narrow and stacked under the rows, and fails unless the preview card sits inside the panel, never intersects the open Palette list and does not move when the list opens and sits at the panel's top with no blank band above it (#1293); a section with no preview must give the help card the whole panel.qml`, `StyleSection.qml`, `SettingsPanel.qml` and `tests/colors_preview/`. Needs qs.
+- `restarting-stream`: `home/quickshell/tests/restarting_stream/run.sh`, the lifecycle tests of `core/RestartingStream.qml` (planned exits, re-probing, `wanted` during backoff) in a headless qs. Needs qs, python3.
 - `voxcmd-phrases`: each phrase in `home/voxcmd/tests/phrases.tsv` routes as recorded (`run-phrases.sh`). Needs jq, fzf.
 - `voxcmd-click`: voxcmd's click support (`run.sh`, with `run-sessions.sh`, `run-modes.sh`, `run-sequences.sh`, `run-overview.sh` and `run-monitors.sh` beside it). Needs jq, fzf.
 - `voxcmd-calendar`: the calendar phrases against stubs (`run-calendar.sh`). Needs jq, fzf.
 - `voxcmd-wake`: the wake word listener (`run-wake.sh`). Needs jq, fzf.
 - `voxcmd-firefox`: the Firefox extension and its native-messaging host (`run-firefox-extension.sh`). Needs jq, fzf; the extension's script runs under node when present.
 - `voxtype-duck`: `home/voxtype/tests/run-duck.sh`, the output-sink ducker. Needs python3.
-- Voxcmd suite scopes: each of the five voxcmd shell suites has its own scope (`voxphrases`, `voxclick`, `voxcalendar`, `voxwake`, `voxfirefox`), so an edit to a file only one suite reads runs only that suite. The crate's sources, the integrations, voxtype-daemon and `extras/voxcmd-firefox` reach all five. A file under `home/voxcmd/tests` gets its row in `PATH_SCOPES` naming the suites that read it, and a fixture with no row of its own falls to the `home/voxcmd/*` catch-all, which `lib/check/tests/test_voxcmd_suite_scopes.py` rejects; add the row when you add a fixture.
+- Voxcmd scopes: `voxclick` (`voxcmd-click`, the longest suite), `voxphrases` (`voxcmd-phrases`), `voxduck` (`voxtype-duck`) and `voxrest` (`voxcmd-calendar`, `voxcmd-wake`, `voxcmd-firefox` and `voxcmd-rust`), so an edit to a file only one of them reads runs only that one. The crate's sources, the integrations, voxtype-daemon and `extras/voxcmd-firefox` reach `voxclick`, `voxphrases` and `voxrest`. A file under `home/voxcmd/tests` gets its row in `PATH_SCOPES` naming the scopes that read it, and a fixture with no row of its own falls to the `home/voxcmd/*` catch-all, which `lib/check/tests/test_voxcmd_suite_scopes.py` rejects; add the row when you add a fixture.
 - `voxcmd-rust`: the voxcmd crate: `cargo fmt --check`, clippy `-D warnings`, `cargo test` (`lib/check/steps/voxcmd-rust.sh`). Takes no heavy slot and runs in the ordinary pool, not the serial lane. Needs cargo.
 - `calendar-sync`: `home/calendar/tests/run.sh`. Runs only when python-icalendar and python-recurring-ical-events import.
 - `calendar-sync-syntax`: the syntax check of `calendar-sync`; always runs when its scope is reached, whatever the libraries.
-- `firefox-policy`: `lib/install/tests/firefox-policy.sh`, the Firefox policy installer, and `voxcmd-install.sh`, `install_voxcmd`. Needs jq.
-- `pacman-tweaks`: `lib/install/tests/pacman-tweaks.sh`, the pacman and makepkg tuning (`lib/install/pacman.sh`, `system/etc/makepkg.conf.d/`).
-- `snapper-setup`: `lib/install/tests/snapper.sh`, the snapper setup (`lib/install/snapper.sh`, `packages/snapper.ini`) against stub commands and a scratch tree.
-- `devtools-coderabbit`: `lib/install/tests/dev-tools-coderabbit.sh`, the CodeRabbit entry of the dev tools picker (`lib/install/dev-tools.sh`, `packages/devtools.ini`) against stub commands.
-- `greeter-keyring`: `lib/install/tests/greeter-keyring.sh` (the greetd keyring unlock installer), `greeter-log.sh` (the greeter log file and the `qs-greeter` wrapper's choice of it) and `greeter-monitors.sh` (the greeter's `monitors.lua`).
-- `migrate-lock`: the `migrate-quickshell-*` and `migrate-lock-assets` tests in `lib/install/tests/`.
-- `install-load`: `lib/install/tests/load.sh`, that sourcing the install libraries prints nothing and never exits.
-- `agent-hooks`: the tests of `guard-masked-checks.sh`, `check-before-pr.sh`, `guard-gh-merge.sh`, `guard-tmux-socket.sh`, `context-budget.sh`, `orchestrator-window-names.sh` (a private tmux server), `report-failed-main-check.sh`, `remind-global-neutral.sh`, `remind-global-neutral-source.sh` and `guard-gh-thread-mutations.sh`. Needs jq, tmux and flock.
+- `install-<test>`: one step per `lib/install/tests/*.sh` (found by name; see Scopes). They cover the Firefox policy and `install_voxcmd`, pacman and makepkg tuning, snapper setup, the CodeRabbit entry of the dev tools picker, the greeter keyring, log and monitors, the `migrate-quickshell-*` and `migrate-lock-assets` migrations, and `load.sh` (sourcing the install libraries prints nothing and never exits). Need jq and zsh.
+- `hook-<test>`: one step per `.claude/hooks/tests/*.sh` and `home/claude/.claude/hooks/tests/*.sh` (found by name; see Scopes), each the test of the hook of that name. Need jq, tmux and flock.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.
 - `reviewers`: the orchestrator skill's `tests/run.sh` (registry resolver), when `reviewers.json`, `reviewers.sh` or its tests change.

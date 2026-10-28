@@ -1,9 +1,9 @@
-"""What lib/check.sh runs and which changes reach each step: plain tables, read by runner.py and keys.py.
+"""What lib/check.sh runs and which changes reach each step: tables and a few discovery globs, read by runner.py and keys.py.
 
-Keep this file data only, one entry per line. A new step goes in STEPS with the scope of the files it reads, and every
-path that can affect it gets an entry in PATH_SCOPES naming that scope. A scope decides both when a change reaches a
-step and what its pass record covers, so a file a step reads but no entry here gives its scope is a file whose edit
-leaves a stale pass in place.
+A scope is a folder of the repository (lib/check/README.md lists them), and a change reaches the steps of the scopes its
+path falls in. Keep the tables one entry per line. A path that a step in another folder reads gets one entry naming both
+scopes, ahead of its folder's rule: a file a step reads but no entry here gives its scope is a file whose edit leaves
+a stale pass in place.
 
 Patterns are fnmatch.fnmatchcase globs, where `*` crosses `/` as in a shell `case`: `lib/check/*.py` would also match
 lib/check/tests/test_keys.py, so the modules in the "all" entries below are named one by one.
@@ -13,121 +13,92 @@ lines of a step's key: a step's key holds its own definition and the scope colum
 where an edit here that matters to the step shows up.
 """
 
+import glob
+import os
+
 from typing import NamedTuple
 
-# One scope per voxcmd shell suite, so an edit to a file only one suite reads runs only that suite. VOXCMD_SUITES is for
-# what every suite runs (the crate they build, the integrations); runner.py reads VOXCMD_SUITE_SCOPES to tell a suite
-# from the crate.
-VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE, VOX_FIREFOX = "voxphrases", "voxclick", "voxcalendar", "voxwake", "voxfirefox"
-VOXCMD_SUITE_SCOPES = (VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE, VOX_FIREFOX)
+# The scopes, one per folder of the repository except the voxcmd ones, which split by how long their tests take. The
+# crate and the integrations feed all of the voxcmd scopes, but not voxduck (voxtype's own package).
+VOX_PHRASES, VOX_CLICK, VOX_DUCK, VOX_REST = "voxphrases", "voxclick", "voxduck", "voxrest"
+# runner.py reads this to tell a suite that VOXCMD_ONLY_SECTIONS can cut short from the other steps, so voxcmd-rust,
+# which shares VOX_REST, counts as one: its pass is then withheld too, which only errs towards running it again.
+VOXCMD_SUITE_SCOPES = (VOX_PHRASES, VOX_CLICK, VOX_REST)
 VOXCMD_SUITES = " ".join(VOXCMD_SUITE_SCOPES)
 
-# Every matching entry adds its scope, ahead of the PATH_SCOPES one.
-ADDITIVE_SCOPES = [
-    ("lib/check/*", "checkscope"),
-]
+# Every matching entry adds its scope, ahead of the PATH_SCOPES one. Empty since markdown under lib/check maps to no steps.
+ADDITIVE_SCOPES = []
 
 # The first matching entry wins, so order matters. Its scopes (space-separated) are what a change to that path reaches;
 # "all" reaches every step, and "" only the steps that always run. The final entry sends every path no rule claims to
 # "all", so an unforeseen file runs everything.
 PATH_SCOPES = [
+    # The runner's modules also name checkscope, because keys.py leaves "all" out of the keys of steps that do not read
+    # them and check-scope and check-cache do.
     ("lib/check.sh", "all"),
-    ("lib/check/runner.py", "all"),
-    ("lib/check/keys.py", "all"),
-    ("lib/check/scopes.py", "all"),
-    ("lib/check/lock.sh", "all"),
-    ("lib/check/passed.sh", "all"),
-    ("lib/check/passed.py", "all"),
+    ("lib/check/runner.py", "checkscope all"),
+    ("lib/check/keys.py", "checkscope all"),
+    ("lib/check/scopes.py", "checkscope all"),
+    ("lib/check/lock.sh", "checkscope all"),
+    ("lib/check/passed.sh", "checkscope all"),
+    ("lib/check/passed.py", "checkscope all"),
     ("justfile", "all"),
     (".claude/check-commands", "all"),
-    ("lib/check/steps/lua.sh", "lua"),
-    (".luacheckrc", "lua"),
-    # The files outside the Quickshell tree that OUTSIDE_REFS in lib/check/steps/qml_paths.py names, ahead of their folders.
-    ("home/hypr/.config/hypr/scripts/lock-screen.sh", "lua qml docsgen"),
-    ("home/voxcmd/src/timer.rs", "rust " + VOXCMD_SUITES + " qml"),
-    ("home/voxcmd/tests/run-monitors.sh", VOX_CLICK + " qml"),
-    # The input vectors run the Lua validator and the bar's, so the files either reads reach them, ahead of the folders.
-    ("home/hypr/.config/hypr/config/input/init.lua", "lua inputvec docsgen"),
-    ("home/hypr/.config/hypr/lib/state.lua", "lua inputvec docsgen"),
-    # The greeter monitor generator loads the session's JSON reader.
-    ("home/hypr/.config/hypr/lib/json.lua", "lua keyring inputvec docsgen"),
-    ("home/hypr/*", "lua docsgen"),
-    # Ahead of the greeter's QML entry.
-    ("system/etc/greetd/hyprland.lua", "lua qml keyring"),
-    ("system/etc/greetd/*.lua", "lua qml"),
-    # ship-batch builds its greeter re-sync regex from the list, and only its suite tests that regex.
-    ("lib/common/greeter-files.sh", "qml ship loader keyring"),
-    ("lib/check/steps/qml.py", "qml"),
-    ("lib/check/qml_imports.py", "qml docsgen"),
-    ("lib/check/steps/qml_paths.py", "qml docsgen"),
-    ("lib/check/steps/qml_layers.py", "qml"),
-    ("lib/check/qml-layers.allow", "qml"),
-    ("lib/check/steps/qml_singleton_names.py", "qml"),
-    ("lib/check/qml-singleton-names.allow", "qml"),
-    ("lib/check/steps/lock-skins.sh", "qml"),
-    # The registry step is a tree step too: it loads the Lua definitions headlessly and reads the IpcHandlers.
-    ("lib/check/steps/registry.py", ""),
-    ("lib/check/registry.allow", ""),
-    ("lib/check/steps/style-exports.sh", "qml"),
-    # The keybind table is generated from the keymaps, which reach docsgen through the home/hypr/* rule; its generator's
-    # tests are unittest cases in lib/check/tests.
-    ("lib/check/steps/docs-generated.sh", "docsgen"),
+    # Markdown runs no step, ahead of every folder rule; the two tables below are generated into .md files that the
+    # docs-generated step compares, so those keep it.
+    ("docs/keybinds.md", "docsgen"),
+    ("home/quickshell/.config/quickshell/README.md", "docsgen quickshell"),
+    ("*.md", ""),
+    # hypr: the Lua config and its tests. The files outside the folder that a step reads come first.
+    ("lib/check/steps/lua.sh", "checkscope hypr"),
+    (".luacheckrc", "hypr"),
+    # The bar's input vectors run the Lua validator and the bar's, so the files either reads reach the quickshell scope.
+    ("home/hypr/.config/hypr/config/input/init.lua", "hypr quickshell docsgen"),
+    ("home/hypr/.config/hypr/lib/state.lua", "hypr quickshell docsgen"),
+    # The greeter monitor generator (install scope) loads the session's JSON reader.
+    ("home/hypr/.config/hypr/lib/json.lua", "hypr install quickshell docsgen"),
+    # OUTSIDE_REFS in lib/check/steps/qml_paths.py names this file as a consumer of the bar's files.
+    ("home/hypr/.config/hypr/scripts/lock-screen.sh", "hypr quickshell docsgen"),
+    ("home/hypr/*", "hypr docsgen"),
+    (".claude/skills/shadow/shadow.sh", "hypr"),
+    ("system/etc/greetd/hyprland.lua", "hypr quickshell install"),
+    ("system/etc/greetd/*.lua", "hypr quickshell"),
+    ("system/etc/greetd/quickshell/*", "quickshell"),
+    ("system/etc/greetd/*", "hypr"),
+    ("lib/install/greeter-monitors.lua", "install hypr"),
+    # quickshell: the bar, its node and runtime tests, shaders and the lock skins.
+    ("lib/common/greeter-files.sh", "quickshell install agents"),
+    ("lib/check/steps/qml_ipc.py", "checkscope docsgen"),
+    ("lib/check/qml_imports.py", "checkscope quickshell docsgen"),
+    ("lib/check/steps/qml_paths.py", "checkscope quickshell docsgen"),
+    ("lib/check/qml-ipc.allow", "checkscope"),
+    ("lib/check/qml*", "checkscope quickshell"),
+    ("lib/check/steps/qml*", "checkscope quickshell"),
+    ("lib/check/steps/lock-skins.sh", "checkscope quickshell"),
+    ("lib/check/steps/style-exports.sh", "checkscope quickshell"),
+    ("lib/check/steps/time-format.sh", "checkscope quickshell"),
+    ("lib/check/steps/shaders.sh", "checkscope quickshell"),
+    ("home/quickshell/.config/quickshell/scripts/frame-app-corners", "checkscope quickshell"),
+    ("home/quickshell/.config/quickshell/*Ipc.qml", "docsgen quickshell"),
+    ("home/quickshell/*", "quickshell"),
+    # docsgen: the generated tables (keybinds from the keymaps under hypr, IPC from the handlers under quickshell).
+    ("lib/check/steps/docs-generated.sh", "checkscope docsgen"),
     ("lib/docs/gen-keybinds", "checkscope docsgen"),
-    # The IPC table is generated from the IpcHandler files and their parser, so edits to those run the same step (in the docsgen scope).
     ("lib/docs/gen-ipc", "checkscope docsgen"),
     ("lib/docs/docgen.py", "checkscope docsgen"),
-    ("lib/check/steps/qml_ipc.py", "docsgen"),
-    # The editor's IPC handler is also what the bar-editor test drives, so it selects that step too.
-    ("home/quickshell/.config/quickshell/features/bar_editor/BarEditorIpc.qml", "bareditor docsgen qml node"),
-    ("home/quickshell/.config/quickshell/*Ipc.qml", "docsgen qml node"),
-    ("home/quickshell/.config/quickshell/README.md", "docsgen qml node"),
-    ("docs/keybinds.md", "docsgen"),
-    ("lib/check/steps/time-format.sh", "qml"),
-    ("lib/check/steps/shaders.sh", "shaders"),
-    # Ahead of the Quickshell rule below. Only the shader step reads a .frag; QML names the compiled .qsb by path, which
-    # qml-paths checks, so a renamed or deleted .qsb reaches it too.
-    # The app-corner generator's tests are unittest cases in lib/check/tests, so the script reaches check-cache.
-    ("home/quickshell/.config/quickshell/scripts/frame-app-corners", "checkscope qml"),
-    ("home/quickshell/*.frag", "shaders"),
-    ("home/quickshell/*.frag.qsb", "shaders qml"),
-    ("system/etc/greetd/quickshell/*", "qml"),
-    # A runtime test and the one component it pins get their own scope, ahead of the Quickshell rules, so an edit to
-    # either runs that test; the files are QML too, so the qml step still reads them.
-    ("home/quickshell/tests/input_settings/*", "inputvec qml"),
-    ("home/quickshell/.config/quickshell/features/settings/HyprInputValidation.js", "inputvec qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/HyprInputSettings.qml", "inputvec qml node"),
-    ("home/quickshell/tests/polled_command/*", "polledcmd qml"),
-    ("home/quickshell/.config/quickshell/core/PolledCommand.qml", "polledcmd qml node"),
-    ("home/quickshell/tests/polled_file/*", "polledfile qml"),
-    ("home/quickshell/.config/quickshell/core/PolledFile.qml", "polledfile qml node"),
-    ("home/quickshell/tests/colors_preview/*", "colorsprev qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/RowsSection.qml", "colorsprev qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/sections/StyleSection.qml", "colorsprev qml node"),
-    ("home/quickshell/.config/quickshell/features/settings/SettingsPanel.qml", "colorsprev qml node"),
-    ("home/quickshell/.config/quickshell/ui/scroll/ScrollCue.qml", "colorsprev qml node"),
-    ("home/quickshell/tests/restarting_stream/*", "restartstream qml"),
-    ("home/quickshell/.config/quickshell/core/RestartingStream.qml", "restartstream qml node"),
-    # The editor test runs a copy of the whole bar config, and these are the files its scenarios exercise.
-    ("home/quickshell/tests/bar_editor/*", "bareditor qml"),
-    ("home/quickshell/.config/quickshell/features/bar_editor/*", "bareditor qml node"),
-    ("home/quickshell/.config/quickshell/features/bar/BarSettings.qml", "bareditor qml node"),
-    ("home/quickshell/.config/quickshell/features/bar/BarLayout.js", "bareditor qml node"),
-    ("home/quickshell/.config/quickshell/features/bar/Bar.qml", "bareditor qml node"),
-    ("home/quickshell/.config/quickshell/features/bar/BarItems.qml", "bareditor qml node"),
-    ("home/quickshell/.config/quickshell/core/JsonStore.qml", "bareditor qml node"),
-    ("home/quickshell/.config/quickshell/features/popups/Popups.qml", "bareditor qml node"),
-    ("home/quickshell/tests/*", "node qml"),
-    ("home/quickshell/*", "qml node"),
-    ("lib/check/steps/voxcmd-rust.sh", "rust"),
-    # The suites build and run the crate, so its sources reach them as well as cargo's own tests. Snapshots, the generated
-    # goldens and the crate's test sources are read only by cargo test; the other fixtures are read by both. An
-    # integration file reaches the suites, and the crate through tests/integrations.rs.
-    ("home/voxcmd/src/*", "rust " + VOXCMD_SUITES),
-    ("home/voxcmd/Cargo.*", "rust " + VOXCMD_SUITES),
-    ("home/voxcmd/rustfmt.toml", "rust"),
-    ("home/voxcmd/tests/*.rs", "rust"),
-    ("home/voxcmd/tests/snapshots/*", "rust"),
-    ("home/voxcmd/tests/fixtures/*-goldens.tsv", "rust"),
+    # voxcmd. The suites build and run the crate, so its sources reach all of them as well as cargo's own tests (voxrest).
+    # Snapshots, the generated goldens and the crate's test sources are read only by cargo test; the other fixtures are
+    # read by both. An integration file reaches the suites, and the crate through tests/integrations.rs.
+    ("lib/check/steps/voxcmd-rust.sh", "checkscope voxrest"),
+    # timer.rs and run-monitors.sh are consumers OUTSIDE_REFS names, so they reach the quickshell scope too.
+    ("home/voxcmd/src/timer.rs", VOXCMD_SUITES + " quickshell"),
+    ("home/voxcmd/tests/run-monitors.sh", VOX_CLICK + " quickshell"),
+    ("home/voxcmd/src/*", VOXCMD_SUITES),
+    ("home/voxcmd/Cargo.*", VOXCMD_SUITES),
+    ("home/voxcmd/rustfmt.toml", VOX_REST),
+    ("home/voxcmd/tests/*.rs", VOX_REST),
+    ("home/voxcmd/tests/snapshots/*", VOX_REST),
+    ("home/voxcmd/tests/fixtures/*-goldens.tsv", VOX_REST),
     # The shell suites by what each reads (found by following their source/read lines; run.sh stands for voxcmd-click and
     # carries run-sessions, run-modes, run-sequences, run-overview and run-monitors). Ahead of the fixture catch-all below.
     ("home/voxcmd/tests/run-phrases.sh", VOX_PHRASES),
@@ -142,99 +113,74 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/lib.sh", VOX_CLICK),
     ("home/voxcmd/tests/window-fixtures.sh", VOX_CLICK),
     ("home/voxcmd/tests/firefox-fake-host", VOX_CLICK),
-    ("home/voxcmd/tests/run-calendar.sh", VOX_CALENDAR),
-    ("home/voxcmd/tests/run-wake.sh", VOX_WAKE),
-    ("home/voxcmd/tests/wake_test.py", VOX_WAKE),
-    ("home/voxcmd/tests/run-firefox-extension.sh", VOX_FIREFOX),
-    ("home/voxcmd/tests/firefox-host-test", VOX_FIREFOX),
-    ("home/voxcmd/tests/firefox-background.test.js", VOX_FIREFOX),
-    # Every suite but the Firefox one runs inside sandbox.sh, whose tests/bin ask-stub they reach the ask stubs through.
-    ("home/voxcmd/tests/sandbox.sh", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE])),
-    ("home/voxcmd/tests/bin/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR, VOX_WAKE])),
-    # Builds the fixture Firefox profile (places.sql, sessionstore.json) for the phrases, click and calendar suites.
-    ("home/voxcmd/tests/firefox-profile", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
+    ("home/voxcmd/tests/run-calendar.sh", VOX_REST),
+    ("home/voxcmd/tests/run-wake.sh", VOX_REST),
+    ("home/voxcmd/tests/wake_test.py", VOX_REST),
+    ("home/voxcmd/tests/run-firefox-extension.sh", VOX_REST),
+    ("home/voxcmd/tests/firefox-host-test", VOX_REST),
+    ("home/voxcmd/tests/firefox-background.test.js", VOX_REST),
+    # Every suite but the Firefox one runs inside sandbox.sh, whose tests/bin ask-stub they reach the ask stubs through;
+    # the Firefox suite shares the voxrest scope, so the scope runs.
+    ("home/voxcmd/tests/sandbox.sh", VOXCMD_SUITES),
+    ("home/voxcmd/tests/bin/*", VOXCMD_SUITES),
+    # Builds the fixture Firefox profile (places.sql, sessionstore.json) for the phrases, click and calendar suites; the
+    # calendar one shares voxrest with the Firefox suite, which therefore reruns for no reason.
+    ("home/voxcmd/tests/firefox-profile", VOXCMD_SUITES),
     # Run by hand (benchmark, wake sampling), by no step.
     ("home/voxcmd/tests/bench.sh", ""),
     ("home/voxcmd/tests/bench-phrases.tsv", ""),
     ("home/voxcmd/tests/wake-sample.sh", ""),
     # Fixtures: phrase-fixtures.sh loads the desktop's JSON for the phrases suite, window-fixtures.sh a part of it for the
     # click suite; applications/ is the XDG_DATA_HOME both export, and calendar.sh's suite exports it too.
-    ("home/voxcmd/tests/fixtures/clients.json", " ".join([VOX_PHRASES, VOX_CLICK])),
-    ("home/voxcmd/tests/fixtures/binds.json", " ".join([VOX_PHRASES, VOX_CLICK])),
-    ("home/voxcmd/tests/fixtures/applications/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
+    ("home/voxcmd/tests/fixtures/clients.json", VOX_PHRASES + " " + VOX_CLICK),
+    ("home/voxcmd/tests/fixtures/binds.json", VOX_PHRASES + " " + VOX_CLICK),
+    ("home/voxcmd/tests/fixtures/applications/*", VOXCMD_SUITES),
     ("home/voxcmd/tests/fixtures/firefox/live-tabs.json", VOX_CLICK),
-    ("home/voxcmd/tests/fixtures/firefox/*", " ".join([VOX_PHRASES, VOX_CLICK, VOX_CALENDAR])),
-    ("home/voxcmd/tests/fixtures/monitors.json", " ".join([VOX_PHRASES, VOX_CLICK])),
+    ("home/voxcmd/tests/fixtures/firefox/*", VOXCMD_SUITES),
+    ("home/voxcmd/tests/fixtures/monitors.json", VOX_PHRASES + " " + VOX_CLICK),
     ("home/voxcmd/tests/fixtures/workspaces.json", VOX_PHRASES),
-    ("home/voxcmd/tests/fixtures/pw-dump.json", " ".join([VOX_PHRASES, VOX_CLICK])),
+    ("home/voxcmd/tests/fixtures/pw-dump.json", VOX_PHRASES + " " + VOX_CLICK),
     ("home/voxcmd/tests/fixtures/ocr.tsv", VOX_PHRASES),
     ("home/voxcmd/tests/fixtures/overview.json", VOX_CLICK),
     ("home/voxcmd/tests/fixtures/monitors/*", VOX_CLICK),
     # Only the crate's tests read these (no shell suite names them), except integrations/, which the click suite also reads.
     # A fixture added without a rule here falls to home/voxcmd/*, which test_voxcmd_suite_scopes.py's tripwire rejects.
-    ("home/voxcmd/tests/fixtures/monitor-places/*", "rust"),
-    ("home/voxcmd/tests/fixtures/speech/*", "rust"),
-    ("home/voxcmd/tests/fixtures/match/*", "rust"),
-    ("home/voxcmd/tests/fixtures/ask/*", "rust"),
-    ("home/voxcmd/tests/fixtures/click/*", "rust"),
-    ("home/voxcmd/tests/fixtures/integrations/*", "rust " + VOX_CLICK),
+    ("home/voxcmd/tests/fixtures/monitor-places/*", VOX_REST),
+    ("home/voxcmd/tests/fixtures/speech/*", VOX_REST),
+    ("home/voxcmd/tests/fixtures/match/*", VOX_REST),
+    ("home/voxcmd/tests/fixtures/ask/*", VOX_REST),
+    ("home/voxcmd/tests/fixtures/click/*", VOX_REST),
+    ("home/voxcmd/tests/fixtures/integrations/*", VOX_REST + " " + VOX_CLICK),
     # The suites' own config for these is the sandbox's copy of the package, so a real integration reaches all of them.
-    ("home/voxcmd/.config/voxcmd/integrations/*", "rust " + VOXCMD_SUITES),
+    ("home/voxcmd/.config/voxcmd/integrations/*", VOXCMD_SUITES),
     ("home/voxcmd/*", VOXCMD_SUITES),
     ("home/voxtype/.local/bin/voxtype-daemon", VOXCMD_SUITES),
     # run-wake.sh puts this directory on PATH and asserts the prompt voxcmd builds through it; no other suite runs it.
-    ("home/voxtype/.local/bin/voxtype-prompt", "voxtype " + VOX_WAKE),
-    ("home/voxtype/*", "voxtype"),
-    ("home/systemd/.config/systemd/user/voxtype-duck.service", "voxtype"),
+    ("home/voxtype/.local/bin/voxtype-prompt", VOX_DUCK + " " + VOX_REST),
+    ("home/voxtype/*", VOX_DUCK),
+    ("home/systemd/.config/systemd/user/voxtype-duck.service", VOX_DUCK),
     ("extras/voxcmd-firefox/*", VOXCMD_SUITES),
-    # The installer and the justfile call it, but those already run everything.
-    ("lib/install/voice.sh", "policy loader"),
-    ("lib/install/migrate.sh", "migratelock loader"),
-    ("lib/install/tests/migrate-lock-assets.sh", "migratelock"),
-    ("lib/install/tests/migrate-quickshell-state.sh", "migratelock"),
-    ("lib/install/tests/migrate-quickshell-input.sh", "migratelock"),
-    ("lib/install/tests/migrate-quickshell-weather.sh", "migratelock"),
-    ("lib/install/tests/firefox-policy.sh", "policy"),
-    ("lib/install/tests/voxcmd-install.sh", "policy"),
-    ("lib/install/pacman.sh", "pacman loader"),
-    ("lib/install/tests/pacman-tweaks.sh", "pacman"),
-    ("lib/install/snapper.sh", "snapper loader"),
-    ("lib/install/tests/snapper.sh", "snapper"),
-    ("packages/snapper.ini", "snapper"),
-    ("lib/install/dev-tools.sh", "devtools loader"),
-    # The devtools test sources these two.
-    ("lib/common/output.sh", "devtools loader"),
-    ("lib/common/packages.sh", "devtools loader"),
-    ("lib/install/tests/dev-tools-coderabbit.sh", "devtools"),
-    ("packages/devtools.ini", "devtools"),
-    ("system/etc/makepkg.conf.d/*", "pacman"),
-    ("lib/install/greeter.sh", "keyring loader"),
-    ("lib/install/tests/greeter-keyring.sh", "keyring"),
-    ("lib/install/tests/greeter-log.sh", "keyring"),
-    ("lib/install/tests/greeter-monitors.sh", "keyring"),
-    ("lib/install/tests/greeter-stage-zsh.sh", "keyring"),
-    ("lib/install/greeter-monitors.lua", "keyring lua"),
-    ("system/usr/local/bin/qs-greeter", "keyring"),
-    # Every install library is sourced by the loader test, as are the common ones it loads.
-    ("lib/install/*.sh", "loader"),
-    ("lib/common/*.sh", "loader"),
-    ("home/calendar/*", "calendar"),
-    ("home/claude/.claude/hooks/*", "hooks"),
-    ("home/claude/.claude/skills/orchestrator-handoff/*", "hooks"),
-    (".claude/hooks/*", "hooks"),
-    (".claude/skills/owner-test-bar/*", "bar"),
-    # shadow.sh is also run by the shadow-action test, which sources it for `action`.
-    (".claude/skills/shadow/shadow.sh", "lua"),
-    (".claude/skills/ship-batch/*", "ship"),
-    ("home/claude/.claude/skills/merge-prs/*", "ship"),
-    ("home/claude/.claude/skills/orchestrator/reviewers.*", "reviewers"),
-    ("home/claude/.claude/skills/orchestrator/*review*", "reviewers"),
-    ("home/claude/.claude/skills/orchestrator/tests/*", "reviewers"),
-    ("system/etc/greetd/*", "lua"),
+    # install: the installer libraries, their tests, the packages they read, and the host-side calendar script.
+    ("lib/install/*", "install"),
+    ("lib/common/*", "install"),
+    ("packages/snapper.ini", "install"),
+    ("packages/devtools.ini", "install"),
+    ("system/etc/makepkg.conf.d/*", "install"),
+    ("system/usr/local/bin/qs-greeter", "install"),
+    ("home/calendar/*", "install"),
+    # agents: the hooks and the skills whose tests have steps.
+    ("home/claude/.claude/hooks/*", "agents"),
+    ("home/claude/.claude/skills/orchestrator-handoff/*", "agents"),
+    ("home/claude/.claude/skills/orchestrator/*", "agents"),
+    ("home/claude/.claude/skills/merge-prs/*", "agents"),
+    (".claude/hooks/*", "agents"),
+    (".claude/skills/owner-test-bar/*", "agents"),
+    (".claude/skills/ship-batch/*", "agents"),
+    # checkscope: the runner's own modules and tests, and the scripts whose tests are unittest cases in lib/check/tests.
+    ("lib/plan_new.py", "checkscope"),
+    ("lib/check/*", "checkscope"),
     # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these, plus the
     # shell linters for the shell files among them.
-    # Its tests are unittest cases in lib/check/tests, so the script reaches check-cache.
-    ("lib/plan_new.py", "checkscope"),
     ("lib/*", ""),
     ("install.sh", ""),
     ("uninstall.sh", ""),
@@ -245,7 +191,6 @@ PATH_SCOPES = [
     ("system/*", ""),
     ("home/*", ""),
     (".claude/*", ""),
-    ("*.md", ""),
     ("LICENSE", ""),
     ("*", "all"),
 ]
@@ -267,96 +212,69 @@ class Step(NamedTuple):
     serial_lane: bool = False
 
 
+
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def discovered(pattern, scope, command, name_prefix="", needs=(), skip_reason=""):
+    """One step per file matching pattern (relative to the repository root), named from the file: its stem with `_` as `-`,
+    or for a `<dir>/run.sh` pattern the directory's name. Adding a test file that follows the convention needs no entry."""
+    steps = []
+    for path in sorted(glob.glob(os.path.join(REPO, pattern))):
+        rel = os.path.relpath(path, REPO)
+        parts = rel.split("/")
+        stem = parts[-2] if parts[-1] == "run.sh" else os.path.splitext(parts[-1])[0]
+        steps.append(Step(name_prefix + stem.replace("_", "-"), scope, command % ("./" + rel), needs, skip_reason=skip_reason))
+    return steps
+
+
 VOXCMD_SKIP = "voxcmd phrases need jq and fzf"
 HOOKS_SKIP = "agent hook and owner-test-bar tests need jq"
 
-# Every step, longest first.
+# Longest first, then the steps found by naming convention (see lib/check/README.md).
 STEPS = [
     Step("voxcmd-phrases", VOX_PHRASES, "bash ./home/voxcmd/tests/run-phrases.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-click", VOX_CLICK, "bash ./home/voxcmd/tests/run.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
-    Step("voxcmd-calendar", VOX_CALENDAR, "bash ./home/voxcmd/tests/run-calendar.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
-    Step("voxcmd-wake", VOX_WAKE, "bash ./home/voxcmd/tests/run-wake.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
-    Step("voxtype-duck", "voxtype", "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
-    Step("voxcmd-firefox", VOX_FIREFOX, "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
-    Step("voxcmd-rust", "rust", "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
+    Step("voxcmd-calendar", VOX_REST, "bash ./home/voxcmd/tests/run-calendar.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxcmd-wake", VOX_REST, "bash ./home/voxcmd/tests/run-wake.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxtype-duck", VOX_DUCK, "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
+    Step("voxcmd-firefox", VOX_REST, "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
+    Step("voxcmd-rust", VOX_REST, "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
-    Step("firefox-policy", "policy", "bash ./lib/install/tests/firefox-policy.sh && bash ./lib/install/tests/voxcmd-install.sh", ("jq",), skip_reason="the firefox policy test needs jq"),
-    Step("pacman-tweaks", "pacman", "bash ./lib/install/tests/pacman-tweaks.sh"),
-    Step("snapper-setup", "snapper", "bash ./lib/install/tests/snapper.sh"),
-    Step("devtools-coderabbit", "devtools", "bash ./lib/install/tests/dev-tools-coderabbit.sh"),
-    Step("greeter-keyring", "keyring", "bash ./lib/install/tests/greeter-keyring.sh && bash ./lib/install/tests/greeter-log.sh && bash ./lib/install/tests/greeter-monitors.sh"),
-    Step("greeter-stage-zsh", "keyring", "bash ./lib/install/tests/greeter-stage-zsh.sh", ("zsh", "jq"), skip_reason="the greeter zsh staging test needs zsh and jq"),
-    Step("migrate-lock", "migratelock", "bash ./lib/install/tests/migrate-lock-assets.sh && bash ./lib/install/tests/migrate-quickshell-state.sh && bash ./lib/install/tests/migrate-quickshell-input.sh && bash ./lib/install/tests/migrate-quickshell-weather.sh"),
-    Step("install-load", "loader", "bash ./lib/install/tests/load.sh"),
-    Step("qmllint", "qml", "python3 -B ./lib/check/steps/qml.py"),
+    Step("calendar-sync", "install", "bash ./home/calendar/tests/run.sh", probe="python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1", skip_reason="calendar-sync tests need python-icalendar and python-recurring-ical-events"),
+    # py_compile would drop a __pycache__ into the stow package, so this parses instead.
+    Step("calendar-sync-syntax", "install", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
+    Step("qmllint", "quickshell", "python3 -B ./lib/check/steps/qml.py"),
     Step("shellcheck", "shell", 'status=0; [ ! -s "$CHECK_LOGS/plain.list" ] || xargs shellcheck <"$CHECK_LOGS/plain.list" || status=1; [ ! -s "$CHECK_LOGS/sourcing.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/sourcing.list" || status=1; [ ! -s "$CHECK_LOGS/agent.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/agent.list" || status=1; exit $status', ("shellcheck",), skip_reason="shellcheck not installed"),
-    Step("calendar-sync", "calendar", "bash ./home/calendar/tests/run.sh", probe="python3 -c 'import icalendar, recurring_ical_events' >/dev/null 2>&1", skip_reason="calendar-sync tests need python-icalendar and python-recurring-ical-events"),
-    Step("owner-test-bar", "bar", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),
-    Step("ship-batch", "ship", "bash ./.claude/skills/ship-batch/tests/run.sh"),
-    Step("merge-prs", "ship", "bash ./home/claude/.claude/skills/merge-prs/tests/run.sh"),
-    Step("reviewers", "reviewers", "bash ./home/claude/.claude/skills/orchestrator/tests/run.sh && bash ./home/claude/.claude/skills/orchestrator/tests/local.sh", ("jq", "git"), skip_reason="the reviewer tests need jq and git"),
+    Step("owner-test-bar", "agents", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),
+    Step("ship-batch", "agents", "bash ./.claude/skills/ship-batch/tests/run.sh"),
+    Step("merge-prs", "agents", "bash ./home/claude/.claude/skills/merge-prs/tests/run.sh"),
+    Step("reviewers", "agents", "bash ./home/claude/.claude/skills/orchestrator/tests/run.sh && bash ./home/claude/.claude/skills/orchestrator/tests/local.sh", ("jq", "git"), skip_reason="the reviewer tests need jq and git"),
     Step("shfmt", "shell", 'status=0; cat "$CHECK_LOGS/plain.fmt.list" "$CHECK_LOGS/sourcing.fmt.list" | grep . | xargs -r shfmt -i 2 -d || status=1; [ ! -s "$CHECK_LOGS/agent.fmt.list" ] || xargs shfmt -i 2 -d <"$CHECK_LOGS/agent.fmt.list" || status=1; exit $status', ("shfmt",), skip_reason="shfmt not installed"),
-    Step("stylua", "lua", "stylua --respect-ignores --check home/hypr/.config/hypr", ("stylua",), skip_reason="stylua not installed"),
-    Step("luacheck", "lua", "sh ./lib/check/steps/lua.sh"),
-    Step("qml-paths", "qml", "python3 -B ./lib/check/steps/qml_paths.py"),
-    Step("qml-layers", "qml", "python3 -B ./lib/check/steps/qml_layers.py"),
-    Step("qml-singleton-names", "qml", "python3 -B ./lib/check/steps/qml_singleton_names.py"),
+    Step("stylua", "hypr", "stylua --respect-ignores --check home/hypr/.config/hypr", ("stylua",), skip_reason="stylua not installed"),
+    Step("luacheck", "hypr", "sh ./lib/check/steps/lua.sh"),
+    Step("qml-paths", "quickshell", "python3 -B ./lib/check/steps/qml_paths.py"),
+    Step("qml-layers", "quickshell", "python3 -B ./lib/check/steps/qml_layers.py"),
+    Step("qml-singleton-names", "quickshell", "python3 -B ./lib/check/steps/qml_singleton_names.py"),
     Step("qml-ipc", "tree", "python3 -B ./lib/check/steps/qml_ipc.py"),
     Step("readme-links", "tree", "python3 -B ./lib/check/steps/readme_links.py"),
     # "tree" because it reads the Lua keymaps and definitions, lib/check/registry.allow and the Quickshell IpcHandlers: no
     # single scope covers them. No `needs`: a missing lua must fail the step, not skip it.
     Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),
-    Step("lock-skins", "qml", "bash ./lib/check/steps/lock-skins.sh"),
+    Step("lock-skins", "quickshell", "bash ./lib/check/steps/lock-skins.sh"),
     Step("docs-generated", "docsgen", "sh ./lib/check/steps/docs-generated.sh", ("lua", "python3"), skip_reason="the generated table checks need lua and python3"),
-    Step("style-exports", "qml", "sh ./lib/check/steps/style-exports.sh"),
+    Step("style-exports", "quickshell", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
-    Step("shaders", "shaders", "sh ./lib/check/steps/shaders.sh", probe='[ -x "${QSB-}" ] || command -v qsb >/dev/null || [ -x /usr/lib/qt6/bin/qsb ]', skip_reason="the shader check needs qsb (qt6-shadertools)"),
-    Step("time-format", "qml", "sh ./lib/check/steps/time-format.sh"),
-    # py_compile would drop a __pycache__ into the stow package, so this parses instead.
-    Step("calendar-sync-syntax", "calendar", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
-    Step("agent-hooks", "hooks", "bash ./home/claude/.claude/hooks/tests/guard-masked-checks.sh && bash ./.claude/hooks/tests/check-before-pr.sh && bash ./.claude/hooks/tests/guard-gh-merge.sh && bash ./home/claude/.claude/hooks/tests/guard-tmux-socket.sh && bash ./home/claude/.claude/hooks/tests/context-budget.sh && bash ./home/claude/.claude/hooks/tests/remind-global-neutral.sh && bash ./.claude/hooks/tests/remind-global-neutral-source.sh && bash ./home/claude/.claude/hooks/tests/orchestrator-window-names.sh && bash ./.claude/hooks/tests/report-failed-main-check.sh && bash ./home/claude/.claude/hooks/tests/guard-gh-thread-mutations.sh", ("jq", "tmux", "flock"), skip_reason=HOOKS_SKIP),
-    Step("json-store", "qml", "bash ./home/quickshell/tests/json_store/run.sh", ("qs", "python3"), skip_reason="the json-store tests need qs and python3"),
-    Step("bar-editor", "bareditor", "bash ./home/quickshell/tests/bar_editor/run.sh", ("qs", "python3"), skip_reason="the bar-editor tests need qs and python3"),
-    Step("polled-command", "polledcmd", "bash ./home/quickshell/tests/polled_command/run.sh", ("qs", "python3"), skip_reason="the polled-command tests need qs and python3"),
-    Step("polled-file", "polledfile", "bash ./home/quickshell/tests/polled_file/run.sh", ("qs", "python3"), skip_reason="the polled-file tests need qs and python3"),
-    Step("colors-preview", "colorsprev", "bash ./home/quickshell/tests/colors_preview/run.sh", ("qs",), skip_reason="the colors-preview test needs qs"),
-    Step("restarting-stream", "restartstream", "bash ./home/quickshell/tests/restarting_stream/run.sh", ("qs", "python3"), skip_reason="the restarting-stream tests need qs and python3"),
-    Step("frame-lone-flush", "lua", "lua ./home/hypr/tests/frame_lone_flush.lua", ("lua",), skip_reason="the frame tests need lua"),
-    Step("bind-action", "lua", "lua ./home/hypr/tests/bind_action.lua", ("lua",), skip_reason="the bind tests need lua"),
-    Step("hypr-act", "lua", "bash ./home/hypr/tests/hypr-act.sh"),
-    Step("shadow-action", "lua", "bash ./home/hypr/tests/shadow-action.sh", ("lua", "jq"), skip_reason="the shadow action test needs lua and jq"),
-    Step("act-lib", "lua", "lua ./home/hypr/tests/act.lua", ("lua",), skip_reason="the action tests need lua"),
-    Step("act-global", "lua", "bash ./home/hypr/tests/act-global.sh", ("lua",), skip_reason="the global action tests need lua"),
-    Step("act-launch", "lua", "bash ./home/hypr/tests/act-launch.sh", ("lua",), skip_reason="the launch action tests need lua"),
-    Step("act-submap-rows", "lua", "bash ./home/hypr/tests/act-submap-rows.sh", ("lua",), skip_reason="the submap row tests need lua"),
-    Step("act-stateful", "lua", "bash ./home/hypr/tests/act-stateful.sh", ("lua",), skip_reason="the stateful submap tests need lua"),
-    Step("act-ipc", "lua", "bash ./home/hypr/tests/act-ipc.sh", ("lua",), skip_reason="the IPC action tests need lua"),
-    Step("theme-state", "lua", "lua ./home/hypr/tests/theme_state.lua", ("lua",), skip_reason="the theme state tests need lua"),
-    Step("restart-bar", "lua", "bash ./home/hypr/tests/restart-bar.sh"),
-    Step("input-vectors-lua", "inputvec", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
-    Step("input-vectors-js", "inputvec", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
-    Step("notification-markup", "node", "node ./home/quickshell/tests/notification_markup.js", ("node",), skip_reason="notification markup tests need node"),
-    Step("toast-extent", "node", "node ./home/quickshell/tests/toast_extent.js", ("node",), skip_reason="the toast extent tests need node"),
-    Step("picker-start-mode", "node", "node ./home/quickshell/tests/picker_start_mode.js", ("node",), skip_reason="the picker start mode tests need node"),
-    Step("cava-viewers", "node", "node ./home/quickshell/tests/cava_viewers.js", ("node",), skip_reason="the cava viewer tests need node"),
-    Step("style-title-readout", "node", "node ./home/quickshell/tests/style_title_readout.js", ("node",), skip_reason="the style title readout tests need node"),
-    Step("ansi-text", "node", "node ./home/quickshell/tests/ansi_text.js", ("node",), skip_reason="the ANSI text tests need node"),
-    Step("agent-sessions", "node", "node ./home/quickshell/tests/agent_sessions.js", ("node",), skip_reason="the agent sessions tests need node"),
-    Step("picker-browse", "node", "node ./home/quickshell/tests/picker_browse.js", ("node",), skip_reason="the picker browse layout tests need node"),
-    Step("hover-popup", "node", "node ./home/quickshell/tests/hover_popup.js", ("node",), skip_reason="the hover popup tests need node"),
-    Step("position-poll", "node", "node ./home/quickshell/tests/position_poll.js", ("node",), skip_reason="the position poll tests need node"),
-    Step("media-text", "node", "node ./home/quickshell/tests/media_text.js", ("node",), skip_reason="the media text tests need node"),
-    Step("media-settings", "node", "node ./home/quickshell/tests/media_settings.js", ("node",), skip_reason="the media settings tests need node"),
-    Step("media-sample", "node", "node ./home/quickshell/tests/media_sample.js", ("node",), skip_reason="the media sample tests need node"),
-    Step("settings-scale", "node", "node ./home/quickshell/tests/settings_scale.js", ("node",), skip_reason="the settings scale tests need node"),
-    Step("settings-sections", "node", "node ./home/quickshell/tests/settings_sections.js", ("node",), skip_reason="the settings sections tests need node"),
-    Step("scroll-cue", "node", "node ./home/quickshell/tests/scroll_cue.js", ("node",), skip_reason="the scroll cue tests need node"),
-    Step("bar-layout", "node", "node ./home/quickshell/tests/bar_layout.js", ("node",), skip_reason="the bar layout tests need node"),
-    Step("bar-vertical", "node", "node ./home/quickshell/tests/bar_vertical.js", ("node",), skip_reason="the bar vertical tests need node"),
-    Step("directory-format", "node", "node ./home/quickshell/tests/directory_format.js", ("node",), skip_reason="the directory format tests need node"),
-    Step("island-shapes", "node", "node ./home/quickshell/tests/island_shapes.js", ("node",), skip_reason="the island shape tests need node"),
-    Step("drawer-shapes", "node", "node ./home/quickshell/tests/drawer_shapes.js", ("node",), skip_reason="the drawer shape tests need node"),
+    Step("shaders", "quickshell", "sh ./lib/check/steps/shaders.sh", probe='[ -x "${QSB-}" ] || command -v qsb >/dev/null || [ -x /usr/lib/qt6/bin/qsb ]', skip_reason="the shader check needs qsb (qt6-shadertools)"),
+    Step("time-format", "quickshell", "sh ./lib/check/steps/time-format.sh"),
+    # The Lua entry points in home/hypr/tests that no .sh wraps (the other .lua files there are helpers of the .sh tests).
+    Step("frame-lone-flush", "hypr", "lua ./home/hypr/tests/frame_lone_flush.lua", ("lua",), skip_reason="the hypr tests need lua"),
+    Step("bind-action", "hypr", "lua ./home/hypr/tests/bind_action.lua", ("lua",), skip_reason="the hypr tests need lua"),
+    Step("act-lib", "hypr", "lua ./home/hypr/tests/act.lua", ("lua",), skip_reason="the hypr tests need lua"),
+    Step("theme-state", "hypr", "lua ./home/hypr/tests/theme_state.lua", ("lua",), skip_reason="the hypr tests need lua"),
+    Step("input-vectors-lua", "quickshell", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
+    Step("input-vectors-js", "quickshell", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
     Step("packages", "tree", "sh ./lib/check/steps/packages.sh"),
     Step("symlinks", "tree", "sh ./lib/check/steps/symlinks.sh"),
     Step("git-diff-check", "tree", "git diff --check HEAD"),
@@ -364,6 +282,13 @@ STEPS = [
     Step("conflicts", "tree", "sh ./lib/check/steps/conflicts.sh"),
     Step("ignored-integrations", "tree", "sh ./lib/check/steps/ignored-integrations.sh"),
 ]
+# Found by naming convention: a new test in one of these places is a step without an entry above.
+STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", needs=("lua", "jq"), skip_reason="the hypr tests need lua and jq")
+STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", needs=("node", "jq"), skip_reason="the quickshell node tests need node and jq")
+STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", needs=("qs", "python3"), skip_reason="the quickshell runtime tests need qs and python3")
+STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", needs=("jq", "zsh"), skip_reason="the install tests need jq and zsh")
+STEPS += discovered(".claude/hooks/tests/*.sh", "agents", "bash %s", "hook-", ("jq", "tmux", "flock"), HOOKS_SKIP)
+STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "agents", "bash %s", "hook-", ("jq", "tmux", "flock"), HOOKS_SKIP)
 
 # The shell files by the group shellcheck lints them in, as shell globs (one left unmatched stays in the list as
 # written). A group is linted whole when any member changes, since a member can source another.
