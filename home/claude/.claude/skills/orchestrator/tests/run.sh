@@ -39,10 +39,9 @@ run
 check "exit 0" '[ $rc -eq 0 ]'
 check "names in file order" '[ "$(jq -r "map(.name) | join(\",\")" <<<"$out")" = codex,coderabbit,claude ]'
 check "codex scope all, gate auto" '[ "$(field codex ".local.scope + \"/\" + .gate")" = all/auto ]'
-check "coderabbit scope off, gate auto" '[ "$(field coderabbit ".local.scope + \"/\" + .gate")" = off/auto ]'
+check "coderabbit scope public, gate auto" '[ "$(field coderabbit ".local.scope + \"/\" + .gate")" = public/auto ]'
 check "claude scope off, gate never" '[ "$(field claude ".local.scope + \"/\" + .gate")" = off/never ]'
 check "claude has no github block" '[ "$(field claude "has(\"github\")")" = false ]'
-check "coderabbit keeps default_when_on" '[ "$(field coderabbit ".local.default_when_on")" = public ]'
 check "no stderr" '[ -z "$err" ]'
 
 echo "== repo layer"
@@ -74,7 +73,7 @@ reset
 echo '{"reviewers":[{"name":"codex","local":"off","gate":"never"}]}' >"$repo_file"
 run
 check "repo file beats the built-in (scope shorthand and gate)" '[ "$(field codex ".local.scope + \"/\" + .gate")" = off/never ]'
-check "coderabbit default_when_on survives a repo file" '[ "$(field coderabbit ".local.default_when_on")" = public ]'
+check "coderabbit public default survives a repo file" '[ "$(field coderabbit ".local.scope")" = public ]'
 
 echo "== repo file lookup"
 check "repo file read from the repo root when run in a subdirectory" '
