@@ -31,7 +31,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `power/` holds `Power` (AC and battery state), its IPC handler and settings, the Power and Battery popups, and `PowerConfirm`.
 - [`clock/`](features/clock/README.md): Clock, calendar and time zones
 - [`weather/`](features/weather/README.md): Weather settings, alerts, fixtures and views
-- `launcher/` holds the fuzzy picker, its `Pickers` registry and IPC handler, its providers (agents, apps, clipboard, dirs, emoji, keybinds, choices), the HyprVim `:` prompt in `hyprvim/`, and `TypingSettings`.
+- [`launcher/`](features/launcher/README.md) holds the fuzzy picker, its `Pickers` registry and IPC handler, its providers (agents, apps, clipboard, dirs, emoji, keybinds, choices), the HyprVim `:` prompt in `hyprvim/`, and `TypingSettings`.
 - `developer/` holds `DeveloperSettings` (the code reviewers and their `developer.json` choices) for Settings > Developer.
 - `screen_select/` holds `RegionSelector`, its toolbar and key overlays, and the `cursors/`, `loupe/` and `targets/` skins.
 - `display/` holds `Displays` and `DisplayLayout.js` (monitor layout), `Backlight`, the brightness and zoom IPC handlers, and the overview zoom `Zoom` with its loupe and reticle.
@@ -233,7 +233,7 @@ Reviewers check Quickshell diffs against this section. Each rule names where it 
 
 **A Settings section.** Write `features/settings/sections/<Name>Section.qml`, usually a `RowsSection` with a list of rows, and add an entry to `list` in `features/settings/Sections.js`. The sidebar, search and IPC pick it up from there.
 
-**A picker provider.** Subclass `features/launcher/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `home/hypr/.config/hypr/lib/actions/menu.lua`, so the bind still works without the bar. A provider that is mostly looked at rather than typed into can set `layout: "browse"` (search, a resizable preview, then a grid of cards, dropped from the center island) and supply its own `card`; the spec is [specs/core/pickers.md](../../../../specs/core/pickers.md).
+**A picker provider.** Subclass `features/launcher/PickerProvider.qml`: set `name` and `items`, implement `refresh()` and `activate()`, and it registers itself. Add it to `shell.qml` next to the other providers. To open it from Hyprland, bind `Menu.picker("<name>", "<rofi fallback>")` from `home/hypr/.config/hypr/lib/actions/menu.lua`, so the bind still works without the bar. A provider that is mostly looked at rather than typed into can set `layout: "browse"` (search, a resizable preview, then a grid of cards, dropped from the center island) and supply its own `card`; see [launcher/README.md](features/launcher/README.md#browse-pickers).
 
 Adding a [style or style token](theme/README.md#adding-a-style-or-style-token) and a [lock skin](features/lock/README.md#adding-a-lock-skin) is described next to the code they touch.
 

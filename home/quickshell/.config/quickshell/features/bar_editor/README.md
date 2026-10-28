@@ -1,11 +1,28 @@
 # Bar editor
 
-A full-screen mode that edits the bar modules on the real bars. Open it with `qs ipc call bareditor open ""` (an empty string is the focused monitor; `open DP-1` picks one), `hypr-act bareditor.open` or `qs ipc call bareditor toggle`; `close` and `state` exist too. Settings > Bar modules > Edit bar opens it too (after Settings closes; Settings does not reopen). The keys, the shared versus own layout rules and what is not covered are in [`specs/core/baredit.md`](../../../../../../specs/core/baredit.md).
+Edit the bar modules on the bars themselves: a full-screen mode over every monitor that has a bar, driven from the keyboard, where the bar changes as you press keys. Open it from Settings > Bar modules > Edit bar (Settings closes and does not reopen), `hypr-act bareditor.open`, or `qs ipc call bareditor open ""` (an empty string is the focused monitor; `open DP-1` picks one; `toggle`, `close` and `state` exist too). `?` shows the key list. Changes apply and save at once. Keyboard only; dragging is not supported.
 
-- `BarEditor.qml` (singleton) holds the state: which monitor and module are selected, the mode, the undo stacks, and the key dispatcher `press("h")`. Every edit is a pure function in [`../bar/BarLayout.js`](../bar/README.md) applied through `BarSettings.set_state`, so the bars change as keys are pressed. In VISUAL, `x` forgets the saved bar position through `BarLayout.forget_position_for_mode` and the hint bar's mode block shows the edge (`position_edge`; `position_source` is in the `state` IPC output). `c` in NORMAL steps the selected module's compact override through `BarLayout.cycle_module_compact` (a module without `supports_compact` only sets `notice`, which the hint bar shows until the next key); `c` in VISUAL toggles the layout's compact through `BarLayout.toggle_compact`.
-- `BarEditorWindow.qml` is one overlay per screen (`quickshell-bareditor`). Every screen draws its own selection and swallows the pointer, leaving the system cursor as it is (skin cursors are for modes where the keyboard moves the pointer); only the picked monitor's window takes the keyboard (an exclusive grab, which is what lets it follow monitor select) and draws the mode, hints and boxes. A module with a compact override gets a dot at its corner (`compact_marks_for`, from that screen's own rule, so a sharing peer matched by another rule marks its own; a module drawn zero wide is marked at its slot).
-- `HintData.js` is the one table of the keys each mode lists on the hint bar (`HintBox.qml` is its plate, `HintContent.qml` draws it: a mode block, then a column per key group); `tests/bar_editor` checks it against the keys each mode acts on, so adding a key to a mode means adding it there. The HIDDEN list is `BarLayout.addable_entries`: hidden modules plus the argument variants not on the layout.
-- [`../bar/BarItems.qml`](../bar/README.md) is where `Bar.qml` publishes each live module, so the overlay can place its mark on it (kept in `bar/` so the bar never imports the editor).
+## Keys
+
+`q` closes the editor from every mode (a module you are carrying is put back).
+
+| Mode | Keys |
+| --- | --- |
+| Monitor select | `hjkl` pick a monitor by screen position, Enter edits its bar, `q` or Esc closes |
+| NORMAL | `h`/`l` select the previous or next module (`j`/`k` too on a side bar), Shift+`H`/`L` move it (crossing to the next side at the ends; on a lualine bar a module stays in its section), `x` hide, `c` compact this module (inherit, on, off), `o` own layout, `u` undo, Ctrl+R redo, Tab hidden, Shift+`V` whole bar, Esc back to monitor select |
+| HIDDEN (Tab) | `h`/`l` select a hidden module, Enter picks it up, then `h`/`l` place it and Enter drops it; Esc cancels the carry. With nothing carried, Esc or Tab leaves |
+| VISUAL (Shift+`V`) | `hjkl` move the whole bar to the left, bottom, top or right edge, `c` compact the whole bar, `x` forget the saved bar position (no prompt; offered only when one is saved), `u`/Ctrl+R undo and redo, Esc or Enter back |
+
+## Shared or own layout
+
+Monitors share one layout unless you press `o` on one, which gives it its own copy (`o` again returns it to shared). Editing a monitor that shares changes all of them, and all of them are highlighted. Moving the whole bar in VISUAL follows the same rule. Hiding never deletes a module: HIDDEN lists the hidden modules and the argument variants not on the layout (`system:memory`, `system:temperature`; plain `system` and `system:cpu` are one module, so only one is ever offered). A module with a compact override shows a dot at its corner, filled for on and a ring for off; `c` on a module with no compact form changes nothing and the hint bar says so.
+
+Undo restores the whole saved bar state, so it also reverts other bar settings changed during the session.
+
+## Code
+
+- `BarEditor.qml` (singleton) holds the state (monitor, module, mode, undo stacks) and the key dispatcher `press("h")`. Every edit is a pure function in [`../bar/BarLayout.js`](../bar/README.md) applied through `BarSettings.set_state`; start there.
+- `BarEditorWindow.qml` is one overlay per screen (`quickshell-bareditor`); only the picked monitor's window takes the keyboard. `../bar/BarItems.qml` is where `Bar.qml` publishes each live module so the overlay can mark it.
+- `HintData.js` is the table of keys each mode lists on the hint bar (`HintBox.qml`, `HintContent.qml` draw it); a test compares it to the keys each mode handles, so a new key goes in both.
 - `BarEditorIpc.qml` is the `bareditor` IPC target.
-
-Tests: `home/quickshell/tests/bar_editor/` runs the real `BarSettings` and `BarEditor` in a headless `qs` (`lib/check.sh --only bar-editor`); the pure edits are in `tests/bar_layout.js`. No layer-shell window loads headless, so the windows are checked with the `shadow` skill.
+- Tests: `lib/check.sh --only bar-editor` runs the real `BarSettings` and `BarEditor` headless (`home/quickshell/tests/bar_editor/`); pure edits are in `tests/bar_layout.js`. Layer-shell windows do not load headless, so check the windows with the `shadow` skill.
