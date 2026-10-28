@@ -57,6 +57,10 @@ Singleton {
     readonly property var view: BarLayout.layout_of(root.edited_rule)
     readonly property bool vertical: BarLayout.is_vertical(BarLayout.position_of(root.edited_rule))
     // A lualine bar on a row draws its modules by section; on a column it falls back to islands.
+    readonly property string position_edge: BarLayout.position_of(root.edited_rule) || "top"
+    readonly property string position_source: BarLayout.position_source(root.tracked, BarSettings.state, root.screen_key)
+    // False when `x` in VISUAL would change nothing, so the hint does not offer it.
+    readonly property bool can_forget: JSON.stringify(BarLayout.forget_position_for_mode(BarSettings.state, root.screen_key)) !== JSON.stringify(BarSettings.state)
     readonly property bool sectioned: root.lualine && !root.vertical
     readonly property var order: BarLayout.nav_order(root.view, root.sectioned)
     readonly property bool sharing: BarLayout.is_sharing(BarSettings.state, root.screen_key)
@@ -135,7 +139,7 @@ Singleton {
     }
 
     function state_json() {
-        return JSON.stringify({ active: root.active, mode: root.mode, focus_screen: root.focus_screen, selected: root.selected, picked: root.picked, sharing: root.sharing, sharing_count: root.sharing_count, undo: root.undo_stack.length, redo: root.redo_stack.length });
+        return JSON.stringify({ active: root.active, mode: root.mode, focus_screen: root.focus_screen, selected: root.selected, picked: root.picked, sharing: root.sharing, sharing_count: root.sharing_count, position_edge: root.position_edge, position_source: root.position_source, undo: root.undo_stack.length, redo: root.redo_stack.length });
     }
 
     // Applies an edit as one undo step; an edit that changes nothing is not one.
@@ -301,6 +305,10 @@ Singleton {
         root.hidden_selected = entry;
     }
 
+    function forget_position() {
+        root.commit(BarLayout.forget_position_for_mode(BarSettings.state, root.screen_key));
+    }
+
     function set_edge(position) {
         root.commit(BarLayout.set_position_for_mode(BarSettings.state, root.screen_key, position));
     }
@@ -400,6 +408,9 @@ Singleton {
     function press_visual(spec) {
         const edges = { h: "left", j: "bottom", k: "top", l: "right" };
         if (edges[spec]) root.set_edge(edges[spec]);
+        else if (spec === "x") root.forget_position();
+        else if (spec === "u") root.undo();
+        else if (spec === "Ctrl+r") root.redo();
         else if (spec === "Esc" || spec === "Enter") root.mode = "normal";
     }
 }
