@@ -1,27 +1,28 @@
 .pragma library
 
-// One entry per bar module; order is the settings list order. section is the lualine right-island section.
+// One entry per bar module; order is the settings list order. section is the lualine right-island section. supports_compact
+// marks the modules whose drawing changes when compact (system hides), so the bar editor's `c` offers only those.
 var modules = [
-    { name: "start", file: "StartButton.qml", popup: true, section: "x", args: [] },
-    { name: "workspaces", file: "Workspaces.qml", popup: false, section: "x", args: [] },
-    { name: "clock", file: "Clock.qml", popup: true, section: "z", args: [] },
+    { name: "start", file: "StartButton.qml", popup: true, section: "x", args: [], supports_compact: true },
+    { name: "workspaces", file: "Workspaces.qml", popup: false, section: "x", args: [], supports_compact: true },
+    { name: "clock", file: "Clock.qml", popup: true, section: "z", args: [], supports_compact: true },
     { name: "tray", file: "Tray.qml", popup: true, section: "x", args: [] },
-    { name: "volume", file: "Volume.qml", popup: true, section: "x", args: [] },
+    { name: "volume", file: "Volume.qml", popup: true, section: "x", args: [], supports_compact: true },
     { name: "battery", file: "Battery.qml", popup: true, section: "x", args: [] },
     { name: "bluetooth", file: "Bluetooth.qml", popup: true, section: "y", args: [] },
-    { name: "system", file: "System.qml", popup: true, section: "x", args: ["cpu", "memory", "temperature"] },
+    { name: "system", file: "System.qml", popup: true, section: "x", args: ["cpu", "memory", "temperature"], supports_compact: true },
     { name: "network", file: "Network.qml", popup: true, section: "y", args: [] },
     { name: "weather", file: "Weather.qml", popup: true, section: "x", args: [] },
     { name: "keeptabs", file: "Keeptabs.qml", popup: true, section: "x", args: [] },
     { name: "cmdstatus", file: "CommandStatus.qml", popup: false, section: "x", args: [] },
     { name: "updates", file: "Updates.qml", popup: true, section: "x", args: [] },
     { name: "voxtype", file: "Voxtype.qml", popup: false, section: "y", args: [] },
-    { name: "recording", file: "Recording.qml", popup: false, section: "y", args: [] },
+    { name: "recording", file: "Recording.qml", popup: false, section: "y", args: [], supports_compact: true },
     { name: "notifications", file: "Notifications.qml", popup: true, section: "z", args: [] },
-    { name: "media", file: "Media.qml", popup: true, section: "x", args: [] },
+    { name: "media", file: "Media.qml", popup: true, section: "x", args: [], supports_compact: true },
     { name: "directory", file: "Directory.qml", popup: false, section: "x", args: [] },
     // The old name of `media`: still accepted so old configs load, but not offered in the module picker.
-    { name: "cava", file: "Cava.qml", popup: false, section: "x", args: [], alias_of: "media" }
+    { name: "cava", file: "Cava.qml", popup: false, section: "x", args: [], alias_of: "media", supports_compact: true }
 ];
 
 var names = modules.map(m => m.name);
@@ -33,4 +34,9 @@ function find(name) {
 function has_popup(name) {
     const m = find(name);
     return !!m && m.popup;
+}
+
+function supports_compact(name) {
+    const m = find(name);
+    return !!m && m.supports_compact === true;
 }

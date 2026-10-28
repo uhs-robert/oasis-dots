@@ -258,7 +258,7 @@ Item {
                         id: loader
                         x: parent.pad_left
                         anchors.verticalCenter: parent.verticalCenter
-                        Component.onCompleted: setSource(cell.modelData.url, root.module_props)
+                        Component.onCompleted: setSource(cell.modelData.url, Object.assign({ compact: cell.modelData.compact }, root.module_props))
                         onLoaded: {
                             if (item.hasOwnProperty("on_accent")) item.on_accent = Qt.binding(() => root.accent);
                             // The whole cell is the module's hover zone, so the lead arrow and padding open the popup too.

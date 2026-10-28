@@ -151,8 +151,9 @@ Singleton {
         return BarLayout.thickness_for(rule ? rule.height : 0, Style.bar_height, Style.bar_height_vertical, BarLayout.position_of(rule), root.default_height);
     }
 
-    function compact_for(rule) {
-        return !!(rule && rule.compact);
+    // One module's compact on a bar showing `rule`: its per-module override, else the layout's (BarLayout.module_compact).
+    function module_compact_for(rule, entry) {
+        return BarLayout.module_compact(rule, entry);
     }
 
     // "top" or "bottom"; warns once per unsupported value.
