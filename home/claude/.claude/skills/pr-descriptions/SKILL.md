@@ -18,11 +18,9 @@ Plain paragraphs, in this order, skipping any that have nothing to say:
 
 1. **Why.** The problem or trigger, in a sentence or two. If an issue already explains it, link the issue and say only what the issue doesn't.
 2. **What changed.** The shape of the change in prose, not a file-by-file tour. Name commands, flags and files in backticks where the reviewer will look for them.
-3. **What a reviewer would miss.** Merge order, a stacked base, something to do after merging (restow, migrate, rerun an install), a behavior that stayed the same on purpose, something dropped from an earlier version of the PR.
+3. **What a reviewer would miss.** Merge order, something to do after merging (restow, migrate, rerun an install), a behavior that stayed the same on purpose, something dropped from an earlier version of the PR.
 4. **How it was checked**, only when that is not obvious from the diff and CI: a live test, a manual repro, a case the tests can't reach. One line.
 5. **Issue link**, last, on its own line: `Closes #N`, or `Part of #N` while other PRs for that issue remain.
-
-On a stacked PR, the first line is `Stacked on #N.`
 
 ## Style
 

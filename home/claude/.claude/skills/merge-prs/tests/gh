@@ -32,7 +32,7 @@ if [[ -n ${GH_LOG-} ]]; then
 fi
 number=""
 case "$args" in
-"pr view "* | "pr merge "* | "pr edit "* | "pr comment "*) number=$3 ;;
+"pr view "* | "pr merge "* | "pr comment "*) number=$3 ;;
 "api graphql"*) number=$(grep -o 'number=[0-9]*' <<<"$args" | cut -d= -f2) ;;
 esac
 state_file=$GH_STATE
@@ -143,15 +143,6 @@ case "$args" in
 esac
 case "$args" in
 "repo view"*) printf 'me/repo\tmain\ttrue\ttrue\ttrue\n' ;;
-"pr list"*)
-  base=$(sed -E 's/.*--base ([^ ]+).*/\1/' <<<"$args")
-  for f in "$GH_STATE".*; do
-    [[ -f $f && $f != *.new ]] || continue
-    state_file=$f
-    [[ $(get base) == "$base" && $(get state) == OPEN ]] || continue
-    printf '%s\t%s\t%s\tfalse\n' "${f##*.}" "$(get head)" "$(head_oid)"
-  done
-  ;;
 # Each side of a compare against main: reviewed_subjects/reviewed_files for the commit Codex reviewed, head_subjects/
 # head_files for anything else, as ;-separated lists.
 "api repos/"*"/compare/"*)
@@ -177,7 +168,6 @@ case "$args" in
   # codex_never_reviews=1: Codex answers with a summary that records no commit, as it does out of quota.
   [[ $(get codex_never_reviews || true) == 1 ]] || put codex_commit "$(head_oid | cut -c1-7)"
   ;;
-"pr edit"*) put base "$(sed -E 's/.*--base ([^ ]+).*/\1/' <<<"$args")" ;;
 "api graphql"*)
   # codex_pending_reads=N reports no Codex review yet on a fresh PR for N reads, then completed.
   pending=$(get codex_pending_reads || true)
@@ -204,20 +194,18 @@ case "$args" in
   printf '%s\t%s\t%s\t%s\n' "$(get open_threads || true)" "$(get codex || true)" "$(get codex_commit || true)" "$(head_oid)" |
     awk -F'\t' -v OFS='\t' '{ if ($1 == "") $1 = 0; if ($2 == "") $2 = "none"; if ($3 == "") { $3 = "-"; if ($2 == "Completed") $2 = "Unreviewed" } print }'
   ;;
-"pr view"*"headRefName,headRefOid,baseRefName,state,isCrossRepository"*)
+# cross=true: the PR is from a fork.
+"pr view"*"--json baseRefName,state,isCrossRepository"*)
+  printf '%s\t%s\t%s\n' "$(get base)" "$(get state)" "$(get cross || true)" |
+    awk -F'\t' -v OFS='\t' '{ if ($3 == "") $3 = "false"; print }'
+  ;;
+"pr view"*"headRefName,headRefOid,baseRefName,state"*)
   # push_on_merge_read=1: a push lands between the reviewer checks and the merge.
   [[ -z $(get push_on_merge_read) ]] || {
     put push_on_merge_read ""
     push_new_commit
   }
-  # push_branch_on_merge_read=<branch>: the same push, to another PR's branch (a child).
-  [[ -z $(get push_branch_on_merge_read) ]] || {
-    branch=$(get push_branch_on_merge_read)
-    put push_branch_on_merge_read ""
-    push_new_commit "$branch"
-  }
-  printf '%s\t%s\t%s\t%s\t%s\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)" "$(get cross || true)" |
-    awk -F'\t' -v OFS='\t' '{ if ($5 == "") $5 = "false"; print }'
+  printf '%s\t%s\t%s\t%s\n' "$(get head)" "$(reported_oid)" "$(get base)" "$(get state)"
   ;;
 "pr view"*"headRefOid,mergeable"*)
   oid=$(reported_oid)
@@ -229,7 +217,6 @@ case "$args" in
   fi
   printf '%s\t%s\n' "$oid" "$m"
   ;;
-"pr view"*"--json isCrossRepository --jq"*) get cross || echo false ;;
 "pr view"*"--json headRefOid --jq"*) reported_oid ;;
 "pr view"*"--json state"*) get state ;;
 "pr merge"*)
