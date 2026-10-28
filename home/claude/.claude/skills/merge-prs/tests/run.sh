@@ -144,7 +144,7 @@ sed -i 's/^state=OPEN/state=MERGED/' "$GH_STATE"
 out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 show "$out"
-check "refuses a merged fork PR too" "[[ $code != 0 ]] && grep -q '#7 is from a fork' <<<\"\$out\"" 
+check "refuses a merged fork PR too" "[[ $code != 0 ]] && grep -q '#7 is from a fork' <<<\"\$out\""
 check "keeps the local branch" "git -C '$root/main' show-ref -q --verify refs/heads/child"
 
 echo "== main held by another worktree"
