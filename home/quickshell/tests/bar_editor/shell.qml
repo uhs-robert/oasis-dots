@@ -6,6 +6,7 @@ import qs.features.bar
 import qs.features.bar_editor
 import qs.features.popups
 import "features/bar/BarLayout.js" as BarLayout
+import "features/bar_editor/HintData.js" as HintData
 
 // Harness shell for run.py: runs the scenario named by $SCENARIO inside a copy of the real bar config, so the real
 // BarSettings (and the editor) are what is tested. The result goes to result.json under $XDG_STATE_HOME, then qs quits.
@@ -82,7 +83,7 @@ ShellRoot {
             root.check("scenario ran to the end", String(e), "");
         }
     }
-    // req: BAREDIT-01, BAREDIT-02, BAREDIT-03, BAREDIT-04, BAREDIT-09, BAREDIT-11, BAREDIT-12, BAREDIT-13, BAREDIT-14, BAREDIT-20, BAREDIT-21 (position_source only) the key flows through the dispatcher.
+    // req: BAREDIT-01, BAREDIT-02, BAREDIT-03, BAREDIT-10, BAREDIT-04, BAREDIT-09, BAREDIT-11, BAREDIT-12, BAREDIT-13, BAREDIT-14, BAREDIT-20, BAREDIT-21 (position_source only) the key flows through the dispatcher.
     function scenario_keys() {
         const A = root.real_name;
         root.check("monitors skip the one with no bar", BarEditor.monitors.map(m => m.name), [A, "B"]);
@@ -109,6 +110,9 @@ ShellRoot {
         root.check("u undoes the hide", root.layout().center, ["workspaces", "clock"]);
         root.keys("Ctrl+r");
         root.check("Ctrl+r redoes it", root.layout().center, ["clock"]);
+        const before_a = JSON.stringify(BarSettings.state);
+        root.keys("a");
+        root.check("a does nothing (the add prompt is retired)", [JSON.stringify(BarSettings.state) === before_a, BarEditor.mode], [true, "normal"]);
         root.keys("u u u");
         root.check("u past the start of the session does nothing more", [root.layout(), BarEditor.undo_stack.length], [{ left: ["start", "workspaces"], center: ["clock"], right: ["tray", "volume"] }, 0]);
         root.keys("l L u");
@@ -182,9 +186,6 @@ ShellRoot {
         root.check("c keeps the shared compact when a disconnected monitor's rule gives the other value", [BarSettings.state.shared.compact], [false]);
         BarEditor.tracked_rules = [];
         root.keys("c c");
-        root.keys("a");
-        root.check("a opens the prompt, empty for a module with no arguments", [BarEditor.prompt_open, BarEditor.prompt_text], [true, ""]);
-        root.keys("Esc");
         BarEditor.selected = "start";
         root.keys(Array(root.layout().left.length + root.layout().center.length + 1).join("l "));
         root.check("selection walks across the sides in bar order", BarEditor.selected, root.layout().right[0]);
@@ -226,30 +227,112 @@ ShellRoot {
         root.check("q while carrying closes the editor and puts the module back", [BarEditor.active, BarEditor.picked, JSON.stringify(BarSettings.state) === clean], [false, "", true]);
     }
 
-    // req: BAREDIT-10
-    function scenario_add_arg() {
+    // req: BAREDIT-13, BAREDIT-22 the HIDDEN tray lists argument variants; system and system:cpu are one module.
+    function scenario_hidden_add() {
         BarEditor.tracked_of = s => ({ match: "*", left: [], center: [], right: ["tray", "system"] });
         BarEditor.open("B");
-        root.keys("l");
-        root.check("selects system", BarEditor.selected, "system");
-        root.keys("a");
-        root.check("a prefills the module's next unused argument", [BarEditor.prompt_open, BarEditor.prompt_text], [true, "system:cpu"]);
+        root.keys("o");
+        root.keys("Tab");
+        root.check("Tab lists the variants not on the bar, never system:cpu", [BarEditor.hidden_list.indexOf("system:memory") >= 0, BarEditor.hidden_list.indexOf("system:temperature") >= 0, BarEditor.hidden_list.indexOf("system:cpu"), BarEditor.hidden_list.indexOf("system")], [true, true, -1, -1]);
+        BarEditor.hidden_selected = "system:memory";
+        root.keys("Enter h");
+        root.check("a picked variant is carried on the bar", [BarEditor.picked, BarEditor.view.right.indexOf("system:memory") >= 0], ["system:memory", true]);
         root.keys("Enter");
-        root.check("Enter adds it after the selected module and selects it", [BarEditor.view.right, BarEditor.selected, BarEditor.prompt_open], [["tray", "system", "system:cpu"], "system:cpu", false]);
-        root.keys("a");
-        root.check("the next prefill skips the one on the bar", BarEditor.prompt_text, "system:memory");
-        root.keys("Backspace Backspace Backspace Backspace Backspace Backspace");
-        root.keys("t e m p e r a t u r e");
-        root.keys("Enter");
-        root.check("a typed argument is added too", BarEditor.view.right, ["tray", "system", "system:cpu", "system:temperature"]);
-        root.keys("a");
-        root.keys("Backspace Backspace Backspace Backspace Backspace Backspace Backspace Backspace Backspace Backspace Backspace Backspace Backspace");
-        root.keys("n o p e Enter");
-        root.check("an invalid entry keeps the prompt open and adds nothing", [BarEditor.prompt_open, BarEditor.view.right.length], [true, 4]);
-        root.keys("q");
-        root.check("q in the prompt is a typed letter, not close", [BarEditor.active, BarEditor.prompt_text], [true, "nopeq"]);
+        root.check("Enter drops it and selects it in NORMAL", [BarEditor.mode, BarEditor.selected, BarEditor.view.right.length], ["normal", "system:memory", 3]);
+        root.keys("Tab");
+        root.check("it leaves the tray, the other variant stays", [BarEditor.hidden_list.indexOf("system:memory"), BarEditor.hidden_list.indexOf("system:temperature") >= 0], [-1, true]);
         root.keys("Esc");
-        root.check("Esc cancels the prompt and keeps the editor open", [BarEditor.prompt_open, BarEditor.active], [false, true]);
+        root.keys("o");
+        root.keys("Tab");
+        root.check("back on the shared layout, which lacks it, the tray lists it again", [BarEditor.sharing, BarEditor.hidden_list.indexOf("system:memory") >= 0], [true, true]);
+    }
+
+    // req: BAREDIT-22 nothing left to add.
+    function scenario_hidden_empty() {
+        const everything = BarLayout.known.filter(e => e !== "cava").concat(["system:memory", "system:temperature"]);
+        BarEditor.tracked_of = s => ({ match: "*", left: everything, center: [], right: [] });
+        BarEditor.open("B");
+        root.keys("Tab");
+        root.check("a bar with every module and variant has nothing to add", [BarEditor.mode, BarEditor.hidden_list, BarEditor.hidden_selected], ["hidden", [], ""]);
+        root.keys("Enter");
+        root.check("Enter with nothing selected changes nothing", [BarEditor.picked, BarEditor.undo_stack.length], ["", 0]);
+    }
+
+    // The keys the hint bar lists for a mode are the keys that mode acts on: each key is pressed from a fresh fixture, and the
+    // ones that change anything must be exactly HintData's list.
+    readonly property var probe_keys: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ?".split("").concat(["Tab", "Enter", "Esc", "Ctrl+r", "Backspace"])
+    function snapshot() {
+        return JSON.stringify([BarSettings.state, BarEditor.mode, BarEditor.active, BarEditor.help_open, BarEditor.focus_screen, BarEditor.selected, BarEditor.hidden_selected, BarEditor.picked, BarEditor.undo_stack.length, BarEditor.redo_stack.length]);
+    }
+    // A fresh editor in `mode` with something to undo and redo and every key's target in reach.
+    function hint_fixture(mode, vertical, saved_edge) {
+        BarEditor.close();
+        BarSettings.set_state(BarLayout.normalize(null));
+        const plus = [["N", 1920, -1080], ["W", 0, 0], ["B", 1920, 0], ["E", 3840, 0], ["S", 1920, 1080]];
+        root.install(plus.map(p => Object.assign(root.fake_screen(p[0], p[1], true), { y: p[2] })));
+        BarEditor.tracked_of = s => Object.assign({}, root.layout_rule, vertical ? { position: "left" } : {});
+        BarEditor.open("B");
+        if (mode === "visual" && saved_edge) root.keys("V l Enter");
+        root.keys("l l L H u");
+        if (mode === "monitor") root.keys("Esc");
+        if (mode === "hidden") {
+            root.keys("Tab");
+            BarEditor.hidden_selected = BarEditor.hidden_list[2];
+        }
+        if (mode === "carrying") {
+            root.keys("Tab");
+            BarEditor.hidden_selected = "battery";
+            root.keys("Enter h");
+        }
+        if (mode === "visual") root.keys("V");
+    }
+    function check_hint_keys(label, mode, vertical, saved_edge) {
+        const carrying = mode === "carrying";
+        const real = carrying ? "hidden" : mode;
+        const accepted = [];
+        for (const k of root.probe_keys) {
+            root.hint_fixture(mode, vertical, saved_edge);
+            const before = root.snapshot();
+            BarEditor.press(k);
+            if (root.snapshot() !== before) accepted.push(k);
+        }
+        root.hint_fixture(mode, vertical, saved_edge);
+        const listed = HintData.keys_of(HintData.groups(real, carrying, BarEditor.vertical, BarEditor.can_forget));
+        // The saved edge's own key is the one hjkl press that changes nothing.
+        root.check(label + ": the hint bar lists exactly the keys that act", listed.filter(k => !(saved_edge && k === "l")).sort(), accepted.filter(k => !(saved_edge && k === "l")).sort());
+    }
+    // req: BAREDIT-23
+    function scenario_hint_keys() {
+        root.check_hint_keys("monitor select", "monitor", false, false);
+        root.check_hint_keys("NORMAL on a row", "normal", false, false);
+        root.check_hint_keys("NORMAL on a column", "normal", true, false);
+        root.check_hint_keys("HIDDEN", "hidden", false, false);
+        root.check_hint_keys("HIDDEN carrying a module", "carrying", false, false);
+        root.check_hint_keys("VISUAL with nothing saved", "visual", false, false);
+        root.check_hint_keys("VISUAL with a saved edge", "visual", false, true);
+    }
+
+    // The window cannot load offscreen, so the hint plate is checked on a stand-in screen-sized parent.
+    Item {
+        id: stage
+        width: 1920
+        height: 1080
+        HintBox { id: stage_hints }
+    }
+    // req: BAREDIT-24
+    function scenario_hint_edge() {
+        BarEditor.open("B");
+        root.keys("V");
+        const plate = stage_hints;
+        const fresh_height = plate.content.implicitHeight + 16;
+        stage_hints.on_top = false;
+        root.check("bar on top: hints at the bottom edge at their own height", [plate.height, plate.y], [fresh_height, 1080 - fresh_height - 24]);
+        root.keys("j");
+        stage_hints.on_top = true;
+        root.check("j moves the bar to the bottom: hints at the top at their own height", [plate.height, plate.y], [fresh_height, 24]);
+        root.keys("k");
+        stage_hints.on_top = false;
+        root.check("k moves it back: hints return to the bottom, not stretched", [plate.height, plate.y], [fresh_height, 1080 - fresh_height - 24]);
     }
 
     // req: BAREDIT-12, BAREDIT-13
@@ -398,7 +481,10 @@ ShellRoot {
     readonly property var plans: ({
         editor_ownership: { steps: [[100, () => root.run_editor("ownership")]], end: 500 },
         editor_popups: { steps: [[100, () => root.run_editor("popups")], [300, () => root.scenario_popups_after()], [500, () => root.scenario_popups_hover()], [700, () => root.scenario_popups_hands_off()]], end: 900 },
-        editor_add_arg: { steps: [[100, () => root.run_editor("add_arg")]], end: 500 },
+        editor_hint_keys: { steps: [[100, () => root.run_editor("hint_keys")]], end: 500 },
+        editor_hidden_add: { steps: [[100, () => root.run_editor("hidden_add")]], end: 500 },
+        editor_hidden_empty: { steps: [[100, () => root.run_editor("hidden_empty")]], end: 500 },
+        editor_hint_edge: { steps: [[100, () => root.run_editor("hint_edge")]], end: 500 },
         editor_pick_redo: { steps: [[100, () => root.run_editor("pick_redo")]], end: 500 },
         editor_monitors: { steps: [[100, () => root.run_editor("monitors")]], end: 500 },
         editor_undo_own: { steps: [[100, () => root.run_editor("undo_own")]], end: 500 },

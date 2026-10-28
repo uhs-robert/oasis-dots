@@ -30,8 +30,6 @@ Singleton {
     property string hidden_selected: ""
     property string picked: ""
     property bool help_open: false
-    property bool prompt_open: false
-    property string prompt_text: ""
 
     // Whole BarSettings.state snapshots. Restoring one also restores unrelated keys changed since (directory switches).
     property var undo_stack: []
@@ -65,9 +63,7 @@ Singleton {
     readonly property var order: BarLayout.nav_order(root.view, root.sectioned)
     readonly property bool sharing: BarLayout.is_sharing(BarSettings.state, root.screen_key)
     readonly property int sharing_count: root.sharing ? root.sharing_screens().length : 0
-    readonly property var hidden_list: BarLayout.hidden_entries(BarSettings.rules, BarSettings.state, root.view).filter(BarLayout.is_known_entry)
-    // The module the hint bar names: the one under the cursor in the hidden list, else the selected one.
-    readonly property string current_name: root.mode === "hidden" && root.picked === "" ? root.hidden_selected : root.selected
+    readonly property var hidden_list: BarLayout.addable_entries(BarSettings.rules, BarSettings.state, root.view).filter(BarLayout.is_known_entry)
     // Look prototype: which hint bar design to draw ("caps", "dense" or "split").
     property string hint_design: "caps"
     readonly property string mode_label: root.mode === "monitor" ? "MONITOR" : root.mode.toUpperCase()
@@ -113,7 +109,6 @@ Singleton {
         root.pick_base = null;
         root.picked = "";
         root.help_open = false;
-        root.prompt_open = false;
         root.focus_screen = root.monitors.some(m => m.name === wanted) ? wanted : root.monitors[0].name;
         root.mode = "normal";
         root.selected = root.order[0] || "";
@@ -128,7 +123,6 @@ Singleton {
         root.selected = "";
         root.picked = "";
         root.help_open = false;
-        root.prompt_open = false;
         root.undo_stack = [];
         root.redo_stack = [];
         root.pick_base = null;
@@ -191,8 +185,7 @@ Singleton {
             root.focus_screen = root.monitors[0].name;
             root.mode = "monitor";
             root.help_open = false;
-            root.prompt_open = false;
-        }
+            }
         root.ensure_selection();
     }
 
@@ -257,19 +250,6 @@ Singleton {
         root.selected = root.order[Math.min(at, root.order.length - 1)] || "";
     }
 
-    function open_prompt() {
-        const base = root.selected.split(":")[0];
-        root.prompt_text = root.selected === "" ? "" : BarLayout.suggest_entry(root.tracked, BarSettings.state, root.screen_key, base);
-        root.prompt_open = true;
-    }
-
-    function accept_prompt() {
-        const text = root.prompt_text.trim();
-        if (!BarLayout.valid_entry(text)) return;
-        if (root.commit(BarLayout.add_entry(root.tracked, BarSettings.state, root.screen_key, text, root.selected))) root.selected = text;
-        root.prompt_open = false;
-    }
-
     // Takes the highlighted hidden module onto the bar to be placed with h/l; Esc returns everything to before.
     function pick_up() {
         const entry = root.hidden_selected;
@@ -319,11 +299,7 @@ Singleton {
     // which is every key while it is open: nothing may reach what is under it.
     function press(spec) {
         if (!root.active) return false;
-        if (root.prompt_open) {
-            root.press_prompt(spec);
-            return true;
-        }
-        // In the add prompt q is a typed letter; everywhere else it closes, cancelling a pick-up in progress.
+        // q closes from everywhere, cancelling a pick-up in progress.
         if (spec === "q") {
             root.close();
             return true;
@@ -341,13 +317,6 @@ Singleton {
         else if (root.mode === "hidden") root.press_hidden(spec);
         else if (root.mode === "visual") root.press_visual(spec);
         return true;
-    }
-
-    function press_prompt(spec) {
-        if (spec === "Esc") root.prompt_open = false;
-        else if (spec === "Enter") root.accept_prompt();
-        else if (spec === "Backspace") root.prompt_text = root.prompt_text.slice(0, -1);
-        else if (spec.length === 1) root.prompt_text += spec;
     }
 
     readonly property var directions: ({ h: [-1, 0], l: [1, 0], k: [0, -1], j: [0, 1] })
@@ -373,8 +342,6 @@ Singleton {
             root.commit(BarLayout.toggle_compact(root.tracked, BarSettings.state, root.screen_key, root.sharing_rules()));
         } else if (spec === "o") {
             root.commit(BarLayout.toggle_own(root.tracked, BarSettings.state, root.screen_key));
-        } else if (spec === "a") {
-            root.open_prompt();
         } else if (spec === "x") {
             root.hide_selected();
         } else if (spec === "u") {

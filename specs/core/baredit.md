@@ -18,17 +18,17 @@ The owner edits the bar modules on the real bars instead of in a list: a full-sc
 ## Requirements
 - **BAREDIT-01** The editor opens over the real bars of every monitor with a bar and starts on the focused monitor's bar in NORMAL mode; monitors with no bar are skipped.
 - **BAREDIT-02** Monitor select moves between monitors with h/j/k/l by screen position; Enter edits that bar; q closes.
-- **BAREDIT-03** Esc in NORMAL goes up to monitor select; Esc at monitor select closes the editor, and q closes it from every state (cancelling a hidden module being carried), except in the `a` prompt, where q is a typed letter and Esc cancels the prompt.
+- **BAREDIT-03** Esc in NORMAL goes up to monitor select; Esc at monitor select closes the editor, and q closes it from every state (cancelling a hidden module being carried).
 - **BAREDIT-04** In NORMAL, h/l select the previous/next module (also j/k on a side bar), in the order the bar shows them.
 - **BAREDIT-05** Shift+H/L move the selected module, crossing into the next side at the ends; on a sorted (lualine) bar a module never moves out of its section.
 - **BAREDIT-06** Editing a monitor that shares the layout edits the shared layout, and every sharing monitor is highlighted.
 - **BAREDIT-07** `o` gives a monitor its own copy of the layout; `o` again returns it to shared. The editor shows which mode is active.
 - **BAREDIT-08** `c` toggles compact for the layout being edited: all sharing monitors on a shared layout, one monitor on its own.
 - **BAREDIT-09** `x` moves the selected module to the hidden list and never deletes it.
-- **BAREDIT-10** `a` adds a module with an argument (for example system:cpu).
+- **BAREDIT-10** Retired, id not reused: `a` no longer adds a module with an argument and does nothing; the argument variants are in the HIDDEN list (BAREDIT-22).
 - **BAREDIT-11** Changes apply to the real bars at once and are saved.
 - **BAREDIT-12** `u` undoes and Ctrl+R redoes edits made in the session; a new edit clears redo.
-- **BAREDIT-13** Tab shows hidden modules; Enter picks one up, h/l place it on the bar, Enter drops it, Esc cancels with nothing changed.
+- **BAREDIT-13** Tab shows the hidden modules and the argument variants (BAREDIT-22); Enter picks one up, h/l place it on the bar, Enter drops it, Esc cancels with nothing changed.
 - **BAREDIT-14** Shift+V selects the whole bar; h/j/k/l move it to the left, bottom, top or right edge live; a sharing monitor changes the shared position, a monitor with its own layout only its own; Esc or Enter returns to NORMAL.
 - **BAREDIT-15** Quickshell takes the keyboard and pointer (never a Hyprland submap); only one screen owns the keyboard and it follows the picked monitor; `?` shows a help box.
 - **BAREDIT-16** [gap: untested] The look (highlight, mode indicator) is readable in every style; checked by screenshots only.
@@ -37,13 +37,16 @@ The owner edits the bar modules on the real bars instead of in a list: a full-sc
 - **BAREDIT-19** A monitor added or removed while the editor is open updates monitor select; losing the picked monitor returns to monitor select on another one, and losing the last bar closes the editor.
 - **BAREDIT-20** In VISUAL, `x` forgets the saved bar position that h/j/k/l would write, with no prompt: a monitor with its own layout loses only its own saved position; a sharing monitor loses the shared position and any saved one of its own, which also moves own-layout monitors that follow the shared one. The bar then follows the shared position, bars.json or top. Nothing saved: nothing changes. `u` and Ctrl+R undo and redo in VISUAL too.
 - **BAREDIT-21** [gap: untested] The VISUAL hint bar names the bar's edge and what decided it (saved for this monitor, shared position, bars.json, default), updating after every move, forget, undo and redo; it offers `x forget` only when something is saved to forget; checked by screenshots only (the edge, source and forgettable state it reads are tested).
+- **BAREDIT-22** HIDDEN lists, after the hidden modules, every argument variant of a module (system:memory, system:temperature) that is not on the layout being edited, so a picked variant is added on drop and leaves the list, and an own-layout monitor lacking one still sees it. Plain `system` and `system:cpu` are one module (both draw CPU only): Tab never offers system:cpu, offers system when neither is on the layout, and CPU cannot be added twice; a saved system:cpu entry keeps working. With nothing left to add the tray says "nothing to add".
+- **BAREDIT-23** The hint bar lists every key the current mode acts on and no other (NORMAL includes Tab, Shift+V, u and Ctrl+R), from one table (`HintData.js`) that a test compares to the keys each mode accepts.
+- **BAREDIT-24** The hint bar keeps its own size and sits on the screen edge the bar is not on, including after the bar moves to the other edge in VISUAL (it never stretches across the screen).
 
 ## Look
-The bar being edited gets a thin frame and a light tint in the theme's primary color. The selected module gets a line along the bar's inner edge, a caret pointing at it and its name on a plate past the caret, in the theme's secondary color; a monitor sharing the layout shows them fainter, without the frame. The mode (`-- NORMAL --`, `-- HIDDEN --`, `-- VISUAL --`) sits in a hint bar at the screen edge the bar is not on, with whether the layout is shared by n monitors or own. VISUAL frames the whole bar, and its hint bar names the bar's edge and what decided it. HIDDEN lists the hidden modules in a tray above the hint bar. Monitor select shows the screens as they sit, the picked one lit. The help box is the shared key help. The pointer keeps the system cursor: no picker skin, since the keyboard never moves it. Everything uses style tokens.
+The bar being edited gets a thin frame and a light tint in the theme's primary color. The selected module gets a line along the bar's inner edge, a caret pointing at it and its name on a plate past the caret, in the theme's secondary color; a monitor sharing the layout shows them fainter, without the frame. The mode (`-- NORMAL --`, `-- HIDDEN --`, `-- VISUAL --`) sits in a hint bar at the screen edge the bar is not on, with whether the layout is shared by n monitors or own. VISUAL frames the whole bar, and its hint bar names the bar's edge and what decided it. HIDDEN lists the hidden modules and argument variants in a tray beside the hint bar. Monitor select shows the screens as they sit, the picked one lit. The help box is the shared key help. The pointer keeps the system cursor: no picker skin, since the keyboard never moves it. Everything uses style tokens.
 
 ## Not covered
 - Undo restores whole saved states, so it also reverts unrelated keys changed elsewhere during the session (the Directory switches, an edit made to the file by hand).
 - The keyboard goes to the picked monitor's surface with an exclusive grab, because a handover to another screen otherwise waits for the pointer to move there. The pointer is swallowed on every screen, so nothing under the editor sees it.
-- A module the bar hides while it has nothing to show can be selected; its mark sits at the nearest shown module, and the hint bar names the selected module.
+- A module the bar hides while it has nothing to show can be selected; its mark sits at the nearest shown module.
 - Keyboard only: dragging modules is not covered.
 - The editor's windows are checked in the shadow session only, because no layer-shell window loads in the headless test.

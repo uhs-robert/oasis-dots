@@ -382,12 +382,27 @@ var module_args = BarModules.modules.reduce((out, m) => {
     return out;
 }, {});
 
-// The first `base:arg` not in `taken`, else "".
-function next_entry(base, taken) {
-    for (const arg of module_args[base] || []) {
-        if (taken.indexOf(base + ":" + arg) < 0) return base + ":" + arg;
-    }
-    return "";
+// Entries that render identically to a plainer one: system draws CPU only, so system:cpu is the same module as system.
+var same_as = { "system:cpu": "system" };
+
+function plain_entry(entry) {
+    return same_as[entry] || entry;
+}
+
+// What the editor's hidden list offers for the layout being edited: the hidden modules, then every `base:arg` variant not on
+// it. An entry and its `same_as` twin count as one, so system:cpu is never offered (system is) and CPU cannot land twice.
+function addable_entries(rules, state, layout) {
+    const on = sides.reduce((all, s) => all.concat(layout[s]), []).map(plain_entry);
+    const out = [];
+    const add = entry => {
+        const plain = plain_entry(entry);
+        if (on.indexOf(plain) < 0 && out.indexOf(plain) < 0) out.push(plain);
+    };
+    const hidden = hidden_entries(rules, state, layout);
+    hidden.filter(e => e.indexOf(":") < 0).forEach(add);
+    hidden.filter(e => e.indexOf(":") >= 0).forEach(add);
+    for (const base of Object.keys(module_args)) module_args[base].forEach(arg => add(base + ":" + arg));
+    return out;
 }
 
 // op: { type: "hide" | "show" | "side" | "remove", entry, side?, index? } or { type: "move", entry, delta } or { type: "move", entry, with } to swap with another entry. Returns a new state.
@@ -523,30 +538,6 @@ function unhide_place(rules, rule, state, key, entry) {
     const next = normalize(state);
     const back = restore_side(rules, next, key, entry);
     return edit(rule, next, key, { type: "show", entry: entry, side: back.side, index: back.index });
-}
-
-// Whether `text` names a module and an argument it takes, like system:cpu.
-function valid_entry(text) {
-    const at = text.indexOf(":");
-    if (at < 0) return false;
-    return (module_args[text.slice(0, at)] || []).indexOf(text.slice(at + 1)) >= 0;
-}
-
-// The next unused `base:arg` for a module, else "".
-function suggest_entry(rule, state, key, base) {
-    const view = layout_of(effective(rule, normalize(state), key));
-    return next_entry(base, view.left.concat(view.center, view.right));
-}
-
-// Adds an argument entry just after `after` on its side (the right end when `after` is not on the bar). An invalid entry or
-// one already on the bar changes nothing.
-function add_entry(rule, state, key, text, after) {
-    const next = normalize(state);
-    const view = layout_of(effective(rule, next, key));
-    if (!valid_entry(text) || side_of(view, text) !== "") return next;
-    const side = side_of(view, after);
-    if (side === "") return edit(rule, next, key, { type: "show", entry: text, side: "right", index: -1 });
-    return edit(rule, next, key, { type: "show", entry: text, side: side, index: view[side].indexOf(after) + 1 });
 }
 
 // `o`: a sharing monitor gets a copy of what it shows now; a monitor with its own layout goes back to the shared one.

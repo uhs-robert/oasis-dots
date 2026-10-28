@@ -205,7 +205,7 @@ PanelWindow {
         border.color: root.keyboard_owner ? Style.accent_color : Style.frame_border_color
     }
 
-    // HIDDEN: the hidden modules, above the hint bar.
+    // HIDDEN: the hidden modules and the argument variants not on the bar, away from the hint bar.
     Rectangle {
         visible: root.keyboard_owner && BarEditor.mode === "hidden" && BarEditor.picked === ""
         anchors.horizontalCenter: parent.horizontalCenter
@@ -227,7 +227,7 @@ PanelWindow {
             spacing: 8
             Text {
                 visible: BarEditor.hidden_list.length === 0
-                text: "nothing hidden"
+                text: "nothing to add"
                 color: Style.text_muted
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-1)
@@ -263,47 +263,13 @@ PanelWindow {
         }
     }
 
-    // The add-argument prompt.
-    Rectangle {
-        visible: root.keyboard_owner && BarEditor.prompt_open
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: root.hints_on_top ? hint_box.y + hint_box.height + 10 : hint_box.y - height - 10
-        width: 360
-        height: prompt_text.implicitHeight + 16
-        radius: Style.frame_radius
-        color: Style.frame_color
-        border.width: Style.frame_border_width
-        border.color: Style.frame_border_color
-        Text {
-            id: prompt_text
-            anchors.verticalCenter: parent.verticalCenter
-            x: 12
-            text: "add: " + BarEditor.prompt_text + "█"
-            color: Style.text_fg
-            font.family: Style.font_family
-            font.pixelSize: Style.fs(-1)
-        }
-    }
-
-    // The mode and key hints, bottom-center like the region selector's hint bar.
-    Rectangle {
+    // The key hints, on the screen edge the bar is not on.
+    HintBox {
         id: hint_box
         visible: root.keyboard_owner && BarEditor.mode !== "monitor"
-        anchors.horizontalCenter: parent.horizontalCenter
-        // y rather than top/bottom anchors: flipping anchors between undefined and a parent edge left both set (see hint-bar-visual-bug).
-        y: root.hints_on_top ? 24 : parent.height - hint_box.height - 24
-        width: Math.min(parent.width - 32, hint_row.implicitWidth + 28)
-        height: hint_row.implicitHeight + 16
-        radius: Style.frame_radius
-        color: Style.frame_color
-        border.width: Style.frame_border_width
-        border.color: Style.frame_border_color
-        HintContent {
-            id: hint_row
-            anchors.centerIn: parent
-            carrying: root.carrying
-            vertical: root.vertical
-        }
+        on_top: root.hints_on_top
+        carrying: root.carrying
+        vertical: root.vertical
     }
 
     // Monitor select: the screens as they sit, the picked one lit.
@@ -423,7 +389,7 @@ PanelWindow {
             anchors.topMargin: help_title.y + help_title.height + 8
             anchors.margins: 12
             popup_keys: false
-            text: "h/l select module · H/L move module · c compact · o own layout · a add argument · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar (then hjkl moves it to an edge, x forgets the saved position, u undoes) · Esc monitor select · q close"
+            text: "h/l select module · H/L move module · c compact · o own layout · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar (then hjkl moves it to an edge, x forgets the saved position, u undoes) · Esc monitor select · q close"
         }
     }
 }
