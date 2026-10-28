@@ -221,8 +221,6 @@ PATH_SCOPES = [
     ("home/calendar/*", "calendar"),
     ("home/claude/.claude/hooks/*", "hooks"),
     ("home/claude/.claude/skills/orchestrator-handoff/*", "hooks"),
-    # The plan scaffold's test validates against this schema.
-    ("lib/plan-frontmatter.yaml", "checkscope"),
     (".claude/hooks/*", "hooks"),
     (".claude/skills/owner-test-bar/*", "bar"),
     # shadow.sh is also run by the shadow-action test, which sources it for `action`.

@@ -39,12 +39,21 @@ fi
 # of a known parent (-P) is the one pattern kill that stays inside this session.
 pattern_kill="${at_cmd}(killall|pkill)([[:space:]][^;&|]*)?(;|$)"
 pgrep_kill="${at_cmd}pgrep([[:space:]][^;&|]*)?\|[[:space:]]*xargs([[:space:]][^;&|]*)?[[:space:]]kill"
-subst_kill="${at_cmd}kill([[:space:]][^;&|]*)?(\\\$\\(|\`)pgrep[^)\`]*"
+subst_kill="${at_cmd}kill([[:space:]][^;&|]*)?(\\\$\\(|\`)[[:space:]]*pgrep[^)\`]*"
 # Each kill is judged on its own: a scoped one earlier in the command must not excuse a later one.
 unchecked=$flat
 while [[ $unchecked =~ $pattern_kill || $unchecked =~ $pgrep_kill || $unchecked =~ $subst_kill ]]; do
   kill_cmd=${BASH_REMATCH[0]}
-  [[ $kill_cmd =~ [[:space:]](-P|--parent)[[:space:]=] ]] ||
+  unscoped=0
+  rest=$kill_cmd
+  while [[ $rest == *pgrep* ]]; do # every pgrep in a substitution needs its own -P
+    rest=${rest#*pgrep}
+    [[ ${rest%%pgrep*} =~ [[:space:]](-P|--parent)[[:space:]=] ]] || unscoped=1
+  done
+  [[ $kill_cmd == *pgrep* ]] || [[ $kill_cmd =~ [[:space:]](-P|--parent)[[:space:]=] ]] || unscoped=1
+  # Signal 0 only probes that a process exists.
+  [[ $kill_cmd =~ (^|[^[:alnum:]_-])kill[[:space:]]+-0[[:space:]] ]] && unscoped=0
+  ((unscoped == 0)) ||
     deny "a kill by name or pattern also hits other sessions' processes (they run the same suites): kill the PIDs you started (\$! when you launch them), or scope with pkill -P <your parent pid>"
   unchecked=${unchecked/"$kill_cmd"/ }
 done
