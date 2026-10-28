@@ -1,7 +1,10 @@
 .pragma library
 
 // The keys a mode offers, in groups by purpose. Each key is [cap, label]; the hint bar shows every one of them.
-function groups(mode, carrying, vertical, can_forget) {
+// `compact` is what `c` acts on now: the selected module's override in NORMAL ("inherit", "on", "off", "none" with no
+// compact form), the whole bar's compact in VISUAL ("on", "off").
+function groups(mode, carrying, vertical, can_forget, compact) {
+    const compact_key = ["c", "compact: " + (compact || "off")];
     const quit = ["q", "quit"];
     const help = ["?", "help"];
     if (mode === "monitor") {
@@ -23,7 +26,7 @@ function groups(mode, carrying, vertical, can_forget) {
         ];
     }
     if (mode === "visual") {
-        const edit = [["h j k l", "move to edge"]];
+        const edit = [["h j k l", "move to edge"], compact_key];
         if (can_forget) edit.push(["x", "forget"]);
         return [
             { name: "move", keys: edit },
@@ -33,7 +36,7 @@ function groups(mode, carrying, vertical, can_forget) {
     }
     return [
         { name: "select", keys: [[vertical ? "h/l j/k" : "h/l", "select"]] },
-        { name: "edit", keys: [[vertical ? "H/L J/K" : "H/L", "move"], ["x", "hide"], ["c", "compact"], ["o", "own"]] },
+        { name: "edit", keys: [[vertical ? "H/L J/K" : "H/L", "move"], ["x", "hide"], compact_key, ["o", "own"]] },
         { name: "modes", keys: [["Tab", "hidden"], ["V", "bar"]] },
         { name: "history", keys: [["u", "undo"], ["^R", "redo"]] },
         { name: "leave", keys: [["Esc", "back"], quit, help] }

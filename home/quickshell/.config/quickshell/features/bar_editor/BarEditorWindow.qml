@@ -175,6 +175,27 @@ PanelWindow {
         }
     }
 
+    // Modules with a compact override of their own: a dot at the module's corner, filled when forced on, a ring when forced off.
+    Repeater {
+        model: (root.keyboard_owner || root.peer) && (BarEditor.mode === "normal" || BarEditor.mode === "hidden") ? BarEditor.compact_marks : []
+        Rectangle {
+            id: compact_mark
+            required property var modelData
+            readonly property rect at: root.placed_rect(compact_mark.modelData.entry).rect
+            readonly property bool forced_on: compact_mark.modelData.on
+            visible: compact_mark.at.width >= 1
+            opacity: root.keyboard_owner ? 1 : 0.45
+            width: 7
+            height: 7
+            radius: 3.5
+            x: compact_mark.at.x + compact_mark.at.width - width
+            y: compact_mark.at.y
+            color: compact_mark.forced_on ? Theme.theme_secondary : "transparent"
+            border.width: 1.5
+            border.color: Theme.theme_secondary
+        }
+    }
+
     // VISUAL: the whole bar, framed; a screen sharing the edge shows it fainter.
     Rectangle {
         visible: BarEditor.mode === "visual" && root.bar_item !== null && (root.keyboard_owner || root.peer)
@@ -382,7 +403,7 @@ PanelWindow {
             anchors.topMargin: help_title.y + help_title.height + 8
             anchors.margins: 12
             popup_keys: false
-            text: "h/l select module · H/L move module · c compact · o own layout · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar (then hjkl moves it to an edge, x forgets the saved position, u undoes) · Esc monitor select · q close"
+            text: "h/l select module · H/L move module · c module compact (inherit, on, off) · o own layout · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar (then hjkl moves it to an edge, c toggles the bar's compact, x forgets the saved position, u undoes) · Esc monitor select · q close"
         }
     }
 }
