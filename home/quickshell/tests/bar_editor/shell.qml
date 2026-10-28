@@ -82,7 +82,7 @@ ShellRoot {
             root.check("scenario ran to the end", String(e), "");
         }
     }
-    // req: BAREDIT-01, BAREDIT-02, BAREDIT-03, BAREDIT-04, BAREDIT-09, BAREDIT-11, BAREDIT-12, BAREDIT-13, BAREDIT-14, BAREDIT-20, BAREDIT-21 the key flows through the dispatcher.
+    // req: BAREDIT-01, BAREDIT-02, BAREDIT-03, BAREDIT-04, BAREDIT-09, BAREDIT-11, BAREDIT-12, BAREDIT-13, BAREDIT-14, BAREDIT-20, BAREDIT-21 (position_source only) the key flows through the dispatcher.
     function scenario_keys() {
         const A = root.real_name;
         root.check("monitors skip the one with no bar", BarEditor.monitors.map(m => m.name), [A, "B"]);
@@ -149,6 +149,14 @@ ShellRoot {
         root.keys("u");
         root.keys("j");
         root.check("hint state: the edge follows a move", [BarEditor.position_edge, BarEditor.position_source, BarEditor.can_forget], ["bottom", "global", true]);
+        const saved_state = BarSettings.state;
+        BarSettings.set_state(BarLayout.set_position(saved_state, BarEditor.screen_key, "left"));
+        root.check("a stale own position outranks the shared one", [BarEditor.position_edge, BarEditor.position_source], ["left", "monitor"]);
+        root.keys("x");
+        root.check("VISUAL x on a sharing monitor clears the shared and its stale own position", [BarEditor.screen_key in BarSettings.state.positions, "position" in BarSettings.state.shared, BarEditor.position_source], [false, false, "default"]);
+        root.keys("u");
+        root.check("VISUAL u restores both", [BarSettings.state.positions[BarEditor.screen_key], BarSettings.state.shared.position], ["left", "bottom"]);
+        BarSettings.set_state(saved_state);
         root.keys("Esc");
         root.check("Esc leaves VISUAL for NORMAL", BarEditor.mode, "normal");
         root.keys("o V k");
@@ -157,6 +165,8 @@ ShellRoot {
         root.check("VISUAL x on an own layout clears only its own position", [BarEditor.screen_key in BarSettings.state.positions, BarSettings.state.shared.position, BarEditor.position_source], [false, "bottom", "global"]);
         root.keys("u");
         root.check("VISUAL u restores the own position", BarSettings.state.positions[BarEditor.screen_key], "top");
+        root.keys("Ctrl+r");
+        root.check("VISUAL Ctrl+R redoes the own-layout forget", [BarEditor.screen_key in BarSettings.state.positions, BarSettings.state.shared.position], [false, "bottom"]);
         root.keys("Enter");
         root.keys("c");
         root.check("c on an own layout sets only that layout's compact", [BarSettings.state.monitors[BarEditor.screen_key].compact, "compact" in BarSettings.state.shared], [true, false]);
