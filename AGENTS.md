@@ -52,8 +52,6 @@ just update-repos     # pull non-linked clones in repos/
 
 A new check step, or a path that should reach one, goes in the tables of `lib/check/scopes.py`; keep step docs in `lib/check/README.md`, not in `lib/check.sh` (an edit to the shim reruns every step).
 
-A spec is `specs/core/<id>.md`, copied from `specs/core/TEMPLATE.md`; its front matter and any `.plans/` file's (the generic fields of the orchestrator skills plus `specs`, the list of spec ids it touches) are validated by the `specs` step against `specs/schema/` (`check-jsonschema`, from `packages/pipx.ini`; the step fails without it). Each requirement id (`- **BAR-03** ...`) is tagged in a test with `req: BAR-03` (a comment or a `vectors.tsv` note; several ids comma-separated) or marked `[gap: untested]` or `[gap: unmet]`; `lib/check/steps/specs.py --write` regenerates `specs/gaps.md`. Tooling tests and voxcmd goldens stay untagged.
-
 Formatting scope is deliberately narrow — whitespace and stylua checks only cover `install.sh`, `uninstall.sh`, `justfile`, `lib/`, `packages/`, `home/hypr/`, and shfmt covers the Quickshell audio importers (`scripts/*-audio`, `scripts/lib/`) and the agent tooling's tracked shell scripts under `.claude/` and `home/claude/.claude/` (skills, hooks, `status.d`; written here, not vendored). Everything else under `home/` is vendored or hand-maintained upstream config; do not reformat it.
 
 New install behaviour goes in the matching `lib/install/` function, and a new package in a `packages/` manifest, never inline in `install.sh`.
@@ -87,9 +85,9 @@ How the owner expects anything interactive to behave, in Quickshell, voxcmd or a
 
 ## Docs
 
-A README is for users first: what the feature does and how to use it, leading with what to do. It ends with a short `## Code` map for whoever changes it (which file does what, where to start), not a tour of every function. A trap or the reason behind a choice goes in a comment at the code it explains, never in a central log. `docs/` holds user guides that span features. `specs/` holds the roadmap and the specs; a feature's README links to its spec. None of these repeats a rule from this file; link to it.
+A README is for users first: what the feature does and how to use it, leading with what to do. It ends with a short `## Code` map for whoever changes it (which file does what, where to start), not a tour of every function. A trap or the reason behind a choice goes in a comment at the code it explains, never in a central log. `docs/` holds user guides that span features. None of these repeats a rule from this file; link to it.
 
-`.plans/<topic>/<topic>.md` holds the tracker for work in progress (batch order, open points), with its plan drafts beside it; `.logs/<topic>/` holds its evidence (check output, review notes, PR bodies). Whoever owns the topic deletes both once it is merged or dropped, after moving anything durable into the repo in the last PR: a status into `specs/`, a decision's reason beside the code it explains. They exist in the main checkout only (both are gitignored, so worktrees do not see them); briefs give their absolute paths. An agent without a path finds the main checkout as the parent of `git rev-parse --path-format=absolute --git-common-dir`.
+`.plans/<topic>/<topic>.md` holds the tracker for work in progress (batch order, open points), with its plan drafts beside it; `.logs/<topic>/` holds its evidence (check output, review notes, PR bodies). Whoever owns the topic deletes both once it is merged or dropped, after moving anything durable into the repo in the last PR: a status into the feature's README or an issue, a decision's reason beside the code it explains. They exist in the main checkout only (both are gitignored, so worktrees do not see them); briefs give their absolute paths. An agent without a path finds the main checkout as the parent of `git rev-parse --path-format=absolute --git-common-dir`.
 
 ## Global agent files
 
