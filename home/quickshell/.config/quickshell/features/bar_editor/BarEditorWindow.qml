@@ -18,13 +18,6 @@ PanelWindow {
     readonly property bool has_bar: BarEditor.monitors.some(m => m.name === root.screen_name)
     // A screen showing the layout being edited, which follows every change.
     readonly property bool peer: !root.keyboard_owner && BarEditor.sharing && BarEditor.sharing_screens().indexOf(root.screen_name) >= 0
-    // What decided the bar's edge, worded for the VISUAL hint; a monitor with its own layout only follows the shared position.
-    readonly property string position_source_label: {
-        const source = BarEditor.position_source;
-        if (source === "monitor") return "saved for this monitor";
-        if (source === "global") return BarEditor.sharing ? "shared position" : "follows the shared position";
-        return source === "bars.json" ? "follows bars.json" : "follows the default";
-    }
     readonly property bool carrying: BarEditor.mode === "hidden" && BarEditor.picked !== ""
     readonly property bool shows_selection: BarEditor.mode === "normal" || root.carrying
     readonly property var bar_item: BarItems.item_of(root.screen_name, "bar")

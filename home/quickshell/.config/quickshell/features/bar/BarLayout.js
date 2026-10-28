@@ -360,7 +360,9 @@ function order_from(layout, old) {
 function restore_side(rules, state, key, entry) {
     const own = key && state.monitors[key];
     const last = own ? own.last_side : state.shared.last_side;
-    return last[entry] || { side: tracked_side(rules, entry) || "right", index: -1 };
+    // A saved twin (system:cpu) holds the slot plain system takes back.
+    const remembered_as = [entry].concat(Object.keys(same_as).filter(twin => same_as[twin] === entry)).find(e => last[e]);
+    return last[remembered_as] || { side: tracked_side(rules, entry) || "right", index: -1 };
 }
 
 // Forgets an entry everywhere in the state.

@@ -2,7 +2,7 @@
 # Gaps
 
 - **BAREDIT-16** (untested; [baredit.md](core/baredit.md)) The look (highlight, mode indicator) is readable in every style; checked by screenshots only.
-- **BAREDIT-21** (untested; [baredit.md](core/baredit.md)) The VISUAL hint bar names the bar's edge and what decided it (saved for this monitor, shared position, bars.json, default), updating after every move, forget, undo and redo; it offers `x forget` only when something is saved to forget; checked by screenshots only (the edge, source and forgettable state it reads are tested).
+- **BAREDIT-21** (untested; [baredit.md](core/baredit.md)) The VISUAL hint bar's mode block shows the bar's current edge under the mode name, updating after every move, forget, undo and redo, and offers `x forget` only when something is saved to forget; checked by screenshots only (the edge and forgettable state it reads are tested).
 - **KEYS-05** (untested; [keys.md](core/keys.md)) A global shortcut acts the moment it is pressed, wherever the keyboard focus is, except while a submap is active.
 - **KEYS-07** (untested; [keys.md](core/keys.md)) While a submap is active only its own keys act. A global shortcut still acts there only if it is marked to work in submaps.
 - **KEYS-20** (untested; [keys.md](core/keys.md)) The keybind search lists every bind of the mode you are in, submaps first and marked with `+`, and running a choice does what the key would.
