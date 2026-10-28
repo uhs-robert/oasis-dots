@@ -83,7 +83,7 @@ ShellRoot {
             root.check("scenario ran to the end", String(e), "");
         }
     }
-    // req: BAREDIT-01, BAREDIT-02, BAREDIT-03, BAREDIT-08, BAREDIT-10, BAREDIT-04, BAREDIT-09, BAREDIT-11, BAREDIT-12, BAREDIT-13, BAREDIT-14, BAREDIT-20, BAREDIT-21 (position_source only) the key flows through the dispatcher.
+    // the key flows through the dispatcher.
     function scenario_keys() {
         const A = root.real_name;
         root.check("monitors skip the one with no bar", BarEditor.monitors.map(m => m.name), [A, "B"]);
@@ -225,7 +225,7 @@ ShellRoot {
         root.check("q while carrying closes the editor and puts the module back", [BarEditor.active, BarEditor.picked, JSON.stringify(BarSettings.state) === clean], [false, "", true]);
     }
 
-    // req: BAREDIT-13, BAREDIT-22 the HIDDEN tray lists argument variants; system and system:cpu are one module.
+    // the HIDDEN tray lists argument variants; system and system:cpu are one module.
     function scenario_hidden_add() {
         BarEditor.tracked_of = s => ({ match: "*", left: [], center: [], right: ["tray", "system"] });
         BarEditor.open("B");
@@ -264,7 +264,7 @@ ShellRoot {
         }
     }
 
-    // req: BAREDIT-25, BAREDIT-26 `c` in NORMAL steps the selected module's own compact; one with no compact form says so.
+    // `c` in NORMAL steps the selected module's own compact; one with no compact form says so.
     function scenario_module_compact() {
         live_bar.active = true;
         BarEditor.open("B");
@@ -313,7 +313,7 @@ ShellRoot {
         live_bar.active = false;
     }
 
-    // req: BAREDIT-25 a bars.json rule's own per-module compact is what the editor shows and steps from.
+    // a bars.json rule's own per-module compact is what the editor shows and steps from.
     function scenario_rule_compact() {
         const rule = Object.assign({}, root.layout_rule, { compact_modules: { clock: true } });
         BarEditor.tracked_of = s => rule;
@@ -331,7 +331,7 @@ ShellRoot {
         root.check("with nothing saved only the screen whose rule names it is marked", [BarEditor.compact_marks_for("B"), BarEditor.compact_marks_for(root.real_name)], [[{ entry: "clock", on: true }], []]);
     }
 
-    // req: BAREDIT-22 nothing left to add.
+    // nothing left to add.
     function scenario_hidden_empty() {
         const everything = BarLayout.known.filter(e => e !== "cava").concat(["system:memory", "system:temperature"]);
         BarEditor.tracked_of = s => ({ match: "*", left: everything, center: [], right: [] });
@@ -385,7 +385,6 @@ ShellRoot {
         // The saved edge's own key is the one hjkl press that changes nothing.
         root.check(label + ": the hint bar lists exactly the keys that act", listed.filter(k => !(saved_edge && k === "l")).sort(), accepted.filter(k => !(saved_edge && k === "l")).sort());
     }
-    // req: BAREDIT-23
     function scenario_hint_keys() {
         root.check_hint_keys("monitor select", "monitor", false, false);
         root.check_hint_keys("NORMAL on a row", "normal", false, false);
@@ -403,7 +402,6 @@ ShellRoot {
         height: 1080
         HintBox { id: stage_hints }
     }
-    // req: BAREDIT-24
     function scenario_hint_edge() {
         BarEditor.open("B");
         root.keys("V");
@@ -419,7 +417,6 @@ ShellRoot {
         root.check("k moves it back: hints return to the bottom, not stretched", [plate.height, plate.y], [fresh_height, 1080 - fresh_height - 24]);
     }
 
-    // req: BAREDIT-12, BAREDIT-13
     function scenario_pick_redo() {
         BarEditor.open("B");
         root.keys("l L u");
@@ -436,7 +433,7 @@ ShellRoot {
     }
 
 
-    // req: BAREDIT-15 one screen owns the keyboard, and it follows the picked monitor.
+    // one screen owns the keyboard, and it follows the picked monitor.
     function scenario_ownership() {
         const names = ["A", "B", "C"];
         root.check("nothing owns the keyboard before opening", root.owners(names), []);
@@ -466,7 +463,7 @@ ShellRoot {
         root.check("a key while closed is not taken", BarEditor.press("l"), false);
     }
 
-    // req: BAREDIT-18 a popup and the editor never both hold the keyboard.
+    // a popup and the editor never both hold the keyboard.
     function scenario_popups() {
         const names = ["A", "B", "C"];
         Popups.open("settings", null, undefined, "B");
@@ -503,7 +500,7 @@ ShellRoot {
         BarSettings.set_state(BarSettings.state);
     }
 
-    // req: BAREDIT-19 monitors added or removed while open.
+    // monitors added or removed while open.
     function scenario_monitors() {
         root.stamp();
         BarEditor.open("B");
@@ -530,7 +527,7 @@ ShellRoot {
         root.check("and cannot open", BarEditor.open(""), false);
     }
 
-    // req: BAREDIT-07, BAREDIT-12 undo and redo across own-layout toggles.
+    // undo and redo across own-layout toggles.
     function scenario_undo_own() {
         root.stamp();
         BarEditor.open("B");

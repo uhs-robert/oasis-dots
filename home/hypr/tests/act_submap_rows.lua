@@ -108,7 +108,7 @@ local found, ProbeAct = row_binds({
 })
 check("row: id takes the action's label", found.A and found.A.opts.desc == "Terminal")
 check("row: desc overrides the label", found.B and found.B.opts.desc == "Own Label")
--- req: KEYS-24 (a row with no description is not listed)
+-- a row with no description is not listed
 check("row: desc = false leaves it undescribed", found.C and found.C.opts.desc == nil)
 check("row: unknown id drops only that row", found.D == nil and found.H and found.H.opts.desc == "Task Manager")
 check("row: opts reach the bind", found.E and found.E.opts.keep == true and found.E.opts.desc == "Enter Submap")
@@ -130,7 +130,6 @@ check(
 )
 
 -- In a one-shot submap an id row exits after it runs, and `keep` stays; both as plain rows do.
--- req: KEYS-15
 found = row_binds({
 	{ "A", "terminal.open" },
 	{ "B", { "submap.enter", { "Probe" } }, "Stay", { keep = true } },
@@ -199,12 +198,12 @@ end
 
 local ROWS = { { "A", "terminal.open" } }
 
--- req: KEYS-06 (the entry key switches into the submap)
+-- the entry key switches into the submap
 probes({ { name = "Probe", desc = "+Probe", enter = "SUPER + P", binds = ROWS } })
 check("entry key enters the submap", pressed("", "SUPER + P") == "submap(Probe)")
 check("entry key is labelled", probe_bind("", "SUPER + P").opts.desc == "+Probe")
 
--- req: KEYS-04 (a leader-based entry key follows the leader, none left behind)
+-- a leader-based entry key follows the leader, none left behind
 Stubs.load(
 	{ name = "alt", leader = "ALT", monitors = {} },
 	{ "keymaps.global", "keymaps.submaps.leader", "keymaps.submaps.go" }
@@ -215,11 +214,11 @@ Stubs.load(Stubs.VARIANTS[1], { "keymaps.global", "keymaps.submaps.leader", "key
 check("default leader: Leader entry key", probe_bind("", "SUPER + SPACE") ~= nil and probe_bind("", "SPACE") == nil)
 check("default leader: Go entry key", probe_bind("", "SUPER + G") ~= nil and probe_bind("", "G") == nil)
 
--- req: KEYS-18 (the leader plus SPACE enters the Leader submap, a one-shot menu)
+-- the leader plus SPACE enters the Leader submap, a one-shot menu
 check("leader SPACE enters Leader", pressed("", "SUPER + SPACE") == "submap(Leader)")
 check("Leader is one-shot", pressed("Leader", "catchall") == "submap(reset)")
 
--- req: KEYS-13 (ESCAPE: out of every submap, back one level, into a named submap, or no ESCAPE)
+-- ESCAPE: out of every submap, back one level, into a named submap, or no ESCAPE
 local Submap = probes({
 	{ name = "Outer", binds = ROWS },
 	{ name = "Reset", binds = ROWS },
@@ -238,7 +237,7 @@ Submap.previous = nil
 check("ESCAPE: previous with nowhere to go leaves", pressed("Previous", "ESCAPE") == "submap(reset)")
 check("ESCAPE: a submap can have none", probe_bind("Never", "ESCAPE") == nil)
 
--- req: KEYS-14 (BACKSPACE: the submap you came from, else out)
+-- BACKSPACE: the submap you came from, else out
 Submap.enter("Outer")
 Submap.enter("Reset")
 check("BACKSPACE: back to the submap before", pressed("Reset", "BackSpace") == "submap(Outer)")
@@ -246,7 +245,7 @@ Submap.reset()
 Submap.previous = nil
 check("BACKSPACE: out when there is none", pressed("Reset", "BackSpace") == "submap(reset)")
 
--- req: KEYS-16 (one-shot: an unbound key just leaves), KEYS-17 (stay: an unbound key does nothing)
+-- one-shot: an unbound key just leaves; stay: an unbound key does nothing
 probes({
 	{ name = "Once", catchall = "reset", binds = ROWS },
 	{ name = "Stay", catchall = "stay", binds = ROWS },
@@ -255,7 +254,7 @@ check("one-shot: unbound key leaves", pressed("Once", "catchall") == "submap(res
 check("stay: unbound key is swallowed", pressed("Stay", "catchall") == "no_op")
 check("stay: nothing leaves the submap", not pressed("Stay", "catchall"):find("submap", 1, true))
 
--- req: KEYS-23 (SHIFT + SLASH toggles which-key, unlabelled; a submap's own row on that key wins)
+-- SHIFT + SLASH toggles which-key, unlabelled; a submap's own row on that key wins
 probes({
 	{ name = "Plain", binds = ROWS },
 	{ name = "Own", binds = { { "shift+slash", "terminal.open", "Own help" } } },
@@ -266,7 +265,7 @@ check("which-key toggle has no description", toggle and toggle.opts.desc == nil)
 check("which-key toggle toggles", pressed("Plain", "SHIFT + SLASH") == "hyprvim.whichkey.toggle()")
 check("a row on that key keeps its row", probe_bind("Own", "SHIFT + SLASH") == nil and probe_bind("Own", "shift+slash"))
 
--- req: KEYS-34 (a submap of your own: name, entry key, label, escape, one-shot setting, rows)
+-- a submap of your own: name, entry key, label, escape, one-shot setting, rows
 probes({
 	{
 		name = "Notes",

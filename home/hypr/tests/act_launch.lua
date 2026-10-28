@@ -69,7 +69,6 @@ check("submap.enter unknown name raises", ran("submap.enter", "Typo"):match("^ER
 check("run submap.enter", ran("submap.enter", "Bar") == "submap(Bar)")
 check("submap.enter needs a name", ran("submap.enter"):match("^ERROR") ~= nil)
 
--- req: KEYS-37
 -- A submap whose setup raised has no Escape bind, so it must stay unenterable by the action and by Submap.enter.
 local Submap = require("lib.key.submap")
 local broken = Submap.define({

@@ -21,7 +21,6 @@ const loaded = raw => V.validated(defaults, raw, (key, value) => V.in_choices(ch
 const mode = (raw, name, group) => S.docked_mode(loaded(raw), name, group);
 
 const cases = [
-  // req: PICKERS-11
   ["defaults: browse opens NORMAL, search INSERT", () => [mode({}, "clipboard", "browse"), mode({}, "apps", "search")], ["normal", "insert"]],
   ["defaults: every bottom picker follows its group", () => S.bottom_pickers.map(n => defaults[n + "_start_mode"]), Array(7).fill("group")],
   ["a file from before the groups loads with their defaults", () => loaded({ start_mode: "normal", remember_query: true }).browse_start_mode, "normal"],

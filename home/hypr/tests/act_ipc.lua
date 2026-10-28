@@ -199,7 +199,6 @@ local power_only = bind_set({ "keymaps.global.power" })
 package.preload["keymaps.global.power"] = function()
 	return assert(load("local = 1", "=keymaps/global/power.lua"))()
 end
--- req: KEYS-35
 package.preload["keymaps.submaps.go"] = function()
 	error("go broke")
 end
@@ -248,7 +247,6 @@ check(
 )
 check("warns about nothing else: " .. keymap_warned, #broken_warnings == 2)
 
--- req: KEYS-36
 -- Failing partway is harder: global power.lua raises after all its binds, and the Go submap's body raises after one
 -- bind inside it. Hyprland's current submap must be back to global once the Go file fails, so the later submaps'
 -- entry keys stay global, and Go gets no entry key into a submap with no Escape.
