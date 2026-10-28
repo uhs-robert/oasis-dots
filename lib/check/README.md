@@ -1,6 +1,6 @@
 # The check runner
 
-`lib/check.sh` is a shim for `lib/check/runner.py`; it works as `sh lib/check.sh` and as `lib/check.sh`. The step table, the path rules and the shell file groups are in `lib/check/scopes.py`, where a new step goes. This file holds what the shim's header used to: the options, the environment, the step list and how passes are recorded. Editing the shim is scope "all" (every step reruns, about 4 minutes); editing this file reaches only `check-scope` and `check-cache`.
+`lib/check.sh` is a shim for `lib/check/runner.py` (stdlib Python 3.11+, always run with `-B`); it works as `sh lib/check.sh` and as `lib/check.sh`. The step table, the path rules and the shell file groups are in `lib/check/scopes.py`, where a new step goes. This file holds what the shim's header used to: the options, the environment, the step list and how passes are recorded. Editing the shim is scope "all" (every step reruns, about 4 minutes); editing this file reaches only `check-scope` and `check-cache`.
 
 ## Running it
 
@@ -126,7 +126,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 
 ## Passes
 
-A step that passes is recorded (`lib/check/passed.sh`) under a key hashing the step's definition (command, scope, needs, probe) and the content of the files it reads, the same files whose change makes `--changed` pick it (its scope in `scopes.py`). `scopes.py` itself is no input of other steps' keys, so editing it reruns only the steps it changes. A later run skips a step whose key already passed, uncommitted and untracked content included, and a pass is recorded only when the step's files did not change while it ran. The records are in the repository's common git dir, shared by every worktree.
+A step that passes is recorded (`lib/check/passed.sh`) under a key hashing the step's definition (command, scope, needs, probe) and the content of the files it reads, the same files whose change makes `--changed` pick it (its scope in `scopes.py`). `scopes.py` itself is no input of other steps' keys, so editing it reruns only the steps it changes. A later run skips a step whose key already passed, uncommitted and untracked content included, and a pass is recorded only when the step's files did not change while it ran. The records are in the repository's common git dir, shared by every worktree. A new `Step` field that can change a pass goes in `keys.DEFINITION_FIELDS` (a guard test fails otherwise). Branches cut before the Python port share no passes with this runner (`keys.py` says why).
 
 A run that leaves the tree clean also records the tree: when every step passed for its content, or for `--changed <base>` on top of a base recorded as passed. A `--changed` run records that it passed against `<base>`, which is what the PR hook looks up. An `--only` run records its steps' passes, under the same keys a later `--changed` run looks up, but never the tree or a base. The shell steps (`shellcheck`, `shfmt`) key on the run's file lists, so for them pass `--only` the same `--changed` base the final run will use, or expect it to run them again. With `VOXCMD_ONLY_SECTIONS` set the voxcmd suites run in part, so no run records their pass, the tree or a base.
 

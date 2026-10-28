@@ -201,9 +201,35 @@ Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `powe
 
 A singleton is named for what it holds: `Settings` for the user's saved choices (`ClockSettings`, `BarSettings`), `State` for live data read from outside (the system, a daemon, a file the user does not edit), and otherwise a plain noun for what it is (`Sessions`, `Popups`). A name ending in `Config`, `Store` or `Manager` says which of those it is only by accident, so `lib/check/steps/qml_singleton_names.py` fails any `pragma Singleton` file named that way unless `lib/check/qml-singleton-names.allow` lists it as a temporary exception; the rename that removes the name deletes the line.
 
-## Extending
+## Key conventions
 
-Structure rules (layers, imports, where a new file goes, greeter-staged files, tests) are in [AGENTS.md](../../../../AGENTS.md#quickshell-structure).
+Keys stay consistent across surfaces; new popups, pickers and skins follow these. The repo-wide interaction conventions are in [AGENTS.md](../../../../AGENTS.md#interaction-conventions).
+
+- Popups (`features/popups/frames/Popup.qml`, keys in `PopupKeys.qml`): Tab/Shift+Tab step the top tabs, `[`/`]` the bottom views; a popup with one level answers both. Number keys pick a tab. Clock: Tab and `[`/`]` cycle timezones.
+- Settings panes: `h` (and Esc, Tab) goes back to the sidebar and `l` or Enter goes in, like a file manager; a pane with nested views (Sessions) steps `h` and Esc up one view at a time and reaches the sidebar from its top view. A row's value steps with `l`/Space forward and Shift+`H`/`L` either way, so a section leaves plain `h` unused. `{`/`}` jump between headings (`RowsSection`). `Ctrl+D`/`Ctrl+U` move half a page in the section list, a pane and an open list (`SettingsPopup.half_page_pane`), except that while typing in an open list's filter (INSERT) `Ctrl+U` clears it and only `Ctrl+D` pages; in NORMAL both page.
+- Overviews (workspace and share picker): `s` selects a whole screen, `w` sends the selected workspace to a monitor and `W` swaps it (both confirm with Enter), Tab/Shift+Tab switch regular and special workspaces, `[`/`]` cycle windows, `f` toggles the view; in the share picker `r` opens the region selector and Esc there comes back.
+- A popup action that opens a window launches it through `Popups.after_close(fn)`, never `Popups.close()` then a launch: a window that maps while the popup holds the keyboard ends up unfocused.
+- Lock and greeter input is a vim model owned by the shared router (`Lock.key`, `Greeter.key`): NORMAL while nothing is typed, where `h/j/k/l` navigate skin menus and `h`/`l` do nothing on vertical lists; `i` or any other printable key enters INSERT (`-- INSERT --` shows bottom-left); Esc on an empty buffer returns to NORMAL. The skin contract is in [the lock README](features/lock/README.md).
+- `x` removes or forgets the selected thing. Forgetting and deleting saved data ask `y`/`n` first, naming what goes, unless `u` undoes it (the bar editor's `x` in VISUAL); `q` still closes from the prompt.
+- Picker lists step rows with Tab/Shift+Tab, except a provider whose items expand (`PickerProvider.expands`, e.g. Voice Help): there Tab expands the selected item, as Tab completes in HyprVim's prompt, and Backspace on an empty search goes back.
+- Full-screen modes (pickers, zoom) follow `RegionSelector`: Quickshell owns keyboard and pointer, with a `?` help box, never a Hyprland submap. Modes where the keyboard moves the pointer load the skin cursor from `features/screen_select/cursors`; others (the bar editor) keep the system cursor.
+- Never hand-edit the `BEGIN generated` block in `Style.qml`: edit `theme/StyleSchema.js` and run `scripts/gen-style-exports`. Adding a style or token: [theme README](theme/README.md).
+- Times use `TimeFormat` and `ClockSettings`; state paths use `core/Paths.qml` and `home/hypr/.config/hypr/lib/state.lua`; a settings file is a `core/JsonStore.qml` child of its store singleton.
+
+## Structure rules
+
+Reviewers check Quickshell diffs against this section. Each rule names where it is enforced.
+
+- Layers: a file imports its own layer or a lower one, in the order of `LAYERS` in `lib/check/steps/qml_layers.py` (`qml-layers`). `core/` imports nothing outside `core/`. A kept upward edge goes in `lib/check/qml-layers.allow`; delete the line in the PR that removes the edge.
+- Imports: folders as `import qs.<path>`, JS relative (`import "Tints.js" as Tints`). `qml-layers` also fails a relative import from one feature or style into a sibling; go through a singleton (kept edges: `SIBLING_ALLOW`). `import qs.features.<y>` across features is unchecked.
+- String-built paths and table-driven loads: `qml-paths` (`lib/check/steps/qml_paths.py`) lists the rules and the `// qs-path:` markers.
+- Singleton names: see [Naming singletons](#naming-singletons).
+- Where a new file goes (not checked): shared by several features and style-neutral, `ui/`; used by one feature, that feature's folder; one style's drawing, that feature if one uses it, else `styles/<name>/`. A single-style widget with three or more consumers (`MateriaOrb`, `VisorGlass`, `HandCursor`) lives in `ui/`.
+- Greeter-staged files: any file the greeter loads is listed in `lib/common/greeter-files.sh`, edited in the PR that adds, moves or deletes it; ship-batch re-syncs the greeter from that list. A lock skin imports only files the greeter stages (not another skin, not `qs.services`).
+- Tests: a check step's tests are `lib/check/tests/test_<step>.py`; a runtime QML test is `home/quickshell/tests/<name>/run.sh` with its own Step and `PATH_SCOPES` rule in `lib/check/scopes.py`. Run them through `lib/check.sh --only <step>` so the pass counts.
+- Docs: `readme-links` (`lib/check/steps/readme_links.py`) fails a dead link, anchor or backticked path in a Quickshell README.
+
+## Extending
 
 **A Settings section.** Write `features/settings/sections/<Name>Section.qml`, usually a `RowsSection` with a list of rows, and add an entry to `list` in `features/settings/Sections.js`. The sidebar, search and IPC pick it up from there.
 

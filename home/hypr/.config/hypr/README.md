@@ -156,3 +156,13 @@ vim.cmd.colorscheme(colorscheme) -- or pass it to your plugin manager, e.g. Lazy
 ## Desktop shell
 
 The bar, popups, notifications, pickers, workspace overview, lock screen and greeter are one Quickshell config. Hyprland starts it at login and talks to it through `scripts/qs-ipc`, falling back to the `Config.app.menu` launcher (rofi by default) or hyprlock when it isn't running. See the [Quickshell README](../../../quickshell/.config/quickshell/README.md) for IPC, the [theme README](../../../quickshell/.config/quickshell/theme/README.md) for styles, the [settings README](../../../quickshell/.config/quickshell/features/settings/README.md) for settings and the [popups README](../../../quickshell/.config/quickshell/features/popups/README.md) for keys.
+
+## Code
+
+The config is Lua, not `hyprland.conf`, and the tree is stylua-checked.
+
+- `hyprland.lua` is the entrypoint: it merges the machine config (`config/machines/`), loads the `hyprvim` plugin and requires `custom/init.lua` last. Subsystems live in `config/`, `keymaps/`, `extensions/`, `lib/`, `scripts/` and `theme/`.
+- Actions (`lib/act.lua`): each thing the desktop can do is defined once with `Act.define` in `lib/actions/defs/` (`tools.lua` for the tool keys, `pickers.lua` for the pickers and HyprVim keys, one file per bar area for the keyless IPC actions). A defs file is live only if a keymap requires it (`keymaps/global/tools.lua`, `keymaps/global/keyless.lua`). `Act.bind` adds another key with args; `Act.run` and `Act.run_cli` run one by id. `hypr-act list` and `hypr-act <id> [args...]` (`home/hypr/.local/bin/hypr-act`) list and run them in the live session; its header lists the exit codes.
+- The `registry` check step loads the defs under stubs (`home/hypr/tests/act_refs.lua`, which needs a stub line for any new `require`) and checks the ids, IPC functions and scripts they name. A new bind or typed IPC function needs an action, or a reasoned line in `lib/check/registry.allow`.
+- Keys: register binds through `lib/key/bind.lua` (`Bind.key`, `Bind.submap`), never raw `hl.bind` or `hl.define_submap`, so `Bind.unbind` can remove a key from one submap. `Bind.unbind` and `Bind.submap` are public API for `custom/`; keep their signatures stable.
+- Overrides stay out of tracked files: machine values in `config/machines/<hostname>.lua`, everything else in `custom/` (see [Add your own config](#3-add-your-own-config)). Never auto-load other `custom/` files from the config; the wallpaper rotator, a separate process, is the one reader of `custom/wallpaper.lua` and `custom/hyprpaper.conf`.
