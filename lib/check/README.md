@@ -76,6 +76,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `firefox-policy`: `lib/install/tests/firefox-policy.sh`, the Firefox policy installer, and `voxcmd-install.sh`, `install_voxcmd`. Needs jq.
 - `pacman-tweaks`: `lib/install/tests/pacman-tweaks.sh`, the pacman and makepkg tuning (`lib/install/pacman.sh`, `system/etc/makepkg.conf.d/`).
 - `snapper-setup`: `lib/install/tests/snapper.sh`, the snapper setup (`lib/install/snapper.sh`, `packages/snapper.ini`) against stub commands and a scratch tree.
+- `devtools-coderabbit`: `lib/install/tests/dev-tools-coderabbit.sh`, the CodeRabbit entry of the dev tools picker (`lib/install/dev-tools.sh`, `packages/devtools.ini`) against stub commands.
 - `greeter-keyring`: `lib/install/tests/greeter-keyring.sh` (the greetd keyring unlock installer), `greeter-log.sh` (the greeter log file and the `qs-greeter` wrapper's choice of it) and `greeter-monitors.sh` (the greeter's `monitors.lua`).
 - `migrate-lock`: the `migrate-quickshell-*` and `migrate-lock-assets` tests in `lib/install/tests/`.
 - `install-load`: `lib/install/tests/load.sh`, that sourcing the install libraries prints nothing and never exits.
