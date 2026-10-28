@@ -3,7 +3,7 @@
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 hook=$here/../validate-plan-frontmatter.sh
-repo=$(cd "$here/../../../../.." && pwd)
+repo=$(cd "$here/../../.." && pwd)
 pass=0 fail=0
 
 root=$(mktemp -d)

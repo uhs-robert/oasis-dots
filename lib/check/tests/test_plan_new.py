@@ -71,6 +71,13 @@ class ScaffoldTest(TreeCase):
         self.assertIn("foo.md", out.getvalue())
         self.assertIn("check-jsonschema", err.getvalue())
 
+    def test_an_item_cannot_leave_the_topic_folder(self):
+        for kind in ("plan", "handoff"):
+            with self.assertRaisesRegex(ValueError, "item"):
+                plan_new.scaffold(self.root, "foo", kind, "../../evil")
+        self.assertFalse(os.path.exists(os.path.join(self.root, ".plans", "evil-handoff-draft.md")))
+
+    @unittest.skipUnless(shutil.which("just"), "needs just")
     def test_just_does_not_run_a_topic_as_shell(self):
         marker = os.path.join(self.root, "pwned")
         done = subprocess.run(["just", "--justfile", os.path.join(REPO_DIR, "justfile"), "--working-directory", REPO_DIR,

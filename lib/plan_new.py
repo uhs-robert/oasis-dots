@@ -56,8 +56,10 @@ def scaffold(root, topic, kind, item=None, today=None):
         raise ValueError(f"unknown kind {kind!r}; use one of: {', '.join(KINDS)}")
     if not NAME.match(topic):
         raise ValueError(f"topic {topic!r} must be lowercase letters, digits and dashes")
-    if kind == "plan" and not (item and NAME.match(item)):
+    if kind == "plan" and not item:
         raise ValueError("a plan needs an item name: just plan-new <topic> plan <item>")
+    if item and not NAME.match(item):
+        raise ValueError(f"item {item!r} must be lowercase letters, digits and dashes")
     if kind == "tracker" and item:
         raise ValueError("a tracker takes no item")
     path = doc_path(root, topic, kind, item)
