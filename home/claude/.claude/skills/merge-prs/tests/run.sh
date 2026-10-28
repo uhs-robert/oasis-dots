@@ -315,6 +315,23 @@ code=$?
 show "$out"
 check "passes" "[[ $code == 0 ]]"
 
+echo "== review gate: a rebased commit with the same subject and counts but other content is counted"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=fix: q;feat: add x\nreviewed_files=a\nhead_files=a\ncommit_files_c1=a:25\ncommit_files_c2=a:25\ncommit_patch_c2=other\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+check "counts its lines" "grep -q '25 lines changed since the review' <<<\"\$out\""
+
+echo "== review gate: a rebased commit whose file has no patch is counted"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=fix: q;feat: add x\nreviewed_files=a\nhead_files=a\ncommit_files_c1=a:25\ncommit_files_c2=a:25\ncommit_nopatch_c2=1\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "fails" "[[ $code != 0 ]]"
+
 echo "== review gate: a fix that reaches a new file"
 setup
 printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;fix: y\nreviewed_files=a\nhead_files=a;c\n' >>"$GH_STATE"

@@ -157,6 +157,14 @@ case "$args" in
   ;;
 # Files of one commit as "name<TAB>changes": commit_files_<sha> in the state, as a ;-separated list of name or
 # name:changes (default 1 changed line).
+# With a patch query (--jq mentions patch): "name<TAB>json patch", the patch commit_patch_<sha> (default "same") for every
+# file, or null when commit_nopatch_<sha> is set.
+"api "*"repos/"*"/commits/"*"patch"*)
+  sha=$(sed -E 's|.*/commits/([^ ]+) .*|\1|' <<<"$args")
+  patch=$(get "commit_patch_$sha"); [[ -n $patch ]] || patch=same
+  [[ -z $(get "commit_nopatch_$sha") ]] || patch=
+  get "commit_files_$sha" | tr ';' '\n' | awk -F: -v p="$patch" 'NF { print $1 "\t" (p == "" ? "null" : "\"" p "\"") }'
+  ;;
 "api "*"repos/"*"/commits/"*)
   sha=$(sed -E 's|.*/commits/([^ ]+).*|\1|' <<<"$args")
   get "commit_files_$sha" | tr ';' '\n' | awk -F: 'NF { print $1 "\t" ($2 == "" ? 1 : $2) }'

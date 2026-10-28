@@ -157,18 +157,40 @@ under_prefix() {
 
 commit_rows='.commits[] | [.sha, (.commit.message | split("\n")[0])] | @tsv'
 
-# The files and line counts of one commit, sorted: what a rebase leaves unchanged.
+# What a rebase leaves unchanged about a commit: per file its name and a hash of its patch without the "@@" hunk headers
+# (which carry line offsets). Empty when any file has no patch (binary, too large), so such a commit never matches.
+# Sets commit_signature_of rather than printing, so the cache survives; each commit's patches are fetched once per run.
+declare -A signature_cache=()
 commit_signature() {
-  gh api --paginate "repos/$slug/commits/$1" --jq '.files[] | [.filename, .changes] | @tsv' | sort
+  local sha=$1 rows file patch_json hash
+  commit_signature_of=${signature_cache[$sha]-}
+  [[ -z ${signature_cache[$sha]+set} ]] || return 0
+  rows=$(gh api --paginate "repos/$slug/commits/$sha" --jq '.files[] | [.filename, (.patch | if . == null then null else (split("\n") | map(select(startswith("@@") | not)) | join("\n")) end | tojson)] | @tsv') ||
+    die "cannot read the patches of $sha"
+  commit_signature_of=""
+  while IFS=$'\t' read -r file patch_json; do
+    [[ -n $file ]] || continue
+    if [[ $patch_json == null ]]; then
+      commit_signature_of=""
+      break
+    fi
+    hash=$(sha256sum <<<"$patch_json")
+    commit_signature_of+="$file ${hash%% *}"$'\n'
+  done <<<"$rows"
+  [[ -z $commit_signature_of ]] || commit_signature_of=$(sort <<<"$commit_signature_of")
+  signature_cache[$sha]=$commit_signature_of
 }
 
-# Whether a commit has the subject and signature of one of the reviewed commits (rows of "sha<TAB>subject").
+# Whether a commit has the subject and patch content of one of the reviewed commits (rows of "sha<TAB>subject").
 reviewed_by_content() {
   local sha=$1 subject=$2 rows=$3 other other_subject mine
-  mine=$(commit_signature "$sha") || die "cannot read the files of $sha"
+  commit_signature "$sha"
+  mine=$commit_signature_of
+  [[ -n $mine ]] || return 1
   while IFS=$'\t' read -r other other_subject; do
     [[ $other_subject == "$subject" ]] || continue
-    [[ $(commit_signature "$other") == "$mine" ]] && return 0
+    commit_signature "$other"
+    [[ $commit_signature_of == "$mine" ]] && return 0
   done <<<"$rows"
   return 1
 }
