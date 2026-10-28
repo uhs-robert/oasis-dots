@@ -150,8 +150,8 @@ case "$args" in
   side="head"
   [[ -n $(get codex_commit) && $sha == "$(get codex_commit)"* ]] && side=reviewed
   case $args in
-  # Commits are listed by sha (c1, c2, ... by position in the side's subjects).
-  *.sha*) get "${side}_subjects" | tr ';' '\n' | awk '{ printf "c%d\n", NR }' ;;
+  # Commits are listed by sha (c1, c2, ... by position in the side's subjects, with the subject).
+  *.sha*) get "${side}_subjects" | tr ';' '\n' | awk '{ printf "c%d\t%s\n", NR, $0 }' ;;
   *) get "${side}_files" | tr ';' '\n' ;;
   esac
   ;;
