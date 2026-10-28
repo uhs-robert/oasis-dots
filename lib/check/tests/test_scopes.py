@@ -86,13 +86,16 @@ CASES = [
     ("home/voxcmd/tests/fixtures/overview.json", " voxclick"),
     ("home/voxcmd/tests/fixtures/ocr.tsv", " voxphrases"),
     ("home/voxcmd/tests/fixtures/x.txt", " voxphrases voxclick voxrest"),
-    # The crate's sources reach the suites that build it; its tests, snapshots and goldens only cargo test (voxrest).
+    # The crate's sources reach the suites that build it; its tests, snapshots and goldens only cargo test (voxrust).
     ("home/voxcmd/src/main.rs", " voxphrases voxclick voxrest voxrust"),
     ("home/voxcmd/Cargo.lock", " voxphrases voxclick voxrest voxrust"),
     ("home/voxcmd/.config/voxcmd/integrations/x.toml", " voxphrases voxclick voxrest voxrust"),
     ("extras/voxcmd-firefox/background.js", " voxphrases voxclick voxrest"),
     ("home/voxcmd/rustfmt.toml", " voxrust"),
     ("home/voxcmd/tests/cli.rs", " voxrust"),
+    # Cargo tests read the shipped share/ files and replacement rules, so they reach the crate step too.
+    ("home/voxcmd/.local/share/voxcmd/hook-cache.sh", " voxphrases voxclick voxrest voxrust"),
+    ("home/voxcmd/.config/voxcmd/replacements.d/resize", " voxphrases voxclick voxrest voxrust"),
     ("home/voxcmd/tests/snapshots/cli__x.snap", " voxrust"),
     ("home/voxcmd/tests/fixtures/match-goldens.tsv", " voxrust"),
     ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " voxrust"),
