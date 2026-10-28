@@ -27,7 +27,7 @@ The parallel output of a step is buffered and a passing step prints one line; af
 
 ### Environment
 
-- `CHECK_FULL=1` makes `--changed` run everything, and runs every step whatever passed before. `.claude/hooks/guard-check-full.sh` denies it when the tree already has a recorded pass, unless `CHECK_FULL_REASON` is set.
+- `CHECK_FULL=1` makes `--changed` run everything, and runs every step whatever passed before.
 - `CHECK_JOBS` sets how many steps run at once (default half the cores, always clamped to 1-4); 1 runs them one after another with live output.
 - `CHECK_SKIP_STEPS="step ..."` drops those steps whatever the scope says (the summary line lists them).
 - `CHECK_HEAVY_SLOTS` (default 1) and `CHECK_LOCK_WAIT_SECS` (default 1200): see "Slots". `CHECK_NO_LOCK=1` runs the heavy steps without a slot, for a check that must never wait.
@@ -79,8 +79,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `greeter-keyring`: `lib/install/tests/greeter-keyring.sh` (the greetd keyring unlock installer), `greeter-log.sh` (the greeter log file and the `qs-greeter` wrapper's choice of it) and `greeter-monitors.sh` (the greeter's `monitors.lua`).
 - `migrate-lock`: the `migrate-quickshell-*` and `migrate-lock-assets` tests in `lib/install/tests/`.
 - `install-load`: `lib/install/tests/load.sh`, that sourcing the install libraries prints nothing and never exits.
-- `agent-hooks`: the tests of `guard-masked-checks.sh`, `check-before-pr.sh`, `restart-qs-after-git.sh`, `guard-gh-merge.sh`, `warn-direct-voxcmd-suite.sh`, `guard-tmux-socket.sh`, `guard-check-full.sh`, `context-budget.sh`, `orchestrator-window-names.sh` (a private tmux server), `report-failed-main-check.sh` and `validate-plan-frontmatter.sh` (the PostToolUse hook that reports bad `.plans/` front matter; its test writes plan docs into a temp checkout; the schema is `.claude/hooks/plan-frontmatter.yaml`, which `test_plan_new` also reads). Needs jq, tmux and flock.
-- `stale-shells-hook`: the test of `stale-shells.sh`. Needs jq.
+- `agent-hooks`: the tests of `guard-masked-checks.sh`, `check-before-pr.sh`, `guard-gh-merge.sh`, `guard-tmux-socket.sh`, `context-budget.sh`, `orchestrator-window-names.sh` (a private tmux server), `report-failed-main-check.sh`, `remind-global-neutral.sh`, `remind-global-neutral-source.sh` and `guard-gh-thread-mutations.sh`. Needs jq, tmux and flock.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.
 - `reviewers`: the orchestrator skill's `tests/run.sh` (registry resolver), when `reviewers.json`, `reviewers.sh` or its tests change.

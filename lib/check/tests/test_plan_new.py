@@ -1,10 +1,9 @@
-"""Tests the .plans scaffold (lib/plan_new.py): each kind yields a doc whose front matter passes the plan schema."""
+"""Tests the .plans scaffold (lib/plan_new.py): each kind yields a doc with valid front matter."""
 
 import os
 import shutil
 import subprocess
 import sys
-import tempfile
 import unittest
 
 sys.dont_write_bytecode = True
@@ -16,25 +15,29 @@ import plan_new  # noqa: E402
 from test_qml import TreeCase  # noqa: E402
 
 
-def accepted(path):
-    """check-jsonschema's verdict on the doc's leading --- block."""
+def front_matter(path):
+    """The doc's leading --- block as a key/value dict."""
     with open(path) as handle:
         block = handle.read().split("---\n")[1]
-    with tempfile.NamedTemporaryFile("w", suffix=".yaml") as front:
-        front.write(block)
-        front.flush()
-        return subprocess.run(["check-jsonschema", "--schemafile", os.path.join(REPO_DIR, ".claude/hooks/plan-frontmatter.yaml"), front.name],
-                              capture_output=True, text=True)
+    return dict(line.split(": ", 1) for line in block.splitlines() if ": " in line)
 
 
-@unittest.skipUnless(shutil.which("check-jsonschema"), "needs check-jsonschema")
+def assert_valid_front_matter(test, path, kind):
+    front = front_matter(path)
+    expected_keys = {"kind", "status", "owner_session", "updated", "pr"} | ({"branch"} if kind != "tracker" else set())
+    test.assertEqual(set(front), expected_keys)
+    test.assertEqual(front["kind"], kind)
+    test.assertIn(front["status"], ("active", "parked", "done"))
+    test.assertRegex(front["updated"].strip('"'), r"^\d{4}-\d{2}-\d{2}$")
+    test.assertEqual(front["pr"], "none")
+
+
 class ScaffoldTest(TreeCase):
-    def test_each_kind_passes_the_schema_at_its_path(self):
+    def test_each_kind_has_valid_front_matter_at_its_path(self):
         for kind, item, name in (("tracker", None, "foo/foo.md"), ("plan", "bar", "foo/foo-bar-plan-draft.md"), ("handoff", None, "foo/foo-handoff.md")):
             path = plan_new.scaffold(self.root, "foo", kind, item, today="2026-10-27")
             self.assertEqual(path, os.path.join(self.root, ".plans", name))
-            done = accepted(path)
-            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            assert_valid_front_matter(self, path, kind)
 
     def read(self, path):
         with open(path) as handle:
@@ -62,10 +65,10 @@ class ScaffoldTest(TreeCase):
         with self.assertRaisesRegex(ValueError, "no item"):
             plan_new.scaffold(self.root, "foo", "tracker", "x")
 
-    def test_a_handoff_with_an_item_gets_the_draft_name_and_validates(self):
+    def test_a_handoff_with_an_item_gets_the_draft_name(self):
         path = plan_new.scaffold(self.root, "foo", "handoff", "bar")
         self.assertEqual(path, os.path.join(self.root, ".plans/foo/foo-bar-handoff-draft.md"))
-        self.assertEqual(accepted(path).returncode, 0)
+        assert_valid_front_matter(self, path, "handoff")
 
     def test_an_item_cannot_leave_the_topic_folder(self):
         for kind in ("plan", "handoff"):

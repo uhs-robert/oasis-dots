@@ -265,9 +265,7 @@ e2e_setup() {
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib/check" "$e2e/main/.claude/skills/ship-batch"
   cp "$here/../../../../lib/check/passed.sh" "$here/../../../../lib/check/passed.py" "$e2e/main/lib/check/"
-  cp "$here/../ship-batch.sh" "$here/../base.sh" "$here/../main-check.sh" "$e2e/main/.claude/skills/ship-batch/"
-  mkdir -p "$e2e/main/.claude/hooks"
-  cp "$here/../../../hooks/live-hypr.sh" "$e2e/main/.claude/hooks/"
+  cp "$here/../ship-batch.sh" "$here/../base.sh" "$here/../main-check.sh" "$here/../live-hypr.sh" "$e2e/main/.claude/skills/ship-batch/"
   # With $e2e/probe_main_check present a check also logs whether a check of main held its run lock at that moment; with
   # $e2e/branch_hold present it waits until that file is removed.
   cat >"$e2e/main/lib/check.sh" <<STUB

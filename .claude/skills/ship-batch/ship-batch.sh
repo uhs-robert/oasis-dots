@@ -12,8 +12,8 @@ ipc="$HOME/.config/hypr/scripts/qs-ipc"
 bars="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/test-bars"
 # shellcheck source=base.sh
 source "$(dirname "$0")/base.sh"
-# shellcheck source=../../hooks/live-hypr.sh
-source "$(dirname "$0")/../../hooks/live-hypr.sh"
+# shellcheck source=live-hypr.sh
+source "$(dirname "$0")/live-hypr.sh"
 
 die() {
   echo "ship-batch: $*" >&2

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Scaffolds a `.plans/` doc with front matter that passes `.claude/hooks/plan-frontmatter.yaml`.
+"""Scaffolds a `.plans/` doc with front matter: `kind`, `status`, `owner_session`, `updated`, `pr` and, for plans and handoffs, `branch`.
 
   just plan-new <topic> <tracker|plan|handoff> [item]
 
 The doc goes in the main checkout's `.plans/` (worktrees do not see it) and is never overwritten. `item` names a plan
-(`<topic>-<item>-plan-draft.md`) or a piece's handoff (`<topic>-<item>-handoff-draft.md`). test_plan_new validates each scaffold against the schema,
-so it cannot drift.
+(`<topic>-<item>-plan-draft.md`) or a piece's handoff (`<topic>-<item>-handoff-draft.md`). test_plan_new checks each scaffold's front matter.
 """
 
 import datetime
