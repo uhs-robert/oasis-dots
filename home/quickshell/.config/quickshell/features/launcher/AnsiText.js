@@ -157,7 +157,8 @@ function to_styled(input, default_fg, palette, background) {
 var frame_only = /^[\s\u2500-\u259f]*$/;
 
 // Breaks every line of raw pane text (escapes still in) so none shows more than `columns` characters; a frame line
-// is cut at `columns` instead. Escapes take no width and stay in place, so to_styled carries colours across the breaks.
+// is cut at `columns` instead. Escapes take no width and stay in place; each break repeats the line's colour codes so
+// far, so a continuation keeps its colour even when bottom_lines drops the row it started on.
 // Each code point counts as one column: a wide CJK or emoji character runs past by one, which the preview's clip hides.
 function wrap_lines(text, columns) {
     if (!(columns > 0)) return text;
@@ -165,12 +166,14 @@ function wrap_lines(text, columns) {
         var cut = frame_only.test(line.replace(sequence_pattern, ""));
         var out = "";
         var used = 0;
+        var sgr = "";
         var i = 0;
         while (i < line.length) {
             if (line[i] === "\x1b") {
                 sequence_pattern.lastIndex = i;
                 var m = sequence_pattern.exec(line);
                 var length = m && m.index === i ? m[0].length : 1;
+                if (length > 1 && m[2] === "m") sgr += m[0];
                 out += line.slice(i, i + length);
                 i += length;
                 continue;
@@ -180,7 +183,7 @@ function wrap_lines(text, columns) {
             if (/[\x00-\x1f\x7f]/.test(ch)) { out += ch; continue; }
             if (used === columns) {
                 if (cut) continue;
-                out += "\n";
+                out += "\n" + sgr;
                 used = 0;
             }
             out += ch;
