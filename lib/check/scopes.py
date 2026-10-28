@@ -88,7 +88,7 @@ PATH_SCOPES = [
     ("lib/docs/gen-keybinds", "checkscope docsgen"),
     ("lib/docs/gen-ipc", "checkscope docsgen"),
     ("lib/docs/docgen.py", "checkscope docsgen"),
-    # voxcmd. The suites build and run the crate, so its sources reach all of them as well as cargo's own tests (voxrest).
+    # voxcmd. The suites build and run the crate, so its sources reach all of them as well as cargo's own tests (voxrust).
     # Snapshots, the generated goldens and the crate's test sources are read only by cargo test; the other fixtures are
     # read by both. An integration file reaches the suites, and the crate through tests/integrations.rs.
     ("lib/check/steps/voxcmd-rust.sh", "checkscope voxrust"),
@@ -155,6 +155,9 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/integrations/*", VOX_RUST + " " + VOX_CLICK),
     # The suites' own config for these is the sandbox's copy of the package, so a real integration reaches all of them.
     ("home/voxcmd/.config/voxcmd/integrations/*", VOXCMD_SUITES_AND_CRATE),
+    # hook_cache.rs and dictation.rs read the shipped share/ files, and the crate's tests read the replacement rules.
+    ("home/voxcmd/.local/share/voxcmd/*", VOXCMD_SUITES_AND_CRATE),
+    ("home/voxcmd/.config/voxcmd/replacements.d/*", VOXCMD_SUITES_AND_CRATE),
     ("home/voxcmd/*", VOXCMD_SUITES),
     ("home/voxtype/.local/bin/voxtype-daemon", VOXCMD_SUITES),
     # run-wake.sh puts this directory on PATH and asserts the prompt voxcmd builds through it; no other suite runs it.
@@ -218,11 +221,11 @@ class Step(NamedTuple):
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def discovered(pattern, scope, command, name_prefix="", always_needs=(), maybe_needs=()):
+def discovered(pattern, scope, command, name_prefix="", always_needs=(), maybe_needs=(), extra_needs=None):
     """One step per file matching pattern (relative to the repository root), named from the file: its stem with `_` as `-`,
     or for a `<dir>/run.sh` pattern the directory's name. Adding a test file that follows the convention needs no entry.
     A step needs always_needs plus those maybe_needs the file's text names, so a test is not skipped for a tool it
-    never runs."""
+    never runs. extra_needs names the tools a test reaches only through a script it sources, by step name."""
     steps = []
     for path in sorted(glob.glob(os.path.join(REPO, pattern))):
         rel = os.path.relpath(path, REPO)
@@ -231,8 +234,10 @@ def discovered(pattern, scope, command, name_prefix="", always_needs=(), maybe_n
         with open(path, errors="replace") as handle:
             text = handle.read()
         needs = tuple(always_needs) + tuple(tool for tool in maybe_needs if re.search(r"(?<![\w-])" + tool + r"(?![\w-])", text))
+        name = name_prefix + stem.replace("_", "-")
+        needs += tuple(tool for tool in (extra_needs or {}).get(name, ()) if tool not in needs)
         skip_reason = f"the {stem} test needs " + ", ".join(needs) if needs else ""
-        steps.append(Step(name_prefix + stem.replace("_", "-"), scope, command % ("./" + rel), needs, skip_reason=skip_reason))
+        steps.append(Step(name, scope, command % ("./" + rel), needs, skip_reason=skip_reason))
     return steps
 
 
@@ -291,13 +296,12 @@ STEPS = [
     Step("ignored-integrations", "tree", "sh ./lib/check/steps/ignored-integrations.sh"),
 ]
 # Found by naming convention: a new test in one of these places is a step without an entry above.
-STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua", "jq"))
+STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua", "jq"), extra_needs={"shadow-action": ("lua", "jq")})
 STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", always_needs=("node",), maybe_needs=("jq",))
 STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", always_needs=("qs",), maybe_needs=("python3",))
-STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", maybe_needs=("jq", "zsh"))
+STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", maybe_needs=("jq", "zsh"), extra_needs={"install-greeter-stage-zsh": ("jq",)})
 STEPS += discovered(".claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
 STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
-
 
 # The shell files by the group shellcheck lints them in, as shell globs (one left unmatched stays in the list as
 # written). A group is linted whole when any member changes, since a member can source another.
