@@ -671,6 +671,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `J` | press | System | Journal (lazyjournal) | `terminal.tool` |
 | `K` | press | System | Kill App (Click) | `system.kill_app` |
 | `L` | press | System | Lock | `power.confirm` |
+| `SHIFT + L` | press | System | Toggle Auto-Lock | `system.toggle_autolock` |
 | `R` | press | System | Reboot | `power.confirm` |
 | `SHIFT + R` | press | System | Replay Autostart | `system.replay_autostart` |
 | `P` | press | System | Power Off | `power.confirm` |
