@@ -119,6 +119,16 @@ check "stops with an error" "[[ $code != 0 ]]"
 check "says the base is not main" "grep -q '#7 is based on parent, not main' <<<\"\$out\""
 check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
 
+echo "== PR retargeted after the up-front check is refused"
+setup
+echo merge_base=parent >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "says it was retargeted" "grep -q '#7 was retargeted to parent, not main' <<<\"\$out\""
+check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
+
 echo "== fork PR is refused"
 setup
 echo cross=true >>"$GH_STATE"
@@ -128,6 +138,14 @@ show "$out"
 check "stops with an error" "[[ $code != 0 ]]"
 check "says it is from a fork" "grep -q '#7 is from a fork' <<<\"\$out\""
 check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
+setup
+printf 'cross=true\n' >>"$GH_STATE"
+sed -i 's/^state=OPEN/state=MERGED/' "$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "refuses a merged fork PR too" "[[ $code != 0 ]] && grep -q '#7 is from a fork' <<<\"\$out\"" 
+check "keeps the local branch" "git -C '$root/main' show-ref -q --verify refs/heads/child"
 
 echo "== main held by another worktree"
 setup

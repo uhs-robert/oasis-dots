@@ -591,22 +591,23 @@ gate_summary_comment() {
   esac
 }
 
-# Checks every PR before merging any, so a run never stops halfway through the list over a review it could have seen up front.
-# Unresolved threads always block; --skip-review-gate drops only the reviewers' states. The waiver is for a reviewer
-# that is down or slow, not for findings it already posted. Threads are read after the
-# reviewers, since findings arrive while one is waited for.
 # A PR that is not based on the default branch or comes from a fork would merge somewhere this script does not follow up.
+# A merged fork PR is refused too: local cleanup no longer knows forks and could delete a same-named local branch.
 check_targets() {
   local pr info base state cross
   for pr in "${prs[@]}"; do
     info=$(gh pr view "$pr" --json baseRefName,state,isCrossRepository \
       --jq '[.baseRefName, .state, .isCrossRepository] | @tsv') || die "cannot read PR $pr"
     IFS=$'\t' read -r base state cross <<<"$info"
-    [[ $state != OPEN ]] || [[ $base == "$default" ]] || die "#${pr#\#} is based on $base, not $default; merge-prs only merges PRs into $default"
-    [[ $state != OPEN || $cross != true ]] || die "#${pr#\#} is from a fork; merge-prs only merges PRs from this repository"
+    [[ $state != OPEN || $base == "$default" ]] || die "#${pr#\#} is based on $base, not $default; merge-prs only merges PRs into $default"
+    [[ $cross != true ]] || die "#${pr#\#} is from a fork; merge-prs only merges PRs from this repository"
   done
 }
 
+# Checks every PR before merging any, so a run never stops halfway through the list over a review it could have seen up front.
+# Unresolved threads always block; --skip-review-gate drops only the reviewers' states. The waiver is for a reviewer
+# that is down or slow, not for findings it already posted. Threads are read after the
+# reviewers, since findings arrive while one is waited for.
 check_reviews() {
   local pr number info open status reviewed head name gated_head mark attempts
   local -a problems=()
@@ -877,6 +878,8 @@ merge_pr() {
     return 0
   fi
   [[ $state == OPEN ]] || die "PR $pr is $state"
+  # A retarget after check_targets (during the review wait or an earlier merge) would otherwise merge it into the new base.
+  [[ $base == "$default" ]] || die "#${pr#\#} was retargeted to $base, not $default; merge-prs only merges PRs into $default"
   if [[ -z ${pushed_heads[$head]:-} && -n ${gated_heads[${pr#\#}]:-} && $head_oid != "${gated_heads[${pr#\#}]}" ]]; then
     die "PR $pr was pushed to (${head_oid:0:7}) after its reviewers passed on ${gated_heads[${pr#\#}]:0:7}; rerun to check the new head"
   fi

@@ -257,7 +257,7 @@ exec $real_setsid "\$@"
 STUB
 chmod +x "$stubs"/* "$fake_home"/.claude/skills/merge-prs/*
 
-# A main checkout on main with two stacked PR branches, b1 and b2, each in a worktree of its own.
+# A main checkout on main with two PR branches, b1 and b2, the second cut from the first, each in a worktree of its own.
 e2e_setup() {
   rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/just_hold" "$e2e/just_daemon" "$e2e/just_chatty" \
     "$e2e/probe_main_check" "$e2e/branch_hold" "$e2e/setsid_delay" "$e2e/merge_hold" "$e2e/lock_hold" "$e2e/merge_removes_wt"
