@@ -15,7 +15,9 @@ local Closed = require("lib.closed_windows")
 --- Initialises the Hyprland session: applies machine config, loads all subsystems, then the user's custom/init.lua.
 local function init()
   -- toggle-hypr-errors.sh keeps the errors it hid here; a (re)load brings its own, so the saved ones are stale.
-  os.remove((os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/hypr-hidden-errors")
+  local runtime_dir = os.getenv("XDG_RUNTIME_DIR")
+  if runtime_dir == nil or runtime_dir == "" then runtime_dir = "/tmp" end -- as the script's ${XDG_RUNTIME_DIR:-/tmp}
+  os.remove(runtime_dir .. "/hypr-hidden-errors")
   Config.setup(Machines.merge(Default))
 
   if package.searchpath("lua.plugins.hyprvim", package.path) then
