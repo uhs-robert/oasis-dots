@@ -74,6 +74,7 @@ function parse_sessions(text, home) {
             keywords: [s.agent || "", state, cwd],
             tmux_socket: s.tmux_socket || "",
             tmux_pane: s.tmux_pane || "",
+            pid: /^[1-9]\d*$/.test(String(s.pid)) ? String(s.pid) : "",
             context: parse_context(s)
         };
     });
@@ -83,10 +84,25 @@ function socket_args(entry) {
     return entry.tmux_socket ? ["-S", entry.tmux_socket] : [];
 }
 
+// A session outside tmux is read from its kitty window: kitty puts the window's remote-control socket and id in the
+// environment of everything it starts, so the agent's own environment names them. Sets `to` and `win`; fails when the
+// process is gone or its terminal is not a kitty with `listen_on` set.
+var kitty_window_fn = "kitty_window() { "
+    + "e=$(tr '\\0' '\\n' 2>/dev/null < \"/proc/$1/environ\") || return 1; "
+    + "to=$(printf '%s\\n' \"$e\" | sed -n 's/^KITTY_LISTEN_ON=//p'); "
+    + "win=$(printf '%s\\n' \"$e\" | sed -n 's/^KITTY_WINDOW_ID=//p'); "
+    + "[ -n \"$to\" ] && [ -n \"$win\" ]; }; ";
+
 // A session recorded without a socket lives on tmux's default server, so `-S` is left out rather than passed empty.
-// The pane's width comes first, from the same tmux call, so the preview can fit its font to the whole width.
+// The pane's width comes first, from the same tmux call, so the preview can fit its font to the whole width; a kitty
+// window's comes from its tty, which is the agent's stdin.
 function capture_argv(entry) {
-    return ["tmux"].concat(socket_args(entry), ["display-message", "-p", "-t", entry.tmux_pane, "#{pane_width}", ";", "capture-pane", "-p", "-e", "-t", entry.tmux_pane]);
+    if (entry.tmux_pane) return ["tmux"].concat(socket_args(entry), ["display-message", "-p", "-t", entry.tmux_pane, "#{pane_width}", ";", "capture-pane", "-p", "-e", "-t", entry.tmux_pane]);
+    var script = kitty_window_fn + "kitty_window \"$1\" || exit 1; "
+        + "cols=$(stty size < \"/proc/$1/fd/0\" 2>/dev/null | cut -d' ' -f2); "
+        + "printf '%s\\n' \"${cols:-0}\"; "
+        + "exec kitten @ --to \"$to\" get-text --match \"id:$win\" --extent screen --ansi";
+    return ["sh", "-c", script, "sh", entry.pid || ""];
 }
 
 // { width, text } from capture_argv's output; width is 0 when the first line is not a number.
@@ -125,13 +141,14 @@ function last_line(text) {
     return "";
 }
 
-// One process for every session's plain capture, each headed by a \x1e line naming its id; a pane that is gone prints nothing.
+// One process for every session's plain capture, each headed by a \x1e line naming its id; a pane or window that is gone prints nothing.
 function tails_argv(entries) {
-    var script = "while [ $# -ge 3 ]; do printf '\\036%s\\n' \"$1\"; "
-        + "if [ -n \"$3\" ]; then if [ -n \"$2\" ]; then tmux -S \"$2\" capture-pane -p -t \"$3\"; else tmux capture-pane -p -t \"$3\"; fi 2>/dev/null; fi; "
-        + "shift 3; done";
+    var script = kitty_window_fn + "while [ $# -ge 4 ]; do printf '\\036%s\\n' \"$1\"; "
+        + "if [ -n \"$3\" ]; then if [ -n \"$2\" ]; then tmux -S \"$2\" capture-pane -p -t \"$3\"; else tmux capture-pane -p -t \"$3\"; fi 2>/dev/null; "
+        + "elif [ -n \"$4\" ] && kitty_window \"$4\"; then kitten @ --to \"$to\" get-text --match \"id:$win\" --extent screen 2>/dev/null; fi; "
+        + "shift 4; done";
     var args = ["sh", "-c", script, "sh"];
-    for (var i = 0; i < entries.length; i++) args.push(entries[i].id, entries[i].tmux_socket || "", entries[i].tmux_pane || "");
+    for (var i = 0; i < entries.length; i++) args.push(entries[i].id, entries[i].tmux_socket || "", entries[i].tmux_pane || "", entries[i].pid || "");
     return args;
 }
 
