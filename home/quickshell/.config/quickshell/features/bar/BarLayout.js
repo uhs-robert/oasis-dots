@@ -422,6 +422,8 @@ function edit(rule, state, key, op) {
         if (op.type === "hide" && was) next.monitors[key].last_side[op.entry] = { side: was, index: view[was].indexOf(op.entry) };
         return next;
     }
+    // A new placement under the plain name replaces any saved twin placement, which `effective` would otherwise apply after it.
+    if (op.type !== "move") Object.keys(next.shared.place).filter(k => k !== plain_entry(op.entry) && plain_entry(k) === plain_entry(op.entry)).forEach(k => delete next.shared.place[k]);
     if (op.type === "hide") {
         next.shared.place[plain_entry(op.entry)] = "hidden";
         if (was) next.shared.last_side[op.entry] = { side: was, index: view[was].indexOf(op.entry) };
