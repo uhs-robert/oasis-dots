@@ -65,13 +65,9 @@ PATH_SCOPES = [
     ("lib/check/steps/qml_singleton_names.py", "qml"),
     ("lib/check/qml-singleton-names.allow", "qml"),
     ("lib/check/steps/lock-skins.sh", "qml"),
-    # The specs step is a tree step, so these files need no scope of their own; the schemas are named so that they do
-    # not fall to the final "all" rule.
-    ("lib/check/steps/specs.py", ""),
     # The registry step is a tree step too: it loads the Lua definitions headlessly and reads the IpcHandlers.
     ("lib/check/steps/registry.py", ""),
     ("lib/check/registry.allow", ""),
-    ("specs/*", ""),
     ("lib/check/steps/style-exports.sh", "qml"),
     # The keybind table is generated from the keymaps, which reach docsgen through the home/hypr/* rule; its generator's
     # tests are unittest cases in lib/check/tests.
@@ -226,6 +222,8 @@ PATH_SCOPES = [
     ("home/claude/.claude/hooks/*", "hooks"),
     ("home/claude/.claude/skills/orchestrator-handoff/*", "hooks"),
     (".claude/hooks/live-hypr.sh", "hooks ship"),
+    # The plan scaffold's test validates against this schema.
+    (".claude/hooks/plan-frontmatter.yaml", "hooks checkscope"),
     (".claude/hooks/*", "hooks"),
     (".claude/skills/owner-test-bar/*", "bar"),
     # shadow.sh is also run by the shadow-action test, which sources it for `action`.
@@ -309,9 +307,6 @@ STEPS = [
     Step("qml-singleton-names", "qml", "python3 -B ./lib/check/steps/qml_singleton_names.py"),
     Step("qml-ipc", "tree", "python3 -B ./lib/check/steps/qml_ipc.py"),
     Step("readme-links", "tree", "python3 -B ./lib/check/steps/readme_links.py"),
-    # "tree" so that an edit of an ignored .plans/ file, which no path rule can see, still selects it. No `needs`: a
-    # missing check-jsonschema must fail the step, not skip it.
-    Step("specs", "tree", "python3 -B ./lib/check/steps/specs.py"),
     # "tree" because it reads the Lua keymaps and definitions, lib/check/registry.allow and the Quickshell IpcHandlers: no
     # single scope covers them. No `needs`: a missing lua must fail the step, not skip it.
     Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),

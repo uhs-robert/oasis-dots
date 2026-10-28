@@ -135,36 +135,18 @@ class CitedPathTest(LinksCase):
         self.assertEqual(self.check({"qs/README.md": "ok\n", "docs/n.txt": "[x](gone.md)\n", "qs/a.txt": "[x](gone.md)\n", "home/k/N.md": "[x](gone.md)\n"}), [])
 
 
-class DocsAndSpecsTest(LinksCase):
-    """docs/ and specs/ are read like the Quickshell READMEs; only some of them also have their backticked paths held."""
+class DocsTest(LinksCase):
+    """docs/ is read like the Quickshell READMEs, backticked paths included."""
 
-    MISSING = "`specs/gone.md`\n"
+    MISSING = "`lib/gone.md`\n"
 
     def test_a_dead_link_in_docs_fails_with_its_line(self):
         self.assertEqual(self.check({"docs/x.md": "ok\n[gone](nope.md)\n"}), ["docs/x.md:2: link nope.md points at docs/nope.md, which does not exist"])
 
-    def test_a_bad_anchor_in_a_spec_fails(self):
-        found = self.check({"specs/core/x.md": "[a](../decisions.md#nope)\n", "specs/decisions.md": "# Title\n"})
-        self.assertEqual(found, ["specs/core/x.md:1: link ../decisions.md#nope names no heading of specs/decisions.md"])
-
-    def test_a_missing_backticked_path_fails_in_docs_decisions_and_core_specs(self):
-        for path in ("docs/x.md", "specs/decisions.md", "specs/core/x.md"):
-            found = self.check({path: self.MISSING})
-            self.assertEqual(len(found), 1, path)
-            self.assertTrue(found[0].startswith(f"{path}:1: `specs/gone.md` does not exist"), found)
-
-    def test_a_missing_backticked_path_passes_in_the_roadmap(self):
-        self.assertEqual(self.check({"specs/roadmap.md": self.MISSING}), [])
-
-    def test_a_missing_backticked_path_fails_in_the_port_plan(self):
-        found = self.check({"specs/voxcmd-port.md": self.MISSING})
-        self.assertTrue(found and found[0].startswith("specs/voxcmd-port.md:1: `specs/gone.md` does not exist"), found)
-
-    def test_links_in_the_roadmap_are_still_checked(self):
-        self.assertEqual(len(self.check({"specs/roadmap.md": "[x](gone.md)\n"})), 1)
-
-    def test_specs_is_a_known_folder(self):
-        self.assertEqual(self.check({"docs/x.md": "`specs/schema/spec.yaml`\n", "specs/schema/spec.yaml": ""}), [])
+    def test_a_missing_backticked_path_fails_in_docs(self):
+        found = self.check({"docs/x.md": self.MISSING})
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0].startswith("docs/x.md:1: `lib/gone.md` does not exist"), found)
 
 
 class RealTreeTest(unittest.TestCase):

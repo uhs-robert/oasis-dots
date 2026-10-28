@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=https://json-schema.org/draft/2020-12/schema
-# The front matter of a plan, tracker or handoff under .plans/ (local, so only validated where that folder exists).
+# The front matter of a plan, tracker or handoff under .plans/ (local, so only the write-time hook validates it).
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Plan front matter
 type: object
 additionalProperties: false
-required: [kind, status, owner_session, updated, specs, pr]
+required: [kind, status, owner_session, updated, pr]
 properties:
   kind:
     enum: [tracker, plan, handoff]
@@ -17,9 +17,6 @@ properties:
     type: string
     format: date
     pattern: "^\\d{4}-\\d{2}-\\d{2}$"
-  specs:
-    type: array
-    items: {type: string, pattern: "^[a-z]{2,}$"}
   # Required for plans and handoffs (below), absent for trackers; "none" when there is no branch.
   branch:
     type: string

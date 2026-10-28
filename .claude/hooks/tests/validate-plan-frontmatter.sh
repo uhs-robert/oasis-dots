@@ -3,20 +3,16 @@
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 hook=$here/../validate-plan-frontmatter.sh
-repo=$(cd "$here/../../.." && pwd)
 pass=0 fail=0
 
 root=$(mktemp -d)
 trap 'rm -rf "$root"' EXIT
-mkdir -p "$root/lib/check/steps" "$root/specs/schema" "$root/.plans/x" "$root/src"
-cp "$repo/lib/check/steps/specs.py" "$root/lib/check/steps/"
-cp "$repo/specs/schema/plan.yaml" "$root/specs/schema/"
+mkdir -p "$root/.plans/x" "$root/src"
 good='---
 kind: tracker
 status: active
 owner_session: none
 updated: "2026-10-27"
-specs: []
 pr: none
 ---
 # T

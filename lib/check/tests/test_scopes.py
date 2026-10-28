@@ -37,11 +37,7 @@ CASES = [
     ("lib/check/qml-ipc.allow", "checkscope"),
     ("lib/check/steps/lua.sh", "checkscope lua"),
     ("lib/check/steps/symlinks.sh", "checkscope"),
-    # Specs and their schemas reach only the steps that always run, the specs step among them.
-    ("lib/check/steps/specs.py", "checkscope"),
-    ("specs/core/bar.md", ""),
-    ("specs/schema/spec.yaml", ""),
-    ("specs/roadmap.md", ""),
+    (".claude/hooks/plan-frontmatter.yaml", " hooks checkscope"),
     # The registry step is a tree step: the step itself reaches only the always-run steps. The Lua it loads is Lua.
     ("lib/check/steps/registry.py", "checkscope"),
     ("lib/check/registry.allow", "checkscope"),

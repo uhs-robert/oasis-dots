@@ -126,16 +126,7 @@ case_readme() {
   start_case 'README-only change'
   echo >>README.md
   plan
-  expect_ran_exactly qml-ipc readme-links specs registry packages symlinks git-diff-check whitespace conflicts ignored-integrations
-}
-
-case_ignored_plan_file() {
-  start_case 'ignored .plans file, no tracked change'
-  echo '/.plans/' >>.git/info/exclude
-  mkdir .plans
-  echo broken >.plans/broken.md
-  plan
-  expect_ran specs
+  expect_ran_exactly qml-ipc readme-links registry packages symlinks git-diff-check whitespace conflicts ignored-integrations
 }
 
 case_home_qml() {
@@ -353,7 +344,7 @@ case_install_loader_reached_through_earlier_arms() {
 case_paths_list() {
   start_case 'path list from stdin'
   plan_paths 'README.md'
-  expect_ran_exactly qml-ipc readme-links specs registry packages symlinks git-diff-check whitespace conflicts ignored-integrations
+  expect_ran_exactly qml-ipc readme-links registry packages symlinks git-diff-check whitespace conflicts ignored-integrations
   [ "$plan_line" = "${plan_line/listed files/}" ] && fail 'the label to say listed files'
   local qml
   qml=$(first_tracked 'home/quickshell/*.qml') || return 0
@@ -405,7 +396,7 @@ case_only() {
   [ $? = 2 ] || fail 'an unknown step to exit 2'
 }
 
-for case_fn in case_readme case_ignored_plan_file case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
+for case_fn in case_readme case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
   case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed case_only; do
   report "$case_fn"
