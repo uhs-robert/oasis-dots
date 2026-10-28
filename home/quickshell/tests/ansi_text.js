@@ -68,13 +68,15 @@ const bottom = [
 const wrapped = [
   ["short line untouched", wrap_lines("abc\nde", 3), "abc\nde"],
   ["long line breaks at the width", wrap_lines("abcdefg", 3), "abc\ndef\ng"],
-  ["escapes take no width", wrap_lines("\x1b[31mabc\x1b[0mdef", 3), "\x1b[31mabc\x1b[0m\ndef"],
+  ["escapes take no width", wrap_lines("\x1b[31mabc\x1b[0mdef", 3), "\x1b[31mabc\x1b[0m\n\x1b[31m\x1b[0mdef"],
   ["colour carries across the break", to_styled(wrap_lines("\x1b[31mabcd", 2), "#cccccc"), "<font color=\"#cd0000\">ab</font><br/><font color=\"#cd0000\">cd</font>"],
   ["frame line is cut, not wrapped", wrap_lines("\u256d\u2500\u2500\u2500\u2500\u256e", 3), "\u256d\u2500\u2500"],
   ["coloured frame keeps its escapes", wrap_lines("\x1b[2m\u2500\u2500\u2500\u2500\x1b[0m", 2), "\x1b[2m\u2500\u2500\x1b[0m"],
   ["text in a frame wraps", wrap_lines("\u2502 abcd", 3), "\u2502 a\nbcd"],
   ["astral character is one column", wrap_lines("\u{1F600}ab", 2), "\u{1F600}a\nb"],
   ["no width leaves it", wrap_lines("abcdef", 0), "abcdef"],
+  ["break repeats the colour codes", wrap_lines("\x1b[31mab\x1b[1mcdef", 2), "\x1b[31mab\x1b[1m\n\x1b[31m\x1b[1mcd\n\x1b[31m\x1b[1mef"],
+  ["continuation keeps its colour after the cut", to_styled(bottom_lines(wrap_lines("\x1b[31mabcdef", 2), 2), "#cccccc"), "<font color=\"#cd0000\">cd</font><br/><font color=\"#cd0000\">ef</font>"],
 ];
 for (const [name, got, expected] of wrapped) {
   try {
