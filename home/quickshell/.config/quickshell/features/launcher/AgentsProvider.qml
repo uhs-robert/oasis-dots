@@ -7,7 +7,7 @@ import "AnsiText.js" as AnsiText
 import "../../core/Fuzzy.js" as Fuzzy
 
 // Running agent sessions from keeptabs, in its own order: Enter jumps to the session's window, the preview shows the
-// selected session's tmux pane as text, and each card its state, how full its context is and the last line its pane printed,
+// selected session's tmux pane or kitty window as text, and each card its state, how full its context is and the last line its pane printed,
 // refreshed while open.
 PickerProvider {
     id: root
@@ -74,7 +74,7 @@ PickerProvider {
         Item {
             id: pane
             property var entry: null
-            readonly property bool has_pane: !!pane.entry && pane.entry.tmux_pane !== ""
+            readonly property bool has_pane: !!pane.entry && (pane.entry.tmux_pane !== "" || pane.entry.pid !== "")
             // Id of the entry the shown text was captured for, so a late capture never lands on another row.
             property string text_id: ""
             property string pane_text: ""
@@ -181,7 +181,7 @@ PickerProvider {
                 anchors.fill: parent
                 anchors.margins: 10
                 visible: !pane.has_pane || pane.failed || pane.text_id === ""
-                text: !pane.entry ? "" : !pane.has_pane ? "No preview: this session is not in a tmux pane." : pane.failed ? "No preview: the tmux pane is gone." : ""
+                text: !pane.entry ? "" : !pane.has_pane ? "No preview: keeptabs knows no tmux pane or process for this session." : !pane.failed ? "" : pane.entry.tmux_pane !== "" ? "No preview: the tmux pane is gone." : "No preview: this session is not in tmux or in a kitty window with remote control (allow_remote_control and listen_on)."
                 textFormat: Text.PlainText
                 wrapMode: Text.WordWrap
                 color: Style.text_muted

@@ -1,11 +1,11 @@
-// Runs AgentSessions.js under node: the row parsing, tmux argv and pane tails behind the agent sessions picker.
+// Runs AgentSessions.js under node: the row parsing, tmux and kitty argv and pane tails behind the agent sessions picker.
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 const os = require("os");
-const { execFileSync } = require("child_process");
+const { execFileSync, spawn } = require("child_process");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/AgentSessions.js"), "utf8");
 const context = vm.createContext({});
@@ -25,6 +25,13 @@ fs.writeFileSync(path.join(stub_dir, "tmux"), [
   "  *) echo 'no pane' >&2; exit 1 ;;",
   "esac",
 ].join("\n") + "\n", { mode: 0o755 });
+// A stub kitten that names the window it was asked for, and two live processes standing in for agents: one started by a
+// kitty with remote control, one by some other terminal.
+fs.writeFileSync(path.join(stub_dir, "kitten"), "#!/bin/sh\nprintf 'window %s %s\\n' \"$3\" \"$6\"\ncase \" $* \" in *\" --ansi \"*) echo ansi ;; esac\n", { mode: 0o755 });
+const kitty_agent = spawn("sleep", ["60"], { stdio: "ignore", env: { KITTY_LISTEN_ON: "unix:/run/k", KITTY_WINDOW_ID: "7" } });
+const other_agent = spawn("sleep", ["60"], { stdio: "ignore", env: {} });
+const run_stubbed = argv => execFileSync(argv[0], argv.slice(1), { encoding: "utf8", env: { PATH: stub_dir + ":/usr/bin:/bin" } });
+const exit_code = argv => { try { run_stubbed(argv); return 0; } catch (e) { return e.status; } };
 const run_tails = entries => {
   const argv = tails_argv(entries);
   return parse_tails(execFileSync(argv[0], argv.slice(1), { encoding: "utf8", env: { PATH: stub_dir + ":/usr/bin:/bin" } }));
@@ -42,9 +49,13 @@ const cases = [
   ["cwd outside home stays whole", () => parse_sessions("[{\"id\":\"a\",\"agent\":\"c\",\"cwd\":\"/home/mexyz\"}]", home)[0].description, "c · /home/mexyz"],
   ["numeric id becomes a string", () => parse_sessions("[{\"id\":7}]", home)[0].id, "7"],
   ["missing tmux fields become empty", () => { const r = parse_sessions("[{\"id\":\"a\"}]", home)[0]; return [r.tmux_socket, r.tmux_pane]; }, ["", ""]],
+  ["a pid is kept as a string, anything else as empty", () => parse_sessions("[{\"id\":\"a\",\"pid\":42},{\"id\":\"b\",\"pid\":\"1; rm\"},{\"id\":\"c\"}]", home).map(r => r.pid), ["42", "", ""]],
   ["a row carries its agent, state and short cwd for the card", () => { const r = parse_sessions("[{\"id\":\"a\",\"agent\":\"claude\",\"state\":\"waiting\",\"cwd\":\"/home/me/x\"}]", home)[0]; return [r.agent, r.state, r.cwd_short]; }, ["claude", "waiting", "~/x"]],
   ["capture with a socket asks for the width first", () => capture_argv({ tmux_socket: "/run/t.sock", tmux_pane: "%4" }), ["tmux", "-S", "/run/t.sock", "display-message", "-p", "-t", "%4", "#{pane_width}", ";", "capture-pane", "-p", "-e", "-t", "%4"]],
   ["capture without a socket leaves -S out", () => capture_argv({ tmux_socket: "", tmux_pane: "%4" }), ["tmux", "display-message", "-p", "-t", "%4", "#{pane_width}", ";", "capture-pane", "-p", "-e", "-t", "%4"]],
+  ["outside tmux the capture reads the agent's kitty window, in colour", () => split_capture(run_stubbed(capture_argv({ tmux_pane: "", pid: String(kitty_agent.pid) }))), { width: 0, text: "window unix:/run/k id:7\nansi\n" }],
+  ["an agent not started by a remote-controlled kitty has no capture", () => exit_code(capture_argv({ tmux_pane: "", pid: String(other_agent.pid) })), 1],
+  ["a gone agent has no capture", () => exit_code(capture_argv({ tmux_pane: "", pid: "999999999" })), 1],
   ["the width line splits off the capture", () => split_capture("212\nline one\nline two\n"), { width: 212, text: "line one\nline two\n" }],
   ["a capture without a width line keeps all its text", () => split_capture("line one\n"), { width: 0, text: "line one\n" }],
   ["a width with no capture after it", () => split_capture("80"), { width: 80, text: "" }],
@@ -61,6 +72,7 @@ const cases = [
   ["tails come back per session id", () => run_tails([{ id: "a", tmux_socket: "/run/t.sock", tmux_pane: "%1" }, { id: "b", tmux_socket: "", tmux_pane: "%2" }]), { a: "working on it", b: "default server" }],
   ["a gone pane or no pane gives an empty tail and keeps the rest", () => run_tails([{ id: "a", tmux_socket: "", tmux_pane: "%9" }, { id: "b", tmux_socket: "", tmux_pane: "" }, { id: "c", tmux_socket: "/s", tmux_pane: "%1" }]), { a: "", b: "", c: "working on it" }],
   ["no output gives no tails", () => parse_tails(""), {}],
+  ["a session outside tmux takes its tail from its kitty window", () => run_tails([{ id: "a", tmux_pane: "", pid: String(kitty_agent.pid) }, { id: "b", tmux_pane: "", pid: String(other_agent.pid) }, { id: "c", tmux_socket: "", tmux_pane: "%2" }]), { a: "window unix:/run/k id:7", b: "", c: "default server" }],
   ["a row carries keeptabs' context use", () => parse_sessions("[{\"id\":\"a\",\"context_pct\":59,\"context_used\":118031,\"context_window\":200000}]", home)[0].context, { pct: 59, used: 118031, window: 200000 }],
   ["a session without context data has none", () => parse_sessions("[{\"id\":\"a\"}]", home)[0].context, null],
   ["a zero or missing window is no context data", () => [parse_context({ context_used: 5, context_window: 0 }), parse_context({ context_used: 5 }), parse_context({ context_used: "x", context_window: 10 })], [null, null, null]],
@@ -79,6 +91,8 @@ for (const [name, run, expected] of cases) {
     console.error("FAIL " + name + ": " + e.message.split("\n")[0]);
   }
 }
+kitty_agent.kill();
+other_agent.kill();
 fs.rmSync(stub_dir, { recursive: true, force: true });
 if (failed > 0) {
   console.error(failed + " failed");

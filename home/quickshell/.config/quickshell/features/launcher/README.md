@@ -15,7 +15,7 @@ Top to bottom: the search bar, a preview of the selected item, and a grid of car
 
 Both open in NORMAL by default; set each picker's start mode in Settings > Input > Typing, alone or by group.
 
-An agent card shows the session's title, agent, state badge, short directory and last line of its tmux pane, refreshed every second; the preview shows the pane's bottom lines. The badge is working (outlined, primary), waiting (filled, warning), done (filled, green) or idle (outlined, dim). Under it a bar and tokens ("118k / 200k") show how full the context is: green below 50%, yellow from 50%, red from 80%; none when the session has no context data. A clipboard card shows an image thumbnail or the first three lines of text.
+An agent card shows the session's title, agent, state badge, short directory and last line of its tmux pane (or, outside tmux, its kitty window), refreshed every second; the preview shows the pane's bottom lines. A kitty window needs `allow_remote_control` and `listen_on` in kitty.conf. The badge is working (outlined, primary), waiting (filled, warning), done (filled, green) or idle (outlined, dim). Under it a bar and tokens ("118k / 200k") show how full the context is: green below 50%, yellow from 50%, red from 80%; none when the session has no context data. A clipboard card shows an image thumbnail or the first three lines of text.
 
 ## Code
 
