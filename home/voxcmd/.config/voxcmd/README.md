@@ -863,3 +863,12 @@ With no session, picker or recording open it does nothing and says nothing. `vox
 ## No-match log
 
 A phrase that still matches nothing, after the [near misses](#near-misses), is appended to `${XDG_STATE_HOME:-~/.local/state}/voxcmd/no-match.log` as one line, the ISO time, a tab and the normalized phrase, so you can review what keeps missing. `voxcmd misses [N]` prints the last N (default 20) lines. The file keeps its last 1000 lines. Nothing is logged for a dry run, a transcript heard in a private mode ([type mode](#type-mode)), a voice session turn, or a phrase forced to an integration with `private_labels=1`. Delete the file to clear it.
+
+## Code
+
+- The binary is the Rust crate in `home/voxcmd/` (`Cargo.toml`, `src/`; stow ignores it). `just voxcmd-build` builds it from the main checkout and links it as `~/.local/bin/voxcmd`; ship-batch rebuilds it after a merge that touches the crate. Port status: [voxcmd-port](../../../../specs/voxcmd-port.md).
+- Integrations are the TOML files in `integrations/`, some with a `.sh` hook beside them.
+- Tests run through `home/voxcmd/tests/sandbox.sh`, never against the live desktop. Each suite is a check step (`lib/check.sh --only voxcmd-phrases`, `voxcmd-click`, `voxcmd-calendar`, `voxcmd-wake`, `voxcmd-firefox`, `voxcmd-rust`; the ducker's is `voxtype-duck`): a hand run records no pass, so the final `--changed` run repeats it (`.claude/hooks/warn-direct-voxcmd-suite.sh` warns). Iterating on one section with `VOXCMD_ONLY_SECTIONS=` by hand is fine; a check run with it set records no pass. Every new or fixed phrasing gets a row in `tests/phrases.tsv`.
+- The goldens (`tests/fixtures/*-goldens.tsv`) are frozen and their generators gone; `cargo test` compares the ported parsers and matchers with them.
+- Firefox: the native-messaging host (`home/voxcmd/.local/share/voxcmd/firefox-host`, stdlib Python) bridges the extension in `extras/voxcmd-firefox/` to `$XDG_RUNTIME_DIR/voxcmd/firefox.sock`. Its manifest needs an absolute path, so `just firefox-host` generates it instead of stowing; `just firefox-extension` installs the signed `.xpi` through a Firefox policy, and `just sign-firefox-extension` signs it. Tests: `lib/install/tests/firefox-policy.sh`, `tests/run-firefox-extension.sh` and run.sh's "firefox live" section.
+- To let the owner try a branch by voice before merging, put it live with the `owner-test-bar` skill (`up <name> <branch>`, then `restore`).

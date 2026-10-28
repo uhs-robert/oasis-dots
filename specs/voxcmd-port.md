@@ -1,6 +1,6 @@
 # voxcmd port: bash to Rust
 
-Status of the rewrite of voxcmd (`home/voxcmd/`) as one Rust binary. It carries no spec front matter and the `specs` check does not scan it. The rules for working on voxcmd are in [AGENTS.md](../AGENTS.md#voxcmd); this file holds only the port status.
+Status of the rewrite of voxcmd (`home/voxcmd/`) as one Rust binary. It carries no spec front matter and the `specs` check does not scan it. The rules for working on voxcmd are in [the voxcmd README](../home/voxcmd/.config/voxcmd/README.md#code); this file holds only the port status.
 
 ## What runs today
 
