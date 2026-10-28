@@ -83,7 +83,7 @@ ShellRoot {
             root.check("scenario ran to the end", String(e), "");
         }
     }
-    // req: BAREDIT-01, BAREDIT-02, BAREDIT-03, BAREDIT-10, BAREDIT-04, BAREDIT-09, BAREDIT-11, BAREDIT-12, BAREDIT-13, BAREDIT-14, BAREDIT-20, BAREDIT-21 (position_source only) the key flows through the dispatcher.
+    // req: BAREDIT-01, BAREDIT-02, BAREDIT-03, BAREDIT-08, BAREDIT-10, BAREDIT-04, BAREDIT-09, BAREDIT-11, BAREDIT-12, BAREDIT-13, BAREDIT-14, BAREDIT-20, BAREDIT-21 (position_source only) the key flows through the dispatcher.
     function scenario_keys() {
         const A = root.real_name;
         root.check("monitors skip the one with no bar", BarEditor.monitors.map(m => m.name), [A, "B"]);
@@ -171,21 +171,19 @@ ShellRoot {
         root.check("VISUAL u restores the own position", BarSettings.state.positions[BarEditor.screen_key], "top");
         root.keys("Ctrl+r");
         root.check("VISUAL Ctrl+R redoes the own-layout forget", [BarEditor.screen_key in BarSettings.state.positions, BarSettings.state.shared.position], [false, "bottom"]);
-        root.keys("Enter");
         root.keys("c");
-        root.check("c on an own layout sets only that layout's compact", [BarSettings.state.monitors[BarEditor.screen_key].compact, "compact" in BarSettings.state.shared], [true, false]);
-        root.keys("o");
+        root.check("VISUAL c on an own layout sets only that layout's compact", [BarSettings.state.monitors[BarEditor.screen_key].compact, "compact" in BarSettings.state.shared], [true, false]);
+        root.keys("Enter o V c");
+        root.check("VISUAL c on a sharing monitor sets the shared compact", [BarSettings.state.shared.compact, Object.keys(BarSettings.state.monitors)], [true, []]);
         root.keys("c");
-        root.check("c on a sharing monitor sets the shared compact", [BarSettings.state.shared.compact, Object.keys(BarSettings.state.monitors)], [true, []]);
-        root.keys("c");
-        root.check("c again clears the shared compact, so every rule's own compact applies again", ["compact" in BarSettings.state.shared, Object.keys(BarSettings.state.monitors)], [false, []]);
+        root.check("VISUAL c again clears the shared compact, so every rule's own compact applies again", ["compact" in BarSettings.state.shared, Object.keys(BarSettings.state.monitors)], [false, []]);
         const portrait_scale = Math.min(520 / 1080, BarEditor.map_height(1080, 1920) / 1920);
         root.check("monitor select's map leaves a portrait monitor's tile room for its tag", [BarEditor.map_height(5760, 1080), 1080 * portrait_scale >= 150], [130, true]);
         BarEditor.tracked_rules = [{ match: { name: "D" }, compact: true }];
         root.keys("c c");
-        root.check("c keeps the shared compact when a disconnected monitor's rule gives the other value", [BarSettings.state.shared.compact], [false]);
+        root.check("VISUAL c keeps the shared compact when a disconnected monitor's rule gives the other value", [BarSettings.state.shared.compact], [false]);
         BarEditor.tracked_rules = [];
-        root.keys("c c");
+        root.keys("c c Enter");
         BarEditor.selected = "start";
         root.keys(Array(root.layout().left.length + root.layout().center.length + 1).join("l "));
         root.check("selection walks across the sides in bar order", BarEditor.selected, root.layout().right[0]);
@@ -247,6 +245,43 @@ ShellRoot {
         root.check("back on the shared layout, which lacks it, the tray lists it again", [BarEditor.sharing, BarEditor.hidden_list.indexOf("system:memory") >= 0], [true, true]);
     }
 
+    // req: BAREDIT-25, BAREDIT-26 `c` in NORMAL steps the selected module's own compact; one with no compact form says so.
+    function scenario_module_compact() {
+        BarEditor.open("B");
+        BarEditor.selected = "clock";
+        const steps = [BarEditor.selected_compact];
+        for (let i = 0; i < 3; i++) {
+            root.keys("c");
+            steps.push(BarEditor.selected_compact);
+        }
+        root.check("c steps the selected module inherit, on, off, inherit", steps, ["inherit", "on", "off", "inherit"]);
+        root.check("each step is an undo step and the cycle ends where it began", [BarEditor.undo_stack.length, "compact_modules" in BarSettings.state.shared], [3, false]);
+        root.keys("c");
+        const view = () => BarLayout.effective(root.layout_rule, BarSettings.state, BarEditor.screen_key);
+        root.check("on a sharing monitor the override is shared; the clock is compact, its neighbour not", [BarSettings.state.shared.compact_modules, BarLayout.module_compact(view(), "clock"), BarLayout.module_compact(view(), "tray"), BarEditor.compact_marks], [{ clock: true }, true, false, [{ entry: "clock", on: true }]]);
+        root.keys("u");
+        root.check("u undoes it", ["compact_modules" in BarSettings.state.shared, BarEditor.selected_compact], [false, "inherit"]);
+        root.keys("Ctrl+r");
+        root.check("Ctrl+r redoes it", BarEditor.selected_compact, "on");
+        root.keys("V c Enter");
+        root.check("the whole bar compact does not touch the override", [BarEditor.bar_compact, BarSettings.state.shared.compact_modules, BarLayout.module_compact(view(), "tray")], [true, { clock: true }, true]);
+        root.keys("c");
+        root.check("an off override keeps the module out of a compact bar", [BarEditor.selected_compact, BarLayout.module_compact(view(), "clock"), BarLayout.module_compact(view(), "volume")], ["off", false, true]);
+        root.keys("o");
+        root.check("o copies the overrides into the own layout", BarSettings.state.monitors[BarEditor.screen_key].compact_modules, { clock: false });
+        root.keys("c");
+        root.check("an own layout's step leaves the shared override alone", [BarEditor.selected_compact, BarSettings.state.shared.compact_modules], ["inherit", { clock: false }]);
+        root.keys("o");
+        BarEditor.selected = "tray";
+        const before = JSON.stringify(BarSettings.state);
+        const undo_depth = BarEditor.undo_stack.length;
+        root.check("a module with no compact form names none", BarEditor.selected_compact, "none");
+        root.keys("c");
+        root.check("c on it changes nothing and says so", [JSON.stringify(BarSettings.state) === before, BarEditor.undo_stack.length, BarEditor.notice], [true, undo_depth, "tray has no compact form"]);
+        root.keys("h");
+        root.check("the next key clears the message", BarEditor.notice, "");
+    }
+
     // req: BAREDIT-22 nothing left to add.
     function scenario_hidden_empty() {
         const everything = BarLayout.known.filter(e => e !== "cava").concat(["system:memory", "system:temperature"]);
@@ -262,7 +297,7 @@ ShellRoot {
     // ones that change anything must be exactly HintData's list.
     readonly property var probe_keys: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ?".split("").concat(["Tab", "Enter", "Esc", "Ctrl+r", "Backspace"])
     function snapshot() {
-        return JSON.stringify([BarSettings.state, BarEditor.mode, BarEditor.active, BarEditor.help_open, BarEditor.focus_screen, BarEditor.selected, BarEditor.hidden_selected, BarEditor.picked, BarEditor.undo_stack.length, BarEditor.redo_stack.length]);
+        return JSON.stringify([BarSettings.state, BarEditor.mode, BarEditor.active, BarEditor.help_open, BarEditor.focus_screen, BarEditor.selected, BarEditor.hidden_selected, BarEditor.picked, BarEditor.undo_stack.length, BarEditor.redo_stack.length, BarEditor.notice]);
     }
     // A fresh editor in `mode` with something to undo and redo and every key's target in reach.
     function hint_fixture(mode, vertical, saved_edge) {
@@ -483,6 +518,7 @@ ShellRoot {
         editor_popups: { steps: [[100, () => root.run_editor("popups")], [300, () => root.scenario_popups_after()], [500, () => root.scenario_popups_hover()], [700, () => root.scenario_popups_hands_off()]], end: 900 },
         editor_hint_keys: { steps: [[100, () => root.run_editor("hint_keys")]], end: 500 },
         editor_hidden_add: { steps: [[100, () => root.run_editor("hidden_add")]], end: 500 },
+        editor_module_compact: { steps: [[100, () => root.run_editor("module_compact")]], end: 500 },
         editor_hidden_empty: { steps: [[100, () => root.run_editor("hidden_empty")]], end: 500 },
         editor_hint_edge: { steps: [[100, () => root.run_editor("hint_edge")]], end: 500 },
         editor_pick_redo: { steps: [[100, () => root.run_editor("pick_redo")]], end: 500 },

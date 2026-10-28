@@ -30,6 +30,8 @@ Singleton {
     property string hidden_selected: ""
     property string picked: ""
     property bool help_open: false
+    // A one-key message on the hint bar (`c` on a module with no compact form); the next key clears it.
+    property string notice: ""
 
     // Whole BarSettings.state snapshots. Restoring one also restores unrelated keys changed since (directory switches).
     property var undo_stack: []
@@ -64,6 +66,11 @@ Singleton {
     readonly property bool sharing: BarLayout.is_sharing(BarSettings.state, root.screen_key)
     readonly property int sharing_count: root.sharing ? root.sharing_screens().length : 0
     readonly property var hidden_list: BarLayout.addable_entries(BarSettings.rules, BarSettings.state, root.view).filter(BarLayout.is_known_entry)
+    // The shown modules with a compact override of their own, as { entry, on }, which the overlay marks on the bar.
+    readonly property var compact_marks: root.order.map(e => ({ entry: e, override: BarLayout.compact_override(BarSettings.state, root.screen_key, e) })).filter(m => m.override !== "inherit").map(m => ({ entry: m.entry, on: m.override === "on" }))
+    // The selected module's override ("inherit", "on", "off"), or "none" when it has no compact form.
+    readonly property string selected_compact: root.selected === "" || !BarLayout.supports_compact(root.selected) ? "none" : BarLayout.compact_override(BarSettings.state, root.screen_key, root.selected)
+    readonly property bool bar_compact: !!(root.edited_rule && root.edited_rule.compact)
     readonly property string mode_label: root.mode === "monitor" ? "MONITOR" : root.mode.toUpperCase()
 
     // "shared" or "own layout" for a monitor's bar.
@@ -107,6 +114,7 @@ Singleton {
         root.pick_base = null;
         root.picked = "";
         root.help_open = false;
+        root.notice = "";
         root.focus_screen = root.monitors.some(m => m.name === wanted) ? wanted : root.monitors[0].name;
         root.mode = "normal";
         root.selected = root.order[0] || "";
@@ -121,6 +129,7 @@ Singleton {
         root.selected = "";
         root.picked = "";
         root.help_open = false;
+        root.notice = "";
         root.undo_stack = [];
         root.redo_stack = [];
         root.pick_base = null;
@@ -133,7 +142,7 @@ Singleton {
     }
 
     function state_json() {
-        return JSON.stringify({ active: root.active, mode: root.mode, focus_screen: root.focus_screen, selected: root.selected, picked: root.picked, sharing: root.sharing, sharing_count: root.sharing_count, position_edge: root.position_edge, position_source: root.position_source, undo: root.undo_stack.length, redo: root.redo_stack.length });
+        return JSON.stringify({ active: root.active, mode: root.mode, focus_screen: root.focus_screen, selected: root.selected, picked: root.picked, sharing: root.sharing, sharing_count: root.sharing_count, position_edge: root.position_edge, position_source: root.position_source, compact: root.selected_compact, bar_compact: root.bar_compact, undo: root.undo_stack.length, redo: root.redo_stack.length });
     }
 
     // Applies an edit as one undo step; an edit that changes nothing is not one.
@@ -285,6 +294,19 @@ Singleton {
         root.hidden_selected = entry;
     }
 
+    function cycle_compact_selected() {
+        if (root.selected === "") return;
+        if (!BarLayout.supports_compact(root.selected)) {
+            root.notice = root.selected + " has no compact form";
+            return;
+        }
+        root.commit(BarLayout.cycle_module_compact(BarSettings.state, root.screen_key, root.selected));
+    }
+
+    function toggle_bar_compact() {
+        root.commit(BarLayout.toggle_compact(root.tracked, BarSettings.state, root.screen_key, root.sharing_rules()));
+    }
+
     function forget_position() {
         root.commit(BarLayout.forget_position_for_mode(BarSettings.state, root.screen_key));
     }
@@ -297,6 +319,7 @@ Singleton {
     // which is every key while it is open: nothing may reach what is under it.
     function press(spec) {
         if (!root.active) return false;
+        root.notice = "";
         // q closes from everywhere, cancelling a pick-up in progress.
         if (spec === "q") {
             root.close();
@@ -337,7 +360,7 @@ Singleton {
         } else if (spec === "H" || spec === "L" || (root.vertical && (spec === "J" || spec === "K"))) {
             root.move_selected(spec === "H" || spec === "K" ? -1 : 1);
         } else if (spec === "c") {
-            root.commit(BarLayout.toggle_compact(root.tracked, BarSettings.state, root.screen_key, root.sharing_rules()));
+            root.cycle_compact_selected();
         } else if (spec === "o") {
             root.commit(BarLayout.toggle_own(root.tracked, BarSettings.state, root.screen_key));
         } else if (spec === "x") {
@@ -376,6 +399,7 @@ Singleton {
         const edges = { h: "left", j: "bottom", k: "top", l: "right" };
         if (edges[spec]) root.set_edge(edges[spec]);
         else if (spec === "x") root.forget_position();
+        else if (spec === "c") root.toggle_bar_compact();
         else if (spec === "u") root.undo();
         else if (spec === "Ctrl+r") root.redo();
         else if (spec === "Esc" || spec === "Enter") root.mode = "normal";

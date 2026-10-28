@@ -53,7 +53,7 @@ SettingsPane {
     implicitHeight: col.implicitHeight
 
     function describe(index) {
-        if (index === 0) return "Edit the bars live on screen: move, hide, add and re-place modules, give a monitor its own layout, compact, move the bar to another edge. Esc/q leaves.";
+        if (index === 0) return "Edit the bars live on screen: move, hide, add and re-place modules, give a monitor its own layout, make one module or the whole bar compact, move the bar to another edge. Esc/q leaves.";
         return root.directory_notes[root.directory_rows[index - 1].name];
     }
 

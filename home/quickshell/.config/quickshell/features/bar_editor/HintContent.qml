@@ -9,7 +9,7 @@ Row {
     id: root
     property bool carrying: false
     property bool vertical: false
-    readonly property var groups: HintData.groups(BarEditor.mode, root.carrying, root.vertical, BarEditor.can_forget)
+    readonly property var groups: HintData.groups(BarEditor.mode, root.carrying, root.vertical, BarEditor.can_forget, BarEditor.mode === "visual" ? (BarEditor.bar_compact ? "on" : "off") : BarEditor.selected_compact)
     // Monitor select already titles its box.
     readonly property string mode_label: BarEditor.mode === "monitor" ? "" : BarEditor.mode_label
     readonly property string edge_label: BarEditor.mode === "visual" ? BarEditor.position_edge + " edge" : ""
@@ -19,7 +19,7 @@ Row {
     Rectangle {
         visible: root.mode_label !== ""
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.max(mode_text.implicitWidth, edge_text.implicitWidth, state_text.implicitWidth) + 24
+        width: Math.max(mode_text.implicitWidth, edge_text.implicitWidth, state_text.implicitWidth, notice_text.visible ? notice_text.implicitWidth : 0) + 24
         height: block.implicitHeight + 14
         radius: Math.min(Style.frame_radius, 4)
         color: Style.title_bg
@@ -53,6 +53,15 @@ Row {
                 opacity: 0.7
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-3)
+            }
+            Text {
+                id: notice_text
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: BarEditor.notice !== ""
+                text: BarEditor.notice
+                color: Style.accent_color
+                font.family: Style.font_family
+                font.pixelSize: Style.fs(-2)
             }
         }
     }
