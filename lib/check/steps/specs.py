@@ -323,7 +323,7 @@ def plan_findings(root, full_paths, shown_from=None):
     for full in full_paths:
         path = os.path.relpath(full, shown_from)
         try:
-            with open(full) as handle:
+            with open(full, encoding="utf-8") as handle:
                 parts = split_front_matter(handle.read())
         except (OSError, UnicodeError) as error:
             # A plan that cannot be read is a finding, not a crash: .plans docs only ever warn.

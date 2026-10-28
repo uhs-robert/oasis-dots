@@ -356,6 +356,19 @@ class PlanTest(SpecsCase):
     def test_a_valid_plan_adds_no_warning(self):
         self.assertEqual(self.plan(GOOD_PLAN), [])
 
+    def test_invalid_utf8_warns_even_under_a_latin_1_locale(self):
+        """A locale that decodes every byte (ISO-8859-1) must not let a non-UTF-8 plan through."""
+        write_tree(self.root, {".plans/b.md": "x\n"})
+        with open(os.path.join(self.root, ".plans", "a.md"), "wb") as handle:
+            handle.write(b"---\n\xff\xfe\n---\n")
+
+        def open_with_latin_1_default(path, mode="r", **options):
+            return open(path, mode, **{"encoding": "latin-1", **options})
+
+        with mock.patch.object(specs, "open", open_with_latin_1_default, create=True):
+            self.assertEqual(self.check({}), [])
+        self.assertIn(".plans/a.md", "\n".join(line for line in self.info if "unreadable" in line))
+
     def test_an_unreadable_plan_warns_and_the_rest_are_still_checked(self):
         write_tree(self.root, {".plans/b.md": "x\n"})
         os.makedirs(os.path.join(self.root, ".plans"), exist_ok=True)
