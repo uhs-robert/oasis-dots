@@ -265,13 +265,33 @@ def excluded(path):
     return any(fnmatch.fnmatch(text, p) for p in patterns)
 
 
-def added_texts(tool_name, tool_input):
-    """The new text that an edit brought in, as a list of strings. None means the whole file is new."""
+def edits_of(tool_name, tool_input):
+    """The edits a tool call made, as dicts with new_string, old_string and replace_all."""
     if tool_name == "Edit":
-        return [tool_input.get("new_string") or ""]
+        return [tool_input]
     if tool_name == "MultiEdit":
-        return [edit.get("new_string") or "" for edit in tool_input.get("edits") or []]
-    return None
+        return tool_input.get("edits") or []
+    return []
+
+
+def edited_lines(text, edit):
+    """Line numbers of the lines an edit added. It finds where new_string sits in the file, because a line
+    of new text can repeat a line elsewhere, and matching by text alone would select that old paragraph."""
+    new = edit.get("new_string") or ""
+    if not new.strip():
+        return set()
+    old_lines = {line.strip() for line in (edit.get("old_string") or "").splitlines()}
+    lines = set()
+    start = text.find(new)
+    while start != -1:
+        first = text.count("\n", 0, start) + 1
+        for offset, line in enumerate(new.splitlines()):
+            if line.strip() and line.strip() not in old_lines:
+                lines.add(first + offset)
+        if not edit.get("replace_all"):
+            break
+        start = text.find(new, start + len(new))
+    return lines
 
 
 def previous_lines(path):
@@ -297,16 +317,11 @@ def markdown_hits(tool_name, tool_input, cwd, filler):
     except OSError:
         return None
     file_lines = text.splitlines()
-    new_texts = added_texts(tool_name, tool_input)
-    if new_texts is None:
+    if tool_name == "Write":
         old_lines = previous_lines(path)
         keep = {n for n, line in enumerate(file_lines, 1) if line.strip() and line.strip() not in old_lines}
     else:
-        new_lines = {line.strip() for chunk in new_texts for line in chunk.splitlines() if line.strip()}
-        old_lines = set()
-        if tool_name == "Edit":
-            old_lines = {line.strip() for line in (tool_input.get("old_string") or "").splitlines()}
-        keep = {n for n, line in enumerate(file_lines, 1) if line.strip() in new_lines - old_lines}
+        keep = set().union(*(edited_lines(text, edit) for edit in edits_of(tool_name, tool_input)))
     if not keep:
         return None
     hits = lint_text(text, filler, keep)

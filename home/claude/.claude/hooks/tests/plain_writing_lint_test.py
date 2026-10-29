@@ -84,6 +84,16 @@ class Markdown(unittest.TestCase):
         self.assertIn("line 3, contraction", message)
         self.assertNotIn("line 1", message)
 
+    def test_edit_that_repeats_an_old_line_does_not_select_the_old_paragraph(self):
+        self.file.write_text("Old text that doesn't follow the rules.\nThis is shared.\n\nA clean paragraph.\nThis is shared.\n")
+        self.assertIsNone(run_hook(self.event("Edit", {"old_string": "A clean paragraph.", "new_string": "A clean paragraph.\nThis is shared."})))
+
+    def test_replace_all_reports_every_occurrence(self):
+        self.file.write_text("It doesn't work.\n\nClean.\n\nIt doesn't work.\n")
+        message = run_hook(self.event("Edit", {"old_string": "It works.", "new_string": "It doesn't work.", "replace_all": True}))
+        self.assertIn("line 1,", message)
+        self.assertIn("line 5,", message)
+
     def test_write_of_a_new_file_reports_every_paragraph(self):
         self.file.write_text("It doesn't work.\n")
         self.assertIn("contraction", run_hook(self.event("Write", {"content": "It doesn't work.\n"})))
