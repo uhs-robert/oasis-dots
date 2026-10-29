@@ -11,4 +11,9 @@ IpcHandler {
         const problem = SubmapState.set_hint(json);
         return problem === "" ? "ok" : problem;
     }
+
+    // Drops every stored hint. Sent on each Hyprland config load, so a hint the reload removed stops showing.
+    function clear(): void {
+        SubmapState.hints = ({});
+    }
 }

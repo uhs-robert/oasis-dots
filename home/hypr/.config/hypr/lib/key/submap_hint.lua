@@ -277,6 +277,10 @@ function SubmapHint.send(name)
   if encoded then Act.Ipc("submap_hints", "set", encoded)() end
 end
 
+--- Drop every hint the bar holds. Called once per config load: a hint a reload removed or dropped is never sent
+--- again, so without this the bar would keep showing the old one.
+function SubmapHint.clear_bar() Act.Ipc("submap_hints", "clear")() end
+
 --- `names` plus every submap with a hint: HyprVim's `which_key.auto_show.disabled`, since the hint bar replaces the
 --- which-key popup there. HyprVim reads that list once at setup, so a hint defined later (from custom/) still gets the
 --- popup as well.

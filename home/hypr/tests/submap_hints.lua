@@ -82,6 +82,34 @@ if SubmapHint.encoded.HintTypo ~= nil or #SubmapHint.errors ~= 1 or not Submap.r
 	print("FAIL a hint item matching no row should drop the hint and keep the submap")
 end
 
+-- A row the submap drops (unknown action, bad args) binds no key, so the hint must not list it either.
+Submap.define({
+	name = "HintDropped",
+	binds = {
+		{ "X", "window.close" },
+		{ "Y", "no.such_action" },
+		{ "Z", { "window.focus", { "sideways" } } },
+	},
+	hint = { { "Close", "window.close" }, { "Ghost", "no.such_action" } },
+}).setup()
+Submap.define({
+	name = "HintBadArgs",
+	binds = { { "X", "window.close" }, { "Z", { "window.focus", { "sideways" } } } },
+	hint = { { "Focus", "window.focus" } },
+}).setup()
+if SubmapHint.encoded.HintDropped ~= nil or SubmapHint.encoded.HintBadArgs ~= nil or #SubmapHint.errors ~= 3 then
+	failures = failures + 1
+	print("FAIL a hint item naming only rows the submap dropped should drop the hint")
+end
+
+-- A config load tells the bar to forget every hint, so one a reload removed does not linger there.
+Stubs.performed = {}
+SubmapHint.clear_bar()
+if not (Stubs.performed[1] or ""):match("qs%-ipc call submap_hints clear") then
+	failures = failures + 1
+	print("FAIL clear_bar should call `submap_hints clear`, got " .. tostring(Stubs.performed[1]))
+end
+
 for index = 1, math.max(#lines, #expected) do
 	if lines[index] ~= expected[index] then
 		failures = failures + 1
