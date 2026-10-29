@@ -452,38 +452,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `CTRL + SHIFT + UP` | press | Cursor |  | `cursor.move` |
 | `CTRL + SHIFT + L` | press | Cursor | Cursor Right (Ultra Fast) | `cursor.move` |
 | `CTRL + SHIFT + RIGHT` | press | Cursor |  | `cursor.move` |
-| `H+K` | press | Cursor | Cursor Up-Left | `cursor.move` |
-| `K+H` | press | Cursor | Cursor Up-Left | `cursor.move` |
-| `L+K` | press | Cursor | Cursor Up-Right | `cursor.move` |
-| `K+L` | press | Cursor | Cursor Up-Right | `cursor.move` |
-| `H+J` | press | Cursor | Cursor Down-Left | `cursor.move` |
-| `J+H` | press | Cursor | Cursor Down-Left | `cursor.move` |
-| `L+J` | press | Cursor | Cursor Down-Right | `cursor.move` |
-| `J+L` | press | Cursor | Cursor Down-Right | `cursor.move` |
-| `SHIFT + H+K` | press | Cursor | Cursor Up-Left (Fast) | `cursor.move` |
-| `SHIFT + K+H` | press | Cursor | Cursor Up-Left (Fast) | `cursor.move` |
-| `SHIFT + L+K` | press | Cursor | Cursor Up-Right (Fast) | `cursor.move` |
-| `SHIFT + K+L` | press | Cursor | Cursor Up-Right (Fast) | `cursor.move` |
-| `SHIFT + H+J` | press | Cursor | Cursor Down-Left (Fast) | `cursor.move` |
-| `SHIFT + J+H` | press | Cursor | Cursor Down-Left (Fast) | `cursor.move` |
-| `SHIFT + L+J` | press | Cursor | Cursor Down-Right (Fast) | `cursor.move` |
-| `SHIFT + J+L` | press | Cursor | Cursor Down-Right (Fast) | `cursor.move` |
-| `CTRL + H+K` | press | Cursor | Cursor Up-Left (Pixel) | `cursor.move` |
-| `CTRL + K+H` | press | Cursor | Cursor Up-Left (Pixel) | `cursor.move` |
-| `CTRL + L+K` | press | Cursor | Cursor Up-Right (Pixel) | `cursor.move` |
-| `CTRL + K+L` | press | Cursor | Cursor Up-Right (Pixel) | `cursor.move` |
-| `CTRL + H+J` | press | Cursor | Cursor Down-Left (Pixel) | `cursor.move` |
-| `CTRL + J+H` | press | Cursor | Cursor Down-Left (Pixel) | `cursor.move` |
-| `CTRL + L+J` | press | Cursor | Cursor Down-Right (Pixel) | `cursor.move` |
-| `CTRL + J+L` | press | Cursor | Cursor Down-Right (Pixel) | `cursor.move` |
-| `CTRL + SHIFT + H+K` | press | Cursor | Cursor Up-Left (Ultra Fast) | `cursor.move` |
-| `CTRL + SHIFT + K+H` | press | Cursor | Cursor Up-Left (Ultra Fast) | `cursor.move` |
-| `CTRL + SHIFT + L+K` | press | Cursor | Cursor Up-Right (Ultra Fast) | `cursor.move` |
-| `CTRL + SHIFT + K+L` | press | Cursor | Cursor Up-Right (Ultra Fast) | `cursor.move` |
-| `CTRL + SHIFT + H+J` | press | Cursor | Cursor Down-Left (Ultra Fast) | `cursor.move` |
-| `CTRL + SHIFT + J+H` | press | Cursor | Cursor Down-Left (Ultra Fast) | `cursor.move` |
-| `CTRL + SHIFT + L+J` | press | Cursor | Cursor Down-Right (Ultra Fast) | `cursor.move` |
-| `CTRL + SHIFT + J+L` | press | Cursor | Cursor Down-Right (Ultra Fast) | `cursor.move` |
 | `E` | press | Cursor | Scroll Up | `cursor.scroll` |
 | `Y` | press | Cursor | Scroll Down | `cursor.scroll` |
 | `COMMA` | press | Cursor | Scroll Left | `cursor.scroll` |
@@ -496,10 +464,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `CTRL + Y` | press | Cursor | Scroll Down (Pixel) | `cursor.scroll` |
 | `CTRL + COMMA` | press | Cursor | Scroll Left (Pixel) | `cursor.scroll` |
 | `CTRL + PERIOD` | press | Cursor | Scroll Right (Pixel) | `cursor.scroll` |
-| `E` | release | Cursor |  | `cursor.scroll_stop` |
-| `Y` | release | Cursor |  | `cursor.scroll_stop` |
-| `COMMA` | release | Cursor |  | `cursor.scroll_stop` |
-| `PERIOD` | release | Cursor |  | `cursor.scroll_stop` |
 | `ESCAPE` | press | Cursor | Exit Cursor |  |
 | `BackSpace` | press | Cursor | Back |  |
 | `SHIFT + SLASH` | press | Cursor | Toggle which-key help |  |

@@ -30,6 +30,10 @@ end
 hl.get_windows = function()
 	return WINDOWS
 end
+-- A fixed pointer position, so a move dumps as the absolute spot it warps to.
+hl.get_cursor_pos = function()
+	return { x = 500, y = 500 }
+end
 -- A fixed uptime, so the selection's config-load generation (lib/selection.lua) is the same in every dump.
 local UPTIME = "1234.56 7890.12"
 local real_open = io.open
@@ -495,10 +499,9 @@ end
 check("scroll: repeating before the release", enabled_timers() == 2)
 local released = 0
 for _, entry in ipairs(Stubs.binds) do
-	if entry.submap == "Cursor" and entry.opts.release == true and entry.opts.ignore_mods == true then
-		if entry.key ~= "catchall" then
-			released = released + 1
-		end
+	local scroll_key = entry.key == "E" or entry.key == "Y" or entry.key == "COMMA" or entry.key == "PERIOD"
+	if entry.submap == "Cursor" and scroll_key and entry.opts.release == true and entry.opts.ignore_mods == true then
+		released = released + 1
 	end
 end
 check("scroll: four release rows", released == 4)
@@ -515,8 +518,55 @@ Submap.registry.Cursor.on_exit({})
 check("scroll: leaving the submap stops the repeat", enabled_timers() == 0)
 check("scroll: leaving kills wl-kbptr", count_of(Stubs.performed, "pkill wl-kbptr") == 1)
 
--- Pointer moves carry their step and direction; a click can leave the submap.
-check("pointer: diagonal chord", text_of(press("Cursor", "SHIFT + H+K")) == "exec_cmd(wlrctl pointer move -100 -100)")
+-- Held pointer moves: a press steps at once and repeats on timers, a second held direction adds its step (the
+-- diagonal), and the move stops once every held direction is released or the submap is left.
+local function release(key)
+	for _, entry in ipairs(Stubs.binds) do
+		if entry.submap == "Cursor" and entry.key == key and entry.opts.release then
+			Stubs.performed = {}
+			entry.action()
+			return Stubs.performed
+		end
+	end
+	error("no release row for " .. key)
+end
+local function fire_enabled_timers()
+	Stubs.performed = {}
+	for _, timer in ipairs(timers) do
+		if timer.enabled then
+			timer.fn()
+		end
+	end
+	return Stubs.performed
+end
+check("move: the first step fires at once", text_of(press("Cursor", "H")) == "cursor.move({x=490,y=500})")
+check("move: one timer waits for the repeat delay", enabled_timers() == 1)
+check("move: a second direction steps by the sum", text_of(press("Cursor", "SHIFT + K")) == "cursor.move({x=490,y=400})")
+check("move: it replaced the first timer", enabled_timers() == 1)
+fire_enabled_timers()
+check("move: the repeat runs beside the delay timer", enabled_timers() == 2)
+local tick = fire_enabled_timers()
+check("move: a repeat tick moves diagonally: " .. text_of(tick), count_of(tick, "cursor.move({x=490,y=400})") >= 1)
+release("K")
+check("move: one direction still held keeps it going", enabled_timers() > 0)
+check("move: then only that direction moves", count_of(fire_enabled_timers(), "cursor.move({x=490,y=500})") >= 1)
+release("H")
+check("move: releasing the last direction stops every timer", enabled_timers() == 0)
+check("move: arrows release too", #release("LEFT") == 0 and enabled_timers() == 0)
+press("Cursor", "J")
+Submap.registry.Cursor.on_exit({})
+check("move: leaving the submap stops the repeat", enabled_timers() == 0)
+check("move: no Hyprland repeat on the move rows", not bind("Cursor", "H").opts.repeating)
+-- Hyprland 0.57 shadows a held key's release bind once another key changes what is held; transparent rows are exempt.
+local opaque = 0
+for _, entry in ipairs(Stubs.binds) do
+	if entry.submap == "Cursor" and entry.opts.release and entry.key ~= "catchall" and not entry.opts.transparent then
+		opaque = opaque + 1
+	end
+end
+check("move and scroll: every release row is transparent", opaque == 0)
+
+-- A click can leave the submap.
 check("pointer: click stays", text_of(press("Cursor", "SPACE")) == "exec_cmd(wlrctl pointer click left)")
 check(
 	"pointer: click with exit resets",
