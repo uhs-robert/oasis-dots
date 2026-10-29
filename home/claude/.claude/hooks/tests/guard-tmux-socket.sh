@@ -19,8 +19,11 @@ expect() {
 }
 
 expect deny 'tmux kill-server'
-expect deny 'cd x && tmux new -d'
-expect deny 'echo hi | tmux load-buffer -'
+expect deny 'cd x && tmux kill-server'
+expect allow 'cd x && tmux new -d'
+expect allow 'echo hi | tmux load-buffer -'
+expect allow 'tmux new-session -d -s x'
+expect allow 'tmux send-keys -t x Enter'
 expect deny 'tmux ls; tmux kill-server'
 expect allow 'tmux -L x new -d'
 expect allow 'env -u TMUX tmux -L x kill-server'
