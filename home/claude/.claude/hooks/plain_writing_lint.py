@@ -121,7 +121,10 @@ def prose_units(text):
             if marker and marker.group(1)[0] == fence[0] and len(marker.group(1)) >= fence[1] and not marker.group(2).strip():
                 fence = None
             continue
-        if not stripped or stripped.startswith((">", "|", "#", "<")):
+        # An indented code block starts after a blank line. Inside a paragraph or list item, indentation is
+        # only a continuation.
+        indented_code = not current and line.startswith(("    ", "\t"))
+        if not stripped or indented_code or stripped.startswith((">", "|", "#", "<")):
             flush(number - 1)
             continue
         if re.match(r"^\s*(?:[-*+]|\d+\.)\s", line):
