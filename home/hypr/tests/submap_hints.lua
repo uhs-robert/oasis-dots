@@ -102,6 +102,20 @@ if SubmapHint.encoded.HintDropped ~= nil or SubmapHint.encoded.HintBadArgs ~= ni
 	print("FAIL a hint item naming only rows the submap dropped should drop the hint")
 end
 
+-- SubmapState.set_hint takes only arrays for groups, keys and footer, so an empty one must encode as `[]`, not `{}`.
+local Json = require("lib.json")
+local no_extras = { escape = false, whichkey = false }
+local empty_group = Json.encode(SubmapHint.build("HintEmpty", { { "None" } }, {}, no_extras))
+if not (empty_group:find('"keys":%[%]') and empty_group:find('"footer":%[%]')) then
+	failures = failures + 1
+	print("FAIL an empty group and footer should encode as arrays, got " .. empty_group)
+end
+local empty_hint = Json.encode(SubmapHint.build("HintNone", {}, {}, no_extras))
+if not empty_hint:find('"groups":%[%]') then
+	failures = failures + 1
+	print("FAIL an empty hint should encode groups as an array, got " .. empty_hint)
+end
+
 -- A config load tells the bar to forget every hint, so one a reload removed does not linger there.
 Stubs.performed = {}
 SubmapHint.clear_bar()
