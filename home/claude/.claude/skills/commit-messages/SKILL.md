@@ -6,7 +6,9 @@ description: >-
 
 # Commit Messages
 
-Write commit messages that tell the story of _why_ a change was made, not just what changed. The reader should come away understanding the context, the decision, and the trade-offs.
+Write commit messages that tell the story of _why_ a change was made, not only what changed. The reader comes away with the context, the decision and the trade-offs.
+
+Write every sentence by the `plain-writing` skill. This skill sets the structure and the length.
 
 ## Subject Line
 
@@ -16,7 +18,7 @@ Format: `type(scope): imperative summary`, with `(#PR)` appended on a squash mer
 - **Breaking changes**: add `!` after the scope (`feat(api)!: ...`) and a `BREAKING CHANGE:` footer.
 - **Imperative mood**: "add", "fix", "remove", "prevent", "handle" -- never past tense.
 - **Lowercase after the colon**, no trailing period, unless the repo's history clearly does otherwise.
-- **Aim for 50 chars, hard cap 72.** Drop words the context already implies -- e.g. "add NOT NULL on" beats "add NOT NULL constraint on" because "NOT NULL" already means constraint. Don't repeat the scope in the summary.
+- **Aim for 50 chars, hard cap 72.** Drop words the context already implies -- e.g. "add NOT NULL on" beats "add NOT NULL constraint on" because "NOT NULL" already means constraint. Do not repeat the scope in the summary.
 - **Tickets go in the footer**, not the subject: `Refs: PROJ-123` or `Closes #42`.
 
 Examples:
@@ -31,34 +33,34 @@ Separate from subject with a blank line. Never hard-wrap: write each paragraph a
 
 ### Narrative Arc
 
-Follow this structure (skip sections that aren't relevant for small changes):
+Follow this structure (skip sections that are not relevant for small changes). Give each paragraph one idea. Do not list keys, files, apps or test fixtures: summarize the group and name only what the reader must act on.
 
 1. **Context / current state**: What the world looks like before this change. Ground the reader.
-2. **Problem or motivation**: What's wrong, missing, or desired. Name the specific concept or mechanism behind the problem rather than describing it loosely. "Not enforced at the DB level" is better than "the database didn't match" because it tells the reader exactly what kind of gap exists. Go further and name the real-world trigger -- the actors, behaviors, or patterns that made this change necessary _now_. "Customers hit this on every page reload" is stronger than "the cache can go stale" because it names who's affected and why it's urgent.
+2. **Problem or motivation**: What is wrong, missing, or desired. Name the specific concept or mechanism behind the problem rather than describing it loosely. "Not enforced at the DB level" is better than "the database did not match" because it tells the reader exactly what kind of gap exists. Go further and name the real-world trigger -- the actors, behaviors, or patterns that made this change necessary _now_. "Customers hit this on every page reload" is stronger than "the cache can go stale" because it names who is affected and why it's urgent.
 3. **Solution**: The approach or strategy, not a play-by-play of the diff. Describe the _shape_ of the change rather than enumerating files or functions. Use "This commit..." to demarcate from background.
-4. **Design reasoning**: Why this approach. State constraints or principles, discuss alternatives considered. Connect facts to the specific concerns they address -- "the table is small" is an assertion; "the table is small enough that the lock will be near-instant" is reasoning. The reader shouldn't have to infer why a fact matters.
+4. **Design reasoning**: Why this approach. State constraints or principles, discuss alternatives considered. Connect facts to the specific concerns they address -- "the table is small" is an assertion; "the table is small enough that the lock will be near-instant" is reasoning. Do not make the reader infer why a fact matters.
 5. **Scope boundaries**: What's explicitly _not_ included. Use phrases like "out of scope for this change" or "a follow-up will..."
 6. **Incidental discoveries**: Anything found along the way. "While digging into this, I discovered..."
-7. **Future work**: What should happen next, if anything.
-8. **Living with this change**: When a change introduces a new constraint, convention, or tool, include practical guidance for developers who'll encounter it. What should they do when it gets in their way? When is it appropriate to override or work around it? This is distinct from future work -- it's a playbook for coexisting with the change.
+7. **Future work**: What comes next, if anything.
+8. **Living with this change**: When a change introduces a new constraint, convention, or tool, include practical guidance for developers who will meet it. What do they do when it gets in their way? When is it appropriate to override or work around it? This is distinct from future work -- it is a playbook for coexisting with the change.
 
 ### Voice and Tone
 
 - **First person**: "I chose to", "I considered", "My philosophy was". The author is present in the narrative.
 - **Conversational but precise**: Reads like explaining the change to a colleague over coffee, not like formal documentation.
-- **Length tracks reasoning, not diff size**: A complex redesign gets section headers, diagrams, and benchmarks. But a subtle one-line bug fix that took days to hunt down can also warrant a page-long explanation tracing the investigation. Write as much as the _reasoning_ demands, regardless of how many lines changed.
+- **Short by default**: Aim for a body under about 150 words. Go longer only for a redesign or a bug that took real investigation, and then use section headers. The length follows the reasoning, not the diff size, but say each step of the reasoning once and in short sentences.
 
 ### Enrichment (use when relevant)
 
 - **Section headers**: For long messages, use markdown-style headers (`Performance`, `Security`, `Notable choices`, etc.) with underlines or blank-line separation.
-- **Cross-references**: Cite commit SHAs, PR numbers, Sentry links, or documentation URLs. The reader should be able to trace anything. Only reference durable artifacts — planning documents, conversation context, and internal phase labels (e.g. "Phase 1") don't survive into git history.
+- **Cross-references**: Cite commit SHAs, PR numbers, Sentry links, or documentation URLs. The reader can trace anything. Only reference durable artifacts. Planning documents, conversation context and internal phase labels (for example "Phase 1") do not survive into git history.
 - **Existing conventions**: When the change follows an existing codebase pattern, name it ("following the pattern used by similar validation rules"). This orients the reader without requiring them to read other files.
 - **Principles/constraints**: Before describing a solution, state the constraints that guided it as a numbered list.
 - **Alternatives considered**: "I considered X but it broke constraint Y. Eventually I settled on Z."
 - **Code snippets / payload shapes**: Include when they clarify the change (JSON shapes, SQL, small code examples).
 - **Mermaid diagrams**: For complex control flow, show before/after as flowcharts or state diagrams.
 - **Performance data**: Include benchmarks or query plan comparisons when the change has performance implications.
-- **Security implications**: Call out security improvements even when they're a side effect.
+- **Security implications**: Call out security improvements even when they are a side effect.
 - **Deployment safety**: Note whether the change is safe to deploy at any time, requires ordering, or is behind a feature flag. "This change was written to be safe to deploy any time."
 - **Verification**: Describe how you confirmed the change works. "I verified this by...", "I was able to reproduce the error using..."
 - **ENV variables**: When introducing new environment variables, list them explicitly.
@@ -73,10 +75,10 @@ Trailers go last, after a blank line, one per line: `Refs: PROJ-123`, `Closes #4
 These signal phrases appear naturally and serve specific roles:
 
 - "This commit..." -- demarcates what the diff does vs. background.
-- "Note that..." -- adds caveats the reader should be aware of.
+- "Note that..." -- adds a caveat for the reader.
 - "While digging into this, I discovered..." -- incidental findings.
 - "out of scope for this change" -- explicit scope boundary.
-- "I've already spent my refactoring budget" -- scope discipline.
+- "I have already spent my refactoring budget" -- scope discipline.
 - "This is purely a refactor" or "pure refactor (ish)" -- declares no behavior change, sometimes with noted small exceptions.
 - "A follow-up will..." -- promises future work without blocking now.
 - "Longer-term, we probably want to..." -- non-blocking future vision.
@@ -106,7 +108,7 @@ Refs: PROJ-456
 ```
 feat(export): show contact subscriptions in CSV
 
-Currently we don't show subscription data for archived contacts in the CSV export because the association we use only returns active contacts. We want to show all subscriptions associated with the contact that are accessible to the user.
+Currently we do not show subscription data for archived contacts in the CSV export because the association we use only returns active contacts. We want to show all subscriptions associated with the contact that are accessible to the user.
 
 I wanted to maintain 3 principles:
 
@@ -128,7 +130,7 @@ Refs: PROJ-123
 ```
 refactor(session): restructure session service tree
 
-In the spirit of "make the change easy, then make the easy change", this commit re-structures the entire tree of services into a form that better suits the changes we're about to make.
+In the spirit of "make the change easy, then make the easy change", this commit re-structures the entire tree of services into a form that better suits the changes we are about to make.
 
 Pure refactor (ish)
 -------------------
@@ -158,7 +160,7 @@ For risky or large changes, commit messages document a deliberate incremental st
 2. Backfill existing data or enable flag
 3. Make column non-nullable / remove flag (only after step 2 is done)
 
-Each commit explains where it sits in the sequence: "Now that we've cleaned up the existing API keys, we can safely add the stricter constraints everywhere."
+Each commit explains where it sits in the sequence: "Now that we have cleaned up the existing API keys, we can safely add the stricter constraints everywhere."
 
 ### Incident Chain Narrative
 
@@ -184,7 +186,7 @@ In abc12345..., we started moving away from archived records. Then we tried to r
 
 When asked to commit:
 
-1. If the commit changes code and the hierarchical-documentation pass hasn't run on it yet, run that skill first. Use its commit message notes as input: additions feed the design reasoning and scope sections, removals mark fix-up commits to squash, keepers must survive into the final message.
+1. If the commit changes code and the hierarchical-documentation pass has not run on it yet, run that skill first. Use its commit message notes as input: additions feed the design reasoning and scope sections, removals mark fix-up commits to squash, keepers must survive into the final message.
 2. Read the diff carefully.
 3. Identify the _story_: what was the state before, what changed, why.
 4. Pick the type and scope by intent; use the scope names the repo's history already uses.
