@@ -412,7 +412,8 @@ hint_shot() {
   # shellcheck disable=SC2016 # jq variables, not shell ones
   patch_state theme_options.json '.version //= 4 | .[$style].screen_frame = ($on == 1)' --arg style "$style" --argjson on "$framed"
   # shellcheck disable=SC2016 # jq variable
-  patch_state bars.json '.shared.position = $p' --arg p "$position"
+  # A saved per-monitor position wins over the shared one (BarLayout.effective), so those are cleared too.
+  patch_state bars.json '.positions = {} | .shared.position = $p' --arg p "$position"
   reload_bar || missing+=("MISS $style $tag (bar did not reload)")
   q submap_hints set "$(cat "$hint_json")" >/dev/null
   local has_frame=0
