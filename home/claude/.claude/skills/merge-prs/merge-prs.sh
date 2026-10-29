@@ -2,7 +2,7 @@
 # Merge PRs into the default branch in order, then clean up local worktrees and branches.
 set -euo pipefail
 
-usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] [--wait-review] <pr>...
+usage="usage: merge-prs.sh [--method rebase|squash|merge] [--keep-branch] [--skip-review-gate] [--wait-review [--request-review]] <pr>...
        merge-prs.sh --check [--skip-review-gate] [--wait-review [--request-review]] <pr>..."
 
 die() {
@@ -626,17 +626,17 @@ gate_summary_comment() {
       else
         echo "note: #$number's Codex review covers $reviewed, not the head ${head:0:7}; the later commits are small changes to files it reviewed"
       fi
-    elif $wait_review && { ! $check_only || $request_review; }; then
+    elif $wait_review && $request_review; then
       echo "merge-prs: #$number changed since Codex reviewed $reviewed ($reason); requesting a review and waiting up to ${review_wait_s}s" >&2
       gh pr comment "$number" --body "$request" >/dev/null || die "cannot request a Codex review on #$number"
       poll_review "$number" head
       [[ $status != Completed || $head == "$reviewed"* ]] ||
         problems+=("#$number: Codex has not reviewed the head ${head:0:7} after ${waited}s; rerun with --wait-review once it has")
     else
-      # --check alone never comments on the PR, so the rerun it needs takes --request-review as well.
-      rerun_flags="--wait-review"
+      # Past the small-fix limit a review is a material-fix decision, so it is never requested on --wait-review alone.
+      rerun_flags="--wait-review --request-review"
       ! $check_only || rerun_flags="--check --wait-review --request-review"
-      problems+=("#$number: commits since Codex reviewed $reviewed need their own review ($reason); rerun with $rerun_flags to request one and wait")
+      problems+=("#$number: commits since Codex reviewed $reviewed need their own review ($reason); rerun with $rerun_flags to request one and wait (a material fix), or with --skip-review-gate if the owner or the tier waives it (note the waiver in the PR)")
     fi
   fi
   case $status in

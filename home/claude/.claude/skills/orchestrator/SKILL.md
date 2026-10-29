@@ -13,7 +13,7 @@ Act as the orchestrator: delegate all hands-on work, however small. Every edit, 
 
 Your context is the session's scarce resource: keep skill loads, file dumps, long diffs and logs out of it. Read summaries, reports and targeted excerpts, not whole files or outputs.
 
-Every brief ends with its report rule as its last line, where agents least often drop it: lead with the result, stay under 2,000 characters, and put anything longer (logs, full finding lists) in a file under `<main checkout>/.logs/<topic>/<item>/` (`<topic>` is the tracker's name, `<item>` the piece; create the dir if missing) whose absolute path the report gives. A reviewer writes its full findings to that file and reports its verdict plus one line per material finding (severity, file:line, the failure in a sentence), under 1,500 characters; open the file only for a finding you act on.
+Every brief ends with its report rule as its last line, where agents least often drop it: lead with the result, stay under 2,000 characters, and put anything longer (logs, full finding lists) in a file under `<main checkout>/.logs/<topic>/<item>/` (`<topic>` is the tracker's name, `<item>` the piece; create the dir if missing) whose absolute path the report gives. A reviewer writes its full findings to that file and reports its verdict plus one line per finding (severity, file:line, the failure in a sentence, whether it hits the stated requirement or the owner's real setup, whether a fix is proportionate to the tier), under 1,500 characters; edge cases outside the requirement are notes in the file, not findings. Open the file only for a finding you act on.
 
 Briefs go by reference: write each piece's plan, constraints and context once, in its plan draft (`<main checkout>/.plans/<topic>/<topic>-<item>-plan-draft.md`, beside its tracker, front matter per the repo's rules, scaffolded where it has a recipe, e.g. `just plan-new <topic> plan <item>` from the main checkout), and have each brief name that file by absolute path (worktrees do not see it) and add only what this agent needs beyond it (its task, owned files, any "Do NOT" line, the report rule). Fix briefs, reviewers and siblings reuse the same file. `.plans/` and `.logs/` live in the main checkout only, because worktrees do not see ignored files; briefs give absolute paths. If the repo's `.gitignore` does not list `/.plans/` and `/.logs/`, add both to `<git-common-dir>/info/exclude` (it covers every worktree) rather than committing to a repo you do not own.
 
@@ -47,11 +47,12 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 
 3. Investigate the issue or PR and repository.
    - Have an agent investigate the issue or PR, the code and its tests.
-   - Unless the task is fully specified, run the `interview` skill's procedure (it governs intake) on the investigation agent's findings, reading nothing yourself, and write its plan into the piece's plan draft; skip its approval ask and do not present the plan yet.
+   - Always run the `interview` skill's procedure (it governs intake) on the investigation agent's findings, reading nothing yourself, and write its plan into the piece's plan draft; skip its approval ask and do not present the plan yet. Small and material pieces get at least one question round, including the design approach; a trivial piece may skip questions but the plan states its tier and assumptions as "Assumed: X".
+   - The plan proposes a review tier, approved with it (re-tier with the owner if the piece grows): trivial (docs, comments, config values, no logic) gets the reviewer agent only, no local external review, and ships with `--skip-review-gate` and a PR-body note; small (a contained fix) gets the reviewer agent and one local external review round; material (a new mechanism, concurrency, lifecycle) gets the full pipeline below.
    - Run `~/.claude/skills/orchestrator/overlap.sh <path>...` on the files the drafted plan will touch. It lists other worktrees (committed and uncommitted work) and open PRs that change them. Settle each overlap with the session or PR owner before delegating, and put the outcome in the plan. If an outcome changes the plan materially, resume interviewing, update the plan draft, rerun `overlap.sh` on the revised plan's files and settle any new overlaps before asking for approval.
    - Present the plan with the overlap outcomes and get the owner's one approval.
    - A hands-on test the owner must do goes in its own message; ask about its result in a later turn, after the owner has acted, never in the same turn under the checklist.
-   - Once building, escalate only materially ambiguous product or architectural decisions, collected into one ask rather than each as it comes up, and keep agents whose work does not depend on the answer running while you wait.
+   - Once building, forks go to the owner: a design choice the plan does not settle, a new mechanism or file, or scope growth. Bring them with options, pros, cons, cost and a recommendation, batched into one ask rather than each as it comes up, and keep agents whose work does not depend on the answer running while you wait. A choice of yours that changes the design is a fork, not an "Assumed".
 
 4. Delegate using the cheapest capable model:
    - Haiku only when the done check fits in one sentence and a wrong result is cheap to catch (a rename, a known small fix, a lookup); otherwise Sonnet. Haiku output that misses the bar goes to Sonnet, never back to Haiku.
@@ -65,6 +66,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Where the repo's merge step runs the check, don't run it yourself and don't make the agent run it; otherwise run the final validation yourself as one background Bash call in the worktree (for example `lib/check.sh --changed <merge-base>` when the repo has one). A failure goes back to the agent per step 8.
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
    - For concurrency or lifecycle work (signals, locks, processes that hand over or race), name those risks in the brief and require tests that drive each risky path before review. Review rounds otherwise find these bugs one at a time.
+   - Tell it to stop and report a fork rather than choose (the same three kinds as step 3); implementer and fixer briefs both say so.
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
    - A fix adds a test when, and only when, the bug could come back silently and nothing else would catch it; the agent shows it failing on the unfixed code first. Otherwise it says in one line why no test.
    - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement. Work that stands alone goes in a new file; where siblings must share a file (a list, table, index or config), keep each edit a small addition, or run those agents one after another.
@@ -72,7 +74,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
-7. Get an external review of the issue and diff against the review dimensions. The local reviewers (Codex, CodeRabbit, Claude, any a repo adds in `.claude/reviewers.json`; see `reviewers.md`) run in parallel and are advisory; an Opus subagent covers when none is available.
+7. Get an external review of the issue and diff against the review dimensions, as the tier allows (none for trivial, one round for small). The local reviewers (Codex, CodeRabbit, Claude, any a repo adds in `.claude/reviewers.json`; see `reviewers.md`) run in parallel and are advisory; an Opus subagent covers when none is available.
    - From the worktree, run `~/.claude/skills/orchestrator/run-local-reviews.sh <base> <main checkout>/.logs/<topic>/<item>` as one background Bash call. It runs every reviewer whose scope is not off and prints one line per reviewer: `<name>: <review path>` or `<name>: <reason>` (unavailable, skipped by scope, uncommitted changes).
    - Commit first (a reviewer exits 3 on uncommitted changes).
    - Request it the moment the work is handed to the owner for hands-on testing, so the two overlap; with no hands-on testing, as soon as the branch is committed.
@@ -82,10 +84,12 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - No review path at all → read `review-fallback.md` beside this skill.
    - For what meets a standing merge approval, see `review-fallback.md`.
 
-8. Evaluate and resolve findings. Classify each material finding as valid, partially valid, invalid, or out of scope; do not blindly apply reviewer suggestions. Fix valid ones using the model policy from step 4.
+8. Evaluate and resolve findings. Classify each finding as valid, partially valid, invalid, or out of scope, and test it for proportion to the tier; do not blindly apply reviewer suggestions. Apply small valid fixes using the model policy from step 4; decline invalid and out-of-scope ones with a reason. A finding whose fix would add a mechanism, grow scope or change the design is a fork (step 3).
+   - A piece gets 2 fix rounds, counted in the tracker; a redesign does not reset the count, and a 3rd round needs the owner's approval.
+   - Every GitHub review thread gets a reply through `resolve-thread.sh` (fixed, declined with the reason, or deferred to an issue) and is resolved; the merge gate still blocks on unresolved threads.
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when the fix is in code it already read and its context, from the token count its completion reports, is under 400k; from 400k to 500k, only for a small targeted fix.
    - Otherwise, or once it reports compacting, brief a fresh agent with the diff range, the finding and the file paths. Also start fresh when the finding shows the approach itself was wrong.
-   - Tell the fixer to make the smallest change that fixes the finding, with a test only where step 5 calls for one. If the fix needs a new mechanism, it reports that before building it.
+   - Tell the fixer to make the smallest change that fixes the finding, with a test only where step 5 calls for one. If the fix needs a new mechanism, it reports that fork before building it.
    - Re-run the external review only for a material fix (a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic); a targeted fix gets a reviewer agent's diff review (step 6) and any test step 5 calls for.
 
 9. Final validation: the tree is clean, your check passed on the final head (unless the repo's merge step runs the check), and a reviewer agent confirms the diff has nothing unrelated.
@@ -95,4 +99,4 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 
 11. Run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` and resolve any thread or reviewer problem it reports. Only a passing check makes the PR ready.
 
-12. Report: issue URL, PR URL, summary, validation, notable findings and dispositions, which reviewer ran (quoting the line Codex printed after `codex unavailable:`, if any), remaining risks, and whether it is ready for human review.
+12. Report: issue URL, PR URL, summary, validation, notable findings and dispositions (every declined thread listed), which reviewer ran (quoting the line Codex printed after `codex unavailable:`, if any), remaining risks, and whether it is ready for human review.
