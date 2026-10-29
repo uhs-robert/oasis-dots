@@ -1,4 +1,4 @@
---- Workspace navigation actions: focus, move window, cycle, scroll.
+--- Workspace navigation: focus, move window, cycle, scroll.
 
 local Workspaces = require("lib.workspaces") ---@class Workspaces
 local Hypr = require("lib.hypr") ---@class HyprLib

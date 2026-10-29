@@ -109,7 +109,7 @@ open_folder() {
   cmd=$(sed -E 's/ ?%[a-zA-Z]//g' <<<"$cmd")
   cmd=$(jq -Rn --arg c "$cmd" '$c')
   if [ "$terminal" = "true" ]; then
-    lua="require('lib.actions.cmd').term($cmd)()"
+    lua="require('lib.desktop.terminal').run($cmd)()"
   else
     lua="hl.exec_cmd($cmd)"
   fi

@@ -55,7 +55,8 @@ Then start `~/.config/hypr/custom/keymaps.lua` with the helpers the examples bel
 -- ~/.config/hypr/custom/keymaps.lua
 local Bind = require("lib.key.bind")
 local Submap = require("lib.key.submap")
-local Cmd = require("lib.actions.cmd")
+local Hypr = require("lib.hypr")
+local Terminal = require("lib.desktop.terminal")
 ```
 
 Apply every change with:
@@ -99,14 +100,14 @@ Bind.leader_cmd("F9", "qalculate-gtk", "Calculator")
 Bind.cmd("CTRL + ALT + N", "kitty -e nvim ~/notes.md", "Notes")
 ```
 
-The third argument is the description shown in search and which-key. The built-in actions live in `home/hypr/.config/hypr/lib/actions/`, grouped by subject (`window.lua`, `workspace.lua`, `apps.lua`, `cmd.lua`, `menu.lua`, `media.lua` and others). The ones you will reach for most:
+The third argument is the description shown in search and which-key. The built-in desktop functions live in `home/hypr/.config/hypr/lib/desktop/`, one file per area (`window.lua`, `workspace.lua`, `apps.lua`, `terminal.lua`, `menu.lua`, `media.lua` and others), and `Hypr.exec` is in `home/hypr/.config/hypr/lib/hypr.lua`. The ones you will reach for most:
 
-| Action | Does |
+| Function | Does |
 | --- | --- |
-| `Cmd.run("command")` | Runs a command |
-| `Cmd.term("command")` | Runs it in your terminal |
-| `Cmd.open_term()` | Opens your terminal |
-| `Cmd.bottom_terminal("command")` | Runs it in a terminal that drops in at the bottom of the screen |
+| `Hypr.exec("command")` | Runs a command |
+| `Terminal.run("command")` | Runs it in your terminal |
+| `Terminal.open()` | Opens your terminal |
+| `Terminal.bottom("command")` | Runs it in a terminal that drops in at the bottom of the screen |
 
 A bind that should also work while you are inside a submap passes its options in place of the description. This replaces the calculator line above, rather than adding to it:
 
@@ -120,7 +121,7 @@ Binding a key that is already bound does not replace it: Hyprland keeps both bin
 
 ```lua
 Bind.leader_unbind("RETURN")
-Bind.leader_fn("BACKSPACE", Cmd.open_term(), "Terminal")
+Bind.leader_fn("BACKSPACE", Terminal.open(), "Terminal")
 ```
 
 A shipped bind that runs an action has its id in the Id column of the [table below](#every-shipped-bind). Binding the id instead keeps the action's label and shows your key in `hypr-act list`:
@@ -178,8 +179,8 @@ Submap.define({
   catchall = "reset",
 
   binds = {
-    { "T", Cmd.term("nvim ~/notes/today.md"), "Today" },
-    { "I", Cmd.term("nvim ~/notes/inbox.md"), "Inbox" },
+    { "T", Terminal.run("nvim ~/notes/today.md"), "Today" },
+    { "I", Terminal.run("nvim ~/notes/inbox.md"), "Inbox" },
   },
 }).setup()
 ```

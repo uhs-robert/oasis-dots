@@ -1,4 +1,4 @@
---- Media actions: volume, brightness, playerctl.
+--- Media control: volume, brightness, playerctl.
 
 local Hypr = require("lib.hypr") --- @class HyprLib
 local Scripts = require("lib.scripts") ---@class Scripts

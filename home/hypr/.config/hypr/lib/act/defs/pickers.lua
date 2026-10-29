@@ -4,7 +4,7 @@
 local Act = require("lib.act") ---@class ActionLib
 local Defer = require("lib.act.defer") ---@class Defer
 
-local picker = function(menu_function) return Defer.call("lib.actions.menu", menu_function) end
+local picker = function(menu_function) return Defer.call("lib.desktop.menu", menu_function) end
 
 Act.define("picker.clipboard", {
   label = "Clipboard History",

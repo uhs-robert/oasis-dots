@@ -267,7 +267,7 @@ class MutationTest(IpcCase):
 
     FILES = {
         "qs/features/TmuxOverviewIpc.qml": 'IpcHandler { target: "tmux_overview"; function state(): string { return "" } }\n',
-        "h/lib/actions/menu.lua": 'run(Scripts.qs_ipc .. " call tmux_overview state")\n',
+        "h/lib/desktop/menu.lua": 'run(Scripts.qs_ipc .. " call tmux_overview state")\n',
         "t/.tmux.conf": "run-shell 'qs-ipc call tmux_overview state'\n",
         "v/tests/sandbox.sh": '*"call tmux_overview state"*) echo closed ;;\n',
         "v/src/bar.rs": 'ask(&["tmux_overview", "state"], t);\n',
@@ -280,7 +280,7 @@ class MutationTest(IpcCase):
         files = {**self.FILES, "qs/features/TmuxOverviewIpc.qml": self.FILES["qs/features/TmuxOverviewIpc.qml"].replace("tmux_overview", "tmux_renamed")}
         found = self.check(files)
         flagged = sorted(line.split(":")[0] for line in found if "declared by no IpcHandler" in line)
-        self.assertEqual(flagged, ["h/lib/actions/menu.lua", "t/.tmux.conf", "v/src/bar.rs", "v/tests/sandbox.sh"])
+        self.assertEqual(flagged, ["h/lib/desktop/menu.lua", "t/.tmux.conf", "v/src/bar.rs", "v/tests/sandbox.sh"])
         self.assertTrue(any('target "tmux_renamed" is called by nothing' in line for line in found), found)
 
     def test_renaming_the_target_in_the_callers_only_fails(self):

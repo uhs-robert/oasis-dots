@@ -22,7 +22,7 @@ end
 --- Restore cursor config and kill wl-kbptr. Called on submap exit.
 local function exit_cursor()
   hl.config({ cursor = { inactive_timeout = DEFAULTS.timeout, hide_on_key_press = DEFAULTS.hide } })
-  require("lib.actions.cursor").hold_stop()
+  require("lib.desktop.cursor").hold_stop()
   hl.dispatch(hl.dsp.exec_cmd("pkill wl-kbptr"))
 end
 

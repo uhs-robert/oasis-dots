@@ -1,5 +1,5 @@
---- Move actions for the Move submap.
---- Use Move.at(n) to create a directional action set at a given pixel step size.
+--- Window nudging for the Move submap.
+--- Use Move.at(n) to create a directional set at a given pixel step size.
 
 --- @class Move
 local Move = {}

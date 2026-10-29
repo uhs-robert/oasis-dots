@@ -11,7 +11,7 @@ Act.define("workspace.focus", {
   intent = "Go to workspace n, or to slot n of this monitor with persistent workspaces.",
   params = { { name = "n", type = "int" } },
   run = function(n)
-    local Workspace = require("lib.actions.workspace")
+    local Workspace = require("lib.desktop.workspace")
     if per_monitor() then
       Workspace.focus_local(n)()
     else
@@ -25,7 +25,7 @@ Act.define("workspace.move", {
   intent = "Move the focused window to workspace n, or to slot n of this monitor with persistent workspaces.",
   params = { { name = "n", type = "int" } },
   run = function(n)
-    local Workspace = require("lib.actions.workspace")
+    local Workspace = require("lib.desktop.workspace")
     if per_monitor() then
       Workspace.move_local(n)()
     else
@@ -39,7 +39,7 @@ Act.define("workspace.cycle", {
   intent = "Go to the previous or next workspace (on this monitor with persistent workspaces).",
   params = { { name = "dir", type = "enum", values = { "prev", "next" } } },
   run = function(dir)
-    local Workspace = require("lib.actions.workspace")
+    local Workspace = require("lib.desktop.workspace")
     if per_monitor() then
       Workspace.cycle_local(dir)()
     elseif dir == "next" then
@@ -55,7 +55,7 @@ Act.define("workspace.move_window", {
   intent = "Move the focused window to the previous or next workspace (on this monitor with persistent workspaces).",
   params = { { name = "dir", type = "enum", values = { "prev", "next" } } },
   run = function(dir)
-    local Workspace = require("lib.actions.workspace")
+    local Workspace = require("lib.desktop.workspace")
     if per_monitor() then
       Workspace.move_window_local(dir)()
     elseif dir == "next" then
@@ -69,5 +69,5 @@ Act.define("workspace.move_window", {
 Act.define("workspace.focus_last", {
   label = "Last Workspace",
   intent = "Go back to the workspace you were on before this one.",
-  run = function() require("lib.actions.workspace").focus_last()() end,
+  run = function() require("lib.desktop.workspace").focus_last()() end,
 })

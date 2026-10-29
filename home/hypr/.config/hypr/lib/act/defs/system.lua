@@ -10,7 +10,7 @@ Act.define("system.edit_keymaps", {
   intent = "Open the Hyprland keymaps folder in the terminal file manager.",
   run = function()
     local files = require("config").app.tui_file_manager
-    require("lib.actions.cmd").term(files .. " ~/.config/hypr/keymaps/")()
+    require("lib.desktop.terminal").run(files .. " ~/.config/hypr/keymaps/")()
   end,
 })
 
@@ -59,13 +59,13 @@ Act.define("system.update", {
 Act.define("system.voxtype_settings", {
   label = "Voxtype Settings",
   intent = "Open the voxtype settings in a terminal.",
-  run = function() require("lib.actions.cmd").term("voxtype configure")() end,
+  run = function() require("lib.desktop.terminal").run("voxtype configure")() end,
 })
 
 Act.define("system.voxtype_restart", {
   label = "Voxtype Restart",
   intent = "Restart the voxtype service.",
-  run = function() require("lib.actions.cmd").term("systemctl --user restart voxtype")() end,
+  run = function() require("lib.desktop.terminal").run("systemctl --user restart voxtype")() end,
 })
 
 Act.define("system.toggle_errors", {

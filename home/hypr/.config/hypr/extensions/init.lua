@@ -9,7 +9,7 @@ end
 
 --- Sync the rofi Steam entry with the Steam launch command once per session start.
 local function sync_steam_desktop_entry()
-  hl.on("hyprland.start", function() require("extensions.steam").sync(require("lib.actions.apps").steam_prime) end)
+  hl.on("hyprland.start", function() require("extensions.steam").sync(require("lib.desktop.apps").steam_prime) end)
 end
 
 --- Enable all extensions. Add calls here to register additional extensions.

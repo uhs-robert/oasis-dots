@@ -15,7 +15,7 @@ local function names_of(set)
   return names
 end
 
--- Must list every name in `Apps.map` (lib/actions/apps.lua); act_submap_rows.lua fails when one is missing.
+-- Must list every name in `Apps.map` (lib/desktop/apps.lua); act_submap_rows.lua fails when one is missing.
 local MAPPED_APPS = {
   "betterbird",
   "cliamp",
@@ -36,7 +36,7 @@ Act.define("apps.focus", {
   intent = "Focus the app's window, or start the app when it has none.",
   params = { { name = "app", type = "enum", values = MAPPED_APPS } },
   run = function(app)
-    local Apps = require("lib.actions.apps")
+    local Apps = require("lib.desktop.apps")
     Apps.focus_or_launch(Apps.map[app])()
   end,
 })
@@ -59,7 +59,7 @@ Act.define("apps.open", {
   label = "Open App",
   intent = "Start an app, even when it is already running.",
   params = { { name = "app", type = "enum", values = names_of(OPENED_APPS) } },
-  run = function(app) require("lib.actions.apps").open(OPENED_APPS[app])() end,
+  run = function(app) require("lib.desktop.apps").open(OPENED_APPS[app])() end,
 })
 
 -- window: "terminal" is a normal terminal window, "bottom" the half-height one; prefill types the command at the prompt
@@ -80,12 +80,12 @@ Act.define("terminal.tool", {
   intent = "Run a command-line tool in a terminal: aria2tui, abtop, doggo, gdu, gping, lazyjournal, qalc or xh.",
   params = { { name = "tool", type = "enum", values = names_of(TERMINAL_TOOLS) } },
   run = function(tool)
-    local Cmd = require("lib.actions.cmd")
+    local Terminal = require("lib.desktop.terminal")
     local spec = TERMINAL_TOOLS[tool]
     if spec.window == "terminal" then
-      Cmd.term(tool)()
+      Terminal.run(tool)()
     else
-      Cmd.bottom_terminal(tool, spec.prefill)()
+      Terminal.bottom(tool, spec.prefill)()
     end
   end,
 })
@@ -93,5 +93,5 @@ Act.define("terminal.tool", {
 Act.define("terminal.editor", {
   label = "Editor",
   intent = "Open the configured editor in a new terminal.",
-  run = function() require("lib.actions.cmd").term(require("config").app.editor or "nvim")() end,
+  run = function() require("lib.desktop.terminal").run(require("config").app.editor or "nvim")() end,
 })

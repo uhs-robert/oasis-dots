@@ -131,7 +131,7 @@ local function load_keymaps(config)
 			return "MON" .. slot
 		end,
 	}
-	package.loaded["lib.actions.menu"] = {
+	package.loaded["lib.desktop.menu"] = {
 		keybinds = function()
 			return function()
 				performed[#performed + 1] = "menu.keybinds"

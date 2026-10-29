@@ -1,6 +1,6 @@
 local Act = require("lib.act") ---@class ActionLib
 local Bind = require("lib.key.bind") ---@class BindLib
-local Window = require("lib.actions.window") ---@class WindowActions
+local Window = require("lib.desktop.window") ---@class WindowActions
 
 -- The wheel cycles workspaces. Drag and resize stay binds: they need the mouse dispatchers, which an action
 -- performed from a script cannot start.

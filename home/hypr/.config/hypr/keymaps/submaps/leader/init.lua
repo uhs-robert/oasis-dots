@@ -3,7 +3,7 @@
 
 local BarRows = require("keymaps.submaps.bar.rows") --- @class BarRows
 local Config = require("config") --- @class Config
-local Cmd = require("lib.actions.cmd") --- @class Cmd
+local Hypr = require("lib.hypr") --- @class HyprLib
 local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
 local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
@@ -44,7 +44,7 @@ Submap.define({
       { "CTRL + COMMA",  "voice.rapid" },
       { "CTRL + PERIOD", "voice.wake" },
       -- SHIFT + SLASH would read as help, but every submap keeps it for the which-key toggle.
-      { "CTRL + SLASH",  Cmd.run(Scripts.voxcmd_help),                    "Voice Help" },
+      { "CTRL + SLASH",  Hypr.exec(Scripts.voxcmd_help),                    "Voice Help" },
 
       -- Submaps
       { "G",             { "submap.enter", { "Groups" } },                "+Groups",        KEEP },

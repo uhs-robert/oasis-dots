@@ -1,5 +1,5 @@
 -- Actions for the Cursor submap: pointer movement, scrolling, clicks and wl-kbptr. Keyless; the Cursor and Quick Click
--- rows bind them. Held scrolling keeps its timers in lib/actions/cursor.lua, so a release row stops what a press
+-- rows bind them. Held scrolling keeps its timers in lib/desktop/cursor.lua, so a release row stops what a press
 -- started whichever submap bound it.
 local Act = require("lib.act") ---@class ActionLib
 
@@ -30,7 +30,7 @@ local KBPTR_MODES = {
 local CLICK_BUTTONS = { "left", "right", "middle" }
 
 --- @return CursorActions
-local function cursor() return require("lib.actions.cursor") end
+local function cursor() return require("lib.desktop.cursor") end
 
 --- Whether a Cursor submap is active. Its release rows and exit hook are what stop a repeating scroll and restore the
 --- cursor config on leaving, so an action called from anywhere else (hypr-act, the bar, voice) must not rely on them.

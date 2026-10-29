@@ -1,4 +1,4 @@
---- Cursor actions: pointer movement, scrolling, clicking, key dispatch via wlrctl/hyprctl.
+--- Cursor control: pointer movement, scrolling, clicking, key dispatch via wlrctl/hyprctl.
 
 local Hypr = require("lib.hypr") --- @class HyprLib
 local Submap = require("lib.key.submap") ---@class Submap
