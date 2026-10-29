@@ -8,7 +8,7 @@ description: >-
 
 An issue says what is wrong or missing and why it matters, so whoever picks it up can choose the fix. It is not an implementation plan: the approach is decided in the PR, where the code is. Aim for under 150 words.
 
-Write every sentence by the `plain-writing` skill. This skill sets the structure and the length.
+Write every sentence by the `plain-writing` skill. The `issue-descriptions` skill sets the structure and the length.
 
 ## Title
 
