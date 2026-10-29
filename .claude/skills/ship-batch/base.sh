@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
-# Sourced by ship-batch.sh and its tests: the commit the post-merge reloads are measured from, and the stow packages a
-# merge left out of date.
+# Sourced by ship-batch.sh, post-merge.sh and their tests: the ship lock, the commit post-merge last applied, and the
+# stow packages a merge left out of date.
 
-base_file() {
-  echo "$(git -C "$1" rev-parse --path-format=absolute --git-common-dir)/ship-batch-base"
+common_dir() {
+  git -C "$1" rev-parse --path-format=absolute --git-common-dir
 }
 
-# One batch at a time per repository works on the main checkout: the merge, the pull and the reloads after them. A
-# second run waits for the first, up to SHIP_BATCH_LOCK_WAIT seconds (default 900), naming it. The lock lives on fd 9
+# Holds the commit whose post-merge steps all succeeded. Only record_applied writes it.
+applied_file() {
+  echo "$(common_dir "$1")/post-merge-applied"
+}
+
+lock_file() {
+  echo "$(common_dir "$1")/ship-batch.lock"
+}
+
+# One run at a time per repository works on the main checkout: a ship-batch's merge and pull, and post-merge's reloads.
+# A second run waits for the first, up to SHIP_BATCH_LOCK_WAIT seconds (default 900), naming it. The lock lives on fd 9
 # until release_lock or exit, so it also covers merge-prs and the reloads it spawns.
 take_lock() {
   local repo=$1 merging=$2 lock holder wait_s=${SHIP_BATCH_LOCK_WAIT:-900}
-  lock="$(dirname "$(base_file "$repo")")/ship-batch.lock"
+  lock=$(lock_file "$repo")
   # Opened read-write, since truncating it would wipe the note naming the holder.
   exec 9<>"$lock"
   if ! flock -n 9; then
@@ -30,7 +39,7 @@ take_lock() {
 # Takes the ship lock only if it is free right now; returns 1, holding nothing, when another batch has it.
 try_lock() {
   local lock
-  lock="$(dirname "$(base_file "$1")")/ship-batch.lock"
+  lock=$(lock_file "$1")
   exec 9<>"$lock"
   flock -n 9 || {
     exec 9>&-
@@ -44,28 +53,23 @@ release_lock() {
   exec 9>&-
 }
 
-# Prints the commit to check from. A base left by an unfinished run wins over HEAD, since that run may already
-# have merged and pulled, which would leave HEAD equal to the new main and nothing to check.
-select_base() {
-  local repo=$1 file base
-  file=$(base_file "$repo")
-  if [[ -s $file ]]; then
-    base=$(<"$file")
-    echo "ship-batch: resuming from ${base:0:12}, the last batch's check did not finish" >&2
-  else
-    base=$(git -C "$repo" rev-parse HEAD)
-    echo "$base" >"$file"
-  fi
-  echo "$base"
+# Prints the commit post-merge last applied, nothing when there is no record.
+applied_commit() {
+  local file
+  file=$(applied_file "$1")
+  [[ ! -s $file ]] || cat "$file"
 }
 
-# True when the recorded base is a commit of this repository that the new main descends from.
+# Renamed into place so an interrupted write cannot leave a truncated sha that reads as a valid record.
+record_applied() {
+  local file
+  file=$(applied_file "$1")
+  echo "$2" >"$file.tmp" && mv "$file.tmp" "$file"
+}
+
+# True when the recorded commit is a commit of this repository that the new main descends from.
 base_is_ancestor() {
   git -C "$1" cat-file -e "$2^{commit}" 2>/dev/null && git -C "$1" merge-base --is-ancestor "$2" "$3"
-}
-
-finish_base() {
-  rm -f "$(base_file "$1")"
 }
 
 # Prints the stow packages under home/ that gained, lost or renamed a file between two commits and are installed here.
