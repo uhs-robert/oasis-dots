@@ -9,8 +9,9 @@ shopt -s extglob
 # start and exit silently.
 
 # -u keeps other users' bars out of the pattern's match.
-# shellcheck source=./bar-pattern.sh
+# shellcheck source=/dev/null
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/bar-pattern.sh"
+# shellcheck disable=SC2154 # bar_pattern comes from bar-pattern.sh
 pattern=$bar_pattern
 default_grace=5
 grace=${RESTART_BAR_GRACE:-$default_grace}

@@ -380,7 +380,7 @@ mkdir -p "$fake_home/.config/hypr/scripts" "$e2e/cache"
 # shellcheck disable=SC2016 # expanded by the stub
 # It prints a pid that the stub hyprctl bumps on each relaunch, so a bar that did not change counts as not restarted.
 printf '#!/bin/sh\nfor a; do :; done; grep -qE -- "$a" "$STUB_QS_PROCS" || exit 1\ncat "$STUB_QS_PROCS.pid" 2>/dev/null || echo 1\n' >"$stubs/pgrep"
-# shellcheck source=/dev/null
+# shellcheck source=../../../../home/hypr/.config/hypr/scripts/bar-pattern.sh
 source "$here/../../../../home/hypr/.config/hypr/scripts/bar-pattern.sh"
 printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 chmod +x "$stubs/pgrep" "$fake_home/.config/hypr/scripts/qs-ipc"
@@ -408,7 +408,7 @@ cat >"$stubs/hyprctl" <<STUB
 grep -qx "\$HYPRLAND_INSTANCE_SIGNATURE" "\$STUB_LIVE_SIGS" || exit 1
 [ -e "\$XDG_RUNTIME_DIR/hypr/\$HYPRLAND_INSTANCE_SIGNATURE/.socket.sock" ] || exit 1
 echo "hyprctl \${HYPRLAND_INSTANCE_SIGNATURE} \$*" >>"\$SHIP_LOG"
-[ "\$1" = dispatch ] && { echo "qs -n" >"\$STUB_QS_PROCS"; echo \$((\$(cat "\$STUB_QS_PROCS.pid" 2>/dev/null || echo 1) + 1)) >"\$STUB_QS_PROCS.pid"; }
+[ "\$1" = dispatch ] && [ ! -e "$e2e/no_relaunch" ] && { echo "qs -n" >"\$STUB_QS_PROCS"; echo \$((\$(cat "\$STUB_QS_PROCS.pid" 2>/dev/null || echo 1) + 1)) >"\$STUB_QS_PROCS.pid"; }
 [ "\$1" = reload ] && exit "\${STUB_RELOAD_STATUS:-0}"
 exit 0
 STUB
@@ -498,7 +498,12 @@ STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh
 check "a failure with no bar restart fails too" "[[ $? != 0 ]] && grep -q 'migrating failed' '$e2e/out'"
 STUB_MIGRATE_STATUS=1 STUB_MIGRATE_ONLY_DOWN=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
 check "a failure with the old bar stopped relaunches the bar first, then fails" "[[ $? != 0 ]] && grep -q 'the bar was restarted' '$e2e/out' && ((\$(line_of 'migrate bar down') < \$(dispatch_line)))"
-check "and clears the base: the merges and reloads were done" "[[ ! -e \$(base_file '$e2e/main') ]]"
+check "and keeps the base so a rerun resumes" "[[ -e \$(base_file '$e2e/main') ]]"
+# A bar that never comes back (the relaunch writes nothing) fails the ship, but the merges and migrations were done.
+touch "$e2e/no_relaunch"
+migrate_ship lib/install/migrate.sh home/quickshell/bar; gone_rc=$?
+rm -f "$e2e/no_relaunch"
+check "a bar that does not come back fails the ship but clears the base" "[[ $gone_rc != 0 ]] && grep -q 'qs did not come back' '$e2e/out' && [[ ! -e \$(base_file '$e2e/main') ]]"
 touch "$e2e/pkill_survives"
 migrate_ship lib/install/migrate.sh home/quickshell/bar
 survive_rc=$?

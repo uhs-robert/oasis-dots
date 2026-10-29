@@ -128,7 +128,9 @@ check env RESTART_BAR_GRACE=1 bash "$script"
 check test "$(cat pid)" != "$old_pid"
 check test "$(bars_started)" -eq 2
 
+# shellcheck source=/dev/null
 source "$here/../.config/hypr/scripts/bar-pattern.sh"
+# shellcheck disable=SC2154 # bar_pattern comes from bar-pattern.sh
 pattern=$bar_pattern
 # The signals go to the owner's bars only: both commands get -u $UID and the pattern, and no other match.
 : >pgrep_args
