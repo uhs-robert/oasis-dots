@@ -1,5 +1,5 @@
 --- Resize submap
---- Each bind resizes the active window
+--- Each bind resizes the selected windows (lib/actions/selection.lua), or the focused one when none is selected
 
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
@@ -27,6 +27,7 @@ Submap.define({
 
   escape = "reset",
   catchall = "stay",
+  targets = true,
 
   hint = {
     { "Resize", { "resize.step", tiers = "speed" } },

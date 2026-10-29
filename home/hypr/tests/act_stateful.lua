@@ -1,8 +1,8 @@
 -- The Windows, Cursor, Quick Click, Groups, Move, Resize and Delete submaps now name actions. This compares every bind
 -- in them with fixtures/act_stateful_binds.tsv (key, which-key label, flags, what the key does), dumped before the
 -- move, under four configs: default, no leader with three monitors, persistent workspaces, and vim_mode off. It then
--- checks what the fixture cannot: the state the actions share (the Windows selection, the Cursor scroll timers) lives
--- across key presses, does not leak out of its submap, and is fresh after a reload; `catchall = "stay"` submaps still
+-- checks what the fixture cannot: the state the actions share (the window selection, the Cursor scroll timers) lives
+-- across key presses, carries across Windows, Resize and Move but not out of them, and is fresh after a reload; `catchall = "stay"` submaps still
 -- swallow unbound keys; and each submap file loads the defs its rows name.
 --
 --   SHELL=/bin/zsh lua home/hypr/tests/act_stateful.lua          compare with the fixture and run the checks
@@ -48,6 +48,13 @@ hl.timer = function(fn, opts)
 	end
 	timers[#timers + 1] = timer
 	return timer
+end
+-- The handler Submap.define hooks to Hyprland's submap event, called with a submap name to stand in for a raw switch.
+local submap_event = nil
+hl.on = function(event, fn)
+	if event == "keybinds.submap" then
+		submap_event = fn
+	end
 end
 local function enabled_timers()
 	local count = 0
@@ -205,26 +212,33 @@ for _, name in ipairs({ "Windows", "Cursor", "Quick Click", "Groups", "Move", "R
 end
 check("Delete: catchall resets", type(bind("Delete", "catchall").action) == "function")
 
--- The Windows selection survives between presses. Select two windows, then one key acts on both and puts focus back.
+-- The selection survives between presses. Select two windows, then one key acts on both and puts focus back.
 load_all()
+local Submap = require("lib.key.submap")
+Submap.enter("Windows")
 active = WINDOWS[1]
 press("Windows", "SPACE")
 active = WINDOWS[2]
 local selected = press("Windows", "SPACE")
-check("select: highlights the window", count_of(selected, "set_prop") == 2)
+check("select: borders are left alone", count_of(selected, "set_prop") == 0)
+check(
+	"select: the bar gets both, in the order selected: " .. text_of(selected),
+	count_of(selected, "submap_hints selection") == 1 and count_of(selected, '"windows":["0xa1","0xb2"]') == 1
+)
 local moved = press("Windows", "SHIFT + H")
 check("selected move: one move per selected window", count_of(moved, "window.move({direction=l})") == 2)
 check(
 	"selected move: both windows are focused",
 	count_of(moved, "focus({window=address:0xa1})") == 1 and count_of(moved, "focus({window=address:0xb2})") == 2
 )
-check("selected move: focus ends where it began", moved[#moved] == "focus({window=address:0xb2})")
+check("selected move: focus ends where it began", moved[#moved - 1] == "focus({window=address:0xb2})")
+check("selected move: the bar rereads the windows", moved[#moved] == "event(window_targets)")
 local floated = press("Windows", "F")
 check("selected float: toggles both", count_of(floated, "window.float") == 2)
 
 -- Toggling a selected window again takes it out, so the next key acts on the one left.
 active = WINDOWS[2]
-press("Windows", "SPACE")
+check("deselect: sends the one left", count_of(press("Windows", "SPACE"), '"windows":["0xa1"]') == 1)
 moved = press("Windows", "SHIFT + H")
 check("deselect: one window left selected", count_of(moved, "window.move({direction=l})") == 1)
 check("deselect: the one left is focused", count_of(moved, "focus({window=address:0xa1})") == 1)
@@ -233,26 +247,89 @@ check("deselect: the one left is focused", count_of(moved, "focus({window=addres
 active = WINDOWS[2]
 local swapped = press("Windows", "S")
 check("swap: swaps with the selected window", count_of(swapped, "window.swap({target=address:0xa1})") == 1)
+check("swap: sends the empty selection", count_of(swapped, '"windows":[]') == 1)
 moved = press("Windows", "SHIFT + H")
 check("swap: clears the selection", count_of(moved, "focus(") == 0 and count_of(moved, "window.move") == 1)
 
--- Leaving the submap clears the selection; it does not reach the other submaps or the next visit.
-active = WINDOWS[1]
-press("Windows", "SPACE")
-local Submap = require("lib.key.submap")
-local left = {}
-Stubs.performed = {}
-Submap.registry.Windows.on_exit({})
-left = Stubs.performed
-check("exit: restores the border", count_of(left, "set_prop") == 2)
-moved = press("Windows", "SHIFT + H")
-check("exit: the next visit starts empty", count_of(moved, "focus(") == 0 and count_of(moved, "window.move") == 1)
-active = WINDOWS[1]
-press("Windows", "SPACE")
+--- Select the first two windows from inside Windows, leaving the second focused.
+local function select_two()
+	active = WINDOWS[1]
+	press("Windows", "SPACE")
+	active = WINDOWS[2]
+	press("Windows", "SPACE")
+end
+
+--- How many windows a Move nudge acts on: the selection when there is one, else the focused window.
+local function nudged_count()
+	return count_of(press("Move", "H"), "window.move({relative=true,x=-10,y=0})")
+end
+
+-- Move and Resize act on every selected window and put focus back, like the Windows rows.
+load_all()
+Submap = require("lib.key.submap")
+Submap.enter("Windows")
+select_two()
+Submap.enter("Move")
 local nudged = press("Move", "H")
-check("other submaps ignore the selection", #nudged == 1 and nudged[1]:find("window.move", 1, true) ~= nil)
-check("Groups ignores the selection", count_of(press("Groups", "H"), "focus(") == 1)
-Submap.registry.Windows.on_exit({})
+check("Move: one nudge per selected window", count_of(nudged, "window.move({relative=true,x=-10,y=0})") == 2)
+check("Move: focus ends where it began", nudged[#nudged - 1] == "focus({window=address:0xb2})")
+check("Move: float toggles every selected window", count_of(press("Move", "F"), "window.float") == 2)
+Submap.enter("Resize")
+local resized = press("Resize", "SHIFT + L")
+check("Resize: one step per selected window", count_of(resized, "window.resize({relative=true,x=100,y=0})") == 2)
+check("Resize: focus ends where it began", resized[#resized - 1] == "focus({window=address:0xb2})")
+local reset = press("Resize", "EQUAL")
+check("Resize: reset floats and tiles every selected window", count_of(reset, "window.float") == 4)
+check("Resize: reset puts focus back", reset[#reset - 1] == "focus({window=address:0xb2})")
+
+-- The selection carries across Windows, Resize and Move, by their keys and by BackSpace, and sends nothing on the way.
+load_all()
+Submap = require("lib.key.submap")
+Submap.enter("Windows")
+select_two()
+local carried = press("Windows", "R")
+check("Windows R: no selection sent", count_of(carried, "submap_hints selection") == 0)
+check("Windows R -> Resize keeps both", count_of(press("Resize", "L"), "window.resize") == 2)
+press("Resize", "BackSpace")
+check("Resize BackSpace -> Windows", Submap.current == "Windows")
+check("BackSpace keeps both", count_of(press("Windows", "SHIFT + H"), "window.move({direction=l})") == 2)
+press("Windows", "M")
+check("Windows M -> Move keeps both", nudged_count() == 2)
+press("Move", "BackSpace")
+press("Windows", "R")
+check("Windows -> Move -> Windows -> Resize keeps both", count_of(press("Resize", "L"), "window.resize") == 2)
+
+-- Leaving the family clears it: Escape from any of them, another submap, BackSpace out of Windows.
+local left = press("Resize", "ESCAPE")
+check("Escape from Resize sends the empty selection", count_of(left, '"windows":[]') == 1)
+Submap.enter("Move")
+check("Move entered from outside starts empty", nudged_count() == 1)
+Submap.reset()
+Submap.enter("Windows")
+select_two()
+Submap.enter("Cursor")
+Submap.enter("Windows")
+check("Windows -> Cursor -> Windows starts empty", count_of(press("Windows", "SHIFT + H"), "focus(") == 0)
+select_two()
+Submap.reset()
+Submap.enter("Windows")
+press("Windows", "BackSpace")
+check("BackSpace out of Windows resets", Submap.current == "reset")
+Submap.enter("Windows")
+check("BackSpace out of the family clears", count_of(press("Windows", "SHIFT + H"), "focus(") == 0)
+
+-- A raw switch that skips Submap (a script's `hl.dsp.submap`) is caught through Hyprland's submap event.
+check("the submap event is watched", submap_event ~= nil)
+select_two()
+submap_event("Resize")
+check("raw switch to Resize keeps the selection", nudged_count() == 2)
+local raw = {}
+Stubs.performed = {}
+submap_event("")
+raw = Stubs.performed
+check("raw switch to reset clears and sends it", count_of(raw, '"windows":[]') == 1)
+Submap.enter("Windows")
+check("after a raw reset the selection is empty", count_of(press("Windows", "SHIFT + H"), "focus(") == 0)
 
 -- A reload starts from nothing: no duplicate binds or actions, an empty selection.
 local function bind_count()
@@ -355,14 +432,16 @@ require("lib.act").run("cursor.scroll", "down", 10)
 check("inside Cursor: scroll repeats", enabled_timers() == 1)
 require("lib.act").run("cursor.scroll_stop")
 
--- A selection made from outside the Windows submap is gone when the submap is entered.
-load_all()
-active = WINDOWS[1]
-require("lib.act").run("windows.select_toggle")
-Stubs.performed = {}
-require("lib.key.submap").registry.Windows.on_enter({})
-check("enter Windows: clears a selection made outside", count_of(Stubs.performed, "set_prop") == 2)
-check("enter Windows: the first key acts on the focused window", count_of(press("Windows", "SHIFT + H"), "focus(") == 0)
+-- A selection made from outside the submaps is gone when Windows, or Move or Resize from their global keys, is entered.
+for _, name in ipairs({ "Windows", "Move", "Resize" }) do
+	load_all()
+	active = WINDOWS[1]
+	require("lib.act").run("windows.select_toggle")
+	Stubs.performed = {}
+	require("lib.key.submap").enter(name)
+	check("enter " .. name .. ": clears a selection made outside", count_of(Stubs.performed, '"windows":[]') == 1)
+end
+check("enter Resize: the first key acts on the focused window", count_of(press("Resize", "L"), "focus(") == 0)
 
 -- A selected window that closed is forgotten before the next action, so nothing hits the focused window by mistake.
 load_all()

@@ -1,5 +1,5 @@
 --- Move submap
---- Each bind moves the current active window
+--- Each bind moves the selected windows (lib/actions/selection.lua), or the focused one when none is selected
 
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
@@ -7,7 +7,7 @@ local Submap = require("lib.key.submap") ---@class Submap
 
 -- The actions the rows name.
 require("lib.actions.defs.move")
-require("lib.actions.defs.windows")
+require("lib.actions.defs.windows_select")
 
 --- The four directions as actions that nudge by `amount` pixels.
 --- @param amount number
@@ -28,15 +28,16 @@ Submap.define({
 
   escape = "reset",
   catchall = "stay",
+  targets = true,
 
   hint = {
     { "Move", { "move.step", tiers = "speed" } },
-    { "Window", { "window.float_toggle", label = "Float" } },
+    { "Window", { "windows.float_selected", label = "Float" } },
   },
 
   binds = function()
     local keys = {
-      { "F", "window.float_toggle" },
+      { "F", "windows.float_selected", "Toggle Floating" },
     }
 
     for _, key in ipairs(Direction.speed_binds(nudge, "Move")) do
