@@ -17,7 +17,8 @@ shopt -s extglob
 # --json: that is an empty list; any other failure (qs missing, no config, unparsable output) is an error, never "no bar".
 bar_pids() {
   local out
-  out=$(qs list --json --any-display 2>&1) || return 1
+  # env -u: a caller's QS_CONFIG_PATH/QS_CONFIG_NAME would point qs (here and in the relaunch) at a test config.
+  out=$(env -u QS_CONFIG_PATH -u QS_CONFIG_NAME qs list --json --any-display 2>&1) || return 1
   [[ $out == "No running instances"* ]] && return 0
   jq -r '.[].pid' <<<"$out"
 }
@@ -64,4 +65,4 @@ if ! wait_gone "$grace"; then
     exit 1
   fi
 fi
-exec qs -n
+exec env -u QS_CONFIG_PATH -u QS_CONFIG_NAME qs -n
