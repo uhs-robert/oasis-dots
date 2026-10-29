@@ -239,7 +239,7 @@ chmod +x "$stubs"/* "$fake_home"/.claude/skills/merge-prs/*
 
 # A main checkout on main with two PR branches, b1 and b2, the second cut from the first, each in a worktree of its own.
 e2e_setup() {
-  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/branch_hold" "$e2e/merge_hold" "$e2e/merge_removes_wt"
+  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/branch_hold" "$e2e/advance_main" "$e2e/merge_hold" "$e2e/merge_removes_wt"
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
@@ -250,6 +250,11 @@ e2e_setup() {
 echo "check \$(basename "\$PWD") \$* $lock_state" >>"\$SHIP_LOG"
 echo "checking \$(basename "\$PWD")"
 while [[ -e $e2e/branch_hold ]]; do sleep 0.2; done
+# With $e2e/advance_main present another batch lands a commit on origin/main while the branch is being checked.
+if [[ -e $e2e/advance_main ]]; then
+  rm -rf $e2e/other && git clone -q $e2e/origin.git $e2e/other 2>/dev/null
+  git -C $e2e/other -c user.name=t -c user.email=t@t commit -q --allow-empty -m other && git -C $e2e/other push -q origin main 2>/dev/null
+fi
 exit \${STUB_BRANCH_STATUS:-0}
 STUB
   chmod +x "$e2e/main/lib/check.sh"
@@ -300,6 +305,12 @@ STUB_BRANCH_STATUS=1 ship 1 2
 check "a failing branch check merges nothing and fails the run" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && grep -q 'the check fails on b1 (PR 1)' '$e2e/out'"
 check "and leaves nothing to resume" "[[ ! -e \$(base_file '$e2e/main') ]]"
 check "the failing check's output is shown" "grep -q 'checking wt-1' '$e2e/out'"
+
+# What would land was checked against an older main: another batch merged in between.
+e2e_setup
+touch "$e2e/advance_main"
+ship 1
+check "a branch checked against a main that has since moved is not merged" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && grep -q 'main moved since b1 was checked (PR 1); nothing was merged; rerun' '$e2e/out'"
 
 # The check and the review wait run together: a check that fails while the gate is still waiting must not be lost.
 e2e_setup
