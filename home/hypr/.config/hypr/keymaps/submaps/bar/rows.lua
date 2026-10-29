@@ -1,8 +1,8 @@
 --- Bar popup key rows, shared by the Bar submap and the Leader submap's popup keys.
 
 -- The actions the rows name; Bar and Leader only require this module.
-require("lib.actions.defs.popups")
-require("lib.actions.defs.system")
+require("lib.act.defs.popups")
+require("lib.act.defs.system")
 
 --- @class BarRows
 local BarRows = {}

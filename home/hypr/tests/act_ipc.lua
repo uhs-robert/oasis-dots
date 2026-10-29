@@ -1,4 +1,4 @@
--- Loads the keyless IPC action definitions (lib/actions/defs/{notifications,style,lock,power,screenshot,zoom,overview,
+-- Loads the keyless IPC action definitions (lib/act/defs/{notifications,style,lock,power,screenshot,zoom,overview,
 -- settings,launcher}.lua) under a stubbed `hl`, runs every id with sample arguments and compares the command line it
 -- would hand to Hyprland with the table below: the `qs-ipc call <target> <function> <args>` words, quoted for the shell.
 -- It also checks that nothing else is defined in those files, and that requiring keymaps.global (what a live session loads) registers them all, even when one definition file is broken,
@@ -59,7 +59,7 @@ local REFUSED = {
 local Act = require("lib.act")
 local Scripts = require("lib.scripts")
 for _, file in ipairs(FILES) do
-	require("lib.actions.defs." .. file)
+	require("lib.act.defs." .. file)
 end
 
 local failures = 0
@@ -133,13 +133,13 @@ end
 -- load each file on its own and warn naming the broken one, and the submaps that require it again (Leader for pickers,
 -- System for power) must neither raise nor run it twice. pickers.lua defines its actions and then raises, power.lua
 -- does not parse.
-local pickers_path = here .. "/../.config/hypr/lib/actions/defs/pickers.lua"
-package.preload["lib.actions.defs.pickers"] = function()
+local pickers_path = here .. "/../.config/hypr/lib/act/defs/pickers.lua"
+package.preload["lib.act.defs.pickers"] = function()
 	assert(loadfile(pickers_path))()
 	error("pickers broke after defining")
 end
-package.preload["lib.actions.defs.power"] = function()
-	return assert(load("local = 1", "=lib/actions/defs/power.lua"))()
+package.preload["lib.act.defs.power"] = function()
+	return assert(load("local = 1", "=lib/act/defs/power.lua"))()
 end
 -- The real Config, not the cut-down one above: the submaps read more of it.
 package.loaded["config"] = nil
@@ -174,11 +174,11 @@ local function count_warnings(text)
 	return count
 end
 local warned = table.concat(act_after.warnings, "\n")
-check("warns once naming pickers.lua: " .. warned, count_warnings("lib/actions/defs/pickers.lua failed to load") == 1)
-check("warns once naming power.lua: " .. warned, count_warnings("lib/actions/defs/power.lua failed to load") == 1)
+check("warns once naming pickers.lua: " .. warned, count_warnings("lib/act/defs/pickers.lua failed to load") == 1)
+check("warns once naming power.lua: " .. warned, count_warnings("lib/act/defs/power.lua failed to load") == 1)
 check("no file runs twice: " .. warned, count_warnings("already defined") == 0)
-package.preload["lib.actions.defs.pickers"] = nil
-package.preload["lib.actions.defs.power"] = nil
+package.preload["lib.act.defs.pickers"] = nil
+package.preload["lib.act.defs.power"] = nil
 
 -- The same holds one level up for keymap files: keymaps/global/init.lua and keymaps/submaps/init.lua load each file on
 -- its own, so a broken one costs only its own keys. power.lua does not parse and the Go submap raises before it

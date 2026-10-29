@@ -5,9 +5,9 @@ local Config = require("config") --- @class Config
 local Submap = require("lib.key.submap") --- @class Submap
 
 -- The actions the rows name.
-require("lib.actions.defs.delete")
-require("lib.actions.defs.notifications")
-require("lib.actions.defs.windows")
+require("lib.act.defs.delete")
+require("lib.act.defs.notifications")
+require("lib.act.defs.windows")
 
 --- A row action that closes every window of an app group.
 --- @param group string

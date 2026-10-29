@@ -70,7 +70,7 @@ qs-ipc show        # list every target and function
 
 `qs-picker <provider> <fallback> [mode]` in the same folder opens a picker, or runs the fallback command when no bar answers.
 
-Every function the shell exposes, with its typed signature and, where an action in `home/hypr/.config/hypr/lib/actions/defs` performs it, that action's id. The table is generated from the `IpcHandler` declarations; `just docs-gen` rewrites it.
+Every function the shell exposes, with its typed signature and, where an action in `home/hypr/.config/hypr/lib/act/defs` performs it, that action's id. The table is generated from the `IpcHandler` declarations; `just docs-gen` rewrites it.
 
 <!-- BEGIN generated -->
 | Target | Signature | Action id |

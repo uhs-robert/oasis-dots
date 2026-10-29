@@ -1,4 +1,4 @@
--- Runs lib/act.lua against a stubbed `hl`: define registers an action and bind gives it keys, params are checked and coerced,
+-- Runs lib/act/init.lua against a stubbed `hl`: define registers an action and bind gives it keys, params are checked and coerced,
 -- run_cli survives hostile strings, Ipc/Cmd carry their data and render params in one pass, and a bad definition
 -- warns and skips without aborting the config.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -704,7 +704,7 @@ Bind.unbind("ALT + Q")
 Act.bind("a.one", { key = "ALT + Q" })
 check("rebind: same action lists the key once", #keys_of("a.one") == 1)
 
--- The picker and HyprVim actions (lib/actions/defs/pickers.lua, keys from keymaps/global/pickers.lua): same keys and
+-- The picker and HyprVim actions (lib/act/defs/pickers.lua, keys from keymaps/global/pickers.lua): same keys and
 -- labels as the binds they replaced, and running one calls the Menu closure or the hyprvim module once.
 fresh()
 Bind = require("lib.key.bind")

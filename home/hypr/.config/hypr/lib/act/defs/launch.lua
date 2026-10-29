@@ -2,7 +2,7 @@
 -- lib/actions/{cmd,menu}.lua and run on use, so a headless load needs neither Config nor the session, and a command that
 -- follows Config (the file managers) reads it when it runs.
 local Act = require("lib.act") ---@class ActionLib
-local Defer = require("lib.actions.defer") ---@class Defer
+local Defer = require("lib.act.defer") ---@class Defer
 local Scripts = require("lib.scripts") ---@class Scripts
 
 Act.define("terminal.open", {

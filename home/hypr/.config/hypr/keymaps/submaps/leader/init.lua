@@ -9,9 +9,9 @@ local Submap = require("lib.key.submap") --- @class Submap
 local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
 
 -- The actions the rows name.
-require("lib.actions.defs.launch")
-require("lib.actions.defs.pickers")
-require("lib.actions.defs.tools")
+require("lib.act.defs.launch")
+require("lib.act.defs.pickers")
+require("lib.act.defs.tools")
 
 local KEEP = { keep = true }
 

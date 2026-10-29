@@ -5,10 +5,10 @@ local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
 
 -- The actions the rows name.
-require("lib.actions.defs.launch")
-require("lib.actions.defs.windows")
-require("lib.actions.defs.windows_select")
-require("lib.actions.defs.workspaces")
+require("lib.act.defs.launch")
+require("lib.act.defs.windows")
+require("lib.act.defs.windows_select")
+require("lib.act.defs.workspaces")
 
 local function enter_submap(name) return { "submap.enter", { name } } end
 

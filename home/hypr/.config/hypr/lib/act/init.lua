@@ -552,9 +552,9 @@ function Act.load_each(prefix, names)
   end
 end
 
---- Require lib/actions/defs/<name>.lua for each name, as Act.load_each does.
+--- Require lib/act/defs/<name>.lua for each name, as Act.load_each does.
 --- @param names string[]
-function Act.load_defs(names) Act.load_each("lib.actions.defs", names) end
+function Act.load_defs(names) Act.load_each("lib.act.defs", names) end
 
 ---------------------------------------------------------------------------------------------------
 -- run

@@ -1,4 +1,4 @@
--- Runs keymaps/global/tools.lua, which loads lib/actions/defs/tools.lua, against a stubbed `hl`: the 14 tool actions
+-- Runs keymaps/global/tools.lua, which loads lib/act/defs/tools.lua, against a stubbed `hl`: the 14 tool actions
 -- get the keys and labels written out below, nothing warns, each key runs the command written out below, and their
 -- binds can be removed with Bind.unbind. The rest covers the key helpers and Bind.unbind on keys of their own.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."

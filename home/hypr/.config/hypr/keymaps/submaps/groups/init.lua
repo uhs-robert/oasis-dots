@@ -5,8 +5,8 @@ local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
 
 -- The actions the rows name.
-require("lib.actions.defs.groups")
-require("lib.actions.defs.windows")
+require("lib.act.defs.groups")
+require("lib.act.defs.windows")
 
 Submap.define({
   name = "Groups",

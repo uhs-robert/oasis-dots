@@ -5,9 +5,9 @@ local Config = require("config") --- @class Config
 local Submap = require("lib.key.submap") --- @class Submap
 
 -- The actions the rows name.
-require("lib.actions.defs.apps")
-require("lib.actions.defs.launch")
-require("lib.actions.defs.tools")
+require("lib.act.defs.apps")
+require("lib.act.defs.launch")
+require("lib.act.defs.tools")
 
 local function focus_app(app) return { "apps.focus", { app } } end
 local function open_app(app) return { "apps.open", { app } } end

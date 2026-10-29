@@ -7,11 +7,11 @@ local Window = require("lib.actions.window") --- @class WindowActions
 local Workspaces = require("lib.workspaces") --- @class Workspaces
 
 -- The actions the rows name.
-require("lib.actions.defs.apps")
-require("lib.actions.defs.launch")
-require("lib.actions.defs.pickers")
-require("lib.actions.defs.tools")
-require("lib.actions.defs.workspaces")
+require("lib.act.defs.apps")
+require("lib.act.defs.launch")
+require("lib.act.defs.pickers")
+require("lib.act.defs.tools")
+require("lib.act.defs.workspaces")
 
 local function focus_app(app) return { "apps.focus", { app } } end
 

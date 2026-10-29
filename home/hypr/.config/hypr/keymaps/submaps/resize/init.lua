@@ -6,8 +6,8 @@ local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
 
 -- The actions the rows name.
-require("lib.actions.defs.launch")
-require("lib.actions.defs.resize")
+require("lib.act.defs.launch")
+require("lib.act.defs.resize")
 
 local function enter_submap(name) return { "submap.enter", { name } } end
 

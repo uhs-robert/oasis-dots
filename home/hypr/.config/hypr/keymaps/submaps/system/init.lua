@@ -5,10 +5,10 @@ local Config = require("config") --- @class Config
 local Submap = require("lib.key.submap") --- @class Submap
 
 -- The actions the rows name.
-require("lib.actions.defs.apps")
-require("lib.actions.defs.launch")
-require("lib.actions.defs.power")
-require("lib.actions.defs.system")
+require("lib.act.defs.apps")
+require("lib.act.defs.launch")
+require("lib.act.defs.power")
+require("lib.act.defs.system")
 
 local function tool(name) return { "terminal.tool", { name } } end
 

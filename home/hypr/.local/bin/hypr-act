@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs actions on the live Hyprland.
 #   hypr-act list              the JSON list of every defined action ({"version":1,"actions":[...]}, shape in
-#                              lib/act.lua `Act.list_json`)
+#                              lib/act/init.lua `Act.list_json`)
 #   hypr-act <id> [args...]    performs the action by id (`Act.run_cli`); silent on success
 #
 # The list comes from the running session, so it holds the machine's Config and custom/. On failure stdout stays

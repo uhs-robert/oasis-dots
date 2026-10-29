@@ -1,11 +1,11 @@
--- Loads every lib/actions/defs/*.lua headlessly and prints the action list (Act.list_json) on stdout. It exits 1 on
+-- Loads every lib/act/defs/*.lua headlessly and prints the action list (Act.list_json) on stdout. It exits 1 on
 -- any Act warning, so lib/check/steps/registry.py can check what the definitions refer to (ids, IPC functions,
 -- scripts) and throw the list away: nothing about the actions is committed. Runs under a permissive `hl` and the repo's
 -- default Config, so the output is the same on every machine. A new `require` the stubs lack fails with its module name.
 --
 --   lua home/hypr/tests/act_refs.lua [--defs DIR] [--resolve ID [WORD...]]
 --
--- --defs reads DIR instead of lib/actions/defs (the tests plant bad definitions there).
+-- --defs reads DIR instead of lib/act/defs (the tests plant bad definitions there).
 -- --resolve prints one JSON object, the `perform` plan of Act.resolve (what `hypr-act ID WORD...` would run, with the
 -- params checked the same way), instead of the list; an Act error exits 5 with its message, as hypr-act does.
 -- shadow.sh action uses it, since the shadow's Hyprland has no actions of its own.
@@ -13,7 +13,7 @@ local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local hypr_dir = here .. "/../.config/hypr"
 package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.path
 
-local defs_dir = hypr_dir .. "/lib/actions/defs"
+local defs_dir = hypr_dir .. "/lib/act/defs"
 local first = 1
 if arg[1] == "--defs" and arg[2] then
 	defs_dir = arg[2]

@@ -2,7 +2,7 @@
 -- when the bar lacks a provider, and the directory picker follows `app.tui_file_manager`; an IPC call has neither.
 -- Menu and hyprvim are required on use, so a headless load needs neither Config nor the optional hyprvim repo.
 local Act = require("lib.act") ---@class ActionLib
-local Defer = require("lib.actions.defer") ---@class Defer
+local Defer = require("lib.act.defer") ---@class Defer
 
 local picker = function(menu_function) return Defer.call("lib.actions.menu", menu_function) end
 
