@@ -204,6 +204,12 @@ cat >"$fake_home/.claude/skills/merge-prs/merge-prs.sh" <<STUB
 #!/usr/bin/env bash
 if [[ \$1 == --check ]]; then
   echo "gate \$* $lock_state" >>"\$SHIP_LOG"
+  # With $e2e/advance_branch present the PR branch gets a commit while the gate waits for its reviewers.
+  if [[ -e $e2e/advance_branch ]]; then
+    sleep 1 # the check is reading the worktree (index.lock) at first
+    git -C "$e2e/wt-1" -c user.name=t -c user.email=t@t commit -q --allow-empty -m late
+    rm -f $e2e/advance_branch
+  fi
   [[ " \${STUB_GATE_FAIL:-} " != *" \${*: -1} "* ]]
   exit
 fi
@@ -246,7 +252,7 @@ chmod +x "$stubs"/* "$fake_home"/.claude/skills/merge-prs/*
 
 # A main checkout on main with two PR branches, b1 and b2, the second cut from the first, each in a worktree of its own.
 e2e_setup() {
-  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/branch_hold" "$e2e/advance_main" "$e2e/stale_head" "$e2e/merge_hold" "$e2e/merge_removes_wt"
+  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/branch_hold" "$e2e/advance_main" "$e2e/stale_head" "$e2e/advance_branch" "$e2e/merge_hold" "$e2e/merge_removes_wt"
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
@@ -324,6 +330,18 @@ e2e_setup
 touch "$e2e/stale_head"
 ship 1
 check "a PR whose head is not the checked commit is not merged" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && grep -q 'PR head differs from the checked commit' '$e2e/out'"
+
+# A commit pushed while the reviewers are awaited was not part of the check.
+e2e_setup
+touch "$e2e/advance_branch"
+ship 1
+check "a commit that lands during the gate wait is not merged on the earlier pass" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && grep -q 'PR head differs from the checked commit' '$e2e/out'"
+
+# The check runs on the worktree's files, so they must be the commit that merges.
+e2e_setup
+echo dirty >"$e2e/wt-1/untracked"
+ship 1
+check "a worktree with uncommitted changes is not checked or merged" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && grep -q 'b1 worktree has uncommitted changes; commit or stash them' '$e2e/out'"
 
 # The check and the review wait run together: a check that fails while the gate is still waiting must not be lost.
 e2e_setup
