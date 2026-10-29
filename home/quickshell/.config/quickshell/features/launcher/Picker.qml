@@ -28,7 +28,7 @@ Popup {
     footer_hint: "Enter " + root.verb + root.nesting_hint + " · Esc normal · q close"
     // NORMAL mode spells out the provider's actions and the browse preview keys; with neither the frame shows its own "? help · q close".
     footer_override: root.insert ? "Enter " + root.verb + root.nesting_hint + " · Esc normal" : root.action_hint !== "" || root.browse ? "Enter " + root.verb + root.nesting_hint + (root.action_hint !== "" ? " · " + root.action_hint : "") + root.browse_hint + " · ? help · q close" : ""
-    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move", root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"].concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.browse ? ["=/+ bigger preview, past large to max", "- smaller preview", "p preview on/off", "v grid/list", "1-9 select the numbered item on screen (Enter opens)"] : []).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
+    key_help: ["Enter " + root.verb, "Up/Down move", "Ctrl+j/k move"].concat(root.tab_help).concat(root.provider && root.provider.can_go_back ? ["Backspace on an empty search back"] : []).concat(root.tabs.length > 0 ? ["Ctrl+Tab/Ctrl+Shift+Tab tabs"] : []).concat(["Ctrl+u clear", "Esc normal mode", "j/k rows", "h/l columns", "0/$ row ends", "gg/G first/last", "i/a insert", "/ search"]).concat(root.browse ? ["=/+ bigger preview, past large to max", "- smaller preview", "p preview on/off", "v grid/list", "1-9 select the numbered item on screen (Enter opens)"] : []).concat(root.action_hint !== "" ? [root.action_hint] : []).concat(["q/Esc close"]).join(" · ")
     jumps_enabled: !root.insert
     cursor_state: root.selected
     tabs: root.provider ? root.provider.tabs : []
@@ -39,7 +39,10 @@ Popup {
     readonly property string action_hint: root.provider ? root.provider.actions.map(a => a.key + " " + a.desc).join(" · ") : ""
     readonly property bool is_open: Popups.open_name === "picker"
     readonly property bool browse: !!root.provider && root.provider.layout === "browse"
-    readonly property string browse_hint: root.browse ? " · =/- p preview · v view · 1-9 pick" : ""
+    readonly property string browse_hint: root.browse ? (root.has_alt_preview ? " · Tab " + (root.showing_alt ? "back" : root.provider.alt_preview_name) : "") + " · =/- p preview · v view · 1-9 pick" : ""
+    // A browse picker leaves rows to hjkl, so Tab is free for its alternate preview.
+    readonly property var tab_help: root.browse ? (root.has_alt_preview ? ["Tab/Shift+Tab preview or " + root.provider.alt_preview_name] : []) : [root.provider && root.provider.expands ? "Tab expand, Shift+Tab prev" : "Tab/Shift+Tab next/prev"]
+    readonly property bool has_alt_preview: root.browse && root.provider.alt_preview !== null
     readonly property int columns: root.browse_list ? 1 : root.browse ? BrowseLayout.columns(list_area.width - 2 * root.cue_gutter, root.card_width, root.card_gap) : root.dock_bottom && root.provider ? Math.max(1, root.provider.columns) : 1
     readonly property real cell_height: Style.px(30)
     readonly property real card_gap: Style.px(8)
@@ -55,6 +58,9 @@ Popup {
     property string preview_size: "m"
     // What p brings the preview back to.
     property string last_preview_size: "m"
+    // Tab swaps the provider's alt_preview in; every open starts on the selected item's preview.
+    property bool alt_preview_shown: false
+    readonly property bool showing_alt: root.has_alt_preview && root.alt_preview_shown
     // "grid" of cards or one-line "list" rows; v flips it, and every open starts on the grid.
     property string browse_view: "grid"
     readonly property bool browse_list: root.browse && root.browse_view === "list"
@@ -109,6 +115,7 @@ Popup {
         root.preview_size = preview_size;
         root.last_preview_size = preview_size;
         root.browse_view = "grid";
+        root.alt_preview_shown = false;
         root.reset();
         query_input.text = recalled;
         // Reads Popups.open_anchor, not dock_bottom: held_anchor may still be stale when this handler runs first.
@@ -275,6 +282,14 @@ Popup {
         Qt.callLater(root.reveal_selected);
     }
 
+    function swap_alt_preview() {
+        if (!root.has_alt_preview) return;
+        const next = BrowseLayout.alt_swapped(root.preview_size, root.last_preview_size, root.alt_preview_shown);
+        root.alt_preview_shown = next.alt;
+        if (next.size !== root.preview_size) root.set_preview_size(next.size);
+        else ThemeAudio.play("cursor");
+    }
+
     function set_browse_view(view) {
         root.browse_view = view;
         ThemeAudio.play("cursor");
@@ -321,6 +336,8 @@ Popup {
         } else if (ctrl && (k === Qt.Key_Tab || k === Qt.Key_Backtab) && root.tabs.length > 0) {
             root.step_tab(k === Qt.Key_Tab ? 1 : -1);
             root.play_if_moved(before);
+        } else if ((k === Qt.Key_Tab || k === Qt.Key_Backtab) && root.browse) {
+            root.swap_alt_preview();
         } else if (k === Qt.Key_Tab && root.provider && root.provider.expands) {
             root.expand_selected();
         } else if (k === Qt.Key_Tab) {
@@ -843,14 +860,14 @@ Popup {
                 height: root.browse ? root.browse_split.preview_height : parent.height
                 // Unloaded while the browse preview is off, so a live one (the agents' pane capture) stops polling.
                 active: root.visible && !!root.provider && root.provider.preview !== null && !(root.browse && root.preview_size === "off")
-                sourceComponent: root.provider ? root.provider.preview : null
+                sourceComponent: root.showing_alt ? root.provider.alt_preview : root.provider ? root.provider.preview : null
             }
 
             Binding {
                 target: preview_loader.item
                 property: "entry"
                 value: root.selected_item
-                when: preview_loader.status === Loader.Ready
+                when: preview_loader.status === Loader.Ready && !root.showing_alt
             }
         }
 

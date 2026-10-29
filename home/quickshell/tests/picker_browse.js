@@ -8,8 +8,8 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/BrowseLayout.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, on_screen, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels };", context);
-const { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, on_screen, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, alt_swapped, on_screen, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels };", context);
+const { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, alt_swapped, on_screen, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels } = context.api;
 
 // A 1080p body: 760 tall under the title, 720 of it under the search bar; cards 112 tall with an 8 gap.
 const body = 760, area = 720, row = 120, gap = 8;
@@ -42,6 +42,8 @@ const cases = [
   ["an off preview fills the whole area, no blank band under the view", () => fit(area, body, "off", row, gap, 50, 4, 20), { rows: 5, preview_height: 0, view_height: area, overflows: true }],
   ["off with room for the peeks keeps every row clear of the fades", () => [fit(760, body, "off", row, gap, 50, 4, 20).rows, fit(760, body, "off", row, gap, 50, 4, 20).view_height], [6, 760]],
   ["v flips grid and list", () => [toggled_view("grid"), toggled_view("list"), toggled_view(undefined)], ["list", "grid", "list"]],
+  ["Tab flips between the preview and its alternate at the same size", () => [alt_swapped("l", "l", false), alt_swapped("max", "max", true)], [{ size: "l", alt: true }, { size: "max", alt: false }]],
+  ["Tab with the preview off restores its last size on the alternate", () => [alt_swapped("off", "s", false), alt_swapped("off", "l", true), alt_swapped("off", "off", false)], [{ size: "s", alt: true }, { size: "l", alt: true }, { size: "m", alt: true }]],
   ["list rows follow the room left under the preview", () => [split(area, body, "l", 38, gap).rows, split(area, body, "off", 38, gap).rows], [4, 18]],
   ["at the top, the rows above the faded peek are on screen", () => on_screen(0, 2 * row + 40, 5 * row, row, 112, 20, 5, 23), { first: 0, end: 10 }],
   ["scrolled, a peek row at either end is not on screen", () => on_screen(row - 20, 2 * row + 40, 5 * row, row, 112, 20, 5, 23), { first: 5, end: 15 }],
