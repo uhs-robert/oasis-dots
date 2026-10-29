@@ -16,8 +16,6 @@ CASES = [
     ("lib/check.sh", " all"),
     ("lib/check/runner.py", " checkscope all"),
     ("lib/check/scopes.py", " checkscope all"),
-    ("lib/check/passed.py", " checkscope all"),
-    ("lib/check/passed.sh", " checkscope all"),
     ("lib/check/lock.sh", " checkscope all"),
     ("justfile", " all"),
     (".claude/check-commands", " all"),
@@ -171,7 +169,7 @@ class PathScopes(unittest.TestCase):
     def test_tests_are_found_by_naming_convention(self):
         """A tests/ file that follows a convention in scopes.py is a step without an entry of its own."""
         names = {step.name for step in scopes.STEPS}
-        for name in ("act-global", "bar-layout", "polled-command", "install-pacman-tweaks", "hook-report-failed-main-check"):
+        for name in ("act-global", "bar-layout", "polled-command", "install-pacman-tweaks"):
             with self.subTest(name=name):
                 self.assertIn(name, names)
 

@@ -807,12 +807,6 @@ copy_assets() {
   done < <(git -C "$repo" ls-files -z --others --ignored --exclude-standard "$qs_rel")
 }
 
-# True when the branch already contains origin/main (so the merged tree is the branch's own tree) and that head has a
-# recorded `check.sh --changed` pass against it.
-branch_passed() {
-  git merge-base --is-ancestor origin/main "$1" && lib/check/passed.sh passed-since origin/main "$1"
-}
-
 build() {
   local name=$1
   shift
@@ -827,13 +821,10 @@ build() {
   done
   copy_assets "$dir/$qs_rel"
   printf '%s\n' "$@" >"$dir.branches"
-  # The merged tree is fresh, so a recorded tree pass never matches it. A lone branch that already contains origin/main
-  # merges to its own tree, so its recorded pass stands in; any other merge was never checked, so it runs. CHECK_NO_LOCK: this
-  # must not queue behind other sessions' voxcmd suites.
+  # The merged tree is new, so it is always checked. CHECK_NO_LOCK: this must not queue behind other sessions' voxcmd
+  # suites.
   # Kept in a log beside the build, since a bare "check fails" leaves the caller no way to tell which step broke.
-  (cd "$dir" && {
-    lib/check/passed.sh is-passed || { (($# == 1)) && branch_passed "$1"; } || CHECK_NO_LOCK=1 lib/check.sh --changed origin/main
-  } >"$dir.check.log" 2>&1) || {
+  (cd "$dir" && CHECK_NO_LOCK=1 lib/check.sh --changed origin/main >"$dir.check.log" 2>&1) || {
     tail -n 25 "$dir.check.log" >&2
     die "the check fails on the combined build in $dir (full output $dir.check.log)"
   }

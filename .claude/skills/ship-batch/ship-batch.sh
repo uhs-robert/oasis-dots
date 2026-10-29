@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Usage: ship-batch.sh [--skip-review-gate] [--sync-check] [<pr>...]; merges the PRs in order, then updates main, restarts
-# what changed and starts the check of main in the background (main-check.sh). --skip-review-gate skips the reviewers' states
-# (no waiting, no review requests) for every PR, only when the owner waived them or named another reviewer; unresolved
-# review threads still block, and each PR's branch check still runs.
-# --sync-check (or SHIP_BATCH_SYNC_CHECK=1) waits for the check of main instead and fails the run when it fails.
-# ship-batch.sh --wait-main-check waits for the background check and exits 0 when main is green, 1 when it is not.
+# Usage: ship-batch.sh [--skip-review-gate] [<pr>...]; merges the PRs in order, then updates main and restarts what
+# changed. Each PR's branch is checked once, while its reviewers are awaited; main is not checked after the merge (run
+# `just check` there on demand). --skip-review-gate skips the reviewers' states (no waiting, no review requests) for every
+# PR, only when the owner waived them or named another reviewer; unresolved review threads still block, and each PR's
+# branch check still runs.
 set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
 ipc="$HOME/.config/hypr/scripts/qs-ipc"
 bars="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/test-bars"
+script_dir=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=base.sh
-source "$(dirname "$0")/base.sh"
+source "$script_dir/base.sh"
 # shellcheck source=live-hypr.sh
 source "$(dirname "$0")/live-hypr.sh"
 
@@ -36,59 +36,29 @@ use_live_hypr() {
   hypr_checked=true
 }
 
-# The main checkout's copy, not this script's neighbour: run from a PR worktree in the batch, that worktree is removed by
-# the merge before the check starts. Absolute, as systemd-run needs.
-main_check="$repo/.claude/skills/ship-batch/main-check.sh"
-[[ ${1:-} != --wait-main-check ]] || exec "$main_check" wait
-
-skip_gate=() sync_check=false
-[[ -z ${SHIP_BATCH_SYNC_CHECK:-} ]] || sync_check=true
+skip_gate=()
 while [[ ${1:-} == --* ]]; do
   case $1 in
   --skip-review-gate) skip_gate=(--skip-review-gate) ;;
-  --sync-check) sync_check=true ;;
   *) die "unknown flag $1" ;;
   esac
   shift
 done
 # Flags are read only up front, so one after a PR number would otherwise be taken for a PR and fail late, at the gate.
 for arg; do
-  [[ $arg != -* ]] || die "usage: ship-batch.sh [--skip-review-gate] [--sync-check] [<pr>...]; $arg came after a PR number, flags go first"
+  [[ $arg != -* ]] || die "usage: ship-batch.sh [--skip-review-gate] [<pr>...]; $arg came after a PR number, flags go first"
 done
 
-main_check_failure_notice "$repo"
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
 
-# A run that stopped the check of main and dies before starting it again restarts it on the way out, under the ship lock,
-# so the debt is never left with no check running and nothing reported. A foreground check is stopped with the run.
-restart_stopped_check=false sync_check_pid=''
+check_pid=''
 on_exit() {
+  [[ -z $check_pid ]] || kill -TERM -- "-$check_pid" 2>/dev/null
   remove_temp_worktree
-  [[ -z $sync_check_pid ]] || kill -TERM -- "-$sync_check_pid" 2>/dev/null
-  # fd 9 still open: this run died holding the ship lock.
-  if $restart_stopped_check && { { true >&9; } 2>/dev/null || take_lock "$repo" ""; }; then
-    local owed
-    owed=$(owed_check "$repo")
-    if [[ -n $owed ]] && ! main_check_is_running "$repo"; then
-      start_main_check "$repo" "$main_check" "$(git -C "$repo" rev-parse HEAD)" "$owed" &&
-        echo "ship-batch: restarted the check of main this run stopped (log $(main_check_path "$repo" log))" >&2
-    fi
-  fi
-  # Last, so a waiter keeps waiting while this run takes the lock to restart the check.
-  clear_main_check_suspended "$repo"
 }
-# Stopped before the first branch check, so its heavy steps do not wait behind a check of a main that is about to change.
-# Under the ship lock, unless another batch holds it: that batch stops and restarts the check itself.
-stop_main_check_early() {
-  try_lock "$repo" "stopping the check of main" || return 0
-  stop_main_check "$repo" || die "could not stop the running check of main"
-  ! $main_check_stopped || restart_stopped_check=true
-  release_lock
-}
-
 # Waiting for reviews and checking branches take minutes and touch nothing shared, so they run before the ship lock: a
-# PR still waiting for its review must not hold up another session's batch. Each PR in turn waits for its gating reviewers
-# (requesting one for a changed head) and passes its own scoped check, in its local worktree or, for a branch pushed from
+# PR still waiting for its review must not hold up another session's batch. Each PR in turn is checked while its gating
+# reviewers are awaited (requesting one for a changed head), in its local worktree or, for a branch pushed from
 # elsewhere (a cloud session), in a temporary worktree at the PR head that is removed on every exit path. The first PR
 # that is not ready stops the list: the ones before it merge, in order, and it and the rest are left for a rerun.
 trap on_exit EXIT
@@ -102,10 +72,6 @@ for pr in "$@"; do
   else
     gate_flags=(--check --wait-review --request-review)
   fi
-  if ! (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${gate_flags[@]}" "$pr"); then
-    not_ready="PR $pr does not pass the review gate"
-    break
-  fi
   branch=$(cd "$repo" && gh pr view "$pr" --json headRefName -q .headRefName) || die "cannot read PR $pr"
   worktree=$(git -C "$repo" worktree list --porcelain | awk -v ref="branch refs/heads/$branch" '/^worktree /{w = substr($0, 10)} $0 == ref {print w; exit}')
   if [[ -z $worktree ]]; then
@@ -113,10 +79,25 @@ for pr in "$@"; do
     add_temp_worktree "$repo" "pull/$pr/head" || die "cannot fetch the head of PR $pr into a temporary worktree"
     worktree=$temp_worktree
   fi
+  # The check runs once, here, beside the reviewer wait that takes most of the time; there is no rerun after the merge.
+  # Its own process group, so on_exit can end the check's steps; its output is held back so it does not interleave with the gate's.
+  check_log=$(mktemp)
+  # shellcheck disable=SC2016 # expanded by the inner bash
+  (cd "$worktree" && exec setsid bash -c 'source "$1" && check_branch_here' _ "$script_dir/base.sh" >"$check_log" 2>&1) 9>&- &
+  check_pid=$!
+  gate_passed=true
+  (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${gate_flags[@]}" "$pr") || gate_passed=false
+  $gate_passed || kill -TERM -- "-$check_pid" 2>/dev/null || true
   branch_passed=true
-  $restart_stopped_check || stop_main_check_early
-  (cd "$worktree" && check_branch_here) || branch_passed=false
+  wait "$check_pid" || branch_passed=false
+  check_pid=''
+  cat "$check_log"
+  rm -f "$check_log"
   remove_temp_worktree
+  if ! $gate_passed; then
+    not_ready="PR $pr does not pass the review gate"
+    break
+  fi
   if ! $branch_passed; then
     not_ready="the check fails on $branch (PR $pr)"
     break
@@ -132,10 +113,6 @@ fi
 # restows, reloads and restarts that follow it. Commands below that can leave a daemon behind run with fd 9 closed so it
 # cannot hold the lock after this run.
 take_lock "$repo" "${ready[*]}" || die "gave up waiting for the ship-batch running in this repository"
-# A check still running verifies a main the pull below is about to replace, and would hold heavy-step slots the next
-# branch checks need. Stopping it first leaves the owed base as it was; the check restarts after this merge.
-stop_main_check "$repo" || die "could not stop the running check of main"
-! $main_check_stopped || restart_stopped_check=true
 before=$(select_base "$repo")
 # The reviews were waited for above, so the gate here only confirms them and never waits under the lock.
 ((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${skip_gate[@]}" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
@@ -246,48 +223,9 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
 fi
 
 # Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the reloads and restarts.
-[[ $before == "$after" ]] || owe_check "$repo" "$before"
 finish_base "$repo"
-
-# The check runs from the oldest base still owed (see owe_check), so a rerun after a failed or interrupted check checks
-# again, and the step records make that rerun cost only the steps that did not pass. A lookup that costs seconds runs here
-# once the lock is released; a real check is started in the background while the lock is still held, so the next batch's
-# stop finds it and a waiter never sees the gap before it starts.
-check_from=$(owed_check "$repo")
-if [[ -z $check_from ]]; then
-  restart_stopped_check=false
-  clear_main_check_suspended "$repo"
-  release_lock
-elif $sync_check || "$main_check" quick "$after"; then
-  restart_stopped_check=false
-  # A foreground check is its own process group too, so a newer batch's stop reaches its steps; waiting on it in the
-  # background keeps this run's INT and TERM traps live. It takes its run lock before the ship lock is released, as in
-  # start_main_check: a batch waiting for the lock would otherwise find nothing to stop and race it for the run lock.
-  rm -f "$(main_check_path "$repo" pid)"
-  setsid -w "$main_check" run "$after" "$check_from" 9>&- &
-  sync_check_pid=$!
-  clear_main_check_suspended "$repo"
-  # A check that never takes its run lock shows in its exit status below.
-  wait_main_check_running "$repo" || true
-  release_lock
-  check_status=0
-  wait "$sync_check_pid" || check_status=$?
-  sync_check_pid=''
-  case $check_status in
-  0) ;;
-  # TERM from a newer batch's stop_main_check, or its KILL when TERM was not enough.
-  143 | 137) echo "ship-batch: a newer batch stopped the check of main (superseded); the check from ${check_from:0:12} is still owed and that batch runs it" ;;
-  4) die "the check of main passed a main checkout with local changes to tracked files; the check from ${check_from:0:12} is still owed" ;;
-  *) die "the check fails on main after the merge; fix it before anything else (exit $check_status)" ;;
-  esac
-else
-  start_main_check "$repo" "$main_check" "$after" "$check_from" || die "the check of main is owed but did not start"
-  restart_stopped_check=false
-  release_lock
-  echo "ship-batch: the check of main runs in the background (log $(main_check_path "$repo" log)); wait for it with: ship-batch.sh --wait-main-check"
-fi
+release_lock
 
 echo "ship-batch: main is at $(git -C "$repo" log --oneline -1)"
 (cd "$repo" && "$HOME/.claude/skills/merge-prs/status.sh") || true
-main_check_failure_notice "$repo"
 [[ -z $not_ready ]] || die "$not_ready; rerun ship-batch with it and the PRs after it once that is fixed"

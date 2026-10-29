@@ -24,7 +24,6 @@ sys.dont_write_bytecode = True
 CHECK_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(os.path.dirname(CHECK_DIR))
 sys.path.insert(0, CHECK_DIR)
-import passed  # noqa: E402
 import scopes  # noqa: E402
 
 USAGE = "usage: lib/check.sh [--plan] [--changed <base> | --paths-from <file|->] [--only <step>[,<step>...]]"
@@ -65,13 +64,6 @@ class Options:
 
 def env_set(name):
     return bool(os.environ.get(name))
-
-
-def runs_in_part(step):
-    """Whether this run runs only part of step, so its pass would vouch for more than ran. VOXCMD_ONLY_SECTIONS
-    reaches the voxcmd suites (home/voxcmd/tests/lib.sh) through the environment and runs only the sections it names;
-    the Rust crate's step never reads it."""
-    return step.scope in scopes.VOXCMD_SUITE_SCOPES and env_set("VOXCMD_ONLY_SECTIONS")
 
 
 def job_count():
@@ -274,22 +266,6 @@ def print_out(text, stream=None):
     write_out(text.encode() + b"\n", stream)
 
 
-def git_output(*args):
-    """git's stdout, or None when it fails; its stderr goes through."""
-    result = subprocess.run(("git", *args), stdout=subprocess.PIPE, check=False)
-    return result.stdout if result.returncode == 0 else None
-
-
-def clean_head_tree():
-    """HEAD's tree when nothing is modified or untracked (ignored files aside), else None."""
-    # --untracked-files=normal: status.showUntrackedFiles=no must not hide an untracked file.
-    status = git_output("status", "--porcelain", "--untracked-files=normal")
-    head_tree = git_output("rev-parse", "HEAD^{tree}")
-    if status is None or status or head_tree is None:
-        return None
-    return head_tree.decode().strip()
-
-
 def process_stat(pid):
     """The fields of /proc/<pid>/stat after the command name (state first, then the parent's pid), or None once the
     process is gone. The name may hold spaces and parentheses, so the fields count from its last closing one."""
@@ -457,17 +433,6 @@ def tail(data, count):
     return b"\n".join(lines[-count:]) + (b"\n" if ends_with_newline and lines else b"")
 
 
-def ignoring_git_errors(action, *args):
-    """Runs a passed.py action as `lib/check/passed.sh ... || true` did: git has printed its own error."""
-    try:
-        return action(*args)
-    except passed.GitError:
-        return False
-    except (passed.DirtyTree, OSError) as error:
-        print(error if isinstance(error, passed.DirtyTree) else f"check-passed: {error}", file=sys.stderr)
-        return False
-
-
 def name_list(names):
     """Names as the summary line lists them: each after a space."""
     return "".join(" " + name for name in names)
@@ -493,10 +458,6 @@ def print_failures(failed, pool):
 def run(options, logs, pool):
     change_set = ChangeSet.from_options(options)
     shell_lists = ShellLists(change_set)
-
-    # HEAD's tree if the working tree is clean before the run and still is after it: only then does a pass vouch for
-    # that tree.
-    tree_before = None if options.plan else clean_head_tree()
 
     skip_steps = f" {os.environ.get('CHECK_SKIP_STEPS', '')} "
     ran, skipped_by_scope, skipped_by_request, skip_lines = [], [], [], set()
@@ -537,24 +498,7 @@ def run(options, logs, pool):
     failed = [step for step in ran if step.name in pool.failed]
     if failed:
         print_failures(failed, pool)
-    ran_in_part = [step.name for step in ran if runs_in_part(step)]
-    if ran_in_part:
-        print_out(f"check: VOXCMD_ONLY_SECTIONS is set, so no pass is recorded for{name_list(ran_in_part)}")
-    if failed:
         return 1
-
-    # --paths-from checks a list someone chose and --only the steps someone chose, and CHECK_SKIP_STEPS drops steps, which
-    # vouch for no tree; neither does a step that ran in part.
-    if not options.paths_from and not options.only and not ran_in_part and not skipped_by_request and tree_before:
-        if clean_head_tree() == tree_before:
-            if options.changed_base:
-                ignoring_git_errors(passed.record_changed, options.changed_base)
-            # Inductive: a base that passed, plus a scoped pass over everything changed since, vouches for the tree, as
-            # does a run that reached every step.
-            if "all" in change_set.reached or (
-                options.changed_base and ignoring_git_errors(passed.passed_somewhere, options.changed_base)
-            ):
-                ignoring_git_errors(passed.record)
 
     print_out("All checks passed")
     return 0
