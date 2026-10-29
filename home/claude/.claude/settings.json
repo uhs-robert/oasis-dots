@@ -166,6 +166,16 @@
             "command": "~/.claude/hooks/context-budget.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -I ~/.claude/hooks/plain_writing_lint.py",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [
