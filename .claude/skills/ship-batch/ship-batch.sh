@@ -121,19 +121,26 @@ fi
 # cannot hold the lock after this run.
 take_lock "$repo" "${ready[*]}" || die "gave up waiting for the ship-batch running in this repository"
 # Each branch was checked against the main of its own time. Another batch may have merged since, and then what would land
-# was never checked, so a branch that no longer contains origin/main is not merged (nor are the ones after it).
-git -C "$repo" fetch -q origin main || die "cannot fetch origin/main to confirm the checked branches are current"
-moved=''
+# was never checked, so a branch that no longer contains origin/main is not merged (nor are the ones after it). The same
+# goes for a PR whose head on GitHub is not the commit that was checked (merge-prs merges the PR head, not the worktree).
+git -C "$repo" fetch -q origin main 9>&- || die "cannot fetch origin/main to confirm the checked branches are current"
+stale=''
 for i in "${!ready[@]}"; do
-  git -C "$repo" merge-base --is-ancestor origin/main "${checked_heads[i]}" && continue
-  moved="main moved since ${ready_branches[i]} was checked (PR ${ready[i]})"
+  pr_head=$(cd "$repo" && gh pr view "${ready[i]}" --json headRefOid -q .headRefOid 9>&-) || die "cannot read the head of PR ${ready[i]}"
+  if [[ $pr_head != "${checked_heads[i]}" ]]; then
+    stale="PR head differs from the checked commit (${ready_branches[i]}, PR ${ready[i]})"
+  elif ! git -C "$repo" merge-base --is-ancestor origin/main "${checked_heads[i]}"; then
+    stale="main moved since ${ready_branches[i]} was checked (PR ${ready[i]})"
+  else
+    continue
+  fi
   ready=("${ready[@]:0:i}")
   break
 done
-if [[ -n $moved ]]; then
-  ((${#ready[@]})) || die "$moved; nothing was merged; rerun ship-batch"
-  echo "ship-batch: $moved; merging only ${ready[*]}"
-  not_ready=$moved
+if [[ -n $stale ]]; then
+  ((${#ready[@]})) || die "${not_ready:+$not_ready; }$stale; nothing was merged; rerun ship-batch"
+  echo "ship-batch: $stale; merging only ${ready[*]}"
+  not_ready="${not_ready:+$not_ready; }$stale"
 fi
 before=$(select_base "$repo")
 # The reviews were waited for above, so the gate here only confirms them and never waits under the lock.

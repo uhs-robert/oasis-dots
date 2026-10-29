@@ -215,7 +215,14 @@ for pr; do [[ \$pr == --* ]] && continue; git push -q origin "b\$pr:main" 2>/dev
 STUB
 printf '#!/bin/sh\n' >"$fake_home/.claude/skills/merge-prs/status.sh"
 # shellcheck disable=SC2016 # expanded by the stub
-printf '#!/bin/sh\necho "b$3"\n' >"$stubs/gh"
+# With $e2e/stale_head present the PR head on the forge is not the commit that was checked.
+cat >"$stubs/gh" <<STUB
+#!/bin/sh
+case "\$*" in
+*headRefOid*) if [ -e $e2e/stale_head ]; then echo 0000000000000000000000000000000000000001; else git -C $e2e/main rev-parse "b\$3"; fi ;;
+*) echo "b\$3" ;;
+esac
+STUB
 # Logs each recipe with the lock state; fd 9 must not reach it.
 cat >"$stubs/just" <<STUB
 #!/usr/bin/env bash
@@ -239,7 +246,7 @@ chmod +x "$stubs"/* "$fake_home"/.claude/skills/merge-prs/*
 
 # A main checkout on main with two PR branches, b1 and b2, the second cut from the first, each in a worktree of its own.
 e2e_setup() {
-  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/branch_hold" "$e2e/advance_main" "$e2e/merge_hold" "$e2e/merge_removes_wt"
+  rm -rf "$e2e/origin.git" "$e2e/main" "$e2e"/wt-* "$SHIP_LOG" "$e2e/branch_hold" "$e2e/advance_main" "$e2e/stale_head" "$e2e/merge_hold" "$e2e/merge_removes_wt"
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
@@ -311,6 +318,12 @@ e2e_setup
 touch "$e2e/advance_main"
 ship 1
 check "a branch checked against a main that has since moved is not merged" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && grep -q 'main moved since b1 was checked (PR 1); nothing was merged; rerun' '$e2e/out'"
+
+# merge-prs merges the PR head on the forge, which can differ from the commit that was checked.
+e2e_setup
+touch "$e2e/stale_head"
+ship 1
+check "a PR whose head is not the checked commit is not merged" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && grep -q 'PR head differs from the checked commit' '$e2e/out'"
 
 # The check and the review wait run together: a check that fails while the gate is still waiting must not be lost.
 e2e_setup
