@@ -40,6 +40,7 @@
       "Read(~/.zshrc)"
     ],
     "deny": [
+      "Bash(git push --force)",
       "Bash(git push --force *)",
       "Bash(git push --force-with-lease origin main *)",
       "Bash(git push --force-with-lease origin main)",
