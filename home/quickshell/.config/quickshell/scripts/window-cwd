@@ -2,9 +2,10 @@
 # Prints what a terminal window shows: an optional `app:<name>` line naming the program running in it (anything but a
 # shell), then its open Neovim file as `file:<path>`, Yazi's folder, or its working directory. The process tree it
 # reads is its tmux client's pane, else the kitty window, else the deepest child.
-# Usage: window-cwd <window pid> <window title>
+# Usage: window-cwd <window pid> <window title> [1 if it is the focused window]
 pid=$1
 title=$2
+focused=${3:-0}
 [ -n "$pid" ] || exit 0
 run_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
@@ -27,16 +28,22 @@ for osw in json.load(sys.stdin):
             continue
         for w in tab.get("windows", []):
             if w.get("is_active"):
-                shown.append(w)
-match = next((w for w in shown if w.get("title") == title), None)
-match = match or next((w for w in shown if bare(w.get("title", "")) == bare(title)), None)
-if match is None and len(shown) == 1:
-    match = shown[0]
+                shown.append((bool(osw.get("is_focused")), w))
+matches = [s for s in shown if s[1].get("title") == title] or [s for s in shown if bare(s[1].get("title", "")) == bare(title)]
+if not matches and len(shown) == 1:
+    matches = shown
+# Two windows can share a title (two shells in ~); kitty focus tells the focused one from the rest, and when that
+# still leaves several that disagree on the folder, no answer beats another window'"'"'s.
+if len(matches) > 1:
+    matches = [s for s in matches if s[0] == (sys.argv[2] == "1")] or matches
+if len(matches) > 1 and len({s[1].get("cwd") for s in matches}) > 1:
+    matches = []
+match = matches[0][1] if matches else None
 if match:
     procs = match.get("foreground_processes") or []
     cwd = procs[-1].get("cwd") if procs and procs[-1].get("cwd") else match.get("cwd", "")
     print("%s\t%s" % (match.get("pid", ""), cwd))
-' "$title")
+' "$title" "$focused")
   # No kitty window shows this title (yet); printing nothing beats printing another window's directory.
   [ -n "$kitty_match" ] || exit 0
   pid=${kitty_match%%$'\t'*}

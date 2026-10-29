@@ -80,7 +80,7 @@ Item {
             root.cwd_output = "";
             return;
         }
-        cwd_proc.pending = [String(pid), t.title || ""];
+        cwd_proc.pending = [String(pid), t.title || "", t === Hyprland.activeToplevel ? "1" : "0"];
         if (!cwd_proc.running) cwd_proc.start_pending();
     }
 

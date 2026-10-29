@@ -153,7 +153,8 @@ Item {
     readonly property real body_span: root.vertical ? body.height : body.width
     readonly property real length: root.capsule ? root.body_span + root.capsule_inset * 2 : root.body_span + (cap_left ? cap_width : 0) + (cap_right ? cap_width : 0) + root.lug * 2
     // What the island adds around its modules' row (pads, caps, the capsule's inset, 1px for the ceil), whatever they hold.
-    readonly property real chrome_length: root.length - root.body_span + root.pad * 2 + 1
+    // Built from its parts, not `length - body_span`: `length` follows the modules, which would bind a module's room to itself.
+    readonly property real chrome_length: (root.capsule ? root.capsule_inset * 2 : (root.cap_left ? root.cap_width : 0) + (root.cap_right ? root.cap_width : 0) + root.lug * 2) + root.pad * 2 + 1
 
     // The row's length on a top or bottom bar without `except` (a module's Loader), counting the gap each leaves.
     // Reads the items' own widths, not the layout's, which settles a polish later and would make a fit to it flicker.
