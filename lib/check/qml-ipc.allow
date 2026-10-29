@@ -9,4 +9,3 @@ uncalled transition                   # a debugging hook, called by hand (perman
 uncalled osd                          # shadow.sh wait reaches it through a computed target (permanent)
 frozen hyprvim_prompt open close      # called by repos/hyprvim, outside this repo (permanent)
 frozen hyprvim_whichkey open close    # called by repos/hyprvim and .claude/skills/shadow/smoke.sh (permanent)
-uncalled bareditor                    # opened through the keyless bareditor.* actions, which this check does not read (the Settings "Edit bar" row)
