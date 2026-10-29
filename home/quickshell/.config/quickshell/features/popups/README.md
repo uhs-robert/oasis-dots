@@ -46,11 +46,11 @@ The main binds that open things (the leader is `SUPER`):
 
 | Bind                                  | Opens                                              |
 | ------------------------------------- | -------------------------------------------------- |
-| `SUPER + B`, then a letter            | A bar popup (`S` Start, `N` notifications, `V` volume, `W` weather, `C` calendar...) |
-| `SUPER + SPACE`, then a letter        | The same popups, plus `S` Settings and `SPACE` Start |
+| `SUPER + B`, then a letter            | A bar popup (`S` Start, `SHIFT + S` Settings, `N` notifications, `V` volume, `W` weather, `C` calendar...) |
+| `SUPER + SPACE`, then a letter        | The same popups, with `S` Settings in place of Start |
 | `SUPER + /`                           | Keybinds picker for the current submap             |
 | `SUPER + O`                           | Apps picker                                        |
-| `SUPER + A`                           | Agent sessions picker                              |
+| `SUPER + SPACE` then `SPACE`, `SUPER + G` then `A` | Agent sessions picker                 |
 | `SUPER + T`                           | Workspace overview with window search (`SHIFT` carries the focused window to a workspace and follows it) |
 | `SUPER + CTRL + V`                    | Clipboard picker                                   |
 | `SUPER + CTRL + SPACE`                | Directory picker                                   |

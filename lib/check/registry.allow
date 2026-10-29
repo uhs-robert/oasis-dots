@@ -18,18 +18,19 @@ bind * BackSpace                        # goes back one submap
 bind * SHIFT + SLASH                    # toggles the which-key overlay
 bind * catchall                         # a catchall that swallows or ends the submap on an unbound key
 # The submaps with a "reset" or function catchall; a modifier pressed alone would otherwise reach the catchall.
-bind Bar,Delete,Go,Leader,System SLASH      # no-op that claims the which-key chord's `/` key-up from Hyprland 0.56's release catchall
-bind Bar,Delete,Go,Leader,System Shift_L    # no-op that claims the modifier press (on 0.56 its key-up), so a held modifier keeps the submap
-bind Bar,Delete,Go,Leader,System Shift_R    # the same, for the right Shift
-bind Bar,Delete,Go,Leader,System Control_L  # the same, for the left Ctrl
-bind Bar,Delete,Go,Leader,System Control_R  # the same, for the right Ctrl
-bind Bar,Delete,Go,Leader,System Alt_L      # the same, for the left Alt
-bind Bar,Delete,Go,Leader,System Alt_R      # the same, for the right Alt
-bind Bar,Delete,Go,Leader,System Super_L    # the same, for the left Super
-bind Bar,Delete,Go,Leader,System Super_R    # the same, for the right Super
+bind Applications,Bar,Delete,Go,Leader,System SLASH      # no-op that claims the which-key chord's `/` key-up from Hyprland 0.56's release catchall
+bind Applications,Bar,Delete,Go,Leader,System Shift_L    # no-op that claims the modifier press (on 0.56 its key-up), so a held modifier keeps the submap
+bind Applications,Bar,Delete,Go,Leader,System Shift_R    # the same, for the right Shift
+bind Applications,Bar,Delete,Go,Leader,System Control_L  # the same, for the left Ctrl
+bind Applications,Bar,Delete,Go,Leader,System Control_R  # the same, for the right Ctrl
+bind Applications,Bar,Delete,Go,Leader,System Alt_L      # the same, for the left Alt
+bind Applications,Bar,Delete,Go,Leader,System Alt_R      # the same, for the right Alt
+bind Applications,Bar,Delete,Go,Leader,System Super_L    # the same, for the left Super
+bind Applications,Bar,Delete,Go,Leader,System Super_R    # the same, for the right Super
 
 # Keys that enter a submap (Submap.define `enter`); the Leader menu enters the same submaps through the submap.enter action.
 bind global SUPER + SPACE               # enters Leader
+bind global SUPER + A                   # enters Applications
 bind global SUPER + G                   # enters Go
 bind global SUPER + Q                   # enters System
 bind global SUPER + D                   # enters Delete

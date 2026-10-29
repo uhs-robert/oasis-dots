@@ -29,6 +29,7 @@ function BarRows.binds(overrides)
     BarRows.row("P", "battery", "Power and Brightness"),
     BarRows.row("Q", "system", "System"),
     BarRows.row("S", "start", "Start Menu"),
+    BarRows.row("SHIFT + S", "settings", "Settings"),
     BarRows.row("T", "tray", "Tray"),
     { "U", "system.update", "Updates" },
     BarRows.row("V", "volume", "Volume"),
