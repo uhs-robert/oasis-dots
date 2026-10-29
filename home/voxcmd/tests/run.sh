@@ -55,10 +55,6 @@ source "$here/lib.sh"
 # word <block> <line> <word_num> <left> <top> <width> <height> <conf> <text>: one tesseract word row (level 5).
 word() { printf '5\t1\t%s\t1\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"; }
 header() { printf 'level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n'; }
-# window <gx> <gy> <gw> <gh> <iw> <ih>
-window() { printf '#window %s %s %s %s %s %s\n' "$@"; }
-# strip <i> <y0> <own_top> <own_bottom>
-strip() { printf '#strip %s %s %s %s\n' "$@"; }
 
 # voxcmd_bin is what the sandbox put first on PATH, which must be this checkout's Rust build.
 voxcmd_bin=$(command -v voxcmd)
@@ -99,6 +95,11 @@ check "leaves no screenshot behind" "[[ -z \$(ls '$XDG_RUNTIME_DIR' | grep voxcm
 : >"$log"
 out=$(SANDBOX_GRIM_NO_TOPLEVEL=1 "${click_ocr[@]}")
 check "a failed toplevel capture falls back to the screen region" "grep -q 'grim -t ppm -g 100,50 160x96' '$log' && [[ \$(head -1 <<<\"\$out\") == '#window 100 50 160 96 256 154' ]]"
+SANDBOX_ACTIVEWINDOW_JSON='{"at": [100, 50], "size": [160, 96], "monitor": 0}'
+: >"$log"
+"${click_ocr[@]}" >/dev/null
+check "no stable id captures the screen region without trying -T" "grep -q 'grim -t ppm -g 100,50 160x96' '$log' && ! grep -q ' -T ' '$log'"
+SANDBOX_ACTIVEWINDOW_JSON=$default_window
 : >"$log"
 out=$(SANDBOX_GRIM_SIZE='256 154' "${click_ocr[@]}" 2>&1)
 check "a capture within 2% of the window's shape is used as it is" "! grep -q ' -g ' '$log' && [[ \$(head -1 <<<\"\$out\") == '#window 100 50 160 96 256 154' ]]"
@@ -493,11 +494,6 @@ clients <<<"$(
 out=$(explain "sign in")
 check "a candidate under a floating window is kept by word matching but dropped as covered" "grep -q 'kept strong (same words), then dropped: covered by another window' <<<\"\$out\" && grep -q '^outcome  covered: ' <<<\"\$out\""
 SANDBOX_CLIENTS_JSON='[]'
-SANDBOX_MONITORS_JSON='[{"id": 0, "name": "DP-1", "width": 1920, "height": 1080, "scale": 1, "transform": 0, "x": 0, "y": 0, "reserved": [0, 100, 0, 0]}]'
-out=$(explain "sign in")
-SANDBOX_MONITORS_JSON='[{"id": 0, "name": "DP-1", "width": 1920, "height": 1080, "scale": 1, "transform": 0, "x": 0, "y": 0, "reserved": [0, 0, 0, 0]}]'
-
-out=$(explain "it")
 
 : >"$log"
 SANDBOX_CLIENTS_JSON='[{"address": "0x4001", "mapped": true, "class": "other", "stableId": "18000009", "at": [100, 50], "size": [160, 96], "floating": false, "pinned": false, "monitor": 0, "workspace": {"id": 1}}]'
@@ -1640,8 +1636,8 @@ check "Tab in Voice Help lists every installed app once, by name" "[[ \$(apps_he
 
 section "voice help"
 # Voice Help lists every integration's examples, the fallbacks last, and Tab on one lists what it offers to run. The
-# package copy's voxcmd-pick answers what $help_answer holds and logs its arguments; no such file makes it exit 1, as a
-# cancelled pick does, and an empty one answers nothing with exit 0.
+# package copy's voxcmd-pick answers what $help_answer holds and logs its arguments (no such file: exit 1, as a cancelled
+# pick does). A cancelled or empty pick and a help without examples are cargo tests (tests/integrations.rs).
 help_pkg=$root/help-pkg
 mkdir -p "$help_pkg"
 cp -r "$package/.local" "$help_pkg/.local"
@@ -1719,7 +1715,8 @@ out=$(SANDBOX_BINDS_JSON=$keybinds_help_binds VOXCMD_CONFIG_DIR=$keybinds_help_c
 check "entering the Delete submap does not" "grep -q 'id=.submap:Delete.' <<<\"\$out\" && grep -q 'confirm: false' <<<\"\$out\""
 section "a stray integrations.d"
 # The bash voxcmd that read integrations.d is gone, so a leftover file there (an outside user's, or a private link) must
-# neither load nor take the other integrations down; `integrations check` says why it is ignored.
+# neither load nor take the other integrations down. That `integrations check` says why is a cargo test
+# (tests/integrations.rs); this checks the routing.
 stray_config=$root/stray-config
 mkdir -p "$stray_config/replacements.d" "$stray_config/integrations.d"
 copy_shipped_integrations "$stray_config" media
