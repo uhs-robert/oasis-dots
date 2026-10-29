@@ -1,4 +1,4 @@
--- Loads keymaps/global/{shortcuts,tools}.lua against a stubbed `hl` under two Config shapes (with and without a
+-- Loads keymaps/global/{shortcuts,tools,pickers}.lua against a stubbed `hl` under two Config shapes (with and without a
 -- leader) and compares every registered bind with fixtures/act_launch_binds.tsv: submap, key, which-key label, flags
 -- and what the key does. The fixture was dumped from the keymaps as they were before the launch keys were actions and
 -- is unchanged by that move. It also checks the new action ids exist, carry the labels and run by name.
@@ -9,7 +9,7 @@ local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local Stubs = dofile(here .. "/act_stubs.lua")
 
 -- Bar is loaded because pressing a key that enters a submap fails while it is unknown; only the global binds are compared.
-local MODULES = { "keymaps.global.shortcuts", "keymaps.global.tools", "keymaps.submaps.bar" }
+local MODULES = { "keymaps.global.shortcuts", "keymaps.global.tools", "keymaps.global.pickers", "keymaps.submaps.bar" }
 local function in_global_map(submap)
 	return submap == ""
 end

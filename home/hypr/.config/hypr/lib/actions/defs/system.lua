@@ -1,4 +1,4 @@
--- Actions for the System submap: reloads, restarts and the update terminal. No default keys: the System rows (and the
+-- Actions for the System submap: reloads, restarts and the update terminal. The System rows (and the
 -- Bar's Updates row) bind them. Logout, lock, reboot and power off are not here; they stay plain rows until
 -- they are power actions of their own.
 local Act = require("lib.act") ---@class ActionLib

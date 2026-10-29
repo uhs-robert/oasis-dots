@@ -1,4 +1,4 @@
--- Keyless zoom actions beyond the Z key (`zoom.toggle`, tools.lua). The deltas step the live magnifier.
+-- Keyless zoom actions beyond `zoom.toggle` (tools.lua). The deltas step the live magnifier.
 local Act = require("lib.act") ---@class ActionLib
 local Ipc = Act.Ipc
 

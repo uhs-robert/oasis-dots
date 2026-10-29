@@ -1,5 +1,5 @@
 -- Actions for the Go and System submaps: focus-or-launch an app, run a terminal tool, open the editor. They take a name
--- from a fixed list instead of a command, so `hypr-act` cannot be made to run arbitrary commands. No default keys: the submap rows bind them.
+-- from a fixed list instead of a command, so `hypr-act` cannot be made to run arbitrary commands. The submap rows bind them.
 local Act = require("lib.act") ---@class ActionLib
 
 --- The keys of `set`, sorted: the values an enum param accepts.

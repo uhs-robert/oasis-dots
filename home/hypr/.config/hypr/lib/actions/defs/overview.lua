@@ -1,4 +1,4 @@
--- Keyless open and close for the two overviews beyond the keyed ones (`overview.*` in tools.lua, `tmux.overview`).
+-- Keyless open and close for the two overviews beyond the ones with global keys (`overview.*` in tools.lua, `tmux.overview`).
 local Act = require("lib.act") ---@class ActionLib
 local Ipc = Act.Ipc
 

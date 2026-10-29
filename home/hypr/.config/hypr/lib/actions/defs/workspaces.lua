@@ -1,6 +1,6 @@
 -- Actions for the workspace keys. With `Config.persistent_workspaces` the same ids act on the active monitor's own
--- slots, so a key never needs to know which mode is on. No default keys: keymaps/global/workspace.lua binds them with
--- Act.bind, because the slot count and the key set follow Config.
+-- slots, so a key never needs to know which mode is on. keymaps/global/workspace.lua binds them; the
+-- slot count and the key set follow Config.
 local Act = require("lib.act") ---@class ActionLib
 
 --- @return boolean

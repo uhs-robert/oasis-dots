@@ -1,9 +1,9 @@
 --- Leader submap
 --- Entry point to every other submap; direct binds mirror their global leader key
 
+local BarRows = require("keymaps.submaps.bar.rows") --- @class BarRows
 local Config = require("config") --- @class Config
 local Cmd = require("lib.actions.cmd") --- @class Cmd
-local Popups = require("lib.actions.popups") --- @class Popups
 local Scripts = require("lib.scripts") --- @class Scripts
 local Submap = require("lib.key.submap") --- @class Submap
 local Launcher = require("extensions.auto_launcher.launcher") ---@class Launcher
@@ -50,8 +50,8 @@ Submap.define({
       -- stylua: ignore end
     }
 
-    table.insert(binds, Popups.row("SPACE", "start", "Start Menu"))
-    for _, row in ipairs(Popups.binds({ S = Popups.row("S", "settings", "Settings") })) do
+    table.insert(binds, BarRows.row("SPACE", "start", "Start Menu"))
+    for _, row in ipairs(BarRows.binds({ S = BarRows.row("S", "settings", "Settings") })) do
       table.insert(binds, row)
     end
     return binds

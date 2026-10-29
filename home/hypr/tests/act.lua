@@ -1,4 +1,4 @@
--- Runs lib/act.lua against a stubbed `hl`: define/bind register keys, params are checked and coerced,
+-- Runs lib/act.lua against a stubbed `hl`: define registers an action and bind gives it keys, params are checked and coerced,
 -- run_cli survives hostile strings, Ipc/Cmd carry their data and render params in one pass, and a bad definition
 -- warns and skips without aborting the config.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -90,27 +90,41 @@ local ran = {}
 local zoom = Act.define("zoom.toggle", {
 	label = "Zoom",
 	intent = "Toggle the zoom.",
-	key = { key = "Z", leader = true },
-	extra_keys = { { key = "Print", universal = true }, "ALT + Z" },
 	opts = { repeating = true },
 	run = function()
 		ran[#ran + 1] = "zoom"
 	end,
 })
 check("define: returns a handle with the id", zoom ~= nil and zoom.id == "zoom.toggle")
-check("define: three binds, no warnings", #binds == 3 and #Act.warnings == 0)
-check("define: leader key is prefixed", find("SUPER + Z") ~= nil)
-check("define: label is the bind description", find("SUPER + Z").opts.desc == "Zoom")
-check("define: opts pass through to hl.bind", find("SUPER + Z").opts.repeating == true)
-check("define: universal key is submap_universal", find("Print").opts.submap_universal == true)
+check("define: binds nothing", #binds == 0 and #Act.warnings == 0)
+Act.bind("zoom.toggle", { key = { key = "Z", leader = true } })
+Act.bind("zoom.toggle", { key = { key = "Print", universal = true } })
+Act.bind("zoom.toggle", { key = "ALT + Z" })
+check("bind: three binds, no warnings", #binds == 3 and #Act.warnings == 0)
+check("bind: leader key is prefixed", find("SUPER + Z") ~= nil)
+check("bind: label is the bind description", find("SUPER + Z").opts.desc == "Zoom")
+check("bind: the define's opts pass through to hl.bind", find("SUPER + Z").opts.repeating == true)
+check("bind: universal key is submap_universal", find("Print").opts.submap_universal == true)
 check(
-	"define: plain string key is bound as written",
+	"bind: plain string key is bound as written",
 	find("ALT + Z") ~= nil and not find("ALT + Z").opts.submap_universal
 )
 find("SUPER + Z").action()
-check("define: the key runs the action", #ran == 1)
+check("bind: the key runs the action", #ran == 1)
 
--- A keyless action binds nothing; Act.bind adds a key with args later.
+-- A key belongs in keymaps/, never in the define: one there warns and skips the action.
+fresh()
+check("define: a key is refused", Act.define("a.keyed", { label = "Keyed", key = "K", run = function() end }) == nil)
+check(
+	"define: extra keys are refused",
+	Act.define("a.extra", { label = "Extra", extra_keys = { "K" }, run = function() end }) == nil
+)
+check(
+	"define: refused keys bind nothing and say why",
+	#binds == 0 and #Act.warnings == 2 and has(Act.warnings[1], "takes no key") and has(Act.warnings[2], "takes no key")
+)
+
+-- An action with params gets its keys from Act.bind with args.
 fresh()
 local seen = {}
 Act.define("workspace.focus", {
@@ -144,7 +158,8 @@ check("bind desc: the key still runs the action", pcall(find("F6").action))
 
 -- A define's opts.desc is not a label for its keys: the label stays.
 fresh()
-Act.define("desc.opt", { label = "Label", key = "F1", opts = { desc = "Other", locked = true }, run = function() end })
+Act.define("desc.opt", { label = "Label", opts = { desc = "Other", locked = true }, run = function() end })
+Act.bind("desc.opt", { key = "F1" })
 check("define: opts.desc does not rename the key", find("F1").opts.desc == "Label" and find("F1").opts.locked == true)
 
 fresh()
@@ -169,28 +184,32 @@ check("bind: warning names the problem", has(Act.warnings[1], "expects an int"))
 ---------------------------------------------------------------------------------------------------
 fresh()
 local ok = pcall(function()
-	Act.define("a.first", { label = "First", key = "F1", run = function() end })
+	Act.define("a.first", { label = "First", run = function() end })
+	Act.bind("a.first", { key = "F1" })
 	Act.bind("nope.missing", { key = "F9" })
-	Act.define("a.dup", { label = "Dup", key = "F2", run = function() end })
-	Act.define("a.dup", { label = "Dup again", key = "F3", run = function() end })
-	Act.define("a.nolabel", { key = "F4", run = function() end })
-	Act.define("a.norun", { label = "No run", key = "F5" })
-	Act.define("a.Bad", { label = "Bad", key = "F6", run = function() end })
-	Act.define("BadId", { label = "Bad", key = "F6", run = function() end })
+	Act.define("a.dup", { label = "Dup", run = function() end })
+	Act.define("a.dup", { label = "Dup again", run = function() end })
+	Act.bind("a.dup", { key = "F2" })
+	Act.define("a.nolabel", { run = function() end })
+	Act.define("a.norun", { label = "No run" })
+	Act.define("a.Bad", { label = "Bad", run = function() end })
+	Act.define("BadId", { label = "Bad", run = function() end })
 	Act.define("a.nilspec")
-	Act.define("a.badkey", { label = "Bad key", key = 5, run = function() end })
-	Act.define("a.last", { label = "Last", key = "F7", run = function() end })
+	Act.define("a.last", { label = "Last", run = function() end })
+	Act.bind("a.last", { key = 5 })
+	Act.bind("a.last", { key = "F7" })
 end)
 check("warn-skip: nothing raises", ok)
 check(
-	"warn-skip: valid defines around the bad ones still bind",
+	"warn-skip: valid binds around the bad ones still bind",
 	find("F1") ~= nil and find("F7") ~= nil and find("F2") ~= nil
 )
-check("warn-skip: no bind for the rejected ones", #binds == 3 and find("F3") == nil and find("F9") == nil)
+check("warn-skip: no bind for the rejected ones", #binds == 3 and find("F9") == nil)
 check("warn-skip: one warning per problem", #Act.warnings == 8)
 check("warn-skip: unknown id named", has(Act.warnings[1], "nope.missing"))
 check("warn-skip: duplicate named", has(Act.warnings[2], "already defined"))
-check("warn-skip: first definition kept", find("F2") ~= nil and find("F3") == nil)
+check("warn-skip: bad key named", has(Act.warnings[8], "non-empty string"))
+check("warn-skip: first definition kept", find("F2") ~= nil and find("F2").opts.desc == "Dup")
 check("warn-skip: one notification scheduled for all", #timers == 1)
 timers[1]()
 check(
@@ -221,7 +240,8 @@ check("pcall: a define that raises warns instead", ok and #Act.warnings == 1 and
 -- A failed hl.bind is caught too.
 fresh()
 bind_error = "no such key"
-ok = pcall(Act.define, "a.badbind", { label = "Bad bind", key = "X", run = function() end })
+Act.define("a.badbind", { label = "Bad bind", run = function() end })
+ok = pcall(Act.bind, "a.badbind", { key = "X" })
 bind_error = nil
 check("pcall: a failing hl.bind warns instead", ok and #Act.warnings == 1 and has(Act.warnings[1], "no such key"))
 
@@ -397,19 +417,13 @@ rejected(
 )
 rejected("params: values on a non-enum", { { name = "a", type = "int", values = { "x" } } }, "not an enum")
 rejected("params: not a list", "n", "params must be a list")
-local keyed = Act.define("bad.keyed", {
-	label = "Keyed",
-	key = "K",
-	params = { { name = "n", type = "int" } },
-	run = function() end,
-})
-check("params: a default key cannot leave required params unfilled", keyed == nil and #binds == 0)
-check("params: a default key may use defaults", Act.define("ok.keyed", {
-	label = "Keyed",
-	key = "K",
+Act.define("ok.defaulted", {
+	label = "Defaulted",
 	params = { { name = "n", type = "int", default = 1 } },
 	run = function() end,
-}) ~= nil and find("K") ~= nil)
+})
+Act.bind("ok.defaulted", { key = "K" })
+check("params: a key without args may use defaults", find("K") ~= nil)
 
 ---------------------------------------------------------------------------------------------------
 -- Ipc and Cmd
@@ -598,11 +612,11 @@ local Json = require("lib.json")
 Act.define("zoom.toggle", {
 	label = "Zoom",
 	intent = "Toggle zoom.",
-	key = { key = "Z", leader = true },
-	extra_keys = { { key = "Print", universal = true } },
 	run = Act.Ipc("zoom", "toggle", "{n}"),
 	params = { { name = "n", type = "int", default = 1 } },
 })
+Act.bind("zoom.toggle", { key = { key = "Z", leader = true } })
+Act.bind("zoom.toggle", { key = { key = "Print", universal = true } })
 Act.define("a.first", { label = "First", run = function() end })
 Act.define("mode.set", {
 	label = "Mode",
@@ -623,7 +637,7 @@ check(
 )
 check("list: lua perform", first.perform.kind == "lua")
 check("list: leader applied to the key", zoom.keys[1].key == "SUPER + Z" and zoom.keys[1].leader == true)
-check("list: extra key follows, universal kept", zoom.keys[2].key == "Print" and zoom.keys[2].universal == true)
+check("list: second key follows, universal kept", zoom.keys[2].key == "Print" and zoom.keys[2].universal == true)
 check(
 	"list: ipc perform",
 	zoom.perform.kind == "ipc"
@@ -642,20 +656,21 @@ check(
 	Act.list_json():find('"intent":null', 1, true) and Act.list_json():find('"keys":[]', 1, true)
 )
 
--- Keys changed after define, as custom/init.lua does, show in the list: an Act.bind key is added and an unbound
--- default is dropped.
+-- Keys changed after the keymaps loaded, as custom/init.lua does, show in the list: an Act.bind key is added and an
+-- unbound shipped key is dropped.
 fresh()
 local Bind = require("lib.key.bind")
-Act.define("zoom.toggle", { label = "Zoom", key = { key = "Z", leader = true }, run = function() end })
+Act.define("zoom.toggle", { label = "Zoom", run = function() end })
+Act.bind("zoom.toggle", { key = { key = "Z", leader = true } })
 Act.bind("zoom.toggle", { key = "ALT + X" })
 local before = Json.decode(Act.list_json()).actions[1].keys
 check(
-	"custom keys: default and added key listed",
+	"custom keys: shipped and added key listed",
 	#before == 2 and before[1].key == "SUPER + Z" and before[2].key == "ALT + X"
 )
 Bind.leader_unbind("Z")
 local after = Json.decode(Act.list_json()).actions[1].keys
-check("custom keys: unbound default dropped, added key kept", #after == 1 and after[1].key == "ALT + X")
+check("custom keys: unbound shipped key dropped, added key kept", #after == 1 and after[1].key == "ALT + X")
 Bind.unbind("ALT + X")
 check("custom keys: all unbound gives no keys", #Json.decode(Act.list_json()).actions[1].keys == 0)
 
@@ -669,7 +684,8 @@ local function keys_of(action_id)
 end
 fresh()
 Bind = require("lib.key.bind")
-Act.define("a.one", { label = "One", key = { key = "ALT + Q" }, run = function() end })
+Act.define("a.one", { label = "One", run = function() end })
+Act.bind("a.one", { key = "ALT + Q" })
 Act.define("a.two", { label = "Two", run = function() end })
 Bind.unbind("ALT + Q")
 Act.bind("a.two", { key = "ALT + Q" })
@@ -678,20 +694,22 @@ check("rebind: key moved to another action lists on the new one", #keys_of("a.tw
 
 fresh()
 Bind = require("lib.key.bind")
-Act.define("a.one", { label = "One", key = { key = "ALT + Q" }, run = function() end })
+Act.define("a.one", { label = "One", run = function() end })
+Act.bind("a.one", { key = "ALT + Q" })
 Bind.unbind("ALT + Q")
 Bind.key("ALT + Q", function() end, "plain callback")
 check("rebind: key reused by a plain callback leaves the action", #keys_of("a.one") == 0)
 
 fresh()
 Bind = require("lib.key.bind")
-Act.define("a.one", { label = "One", key = { key = "ALT + Q" }, run = function() end })
+Act.define("a.one", { label = "One", run = function() end })
+Act.bind("a.one", { key = "ALT + Q" })
 Bind.unbind("ALT + Q")
 Act.bind("a.one", { key = "ALT + Q" })
 check("rebind: same action lists the key once", #keys_of("a.one") == 1)
 
--- The picker and HyprVim actions (lib/actions/defs/pickers.lua): same keys and labels as the binds they replaced, and
--- running one calls the Menu closure or the hyprvim module once.
+-- The picker and HyprVim actions (lib/actions/defs/pickers.lua, keys from keymaps/global/pickers.lua): same keys and
+-- labels as the binds they replaced, and running one calls the Menu closure or the hyprvim module once.
 fresh()
 Bind = require("lib.key.bind")
 local menu_calls, hyprvim_calls = {}, {}
@@ -721,7 +739,7 @@ package.loaded["lua.plugins.hyprvim"] = {
 		end,
 	},
 }
-assert(loadfile(hypr_dir .. "/lib/actions/defs/pickers.lua"))()
+assert(loadfile(hypr_dir .. "/keymaps/global/pickers.lua"))()
 check("pickers: no warnings, seven binds", #Act.warnings == 0 and #binds == 7)
 local picker_keys = {
 	{ "picker.clipboard", "Clipboard History", "SUPER + CTRL + V", "clipboard" },

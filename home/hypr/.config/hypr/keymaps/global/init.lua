@@ -5,6 +5,7 @@ require("lib.act").load_each("keymaps.global", {
   "workspace",
   "shortcuts",
   "tools",
+  "pickers",
   "media",
   "keyless",
   "power",
