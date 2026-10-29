@@ -93,7 +93,13 @@ end
 --- @param from string
 --- @param to   string
 local function settle_selection(from, to)
-  if not (has_targets(from) and has_targets(to)) then require("lib.actions.selection").clear() end
+  if has_targets(from) and has_targets(to) then return end
+  local Selection = require("lib.actions.selection")
+  if has_targets(to) then
+    Selection.resync()
+  else
+    Selection.clear()
+  end
 end
 
 local watching_submap_event = false
