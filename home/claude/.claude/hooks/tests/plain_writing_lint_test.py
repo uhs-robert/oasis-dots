@@ -55,6 +55,8 @@ class Rules(unittest.TestCase):
         self.assertEqual(categories("The user's file stays."), [])
         self.assertEqual(categories("```\nit doesn't matter; really\n```"), [])
         self.assertEqual(categories("> Before: it doesn't work."), [])
+        self.assertEqual(categories("````\n```\nit doesn't; really\n```\nstill code; it isn't prose\n````\nThe body is clean."), [])
+        self.assertEqual(categories("```\n```not a close\nit doesn't\n```\nThe body is clean."), [])
         self.assertEqual(categories("# A heading that doesn't count"), [])
         self.assertEqual(categories("---\ndescription: it doesn't\n---\nThe body is clean."), [])
         self.assertEqual(categories("It reads a string, including the name."), [])
@@ -153,6 +155,10 @@ class Commands(unittest.TestCase):
 
     def test_pr_body_from_heredoc(self):
         command = "gh pr create --title t --body-file - <<'EOF'\nThe fix shouldn't change the API.\nEOF"
+        self.assertIn("the PR body", self.bash(command))
+
+    def test_pr_body_from_command_substitution(self):
+        command = "gh pr create --title t --body \"$(cat <<'EOF'\nThe fix shouldn't change the API.\nEOF\n)\""
         self.assertIn("the PR body", self.bash(command))
 
     def test_issue_body_from_flag_and_file(self):
