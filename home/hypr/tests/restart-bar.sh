@@ -128,7 +128,8 @@ check env RESTART_BAR_GRACE=1 bash "$script"
 check test "$(cat pid)" != "$old_pid"
 check test "$(bars_started)" -eq 2
 
-pattern='^(/[^ ]*/)?qs -n( |$)'
+source "$here/../.config/hypr/scripts/bar-pattern.sh"
+pattern=$bar_pattern
 # The signals go to the owner's bars only: both commands get -u $UID and the pattern, and no other match.
 : >pgrep_args
 unset STUB_BAR
@@ -165,10 +166,10 @@ check grep -qxF -- "-KILL -u $UID -f $pattern" pkill_args
 
 # The pattern the script passes matches a bar launched with a path, and not a shadow bar or a look-alike.
 used=$(sed -n 's/^-u [0-9]* -f //p' pkill_args | head -n1)
-for line in "qs -n" "/usr/bin/qs -n" "/usr/bin/qs -n -p /x" "qs -n -p /x"; do
+for line in "qs -n" "/usr/bin/qs -n" "/usr/bin/qs -n -p /x" "qs -n -p /x" "quickshell" "/usr/bin/quickshell"; do
   check grep -Eq -- "$used" <<<"$line"
 done
-for line in "qs-shadow -n" "/usr/bin/qs-shadow -n" "qs -p /x" "bash restart-bar.sh qs -n" "qsx -n"; do
+for line in "qs-shadow -n" "/usr/bin/qs-shadow -n" "qs -p /x" "quickshell -p /x" "bash restart-bar.sh qs -n" "qsx -n"; do
   # shellcheck disable=SC2016 # expanded by the inner shell
   check bash -c '! grep -Eq -- "$0" <<<"$1"' "$used" "$line"
 done

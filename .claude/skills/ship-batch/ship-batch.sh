@@ -201,6 +201,10 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
   [[ -z ${errors//[[:space:]]/} ]] || die "Hyprland config errors after reload: $errors"
 fi
 
+# The merges and reloads are done: a bar failure below tells the owner to restart by hand and must not leave the marker
+# for every later run to resume from. A failure or interruption above this point keeps the base.
+finish_base "$repo"
+
 if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/quickshell; then
   if pgrep -af "^qs .*-p $bars/" >/dev/null; then
     echo "ship-batch: a test bar is running; restore it with the owner-test-bar skill"
@@ -222,8 +226,11 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     use_live_hypr "restart the bar by hand"
     # `qs -n` refuses to start while the old bar lives, so a bar slow to exit on SIGTERM would be relaunched into
     # nothing and leave the owner with no bar: escalate to SIGKILL before going on. Only the owner's `qs -n` bar, bare or with
-    # an absolute path, is matched (as in restart-bar.sh): -x qs would also kill other users' or sessions' test bars.
-    bar_pattern='^(/[^ ]*/)?qs -n( |$)'
+    # an absolute path, or the bare `quickshell` a crash relaunch leaves, is matched (as in restart-bar.sh): -x qs would
+    # also kill other users' or sessions' test bars.
+    # shellcheck source=/dev/null
+    source "$HOME/.config/hypr/scripts/bar-pattern.sh"
+    old_bar_pid=$(pgrep -u "$UID" -f "$bar_pattern" | head -n1 || true)
     pkill -u "$UID" -f "$bar_pattern" || true
     for _ in $(seq 20); do
       pgrep -u "$UID" -f "$bar_pattern" >/dev/null || break
@@ -246,14 +253,12 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     fi
     hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" 9>&- >/dev/null || die "hyprctl could not relaunch qs; start it by hand: hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\""
     sleep 6
-    pgrep -u "$UID" -f "$bar_pattern" >/dev/null || die "qs did not come back; read 'qs log'"
+    new_bar_pid=$(pgrep -u "$UID" -f "$bar_pattern" | head -n1 || true)
+    [[ -n $new_bar_pid && $new_bar_pid != "$old_bar_pid" ]] || die "qs did not come back; read 'qs log'"
     ((migrate_status == 0)) || die "$migrate_failure (the bar was restarted)"
     echo "ship-batch: restarted the stowed bar"
   fi
 fi
-
-# Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the reloads and restarts.
-finish_base "$repo"
 release_lock
 
 echo "ship-batch: main is at $(git -C "$repo" log --oneline -1)"

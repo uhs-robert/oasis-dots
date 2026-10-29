@@ -8,9 +8,10 @@ shopt -s extglob
 # Exits non-zero without starting a bar when the old one survives SIGKILL (stuck in D-state): `qs -n` would refuse to
 # start and exit silently.
 
-# The owner's bar and test bars launch as `qs -n ...`, bare or with an absolute path; a shadow bar runs as `qs-shadow` and never matches. -u keeps
-# other users' bars out.
-pattern='^(/[^ ]*/)?qs -n( |$)'
+# -u keeps other users' bars out of the pattern's match.
+# shellcheck source=./bar-pattern.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/bar-pattern.sh"
+pattern=$bar_pattern
 default_grace=5
 grace=${RESTART_BAR_GRACE:-$default_grace}
 if [[ $grace != +([0-9]) ]]; then
