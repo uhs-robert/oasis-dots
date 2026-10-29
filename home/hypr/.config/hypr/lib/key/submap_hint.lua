@@ -226,9 +226,9 @@ end
 --- @param extras { escape: boolean, whichkey: boolean }  Which of the binds Submap.define adds itself this submap has
 --- @return table
 function SubmapHint.build(name, hint, rows, extras)
-  local groups = {}
+  local groups = Json.array()
   for _, group in ipairs(hint) do
-    local keys = {}
+    local keys = Json.array()
     for index = 2, #group do
       local item = group[index]
       if type(item) == "string" then item = { item } end
