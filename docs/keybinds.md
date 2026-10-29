@@ -36,7 +36,7 @@ keymaps/
     bar/rows.lua       the popup keys, shared by Bar and Leader
 ```
 
-Every key lives in these files. Most name an action by id, as `Act.bind("terminal.open", { key = ... })` or a submap row `{ "E", "files.open" }`; what an action does is defined apart, in `home/hypr/.config/hypr/lib/actions/defs/`, so a key moves without touching the action.
+Every key lives in these files. Most name an action by id, as `Act.bind("terminal.open", { key = ... })` or a submap row `{ "E", "files.open" }`; what an action does is defined apart, in `home/hypr/.config/hypr/lib/act/defs/`, so a key moves without touching the action.
 
 A global bind fires the moment you press it. A submap is a separate set of binds: its entry key switches the keyboard into it, where plain keys such as `F` or `SHIFT + S` do things, and which-key lists those binds as you enter it. Each submap's name, which you need for changing it, is the `name` field at the top of its file: `System`, `Windows`, `Leader` and so on.
 

@@ -2,7 +2,7 @@ local Act = require("lib.act") ---@class ActionLib
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
 
-require("lib.actions.defs.windows")
+require("lib.act.defs.windows")
 
 Act.bind("help.keybinds", { key = { key = "SLASH", leader = true, universal = true } })
 Act.bind("window.close", { key = { key = "X", leader = true } })

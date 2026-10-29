@@ -1,7 +1,7 @@
 local Act = require("lib.act") ---@class ActionLib
 
 -- The flags (locked, repeating, submap_universal) come with each action, so a key added here gets them too.
-require("lib.actions.defs.media")
+require("lib.act.defs.media")
 
 Act.bind("media.prev", { key = { key = "ALT + H", leader = true } })
 Act.bind("media.prev", { key = "XF86AudioPrev" })

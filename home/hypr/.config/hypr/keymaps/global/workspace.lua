@@ -2,7 +2,7 @@ local Act = require("lib.act") ---@class ActionLib
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
 
-require("lib.actions.defs.workspaces")
+require("lib.act.defs.workspaces")
 
 -- The ids are the same with persistent workspaces; only their wording and the slot count change.
 local persistent_ws = Config.persistent_workspaces

@@ -1,6 +1,6 @@
 -- Actions for the Groups submap. Keyless: the Groups rows bind them. Focus and the other window keys reuse `window.*`.
 local Act = require("lib.act") ---@class ActionLib
-local Defer = require("lib.actions.defer") ---@class Defer
+local Defer = require("lib.act.defer") ---@class Defer
 
 local DIRECTION_CODE = { left = "l", down = "d", up = "u", right = "r" }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fails an action definition that refers to something that does not exist.
 
-Runs home/hypr/tests/act_refs.lua, which loads every lib/actions/defs/*.lua headlessly and prints the action list as
+Runs home/hypr/tests/act_refs.lua, which loads every lib/act/defs/*.lua headlessly and prints the action list as
 JSON, reads that list in memory and throws it away: no list is committed, so nothing can drift. Fails on:
 
   - the Lua failing or `Act` warning (an unknown id, a duplicate, bad params, a `{param}` that is not declared);

@@ -84,7 +84,7 @@ end
 
 -- The row form, on its own submap in a fresh load.
 local function row_binds(rows, catchall)
-	Stubs.load(Stubs.VARIANTS[1], { "keymaps.global", "lib.actions.defs.apps" })
+	Stubs.load(Stubs.VARIANTS[1], { "keymaps.global", "lib.act.defs.apps" })
 	local Submap = require("lib.key.submap")
 	Stubs.binds = {}
 	Submap.define({ name = "Probe", escape = "reset", catchall = catchall or false, binds = rows }).setup()
@@ -166,7 +166,7 @@ PowerAct.run = real_run
 
 -- The submap lifecycle on probe submaps: entry key, ESCAPE, BACKSPACE, unbound-key policies, the which-key toggle.
 local function probes(specs, variant)
-	Stubs.load(variant or Stubs.VARIANTS[1], { "keymaps.global", "lib.actions.defs.apps" })
+	Stubs.load(variant or Stubs.VARIANTS[1], { "keymaps.global", "lib.act.defs.apps" })
 	local Submap = require("lib.key.submap")
 	Stubs.binds = {}
 	for _, spec in ipairs(specs) do

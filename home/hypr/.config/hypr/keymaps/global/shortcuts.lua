@@ -1,6 +1,6 @@
 local Act = require("lib.act") ---@class ActionLib
 
-require("lib.actions.defs.launch")
+require("lib.act.defs.launch")
 
 Act.bind("terminal.open", { key = { key = "RETURN", leader = true } })
 Act.bind("terminal.bottom", { key = { key = "SHIFT + RETURN", leader = true } })
