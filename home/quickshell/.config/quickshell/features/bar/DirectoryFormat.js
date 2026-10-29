@@ -18,10 +18,17 @@ function shorten(path, is_file, home) {
     return "…/" + (cut >= 0 ? tail.slice(cut + 1) : tail);
 }
 
-// The path text for window-cwd's output ("file:<path>" for an open Neovim file, else a directory).
+// window-cwd's output split into the program it names (an optional "app:<name>" first line) and the rest.
+function parse(output) {
+    const lines = output.trim().split("\n");
+    const app = lines.length > 0 && lines[0].startsWith("app:") ? lines.shift().slice(4) : "";
+    return { app: app, path: lines.join("\n").trim() };
+}
+
+// The path text for window-cwd's path ("file:<path>" for an open Neovim file, else a directory).
 // The path switch governs directories; the file switch governs the file name, which stands alone when the path is off.
-function path_text(output, switches, home) {
-    const out = output.trim();
+function path_text(path_output, switches, home) {
+    const out = path_output.trim();
     if (out === "") return "";
     if (!out.startsWith("file:")) return switches.path ? shorten(out, false, home) : "";
     const file = out.slice(5);
@@ -29,6 +36,13 @@ function path_text(output, switches, home) {
     if (switches.path && switches.file_name) return shorten(file, true, home);
     if (switches.path) return shorten(cut > 0 ? file.slice(0, cut) : "/", false, home);
     return switches.file_name ? file.slice(cut + 1) : "";
+}
+
+// The tooltip: app name and the whole path, untruncated (~ for $HOME), whatever the switches hide from the bar.
+function tooltip_text(app_name, path_output, home) {
+    const path = path_output.startsWith("file:") ? path_output.slice(5) : path_output;
+    const shown = home && (path === home || path.startsWith(home + "/")) ? "~" + path.slice(home.length) : path;
+    return [app_name, shown].filter(s => s !== "").join("\n");
 }
 
 function app_text(app_name, switches) {

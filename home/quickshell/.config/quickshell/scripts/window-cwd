@@ -1,10 +1,47 @@
 #!/usr/bin/env bash
-# Prints a terminal window's open Neovim file, else its working directory: its tmux client's pane, else kitty remote control, else the deepest child's cwd.
+# Prints what a terminal window shows: an optional `app:<name>` line naming the program running in it (anything but a
+# shell), then its open Neovim file as `file:<path>`, Yazi's folder, or its working directory. The process tree it
+# reads is its tmux client's pane, else the kitty window, else the deepest child.
 # Usage: window-cwd <window pid> <window title>
 pid=$1
 title=$2
 [ -n "$pid" ] || exit 0
 run_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# kitty --single-instance gives every OS window the same pid, so narrow pid to the shell of the kitty window showing
+# $title; otherwise every window would resolve to whichever tmux client or child the shared process happens to own.
+kitty_sock="$run_dir/kitty-$pid"
+kitty_cwd=""
+kitty_match=""
+if [ -S "$kitty_sock" ] && command -v kitty >/dev/null 2>&1; then
+  kitty_match=$(kitty @ --to "unix:$kitty_sock" ls 2>/dev/null | python3 -c '
+import json, re, sys
+title = sys.argv[1]
+# Titles that animate a leading spinner (Claude Code, build tools) can change between the Hyprland event and this lookup.
+def bare(t):
+    return re.sub(r"^\W+", "", t)
+shown = []
+for osw in json.load(sys.stdin):
+    for tab in osw.get("tabs", []):
+        if not tab.get("is_active"):
+            continue
+        for w in tab.get("windows", []):
+            if w.get("is_active"):
+                shown.append(w)
+match = next((w for w in shown if w.get("title") == title), None)
+match = match or next((w for w in shown if bare(w.get("title", "")) == bare(title)), None)
+if match is None and len(shown) == 1:
+    match = shown[0]
+if match:
+    procs = match.get("foreground_processes") or []
+    cwd = procs[-1].get("cwd") if procs and procs[-1].get("cwd") else match.get("cwd", "")
+    print("%s\t%s" % (match.get("pid", ""), cwd))
+' "$title")
+  # No kitty window shows this title (yet); printing nothing beats printing another window's directory.
+  [ -n "$kitty_match" ] || exit 0
+  pid=${kitty_match%%$'\t'*}
+  kitty_cwd=${kitty_match#*$'\t'}
+fi
 
 # The file in the first nvim at or below $1 that answers on its socket.
 nvim_file() {
@@ -34,45 +71,62 @@ descends() {
   return 1
 }
 
+# Not named: the shells and multiplexers a program runs under.
+shells=" bash zsh fish sh dash ksh nu xonsh elvish tmux screen zellij sudo doas "
+# Full-screen programs another program can open (Neovim from Yazi); the deepest of these is named over its opener.
+openers=" nvim vim hx yazi lazygit ranger lf "
+
+# Describes the newest-child chain under $1, with $2 the directory to show for a plain shell. The first non-shell is
+# the program the user started; a deeper opener wins, as Neovim opened from Yazi, but not a tool's own children.
+describe() {
+  local p=$1 fallback=$2 prog="" comm leaf=$1
+  while [ -n "$p" ]; do
+    comm=$(cat "/proc/$p/comm" 2>/dev/null)
+    # Gone between pgrep and here (a short-lived child).
+    [ -n "$comm" ] || break
+    if [[ $shells != *" $comm "* ]]; then
+      [ -z "$prog" ] && prog=$p
+      [[ $openers == *" $comm "* ]] && prog=$p
+    fi
+    leaf=$p
+    p=$(pgrep -P "$p" | tail -n 1)
+  done
+  if [ -z "$prog" ]; then
+    if [ -n "$fallback" ]; then printf '%s\n' "$fallback"; else readlink "/proc/$leaf/cwd" 2>/dev/null; fi
+    return
+  fi
+  comm=$(cat "/proc/$prog/comm" 2>/dev/null)
+  printf 'app:%s\n' "$comm"
+  case $comm in
+    nvim) nvim_file "$prog" && return ;;
+    # Yazi never changes its own cwd; init.lua's cd hook writes the folder it shows.
+    yazi) [ -s "$run_dir/yazi-cwd-$prog" ] && { cat "$run_dir/yazi-cwd-$prog"; echo; return; } ;;
+  esac
+  readlink "/proc/$prog/cwd" 2>/dev/null
+}
+
 if command -v tmux >/dev/null 2>&1; then
   pick="" only="" count=0 pick_pane="" only_pane=""
-  while IFS=$'\t' read -r cpid session path pane_pid command; do
+  while IFS=$'\t' read -r cpid session path pane_pid; do
     descends "$cpid" || continue
     count=$((count + 1))
     only=$path
-    only_pane="$pane_pid $command"
+    only_pane=$pane_pid
     case "$title" in
-      "$session" | *" $session" | "$session "*) pick=$path pick_pane="$pane_pid $command" ;;
+      "$session" | *" $session" | "$session "*) pick=$path pick_pane=$pane_pid ;;
     esac
-  done < <(tmux list-clients -F $'#{client_pid}\t#{client_session}\t#{pane_current_path}\t#{pane_pid}\t#{pane_current_command}' 2>/dev/null)
+  done < <(tmux list-clients -F $'#{client_pid}\t#{client_session}\t#{pane_current_path}\t#{pane_pid}' 2>/dev/null)
   [ -z "$pick" ] && [ "$count" -eq 1 ] && pick=$only pick_pane=$only_pane
   if [ -n "$pick" ]; then
-    [ "${pick_pane#* }" = "nvim" ] && nvim_file "${pick_pane%% *}" && exit 0
-    printf '%s\n' "$pick"
+    describe "$pick_pane" "$pick"
     exit 0
   fi
 fi
 
-sock="$run_dir/kitty-$pid"
-if [ -S "$sock" ] && command -v kitty >/dev/null 2>&1; then
-  cwd=$(kitty @ --to "unix:$sock" ls 2>/dev/null | python3 -c '
-import json, sys
-title = sys.argv[1]
-for osw in json.load(sys.stdin):
-    for tab in osw.get("tabs", []):
-        for w in tab.get("windows", []):
-            if w.get("is_focused") and tab.get("is_focused") and w.get("title") == title:
-                procs = w.get("foreground_processes") or []
-                print(procs[-1].get("cwd") if procs and procs[-1].get("cwd") else w.get("cwd", ""))
-                sys.exit()
-' "$title")
-  if [ -n "$cwd" ]; then
-    printf '%s\n' "$cwd"
-    exit 0
-  fi
+# A kitty window already narrowed pid to its shell; any other terminal is itself the root, and is named by the bar.
+if [ -n "$kitty_match" ]; then
+  describe "$pid" "$kitty_cwd"
+else
+  shell=$(pgrep -P "$pid" | tail -n 1)
+  [ -n "$shell" ] && describe "$shell" ""
 fi
-
-leaf=$pid
-while child=$(pgrep -P "$leaf" | tail -n 1) && [ -n "$child" ]; do leaf=$child; done
-[ "$(cat "/proc/$leaf/comm" 2>/dev/null)" = "nvim" ] && nvim_file "$(ps -o ppid= -p "$leaf" | tr -d ' ')" && exit 0
-readlink "/proc/$leaf/cwd" 2>/dev/null
