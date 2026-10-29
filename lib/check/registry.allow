@@ -27,6 +27,16 @@ bind Applications,Bar,Delete,Go,Leader,System Alt_L      # the same, for the lef
 bind Applications,Bar,Delete,Go,Leader,System Alt_R      # the same, for the right Alt
 bind Applications,Bar,Delete,Go,Leader,System Super_L    # the same, for the left Super
 bind Applications,Bar,Delete,Go,Leader,System Super_R    # the same, for the right Super
+# The submaps with a "stay" catchall; Hyprland 0.57 runs a catchall on mouse events too, so these hand clicks and scrolls on.
+bind * mouse:272  # non-consuming no-op that keeps the catchall from swallowing a left click
+bind * mouse:273  # the same, for the right button
+bind * mouse:274  # the same, for the middle button
+bind * mouse:275  # the same, for the side button
+bind * mouse:276  # the same, for the extra button
+bind * mouse_up  # the same, for the wheel up
+bind * mouse_down  # the same, for the wheel down
+bind * mouse_left  # the same, for the wheel left
+bind * mouse_right  # the same, for the wheel right
 
 # Keys that enter a submap (Submap.define `enter`); the Leader menu enters the same submaps through the submap.enter action.
 bind global SUPER + SPACE               # enters Leader

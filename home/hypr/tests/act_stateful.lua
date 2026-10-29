@@ -242,6 +242,11 @@ for _, name in ipairs({ "Windows", "Cursor", "Quick Click", "Groups", "Move", "R
 	local entry = bind(name, "catchall")
 	check(name .. ": catchall stays", type(entry.action) == "table" and entry.action.text == "no_op")
 	check(name .. ": catchall releases", entry.opts.release == true and entry.opts.ignore_mods == true)
+	-- Hyprland 0.57 runs a catchall on mouse events too; a matching non-consuming bind hands clicks and scrolls on.
+	for _, input in ipairs({ "mouse:272", "mouse:273", "mouse:274", "mouse_up", "mouse_down" }) do
+		local pass = bind(name, input)
+		check(name .. ": " .. input .. " passes through", pass.opts.non_consuming == true and pass.opts.ignore_mods == true)
+	end
 end
 check("Delete: catchall resets", type(bind("Delete", "catchall").action) == "function")
 
