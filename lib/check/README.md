@@ -101,6 +101,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `hook-<test>`: one step per `.claude/hooks/tests/*.sh` and `home/claude/.claude/hooks/tests/*.sh` (found by name; see Scopes), each the test of the hook of that name. Each needs jq, plus tmux and flock where its file names them.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.
+- `rebase-branch`: `.claude/skills/ship-batch/tests/rebase_branch.sh`, the ship-batch rebase helper against a temp origin.
 - `reviewers`: the orchestrator skill's `tests/run.sh` (registry resolver), when `reviewers.json`, `reviewers.sh` or its tests change.
 - `frame-lone-flush`: `home/hypr/tests/frame_lone_flush.lua` runs `config/general/frame.lua` against a stubbed `hl` and checks the lone-window flush opt-out (when it starts and ends) and the workspace animation swap. Needs lua.
 - `bind-action`: `home/hypr/tests/bind_action.lua` runs `lib/actions/defs/tools.lua` against a stubbed `hl`: the 14 tool actions register the keys, extra keys, labels and `submap_universal` flags written out in the test with no warning, perform the command written out in the test through `Ipc`/`Cmd` argv, and their binds can be unbound. Needs lua.
