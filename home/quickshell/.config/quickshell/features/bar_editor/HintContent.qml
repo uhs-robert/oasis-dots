@@ -21,7 +21,6 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         title: root.mode_label
         Text {
-            anchors.horizontalCenter: parent.horizontalCenter
             visible: root.edge_label !== ""
             text: root.edge_label
             color: Style.title_fg
@@ -29,7 +28,6 @@ Row {
             font.pixelSize: Style.fs(-2)
         }
         Text {
-            anchors.horizontalCenter: parent.horizontalCenter
             text: root.state_label
             color: Style.title_fg
             opacity: 0.7
@@ -37,7 +35,6 @@ Row {
             font.pixelSize: Style.fs(-3)
         }
         Text {
-            anchors.horizontalCenter: parent.horizontalCenter
             visible: BarEditor.notice !== ""
             text: BarEditor.notice
             color: Style.accent_color

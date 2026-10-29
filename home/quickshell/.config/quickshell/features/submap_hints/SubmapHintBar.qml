@@ -19,13 +19,21 @@ PanelWindow {
     readonly property var bar_item: root.screen ? BarItems.item_of(root.screen.name, "bar") : null
     readonly property bool on_top: root.bar_item !== null && root.bar_item.position === "bottom"
     readonly property int edge_gap: 24
+    readonly property int gap: 18
+    // The room the plate's contents have on this screen: its width less the edge gaps and the plate's padding.
+    readonly property real room: (root.screen ? root.screen.width : 1920) - 2 * root.edge_gap - 28
+    // The name chip goes above the groups, on one line, when that saves the groups a row: on a narrow screen or with a
+    // large font its column costs more than the line it takes on top.
+    readonly property bool stacked: groups.fill(root.room - root.gap - mode_block.stacked_width).rows > groups.fill(root.room).rows
 
-    screen: {
-        const mon = Hyprland.focusedMonitor;
-        return (mon && Quickshell.screens.find(s => s.name === mon.name)) || null;
-    }
+    // One per screen, shown on the focused one: a single window following the focus by rebinding `screen` is remapped on
+    // every change, which fought the `visible` binding.
+    required property var modelData
+    readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.modelData.name
+
+    screen: root.modelData
     // Hidden while the which-key HUD SHIFT + / opens is up, which lists every key and would sit over it.
-    visible: root.hint !== null && root.screen !== null && !SubmapState.whichkey_open
+    visible: root.hint !== null && root.focused && !SubmapState.whichkey_open
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     anchors.top: root.on_top
@@ -43,15 +51,17 @@ PanelWindow {
         id: plate
         width: plate.implicitWidth
         height: plate.implicitHeight
-        Row {
+        Grid {
             anchors.centerIn: parent
-            spacing: 18
+            columns: root.stacked ? 1 : 2
+            columnSpacing: root.gap
+            rowSpacing: 10
+            verticalItemAlignment: Grid.AlignVCenter
             HintModeBlock {
                 id: mode_block
-                anchors.verticalCenter: parent.verticalCenter
+                inline: root.stacked
                 title: root.hint ? root.hint.name : ""
                 Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
                     visible: root.status_text !== ""
                     text: root.status_text
                     color: Style.title_fg
@@ -61,7 +71,6 @@ PanelWindow {
                 }
                 // Esc and the ? that opens the full which-key list.
                 Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 8
                     Repeater {
                         model: root.hint ? root.hint.footer || [] : []
@@ -88,10 +97,10 @@ PanelWindow {
                 }
             }
             HintGroups {
-                anchors.verticalCenter: parent.verticalCenter
+                id: groups
                 groups: root.hint ? root.hint.groups : []
                 // Wraps whole groups before the plate outgrows the screen.
-                max_width: (root.screen ? root.screen.width : 1920) - 2 * root.edge_gap - 28 - 18 - mode_block.width
+                max_width: root.stacked ? root.room : root.room - root.gap - mode_block.width
             }
         }
     }
