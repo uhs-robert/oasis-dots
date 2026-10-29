@@ -4,9 +4,9 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.features.bar
 
-// The windows the keys of a `targets` submap (Windows, Resize, Move) act on: the focused one, and the selection
-// home/hypr/.config/hypr/lib/actions/selection.lua keeps and sends over `submap_hints selection`. Window places are
-// reread from Hyprland only while such a submap is up.
+// The window selection of the `targets` submaps (Windows, Resize, Move), which
+// home/hypr/.config/hypr/lib/actions/selection.lua keeps and sends over `submap_hints selection`, and where those
+// windows are. Window places are reread from Hyprland only while such a submap is up.
 Singleton {
     id: root
 
@@ -15,7 +15,6 @@ Singleton {
     property var selected: []
     // The serial of the last selection applied: each send is its own qs-ipc process, so an older one can land last.
     property int serial: 0
-    readonly property string focused_address: Hyprland.activeToplevel ? Hyprland.activeToplevel.address : ""
 
     // Stores a selection `{ "serial": n, "windows": ["0x..."] }`; returns "" or why it was refused.
     function set_selection(json) {
@@ -46,19 +45,23 @@ Singleton {
     }
 
     // Windows a screen shows now, each { address, x, y, w, h } in that screen's coordinates: those on its active
-    // workspace, or on its special workspace while that is open over it. Grouped tabs that are not shown are skipped.
+    // workspace, or on its special workspace while that is open over it. Grouped tabs that are not shown are skipped,
+    // and so are the tiled windows a fullscreen or maximized one covers.
     function windows_on(screen) {
         const monitor = screen ? Hyprland.monitorFor(screen) : null;
         if (!monitor || !monitor.activeWorkspace)
             return [];
         const special = monitor.lastIpcObject && monitor.lastIpcObject.specialWorkspace ? monitor.lastIpcObject.specialWorkspace.id : 0;
         const shown_id = special ? special : monitor.activeWorkspace.id;
+        const shown = Hyprland.toplevels.values.filter(t => {
+            const ipc = t.lastIpcObject;
+            return ipc && ipc.at && ipc.size && ipc.workspace && !ipc.hidden && ipc.mapped !== false && ipc.workspace.id === shown_id;
+        });
+        const covering = shown.some(t => t.lastIpcObject.fullscreen > 0);
         const out = [];
-        for (const toplevel of Hyprland.toplevels.values) {
+        for (const toplevel of shown) {
             const ipc = toplevel.lastIpcObject;
-            if (!ipc || !ipc.at || !ipc.size || !ipc.workspace || ipc.hidden || ipc.mapped === false)
-                continue;
-            if (ipc.workspace.id !== shown_id)
+            if (covering && !(ipc.fullscreen > 0) && !ipc.floating)
                 continue;
             out.push({
                 address: toplevel.address,

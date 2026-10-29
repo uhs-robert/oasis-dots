@@ -30,8 +30,20 @@ end
 hl.get_windows = function()
 	return WINDOWS
 end
+-- The palette the selection border takes its colour from. The real module loads the machine's theme and writes state.
+package.loaded["theme"] = { colors = { theme_secondary = "#F0E68C" } }
+-- The border width and colours are the shapes Hyprland 0.57 returns: a number and gradient tables.
+local CONFIG = {
+	["input.repeat_delay"] = 600,
+	["general.border_size"] = 2,
+	["general.col.active_border"] = { colors = { "0xFFFFFFFF" }, angle = 0.0 },
+	["general.col.inactive_border"] = { colors = { "0xFF444444" }, angle = 0.0 },
+}
 hl.get_config = function(name)
-	return name == "input.repeat_delay" and 600 or 25
+	if CONFIG[name] ~= nil then
+		return CONFIG[name]
+	end
+	return 25
 end
 -- The submap Hyprland reports. The dump runs every row as if pressed inside its own submap, so this defaults to Cursor;
 -- the tests of actions called from outside set it to "".
@@ -49,11 +61,15 @@ hl.timer = function(fn, opts)
 	timers[#timers + 1] = timer
 	return timer
 end
--- The handler Submap.define hooks to Hyprland's submap event, called with a submap name to stand in for a raw switch.
+-- The handlers Submap.define hooks to Hyprland's submap event (called with a submap name to stand in for a raw switch)
+-- and to its config event (called to stand in for a reload or the screen frame setting borders).
 local submap_event = nil
+local config_event = nil
 hl.on = function(event, fn)
 	if event == "keybinds.submap" then
 		submap_event = fn
+	elseif event == "config.props_refreshed" then
+		config_event = fn
 	end
 end
 local function enabled_timers()
@@ -220,7 +236,13 @@ active = WINDOWS[1]
 press("Windows", "SPACE")
 active = WINDOWS[2]
 local selected = press("Windows", "SPACE")
-check("select: borders are left alone", count_of(selected, "set_prop") == 0)
+check(
+	"select: a border twice the width, in the theme's secondary colour: " .. text_of(selected),
+	count_of(selected, "window.set_prop({prop=border_size,value=4,window=address:0xb2})") == 1
+		and count_of(selected, "prop=active_border_color,value=rgba(") == 1
+		and count_of(selected, "prop=inactive_border_color,value=rgba(") == 1
+		and count_of(selected, "window.tag({tag=+targets_selected,window=address:0xb2})") == 1
+)
 check(
 	"select: the bar gets both, in the order selected: " .. text_of(selected),
 	count_of(selected, "submap_hints selection") == 1 and count_of(selected, '"windows":["0xa1","0xb2"]') == 1
@@ -238,7 +260,16 @@ check("selected float: toggles both", count_of(floated, "window.float") == 2)
 
 -- Toggling a selected window again takes it out, so the next key acts on the one left.
 active = WINDOWS[2]
-check("deselect: sends the one left", count_of(press("Windows", "SPACE"), '"windows":["0xa1"]') == 1)
+local deselected = press("Windows", "SPACE")
+check("deselect: sends the one left", count_of(deselected, '"windows":["0xa1"]') == 1)
+check(
+	"deselect: the width override is unset and the configured colours put back: " .. text_of(deselected),
+	count_of(deselected, "prop=border_size,value=unset,window=address:0xb2") == 1
+		and count_of(deselected, "prop=active_border_color,value=rgba(ffffffff),window=address:0xb2") == 1
+		and count_of(deselected, "prop=inactive_border_color,value=rgba(444444ff),window=address:0xb2") == 1
+		and count_of(deselected, "tag=-targets_selected,window=address:0xb2") == 1
+		and count_of(deselected, "tag=+targets_border_pinned,window=address:0xb2") == 1
+)
 moved = press("Windows", "SHIFT + H")
 check("deselect: one window left selected", count_of(moved, "window.move({direction=l})") == 1)
 check("deselect: the one left is focused", count_of(moved, "focus({window=address:0xa1})") == 1)
@@ -330,6 +361,33 @@ raw = Stubs.performed
 check("raw switch to reset clears and sends it", count_of(raw, '"windows":[]') == 1)
 Submap.enter("Windows")
 check("after a raw reset the selection is empty", count_of(press("Windows", "SHIFT + H"), "focus(") == 0)
+
+-- The borders follow the config: a selected window gets its border again at a new width, and a window still tagged
+-- selected by the Lua state a reload replaced, or pinned to the old colours, takes the configured ones.
+check("the config event is watched", config_event ~= nil)
+Submap.enter("Windows")
+active = WINDOWS[1]
+press("Windows", "SPACE")
+WINDOWS[2].tags = { "targets_selected" }
+WINDOWS[3].tags = { "targets_border_pinned" }
+CONFIG["general.border_size"] = 5
+Stubs.performed = {}
+config_event()
+local refreshed = Stubs.performed
+check(
+	"config change: the selected window is re-bordered at the new width: " .. text_of(refreshed),
+	count_of(refreshed, "prop=border_size,value=10,window=address:0xa1") == 1
+)
+check(
+	"config change: a stale selected tag loses its border",
+	count_of(refreshed, "prop=border_size,value=unset,window=address:0xb2") == 1
+)
+check(
+	"config change: a pinned window takes the configured colours",
+	count_of(refreshed, "prop=active_border_color,value=rgba(ffffffff),window=address:0xc3") == 1
+)
+WINDOWS[2].tags, WINDOWS[3].tags, CONFIG["general.border_size"] = nil, nil, 2
+Submap.reset()
 
 -- A reload starts from nothing: no duplicate binds or actions, an empty selection.
 local function bind_count()
