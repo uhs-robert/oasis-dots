@@ -183,24 +183,27 @@ local function names_action(action)
   return type(action) == "string" or (type(action) == "table" and type(action[1]) == "string")
 end
 
---- Replace each row that names an action with a plain row; a row whose action does not resolve is dropped.
+--- Replace each row that names an action with a plain row; a row whose action does not resolve is dropped. The second
+--- result is the rows that survived as written, action ids intact, for the hint bar to read.
 --- @param rows table[]
---- @return table[]
+--- @return table[] resolved, table[] kept
 local function resolve_action_rows(rows)
-  local resolved = {}
+  local resolved, kept = {}, {}
   for _, row in ipairs(rows) do
     if not names_action(row[2]) then
       table.insert(resolved, row)
+      table.insert(kept, row)
     else
       local run, label = Act.row_action(row[2])
       if run then
         local desc = row[3]
         if desc == nil then desc = label end
         table.insert(resolved, { row[1], run, desc or nil, row[4] })
+        table.insert(kept, row)
       end
     end
   end
-  return resolved
+  return resolved, kept
 end
 
 --- Invoke an action: calls it directly if it is a function, otherwise dispatches it as a HL dispatcher.
@@ -337,14 +340,14 @@ function Submap.define(spec)
   function M.setup()
     Bind.submap(spec.name, function()
       local catchall = normalize_catchall(spec)
-      local rows = resolve_binds(spec.binds) or {}
-      local raw_binds = apply_individual_oneshots(resolve_action_rows(rows), M.exit)
+      local resolved, bound_rows = resolve_action_rows(resolve_binds(spec.binds) or {})
+      local raw_binds = apply_individual_oneshots(resolved, M.exit)
       local binds = catchall == "reset" and wrap_oneshot(raw_binds, M.exit) or raw_binds
 
       Bind.keys(binds or {})
 
       if spec.hint then
-        SubmapHint.register(spec.name, spec.hint, rows, {
+        SubmapHint.register(spec.name, spec.hint, bound_rows, {
           escape = normalize_escape(spec) ~= false,
           whichkey = not binds_use_key(raw_binds, whichkey_toggle_key),
         })
