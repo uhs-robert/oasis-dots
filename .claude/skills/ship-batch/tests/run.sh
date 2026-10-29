@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ship-batch against a temp repository: base selection, the lock, restows and whole batches against stubs; no GitHub.
+# ship-batch and post-merge against a temp repository: the applied record, the lock, restows and whole batches against
+# stubs; no GitHub.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=../base.sh
@@ -36,29 +37,20 @@ git init -q -b main "$repo"
 g -C "$repo" commit -q --allow-empty -m one
 first=$(git -C "$repo" rev-parse HEAD)
 git -C "$repo" worktree add -q "$root/wt" -b side
-file=$(base_file "$repo")
+file=$(applied_file "$repo")
 
-echo "== fresh run records HEAD"
-out=$(select_base "$repo" 2>"$root/err")
-check "prints HEAD" "[[ $out == '$first' ]]"
-check "records HEAD" "[[ \$(<'$file') == '$first' ]]"
-check "says nothing" "[[ ! -s $root/err ]]"
-check "a worktree sees the same file" "[[ \$(base_file '$root/wt') == '$file' ]]"
-
-echo "== rerun after an unfinished run keeps the old base"
+echo "== the applied record"
+check "no record at first" "[[ -z \$(applied_commit '$repo') ]]"
+record_applied "$repo" "$first"
+check "records the commit" "[[ \$(applied_commit '$repo') == '$first' && \$(<'$file') == '$first' ]]"
+check "a worktree sees the same file" "[[ \$(applied_file '$root/wt') == '$file' ]]"
+check "no temp file is left behind" "[[ ! -e '$file.tmp' ]]"
 g -C "$repo" commit -q --allow-empty -m two
-out=$(select_base "$repo" 2>"$root/err")
-check "prints the recorded commit" "[[ $out == '$first' ]]"
-check "keeps the file" "[[ \$(<'$file') == '$first' ]]"
-check "announces the resume" "grep -q 'resuming from ${first:0:12}' $root/err"
-check "recorded base is an ancestor of main" "base_is_ancestor '$repo' '$first' main"
-
-echo "== finish removes the file"
-finish_base "$repo"
-check "file gone" "[[ ! -e '$file' ]]"
-out=$(select_base "$repo" 2>/dev/null)
-check "next run starts from the new HEAD" "[[ $out == '$(git -C "$repo" rev-parse HEAD)' ]]"
-finish_base "$repo"
+check "the record is kept until written again" "[[ \$(applied_commit '$repo') == '$first' ]]"
+check "a recorded commit is an ancestor of main" "base_is_ancestor '$repo' '$first' main"
+record_applied "$repo" "$(git -C "$repo" rev-parse HEAD)"
+check "writing again replaces it" "[[ \$(applied_commit '$repo') == '$(git -C "$repo" rev-parse HEAD)' ]]"
+rm -f "$file"
 
 echo "== unusable bases"
 g -C "$repo" switch -q --orphan other
@@ -67,7 +59,7 @@ check "a commit main does not descend from is refused" "! base_is_ancestor '$rep
 check "a missing commit is refused" "! base_is_ancestor '$repo' 0000000000000000000000000000000000000001 main"
 
 echo "== one batch at a time on the main checkout"
-lock_file=$(dirname "$file")/ship-batch.lock
+lock_path=$(lock_file "$repo")
 check "the first run takes the lock" "take_lock '$repo' '7 8'"
 check "a second run gives up after the bounded wait" "! (SHIP_BATCH_LOCK_WAIT=1 take_lock '$repo' 9 2>'$root/err')"
 check "naming the holder" "grep -q 'pid $$, since .*, merging 7 8' '$root/err'"
@@ -79,7 +71,7 @@ check "release frees it at once" "(SHIP_BATCH_LOCK_WAIT=1 take_lock '$repo' 9)"
 ) &
 holder=$!
 for _ in $(seq 100); do
-  grep -qs 'merging 5' "$lock_file" && break
+  grep -qs 'merging 5' "$lock_path" && break
   sleep 0.1
 done
 check "a second run waits for the first to finish" "(SHIP_BATCH_LOCK_WAIT=60 take_lock '$repo' 6 2>'$root/err') && grep -q 'merging 5' '$root/err'"
@@ -256,7 +248,7 @@ e2e_setup() {
   git init -q --bare -b main "$e2e/origin.git"
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
-  cp "$here/../ship-batch.sh" "$here/../base.sh" "$here/../live-hypr.sh" "$e2e/main/.claude/skills/ship-batch/"
+  cp "$here/../ship-batch.sh" "$here/../post-merge.sh" "$here/../base.sh" "$here/../live-hypr.sh" "$e2e/main/.claude/skills/ship-batch/"
   # With $e2e/branch_hold present a check waits until that file is removed; STUB_BRANCH_STATUS is its exit status.
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash
@@ -274,6 +266,9 @@ STUB
   g -C "$e2e/main" add -A
   g -C "$e2e/main" commit -q -m base
   git -C "$e2e/main" push -q origin main 2>/dev/null
+  # Post-merge has applied the base commit, as on a machine that has been through a merge before; tests of a first run delete it.
+  e2e_base=$(git -C "$e2e/main" rev-parse HEAD)
+  record_applied "$e2e/main" "$e2e_base"
   export SHIP_LOCK=$e2e/main/.git/ship-batch.lock
   git -C "$e2e/main" worktree add -q -b b1 "$e2e/wt-1"
   echo 1 >"$e2e/wt-1/one"
@@ -298,7 +293,7 @@ check "after every review and branch check" "((\$(line_of 'check wt-2 --changed 
 # The foreground check starts while the batch still holds the lock and releases it moments later; the overlap is benign.
 check "main is not checked after the merge" "! grep -q '^just check' '$SHIP_LOG' && ! grep -q 'check main' '$SHIP_LOG'"
 check "main is pulled" "[[ \$(git -C '$e2e/main' rev-parse HEAD) == \$(git -C '$e2e/main' rev-parse b2) ]]"
-check "nothing is left to resume" "[[ ! -e \$(base_file '$e2e/main') ]]"
+check "post-merge recorded the new main" "[[ \$(applied_commit '$e2e/main') == \$(git -C '$e2e/main' rev-parse HEAD) ]]"
 check "the lock is free" "flock -n '$SHIP_LOCK' true"
 
 e2e_setup
@@ -310,12 +305,12 @@ check "a branch after it is not checked" "! logged 'check wt-2 --changed origin/
 
 e2e_setup
 STUB_GATE_FAIL=1 ship 1 2
-check "a first PR failing its gate merges nothing" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && [[ ! -e \$(base_file '$e2e/main') ]]"
+check "a first PR failing its gate merges nothing" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && [[ \$(applied_commit '$e2e/main') == '$e2e_base' ]]"
 
 e2e_setup
 STUB_BRANCH_STATUS=1 ship 1 2
 check "a failing branch check merges nothing and fails the run" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG' && grep -q 'the check fails on b1 (PR 1)' '$e2e/out'"
-check "and leaves nothing to resume" "[[ ! -e \$(base_file '$e2e/main') ]]"
+check "and records nothing" "[[ \$(applied_commit '$e2e/main') == '$e2e_base' ]]"
 check "the failing check's output is shown" "grep -q 'checking wt-1' '$e2e/out'"
 
 # What would land was checked against an older main: another batch merged in between.
@@ -503,21 +498,21 @@ check "a merge touching none of those paths skips the step" "[[ $? == 0 ]] && ! 
 STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
 check "a failing migration fails the ship" "[[ $? != 0 ]] && grep -q 'migrating failed' '$e2e/out'"
 check "before the restart, so the bar is left alone and no check of main starts" "! logged 'restart-bar stop' && ! grep -q '^just check' '$SHIP_LOG'"
-check "and leaves the base recorded, so a rerun resumes" "[[ -e \$(base_file '$e2e/main') ]]"
+check "and leaves the record where it was, so a rerun applies it" "[[ \$(applied_commit '$e2e/main') == '$e2e_base' ]]"
 check "the lock is free" "flock -n '$SHIP_LOCK' true"
 STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh
 check "a failure with no bar restart fails too" "[[ $? != 0 ]] && grep -q 'migrating failed' '$e2e/out'"
 STUB_MIGRATE_STATUS=1 STUB_MIGRATE_ONLY_DOWN=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
 check "a failure with the old bar stopped relaunches the bar first, then fails" "[[ $? != 0 ]] && grep -q 'the bar was restarted' '$e2e/out' && ((\$(line_of 'migrate bar down') < \$(start_line)))"
-check "and keeps the base so a rerun resumes" "[[ -e \$(base_file '$e2e/main') ]]"
+check "and keeps the record so a rerun applies it" "[[ \$(applied_commit '$e2e/main') == '$e2e_base' ]]"
 check "the bar is stopped, migrated and started through the shared script, without the ship lock's descriptor" "migrate_ship lib/install/migrate.sh home/quickshell/bar && ! logged 'restart-bar fd9 leaked' && logged 'restart-bar stop' && logged 'restart-bar start' && grep -q 'restarted the stowed bar' '$e2e/out'"
 STUB_BAR_STOP_STATUS=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
 stop_rc=$?
 check "a bar that will not stop fails the ship, with nothing migrated again or started" "[[ $stop_rc != 0 && \$(migrate_count) == 1 ]] && ! logged 'migrate bar down' && ! logged 'restart-bar start' && grep -q 'the old bar did not stop' '$e2e/out'"
-check "and keeps the base so a rerun resumes, and frees the lock" "[[ -e \$(base_file '$e2e/main') ]] && flock -n '$SHIP_LOCK' true"
+check "and keeps the record so a rerun applies it, and frees the lock" "[[ \$(applied_commit '$e2e/main') == '$e2e_base' ]] && flock -n '$SHIP_LOCK' true"
 STUB_BAR_START_STATUS=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
 start_rc=$?
-check "a bar that does not start fails the ship and keeps the base" "[[ $start_rc != 0 ]] && grep -q 'the bar did not start' '$e2e/out' && ! grep -q 'restarted the stowed bar' '$e2e/out' && [[ -e \$(base_file '$e2e/main') ]]"
+check "a bar that does not start fails the ship and keeps the record" "[[ $start_rc != 0 ]] && grep -q 'the bar did not start' '$e2e/out' && ! grep -q 'restarted the stowed bar' '$e2e/out' && [[ \$(applied_commit '$e2e/main') == '$e2e_base' ]]"
 
 echo "== a merge that touches the voxcmd crate rebuilds the installed voxcmd"
 build_count() { grep -c '^just voxcmd-build' "$SHIP_LOG"; }
@@ -545,7 +540,7 @@ build_rc=$?
 check "a failing build does not fail the merge" "[[ $build_rc == 0 ]] && grep -q 'merge ' '$SHIP_LOG'"
 check "it warns loudly with the command to rerun" "grep -q 'WARNING: just voxcmd-build failed' '$e2e/out' && grep -q 'run: just voxcmd-build' '$e2e/out'"
 check "and sends a critical notification" "grep -q 'notify-send --urgency=critical.*just voxcmd-build failed' '$SHIP_LOG'"
-check "the rest of the run still happens: base settled, lock free" "[[ ! -e \$(base_file '$e2e/main') ]] && flock -n '$SHIP_LOCK' true"
+check "the rest of the run still happens: main recorded as applied, lock free" "[[ \$(applied_commit '$e2e/main') == \$(git -C '$e2e/main' rev-parse HEAD) ]] && flock -n '$SHIP_LOCK' true"
 # stow -R removes ~/.local/bin/voxcmd when the merge deleted its package file, so a failed build would leave no voxcmd.
 mkdir -p "$fake_home/.local/bin" "$fake_home/rs/bin"
 printf '#!/bin/sh\n' >"$fake_home/rs/bin/voxcmd"
@@ -587,6 +582,122 @@ check "pending is retried, then unlocked restarts" "[[ $? == 0 ]] && logged 'res
 answers_ship weird
 check "an odd answer that never settles gives up after the budget, naming the last answer" "[[ $? != 0 ]] && ! logged 'restart-bar stop' && grep -q \"never settled (last answer 'weird')\" '$e2e/out' && [[ \$(<$e2e/calls) == 15 ]]"
 printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+
+echo "== post-merge applies main since the last success"
+# Each scenario starts from an established machine (e2e_setup records the base commit as applied), commits straight onto
+# main (no merge needed) and runs post-merge.sh the way a hand run does.
+printf '#!/bin/sh\necho unlocked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+pm() { env XDG_RUNTIME_DIR="$owner_run" HOME="$fake_home" PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/post-merge.sh" >"$e2e/out" 2>&1; }
+pm_head() { git -C "$e2e/main" rev-parse HEAD; }
+pm_applied() { applied_commit "$e2e/main"; }
+pm_log_lines() { touch "$SHIP_LOG" && wc -l <"$SHIP_LOG"; }
+pm_commit() {
+  local f
+  for f; do
+    mkdir -p "$(dirname "$e2e/main/$f")"
+    echo "$RANDOM" >"$e2e/main/$f"
+  done
+  g -C "$e2e/main" add -A
+  g -C "$e2e/main" commit -q -m "pm $*"
+}
+
+e2e_setup
+echo "qs -n" >"$STUB_QS_PROCS"
+pm_commit lib/install/migrate.sh home/quickshell/bar
+pm
+check "success: the run succeeds" "[[ $? == 0 ]] || { cat '$e2e/out'; false; }"
+check "it applies the changes: migrations around the bar restart" "[[ \$(migrate_count) == 2 ]] && logged 'restart-bar stop' && logged 'restart-bar start'"
+check "and records main as applied" "[[ \$(pm_applied) == \$(pm_head) ]]"
+check "under the lock, with no descriptor leaked to a step" "logged '$migrate_step' && ! grep -q 'fd9 leaked' '$SHIP_LOG' && flock -n '$SHIP_LOCK' true"
+lines_before=$(pm_log_lines)
+pm
+check "a rerun with nothing new does nothing" "[[ $? == 0 && \$(pm_log_lines) == $lines_before ]] && grep -q 'already applied' '$e2e/out'"
+
+e2e_setup
+echo "qs -n" >"$STUB_QS_PROCS"
+pm_commit lib/install/migrate.sh
+STUB_MIGRATE_STATUS=1 pm
+check "failure: a failing step fails the run" "[[ $? != 0 ]] && grep -q 'migrating failed; fix it and rerun: just post-merge' '$e2e/out'"
+check "and leaves the record where it was" "[[ \$(pm_applied) == '$e2e_base' ]]"
+pm_commit home/hypr/cfg
+check "(nothing reloaded Hyprland yet, as the failed step came first)" "! logged 'hyprctl live reload'"
+pm
+check "a rerun applies everything since the record, the earlier commit's changes too" "[[ $? == 0 ]] && logged 'hyprctl live reload' && logged '$migrate_step'"
+check "and records main" "[[ \$(pm_applied) == \$(pm_head) ]]"
+
+e2e_setup
+echo "qs -n" >"$STUB_QS_PROCS"
+printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+pm_commit home/quickshell/bar
+pm
+check "locked screen: the run fails without restarting the bar" "[[ $? != 0 ]] && ! logged 'restart-bar stop' && grep -q 'screen is locked' '$e2e/out'"
+check "and says main is not recorded as applied, leaving the record alone" "grep -q 'not recorded as applied' '$e2e/out' && [[ \$(pm_applied) == '$e2e_base' ]]"
+printf '#!/bin/sh\necho unlocked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
+pm
+check "once unlocked the next run restarts the bar and records main" "[[ $? == 0 ]] && logged 'restart-bar stop' && logged 'restart-bar start' && [[ \$(pm_applied) == \$(pm_head) ]]"
+check "without leaking the lock descriptor to the bar scripts" "! grep -q 'fd9 leaked' '$SHIP_LOG'"
+
+e2e_setup
+echo "qs -n" >"$STUB_QS_PROCS"
+pm_commit home/hypr/cfg lib/install/migrate.sh
+rm -f "$(applied_file "$e2e/main")"
+pm
+check "first run: with no record everything applies once" "[[ $? == 0 ]] && grep -q 'no earlier run is recorded' '$e2e/out' && logged 'hyprctl live reload' && logged '$migrate_step'"
+check "and main is recorded" "[[ \$(pm_applied) == \$(pm_head) ]]"
+lines_before=$(pm_log_lines)
+pm
+check "a second run does nothing" "[[ $? == 0 && \$(pm_log_lines) == $lines_before ]]"
+
+e2e_setup
+echo unrelated >"$e2e/main/README.md"
+g -C "$e2e/main" add -A
+g -C "$e2e/main" commit -q -m docs
+record_applied "$e2e/main" 0000000000000000000000000000000000000001
+pm_commit home/hypr/cfg
+pm
+check "a record that is not a commit of main applies everything" "[[ $? == 0 ]] && grep -q 'is not an ancestor of main; applying everything' '$e2e/out' && logged 'hyprctl live reload' && [[ \$(pm_applied) == \$(pm_head) ]]"
+
+e2e_setup
+pm_commit home/hypr/cfg
+(
+  take_lock "$e2e/main" 'ship 9'
+  sleep 2
+) &
+holder=$!
+for _ in $(seq 100); do
+  grep -qs 'ship 9' "$SHIP_LOCK" && break
+  sleep 0.1
+done
+lines_before=$(pm_log_lines)
+start_s=$SECONDS
+SHIP_BATCH_LOCK_WAIT=1 pm
+check "lock: a hand run that cannot get the ship lock in time gives up, naming the holder" "[[ $? != 0 ]] && grep -q 'ship 9' '$e2e/out' && grep -q 'gave up waiting' '$e2e/out'"
+check "touching nothing and recording nothing" "[[ \$(pm_log_lines) == $lines_before && \$(pm_applied) == '$e2e_base' ]]"
+SHIP_BATCH_LOCK_WAIT=60 pm
+check "a hand run waits for the ship lock, then applies" "[[ $? == 0 ]] && grep -q 'waiting up to' '$e2e/out' && logged 'hyprctl live reload' && [[ \$(pm_applied) == \$(pm_head) ]]"
+wait "$holder"
+
+echo "== ship-batch hands the lock to post-merge"
+SHIP_BATCH_LOCK_WAIT=3 migrate_ship lib/install/migrate.sh
+check "ship-batch releases its lock before calling post-merge: no deadlock, no waiting" "[[ $? == 0 ]] && ! grep -q 'another ship-batch holds' '$e2e/out' && logged '$migrate_step'"
+check "post-merge runs its steps under the lock itself, and records main" "[[ \$(pm_applied) == \$(pm_head) ]] && flock -n '$SHIP_LOCK' true && ! grep -q 'fd9 leaked' '$SHIP_LOG'"
+STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh
+check "a failing post-merge fails the ship after the merge, naming the recovery" "[[ $? != 0 ]] && grep -q 'post-merge failed.*just post-merge' '$e2e/out' && [[ \$(git -C '$e2e/main' rev-parse HEAD) == \$(git -C '$e2e/main' rev-parse b1) ]]"
+check "and the status listing still runs, the record is kept" "[[ \$(pm_applied) == '$e2e_base' ]] && grep -q 'main is at' '$e2e/out'"
+
+echo "== ship-batch with no PR numbers"
+e2e_setup
+echo "qs -n" >"$STUB_QS_PROCS"
+rm -rf "$e2e/other"
+git clone -q "$e2e/origin.git" "$e2e/other" 2>/dev/null
+mkdir -p "$e2e/other/lib/install"
+echo changed >"$e2e/other/lib/install/migrate.sh"
+g -C "$e2e/other" add -A
+g -C "$e2e/other" commit -q -m "merged by hand"
+git -C "$e2e/other" push -q origin main 2>/dev/null
+env XDG_RUNTIME_DIR="$owner_run" HOME="$fake_home" PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" >"$e2e/out" 2>&1
+check "it pulls main and applies it through post-merge, needing no marker" "[[ $? == 0 ]] && [[ \$(pm_head) == \$(git -C '$e2e/origin.git' rev-parse main) ]] && logged '$migrate_step' && [[ \$(pm_applied) == \$(pm_head) ]] && ! grep -q 'resuming' '$e2e/out'"
+check "and merges nothing" "! grep -q '^merge' '$SHIP_LOG'"
 
 echo "== a batch run from a worktree the merge removes"
 e2e_setup

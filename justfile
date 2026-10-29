@@ -107,6 +107,10 @@ shaders:
 check:
     sh ./lib/check.sh
 
+# Apply main to this machine after it changed (ship-batch calls it; run it after a PR merged on GitHub or a git pull, and to recover from a failed step): restow, reload units, rebuild voxcmd, migrate, reload Hyprland, sync the greeter, restart the bar, for what changed since the last successful run. Waits for a running ship-batch; skips the bar restart and exits non-zero while the screen is locked, so rerun it once unlocked
+post-merge:
+    bash .claude/skills/ship-batch/post-merge.sh
+
 # Time how long voxcmd takes to route the benchmark phrases in the sandbox (--runs N, --live, --all); see home/voxcmd/tests/bench.sh
 voxcmd-bench *ARGS:
     home/voxcmd/tests/bench.sh {{ARGS}}

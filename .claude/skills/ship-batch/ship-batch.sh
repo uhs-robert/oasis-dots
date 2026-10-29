@@ -1,40 +1,21 @@
 #!/usr/bin/env bash
-# Usage: ship-batch.sh [--skip-review-gate] [--request-review] [<pr>...]; merges the PRs in order, then updates main and restarts what
-# changed. Each PR's branch is checked once, while its reviewers are awaited; main is not checked after the merge (run
-# `just check` there on demand). --skip-review-gate skips the reviewers' states (no waiting, no review requests) for every
-# PR, only when the owner waived them or named another reviewer; unresolved review threads still block, and each PR's
-# branch check still runs. --request-review lets the review wait comment `@codex review` on a PR whose head changed past
-# the small-fix limit since its review; only for a material fix, otherwise the gate reports the problem and the caller decides.
+# Usage: ship-batch.sh [--skip-review-gate] [--request-review] [<pr>...]; merges the PRs in order, pulls main and runs
+# post-merge.sh to apply it. With no PR numbers it only pulls and runs post-merge.sh. Each PR's branch is checked once,
+# while its reviewers are awaited; main is not checked after the merge (run `just check` there on demand).
+# --skip-review-gate skips the reviewers' states (no waiting, no review requests) for every PR, only when the owner waived
+# them or named another reviewer; unresolved review threads still block, and each PR's branch check still runs.
+# --request-review lets the review wait comment `@codex review` on a PR whose head changed past the small-fix limit since
+# its review; only for a material fix, otherwise the gate reports the problem and the caller decides.
 set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
-ipc="$HOME/.config/hypr/scripts/qs-ipc"
-bars="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/test-bars"
 script_dir=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=base.sh
 source "$script_dir/base.sh"
-# shellcheck source=live-hypr.sh
-source "$(dirname "$0")/live-hypr.sh"
 
 die() {
   echo "ship-batch: $*" >&2
   exit 1
-}
-
-# Agent shells often carry a stale or missing signature, and a caller cannot prefix one without the command leaving the
-# owner's allow rule, so the first hyprctl use finds the live instance itself. A valid signature in the environment is kept.
-hypr_checked=false
-use_live_hypr() {
-  $hypr_checked && return
-  # Inside a shadow its own signature answers, so the fast path is skipped: reloading it and killing the owner's qs would split.
-  if in_shadow_runtime || ! timeout 3 hyprctl version 9>&- >/dev/null 2>&1; then
-    local live
-    live=$(find_live_hypr_signature) || die "hyprctl cannot reach Hyprland (no instance answers 'hyprctl version'); $1"
-    export HYPRLAND_INSTANCE_SIGNATURE=$live XDG_RUNTIME_DIR
-    XDG_RUNTIME_DIR=$(owner_runtime_dir)
-    echo "ship-batch: HYPRLAND_INSTANCE_SIGNATURE was unset or stale; using the live instance $live" >&2
-  fi
-  hypr_checked=true
 }
 
 skip_gate=()
@@ -120,9 +101,8 @@ if [[ -n $not_ready ]]; then
   echo "ship-batch: $not_ready; merging only ${ready[*]}, in order"
 fi
 
-# Only what must happen one batch at a time on the main checkout runs under the lock: the merge, the pull, and the
-# restows, reloads and restarts that follow it. Commands below that can leave a daemon behind run with fd 9 closed so it
-# cannot hold the lock after this run.
+# Only the merge and the pull run under the lock (fd 9, closed for commands that could leave a daemon behind). It is
+# released before post-merge.sh, which takes it itself.
 take_lock "$repo" "${ready[*]}" || die "gave up waiting for the ship-batch running in this repository"
 # Each branch was checked against the main of its own time. Another batch may have merged since, and then what would land
 # was never checked, so a branch that no longer contains origin/main is not merged (nor are the ones after it). The same
@@ -146,100 +126,16 @@ if [[ -n $stale ]]; then
   echo "ship-batch: $stale; merging only ${ready[*]}"
   not_ready="${not_ready:+$not_ready; }$stale"
 fi
-before=$(select_base "$repo")
 # The reviews were waited for above, so the gate here only confirms them and never waits under the lock.
 ((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${skip_gate[@]}" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only
-after=$(git -C "$repo" rev-parse HEAD)
-# A recorded base that main no longer descends from (rewritten history, pruned commit) vouches for nothing: treat every
-# file as changed so no reload or restart is skipped.
-if ! base_is_ancestor "$repo" "$before" "$after"; then
-  echo "ship-batch: ${before:0:12} is not an ancestor of main; reloading everything"
-  before=$(git -C "$repo" hash-object -t tree /dev/null)
-fi
-
-qs_dir=home/quickshell/.config/quickshell
-greeter_paths="^($(greeter_qs_regex "$repo" "$qs_dir")|system/etc/greetd/(quickshell/|hyprland\.lua$)|system/usr/local/bin/qs-greeter$|lib/(install/greeter|common/greeter-files)\.sh$|lib/install/greeter-monitors\.lua$|justfile$)"
-changed=$(git -C "$repo" diff --name-only "$before" "$after")
-if grep -Eq "$greeter_paths" <<<"$changed"; then
-  if sudo -n true 2>/dev/null; then
-    (cd "$repo" && just greeter-sync --install) 9>&- || die "greeter-sync failed"
-    echo "ship-batch: synced the greeter"
-  else
-    echo "ship-batch: greeter files changed; run: just greeter-sync --install"
-  fi
-fi
-other_greetd=$(grep -E '^system/etc/greetd/' <<<"$changed" | grep -Ev "$greeter_paths" | paste -sd' ' || true)
-[[ -z $other_greetd ]] || echo "ship-batch: $other_greetd changed; deploy with: just system-apply"
-
-# Before the reloads below, which may load a script or unit the merge added.
-while IFS= read -r package; do
-  (cd "$repo" && just restow "$package") 9>&- || die "restowing $package failed; run: just restow $package"
-  echo "ship-batch: restowed $package (files added or removed)"
-done < <(packages_to_restow "$repo" "$before" "$after")
-if grep -q '^home/systemd/\.config/systemd/user/' <<<"$changed"; then
-  systemctl --user daemon-reload 9>&- || die "systemctl --user daemon-reload failed"
-  echo "ship-batch: reloaded the user units"
-fi
-# After the restows (the rebuild reads the stowed checkout) and before any restart, a warning in the run's output rather
-# than a failure: the merge has landed either way.
-rebuild_crates "$repo" "$changed"
-# A pull that only edits files restows nothing, so a migration the merge added or changed would never run on its own. Run
-# before the restart and, when the bar is restarted, again with the old bar gone: a migration that deletes an old file
-# waits for a run with no bar up (see lib/install/migrate.sh), and the relaunched bar would count as one.
-migrate_paths='^(lib/install/(migrate|load)\.sh|install\.sh|justfile)$'
-run_migrations=false
-grep -Eq "$migrate_paths" <<<"$changed" && run_migrations=true
-migrate_failure='migrating failed; fix it and rerun ship-batch (a rerun resumes), or run: just migrate-quickshell-state'
-migrate() {
-  $run_migrations || return 0
-  (cd "$repo" && just migrate-quickshell-state) 9>&- || return 1
-  echo "ship-batch: ran the install migrations ($1)"
-}
-migrate "before the bar restart" || die "$migrate_failure"
-if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/hypr; then
-  use_live_hypr "reload Hyprland by hand: hyprctl reload"
-  hyprctl reload 9>&- >/dev/null || die "hyprctl reload failed (exit $?); reload Hyprland by hand: hyprctl reload"
-  errors=$(hyprctl configerrors 9>&-) || die "hyprctl configerrors failed; check the config by hand: hyprctl configerrors"
-  [[ -z ${errors//[[:space:]]/} ]] || die "Hyprland config errors after reload: $errors"
-fi
-
-if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after" -- home/quickshell; then
-  if pgrep -af "^qs .*-p $bars/" >/dev/null; then
-    echo "ship-batch: a test bar is running; restore it with the owner-test-bar skill"
-  else
-    # The pull just changed the bar's files, so the running bar is often mid-reload and answers nothing, or "Not ready to
-    # accept queries yet.", or something else odd, for a few seconds. Only "unlocked" or an explicit locked answer
-    # ("secure"; see Lock.state()) settles it: any other answer, "pending" while a lock engages included, is retried.
-    for _ in $(seq 15); do
-      state=$(timeout 3 "$ipc" call lock state 9>&- 2>/dev/null || true)
-      [[ $state == unlocked || $state == secure ]] && break
-      sleep 1
-    done
-    # The last answer is named so a false "locked" or a bar that never settled can be diagnosed afterwards.
-    case $state in
-    unlocked) ;;
-    secure) die "Quickshell changed but the screen is locked (lock state '$state'); restart the bar once unlocked" ;;
-    *) die "Quickshell changed but the lock state never settled (last answer '${state:-none}'); restart the bar once unlocked" ;;
-    esac
-    use_live_hypr "restart the bar by hand"
-    # restart-bar.sh stops the bar (SIGKILL after its grace, failing when the bar survives that) and starts it again; its
-    # processes run without the ship lock's descriptor so none can hold the lock after this run.
-    restart_bar="$HOME/.config/hypr/scripts/restart-bar.sh"
-    "$restart_bar" stop 9>&- || die "the old bar did not stop, so nothing was started; fix it and rerun ship-batch (a rerun resumes)"
-    # A failure here still starts the bar first: dying with the old one stopped would leave the owner with none.
-    migrate_status=0
-    migrate "after stopping the bar" || migrate_status=1
-    "$restart_bar" start 9>&- || die "the bar did not start; read 'qs log' and start it by hand: $restart_bar start"
-    ((migrate_status == 0)) || die "$migrate_failure (the bar was restarted)"
-    echo "ship-batch: restarted the stowed bar"
-  fi
-fi
-
-# Only now: a failure or interruption anywhere above keeps the base, so a rerun repeats the reloads and restarts.
-finish_base "$repo"
+# The lock is released first: post-merge takes it itself, so keeping it here would deadlock. With no PR numbers this is a
+# plain pull plus post-merge. The script runs from the main checkout, which now holds the merged version.
 release_lock
+post_merge_status=0
+"$repo/.claude/skills/ship-batch/post-merge.sh" || post_merge_status=$?
 
 echo "ship-batch: main is at $(git -C "$repo" log --oneline -1)"
 (cd "$repo" && "$HOME/.claude/skills/merge-prs/status.sh") || true
+((post_merge_status == 0)) || die "post-merge failed (exit $post_merge_status); main is merged, fix what it reported and run: just post-merge"
 [[ -z $not_ready ]] || die "$not_ready; rerun ship-batch with it and the PRs after it once that is fixed"
