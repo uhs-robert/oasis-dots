@@ -27,18 +27,6 @@
           },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-before-commit.sh",
-            "timeout": 150,
-            "statusMessage": "Linting the files in the commit"
-          },
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-before-pr.sh",
-            "timeout": 30,
-            "statusMessage": "Looking up the branch's check pass"
-          },
-          {
-            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-in-background.sh",
             "timeout": 10
           }

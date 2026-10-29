@@ -32,8 +32,8 @@ Before editing an area, read its README's code map: the `## Code` section of a f
 ```bash
 just                  # list recipes
 just check            # full validation (run before committing)
-lib/check.sh --changed origin/main   # only the steps the changed files can affect, skipping those already passed for the same files
-lib/check.sh --only voxcmd-click,voxcmd-rust   # just those steps; their passes count for the final --changed run
+lib/check.sh --changed origin/main   # only the steps the changed files can affect; every run reruns its steps
+lib/check.sh --only voxcmd-click,voxcmd-rust   # just those steps
 just lint             # shellcheck install.sh uninstall.sh, lib/check.sh, lib/{common,install,check}/**/*.sh, demo/*.sh and the Quickshell audio importers
 just shaders          # rebuild every Quickshell .frag.qsb from its .frag (qsb); the shaders check step fails on a stale one
 just stow <pkg>       # symlink one package into ~

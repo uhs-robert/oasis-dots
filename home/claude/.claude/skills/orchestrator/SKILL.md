@@ -62,7 +62,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements, through the piece's plan draft.
    - Tell it to run only targeted tests, each under 10 minutes, then commit, push and report in the same turn, leaving nothing running.
-   - Run the final validation yourself as one background Bash call in the worktree: `lib/check.sh --changed <merge-base>` when the repo has one. A failure goes back to the agent per step 8.
+   - Where the repo's merge step runs the check, don't run it yourself and don't make the agent run it; otherwise run the final validation yourself as one background Bash call in the worktree (for example `lib/check.sh --changed <merge-base>` when the repo has one). A failure goes back to the agent per step 8.
    - Tell it to finish with the `hierarchical-documentation` pass on its diff, then commit with the `commit-messages` skill; neither runs unless the brief names it.
    - For concurrency or lifecycle work (signals, locks, processes that hand over or race), name those risks in the brief and require tests that drive each risky path before review. Review rounds otherwise find these bugs one at a time.
    - Require a report of changes, validation, deviations from the plan with rationale, and remaining concerns.
@@ -88,7 +88,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Tell the fixer to make the smallest change that fixes the finding, with a test only where step 5 calls for one. If the fix needs a new mechanism, it reports that before building it.
    - Re-run the external review only for a material fix (a new mechanism, new concurrency or lifecycle code, or a rewrite of the reviewed logic); a targeted fix gets a reviewer agent's diff review (step 6) and any test step 5 calls for.
 
-9. Final validation: your check passed on the final head, the tree is clean, and a reviewer agent confirms the diff has nothing unrelated.
+9. Final validation: the tree is clean, your check passed on the final head (unless the repo's merge step runs the check), and a reviewer agent confirms the diff has nothing unrelated.
 
 10. Create a PR against the appropriate base branch, or push to the existing PR's branch when working on one.
     Reference and close the issue, if one exists.
