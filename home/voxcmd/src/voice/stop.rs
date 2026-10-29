@@ -4,7 +4,8 @@
 //! discarded, whatever the watcher is doing. Then every running sequence is flagged, the waiting ask is cancelled, and
 //! whatever voxtype still records or transcribes is cancelled. A one-recording mode's recording (type mode's
 //! dictation) is the exception: it is stopped and typed, and its watcher ends the session
-//! (`session::dictation::stop_recording_locked`).
+//! (`session::dictation::stop_recording_locked`). A picker the bar published is cancelled only while a reply recording
+//! is attached to it: one opened by key is the user's, not voice activity.
 use super::{voxtype_record, voxtype_state};
 use crate::ask;
 use crate::debug::debug;
@@ -12,6 +13,7 @@ use crate::exit::CliError;
 use crate::paths;
 use crate::route::sequence_run::process_start_time;
 use crate::session::{self, SessionLock, dictation, text_of};
+use std::os::unix::ffi::OsStrExt;
 
 pub fn run() -> Result<(), CliError> {
     if dictation::stop_recording_locked(&SessionLock::take()) {
@@ -26,7 +28,17 @@ pub fn run() -> Result<(), CliError> {
             .open(paths::discard_flag(pid));
     }
     if let Some(pending) = ask::read_pending() {
-        ask::write_answer(&pending.fifo, "");
+        match (pending.owner, &pending.fifo) {
+            (ask::Owner::Ask, Some(fifo)) => {
+                ask::write_answer(fifo, "");
+            }
+            (ask::Owner::Bar, _) if reply_watcher_running() => {
+                let token = pending.token.unwrap_or_default();
+                debug("stop: cancelling the bar's picker, which a reply recording was answering");
+                ask::qs_ipc_call(&["picker".as_ref(), "cancel".as_ref(), token.as_ref()]);
+            }
+            _ => {}
+        }
     }
     // Under the lock a listen holds while it starts a recording, so a voice key pressed just before this is either
     // cancelled here or starts after it, never between the look and the cancel.
@@ -37,6 +49,41 @@ pub fn run() -> Result<(), CliError> {
         voxtype_record("cancel", &[]);
     }
     Ok(())
+}
+
+/// A listen's watcher that will hand its transcript to `reply` is running for this user's voxcmd: the pending pick has
+/// a reply recording attached. The watcher outlives the recording while it hands the answer over, which also counts.
+/// Matched by `XDG_RUNTIME_DIR` too, so a sandbox or a parallel suite's watcher is not taken for this one's.
+fn reply_watcher_running() -> bool {
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return false;
+    };
+    let runtime_dir = paths::user_runtime_dir();
+    entries.flatten().any(|entry| {
+        let proc_dir = entry.path();
+        std::fs::read(proc_dir.join("cmdline")).is_ok_and(|cmdline| is_reply_watcher(&cmdline))
+            && std::fs::read(proc_dir.join("environ")).is_ok_and(|environ| runtime_dir_of(&environ) == runtime_dir)
+    })
+}
+
+/// `<voxcmd> internal watch reply ...`, as `listen` starts it.
+fn is_reply_watcher(cmdline: &[u8]) -> bool {
+    let mut args = cmdline.split(|&byte| byte == 0);
+    let program = args.next().unwrap_or_default();
+    let name = program.rsplit(|&byte| byte == b'/').next().unwrap_or_default();
+    name.starts_with(b"voxcmd") && args.take(3).eq([&b"internal"[..], b"watch", b"reply"])
+}
+
+/// The `XDG_RUNTIME_DIR` a process started with, `/tmp` when unset or empty, as `paths::user_runtime_dir` reads it.
+fn runtime_dir_of(environ: &[u8]) -> std::path::PathBuf {
+    let value = environ
+        .split(|&byte| byte == 0)
+        .find_map(|entry| entry.strip_prefix(b"XDG_RUNTIME_DIR="))
+        .filter(|value| !value.is_empty());
+    value.map_or_else(
+        || "/tmp".into(),
+        |value| std::path::PathBuf::from(std::ffi::OsStr::from_bytes(value)),
+    )
 }
 
 /// The pid of each sequence running now. A record whose process is gone, or is another one under a reused pid (its

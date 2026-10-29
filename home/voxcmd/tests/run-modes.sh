@@ -781,6 +781,20 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 check "a pending picker does not take dictation: it stays with type mode, which refuses it" "session_gone && toast_has 'voxcmd: not typed a voxcmd picker or card is open' && ! grep -q 'goes to reply' '$debug_log' && grep -q 'a transcript of 13 characters goes to session_turn' '$debug_log' && ! grep -q '^wtype' '$log'"
 kill "$waiter_pid" 2>/dev/null
 wait "$waiter_pid" 2>/dev/null
+# Nor to a picker the bar published for itself: it has no FIFO, and its pid is a live bar (a program named qs).
+cp /bin/sleep "$root/qs"
+"$root/qs" 60 &
+bar_pid=$!
+jq -n -c --argjson pid "$bar_pid" \
+  '{pid: $pid, owner: "bar", token: "k1", label: "Session", choices: [{id: "Work", label: "Work"}], expansions: {}, view_key: ""}' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+sess_start "UNTIL_STOP Secret words."
+owner_is_listening
+sess_voxcmd_env listen
+sess_wait
+rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+check "a picker the bar published does not take dictation either: type mode refuses it" "session_gone && toast_has 'voxcmd: not typed a voxcmd picker or card is open' && ! grep -q 'goes to reply' '$debug_log' && grep -q 'a transcript of 13 characters goes to session_turn' '$debug_log' && ! grep -q '^wtype' '$log'"
+kill "$bar_pid" 2>/dev/null
+wait "$bar_pid" 2>/dev/null
 
 # Dictation stays out of the logs and the session file.
 sess_start "UNTIL_STOP Hello private words. Cortana, stop."

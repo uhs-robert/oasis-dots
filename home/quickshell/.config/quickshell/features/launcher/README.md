@@ -18,9 +18,13 @@ Both open in NORMAL by default; set each picker's start mode in Settings > Input
 
 An agent card shows the session's title, agent, state badge, short directory and last line of its tmux pane (or, outside tmux, its kitty window), refreshed every second; the preview shows the pane's bottom lines, shrunk to fit the pane's width down to a readable size; a pane wider than that (on an ultrawide) wraps its long lines, and cuts its border lines at the edge. A kitty window needs `allow_remote_control` and `listen_on` in kitty.conf. The badge is working (outlined, primary), waiting (filled, warning), done (filled, green) or idle (outlined, dim). Under it a bar and tokens ("118k / 200k") show how full the context is: green below 50%, yellow from 50%, red from 80%; none when the session has no context data. A clipboard card shows an image thumbnail or the first three lines of text.
 
+## Voice answers
+
+The voice key answers an open choices picker however it opened: a number, a choice's name, "expand two" or "cancel". The keys work as before. While the screen is locked, a voice answer is refused. `PickerVoice` publishes the open picker for voxcmd and takes the answers back through `picker answer`, `expand` and `cancel`; the file and the calls are in the voxcmd README under [Pickers the bar publishes](../../../../../voxcmd/.config/voxcmd/README.md#pickers-the-bar-publishes). Only the choices picker opts in (`PickerProvider.voice_answerable`). The fuzzy pickers and the rofi fallback stay keyboard only.
+
 ## Code
 
-- `Picker.qml` is the search box and list; `Pickers.qml` registers the providers and `PickerIpc.qml` is the IPC handler. A provider subclasses `PickerProvider.qml` (see "Extending" in the [Quickshell README](../../README.md)).
+- `Picker.qml` is the search box and list; `Pickers.qml` registers the providers and `PickerIpc.qml` is the IPC handler. `PickerVoice.qml` publishes the open voice-answerable picker for voxcmd and checks each voice answer's token. A provider subclasses `PickerProvider.qml` (see "Extending" in the [Quickshell README](../../README.md)).
 - Providers: `AppsProvider`, `DirsProvider`, `EmojiProvider`, `ClipboardProvider`, `KeybindsProvider`, `ChoicesProvider`, `AgentsProvider`. Agent session parsing is `AgentSessions.js`; its card pieces are `AgentStateBadge.qml`, `AgentContextBar.qml` and `AnsiText.js`.
 - `BrowseLayout.js` holds the preview-size and grid maths for the browse layout.
 - `StartMode.js` and `TypingSettings.qml` hold the per-picker start mode and its Settings > Input > Typing rows.

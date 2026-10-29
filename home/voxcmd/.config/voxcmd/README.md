@@ -800,12 +800,13 @@ Expansions are `{key: {title, choices}}`, and a choice with `expand: key` opens 
 
 ### Answering by voice
 
-Press the Voice Command key while a voxcmd picker is open and speak a reply; the recording stops itself after it, like a command, but on a pause after as little as 0.1 s of speech (`VOXCMD_REPLY_MIN_SPEECH_SECS`), since a reply is often one short word. It can be:
+Press the Voice Command key while a picker is open and speak a reply. This works for a voxcmd picker and for any choices picker the bar shows, also one opened from Hyprland or by key, such as "open a session" ([Pickers the bar publishes](#pickers-the-bar-publishes)). The recording stops itself after it, like a command, but on a pause after as little as 0.1 s of speech (`VOXCMD_REPLY_MIN_SPEECH_SECS`), since a reply is often one short word. It can be:
 
 - a choice's label: the whole label, else the choice sharing the most words with the reply, else a substring, else fuzzy; it must single out one choice. Words compare by stem and the reply's other words do not count, so "locked", "lock it" and "lock computer" all pick `Keybinds: Lock (System)`, which needs no "system";
 - an ordinal: `two`, `the second one`, `number 3`, `first`, `twelfth`, `twenty first`, `3rd`, `last` (a wrong suffix such as `2th` is no ordinal);
 - a direction, for choices drawn on screen ([click hints](#click-hints)): `the top one`, `the bottom one`, `the left one`, `the right one` (also `topmost`, `lower`, ...). It goes by the boxes' edges, so a column of items lined up on the left has one leftmost; boxes whose edges are within half a text height tie, and a top or bottom tie goes to the leftmost, a left or right tie to the topmost. The numbers run in reading order, so `first` and `last` are the first and last in that order;
 - with a single choice, `yes`, `yeah`, `sure`, `that one` or `do it` to take it, and `no` or `nope` to cancel;
+- `expand` and an ordinal (`expand two`), which opens that choice's list as Tab does. The ordinal counts the top-level choices;
 - `cancel`, `never mind` or `none`, which cancel like Esc.
 
 A picker with a single choice, which a [weak match](#word-matching) opens, asked about a command that came by voice (from `voxcmd listen`) listens for the reply without the key: voxcmd passes `--listen`, and `voxcmd ask pick` starts the reply recording (`voxcmd listen --start-only`, only while voxtype is idle) just before the picker shows. It stops itself like any reply, and silence cancels it and leaves the picker waiting for a key or the Voice Command key. Answering by key, click or timeout cancels it if it is still recording or transcribing, as the [confirm card](#confirm) does, and leaves alone any recording started after it.
@@ -815,6 +816,18 @@ A recording started while a picker waits is always a reply, so `cancel` there cl
 The reply picks as if the choice had been clicked and closes the picker. A reply that matches nothing or several choices leaves the picker open and sends a notification; press the key again to retry.
 
 While it waits, `voxcmd ask pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices, expansions, view}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored. The reply goes into the picker's result FIFO, so `voxcmd ask pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
+
+#### Pickers the bar publishes
+
+While a choices picker is open and no voxcmd ask owns `pending-pick.json`, the bar writes that file itself, in one step: `{pid, owner: "bar", token, label, choices: [{id, label, expand}], expansions: {key: {title, choices: [{id, label}]}}, view_key}`. It has no `fifo`. `pid` is the bar's, and voxcmd trusts the file only while that pid runs `qs` or `quickshell`. `token` changes on every open, so an answer read from an earlier picker is refused. `view_key` is the expansion on screen, "" for the top level, and the bar rewrites the file when Tab changes it. The bar removes the file when the picker closes, and at start-up removes one it left under the same pid before a reload. While a voxcmd ask owns the file, the bar leaves it alone: the ask answers through its FIFO and shows its picker through the bar anyway.
+
+voxcmd answers such a picker over the bar's IPC, and each call returns `ok`, `stale` (the token is not the open picker's, or what it names is no longer shown) or `locked` (the screen is locked):
+
+- `qs-ipc call picker answer <token> <text>` picks the shown choice `text` names, as a click does. Inside an expansion, `text` is `<view_key><TAB><label>`;
+- `qs-ipc call picker expand <index> <token>` opens the list under the 1-based top-level choice, as Tab does, and returns `unknown` when it has none. An empty token expands whatever choices picker is open, which is how "expand two" reaches a voxcmd ask's picker;
+- `qs-ipc call picker cancel <token>` closes it as Esc does.
+
+`stale`, `locked` or a bar that is gone reads as "No picker is waiting for a reply". Stop Voice closes a bar picker only while a reply recording is attached to it, so a picker opened by key stays open. `voxcmd util pending-pick` prints a bar entry too, so a hook sees it.
 
 Hyprland still runs binds while the Quickshell picker or confirm card has the keyboard. rofi asks the compositor to inhibit shortcuts while it is open, and Hyprland honours that unless `binds:disable_keybind_grabbing` is set, so with the rofi fallback the key does nothing until rofi closes; pick with the keyboard or mouse there.
 
@@ -851,7 +864,7 @@ A session keeps the microphone re-opening after each spoken turn, so related com
 
 - Ends the open [voice session](#voice-sessions) and every mode in it, reported by its usual "ended: stopped" toast. In [type mode](#type-mode) the recording is stopped and typed first, and the session ends once it is typed; nothing else below happens then. This comes first, so the session's listener cannot open the microphone again, even when it is mid-turn: its turn is discarded and the session is gone when it looks. An action that turn is already running still finishes, but nothing it opens (a picker or confirm card) listens for a reply.
 - Ends a running [sequence](#sequences) before its next step starts, or while it waits for one, saying nothing.
-- Cancels the open picker, confirm card or the numbered overlay, as Esc does.
+- Cancels the open voxcmd picker, confirm card or the numbered overlay, as Esc does. A picker the bar published closes only while a reply recording is attached to it.
 - Cancels a voxtype recording under way, or being transcribed, whichever key started it: Voice Command, a reply recording or Speech to Text. Nothing said is routed or typed, and Speech to Text resumes its paused media as it does when any recording ends.
 
 With no session, picker or recording open it does nothing and says nothing. `voxcmd end-session` still ends only the session.

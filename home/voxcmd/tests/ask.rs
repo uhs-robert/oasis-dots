@@ -449,3 +449,138 @@ fn a_stop_signal_during_setup_ends_the_ask_before_the_question_shows() {
         assert!(bar.left_behind().is_empty(), "{args:?}: left {:?}", bar.left_behind());
     }
 }
+
+/// A process named `qs`, as a bar entry's pid must be, once it has exec'd.
+fn fake_bar(dir: &Path) -> Child {
+    let path = dir.join("qs");
+    std::fs::copy("/bin/sleep", &path).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let bar = loop {
+        match Command::new(&path).arg("600").spawn() {
+            Ok(child) => break child,
+            Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy && Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(error) => panic!("{error}"),
+        }
+    };
+    wait_for("the fake bar runs", || {
+        std::fs::read(format!("/proc/{}/cmdline", bar.id())).is_ok_and(|cmdline| cmdline.starts_with(b"/"))
+            && std::fs::read_to_string(format!("/proc/{}/comm", bar.id())).is_ok_and(|comm| comm == "qs\n")
+    });
+    bar
+}
+
+/// What the bar publishes for its open choices picker: a session list whose first choice opens a list of its own.
+fn bar_entry(pid: u32, token: &str, view_key: &str) -> String {
+    serde_json::json!({
+        "pid": pid, "owner": "bar", "token": token, "label": "Session",
+        "choices": [{"id": "Work", "label": "Work", "expand": "work"}, {"id": "Home", "label": "Home"}],
+        "expansions": {"work": {"title": "Work apps", "choices": [{"id": "Mail", "label": "Mail"}, {"id": "Chat", "label": "Chat"}]}},
+        "view_key": view_key,
+    })
+    .to_string()
+}
+
+#[test]
+fn a_reply_to_the_bars_picker_goes_over_its_ipc_with_the_token() {
+    let bar = Bar::new();
+    let mut qs = fake_bar(bar.path());
+    std::fs::create_dir_all(bar.runtime().join("voxcmd")).unwrap();
+    std::fs::write(bar.pending_pick(), bar_entry(qs.id(), "k1", "")).unwrap();
+    let (code, out, _) = finish(bar.spawn(&["reply", "--dry-run", "two"], &[]));
+    assert_eq!((code, out.lines().nth(2)), (0, Some("picker:      Session")));
+    assert!(out.ends_with("result:      pick: Home"), "{out}");
+    for (reply, call) in [
+        ("two", "qs-ipc call picker answer k1 Home"),
+        ("expand one", "qs-ipc call picker expand 1 k1"),
+        ("never mind", "qs-ipc call picker cancel k1"),
+    ] {
+        let (code, _, err) = finish(bar.spawn(&["reply", reply], &[]));
+        assert_eq!(code, 0, "{reply}: {err}");
+        assert!(bar.calls().ends_with(call), "{reply}: {}", bar.calls());
+    }
+    // Tab opened the first choice's list: the reply names one of its choices, prefixed with its key.
+    std::fs::write(bar.pending_pick(), bar_entry(qs.id(), "k1", "work")).unwrap();
+    let (_, out, _) = finish(bar.spawn(&["reply", "--dry-run", "chat"], &[]));
+    assert!(out.contains("picker:      Session > Work apps"), "{out}");
+    assert_eq!(finish(bar.spawn(&["reply", "two"], &[])).0, 0);
+    assert!(
+        bar.calls().ends_with("qs-ipc call picker answer k1 work\tChat"),
+        "{}",
+        bar.calls()
+    );
+    assert!(bar.toasts().is_empty(), "{}", bar.toasts());
+    let _ = qs.kill();
+    let _ = qs.wait();
+}
+
+#[test]
+fn a_stale_token_or_a_locked_screen_reads_as_no_picker() {
+    let bar = Bar::new();
+    let mut qs = fake_bar(bar.path());
+    std::fs::create_dir_all(bar.runtime().join("voxcmd")).unwrap();
+    std::fs::write(bar.pending_pick(), bar_entry(qs.id(), "old", "")).unwrap();
+    for said in ["stale", "locked"] {
+        let (code, _, _) = finish(bar.spawn(&["reply", "two"], &[("GOLDEN_PICKER", said)]));
+        assert_eq!(code, 1, "{said}");
+        assert!(
+            bar.calls().ends_with("qs-ipc call picker answer old Home"),
+            "{}",
+            bar.calls()
+        );
+    }
+    assert_eq!(
+        bar.toasts(),
+        "-a|voxcmd|--transient|voxcmd|No picker is waiting for a reply|\n".repeat(2)
+    );
+    let _ = qs.kill();
+    let _ = qs.wait();
+}
+
+#[test]
+fn a_bar_entry_whose_pid_is_dead_or_another_program_is_not_pending() {
+    let bar = Bar::new();
+    std::fs::create_dir_all(bar.runtime().join("voxcmd")).unwrap();
+    let mut qs = fake_bar(bar.path());
+    let dead = qs.id();
+    let _ = qs.kill();
+    let _ = qs.wait();
+    let mut other = Command::new("sleep").arg("600").spawn().unwrap();
+    for pid in [dead, other.id()] {
+        std::fs::write(bar.pending_pick(), bar_entry(pid, "k1", "")).unwrap();
+        let (code, _, err) = finish(bar.spawn(&["reply", "--dry-run", "two"], &[]));
+        assert_eq!(
+            (code, err.as_str()),
+            (1, "voxcmd: No picker is waiting for a reply"),
+            "{pid}"
+        );
+        assert_eq!(finish(bar.spawn(&["util", "pending-pick"], &[])).0, 1, "{pid}");
+    }
+    assert_eq!(finish(bar.spawn(&["reply", "two"], &[])).0, 1);
+    assert!(!bar.calls().contains("picker answer"), "{}", bar.calls());
+    let _ = other.kill();
+    let _ = other.wait();
+}
+
+#[test]
+fn expand_reaches_the_bar_for_an_asks_picker_too_without_a_token() {
+    let bar = Bar::new();
+    let pick = bar.spawn(
+        &[
+            "ask",
+            "pick",
+            "Which?",
+            r#"[{"id":"w","label":"Work","expand":"work"},"Home"]"#,
+            r#"{"work":{"title":"Work apps","choices":["Mail"]}}"#,
+        ],
+        &[("GOLDEN_HOLD", "1")],
+    );
+    wait_for("the pick is pending", || bar.pending_pick().exists());
+    let (code, _, err) = finish(bar.spawn(&["reply", "expand one"], &[]));
+    assert_eq!(code, 0, "{err}");
+    assert!(bar.calls().ends_with("qs-ipc call picker expand 1 "), "{}", bar.calls());
+    assert_eq!(finish(bar.spawn(&["reply", "cancel"], &[])).0, 0);
+    assert_eq!(finish(pick).0, 1);
+    assert!(!bar.pending_pick().exists());
+}

@@ -25,5 +25,10 @@ case "$2 $3" in
   [ "${GOLDEN_OPEN:-ok}" != ok ] || answer "$5"
   echo "${GOLDEN_OPEN:-ok}"
   ;;
+"picker answer" | "picker expand" | "picker cancel")
+  # A voice answer to the open picker; GOLDEN_PICKER is what the bar says ("stale", "locked"), "ok" by default.
+  note "qs-ipc $*"
+  echo "${GOLDEN_PICKER:-ok}"
+  ;;
 *) note "qs-ipc $*" ;;
 esac

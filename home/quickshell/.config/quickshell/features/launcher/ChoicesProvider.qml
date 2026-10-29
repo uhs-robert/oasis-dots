@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.features.audio
 
 // Caller-supplied choices from Prompt.select or a shell caller (`voxcmd ask pick`). The mode arg is a JSON spec path:
 // { id, label, choices, result_path, expansions, view_path }. Enter or close writes the pick (empty on cancel) to
@@ -8,6 +9,7 @@ import Quickshell.Io
 // result_path, so there is no callback to run.
 // A choice may be { label, expand: key } naming one of expansions { key: { title, choices } }: Tab shows that list,
 // whose picks are written as "<key><TAB><label>", and the shown key ("" at the top) is written to view_path.
+// The voice key answers it whoever opened it (PickerVoice); an answer finishes the session as a click or Esc does.
 PickerProvider {
     id: root
 
@@ -25,6 +27,8 @@ PickerProvider {
     can_go_back: root.view !== ""
     // True from open until the callback is dispatched.
     property bool session: false
+    voice_answerable: true
+    voice_question: root.session && !root.loading && Array.isArray(root.spec.choices) ? root.question_for_voice(root.view) : null
 
     // Specs are read asynchronously, and a spec's id and result_path exist only once it is read. An open that
     // lands while one is still loading is queued rather than started, so the load in flight can finish and answer
@@ -94,6 +98,39 @@ PickerProvider {
 
     function go_back() {
         if (root.view !== "") root.show("");
+    }
+
+    function question_for_voice(view_key) {
+        const expansions = {};
+        for (const key in root.spec.expansions || {}) {
+            const e = root.expansion(key);
+            expansions[key] = { title: String(e.title || ""), choices: (e.choices || []).map(c => ({ id: String(c), label: String(c) })) };
+        }
+        const choices = root.top_items().map((item, i) => {
+            const c = root.spec.choices[i];
+            const choice = { id: c !== null && typeof c === "object" && c.id !== undefined ? String(c.id) : item.label, label: item.label };
+            if (item.expand !== "") choice.expand = item.expand;
+            return choice;
+        });
+        return { label: String(root.spec.label || ""), choices: choices, expansions: expansions, view_key: view_key };
+    }
+
+    function voice_answer(text) {
+        const tab = text.indexOf("\t");
+        const key = tab < 0 ? "" : text.slice(0, tab);
+        const label = tab < 0 ? text : text.slice(tab + 1);
+        const item = key === root.view ? root.items.find(i => i.label === label) : null;
+        if (!root.session || !item) return false;
+        // As Picker.activate does for a click: close first, so the close reads as a pick, not a cancel.
+        ThemeAudio.play("confirm");
+        Pickers.close();
+        root.activate(item);
+        return true;
+    }
+
+    function voice_expand(index) {
+        const item = root.view === "" ? root.items[index - 1] : null;
+        return root.session && !!item && root.expand(item);
     }
 
     Process {

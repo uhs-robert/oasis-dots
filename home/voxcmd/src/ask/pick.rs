@@ -5,7 +5,7 @@
 //! back to rofi. Expansions are `{key: {title, choices}}`: Tab on a choice whose `expand` names a key shows that list,
 //! Backspace on an empty search comes back; rofi shows only the top level.
 use super::{
-    Asking, Expansion, PendingPick, PickChoice, StopSignals, Stopped, is_executable, qs_ipc_call, shell_quote,
+    Asking, Expansion, Owner, PendingPick, PickChoice, StopSignals, Stopped, is_executable, qs_ipc_call, shell_quote,
     terminate_with_children,
 };
 use crate::exit::CliError;
@@ -237,7 +237,9 @@ fn ask(
     }
     if let Err(error) = asking.publish(&PendingPick {
         pid: std::process::id(),
-        fifo: asking.fifo.clone(),
+        owner: Owner::Ask,
+        fifo: Some(asking.fifo.clone()),
+        token: None,
         label: label.to_string(),
         kind: None,
         choices: choices.to_vec(),
@@ -245,6 +247,7 @@ fn ask(
         view: Some(view_path),
         listen_again: None,
         verb: None,
+        view_key: None,
     }) {
         return Ok(Err(error));
     }
