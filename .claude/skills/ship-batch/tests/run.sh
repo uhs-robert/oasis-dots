@@ -669,7 +669,6 @@ for _ in $(seq 100); do
   sleep 0.1
 done
 lines_before=$(pm_log_lines)
-start_s=$SECONDS
 SHIP_BATCH_LOCK_WAIT=1 pm
 check "lock: a hand run that cannot get the ship lock in time gives up, naming the holder" "[[ $? != 0 ]] && grep -q 'ship 9' '$e2e/out' && grep -q 'gave up waiting' '$e2e/out'"
 check "touching nothing and recording nothing" "[[ \$(pm_log_lines) == $lines_before && \$(pm_applied) == '$e2e_base' ]]"
