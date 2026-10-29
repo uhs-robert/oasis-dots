@@ -125,13 +125,14 @@ Write each README sentence by the `plain-writing` skill.
 
 - **Keep maps true.** When the diff adds, renames or removes a file and the
   nearest README's code map covers that folder, update the map.
-- **Test for a new README.** Write one when either signal holds: (a) the diff
-  creates a fact about how files in the folder relate (a rule spanning files,
-  which file to start from, what the folder must not depend on) that no single
-  file's header can hold; (b) the folder is a place readers start, not one they
-  reach from a caller. Keep it short: a one-line map entry per file, plus those
-  facts. If a README already covers the folder, put the fact there. If none
-  does, write a short one in the nearest folder readers start from.
+- **Test for a new README.** When either signal holds and no README covers the
+  folder, write one: (a) the diff creates a fact about how files in the folder
+  relate (a rule spanning files, which file to start from, what the folder must
+  not depend on) that no single file's header can hold; (b) the folder is a
+  place readers start, not one they reach from a caller. Keep it short: a
+  one-line map entry per file, plus those facts. If a README already covers the
+  folder, put the fact there. If none does, write a short one in this folder if
+  readers start there, else in the nearest parent they start from.
 - **Pattern folders get a line, not a README.** When every file has the same
   shape (one file per theme, per action group), the parent's map gets one line,
   even if readers start there, unless the folder also holds facts about how its
@@ -195,9 +196,9 @@ Output a section with this structure:
   through a squash. Call these out so they don't get lost.
 
 This is raw material for the commit-messages skill, which turns it into the
-commit message — not a draft, and not a recap of documentation changes made. The
-one exception: name each folder README you created or updated and why, so the
-commit message can mention it. If there's nothing meaningful to surface, omit
+commit message. It is not a draft, and not a recap of documentation changes made.
+The one exception: name each folder README you created or updated and why, so the
+commit message can mention it. If there is nothing meaningful to surface, omit
 this section rather than padding it.
 
 ## Core principle
