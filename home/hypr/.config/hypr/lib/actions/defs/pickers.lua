@@ -9,7 +9,6 @@ local picker = function(menu_function) return Defer.call("lib.actions.menu", men
 Act.define("picker.clipboard", {
   label = "Clipboard History",
   intent = "Pick an entry from the clipboard history and copy it.",
-  key = { key = "CTRL + V", leader = true },
   run = picker("clipboard"),
 })
 
@@ -22,41 +21,35 @@ Act.define("picker.clipboard_delete", {
 Act.define("picker.directory", {
   label = "Jump to Directory",
   intent = "Pick a frequently used directory and open it in the file manager.",
-  key = { key = "CTRL + SPACE", leader = true },
   run = picker("zoxide"),
 })
 
 Act.define("picker.emoji", {
   label = "Emoji Picker",
   intent = "Pick an emoji and type it into the focused window.",
-  key = { key = "CTRL + E", leader = true },
   run = picker("emoji"),
 })
 
 Act.define("picker.agents", {
   label = "Agent Sessions Picker",
   intent = "Pick a running agent session, with a live preview of its terminal, and jump to it.",
-  key = { key = "A", leader = true },
   run = picker("agents_picker"),
 })
 
 Act.define("hyprvim.terminal", {
   label = "HyprVim Terminal",
   intent = "Open HyprVim's command prompt.",
-  key = { key = "SHIFT + SEMICOLON", leader = true },
   run = function() require("lua.plugins.hyprvim").command.prompt() end,
 })
 
 Act.define("hyprvim.jump_mark", {
   label = "Jump to Mark",
   intent = "Jump to a window or workspace mark set in HyprVim.",
-  key = { key = "APOSTROPHE", leader = true },
   run = function() require("lua.plugins.hyprvim").marks.enter_jump() end,
 })
 
 Act.define("hyprvim.edit_selection", {
   label = "Edit Selection in Vim",
   intent = "Open the selected text in HyprVim's editor, in insert mode.",
-  key = { key = "N", leader = true },
   run = function() require("lua.plugins.hyprvim").editor.open({ insert_mode = true }) end,
 })

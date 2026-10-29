@@ -1,8 +1,7 @@
 -- Loads the keyless IPC action definitions (lib/actions/defs/{notifications,style,lock,power,screenshot,zoom,overview,
 -- settings,launcher}.lua) under a stubbed `hl`, runs every id with sample arguments and compares the command line it
 -- would hand to Hyprland with the table below: the `qs-ipc call <target> <function> <args>` words, quoted for the shell.
--- It also checks that each of these actions has no key, that nothing else is defined in those files, and that
--- requiring keymaps.global (what a live session loads) registers them all, even when one definition file is broken,
+-- It also checks that nothing else is defined in those files, and that requiring keymaps.global (what a live session loads) registers them all, even when one definition file is broken,
 -- and that a broken keymap file costs only its own keys.
 --
 --   lua home/hypr/tests/act_ipc.lua
@@ -93,10 +92,9 @@ for _, case in ipairs(REFUSED) do
 	check("refuse " .. case[1] .. " " .. table.concat(case[2], " "), not ok and sent == nil)
 end
 
--- Every action these files define is in the table (the files hold nothing else), and none has a key.
+-- Every action these files define is in the table (the files hold nothing else).
 for _, handle in ipairs(Act.list()) do
 	check("covered: " .. handle.id, covered[handle.id])
-	check("keyless: " .. handle.id, handle.key == nil and #handle.extra_keys == 0)
 end
 
 -- The files above were required by name. A live session only loads what keymaps/global requires, so load that entry
@@ -124,10 +122,11 @@ local ok, err = xpcall(require, debug.traceback, "keymaps.global")
 check("the real keymaps entry loads: " .. tostring(err), ok)
 local loaded = {}
 for _, handle in ipairs(require("lib.act").list()) do
-	loaded[handle.id] = true
+	loaded[handle.id] = handle
 end
 for id in pairs(covered) do
 	check("keymaps.global registers " .. id, loaded[id])
+	check("keymaps.global binds no key to " .. id, loaded[id] and #loaded[id].bound_keys == 0)
 end
 
 -- One broken definition file costs only its own actions, across the whole keymaps load: keyless.lua and tools.lua

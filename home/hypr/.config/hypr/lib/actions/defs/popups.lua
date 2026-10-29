@@ -1,5 +1,4 @@
--- One action for every bar popup. Leader and Bar rows pass the popup name; the action has no default key because the
--- key set differs by submap.
+-- One action for every bar popup. Leader and Bar rows pass the popup name.
 local Act = require("lib.act") ---@class ActionLib
 
 Act.define("popup.open", {

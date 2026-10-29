@@ -1,7 +1,5 @@
 -- Actions for the global window keys: help, close, fullscreen, focus and move, scratchpad and monitors. The performers
 -- stay in lib/actions/window.lua and are required on use, so a headless load needs neither Config nor the session.
--- Actions with a param have no default key: keymaps/global/general.lua binds each one with Act.bind, because the key
--- set follows Config (vim_mode, monitor count).
 local Act = require("lib.act") ---@class ActionLib
 
 --- Run `Window[name](...)` on each key press; the performers return a closure.
@@ -20,14 +18,12 @@ local DIRECTIONS = { "left", "down", "up", "right" }
 Act.define("help.keybinds", {
   label = "Keybind Help",
   intent = "Show every key that works right now.",
-  key = { key = "SLASH", leader = true, universal = true },
   run = function() require("lib.actions.menu").keybinds()() end,
 })
 
 Act.define("window.close", {
   label = "Close Window",
   intent = "Close the focused window so Restore Closed Window can bring it back.",
-  key = { key = "X", leader = true },
   run = window("close"),
 })
 
@@ -46,21 +42,18 @@ Act.define("window.float_toggle", {
 Act.define("window.fullscreen", {
   label = "Toggle Fullscreen",
   intent = "Make the focused window fullscreen, or put it back.",
-  key = { key = "F", leader = true },
   run = window("fullscreen_toggle"),
 })
 
 Act.define("window.maximize", {
   label = "Toggle Maximize",
   intent = "Maximize the focused window inside the frame and bar, or put it back.",
-  key = { key = "M", leader = true },
   run = window("maximize_toggle"),
 })
 
 Act.define("window.restore_closed", {
   label = "Restore Closed Window",
   intent = "Reopen the window closed last.",
-  key = { key = "U", leader = true },
   run = window("restore_closed"),
 })
 
@@ -88,14 +81,12 @@ Act.define("window.cycle_float", {
 Act.define("scratchpad.toggle", {
   label = "Toggle Scratchpad",
   intent = "Show or hide the scratchpad.",
-  key = { key = "S", leader = true, universal = true },
   run = window("toggle_special", "scratchpad"),
 })
 
 Act.define("scratchpad.move", {
   label = "Move to Scratchpad",
   intent = "Send the focused window to the scratchpad.",
-  key = { key = "SHIFT + S", leader = true, universal = true },
   run = window("move_to_special", "scratchpad"),
 })
 

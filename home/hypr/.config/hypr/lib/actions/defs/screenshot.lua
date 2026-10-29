@@ -1,5 +1,5 @@
--- Keyless screenshot actions that talk to the bar's menu. `screenshot.take` and `screenshot.pixel` (tools.lua) are the
--- keyed ones, and run the script that falls back to rofi.
+-- Keyless screenshot actions that talk to the bar's menu. `screenshot.take` and `screenshot.pixel` (tools.lua) have the
+-- global keys, and run the script that falls back to rofi.
 local Act = require("lib.act") ---@class ActionLib
 local Ipc = Act.Ipc
 

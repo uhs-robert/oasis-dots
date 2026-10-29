@@ -1,6 +1,6 @@
--- Runs lib/actions/defs/tools.lua against a stubbed `hl`: the 14 tool actions register the keys, extra keys and
--- labels written out below, nothing warns, each key runs the command written out below, and their binds can be
--- removed with Bind.unbind. The rest covers the key helpers and Bind.unbind on keys of their own.
+-- Runs keymaps/global/tools.lua, which loads lib/actions/defs/tools.lua, against a stubbed `hl`: the 14 tool actions
+-- get the keys and labels written out below, nothing warns, each key runs the command written out below, and their
+-- binds can be removed with Bind.unbind. The rest covers the key helpers and Bind.unbind on keys of their own.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local hypr_dir = here .. "/../.config/hypr"
 package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.path
@@ -49,7 +49,7 @@ local Bind = require("lib.key.bind")
 local Act = require("lib.act")
 check("Bind.action is gone", Bind.action == nil)
 
-require("lib.actions.defs.tools")
+require("keymaps.global.tools")
 check("no warnings", #Act.warnings == 0)
 
 local function find(key)
@@ -83,7 +83,6 @@ local expected = {
 }
 check("14 actions", #expected == 14)
 
--- a bind with extra keys; the keys here carry the leader SUPER
 -- Every key performs its action's command: argv joined for a command, `qs-ipc call` for an IPC function.
 local function performed(key)
 	executed = {}
@@ -119,7 +118,7 @@ check("run keyless by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call ov
 -- the screenshot key works in submaps
 check("Print works in submaps", find("Print").opts.submap_universal == true)
 
--- Bind.unbind removes what Act.define registered, extras included.
+-- Bind.unbind removes what the keymap bound, an action's second key included.
 -- the removal count, 0 when nothing matches, the leader form
 check("unbind: main key", Bind.unbind("Print") == 1)
 check("unbind: leader extra", Bind.leader_unbind("I") == 1)

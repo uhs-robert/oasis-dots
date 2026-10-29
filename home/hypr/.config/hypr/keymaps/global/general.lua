@@ -2,8 +2,15 @@ local Act = require("lib.act") ---@class ActionLib
 local Config = require("config") ---@class Config
 local Direction = require("lib.key.direction") ---@class Direction
 
--- Help, close, fullscreen, maximize, restore and the scratchpad bind their own keys when this loads.
 require("lib.actions.defs.windows")
+
+Act.bind("help.keybinds", { key = { key = "SLASH", leader = true, universal = true } })
+Act.bind("window.close", { key = { key = "X", leader = true } })
+Act.bind("window.fullscreen", { key = { key = "F", leader = true } })
+Act.bind("window.maximize", { key = { key = "M", leader = true } })
+Act.bind("window.restore_closed", { key = { key = "U", leader = true } })
+Act.bind("scratchpad.toggle", { key = { key = "S", leader = true, universal = true } })
+Act.bind("scratchpad.move", { key = { key = "SHIFT + S", leader = true, universal = true } })
 
 -- Focus and Move Window: the keys follow Config.vim_mode (the letter or the arrow carries the which-key label).
 local DIRECTIONS = {
