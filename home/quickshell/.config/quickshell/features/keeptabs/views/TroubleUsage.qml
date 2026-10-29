@@ -13,7 +13,7 @@ Item {
     property var st: Style
     property bool draws_footer: false
 
-    readonly property var level_colors: ({ OK: Style.pal.ok, WARNING: Style.pal.warning, ERROR: Style.pal.error, ADVICE: Style.pal.info })
+    readonly property var level_colors: ({ OK: Style.pal.ok, WARNING: Style.pal.warning, ERROR: Style.pal.error, ADVICE: Style.pal.info, "": root.st.text_dim })
 
     function level_of(row) {
         if (row.percent >= 95) return "ERROR";
@@ -32,6 +32,9 @@ Item {
         for (const row of ClaudeUsageState.rows) {
             lines.push({ level: root.level_of(row), text: row.percent + "% used · " + row.label, indent: false });
             if (row.resets !== "") lines.push({ level: "ADVICE", text: "resets " + row.resets, indent: true });
+            const projection = ClaudeUsageState.projection_of(row);
+            // Under pace is a plain info line, which checkhealth draws without a level badge.
+            if (projection.shown) lines.push({ level: projection.over ? "WARNING" : "", text: projection.over ? "on pace to hit the limit by " + projection.when : "on pace for ~" + projection.end_percent + "% by " + projection.when, indent: true });
         }
         return lines;
     }
@@ -96,6 +99,7 @@ Item {
                 }
 
                 Rectangle {
+                    visible: report_line.modelData.level !== ""
                     implicitWidth: level_text.implicitWidth + 8
                     implicitHeight: level_text.implicitHeight
                     radius: 2
@@ -117,7 +121,7 @@ Item {
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                     text: report_line.modelData.text
-                    color: report_line.modelData.level === "ADVICE" ? root.st.text_muted : root.st.text_fg
+                    color: report_line.modelData.level === "" ? root.st.text_dim : report_line.modelData.level === "ADVICE" ? root.st.text_muted : root.st.text_fg
                     font.family: root.st.mono_font
                     font.pixelSize: root.st.fs(-2)
                 }

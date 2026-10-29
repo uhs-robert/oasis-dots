@@ -61,6 +61,7 @@ Item {
                 required property int index
                 readonly property int used_blocks: root.blocks_used(slot.modelData.percent)
                 readonly property color fill: Fmt.context_bar_color(slot.modelData.percent, root.colors)
+                readonly property var projection: ClaudeUsageState.projection_of(slot.modelData)
 
                 width: ListView.view.width
                 height: slot_col.implicitHeight + 16
@@ -171,6 +172,17 @@ Item {
                                 font.pixelSize: root.st.fs(-5)
                             }
                         }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
+                        visible: slot.projection.shown
+                        text: slot.projection.over ? "CARD FULL BY " + slot.projection.when.toUpperCase() : "PROJECTED " + slot.projection.end_percent + "% BY " + slot.projection.when.toUpperCase()
+                        color: slot.projection.over ? Style.pal.warning : root.st.text_muted
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-5)
                     }
                 }
             }

@@ -67,6 +67,7 @@ Item {
                 delegate: ColumnLayout {
                     id: limit
                     required property var modelData
+                    readonly property var projection: ClaudeUsageState.projection_of(limit.modelData)
 
                     width: limit_list.width
                     spacing: 3
@@ -129,6 +130,17 @@ Item {
                         elide: Text.ElideRight
                         text: ("Resets " + limit.modelData.resets).toUpperCase()
                         color: Style.wk.soft
+                        font.family: W.mono_font
+                        font.pixelSize: root.st.fs(-3)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        visible: limit.projection.shown
+                        elide: Text.ElideRight
+                        text: (limit.projection.over ? "Limit " + limit.projection.when : "Pace ~" + limit.projection.end_percent + "% by " + limit.projection.when).toUpperCase()
+                        color: limit.projection.over ? Style.pal.warning : Style.wk.dim
                         font.family: W.mono_font
                         font.pixelSize: root.st.fs(-3)
                     }

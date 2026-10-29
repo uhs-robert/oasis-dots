@@ -122,6 +122,7 @@ Item {
                             id: legend
                             required property var modelData
                             required property int index
+                            readonly property var projection: ClaudeUsageState.projection_of(legend.modelData)
                             Layout.fillWidth: true
                             spacing: 8
 
@@ -171,6 +172,17 @@ Item {
                                     visible: legend.modelData.resets !== ""
                                     text: "Resets " + legend.modelData.resets
                                     color: root.st.text_dim
+                                    font.family: root.st.font_family
+                                    font.pixelSize: root.st.fs(-3)
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    elide: Text.ElideRight
+                                    visible: legend.projection.shown
+                                    text: legend.projection.over ? "Full by " + legend.projection.when : "On pace for ~" + legend.projection.end_percent + "%"
+                                    color: legend.projection.over ? Style.pal.warning : root.st.text_dim
                                     font.family: root.st.font_family
                                     font.pixelSize: root.st.fs(-3)
                                 }

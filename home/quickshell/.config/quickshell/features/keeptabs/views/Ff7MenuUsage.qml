@@ -77,6 +77,7 @@ Item {
                 required property int index
                 readonly property real pct: Math.max(0, Math.min(100, limit.modelData.percent))
                 readonly property bool mastered: limit.pct >= 100
+                readonly property var projection: ClaudeUsageState.projection_of(limit.modelData)
 
                 width: ListView.view.width
                 height: Math.max(Style.px(40), limit_col.implicitHeight + 6)
@@ -139,6 +140,17 @@ Item {
                         elide: Text.ElideRight
                         text: "resets " + limit.modelData.resets
                         color: root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-3)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        visible: limit.projection.shown
+                        elide: Text.ElideRight
+                        text: limit.projection.text
+                        color: limit.projection.over ? Style.pal.warning : root.st.text_dim
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-3)
                     }

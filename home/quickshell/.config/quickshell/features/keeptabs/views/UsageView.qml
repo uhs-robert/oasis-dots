@@ -52,13 +52,15 @@ Item {
             delegate: Rectangle {
                 id: usage_row
                 required property var modelData
+                readonly property var projection: ClaudeUsageState.projection_of(usage_row.modelData)
 
                 width: ListView.view.width
-                height: 56
+                height: Math.max(56, usage_column.implicitHeight + 12)
                 radius: Style.radius(4)
                 color: "transparent"
 
                 ColumnLayout {
+                    id: usage_column
                     anchors.fill: parent
                     anchors.margins: 6
                     spacing: 4
@@ -118,6 +120,17 @@ Item {
                         visible: usage_row.modelData.resets !== ""
                         text: "resets " + usage_row.modelData.resets
                         color: root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-3)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
+                        visible: usage_row.projection.shown
+                        text: usage_row.projection.text
+                        color: usage_row.projection.over ? Style.pal.warning : root.st.text_dim
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-3)
                     }
