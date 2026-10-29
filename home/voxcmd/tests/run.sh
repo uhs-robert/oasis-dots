@@ -155,6 +155,7 @@ leaked=0
 for attempt in 1 2 3 4 5 6; do
   reset_strips
   failing_run >/dev/null 2>&1
+  [ -s "$strips_dir/pids" ] || leaked=$((leaked + 1))
   wait_until all_strip_pids_gone || leaked=$((leaked + 1))
 done
 check "no strip outlives a failed run, in 6 runs" "[[ $leaked == 0 ]]"
