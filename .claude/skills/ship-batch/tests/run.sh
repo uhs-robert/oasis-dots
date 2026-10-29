@@ -21,7 +21,7 @@ shadow_run=
 cleanup() {
   trap '' EXIT TERM INT HUP
   rm -f "$root/e2e/branch_hold"
-  pkill -f "$root/e2e/" 2>/dev/null
+  pkill -KILL -f "$root/e2e/" 2>/dev/null # KILL: the fake bars that ignore SIGTERM
   rm -rf "$root" "$shadow_run"
 }
 trap cleanup EXIT
@@ -236,7 +236,7 @@ cat >"$stubs/just" <<STUB
 echo "just \$* $lock_state" >>"\$SHIP_LOG"
 [[ ! -e /proc/\$\$/fd/9 ]] || echo "just fd9 leaked" >>"\$SHIP_LOG"
 if [[ \$1 == migrate-quickshell-state ]]; then
-  grep -q qs "\$STUB_QS_PROCS" 2>/dev/null && bar=up || bar=down
+  qs list --json | grep -q pid && bar=up || bar=down
   echo "migrate bar \$bar" >>"\$SHIP_LOG"
   [[ -z \${STUB_MIGRATE_STATUS:-} || ( -n \${STUB_MIGRATE_ONLY_DOWN:-} && \$bar == up ) ]] || exit "\$STUB_MIGRATE_STATUS"
 fi
@@ -258,7 +258,7 @@ e2e_setup() {
   mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
   cp "$here/../ship-batch.sh" "$here/../base.sh" "$here/../live-hypr.sh" "$e2e/main/.claude/skills/ship-batch/"
   mkdir -p "$e2e/main/home/hypr/.config/hypr/scripts"
-  cp "$here/../../../../home/hypr/.config/hypr/scripts/bar-pattern.sh" "$e2e/main/home/hypr/.config/hypr/scripts/"
+  cp "$here/../../../../home/hypr/.config/hypr/scripts/restart-bar.sh" "$e2e/main/home/hypr/.config/hypr/scripts/"
   # With $e2e/branch_hold present a check waits until that file is removed; STUB_BRANCH_STATUS is its exit status.
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash
@@ -374,17 +374,39 @@ for path in services/Foo.qml features/lock/Lock.qml assets/fonts/a.otf styles/ne
 done
 
 echo "== only an owner test bar blocks the bar restart"
-# pgrep greps the command lines in STUB_QS_PROCS with the pattern ship-batch passes. A restart would pkill the real qs,
-# so the stub qs-ipc reports a locked screen ("secure"): reaching that failure shows the test-bar check let the restart proceed.
+# The owner's bar is a fake process (start-fake-bar, whose cmdline is nothing like `qs -n`) that the stub `qs list` reports
+# while it lives, as `qs list` does for the default config; ship-batch finds it only that way. It logs "bar got TERM" in
+# SHIP_LOG when signalled; with $e2e/term_survives it ignores SIGTERM, and with $e2e/immortal `qs list` keeps reporting pid 1,
+# which cannot be killed. A restart would signal a real bar, so the stub qs-ipc reports a locked screen ("secure"):
+# reaching that failure shows the test-bar check let the restart proceed. pgrep greps the command lines in STUB_QS_PROCS
+# (owner test bars only) for the test-bar check.
 mkdir -p "$fake_home/.config/hypr/scripts" "$e2e/cache"
+cat >"$stubs/start-fake-bar" <<'STUB'
+#!/bin/bash
+# "unlisted" starts a process that qs list does not report, like a crash reporter.
+handler='exit 0'
+[ -e "$E2E/term_survives" ] && handler=':'
+(
+  bash -c 'trap "echo bar got TERM >>\"$SHIP_LOG\"; $0" TERM; while :; do sleep 0.2; done' "$handler" "$E2E/fake-bar" >/dev/null 2>&1 &
+  [ "$1" = unlisted ] || echo $! >"$E2E/bar_pid"
+)
+STUB
+cat >"$stubs/qs" <<'STUB'
+#!/bin/bash
+[ "$1" = list ] || exit 0
+pid=$(cat "$E2E/bar_pid" 2>/dev/null)
+[ -e "$E2E/immortal" ] && pid=1
+state=$(sed 's/.*) //' "/proc/${pid:-0}/stat" 2>/dev/null)
+case $state in
+"" | Z*) echo "[]" ;;
+*) echo "[{\"pid\": $pid}]" ;;
+esac
+STUB
 # shellcheck disable=SC2016 # expanded by the stub
-# It prints a pid that the stub hyprctl bumps on each relaunch, so a bar that did not change counts as not restarted.
-printf '#!/bin/sh\nfor a; do :; done; grep -qE -- "$a" "$STUB_QS_PROCS" || exit 1\ncat "$STUB_QS_PROCS.pid" 2>/dev/null || echo 1\n' >"$stubs/pgrep"
-# shellcheck source=../../../../home/hypr/.config/hypr/scripts/bar-pattern.sh
-source "$here/../../../../home/hypr/.config/hypr/scripts/bar-pattern.sh"
+printf '#!/bin/sh\nfor a; do :; done; grep -E -- "$a" "$STUB_QS_PROCS"\n' >"$stubs/pgrep"
 printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
-chmod +x "$stubs/pgrep" "$fake_home/.config/hypr/scripts/qs-ipc"
-export STUB_QS_PROCS=$e2e/qs_procs XDG_CACHE_HOME=$e2e/cache
+chmod +x "$stubs/pgrep" "$stubs/qs" "$stubs/start-fake-bar" "$fake_home/.config/hypr/scripts/qs-ipc"
+export E2E=$e2e STUB_QS_PROCS=$e2e/qs_procs XDG_CACHE_HOME=$e2e/cache
 bar_ship() {
   e2e_setup
   mkdir -p "$e2e/wt-1/home/quickshell"
@@ -408,7 +430,9 @@ cat >"$stubs/hyprctl" <<STUB
 grep -qx "\$HYPRLAND_INSTANCE_SIGNATURE" "\$STUB_LIVE_SIGS" || exit 1
 [ -e "\$XDG_RUNTIME_DIR/hypr/\$HYPRLAND_INSTANCE_SIGNATURE/.socket.sock" ] || exit 1
 echo "hyprctl \${HYPRLAND_INSTANCE_SIGNATURE} \$*" >>"\$SHIP_LOG"
-[ "\$1" = dispatch ] && [ ! -e "$e2e/no_relaunch" ] && { echo "qs -n" >"\$STUB_QS_PROCS"; echo \$((\$(cat "\$STUB_QS_PROCS.pid" 2>/dev/null || echo 1) + 1)) >"\$STUB_QS_PROCS.pid"; }
+if [ "\$1" = dispatch ]; then
+  if [ -e "$e2e/no_relaunch" ]; then "$stubs/start-fake-bar" unlisted; else "$stubs/start-fake-bar"; fi
+fi
 [ "\$1" = reload ] && exit "\${STUB_RELOAD_STATUS:-0}"
 exit 0
 STUB
@@ -453,11 +477,8 @@ rm -rf "$shadow_run"
 
 echo "== the install migrations run when a merge changes migration code"
 # Each run commits the given files on b1. The stubs log the migration step with the lock state and whether a bar is up, and
-# the restart as pkill and the relaunch dispatch. The stub bar answers unlocked so the restart goes ahead.
+# the old bar's SIGTERM and the relaunch dispatch. The stub bar answers unlocked so the restart goes ahead.
 printf '#!/bin/sh\necho unlocked\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
-# shellcheck disable=SC2016 # expanded by the stub
-printf '#!/bin/sh\necho "pkill $*" >>"$SHIP_LOG"\n[ -e "%s" ] && exit 0\n[ -e "%s" ] && [ "$1" != -KILL ] && exit 0\n: >"$STUB_QS_PROCS"\n' "$e2e/pkill_survives" "$e2e/term_survives" >"$stubs/pkill"
-chmod +x "$stubs/pkill"
 printf 'live\n' >"$STUB_LIVE_SIGS"
 migrate_step='just migrate-quickshell-state held'
 migrate_ship() {
@@ -469,7 +490,9 @@ migrate_ship() {
   done
   g -C "$e2e/wt-1" add -A
   g -C "$e2e/wt-1" commit -q -m migrate
-  echo "${STUB_BAR_CMDLINE:-qs -n}" >"$STUB_QS_PROCS"
+  : >"$STUB_QS_PROCS"
+  rm -f "$e2e/bar_pid"
+  "$stubs/start-fake-bar"
   env XDG_RUNTIME_DIR="$owner_run" HOME="$fake_home" PATH="$stubs:$PATH" timeout -k 5 $ship_timeout bash "$e2e/main/.claude/skills/ship-batch/ship-batch.sh" 1 >"$e2e/out" 2>&1
 }
 # shellcheck disable=SC2329 # called by the checks below, through eval
@@ -478,20 +501,20 @@ dispatch_line() { grep -n '^hyprctl live dispatch' "$SHIP_LOG" | cut -d: -f1; }
 migrate_ship lib/install/migrate.sh home/quickshell/bar
 check "a merge touching migrate.sh succeeds" "[[ $? == 0 ]] || { cat '$e2e/out'; false; }"
 check "it runs the migrations twice, under the lock" "[[ \$(migrate_count) == 2 ]]"
-check "the first run is with the bar up, before the restart" "((\$(line_of 'migrate bar up') < \$(line_of 'pkill -u $UID -f $bar_pattern')))"
-check "the second is after the old bar is gone and before the new one starts" "logged 'migrate bar down' && ((\$(line_of 'pkill -u $UID -f $bar_pattern') < \$(line_of 'migrate bar down') && \$(line_of 'migrate bar down') < \$(dispatch_line)))"
+check "the first run is with the bar up, before the restart" "((\$(line_of 'migrate bar up') < \$(line_of 'bar got TERM')))"
+check "the second is after the old bar is gone and before the new one starts" "logged 'migrate bar down' && ((\$(line_of 'bar got TERM') < \$(line_of 'migrate bar down') && \$(line_of 'migrate bar down') < \$(dispatch_line)))"
 check "without the ship lock's descriptor" "! logged 'just fd9 leaked'"
 for path in lib/install/load.sh install.sh justfile; do
   migrate_ship "$path"
   check "a merge touching $path runs the step once, with no bar restart" "[[ $? == 0 && \$(migrate_count) == 1 ]]"
 done
 migrate_ship lib/install/migrate.sh home/hypr/cfg
-check "migration code without a bar change runs the step once, with the bar up" "[[ $? == 0 && \$(migrate_count) == 1 ]] && logged 'migrate bar up' && ! logged 'migrate bar down' && ! logged 'pkill -u $UID -f $bar_pattern'"
+check "migration code without a bar change runs the step once, with the bar up" "[[ $? == 0 && \$(migrate_count) == 1 ]] && logged 'migrate bar up' && ! logged 'migrate bar down' && ! logged 'bar got TERM'"
 migrate_ship home/quickshell/bar lib/install/stow.sh home/hypr/cfg
 check "a merge touching none of those paths skips the step" "[[ $? == 0 ]] && ! grep -q 'migrate' '$SHIP_LOG' && ! grep -q 'install migrations' '$e2e/out'"
 STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh home/quickshell/bar
 check "a failing migration fails the ship" "[[ $? != 0 ]] && grep -q 'migrating failed' '$e2e/out'"
-check "before the restart, so the bar is left alone and no check of main starts" "! logged 'pkill -u $UID -f $bar_pattern' && ! grep -q '^just check' '$SHIP_LOG'"
+check "before the restart, so the bar is left alone and no check of main starts" "! logged 'bar got TERM' && ! grep -q '^just check' '$SHIP_LOG'"
 check "and leaves the base recorded, so a rerun resumes" "[[ -e \$(base_file '$e2e/main') ]]"
 check "the lock is free" "flock -n '$SHIP_LOCK' true"
 STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh
@@ -501,38 +524,31 @@ check "a failure with the old bar stopped relaunches the bar first, then fails" 
 check "and keeps the base so a rerun resumes" "[[ -e \$(base_file '$e2e/main') ]]"
 # A bar that never comes back (the relaunch writes nothing) fails the ship, but the merges and migrations were done.
 touch "$e2e/no_relaunch"
-migrate_ship lib/install/migrate.sh home/quickshell/bar; gone_rc=$?
+migrate_ship lib/install/migrate.sh home/quickshell/bar
+gone_rc=$?
 rm -f "$e2e/no_relaunch"
 check "a bar that does not come back fails the ship but clears the base" "[[ $gone_rc != 0 ]] && grep -q 'qs did not come back' '$e2e/out' && [[ ! -e \$(base_file '$e2e/main') ]]"
-touch "$e2e/pkill_survives"
+# pid 1 stands for a bar that survives SIGKILL: qs list keeps reporting it and the relaunched bar cannot replace it.
+touch "$e2e/immortal"
 migrate_ship lib/install/migrate.sh home/quickshell/bar
 survive_rc=$?
-rm -f "$e2e/pkill_survives"
-check "a bar that survives pkill skips the second pass, says so and does not fail" "[[ $survive_rc == 0 && \$(migrate_count) == 1 ]] && ! logged 'migrate bar down' && grep -q 'the old bar was still running, so migration cleanup was skipped' '$e2e/out'"
-check "and the bar is still relaunched" "(( \$(dispatch_line) > 0 )) && grep -q 'restarted the stowed bar' '$e2e/out'"
+rm -f "$e2e/immortal"
+check "a bar that survives SIGKILL skips the second pass, says so and fails as not restarted" "[[ $survive_rc != 0 && \$(migrate_count) == 1 ]] && ! logged 'migrate bar down' && grep -q 'the old bar was still running, so migration cleanup was skipped' '$e2e/out' && grep -q 'qs did not come back' '$e2e/out'"
+check "and the bar is still relaunched" "(( \$(dispatch_line) > 0 ))"
 touch "$e2e/term_survives"
 migrate_ship lib/install/migrate.sh home/quickshell/bar
 term_rc=$?
 rm -f "$e2e/term_survives"
-check "a bar that ignores SIGTERM is killed with SIGKILL before the relaunch, and the second pass runs" "[[ $term_rc == 0 && \$(migrate_count) == 2 ]] && logged 'pkill -KILL -u $UID -f $bar_pattern' && logged 'migrate bar down' && ((\$(line_of 'pkill -KILL -u $UID -f $bar_pattern') < \$(dispatch_line)))"
-used=$(sed -n 's/^pkill -u [0-9]* -f //p' "$SHIP_LOG" | head -n1)
-for line in "qs -n" "/usr/bin/qs -n" "/usr/bin/qs -n -p /x"; do
-  check "the restart pattern matches '$line'" "grep -Eq -- '$used' <<<'$line'"
-done
-for line in "qs-shadow -n" "/usr/bin/qs-shadow -n" "qs -p /x" "qsx -n"; do
-  check "the restart pattern does not match '$line'" "! grep -Eq -- '$used' <<<'$line'"
-done
-for line in "quickshell" "/usr/bin/quickshell"; do
-  check "the restart pattern matches '$line'" "grep -Eq -- '$used' <<<'$line'"
-done
-for line in "quickshell -p /x" "quickshell -c greeter" "/usr/bin/qs-shadow"; do
-  check "the restart pattern does not match '$line'" "! grep -Eq -- '$used' <<<'$line'"
-done
-# The crash handler's relaunch leaves a bar with no arguments at all.
-STUB_BAR_CMDLINE=quickshell migrate_ship lib/install/migrate.sh home/quickshell/bar
-check "a bar relaunched as plain quickshell is found, killed and replaced" "[[ $? == 0 ]] && logged 'pkill -u $UID -f $bar_pattern' && logged 'migrate bar down'"
-check "a bar that exits on SIGTERM is not sent SIGKILL" "migrate_ship lib/install/migrate.sh home/quickshell/bar && ! logged 'pkill -KILL -u $UID -f $bar_pattern'"
-
+check "a bar that ignores SIGTERM is killed with SIGKILL before the relaunch, and the second pass runs" "[[ $term_rc == 0 && \$(migrate_count) == 2 ]] && logged 'bar got TERM' && logged 'migrate bar down' && ((\$(line_of 'bar got TERM') < \$(dispatch_line)))"
+# The fake bar's cmdline is nothing like `qs -n` (a crash relaunch leaves a bare quickshell): only qs list finds it.
+migrate_ship lib/install/migrate.sh home/quickshell/bar
+check "a bar found only through qs list is stopped and replaced by a different pid" "[[ $? == 0 ]] && logged 'bar got TERM' && logged 'migrate bar down' && grep -q 'restarted the stowed bar' '$e2e/out'"
+# A decoy test or shadow bar is another config or runtime: qs list without --all does not report it, so it is not signalled.
+sleep 60 &
+decoy=$!
+migrate_ship lib/install/migrate.sh home/quickshell/bar
+check "a test or shadow bar that qs list does not report is left alone" "kill -0 $decoy"
+kill "$decoy"
 echo "== a merge that touches the voxcmd crate rebuilds the installed voxcmd"
 build_count() { grep -c '^just voxcmd-build' "$SHIP_LOG"; }
 migrate_ship home/voxcmd/src/paths.rs
@@ -591,15 +607,15 @@ answers_ship() {
   migrate_ship home/quickshell/bar
 }
 answers_ship "Not ready to accept queries yet." weird unlocked
-check "an odd answer, then unlocked, restarts the bar" "[[ $? == 0 ]] && logged 'pkill -u $UID -f $bar_pattern' && [[ \$(<$e2e/calls) == 3 ]]"
+check "an odd answer, then unlocked, restarts the bar" "[[ $? == 0 ]] && logged 'bar got TERM' && [[ \$(<$e2e/calls) == 3 ]]"
 answers_ship secure
-check "secure skips the restart and prints the answer" "[[ $? != 0 ]] && ! logged 'pkill -u $UID -f $bar_pattern' && grep -q \"screen is locked (lock state 'secure')\" '$e2e/out'"
+check "secure skips the restart and prints the answer" "[[ $? != 0 ]] && ! logged 'bar got TERM' && grep -q \"screen is locked (lock state 'secure')\" '$e2e/out'"
 answers_ship pending secure
-check "pending is retried, then secure skips" "[[ $? != 0 ]] && ! logged 'pkill -u $UID -f $bar_pattern' && grep -q \"lock state 'secure'\" '$e2e/out' && [[ \$(<$e2e/calls) == 2 ]]"
+check "pending is retried, then secure skips" "[[ $? != 0 ]] && ! logged 'bar got TERM' && grep -q \"lock state 'secure'\" '$e2e/out' && [[ \$(<$e2e/calls) == 2 ]]"
 answers_ship pending unlocked
-check "pending is retried, then unlocked restarts" "[[ $? == 0 ]] && logged 'pkill -u $UID -f $bar_pattern' && [[ \$(<$e2e/calls) == 2 ]]"
+check "pending is retried, then unlocked restarts" "[[ $? == 0 ]] && logged 'bar got TERM' && [[ \$(<$e2e/calls) == 2 ]]"
 answers_ship weird
-check "an odd answer that never settles gives up after the budget, naming the last answer" "[[ $? != 0 ]] && ! logged 'pkill -u $UID -f $bar_pattern' && grep -q \"never settled (last answer 'weird')\" '$e2e/out' && [[ \$(<$e2e/calls) == 15 ]]"
+check "an odd answer that never settles gives up after the budget, naming the last answer" "[[ $? != 0 ]] && ! logged 'bar got TERM' && grep -q \"never settled (last answer 'weird')\" '$e2e/out' && [[ \$(<$e2e/calls) == 15 ]]"
 printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 
 echo "== a batch run from a worktree the merge removes"

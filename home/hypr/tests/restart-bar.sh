@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Tests scripts/restart-bar.sh against a fake bar that takes a second to exit on SIGTERM, the race that left no bar
-# after SUPER+Q b: the old kill-then-`qs -n` line must fail here and the script must succeed. pgrep, the kill command
-# and qs are stubs that only see the fake bar's own pid, so the owner's live bar is never signalled. notify-send is a
-# stub too, or the survives-SIGKILL case would pop a real "Bar restart failed" on the owner's desktop.
+# after SUPER+Q b: the old kill-then-`qs -n` line must fail here and the script must succeed. `qs` is a stub whose `list`
+# reports only the fake bar's own pid, so the owner's live bar is never signalled. notify-send is a stub too, or the
+# survives-SIGKILL case would pop a real "Bar restart failed" on the owner's desktop.
 set -u
 
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -31,9 +31,20 @@ stat=$(cat "/proc/$1/stat" 2>/dev/null) || exit 1
 state=${stat##*) }
 [[ ${state%% *} != Z ]]
 STUB
-# pid: the live fake bar. started: one line per bar the fake qs launched.
+# pid: the live fake bar. started: one line per bar the fake qs launched. `qs list` reports the default config's bar; with --all it adds
+# the decoy test/shadow bar whose pid is in decoy_pid. STUB_BAR=immortal keeps listing a bar that was killed, as a process
+# stuck in D-state would.
 cat >bin/qs <<'STUB'
 #!/usr/bin/env bash
+if [[ $1 == list ]]; then
+  pids=()
+  if [[ -s $STUB_DIR/pid ]] && { alive "$(cat "$STUB_DIR/pid")" || [[ ${STUB_BAR:-slow} == immortal ]]; }; then
+    pids+=("$(cat "$STUB_DIR/pid")")
+  fi
+  [[ " $* " == *" --all "* && -s $STUB_DIR/decoy_pid ]] && pids+=("$(cat "$STUB_DIR/decoy_pid")")
+  printf '%s\n' "${pids[@]}" | jq -R 'select(. != "") | {pid: tonumber}' | jq -s .
+  exit 0
+fi
 # Like `qs -n`: exit at once while another instance is alive.
 if [[ -s $STUB_DIR/pid ]] && alive "$(cat "$STUB_DIR/pid")"; then
   exit 0
@@ -45,24 +56,15 @@ if [[ ${STUB_BAR:-slow} == stubborn || ${STUB_BAR:-slow} == immortal ]]; then
 else
   handler='sleep 1; exit 0'
 fi
+# STUB_BAR=crashed leaves only a crash reporter (a bare `quickshell` that is no listed instance).
+if [[ ${STUB_BAR:-slow} == crashed ]]; then
+  bash -c "exec -a quickshell sleep 30" &
+  echo $! >>"$STUB_DIR/all_pids"
+  exit 0
+fi
 bash -c "trap '$handler' TERM; while :; do sleep 0.1; done" &
 echo $! >"$STUB_DIR/pid"
 echo $! >>"$STUB_DIR/all_pids"
-STUB
-cat >bin/pgrep <<'STUB'
-#!/usr/bin/env bash
-echo "$*" >>"$STUB_DIR/pgrep_args"
-[[ -s $STUB_DIR/pid ]] && alive "$(cat "$STUB_DIR/pid")"
-STUB
-cat >bin/pkill <<'STUB'
-#!/usr/bin/env bash
-echo "$*" >>"$STUB_DIR/pkill_args"
-signal=TERM
-[[ $1 == -KILL ]] && signal=KILL
-# STUB_BAR=immortal survives SIGKILL, as a process stuck in D-state does.
-[[ $signal == KILL && ${STUB_BAR:-slow} == immortal ]] && exit 0
-[[ -s $STUB_DIR/pid ]] && kill -"$signal" "$(cat "$STUB_DIR/pid")" 2>/dev/null
-exit 0
 STUB
 cat >bin/notify-send <<'STUB'
 #!/usr/bin/env bash
@@ -98,7 +100,7 @@ check alive $$
 # The old line: qs -n sees the dying bar, exits, and the bar then dies for good.
 start_bar
 old_pid=$(cat pid)
-bash -c "pkill -f '^qs -n'; qs -n"
+bash -c 'kill "$1"; qs -n' _ "$old_pid"
 wait_dead "$old_pid"
 check test "$(bars_started)" -eq 1
 check not alive "$old_pid"
@@ -128,20 +130,19 @@ check env RESTART_BAR_GRACE=1 bash "$script"
 check test "$(cat pid)" != "$old_pid"
 check test "$(bars_started)" -eq 2
 
-# shellcheck source=/dev/null
-source "$here/../.config/hypr/scripts/bar-pattern.sh"
-# shellcheck disable=SC2154 # bar_pattern comes from bar-pattern.sh
-pattern=$bar_pattern
-# The signals go to the owner's bars only: both commands get -u $UID and the pattern, and no other match.
-: >pgrep_args
+# A decoy test or shadow bar is not in the default `qs list` and must survive the restart.
+bash -c 'exec -a quickshell sleep 60' &
+decoy=$!
+echo "$decoy" >decoy_pid
+echo "$decoy" >>all_pids
 unset STUB_BAR
-: >pkill_args
 start_bar
+old_pid=$(cat pid)
+check test "$(bash "$script" --pids)" = "$old_pid"
 check bash "$script"
-check grep -qxF -- "-u $UID -f $pattern" pkill_args
-check grep -qxF -- "-u $UID -f $pattern" pgrep_args
-check test "$(grep -cvxF -- "-u $UID -f $pattern" pgrep_args)" -eq 0
-check test "$(grep -cvxF -- "-u $UID -f $pattern" pkill_args)" -eq 0
+check test "$(cat pid)" != "$old_pid"
+check alive "$decoy"
+check test "$(bash "$script" --pids)" = "$(cat pid)"
 
 # A fractional grace is not valid arithmetic: warn and fall back instead of crashing.
 start_bar
@@ -164,16 +165,10 @@ check test $? -ne 0
 check grep -q "survived SIGKILL" err
 check grep -q "Bar restart failed" notified
 check test "$(bars_started)" -eq 1
-check grep -qxF -- "-KILL -u $UID -f $pattern" pkill_args
 
-# The pattern the script passes matches a bar launched with a path, and not a shadow bar or a look-alike.
-used=$(sed -n 's/^-u [0-9]* -f //p' pkill_args | head -n1)
-for line in "qs -n" "/usr/bin/qs -n" "/usr/bin/qs -n -p /x" "qs -n -p /x" "quickshell" "/usr/bin/quickshell"; do
-  check grep -Eq -- "$used" <<<"$line"
-done
-for line in "qs-shadow -n" "/usr/bin/qs-shadow -n" "qs -p /x" "quickshell -p /x" "bash restart-bar.sh qs -n" "qsx -n"; do
-  # shellcheck disable=SC2016 # expanded by the inner shell
-  check bash -c '! grep -Eq -- "$0" <<<"$1"' "$used" "$line"
-done
+# A crash reporter (a bare `quickshell` that is no listed instance) is not a bar.
+export STUB_BAR=crashed
+start_bar
+check test -z "$(bash "$script" --pids)"
 
 exit $((failures > 0))

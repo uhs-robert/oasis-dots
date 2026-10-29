@@ -221,29 +221,29 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     esac
     use_live_hypr "restart the bar by hand"
     # `qs -n` refuses to start while the old bar lives, so a bar slow to exit on SIGTERM would be relaunched into
-    # nothing and leave the owner with no bar: escalate to SIGKILL before going on. Only the owner's `qs -n` bar, bare or with
-    # an absolute path, or the bare `quickshell` a crash relaunch leaves, is matched (as in restart-bar.sh): -x qs would
-    # also kill other users' or sessions' test bars.
-    # shellcheck source=/dev/null
-    source "$repo/home/hypr/.config/hypr/scripts/bar-pattern.sh"
-    # shellcheck disable=SC2154 # bar_pattern comes from bar-pattern.sh
-    old_bar_pid=$(pgrep -u "$UID" -f "$bar_pattern" | head -n1 || true)
-    pkill -u "$UID" -f "$bar_pattern" || true
+    # nothing and leave the owner with no bar: escalate to SIGKILL before going on. The bar is the instance of the owner's
+    # config that `qs list` reports (restart-bar.sh --pids), not a command-line match: a crash relaunch leaves a bare
+    # `quickshell`, and test and shadow bars are other configs or runtimes.
+    bar_pids() { bash "$repo/home/hypr/.config/hypr/scripts/restart-bar.sh" --pids; }
+    old_bar_pids=$(bar_pids)
+    # shellcheck disable=SC2086 # one word per pid
+    [[ -z $old_bar_pids ]] || kill $old_bar_pids 2>/dev/null || true
     for _ in $(seq 20); do
-      pgrep -u "$UID" -f "$bar_pattern" >/dev/null || break
+      [[ -z $(bar_pids) ]] && break
       sleep 0.2
     done
-    if pgrep -u "$UID" -f "$bar_pattern" >/dev/null; then
-      pkill -KILL -u "$UID" -f "$bar_pattern" || true
+    if [[ -n $(bar_pids) ]]; then
+      # shellcheck disable=SC2046
+      kill -KILL $(bar_pids) 2>/dev/null || true
       for _ in $(seq 10); do
-        pgrep -u "$UID" -f "$bar_pattern" >/dev/null || break
+        [[ -z $(bar_pids) ]] && break
         sleep 0.2
       done
     fi
     # A failure here still relaunches the bar first: dying with the old one killed would leave the owner with none.
     migrate_status=0
     # The wait above can run out (a slow exit): migrations that see a bar keep the old state and nothing would retry.
-    if pgrep -u "$UID" -f "$bar_pattern" >/dev/null; then
+    if [[ -n $(bar_pids) ]]; then
       $run_migrations && echo "ship-batch: the old bar was still running, so migration cleanup was skipped; stop the bar and run: just migrate-quickshell-state"
     else
       migrate "after stopping the bar" || migrate_status=1
@@ -253,8 +253,9 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     ((migrate_status == 0)) && finish_base "$repo"
     hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" 9>&- >/dev/null || die "hyprctl could not relaunch qs; start it by hand: hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\""
     sleep 6
-    new_bar_pid=$(pgrep -u "$UID" -f "$bar_pattern" | head -n1 || true)
-    [[ -n $new_bar_pid && $new_bar_pid != "$old_bar_pid" ]] || die "qs did not come back; read 'qs log'"
+    # Success is a listed instance with a pid the old bar did not have: a crash reporter or the old bar still alive is not it.
+    new_bar_pids=$(bar_pids)
+    if [[ -z $new_bar_pids ]] || grep -qxFf <(echo "$old_bar_pids") <<<"$new_bar_pids"; then die "qs did not come back; read 'qs log'"; fi
     ((migrate_status == 0)) || die "$migrate_failure (the bar was restarted)"
     echo "ship-batch: restarted the stowed bar"
   fi
