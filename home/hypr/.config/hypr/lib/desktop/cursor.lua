@@ -34,19 +34,33 @@ local Cursor = {
   click_middle = function() return Hypr.exec("wlrctl pointer click middle") end,
 }
 
+--- Return an action that warps the pointer by (dx, dy) from where it is now.
+--- Not wlrctl, which adds and removes a virtual pointer on every run: a move per repeat tick would spawn a process
+--- each time. Hyprland clamps the warp to the monitor layout.
+--- @param dx number
+--- @param dy number
+--- @return fun()
+local function warp_by(dx, dy)
+  return function()
+    local pos = hl.get_cursor_pos()
+    if not pos then return end
+    hl.dispatch(hl.dsp.cursor.move({ x = pos.x + dx, y = pos.y + dy }))
+  end
+end
+
 --- Cursor movement factory for Direction.speed_binds / Direction.omni_binds.
 --- @param amount number  Pixels to move per axis per trigger
 --- @return DirActions
 Cursor.move = function(amount)
   return {
-    left = Hypr.exec("wlrctl pointer move -" .. amount .. " 0"),
-    right = Hypr.exec("wlrctl pointer move " .. amount .. " 0"),
-    up = Hypr.exec("wlrctl pointer move 0 -" .. amount),
-    down = Hypr.exec("wlrctl pointer move 0 " .. amount),
-    nw = Hypr.exec("wlrctl pointer move -" .. amount .. " -" .. amount),
-    ne = Hypr.exec("wlrctl pointer move " .. amount .. " -" .. amount),
-    sw = Hypr.exec("wlrctl pointer move -" .. amount .. " " .. amount),
-    se = Hypr.exec("wlrctl pointer move " .. amount .. " " .. amount),
+    left = warp_by(-amount, 0),
+    right = warp_by(amount, 0),
+    up = warp_by(0, -amount),
+    down = warp_by(0, amount),
+    nw = warp_by(-amount, -amount),
+    ne = warp_by(amount, -amount),
+    sw = warp_by(-amount, amount),
+    se = warp_by(amount, amount),
   }
 end
 
@@ -62,33 +76,99 @@ Cursor.scroll = function(step)
   }
 end
 
-local hold_timers = {}
-
---- Cancel the repeat started by Cursor.hold.
-Cursor.hold_stop = function()
-  for _, timer in ipairs(hold_timers) do
-    timer:set_enabled(false)
-  end
-  hold_timers = {}
+--- Start `fn` repeating at the keyboard's repeat delay and rate; returns the timers that drive it.
+--- @param fn fun()
+--- @return table[]
+local function start_repeat(fn)
+  local delay = hl.get_config("input.repeat_delay") or 600
+  local rate = hl.get_config("input.repeat_rate") or 25
+  local timers = {}
+  timers[1] = hl.timer(
+    function() timers[#timers + 1] = hl.timer(fn, { timeout = math.floor(1000 / rate), type = "repeat" }) end,
+    { timeout = delay, type = "oneshot" }
+  )
+  return timers
 end
 
---- Repeat `fn` while its key stays down, until Cursor.hold_stop runs on the key's release.
+--- @param timers table[]
+local function stop_timers(timers)
+  for _, timer in ipairs(timers) do
+    timer:set_enabled(false)
+  end
+end
+
+local scroll_timers = {}
+
+--- Cancel the repeat started by Cursor.hold.
+Cursor.scroll_stop = function()
+  stop_timers(scroll_timers)
+  scroll_timers = {}
+end
+
+--- Repeat `fn` while its key stays down, until Cursor.scroll_stop runs on the key's release.
 --- A binding's own `repeating` flag cannot do this for scrolling: Hyprland drops the key repeat as soon as an
---- axis event arrives, so wlrctl's first scroll ends it. The keyboard's repeat delay and rate are mirrored.
+--- axis event arrives, so wlrctl's first scroll ends it.
 --- @param fn fun()
 --- @return fun()
 Cursor.hold = function(fn)
   return function()
-    Cursor.hold_stop()
+    Cursor.scroll_stop()
     fn()
-    local delay = hl.get_config("input.repeat_delay") or 600
-    local rate = hl.get_config("input.repeat_rate") or 25
-    local start = hl.timer(
-      function() hold_timers[#hold_timers + 1] = hl.timer(fn, { timeout = math.floor(1000 / rate), type = "repeat" }) end,
-      { timeout = delay, type = "oneshot" }
-    )
-    hold_timers[#hold_timers + 1] = start
+    scroll_timers = start_repeat(fn)
   end
+end
+
+--- Unit steps per direction; the held directions move the pointer by the sum of their steps times their amounts.
+local UNIT_STEP = {
+  left = { -1, 0 },
+  right = { 1, 0 },
+  up = { 0, -1 },
+  down = { 0, 1 },
+  nw = { -1, -1 },
+  ne = { 1, -1 },
+  sw = { -1, 1 },
+  se = { 1, 1 },
+}
+
+--- @type table<string, number> direction -> pixels per step, for each direction key held down
+local held_moves = {}
+local move_timers = {}
+
+local function step_held_moves()
+  local dx, dy = 0, 0
+  for dir, amount in pairs(held_moves) do
+    dx = dx + UNIT_STEP[dir][1] * amount
+    dy = dy + UNIT_STEP[dir][2] * amount
+  end
+  if dx ~= 0 or dy ~= 0 then warp_by(dx, dy)() end
+end
+
+--- Mark a direction held, step once and keep stepping until Cursor.move_release lets go of every held direction.
+--- Not the bind's own `repeating` flag: on Hyprland 0.57 a key that starts a chord (H of H+K) fires on release and
+--- never repeats, so diagonals come from holding two directions at once instead of from chord binds.
+--- @param dir string  A UNIT_STEP key
+--- @param amount number
+Cursor.move_press = function(dir, amount)
+  held_moves[dir] = amount
+  stop_timers(move_timers)
+  step_held_moves()
+  move_timers = start_repeat(step_held_moves)
+end
+
+--- @param dir string  A UNIT_STEP key
+Cursor.move_release = function(dir)
+  held_moves[dir] = nil
+  if next(held_moves) ~= nil then return end
+  stop_timers(move_timers)
+  move_timers = {}
+end
+
+--- Stop every held move and scroll. A release that never arrives (the submap left mid-hold) must not keep them going.
+Cursor.hold_stop = function()
+  Cursor.scroll_stop()
+  held_moves = {}
+  stop_timers(move_timers)
+  move_timers = {}
 end
 
 --- Run a wl-kbptr mode.

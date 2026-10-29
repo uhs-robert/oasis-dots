@@ -42,12 +42,25 @@ end
 
 Act.define("cursor.move", {
   label = "Move Pointer",
-  intent = "Move the mouse pointer by a number of pixels in a direction, diagonals included.",
+  intent = "Move the mouse pointer by a number of pixels in a direction, diagonals included. In the Cursor submap it keeps moving until cursor.move_stop runs for that direction; anywhere else it moves once.",
   params = {
     { name = "dir", type = "enum", values = MOVE_DIRECTIONS },
     { name = "amount", type = "int" },
   },
-  run = function(dir, amount) cursor().move(amount)[MOVE_KEY[dir]]() end,
+  run = function(dir, amount)
+    if in_cursor_submap() then
+      cursor().move_press(MOVE_KEY[dir], amount)
+    else
+      cursor().move(amount)[MOVE_KEY[dir]]()
+    end
+  end,
+})
+
+Act.define("cursor.move_stop", {
+  label = "Stop Moving",
+  intent = "Let go of a direction a held cursor.move started.",
+  params = { { name = "dir", type = "enum", values = MOVE_DIRECTIONS } },
+  run = function(dir) cursor().move_release(MOVE_KEY[dir]) end,
 })
 
 Act.define("cursor.scroll", {
@@ -70,7 +83,7 @@ Act.define("cursor.scroll", {
 Act.define("cursor.scroll_stop", {
   label = "Stop Scrolling",
   intent = "End a repeating scroll.",
-  run = function() cursor().hold_stop() end,
+  run = function() cursor().scroll_stop() end,
 })
 
 Act.define("cursor.click", {

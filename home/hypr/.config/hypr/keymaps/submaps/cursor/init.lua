@@ -38,7 +38,7 @@ local function pointer(mode, exit) return { "cursor.pointer_mode", { mode, exit 
 --- @return table
 local function click(button, exit) return { "cursor.click", { button, exit == true } } end
 
---- The eight pointer directions as actions that move by `amount` pixels.
+--- The four pointer directions as actions that move by `amount` pixels. Holding two of them moves diagonally.
 --- @param amount number
 --- @return DirActions
 local function move_by(amount)
@@ -47,12 +47,13 @@ local function move_by(amount)
     right = { "cursor.move", { "right", amount } },
     up = { "cursor.move", { "up", amount } },
     down = { "cursor.move", { "down", amount } },
-    nw = { "cursor.move", { "up_left", amount } },
-    ne = { "cursor.move", { "up_right", amount } },
-    sw = { "cursor.move", { "down_left", amount } },
-    se = { "cursor.move", { "down_right", amount } },
   }
 end
+
+--- Options for the release rows that end a held move or scroll. ignore_mods: letting go of SHIFT or CTRL first still
+--- stops it. transparent: Hyprland 0.57 shadows a held key's release bind once another key is pressed or released
+--- (shadowBinds), so without it the release after a diagonal never runs and the pointer moves forever.
+local function held_release() return { release = true, ignore_mods = true, transparent = true } end
 
 --- Build scroll bind rows for a modifier tier. Scrolling repeats until the release rows from scroll_release_binds
 --- stop it.
@@ -70,12 +71,25 @@ local function scroll_binds(mod, step, suffix)
   }
 end
 
---- Release rows that end a held scroll. They ignore modifiers so letting go of SHIFT or CTRL first still stops it.
+--- Release rows that end a held scroll.
 --- @return table[]
 local function scroll_release_binds()
   local rows = {}
   for _, key in ipairs({ "E", "Y", "COMMA", "PERIOD" }) do
-    rows[#rows + 1] = { key, "cursor.scroll_stop", false, { release = true, ignore_mods = true } }
+    rows[#rows + 1] = { key, "cursor.scroll_stop", false, held_release() }
+  end
+  return rows
+end
+
+--- Release rows that let go of a held move direction.
+--- @param set DirectionKeys
+--- @return table[]
+local function move_release_binds(set)
+  local rows = {}
+  local function add(key, dir) rows[#rows + 1] = { key, { "cursor.move_stop", { dir } }, false, held_release() } end
+  for _, dir in ipairs({ "left", "down", "up", "right" }) do
+    add(set[dir], dir)
+    if set.arrows ~= false then add(dir:upper(), dir) end
   end
   return rows
 end
@@ -96,8 +110,7 @@ local cursor_mode = Submap.define({
   on_enter = enter_cursor,
   on_exit = exit_cursor,
 
-  -- The diagonal chords, the scroll speeds and the Shift and Ctrl wl-kbptr variants are left to the full list behind
-  -- SHIFT + /.
+  -- The scroll speeds and the Shift and Ctrl wl-kbptr variants are left to the full list behind SHIFT + /.
   hint = {
     { "Move", { "cursor.move", label = "Move", tiers = "speed" } },
     {
@@ -170,17 +183,12 @@ local cursor_mode = Submap.define({
         keys[#keys + 1] = { "ALT + " .. arrow[1], { "cursor.send_key", { arrow[2] } }, arrow[3], { repeating = true } }
       end
 
-      -- Cursor movement speed tiers with repeating
+      -- Speed tiers. cursor.move repeats on its own until the release rows let go, so Hyprland's repeat stays off.
       for _, key in ipairs(Direction.speed_binds(move_by, "Cursor", nil, set)) do
-        key[4] = key[4] or {}
-        key[4].repeating = true
+        key[4] = nil
         keys[#keys + 1] = key
       end
-
-      -- Diagonal (omni-direction) speed tiers with repeating
-      for _, key in ipairs(Direction.omni_binds(move_by, "Cursor", nil, set)) do
-        key[4] = key[4] or {}
-        key[4].repeating = true
+      for _, key in ipairs(move_release_binds(set)) do
         keys[#keys + 1] = key
       end
     end
