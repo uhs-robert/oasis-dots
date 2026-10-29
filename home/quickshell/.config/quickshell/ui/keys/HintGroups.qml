@@ -10,22 +10,28 @@ Flow {
     property var groups: []
     property real max_width: Infinity
     // The widest row once the groups are filled in the way Flow fills them, so a wrapped bar is no wider than its rows.
-    readonly property real fitted_width: {
-        let line = 0, widest = 0;
+    readonly property real fitted_width: root.fill(root.max_width).width
+    width: root.fitted_width
+    spacing: 18
+
+    // How Flow fills `width` with the groups: { rows, width } with width the widest row. Lets a caller compare layouts
+    // before choosing one.
+    function fill(width) {
+        let line = 0, widest = 0, rows = 0;
         for (let i = 0; i < groups_repeater.count; i++) {
             const item = groups_repeater.itemAt(i);
             if (!item) continue;
-            if (line > 0 && line + root.spacing + item.implicitWidth > root.max_width) {
+            if (line > 0 && line + root.spacing + item.implicitWidth > width) {
                 widest = Math.max(widest, line);
                 line = item.implicitWidth;
+                rows++;
             } else {
+                if (line === 0) rows = Math.max(rows, 1);
                 line += (line > 0 ? root.spacing : 0) + item.implicitWidth;
             }
         }
-        return Math.ceil(Math.max(widest, line));
+        return { rows: rows, width: Math.ceil(Math.max(widest, line)) };
     }
-    width: root.fitted_width
-    spacing: 18
 
     Repeater {
         id: groups_repeater

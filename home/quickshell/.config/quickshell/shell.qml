@@ -304,7 +304,10 @@ ShellRoot {
     WhichKeyIpc {
         whichkey: whichkey
     }
-    SubmapHintBar {}
+    Variants {
+        model: Quickshell.screens
+        SubmapHintBar {}
+    }
     SubmapHintIpc {}
     Variants {
         model: BarEditor.active ? Quickshell.screens : []
