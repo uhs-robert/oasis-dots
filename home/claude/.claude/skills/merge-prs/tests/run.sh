@@ -211,6 +211,24 @@ check "exits 0" "[[ $code == 0 ]]"
 check "notes the fixes" "grep -q 'are small changes to files it reviewed' <<<\"\$out\""
 check "does not request a review" "! grep -q '^commented=' '$GH_STATE'"
 
+echo "== review gate: a merge of main since the Codex review"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;Merge remote-tracking branch origin/main;fix: y\nmerged_c2=m1\nstatus_m1=behind\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a:400;z:300\ncommit_files_c3=a:2\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+show "$out"
+check "passes, not counting main's lines" "[[ $code == 0 ]]"
+check "does not request a review" "! grep -q '^commented=' '$GH_STATE'"
+
+echo "== review gate: a merge of another branch since the Codex review"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;Merge branch feat/z\nmerged_c2=z1\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a:30\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "counts the merge's lines" "grep -q '30 lines changed since the review' <<<\"\$out\""
+
 echo "== review gate: generated-only commit since the Codex review"
 setup
 mkdir -p .claude

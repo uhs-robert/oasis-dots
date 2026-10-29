@@ -152,6 +152,18 @@ case "$args" in
   case $args in
   # Commits are listed by sha (c1, c2, ... by position in the side's subjects, with the subject).
   # With rebased=1 the head's commits are new ones (h1, h2, ...), as after a rebase.
+  # Whether a merged-in parent is on main: status_<sha> in the state, default ahead (not on main).
+  *"--jq .status"*) status=$(get "status_$sha") || true && echo "${status:-ahead}" ;;
+  # The head side with merged-in parents between sha and subject: merged_<sha> in the state, "-" when unset.
+  *parents*)
+    prefix=c
+    [[ -n $(get rebased) ]] && prefix=h
+    get head_subjects | tr ';' '\n' | while IFS= read -r subject; do
+      n=$((${n:-0} + 1))
+      merged=$(get "merged_$prefix$n") || true
+      printf '%s%d\t%s\t%s\n' "$prefix" "$n" "${merged:--}" "$subject"
+    done
+    ;;
   *.sha*)
     prefix=c
     [[ $side == head && -n $(get rebased) ]] && prefix=h
