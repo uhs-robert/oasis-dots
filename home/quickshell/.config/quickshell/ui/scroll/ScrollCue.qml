@@ -40,6 +40,15 @@ Item {
         value: fade_effect
     }
 
+    // A Binding does not restore its target when it is destroyed, so a cue unloaded before its target (the browse
+    // picker's at the max preview size) would leave the layer holding the deleted fade_effect. The next cue's Binding
+    // then reads that dangling pointer as the value to restore, and qs segfaults.
+    Component.onDestruction: {
+        if (!root.target) return;
+        root.target.layer.enabled = false;
+        root.target.layer.effect = null;
+    }
+
     Component {
         id: fade_effect
         MultiEffect {
