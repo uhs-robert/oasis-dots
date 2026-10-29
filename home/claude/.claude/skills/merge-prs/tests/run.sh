@@ -4,6 +4,10 @@
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 script=${1:-$here/../merge-prs.sh}
+# Every case's repo lives under one folder, removed on exit: a case makes a fresh one, and 200 of them per run filled
+# /tmp's inodes when they were left behind.
+suite=$(mktemp -d)
+trap 'cd /; rm -rf "$suite"' EXIT
 pass=0 fail=0
 check() { if eval "$2"; then
   echo "ok   $1"
@@ -16,7 +20,7 @@ g() { git -c user.name=t -c user.email=t@t "$@"; }
 show() { while IFS= read -r line; do printf '   | %s\n' "$line"; done <<<"$1"; }
 
 setup() {
-  root=$(mktemp -d)
+  root=$(mktemp -d -p "$suite")
   export ORIGIN=$root/origin.git GH_STATE=$root/state
   git init -q --bare -b main "$ORIGIN"
   g clone -q "$ORIGIN" "$root/main" 2>/dev/null
@@ -601,7 +605,7 @@ check "does not run the script" "[[ ! -e '$root/env' ]]"
 # shellcheck disable=SC2016
 minify='mkdir -p out; tr "\n" " " <src >out/src.min; git add -A out; git diff --cached --quiet || git -c user.name=t -c user.email=t@t commit -qm "build: minify"'
 init_build_repo() {
-  root=$(mktemp -d)
+  root=$(mktemp -d -p "$suite")
   export ORIGIN=$root/origin.git GH_STATE=$root/state
   git init -q --bare -b main "$ORIGIN"
   g clone -q "$ORIGIN" "$root/main" 2>/dev/null
