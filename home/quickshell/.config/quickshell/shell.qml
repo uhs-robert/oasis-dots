@@ -259,8 +259,13 @@ ShellRoot {
     DirsProvider {}
     KeybindsProvider {}
     ChoicesProvider {}
+    PickerVoice {
+        id: picker_voice
+    }
     PopupIpc {}
-    PickerIpc {}
+    PickerIpc {
+        voice: picker_voice
+    }
     BrightnessIpc {}
     NotificationsIpc {}
     StyleIpc {}

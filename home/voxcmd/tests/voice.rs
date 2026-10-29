@@ -223,6 +223,70 @@ fn pending_pick(voice: &Voice, asker: &Child) -> PathBuf {
     fifo
 }
 
+/// A process named `qs` publishing its open picker, as the bar does, and the `qs-ipc` its answers go through.
+fn bar_picker(voice: &Voice) -> Child {
+    let program = voice.path().join("bin/qs");
+    std::fs::copy("/bin/sleep", &program).unwrap();
+    let bar = (0..500)
+        .find_map(|_| match Command::new(&program).arg("30").spawn() {
+            Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
+                std::thread::sleep(Duration::from_millis(10));
+                None
+            }
+            spawned => Some(spawned.unwrap()),
+        })
+        .expect("the bar never started");
+    assert!(wait_for(|| {
+        std::fs::read_to_string(format!("/proc/{}/comm", bar.id())).is_ok_and(|comm| comm == "qs\n")
+    }));
+    std::fs::create_dir_all(voice.path().join("xdg/hypr/scripts")).unwrap();
+    voice.script(
+        "xdg/hypr/scripts/qs-ipc",
+        &format!(
+            "echo \"qs-ipc $*\" >> '{}'; echo ok",
+            voice.path().join("calls").display()
+        ),
+    );
+    let pending = serde_json::json!({"pid": bar.id(), "owner": "bar", "token": "k1", "label": "Session",
+        "choices": [{"id": "Work", "label": "Work"}], "expansions": {}, "view_key": ""});
+    std::fs::write(voice.runtime().join("pending-pick.json"), pending.to_string()).unwrap();
+    bar
+}
+
+#[test]
+fn the_voice_key_answers_a_picker_the_bar_published() {
+    let voice = Voice::new();
+    voice.set_state("idle");
+    let mut bar = bar_picker(&voice);
+    assert!(voice.output(&["listen"]).status.success());
+    end(&mut bar);
+    assert!(wait_for(|| voice.calls().contains("setsid")));
+    assert!(
+        voice.calls().contains(" internal watch reply - 0 "),
+        "{}",
+        voice.calls()
+    );
+}
+
+#[test]
+fn stop_cancels_the_bars_picker_only_while_a_reply_recording_is_attached() {
+    let voice = Voice::new();
+    voice.set_state("idle");
+    let mut bar = bar_picker(&voice);
+    // Opened by key: nothing records an answer for it, so it is the user's to close.
+    assert!(voice.output(&["stop"]).status.success());
+    assert!(!voice.calls().contains("picker cancel"), "{}", voice.calls());
+    // The voice key: a reply watcher waits on the recording.
+    voice.detector("exec sleep 30");
+    let mut watcher = voice.watcher(&["reply", "-", "0", ""], &[], true);
+    assert!(voice.output(&["stop"]).status.success());
+    assert!(watcher.wait().unwrap().success());
+    end(&mut bar);
+    let calls = voice.calls();
+    assert_eq!(calls.matches("qs-ipc call picker cancel k1\n").count(), 1, "{calls}");
+    assert!(calls.contains("voxtype record cancel"), "{calls}");
+}
+
 // ---- the watcher ------------------------------------------------------------------------------------------------
 
 #[test]

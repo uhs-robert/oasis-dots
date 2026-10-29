@@ -4,7 +4,8 @@
 //! An ask is a process of its own whose command line says what it is (`voxcmd ask pick ...`): `pending-pick.json` names
 //! that process, and a reply, Stop Voice or the bar trust the file only while that process still asks (`read_pending`).
 //! Each ask has a private directory under `$XDG_RUNTIME_DIR` holding the answer FIFO; whoever answers writes one line
-//! to it, and an empty line is a cancel.
+//! to it, and an empty line is a cancel. The bar publishes any other choices picker in the same file (`Owner::Bar`),
+//! with no FIFO: it is answered over the bar's IPC, by a token that changes on every open.
 pub mod confirm;
 pub mod hints;
 pub mod pick;
@@ -33,7 +34,15 @@ use std::time::{Duration, Instant};
 pub struct PendingPick {
     #[serde(deserialize_with = "number_or_numeric_text")]
     pub pid: u32,
-    pub fifo: PathBuf,
+    /// Absent for an ask, which keeps its field order.
+    #[serde(default, skip_serializing_if = "Owner::is_ask")]
+    pub owner: Owner,
+    /// An ask's answer FIFO; the bar has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fifo: Option<PathBuf>,
+    /// The bar's token for the open picker, which its answer calls repeat; a reopened picker has a new one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
     #[serde(default, deserialize_with = "lenient_text")]
     pub label: String,
     /// `confirm` or `hints`; absent for the text picker.
@@ -52,6 +61,26 @@ pub struct PendingPick {
     /// The confirm question's verb, which a reply starting with it answers yes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verb: Option<String>,
+    /// The bar's own `view`: the expansion key it shows, "" for the top level, rewritten in the file as it changes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view_key: Option<String>,
+}
+
+/// Who wrote the pending pick and so who takes the answer.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Owner {
+    /// A `voxcmd ask` process, answered through its FIFO.
+    #[default]
+    Ask,
+    /// The Quickshell bar, answered with `qs-ipc call picker answer|expand|cancel`.
+    Bar,
+}
+
+impl Owner {
+    fn is_ask(&self) -> bool {
+        *self == Self::Ask
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -94,12 +123,19 @@ fn lenient_text<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D:
 
 // ---- the answering side ---------------------------------------------------------------------------------------------
 
-/// The pending pick while its asker still waits on its FIFO. A stale file is left alone: a new ask may be about to
-/// replace it.
+/// The pending pick while its writer still waits: an ask on its FIFO, or the bar that published its open picker. A
+/// stale file is left alone: a new ask may be about to replace it.
 pub fn read_pending() -> Option<PendingPick> {
     let state: PendingPick = serde_json::from_str(&std::fs::read_to_string(paths::pending_pick()).ok()?).ok()?;
-    let is_fifo = std::fs::metadata(&state.fifo).is_ok_and(|meta| meta.file_type().is_fifo());
-    (is_fifo && still_asking(state.pid)).then_some(state)
+    let live = match state.owner {
+        Owner::Ask => state.fifo.as_deref().is_some_and(is_fifo) && still_asking(state.pid),
+        Owner::Bar => state.token.as_deref().is_some_and(|token| !token.is_empty()) && is_bar(state.pid),
+    };
+    live.then_some(state)
+}
+
+fn is_fifo(path: &Path) -> bool {
+    std::fs::metadata(path).is_ok_and(|meta| meta.file_type().is_fifo())
 }
 
 /// `voxcmd util pending-pick`: the pending pick's file text, as the bash `pending_pick` printed it, so a hook can
@@ -118,16 +154,29 @@ fn pending_pick_text(file: &Path) -> Option<String> {
         serde_json::Value::String(text) => text.clone(),
         _ => return None,
     };
-    let fifo = state.get("fifo")?.as_str()?;
-    let is_fifo = std::fs::metadata(fifo).is_ok_and(|meta| meta.file_type().is_fifo());
-    let asking = pid.parse().is_ok_and(still_asking);
+    let live = match state.get("owner").map(serde_json::Value::as_str) {
+        None => {
+            let fifo = state.get("fifo")?.as_str()?;
+            is_fifo(Path::new(fifo)) && pid.parse().is_ok_and(still_asking)
+        }
+        Some(Some("bar")) => {
+            let token = state.get("token")?.as_str()?;
+            !token.is_empty() && pid.parse().is_ok_and(is_bar)
+        }
+        Some(_) => false,
+    };
     // The bash printed through `$(...)`, which drops trailing newlines; main adds the one.
-    (is_fifo && asking).then(|| text.trim_end_matches('\n').to_string())
+    live.then(|| text.trim_end_matches('\n').to_string())
 }
 
-/// Whether the pick read earlier is still the one waiting: Stop Voice may have cancelled it since.
+/// Whether the pick read earlier is still the one waiting: Stop Voice may have cancelled it since, or the bar reopened
+/// its picker (a new token).
 pub fn still_pending(earlier: &PendingPick) -> bool {
-    read_pending().is_some_and(|now| now.pid == earlier.pid && now.fifo == earlier.fifo)
+    read_pending().is_some_and(|now| same_question(&now, earlier))
+}
+
+fn same_question(now: &PendingPick, earlier: &PendingPick) -> bool {
+    now.pid == earlier.pid && now.owner == earlier.owner && now.fifo == earlier.fifo && now.token == earlier.token
 }
 
 const ASK_KINDS: [&str; 3] = ["pick", "confirm", "hints"];
@@ -136,6 +185,18 @@ const ASK_KINDS: [&str; 3] = ["pick", "confirm", "hints"];
 /// line, as the bash `pending_pick` matched) or `voxcmd[-rs] ask <kind>`. A pid since reused by another process fails.
 fn still_asking(pid: u32) -> bool {
     std::fs::read(format!("/proc/{pid}/cmdline")).is_ok_and(|cmdline| is_asker_command_line(&cmdline))
+}
+
+/// The pid in the file is still a Quickshell bar. A bar that reloaded keeps its pid, which the token tells apart.
+fn is_bar(pid: u32) -> bool {
+    std::fs::read(format!("/proc/{pid}/cmdline")).is_ok_and(|cmdline| is_bar_command_line(&cmdline))
+}
+
+/// `qs` or `quickshell` from any path, as `qs-ipc` finds the bar.
+fn is_bar_command_line(cmdline: &[u8]) -> bool {
+    let program = cmdline.split(|&byte| byte == 0).next().unwrap_or_default();
+    let name = program.rsplit(|&byte| byte == b'/').next().unwrap_or_default();
+    name == b"qs" || name == b"quickshell"
 }
 
 fn is_asker_command_line(cmdline: &[u8]) -> bool {
@@ -735,7 +796,9 @@ pub(crate) mod tests {
     fn the_pending_pick_keeps_the_helpers_field_order() {
         let state = PendingPick {
             pid: 1,
-            fifo: "/f".into(),
+            owner: Owner::Ask,
+            fifo: Some("/f".into()),
+            token: None,
             label: "Which one?".into(),
             kind: Some("hints".into()),
             choices: Vec::new(),
@@ -743,11 +806,61 @@ pub(crate) mod tests {
             view: None,
             listen_again: Some(String::new()),
             verb: None,
+            view_key: None,
         };
         assert_eq!(
             serde_json::to_string(&state).unwrap(),
             r#"{"pid":1,"fifo":"/f","label":"Which one?","kind":"hints","choices":[],"expansions":{},"listen_again":""}"#
         );
+    }
+
+    #[test]
+    fn a_bar_entry_reads_without_a_fifo_and_an_unknown_owner_does_not() {
+        let written = r#"{"pid":7,"owner":"bar","token":"k1","label":"Session","choices":[{"id":"Work","label":"Work",
+            "expand":"w"}],"expansions":{"w":{"title":"Work apps","choices":[{"id":"Mail","label":"Mail"}]}},"view_key":"w"}"#;
+        let state: PendingPick = serde_json::from_str(written).unwrap();
+        assert_eq!((state.owner, state.fifo.as_ref()), (Owner::Bar, None));
+        assert_eq!(state.token.as_deref(), Some("k1"));
+        assert_eq!(state.view_key.as_deref(), Some("w"));
+        assert_eq!(state.expansions["w"].choices[0].label, "Mail");
+        assert!(serde_json::from_str::<PendingPick>(r#"{"pid":7,"owner":"rofi"}"#).is_err());
+    }
+
+    #[test]
+    fn the_bar_is_qs_or_quickshell_from_any_path() {
+        for cmdline in [&b"qs\0-n\0"[..], b"/usr/bin/quickshell\0-n\0-p\0/x\0", b"qs\0"] {
+            assert!(is_bar_command_line(cmdline), "{}", String::from_utf8_lossy(cmdline));
+        }
+        for cmdline in [&b"sleep\x0060\0"[..], b"/usr/bin/qsx\0", b"/home/u/qs/sleep\0", b""] {
+            assert!(!is_bar_command_line(cmdline), "{}", String::from_utf8_lossy(cmdline));
+        }
+    }
+
+    #[test]
+    fn a_reopened_bar_picker_is_a_new_question() {
+        let bar = |pid, token: &str| PendingPick {
+            pid,
+            owner: Owner::Bar,
+            fifo: None,
+            token: Some(token.to_string()),
+            label: String::new(),
+            kind: None,
+            choices: Vec::new(),
+            expansions: BTreeMap::new(),
+            view: None,
+            listen_again: None,
+            verb: None,
+            view_key: Some(String::new()),
+        };
+        let earlier = bar(7, "k1");
+        let mut shown_deeper = bar(7, "k1");
+        shown_deeper.view_key = Some("w".to_string());
+        assert!(
+            same_question(&shown_deeper, &earlier),
+            "a Tab into a list is the same question"
+        );
+        assert!(!same_question(&bar(7, "k2"), &earlier), "reloaded or reopened");
+        assert!(!same_question(&bar(8, "k1"), &earlier), "another bar");
     }
 
     #[test]
@@ -828,5 +941,65 @@ pub(crate) mod tests {
         bystander.kill().unwrap();
         bystander.wait().unwrap();
         assert_eq!(text_of(&asking), None, "asker exited");
+    }
+
+    /// A process named `qs`, as the bar's pid must be; copied, so the name is the program's own.
+    fn fake_bar(dir: &Path) -> Child {
+        let path = dir.join("qs");
+        std::fs::copy("/bin/sleep", &path).unwrap();
+        // Copying races with forks on other test threads (ETXTBSY until they exec), so the start is retried.
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            match Command::new(&path).arg("30").spawn() {
+                Ok(child) => return child,
+                Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy && Instant::now() < deadline => {
+                    thread::sleep(Duration::from_millis(10));
+                }
+                Err(error) => panic!("{error}"),
+            }
+        }
+    }
+
+    #[test]
+    fn a_bar_entry_is_pending_only_while_its_pid_is_a_bar() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut bar = fake_bar(dir.path());
+        let mut bystander = Command::new("sleep").arg("30").spawn().unwrap();
+        // Until the copy has exec'd, /proc/<pid>/cmdline is still the test binary's.
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !is_bar(bar.id()) {
+            assert!(Instant::now() < deadline, "the fake bar never started");
+            thread::sleep(Duration::from_millis(10));
+        }
+        let state_file = dir.path().join("pending-pick.json");
+        let text_of = |state: &str| {
+            std::fs::write(&state_file, state).unwrap();
+            pending_pick_text(&state_file)
+        };
+        let entry = |pid: u32, token: &str| format!(r#"{{"pid":{pid},"owner":"bar","token":"{token}","choices":[]}}"#);
+
+        assert_eq!(text_of(&entry(bar.id(), "k1")), Some(entry(bar.id(), "k1")));
+        assert_eq!(
+            text_of(&entry(bystander.id(), "k1")),
+            None,
+            "pid reused by another program"
+        );
+        assert_eq!(text_of(&entry(bar.id(), "")), None, "no token");
+        assert_eq!(
+            text_of(&format!(r#"{{"pid":{},"owner":"bar"}}"#, bar.id())),
+            None,
+            "no token field"
+        );
+        assert_eq!(
+            text_of(&format!(r#"{{"pid":{},"owner":"rofi","token":"k"}}"#, bar.id())),
+            None,
+            "unknown owner"
+        );
+
+        bar.kill().unwrap();
+        bar.wait().unwrap();
+        bystander.kill().unwrap();
+        bystander.wait().unwrap();
+        assert_eq!(text_of(&entry(bar.id(), "k1")), None, "the bar exited");
     }
 }

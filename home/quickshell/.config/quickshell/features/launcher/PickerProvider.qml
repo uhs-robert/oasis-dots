@@ -58,6 +58,11 @@ Scope {
     // can_go_back Backspace on an empty search calls go_back(). Tab steps rows unless `expands` or the layout is browse.
     property bool expands: false
     property bool can_go_back: false
+    // Lets the voice key answer it, whoever opened it (PickerVoice). Such a provider keeps voice_question current
+    // while it waits for an answer, null otherwise: { label, choices: [{ id, label, expand }], expansions: { key:
+    // { title, choices: [{ id, label }] } }, view_key }, with view_key the expansion shown ("" for the top level).
+    property bool voice_answerable: false
+    property var voice_question: null
 
     // Called on every open with the opener's mode arg, so keep it cheap; an item's `icon_path` skips the picker's icon lookup.
     function refresh(arg) {}
@@ -74,6 +79,17 @@ Scope {
     }
 
     function go_back() {}
+
+    // Picks the shown item `text` names ("<view_key><TAB><label>" inside an expansion) as a click does. Returns false
+    // when no shown item matches, as when the view changed since voxcmd read it.
+    function voice_answer(text) {
+        return false;
+    }
+
+    // Opens the list under the 1-based top-level item, as Tab does. Returns false when it has none.
+    function voice_expand(index) {
+        return false;
+    }
 
     Component.onCompleted: Pickers.register(root)
 }

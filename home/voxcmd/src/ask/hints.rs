@@ -4,7 +4,8 @@
 //! exits 0, or exits 1 on cancel. Answered by number key, click or a spoken reply. No bar, a choice without a box, more
 //! choices than numbers, or a bar that refuses the overlay hands the whole pick to the text picker instead.
 use super::{
-    AskWith, Asking, PendingPick, PickChoice, StopSignals, Stopped, is_executable, qs_ipc_call, wait_or_terminate,
+    AskWith, Asking, Owner, PendingPick, PickChoice, StopSignals, Stopped, is_executable, qs_ipc_call,
+    wait_or_terminate,
 };
 use crate::exit::CliError;
 use crate::paths;
@@ -193,7 +194,9 @@ fn ask(
     };
     if let Err(error) = asking.publish(&PendingPick {
         pid: std::process::id(),
-        fifo: asking.fifo.clone(),
+        owner: Owner::Ask,
+        fifo: Some(asking.fifo.clone()),
+        token: None,
         label: label.to_string(),
         kind: Some("hints".to_string()),
         choices: choices.to_vec(),
@@ -201,6 +204,7 @@ fn ask(
         view: None,
         listen_again: Some(listen_again_text),
         verb: None,
+        view_key: None,
     }) {
         return Ok(Err(error));
     }

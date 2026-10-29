@@ -2,10 +2,13 @@
 //! choices and written to its FIFO as if picked there (was the bash `reply`); `--dry-run` and `explain --reply` print
 //! the match instead
 //!
-//! A pick reply matches like a candidate target: a cancel word, an ordinal or a direction, then the label exactly, by
-//! the words it shares with the reply, as a substring, and fuzzily; only a single hit counts. A confirm reply is yes, no
-//! or unclear. An unclear reply leaves the question open and, once, listens again.
-use super::{PendingPick, PickChoice, listen_start_only, read_pending, still_pending, write_answer};
+//! A pick reply matches like a candidate target: a cancel word, "expand" and an ordinal, an ordinal or a direction,
+//! then the label exactly, by the words it shares with the reply, as a substring, and fuzzily; only a single hit
+//! counts. A confirm reply is yes, no or unclear. An unclear reply leaves the question open and, once, listens again.
+//! A picker the bar published is answered over its IPC instead of a FIFO.
+use super::{
+    Owner, PendingPick, PickChoice, listen_start_only, qs_ipc_call, read_pending, still_pending, write_answer,
+};
 use crate::cli::ReplyArgs;
 use crate::debug::debug;
 use crate::exit::CliError;
@@ -24,6 +27,8 @@ pub enum Verdict {
     Cancel,
     /// The displayed label of the choice it names.
     Pick(String),
+    /// The 1-based position of the choice whose list to open, as Tab does.
+    Expand(usize),
     Yes,
     No,
     /// Why it names no single choice.
@@ -36,6 +41,7 @@ impl Verdict {
         match self {
             Self::Cancel => "cancel".to_string(),
             Self::Pick(label) => format!("pick: {label}"),
+            Self::Expand(position) => format!("expand: {position}"),
             Self::Yes => "yes".to_string(),
             Self::No => "no".to_string(),
             Self::Unclear(why) => format!("unclear: {why}"),
@@ -46,6 +52,7 @@ impl Verdict {
         match self {
             Self::Cancel => "cancel",
             Self::Pick(_) => "pick",
+            Self::Expand(_) => "expand",
             Self::Yes => "yes",
             Self::No => "no",
             Self::Unclear(_) => "unclear",
@@ -67,7 +74,7 @@ pub struct ReplyTrace {
     pub shown_list: Option<String>,
     /// The labels of the list on screen.
     pub choices: Vec<String>,
-    /// `pick`, `cancel`, `yes`, `no` or `unclear`.
+    /// `pick`, `expand`, `cancel`, `yes`, `no` or `unclear`.
     pub verdict: String,
     pub picked: Option<String>,
     /// Why an unclear reply names no single choice.
@@ -158,12 +165,15 @@ fn read(transcript: &str) -> Option<Reading> {
         });
     }
     // The list on screen: the top level, or the expansion Tab opened, whose picks go back prefixed with its key.
-    let viewed = state
-        .view
-        .as_ref()
-        .and_then(|view| std::fs::read_to_string(view).ok())
-        .map(|key| key.trim_end_matches('\n').to_string())
-        .unwrap_or_default();
+    let viewed = match state.owner {
+        Owner::Bar => state.view_key.clone().unwrap_or_default(),
+        Owner::Ask => state
+            .view
+            .as_ref()
+            .and_then(|view| std::fs::read_to_string(view).ok())
+            .map(|key| key.trim_end_matches('\n').to_string())
+            .unwrap_or_default(),
+    };
     let (shown_key, shown_title, shown) = match state.expansions.get(&viewed) {
         Some(expansion) if !viewed.is_empty() => (viewed, expansion.title.clone(), expansion.choices.clone()),
         _ => (String::new(), String::new(), state.choices.clone()),
@@ -201,10 +211,11 @@ pub fn run(args: ReplyArgs) -> Result<Option<String>, CliError> {
         ask_again(&reading, why);
         return Err(CliError::quiet("reply"));
     }
+    let fifo = reading.state.fifo.clone().unwrap_or_default();
     if reading.is_confirm() {
         // The asker reads anything but "yes" as a no.
         let answer = if reading.verdict == Verdict::Yes { "yes" } else { "no" };
-        if write_answer(&reading.state.fifo, answer) {
+        if write_answer(&fifo, answer) {
             debug(&format!("confirm reply written: {answer}"));
         } else {
             debug("confirm reply not written: nobody read the FIFO");
@@ -216,11 +227,47 @@ pub fn run(args: ReplyArgs) -> Result<Option<String>, CliError> {
         Verdict::Pick(label) => format!("{}\t{label}", reading.shown_key),
         _ => String::new(),
     };
-    if write_answer(&reading.state.fifo, &answer) {
+    let token = reading.state.token.as_deref().unwrap_or_default();
+    // An ask's picker is the bar's too when the bar shows it, so "expand" goes to the bar for both; without a token,
+    // the bar expands whatever choices picker is open.
+    let bar_call = match (&reading.verdict, reading.state.owner) {
+        (Verdict::Expand(position), owner) => {
+            let token = if owner == Owner::Bar { token } else { "" };
+            Some(vec!["expand".to_string(), position.to_string(), token.to_string()])
+        }
+        (Verdict::Cancel, Owner::Bar) => Some(vec!["cancel".to_string(), token.to_string()]),
+        (_, Owner::Bar) => Some(vec!["answer".to_string(), token.to_string(), answer.clone()]),
+        (_, Owner::Ask) => None,
+    };
+    let handed_over = match bar_call {
+        Some(call) => answer_through_bar(&call, reading.state.owner),
+        None => write_answer(&fifo, &answer),
+    };
+    if handed_over {
         Ok(None)
     } else {
         Err(CliError::quiet("reply"))
     }
+}
+
+/// `qs-ipc call picker <call>`. The bar says `stale` when the token is no longer its open picker's (it closed or
+/// reopened since the file was read) and `locked` while the screen is locked; either, or a bar gone, means the
+/// picker the reply was meant for is not waiting.
+fn answer_through_bar(call: &[String], owner: Owner) -> bool {
+    let mut args = vec![std::ffi::OsStr::new("picker")];
+    args.extend(call.iter().map(std::ffi::OsStr::new));
+    let said = qs_ipc_call(&args);
+    if said == "ok" {
+        return true;
+    }
+    debug(&format!(
+        "reply: the bar answered {said:?} to picker {}",
+        call.join(" ")
+    ));
+    if owner == Owner::Bar {
+        notify::notify(Kind::Info, "voxcmd", NO_PICKER);
+    }
+    false
 }
 
 /// Leaves the question open. Only an ask that listens for its reply leaves a `listen_again` file, and only one removal
@@ -279,6 +326,7 @@ fn regex(pattern: &str) -> Regex {
     Regex::new(pattern).expect("a valid pattern")
 }
 
+static EXPAND: LazyLock<Regex> = LazyLock::new(|| regex("^expand (.+)$"));
 static CANCEL: LazyLock<Regex> =
     LazyLock::new(|| regex("^(cancel|never ?mind|none( of (them|these|those))?|nothing|forget it)$"));
 /// Replies that take or turn down the only choice without naming it: a picker with one choice (a weak match's) only
@@ -300,6 +348,18 @@ pub fn match_reply(text: &str, choices: &[PickChoice]) -> Verdict {
     if CANCEL.is_match(text) || (count == 1 && SINGLE_CHOICE_NO.is_match(text)) {
         return Verdict::Cancel;
     }
+    if let Some(named) = EXPAND.captures(text) {
+        return match ordinal_position(&named[1], count).and_then(|position| usize::try_from(position).ok()) {
+            Some(position) if (1..=count).contains(&position) && choices[position - 1].expand.is_some() => {
+                Verdict::Expand(position)
+            }
+            Some(position) if (1..=count).contains(&position) => {
+                Verdict::Unclear(format!("choice {position} has no list to expand"))
+            }
+            Some(_) => Verdict::Unclear(format!("there are only {count} choices")),
+            None => Verdict::Unclear("say expand and a number".to_string()),
+        };
+    }
     if let Some(position) = ordinal_position(text, count).or_else(|| direction_position(text, choices)) {
         return match usize::try_from(position)
             .ok()
@@ -309,13 +369,15 @@ pub fn match_reply(text: &str, choices: &[PickChoice]) -> Verdict {
             None => Verdict::Unclear(format!("there are only {count} choices")),
         };
     }
-    // Each label without its number, normalized like the reply.
+    // Each label without its number, normalized like the reply. A Lua list's labels carry no number, and one may hold
+    // ". " itself ("St. Louis").
     let spoken: Vec<String> = choices
         .iter()
         .map(|choice| {
             let label = choice
                 .label
                 .split_once(". ")
+                .filter(|(number, _)| !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit()))
                 .map_or(choice.label.as_str(), |(_, rest)| rest);
             normalize(label)
         })
@@ -586,6 +648,43 @@ mod tests {
         assert_eq!(match_reply("no thanks", &one), Verdict::Cancel);
         assert_eq!(verdict("thats the one please", &one), "pick: 1. Lock (System)");
         assert_ne!(match_reply("no", &three), Verdict::Cancel);
+    }
+
+    #[test]
+    fn expand_and_a_position_opens_that_choices_list() {
+        let mut shown = choices(&["Work", "Home", "Games"]);
+        shown[1].expand = Some("home".to_string());
+        for (text, expected) in [
+            ("expand two", "expand: 2"),
+            ("expand the second one", "expand: 2"),
+            ("expand 2", "expand: 2"),
+            ("expand one", "unclear: choice 1 has no list to expand"),
+            ("expand five", "unclear: there are only 3 choices"),
+            ("expand home", "unclear: say expand and a number"),
+        ] {
+            assert_eq!(verdict(text, &shown), expected, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_lua_lists_labels_carry_no_number_to_strip() {
+        let lua = [
+            PickChoice {
+                id: "St. Louis".to_string(),
+                label: "St. Louis".to_string(),
+                expand: None,
+                r#box: None,
+            },
+            PickChoice {
+                id: "Louisville".to_string(),
+                label: "Louisville".to_string(),
+                expand: None,
+                r#box: None,
+            },
+        ];
+        assert_eq!(verdict("saint louis", &lua), "pick: St. Louis");
+        assert_eq!(verdict("st louis", &lua), "pick: St. Louis");
+        assert_eq!(verdict("two", &lua), "pick: Louisville");
     }
 
     #[test]

@@ -3,7 +3,7 @@
 //! Exits 0 for yes, 1 for no, cancel or no answer. Uses the bar's confirm card, else rofi with Yes and No. With
 //! `--listen` the reply's recording starts just before the card shows, and an unclear reply listens once more.
 use super::{
-    Asking, PendingPick, PickChoice, StopSignals, Stopped, is_executable, qs_ipc_call, shell_quote,
+    Asking, Owner, PendingPick, PickChoice, StopSignals, Stopped, is_executable, qs_ipc_call, shell_quote,
     terminate_with_children,
 };
 use crate::debug::debug;
@@ -43,7 +43,9 @@ fn ask(
     // Shaped like the picker's, so `reply` and `listen` find it; kind tells reply to match yes or no.
     if let Err(error) = asking.publish(&PendingPick {
         pid: std::process::id(),
-        fifo: asking.fifo.clone(),
+        owner: Owner::Ask,
+        fifo: Some(asking.fifo.clone()),
+        token: None,
         label: question.to_string(),
         kind: Some("confirm".to_string()),
         choices: vec![choice("yes", "Yes"), choice("no", "No")],
@@ -51,6 +53,7 @@ fn ask(
         view: None,
         listen_again: Some(listen_again.to_string_lossy().into_owned()),
         verb: Some(verb.to_string()),
+        view_key: None,
     }) {
         return Ok(Err(error));
     }
