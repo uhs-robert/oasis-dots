@@ -7,10 +7,12 @@ default	Cursor	Keys	A-hjkl Arrows · C-u/d Page
 default	Cursor	(footer)	Esc Exit · ? All keys
 default	Move	Move	hjkl Move · S/C speed
 default	Move	Window	f Float
+default	Move	Mode	w Windows · r Resize
 default	Move	(footer)	Esc Exit · ? All keys
 default	Move	(targets)	on
 default	Resize	Resize	hjkl Resize · S/C speed
 default	Resize	Window	= Reset
+default	Resize	Mode	w Windows · m Move
 default	Resize	(footer)	Esc Exit · ? All keys
 default	Resize	(targets)	on
 default	Windows	Focus	hjkl Focus · 1..0 Monitor · [] Floats
@@ -28,10 +30,12 @@ no-leader	Cursor	Keys	A-hjkl Arrows · C-u/d Page
 no-leader	Cursor	(footer)	Esc Exit · ? All keys
 no-leader	Move	Move	hjkl Move · S/C speed
 no-leader	Move	Window	f Float
+no-leader	Move	Mode	w Windows · r Resize
 no-leader	Move	(footer)	Esc Exit · ? All keys
 no-leader	Move	(targets)	on
 no-leader	Resize	Resize	hjkl Resize · S/C speed
 no-leader	Resize	Window	= Reset
+no-leader	Resize	Mode	w Windows · m Move
 no-leader	Resize	(footer)	Esc Exit · ? All keys
 no-leader	Resize	(targets)	on
 no-leader	Windows	Focus	hjkl Focus · 1..3 Monitor · [] Floats
