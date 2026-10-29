@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs.features.popups
 import qs.features.audio
+import "../../core/WindowVisibility.js" as WindowVisibility
 
 // The screenshot menu, the region selector's shared state, and the recording indicator.
 Singleton {
@@ -252,14 +253,9 @@ Singleton {
     }
 
     function window_targets(monitors, clients) {
-        const shown = {};
-        for (const m of monitors) shown[m.id] = { name: m.name, ws: m.activeWorkspace ? m.activeWorkspace.id : 0, special: m.specialWorkspace ? m.specialWorkspace.id : 0 };
-        const visible = c => {
-            const m = shown[c.monitor];
-            return m && c.mapped && !c.hidden && c.workspace && (c.workspace.id === m.ws || (m.special !== 0 && c.workspace.id === m.special) || c.pinned);
-        };
+        const shown = WindowVisibility.shown_by_monitor(monitors);
         const list = [];
-        for (const c of clients.filter(visible).sort((a, b) => a.focusHistoryID - b.focusHistoryID)) {
+        for (const c of clients.filter(c => WindowVisibility.is_shown(c, shown)).sort((a, b) => a.focusHistoryID - b.focusHistoryID)) {
             const s = root.screen_of(shown[c.monitor].name);
             if (!s) continue;
             const x0 = Math.max(c.at[0], s.x);
