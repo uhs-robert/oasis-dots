@@ -6,8 +6,11 @@ local Direction = require("lib.key.direction") ---@class Direction
 local Submap = require("lib.key.submap") ---@class Submap
 
 -- The actions the rows name.
+require("lib.actions.defs.launch")
 require("lib.actions.defs.move")
 require("lib.actions.defs.windows_select")
+
+local function enter_submap(name) return { "submap.enter", { name } } end
 
 --- The four directions as actions that nudge by `amount` pixels.
 --- @param amount number
@@ -33,11 +36,15 @@ Submap.define({
   hint = {
     { "Move", { "move.step", tiers = "speed" } },
     { "Window", { "windows.float_selected", label = "Float" } },
+    { "Mode", "submap.enter" },
   },
 
   binds = function()
+    -- Straight to the other `targets` submaps, so the selection carries; BackSpace only goes back one step.
     local keys = {
       { "F", "windows.float_selected", "Toggle Floating" },
+      { "W", enter_submap("Windows"), "+Windows" },
+      { "R", enter_submap("Resize"), "+Resize" },
     }
 
     for _, key in ipairs(Direction.speed_binds(nudge, "Move")) do

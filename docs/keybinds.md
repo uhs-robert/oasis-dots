@@ -10,7 +10,7 @@ You rarely need to open a file to find a bind.
 - `SUPER + SHIFT + /` opens which-key from anywhere, showing every bind in the current submap at a glance, or the global binds when you are in none.
 - Entering a submap also shows its binds in which-key, except Windows, Resize, Move and Cursor: they show a compact hint bar of their main keys instead, and `?` there opens the full which-key list.
 - Inside a submap, `?` hides or shows which-key without leaving it.
-- In Windows, Resize and Move the keys act on the focused window, or on the selection: `SPACE` in Windows selects windows (a thick border in the theme's secondary colour, a number in selection order, "N selected" in the hint bar), and every Windows, Resize and Move key then acts on all of them. The selection carries between those three, through `R`, `M` and `BackSpace`, and clears when you leave them.
+- In Windows, Resize and Move the keys act on the focused window, or on the selection: `SPACE` in Windows selects windows (a thick border in the theme's secondary colour, a number in selection order, "N selected" in the hint bar), and every Windows, Resize and Move key then acts on all of them. Each of the three switches straight to the other two (`w` Windows, `r` Resize, `m` Move), and the selection carries between them, through those keys and `BackSpace`, and clears when you leave them.
 
 All of them read the description written next to each bind, so anything you add shows up in them too.
 
@@ -601,6 +601,8 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + SLASH` | press | Leader | Toggle which-key help |  |
 | `catchall` | release | Leader |  |  |
 | `F` | press | Move | Toggle Floating | `windows.float_selected` |
+| `W` | press | Move | +Windows | `submap.enter` |
+| `R` | press | Move | +Resize | `submap.enter` |
 | `H` | press | Move | Move Left | `move.step` |
 | `LEFT` | press | Move |  | `move.step` |
 | `J` | press | Move | Move Down | `move.step` |
@@ -656,6 +658,8 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + SLASH` | press | Quick Click | Toggle which-key help |  |
 | `catchall` | release | Quick Click |  |  |
 | `EQUAL` | press | Resize | Reset Size | `resize.reset` |
+| `W` | press | Resize | +Windows | `submap.enter` |
+| `M` | press | Resize | +Move | `submap.enter` |
 | `H` | press | Resize | Resize Left | `resize.step` |
 | `LEFT` | press | Resize |  | `resize.step` |
 | `J` | press | Resize | Resize Down | `resize.step` |
