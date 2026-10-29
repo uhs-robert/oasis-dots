@@ -1,6 +1,7 @@
 -- Actions for the Windows submap's selection: select a window, then act on every selected window at once (or on the
--- focused one when none is selected). Keyless; the Windows rows bind them. The selection itself is in
--- lib/actions/selection.lua so it persists between presses, and is required on use so a headless load needs no session.
+-- focused one when none is selected). Keyless; the Windows rows bind them, and Move its float toggle. The selection
+-- itself is in lib/actions/selection.lua so it persists between presses and carries into Resize and Move, and is
+-- required on use so a headless load needs no session.
 local Act = require("lib.act") ---@class ActionLib
 
 local DIRECTION_CODE = { left = "l", down = "d", up = "u", right = "r" }
@@ -35,7 +36,7 @@ Act.define("windows.swap_selected", {
 
 Act.define("windows.clear_selection", {
   label = "Clear Selection",
-  intent = "Deselect every window and restore its borders.",
+  intent = "Deselect every window.",
   run = function() selection().clear() end,
 })
 

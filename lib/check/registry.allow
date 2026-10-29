@@ -70,7 +70,7 @@ ipc power run                           # runs the power action without the prom
 ipc screenshot close pick recording_started recording_stopped share toggle  # driven by the share picker, the recorder and the bar; the menu, select and stop calls are actions
 ipc settings activate back cursor hide step view  # the Settings window's keyboard driver; open and toggle are actions
 ipc sound play                          # a sound the theme audio plays
-ipc submap_hints clear set              # the hint bar Submap.define sends on entering a submap with a `hint`, and the reset each config load sends; not commands
+ipc submap_hints clear selection set    # the hint bar Submap.define sends on entering a submap with a `hint`, the reset each config load sends, and the window selection lib/actions/selection.lua sends on each change; state pushed to the bar, not commands
 ipc style get get_cava_line get_effects_pack get_lock get_lock_backdrop get_lock_tint get_ui_sounds set_effects_pack set_lock set_lock_backdrop set_lock_tint set_ui_sounds toggle_cava_line  # the Settings pane's getters and setters; style.set and cycle are actions
 ipc tmux_overview state                 # a state query
 ipc transition play                     # a debugging hook

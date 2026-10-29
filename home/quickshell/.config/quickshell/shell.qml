@@ -306,6 +306,10 @@ ShellRoot {
     }
     Variants {
         model: Quickshell.screens
+        WindowTargetOverlay {}
+    }
+    Variants {
+        model: Quickshell.screens
         SubmapHintBar {}
     }
     SubmapHintIpc {}

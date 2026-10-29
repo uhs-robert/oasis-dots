@@ -10,6 +10,7 @@ You rarely need to open a file to find a bind.
 - `SUPER + SHIFT + /` opens which-key from anywhere, showing every bind in the current submap at a glance, or the global binds when you are in none.
 - Entering a submap also shows its binds in which-key, except Windows, Resize, Move and Cursor: they show a compact hint bar of their main keys instead, and `?` there opens the full which-key list.
 - Inside a submap, `?` hides or shows which-key without leaving it.
+- In Windows, Resize and Move the bar frames the window the keys act on. `SPACE` in Windows selects windows (numbered on screen, "N selected" in the hint bar); every Windows, Resize and Move key then acts on all of them. The selection carries between those three, through `R`, `M` and `BackSpace`, and clears when you leave them.
 
 All of them read the description written next to each bind, so anything you add shows up in them too.
 
@@ -193,6 +194,7 @@ Submap.define({
 | `escape` | What `ESCAPE` does. `"reset"` leaves all submaps, `"previous"` goes back one, a submap name jumps to that one |
 | `catchall` | What an unlisted key does. `"reset"` makes the submap one-shot: any key leaves it, and its rows leave it for you. `"stay"` keeps it active until you escape, for submaps you press repeatedly |
 | `hint` | Optional. Shows the Quickshell hint bar on entry instead of which-key: a list of groups, each a heading then the action ids whose rows it lists (a row that runs a function cannot be listed), e.g. `{ { "Notes", "notes.today", "notes.inbox" } }`. The keys and labels come from your rows; an item can be `{ id, label = "Short" }` to rename it, with `mods` and `args` to pick some of its rows. Speed tiers (a `(Fast)` row beside its plain one) are left to which-key; `tiers = "speed"` sums them up as one `S/C speed` entry (see `home/hypr/.config/hypr/lib/key/submap_hint.lua`). A hint set from `custom/` still opens which-key as well, since HyprVim reads its list before `custom/` loads |
+| `targets` | Optional, `true` for a submap whose keys act on the focused window or the Windows selection (`home/hypr/.config/hypr/lib/actions/selection.lua`): the bar frames those windows while it is up, and the selection carries between submaps with `targets` and clears on any other switch |
 
 In a one-shot submap, a row can stay in it instead by adding `{ keep = true }` as a fourth item.
 
@@ -598,7 +600,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `BackSpace` | release | Leader | Back |  |
 | `SHIFT + SLASH` | press | Leader | Toggle which-key help |  |
 | `catchall` | release | Leader |  |  |
-| `F` | press | Move | Toggle Floating | `window.float_toggle` |
+| `F` | press | Move | Toggle Floating | `windows.float_selected` |
 | `H` | press | Move | Move Left | `move.step` |
 | `LEFT` | press | Move |  | `move.step` |
 | `J` | press | Move | Move Down | `move.step` |

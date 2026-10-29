@@ -8,15 +8,18 @@ default	Cursor	(footer)	Esc Exit · ? All keys
 default	Move	Move	hjkl Move · S/C speed
 default	Move	Window	f Float
 default	Move	(footer)	Esc Exit · ? All keys
+default	Move	(targets)	framed
 default	Resize	Resize	hjkl Resize · S/C speed
 default	Resize	Window	= Reset
 default	Resize	(footer)	Esc Exit · ? All keys
+default	Resize	(targets)	framed
 default	Windows	Focus	hjkl Focus · 1..0 Monitor · [] Floats
 default	Windows	Move	HJKL Move · C-hjkl WS · S-1..5 WS
 default	Windows	Select	space Select · s Swap · Enter Confirm
 default	Windows	Window	x Close · f Float · p Pseudo · - Split
 default	Windows	Mode	r Resize · m Move · c Cursor
 default	Windows	(footer)	Esc Exit · ? All keys
+default	Windows	(targets)	framed
 no-leader	Cursor	Move	hjkl Move · S/C speed
 no-leader	Cursor	Click	space Left · r Right · m Middle · C-space/r/m +Exit
 no-leader	Cursor	Pick	f Float · t Tile · g Split · ; Quick
@@ -26,12 +29,15 @@ no-leader	Cursor	(footer)	Esc Exit · ? All keys
 no-leader	Move	Move	hjkl Move · S/C speed
 no-leader	Move	Window	f Float
 no-leader	Move	(footer)	Esc Exit · ? All keys
+no-leader	Move	(targets)	framed
 no-leader	Resize	Resize	hjkl Resize · S/C speed
 no-leader	Resize	Window	= Reset
 no-leader	Resize	(footer)	Esc Exit · ? All keys
+no-leader	Resize	(targets)	framed
 no-leader	Windows	Focus	hjkl Focus · 1..3 Monitor · [] Floats
 no-leader	Windows	Move	HJKL Move · C-hjkl WS · S-1..5 WS
 no-leader	Windows	Select	space Select · s Swap · Enter Confirm
 no-leader	Windows	Window	x Close · f Float · p Pseudo · - Split
 no-leader	Windows	Mode	r Resize · m Move · c Cursor
 no-leader	Windows	(footer)	Esc Exit · ? All keys
+no-leader	Windows	(targets)	framed

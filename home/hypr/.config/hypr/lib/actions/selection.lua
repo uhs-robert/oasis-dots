@@ -1,9 +1,14 @@
---- The Windows submap's multi-selection. It lives in this module, not in the submap file, so every action that reads
---- or changes it sees the same selection across key presses.
+--- The multi-selection of the submaps that act on windows (Submap.define `targets`: Windows, Resize, Move). It lives in
+--- this module, not in a submap file, so every action that reads or changes it sees the same selection across key
+--- presses and across those submaps. Quickshell draws it (the submap_hints `selection` call), so a change is sent there.
+local Act = require("lib.act") ---@class ActionLib
+local Json = require("lib.json") ---@class Json
 
---- Selected windows: { [addr] = { active, inactive } }, stores original border colors.
+--- Selected addresses in the order they were selected, so actions and Quickshell's marks follow that order.
+--- @type string[]
 local SELECTED = {}
-local SELECTION_COLOR = "rgba(ffaa00ff)"
+-- Counts every send: each is its own qs-ipc process, and two sent close together can land out of order.
+local serial = 0
 
 --- Return address of the currently focused window, or nil.
 local function get_active_address()
@@ -12,20 +17,27 @@ local function get_active_address()
   return w and w.address or nil
 end
 
---- Return the theme's { active, inactive } border colors.
---- TODO: Convert to Tags/Window Rules when https://github.com/hyprwm/Hyprland/discussions/14030 is resolved.
-local function get_theme_borders()
-  local ok, Theme = pcall(require, "theme")
-  local c = ok and Theme.colors or {}
-
-  return { active = c.theme_primary, inactive = c.bg_mantle }
+--- @param addr string
+--- @return integer|nil
+local function index_of(addr)
+  for index, selected in ipairs(SELECTED) do
+    if selected == addr then return index end
+  end
+  return nil
 end
 
---- Override active + inactive border color for a window by address.
-local function set_border(addr, active, inactive)
-  hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. addr, prop = "active_border_color", value = active }))
-  hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. addr, prop = "inactive_border_color", value = inactive }))
+--- Send the selection to Quickshell.
+local function send()
+  serial = serial + 1
+  local windows = Json.array()
+  for index, addr in ipairs(SELECTED) do
+    windows[index] = addr
+  end
+  Act.Ipc("submap_hints", "selection", Json.encode({ serial = serial, windows = windows }))()
 end
+
+--- Tell Quickshell to reread window positions: a relative move or resize raises no Hyprland event of its own.
+local function announce_geometry() hl.dispatch(hl.dsp.event("window_targets")) end
 
 --- Forget selected windows that no longer exist: focusing a closed window's address fails, and the action that follows
 --- would then hit whatever is focused instead.
@@ -34,35 +46,38 @@ local function drop_closed()
   for _, w in ipairs(hl.get_windows() or {}) do
     open[w.address] = true
   end
-  for addr in pairs(SELECTED) do
-    if not open[addr] then SELECTED[addr] = nil end
+  local kept = {}
+  for _, addr in ipairs(SELECTED) do
+    if open[addr] then kept[#kept + 1] = addr end
   end
+  if #kept == #SELECTED then return end
+  SELECTED = kept
+  send()
 end
 
 --- @class Selection
 local Selection = {}
 
---- Toggle select on the focused window, highlighting its border.
+--- Toggle select on the focused window.
 function Selection.toggle()
   local addr = get_active_address()
   if not addr then return end
 
-  if SELECTED[addr] then
-    local original = SELECTED[addr]
-    SELECTED[addr] = nil
-    set_border(addr, original.active, original.inactive)
+  local index = index_of(addr)
+  if index then
+    table.remove(SELECTED, index)
   else
-    SELECTED[addr] = get_theme_borders()
-    set_border(addr, SELECTION_COLOR, SELECTION_COLOR)
+    SELECTED[#SELECTED + 1] = addr
   end
+  send()
 end
 
---- Deselect every window and restore its borders. Called when the Windows submap exits.
+--- Deselect every window. Sends only when something was selected, as Submap.define calls this on every switch that
+--- leaves the `targets` submaps.
 function Selection.clear()
-  for addr, original in pairs(SELECTED) do
-    set_border(addr, original.active, original.inactive)
-    SELECTED[addr] = nil
-  end
+  if #SELECTED == 0 then return end
+  SELECTED = {}
+  send()
 end
 
 --- Swap the focused window with the one selected window, then clear the selection.
@@ -70,7 +85,7 @@ function Selection.swap()
   drop_closed()
   local active = get_active_address()
   local target, count = nil, 0
-  for addr in pairs(SELECTED) do
+  for _, addr in ipairs(SELECTED) do
     if addr ~= active then
       target, count = addr, count + 1
     end
@@ -92,18 +107,19 @@ end
 function Selection.for_selected(fn)
   return function()
     drop_closed()
-    local any = next(SELECTED)
-    if not any then
+    if #SELECTED == 0 then
       fn()
+      announce_geometry()
       return
     end
 
     local original = get_active_address()
-    for addr in pairs(SELECTED) do
+    for _, addr in ipairs(SELECTED) do
       hl.dispatch(hl.dsp.focus({ window = "address:" .. addr }))
       fn()
     end
     if original then hl.dispatch(hl.dsp.focus({ window = "address:" .. original })) end
+    announce_geometry()
   end
 end
 

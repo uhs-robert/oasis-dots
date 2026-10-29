@@ -31,6 +31,7 @@ local Submap = {
 --- @field on_exit?  fun(ctx: SubmapContext)                         Called before leaving this submap
 --- @field binds?    table[]|fun(): table[]                          Rows passed to Bind.keys inside the submap, or a function returning them. A row is { keys, action, desc?, opts? }; `action` may be an action id ("window.close") or { id, args } ("popup.open", { "clock" }), which takes the action's label unless `desc` is given (false for none).
 --- @field hint?     SubmapHintGroup[]                               Groups for the compact hint bar shown on entry in place of HyprVim's which-key popup (SHIFT + / still opens that); see lib/key/submap_hint.lua
+--- @field targets?  boolean                                         Its keys act on the focused window or the selection (lib/actions/selection.lua): Quickshell frames them while it is up, and the selection carries between submaps that set this and clears on any other switch
 
 --- @class SubmapHandle
 --- @field enter fun()   Switch into this submap
@@ -80,6 +81,33 @@ local function normalize_catchall(spec)
   return spec.catchall
 end
 
+--- @param name string
+--- @return boolean
+local function has_targets(name)
+  local spec = Submap.registry[name]
+  return spec ~= nil and spec.targets == true
+end
+
+--- Clear the window selection on a switch that leaves the `targets` submaps or comes into them from outside: a
+--- selection made outside (hypr-act, voice) must not reach the first key, nor one made here a later visit.
+--- @param from string
+--- @param to   string
+local function settle_selection(from, to)
+  if not (has_targets(from) and has_targets(to)) then require("lib.actions.selection").clear() end
+end
+
+local watching_submap_event = false
+
+--- Clear the selection on the routes into a plain submap that skip Submap.enter and Submap.reset (a raw
+--- `hl.dsp.submap` from a script or plugin). Hooked once per config load, by the first submap with `targets`.
+local function watch_submap_event()
+  if watching_submap_event then return end
+  watching_submap_event = true
+  hl.on("keybinds.submap", function(name)
+    if not has_targets(name) then require("lib.actions.selection").clear() end
+  end)
+end
+
 --- Activate a named submap, firing exit/enter hooks.
 --- @param name string
 function Submap.enter(name)
@@ -90,6 +118,7 @@ function Submap.enter(name)
   local prev_name = Submap.current
 
   fire_exit(Submap.registry[prev_name], prev_name, name)
+  settle_selection(prev_name, name)
 
   Submap.previous = prev_name
   Submap.current = name
@@ -112,6 +141,7 @@ function Submap.reset()
   local prev_name = Submap.current
 
   fire_exit(Submap.registry[prev_name], prev_name, "reset")
+  settle_selection(prev_name, "reset")
 
   Submap.previous = prev_name
   Submap.current = "reset"
@@ -350,6 +380,7 @@ function Submap.define(spec)
         SubmapHint.register(spec.name, spec.hint, bound_rows, {
           escape = normalize_escape(spec) ~= false,
           whichkey = not binds_use_key(raw_binds, whichkey_toggle_key),
+          targets = spec.targets == true,
         })
       end
 
@@ -367,6 +398,7 @@ function Submap.define(spec)
     -- Registered only once the body succeeded: a submap whose setup raised has no Escape bind and must stay unknown
     -- to Submap.enter and the submap.enter action.
     Submap.registry[spec.name] = spec
+    if spec.targets then watch_submap_event() end
 
     -- After the body, which raises when it fails: an entry key into a half-built submap with no Escape would strand
     -- the user there.

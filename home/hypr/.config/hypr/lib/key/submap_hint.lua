@@ -218,12 +218,13 @@ local function item_entries(item, rows)
   return out
 end
 
---- Build the hint Quickshell draws: { name, groups = { { name, keys = { {cap, label}... } }... }, footer = { {cap, label}... } }.
+--- Build the hint Quickshell draws: { name, groups = { { name, keys = { {cap, label}... } }... }, footer = { {cap, label}... },
+--- targets? }, `targets` set for a submap with Submap.define `targets`, whose bar frames the target windows.
 --- An item that matches no row raises, so a hint cannot outlive the bind it names.
 --- @param name string    Submap name
 --- @param hint SubmapHintGroup[]
 --- @param rows table[]   The submap's bind rows as written (action ids, not yet resolved)
---- @param extras { escape: boolean, whichkey: boolean }  Which of the binds Submap.define adds itself this submap has
+--- @param extras { escape: boolean, whichkey: boolean, targets?: boolean }  Which of the binds Submap.define adds itself this submap has, and its `targets`
 --- @return table
 function SubmapHint.build(name, hint, rows, extras)
   local groups = Json.array()
@@ -248,7 +249,7 @@ function SubmapHint.build(name, hint, rows, extras)
   if extras.escape then footer[#footer + 1] = { "Esc", "Exit" } end
   if extras.whichkey then footer[#footer + 1] = { "?", "All keys" } end
 
-  return { name = name, groups = groups, footer = footer }
+  return { name = name, groups = groups, footer = footer, targets = extras.targets or nil }
 end
 
 --- Build and keep the hint for a submap; Submap.define calls this from setup. A hint that fails to build is reported
@@ -257,7 +258,7 @@ end
 --- @param name string
 --- @param hint SubmapHintGroup[]
 --- @param rows table[]
---- @param extras { escape: boolean, whichkey: boolean }
+--- @param extras { escape: boolean, whichkey: boolean, targets?: boolean }
 function SubmapHint.register(name, hint, rows, extras)
   local ok, built = pcall(SubmapHint.build, name, hint, rows, extras)
   if ok then

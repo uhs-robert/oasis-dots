@@ -1,7 +1,8 @@
 -- The hint bars the shipped submaps send Quickshell (Submap.define `hint`, lib/key/submap_hint.lua), built from the
 -- keymaps under the stubs and compared with fixtures/submap_hints.txt, one line per group:
--- `variant<TAB>submap<TAB>group<TAB>cap label · cap label`, the Esc and ? keys as group `(footer)`. A hint item that no
--- bind row matches fails the test.
+-- `variant<TAB>submap<TAB>group<TAB>cap label · cap label`, the Esc and ? keys as group `(footer)`, and a `(targets)`
+-- line for a submap whose bar frames the target windows (Submap.define `targets`). A hint item that no bind row matches
+-- fails the test.
 --
 --   lua home/hypr/tests/submap_hints.lua            compare with the fixture
 --   lua home/hypr/tests/submap_hints.lua --update   rewrite the fixture
@@ -46,6 +47,9 @@ for _, variant in ipairs(Stubs.VARIANTS) do
 					keys[#keys + 1] = key[1] .. " " .. key[2]
 				end
 				lines[#lines + 1] = table.concat({ variant.name, name, row[1], table.concat(keys, " · ") }, "\t")
+			end
+			if hint.targets then
+				lines[#lines + 1] = table.concat({ variant.name, name, "(targets)", "framed" }, "\t")
 			end
 		end
 	end

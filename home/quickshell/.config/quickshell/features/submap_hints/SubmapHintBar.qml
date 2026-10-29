@@ -14,8 +14,8 @@ PanelWindow {
     id: root
 
     readonly property var hint: SubmapState.hint
-    // A second line under the submap name, for state such as a selection count; empty hides it.
-    property string status_text: ""
+    // A second line under the submap name; empty hides it.
+    readonly property string status_text: WindowTargetState.active && WindowTargetState.selected.length > 0 ? WindowTargetState.selected.length + " selected" : ""
     readonly property var bar_item: root.screen ? BarItems.item_of(root.screen.name, "bar") : null
     readonly property bool on_top: root.bar_item !== null && root.bar_item.position === "bottom"
     readonly property int edge_gap: 24

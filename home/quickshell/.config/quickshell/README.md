@@ -54,7 +54,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `audio/` holds `ThemeAudio` (the sound packs and their volumes) and the `sound` IPC handler `SoundIpc`.
 - `style/` holds `StyleIpc`, the `style` IPC handler (style, lock skin and sound-pack calls).
 - `windows/` holds `WindowState` (Hyprland windows, most recently focused first).
-- `submap_hints/` holds `SubmapHintBar`, the compact key hints shown while Hyprland is in a submap whose `Submap.define` has a `hint` (Windows, Resize, Move, Cursor), and its `submap_hints` IPC handler. The hints themselves are kept by name in `bar/SubmapState`.
+- `submap_hints/` holds `SubmapHintBar`, the compact key hints shown while Hyprland is in a submap whose `Submap.define` has a `hint` (Windows, Resize, Move, Cursor), and its `submap_hints` IPC handler. The hints themselves are kept by name in `bar/SubmapState`. In a submap with `targets` (Windows, Resize, Move), `WindowTargetOverlay` frames the focused window and numbers the selected ones on every screen, from `WindowTargetState` (the selection Hyprland sends and the window places it rereads on Hyprland events).
 - [`lock/`](features/lock/README.md): Lock screen, skins and greeter
 
 ## IPC
@@ -164,6 +164,7 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `style` | `toggle_cava_line(): void` |  |
 | `style` | `get_cava_line(): bool` |  |
 | `submap_hints` | `set(json: string): string` |  |
+| `submap_hints` | `selection(json: string): string` |  |
 | `submap_hints` | `clear(): void` |  |
 | `tmux_overview` | `open(): string` | `tmux.overview` |
 | `tmux_overview` | `close(): string` | `tmux.close` |
@@ -196,7 +197,7 @@ Notes on the targets whose names do not say enough:
 - `calendar`: `refresh` rereads the calendar cache; `open_day <YYYY-MM-DD>` opens the clock popup on that day.
 - `cmdstatus`: `refresh <id>` with `""` refreshes every entry.
 - `hyprvim_whichkey`, `hyprvim_prompt`: external API, the HyprVim which-key HUD and `:` prompt, each with `open` and `close`, called by the hyprvim plugin.
-- `submap_hints`: `clear` drops every stored hint (sent on each Hyprland config load); `set <json>` stores a submap's hint bar (`{name, groups: [{name, keys: [[cap, label]]}], footer: [[cap, label]]}`), shown while Hyprland is in that submap; `home/hypr/.config/hypr/lib/key/submap_hint.lua` sends it on every entry.
+- `submap_hints`: `clear` drops every stored hint (sent on each Hyprland config load); `set <json>` stores a submap's hint bar (`{name, groups: [{name, keys: [[cap, label]]}], footer: [[cap, label]]}`), shown while Hyprland is in that submap; `home/hypr/.config/hypr/lib/key/submap_hint.lua` sends it on every entry. `selection <json>` stores the window selection (`{serial, windows: ["0x..."]}`) that `home/hypr/.config/hypr/lib/actions/selection.lua` sends on each change; an older serial is ignored.
 
 Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `power`, `clock`, `volume`, `battery`, `bluetooth`, `system`, `tray`, `network`, `keeptabs`, `weather`, `updates`, `media`, `screenshot`, `notifications`, `picker`.
 
