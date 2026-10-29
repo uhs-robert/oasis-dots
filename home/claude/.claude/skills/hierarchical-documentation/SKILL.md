@@ -1,6 +1,6 @@
 ---
 name: hierarchical-documentation
-description: Final naming and comment pass on finished code before it is committed. Use when code work is done and about to be committed, as the last step before writing the commit message, or when the user asks to polish naming, comments or documentation. Given a scope (commit hash, "uncommitted changes", "divergence from main", etc.), rewrites identifiers and comments in place, then surfaces notes for the commit message.
+description: Final naming, comment and folder README pass on finished code before it is committed. Use when code work is done and about to be committed, as the last step before writing the commit message, or when the user asks to polish naming, comments or documentation. Given a scope (commit hash, "uncommitted changes", "divergence from main", etc.), rewrites identifiers and comments in place, adds or updates folder READMEs where the change needs one, then surfaces notes for the commit message.
 ---
 
 # Hierarchical Documentation
@@ -19,6 +19,8 @@ least accessible:
   searchable, impossible to separate from what they describe. Always try here first.
 - **Comments** — flexible but fragile. They can drift from the code they describe
   when code moves. Use when code alone can't carry the information.
+- **Folder README** — how the files in a folder relate and where to start. It
+  holds facts no single file can hold.
 - **Commit messages** — capture the *why of the change*, not the *why of the code*.
   Accessible only to those reading history; never assume a code reader will find them.
 
@@ -37,6 +39,8 @@ Translate the user's input into a concrete set of changed files:
 - A specific file path → just that file
 
 Read the diff to understand what changed, then read the full content of each changed file.
+Also list the folders whose files the diff adds, renames or removes, or whose
+relations it changes.
 
 ## Step 2: Apply documentation improvements
 
@@ -115,6 +119,29 @@ applies to one branch of an `if` belongs inside that branch, not above the whole
 statement. Reference specific identifiers in comments where possible — this makes
 the relationship between comment and code explicit and harder to accidentally break.
 
+### Folder READMEs
+
+Write each README sentence by the `plain-writing` skill.
+
+- **Keep maps true.** When the diff adds, renames or removes a file and the
+  nearest README's code map covers that folder, update the map.
+- **Test for a new README.** Write one when either signal holds and the folder
+  has none: (a) the diff creates a fact about how files in the folder relate (a
+  rule spanning files, which file to start from, what the folder must not depend
+  on) that no single file's header can hold; (b) the folder is a place readers
+  start, not one they reach from a caller. Keep it short: a one-line map entry
+  per file, plus those facts. Otherwise put the fact in the nearest README that
+  covers the folder.
+- **Pattern folders get a line, not a README.** When every file has the same
+  shape (one file per theme, per action group), the parent's map gets one line.
+- **File count is not the signal.** Many same-shape files need no README. A
+  folder of three files with different roles can.
+- **One home per fact.** Move it, never copy it. A trap or the reason for a
+  choice stays a comment at the code.
+- **The repo's own conventions win.** If its AGENTS.md, CLAUDE.md or
+  contributing docs set a README layout (for example users first, ending in a
+  `## Code` map), follow that layout.
+
 ### What not to touch
 
 Stay out of these areas — not because they don't matter, but because they are
@@ -128,6 +155,8 @@ structural concerns beyond naming and comments:
   and belongs in a structural review
 - **Code outside the diff scope** — this pass is about the change at hand;
   opportunistic cleanups elsewhere create noise and scope creep
+- **READMEs for data, asset, fixture or generated folders**, or any README that
+  only restates file names the tree already shows
 
 If you notice issues in these areas, capture them in commit message notes.
 
@@ -165,7 +194,7 @@ Output a section with this structure:
   through a squash. Call these out so they don't get lost.
 
 This is raw material for the commit-messages skill, which turns it into the
-commit message — not a draft, and not a recap of documentation changes made. If there's nothing meaningful to surface,
+commit message — not a draft, and not a recap of documentation changes made. The one exception: name each folder README you created or updated and why, so the commit message can mention it. If there's nothing meaningful to surface,
 omit this section rather than padding it.
 
 ## Core principle
