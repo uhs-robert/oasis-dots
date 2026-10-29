@@ -28,8 +28,9 @@ local function scope_name(submap)
   return submap
 end
 
---- True when a handle's :remove() drops only that bind (Hyprland 0.57+); older releases disable instead.
-local SCOPED_REMOVE = (function()
+--- Whether Hyprland is 0.57 or newer, whose rewritten keybind manager changed how binds match. Among others, a
+--- handle's :remove() drops only that bind there; older releases disable instead.
+Bind.keybinds_v2 = (function()
   local version = type(hl.version) == "function" and hl.version() or nil
   if type(version) ~= "string" then return false end
   local major, minor = version:match("^(%d+)%.(%d+)")
@@ -40,7 +41,7 @@ end)()
 
 --- @param handle table  Handle returned by hl.bind
 local function remove_handle(handle)
-  if SCOPED_REMOVE then
+  if Bind.keybinds_v2 then
     handle:remove()
   else
     handle:set_enabled(false)

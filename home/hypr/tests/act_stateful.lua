@@ -249,6 +249,21 @@ for _, name in ipairs({ "Windows", "Cursor", "Quick Click", "Groups", "Move", "R
 	end
 end
 check("Delete: catchall resets", type(bind("Delete", "catchall").action) == "function")
+-- A one-shot submap's click closes it like an unbound key, and the click still reaches the window.
+local delete_click = bind("Delete", "mouse:272")
+check("Delete: a click resets", type(delete_click.action) == "function" and delete_click.opts.non_consuming == true)
+-- On 0.57 a one-shot Back runs on key-down: a key-up bind would let its key-down through to the focused app.
+check("Delete: Back on key-down", not bind("Delete", "BackSpace").opts.release)
+-- Each key with a held-release row also has an any-modifier no-op, so an unbound combo (ALT + LEFT) is swallowed.
+for _, key in ipairs({ "H", "LEFT", "E", "PERIOD" }) do
+	local claimed = false
+	for _, entry in ipairs(Stubs.binds) do
+		if entry.submap == "Cursor" and entry.key == key and not entry.opts.release and entry.opts.ignore_mods then
+			claimed = claimed or (type(entry.action) == "table" and entry.action.text == "no_op")
+		end
+	end
+	check("Cursor: " .. key .. " claims its unbound combos", claimed)
+end
 
 -- The selection survives between presses. Select two windows, then one key acts on both and puts focus back.
 load_all()

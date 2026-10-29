@@ -373,7 +373,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `W` | press | Applications | LibreOffice Writer | `apps.open` |
 | `X` | press | Applications | LibreOffice Calc | `apps.open` |
 | `ESCAPE` | press | Applications | Exit Applications |  |
-| `BackSpace` | release | Applications | Back |  |
+| `BackSpace` | press | Applications | Back |  |
 | `SHIFT + SLASH` | press | Applications | Toggle which-key help |  |
 | `catchall` | release | Applications |  |  |
 | `A` | press | Bar | Agents | `menu.agents` |
@@ -391,7 +391,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `V` | press | Bar | Volume | `popup.open` |
 | `W` | press | Bar | Weather | `popup.open` |
 | `ESCAPE` | press | Bar | Exit Bar |  |
-| `BackSpace` | release | Bar | Back |  |
+| `BackSpace` | press | Bar | Back |  |
 | `SHIFT + SLASH` | press | Bar | Toggle which-key help |  |
 | `catchall` | release | Bar |  |  |
 | `SEMICOLON` | press | Cursor | Floating Click (Exit) | `cursor.pointer_mode` |
@@ -485,7 +485,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `W` | press | Delete | Close Window | `window.close` |
 | `SHIFT + W` | press | Delete | Kill Window | `window.kill` |
 | `ESCAPE` | press | Delete | Exit Delete |  |
-| `BackSpace` | release | Delete | Back |  |
+| `BackSpace` | press | Delete | Back |  |
 | `SHIFT + SLASH` | press | Delete | Toggle which-key help |  |
 | `catchall` | release | Delete |  |  |
 | `TAB` | press | Go | Last Workspace | `workspace.focus_last` |
@@ -502,7 +502,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `W` | press | Go | Search Windows | `overview.search` |
 | `Y` | press | Go | Yazi | `apps.focus` |
 | `ESCAPE` | press | Go | Exit Go |  |
-| `BackSpace` | release | Go | Back |  |
+| `BackSpace` | press | Go | Back |  |
 | `SHIFT + SLASH` | press | Go | Toggle which-key help |  |
 | `catchall` | release | Go |  |  |
 | `SPACE` | press | Groups | Toggle Group | `groups.toggle` |
@@ -562,7 +562,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `V` | press | Leader | Volume | `popup.open` |
 | `W` | press | Leader | Weather | `popup.open` |
 | `ESCAPE` | press | Leader | Exit Leader |  |
-| `BackSpace` | release | Leader | Back |  |
+| `BackSpace` | press | Leader | Back |  |
 | `SHIFT + SLASH` | press | Leader | Toggle which-key help |  |
 | `catchall` | release | Leader |  |  |
 | `F` | press | Move | Toggle Floating | `windows.float_selected` |
@@ -685,7 +685,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `W` | press | System | HTTP (xh) | `terminal.tool` |
 | `X` | press | System | Toggle Hypr Errors | `system.toggle_errors` |
 | `ESCAPE` | press | System | Exit System |  |
-| `BackSpace` | release | System | Back |  |
+| `BackSpace` | press | System | Back |  |
 | `SHIFT + SLASH` | press | System | Toggle which-key help |  |
 | `catchall` | release | System |  |  |
 | `R` | press | Windows | +Resize | `submap.enter` |

@@ -27,6 +27,19 @@ bind Applications,Bar,Delete,Go,Leader,System Alt_L      # the same, for the lef
 bind Applications,Bar,Delete,Go,Leader,System Alt_R      # the same, for the right Alt
 bind Applications,Bar,Delete,Go,Leader,System Super_L    # the same, for the left Super
 bind Applications,Bar,Delete,Go,Leader,System Super_R    # the same, for the right Super
+# Cursor keys with a held-release row: an any-modifier no-op claims their unbound combos (Hyprland 0.57 lets them through).
+bind Cursor H  # no-op that swallows an unbound modifier combo of a held move or scroll key, such as ALT + LEFT
+bind Cursor J  # the same
+bind Cursor K  # the same
+bind Cursor L  # the same
+bind Cursor LEFT  # the same
+bind Cursor DOWN  # the same
+bind Cursor UP  # the same
+bind Cursor RIGHT  # the same
+bind Cursor E  # the same
+bind Cursor Y  # the same
+bind Cursor COMMA  # the same
+bind Cursor PERIOD  # the same
 # The submaps with a "stay" catchall; Hyprland 0.57 runs a catchall on mouse events too, so these hand clicks and scrolls on.
 bind * mouse:272  # non-consuming no-op that keeps the catchall from swallowing a left click
 bind * mouse:273  # the same, for the right button

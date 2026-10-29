@@ -2,11 +2,12 @@
 # Since redumped only where keys were removed, moved or added (the Applications submap dropped, SUPER + A for the agents picker, Go V for the editor).
 # Redumped for the one-shot submaps' lone-modifier no-ops (Hyprland 0.57 runs a catchall on key press).
 # Redumped for the Applications submap restored on SUPER + A, the agents picker on Leader SPACE and Go A, and Bar and Leader SHIFT + S for Settings.
+# Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Applications	B	Bottles	-	exec_cmd(bottles);submap(reset)
-default	Applications	BackSpace	Back	release=true	submap(reset)
+default	Applications	BackSpace	Back	-	submap(reset)
 default	Applications	Control_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Control_R	-	ignore_mods=true,transparent=true	no_op
 default	Applications	D	Discord	-	exec_cmd(discord);submap(reset)
@@ -34,11 +35,20 @@ default	Applications	T	Torrent	-	exec_cmd(deluge);submap(reset)
 default	Applications	W	LibreOffice Writer	-	exec_cmd(libreoffice --writer);submap(reset)
 default	Applications	X	LibreOffice Calc	-	exec_cmd(libreoffice --calc);submap(reset)
 default	Applications	catchall	-	ignore_mods=true,release=true	submap(reset)
+default	Applications	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Bar	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
 default	Bar	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Bar	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Bar	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
-default	Bar	BackSpace	Back	release=true	submap(reset)
+default	Bar	BackSpace	Back	-	submap(reset)
 default	Bar	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open clock);submap(reset)
 default	Bar	Control_L	-	ignore_mods=true,transparent=true	no_op
 default	Bar	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -61,11 +71,20 @@ default	Bar	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);subma
 default	Bar	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
 default	Bar	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
 default	Bar	catchall	-	ignore_mods=true,release=true	submap(reset)
+default	Bar	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Go	A	Agent Sessions Picker	-	exec_cmd(~/.config/hypr/scripts/qs-picker agents '~/.local/bin/keeptabs-pick');submap(reset)
 default	Go	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Go	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Go	B	Browser	-	exec_cmd(firefox);submap(reset)
-default	Go	BackSpace	Back	release=true	submap(reset)
+default	Go	BackSpace	Back	-	submap(reset)
 default	Go	C	Tmuxifier Config	-	exec_cmd(kitty --single-instance -e tmuxifier load-session config);submap(reset)
 default	Go	Control_L	-	ignore_mods=true,transparent=true	no_op
 default	Go	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -87,11 +106,20 @@ default	Go	V	Editor	-	exec_cmd(kitty --single-instance -e nvim);submap(reset)
 default	Go	W	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview search);submap(reset)
 default	Go	Y	Yazi	-	exec_cmd(kitty --single-instance --class yazi -e yazi);submap(reset)
 default	Go	catchall	-	ignore_mods=true,release=true	submap(reset)
+default	Go	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Leader	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
 default	Leader	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Leader	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
-default	Leader	BackSpace	Back	release=true	submap(reset)
+default	Leader	BackSpace	Back	-	submap(reset)
 default	Leader	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open clock);submap(reset)
 default	Leader	COMMA	Voice Command	-	exec_cmd(~/.local/bin/voxcmd listen);submap(reset)
 default	Leader	CTRL + COMMA	Rapid Mode	-	exec_cmd(~/.local/bin/voxcmd session rapid);submap(reset)
@@ -129,11 +157,20 @@ default	Leader	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);su
 default	Leader	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
 default	Leader	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
 default	Leader	catchall	-	ignore_mods=true,release=true	submap(reset)
+default	Leader	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	System	A	AI Manager	-	exec_cmd(kitty --single-instance -e abtop);submap(reset)
 default	System	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	System	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	System	B	Restart Bar	-	exec_cmd(~/.config/hypr/scripts/restart-bar.sh);submap(reset)
-default	System	BackSpace	Back	release=true	submap(reset)
+default	System	BackSpace	Back	-	submap(reset)
 default	System	C	Calculate (qalc)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e qalc);submap(reset)
 default	System	Control_L	-	ignore_mods=true,transparent=true	no_op
 default	System	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -165,10 +202,19 @@ default	System	V	Voxtype Settings	-	exec_cmd(kitty --single-instance -e voxtype 
 default	System	W	HTTP (xh)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
 default	System	X	Toggle Hypr Errors	-	exec_cmd(~/.config/hypr/scripts/toggle-hypr-errors.sh);submap(reset)
 default	System	catchall	-	ignore_mods=true,release=true	submap(reset)
+default	System	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	B	Bottles	-	exec_cmd(bottles);submap(reset)
-no-leader	Applications	BackSpace	Back	release=true	submap(reset)
+no-leader	Applications	BackSpace	Back	-	submap(reset)
 no-leader	Applications	Control_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	Control_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	D	Discord	-	exec_cmd(discord);submap(reset)
@@ -196,11 +242,20 @@ no-leader	Applications	T	Torrent	-	exec_cmd(deluge);submap(reset)
 no-leader	Applications	W	LibreOffice Writer	-	exec_cmd(libreoffice --writer);submap(reset)
 no-leader	Applications	X	LibreOffice Calc	-	exec_cmd(libreoffice --calc);submap(reset)
 no-leader	Applications	catchall	-	ignore_mods=true,release=true	submap(reset)
+no-leader	Applications	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Bar	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
 no-leader	Bar	Alt_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
-no-leader	Bar	BackSpace	Back	release=true	submap(reset)
+no-leader	Bar	BackSpace	Back	-	submap(reset)
 no-leader	Bar	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open clock);submap(reset)
 no-leader	Bar	Control_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -223,6 +278,15 @@ no-leader	Bar	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);sub
 no-leader	Bar	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
 no-leader	Bar	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
 no-leader	Bar	catchall	-	ignore_mods=true,release=true	submap(reset)
+no-leader	Bar	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Go	1	Monitor 1	-	focus({monitor=DP-1});submap(reset)
 no-leader	Go	2	Monitor 2	-	focus({monitor=desc:Some Monitor});submap(reset)
 no-leader	Go	3	Monitor 3	-	focus({monitor=HDMI-A-1});submap(reset)
@@ -230,7 +294,7 @@ no-leader	Go	A	Agent Sessions Picker	-	exec_cmd(~/.config/hypr/scripts/qs-picker
 no-leader	Go	Alt_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	B	Browser	-	exec_cmd(firefox);submap(reset)
-no-leader	Go	BackSpace	Back	release=true	submap(reset)
+no-leader	Go	BackSpace	Back	-	submap(reset)
 no-leader	Go	C	Tmuxifier Config	-	exec_cmd(kitty --single-instance -e tmuxifier load-session config);submap(reset)
 no-leader	Go	Control_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -252,11 +316,20 @@ no-leader	Go	V	Editor	-	exec_cmd(kitty --single-instance -e nvim);submap(reset)
 no-leader	Go	W	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview search);submap(reset)
 no-leader	Go	Y	Yazi	-	exec_cmd(kitty --single-instance --class yazi -e yazi);submap(reset)
 no-leader	Go	catchall	-	ignore_mods=true,release=true	submap(reset)
+no-leader	Go	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Leader	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
 no-leader	Leader	Alt_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
-no-leader	Leader	BackSpace	Back	release=true	submap(reset)
+no-leader	Leader	BackSpace	Back	-	submap(reset)
 no-leader	Leader	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open clock);submap(reset)
 no-leader	Leader	COMMA	Voice Command	-	exec_cmd(~/.local/bin/voxcmd listen);submap(reset)
 no-leader	Leader	CTRL + COMMA	Rapid Mode	-	exec_cmd(~/.local/bin/voxcmd session rapid);submap(reset)
@@ -294,11 +367,20 @@ no-leader	Leader	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);
 no-leader	Leader	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
 no-leader	Leader	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
 no-leader	Leader	catchall	-	ignore_mods=true,release=true	submap(reset)
+no-leader	Leader	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	System	A	AI Manager	-	exec_cmd(kitty --single-instance -e abtop);submap(reset)
 no-leader	System	Alt_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	B	Restart Bar	-	exec_cmd(~/.config/hypr/scripts/restart-bar.sh);submap(reset)
-no-leader	System	BackSpace	Back	release=true	submap(reset)
+no-leader	System	BackSpace	Back	-	submap(reset)
 no-leader	System	C	Calculate (qalc)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e qalc);submap(reset)
 no-leader	System	Control_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -330,3 +412,12 @@ no-leader	System	V	Voxtype Settings	-	exec_cmd(kitty --single-instance -e voxtyp
 no-leader	System	W	HTTP (xh)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
 no-leader	System	X	Toggle Hypr Errors	-	exec_cmd(~/.config/hypr/scripts/toggle-hypr-errors.sh);submap(reset)
 no-leader	System	catchall	-	ignore_mods=true,release=true	submap(reset)
+no-leader	System	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)

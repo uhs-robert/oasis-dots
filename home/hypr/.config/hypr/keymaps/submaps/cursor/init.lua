@@ -55,6 +55,13 @@ end
 --- (shadowBinds), so without it the release after a diagonal never runs and the pointer moves forever.
 local function held_release() return { release = true, ignore_mods = true, transparent = true } end
 
+--- A no-op that claims every modifier combo of a key with a held_release row. On 0.57 a release bind half-matches
+--- the key-down, which keeps the "stay" catchall from running without claiming the key, so a combo with no bind of
+--- its own (ALT + LEFT) reached the focused app.
+--- @param key string
+--- @return table
+local function claim_key(key) return { key, hl.dsp.no_op(), false, { ignore_mods = true, transparent = true } } end
+
 --- Build scroll bind rows for a modifier tier. Scrolling repeats until the release rows from scroll_release_binds
 --- stop it.
 --- @param mod string
@@ -77,6 +84,7 @@ local function scroll_release_binds()
   local rows = {}
   for _, key in ipairs({ "E", "Y", "COMMA", "PERIOD" }) do
     rows[#rows + 1] = { key, "cursor.scroll_stop", false, held_release() }
+    rows[#rows + 1] = claim_key(key)
   end
   return rows
 end
@@ -86,7 +94,10 @@ end
 --- @return table[]
 local function move_release_binds(set)
   local rows = {}
-  local function add(key, dir) rows[#rows + 1] = { key, { "cursor.move_stop", { dir } }, false, held_release() } end
+  local function add(key, dir)
+    rows[#rows + 1] = { key, { "cursor.move_stop", { dir } }, false, held_release() }
+    rows[#rows + 1] = claim_key(key)
+  end
   for _, dir in ipairs({ "left", "down", "up", "right" }) do
     add(set[dir], dir)
     if set.arrows ~= false then add(dir:upper(), dir) end
