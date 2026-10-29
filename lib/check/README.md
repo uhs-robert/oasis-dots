@@ -16,7 +16,7 @@ lib/check.sh --plan [--changed <base>|--paths-from <file|->] [--only ...] prints
 
 `--changed` always runs the "tree" steps: `git-diff-check`, `whitespace`, `conflicts`, `symlinks`, `packages`, `ignored-integrations`, `qml-ipc`, `readme-links` and `registry`. A change to `lib/check.sh`, the runner's own modules (`runner.py`, `scopes.py`, `lock.sh`, `passed.sh`, `passed.py`), the `justfile`, `.claude/check-commands` or any path no rule in `scopes.py` claims runs everything. A Markdown file runs no step (see Scopes).
 
-The parallel output of a step is buffered and a passing step prints one line; after the `FAILED:` line, the last 25 lines of each failing step follow. A step whose tool is missing prints `skip:` and passes. Run a suite through `--only` rather than by hand (a hook warns). Every run reruns its steps: nothing skips a step because it passed before.
+The parallel output of a step is buffered and a passing step prints one line; after the `FAILED:` line, the last 25 lines of each failing step follow. A step whose tool is missing prints `skip:` and passes. Run a suite through `--only` rather than by hand, so it gets the runner's environment and takes a heavy-step slot. Every run reruns its steps: nothing skips a step because it passed before.
 
 ### Reading the summary
 
