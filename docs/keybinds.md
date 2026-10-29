@@ -8,7 +8,7 @@ You rarely need to open a file to find a bind.
 
 - `SUPER + /` searches every bind in the mode you are in and runs the one you pick. Submaps are listed first, each with a `+` in front of its name, so it doubles as a map of the submaps you can enter from here.
 - `SUPER + SHIFT + /` opens which-key from anywhere, showing every bind in the current submap at a glance, or the global binds when you are in none.
-- Entering a submap also shows its binds in which-key.
+- Entering a submap also shows its binds in which-key, except Windows, Resize, Move and Cursor: they show a compact hint bar of their main keys instead, and `?` there opens the full which-key list.
 - Inside a submap, `?` hides or shows which-key without leaving it.
 
 All of them read the description written next to each bind, so anything you add shows up in them too.
@@ -192,6 +192,7 @@ Submap.define({
 | `enter` | The key that opens it. Check it is free with `SUPER + /` first |
 | `escape` | What `ESCAPE` does. `"reset"` leaves all submaps, `"previous"` goes back one, a submap name jumps to that one |
 | `catchall` | What an unlisted key does. `"reset"` makes the submap one-shot: any key leaves it, and its rows leave it for you. `"stay"` keeps it active until you escape, for submaps you press repeatedly |
+| `hint` | Optional. Shows the Quickshell hint bar on entry instead of which-key: a list of groups, each a heading then the action ids whose rows it lists (a row that runs a function cannot be listed), e.g. `{ { "Notes", "notes.today", "notes.inbox" } }`. The keys and labels come from your rows; an item can be `{ id, label = "Short" }` to rename it, with `mods` and `args` to pick some of its rows (see `home/hypr/.config/hypr/lib/key/submap_hint.lua`). A hint set from `custom/` still opens which-key as well, since HyprVim reads its list before `custom/` loads |
 
 In a one-shot submap, a row can stay in it instead by adding `{ keep = true }` as a fourth item.
 

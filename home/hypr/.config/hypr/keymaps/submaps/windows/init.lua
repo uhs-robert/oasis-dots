@@ -25,6 +25,30 @@ Submap.define({
   on_enter = function() require("lib.actions.selection").clear() end,
   on_exit = function() require("lib.actions.selection").clear() end,
 
+  hint = {
+    { "Focus", "window.focus", "monitor.focus", { "windows.step_float", label = "Floating" } },
+    {
+      "Move",
+      "windows.move_selected",
+      { "workspace.cycle", "windows.workspace_selected", label = "Workspace" },
+      "windows.workspace_move_selected",
+    },
+    {
+      "Select",
+      { "windows.select_toggle", label = "Select" },
+      { "windows.swap_selected", label = "Swap" },
+      { "windows.confirm", label = "Confirm" },
+    },
+    {
+      "Window",
+      { "windows.close_selected", label = "Close" },
+      { "windows.float_selected", label = "Float" },
+      { "windows.pseudo_selected", label = "Pseudo" },
+      { "windows.split_selected", label = "Split" },
+    },
+    { "Mode", "submap.enter" },
+  },
+
   binds = function()
     local focus_actions = {
       left = { "window.focus", { "left" } },
