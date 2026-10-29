@@ -8,7 +8,7 @@ Each thing the desktop can do is one action: an id, a label, typed params and a 
 
 ## Keys
 
-Shipped actions carry no key. `lib/` says what an action does and `keymaps/` says which key runs it, so moving a key never means editing an action. A define in `custom/` may still pass `key` and `extra_keys`. See [keymaps](../../keymaps/README.md) for where each key lives.
+Shipped actions carry no key. [Keymaps](../../keymaps/README.md) says which key runs each one and how to move it.
 
 A defs file is live only if a keymap requires it, for example `keymaps/global/tools.lua`. The actions with no key at all load from `keymaps/global/keyless.lua`.
 
