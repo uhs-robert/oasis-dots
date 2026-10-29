@@ -147,9 +147,9 @@ case_markdown_a_test_reads() {
 
 case_hook_edit() {
   start_case 'an agent hook'
-  echo '# x' >>.claude/hooks/report-failed-main-check.sh
+  echo "# x" >>.claude/hooks/guard-legacy-hyprctl.sh
   plan
-  expect_ran hook-report-failed-main-check reviewers owner-test-bar shellcheck
+  expect_ran reviewers owner-test-bar shellcheck
   expect_skipped ship-batch merge-prs voxcmd-click qmllint
 }
 
@@ -303,7 +303,7 @@ case_full_override() {
 
 case_check_py() {
   start_case 'change to a lib/check/ Python module'
-  echo '# x' >>lib/check/passed.py
+  echo '# x' >>lib/check/runner.py
   plan
   expect_everything
 }

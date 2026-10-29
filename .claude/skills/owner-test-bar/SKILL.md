@@ -16,7 +16,7 @@ Run from any worktree; never by hand, and never for an agent's own checks (use `
 
 ## Details
 
-The owner tests every Quickshell change on their real bar before merging; this skill is how a branch gets there. It is for the owner to try, not for agents to test on. Do it with `owner-test-bar.sh` in this directory, never by hand: it merges the branches into a throwaway worktree, copies the gitignored assets (theme.json, FF7 audio) from the main checkout even when run from a worktree, runs `lib/check.sh --changed origin/main` (skipped when the tree, or a lone branch that already contains origin/main, is already recorded as passed; it never waits on the heavy-step lock), refuses to touch `qs` unless the lock reports `unlocked`, launches through Hyprland so `qs` does not inherit this shell's TMUX, and fails loudly on load errors.
+The owner tests every Quickshell change on their real bar before merging; this skill is how a branch gets there. It is for the owner to try, not for agents to test on. Do it with `owner-test-bar.sh` in this directory, never by hand: it merges the branches into a throwaway worktree, copies the gitignored assets (theme.json, FF7 audio) from the main checkout even when run from a worktree, runs `lib/check.sh --changed origin/main` (it never waits on the heavy-step lock), refuses to touch `qs` unless the lock reports `unlocked`, launches through Hyprland so `qs` does not inherit this shell's TMUX, and fails loudly on load errors.
 
 ```
 .claude/skills/owner-test-bar/owner-test-bar.sh up <name> <branch>...   # build and swap in one step

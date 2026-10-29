@@ -37,8 +37,6 @@ PATH_SCOPES = [
     ("lib/check/runner.py", "checkscope all"),
     ("lib/check/scopes.py", "checkscope all"),
     ("lib/check/lock.sh", "checkscope all"),
-    ("lib/check/passed.sh", "checkscope all"),
-    ("lib/check/passed.py", "checkscope all"),
     ("justfile", "all"),
     (".claude/check-commands", "all"),
     # Markdown runs no step, ahead of every folder rule; the two tables below are generated into .md files that the

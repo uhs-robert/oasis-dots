@@ -1,6 +1,6 @@
 # The check runner
 
-`lib/check.sh` is a shim for `lib/check/runner.py` (stdlib Python 3.11+, always run with `-B`); it works as `sh lib/check.sh` and as `lib/check.sh`. The step table, the path rules and the shell file groups are in `lib/check/scopes.py`, where a new step goes. This file holds what the shim's header used to: the options, the environment, the step list and how tree passes are recorded. Editing the shim is scope "all" (every step reruns, about 4 minutes); editing this file reaches only `check-scope` and `check-cache`.
+`lib/check.sh` is a shim for `lib/check/runner.py` (stdlib Python 3.11+, always run with `-B`); it works as `sh lib/check.sh` and as `lib/check.sh`. The step table, the path rules and the shell file groups are in `lib/check/scopes.py`, where a new step goes. This file holds what the shim's header used to: the options, the environment and the step list. Editing the shim is scope "all" (every step reruns, about 4 minutes); editing this file reaches only `check-scope` and `check-cache`.
 
 ## Running it
 
@@ -14,7 +14,7 @@ lib/check.sh --only <step>[,<step>...] only the named steps (repeatable), whatev
 lib/check.sh --plan [--changed <base>|--paths-from <file|->] [--only ...] prints the plan (the summary line, then each shellcheck list) and exits 0, running nothing
 ```
 
-`--changed` always runs the "tree" steps: `git-diff-check`, `whitespace`, `conflicts`, `symlinks`, `packages`, `ignored-integrations`, `qml-ipc`, `readme-links` and `registry`. A change to `lib/check.sh`, the runner's own modules (`runner.py`, `scopes.py`, `lock.sh`, `passed.sh`, `passed.py`), the `justfile`, `.claude/check-commands` or any path no rule in `scopes.py` claims runs everything. A Markdown file runs no step (see Scopes).
+`--changed` always runs the "tree" steps: `git-diff-check`, `whitespace`, `conflicts`, `symlinks`, `packages`, `ignored-integrations`, `qml-ipc`, `readme-links` and `registry`. A change to `lib/check.sh`, the runner's own modules (`runner.py`, `scopes.py`, `lock.sh`), the `justfile`, `.claude/check-commands` or any path no rule in `scopes.py` claims runs everything. A Markdown file runs no step (see Scopes).
 
 The parallel output of a step is buffered and a passing step prints one line; after the `FAILED:` line, the last 25 lines of each failing step follow. A step whose tool is missing prints `skip:` and passes. Run a suite through `--only` rather than by hand, so it gets the runner's environment and takes a heavy-step slot. Every run reruns its steps: nothing skips a step because it passed before.
 
@@ -34,7 +34,7 @@ The parallel output of a step is buffered and a passing step prints one line; af
 
 ### Where it runs on its own
 
-Nothing runs it at the end of a turn, at a commit or at a PR open. ship-batch runs it on each PR's branch, then on main. A worktree has no `repos/`, so its pass does not cover `symlinks` for the main checkout: run the check in the real checkout before merging.
+Nothing runs it at the end of a turn, at a commit or at a PR open. ship-batch runs it once on each PR's branch, while the reviewers are awaited; main is not checked after the merge, run `just check` there when wanted. A worktree has no `repos/`, so its pass does not cover `symlinks` for the main checkout: run the check in the real checkout before merging.
 
 ## Scopes
 
@@ -135,14 +135,10 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `scroll-cue`: `home/quickshell/tests/scroll_cue.js`, which edges of a Settings list or browse picker hide content and that a revealed row stays clear of the scroll fade (`ui/scroll/ScrollCue.js`). Needs node.
 - `bar-layout`: `home/quickshell/tests/bar_layout.js`, the bar position in `features/bar/BarLayout.js` (rules, per-monitor overrides, the state file, the directory switches). Needs node.
 - `bar-vertical`: `home/quickshell/tests/bar_vertical.js`, the side-bar column helpers in `features/bar/VerticalLayout.js` (cross width, text fit, unit drop, stacked clock). Needs node.
-- `check-scope`, `check-cache`: which steps `--changed` picks (`lib/check/tests/scope.sh`), and the runner's scopes, pass records and slot lock (`lib/check/tests/test_*.py`, `lock.sh`), and `shaders.sh`, the shaders step's tests. Any file under `lib/check/` reaches them, this README included.
+- `check-scope`, `check-cache`: which steps `--changed` picks (`lib/check/tests/scope.sh`), and the runner's scopes and slot lock (`lib/check/tests/test_*.py`, `lock.sh`), and `shaders.sh`, the shaders step's tests. Any file under `lib/check/` reaches them, this README included.
 - `packages`: duplicate package names across the manifests (`lib/check/steps/packages.sh`).
 - `symlinks`, `whitespace`, `conflicts`, `git-diff-check`: tracked symlinks that dangle or leave the repo; trailing whitespace; conflict markers; and `git diff --check HEAD`.
 - `ignored-integrations`: no voxcmd integration or replacement file is one git ignores (`lib/check/steps/ignored-integrations.sh`).
-
-## Passes
-
-No step is skipped for having passed before. A run that leaves the tree clean (nothing modified or untracked, before and after) records the tree in `lib/check/passed.sh`: when the run reached every step, or when `--changed <base>` passed on top of a base recorded as passed. A `--changed` run also records that it passed against `<base>`. `--paths-from`, `--only`, `CHECK_SKIP_STEPS` and `VOXCMD_ONLY_SECTIONS` runs vouch for no tree. The records are in the repository's common git dir, shared by every worktree; ship-batch and the owner-test-bar read them. `passed.sh` still has the per-step `step-record` and `step-is-passed` actions, which nothing calls.
 
 ## Slots
 
