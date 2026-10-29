@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import qs.features.bar
+import "../../core/WindowVisibility.js" as WindowVisibility
 
 // The window selection of the `targets` submaps (Windows, Resize, Move), which
 // home/hypr/.config/hypr/lib/actions/selection.lua keeps and sends over `submap_hints selection`, and where those
@@ -44,24 +45,24 @@ Singleton {
         return root.selected.indexOf(address) + 1;
     }
 
-    // Windows a screen shows now, each { address, x, y, w, h } in that screen's coordinates: those on its active
-    // workspace, or on its special workspace while that is open over it. Grouped tabs that are not shown are skipped,
-    // and so are the tiled windows a fullscreen or maximized one covers.
+    // Windows a screen shows now, each { address, x, y, w, h } in that screen's coordinates, by the rule the screenshot
+    // window picker uses (core/WindowVisibility.js): its active workspace, its open special workspace and pinned
+    // windows. Grouped tabs that are not shown are skipped, and so are the tiled windows a fullscreen or maximized one
+    // covers.
     function windows_on(screen) {
         const monitor = screen ? Hyprland.monitorFor(screen) : null;
-        if (!monitor || !monitor.activeWorkspace)
+        if (!monitor)
             return [];
-        const special = monitor.lastIpcObject && monitor.lastIpcObject.specialWorkspace ? monitor.lastIpcObject.specialWorkspace.id : 0;
-        const shown_id = special ? special : monitor.activeWorkspace.id;
+        const shown_workspaces = WindowVisibility.shown_by_monitor(Hyprland.monitors.values.map(m => m.lastIpcObject));
         const shown = Hyprland.toplevels.values.filter(t => {
             const ipc = t.lastIpcObject;
-            return ipc && ipc.at && ipc.size && ipc.workspace && !ipc.hidden && ipc.mapped !== false && ipc.workspace.id === shown_id;
+            return ipc && ipc.at && ipc.size && ipc.monitor === monitor.id && WindowVisibility.is_shown(ipc, shown_workspaces);
         });
-        const covering = shown.some(t => t.lastIpcObject.fullscreen > 0);
+        const shown_ipc = shown.map(t => t.lastIpcObject);
         const out = [];
         for (const toplevel of shown) {
             const ipc = toplevel.lastIpcObject;
-            if (covering && !(ipc.fullscreen > 0) && !ipc.floating)
+            if (WindowVisibility.is_covered(ipc, shown_ipc))
                 continue;
             out.push({
                 address: toplevel.address,
@@ -83,7 +84,7 @@ Singleton {
 
     // Window and workspace changes that move a frame; `custom>>window_targets` is the event the Lua actions raise after
     // a relative move or resize, which Hyprland reports with no event of its own.
-    readonly property var geometry_events: ["activewindowv2", "workspacev2", "movewindowv2", "openwindow", "closewindow", "changefloatingmode", "fullscreen", "focusedmonv2", "activespecialv2", "moveworkspacev2"]
+    readonly property var geometry_events: ["activewindowv2", "workspacev2", "movewindowv2", "openwindow", "closewindow", "changefloatingmode", "fullscreen", "focusedmonv2", "activespecialv2", "moveworkspacev2", "pin"]
 
     Connections {
         target: Hyprland
