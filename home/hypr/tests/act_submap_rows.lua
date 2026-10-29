@@ -253,6 +253,15 @@ probes({
 check("one-shot: unbound key leaves", pressed("Once", "catchall") == "submap(reset)")
 check("stay: unbound key is swallowed", pressed("Stay", "catchall") == "no_op")
 check("stay: nothing leaves the submap", not pressed("Stay", "catchall"):find("submap", 1, true))
+-- one-shot: holding a modifier for a chord row does not leave, and bare `/` is an unbound key like any other
+for _, key in ipairs({ "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R", "Super_L", "Super_R" }) do
+	local modifier = probe_bind("Once", key)
+	check(
+		"one-shot: " .. key .. " alone stays",
+		modifier and pressed("Once", key) == "no_op" and modifier.opts.ignore_mods and modifier.opts.transparent
+	)
+end
+check("one-shot: bare SLASH leaves", probe_bind("Once", "SLASH") == nil)
 
 -- SHIFT + SLASH toggles which-key, unlabelled; a submap's own row on that key wins
 probes({

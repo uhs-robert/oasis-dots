@@ -1,4 +1,5 @@
 # Dumped by `SHELL=/bin/zsh lua act_stateful.lua --dump` from the Windows, Cursor, Quick Click, Groups, Move, Resize and Delete submaps before their rows named actions (origin/main 0f4b00380).
+# Since redumped only for the one-shot submaps' lone-modifier no-ops (Hyprland 0.57 runs a catchall on key press).
 # Columns: config, submap, key, which-key label, flags, what the key does.
 arrows	Cursor	ALT + H	Arrow Left	repeating=true	send_shortcut({key=LEFT,mods=})
 arrows	Cursor	ALT + J	Arrow Down	repeating=true	send_shortcut({key=DOWN,mods=})
@@ -110,9 +111,13 @@ arrows	Cursor	UP	Cursor Up	repeating=true	exec_cmd(wlrctl pointer move 0 -10)
 arrows	Cursor	Y	-	ignore_mods=true,release=true	-
 arrows	Cursor	Y	Scroll Down	-	exec_cmd(wlrctl pointer scroll -10 0)
 arrows	Cursor	catchall	-	ignore_mods=true,release=true	no_op
+arrows	Delete	Alt_L	-	ignore_mods=true,transparent=true	no_op
+arrows	Delete	Alt_R	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	B	Close Browsers	-	window.close({window=address:0xa1});window.close({window=address:0xc3});submap(reset)
 arrows	Delete	BackSpace	Back	release=true	submap(reset)
 arrows	Delete	C	Clear Clipboard	-	exec_cmd(cliphist wipe);submap(reset)
+arrows	Delete	Control_L	-	ignore_mods=true,transparent=true	no_op
+arrows	Delete	Control_R	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	D	Close All on WS	-	window.close({window=address:0xa1});window.close({window=address:0xb2});submap(reset)
 arrows	Delete	E	Close Editors	-	submap(reset)
 arrows	Delete	ESCAPE	Exit Delete	-	submap(reset)
@@ -127,9 +132,10 @@ arrows	Delete	SHIFT + D	Kill All on WS	-	os.execute(kill -9 nil);os.execute(kill
 arrows	Delete	SHIFT + O	Kill Others on WS	-	os.execute(kill -9 nil);submap(reset)
 arrows	Delete	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 arrows	Delete	SHIFT + W	Kill Window	-	window.kill({window=address:0xa1});submap(reset)
-arrows	Delete	SLASH	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	Shift_L	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	Shift_R	-	ignore_mods=true,transparent=true	no_op
+arrows	Delete	Super_L	-	ignore_mods=true,transparent=true	no_op
+arrows	Delete	Super_R	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	T	Close Terminals	-	window.close({window=address:0xb2});submap(reset)
 arrows	Delete	W	Close Window	-	window.close({window=address:0xa1});submap(reset)
 arrows	Delete	catchall	-	ignore_mods=true,release=true	submap(reset)
@@ -417,9 +423,13 @@ default	Cursor	UP	-	repeating=true	exec_cmd(wlrctl pointer move 0 -10)
 default	Cursor	Y	-	ignore_mods=true,release=true	-
 default	Cursor	Y	Scroll Down	-	exec_cmd(wlrctl pointer scroll -10 0)
 default	Cursor	catchall	-	ignore_mods=true,release=true	no_op
+default	Delete	Alt_L	-	ignore_mods=true,transparent=true	no_op
+default	Delete	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Delete	B	Close Browsers	-	window.close({window=address:0xa1});window.close({window=address:0xc3});submap(reset)
 default	Delete	BackSpace	Back	release=true	submap(reset)
 default	Delete	C	Clear Clipboard	-	exec_cmd(cliphist wipe);submap(reset)
+default	Delete	Control_L	-	ignore_mods=true,transparent=true	no_op
+default	Delete	Control_R	-	ignore_mods=true,transparent=true	no_op
 default	Delete	D	Close All on WS	-	window.close({window=address:0xa1});window.close({window=address:0xb2});submap(reset)
 default	Delete	E	Close Editors	-	submap(reset)
 default	Delete	ESCAPE	Exit Delete	-	submap(reset)
@@ -434,9 +444,10 @@ default	Delete	SHIFT + D	Kill All on WS	-	os.execute(kill -9 nil);os.execute(kil
 default	Delete	SHIFT + O	Kill Others on WS	-	os.execute(kill -9 nil);submap(reset)
 default	Delete	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	Delete	SHIFT + W	Kill Window	-	window.kill({window=address:0xa1});submap(reset)
-default	Delete	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Delete	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Delete	Shift_R	-	ignore_mods=true,transparent=true	no_op
+default	Delete	Super_L	-	ignore_mods=true,transparent=true	no_op
+default	Delete	Super_R	-	ignore_mods=true,transparent=true	no_op
 default	Delete	T	Close Terminals	-	window.close({window=address:0xb2});submap(reset)
 default	Delete	W	Close Window	-	window.close({window=address:0xa1});submap(reset)
 default	Delete	catchall	-	ignore_mods=true,release=true	submap(reset)
@@ -724,9 +735,13 @@ no-leader	Cursor	UP	-	repeating=true	exec_cmd(wlrctl pointer move 0 -10)
 no-leader	Cursor	Y	-	ignore_mods=true,release=true	-
 no-leader	Cursor	Y	Scroll Down	-	exec_cmd(wlrctl pointer scroll -10 0)
 no-leader	Cursor	catchall	-	ignore_mods=true,release=true	no_op
+no-leader	Delete	Alt_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Delete	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	B	Close Browsers	-	window.close({window=address:0xa1});window.close({window=address:0xc3});submap(reset)
 no-leader	Delete	BackSpace	Back	release=true	submap(reset)
 no-leader	Delete	C	Clear Clipboard	-	exec_cmd(cliphist wipe);submap(reset)
+no-leader	Delete	Control_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Delete	Control_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	D	Close All on WS	-	window.close({window=address:0xa1});window.close({window=address:0xb2});submap(reset)
 no-leader	Delete	E	Close Editors	-	submap(reset)
 no-leader	Delete	ESCAPE	Exit Delete	-	submap(reset)
@@ -741,9 +756,10 @@ no-leader	Delete	SHIFT + D	Kill All on WS	-	os.execute(kill -9 nil);os.execute(k
 no-leader	Delete	SHIFT + O	Kill Others on WS	-	os.execute(kill -9 nil);submap(reset)
 no-leader	Delete	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 no-leader	Delete	SHIFT + W	Kill Window	-	window.kill({window=address:0xa1});submap(reset)
-no-leader	Delete	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	Shift_R	-	ignore_mods=true,transparent=true	no_op
+no-leader	Delete	Super_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Delete	Super_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	T	Close Terminals	-	window.close({window=address:0xb2});submap(reset)
 no-leader	Delete	W	Close Window	-	window.close({window=address:0xa1});submap(reset)
 no-leader	Delete	catchall	-	ignore_mods=true,release=true	submap(reset)
@@ -1024,9 +1040,13 @@ persistent	Cursor	UP	-	repeating=true	exec_cmd(wlrctl pointer move 0 -10)
 persistent	Cursor	Y	-	ignore_mods=true,release=true	-
 persistent	Cursor	Y	Scroll Down	-	exec_cmd(wlrctl pointer scroll -10 0)
 persistent	Cursor	catchall	-	ignore_mods=true,release=true	no_op
+persistent	Delete	Alt_L	-	ignore_mods=true,transparent=true	no_op
+persistent	Delete	Alt_R	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	B	Close Browsers	-	window.close({window=address:0xa1});window.close({window=address:0xc3});submap(reset)
 persistent	Delete	BackSpace	Back	release=true	submap(reset)
 persistent	Delete	C	Clear Clipboard	-	exec_cmd(cliphist wipe);submap(reset)
+persistent	Delete	Control_L	-	ignore_mods=true,transparent=true	no_op
+persistent	Delete	Control_R	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	D	Close All on WS	-	window.close({window=address:0xa1});window.close({window=address:0xb2});submap(reset)
 persistent	Delete	E	Close Editors	-	submap(reset)
 persistent	Delete	ESCAPE	Exit Delete	-	submap(reset)
@@ -1041,9 +1061,10 @@ persistent	Delete	SHIFT + D	Kill All on WS	-	os.execute(kill -9 nil);os.execute(
 persistent	Delete	SHIFT + O	Kill Others on WS	-	os.execute(kill -9 nil);submap(reset)
 persistent	Delete	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 persistent	Delete	SHIFT + W	Kill Window	-	window.kill({window=address:0xa1});submap(reset)
-persistent	Delete	SLASH	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	Shift_L	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	Shift_R	-	ignore_mods=true,transparent=true	no_op
+persistent	Delete	Super_L	-	ignore_mods=true,transparent=true	no_op
+persistent	Delete	Super_R	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	T	Close Terminals	-	window.close({window=address:0xb2});submap(reset)
 persistent	Delete	W	Close Window	-	window.close({window=address:0xa1});submap(reset)
 persistent	Delete	catchall	-	ignore_mods=true,release=true	submap(reset)

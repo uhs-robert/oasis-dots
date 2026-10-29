@@ -1,10 +1,15 @@
 # Dumped by `SHELL=/bin/zsh lua act_submap_rows.lua --dump` from the Leader, Go, System and Bar submaps before their rows named actions (origin/main 5f1d11782).
 # Since redumped only where keys were removed, moved or added (the Applications submap dropped, SUPER + A for the agents picker, Go V for the editor).
+# Redumped for the one-shot submaps' lone-modifier no-ops (Hyprland 0.57 runs a catchall on key press).
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Bar	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
+default	Bar	Alt_L	-	ignore_mods=true,transparent=true	no_op
+default	Bar	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Bar	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
 default	Bar	BackSpace	Back	release=true	submap(reset)
 default	Bar	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open clock);submap(reset)
+default	Bar	Control_L	-	ignore_mods=true,transparent=true	no_op
+default	Bar	Control_R	-	ignore_mods=true,transparent=true	no_op
 default	Bar	ESCAPE	Exit Bar	-	submap(reset)
 default	Bar	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
 default	Bar	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
@@ -13,18 +18,23 @@ default	Bar	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call
 default	Bar	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open system);submap(reset)
 default	Bar	S	Start Menu	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open start);submap(reset)
 default	Bar	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
-default	Bar	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Bar	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Bar	Shift_R	-	ignore_mods=true,transparent=true	no_op
+default	Bar	Super_L	-	ignore_mods=true,transparent=true	no_op
+default	Bar	Super_R	-	ignore_mods=true,transparent=true	no_op
 default	Bar	T	Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 default	Bar	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
 default	Bar	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
 default	Bar	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
 default	Bar	catchall	-	ignore_mods=true,release=true	submap(reset)
 default	Go	A	Agent Sessions	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
+default	Go	Alt_L	-	ignore_mods=true,transparent=true	no_op
+default	Go	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Go	B	Browser	-	exec_cmd(firefox);submap(reset)
 default	Go	BackSpace	Back	release=true	submap(reset)
 default	Go	C	Tmuxifier Config	-	exec_cmd(kitty --single-instance -e tmuxifier load-session config);submap(reset)
+default	Go	Control_L	-	ignore_mods=true,transparent=true	no_op
+default	Go	Control_R	-	ignore_mods=true,transparent=true	no_op
 default	Go	ESCAPE	Exit Go	-	submap(reset)
 default	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
 default	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
@@ -32,9 +42,10 @@ default	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 default	Go	S	Slack	-	exec_cmd(slack);submap(reset)
 default	Go	SHIFT + S	Steam	-	exec_cmd(steam);submap(reset)
 default	Go	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
-default	Go	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Go	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Go	Shift_R	-	ignore_mods=true,transparent=true	no_op
+default	Go	Super_L	-	ignore_mods=true,transparent=true	no_op
+default	Go	Super_R	-	ignore_mods=true,transparent=true	no_op
 default	Go	T	Terminal	-	exec_cmd(kitty);submap(reset)
 default	Go	TAB	Last Workspace	-	focus({workspace=previous});submap(reset)
 default	Go	V	Editor	-	exec_cmd(kitty --single-instance -e nvim);submap(reset)
@@ -42,6 +53,8 @@ default	Go	W	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overvi
 default	Go	Y	Yazi	-	exec_cmd(kitty --single-instance --class yazi -e yazi);submap(reset)
 default	Go	catchall	-	ignore_mods=true,release=true	submap(reset)
 default	Leader	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
+default	Leader	Alt_L	-	ignore_mods=true,transparent=true	no_op
+default	Leader	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Leader	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
 default	Leader	BackSpace	Back	release=true	submap(reset)
 default	Leader	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open clock);submap(reset)
@@ -50,6 +63,8 @@ default	Leader	CTRL + COMMA	Rapid Mode	-	exec_cmd(~/.local/bin/voxcmd session ra
 default	Leader	CTRL + PERIOD	Wake Word	-	exec_cmd(~/.local/bin/voxcmd wake toggle);submap(reset)
 default	Leader	CTRL + SLASH	Voice Help	-	exec_cmd(~/.local/bin/voxcmd help);submap(reset)
 default	Leader	CTRL + V	Clipboard	-	exec_cmd(~/.config/hypr/scripts/qs-picker clipboard 'cliphist list | rofi -name rofiDmenu -i -dmenu -p '\''Clipboard'\'' | cliphist decode | wl-copy');submap(reset)
+default	Leader	Control_L	-	ignore_mods=true,transparent=true	no_op
+default	Leader	Control_R	-	ignore_mods=true,transparent=true	no_op
 default	Leader	E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimoji --action type --selector-args '\''-name rofiDmenu'\''');submap(reset)
 default	Leader	ESCAPE	Exit Leader	-	submap(reset)
 default	Leader	G	+Groups	keep=true	submap(Groups)
@@ -65,11 +80,12 @@ default	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);sub
 default	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
 default	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	Leader	SHIFT + TAB	Tmux Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open);submap(reset)
-default	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
 default	Leader	SPACE	Start Menu	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open start);submap(reset)
 default	Leader	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Shift_R	-	ignore_mods=true,transparent=true	no_op
+default	Leader	Super_L	-	ignore_mods=true,transparent=true	no_op
+default	Leader	Super_R	-	ignore_mods=true,transparent=true	no_op
 default	Leader	T	Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 default	Leader	TAB	Workspace Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open);submap(reset)
 default	Leader	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
@@ -77,9 +93,13 @@ default	Leader	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open
 default	Leader	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
 default	Leader	catchall	-	ignore_mods=true,release=true	submap(reset)
 default	System	A	AI Manager	-	exec_cmd(kitty --single-instance -e abtop);submap(reset)
+default	System	Alt_L	-	ignore_mods=true,transparent=true	no_op
+default	System	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	System	B	Restart Bar	-	exec_cmd(~/.config/hypr/scripts/restart-bar.sh);submap(reset)
 default	System	BackSpace	Back	release=true	submap(reset)
 default	System	C	Calculate (qalc)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e qalc);submap(reset)
+default	System	Control_L	-	ignore_mods=true,transparent=true	no_op
+default	System	Control_R	-	ignore_mods=true,transparent=true	no_op
 default	System	D	DNS (doggo)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
 default	System	E	Logout	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm logout);submap(reset)
 default	System	ESCAPE	Exit System	-	submap(reset)
@@ -96,20 +116,25 @@ default	System	SHIFT + L	Toggle Auto-Lock	-	exec_cmd(~/.config/hypr/scripts/togg
 default	System	SHIFT + R	Replay Autostart	-	autostart.run();submap(reset)
 default	System	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	System	SHIFT + V	Voxtype Restart	-	exec_cmd(kitty --single-instance -e systemctl --user restart voxtype);submap(reset)
-default	System	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	System	SLASH	Edit Keymaps	-	exec_cmd(kitty --single-instance -e yazi ~/.config/hypr/keymaps/);submap(reset)
 default	System	SPACE	Task Manager	-	exec_cmd(kitty --single-instance -e btop);submap(reset)
 default	System	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	System	Shift_R	-	ignore_mods=true,transparent=true	no_op
+default	System	Super_L	-	ignore_mods=true,transparent=true	no_op
+default	System	Super_R	-	ignore_mods=true,transparent=true	no_op
 default	System	U	Disk Usage (gdu)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e gdu);submap(reset)
 default	System	V	Voxtype Settings	-	exec_cmd(kitty --single-instance -e voxtype configure);submap(reset)
 default	System	W	HTTP (xh)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
 default	System	X	Toggle Hypr Errors	-	exec_cmd(~/.config/hypr/scripts/toggle-hypr-errors.sh);submap(reset)
 default	System	catchall	-	ignore_mods=true,release=true	submap(reset)
 no-leader	Bar	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
+no-leader	Bar	Alt_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Bar	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
 no-leader	Bar	BackSpace	Back	release=true	submap(reset)
 no-leader	Bar	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open clock);submap(reset)
+no-leader	Bar	Control_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Bar	Control_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	ESCAPE	Exit Bar	-	submap(reset)
 no-leader	Bar	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
 no-leader	Bar	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
@@ -118,9 +143,10 @@ no-leader	Bar	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc ca
 no-leader	Bar	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open system);submap(reset)
 no-leader	Bar	S	Start Menu	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open start);submap(reset)
 no-leader	Bar	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
-no-leader	Bar	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	Shift_R	-	ignore_mods=true,transparent=true	no_op
+no-leader	Bar	Super_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Bar	Super_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	T	Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 no-leader	Bar	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
 no-leader	Bar	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
@@ -130,9 +156,13 @@ no-leader	Go	1	Monitor 1	-	focus({monitor=DP-1});submap(reset)
 no-leader	Go	2	Monitor 2	-	focus({monitor=desc:Some Monitor});submap(reset)
 no-leader	Go	3	Monitor 3	-	focus({monitor=HDMI-A-1});submap(reset)
 no-leader	Go	A	Agent Sessions	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
+no-leader	Go	Alt_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Go	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	B	Browser	-	exec_cmd(firefox);submap(reset)
 no-leader	Go	BackSpace	Back	release=true	submap(reset)
 no-leader	Go	C	Tmuxifier Config	-	exec_cmd(kitty --single-instance -e tmuxifier load-session config);submap(reset)
+no-leader	Go	Control_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Go	Control_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	ESCAPE	Exit Go	-	submap(reset)
 no-leader	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
 no-leader	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
@@ -140,9 +170,10 @@ no-leader	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 no-leader	Go	S	Slack	-	exec_cmd(slack);submap(reset)
 no-leader	Go	SHIFT + S	Steam	-	exec_cmd(steam);submap(reset)
 no-leader	Go	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
-no-leader	Go	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	Shift_R	-	ignore_mods=true,transparent=true	no_op
+no-leader	Go	Super_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Go	Super_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	T	Terminal	-	exec_cmd(kitty);submap(reset)
 no-leader	Go	TAB	Last Workspace	-	focus({workspace=previous});submap(reset)
 no-leader	Go	V	Editor	-	exec_cmd(kitty --single-instance -e nvim);submap(reset)
@@ -150,6 +181,8 @@ no-leader	Go	W	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call over
 no-leader	Go	Y	Yazi	-	exec_cmd(kitty --single-instance --class yazi -e yazi);submap(reset)
 no-leader	Go	catchall	-	ignore_mods=true,release=true	submap(reset)
 no-leader	Leader	A	Agents	-	exec_cmd(sh -c 'out=$(~/.config/hypr/scripts/qs-ipc call popup open keeptabs 2>&1) && [ -z "$out" ] || { [ -x ~/.local/bin/keeptabs-pick ] && exec ~/.local/bin/keeptabs-pick; }');submap(reset)
+no-leader	Leader	Alt_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Leader	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	B	Bluetooth	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open bluetooth);submap(reset)
 no-leader	Leader	BackSpace	Back	release=true	submap(reset)
 no-leader	Leader	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open clock);submap(reset)
@@ -158,6 +191,8 @@ no-leader	Leader	CTRL + COMMA	Rapid Mode	-	exec_cmd(~/.local/bin/voxcmd session 
 no-leader	Leader	CTRL + PERIOD	Wake Word	-	exec_cmd(~/.local/bin/voxcmd wake toggle);submap(reset)
 no-leader	Leader	CTRL + SLASH	Voice Help	-	exec_cmd(~/.local/bin/voxcmd help);submap(reset)
 no-leader	Leader	CTRL + V	Clipboard	-	exec_cmd(~/.config/hypr/scripts/qs-picker clipboard 'cliphist list | rofi -name rofiDmenu -i -dmenu -p '\''Clipboard'\'' | cliphist decode | wl-copy');submap(reset)
+no-leader	Leader	Control_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Leader	Control_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimoji --action type --selector-args '\''-name rofiDmenu'\''');submap(reset)
 no-leader	Leader	ESCAPE	Exit Leader	-	submap(reset)
 no-leader	Leader	G	+Groups	keep=true	submap(Groups)
@@ -173,11 +208,12 @@ no-leader	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);s
 no-leader	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
 no-leader	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 no-leader	Leader	SHIFT + TAB	Tmux Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open);submap(reset)
-no-leader	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
 no-leader	Leader	SPACE	Start Menu	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open start);submap(reset)
 no-leader	Leader	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Shift_R	-	ignore_mods=true,transparent=true	no_op
+no-leader	Leader	Super_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	Leader	Super_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	T	Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 no-leader	Leader	TAB	Workspace Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open);submap(reset)
 no-leader	Leader	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
@@ -185,9 +221,13 @@ no-leader	Leader	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup op
 no-leader	Leader	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
 no-leader	Leader	catchall	-	ignore_mods=true,release=true	submap(reset)
 no-leader	System	A	AI Manager	-	exec_cmd(kitty --single-instance -e abtop);submap(reset)
+no-leader	System	Alt_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	System	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	B	Restart Bar	-	exec_cmd(~/.config/hypr/scripts/restart-bar.sh);submap(reset)
 no-leader	System	BackSpace	Back	release=true	submap(reset)
 no-leader	System	C	Calculate (qalc)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e qalc);submap(reset)
+no-leader	System	Control_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	System	Control_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	D	DNS (doggo)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
 no-leader	System	E	Logout	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm logout);submap(reset)
 no-leader	System	ESCAPE	Exit System	-	submap(reset)
@@ -204,11 +244,12 @@ no-leader	System	SHIFT + L	Toggle Auto-Lock	-	exec_cmd(~/.config/hypr/scripts/to
 no-leader	System	SHIFT + R	Replay Autostart	-	autostart.run();submap(reset)
 no-leader	System	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 no-leader	System	SHIFT + V	Voxtype Restart	-	exec_cmd(kitty --single-instance -e systemctl --user restart voxtype);submap(reset)
-no-leader	System	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	SLASH	Edit Keymaps	-	exec_cmd(kitty --single-instance -e yazi ~/.config/hypr/keymaps/);submap(reset)
 no-leader	System	SPACE	Task Manager	-	exec_cmd(kitty --single-instance -e btop);submap(reset)
 no-leader	System	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	Shift_R	-	ignore_mods=true,transparent=true	no_op
+no-leader	System	Super_L	-	ignore_mods=true,transparent=true	no_op
+no-leader	System	Super_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	U	Disk Usage (gdu)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e gdu);submap(reset)
 no-leader	System	V	Voxtype Settings	-	exec_cmd(kitty --single-instance -e voxtype configure);submap(reset)
 no-leader	System	W	HTTP (xh)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
