@@ -262,6 +262,7 @@ STEPS = [
     Step("shellcheck", "shell", 'status=0; [ ! -s "$CHECK_LOGS/plain.list" ] || xargs shellcheck <"$CHECK_LOGS/plain.list" || status=1; [ ! -s "$CHECK_LOGS/sourcing.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/sourcing.list" || status=1; [ ! -s "$CHECK_LOGS/agent.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/agent.list" || status=1; exit $status', ("shellcheck",), skip_reason="shellcheck not installed"),
     Step("owner-test-bar", "hooks", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("ship-batch", "skills", "bash ./.claude/skills/ship-batch/tests/run.sh"),
+    Step("rebase-branch", "skills", "bash ./.claude/skills/ship-batch/tests/rebase_branch.sh"),
     Step("merge-prs", "skills", "bash ./home/claude/.claude/skills/merge-prs/tests/run.sh"),
     Step("reviewers", "hooks", "bash ./home/claude/.claude/skills/orchestrator/tests/run.sh && bash ./home/claude/.claude/skills/orchestrator/tests/local.sh", ("jq", "git"), skip_reason="the reviewer tests need jq and git"),
     Step("shfmt", "shell", 'status=0; cat "$CHECK_LOGS/plain.fmt.list" "$CHECK_LOGS/sourcing.fmt.list" | grep . | xargs -r shfmt -i 2 -d || status=1; [ ! -s "$CHECK_LOGS/agent.fmt.list" ] || xargs shfmt -i 2 -d <"$CHECK_LOGS/agent.fmt.list" || status=1; exit $status', ("shfmt",), skip_reason="shfmt not installed"),
