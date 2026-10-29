@@ -15,7 +15,7 @@ description: The only way to merge PRs in this repo. Open and merge the PRs for 
 - When the gate gives up waiting on a review (Codex "still running" after its wait), do not rerun: ask the owner whether to merge with `--skip-review-gate`.
 - Merge only through this script, never `merge-prs.sh <n>` or `gh` directly.
 - Main is not checked after a merge: each branch is checked once, before it merges. Run `just check` in the main checkout when its state matters.
-- With no PR numbers it pulls main and runs post-merge, which also applies a PR merged by hand. To recover from a failed step, or after a merge on GitHub or a plain `git pull`, run `just post-merge`.
+- With no PR numbers it pulls main and runs post-merge, which also applies a PR merged by hand on GitHub. `just post-merge` never pulls, it applies what is checked out: use it to recover from a failed step, or after a `git pull`.
 
 ## Details
 

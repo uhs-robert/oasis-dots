@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Usage: post-merge.sh (`just post-merge`); applies what changed on main since the last successful run to the live machine:
-# greeter sync, restows, unit reload, crate rebuild, install migrations, Hyprland reload and the bar restart. Run it
-# after anything that updates main (ship-batch calls it; so does a hand run after a PR merged on GitHub or a `git pull`),
-# and again to recover from any failed step.
+# greeter sync, restows, unit reload, crate rebuild, install migrations, Hyprland reload and the bar restart. It never
+# pulls: it applies what is checked out. ship-batch calls it after its pull; after a merge on GitHub, run ship-batch.sh
+# with no PR numbers (pulls, then applies) or `git pull` then this; rerun it to recover from any failed step.
 # The commit applied is recorded (record_applied) only once every step succeeded, so a failed or interrupted run leaves
 # the record alone and the rerun covers everything since it, steps that already ran included (all are safe to repeat).
 # It lives beside ship-batch because it shares base.sh (the lock, the restow list) and live-hypr.sh with it.
@@ -43,7 +43,7 @@ use_live_hypr() {
 # Held for the whole run: a hand run waits for a ship-batch (which releases its own lock before calling this), and two
 # runs never restow or restart the bar at once. Commands below that can leave a daemon behind run with fd 9 closed so it
 # cannot hold the lock after this run.
-take_lock "$repo" "post-merge" || die "gave up waiting for the ship-batch or post-merge running in this repository"
+take_lock "$repo" "applying main" || die "gave up waiting for the ship-batch or post-merge running in this repository"
 
 after=$(git -C "$repo" rev-parse HEAD)
 before=$(applied_commit "$repo")
