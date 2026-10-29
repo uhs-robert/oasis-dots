@@ -15,7 +15,21 @@ fi; }
 g() { git -c user.name=t -c user.email=t@t "$@"; }
 
 root=$(mktemp -d)
-trap 'rm -rf "$root"' EXIT
+# live-hypr.sh only treats a runtime dir under /tmp/shadow-* as a nested session, so this one cannot live under $root.
+shadow_run=$(mktemp -d "/tmp/shadow-$UID-shipbatchtest.XXXXXX")
+
+# The end-to-end section starts a real systemd-run unit and detached daemons that outlive this script, so removing the
+# temp root is not enough. Match processes by $root only, never by name, so the owner's real main check is untouched.
+cleanup() {
+  trap '' EXIT TERM INT HUP
+  if [[ -n ${MAIN_CHECK_UNIT:-} ]]; then systemctl --user stop "$MAIN_CHECK_UNIT" 2>/dev/null; fi
+  rm -f "$root/e2e/just_hold"
+  pkill -f "$root/e2e/" 2>/dev/null
+  rm -rf "$root" "$shadow_run"
+}
+trap cleanup EXIT
+# bash runs the EXIT trap on these only when it traps them itself.
+for sig in TERM INT HUP; do trap "exit \$((128 + \$(kill -l $sig)))" "$sig"; done
 repo=$root/repo
 git init -q -b main "$repo"
 g -C "$repo" commit -q --allow-empty -m one
@@ -232,7 +246,8 @@ if [[ -n \$slot ]]; then
   flock -w 5 7 || echo "slot busy" >>"\$SHIP_LOG"
   echo "just holding" >>"\$SHIP_LOG"
   trap 'if [[ -e $e2e/main/.git/ship-batch-main-check.suspended ]]; then echo "stopped with marker"; else echo "stopped without marker"; fi >>"\$SHIP_LOG"; exit 143' TERM
-  while [[ -e $e2e/just_hold ]]; do sleep 0.2; done
+  # Bounded so a lost marker cannot hold the slot forever.
+  for _ in \$(seq 600); do [[ -e $e2e/just_hold ]] || break; sleep 0.2; done
 fi
 if [[ \$1 == migrate-quickshell-state ]]; then
   grep -q qs "\$STUB_QS_PROCS" 2>/dev/null && bar=up || bar=down
@@ -393,8 +408,7 @@ STUB
 chmod +x "$stubs/hyprctl"
 export STUB_LIVE_SIGS=$e2e/live_sigs
 owner_run=$e2e/owner_run
-shadow_run=/tmp/shadow-$UID-shipbatchtest
-rm -rf "$owner_run" "$shadow_run"
+rm -rf "$owner_run"
 mkdir -p "$owner_run/hypr/live" "$owner_run/hypr/old_live" "$owner_run/hypr/dead" "$shadow_run/hypr/nested"
 touch -d '1 hour ago' "$owner_run/hypr/live/.socket.sock"
 touch -d '2 hours ago' "$owner_run/hypr/old_live/.socket.sock"
