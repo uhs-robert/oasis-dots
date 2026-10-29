@@ -163,6 +163,23 @@ Item {
         for (const c of layout.children) if (c !== except && c.visible) sum += c.implicitWidth + Style.bar_module_gap;
         return sum;
     }
+
+    // A module that sizes itself to the room Bar.qml gives it (it declares `room`, like Directory).
+    function is_fitted(c) {
+        return !!c.item && c.item.hasOwnProperty("room");
+    }
+
+    // The row's length on a top or bottom bar without its fitted modules: what it takes whatever room they get.
+    function row_length_fixed() {
+        let sum = 0;
+        for (const c of layout.children) if (c.visible && !root.is_fitted(c)) sum += c.implicitWidth + Style.bar_module_gap;
+        return sum;
+    }
+
+    function has_fitted_module() {
+        for (const c of layout.children) if (c.visible && root.is_fitted(c)) return true;
+        return false;
+    }
     // Places a layer drawn in the top-bar frame onto the edge. Shared by every layer; each is at 0, 0 and `length` by `thickness`.
     Matrix4x4 {
         id: deco_frame
