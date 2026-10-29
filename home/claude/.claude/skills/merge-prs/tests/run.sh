@@ -365,10 +365,22 @@ check "names the file" "grep -q 'c was not in the reviewed changes' <<<\"\$out\"
 check "does not request a review under --check" "! grep -q '^commented=' '$GH_STATE'"
 check "names the --check rerun that requests one" "grep -q 'rerun with --check --wait-review --request-review' <<<\"\$out\""
 
-echo "== --wait-review: new work gets a review requested and waited for"
+echo "== --wait-review alone: new work over the limit is refused, no review requested"
 setup
 printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a:30\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 timeout 30 "$script" --wait-review 7 2>&1)
+code=$?
+show "$out"
+check "stops with an error" "[[ $code != 0 ]]"
+check "posts no comment" "! grep -q '^commented' '$GH_STATE'"
+check "does not merge" "! grep -q 'merged' <<<\"\$out\""
+check "names --request-review" "grep -q 'rerun with --wait-review --request-review' <<<\"\$out\""
+check "names --skip-review-gate" "grep -q 'or with --skip-review-gate' <<<\"\$out\""
+
+echo "== --wait-review --request-review: new work gets a review requested and waited for"
+setup
+printf 'codex=Completed\ncodex_commit=abc1234\nreviewed_subjects=feat: add x\nhead_subjects=feat: add x;feat: add z\nreviewed_files=a\nhead_files=a\ncommit_files_c2=a:30\n' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 timeout 30 "$script" --wait-review --request-review 7 2>&1)
 code=$?
 show "$out"
 check "exits 0" "[[ $code == 0 ]]"
