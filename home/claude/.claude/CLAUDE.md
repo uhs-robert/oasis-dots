@@ -5,6 +5,7 @@
 - Comments follow the `hierarchical-documentation` skill: carry meaning in names first; comment only what a cold reader would wonder about and names can't express (why this approach, a deliberately skipped obvious option, a footgun). Keep comments close to the code they describe. Reasoning about the change itself (what was tried, what broke along the way) goes in the commit message, not the source.
 - Write every commit message with the `commit-messages` skill.
 - Write every PR with the `pr-descriptions` skill and every issue with the `issue-descriptions` skill.
+- Write all prose (replies, commit messages, PRs, issues, docs, comments) by the `plain-writing` skill.
 
 ## How to talk to me
 
@@ -17,3 +18,4 @@ I read at human speed and skim long output, which means I can end up accepting t
 - Never put a decision or risk in the middle of a paragraph or at the bottom of a long list. If it's important enough for me to act on, put it near the top.
 - When you make a choice on my behalf (a library, a default, how to read an ambiguous request), list it near the top as "Assumed: X" so I can see it and overrule it.
 - I'm an expert. Don't explain familiar concepts or basics unless I ask.
+- Write every reply in plain sentences: short, active voice, no contractions, no should/would/may/might/could, no em-dashes or semicolons, no filler words. Explain each term you coined during the work in a few words. The `plain-writing` skill has the full rules.

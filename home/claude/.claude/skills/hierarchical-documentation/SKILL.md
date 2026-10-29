@@ -90,6 +90,8 @@ structural cooperation), see [naming.md](naming.md).
 
 ### Comments (use when code can't carry the information)
 
+Write each comment sentence by the `plain-writing` skill.
+
 **Add a comment when:**
 - A reader might wonder *why* the code is written this way
 - A decision was made to *not* do something obvious — the absence needs explaining
