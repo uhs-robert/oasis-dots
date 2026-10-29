@@ -20,7 +20,6 @@
       "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
       "Bash(git branch:*)",
-      "Bash(git branch -d:*)",
       "Bash(git diff:*)",
       "Bash(git fetch:*)",
       "Bash(git log:*)",
