@@ -274,7 +274,6 @@ STUB
   g -C "$e2e/main" add -A
   g -C "$e2e/main" commit -q -m base
   git -C "$e2e/main" push -q origin main 2>/dev/null
-  e2e_base=$(git -C "$e2e/main" rev-parse HEAD)
   export SHIP_LOCK=$e2e/main/.git/ship-batch.lock
   git -C "$e2e/main" worktree add -q -b b1 "$e2e/wt-1"
   echo 1 >"$e2e/wt-1/one"
