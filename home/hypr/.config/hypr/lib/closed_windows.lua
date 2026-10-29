@@ -50,7 +50,11 @@ end
 --- @return string|nil
 local function snapshot(w)
   local rules = {}
-  if w.workspace then rules.workspace = w.workspace.id > 0 and w.workspace.id or w.workspace.name end
+  -- Special workspaces such as the scratchpad have a nil id.
+  if w.workspace then
+    local id = w.workspace.id
+    rules.workspace = (id and id > 0) and id or w.workspace.name
+  end
   if w.floating then
     rules.float = true
     rules.size = w.size.x .. " " .. w.size.y
