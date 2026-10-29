@@ -27,7 +27,9 @@ Item {
     // Closer rings when there are many, so the innermost still leaves room for the readout.
     readonly property real ring_step: root.count > 1 ? Math.min(13, (root.outer_radius - 24) / (root.count - 1)) : 0
     readonly property real cluster_size: 2 * root.outer_radius + 8
-    readonly property real cell_height: root.count > 0 ? Math.min(46, area.height / root.count) : 46
+    readonly property bool any_projection: root.rows.some(row => ClaudeUsageState.projection_of(row).shown)
+    // Callouts are centred on their cell, so a taller callout needs a taller cell or it runs into its neighbour.
+    readonly property real cell_height: root.count > 0 ? Math.min(root.any_projection ? 72 : 46, area.height / root.count) : 46
     readonly property real callout_x: root.cluster_size + 26
 
     function ring_radius(i) {
@@ -143,6 +145,7 @@ Item {
                     id: callout
                     required property var modelData
                     required property int index
+                    readonly property var projection: ClaudeUsageState.projection_of(callout.modelData)
 
                     x: root.callout_x
                     y: area.cy + (callout.index - (root.count - 1) / 2) * root.cell_height - callout.height / 2
@@ -183,6 +186,17 @@ Item {
                         maximumLineCount: 2
                         elide: Text.ElideRight
                         color: root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-4)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        visible: callout.projection.shown
+                        text: callout.projection.short
+                        elide: Text.ElideRight
+                        color: callout.projection.over ? Style.pal.warning : root.st.text_dim
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-4)
                     }

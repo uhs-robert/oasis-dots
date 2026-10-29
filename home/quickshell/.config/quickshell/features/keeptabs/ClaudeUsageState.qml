@@ -2,6 +2,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import qs.core
+import qs.features.clock
+import "UsageProjection.js" as Proj
 
 // `claude -p /usage`, refreshed every 10 min only on AC while agents run, and when one finishes.
 Singleton {
@@ -60,11 +62,71 @@ Singleton {
         }
     }
 
+    // Epoch ms per `resets` text, from `date`; a text it could not read is absent, so its row shows no projection.
+    property var reset_ms: ({})
+    // Ticks the projections on while on AC; on battery they move on with each refresh().
+    property double now_ms: Date.now()
+    property var resolving: []
+    property bool resolve_again: false
+
+    // { shown, over, text, when, end_percent } for the line under a weekly bar, from UsageProjection.describe.
+    function projection_of(row) {
+        return Proj.describe(row.label, row.percent, root.reset_ms[row.resets], root.now_ms, h => TimeFormat.h24 ? TimeFormat.clock_of(h, 0) : TimeFormat.hour_of(h));
+    }
+
+    function resolve_resets() {
+        if (resolver.busy) {
+            root.resolve_again = true;
+            return;
+        }
+        const specs = [];
+        for (const r of root.rows) {
+            if (!Proj.is_weekly(r.label) || specs.some(x => x.resets === r.resets)) continue;
+            const spec = Proj.date_spec(Proj.reset_parts(r.resets, Date.now()));
+            if (spec) specs.push({ resets: r.resets, spec: spec });
+        }
+        root.resolving = specs;
+        if (specs.length === 0) {
+            root.reset_ms = {};
+            return;
+        }
+        resolver.command = ["sh", "-c", Proj.date_script, "sh"].concat(specs.map(x => x.spec));
+        resolver.run();
+    }
+
+    onRowsChanged: root.resolve_resets()
+
+    PolledCommand {
+        id: resolver
+        onFinished: (code, out) => {
+            const lines = out.trim().split("\n");
+            const next = {};
+            root.resolving.forEach((x, i) => {
+                const secs = parseInt(lines[i]);
+                if (isFinite(secs)) next[x.resets] = secs * 1000;
+            });
+            root.reset_ms = next;
+            root.now_ms = Date.now();
+            if (root.resolve_again) {
+                root.resolve_again = false;
+                root.resolve_resets();
+            }
+        }
+    }
+
+    Timer {
+        interval: 60000
+        repeat: true
+        running: PowerSource.on_ac && Object.keys(root.reset_ms).length > 0
+        onTriggered: root.now_ms = Date.now()
+    }
+
     // Matches "Current session: 15% used · resets Aug 31, 11pm (America/New_York)" and the
     // dash variant; the reset clause is optional so a line with no reset still parses.
     readonly property var line_pattern: /^(Current [^:]+):\s*(\d+)%\s*used(?:\s*[·-]\s*resets\s*(.+))?$/
 
     function refresh(force) {
+        root.now_ms = Date.now();
         if (poll.busy) return;
         if (!force && root.updated > 0 && Date.now() - root.updated < root.max_age_ms) return;
         root.loading = true;

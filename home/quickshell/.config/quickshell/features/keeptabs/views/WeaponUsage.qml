@@ -41,6 +41,10 @@ Item {
         return row && row.resets !== "" ? "HEV CHARGER ONLINE " + row.resets.toUpperCase() : "HEV CHARGER OFFLINE";
     }
 
+    function projection_text(projection) {
+        return projection.over ? "DEPLETED BY " + projection.when.toUpperCase() : "PROJECTED ~" + projection.end_percent + "% USED AT RECHARGE";
+    }
+
     function remaining(row) {
         return row ? Math.max(0, Math.min(100, 100 - row.percent)) : 0;
     }
@@ -148,6 +152,7 @@ Item {
             delegate: ColumnLayout {
                 id: extra
                 required property var modelData
+                readonly property var projection: ClaudeUsageState.projection_of(extra.modelData)
                 width: ListView.view.width
                 spacing: 2
 
@@ -191,6 +196,18 @@ Item {
                     elide: Text.ElideRight
                     text: root.charger_text(extra.modelData)
                     color: root.st.text_dim
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.fs(-5)
+                    font.letterSpacing: 1
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
+                    visible: extra.projection.shown
+                    text: root.projection_text(extra.projection)
+                    color: extra.projection.over ? Style.pal.warning : root.st.text_dim
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-5)
                     font.letterSpacing: 1
@@ -243,6 +260,7 @@ Item {
         property bool icon_cross: true
         readonly property real remaining_pct: root.remaining(gauge.row)
         readonly property color tone: gauge.row ? Fmt.context_bar_color(gauge.row.percent, root.colors) : root.hl
+        readonly property var projection: gauge.row ? ClaudeUsageState.projection_of(gauge.row) : ({ shown: false })
 
         Layout.fillWidth: true
         Layout.preferredWidth: 1
@@ -361,6 +379,18 @@ Item {
             elide: Text.ElideRight
             text: root.charger_text(gauge.row)
             color: root.st.text_dim
+            font.family: root.st.font_family
+            font.pixelSize: root.st.fs(-5)
+            font.letterSpacing: 1
+        }
+
+        Text {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            elide: Text.ElideRight
+            visible: gauge.projection.shown
+            text: root.projection_text(gauge.projection)
+            color: gauge.projection.over ? Style.pal.warning : root.st.text_dim
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-5)
             font.letterSpacing: 1

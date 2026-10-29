@@ -57,6 +57,7 @@ Item {
                 delegate: ColumnLayout {
                     id: usage_row
                     required property var modelData
+                    readonly property var projection: ClaudeUsageState.projection_of(usage_row.modelData)
 
                     width: ListView.view.width
                     spacing: 3
@@ -99,6 +100,17 @@ Item {
                         visible: usage_row.modelData.resets !== ""
                         text: "The inn restores you at " + usage_row.modelData.resets
                         color: root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-4)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
+                        visible: usage_row.projection.shown
+                        text: usage_row.projection.over ? "Thy strength fails by " + usage_row.projection.when + "!" : "Thou shalt reach ~" + usage_row.projection.end_percent + "% by " + usage_row.projection.when
+                        color: usage_row.projection.over ? Style.pal.warning : root.st.text_dim
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-4)
                     }

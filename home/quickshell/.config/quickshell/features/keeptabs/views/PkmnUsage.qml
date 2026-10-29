@@ -74,6 +74,7 @@ Item {
             delegate: ColumnLayout {
                 id: limit
                 required property var modelData
+                readonly property var projection: ClaudeUsageState.projection_of(limit.modelData)
 
                 width: ListView.view.width
                 spacing: 3
@@ -113,6 +114,17 @@ Item {
                     visible: limit.modelData.resets !== ""
                     text: "TIME " + limit.modelData.resets
                     color: root.shades[2]
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.fs(-4)
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
+                    visible: limit.projection.shown
+                    text: limit.projection.over ? "FULL BY " + limit.projection.when.toUpperCase() : "~" + limit.projection.end_percent + "% BY " + limit.projection.when.toUpperCase()
+                    color: limit.projection.over && !root.mono ? Style.pal.warning : root.shades[limit.projection.over ? 3 : 2]
                     font.family: root.st.font_family
                     font.pixelSize: root.st.fs(-4)
                 }

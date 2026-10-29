@@ -69,9 +69,11 @@ Item {
             id: usage_row
             required property var modelData
             readonly property color level_color: Fmt.context_bar_color(usage_row.modelData.percent, root.colors)
+            readonly property var projection: ClaudeUsageState.projection_of(usage_row.modelData)
+            readonly property int reset_lines: usage_row.modelData.resets !== "" ? 1 : 0
 
             width: ListView.view.width
-            height: usage_row.modelData.resets !== "" ? 3 * root.lh : 2 * root.lh
+            height: (2 + usage_row.reset_lines + (usage_row.projection.shown ? 1 : 0)) * root.lh
 
             Text {
                 width: parent.width
@@ -109,6 +111,18 @@ Item {
                 visible: usage_row.modelData.resets !== ""
                 text: "Resets " + usage_row.modelData.resets
                 color: root.st.text_dim
+                font.family: root.st.mono_font
+                font.pixelSize: root.text_px
+            }
+
+            Text {
+                y: (2 + usage_row.reset_lines) * root.lh
+                width: parent.width
+                height: root.lh
+                elide: Text.ElideRight
+                visible: usage_row.projection.shown
+                text: usage_row.projection.text.length <= root.cols ? usage_row.projection.text : "Projected: " + usage_row.projection.short
+                color: usage_row.projection.over ? Style.pal.warning : root.st.text_dim
                 font.family: root.st.mono_font
                 font.pixelSize: root.text_px
             }

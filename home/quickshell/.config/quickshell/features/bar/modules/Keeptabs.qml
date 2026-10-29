@@ -13,7 +13,10 @@ BarModule {
 
     shown: KeeptabsState.available
     tooltip_text: {
-        const usage = ClaudeUsageState.rows.map(r => r.label + ": " + r.percent + "%").join("\n");
+        const usage = ClaudeUsageState.rows.map(r => {
+            const projection = ClaudeUsageState.projection_of(r);
+            return r.label + ": " + r.percent + "%" + (projection.shown ? " · " + projection.short : "");
+        }).join("\n");
         return KeeptabsState.tooltip.replace(/\t/g, "  ") + (usage ? "\n\n" + usage : "");
     }
     implicitWidth: shown ? row.implicitWidth : 0

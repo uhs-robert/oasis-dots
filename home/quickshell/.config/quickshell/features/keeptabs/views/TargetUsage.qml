@@ -15,6 +15,8 @@ Item {
     readonly property color vec: root.st.text_primary
     readonly property color hot: root.st.meter_hot.a > 0 ? root.st.meter_hot : Theme.theme_label
     readonly property var names: ["LSR", "SHD", "ENG", "PWR"]
+    // Every column reserves the projection line when any shows one, so the scales stay level across the row.
+    readonly property bool any_projection: ClaudeUsageState.rows.some(row => ClaudeUsageState.projection_of(row).shown)
 
     ColumnLayout {
         anchors.fill: parent
@@ -56,6 +58,7 @@ Item {
                     required property int index
                     readonly property real pct: Math.max(0, Math.min(100, column.modelData.percent))
                     readonly property color tone: column.pct >= 85 ? root.hot : root.vec
+                    readonly property var projection: ClaudeUsageState.projection_of(column.modelData)
 
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
@@ -136,6 +139,29 @@ Item {
                         elide: Text.ElideRight
                         text: column.modelData.resets !== "" ? column.modelData.resets : "--"
                         color: root.st.text_fg
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-4)
+                    }
+
+                    // Label over value like RECHG: "LIMIT" over the hit time, or "PROJ" over the projected percent at recharge.
+                    Text {
+                        Layout.preferredHeight: Math.ceil(recharge_metrics.height)
+                        visible: root.any_projection
+                        text: !column.projection.shown ? "" : column.projection.over ? "LIMIT" : "PROJ"
+                        color: root.st.text_muted
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-4)
+                        font.letterSpacing: 1.5
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.preferredHeight: Math.ceil(recharge_metrics.height)
+                        visible: root.any_projection
+                        elide: Text.ElideRight
+                        text: !column.projection.shown ? "" : column.projection.over ? column.projection.when : "~" + column.projection.end_percent + "%"
+                        color: column.projection.over ? root.hot : root.st.text_dim
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-4)
                     }

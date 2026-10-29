@@ -64,6 +64,7 @@ Item {
                     ColumnLayout {
                         id: cell
                         required property var modelData
+                        readonly property var projection: ClaudeUsageState.projection_of(cell.modelData)
 
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -117,6 +118,22 @@ Item {
                             elide: Text.ElideRight
                             text: "Resets " + cell.modelData.resets
                             color: Theme.fg_strong
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-4)
+                            style: Text.Outline
+                            styleColor: Theme.bg_shadow
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            visible: cell.projection.shown
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                            text: cell.projection.short.charAt(0).toUpperCase() + cell.projection.short.slice(1)
+                            color: cell.projection.over ? Style.pal.warning : root.st.text_dim
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-4)
                             style: Text.Outline

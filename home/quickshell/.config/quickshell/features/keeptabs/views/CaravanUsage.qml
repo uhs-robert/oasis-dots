@@ -53,9 +53,10 @@ Item {
                 required property var modelData
                 readonly property real level: Math.max(0, Math.min(100, usage_row.modelData.percent)) / 100
                 readonly property color sun: usage_row.level >= 0.85 ? root.st.meter_hot : root.sand
+                readonly property var projection: ClaudeUsageState.projection_of(usage_row.modelData)
 
                 width: ListView.view.width
-                height: Style.px(58)
+                height: Style.px(58) + (usage_row.projection.shown ? projection_text.implicitHeight + 4 : 0)
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -140,6 +141,20 @@ Item {
                         color: root.st.text_dim
                         font.family: root.st.font_family
                         font.pixelSize: root.st.fs(-3)
+                    }
+
+                    Text {
+                        id: projection_text
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        horizontalAlignment: Text.AlignRight
+                        elide: Text.ElideRight
+                        visible: usage_row.projection.shown
+                        text: usage_row.projection.text
+                        color: usage_row.projection.over ? Style.pal.warning : root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-3)
+                        font.italic: true
                     }
                 }
             }

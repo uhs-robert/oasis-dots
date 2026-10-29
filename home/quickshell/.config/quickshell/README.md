@@ -43,7 +43,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `system/` holds the system popup and the `SysStats` and `SystemStat` singletons.
 - `bluetooth/` holds the Bluetooth popup.
 - `network/` holds the network popup with its Wi-Fi rows, header, details and password panes and `Network.js`.
-- `keeptabs/` holds `KeeptabsState`, `ClaudeUsageState`, the keeptabs popup and its per-style Agents and Usage layouts in `views/`.
+- `keeptabs/` holds `KeeptabsState`, `ClaudeUsageState`, `UsageProjection.js` (where each weekly limit is heading at the week's pace so far), the keeptabs popup and its per-style Agents and Usage layouts in `views/`.
 - `updates/` holds `UpdatesState` (pending package counts), the updates popup and its NES inventory.
 - [`overview/`](features/overview/README.md): Workspace overview, voice contract and tmux tools
 - [`bar/`](features/bar/README.md): Bar layout and modules, command status

@@ -55,6 +55,7 @@ Item {
                 id: card
                 required property var modelData
                 readonly property real used: Math.max(0, Math.min(100, card.modelData.percent))
+                readonly property var projection: ClaudeUsageState.projection_of(card.modelData)
 
                 // Inset so the Block's shadow and glow are not cut by the list clip.
                 x: 3
@@ -104,6 +105,20 @@ Item {
                             font.pixelSize: root.st.fs(-5)
                             font.letterSpacing: 1.2
                         }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.topMargin: 2
+                        elide: Text.ElideRight
+                        visible: card.projection.shown
+                        text: card.projection.text
+                        color: card.projection.over ? Style.pal.warning : root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-5)
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 1.2
                     }
                 }
             }

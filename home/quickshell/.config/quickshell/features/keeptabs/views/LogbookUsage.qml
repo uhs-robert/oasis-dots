@@ -64,6 +64,7 @@ Item {
                     required property var modelData
                     readonly property real energy: Math.max(0, Math.min(100, 100 - limit_row.modelData.percent))
                     readonly property color tone: limit_row.energy < root.low_energy ? Style.pal.red : root.visor_light
+                    readonly property var projection: ClaudeUsageState.projection_of(limit_row.modelData)
 
                     width: limit_list.width
                     height: Math.max(Style.px(66), limit_text.implicitHeight + 16)
@@ -140,6 +141,18 @@ Item {
                             visible: limit_row.modelData.resets !== ""
                             text: "RECHARGE " + limit_row.modelData.resets
                             color: root.st.text_dim
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-4)
+                        }
+
+                        // Read as energy, like the rest of the HUD: what is projected to be left at recharge.
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            visible: limit_row.projection.shown
+                            text: limit_row.projection.over ? "DEPLETION PROJECTED " + limit_row.projection.when.toUpperCase() : "PROJECTED ENERGY ~" + Math.max(0, 100 - limit_row.projection.end_percent) + " AT RECHARGE"
+                            color: limit_row.projection.over ? Style.pal.warning : root.st.text_dim
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-4)
                         }
