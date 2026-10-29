@@ -1,5 +1,6 @@
--- Actions for the Go and System submaps: focus-or-launch an app, run a terminal tool, open the editor. They take a name
--- from a fixed list instead of a command, so `hypr-act` cannot be made to run arbitrary commands. The submap rows bind them.
+-- Actions for the Applications, Go and System submaps: focus-or-launch an app, open one, run a terminal tool, open the
+-- editor. They take a name from a fixed list instead of a command, so `hypr-act` cannot be made to run arbitrary
+-- commands. The submap rows bind them.
 local Act = require("lib.act") ---@class ActionLib
 
 --- The keys of `set`, sorted: the values an enum param accepts.
@@ -38,6 +39,27 @@ Act.define("apps.focus", {
     local Apps = require("lib.actions.apps")
     Apps.focus_or_launch(Apps.map[app])()
   end,
+})
+
+-- Apps that are only started, never focused; the value is the command.
+local OPENED_APPS = {
+  bottles = "bottles",
+  deluge = "deluge",
+  discord = "discord",
+  firefox = "firefox",
+  gimp = "gimp",
+  inkscape = "inkscape",
+  libreoffice_calc = "libreoffice --calc",
+  libreoffice_writer = "libreoffice --writer",
+  qalculate = "qalculate-gtk",
+  qutebrowser = "qutebrowser",
+}
+
+Act.define("apps.open", {
+  label = "Open App",
+  intent = "Start an app, even when it is already running.",
+  params = { { name = "app", type = "enum", values = names_of(OPENED_APPS) } },
+  run = function(app) require("lib.actions.apps").open(OPENED_APPS[app])() end,
 })
 
 -- window: "terminal" is a normal terminal window, "bottom" the half-height one; prefill types the command at the prompt

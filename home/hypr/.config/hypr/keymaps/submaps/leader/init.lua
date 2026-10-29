@@ -28,6 +28,7 @@ Submap.define({
     local binds = {
       -- stylua: ignore start
       -- Pickers
+      { "SPACE",         "picker.agents" },
       { "SLASH",         "picker.directory",                              "Directory" },
       { "O",             "menu.drun" },
       { "SHIFT + O",     Launcher.show_picker,                            "Session Launcher" },
@@ -50,7 +51,6 @@ Submap.define({
       -- stylua: ignore end
     }
 
-    table.insert(binds, BarRows.row("SPACE", "start", "Start Menu"))
     for _, row in ipairs(BarRows.binds({ S = BarRows.row("S", "settings", "Settings") })) do
       table.insert(binds, row)
     end

@@ -30,7 +30,7 @@ keymaps/
     power.lua          lock, sleep, power
     mouse.lua          mouse binds
   submaps/             submaps: press one key to enter, then another to act
-    leader/  go/  system/  delete/  windows/
+    leader/  apps/  go/  system/  delete/  windows/
     groups/  cursor/  resize/  move/  bar/
     bar/rows.lua       the popup keys, shared by Bar and Leader
 ```
@@ -314,7 +314,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + CTRL + V` | press | global | Clipboard History | `picker.clipboard` |
 | `SUPER + CTRL + SPACE` | press | global | Jump to Directory | `picker.directory` |
 | `SUPER + CTRL + E` | press | global | Emoji Picker | `picker.emoji` |
-| `SUPER + A` | press | global | Agent Sessions Picker | `picker.agents` |
 | `SUPER + SHIFT + SEMICOLON` | press | global | HyprVim Terminal | `hyprvim.terminal` |
 | `SUPER + APOSTROPHE` | press | global | Jump to Mark | `hyprvim.jump_mark` |
 | `SUPER + N` | press | global | Edit Selection in Vim | `hyprvim.edit_selection` |
@@ -341,6 +340,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + mouse:272` | press | global |  |  |
 | `SUPER + mouse:273` | press | global |  |  |
 | `SUPER + SPACE` | press | global | +Leader |  |
+| `SUPER + A` | press | global | +Applications |  |
 | `SUPER + G` | press | global | +Go |  |
 | `SUPER + Q` | press | global | +System |  |
 | `SUPER + D` | press | global | +Delete |  |
@@ -350,6 +350,28 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + C` | press | global | +Cursor |  |
 | `SUPER + R` | press | global | +Resize |  |
 | `SUPER + SHIFT + M` | press | global | +Move |  |
+| `SPACE` | press | Applications | Search Windows | `overview.search` |
+| `SLASH` | press | Applications | Search Applications | `menu.drun` |
+| `B` | press | Applications | Bottles | `apps.open` |
+| `SHIFT + C` | press | Applications | Calculator | `apps.open` |
+| `D` | press | Applications | Discord | `apps.open` |
+| `E` | press | Applications | Editor | `terminal.editor` |
+| `F` | press | Applications | Firefox | `apps.open` |
+| `G` | press | Applications | Gimp | `apps.open` |
+| `I` | press | Applications | Inkscape | `apps.open` |
+| `M` | press | Applications | Mail | `apps.focus` |
+| `P` | press | Applications | ProtonPlus | `apps.focus` |
+| `Q` | press | Applications | QuteBrowser | `apps.open` |
+| `R` | press | Applications | Radio (cliamp) | `apps.focus` |
+| `S` | press | Applications | Slack | `apps.focus` |
+| `SHIFT + S` | press | Applications | Steam | `apps.focus` |
+| `T` | press | Applications | Torrent | `apps.open` |
+| `W` | press | Applications | LibreOffice Writer | `apps.open` |
+| `X` | press | Applications | LibreOffice Calc | `apps.open` |
+| `ESCAPE` | press | Applications | Exit Applications |  |
+| `BackSpace` | release | Applications | Back |  |
+| `SHIFT + SLASH` | press | Applications | Toggle which-key help |  |
+| `catchall` | release | Applications |  |  |
 | `A` | press | Bar | Agents | `menu.agents` |
 | `B` | press | Bar | Bluetooth | `popup.open` |
 | `C` | press | Bar | Calendar | `popup.open` |
@@ -359,6 +381,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `P` | press | Bar | Power and Brightness | `popup.open` |
 | `Q` | press | Bar | System | `popup.open` |
 | `S` | press | Bar | Start Menu | `popup.open` |
+| `SHIFT + S` | press | Bar | Settings | `popup.open` |
 | `T` | press | Bar | Tray | `popup.open` |
 | `U` | press | Bar | Updates | `system.update` |
 | `V` | press | Bar | Volume | `popup.open` |
@@ -498,7 +521,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + SLASH` | press | Delete | Toggle which-key help |  |
 | `catchall` | release | Delete |  |  |
 | `TAB` | press | Go | Last Workspace | `workspace.focus_last` |
-| `A` | press | Go | Agent Sessions | `menu.agents` |
+| `A` | press | Go | Agent Sessions Picker | `picker.agents` |
 | `B` | press | Go | Browser | `apps.focus` |
 | `C` | press | Go | Tmuxifier Config | `apps.focus` |
 | `M` | press | Go | Mail | `apps.focus` |
@@ -541,6 +564,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `BackSpace` | press | Groups | Back |  |
 | `SHIFT + SLASH` | press | Groups | Toggle which-key help |  |
 | `catchall` | release | Groups |  |  |
+| `SPACE` | press | Leader | Agent Sessions Picker | `picker.agents` |
 | `SLASH` | press | Leader | Directory | `picker.directory` |
 | `O` | press | Leader | Open Application | `menu.drun` |
 | `SHIFT + O` | press | Leader | Session Launcher |  |
@@ -555,7 +579,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `CTRL + PERIOD` | press | Leader | Wake Word | `voice.wake` |
 | `CTRL + SLASH` | press | Leader | Voice Help |  |
 | `G` | press | Leader | +Groups | `submap.enter` |
-| `SPACE` | press | Leader | Start Menu | `popup.open` |
 | `A` | press | Leader | Agents | `menu.agents` |
 | `B` | press | Leader | Bluetooth | `popup.open` |
 | `C` | press | Leader | Calendar | `popup.open` |
@@ -565,6 +588,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `P` | press | Leader | Power and Brightness | `popup.open` |
 | `Q` | press | Leader | System | `popup.open` |
 | `S` | press | Leader | Settings | `popup.open` |
+| `SHIFT + S` | press | Leader | Settings | `popup.open` |
 | `T` | press | Leader | Tray | `popup.open` |
 | `U` | press | Leader | Updates | `system.update` |
 | `V` | press | Leader | Volume | `popup.open` |

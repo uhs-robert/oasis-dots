@@ -1,11 +1,11 @@
 # Dumped by `SHELL=/bin/zsh lua act_launch.lua --dump` from keymaps/global/{shortcuts,tools}.lua before the launch keys were actions (origin/main 5f1d11782).
 # Since redumped only where keys were removed or moved (the Applications submap dropped, SUPER + A for the agents picker).
+# Redumped when the agents picker lost SUPER + A to the restored Applications submap.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	-	ALT + GRAVE	Tmux overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open)
 default	-	ALT + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
 default	-	CTRL + SHIFT + ESCAPE	Task Manager	-	exec_cmd(kitty --single-instance -e btop)
 default	-	Print	Screenshot	submap_universal=true	exec_cmd(~/.config/hypr/scripts/screenshot.sh)
-default	-	SUPER + A	Agent Sessions Picker	-	exec_cmd(~/.config/hypr/scripts/qs-picker agents '~/.local/bin/keeptabs-pick')
 default	-	SUPER + APOSTROPHE	Jump to Mark	-	hyprvim.marks.enter_jump()
 default	-	SUPER + B	+Bar	keep=true	submap(Bar)
 default	-	SUPER + COMMA	Voice Command	-	exec_cmd(~/.local/bin/voxcmd listen)
@@ -32,7 +32,6 @@ default	-	SUPER + T	Search windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call
 default	-	SUPER + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
 default	-	SUPER + Y	Yazi	-	exec_cmd(kitty --single-instance -e yazi)
 default	-	SUPER + Z	Zoom	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call zoom toggle)
-no-leader	-	A	Agent Sessions Picker	-	exec_cmd(~/.config/hypr/scripts/qs-picker agents '~/.local/bin/keeptabs-pick')
 no-leader	-	ALT + GRAVE	Tmux overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open)
 no-leader	-	ALT + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
 no-leader	-	APOSTROPHE	Jump to Mark	-	hyprvim.marks.enter_jump()

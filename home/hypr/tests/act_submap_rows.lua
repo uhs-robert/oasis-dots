@@ -1,4 +1,4 @@
--- Loads the global keymaps and the Leader, Go, System and Bar submaps against a stubbed `hl` under two
+-- Loads the global keymaps and the Leader, Applications, Go, System and Bar submaps against a stubbed `hl` under two
 -- Config shapes and compares every bind in those submaps with fixtures/act_submap_rows_binds.tsv: key, which-key label,
 -- flags and what the key does. The fixture was dumped from the submaps as they were before their rows named actions and
 -- is unchanged by that move. It also checks the row form itself ({ key, "id" } and { key, { id, args } }): the label
@@ -13,12 +13,13 @@ local Stubs = dofile(here .. "/act_stubs.lua")
 local MODULES = {
 	"keymaps.global",
 	"keymaps.submaps.leader",
+	"keymaps.submaps.apps",
 	"keymaps.submaps.go",
 	"keymaps.submaps.system",
 	"keymaps.submaps.bar",
 	"keymaps.submaps.groups", -- entered by a Leader row
 }
-local SUBMAPS = { Leader = true, Go = true, System = true, Bar = true }
+local SUBMAPS = { Leader = true, Applications = true, Go = true, System = true, Bar = true }
 local function in_listed_submap(submap)
 	return SUBMAPS[submap] == true
 end
@@ -47,6 +48,7 @@ end
 for _, id in ipairs({
 	"popup.open",
 	"apps.focus",
+	"apps.open",
 	"terminal.tool",
 	"terminal.editor",
 	"workspace.focus_last",
@@ -74,7 +76,7 @@ check(
 )
 
 -- Each submap loaded on its own, without the global keys first, names only actions its file requires.
-for _, module in ipairs({ "keymaps.submaps.leader", "keymaps.submaps.go", "keymaps.submaps.system" }) do
+for _, module in ipairs({ "keymaps.submaps.leader", "keymaps.submaps.apps", "keymaps.submaps.go", "keymaps.submaps.system" }) do
 	Stubs.load(Stubs.VARIANTS[1], { module })
 	local warnings = require("lib.act").warnings
 	check(module .. " alone: no warnings: " .. table.concat(warnings, "; "), #warnings == 0)

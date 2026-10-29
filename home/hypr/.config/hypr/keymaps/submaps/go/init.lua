@@ -9,6 +9,7 @@ local Workspaces = require("lib.workspaces") --- @class Workspaces
 -- The actions the rows name.
 require("lib.actions.defs.apps")
 require("lib.actions.defs.launch")
+require("lib.actions.defs.pickers")
 require("lib.actions.defs.tools")
 require("lib.actions.defs.workspaces")
 
@@ -26,7 +27,7 @@ Submap.define({
     local rows = {
       -- stylua: ignore start
       { "TAB",       "workspace.focus_last" },
-      { "A",         "menu.agents" },
+      { "A",         "picker.agents" },
       { "B",         focus_app("firefox"),                  "Browser" },
       { "C",         focus_app("tmux_config"),              "Tmuxifier Config" },
       { "M",         focus_app("betterbird"),               "Mail" }, { "P",         "menu.tmux",                           "Project" }, -- TODO: Convert to QS?
