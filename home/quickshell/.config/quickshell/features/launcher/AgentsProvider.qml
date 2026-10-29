@@ -111,7 +111,9 @@ PickerProvider {
                 pane.pane_text = "";
                 pane.text_id = "";
                 pane.failed = false;
-                if (pane.has_pane) pane.capture();
+                // Deferred, and capture() checks has_pane itself: a reloaded preview (Tab back, p) gets its entry while it is
+                // still being built, when has_pane has not caught up yet and reads false.
+                Qt.callLater(pane.capture);
             }
 
             function capture() {
