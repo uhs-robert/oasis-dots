@@ -1,7 +1,8 @@
---- Actions: one id, label and typed params per thing the desktop can do.
+--- Actions: one id, label, typed params and key per thing the desktop can do.
 ---
---- `Act.define` registers an action and binds nothing; `Act.bind` gives it a key (with args for an action that takes
---- params), from keymaps/ or custom/. `Act.run` and `Act.run_cli` perform one by id, so keys, the
+--- `Act.define` registers an action and binds the key it carries, if any; `Act.bind` adds a key (a loop key with
+--- args, a submap row, a custom/ override). The tracked config binds every key from keymaps/ with `Act.bind`, so
+--- changing a key never means editing an action. `Act.run` and `Act.run_cli` perform one by id, so keys, the
 --- `hypr-act` script, the bar and voice share one path. Config-time mistakes warn and skip only the bad entry,
 --- because a Lua error would abort the rest of the config file.
 ---
@@ -29,8 +30,10 @@ local Scripts = require("lib.scripts") ---@class Scripts
 --- @field label      string
 --- @field intent     string|nil
 --- @field params     ActionParam[]
---- @field opts       table     hl.bind options every key of this action gets
---- @field bound_keys table[]   Every key Act.bind registered so far; list drops the unbound ones
+--- @field key        ActionKey|nil
+--- @field extra_keys ActionKey[]
+--- @field opts       table
+--- @field bound_keys table[]   Every key registered so far, default or added with Act.bind; list drops the unbound ones
 --- @field run        function|table  Lua function, or an Ipc/Cmd table
 
 --- @class ActionLib
@@ -466,8 +469,6 @@ local function build_handle(id, spec)
   if type(spec) ~= "table" then return nil, "needs a spec table" end
   if type(spec.label) ~= "string" or spec.label == "" then return nil, "needs a label" end
   if spec.intent ~= nil and type(spec.intent) ~= "string" then return nil, "intent must be a string" end
-  -- Keys are bound apart from actions (keymaps/, custom/), so changing a key never means editing an action.
-  if spec.key ~= nil or spec.extra_keys ~= nil then return nil, "takes no key; bind one with Act.bind" end
   if not is_runnable(spec.run) then return nil, "run must be a function, Act.Ipc(...) or Act.Cmd(...)" end
 
   local params, params_problem = normalize_params(spec.params)
@@ -482,16 +483,30 @@ local function build_handle(id, spec)
     label = spec.label,
     intent = spec.intent,
     params = params,
+    extra_keys = {},
     opts = spec.opts or {},
     bound_keys = {},
     run = spec.run,
   }
+  if spec.key ~= nil then
+    local key, key_problem = normalize_key(spec.key)
+    if not key then return nil, key_problem end
+    handle.key = key
+  end
+  for _, extra in ipairs(spec.extra_keys or {}) do
+    local key, key_problem = normalize_key(extra)
+    if not key then return nil, key_problem end
+    table.insert(handle.extra_keys, key)
+  end
+  if (handle.key or #handle.extra_keys > 0) and required_count(params) > 0 then
+    return nil, "a default key cannot supply required params; define it keyless and use Act.bind with args"
+  end
   return handle
 end
 
---- Declare an action. Any problem warns and skips this action only.
+--- Declare an action and bind its default key and extra keys. Any problem warns and skips this action only.
 --- @param id   string
---- @param spec { label: string, intent: string|nil, params: ActionParam[]|nil, opts: table|nil, run: function|table }
+--- @param spec { label: string, intent: string|nil, params: ActionParam[]|nil, key: string|table|nil, extra_keys: table[]|nil, opts: table|nil, run: function|table }
 --- @return ActionHandle|nil
 function Act.define(id, spec)
   local built_ok, handle, problem = pcall(build_handle, id, spec)
@@ -504,6 +519,14 @@ function Act.define(id, spec)
   end
 
   registry[handle.id] = handle
+  local default_keys = {}
+  if handle.key then table.insert(default_keys, handle.key) end
+  for _, extra in ipairs(handle.extra_keys) do
+    table.insert(default_keys, extra)
+  end
+  for _, key in ipairs(default_keys) do
+    Act.bind(handle.id, { key = key })
+  end
   return handle
 end
 

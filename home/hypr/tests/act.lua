@@ -112,16 +112,12 @@ check(
 find("SUPER + Z").action()
 check("bind: the key runs the action", #ran == 1)
 
--- A key belongs in keymaps/, never in the define: one there warns and skips the action.
+-- A define may carry its own key, as custom/ files can; tracked actions bind theirs in keymaps/.
 fresh()
-check("define: a key is refused", Act.define("a.keyed", { label = "Keyed", key = "K", run = function() end }) == nil)
+Act.define("a.keyed", { label = "Keyed", key = "ALT + K", extra_keys = { "ALT + J" }, run = function() end })
 check(
-	"define: extra keys are refused",
-	Act.define("a.extra", { label = "Extra", extra_keys = { "K" }, run = function() end }) == nil
-)
-check(
-	"define: refused keys bind nothing and say why",
-	#binds == 0 and #Act.warnings == 2 and has(Act.warnings[1], "takes no key") and has(Act.warnings[2], "takes no key")
+	"define: key and extra keys are bound",
+	find("ALT + K") ~= nil and find("ALT + J") ~= nil and #Act.warnings == 0
 )
 
 -- An action with params gets its keys from Act.bind with args.
