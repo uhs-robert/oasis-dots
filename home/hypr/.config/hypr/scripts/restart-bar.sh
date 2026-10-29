@@ -8,9 +8,9 @@ shopt -s extglob
 # Exits non-zero without starting a bar when the old one survives SIGKILL (stuck in D-state): `qs -n` would refuse to
 # start and exit silently.
 
-# The owner's bar and test bars launch as `qs -n ...`, bare or with an absolute path; a shadow bar runs as `qs-shadow` and never matches. -u keeps
-# other users' bars out.
-pattern='^(/[^ ]*/)?qs -n( |$)'
+# `qs list` shows only the owner's default-config instances (no test or shadow bars), and still finds a bar whose
+# command line a crash turned into plain `quickshell`.
+bar_pids() { qs list --json --any-display | jq -r '.[].pid'; }
 default_grace=5
 grace=${RESTART_BAR_GRACE:-$default_grace}
 if [[ $grace != +([0-9]) ]]; then
@@ -22,15 +22,15 @@ fi
 wait_gone() {
   local ticks=$((10#$1 * 10)) # 10#: a leading zero (08) is not octal
   while ((ticks-- > 0)); do
-    pgrep -u "$UID" -f "$pattern" >/dev/null || return 0
+    [[ -n $(bar_pids) ]] || return 0
     sleep 0.1
   done
-  ! pgrep -u "$UID" -f "$pattern" >/dev/null
+  [[ -z $(bar_pids) ]]
 }
 
-pkill -u "$UID" -f "$pattern"
+bar_pids | xargs -r kill
 if ! wait_gone "$grace"; then
-  pkill -KILL -u "$UID" -f "$pattern"
+  bar_pids | xargs -r kill -KILL
   if ! wait_gone 2; then
     message="the old bar survived SIGKILL (stuck in uninterruptible sleep?); no new bar was started"
     echo "restart-bar: $message" >&2
