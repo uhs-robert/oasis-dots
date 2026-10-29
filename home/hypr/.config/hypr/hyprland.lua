@@ -19,6 +19,7 @@ local function init()
   if runtime_dir == nil or runtime_dir == "" then runtime_dir = "/tmp" end -- as the script's ${XDG_RUNTIME_DIR:-/tmp}
   os.remove(runtime_dir .. "/hypr-hidden-errors")
   Config.setup(Machines.merge(Default))
+  require("lib.key.submap_hint").clear_bar()
 
   if package.searchpath("lua.plugins.hyprvim", package.path) then
     require("lua.plugins.hyprvim").setup({
