@@ -83,25 +83,26 @@ shells=" bash zsh fish sh dash ksh nu xonsh elvish tmux screen zellij sudo doas 
 # Full-screen programs another program can open (Neovim from Yazi); the deepest of these is named over its opener.
 openers=" nvim vim hx yazi lazygit ranger lf "
 
-# Describes the newest-child chain under $1, with $2 the directory to show for a plain shell. The first non-shell is
-# the program the user started; a deeper opener wins, as Neovim opened from Yazi, but not a tool's own children.
+# Describes the program in the foreground of the terminal $1 (a shell, or a program a tmux pane runs directly) is
+# attached to, with $2 the directory to show at a shell prompt. The foreground process group, not the newest child,
+# so a background job (`sleep 60 &`) is never taken for it. Below that program a deeper opener wins, as Neovim
+# opened from Yazi, but not a tool's own children.
 describe() {
-  local p=$1 fallback=$2 prog="" comm leaf=$1
-  while [ -n "$p" ]; do
-    comm=$(cat "/proc/$p/comm" 2>/dev/null)
-    # Gone between pgrep and here (a short-lived child).
-    [ -n "$comm" ] || break
-    if [[ $shells != *" $comm "* ]]; then
-      [ -z "$prog" ] && prog=$p
-      [[ $openers == *" $comm "* ]] && prog=$p
-    fi
-    leaf=$p
-    p=$(pgrep -P "$p" | tail -n 1)
-  done
-  if [ -z "$prog" ]; then
-    if [ -n "$fallback" ]; then printf '%s\n' "$fallback"; else readlink "/proc/$leaf/cwd" 2>/dev/null; fi
+  local root=$1 fallback=$2 prog="" comm p stat
+  stat=$(cat "/proc/$root/stat" 2>/dev/null)
+  # Fields after the parenthesised comm: state ppid pgrp session tty_nr tpgid.
+  read -r _ _ _ _ _ prog _ <<<"${stat##*) }"
+  comm=$(cat "/proc/$prog/comm" 2>/dev/null)
+  if [ -z "$comm" ] || [[ $shells == *" $comm "* ]]; then
+    if [ -n "$fallback" ]; then printf '%s\n' "$fallback"; else readlink "/proc/$root/cwd" 2>/dev/null; fi
     return
   fi
+  p=$(pgrep -P "$prog" | tail -n 1)
+  while [ -n "$p" ]; do
+    comm=$(cat "/proc/$p/comm" 2>/dev/null)
+    [[ $openers == *" $comm "* ]] && prog=$p
+    p=$(pgrep -P "$p" | tail -n 1)
+  done
   comm=$(cat "/proc/$prog/comm" 2>/dev/null)
   printf 'app:%s\n' "$comm"
   case $comm in
