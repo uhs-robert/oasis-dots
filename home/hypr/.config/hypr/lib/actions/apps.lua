@@ -3,7 +3,6 @@
 
 local Config = require("config") ---@class Config
 local Cmd = require("lib.actions.cmd") ---@class Cmd
-local Window = require("lib.window") ---@class Window
 
 local TERM = Config.app.term
 local TERM_CMD = Config.app.term_cmd
@@ -20,6 +19,21 @@ local function has_cmd(name)
     end
   end
   return false
+end
+
+--- Return the address of the first client matching the given criteria.
+--- @param class string Window class, also matching `<class>-*` (session launcher windows are `kitty-tmux-<name>`)
+--- @param title string|nil Exact title or title-prefix match (prefix followed by space)
+--- @param exclude_title string|nil Skip windows whose title starts with this string
+--- @return string|nil
+local function find_window(class, title, exclude_title)
+  for _, c in ipairs(hl.get_windows()) do
+    local ok = c.class == class or string.find(c.class, class .. "-", 1, true) == 1
+    if ok and title then ok = c.title == title or string.find(c.title, title .. " ", 1, true) == 1 end
+    if ok and exclude_title then ok = string.find(c.title, exclude_title, 1, true) ~= 1 end
+    if ok then return c.address end
+  end
+  return nil
 end
 
 -- Hybrid GPU laptops default apps to the iGPU; route Steam through the dGPU so games inherit it.
@@ -56,7 +70,14 @@ Apps.open = function(app_command) return Cmd.run(app_command) end
 --- @param opts { program: string, class?: string, title?: string, exclude_title?: string, cmd?: string }
 --- @return fun()
 Apps.focus_or_launch = function(opts)
-  return function() Window.focus_or_launch(opts) end
+  return function()
+    local address = find_window(opts.class or opts.program, opts.title, opts.exclude_title)
+    if address then
+      hl.dispatch(hl.dsp.focus({ window = "address:" .. address }))
+    else
+      hl.dispatch(hl.dsp.exec_cmd(opts.cmd or opts.program))
+    end
+  end
 end
 
 return Apps

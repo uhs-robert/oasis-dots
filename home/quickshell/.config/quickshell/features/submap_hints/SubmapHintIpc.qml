@@ -14,7 +14,7 @@ IpcHandler {
     }
 
     // Stores the window selection `{ "generation": g, "serial": n, "windows": ["0x..."] }`, sent by
-    // lib/actions/selection.lua on every change. "ok", or why the JSON was refused.
+    // lib/selection.lua on every change. "ok", or why the JSON was refused.
     function selection(json: string): string {
         const problem = WindowTargetState.set_selection(json);
         return problem === "" ? "ok" : problem;

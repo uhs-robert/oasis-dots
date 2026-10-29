@@ -30,7 +30,7 @@ end
 hl.get_windows = function()
 	return WINDOWS
 end
--- A fixed uptime, so the selection's config-load generation (lib/actions/selection.lua) is the same in every dump.
+-- A fixed uptime, so the selection's config-load generation (lib/selection.lua) is the same in every dump.
 local UPTIME = "1234.56 7890.12"
 local real_open = io.open
 io.open = function(path, ...)

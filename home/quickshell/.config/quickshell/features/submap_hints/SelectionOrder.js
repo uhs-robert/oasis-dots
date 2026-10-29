@@ -1,6 +1,6 @@
 .pragma library
 
-// Orders the window selection sends home/hypr/.config/hypr/lib/actions/selection.lua makes, as the bar receives them:
+// Orders the window selection sends home/hypr/.config/hypr/lib/selection.lua makes, as the bar receives them:
 // by generation (one per Hyprland config load, only ever growing), then by serial within it. Each send is its own
 // qs-ipc process, so an older one can land last, and a reload restarts the serial. Pure, so node can test it.
 // A state is { generation, serial, selected }; each function returns the next state, or null to keep the current one.

@@ -194,7 +194,7 @@ Submap.define({
 | `escape` | What `ESCAPE` does. `"reset"` leaves all submaps, `"previous"` goes back one, a submap name jumps to that one |
 | `catchall` | What an unlisted key does. `"reset"` makes the submap one-shot: any key leaves it, and its rows leave it for you. `"stay"` keeps it active until you escape, for submaps you press repeatedly |
 | `hint` | Optional. Shows the Quickshell hint bar on entry instead of which-key: a list of groups, each a heading then the action ids whose rows it lists (a row that runs a function cannot be listed), e.g. `{ { "Notes", "notes.today", "notes.inbox" } }`. The keys and labels come from your rows; an item can be `{ id, label = "Short" }` to rename it, with `mods` and `args` to pick some of its rows. Speed tiers (a `(Fast)` row beside its plain one) are left to which-key; `tiers = "speed"` sums them up as one `S/C speed` entry (see `home/hypr/.config/hypr/lib/key/submap_hint.lua`). A hint set from `custom/` still opens which-key as well, since HyprVim reads its list before `custom/` loads |
-| `targets` | Optional, `true` for a submap whose keys act on the focused window or the Windows selection (`home/hypr/.config/hypr/lib/actions/selection.lua`): selected windows get a thick border and a number while it is up, and the selection carries between submaps with `targets` and clears on any other switch |
+| `targets` | Optional, `true` for a submap whose keys act on the focused window or the Windows selection (`home/hypr/.config/hypr/lib/selection.lua`): selected windows get a thick border and a number while it is up, and the selection carries between submaps with `targets` and clears on any other switch |
 
 In a one-shot submap, a row can stay in it instead by adding `{ keep = true }` as a fourth item.
 
