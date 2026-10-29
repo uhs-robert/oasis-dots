@@ -76,6 +76,15 @@ cat >bin/notify-send <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >>"$STUB_DIR/notified"
 STUB
+# Like Hyprland's exec_cmd: launches the bar detached from the caller. STUB_HYPR=fail errors out, STUB_HYPR=noop launches
+# nothing (a bar that never comes up).
+cat >bin/hyprctl <<'STUB'
+#!/usr/bin/env bash
+echo "$*" >>"$STUB_DIR/hyprctl_args"
+[[ ${STUB_HYPR:-} == fail ]] && exit 1
+[[ ${STUB_HYPR:-} == noop ]] || qs -n </dev/null >/dev/null 2>&1
+exit 0
+STUB
 chmod +x bin/*
 export STUB_DIR=$work PATH=$work/bin:$PATH
 
@@ -166,5 +175,74 @@ check grep -q "survived SIGKILL" err
 check grep -q "Bar restart failed" notified
 check test "$(bars_started)" -eq 1
 check grep -qxF -- "-KILL $(cat pid)" kill_args
+
+unset STUB_BAR
+# Stop mode: the bar is gone and none is started.
+start_bar
+old_pid=$(cat pid)
+check bash "$script" stop
+check not alive "$old_pid"
+check test "$(bars_started)" -eq 1
+
+# Stop mode with a bar that ignores SIGTERM: SIGKILL after the grace, still no new bar.
+export STUB_BAR=stubborn
+start_bar
+old_pid=$(cat pid)
+check env RESTART_BAR_GRACE=1 bash "$script" stop
+check not alive "$old_pid"
+check test "$(bars_started)" -eq 1
+
+# Stop mode with a bar that survives SIGKILL: critical notification, exit 1.
+export STUB_BAR=immortal
+start_bar
+env RESTART_BAR_GRACE=1 bash "$script" stop 2>err
+check test $? -ne 0
+check grep -q "survived SIGKILL" err
+check grep -q "critical Bar restart failed" notified
+check test "$(bars_started)" -eq 1
+unset STUB_BAR
+
+# Stop mode with no bar running succeeds.
+rm -f started pid
+check bash "$script" stop
+check test ! -e started
+
+# Start mode: launches through Hyprland's exec_cmd and succeeds once the bar is up.
+rm -f started pid hyprctl_args
+check bash "$script" start
+check grep -qF "hl.dsp.exec_cmd('qs -n')" hyprctl_args
+check test "$(bars_started)" -eq 1
+check alive "$(cat pid)"
+
+# Stop, then start, leaves a fresh bar (the ship-batch sequence).
+old_pid=$(cat pid)
+check bash "$script" stop
+check bash "$script" start
+check test "$(cat pid)" != "$old_pid"
+check test "$(bars_started)" -eq 2
+
+# Start mode fails, with a critical notification, when no bar comes up.
+bash "$script" stop
+rm -f started pid notified
+STUB_HYPR=noop bash "$script" start 2>err
+check test $? -ne 0
+check grep -q "did not come back" err
+check grep -q "critical Bar start failed" notified
+
+# Start mode fails when hyprctl cannot dispatch.
+rm -f started pid notified
+STUB_HYPR=fail bash "$script" start 2>err
+check test $? -ne 0
+check grep -q "hyprctl could not relaunch" err
+check grep -q "critical Bar start failed" notified
+check test ! -e started
+
+# An unknown mode is a usage error and touches nothing.
+start_bar
+old_pid=$(cat pid)
+bash "$script" bogus 2>err
+check test $? -eq 2
+check grep -q usage err
+check alive "$old_pid"
 
 exit $((failures > 0))
