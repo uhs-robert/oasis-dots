@@ -30,6 +30,10 @@ Scope {
     property var actions: []
     // Drawn beside the list (above the cards in the browse layout) with `entry` set to the selected item.
     property Component preview: null
+    // Browse only: plain Tab or Shift+Tab swaps `preview` for this and back; it gets no `entry`. Null leaves Tab unused.
+    property Component alt_preview: null
+    // What the footer and help call alt_preview ("Tab usage").
+    property string alt_preview_name: ""
     // "list" docks at the bottom from IPC, or drops from the island it was opened on. "browse" always drops from the
     // focused monitor's center island at about Settings' size: search, a preview whose size `=`/`-`/`p` change, then cards.
     property string layout: "list"
@@ -51,7 +55,7 @@ Scope {
     property var tabs: []
     property int tab: 0
     // Tab completes like HyprVim's command line: on an item, expand(item) may swap in a list under it, and while
-    // can_go_back Backspace on an empty search calls go_back(). Tab steps rows unless `expands`.
+    // can_go_back Backspace on an empty search calls go_back(). Tab steps rows unless `expands` or the layout is browse.
     property bool expands: false
     property bool can_go_back: false
 

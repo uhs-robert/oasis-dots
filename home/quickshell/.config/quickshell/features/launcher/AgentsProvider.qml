@@ -2,13 +2,15 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.theme
+import qs.features.keeptabs
+import qs.features.keeptabs.views
 import "AgentSessions.js" as AgentSessions
 import "AnsiText.js" as AnsiText
 import "../../core/Fuzzy.js" as Fuzzy
 
 // Running agent sessions from keeptabs, in its own order: Enter jumps to the session's window, the preview shows the
-// selected session's tmux pane or kitty window as text, and each card its state, how full its context is and the last line its pane printed,
-// refreshed while open.
+// selected session's tmux pane or kitty window as text (Tab swaps in Claude usage, as the keeptabs popup's Usage tab
+// shows it), and each card its state, how full its context is and the last line its pane printed, refreshed while open.
 PickerProvider {
     id: root
 
@@ -212,6 +214,25 @@ PickerProvider {
                 color: Theme.fg_core
                 font.family: Style.mono_font
                 font.pixelSize: pane.font_px
+            }
+        }
+    }
+
+    alt_preview_name: "usage"
+    // The keeptabs popup's generic Usage view, not the style's own layout: those are drawn for the popup's frame.
+    alt_preview: Component {
+        Item {
+            Component.onCompleted: ClaudeUsageState.refresh(false)
+
+            Rectangle {
+                anchors.fill: parent
+                radius: Style.radius(4)
+                color: Theme.bg_core
+            }
+
+            UsageView {
+                anchors.fill: parent
+                anchors.margins: 10
             }
         }
     }

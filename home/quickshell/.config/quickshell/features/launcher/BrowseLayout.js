@@ -59,6 +59,13 @@ function toggled_view(view) {
     return view === "list" ? "grid" : "list";
 }
 
+// Tab between the preview and the provider's alternate one: { size, alt }. With the preview off, Tab reads as asking for
+// the alternate, so it comes back at its last size showing that.
+function alt_swapped(size, last_on, alt_shown) {
+    if (size_of(size) !== "off") return { size: size_of(size), alt: !alt_shown };
+    return { size: toggled(size, last_on), alt: true };
+}
+
 // The items wholly on screen, as result indices [first, end): whole rows inside the view, short of the scroll cue's
 // fade at an edge that hides more, so a faded peek row never counts. The quick-pick digits number the first nine.
 function on_screen(content_y, view_height, content_height, cell_height, item_height, fade, cols, count) {
