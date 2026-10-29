@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One bounded pass on a shadow bar: per style, shoot the popup, OSD, which-key, click hints and region selector, then build a contact sheet.
+# One bounded pass on a shadow bar: per style, shoot the popup, OSD, which-key, click hints and region selector, then the submap hint bar in frame and floating modes, then build a contact sheet.
 set -euo pipefail
 
 shadow="$(dirname "$0")/shadow.sh"
@@ -113,6 +113,7 @@ if ((dry_run)); then
   for s in "${styles[@]}"; do
     echo "smoke: $s: style set, popup battery, osd (voxtype recording), which-key (fixture payload), click hints (fixture boxes)$(is_region_style "$s" && echo ', region (pixel, select)')"
   done
+  echo "smoke: hint bar: goldeneye with the frame on (top bar, bottom bar), ps1 without it"
   "$shadow" status "$name" | head -1
   exit 0
 fi
@@ -127,11 +128,61 @@ q() { "$shadow" ipc "$name" "$@"; }
 sh_hyprctl() { "$shadow" hyprctl "$name" "$@"; }
 qlog() { sed 's/\x1b\[[0-9;]*m//g' "${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/logs/qs.log"; }
 
+# Quickshell reloads its config when a file in it changes, which also rereads the state files; the bar reads the frame
+# option and the bar position at load, so a patched state file takes effect by touching a source file.
+reload_bar() {
+  touch "$qs_copy/shell.qml"
+  sleep 2
+  for _ in $(seq 50); do
+    q style get >/dev/null 2>&1 && return 0
+    sleep 0.2
+  done
+  return 1
+}
+
+# Keeps the state files the hint pass patches, and notes which did not exist.
+save_state() {
+  local f
+  mkdir -p "$state_backup"
+  for f in "${state_files[@]}"; do
+    if [[ -e $state_dir/$f ]]; then cp "$state_dir/$f" "$state_backup/$f"; else rm -f "$state_backup/$f"; fi
+  done
+  state_saved=1
+}
+
+# Puts each file back, or removes it when it did not exist before.
+restore_state() {
+  local f
+  for f in "${state_files[@]}"; do
+    if [[ -e $state_backup/$f ]]; then cp "$state_backup/$f" "$state_dir/$f"; else rm -f "$state_dir/$f"; fi
+  done
+}
+
+# patch_state FILE JQ_FILTER [jq args]: the saved copy (an empty object when the file did not exist) through the filter,
+# written whole and renamed because the bar watches some of these files.
+patch_state() {
+  local f=$1 filter=$2
+  shift 2
+  local src=$state_backup/$f
+  [[ -e $src ]] || src=/dev/stdin
+  if [[ $src == /dev/stdin ]]; then echo '{}' | jq "$@" "$filter" >"$state_dir/$f.tmp"; else jq "$@" "$filter" "$src" >"$state_dir/$f.tmp"; fi && mv "$state_dir/$f.tmp" "$state_dir/$f"
+}
+
 orig_style=$(q style get)
+state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/home/.local/state/quickshell"
+qs_copy="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/qs"
+state_backup="$out/state.orig"
+state_files=(bars.json theme_options.json)
+state_saved=0
 # shellcheck disable=SC2329
 restore() {
   q popup close >/dev/null 2>&1 || true
   q screenshot close >/dev/null 2>&1 || true
+  sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null 2>&1 || true
+  if ((state_saved)); then
+    restore_state
+    ((started_shadow)) || reload_bar
+  fi
   if ((started_shadow)); then
     "$shadow" down "$name" >&2 || true
     return
@@ -331,6 +382,59 @@ for style in "${styles[@]}"; do
     sleep 0.5
   fi
 done
+
+# The hint bar of a submap, shown by entering one. The shadow loads no keymaps, so the submap is defined here and the hint
+# is sent as Submap.define does. The frame is a per-style option, set here in the shadow's own state (goldeneye on, ps1
+# off); the quickshell-frame layer confirms which one drew.
+hint_json="$out/hint.json"
+cat >"$hint_json" <<'JSON'
+{
+  "name": "Windows",
+  "groups": [
+    { "name": "Focus", "keys": [["h", "left"], ["j", "down"], ["k", "up"], ["l", "right"]] },
+    { "name": "Move", "keys": [["H", "swap left"], ["J", "swap down"], ["K", "swap up"], ["L", "swap right"]] },
+    { "name": "Layout", "keys": [["f", "float"], ["m", "max"], ["s", "split"]] }
+  ],
+  "footer": [["Esc", "exit"], ["?", "all keys"]]
+}
+JSON
+
+# hint_shot STYLE BAR_POSITION FRAME(1|0): the frame and the bar position are set in the shadow's state files, so the pass
+# does not depend on the owner's saved options.
+hint_shot() {
+  local style=$1 position=$2 framed=$3 tag="hintbar_$2"
+  [[ $framed == 0 ]] && tag="hintbar_floating"
+  q style set "$style" >/dev/null
+  sleep 1.3
+  # shellcheck disable=SC2016 # jq variables, not shell ones
+  patch_state theme_options.json '.version //= 4 | .[$style].screen_frame = ($on == 1)' --arg style "$style" --argjson on "$framed"
+  # shellcheck disable=SC2016 # jq variable
+  patch_state bars.json '.shared.position = $p' --arg p "$position"
+  reload_bar || missing+=("MISS $style $tag (bar did not reload)")
+  q submap_hints set "$(cat "$hint_json")" >/dev/null
+  local has_frame=0
+  [[ -n $(layer_geom quickshell-frame) ]] && has_frame=1
+  [[ $has_frame == "$framed" ]] || missing+=("MISS $style $tag (frame layer present=$has_frame, expected $framed)")
+  sh_hyprctl dispatch "hl.dsp.submap('Windows')" >/dev/null
+  # Mid-grow: the open animation runs 190 ms.
+  sleep 0.06
+  "$shadow" shot "$name" --out "$out/${style}_${tag}_grow.png" >/dev/null || true
+  wait_layer quickshell-submap-hints && {
+    sleep 0.5
+    shoot "$style" "$tag" quickshell-submap-hints
+  } || missing+=("MISS $style $tag")
+  sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null
+  sleep 0.3
+  check_blank "$style" "$tag" quickshell-submap-hints
+}
+
+echo "smoke: hint bar"
+save_state
+sh_hyprctl eval "hl.define_submap('Windows', function() hl.bind('Escape', hl.dsp.submap('reset')) end)" >/dev/null
+hint_shot goldeneye top 1
+hint_shot goldeneye bottom 1
+hint_shot ps1 top 0
+restore_state
 
 sheet="$out/sheet.png"
 python3 - "$out" "$sheet" <<'PY'
