@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from unittest import mock
 
+# The test must not leave a __pycache__ beside the hook, inside a tracked directory.
+sys.dont_write_bytecode = True
 HOOK = pathlib.Path(__file__).resolve().parent.parent / "plain_writing_lint.py"
 spec = importlib.util.spec_from_file_location("plain_writing_lint", HOOK)
 lint = importlib.util.module_from_spec(spec)
@@ -55,6 +57,8 @@ class Rules(unittest.TestCase):
         self.assertEqual(categories("The user's file stays."), [])
         self.assertEqual(categories("```\nit doesn't matter; really\n```"), [])
         self.assertEqual(categories("> Before: it doesn't work."), [])
+        self.assertEqual(categories("The body is clean.\n\n    print(\"retry\"); retry()\n\tdon't(); x"), [])
+        self.assertIn("contraction", categories("- An item\n    that doesn't end here."))
         self.assertEqual(categories("<!--\nIt shouldn't be linted; this is hidden.\n-->\nThe body is clean."), [])
         self.assertEqual([h[0] for h in lint.lint_text("<!--\na\n-->\nIt doesn't work.", FILLER)], [4])
         self.assertEqual(categories("````\n```\nit doesn't; really\n```\nstill code; it isn't prose\n````\nThe body is clean."), [])
