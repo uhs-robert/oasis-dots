@@ -119,3 +119,22 @@ end, 500, Header.LEFT)
 -- if os.getenv("NVIM") then
 -- 	require("toggle-pane"):entry("min-preview")
 -- end
+
+-- Tell the Quickshell bar's Directory module which folder this Yazi shows: Yazi never changes its own cwd, so the bar
+-- reads $XDG_RUNTIME_DIR/yazi-cwd-<pid> instead.
+local function publish_cwd()
+	local runtime = os.getenv("XDG_RUNTIME_DIR")
+	local stat = runtime and io.open("/proc/self/stat")
+	if not stat then
+		return
+	end
+	local pid = stat:read("n")
+	stat:close()
+	local out = io.open(runtime .. "/yazi-cwd-" .. pid, "w")
+	if out then
+		out:write(tostring(cx.active.current.cwd))
+		out:close()
+	end
+end
+ps.sub("cd", publish_cwd)
+ps.sub("tab", publish_cwd)

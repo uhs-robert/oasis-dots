@@ -120,6 +120,20 @@ Item {
         // Split mode keeps the strip under the clock, so the module shows the position instead of a second visualizer.
         if (item.hasOwnProperty("forced_right_side")) item.forced_right_side = Qt.binding(() => MediaSettings.module_position_only(root.island_style, root.lualine) ? "position" : "");
         if (entry.arg && item.hasOwnProperty("stat")) item.stat = entry.arg;
+        if (item.hasOwnProperty("room")) item.room = Qt.binding(() => root.module_room(island, item));
+    }
+
+    // How long a side-island module may grow on a top or bottom bar before its island comes within a module gap of
+    // the next island (the center one, else the other side). The center island grows both ways, so it has no limit.
+    function module_room(island, item) {
+        if (root.vertical || root.lualine || island === center_island) return Infinity;
+        const start = root.frame ? root.frame.start : root.strip_side;
+        const end = root.width - (root.frame ? root.frame.end : root.strip_side);
+        const gap = Style.bar_module_gap;
+        const island_room = island === left_island
+            ? (root.has_center ? center_island.x : right_island.visible ? right_island.x : end) - gap - start
+            : end - gap - (root.has_center ? center_island.x + center_island.width : left_island.visible ? left_island.x + left_island.width : start);
+        return island_room - island.chrome_length - island.row_length_without(item.parent);
     }
 
     // Under a frame the statusline is a strip along the bar edge between the frame's sides, not out to the screen edges, so

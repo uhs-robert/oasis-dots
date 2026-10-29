@@ -19,11 +19,15 @@ Item {
     // Side padding; 0 inside an island, whose layout spaces its items.
     property real padding: 12
 
-    // window-cwd's raw output; `cwd` is what it shows under the current switches.
+    // window-cwd's raw output; `cwd` is what it shows under the current switches. A program running in a terminal
+    // (yazi, nvim, claude) is named by its command in place of the terminal.
     property string app_name: ""
     property string cwd_output: ""
-    readonly property string cwd: DirectoryFormat.path_text(root.cwd_output, BarSettings.directory_switches, root.home)
-    readonly property string shown_app: DirectoryFormat.app_text(root.app_name, BarSettings.directory_switches)
+    readonly property var cwd_parts: DirectoryFormat.parse(root.cwd_output)
+    readonly property string window_app: root.cwd_parts.app || root.app_name
+    readonly property string cwd: DirectoryFormat.path_text(root.cwd_parts.path, BarSettings.directory_switches, root.home)
+    readonly property string shown_app: DirectoryFormat.app_text(root.window_app, BarSettings.directory_switches)
+    readonly property string tooltip_text: DirectoryFormat.tooltip_text(root.window_app, root.cwd_parts.path, root.home)
     property var toplevel: null
 
     readonly property var terminal_classes: ["kitty", "foot", "alacritty", "wezterm", "org.wezfurlong.wezterm", "com.mitchellh.ghostty", "xterm"]
@@ -60,21 +64,44 @@ Item {
         const t = root.focused_here();
         root.toplevel = t;
         if (!t) {
+            root.retry_settle();
             root.app_name = "";
             root.cwd_output = "";
             return;
         }
         const cls = root.class_of(t);
+        if (!cls) root.retry_settle();
         const entry = cls ? DesktopEntries.heuristicLookup(cls) : null;
         root.app_name = entry && entry.name ? entry.name : cls;
         const terminal = root.terminal_classes.indexOf(cls.toLowerCase()) >= 0 || (!!entry && Array.from(entry.categories || []).indexOf("TerminalEmulator") >= 0);
         const pid = t.lastIpcObject ? t.lastIpcObject.pid : 0;
+        if (terminal && !pid) root.retry_settle();
         if (!terminal || !pid) {
             root.cwd_output = "";
             return;
         }
         cwd_proc.pending = [String(pid), t.title || ""];
         if (!cwd_proc.running) cwd_proc.start_pending();
+    }
+
+    // A window that has just opened can lack its workspace or pid for a moment, and Hyprland sends no event when they
+    // arrive, so an event that finds nothing looks again a few times.
+    Timer {
+        id: settle_timer
+        property int left: 0
+        interval: 300
+        onTriggered: root.refresh()
+    }
+
+    function retry_settle() {
+        if (settle_timer.left <= 0) return;
+        settle_timer.left--;
+        settle_timer.restart();
+    }
+
+    function refresh_on_event() {
+        settle_timer.left = 3;
+        Qt.callLater(root.refresh);
     }
 
     // Runs once per event; a change while it runs queues one more pass.
@@ -99,15 +126,15 @@ Item {
         target: Hyprland
 
         function onActiveToplevelChanged() {
-            Qt.callLater(root.refresh);
+            root.refresh_on_event();
         }
 
         function onRawEvent(event) {
-            if (["activewindow", "activewindowv2", "windowtitle", "windowtitlev2", "workspace", "workspacev2", "focusedmon", "closewindow", "openwindow", "movewindow"].includes(event.name)) Qt.callLater(root.refresh);
+            if (["activewindow", "activewindowv2", "windowtitle", "windowtitlev2", "workspace", "workspacev2", "focusedmon", "closewindow", "openwindow", "movewindow"].includes(event.name)) root.refresh_on_event();
         }
     }
 
-    Component.onCompleted: Qt.callLater(root.refresh)
+    Component.onCompleted: root.refresh_on_event()
 
     Row {
         id: row
