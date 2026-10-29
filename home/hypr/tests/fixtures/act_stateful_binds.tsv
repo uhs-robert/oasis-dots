@@ -3,6 +3,7 @@
 # Redumped for the window selection: its border set_prop (2x width, theme secondary) and restore, the selection sent to Quickshell, event(window_targets) after each selection-aware action, targets on the Windows/Resize/Move hints.
 # Redumped for pointer moves: wlrctl steps with no repeating flag and no diagonal chords (cursor.move repeats on Lua timers until the release rows), so a held key keeps moving on Hyprland 0.57.
 # Redumped for the mouse pass-through binds in every "stay" submap (Hyprland 0.57 runs a catchall on mouse events).
+# Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 arrows	Cursor	ALT + H	Arrow Left	repeating=true	send_shortcut({key=LEFT,mods=})
 arrows	Cursor	ALT + J	Arrow Down	repeating=true	send_shortcut({key=DOWN,mods=})
@@ -11,6 +12,7 @@ arrows	Cursor	ALT + L	Arrow Right	repeating=true	send_shortcut({key=RIGHT,mods=}
 arrows	Cursor	APOSTROPHE	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Cursor	BackSpace	Back	-	submap(reset)
 arrows	Cursor	COMMA	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	COMMA	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	COMMA	Scroll Left	-	exec_cmd(wlrctl pointer scroll 0 -10)
 arrows	Cursor	CTRL + COMMA	Scroll Left (Pixel)	-	exec_cmd(wlrctl pointer scroll 0 -1)
 arrows	Cursor	CTRL + D	Page Down	-	send_shortcut({key=next,mods=})
@@ -41,27 +43,36 @@ arrows	Cursor	CTRL + U	Page Up	-	send_shortcut({key=prior,mods=})
 arrows	Cursor	CTRL + UP	Cursor Up (Pixel)	-	exec_cmd(wlrctl pointer move 0 -1)
 arrows	Cursor	CTRL + Y	Scroll Down (Pixel)	-	exec_cmd(wlrctl pointer scroll -1 0)
 arrows	Cursor	DOWN	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	DOWN	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	DOWN	Cursor Down	-	exec_cmd(wlrctl pointer move 0 10)
 arrows	Cursor	E	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	E	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	E	Scroll Up	-	exec_cmd(wlrctl pointer scroll 10 0)
 arrows	Cursor	ESCAPE	Exit Cursor	-	submap(reset)
 arrows	Cursor	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Cursor	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Cursor	H	-	-	exec_cmd(wlrctl pointer move -10 0)
 arrows	Cursor	H	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	H	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	J	-	-	exec_cmd(wlrctl pointer move 0 10)
 arrows	Cursor	J	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	J	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	K	-	-	exec_cmd(wlrctl pointer move 0 -10)
 arrows	Cursor	K	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	K	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	L	-	-	exec_cmd(wlrctl pointer move 10 0)
 arrows	Cursor	L	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	L	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	LEFT	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	LEFT	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	LEFT	Cursor Left	-	exec_cmd(wlrctl pointer move -10 0)
 arrows	Cursor	M	Middle Click	-	exec_cmd(wlrctl pointer click middle)
 arrows	Cursor	PERIOD	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	PERIOD	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	PERIOD	Scroll Right	-	exec_cmd(wlrctl pointer scroll 0 10)
 arrows	Cursor	R	Right Click	-	exec_cmd(wlrctl pointer click right)
 arrows	Cursor	RIGHT	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	RIGHT	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	RIGHT	Cursor Right	-	exec_cmd(wlrctl pointer move 10 0)
 arrows	Cursor	SEMICOLON	Floating Click (Exit)	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 arrows	Cursor	SHIFT + APOSTROPHE	Tiling Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -86,8 +97,10 @@ arrows	Cursor	SPACE	Left Click	-	exec_cmd(wlrctl pointer click left)
 arrows	Cursor	SUPER + SEMICOLON	-	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 arrows	Cursor	T	Tiling Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Cursor	UP	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	UP	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	UP	Cursor Up	-	exec_cmd(wlrctl pointer move 0 -10)
 arrows	Cursor	Y	-	ignore_mods=true,release=true,transparent=true	-
+arrows	Cursor	Y	-	ignore_mods=true,transparent=true	no_op
 arrows	Cursor	Y	Scroll Down	-	exec_cmd(wlrctl pointer scroll -10 0)
 arrows	Cursor	catchall	-	ignore_mods=true,release=true	no_op
 arrows	Cursor	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -102,7 +115,7 @@ arrows	Cursor	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no
 arrows	Delete	Alt_L	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	Alt_R	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	B	Close Browsers	-	window.close({window=address:0xa1});window.close({window=address:0xc3});submap(reset)
-arrows	Delete	BackSpace	Back	release=true	submap(reset)
+arrows	Delete	BackSpace	Back	-	submap(reset)
 arrows	Delete	C	Clear Clipboard	-	exec_cmd(cliphist wipe);submap(reset)
 arrows	Delete	Control_L	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -128,6 +141,15 @@ arrows	Delete	Super_R	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	T	Close Terminals	-	window.close({window=address:0xb2});submap(reset)
 arrows	Delete	W	Close Window	-	window.close({window=address:0xa1});submap(reset)
 arrows	Delete	catchall	-	ignore_mods=true,release=true	submap(reset)
+arrows	Delete	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 arrows	Groups	BRACKETLEFT	Previous Group Window	-	group.prev
 arrows	Groups	BRACKETRIGHT	Next Group Window	-	group.next
 arrows	Groups	BackSpace	Back	-	submap(reset)
@@ -358,6 +380,7 @@ default	Cursor	ALT + L	Arrow Right	repeating=true	send_shortcut({key=RIGHT,mods=
 default	Cursor	APOSTROPHE	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Cursor	BackSpace	Back	-	submap(reset)
 default	Cursor	COMMA	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	COMMA	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	COMMA	Scroll Left	-	exec_cmd(wlrctl pointer scroll 0 -10)
 default	Cursor	CTRL + COMMA	Scroll Left (Pixel)	-	exec_cmd(wlrctl pointer scroll 0 -1)
 default	Cursor	CTRL + D	Page Down	-	send_shortcut({key=next,mods=})
@@ -389,27 +412,36 @@ default	Cursor	CTRL + UP	-	-	exec_cmd(wlrctl pointer move 0 -1)
 default	Cursor	CTRL + Y	Scroll Down (Pixel)	-	exec_cmd(wlrctl pointer scroll -1 0)
 default	Cursor	DOWN	-	-	exec_cmd(wlrctl pointer move 0 10)
 default	Cursor	DOWN	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	DOWN	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	E	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	E	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	E	Scroll Up	-	exec_cmd(wlrctl pointer scroll 10 0)
 default	Cursor	ESCAPE	Exit Cursor	-	submap(reset)
 default	Cursor	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Cursor	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Cursor	H	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	H	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	H	Cursor Left	-	exec_cmd(wlrctl pointer move -10 0)
 default	Cursor	J	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	J	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	J	Cursor Down	-	exec_cmd(wlrctl pointer move 0 10)
 default	Cursor	K	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	K	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	K	Cursor Up	-	exec_cmd(wlrctl pointer move 0 -10)
 default	Cursor	L	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	L	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	L	Cursor Right	-	exec_cmd(wlrctl pointer move 10 0)
 default	Cursor	LEFT	-	-	exec_cmd(wlrctl pointer move -10 0)
 default	Cursor	LEFT	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	LEFT	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	M	Middle Click	-	exec_cmd(wlrctl pointer click middle)
 default	Cursor	PERIOD	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	PERIOD	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	PERIOD	Scroll Right	-	exec_cmd(wlrctl pointer scroll 0 10)
 default	Cursor	R	Right Click	-	exec_cmd(wlrctl pointer click right)
 default	Cursor	RIGHT	-	-	exec_cmd(wlrctl pointer move 10 0)
 default	Cursor	RIGHT	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	RIGHT	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	SEMICOLON	Floating Click (Exit)	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 default	Cursor	SHIFT + APOSTROPHE	Tiling Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Cursor	SHIFT + COMMA	Scroll Left (Fast)	-	exec_cmd(wlrctl pointer scroll 0 -100)
@@ -434,7 +466,9 @@ default	Cursor	SUPER + SEMICOLON	-	-	submap(reset);exec_cmd(~/.config/hypr/scrip
 default	Cursor	T	Tiling Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Cursor	UP	-	-	exec_cmd(wlrctl pointer move 0 -10)
 default	Cursor	UP	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	UP	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	Y	-	ignore_mods=true,release=true,transparent=true	-
+default	Cursor	Y	-	ignore_mods=true,transparent=true	no_op
 default	Cursor	Y	Scroll Down	-	exec_cmd(wlrctl pointer scroll -10 0)
 default	Cursor	catchall	-	ignore_mods=true,release=true	no_op
 default	Cursor	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -449,7 +483,7 @@ default	Cursor	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	n
 default	Delete	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Delete	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Delete	B	Close Browsers	-	window.close({window=address:0xa1});window.close({window=address:0xc3});submap(reset)
-default	Delete	BackSpace	Back	release=true	submap(reset)
+default	Delete	BackSpace	Back	-	submap(reset)
 default	Delete	C	Clear Clipboard	-	exec_cmd(cliphist wipe);submap(reset)
 default	Delete	Control_L	-	ignore_mods=true,transparent=true	no_op
 default	Delete	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -475,6 +509,15 @@ default	Delete	Super_R	-	ignore_mods=true,transparent=true	no_op
 default	Delete	T	Close Terminals	-	window.close({window=address:0xb2});submap(reset)
 default	Delete	W	Close Window	-	window.close({window=address:0xa1});submap(reset)
 default	Delete	catchall	-	ignore_mods=true,release=true	submap(reset)
+default	Delete	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Groups	BRACKETLEFT	Previous Group Window	-	group.prev
 default	Groups	BRACKETRIGHT	Next Group Window	-	group.next
 default	Groups	BackSpace	Back	-	submap(reset)
@@ -706,6 +749,7 @@ no-leader	Cursor	ALT + L	Arrow Right	repeating=true	send_shortcut({key=RIGHT,mod
 no-leader	Cursor	APOSTROPHE	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Cursor	BackSpace	Back	-	submap(reset)
 no-leader	Cursor	COMMA	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	COMMA	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	COMMA	Scroll Left	-	exec_cmd(wlrctl pointer scroll 0 -10)
 no-leader	Cursor	CTRL + COMMA	Scroll Left (Pixel)	-	exec_cmd(wlrctl pointer scroll 0 -1)
 no-leader	Cursor	CTRL + D	Page Down	-	send_shortcut({key=next,mods=})
@@ -737,27 +781,36 @@ no-leader	Cursor	CTRL + UP	-	-	exec_cmd(wlrctl pointer move 0 -1)
 no-leader	Cursor	CTRL + Y	Scroll Down (Pixel)	-	exec_cmd(wlrctl pointer scroll -1 0)
 no-leader	Cursor	DOWN	-	-	exec_cmd(wlrctl pointer move 0 10)
 no-leader	Cursor	DOWN	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	DOWN	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	E	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	E	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	E	Scroll Up	-	exec_cmd(wlrctl pointer scroll 10 0)
 no-leader	Cursor	ESCAPE	Exit Cursor	-	submap(reset)
 no-leader	Cursor	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Cursor	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Cursor	H	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	H	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	H	Cursor Left	-	exec_cmd(wlrctl pointer move -10 0)
 no-leader	Cursor	J	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	J	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	J	Cursor Down	-	exec_cmd(wlrctl pointer move 0 10)
 no-leader	Cursor	K	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	K	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	K	Cursor Up	-	exec_cmd(wlrctl pointer move 0 -10)
 no-leader	Cursor	L	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	L	Cursor Right	-	exec_cmd(wlrctl pointer move 10 0)
 no-leader	Cursor	LEFT	-	-	exec_cmd(wlrctl pointer move -10 0)
 no-leader	Cursor	LEFT	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	LEFT	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	M	Middle Click	-	exec_cmd(wlrctl pointer click middle)
 no-leader	Cursor	PERIOD	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	PERIOD	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	PERIOD	Scroll Right	-	exec_cmd(wlrctl pointer scroll 0 10)
 no-leader	Cursor	R	Right Click	-	exec_cmd(wlrctl pointer click right)
 no-leader	Cursor	RIGHT	-	-	exec_cmd(wlrctl pointer move 10 0)
 no-leader	Cursor	RIGHT	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	RIGHT	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	SEMICOLON	Floating Click (Exit)	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 no-leader	Cursor	SHIFT + APOSTROPHE	Tiling Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Cursor	SHIFT + COMMA	Scroll Left (Fast)	-	exec_cmd(wlrctl pointer scroll 0 -100)
@@ -781,7 +834,9 @@ no-leader	Cursor	SPACE	Left Click	-	exec_cmd(wlrctl pointer click left)
 no-leader	Cursor	T	Tiling Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Cursor	UP	-	-	exec_cmd(wlrctl pointer move 0 -10)
 no-leader	Cursor	UP	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	UP	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	Y	-	ignore_mods=true,release=true,transparent=true	-
+no-leader	Cursor	Y	-	ignore_mods=true,transparent=true	no_op
 no-leader	Cursor	Y	Scroll Down	-	exec_cmd(wlrctl pointer scroll -10 0)
 no-leader	Cursor	catchall	-	ignore_mods=true,release=true	no_op
 no-leader	Cursor	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -796,7 +851,7 @@ no-leader	Cursor	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true
 no-leader	Delete	Alt_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	B	Close Browsers	-	window.close({window=address:0xa1});window.close({window=address:0xc3});submap(reset)
-no-leader	Delete	BackSpace	Back	release=true	submap(reset)
+no-leader	Delete	BackSpace	Back	-	submap(reset)
 no-leader	Delete	C	Clear Clipboard	-	exec_cmd(cliphist wipe);submap(reset)
 no-leader	Delete	Control_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -822,6 +877,15 @@ no-leader	Delete	Super_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	T	Close Terminals	-	window.close({window=address:0xb2});submap(reset)
 no-leader	Delete	W	Close Window	-	window.close({window=address:0xa1});submap(reset)
 no-leader	Delete	catchall	-	ignore_mods=true,release=true	submap(reset)
+no-leader	Delete	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Groups	BRACKETLEFT	Previous Group Window	-	group.prev
 no-leader	Groups	BRACKETRIGHT	Next Group Window	-	group.next
 no-leader	Groups	BackSpace	Back	-	submap(reset)
@@ -1045,6 +1109,7 @@ persistent	Cursor	ALT + L	Arrow Right	repeating=true	send_shortcut({key=RIGHT,mo
 persistent	Cursor	APOSTROPHE	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Cursor	BackSpace	Back	-	submap(reset)
 persistent	Cursor	COMMA	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	COMMA	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	COMMA	Scroll Left	-	exec_cmd(wlrctl pointer scroll 0 -10)
 persistent	Cursor	CTRL + COMMA	Scroll Left (Pixel)	-	exec_cmd(wlrctl pointer scroll 0 -1)
 persistent	Cursor	CTRL + D	Page Down	-	send_shortcut({key=next,mods=})
@@ -1076,27 +1141,36 @@ persistent	Cursor	CTRL + UP	-	-	exec_cmd(wlrctl pointer move 0 -1)
 persistent	Cursor	CTRL + Y	Scroll Down (Pixel)	-	exec_cmd(wlrctl pointer scroll -1 0)
 persistent	Cursor	DOWN	-	-	exec_cmd(wlrctl pointer move 0 10)
 persistent	Cursor	DOWN	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	DOWN	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	E	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	E	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	E	Scroll Up	-	exec_cmd(wlrctl pointer scroll 10 0)
 persistent	Cursor	ESCAPE	Exit Cursor	-	submap(reset)
 persistent	Cursor	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Cursor	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Cursor	H	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	H	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	H	Cursor Left	-	exec_cmd(wlrctl pointer move -10 0)
 persistent	Cursor	J	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	J	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	J	Cursor Down	-	exec_cmd(wlrctl pointer move 0 10)
 persistent	Cursor	K	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	K	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	K	Cursor Up	-	exec_cmd(wlrctl pointer move 0 -10)
 persistent	Cursor	L	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	L	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	L	Cursor Right	-	exec_cmd(wlrctl pointer move 10 0)
 persistent	Cursor	LEFT	-	-	exec_cmd(wlrctl pointer move -10 0)
 persistent	Cursor	LEFT	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	LEFT	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	M	Middle Click	-	exec_cmd(wlrctl pointer click middle)
 persistent	Cursor	PERIOD	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	PERIOD	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	PERIOD	Scroll Right	-	exec_cmd(wlrctl pointer scroll 0 10)
 persistent	Cursor	R	Right Click	-	exec_cmd(wlrctl pointer click right)
 persistent	Cursor	RIGHT	-	-	exec_cmd(wlrctl pointer move 10 0)
 persistent	Cursor	RIGHT	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	RIGHT	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	SEMICOLON	Floating Click (Exit)	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 persistent	Cursor	SHIFT + APOSTROPHE	Tiling Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Cursor	SHIFT + COMMA	Scroll Left (Fast)	-	exec_cmd(wlrctl pointer scroll 0 -100)
@@ -1121,7 +1195,9 @@ persistent	Cursor	SUPER + SEMICOLON	-	-	submap(reset);exec_cmd(~/.config/hypr/sc
 persistent	Cursor	T	Tiling Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Cursor	UP	-	-	exec_cmd(wlrctl pointer move 0 -10)
 persistent	Cursor	UP	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	UP	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	Y	-	ignore_mods=true,release=true,transparent=true	-
+persistent	Cursor	Y	-	ignore_mods=true,transparent=true	no_op
 persistent	Cursor	Y	Scroll Down	-	exec_cmd(wlrctl pointer scroll -10 0)
 persistent	Cursor	catchall	-	ignore_mods=true,release=true	no_op
 persistent	Cursor	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1136,7 +1212,7 @@ persistent	Cursor	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=tru
 persistent	Delete	Alt_L	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	Alt_R	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	B	Close Browsers	-	window.close({window=address:0xa1});window.close({window=address:0xc3});submap(reset)
-persistent	Delete	BackSpace	Back	release=true	submap(reset)
+persistent	Delete	BackSpace	Back	-	submap(reset)
 persistent	Delete	C	Clear Clipboard	-	exec_cmd(cliphist wipe);submap(reset)
 persistent	Delete	Control_L	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	Control_R	-	ignore_mods=true,transparent=true	no_op
@@ -1162,6 +1238,15 @@ persistent	Delete	Super_R	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	T	Close Terminals	-	window.close({window=address:0xb2});submap(reset)
 persistent	Delete	W	Close Window	-	window.close({window=address:0xa1});submap(reset)
 persistent	Delete	catchall	-	ignore_mods=true,release=true	submap(reset)
+persistent	Delete	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 persistent	Groups	BRACKETLEFT	Previous Group Window	-	group.prev
 persistent	Groups	BRACKETRIGHT	Next Group Window	-	group.next
 persistent	Groups	BackSpace	Back	-	submap(reset)

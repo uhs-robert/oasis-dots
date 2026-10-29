@@ -332,18 +332,22 @@ local function bind_catchall(catchall, exit_fn, spec)
     Bind.key(lone_modifier_keys, hl.dsp.no_op(), { ignore_mods = true, transparent = true })
   end
 
-  local opts = { release = true, ignore_mods = true }
+  local action
   if catchall == "stay" then
-    -- Hyprland 0.57 also runs a catchall on mouse button and wheel events, so a "stay" catchall swallowed every click
-    -- and scroll, the Cursor submap's own wlrctl clicks included. A bind that matches stops the catchall, and
-    -- non_consuming hands the event on to the window.
-    Bind.key(mouse_inputs, hl.dsp.no_op(), { ignore_mods = true, non_consuming = true, transparent = true })
-    Bind.key("catchall", hl.dsp.no_op(), opts)
+    action = hl.dsp.no_op()
   elseif catchall == "reset" then
-    Bind.key("catchall", exit_fn, opts)
+    action = exit_fn
   elseif type(catchall) == "function" then
-    Bind.key("catchall", function() catchall(context({ spec = spec })) end, opts)
+    action = function() catchall(context({ spec = spec })) end
+  else
+    return
   end
+
+  -- Hyprland 0.57 also runs a catchall on mouse button and wheel events, so it swallowed every click and scroll (the
+  -- Cursor submap's own wlrctl clicks included). These binds do what the catchall does, and a bind that matches keeps
+  -- the catchall from running; non_consuming hands the event on to the window.
+  Bind.key(mouse_inputs, action, { ignore_mods = true, non_consuming = true, transparent = true })
+  Bind.key("catchall", action, { release = true, ignore_mods = true })
 end
 
 local whichkey_toggle_key = "SHIFT + SLASH"
@@ -411,7 +415,10 @@ function Submap.define(spec)
 
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)
-        local back_opts = catchall == "reset" and { release = true } or nil
+        -- Before 0.57 a one-shot Back runs on key-up: on key-down, the key-up would reach the catchall of the submap
+        -- it went back to. 0.57 matches the key-up in the submap the key went down in, while a key-up bind there lets
+        -- its key-down through to the focused app.
+        local back_opts = catchall == "reset" and not Bind.keybinds_v2 and { release = true } or nil
         Bind.key("BackSpace", M.back, "Back", back_opts)
       end
 
