@@ -31,6 +31,7 @@ import qs.features.voice
 import qs.features.popups
 import qs.features.audio
 import qs.features.style
+import qs.features.submap_hints
 import "features/bar/BarLayout.js" as BarLayout
 
 ShellRoot {
@@ -303,6 +304,8 @@ ShellRoot {
     WhichKeyIpc {
         whichkey: whichkey
     }
+    SubmapHintBar {}
+    SubmapHintIpc {}
     Variants {
         model: BarEditor.active ? Quickshell.screens : []
         BarEditorWindow {}

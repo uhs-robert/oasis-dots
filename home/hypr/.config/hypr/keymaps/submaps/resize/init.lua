@@ -28,6 +28,11 @@ Submap.define({
   escape = "reset",
   catchall = "stay",
 
+  hint = {
+    { "Resize", "resize.step" },
+    { "Window", { "resize.reset", label = "Reset" } },
+  },
+
   binds = function()
     local keys = {
       { "EQUAL", "resize.reset" },

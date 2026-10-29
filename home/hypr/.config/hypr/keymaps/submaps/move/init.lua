@@ -29,6 +29,11 @@ Submap.define({
   escape = "reset",
   catchall = "stay",
 
+  hint = {
+    { "Move", "move.step" },
+    { "Window", { "window.float_toggle", label = "Float" } },
+  },
+
   binds = function()
     local keys = {
       { "F", "window.float_toggle" },

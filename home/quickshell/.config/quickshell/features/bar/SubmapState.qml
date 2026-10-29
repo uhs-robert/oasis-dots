@@ -52,7 +52,34 @@ Singleton {
     property bool indicator_clear: true
     readonly property bool indicator_shown: root.active && root.indicator_clear
     // Submaps whose HUD HyprVim does not open on entry: `which_key.auto_show.disabled` in hypr/hyprland.lua, which this list must follow. They need no hold.
-    readonly property var no_auto_hud: ["NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor"]
+    // The submaps with a hint bar are also in that list, and come from `hints`.
+    readonly property var no_auto_hud: ["NORMAL", "INSERT", "VISUAL", "V-LINE"]
+    // The hint bar of each submap that has one, by name, as `submap_hints set` last sent it ({ name, groups, footer }). Kept
+    // across visits, so after the first the bar shows from the submap event without waiting for Hyprland's IPC call.
+    property var hints: ({})
+    readonly property var hint: root.hints[root.submap_name] || null
+
+    // Stores a hint; returns "" or why the JSON was refused.
+    function set_hint(json) {
+        let spec;
+        try {
+            spec = JSON.parse(json);
+        } catch (e) {
+            return "not JSON: " + e.message;
+        }
+        if (!spec || typeof spec.name !== "string" || spec.name === "" || !Array.isArray(spec.groups))
+            return "needs a name and groups";
+        const next = Object.assign({}, root.hints);
+        next[spec.name] = spec;
+        root.hints = next;
+        // The first visit's call lands after the submap event, which held the indicator for a which-key HUD that never comes.
+        if (spec.name === root.submap_name && root.hold_ends > 0) {
+            settle.stop();
+            root.hold_ends = 0;
+            root.indicator_clear = !root.whichkey_open;
+        }
+        return "";
+    }
     // When the hold that began at the last entry ends; a HUD closing sooner than that must not reveal the indicator early.
     property double hold_ends: 0
 
@@ -64,7 +91,7 @@ Singleton {
             root.indicator_clear = true;
             return;
         }
-        if (root.no_auto_hud.includes(name)) {
+        if (root.no_auto_hud.includes(name) || root.hints[name]) {
             settle.stop();
             root.hold_ends = 0;
             // An open HUD from the previous submap still hides it; its close restarts the timer.

@@ -12,7 +12,7 @@ Hyprland starts it with `qs -n` (see `home/hypr/.config/hypr/config/autostart/`)
 | ------------- | ------------------------------------------------------------------------------------------ |
 | `shell.qml`   | Entry point: a bar per monitor, then every popup, picker provider, IPC handler and overlay |
 | `services/`   | `Palettes`, the one singleton not yet moved into a feature (`shell.qml` still imports it so Quickshell registers the module) |
-| `ui/`         | Shared widgets: `menu/` (rows, tabs), `frames/` (brackets and the pieces a frame stack is built from), `gauges/` (`Meter`, `AtbBar`, `TickRuler`...), `keys/` (key badges and controller badges), `scroll/` (`ScrollCue`, the fade and caret of a list that scrolls on), `effects/` (dither, scanlines, sheen, sprites) |
+| `ui/`         | Shared widgets: `menu/` (rows, tabs), `frames/` (brackets and the pieces a frame stack is built from), `gauges/` (`Meter`, `AtbBar`, `TickRuler`...), `keys/` (key badges, controller badges, and the hint bar parts `HintPlate`, `HintModeBlock` and `HintGroups`), `scroll/` (`ScrollCue`, the fade and caret of a list that scrolls on), `effects/` (dither, scanlines, sheen, sprites) |
 | `styles/`     | One folder per style with the pieces that only that style draws: `tokens.js` (its token overrides), `icons.js` (its bar icon set, where it has one), `widgets/` and `sounds/` (the style's sound pack), and for snes `popups/`; `goldeneye/` also holds `Watch.js` (the watch colors), `watch_tokens.js` and the watch parts its lock skin shares (`PanelShape`, `SegmentArc`, `WatchHands`, `static.frag`). `index.js` builds every style's token set and `IconSets.js` registers the icon sets |
 | `features/`   | One folder per feature, listed under Features below |
 | `core/`       | `Paths.qml` (XDG dirs), `JsonStore.qml` (one JSON settings file: debounced atomic save, watch, extras kept; or with `read_only` a follower of a file another program writes), `Fuzzy.js` (the fuzzy matcher), `RestartingStream.qml` (a streamed command restarted with backoff, re-probed for its tool, planned exits not counted as failures), `PolledCommand.qml` (a command run on a timer or on demand, one result per run) and `PolledFile.qml` (a file read on a timer or on demand, `loaded` or `load_failed` per read) |
@@ -54,6 +54,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `audio/` holds `ThemeAudio` (the sound packs and their volumes) and the `sound` IPC handler `SoundIpc`.
 - `style/` holds `StyleIpc`, the `style` IPC handler (style, lock skin and sound-pack calls).
 - `windows/` holds `WindowState` (Hyprland windows, most recently focused first).
+- `submap_hints/` holds `SubmapHintBar`, the compact key hints shown while Hyprland is in a submap whose `Submap.define` has a `hint` (Windows, Resize, Move, Cursor), and its `submap_hints` IPC handler. The hints themselves are kept by name in `bar/SubmapState`.
 - [`lock/`](features/lock/README.md): Lock screen, skins and greeter
 
 ## IPC
@@ -162,6 +163,7 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `style` | `get_lock_backdrop(): string` |  |
 | `style` | `toggle_cava_line(): void` |  |
 | `style` | `get_cava_line(): bool` |  |
+| `submap_hints` | `set(json: string): string` |  |
 | `tmux_overview` | `open(): string` | `tmux.overview` |
 | `tmux_overview` | `close(): string` | `tmux.close` |
 | `tmux_overview` | `search(): string` | `tmux.search` |
@@ -193,6 +195,7 @@ Notes on the targets whose names do not say enough:
 - `calendar`: `refresh` rereads the calendar cache; `open_day <YYYY-MM-DD>` opens the clock popup on that day.
 - `cmdstatus`: `refresh <id>` with `""` refreshes every entry.
 - `hyprvim_whichkey`, `hyprvim_prompt`: external API, the HyprVim which-key HUD and `:` prompt, each with `open` and `close`, called by the hyprvim plugin.
+- `submap_hints`: `set <json>` stores a submap's hint bar (`{name, groups: [{name, keys: [[cap, label]]}], footer: [[cap, label]]}`), shown while Hyprland is in that submap; `home/hypr/.config/hypr/lib/key/submap_hint.lua` sends it on every entry.
 
 Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `power`, `clock`, `volume`, `battery`, `bluetooth`, `system`, `tray`, `network`, `keeptabs`, `weather`, `updates`, `media`, `screenshot`, `notifications`, `picker`.
 

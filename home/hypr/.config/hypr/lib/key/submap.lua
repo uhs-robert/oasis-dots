@@ -3,6 +3,7 @@
 --- Use Submap.define() to declare a submap; call .setup() on the result to register binds.
 local Act = require("lib.act") ---@class ActionLib
 local Bind = require("lib.key.bind") ---@class BindLib
+local SubmapHint = require("lib.key.submap_hint") ---@class SubmapHint
 
 --- @class Submap
 local Submap = {
@@ -29,6 +30,7 @@ local Submap = {
 --- @field on_enter? fun(ctx: SubmapContext)                         Called after entering this submap
 --- @field on_exit?  fun(ctx: SubmapContext)                         Called before leaving this submap
 --- @field binds?    table[]|fun(): table[]                          Rows passed to Bind.keys inside the submap, or a function returning them. A row is { keys, action, desc?, opts? }; `action` may be an action id ("window.close") or { id, args } ("popup.open", { "clock" }), which takes the action's label unless `desc` is given (false for none).
+--- @field hint?     SubmapHintGroup[]                               Groups for the compact hint bar shown on entry in place of HyprVim's which-key popup (SHIFT + / still opens that); see lib/key/submap_hint.lua
 
 --- @class SubmapHandle
 --- @field enter fun()   Switch into this submap
@@ -101,6 +103,8 @@ function Submap.enter(name)
       spec = next_spec,
     }))
   end
+
+  if next_spec.hint then SubmapHint.send(name) end
 end
 
 --- Return to the global (reset) submap, firing the current submap's exit hook.
@@ -333,10 +337,18 @@ function Submap.define(spec)
   function M.setup()
     Bind.submap(spec.name, function()
       local catchall = normalize_catchall(spec)
-      local raw_binds = apply_individual_oneshots(resolve_action_rows(resolve_binds(spec.binds) or {}), M.exit)
+      local rows = resolve_binds(spec.binds) or {}
+      local raw_binds = apply_individual_oneshots(resolve_action_rows(rows), M.exit)
       local binds = catchall == "reset" and wrap_oneshot(raw_binds, M.exit) or raw_binds
 
       Bind.keys(binds or {})
+
+      if spec.hint then
+        SubmapHint.register(spec.name, spec.hint, rows, {
+          escape = normalize_escape(spec) ~= false,
+          whichkey = not binds_use_key(raw_binds, whichkey_toggle_key),
+        })
+      end
 
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)

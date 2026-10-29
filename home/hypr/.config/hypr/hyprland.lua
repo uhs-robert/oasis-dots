@@ -29,7 +29,10 @@ local function init()
         frontend = "quickshell",
         quickshell_ipc = Scripts.qs_ipc,
         delay_ms = Config.input.which_key_delay_ms,
-        auto_show = { disabled = { "NORMAL", "INSERT", "VISUAL", "V-LINE", "Cursor" } },
+        -- Read after Config.setup has loaded the keymaps, so every submap with a hint bar is in the list.
+        auto_show = {
+          disabled = require("lib.key.submap_hint").without_whichkey({ "NORMAL", "INSERT", "VISUAL", "V-LINE" }),
+        },
       },
       prompt = { frontend = "quickshell" },
       close_handler = Closed.close_addresses,

@@ -96,6 +96,31 @@ local cursor_mode = Submap.define({
   on_enter = enter_cursor,
   on_exit = exit_cursor,
 
+  -- The diagonal chords and the Shift and Ctrl wl-kbptr variants are left to the full list behind SHIFT + /.
+  hint = {
+    { "Move", { "cursor.move", label = "Move" } },
+    {
+      "Click",
+      { "cursor.click", args = { "left" }, mods = "", label = "Left" },
+      { "cursor.click", args = { "right" }, mods = "", label = "Right" },
+      { "cursor.click", args = { "middle" }, mods = "", label = "Middle" },
+      { "cursor.click", mods = "CTRL", label = "Click" },
+    },
+    {
+      "Pick",
+      { "cursor.pointer_mode", args = { "floating_click", false }, mods = "", label = "Float" },
+      { "cursor.pointer_mode", args = { "tile_click" }, mods = "", label = "Tile" },
+      { "cursor.pointer_mode", args = { "split_click" }, mods = "", label = "Split" },
+      { "cursor.pointer_mode", args = { "floating_click", true }, mods = "", label = "Float" },
+    },
+    { "Scroll", { "cursor.scroll", label = "Scroll" } },
+    {
+      "Keys",
+      { "cursor.send_key", mods = "ALT", label = "Arrows" },
+      { "cursor.send_key", mods = "CTRL", label = "Page" },
+    },
+  },
+
   binds = function()
     local mode = POINTER_KEY_SETS[Config.input.pointer_keys] and Config.input.pointer_keys or "hjkl"
     local key_sets = POINTER_KEY_SETS[mode]
