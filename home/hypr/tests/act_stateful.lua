@@ -30,10 +30,6 @@ end
 hl.get_windows = function()
 	return WINDOWS
 end
--- A fixed pointer position, so a move dumps as the absolute spot it warps to.
-hl.get_cursor_pos = function()
-	return { x = 500, y = 500 }
-end
 -- A fixed uptime, so the selection's config-load generation (lib/selection.lua) is the same in every dump.
 local UPTIME = "1234.56 7890.12"
 local real_open = io.open
@@ -122,7 +118,10 @@ local SUBMAPS = {
 	Resize = true,
 	Delete = true,
 }
+-- Also the per-row reset: a held Cursor move would otherwise carry into every later row's step. The filter runs just
+-- before each row.
 local function in_listed_submap(submap)
+	require("lib.desktop.cursor").hold_stop()
 	return SUBMAPS[submap] == true
 end
 
@@ -539,17 +538,17 @@ local function fire_enabled_timers()
 	end
 	return Stubs.performed
 end
-check("move: the first step fires at once", text_of(press("Cursor", "H")) == "cursor.move({x=490,y=500})")
+check("move: the first step fires at once", text_of(press("Cursor", "H")) == "exec_cmd(wlrctl pointer move -10 0)")
 check("move: one timer waits for the repeat delay", enabled_timers() == 1)
-check("move: a second direction steps by the sum", text_of(press("Cursor", "SHIFT + K")) == "cursor.move({x=490,y=400})")
+check("move: a second direction steps by the sum", text_of(press("Cursor", "SHIFT + K")) == "exec_cmd(wlrctl pointer move -10 -100)")
 check("move: it replaced the first timer", enabled_timers() == 1)
 fire_enabled_timers()
 check("move: the repeat runs beside the delay timer", enabled_timers() == 2)
 local tick = fire_enabled_timers()
-check("move: a repeat tick moves diagonally: " .. text_of(tick), count_of(tick, "cursor.move({x=490,y=400})") >= 1)
+check("move: a repeat tick moves diagonally: " .. text_of(tick), count_of(tick, "exec_cmd(wlrctl pointer move -10 -100)") >= 1)
 release("K")
 check("move: one direction still held keeps it going", enabled_timers() > 0)
-check("move: then only that direction moves", count_of(fire_enabled_timers(), "cursor.move({x=490,y=500})") >= 1)
+check("move: then only that direction moves", count_of(fire_enabled_timers(), "exec_cmd(wlrctl pointer move -10 0)") >= 1)
 release("H")
 check("move: releasing the last direction stops every timer", enabled_timers() == 0)
 check("move: arrows release too", #release("LEFT") == 0 and enabled_timers() == 0)

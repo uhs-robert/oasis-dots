@@ -34,33 +34,28 @@ local Cursor = {
   click_middle = function() return Hypr.exec("wlrctl pointer click middle") end,
 }
 
---- Return an action that warps the pointer by (dx, dy) from where it is now.
---- Not wlrctl, which adds and removes a virtual pointer on every run: a move per repeat tick would spawn a process
---- each time. Hyprland clamps the warp to the monitor layout.
+--- Return an action that moves the pointer by (dx, dy) with wlrctl.
+--- Not hl.dsp.cursor.move: Hyprland's warp skips focus-follows-mouse, while wlrctl sends real pointer motion. wlrctl
+--- adds and removes a virtual pointer on each run, which on Hyprland 0.57 cancels every bind's own repeat, so held
+--- moves repeat on Lua timers (Cursor.move_press) instead.
 --- @param dx number
 --- @param dy number
 --- @return fun()
-local function warp_by(dx, dy)
-  return function()
-    local pos = hl.get_cursor_pos()
-    if not pos then return end
-    hl.dispatch(hl.dsp.cursor.move({ x = pos.x + dx, y = pos.y + dy }))
-  end
-end
+local function move_by(dx, dy) return Hypr.exec("wlrctl pointer move " .. dx .. " " .. dy) end
 
 --- Cursor movement factory for Direction.speed_binds / Direction.omni_binds.
 --- @param amount number  Pixels to move per axis per trigger
 --- @return DirActions
 Cursor.move = function(amount)
   return {
-    left = warp_by(-amount, 0),
-    right = warp_by(amount, 0),
-    up = warp_by(0, -amount),
-    down = warp_by(0, amount),
-    nw = warp_by(-amount, -amount),
-    ne = warp_by(amount, -amount),
-    sw = warp_by(-amount, amount),
-    se = warp_by(amount, amount),
+    left = move_by(-amount, 0),
+    right = move_by(amount, 0),
+    up = move_by(0, -amount),
+    down = move_by(0, amount),
+    nw = move_by(-amount, -amount),
+    ne = move_by(amount, -amount),
+    sw = move_by(-amount, amount),
+    se = move_by(amount, amount),
   }
 end
 
@@ -140,7 +135,7 @@ local function step_held_moves()
     dx = dx + UNIT_STEP[dir][1] * amount
     dy = dy + UNIT_STEP[dir][2] * amount
   end
-  if dx ~= 0 or dy ~= 0 then warp_by(dx, dy)() end
+  if dx ~= 0 or dy ~= 0 then move_by(dx, dy)() end
 end
 
 --- Mark a direction held, step once and keep stepping until Cursor.move_release lets go of every held direction.
