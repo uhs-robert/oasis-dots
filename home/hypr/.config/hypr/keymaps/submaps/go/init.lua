@@ -29,17 +29,14 @@ Submap.define({
       { "A",         "menu.agents" },
       { "B",         focus_app("firefox"),                  "Browser" },
       { "C",         focus_app("tmux_config"),              "Tmuxifier Config" },
-      { "F",         focus_app("yazi"),                     "Files" },
-      { "SHIFT + F", focus_app("thunar"),                   "Thunar" },
-      { "H",         focus_app("hyprconfig"),               "Hypr Config" },
-      { "M",         focus_app("betterbird"),               "Mail" },
-      { "P",         "menu.tmux",                           "Project" },
+      { "M",         focus_app("betterbird"),               "Mail" }, { "P",         "menu.tmux",                           "Project" }, -- TODO: Convert to QS?
       { "Q",         focus_app("qutebrowser"),              "QuteBrowser" },
       { "S",         focus_app("slack"),                    "Slack" },
       { "SHIFT + S", focus_app("steam"),                    "Steam" },
       { "T",         focus_app("terminal"),                 "Terminal" },
       { "V",         "terminal.editor" },
       { "W",         "overview.search",                     "Search Windows" },
+      { "Y",         focus_app("yazi"),                     "Yazi" },
       -- stylua: ignore end
     }
 

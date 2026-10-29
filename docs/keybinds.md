@@ -489,9 +489,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `A` | press | Go | Agent Sessions | `menu.agents` |
 | `B` | press | Go | Browser | `apps.focus` |
 | `C` | press | Go | Tmuxifier Config | `apps.focus` |
-| `F` | press | Go | Files | `apps.focus` |
-| `SHIFT + F` | press | Go | Thunar | `apps.focus` |
-| `H` | press | Go | Hypr Config | `apps.focus` |
 | `M` | press | Go | Mail | `apps.focus` |
 | `P` | press | Go | Project | `menu.tmux` |
 | `Q` | press | Go | QuteBrowser | `apps.focus` |
@@ -500,6 +497,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `T` | press | Go | Terminal | `apps.focus` |
 | `V` | press | Go | Editor | `terminal.editor` |
 | `W` | press | Go | Search Windows | `overview.search` |
+| `Y` | press | Go | Yazi | `apps.focus` |
 | `ESCAPE` | press | Go | Exit Go |  |
 | `BackSpace` | release | Go | Back |  |
 | `SHIFT + SLASH` | press | Go | Toggle which-key help |  |
