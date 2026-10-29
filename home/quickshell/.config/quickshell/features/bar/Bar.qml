@@ -124,15 +124,18 @@ Item {
     }
 
     // How long a side-island module may grow on a top or bottom bar before its island comes within a module gap of
-    // the next island (the center one, else the other side). The center island grows both ways, so it has no limit.
+    // the center island. The center island grows both ways, so it has no limit. Without one, each side gets up to the
+    // middle rather than what the other side leaves: both sides can hold a Directory, whose rooms would then bind to
+    // each other's widths.
     function module_room(island, item) {
         if (root.vertical || root.lualine || island === center_island) return Infinity;
         const start = root.frame ? root.frame.start : root.strip_side;
         const end = root.width - (root.frame ? root.frame.end : root.strip_side);
         const gap = Style.bar_module_gap;
+        const middle = (start + end) / 2;
         const island_room = island === left_island
-            ? (root.has_center ? center_island.x : right_island.visible ? right_island.x : end) - gap - start
-            : end - gap - (root.has_center ? center_island.x + center_island.width : left_island.visible ? left_island.x + left_island.width : start);
+            ? (root.has_center ? center_island.x - gap : middle - gap / 2) - start
+            : end - (root.has_center ? center_island.x + center_island.width + gap : middle + gap / 2);
         return island_room - island.chrome_length - island.row_length_without(item.parent);
     }
 
