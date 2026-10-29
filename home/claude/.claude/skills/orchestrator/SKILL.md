@@ -37,6 +37,8 @@ Target: `$target`
 
 ## Briefing the owner
 
+Load the `plain-writing` skill before your first reply to the owner, and write every reply, brief and question by it.
+
 Before every `AskUserQuestion`, write a brief in the reply text, conclusion first: where it stands; per option, what happens, the pros, the cons and the cost; the core tradeoff; your recommendation. Plain words: translate an agent's recommendations into what changes for the owner, with no internal labels (e.g. "D1 scope tree"), file:line refs or code names unless asked. Never ask "approve recommendations N-M" or one bundled "approve all": each material decision gets its own options, and a minor one with a single sensible answer is not asked but stated near the top as "Assumed: X". Self-check: could the owner answer having read nothing else today?
 
 ## Workflow
