@@ -228,7 +228,7 @@ pub fn run(args: ReplyArgs) -> Result<Option<String>, CliError> {
         _ => String::new(),
     };
     let token = reading.state.token.as_deref().unwrap_or_default();
-    // An ask's picker is the bar's too when the bar shows it, so "expand" goes to the bar for both; without a token,
+    // An ask's picker is the bar's too when the bar shows it, so "expand" goes to the bar for both. Without a token,
     // the bar expands whatever choices picker is open.
     let bar_call = match (&reading.verdict, reading.state.owner) {
         (Verdict::Expand(position), owner) => {
@@ -251,8 +251,8 @@ pub fn run(args: ReplyArgs) -> Result<Option<String>, CliError> {
 }
 
 /// `qs-ipc call picker <call>`. The bar says `stale` when the token is no longer its open picker's (it closed or
-/// reopened since the file was read) and `locked` while the screen is locked; either, or a bar gone, means the
-/// picker the reply was meant for is not waiting.
+/// reopened since the file was read) and `locked` while the screen is locked. Either one, or a bar that is gone,
+/// means the picker the reply was meant for is not waiting.
 fn answer_through_bar(call: &[String], owner: Owner) -> bool {
     let mut args = vec![std::ffi::OsStr::new("picker")];
     args.extend(call.iter().map(std::ffi::OsStr::new));

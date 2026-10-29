@@ -37,10 +37,10 @@ pub struct PendingPick {
     /// Absent for an ask, which keeps its field order.
     #[serde(default, skip_serializing_if = "Owner::is_ask")]
     pub owner: Owner,
-    /// An ask's answer FIFO; the bar has none.
+    /// An ask's answer FIFO. The bar has none.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fifo: Option<PathBuf>,
-    /// The bar's token for the open picker, which its answer calls repeat; a reopened picker has a new one.
+    /// The bar's token for the open picker, which its answer calls repeat. A reopened picker has a new one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
     #[serde(default, deserialize_with = "lenient_text")]
@@ -943,7 +943,7 @@ pub(crate) mod tests {
         assert_eq!(text_of(&asking), None, "asker exited");
     }
 
-    /// A process named `qs`, as the bar's pid must be; copied, so the name is the program's own.
+    /// A process named `qs`, as the bar's pid must be. It is a copy, so the name is the program's own.
     fn fake_bar(dir: &Path) -> Child {
         let path = dir.join("qs");
         std::fs::copy("/bin/sleep", &path).unwrap();

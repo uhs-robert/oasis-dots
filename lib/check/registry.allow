@@ -65,6 +65,7 @@ ipc notifications close focus_toast get_dnd get_last has_toast history open  # q
 ipc osd state                           # a state query
 ipc overview act save_session state     # the overview's own driver and queries; overview.toggle and close are actions
 ipc picker open_with                    # the picker launcher scripts pass a provider and arguments
+ipc picker answer cancel expand          # voice answers from voxcmd (reply, Stop Voice), by the open picker's token
 ipc popup close focus keyboard state toggle  # the bar's popup plumbing; popup.open is the action
 ipc power run                           # runs the power action without the prompt, deliberately not an action
 ipc screenshot close pick recording_started recording_stopped share toggle  # driven by the share picker, the recorder and the bar; the menu, select and stop calls are actions
