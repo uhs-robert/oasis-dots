@@ -113,7 +113,7 @@ if ((dry_run)); then
   for s in "${styles[@]}"; do
     echo "smoke: $s: style set, popup battery, osd (voxtype recording), which-key (fixture payload), click hints (fixture boxes)$(is_region_style "$s" && echo ', region (pixel, select)')"
   done
-  echo "smoke: hint bar: goldeneye with the frame on (top bar, bottom bar), ps1 without it"
+  echo "smoke: hint bars (submap, Edit Bar): goldeneye with the frame on (top bar, bottom bar), ps1 without it"
   "$shadow" status "$name" | head -1
   exit 0
 fi
@@ -399,11 +399,14 @@ cat >"$hint_json" <<'JSON'
 }
 JSON
 
-# hint_shot STYLE BAR_POSITION FRAME(1|0): the frame and the bar position are set in the shadow's state files, so the pass
-# does not depend on the owner's saved options.
+# hint_shot STYLE BAR_POSITION FRAME(1|0) [editor]: the frame and the bar position are set in the shadow's state files, so
+# the pass does not depend on the owner's saved options. The submap hint bar is entered by submap; with `editor` it is
+# the Edit Bar hint box (a drawer window with the frame, inside the fullscreen editor window without it).
 hint_shot() {
-  local style=$1 position=$2 framed=$3 tag="hintbar_$2"
-  [[ $framed == 0 ]] && tag="hintbar_floating"
+  local style=$1 position=$2 framed=$3 what=${4:-submap} prefix=hintbar ns=quickshell-submap-hints
+  [[ $what == editor ]] && prefix=editbar ns=quickshell-bareditor-hints
+  local tag="${prefix}_$position"
+  [[ $framed == 0 ]] && tag="${prefix}_floating"
   q style set "$style" >/dev/null
   sleep 1.3
   # shellcheck disable=SC2016 # jq variables, not shell ones
@@ -415,17 +418,23 @@ hint_shot() {
   local has_frame=0
   [[ -n $(layer_geom quickshell-frame) ]] && has_frame=1
   [[ $has_frame == "$framed" ]] || missing+=("MISS $style $tag (frame layer present=$has_frame, expected $framed)")
-  sh_hyprctl dispatch "hl.dsp.submap('Windows')" >/dev/null
+  if [[ $what == editor ]]; then q bareditor open "" >/dev/null; else sh_hyprctl dispatch "hl.dsp.submap('Windows')" >/dev/null; fi
   # Mid-grow: the open animation runs 190 ms.
   sleep 0.06
   "$shadow" shot "$name" --out "$out/${style}_${tag}_grow.png" >/dev/null || true
-  wait_layer quickshell-submap-hints && {
-    sleep 0.5
-    shoot "$style" "$tag" quickshell-submap-hints
-  } || missing+=("MISS $style $tag")
-  sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null
+  if [[ $what == editor && $framed == 0 ]]; then
+    # The box is part of the fullscreen editor window, so there is no layer of its own to crop to.
+    sleep 0.6
+    "$shadow" shot "$name" --out "$out/${style}_${tag}.png" >/dev/null || missing+=("MISS $style $tag")
+  else
+    wait_layer "$ns" && {
+      sleep 0.5
+      shoot "$style" "$tag" "$ns"
+    } || missing+=("MISS $style $tag")
+  fi
+  if [[ $what == editor ]]; then q bareditor close >/dev/null; else sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null; fi
   sleep 0.3
-  check_blank "$style" "$tag" quickshell-submap-hints
+  [[ $what == editor && $framed == 0 ]] || check_blank "$style" "$tag" "$ns"
 }
 
 echo "smoke: hint bar"
@@ -434,6 +443,10 @@ sh_hyprctl eval "hl.define_submap('Windows', function() hl.bind('Escape', hl.dsp
 hint_shot goldeneye top 1
 hint_shot goldeneye bottom 1
 hint_shot ps1 top 0
+echo "smoke: edit bar hints"
+hint_shot goldeneye top 1 editor
+hint_shot goldeneye bottom 1 editor
+hint_shot ps1 top 0 editor
 restore_state
 
 sheet="$out/sheet.png"

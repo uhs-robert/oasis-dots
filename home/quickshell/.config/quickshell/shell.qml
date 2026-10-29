@@ -322,6 +322,10 @@ ShellRoot {
         model: BarEditor.active ? Quickshell.screens : []
         BarEditorWindow {}
     }
+    Variants {
+        model: Quickshell.screens
+        HintDrawerWindow {}
+    }
     BarEditorIpc {}
     Overview {
         id: overview_window

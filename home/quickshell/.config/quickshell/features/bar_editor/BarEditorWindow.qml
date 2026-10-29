@@ -56,6 +56,8 @@ PanelWindow {
     readonly property rect bar_rect: root.rect_of(root.bar_item)
     // Hints go to the screen edge the bar is not on.
     readonly property bool hints_on_top: root.bar_item !== null && root.bar_item.position === "bottom"
+    // With the screen frame on, the hints are HintDrawerWindow's drawer instead of HintBox.
+    readonly property bool hints_in_drawer: ScreenFrames.layout_for(root.modelData) !== null
     // A module the bar hides while it has nothing to show is zero wide; it still gets a mark.
     readonly property real mark_width: Math.max(root.sel.width, 14)
     readonly property real mark_x: root.sel.x - (root.mark_width - root.sel.width) / 2
@@ -285,7 +287,7 @@ PanelWindow {
     // The key hints, on the screen edge the bar is not on.
     HintBox {
         id: hint_box
-        visible: root.keyboard_owner && BarEditor.mode !== "monitor"
+        visible: root.keyboard_owner && BarEditor.mode !== "monitor" && !root.hints_in_drawer
         on_top: root.hints_on_top
         carrying: root.carrying
         vertical: root.vertical
