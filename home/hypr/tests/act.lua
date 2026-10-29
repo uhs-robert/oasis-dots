@@ -709,7 +709,7 @@ check("rebind: same action lists the key once", #keys_of("a.one") == 1)
 fresh()
 Bind = require("lib.key.bind")
 local menu_calls, hyprvim_calls = {}, {}
-package.loaded["lib.actions.menu"] = setmetatable({}, {
+package.loaded["lib.desktop.menu"] = setmetatable({}, {
 	__index = function(_, name)
 		return function()
 			return function()
@@ -792,7 +792,7 @@ for _, handle in ipairs(Act.list()) do
 	end
 end
 check("pickers: eight listed", picker_listed == 8)
-package.loaded["lib.actions.menu"] = nil
+package.loaded["lib.desktop.menu"] = nil
 package.loaded["lua.plugins.hyprvim"] = nil
 
 local list_path = os.tmpname()

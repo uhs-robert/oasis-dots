@@ -7,7 +7,7 @@
 -- Entries failing the AppEntry field types, or lacking cmd or monitor/special, are skipped.
 
 local Config = require("config") ---@class Config
-local Apps = require("lib.actions.apps") ---@class Apps
+local Apps = require("lib.desktop.apps") ---@class Apps
 local Json = require("lib.json") ---@class Json
 local state_dir = require("lib.state")
 

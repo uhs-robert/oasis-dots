@@ -1,4 +1,4 @@
---- Close actions for the Delete submap: every window on the workspace, or every window of one kind of app.
+--- Bulk closing for the Delete submap: every window on the workspace, or every window of one kind of app.
 
 local Closed = require("lib.closed_windows") --- @class ClosedWindows
 

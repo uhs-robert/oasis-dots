@@ -1,5 +1,5 @@
---- Resize actions for the Resize submap.
---- Use Resize.at(n) to create a directional action set at a custom step size.
+--- Window resizing for the Resize submap.
+--- Use Resize.at(n) to create a directional set at a custom step size.
 
 --- @class Resize
 local Resize = {}

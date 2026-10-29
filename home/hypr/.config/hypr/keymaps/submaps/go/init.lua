@@ -3,7 +3,7 @@
 
 local Config = require("config") --- @class Config
 local Submap = require("lib.key.submap") --- @class Submap
-local Window = require("lib.actions.window") --- @class WindowActions
+local Window = require("lib.desktop.window") --- @class WindowActions
 local Workspaces = require("lib.workspaces") --- @class Workspaces
 
 -- The actions the rows name.

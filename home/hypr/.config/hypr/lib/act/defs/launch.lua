@@ -1,5 +1,5 @@
 -- Actions for the launch keys: terminals, file managers, the menus and the task manager. The performers stay in
--- lib/actions/{cmd,menu}.lua and run on use, so a headless load needs neither Config nor the session, and a command that
+-- lib/desktop/{cmd,menu}.lua and run on use, so a headless load needs neither Config nor the session, and a command that
 -- follows Config (the file managers) reads it when it runs.
 local Act = require("lib.act") ---@class ActionLib
 local Defer = require("lib.act.defer") ---@class Defer
@@ -8,37 +8,37 @@ local Scripts = require("lib.scripts") ---@class Scripts
 Act.define("terminal.open", {
   label = "Terminal",
   intent = "Open a new terminal window.",
-  run = Defer.call("lib.actions.cmd", "open_term"),
+  run = Defer.call("lib.desktop.terminal", "open"),
 })
 
 Act.define("terminal.bottom", {
   label = "Bottom Terminal",
   intent = "Open a terminal in the bottom half of the screen.",
-  run = Defer.call("lib.actions.cmd", "bottom_terminal"),
+  run = Defer.call("lib.desktop.terminal", "bottom"),
 })
 
 Act.define("menu.ssh", {
   label = "SSH Select",
   intent = "Pick a host from the SSH config and connect in a terminal.",
-  run = Defer.call("lib.actions.menu", "ssh"),
+  run = Defer.call("lib.desktop.menu", "ssh"),
 })
 
 Act.define("files.open", {
   label = "File Manager",
   intent = "Open the graphical file manager.",
-  run = function() require("lib.actions.cmd").run(require("config").app.gui_file_manager)() end,
+  run = function() require("lib.hypr").exec(require("config").app.gui_file_manager)() end,
 })
 
 Act.define("menu.drun", {
   label = "Open Application",
   intent = "Pick an application and start it.",
-  run = Defer.call("lib.actions.menu", "drun"),
+  run = Defer.call("lib.desktop.menu", "drun"),
 })
 
 Act.define("menu.agents", {
   label = "Agent Sessions",
   intent = "Open the agent sessions popup.",
-  run = Defer.call("lib.actions.menu", "agents"),
+  run = Defer.call("lib.desktop.menu", "agents"),
 })
 
 Act.define("menu.tmux", {
@@ -50,13 +50,13 @@ Act.define("menu.tmux", {
 Act.define("terminal.yazi", {
   label = "Yazi",
   intent = "Open Yazi in a new terminal.",
-  run = Defer.call("lib.actions.cmd", "term", "yazi"),
+  run = Defer.call("lib.desktop.terminal", "run", "yazi"),
 })
 
 Act.define("terminal.task_manager", {
   label = "Task Manager",
   intent = "Open btop in a new terminal.",
-  run = Defer.call("lib.actions.cmd", "term", "btop"),
+  run = Defer.call("lib.desktop.terminal", "run", "btop"),
 })
 
 Act.define("submap.enter", {

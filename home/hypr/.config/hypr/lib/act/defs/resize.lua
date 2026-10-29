@@ -9,11 +9,11 @@ Act.define("resize.step", {
     { name = "dir", type = "enum", values = { "left", "down", "up", "right" } },
     { name = "amount", type = "int" },
   },
-  run = function(dir, amount) require("lib.selection").for_selected(require("lib.actions.resize").at(amount)[dir])() end,
+  run = function(dir, amount) require("lib.selection").for_selected(require("lib.desktop.resize").at(amount)[dir])() end,
 })
 
 Act.define("resize.reset", {
   label = "Reset Size",
   intent = "Return every selected window, or the focused one when none is selected, to its layout size by floating and tiling it again.",
-  run = function() require("lib.selection").for_selected(require("lib.actions.resize").reset)() end,
+  run = function() require("lib.selection").for_selected(require("lib.desktop.resize").reset)() end,
 })

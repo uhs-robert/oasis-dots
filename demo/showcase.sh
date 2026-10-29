@@ -917,7 +917,7 @@ post_turn() { qs_ipc call popup close; }
 
 # An empty slot 4 gives the styles beat a bare desktop: the bar and popups are the whole picture.
 beat_empty() {
-  bind "SUPER + 4" 'require("lib.actions.workspace").focus_local(4)()'
+  bind "SUPER + 4" 'require("lib.desktop.workspace").focus_local(4)()'
   pause "$T_MOVE_HOLD"
 }
 
@@ -944,7 +944,7 @@ show_popup() {
 
 # No key caption either, so the bar's volume OSD plays without the overlay over it.
 show_volume() {
-  hypr_eval 'require("lib.actions.media").volume_up()()'
+  hypr_eval 'require("lib.desktop.media").volume_up()()'
   volume_steps=$((volume_steps + 1))
   pause "$T_SURFACE_HOLD"
 }
@@ -967,13 +967,13 @@ beat_styles() {
 # Back to the owner's volume once the recorder has stopped; `restore` calls it.
 undo_volume() {
   while ((volume_steps > 0)); do
-    hypr_eval 'require("lib.actions.media").volume_down()()'
+    hypr_eval 'require("lib.desktop.media").volume_down()()'
     volume_steps=$((volume_steps - 1))
   done
 }
 
 pre_kickoff() {
-  bind "SUPER + 2" 'require("lib.actions.workspace").focus_local(2)()'
+  bind "SUPER + 2" 'require("lib.desktop.workspace").focus_local(2)()'
   pause "$T_MOVE_HOLD"
   focus_class kitty-tmux-agent
 }
@@ -1039,7 +1039,7 @@ beat_overview() {
 # lazygit carried in by the overview beat); two half-width columns would look the same in scrolling as in the split
 # layout, three overflow and scroll.
 beat_prompt() {
-  bind "SUPER + 5" 'require("lib.actions.workspace").focus_local(5)()'
+  bind "SUPER + 5" 'require("lib.desktop.workspace").focus_local(5)()'
   pause "$T_MOVE_HOLD"
   overlay_keys ":"
   pause "$T_LEAD"
@@ -1222,7 +1222,7 @@ beat_keeptabs() {
 beat_outro() {
   overlay_card true
   pause 0.3
-  hypr_eval 'require("lib.actions.workspace").focus_local(4)()'
+  hypr_eval 'require("lib.desktop.workspace").focus_local(4)()'
   pause "$T_OUTRO_HOLD"
 }
 

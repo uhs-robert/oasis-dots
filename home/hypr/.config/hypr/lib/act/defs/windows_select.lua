@@ -16,7 +16,7 @@ local function selection() return require("lib.selection") end
 --- @return fun()
 local function on_selected(name, ...)
   local fixed = { ... }
-  return function() selection().for_selected(require("lib.actions.window")[name](table.unpack(fixed)))() end
+  return function() selection().for_selected(require("lib.desktop.window")[name](table.unpack(fixed)))() end
 end
 
 --- @return boolean
@@ -43,14 +43,14 @@ Act.define("windows.clear_selection", {
 Act.define("windows.confirm", {
   label = "Confirm Selection",
   intent = "Pass the Return key through to the focused window.",
-  run = function() require("lib.actions.window").pass_to_active()() end,
+  run = function() require("lib.desktop.window").pass_to_active()() end,
 })
 
 Act.define("windows.step_float", {
   label = "Step Floating Window",
   intent = "Focus the previous or next floating window on this workspace.",
   params = { { name = "dir", type = "enum", values = { "prev", "next" } } },
-  run = function(dir) require("lib.actions.window").cycle_float(dir)() end,
+  run = function(dir) require("lib.desktop.window").cycle_float(dir)() end,
 })
 
 Act.define("windows.close_selected", {
@@ -89,7 +89,7 @@ Act.define("windows.workspace_selected", {
   intent = "Move every selected window (or the focused one) to the previous or next workspace, on this monitor with persistent workspaces.",
   params = { { name = "dir", type = "enum", values = { "prev", "next" } } },
   run = function(dir)
-    local Workspace = require("lib.actions.workspace")
+    local Workspace = require("lib.desktop.workspace")
     local move
     if per_monitor() then
       move = Workspace.move_window_local(dir)
@@ -107,7 +107,7 @@ Act.define("windows.workspace_move_selected", {
   intent = "Move every selected window (or the focused one) to workspace n, or to slot n of this monitor with persistent workspaces.",
   params = { { name = "n", type = "int" } },
   run = function(n)
-    local Workspace = require("lib.actions.workspace")
+    local Workspace = require("lib.desktop.workspace")
     selection().for_selected(per_monitor() and Workspace.move_local(n) or Workspace.move(n))()
   end,
 })

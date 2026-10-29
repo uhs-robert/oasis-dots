@@ -1,5 +1,5 @@
 -- Actions for the media keys: tracks, volume, mute and brightness. One label per action, so every key bound to one
--- shows the same name. The performers stay in lib/actions/media.lua.
+-- shows the same name. The performers stay in lib/desktop/media.lua.
 local Act = require("lib.act") ---@class ActionLib
 
 -- Every key bound to these gets the flags: `locked` keeps it working on the lock screen, `repeating` lets volume ride
@@ -11,7 +11,7 @@ local REPEATING = { submap_universal = true, locked = true, repeating = true }
 --- @param name string
 --- @return fun()
 local function media(name)
-  return function() require("lib.actions.media")[name]()() end
+  return function() require("lib.desktop.media")[name]()() end
 end
 
 Act.define("media.prev", {

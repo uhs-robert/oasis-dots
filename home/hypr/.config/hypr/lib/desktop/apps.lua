@@ -1,8 +1,7 @@
---- App launcher actions for the Applications and Go submaps.
---- All actions dispatch a command or focus/launch a window.
+--- App launching for the Applications and Go submaps: run an app, or focus its window when one is open.
 
 local Config = require("config") ---@class Config
-local Cmd = require("lib.actions.cmd") ---@class Cmd
+local Hypr = require("lib.hypr") ---@class HyprLib
 
 local TERM = Config.app.term
 local TERM_CMD = Config.app.term_cmd
@@ -64,7 +63,7 @@ Apps.map = {
 --- Return an action that runs a shell command.
 --- @param app_command string
 --- @return fun()
-Apps.open = function(app_command) return Cmd.run(app_command) end
+Apps.open = function(app_command) return Hypr.exec(app_command) end
 
 --- Return an action that focuses an existing window or launches the app.
 --- @param opts { program: string, class?: string, title?: string, exclude_title?: string, cmd?: string }

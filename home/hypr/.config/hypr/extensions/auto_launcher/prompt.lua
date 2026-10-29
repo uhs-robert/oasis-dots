@@ -4,7 +4,7 @@
 --- that is dispatched by hyprctl once the prompt exits.
 
 local Config = require("config") ---@class Config
-local Cmd = require("lib.actions.cmd") ---@class Cmd
+local Hypr = require("lib.hypr") ---@class HyprLib
 local Scripts = require("lib.scripts") ---@class Scripts
 
 --- @class Prompt
@@ -64,7 +64,7 @@ end
 function Prompt.async(label, callback)
   local id, paths = new_request(callback)
   local cmd = build_cmd(label) .. " > " .. shell_quote(paths.result) .. " ; " .. answer_cmd(id)
-  Cmd.run(cmd)()
+  Hypr.exec(cmd)()
 end
 
 ---@param s string
@@ -113,7 +113,7 @@ function Prompt.select(label, choices, callback)
     .. shell_quote(paths.result)
     .. " ; "
     .. answer_cmd(id)
-  Cmd.run(Scripts.qs_picker .. " choices " .. shell_quote(fallback) .. " " .. shell_quote(paths.spec))()
+  Hypr.exec(Scripts.qs_picker .. " choices " .. shell_quote(fallback) .. " " .. shell_quote(paths.spec))()
 end
 
 return Prompt

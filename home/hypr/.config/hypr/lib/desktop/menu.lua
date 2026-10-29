@@ -1,8 +1,7 @@
---- Menu launcher actions.
---- All actions open the configured menu app and return fun().
+--- Menus and pickers: each opens the bar's picker or the configured menu app.
 
 local Config = require("config") ---@class Config
-local Cmd = require("lib.actions.cmd") ---@class Cmd
+local Hypr = require("lib.hypr") ---@class HyprLib
 local Rules = require("config.rules") ---@class Rules
 local Scripts = require("lib.scripts") ---@class Scripts
 
@@ -91,7 +90,7 @@ end
 --- @return fun()
 function Menu.picker(provider, fallback, mode)
   local function quote(s) return "'" .. s:gsub("'", "'\\''") .. "'" end
-  return Cmd.run(
+  return Hypr.exec(
     Scripts.qs_picker .. " " .. provider .. " " .. quote(fallback) .. (mode and (" " .. quote(mode)) or "")
   )
 end
@@ -109,33 +108,33 @@ end
 
 --- Return an action that opens the Quickshell workspace overview.
 --- @return fun()
-function Menu.overview() return Cmd.run(Scripts.qs_ipc .. " call overview open") end
+function Menu.overview() return Hypr.exec(Scripts.qs_ipc .. " call overview open") end
 
 --- Return an action that opens the Quickshell tmux overview.
 --- @return fun()
-function Menu.tmux_overview() return Cmd.run(Scripts.qs_ipc .. " call tmux_overview open") end
+function Menu.tmux_overview() return Hypr.exec(Scripts.qs_ipc .. " call tmux_overview open") end
 
 --- Return an action that opens the workspace overview with window search active.
 --- @return fun()
-function Menu.overview_search() return Cmd.run(Scripts.qs_ipc .. " call overview search") end
+function Menu.overview_search() return Hypr.exec(Scripts.qs_ipc .. " call overview search") end
 
 --- Return an action that opens the overview carrying the focused window, to drop it on a workspace.
 --- @param follow boolean Follow the window to its new workspace.
 --- @return fun()
 function Menu.overview_move(follow)
-  return Cmd.run(Scripts.qs_ipc .. " call overview " .. (follow and "move_follow" or "move_silent"))
+  return Hypr.exec(Scripts.qs_ipc .. " call overview " .. (follow and "move_follow" or "move_silent"))
 end
 
 --- Return an action that opens the tmux session picker.
 --- @return fun()
-function Menu.tmux() return Cmd.run(Scripts.rofi_tmux) end
+function Menu.tmux() return Hypr.exec(Scripts.rofi_tmux) end
 
 --- Return an action that opens the Quickshell keeptabs popup, falling back to the rofi picker.
 --- @return fun()
 function Menu.agents()
   local open = Scripts.qs_ipc .. " call popup open keeptabs"
   local pick = "~/.local/bin/keeptabs-pick"
-  return Cmd.run(
+  return Hypr.exec(
     "sh -c 'out=$(" .. open .. ' 2>&1) && [ -z "$out" ] || { [ -x ' .. pick .. " ] && exec " .. pick .. "; }'"
   )
 end
@@ -168,7 +167,7 @@ function Menu.zoxide(app)
   local class = app and "" or (" --class " .. FILE_MANAGER)
   local open = TERM_CMD .. class .. " -e " .. shell
   local rofi = "zoxide query -l | " .. picker .. " | xargs -r -I{} " .. open
-  if app then return Cmd.run(rofi) end
+  if app then return Hypr.exec(rofi) end
   return Menu.picker("dirs", rofi, FILE_MANAGER)
 end
 
@@ -181,6 +180,6 @@ end
 
 --- Return an action that picks a Bitwarden entry (see ~/.config/rofi-rbw.rc).
 --- @return fun()
-function Menu.bitwarden() return Cmd.run("rofi-rbw") end
+function Menu.bitwarden() return Hypr.exec("rofi-rbw") end
 
 return Menu

@@ -215,7 +215,7 @@ for _, param in ipairs(ids["delete.close_group"] and ids["delete.close_group"].p
 end
 check(
 	"delete.close_group takes every group: " .. table.concat(listed, ","),
-	table.concat(listed, ",") == table.concat(require("lib.actions.delete").groups, ",")
+	table.concat(listed, ",") == table.concat(require("lib.desktop.delete").groups, ",")
 )
 
 -- Each submap file loaded alone, without the global keys, names only actions it requires itself.

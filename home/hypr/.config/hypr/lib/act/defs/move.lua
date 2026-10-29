@@ -9,5 +9,5 @@ Act.define("move.step", {
     { name = "dir", type = "enum", values = { "left", "down", "up", "right" } },
     { name = "amount", type = "int" },
   },
-  run = function(dir, amount) require("lib.selection").for_selected(require("lib.actions.move").at(amount)[dir])() end,
+  run = function(dir, amount) require("lib.selection").for_selected(require("lib.desktop.move").at(amount)[dir])() end,
 })

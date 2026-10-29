@@ -111,7 +111,7 @@ package.loaded["config"] = {
 	monitors = {},
 	app = { term_cmd = "kitty", gui_file_manager = "files", tui_file_manager = "yazi" },
 }
-package.loaded["lib.actions.menu"] = setmetatable({}, {
+package.loaded["lib.desktop.menu"] = setmetatable({}, {
 	__index = function()
 		return function()
 			return function() end

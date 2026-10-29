@@ -1,28 +1,21 @@
---- Command runner.
---- All actions dispatch a command.
+--- Terminal launchers: the configured terminal (`Config.app.term_cmd`), a command in it, or the bottom-half terminal.
 
 local Config = require("config") ---@class Config
+local Hypr = require("lib.hypr") ---@class HyprLib
 
 local TERM_CMD = Config.app.term_cmd
 
---- @class Cmd
-local Cmd = {}
-
---- Return an action that runs a shell command.
---- @param cmd string
---- @return fun()
-Cmd.run = function(cmd)
-  return function() hl.dispatch(hl.dsp.exec_cmd(cmd)) end
-end
+--- @class Terminal
+local Terminal = {}
 
 --- Return an action that opens a new terminal window.
 --- @return fun()
-Cmd.open_term = function() return Cmd.run(TERM_CMD) end
+Terminal.open = function() return Hypr.exec(TERM_CMD) end
 
 --- Return an action that runs a command in the configured terminal.
 --- @param command string
 --- @return fun()
-Cmd.term = function(command) return Cmd.run(TERM_CMD .. " -e " .. command) end
+Terminal.run = function(command) return Hypr.exec(TERM_CMD .. " -e " .. command) end
 
 local BOTTOM_CLASS = "bottom-half-screen"
 local PREFILL_TIMEOUT_MS = 5000
@@ -57,13 +50,13 @@ end
 --- @param command string|nil
 --- @param prefill boolean|nil If true, load command into the shell prompt instead of running it.
 --- @return fun()
-Cmd.bottom_terminal = function(command, prefill)
+Terminal.bottom = function(command, prefill)
   local cmd = TERM_CMD .. " --class " .. BOTTOM_CLASS
-  if command and not prefill then return Cmd.run(cmd .. " -e " .. command) end
+  if command and not prefill then return Hypr.exec(cmd .. " -e " .. command) end
   return function()
     if command then prefill_when_open(command) end
     hl.dispatch(hl.dsp.exec_cmd(cmd))
   end
 end
 
-return Cmd
+return Terminal

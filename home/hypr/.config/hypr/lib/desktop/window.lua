@@ -1,4 +1,4 @@
---- Window management actions: focus direction, move direction, close, fullscreen, scratchpad, monitors.
+--- Window management: focus direction, move direction, close, fullscreen, scratchpad, monitors.
 
 local Workspaces = require("lib.workspaces") --- @class Workspaces
 local Hypr = require("lib.hypr") --- @class HyprLib

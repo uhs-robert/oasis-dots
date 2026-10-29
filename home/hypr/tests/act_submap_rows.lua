@@ -58,7 +58,7 @@ for _, id in ipairs({
 	check("defined: " .. id, ids[id] ~= nil)
 end
 -- The app names an action takes are exactly the names Apps.map has, so a new app cannot be left out by accident.
-local Apps = require("lib.actions.apps")
+local Apps = require("lib.desktop.apps")
 local names = {}
 for name in pairs(Apps.map) do
 	names[#names + 1] = name
