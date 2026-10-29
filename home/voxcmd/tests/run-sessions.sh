@@ -471,8 +471,8 @@ sess_wait
 check "outside a session a stock noise transcript is routed" "grep -q 'transcript \"thank you\" goes to route' '$XDG_RUNTIME_DIR/voxcmd/debug.log' && ! grep -q 'guess at noise' '$XDG_RUNTIME_DIR/voxcmd/debug.log'"
 rm -f "$XDG_RUNTIME_DIR/voxcmd/debug.log"
 
-# Killed only once it is listening: a watcher killed while it starts dies before its trap is set. SIGKILL runs no trap, so
-# the file stays, but the owner check reads it as no session.
+# SIGKILL runs no trap, so the file stays, but the owner check reads it as no session. Killed only once it is listening:
+# a watcher killed while it starts dies before it could set a trap anyway.
 sess_start HOLD
 owner_is_listening
 signal_watchers KILL
