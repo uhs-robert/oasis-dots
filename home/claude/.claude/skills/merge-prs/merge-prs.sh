@@ -524,7 +524,7 @@ eval_check_run() {
 # A check_run reviewer's gate for one PR: waits (with --wait-review) while it is pending or running, asks once again after
 # a failure, and records the problem or the note. The deadline is per reviewer, so a slow one cannot starve the next.
 gate_check_run() {
-  local name=$1 number=$2 label wait_s request started requested=false head
+  local name=$1 number=$2 label wait_s request started requested=false head announced=false
   label=$(rjq "$name" .label)
   wait_s=${MERGE_PRS_REVIEW_WAIT:-$(rjq "$name" '.github.wait_s // 1200')}
   request=$(rjq "$name" '.github.request // ""')
@@ -533,7 +533,11 @@ gate_check_run() {
     head=$(gh pr view "$number" --json headRefOid --jq .headRefOid) || die "cannot read the head of #$number"
     eval_check_run "$name" "$number" "$head"
     case $cr_state in
-    Pending | Running) $wait_review || break ;;
+    Pending | Running)
+      $wait_review || break
+      $announced || echo "merge-prs: #$number waiting up to ${wait_s}s for the $label review: $cr_msg" >&2
+      announced=true
+      ;;
     Failed)
       if $requested; then
         :
@@ -583,6 +587,7 @@ gate_summary_comment() {
   if [[ $status == Running || $status == Pending ]] && $wait_review; then
     echo "merge-prs: waiting up to ${review_wait_s}s for #$number's Codex review" >&2
     poll_review "$number"
+    echo "merge-prs: #$number's Codex review wait ended after ${waited}s (status: $status)" >&2
   fi
   # A summary that failed or reviewed nothing next to a usage-limit comment on this head is a reviewer that cannot run, not a failure.
   if [[ $status == Failed || $status == Unreviewed ]]; then
