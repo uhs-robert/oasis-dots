@@ -23,7 +23,7 @@ Register binds through `lib/key/bind.lua` (`Bind.key`, `Bind.submap`), never raw
 - `global/init.lua`: loads the files below, in order.
 - `global/general.lua`: window keys (close, fullscreen, maximize, float, scratchpad, monitors), the keybind help and the direction keys.
 - `global/workspace.lua`: workspace focus and move keys, numbered per monitor when workspaces are persistent.
-- `global/shortcuts.lua`: terminal, menu and file manager keys.
+- `global/shortcuts.lua`: terminal, menu, file manager and task manager keys, and `B` into the Bar submap.
 - `global/tools.lua`: screenshot, zoom, voice, password picker and overview keys.
 - `global/pickers.lua`: clipboard, directory and emoji pickers and the HyprVim keys.
 - `global/media.lua`: media keys and their Leader forms.
