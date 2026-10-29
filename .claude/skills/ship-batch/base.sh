@@ -19,21 +19,23 @@ lock_file() {
 # A second run waits for the first, up to SHIP_BATCH_LOCK_WAIT seconds (default 900), naming it. The lock lives on fd 9
 # until release_lock or exit, so it also covers merge-prs and the reloads it spawns.
 take_lock() {
-  local repo=$1 merging=$2 lock holder wait_s=${SHIP_BATCH_LOCK_WAIT:-900}
+  local repo=$1 note=$2 lock holder wait_s=${SHIP_BATCH_LOCK_WAIT:-900} caller
+  # Names this run (ship-batch or post-merge) in what it prints and in the note other runs read.
+  caller=$(basename "$0" .sh)
   lock=$(lock_file "$repo")
   # Opened read-write, since truncating it would wipe the note naming the holder.
   exec 9<>"$lock"
   if ! flock -n 9; then
     holder=$(<"$lock")
-    echo "ship-batch: another ship-batch holds the main checkout (${holder:-unknown}); waiting up to ${wait_s}s" >&2
+    echo "$caller: another run holds the main checkout (${holder:-unknown}); waiting up to ${wait_s}s" >&2
     flock -w "$wait_s" 9 || {
-      echo "ship-batch: still held after ${wait_s}s by: $(<"$lock")" >&2
+      echo "$caller: still held after ${wait_s}s by: $(<"$lock")" >&2
       # Closed, since ship-batch's exit trap reads an open fd 9 as holding the lock.
       exec 9>&-
       return 1
     }
   fi
-  printf 'pid %s, since %s, merging %s\n' "$$" "$(date +%H:%M:%S)" "${merging:-no PRs}" >"$lock"
+  printf 'pid %s (%s), since %s, %s\n' "$$" "$caller" "$(date +%H:%M:%S)" "$note" >"$lock"
 }
 
 # Takes the ship lock only if it is free right now; returns 1, holding nothing, when another batch has it.

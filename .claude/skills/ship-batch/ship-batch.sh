@@ -103,7 +103,7 @@ fi
 
 # Only the merge and the pull run under the lock (fd 9, closed for commands that could leave a daemon behind). It is
 # released before post-merge.sh, which takes it itself.
-take_lock "$repo" "${ready[*]}" || die "gave up waiting for the ship-batch running in this repository"
+take_lock "$repo" "merging ${ready[*]:-no PRs}" || die "gave up waiting for the ship-batch running in this repository"
 # Each branch was checked against the main of its own time. Another batch may have merged since, and then what would land
 # was never checked, so a branch that no longer contains origin/main is not merged (nor are the ones after it). The same
 # goes for a PR whose head on GitHub is not the commit that was checked (merge-prs merges the PR head, not the worktree).
@@ -128,7 +128,7 @@ if [[ -n $stale ]]; then
 fi
 # The reviews were waited for above, so the gate here only confirms them and never waits under the lock.
 ((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${skip_gate[@]}" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
-git -C "$repo" pull -q --ff-only
+git -C "$repo" pull -q --ff-only 9>&-
 # The lock is released first: post-merge takes it itself, so keeping it here would deadlock. With no PR numbers this is a
 # plain pull plus post-merge. The script runs from the main checkout, which now holds the merged version.
 release_lock

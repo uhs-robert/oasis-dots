@@ -60,13 +60,13 @@ check "a missing commit is refused" "! base_is_ancestor '$repo' 0000000000000000
 
 echo "== one batch at a time on the main checkout"
 lock_path=$(lock_file "$repo")
-check "the first run takes the lock" "take_lock '$repo' '7 8'"
+check "the first run takes the lock" "take_lock '$repo' 'merging 7 8'"
 check "a second run gives up after the bounded wait" "! (SHIP_BATCH_LOCK_WAIT=1 take_lock '$repo' 9 2>'$root/err')"
-check "naming the holder" "grep -q 'pid $$, since .*, merging 7 8' '$root/err'"
+check "naming the holder" "grep -q 'pid $$ (.*), since .*, merging 7 8' '$root/err'"
 release_lock
 check "release frees it at once" "(SHIP_BATCH_LOCK_WAIT=1 take_lock '$repo' 9)"
 (
-  take_lock "$repo" 5
+  take_lock "$repo" 'merging 5'
   sleep 2
 ) &
 holder=$!
@@ -679,7 +679,7 @@ wait "$holder"
 
 echo "== ship-batch hands the lock to post-merge"
 SHIP_BATCH_LOCK_WAIT=3 migrate_ship lib/install/migrate.sh
-check "ship-batch releases its lock before calling post-merge: no deadlock, no waiting" "[[ $? == 0 ]] && ! grep -q 'another ship-batch holds' '$e2e/out' && logged '$migrate_step'"
+check "ship-batch releases its lock before calling post-merge: no deadlock, no waiting" "[[ $? == 0 ]] && ! grep -q 'holds the main checkout' '$e2e/out' && logged '$migrate_step'"
 check "post-merge runs its steps under the lock itself, and records main" "[[ \$(pm_applied) == \$(pm_head) ]] && flock -n '$SHIP_LOCK' true && ! grep -q 'fd9 leaked' '$SHIP_LOG'"
 STUB_MIGRATE_STATUS=1 migrate_ship lib/install/migrate.sh
 check "a failing post-merge fails the ship after the merge, naming the recovery" "[[ $? != 0 ]] && grep -q 'post-merge failed.*just post-merge' '$e2e/out' && [[ \$(git -C '$e2e/main' rev-parse HEAD) == \$(git -C '$e2e/main' rev-parse b1) ]]"
