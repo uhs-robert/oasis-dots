@@ -30,7 +30,7 @@ Submap.define({
   catchall = "stay",
 
   hint = {
-    { "Move", "move.step" },
+    { "Move", { "move.step", tiers = "speed" } },
     { "Window", { "window.float_toggle", label = "Float" } },
   },
 

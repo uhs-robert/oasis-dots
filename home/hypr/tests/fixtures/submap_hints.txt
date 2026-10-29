@@ -1,36 +1,36 @@
 # lua home/hypr/tests/submap_hints.lua --update
-default	Cursor	Move	hjkl Move · HJKL Fast · C-hjkl Pixel · C-HJKL Ultra Fast
-default	Cursor	Click	space Left · r Right · m Middle · C-space/r/m Click (Exit)
-default	Cursor	Pick	f Float · t Tile · g Split · ; Float (Exit)
-default	Cursor	Scroll	ey,. Scroll · EY<> Fast · C-ey,. Pixel
+default	Cursor	Move	hjkl Move · S/C speed
+default	Cursor	Click	space Left · r Right · m Middle · C-space/r/m +Exit
+default	Cursor	Pick	f Float · t Tile · g Split · ; Quick
+default	Cursor	Scroll	ey,. Scroll
 default	Cursor	Keys	A-hjkl Arrows · C-u/d Page
 default	Cursor	(footer)	Esc Exit · ? All keys
-default	Move	Move	hjkl Move · HJKL Fast · C-hjkl Pixel · C-HJKL Ultra Fast
+default	Move	Move	hjkl Move · S/C speed
 default	Move	Window	f Float
 default	Move	(footer)	Esc Exit · ? All keys
-default	Resize	Resize	hjkl Resize · HJKL Fast · C-hjkl Pixel · C-HJKL Ultra Fast
+default	Resize	Resize	hjkl Resize · S/C speed
 default	Resize	Window	= Reset
 default	Resize	(footer)	Esc Exit · ? All keys
-default	Windows	Focus	hjkl Focus · 1..0 Monitor · [] Floating
-default	Windows	Move	HJKL Move · C-hjkl Workspace · S-1..5 Move to WS
+default	Windows	Focus	hjkl Focus · 1..0 Monitor · [] Floats
+default	Windows	Move	HJKL Move · C-hjkl WS · S-1..5 WS
 default	Windows	Select	space Select · s Swap · Enter Confirm
 default	Windows	Window	x Close · f Float · p Pseudo · - Split
 default	Windows	Mode	r Resize · m Move · c Cursor
 default	Windows	(footer)	Esc Exit · ? All keys
-no-leader	Cursor	Move	hjkl Move · HJKL Fast · C-hjkl Pixel · C-HJKL Ultra Fast
-no-leader	Cursor	Click	space Left · r Right · m Middle · C-space/r/m Click (Exit)
-no-leader	Cursor	Pick	f Float · t Tile · g Split · ; Float (Exit)
-no-leader	Cursor	Scroll	ey,. Scroll · EY<> Fast · C-ey,. Pixel
+no-leader	Cursor	Move	hjkl Move · S/C speed
+no-leader	Cursor	Click	space Left · r Right · m Middle · C-space/r/m +Exit
+no-leader	Cursor	Pick	f Float · t Tile · g Split · ; Quick
+no-leader	Cursor	Scroll	ey,. Scroll
 no-leader	Cursor	Keys	A-hjkl Arrows · C-u/d Page
 no-leader	Cursor	(footer)	Esc Exit · ? All keys
-no-leader	Move	Move	hjkl Move · HJKL Fast · C-hjkl Pixel · C-HJKL Ultra Fast
+no-leader	Move	Move	hjkl Move · S/C speed
 no-leader	Move	Window	f Float
 no-leader	Move	(footer)	Esc Exit · ? All keys
-no-leader	Resize	Resize	hjkl Resize · HJKL Fast · C-hjkl Pixel · C-HJKL Ultra Fast
+no-leader	Resize	Resize	hjkl Resize · S/C speed
 no-leader	Resize	Window	= Reset
 no-leader	Resize	(footer)	Esc Exit · ? All keys
-no-leader	Windows	Focus	hjkl Focus · 1..3 Monitor · [] Floating
-no-leader	Windows	Move	HJKL Move · C-hjkl Workspace · S-1..5 Move to WS
+no-leader	Windows	Focus	hjkl Focus · 1..3 Monitor · [] Floats
+no-leader	Windows	Move	HJKL Move · C-hjkl WS · S-1..5 WS
 no-leader	Windows	Select	space Select · s Swap · Enter Confirm
 no-leader	Windows	Window	x Close · f Float · p Pseudo · - Split
 no-leader	Windows	Mode	r Resize · m Move · c Cursor

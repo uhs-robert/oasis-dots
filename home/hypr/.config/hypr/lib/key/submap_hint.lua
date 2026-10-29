@@ -9,8 +9,8 @@ local Json = require("lib.json") ---@class Json
 --- @field [integer] string  Action ids whose rows the item lists
 --- @field args?  table      Only rows whose action args equal these, position by position
 --- @field mods?  string     Only rows with exactly these modifiers, e.g. "" or "CTRL"
---- @field label? string     Replaces the label taken from the rows, so the rows merge into one entry per modifier set (a
----                          tier such as "(Fast)" still gets its own)
+--- @field label? string     Replaces the whole label taken from the rows, so the rows merge into one entry per modifier set
+--- @field tiers? string     Sums up the speed tiers the item leaves out as one entry, e.g. "speed" gives "S/C speed"
 
 --- A group is { heading, item, item... }; an item is an action id or a SubmapHintItem.
 --- @alias SubmapHintGroup table
@@ -192,14 +192,28 @@ local function item_entries(item, rows)
     end
   end
 
-  local out = {}
+  local out, tier_mods = {}, {}
   for _, entry in ipairs(entries) do
-    -- A tier beside its plain sibling ("HJKL Fast" after "hjkl Resize") needs only its tier name.
-    local label = entry.stem
-    if entry.suffix then
-      label = stems_plain[entry.stem] and entry.suffix or (entry.stem .. " (" .. entry.suffix .. ")")
+    -- A tier beside its plain sibling ("SHIFT + H" Resize Left (Fast) beside "H" Resize Left) is a speed step: one
+    -- entry per tier crowded a narrow screen out, so they are left to the full list, or summed up by `tiers`.
+    local is_tier = entry.suffix ~= nil and stems_plain[entry.stem]
+    if is_tier then
+      for mod in pairs(entry.mods) do
+        tier_mods[mod] = true
+      end
+    else
+      local label = entry.stem
+      if entry.suffix and not item.label then label = entry.stem .. " (" .. entry.suffix .. ")" end
+      out[#out + 1] = { entry_cap(entry.mods, entry.bases), label }
     end
-    out[#out + 1] = { entry_cap(entry.mods, entry.bases), label }
+  end
+
+  if item.tiers and next(tier_mods) then
+    local letters = {}
+    for _, mod in ipairs({ "SHIFT", "CTRL", "ALT" }) do
+      if tier_mods[mod] then letters[#letters + 1] = mod:sub(1, 1) end
+    end
+    out[#out + 1] = { table.concat(letters, "/"), item.tiers }
   end
   return out
 end

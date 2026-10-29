@@ -271,8 +271,8 @@ arrows	Windows	8	Monitor 8	-	-
 arrows	Windows	9	Monitor 9	-	-
 arrows	Windows	BRACKETLEFT	Prev Float	-	-
 arrows	Windows	BRACKETRIGHT	Next Float	-	-
-arrows	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S-←↓↑→","Fast"],["C-←↓↑→","Pixel"],["C-S-←↓↑→","Ultra Fast"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","Click (Exit)"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Float (Exit)"]],"name":"Pick"},{"keys":[["ey,.","Scroll"],["EY<>","Fast"],["C-ey,.","Pixel"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
-arrows	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S-←↓↑→","Fast"],["C-←↓↑→","Pixel"],["C-S-←↓↑→","Ultra Fast"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","Click (Exit)"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Float (Exit)"]],"name":"Pick"},{"keys":[["ey,.","Scroll"],["EY<>","Fast"],["C-ey,.","Pixel"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+arrows	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+arrows	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
 arrows	Windows	CTRL + DOWN	Workspace Down	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1})
 arrows	Windows	CTRL + H	-	-	focus({workspace=m-1})
 arrows	Windows	CTRL + J	-	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1})
@@ -289,10 +289,10 @@ arrows	Windows	J	-	-	focus({direction=d})
 arrows	Windows	K	-	-	focus({direction=u})
 arrows	Windows	L	-	-	focus({direction=r})
 arrows	Windows	LEFT	Focus Left	-	focus({direction=l})
-arrows	Windows	M	+Move	-	submap(Move);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S-←↓↑→","Fast"],["C-←↓↑→","Pixel"],["C-S-←↓↑→","Ultra Fast"]],"name":"Move"},{"keys":[["f","Float"]],"name":"Window"}],"name":"Move"}')
+arrows	Windows	M	+Move	-	submap(Move);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["f","Float"]],"name":"Window"}],"name":"Move"}')
 arrows	Windows	MINUS	Toggle Split	-	layout(togglesplit)
 arrows	Windows	P	Toggle Pseudo	-	window.pseudo
-arrows	Windows	R	+Resize	-	submap(Resize);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Resize"],["S-←↓↑→","Fast"],["C-←↓↑→","Pixel"],["C-S-←↓↑→","Ultra Fast"]],"name":"Resize"},{"keys":[["=","Reset"]],"name":"Window"}],"name":"Resize"}')
+arrows	Windows	R	+Resize	-	submap(Resize);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Resize"],["S/C","speed"]],"name":"Resize"},{"keys":[["=","Reset"]],"name":"Window"}],"name":"Resize"}')
 arrows	Windows	RETURN	Confirm Selection	-	pass({window=active})
 arrows	Windows	RIGHT	Focus Right	-	focus({direction=r})
 arrows	Windows	S	Swap with Selected	-	-
@@ -584,8 +584,8 @@ default	Windows	8	Monitor 8	-	-
 default	Windows	9	Monitor 9	-	-
 default	Windows	BRACKETLEFT	Prev Float	-	-
 default	Windows	BRACKETRIGHT	Next Float	-	-
-default	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","Click (Exit)"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Float (Exit)"]],"name":"Pick"},{"keys":[["ey,.","Scroll"],["EY<>","Fast"],["C-ey,.","Pixel"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
-default	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","Click (Exit)"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Float (Exit)"]],"name":"Pick"},{"keys":[["ey,.","Scroll"],["EY<>","Fast"],["C-ey,.","Pixel"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+default	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+default	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
 default	Windows	CTRL + DOWN	-	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1})
 default	Windows	CTRL + H	Workspace Left	-	focus({workspace=m-1})
 default	Windows	CTRL + J	Workspace Down	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1})
@@ -602,10 +602,10 @@ default	Windows	J	Focus Down	-	focus({direction=d})
 default	Windows	K	Focus Up	-	focus({direction=u})
 default	Windows	L	Focus Right	-	focus({direction=r})
 default	Windows	LEFT	-	-	focus({direction=l})
-default	Windows	M	+Move	-	submap(Move);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["f","Float"]],"name":"Window"}],"name":"Move"}')
+default	Windows	M	+Move	-	submap(Move);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["f","Float"]],"name":"Window"}],"name":"Move"}')
 default	Windows	MINUS	Toggle Split	-	layout(togglesplit)
 default	Windows	P	Toggle Pseudo	-	window.pseudo
-default	Windows	R	+Resize	-	submap(Resize);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Resize"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Resize"},{"keys":[["=","Reset"]],"name":"Window"}],"name":"Resize"}')
+default	Windows	R	+Resize	-	submap(Resize);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Resize"],["S/C","speed"]],"name":"Resize"},{"keys":[["=","Reset"]],"name":"Window"}],"name":"Resize"}')
 default	Windows	RETURN	Confirm Selection	-	pass({window=active})
 default	Windows	RIGHT	-	-	focus({direction=r})
 default	Windows	S	Swap with Selected	-	-
@@ -890,8 +890,8 @@ no-leader	Windows	2	Monitor 2	-	-
 no-leader	Windows	3	Monitor 3	-	-
 no-leader	Windows	BRACKETLEFT	Prev Float	-	-
 no-leader	Windows	BRACKETRIGHT	Next Float	-	-
-no-leader	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","Click (Exit)"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Float (Exit)"]],"name":"Pick"},{"keys":[["ey,.","Scroll"],["EY<>","Fast"],["C-ey,.","Pixel"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
-no-leader	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","Click (Exit)"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Float (Exit)"]],"name":"Pick"},{"keys":[["ey,.","Scroll"],["EY<>","Fast"],["C-ey,.","Pixel"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+no-leader	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+no-leader	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
 no-leader	Windows	CTRL + DOWN	-	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1})
 no-leader	Windows	CTRL + H	Workspace Left	-	focus({workspace=m-1})
 no-leader	Windows	CTRL + J	Workspace Down	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1})
@@ -908,10 +908,10 @@ no-leader	Windows	J	Focus Down	-	focus({direction=d})
 no-leader	Windows	K	Focus Up	-	focus({direction=u})
 no-leader	Windows	L	Focus Right	-	focus({direction=r})
 no-leader	Windows	LEFT	-	-	focus({direction=l})
-no-leader	Windows	M	+Move	-	submap(Move);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["f","Float"]],"name":"Window"}],"name":"Move"}')
+no-leader	Windows	M	+Move	-	submap(Move);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["f","Float"]],"name":"Window"}],"name":"Move"}')
 no-leader	Windows	MINUS	Toggle Split	-	layout(togglesplit)
 no-leader	Windows	P	Toggle Pseudo	-	window.pseudo
-no-leader	Windows	R	+Resize	-	submap(Resize);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Resize"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Resize"},{"keys":[["=","Reset"]],"name":"Window"}],"name":"Resize"}')
+no-leader	Windows	R	+Resize	-	submap(Resize);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Resize"],["S/C","speed"]],"name":"Resize"},{"keys":[["=","Reset"]],"name":"Window"}],"name":"Resize"}')
 no-leader	Windows	RETURN	Confirm Selection	-	pass({window=active})
 no-leader	Windows	RIGHT	-	-	focus({direction=r})
 no-leader	Windows	S	Swap with Selected	-	-
@@ -1203,8 +1203,8 @@ persistent	Windows	8	Monitor 8	-	-
 persistent	Windows	9	Monitor 9	-	-
 persistent	Windows	BRACKETLEFT	Prev Float	-	-
 persistent	Windows	BRACKETRIGHT	Next Float	-	-
-persistent	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","Click (Exit)"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Float (Exit)"]],"name":"Pick"},{"keys":[["ey,.","Scroll"],["EY<>","Fast"],["C-ey,.","Pixel"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
-persistent	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","Click (Exit)"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Float (Exit)"]],"name":"Pick"},{"keys":[["ey,.","Scroll"],["EY<>","Fast"],["C-ey,.","Pixel"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+persistent	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+persistent	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
 persistent	Windows	CTRL + DOWN	-	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1})
 persistent	Windows	CTRL + H	Workspace Left	-	focus({workspace=m-1})
 persistent	Windows	CTRL + J	Workspace Down	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1})
@@ -1221,10 +1221,10 @@ persistent	Windows	J	Focus Down	-	focus({direction=d})
 persistent	Windows	K	Focus Up	-	focus({direction=u})
 persistent	Windows	L	Focus Right	-	focus({direction=r})
 persistent	Windows	LEFT	-	-	focus({direction=l})
-persistent	Windows	M	+Move	-	submap(Move);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Move"},{"keys":[["f","Float"]],"name":"Window"}],"name":"Move"}')
+persistent	Windows	M	+Move	-	submap(Move);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["f","Float"]],"name":"Window"}],"name":"Move"}')
 persistent	Windows	MINUS	Toggle Split	-	layout(togglesplit)
 persistent	Windows	P	Toggle Pseudo	-	window.pseudo
-persistent	Windows	R	+Resize	-	submap(Resize);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Resize"],["HJKL","Fast"],["C-hjkl","Pixel"],["C-HJKL","Ultra Fast"]],"name":"Resize"},{"keys":[["=","Reset"]],"name":"Window"}],"name":"Resize"}')
+persistent	Windows	R	+Resize	-	submap(Resize);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Resize"],["S/C","speed"]],"name":"Resize"},{"keys":[["=","Reset"]],"name":"Window"}],"name":"Resize"}')
 persistent	Windows	RETURN	Confirm Selection	-	pass({window=active})
 persistent	Windows	RIGHT	-	-	focus({direction=r})
 persistent	Windows	S	Swap with Selected	-	-

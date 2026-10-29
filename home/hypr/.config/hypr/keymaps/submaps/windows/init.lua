@@ -26,12 +26,12 @@ Submap.define({
   on_exit = function() require("lib.actions.selection").clear() end,
 
   hint = {
-    { "Focus", "window.focus", "monitor.focus", { "windows.step_float", label = "Floating" } },
+    { "Focus", "window.focus", "monitor.focus", { "windows.step_float", label = "Floats" } },
     {
       "Move",
       "windows.move_selected",
-      { "workspace.cycle", "windows.workspace_selected", label = "Workspace" },
-      "windows.workspace_move_selected",
+      { "workspace.cycle", "windows.workspace_selected", label = "WS" },
+      { "windows.workspace_move_selected", label = "WS" },
     },
     {
       "Select",
