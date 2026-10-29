@@ -50,7 +50,6 @@
     "deny": [
       "Bash(gh pr merge*)",
       "Bash(gh * pr merge*)",
-      "Bash(gh pr * merge*)",
       "Bash(*merge-prs.sh 0*)",
       "Bash(*merge-prs.sh 1*)",
       "Bash(*merge-prs.sh 2*)",
