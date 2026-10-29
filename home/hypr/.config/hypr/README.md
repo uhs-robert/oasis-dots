@@ -106,24 +106,7 @@ That option pins them so they always appear in the bar even when empty. It also 
 
 ## App Launcher / Sessions
 
-`extensions/auto_launcher/` provides a workspace session launcher, picked in the Quickshell picker (or the dmenu command in `Config.app.dmenu_cmd`, rofi by default, when the bar isn't running). A session is a named set of apps, each pinned to a specific monitor and workspace offset. `sessions.lua` ships a few generic ones (Browsing, Files, Game, System Monitor, System Update) built from your `Config.app` choices and common apps (Firefox, Steam, btop, topgrade); a session monitor that is not connected folds onto the highest connected one, so they work on any layout.
-
-Your own sessions go in your `custom/` config and are registered on top of the defaults. `Sessions.term` runs a command in the configured terminal under its own window class, `Sessions.tmuxifier` loads a tmuxifier session, and a plain table launches any app:
-
-```lua
--- custom/sessions.lua, required from custom/init.lua
-local Sessions = require("extensions.auto_launcher.sessions")
-
-Sessions.add("💼 Work", {
-  { monitor = 1, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
-  Sessions.tmuxifier({ session = "work", monitor = 2, ws = 1 }),
-  { monitor = 2, ws = 2, cmd = "slack", class = "slack", size = { 1064, 461 }, delay = 5000 },
-})
-
-Sessions.remove("🎮 Game") -- drop a default; Sessions.clear() drops them all
-```
-
-Trigger the picker with `SUPER + SHIFT + O`. `Launcher.launch(name)` starts a session by exact name without the picker; voxcmd uses it for "open the work session" (see its [Sessions](../../../voxcmd/.config/voxcmd/README.md#sessions) section), with `Launcher.write_names(path)` to list them.
+`extensions/auto_launcher/` launches named sets of apps, each on its own monitor and workspace, from a picker on `SUPER + SHIFT + O`. See [`extensions/auto_launcher/README.md`](extensions/auto_launcher/README.md) for the shipped sessions and how to add your own.
 
 ## Wallpaper
 
@@ -162,8 +145,7 @@ The bar, popups, notifications, pickers, workspace overview, lock screen and gre
 The config is Lua, not `hyprland.conf`, and the tree is stylua-checked.
 
 - `hyprland.lua` is the entrypoint: it merges the machine config (`config/machines/`), loads the `hyprvim` plugin and requires `custom/init.lua` last. Subsystems live in `config/`, `keymaps/`, `extensions/`, `lib/`, `scripts/` and `theme/`.
-- Actions (`lib/act/init.lua`): each thing the desktop can do is defined once with `Act.define` in `lib/act/defs/` (`tools.lua` for the tools, `pickers.lua` for the pickers and HyprVim, one file per bar area for the IPC actions no key reaches). Shipped actions carry no key, so `lib/` says what an action does and `keymaps/` says which key runs it (a define in `custom/` may still pass `key` and `extra_keys`): a global key is an `Act.bind(id, { key, args, desc })` line in `keymaps/global/`, a submap key a row in that submap's file, and the Bar popup rows, which the Leader submap reuses, are in `keymaps/submaps/bar/rows.lua`. To move a shipped key, edit that line. A defs file is live only if a keymap requires it (`keymaps/global/tools.lua`, `keymaps/global/keyless.lua`). `Act.run` and `Act.run_cli` run one by id. An action's `run` hands its work to `lib/desktop/`, one file per desktop area (windows, workspaces, cursor, media, apps, menus, terminals). Those files know nothing about action ids, so keymaps, extensions and `custom/` also call them directly. `hypr-act list` and `hypr-act <id> [args...]` (`home/hypr/.local/bin/hypr-act`) list and run them in the live session; its header lists the exit codes.
-- The `registry` check step loads the defs under stubs (`home/hypr/tests/act_refs.lua`, which needs a stub line for any new `require`) and checks the ids, IPC functions and scripts they name. A new bind or typed IPC function needs an action, or a reasoned line in `lib/check/registry.allow`.
-- Keys: register binds through `lib/key/bind.lua` (`Bind.key`, `Bind.submap`), never raw `hl.bind` or `hl.define_submap`, so `Bind.unbind` can remove a key from one submap. `Bind.unbind` and `Bind.submap` are public API for `custom/`; keep their signatures stable.
-- Submaps: `lib/key/submap.lua` (`Submap.define`) builds one from bind rows. Its `hint` option groups action ids into the compact hint bar (`lib/key/submap_hint.lua` derives the keys and labels from the rows and sends the result to Quickshell's `submap_hints` target on every entry); a submap with a hint is left out of which-key's auto-show in `hyprland.lua`. `home/hypr/tests/submap_hints.lua` pins what each hint lists. Its `targets` option (Windows, Resize, Move) marks a submap whose keys act on the focused window or the selection: `lib/selection.lua` holds that selection, carries it between such submaps, clears it on any other switch (`Submap.enter`, `Submap.reset` and Hyprland's submap event), draws each selected window's border with `set_prop` (kept in step with config changes and reloads through window tags) and sends the selection to Quickshell, which numbers the windows.
 - Overrides stay out of tracked files: machine values in `config/machines/<hostname>.lua`, everything else in `custom/` (see [Add your own config](#3-add-your-own-config)). Never auto-load other `custom/` files from the config; the wallpaper rotator, a separate process, is the one reader of `custom/wallpaper.lua` and `custom/hyprpaper.conf`.
+- [`lib/`](lib/README.md) holds the shared libraries. [`lib/act/`](lib/act/README.md) is the action system and [`lib/desktop/`](lib/desktop/README.md) the desktop areas it drives.
+- [`keymaps/`](keymaps/README.md) holds every shipped key, the binding rules and the submap options.
+- Pattern folders, every file the same shape: `config/*/` is one config module per folder, `theme/colors/` one palette per file, `theme/generate/` one generator per target, `scripts/` one shell helper per file.
