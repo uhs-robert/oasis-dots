@@ -1,5 +1,5 @@
-"""Tests which scopes a changed path reaches (keys.path_scopes over scopes.py), without a clone. The expected strings
-are the raw $scopes of the shell runner the port replaced, leading space included, since they are part of the key bytes.
+"""Tests which scopes a changed path reaches (scopes.path_scopes over scopes.py), without a clone. The expected strings
+are the raw $scopes of the shell runner the port replaced, leading space included.
 """
 
 import os
@@ -9,14 +9,12 @@ import unittest
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import keys  # noqa: E402
 import scopes  # noqa: E402
 
 CASES = [
     # The runner's own files run everything.
     ("lib/check.sh", " all"),
     ("lib/check/runner.py", " checkscope all"),
-    ("lib/check/keys.py", " checkscope all"),
     ("lib/check/scopes.py", " checkscope all"),
     ("lib/check/passed.py", " checkscope all"),
     ("lib/check/passed.sh", " checkscope all"),
@@ -24,7 +22,6 @@ CASES = [
     ("justfile", " all"),
     (".claude/check-commands", " all"),
     # Named one by one above because `*` crosses `/`: a test module is no runner file.
-    ("lib/check/tests/test_keys.py", " checkscope"),
     ("lib/check/tests/scope.sh", " checkscope"),
     ("lib/check/steps/symlinks.sh", " checkscope"),
     ("lib/check/registry.allow", " checkscope"),
@@ -115,7 +112,7 @@ CASES = [
     ("lib/common/greeter-files.sh", " quickshell install skills"),
     ("packages/snapper.ini", " install"),
     # hooks: the agent hooks and the tests of the reviewers and owner-test-bar; skills: ship-batch and merge-prs.
-    (".claude/hooks/check-before-commit.sh", " hooks"),
+    (".claude/hooks/guard-legacy-hyprctl.sh", " hooks"),
     ("home/claude/.claude/skills/orchestrator/reviewers.json", " hooks"),
     (".claude/skills/owner-test-bar/owner-test-bar.sh", " hooks"),
     (".claude/skills/ship-batch/tests/run.sh", " skills"),
@@ -139,22 +136,22 @@ class PathScopes(unittest.TestCase):
     def test_cases(self):
         for path, expected in CASES:
             with self.subTest(path=path):
-                self.assertEqual(keys.path_scopes(path), expected)
+                self.assertEqual(scopes.path_scopes(path), expected)
 
     def test_a_crate_edit_selects_the_voxcmd_suites(self):
         """The suites build the crate and run its binary, so editing its sources or manifest must run them and the
         crate's own step; its test sources, snapshots and goldens are read only by cargo test, in the voxrust scope."""
         for path in ("home/voxcmd/src/cli.rs", "home/voxcmd/Cargo.toml"):
             with self.subTest(path=path):
-                self.assertEqual(set(keys.path_scopes(path).split()), {*scopes.VOXCMD_SUITE_SCOPES, scopes.VOX_RUST})
+                self.assertEqual(set(scopes.path_scopes(path).split()), {*scopes.VOXCMD_SUITE_SCOPES, scopes.VOX_RUST})
         for path in ("home/voxcmd/tests/cli.rs", "home/voxcmd/tests/snapshots/cli__x.snap"):
             with self.subTest(path=path):
-                self.assertEqual(keys.path_scopes(path).split(), [scopes.VOX_RUST])
+                self.assertEqual(scopes.path_scopes(path).split(), [scopes.VOX_RUST])
 
     def test_a_voxcmd_click_edit_selects_only_the_click_sub_scope(self):
         for path in ("home/voxcmd/tests/run.sh", "home/voxcmd/tests/run-sessions.sh", "home/voxcmd/tests/fixtures/overview.json"):
             with self.subTest(path=path):
-                self.assertEqual(keys.path_scopes(path).split(), [scopes.VOX_CLICK])
+                self.assertEqual(scopes.path_scopes(path).split(), [scopes.VOX_CLICK])
         click_steps = [step.name for step in scopes.STEPS if step.scope == scopes.VOX_CLICK]
         self.assertEqual(click_steps, ["voxcmd-click"])
 
@@ -162,10 +159,10 @@ class PathScopes(unittest.TestCase):
         for path in ("README.md", "lib/check/README.md", "home/claude/.claude/skills/merge-prs/SKILL.md",
                      ".claude/hooks/README.md", "home/voxcmd/.config/voxcmd/README.md", "home/hypr/.config/hypr/README.md"):
             with self.subTest(path=path):
-                self.assertEqual(keys.path_scopes(path), "")
+                self.assertEqual(scopes.path_scopes(path), "")
         # docs-generated compares these two against what the generators print.
-        self.assertEqual(keys.path_scopes("docs/keybinds.md"), " docsgen")
-        self.assertEqual(keys.path_scopes("home/quickshell/.config/quickshell/README.md"), " docsgen")
+        self.assertEqual(scopes.path_scopes("docs/keybinds.md"), " docsgen")
+        self.assertEqual(scopes.path_scopes("home/quickshell/.config/quickshell/README.md"), " docsgen")
 
     def test_there_are_few_folder_scopes(self):
         folder_scopes = {step.scope for step in scopes.STEPS} - {"tree", "shell"}
@@ -174,7 +171,7 @@ class PathScopes(unittest.TestCase):
     def test_tests_are_found_by_naming_convention(self):
         """A tests/ file that follows a convention in scopes.py is a step without an entry of its own."""
         names = {step.name for step in scopes.STEPS}
-        for name in ("act-global", "bar-layout", "polled-command", "install-pacman-tweaks", "hook-check-before-pr"):
+        for name in ("act-global", "bar-layout", "polled-command", "install-pacman-tweaks", "hook-report-failed-main-check"):
             with self.subTest(name=name):
                 self.assertIn(name, names)
 

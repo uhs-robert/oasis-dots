@@ -2,8 +2,7 @@
 # Tests which steps `lib/check.sh --changed` picks for a change, through `check.sh --plan`, so no linter runs.
 # Each case edits a scratch clone of this checkout (with the working tree's lib/check.sh, lib/check/, lib/common/ and lib/install/ on top) and reads the plan.
 set -u
-# A hook or an outer check can leave these pointing at another repository, or skipping steps (the commit hook skips the
-# voxcmd ones).
+# A hook or an outer check can leave these pointing at another repository, or skipping steps.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE CHECK_SKIP_STEPS
 
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
@@ -148,9 +147,9 @@ case_markdown_a_test_reads() {
 
 case_hook_edit() {
   start_case 'an agent hook'
-  echo '# x' >>.claude/hooks/check-before-pr.sh
+  echo '# x' >>.claude/hooks/report-failed-main-check.sh
   plan
-  expect_ran hook-check-before-pr reviewers owner-test-bar shellcheck
+  expect_ran hook-report-failed-main-check reviewers owner-test-bar shellcheck
   expect_skipped ship-batch merge-prs voxcmd-click qmllint
 }
 

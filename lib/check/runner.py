@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The check runner behind lib/check.sh, whose header documents the command; the steps and scopes are in scopes.py.
 
-Callers parse the output (the commit hook, ship-batch, lib/check/tests/scope.sh reading --plan), so its lines, exit
+Callers parse the output (ship-batch, lib/check/tests/scope.sh reading --plan), so its lines, exit
 codes and environment variables match the shell runner this replaced. Run it with `python3 -B`, as the shim does:
 lib/check/ must never get a __pycache__.
 """
@@ -24,7 +24,6 @@ sys.dont_write_bytecode = True
 CHECK_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(os.path.dirname(CHECK_DIR))
 sys.path.insert(0, CHECK_DIR)
-import keys  # noqa: E402
 import passed  # noqa: E402
 import scopes  # noqa: E402
 
@@ -174,7 +173,7 @@ class ChangeSet:
 def reached_by(paths):
     reached = set()
     for path in paths:
-        reached.update(keys.path_scopes(path).split())
+        reached.update(scopes.path_scopes(path).split())
     return reached
 
 
@@ -233,16 +232,6 @@ class ShellLists:
             group: files if self.fmt[group] or change_set.any_deleted else [] for group, files in self.whole.items()
         }
 
-    def for_key(self, step, variant):
-        """What a shell step's key covers: the whole groups ("full") or the lists this run lints ("run")."""
-        if variant == "full":
-            lists = self.whole
-        elif step.name == "shfmt":
-            lists = self.fmt
-        else:
-            lists = self.lint
-        return {group: lists[group] for group in SHELL_GROUP_NAMES}
-
     def write(self, logs):
         """The lists the shellcheck and shfmt steps read from $CHECK_LOGS."""
         for group in SHELL_GROUP_NAMES:
@@ -265,7 +254,7 @@ missing_tool_cache = {}
 
 
 def missing_tool(step):
-    """The skip line of a step whose optional tool is missing, or "". Cached: every_step_passed asks again."""
+    """The skip line of a step whose optional tool is missing, or ""."""
     if step.name not in missing_tool_cache:
         missing = any(shutil.which(tool) is None for tool in step.needs) or (
             step.probe and subprocess.run(("sh", "-c", step.probe), check=False).returncode != 0
@@ -285,21 +274,19 @@ def print_out(text, stream=None):
     write_out(text.encode() + b"\n", stream)
 
 
-class Snapshot:
-    """A tree of the working tree's content and its classified files, for step keys."""
+def git_output(*args):
+    """git's stdout, or None when it fails; its stderr goes through."""
+    result = subprocess.run(("git", *args), stdout=subprocess.PIPE, check=False)
+    return result.stdout if result.returncode == 0 else None
 
-    def __init__(self, tree, coverage):
-        self.tree = tree
-        self.coverage = coverage
-        self.entries = keys.classify_tree(tree)
 
-    @classmethod
-    def take(cls, logs, coverage):
-        tree = keys.snapshot_tree(logs)
-        return cls(tree, coverage) if tree else None
-
-    def key(self, step, shell_lists, variant="run"):
-        return keys.step_key(step, self.entries, self.tree, self.coverage, shell_lists.for_key(step, variant))
+def clean_head_tree():
+    """HEAD's tree when nothing is modified or untracked (ignored files aside), else None."""
+    status = git_output("status", "--porcelain")
+    head_tree = git_output("rev-parse", "HEAD^{tree}")
+    if status or head_tree is None:
+        return None
+    return head_tree.decode().strip()
 
 
 def process_stat(pid):
@@ -427,7 +414,7 @@ class StepPool:
 
     def abort(self):
         """Ends every running step, its children included, removes the temp dir and exits 1: TERM, then KILL for
-        whatever is left after a grace period. The steps share this process group, as GNU timeout (the commit hook)
+        whatever is left after a grace period. The steps share this process group, as GNU timeout
         needs to reach them, so a TERM sent to this process alone would otherwise leave them running. The lock is held
         to the end, so no step starts and no log is opened behind the removal."""
         with self.lock:
@@ -469,17 +456,6 @@ def tail(data, count):
     return b"\n".join(lines[-count:]) + (b"\n" if ends_with_newline and lines else b"")
 
 
-def every_step_passed(snapshot, shell_lists):
-    """Whether every step, whatever this run's scope, has a pass recorded for the whole of this content."""
-    for step in scopes.STEPS:
-        if missing_tool(step):
-            continue
-        key = snapshot.key(step, shell_lists, "full")
-        if key is None or not passed.step_is_passed(step.name, key):
-            return False
-    return True
-
-
 def ignoring_git_errors(action, *args):
     """Runs a passed.py action as `lib/check/passed.sh ... || true` did: git has printed its own error."""
     try:
@@ -496,11 +472,9 @@ def name_list(names):
     return "".join(" " + name for name in names)
 
 
-def summary_line(label, ran, passed_before, skipped_by_scope, skipped_by_request):
+def summary_line(label, ran, skipped_by_scope, skipped_by_request):
     """The line callers parse for what ran (lib/check/tests/scope.sh, ship-batch's and the hooks' readers)."""
     line = f"check: {label}; ran:{name_list(ran)};"
-    if passed_before:
-        line += f" skipped (passed for these inputs):{name_list(passed_before)};"
     line += f" skipped by scope:{name_list(skipped_by_scope) or ' none'}"
     if skipped_by_request:
         line += f"; skipped by request:{name_list(skipped_by_request)}"
@@ -518,16 +492,13 @@ def print_failures(failed, pool):
 def run(options, logs, pool):
     change_set = ChangeSet.from_options(options)
     shell_lists = ShellLists(change_set)
-    ignore_records = env_set("CHECK_FULL")
 
-    # Each step's key is computed before the run and again after it; a pass is recorded only when they agree, so a file
-    # edited while the step ran never gets a pass recorded for content the step did not see.
-    coverage = passed.coverage()
-    before = None if options.plan else Snapshot.take(logs, coverage)
+    # HEAD's tree if the working tree is clean before the run and still is after it: only then does a pass vouch for
+    # that tree.
+    tree_before = None if options.plan else clean_head_tree()
 
     skip_steps = f" {os.environ.get('CHECK_SKIP_STEPS', '')} "
-    ran, passed_before, skipped_by_scope, skipped_by_request, skip_lines = [], [], [], [], set()
-    keys_before = {}
+    ran, skipped_by_scope, skipped_by_request, skip_lines = [], [], [], set()
     for step in scopes.STEPS:
         # A step --only leaves out is not skipped, it is outside the run, so no summary list names it.
         if options.only and step.name not in options.only:
@@ -543,12 +514,6 @@ def run(options, logs, pool):
         if missing:
             skip_lines.add(missing)
             continue
-        key = before.key(step, shell_lists) if before else None
-        if key is not None:
-            keys_before[step.name] = key
-            if not ignore_records and passed.step_is_passed(step.name, key):
-                passed_before.append(step.name)
-                continue
         ran.append(step)
 
     for line in sorted_like_shell(skip_lines):
@@ -557,9 +522,7 @@ def run(options, logs, pool):
     label = change_set.label
     if options.only:
         label = "only " + ",".join(options.only) + ("" if label == "full" else ", " + label)
-    print_out(summary_line(label, ran_names, passed_before, skipped_by_scope, skipped_by_request))
-    for name in passed_before:
-        print_out(f"== {name} skipped (passed for these inputs)")
+    print_out(summary_line(label, ran_names, skipped_by_scope, skipped_by_request))
 
     if options.plan:
         for group in SHELL_GROUP_NAMES:
@@ -573,32 +536,21 @@ def run(options, logs, pool):
     failed = [step for step in ran if step.name in pool.failed]
     if failed:
         print_failures(failed, pool)
-
-    # Records what passed. A step counts only when its inputs are what they were when it started.
-    after = Snapshot.take(logs, coverage) if before else None
     ran_in_part = [step.name for step in ran if runs_in_part(step)]
     if ran_in_part:
         print_out(f"check: VOXCMD_ONLY_SECTIONS is set, so no pass is recorded for{name_list(ran_in_part)}")
-    if after:
-        for step in ran:
-            if step.name in pool.failed or step.name not in keys_before or step.name in ran_in_part:
-                continue
-            if after.key(step, shell_lists) == keys_before[step.name]:
-                ignoring_git_errors(passed.step_record, step.name, keys_before[step.name])
     if failed:
         return 1
 
-    # A whole-tree record means HEAD's tree, so it needs a working tree with nothing uncommitted or untracked that was
-    # not edited during the run. --paths-from checks a list someone chose and --only the steps someone chose, which
-    # vouch for no tree; neither does a step that ran in part.
-    if not options.paths_from and not options.only and not ran_in_part and after and after.tree == before.tree:
-        head_tree = keys.git_output("rev-parse", "HEAD^{tree}")
-        if head_tree is not None and after.tree == head_tree.decode().strip():
+    # --paths-from checks a list someone chose and --only the steps someone chose, which vouch for no tree; neither
+    # does a step that ran in part.
+    if not options.paths_from and not options.only and not ran_in_part and tree_before:
+        if clean_head_tree() == tree_before:
             if options.changed_base:
                 ignoring_git_errors(passed.record_changed, options.changed_base)
-            # Inductive: a base whose every step passed, plus a scoped pass over everything changed since, vouches for
-            # the tree.
-            if every_step_passed(after, shell_lists) or (
+            # Inductive: a base that passed, plus a scoped pass over everything changed since, vouches for the tree, as
+            # does a run that reached every step.
+            if ("all" in change_set.reached and not skipped_by_request) or (
                 options.changed_base and ignoring_git_errors(passed.passed_somewhere, options.changed_base)
             ):
                 ignoring_git_errors(passed.record)

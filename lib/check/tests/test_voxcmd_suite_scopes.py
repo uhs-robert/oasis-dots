@@ -10,7 +10,6 @@ import unittest
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import keys  # noqa: E402
 import scopes  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -99,11 +98,11 @@ class VoxcmdSuiteScopes(unittest.TestCase):
                 if path in texts or (suite, name) in NOT_READ or not mentions(joined, path):
                     continue
                 with self.subTest(suite=suite, path=path):
-                    self.assertIn(suite, keys.path_scopes(path).split(), (
+                    self.assertIn(suite, scopes.path_scopes(path).split(), (
                         f"{suite} reads {path} but an edit of it does not reach the suite: fix its rule in scopes.py"))
             for path in texts:
                 with self.subTest(suite=suite, path=path):
-                    self.assertIn(suite, keys.path_scopes(path).split())
+                    self.assertIn(suite, scopes.path_scopes(path).split())
 
 
 if __name__ == "__main__":

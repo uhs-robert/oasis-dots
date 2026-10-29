@@ -1,4 +1,4 @@
-"""What lib/check.sh runs and which changes reach each step: tables and a few discovery globs, read by runner.py and keys.py.
+"""What lib/check.sh runs and which changes reach each step: tables and a few discovery globs, read by runner.py.
 
 A scope is a folder of the repository (lib/check/README.md lists them), and a change reaches the steps of the scopes its
 path falls in. Keep the tables one entry per line. A path that a step in another folder reads gets one entry naming both
@@ -6,13 +6,10 @@ scopes, ahead of its folder's rule: a file a step reads but no entry here gives 
 a stale pass in place.
 
 Patterns are fnmatch.fnmatchcase globs, where `*` crosses `/` as in a shell `case`: `lib/check/*.py` would also match
-lib/check/tests/test_keys.py, so the modules in the "all" entries below are named one by one.
-
-This file is "all" so that any edit of it selects every step under --changed, but keys.py leaves it out of the "all"
-lines of a step's key: a step's key holds its own definition and the scope column of the files it reads, which is
-where an edit here that matters to the step shows up.
+lib/check/tests/test_scopes.py, so the modules in the "all" entries below are named one by one.
 """
 
+import fnmatch
 import glob
 import os
 import re
@@ -35,11 +32,9 @@ ADDITIVE_SCOPES = []
 # "all" reaches every step, and "" only the steps that always run. The final entry sends every path no rule claims to
 # "all", so an unforeseen file runs everything.
 PATH_SCOPES = [
-    # The runner's modules also name checkscope, because keys.py leaves "all" out of the keys of steps that do not read
-    # them and check-scope and check-cache do.
+    # The runner's modules also name checkscope, so check-scope and check-cache are named by their edits.
     ("lib/check.sh", "all"),
     ("lib/check/runner.py", "checkscope all"),
-    ("lib/check/keys.py", "checkscope all"),
     ("lib/check/scopes.py", "checkscope all"),
     ("lib/check/lock.sh", "checkscope all"),
     ("lib/check/passed.sh", "checkscope all"),
@@ -254,7 +249,7 @@ STEPS = [
     Step("voxcmd-firefox", VOX_REST, "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-rust", VOX_RUST, "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
-    Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/cache.sh && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
+    Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
     Step("calendar-sync-syntax", "install", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
     Step("qmllint", "quickshell", "python3 -B ./lib/check/steps/qml.py"),
@@ -339,3 +334,15 @@ SHELL_GROUPS = {
 AGENT_SHELL_ROOTS = [".claude", "home/claude/.claude"]
 AGENT_SHELL_EXCLUDES = [".claude/worktrees", "home/claude/.claude/skills/synced"]
 AGENT_SHEBANG = r"^#!.*[/ ](ba|da|z)?sh( |$)"
+
+
+def path_scopes(path):
+    """The scopes a change to path reaches, as a space-separated string: the additive scopes first, then the first
+    PATH_SCOPES match's with a leading space."""
+    found = " ".join(scope for pattern, scope in ADDITIVE_SCOPES if fnmatch.fnmatchcase(path, pattern))
+    for pattern, reached in PATH_SCOPES:
+        if fnmatch.fnmatchcase(path, pattern):
+            if reached:
+                found += " " + reached
+            break
+    return found
