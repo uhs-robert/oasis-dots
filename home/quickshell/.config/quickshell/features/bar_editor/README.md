@@ -23,6 +23,6 @@ Undo restores the whole saved bar state, so it also reverts other bar settings c
 
 - `BarEditor.qml` (singleton) holds the state (monitor, module, mode, undo stacks) and the key dispatcher `press("h")`. Every edit is a pure function in [`../bar/BarLayout.js`](../bar/README.md) applied through `BarSettings.set_state`; start there.
 - `BarEditorWindow.qml` is one overlay per screen (`quickshell-bareditor`); only the picked monitor's window takes the keyboard. `../bar/BarItems.qml` is where `Bar.qml` publishes each live module so the overlay can mark it.
-- `HintData.js` is the table of keys each mode lists on the hint bar (`HintBox.qml`, `HintContent.qml` draw it); a test compares it to the keys each mode handles, so a new key goes in both.
+- `HintData.js` is the table of keys each mode lists on the hint bar (`HintBox.qml`, `HintContent.qml` draw it from the shared hint bar parts in `ui/keys/`, which the submap hint bar uses too); a test compares it to the keys each mode handles, so a new key goes in both.
 - `BarEditorIpc.qml` is the `bareditor` IPC target.
 - Tests: `lib/check.sh --only bar-editor` runs the real `BarSettings` and `BarEditor` headless (`home/quickshell/tests/bar_editor/`); pure edits are in `tests/bar_layout.js`. Layer-shell windows do not load headless, so check the windows with the `shadow` skill.
