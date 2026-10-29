@@ -34,6 +34,10 @@ STUB
 # pid: the live fake bar. started: one line per bar the fake qs launched.
 cat >bin/qs <<'STUB'
 #!/usr/bin/env bash
+if [[ ${1:-} == list ]]; then
+  [[ -s $STUB_DIR/pid ]] && alive "$(cat "$STUB_DIR/pid")" && echo "[{\"pid\": $(cat "$STUB_DIR/pid")}]"
+  exit 0
+fi
 # Like `qs -n`: exit at once while another instance is alive.
 if [[ -s $STUB_DIR/pid ]] && alive "$(cat "$STUB_DIR/pid")"; then
   exit 0
@@ -49,11 +53,6 @@ bash -c "trap '$handler' TERM; while :; do sleep 0.1; done" &
 echo $! >"$STUB_DIR/pid"
 echo $! >>"$STUB_DIR/all_pids"
 STUB
-cat >bin/pgrep <<'STUB'
-#!/usr/bin/env bash
-echo "$*" >>"$STUB_DIR/pgrep_args"
-[[ -s $STUB_DIR/pid ]] && alive "$(cat "$STUB_DIR/pid")"
-STUB
 cat >bin/pkill <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >>"$STUB_DIR/pkill_args"
@@ -62,6 +61,15 @@ signal=TERM
 # STUB_BAR=immortal survives SIGKILL, as a process stuck in D-state does.
 [[ $signal == KILL && ${STUB_BAR:-slow} == immortal ]] && exit 0
 [[ -s $STUB_DIR/pid ]] && kill -"$signal" "$(cat "$STUB_DIR/pid")" 2>/dev/null
+exit 0
+STUB
+cat >bin/kill <<'STUB'
+#!/usr/bin/env bash
+echo "$*" >>"$STUB_DIR/kill_args"
+signal=TERM
+[[ $1 == -KILL ]] && signal=KILL
+[[ $signal == KILL && ${STUB_BAR:-slow} == immortal ]] && exit 0
+[[ -s $STUB_DIR/pid ]] && command kill -"$signal" "$(cat "$STUB_DIR/pid")" 2>/dev/null
 exit 0
 STUB
 cat >bin/notify-send <<'STUB'
@@ -128,17 +136,13 @@ check env RESTART_BAR_GRACE=1 bash "$script"
 check test "$(cat pid)" != "$old_pid"
 check test "$(bars_started)" -eq 2
 
-pattern='^(/[^ ]*/)?qs -n( |$)'
-# The signals go to the owner's bars only: both commands get -u $UID and the pattern, and no other match.
-: >pgrep_args
+# The signals go to the pids `qs list` reports.
 unset STUB_BAR
-: >pkill_args
+: >kill_args
 start_bar
+old_pid=$(cat pid)
 check bash "$script"
-check grep -qxF -- "-u $UID -f $pattern" pkill_args
-check grep -qxF -- "-u $UID -f $pattern" pgrep_args
-check test "$(grep -cvxF -- "-u $UID -f $pattern" pgrep_args)" -eq 0
-check test "$(grep -cvxF -- "-u $UID -f $pattern" pkill_args)" -eq 0
+check grep -qxF -- "$old_pid" kill_args
 
 # A fractional grace is not valid arithmetic: warn and fall back instead of crashing.
 start_bar
@@ -161,16 +165,6 @@ check test $? -ne 0
 check grep -q "survived SIGKILL" err
 check grep -q "Bar restart failed" notified
 check test "$(bars_started)" -eq 1
-check grep -qxF -- "-KILL -u $UID -f $pattern" pkill_args
-
-# The pattern the script passes matches a bar launched with a path, and not a shadow bar or a look-alike.
-used=$(sed -n 's/^-u [0-9]* -f //p' pkill_args | head -n1)
-for line in "qs -n" "/usr/bin/qs -n" "/usr/bin/qs -n -p /x" "qs -n -p /x"; do
-  check grep -Eq -- "$used" <<<"$line"
-done
-for line in "qs-shadow -n" "/usr/bin/qs-shadow -n" "qs -p /x" "bash restart-bar.sh qs -n" "qsx -n"; do
-  # shellcheck disable=SC2016 # expanded by the inner shell
-  check bash -c '! grep -Eq -- "$0" <<<"$1"' "$used" "$line"
-done
+check grep -qxF -- "-KILL $(cat pid)" kill_args
 
 exit $((failures > 0))
