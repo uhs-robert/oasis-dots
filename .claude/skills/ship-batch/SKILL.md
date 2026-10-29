@@ -7,9 +7,11 @@ description: The only way to merge PRs in this repo. Open and merge the PRs for 
 
 ## Scripts
 
+- Bring a branch up to date with `.claude/skills/ship-batch/rebase-branch.sh <branch>`, never by merging `origin/main` in or a bare force-push (both blocked or costly): it rebases, then pushes with `--force-with-lease`, and refuses `main`, a branch with no open PR or one whose remote has commits it lacks.
 - Before running it, every branch is rebased on `origin/main`, pushed and has an open PR (step 1); afterwards tick the finished items in `review.md` if one exists (step 4).
 - `.claude/skills/ship-batch/ship-batch.sh <n>...` with the PRs in merge order, as that bare command: a prefixed variable no longer matches the owner's allow rule and is blocked.
 - `--skip-review-gate` goes before the PR numbers, only when the owner waived the reviewers; it skips reviewer states (no waiting, no requests), unresolved threads still block. Say so in the PR.
+- When the gate gives up waiting on a review (Codex "still running" after its wait), do not rerun: ask the owner whether to merge with `--skip-review-gate`.
 - Merge only through this script, never `merge-prs.sh <n>` or `gh` directly.
 - `ship-batch.sh --wait-main-check`, in the background, is the only way to know main is green. A failed main check warns and never blocks; fix it with a small follow-up PR first.
 - With no PR numbers it resumes an interrupted run.
