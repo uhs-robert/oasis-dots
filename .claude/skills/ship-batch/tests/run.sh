@@ -291,7 +291,7 @@ line_of() { grep -nxF -- "$1" "$SHIP_LOG" | cut -d: -f1; }
 e2e_setup
 ship 1 2
 check "the batch succeeds" "[[ $? == 0 ]] || { cat '$e2e/out'; false; }"
-check "each review is waited for outside the lock" "logged 'gate --check --wait-review --request-review 1 free' && logged 'gate --check --wait-review --request-review 2 free'"
+check "each review is waited for outside the lock, without requesting one" "logged 'gate --check --wait-review 1 free' && logged 'gate --check --wait-review 2 free'"
 check "each branch is checked outside the lock" "logged 'check wt-1 --changed origin/main free' && logged 'check wt-2 --changed origin/main free'"
 check "the merge runs under the lock, without waiting for reviews" "logged 'merge 1 2 held'"
 check "after every review and branch check" "((\$(line_of 'check wt-2 --changed origin/main free') < \$(line_of 'merge 1 2 held')))"
@@ -349,6 +349,11 @@ touch "$e2e/branch_hold"
 STUB_BRANCH_STATUS=1 ship 1
 check "a check that outlasts the gate still stops the merge" "[[ $? != 0 ]] && ! grep -q '^merge' '$SHIP_LOG'"
 wait
+
+e2e_setup
+ship --request-review 1 2
+check "with --request-review the batch succeeds" "[[ $? == 0 ]] || { cat '$e2e/out'; false; }"
+check "the gate gets --request-review" "logged 'gate --check --wait-review --request-review 1 free' && logged 'gate --check --wait-review --request-review 2 free'"
 
 e2e_setup
 ship --skip-review-gate 1 2

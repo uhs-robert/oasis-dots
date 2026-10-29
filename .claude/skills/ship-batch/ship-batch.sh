@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Usage: ship-batch.sh [--skip-review-gate] [<pr>...]; merges the PRs in order, then updates main and restarts what
+# Usage: ship-batch.sh [--skip-review-gate] [--request-review] [<pr>...]; merges the PRs in order, then updates main and restarts what
 # changed. Each PR's branch is checked once, while its reviewers are awaited; main is not checked after the merge (run
 # `just check` there on demand). --skip-review-gate skips the reviewers' states (no waiting, no review requests) for every
 # PR, only when the owner waived them or named another reviewer; unresolved review threads still block, and each PR's
-# branch check still runs.
+# branch check still runs. --request-review lets the review wait comment `@codex review` on a PR whose head changed past
+# the small-fix limit since its review; only for a material fix, otherwise the gate reports the problem and the caller decides.
 set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{print substr($0, 10); exit}')
@@ -37,16 +38,18 @@ use_live_hypr() {
 }
 
 skip_gate=()
+request_flag=()
 while [[ ${1:-} == --* ]]; do
   case $1 in
   --skip-review-gate) skip_gate=(--skip-review-gate) ;;
+  --request-review) request_flag=(--request-review) ;;
   *) die "unknown flag $1" ;;
   esac
   shift
 done
 # Flags are read only up front, so one after a PR number would otherwise be taken for a PR and fail late, at the gate.
 for arg; do
-  [[ $arg != -* ]] || die "usage: ship-batch.sh [--skip-review-gate] [<pr>...]; $arg came after a PR number, flags go first"
+  [[ $arg != -* ]] || die "usage: ship-batch.sh [--skip-review-gate] [--request-review] [<pr>...]; $arg came after a PR number, flags go first"
 done
 
 [[ $(git -C "$repo" branch --show-current) == main ]] || die "the main checkout is not on main; switch it back first"
@@ -58,7 +61,7 @@ on_exit() {
 }
 # Waiting for reviews and checking branches take minutes and touch nothing shared, so they run before the ship lock: a
 # PR still waiting for its review must not hold up another session's batch. Each PR in turn is checked while its gating
-# reviewers are awaited (requesting one for a changed head), in its local worktree or, for a branch pushed from
+# reviewers are awaited (requesting one for a changed head only under --request-review), in its local worktree or, for a branch pushed from
 # elsewhere (a cloud session), in a temporary worktree at the PR head that is removed on every exit path. The first PR
 # that is not ready stops the list: the ones before it merge, in order, and it and the rest are left for a rerun.
 trap on_exit EXIT
@@ -70,7 +73,7 @@ for pr in "$@"; do
     echo "ship-batch: PR $pr: reviewer states skipped by request; threads still checked"
     gate_flags=(--check --skip-review-gate)
   else
-    gate_flags=(--check --wait-review --request-review)
+    gate_flags=(--check --wait-review "${request_flag[@]}")
   fi
   branch=$(cd "$repo" && gh pr view "$pr" --json headRefName -q .headRefName) || die "cannot read PR $pr"
   worktree=$(git -C "$repo" worktree list --porcelain | awk -v ref="branch refs/heads/$branch" '/^worktree /{w = substr($0, 10)} $0 == ref {print w; exit}')
