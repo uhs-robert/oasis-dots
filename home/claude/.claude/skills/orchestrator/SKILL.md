@@ -58,7 +58,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - Opus when Sonnet fails after a corrected retry, or for deep debugging or subtle correctness (concurrency, security, data integrity).
    - Give exploratory agents a time limit, 20 minutes by default, after which they report what they have.
    - When work spans layers (e.g. a UI and a backend), agree the hand-off format first (an id format, an API call, a JSON shape), then run one implementer per layer in parallel.
-   - When the permission classifier denies an action, do not retry it in another form or via an agent; hand the owner the exact `!` command.
+   - When the permission classifier denies an action, do not retry it in another form or via an agent; hand the owner the exact `!` command. Exception: if the denied call wrapped a script that has an allow rule, inside `$(...)`, after `&&`/`;`, or with a `VAR=x` prefix, rerun that script once as a bare command before handing the owner a command.
 
 5. Give the implementer the worktree path, issue or PR, plan, constraints, relevant context, and validation requirements, through the piece's plan draft.
    - Tell it to run only targeted tests, each under 10 minutes, then commit, push and report in the same turn, leaving nothing running.
