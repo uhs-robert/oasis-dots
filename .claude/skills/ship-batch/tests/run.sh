@@ -14,22 +14,26 @@ else
 fi; }
 g() { git -c user.name=t -c user.email=t@t "$@"; }
 
-root=$(mktemp -d)
+root=$(mktemp -d) || exit 1
+# Private to this run, and set before the trap exists, so cleanup can only ever stop this suite's own unit.
+MAIN_CHECK_UNIT=dotfiles-main-check-test-$$
 # live-hypr.sh only treats a runtime dir under /tmp/shadow-* as a nested session, so this one cannot live under $root.
-shadow_run=$(mktemp -d "/tmp/shadow-$UID-shipbatchtest.XXXXXX")
+shadow_run=$(mktemp -d "/tmp/shadow-$UID-shipbatchtest.XXXXXX") || exit 1
 
 # The end-to-end section starts a real systemd-run unit and detached daemons that outlive this script, so removing the
 # temp root is not enough. Match processes by $root only, never by name, so the owner's real main check is untouched.
 cleanup() {
   trap '' EXIT TERM INT HUP
-  if [[ -n ${MAIN_CHECK_UNIT:-} ]]; then systemctl --user stop "$MAIN_CHECK_UNIT" 2>/dev/null; fi
+  systemctl --user stop "$MAIN_CHECK_UNIT" 2>/dev/null
   rm -f "$root/e2e/just_hold"
   pkill -f "$root/e2e/" 2>/dev/null
   rm -rf "$root" "$shadow_run"
 }
 trap cleanup EXIT
 # bash runs the EXIT trap on these only when it traps them itself.
-for sig in TERM INT HUP; do trap "exit \$((128 + \$(kill -l $sig)))" "$sig"; done
+trap 'exit 143' TERM
+trap 'exit 130' INT
+trap 'exit 129' HUP
 repo=$root/repo
 git init -q -b main "$repo"
 g -C "$repo" commit -q --allow-empty -m one
@@ -204,8 +208,8 @@ fake_home=$e2e/home
 mkdir -p "$stubs" "$fake_home/.claude/skills/merge-prs"
 export SHIP_LOG=$e2e/log
 # The old sections wait for the check of main; the background check has its own section at the end. The unit name is
-# private to this run, so stopping it never touches the owner's real dotfiles-main-check.
-export SHIP_BATCH_SYNC_CHECK=1 MAIN_CHECK_UNIT=dotfiles-main-check-test-$$
+# private to this run (set at the top), so stopping it never touches the owner's dotfiles-main-check-<hash> unit.
+export SHIP_BATCH_SYNC_CHECK=1 MAIN_CHECK_UNIT
 # Every run of ship-batch is bounded, so a reverted lifecycle fix fails its test instead of hanging the suite.
 ship_timeout=120
 # shellcheck disable=SC2016 # expanded by the stubs
@@ -239,7 +243,7 @@ cat >"$stubs/just" <<STUB
 echo "just \$* $lock_state" >>"\$SHIP_LOG"
 [[ ! -e /proc/\$\$/fd/9 ]] || echo "just fd9 leaked" >>"\$SHIP_LOG"
 [[ ! -e $e2e/just_daemon ]] || setsid -f bash -c 'exec -a $e2e/test-daemon sleep 300'
-[[ ! -e $e2e/just_chatty ]] || setsid -f bash -c 'exec -a $e2e/test-daemon bash -c "while sleep 0.2; do echo daemon tick; done"'
+[[ ! -e $e2e/just_chatty ]] || setsid -f bash -c 'exec -a $e2e/test-daemon bash -c "for _ in \$(seq 600); do sleep 0.2; echo daemon tick; done"'
 slot=\$(cat "$e2e/just_hold" 2>/dev/null)
 if [[ -n \$slot ]]; then
   exec 7>"\$slot"
