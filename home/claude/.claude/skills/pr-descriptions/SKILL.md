@@ -8,7 +8,7 @@ description: >-
 
 A PR body is for the reviewer reading it today. The commit messages carry the full reasoning for future readers; the body gives the reviewer what they need to review and merge safely, and nothing else. Aim for under 150 words.
 
-Write every sentence by the `plain-writing` skill. This skill sets the structure and the length.
+Write every sentence by the `plain-writing` skill. The `pr-descriptions` skill sets the structure and the length.
 
 ## Title
 

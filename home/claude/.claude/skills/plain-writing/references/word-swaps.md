@@ -7,7 +7,7 @@ Words that AI-written text overuses, with plain replacements. If a word carries 
 | leverage, utilize, harness | use |
 | in order to | to |
 | prior to | before |
-| ensure | make sure |
+| ensure | check, or state the requirement with "must": "The file must exist." |
 | it is worth noting that, it is important to note | (delete, then state the fact) |
 | simply, just, easily, seamless, seamlessly, effortlessly | (delete) |
 | robust, powerful, comprehensive, performant | (delete, or give the measurable property) |

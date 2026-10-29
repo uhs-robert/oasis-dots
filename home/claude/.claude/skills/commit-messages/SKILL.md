@@ -8,7 +8,7 @@ description: >-
 
 Write commit messages that tell the story of _why_ a change was made, not only what changed. The reader comes away with the context, the decision and the trade-offs.
 
-Write every sentence by the `plain-writing` skill. This skill sets the structure and the length.
+Write every sentence by the `plain-writing` skill. The `commit-messages` skill sets the structure and the length.
 
 ## Subject Line
 

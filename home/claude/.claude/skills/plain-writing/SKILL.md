@@ -35,7 +35,7 @@ The rules are adapted from [SimpleEnglish](https://github.com/AminBlg/SimpleEngl
    | would (a hypothetical) | can, or restructure: "If X happens, Y happens." |
    | could not (past ability) | did not, was not able to |
 
-7. Use complete grammar. Do not use contractions ("don't", "it's", "we'll"). Keep articles and keep "that". Short does not mean telegraphic: "Make sure that the file exists before you run the command", not "Ensure file exists before running." A possessive ("the user's file") is not a contraction.
+7. Use complete grammar. Do not use contractions ("don't", "it's", "we'll"). Keep articles and keep "that". Short does not mean telegraphic: "Create the file before you run the command", not "Create file before running." A possessive ("the user's file") is not a contraction.
 8. Do not use semicolons, em-dashes, or a spaced or double hyphen between clauses. Write two sentences, or name the relation: because, but, so, for example. A range (`5-10`) and a flag (`--force`) are not dashes.
 9. Use a connecting word between related sentences: then, as a result, but.
 10. Use a one-word verb when one exists: "install", not "set up". "decrease", not "go down".
@@ -76,7 +76,7 @@ Documentation:
 
 > Before: Leveraging sqlpipe's robust architecture, users can seamlessly synchronize their Postgres tables to S3 with minimal configuration overhead. Before getting started, you should ensure that your AWS credentials have been properly configured — this is crucial for avoiding frustrating permission issues down the line.
 >
-> After: sqlpipe copies your Postgres tables to S3. It needs one configuration file. Before you start, make sure that your AWS credentials are correct. If they are not, S3 rejects the upload with a permission error.
+> After: sqlpipe copies your Postgres tables to S3. It needs one configuration file. Before you start, check that your AWS credentials are correct. If they are not, S3 rejects the upload with a permission error.
 
 A commit body:
 
