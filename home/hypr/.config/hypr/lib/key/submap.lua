@@ -307,6 +307,19 @@ end
 --- The keys Hyprland treats as modifiers when pressed alone, less Caps_Lock and Num_Lock, which toggle a lock.
 local lone_modifier_keys = { "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R", "Super_L", "Super_R" }
 
+--- Mouse buttons (left, right, middle, side, extra) and wheel directions, in Hyprland's bind names.
+local mouse_inputs = {
+  "mouse:272",
+  "mouse:273",
+  "mouse:274",
+  "mouse:275",
+  "mouse:276",
+  "mouse_up",
+  "mouse_down",
+  "mouse_left",
+  "mouse_right",
+}
+
 --- Register the catchall bind for a submap.
 --- @param catchall "stay"|"reset"|false|fun(ctx: SubmapContext)
 --- @param exit_fn  fun()
@@ -321,6 +334,10 @@ local function bind_catchall(catchall, exit_fn, spec)
 
   local opts = { release = true, ignore_mods = true }
   if catchall == "stay" then
+    -- Hyprland 0.57 also runs a catchall on mouse button and wheel events, so a "stay" catchall swallowed every click
+    -- and scroll, the Cursor submap's own wlrctl clicks included. A bind that matches stops the catchall, and
+    -- non_consuming hands the event on to the window.
+    Bind.key(mouse_inputs, hl.dsp.no_op(), { ignore_mods = true, non_consuming = true, transparent = true })
     Bind.key("catchall", hl.dsp.no_op(), opts)
   elseif catchall == "reset" then
     Bind.key("catchall", exit_fn, opts)
