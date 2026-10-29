@@ -2,7 +2,7 @@ local Config = require("config") ---@class Config
 local Monitors = require("config.monitors") ---@class Monitors
 local Sessions = require("extensions.auto_launcher.sessions") ---@class Sessions
 local Provenance = require("extensions.auto_launcher.provenance") ---@class Provenance
-local Prompt = require("lib.prompt") ---@class Prompt
+local Prompt = require("extensions.auto_launcher.prompt") ---@class Prompt
 local Json = require("lib.json") ---@class Json
 
 --- @type table<string, HL.WindowRule>

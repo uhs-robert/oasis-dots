@@ -7,7 +7,7 @@ import "../../core/WindowVisibility.js" as WindowVisibility
 import "SelectionOrder.js" as SelectionOrder
 
 // The window selection of the `targets` submaps (Windows, Resize, Move), which
-// home/hypr/.config/hypr/lib/actions/selection.lua keeps and sends over `submap_hints selection`, and where those
+// home/hypr/.config/hypr/lib/selection.lua keeps and sends over `submap_hints selection`, and where those
 // windows are. Window places are reread from Hyprland only while such a submap is up.
 Singleton {
     id: root

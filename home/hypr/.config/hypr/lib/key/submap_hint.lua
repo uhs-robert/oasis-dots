@@ -281,9 +281,7 @@ end
 --- Drop every hint the bar holds, and the selection. Called once per config load: a hint a reload removed or dropped is
 --- never sent again, so without this the bar would keep showing the old one. It carries the load's selection
 --- generation, so a selection the old config sent that lands after it is ignored.
-function SubmapHint.clear_bar()
-  Act.Ipc("submap_hints", "clear", tostring(require("lib.actions.selection").generation()))()
-end
+function SubmapHint.clear_bar() Act.Ipc("submap_hints", "clear", tostring(require("lib.selection").generation()))() end
 
 --- `names` plus every submap with a hint: HyprVim's `which_key.auto_show.disabled`, since the hint bar replaces the
 --- which-key popup there. HyprVim reads that list once at setup, so a hint defined later (from custom/) still gets the

@@ -31,7 +31,7 @@ local Submap = {
 --- @field on_exit?  fun(ctx: SubmapContext)                         Called before leaving this submap
 --- @field binds?    table[]|fun(): table[]                          Rows passed to Bind.keys inside the submap, or a function returning them. A row is { keys, action, desc?, opts? }; `action` may be an action id ("window.close") or { id, args } ("popup.open", { "clock" }), which takes the action's label unless `desc` is given (false for none).
 --- @field hint?     SubmapHintGroup[]                               Groups for the compact hint bar shown on entry in place of HyprVim's which-key popup (SHIFT + / still opens that); see lib/key/submap_hint.lua
---- @field targets?  boolean                                         Its keys act on the focused window or the selection (lib/actions/selection.lua): selected windows get a thick border and Quickshell numbers them while it is up, and the selection carries between submaps that set this and clears on any other switch
+--- @field targets?  boolean                                         Its keys act on the focused window or the selection (lib/selection.lua): selected windows get a thick border and Quickshell numbers them while it is up, and the selection carries between submaps that set this and clears on any other switch
 
 --- @class SubmapHandle
 --- @field enter fun()   Switch into this submap
@@ -94,7 +94,7 @@ end
 --- @param to   string
 local function settle_selection(from, to)
   if has_targets(from) and has_targets(to) then return end
-  local Selection = require("lib.actions.selection")
+  local Selection = require("lib.selection")
   if has_targets(to) then
     Selection.resync()
   else
@@ -111,9 +111,9 @@ local function watch_submap_event()
   if watching_submap_event then return end
   watching_submap_event = true
   hl.on("keybinds.submap", function(name)
-    if not has_targets(name) then require("lib.actions.selection").clear() end
+    if not has_targets(name) then require("lib.selection").clear() end
   end)
-  require("lib.actions.selection").follow_config()
+  require("lib.selection").follow_config()
 end
 
 --- Activate a named submap, firing exit/enter hooks.

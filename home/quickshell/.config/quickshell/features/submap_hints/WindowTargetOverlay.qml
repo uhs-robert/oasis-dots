@@ -5,7 +5,7 @@ import Quickshell.Wayland
 import qs.theme
 
 // While a `targets` submap (Windows, Resize, Move) is up, numbers each selected window in the order it was picked, on
-// every screen. Hyprland draws the selection itself as the window's border (lib/actions/selection.lua); this only adds
+// every screen. Hyprland draws the selection itself as the window's border (lib/selection.lua); this only adds
 // the number. Display only: no keyboard, and an empty input mask lets every click through.
 PanelWindow {
     id: root
