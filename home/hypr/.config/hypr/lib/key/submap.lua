@@ -259,11 +259,21 @@ local function wrap_oneshot(rows, exit_fn)
   return wrapped
 end
 
+--- The keys Hyprland treats as modifiers when pressed alone, less Caps_Lock and Num_Lock, which toggle a lock.
+local lone_modifier_keys = { "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R", "Super_L", "Super_R" }
+
 --- Register the catchall bind for a submap.
 --- @param catchall "stay"|"reset"|false|fun(ctx: SubmapContext)
 --- @param exit_fn  fun()
 --- @param spec     SubmapSpec
 local function bind_catchall(catchall, exit_fn, spec)
+  -- Hyprland 0.57 runs a catchall on the key press, whatever its `release` flag, and a modifier pressed alone
+  -- claims no bind, so holding Ctrl for a `CTRL + X` row would exit a one-shot submap before X arrives. These
+  -- no-ops claim the modifier presses; transparent, so a modifier held during another bind is not shadowed.
+  if catchall == "reset" or type(catchall) == "function" then
+    Bind.key(lone_modifier_keys, hl.dsp.no_op(), { ignore_mods = true, transparent = true })
+  end
+
   local opts = { release = true, ignore_mods = true }
   if catchall == "stay" then
     Bind.key("catchall", hl.dsp.no_op(), opts)
@@ -295,20 +305,9 @@ local function binds_use_key(rows, key)
 end
 
 --- Bind the which-key toggle in the submap being registered.
---- @param catchall "stay"|"reset"|false|fun(ctx: SubmapContext)
-local function bind_whichkey_toggle(catchall)
+local function bind_whichkey_toggle()
   -- No description, so which-key does not list the toggle as a row in every submap.
   Bind.key(whichkey_toggle_key, Submap.toggle_whichkey)
-
-  -- A "reset" or function catchall runs on any key-up nothing else claims, and Hyprland lets only a non-release
-  -- bind claim one: a matching release bind still runs alongside the catchall. These no-ops claim both key-ups
-  -- the chord leaves behind, in either order, since ignore_mods matches the bare `/` once Shift is up.
-  -- transparent, because Hyprland shadows a bind while its key is held during another bind, which would skip
-  -- these exactly when the chord's other key comes up.
-  local catchall_acts = catchall == "reset" or type(catchall) == "function"
-  if catchall_acts then
-    Bind.key({ "SLASH", "Shift_L", "Shift_R" }, hl.dsp.no_op(), { ignore_mods = true, transparent = true })
-  end
 end
 
 --- Declare a submap and return a handle with enter/exit/setup methods.
@@ -338,7 +337,7 @@ function Submap.define(spec)
         Bind.key("BackSpace", M.back, "Back", back_opts)
       end
 
-      if not binds_use_key(raw_binds, whichkey_toggle_key) then bind_whichkey_toggle(catchall) end
+      if not binds_use_key(raw_binds, whichkey_toggle_key) then bind_whichkey_toggle() end
 
       bind_catchall(catchall, M.exit, spec)
     end)
