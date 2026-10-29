@@ -20,7 +20,7 @@ An agent card shows the session's title, agent, state badge, short directory and
 
 ## Voice answers
 
-The voice key answers an open choices picker however it opened: a number, a choice's name, "expand two" or "cancel". The keys work as before. While the screen is locked, a voice answer is refused. `PickerVoice` publishes the open picker for voxcmd and takes the answers back through `picker answer`, `expand` and `cancel`; the file and the calls are in the voxcmd README under [Pickers the bar publishes](../../../../../voxcmd/.config/voxcmd/README.md#pickers-the-bar-publishes). Only the choices picker opts in (`PickerProvider.voice_answerable`). The fuzzy pickers and the rofi fallback stay keyboard only.
+The voice key answers an open choices picker however it opened: a number, a choice's name, "expand two" or "cancel". The keys work as before. While the screen is locked, a voice answer is refused. `PickerVoice` publishes the open picker for voxcmd and takes the answers back through `picker answer`, `expand` and `cancel`. The file and the calls are in the voxcmd README under [Pickers the bar publishes](../../../../../voxcmd/.config/voxcmd/README.md#pickers-the-bar-publishes). Only the choices picker opts in (`PickerProvider.voice_answerable`). The fuzzy pickers and the rofi fallback stay keyboard only.
 
 ## Code
 

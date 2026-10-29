@@ -74,7 +74,7 @@ Scope {
     // sh -c <script> sh <dir> <text> <mine>: with text, writes it as the pending pick in one step, unless a live voxcmd
     // ask owns the file (exit 3): the ask answers through its own FIFO and keeps its listen bookkeeping there, and
     // shows its picker through this bar anyway. With no text, removes the file only while it starts with <mine>.
-    // `voxcmd util pending-pick` prints the file only while its writer is live; a missing voxcmd reads as nobody.
+    // `voxcmd util pending-pick` prints the file only while its writer is live. A missing voxcmd reads as nobody.
     readonly property string sync_script: `dir=$1 text=$2 mine=$3 file=$1/pending-pick.json
 if [ -z "$text" ]; then
   [ -z "$mine" ] && exit 0
@@ -91,7 +91,7 @@ mkdir -p "$dir" && printf "%s\\n" "$text" >"$file.$$" && mv -f "$file.$$" "$file
         property string syncing_text: ""
         onExited: code => {
             root.synced_text = writer.syncing_text;
-            // A bar file is this bar's to remove by its token only once written; skipped or removed, nothing is.
+            // A bar file is this bar's to remove by its token only once written. After a skip or a removal, no file is.
             root.own_file_start = code === 0 && writer.syncing_text !== "" ? "{\"pid\":" + root.pid + ",\"owner\":\"bar\",\"token\":\"" + JSON.parse(writer.syncing_text).token + "\"," : "";
             root.sync();
         }

@@ -9,7 +9,7 @@ import qs.features.audio
 // result_path, so there is no callback to run.
 // A choice may be { label, expand: key } naming one of expansions { key: { title, choices } }: Tab shows that list,
 // whose picks are written as "<key><TAB><label>", and the shown key ("" at the top) is written to view_path.
-// The voice key answers it whoever opened it (PickerVoice); an answer finishes the session as a click or Esc does.
+// The voice key answers it whoever opened it (PickerVoice). An answer finishes the session as a click or Esc does.
 PickerProvider {
     id: root
 
@@ -130,7 +130,9 @@ PickerProvider {
 
     function voice_expand(index) {
         const item = root.view === "" ? root.items[index - 1] : null;
-        return root.session && !!item && root.expand(item);
+        if (!root.session || !item || item.expand === "") return false;
+        root.expand_requested(item);
+        return true;
     }
 
     Process {

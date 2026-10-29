@@ -80,13 +80,16 @@ Scope {
 
     function go_back() {}
 
+    signal expand_requested(var item)
+
     // Picks the shown item `text` names ("<view_key><TAB><label>" inside an expansion) as a click does. Returns false
     // when no shown item matches, as when the view changed since voxcmd read it.
     function voice_answer(text) {
         return false;
     }
 
-    // Opens the list under the 1-based top-level item, as Tab does. Returns false when it has none.
+    // Opens the list under the 1-based top-level item, as Tab does: through expand_requested, which the open Picker
+    // handles as Tab. Returns false when the item has no list.
     function voice_expand(index) {
         return false;
     }

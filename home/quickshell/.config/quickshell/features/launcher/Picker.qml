@@ -138,6 +138,10 @@ Popup {
         function onTabChanged() {
             root.current_tab = root.provider.tab;
         }
+
+        function onExpand_requested(item) {
+            root.expand_item(item);
+        }
     }
 
     Connections {
@@ -227,6 +231,11 @@ Popup {
     function expand_selected() {
         const item = root.selected_item;
         if (!item || !root.provider) return;
+        root.expand_item(item);
+    }
+
+    // Also a voice "expand N" (PickerProvider.expand_requested), so the search clears for it as it does for Tab.
+    function expand_item(item) {
         const from = { query: query_input.text, id: item.id };
         if (!root.provider.expand(item)) return;
         root.expanded_from = root.expanded_from.concat([from]);
