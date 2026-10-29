@@ -18,7 +18,8 @@ bind * BackSpace                        # goes back one submap
 bind * SHIFT + SLASH                    # toggles the which-key overlay
 bind * catchall                         # a catchall that swallows or ends the submap on an unbound key
 # The submaps with a "reset" or function catchall; a modifier pressed alone would otherwise reach the catchall.
-bind Bar,Delete,Go,Leader,System Shift_L    # no-op that claims the modifier press, so a held modifier keeps the submap
+bind Bar,Delete,Go,Leader,System SLASH      # no-op that claims the which-key chord's `/` key-up from Hyprland 0.56's release catchall
+bind Bar,Delete,Go,Leader,System Shift_L    # no-op that claims the modifier press (on 0.56 its key-up), so a held modifier keeps the submap
 bind Bar,Delete,Go,Leader,System Shift_R    # the same, for the right Shift
 bind Bar,Delete,Go,Leader,System Control_L  # the same, for the left Ctrl
 bind Bar,Delete,Go,Leader,System Control_R  # the same, for the right Ctrl

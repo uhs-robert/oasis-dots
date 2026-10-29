@@ -132,6 +132,7 @@ arrows	Delete	SHIFT + D	Kill All on WS	-	os.execute(kill -9 nil);os.execute(kill
 arrows	Delete	SHIFT + O	Kill Others on WS	-	os.execute(kill -9 nil);submap(reset)
 arrows	Delete	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 arrows	Delete	SHIFT + W	Kill Window	-	window.kill({window=address:0xa1});submap(reset)
+arrows	Delete	SLASH	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	Shift_L	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	Shift_R	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	Super_L	-	ignore_mods=true,transparent=true	no_op
@@ -444,6 +445,7 @@ default	Delete	SHIFT + D	Kill All on WS	-	os.execute(kill -9 nil);os.execute(kil
 default	Delete	SHIFT + O	Kill Others on WS	-	os.execute(kill -9 nil);submap(reset)
 default	Delete	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	Delete	SHIFT + W	Kill Window	-	window.kill({window=address:0xa1});submap(reset)
+default	Delete	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Delete	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Delete	Shift_R	-	ignore_mods=true,transparent=true	no_op
 default	Delete	Super_L	-	ignore_mods=true,transparent=true	no_op
@@ -756,6 +758,7 @@ no-leader	Delete	SHIFT + D	Kill All on WS	-	os.execute(kill -9 nil);os.execute(k
 no-leader	Delete	SHIFT + O	Kill Others on WS	-	os.execute(kill -9 nil);submap(reset)
 no-leader	Delete	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 no-leader	Delete	SHIFT + W	Kill Window	-	window.kill({window=address:0xa1});submap(reset)
+no-leader	Delete	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	Shift_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	Super_L	-	ignore_mods=true,transparent=true	no_op
@@ -1061,6 +1064,7 @@ persistent	Delete	SHIFT + D	Kill All on WS	-	os.execute(kill -9 nil);os.execute(
 persistent	Delete	SHIFT + O	Kill Others on WS	-	os.execute(kill -9 nil);submap(reset)
 persistent	Delete	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 persistent	Delete	SHIFT + W	Kill Window	-	window.kill({window=address:0xa1});submap(reset)
+persistent	Delete	SLASH	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	Shift_L	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	Shift_R	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	Super_L	-	ignore_mods=true,transparent=true	no_op

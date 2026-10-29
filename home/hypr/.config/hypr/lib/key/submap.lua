@@ -305,9 +305,16 @@ local function binds_use_key(rows, key)
 end
 
 --- Bind the which-key toggle in the submap being registered.
-local function bind_whichkey_toggle()
+--- @param catchall "stay"|"reset"|false|fun(ctx: SubmapContext)
+local function bind_whichkey_toggle(catchall)
   -- No description, so which-key does not list the toggle as a row in every submap.
   Bind.key(whichkey_toggle_key, Submap.toggle_whichkey)
+
+  -- For Hyprland 0.56, whose catchall runs on key release: claims the `/` key-up when it outlasts Shift (ignore_mods
+  -- matches the bare `/`). bind_catchall's modifier no-ops claim the Shift key-up.
+  if catchall == "reset" or type(catchall) == "function" then
+    Bind.key("SLASH", hl.dsp.no_op(), { ignore_mods = true, transparent = true })
+  end
 end
 
 --- Declare a submap and return a handle with enter/exit/setup methods.
@@ -337,7 +344,7 @@ function Submap.define(spec)
         Bind.key("BackSpace", M.back, "Back", back_opts)
       end
 
-      if not binds_use_key(raw_binds, whichkey_toggle_key) then bind_whichkey_toggle() end
+      if not binds_use_key(raw_binds, whichkey_toggle_key) then bind_whichkey_toggle(catchall) end
 
       bind_catchall(catchall, M.exit, spec)
     end)
