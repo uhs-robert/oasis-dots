@@ -29,7 +29,7 @@ Submap.define({
   catchall = "stay",
 
   hint = {
-    { "Resize", "resize.step" },
+    { "Resize", { "resize.step", tiers = "speed" } },
     { "Window", { "resize.reset", label = "Reset" } },
   },
 
