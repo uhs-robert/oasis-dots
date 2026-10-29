@@ -156,6 +156,17 @@ under_prefix() {
 }
 
 commit_rows='.commits[] | [.sha, (.commit.message | split("\n")[0])] | @tsv'
+# The same with each commit's merged-in parents between, "-" for an ordinary commit (read collapses an empty tab field).
+head_rows='.commits[] | [.sha, (if (.parents | length) > 1 then (.parents[1:] | map(.sha) | join(" ")) else "-" end), (.commit.message | split("\n")[0])] | @tsv'
+
+# True when every given commit is already on the default branch.
+merges_only_default() {
+  local parent status
+  for parent in $1; do
+    status=$(gh api "repos/$slug/compare/$default...$parent" --jq .status) || die "cannot compare $parent with $default"
+    [[ $status == behind || $status == identical ]] || return 1
+  done
+}
 
 # What a rebase leaves unchanged about a commit: per file its name and a hash of its patch without the "@@" hunk headers
 # (which carry line offsets). Empty when any file has no patch (binary, too large), so such a commit never matches.
@@ -201,20 +212,22 @@ small_fix_lines=20
 # Sets rereview_why to the reason the commits after Codex's review need a review of their own; empty when together they
 # change at most small_fix_lines lines, all in files the review covered. Sets generated_skipped when a commit was ignored
 # for touching only generated paths.
-# Compares each side against the default branch, so commits picked up by a rebase after the review are not counted.
+# Compares each side against the default branch, so commits picked up by a rebase after the review are not counted, and
+# skips a merge that only brings the default branch in, which is the same catch-up done without a force-push.
 # Not run in a subshell, so the two variables reach the caller.
 rereview_reason() {
-  local reviewed=$1 head=$2 reviewed_commits head_shas covered changed new_file sha file changes sha_files_text only_generated lines=0 unmeasured=""
+  local reviewed=$1 head=$2 reviewed_commits head_shas merged covered changed new_file sha file changes sha_files_text only_generated lines=0 unmeasured=""
   local -a prefixes=()
   rereview_why=""
   generated_skipped=false
   mapfile -t prefixes < <(generated_prefixes)
   reviewed_commits=$(gh api "repos/$slug/compare/$default...$reviewed" --jq "$commit_rows") ||
     die "cannot compare $reviewed with $default"
-  head_shas=$(gh api "repos/$slug/compare/$default...$head" --jq "$commit_rows") ||
+  head_shas=$(gh api "repos/$slug/compare/$default...$head" --jq "$head_rows") ||
     die "cannot compare $head with $default"
-  while IFS=$'\t' read -r sha subject; do
+  while IFS=$'\t' read -r sha merged subject; do
     [[ -n $sha ]] || continue
+    [[ $merged == - ]] || ! merges_only_default "$merged" || continue
     ! grep -q "^$sha"$'\t' <<<"$reviewed_commits" || continue
     # A rebase gives the reviewed commits new shas; the same subject with the same files and counts is still that commit.
     ! reviewed_by_content "$sha" "$subject" "$reviewed_commits" || continue
