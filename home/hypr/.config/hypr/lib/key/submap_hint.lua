@@ -219,7 +219,7 @@ local function item_entries(item, rows)
 end
 
 --- Build the hint Quickshell draws: { name, groups = { { name, keys = { {cap, label}... } }... }, footer = { {cap, label}... },
---- targets? }, `targets` set for a submap with Submap.define `targets`, whose bar frames the target windows.
+--- targets? }, `targets` set for a submap with Submap.define `targets`, whose bar numbers the selected windows.
 --- An item that matches no row raises, so a hint cannot outlive the bind it names.
 --- @param name string    Submap name
 --- @param hint SubmapHintGroup[]
