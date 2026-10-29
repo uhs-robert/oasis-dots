@@ -1,8 +1,10 @@
 # Desktop areas
 
-What the desktop does, one file per area. An action's `run` hands its work to these files (see [actions](../act/README.md)).
+What the desktop does, one file per area. An action's `run` hands its work to these files (see [actions](../act/README.md)). Come here to change how a window, workspace, app or media step behaves.
 
 These files know nothing about action ids. Keymaps, extensions and `custom/` call them directly too.
+
+## Code
 
 - `apps.lua`: run an app, or focus its window when one is open.
 - `cursor.lua`: pointer movement, scrolling, clicking and key dispatch.
