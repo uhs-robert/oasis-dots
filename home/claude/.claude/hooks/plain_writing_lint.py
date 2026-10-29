@@ -91,6 +91,9 @@ def strip_exempt(text):
 def prose_units(text):
     """Split Markdown into prose units, as (first line number, last line number, text). A unit is a
     paragraph or one list item. Fenced code, block quotes, tables, headings and front matter are skipped."""
+    # Blank out HTML comments first, keeping their newlines so line numbers stay true. Split into lines,
+    # a multi-line comment would lose its opener and leave its body to be linted.
+    text = re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
     units, current, start = [], [], 0
     fence = None  # (character, length) of the open code fence
     lines = text.splitlines()

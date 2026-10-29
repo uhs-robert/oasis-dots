@@ -55,6 +55,8 @@ class Rules(unittest.TestCase):
         self.assertEqual(categories("The user's file stays."), [])
         self.assertEqual(categories("```\nit doesn't matter; really\n```"), [])
         self.assertEqual(categories("> Before: it doesn't work."), [])
+        self.assertEqual(categories("<!--\nIt shouldn't be linted; this is hidden.\n-->\nThe body is clean."), [])
+        self.assertEqual([h[0] for h in lint.lint_text("<!--\na\n-->\nIt doesn't work.", FILLER)], [4])
         self.assertEqual(categories("````\n```\nit doesn't; really\n```\nstill code; it isn't prose\n````\nThe body is clean."), [])
         self.assertEqual(categories("```\n```not a close\nit doesn't\n```\nThe body is clean."), [])
         self.assertEqual(categories("# A heading that doesn't count"), [])
