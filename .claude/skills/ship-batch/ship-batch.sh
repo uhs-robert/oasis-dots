@@ -81,6 +81,8 @@ for pr in "$@"; do
   fi
   # The check runs once, here, beside the reviewer wait that takes most of the time; there is no rerun after the merge.
   # Its own process group, so on_exit can end the check's steps; its output is held back so it does not interleave with the gate's.
+  # Recorded before the check starts: a commit pushed during the reviewer wait must not be credited with this check.
+  checked_head=$(git -C "$worktree" rev-parse HEAD)
   check_log=$(mktemp)
   # shellcheck disable=SC2016 # expanded by the inner bash
   (cd "$worktree" && exec setsid bash -c 'source "$1" && check_branch_here' _ "$script_dir/base.sh" >"$check_log" 2>&1) 9>&- &
@@ -97,7 +99,6 @@ for pr in "$@"; do
   check_pid=''
   cat "$check_log"
   rm -f "$check_log"
-  checked_head=$(git -C "$worktree" rev-parse HEAD)
   remove_temp_worktree
   if ! $gate_passed; then
     not_ready="PR $pr does not pass the review gate"

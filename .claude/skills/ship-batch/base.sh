@@ -154,6 +154,11 @@ remove_temp_worktree() {
 # Checks the branch checked out in the current directory. This is the only check a change gets, so it must be a check of
 # what main will become: a branch missing commits of origin/main is refused rather than checked.
 check_branch_here() {
+  # The check would run on files that are not the commit that merges.
+  [[ -z $(git status --porcelain) ]] || {
+    echo "ship-batch: $(git branch --show-current) worktree has uncommitted changes; commit or stash them" >&2
+    return 1
+  }
   git fetch -q origin main || return 1
   git merge-base --is-ancestor origin/main HEAD || {
     echo "ship-batch: the branch does not contain origin/main; rebase it with rebase-branch.sh first" >&2
