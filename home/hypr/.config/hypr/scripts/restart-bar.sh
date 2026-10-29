@@ -15,7 +15,13 @@ shopt -s extglob
 
 # `qs list` shows only the owner's default-config instances (no test or shadow bars), and still finds a bar whose
 # command line a crash turned into plain `quickshell`.
-bar_pids() { qs list --json --any-display | jq -r '.[].pid'; }
+bar_pids() {
+  local list
+  list=$(qs list --json --any-display)
+  # With no instance running, `qs list --json` prints a plain-text notice, not `[]`.
+  [[ $list == "["* ]] || return 0
+  jq -r '.[].pid' <<<"$list"
+}
 default_grace=5
 grace=${RESTART_BAR_GRACE:-$default_grace}
 if [[ $grace != +([0-9]) ]]; then
