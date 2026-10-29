@@ -35,7 +35,12 @@ STUB
 cat >bin/qs <<'STUB'
 #!/usr/bin/env bash
 if [[ ${1:-} == list ]]; then
-  [[ -s $STUB_DIR/pid ]] && alive "$(cat "$STUB_DIR/pid")" && echo "[{\"pid\": $(cat "$STUB_DIR/pid")}]"
+  if [[ -s $STUB_DIR/pid ]] && alive "$(cat "$STUB_DIR/pid")"; then
+    echo "[{\"pid\": $(cat "$STUB_DIR/pid")}]"
+  else
+    # The real qs prints this notice, not JSON, when no instance runs.
+    printf 'No running instances for "%s"\nUse --all to list all instances.\n' "$HOME/.config/quickshell/shell.qml"
+  fi
   exit 0
 fi
 # Like `qs -n`: exit at once while another instance is alive.
@@ -120,10 +125,11 @@ wait_dead "$old_pid"
 check test "$(bars_started)" -eq 1
 check not alive "$old_pid"
 
-# The script: waits for the old bar, then starts a new one.
+# The script: waits for the old bar, then starts a new one, and stays quiet while no bar runs in between.
 start_bar
 old_pid=$(cat pid)
-check bash "$script"
+check bash "$script" 2>err
+check test ! -s err
 check test "$(bars_started)" -eq 2
 check test "$(cat pid)" != "$old_pid"
 check alive "$(cat pid)"
@@ -133,7 +139,8 @@ old_pid=$(cat pid)
 kill "$old_pid"
 wait_dead "$old_pid"
 rm -f started pid
-check bash "$script"
+check bash "$script" 2>err
+check test ! -s err
 check test "$(bars_started)" -eq 1
 check alive "$(cat pid)"
 
