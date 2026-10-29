@@ -48,7 +48,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 3. Investigate the issue or PR and repository.
    - Have an agent investigate the issue or PR, the code and its tests.
    - Always run the `interview` skill's procedure (it governs intake) on the investigation agent's findings, reading nothing yourself, and write its plan into the piece's plan draft; skip its approval ask and do not present the plan yet. Small and material pieces get at least one question round, including the design approach; a trivial piece may skip questions but the plan states its tier and assumptions as "Assumed: X".
-   - The plan proposes a review tier, approved with it (re-tier with the owner if the piece grows): trivial (docs, comments, config values, no logic) gets the reviewer agent only, no local external review, and ships with `--skip-review-gate` and a PR-body note; small (a contained fix) gets the reviewer agent and one local external review round; material (a new mechanism, concurrency, lifecycle) gets the full pipeline below.
+   - The plan proposes a review tier, approved with it (re-tier with the owner if the piece grows): trivial (docs, comments, config values, no logic) gets the reviewer agent only, no local external review, and ships with `--skip-review-gate` and a PR-body note (the flag covers every PR in a ship run, so such a piece ships in a run of its own); small (a contained fix) gets the reviewer agent and one local external review round; material (a new mechanism, concurrency, lifecycle) gets the full pipeline below.
    - Run `~/.claude/skills/orchestrator/overlap.sh <path>...` on the files the drafted plan will touch. It lists other worktrees (committed and uncommitted work) and open PRs that change them. Settle each overlap with the session or PR owner before delegating, and put the outcome in the plan. If an outcome changes the plan materially, resume interviewing, update the plan draft, rerun `overlap.sh` on the revised plan's files and settle any new overlaps before asking for approval.
    - Present the plan with the overlap outcomes and get the owner's one approval.
    - A hands-on test the owner must do goes in its own message; ask about its result in a later turn, after the owner has acted, never in the same turn under the checklist.
@@ -71,7 +71,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
    - A fix adds a test when, and only when, the bug could come back silently and nothing else would catch it; the agent shows it failing on the unfixed code first. Otherwise it says in one line why no test.
    - When agents run in parallel, each brief lists the files it owns, a "Do NOT" line naming what a sibling owns, and the shared code it must use rather than reimplement. Work that stands alone goes in a new file; where siblings must share a file (a list, table, index or config), keep each edit a small addition, or run those agents one after another.
 
-6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per material finding).
+6. Never read a diff yourself. Brief a read-only reviewer agent with the review dimensions, the repository conventions and a check that the commit messages follow `commit-messages`, and read its findings (verdict plus one line per finding, as the report rule above).
    - After a parallel batch, also review the branches against each other: shared names, formats and hand-off contracts agree, and no helper is duplicated across them.
 
 7. Get an external review of the issue and diff against the review dimensions, as the tier allows (none for trivial, one round for small). The local reviewers (Codex, CodeRabbit, Claude, any a repo adds in `.claude/reviewers.json`; see `reviewers.md`) run in parallel and are advisory; an Opus subagent covers when none is available.
@@ -86,7 +86,7 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 
 8. Evaluate and resolve findings. Classify each finding as valid, partially valid, invalid, or out of scope, and test it for proportion to the tier; do not blindly apply reviewer suggestions. Apply small valid fixes using the model policy from step 4; decline invalid and out-of-scope ones with a reason. A finding whose fix would add a mechanism, grow scope or change the design is a fork (step 3).
    - A piece gets 2 fix rounds, counted in the tracker; a redesign does not reset the count, and a 3rd round needs the owner's approval.
-   - Every GitHub review thread gets a reply through `resolve-thread.sh` (fixed, declined with the reason, or deferred to an issue) and is resolved; the merge gate still blocks on unresolved threads.
+   - Every GitHub review thread gets a reply through `~/.claude/skills/merge-prs/resolve-thread.sh` (fixed, declined with the reason, or deferred to an issue) and is resolved; the merge gate still blocks on unresolved threads.
    - Send the fix to the agent that wrote the code (`SendMessage` to its name) when the fix is in code it already read and its context, from the token count its completion reports, is under 400k; from 400k to 500k, only for a small targeted fix.
    - Otherwise, or once it reports compacting, brief a fresh agent with the diff range, the finding and the file paths. Also start fresh when the finding shows the approach itself was wrong.
    - Tell the fixer to make the smallest change that fixes the finding, with a test only where step 5 calls for one. If the fix needs a new mechanism, it reports that fork before building it.
@@ -97,6 +97,6 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 10. Create a PR against the appropriate base branch, or push to the existing PR's branch when working on one.
     Reference and close the issue, if one exists.
 
-11. Run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` and resolve any thread or reviewer problem it reports. Only a passing check makes the PR ready.
+11. Run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` (with `--skip-review-gate` for a trivial piece or one where the owner waived the reviewers) and resolve any thread or reviewer problem it reports. Only a passing check makes the PR ready.
 
 12. Report: issue URL, PR URL, summary, validation, notable findings and dispositions (every declined thread listed), which reviewer ran (quoting the line Codex printed after `codex unavailable:`, if any), remaining risks, and whether it is ready for human review.

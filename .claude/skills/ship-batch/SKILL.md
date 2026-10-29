@@ -11,7 +11,7 @@ description: The only way to merge PRs in this repo. Open and merge the PRs for 
 - Before running it, every branch is rebased on `origin/main`, pushed and has an open PR (step 1); afterwards tick the finished items in `review.md` if one exists (step 4).
 - `.claude/skills/ship-batch/ship-batch.sh <n>...` with the PRs in merge order, as that bare command: a prefixed variable no longer matches the owner's allow rule and is blocked.
 - `--request-review` goes before the PR numbers, only for a material fix: it lets the review wait comment `@codex review` on a PR changed past the small-fix limit since its review. Without it the gate reports that as a problem.
-- `--skip-review-gate` goes before the PR numbers, only when the owner waived the reviewers; it skips reviewer states (no waiting, no requests), unresolved threads still block. Say so in the PR.
+- `--skip-review-gate` goes before the PR numbers, only when the owner waived the reviewers or the piece's approved review tier is trivial; it skips reviewer states (no waiting, no requests), unresolved threads still block, and it applies to every PR in the run, so a piece shipped with it goes in its own run, never in a batch with other pieces. Say so in the PR.
 - When the gate gives up waiting on a review (Codex "still running" after its wait), do not rerun: ask the owner whether to merge with `--skip-review-gate`.
 - Merge only through this script, never `merge-prs.sh <n>` or `gh` directly.
 - Main is not checked after a merge: each branch is checked once, before it merges. Run `just check` in the main checkout when its state matters.
