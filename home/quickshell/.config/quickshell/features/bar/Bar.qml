@@ -124,19 +124,23 @@ Item {
     }
 
     // How long a side-island module may grow on a top or bottom bar before its island comes within a module gap of
-    // the center island. The center island grows both ways, so it has no limit. Without one, each side gets up to the
-    // middle rather than what the other side leaves: both sides can hold a Directory, whose rooms would then bind to
-    // each other's widths.
+    // the next island. The center island grows both ways, so it has no limit. Without a center island the other side
+    // is measured by its fixed modules only: both sides can hold a Directory, whose rooms would otherwise bind to each
+    // other's widths, so two such modules split what the fixed content leaves.
     function module_room(island, item) {
         if (root.vertical || root.lualine || island === center_island) return Infinity;
         const start = root.frame ? root.frame.start : root.strip_side;
         const end = root.width - (root.frame ? root.frame.end : root.strip_side);
         const gap = Style.bar_module_gap;
-        const middle = (start + end) / 2;
-        const island_room = island === left_island
-            ? (root.has_center ? center_island.x - gap : middle - gap / 2) - start
-            : end - (root.has_center ? center_island.x + center_island.width + gap : middle + gap / 2);
-        return island_room - island.chrome_length - island.row_length_without(item.parent);
+        const own_fixed = island.chrome_length + island.row_length_without(item.parent);
+        if (root.has_center) {
+            const island_room = island === left_island ? center_island.x - gap - start : end - (center_island.x + center_island.width + gap);
+            return island_room - own_fixed;
+        }
+        const other = island === left_island ? right_island : left_island;
+        const other_fixed = other.visible ? other.chrome_length + other.row_length_fixed() : 0;
+        const free = end - start - gap - own_fixed - other_fixed;
+        return other.visible && other.has_fitted_module() ? free / 2 : free;
     }
 
     // Under a frame the statusline is a strip along the bar edge between the frame's sides, not out to the screen edges, so
