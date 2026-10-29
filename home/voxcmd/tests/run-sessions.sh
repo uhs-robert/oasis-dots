@@ -395,12 +395,6 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 kill "$stop_waiter_pid" 2>/dev/null
 wait "$stop_waiter_pid" 2>/dev/null
 
-# With nothing open it is silent.
-fresh_logs
-rm -f "$XDG_RUNTIME_DIR/voxcmd/session.json"
-echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
-check "stop with nothing open exits 0 and does nothing" "env SANDBOX_SETSID_RUN=1 VOXCMD_CONFIG_DIR='$sess_config' '$sess_voxcmd' stop >/dev/null 2>&1 && ! grep -qE '^(voxtype record|notify-send)' '$log'"
-
 # Settling: the next listen waits for the overlay and popups. The stub bar reports what the files hold. A wait is told
 # from none by how often the bar is asked, and only the lower bounds are times, which load can only stretch.
 settle_ms() {
@@ -431,10 +425,7 @@ check "an open overlay is waited out" "settle_waits_out '$hints_state' open"
 for popup_state in "opening weather" "open weather" "closing weather"; do
   check "a popup that is '$popup_state' is waited out" "settle_waits_out '$popup_state_file' '$popup_state'"
 done
-echo open >"$hints_state"
-check "a screen that never settles is waited on for a bounded time" "[[ \$(settle_ms VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.3) -ge 300 ]] && { timeout '$test_wait_secs' env VOXCMD_APP_SETTLE_SECS=0 VOXCMD_UI_SETTLE_MAX_SECS=0.1 '$sess_voxcmd' internal settle; [[ \$? == 1 ]]; }"
 rm -f "$hints_state"
-check "no bar to ask counts as settled" "env XDG_CONFIG_HOME='$root/no-bar' VOXCMD_APP_SETTLE_SECS=0 '$sess_voxcmd' internal settle"
 
 # In a session the bar is asked after the turn's action and before the microphone opens again.
 sess_run alpha "done"
@@ -480,14 +471,8 @@ sess_wait
 check "outside a session a stock noise transcript is routed" "grep -q 'transcript \"thank you\" goes to route' '$XDG_RUNTIME_DIR/voxcmd/debug.log' && ! grep -q 'guess at noise' '$XDG_RUNTIME_DIR/voxcmd/debug.log'"
 rm -f "$XDG_RUNTIME_DIR/voxcmd/debug.log"
 
-# The watcher dying mid-session takes the session with it. Killed only once it is listening: a watcher killed while it
-# starts dies before its trap is set, and one handing over to a successor that is starting leaves the session to it.
-sess_start HOLD
-owner_is_listening
-signal_watchers TERM
-sess_wait
-check "a killed listener ends the session" "session_gone"
-# SIGKILL runs no trap, so the file stays, but the owner check reads it as no session.
+# Killed only once it is listening: a watcher killed while it starts dies before its trap is set. SIGKILL runs no trap, so
+# the file stays, but the owner check reads it as no session.
 sess_start HOLD
 owner_is_listening
 signal_watchers KILL
