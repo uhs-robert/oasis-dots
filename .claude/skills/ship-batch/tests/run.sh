@@ -236,7 +236,7 @@ cat >"$stubs/just" <<STUB
 echo "just \$* $lock_state" >>"\$SHIP_LOG"
 [[ ! -e /proc/\$\$/fd/9 ]] || echo "just fd9 leaked" >>"\$SHIP_LOG"
 if [[ \$1 == migrate-quickshell-state ]]; then
-  qs list --json | grep -q pid && bar=up || bar=down
+  qs list --json --any-display | grep -q pid && bar=up || bar=down
   echo "migrate bar \$bar" >>"\$SHIP_LOG"
   [[ -z \${STUB_MIGRATE_STATUS:-} || ( -n \${STUB_MIGRATE_ONLY_DOWN:-} && \$bar == up ) ]] || exit "\$STUB_MIGRATE_STATUS"
 fi
@@ -394,11 +394,14 @@ STUB
 cat >"$stubs/qs" <<'STUB'
 #!/bin/bash
 [ "$1" = list ] || exit 0
+# Like the real one: qs_broken fails, and without --any-display a shell off the owner's display sees no bar.
+[ -e "$E2E/qs_broken" ] && { echo "qs: boom" >&2; exit 1; }
+case " $* " in *" --any-display "*) ;; *) echo "No running instances"; exit 0 ;; esac
 pid=$(cat "$E2E/bar_pid" 2>/dev/null)
 [ -e "$E2E/immortal" ] && pid=1
 state=$(sed 's/.*) //' "/proc/${pid:-0}/stat" 2>/dev/null)
 case $state in
-"" | Z*) echo "[]" ;;
+"" | Z*) echo "No running instances for \"owner\"" ;;
 *) echo "[{\"pid\": $pid}]" ;;
 esac
 STUB
@@ -534,7 +537,13 @@ migrate_ship lib/install/migrate.sh home/quickshell/bar
 survive_rc=$?
 rm -f "$e2e/immortal"
 check "a bar that survives SIGKILL skips the second pass, says so and fails as not restarted" "[[ $survive_rc != 0 && \$(migrate_count) == 1 ]] && ! logged 'migrate bar down' && grep -q 'the old bar was still running, so migration cleanup was skipped' '$e2e/out' && grep -q 'qs did not come back' '$e2e/out'"
-check "and the bar is still relaunched" "(( \$(dispatch_line) > 0 ))"
+check "and the bar is still relaunched, with the base kept for the skipped migration" "(( \$(dispatch_line) > 0 )) && [[ -e \$(base_file '$e2e/main') ]]"
+# A listing that fails is not "no bar": nothing is signalled or relaunched.
+touch "$e2e/qs_broken"
+migrate_ship lib/install/migrate.sh home/quickshell/bar
+broken_rc=$?
+rm -f "$e2e/qs_broken"
+check "a failing qs list stops the restart before anything is killed or relaunched" "[[ $broken_rc != 0 ]] && grep -q \"could not list the bar\" '$e2e/out' && ! logged 'bar got TERM' && [[ -z \$(dispatch_line) ]] && [[ -e \$(base_file '$e2e/main') ]]"
 touch "$e2e/term_survives"
 migrate_ship lib/install/migrate.sh home/quickshell/bar
 term_rc=$?

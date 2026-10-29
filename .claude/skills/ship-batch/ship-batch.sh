@@ -225,36 +225,44 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     # config that `qs list` reports (restart-bar.sh --pids), not a command-line match: a crash relaunch leaves a bare
     # `quickshell`, and test and shadow bars are other configs or runtimes.
     bar_pids() { bash "$repo/home/hypr/.config/hypr/scripts/restart-bar.sh" --pids; }
-    old_bar_pids=$(bar_pids)
+    # A failed listing is not "no bar": stop before killing or relaunching anything.
+    bar_gone() {
+      local pids
+      pids=$(bar_pids) && [[ -z $pids ]]
+    }
+    old_bar_pids=$(bar_pids) || die "could not list the bar with 'qs list'; nothing was stopped (restart-bar.sh --pids)"
     # shellcheck disable=SC2086 # one word per pid
     [[ -z $old_bar_pids ]] || kill $old_bar_pids 2>/dev/null || true
     for _ in $(seq 20); do
-      [[ -z $(bar_pids) ]] && break
+      bar_gone && break
       sleep 0.2
     done
-    if [[ -n $(bar_pids) ]]; then
+    if ! bar_gone; then
       # shellcheck disable=SC2046
       kill -KILL $(bar_pids) 2>/dev/null || true
       for _ in $(seq 10); do
-        [[ -z $(bar_pids) ]] && break
+        bar_gone && break
         sleep 0.2
       done
     fi
     # A failure here still relaunches the bar first: dying with the old one killed would leave the owner with none.
     migrate_status=0
+    old_bar_survived=false
     # The wait above can run out (a slow exit): migrations that see a bar keep the old state and nothing would retry.
-    if [[ -n $(bar_pids) ]]; then
+    if ! bar_gone; then
+      old_bar_survived=true
       $run_migrations && echo "ship-batch: the old bar was still running, so migration cleanup was skipped; stop the bar and run: just migrate-quickshell-state"
     else
       migrate "after stopping the bar" || migrate_status=1
     fi
     # Everything a rerun would redo is done, so a bar failure from here on (it tells the owner to restart by hand) must not
-    # leave the marker for later runs to resume from. A failed migration keeps it: the rerun repeats that step.
-    ((migrate_status == 0)) && finish_base "$repo"
+    # leave the marker for later runs to resume from. A failed migration, or a skipped one because the old bar
+    # survived, keeps it: the rerun repeats that step.
+    ((migrate_status == 0)) && ! $old_bar_survived && finish_base "$repo"
     hyprctl dispatch "hl.dsp.exec_cmd('qs -n')" 9>&- >/dev/null || die "hyprctl could not relaunch qs; start it by hand: hyprctl dispatch \"hl.dsp.exec_cmd('qs -n')\""
     sleep 6
     # Success is a listed instance with a pid the old bar did not have: a crash reporter or the old bar still alive is not it.
-    new_bar_pids=$(bar_pids)
+    new_bar_pids=$(bar_pids) || die "could not list the bar with 'qs list' after the relaunch; read 'qs log'"
     if [[ -z $new_bar_pids ]] || grep -qxFf <(echo "$old_bar_pids") <<<"$new_bar_pids"; then die "qs did not come back; read 'qs log'"; fi
     ((migrate_status == 0)) || die "$migrate_failure (the bar was restarted)"
     echo "ship-batch: restarted the stowed bar"

@@ -37,11 +37,15 @@ STUB
 cat >bin/qs <<'STUB'
 #!/usr/bin/env bash
 if [[ $1 == list ]]; then
+  # STUB_BAR=broken: qs list itself fails. Without --any-display a shell off the owner's display sees no bar.
+  [[ ${STUB_BAR:-slow} == broken ]] && { echo "qs: boom" >&2; exit 1; }
+  [[ " $* " == *" --any-display "* ]] || { echo "No running instances"; exit 0; }
   pids=()
   if [[ -s $STUB_DIR/pid ]] && { alive "$(cat "$STUB_DIR/pid")" || [[ ${STUB_BAR:-slow} == immortal ]]; }; then
     pids+=("$(cat "$STUB_DIR/pid")")
   fi
   [[ " $* " == *" --all "* && -s $STUB_DIR/decoy_pid ]] && pids+=("$(cat "$STUB_DIR/decoy_pid")")
+  ((${#pids[@]})) || { echo "No running instances for \"owner\""; exit 0; }
   printf '%s\n' "${pids[@]}" | jq -R 'select(. != "") | {pid: tonumber}' | jq -s .
   exit 0
 fi
@@ -165,6 +169,18 @@ check test $? -ne 0
 check grep -q "survived SIGKILL" err
 check grep -q "Bar restart failed" notified
 check test "$(bars_started)" -eq 1
+
+# A failing `qs list` is an error, not "no bar": nothing is killed or started.
+export STUB_BAR=slow
+start_bar
+started_before=$(bars_started)
+STUB_BAR=broken bash "$script" 2>err
+check test $? -ne 0
+check grep -q "could not list the bar" err
+check test "$(bars_started)" -eq "$started_before"
+check alive "$(cat pid)"
+STUB_BAR=broken bash "$script" --pids 2>/dev/null
+check test $? -ne 0
 
 # A crash reporter (a bare `quickshell` that is no listed instance) is not a bar.
 export STUB_BAR=crashed
