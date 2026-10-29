@@ -64,7 +64,7 @@ on_exit() {
 trap on_exit EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-ready=() not_ready=''
+ready=() ready_branches=() checked_heads=() not_ready=''
 for pr in "$@"; do
   if ((${#skip_gate[@]})); then
     echo "ship-batch: PR $pr: reviewer states skipped by request; threads still checked"
@@ -87,12 +87,17 @@ for pr in "$@"; do
   check_pid=$!
   gate_passed=true
   (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${gate_flags[@]}" "$pr") || gate_passed=false
-  $gate_passed || kill -TERM -- "-$check_pid" 2>/dev/null || true
+  # The group exists only once setsid has run; before that the pid is the subshell, and `wait` would block for the whole check.
+  $gate_passed || {
+    kill -TERM -- "-$check_pid" 2>/dev/null
+    kill -TERM "$check_pid" 2>/dev/null
+  } || true
   branch_passed=true
   wait "$check_pid" || branch_passed=false
   check_pid=''
   cat "$check_log"
   rm -f "$check_log"
+  checked_head=$(git -C "$worktree" rev-parse HEAD)
   remove_temp_worktree
   if ! $gate_passed; then
     not_ready="PR $pr does not pass the review gate"
@@ -103,6 +108,8 @@ for pr in "$@"; do
     break
   fi
   ready+=("$pr")
+  ready_branches+=("$branch")
+  checked_heads+=("$checked_head")
 done
 if [[ -n $not_ready ]]; then
   ((${#ready[@]})) || die "$not_ready; nothing was merged"
@@ -113,6 +120,21 @@ fi
 # restows, reloads and restarts that follow it. Commands below that can leave a daemon behind run with fd 9 closed so it
 # cannot hold the lock after this run.
 take_lock "$repo" "${ready[*]}" || die "gave up waiting for the ship-batch running in this repository"
+# Each branch was checked against the main of its own time. Another batch may have merged since, and then what would land
+# was never checked, so a branch that no longer contains origin/main is not merged (nor are the ones after it).
+git -C "$repo" fetch -q origin main || die "cannot fetch origin/main to confirm the checked branches are current"
+moved=''
+for i in "${!ready[@]}"; do
+  git -C "$repo" merge-base --is-ancestor origin/main "${checked_heads[i]}" && continue
+  moved="main moved since ${ready_branches[i]} was checked (PR ${ready[i]})"
+  ready=("${ready[@]:0:i}")
+  break
+done
+if [[ -n $moved ]]; then
+  ((${#ready[@]})) || die "$moved; nothing was merged; rerun ship-batch"
+  echo "ship-batch: $moved; merging only ${ready[*]}"
+  not_ready=$moved
+fi
 before=$(select_base "$repo")
 # The reviews were waited for above, so the gate here only confirms them and never waits under the lock.
 ((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${skip_gate[@]}" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
