@@ -128,7 +128,6 @@ home/claude/**
 !home/claude/.claude/commands/**
 !home/claude/.claude/hooks/
 !home/claude/.claude/hooks/**
-home/claude/.claude/hooks/**/__pycache__/
 !home/claude/.claude/skills/
 !home/claude/.claude/skills/**
 home/claude/.claude/skills/synced/
