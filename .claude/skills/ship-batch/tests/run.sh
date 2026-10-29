@@ -17,9 +17,7 @@ g() { git -c user.name=t -c user.email=t@t "$@"; }
 root=$(mktemp -d) || exit 1
 # Private to this run, and set before the trap exists, so cleanup can only ever stop this suite's own unit.
 MAIN_CHECK_UNIT=dotfiles-main-check-test-$$
-# live-hypr.sh only treats a runtime dir under /tmp/shadow-* as a nested session, so this one cannot live under $root.
-shadow_run=$(mktemp -d "/tmp/shadow-$UID-shipbatchtest.XXXXXX") || exit 1
-
+shadow_run=
 # The end-to-end section starts a real systemd-run unit and detached daemons that outlive this script, so removing the
 # temp root is not enough. Match processes by $root only, never by name, so the owner's real main check is untouched.
 cleanup() {
@@ -34,6 +32,8 @@ trap cleanup EXIT
 trap 'exit 143' TERM
 trap 'exit 130' INT
 trap 'exit 129' HUP
+# live-hypr.sh only treats a runtime dir under /tmp/shadow-* as a nested session, so this one cannot live under $root.
+shadow_run=$(mktemp -d "/tmp/shadow-$UID-shipbatchtest.XXXXXX") || exit 1
 repo=$root/repo
 git init -q -b main "$repo"
 g -C "$repo" commit -q --allow-empty -m one
@@ -243,7 +243,7 @@ cat >"$stubs/just" <<STUB
 echo "just \$* $lock_state" >>"\$SHIP_LOG"
 [[ ! -e /proc/\$\$/fd/9 ]] || echo "just fd9 leaked" >>"\$SHIP_LOG"
 [[ ! -e $e2e/just_daemon ]] || setsid -f bash -c 'exec -a $e2e/test-daemon sleep 300'
-[[ ! -e $e2e/just_chatty ]] || setsid -f bash -c 'exec -a $e2e/test-daemon bash -c "for _ in \$(seq 600); do sleep 0.2; echo daemon tick; done"'
+[[ ! -e $e2e/just_chatty ]] || setsid -f bash -c 'exec -a $e2e/test-daemon bash -c "for ((i=0;i<600;i++)); do sleep 0.2; echo daemon tick; done"'
 slot=\$(cat "$e2e/just_hold" 2>/dev/null)
 if [[ -n \$slot ]]; then
   exec 7>"\$slot"
