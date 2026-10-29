@@ -257,6 +257,8 @@ e2e_setup() {
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
   cp "$here/../ship-batch.sh" "$here/../base.sh" "$here/../live-hypr.sh" "$e2e/main/.claude/skills/ship-batch/"
+  mkdir -p "$e2e/main/home/hypr/.config/hypr/scripts"
+  cp "$here/../../../../home/hypr/.config/hypr/scripts/bar-pattern.sh" "$e2e/main/home/hypr/.config/hypr/scripts/"
   # With $e2e/branch_hold present a check waits until that file is removed; STUB_BRANCH_STATUS is its exit status.
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash
@@ -378,9 +380,8 @@ mkdir -p "$fake_home/.config/hypr/scripts" "$e2e/cache"
 # shellcheck disable=SC2016 # expanded by the stub
 # It prints a pid that the stub hyprctl bumps on each relaunch, so a bar that did not change counts as not restarted.
 printf '#!/bin/sh\nfor a; do :; done; grep -qE -- "$a" "$STUB_QS_PROCS" || exit 1\ncat "$STUB_QS_PROCS.pid" 2>/dev/null || echo 1\n' >"$stubs/pgrep"
-cp "$here/../../../../home/hypr/.config/hypr/scripts/bar-pattern.sh" "$fake_home/.config/hypr/scripts/"
 # shellcheck source=/dev/null
-source "$fake_home/.config/hypr/scripts/bar-pattern.sh"
+source "$here/../../../../home/hypr/.config/hypr/scripts/bar-pattern.sh"
 printf '#!/bin/sh\necho secure\n' >"$fake_home/.config/hypr/scripts/qs-ipc"
 chmod +x "$stubs/pgrep" "$fake_home/.config/hypr/scripts/qs-ipc"
 export STUB_QS_PROCS=$e2e/qs_procs XDG_CACHE_HOME=$e2e/cache

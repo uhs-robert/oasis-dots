@@ -229,7 +229,7 @@ if [[ $before != "$after" ]] && ! git -C "$repo" diff --quiet "$before" "$after"
     # an absolute path, or the bare `quickshell` a crash relaunch leaves, is matched (as in restart-bar.sh): -x qs would
     # also kill other users' or sessions' test bars.
     # shellcheck source=/dev/null
-    source "$HOME/.config/hypr/scripts/bar-pattern.sh"
+    source "$repo/home/hypr/.config/hypr/scripts/bar-pattern.sh"
     old_bar_pid=$(pgrep -u "$UID" -f "$bar_pattern" | head -n1 || true)
     pkill -u "$UID" -f "$bar_pattern" || true
     for _ in $(seq 20); do
