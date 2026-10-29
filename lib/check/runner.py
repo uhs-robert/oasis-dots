@@ -282,9 +282,10 @@ def git_output(*args):
 
 def clean_head_tree():
     """HEAD's tree when nothing is modified or untracked (ignored files aside), else None."""
-    status = git_output("status", "--porcelain")
+    # --untracked-files=normal: status.showUntrackedFiles=no must not hide an untracked file.
+    status = git_output("status", "--porcelain", "--untracked-files=normal")
     head_tree = git_output("rev-parse", "HEAD^{tree}")
-    if status or head_tree is None:
+    if status is None or status or head_tree is None:
         return None
     return head_tree.decode().strip()
 
@@ -414,9 +415,9 @@ class StepPool:
 
     def abort(self):
         """Ends every running step, its children included, removes the temp dir and exits 1: TERM, then KILL for
-        whatever is left after a grace period. The steps share this process group, as GNU timeout
-        needs to reach them, so a TERM sent to this process alone would otherwise leave them running. The lock is held
-        to the end, so no step starts and no log is opened behind the removal."""
+        whatever is left after a grace period. The steps share this process group, so a TERM sent to
+        this process alone would otherwise leave them running. The lock is held to the end,
+        so no step starts and no log is opened behind the removal."""
         with self.lock:
             self.stopping = True
             signalled = set()
@@ -473,7 +474,7 @@ def name_list(names):
 
 
 def summary_line(label, ran, skipped_by_scope, skipped_by_request):
-    """The line callers parse for what ran (lib/check/tests/scope.sh, ship-batch's and the hooks' readers)."""
+    """The line callers parse for what ran (lib/check/tests/scope.sh and ship-batch)."""
     line = f"check: {label}; ran:{name_list(ran)};"
     line += f" skipped by scope:{name_list(skipped_by_scope) or ' none'}"
     if skipped_by_request:
@@ -542,15 +543,15 @@ def run(options, logs, pool):
     if failed:
         return 1
 
-    # --paths-from checks a list someone chose and --only the steps someone chose, which vouch for no tree; neither
-    # does a step that ran in part.
-    if not options.paths_from and not options.only and not ran_in_part and tree_before:
+    # --paths-from checks a list someone chose and --only the steps someone chose, and CHECK_SKIP_STEPS drops steps, which
+    # vouch for no tree; neither does a step that ran in part.
+    if not options.paths_from and not options.only and not ran_in_part and not skipped_by_request and tree_before:
         if clean_head_tree() == tree_before:
             if options.changed_base:
                 ignoring_git_errors(passed.record_changed, options.changed_base)
             # Inductive: a base that passed, plus a scoped pass over everything changed since, vouches for the tree, as
             # does a run that reached every step.
-            if ("all" in change_set.reached and not skipped_by_request) or (
+            if "all" in change_set.reached or (
                 options.changed_base and ignoring_git_errors(passed.passed_somewhere, options.changed_base)
             ):
                 ignoring_git_errors(passed.record)
