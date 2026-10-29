@@ -92,7 +92,7 @@ def prose_units(text):
     """Split Markdown into prose units, as (first line number, last line number, text). A unit is a
     paragraph or one list item. Fenced code, block quotes, tables, headings and front matter are skipped."""
     units, current, start = [], [], 0
-    in_fence = False
+    fence = None  # (character, length) of the open code fence
     lines = text.splitlines()
     in_front_matter = bool(lines) and lines[0].strip() == "---"
 
@@ -108,11 +108,15 @@ def prose_units(text):
             if number > 1 and stripped == "---":
                 in_front_matter = False
             continue
-        if stripped.startswith(("```", "~~~")):
+        marker = re.match(r"(`{3,}|~{3,})(.*)$", stripped)
+        if fence is None and marker:
             flush(number - 1)
-            in_fence = not in_fence
+            fence = (marker.group(1)[0], len(marker.group(1)))
             continue
-        if in_fence:
+        if fence is not None:
+            # CommonMark: only the same character, at least as long, with nothing after it, closes the fence.
+            if marker and marker.group(1)[0] == fence[0] and len(marker.group(1)) >= fence[1] and not marker.group(2).strip():
+                fence = None
             continue
         if not stripped or stripped.startswith((">", "|", "#", "<")):
             flush(number - 1)
@@ -217,6 +221,9 @@ def gh_body(command, cwd):
     try:
         words = shlex.split(first_line if heredoc else command)
     except ValueError:
+        # --body "$(cat <<'EOF' ...)" leaves an open quote on the first line.
+        if heredoc and re.search(r"(?:--body|-b)\s+\"?\$\(\s*cat\s+<<", first_line):
+            return heredoc.group(3)
         return None
     for index, word in enumerate(words[:-1]):
         value = words[index + 1]
