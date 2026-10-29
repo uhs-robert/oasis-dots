@@ -576,7 +576,9 @@ fn expand_reaches_the_bar_for_an_asks_picker_too_without_a_token() {
         ],
         &[("GOLDEN_HOLD", "1")],
     );
-    wait_for("the pick is pending", || bar.pending_pick().exists());
+    // The picker shows after the pick is pending, and its stub numbers each dump by the files already there: a reply
+    // racing it would share a number with the spec dump and sort before it.
+    wait_for("the picker shows", || bar.calls().contains(".spec "));
     let (code, _, err) = finish(bar.spawn(&["reply", "expand one"], &[]));
     assert_eq!(code, 0, "{err}");
     assert!(bar.calls().ends_with("qs-ipc call picker expand 1 "), "{}", bar.calls());
