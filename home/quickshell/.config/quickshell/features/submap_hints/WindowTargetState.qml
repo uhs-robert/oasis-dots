@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.features.bar
 import "../../core/WindowVisibility.js" as WindowVisibility
+import "SelectionOrder.js" as SelectionOrder
 
 // The window selection of the `targets` submaps (Windows, Resize, Move), which
 // home/hypr/.config/hypr/lib/actions/selection.lua keeps and sends over `submap_hints selection`, and where those
@@ -14,10 +15,20 @@ Singleton {
     readonly property bool active: !!SubmapState.hint && SubmapState.hint.targets === true
     // Selected addresses as Quickshell writes them (no 0x), in the order they were selected.
     property var selected: []
-    // The serial of the last selection applied: each send is its own qs-ipc process, so an older one can land last.
-    property int serial: 0
+    // The (generation, serial) of the last selection applied, as SelectionOrder.js orders them.
+    property real generation: 0
+    property real serial: 0
 
-    // Stores a selection `{ "serial": n, "windows": ["0x..."] }`; returns "" or why it was refused.
+    function apply(next) {
+        if (!next)
+            return;
+        root.generation = next.generation;
+        root.serial = next.serial;
+        root.selected = next.selected;
+    }
+
+    // Stores a selection `{ "generation": g, "serial": n, "windows": ["0x..."] }` unless a newer one was applied;
+    // returns "" or why it was refused.
     function set_selection(json) {
         let spec;
         try {
@@ -25,19 +36,15 @@ Singleton {
         } catch (e) {
             return "not JSON: " + e.message;
         }
-        if (!spec || typeof spec.serial !== "number" || !Array.isArray(spec.windows))
-            return "needs a serial and windows";
-        if (spec.serial <= root.serial)
-            return "";
-        root.serial = spec.serial;
-        root.selected = spec.windows.map(a => String(a).replace(/^0x/, ""));
+        if (!spec || typeof spec.generation !== "number" || typeof spec.serial !== "number" || !Array.isArray(spec.windows))
+            return "needs a generation, a serial and windows";
+        root.apply(SelectionOrder.after_selection({ generation: root.generation, serial: root.serial }, spec));
         return "";
     }
 
-    // A config reload restarts Lua's serial and empties its selection.
-    function clear() {
-        root.serial = 0;
-        root.selected = [];
+    // A config load's generation starts with nothing selected.
+    function clear(generation) {
+        root.apply(SelectionOrder.after_clear({ generation: root.generation, serial: root.serial }, generation));
     }
 
     // The 1-based place of a window in the selection, 0 when it is not selected.

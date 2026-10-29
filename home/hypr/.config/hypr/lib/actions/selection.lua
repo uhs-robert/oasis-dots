@@ -13,7 +13,20 @@ local PINNED_TAG = "targets_border_pinned"
 --- Selected addresses in the order they were selected, so actions and Quickshell's numbers follow that order.
 --- @type string[]
 local SELECTED = {}
--- Counts every send: each is its own qs-ipc process, and two sent close together can land out of order.
+--- This config load's place among all of them, so Quickshell can order sends across a reload, which restarts `serial`:
+--- the system's uptime in centiseconds, which only grows while Hyprland and the bar run. os.time() is the fallback where
+--- /proc is missing; it counts seconds, so two reloads within one could share it.
+--- @return integer
+local function load_generation()
+  local file = io.open("/proc/uptime", "r")
+  local uptime = file and tonumber((file:read("*l") or ""):match("^(%d+%.?%d*)"))
+  if file then file:close() end
+  if uptime then return math.floor(uptime * 100) end
+  return os.time()
+end
+local GENERATION = load_generation()
+-- Counts every send in this generation: each is its own qs-ipc process, and two sent close together can land out of
+-- order, so Quickshell keeps the newest (generation, serial).
 local serial = 0
 
 --- Return address of the currently focused window, or nil.
@@ -112,7 +125,7 @@ local function send()
   for index, addr in ipairs(SELECTED) do
     windows[index] = addr
   end
-  Act.Ipc("submap_hints", "selection", Json.encode({ serial = serial, windows = windows }))()
+  Act.Ipc("submap_hints", "selection", Json.encode({ generation = GENERATION, serial = serial, windows = windows }))()
 end
 
 --- Tell Quickshell to reread window positions: a relative move or resize raises no Hyprland event of its own.
@@ -163,6 +176,21 @@ function Selection.clear()
   SELECTED = {}
   send()
 end
+
+--- Deselect every window and send the empty selection whatever the bar last heard. Submap.define calls this on coming
+--- into the `targets` submaps from outside, so an update the bar missed (a qs-ipc call that failed, a bar restart)
+--- cannot outlast the visit.
+function Selection.resync()
+  for _, addr in ipairs(SELECTED) do
+    unmark(addr)
+  end
+  SELECTED = {}
+  send()
+end
+
+--- This config load's generation, which `submap_hints clear` carries so the bar drops any send from an older one.
+--- @return integer
+function Selection.generation() return GENERATION end
 
 --- Keep the borders in step with the config, on every config change (a reload, or the screen frame setting widths and
 --- colours): a window still selected gets its border again at the new width, one tagged selected by a Lua state a

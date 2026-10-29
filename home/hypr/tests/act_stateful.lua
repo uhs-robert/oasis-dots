@@ -30,6 +30,20 @@ end
 hl.get_windows = function()
 	return WINDOWS
 end
+-- A fixed uptime, so the selection's config-load generation (lib/actions/selection.lua) is the same in every dump.
+local UPTIME = "1234.56 7890.12"
+local real_open = io.open
+io.open = function(path, ...)
+	if path == "/proc/uptime" then
+		return {
+			read = function()
+				return UPTIME
+			end,
+			close = function() end,
+		}
+	end
+	return real_open(path, ...)
+end
 -- The palette the selection border takes its colour from. The real module loads the machine's theme and writes state.
 package.loaded["theme"] = { colors = { theme_secondary = "#F0E68C" } }
 -- The border width and colours are the shapes Hyprland 0.57 returns: a number and gradient tables.
@@ -403,6 +417,34 @@ check(
 )
 WINDOWS[2].tags, WINDOWS[3].tags, CONFIG["general.border_size"] = nil, nil, 2
 Submap.reset()
+
+-- Every selection send carries this config load's generation (the uptime in centiseconds), and so does the clear each
+-- load sends, so the bar can drop a send from before a reload that lands after it.
+Stubs.performed = {}
+Submap.enter("Windows")
+local entered = Stubs.performed
+check(
+	"entering from outside resyncs the bar, even with nothing selected: " .. text_of(entered),
+	count_of(entered, '"generation":123456,"serial":') == 1 and count_of(entered, '"windows":[]') == 1
+)
+Stubs.performed = {}
+require("lib.key.submap_hint").clear_bar()
+check(
+	"the config-load clear carries the generation: " .. text_of(Stubs.performed),
+	count_of(Stubs.performed, "submap_hints clear 123456") == 1
+)
+Submap.reset()
+UPTIME = "1300.00 7890.12"
+load_all()
+Submap = require("lib.key.submap")
+Stubs.performed = {}
+Submap.enter("Windows")
+check(
+	"a reload's sends come from a later generation, whose serial restarts: " .. text_of(Stubs.performed),
+	count_of(Stubs.performed, '"generation":130000,"serial":1,') == 1
+)
+Submap.reset()
+UPTIME = "1234.56 7890.12"
 
 -- A reload starts from nothing: no duplicate binds or actions, an empty selection.
 local function bind_count()
