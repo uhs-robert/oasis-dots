@@ -137,7 +137,7 @@ if command -v tmux >/dev/null 2>&1; then
     fi
   done < <(tmux list-clients -F $'#{client_pid}\t#{client_session}\t#{pane_current_path}\t#{pane_pid}\t#{client_tty}' 2>/dev/null)
   # Several clients at the best rank that the title does not separate: no answer beats another client's.
-  [ "$pick_titled" -eq 0 ] && [ "${ranked[pick_rank]}" -gt 1 ] && pick=""
+  [ "$pick_titled" -eq 0 ] && [ "${ranked[pick_rank]}" -gt 1 ] && exit 0
   if [ -n "$pick" ]; then
     describe "$pick_pane" "$pick"
     exit 0
