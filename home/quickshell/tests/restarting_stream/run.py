@@ -83,7 +83,8 @@ def check_planned(r):
     expect(p, "exit delays", [e["delay"] for e in r.exits], [200])
     expect(p, "quick-failure warnings", r.quick_warnings, 0)
     if len(r.ups) == 2:
-        # The restart waits out the 200 ms delay after the exit, which follows the kill; the upper bound only catches a stuck restart.
+        # The restart waits out the 200 ms delay after the exit, which follows the kill; the upper bound only catches
+        # a stuck restart.
         between(p, "restart after the planned exit", r.ups[1] - r.actions["kill"], 140, 1500)
     return p
 

@@ -626,7 +626,8 @@ ShellRoot {
 
     BarEditorIpc {}
 
-    // The result file ends the process and run.py reads bars.json after it, so the result waits for BarSettings' last write.
+    // The result file ends the process and run.py reads bars.json after it, so the result waits for BarSettings'
+    // last write.
     function finish() {
         settle.start();
     }
