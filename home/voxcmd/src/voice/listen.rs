@@ -122,8 +122,9 @@ fn listen_locked_for(
             }
             let mode = ModeSettings::of(&text_of(&session["integration"]));
             // A mode that takes the words itself or keeps them private (type mode) never has its dictation read as a
-            // reply to an ask, which would log the words and could answer a card with them.
-            if pending.is_some() && !mode.private && !mode.has_handler {
+            // reply to an ask, which would log the words and could answer a card with them. The session's own next
+            // turn ignores a pending pick too: as a reply it would not keep the session, and the pick stays for keys.
+            if pending.is_some() && !mode.private && !mode.has_handler && !session::is_mine(&session, me) {
                 Handler::Reply
             } else {
                 session_listen = Some(SessionListen {

@@ -478,13 +478,19 @@ fn a_flagged_action_heard_in_a_session_turn_leaves_the_microphone_to_the_session
     // The action ran and its picker opened, so what follows is not vacuous.
     let pending = std::fs::read_to_string(voice.runtime().join("pending-pick.json")).unwrap();
     assert!(pending.contains("k2"), "{pending}");
-    // The action leaves the microphone free, so the session's own next listen opens it. Started first, the reply
-    // recording makes that listen fail and end the session.
+    // The session carries on: its own next listen is a session turn, owned by a live watcher. A reply recording
+    // started first, or a next listen read as a reply to the picker, would end it.
+    let state: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(voice.runtime().join("session.json")).unwrap_or_default())
+            .unwrap_or_else(|_| panic!("the session ended: {}", voice.debug_log()));
+    let owner = state["owner"].as_u64().unwrap();
+    assert_ne!(owner, u64::from(watcher.id()));
     assert!(
-        !voice.debug_log().contains("the microphone could not be opened"),
+        voice.calls().contains("internal watch session_turn 1:pickers:1 0 "),
         "{}",
-        voice.debug_log()
+        voice.calls()
     );
+    assert!(!voice.calls().contains("internal watch reply"), "{}", voice.calls());
 }
 
 // ---- the watcher ------------------------------------------------------------------------------------------------

@@ -194,7 +194,8 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         debug(&format!("action not run: {toast}: its mode could not open"));
         return result;
     }
-    // Not in a session turn: `continue_turns` opens the microphone next, which a reply recording would hold.
+    // A session turn skips the reply recording: the session listens for its next turn right after, and a recording
+    // already running would make that listen fail and end the session.
     let pick_before =
         (declared.is_some_and(|action| action.listen_for_pick) && rt.reply_listen_wanted() && !rt.in_session_turn)
             .then(|| crate::ask::read_pending().map(|pick| crate::ask::PickId::of(&pick)));
