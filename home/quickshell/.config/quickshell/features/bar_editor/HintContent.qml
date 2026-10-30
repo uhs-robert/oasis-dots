@@ -10,8 +10,9 @@ Row {
     property bool carrying: false
     property bool vertical: false
     readonly property var groups: HintData.groups(BarEditor.mode, root.carrying, root.vertical, BarEditor.can_forget, BarEditor.mode === "visual" ? (BarEditor.bar_compact ? "on" : "off") : BarEditor.selected_compact)
-    // Monitor select already titles its box.
-    readonly property string mode_label: BarEditor.mode === "monitor" ? "" : BarEditor.mode_label
+    // The floating monitor box titles itself; in the drawer monitor select is a mode like the others.
+    property bool box_titled: false
+    readonly property string mode_label: root.box_titled && BarEditor.mode === "monitor" ? "" : BarEditor.mode_label
     readonly property string edge_label: BarEditor.mode === "visual" ? BarEditor.position_edge + " edge" : ""
     readonly property string state_label: BarEditor.sharing ? "shared x" + BarEditor.sharing_count : "own layout"
     spacing: 18

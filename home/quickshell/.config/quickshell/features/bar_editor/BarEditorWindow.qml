@@ -56,7 +56,7 @@ PanelWindow {
     readonly property rect bar_rect: root.rect_of(root.bar_item)
     // Hints go to the screen edge the bar is not on.
     readonly property bool hints_on_top: root.bar_item !== null && root.bar_item.position === "bottom"
-    // With the screen frame on, the hints are HintDrawerWindow's drawer instead of HintBox.
+    // With the screen frame on, the hints (and the monitor map) are HintDrawerWindow's drawer instead of HintBox and monitor_box.
     readonly property bool hints_in_drawer: ScreenFrames.layout_for(root.modelData) !== null
     // A module the bar hides while it has nothing to show is zero wide; it still gets a mark.
     readonly property real mark_width: Math.max(root.sel.width, 14)
@@ -296,22 +296,10 @@ PanelWindow {
     // Monitor select: the screens as they sit, the picked one lit.
     Item {
         id: monitor_box
-        visible: root.keyboard_owner && BarEditor.mode === "monitor"
+        visible: root.keyboard_owner && BarEditor.mode === "monitor" && !root.hints_in_drawer
         anchors.centerIn: parent
         width: 560
-        height: monitor_box.map_height + 130
-        readonly property var bounds: {
-            let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-            for (const m of BarEditor.monitors) {
-                x0 = Math.min(x0, m.x);
-                y0 = Math.min(y0, m.y);
-                x1 = Math.max(x1, m.x + m.w);
-                y1 = Math.max(y1, m.y + m.h);
-            }
-            return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
-        }
-        readonly property real map_height: BarEditor.map_height(monitor_box.bounds.w, monitor_box.bounds.h)
-        readonly property real scale: Math.min(520 / bounds.w, monitor_box.map_height / bounds.h)
+        height: monitor_map.map_height + 130
         Rectangle {
             anchors.fill: parent
             radius: Style.frame_radius
@@ -328,47 +316,16 @@ PanelWindow {
             font.pixelSize: Style.fs(-1)
             font.bold: true
         }
-        Item {
+        MonitorMap {
+            id: monitor_map
             x: 20
             y: 44
-            width: 520
-            height: monitor_box.map_height
-            Repeater {
-                model: BarEditor.monitors
-                Rectangle {
-                    id: tile
-                    required property var modelData
-                    readonly property bool picked: modelData.name === BarEditor.focus_screen
-                    x: (modelData.x - monitor_box.bounds.x) * monitor_box.scale
-                    y: (modelData.y - monitor_box.bounds.y) * monitor_box.scale
-                    width: modelData.w * monitor_box.scale - 4
-                    height: modelData.h * monitor_box.scale - 4
-                    radius: Math.min(Style.frame_radius, 6)
-                    color: tile.picked ? Qt.alpha(Style.accent_color, 0.3) : "transparent"
-                    border.width: tile.picked ? 2 : 1
-                    border.color: tile.picked ? Style.accent_color : Style.frame_border_color
-                    Rectangle {
-                        width: parent.width
-                        height: 8
-                        color: tile.picked ? Style.accent_color : Style.frame_border_color
-                    }
-                    Text {
-                        anchors.centerIn: parent
-                        width: parent.width - 8
-                        horizontalAlignment: Text.AlignHCenter
-                        elide: Text.ElideRight
-                        text: tile.modelData.name + "\n" + BarEditor.tag_of(tile.modelData.name)
-                        color: Style.text_fg
-                        font.family: Style.font_family
-                        font.pixelSize: Style.fs(-1)
-                    }
-                }
-            }
         }
         HintContent {
             x: 10
-            y: monitor_box.map_height + 62
+            y: monitor_map.map_height + 62
             width: 540
+            box_titled: true
         }
     }
 

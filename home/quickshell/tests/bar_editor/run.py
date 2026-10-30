@@ -282,6 +282,7 @@ SCENARIOS = {
     "editor_module_compact": scenario_editor("editor_module_compact"),
     "editor_rule_compact": scenario_editor("editor_rule_compact"),
     "editor_hint_edge": scenario_editor("editor_hint_edge"),
+    "editor_monitor_map": scenario_editor("editor_monitor_map"),
     "editor_pick_redo": scenario_editor("editor_pick_redo"),
     "no_import_cycle": scenario_no_import_cycle,
     "editor_monitors": scenario_editor("editor_monitors"),

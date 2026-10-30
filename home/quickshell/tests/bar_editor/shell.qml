@@ -401,6 +401,29 @@ ShellRoot {
         width: 1920
         height: 1080
         HintBox { id: stage_hints }
+        MonitorMap { id: stage_map }
+    }
+    function tile_of(name) {
+        return stage_map.children.find(c => c.modelData && c.modelData.name === name);
+    }
+    function rect_of_tile(tile) {
+        return [Math.round(tile.x), Math.round(tile.y), Math.round(tile.width), Math.round(tile.height)];
+    }
+    // The monitor map on stand-in screens: tile rects, the picked flag, a portrait screen's taller map and the height cap.
+    function scenario_monitor_map() {
+        const A = root.real_name;
+        BarEditor.open("B");
+        BarEditor.press("Esc");
+        root.check("two screens side by side: a wide, short map", [stage_map.implicitWidth, Math.round(stage_map.implicitHeight)], [520, 146]);
+        root.check("the tiles sit as the screens do, in order, without C (no bar)", [root.rect_of_tile(root.tile_of(A)), root.rect_of_tile(root.tile_of("B")), root.tile_of("C")], [[0, 0, 256, 142], [260, 0, 256, 142], undefined]);
+        root.check("the picked screen is lit", [root.tile_of(A).picked, root.tile_of("B").picked], [false, true]);
+        root.keys("h");
+        root.check("h moves the lit tile", [root.tile_of(A).picked, root.tile_of("B").picked], [true, false]);
+        BarEditor.screens = [{ name: A, model: "M" + A, x: 0, y: 0, width: 1080, height: 1920, bar: true }];
+        root.check("a portrait screen alone gets the tallest map, not a thin strip", [Math.round(stage_map.implicitHeight), Math.round(root.tile_of(A).width)], [320, 1080 * (320 / 1920) - 4]);
+        stage_map.max_height = 200;
+        root.check("a cap shorter than the map clamps it and the tiles shrink to fit", [stage_map.implicitHeight, Math.round(root.tile_of(A).height)], [200, Math.round(1920 * (200 / 1920) - 4)]);
+        stage_map.max_height = Infinity;
     }
     function scenario_hint_edge() {
         BarEditor.open("B");
@@ -567,6 +590,7 @@ ShellRoot {
         editor_rule_compact: { steps: [[100, () => root.run_editor("rule_compact")]], end: 500 },
         editor_module_compact: { steps: [[100, () => root.run_editor("module_compact")]], end: 500 },
         editor_hidden_empty: { steps: [[100, () => root.run_editor("hidden_empty")]], end: 500 },
+        editor_monitor_map: { steps: [[100, () => root.run_editor("monitor_map")]], end: 500 },
         editor_hint_edge: { steps: [[100, () => root.run_editor("hint_edge")]], end: 500 },
         editor_pick_redo: { steps: [[100, () => root.run_editor("pick_redo")]], end: 500 },
         editor_monitors: { steps: [[100, () => root.run_editor("monitors")]], end: 500 },
