@@ -54,7 +54,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `audio/` holds `ThemeAudio` (the sound packs and their volumes) and the `sound` IPC handler `SoundIpc`.
 - `style/` holds `StyleIpc`, the `style` IPC handler (style, lock skin and sound-pack calls).
 - `windows/` holds `WindowState` (Hyprland windows, most recently focused first).
-- `submap_hints/` holds `SubmapHintBar`, the compact key hints shown while Hyprland is in a submap whose `Submap.define` has a `hint` (Windows, Resize, Move, Cursor; a plain-centre frame drawer opposite the bar with the screen frame on, a floating plate without), and its `submap_hints` IPC handler. The hints themselves are kept by name in `bar/SubmapState`. In a submap with `targets` (Windows, Resize, Move), `WindowTargetOverlay` numbers the selected windows on every screen (Hyprland draws their border), from `WindowTargetState` (the selection Hyprland sends and the window places it rereads on Hyprland events).
+- `submap_hints/` holds `SubmapHintBar`, the compact key hints (in the `bar/HintDrawer` window the Edit Bar hints share) shown while Hyprland is in a submap whose `Submap.define` has a `hint` (Windows, Resize, Move, Cursor; a plain-centre frame drawer opposite the bar with the screen frame on, a floating plate without), and its `submap_hints` IPC handler. The hints themselves are kept by name in `bar/SubmapState`. In a submap with `targets` (Windows, Resize, Move), `WindowTargetOverlay` numbers the selected windows on every screen (Hyprland draws their border), from `WindowTargetState` (the selection Hyprland sends and the window places it rereads on Hyprland events).
 - [`lock/`](features/lock/README.md): Lock screen, skins and greeter
 
 ## IPC

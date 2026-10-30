@@ -113,7 +113,7 @@ if ((dry_run)); then
   for s in "${styles[@]}"; do
     echo "smoke: $s: style set, popup battery, osd (voxtype recording), which-key (fixture payload), click hints (fixture boxes)$(is_region_style "$s" && echo ', region (pixel, select)')"
   done
-  echo "smoke: hint bars (submap, Edit Bar): goldeneye with the frame on (top bar, bottom bar), ps1 without it"
+  echo "smoke: hint bars (submap, Edit Bar, Edit Bar monitor select): goldeneye with the frame on (top bar, bottom bar), ps1 without it"
   "$shadow" status "$name" | head -1
   exit 0
 fi
@@ -399,12 +399,14 @@ cat >"$hint_json" <<'JSON'
 }
 JSON
 
-# hint_shot STYLE BAR_POSITION FRAME(1|0) [editor]: the frame and the bar position are set in the shadow's state files, so
+# hint_shot STYLE BAR_POSITION FRAME(1|0) [editor|monitor]: the frame and the bar position are set in the shadow's state files, so
 # the pass does not depend on the owner's saved options. The submap hint bar is entered by submap; with `editor` it is
-# the Edit Bar hint box (a drawer window with the frame, inside the fullscreen editor window without it).
+# the Edit Bar hint box (a drawer window with the frame, inside the fullscreen editor window without it); `monitor` is
+# the same after Esc, in monitor select, where the drawer also holds the monitor map (the floating box without the frame).
 hint_shot() {
   local style=$1 position=$2 framed=$3 what=${4:-submap} prefix=hintbar ns=quickshell-submap-hints
   [[ $what == editor ]] && prefix=editbar ns=quickshell-bareditor-hints
+  [[ $what == monitor ]] && prefix=monbar ns=quickshell-bareditor-hints
   local tag="${prefix}_$position"
   [[ $framed == 0 ]] && tag="${prefix}_floating"
   q style set "$style" >/dev/null
@@ -419,11 +421,15 @@ hint_shot() {
   local has_frame=0
   [[ -n $(layer_geom quickshell-frame) ]] && has_frame=1
   [[ $has_frame == "$framed" ]] || missing+=("MISS $style $tag (frame layer present=$has_frame, expected $framed)")
-  if [[ $what == editor ]]; then q bareditor open "" >/dev/null; else sh_hyprctl dispatch "hl.dsp.submap('Windows')" >/dev/null; fi
-  # Mid-grow: the open animation runs 190 ms.
+  if [[ $what == monitor ]]; then
+    q bareditor open "" >/dev/null
+    sleep 0.5
+    "$shadow" keys "$name" -k Escape >/dev/null
+  elif [[ $what == editor ]]; then q bareditor open "" >/dev/null; else sh_hyprctl dispatch "hl.dsp.submap('Windows')" >/dev/null; fi
+  # Mid-grow: the open animation runs 190 ms. In monitor select the drawer first folds (120 ms) and then regrows.
   sleep 0.06
   "$shadow" shot "$name" --out "$out/${style}_${tag}_grow.png" >/dev/null || true
-  if [[ $what == editor && $framed == 0 ]]; then
+  if [[ $what != submap && $framed == 0 ]]; then
     # The box is part of the fullscreen editor window, so there is no layer of its own to crop to.
     sleep 0.6
     "$shadow" shot "$name" --out "$out/${style}_${tag}.png" >/dev/null || missing+=("MISS $style $tag")
@@ -433,9 +439,9 @@ hint_shot() {
       shoot "$style" "$tag" "$ns"
     } || missing+=("MISS $style $tag")
   fi
-  if [[ $what == editor ]]; then q bareditor close >/dev/null; else sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null; fi
+  if [[ $what != submap ]]; then q bareditor close >/dev/null; else sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null; fi
   sleep 0.3
-  [[ $what == editor && $framed == 0 ]] || check_blank "$style" "$tag" "$ns"
+  [[ $what != submap && $framed == 0 ]] || check_blank "$style" "$tag" "$ns"
 }
 
 echo "smoke: hint bar"
@@ -448,6 +454,10 @@ echo "smoke: edit bar hints"
 hint_shot goldeneye top 1 editor
 hint_shot goldeneye bottom 1 editor
 hint_shot ps1 top 0 editor
+echo "smoke: edit bar monitor select"
+hint_shot goldeneye top 1 monitor
+hint_shot goldeneye bottom 1 monitor
+hint_shot ps1 top 0 monitor
 restore_state
 
 sheet="$out/sheet.png"
