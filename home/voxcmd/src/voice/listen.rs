@@ -92,6 +92,8 @@ pub fn listen_locked(lock: &SessionLock, start_only: bool, owner_file: Option<&P
     }
     let _ = std::fs::create_dir_all(paths::runtime_dir());
     let mut session_listen = None;
+    // Read once: the handler choice and the reply's pin must name the same pick.
+    let pending = ask::read_pending();
     let handler = match session::state(lock) {
         Some(session) => {
             if recording_transcript_pending(&session, me) {
@@ -104,7 +106,7 @@ pub fn listen_locked(lock: &SessionLock, start_only: bool, owner_file: Option<&P
             let mode = ModeSettings::of(&text_of(&session["integration"]));
             // A mode that takes the words itself or keeps them private (type mode) never has its dictation read as a
             // reply to an ask, which would log the words and could answer a card with them.
-            if ask::read_pending().is_some() && !mode.private && !mode.has_handler {
+            if pending.is_some() && !mode.private && !mode.has_handler {
                 Handler::Reply
             } else {
                 session_listen = Some(SessionListen {
@@ -114,7 +116,7 @@ pub fn listen_locked(lock: &SessionLock, start_only: bool, owner_file: Option<&P
                 Handler::SessionTurn
             }
         }
-        None if ask::read_pending().is_some() => Handler::Reply,
+        None if pending.is_some() => Handler::Reply,
         None => Handler::Route,
     };
     let _ = std::fs::remove_file(paths::transcript());
@@ -130,7 +132,10 @@ pub fn listen_locked(lock: &SessionLock, start_only: bool, owner_file: Option<&P
         notify::notify(Kind::Error, "voxcmd error", "voxtype record start failed");
         return false;
     }
-    let Some(watcher) = start_watcher(handler, session_listen.as_ref(), owner_file) else {
+    let pin = (handler == Handler::Reply)
+        .then(|| pending.as_ref().map(ask::PickId::of))
+        .flatten();
+    let Some(watcher) = start_watcher(handler, session_listen.as_ref(), owner_file, pin.as_ref()) else {
         return false;
     };
     if session_listen.is_some() {
@@ -156,16 +161,22 @@ pub fn inherited_owner_file() -> Option<PathBuf> {
 /// Starts the watcher through the `setsid` binary, so it outlives this listen and the terminal or key binding that ran
 /// it; the suites log and stub that `setsid` call. The session lock is close-on-exec, so the watcher never holds it.
 /// Its pid, none when it could not start.
-fn start_watcher(handler: Handler, session_listen: Option<&SessionListen>, owner_file: Option<&Path>) -> Option<u32> {
+fn start_watcher(
+    handler: Handler,
+    session_listen: Option<&SessionListen>,
+    owner_file: Option<&Path>,
+    pin: Option<&ask::PickId>,
+) -> Option<u32> {
     let mut command = Command::new("setsid");
     command.arg(ask::this_binary()).args(["internal", "watch"]);
     let (token, private) = session_listen.map_or(("-", false), |listen| (listen.token.as_str(), listen.mode.private));
     command
         .args([handler.name(), token, if private { "1" } else { "0" }])
-        .arg(autostop_settings(handler, session_listen.map(|listen| &listen.mode)))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+        .arg(autostop_settings(handler, session_listen.map(|listen| &listen.mode)));
+    if let Some(pin) = pin {
+        command.arg(pin.encode());
+    }
+    command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     if let Some(owner_file) = owner_file {
         command.env("VOXCMD_RECORDING_OWNER_FILE", owner_file);
     }

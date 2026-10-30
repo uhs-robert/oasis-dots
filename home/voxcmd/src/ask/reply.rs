@@ -7,7 +7,7 @@
 //! counts. A confirm reply is yes, no or unclear. An unclear reply leaves the question open and, once, listens again.
 //! A picker the bar published is answered over its IPC instead of a FIFO.
 use super::{
-    Owner, PendingPick, PickChoice, listen_start_only, qs_ipc_call, read_pending, still_pending, write_answer,
+    Owner, PendingPick, PickChoice, PickId, listen_start_only, qs_ipc_call, read_pending, still_pending, write_answer,
 };
 use crate::cli::ReplyArgs;
 use crate::debug::debug;
@@ -143,11 +143,11 @@ impl Reading {
 }
 
 /// The reply matched against the open question; none when nothing waits for one. A confirm reply's verdict is logged,
-/// dry run or not.
-fn read(transcript: &str) -> Option<Reading> {
+/// dry run or not. A pin names the pick the reply was recorded for; a different pick waiting now gets none.
+fn read(transcript: &str, pin: Option<&PickId>) -> Option<Reading> {
     let replacements = Replacements::load(&paths::config_dir().join("replacements.d"));
     let normalized = apply_replacements(&normalize(transcript), &replacements);
-    let state = read_pending()?;
+    let state = read_pending().filter(|state| pin.is_none_or(|pin| pin.matches(state)))?;
     if state.kind.as_deref() == Some("confirm") {
         let verdict = match_confirm_reply(&normalized, state.verb.as_deref().unwrap_or_default());
         debug(&format!(
@@ -195,8 +195,13 @@ const NO_PICKER: &str = "No picker is waiting for a reply";
 /// `voxcmd reply [--dry-run] <phrase>`. Exit 1 when nothing waits for a reply, the reply was unclear, or the answer
 /// could not be handed over.
 pub fn run(args: ReplyArgs) -> Result<Option<String>, CliError> {
+    run_pinned(args, None)
+}
+
+/// `run` for a voice reply, which answers only the pick it was recorded for.
+pub fn run_pinned(args: ReplyArgs, pin: Option<PickId>) -> Result<Option<String>, CliError> {
     let transcript = args.phrase.join(" ");
-    let Some(reading) = read(&transcript) else {
+    let Some(reading) = read(&transcript, pin.as_ref()) else {
         if args.dry_run {
             eprintln!("voxcmd: {NO_PICKER}");
         } else {
@@ -303,7 +308,7 @@ fn ask_again(reading: &Reading, why: &str) {
 /// `voxcmd explain --reply [--json] <phrase>`: the dry run's lines, or the trace as JSON. Exit 1 when nothing waits for
 /// a reply, as the dry run.
 pub fn explain(phrase: &str, json: bool) -> Result<String, CliError> {
-    let Some(reading) = read(phrase) else {
+    let Some(reading) = read(phrase, None) else {
         eprintln!("voxcmd: {NO_PICKER}");
         return Err(CliError::quiet("explain"));
     };
