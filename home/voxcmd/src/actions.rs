@@ -113,6 +113,34 @@ fn confirm_question(integration_name: &str, label: &str) -> String {
     format!("{first}{}?", chars.as_str())
 }
 
+/// How long a `listen_for_pick` action waits for the bar to publish its picker, which it does a moment after the
+/// action returns.
+const PICK_APPEARS_SECS: f64 = 1.5;
+const PICK_POLL_MILLIS: u64 = 50;
+
+/// Starts the reply recording once the bar publishes a pick other than `before`, so the user can answer the picker an
+/// action just opened without the key. The recording pins itself to that pick. Nothing starts when none appears: the
+/// action may have opened nothing (bar down, screen locked), and that is no error. Blocks, so a later step of a
+/// sequence waits up to the full window when none appears.
+fn listen_for_new_bar_pick(rt: &Runtime, before: Option<&crate::ask::PickId>) {
+    let deadline = std::time::Instant::now() + crate::voice::time_scaled(PICK_APPEARS_SECS);
+    loop {
+        let appeared = crate::ask::read_pending()
+            .is_some_and(|pick| pick.owner == crate::ask::Owner::Bar && before.is_none_or(|id| !id.matches(&pick)));
+        if appeared {
+            // Stop Voice may have come in during the wait.
+            if rt.reply_listen_wanted() {
+                crate::ask::listen_start_only(None);
+            }
+            return;
+        }
+        if std::time::Instant::now() >= deadline {
+            return;
+        }
+        std::thread::sleep(crate::voice::time_scaled(PICK_POLL_MILLIS as f64 / 1000.0));
+    }
+}
+
 pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResult {
     let integration = &rt.config.integrations[option.integration];
     // The label an error toast and the debug log carry is the one without screen text for a private integration.
@@ -166,6 +194,8 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         debug(&format!("action not run: {toast}: its mode could not open"));
         return result;
     }
+    let pick_before = (declared.is_some_and(|action| action.listen_for_pick) && rt.reply_listen_wanted())
+        .then(|| crate::ask::read_pending().map(|pick| crate::ask::PickId::of(&pick)));
     // An action with no command only opens or leaves its mode.
     let started = (!option.command.is_empty()).then(|| match declared.and_then(|action| action.builtin.as_ref()) {
         // Done in-process; the result reads like a process's, so a failure below is reported as any other.
@@ -193,6 +223,9 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
             result.detail = "its session could not listen".to_string();
             debug(&format!("action failed: {toast}: its session could not listen"));
             return result;
+        }
+        if let Some(before) = pick_before {
+            listen_for_new_bar_pick(rt, before.as_ref());
         }
         result.outcome = StepOutcome::Ran;
         result.exit_code = 0;
