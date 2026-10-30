@@ -485,8 +485,9 @@ fn a_flagged_action_heard_in_a_session_turn_leaves_the_microphone_to_the_session
             .unwrap_or_else(|_| panic!("the session ended: {}", voice.debug_log()));
     let owner = state["owner"].as_u64().unwrap();
     assert_ne!(owner, u64::from(watcher.id()));
+    // The stub setsid logs after the watcher has exited, so wait for the call before checking the rest.
     assert!(
-        voice.calls().contains("internal watch session_turn 1:pickers:1 0 "),
+        wait_for(|| voice.calls().contains("internal watch session_turn 1:pickers:1 0 ")),
         "{}",
         voice.calls()
     );
