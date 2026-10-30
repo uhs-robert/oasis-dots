@@ -208,6 +208,16 @@ impl PickId {
         serde_json::from_str(text).ok()
     }
 
+    /// Stands for a pin that could not be read: no live pick has pid 0, so a reply holding it answers nothing.
+    pub fn unreadable() -> Self {
+        Self {
+            pid: 0,
+            owner: Owner::Ask,
+            fifo: None,
+            token: None,
+        }
+    }
+
     pub fn matches(&self, pick: &PendingPick) -> bool {
         *self == Self::of(pick)
     }

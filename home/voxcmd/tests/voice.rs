@@ -350,6 +350,35 @@ fn stop_cancels_the_bars_picker_only_while_a_reply_recording_is_attached() {
     assert!(calls.contains("voxtype record cancel"), "{calls}");
 }
 
+#[test]
+fn stop_leaves_a_picker_the_bar_reopened_while_a_reply_was_recorded_for_the_old_one() {
+    let voice = Voice::new();
+    voice.set_state("idle");
+    let mut bar = bar_picker(&voice);
+    voice.detector("exec sleep 30");
+    let pin = serde_json::json!({"pid": bar.id(), "owner": "bar", "fifo": null, "token": "k1"}).to_string();
+    let mut watcher = voice.watcher(&["reply", "-", "0", "", &pin], &[], true);
+    let reopened = serde_json::json!({"pid": bar.id(), "owner": "bar", "token": "k2", "label": "Session",
+        "choices": [{"id": "Work", "label": "Work"}], "expansions": {}, "view_key": ""});
+    std::fs::write(voice.runtime().join("pending-pick.json"), reopened.to_string()).unwrap();
+    assert!(voice.output(&["stop"]).status.success());
+    assert!(watcher.wait().unwrap().success());
+    end(&mut bar);
+    assert!(!voice.calls().contains("picker cancel"), "{}", voice.calls());
+}
+
+#[test]
+fn a_reply_with_an_unreadable_pin_answers_nothing() {
+    let voice = Voice::new();
+    let mut bar = bar_picker(&voice);
+    std::fs::write(voice.runtime().join("transcript.txt"), "work\n").unwrap();
+    let mut watcher = voice.watcher(&["reply", "-", "0", "", "garbage"], &[], false);
+    voice.set_state("idle");
+    assert!(!watcher.wait().unwrap().success());
+    end(&mut bar);
+    assert!(!voice.calls().contains("picker answer"), "{}", voice.calls());
+}
+
 // ---- the watcher ------------------------------------------------------------------------------------------------
 
 #[test]
