@@ -328,6 +328,11 @@ pub fn listen_start_only(owner_file: Option<&Path>) -> bool {
     crate::voice::listen::start_only(owner_file)
 }
 
+/// `listen_start_only` for a reply to `pick`, the pick the caller saw open.
+pub fn listen_start_only_for(pick: PendingPick) -> bool {
+    crate::voice::listen::start_only_for(pick)
+}
+
 // ---- the asking side ------------------------------------------------------------------------------------------------
 
 /// INT, TERM or HUP arrived. The ask then cleans up and exits 1.

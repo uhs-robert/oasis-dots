@@ -116,7 +116,7 @@ fn confirm_question(integration_name: &str, label: &str) -> String {
 /// How long a `listen_for_pick` action waits for the bar to publish its picker, which it does a moment after the
 /// action returns.
 const PICK_APPEARS_SECS: f64 = 1.5;
-const PICK_POLL_MILLIS: u64 = 50;
+const PICK_POLL_SECS: f64 = 0.05;
 
 /// Starts the reply recording once the bar publishes a pick other than `before`, so the user can answer the picker an
 /// action just opened without the key. The recording pins itself to that pick. Nothing starts when none appears: the
@@ -126,18 +126,18 @@ fn listen_for_new_bar_pick(rt: &Runtime, before: Option<&crate::ask::PickId>) {
     let deadline = std::time::Instant::now() + crate::voice::time_scaled(PICK_APPEARS_SECS);
     loop {
         let appeared = crate::ask::read_pending()
-            .is_some_and(|pick| pick.owner == crate::ask::Owner::Bar && before.is_none_or(|id| !id.matches(&pick)));
-        if appeared {
+            .filter(|pick| pick.owner == crate::ask::Owner::Bar && before.is_none_or(|id| !id.matches(pick)));
+        if let Some(pick) = appeared {
             // Stop Voice may have come in during the wait.
             if rt.reply_listen_wanted() {
-                crate::ask::listen_start_only(None);
+                crate::ask::listen_start_only_for(pick);
             }
             return;
         }
         if std::time::Instant::now() >= deadline {
             return;
         }
-        std::thread::sleep(crate::voice::time_scaled(PICK_POLL_MILLIS as f64 / 1000.0));
+        std::thread::sleep(crate::voice::time_scaled(PICK_POLL_SECS));
     }
 }
 
@@ -194,8 +194,10 @@ pub fn run_option(rt: &Runtime, option: &RouteOption, said: &Spoken) -> StepResu
         debug(&format!("action not run: {toast}: its mode could not open"));
         return result;
     }
-    let pick_before = (declared.is_some_and(|action| action.listen_for_pick) && rt.reply_listen_wanted())
-        .then(|| crate::ask::read_pending().map(|pick| crate::ask::PickId::of(&pick)));
+    // Not in a session turn: `continue_turns` opens the microphone next, which a reply recording would hold.
+    let pick_before =
+        (declared.is_some_and(|action| action.listen_for_pick) && rt.reply_listen_wanted() && !rt.in_session_turn)
+            .then(|| crate::ask::read_pending().map(|pick| crate::ask::PickId::of(&pick)));
     // An action with no command only opens or leaves its mode.
     let started = (!option.command.is_empty()).then(|| match declared.and_then(|action| action.builtin.as_ref()) {
         // Done in-process; the result reads like a process's, so a failure below is reported as any other.
