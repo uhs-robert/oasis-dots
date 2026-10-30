@@ -88,6 +88,7 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `cmdstatus` | `refresh(id: string): string` |  |
 | `confirm` | `ask(question: string, result_path: string): string` |  |
 | `confirm` | `dismiss(result_path: string): void` |  |
+| `dir` | `refresh(): void` |  |
 | `hyprvim_prompt` | `open(path: string): string` |  |
 | `hyprvim_prompt` | `close(): void` |  |
 | `hyprvim_whichkey` | `open(path: string): void` |  |

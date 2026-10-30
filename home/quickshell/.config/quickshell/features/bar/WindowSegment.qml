@@ -134,6 +134,15 @@ Item {
         }
     }
 
+    // tmux hooks (target `dir`) call this for changes Hyprland never reports, such as a tmux window or pane switch.
+    Connections {
+        target: DirectoryRefresh
+
+        function onRequested() {
+            root.refresh_on_event();
+        }
+    }
+
     Component.onCompleted: root.refresh_on_event()
 
     Row {
