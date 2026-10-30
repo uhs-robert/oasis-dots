@@ -305,7 +305,9 @@ local function wrap_oneshot(rows, exit_fn)
 end
 
 --- The keys Hyprland treats as modifiers when pressed alone, less Caps_Lock and Num_Lock, which toggle a lock, plus
---- AltGr (level 3 and 5 shift) and Compose, which a layout option such as lv3:ralt_switch or compose:menu adds.
+--- AltGr (level 3 and 5 shift), which a layout option such as lv3:ralt_switch adds. Compose (Multi_key) is left out on
+--- purpose: it starts a sequence rather than holding a modifier, so a no-op would keep the submap open and the next
+--- compose character would run as a submap command.
 local lone_modifier_keys = {
   "Shift_L",
   "Shift_R",
@@ -317,7 +319,6 @@ local lone_modifier_keys = {
   "Super_R",
   "ISO_Level3_Shift",
   "ISO_Level5_Shift",
-  "Multi_key",
 }
 
 --- Mouse buttons (left, right, middle, side, extra, forward, back, task) and wheel directions, in Hyprland's bind names.
