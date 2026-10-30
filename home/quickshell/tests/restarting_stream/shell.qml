@@ -53,7 +53,11 @@ ShellRoot {
         // wanted dropping during backoff: the pending restart must not start it.
         wanted_off_in_backoff: { settings: { probe: false }, actions: [[300, "kill"], [350, "wanted_false"]], end: 1200 },
         // wanted flapping during backoff starts it once, at the flap, and the old timer adds no second start.
-        wanted_flap_in_backoff: { settings: { probe: false }, actions: [[300, "kill"], [350, "wanted_false"], [450, "wanted_true"]], end: 2400 },
+        wanted_flap_in_backoff: {
+            settings: { probe: false },
+            actions: [[300, "kill"], [350, "wanted_false"], [450, "wanted_true"]],
+            end: 2400
+        },
         // wanted false stops the stream and leaves no process behind.
         stop_leaves_nothing: { settings: { probe: false }, actions: [[300, "wanted_false"], [400, "check_alive"]], end: 800 }
     })
