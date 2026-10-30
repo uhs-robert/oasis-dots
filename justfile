@@ -286,6 +286,18 @@ demo-beat name:
 demo-record:
     demo/showcase.sh record
 
+# Build the stowed OasisFox TOML config (~/.config/oasisfox) into Firefox's managed storage file; OasisFox is found at $OASISFOX_DIR, default $GITHUB_DIR/personal/oasisfox (GITHUB_DIR defaults to ~/Development), and needs `just build` run there first
+oasisfox-config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    oasisfox="${OASISFOX_DIR:-${GITHUB_DIR:-$HOME/Development}/personal/oasisfox}"
+    [[ -f $oasisfox/tools/build-config/cli.ts ]] || { echo "oasisfox-config: no OasisFox checkout at $oasisfox (set OASISFOX_DIR)" >&2; exit 1; }
+    [[ -f $oasisfox/dist/commands.json ]] || { echo "oasisfox-config: run 'just build' in $oasisfox first" >&2; exit 1; }
+    config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/oasisfox"
+    [[ -d $config_dir ]] || { echo "oasisfox-config: no config at $config_dir (run 'just stow oasisfox')" >&2; exit 1; }
+    cd "$oasisfox"
+    node tools/build-config/cli.ts "$config_dir"
+
 # Regenerate the generated sections of the docs (the keybind table in docs/keybinds.md, the IPC table in the Quickshell README)
 docs-gen:
     python3 -B lib/docs/gen-keybinds --write
