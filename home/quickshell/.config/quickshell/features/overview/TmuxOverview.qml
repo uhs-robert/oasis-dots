@@ -218,7 +218,7 @@ OverviewBase {
     }
 
     function window_address(session_name) {
-        const t = WindowState.windows.find(w => (WindowState.class_of(w) || "").toLowerCase().indexOf(root.term_name) >= 0 && TmuxData.title_matches(w.title || "", session_name));
+        const t = WindowState.windows.find(w => (WindowState.class_of(w) || "").toLowerCase().indexOf(root.term_name) >= 0 && TmuxData.title_matches(w.title || "", session_name, root.groups.map(g => g.name)));
         return t ? t.address : "";
     }
 
