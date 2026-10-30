@@ -4,6 +4,7 @@
 # Redumped for pointer moves: wlrctl steps with no repeating flag and no diagonal chords (cursor.move repeats on Lua timers until the release rows), so a held key keeps moving on Hyprland 0.57.
 # Redumped for the mouse pass-through binds in every "stay" submap (Hyprland 0.57 runs a catchall on mouse events).
 # Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
+# Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr and Compose no-ops.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 arrows	Cursor	ALT + H	Arrow Left	repeating=true	send_shortcut({key=LEFT,mods=})
 arrows	Cursor	ALT + J	Arrow Down	repeating=true	send_shortcut({key=DOWN,mods=})
@@ -108,6 +109,9 @@ arrows	Cursor	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	n
 arrows	Cursor	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Cursor	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Cursor	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Cursor	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Cursor	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Cursor	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Cursor	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Cursor	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Cursor	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -124,7 +128,10 @@ arrows	Delete	E	Close Editors	-	submap(reset)
 arrows	Delete	ESCAPE	Exit Delete	-	submap(reset)
 arrows	Delete	F	Close File Managers	-	submap(reset)
 arrows	Delete	G	Close Games	-	submap(reset)
+arrows	Delete	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+arrows	Delete	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	M	Close Mail	-	submap(reset)
+arrows	Delete	Multi_key	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	N	Clear Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call notifications clear_all);submap(reset)
 arrows	Delete	O	Close Others on WS	-	window.close({window=address:0xb2});submap(reset)
 arrows	Delete	P	Close Media Players	-	submap(reset)
@@ -146,6 +153,9 @@ arrows	Delete	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	s
 arrows	Delete	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 arrows	Delete	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 arrows	Delete	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+arrows	Delete	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 arrows	Delete	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 arrows	Delete	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 arrows	Delete	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -182,6 +192,9 @@ arrows	Groups	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	n
 arrows	Groups	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Groups	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Groups	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Groups	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Groups	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Groups	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Groups	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Groups	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Groups	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -230,6 +243,9 @@ arrows	Move	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_
 arrows	Move	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Move	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Move	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Move	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Move	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Move	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Move	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Move	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Move	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -257,6 +273,9 @@ arrows	Quick Click	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=t
 arrows	Quick Click	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Quick Click	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Quick Click	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Quick Click	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Quick Click	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Quick Click	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Quick Click	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Quick Click	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Quick Click	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -305,6 +324,9 @@ arrows	Resize	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	n
 arrows	Resize	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Resize	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Resize	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Resize	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Resize	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Resize	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Resize	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Resize	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Resize	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -369,6 +391,9 @@ arrows	Windows	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	
 arrows	Windows	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Windows	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Windows	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Windows	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Windows	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Windows	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Windows	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Windows	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Windows	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -476,6 +501,9 @@ default	Cursor	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	
 default	Cursor	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Cursor	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Cursor	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Cursor	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Cursor	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Cursor	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Cursor	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Cursor	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Cursor	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -492,7 +520,10 @@ default	Delete	E	Close Editors	-	submap(reset)
 default	Delete	ESCAPE	Exit Delete	-	submap(reset)
 default	Delete	F	Close File Managers	-	submap(reset)
 default	Delete	G	Close Games	-	submap(reset)
+default	Delete	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+default	Delete	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Delete	M	Close Mail	-	submap(reset)
+default	Delete	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Delete	N	Clear Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call notifications clear_all);submap(reset)
 default	Delete	O	Close Others on WS	-	window.close({window=address:0xb2});submap(reset)
 default	Delete	P	Close Media Players	-	submap(reset)
@@ -514,6 +545,9 @@ default	Delete	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	
 default	Delete	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Delete	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Delete	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Delete	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Delete	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Delete	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Delete	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -550,6 +584,9 @@ default	Groups	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	
 default	Groups	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Groups	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Groups	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Groups	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Groups	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Groups	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Groups	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Groups	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Groups	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -598,6 +635,9 @@ default	Move	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no
 default	Move	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Move	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Move	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Move	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Move	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Move	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Move	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Move	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Move	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -625,6 +665,9 @@ default	Quick Click	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=
 default	Quick Click	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Quick Click	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Quick Click	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Quick Click	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Quick Click	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Quick Click	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Quick Click	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Quick Click	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Quick Click	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -673,6 +716,9 @@ default	Resize	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	
 default	Resize	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Resize	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Resize	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Resize	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Resize	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Resize	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Resize	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Resize	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Resize	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -737,6 +783,9 @@ default	Windows	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true
 default	Windows	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Windows	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Windows	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Windows	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Windows	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Windows	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Windows	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Windows	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Windows	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -844,6 +893,9 @@ no-leader	Cursor	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tru
 no-leader	Cursor	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Cursor	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Cursor	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Cursor	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Cursor	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Cursor	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Cursor	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Cursor	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Cursor	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -860,7 +912,10 @@ no-leader	Delete	E	Close Editors	-	submap(reset)
 no-leader	Delete	ESCAPE	Exit Delete	-	submap(reset)
 no-leader	Delete	F	Close File Managers	-	submap(reset)
 no-leader	Delete	G	Close Games	-	submap(reset)
+no-leader	Delete	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+no-leader	Delete	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	M	Close Mail	-	submap(reset)
+no-leader	Delete	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	N	Clear Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call notifications clear_all);submap(reset)
 no-leader	Delete	O	Close Others on WS	-	window.close({window=address:0xb2});submap(reset)
 no-leader	Delete	P	Close Media Players	-	submap(reset)
@@ -882,6 +937,9 @@ no-leader	Delete	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tru
 no-leader	Delete	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Delete	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Delete	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Delete	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Delete	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Delete	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Delete	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -918,6 +976,9 @@ no-leader	Groups	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tru
 no-leader	Groups	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Groups	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Groups	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Groups	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Groups	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Groups	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Groups	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Groups	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Groups	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -966,6 +1027,9 @@ no-leader	Move	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	
 no-leader	Move	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Move	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Move	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Move	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Move	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Move	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Move	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Move	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Move	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -993,6 +1057,9 @@ no-leader	Quick Click	mouse:273	-	ignore_mods=true,non_consuming=true,transparen
 no-leader	Quick Click	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Quick Click	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Quick Click	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Quick Click	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Quick Click	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Quick Click	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Quick Click	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Quick Click	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Quick Click	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1041,6 +1108,9 @@ no-leader	Resize	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tru
 no-leader	Resize	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Resize	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Resize	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Resize	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Resize	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Resize	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Resize	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Resize	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Resize	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1098,6 +1168,9 @@ no-leader	Windows	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tr
 no-leader	Windows	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Windows	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Windows	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Windows	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Windows	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Windows	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Windows	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Windows	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Windows	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1205,6 +1278,9 @@ persistent	Cursor	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tr
 persistent	Cursor	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Cursor	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Cursor	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Cursor	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Cursor	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Cursor	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Cursor	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Cursor	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Cursor	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1221,7 +1297,10 @@ persistent	Delete	E	Close Editors	-	submap(reset)
 persistent	Delete	ESCAPE	Exit Delete	-	submap(reset)
 persistent	Delete	F	Close File Managers	-	submap(reset)
 persistent	Delete	G	Close Games	-	submap(reset)
+persistent	Delete	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+persistent	Delete	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	M	Close Mail	-	submap(reset)
+persistent	Delete	Multi_key	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	N	Clear Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call notifications clear_all);submap(reset)
 persistent	Delete	O	Close Others on WS	-	window.close({window=address:0xb2});submap(reset)
 persistent	Delete	P	Close Media Players	-	submap(reset)
@@ -1243,6 +1322,9 @@ persistent	Delete	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tr
 persistent	Delete	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 persistent	Delete	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 persistent	Delete	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+persistent	Delete	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 persistent	Delete	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 persistent	Delete	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 persistent	Delete	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -1279,6 +1361,9 @@ persistent	Groups	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tr
 persistent	Groups	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Groups	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Groups	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Groups	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Groups	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Groups	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Groups	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Groups	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Groups	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1327,6 +1412,9 @@ persistent	Move	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true
 persistent	Move	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Move	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Move	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Move	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Move	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Move	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Move	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Move	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Move	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1354,6 +1442,9 @@ persistent	Quick Click	mouse:273	-	ignore_mods=true,non_consuming=true,transpare
 persistent	Quick Click	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Quick Click	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Quick Click	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Quick Click	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Quick Click	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Quick Click	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Quick Click	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Quick Click	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Quick Click	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1402,6 +1493,9 @@ persistent	Resize	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tr
 persistent	Resize	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Resize	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Resize	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Resize	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Resize	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Resize	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Resize	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Resize	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Resize	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1464,6 +1558,9 @@ persistent	Windows	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=t
 persistent	Windows	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Windows	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Windows	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Windows	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Windows	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Windows	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Windows	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Windows	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Windows	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op

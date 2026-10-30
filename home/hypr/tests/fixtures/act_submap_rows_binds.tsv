@@ -3,6 +3,7 @@
 # Redumped for the one-shot submaps' lone-modifier no-ops (Hyprland 0.57 runs a catchall on key press).
 # Redumped for the Applications submap restored on SUPER + A, the agents picker on Leader SPACE and Go A, and Bar and Leader SHIFT + S for Settings.
 # Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
+# Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr and Compose no-ops.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
@@ -16,7 +17,10 @@ default	Applications	ESCAPE	Exit Applications	-	submap(reset)
 default	Applications	F	Firefox	-	exec_cmd(firefox);submap(reset)
 default	Applications	G	Gimp	-	exec_cmd(gimp);submap(reset)
 default	Applications	I	Inkscape	-	exec_cmd(inkscape);submap(reset)
+default	Applications	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+default	Applications	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Applications	M	Mail	-	exec_cmd(betterbird);submap(reset)
+default	Applications	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Applications	P	ProtonPlus	-	exec_cmd(protonplus);submap(reset)
 default	Applications	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 default	Applications	R	Radio (cliamp)	-	exec_cmd(kitty --single-instance -e cliamp);submap(reset)
@@ -40,6 +44,9 @@ default	Applications	mouse:273	-	ignore_mods=true,non_consuming=true,transparent
 default	Applications	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Applications	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Applications	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Applications	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Applications	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Applications	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Applications	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -54,7 +61,10 @@ default	Bar	Control_L	-	ignore_mods=true,transparent=true	no_op
 default	Bar	Control_R	-	ignore_mods=true,transparent=true	no_op
 default	Bar	ESCAPE	Exit Bar	-	submap(reset)
 default	Bar	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
+default	Bar	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+default	Bar	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Bar	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
+default	Bar	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Bar	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
 default	Bar	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open battery);submap(reset)
 default	Bar	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open system);submap(reset)
@@ -76,6 +86,9 @@ default	Bar	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	sub
 default	Bar	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Bar	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Bar	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Bar	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Bar	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Bar	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Bar	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -89,7 +102,10 @@ default	Go	C	Tmuxifier Config	-	exec_cmd(kitty --single-instance -e tmuxifier lo
 default	Go	Control_L	-	ignore_mods=true,transparent=true	no_op
 default	Go	Control_R	-	ignore_mods=true,transparent=true	no_op
 default	Go	ESCAPE	Exit Go	-	submap(reset)
+default	Go	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+default	Go	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
+default	Go	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
 default	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 default	Go	S	Slack	-	exec_cmd(slack);submap(reset)
@@ -111,6 +127,9 @@ default	Go	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	subm
 default	Go	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Go	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Go	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Go	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Go	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Go	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Go	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -132,7 +151,10 @@ default	Leader	E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimo
 default	Leader	ESCAPE	Exit Leader	-	submap(reset)
 default	Leader	G	+Groups	keep=true	submap(Groups)
 default	Leader	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
+default	Leader	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+default	Leader	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Leader	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
+default	Leader	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Leader	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
 default	Leader	O	Open Application	-	exec_cmd(~/.config/hypr/scripts/qs-picker apps 'rofi -i -show drun');submap(reset)
 default	Leader	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open battery);submap(reset)
@@ -162,6 +184,9 @@ default	Leader	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	
 default	Leader	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Leader	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Leader	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Leader	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Leader	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Leader	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -179,9 +204,12 @@ default	System	E	Logout	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power conf
 default	System	ESCAPE	Exit System	-	submap(reset)
 default	System	G	Ping (gping)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
 default	System	H	Reload Hyprland	-	exec_cmd(hyprctl reload);submap(reset)
+default	System	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+default	System	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	System	J	Journal (lazyjournal)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e lazyjournal);submap(reset)
 default	System	K	Kill App (Click)	-	exec_cmd(hyprctl kill);submap(reset)
 default	System	L	Lock	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm lock);submap(reset)
+default	System	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	System	P	Power Off	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm poweroff);submap(reset)
 default	System	R	Reboot	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm reboot);submap(reset)
 default	System	SHIFT + A	Aria2tui	-	exec_cmd(kitty --single-instance -e aria2tui);submap(reset)
@@ -207,6 +235,9 @@ default	System	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	
 default	System	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	System	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	System	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	System	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	System	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	System	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	System	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -223,7 +254,10 @@ no-leader	Applications	ESCAPE	Exit Applications	-	submap(reset)
 no-leader	Applications	F	Firefox	-	exec_cmd(firefox);submap(reset)
 no-leader	Applications	G	Gimp	-	exec_cmd(gimp);submap(reset)
 no-leader	Applications	I	Inkscape	-	exec_cmd(inkscape);submap(reset)
+no-leader	Applications	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+no-leader	Applications	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	M	Mail	-	exec_cmd(betterbird);submap(reset)
+no-leader	Applications	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	P	ProtonPlus	-	exec_cmd(protonplus);submap(reset)
 no-leader	Applications	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 no-leader	Applications	R	Radio (cliamp)	-	exec_cmd(kitty --single-instance -e cliamp);submap(reset)
@@ -247,6 +281,9 @@ no-leader	Applications	mouse:273	-	ignore_mods=true,non_consuming=true,transpare
 no-leader	Applications	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Applications	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Applications	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Applications	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Applications	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Applications	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -261,7 +298,10 @@ no-leader	Bar	Control_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	Control_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	ESCAPE	Exit Bar	-	submap(reset)
 no-leader	Bar	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
+no-leader	Bar	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+no-leader	Bar	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
+no-leader	Bar	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
 no-leader	Bar	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open battery);submap(reset)
 no-leader	Bar	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open system);submap(reset)
@@ -283,6 +323,9 @@ no-leader	Bar	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	s
 no-leader	Bar	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Bar	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Bar	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Bar	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Bar	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Bar	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Bar	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -299,7 +342,10 @@ no-leader	Go	C	Tmuxifier Config	-	exec_cmd(kitty --single-instance -e tmuxifier 
 no-leader	Go	Control_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	Control_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	ESCAPE	Exit Go	-	submap(reset)
+no-leader	Go	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+no-leader	Go	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
+no-leader	Go	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
 no-leader	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 no-leader	Go	S	Slack	-	exec_cmd(slack);submap(reset)
@@ -321,6 +367,9 @@ no-leader	Go	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	su
 no-leader	Go	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Go	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Go	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Go	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Go	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Go	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Go	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -342,7 +391,10 @@ no-leader	Leader	E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofi
 no-leader	Leader	ESCAPE	Exit Leader	-	submap(reset)
 no-leader	Leader	G	+Groups	keep=true	submap(Groups)
 no-leader	Leader	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
+no-leader	Leader	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+no-leader	Leader	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
+no-leader	Leader	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
 no-leader	Leader	O	Open Application	-	exec_cmd(~/.config/hypr/scripts/qs-picker apps 'rofi -i -show drun');submap(reset)
 no-leader	Leader	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open battery);submap(reset)
@@ -372,6 +424,9 @@ no-leader	Leader	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tru
 no-leader	Leader	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Leader	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Leader	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Leader	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Leader	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Leader	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Leader	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -389,9 +444,12 @@ no-leader	System	E	Logout	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power co
 no-leader	System	ESCAPE	Exit System	-	submap(reset)
 no-leader	System	G	Ping (gping)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
 no-leader	System	H	Reload Hyprland	-	exec_cmd(hyprctl reload);submap(reset)
+no-leader	System	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
+no-leader	System	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	J	Journal (lazyjournal)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e lazyjournal);submap(reset)
 no-leader	System	K	Kill App (Click)	-	exec_cmd(hyprctl kill);submap(reset)
 no-leader	System	L	Lock	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm lock);submap(reset)
+no-leader	System	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	P	Power Off	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm poweroff);submap(reset)
 no-leader	System	R	Reboot	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm reboot);submap(reset)
 no-leader	System	SHIFT + A	Aria2tui	-	exec_cmd(kitty --single-instance -e aria2tui);submap(reset)
@@ -417,6 +475,9 @@ no-leader	System	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=tru
 no-leader	System	mouse:274	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	System	mouse:275	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	System	mouse:276	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse:277	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse:278	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	System	mouse:279	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	System	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	System	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	System	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)

@@ -27,6 +27,9 @@ bind Applications,Bar,Delete,Go,Leader,System Alt_L      # the same, for the lef
 bind Applications,Bar,Delete,Go,Leader,System Alt_R      # the same, for the right Alt
 bind Applications,Bar,Delete,Go,Leader,System Super_L    # the same, for the left Super
 bind Applications,Bar,Delete,Go,Leader,System Super_R    # the same, for the right Super
+bind Applications,Bar,Delete,Go,Leader,System ISO_Level3_Shift  # the same, for AltGr under a layout option such as lv3:ralt_switch
+bind Applications,Bar,Delete,Go,Leader,System ISO_Level5_Shift  # the same, for the level 5 shift
+bind Applications,Bar,Delete,Go,Leader,System Multi_key  # the same, for Compose under a layout option such as compose:menu
 # Cursor keys with a held-release row: an any-modifier no-op claims their unbound combos (Hyprland 0.57 lets them through).
 bind Cursor H  # no-op that swallows an unbound modifier combo of a held move or scroll key, such as ALT + LEFT
 bind Cursor J  # the same
@@ -46,6 +49,9 @@ bind * mouse:273  # the same, for the right button
 bind * mouse:274  # the same, for the middle button
 bind * mouse:275  # the same, for the side button
 bind * mouse:276  # the same, for the extra button
+bind * mouse:277  # the same, for the forward button
+bind * mouse:278  # the same, for the back button
+bind * mouse:279  # the same, for the task button
 bind * mouse_up  # the same, for the wheel up
 bind * mouse_down  # the same, for the wheel down
 bind * mouse_left  # the same, for the wheel left
