@@ -91,10 +91,12 @@ PanelWindow {
     // The claim waits a beat after the old owner lets go: when both commits land together, Hyprland can leave the keyboard
     // with nobody, and the editor then gets no keys until it is reopened.
     property bool claims_keyboard: false
+    // Works around that Hyprland race; the value was found by test. Known limit: keys pressed during the gap reach no editor window.
+    readonly property int claim_delay_ms: 60
     WlrLayershell.keyboardFocus: root.claims_keyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     Timer {
         id: claim_delay
-        interval: 60
+        interval: root.claim_delay_ms
         onTriggered: root.claims_keyboard = root.keyboard_owner
     }
 
