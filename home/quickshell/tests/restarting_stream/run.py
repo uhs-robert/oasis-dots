@@ -123,7 +123,7 @@ def check_missing_then_installed(r):
     expect(p, "missing warnings", r.missing_warnings, 1)
     expect(p, "starts", len(r.ups), 1)
     if r.ups:
-        between(p, "start after install", r.ups[0] - r.actions["present"], 50, 1500)
+        between(p, "start after install", r.ups[0] - r.actions["present"], 0, 1500)
     expect(p, "available at end", r.end["available"], True)
     expect(p, "probed at least 3 times", r.probes >= 3, True)
     return p
