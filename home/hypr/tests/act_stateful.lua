@@ -243,10 +243,18 @@ for _, name in ipairs({ "Windows", "Cursor", "Quick Click", "Groups", "Move", "R
 	check(name .. ": catchall stays", type(entry.action) == "table" and entry.action.text == "no_op")
 	check(name .. ": catchall releases", entry.opts.release == true and entry.opts.ignore_mods == true)
 	-- Hyprland 0.57 runs a catchall on mouse events too; a matching non-consuming bind hands clicks and scrolls on.
-	for _, input in ipairs({ "mouse:272", "mouse:273", "mouse:274", "mouse_up", "mouse_down" }) do
+	for _, input in ipairs({
+		"mouse:272", "mouse:273", "mouse:274", "mouse:275", "mouse:276", "mouse:277", "mouse:278", "mouse:279",
+		"mouse_up", "mouse_down", "mouse_left", "mouse_right",
+	}) do
 		local pass = bind(name, input)
 		check(name .. ": " .. input .. " passes through", pass.opts.non_consuming == true and pass.opts.ignore_mods == true)
 	end
+end
+-- A one-shot submap must not end on a lone AltGr or Compose press, the way it survives a lone Shift.
+for _, key in ipairs({ "ISO_Level3_Shift", "ISO_Level5_Shift", "Multi_key" }) do
+	local entry = bind("Delete", key)
+	check("Delete: " .. key .. " is a transparent no-op", entry.action.text == "no_op" and entry.opts.transparent == true and entry.opts.ignore_mods == true)
 end
 check("Delete: catchall resets", type(bind("Delete", "catchall").action) == "function")
 -- A one-shot submap's click closes it like an unbound key, and the click still reaches the window.
