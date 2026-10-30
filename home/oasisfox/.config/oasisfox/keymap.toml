@@ -1,0 +1,92 @@
+# The owner's OasisFox keymap. Keys that match the built-in defaults are left out.
+# Private config (the client, employer and partner containers) joins through keymap.d/ from a private repo.
+
+# sa/Sa, sb/Sb, ...: search with the engine in this tab or a new tab.
+[search_keys]
+a = "arch"
+b = "brave"
+c = "crates"
+f = "flathub"
+G = "gh"
+h = "hackernews"
+i = "imdb"
+m = "mdn"
+n = "npm"
+o = "stackoverflow"
+q = "gpt"
+r = "reddit"
+s = "google"
+t = "translate"
+w = "wikipedia"
+y = "youtube"
+z = "wolframalpha"
+
+# cd/Cd, cn/Cn, ...: reopen the page in the container, or prompt in a new tab of it.
+[container_keys]
+d = "default"
+n = "No"
+p = "Personal"
+r = "Research"
+
+[normal]
+# These three open a window with open.url, not the default window.new, so they stay.
+W = ":open window @current_url"
+wo = ":open window"
+ww = ":open window @current_url"
+ZZ = "quitall"
+";f" = "hint"
+# A generated search key is one key, so the longer families (sgg, sdd, ...) are explicit.
+# A leading colon types the command into the command line and waits for the query.
+",," = ":search google"
+",<" = ":search google tab"
+sgg = ":search google"
+Sgg = ":search google tab"
+sgc = ":search calendar"
+Sgc = ":search calendar tab"
+sgd = ":search drive"
+Sgd = ":search drive tab"
+sge = ":search gmail"
+Sge = ":search gmail tab"
+sgi = ":search image"
+Sgi = ":search image tab"
+sgm = ":search maps"
+Sgm = ":search maps tab"
+sgr = ":search redditgoogle"
+Sgr = ":search redditgoogle tab"
+sgth = ":search lasthour"
+Sgth = ":search lasthour tab"
+sgtd = ":search lastday"
+Sgtd = ":search lastday tab"
+sgtw = ":search lastweek"
+Sgtw = ":search lastweek tab"
+sgtm = ":search lastmonth"
+Sgtm = ":search lastmonth tab"
+sgty = ":search lastyear"
+Sgty = ":search lastyear tab"
+sdd = ":search duck"
+Sdd = ":search duck tab"
+sde = ":search define"
+Sde = ":search define tab"
+sdu = ":search urbandictionary"
+Sdu = ":search urbandictionary tab"
+sdy = ":search synonym"
+Sdy = ":search synonym tab"
+sea = ":search amazon"
+Sea = ":search amazon tab"
+spb = ":search gamebanana"
+Spb = ":search gamebanana tab"
+spn = ":search nexusmods"
+Spn = ":search nexusmods tab"
+spp = ":search proton"
+Spp = ":search proton tab"
+sps = ":search steam"
+Sps = ":search steam tab"
+
+[ignore]
+"<S-Insert>" = "mode normal"
+"<AC-Escape>" = "mode normal"
+"<AC-`>" = "mode normal"
+
+[cmdline]
+"<A-ArrowDown>" = "nextcomp"
+"<A-ArrowUp>" = "prevcomp"
