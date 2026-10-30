@@ -607,15 +607,16 @@ fn listen_with_an_ask_waiting_replies_with_a_shorter_speech_minimum() {
     assert!(output.status.success());
     assert!(wait_for(|| voice.calls().contains("setsid")));
     let calls = voice.calls();
+    let pin = format!(
+        r#"{{"pid":{pid},"owner":"ask","fifo":{},"token":null}}"#,
+        serde_json::json!(fifo)
+    );
     assert!(
         calls.contains(&format!(
             "setsid owner={} {} internal watch reply - 0 VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.1 {}\n",
             owner_file.display(),
             env!("CARGO_BIN_EXE_voxcmd"),
-            format!(
-                r#"{{"pid":{pid},"owner":"ask","fifo":{},"token":null}}"#,
-                serde_json::json!(fifo)
-            )
+            pin
         )),
         "{calls}"
     );
