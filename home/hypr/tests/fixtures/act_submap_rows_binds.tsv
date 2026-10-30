@@ -3,7 +3,7 @@
 # Redumped for the one-shot submaps' lone-modifier no-ops (Hyprland 0.57 runs a catchall on key press).
 # Redumped for the Applications submap restored on SUPER + A, the agents picker on Leader SPACE and Go A, and Bar and Leader SHIFT + S for Settings.
 # Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
-# Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr and Compose no-ops.
+# Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr no-ops.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
@@ -20,7 +20,6 @@ default	Applications	I	Inkscape	-	exec_cmd(inkscape);submap(reset)
 default	Applications	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Applications	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Applications	M	Mail	-	exec_cmd(betterbird);submap(reset)
-default	Applications	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Applications	P	ProtonPlus	-	exec_cmd(protonplus);submap(reset)
 default	Applications	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 default	Applications	R	Radio (cliamp)	-	exec_cmd(kitty --single-instance -e cliamp);submap(reset)
@@ -64,7 +63,6 @@ default	Bar	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call
 default	Bar	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Bar	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Bar	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
-default	Bar	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Bar	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
 default	Bar	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open battery);submap(reset)
 default	Bar	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open system);submap(reset)
@@ -105,7 +103,6 @@ default	Go	ESCAPE	Exit Go	-	submap(reset)
 default	Go	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Go	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
-default	Go	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
 default	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 default	Go	S	Slack	-	exec_cmd(slack);submap(reset)
@@ -154,7 +151,6 @@ default	Leader	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc c
 default	Leader	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Leader	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Leader	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
-default	Leader	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Leader	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
 default	Leader	O	Open Application	-	exec_cmd(~/.config/hypr/scripts/qs-picker apps 'rofi -i -show drun');submap(reset)
 default	Leader	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open battery);submap(reset)
@@ -209,7 +205,6 @@ default	System	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	System	J	Journal (lazyjournal)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e lazyjournal);submap(reset)
 default	System	K	Kill App (Click)	-	exec_cmd(hyprctl kill);submap(reset)
 default	System	L	Lock	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm lock);submap(reset)
-default	System	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	System	P	Power Off	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm poweroff);submap(reset)
 default	System	R	Reboot	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm reboot);submap(reset)
 default	System	SHIFT + A	Aria2tui	-	exec_cmd(kitty --single-instance -e aria2tui);submap(reset)
@@ -257,7 +252,6 @@ no-leader	Applications	I	Inkscape	-	exec_cmd(inkscape);submap(reset)
 no-leader	Applications	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	M	Mail	-	exec_cmd(betterbird);submap(reset)
-no-leader	Applications	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	P	ProtonPlus	-	exec_cmd(protonplus);submap(reset)
 no-leader	Applications	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 no-leader	Applications	R	Radio (cliamp)	-	exec_cmd(kitty --single-instance -e cliamp);submap(reset)
@@ -301,7 +295,6 @@ no-leader	Bar	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc ca
 no-leader	Bar	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
-no-leader	Bar	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
 no-leader	Bar	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open battery);submap(reset)
 no-leader	Bar	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open system);submap(reset)
@@ -345,7 +338,6 @@ no-leader	Go	ESCAPE	Exit Go	-	submap(reset)
 no-leader	Go	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
-no-leader	Go	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
 no-leader	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 no-leader	Go	S	Slack	-	exec_cmd(slack);submap(reset)
@@ -394,7 +386,6 @@ no-leader	Leader	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc
 no-leader	Leader	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	M	Media	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open media);submap(reset)
-no-leader	Leader	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	N	Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open notifications);submap(reset)
 no-leader	Leader	O	Open Application	-	exec_cmd(~/.config/hypr/scripts/qs-picker apps 'rofi -i -show drun');submap(reset)
 no-leader	Leader	P	Power and Brightness	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open battery);submap(reset)
@@ -449,7 +440,6 @@ no-leader	System	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	J	Journal (lazyjournal)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e lazyjournal);submap(reset)
 no-leader	System	K	Kill App (Click)	-	exec_cmd(hyprctl kill);submap(reset)
 no-leader	System	L	Lock	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm lock);submap(reset)
-no-leader	System	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	P	Power Off	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm poweroff);submap(reset)
 no-leader	System	R	Reboot	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm reboot);submap(reset)
 no-leader	System	SHIFT + A	Aria2tui	-	exec_cmd(kitty --single-instance -e aria2tui);submap(reset)

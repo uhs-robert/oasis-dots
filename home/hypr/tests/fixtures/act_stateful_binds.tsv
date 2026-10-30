@@ -4,7 +4,7 @@
 # Redumped for pointer moves: wlrctl steps with no repeating flag and no diagonal chords (cursor.move repeats on Lua timers until the release rows), so a held key keeps moving on Hyprland 0.57.
 # Redumped for the mouse pass-through binds in every "stay" submap (Hyprland 0.57 runs a catchall on mouse events).
 # Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
-# Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr and Compose no-ops.
+# Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr no-ops.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 arrows	Cursor	ALT + H	Arrow Left	repeating=true	send_shortcut({key=LEFT,mods=})
 arrows	Cursor	ALT + J	Arrow Down	repeating=true	send_shortcut({key=DOWN,mods=})
@@ -131,7 +131,6 @@ arrows	Delete	G	Close Games	-	submap(reset)
 arrows	Delete	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	M	Close Mail	-	submap(reset)
-arrows	Delete	Multi_key	-	ignore_mods=true,transparent=true	no_op
 arrows	Delete	N	Clear Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call notifications clear_all);submap(reset)
 arrows	Delete	O	Close Others on WS	-	window.close({window=address:0xb2});submap(reset)
 arrows	Delete	P	Close Media Players	-	submap(reset)
@@ -523,7 +522,6 @@ default	Delete	G	Close Games	-	submap(reset)
 default	Delete	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Delete	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Delete	M	Close Mail	-	submap(reset)
-default	Delete	Multi_key	-	ignore_mods=true,transparent=true	no_op
 default	Delete	N	Clear Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call notifications clear_all);submap(reset)
 default	Delete	O	Close Others on WS	-	window.close({window=address:0xb2});submap(reset)
 default	Delete	P	Close Media Players	-	submap(reset)
@@ -915,7 +913,6 @@ no-leader	Delete	G	Close Games	-	submap(reset)
 no-leader	Delete	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	M	Close Mail	-	submap(reset)
-no-leader	Delete	Multi_key	-	ignore_mods=true,transparent=true	no_op
 no-leader	Delete	N	Clear Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call notifications clear_all);submap(reset)
 no-leader	Delete	O	Close Others on WS	-	window.close({window=address:0xb2});submap(reset)
 no-leader	Delete	P	Close Media Players	-	submap(reset)
@@ -1300,7 +1297,6 @@ persistent	Delete	G	Close Games	-	submap(reset)
 persistent	Delete	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	M	Close Mail	-	submap(reset)
-persistent	Delete	Multi_key	-	ignore_mods=true,transparent=true	no_op
 persistent	Delete	N	Clear Notifications	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call notifications clear_all);submap(reset)
 persistent	Delete	O	Close Others on WS	-	window.close({window=address:0xb2});submap(reset)
 persistent	Delete	P	Close Media Players	-	submap(reset)
