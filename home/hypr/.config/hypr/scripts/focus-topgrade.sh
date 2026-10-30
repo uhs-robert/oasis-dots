@@ -22,7 +22,7 @@ if [ -n "$pane" ]; then
 fi
 
 addr=$(hyprctl clients -j | jq -r --arg t "$title" '
-  [.[] | select(($t != "" and (.title == $t or (.title | startswith($t + " ")))) or .class == "quickshell-upgrade" or (.class | endswith("-topgrade")))]
+  [.[] | select(($t != "" and (.title == $t or (.title | startswith($t + " ")) or .title == "Tmux " + $t or (.title | startswith("Tmux " + $t + " ")))) or .class == "quickshell-upgrade" or (.class | endswith("-topgrade")))]
   | first | .address // empty')
 
 if [ -n "$addr" ]; then

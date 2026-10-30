@@ -79,6 +79,10 @@ write_clients((other_client, "Dev", "/tmp/dev", other_client, "/dev/pts/99999"),
 check("'Dev tools nvim' picks session 'Dev tools', not 'Dev'", run_script(pid, "Dev tools nvim"), "/tmp/dev_tools")
 check("'Dev nvim' still picks session 'Dev'", run_script(pid, "Dev nvim"), "/tmp/dev")
 
+# A program named like a longer session must not outrank the session the title starts with.
+write_clients((other_client, "Dev", "/tmp/dev", other_client, "/dev/pts/99999"), (own_client, "claude", "/tmp/claude", own_client, "/dev/pts/99998"))
+check("title 'Dev claude' picks session 'Dev', not a session named after the program", run_script(pid, "Dev claude"), "/tmp/dev")
+
 # A window whose only child shell is the tmux client process: its comm is `tmux: client`, which is not an app.
 open(clients_file, "w").close()
 cwd = os.path.join(work, "client_cwd")
