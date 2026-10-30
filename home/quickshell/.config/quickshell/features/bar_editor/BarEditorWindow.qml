@@ -113,6 +113,10 @@ PanelWindow {
         onTriggered: root.tick++
     }
 
+    // A window created already owning the keyboard (the editor opens, or a screen appears, while it is open) has no change to
+    // wait on, and no old owner to wait for.
+    Component.onCompleted: root.claims_keyboard = root.keyboard_owner
+
     onKeyboard_ownerChanged: {
         if (root.keyboard_owner) {
             claim_delay.restart();
