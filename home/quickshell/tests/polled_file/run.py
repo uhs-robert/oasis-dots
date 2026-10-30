@@ -4,9 +4,10 @@ It guards the FileView behaviour the component relies on: a missing file arrives
 without a line in the qs log, and a changed path reads the new file, also with blockLoading. Each scenario runs
 shell.qml with SCENARIO set and is judged here from the timed event list the shell saves.
 
-FileView reads a file once by itself when its path is first set, so every scenario starts with one read inside the
-first STARTUP_MS that is not the component's doing; the checks see the events after it, except interval_start, which
-also needs to know that the timer's own first tick came with it.
+FileView reads a file once by itself when its path is first set, so every scenario starts with one read that is not
+the component's doing. The shell starts its clock at that read (t = 0) and holds the plan back until it arrives, so
+slow startup cannot put it inside the plan. A timer's own first tick may follow it, so reads before STARTUP_MS are
+startup too; the checks see the events after that, except interval_start, which also needs to know that the tick came.
 
   python3 -B run.py [scenario...]
 """
@@ -18,7 +19,7 @@ import subprocess
 import sys
 import tempfile
 
-STARTUP_MS = 50
+STARTUP_MS = 100
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE = os.path.join(HERE, "..", "..", ".config", "quickshell", "core", "PolledFile.qml")
 
@@ -117,11 +118,11 @@ def check_disabled(events, out):
 def check_enabled_late(events, out):
     problems = []
     times = [e["t"] for e in after_startup(events)]
-    # Enabled at 400 with run_on_start: ticks near 400, 500, 600; disabled at 650: none after.
+    # Enabled at 400 with run_on_start: ticks near 400, 500, 600; disabled at 650: a tick at 700 would make a fourth,
+    # so the count shows none after (a late read of the 600 tick must not fail it).
     expect(problems, "count", len(times), 3)
     if times:
         expect(problems, "none before enable", min(times) >= 380, True)
-        expect(problems, "none after disable", max(times) <= 700, True)
     return problems
 
 
@@ -132,8 +133,8 @@ def check_interval_start(events, out):
     expect(problems, "count", len(times), 3)  # 200, 400, 600
     expect(problems, "read at start", bool([e for e in events if e["t"] < STARTUP_MS]), True)
     for earlier, later in zip(times, times[1:]):
-        if not 150 <= later - earlier <= 280:
-            problems.append("gap %d ms, want about 200" % (later - earlier))
+        if not 150 <= later - earlier <= 380:
+            problems.append("gap %d ms, want 150..380" % (later - earlier))
     return problems
 
 

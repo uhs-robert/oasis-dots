@@ -1,7 +1,8 @@
 #!/bin/sh
 # Formats, lints and tests the voxcmd Rust crate: cargo fmt --check, clippy with warnings denied, then cargo test.
-# It takes no heavy-step slot (lib/check/lock.sh): it is short and not timing-sensitive, and a slot would queue it
-# behind the minutes-long voxcmd suites and other agents' checks. It runs in the ordinary pool, not the serial lane. The target dir stays per-checkout: a shared one serialises worktrees on
+# It takes no heavy-step slot (lib/check/lock.sh): it is short, its timing-sensitive tests wait on events instead of
+# fixed windows, and a slot would queue it behind the minutes-long voxcmd suites and other agents' checks. It runs in
+# the ordinary pool, not the serial lane. The target dir stays per-checkout: a shared one serialises worktrees on
 # cargo's lock and saves little for a crate this size.
 set -u
 

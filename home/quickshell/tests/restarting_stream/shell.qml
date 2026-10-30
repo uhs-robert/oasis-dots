@@ -33,7 +33,7 @@ ShellRoot {
     // reprobe, absent, present) and `end` (ms at which the result is saved). Delays are scaled down from production.
     readonly property var plans: ({
         // A planned exit restarts after the initial delay, with no warning and no doubling.
-        planned: { settings: { probe: false }, actions: [[300, "expect_exit"], [310, "kill"]], end: 900 },
+        planned: { settings: { probe: false }, actions: [[300, "expect_exit"], [310, "kill"]], end: 2400 },
         // The control: the same kill without the mark is a quick failure.
         unplanned: { settings: { probe: false }, actions: [[300, "kill"]], end: 900 },
         // A mark whose exit never came lapses, so a later crash counts.
@@ -43,17 +43,17 @@ ShellRoot {
         // Repeated right-clicks make one planned exit; the next crash counts again.
         repeated_marks: { settings: { probe: false }, actions: [[300, "expect_exit"], [305, "expect_exit"], [310, "expect_exit"], [315, "kill"], [900, "kill"]], end: 1300 },
         // The tool is missing at start: one warning, no stream; installed later, the re-probe starts it.
-        missing_then_installed: { settings: {}, actions: [[700, "present"]], end: 1800 },
+        missing_then_installed: { settings: {}, actions: [[700, "present"]], end: 2800 },
         // The re-probe timer ticks faster than a probe takes: still one probe at a time.
         probe_in_flight: { settings: { probe_sleep: "0.5", reprobe: 100 }, actions: [], end: 1300 },
         // A restart re-probes; the tool is gone, so no stream comes back, until it is installed again.
-        removed_then_back: { settings: {}, actions: [[300, "absent"], [310, "kill"], [1200, "present"]], end: 2200 },
+        removed_then_back: { settings: {}, actions: [[300, "absent"], [310, "kill"], [1200, "present"]], end: 4000 },
         // A probe failing while the stream runs leaves that stream alone; it is not restarted once it ends.
-        probe_flips_while_running: { settings: {}, actions: [[300, "absent"], [310, "reprobe"], [600, "kill"]], end: 1200 },
+        probe_flips_while_running: { settings: {}, actions: [[300, "absent"], [310, "reprobe"], [600, "kill"]], end: 2000 },
         // wanted dropping during backoff: the pending restart must not start it.
         wanted_off_in_backoff: { settings: { probe: false }, actions: [[300, "kill"], [350, "wanted_false"]], end: 1200 },
         // wanted flapping during backoff starts it once, at the flap, and the old timer adds no second start.
-        wanted_flap_in_backoff: { settings: { probe: false }, actions: [[300, "kill"], [350, "wanted_false"], [450, "wanted_true"]], end: 1200 },
+        wanted_flap_in_backoff: { settings: { probe: false }, actions: [[300, "kill"], [350, "wanted_false"], [450, "wanted_true"]], end: 2400 },
         // wanted false stops the stream and leaves no process behind.
         stop_leaves_nothing: { settings: { probe: false }, actions: [[300, "wanted_false"], [400, "check_alive"]], end: 800 }
     })

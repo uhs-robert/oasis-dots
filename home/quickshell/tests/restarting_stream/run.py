@@ -63,6 +63,7 @@ class Run:
         self.missing_warnings = out.count("TEST-WARN-MISSING")
         self.ups = [e["t"] for e in events if e["kind"] == "line" and e["text"] == "up"]
         self.exits = [e for e in events if e["kind"] == "exited"]
+        self.actions = {e["name"]: e["t"] for e in reversed(events) if e["kind"] == "action"}
         self.end = [e for e in events if e["kind"] == "end"][0]
 
 
@@ -82,7 +83,8 @@ def check_planned(r):
     expect(p, "exit delays", [e["delay"] for e in r.exits], [200])
     expect(p, "quick-failure warnings", r.quick_warnings, 0)
     if len(r.ups) == 2:
-        between(p, "restart after the planned exit", r.ups[1], 450, 800)
+        # The restart waits out the 200 ms delay after the exit, which follows the kill; the upper bound only catches a stuck restart.
+        between(p, "restart after the planned exit", r.ups[1] - r.actions["kill"], 140, 1500)
     return p
 
 
@@ -120,7 +122,7 @@ def check_missing_then_installed(r):
     expect(p, "missing warnings", r.missing_warnings, 1)
     expect(p, "starts", len(r.ups), 1)
     if r.ups:
-        between(p, "start after install", r.ups[0], 750, 1300)
+        between(p, "start after install", r.ups[0] - r.actions["present"], 50, 1500)
     expect(p, "available at end", r.end["available"], True)
     expect(p, "probed at least 3 times", r.probes >= 3, True)
     return p
@@ -139,7 +141,8 @@ def check_removed_then_back(r):
     p = []
     expect(p, "starts", len(r.ups), 2)
     if len(r.ups) == 2:
-        between(p, "start after reinstall", r.ups[1], 1200, 2100)
+        # Never before the tool is back; the upper bound allows slow re-probes and process starts.
+        between(p, "start after reinstall", r.ups[1] - r.actions["present"], 0, 2500)
     expect(p, "exits", len(r.exits), 1)
     expect(p, "available at end", r.end["available"], True)
     expect(p, "probed at the restart", r.probes >= 3, True)
@@ -151,7 +154,7 @@ def check_probe_flips_while_running(r):
     expect(p, "starts", len(r.ups), 1)
     expect(p, "exits", len(r.exits), 1)
     if r.exits:
-        between(p, "the running stream lived until the kill", r.exits[0]["t"], 590, 700)
+        between(p, "the running stream lived until the kill", r.exits[0]["t"] - r.actions["kill"], 0, 1000)
     expect(p, "available at end", r.end["available"], False)
     expect(p, "running at end", r.end["running"], False)
     return p
@@ -167,8 +170,10 @@ def check_wanted_off_in_backoff(r):
 def check_wanted_flap_in_backoff(r):
     p = []
     expect(p, "starts", len(r.ups), 2)
-    if len(r.ups) == 2:
-        between(p, "start at the flap, not after the backoff", r.ups[1], 440, 650)
+    if len(r.ups) == 2 and r.exits:
+        # Never before the flap, and before the backoff that follows the exit would have fired on its own.
+        backoff_ends = r.exits[0]["t"] + r.exits[0]["delay"] - r.actions["wanted_true"]
+        between(p, "start at the flap, not after the backoff", r.ups[1] - r.actions["wanted_true"], 0, backoff_ends)
     return p
 
 

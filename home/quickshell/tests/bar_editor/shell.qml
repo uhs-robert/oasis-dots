@@ -626,8 +626,20 @@ ShellRoot {
 
     BarEditorIpc {}
 
+    // The result file ends the process and run.py reads bars.json after it, so the result waits for BarSettings' last write.
     function finish() {
-        result_file.setText(JSON.stringify(root.result));
+        settle.start();
+    }
+
+    Timer {
+        id: settle
+        interval: 5
+        repeat: true
+        onTriggered: {
+            if (BarSettings.write_pending) return;
+            settle.stop();
+            result_file.setText(JSON.stringify(root.result));
+        }
     }
 
     FileView {

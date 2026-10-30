@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 QS_DIR = os.path.join(HERE, "..", "..", ".config", "quickshell")
@@ -87,12 +88,16 @@ def run_qs(scenario, root, seed=None):
 
 
 def bars_file(root):
-    with open(os.path.join(root, "state", "quickshell", "bars.json")) as f:
-        return json.load(f)
+    """The saved bars.json, or {} when it is missing, so the caller reports a wrong value instead of the run crashing."""
+    try:
+        with open(os.path.join(root, "state", "quickshell", "bars.json")) as f:
+            return json.load(f)
+    except (FileNotFoundError, ValueError):
+        return {}
 
 
 def first_order(state):
-    order = state["shared"]["order"]
+    order = state.get("shared", {}).get("order")
     return int(order[0][1:]) if order else 0
 
 
@@ -131,7 +136,7 @@ def scenario_visual_rapid(root):
     want = [["left", "bottom", "top", "right"][i % 4] for i in range(40)]
     if result["edges_seen"] != want:
         problems.append("edges seen %r, want %r" % (result["edges_seen"], want))
-    on_disk = bars_file(root)["shared"].get("position")
+    on_disk = bars_file(root).get("shared", {}).get("position")
     if on_disk != want[-1] or result["final_edge"] != want[-1]:
         problems.append("final edge: memory %r, file %r, want %r" % (result["final_edge"], on_disk, want[-1]))
     return problems
@@ -237,8 +242,9 @@ def scenario_migrate(root):
     on_disk = bars_file(root)
     if on_disk.get("cava_migrated") is not True:
         problems.append("migrated file was not stamped: %r" % on_disk)
-    if on_disk["monitors"]["M"]["left"] != ["workspaces", "media"]:
-        problems.append("media not added after workspaces: %r" % on_disk["monitors"]["M"]["left"])
+    left = on_disk.get("monitors", {}).get("M", {}).get("left")
+    if left != ["workspaces", "media"]:
+        problems.append("media not added after workspaces: %r" % left)
     return problems
 
 
@@ -300,6 +306,9 @@ def main():
         root = tempfile.mkdtemp(prefix="bar_editor_")
         try:
             problems = SCENARIOS[name](root)
+        except Exception:
+            # One scenario's crash is that scenario's failure; the rest still run.
+            problems = ["crashed:\n" + traceback.format_exc()]
         finally:
             shutil.rmtree(root, ignore_errors=True)
         print(("FAIL " if problems else "ok   ") + name)

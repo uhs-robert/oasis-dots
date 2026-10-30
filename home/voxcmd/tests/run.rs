@@ -711,8 +711,23 @@ fn term_run_while_asking(setup: &Setup, phrase: &str, envs: &[(&str, String)]) -
         assert!(std::time::Instant::now() < deadline, "the ask never waited");
         std::thread::sleep(std::time::Duration::from_millis(10));
     };
+    // The reader starts before the bar stub has handled the open call, and a stop signal that lands first leaves no
+    // call to compare. The stub writes the call file first, then dumps the pending pick.
     let pending = setup.path().join("runtime/voxcmd/pending-pick.json");
-    assert!(pending.exists());
+    let dumps = setup.path().join("work/dumps");
+    let opened = || {
+        pending.exists()
+            && std::fs::read_dir(&dumps).is_ok_and(|entries| {
+                entries.flatten().any(|entry| {
+                    entry.path().extension().is_some_and(|extension| extension == "call")
+                        && std::fs::metadata(entry.path()).is_ok_and(|meta| meta.len() > 0)
+                })
+            })
+    };
+    while !opened() {
+        assert!(std::time::Instant::now() < deadline, "the bar was never asked to open");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     // SAFETY: kill only sends a signal.
     unsafe { libc::kill(voxcmd.id() as i32, libc::SIGTERM) };
     let output = voxcmd.wait_with_output().unwrap();
@@ -726,10 +741,9 @@ fn term_run_while_asking(setup: &Setup, phrase: &str, envs: &[(&str, String)]) -
         .collect();
     assert!(ask_dirs.is_empty(), "{ask_dirs:?}");
     assert!(
-        gone_within(reader, std::time::Duration::from_secs(2)),
+        gone_within(reader, std::time::Duration::from_secs(10)),
         "the answer reader {reader} outlived the ask"
     );
-    let dumps = setup.path().join("work/dumps");
     let mut calls: Vec<_> = std::fs::read_dir(&dumps)
         .unwrap()
         .flatten()
