@@ -292,7 +292,7 @@ STEPS = [
 # Found by naming convention: a new test in one of these places is a step without an entry above.
 STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua", "jq"), extra_needs={"shadow-action": ("lua", "jq")})
 STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", always_needs=("node",), maybe_needs=("jq",))
-STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", always_needs=("qs",), maybe_needs=("python3",))
+STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", maybe_needs=("qs", "python3"))
 STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", maybe_needs=("jq", "zsh"), extra_needs={"install-greeter-stage-zsh": ("jq",)})
 STEPS += discovered(".claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
 STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))

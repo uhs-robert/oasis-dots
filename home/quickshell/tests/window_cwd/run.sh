@@ -68,7 +68,7 @@ write_clients((other_client, "a", "/tmp/a", other_client, "/dev/pts/99998"), (ow
 check("the title picks between clients of equal rank", run_script(pid, "b"), "/tmp/b")
 check("the title picks the other client too", run_script(pid, "x a"), "/tmp/a")
 # No title match and no better rank: no tmux path, rather than a guess between the two.
-check("ambiguous clients give no tmux path", run_script(pid, "unrelated") in ("/tmp/a", "/tmp/b"), False)
+check("ambiguous clients give no answer", run_script(pid, "unrelated"), "")
 
 # A window whose only child shell is the tmux client process: its comm is `tmux: client`, which is not an app.
 open(clients_file, "w").close()
