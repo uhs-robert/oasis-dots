@@ -135,6 +135,8 @@ function latest_client(clients) {
 
 // Hyprland titles are the session name, with a "Tmux " prefix when a tmuxifier layout set the title string, and then
 // the active program ("UpHill nvim").
-function title_matches(title, session_name) {
-    return [session_name, "Tmux " + session_name].some(t => title === t || title.startsWith(t + " "));
+// A longer name in session_names that also fits the title owns the window ("Dev tools nvim" is not session "Dev").
+function title_matches(title, session_name, session_names) {
+    const fits = name => [name, "Tmux " + name].some(t => title === t || title.startsWith(t + " "));
+    return fits(session_name) && !(session_names || []).some(o => o.length > session_name.length && fits(o));
 }

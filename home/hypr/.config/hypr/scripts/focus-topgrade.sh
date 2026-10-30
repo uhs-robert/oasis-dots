@@ -18,11 +18,11 @@ pane=$(tmux list-panes -a -F '#{pane_pid} #{pane_id}' 2>/dev/null |
   done)
 if [ -n "$pane" ]; then
   tmux select-window -t "$pane" \; select-pane -t "$pane"
-  title=$(tmux display -p -t "$pane" '#{T:set-titles-string}')
+  title=$(tmux display -p -t "$pane" '#{session_name}')
 fi
 
 addr=$(hyprctl clients -j | jq -r --arg t "$title" '
-  [.[] | select(($t != "" and .title == $t) or .class == "quickshell-upgrade" or (.class | endswith("-topgrade")))]
+  [.[] | select(($t != "" and (.title == $t or (.title | startswith($t + " ")))) or .class == "quickshell-upgrade" or (.class | endswith("-topgrade")))]
   | first | .address // empty')
 
 if [ -n "$addr" ]; then

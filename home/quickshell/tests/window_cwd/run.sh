@@ -74,6 +74,11 @@ write_clients((other_client, "Other", "/tmp/other", other_client, "/dev/pts/9999
 check("title 'Tmux <session> <program>' picks that session's client", run_script(pid, "Tmux Config nvim"), "/tmp/config")
 check("title '<session> <program>' picks that session's client", run_script(pid, "Config nvim"), "/tmp/config")
 
+# Session names that start alike: the longest one that fits the title wins, whichever client is listed first.
+write_clients((other_client, "Dev", "/tmp/dev", other_client, "/dev/pts/99999"), (own_client, "Dev tools", "/tmp/dev_tools", own_client, "/dev/pts/99998"))
+check("'Dev tools nvim' picks session 'Dev tools', not 'Dev'", run_script(pid, "Dev tools nvim"), "/tmp/dev_tools")
+check("'Dev nvim' still picks session 'Dev'", run_script(pid, "Dev nvim"), "/tmp/dev")
+
 # A window whose only child shell is the tmux client process: its comm is `tmux: client`, which is not an app.
 open(clients_file, "w").close()
 cwd = os.path.join(work, "client_cwd")
