@@ -82,6 +82,7 @@ bind Go 3                               # focus the third configured monitor
 # IPC functions that are not person-facing commands.
 ipc brightness refresh                  # the bar's brightness module refreshes after a key changes it
 ipc cmdstatus refresh                   # a refresh hook nothing calls yet (see qml-ipc.allow)
+ipc dir refresh                         # called by the tmux hooks in home/tmux/.tmux.conf, not a key
 ipc calendar open_day refresh           # called by the calendar sync and by voxcmd's calendar integration, not by a person
 ipc clickhints dismiss open state       # the Quick Click overlay, driven by the Quick Click submap and the shadow tests
 ipc confirm ask dismiss                 # the confirmation prompt other surfaces raise

@@ -66,9 +66,13 @@ check("a sole client on the window's tty is picked whatever the title", run_scri
 # Clients that merely descend from the window pid (no tty match) rank equal, so the title decides.
 write_clients((other_client, "a", "/tmp/a", other_client, "/dev/pts/99998"), (own_client, "b", "/tmp/b", own_client, "/dev/pts/99999"))
 check("the title picks between clients of equal rank", run_script(pid, "b"), "/tmp/b")
-check("the title picks the other client too", run_script(pid, "x a"), "/tmp/a")
+check("the title picks the other client too", run_script(pid, "Tmux a"), "/tmp/a")
 # No title match and no better rank: no tmux path, rather than a guess between the two.
 check("ambiguous clients give no answer", run_script(pid, "unrelated"), "")
+# The title, with its layout prefix and the program after the session name, picks the session.
+write_clients((other_client, "Other", "/tmp/other", other_client, "/dev/pts/99999"), (own_client, "Config", "/tmp/config", own_client, "/dev/pts/99998"))
+check("title 'Tmux <session> <program>' picks that session's client", run_script(pid, "Tmux Config nvim"), "/tmp/config")
+check("title '<session> <program>' picks that session's client", run_script(pid, "Config nvim"), "/tmp/config")
 
 # A window whose only child shell is the tmux client process: its comm is `tmux: client`, which is not an app.
 open(clients_file, "w").close()

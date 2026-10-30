@@ -283,6 +283,7 @@ ShellRoot {
     ClickHintsIpc {}
     SoundIpc {}
     CommandStatusIpc {}
+    DirectoryIpc {}
     CalendarIpc {}
     LockPreview {
         id: lock_preview

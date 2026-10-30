@@ -133,7 +133,8 @@ function latest_client(clients) {
     return clients.slice().sort((a, b) => b.activity - a.activity)[0] || null;
 }
 
-// Hyprland titles are the session name, with a "Tmux " prefix when a tmuxifier layout set the title string.
+// Hyprland titles are the session name, with a "Tmux " prefix when a tmuxifier layout set the title string, and then
+// the active program ("UpHill nvim").
 function title_matches(title, session_name) {
-    return title === session_name || title === "Tmux " + session_name;
+    return [session_name, "Tmux " + session_name].some(t => title === t || title.startsWith(t + " "));
 }
