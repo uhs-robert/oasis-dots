@@ -42,7 +42,7 @@ pub(super) const VERDICT_MAX_LENGTH: i32 = 5;
 
 /// `internal watch` (alias `_watch`), positional as the bash entry point took them: the handler (`route`, `reply`,
 /// `session_turn`), the session mode the recording is heard in (`-` for none), 1 when that mode is private (only
-/// lengths are logged, nothing goes to the no-match log), and the detector's `VAR=value` lines.
+/// lengths are logged, nothing goes to the no-match log), the detector's `VAR=value` lines, and for a reply the encoded `PickId` it answers.
 pub fn run(args: &[String]) -> Result<(), CliError> {
     let handler = match args.first().map(String::as_str) {
         Some("route") => Handler::Route,
@@ -51,13 +51,14 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
         _ => {
             return Err(CliError::usage(
                 "internal watch",
-                "usage: route|reply|session_turn [mode token] [private 0|1] [detector settings]",
+                "usage: route|reply|session_turn [mode token] [private 0|1] [detector settings] [pick id]",
             ));
         }
     };
     let heard_mode = args.get(1).map_or("", String::as_str);
     let heard_private = args.get(2).is_some_and(|private| private == "1");
     let detector_settings = args.get(3).map_or("", String::as_str);
+    let pinned = args.get(4).and_then(|text| ask::PickId::parse(text));
     let me = std::process::id();
     let stop_signals_held = process::StopSignalsHeld::new();
     process::stop_on_hangup_too();
@@ -99,10 +100,13 @@ pub fn run(args: &[String]) -> Result<(), CliError> {
     let exit_code = match handler {
         Handler::Route => route::runner::run_spoken(&transcript, &heard),
         Handler::Reply => i32::from(
-            ask::reply::run(ReplyArgs {
-                dry_run: false,
-                phrase: vec![transcript],
-            })
+            ask::reply::run_pinned(
+                ReplyArgs {
+                    dry_run: false,
+                    phrase: vec![transcript],
+                },
+                pinned,
+            )
             .is_err(),
         ),
         Handler::SessionTurn => route::runner::with_runner(&heard, |runner| {

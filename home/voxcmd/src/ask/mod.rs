@@ -176,7 +176,41 @@ pub fn still_pending(earlier: &PendingPick) -> bool {
 }
 
 fn same_question(now: &PendingPick, earlier: &PendingPick) -> bool {
-    now.pid == earlier.pid && now.owner == earlier.owner && now.fifo == earlier.fifo && now.token == earlier.token
+    PickId::of(now) == PickId::of(earlier)
+}
+
+/// What tells one open pick from the next: the fields `same_question` compares. A voice reply pins it when its
+/// recording starts, so a picker opened during the transcription is not answered. Passed to the watcher as JSON.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PickId {
+    pid: u32,
+    owner: Owner,
+    fifo: Option<PathBuf>,
+    token: Option<String>,
+}
+
+impl PickId {
+    pub fn of(pick: &PendingPick) -> Self {
+        Self {
+            pid: pick.pid,
+            owner: pick.owner,
+            fifo: pick.fifo.clone(),
+            token: pick.token.clone(),
+        }
+    }
+
+    pub fn encode(&self) -> String {
+        serde_json::to_string(self).unwrap_or_default()
+    }
+
+    /// None for text that is not an encoded id, which leaves the reply unpinned.
+    pub fn parse(text: &str) -> Option<Self> {
+        serde_json::from_str(text).ok()
+    }
+
+    pub fn matches(&self, pick: &PendingPick) -> bool {
+        *self == Self::of(pick)
+    }
 }
 
 const ASK_KINDS: [&str; 3] = ["pick", "confirm", "hints"];
