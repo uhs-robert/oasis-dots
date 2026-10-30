@@ -847,7 +847,7 @@ mod tests {
     }
 
     #[test]
-    fn only_the_shipped_session_launcher_listens_for_a_pick() {
+    fn the_shipped_session_launcher_listens_for_a_pick_and_open_does_not() {
         let file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations/sessions.toml");
         let sessions = load_toml(&file).unwrap();
         assert!(sessions.actions["launcher"].listen_for_pick);

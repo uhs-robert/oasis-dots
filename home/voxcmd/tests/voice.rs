@@ -452,6 +452,41 @@ fn a_typed_run_does_not_wait_for_a_picker() {
     assert!(!voice.calls().contains("setsid"), "{}", voice.calls());
 }
 
+#[test]
+fn a_flagged_action_heard_in_a_session_turn_leaves_the_microphone_to_the_session() {
+    let (voice, mut bar) = voice_with_bar_picks();
+    // The mode is the pickers file itself, so the turn routes "open it" to the flagged action.
+    let file = voice.path().join("config/integrations/pickers.toml");
+    voice.set_state("recording");
+    let mut watcher = voice
+        .command(&["internal", "watch", "session_turn", "1:pickers:1", "0", ""])
+        .spawn()
+        .unwrap();
+    assert!(wait_for(|| voice.debug_log().contains("watch: voxtype recording")));
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let session = serde_json::json!({"kind": "pickers", "label": "Pickers", "exit_hint": "x", "frame_id": "1",
+        "integration": file, "owner": watcher.id(), "owner_start": start_time_of(watcher.id()), "unclear": 0,
+        "turns": 0, "stack": [], "started": now, "mode_started": now, "last_heard": now});
+    std::fs::write(voice.runtime().join("session.json"), session.to_string()).unwrap();
+    std::fs::write(voice.runtime().join("transcript.txt"), "open it\n").unwrap();
+    voice.set_state("idle");
+    assert!(watcher.wait().unwrap().success(), "{}", voice.debug_log());
+    end(&mut bar);
+    // The action ran and its picker opened, so what follows is not vacuous.
+    let pending = std::fs::read_to_string(voice.runtime().join("pending-pick.json")).unwrap();
+    assert!(pending.contains("k2"), "{pending}");
+    // The action leaves the microphone free, so the session's own next listen opens it. Started first, the reply
+    // recording makes that listen fail and end the session.
+    assert!(
+        !voice.debug_log().contains("the microphone could not be opened"),
+        "{}",
+        voice.debug_log()
+    );
+}
+
 // ---- the watcher ------------------------------------------------------------------------------------------------
 
 #[test]

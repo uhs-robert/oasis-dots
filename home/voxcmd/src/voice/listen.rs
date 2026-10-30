@@ -56,6 +56,12 @@ pub fn start_only(owner_file: Option<&Path>) -> bool {
     listen(true, owner_file)
 }
 
+/// A start-only reply recording for `pick`, which the caller saw open: the recording pins itself to it even when
+/// another has replaced it since.
+pub fn start_only_for(pick: ask::PendingPick) -> bool {
+    listen_locked_for(&SessionLock::take(), true, None, std::process::id(), Some(pick))
+}
+
 fn listen(start_only: bool, owner_file: Option<&Path>) -> bool {
     listen_locked(&SessionLock::take(), start_only, owner_file, std::process::id())
 }
@@ -70,6 +76,17 @@ struct SessionListen {
 /// `listen` under a session lock the caller holds; `me` is the process the listen is for, which a session's own listen
 /// hands the session from.
 pub fn listen_locked(lock: &SessionLock, start_only: bool, owner_file: Option<&Path>, me: u32) -> bool {
+    listen_locked_for(lock, start_only, owner_file, me, None)
+}
+
+/// `listen_locked` for the pick the caller saw, instead of the one the file holds by now.
+fn listen_locked_for(
+    lock: &SessionLock,
+    start_only: bool,
+    owner_file: Option<&Path>,
+    me: u32,
+    seen_pick: Option<ask::PendingPick>,
+) -> bool {
     let state = voxtype_state();
     let for_reply = owner_file.is_some() || inherited_owner_file().is_some();
     debug(&format!(
@@ -92,8 +109,8 @@ pub fn listen_locked(lock: &SessionLock, start_only: bool, owner_file: Option<&P
     }
     let _ = std::fs::create_dir_all(paths::runtime_dir());
     let mut session_listen = None;
-    // Read once: the handler choice and the reply's pin must name the same pick.
-    let pending = ask::read_pending();
+    // Read once (or given): the handler choice and the reply's pin must name the same pick.
+    let pending = seen_pick.or_else(ask::read_pending);
     let handler = match session::state(lock) {
         Some(session) => {
             if recording_transcript_pending(&session, me) {
