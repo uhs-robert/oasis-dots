@@ -32,8 +32,8 @@ pub fn run() -> Result<(), CliError> {
             (ask::Owner::Ask, Some(fifo)) => {
                 ask::write_answer(fifo, "");
             }
-            (ask::Owner::Bar, _) if reply_watcher_running() => {
-                let token = pending.token.unwrap_or_default();
+            (ask::Owner::Bar, _) if reply_watcher_running_for(&pending) => {
+                let token = pending.token.clone().unwrap_or_default();
                 debug("stop: cancelling the bar's picker, which a reply recording was answering");
                 ask::qs_ipc_call(&["picker".as_ref(), "cancel".as_ref(), token.as_ref()]);
             }
@@ -51,27 +51,37 @@ pub fn run() -> Result<(), CliError> {
     Ok(())
 }
 
-/// A listen's watcher that will hand its transcript to `reply` is running for this user's voxcmd: the pending pick has
-/// a reply recording attached. The watcher outlives the recording while it hands the answer over, which also counts.
+/// A listen's watcher that will hand its transcript to `reply` is running for this user's voxcmd and answers `pending`:
+/// the pending pick has a reply recording attached. A watcher pinned to an earlier pick (the bar reopened its picker)
+/// is not attached to this one, since its reply is refused. The watcher outlives the recording while it hands the answer over, which also counts.
 /// Matched by `XDG_RUNTIME_DIR` too, so a sandbox or a parallel suite's watcher is not taken for this one's.
-fn reply_watcher_running() -> bool {
+fn reply_watcher_running_for(pending: &ask::PendingPick) -> bool {
     let Ok(entries) = std::fs::read_dir("/proc") else {
         return false;
     };
     let runtime_dir = paths::user_runtime_dir();
     entries.flatten().any(|entry| {
         let proc_dir = entry.path();
-        std::fs::read(proc_dir.join("cmdline")).is_ok_and(|cmdline| is_reply_watcher(&cmdline))
+        std::fs::read(proc_dir.join("cmdline")).is_ok_and(|cmdline| is_reply_watcher_for(&cmdline, pending))
             && std::fs::read(proc_dir.join("environ")).is_ok_and(|environ| runtime_dir_of(&environ) == runtime_dir)
     })
 }
 
-/// `<voxcmd> internal watch reply ...`, as `listen` starts it.
-fn is_reply_watcher(cmdline: &[u8]) -> bool {
+/// `<voxcmd> internal watch reply <token> <private> <settings> [pin]`, as `listen` starts it, unpinned or pinned to
+/// `pending`.
+fn is_reply_watcher_for(cmdline: &[u8], pending: &ask::PendingPick) -> bool {
     let mut args = cmdline.split(|&byte| byte == 0);
     let program = args.next().unwrap_or_default();
     let name = program.rsplit(|&byte| byte == b'/').next().unwrap_or_default();
-    name.starts_with(b"voxcmd") && args.take(3).eq([&b"internal"[..], b"watch", b"reply"])
+    let is_reply = name.starts_with(b"voxcmd") && args.by_ref().take(3).eq([&b"internal"[..], b"watch", b"reply"]);
+    // After the handler: token, private flag, detector settings, then the pin.
+    is_reply
+        && args.nth(3).filter(|pin| !pin.is_empty()).is_none_or(|pin| {
+            std::str::from_utf8(pin)
+                .ok()
+                .and_then(ask::PickId::parse)
+                .is_some_and(|pin| pin.matches(pending))
+        })
 }
 
 /// The `XDG_RUNTIME_DIR` a process started with, `/tmp` when unset or empty, as `paths::user_runtime_dir` reads it.
