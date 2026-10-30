@@ -21,8 +21,13 @@ if [ -n "$pane" ]; then
   title=$(tmux display -p -t "$pane" '#{session_name}')
 fi
 
-addr=$(hyprctl clients -j | jq -r --arg t "$title" '
-  [.[] | select(($t != "" and (.title == $t or (.title | startswith($t + " ")) or .title == "Tmux " + $t or (.title | startswith("Tmux " + $t + " ")))) or .class == "quickshell-upgrade" or (.class | endswith("-topgrade")))]
+others=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | jq -R . | jq -sc .)
+# A longer session name that also fits a title owns that window ("Config tools zsh" is not session "Config"), as in
+# voxcmd's tmux.sh.
+addr=$(hyprctl clients -j | jq -r --arg t "$title" --argjson others "${others:-[]}" '
+  def fits($w; $s): $w == $s or ($w | startswith($s + " ")) or $w == "Tmux " + $s or ($w | startswith("Tmux " + $s + " "));
+  [.[] | select((.title as $w | $t != "" and fits($w; $t) and ($others | map(select(length > ($t | length) and fits($w; .))) | length == 0))
+    or .class == "quickshell-upgrade" or (.class | endswith("-topgrade")))]
   | first | .address // empty')
 
 if [ -n "$addr" ]; then
