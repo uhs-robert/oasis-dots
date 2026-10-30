@@ -19,7 +19,7 @@ Item {
         return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
     }
     readonly property real map_height: Math.min(root.max_height, BarEditor.map_height(root.bounds.w, root.bounds.h))
-    readonly property real scale: Math.min(520 / root.bounds.w, root.map_height / root.bounds.h)
+    readonly property real tile_scale: Math.min(520 / root.bounds.w, root.map_height / root.bounds.h)
 
     implicitWidth: 520
     implicitHeight: root.map_height
@@ -30,10 +30,10 @@ Item {
             id: tile
             required property var modelData
             readonly property bool picked: modelData.name === BarEditor.focus_screen
-            x: (modelData.x - root.bounds.x) * root.scale
-            y: (modelData.y - root.bounds.y) * root.scale
-            width: modelData.w * root.scale - 4
-            height: modelData.h * root.scale - 4
+            x: (modelData.x - root.bounds.x) * root.tile_scale
+            y: (modelData.y - root.bounds.y) * root.tile_scale
+            width: modelData.w * root.tile_scale - 4
+            height: modelData.h * root.tile_scale - 4
             radius: Math.min(Style.frame_radius, 6)
             color: tile.picked ? Qt.alpha(Style.accent_color, 0.3) : "transparent"
             border.width: tile.picked ? 2 : 1
