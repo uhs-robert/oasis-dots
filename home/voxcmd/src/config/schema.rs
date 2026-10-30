@@ -86,6 +86,8 @@ pub struct Action {
     pub builtin: Option<Builtin>,
     pub no_match: Option<String>,
     pub silent: bool,
+    /// After a spoken run succeeds, wait briefly for the bar to publish a new picker and listen for its reply.
+    pub listen_for_pick: bool,
     pub free_text: bool,
     pub mode_switch: bool,
     pub mode_entry: bool,
@@ -318,6 +320,7 @@ pub const ACTION_KEYS: &[&str] = &[
     "candidate_arg",
     "no_match",
     "silent",
+    "listen_for_pick",
     "free_text",
     "mode_switch",
     "mode_entry",
@@ -428,6 +431,8 @@ struct ActionTable {
     provider: Option<String>,
     no_match: Option<String>,
     silent: Option<bool>,
+    #[serde(default)]
+    listen_for_pick: bool,
     #[serde(default)]
     free_text: bool,
     #[serde(default)]
@@ -620,6 +625,7 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 builtin,
                 no_match: table.no_match,
                 silent: table.silent.unwrap_or(parsed.silent),
+                listen_for_pick: table.listen_for_pick,
                 free_text: table.free_text,
                 mode_switch: table.mode_switch,
                 mode_entry: table.mode_entry,
@@ -838,6 +844,14 @@ mod tests {
             media.actions["play_on"].candidates,
             Some(Candidates::Shell(_))
         ));
+    }
+
+    #[test]
+    fn only_the_shipped_session_launcher_listens_for_a_pick() {
+        let file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations/sessions.toml");
+        let sessions = load_toml(&file).unwrap();
+        assert!(sessions.actions["launcher"].listen_for_pick);
+        assert!(!sessions.actions["open"].listen_for_pick);
     }
 
     #[test]

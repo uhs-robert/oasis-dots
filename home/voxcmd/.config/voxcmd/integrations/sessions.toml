@@ -19,8 +19,8 @@ verbs = [
 examples = ["open the <name> session", "open a session"]
 
 [actions]
-# The session's windows appearing is the feedback.
-launcher = { run = 'hyprctl_eval "$launcher_module.show_picker()"', silent = true }
+# The session's windows appearing is the feedback. The launcher's picker takes a spoken pick without the key.
+launcher = { run = 'hyprctl_eval "$launcher_module.show_picker()"', silent = true, listen_for_pick = true }
 skip = { run = "true", candidates = "true" }
 
 [actions.open]

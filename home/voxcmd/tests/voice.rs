@@ -379,6 +379,79 @@ fn a_reply_with_an_unreadable_pin_answers_nothing() {
     assert!(!voice.calls().contains("picker answer"), "{}", voice.calls());
 }
 
+// ---- listen_for_pick --------------------------------------------------------------------------------------------
+
+const PICKER_INTEGRATION: &str = r#"
+name = "Pickers"
+verbs = [
+  { action = "opens", match = 'open it' },
+  { action = "opens_nothing", match = 'open nothing' },
+  { action = "unflagged", match = 'open plain' },
+]
+
+[actions]
+opens = { run = 'sleep 0.05; cp "$WORK/next-pick.json" "$WORK/../runtime/voxcmd/pending-pick.json"', silent = true, listen_for_pick = true }
+opens_nothing = { run = "true", silent = true, listen_for_pick = true }
+unflagged = { run = 'cp "$WORK/next-pick.json" "$WORK/../runtime/voxcmd/pending-pick.json"', silent = true }
+"#;
+
+/// A bar with pick `k1` open, and `k2` ready for the action to publish.
+fn voice_with_bar_picks() -> (Voice, Child) {
+    let voice = Voice::new();
+    std::fs::write(
+        voice.path().join("config/integrations/pickers.toml"),
+        PICKER_INTEGRATION,
+    )
+    .unwrap();
+    let bar = bar_picker(&voice);
+    let next = serde_json::json!({"pid": bar.id(), "owner": "bar", "token": "k2", "label": "Session",
+        "choices": [{"id": "Work", "label": "Work"}], "expansions": {}, "view_key": ""});
+    std::fs::write(voice.work("next-pick.json"), next.to_string()).unwrap();
+    (voice, bar)
+}
+
+/// Routes `said` as a watcher does for a spoken command, and waits for it to finish.
+fn route_by_voice(voice: &Voice, said: &str) {
+    std::fs::write(voice.runtime().join("transcript.txt"), format!("{said}\n")).unwrap();
+    let mut watcher = voice.watcher(&["route", "-", "0", ""], &[], false);
+    voice.set_state("idle");
+    assert!(watcher.wait().unwrap().success());
+}
+
+#[test]
+fn a_spoken_command_that_opens_a_bar_picker_listens_for_its_reply() {
+    let (voice, mut bar) = voice_with_bar_picks();
+    let bar_pid = bar.id();
+    route_by_voice(&voice, "open it");
+    end(&mut bar);
+    assert!(wait_for(|| voice.calls().contains("setsid")), "{}", voice.calls());
+    assert!(
+        voice.calls().contains(" internal watch reply - 0 "),
+        "{}",
+        voice.calls()
+    );
+    let pin = r#" {"pid":%PID%,"owner":"bar","fifo":null,"token":"k2"}"#.replace("%PID%", &bar_pid.to_string());
+    assert!(voice.calls().contains(&pin), "{}", voice.calls());
+}
+
+#[test]
+fn no_reply_listens_without_a_new_bar_picker_or_the_flag() {
+    for said in ["open nothing", "open plain"] {
+        let (voice, mut bar) = voice_with_bar_picks();
+        route_by_voice(&voice, said);
+        end(&mut bar);
+        assert!(!voice.calls().contains("setsid"), "{said}: {}", voice.calls());
+    }
+}
+
+#[test]
+fn a_typed_run_does_not_wait_for_a_picker() {
+    let (voice, mut bar) = voice_with_bar_picks();
+    assert!(voice.output(&["run", "open it"]).status.success());
+    end(&mut bar);
+    assert!(!voice.calls().contains("setsid"), "{}", voice.calls());
+}
+
 // ---- the watcher ------------------------------------------------------------------------------------------------
 
 #[test]
