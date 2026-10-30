@@ -585,12 +585,23 @@ for _, entry in ipairs(Stubs.binds) do
 end
 check("move and scroll: every release row is transparent", opaque == 0)
 
+-- A click stops the held-move timers and runs after a short delay, so a move started just before it runs first.
+press("Cursor", "H")
+check("click order: a move timer is running", enabled_timers() == 1)
+local click_timers_before = #timers
+local click_now = press("Cursor", "SPACE")
+check("click order: the click stops the move timers", enabled_timers() == 1 and not timers[1].enabled)
+check("click order: nothing runs at once", #click_now == 0)
+local click_timer = timers[click_timers_before + 1]
+check("click order: the click waits 20 ms", click_timer and click_timer.opts.timeout == 20 and click_timer.opts.type == "oneshot")
+Stubs.performed = {}
+click_timer.fn()
+check("click order: the delayed timer clicks", text_of(Stubs.performed) == "exec_cmd(wlrctl pointer click left)")
+release("H")
+
 -- A click can leave the submap.
-check("pointer: click stays", text_of(press("Cursor", "SPACE")) == "exec_cmd(wlrctl pointer click left)")
-check(
-	"pointer: click with exit resets",
-	text_of(press("Cursor", "CTRL + SPACE")) == "exec_cmd(wlrctl pointer click left);submap(reset)"
-)
+check("pointer: click stays", text_of(press("Cursor", "SPACE")) == "")
+check("pointer: click with exit resets", text_of(press("Cursor", "CTRL + SPACE")) == "submap(reset)")
 
 -- Called from outside the Cursor submap (hypr-act, the bar, voice), nothing is left running for a release row that
 -- cannot fire: a scroll is one step with no timers, and a pointer mode leaves the submap path instead of entering Cursor.
