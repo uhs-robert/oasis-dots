@@ -9,6 +9,7 @@ const F = vm.createContext({});
 vm.runInContext(script, F);
 
 const home = "/home/me";
+const terminals = ["kitty", "foot", "alacritty"];
 const all = { app_name: true, path: true, file_name: true };
 const off = (...names) => Object.assign({}, all, ...names.map(n => ({ [n]: false })));
 const file = "file:/home/me/projects/dotfiles/home/quickshell/init.lua";
@@ -37,6 +38,13 @@ const cases = [
   ["empty output is empty", () => F.path_text("  \n", all, home), ""],
   ["app name on", () => F.app_text("Foot", all), "Foot"],
   ["app name off", () => F.app_text("Foot", off("app_name")), ""],
+  ["kitty is a terminal", () => F.is_terminal_class("kitty", terminals), true],
+  ["a tmuxifier class is a terminal", () => F.is_terminal_class("kitty-tmux-uphill", terminals), true],
+  ["foot-x is a terminal", () => F.is_terminal_class("foot-x", terminals), true],
+  ["the class match ignores case", () => F.is_terminal_class("Kitty-Tmux-A", terminals), true],
+  ["a look-alike is not a terminal", () => F.is_terminal_class("kittyfoo", terminals), false],
+  ["firefox is not a terminal", () => F.is_terminal_class("firefox", terminals), false],
+  ["an empty class is not a terminal", () => F.is_terminal_class("", terminals), false],
   ["default switches are all on", () => F.default_switches, all],
 ];
 
