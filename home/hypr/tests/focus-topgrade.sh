@@ -45,16 +45,16 @@ cp "$work/bin/qs-ipc" "$work/home/.config/hypr/scripts/qs-ipc"
 
 # check <name> <pane session> <sessions> <clients JSON> <wanted log line>
 check() {
-	local name=$1 got
-	: >"$work/log"
-	got=$(
-		HOME="$work/home" PATH="$work/bin:$PATH" PANE_SESSION=$2 SESSIONS=$3 CLIENTS=$4 FOCUS_LOG="$work/log" bash "$script" >/dev/null 2>&1
-		cat "$work/log"
-	)
-	if [[ $got != *"$5"* ]]; then
-		failures=$((failures + 1))
-		echo "FAIL $name: want '$5', got '$got'" >&2
-	fi
+  local name=$1 got
+  : >"$work/log"
+  got=$(
+    HOME="$work/home" PATH="$work/bin:$PATH" PANE_SESSION=$2 SESSIONS=$3 CLIENTS=$4 FOCUS_LOG="$work/log" bash "$script" >/dev/null 2>&1
+    cat "$work/log"
+  )
+  if [[ $got != *"$5"* ]]; then
+    failures=$((failures + 1))
+    echo "FAIL $name: want '$5', got '$got'" >&2
+  fi
 }
 
 clients='[{"title":"Config tools zsh","class":"kitty","address":"0xTOOLS"},{"title":"Config topgrade","class":"kitty","address":"0xCONFIG"}]'
