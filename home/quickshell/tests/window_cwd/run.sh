@@ -27,8 +27,10 @@ def read_line(fd):
     return buf.decode().strip()
 
 failed = 0
+total = 0
 def check(name, got, want):
-    global failed
+    global failed, total
+    total += 1
     if got != want:
         failed += 1
         print("FAIL %s\n  want: %r\n  got:  %r" % (name, want, got))
@@ -53,6 +55,21 @@ with open(clients_file, "w") as f:
     f.write("%d\tb\t/tmp/own\t%d\t/dev/%s\n" % (own_client, own_client, tty))
 check("client on the window's tty wins over a title that matches neither", run_script(pid, "unrelated"), "/tmp/own")
 
+def write_clients(*rows):
+    with open(clients_file, "w") as f:
+        for row in rows:
+            f.write("%d\t%s\t%s\t%d\t%s\n" % row)
+
+# Plain `tmux attach` from the window's shell: one client, a child of the window on its tty.
+write_clients((own_client, "b", "/tmp/own", own_client, "/dev/" + tty))
+check("a sole client on the window's tty is picked whatever the title", run_script(pid, "unrelated"), "/tmp/own")
+# Clients that merely descend from the window pid (no tty match) rank equal, so the title decides.
+write_clients((other_client, "a", "/tmp/a", other_client, "/dev/pts/99998"), (own_client, "b", "/tmp/b", own_client, "/dev/pts/99999"))
+check("the title picks between clients of equal rank", run_script(pid, "b"), "/tmp/b")
+check("the title picks the other client too", run_script(pid, "x a"), "/tmp/a")
+# No title match and no better rank: no tmux path, rather than a guess between the two.
+check("ambiguous clients give no tmux path", run_script(pid, "unrelated") in ("/tmp/a", "/tmp/b"), False)
+
 # A window whose only child shell is the tmux client process: its comm is `tmux: client`, which is not an app.
 open(clients_file, "w").close()
 cwd = os.path.join(work, "client_cwd")
@@ -72,6 +89,6 @@ for w in windows:
         os.killpg(w, signal.SIGKILL)
     except OSError:
         pass
-print("%d/2 passed" % (2 - failed))
+print("%d/%d passed" % (total - failed, total))
 sys.exit(1 if failed else 0)
 PY
