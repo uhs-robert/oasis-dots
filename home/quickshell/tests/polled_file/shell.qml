@@ -6,15 +6,22 @@ import Quickshell.Io
 // Harness shell for run.py: runs the scenario named by $SCENARIO against core/PolledFile.qml, reading files from
 // $DATA (a.txt and b.txt exist, missing.txt does not), and writes every `loaded` and `load_failed`, with its time in
 // ms from start, to result.json under $XDG_STATE_HOME when the scenario's `end` is reached, then quits.
+// The plan's clock starts when FileView's own first read arrives (that event is t = 0), not when the shell is built, so
+// a slow boot cannot move that read into the plan's window. The poller's timer is held back the same way.
 ShellRoot {
     id: root
 
     readonly property string scenario: Quickshell.env("SCENARIO")
     readonly property string data: Quickshell.env("DATA")
     property real started: Date.now()
+    property bool ready: false
     property var events: []
 
     function note(kind, extra) {
+        if (!root.ready && (kind === "loaded" || kind === "load_failed")) {
+            root.ready = true;
+            root.started = Date.now();
+        }
         const event = Object.assign({ t: Date.now() - root.started, kind: kind }, extra || {});
         root.events = root.events.concat([event]);
     }
@@ -59,7 +66,7 @@ ShellRoot {
     PolledFile {
         id: poller
         path: root.data + "/" + root.plan.settings.path
-        enabled: root.plan.settings.enabled !== false
+        enabled: root.ready && root.plan.settings.enabled !== false
         interval_ms: root.plan.settings.interval_ms || 0
         run_on_start: root.plan.settings.run_on_start !== false
         block_loading: root.plan.settings.block_loading === true
@@ -72,7 +79,7 @@ ShellRoot {
         delegate: Timer {
             required property var modelData
             interval: modelData[0]
-            running: true
+            running: root.ready
             onTriggered: {
                 const action = modelData[1];
                 if (action === "poll") poller.poll();
@@ -85,7 +92,7 @@ ShellRoot {
 
     Timer {
         interval: root.plan.end
-        running: true
+        running: root.ready
         onTriggered: result_file.setText(JSON.stringify(root.events))
     }
 }

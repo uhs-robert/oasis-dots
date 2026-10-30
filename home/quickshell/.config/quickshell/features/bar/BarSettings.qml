@@ -50,6 +50,9 @@ Singleton {
         onLoaded: root.adopt_loaded()
     }
 
+    // True from an edit until its write is on disk; the bar-editor test waits on it before it ends the process.
+    readonly property bool write_pending: store.dirty || store.writing
+
     // The store may have finished loading before its change handler was connected.
     Component.onCompleted: if (store.loaded_once) root.adopt_loaded()
 
