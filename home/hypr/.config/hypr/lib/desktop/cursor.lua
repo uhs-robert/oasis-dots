@@ -27,11 +27,39 @@ local KBPTR_CMDS = {
   split_r_click = KBPTR .. " -o modes=split && wlrctl pointer click right",
 }
 
+--- Gap between stopping the move timers and starting a click. Every wlrctl step is its own async process, so the
+--- start order of a move and the click after it is not their run order under load. This gap lets moves already
+--- started run first. It bounds the race and does not remove it.
+local CLICK_DELAY_MS = 20
+
+local move_timers = {}
+
+--- @param timers table[]
+local function stop_timers(timers)
+  for _, timer in ipairs(timers) do
+    timer:set_enabled(false)
+  end
+end
+
+--- Return an action that stops the held-move timers, then clicks `button` after CLICK_DELAY_MS.
+--- @param button string
+--- @return fun(): fun()
+local function click_after_moves(button)
+  local click = Hypr.exec("wlrctl pointer click " .. button)
+  return function()
+    return function()
+      stop_timers(move_timers)
+      move_timers = {}
+      hl.timer(click, { timeout = CLICK_DELAY_MS, type = "oneshot" })
+    end
+  end
+end
+
 --- @class CursorActions
 local Cursor = {
-  click_left = function() return Hypr.exec("wlrctl pointer click left") end,
-  click_right = function() return Hypr.exec("wlrctl pointer click right") end,
-  click_middle = function() return Hypr.exec("wlrctl pointer click middle") end,
+  click_left = click_after_moves("left"),
+  click_right = click_after_moves("right"),
+  click_middle = click_after_moves("middle"),
 }
 
 --- Return an action that moves the pointer by (dx, dy) with wlrctl.
@@ -85,13 +113,6 @@ local function start_repeat(fn)
   return timers
 end
 
---- @param timers table[]
-local function stop_timers(timers)
-  for _, timer in ipairs(timers) do
-    timer:set_enabled(false)
-  end
-end
-
 local scroll_timers = {}
 
 --- Cancel the repeat started by Cursor.hold.
@@ -127,7 +148,6 @@ local UNIT_STEP = {
 
 --- @type table<string, number> direction -> pixels per step, for each direction key held down
 local held_moves = {}
-local move_timers = {}
 
 local function step_held_moves()
   local dx, dy = 0, 0
