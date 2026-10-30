@@ -131,7 +131,7 @@ if command -v tmux >/dev/null 2>&1; then
     # The longest session name that fits the title wins, so "Dev tools nvim" is session "Dev tools", not "Dev".
     titled=0
     case "$title" in
-      "$session" | *" $session" | "$session "* | *" $session "*) titled=${#session} ;;
+      "$session" | "Tmux $session" | "$session "* | "Tmux $session "*) titled=${#session} ;;
     esac
     if [ "$rank" -gt "$pick_rank" ] || { [ "$rank" -eq "$pick_rank" ] && [ "$titled" -gt "$pick_titled" ]; }; then
       pick_rank=$rank pick_titled=$titled pick=$path pick_pane=$pane_pid
