@@ -589,10 +589,12 @@ check("move and scroll: every release row is transparent", opaque == 0)
 press("Cursor", "H")
 check("click order: a move timer is running", enabled_timers() == 1)
 local click_timers_before = #timers
+local move_timer = timers[click_timers_before]
 local click_now = press("Cursor", "SPACE")
-check("click order: the click stops the move timers", enabled_timers() == 1 and not timers[1].enabled)
+check("click order: the click stops the move timers", not move_timer.enabled)
 check("click order: nothing runs at once", #click_now == 0)
 local click_timer = timers[click_timers_before + 1]
+check("click order: the click timer is enabled", click_timer and click_timer.enabled)
 check("click order: the click waits 20 ms", click_timer and click_timer.opts.timeout == 20 and click_timer.opts.type == "oneshot")
 Stubs.performed = {}
 click_timer.fn()
