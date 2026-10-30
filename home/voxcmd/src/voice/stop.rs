@@ -53,7 +53,8 @@ pub fn run() -> Result<(), CliError> {
 
 /// A listen's watcher that will hand its transcript to `reply` is running for this user's voxcmd and answers `pending`:
 /// the pending pick has a reply recording attached. A watcher pinned to an earlier pick (the bar reopened its picker)
-/// is not attached to this one, since its reply is refused. The watcher outlives the recording while it hands the answer over, which also counts.
+/// is not attached to this one, since its reply is refused. The watcher outlives the recording while it hands the
+/// answer over, which also counts.
 /// Matched by `XDG_RUNTIME_DIR` too, so a sandbox or a parallel suite's watcher is not taken for this one's.
 fn reply_watcher_running_for(pending: &ask::PendingPick) -> bool {
     let Ok(entries) = std::fs::read_dir("/proc") else {
