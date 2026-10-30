@@ -18,6 +18,13 @@ function shorten(path, is_file, home) {
     return "…/" + (cut >= 0 ? tail.slice(cut + 1) : tail);
 }
 
+// Whether a window class is a terminal: a known class, or one that extends it after a dash (tmuxifier names its
+// windows kitty-tmux-<session>). The dash keeps look-alikes such as kittyfoo out.
+function is_terminal_class(cls, terminal_classes) {
+    const c = cls.toLowerCase();
+    return terminal_classes.some(t => c === t || c.startsWith(t + "-"));
+}
+
 // window-cwd's output split into the program it names (an optional "app:<name>" first line) and the rest.
 function parse(output) {
     const lines = output.trim().split("\n");

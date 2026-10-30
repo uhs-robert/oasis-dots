@@ -73,7 +73,7 @@ Item {
         if (!cls) root.retry_settle();
         const entry = cls ? DesktopEntries.heuristicLookup(cls) : null;
         root.app_name = entry && entry.name ? entry.name : cls;
-        const terminal = root.terminal_classes.indexOf(cls.toLowerCase()) >= 0 || (!!entry && Array.from(entry.categories || []).indexOf("TerminalEmulator") >= 0);
+        const terminal = DirectoryFormat.is_terminal_class(cls, root.terminal_classes) || (!!entry && Array.from(entry.categories || []).indexOf("TerminalEmulator") >= 0);
         const pid = t.lastIpcObject ? t.lastIpcObject.pid : 0;
         if (terminal && !pid) root.retry_settle();
         if (!terminal || !pid) {
