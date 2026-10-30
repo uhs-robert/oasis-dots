@@ -88,7 +88,15 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     // Exclusive on the owner only: with OnDemand the keyboard stays where it was when monitor select hands the editor to another
     // screen, until the pointer enters that screen. Unlike RegionSelector this loses nothing, since every screen's pointer is swallowed anyway.
-    WlrLayershell.keyboardFocus: root.keyboard_owner ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    // The claim waits a beat after the old owner lets go: when both commits land together, Hyprland can leave the keyboard
+    // with nobody, and the editor then gets no keys until it is reopened.
+    property bool claims_keyboard: false
+    WlrLayershell.keyboardFocus: root.claims_keyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    Timer {
+        id: claim_delay
+        interval: 60
+        onTriggered: root.claims_keyboard = root.keyboard_owner
+    }
 
     // Hyprland skips every bind while the editor has the keyboard, so none can act on the bar being edited.
     ShortcutInhibitor {
@@ -103,7 +111,15 @@ PanelWindow {
         onTriggered: root.tick++
     }
 
-    onKeyboard_ownerChanged: if (root.keyboard_owner) Qt.callLater(() => keys_item.forceActiveFocus())
+    onKeyboard_ownerChanged: {
+        if (root.keyboard_owner) {
+            claim_delay.restart();
+            Qt.callLater(() => keys_item.forceActiveFocus());
+        } else {
+            claim_delay.stop();
+            root.claims_keyboard = false;
+        }
+    }
 
     // Nothing under the editor sees the pointer.
     MouseArea {
