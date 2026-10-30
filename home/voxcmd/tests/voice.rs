@@ -1,6 +1,7 @@
 //! `listen`, `internal watch`, `stop`, `session end` and `internal settle` end to end: the binary against a runtime dir
 //! of its own, with stubs for voxtype, setsid, the toasts, the auto-stop detector and the stand-in voxcmd (which logs what
 //! it was asked to do). voxtype's state is a file the test writes, as voxtype would.
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::time::{Duration, Instant};
@@ -258,6 +259,7 @@ fn the_voice_key_answers_a_picker_the_bar_published() {
     let voice = Voice::new();
     voice.set_state("idle");
     let mut bar = bar_picker(&voice);
+    let bar_pid = bar.id();
     assert!(voice.output(&["listen"]).status.success());
     end(&mut bar);
     assert!(wait_for(|| voice.calls().contains("setsid")));
@@ -266,6 +268,67 @@ fn the_voice_key_answers_a_picker_the_bar_published() {
         "{}",
         voice.calls()
     );
+    assert!(
+        voice.calls().contains(
+            r#" {"pid":%PID%,"owner":"bar","fifo":null,"token":"k1"}"#.replace("%PID%", &bar_pid.to_string()).as_str()
+        ),
+        "{}",
+        voice.calls()
+    );
+}
+
+/// A reply watcher of the bar's pick `k1`, its transcript already heard, with voxtype still recording.
+fn pinned_reply_watcher(voice: &Voice, bar: &Child) -> Child {
+    std::fs::write(voice.runtime().join("transcript.txt"), "work\n").unwrap();
+    let pin = serde_json::json!({"pid": bar.id(), "owner": "bar", "fifo": null, "token": "k1"}).to_string();
+    voice.watcher(&["reply", "-", "0", "", &pin], &[], false)
+}
+
+#[test]
+fn a_reply_answers_the_picker_it_was_recorded_for() {
+    let voice = Voice::new();
+    let mut bar = bar_picker(&voice);
+    let mut watcher = pinned_reply_watcher(&voice, &bar);
+    voice.set_state("idle");
+    assert!(watcher.wait().unwrap().success());
+    end(&mut bar);
+    assert!(
+        voice.calls().contains("qs-ipc call picker answer k1 Work\n"),
+        "{}",
+        voice.calls()
+    );
+}
+
+#[test]
+fn a_reply_does_not_answer_a_picker_opened_while_it_was_transcribed() {
+    let voice = Voice::new();
+    let mut bar = bar_picker(&voice);
+    let mut other_asker = asker(&voice);
+    let mut watcher = pinned_reply_watcher(&voice, &bar);
+    // The bar reopened its picker (new token), then an ask (other pid and FIFO) took the file.
+    let reopened = serde_json::json!({"pid": bar.id(), "owner": "bar", "token": "k2", "label": "Session",
+        "choices": [{"id": "Work", "label": "Work"}], "expansions": {}, "view_key": ""});
+    std::fs::write(voice.runtime().join("pending-pick.json"), reopened.to_string()).unwrap();
+    voice.set_state("idle");
+    assert!(!watcher.wait().unwrap().success());
+    assert!(!voice.calls().contains("picker answer"), "{}", voice.calls());
+
+    let mut watcher = pinned_reply_watcher(&voice, &bar);
+    let fifo = pending_pick(&voice, &other_asker);
+    voice.set_state("idle");
+    assert!(!watcher.wait().unwrap().success());
+    assert!(!voice.calls().contains("picker answer"), "{}", voice.calls());
+    // Nothing was written to the other ask's FIFO: a reader finds it empty.
+    let reader = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NONBLOCK)
+        .open(&fifo)
+        .unwrap();
+    let mut written = String::new();
+    let _ = std::io::Read::read_to_string(&mut { reader }, &mut written);
+    assert_eq!(written, "");
+    end(&mut bar);
+    end(&mut other_asker);
 }
 
 #[test]
@@ -503,7 +566,8 @@ fn listen_with_an_ask_waiting_replies_with_a_shorter_speech_minimum() {
     let voice = Voice::new();
     voice.set_state("idle");
     let mut asking = asker(&voice);
-    pending_pick(&voice, &asking);
+    let pid = asking.id();
+    let fifo = pending_pick(&voice, &asking);
     let owner_file = voice.work("owner");
     let output = voice
         .command(&["listen", "--start-only"])
@@ -516,9 +580,13 @@ fn listen_with_an_ask_waiting_replies_with_a_shorter_speech_minimum() {
     let calls = voice.calls();
     assert!(
         calls.contains(&format!(
-            "setsid owner={} {} internal watch reply - 0 VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.1\n",
+            "setsid owner={} {} internal watch reply - 0 VOXCMD_AUTOSTOP_MIN_SPEECH_SECS=0.1 {}\n",
             owner_file.display(),
-            env!("CARGO_BIN_EXE_voxcmd")
+            env!("CARGO_BIN_EXE_voxcmd"),
+            format!(
+                r#"{{"pid":{pid},"owner":"ask","fifo":{},"token":null}}"#,
+                serde_json::json!(fifo)
+            )
         )),
         "{calls}"
     );
