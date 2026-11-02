@@ -1,6 +1,6 @@
 # OasisFox config
 
-The owner's OasisFox keymap, search engines and settings. `just stow oasisfox` links this directory to `~/.config/oasisfox/`. `just oasisfox-config` merges it into Firefox's managed storage file, and `qr` in the browser reloads the extension.
+My OasisFox keymap, search engines and settings. `just stow oasisfox` links this directory to `~/.config/oasisfox/`. `just oasisfox-config` merges it into Firefox's managed storage file, and `qr` in the browser reloads the extension.
 
 Run `just build` in the OasisFox checkout first. The recipe finds that checkout at `$OASISFOX_DIR`, or at `repos/oasisfox` when unset. `just repos` sets that checkout up.
 
