@@ -5,8 +5,8 @@
 //! back to rofi. Expansions are `{key: {title, choices}}`: Tab on a choice whose `expand` names a key shows that list,
 //! Backspace on an empty search comes back; rofi shows only the top level.
 use super::{
-    Asking, Expansion, Owner, PendingPick, PickChoice, StopSignals, Stopped, is_executable, qs_ipc_call, shell_quote,
-    terminate_with_children,
+    Asking, Expansion, Owner, PendingPick, PickChoice, StopSignals, Stopped, is_executable, qs_ipc_call, read_pending,
+    shell_quote, terminate_with_children,
 };
 use crate::exit::CliError;
 use crate::paths;
@@ -280,7 +280,8 @@ fn ask(
     let timeout = super::timeout_setting("VOXCMD_PICK_TIMEOUT", "300");
     let picked = asking.read_answer(&timeout, signals)?;
     // Read before clean_up removes our own entry: a pending pick that is not ours is a newer ask, whose picker a close would dismiss.
-    let newer_ask_pending = !asking.owns_pending_pick() && paths::pending_pick().exists();
+    // A stale file of a dead asker does not count, so it cannot keep our own picker open.
+    let newer_ask_pending = !asking.owns_pending_pick() && read_pending().is_some();
     // Removed before closing: closing the bar's picker writes a cancel to the FIFO, which must find it gone.
     asking.clean_up();
     // qs-picker exits when the bar takes the pick but can lag the answer, so whether it has exited cannot tell the bar's
