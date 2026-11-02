@@ -353,11 +353,19 @@ echo recording >"$XDG_RUNTIME_DIR/voxtype/state"
 sess_voxcmd_env stop
 check "stop cancels a dictation and says nothing" "grep -q '^voxtype record cancel' '$log' && ! grep -q '^notify-send' '$log'"
 
+# Starts, in the background, a process whose command line is `voxcmd ask <kind>`, which is how a live asker is known.
+# `exec -a` sets the name, and a script named `ask` is what `voxcmd ask ...` runs. The script loops rather than
+# exec-ing sleep, which would rename the process.
+start_fake_asker() {
+  mkdir -p "$root/fake-asker"
+  printf 'while :; do sleep 0.5; done\n' >"$root/fake-asker/ask"
+  (cd "$root/fake-asker" && exec -a voxcmd bash ask "$1") &
+}
+
 # A waiting picker is answered with an empty line, as a cancel.
 fresh_logs
 echo idle >"$XDG_RUNTIME_DIR/voxtype/state"
-cp /bin/sleep "$root/voxcmd-hints"
-"$root/voxcmd-hints" 60 &
+start_fake_asker hints
 stop_waiter_pid=$!
 mkfifo "$root/stop-fifo"
 jq -n -c --argjson pid "$stop_waiter_pid" --arg fifo "$root/stop-fifo" \
@@ -377,8 +385,7 @@ printf '#!/bin/sh\nexit 1\n' >"$root/failing-bin/notify-send"
 chmod +x "$root/failing-bin/notify-send"
 sess_start HOLD
 owner_is_listening
-cp /bin/sleep "$root/voxcmd-hints"
-"$root/voxcmd-hints" 60 &
+start_fake_asker hints
 stop_waiter_pid=$!
 mkfifo "$root/stop-fifo-2"
 jq -n -c --argjson pid "$stop_waiter_pid" --arg fifo "$root/stop-fifo-2" \
@@ -491,8 +498,7 @@ mkdir -p "$root/owner"
 cp /bin/sleep "$root/owner/voxcmd"
 "$root/owner/voxcmd" 60 &
 owner_pid=$!
-cp /bin/sleep "$root/voxcmd-hints"
-"$root/voxcmd-hints" 60 &
+start_fake_asker hints
 waiter_pid=$!
 mkfifo "$root/pending-fifo"
 jq -n -c --argjson pid "$waiter_pid" --arg fifo "$root/pending-fifo" \

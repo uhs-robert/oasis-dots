@@ -225,8 +225,7 @@ impl PickId {
 
 const ASK_KINDS: [&str; 3] = ["pick", "confirm", "hints"];
 
-/// The pid in the file still asks: it is a bash helper (`voxcmd-pick`, `-confirm`, `-hints`, anywhere in its command
-/// line, as the bash `pending_pick` matched) or `voxcmd[-rs] ask <kind>`. A pid since reused by another process fails.
+/// The pid in the file still asks: it runs as `voxcmd[-rs] ask <kind>`. A pid since reused by another process fails.
 fn still_asking(pid: u32) -> bool {
     std::fs::read(format!("/proc/{pid}/cmdline")).is_ok_and(|cmdline| is_asker_command_line(&cmdline))
 }
@@ -245,9 +244,6 @@ fn is_bar_command_line(cmdline: &[u8]) -> bool {
 
 fn is_asker_command_line(cmdline: &[u8]) -> bool {
     let text = String::from_utf8_lossy(cmdline);
-    if ASK_KINDS.iter().any(|kind| text.contains(&format!("voxcmd-{kind}"))) {
-        return true;
-    }
     let args: Vec<&str> = text.split('\0').collect();
     let program = args[0].rsplit('/').next().unwrap_or_default();
     matches!(program, "voxcmd" | "voxcmd-rs")
@@ -806,15 +802,15 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn an_asker_is_a_bash_helper_or_voxcmd_ask() {
-        let asking: [&[u8]; 5] = [
-            b"/bin/bash\0/home/u/.local/bin/voxcmd-confirm\0--verb\0close\0Close it?\0",
-            b"/tmp/x/voxcmd-hints\x0060\0",
+    fn an_asker_is_voxcmd_ask() {
+        let asking: [&[u8]; 3] = [
             b"/home/u/target/release/voxcmd\0ask\0pick\0Which?\0[]\0",
             b"voxcmd-rs\0ask\0hints\0--listen\0Which?\0[]\0",
             b"/usr/bin/voxcmd\0ask\0confirm\0",
         ];
-        let other: [&[u8]; 5] = [
+        let other: [&[u8]; 7] = [
+            b"/bin/bash\0/home/u/.local/bin/voxcmd-confirm\0--verb\0close\0Close it?\0",
+            b"/tmp/x/voxcmd-hints\x0060\0",
             b"/home/u/target/release/voxcmd\0run\0close firefox\0",
             b"/usr/bin/voxcmd\0ask\0",
             b"/usr/bin/voxcmd\0ask\0other\0",
@@ -951,10 +947,13 @@ pub(crate) mod tests {
         let fifo_c = CString::new(fifo.as_os_str().as_bytes()).unwrap();
         // SAFETY: mkfifo on a NUL-terminated path.
         assert_eq!(unsafe { libc::mkfifo(fifo_c.as_ptr(), 0o600) }, 0);
-        // Waits for the shell's first output: until it has exec'd, /proc/<pid>/cmdline is still the test binary's. The
-        // shell then blocks on the `read` builtin (stdin stays open) instead of a child, so killing it leaks nothing.
-        let mut asker = Command::new("sh")
-            .args(["-c", "echo up; read _", "voxcmd-pick"])
+        // A bash script named `ask`, run with argv[0] `voxcmd`, so its command line is `voxcmd ask pick`. Waits for the
+        // script's first output: until it has exec'd, /proc/<pid>/cmdline is still the test binary's. The script then
+        // blocks on the `read` builtin (stdin stays open) instead of a child, so killing it leaks nothing.
+        std::fs::write(dir.path().join("ask"), "echo up; read _\n").unwrap();
+        let mut asker = Command::new("bash")
+            .current_dir(dir.path())
+            .args(["-c", "exec -a voxcmd bash ask pick"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
