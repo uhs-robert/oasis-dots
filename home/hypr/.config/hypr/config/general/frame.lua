@@ -345,7 +345,8 @@ end
 
 for _, event in ipairs({
   "window.open",
-  "window.update_rules", -- fires when a window floats or tiles; Hyprland has no float event
+  "window.update_state", -- a window floats or tiles
+  "window.update_rules", -- backstop for a float or tile that a rule change causes; a second release is harmless
   "window.close",
   "window.destroy",
   "window.move_to_workspace",
