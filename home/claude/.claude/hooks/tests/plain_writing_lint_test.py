@@ -262,6 +262,26 @@ class Commands(unittest.TestCase):
         self.assertIsNone(self.bash("gh pr create --body-file - <<'EOF'\nRun `gh issue create --body should`.\nEOF"))
         self.assertIsNone(self.bash("cat > notes.md <<'EOF'\ngh issue create --body should\nEOF"))
 
+    def test_shift_operator_in_quotes_or_arithmetic_is_not_a_heredoc(self):
+        bad = 'gh pr create --body "It doesn\'t work."'
+        for before in ('git commit -m "fix: shift x << 2"', "echo $((1 << n))", "echo 'cout << x'", "((x << 2))"):
+            with self.subTest(before):
+                self.assertIn("the PR body", self.bash(f"{before}\n{bad}"))
+
+    def test_real_heredoc_without_a_closing_line_still_hides_the_rest(self):
+        self.assertIsNone(self.bash("cat <<EOF\ngh issue create --body should"))
+
+    def test_gh_command_in_a_comment_is_not_a_command(self):
+        self.assertIsNone(self.bash("true # gh issue create --body should"))
+        self.assertIsNone(self.bash("gh pr create --body Clean # don't"))
+
+    def test_heredoc_piped_into_gh_is_its_body(self):
+        self.assertIn("the PR body", self.bash("cat <<'EOF' | gh pr create --body-file -\nIt doesn't work.\nEOF"))
+
+    def test_body_file_path_with_a_nul_byte_does_not_hide_later_bodies(self):
+        command = 'gh pr create --body-file "a\x00b"; gh issue create --body should'
+        self.assertEqual(lint.gh_bodies(command, self.root), [("issue", "should")])
+
     def test_odd_and_long_commands_neither_crash_nor_stall(self):
         # main() swallows exceptions, so call gh_bodies() directly to see a crash.
         import random
