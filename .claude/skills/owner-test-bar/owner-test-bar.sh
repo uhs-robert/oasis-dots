@@ -7,6 +7,8 @@ repo=$(dirname "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --path-forma
 qs_rel=home/quickshell/.config/quickshell
 bars="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/test-bars"
 ipc="$repo/home/hypr/.config/hypr/scripts/qs-ipc"
+# Beside this script first, so a worktree runs its own hypr-live; PATH serves a copy run from elsewhere.
+hypr_live_bin="$(dirname "${BASH_SOURCE[0]}")/../../../home/hypr/.local/bin/hypr-live"
 hypr_link="$HOME/.config/hypr"
 hypr_rel=home/hypr/.config/hypr
 hypr_orig="$bars/.hypr_orig"
@@ -135,11 +137,12 @@ guard_live_bar() {
 }
 
 # A shell that outlives a login has a stale HYPRLAND_INSTANCE_SIGNATURE, so the owner's live instance is found by its
-# socket (hypr-live, from the main checkout when it is not stowed yet) and exported for every hyprctl call after it.
+# socket (hypr-live) and exported for every hyprctl call after it.
 # Dies with $1 when none answers, before the caller changes anything.
 use_live_hypr() {
   local live lines line
-  live=$(command -v hypr-live || echo "$repo/home/hypr/.local/bin/hypr-live")
+  live=$hypr_live_bin
+  [[ -x $live ]] || live=$(command -v hypr-live) || die "hypr-live not found; $1"
   lines=$("$live" --owner --env 2>/dev/null) || die "hyprctl cannot reach Hyprland (no instance answers 'hyprctl version'); $1"
   # shellcheck disable=SC2163 # each line is NAME=value, which export takes whole
   while IFS= read -r line; do export "$line"; done <<<"$lines"
@@ -204,6 +207,8 @@ hypr_errors() {
 
 hypr_restore() {
   [[ -f $hypr_orig ]] || return 0
+  # Restore runs from the same stale shells; the reload must reach the live instance, and dies before the link moves.
+  use_live_hypr "hypr link left as it is"
   hypr_point "$(<"$hypr_orig")"
   rm -f "$hypr_orig" "$hypr_bar"
   echo "hypr: restored"
