@@ -1,4 +1,4 @@
-# The owner's OasisFox keymap. Keys that match the built-in defaults are left out.
+# My OasisFox keymap. Keys that match the built-in defaults are left out.
 # Private config (the client, employer and partner containers) joins through keymap.d/ from a private repo.
 
 # sa/Sa, sb/Sb, ...: search with the engine in this tab or a new tab.
