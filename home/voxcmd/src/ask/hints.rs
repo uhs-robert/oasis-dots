@@ -217,6 +217,9 @@ fn ask(
     overlay.open = true;
     let opened = qs_ipc_call(&["clickhints".as_ref(), "open".as_ref(), spec_path.as_os_str()]);
     signals.check()?;
+    if opened == "ok" {
+        overlay.asking.watch_bar();
+    }
     if opened != "ok" {
         // The text picker takes over the pending-pick file. This ask's own reply recording, if any, ends with it.
         overlay.open = false;

@@ -247,8 +247,17 @@ fn bar_pid() -> Option<u32> {
         .stderr(Stdio::null())
         .output()
         .ok()?;
-    let throwaway = format!(" -p {}/", std::env::var("TMPDIR").unwrap_or_else(|_| "/tmp".into()));
-    String::from_utf8_lossy(&output.stdout)
+    let tmpdir = std::env::var("TMPDIR").ok().filter(|dir| !dir.is_empty());
+    last_non_throwaway_pid(
+        &String::from_utf8_lossy(&output.stdout),
+        tmpdir.as_deref().unwrap_or("/tmp"),
+    )
+}
+
+/// The pid at the start of the last `pgrep -af` line that is not a throwaway instance (`-p <tmpdir>/...`).
+fn last_non_throwaway_pid(pgrep_lines: &str, tmpdir: &str) -> Option<u32> {
+    let throwaway = format!(" -p {tmpdir}/");
+    pgrep_lines
         .lines()
         .rfind(|line| !line.contains(&throwaway))?
         .split(' ')
@@ -406,7 +415,7 @@ pub struct Asking {
     pub fifo: PathBuf,
     owner_file: PathBuf,
     cleaned: bool,
-    /// The bar running when the ask started, whose death ends the wait. None: no bar, so the wait runs to its timeout.
+    /// The bar showing the question, whose death ends the wait. None: not watched, so the wait runs to its timeout.
     bar_pid: Option<u32>,
 }
 
@@ -433,7 +442,7 @@ impl Asking {
             owner_file: dir.join("recording-owner"),
             dir,
             cleaned: false,
-            bar_pid: bar_pid(),
+            bar_pid: None,
         };
         let fifo = CString::new(asking.fifo.as_os_str().as_bytes()).map_err(|_| failed("bad runtime dir"))?;
         // SAFETY: mkfifo on a NUL-terminated path.
@@ -441,6 +450,12 @@ impl Asking {
             return Err(failed("cannot make the answer FIFO"));
         }
         Ok(asking)
+    }
+
+    /// Starts watching the running bar. Call it only once the bar has taken the question: a question shown by rofi
+    /// outlives the bar, and a bar that restarted first is not the one showing it.
+    pub fn watch_bar(&mut self) {
+        self.bar_pid = bar_pid();
     }
 
     /// Replaces `pending-pick.json` in one step, before the question shows, so a reply recording started now or by
@@ -762,6 +777,16 @@ mod executable;
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn the_bar_is_the_last_running_instance_that_is_not_a_throwaway() {
+        let lines =
+            "11 /usr/bin/qs -n\n22 /usr/bin/qs -n -p /tmp/render\n33 qs --no-duplicate\n44 qs -n -p /tmp/x/shell.qml";
+        assert_eq!(last_non_throwaway_pid(lines, "/tmp"), Some(33));
+        assert_eq!(last_non_throwaway_pid("22 qs -n -p /tmp/render", "/tmp"), None);
+        assert_eq!(last_non_throwaway_pid("22 qs -n -p /tmp/render", "/run/tmp"), Some(22));
+        assert_eq!(last_non_throwaway_pid("", "/tmp"), None);
+    }
     use std::io::{BufRead, BufReader};
 
     pub(crate) fn script(dir: &std::path::Path, name: &str, body: &str) -> PathBuf {
