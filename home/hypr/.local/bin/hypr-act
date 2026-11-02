@@ -18,18 +18,10 @@ set -u
 
 eval_timeout=${HYPR_ACT_TIMEOUT:-3}
 
-# Newest instance whose hyprctl answers, found by its socket and not by HYPRLAND_INSTANCE_SIGNATURE: that variable is
-# stale in a shell that outlives a login. Newest by .socket.sock, as a directory's mtime moves with its other sockets.
+# The live instance comes from hypr-live, beside this script, as HYPRLAND_INSTANCE_SIGNATURE is stale in a shell that
+# outlives a login. Found through the link's target, since a stowed copy is a link into the repo.
 find_instance() {
-  local socket instance runtime=${XDG_RUNTIME_DIR:-/run/user/$UID}
-  while read -r socket; do
-    instance=$(basename "$(dirname "$socket")")
-    if XDG_RUNTIME_DIR=$runtime HYPRLAND_INSTANCE_SIGNATURE=$instance timeout 3 hyprctl version >/dev/null 2>&1; then
-      echo "$instance"
-      return 0
-    fi
-  done < <(ls -1t "$runtime"/hypr/*/.socket.sock 2>/dev/null)
-  return 1
+  "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/hypr-live" 2>/dev/null
 }
 
 not_running() {

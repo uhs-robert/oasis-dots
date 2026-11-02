@@ -249,6 +249,8 @@ e2e_setup() {
   git clone -q "$e2e/origin.git" "$e2e/main" 2>/dev/null
   mkdir -p "$e2e/main/lib" "$e2e/main/.claude/skills/ship-batch"
   cp "$here/../ship-batch.sh" "$here/../post-merge.sh" "$here/../base.sh" "$here/../live-hypr.sh" "$e2e/main/.claude/skills/ship-batch/"
+  mkdir -p "$e2e/main/home/hypr/.local/bin"
+  cp "$here/../../../../home/hypr/.local/bin/hypr-live" "$e2e/main/home/hypr/.local/bin/"
   # With $e2e/branch_hold present a check waits until that file is removed; STUB_BRANCH_STATUS is its exit status.
   cat >"$e2e/main/lib/check.sh" <<STUB
 #!/usr/bin/env bash

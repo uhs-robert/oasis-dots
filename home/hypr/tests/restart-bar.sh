@@ -2,7 +2,9 @@
 # Tests scripts/restart-bar.sh against a fake bar that takes a second to exit on SIGTERM, the race that left no bar
 # after SUPER+Q b: the old kill-then-`qs -n` line must fail here and the script must succeed. pgrep, the kill command
 # and qs are stubs that only see the fake bar's own pid, so the owner's live bar is never signalled. notify-send is a
-# stub too, or the survives-SIGKILL case would pop a real "Bar restart failed" on the owner's desktop.
+# stub too, or the survives-SIGKILL case would pop a real "Bar restart failed" on the owner's desktop. hyprctl answers
+# only for the signatures in live_sigs under the fake runtime dir, as the real one does for a socket that exists, so the
+# stale-environment cases (the #969 failure: a bar killed and no live Hyprland to relaunch it) run for real.
 set -u
 
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -48,6 +50,7 @@ if [[ -s $STUB_DIR/pid ]] && alive "$(cat "$STUB_DIR/pid")"; then
   exit 0
 fi
 echo started >>"$STUB_DIR/started"
+echo "${HYPRLAND_INSTANCE_SIGNATURE:-} ${XDG_RUNTIME_DIR:-}" >>"$STUB_DIR/qs_env"
 # STUB_BAR=stubborn ignores SIGTERM; otherwise SIGTERM is answered after a second.
 if [[ ${STUB_BAR:-slow} == stubborn || ${STUB_BAR:-slow} == immortal ]]; then
   handler=':'
@@ -81,17 +84,26 @@ cat >bin/notify-send <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >>"$STUB_DIR/notified"
 STUB
-# Like Hyprland's exec_cmd: launches the bar detached from the caller. STUB_HYPR=fail errors out, STUB_HYPR=noop launches
-# nothing (a bar that never comes up).
+# `version` answers for a live signature only. `dispatch` is like Hyprland's exec_cmd: it launches the bar detached from
+# the caller. STUB_HYPR=fail makes it error out, STUB_HYPR=noop launches nothing (a bar that never comes up).
 cat >bin/hyprctl <<'STUB'
 #!/usr/bin/env bash
-echo "$*" >>"$STUB_DIR/hyprctl_args"
+echo "${HYPRLAND_INSTANCE_SIGNATURE:-} $*" >>"$STUB_DIR/hyprctl_args"
+[[ -e $XDG_RUNTIME_DIR/hypr/${HYPRLAND_INSTANCE_SIGNATURE:-}/.socket.sock ]] || exit 1
+grep -qx "$HYPRLAND_INSTANCE_SIGNATURE" "$STUB_DIR/live_sigs" || exit 1
+[[ $1 == dispatch ]] || exit 0
 [[ ${STUB_HYPR:-} == fail ]] && exit 1
 [[ ${STUB_HYPR:-} == noop ]] || qs -n </dev/null >/dev/null 2>&1
 exit 0
 STUB
 chmod +x bin/*
 export STUB_DIR=$work PATH=$work/bin:$PATH
+# One live instance in the fake runtime dir, and a signature in the environment that no longer answers. restart-bar finds
+# hypr-live through its own path, so the real one runs here.
+export XDG_RUNTIME_DIR=$work/run HYPRLAND_INSTANCE_SIGNATURE=stale
+mkdir -p run/hypr/live run/hypr/stale
+: >run/hypr/live/.socket.sock
+echo live >live_sigs
 
 start_bar() {
   rm -f "$work/started" "$work/pid"
@@ -217,7 +229,7 @@ check test ! -e started
 # Start mode: launches through Hyprland's exec_cmd and succeeds once the bar is up.
 rm -f started pid hyprctl_args
 check bash "$script" start
-check grep -qF "hl.dsp.exec_cmd('qs -n')" hyprctl_args
+check grep -qF "live dispatch hl.dsp.exec_cmd('qs -n')" hyprctl_args
 check test "$(bars_started)" -eq 1
 check alive "$(cat pid)"
 
@@ -243,6 +255,66 @@ check test $? -ne 0
 check grep -q "hyprctl could not relaunch" err
 check grep -q "critical Bar start failed" notified
 check test ! -e started
+
+# Stale environment, one live instance: the bar restarts on the live signature (#969). The new bar carries it, and
+# `start` dispatches through it.
+start_bar
+old_pid=$(cat pid)
+: >qs_env
+check bash "$script"
+check test "$(cat pid)" != "$old_pid"
+check grep -qxF "live $work/run" qs_env
+rm -f started pid hyprctl_args
+check bash "$script" start
+check grep -qF "live dispatch hl.dsp.exec_cmd('qs -n')" hyprctl_args
+
+# #969: stale environment and no live instance. The old bar keeps running, nothing is signalled and the exit is non-zero,
+# in every mode.
+: >live_sigs
+for mode in '' stop start; do
+  start_bar
+  old_pid=$(cat pid)
+  : >kill_args
+  rm -f notified
+  bash "$script" $mode 2>err
+  check test $? -ne 0
+  check grep -q "no live Hyprland answers" err
+  check grep -q "critical Bar restart skipped" notified
+  check alive "$old_pid"
+  check test ! -s kill_args
+  check test "$(bars_started)" -eq 1
+done
+
+# A lock that names a live PID (a reused one) does not make a dead instance count: the probe still fails.
+printf '%s\nwayland-1\n' $$ >run/hypr/live/hyprland.lock
+start_bar
+old_pid=$(cat pid)
+bash "$script" 2>err
+check test $? -ne 0
+check alive "$old_pid"
+check test "$(bars_started)" -eq 1
+rm run/hypr/live/hyprland.lock
+echo live >live_sigs
+
+# The instance dies while the old bar is stopping: no bar is started on the dead one, and the failure says so.
+cat >bin/kill <<'STUB'
+#!/usr/bin/env bash
+echo "$*" >>"$STUB_DIR/kill_args"
+: >"$STUB_DIR/live_sigs"
+[[ -s $STUB_DIR/pid ]] && command kill -TERM "$(cat "$STUB_DIR/pid")" 2>/dev/null
+exit 0
+STUB
+start_bar
+old_pid=$(cat pid)
+rm -f notified
+bash "$script" 2>err
+check test $? -ne 0
+check grep -q "the old bar is stopped and no bar was started" err
+check grep -q "critical Bar restart skipped" notified
+check test "$(bars_started)" -eq 1
+wait_dead "$old_pid"
+check not alive "$old_pid"
+echo live >live_sigs
 
 # An unknown mode is a usage error and touches nothing.
 start_bar

@@ -4,7 +4,7 @@
 --- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, only?: table<string, boolean>, reserved?: table<string, boolean>, history?: string[], pins?: table<string, string> }): boolean, table<string, string>, table<string, boolean> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok, a map of monitor name to the wallpaper path applied, and the set of monitors that got a pin
 --- @field list_monitors fun(cfg: table, util: table): { name: string, description: string }[] Active monitors; description is empty when only the text fallback worked
 --- @field follow_live_instance fun(util: table) Point util.signature at the live Hyprland instance if the current one is gone
---- @field detect_signature fun(skip_env?: boolean): string|nil Current Hyprland instance signature from the environment or the runtime dir
+--- @field detect_signature fun(skip_env?: boolean): string|nil Signature of the live Hyprland instance, from `hypr-live`
 --- @field list_images fun(dir: string, skip?: string[]): string[] Public wrapper around list_images for external callers
 --- @field folder fun(name: string): string Folder name for a period, season or weather key
 --- @field PERIODS string[] Period keys in day order
@@ -284,15 +284,12 @@ local function parse_monitors_json(out)
   return mons
 end
 
---- Return HYPRLAND_INSTANCE_SIGNATURE from the environment, else the newest instance in $XDG_RUNTIME_DIR/hypr, or nil.
+--- Return the signature of the live Hyprland instance, or nil. The lookup is the `hypr-live` script, shared with the
+--- other callers: HYPRLAND_INSTANCE_SIGNATURE can be stale, and a directory listing cannot tell a dead instance.
 --- @return string|nil
 --- @param skip_env? boolean ignore HYPRLAND_INSTANCE_SIGNATURE, e.g. after it failed
 function Apply.detect_signature(skip_env)
-  local env_sig = not skip_env and os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
-  if env_sig and env_sig ~= "" then return env_sig end
-  local runtime = os.getenv("XDG_RUNTIME_DIR")
-  if not runtime or runtime == "" then return nil end
-  local p = io.popen(string.format("ls -1t '%s/hypr' 2>/dev/null | head -n 1", runtime))
+  local p = io.popen((skip_env and "env -u HYPRLAND_INSTANCE_SIGNATURE " or "") .. "hypr-live 2>/dev/null")
   if not p then return nil end
   local sig = p:read("*l")
   p:close()
