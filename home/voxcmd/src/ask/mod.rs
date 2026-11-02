@@ -235,6 +235,28 @@ fn is_bar(pid: u32) -> bool {
     std::fs::read(format!("/proc/{pid}/cmdline")).is_ok_and(|cmdline| is_bar_command_line(&cmdline))
 }
 
+const BAR_POLL: Duration = Duration::from_secs(1);
+
+/// The running bar's pid, found as `hypr/.config/hypr/scripts/qs-ipc` finds it: keep the rule in step with that script.
+/// Throwaway instances run from the temp dir are not the bar. A pid that dies and is reused by another `qs` reads as
+/// alive: an accepted limit, the wait then ends at its timeout as before.
+fn bar_pid() -> Option<u32> {
+    let output = Command::new("pgrep")
+        .args(["-af", r"^([^ ]*/)?(qs|quickshell) (.* )?(-n|--no-duplicate)( |$)"])
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    let throwaway = format!(" -p {}/", std::env::var("TMPDIR").unwrap_or_else(|_| "/tmp".into()));
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .rfind(|line| !line.contains(&throwaway))?
+        .split(' ')
+        .next()?
+        .parse()
+        .ok()
+}
+
 /// `qs` or `quickshell` from any path, as `qs-ipc` finds the bar.
 fn is_bar_command_line(cmdline: &[u8]) -> bool {
     let program = cmdline.split(|&byte| byte == 0).next().unwrap_or_default();
@@ -384,6 +406,8 @@ pub struct Asking {
     pub fifo: PathBuf,
     owner_file: PathBuf,
     cleaned: bool,
+    /// The bar running when the ask started, whose death ends the wait. None: no bar, so the wait runs to its timeout.
+    bar_pid: Option<u32>,
 }
 
 impl Asking {
@@ -409,6 +433,7 @@ impl Asking {
             owner_file: dir.join("recording-owner"),
             dir,
             cleaned: false,
+            bar_pid: bar_pid(),
         };
         let fifo = CString::new(asking.fifo.as_os_str().as_bytes()).map_err(|_| failed("bad runtime dir"))?;
         // SAFETY: mkfifo on a NUL-terminated path.
@@ -476,7 +501,16 @@ impl Asking {
             let _ = stdout.read_to_string(&mut answer);
             answer
         });
-        wait_or_terminate(&mut reader, signals)?;
+        // A bar that died takes its picker with it and nobody writes the FIFO, so the wait ends as a cancel.
+        let mut last_poll = Instant::now();
+        let bar_gone = || {
+            if last_poll.elapsed() < BAR_POLL {
+                return false;
+            }
+            last_poll = Instant::now();
+            self.bar_pid.is_some_and(|pid| !is_bar(pid))
+        };
+        wait_unless(&mut reader, signals, bar_gone)?;
         let answer = collected.join().unwrap_or_default();
         Ok(answer.trim_end_matches('\n').to_string())
     }
@@ -522,19 +556,32 @@ pub fn timeout_setting(name: &str, default: &str) -> String {
 /// Waits for a child, sending it TERM and returning `Stopped` when a held signal arrives first. TERM rather than KILL:
 /// `timeout` passes it on to the `head` blocked opening the FIFO, which would otherwise outlive it.
 pub fn wait_or_terminate(child: &mut Child, signals: &StopSignals) -> Result<std::process::ExitStatus, Stopped> {
+    wait_unless(child, signals, || false)
+}
+
+/// `wait_or_terminate`, also sending TERM and returning the status the child ends with when `give_up` turns true.
+fn wait_unless(
+    child: &mut Child,
+    signals: &StopSignals,
+    mut give_up: impl FnMut() -> bool,
+) -> Result<std::process::ExitStatus, Stopped> {
     loop {
         match child.try_wait() {
             Ok(Some(status)) => return Ok(status),
             Ok(None) => {}
             Err(_) => return Err(Stopped),
         }
-        if signals.check().is_err() {
+        let stopped = signals.check().is_err();
+        if stopped || give_up() {
             if let Ok(pid) = libc::pid_t::try_from(child.id()) {
                 // SAFETY: kill only sends a signal.
                 unsafe { libc::kill(pid, libc::SIGTERM) };
             }
-            let _ = child.wait();
-            return Err(Stopped);
+            let status = child.wait();
+            return match status {
+                Ok(status) if !stopped => Ok(status),
+                _ => Err(Stopped),
+            };
         }
         thread::sleep(Duration::from_millis(10));
     }
