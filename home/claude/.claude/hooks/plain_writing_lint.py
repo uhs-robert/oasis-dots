@@ -40,7 +40,27 @@ ING_NOT_VERB = {"during", "including", "according", "nothing", "something", "any
 
 GH_BODY_COMMAND = re.compile(r"\bgh\s+(pr|issue)\s+(create|edit)\b")
 GIT_COMMIT_COMMAND = re.compile(r"\bgit\b(?:\s+-C\s+\S+)?[^|;&\n]*?\bcommit\b")
-HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n(.*?)\n\s*\2\s*$", re.S | re.M)
+COMMAND_SEPARATORS = {"&&", "||", ";", "|", "&"}
+# Open `--body "$(cat ` at the end of the text before a heredoc: the same as `--body-file -`.
+BODY_FROM_CAT = re.compile(r"(?:--body|-b)\s+\"?\$\(\s*cat\s+$")
+# CommonMark HTML blocks of kind 6 end at a blank line. Kind 1 (pre, script, style, textarea) ends at its close tag.
+HTML_BLOCK_TAGS = (
+    "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|"
+    "fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|"
+    "menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|"
+    "track|ul"
+)
+HTML_BLOCK_START = re.compile(rf"^ {{0,3}}</?(?:{HTML_BLOCK_TAGS})(?:\s|/?>|$)", re.I)
+HTML_RAW_START = re.compile(r"^ {0,3}<(pre|script|style|textarea)(?:\s|>|$)", re.I)
+SETEXT_UNDERLINE = re.compile(r"^ {0,3}(?:=+|-+)\s*$")
+# A footnote `[^1]:` is prose, so the label may not start with a caret.
+LINK_DEFINITION = re.compile(r"^ {0,3}\[[^\]^][^\]]*\]:\s")
+LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+\.)\s")
+# `rest` is the shell text after the delimiter on the opening line, which can hold more commands.
+HEREDOC = re.compile(r"<<-?\s*(?P<quote>['\"]?)(?P<delimiter>\w+)(?P=quote)(?P<rest>[^\n]*)\n(?P<body>.*?)\n\s*(?P=delimiter)\s*$", re.S | re.M)
+# What closes a `--body "$(cat <<'EOF' ... EOF` substitution after the heredoc.
+SUBSTITUTION_END = re.compile(r"\s*\)\s*\"?")
+ENV_ASSIGNMENT = re.compile(r"\w+=")
 
 
 def word_swaps_path():
@@ -81,7 +101,8 @@ def strip_exempt(text):
     """Remove what the rules exempt: code, URLs, quoted text and HTML comments. Inline code becomes one
     placeholder word, because an identifier counts as one word in a sentence."""
     text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
-    text = re.sub(r"`[^`\n]+`", "CODE", text)
+    # A run of backticks closes only on a run of the same length, so a double-backtick span may hold one.
+    text = re.sub(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", "CODE", text)
     text = re.sub(r"https?://\S+", "URL", text)
     text = re.sub(r"\]\([^)]*\)", "]", text)
     text = re.sub(r"\"[^\"\n]*\"|“[^”\n]*”", "QUOTE", text)
@@ -90,7 +111,8 @@ def strip_exempt(text):
 
 def prose_units(text):
     """Split Markdown into prose units, as (first line number, last line number, text). A unit is a
-    paragraph or one list item. Fenced code, block quotes, tables, headings and front matter are skipped."""
+    paragraph or one list item. Fenced code, block quotes, HTML blocks, tables, headings (ATX and setext), link
+    reference definitions and front matter are skipped."""
     # Blank out HTML comments first, keeping their newlines so line numbers stay true. Split into lines,
     # a multi-line comment would lose its opener and leave its body to be linted.
     text = re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
@@ -98,6 +120,7 @@ def prose_units(text):
     fence = None  # (character, length) of the open code fence
     lines = text.splitlines()
     in_front_matter = bool(lines) and lines[0].strip() == "---"
+    html_block_end = None  # "blank" or the close-tag pattern of the open HTML block
 
     def flush(end):
         nonlocal current
@@ -111,6 +134,13 @@ def prose_units(text):
             if number > 1 and stripped == "---":
                 in_front_matter = False
             continue
+        if html_block_end is not None:
+            if html_block_end == "blank":
+                if not stripped:
+                    html_block_end = None
+            elif html_block_end.search(line):
+                html_block_end = None
+            continue
         marker = re.match(r"(`{3,}|~{3,})(.*)$", stripped)
         if fence is None and marker:
             flush(number - 1)
@@ -121,13 +151,27 @@ def prose_units(text):
             if marker and marker.group(1)[0] == fence[0] and len(marker.group(1)) >= fence[1] and not marker.group(2).strip():
                 fence = None
             continue
+        raw_html = HTML_RAW_START.match(line)
+        if raw_html or HTML_BLOCK_START.match(line):
+            flush(number - 1)
+            html_block_end = re.compile(rf"</{raw_html.group(1)}\s*>", re.I) if raw_html else "blank"
+            if raw_html and html_block_end.search(line):
+                html_block_end = None
+            continue
+        # A setext underline turns the paragraph above it into a heading. After a list item it is not one.
+        if current and SETEXT_UNDERLINE.match(line) and not LIST_ITEM.match(current[0]):
+            current = []
+            continue
+        # A definition cannot interrupt a paragraph.
+        if not current and LINK_DEFINITION.match(line):
+            continue
         # An indented code block starts after a blank line. Inside a paragraph or list item, indentation is
         # only a continuation.
         indented_code = not current and line.startswith(("    ", "\t"))
         if not stripped or indented_code or stripped.startswith((">", "|", "#", "<")):
             flush(number - 1)
             continue
-        if re.match(r"^\s*(?:[-*+]|\d+\.)\s", line):
+        if LIST_ITEM.match(line):
             flush(number - 1)
         if not current:
             start = number
@@ -220,52 +264,116 @@ def commit_message_hits(command, cwd, filler):
     return report("the commit message", hits, "Amend the commit with the corrected message.")
 
 
-def gh_body(command, cwd):
-    """The body text of a `gh pr|issue create|edit` command, or None."""
-    heredoc = HEREDOC.search(command)
-    first_line = command.split("\n", 1)[0]
+def command_words(text):
+    """Shell words of a command, with `&&`, `||`, `;` and `|` as their own words. None on an open quote."""
+    lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    lexer.commenters = ""
     try:
-        words = shlex.split(first_line if heredoc else command)
+        return list(lexer)
     except ValueError:
-        # --body "$(cat <<'EOF' ...)" leaves an open quote on the first line.
-        if heredoc and re.search(r"(?:--body|-b)\s+\"?\$\(\s*cat\s+<<", first_line):
-            return heredoc.group(3)
         return None
+
+
+def segment_body(words, heredoc, cwd):
+    """The body of one gh command, given as its words."""
     for index, word in enumerate(words[:-1]):
         value = words[index + 1]
         if word in ("--body", "-b"):
             return value
         if word in ("--body-file", "-F"):
             if value == "-":
-                return heredoc.group(3) if heredoc else None
-            path = pathlib.Path(cwd, os.path.expanduser(value))
-            try:
-                return path.read_text(encoding="utf-8")
-            except OSError:
-                return None
+                return heredoc
+            return read_body_file(value, cwd)
     for word in words:
-        for flag in ("--body=", "--body-file="):
-            if word.startswith(flag):
-                value = word[len(flag):]
-                if flag == "--body=":
-                    return value
-                try:
-                    return pathlib.Path(cwd, os.path.expanduser(value)).read_text(encoding="utf-8")
-                except OSError:
-                    return None
+        if word.startswith("--body="):
+            return word[len("--body="):]
+        if word.startswith("--body-file="):
+            return read_body_file(word[len("--body-file="):], cwd)
     return None
 
 
+def read_body_file(value, cwd):
+    try:
+        return pathlib.Path(cwd, os.path.expanduser(value)).read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def mark_command_breaks(text):
+    """Turn each newline outside quotes into `;`, because shlex reads a newline as a space."""
+    out, quote = [], None
+    escaped = False
+    for char in text:
+        if escaped:
+            escaped = False
+        elif char == "\\" and quote != "'":
+            escaped = True
+        elif quote:
+            quote = None if char == quote else quote
+        elif char in "'\"":
+            quote = char
+        elif char == "\n":
+            char = " ; "
+        out.append(char)
+    return "".join(out)
+
+
+def gh_bodies_of_chunk(chunk, heredoc, cwd):
+    """The (kind, body) of each gh command in shell text. The heredoc, if any, belongs to its last command."""
+    words = command_words(mark_command_breaks(chunk.replace("\\\n", " ")))
+    if words is None:
+        return []
+    segments, current = [], []
+    for word in words:
+        if word in COMMAND_SEPARATORS:
+            segments.append(current)
+            current = []
+        else:
+            current.append(word)
+    segments.append(current)
+    bodies = []
+    for number, segment in enumerate(segments):
+        while segment and ENV_ASSIGNMENT.match(segment[0]):
+            segment = segment[1:]
+        if len(segment) > 2 and segment[0] == "gh" and segment[1] in ("pr", "issue") and segment[2] in ("create", "edit"):
+            owned = heredoc if number == len(segments) - 1 else None
+            body = segment_body(segment, owned, cwd)
+            if body:
+                bodies.append((segment[1], body))
+    return bodies
+
+
+def gh_bodies(command, cwd):
+    """The (kind, body) of every `gh pr|issue create|edit` in a command, a chain included. The text is cut
+    at each heredoc: the shell text before it is parsed, its body goes to the command that opened it, and
+    parsing resumes after its closing delimiter."""
+    bodies, position = [], 0
+    while True:
+        heredoc = HEREDOC.search(command, position)
+        if not heredoc:
+            return bodies + gh_bodies_of_chunk(command[position:], None, cwd)
+        head = command[position:heredoc.start()]
+        chunk = head + " " + heredoc.group("rest")
+        position = heredoc.end()
+        if command_words(chunk.replace("\\\n", " ")) is None:
+            # --body "$(cat <<'EOF' ...)" leaves an open quote before the heredoc.
+            opener = BODY_FROM_CAT.search(head)
+            if opener:
+                chunk = head[:opener.start()] + "--body-file - " + heredoc.group("rest")
+                closing = SUBSTITUTION_END.match(command, position)
+                position = closing.end() if closing else position
+        bodies += gh_bodies_of_chunk(chunk, heredoc.group("body"), cwd)
+
+
 def gh_body_hits(command, cwd, filler):
-    body = gh_body(command, cwd)
-    if not body:
-        return None
-    hits = lint_text(body, filler)
-    if not hits:
-        return None
-    kind = GH_BODY_COMMAND.search(command).group(1)
-    kind_name = "PR" if kind == "pr" else "issue"
-    return report(f"the {kind_name} body", hits, f"Edit the {kind_name} body with `gh {kind} edit --body-file`.")
+    messages = []
+    for kind, body in gh_bodies(command, cwd):
+        hits = lint_text(body, filler)
+        if hits:
+            kind_name = "PR" if kind == "pr" else "issue"
+            messages.append(report(f"the {kind_name} body", hits, f"Edit the {kind_name} body with `gh {kind} edit --body-file`."))
+    return "\n".join(messages) or None
 
 
 def excluded(path):
