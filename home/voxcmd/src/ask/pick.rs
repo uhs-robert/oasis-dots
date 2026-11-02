@@ -280,7 +280,7 @@ fn ask(
     let timeout = super::timeout_setting("VOXCMD_PICK_TIMEOUT", "300");
     let picked = asking.read_answer(&timeout, signals)?;
     // Read before clean_up removes our own entry: a pending pick that is not ours is a newer ask, whose picker a close would dismiss.
-    // A stale file of a dead asker does not count, so it cannot keep our own picker open.
+    // A dead asker's leftover file does not count as a newer ask, so it cannot make us skip closing the picker.
     let newer_ask_pending = !asking.owns_pending_pick() && read_pending().is_some();
     // Removed before closing: closing the bar's picker writes a cancel to the FIFO, which must find it gone.
     asking.clean_up();

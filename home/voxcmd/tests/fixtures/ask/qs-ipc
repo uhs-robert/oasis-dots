@@ -5,9 +5,9 @@
 next() { printf '%s/%03d.%s' "$GOLDEN_DUMPS" "$(find "$GOLDEN_DUMPS" -type f | wc -l)" "$1"; }
 note() { printf '%s\n' "$*" >"$(next call)"; }
 dump() { cp "$1" "$(next "$2")"; }
-# GOLDEN_HOLD: nobody answers, as a bar waiting on the user. GOLDEN_REPLACE: a newer ask takes the pending pick first.
+# GOLDEN_HOLD: nobody answers, as a bar waiting on the user. GOLDEN_REPLACE: the pending pick file a newer ask writes first.
 answer() {
-  [ -z "${GOLDEN_REPLACE-}" ] || printf '{"pid":1,"fifo":"/newer"}\n' >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
+  [ -z "${GOLDEN_REPLACE-}" ] || printf '%s\n' "$GOLDEN_REPLACE" >"$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
   if [ -z "${GOLDEN_HOLD-}" ]; then (printf '%s\n' "${GOLDEN_ANSWER-}" >"$1") >/dev/null 2>&1 & fi
 }
 result_path() { sed -n 's/.*"result_path": *"\([^"]*\)".*/\1/p' "$1" | head -n 1; }
