@@ -9,6 +9,7 @@ import qs.features.audio
 // result_path, so there is no callback to run.
 // A choice may be { label, expand: key } naming one of expansions { key: { title, choices } }: Tab shows that list,
 // whose picks are written as "<key><TAB><label>", and the shown key ("" at the top) is written to view_path.
+// A row shows its position as a dim number, the one the voice key resolves, unless its label already starts "N. ".
 // The voice key answers it whoever opened it (PickerVoice). An answer finishes the session as a click or Esc does.
 PickerProvider {
     id: root
@@ -74,19 +75,24 @@ PickerProvider {
         return (root.spec.expansions || {})[key] || { title: "", choices: [] };
     }
 
+    // A label that already starts with its own number (`voxcmd ask pick` writes "1. X") needs no second one.
+    function ordinal_for(label, position) {
+        return /^\d+\. /.test(label) ? "" : String(position);
+    }
+
     function top_items() {
         return (root.spec.choices || []).map((c, i) => {
             const label = typeof c === "string" ? c : String(c.label);
             const key = typeof c === "string" ? "" : String(c.expand || "");
             const expansion = key !== "" ? root.expansion(key) : null;
             const tab_hint = expansion && expansion.choices.length > 0 ? "Tab: " + (expansion.title || key) + " (" + expansion.choices.length + ")" : "";
-            return { id: i + ":" + label, label: label, expand: tab_hint !== "" ? key : "", description: tab_hint };
+            return { id: i + ":" + label, label: label, expand: tab_hint !== "" ? key : "", description: tab_hint, ordinal: root.ordinal_for(label, i + 1) };
         });
     }
 
     function show(key) {
         root.view = key;
-        root.items = key === "" ? root.top_items() : root.expansion(key).choices.map((c, i) => ({ id: key + "/" + i + ":" + c, label: c, expand: "" }));
+        root.items = key === "" ? root.top_items() : root.expansion(key).choices.map((c, i) => ({ id: key + "/" + i + ":" + c, label: c, expand: "", ordinal: root.ordinal_for(c, i + 1) }));
         if (root.spec.view_path) Quickshell.execDetached(["sh", "-c", "printf %s \"$1\" > \"$2\"", "sh", key, root.spec.view_path]);
     }
 

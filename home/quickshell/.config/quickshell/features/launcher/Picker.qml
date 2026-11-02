@@ -82,6 +82,8 @@ Popup {
     // { query, id } of each item Tab expanded, so going back restores the search and the row.
     property var expanded_from: []
 
+    // Characters in the widest row number, so the labels of a list line up.
+    readonly property int ordinal_chars: (root.provider ? root.provider.items : []).reduce((n, i) => Math.max(n, String(i.ordinal || "").length), 0)
     readonly property var results: root.rank(root.provider ? root.provider.items : [], root.query)
     readonly property var selected_item: root.results.length > 0 ? root.results[Math.min(root.selected, root.results.length - 1)].item : null
 
@@ -814,8 +816,29 @@ Popup {
                     }
 
                     Text {
-                        id: row_label
+                        id: row_ordinal
+                        readonly property int gap_to_label: 6
+                        visible: root.ordinal_chars > 0
                         anchors.left: row_icon.right
+                        anchors.leftMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: ordinal_metrics.width + row_ordinal.gap_to_label
+                        text: row.result.item.ordinal || ""
+                        textFormat: Text.PlainText
+                        color: row.fg(root.st.text_muted)
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-4)
+                    }
+
+                    TextMetrics {
+                        id: ordinal_metrics
+                        text: "0".repeat(root.ordinal_chars)
+                        font: row_ordinal.font
+                    }
+
+                    Text {
+                        id: row_label
+                        anchors.left: row_ordinal.visible ? row_ordinal.right : row_icon.right
                         anchors.leftMargin: 8
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(implicitWidth, row.width - x - 8 - (row_desc.visible ? Style.px(40) : 0))
