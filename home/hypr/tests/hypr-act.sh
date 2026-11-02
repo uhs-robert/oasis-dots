@@ -66,7 +66,7 @@ chmod +x "$work/bin/hyprctl"
 
 run() {
   : >"$work/log"
-  XDG_RUNTIME_DIR=$work/run PATH=$work/bin:$PATH STUB_LOG=$work/log "$script" "$@" >"$work/out" 2>"$work/err"
+  env -u HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR="$work/run" PATH="$work/bin:$PATH" STUB_LOG="$work/log" "$script" "$@" >"$work/out" 2>"$work/err"
   status=$?
 }
 no_stray_files() { [[ -z $(find "$work/run" -maxdepth 1 -name 'hypr-act.*') ]]; }

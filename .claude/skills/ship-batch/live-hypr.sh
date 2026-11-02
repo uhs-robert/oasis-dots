@@ -15,19 +15,12 @@ owner_runtime_dir() {
   fi
 }
 
-# hyprctl looks its socket up under $XDG_RUNTIME_DIR/hypr/<signature>, so probes and every later hyprctl call must run
-# with the owner's runtime dir, which callers export alongside the signature.
-# Prints the newest instance signature whose hyprctl answers `$1` (default version), and fails when none does. Newest by
-# its .socket.sock, not the directory: a directory's mtime moves whenever a child like .hyprpaper.sock is recreated.
+# The lookup is hypr-live (--owner: never the nested instance inside a shadow). It is found by repo path, not PATH,
+# because ship-batch can run before the restow that puts it on PATH. Callers export the owner's runtime dir alongside the
+# signature, since hyprctl looks its socket up under $XDG_RUNTIME_DIR/hypr/<signature>.
+hypr_live_bin="$(dirname "${BASH_SOURCE[0]}")/../../../home/hypr/.local/bin/hypr-live"
+
+# Prints the newest live instance signature whose hyprctl answers `$1` (default version), and fails when none does.
 find_live_hypr_signature() {
-  local probe=${1:-version} socket instance owner_dir
-  owner_dir=$(owner_runtime_dir)
-  while read -r socket; do
-    instance=$(basename "$(dirname "$socket")")
-    if XDG_RUNTIME_DIR=$owner_dir HYPRLAND_INSTANCE_SIGNATURE=$instance timeout 3 hyprctl "$probe" >/dev/null 2>&1; then
-      echo "$instance"
-      return 0
-    fi
-  done < <(ls -1t "$owner_dir"/hypr/*/.socket.sock 2>/dev/null)
-  return 1
+  "$hypr_live_bin" --owner --probe "${1:-version}" 2>/dev/null
 }
