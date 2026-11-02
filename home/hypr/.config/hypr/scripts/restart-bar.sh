@@ -47,8 +47,9 @@ fail() {
   exit 1
 }
 
-# hypr-live is on PATH once stowed; the path beside this script's link target serves a checkout that is not stowed yet.
-hypr_live=$(command -v hypr-live || echo "$(dirname "$(readlink -f "$0")")/../../../.local/bin/hypr-live")
+# hypr-live beside this script's link target first, so a worktree runs its own; PATH serves a copy run from elsewhere.
+hypr_live="$(dirname "$(readlink -f "$0")")/../../../.local/bin/hypr-live"
+[[ -x $hypr_live ]] || hypr_live=$(command -v hypr-live) || fail "hypr-live not found; the bar was left running" "Bar restart skipped"
 
 # Exports the live signature and runtime dir, or fails with $1 saying what was left alone.
 use_live_hypr() {

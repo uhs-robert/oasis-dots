@@ -744,7 +744,7 @@ hl_bar=$root/hl_bar
 mkdir -p "$hl_main" "$hl_bar"
 # shellcheck disable=SC2016
 hl_env='source "$1"; repo=$2; bars=$3; hypr_link=$4; hypr_orig=$bars/.hypr_orig; hypr_bar=$bars/.hypr_bar
-  require_unlocked() { :; }; launch() { :; }; verify() { :; }; hyprctl() { :; }; sleep() { :; }; restart_rotator() { :; }
+  require_unlocked() { :; }; launch() { :; }; verify() { :; }; hyprctl() { :; }; use_live_hypr() { :; }; sleep() { :; }; restart_rotator() { :; }
   voxcmd_swap() { :; }; voxtype_swap() { :; }'
 ln -sfn "$hl_main" "$root/hl_link"
 hy_swap_moved() {
@@ -773,10 +773,20 @@ done
 # shellcheck disable=SC2016
 printf '#!/usr/bin/env bash\necho "hyprctl $HYPRLAND_INSTANCE_SIGNATURE $*" >>"$LV_CALLS"\n' >"$lv_bin/hyprctl"
 chmod +x "$lv_bin"/*
-export LV_CALLS=$root/lv_calls LV_LIVE=$root/lv_live
+export LV_CALLS=$root/lv_calls LV_LIVE=$root/lv_live root_dir=$root
 lv_launch() {
   : >"$LV_CALLS"
-  HYPRLAND_INSTANCE_SIGNATURE=stale PATH="$lv_bin:$PATH" bash -c 'source "$1"; sleep() { :; }; launch "qs -n"' _ "$here/../owner-test-bar.sh" 2>&1
+  HYPRLAND_INSTANCE_SIGNATURE=stale PATH="$lv_bin:$PATH" bash -c 'source "$1"; hypr_live_bin=$2; sleep() { :; }; launch "qs -n"' _ "$here/../owner-test-bar.sh" "$lv_bin/hypr-live" 2>&1
+}
+# Restore from a stale shell: the reload must run on the live instance, and with none answering the link stays put.
+lv_restore() {
+  : >"$LV_CALLS"
+  rm -rf "$root/lv_link" "$root/lv_home"
+  mkdir -p "$root/lv_home" "$root/lv_other"
+  ln -s "$root/lv_other" "$root/lv_link"
+  echo "$root/lv_home" >"$root/lv_orig"
+  HYPRLAND_INSTANCE_SIGNATURE=stale PATH="$lv_bin:$PATH" bash -c 'source "$1"; hypr_live_bin=$2; hypr_link=$root_dir/lv_link; hypr_orig=$root_dir/lv_orig; hypr_bar=$root_dir/lv_bar
+    sleep() { :; }; restart_rotator() { :; }; hypr_restore' _ "$here/../owner-test-bar.sh" "$lv_bin/hypr-live" 2>&1
 }
 touch "$LV_LIVE"
 out=$(lv_launch)
@@ -788,6 +798,16 @@ out=$(lv_launch)
 code=$?
 show "$out"
 check "with none answering it dies before stopping qs" "[[ $code != 0 ]] && grep -q 'hyprctl cannot reach Hyprland' <<<\"\$out\" && ! grep -q pkill '$LV_CALLS'"
+touch "$LV_LIVE"
+out=$(lv_restore)
+code=$?
+show "$out"
+check "a restore from a stale shell reloads on the live instance" "[[ $code == 0 ]] && grep -q 'hyprctl live reload' '$LV_CALLS' && ! grep -q 'hyprctl stale' '$LV_CALLS' && [[ \$(readlink $root/lv_link) == $root/lv_home && ! -e $root/lv_orig ]]"
+rm -f "$LV_LIVE"
+out=$(lv_restore)
+code=$?
+show "$out"
+check "with none answering a restore dies, keeps the record and leaves the link" "[[ $code != 0 && -e $root/lv_orig && \$(readlink $root/lv_link) == $root/lv_other ]] && ! grep -q reload '$LV_CALLS'"
 
 echo "== restore and remove: a failing Hyprland restore is reported and keeps the claim"
 hy_restore_fails() {

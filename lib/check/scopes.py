@@ -324,6 +324,7 @@ SHELL_GROUPS = {
         "home/hypr/.config/hypr/scripts/state-write",
         "home/hypr/.config/hypr/scripts/restart-bar.sh",
         "home/hypr/.local/bin/hypr-act",
+        "home/hypr/.local/bin/hypr-live",
         "home/hypr/tests/*.sh",
         "home/agents/.local/bin/agent-run",
         "home/agents/.local/bin/agent-shims",

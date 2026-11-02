@@ -9,7 +9,7 @@ here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 script=$here/../.local/bin/hypr-live
 work=$(mktemp -d)
 # The shadow runtime dir must match /tmp/shadow-*, so it cannot sit under $work.
-shadow_run=/tmp/shadow-hypr-live-test-$$
+shadow_run=$(mktemp -d /tmp/shadow-hypr-live-test.XXXXXX)
 trap 'rm -rf "$work" "$shadow_run"' EXIT
 failures=0
 cd "$work" || exit 1
