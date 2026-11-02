@@ -774,9 +774,14 @@ fn a_mode_with_handle_turn_gets_each_turn_s_words_in_voxcmd_text_with_no_ending(
 fn a_mode_s_handle_turn_is_not_run_while_a_picker_waits_on_the_user() {
     let rig = Rig::new();
     rig.integration("demo", HANDLER);
-    // Not exec'd: the asker is known by its command line.
-    rig.script("bin/voxcmd-pick", "while :; do sleep 0.1; done");
-    let mut asker = Command::new(rig.path().join("bin/voxcmd-pick")).spawn().unwrap();
+    // A script named `ask` run with argv[0] `voxcmd`: the asker is known by its command line, `voxcmd ask pick`. Not
+    // exec'd into sleep, which would take the arguments.
+    rig.script("bin/ask", "while :; do sleep 0.1; done");
+    let mut asker = Command::new("bash")
+        .current_dir(rig.path().join("bin"))
+        .args(["-c", "exec -a voxcmd bash ask pick"])
+        .spawn()
+        .unwrap();
     let fifo = rig.work("answer");
     assert!(Command::new("mkfifo").arg(&fifo).status().unwrap().success());
     std::fs::write(
