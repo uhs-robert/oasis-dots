@@ -118,7 +118,9 @@ impl Bar {
         for name in ["qs-ipc", "qs-picker"] {
             std::os::unix::fs::symlink(stub(name), bar.scripts().join(name)).unwrap();
         }
-        std::os::unix::fs::symlink(stub("notify-send"), bar.path().join("bin/notify-send")).unwrap();
+        for name in ["notify-send", "pgrep"] {
+            std::os::unix::fs::symlink(stub(name), bar.path().join("bin").join(name)).unwrap();
+        }
         bar
     }
 
@@ -599,4 +601,132 @@ fn expand_reaches_the_bar_for_an_asks_picker_too_without_a_token() {
     assert_eq!(finish(bar.spawn(&["reply", "cancel"], &[])).0, 0);
     assert_eq!(finish(pick).0, 1);
     assert!(!bar.pending_pick().exists());
+}
+
+/// Processes whose command line names a file under this bar's directory: the `head` reading an ask's FIFO.
+fn readers_left(bar: &Bar) -> Vec<String> {
+    let needle = bar.path().to_string_lossy().into_owned();
+    std::fs::read_dir("/proc")
+        .unwrap()
+        .filter_map(|entry| std::fs::read(entry.ok()?.path().join("cmdline")).ok())
+        .map(|cmdline| String::from_utf8_lossy(&cmdline).replace('\0', " "))
+        .filter(|line| line.contains(&needle) && line.contains("head"))
+        .collect()
+}
+
+const DEAD_BAR_ASKS: [(&str, &[&str]); 3] = [
+    ("pick", &["ask", "pick", "Which?", TWO]),
+    ("confirm", &["ask", "confirm", "--verb", "close", "Close it?"]),
+    ("hints", &["ask", "hints", "Which one?", BOXES]),
+];
+
+#[test]
+fn a_bar_that_dies_mid_wait_cancels_every_ask_long_before_its_timeout() {
+    for (kind, args) in DEAD_BAR_ASKS {
+        let bar = Bar::new();
+        let mut qs = fake_bar(bar.path());
+        let pid = qs.id().to_string();
+        let started = Instant::now();
+        let ask = bar.spawn(
+            args,
+            &[
+                ("GOLDEN_HOLD", "1"),
+                ("GOLDEN_BAR_PID", &pid),
+                ("VOXCMD_PICK_TIMEOUT", "120"),
+                ("VOXCMD_CONFIRM_TIMEOUT", "120"),
+                ("VOXCMD_HINTS_TIMEOUT", "120"),
+            ],
+        );
+        wait_for("the ask waits", || {
+            bar.calls().contains("qs-ipc") || bar.calls().contains(".spec ")
+        });
+        let _ = qs.kill();
+        let _ = qs.wait();
+        let (code, out, _) = finish(ask);
+        assert_eq!((code, out.as_str()), (1, ""), "{kind}");
+        assert!(started.elapsed() < Duration::from_secs(15), "{kind}");
+        assert!(!bar.pending_pick().exists(), "{kind}");
+        assert!(bar.left_behind().is_empty(), "{kind}: {:?}", bar.left_behind());
+        assert!(readers_left(&bar).is_empty(), "{kind}: {:?}", readers_left(&bar));
+        assert!(bar.toasts().is_empty(), "{kind}: {}", bar.toasts());
+    }
+}
+
+#[test]
+fn a_live_bar_does_not_cancel_a_wait_and_its_answer_still_arrives() {
+    for (kind, args) in DEAD_BAR_ASKS.into_iter().take(2) {
+        let bar = Bar::new();
+        let mut qs = fake_bar(bar.path());
+        let pid = qs.id().to_string();
+        let ask = bar.spawn(args, &[("GOLDEN_HOLD", "1"), ("GOLDEN_BAR_PID", &pid)]);
+        wait_for("the ask is pending", || bar.pending_pick().exists());
+        // Past two polls of the bar.
+        std::thread::sleep(Duration::from_millis(2500));
+        assert!(bar.pending_pick().exists(), "{kind}: cancelled while the bar lived");
+        let fifo = std::fs::read_dir(bar.runtime())
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .find(|path| {
+                path.file_name()
+                    .is_some_and(|n| n.to_string_lossy().starts_with("voxcmd-"))
+            })
+            .unwrap()
+            .join("result");
+        std::fs::write(&fifo, if kind == "pick" { "2. Slack\n" } else { "yes\n" }).unwrap();
+        let (code, out, err) = finish(ask);
+        assert_eq!(code, 0, "{kind}: {err}");
+        assert!(!out.is_empty() || kind == "confirm", "{kind}");
+        let _ = qs.kill();
+        let _ = qs.wait();
+    }
+}
+
+#[test]
+fn a_dead_bar_leaves_a_newer_asks_pending_pick_alone() {
+    let bar = Bar::new();
+    let mut qs = fake_bar(bar.path());
+    let pid = qs.id().to_string();
+    let mut newer = common::spawn_fake_asker(bar.path(), "pick");
+    let entry = newer_ask_entry(&bar, &newer);
+    let ask = bar.spawn(
+        &["ask", "pick", "Which?", TWO],
+        &[
+            ("GOLDEN_HOLD", "1"),
+            ("GOLDEN_BAR_PID", &pid),
+            ("GOLDEN_REPLACE", entry.as_str()),
+        ],
+    );
+    wait_for("the newer ask replaced the file", || {
+        std::fs::read_to_string(bar.pending_pick()).is_ok_and(|text| text == format!("{entry}\n"))
+    });
+    let _ = qs.kill();
+    let _ = qs.wait();
+    let (code, out, _) = finish(ask);
+    let kept = std::fs::read_to_string(bar.pending_pick()).unwrap_or_default();
+    let _ = newer.kill();
+    let _ = newer.wait();
+    assert_eq!((code, out.as_str()), (1, ""));
+    assert_eq!(kept, format!("{entry}\n"));
+    assert!(bar.left_behind().is_empty(), "{:?}", bar.left_behind());
+}
+
+#[test]
+fn term_while_the_bar_lives_cleans_up_once_and_leaves_no_reader() {
+    let bar = Bar::new();
+    let mut qs = fake_bar(bar.path());
+    let pid = qs.id().to_string();
+    let ask = bar.spawn(
+        &["ask", "pick", "Which?", TWO],
+        &[("GOLDEN_HOLD", "1"), ("GOLDEN_BAR_PID", &pid)],
+    );
+    wait_for("the picker shows", || bar.calls().contains(".spec "));
+    // SAFETY: kill only sends a signal.
+    unsafe { libc::kill(ask.id() as i32, libc::SIGTERM) };
+    let (code, _, _) = finish(ask);
+    assert_eq!(code, 1);
+    assert!(!bar.pending_pick().exists());
+    assert!(bar.left_behind().is_empty(), "{:?}", bar.left_behind());
+    assert!(readers_left(&bar).is_empty(), "{:?}", readers_left(&bar));
+    let _ = qs.kill();
+    let _ = qs.wait();
 }

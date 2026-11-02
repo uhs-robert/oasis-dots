@@ -1,0 +1,4 @@
+#!/bin/sh
+# pgrep for tests/ask.rs: reports $GOLDEN_BAR_PID as the one running bar, or none, never the machine's real bar.
+[ -z "${GOLDEN_BAR_PID-}" ] || printf '%s /usr/bin/qs -n\n' "$GOLDEN_BAR_PID"
+[ -n "${GOLDEN_BAR_PID-}" ]
