@@ -24,7 +24,14 @@ Act.define("system.reload_hyprland", {
   label = "Reload Hyprland",
   intent = "Reload the Hyprland configuration.",
   -- In-process, so the reload does not depend on the shell's HYPRLAND_INSTANCE_SIGNATURE, which a re-login stales.
-  run = function() hl.dispatch(hl.dsp.reload_config()) end,
+  -- Hyprland 0.56 has no reload_config dispatcher, so it falls back to hyprctl until 0.56 support ends.
+  run = function()
+    if hl.dsp.reload_config then
+      hl.dispatch(hl.dsp.reload_config())
+    else
+      Cmd("hyprctl", "reload")()
+    end
+  end,
 })
 
 Act.define("system.reload_plugins", {
