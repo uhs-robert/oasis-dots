@@ -4,12 +4,11 @@ local Direction = require("lib.key.direction") ---@class Direction
 
 require("lib.act.defs.workspaces")
 
--- The ids are the same with persistent workspaces; only their wording and the slot count change.
-local persistent_ws = Config.persistent_workspaces
-local WS_COUNT = type(persistent_ws) == "number" and math.min(persistent_ws, 10) or 10
-local ON_MONITOR = persistent_ws and " on Monitor" or ""
+-- The ids are the same with persistent workspaces; only their wording changes. All ten keys are bound either way,
+-- since a monitor's count changes with how many monitors are connected and parked workspaces sit past its own.
+local ON_MONITOR = Config.persistent_workspaces and " on Monitor" or ""
 
-for slot = 1, WS_COUNT do
+for slot = 1, 10 do
   local key = slot % 10
   Act.bind("workspace.focus", {
     key = { key = "" .. key, leader = true, universal = true },

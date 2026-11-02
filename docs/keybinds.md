@@ -283,6 +283,16 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + SHIFT + 4` | press | global | Move to Workspace 4 | `workspace.move` |
 | `SUPER + 5` | press | global | Go to Workspace 5 | `workspace.focus` |
 | `SUPER + SHIFT + 5` | press | global | Move to Workspace 5 | `workspace.move` |
+| `SUPER + 6` | press | global | Go to Workspace 6 | `workspace.focus` |
+| `SUPER + SHIFT + 6` | press | global | Move to Workspace 6 | `workspace.move` |
+| `SUPER + 7` | press | global | Go to Workspace 7 | `workspace.focus` |
+| `SUPER + SHIFT + 7` | press | global | Move to Workspace 7 | `workspace.move` |
+| `SUPER + 8` | press | global | Go to Workspace 8 | `workspace.focus` |
+| `SUPER + SHIFT + 8` | press | global | Move to Workspace 8 | `workspace.move` |
+| `SUPER + 9` | press | global | Go to Workspace 9 | `workspace.focus` |
+| `SUPER + SHIFT + 9` | press | global | Move to Workspace 9 | `workspace.move` |
+| `SUPER + 0` | press | global | Go to Workspace 10 | `workspace.focus` |
+| `SUPER + SHIFT + 0` | press | global | Move to Workspace 10 | `workspace.move` |
 | `SUPER + CTRL + H` | press | global | Prev WS on Monitor | `workspace.cycle` |
 | `SUPER + CTRL + LEFT` | press | global |  | `workspace.cycle` |
 | `SUPER + CTRL + L` | press | global | Next WS on Monitor | `workspace.cycle` |
@@ -729,6 +739,11 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + 3` | press | Windows | Move to WS 3 | `windows.workspace_move_selected` |
 | `SHIFT + 4` | press | Windows | Move to WS 4 | `windows.workspace_move_selected` |
 | `SHIFT + 5` | press | Windows | Move to WS 5 | `windows.workspace_move_selected` |
+| `SHIFT + 6` | press | Windows | Move to WS 6 | `windows.workspace_move_selected` |
+| `SHIFT + 7` | press | Windows | Move to WS 7 | `windows.workspace_move_selected` |
+| `SHIFT + 8` | press | Windows | Move to WS 8 | `windows.workspace_move_selected` |
+| `SHIFT + 9` | press | Windows | Move to WS 9 | `windows.workspace_move_selected` |
+| `SHIFT + 0` | press | Windows | Move to WS 10 | `windows.workspace_move_selected` |
 | `1` | press | Windows | Monitor 1 | `monitor.focus` |
 | `2` | press | Windows | Monitor 2 | `monitor.focus` |
 | `3` | press | Windows | Monitor 3 | `monitor.focus` |

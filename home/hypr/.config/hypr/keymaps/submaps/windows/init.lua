@@ -94,7 +94,7 @@ Submap.define({
       keys[#keys + 1] = key
     end
 
-    for i = 1, Config.persistent_workspaces or 10 do
+    for i = 1, 10 do
       keys[#keys + 1] =
         { "SHIFT + " .. tostring(i % 10), { "windows.workspace_move_selected", { i } }, "Move to WS " .. i }
     end

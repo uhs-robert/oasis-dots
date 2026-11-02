@@ -73,8 +73,31 @@ RowsSection {
             text: v => root.osd_edge_names[v] || String(v),
             value: () => OsdSettings.edge,
             set: v => OsdSettings.set("edge", v)
-        }
+        },
+        { heading: "Workspaces" },
+        root.workspace_row("single_monitor", "One monitor", "Workspaces while only one monitor is connected. 10 gives every number key, 1 to 0, its own workspace."),
+        root.workspace_row("per_monitor", "Several monitors", "Workspaces on each monitor while two or more are connected. With 5, monitor 1 has 1-5, monitor 2 has 6-10, and so on.")
     ]
+
+    readonly property string workspace_help: "Workspace numbers never change when you dock or undock: only the screen showing them does. Docking hands each workspace to the monitor whose range holds it, so with the defaults the laptop keeps 1-5 and 6-10 move to monitor 2. A workspace whose monitor is not connected waits on the first monitor and goes back when that monitor returns. Monitor order comes from the machine profile."
+
+    // Fixed while the machine profile turns persistent workspaces off, like Flush single windows without the frame.
+    function workspace_row(key, label, desc) {
+        const off = "off (global workspaces)";
+        return {
+            label: label,
+            desc: desc,
+            help: root.workspace_help,
+            values: () => WorkspaceSettings.enabled ? WorkspaceSettings.counts : [off],
+            text: v => v === 10 ? "10 (keys 1-0)" : String(v),
+            value: () => WorkspaceSettings.enabled ? WorkspaceSettings.value(key) : off,
+            set: v => {
+                if (WorkspaceSettings.enabled) WorkspaceSettings.set(key, v);
+            },
+            cycle: WorkspaceSettings.enabled,
+            pick: WorkspaceSettings.enabled
+        };
+    }
 
     preview: Rectangle {
         id: card

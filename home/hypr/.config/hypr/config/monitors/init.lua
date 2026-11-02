@@ -1,7 +1,7 @@
 local Config = require("config") ---@class Config
 local Json = require("lib.json") ---@class Json
 local Workspaces = require("lib.workspaces") ---@class Workspaces
-local PERSISTENT_WS = Config.persistent_workspaces
+local Layout = require("lib.workspace_layout")
 --- @type { description?: string, name?: string, id?: integer, mode?: string, position?: string, scale?: number, transform?: integer, primary?: boolean }[]
 local MONITOR_ORDER = Config.monitors
 
@@ -123,30 +123,22 @@ end
 
 local persistent_rules = {} --- @type table<integer, { output: string, rule: HL.WorkspaceRule }>
 
---- Pins each slot's workspace range to its monitor and disables rules left over from an earlier slot assignment.
---- Unmatched monitors take free slots, so their ranges never collide with a matched monitor's.
-local function init_persistent_workspaces()
-  local monitors = hl.get_monitors()
-  local slots, matched = Workspaces.assign_slots(monitors, MONITOR_ORDER)
-  local wanted = {} --- @type table<integer, string>
-
-  for i, entry in ipairs(MONITOR_ORDER) do
-    local output = get_monitor_output(entry, monitors)
-    if output then
-      for n = (i - 1) * PERSISTENT_WS + 1, i * PERSISTENT_WS do
-        wanted[n] = output
-      end
-    end
+--- Connected monitors and their slots, leaving out one that is being removed.
+--- @param removed? HL.Monitor
+--- @return HL.Monitor[] monitors
+--- @return table<string, integer> slots
+local function connected_monitors(removed)
+  local monitors = {}
+  for _, mon in ipairs(hl.get_monitors()) do
+    if not removed or mon.name ~= removed.name then monitors[#monitors + 1] = mon end
   end
-  for _, mon in ipairs(monitors) do
-    if not matched[mon.name] then
-      local idx = slots[mon.name]
-      for n = (idx - 1) * PERSISTENT_WS + 1, idx * PERSISTENT_WS do
-        wanted[n] = mon.name
-      end
-    end
-  end
+  return monitors, (Workspaces.assign_slots(monitors, MONITOR_ORDER))
+end
 
+--- Pins every connected monitor's range to it and disables rules left over from an earlier assignment.
+--- @param slots table<string, integer>
+local function pin_workspaces(slots)
+  local wanted = Layout.owners(Config, slots)
   for n, held in pairs(persistent_rules) do
     if wanted[n] ~= held.output then
       held.rule:set_enabled(false)
@@ -161,11 +153,23 @@ local function init_persistent_workspaces()
   end
 end
 
---- Focuses the first persistent workspace assigned to the given monitor.
---- @param mon HL.Monitor The monitor whose first workspace to focus
-local function focus_first_ws(mon)
-  local idx = Workspaces.slot_of(mon)
-  hl.dispatch(hl.dsp.focus({ workspace = (idx - 1) * PERSISTENT_WS + 1 }))
+--- Moves each numbered workspace to its owner, or parks it, and keeps the focused one focused.
+--- @param slots table<string, integer>
+--- @return boolean followed True when the focused workspace moved and focus went with it
+local function move_workspaces(slots)
+  local live = {}
+  for _, ws in ipairs(hl.get_workspaces()) do
+    live[#live + 1] = { id = ws.id, special = ws.special, monitor = ws.monitor and ws.monitor.name }
+  end
+  local active = hl.get_active_workspace()
+  local active_id = active and not active.special and active.id
+  local followed = false
+  for _, move in ipairs(Layout.plan(Config, slots, live)) do
+    hl.dispatch(hl.dsp.workspace.move({ workspace = move.id, monitor = move.monitor }))
+    if move.id == active_id then followed = true end
+  end
+  if followed then hl.dispatch(hl.dsp.focus({ workspace = active_id })) end
+  return followed
 end
 
 --- Sets the X primary output to whichever MONITOR_ORDER entry has `primary = true`, if connected.
@@ -184,33 +188,20 @@ local function set_primary_monitor()
   end
 end
 
---- Applies monitor mode/position settings and persistent workspace rules.
---- @param mon? HL.Monitor The monitor that was removed
-local function apply_layout(mon)
+--- Applies monitor settings, then pins and moves the persistent workspaces for the monitors now connected.
+--- @param added? HL.Monitor A monitor just plugged in, which gets focus on its first workspace
+--- @param removed? HL.Monitor A monitor just unplugged
+local function apply_layout(added, removed)
   init_monitors()
   set_primary_monitor()
-  if PERSISTENT_WS then
-    init_persistent_workspaces()
-    if mon then focus_first_ws(mon) end
+  if not Config.persistent_workspaces then return end
+  local monitors, slots = connected_monitors(removed)
+  if #monitors == 0 then return end
+  pin_workspaces(slots)
+  local followed = move_workspaces(slots)
+  if added and slots[added.name] and not followed then
+    hl.dispatch(hl.dsp.focus({ workspace = (Layout.range(Config, slots[added.name], #monitors)) }))
   end
-end
-
---- Moves workspaces from a disconnected monitor to the first remaining monitor.
---- @param mon HL.Monitor The monitor that was removed
-local function on_monitor_removed(mon)
-  local removed_idx = Workspaces.slot_of(mon)
-  local remaining = hl.get_monitors()
-  local fallback = remaining[1]
-
-  if PERSISTENT_WS and fallback then
-    local start_ws = (removed_idx - 1) * PERSISTENT_WS + 1
-    local end_ws = removed_idx * PERSISTENT_WS
-    for n = start_ws, end_ws do
-      hl.dispatch(hl.dsp.workspace.move({ workspace = n, monitor = fallback.name }))
-    end
-  end
-
-  apply_layout()
 end
 
 --- @class Monitors
@@ -228,12 +219,21 @@ function Monitors.resolve_slot(slot)
   return highest or slot
 end
 
---- Applies monitor settings, assigns persistent workspaces, and registers hotplug event handlers.
+--- True when one monitor is connected and owns the single-monitor range.
+--- @return boolean
+function Monitors.is_single() return Layout.is_single(Config, #hl.get_monitors()) end
+
+--- Re-reads the saved workspace counts and re-lays the workspaces; Settings > Style calls this through `hyprctl eval`.
+function Monitors.apply()
+  Layout.apply_state(Config)
+  apply_layout()
+end
+
 local function init()
   apply_layout()
-  hl.on("hyprland.start", apply_layout)
-  hl.on("monitor.added", apply_layout)
-  hl.on("monitor.removed", on_monitor_removed)
+  hl.on("hyprland.start", function() apply_layout() end)
+  hl.on("monitor.added", function(mon) apply_layout(mon) end)
+  hl.on("monitor.removed", function(mon) apply_layout(nil, mon) end)
 end
 
 init()

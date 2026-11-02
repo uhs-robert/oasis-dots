@@ -1,6 +1,6 @@
 # Settings panel
 
-`settings/` holds the Settings panel (`SettingsPopup`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings` and `HyprInputSettings`.
+`settings/` holds the Settings panel (`SettingsPopup`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings`, `HyprInputSettings` and `WorkspaceSettings`.
 
 Settings takes 80% of the screen each way: with the screen frame on it grows out of the frame as a drawer, otherwise it drops from the centre of the bar like the other popups. It holds the section list on the left, sized to its labels, the selected section in the middle and a docked panel on the right (about 1.25 times the list's width; under the rows on a portrait or small screen) that explains the selected setting in full; the section gets the rest. Open it with `SUPER + SPACE` then `S`, `SUPER + B` then `SHIFT + S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
 
@@ -15,7 +15,7 @@ The section list, the pane and the help card scroll when they outgrow the popup 
 | System     | Displays, Default apps, Power, Sessions, Lock & login |
 | Input      | Typing, Keyboard, Voice, Mouse & touchpad                    |
 
-A section's rows can sit under headings (Style: Style, Colors, Screen; Date & time: Format, Calendar; Default apps: Apps, File types; Power: Idle, Lid & buttons, Profiles; Lock & login: Lock, Login; Media: Visualizer, Layout, Text; Theme options: Effects, Frame & bar, Skins, Fonts, a group the current style offers nothing in left out), which the cursor skips and `{`/`}` jump between. Rows take `{ heading }` in `RowsSection`. The panel's preview follows the cursor: Style's palette card shows on its Colors rows, and Lock & login's thumbnail (above its rows) shows the login screen on its Login rows. A section can also pin something over its rows with `RowsSection.pinned`, which stays in view while the rows scroll under it (Media's live preview). Each row's value starts in one column past the section's longest label, so values stay beside their labels however wide the pane is. `Ctrl+D`/`Ctrl+U` move half a page, as in vim: half a pane of rows (headings skipped, no wrap), half the section list, or half an open list's window; a pane without a row list scrolls half a page. In an open list's INSERT mode `Ctrl+U` still clears the filter, so the half page up is a NORMAL key there.
+A section's rows can sit under headings (Style: Style, Colors, Screen, Workspaces; Date & time: Format, Calendar; Default apps: Apps, File types; Power: Idle, Lid & buttons, Profiles; Lock & login: Lock, Login; Media: Visualizer, Layout, Text; Theme options: Effects, Frame & bar, Skins, Fonts, a group the current style offers nothing in left out), which the cursor skips and `{`/`}` jump between. Rows take `{ heading }` in `RowsSection`. The panel's preview follows the cursor: Style's palette card shows on its Colors rows, and Lock & login's thumbnail (above its rows) shows the login screen on its Login rows. A section can also pin something over its rows with `RowsSection.pinned`, which stays in view while the rows scroll under it (Media's live preview). Each row's value starts in one column past the section's longest label, so values stay beside their labels however wide the pane is. `Ctrl+D`/`Ctrl+U` move half a page, as in vim: half a pane of rows (headings skipped, no wrap), half the section list, or half an open list's window; a pane without a row list scrolls half a page. In an open list's INSERT mode `Ctrl+U` still clears the filter, so the half page up is a NORMAL key there.
 
 The ids of sections since merged still open the merged one where they went (`colors` opens Style at Colors, `clock` and `calendar` open Date & time at Format and Calendar, `login` opens Lock & login at Login); `Sections.aliases` lists them.
 
@@ -30,6 +30,10 @@ Settings > Style > OSD edge (under Screen) picks the edge the volume, brightness
 ## Flush single windows
 
 Settings > Style > Flush single windows (under Screen) decides whether a lone window sits flush against the screen frame (off, it keeps the gaps and rounding of any other window). It is one setting for every style, saved as `flush_single` in `style.json`, and only applies while the current style's Screen frame is on; with it off the row says so and keeps its value. Hyprland gets it through `ScreenFrameSync`.
+
+## Workspaces
+
+Settings > Style > Workspaces sets how many persistent workspaces a monitor gets: One monitor (default 10, so every number key from 1 to 0 has one) while only one monitor is connected, and Several monitors (default 5) for each monitor while two or more are. A change applies at once, without a Hyprland reload. Workspace numbers stay the same on dock and undock, and only the monitor showing them changes; the [Hyprland README](../../../../../hypr/.config/hypr/README.md#workspaces) has the rules. A row you have not changed shows Hyprland's current value, so a count from the machine profile reads correctly. With `persistent_workspaces = false` in the profile both rows read "off" and keep their values. It saves to `hypr/workspaces.json`.
 
 ## Input settings
 
@@ -82,3 +86,4 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `hypr/power.json`                         | Idle and power settings, read by Hyprland        |
 | `hypr/sessions.json`                      | Saved sessions for the launcher picker, written by Settings > Sessions |
 | `hypr/input.json`                         | Keyboard, mouse, touchpad, which-key delay and pointer keys, read by Hyprland |
+| `hypr/workspaces.json`                    | Workspaces with one monitor and per monitor with several, read by Hyprland |

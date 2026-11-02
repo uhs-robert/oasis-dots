@@ -7,12 +7,17 @@ local Json = require("lib.json") ---@class Json
 
 --- @type table<string, HL.WindowRule>
 local RULES = {}
-local WS_PER_MONITOR = Config.ws_per_monitor
 
+--- Sessions keep the docked grid (Config.ws_per_monitor per slot), so a saved workspace keeps its number. With one
+--- monitor that number is used as is, since that monitor owns the first ranges.
 --- @param monitor integer  1-based monitor index; a disconnected one folds onto the highest connected
 --- @param offset integer   1-based workspace offset within the monitor's range
 --- @return integer
-local function ws(monitor, offset) return (Monitors.resolve_slot(monitor) - 1) * WS_PER_MONITOR + offset end
+local function ws(monitor, offset)
+  local per = Config.ws_per_monitor
+  if Monitors.is_single() then return (monitor - 1) * per + offset end
+  return (Monitors.resolve_slot(monitor) - 1) * per + offset
+end
 
 --- Target workspace of an entry: a workspace id, or `special:<name>`.
 --- @param app AppEntry

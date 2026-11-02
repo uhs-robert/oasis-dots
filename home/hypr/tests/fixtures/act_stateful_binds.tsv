@@ -235,7 +235,6 @@ arrows	Move	SHIFT + RIGHT	Move Right (Fast)	repeating=true	window.move({relative
 arrows	Move	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 arrows	Move	SHIFT + UP	Move Up (Fast)	repeating=true	window.move({relative=true,x=0,y=-100});event(window_targets)
 arrows	Move	UP	Move Up	repeating=true	window.move({relative=true,x=0,y=-10});event(window_targets)
-arrows	Move	W	+Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints selection '{"generation":123456,"serial":4,"windows":[]}');submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["S-←↓↑→","Move"],["C-←↓↑→","WS"],["S-1..5","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 arrows	Move	catchall	-	ignore_mods=true,release=true	no_op
 arrows	Move	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Move	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -249,6 +248,7 @@ arrows	Move	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	no
 arrows	Move	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Move	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Move	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Move	W	+Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints selection '{"generation":123456,"serial":4,"windows":[]}');submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["S-←↓↑→","Move"],["C-←↓↑→","WS"],["S-1..0","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 arrows	Quick Click	APOSTROPHE	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Quick Click	BackSpace	Back	-	submap(reset)
 arrows	Quick Click	CTRL + F	Floating Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -316,7 +316,6 @@ arrows	Resize	SHIFT + RIGHT	Resize Right (Fast)	repeating=true	window.resize({re
 arrows	Resize	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 arrows	Resize	SHIFT + UP	Resize Up (Fast)	repeating=true	window.resize({relative=true,x=0,y=-100});event(window_targets)
 arrows	Resize	UP	Resize Up	repeating=true	window.resize({relative=true,x=0,y=-10});event(window_targets)
-arrows	Resize	W	+Windows	-	submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["S-←↓↑→","Move"],["C-←↓↑→","WS"],["S-1..5","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 arrows	Resize	catchall	-	ignore_mods=true,release=true	no_op
 arrows	Resize	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Resize	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -330,6 +329,7 @@ arrows	Resize	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	
 arrows	Resize	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Resize	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Resize	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Resize	W	+Windows	-	submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["S-←↓↑→","Move"],["C-←↓↑→","WS"],["S-1..0","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 arrows	Windows	0	Monitor 10	-	-
 arrows	Windows	1	Monitor 1	-	-
 arrows	Windows	2	Monitor 2	-	-
@@ -397,6 +397,11 @@ arrows	Windows	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true
 arrows	Windows	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Windows	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 arrows	Windows	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+arrows	Windows	SHIFT + 0	Move to WS 10	-	focus({window=address:0xa1});window.move({workspace=m~10});focus({window=address:0xa1});event(window_targets)
+arrows	Windows	SHIFT + 6	Move to WS 6	-	focus({window=address:0xa1});window.move({workspace=m~6});focus({window=address:0xa1});event(window_targets)
+arrows	Windows	SHIFT + 7	Move to WS 7	-	focus({window=address:0xa1});window.move({workspace=m~7});focus({window=address:0xa1});event(window_targets)
+arrows	Windows	SHIFT + 8	Move to WS 8	-	focus({window=address:0xa1});window.move({workspace=m~8});focus({window=address:0xa1});event(window_targets)
+arrows	Windows	SHIFT + 9	Move to WS 9	-	focus({window=address:0xa1});window.move({workspace=m~9});focus({window=address:0xa1});event(window_targets)
 default	Cursor	ALT + H	Arrow Left	repeating=true	send_shortcut({key=LEFT,mods=})
 default	Cursor	ALT + J	Arrow Down	repeating=true	send_shortcut({key=DOWN,mods=})
 default	Cursor	ALT + K	Arrow Up	repeating=true	send_shortcut({key=UP,mods=})
@@ -626,7 +631,6 @@ default	Move	SHIFT + RIGHT	-	repeating=true	window.move({relative=true,x=100,y=0
 default	Move	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	Move	SHIFT + UP	-	repeating=true	window.move({relative=true,x=0,y=-100});event(window_targets)
 default	Move	UP	-	repeating=true	window.move({relative=true,x=0,y=-10});event(window_targets)
-default	Move	W	+Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints selection '{"generation":123456,"serial":4,"windows":[]}');submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..5","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 default	Move	catchall	-	ignore_mods=true,release=true	no_op
 default	Move	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Move	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -640,6 +644,7 @@ default	Move	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true	n
 default	Move	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Move	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Move	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Move	W	+Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints selection '{"generation":123456,"serial":4,"windows":[]}');submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..0","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 default	Quick Click	APOSTROPHE	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Quick Click	BackSpace	Back	-	submap(reset)
 default	Quick Click	CTRL + F	Floating Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -707,7 +712,6 @@ default	Resize	SHIFT + RIGHT	-	repeating=true	window.resize({relative=true,x=100
 default	Resize	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	Resize	SHIFT + UP	-	repeating=true	window.resize({relative=true,x=0,y=-100});event(window_targets)
 default	Resize	UP	-	repeating=true	window.resize({relative=true,x=0,y=-10});event(window_targets)
-default	Resize	W	+Windows	-	submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..5","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 default	Resize	catchall	-	ignore_mods=true,release=true	no_op
 default	Resize	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Resize	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -721,6 +725,7 @@ default	Resize	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true
 default	Resize	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Resize	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Resize	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Resize	W	+Windows	-	submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..0","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 default	Windows	0	Monitor 10	-	-
 default	Windows	1	Monitor 1	-	-
 default	Windows	2	Monitor 2	-	-
@@ -788,6 +793,11 @@ default	Windows	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=tru
 default	Windows	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Windows	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 default	Windows	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+default	Windows	SHIFT + 0	Move to WS 10	-	focus({window=address:0xa1});window.move({workspace=m~10});focus({window=address:0xa1});event(window_targets)
+default	Windows	SHIFT + 6	Move to WS 6	-	focus({window=address:0xa1});window.move({workspace=m~6});focus({window=address:0xa1});event(window_targets)
+default	Windows	SHIFT + 7	Move to WS 7	-	focus({window=address:0xa1});window.move({workspace=m~7});focus({window=address:0xa1});event(window_targets)
+default	Windows	SHIFT + 8	Move to WS 8	-	focus({window=address:0xa1});window.move({workspace=m~8});focus({window=address:0xa1});event(window_targets)
+default	Windows	SHIFT + 9	Move to WS 9	-	focus({window=address:0xa1});window.move({workspace=m~9});focus({window=address:0xa1});event(window_targets)
 no-leader	Cursor	 + SEMICOLON	-	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 no-leader	Cursor	ALT + H	Arrow Left	repeating=true	send_shortcut({key=LEFT,mods=})
 no-leader	Cursor	ALT + J	Arrow Down	repeating=true	send_shortcut({key=DOWN,mods=})
@@ -1017,7 +1027,6 @@ no-leader	Move	SHIFT + RIGHT	-	repeating=true	window.move({relative=true,x=100,y
 no-leader	Move	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 no-leader	Move	SHIFT + UP	-	repeating=true	window.move({relative=true,x=0,y=-100});event(window_targets)
 no-leader	Move	UP	-	repeating=true	window.move({relative=true,x=0,y=-10});event(window_targets)
-no-leader	Move	W	+Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints selection '{"generation":123456,"serial":4,"windows":[]}');submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..3","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..5","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 no-leader	Move	catchall	-	ignore_mods=true,release=true	no_op
 no-leader	Move	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Move	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1031,6 +1040,7 @@ no-leader	Move	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true
 no-leader	Move	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Move	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Move	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Move	W	+Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints selection '{"generation":123456,"serial":4,"windows":[]}');submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..3","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..0","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 no-leader	Quick Click	 + APOSTROPHE	-	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Quick Click	 + SEMICOLON	-	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 no-leader	Quick Click	APOSTROPHE	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -1098,7 +1108,6 @@ no-leader	Resize	SHIFT + RIGHT	-	repeating=true	window.resize({relative=true,x=1
 no-leader	Resize	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 no-leader	Resize	SHIFT + UP	-	repeating=true	window.resize({relative=true,x=0,y=-100});event(window_targets)
 no-leader	Resize	UP	-	repeating=true	window.resize({relative=true,x=0,y=-10});event(window_targets)
-no-leader	Resize	W	+Windows	-	submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..3","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..5","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 no-leader	Resize	catchall	-	ignore_mods=true,release=true	no_op
 no-leader	Resize	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Resize	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1112,6 +1121,7 @@ no-leader	Resize	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=tr
 no-leader	Resize	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Resize	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Resize	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Resize	W	+Windows	-	submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..3","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..0","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 no-leader	Windows	1	Monitor 1	-	-
 no-leader	Windows	2	Monitor 2	-	-
 no-leader	Windows	3	Monitor 3	-	-
@@ -1172,6 +1182,11 @@ no-leader	Windows	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=t
 no-leader	Windows	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Windows	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 no-leader	Windows	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+no-leader	Windows	SHIFT + 0	Move to WS 10	-	focus({window=address:0xa1});window.move({workspace=m~10});focus({window=address:0xa1});event(window_targets)
+no-leader	Windows	SHIFT + 6	Move to WS 6	-	focus({window=address:0xa1});window.move({workspace=m~6});focus({window=address:0xa1});event(window_targets)
+no-leader	Windows	SHIFT + 7	Move to WS 7	-	focus({window=address:0xa1});window.move({workspace=m~7});focus({window=address:0xa1});event(window_targets)
+no-leader	Windows	SHIFT + 8	Move to WS 8	-	focus({window=address:0xa1});window.move({workspace=m~8});focus({window=address:0xa1});event(window_targets)
+no-leader	Windows	SHIFT + 9	Move to WS 9	-	focus({window=address:0xa1});window.move({workspace=m~9});focus({window=address:0xa1});event(window_targets)
 persistent	Cursor	ALT + H	Arrow Left	repeating=true	send_shortcut({key=LEFT,mods=})
 persistent	Cursor	ALT + J	Arrow Down	repeating=true	send_shortcut({key=DOWN,mods=})
 persistent	Cursor	ALT + K	Arrow Up	repeating=true	send_shortcut({key=UP,mods=})
@@ -1401,7 +1416,6 @@ persistent	Move	SHIFT + RIGHT	-	repeating=true	window.move({relative=true,x=100,
 persistent	Move	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 persistent	Move	SHIFT + UP	-	repeating=true	window.move({relative=true,x=0,y=-100});event(window_targets)
 persistent	Move	UP	-	repeating=true	window.move({relative=true,x=0,y=-10});event(window_targets)
-persistent	Move	W	+Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints selection '{"generation":123456,"serial":4,"windows":[]}');submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..3","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 persistent	Move	catchall	-	ignore_mods=true,release=true	no_op
 persistent	Move	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Move	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1415,6 +1429,7 @@ persistent	Move	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=tru
 persistent	Move	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Move	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Move	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Move	W	+Windows	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints selection '{"generation":123456,"serial":4,"windows":[]}');submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..0","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 persistent	Quick Click	APOSTROPHE	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Quick Click	BackSpace	Back	-	submap(reset)
 persistent	Quick Click	CTRL + F	Floating Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -1482,7 +1497,6 @@ persistent	Resize	SHIFT + RIGHT	-	repeating=true	window.resize({relative=true,x=
 persistent	Resize	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 persistent	Resize	SHIFT + UP	-	repeating=true	window.resize({relative=true,x=0,y=-100});event(window_targets)
 persistent	Resize	UP	-	repeating=true	window.resize({relative=true,x=0,y=-10});event(window_targets)
-persistent	Resize	W	+Windows	-	submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..3","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 persistent	Resize	catchall	-	ignore_mods=true,release=true	no_op
 persistent	Resize	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Resize	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
@@ -1496,6 +1510,7 @@ persistent	Resize	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=t
 persistent	Resize	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Resize	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Resize	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Resize	W	+Windows	-	submap(Windows);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Focus"],["1..0","Monitor"],["[]","Floats"]],"name":"Focus"},{"keys":[["HJKL","Move"],["C-hjkl","WS"],["S-1..0","WS"]],"name":"Move"},{"keys":[["space","Select"],["s","Swap"],["Enter","Confirm"]],"name":"Select"},{"keys":[["x","Close"],["f","Float"],["p","Pseudo"],["-","Split"]],"name":"Window"},{"keys":[["r","Resize"],["m","Move"],["c","Cursor"]],"name":"Mode"}],"name":"Windows","targets":true}')
 persistent	Windows	0	Monitor 10	-	-
 persistent	Windows	1	Monitor 1	-	-
 persistent	Windows	2	Monitor 2	-	-
@@ -1561,3 +1576,10 @@ persistent	Windows	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=
 persistent	Windows	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Windows	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
 persistent	Windows	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	no_op
+persistent	Windows	SHIFT + 0	Move to WS 10	-	focus({window=address:0xa1});window.move({workspace=m~10});focus({window=address:0xa1});event(window_targets)
+persistent	Windows	SHIFT + 4	Move to WS 4	-	focus({window=address:0xa1});window.move({workspace=m~4});focus({window=address:0xa1});event(window_targets)
+persistent	Windows	SHIFT + 5	Move to WS 5	-	focus({window=address:0xa1});window.move({workspace=m~5});focus({window=address:0xa1});event(window_targets)
+persistent	Windows	SHIFT + 6	Move to WS 6	-	focus({window=address:0xa1});window.move({workspace=m~6});focus({window=address:0xa1});event(window_targets)
+persistent	Windows	SHIFT + 7	Move to WS 7	-	focus({window=address:0xa1});window.move({workspace=m~7});focus({window=address:0xa1});event(window_targets)
+persistent	Windows	SHIFT + 8	Move to WS 8	-	focus({window=address:0xa1});window.move({workspace=m~8});focus({window=address:0xa1});event(window_targets)
+persistent	Windows	SHIFT + 9	Move to WS 9	-	focus({window=address:0xa1});window.move({workspace=m~9});focus({window=address:0xa1});event(window_targets)
