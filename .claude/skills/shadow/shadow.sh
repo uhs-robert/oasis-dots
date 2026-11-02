@@ -27,6 +27,10 @@ die() {
 
 now_ms() { echo $(($(date +%s%N) / 1000000)); }
 
+# Each held wtype lasts about 66 minutes and is replaced every 50, so two always overlap.
+keyboard_hold_ms=4000000
+keyboard_renew_s=3000
+
 # Hyprland's event socket <runtime>/hypr/<62-char signature>/.socket2.sock must fit sun_path (107 chars).
 # That is 107 - len("/tmp/shadow-<uid>-") - len("/hypr/") - 62 - len("/.socket2.sock").
 max_name_len=$((107 - 13 - ${#UID} - 6 - 62 - 14))
@@ -379,9 +383,13 @@ up() {
 
   # Hyprland drops keyboard focus from an OnDemand layer (a picker) when the last keyboard leaves and does not give it
   # back when one returns. `keys` plugs a wtype keyboard in and out per call, so without this one lone keypress is lost.
-  # About 24 days, so the holder outlives any run; Shift_L is the harmless key it types when the time ends.
+  # wtype 0.4 overflows 32-bit microseconds above about 4294967 ms, so no single wtype can outlast a long run. The loop
+  # starts the next one before the last ends: both keyboards overlap, so there is never a gap. A wtype ends with one
+  # tap of Shift_L (press and release), harmless while idle.
   set_client_env
-  setsid "${client_env[@]}" wtype -s 2000000000 -k Shift_L >"$logs/keyboard.log" 2>&1 </dev/null &
+  # shellcheck disable=SC2016 # expanded by the child shell
+  setsid "${client_env[@]}" sh -c 'while :; do wtype -s "$0" -k Shift_L & sleep "$1"; done' \
+    "$keyboard_hold_ms" "$keyboard_renew_s" >"$logs/keyboard.log" 2>&1 </dev/null &
   echo "$!" >"$base/keyboard.sid"
   wait_for 100 held_keyboard_listed || die "the held keyboard never appeared; see $logs/keyboard.log"
 
