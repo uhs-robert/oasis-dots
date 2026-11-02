@@ -343,15 +343,27 @@ local function toggle_lone_flush()
   return true
 end
 
-for _, event in ipairs({
+--- Whether Hyprland has the window.update_state event (0.57 and newer). On 0.56 hl.on raises for an unknown event,
+--- which would stop the loop below. Inline rather than lib.key.bind's check, as this file has no requires; both go
+--- when 0.56 support ends.
+local has_update_state = (function()
+  local version = type(hl.version) == "function" and hl.version() or nil
+  local major, minor = tostring(version):match("^(%d+)%.(%d+)")
+  major, minor = tonumber(major), tonumber(minor)
+  return major ~= nil and (major > 0 or minor >= 57)
+end)()
+
+local release_events = {
   "window.open",
-  "window.update_state", -- a window floats or tiles
-  "window.update_rules", -- backstop for a float or tile that a rule change causes; a second release is harmless
+  "window.update_rules", -- floats and tiles on 0.56; a backstop on 0.57, where a second release is harmless
   "window.close",
   "window.destroy",
   "window.move_to_workspace",
   "window.fullscreen",
-}) do
+}
+if has_update_state then table.insert(release_events, "window.update_state") end -- a window floats or tiles
+
+for _, event in ipairs(release_events) do
   hl.on(event, function() release_stale_gapped_lones() end)
 end
 
