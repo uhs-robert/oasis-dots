@@ -297,7 +297,7 @@ class HeadlessLoadTest(TreeCase):
             "resize.reset", "resize.step",
             "scratchpad.move", "scratchpad.toggle",
             "submap.enter",
-            "system.edit_keymaps", "system.replay_autostart", "system.voxtype_restart", "system.voxtype_settings",
+            "system.edit_keymaps", "system.reload_hyprland", "system.replay_autostart", "system.voxtype_restart", "system.voxtype_settings",
             "terminal.bottom", "terminal.editor", "terminal.open", "terminal.task_manager", "terminal.tool",
             "terminal.yazi",
             "window.close", "window.cycle_float", "window.float_toggle", "window.focus",
@@ -309,7 +309,7 @@ class HeadlessLoadTest(TreeCase):
             "workspace.cycle", "workspace.focus", "workspace.focus_last", "workspace.move",
             "workspace.move_window",
         ])
-        self.assertEqual(len(listing["actions"]), 24 + len(lua_ids) + len(KEYLESS_IPC_IDS))
+        self.assertEqual(len(listing["actions"]), 23 + len(lua_ids) + len(KEYLESS_IPC_IDS))
 
     def test_the_real_tree_defines_the_keyless_ipc_actions(self):
         listing, findings = registry.load_list(REPO_DIR)
