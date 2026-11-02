@@ -66,6 +66,8 @@ require("sshfs"):setup({
 		"compression=yes",
 		"cache_timeout=300",
 		"ConnectTimeout=10",
+		"ServerAliveInterval=15",
+		"ServerAliveCountMax=3",
 		"dir_cache=no",
 		"dcache_timeout=600",
 	},
