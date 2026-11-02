@@ -7,6 +7,7 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -243,6 +244,37 @@ class Commands(unittest.TestCase):
         # main() swallows exceptions, so a crash here would only show as a silent miss.
         command = "gh pr create --body \"$(cat <<'EOF'\nIt doesn't work.\nEOF\n"
         self.assertEqual(lint.gh_bodies(command, self.root), [("pr", "It doesn't work.")])
+
+    def test_gh_command_inside_a_command_substitution(self):
+        self.assertIn("the PR body", self.bash('pr_url=$(gh pr create --body "It doesn\'t work.")'))
+        self.assertIn("the PR body", self.bash('echo "$(gh pr create --body "It doesn\'t work.")"'))
+
+    def test_heredoc_belongs_to_the_command_that_opens_it(self):
+        command = "gh pr create --body-file - <<'EOF' && echo done\nIt doesn't work.\nEOF"
+        self.assertIn("the PR body", self.bash(command))
+
+    def test_gh_command_after_another_commands_heredoc_substitution(self):
+        command = "git commit -m \"$(cat <<'EOF'\nmsg\nEOF\n)\" && gh pr create --body \"It doesn't work.\""
+        self.assertIn("the PR body", self.bash(command))
+
+    def test_gh_text_inside_an_argument_or_heredoc_body_is_not_a_command(self):
+        self.assertIsNone(self.bash('gh pr create --title "gh issue create --body should" --body "Clean."'))
+        self.assertIsNone(self.bash("gh pr create --body-file - <<'EOF'\nRun `gh issue create --body should`.\nEOF"))
+        self.assertIsNone(self.bash("cat > notes.md <<'EOF'\ngh issue create --body should\nEOF"))
+
+    def test_odd_and_long_commands_neither_crash_nor_stall(self):
+        # main() swallows exceptions, so call gh_bodies() directly to see a crash.
+        import random
+        pieces = ["gh pr create ", "--body ", "-b ", "--body-file - ", "<<'EOF'", "<<-E", "<<<", "EOF", "\n", "\\\n",
+                  "\"", "'", "$(", "(", ")", "`", "&&", "|", ";", "&", "=", "x", " "]
+        generator = random.Random(1420)
+        for _ in range(2000):
+            lint.gh_bodies("".join(generator.choice(pieces) for _ in range(30)), self.root)
+        started = time.monotonic()
+        for command in ("gh pr create " * 20000, "<<a " * 20000, "gh pr create --body \"" + "(" * 50000,
+                        "gh pr create --body-file - " + "<<a " * 20000 + "\n", "$(" * 50000, "\\\n" * 50000):
+            lint.gh_bodies(command, self.root)
+        self.assertLess(time.monotonic() - started, 5)
 
     def test_other_commands_and_bad_input_are_silent(self):
         self.assertIsNone(self.bash("ls -la"))
