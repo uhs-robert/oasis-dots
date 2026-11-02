@@ -39,6 +39,26 @@ Bind.keybinds_v2 = (function()
   return major > 0 or minor >= 57
 end)()
 
+-- The pre-0.57 branches here and in lib/key/submap.lua go after this date. Until then an older Hyprland warns at
+-- every load so a lagging machine updates first. A load without hl.version (the headless checks) stays quiet.
+local KEYBINDS_V1_REMOVAL_DATE = "2026-12-01"
+
+if not Bind.keybinds_v2 and type(hl.version) == "function" and type(hl.timer) == "function" then
+  hl.timer(
+    function()
+      hl.notification.create({
+        text = "Hyprland "
+          .. tostring(hl.version())
+          .. " support ends on "
+          .. KEYBINDS_V1_REMOVAL_DATE
+          .. ". Update to 0.57 or newer (pacman -Syu) before then, or keybinds break.",
+        timeout = 15000,
+      })
+    end,
+    { timeout = 2000, type = "oneshot" }
+  )
+end
+
 --- @param handle table  Handle returned by hl.bind
 local function remove_handle(handle)
   if Bind.keybinds_v2 then
