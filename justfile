@@ -286,11 +286,11 @@ demo-beat name:
 demo-record:
     demo/showcase.sh record
 
-# Build the stowed OasisFox TOML config (~/.config/oasisfox) into Firefox's managed storage file; OasisFox is found at $OASISFOX_DIR, default $GITHUB_DIR/personal/oasisfox (GITHUB_DIR defaults to ~/Development), and needs `just build` run there first
+# Build the stowed OasisFox TOML config (~/.config/oasisfox) into Firefox's managed storage file; OasisFox is found at $OASISFOX_DIR, default repos/oasisfox (set up by `just repos`), and needs `just build` run there first
 oasisfox-config:
     #!/usr/bin/env bash
     set -euo pipefail
-    oasisfox="${OASISFOX_DIR:-${GITHUB_DIR:-$HOME/Development}/personal/oasisfox}"
+    oasisfox="${OASISFOX_DIR:-{{ justfile_directory() }}/repos/oasisfox}"
     [[ -f $oasisfox/tools/build-config/cli.ts ]] || { echo "oasisfox-config: no OasisFox checkout at $oasisfox (set OASISFOX_DIR)" >&2; exit 1; }
     [[ -f $oasisfox/dist/commands.json ]] || { echo "oasisfox-config: run 'just build' in $oasisfox first" >&2; exit 1; }
     config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/oasisfox"
