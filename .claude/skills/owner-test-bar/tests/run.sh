@@ -757,6 +757,38 @@ code=$?
 show "$out"
 check "a swap that fails after the link moved puts Hyprland back, says it failed and how to finish, and fails" "grep -q 'hypr swap failed' <<<\"\$out\" && grep -q 'run: .*owner-test-bar.sh restore' <<<\"\$out\" && [[ $code != 0 && \$(readlink $root/hl_link) == $hl_main && ! -e $bars_dir/.hypr_orig ]]"
 
+echo "== a stale Hyprland signature in the environment"
+# hypr-live, pkill and hyprctl are stubs on PATH, so no real qs or Hyprland is touched.
+lv_bin=$root/lv_bin
+mkdir -p "$lv_bin"
+cat >"$lv_bin/hypr-live" <<'STUB'
+#!/usr/bin/env bash
+[[ -e $LV_LIVE ]] || { echo "hypr-live: none" >&2; exit 1; }
+printf 'HYPRLAND_INSTANCE_SIGNATURE=live\nXDG_RUNTIME_DIR=/run/lv\n'
+STUB
+# shellcheck disable=SC2016 # the stubs expand their variables when they run
+for stub in pkill pgrep; do
+  printf '#!/usr/bin/env bash\necho "%s $*" >>"$LV_CALLS"\nexit 1\n' "$stub" >"$lv_bin/$stub"
+done
+# shellcheck disable=SC2016
+printf '#!/usr/bin/env bash\necho "hyprctl $HYPRLAND_INSTANCE_SIGNATURE $*" >>"$LV_CALLS"\n' >"$lv_bin/hyprctl"
+chmod +x "$lv_bin"/*
+export LV_CALLS=$root/lv_calls LV_LIVE=$root/lv_live
+lv_launch() {
+  : >"$LV_CALLS"
+  HYPRLAND_INSTANCE_SIGNATURE=stale PATH="$lv_bin:$PATH" bash -c 'source "$1"; sleep() { :; }; launch "qs -n"' _ "$here/../owner-test-bar.sh" 2>&1
+}
+touch "$LV_LIVE"
+out=$(lv_launch)
+code=$?
+show "$out"
+check "a live instance is found and the relaunch runs on it" "[[ $code == 0 ]] && grep -q 'hyprctl live dispatch' '$LV_CALLS'"
+rm -f "$LV_LIVE"
+out=$(lv_launch)
+code=$?
+show "$out"
+check "with none answering it dies before stopping qs" "[[ $code != 0 ]] && grep -q 'hyprctl cannot reach Hyprland' <<<\"\$out\" && ! grep -q pkill '$LV_CALLS'"
+
 echo "== restore and remove: a failing Hyprland restore is reported and keeps the claim"
 hy_restore_fails() {
   HOME=$hy_home bash -c "$hl_env"'

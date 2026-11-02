@@ -71,7 +71,7 @@ Every PR merge goes through `.claude/skills/ship-batch/ship-batch.sh <n>...` (PR
 These apply whenever you touch the running session, from any part of the repo:
 
 - Hyprland runs a Lua config, so drive it with the Lua API: `hyprctl keyword` fails, and `hyprctl dispatch` takes an `hl.dsp.*` expression (`hyprctl dispatch "hl.dsp.exec_cmd('qs -n')"`), not a dispatcher name like `exec` or `movecursor`. Use `hyprctl eval '...'` for anything else, including `hl.config({ ... })` in place of `keyword`.
-- After a re-login `HYPRLAND_INSTANCE_SIGNATURE` in long-lived shells is stale: the live instance is the newest socket under `$XDG_RUNTIME_DIR/hypr` that answers `hyprctl monitors`.
+- After a re-login `HYPRLAND_INSTANCE_SIGNATURE` in long-lived shells is stale. Run `hypr-live` for the live signature (the newest socket under `$XDG_RUNTIME_DIR/hypr` that answers `hyprctl version`), or use `hypr-act` and the scripts that already call it.
 - Kill `qs` by PID rather than relying on `hyprctl`.
 - Test voxcmd through `home/voxcmd/tests/sandbox.sh`, never against the live desktop. Regenerate the voxcmd goldens only with the owner's sign-off.
 

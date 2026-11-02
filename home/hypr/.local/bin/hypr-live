@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Prints the signature of the live Hyprland instance, found by its socket and not trusted from the environment:
+# HYPRLAND_INSTANCE_SIGNATURE is stale in any shell, editor or bar that outlives a login.
+#   hypr-live [--probe CMD] [--owner] [--env]
+#   --probe CMD  the hyprctl command that must answer (default version)
+#   --owner      look in the owner's runtime dir when this shell runs inside a shadow (see the shadow skill), and never
+#                accept the shadow's own instance. Without it the runtime dir is $XDG_RUNTIME_DIR as it stands, so a
+#                caller inside a shadow, such as the shadow bar, keeps talking to the nested Hyprland.
+#   --env        print HYPRLAND_INSTANCE_SIGNATURE=... and XDG_RUNTIME_DIR=... lines, for a caller that exports both
+# Exit 0 with the answer on stdout, 1 with one line on stderr when no instance answers, 2 on bad usage.
+# OWNER_RUNTIME_DIR names the owner's runtime dir for the tests; it defaults to /run/user/$UID.
+set -u
+
+probe=version owner=0 want_env=0
+usage() {
+  echo "usage: hypr-live [--probe CMD] [--owner] [--env]" >&2
+  exit 2
+}
+while (($#)); do
+  case $1 in
+  --probe)
+    (($# >= 2)) || usage
+    probe=$2
+    shift 2
+    ;;
+  --owner)
+    owner=1
+    shift
+    ;;
+  --env)
+    want_env=1
+    shift
+    ;;
+  *) usage ;;
+  esac
+done
+
+runtime=${XDG_RUNTIME_DIR:-/run/user/$UID}
+in_shadow=0
+[[ $runtime == /tmp/shadow-* ]] && in_shadow=1
+# A shadow's nested Hyprland would answer every probe; the owner's session is never in that runtime dir.
+((owner && in_shadow)) && runtime=${OWNER_RUNTIME_DIR:-/run/user/$UID}
+
+answers() {
+  XDG_RUNTIME_DIR=$runtime HYPRLAND_INSTANCE_SIGNATURE=$1 timeout 3 hyprctl "$probe" >/dev/null 2>&1
+}
+
+# Only a shortcut to skip a probe that would wait out its timeout. A lock that is missing, unreadable or names a reused
+# PID counts as live, so the probe stays the one authority on whether an instance answers.
+lock_pid_gone() {
+  local pid
+  { read -r pid <"$runtime/hypr/$1/hyprland.lock"; } 2>/dev/null || return 1
+  [[ $pid =~ ^[0-9]+$ ]] && [[ ! -d /proc/$pid ]]
+}
+
+emit() {
+  if ((want_env)); then
+    echo "HYPRLAND_INSTANCE_SIGNATURE=$1"
+    echo "XDG_RUNTIME_DIR=$runtime"
+  else
+    echo "$1"
+  fi
+  exit 0
+}
+
+# The environment's own signature first, so a valid one is kept: it is cheap and it is what tests and shadow shells set.
+env_sig=${HYPRLAND_INSTANCE_SIGNATURE:-}
+if [[ -n $env_sig && $env_sig != */* ]] && ! ((owner && in_shadow)) && ! lock_pid_gone "$env_sig" && answers "$env_sig"; then
+  emit "$env_sig"
+fi
+
+# Newest by .socket.sock, as a directory's mtime moves whenever a child socket such as .hyprpaper.sock is recreated.
+while read -r socket; do
+  instance=$(basename "$(dirname "$socket")")
+  lock_pid_gone "$instance" && continue
+  answers "$instance" && emit "$instance"
+done < <(ls -1t "$runtime"/hypr/*/.socket.sock 2>/dev/null)
+
+echo "hypr-live: no Hyprland instance answered 'hyprctl $probe' under $runtime/hypr" >&2
+exit 1

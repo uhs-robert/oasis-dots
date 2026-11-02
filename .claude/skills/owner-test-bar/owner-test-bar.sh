@@ -134,10 +134,20 @@ guard_live_bar() {
   die "test bar '$live' is running and the owner may be testing it; include its branches ($(paste -sd ' ' "$bars/$live.branches")) in this bar, or pass --replace once the owner agrees"
 }
 
+# A shell that outlives a login has a stale HYPRLAND_INSTANCE_SIGNATURE, so the owner's live instance is found by its
+# socket (hypr-live, from the main checkout when it is not stowed yet) and exported for every hyprctl call after it.
+# Dies with $1 when none answers, before the caller changes anything.
+use_live_hypr() {
+  local live lines line
+  live=$(command -v hypr-live || echo "$repo/home/hypr/.local/bin/hypr-live")
+  lines=$("$live" --owner --env 2>/dev/null) || die "hyprctl cannot reach Hyprland (no instance answers 'hyprctl version'); $1"
+  # shellcheck disable=SC2163 # each line is NAME=value, which export takes whole
+  while IFS= read -r line; do export "$line"; done <<<"$lines"
+}
+
 # Launch through Hyprland so qs does not inherit this shell's TMUX environment.
 launch() {
-  # A stale HYPRLAND_INSTANCE_SIGNATURE would let pkill stop the bar and the relaunch below fail.
-  hyprctl version >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); not stopping qs"
+  use_live_hypr "not stopping qs"
   pkill -x qs || true
   for _ in $(seq 20); do
     pgrep -x qs >/dev/null || break
@@ -248,8 +258,8 @@ hypr_swap() {
     return 0
   fi
   local orig errors live
-  # hypr_point reloads through hyprctl; a stale HYPRLAND_INSTANCE_SIGNATURE would fail it after the link moved.
-  hyprctl version >/dev/null 2>&1 || die "hyprctl cannot reach Hyprland (stale HYPRLAND_INSTANCE_SIGNATURE?); hypr link untouched"
+  # hypr_point reloads through hyprctl; a dead instance would fail it after the link moved.
+  use_live_hypr "hypr link untouched"
   orig=$(readlink "$hypr_link") || die "$hypr_link is not a symlink; refusing the hypr swap"
   copy_ignored_files "$dir" "$hypr_rel"
   require_machine_profile "$dir"

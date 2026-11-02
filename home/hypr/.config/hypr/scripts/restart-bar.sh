@@ -10,8 +10,10 @@ shopt -s extglob
 # Exits non-zero without starting a bar when the old one survives SIGKILL (stuck in D-state): `qs -n` would refuse to
 # start and exit silently.
 # `start` launches the bar through Hyprland (`hyprctl dispatch`), so it outlives the caller, and fails unless a bar is up
-# within a few seconds; it needs a HYPRLAND_INSTANCE_SIGNATURE that answers. Without an argument the bar is exec'd in the
-# caller's own environment, as the keybind needs.
+# within a few seconds. Without an argument the bar is exec'd in the caller's own environment, as the keybind needs.
+# The caller's HYPRLAND_INSTANCE_SIGNATURE is stale in a shell that outlives a login, so every mode finds the live
+# instance with hypr-live first and exports it, which the exec'd bar then inherits. When none answers, the old bar is
+# left running and the exit is non-zero: stopping it first left no bar at all (#969).
 
 # `qs list` shows only the owner's default-config instances (no test or shadow bars), and still finds a bar whose
 # command line a crash turned into plain `quickshell`.
@@ -45,6 +47,17 @@ fail() {
   exit 1
 }
 
+# hypr-live is on PATH once stowed; the path beside this script's link target serves a checkout that is not stowed yet.
+hypr_live=$(command -v hypr-live || echo "$(dirname "$(readlink -f "$0")")/../../../.local/bin/hypr-live")
+
+# Exports the live signature and runtime dir, or fails with $1 saying what was left alone.
+use_live_hypr() {
+  local lines line
+  lines=$("$hypr_live" --env 2>/dev/null) || fail "no live Hyprland answers; $1" "Bar restart skipped"
+  # shellcheck disable=SC2163 # each line is NAME=value, which export takes whole
+  while IFS= read -r line; do export "$line"; done <<<"$lines"
+}
+
 stop_bar() {
   bar_pids | xargs -r kill
   if ! wait_gone "$grace"; then
@@ -65,10 +78,19 @@ start_bar() {
 }
 
 case ${1:-} in
-stop) stop_bar ;;
-start) start_bar ;;
-'')
+stop)
+  use_live_hypr "the bar was left running"
   stop_bar
+  ;;
+start)
+  use_live_hypr "no bar was started"
+  start_bar
+  ;;
+'')
+  use_live_hypr "the bar was left running"
+  stop_bar
+  # Hyprland can exit while the old bar dies; a bar started on a dead instance has no desktop to attach to.
+  use_live_hypr "the old bar is stopped and no bar was started"
   exec qs -n
   ;;
 *)
