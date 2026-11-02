@@ -248,6 +248,7 @@ host_output_listed() {
   return 1
 }
 
+held_keyboard_listed() { shadow_hyprctl devices -j 2>/dev/null | jq -e '.keyboards | length > 0' >/dev/null; }
 hypr_socket_ready() { compgen -G "$runtime/hypr/*/.socket.sock" >/dev/null; }
 output_listed() { shadow_hyprctl monitors "$@" -j 2>/dev/null | grep -q '"WAYLAND-1"'; }
 
@@ -376,8 +377,15 @@ up() {
   shadow_hyprctl instances -j | jq -r --arg s "$(<"$base/signature")" '.[] | select(.instance == $s) | .wl_socket' >"$base/wl-socket"
   local t_hypr=$(($(now_ms) - t0))
 
-  # Launched as qs-shadow, so pgrep -x qs, pkill -x qs and pgrep -af '^qs ' (owner-test-bar, git hooks) never match it.
+  # Hyprland drops keyboard focus from an OnDemand layer (a picker) when the last keyboard leaves and does not give it
+  # back when one returns. `keys` plugs a wtype keyboard in and out per call, so without this one lone keypress is lost.
+  # About 24 days, so the holder outlives any run; Shift_L is the harmless key it types when the time ends.
   set_client_env
+  setsid "${client_env[@]}" wtype -s 2000000000 -k Shift_L >"$logs/keyboard.log" 2>&1 </dev/null &
+  echo "$!" >"$base/keyboard.sid"
+  wait_for 100 held_keyboard_listed || die "the held keyboard never appeared; see $logs/keyboard.log"
+
+  # Launched as qs-shadow, so pgrep -x qs, pkill -x qs and pgrep -af '^qs ' (owner-test-bar, git hooks) never match it.
   setsid "${client_env[@]}" "$bin_dir/qs-shadow" -p "$qs_dir" >"$logs/qs.log" 2>&1 </dev/null &
   echo "$!" >"$base/qs.sid"
   wait_for 400 grep -q 'Configuration Loaded' "$logs/qs.log" || die "the bar did not load; see $logs/qs.log"
@@ -583,7 +591,7 @@ status_one() {
   echo "$name: up, ${#pids[@]} processes, $(pss_mb "${pids[@]}") MB PSS, size $(cat "$base/size" 2>/dev/null || echo unknown), source $source"
   echo "  runtime $runtime, signature $(cat "$base/signature" 2>/dev/null || echo none)"
   local component sid
-  for component in qs hypr host bus; do
+  for component in qs keyboard hypr host bus; do
     sid=$(cat "$base/$component.sid" 2>/dev/null || true)
     if [[ -n $sid ]] && pgrep -s "$sid" >/dev/null; then echo "  $component: running (session $sid)"; else echo "  $component: not running"; fi
   done
@@ -631,7 +639,7 @@ teardown() {
     component=${sid_file##*/}
     kill_session "${component%.sid}"
   done
-  for component in qs hypr host bus; do kill_session "$component"; done
+  for component in qs keyboard hypr host bus; do kill_session "$component"; done
   if mountpoint -q "$runtime/gvfs" 2>/dev/null; then fusermount -u "$runtime/gvfs" || fusermount -uz "$runtime/gvfs"; fi
   # Strays outside the recorded sessions (a service the bus activated, a daemonized child) get one sweep.
   for pid in $(shadow_pids); do
