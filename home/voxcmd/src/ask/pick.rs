@@ -176,6 +176,8 @@ pub fn run(
     let (choices, expansions) = prepare(choices_json, expansions_json.unwrap_or_default())
         .map_err(|message| CliError::usage("ask pick", message))?;
     let mut asking = Asking::create("pick")?;
+    // qs-picker hides whether the bar or the rofi fallback shows the question, so the bar is watched either way.
+    asking.watch_bar();
     let picked = ask(&mut asking, &signals, listen, label, &choices, &expansions);
     let Ok(picked) = picked else {
         return Err(CliError::quiet("ask pick"));

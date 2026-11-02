@@ -76,6 +76,9 @@ fn ask(
             asking.fifo.as_os_str(),
         ]) == "ok";
     signals.check()?;
+    if bar_took_it {
+        asking.watch_bar();
+    }
     let mut rofi = None;
     // The card cancels itself after 10 seconds without an answer, waiting while voice is heard; this only covers a
     // bar that dies mid-question.

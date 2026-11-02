@@ -1,0 +1,4 @@
+#!/bin/sh
+# rofi for tests/ask.rs: answers "Yes" on stdout after $GOLDEN_ROFI_DELAY seconds, as a user picking it.
+sleep "${GOLDEN_ROFI_DELAY-0}"
+printf 'Yes\n'

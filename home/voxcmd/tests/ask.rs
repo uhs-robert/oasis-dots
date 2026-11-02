@@ -118,7 +118,7 @@ impl Bar {
         for name in ["qs-ipc", "qs-picker"] {
             std::os::unix::fs::symlink(stub(name), bar.scripts().join(name)).unwrap();
         }
-        for name in ["notify-send", "pgrep"] {
+        for name in ["notify-send", "pgrep", "rofi"] {
             std::os::unix::fs::symlink(stub(name), bar.path().join("bin").join(name)).unwrap();
         }
         bar
@@ -729,4 +729,23 @@ fn term_while_the_bar_lives_cleans_up_once_and_leaves_no_reader() {
     assert!(readers_left(&bar).is_empty(), "{:?}", readers_left(&bar));
     let _ = qs.kill();
     let _ = qs.wait();
+}
+
+#[test]
+fn a_confirm_rofi_answers_is_not_cancelled_by_a_bar_that_is_gone() {
+    let bar = Bar::new();
+    let mut qs = fake_bar(bar.path());
+    let pid = qs.id().to_string();
+    let _ = qs.kill();
+    let _ = qs.wait();
+    // The bar refuses the card, so rofi shows it and answers after two polls would have run.
+    let (code, _, err) = finish(bar.spawn(
+        &["ask", "confirm", "Close it?"],
+        &[
+            ("GOLDEN_OPEN", "refused"),
+            ("GOLDEN_BAR_PID", &pid),
+            ("GOLDEN_ROFI_DELAY", "2.5"),
+        ],
+    ));
+    assert_eq!(code, 0, "cancelled although rofi showed it: {err}");
 }
