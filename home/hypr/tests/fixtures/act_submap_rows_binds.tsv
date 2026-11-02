@@ -199,7 +199,7 @@ default	System	D	DNS (doggo)	-	exec_cmd(kitty --single-instance --class bottom-h
 default	System	E	Logout	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm logout);submap(reset)
 default	System	ESCAPE	Exit System	-	submap(reset)
 default	System	G	Ping (gping)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
-default	System	H	Reload Hyprland	-	exec_cmd(hyprctl reload);submap(reset)
+default	System	H	Reload Hyprland	-	reload_config;submap(reset)
 default	System	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	System	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	System	J	Journal (lazyjournal)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e lazyjournal);submap(reset)
@@ -434,7 +434,7 @@ no-leader	System	D	DNS (doggo)	-	exec_cmd(kitty --single-instance --class bottom
 no-leader	System	E	Logout	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call power confirm logout);submap(reset)
 no-leader	System	ESCAPE	Exit System	-	submap(reset)
 no-leader	System	G	Ping (gping)	-	exec_cmd(kitty --single-instance --class bottom-half-screen);submap(reset)
-no-leader	System	H	Reload Hyprland	-	exec_cmd(hyprctl reload);submap(reset)
+no-leader	System	H	Reload Hyprland	-	reload_config;submap(reset)
 no-leader	System	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	System	J	Journal (lazyjournal)	-	exec_cmd(kitty --single-instance --class bottom-half-screen -e lazyjournal);submap(reset)
