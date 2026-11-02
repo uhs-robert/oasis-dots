@@ -23,7 +23,8 @@ Act.define("system.restart_bar", {
 Act.define("system.reload_hyprland", {
   label = "Reload Hyprland",
   intent = "Reload the Hyprland configuration.",
-  run = Cmd("hyprctl", "reload"),
+  -- In-process, so the reload does not depend on the shell's HYPRLAND_INSTANCE_SIGNATURE, which a re-login stales.
+  run = function() hl.dispatch(hl.dsp.reload_config()) end,
 })
 
 Act.define("system.reload_plugins", {
