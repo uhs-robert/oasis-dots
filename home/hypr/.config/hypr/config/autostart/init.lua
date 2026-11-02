@@ -15,12 +15,14 @@ local function run()
   os.execute("systemctl --user start gnome-keyring-daemon.socket")
   os.execute("gnome-keyring-daemon --start --components=secrets,ssh")
   os.execute("dbus-update-activation-environment --systemd GNOME_KEYRING_CONTROL SSH_AUTH_SOCK")
-  -- A tmux server outlives logout, so its global environment keeps the last session's values. Never starts a server.
-  -- SSH_AUTH_SOCK comes from the systemd user environment, which the line above just filled.
+  -- A tmux server outlives logout, so its environment keeps the last session's values. Never starts a server.
+  -- Hyprland's own value wins; the systemd user environment only fills in what Hyprland lacks (SSH_AUTH_SOCK, set just above).
+  -- Session-level copies (tmux's update-environment on attach) beat the global value in new panes, so drop them in every session.
   os.execute(
     [[tmux has-session 2>/dev/null && for v in HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS SSH_AUTH_SOCK; do ]]
       .. [[val=$(printenv "$v" || systemctl --user show-environment | sed -n "s/^$v=//p"); ]]
-      .. [[[ -n "$val" ] && tmux set-environment -g "$v" "$val"; done]]
+      .. [[[ -n "$val" ] && tmux set-environment -g "$v" "$val" && ]]
+      .. [[for s in $(tmux list-sessions -F '#{session_id}'); do tmux set-environment -u -t "$s" "$v"; done; done]]
   )
   hl.exec_cmd("~/.config/hypr/scripts/power.sh watch")
   -- Guards machines that still have swaync installed: D-Bus activation would otherwise respawn it and steal notifications from qs.

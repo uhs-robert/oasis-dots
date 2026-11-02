@@ -40,13 +40,18 @@ if [[ -o interactive && -n "$HYPRLAND_INSTANCE_SIGNATURE" && -z "$NO_FASTFETCH" 
   fi
 fi
 
-# Inside tmux, a re-login leaves a dead Hyprland signature. Adopt the values Hyprland pushed to tmux's global environment.
-# The socket test keeps the common case subprocess-free and leaves shells with a live (e.g. shadow) signature alone.
+# Inside tmux, a re-login leaves a dead Hyprland signature. Adopt the values Hyprland pushed to tmux.
+# Hyprland's hyprland.lock holds the instance PID on its first line. A leftover socket file survives a crash, so test the PID
+# in /proc (no subprocess) and leave shells with a live instance (for example a shadow bar shell) alone.
 _tmux_refresh_hypr_env() {
-  [[ -n $HYPRLAND_INSTANCE_SIGNATURE && -S $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket.sock ]] && return
+  [[ -n $HYPRLAND_INSTANCE_SIGNATURE && -n $XDG_RUNTIME_DIR ]] || return # SSH or TTY attach: no desktop to follow
+  local lock=$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprland.lock
+  [[ -r $lock ]] && local -a lock_lines=("${(@f)$(<$lock)}") && [[ -d /proc/${lock_lines[1]:-x} ]] && return
   local var line
   for var in HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS SSH_AUTH_SOCK; do
-    line=$(tmux show-environment -g $var 2>/dev/null) || continue
+    # A session value beats the global one in new panes, so read the same order.
+    line=$(tmux show-environment $var 2>/dev/null)
+    [[ $line == $var=?* ]] || line=$(tmux show-environment -g $var 2>/dev/null)
     [[ $line == $var=?* ]] && export "$line"
   done
 }
