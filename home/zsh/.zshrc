@@ -40,6 +40,21 @@ if [[ -o interactive && -n "$HYPRLAND_INSTANCE_SIGNATURE" && -z "$NO_FASTFETCH" 
   fi
 fi
 
+# Inside tmux, a re-login leaves a dead Hyprland signature. Adopt the values Hyprland pushed to tmux's global environment.
+# The socket test keeps the common case subprocess-free and leaves shells with a live (e.g. shadow) signature alone.
+_tmux_refresh_hypr_env() {
+  [[ -n $HYPRLAND_INSTANCE_SIGNATURE && -S $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket.sock ]] && return
+  local var line
+  for var in HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS SSH_AUTH_SOCK; do
+    line=$(tmux show-environment -g $var 2>/dev/null) || continue
+    [[ $line == $var=?* ]] && export "$line"
+  done
+}
+if [[ -o interactive && -n $TMUX ]]; then
+  autoload -Uz add-zsh-hook
+  add-zsh-hook precmd _tmux_refresh_hypr_env
+fi
+
 # zsh-vi-mode: keep normal blinking terminal cursor
 function zvm_config() {
   ZVM_NORMAL_MODE_CURSOR=$ZVM_CURSOR_BLINKING_BLOCK
