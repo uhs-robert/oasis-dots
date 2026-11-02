@@ -38,12 +38,10 @@ ING_NOT_VERB = {"during", "including", "according", "nothing", "something", "any
                 "building", "padding", "spacing", "warning", "warnings", "logging", "naming", "routing", "testing"}
 
 # `gh` must start a shell word: at the start, after a blank, `(`, `=`, an operator or a backtick.
-GH_BODY_COMMAND_START = r"(?<![^\s(=;&|`])gh(?:\s|\\\n)+(?P<kind>pr|issue)(?:\s|\\\n)+(?:create|edit)\b"
-GH_BODY_COMMAND = re.compile(GH_BODY_COMMAND_START)
+GH_BODY_COMMAND = re.compile(r"(?<![^\s(=;&|`])gh(?:\s|\\\n)+(?P<kind>pr|issue)(?:\s|\\\n)+(?:create|edit)\b")
 GIT_COMMIT_COMMAND = re.compile(r"\bgit\b(?:\s+-C\s+\S+)?[^|;&\n]*?\bcommit\b")
 # `<<<` is a here-string, not a heredoc.
 HEREDOC_OPENER = re.compile(r"(?<!<)<<(?!<)(?P<dash>-?)[ \t]*(?P<quote>['\"]?)(?P<delimiter>\w+)(?P=quote)")
-GH_COMMAND_OR_HEREDOC = re.compile(GH_BODY_COMMAND_START + "|" + HEREDOC_OPENER.pattern)
 # CommonMark HTML blocks of kind 6 end at a blank line. Kind 1 (pre, script, style, textarea) ends at its close tag.
 HTML_BLOCK_TAGS = (
     "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|"
@@ -296,13 +294,12 @@ def heredoc_bodies(command, newline, openers, bodies_end_by_line):
 
 def read_gh_command(command, start, bodies_end_by_line):
     """Read the shell words of the command at `start`, up to the first unquoted operator, newline or closing
-    `)`. Returns (words, heredocs, end, later_bodies). `heredocs` maps a word index to the body of a heredoc
+    `)`. Returns (words, heredocs, end). `heredocs` maps a word index to the body of a heredoc
     opened inside that word, as in `--body "$(cat <<'EOF'`, and None to the command's own stdin heredoc.
-    `later_bodies` is the (start, end) span of heredoc bodies that the shell reads after `end`, or None."""
+    The bodies it reads are noted in `bodies_end_by_line`, so the caller skips them at the newline."""
     words, heredocs, openers = [], {}, []
     word, in_word = [], False
     nesting = []  # open quotes and substitutions, innermost last: "'", '"' or "("
-    later_bodies = None
     index = start
 
     def end_word():
@@ -349,7 +346,6 @@ def read_gh_command(command, start, bodies_end_by_line):
         if char == "\n" and openers:
             after = take_bodies(index)
             if inner is None:
-                later_bodies = (index + 1, after)
                 break
             # Inside `$(`, the shell reads on after the bodies, up to the closing `)`.
             word.append(char)
@@ -380,6 +376,8 @@ def read_gh_command(command, start, bodies_end_by_line):
             word.append(char)
         elif char in " \t":
             end_word()
+        elif char == "#" and not word and not in_word:
+            break  # a comment ends the command
         elif char in ";|\n)`" or (char == "&" and command[index - 1] not in "<>"):
             break
         else:
@@ -390,8 +388,8 @@ def read_gh_command(command, start, bodies_end_by_line):
         # The command ended before its line did, as in `<<'EOF' && echo done`: the bodies follow that line.
         newline = command.find("\n", index)
         if newline != -1:
-            later_bodies = (newline + 1, take_bodies(newline))
-    return words, heredocs, index, later_bodies
+            take_bodies(newline)
+    return words, heredocs, index
 
 
 def gh_command_body(words, heredocs, cwd):
@@ -414,49 +412,115 @@ def gh_command_body(words, heredocs, cwd):
 def read_body_file(value, cwd):
     try:
         return pathlib.Path(cwd, os.path.expanduser(value)).read_text(encoding="utf-8")
-    except OSError:
+    except (OSError, ValueError):  # ValueError: a NUL byte in the path
         return None
 
 
+def piped_in(command, index):
+    """Whether a single `|` comes right before index, blanks aside."""
+    before = index - 1
+    while before >= 0 and command[before] in " \t":
+        before -= 1
+    return before >= 0 and command[before] == "|" and (before == 0 or command[before - 1] != "|")
+
+
 def gh_bodies(command, cwd):
-    """The (kind, body) of every `gh pr|issue create|edit` in a command. It finds each such command wherever
-    it starts, also inside `$(...)` or after another command, and reads only that command's own words. Text before
-    the command is not parsed, so a stray quote there cannot hide it. Text inside an already-read gh
-    command and every heredoc body is not searched, because it is data, not commands."""
-    bodies, bodies_end_by_line, position = [], {}, 0
-    heredoc_spans = []  # (start, end) spans of heredoc bodies, in text order, overlapping spans merged
+    """The (kind, body) of every `gh pr|issue create|edit` in a command. It walks the command once and tracks
+    quotes, `$(...)`, arithmetic, comments and heredoc bodies, so it finds a gh command or a heredoc only
+    where the shell runs one: also inside `$(...)` or after another command, but not in quoted text, a
+    comment or a body. Each gh command reads only its own words, so text before it cannot hide it."""
+    bodies, bodies_end_by_line = [], {}
+    # Open contexts, innermost last: "'", '"', "(" for a command substitution or subshell, "((" for arithmetic
+    # and "a(" for a parenthesis inside arithmetic.
+    nesting = []
+    line_openers = []  # (delimiter, strip_tabs) of other commands' heredocs opened on the current line
+    last_line_body = None  # body of the last heredoc of another command on this line, for `cat <<EOF | gh ...`
+    index = 0
 
-    def skip(span):
-        if heredoc_spans and span[0] <= heredoc_spans[-1][1]:
-            heredoc_spans[-1] = (heredoc_spans[-1][0], max(heredoc_spans[-1][1], span[1]))
-        else:
-            heredoc_spans.append(span)
+    def take_line_bodies(newline):
+        nonlocal line_openers, last_line_body
+        line_bodies, _ = heredoc_bodies(command, newline, line_openers, bodies_end_by_line)
+        last_line_body = line_bodies[-1]
+        line_openers = []
 
-    while True:
-        match = GH_COMMAND_OR_HEREDOC.search(command, position)
-        if not match:
-            return bodies
-        while heredoc_spans and heredoc_spans[0][1] <= match.start():
-            heredoc_spans.pop(0)
-        if heredoc_spans and heredoc_spans[0][0] <= match.start():
-            position = heredoc_spans[0][1]
+    while index < len(command):
+        char = command[index]
+        inner = nesting[-1] if nesting else None
+        if inner == "'":
+            closing = command.find("'", index)
+            index = len(command) if closing == -1 else closing + 1
+            nesting.pop()
             continue
-        other_heredoc = match.group("delimiter")
-        if other_heredoc:
-            newline = command.find("\n", match.end())
-            if newline == -1:
-                return bodies
-            _, after = heredoc_bodies(command, newline, [(other_heredoc, match.group("dash") == "-")], bodies_end_by_line)
-            skip((newline + 1, after))
-            position = match.end()
+        if char == "\\":
+            index += 2
             continue
-        words, heredocs, end, later_bodies = read_gh_command(command, match.start(), bodies_end_by_line)
-        body = gh_command_body(words, heredocs, cwd)
-        if body:
-            bodies.append((match.group("kind"), body))
-        if later_bodies:
-            skip(later_bodies)
-        position = max(end, match.end())
+        if inner == '"':
+            if char == '"':
+                nesting.pop()
+            elif command.startswith("$((", index):
+                nesting.append("((")
+                index += 2
+            elif command.startswith("$(", index):
+                nesting.append("(")
+                index += 1
+            index += 1
+            continue
+        if inner in ("((", "a("):
+            # Arithmetic: `<<` is a shift and quotes are rare, so only the parentheses count.
+            if char == "(":
+                nesting.append("a(")
+            elif char == ")":
+                if inner == "a(":
+                    nesting.pop()
+                elif command.startswith("))", index):
+                    nesting.pop()
+                    index += 1
+            index += 1
+            continue
+        if char == "\n":
+            if line_openers:
+                take_line_bodies(index)
+            last_line_body = None
+            index = bodies_end_by_line.get(index, index + 1)
+            continue
+        if char == "#" and (index == 0 or command[index - 1] in " \t\n;&|("):
+            comment_end = command.find("\n", index)
+            index = len(command) if comment_end == -1 else comment_end
+            continue
+        opener = HEREDOC_OPENER.match(command, index) if char == "<" else None
+        if opener:
+            line_openers.append((opener.group("delimiter"), opener.group("dash") == "-"))
+            index = opener.end()
+            continue
+        gh_command = GH_BODY_COMMAND.match(command, index) if char == "g" else None
+        if gh_command:
+            newline = command.find("\n", index)
+            # The bodies of heredocs opened earlier on the line come first, so read them before the gh command
+            # reads its own.
+            if line_openers and newline != -1:
+                take_line_bodies(newline)
+            words, heredocs, end = read_gh_command(command, index, bodies_end_by_line)
+            if last_line_body is not None and piped_in(command, index):
+                heredocs.setdefault(None, last_line_body)
+            body = gh_command_body(words, heredocs, cwd)
+            if body:
+                bodies.append((gh_command.group("kind"), body))
+            index = max(end, gh_command.end())
+            continue
+        if command.startswith(("$((", "(("), index):
+            nesting.append("((")
+            index = command.index("((", index) + 2
+            continue
+        if command.startswith("$(", index) or char == "(":
+            nesting.append("(")
+            index += 2 if char == "$" else 1
+            continue
+        if char in "'\"":
+            nesting.append(char)
+        elif char == ")" and nesting:
+            nesting.pop()
+        index += 1
+    return bodies
 
 
 def gh_body_hits(command, cwd, filler):
