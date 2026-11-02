@@ -5,10 +5,10 @@
 local Act = require("lib.act") ---@class ActionLib
 local Json = require("lib.json") ---@class Json
 
--- Tags kept on the windows themselves, as a reload keeps their border overrides but starts this module afresh.
--- SELECTED_TAG marks a window wearing the selection border; PINNED_TAG one whose colours were put back by hand.
+-- Kept on the window itself, as a reload keeps window tags but starts this module afresh. A window rule matching it
+-- draws the selection border, so adding or removing the tag is all a selection change does to the border.
 local SELECTED_TAG = "targets_selected"
-local PINNED_TAG = "targets_border_pinned"
+local BORDER_RULE = "targets_selected_border"
 
 --- Selected addresses in the order they were selected, so actions and Quickshell's numbers follow that order.
 --- @type string[]
@@ -58,33 +58,10 @@ local function has_tag(window, tag)
 end
 
 --- @param addr string
---- @param prop string
---- @param value string
-local function set_prop(addr, prop, value)
-  hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. addr, prop = prop, value = value }))
-end
-
---- @param addr string
 --- @param tag string
 --- @param on boolean
 local function tag_window(addr, tag, on)
   hl.dispatch(hl.dsp.window.tag({ window = "address:" .. addr, tag = (on and "+" or "-") .. tag }))
-end
-
---- A border colour from the config (a gradient table, or a plain value) as a `set_prop` value. Hyprland 0.57's
---- set_prop silently drops a value it cannot read: "0xAARRGGBB" (how the config hands colours back) beside an angle,
---- and an angle after a single colour. So each colour becomes "rgba(RRGGBBAA)" and only a real gradient gets its angle.
---- @param value any
---- @return string
-local function gradient_text(value)
-  if type(value) ~= "table" then return tostring(value) end
-  local parts = {}
-  for _, colour in ipairs(value.colors or {}) do
-    local alpha, rgb = tostring(colour):match("^0[xX](%x%x)(%x%x%x%x%x%x)$")
-    parts[#parts + 1] = alpha and ("rgba(" .. rgb:lower() .. alpha:lower() .. ")") or tostring(colour)
-  end
-  if #parts > 1 then parts[#parts + 1] = tostring(math.floor((value.angle or 0) + 0.5)) .. "deg" end
-  return table.concat(parts, " ")
 end
 
 --- The theme's secondary colour as Hyprland reads it; the palette holds "#rrggbb".
@@ -95,27 +72,25 @@ local function selection_colour()
   return "rgba(" .. hex:gsub("^#", ""):lower() .. "ff)"
 end
 
---- Give a window the selection border: twice the configured width, in the secondary colour.
---- @param addr string
-local function mark(addr)
-  local width = tonumber(hl.get_config("general.border_size")) or 2
-  local colour = selection_colour()
-  set_prop(addr, "border_size", tostring(math.max(2, 2 * width)))
-  set_prop(addr, "active_border_color", colour)
-  set_prop(addr, "inactive_border_color", colour)
-  tag_window(addr, SELECTED_TAG, true)
-end
+-- What the border rule was last registered with, so the config event, which fires on every config change, only
+-- touches the rule when its width or colour moved.
+local registered_border = nil
 
---- Take the selection border off a window. The width override can be unset; a colour override cannot (Hyprland 0.57
---- ignores "unset" for it), so the colours are set to the configured ones and the window is tagged to follow them when
---- they change (see Selection.follow_config).
---- @param addr string
-local function unmark(addr)
-  set_prop(addr, "border_size", "unset")
-  set_prop(addr, "active_border_color", gradient_text(hl.get_config("general.col.active_border")))
-  set_prop(addr, "inactive_border_color", gradient_text(hl.get_config("general.col.inactive_border")))
-  tag_window(addr, SELECTED_TAG, false)
-  tag_window(addr, PINNED_TAG, true)
+--- Register (or, by its name, update) the rule that draws the selection border: twice the configured width, in the
+--- secondary colour. Two colours in `border_color` set the active and the inactive border.
+local function register_border_rule()
+  local configured = hl.get_config("general.border_size")
+  local width = math.max(2, 2 * (tonumber(configured) or 2))
+  local colour = selection_colour()
+  local key = width .. " " .. colour
+  if key == registered_border then return end
+  registered_border = key
+  hl.window_rule({
+    name = BORDER_RULE,
+    match = { tag = SELECTED_TAG },
+    border_color = colour .. " " .. colour,
+    border_size = width,
+  })
 end
 
 --- Send the selection to Quickshell.
@@ -158,10 +133,10 @@ function Selection.toggle()
   local index = index_of(addr)
   if index then
     table.remove(SELECTED, index)
-    unmark(addr)
+    tag_window(addr, SELECTED_TAG, false)
   else
     SELECTED[#SELECTED + 1] = addr
-    mark(addr)
+    tag_window(addr, SELECTED_TAG, true)
   end
   send()
 end
@@ -171,7 +146,7 @@ end
 function Selection.clear()
   if #SELECTED == 0 then return end
   for _, addr in ipairs(SELECTED) do
-    unmark(addr)
+    tag_window(addr, SELECTED_TAG, false)
   end
   SELECTED = {}
   send()
@@ -182,7 +157,7 @@ end
 --- cannot outlast the visit.
 function Selection.resync()
   for _, addr in ipairs(SELECTED) do
-    unmark(addr)
+    tag_window(addr, SELECTED_TAG, false)
   end
   SELECTED = {}
   send()
@@ -192,16 +167,16 @@ end
 --- @return integer
 function Selection.generation() return GENERATION end
 
---- Keep the borders in step with the config, on every config change (a reload, or the screen frame setting widths and
---- colours): a window still selected gets its border again at the new width, one tagged selected by a Lua state a
---- reload replaced loses it, and a pinned one takes the new colours. Hooked once per config load by Submap.define.
+--- Keep the border rule in step with the config, on every config change (a reload, or the screen frame setting widths
+--- and colours), and take the tag off a window that a Lua state a reload replaced left selected. Hooked once per config
+--- load by Submap.define.
 function Selection.follow_config()
+  register_border_rule()
   hl.on("config.props_refreshed", function()
+    register_border_rule()
     for _, window in ipairs(hl.get_windows() or {}) do
-      if index_of(window.address) then
-        mark(window.address)
-      elseif has_tag(window, SELECTED_TAG) or has_tag(window, PINNED_TAG) then
-        unmark(window.address)
+      if has_tag(window, SELECTED_TAG) and not index_of(window.address) then
+        tag_window(window.address, SELECTED_TAG, false)
       end
     end
   end)
