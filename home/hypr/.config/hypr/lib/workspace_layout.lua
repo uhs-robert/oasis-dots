@@ -42,7 +42,9 @@ end
 --- @param cfg table
 --- @param connected integer Number of connected monitors
 --- @return boolean
-function Layout.is_single(cfg, connected) return connected == 1 and cfg.single_monitor_workspaces ~= nil end
+function Layout.is_single(cfg, connected)
+  return cfg.persistent_workspaces and connected == 1 and cfg.single_monitor_workspaces ~= nil or false
+end
 
 --- First and last workspace a slot owns.
 --- @param cfg table

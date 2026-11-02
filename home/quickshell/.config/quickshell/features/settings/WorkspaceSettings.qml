@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import qs.core
 
 // How many persistent workspaces a monitor gets, saved in workspaces.json under the Hyprland state dir.
@@ -24,6 +25,15 @@ Singleton {
     }
 
     Component.onCompleted: live_proc.running = true
+
+    // A reload can change the profile's counts or turn persistent workspaces off.
+    Connections {
+        target: Hyprland
+
+        function onRawEvent(event) {
+            if (event.name === "configreloaded") live_proc.running = true;
+        }
+    }
 
     Process {
         id: live_proc

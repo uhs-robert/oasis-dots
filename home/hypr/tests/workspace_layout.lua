@@ -102,6 +102,9 @@ check(
 )
 check("no monitors, no moves", moves({}, on(HP, 1, 3)) == "")
 
+-- Global workspaces have no single-monitor range, so sessions keep folding monitors.
+check("global workspaces are never single", not Layout.is_single({ persistent_workspaces = false, single_monitor_workspaces = 10 }, 1))
+
 -- Saved counts.
 local function write_state(text)
 	local f = assert(io.open(state_dir .. "/workspaces.json", "w"))
