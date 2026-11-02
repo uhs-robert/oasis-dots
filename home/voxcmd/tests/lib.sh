@@ -60,6 +60,19 @@ process_running() { [[ -e /proc/$1 && $(awk '{print $3}' "/proc/$1/stat" 2>/dev/
 process_gone() { ! process_running "$1"; }
 # An empty PID, a lookup that found nothing, fails at once rather than waiting out the bound.
 wait_until_gone() { [ -n "$1" ] && wait_until process_gone "$1"; }
+# start_fake_asker <kind>: starts, in the background, a process whose command line is `voxcmd ask <kind>`, which is how a
+# live asker is known, and sets fake_asker_pid once /proc shows that line (until then it is still the starting bash's).
+# `exec -a` sets the name and a script called `ask` is what `voxcmd ask ...` runs. The script loops rather than exec-ing
+# sleep, which would rename the process.
+start_fake_asker() {
+  local dir
+  dir=$(mktemp -d "$root/fake-asker.XXXXXX")
+  printf 'while :; do sleep 0.5; done\n' >"$dir/ask"
+  (cd "$dir" && exec -a voxcmd bash ask "$1") &
+  fake_asker_pid=$!
+  wait_until fake_asker_named "$fake_asker_pid" "$1"
+}
+fake_asker_named() { [[ $(tr '\0' ' ' <"/proc/$1/cmdline" 2>/dev/null) == "voxcmd ask $2 " ]]; }
 # logged_processes_gone <sed pattern>: every process whose PID voxcmd's debug log names in the pattern's \1 is gone.
 # voxcmd logs each watcher it starts and each ended hook it runs before it exits, so once the logged watchers are gone
 # no line naming another is still to come.

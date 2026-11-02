@@ -679,11 +679,9 @@ kill -TERM "$waiter_pid"
 wait "$waiter_pid" || true
 rm -f "$XDG_RUNTIME_DIR/voxtype/state"
 
-# Replies: the pending state of a waiting hints picker, owned by a process whose command line names voxcmd-hints.
-waiter=$root/voxcmd-hints
-cp /bin/sleep "$waiter"
-"$waiter" 60 &
-waiter_pid=$!
+# Replies: the pending state of a waiting hints picker, owned by a process whose command line is `voxcmd ask hints`.
+start_fake_asker hints
+waiter_pid=$fake_asker_pid
 reply_fifo=$root/reply-fifo
 mkfifo "$reply_fifo"
 listen_again=$root/listen-again
@@ -714,9 +712,8 @@ rm -f "$XDG_RUNTIME_DIR/voxcmd/pending-pick.json"
 # ---- narrowing replies by box position ------------------------------------------------------------------------------
 
 section "direction replies"
-waiter=$root/voxcmd-hints
-"$waiter" 60 &
-waiter_pid=$!
+start_fake_asker hints
+waiter_pid=$fake_asker_pid
 # Four boxes: two on the top row (the right one a few pixels lower), one lower left, one far lower right.
 jq -n -c --argjson pid "$waiter_pid" --arg fifo "$reply_fifo" \
   '{pid: $pid, fifo: $fifo, label: "Which one?", kind: "hints", expansions: {},

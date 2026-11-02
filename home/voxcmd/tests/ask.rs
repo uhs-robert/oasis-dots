@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
+mod common;
+
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
@@ -261,20 +263,49 @@ fn term_while_waiting_exits_1_dismisses_the_overlay_and_cleans_up() {
     assert!(bar.left_behind().is_empty(), "{:?}", bar.left_behind());
 }
 
+/// The pending pick file of an ask whose process is `asker` and which waits on a FIFO.
+fn newer_ask_entry(bar: &Bar, asker: &Child) -> String {
+    let fifo = bar.path().join("newer-fifo");
+    let fifo_path = std::ffi::CString::new(fifo.to_str().unwrap()).unwrap();
+    // SAFETY: mkfifo on a NUL-terminated path.
+    assert_eq!(unsafe { libc::mkfifo(fifo_path.as_ptr(), 0o600) }, 0);
+    format!("{{\"pid\":{},\"fifo\":\"{}\"}}", asker.id(), fifo.display())
+}
+
 #[test]
 fn a_pending_pick_a_newer_ask_took_over_is_left_alone() {
     let bar = Bar::new();
+    let mut newer = common::spawn_fake_asker(bar.path(), "pick");
+    let entry = newer_ask_entry(&bar, &newer);
     let (code, out, _) = finish(bar.spawn(
         &["ask", "pick", "Which?", TWO],
-        &[("GOLDEN_REPLACE", "1"), ("GOLDEN_ANSWER", "1. Firefox")],
+        &[("GOLDEN_REPLACE", entry.as_str()), ("GOLDEN_ANSWER", "1. Firefox")],
     ));
+    let _ = newer.kill();
+    let _ = newer.wait();
     assert_eq!((code, out.as_str()), (0, "Firefox"));
     assert_eq!(
         std::fs::read_to_string(bar.pending_pick()).unwrap(),
-        "{\"pid\":1,\"fifo\":\"/newer\"}\n"
+        format!("{entry}\n")
     );
     // A close would dismiss the newer ask's picker.
     assert!(!bar.calls().contains("picker close"), "{}", bar.calls());
+}
+
+#[test]
+fn a_dead_asker_s_leftover_pick_file_does_not_stop_the_picker_close() {
+    let bar = Bar::new();
+    let mut dead = common::spawn_fake_asker(bar.path(), "pick");
+    let entry = newer_ask_entry(&bar, &dead);
+    let _ = dead.kill();
+    let _ = dead.wait();
+    let (code, out, _) = finish(bar.spawn(
+        &["ask", "pick", "Which?", TWO],
+        &[("GOLDEN_REPLACE", entry.as_str()), ("GOLDEN_ANSWER", "1. Firefox")],
+    ));
+    assert_eq!((code, out.as_str()), (0, "Firefox"));
+    // The leftover file is no newer ask, so the picker is closed as usual.
+    assert!(bar.calls().contains("picker close"), "{}", bar.calls());
 }
 
 #[test]
@@ -345,27 +376,10 @@ fn the_bash_spelling_of_cancel_owned_recording_flags_the_watcher() {
     );
 }
 
-/// A process whose command line names a bash helper, as a pending pick's asker must have. Copying an executable races
-/// with forks on other test threads (ETXTBSY until they exec), so the start is retried.
-fn waiter(dir: &Path) -> Child {
-    let path = dir.join("voxcmd-hints");
-    std::fs::copy("/bin/sleep", &path).unwrap();
-    let deadline = Instant::now() + Duration::from_secs(10);
-    loop {
-        match Command::new(&path).arg("600").spawn() {
-            Ok(child) => return child,
-            Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy && Instant::now() < deadline => {
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            Err(error) => panic!("{error}"),
-        }
-    }
-}
-
 #[test]
 fn replies_match_as_the_bash_reply_did() {
     let dir = tempfile::tempdir().unwrap();
-    let mut waiter = waiter(dir.path());
+    let mut waiter = common::spawn_fake_asker(dir.path(), "hints");
     let runtime = dir.path().join("runtime");
     std::fs::create_dir_all(runtime.join("voxcmd")).unwrap();
     let fifo = runtime.join("result");

@@ -197,20 +197,9 @@ fn start_time_of(pid: u32) -> String {
         .to_string()
 }
 
-/// A process whose command line names a bash asker, as the pending pick's pid must.
+/// A process whose command line is `voxcmd ask hints`, as the pending pick's pid must be.
 fn asker(voice: &Voice) -> Child {
-    let program = voice.path().join("bin/voxcmd-hints");
-    std::fs::copy("/bin/sleep", &program).unwrap();
-    // A fork on another test thread may hold the copy's write fd for a moment.
-    for _ in 0..500 {
-        match Command::new(&program).arg("30").spawn() {
-            Err(error) if error.kind() == std::io::ErrorKind::ExecutableFileBusy => {
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            spawned => return spawned.unwrap(),
-        }
-    }
-    panic!("the asker never started")
+    common::spawn_fake_asker(&voice.path().join("bin"), "hints")
 }
 
 fn pending_pick(voice: &Voice, asker: &Child) -> PathBuf {

@@ -766,9 +766,8 @@ sess_wait
 check "an unreachable Hyprland is named, not read as no focus" "session_gone && toast_has 'voxcmd: not typed Hyprland cannot be reached' && ! grep -q '^wtype' '$log'"
 # Dictation never goes to a picker that is waiting when type mode listens.
 sess_env=(SANDBOX_ACTIVEWINDOW_JSON="$focused_window")
-cp /bin/sleep "$root/voxcmd-hints"
-"$root/voxcmd-hints" 60 &
-waiter_pid=$!
+start_fake_asker hints
+waiter_pid=$fake_asker_pid
 rm -f "$root/modes-fifo"
 mkfifo "$root/modes-fifo"
 jq -n -c --argjson pid "$waiter_pid" --arg fifo "$root/modes-fifo" \
