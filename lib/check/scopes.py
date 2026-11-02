@@ -278,6 +278,7 @@ STEPS = [
     Step("frame-lone-flush", "hypr", "lua ./home/hypr/tests/frame_lone_flush.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("bind-action", "hypr", "lua ./home/hypr/tests/bind_action.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("act-lib", "hypr", "lua ./home/hypr/tests/act.lua", ("lua",), skip_reason="the hypr tests need lua"),
+    Step("workspace-layout", "hypr", "lua ./home/hypr/tests/workspace_layout.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("theme-state", "hypr", "lua ./home/hypr/tests/theme_state.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("submap-hints", "hypr", "lua ./home/hypr/tests/submap_hints.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("input-vectors-lua", "quickshell", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),

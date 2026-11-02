@@ -50,7 +50,8 @@ local Utils = require("lib.utils") ---@class Utils
 --- @class Config
 --- @field leader string Modifier key for keybinds (default: "SUPER")
 --- @field theme string Name of the theme file in ./theme/colors/ (default: "oasis_moonlight")
---- @field persistent_workspaces integer|boolean Workspaces per monitor, pinned and monitor-local; false for 5 unpinned, global ones (default: 5)
+--- @field persistent_workspaces integer|boolean Workspaces per monitor with two or more monitors, pinned and monitor-local; false for 5 unpinned, global ones (default: 5)
+--- @field single_monitor_workspaces integer Workspaces when only one monitor is connected, 1 to 10 (default: 10)
 --- @field ws_per_monitor integer Derived from persistent_workspaces (5 when false); do not set
 --- @field vim_mode boolean Use H/J/K/L as directional inputs in keybinds (default: true)
 --- @field use_uwsm boolean Enable uwsm session management (default: false)
@@ -72,6 +73,7 @@ Config.defaults = {
   leader = "SUPER",
   theme = "oasis_moonlight",
   persistent_workspaces = 5,
+  single_monitor_workspaces = 10,
   vim_mode = true,
   use_uwsm = false,
   path_prepend = {},
@@ -288,7 +290,8 @@ local function derive(cfg)
   end
   if cfg.nvidia.backend == nil then cfg.nvidia.backend = "nvidia-drm" end
   if cfg.nvidia.hybrid == nil then cfg.nvidia.hybrid = cfg.nvidia.enable and detect_hybrid() or false end
-  cfg.ws_per_monitor = type(cfg.persistent_workspaces) == "number" and cfg.persistent_workspaces or 5
+  -- Settings > Style saves the workspace counts in state, which wins over the profile.
+  require("lib.workspace_layout").apply_state(cfg)
   cfg.monitors = resolve_monitors(cfg.monitors, cfg.is_laptop)
   fill_menu_cmds(cfg.app)
 end

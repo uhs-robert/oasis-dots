@@ -16,3 +16,4 @@ The code that keymaps, extensions and `custom/` share. Come here to find a helpe
 - `state.lua`: the directory for this config's runtime state, honouring `XDG_STATE_HOME`.
 - `utils.lua`: table merge and file write helpers.
 - `workspaces.lua`: which monitor holds which slot under the current machine profile.
+- `workspace_layout.lua`: which monitor owns each persistent workspace, with one monitor or several, the moves that hand workspaces over on dock and undock, and the counts saved in `workspaces.json`.

@@ -51,7 +51,7 @@ The Settings panel's Default apps section saves `app.term`, `app.editor`, `app.g
 
 ## Monitors
 
-`monitors` is an ordered list of `{ description | name | id, mode, position, scale, transform?, primary? }` entries. A connected monitor matches an entry by description, name or id, and the entry's position in the list is the monitor's slot: the jump index for `Ctrl+<n>` and the Windows submap, and the workspace range `(slot-1)*persistent_workspaces+1` through `slot*persistent_workspaces` (1-5, 6-10, ... with the defaults). Lists replace the default instead of merging, so a hostname profile that sets `monitors` supplies the whole list:
+`monitors` is an ordered list of `{ description | name | id, mode, position, scale, transform?, primary? }` entries. A connected monitor matches an entry by description, name or id, and the entry's position in the list is the monitor's slot: the jump index for `Ctrl+<n>` and the Windows submap, and, with two or more monitors connected, the workspace range `(slot-1)*persistent_workspaces+1` through `slot*persistent_workspaces` (1-5, 6-10, ... with the defaults). One monitor alone owns 1 through `single_monitor_workspaces` (default 10) whatever its slot. Lists replace the default instead of merging, so a hostname profile that sets `monitors` supplies the whole list:
 
 ```lua
 return {

@@ -100,9 +100,9 @@ Press `SUPER + /` to open the Quickshell keybinds picker for the current mode. W
 
 ## Workspaces
 
-Each monitor gets `persistent_workspaces` workspaces (default: 5; 5 when set to `false`). Workspaces are numbered sequentially across monitors: monitor 1 gets 1–5, monitor 2 gets 6–10, and so on.
+With two or more monitors connected, each gets `persistent_workspaces` workspaces (default: 5; 5 when set to `false`). Workspaces are numbered sequentially across monitors: monitor 1 gets 1–5, monitor 2 gets 6–10, and so on. With one monitor connected, it gets `single_monitor_workspaces` instead (default: 10, so every number key from 1 to 0 has a workspace). Settings > Style > Workspaces changes both counts without a reload and saves them to `workspaces.json` in the Hyprland state folder, which wins over the machine profile. Persistent mode pins them so they always appear in the bar even when empty. It also switches workspace keybinds to monitor-local mode, number keys and cycle binds stay within the current monitor's range.
 
-That option pins them so they always appear in the bar even when empty. It also switches workspace keybinds to monitor-local mode, number keys and cycle binds stay within the current monitor's range.
+Workspace numbers never change on dock or undock: only the monitor showing them does. Docking moves each workspace to the monitor whose range holds it, so with the defaults the laptop keeps 1–5 and 6–10 go to monitor 2. A workspace whose monitor is not connected waits on the lowest connected monitor and goes back when its monitor returns. Number keys pick the nth workspace on the focused monitor, so a waiting workspace past a monitor's own range is still on a key there while the monitor has fewer than ten.
 
 ## App Launcher / Sessions
 
