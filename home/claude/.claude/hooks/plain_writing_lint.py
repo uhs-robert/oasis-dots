@@ -15,7 +15,6 @@ import json
 import os
 import pathlib
 import re
-import shlex
 import subprocess
 import sys
 import time
@@ -38,11 +37,13 @@ ING_NOT_VERB = {"during", "including", "according", "nothing", "something", "any
                 "ring", "king", "spring", "bring", "sing", "wing", "ceiling", "heading", "setting", "settings",
                 "building", "padding", "spacing", "warning", "warnings", "logging", "naming", "routing", "testing"}
 
-GH_BODY_COMMAND = re.compile(r"\bgh\s+(pr|issue)\s+(create|edit)\b")
+# `gh` must start a shell word: at the start, after a blank, `(`, `=`, an operator or a backtick.
+GH_BODY_COMMAND_START = r"(?<![^\s(=;&|`])gh(?:\s|\\\n)+(?P<kind>pr|issue)(?:\s|\\\n)+(?:create|edit)\b"
+GH_BODY_COMMAND = re.compile(GH_BODY_COMMAND_START)
 GIT_COMMIT_COMMAND = re.compile(r"\bgit\b(?:\s+-C\s+\S+)?[^|;&\n]*?\bcommit\b")
-COMMAND_SEPARATORS = {"&&", "||", ";", "|", "&"}
-# Open `--body "$(cat ` at the end of the text before a heredoc: the same as `--body-file -`.
-BODY_FROM_CAT = re.compile(r"(?:--body|-b)\s+\"?\$\(\s*cat\s+$")
+# `<<<` is a here-string, not a heredoc.
+HEREDOC_OPENER = re.compile(r"(?<!<)<<(?!<)(?P<dash>-?)[ \t]*(?P<quote>['\"]?)(?P<delimiter>\w+)(?P=quote)")
+GH_COMMAND_OR_HEREDOC = re.compile(GH_BODY_COMMAND_START + "|" + HEREDOC_OPENER.pattern)
 # CommonMark HTML blocks of kind 6 end at a blank line. Kind 1 (pre, script, style, textarea) ends at its close tag.
 HTML_BLOCK_TAGS = (
     "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|"
@@ -56,11 +57,6 @@ SETEXT_UNDERLINE = re.compile(r"^ {0,3}(?:=+|-+)\s*$")
 # A footnote `[^1]:` is prose, so the label may not start with a caret.
 LINK_DEFINITION = re.compile(r"^ {0,3}\[[^\]^][^\]]*\]:\s")
 LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+\.)\s")
-# `rest` is the shell text after the delimiter on the opening line, which can hold more commands.
-HEREDOC = re.compile(r"<<-?\s*(?P<quote>['\"]?)(?P<delimiter>\w+)(?P=quote)(?P<rest>[^\n]*)\n(?P<body>.*?)\n\s*(?P=delimiter)\s*$", re.S | re.M)
-# What closes a `--body "$(cat <<'EOF' ... EOF` substitution after the heredoc.
-SUBSTITUTION_END = re.compile(r"\s*\)\s*\"?")
-ENV_ASSIGNMENT = re.compile(r"\w+=")
 
 
 def word_swaps_path():
@@ -264,32 +260,154 @@ def commit_message_hits(command, cwd, filler):
     return report("the commit message", hits, "Amend the commit with the corrected message.")
 
 
-def command_words(text):
-    """Shell words of a command, with `&&`, `||`, `;` and `|` as their own words. None on an open quote."""
-    lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
-    lexer.commenters = ""
-    try:
-        return list(lexer)
-    except ValueError:
-        return None
+def heredoc_bodies(command, newline, openers, bodies_end_by_line):
+    """The bodies of the heredocs opened on the line that ends at index `newline`, and the index after the
+    last one. `openers` holds (delimiter, strip_tabs). The bodies follow each other, so the first opener on a
+    line starts right after it, and a later call for the same line goes on where the last body ended."""
+    position = bodies_end_by_line.get(newline, newline + 1)
+    bodies = []
+    for delimiter, strip_tabs in openers:
+        start = body_end = position
+        while position < len(command):
+            line_end = command.find("\n", position)
+            line_end = len(command) if line_end == -1 else line_end
+            line = command[position:line_end]
+            line = line.lstrip("\t") if strip_tabs else line
+            if line.strip() == delimiter:
+                position = line_end + 1
+                break
+            # Agents write `EOF && next command`. The shell keeps that line in the body, but the agent meant
+            # the heredoc to end there, so the search goes on with the command after the delimiter.
+            tail = line.lstrip()
+            if tail.startswith(delimiter) and tail[len(delimiter):].lstrip().startswith(("&&", "||", ";", "|")):
+                position = line_end - len(tail) + len(delimiter)
+                break
+            body_end = line_end
+            position = line_end + 1
+        else:
+            # No closing delimiter: the shell takes the rest of the text.
+            body_end = len(command)
+        body = command[start:body_end]
+        # `<<-` strips leading tabs from the body too. Kept, they would read as indented code.
+        bodies.append(re.sub(r"(?m)^\t+", "", body) if strip_tabs else body)
+    bodies_end_by_line[newline] = position
+    return bodies, position
 
 
-def segment_body(words, heredoc, cwd):
-    """The body of one gh command, given as its words."""
+def read_gh_command(command, start, bodies_end_by_line):
+    """Read the shell words of the command at `start`, up to the first unquoted operator, newline or closing
+    `)`. Returns (words, heredocs, end, later_bodies). `heredocs` maps a word index to the body of a heredoc
+    opened inside that word, as in `--body "$(cat <<'EOF'`, and None to the command's own stdin heredoc.
+    `later_bodies` is the (start, end) span of heredoc bodies that the shell reads after `end`, or None."""
+    words, heredocs, openers = [], {}, []
+    word, in_word = [], False
+    nesting = []  # open quotes and substitutions, innermost last: "'", '"' or "("
+    later_bodies = None
+    index = start
+
+    def end_word():
+        nonlocal word, in_word
+        if word or in_word:
+            words.append("".join(word))
+        word, in_word = [], False
+
+    def take_bodies(newline):
+        nonlocal openers
+        bodies, after = heredoc_bodies(command, newline, [opener[:2] for opener in openers], bodies_end_by_line)
+        for (_, _, owner), body in zip(openers, bodies):
+            heredocs.setdefault(owner, body)
+        openers = []
+        return after
+
+    while index < len(command):
+        char = command[index]
+        inner = nesting[-1] if nesting else None
+        if inner == "'":
+            if char == "'":
+                nesting.pop()
+            else:
+                word.append(char)
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(command):
+            # A backslash-newline joins two lines and leaves nothing.
+            if command[index + 1] != "\n":
+                word.append(command[index + 1])
+            index += 2
+            continue
+        if inner == '"':
+            if char == '"':
+                nesting.pop()
+            elif command.startswith("$(", index):
+                nesting.append("(")
+                word.append("$(")
+                index += 1  # with the step below, past both characters
+            else:
+                word.append(char)
+            index += 1
+            continue
+        if char == "\n" and openers:
+            after = take_bodies(index)
+            if inner is None:
+                later_bodies = (index + 1, after)
+                break
+            # Inside `$(`, the shell reads on after the bodies, up to the closing `)`.
+            word.append(char)
+            index = after
+            continue
+        opener = HEREDOC_OPENER.match(command, index) if char == "<" else None
+        if opener:
+            owner = None if inner is None else len(words)
+            openers.append((opener.group("delimiter"), opener.group("dash") == "-", owner))
+            if inner is None:
+                end_word()
+            else:
+                word.append(opener.group(0))
+            index = opener.end()
+            continue
+        if char in "'\"":
+            nesting.append(char)
+            in_word = True
+        elif command.startswith("$(", index):
+            nesting.append("(")
+            word.append("$(")
+            index += 1
+        elif inner == "(":
+            if char == ")":
+                nesting.pop()
+            elif char == "(":
+                nesting.append("(")
+            word.append(char)
+        elif char in " \t":
+            end_word()
+        elif char in ";|\n)`" or (char == "&" and command[index - 1] not in "<>"):
+            break
+        else:
+            word.append(char)
+        index += 1
+    end_word()
+    if openers:
+        # The command ended before its line did, as in `<<'EOF' && echo done`: the bodies follow that line.
+        newline = command.find("\n", index)
+        if newline != -1:
+            later_bodies = (newline + 1, take_bodies(newline))
+    return words, heredocs, index, later_bodies
+
+
+def gh_command_body(words, heredocs, cwd):
+    """The body that `--body`, `-b`, `--body-file` or `-F` gives, or None."""
     for index, word in enumerate(words[:-1]):
         value = words[index + 1]
         if word in ("--body", "-b"):
-            return value
+            return heredocs.get(index + 1, value)
         if word in ("--body-file", "-F"):
-            if value == "-":
-                return heredoc
-            return read_body_file(value, cwd)
-    for word in words:
+            return heredocs.get(None) if value == "-" else read_body_file(value, cwd)
+    for index, word in enumerate(words):
         if word.startswith("--body="):
-            return word[len("--body="):]
+            return heredocs.get(index, word[len("--body="):])
         if word.startswith("--body-file="):
-            return read_body_file(word[len("--body-file="):], cwd)
+            value = word[len("--body-file="):]
+            return heredocs.get(None) if value == "-" else read_body_file(value, cwd)
     return None
 
 
@@ -300,70 +418,45 @@ def read_body_file(value, cwd):
         return None
 
 
-def mark_command_breaks(text):
-    """Turn each newline outside quotes into `;`, because shlex reads a newline as a space."""
-    out, quote = [], None
-    escaped = False
-    for char in text:
-        if escaped:
-            escaped = False
-        elif char == "\\" and quote != "'":
-            escaped = True
-        elif quote:
-            quote = None if char == quote else quote
-        elif char in "'\"":
-            quote = char
-        elif char == "\n":
-            char = " ; "
-        out.append(char)
-    return "".join(out)
-
-
-def gh_bodies_of_chunk(chunk, heredoc, cwd):
-    """The (kind, body) of each gh command in shell text. The heredoc, if any, belongs to its last command."""
-    words = command_words(mark_command_breaks(chunk.replace("\\\n", " ")))
-    if words is None:
-        return []
-    segments, current = [], []
-    for word in words:
-        if word in COMMAND_SEPARATORS:
-            segments.append(current)
-            current = []
-        else:
-            current.append(word)
-    segments.append(current)
-    bodies = []
-    for number, segment in enumerate(segments):
-        while segment and ENV_ASSIGNMENT.match(segment[0]):
-            segment = segment[1:]
-        if len(segment) > 2 and segment[0] == "gh" and segment[1] in ("pr", "issue") and segment[2] in ("create", "edit"):
-            owned = heredoc if number == len(segments) - 1 else None
-            body = segment_body(segment, owned, cwd)
-            if body:
-                bodies.append((segment[1], body))
-    return bodies
-
-
 def gh_bodies(command, cwd):
-    """The (kind, body) of every `gh pr|issue create|edit` in a command, a chain included. The text is cut
-    at each heredoc: the shell text before it is parsed, its body goes to the command that opened it, and
-    parsing resumes after its closing delimiter."""
-    bodies, position = [], 0
+    """The (kind, body) of every `gh pr|issue create|edit` in a command. It finds each such command wherever
+    it starts, also inside `$(...)` or after another command, and reads only that command's own words. Text before
+    the command is not parsed, so a stray quote there cannot hide it. Text inside an already-read gh
+    command and every heredoc body is not searched, because it is data, not commands."""
+    bodies, bodies_end_by_line, position = [], {}, 0
+    heredoc_spans = []  # (start, end) spans of heredoc bodies, in text order, overlapping spans merged
+
+    def skip(span):
+        if heredoc_spans and span[0] <= heredoc_spans[-1][1]:
+            heredoc_spans[-1] = (heredoc_spans[-1][0], max(heredoc_spans[-1][1], span[1]))
+        else:
+            heredoc_spans.append(span)
+
     while True:
-        heredoc = HEREDOC.search(command, position)
-        if not heredoc:
-            return bodies + gh_bodies_of_chunk(command[position:], None, cwd)
-        head = command[position:heredoc.start()]
-        chunk = head + " " + heredoc.group("rest")
-        position = heredoc.end()
-        if command_words(chunk.replace("\\\n", " ")) is None:
-            # --body "$(cat <<'EOF' ...)" leaves an open quote before the heredoc.
-            opener = BODY_FROM_CAT.search(head)
-            if opener:
-                chunk = head[:opener.start()] + "--body-file - " + heredoc.group("rest")
-                closing = SUBSTITUTION_END.match(command, position)
-                position = closing.end() if closing else position
-        bodies += gh_bodies_of_chunk(chunk, heredoc.group("body"), cwd)
+        match = GH_COMMAND_OR_HEREDOC.search(command, position)
+        if not match:
+            return bodies
+        while heredoc_spans and heredoc_spans[0][1] <= match.start():
+            heredoc_spans.pop(0)
+        if heredoc_spans and heredoc_spans[0][0] <= match.start():
+            position = heredoc_spans[0][1]
+            continue
+        other_heredoc = match.group("delimiter")
+        if other_heredoc:
+            newline = command.find("\n", match.end())
+            if newline == -1:
+                return bodies
+            _, after = heredoc_bodies(command, newline, [(other_heredoc, match.group("dash") == "-")], bodies_end_by_line)
+            skip((newline + 1, after))
+            position = match.end()
+            continue
+        words, heredocs, end, later_bodies = read_gh_command(command, match.start(), bodies_end_by_line)
+        body = gh_command_body(words, heredocs, cwd)
+        if body:
+            bodies.append((match.group("kind"), body))
+        if later_bodies:
+            skip(later_bodies)
+        position = max(end, match.end())
 
 
 def gh_body_hits(command, cwd, filler):
