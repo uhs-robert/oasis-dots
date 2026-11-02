@@ -817,7 +817,7 @@ Popup {
 
                     Text {
                         id: row_ordinal
-                        readonly property int gap_to_label: 6
+                        readonly property real gap_to_label: Style.px(6)
                         visible: root.ordinal_chars > 0
                         anchors.left: row_icon.right
                         anchors.leftMargin: 8
