@@ -67,6 +67,29 @@ class Rules(unittest.TestCase):
         self.assertEqual(categories("---\ndescription: it doesn't\n---\nThe body is clean."), [])
         self.assertEqual(categories("It reads a string, including the name."), [])
 
+    def test_exempt_markdown_forms_hide_a_hit_and_a_real_hit_beside_them_stays(self):
+        hit = "It doesn't work."
+        cases = {
+            "multi-backtick span": ("Use `` a ` it couldn't `` here.", 1),
+            "div block": ("<div>\nit couldn't work\n</div>", 1),
+            "details block": ("<details>\n<summary>Why</summary>\nit couldn't work\n</details>", 1),
+            "raw pre block": ("<pre>\nit couldn't work\n\nstill couldn't\n</pre>", 1),
+            "setext heading": ("It couldn't work\n================", 1),
+            "setext dash heading": ("It couldn't work\n----", 1),
+            "link definition": ("[ref]: http://a.example \"it couldn't work\"", 1),
+        }
+        for name, (text, _) in cases.items():
+            with self.subTest(name):
+                self.assertEqual(categories(text), [])
+                self.assertEqual(categories(f"{text}\n\n{hit}"), ["contraction"])
+
+    def test_html_block_ends_at_a_blank_line(self):
+        self.assertEqual(categories("<div>\nhidden\n\nThe fix couldn't wait."), ["contraction"])
+
+    def test_footnote_and_list_item_before_a_rule_stay_linted(self):
+        self.assertIn("contraction", categories("[^1]: It doesn't work."))
+        self.assertIn("contraction", categories("- It doesn't work.\n---"))
+
     def test_inline_code_counts_as_one_word(self):
         sentence = "Run " + " ".join(f"`a{i}`" for i in range(10)) + " " + " ".join(["word"] * 14) + "."
         self.assertEqual(categories(sentence), [])
@@ -172,6 +195,54 @@ class Commands(unittest.TestCase):
         body = pathlib.Path(self.root, "body.md")
         body.write_text("A clean body.\n")
         self.assertIsNone(self.bash("gh issue edit 5 --body-file body.md"))
+
+    def test_pr_body_after_line_continuations(self):
+        heredoc = "gh pr create \\\n  --title t \\\n  --body-file - <<'EOF'\nThe fix shouldn't change the API.\nEOF"
+        self.assertIn("the PR body", self.bash(heredoc))
+        substitution = "gh pr create \\\n  --title t \\\n  --body \"$(cat <<'EOF'\nThe fix shouldn't change the API.\nEOF\n)\""
+        self.assertIn("the PR body", self.bash(substitution))
+        self.assertIn("the PR body", self.bash("gh pr create \\\n  --title t \\\n  --body \"It doesn't start.\""))
+        pathlib.Path(self.root, "bad.md").write_text("It doesn't start.\n")
+        self.assertIn("the PR body", self.bash("gh pr create \\\n  --body-file bad.md"))
+
+    def test_clean_pr_body_after_line_continuations_is_silent(self):
+        heredoc = "gh pr create \\\n  --title t \\\n  --body-file - <<'EOF'\nThe fix keeps the API.\nEOF"
+        self.assertIsNone(self.bash(heredoc))
+        substitution = "gh pr create \\\n  --body \"$(cat <<'EOF'\nThe fix keeps the API.\nEOF\n)\""
+        self.assertIsNone(self.bash(substitution))
+
+    def test_every_gh_command_in_a_chain_is_checked(self):
+        clean = 'gh pr create --body "A clean body."'
+        bad = 'gh pr edit 5 --body "It doesn\'t start."'
+        for chain in (f"{clean} && {bad}", f"{clean}; {bad}", f"{clean} || {bad}", f"{bad} && {clean}"):
+            with self.subTest(chain):
+                self.assertIn("the PR body", self.bash(chain))
+        self.assertIsNone(self.bash(f"{clean} && {clean}"))
+
+    def test_a_gh_word_inside_an_argument_does_not_split_the_command(self):
+        self.assertIn("the PR body", self.bash('gh pr create --title "gh" --body "It doesn\'t work."'))
+        self.assertIn("the PR body", self.bash('gh pr create --title gh --body "It doesn\'t work."'))
+
+    def test_newline_separated_gh_commands_are_each_checked(self):
+        self.assertIn("the issue body", self.bash('gh pr create --body "Clean."\ngh issue create --body "It doesn\'t work."'))
+        self.assertIsNone(self.bash('gh pr create --body "Clean.\nStill clean."'))
+
+    def test_commands_after_a_heredoc_are_checked_and_each_keeps_its_own_body(self):
+        clean = "gh pr create --body-file - <<'EOF'\nA clean body.\nEOF"
+        bad_issue = "gh issue create --body \"It doesn't work.\""
+        self.assertIn("the issue body", self.bash(f"{clean}\n{bad_issue}"))
+        self.assertIn("the issue body", self.bash(f"{clean} && {bad_issue}"))
+        bad_pr = "gh pr create --body-file - <<'EOF'\nIt doesn't work.\nEOF"
+        message = self.bash(f"{bad_pr}\n{clean.replace('pr create', 'issue create')}")
+        self.assertIn("the PR body", message)
+        self.assertNotIn("the issue body", message)
+        substitution = "gh pr create --body \"$(cat <<'EOF'\nA clean body.\nEOF\n)\" && " + bad_issue
+        self.assertIn("the issue body", self.bash(substitution))
+
+    def test_substitution_without_a_closing_paren_still_yields_the_body(self):
+        # main() swallows exceptions, so a crash here would only show as a silent miss.
+        command = "gh pr create --body \"$(cat <<'EOF'\nIt doesn't work.\nEOF\n"
+        self.assertEqual(lint.gh_bodies(command, self.root), [("pr", "It doesn't work.")])
 
     def test_other_commands_and_bad_input_are_silent(self):
         self.assertIsNone(self.bash("ls -la"))
