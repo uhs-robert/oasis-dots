@@ -293,7 +293,7 @@ oasisfox-config:
     oasisfox="${OASISFOX_DIR:-{{ justfile_directory() }}/repos/oasisfox}"
     [[ -f $oasisfox/tools/build-config/cli.ts ]] || { echo "oasisfox-config: no OasisFox checkout at $oasisfox (set OASISFOX_DIR)" >&2; exit 1; }
     [[ -f $oasisfox/dist/commands.json ]] || { echo "oasisfox-config: run 'just build' in $oasisfox first" >&2; exit 1; }
-    config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/oasisfox"
+    config_dir="$HOME/.config/oasisfox"
     [[ -d $config_dir ]] || { echo "oasisfox-config: no config at $config_dir (run 'just stow oasisfox')" >&2; exit 1; }
     cd "$oasisfox"
     node tools/build-config/cli.ts "$config_dir"

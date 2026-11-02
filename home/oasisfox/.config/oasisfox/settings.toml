@@ -1,2 +1,3 @@
 default_engine = "google"
+# OasisFox reserves new_tab_page for phase 3 and does not apply it yet; set the new-tab override separately until then.
 new_tab_page = "https://web.tabliss.io/"
