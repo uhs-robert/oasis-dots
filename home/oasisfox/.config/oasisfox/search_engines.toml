@@ -12,7 +12,6 @@ define = { url = "http://www.merriam-webster.com/dictionary/%s", label = "Merria
 sitedown = { url = "https://www.isitdownrightnow.com/%s", label = "Is it down right now" }
 drive = { url = "https://drive.google.com/drive/search?q=%s", label = "Google Drive" }
 gmail = { url = "https://mail.google.com/mail/u/0/#search/%s", label = "Gmail" }
-fedora = { url = "https://packages.fedoraproject.org/search?query=%s", label = "Fedora packages" }
 flathub = { url = "https://flathub.org/apps/search?q=%s", label = "Flathub apps" }
 google = { url = "https://www.google.com/search?q=%s", label = "Google" }
 gh = { url = "https://github.com/search?q=%s&type=code", label = "GitHub code search" }
@@ -43,3 +42,17 @@ urbandictionary = { url = "https://www.urbandictionary.com/define.php?term=%s", 
 wikipedia = { url = "https://www.wikipedia.org/w/index.php?search=%s", label = "Wikipedia" }
 wolframalpha = { url = "https://www.wolframalpha.com/input/?i=%s", label = "Wolfram Alpha" }
 youtube = { url = "https://www.youtube.com/results?search_query=%s", label = "YouTube" }
+claude = { url = "https://claude.ai/new?q=%s", label = "Claude" }
+gemini = { url = "https://gemini.google.com/app?q=%s", label = "Gemini (opens the app, ignores the query)" }
+grok = { url = "https://grok.com/?q=%s", label = "Grok" }
+perplexity = { url = "https://www.perplexity.ai/search?q=%s", label = "Perplexity" }
+aur = { url = "https://aur.archlinux.org/packages?K=%s", label = "Arch User Repository" }
+archpkg = { url = "https://archlinux.org/packages/?q=%s", label = "Arch Linux packages" }
+archive = { url = "https://archive.org/search?query=%s", label = "Internet Archive" }
+ebay = { url = "https://www.ebay.com/sch/i.html?_nkw=%s", label = "eBay" }
+camel = { url = "https://camelcamelcamel.com/search?sq=%s", label = "CamelCamelCamel price history" }
+gshopping = { url = "https://www.google.com/search?tbm=shop&q=%s", label = "Google Shopping" }
+newegg = { url = "https://www.newegg.com/p/pl?d=%s", label = "Newegg" }
+walmart = { url = "https://www.walmart.com/search?q=%s", label = "Walmart" }
+marketplace = { url = "https://www.facebook.com/marketplace/search?query=%s", label = "Facebook Marketplace" }
+lens = { url = "https://lens.google.com/uploadbyurl?url=%s", label = "Google Lens, reverse image search" }
