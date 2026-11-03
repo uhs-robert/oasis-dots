@@ -1,3 +1,5 @@
 default_engine = "google"
+home_page = "https://web.tabliss.io/"
+which_key_border = "chamfer"
 # OasisFox reserves new_tab_page for phase 3 and does not apply it yet; set the new-tab override separately until then.
 new_tab_page = "https://web.tabliss.io/"
