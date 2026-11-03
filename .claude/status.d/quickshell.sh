@@ -65,8 +65,12 @@ if ! cmp -s "$scratch/stage/monitors.lua" /etc/greetd/monitors.lua; then
   diffs+="${diffs:+$'\n'}monitors.lua"
 fi
 # Compared as JSON, since the bar's sync adds a trailing newline the live file lacks.
+# The bar writes nothing with Settings > Lock & login > Sync to greeter off, so a stale copy is then expected.
 theme_sync=""
-if [[ -f $scratch/stage/theme/theme.json ]] &&
+sync_on=$(jq -r '.sync != false' "${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/greeter.json" 2>/dev/null || echo true)
+if [[ ! -f $scratch/stage/theme/theme.json ]]; then
+  theme_sync="greeter: theme unknown (no state or bundled theme.json to compare)"
+elif [[ $sync_on == true ]] &&
   ! cmp -s <(jq -S . "$scratch/stage/theme/theme.json" 2>/dev/null) <(jq -S . /var/lib/qs-greeter/theme.json 2>/dev/null); then
   theme_sync="greeter: theme not synced to /var/lib/qs-greeter; restart the bar to resync"
 fi
