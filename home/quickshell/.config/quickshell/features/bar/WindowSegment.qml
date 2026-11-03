@@ -151,14 +151,12 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 8
 
-        Text {
+        DirectoryText {
             id: app_text
             visible: root.shown_app !== ""
             anchors.verticalCenter: parent.verticalCenter
             text: root.shown_app
             color: Style.bar_fg
-            font.family: Style.bar_font_family
-            font.pixelSize: Style.bar_font_size
         }
 
         Shape {
@@ -179,7 +177,7 @@ Item {
             }
         }
 
-        Text {
+        DirectoryText {
             id: path_text
             visible: root.cwd !== ""
             anchors.verticalCenter: parent.verticalCenter
@@ -187,8 +185,6 @@ Item {
             elide: Text.ElideLeft
             text: root.cwd
             color: Style.text_dim
-            font.family: Style.bar_font_family
-            font.pixelSize: Style.bar_font_size
         }
     }
 }

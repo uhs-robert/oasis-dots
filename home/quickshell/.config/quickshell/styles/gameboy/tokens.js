@@ -7,6 +7,7 @@ function overrides(t, ctx) {
         return Object.assign({}, ctx.defaults, {
             device_model: model,
             wait_anim: "exclaim",
+            dir_anim: "stepped",
             done_anim: "levelup",
             weather_header: "pokedex",
             keeptabs_layout: "pokedex",

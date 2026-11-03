@@ -10,6 +10,7 @@ function overrides(t, ctx) {
     const hl_f = Qt.alpha(hl, 0.13);
     return {
         wait_anim: "hev_alert",
+        dir_anim: "scramble",
         done_anim: "hev_pickup",
         weather_header: "hev",
         keeptabs_layout: "hev",

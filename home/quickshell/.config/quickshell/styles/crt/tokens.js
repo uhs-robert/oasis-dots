@@ -3,6 +3,7 @@
 function overrides(t, ctx) {
     return {
         wait_anim: "pressanykey",
+        dir_anim: "flicker",
         weather_header: "weatherstar",
         keeptabs_layout: "weatherstar",
         text_muted: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.35)),

@@ -10,6 +10,7 @@ function overrides(t, ctx) {
     return {
         workspace_art: "materia",
         wait_anim: "atb",
+        dir_anim: "slide",
         done_anim: "fanfare",
         weather_header: "status",
         keeptabs_layout: "status",
