@@ -142,14 +142,25 @@ Item {
             start: root.frame ? root.frame.start : root.strip_side,
             end: root.width - (root.frame ? root.frame.end : root.strip_side),
             gap: Style.bar_module_gap,
-            left: left_island.visible ? left_island.chrome_length + left_island.row_length_fixed() : 0,
-            right: right_island.visible ? right_island.chrome_length + right_island.row_length_fixed() : 0,
+            left: root.fixed_length(left_island),
+            right: root.fixed_length(right_island),
             center: root.has_center ? { x: center_island.x, width: center_island.width } : null
         });
     }
     property var auto_compact_memo: BarLayout.auto_compact_off
+    // A layout edit (a module added, removed or given its own compact) changes what compacting saves, so it measures again.
+    readonly property string auto_compact_layout: JSON.stringify(root.rule)
+    onAuto_compact_layoutChanged: {
+        root.auto_compact_memo = BarLayout.auto_compact_off;
+        auto_compact_timer.restart();
+    }
     readonly property var compact_rule: root.auto_compact_memo.on && root.rule ? Object.assign({}, root.rule, { compact: true }) : root.rule
     onIsland_overlapsChanged: auto_compact_timer.restart()
+
+    // A top or bottom island's drawn length without its fitted modules, which shrink to the room they get.
+    function fixed_length(island) {
+        return island.visible ? island.width - island.row_length_fitted() : 0;
+    }
 
     Timer {
         id: auto_compact_timer
