@@ -51,7 +51,7 @@ The Settings panel's Default apps section saves `app.term`, `app.editor`, `app.g
 
 ## Monitors
 
-`monitors` is an ordered list of `{ description | name | id, mode, position, scale, transform?, primary? }` entries. A connected monitor matches an entry by description, name or id, and the entry's position in the list is the monitor's slot: the jump index for `Ctrl+<n>` and the Windows submap, and, with two or more monitors connected, the workspace range `(slot-1)*persistent_workspaces+1` through `slot*persistent_workspaces` (1-5, 6-10, ... with the defaults). One monitor alone owns 1 through `single_monitor_workspaces` (default 10) whatever its slot. Lists replace the default instead of merging, so a hostname profile that sets `monitors` supplies the whole list:
+`monitors` is an ordered list of `{ description | name | id, mode, position, scale, transform?, primary?, start_delay_ms? }` entries. A connected monitor matches an entry by description, name or id, and the entry's position in the list is the monitor's slot: the jump index for `Ctrl+<n>` and the Windows submap, and, with two or more monitors connected, the workspace range `(slot-1)*persistent_workspaces+1` through `slot*persistent_workspaces` (1-5, 6-10, ... with the defaults). One monitor alone owns 1 through `single_monitor_workspaces` (default 10) whatever its slot. Lists replace the default instead of merging, so a hostname profile that sets `monitors` supplies the whole list:
 
 ```lua
 return {
@@ -61,6 +61,8 @@ return {
   },
 }
 ```
+
+`start_delay_ms` keeps that monitor off for the given milliseconds after login, then turns it on. Use it for monitors on a dock that is not ready the moment Hyprland starts: Hyprland 0.57 aborts when such a monitor comes up with no working mode ([hyprwm/Hyprland#16727](https://github.com/hyprwm/Hyprland/discussions/16727)). `3000` covers a USB-C dock. A `hyprctl reload` does not wait. Remove it once Hyprland fixes the crash.
 
 Monitors that match no entry, including every monitor when the list is empty, still come up with their preferred mode, automatic position and scale 1. They take the lowest slots no matched monitor holds, in the order Hyprland connected them (by monitor id, then name), so the profile's length never shifts them: with an empty list the first output is slot 1, the second slot 2. A matched monitor always keeps its own slot, whether or not the others are connected, and an unmatched monitor never shares one. Slots depend only on which monitors are connected, so they survive reloads; a monitor that takes a free slot moves to the next free one when the entry that owns the slot is plugged back in.
 
