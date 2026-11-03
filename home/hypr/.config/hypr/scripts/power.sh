@@ -124,9 +124,16 @@ do_action() {
 }
 
 watch() {
-  local last now
-  exec 9>"$runtime/hypr-power-watch.lock"
-  flock -n 9 || exit 0
+  local last now fd lock="$runtime/hypr-power-watch.lock"
+  # A watcher outlives a crashed Hyprland and keeps the lock, so the newest one ends every holder and takes over.
+  # The holders are the shell, the pipeline subshell and udevadm, which all inherit fd 9. psmisc's fuser is not a dependency.
+  for fd in /proc/[0-9]*/fd/9; do
+    [ "$fd" -ef "$lock" ] || continue
+    fd=${fd#/proc/}
+    kill "${fd%%/*}" 2>/dev/null
+  done
+  exec 9>"$lock"
+  flock -w 2 9 || exit 0
   apply
   pgrep -x hypridle >/dev/null || start_idle
   last=$(source_name)
