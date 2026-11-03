@@ -279,7 +279,7 @@ t("Notifications hover-opens only with notifications", () => {
 t("the base routes toggle_popup through the helper and drops the tooltip when hover opens", () => {
   const base = module_source("BarModule");
   assert.match(base, /if \(root\.hover_active\) hover\.click\(\);/);
-  assert.match(base, /hover_handler\.hovered && !root\.hover_active\) Tooltip\.show/);
+  assert.match(base, /hover_handler\.hovered && root\.has_tooltip && !root\.hover_active\) Tooltip\.show/);
   assert.match(base, /onHover_activeChanged: root\.sync_tooltip\(\)/);
   assert.doesNotMatch(base, /hover_popups/);
 });
