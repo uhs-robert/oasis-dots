@@ -68,7 +68,7 @@ Item {
         return root.stacked ? Math.max(24, Math.min(bar_height - 4, 30)) : Math.max(20, Math.min(bar_height - 10, 28));
     }
     readonly property real base_width: 170
-    // The widest text line, measured even while compact hides it, so auto compact sees a new title.
+    // The widest text line, measured even while compact hides it.
     readonly property real text_width: {
         let widest = 0;
         for (let i = 0; i < text_repeater.count; i++) {
@@ -76,6 +76,14 @@ Item {
             if (line) widest = Math.max(widest, line.window_width);
         }
         return widest;
+    }
+    // How much wider the full well is than the compact one: the text and its gap, less what the full well's minimum
+    // width already reserves. Auto compact reads it, so a new title is seen while compact hides it.
+    readonly property real text_span: root.text_width > 0 ? root.text_width + content.columnSpacing : 0
+    readonly property real compact_extra: {
+        if (root.vertical) return 0;
+        const bare = content.implicitWidth - (root.compact ? 0 : root.text_span) + root.side_inset * 2;
+        return Math.max(root.base_width, bare + root.text_span) - bare;
     }
     // Where the right side starts in the well's own coordinates, for the wheel: past the edge when it is not shown.
     readonly property real right_left: right.visible ? content.x + right.x : root.width + 1
