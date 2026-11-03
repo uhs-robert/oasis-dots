@@ -30,46 +30,61 @@ run_hook() { # $1 transcript, $2 session id, $3 extra input fields
 t="$tmp/orch.jsonl"
 {
   skill_line
-  usage_line 100000
+  usage_line 200000
 } >"$t"
 check "below the threshold says nothing" test -z "$(run_hook "$t" s1)"
 
-usage_line 145000 >>"$t"
+usage_line 240000 >>"$t"
 out=$(run_hook "$t" s1)
-check "at 140k the orchestrator gets the size check" grep -q 'Start only pieces' <<<"$out"
-check "the size check bounds a piece by the handoff threshold" grep -q 'under 175k' <<<"$out"
+check "at 235k the orchestrator gets the size check" grep -q 'Start only pieces' <<<"$out"
+check "the size check bounds a piece by the handoff threshold" grep -q 'under 275k' <<<"$out"
 check "the size check says to ask the owner for the next task" grep -q 'never end a turn idle' <<<"$out"
+check "the note names the 300k budget" grep -q 'of 300k' <<<"$out"
 check "the size check carries the cost table" grep -q '30-45k' <<<"$out"
 check "the note is PostToolUse context" test "$(jq -r .hookSpecificOutput.hookEventName <<<"$out")" = PostToolUse
 check "the wind-down note comes once" test -z "$(run_hook "$t" s1)"
 
-usage_line 300000 true >>"$t"
+usage_line 400000 true >>"$t"
 check "a sidechain's usage is not the session's" test -z "$(run_hook "$t" s1)"
 
-usage_line 165000 >>"$t"
-usage_line 170000 >>"$t"
-check "at 170k there is no handoff note yet" test -z "$(run_hook "$t" s1)"
+usage_line 265000 >>"$t"
+usage_line 270000 >>"$t"
+check "at 270k there is no handoff note yet" test -z "$(run_hook "$t" s1)"
 
-usage_line 176000 >>"$t"
+usage_line 276000 >>"$t"
 out=$(run_hook "$t" s1)
-check "at 175k the orchestrator is told to hand off" grep -q 'Hand off now' <<<"$out"
+check "at 275k the orchestrator is told to hand off" grep -q 'Hand off now' <<<"$out"
 check "the handoff note carries the spawn step" grep -q 'spawn-successor.sh' <<<"$out"
 check "the handoff note comes once" test -z "$(run_hook "$t" s1)"
 
 h="$tmp/handoff.jsonl"
 {
   printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"%s/.claude/skills/orchestrator/SKILL.md"}}]}}\n' "$HOME"
-  usage_line 180000
+  usage_line 280000
 } >"$h"
 check "a successor that read the skill file counts as an orchestrator" grep -q 'Hand off now' <<<"$(run_hook "$h" s2)"
 
 o="$tmp/other.jsonl"
 {
   printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"grep \\"text\\":\\"Base directory for this skill: %s/.claude/skills/orchestrator\\\\n"}}]}}\n' "$HOME"
-  usage_line 170000
+  usage_line 280000
 } >"$o"
 check "a session that only mentions the skill is left alone" test -z "$(run_hook "$o" s3)"
 check "an agent inside an orchestrator is left alone" test -z "$(run_hook "$h" s4 '+ {agent_id: "a1"}')"
 check "an orchestrator outside tmux is left alone" test -z "$(test_tmux='' run_hook "$h" s5)"
+
+b="$tmp/budget.jsonl"
+{
+  skill_line
+  usage_line 140000
+} >"$b"
+out=$(CLAUDE_CONTEXT_BUDGET=200000 run_hook "$b" s6)
+check "a smaller budget moves the wind-down point to 40k before its handoff" grep -q 'under 175k' <<<"$out"
+check "a smaller budget is the one the note names" grep -q 'of 200k' <<<"$out"
+{
+  skill_line
+  usage_line 134000
+} >"$b.low"
+check "a smaller budget says nothing below its wind-down point" test -z "$(CLAUDE_CONTEXT_BUDGET=200000 run_hook "$b.low" s7)"
 
 ((failures == 0)) && echo "all passed" || exit 1
