@@ -176,6 +176,13 @@ Item {
         return sum;
     }
 
+    // What the fitted modules take of the row, each with the gap it adds.
+    function row_length_fitted() {
+        let sum = 0;
+        for (const c of layout.children) if (c.visible && root.is_fitted(c)) sum += c.implicitWidth + Style.bar_module_gap;
+        return sum;
+    }
+
     function has_fitted_module() {
         for (const c of layout.children) if (c.visible && root.is_fitted(c)) return true;
         return false;
