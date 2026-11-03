@@ -176,6 +176,13 @@ Item {
         return sum;
     }
 
+    // What compact hides in the row that can change while hidden (BarModule.compact_hidden).
+    function row_compact_hidden() {
+        let sum = 0;
+        for (const c of layout.children) if (c.visible && c.item && c.item.compact_hidden) sum += c.item.compact_hidden;
+        return sum;
+    }
+
     // What the fitted modules take of the row, each with the gap it adds.
     function row_length_fitted() {
         let sum = 0;
