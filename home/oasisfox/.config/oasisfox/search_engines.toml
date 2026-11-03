@@ -8,7 +8,7 @@ calendar = { url = "https://calendar.google.com/calendar/u/0/r/search?q=%s", lab
 commons = { url = "https://ccsearch.creativecommons.org/?search_fields=title&search_fields=creator&search_fields=tags&search=%s", label = "Creative Commons search" }
 crates = { url = "https://crates.io/search?q=%s", label = "Rust crates" }
 duck = { url = "https://duckduckgo.com/?q=%s", label = "DuckDuckGo" }
-define = { url = "http://www.merriam-webster.com/dictionary/%s", label = "Merriam-Webster dictionary" }
+define = { url = "https://www.merriam-webster.com/dictionary/%s", label = "Merriam-Webster dictionary" }
 sitedown = { url = "https://www.isitdownrightnow.com/%s", label = "Is it down right now" }
 drive = { url = "https://drive.google.com/drive/search?q=%s", label = "Google Drive" }
 gmail = { url = "https://mail.google.com/mail/u/0/#search/%s", label = "Gmail" }
