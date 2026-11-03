@@ -323,12 +323,17 @@ end
 
 -- -------- hyprpaper --------
 
+local function hyprpaper_running()
+  local r = os.execute("pgrep -x hyprpaper >/dev/null 2>&1")
+  return r == true or r == 0
+end
+
 --- Start hyprpaper in the background if it is not already running, with `custom/hyprpaper.conf` when present.
 --- @param cfg table wallpaper config (used for logging)
 --- @param util table shared utility object
+--- @return boolean started a new hyprpaper, which shows nothing yet
 local function ensure_hyprpaper(cfg, util)
-  local r = os.execute("pgrep -x hyprpaper >/dev/null 2>&1")
-  if r ~= true and r ~= 0 then
+  if not hyprpaper_running() then
     util.log("Starting hyprpaper...", cfg)
     local cmd = util.signature and string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprpaper", util.signature)
       or "hyprpaper"
@@ -336,7 +341,9 @@ local function ensure_hyprpaper(cfg, util)
     if readable(conf) then cmd = string.format("%s -c '%s'", cmd, conf) end
     os.execute(cmd .. " >/dev/null 2>&1 &")
     util.sleep(1)
+    return true
   end
+  return false
 end
 
 -- -------- run --------
@@ -380,8 +387,6 @@ function Rotate.start(opts)
       return false, lock_err
     end
   end
-
-  if opts.start_hyprpaper ~= false then ensure_hyprpaper(cfg, util) end
 
   local state = {}
   local last_loc_refresh = os.time()
@@ -471,6 +476,15 @@ function Rotate.start(opts)
   --- partial re-picks only the monitors in `only` (or the `--monitor` target), avoiding live wallpapers.
   --- @param only table<string, boolean>|nil monitors a partial cycle re-picks
   local function cycle(mode, only)
+    -- start-hyprland relaunches a crashed Hyprland under this process; hyprpaper dies with the old instance.
+    -- A new hyprpaper shows nothing, so what the old one showed no longer counts as covered.
+    local signature_before = util.signature
+    Apply.follow_live_instance(util)
+    local fresh_hyprpaper = opts.start_hyprpaper ~= false and ensure_hyprpaper(cfg, util)
+    if fresh_hyprpaper or util.signature ~= signature_before then
+      APPLIED_WALLPAPERS = {}
+      mode, only = "full", nil
+    end
     maybe_refresh()
     active_pins = SettingsPage.usable(settings_state, cfg, util)
     local history = cfg.history_size > 0 and read_history() or {}
@@ -618,11 +632,22 @@ function Rotate.start(opts)
   -- Rotation loop (startup already did the first cycle). Wakes early for a
   -- period change so the new period's wallpapers show on time, and polls the
   -- settings file in short slices since there is no file watcher.
+  --- A Hyprland crash mid-session takes hyprpaper with it; catch that here so the repaint does not wait for rotation.
+  --- @return boolean
+  local function session_restarted()
+    local signature_before = util.signature
+    Apply.follow_live_instance(util)
+    return util.signature ~= signature_before or (opts.start_hyprpaper ~= false and not hyprpaper_running())
+  end
+
   while true do
     util.sleep(POLL_SECONDS)
     adopt_outside_changes()
     apply_settings_change()
-    if cfg.rotation and os.time() >= due then
+    if session_restarted() then
+      cycle("full")
+      schedule()
+    elseif cfg.rotation and os.time() >= due then
       cycle("full")
       schedule()
     end

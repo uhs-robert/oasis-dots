@@ -262,14 +262,14 @@ check("Delete: catchall resets", type(bind("Delete", "catchall").action) == "fun
 -- A one-shot submap's click closes it like an unbound key, and the click still reaches the window.
 local delete_click = bind("Delete", "mouse:272")
 check("Delete: a click resets", type(delete_click.action) == "function" and delete_click.opts.non_consuming == true)
--- On 0.57 a one-shot Back runs on key-down: a key-up bind would let its key-down through to the focused app.
+-- On 0.57 a one-shot Back runs on key-down: the key-up matches in the submap the key went down in.
 check("Delete: Back on key-down", not bind("Delete", "BackSpace").opts.release)
--- Each key with a held-release row also has an any-modifier no-op, so an unbound combo (ALT + LEFT) is swallowed.
+-- Each held-release row matches any modifier, so it claims an unbound combo's key-down (ALT + LEFT) from the app.
 for _, key in ipairs({ "H", "LEFT", "E", "PERIOD" }) do
 	local claimed = false
 	for _, entry in ipairs(Stubs.binds) do
-		if entry.submap == "Cursor" and entry.key == key and not entry.opts.release and entry.opts.ignore_mods then
-			claimed = claimed or (type(entry.action) == "table" and entry.action.text == "no_op")
+		if entry.submap == "Cursor" and entry.key == key and entry.opts.release and entry.opts.ignore_mods then
+			claimed = true
 		end
 	end
 	check("Cursor: " .. key .. " claims its unbound combos", claimed)

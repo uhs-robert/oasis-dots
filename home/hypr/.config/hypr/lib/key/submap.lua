@@ -433,8 +433,7 @@ function Submap.define(spec)
       if normalize_escape(spec) ~= false then
         Bind.key("ESCAPE", M.exit, "Exit " .. spec.name)
         -- Before 0.57 a one-shot Back runs on key-up: on key-down, the key-up would reach the catchall of the submap
-        -- it went back to. 0.57 matches the key-up in the submap the key went down in, while a key-up bind there lets
-        -- its key-down through to the focused app.
+        -- it went back to. 0.57 matches the key-up in the submap the key went down in, so key-down is safe there.
         local back_opts = catchall == "reset" and not Bind.keybinds_v2 and { release = true } or nil
         Bind.key("BackSpace", M.back, "Back", back_opts)
       end
