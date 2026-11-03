@@ -2,6 +2,8 @@
 # Tests for context-budget.sh: an orchestrator session gets the size-check note once, then the handoff note once;
 # other sessions, agents and a sidechain's usage are ignored.
 set -u
+# The checks assume the default budget, so overrides from the caller's shell must not reach the hook.
+unset CLAUDE_CONTEXT_BUDGET CLAUDE_CONTEXT_WIND_DOWN CLAUDE_CONTEXT_HANDOFF
 hook="$(dirname "$0")/../context-budget.sh"
 failures=0
 tmp=$(mktemp -d)
