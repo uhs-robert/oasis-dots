@@ -9,6 +9,7 @@ function overrides(t, ctx) {
         keeptabs_layout: "lsp",
         card_layout: "notify",
         wait_anim: "cursor",
+        dir_anim: "type",
         font_family: "Maple Mono NF",
         // One 16px scale like the notification panel: -1/-2 text is primary, -3/-4 meta, -5 and smaller tags.
         font_size: t.popup_font_size + 1,

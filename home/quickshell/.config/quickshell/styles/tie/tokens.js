@@ -7,6 +7,7 @@ function overrides(t, ctx) {
     const lock = t.theme_label;
     return {
         wait_anim: "comms",
+        dir_anim: "scramble",
         screen_frame_corners: "chamfer",
         done_anim: "lock",
         picker_skin: "tiecomp",

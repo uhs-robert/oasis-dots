@@ -17,6 +17,7 @@ function overrides(t, ctx) {
         keeptabs_layout: "oasis",
         osd_layout: "horizon",
         wait_anim: "mirage",
+        dir_anim: "slide",
         done_anim: "shooting_star",
         level_layout: "slant",
         card_layout: "oasis",

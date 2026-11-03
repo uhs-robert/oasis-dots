@@ -5,6 +5,7 @@ function overrides(t, ctx) {
         bar_icon_set: "terminal",
         bar_meeting_marker: "bracket_tag",
         wait_anim: "cursor",
+        dir_anim: "type",
         weather_header: "wttr",
         keeptabs_layout: "wttr",
         picker_skin: "tmux",

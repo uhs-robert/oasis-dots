@@ -3,6 +3,7 @@
 function overrides(t, ctx) {
     return {
         wait_anim: "advance",
+        dir_anim: "type",
         done_anim: "pixel",
         weather_header: "battle",
         keeptabs_layout: "battle",

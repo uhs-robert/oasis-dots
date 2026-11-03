@@ -7,6 +7,7 @@ function overrides(t, ctx) {
         osd_layout: "watch",
         workspace_art: "dial",
         wait_anim: "transmission",
+        dir_anim: "flicker",
         done_anim: "lcd",
         font_family: Watch.mono_font,
         title_font_family: Watch.head_font,

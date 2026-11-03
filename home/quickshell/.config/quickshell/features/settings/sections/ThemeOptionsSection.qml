@@ -19,7 +19,7 @@ RowsSection {
     // lands in Effects rather than vanishing.
     readonly property var group_keys: ({
             "Frame & bar": ["screen_frame", "corner_style", "bar_island_shape", "bar_island_opacity", "workspace_art", "bar_icon_set", "bar_meeting_marker"],
-            "Skins": ["picker_skin", "overview_skin", "osd_layout", "weather_header", "keeptabs_layout", "done_anim", "wait_anim", "toast_enter"],
+            "Skins": ["picker_skin", "overview_skin", "osd_layout", "weather_header", "keeptabs_layout", "done_anim", "wait_anim", "toast_enter", "dir_anim"],
             "Fonts": ["font_family", "bar_font_family", "font_size"]
         })
 
@@ -58,6 +58,7 @@ RowsSection {
             done_anim: "The keeptabs celebration when a session finishes, from any style.",
             wait_anim: "The keeptabs cue when a session waits on you, from any style.",
             toast_enter: "How notification toasts arrive, from any style.",
+            dir_anim: "How the bar's Directory module shows a new app or path, from any style.",
             screen_frame: "Bands in the bar's colour round the rest of the screen, joined to the bar. Window borders and gaps follow it; Settings > Style says whether a lone window sits flush against it.",
             corner_style: "The shape of the screen's corners, with the frame on or off: the frame's hole, popups, a floating strip's ends and Hyprland and Firefox window corners (Pixel's windows are chamfered). Firefox and yazi read it at start-up.",
             bar_island_shape: "The outline of the bar's islands, one strip across the full bar, or a floating strip set in from the screen edge, from any style, drawn in your palette.",

@@ -94,6 +94,8 @@ Singleton {
     readonly property var wait_anims: ["bubble", "cursor", "pressanykey", "advance", "hand", "alert", "rumble", "transmission", "scan", "comms", "ping", "hev_alert", "exclaim", "atb", "mirage"]
     // Toast arrivals any style can borrow (Theme options); "" is the plain fade-in.
     readonly property var toast_enters: ["", "type", "mode7", "wobble", "bloom"]
+    // Directory module animations any style can borrow (Theme options); "fade" is the plain look.
+    readonly property var dir_anims: ["fade", "slide", "type", "stepped", "flicker", "scramble", "wipe", "none"]
     // Pixel icon sets any style can borrow (Theme options); "" is the Nerd Font glyphs.
     readonly property var bar_icon_sets: [""].concat(IconSets.names)
     // Meeting markers any style can borrow (Theme options); "" is the dot.
@@ -112,6 +114,7 @@ Singleton {
             bar_meeting_marker: MarkerTokens.labels,
             bar_island_shape: { slant: "Slant", octagon: "Octagon", watch: "Watch", window: "Window", rect: "Rectangle", capsule: "Capsule", visor: "Visor", chevron: "Chevron", lean: "Lean", hex: "Hex", ticket: "Ticket", tab: "Tab", pixel: "Pixel", notch: "Notch", none: "None", underline: "Underline", brackets: "Brackets", full: "Full bar", strip: "Floating strip" },
             toast_enter: { "": "Fade", type: "Typewriter", mode7: "Mode 7", wobble: "Wobble", bloom: "Bloom" },
+            dir_anim: { fade: "Fade", slide: "Slide", type: "Typewriter", stepped: "Palette Fade", flicker: "Flicker", scramble: "Decode", wipe: "Scan Wipe", none: "Off" },
             corner_style: { round: "Round", chamfer: "Chamfer", pixel: "Pixel", square: "Square" }
         })
     readonly property var labels: ({ crt: "CRT", nes: "NES", snes: "SNES", gameboy: "Gameboy", goldeneye: "Goldeneye", ps1: "PSX", ff7: "FFVII", ps2: "PS2", halflife: "Half Life", tie: "Tie Fighter", modern: "Modern" })
@@ -497,6 +500,7 @@ Singleton {
     readonly property string controller: root.active.controller
     readonly property string controller_glyphs: root.active.controller_glyphs
     readonly property var meter_art: root.active.meter_art
+    readonly property string dir_anim: root.active.dir_anim || "fade"
     readonly property string toast_enter: root.active.toast_enter
     readonly property string console_views: root.active.console_views
     readonly property string workspace_art: root.active.workspace_art
@@ -688,6 +692,7 @@ Singleton {
         out.push({ key: "done_anim", label: "Done animation", type: "choice", default: b.done_anim || "hearts", choices: root.done_anims, labels: root.borrow_labels("done_anim", root.done_anims) });
         out.push({ key: "wait_anim", label: "Waiting animation", type: "choice", default: b.wait_anim || "bubble", choices: root.wait_anims, labels: root.borrow_labels("wait_anim", root.wait_anims) });
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
+        out.push({ key: "dir_anim", label: "Directory animation", type: "choice", default: b.dir_anim || "fade", choices: root.dir_anims, labels: root.borrow_labels("dir_anim", root.dir_anims) });
         const saved = root.theme_values[style_name] || {};
         if (FrameTokens.offered(b)) out.push({ key: "screen_frame", label: "Screen frame", type: "bool", default: false });
         const corner_choices = FrameTokens.row_choices(b.screen_frame_only, root.frame_corners);
