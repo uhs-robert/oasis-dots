@@ -44,7 +44,7 @@ Singleton {
         id: store
         path: Paths.state_dir + "/bars.json"
         defaults: BarLayout.normalize(null)
-        known_keys: ["shared", "monitors", "positions", "directory", "cava_migrated"]
+        known_keys: ["shared", "monitors", "positions", "directory", "cava_migrated", "auto_compact"]
         debounce_ms: 100
         validate: raw => BarLayout.normalize(raw)
         onLoaded: root.adopt_loaded()
@@ -89,6 +89,13 @@ Singleton {
 
     function set_directory_switch(name, on) {
         root.set_state(BarLayout.set_directory_switch(root.state, name, on));
+    }
+
+    // Compacts a bar whose islands would overlap (Bar.qml), on every monitor.
+    readonly property bool auto_compact: BarLayout.auto_compact(root.state)
+
+    function set_auto_compact(on) {
+        root.set_state(BarLayout.set_auto_compact(root.state, on));
     }
 
     function monitor_key(screen) {
