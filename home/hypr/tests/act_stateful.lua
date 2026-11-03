@@ -246,30 +246,46 @@ for _, name in ipairs({ "Windows", "Cursor", "Quick Click", "Groups", "Move", "R
 	check(name .. ": catchall releases", entry.opts.release == true and entry.opts.ignore_mods == true)
 	-- Hyprland 0.57 runs a catchall on mouse events too; a matching non-consuming bind hands clicks and scrolls on.
 	for _, input in ipairs({
-		"mouse:272", "mouse:273", "mouse:274", "mouse:275", "mouse:276", "mouse:277", "mouse:278", "mouse:279",
-		"mouse_up", "mouse_down", "mouse_left", "mouse_right",
+		"mouse:272",
+		"mouse:273",
+		"mouse:274",
+		"mouse:275",
+		"mouse:276",
+		"mouse:277",
+		"mouse:278",
+		"mouse:279",
+		"mouse_up",
+		"mouse_down",
+		"mouse_left",
+		"mouse_right",
 	}) do
 		local pass = bind(name, input)
-		check(name .. ": " .. input .. " passes through", pass.opts.non_consuming == true and pass.opts.ignore_mods == true)
+		check(
+			name .. ": " .. input .. " passes through",
+			pass.opts.non_consuming == true and pass.opts.ignore_mods == true
+		)
 	end
 end
 -- A one-shot submap must not end on a lone AltGr press, the way it survives a lone Shift.
 for _, key in ipairs({ "ISO_Level3_Shift", "ISO_Level5_Shift" }) do
 	local entry = bind("Delete", key)
-	check("Delete: " .. key .. " is a transparent no-op", entry.action.text == "no_op" and entry.opts.transparent == true and entry.opts.ignore_mods == true)
+	check(
+		"Delete: " .. key .. " is a transparent no-op",
+		entry.action.text == "no_op" and entry.opts.transparent == true and entry.opts.ignore_mods == true
+	)
 end
 check("Delete: catchall resets", type(bind("Delete", "catchall").action) == "function")
 -- A one-shot submap's click closes it like an unbound key, and the click still reaches the window.
 local delete_click = bind("Delete", "mouse:272")
 check("Delete: a click resets", type(delete_click.action) == "function" and delete_click.opts.non_consuming == true)
--- On 0.57 a one-shot Back runs on key-down: a key-up bind would let its key-down through to the focused app.
+-- On 0.57 a one-shot Back runs on key-down: the key-up matches in the submap the key went down in.
 check("Delete: Back on key-down", not bind("Delete", "BackSpace").opts.release)
--- Each key with a held-release row also has an any-modifier no-op, so an unbound combo (ALT + LEFT) is swallowed.
+-- Each held-release row matches any modifier, so it claims an unbound combo's key-down (ALT + LEFT) from the app.
 for _, key in ipairs({ "H", "LEFT", "E", "PERIOD" }) do
 	local claimed = false
 	for _, entry in ipairs(Stubs.binds) do
-		if entry.submap == "Cursor" and entry.key == key and not entry.opts.release and entry.opts.ignore_mods then
-			claimed = claimed or (type(entry.action) == "table" and entry.action.text == "no_op")
+		if entry.submap == "Cursor" and entry.key == key and entry.opts.release and entry.opts.ignore_mods then
+			claimed = true
 		end
 	end
 	check("Cursor: " .. key .. " claims its unbound combos", claimed)
@@ -568,15 +584,24 @@ local function fire_enabled_timers()
 end
 check("move: the first step fires at once", text_of(press("Cursor", "H")) == "exec_cmd(wlrctl pointer move -10 0)")
 check("move: one timer waits for the repeat delay", enabled_timers() == 1)
-check("move: a second direction steps by the sum", text_of(press("Cursor", "SHIFT + K")) == "exec_cmd(wlrctl pointer move -10 -100)")
+check(
+	"move: a second direction steps by the sum",
+	text_of(press("Cursor", "SHIFT + K")) == "exec_cmd(wlrctl pointer move -10 -100)"
+)
 check("move: it replaced the first timer", enabled_timers() == 1)
 fire_enabled_timers()
 check("move: the repeat runs beside the delay timer", enabled_timers() == 2)
 local tick = fire_enabled_timers()
-check("move: a repeat tick moves diagonally: " .. text_of(tick), count_of(tick, "exec_cmd(wlrctl pointer move -10 -100)") >= 1)
+check(
+	"move: a repeat tick moves diagonally: " .. text_of(tick),
+	count_of(tick, "exec_cmd(wlrctl pointer move -10 -100)") >= 1
+)
 release("K")
 check("move: one direction still held keeps it going", enabled_timers() > 0)
-check("move: then only that direction moves", count_of(fire_enabled_timers(), "exec_cmd(wlrctl pointer move -10 0)") >= 1)
+check(
+	"move: then only that direction moves",
+	count_of(fire_enabled_timers(), "exec_cmd(wlrctl pointer move -10 0)") >= 1
+)
 release("H")
 check("move: releasing the last direction stops every timer", enabled_timers() == 0)
 check("move: arrows release too", #release("LEFT") == 0 and enabled_timers() == 0)
@@ -603,7 +628,10 @@ check("click order: the click stops the move timers", not move_timer.enabled)
 check("click order: nothing runs at once", #click_now == 0)
 local click_timer = timers[click_timers_before + 1]
 check("click order: the click timer is enabled", click_timer and click_timer.enabled)
-check("click order: the click waits 20 ms", click_timer and click_timer.opts.timeout == 20 and click_timer.opts.type == "oneshot")
+check(
+	"click order: the click waits 20 ms",
+	click_timer and click_timer.opts.timeout == 20 and click_timer.opts.type == "oneshot"
+)
 Stubs.performed = {}
 click_timer.fn()
 check("click order: the delayed timer clicks", text_of(Stubs.performed) == "exec_cmd(wlrctl pointer click left)")
