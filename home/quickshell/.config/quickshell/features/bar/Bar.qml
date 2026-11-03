@@ -147,6 +147,21 @@ Item {
             center: root.has_center ? { x: center_island.x, width: center_island.width } : null
         });
     }
+    // What compact hides per island pair; only a top or bottom bar hides text that can change (the media title).
+    readonly property var island_hidden: {
+        if (!root.auto_compact_enabled || root.vertical) return root.island_overlaps.map(() => 0);
+        return BarLayout.pair_hidden({
+            left: root.fixed_length(left_island),
+            right: root.fixed_length(right_island),
+            center: root.has_center,
+            hidden: {
+                left: left_island.visible ? left_island.row_compact_hidden() : 0,
+                center: root.has_center ? center_island.row_compact_hidden() : 0,
+                right: right_island.visible ? right_island.row_compact_hidden() : 0
+            }
+        });
+    }
+    onIsland_hiddenChanged: auto_compact_timer.restart()
     property var auto_compact_memo: BarLayout.auto_compact_off
     // A layout edit (a module added, removed or given its own compact) changes what compacting saves, so it measures again.
     readonly property string auto_compact_layout: JSON.stringify(root.rule)
@@ -167,7 +182,7 @@ Item {
         interval: 200
         onTriggered: {
             const was_on = root.auto_compact_memo.on;
-            root.auto_compact_memo = BarLayout.auto_compact_step(root.auto_compact_memo, root.island_overlaps, 8);
+            root.auto_compact_memo = BarLayout.auto_compact_step(root.auto_compact_memo, root.island_overlaps, 8, root.island_hidden);
             // A switch that changes no width moves no overlap, so measure what it saved here.
             if (root.auto_compact_memo.on !== was_on) auto_compact_timer.restart();
         }

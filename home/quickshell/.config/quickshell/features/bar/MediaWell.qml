@@ -68,6 +68,15 @@ Item {
         return root.stacked ? Math.max(24, Math.min(bar_height - 4, 30)) : Math.max(20, Math.min(bar_height - 10, 28));
     }
     readonly property real base_width: 170
+    // The widest text line, measured even while compact hides it, so auto compact sees a new title.
+    readonly property real text_width: {
+        let widest = 0;
+        for (let i = 0; i < text_repeater.count; i++) {
+            const line = text_repeater.itemAt(i);
+            if (line) widest = Math.max(widest, line.window_width);
+        }
+        return widest;
+    }
     // Where the right side starts in the well's own coordinates, for the wheel: past the edge when it is not shown.
     readonly property real right_left: right.visible ? content.x + right.x : root.width + 1
     readonly property real right_width: root.right_mode === "hide" ? 0 : root.right_mode === "cava" ? 64 : 76
@@ -186,6 +195,7 @@ Item {
             spacing: 0
 
             Repeater {
+                id: text_repeater
                 model: root.text_lines
 
                 MarqueeText {

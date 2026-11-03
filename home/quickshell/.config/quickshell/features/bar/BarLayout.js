@@ -195,18 +195,30 @@ function island_overlaps(bar) {
     return bar.left > 0 && bar.right > 0 ? [bar.left + bar.right + bar.gap - (bar.end - bar.start)] : [];
 }
 
-var auto_compact_off = { on: false, full: [], saving: null };
+// What compact hides per island pair, in `island_overlaps`' order, from each island's `hidden` length. The centre island
+// grows both ways, so each side gets half of its own.
+function pair_hidden(bar) {
+    if (bar.center) return [bar.hidden.left + bar.hidden.center / 2, bar.hidden.center / 2 + bar.hidden.right];
+    return bar.left > 0 && bar.right > 0 ? [bar.hidden.left + bar.hidden.right] : [];
+}
 
-// One step of auto compact, from the last `memo` and the overlaps the bar draws now. Compacting shrinks the islands, so
-// the full layout can no longer be measured: `full` keeps the overlaps that turned it on, and `saving` what compacting
-// gained per pair, taken on the first step after. It turns off only once the full layout would fit with `margin` spare,
-// so it does not flip back and forth at the edge. A change in the islands' pairing starts over.
-function auto_compact_step(memo, overlaps, margin) {
-    if (!memo.on) return overlaps.some(o => o > 0) ? { on: true, full: overlaps, saving: null } : auto_compact_off;
-    if (overlaps.length !== memo.full.length) return auto_compact_off;
+var auto_compact_off = { on: false, full: [], saving: null, hidden: null };
+
+// One step of auto compact, from the last `memo`, the overlaps the bar draws now and what compact hides per pair
+// (`hidden`, from `pair_hidden`). Compacting shrinks the islands, so the full layout can no longer be measured: `full`
+// keeps the overlaps that turned it on, and `saving` what compacting gained per pair, taken on the first step after
+// with the `hidden` of that moment. A later change to `hidden` (a new media title) moves the saving by as much. It turns
+// off only once the full layout would fit with `margin` spare, so it does not flip back and forth at the edge. A change
+// in the islands' pairing starts over.
+function auto_compact_step(memo, overlaps, margin, hidden) {
+    const now_hidden = hidden || overlaps.map(() => 0);
+    if (!memo.on) return overlaps.some(o => o > 0) ? { on: true, full: overlaps, saving: null, hidden: null } : auto_compact_off;
+    if (overlaps.length !== memo.full.length || now_hidden.length !== overlaps.length) return auto_compact_off;
     const saving = memo.saving || memo.full.map((f, i) => Math.max(0, f - overlaps[i]));
-    if (overlaps.every((o, i) => o + saving[i] <= -margin)) return auto_compact_off;
-    return { on: true, full: memo.full, saving: saving };
+    const at_saving = memo.hidden || now_hidden;
+    const fits = overlaps.every((o, i) => o + Math.max(0, saving[i] + now_hidden[i] - at_saving[i]) <= -margin);
+    if (fits) return auto_compact_off;
+    return { on: true, full: memo.full, saving: saving, hidden: at_saving };
 }
 
 // The directory module's global on/off switches: the app name, the path, and the file name Neovim has open.
