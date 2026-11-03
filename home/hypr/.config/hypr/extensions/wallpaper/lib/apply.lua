@@ -3,6 +3,7 @@
 --- @class Apply
 --- @field to_monitors fun(cfg: table, util: table, opts?: { exclude?: table<string, boolean>, only?: table<string, boolean>, reserved?: table<string, boolean>, history?: string[], pins?: table<string, string> }): boolean, table<string, string>, table<string, boolean> Apply wallpapers to all active monitors (or cfg.target_monitor if set); returns ok, a map of monitor name to the wallpaper path applied, and the set of monitors that got a pin
 --- @field list_monitors fun(cfg: table, util: table): { name: string, description: string }[] Active monitors; description is empty when only the text fallback worked
+--- @field follow_live_instance fun(util: table) Point util.signature at the live Hyprland instance if the current one is gone
 --- @field detect_signature fun(skip_env?: boolean): string|nil Current Hyprland instance signature from the environment or the runtime dir
 --- @field list_images fun(dir: string, skip?: string[]): string[] Public wrapper around list_images for external callers
 --- @field folder fun(name: string): string Folder name for a period, season or weather key
@@ -298,29 +299,36 @@ function Apply.detect_signature(skip_env)
   return (sig and sig ~= "") and sig or nil
 end
 
---- Run a hyprctl command, retrying with an auto-detected HYPRLAND_INSTANCE_SIGNATURE if needed.
+--- @param out string|nil hyprctl output
+--- @return boolean answered the compositor replied (a dead instance prints "Couldn't connect" to stdout)
+local function answered(out)
+  return out ~= nil
+    and out:match("%S") ~= nil
+    and not out:match("socket timeout")
+    and not out:match("^Couldn't connect")
+end
+
+--- Run a hyprctl command. When the current signature gets no answer, switch `util.signature`
+--- to the newest instance so later hyprctl and hyprpaper calls follow a restarted Hyprland.
 --- @param cmd string hyprctl subcommand and arguments
 --- @param util table shared utility object with `run_cmd`, `log`, and optional `signature`
 --- @return string|nil command output
 local function hyprctl(cmd, util)
-  -- Try with current env
   local base = util.signature and ("HYPRLAND_INSTANCE_SIGNATURE=" .. util.signature .. " ") or ""
   local out = util.run_cmd(base .. "hyprctl " .. cmd .. " 2>/dev/null")
-  if out and out:match("%S") and not out:match("socket timeout") then return out end
+  if answered(out) then return out end
 
-  -- Try to auto-detect a signature
   local sig = Apply.detect_signature(true)
-
-  if sig and sig ~= "" then
-    local env_cmd = string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprctl %s 2>/dev/null", sig, cmd)
-    out = util.run_cmd(env_cmd)
-    if out and out:match("%S") and not out:match("socket timeout") then
-      util.log("hyprctl succeeded after setting HYPRLAND_INSTANCE_SIGNATURE=" .. sig, { verbose = true })
-      return out
+  if sig and sig ~= util.signature then
+    local retry = util.run_cmd(string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprctl %s 2>/dev/null", sig, cmd))
+    if answered(retry) then
+      util.log("Following Hyprland instance " .. sig, { verbose = true })
+      util.signature = sig
+      return retry
     end
   end
 
-  return out
+  return nil
 end
 
 --- Return the active monitors via hyprctl.
@@ -498,6 +506,10 @@ end
 --- @param util table shared utility object
 --- @return { name: string, description: string }[]
 function Apply.list_monitors(cfg, util) return monitors(cfg, util) end
+
+--- Point `util.signature` at the live Hyprland instance if the current one is gone.
+--- @param util table shared utility object
+function Apply.follow_live_instance(util) hyprctl("version", util) end
 
 --- Public wrapper around `list_images` for external callers.
 --- @param dir string directory to scan

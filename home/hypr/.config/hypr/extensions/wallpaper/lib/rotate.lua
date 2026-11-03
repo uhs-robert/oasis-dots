@@ -381,8 +381,6 @@ function Rotate.start(opts)
     end
   end
 
-  if opts.start_hyprpaper ~= false then ensure_hyprpaper(cfg, util) end
-
   local state = {}
   local last_loc_refresh = os.time()
 
@@ -471,6 +469,9 @@ function Rotate.start(opts)
   --- partial re-picks only the monitors in `only` (or the `--monitor` target), avoiding live wallpapers.
   --- @param only table<string, boolean>|nil monitors a partial cycle re-picks
   local function cycle(mode, only)
+    -- start-hyprland relaunches a crashed Hyprland under this process; hyprpaper dies with the old instance.
+    Apply.follow_live_instance(util)
+    if opts.start_hyprpaper ~= false then ensure_hyprpaper(cfg, util) end
     maybe_refresh()
     active_pins = SettingsPage.usable(settings_state, cfg, util)
     local history = cfg.history_size > 0 and read_history() or {}
