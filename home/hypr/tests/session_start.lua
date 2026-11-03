@@ -1,6 +1,6 @@
 -- Loads lib/session_start.lua against a stubbed `hl` and a temp runtime dir and checks when its hooks run: on
 -- hyprland.start at a normal first launch, after the reload when safe mode loads the config late, and never again on
--- an ordinary reload.
+-- an ordinary reload. A late load that raises before `arm` leaves the session unmarked for the repaired reload.
 --
 --   lua home/hypr/tests/session_start.lua
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -29,8 +29,9 @@ end
 
 local handlers
 
---- Loads the module fresh, as a config (re)load does, registers one hook and returns how many times each event ran it.
-local function load(monitor_count)
+--- Loads the module fresh, as a config (re)load does, queues one hook and returns how many times each event ran it.
+--- `fails` stands for a config that raises after queueing the hook, so it never reaches `arm`.
+local function load(monitor_count, fails)
 	handlers = {}
 	local monitors = {}
 	for i = 1, monitor_count do
@@ -46,9 +47,13 @@ local function load(monitor_count)
 		end,
 	}
 	local runs = 0
-	assert(loadfile(hypr_dir .. "/lib/session_start.lua"))()(function()
+	local session_start = assert(loadfile(hypr_dir .. "/lib/session_start.lua"))()
+	session_start.on(function()
 		runs = runs + 1
 	end)
+	if not fails then
+		session_start.arm()
+	end
 	return function(event)
 		for _, fn in ipairs(handlers[event] or {}) do
 			fn()
@@ -92,6 +97,14 @@ local ran, err = pcall(function()
 
 	fire = load(3)
 	expect("reload after a late load: the hook does not run again", fire("config.reloaded"), 0)
+
+	-- A late load whose config raises must leave the session unmarked, so the repaired reload still runs the hook.
+	os.remove(marker)
+	fire = load(3, true)
+	expect("failed late load: the hook does not run", fire("config.reloaded"), 0)
+	expect("failed late load: no marker", marked(), false)
+	fire = load(3)
+	expect("repaired reload: the hook runs", fire("config.reloaded"), 1)
 end)
 
 assert(os.execute("rm -rf '" .. runtime .. "'"))

@@ -9,7 +9,9 @@ end
 
 --- Sync the rofi Steam entry with the Steam launch command once per session start.
 local function sync_steam_desktop_entry()
-  require("lib.session_start")(function() require("extensions.steam").sync(require("lib.desktop.apps").steam_prime) end)
+  require("lib.session_start").on(
+    function() require("extensions.steam").sync(require("lib.desktop.apps").steam_prime) end
+  )
 end
 
 --- Enable all extensions. Add calls here to register additional extensions.

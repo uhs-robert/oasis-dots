@@ -334,7 +334,7 @@ end
 --- @return Config
 Config.setup = function(overrides)
   Config = Config.merge(overrides)
-  require("lib.session_start")(require("config.autostart"))
+  require("lib.session_start").on(require("config.autostart"))
   require("config.env")
   require("keymaps")
   require("config.general")
