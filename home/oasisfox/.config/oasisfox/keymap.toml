@@ -29,11 +29,11 @@ r = "Research"
 
 [normal]
 # These three open a window with open.url, not the default window.new, so they stay.
-W = ":open window @current_url"
-wo = ":open window"
-ww = ":open window @current_url"
+W = { run = ":open window @current_url", label = "New window, edit current URL" }
+wo = { run = ":open window", label = "New window, enter URL" }
+ww = { run = ":open window @current_url", label = "New window, edit current URL" }
 ZZ = "quitall"
-";f" = "hint"
+";f" = { run = "hint", label = "Click element" }
 # A generated search key is one key, so the longer families (sgg, sdd, ...) are explicit.
 # A leading colon types the command into the command line and waits for the query.
 ",," = ":search google"
