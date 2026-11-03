@@ -63,7 +63,7 @@ Item {
             if ((parsed.base === "media" || parsed.base === "cava") && !MediaSettings.module_listed(root.island_style)) continue;
             // A side bar has no slot for cava (it keeps its tail); media shows there as art and a button.
             if (root.vertical && parsed.base === "cava") continue;
-            list.push({ entry: raw, base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file), compact: BarSettings.module_compact_for(root.rule, raw) });
+            list.push({ entry: raw, base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file), compact: BarSettings.module_compact_for(root.compact_rule, raw) });
         }
         return list;
     }
@@ -105,7 +105,7 @@ Item {
     // Sets island/screen/stat properties a module declares, after the Loader instantiates it.
     function wire_module(item, entry, island) {
         BarItems.register(BarItems.key_of(root.screen_name, entry), item);
-        item.compact = Qt.binding(() => BarSettings.module_compact_for(root.rule, entry.entry));
+        item.compact = Qt.binding(() => BarSettings.module_compact_for(root.compact_rule, entry.entry));
         item.screen_name = Qt.binding(() => root.screen_name);
         item.bar_height = Qt.binding(() => root.bar_height);
         if (item.hasOwnProperty("vertical")) item.vertical = Qt.binding(() => root.vertical);
@@ -121,6 +121,45 @@ Item {
         if (item.hasOwnProperty("forced_right_side")) item.forced_right_side = Qt.binding(() => MediaSettings.module_position_only(root.island_style, root.lualine) ? "position" : "");
         if (entry.arg && item.hasOwnProperty("stat")) item.stat = entry.arg;
         if (item.hasOwnProperty("room")) item.room = Qt.binding(() => root.module_room(island, item));
+    }
+
+    // Auto compact: while the islands would overlap, the bar draws as if its layout were compact. Modules with their own
+    // compact override keep it. The timer lets a change settle first, so one edit is one step.
+    // A column's islands have no fitted module, so its lengths are the islands' own. The centre one's cava tail is cut
+    // to the room left and does not count.
+    readonly property bool auto_compact_enabled: BarSettings.auto_compact
+    readonly property var island_overlaps: {
+        if (!root.auto_compact_enabled) return [];
+        if (root.vertical) return BarLayout.island_overlaps({
+            start: root.strip_side,
+            end: root.height - root.strip_side,
+            gap: Style.bar_module_gap,
+            left: left_island.visible ? left_island.module_length : 0,
+            right: right_island.visible ? right_island.module_length : 0,
+            center: root.has_center ? { x: center_island.y, width: center_island.module_length } : null
+        });
+        return BarLayout.island_overlaps({
+            start: root.frame ? root.frame.start : root.strip_side,
+            end: root.width - (root.frame ? root.frame.end : root.strip_side),
+            gap: Style.bar_module_gap,
+            left: left_island.visible ? left_island.chrome_length + left_island.row_length_fixed() : 0,
+            right: right_island.visible ? right_island.chrome_length + right_island.row_length_fixed() : 0,
+            center: root.has_center ? { x: center_island.x, width: center_island.width } : null
+        });
+    }
+    property var auto_compact_memo: BarLayout.auto_compact_off
+    readonly property var compact_rule: root.auto_compact_memo.on && root.rule ? Object.assign({}, root.rule, { compact: true }) : root.rule
+    onIsland_overlapsChanged: auto_compact_timer.restart()
+
+    Timer {
+        id: auto_compact_timer
+        interval: 200
+        onTriggered: {
+            const was_on = root.auto_compact_memo.on;
+            root.auto_compact_memo = BarLayout.auto_compact_step(root.auto_compact_memo, root.island_overlaps, 8);
+            // A switch that changes no width moves no overlap, so measure what it saved here.
+            if (root.auto_compact_memo.on !== was_on) auto_compact_timer.restart();
+        }
     }
 
     // How long a side-island module may grow on a top or bottom bar before its island comes within a module gap of

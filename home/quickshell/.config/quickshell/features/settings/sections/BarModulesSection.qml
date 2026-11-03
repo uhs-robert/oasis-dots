@@ -8,7 +8,8 @@ import qs.features.bar_editor
 import qs.features.popups
 import "../SettingsScale.js" as SScale
 
-// Layout editing lives in the bar editor; this pane only opens it and holds the Directory module's global switches.
+// Layout editing lives in the bar editor; this pane only opens it and holds the global switches: auto compact and the
+// Directory module's.
 SettingsPane {
     id: root
 
@@ -21,9 +22,10 @@ SettingsPane {
         { name: "path", label: "Directory: path" },
         { name: "file_name", label: "Directory: Neovim file name" }
     ]
-    // Row 0 is Edit bar; the Directory switches follow.
-    readonly property int total: 1 + root.directory_rows.length
-    readonly property var labels: ["Edit bar"].concat(root.directory_rows.map(r => r.label))
+    // Row 0 is Edit bar, row 1 Auto compact; the Directory switches follow.
+    readonly property int directory_first: 2
+    readonly property int total: root.directory_first + root.directory_rows.length
+    readonly property var labels: ["Edit bar", "Auto compact"].concat(root.directory_rows.map(r => r.label))
     // Values start past the longest setting label, as in RowsSection, rather than at the far edge of a wide pane.
     readonly property real value_column: {
         // Read so the width is measured again once the font has loaded; advanceWidth alone does not notify.
@@ -54,7 +56,8 @@ SettingsPane {
 
     function describe(index) {
         if (index === 0) return "Edit the bars live on screen: move, hide, add and re-place modules, give a monitor its own layout, make one module or the whole bar compact, move the bar to another edge. Esc/q leaves.";
-        return root.directory_notes[root.directory_rows[index - 1].name];
+        if (index === 1) return "Make a bar compact while its islands would overlap, and full again once they fit. Modules with their own compact setting in the bar editor keep it. Applies to every monitor.";
+        return root.directory_notes[root.directory_rows[index - root.directory_first].name];
     }
 
     // The editor takes the keyboard in the tick it opens, so Settings has to be gone first. Settings does not return afterwards.
@@ -63,12 +66,13 @@ SettingsPane {
     }
 
     function toggle_directory(index) {
-        const name = root.directory_rows[index - 1].name;
+        const name = root.directory_rows[index - root.directory_first].name;
         BarSettings.set_directory_switch(name, !BarSettings.directory_switches[name]);
     }
 
     function activate(index, delta) {
         if (index === 0) root.open_editor();
+        else if (index === 1) BarSettings.set_auto_compact(!BarSettings.auto_compact);
         else root.toggle_directory(index);
     }
 
@@ -117,6 +121,19 @@ SettingsPane {
             }
         }
 
+        ChoiceRow {
+            value_x: root.value_column
+            selected: root.live && root.cursor === 1
+            label: "Auto compact"
+            value_text: BarSettings.auto_compact ? "on" : "off"
+            onHoveredChanged: root.hover(1, hovered)
+            onStepped: {
+                root.focus_pane();
+                root.cursor = 1;
+                root.activate(1, 1);
+            }
+        }
+
         Repeater {
             model: root.directory_rows
 
@@ -124,13 +141,13 @@ SettingsPane {
                 required property int index
                 required property var modelData
                 value_x: root.value_column
-                selected: root.live && root.cursor === 1 + index
+                selected: root.live && root.cursor === root.directory_first + index
                 label: modelData.label
                 value_text: BarSettings.directory_switches[modelData.name] ? "on" : "off"
-                onHoveredChanged: root.hover(1 + index, hovered)
+                onHoveredChanged: root.hover(root.directory_first + index, hovered)
                 onStepped: {
                     root.focus_pane();
-                    root.cursor = 1 + index;
+                    root.cursor = root.directory_first + index;
                     root.toggle_directory(root.cursor);
                 }
             }

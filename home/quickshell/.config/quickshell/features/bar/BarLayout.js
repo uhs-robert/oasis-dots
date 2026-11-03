@@ -171,7 +171,42 @@ function normalize(raw) {
         if (Object.keys(switches).length > 0) out.directory = switches;
     }
     if (raw.cava_migrated === true) out.cava_migrated = true;
+    if (raw.auto_compact === false) out.auto_compact = false;
     return out;
+}
+
+// The global auto compact switch: on by default, saved only while off.
+function auto_compact(state) {
+    return !(state && state.auto_compact === false);
+}
+
+function set_auto_compact(state, on) {
+    const next = normalize(state);
+    if (on) delete next.auto_compact;
+    else next.auto_compact = false;
+    return next;
+}
+
+// How far each pair of neighbouring islands overlaps along the bar (across a top or bottom bar, down a column), the
+// module gap included; at or below 0 they fit. `bar` holds the room (`start`, `end`, `gap`), the first and last islands'
+// lengths (`left`, `right`, 0 when hidden) and the centre island's span (`center`: `{ x, width }`, null without one).
+function island_overlaps(bar) {
+    if (bar.center) return [bar.start + bar.left + bar.gap - bar.center.x, bar.center.x + bar.center.width + bar.gap - (bar.end - bar.right)];
+    return bar.left > 0 && bar.right > 0 ? [bar.left + bar.right + bar.gap - (bar.end - bar.start)] : [];
+}
+
+var auto_compact_off = { on: false, full: [], saving: null };
+
+// One step of auto compact, from the last `memo` and the overlaps the bar draws now. Compacting shrinks the islands, so
+// the full layout can no longer be measured: `full` keeps the overlaps that turned it on, and `saving` what compacting
+// gained per pair, taken on the first step after. It turns off only once the full layout would fit with `margin` spare,
+// so it does not flip back and forth at the edge. A change in the islands' pairing starts over.
+function auto_compact_step(memo, overlaps, margin) {
+    if (!memo.on) return overlaps.some(o => o > 0) ? { on: true, full: overlaps, saving: null } : auto_compact_off;
+    if (overlaps.length !== memo.full.length) return auto_compact_off;
+    const saving = memo.saving || memo.full.map((f, i) => Math.max(0, f - overlaps[i]));
+    if (overlaps.every((o, i) => o + saving[i] <= -margin)) return auto_compact_off;
+    return { on: true, full: memo.full, saving: saving };
 }
 
 // The directory module's global on/off switches: the app name, the path, and the file name Neovim has open.
