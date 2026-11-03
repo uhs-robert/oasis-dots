@@ -11,7 +11,7 @@ import qs.features.bar
 // the media popup, a click pins it. The `cava` entry (Cava.qml) is this module too: the right-side setting decides for both.
 BarModule {
     id: root
-    compact_hidden: root.vertical ? 0 : well.text_width
+    compact_hidden: well.compact_extra
     module_name: "media"
     wash: false
     hover_popup: true

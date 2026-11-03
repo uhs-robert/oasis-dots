@@ -63,7 +63,9 @@ Item {
             if ((parsed.base === "media" || parsed.base === "cava") && !MediaSettings.module_listed(root.island_style)) continue;
             // A side bar has no slot for cava (it keeps its tail); media shows there as art and a button.
             if (root.vertical && parsed.base === "cava") continue;
-            list.push({ entry: raw, base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file), compact: BarSettings.module_compact_for(root.compact_rule, raw) });
+            // The rule's own compact, not auto compact's: reading that here would reload every module when it flips.
+            // wire_module binds the drawn value as soon as the module loads.
+            list.push({ entry: raw, base: parsed.base, arg: parsed.arg, url: Qt.resolvedUrl("modules/" + spec.file), compact: BarSettings.module_compact_for(root.rule, raw) });
         }
         return list;
     }
@@ -169,7 +171,9 @@ Item {
         root.auto_compact_memo = BarLayout.auto_compact_off;
         auto_compact_timer.restart();
     }
-    readonly property var compact_rule: root.auto_compact_memo.on && root.rule ? Object.assign({}, root.rule, { compact: true }) : root.rule
+    // A bool, so each new memo does not hand the modules a new rule object.
+    readonly property bool auto_compacted: root.auto_compact_memo.on
+    readonly property var compact_rule: root.auto_compacted && root.rule ? Object.assign({}, root.rule, { compact: true }) : root.rule
     onIsland_overlapsChanged: auto_compact_timer.restart()
 
     // A top or bottom island's drawn length without its fitted modules, which shrink to the room they get.
