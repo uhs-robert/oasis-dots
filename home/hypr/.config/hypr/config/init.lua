@@ -46,6 +46,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field position string Position in the virtual desktop, e.g. "1920x0"
 --- @field scale number DPI scale factor
 --- @field transform integer|nil Transform (rotation), e.g. 3 for 270°
+--- @field start_delay_ms integer|nil Keep the monitor off for this long after login, for a dock that is not ready yet
 
 --- @class Config
 --- @field leader string Modifier key for keybinds (default: "SUPER")

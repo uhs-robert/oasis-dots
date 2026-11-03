@@ -99,13 +99,13 @@ When you hold no piece and nothing you started is running (no agent, background 
 
 ## Automatic handoff (the context-budget hook starts it)
 
-`~/.claude/hooks/context-budget.sh` adds a note to an orchestrator session at 140k tokens (start only pieces under ~10k of orchestrator context that keep usage under 175k, no new PR cycle) and at 175k (hand off, leaving ~25k for the handoff), only when it runs inside tmux; outside tmux there are no notes and the session carries on. The 175k note names the spawn step, so the skill need not be loaded just to start. The owner set it up to start a handoff on that note without being asked:
+`~/.claude/hooks/context-budget.sh` adds two notes to an orchestrator session: the wind-down note (start only pieces under ~10k of orchestrator context that keep usage under the handoff point, no new PR cycle) and the handoff note (hand off, leaving ~25k of the budget for the handoff). By default the budget is 300k and the notes come at 235k and 275k; `CLAUDE_CONTEXT_BUDGET` moves both, and each note states its own numbers. The notes come only inside tmux. Outside tmux the session gets no notes and carries on. The handoff note names the spawn step, so the skill need not be loaded just to start. The owner set it up to start a handoff on that note without being asked:
 
 1. Tell the owner in one line that you are handing off because the session reached its context budget.
 2. Run `~/.claude/skills/orchestrator-handoff/spawn-successor.sh <your session name>`. It opens a window named `orch-<N>-next` in your tmux session with a fresh Claude told to expect your baton, and renames yours to `orch-<k>-prev` (windows are `orch-<N>-next`, `orch-<N>`, `orch-<N>-prev`, `orch-<N>-done`; N is global). If it fails or is denied, hand the owner the `!` command, or ask them to start the session themselves.
 3. End the turn. The successor sends `READY`; its sender is the successor. Follow Hand over from step 1, using that sender in step 3.
 
-After the 140k note, once no small piece remains (nothing in flight, or only pieces too big for the remaining budget), ask the owner the next-task question with `AskUserQuestion` and offer to hand it to a fresh session. On a yes, run steps 1-3 now, without waiting for 175k.
+After the wind-down note, once no small piece remains (nothing in flight, or only pieces too big for the remaining budget), ask the owner the next-task question with `AskUserQuestion` and offer to hand it to a fresh session. On a yes, run steps 1-3 now, without waiting for the handoff note.
 
 Taking over still needs the owner: the successor asks them before replying `TAKEN`, like any `BATON`.
 
