@@ -28,7 +28,7 @@ pre_sudo = true
 # sudo_command = "sudo"
 
 # Disable specific steps - same options as the command line flag
-disable = ["firmware", "snap", "containers", "hyprpm"]
+disable = ["firmware", "snap", "containers", "hyprpm", "tailscale"]
 
 # Run these steps before all others
 # first = ["chezmoi"]
