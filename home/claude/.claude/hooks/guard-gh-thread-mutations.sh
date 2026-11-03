@@ -8,5 +8,5 @@ cmd=$(jq -r '.tool_input.command // empty')
 [[ $cmd =~ addPullRequestReviewThreadReply|resolveReviewThread|unresolveReviewThread ]] || exit 0
 
 # The allow rule for the script matches only a command that starts with its path, so the reason names that form.
-reason='Blocked, and nothing in this command ran. Resolve each thread with ~/.claude/skills/merge-prs/resolve-thread.sh <PRRT_id> "<reply>" as its own Bash command, starting with that path: the allow rule matches only that form, so a chained call or a call through a variable gets denied. Rerun anything else from this command separately. List ids with --list <pr>.'
+reason='Blocked, and nothing in this command ran. Resolve each thread with ~/.claude/skills/merge-prs/resolve-thread.sh <PRRT_id> "<reply>" as its own Bash command, starting with that path: each part of a chain must match an allow rule, so a chain with an unallowed part or a call through a variable gets denied. Rerun anything else from this command separately. List ids with --list <pr>.'
 jq -n --arg r "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
