@@ -12,6 +12,7 @@ The code that keymaps, extensions and `custom/` share. Come here to find a helpe
 - `json.lua`: JSON encode and decode.
 - `missing_repos.lua`: collects missing repo-backed parts and posts one notification naming them.
 - `scripts.lua`: the paths of the shell helpers in `scripts/` and `~/.local/bin`.
+- `session_start.lua`: runs a hook once per Hyprland process, including when a crash recovery loads the config late.
 - `selection.lua`: the window selection that the Windows, Resize and Move submaps share.
 - `state.lua`: the directory for this config's runtime state, honouring `XDG_STATE_HOME`.
 - `utils.lua`: table merge and file write helpers.

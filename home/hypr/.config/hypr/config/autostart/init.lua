@@ -3,7 +3,7 @@ local TERM = Config.app.term
 
 -- stylua: ignore
 --- Runs all autostart commands on Hyprland session start.
---- Called via `hl.on("hyprland.start", ...)` from config/init.lua.
+--- Called once per Hyprland process through lib/session_start.lua, from config/init.lua.
 --- @return nil
 local function run()
   os.execute(
