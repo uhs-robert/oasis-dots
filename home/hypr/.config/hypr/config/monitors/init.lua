@@ -16,7 +16,7 @@ local is_monitor_match = Workspaces.matches
 --- An id-only entry resolves through `hl.get_monitors()`, which is empty on the first load, so it cannot be held.
 --- @param entry { description?: string, name?: string, start_delay_ms?: integer }
 --- @return boolean
-local function delays_start(entry) return entry.start_delay_ms ~= nil and (entry.description or entry.name) ~= nil end
+local function delays_start(entry) return (entry.start_delay_ms or 0) > 0 and (entry.description or entry.name) ~= nil end
 
 local start_delay_ms = 0
 if not SessionStart.started() then
