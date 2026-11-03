@@ -323,13 +323,17 @@ end
 
 -- -------- hyprpaper --------
 
+local function hyprpaper_running()
+  local r = os.execute("pgrep -x hyprpaper >/dev/null 2>&1")
+  return r == true or r == 0
+end
+
 --- Start hyprpaper in the background if it is not already running, with `custom/hyprpaper.conf` when present.
 --- @param cfg table wallpaper config (used for logging)
 --- @param util table shared utility object
 --- @return boolean started a new hyprpaper, which shows nothing yet
 local function ensure_hyprpaper(cfg, util)
-  local r = os.execute("pgrep -x hyprpaper >/dev/null 2>&1")
-  if r ~= true and r ~= 0 then
+  if not hyprpaper_running() then
     util.log("Starting hyprpaper...", cfg)
     local cmd = util.signature and string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprpaper", util.signature)
       or "hyprpaper"
@@ -628,11 +632,22 @@ function Rotate.start(opts)
   -- Rotation loop (startup already did the first cycle). Wakes early for a
   -- period change so the new period's wallpapers show on time, and polls the
   -- settings file in short slices since there is no file watcher.
+  --- A Hyprland crash mid-session takes hyprpaper with it; catch that here so the repaint does not wait for rotation.
+  --- @return boolean
+  local function session_restarted()
+    local signature_before = util.signature
+    Apply.follow_live_instance(util)
+    return util.signature ~= signature_before or (opts.start_hyprpaper ~= false and not hyprpaper_running())
+  end
+
   while true do
     util.sleep(POLL_SECONDS)
     adopt_outside_changes()
     apply_settings_change()
-    if cfg.rotation and os.time() >= due then
+    if session_restarted() then
+      cycle("full")
+      schedule()
+    elseif cfg.rotation and os.time() >= due then
       cycle("full")
       schedule()
     end
