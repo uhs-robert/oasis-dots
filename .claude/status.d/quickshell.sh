@@ -57,13 +57,22 @@ if ! timeout 2 bash -c 'source "$1"; stage_greeter "$2" "$3" >/dev/null' _ "$rep
   echo "greeter: unknown"
   exit 0
 fi
-diffs=$(diff -rq -x monitors.lua "$scratch/stage" "$dest" 2>&1)
+# theme.json in $dest is only the greeter's fallback, frozen at install, so every theme change made it differ. The greeter
+# reads the copy the bar syncs into /var/lib/qs-greeter instead; that copy is compared below.
+diffs=$(diff -rq -x monitors.lua -x theme.json "$scratch/stage" "$dest" 2>&1)
 # monitors.lua is installed to /etc/greetd, outside $dest; a missing install counts as differing.
 if ! cmp -s "$scratch/stage/monitors.lua" /etc/greetd/monitors.lua; then
   diffs+="${diffs:+$'\n'}monitors.lua"
+fi
+# Compared as JSON, since the bar's sync adds a trailing newline the live file lacks.
+theme_sync=""
+if [[ -f $scratch/stage/theme/theme.json ]] &&
+  ! cmp -s <(jq -S . "$scratch/stage/theme/theme.json" 2>/dev/null) <(jq -S . /var/lib/qs-greeter/theme.json 2>/dev/null); then
+  theme_sync="greeter: theme not synced to /var/lib/qs-greeter; restart the bar to resync"
 fi
 if [[ -z $diffs ]]; then
   echo "greeter: up to date"
 else
   echo "greeter: differs ($(grep -c . <<<"$diffs") files); run: just greeter-sync --install"
 fi
+[[ -z $theme_sync ]] || echo "$theme_sync"
