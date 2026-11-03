@@ -11,13 +11,25 @@ local is_monitor_match = Workspaces.matches
 -- Hyprland 0.57 aborts when a dock monitor comes up with no working mode in the first second after login
 -- (hyprwm/Hyprland#16727). A disabled monitor is skipped there, so entries with `start_delay_ms` stay off until the
 -- dock settles. Only the first config load of a process waits; a later reload enables them at once.
-local start_delay_ms = 0
+
+--- A disabled monitor leaves `hl.get_monitors()`, so an id-only entry could never be found again to turn it back on.
+--- @param entry { description?: string, name?: string, start_delay_ms?: integer }
+--- @return boolean
+local function delays_start(entry) return entry.start_delay_ms ~= nil and (entry.description or entry.name) ~= nil end
+
+local start_delay_ms, has_undelayed_entry = 0, false
 if not SessionStart.started() then
   for _, entry in ipairs(MONITOR_ORDER) do
-    start_delay_ms = math.max(start_delay_ms, entry.start_delay_ms or 0)
+    if delays_start(entry) then
+      start_delay_ms = math.max(start_delay_ms, entry.start_delay_ms)
+    else
+      has_undelayed_entry = true
+    end
   end
 end
-local holding_late_monitors = start_delay_ms > 0
+-- Hyprland applies monitor rules on a monitor's render, so with every monitor held the release would never land.
+local holding_late_monitors = start_delay_ms > 0 and has_undelayed_entry
+local released_late_monitors = false
 
 --- Resolves the `output` selector for hl.monitor() from an order entry.
 --- Falls back to a live monitor lookup when only `id` is provided.
@@ -72,7 +84,8 @@ end
 --- @param output string
 --- @param base table
 --- @param override table|nil
-local function apply_rule(output, base, override)
+--- @param enable boolean|nil send `disabled = false`: hl.monitor() keeps the fields a new rule leaves out
+local function apply_rule(output, base, override, enable)
   local rule = {
     output = output,
     mode = base.mode,
@@ -87,7 +100,8 @@ local function apply_rule(output, base, override)
     if type(override.transform) == "number" then rule.transform = override.transform end
     if override.disabled == true then rule = { output = output, disabled = true } end
   end
-  if rule.disabled or rule.mode then hl.monitor(rule) end
+  if enable and not rule.disabled then rule.disabled = false end
+  if rule.disabled ~= nil or rule.mode then hl.monitor(rule) end
 end
 
 --- Applies hl.monitor() settings for MONITOR_ORDER entries, then UI overrides on top.
@@ -100,8 +114,9 @@ local function init_monitors()
   for _, entry in ipairs(MONITOR_ORDER) do
     local output = get_monitor_output(entry, monitors)
     local override = state_for(state, entry, monitors)
-    if holding_late_monitors and entry.start_delay_ms then override = { disabled = true } end
-    if output then apply_rule(output, entry, override) end
+    local delayed = delays_start(entry)
+    if holding_late_monitors and delayed then override = { disabled = true } end
+    if output then apply_rule(output, entry, override, released_late_monitors and delayed) end
     if entry.description then handled[entry.description] = true end
     if entry.name then handled[entry.name] = true end
   end
@@ -246,6 +261,7 @@ local function init()
   if holding_late_monitors then
     hl.timer(function()
       holding_late_monitors = false
+      released_late_monitors = true
       apply_layout()
     end, { timeout = start_delay_ms, type = "oneshot" })
   end
