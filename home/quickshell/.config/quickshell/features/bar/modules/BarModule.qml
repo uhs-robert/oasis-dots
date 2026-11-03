@@ -23,6 +23,7 @@ Item {
     readonly property bool hover_active: root.shown && root.has_popup && root.hover_popup && root.hover_ready
     property string tooltip_text: ""
     property string tooltip_title: module_name
+    property bool has_tooltip: true
     property bool wash: true
     // The width the content may use on a side bar: the bar's thickness less the island's capsule inset, its border on both sides and the air. The floating strip's inset is not taken off: it grows the bar window, the plate stays bar_height thick.
     readonly property real cross: VerticalLayout.cross_width(root.bar_height, Style.bar_capsule + Style.bar_border_width * 2 + VerticalLayout.air_px)
@@ -64,7 +65,7 @@ Item {
 
     // The popup replaces the tooltip where hover opens it; also rerun when that eligibility changes under a still pointer.
     function sync_tooltip() {
-        if (hover_handler.hovered && !root.hover_active) Tooltip.show(root, root.tooltip_text, root.tooltip_title);
+        if (hover_handler.hovered && root.has_tooltip && !root.hover_active) Tooltip.show(root, root.tooltip_text, root.tooltip_title);
         else Tooltip.hide(root);
     }
     onHover_activeChanged: root.sync_tooltip()

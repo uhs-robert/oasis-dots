@@ -45,13 +45,6 @@ function path_text(path_output, switches, home) {
     return switches.file_name ? file.slice(cut + 1) : "";
 }
 
-// The tooltip: app name and the whole path, untruncated (~ for $HOME), whatever the switches hide from the bar.
-function tooltip_text(app_name, path_output, home) {
-    const path = path_output.startsWith("file:") ? path_output.slice(5) : path_output;
-    const shown = home && (path === home || path.startsWith(home + "/")) ? "~" + path.slice(home.length) : path;
-    return [app_name, shown].filter(s => s !== "").join("\n");
-}
-
 function app_text(app_name, switches) {
     return switches.app_name ? app_name : "";
 }

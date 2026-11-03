@@ -27,7 +27,6 @@ Item {
     readonly property string window_app: root.cwd_parts.app || root.app_name
     readonly property string cwd: DirectoryFormat.path_text(root.cwd_parts.path, BarSettings.directory_switches, root.home)
     readonly property string shown_app: DirectoryFormat.app_text(root.window_app, BarSettings.directory_switches)
-    readonly property string tooltip_text: DirectoryFormat.tooltip_text(root.window_app, root.cwd_parts.path, root.home)
     property var toplevel: null
 
     readonly property var terminal_classes: ["kitty", "foot", "alacritty", "wezterm", "org.wezfurlong.wezterm", "com.mitchellh.ghostty", "xterm"]
