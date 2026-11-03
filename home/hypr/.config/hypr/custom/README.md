@@ -64,7 +64,7 @@ Window rules and event handlers:
 hl.window_rule({ name = "float-calculator", match = { class = "org.gnome.Calculator" }, float = true })
 
 -- Once per session. Unlike a bare hl.on("hyprland.start"), this also runs when Hyprland recovers from a crash.
-require("lib.session_start")(function() hl.exec_cmd("nm-applet --indicator") end)
+require("lib.session_start").on(function() hl.exec_cmd("nm-applet --indicator") end)
 ```
 
 Sessions for the launcher (`SUPER + SHIFT + O`), added to the shipped defaults. `Sessions.term` wraps a command in the configured terminal under its own window class, `Sessions.tmuxifier` loads a tmuxifier session, and plain tables are any app. `Sessions.remove(name)` drops one default and `Sessions.clear()` drops them all:

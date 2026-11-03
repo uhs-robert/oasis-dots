@@ -48,3 +48,5 @@ local function init()
 end
 
 init()
+-- After init, so a config that raises partway never marks the session as started.
+require("lib.session_start").arm()

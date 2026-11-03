@@ -3,6 +3,9 @@
 -- config in by a reload, after start has fired. A marker in the instance's runtime dir tells that late first load
 -- apart from an ordinary reload, which must not run the session hooks again.
 
+local SessionStart = {}
+local hooks = {}
+
 local function marker_path()
   local runtime_dir = os.getenv("XDG_RUNTIME_DIR")
   if runtime_dir == nil or runtime_dir == "" then runtime_dir = "/tmp" end
@@ -21,12 +24,26 @@ local function mark()
   if file then file:close() end
 end
 
--- Monitors exist only once the backend has started, so on the first launch's parse this is empty and start is still due.
-local loaded_late = not marked() and #hl.get_monitors() > 0
-local event = loaded_late and "config.reloaded" or "hyprland.start"
-hl.on(event, mark)
-
---- Runs `fn` once per Hyprland process: on `hyprland.start`, or right after this load when start already passed.
+--- Queues `fn` to run once per Hyprland process. Nothing runs unless `arm` is reached.
 --- @param fn fun()
 --- @return nil
-return function(fn) hl.on(event, fn) end
+function SessionStart.on(fn) table.insert(hooks, fn) end
+
+--- Registers the queued hooks; call it as the config's last line. A config that raises before this line registers
+--- nothing and leaves no marker, so the repaired reload still runs every hook.
+--- @return nil
+function SessionStart.arm()
+  if marked() then return end
+  -- Monitors exist only once the backend has started, so on the first launch's parse this is empty and start is still due.
+  local event = #hl.get_monitors() > 0 and "config.reloaded" or "hyprland.start"
+  hl.on(event, function()
+    mark()
+    -- As separate handlers they failed alone, so one hook that raises must not skip the rest.
+    for _, fn in ipairs(hooks) do
+      local ok, err = pcall(fn)
+      if not ok then print("session_start: hook failed: " .. tostring(err)) end
+    end
+  end)
+end
+
+return SessionStart
