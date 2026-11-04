@@ -4,11 +4,11 @@
 local Act = require("lib.act") ---@class ActionLib
 local Ipc = Act.Ipc
 
-local PICKERS = { "agents", "apps", "clipboard", "dirs", "emoji", "firefox_tabs", "keybinds" }
+local PICKERS = { "agents", "apps", "clipboard", "dirs", "emoji", "firefox_tabs", "keybinds", "windows" }
 
 Act.define("picker.open", {
   label = "Open Picker",
-  intent = "Open the named bar picker: agents, apps, clipboard, dirs, emoji, firefox_tabs or keybinds.",
+  intent = "Open the named bar picker: agents, apps, clipboard, dirs, emoji, firefox_tabs, keybinds or windows.",
   params = { { name = "name", type = "enum", values = PICKERS } },
   run = Ipc("picker", "open", "{name}"),
 })
