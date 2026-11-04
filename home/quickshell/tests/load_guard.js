@@ -8,8 +8,8 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/lock/LoadGuard.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio };", context);
-const { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio, locked_share, configured_quota };", context);
+const { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio, locked_share, configured_quota } = context.api;
 
 // The still flag after each sample of `samples` ([load, power, agents] triples, agents NaN when left out), from a
 // fresh state.
@@ -34,6 +34,12 @@ const agents_stilled = run(repeat(window_samples, agent(0.3))).state;
 const stat = usec => "usage_usec " + usec + "\nuser_usec 1\nsystem_usec 1\n";
 
 const unit = ["# /usr/lib/systemd/user/agents.slice", "[Slice]", "X-LockedCPUQuota=62%", ""].join("\n");
+
+// `systemctl --user cat` output: each file starts with a `# <path>` line.
+const vendor = ["# /usr/lib/systemd/user/agents.slice", "[Slice]", "X-LockedCPUQuota=62%"].join("\n");
+const runtime_dropin = ["# /run/user/1000/systemd/user.control/agents.slice.d/50-CPUQuota.conf", "# This is a drop-in unit file extension, created via \"systemctl set-property\"", "# or an equivalent operation. Do not edit.", "[Slice]", "CPUQuota=992%"].join("\n");
+const user_dropin = q => ["# /home/u/.config/systemd/user/agents.slice.d/override.conf", "[Slice]", "CPUQuota=" + q].join("\n");
+const join = (...files) => files.join("\n\n") + "\n";
 
 const cases = [
   ["the window is 30 s of 5 s samples", () => window_samples, 6],
@@ -74,6 +80,13 @@ const cases = [
   ["agents under an eighth resume, on agents", () => { const s = run(repeat(window_samples, agent(0.1)), agents_stilled).state; return [s.still, s.trigger]; }, [false, "agents"]],
   ["without agents.slice the load average decides", () => [stilled.still, stilled.trigger], [true, "load"]],
   ["power names itself when it alone stills", () => run(repeat(window_samples, [0.1, 0.95, 0.01])).state.trigger, "power"],
+  ["no user quota restores none", () => configured_quota(join(vendor)), ""],
+  ["a quota in the unit itself is kept", () => configured_quota(join(["# /usr/lib/systemd/user/agents.slice", "[Slice]", "CPUQuota=800%"].join("\n"))), "800%"],
+  ["a quota in a ~/.config drop-in is kept", () => configured_quota(join(vendor, user_dropin("400%"))), "400%"],
+  ["our runtime drop-in is ignored", () => [configured_quota(join(vendor, runtime_dropin)), configured_quota(join(vendor, user_dropin("400%"), runtime_dropin))], ["", "400%"]],
+  ["a persistent set-property drop-in is ignored too", () => configured_quota(join(vendor, user_dropin("300%"), ["# /home/u/.config/systemd/user.control/agents.slice.d/50-CPUQuota.conf", "[Slice]", "CPUQuota=50%"].join("\n"))), "300%"],
+  ["the last user quota wins, an empty one unsets", () => [configured_quota(join(user_dropin("400%"), user_dropin("200%"))), configured_quota(join(user_dropin("400%"), user_dropin("")))], ["200%", ""]],
+  ["the locked share reads the key alone", () => [locked_share(vendor), isNaN(locked_share(join(user_dropin("400%")))), isNaN(locked_share(vendor + "\nX-LockedCPUQuota=\n"))], [62, true, true]],
   ["62% of 16 threads", () => locked_quota(unit, 16), "992%"],
   ["a drop-in's later line wins", () => locked_quota(unit + "\n# drop-in\n[Slice]\nX-LockedCPUQuota = 25\n", 16), "400%"],
   ["an empty later line unsets it", () => locked_quota(unit + "\n[Slice]\nX-LockedCPUQuota=\n", 16), ""],

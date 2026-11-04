@@ -117,18 +117,40 @@ function step(state, sample) {
     return next;
 }
 
-// The CPUQuota for agents.slice while locked, from `systemctl --user cat agents.slice`: X-LockedCPUQuota (percent of
-// all threads, the last assignment winning as in systemd, an empty one unsetting it) times the thread count, e.g.
-// "992%" for 62% of 16. "" when the key is absent, empty or not a percentage.
-function locked_quota(unit_text, threads) {
+// X-LockedCPUQuota from `systemctl --user cat agents.slice` as a percent of all threads, or NaN when the key is
+// absent, empty or not a percentage in (0, 100]. The last assignment wins as in systemd, and an empty one unsets it.
+function locked_share(unit_text) {
     let value = "";
     for (const line of (unit_text || "").split("\n")) {
         const m = /^\s*X-LockedCPUQuota\s*=\s*(.*?)\s*$/.exec(line);
         if (m) value = m[1];
     }
     const m = /^(\d+(?:\.\d+)?)%?$/.exec(value);
-    if (!m || !(threads > 0)) return "";
-    const percent = parseFloat(m[1]);
-    if (!(percent > 0) || percent > 100) return "";
+    const percent = m ? parseFloat(m[1]) : NaN;
+    return percent > 0 && percent <= 100 ? percent : NaN;
+}
+
+// The CPUQuota for agents.slice while locked: the locked share times the thread count, e.g. "992%" for 62% of 16.
+// "" without a share or threads.
+function locked_quota(unit_text, threads) {
+    const percent = locked_share(unit_text);
+    if (!isFinite(percent) || !(threads > 0)) return "";
     return Math.max(1, Math.round(percent * threads)) + "%";
+}
+
+// The CPUQuota the user configured for agents.slice, for the unlock to put back: the last `CPUQuota=` in `systemctl
+// --user cat` outside the control drop-ins that `systemctl set-property` writes (ours among them), "" for none.
+function configured_quota(unit_text) {
+    let ours = false;
+    let value = "";
+    for (const line of (unit_text || "").split("\n")) {
+        const file = /^# (\/\S+)\s*$/.exec(line);
+        if (file) {
+            ours = file[1].indexOf("/systemd/user.control/") >= 0 || /\/50-CPUQuota\.conf$/.test(file[1]);
+            continue;
+        }
+        const m = /^\s*CPUQuota\s*=\s*(.*?)\s*$/.exec(line);
+        if (m && !ours) value = m[1];
+    }
+    return value;
 }
