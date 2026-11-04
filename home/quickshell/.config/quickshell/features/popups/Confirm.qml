@@ -25,7 +25,8 @@ Singleton {
         root.result_path = result_path;
         root.on_answer = on_answer || null;
         root.asking = true;
-        Popups.open("confirm", undefined);
+        // The caller (the closing picker, a shell) never hands the card the keyboard, and it waits on y/n.
+        Popups.open_with_keyboard("confirm");
     }
 
     function answer(yes, explicit) {
