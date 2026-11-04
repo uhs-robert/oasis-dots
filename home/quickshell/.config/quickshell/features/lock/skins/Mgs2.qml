@@ -2,9 +2,11 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
+import qs.features.lock.skins.ui
 import "mgs2/Art.js" as Art
 import "mgs2/Reds.js" as Reds
 import "ui/Menu.js" as Menu
+import "ui/Motion.js" as Motion
 
 // Metal Gear Solid 2 recast for the Oasis desktop: the title, the main menu, DATA LOAD picks the user, NAME ENTRY takes the password.
 Item {
@@ -14,6 +16,7 @@ Item {
     readonly property int unlock_ms: 3850
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
+    readonly property var motion: root.ctx && root.ctx.motion ? root.ctx.motion : null
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
 
     property FileView os_release: FileView {
@@ -304,6 +307,17 @@ Item {
         const r = Art.rng(11), out = [];
         for (let i = 0; i < 14; i++) out.push({ x: r() * 1600, y: r() * 900, rx: 160 + r() * 380, ry: 80 + r() * 200, light: r() >= 0.5, a: 0.1 + r() * 0.22, s: (r() - 0.5) * 0.02 });
         return out;
+    }
+
+    // A blob for mgs2/murk.frag: centre and radii, then light or dark, alpha and drift rate.
+    function blob_geo(i) {
+        const b = root.blobs[i];
+        return Qt.vector4d(b.x, b.y, b.rx, b.ry);
+    }
+
+    function blob_look(i) {
+        const b = root.blobs[i];
+        return Qt.vector4d(b.light ? 1 : 0, b.light ? b.a : Math.min(1, b.a * 2.2), b.s * 50, 0);
     }
 
     readonly property var code_labels: [
@@ -647,56 +661,49 @@ Item {
         }
     }
 
-    // The murky grey-green ground, the dark jagged band on the left and film grain; drawn once.
     // The murky grey-green ground: drifting light and dark blobs, the dark jagged band on the left, and scrolling film grain.
     component Murk: Item {
         id: murk
-        // Seconds since the skin loaded; it drives the drift and the grain.
-        property real t: 0
+        // Seconds on the motion clock; it drives the drift and the grain.
+        readonly property real t: root.animate && murk.visible && root.motion ? root.motion.t : 0
         width: 1600
         height: 900
 
-        NumberAnimation on t {
-            running: root.animate && murk.visible
-            from: 0
-            to: 3600
-            duration: 3600000
-            loops: Animation.Infinite
-        }
-
-        Rectangle {
+        // The ground and the blobs in one shader pass. As 14 large gradient Shapes they were 14 blended passes over
+        // most of the screen on every step, which kept the GPU busy for as long as the lock stayed up.
+        ShaderEffect {
             anchors.fill: parent
-            color: "#171d1a"
-        }
-
-        Repeater {
-            model: root.blobs
-
-            Shape {
-                id: blob
-                required property var modelData
-                x: blob.modelData.x + Math.sin(murk.t * blob.modelData.s * 50 + blob.modelData.y) * 60 - blob.modelData.rx
-                y: blob.modelData.y - blob.modelData.rx
-                width: blob.modelData.rx * 2
-                height: blob.modelData.rx * 2
-                preferredRendererType: Shape.CurveRenderer
-                transform: Scale { origin.y: blob.modelData.rx; yScale: blob.modelData.ry / blob.modelData.rx }
-
-                ShapePath {
-                    strokeWidth: -1
-                    fillGradient: RadialGradient {
-                        centerX: blob.modelData.rx
-                        centerY: blob.modelData.rx
-                        focalX: blob.modelData.rx
-                        focalY: blob.modelData.rx
-                        centerRadius: blob.modelData.rx
-                        focalRadius: 0
-                        GradientStop { position: 0; color: blob.modelData.light ? Qt.rgba(0.47, 0.54, 0.494, blob.modelData.a) : Qt.rgba(0, 0, 0, Math.min(1, blob.modelData.a * 2.2)) }
-                        GradientStop { position: 1; color: "#00000000" }
-                    }
-                    PathRectangle { width: blob.width; height: blob.height }
-                }
-            }
+            fragmentShader: Qt.resolvedUrl("mgs2/murk.frag.qsb")
+            property real t: murk.t
+            property color ground: "#171d1a"
+            property vector4d g0: root.blob_geo(0)
+            property vector4d g1: root.blob_geo(1)
+            property vector4d g2: root.blob_geo(2)
+            property vector4d g3: root.blob_geo(3)
+            property vector4d g4: root.blob_geo(4)
+            property vector4d g5: root.blob_geo(5)
+            property vector4d g6: root.blob_geo(6)
+            property vector4d g7: root.blob_geo(7)
+            property vector4d g8: root.blob_geo(8)
+            property vector4d g9: root.blob_geo(9)
+            property vector4d g10: root.blob_geo(10)
+            property vector4d g11: root.blob_geo(11)
+            property vector4d g12: root.blob_geo(12)
+            property vector4d g13: root.blob_geo(13)
+            property vector4d k0: root.blob_look(0)
+            property vector4d k1: root.blob_look(1)
+            property vector4d k2: root.blob_look(2)
+            property vector4d k3: root.blob_look(3)
+            property vector4d k4: root.blob_look(4)
+            property vector4d k5: root.blob_look(5)
+            property vector4d k6: root.blob_look(6)
+            property vector4d k7: root.blob_look(7)
+            property vector4d k8: root.blob_look(8)
+            property vector4d k9: root.blob_look(9)
+            property vector4d k10: root.blob_look(10)
+            property vector4d k11: root.blob_look(11)
+            property vector4d k12: root.blob_look(12)
+            property vector4d k13: root.blob_look(13)
         }
 
         Shape {
@@ -813,6 +820,9 @@ Item {
         readonly property bool has_face: face_image.status === Image.Ready && face_shader.status !== ShaderEffect.Error
         width: 1600
         height: 900
+        // Still art: flattened once so each frame draws one quad, not a full-stage pass for each canvas.
+        layer.enabled: true
+        layer.smooth: true
 
         Canvas {
             anchors.fill: parent
@@ -1233,7 +1243,14 @@ Item {
         property real y1: 0
         property real r0: 0
         property real turn: 0
-        property real t: root.animate ? 0 : 0.5
+        // Seconds into its run on the motion clock: it waits index * 2.2 s, then loops a respawn, the drift over `life`
+        // and a 0.8 s rest.
+        property real t0: 0
+        readonly property real run: root.animate && root.motion ? root.motion.t - drifter.t0 - drifter.index * 2.2 : -1
+        readonly property real pass_s: (drifter.life + 800) / 1000
+        readonly property int pass: drifter.run < 0 ? -1 : Math.floor(drifter.run / drifter.pass_s)
+        readonly property real t: !root.animate ? 0.5 : drifter.pass < 0 ? 0 : Motion.ease("in_out_sine", (drifter.run - drifter.pass * drifter.pass_s) * 1000 / drifter.life)
+        readonly property bool live: root.animate
         x: drifter.x0 + (drifter.x1 - drifter.x0) * drifter.t
         y: drifter.y0 + (drifter.y1 - drifter.y0) * drifter.t
         rotation: drifter.r0 + drifter.turn * drifter.t
@@ -1251,18 +1268,16 @@ Item {
             drifter.turn = (Math.random() - 0.5) * 30;
         }
 
-        Component.onCompleted: drifter.respawn()
-
-        SequentialAnimation {
-            running: root.animate
-            PauseAnimation { duration: drifter.index * 2200 }
-            SequentialAnimation {
-                loops: Animation.Infinite
-                ScriptAction { script: drifter.respawn() }
-                NumberAnimation { target: drifter; property: "t"; from: 0; to: 1; duration: drifter.life; easing.type: Easing.InOutSine }
-                PauseAnimation { duration: 800 }
-            }
+        function restart() {
+            if (root.motion) drifter.t0 = root.motion.t;
         }
+
+        Component.onCompleted: {
+            drifter.restart();
+            drifter.respawn();
+        }
+        onLiveChanged: if (drifter.live) drifter.restart()
+        onPassChanged: if (drifter.pass >= 0) drifter.respawn()
 
         Shape {
             preferredRendererType: Shape.CurveRenderer
@@ -1305,14 +1320,11 @@ Item {
         // The title with its text gone: dimmed paint, drifting molecules and a faint wandering clock.
         Item {
             id: saver
-            property real t: 0
+            readonly property real t: saver_clock.elapsed
 
-            NumberAnimation on t {
+            property Loop saver_clock: Loop {
+                clock: root.motion
                 running: root.animate
-                from: 0
-                to: 3600
-                duration: 3600000
-                loops: Animation.Infinite
             }
 
             TitleArt {
@@ -1513,13 +1525,14 @@ Item {
                     color: "#c9d1c9"
 
                     // Starts at its nearly clear end, so it fades in right as the date finishes and brightens into the blink.
-                    opacity: 0.06
+                    opacity: press_pulse.value
 
-                    SequentialAnimation on opacity {
+                    Loop {
+                        id: press_pulse
+                        clock: root.motion
                         running: root.animate && title.landed
-                        loops: Animation.Infinite
-                        NumberAnimation { from: 0.06; to: 1; duration: 1200; easing.type: Easing.InOutSine }
-                        NumberAnimation { from: 1; to: 0.06; duration: 1200; easing.type: Easing.InOutSine }
+                        first: 0.06
+                        keys: [[1200, 1, "in_out_sine"], [1200, 0.06, "in_out_sine"]]
                     }
                 }
 
@@ -1805,38 +1818,43 @@ Item {
         visible: opacity > 0 && !root.captioning
     }
 
-    // Scanlines at output resolution, then a soft vignette.
-    Canvas {
-        id: scan
+    // Scanlines at output resolution, then a soft vignette, flattened into one still layer so each frame draws them once.
+    Item {
         anchors.fill: parent
-        renderStrategy: Canvas.Cooperative
-        onWidthChanged: scan.requestPaint()
-        onHeightChanged: scan.requestPaint()
-        onPaint: {
-            const c = getContext("2d");
-            c.clearRect(0, 0, width, height);
-            c.fillStyle = "rgba(0,0,0,0.28)";
-            for (let y = 2; y < height; y += 3) c.fillRect(0, y, width, 1);
-        }
-    }
+        layer.enabled: true
 
-    Shape {
-        anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
-
-        ShapePath {
-            strokeWidth: -1
-            fillGradient: RadialGradient {
-                centerX: root.width / 2
-                centerY: root.height * 0.45
-                focalX: root.width / 2
-                focalY: root.height * 0.45
-                centerRadius: Math.hypot(root.width, root.height) / 2
-                focalRadius: 0
-                GradientStop { position: 0.55; color: "#00000000" }
-                GradientStop { position: 1; color: "#8c000000" }
+        Canvas {
+            id: scan
+            anchors.fill: parent
+            renderStrategy: Canvas.Cooperative
+            onWidthChanged: scan.requestPaint()
+            onHeightChanged: scan.requestPaint()
+            onPaint: {
+                const c = getContext("2d");
+                c.clearRect(0, 0, width, height);
+                c.fillStyle = "rgba(0,0,0,0.28)";
+                for (let y = 2; y < height; y += 3) c.fillRect(0, y, width, 1);
             }
-            PathRectangle { width: root.width; height: root.height }
+        }
+
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: -1
+                fillGradient: RadialGradient {
+                    centerX: root.width / 2
+                    centerY: root.height * 0.45
+                    focalX: root.width / 2
+                    focalY: root.height * 0.45
+                    centerRadius: Math.hypot(root.width, root.height) / 2
+                    focalRadius: 0
+                    GradientStop { position: 0.55; color: "#00000000" }
+                    GradientStop { position: 1; color: "#8c000000" }
+                }
+                PathRectangle { width: root.width; height: root.height }
+            }
         }
     }
 }
