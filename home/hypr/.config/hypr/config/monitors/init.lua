@@ -2,29 +2,10 @@ local Config = require("config") ---@class Config
 local Json = require("lib.json") ---@class Json
 local Workspaces = require("lib.workspaces") ---@class Workspaces
 local Layout = require("lib.workspace_layout")
-local SessionStart = require("lib.session_start")
---- @type { description?: string, name?: string, id?: integer, mode?: string, position?: string, scale?: number, transform?: integer, primary?: boolean, start_delay_ms?: integer }[]
+--- @type { description?: string, name?: string, id?: integer, mode?: string, position?: string, scale?: number, transform?: integer, primary?: boolean }[]
 local MONITOR_ORDER = Config.monitors
 
 local is_monitor_match = Workspaces.matches
-
--- Hyprland 0.57 aborts when a dock monitor comes up with no working mode in the first second after login
--- (hyprwm/Hyprland#16727). A disabled monitor is skipped there, so entries with `start_delay_ms` stay off until the
--- dock settles. Only the first config load of a process holds them. The release is a config reload, the one path
--- that applies monitor rules without a monitor drawing a frame, and the reload itself holds nothing.
-
---- An id-only entry resolves through `hl.get_monitors()`, which is empty on the first load, so it cannot be held.
---- @param entry { description?: string, name?: string, start_delay_ms?: integer }
---- @return boolean
-local function delays_start(entry) return (entry.start_delay_ms or 0) > 0 and (entry.description or entry.name) ~= nil end
-
-local start_delay_ms = 0
-if not SessionStart.started() then
-  for _, entry in ipairs(MONITOR_ORDER) do
-    if delays_start(entry) then start_delay_ms = math.max(start_delay_ms, entry.start_delay_ms) end
-  end
-end
-local holding_late_monitors = start_delay_ms > 0
 
 --- Resolves the `output` selector for hl.monitor() from an order entry.
 --- Falls back to a live monitor lookup when only `id` is provided.
@@ -107,7 +88,6 @@ local function init_monitors()
   for _, entry in ipairs(MONITOR_ORDER) do
     local output = get_monitor_output(entry, monitors)
     local override = state_for(state, entry, monitors)
-    if holding_late_monitors and delays_start(entry) then override = { disabled = true } end
     if output then apply_rule(output, entry, override) end
     if entry.description then handled[entry.description] = true end
     if entry.name then handled[entry.name] = true end
@@ -250,9 +230,6 @@ function Monitors.apply()
 end
 
 local function init()
-  if holding_late_monitors then
-    hl.timer(function() hl.dispatch(hl.dsp.reload_config()) end, { timeout = start_delay_ms, type = "oneshot" })
-  end
   apply_layout()
   hl.on("hyprland.start", function() apply_layout() end)
   hl.on("monitor.added", function(mon) apply_layout(mon) end)
