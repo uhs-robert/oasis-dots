@@ -260,6 +260,7 @@ ShellRoot {
     ClipboardProvider {}
     EmojiProvider {}
     DirsProvider {}
+    ProjectsProvider {}
     KeybindsProvider {}
     ChoicesProvider {}
     PickerVoice {

@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# ~/.config/hypr/scripts/tmux-layout
+# Focuses the terminal showing a tmuxifier layout's session, else attaches a new terminal to the running session, else
+# loads the layout in a new terminal. Without a layout argument it asks for one in rofi (the Projects picker's fallback).
+
+set -euo pipefail
+
+LAYOUT_DIR="${TMUXIFIER_LAYOUT_PATH:-$HOME/.tmuxifier/layouts}"
+
+layout="${1:-$(
+  find -L "$LAYOUT_DIR" -maxdepth 1 -type f -name "*.session.sh" |
+    sed -E 's|.*/([^/]+)\.session\.sh$|\1|' |
+    sort |
+    rofi -dmenu -p "Projects"
+)}"
+
+[[ -z "$layout" ]] && exit 0
+
+# The session a layout creates is the session_name it sets, else its file name; voxcmd's integrations/tmux.sh reads it the same way.
+session="$(sed -nE 's/^[[:space:]]*session_name="([^"]+)".*/\1/p' "$LAYOUT_DIR/$layout.session.sh" 2>/dev/null | head -n 1 || true)"
+session="${session:-$layout}"
+
+pretty_name="$(
+  printf '%s\n' "$layout" |
+    sed -E 's/[-_]+/ /g' |
+    awk '{
+      for (i = 1; i <= NF; i++) {
+        $i = toupper(substr($i, 1, 1)) substr($i, 2)
+      }
+      print
+    }'
+)"
+
+term_name="${TERMINAL:-kitty}"
+others="$(tmux list-sessions -F '#S' 2>/dev/null | jq -R . | jq -sc .)"
+
+# tmux titles a layout's window "Tmux <session> <program>" and a plain session's "<session> <program>". A longer
+# session name that also fits the title owns the window ("Dev tools nvim" is not session "Dev"), as in voxcmd.
+address="$(
+  hyprctl clients -j |
+    jq -r --arg title "Tmux $pretty_name" --arg session "$session" --arg term "$term_name" --argjson others "${others:-[]}" '
+      def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+      def fits($t; $s): ($t | ascii_downcase) as $l | ($s | ascii_downcase) as $n
+        | $l == $n or ($l | startswith($n + " ")) or $l == "tmux " + $n or ($l | startswith("tmux " + $n + " "));
+      [.[] | select(.class | ascii_downcase | contains($term))] as $wins
+      | ($wins | map(select((.title | norm) == ($title | norm))))
+        + ($wins | map(select(.title | ascii_downcase | startswith(($title | ascii_downcase) + " "))))
+        + ($wins | map(select(.title as $t | fits($t; $session)
+          and ($others | map(select(length > ($session | length) and fits($t; .))) | length == 0))))
+      | .[0].address // empty
+    '
+)"
+
+if [[ -n "$address" ]]; then
+  hyprctl dispatch "hl.dsp.focus({ window = 'address:$address' })"
+  exit 0
+fi
+
+term="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term"
+[ -x "$term" ] || term="$term_name"
+# A running session without a terminal gets one attached to it, not a second load of its layout.
+if tmux has-session -t "=$session" 2>/dev/null; then
+  "$term" -e tmux attach-session -t "=$session" &
+else
+  "$term" -e tmuxifier load-session "$layout" &
+fi

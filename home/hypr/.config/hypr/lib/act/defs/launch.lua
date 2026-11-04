@@ -3,7 +3,6 @@
 -- follows Config (the file managers) reads it when it runs.
 local Act = require("lib.act") ---@class ActionLib
 local Defer = require("lib.act.defer") ---@class Defer
-local Scripts = require("lib.scripts") ---@class Scripts
 
 Act.define("terminal.open", {
   label = "Terminal",
@@ -44,7 +43,7 @@ Act.define("menu.agents", {
 Act.define("menu.tmux", {
   label = "Tmux Project",
   intent = "Pick a tmux project and open its session.",
-  run = Act.Cmd(Scripts.rofi_tmux),
+  run = Defer.call("lib.desktop.menu", "tmux"),
 })
 
 Act.define("terminal.yazi", {

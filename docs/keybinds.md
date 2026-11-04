@@ -504,7 +504,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `B` | press | Go | Browser | `apps.focus` |
 | `C` | press | Go | Tmuxifier Config | `apps.focus` |
 | `M` | press | Go | Mail | `apps.focus` |
-| `P` | press | Go | Project | `menu.tmux` |
+| `P` | press | Go | Projects | `menu.tmux` |
 | `Q` | press | Go | QuteBrowser | `apps.focus` |
 | `S` | press | Go | Slack | `apps.focus` |
 | `SHIFT + S` | press | Go | Steam | `apps.focus` |

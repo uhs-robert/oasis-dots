@@ -121,9 +121,9 @@ function Menu.overview_move(follow)
   return Hypr.exec(Scripts.qs_ipc .. " call overview " .. (follow and "move_follow" or "move_silent"))
 end
 
---- Return an action that opens the tmux session picker.
+--- Return an action that opens the Quickshell tmuxifier layouts picker, falling back to the script's rofi list.
 --- @return fun()
-function Menu.tmux() return Hypr.exec(Scripts.rofi_tmux) end
+function Menu.tmux() return Menu.picker("projects", Scripts.tmux_layout) end
 
 --- Return an action that opens the Quickshell keeptabs popup, falling back to the rofi picker.
 --- @return fun()

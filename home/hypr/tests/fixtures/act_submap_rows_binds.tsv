@@ -105,7 +105,7 @@ default	Go	ESCAPE	Exit Go	-	submap(reset)
 default	Go	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Go	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
-default	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
+default	Go	P	Projects	-	exec_cmd(~/.config/hypr/scripts/qs-picker projects '~/.config/hypr/scripts/tmux-layout');submap(reset)
 default	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 default	Go	S	Slack	-	exec_cmd(slack);submap(reset)
 default	Go	SHIFT + S	Steam	-	exec_cmd(steam);submap(reset)
@@ -340,7 +340,7 @@ no-leader	Go	ESCAPE	Exit Go	-	submap(reset)
 no-leader	Go	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
-no-leader	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
+no-leader	Go	P	Projects	-	exec_cmd(~/.config/hypr/scripts/qs-picker projects '~/.config/hypr/scripts/tmux-layout');submap(reset)
 no-leader	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 no-leader	Go	S	Slack	-	exec_cmd(slack);submap(reset)
 no-leader	Go	SHIFT + S	Steam	-	exec_cmd(steam);submap(reset)

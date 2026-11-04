@@ -22,7 +22,7 @@ const mode = (raw, name, group) => S.docked_mode(loaded(raw), name, group);
 
 const cases = [
   ["defaults: browse opens NORMAL, search INSERT", () => [mode({}, "clipboard", "browse"), mode({}, "apps", "search")], ["normal", "insert"]],
-  ["defaults: every bottom picker follows its group", () => S.bottom_pickers.map(n => defaults[n + "_start_mode"]), Array(10).fill("group")],
+  ["defaults: every bottom picker follows its group", () => S.bottom_pickers.map(n => defaults[n + "_start_mode"]), Array(S.bottom_pickers.length).fill("group")],
   ["a file from before the groups loads with their defaults", () => loaded({ start_mode: "normal", remember_query: true }).browse_start_mode, "normal"],
   ["a group setting moves its members", () => [mode({ browse_start_mode: "insert" }, "agents", "browse"), mode({ search_start_mode: "normal" }, "emoji", "search")], ["insert", "normal"]],
   ["a group setting leaves the other group alone", () => mode({ browse_start_mode: "insert" }, "apps", "search"), "insert"],

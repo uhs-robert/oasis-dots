@@ -19,7 +19,7 @@ local Scripts = {
   toggle_autolock       = HYPR    .. "toggle-autolock.sh",
   toggle_hypr_errors    = HYPR    .. "toggle-hypr-errors.sh",
   power                 = HYPR    .. "power.sh",
-  rofi_tmux             = HYPR    .. "rofi-tmux.sh",
+  tmux_layout           = HYPR    .. "tmux-layout",
   keybind_help          = HYPR    .. "keybind-help.lua",
   kitty_window_cmd      = HYPR    .. "kitty-window-cmd.sh",
 }

@@ -29,7 +29,8 @@ Submap.define({
       { "A",         "picker.agents" },
       { "B",         focus_app("firefox"),                  "Browser" },
       { "C",         focus_app("tmux_config"),              "Tmuxifier Config" },
-      { "M",         focus_app("betterbird"),               "Mail" }, { "P",         "menu.tmux",                           "Project" }, -- TODO: Convert to QS?
+      { "M",         focus_app("betterbird"),               "Mail" },
+      { "P",         "menu.tmux",                           "Projects" },
       { "Q",         focus_app("qutebrowser"),              "QuteBrowser" },
       { "S",         focus_app("slack"),                    "Slack" },
       { "SHIFT + S", focus_app("steam"),                    "Steam" },

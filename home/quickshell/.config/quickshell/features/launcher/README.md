@@ -1,6 +1,10 @@
 # Launcher and pickers
 
-The launcher is a fuzzy picker with one search box and list shared by every provider: apps, directories, emoji, clipboard, keybinds, running agent sessions, Firefox tabs, tmux windows, open windows and plain choices. Most are typed into and dock at the bottom of the focused monitor (or drop from the bar island you clicked). Agent sessions, Firefox tabs, tmux windows, windows and the clipboard are mostly looked at, so they use a browse layout: they always drop from the center island at about the size of the Settings panel, never dock at the bottom.
+The launcher is a fuzzy picker with one search box and list shared by every provider: apps, directories, tmuxifier projects, emoji, clipboard, keybinds, running agent sessions, Firefox tabs, tmux windows, open windows and plain choices. Most are typed into and dock at the bottom of the focused monitor (or drop from the bar island you clicked). Agent sessions, Firefox tabs, tmux windows, windows and the clipboard are mostly looked at, so they use a browse layout: they always drop from the center island at about the size of the Settings panel, never dock at the bottom.
+
+## Projects
+
+Go > P (`menu.tmux`) lists your tmuxifier layouts (the `*.session.sh` files in `$TMUXIFIER_LAYOUT_PATH`, else `~/.tmuxifier/layouts`) by name, with dashes and underscores shown as spaces. A dot marks a layout whose tmux session already runs: the session the layout names with `session_name`, else one named like the file. Enter focuses the terminal showing that session. A running session with no terminal gets a new one attached to it, and any other layout loads in a new terminal. The search also matches the file and session names. Without the bar Go > P opens the same list in rofi.
 
 ## Browse pickers
 
@@ -55,13 +59,14 @@ The voice key answers an open choices picker however it opened: a number, a choi
 ## Code
 
 - `Picker.qml` is the search box and list; `Pickers.qml` registers the providers and `PickerIpc.qml` is the IPC handler. `PickerVoice.qml` publishes the open voice-answerable picker for voxcmd and checks each voice answer's token. A provider subclasses `PickerProvider.qml` (see "Extending" in the [Quickshell README](../../README.md)).
-- Providers: `AppsProvider`, `DirsProvider`, `EmojiProvider`, `ClipboardProvider`, `KeybindsProvider`, `ChoicesProvider`, `AgentsProvider`, `FirefoxTabsProvider`, `TmuxProvider`, `WindowsProvider`. Agent session parsing is `AgentSessions.js`; its card pieces are `AgentStateBadge.qml`, `AgentContextBar.qml` and `AnsiText.js`. `AnsiPane.qml` draws a captured terminal pane shrunk to fit, in the agents and tmux previews.
+- Providers: `AppsProvider`, `DirsProvider`, `EmojiProvider`, `ClipboardProvider`, `KeybindsProvider`, `ChoicesProvider`, `AgentsProvider`, `FirefoxTabsProvider`, `TmuxProvider`, `WindowsProvider`, `ProjectsProvider`. Agent session parsing is `AgentSessions.js`; its card pieces are `AgentStateBadge.qml`, `AgentContextBar.qml` and `AnsiText.js`. `AnsiPane.qml` draws a captured terminal pane shrunk to fit, in the agents and tmux previews.
 - `FirefoxTabsProvider.qml` talks to the extension through `firefox-tab request` (voxcmd's socket client, in `home/voxcmd/.local/share/voxcmd/`). `FirefoxTabs.js` reads its replies, sorts and numbers the tabs, titles the window headers and cycles the window filter. `FirefoxTabsSettings.qml` keeps the last sort in `firefox_tabs.json` under the Quickshell state dir. `TabThumbnail.qml` and `TabFavicon.qml` draw a tab's picture and icon.
 - `TmuxProvider.qml` lists, captures, kills and selects tmux windows. `TmuxWindows.js` builds the tmux commands, reads their output into one item per window, titles the session headers, sorts, filters and cycles panes, and finds the terminal that shows a session. `TmuxSettings.qml` keeps the last sort in `tmux.json` under the Quickshell state dir.
 - `WindowsProvider.qml` builds its rows from `WindowState.entries()` (`core/WindowEntries.js`, shared with the overview's search, also holds the `f` filter) and draws pictures with `ui/WindowThumbnail.qml`.
 - `BrowseLayout.js` holds the preview-size and grid maths for the browse layout. It also lays out the browse view's lines: the headers of a grouped provider (`PickerProvider.grouped`), then the cards or rows.
 - `Picker.qml` draws each browse card or list row's frame. `EntryBody.qml` loads the provider's `card` or `row` inside it, or `GenericCard.qml` or `GenericRow.qml` for a provider without one, and `QuickHint.qml` is its 1-9 digit. `EntryIcon.qml` is an item's icon or glyph, in the docked list and the generic card and row.
+- `ProjectsProvider.qml` lists the tmuxifier layouts and hands the chosen one to `hypr/scripts/tmux-layout`, which also holds the rofi fallback. `Projects.js` holds its listing script, the names and the running-session match.
 - `ClipboardFilter.js` holds the clipboard picker's type filter (`f`).
 - `StartMode.js` and `TypingSettings.qml` hold the per-picker start mode and its Settings > Input > Typing rows.
 - `HyprvimPrompt.qml` and `HyprvimPromptIpc.qml` are the `:` prompt; `hyprvim/` holds its pieces (`CompletionMenu.qml`, `OutputPane.qml`, `PromptSpec.js`, `VimMotions.js`).
-- Tests are in `home/quickshell/tests/` (`picker_browse.js`, `clipboard_filter.js`, `agent_sessions.js`, `picker_start_mode.js`, `firefox_tabs.js`, `tmux_windows.js`, `window_entries.js`).
+- Tests are in `home/quickshell/tests/` (`picker_browse.js`, `clipboard_filter.js`, `agent_sessions.js`, `picker_start_mode.js`, `firefox_tabs.js`, `tmux_windows.js`, `window_entries.js`, `projects.js`).
