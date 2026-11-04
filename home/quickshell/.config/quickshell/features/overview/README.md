@@ -15,8 +15,7 @@ Voice drives the open overview through two things only: a snapshot file it publi
 
 ## Code
 
-- `Overview.qml` is the workspace overview: its model, keys, marks and the share and save modes. `OverviewIpc.qml` is its `overview` IPC target.
-- `OverviewBase.qml` is the full-screen shell it fills in: the grouped tiles, the shared keys, search and help. `OverviewFrame.qml` draws the style's panel around it.
+- `Overview.qml` is the workspace overview: the full-screen window, its model, keys, marks, search, help and the share and save modes. `OverviewIpc.qml` is its `overview` IPC target. `OverviewFrame.qml` draws the style's panel around it. `SessionNamePopup.qml` is the save mode's name field.
 - `Layout.js` places the groups like the real monitors, or in the filmstrip view. `WorkspaceTile.qml` draws one workspace with its windows. `SearchList.qml` is the ranked match list for `/`.
 - `ScopeAim.qml` (PS1), `LockAim.qml` and `AmmoCounter.qml` (GoldenEye) are the style overlays on the selected window.
 - `Voice.js` builds the voice snapshot described above.
