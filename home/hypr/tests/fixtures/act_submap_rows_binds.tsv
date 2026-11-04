@@ -163,7 +163,7 @@ default	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);sub
 default	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
 default	Leader	SHIFT + S	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 default	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
-default	Leader	SHIFT + TAB	Tmux Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open);submap(reset)
+default	Leader	SHIFT + TAB	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker tmux 'notify-send '\''Tmux Windows'\'' '\''The tmux picker needs the Quickshell bar.'\''');submap(reset)
 default	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
 default	Leader	SPACE	Agent Sessions Picker	-	exec_cmd(~/.config/hypr/scripts/qs-picker agents '~/.local/bin/keeptabs-pick');submap(reset)
@@ -398,7 +398,7 @@ no-leader	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);s
 no-leader	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
 no-leader	Leader	SHIFT + S	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 no-leader	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
-no-leader	Leader	SHIFT + TAB	Tmux Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open);submap(reset)
+no-leader	Leader	SHIFT + TAB	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker tmux 'notify-send '\''Tmux Windows'\'' '\''The tmux picker needs the Quickshell bar.'\''');submap(reset)
 no-leader	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
 no-leader	Leader	SPACE	Agent Sessions Picker	-	exec_cmd(~/.config/hypr/scripts/qs-picker agents '~/.local/bin/keeptabs-pick');submap(reset)

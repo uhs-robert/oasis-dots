@@ -79,7 +79,7 @@ local expected = {
 	{ "overview.move", "Move window in overview", { "SUPER + SHIFT + TAB" }, qs_ipc .. "overview move_follow" },
 	{ "overview.move_silent", "Silent move window in overview", {}, qs_ipc .. "overview move_silent" },
 	{ "overview.open", "Workspace overview", { "ALT + TAB", "SUPER + TAB" }, qs_ipc .. "overview open" },
-	{ "tmux.overview", "Tmux overview", { "ALT + GRAVE" }, qs_ipc .. "tmux_overview open" },
+	{ "tmux.overview", "Tmux overview", {}, qs_ipc .. "tmux_overview open" },
 }
 check("14 actions", #expected == 14)
 

@@ -4,7 +4,7 @@
 local Act = require("lib.act") ---@class ActionLib
 local Defer = require("lib.act.defer") ---@class Defer
 
-local picker = function(menu_function) return Defer.call("lib.desktop.menu", menu_function) end
+local picker = function(menu_function, ...) return Defer.call("lib.desktop.menu", menu_function, ...) end
 
 Act.define("picker.clipboard", {
   label = "Clipboard History",
@@ -40,6 +40,12 @@ Act.define("picker.firefox_tabs", {
   label = "Browser Tabs",
   intent = "Pick an open Firefox tab, with a preview of each, and switch to it.",
   run = picker("firefox_tabs_picker"),
+})
+
+Act.define("picker.tmux", {
+  label = "Tmux Windows",
+  intent = "Pick a tmux window, with a live preview of its panes, and go to it.",
+  run = picker("picker", "tmux", "notify-send 'Tmux Windows' 'The tmux picker needs the Quickshell bar.'"),
 })
 
 Act.define("picker.windows", {
