@@ -1,6 +1,6 @@
 # Lock screen and greeter
 
-`lock/` holds the session lock (`Lock`, its IPC handler, preview and capture), the simple lock screen, the styled lock skins in `skins/`, the skin registry `LockSkins`, and the login screen's settings `LoginSettings` with `GreeterSync`, which keeps the greeter's data current.
+`lock/` holds the session lock (`Lock`, its IPC handler, preview and capture), the simple lock screen, the styled lock skins in `skins/`, the skin registry `LockSkins`, the login screen's settings `LoginSettings` with `GreeterSync`, which keeps the greeter's data current, and the two load pieces of the lock: `LoadGuard` (stills the skin under heavy load) and `AgentCpuCap` (caps `agents.slice` while locked), with their pure logic in `LoadGuard.js`.
 
 `~/.config/hypr/scripts/lock-screen.sh` (used by hypridle and the Power menu; hypridle passes `--auto`) locks with this shell and falls back to hyprlock when the bar isn't running or can't lock. If qs restarts while locked, the new instance takes the lock over.
 
@@ -23,6 +23,12 @@ just greeter-preview         # try it in a window with a fake greetd
 ```
 
 The Quickshell files it stages are listed once, in `lib/common/greeter-files.sh` (edit that list when one moves). `just greeter-sync --from DIR` stages the skins, theme files and fonts from another Quickshell config dir (for example a worktree's `home/quickshell/.config/quickshell`) instead of the repo's, and takes `DIR/theme/theme.json` over your saved theme when it has one. It installs to `/etc/greetd/quickshell` with its data in `/var/lib/qs-greeter`, which the bar keeps current as your theme and choices change (Settings > Lock & login > Sync to greeter). `/usr/local/bin/qs-greeter` falls back to tuigreet when the greeter is missing, fails to start or crashes. Press `F10` or `SUPER + T` at the login screen to switch to tuigreet yourself.
+
+## Under load
+
+While the lock is up on AC, it checks the machine every 5 seconds: the one-minute load average per CPU thread (`/proc/loadavg`) and, on AMD chips whose `amdgpu` hwmon reports `power1_cap`, the package power (PPT) against that cap. When the last 30 seconds average 75% of the threads or 90% of the cap, the skin goes still, as it does on battery. It moves again once the last 30 seconds average under 50% of the threads and 75% of the cap. The log line `Lock: load guard stilled the lock` (and `resumed`) shows each change with the samples behind it. Set `QS_LOAD_GUARD_ROOT` to a folder holding fake `proc/loadavg`, `sys/devices/system/cpu/online` and `sys/class/hwmon/` files to try it without load.
+
+The lock also caps the CPU of agent sessions while it is up. When the `agents.slice` user unit exists and has an `X-LockedCPUQuota=` key (a percentage of all threads, e.g. `62%`), locking runs `systemctl --user set-property --runtime agents.slice CPUQuota=<share x threads>%` and unlocking clears it. A drop-in can change the share, or unset it with an empty `X-LockedCPUQuota=`. The cap is runtime-only, so a reboot drops it, and a bar that starts unlocked clears one left by a bar that died while locked.
 
 ## Adding a lock skin
 

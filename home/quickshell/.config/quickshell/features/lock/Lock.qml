@@ -333,7 +333,7 @@ Singleton {
                 root.message = "";
                 root.granted = true;
                 ThemeAudio.play_lock("unlock");
-                const delay = PowerSource.on_ac ? Math.max(0, Math.min(4000, root.unlock_ms)) : 0;
+                const delay = live_ctx.animate ? Math.max(0, Math.min(4000, root.unlock_ms)) : 0;
                 if (delay === 0) root.finish_unlock();
                 else unlock_timer.restart();
                 return;
@@ -472,6 +472,17 @@ Singleton {
         value: root.music_armed
     }
 
+    // Off AC the ctx is already still, so the guard only samples on AC.
+    LoadGuard {
+        id: load_guard
+        active: persist.locked && PowerSource.on_ac
+    }
+
+    AgentCpuCap {
+        locked: persist.locked
+        threads: load_guard.threads
+    }
+
     LockCtx {
         id: live_ctx
         buffer_length: root.buffer.length
@@ -485,7 +496,7 @@ Singleton {
         insert: root.insert
         granted: root.granted
         saver: root.saver && PowerSource.on_ac
-        animate: PowerSource.on_ac
+        animate: PowerSource.on_ac && !load_guard.still
         shown: persist.locked
         backdrops: root.backdrop_files
         power_live: true
