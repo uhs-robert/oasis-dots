@@ -320,14 +320,15 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + CTRL + COMMA` | press | global | Rapid Mode | `voice.rapid` |
 | `SUPER + CTRL + PERIOD` | press | global | Wake Word | `voice.wake` |
 | `SUPER + CTRL + P` | press | global | Passwords | `picker.passwords` |
-| `SUPER + SHIFT + T` | press | global | Move window in overview | `overview.move` |
 | `ALT + TAB` | press | global | Workspace overview | `overview.open` |
 | `SUPER + TAB` | press | global | Workspace overview | `overview.open` |
+| `SUPER + SHIFT + TAB` | press | global | Move window in overview | `overview.move` |
 | `ALT + GRAVE` | press | global | Tmux overview | `tmux.overview` |
 | `SUPER + CTRL + V` | press | global | Clipboard History | `picker.clipboard` |
 | `SUPER + CTRL + SPACE` | press | global | Jump to Directory | `picker.directory` |
 | `SUPER + CTRL + E` | press | global | Emoji Picker | `picker.emoji` |
 | `SUPER + T` | press | global | Search Windows | `picker.windows` |
+| `SUPER + SHIFT + T` | press | global | Browser Tabs | `picker.firefox_tabs` |
 | `SUPER + SHIFT + SEMICOLON` | press | global | HyprVim Terminal | `hyprvim.terminal` |
 | `SUPER + APOSTROPHE` | press | global | Jump to Mark | `hyprvim.jump_mark` |
 | `SUPER + N` | press | global | Edit Selection in Vim | `hyprvim.edit_selection` |
