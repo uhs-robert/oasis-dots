@@ -396,7 +396,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `Q` | press | Bar | System | `popup.open` |
 | `S` | press | Bar | Start Menu | `popup.open` |
 | `SHIFT + S` | press | Bar | Settings | `popup.open` |
-| `T` | press | Bar | Tray | `popup.open` |
+| `T` | press | Bar | System Tray | `popup.open` |
 | `U` | press | Bar | Updates | `system.update` |
 | `V` | press | Bar | Volume | `popup.open` |
 | `W` | press | Bar | Weather | `popup.open` |
@@ -550,7 +550,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `TAB` | press | Leader | Workspace Overview | `overview.open` |
 | `SHIFT + TAB` | press | Leader | Tmux Overview | `tmux.overview` |
 | `E` | press | Leader | Emoji | `picker.emoji` |
-| `SHIFT + T` | press | Leader | Browser Tabs | `picker.firefox_tabs` |
 | `PERIOD` | press | Leader | Speech to Text | `voice.dictate` |
 | `COMMA` | press | Leader | Voice Command | `voice.command` |
 | `SHIFT + COMMA` | press | Leader | Stop Voice | `voice.stop` |
@@ -567,8 +566,8 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `P` | press | Leader | Power and Brightness | `popup.open` |
 | `Q` | press | Leader | System | `popup.open` |
 | `S` | press | Leader | Settings | `popup.open` |
-| `SHIFT + S` | press | Leader | Settings | `popup.open` |
-| `T` | press | Leader | Tray | `popup.open` |
+| `SHIFT + S` | press | Leader | System Tray | `popup.open` |
+| `T` | press | Leader | Browser Tabs | `picker.firefox_tabs` |
 | `U` | press | Leader | Updates | `system.update` |
 | `V` | press | Leader | Volume | `popup.open` |
 | `W` | press | Leader | Weather | `popup.open` |

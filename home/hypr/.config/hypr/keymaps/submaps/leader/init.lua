@@ -36,7 +36,6 @@ Submap.define({
       { "TAB",           "overview.open",                                 "Workspace Overview" },
       { "SHIFT + TAB",   "tmux.overview",                                 "Tmux Overview" },
       { "E",             "picker.emoji",                                  "Emoji" },
-      { "SHIFT + T",     "picker.firefox_tabs",                           "Browser Tabs" },
 
       -- Commands
       { "PERIOD",        "voice.dictate" },
@@ -52,7 +51,12 @@ Submap.define({
       -- stylua: ignore end
     }
 
-    for _, row in ipairs(BarRows.binds({ S = BarRows.row("S", "settings", "Settings") })) do
+    local bar_overrides = {
+      S = BarRows.row("S", "settings", "Settings"),
+      ["SHIFT + S"] = BarRows.row("SHIFT + S", "tray", "System Tray"),
+      T = { "T", "picker.firefox_tabs", "Browser Tabs" },
+    }
+    for _, row in ipairs(BarRows.binds(bar_overrides)) do
       table.insert(binds, row)
     end
     return binds

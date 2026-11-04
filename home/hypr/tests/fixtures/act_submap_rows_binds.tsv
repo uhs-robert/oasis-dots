@@ -5,6 +5,7 @@
 # Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
 # Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr no-ops.
 # Leader SHIFT + T for the Firefox tabs picker (it was Go SHIFT + B).
+# Leader T for the Firefox tabs picker, Leader SHIFT + S for the tray, and the tray labelled System Tray.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
@@ -75,7 +76,7 @@ default	Bar	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Bar	Shift_R	-	ignore_mods=true,transparent=true	no_op
 default	Bar	Super_L	-	ignore_mods=true,transparent=true	no_op
 default	Bar	Super_R	-	ignore_mods=true,transparent=true	no_op
-default	Bar	T	Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
+default	Bar	T	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 default	Bar	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
 default	Bar	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
 default	Bar	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
@@ -160,9 +161,8 @@ default	Leader	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open
 default	Leader	S	Settings	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open settings);submap(reset)
 default	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);submap(reset)
 default	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
-default	Leader	SHIFT + S	Settings	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open settings);submap(reset)
+default	Leader	SHIFT + S	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 default	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
-default	Leader	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 default	Leader	SHIFT + TAB	Tmux Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open);submap(reset)
 default	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
@@ -171,7 +171,7 @@ default	Leader	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Shift_R	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Super_L	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Super_R	-	ignore_mods=true,transparent=true	no_op
-default	Leader	T	Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
+default	Leader	T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 default	Leader	TAB	Workspace Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open);submap(reset)
 default	Leader	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
 default	Leader	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
@@ -308,7 +308,7 @@ no-leader	Bar	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	Shift_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	Super_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Bar	Super_R	-	ignore_mods=true,transparent=true	no_op
-no-leader	Bar	T	Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
+no-leader	Bar	T	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 no-leader	Bar	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
 no-leader	Bar	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
 no-leader	Bar	W	Weather	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open weather);submap(reset)
@@ -396,9 +396,8 @@ no-leader	Leader	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup op
 no-leader	Leader	S	Settings	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open settings);submap(reset)
 no-leader	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);submap(reset)
 no-leader	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
-no-leader	Leader	SHIFT + S	Settings	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open settings);submap(reset)
+no-leader	Leader	SHIFT + S	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 no-leader	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
-no-leader	Leader	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 no-leader	Leader	SHIFT + TAB	Tmux Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open);submap(reset)
 no-leader	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
@@ -407,7 +406,7 @@ no-leader	Leader	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Shift_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Super_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Super_R	-	ignore_mods=true,transparent=true	no_op
-no-leader	Leader	T	Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
+no-leader	Leader	T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 no-leader	Leader	TAB	Workspace Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open);submap(reset)
 no-leader	Leader	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
 no-leader	Leader	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
