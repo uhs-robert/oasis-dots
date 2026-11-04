@@ -125,7 +125,7 @@
 #                              reads the bar's state through `timeout 2`, and a slower bar reads as none
 #   SANDBOX_DIR                set for the command: the sandbox root, with the call log at $SANDBOX_DIR/calls.log
 #
-# HOME, XDG_STATE_HOME and XDG_CACHE_HOME are empty dirs in the sandbox, so the caller's tmuxifier layouts, timers
+# HOME, XDG_STATE_HOME and XDG_CACHE_HOME are empty dirs in the sandbox and TMUXIFIER_LAYOUT_PATH is unset, so the caller's tmuxifier layouts, timers
 # and state never change a route.
 set -euo pipefail
 
@@ -626,7 +626,7 @@ stubbed_commands=(
 read -ra extra_stubs <<<"${SANDBOX_EXTRA_STUBS:-}"
 for command_name in "${stubbed_commands[@]}" "${extra_stubs[@]}"; do ln -s .stub "$stub_dir/$command_name"; done
 # Called by path, under $XDG_CONFIG_HOME/hypr/scripts.
-for script_name in qs-ipc qs-picker screenshot.sh toggle-autolock.sh rofi-tmux.sh; do
+for script_name in qs-ipc qs-picker screenshot.sh toggle-autolock.sh tmux-layout; do
   ln -s "$stub_dir/.stub" "$config_home/hypr/scripts/$script_name"
 done
 
@@ -642,7 +642,7 @@ export VOXCMD_CONFIG_DIR="$config_home/voxcmd"
 # A picker or confirm card has no bar to answer it here, so it gives up quickly.
 export VOXCMD_PICK_TIMEOUT="${VOXCMD_PICK_TIMEOUT:-2}"
 export VOXCMD_CONFIRM_TIMEOUT="${VOXCMD_CONFIRM_TIMEOUT:-2}"
-unset VOXCMD_LLM_CMD
+unset VOXCMD_LLM_CMD TMUXIFIER_LAYOUT_PATH
 
 status=0
 "$@" || status=$?

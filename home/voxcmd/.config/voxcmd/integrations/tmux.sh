@@ -1,9 +1,9 @@
 # shellcheck shell=bash
 # Hook library of tmux.toml: sourced before every hook and action of the integration.
 
-layout_dir="$HOME/.tmuxifier/layouts"
-# The Project picker's focus-or-open logic for tmuxifier layouts, run with the layout name so it skips rofi.
-layout_opener="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/rofi-tmux.sh"
+layout_dir="${TMUXIFIER_LAYOUT_PATH:-$HOME/.tmuxifier/layouts}"
+# The Projects picker's focus-or-open logic for tmuxifier layouts, run with the layout name so it skips rofi.
+layout_opener="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/tmux-layout"
 
 open_terminal() {
   local term="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/bin/term"
@@ -16,7 +16,7 @@ layout_session_name() {
   sed -nE 's/^[[:space:]]*session_name="([^"]+)".*/\1/p' "$1" | head -n 1
 }
 
-# One candidate per session: running sessions, and the layouts the Project picker lists. A layout whose session is
+# One candidate per session: running sessions, and the layouts the Projects picker lists. A layout whose session is
 # running stays a layout candidate, and focus_or_attach treats it as that session. The JSON is turned into
 # id<TAB>label<TAB>match_text rows at the end; a name holding a tab or newline splits its row, as it never did in JSON.
 switch_candidates() {
@@ -41,7 +41,7 @@ focus_or_attach() {
   case "$1" in
   layout:*)
     # A running layout's terminal is titled with its session name and program, which
-    # rofi-tmux.sh's "Tmux <layout>" search can miss, so it is found as a session instead.
+    # tmux-layout's "Tmux <layout>" search can miss, so it is found as a session instead.
     local stem="${1#layout:}" session
     session=$(layout_session_name "$layout_dir/$stem.session.sh")
     if tmux has-session -t "=${session:-$stem}" 2>/dev/null; then

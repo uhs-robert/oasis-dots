@@ -10,7 +10,7 @@ RowsSection {
     readonly property var modes: ({ insert: "INSERT", normal: "NORMAL" })
     readonly property var which_key_delays: [0, 100, 200, 300, 500, 750, 1000]
     readonly property var groups: [{ id: "browse", label: "Browse pickers" }, { id: "search", label: "Search pickers" }]
-    readonly property var picker_labels: ({ clipboard: "Clipboard", agents: "Agents", firefox_tabs: "Browser tabs", tmux: "Tmux windows", windows: "Windows", apps: "Apps", dirs: "Directories", emoji: "Emoji", keybinds: "Keybinds", choices: "Choices" })
+    readonly property var picker_labels: ({ clipboard: "Clipboard", agents: "Agents", firefox_tabs: "Browser tabs", tmux: "Tmux windows", windows: "Windows", apps: "Apps", dirs: "Directories", projects: "Projects", emoji: "Emoji", keybinds: "Keybinds", choices: "Choices" })
     readonly property var picker_notes: ({ clipboard: " Its delete mode always opens in NORMAL, ready for d." })
 
     function group_of(name) {

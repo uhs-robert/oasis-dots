@@ -31,7 +31,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `power/` holds `Power` (AC and battery state), its IPC handler and settings, the Power and Battery popups, and `PowerConfirm`.
 - [`clock/`](features/clock/README.md): Clock, calendar and time zones
 - [`weather/`](features/weather/README.md): Weather settings, alerts, fixtures and views
-- [`launcher/`](features/launcher/README.md) holds the fuzzy picker, its `Pickers` registry and IPC handler, its providers (agents, apps, clipboard, dirs, emoji, Firefox tabs, tmux windows, windows, keybinds, choices), the HyprVim `:` prompt in `hyprvim/`, and `TypingSettings`.
+- [`launcher/`](features/launcher/README.md) holds the fuzzy picker, its `Pickers` registry and IPC handler, its providers (agents, apps, clipboard, dirs, projects, emoji, Firefox tabs, tmux windows, windows, keybinds, choices), the HyprVim `:` prompt in `hyprvim/`, and `TypingSettings`.
 - `screen_select/` holds `RegionSelector`, its toolbar and key overlays, and the `cursors/`, `loupe/` and `targets/` skins.
 - `display/` holds `Displays` and `DisplayLayout.js` (monitor layout), `Backlight`, the brightness and zoom IPC handlers, and the overview zoom `Zoom` with its loupe and reticle.
 - `media/` holds `MediaState` (MPRIS players), `CavaState` (the cava feed, run while a registered viewer draws it; `CavaViewers.js`), the media popup with its album art, seek bar, round buttons and cava strip, and the volume popup.
@@ -254,6 +254,7 @@ Everything below is optional. A missing tool only disables the feature next to i
 | `wtype`, `wl-copy` | The emoji picker |
 | `zoxide` | The directories picker |
 | `tmux` | The tmux windows picker |
+| `tmux`, `tmuxifier` | The projects picker |
 | `nmcli` (NetworkManager), `nm-connection-editor` | The network popup and its editor |
 | `blueman-manager` | The Bluetooth module's manager |
 | `pw-play` (PipeWire), `mpv` | Interface sounds, and lock and login music |
