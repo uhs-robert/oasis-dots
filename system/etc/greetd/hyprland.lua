@@ -78,7 +78,7 @@ hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 ---- [LATE MONITORS] ----
 -- Hyprland 0.57 aborts when a dock monitor comes up before the dock has settled (hyprwm/Hyprland#16727): building its
 -- framebuffer asserts on a zero size, and a disabled monitor is skipped there. So each GREETER_HELD monitor starts
--- disabled and a timer turns it on. The rule must say `disabled = false`, because hl.monitor() keeps the fields a new
+-- disabled and a timer turns them on. The rule must say `disabled = false`, because hl.monitor() keeps the fields a new
 -- rule leaves out, and it lands only on another monitor's next frame. With nothing else lit, the timer reloads the
 -- config instead, which applies rules directly; the marker makes that reload skip the hold.
 local released_marker = RUNTIME_DIR .. "/hypr/" .. (os.getenv("HYPRLAND_INSTANCE_SIGNATURE") or "") .. "/greeter-monitors-released"
@@ -92,15 +92,19 @@ local function released_before()
 	return file ~= nil
 end
 
-local function release(rule)
+-- One timer at the longest delay releases them all: a release that has to reload would otherwise end every other
+-- monitor's hold early.
+local function release_all()
 	if handed_off then
 		return
 	end
-	local enabled = { disabled = false }
-	for key, value in pairs(rule) do
-		enabled[key] = value
+	for _, held in ipairs(GREETER_HELD) do
+		local enabled = { disabled = false }
+		for key, value in pairs(held.rule) do
+			enabled[key] = value
+		end
+		hl.monitor(enabled)
 	end
-	hl.monitor(enabled)
 	if #(hl.get_monitors() or {}) == 0 then
 		local file = io.open(released_marker, "w")
 		if file then
@@ -110,16 +114,17 @@ local function release(rule)
 	end
 end
 
-local holding = not released_before()
+local holding, longest_delay = not released_before(), 0
 for _, held in ipairs(GREETER_HELD) do
 	if holding then
 		hl.monitor({ output = held.rule.output, disabled = true })
-		hl.timer(function()
-			release(held.rule)
-		end, { timeout = held.delay, type = "oneshot" })
+		longest_delay = math.max(longest_delay, held.delay)
 	else
 		hl.monitor(held.rule)
 	end
+end
+if longest_delay > 0 then
+	hl.timer(release_all, { timeout = longest_delay, type = "oneshot" })
 end
 
 -- Called right before the greeter exits. After a forced teardown of the dock on exit, amdgpu left those monitors on
