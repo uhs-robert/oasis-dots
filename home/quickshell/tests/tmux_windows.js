@@ -88,7 +88,7 @@ const cases = [
   ["the filter keeps only one session's row of a linked window", () => T.arranged(linked.items, "sessions", "$2").map(i => i.id), ["$2:@7"]],
   ["the captures pass pane ids as arguments, not in the script", () => T.captures_argv(["%1", "%2"], true).slice(-2), ["%1", "%2"]],
   ["only a styled capture keeps the colour codes", () => [T.captures_argv(["%1"], true)[2].indexOf("-e") >= 0, T.captures_argv(["%1"], false)[2].indexOf("-e") >= 0], [true, false]],
-  ["the captures split per pane, a gone pane missing", () => T.split_captures(T.sep + "PANE" + T.sep + "%1\na\n b\n" + T.sep + "PANE" + T.sep + "%3\n\n"), { "%1": ["a", " b"], "%3": ["", ""] }],
+  ["the captures split per pane, a gone pane missing", () => T.split_captures(T.sep + "PANE" + T.sep + "%1\na\n b\n" + T.sep + "PANE" + T.sep + "\n" + T.sep + "PANE" + T.sep + "%3\n\n"), { "%1": ["a", " b"], "%3": ["", ""] }],
   ["a window reads its size in cells and whether it is zoomed", () => [by_id("@1").width, by_id("@1").height, by_id("@1").zoomed, by_id("@2").zoomed], [160, 40, false, true]],
   ["a pane reads its size in cells", () => by_id("@1").panes.map(p => [p.pane_id, p.width, p.height]), [["%1", 79, 19], ["%2", 80, 40], ["%3", 79, 20]]],
 ];

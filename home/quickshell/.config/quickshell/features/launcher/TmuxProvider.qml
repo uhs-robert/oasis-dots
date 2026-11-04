@@ -8,6 +8,7 @@ import qs.features.popups
 import qs.features.settings
 import qs.features.windows
 import "TmuxWindows.js" as TmuxWindows
+import "TmuxLayout.js" as TmuxLayout
 import "../../core/Fuzzy.js" as Fuzzy
 
 // Every tmux window, under a header per session or most recently active first (`s`, remembered in TmuxSettings). The
@@ -274,9 +275,12 @@ PickerProvider {
             readonly property var shown: root.shown_pane(preview.entry)
             readonly property string window_key: preview.entry ? preview.entry.id : ""
             readonly property var pane_ids: preview.entry ? preview.entry.panes.map(p => p.pane_id) : []
+            readonly property string layout_key: TmuxLayout.layout_key(preview.entry)
             // Window the shown captures came from, so a late capture never lands on another window.
             property string captured_key: ""
             property var captures: ({})
+            // The output the captures were read from, so an unchanged screen redraws nothing.
+            property string captured_text: ""
             property bool failed: false
 
             clip: true
@@ -286,12 +290,22 @@ PickerProvider {
             onWindow_keyChanged: {
                 preview.captures = {};
                 preview.captured_key = "";
+                preview.captured_text = "";
                 preview.failed = false;
                 Qt.callLater(preview.capture);
             }
 
-            function capture() {
-                if (preview.pane_ids.length === 0 || capture_proc.running) return;
+            // On battery the timer is off, so a pane added or resized since the last capture is captured once here.
+            onLayout_keyChanged: if (!PowerSource.on_ac) Qt.callLater(preview.capture)
+
+            // A tick skips a busy run; any other call waits for it (capture_proc.again).
+            function capture(tick) {
+                if (preview.pane_ids.length === 0) return;
+                if (capture_proc.running || capture_proc.target_key !== "") {
+                    if (!tick) capture_proc.again = true;
+                    return;
+                }
+                capture_proc.again = false;
                 capture_proc.target_key = preview.window_key;
                 capture_proc.command = TmuxWindows.captures_argv(preview.pane_ids, true);
                 capture_proc.running = true;
@@ -302,8 +316,9 @@ PickerProvider {
                 const captures = TmuxWindows.split_captures(text);
                 // Every pane gone: the window closed since the list was read.
                 preview.failed = !preview.pane_ids.some(id => captures[id] !== undefined);
-                if (preview.failed) return;
+                if (preview.failed || (preview.captured_key === key && preview.captured_text === text)) return;
                 preview.captured_key = key;
+                preview.captured_text = text;
                 preview.captures = captures;
             }
 
@@ -311,18 +326,42 @@ PickerProvider {
                 interval: root.capture_interval_ms
                 repeat: true
                 running: preview.pane_ids.length > 0 && root.is_shown && PowerSource.on_ac
-                onTriggered: preview.capture()
+                onTriggered: preview.capture(true)
             }
 
             Process {
                 id: capture_proc
+                // The window this run captures; "" between runs. Kept until both the output and the exit are in.
                 property string target_key: ""
+                property var pending_text: null
+                property var pending_code: null
+                // A capture asked for while this run was out (another window, a new layout) runs after it.
+                property bool again: false
+
+                // The collector can finish after the exit signal, so the run counts once both are in (or the process
+                // failed, when there may be no output at all). Only then may the next run start.
+                function settle() {
+                    if (capture_proc.pending_code === null) return;
+                    if (capture_proc.pending_text === null && capture_proc.pending_code === 0) return;
+                    const key = capture_proc.target_key;
+                    const text = capture_proc.pending_text || "";
+                    capture_proc.target_key = "";
+                    capture_proc.pending_text = null;
+                    capture_proc.pending_code = null;
+                    preview.captured(key, text);
+                    if (capture_proc.again) Qt.callLater(preview.capture);
+                }
 
                 stdout: StdioCollector {
-                    onStreamFinished: preview.captured(capture_proc.target_key, text)
+                    onStreamFinished: {
+                        capture_proc.pending_text = text;
+                        capture_proc.settle();
+                    }
                 }
-                // Here rather than when the output is in, which can come before the process stops running.
-                onExited: if (preview.window_key !== "" && preview.window_key !== capture_proc.target_key) Qt.callLater(preview.capture)
+                onExited: code => {
+                    capture_proc.pending_code = code;
+                    capture_proc.settle();
+                }
             }
 
             Text {
@@ -338,6 +377,7 @@ PickerProvider {
             }
 
             TmuxWindowView {
+                id: window_view
                 anchors.fill: parent
                 anchors.margins: 6
                 visible: !preview.failed && preview.captured_key !== ""
@@ -346,15 +386,18 @@ PickerProvider {
                 captures: preview.captures
             }
 
+            // Beside the window when the letterbox leaves room at the side, else below it, else over its corner with
+            // no see-through.
             Rectangle {
-                anchors.top: parent.top
-                anchors.right: parent.right
-                anchors.margins: 6
+                readonly property bool fits_beside: window_view.width - (window_view.box.x + window_view.box.w) >= width + 6
+                readonly property bool fits_below: window_view.height - window_view.box.h >= height + 6
+                x: parent.width - width - 6
+                y: fits_beside || !fits_below ? 6 : window_view.y + window_view.box.h + 6
                 visible: corner_text.text !== ""
                 width: corner_text.implicitWidth + 12
                 height: corner_text.implicitHeight + 4
                 radius: Style.radius(3)
-                color: Qt.alpha(Theme.bg_surface, 0.9)
+                color: fits_beside || fits_below ? Qt.alpha(Theme.bg_surface, 0.9) : Theme.bg_surface
                 border.width: 1
                 border.color: Qt.alpha(Theme.ui_border, 0.8)
 

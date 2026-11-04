@@ -34,9 +34,25 @@ function font_px_to_fit(cols, rows, area_w, area_h, advance_ratio, line_ratio) {
     return Math.max(1, Math.floor(Math.min(area_w / (cols * advance_ratio), area_h / (rows * line_ratio)) * 0.99));
 }
 
-// A w x h box centred in the area, whole pixels, never above or left of it.
+// font_px_to_fit's size, smaller when the grid measured at that size (grid_w x grid_h, hinting included) still
+// overflows the area.
+function fitted_px(px, grid_w, grid_h, area_w, area_h) {
+    if (px <= 1 || (grid_w <= area_w && grid_h <= area_h)) return px;
+    return Math.max(1, Math.min(px - 1, Math.floor(px * Math.min(area_w / grid_w, area_h / grid_h))));
+}
+
+// A w x h box centred across the area and at its top, as a terminal starts its screen; whole pixels.
 function letterbox(w, h, area_w, area_h) {
-    return { x: Math.max(0, Math.floor((area_w - w) / 2)), y: Math.max(0, Math.floor((area_h - h) / 2)), w: w, h: h };
+    return { x: Math.max(0, Math.floor((area_w - w) / 2)), y: 0, w: w, h: h };
+}
+
+// Changes only when the window's size or a pane's place or size does, so a list reload that changed nothing keeps
+// the drawn panes.
+function layout_key(item) {
+    if (!item) return "";
+    return item.width + "x" + item.height + (item.zoomed ? "z" : "") + " " + item.panes.map(function (p) {
+        return p.pane_id + "@" + p.left + "," + p.top + "," + p.width + "x" + p.height;
+    }).join(" ");
 }
 
 // tmux draws a border in the cell row or column between two panes. Each pane's right and bottom border runs through

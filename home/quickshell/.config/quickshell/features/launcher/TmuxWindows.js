@@ -20,13 +20,14 @@ function list_argv() {
     return ["sh", "-c", "command -v tmux >/dev/null 2>&1 || { echo " + missing_marker + "; exit 0; }; exec tmux \"$@\" 2>/dev/null", "sh"].concat(args);
 }
 
-// One capture of every pane in pane_ids, each headed by a marker line naming it; a gone pane prints nothing. `styled`
-// keeps the colour codes.
+// One capture of every pane in pane_ids, each headed by a marker line naming it. tmux prints the marker, so a gone pane
+// prints no id and no text. `styled` keeps the colour codes.
 function captures_argv(pane_ids, styled) {
-    return ["sh", "-c", "for p; do printf '\\037PANE\\037%s\\n' \"$p\"; tmux capture-pane -p " + (styled ? "-e " : "") + "-t \"$p\" 2>/dev/null; done", "sh"].concat(pane_ids);
+    var marker = "'" + sep + "PANE" + sep + "#{pane_id}'";
+    return ["sh", "-c", "for p; do tmux display-message -p -t \"$p\" " + marker + " \\; capture-pane -p " + (styled ? "-e " : "") + "-t \"$p\" 2>/dev/null; done", "sh"].concat(pane_ids);
 }
 
-// pane_id -> its captured lines, from captures_argv's output.
+// pane_id -> its captured lines, from captures_argv's output; a gone pane is missing.
 function split_captures(text) {
     var out = {};
     var marker = sep + "PANE" + sep;
@@ -35,7 +36,7 @@ function split_captures(text) {
     for (var i = 0; i < all.length; i++) {
         if (all[i].indexOf(marker) === 0) {
             id = all[i].slice(marker.length);
-            out[id] = [];
+            if (id !== "") out[id] = [];
         } else if (id !== "") {
             out[id].push(all[i]);
         }
