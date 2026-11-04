@@ -63,6 +63,8 @@ Scope {
     // { title, choices: [{ id, label }] } }, view_key }, with view_key the expansion shown ("" for the top level).
     property bool voice_answerable: false
     property var voice_question: null
+    // True while the open picker shows this provider; gate a provider's live work (polls, captures) on it.
+    readonly property bool is_shown: Pickers.is_open && Pickers.provider_name === root.name
 
     // Called on every open with the opener's mode arg, so keep it cheap; an item's `icon_path` skips the picker's icon lookup.
     function refresh(arg) {}

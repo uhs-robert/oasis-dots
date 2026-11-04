@@ -1,5 +1,5 @@
 // Runs BrowseLayout.js under node: the browse picker's preview dial, how the cards or list share its body, the quick
-// pick digits and the clipboard's type filter.
+// pick digits.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -8,8 +8,8 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/BrowseLayout.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, alt_swapped, on_screen, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels };", context);
-const { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, alt_swapped, on_screen, digit_index, hint_of, cycled_filter, kept_by_filter, filter_labels } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, alt_swapped, on_screen, digit_index, hint_of };", context);
+const { size_of, grown, shrunk, toggled, columns, split, fit, toggled_view, alt_swapped, on_screen, digit_index, hint_of } = context.api;
 
 // A 1080p body: 760 tall under the title, 720 of it under the search bar; cards 112 tall with an 8 gap.
 const body = 760, area = 720, row = 120, gap = 8;
@@ -54,9 +54,6 @@ const cases = [
   ["digits 1-9 pick the nth item on screen", () => ["1", "5", "9"].map(d => digit_index(d, { first: 10, end: 30 })), [10, 14, 18]],
   ["0, letters and digits past what is on screen pick nothing", () => [digit_index("0", { first: 0, end: 20 }), digit_index("j", { first: 0, end: 20 }), digit_index("12", { first: 0, end: 20 }), digit_index("4", { first: 5, end: 8 }), digit_index(undefined, { first: 0, end: 3 })], [-1, -1, -1, -1, -1]],
   ["only the first nine on screen show a number, counted from the top of the view", () => [10, 18, 19, 9].map(i => hint_of(i, { first: 10, end: 25 })), ["1", "9", "", ""]],
-  ["f cycles all, text, images and back", () => ["all", "text", "image", "bogus"].map(cycled_filter), ["text", "image", "all", "all"]],
-  ["binary entries show only under all", () => ["all", "text", "image"].map(f => ["text", "image", "binary"].filter(k => kept_by_filter(k, f))), [["text", "image", "binary"], ["text"], ["image"]]],
-  ["each filter has a label for the search bar", () => ["all", "text", "image"].map(f => filter_labels[f]), ["ALL", "TEXT", "IMAGES"]],
 ];
 
 let failed = 0;
