@@ -1,24 +1,49 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.core
+import qs.ui.effects
 import qs.ui.frames
+import qs.ui.menu
 import qs.theme
+import qs.features.popups
+import qs.features.popups.frames
+import qs.features.bar
 import qs.features.settings
 import qs.features.screenshot
 import "Layout.js" as Layout
 import "Voice.js" as Voice
+import "../../core/Fuzzy.js" as Fuzzy
 import "../../core/WindowEntries.js" as WindowEntries
 import qs.features.voice
 import qs.features.audio
 import qs.features.windows
 
 // Every monitor's workspaces in one full-screen view on the focused monitor: pick, focus and move windows by key.
-OverviewBase {
+PanelWindow {
     id: root
+
+    property bool wanted: false
+    property string held_screen_name: ""
+    // The filmstrip view instead of the mini-map, until the overview closes.
+    property bool filmstrip: false
+    property real reveal: 0
+
+    property string selected_key: ""
+    // Carried items, and the marks they came from so Esc can put them back.
+    property var picked: []
+    property bool picked_from_marks: false
+    property var marks: []
+    property bool typing: false
+    property bool help_open: false
+    property string query: ""
+    property int hit: 0
+    property bool from_search: false
 
     // Special workspaces instead of regular ones, until toggled back or the overview closes.
     property bool special: false
@@ -60,11 +85,39 @@ OverviewBase {
     Component.onCompleted: Quickshell.execDetached(["mkdir", "-p", root.voice_dir])
 
     readonly property var model: root.visible ? root.build(Hyprland.monitors.values, Hyprland.workspaces.values, Hyprland.toplevels.values, root.special, root.share_mode) : ({ groups: [], tiles: [] })
-    groups: root.model.groups
-    tiles: root.model.tiles
+    readonly property var groups: root.model.groups
+    readonly property var tiles: root.model.tiles
+    readonly property ListModel tile_slots: ListModel {}
+    readonly property var tile_index_of: {
+        const out = {};
+        root.tiles.forEach((t, i) => out[t.key] = i);
+        return out;
+    }
+    readonly property int selected_index: Math.max(0, root.tiles.findIndex(t => t.key === root.selected_key))
+    readonly property var selected_tile: root.tiles[root.selected_index] || null
+    readonly property bool carrying: root.picked.length > 0
+    readonly property var picked_set: root.to_set(root.picked)
+    readonly property var mark_numbers: {
+        const out = {};
+        root.marks.forEach((k, i) => out[k] = i + 1);
+        return out;
+    }
+    readonly property var nav_order: Layout.flat(Layout.flat(Layout.bands(root.groups)).map(g => root.groups[g].tiles))
+
+    readonly property var metrics: ({
+        gap: Style.px(10),
+        pad: Style.px(10),
+        label: Style.fs(-3) + Style.px(12),
+        group_gap: Style.px(22),
+        strip: Style.px(150)
+    })
+    readonly property real list_width: root.typing ? Math.min(Style.px(460), frame.body.width * 0.34) : 0
+    readonly property var layout: Layout.compute(root.filmstrip, root.groups, root.tiles, frame.body.width - root.list_width, frame.body.height, root.metrics, root.selected_index)
+    readonly property bool animate_moves: root.filmstrip && PowerSource.on_ac && root.reveal === 1
 
     // Closed windows drop out of marks and the carried set, even ones in the other mode.
-    onTiles_synced: {
+    onTilesChanged: {
+        Layout.sync_keys(root.tile_slots, root.tiles.map(t => t.key));
         const known = {};
         for (const t of Hyprland.toplevels.values) known[t.address] = true;
         if (root.tiles.length === 0) return;
@@ -78,7 +131,9 @@ OverviewBase {
     // One window carried inside its own workspace, selection on another window there: m/Enter swaps them.
     readonly property string swap_address: root.picked.length === 1 && !!root.selected_tile && root.selected_tile.windows.some(w => w.address === root.picked[0]) && root.current_address !== root.picked[0] ? root.current_address : ""
     readonly property bool can_drop: root.carrying && root.swap_address === "" && !!root.selected_tile && root.picked.some(a => !root.selected_tile.windows.some(w => w.address === a))
-    ranked: root.typing ? root.rank(root.window_entries(), root.query) : []
+    readonly property var ranked: root.typing ? root.rank(root.window_entries(), root.query) : []
+    readonly property int hit_index: Math.min(root.hit, root.ranked.length - 1)
+    readonly property var hit_entry: root.ranked[root.hit_index] || null
     readonly property var matches: root.query === "" ? null : root.to_set(root.ranked.map(e => e.address))
     readonly property int save_total: WindowState.windows.filter(t => !!t.workspace).length
     readonly property int window_total: (root.tiles || []).reduce((n, t) => n + t.windows.length, 0)
@@ -109,13 +164,18 @@ OverviewBase {
         return { x: r.x + 2 + w.rx * cw, y: r.y + 2 + w.ry * ch, w: Math.max(4, w.rw * cw), h: Math.max(4, w.rh * ch), cls: w.label.toUpperCase(), place: place, real: w.real };
     }
 
-    layer_namespace: "quickshell-overview"
-    title: root.save_mode ? "SAVE SESSION" : root.share_mode ? "SHARE" : root.special ? "SPECIAL" : "OVERVIEW"
-    status_accent: root.screen_pick || root.carrying || root.marks.length > 0 || root.query !== ""
-    help_close_desc: root.share_mode ? "cancel share" : root.save_mode ? "close without saving" : "close overview"
-    cursor_sub: root.current_address
-    group_label: (g, i) => g.name + (g.focused ? " · focused" : "")
-    dismiss: () => root.hide_overview()
+    screen: Quickshell.screens.find(s => s.name === root.held_screen_name) || null
+    visible: false
+    color: "transparent"
+    anchors.top: true
+    anchors.bottom: true
+    anchors.left: true
+    anchors.right: true
+    exclusiveZone: 0
+    exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.namespace: "quickshell-overview"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: root.wanted ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     // Exclusive focus alone still lets Hyprland run binds; this skips them all so a share pick moves nothing.
     ShortcutInhibitor {
@@ -187,7 +247,12 @@ OverviewBase {
         root.screen_pick = !!resume && resume.screen_pick;
         root.carry_exit = "";
         root.end_ws_mode();
-        root.reset_common();
+        root.picked = [];
+        root.from_search = false;
+        root.marks = [];
+        root.help_open = false;
+        digit_timer.stop();
+        root.clear_filter();
         const ws = Hyprland.focusedWorkspace;
         root.selected_key = root.special ? "sp:" + on_special.slice(8) : ws ? "ws:" + ws.id : "";
         root.selected_address = WindowState.active_address;
@@ -225,6 +290,158 @@ OverviewBase {
         root.end_ws_mode();
         root.conceal(was_sharing);
         if (was_sharing && !keep_share) Screenshot.send_share("");
+    }
+
+    function hold_focused_screen() {
+        Popups.close();
+        const mon = Hyprland.focusedMonitor;
+        const target = (mon && Quickshell.screens.find(s => s.name === mon.name)) || Quickshell.screens[0];
+        root.held_screen_name = target ? target.name : "";
+        return mon;
+    }
+
+    function reveal_open() {
+        reveal_anim.stop();
+        if (PowerSource.on_ac) {
+            reveal_anim.to = 1;
+            reveal_anim.start();
+        } else {
+            root.reveal = 1;
+        }
+        keys.forceActiveFocus();
+    }
+
+    // Call after clearing wanted; immediate hides at once instead of fading.
+    function conceal(immediate) {
+        root.typing = false;
+        root.help_open = false;
+        reveal_anim.stop();
+        if (immediate) {
+            root.reveal = 0;
+            root.visible = false;
+        } else if (PowerSource.on_ac && root.visible) {
+            reveal_anim.to = 0;
+            reveal_anim.start();
+        } else {
+            root.reveal = 0;
+            root.visible = false;
+        }
+    }
+
+    function focus_later(address) {
+        focus_timer.address = address;
+        focus_timer.restart();
+    }
+
+    function reading_order(items) {
+        return items.slice().sort((a, b) => a.ry - b.ry || a.rx - b.rx);
+    }
+
+    function to_set(list) {
+        const out = {};
+        for (const k of list) out[k] = true;
+        return out;
+    }
+
+    function rank(entries, query) {
+        const terms = Fuzzy.terms_of(query);
+        if (terms.length === 0) return entries;
+        const scored = [];
+        for (const e of entries) {
+            const s = Fuzzy.score_item(terms, e);
+            if (s) scored.push({ entry: e, score: s.score });
+        }
+        scored.sort((a, b) => b.score - a.score || a.entry.recency - b.entry.recency);
+        return scored.map(s => s.entry);
+    }
+
+    function set_hit(i) {
+        root.hit = i;
+        root.select_entry(root.hit_entry);
+    }
+
+    function step_hit(delta) {
+        const n = root.ranked.length;
+        if (n > 0) root.set_hit((root.hit_index + delta + n) % n);
+    }
+
+    function start_filter(from_search) {
+        root.from_search = from_search;
+        root.typing = true;
+        filter_input.forceActiveFocus();
+        filter_input.cursorPosition = filter_input.text.length;
+        root.reset_hit();
+    }
+
+    function clear_filter() {
+        root.typing = false;
+        filter_input.text = "";
+        if (root.visible) keys.forceActiveFocus();
+    }
+
+    function show_help() {
+        root.help_open = true;
+        key_help.forceActiveFocus();
+    }
+
+    function hide_help() {
+        root.help_open = false;
+        if (root.typing) filter_input.forceActiveFocus();
+        else keys.forceActiveFocus();
+    }
+
+    function is_help_key(event) {
+        return event.key === Qt.Key_Question || event.text === "?";
+    }
+
+    function direction_of(k) {
+        if (k === Qt.Key_H || k === Qt.Key_Left) return [-1, 0];
+        if (k === Qt.Key_L || k === Qt.Key_Right) return [1, 0];
+        if (k === Qt.Key_K || k === Qt.Key_Up) return [0, -1];
+        if (k === Qt.Key_J || k === Qt.Key_Down) return [0, 1];
+        return null;
+    }
+
+    function move(dx, dy) {
+        const from = root.selected_index;
+        let to = -1;
+        if (root.filmstrip) {
+            const order = root.layout.order;
+            if (dx !== 0) {
+                const at = order.indexOf(from);
+                to = at >= 0 ? order[at + dx] : -1;
+            } else {
+                root.filmstrip_vertical(dy);
+                return;
+            }
+        } else {
+            to = Layout.neighbor(root.layout.tile_rects, from, dx, dy);
+        }
+        if (to !== undefined && to >= 0) root.select(to);
+    }
+
+    function cursor_key() {
+        return root.selected_key + "|" + root.current_address;
+    }
+
+    function play_if_moved(before) {
+        if (root.cursor_key() !== before) ThemeAudio.play("cursor");
+    }
+
+    // Digits typed in quick succession name one target, so 1 then 2 lands on 12 when it exists.
+    function type_digit(d) {
+        const before = root.cursor_key();
+        const joined = digit_timer.running ? digit_timer.typed + d : "";
+        if (joined !== "" && root.jump(parseInt(joined))) {
+            digit_timer.typed = joined;
+        } else if (d !== "0") {
+            root.jump(parseInt(d));
+            digit_timer.typed = d;
+        } else {
+            return;
+        }
+        root.play_if_moved(before);
+        digit_timer.restart();
     }
 
     function refresh() {
@@ -312,26 +529,26 @@ OverviewBase {
     }
 
     // Puts the tile selection on the window, switching between regular and special mode when it lives in the other one.
-    select_entry: function (entry) {
+    function select_entry(entry) {
         if (!entry) return;
         const is_special = entry.ws_name.startsWith("special:");
         if (is_special !== root.special) {
             root.special = is_special;
-            root.stop_digits();
+            digit_timer.stop();
         }
         const at = root.tile_index_of[is_special ? "sp:" + entry.ws_name.slice(8) : "ws:" + entry.ws_id];
         if (at !== undefined) root.select(at, entry.address);
     }
 
     // An empty query starts on the window before the current one when searching, else on the selected window.
-    reset_hit: function () {
+    function reset_hit() {
         const list = root.ranked;
         let at = 0;
         if (root.query === "") at = root.from_search ? WindowEntries.previous_index(list, WindowState.active_address) : Math.max(0, list.findIndex(e => e.address === root.current_address));
         root.set_hit(at);
     }
 
-    accept_hit: function () {
+    function accept_hit() {
         const entry = root.hit_entry;
         if (!entry) return;
         root.select_entry(entry);
@@ -341,7 +558,7 @@ OverviewBase {
         else root.activate_address(entry.address);
     }
 
-    select: function (index, address) {
+    function select(index, address) {
         const tile = root.tiles[index];
         if (!tile) return;
         root.selected_key = tile.key;
@@ -354,7 +571,7 @@ OverviewBase {
         }
     }
 
-    filmstrip_vertical: function (dy) {
+    function filmstrip_vertical(dy) {
         const from = root.selected_index;
         let to = -1;
         const band_order = Layout.flat(Layout.bands(root.groups));
@@ -393,7 +610,7 @@ OverviewBase {
     }
 
     // Special mode has no usable ids, so digits count tiles in hjkl order there.
-    jump: function (id) {
+    function jump(id) {
         const i = root.special ? (id >= 1 && id <= root.nav_order.length ? root.nav_order[id - 1] : -1) : root.tiles.findIndex(t => !t.is_new && t.id === id);
         if (i >= 0) root.select(i);
         return i >= 0;
@@ -434,7 +651,7 @@ OverviewBase {
 
     function toggle_special() {
         root.special = !root.special;
-        root.stop_digits();
+        digit_timer.stop();
         const here = root.tiles.findIndex(t => t.windows.some(w => w.address === WindowState.active_address));
         if (here >= 0) {
             root.select(here, WindowState.active_address);
@@ -446,7 +663,7 @@ OverviewBase {
         }
     }
 
-    activate: function () {
+    function activate() {
         const tile = root.selected_tile;
         if (!tile) return;
         const address = root.current_address;
@@ -563,21 +780,18 @@ OverviewBase {
         if (root.alive(root.marks).length === 0) return;
         root.naming = true;
         root.name_error = "";
-        name_input.text = root.save_target !== "" ? root.save_target : Sessions.default_name();
-        name_input.forceActiveFocus();
-        name_input.selectAll();
+        name_popup.open(root.save_target !== "" ? root.save_target : Sessions.default_name());
     }
 
     function stop_naming() {
-        // The popup field is inside a focus scope: unless it gives up its scoped focus, focus_keys hands it straight back and keys go nowhere.
-        name_input.focus = false;
+        name_popup.release();
         root.naming = false;
         root.name_error = "";
-        root.focus_keys();
+        keys.forceActiveFocus();
     }
 
     function confirm_save() {
-        const name = name_input.text.trim();
+        const name = name_popup.name;
         const problem = Sessions.name_problem(name, root.save_target);
         if (root.save_pending) return;
         if (problem !== "") {
@@ -613,12 +827,12 @@ OverviewBase {
         root.marks = root.marks.indexOf(a) >= 0 ? root.marks.filter(m => m !== a) : root.marks.concat([a]);
     }
 
-    toggle_mark: function () {
+    function toggle_mark() {
         root.mark_address(root.current_address);
     }
 
     // Marks every window in the selected workspace, or unmarks them all when they already are.
-    toggle_mark_all: function () {
+    function toggle_mark_all() {
         const here = root.tab_order.map(w => w.address);
         if (here.length === 0) return;
         const all = here.every(a => root.marks.indexOf(a) >= 0);
@@ -626,7 +840,7 @@ OverviewBase {
     }
 
     // Closes every marked window, or the selected one; selection steps to the next window.
-    close_selected: function () {
+    function close_selected() {
         const marked = root.alive(root.marks);
         const doomed = marked.length > 0 ? marked : root.current_address !== "" ? [root.current_address] : [];
         if (doomed.length === 0) return;
@@ -643,7 +857,7 @@ OverviewBase {
         refresh_timer.restart();
     }
 
-    pick: function () {
+    function pick() {
         const marked = root.alive(root.marks);
         if (marked.length > 0) {
             root.picked = marked;
@@ -657,14 +871,14 @@ OverviewBase {
         }
     }
 
-    cancel_pick: function () {
+    function cancel_pick() {
         root.carry_exit = "";
         if (root.picked_from_marks) root.marks = root.alive(root.picked);
         root.picked = [];
     }
 
     // Swaps inside a workspace, else moves every carried window there; a fresh slot is then sent to its monitor.
-    drop: function () {
+    function drop() {
         const tile = root.selected_tile;
         const carried = root.alive(root.picked);
         const swap_with = root.swap_address;
@@ -832,27 +1046,63 @@ OverviewBase {
         return "ok";
     }
 
-    pre_key: function (event) {
+    function handle_key(event) {
         const before = root.cursor_key();
         const k = event.key;
+        if (event.modifiers & Qt.AltModifier) return;
         if (event.modifiers & Qt.ControlModifier) {
             const dir = root.direction_of(k);
             if (dir) root.move_monitor(dir[0], dir[1]);
             else if (k >= Qt.Key_0 && k <= Qt.Key_9) root.jump_monitor(k === Qt.Key_0 ? 10 : k - Qt.Key_0);
-            else return "stop";
+            else return;
             root.play_if_moved(before);
-            return "done";
+            event.accepted = true;
+            return;
         }
-        if (root.ws_mode === "swap" && root.handle_swap_key(event)) return "done";
-        if (root.screen_pick && root.handle_screen_key(event)) return "done";
-        if (root.share_mode && root.handle_share_key(event)) return "done";
-        if (root.save_mode && root.handle_save_key(event)) return "done";
-        return "";
-    }
-
-    extra_key: function (event, before) {
-        const k = event.key;
-        if (k === Qt.Key_BracketRight || k === Qt.Key_BracketLeft) {
+        // Each mode takes the keys it owns first; the rest fall through to the normal keys below.
+        if ((root.ws_mode === "swap" && root.handle_swap_key(event)) || (root.screen_pick && root.handle_screen_key(event)) || (root.share_mode && root.handle_share_key(event)) || (root.save_mode && root.handle_save_key(event))) {
+            event.accepted = true;
+            return;
+        }
+        if (root.is_help_key(event)) {
+            root.show_help();
+        } else if (k === Qt.Key_Escape) {
+            ThemeAudio.play("cancel");
+            if (root.carrying) root.cancel_pick();
+            else if (root.marks.length > 0) root.marks = [];
+            else if (root.query !== "") root.clear_filter();
+            else root.hide_overview();
+        } else if (k === Qt.Key_Q) {
+            ThemeAudio.play("cancel");
+            root.hide_overview();
+        } else if (root.direction_of(k)) {
+            const dir = root.direction_of(k);
+            root.move(dir[0], dir[1]);
+            root.play_if_moved(before);
+        } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+            ThemeAudio.play("confirm");
+            if (root.carrying) root.drop();
+            else root.activate();
+        } else if (k === Qt.Key_M) {
+            ThemeAudio.play("confirm");
+            if (root.carrying) root.drop();
+            else root.pick();
+        } else if (!root.carrying && (k === Qt.Key_Space || (k === Qt.Key_V && !(event.modifiers & Qt.ShiftModifier)))) {
+            root.toggle_mark();
+            ThemeAudio.play("confirm");
+        } else if (!root.carrying && k === Qt.Key_V) {
+            root.toggle_mark_all();
+            ThemeAudio.play("confirm");
+        } else if (!root.carrying && k === Qt.Key_X) {
+            root.close_selected();
+            ThemeAudio.play("confirm");
+        } else if (k === Qt.Key_F) {
+            root.filmstrip = !root.filmstrip;
+        } else if (k === Qt.Key_Slash || event.text === "/") {
+            root.start_filter(false);
+        } else if (k >= Qt.Key_0 && k <= Qt.Key_9) {
+            root.type_digit(String(k - Qt.Key_0));
+        } else if (k === Qt.Key_BracketRight || k === Qt.Key_BracketLeft) {
             root.cycle_window(k === Qt.Key_BracketRight ? 1 : -1);
             root.play_if_moved(before);
         } else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) {
@@ -865,9 +1115,9 @@ OverviewBase {
         } else if (k === Qt.Key_W) {
             root.start_ws_mode((event.modifiers & Qt.ShiftModifier) ? "swap" : "monitor");
         } else {
-            return false;
+            return;
         }
-        return true;
+        event.accepted = true;
     }
 
     // A click on a tile's background focuses the workspace itself rather than one of its windows.
@@ -894,7 +1144,7 @@ OverviewBase {
         }
     }
 
-    footer_text: root.help_open ? "? back · Esc back · q " + (root.share_mode ? "cancel share" : root.save_mode ? "close without saving" : "close")
+    readonly property string footer_text: root.help_open ? "? back · Esc back · q " + (root.share_mode ? "cancel share" : root.save_mode ? "close without saving" : "close")
         : root.save_mode ? (root.naming ? "Enter save · Esc back to marking" : "Space mark · V mark all here · Enter name and save · hjkl move · ]/[ window · Tab special · f view · ? help · Esc cancel")
         : root.typing ? "Enter " + (root.share_mode ? "share" : root.carrying ? "drop here" : "focus") + " · Tab/Down next · Shift+Tab/Up previous · Esc " + (root.from_search && root.query === "" ? "close" : "clear") + " · ? help"
         : root.ws_mode === "monitor" ? "Enter send workspace " + root.ws_name + " to this monitor · hjkl/Ctrl+hjkl/Ctrl+1-9 monitor · w/s/Esc back · ? help · q close"
@@ -916,7 +1166,7 @@ OverviewBase {
     readonly property string share_help: "Only windows the share can capture are shown · h/j/k/l move between workspaces · Arrows move between workspaces · Ctrl+h/j/k/l or Ctrl+Arrows jump to the next monitor that way · Ctrl+1-9 jump to that monitor number · ] next window · [ previous window · Enter share the selected window · Click share a window · s pick the whole monitor of the selected workspace, Enter then shares it · r share a region of that monitor, Esc there comes back here · Tab/Shift+Tab toggle special workspaces ·/ search shareable windows by class, title or workspace · 1-9 select workspace by id, or the nth special workspace · f toggle filmstrip view, j/k there jump monitors · Esc/q cancel the share"
     readonly property string ws_help: root.ws_mode === "monitor" ? "Sending workspace " + root.ws_name + " to a monitor · " + root.screen_moves + " · Enter/w send it to the picked monitor · s/Esc cancel · f toggle filmstrip view · q close"
         : "Swapping workspace " + root.ws_name + " with another · h/j/k/l, Arrows, Ctrl+h/j/k/l or Ctrl+1-9 move to the other workspace · 1-9 select workspace by id · ]/[ window · f toggle filmstrip view · Enter/W swap the two workspaces' windows · Esc cancel · q close"
-    help_text: root.save_mode ? root.save_help
+    readonly property string help_text: root.save_mode ? root.save_help
         : root.ws_mode !== "" ? root.ws_help
         : root.typing ? "Type to search " + (root.share_mode ? "shareable " : "") + "windows by class, title or workspace · Enter " + (root.share_mode ? "share the highlighted window" : "focus the highlighted window, or drop the carried window on its workspace") + " · Tab/Down next match · Shift+Tab/Up previous match · Backspace delete, clears when empty · Esc clear search, or close when it is empty"
         : root.screen_pick ? root.screen_help
@@ -926,8 +1176,8 @@ OverviewBase {
         : root.query !== "" ? "Esc clear search · " + root.normal_help
         : root.normal_help
 
-    status_text: {
-        if (root.typing || root.query !== "") return "/" + root.query + (root.typing ? "_" : "") + "  " + root.match_count + " match" + (root.match_count === 1 ? "" : "es");
+    readonly property string status_text: {
+        if (root.typing || root.query !== "") return "/" + root.query + (root.typing ? "_" : "") + "  " + root.ranked.length + " match" + (root.ranked.length === 1 ? "" : "es");
         if (root.ws_mode === "monitor" && root.selected_tile && root.groups[root.selected_tile.group]) return "SEND WORKSPACE " + root.ws_name + " to " + root.groups[root.selected_tile.group].name;
         if (root.ws_mode === "swap" && root.selected_tile) return "SWAP WORKSPACE " + root.ws_name + " with " + (root.selected_tile.key === root.ws_source ? "..." : root.selected_tile.name);
         if (root.save_mode) return (root.save_target !== "" ? "UPDATE " + root.save_target.toUpperCase() : "SAVE SESSION") + " · " + root.marks.length + " of " + root.save_total + " windows marked";
@@ -1008,229 +1258,353 @@ OverviewBase {
         }
     }
 
-    under_tiles: Repeater {
-        model: root.groups
+    NumberAnimation {
+        id: reveal_anim
+        target: root
+        property: "reveal"
+        duration: 170
+        easing.type: Easing.OutCubic
+        onFinished: if (!root.wanted) root.visible = false
+    }
 
-        Item {
-            id: group
-            required property int index
-            readonly property var rect: root.layout.group_rects[group.index] || ({ x: 0, y: 0, w: 0, h: 0 })
-            readonly property bool holds_selection: !!root.selected_tile && root.selected_tile.group === group.index
+    Timer {
+        id: digit_timer
+        property string typed: ""
+        interval: 600
+    }
 
-            x: group.rect.x
-            y: group.rect.y
-            width: group.rect.w
-            height: group.rect.h
+    // Focus waits for the overlay to drop its exclusive keyboard grab, else the grab's release restores the old window.
+    Timer {
+        id: focus_timer
+        property string address: ""
+        interval: 60
+        onTriggered: WindowState.focus(focus_timer.address)
+    }
 
-            Behavior on x {
-                enabled: root.animate_moves
-                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+    // With the screen frame on, the layer is the frame's hole, whose corners are cut in the frame's own profile. The
+    // scrim and panel are masked to that outline so the frame's corners show through instead of being painted over.
+    readonly property var hole_outline: Style.screen_frame_on && root.screen ? ScreenFrames.hole_outline(root.screen) : []
+    readonly property bool corners_cut: root.hole_outline.length > 0 && Style.screen_frame_profile !== null && Style.screen_frame_profile.corner !== "square" && Style.screen_frame_profile.radius > 0
+
+    Item {
+        id: hole_mask
+        anchors.fill: parent
+        visible: false
+        layer.enabled: root.corners_cut
+
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                strokeWidth: -1
+                fillColor: "black"
+                PathPolyline { path: root.hole_outline }
             }
+        }
+    }
 
-            // The screen pick: the whole monitor framed like a selected window.
-            Rectangle {
-                visible: root.screen_pick && group.holds_selection
-                anchors.fill: parent
-                radius: Style.radius(8)
-                color: Qt.alpha(Style.caret_color, 0.08)
-                border.width: 2
-                border.color: Style.caret_color
+    Item {
+        anchors.fill: parent
+        layer.enabled: root.corners_cut
+        layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: hole_mask
+            maskThresholdMin: 0.5
+            maskSpreadAtMin: 1
+        }
 
-                CornerBrackets {
-                    anchors.fill: parent
-                    color: Style.selection_brackets
-                    inset: 3
-                    arm: Math.min(16, parent.width / 4)
-                    all_corners: true
-                }
-            }
+        Rectangle {
+            id: scrim
+            anchors.fill: parent
+            color: Qt.alpha(Theme.bg_crust, 0.6)
+            opacity: root.reveal
 
             MouseArea {
                 anchors.fill: parent
-                enabled: root.screen_pick
-                onClicked: root.screen_clicked(group.index)
-            }
-        }
-    }
-
-    Repeater {
-        model: root.tile_slots
-
-        WorkspaceTile {
-            id: tile
-            required property string key
-            readonly property int index: root.tile_index_of[tile.key] !== undefined ? root.tile_index_of[tile.key] : -1
-            readonly property var modelData: root.tiles[tile.index] || null
-            readonly property var rect: root.layout.tile_rects[tile.index] || ({ x: 0, y: 0, w: 0, h: 0 })
-
-            x: tile.rect.x
-            y: tile.rect.y
-            width: tile.rect.w
-            height: tile.rect.h
-            visible: tile.rect.w > 0 && tile.x + tile.width > 0 && tile.x < root.body.width
-            entry: tile.modelData
-            selected: tile.index === root.selected_index && !root.screen_pick
-            selected_address: root.screen_pick ? "" : root.current_address
-            picked: root.picked_set
-            picked_toplevel: root.picked_toplevel
-            picked_count: root.picked.length
-            marks: root.mark_numbers
-            swap_address: tile.selected ? root.swap_address : ""
-            drop_target: tile.selected && root.can_drop
-            matches: root.matches
-            numbers: root.window_numbers
-            show_numbers: root.voice_on
-            shown: root.visible
-            live: tile.index === root.selected_index && !root.filmstrip
-
-            onTile_clicked: root.tile_clicked(tile.index, "")
-            onWindow_clicked: address => root.tile_clicked(tile.index, address)
-
-            Behavior on x {
-                enabled: root.animate_moves
-                NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
-            }
-        }
-    }
-
-    WorkspaceTile {
-        id: big_tile
-        readonly property var rect: root.layout.big || ({ x: 0, y: 0, w: 0, h: 0 })
-        visible: root.filmstrip && !!root.layout.big
-        x: big_tile.rect.x
-        y: big_tile.rect.y
-        width: big_tile.rect.w
-        height: big_tile.rect.h
-        entry: root.selected_tile
-        selected: !root.screen_pick
-        selected_address: root.screen_pick ? "" : root.current_address
-        picked: root.picked_set
-        picked_toplevel: root.picked_toplevel
-        picked_count: root.picked.length
-        marks: root.mark_numbers
-        swap_address: root.swap_address
-        drop_target: root.can_drop
-        matches: root.matches
-        numbers: root.window_numbers
-        show_numbers: root.voice_on
-        shown: root.visible && root.filmstrip
-        live: true
-
-        onTile_clicked: root.tile_clicked(root.selected_index, "")
-        onWindow_clicked: address => root.tile_clicked(root.selected_index, address)
-    }
-
-    ScopeAim {
-        anchors.fill: parent
-        aim: root.help_open ? null : root.aim
-        cls: root.aim ? root.aim.cls : ""
-        place: root.aim ? root.aim.place : ""
-        real: root.aim ? root.aim.real : null
-        glide: PowerSource.on_ac && root.reveal === 1
-    }
-
-    AmmoCounter {
-        visible: Style.overview_skin === "goldeneye" && root.window_total > 0
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: 12
-        index: root.window_at
-        total: root.window_total
-    }
-
-    LockAim {
-        anchors.fill: parent
-        aim: root.help_open ? null : root.aim
-        animate: PowerSource.on_ac && root.reveal === 1
-    }
-
-    // Names the session being saved; Enter saves and Esc goes back to marking.
-    Item {
-        id: name_popup
-        visible: root.naming
-        anchors.fill: parent
-        z: 20
-
-        MouseArea {
-            anchors.fill: parent
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            color: Qt.alpha(Theme.bg_crust, 0.6)
-        }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: Math.min(parent.width - Style.px(40), Style.px(440))
-            height: name_column.implicitHeight + Style.px(28)
-            radius: Style.radius(8)
-            color: Theme.bg_mantle
-            border.width: 1
-            border.color: Style.caret_color
-
-            Column {
-                id: name_column
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.margins: Style.px(14)
-                spacing: Style.px(8)
-
-                Text {
-                    text: root.save_target !== "" ? "Update session" : "Name this session"
-                    color: Style.text_primary
-                    font.family: Style.font_family
-                    font.pixelSize: Style.fs(-1)
+                onClicked: {
+                    ThemeAudio.play("cancel");
+                    root.hide_overview();
                 }
+            }
+        }
 
-                Rectangle {
-                    width: parent.width
-                    height: Style.px(30)
-                    radius: 6
-                    color: "transparent"
-                    border.width: 1
-                    border.color: root.name_error !== "" ? Style.text_primary : Style.text_accent
+        OverviewFrame {
+            id: frame
+            hole_cut: root.corners_cut
+            // With the screen frame on the layer is the frame's hole, so the panel meets its edge like a drawer does.
+            x: Style.screen_frame_on ? 0 : Style.px(36)
+            y: Style.screen_frame_on ? 0 : Style.px(30)
+            width: parent.width - x * 2
+            height: parent.height - y * 2
+            opacity: root.reveal
+            scale: 0.97 + 0.03 * root.reveal
+            title: root.save_mode ? "SAVE SESSION" : root.share_mode ? "SHARE" : root.special ? "SPECIAL" : "OVERVIEW"
+            status: root.status_text
+            status_color: root.screen_pick || root.carrying || root.marks.length > 0 || root.query !== "" ? Style.text_accent : Style.text_muted
+            footer: root.footer_text
 
-                    TextInput {
-                        id: name_input
+            FocusScope {
+                id: keys
+                anchors.fill: parent
+                focus: true
+                Keys.onPressed: event => root.handle_key(event)
+            }
+
+            TextInput {
+                id: filter_input
+                width: 0
+                height: 0
+                opacity: 0
+                maximumLength: 64
+                onTextChanged: {
+                    root.query = text;
+                    if (root.typing) root.reset_hit();
+                }
+                Keys.onPressed: event => {
+                    const before = root.cursor_key();
+                    const k = event.key;
+                    if (root.is_help_key(event)) {
+                        root.show_help();
+                    } else if (k === Qt.Key_Escape) {
+                        ThemeAudio.play("cancel");
+                        if (root.from_search && root.query === "") root.hide_overview();
+                        else root.clear_filter();
+                    } else if (k === Qt.Key_Return || k === Qt.Key_Enter) {
+                        ThemeAudio.play("confirm");
+                        root.accept_hit();
+                    } else if (k === Qt.Key_Tab || k === Qt.Key_Down) {
+                        root.step_hit(1);
+                        root.play_if_moved(before);
+                    } else if (k === Qt.Key_Backtab || k === Qt.Key_Up) {
+                        root.step_hit(-1);
+                        root.play_if_moved(before);
+                    } else if (k === Qt.Key_Backspace && filter_input.text === "") {
+                        ThemeAudio.play("cancel");
+                        root.clear_filter();
+                    } else {
+                        return;
+                    }
+                    event.accepted = true;
+                }
+            }
+
+            // One monitor's group: its panel and label, and in a screen pick its whole-monitor frame and click target.
+            Repeater {
+                model: root.groups
+
+                Item {
+                    id: group
+                    required property var modelData
+                    required property int index
+                    readonly property var rect: root.layout.group_rects[group.index] || ({ x: 0, y: 0, w: 0, h: 0 })
+                    readonly property bool holds_selection: !!root.selected_tile && root.selected_tile.group === group.index
+
+                    x: group.rect.x
+                    y: group.rect.y
+                    width: group.rect.w
+                    height: group.rect.h
+
+                    Behavior on x {
+                        enabled: root.animate_moves
+                        NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                    }
+
+                    Rectangle {
+                        visible: !root.filmstrip
                         anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 8
-                        verticalAlignment: TextInput.AlignVCenter
-                        maximumLength: 64
-                        clip: true
-                        color: Style.text_fg
-                        selectionColor: Style.selection_bg
-                        selectedTextColor: Style.selection_inverse ? Style.selection_fg : Style.text_fg
-                        font.family: Style.font_family
-                        font.pixelSize: Style.font_size
-                        onTextEdited: root.name_error = ""
+                        radius: Style.radius(8)
+                        color: Qt.alpha(Theme.bg_mantle, 0.5)
+                        border.width: 1
+                        border.color: group.holds_selection ? Qt.alpha(Style.caret_color, 0.6) : Qt.alpha(Theme.ui_border, 0.6)
+                    }
 
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Escape) {
-                                ThemeAudio.play("cancel");
-                                root.stop_naming();
-                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                ThemeAudio.play("confirm");
-                                root.confirm_save();
-                            } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_U) {
-                                name_input.text = "";
-                            } else {
-                                return;
-                            }
-                            event.accepted = true;
+                    Dither {
+                        visible: !root.filmstrip && color.a > 0
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        color: Style.dither
+                        radius: Style.radius(8)
+                        top_radius: Style.radius(8)
+                    }
+
+                    Rectangle {
+                        visible: root.filmstrip
+                        y: root.metrics.label - Style.px(4)
+                        width: parent.width
+                        height: 1
+                        color: group.holds_selection ? Style.caret_color : Theme.ui_border
+                    }
+
+                    Item {
+                        x: root.metrics.pad
+                        y: root.filmstrip ? 0 : Style.px(6)
+                        width: parent.width - root.metrics.pad * 2
+                        height: section.implicitHeight
+                        clip: true
+
+                        MenuSection {
+                            id: section
+                            label: group.modelData.name + (group.modelData.focused ? " · focused" : "")
+                            color: group.holds_selection ? Style.text_primary : Style.section_fg
                         }
                     }
-                }
 
-                Text {
-                    width: parent.width
-                    text: root.name_error !== "" ? root.name_error : root.save_pending ? "Saving..." : root.marks.length + " window" + (root.marks.length === 1 ? "" : "s") + " · Enter save · Esc back to marking"
-                    wrapMode: Text.WordWrap
-                    color: root.name_error !== "" ? Style.text_primary : Style.text_muted
-                    font.family: Style.font_family
-                    font.pixelSize: Style.fs(-2)
+                    Rectangle {
+                        visible: root.screen_pick && group.holds_selection
+                        anchors.fill: parent
+                        radius: Style.radius(8)
+                        color: Qt.alpha(Style.caret_color, 0.08)
+                        border.width: 2
+                        border.color: Style.caret_color
+
+                        CornerBrackets {
+                            anchors.fill: parent
+                            color: Style.selection_brackets
+                            inset: 3
+                            arm: Math.min(16, parent.width / 4)
+                            all_corners: true
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: root.screen_pick
+                        onClicked: root.screen_clicked(group.index)
+                    }
+                }
+            }
+
+            Repeater {
+                model: root.tile_slots
+
+                WorkspaceTile {
+                    id: tile
+                    required property string key
+                    readonly property int index: root.tile_index_of[tile.key] !== undefined ? root.tile_index_of[tile.key] : -1
+                    readonly property var modelData: root.tiles[tile.index] || null
+                    readonly property var rect: root.layout.tile_rects[tile.index] || ({ x: 0, y: 0, w: 0, h: 0 })
+
+                    x: tile.rect.x
+                    y: tile.rect.y
+                    width: tile.rect.w
+                    height: tile.rect.h
+                    visible: tile.rect.w > 0 && tile.x + tile.width > 0 && tile.x < frame.body.width
+                    entry: tile.modelData
+                    selected: tile.index === root.selected_index && !root.screen_pick
+                    selected_address: root.screen_pick ? "" : root.current_address
+                    picked: root.picked_set
+                    picked_toplevel: root.picked_toplevel
+                    picked_count: root.picked.length
+                    marks: root.mark_numbers
+                    swap_address: tile.selected ? root.swap_address : ""
+                    drop_target: tile.selected && root.can_drop
+                    matches: root.matches
+                    numbers: root.window_numbers
+                    show_numbers: root.voice_on
+                    shown: root.visible
+                    live: tile.index === root.selected_index && !root.filmstrip
+
+                    onTile_clicked: root.tile_clicked(tile.index, "")
+                    onWindow_clicked: address => root.tile_clicked(tile.index, address)
+
+                    Behavior on x {
+                        enabled: root.animate_moves
+                        NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+                    }
+                }
+            }
+
+            WorkspaceTile {
+                id: big_tile
+                readonly property var rect: root.layout.big || ({ x: 0, y: 0, w: 0, h: 0 })
+                visible: root.filmstrip && !!root.layout.big
+                x: big_tile.rect.x
+                y: big_tile.rect.y
+                width: big_tile.rect.w
+                height: big_tile.rect.h
+                entry: root.selected_tile
+                selected: !root.screen_pick
+                selected_address: root.screen_pick ? "" : root.current_address
+                picked: root.picked_set
+                picked_toplevel: root.picked_toplevel
+                picked_count: root.picked.length
+                marks: root.mark_numbers
+                swap_address: root.swap_address
+                drop_target: root.can_drop
+                matches: root.matches
+                numbers: root.window_numbers
+                show_numbers: root.voice_on
+                shown: root.visible && root.filmstrip
+                live: true
+
+                onTile_clicked: root.tile_clicked(root.selected_index, "")
+                onWindow_clicked: address => root.tile_clicked(root.selected_index, address)
+            }
+
+            ScopeAim {
+                anchors.fill: parent
+                aim: root.help_open ? null : root.aim
+                cls: root.aim ? root.aim.cls : ""
+                place: root.aim ? root.aim.place : ""
+                real: root.aim ? root.aim.real : null
+                glide: PowerSource.on_ac && root.reveal === 1
+            }
+
+            AmmoCounter {
+                visible: Style.overview_skin === "goldeneye" && root.window_total > 0
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 12
+                index: root.window_at
+                total: root.window_total
+            }
+
+            LockAim {
+                anchors.fill: parent
+                aim: root.help_open ? null : root.aim
+                animate: PowerSource.on_ac && root.reveal === 1
+            }
+
+            SessionNamePopup {
+                id: name_popup
+                visible: root.naming
+                anchors.fill: parent
+                updating: root.save_target !== ""
+                error_text: root.name_error
+                pending: root.save_pending
+                window_count: root.marks.length
+                onEdited: root.name_error = ""
+                onCancelled: root.stop_naming()
+                onConfirmed: root.confirm_save()
+            }
+
+            SearchList {
+                visible: root.typing
+                x: frame.body.width - width
+                width: root.list_width
+                height: frame.body.height
+                entries: root.ranked
+                current: root.hit_index
+                onChosen: index => {
+                    root.set_hit(index);
+                    root.accept_hit();
+                }
+            }
+
+            // The full key list for the current mode, drawn over the tiles.
+            Rectangle {
+                visible: root.help_open
+                anchors.fill: parent
+                color: Style.frame_color.a > 0.5 ? Style.frame_color : Theme.bg_crust
+
+                KeyHelp {
+                    id: key_help
+                    anchors.fill: parent
+                    text: root.help_text
+                    general: [{ key: "?", desc: "back" }, { key: "Esc", desc: "back" }, { key: "q", desc: root.share_mode ? "cancel share" : root.save_mode ? "close without saving" : "close overview" }]
+                    onBack: root.hide_help()
+                    onClose_requested: root.hide_overview()
                 }
             }
         }

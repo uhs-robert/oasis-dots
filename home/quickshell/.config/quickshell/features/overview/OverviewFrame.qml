@@ -32,7 +32,7 @@ Rectangle {
     readonly property int text_style: Style.glow ? Text.Outline : Style.text_shadow.a > 0 ? Text.Raised : Text.Normal
     readonly property color text_glow: Style.glow ? Qt.alpha(Theme.theme_primary, 0.3) : Style.text_shadow
 
-    // Set by OverviewBase when it masks the panel to the screen frame's hole corners. Against the frame those corners
+    // Set by Overview when it masks the panel to the screen frame's hole corners. Against the frame those corners
     // are the frame's, so with no mask (a square profile) the panel has none of its own to round either.
     property bool hole_cut: false
 
