@@ -30,6 +30,8 @@ cat >"$work/stubs/systemd-run" <<'STUB'
 #!/usr/bin/env bash
 [[ -n ${STUB_SCOPE_FAIL:-} ]] && exit 1
 printf '%s\n' "$@" >"$SCOPE_LOG"
+# Like the real one, it expands $VAR in the command unless told not to; here it fails loudly instead.
+if [[ " $* " != *" --expand-environment=no "* && $* == *'$'* ]]; then echo "stub: would expand \$ in arguments" >&2; exit 99; fi
 while [[ $# -gt 0 && $1 != -- ]]; do shift; done
 shift
 exec "$@"
@@ -77,6 +79,7 @@ want_scope="--user
 --slice=agents.slice
 --quiet
 --collect
+--expand-environment=no
 -p
 OOMPolicy=continue
 --
@@ -84,6 +87,10 @@ $work/agents/claude
 a b
 c"
 [[ $(cat "$work/scope.log" 2>/dev/null) == "$want_scope" ]] || fail "scope: systemd-run got '$(cat "$work/scope.log" 2>/dev/null)'"
+
+# A literal ${VAR} in a prompt reaches the agent unexpanded.
+run "$work/outside" "$work/runtime" "$full_path" "$shims/claude" 'Explain ${HOME} and $USER'
+[[ $status == 0 && $out == *'arg Explain ${HOME} and $USER'* ]] || fail "literal dollar: exit $status, output '$out' ($err)"
 
 # AGENT_RUN_SLICE names another slice.
 AGENT_RUN_SLICE=test.slice run "$work/outside" "$work/runtime" "$full_path" "$shims/claude"
