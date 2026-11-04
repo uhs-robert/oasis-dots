@@ -7,8 +7,8 @@
 var sep = "\u001f";
 
 var fmt_session = "S" + sep + ["#{session_id}", "#{session_name}", "#{session_attached}"].join(sep);
-var fmt_window = "W" + sep + ["#{session_id}", "#{window_id}", "#{window_index}", "#{window_name}", "#{window_active}", "#{window_activity}"].join(sep);
-var fmt_pane = "P" + sep + ["#{window_id}", "#{pane_id}", "#{pane_left}", "#{pane_top}", "#{pane_active}", "#{pane_current_command}", "#{pane_current_path}"].join(sep);
+var fmt_window = "W" + sep + ["#{session_id}", "#{window_id}", "#{window_index}", "#{window_name}", "#{window_active}", "#{window_activity}", "#{window_width}", "#{window_height}", "#{window_zoomed_flag}"].join(sep);
+var fmt_pane = "P" + sep + ["#{window_id}", "#{pane_id}", "#{pane_left}", "#{pane_top}", "#{pane_active}", "#{pane_current_command}", "#{pane_current_path}", "#{pane_width}", "#{pane_height}"].join(sep);
 var fmt_client = "C" + sep + ["#{client_name}", "#{session_id}", "#{client_activity}"].join(sep);
 
 // Printed instead of the list when there is no tmux binary; no server prints nothing at all.
@@ -20,38 +20,37 @@ function list_argv() {
     return ["sh", "-c", "command -v tmux >/dev/null 2>&1 || { echo " + missing_marker + "; exit 0; }; exec tmux \"$@\" 2>/dev/null", "sh"].concat(args);
 }
 
-// The pane's width first, as AgentSessions.capture_argv prints it, so AgentSessions.split_capture reads both.
-function capture_argv(pane_id) {
-    return ["tmux", "display-message", "-p", "-t", pane_id, "#{pane_width}", ";", "capture-pane", "-p", "-e", "-t", pane_id];
+// One capture of every pane in pane_ids, each headed by a marker line naming it; a gone pane prints nothing. `styled`
+// keeps the colour codes.
+function captures_argv(pane_ids, styled) {
+    return ["sh", "-c", "for p; do printf '\\037PANE\\037%s\\n' \"$p\"; tmux capture-pane -p " + (styled ? "-e " : "") + "-t \"$p\" 2>/dev/null; done", "sh"].concat(pane_ids);
 }
 
-// One plain capture of every pane in pane_ids, each headed by a marker line naming it; a gone pane prints nothing.
-function tails_argv(pane_ids) {
-    return ["sh", "-c", "for p; do printf '\\037PANE\\037%s\\n' \"$p\"; tmux capture-pane -p -t \"$p\" 2>/dev/null; done", "sh"].concat(pane_ids);
-}
-
-// pane_id -> its last `count` lines with any text, from tails_argv's output.
-function parse_tails(text, count) {
+// pane_id -> its captured lines, from captures_argv's output.
+function split_captures(text) {
     var out = {};
     var marker = sep + "PANE" + sep;
     var id = "";
-    var lines = [];
-    var flush = function () {
-        if (id === "") return;
-        var kept = lines.filter(function (l) { return l.trim() !== ""; });
-        out[id] = kept.slice(Math.max(0, kept.length - count)).join("\n");
-    };
     var all = String(text || "").split("\n");
     for (var i = 0; i < all.length; i++) {
         if (all[i].indexOf(marker) === 0) {
-            flush();
             id = all[i].slice(marker.length);
-            lines = [];
-        } else {
-            lines.push(all[i]);
+            out[id] = [];
+        } else if (id !== "") {
+            out[id].push(all[i]);
         }
     }
-    flush();
+    return out;
+}
+
+// pane_id -> its last `count` lines with any text, for the cards.
+function parse_tails(text, count) {
+    var captures = split_captures(text);
+    var out = {};
+    for (var id in captures) {
+        var kept = captures[id].filter(function (l) { return l.trim() !== ""; });
+        out[id] = kept.slice(Math.max(0, kept.length - count)).join("\n");
+    }
     return out;
 }
 
@@ -82,9 +81,9 @@ function parse_list(text, home) {
     for (var i = 0; i < lines.length; i++) {
         var f = lines[i].split(sep);
         if (f[0] === "S" && f.length >= 4) sessions.push({ id: f[1], name: f[2], attached: int_of(f[3]) > 0 });
-        else if (f[0] === "W" && f.length >= 7) windows.push({ session_id: f[1], id: f[2], index: int_of(f[3]), name: f[4], active: f[5] === "1", activity: int_of(f[6]) });
+        else if (f[0] === "W" && f.length >= 7) windows.push({ session_id: f[1], id: f[2], index: int_of(f[3]), name: f[4], active: f[5] === "1", activity: int_of(f[6]), width: int_of(f[7]), height: int_of(f[8]), zoomed: f[9] === "1" });
         // `list-panes -a` lists a linked window's panes once per session it is in.
-        else if (f[0] === "P" && f.length >= 8 && !panes.some(function (p) { return p.pane_id === f[2]; })) panes.push({ window_id: f[1], pane_id: f[2], left: int_of(f[3]), top: int_of(f[4]), active: f[5] === "1", cmd: f[6], path: f[7], short_path: short_path(f[7], home || "") });
+        else if (f[0] === "P" && f.length >= 8 && !panes.some(function (p) { return p.pane_id === f[2]; })) panes.push({ window_id: f[1], pane_id: f[2], left: int_of(f[3]), top: int_of(f[4]), active: f[5] === "1", cmd: f[6], path: f[7], short_path: short_path(f[7], home || ""), width: int_of(f[8]), height: int_of(f[9]) });
         else if (f[0] === "C" && f.length >= 4) clients.push({ name: f[1], session_id: f[2], activity: int_of(f[3]) });
     }
     var items = [];
@@ -120,6 +119,10 @@ function window_item(win, session, panes) {
         active: win.active,
         activity: win.activity,
         panes: panes,
+        // The size in cells the panes' places and sizes add up to. A zoomed window shows only its active pane.
+        width: win.width,
+        height: win.height,
+        zoomed: win.zoomed,
         active_pane: lead ? lead.pane_id : "",
         cmd: lead ? lead.cmd : "",
         short_path: lead ? lead.short_path : ""
