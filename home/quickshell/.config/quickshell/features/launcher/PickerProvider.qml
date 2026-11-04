@@ -45,6 +45,11 @@ Scope {
     property size card_size: Qt.size(280, 112)
     // One line of the browse list view (`v`), given what `card` gets; null draws the generic row.
     property Component row: null
+    // The view each browse open starts on: "grid" of cards or "list" of rows.
+    property string default_browse_view: "grid"
+    // Browse only: results gather by group_of(item), groups in the order they first appear in `items`, each under a
+    // header line titled group_title(key, its shown items). A search keeps the groups and ranks inside each.
+    property bool grouped: false
     // Shown in the search bar's corner beside the mode, e.g. the clipboard's type filter; "" shows nothing.
     property string status_text: ""
     // Draws status_text in the accent colour, for a state that narrows what the list shows.
@@ -70,6 +75,14 @@ Scope {
     function refresh(arg) {}
 
     function select_tab(i) {}
+
+    function group_of(item) {
+        return "";
+    }
+
+    function group_title(key, items) {
+        return "";
+    }
 
     function activate(item) {}
 
