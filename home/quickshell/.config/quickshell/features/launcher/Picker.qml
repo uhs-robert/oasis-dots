@@ -872,7 +872,10 @@ Popup {
                 width: root.browse ? parent.width : parent.width * 0.38 - 8
                 height: root.browse ? root.browse_split.preview_height : parent.height
                 // Unloaded while the browse preview is off, so a live one (the agents' pane capture) stops polling.
-                active: root.visible && !!root.provider && root.provider.preview !== null && !(root.browse && root.preview_size === "off")
+                // Deliberately not gated on root.visible: unloading the preview in the same step that hides the window
+                // held the hide for 100-300 ms, the layer still mapped (a close stutter, worst with Firefox tabs).
+                // LazyPopup drops the preview with the rest of the picker once the layer is gone.
+                active: !!root.provider && root.provider.preview !== null && !(root.browse && root.preview_size === "off")
                 sourceComponent: root.showing_alt ? root.provider.alt_preview : root.provider ? root.provider.preview : null
             }
 
