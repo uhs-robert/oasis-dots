@@ -158,7 +158,8 @@ PATH_SCOPES = [
     ("home/voxtype/*", VOX_DUCK),
     ("home/systemd/.config/systemd/user/voxtype-duck.service", VOX_DUCK),
     ("extras/voxcmd-firefox/*", VOXCMD_SUITES),
-    # install: the installer libraries, their tests, the packages they read, and the host-side calendar script.
+    # install: the installer libraries, their tests, the packages they read, the host-side calendar script, and the agent
+    # launcher (a small package whose own scope would cost more than it saves).
     ("lib/install/*", "install"),
     ("lib/common/*", "install"),
     ("packages/snapper.ini", "install"),
@@ -166,6 +167,7 @@ PATH_SCOPES = [
     ("system/etc/makepkg.conf.d/*", "install"),
     ("system/usr/local/bin/qs-greeter", "install"),
     ("home/calendar/*", "install"),
+    ("home/agents/*", "install"),
     # hooks: the agent hooks, the owner-test-bar and orchestrator (reviewers) tests. skills: the ship-batch and merge-prs
     # suites, which take minutes where the hook tests take seconds.
     ("home/claude/.claude/hooks/*", "hooks"),
@@ -296,6 +298,7 @@ STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua
 STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", always_needs=("node",), maybe_needs=("jq",))
 STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", maybe_needs=("qs", "python3"))
 STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", maybe_needs=("jq", "zsh"), extra_needs={"install-greeter-stage-zsh": ("jq",)})
+STEPS += discovered("home/agents/tests/*.sh", "install", "bash %s", maybe_needs=("python3",))
 STEPS += discovered(".claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
 STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
 
@@ -314,6 +317,8 @@ SHELL_GROUPS = {
         "home/hypr/.config/hypr/scripts/restart-bar.sh",
         "home/hypr/.local/bin/hypr-act",
         "home/hypr/tests/*.sh",
+        "home/agents/.local/bin/agent-run",
+        "home/agents/tests/*.sh",
         "home/voxcmd/tests/*.sh",
         "lib/check/*.sh",
         "lib/check/steps/*.sh",

@@ -109,6 +109,10 @@ CASES = [
     ("lib/common/output.sh", " install"),
     ("lib/common/greeter-files.sh", " quickshell install skills"),
     ("packages/snapper.ini", " install"),
+    # The agent launcher shares the install scope.
+    ("home/agents/.local/bin/agent-run", " install"),
+    ("home/agents/.local/share/agent-shims/bin/claude", " install"),
+    ("home/agents/tests/agent_run.sh", " install"),
     # hooks: the agent hooks and the tests of the reviewers and owner-test-bar; skills: ship-batch and merge-prs.
     (".claude/hooks/guard-legacy-hyprctl.sh", " hooks"),
     ("home/claude/.claude/skills/orchestrator/reviewers.json", " hooks"),

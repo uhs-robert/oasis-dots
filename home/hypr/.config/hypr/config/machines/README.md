@@ -26,6 +26,8 @@ return {
 }
 ```
 
+The agent shims of the [agents package](../../../../../agents/README.md) (`~/.local/share/agent-shims/bin`) go ahead of these when that folder exists, so an agent started from the desktop runs capped.
+
 `input` sets the keyboard layout (`kb_layout`, default `"us"`, plus `kb_variant` and `kb_options`), key repeat (`repeat_rate`, `repeat_delay`), the pointer (`sensitivity`, `follow_mouse`), the touchpad (`natural_scroll`, `tap_to_click`, `disable_while_typing`), `which_key_delay_ms` and `pointer_keys` (`"hjkl"`, `"wasd"` or `"both"`: the keys that move the pointer in the Cursor submap); defaults are in `config/init.lua`. And `appearance` sets `inactive_opacity` (default `0.5`), `dim_inactive` (default `true`) and `dim_strength` (default `0.2`) for unfocused windows:
 
 ```lua

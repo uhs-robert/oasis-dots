@@ -45,7 +45,7 @@ A scope is a folder, and a change reaches the steps of the scopes its path falls
 | `hypr` | `home/hypr`, `system/etc/greetd` (not its `quickshell/`), `.luacheckrc` | stylua, luacheck, the hypr tests |
 | `quickshell` | `home/quickshell`, `system/etc/greetd/quickshell`, the `qml*` check modules | qmllint, the qml-* checks, lock-skins, style-exports, shaders, time-format, the node and headless-qs tests, the input vectors |
 | `voxclick`, `voxphrases`, `voxduck`, `voxrest`, `voxrust` | `home/voxcmd`, `home/voxtype`, `extras/voxcmd-firefox` | see Voxcmd scopes below |
-| `install` | `lib/install`, `lib/common`, `packages/{snapper,devtools}.ini`, `home/calendar` | the install tests, calendar-sync-syntax |
+| `install` | `lib/install`, `lib/common`, `packages/{snapper,devtools}.ini`, `home/calendar`, `home/agents` | the install tests, calendar-sync-syntax, agent-run |
 | `hooks` | the agent hooks, and the `owner-test-bar`, `orchestrator` and `orchestrator-handoff` skills | the hook tests, owner-test-bar, reviewers (about a minute) |
 | `skills` | the `ship-batch` and `merge-prs` skills | their suites (5 to 11 minutes) |
 | `checkscope` | `lib/check`, `lib/plan_new.py`, the `lib/docs` generators | check-scope, check-cache |
@@ -59,6 +59,7 @@ Tests are found by naming convention, so a new test file needs no entry in `STEP
 - `home/quickshell/tests/*.js`: `node`, scope `quickshell`.
 - `home/quickshell/tests/<name>/run.sh`: the headless-qs tests, scope `quickshell`.
 - `lib/install/tests/*.sh`: `install-<name>`, scope `install`.
+- `home/agents/tests/*.sh`: `bash`, scope `install`.
 - `.claude/hooks/tests/*.sh` and `home/claude/.claude/hooks/tests/*.sh`: `hook-<name>`, scope `hooks`.
 
 Everything else (the voxcmd suites, the lint steps, the skill tests) is listed in `STEPS` by hand.
@@ -97,6 +98,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `voxcmd-rust`: the voxcmd crate: `cargo fmt --check`, clippy `-D warnings`, `cargo test` (`lib/check/steps/voxcmd-rust.sh`). Takes no heavy slot and runs in the ordinary pool, not the serial lane. Needs cargo.
 - `calendar-sync-syntax`: the syntax check of `calendar-sync`.
 - `install-<test>`: one step per `lib/install/tests/*.sh` (found by name; see Scopes). They cover the Firefox policy and `install_voxcmd`, pacman and makepkg tuning, snapper setup, the CodeRabbit entry of the dev tools picker, the greeter keyring, log and monitors, the `migrate-quickshell-*` and `migrate-lock-assets` migrations, and `load.sh` (sourcing the install libraries prints nothing and never exits). Each needs the tools its file names (jq, zsh).
+- `agent-run`: `home/agents/tests/agent_run.sh` runs `agent-run` through the package's shims against a stub `systemd-run` and stub agents: outside `agents.slice` the agent gets its own scope with `OOMPolicy=continue`, inside it (or with no `systemd-run` or user manager) it runs directly, a missing agent exits 127, arguments with spaces, the working directory and the exit code survive, and every shim is a symlink to `agent-run`. Needs python3 (for the fake user manager socket).
 - `hook-<test>`: one step per `.claude/hooks/tests/*.sh` and `home/claude/.claude/hooks/tests/*.sh` (found by name; see Scopes), each the test of the hook of that name. Each needs jq, plus tmux and flock where its file names them.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.

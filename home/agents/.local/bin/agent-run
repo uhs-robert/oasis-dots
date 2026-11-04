@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Runs an AI agent in its own scope under agents.slice, so the slice's memory and CPU limits cover it.
+# Called through a shim symlink named after the agent (~/.local/share/agent-shims/bin/claude), never by its own name.
+#
+# Environment, for tests and one-off runs:
+#   AGENT_RUN_SLICE        the slice to run in (default agents.slice)
+#   AGENT_RUN_CGROUP_FILE  where to read this process's cgroup (default /proc/self/cgroup)
+
+name="${0##*/}"
+self="$0"
+shim_dir=.
+[[ "$0" == */* ]] && shim_dir="${0%/*}"
+slice="${AGENT_RUN_SLICE:-agents.slice}"
+cgroup_file="${AGENT_RUN_CGROUP_FILE:-/proc/self/cgroup}"
+
+if [[ "$name" == agent-run ]]; then
+  echo "agent-run: call it through a shim named after the agent (see ~/.local/share/agent-shims/bin)" >&2
+  exit 2
+fi
+
+# The first $name on PATH that is not a shim. -ef follows symlinks, so a shim in any folder (or a folded stow
+# link to the shim folder) is skipped, not only the folder this one was found in.
+find_real() {
+  local dir candidate
+  local -a path_dirs
+  IFS=: read -r -a path_dirs <<<"$PATH"
+  for dir in "${path_dirs[@]}"; do
+    [[ -n "$dir" ]] || dir=.
+    [[ "$dir" -ef "$shim_dir" ]] && continue
+    candidate="$dir/$name"
+    [[ -f "$candidate" && -x "$candidate" ]] || continue
+    [[ "$candidate" -ef "$self" ]] && continue
+    printf '%s\n' "$candidate"
+    return 0
+  done
+  return 1
+}
+
+in_slice() {
+  local line
+  [[ -r "$cgroup_file" ]] || return 1
+  while IFS= read -r line; do
+    [[ "$line" == */"$slice"/* || "$line" == */"$slice" ]] && return 0
+  done <"$cgroup_file"
+  return 1
+}
+
+# systemd-run exits 1 both when it cannot make the scope and when the agent exits 1, so the user manager is checked
+# first: the agent must still start (uncapped) on a machine or session without one.
+can_scope() {
+  command -v systemd-run >/dev/null || return 1
+  [[ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/systemd/private" ]]
+}
+
+if ! real="$(find_real)"; then
+  echo "$name: not installed (no $name on PATH besides the agent-run shim)" >&2
+  exit 127
+fi
+
+if in_slice || ! can_scope; then
+  exec "$real" "$@"
+fi
+
+# A scope, unlike a service, runs the command in this process: the terminal, working directory, environment and exit
+# code stay the agent's. OOMPolicy=continue lets an OOM kill take one process, not the whole session.
+exec systemd-run --user --scope --slice="$slice" --quiet --collect -p OOMPolicy=continue -- "$real" "$@"

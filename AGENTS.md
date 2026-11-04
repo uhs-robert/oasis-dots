@@ -26,6 +26,7 @@ Before editing an area, read its README's code map: the `## Code` section of a f
 | The check runner | [`lib/check/README.md`](lib/check/README.md) |
 | Betterbird / tbkeys | [`home/thunderbird/README.md`](home/thunderbird/README.md) |
 | Yazi | [`home/yazi/.config/yazi/README.md`](home/yazi/.config/yazi/README.md) |
+| Agent cgroup (`agents.slice`, `agent-run`) | [`home/agents/README.md`](home/agents/README.md) |
 
 ## Commands
 

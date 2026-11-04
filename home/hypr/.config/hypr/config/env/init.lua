@@ -11,10 +11,24 @@ local set_env = function(env_settings)
   end
 end
 
---- Config.path_prepend and the config's own dirs, ahead of the inherited PATH, without duplicates.
+--- True when path names an existing file or directory (fopen succeeds on a directory on Linux).
+--- @param path string
+--- @return boolean
+local function exists(path)
+  local handle = io.open(path, "r")
+  if not handle then return false end
+  handle:close()
+  return true
+end
+
+--- The agent shims (when the agents package is stowed), Config.path_prepend and the config's own dirs, ahead of the
+--- inherited PATH, without duplicates.
 --- @return string
 local function build_path()
   local dirs = {}
+  -- First of all, so an agent started from the desktop finds its shim (and runs in agents.slice) before the real one.
+  local agent_shims = HOME .. "/.local/share/agent-shims/bin"
+  if exists(agent_shims) then dirs[#dirs + 1] = agent_shims end
   for _, dir in ipairs(Config.path_prepend or {}) do
     dirs[#dirs + 1] = dir
   end

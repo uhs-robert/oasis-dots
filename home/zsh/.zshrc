@@ -239,3 +239,9 @@ command -v intelli-shell >/dev/null && eval "$(intelli-shell init zsh)"
 
 # Machine-local additions kept outside this repo
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+
+# Agent shims (the optional agents package) go first on PATH, after every other change to it, so `claude` and the
+# other agents run capped in agents.slice. An entry inherited from Hyprland is moved to the front, not doubled.
+_agent_shims="$HOME/.local/share/agent-shims/bin"
+[[ -d $_agent_shims ]] && path=("$_agent_shims" "${(@)path:#$_agent_shims}")
+unset _agent_shims
