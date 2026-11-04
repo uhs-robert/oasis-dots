@@ -4,9 +4,9 @@ import qs.theme
 import "AnsiText.js" as AnsiText
 import "TmuxLayout.js" as TmuxLayout
 
-// A tmux window as its terminal shows it: the window's whole cell grid, scaled to fit and centred, with every pane at its
-// place and tmux's borders between them. The text is in the terminal's font and colours. The pane `[`/`]` chose has a
-// primary-coloured outline when the window has more than one.
+// A tmux window as its terminal shows it: the window's whole cell grid, scaled to fit, centred across and from the top,
+// with every pane at its place and tmux's borders between them. The text is in the terminal's font and colours. The
+// pane `[`/`]` chose has a primary-coloured outline when the window has more than one.
 Item {
     id: root
 
@@ -16,12 +16,18 @@ Item {
     // pane id -> its captured lines with their colour codes.
     property var captures: ({})
 
-    readonly property var panes: TmuxLayout.drawn_panes(root.entry, root.shown)
-    readonly property var grid_size: TmuxLayout.grid_size(root.entry)
+    // A list reload brings fresh objects every second. The layout goes through a string, which only notifies when it
+    // differs, so the pane views are rebuilt only when the layout changes.
+    readonly property string layout_json: JSON.stringify({ size: TmuxLayout.grid_size(root.entry), panes: TmuxLayout.drawn_panes(root.entry, root.shown) })
+    readonly property var layout: JSON.parse(root.layout_json)
+    readonly property var panes: root.layout.panes
+    readonly property var grid_size: root.layout.size
+    readonly property string shown_id: root.shown ? root.shown.pane_id : ""
     // The theme's font, which the terminal uses too: Style.mono_font follows the bar style, the terminal does not.
     readonly property string font_family: Theme.font_family
-    readonly property int font_px: TmuxLayout.font_px_to_fit(root.grid_size.cols, root.grid_size.rows, root.width, root.height, reference_metrics.font.family !== "" ? reference_metrics.advanceWidth("M") / 100 : 0, reference_metrics.lineSpacing / 100)
-    // advanceWidth is a call, so the binding reads the font to rerun when it changes.
+    // advanceWidth is a call, so each binding reads the font to rerun when it changes.
+    readonly property int fit_px: TmuxLayout.font_px_to_fit(root.grid_size.cols, root.grid_size.rows, root.width, root.height, reference_metrics.font.family !== "" ? reference_metrics.advanceWidth("M") / 100 : 0, reference_metrics.lineSpacing / 100)
+    readonly property int font_px: TmuxLayout.fitted_px(root.fit_px, root.grid_size.cols * (probe_metrics.font.pixelSize > 0 ? probe_metrics.advanceWidth("M") : 0), root.grid_size.rows * probe_metrics.lineSpacing, root.width, root.height)
     readonly property real cell_w: metrics.font.pixelSize > 0 ? metrics.advanceWidth("M") : 0
     readonly property real cell_h: metrics.lineSpacing
     readonly property var box: TmuxLayout.letterbox(Math.ceil(root.grid_size.cols * root.cell_w), Math.ceil(root.grid_size.rows * root.cell_h), root.width, root.height)
@@ -34,6 +40,13 @@ Item {
         id: reference_metrics
         font.family: root.font_family
         font.pixelSize: 100
+    }
+
+    // At the ratio's size, to see whether hinting makes the grid overflow there.
+    FontMetrics {
+        id: probe_metrics
+        font.family: root.font_family
+        font.pixelSize: Math.max(1, root.fit_px)
     }
 
     FontMetrics {
@@ -87,7 +100,7 @@ Item {
         }
 
         Rectangle {
-            readonly property var outline: root.shown ? TmuxLayout.frame(root.panes.find(p => p.pane_id === root.shown.pane_id) || { x: 0, y: 0, w: 0, h: 0 }, root.grid_size.cols, root.grid_size.rows) : null
+            readonly property var outline: root.shown_id !== "" ? TmuxLayout.frame(root.panes.find(p => p.pane_id === root.shown_id) || { x: 0, y: 0, w: 0, h: 0 }, root.grid_size.cols, root.grid_size.rows) : null
             visible: root.panes.length > 1 && !!outline
             x: outline ? Math.round(outline.x * root.cell_w) - 1 : 0
             y: outline ? Math.round(outline.y * root.cell_h) - 1 : 0

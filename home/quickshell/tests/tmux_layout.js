@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const file = path.join(__dirname, "../.config/quickshell/features/launcher/TmuxLayout.js");
 const ctx = vm.createContext({});
-const names = ["drawn_panes", "grid_size", "font_px_to_fit", "letterbox", "borders", "frame", "screen_text"];
+const names = ["drawn_panes", "grid_size", "font_px_to_fit", "fitted_px", "layout_key", "letterbox", "borders", "frame", "screen_text"];
 vm.runInContext(fs.readFileSync(file, "utf8").replace(/^\.pragma.*$/m, "") + "\nthis.api = { " + names.join(", ") + " };", ctx);
 const L = ctx.api;
 
@@ -28,7 +28,10 @@ const cases = [
   ["the font fits the narrower side", () => [L.font_px_to_fit(160, 40, 800, 600, 0.6, 1.2), L.font_px_to_fit(80, 24, 2000, 300, 0.6, 1.2)], [8, 10]],
   ["the font is at least a pixel", () => L.font_px_to_fit(400, 100, 50, 50, 0.6, 1.2), 1],
   ["an empty grid or area gets no font", () => [L.font_px_to_fit(0, 40, 800, 600, 0.6, 1.2), L.font_px_to_fit(160, 40, 0, 600, 0.6, 1.2)], [0, 0]],
-  ["the letterbox centres the grid on whole pixels", () => L.letterbox(301, 100, 600, 401), { x: 149, y: 150, w: 301, h: 100 }],
+  ["the letterbox centres the grid across, from the top", () => L.letterbox(301, 100, 600, 401), { x: 149, y: 0, w: 301, h: 100 }],
+  ["a fitting grid keeps its font size", () => L.fitted_px(8, 790, 590, 800, 600), 8],
+  ["a grid that overflows once measured steps down", () => [L.fitted_px(8, 820, 500, 800, 600), L.fitted_px(8, 2000, 500, 800, 600), L.fitted_px(1, 2000, 500, 800, 600)], [7, 3, 1]],
+  ["the layout key changes with a pane's place or size only", () => { const moved = Object.assign({}, split, { panes: split.panes.map(p => p.pane_id === "%3" ? Object.assign({}, p, { top: 21, height: 19 }) : p) }); return [L.layout_key(split) === L.layout_key(Object.assign({}, split, { activity: 9 })), L.layout_key(split) === L.layout_key(moved), L.layout_key(Object.assign({}, split, { zoomed: true })) === L.layout_key(split), L.layout_key(null)]; }, [true, false, false, ""]],
   ["a grid larger than the area starts at its corner", () => L.letterbox(700, 500, 600, 400), { x: 0, y: 0, w: 700, h: 500 }],
   ["borders run through the cells between panes, into the shared corner", () => L.borders(drawn, 160, 40), [{ x1: 79.5, y1: 0, x2: 79.5, y2: 19.5 }, { x1: 0, y1: 19.5, x2: 79.5, y2: 19.5 }, { x1: 79.5, y1: 19.5, x2: 79.5, y2: 40 }]],
   ["a single pane has no borders", () => L.borders([{ pane_id: "%1", x: 0, y: 0, w: 80, h: 24 }], 80, 24), []],
