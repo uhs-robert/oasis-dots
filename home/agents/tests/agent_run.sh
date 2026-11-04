@@ -89,7 +89,9 @@ c"
 [[ $(cat "$work/scope.log" 2>/dev/null) == "$want_scope" ]] || fail "scope: systemd-run got '$(cat "$work/scope.log" 2>/dev/null)'"
 
 # A literal ${VAR} in a prompt reaches the agent unexpanded.
+# shellcheck disable=SC2016 # the dollar signs are the literal text under test
 run "$work/outside" "$work/runtime" "$full_path" "$shims/claude" 'Explain ${HOME} and $USER'
+# shellcheck disable=SC2016 # literal text again
 [[ $status == 0 && $out == *'arg Explain ${HOME} and $USER'* ]] || fail "literal dollar: exit $status, output '$out' ($err)"
 
 # AGENT_RUN_SLICE names another slice.
