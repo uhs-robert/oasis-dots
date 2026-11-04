@@ -1092,6 +1092,9 @@ check "candidates are listed by site name too" "jq -e 'any(.[]; .match_text == \
 check "a window with no live tab is a candidate under the old id" "jq -e 'any(.[]; .id == \"0x3003 Private notes\")' <<<\"\$out\" >/dev/null"
 
 check "hidden tabs are left out, as the store's are" "! jq -e 'any(.[]; .tab_id == 31)' <<<\"\$(\"\$firefox_tab\" tabs)\" >/dev/null"
+out=$("$firefox_tab" request '{"cmd": "tabs"}')
+check "request relays the host's reply as one JSON line" "jq -e '.ok == true and any(.result[]; .tab_id == 12)' <<<\"\$out\" >/dev/null"
+check "and the request itself unchanged" "[[ \$(tail -n 1 '$live_requests') == '{\"cmd\": \"tabs\"}' ]]"
 : >"$log"
 : >"$live_requests"
 out=$(SANDBOX_CLIENTS_JSON=$marked_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" focus tab:22 "Cart - Example Shop")
@@ -1155,8 +1158,15 @@ check "an error answer to an activation is reported, not retried through the add
 out=$("$firefox_tab" tabs)
 check "but an error answer to the tab list falls back to the session store" "jq -e 'all(.[]; .tab_id == null) and any(.[]; .title == \"Cart - Example Shop\")' <<<\"\$out\" >/dev/null"
 check "saying why in the debug trace" "grep -q 'answered with an error: refused' '$debug_log'"
+out=$("$firefox_tab" request '{"cmd": "tabs"}')
+check "request passes an error answer on as one" "jq -e '.ok == false and (.unavailable | not) and (.error | contains(\"refused\"))' <<<\"\$out\" >/dev/null"
 
 stop_fake_host
+out=$("$firefox_tab" request '{"cmd": "tabs"}')
+check "request says when no host can be reached" "jq -e '.ok == false and .unavailable == true' <<<\"\$out\" >/dev/null"
+status=0
+"$firefox_tab" request '[1]' 2>/dev/null || status=$?
+check "and refuses a request that is not an object with a cmd" "[[ \$status == 2 ]]"
 : >"$log"
 : >"$debug_log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop")
