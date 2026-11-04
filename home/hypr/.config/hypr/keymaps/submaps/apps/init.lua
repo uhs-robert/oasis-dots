@@ -7,7 +7,7 @@ local Submap = require("lib.key.submap") --- @class Submap
 -- The actions the rows name.
 require("lib.act.defs.apps")
 require("lib.act.defs.launch")
-require("lib.act.defs.tools")
+require("lib.act.defs.pickers")
 
 local function focus_app(app) return { "apps.focus", { app } } end
 local function open_app(app) return { "apps.open", { app } } end
@@ -22,7 +22,7 @@ Submap.define({
 
   -- stylua: ignore
   binds = {
-    { "SPACE",     "overview.search",                     "Search Windows" },
+    { "SPACE",     "picker.windows" },
     { "SLASH",     "menu.drun",                           "Search Applications" },
     { "B",         open_app("bottles"),                   "Bottles" },
     { "SHIFT + C", open_app("qalculate"),                 "Calculator" },

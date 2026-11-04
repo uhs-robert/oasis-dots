@@ -61,7 +61,7 @@ Popup {
     // Tab swaps the provider's alt_preview in; every open starts on the selected item's preview.
     property bool alt_preview_shown: false
     readonly property bool showing_alt: root.has_alt_preview && root.alt_preview_shown
-    // "grid" of cards or one-line "list" rows; v flips it, and every open starts on the grid.
+    // "grid" of cards or one-line "list" rows; v flips it, and every open starts on the provider's default_browse_view.
     property string browse_view: "grid"
     readonly property bool browse_list: root.browse && root.browse_view === "list"
     // At the max preview size the cards or rows are hidden, so the scroll cue and the number hints go too.
@@ -116,7 +116,7 @@ Popup {
         const preview_size = BrowseLayout.size_of(root.provider ? root.provider.default_preview_size : "");
         root.preview_size = preview_size;
         root.last_preview_size = preview_size;
-        root.browse_view = "grid";
+        root.browse_view = root.provider && root.provider.default_browse_view === "list" ? "list" : "grid";
         root.alt_preview_shown = false;
         root.reset();
         query_input.text = recalled;

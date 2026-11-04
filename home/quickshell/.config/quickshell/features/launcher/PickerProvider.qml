@@ -39,6 +39,8 @@ Scope {
     property string layout: "list"
     // Preview size each browse open starts at: "off", "s", "m" or "l" (BrowseLayout.js).
     property string default_preview_size: "m"
+    // View each browse open starts on: "grid" of cards or "list" of one-line rows (`v` flips it).
+    property string default_browse_view: "grid"
     // One browse card, given `entry` (the item), `positions` (its query match) and `selected`; null draws the generic card.
     property Component card: null
     // Card size in unscaled pixels; the picker fits as many columns as the width allows.

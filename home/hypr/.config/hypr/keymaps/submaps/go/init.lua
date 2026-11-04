@@ -10,7 +10,6 @@ local Workspaces = require("lib.workspaces") --- @class Workspaces
 require("lib.act.defs.apps")
 require("lib.act.defs.launch")
 require("lib.act.defs.pickers")
-require("lib.act.defs.tools")
 require("lib.act.defs.workspaces")
 
 local function focus_app(app) return { "apps.focus", { app } } end
@@ -37,7 +36,7 @@ Submap.define({
       { "SHIFT + S", focus_app("steam"),                    "Steam" },
       { "T",         focus_app("terminal"),                 "Terminal" },
       { "V",         "terminal.editor" },
-      { "W",         "overview.search",                     "Search Windows" },
+      { "W",         "picker.windows" },
       { "Y",         focus_app("yazi"),                     "Yazi" },
       -- stylua: ignore end
     }

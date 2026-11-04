@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell.Widgets
+import qs.ui
 import qs.ui.effects
 import qs.ui.frames
 import qs.theme
@@ -133,6 +134,7 @@ Item {
                     anchors.fill: parent
                     anchors.margins: win.border.width
                     toplevel: win.modelData.toplevel
+                    icon_source: WindowState.icon_for(win.modelData.toplevel)
                     tint: Style.overview_skin === "goldeneye" && !win.is_selected
                     active: root.shown
                     live: root.live && win.index < root.live_cap

@@ -42,6 +42,12 @@ Act.define("picker.firefox_tabs", {
   run = picker("firefox_tabs_picker"),
 })
 
+Act.define("picker.windows", {
+  label = "Search Windows",
+  intent = "Pick an open window, with a live preview of it, and focus it.",
+  run = picker("windows_picker"),
+})
+
 Act.define("hyprvim.terminal", {
   label = "HyprVim Terminal",
   intent = "Open HyprVim's command prompt.",
