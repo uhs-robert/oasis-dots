@@ -13,7 +13,7 @@ import "../../core/Fuzzy.js" as Fuzzy
 
 // Every tmux window, under a header per session or most recently active first (`s`, remembered in TmuxSettings). The
 // preview shows the chosen pane live; `[` and `]` choose another pane of the window, and Enter lands on it. `f` narrows
-// the list to one session and `x` kills the window. The list reloads every second while it shows (TmuxWindows.kept_order).
+// the list to one session and `x` kills the window. The list reloads while it shows (TmuxWindows.kept_order).
 PickerProvider {
     id: root
 
@@ -215,16 +215,21 @@ PickerProvider {
         onTriggered: root.refocus()
     }
 
-    // The list, and every card's tail in one plain capture while the cards show. On battery the list is read on open and
-    // after a kill, and the tails each time the cards appear.
+    // The list reloads on battery too, only less often: a stale list sends Enter to windows that are gone, and one read
+    // is a single tmux call.
+    Timer {
+        interval: PowerSource.on_ac ? root.capture_interval_ms : 3 * root.capture_interval_ms
+        repeat: true
+        running: root.is_shown && root.tmux_state === "ok"
+        onTriggered: root.reload()
+    }
+
+    // Every card's tail in one plain capture while the cards show; on battery only each time the cards appear.
     Timer {
         interval: root.capture_interval_ms
         repeat: true
-        running: root.is_shown && root.tmux_state === "ok" && PowerSource.on_ac
-        onTriggered: {
-            root.reload();
-            if (root.shows_cards) root.capture_tails();
-        }
+        running: root.shows_cards && root.tmux_state === "ok" && PowerSource.on_ac
+        onTriggered: root.capture_tails()
     }
 
     Process {
