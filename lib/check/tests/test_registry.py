@@ -46,9 +46,6 @@ KEYLESS_IPC_IDS = [
     "zoom.full",
     "overview.toggle",
     "overview.close",
-    "tmux.toggle",
-    "tmux.close",
-    "tmux.search",
     "settings.open",
     "settings.toggle",
     "picker.open",
@@ -310,7 +307,7 @@ class HeadlessLoadTest(TreeCase):
             "workspace.cycle", "workspace.focus", "workspace.focus_last", "workspace.move",
             "workspace.move_window",
         ])
-        self.assertEqual(len(listing["actions"]), 23 + len(lua_ids) + len(KEYLESS_IPC_IDS))
+        self.assertEqual(len(listing["actions"]), 22 + len(lua_ids) + len(KEYLESS_IPC_IDS))
 
     def test_the_real_tree_defines_the_keyless_ipc_actions(self):
         listing, findings = registry.load_list(REPO_DIR)

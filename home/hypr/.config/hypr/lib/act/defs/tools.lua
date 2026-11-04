@@ -1,4 +1,4 @@
--- Actions for the tool keys: zoom, screenshot, voice, passwords and the overviews. Kept apart from
+-- Actions for the tool keys: zoom, screenshot, voice, passwords and the workspace overview. Kept apart from
 -- keymaps/global/tools.lua, which binds them, so a headless load needs only `lib.act`, not Menu or Config.
 local Act = require("lib.act") ---@class ActionLib
 local Ipc, Cmd = Act.Ipc, Act.Cmd
@@ -84,10 +84,4 @@ Act.define("overview.open", {
   label = "Workspace overview",
   intent = "Open the workspace overview.",
   run = Ipc("overview", "open"),
-})
-
-Act.define("tmux.overview", {
-  label = "Tmux overview",
-  intent = "Open the tmux session overview.",
-  run = Ipc("tmux_overview", "open"),
 })

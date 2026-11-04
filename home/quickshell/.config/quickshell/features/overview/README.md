@@ -1,6 +1,6 @@
 # Workspace overview
 
-`overview/` holds the workspace overview (`Overview`, its frame, tiles, search list and aim overlays, `Voice.js` for the voice snapshot), the tmux overview (`TmuxOverview`, `TmuxTile`, `TmuxData.js`, `Ansi.js`) and the saved-session store (`Sessions`, `SessionJson.js`).
+`overview/` holds the workspace overview (`Overview`, its frame, tiles, search list and aim overlays, `Voice.js` for the voice snapshot) and the saved-session store (`Sessions`, `SessionJson.js`).
 
 In the workspace overview, `[`/`]` cycle windows, `Tab`/`Shift + Tab` toggle the special workspaces, `s` picks a whole screen, `w` sends the selected workspace to a monitor (pick it like `s`, `Enter` confirms) and `W` swaps its windows with another workspace's (move to it, `Enter` confirms), `f` toggles the view and `/` searches windows by class, title or workspace. Leader+T opens the [windows picker](../launcher/README.md#windows), not this search; `overview.search` (`qs-ipc call overview search`) still opens the overview searching, on the window before the focused one. Save mode (from Settings > Sessions) is the same overview with every window marked and no moving or closing. The share picker is the same overview with only shareable windows; there `r` opens the region selector, and Esc in it comes back.
 
@@ -13,10 +13,12 @@ Voice drives the open overview through two things only: a snapshot file it publi
 - While voxcmd has a voice session of kind `overview` open (`VoxSessionState`), every window shows its `n` in a bordered badge at its bottom left, after a window glyph (nf-fa-window_maximize), and workspace chips read "WS n" (numeric names only). A marked window shows only its check badge at the top right while the numbers show, with no mark-order number.
 - `w` and `W` call the same `move_workspace_to_monitor` and `swap_workspaces` the `act` verbs do.
 
-## Tools
+## Code
 
-Everything here is optional; a missing tool only disables the feature next to it.
-
-| Tool | Used for |
-| --- | --- |
-| `tmux` | The tmux overview and the tmux targets picker |
+- `Overview.qml` is the workspace overview: its model, keys, marks and the share and save modes. `OverviewIpc.qml` is its `overview` IPC target.
+- `OverviewBase.qml` is the full-screen shell it fills in: the grouped tiles, the shared keys, search and help. `OverviewFrame.qml` draws the style's panel around it.
+- `Layout.js` places the groups like the real monitors, or in the filmstrip view. `WorkspaceTile.qml` draws one workspace with its windows. `SearchList.qml` is the ranked match list for `/`.
+- `ScopeAim.qml` (PS1), `LockAim.qml` and `AmmoCounter.qml` (GoldenEye) are the style overlays on the selected window.
+- `Voice.js` builds the voice snapshot described above.
+- `Sessions.qml` and `SessionJson.js` read and write the saved sessions in `sessions.json`.
+- voxcmd's `home/voxcmd/tests/run-overview.sh` covers the voice contract against a fixture snapshot.

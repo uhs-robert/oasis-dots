@@ -35,7 +35,7 @@ switch_candidates() {
 }
 
 # A running session without a layout gets the terminal already showing it (tmux titles windows "<session> <program>",
-# or "Tmux <session> <program>" for a layout; matched by that prefix, longest session name first), else a new terminal attached to it, as the Tmux Overview
+# or "Tmux <session> <program>" for a layout; matched by that prefix, longest session name first), else a new terminal attached to it, as the tmux picker
 # does when no client can switch.
 focus_or_attach() {
   case "$1" in

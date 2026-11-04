@@ -25,7 +25,7 @@ keymaps/
     general.lua        windows, focus, scratchpad, monitors
     workspace.lua      workspaces
     shortcuts.lua      terminal, file manager, menus
-    tools.lua          screenshots, voice, overviews
+    tools.lua          screenshots, voice, the workspace overview
     pickers.lua        clipboard, emoji and directory pickers, HyprVim
     media.lua          volume, brightness, playback
     power.lua          lock, sleep, power

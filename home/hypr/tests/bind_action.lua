@@ -1,4 +1,4 @@
--- Runs keymaps/global/tools.lua, which loads lib/act/defs/tools.lua, against a stubbed `hl`: the 14 tool actions
+-- Runs keymaps/global/tools.lua, which loads lib/act/defs/tools.lua, against a stubbed `hl`: the 13 tool actions
 -- get the keys and labels written out below, nothing warns, each key runs the command written out below, and their
 -- binds can be removed with Bind.unbind. The rest covers the key helpers and Bind.unbind on keys of their own.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -60,7 +60,7 @@ local function find(key)
 	end
 end
 
--- The 14 actions as the keymaps shipped them before Act: id, label, keys (the leader is SUPER here) and the command
+-- The 13 actions as the keymaps shipped them before Act: id, label, keys (the leader is SUPER here) and the command
 -- each key runs. None of the words needs quoting, and ~/ stays for the shell to expand.
 local qs_ipc = "~/.config/hypr/scripts/qs-ipc call "
 local screenshot = "~/.config/hypr/scripts/screenshot.sh"
@@ -79,9 +79,8 @@ local expected = {
 	{ "overview.move", "Move window in overview", { "SUPER + SHIFT + TAB" }, qs_ipc .. "overview move_follow" },
 	{ "overview.move_silent", "Silent move window in overview", {}, qs_ipc .. "overview move_silent" },
 	{ "overview.open", "Workspace overview", { "ALT + TAB", "SUPER + TAB" }, qs_ipc .. "overview open" },
-	{ "tmux.overview", "Tmux overview", {}, qs_ipc .. "tmux_overview open" },
 }
-check("14 actions", #expected == 14)
+check("13 actions", #expected == 13)
 
 -- Every key performs its action's command: argv joined for a command, `qs-ipc call` for an IPC function.
 local function performed(key)
@@ -109,8 +108,8 @@ check("no other binds", #binds == expected_binds)
 
 -- The same ids run by name, as the bar and voice will.
 executed = {}
-Act.run("tmux.overview")
-check("run by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call tmux_overview open")
+Act.run("overview.open")
+check("run by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call overview open")
 executed = {}
 Act.run("overview.move_silent")
 check("run keyless by id", executed[1] == "~/.config/hypr/scripts/qs-ipc call overview move_silent")

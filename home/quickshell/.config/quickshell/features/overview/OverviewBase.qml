@@ -50,7 +50,6 @@ PanelWindow {
     property string help_text: ""
     property string help_close_desc: "close overview"
     property string cursor_sub: ""
-    property bool zero_digit_jumps: false
 
     property var group_label: (g, i) => ""
     // "done" accepts the key, "stop" leaves it unaccepted, "" goes on to the shared keys.
@@ -106,7 +105,6 @@ PanelWindow {
 
     default property alias content: content_slot.data
     property alias under_tiles: under_slot.data
-    property alias overlay: overlay_slot.data
 
     signal tiles_synced
 
@@ -239,7 +237,7 @@ PanelWindow {
         const joined = digit_timer.running ? digit_timer.typed + d : "";
         if (joined !== "" && root.jump(parseInt(joined))) {
             digit_timer.typed = joined;
-        } else if (d !== "0" || root.zero_digit_jumps) {
+        } else if (d !== "0") {
             root.jump(parseInt(d));
             digit_timer.typed = d;
         } else {
@@ -564,11 +562,6 @@ PanelWindow {
                     root.set_hit(index);
                     root.accept_hit();
                 }
-            }
-
-            Item {
-                id: overlay_slot
-                anchors.fill: parent
             }
 
             // The full key list for the current mode, drawn over the tiles.
