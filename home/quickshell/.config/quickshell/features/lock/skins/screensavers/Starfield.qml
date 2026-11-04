@@ -17,6 +17,8 @@ Item {
     property real star_size: 2
     property real center_x: 0.5
     property real center_y: 0.5
+    // A MotionClock to paint on (the lock ctx's), so the saver shares the skin's steps; see MotionClock.
+    property var clock: null
     property int fps: 60
     // Canvas resolution relative to the item; below 1 trades sharpness for fill cost on big screens.
     property real render_scale: 1
@@ -131,10 +133,26 @@ Item {
         }
     }
 
+    readonly property bool live: root.running && root.visible && root.width > 0 && root.height > 0
+    property real since_paint: 0
+
+    // Without a clock it keeps its own timer.
     Timer {
         interval: Math.max(1, Math.round(1000 / root.fps))
         repeat: true
-        running: root.running && root.visible && root.width > 0 && root.height > 0
+        running: root.live && !root.clock
         onTriggered: canvas.requestPaint()
+    }
+
+    Connections {
+        target: root.clock
+        enabled: root.live
+        function onTicked(dt) {
+            root.since_paint += dt;
+            // A little early, so 60 fps on a 60 Hz clock paints on every tick.
+            if (root.since_paint < 1 / root.fps - 0.004) return;
+            root.since_paint = 0;
+            canvas.requestPaint();
+        }
     }
 }

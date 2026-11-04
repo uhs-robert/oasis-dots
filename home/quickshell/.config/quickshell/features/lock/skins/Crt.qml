@@ -6,6 +6,7 @@ import QtQuick.Shapes
 import Quickshell.Io
 import qs.theme
 import qs.features.lock.skins.screensavers
+import qs.features.lock.skins.ui
 
 // A green-phosphor terminal in a curved tube: powers on from a dot, collapses to a line and a dot on unlock.
 Item {
@@ -26,6 +27,7 @@ Item {
     readonly property string mode_font: root.font
     readonly property color mode_color: root.ph
     readonly property bool animate: !!root.ctx && root.ctx.animate
+    readonly property var motion: root.ctx && root.ctx.motion ? root.ctx.motion : null
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
     readonly property bool dimmed: root.phase === "wrong" || root.phase === "unlock"
     property bool blink_on: true
@@ -487,12 +489,14 @@ Item {
                 GradientStop { position: 1; color: "transparent" }
             }
 
-            NumberAnimation on y {
+            y: roll_y.value
+
+            Loop {
+                id: roll_y
+                clock: root.motion
                 running: root.animate
-                loops: Animation.Infinite
-                from: -glass.height * 0.2
-                to: glass.height * 1.1
-                duration: 7000
+                first: -glass.height * 0.2
+                keys: [[0, -glass.height * 0.2, "linear"], [7000, glass.height * 1.1, "linear"]]
             }
         }
 
@@ -607,6 +611,7 @@ Item {
 
             MatrixRain {
                 anchors.fill: parent
+                clock: root.motion
                 running: root.animate
                 color: Theme.theme_primary_strong
                 trail_color: Theme.theme_primary_strong

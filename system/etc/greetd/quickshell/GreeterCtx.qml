@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.theme
+import qs.features.lock.skins.ui
 import "features/lock/Tints.js" as Tints
 
 // The lock skins' ctx for the greeter: the same fields as the shell's LockCtx, minus media, weather and notifications.
@@ -22,6 +23,10 @@ QtObject {
     property bool granted: false
     property bool saver: false
     property bool animate: !UPower.onBattery
+    // Skins drive their endless motion from this rather than from infinite Animations.
+    readonly property MotionClock motion: MotionClock {
+        running: root.animate
+    }
     property string forced_phase: ""
     // A skin's own sub-screen; the skin steps it from handle_key.
     property string scene: ""

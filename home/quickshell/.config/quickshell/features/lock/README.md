@@ -36,6 +36,7 @@ The skin contract:
 - Optional mode indicator: the shared layer draws `-- INSERT --` bottom-left only in INSERT mode, in `mode_color` (default the lock tint) and `mode_font` (default the shell mono font) when the skin sets them. Set `readonly property string mode_indicator` to `"own"` (the skin draws it from `ctx.insert`) or `"none"` to hide the shared one; the default is `"shared"`.
 - Optional audio: play only when `ctx.sound` is set and the skin is the `ctx.sound_owner`, gate music on `ctx.music_armed !== false`, send effects with `ctx.cue(name)`, and let `ctx.power_request` only ask, since only a `power_live` ctx acts on it. Imported audio lives in `$XDG_DATA_HOME/quickshell/<skin>-audio`; assets inside the skin's folder are staged with it.
 - Honour `ctx.animate` (loops stop off AC) and `ctx.saver`.
+- Drive endless motion from `ctx.motion`, the shared `MotionClock` in `skins/ui/`. It steps about 60 times a second. Bind to a `Loop` (a looping keyframe track) or to `ctx.motion.t`, or count its `ticked(dt)`. An infinite `Animation` or a `FrameAnimation` steps at the screen's refresh rate, so a 240 Hz screen redraws the whole skin 240 times a second. Short one-off animations (intros, shakes) stay normal Animations. Keep moving items out of a `layer`: a layer whose content changes costs an extra frame per change. A layer on a still item that only moves as a whole is fine.
 
 ## Tools
 

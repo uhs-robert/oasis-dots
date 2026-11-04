@@ -486,6 +486,7 @@ Singleton {
         granted: root.granted
         saver: root.saver && PowerSource.on_ac
         animate: PowerSource.on_ac
+        shown: persist.locked
         backdrops: root.backdrop_files
         power_live: true
         sound: true
