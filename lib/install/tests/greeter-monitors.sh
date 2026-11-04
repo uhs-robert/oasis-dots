@@ -205,7 +205,7 @@ local function record(rule)
 end
 hl = setmetatable({
   monitor = record,
-  timer = function(fn) timers[#timers + 1] = fn end,
+  timer = function(fn, opts) timers[#timers + 1] = fn print("timer " .. opts.timeout) end,
   get_monitors = function() local list = {} for i = 1, lit do list[i] = {} end return list end,
   dispatch = function() reloads = reloads + 1 end,
 }, { __index = function() return function() end end })
@@ -219,9 +219,10 @@ LUA
 late() { HYPRLAND_INSTANCE_SIGNATURE=test XDG_RUNTIME_DIR=$scratch/run lua "$scratch/late_monitors.lua" "$scratch/hyprland.lua" "$@" 2>&1 </dev/null | grep -v '^desc:Panel\|^desc:Dock C'; }
 mkdir -p "$scratch/run/hypr/test"
 
-case_name='held monitors start disabled and the timers turn them on with their full rule'
+case_name='held monitors start disabled and one timer turns them all on with their full rules'
 expect_eq "$(late 1 timers)" 'desc:Dock A disabled=true mode=nil
 DP-5 disabled=true mode=nil
+timer 3000
 -- timers
 desc:Dock A disabled=false mode=1920x1080@60
 DP-5 disabled=false mode=preferred
@@ -230,14 +231,15 @@ reloads=0'
 case_name='the handoff turns them off, and a timer still pending does not turn them back on'
 expect_eq "$(late 1 handoff)" 'desc:Dock A disabled=true mode=nil
 DP-5 disabled=true mode=nil
+timer 3000
 -- handoff
 desc:Dock A disabled=true mode=nil
 DP-5 disabled=true mode=nil
 reloads=0'
 
-case_name='with no other monitor lit, the release reloads, and the reload applies the rules without a hold'
+case_name='with no other monitor lit, the release reloads once, and the reload applies the rules without a hold'
 result=$(late 0 timers)
-[[ $result == *"reloads=2"* ]] || fail "expected a reload per release: [$result]"
+[[ $result == *"reloads=1"* ]] || fail "expected one reload: [$result]"
 [[ -e $scratch/run/hypr/test/greeter-monitors-released ]] || fail 'no marker for the reload'
 expect_eq "$(late 0 timers)" 'desc:Dock A disabled=nil mode=1920x1080@60
 DP-5 disabled=nil mode=preferred
