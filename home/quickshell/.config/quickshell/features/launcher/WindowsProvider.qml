@@ -94,12 +94,6 @@ PickerProvider {
             id: pane
             property var entry: null
 
-            Rectangle {
-                anchors.fill: parent
-                radius: Style.radius(4)
-                color: Theme.bg_core
-            }
-
             WindowThumbnail {
                 anchors.left: parent.left
                 anchors.right: parent.right
