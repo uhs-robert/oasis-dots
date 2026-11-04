@@ -4,7 +4,7 @@
 # Redumped for the Applications submap restored on SUPER + A, the agents picker on Leader SPACE and Go A, and Bar and Leader SHIFT + S for Settings.
 # Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
 # Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr no-ops.
-# Go SHIFT + B added for the Firefox tabs picker.
+# Leader SHIFT + T for the Firefox tabs picker (it was Go SHIFT + B).
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
@@ -107,7 +107,6 @@ default	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
 default	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
 default	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 default	Go	S	Slack	-	exec_cmd(slack);submap(reset)
-default	Go	SHIFT + B	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 default	Go	SHIFT + S	Steam	-	exec_cmd(steam);submap(reset)
 default	Go	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	Go	SLASH	-	ignore_mods=true,transparent=true	no_op
@@ -163,6 +162,7 @@ default	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);sub
 default	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
 default	Leader	SHIFT + S	Settings	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open settings);submap(reset)
 default	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
+default	Leader	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 default	Leader	SHIFT + TAB	Tmux Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open);submap(reset)
 default	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
@@ -343,7 +343,6 @@ no-leader	Go	M	Mail	-	exec_cmd(betterbird);submap(reset)
 no-leader	Go	P	Project	-	exec_cmd(~/.config/hypr/scripts/rofi-tmux.sh);submap(reset)
 no-leader	Go	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
 no-leader	Go	S	Slack	-	exec_cmd(slack);submap(reset)
-no-leader	Go	SHIFT + B	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 no-leader	Go	SHIFT + S	Steam	-	exec_cmd(steam);submap(reset)
 no-leader	Go	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 no-leader	Go	SLASH	-	ignore_mods=true,transparent=true	no_op
@@ -399,6 +398,7 @@ no-leader	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);s
 no-leader	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
 no-leader	Leader	SHIFT + S	Settings	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open settings);submap(reset)
 no-leader	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
+no-leader	Leader	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 no-leader	Leader	SHIFT + TAB	Tmux Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open);submap(reset)
 no-leader	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)

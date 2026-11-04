@@ -20,7 +20,7 @@ An agent card shows the session's title, agent, state badge, short directory and
 
 ## Firefox tabs
 
-Go > Shift+B (`picker.firefox_tabs`) lists every Firefox tab, most recently used first, with a picture of each. Enter switches to the tab and focuses its window. In NORMAL mode `x` closes the tab, `y` copies its address (the search bar corner says `URL COPIED`), and `f` cycles all windows, then each Firefox window in turn (`WINDOW 1/2` in the corner, where window 1 is the one used last). The search matches titles and addresses.
+Leader > Shift+T (`picker.firefox_tabs`) lists every Firefox tab, most recently used first, with a picture of each. Enter switches to the tab and focuses its window. In NORMAL mode `x` closes the tab, `y` copies its address (the search bar corner says `URL COPIED`), and `f` cycles all windows, then each Firefox window in turn (`WINDOW 1/2` in the corner, where window 1 is the one used last). The search matches titles and addresses.
 
 The list shows at once with the pictures saved last time. Fresh ones then swap in a few tabs at a time, the selected tab first. An unloaded tab keeps its last picture, dimmed, and says `unloaded`. A tab never captured shows its icon and title. Only icons Firefox hands over inline are drawn, so the bar fetches nothing from the web. Other tabs get a globe.
 

@@ -36,6 +36,7 @@ Submap.define({
       { "TAB",           "overview.open",                                 "Workspace Overview" },
       { "SHIFT + TAB",   "tmux.overview",                                 "Tmux Overview" },
       { "E",             "picker.emoji",                                  "Emoji" },
+      { "SHIFT + T",     "picker.firefox_tabs",                           "Browser Tabs" },
 
       -- Commands
       { "PERIOD",        "voice.dictate" },

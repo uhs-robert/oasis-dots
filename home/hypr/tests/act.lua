@@ -762,6 +762,7 @@ check(
 menu_calls = {}
 Act.run_cli("picker.agents", {})
 check("pickers: picker.agents runs Menu.agents_picker", #menu_calls == 1 and menu_calls[1] == "agents_picker")
+-- Keyless globally: the Leader row binds it.
 menu_calls = {}
 Act.run_cli("picker.firefox_tabs", {})
 check(
