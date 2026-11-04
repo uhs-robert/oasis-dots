@@ -5,6 +5,7 @@ import Quickshell.Widgets
 import qs.core
 import qs.ui
 import qs.theme
+import qs.features.popups
 import qs.features.windows
 import "../../core/Fuzzy.js" as Fuzzy
 import "../../core/WindowEntries.js" as WindowEntries
@@ -63,7 +64,8 @@ PickerProvider {
         focus_fallback.stop();
         const address = root.focus_address;
         root.focus_address = "";
-        WindowState.focus(address);
+        // A popup opened since the picker closed keeps the keyboard.
+        if (Popups.open_name === "") WindowState.focus(address);
     }
 
     function run_action(key, item) {
