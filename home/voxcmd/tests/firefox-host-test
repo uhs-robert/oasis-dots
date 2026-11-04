@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Tests firefox-host with a fake extension on its stdin/stdout pipes and a temporary XDG_RUNTIME_DIR."""
+"""Tests firefox-host with a fake extension on its stdin/stdout pipes and a temporary XDG_RUNTIME_DIR and XDG_CACHE_HOME."""
+import base64
+import hashlib
 import json
 import os
 import socket
@@ -30,7 +32,7 @@ class FakeExtension:
     """The extension's side of the native-messaging pipes."""
 
     def __init__(self, runtime_dir, wait_for_socket=True):
-        env = {**os.environ, "XDG_RUNTIME_DIR": runtime_dir}
+        env = {**os.environ, "XDG_RUNTIME_DIR": runtime_dir, "XDG_CACHE_HOME": os.path.join(runtime_dir, "cache")}
         self.process = subprocess.Popen([sys.executable, HOST], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
         self.path = os.path.join(runtime_dir, "voxcmd", "firefox.sock")
         if wait_for_socket:
@@ -61,6 +63,15 @@ class FakeExtension:
         self.process.stdin.write(struct.pack("=I", len(data)) + data)
         self.process.stdin.flush()
 
+    def answer(self, count, handler):
+        """Answers the next `count` requests with handler(request) -> reply fields, and returns the requests seen."""
+        seen = []
+        for _ in range(count):
+            request = self.read_request()
+            seen.append(request)
+            self.reply({"id": request["id"], **handler(request)})
+        return seen
+
     def close(self):
         self.process.stdin.close()
         return self.process.wait(timeout=WAIT_SECS)
@@ -81,7 +92,9 @@ def ask(path, line):
         return json.loads(data)
 
 
-class HostTest(unittest.TestCase):
+class HostCase(unittest.TestCase):
+    """A host on a fake extension, for each test."""
+
     def setUp(self):
         self.runtime_dir = tempfile.mkdtemp(prefix="vxh")
         self.addCleanup(subprocess.run, ["rm", "-rf", self.runtime_dir])
@@ -100,6 +113,8 @@ class HostTest(unittest.TestCase):
         thread.start()
         return thread
 
+
+class HostTest(HostCase):
     def test_request_is_framed_with_a_fresh_id_and_the_reply_matched(self):
         results = {}
         thread = self.ask_in_thread({"cmd": "activate", "tab_id": 5, "id": "client-chosen"}, results, "a")
@@ -193,6 +208,109 @@ class HostTest(unittest.TestCase):
         thread.join(WAIT_SECS)
         # Failed by the disconnect, not by waiting out the reply timeout.
         self.assertEqual(results["a"], {"ok": False, "error": "the extension disconnected"})
+
+
+JPEG = b"\xff\xd8\xff\xe0 a tiny stand-in JPEG"
+TABS = [
+    {"tab_id": 1, "url": "https://one.example/", "discarded": False},
+    {"tab_id": 2, "url": "https://two.example/", "discarded": True},
+    {"tab_id": 3, "url": "https://three.example/", "discarded": False},
+    {"tab_id": 4, "url": "https://four.example/", "discarded": False},
+]
+
+
+class ThumbnailTest(HostCase):
+    """The thumbnail cache the host keeps for `tabs` and `capture`."""
+
+    def cached(self, url):
+        return os.path.join(self.runtime_dir, "cache", "voxcmd", "firefox-thumbs", hashlib.sha256(url.encode()).hexdigest() + ".jpg")
+
+    def put_image(self, url, age_secs=0):
+        path = self.cached(url)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as file:
+            file.write(JPEG)
+        stamp = time.time() - age_secs
+        os.utime(path, (stamp, stamp))
+        return path
+
+    def fake_extension(self, request):
+        if request["cmd"] == "tabs":
+            return {"ok": True, "result": TABS}
+        if request["cmd"] == "capture_tab" and request["tab_id"] == 3:
+            return {"ok": False, "error": "capture refused"}
+        if request["cmd"] == "capture_tab" and request["tab_id"] == 4:
+            return {"ok": True, "result": {"tab_id": 4, "url": "https://four.example/", "data_url": "data:image/png;base64,AAAA"}}
+        url = next(tab["url"] for tab in TABS if tab["tab_id"] == request["tab_id"])
+        return {"ok": True, "result": {"tab_id": request["tab_id"], "url": url, "data_url": "data:image/jpeg;base64," + base64.b64encode(JPEG).decode()}}
+
+    def capture(self, request, count):
+        results = {}
+        thread = self.ask_in_thread(request, results, "a")
+        seen = self.extension.answer(count, self.fake_extension)
+        thread.join(WAIT_SECS)
+        return seen, results["a"]
+
+    def test_tabs_carry_the_cached_image_of_their_url(self):
+        path = self.put_image("https://two.example/", age_secs=60)
+        results = {}
+        thread = self.ask_in_thread({"cmd": "tabs"}, results, "a")
+        self.extension.answer(1, self.fake_extension)
+        thread.join(WAIT_SECS)
+        listed = {tab["tab_id"]: tab for tab in results["a"]["result"]}
+        self.assertEqual(listed[2]["thumbnail"], path)
+        self.assertEqual(listed[2]["thumbnail_at"], os.stat(path).st_mtime_ns // 1_000_000)
+        self.assertEqual((listed[1]["thumbnail"], listed[1]["thumbnail_at"]), ("", 0))
+
+    def test_capture_without_ids_takes_each_loaded_tab_and_one_failure_leaves_the_rest(self):
+        seen, reply = self.capture({"cmd": "capture"}, 4)
+        self.assertEqual([(request["cmd"], request.get("tab_id")) for request in seen], [("tabs", None), ("capture_tab", 1), ("capture_tab", 3), ("capture_tab", 4)])
+        self.assertTrue(reply["ok"])
+        first, refused, not_jpeg = reply["result"]
+        path = self.cached("https://one.example/")
+        self.assertEqual(first, {"tab_id": 1, "ok": True, "thumbnail": path, "thumbnail_at": os.stat(path).st_mtime_ns // 1_000_000})
+        with open(path, "rb") as file:
+            self.assertEqual(file.read(), JPEG)
+        self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(os.stat(os.path.dirname(path)).st_mode), 0o700)
+        self.assertEqual(refused, {"tab_id": 3, "ok": False, "thumbnail": "", "thumbnail_at": 0, "error": "capture refused"})
+        self.assertEqual((not_jpeg["ok"], not_jpeg["thumbnail"]), (False, ""))
+        self.assertEqual(os.listdir(os.path.dirname(path)), [os.path.basename(path)])
+
+    def test_a_failed_capture_still_reports_the_older_image(self):
+        path = self.put_image("https://three.example/", age_secs=60)
+        _, reply = self.capture({"cmd": "capture", "tab_ids": [3]}, 2)
+        self.assertEqual(reply["result"][0]["ok"], False)
+        self.assertEqual(reply["result"][0]["thumbnail"], "")
+        self.assertTrue(os.path.exists(path))
+
+    def test_capture_takes_only_the_asked_tabs(self):
+        seen, reply = self.capture({"cmd": "capture", "tab_ids": [1]}, 2)
+        self.assertEqual([request.get("tab_id") for request in seen], [None, 1])
+        self.assertEqual([result["tab_id"] for result in reply["result"]], [1])
+
+    def test_capture_refuses_bad_tab_ids_without_asking_the_extension(self):
+        for tab_ids in ("1", [1, "2"], [True]):
+            self.assertFalse(ask(self.extension.path, {"cmd": "capture", "tab_ids": tab_ids})["ok"])
+        seen, _ = self.capture({"cmd": "capture", "tab_ids": []}, 1)
+        self.assertEqual(seen[0]["cmd"], "tabs")
+
+    def test_capture_prunes_old_images_of_no_open_tab(self):
+        old_orphan = self.put_image("https://gone.example/", age_secs=8 * 24 * 3600)
+        new_orphan = self.put_image("https://recent.example/", age_secs=60)
+        old_open = self.put_image("https://two.example/", age_secs=8 * 24 * 3600)
+        self.capture({"cmd": "capture", "tab_ids": []}, 1)
+        self.assertFalse(os.path.exists(old_orphan))
+        self.assertTrue(os.path.exists(new_orphan))
+        self.assertTrue(os.path.exists(old_open))
+
+    def test_close_is_forwarded(self):
+        results = {}
+        thread = self.ask_in_thread({"cmd": "close", "tab_id": 3}, results, "a")
+        seen = self.extension.answer(1, lambda request: {"ok": True, "result": {"closed": True}})
+        thread.join(WAIT_SECS)
+        self.assertEqual({key: seen[0][key] for key in ("cmd", "tab_id")}, {"cmd": "close", "tab_id": 3})
+        self.assertEqual(results["a"], {"ok": True, "result": {"closed": True}})
 
 
 class StaleSocketTest(unittest.TestCase):

@@ -5,18 +5,31 @@ Firefox starts it when the extension connects, and the extension speaks on stdin
 then UTF-8 JSON. The host listens on $XDG_RUNTIME_DIR/voxcmd/firefox.sock, where each client sends one JSON line
 {"cmd": ..., ...} and gets one JSON line back: {"ok": true, "result": ...} or {"ok": false, "error": "..."}.
 A request is forwarded to the extension under a fresh id and answered by the reply carrying that id.
-The host ends when Firefox closes stdin, and touches nothing besides stdin, stdout and its socket.
+
+The host owns the tab thumbnails, one JPEG per URL in $XDG_CACHE_HOME/voxcmd/firefox-thumbs/<sha256(url)>.jpg, so a tab
+that is not loaded (after a restart, say) still finds the last image of its page. `tabs` replies gain each tab's
+`thumbnail` path and `thumbnail_at` (ms epoch) from it, and `capture` is served here: the host asks the extension for
+one tab's image at a time, so one failure leaves the rest alone and no message grows with the number of tabs.
+The host ends when Firefox closes stdin, and touches nothing besides stdin, stdout, its socket and that cache.
 """
+import base64
 import fcntl
+import hashlib
 import json
 import os
 import socket
 import struct
 import sys
+import tempfile
 import threading
 import time
 
 REPLY_TIMEOUT = 2.0
+# Rendering one tab, a heavy background one included, takes longer than answering from the tab list.
+CAPTURE_TIMEOUT = 5.0
+# Only images of no open tab are pruned, and only once this old, so a tab closed by mistake and reopened keeps its image.
+THUMBNAIL_KEEP_SECS = 7 * 24 * 3600
+JPEG_DATA_URL_PREFIX = "data:image/jpeg;base64,"
 # A host starting while its predecessor exits (an extension reload, a Firefox restart) waits this long for the lock.
 LOCK_WAIT = 3.0
 # A client that connects and sends nothing is dropped after this long.
@@ -48,7 +61,7 @@ class Extension:
         data = self.stdin.read(struct.unpack("=I", header)[0])
         return json.loads(data)
 
-    def request(self, fields):
+    def request(self, fields, timeout=REPLY_TIMEOUT):
         with self.pending_lock:
             self.next_id += 1
             request_id = self.next_id
@@ -56,7 +69,7 @@ class Extension:
             self.pending[request_id] = slot
         try:
             self.send({**fields, "id": request_id})
-            if not slot["event"].wait(REPLY_TIMEOUT):
+            if not slot["event"].wait(timeout):
                 return {"ok": False, "error": "the extension did not answer in time"}
             return slot["reply"]
         except OSError as error:
@@ -89,6 +102,110 @@ class Extension:
                     slot["event"].set()
 
 
+def thumbnail_dir():
+    # A relative XDG_CACHE_HOME is invalid by the XDG spec and ignored.
+    cache_home = os.environ.get("XDG_CACHE_HOME", "")
+    if not os.path.isabs(cache_home):
+        cache_home = os.path.join(os.path.expanduser("~"), ".cache")
+    return os.path.join(cache_home, "voxcmd", "firefox-thumbs")
+
+
+def thumbnail_path(url):
+    return os.path.join(thumbnail_dir(), hashlib.sha256(url.encode()).hexdigest() + ".jpg")
+
+
+def thumbnail_fields(url):
+    path = thumbnail_path(url)
+    try:
+        return {"thumbnail": path, "thumbnail_at": os.stat(path).st_mtime_ns // 1_000_000}
+    except OSError:
+        return {"thumbnail": "", "thumbnail_at": 0}
+
+
+def write_thumbnail(url, data_url):
+    """Writes the image under a temporary name and renames it, so a reader never sees half of one."""
+    if not isinstance(data_url, str) or not data_url.startswith(JPEG_DATA_URL_PREFIX):
+        raise ValueError("the extension sent no JPEG")
+    image = base64.b64decode(data_url[len(JPEG_DATA_URL_PREFIX):], validate=True)
+    if not image.startswith(b"\xff\xd8"):
+        raise ValueError("the extension sent no JPEG")
+    path = thumbnail_path(url)
+    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".", suffix=".tmp")
+    try:
+        with os.fdopen(descriptor, "wb") as file:
+            file.write(image)
+        os.replace(temporary, path)
+    except BaseException:
+        os.unlink(temporary)
+        raise
+    return thumbnail_fields(url)
+
+
+def prune_thumbnails(open_urls):
+    keep = {os.path.basename(thumbnail_path(url)) for url in open_urls}
+    cutoff = time.time() - THUMBNAIL_KEEP_SECS
+    try:
+        names = os.listdir(thumbnail_dir())
+    except OSError:
+        return
+    for name in names:
+        if name in keep:
+            continue
+        path = os.path.join(thumbnail_dir(), name)
+        try:
+            if os.stat(path).st_mtime < cutoff:
+                os.unlink(path)
+        except OSError:
+            pass
+
+
+def with_thumbnails(reply):
+    if reply.get("ok") and isinstance(reply.get("result"), list):
+        for tab in reply["result"]:
+            if isinstance(tab, dict) and isinstance(tab.get("url"), str):
+                tab.update(thumbnail_fields(tab["url"]))
+    return reply
+
+
+def capture_one(extension, tab_id):
+    reply = extension.request({"cmd": "capture_tab", "tab_id": tab_id}, CAPTURE_TIMEOUT)
+    if not reply.get("ok"):
+        return {"tab_id": tab_id, "ok": False, "thumbnail": "", "thumbnail_at": 0, "error": str(reply.get("error"))}
+    result = reply.get("result")
+    url = result.get("url") if isinstance(result, dict) else None
+    if not isinstance(url, str) or not url:
+        return {"tab_id": tab_id, "ok": False, "thumbnail": "", "thumbnail_at": 0, "error": "the extension sent no URL"}
+    try:
+        return {"tab_id": tab_id, "ok": True, **write_thumbnail(url, result.get("data_url"))}
+    except (ValueError, OSError) as error:
+        return {"tab_id": tab_id, "ok": False, **thumbnail_fields(url), "error": str(error)}
+
+
+def capture(extension, request):
+    """Captures the asked tabs, or every loaded one, one at a time; the full tab list also says which images to keep."""
+    tab_ids = request.get("tab_ids")
+    if tab_ids is not None and (not isinstance(tab_ids, list) or not all(type(tab_id) is int for tab_id in tab_ids)):
+        return {"ok": False, "error": "tab_ids is a list of integer tab ids"}
+    listed = extension.request({"cmd": "tabs"})
+    if not listed.get("ok") or not isinstance(listed.get("result"), list):
+        return listed if not listed.get("ok") else {"ok": False, "error": "the extension sent no tab list"}
+    tabs = [tab for tab in listed["result"] if isinstance(tab, dict)]
+    if tab_ids is None:
+        tab_ids = [tab["tab_id"] for tab in tabs if type(tab.get("tab_id")) is int and not tab.get("discarded")]
+    results = [capture_one(extension, tab_id) for tab_id in tab_ids]
+    prune_thumbnails(tab["url"] for tab in tabs if isinstance(tab.get("url"), str))
+    return {"ok": True, "result": results}
+
+
+def answer(extension, request):
+    fields = {key: value for key, value in request.items() if key != "id"}
+    if fields["cmd"] == "capture":
+        return capture(extension, fields)
+    reply = extension.request(fields)
+    return with_thumbnails(reply) if fields["cmd"] == "tabs" else reply
+
+
 def read_line(connection):
     data = b""
     while b"\n" not in data and len(data) < MAX_REQUEST_BYTES:
@@ -110,7 +227,7 @@ def serve_client(connection, extension):
             if not isinstance(request, dict) or not isinstance(request.get("cmd"), str):
                 reply = {"ok": False, "error": "a request is a JSON object with a cmd"}
             else:
-                reply = extension.request({key: value for key, value in request.items() if key != "id"})
+                reply = answer(extension, request)
             connection.sendall(json.dumps(reply).encode() + b"\n")
         except OSError:
             pass

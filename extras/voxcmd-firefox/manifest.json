@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "voxcmd",
-  "version": "1.0.0",
-  "description": "Lists and switches tabs for voxcmd's voice commands, through a local native-messaging host.",
+  "version": "1.1.0",
+  "description": "Lists, switches, closes and previews tabs for voxcmd and the bar's tab picker, through a local native-messaging host.",
   "browser_specific_settings": {
     "gecko": {
       "id": "voxcmd@oasis-dots",
@@ -15,7 +15,8 @@
   },
   "permissions": [
     "tabs",
-    "nativeMessaging"
+    "nativeMessaging",
+    "<all_urls>"
   ],
   "background": {
     "scripts": [
