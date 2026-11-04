@@ -15,6 +15,8 @@ fails, tabs come from the session store and switch through the address bar.
   firefox-tab open [--here] <url>      open the url in a new tab, or the url or text in the focused tab
   firefox-tab search <text>            search the text with the default engine in a new tab
   firefox-tab new-tab | close-tab      press Ctrl+T or Ctrl+W in Firefox
+  firefox-tab request <json>           send one request to the extension's host and print the reply line; a host that
+                                       cannot be reached prints {"ok": false, "unavailable": true, "error": ...}
 
 Keys are typed with wtype, and only into a Firefox window that has focus.
 """
@@ -657,6 +659,24 @@ def query_places(connection, words):
     return rows
 
 
+def relay(text):
+    """One request to the host for another program (the Quickshell tabs picker), with the socket checks above."""
+    try:
+        request = json.loads(text)
+    except ValueError:
+        request = None
+    if not isinstance(request, dict) or not isinstance(request.get("cmd"), str):
+        print("the request must be a JSON object with a cmd", file=sys.stderr)
+        sys.exit(2)
+    try:
+        reply = {"ok": True, "result": host_request(request)}
+    except HostUnavailable as error:
+        reply = {"ok": False, "unavailable": True, "error": str(error)}
+    except HostError as error:
+        reply = {"ok": False, "error": str(error)}
+    print(json.dumps(reply))
+
+
 # ---- main ------------------------------------------------------------------------------------------------------
 
 
@@ -684,6 +704,8 @@ def main(args):
         open_url(rest[-1], here)
     elif command == "search" and rest:
         search(" ".join(rest))
+    elif command == "request" and len(rest) == 1:
+        relay(rest[0])
     elif command == "new-tab":
         focused_firefox(focus_recent=True)
         keys(["-M", "ctrl", "t", "-m", "ctrl"])
