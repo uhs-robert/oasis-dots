@@ -549,7 +549,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + O` | press | Leader | Session Launcher |  |
 | `CTRL + V` | press | Leader | Clipboard | `picker.clipboard` |
 | `TAB` | press | Leader | Workspace Overview | `overview.open` |
-| `SHIFT + TAB` | press | Leader | Tmux Windows | `picker.tmux` |
+| `CTRL + T` | press | Leader | Tmux Windows | `picker.tmux` |
 | `E` | press | Leader | Emoji | `picker.emoji` |
 | `PERIOD` | press | Leader | Speech to Text | `voice.dictate` |
 | `COMMA` | press | Leader | Voice Command | `voice.command` |
