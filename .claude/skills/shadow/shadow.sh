@@ -66,7 +66,7 @@ shadow_pids() {
 }
 
 # A minimal environment built from nothing: no owner WAYLAND_DISPLAY, HYPRLAND_INSTANCE_SIGNATURE, bus or PipeWire.
-# TMUX_TMPDIR gives the bar's tmux overview a private, empty tmux server instead of the owner's sessions.
+# TMUX_TMPDIR gives the bar's tmux picker a private, empty tmux server instead of the owner's sessions.
 # An array rather than a function so setsid can exec it.
 set_env() {
   shadow_env=(env -i

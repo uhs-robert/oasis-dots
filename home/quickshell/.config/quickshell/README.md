@@ -45,7 +45,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `network/` holds the network popup with its Wi-Fi rows, header, details and password panes and `Network.js`.
 - `keeptabs/` holds `KeeptabsState`, `ClaudeUsageState`, `UsageProjection.js` (where each weekly limit is heading at the week's pace so far), the keeptabs popup and its per-style Agents and Usage layouts in `views/`.
 - `updates/` holds `UpdatesState` (pending package counts), the updates popup and its NES inventory.
-- [`overview/`](features/overview/README.md): Workspace overview, voice contract and tmux tools
+- [`overview/`](features/overview/README.md): Workspace overview and its voice contract
 - [`bar/`](features/bar/README.md): Bar layout and modules, command status
 - [`bar_editor/`](features/bar_editor/README.md): The full-screen editor for the bar's modules, opened over IPC
 - `voice/` holds `VoxSessionState` and `VoxWakeState` (the voxcmd session and wake-word files), `VoxtypeState` and `VoxtypeAudioState` (dictation state and samples), `VoiceSettings`, and the click hints: `ClickHints`, its IPC handler and `ClickHintsOverlay`.
@@ -170,11 +170,6 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `submap_hints` | `set(json: string): string` |  |
 | `submap_hints` | `selection(json: string): string` |  |
 | `submap_hints` | `clear(generation: string): void` |  |
-| `tmux_overview` | `open(): string` | `tmux.overview` |
-| `tmux_overview` | `close(): string` | `tmux.close` |
-| `tmux_overview` | `search(): string` | `tmux.search` |
-| `tmux_overview` | `toggle(): string` | `tmux.toggle` |
-| `tmux_overview` | `state(): string` |  |
 | `transition` | `play(name: string): void` |  |
 | `weather` | `preview(name: string): string` |  |
 | `weather` | `previewing(): string` |  |
@@ -247,7 +242,7 @@ Adding a [style or style token](theme/README.md#adding-a-style-or-style-token) a
 
 ## Tools
 
-Everything below is optional. A missing tool only disables the feature next to it. `hyprctl` (Hyprland) is required throughout. Tools for the bar, workspace overview and lock are in [Bar](features/bar/README.md#tools), [Workspace overview](features/overview/README.md#tools) and [Lock screen and greeter](features/lock/README.md#tools).
+Everything below is optional. A missing tool only disables the feature next to it. `hyprctl` (Hyprland) is required throughout. Tools for the bar and lock are in [Bar](features/bar/README.md#tools) and [Lock screen and greeter](features/lock/README.md#tools).
 
 | Tool | Used for |
 | --- | --- |
@@ -258,6 +253,7 @@ Everything below is optional. A missing tool only disables the feature next to i
 | `cliphist`, `wl-copy` | The clipboard picker |
 | `wtype`, `wl-copy` | The emoji picker |
 | `zoxide` | The directories picker |
+| `tmux` | The tmux windows picker |
 | `nmcli` (NetworkManager), `nm-connection-editor` | The network popup and its editor |
 | `blueman-manager` | The Bluetooth module's manager |
 | `pw-play` (PipeWire), `mpv` | Interface sounds, and lock and login music |

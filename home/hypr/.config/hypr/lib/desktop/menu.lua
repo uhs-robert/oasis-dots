@@ -110,10 +110,6 @@ end
 --- @return fun()
 function Menu.overview() return Hypr.exec(Scripts.qs_ipc .. " call overview open") end
 
---- Return an action that opens the Quickshell tmux overview.
---- @return fun()
-function Menu.tmux_overview() return Hypr.exec(Scripts.qs_ipc .. " call tmux_overview open") end
-
 --- Return an action that opens the workspace overview with window search active.
 --- @return fun()
 function Menu.overview_search() return Hypr.exec(Scripts.qs_ipc .. " call overview search") end
