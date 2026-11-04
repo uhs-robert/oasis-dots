@@ -5,9 +5,10 @@ import qs.theme
 import "FirefoxTabs.js" as FirefoxTabs
 import "../../core/Fuzzy.js" as Fuzzy
 
-// Every Firefox tab, most recently used first, through voxcmd's Firefox extension: each card shows the tab's last
-// captured image, refreshed a few tabs at a time after the list shows. Enter switches to the tab and focuses its
-// window, `x` closes it, `y` copies its URL and `f` narrows the list to one window.
+// Every Firefox tab through voxcmd's Firefox extension, grouped by window in tab-bar order or most recently used
+// first (`s`, remembered in FirefoxTabsSettings): each card shows the tab's last captured image, refreshed a few tabs
+// at a time after the list shows. Enter switches to the tab and focuses its window, `x` closes it, `y` copies its URL
+// and `f` narrows the list to one window.
 PickerProvider {
     id: root
 
@@ -16,12 +17,14 @@ PickerProvider {
     layout: "browse"
     default_preview_size: "m"
     card_size: Qt.size(248, 190)
+    default_browse_view: "list"
+    grouped: root.sort === "tabs"
     title: "Browser tabs"
     placeholder: "Search tabs by title or address"
     verb: "switch"
     rank_by_usage: false
     keep_order: true
-    actions: [{ key: "x", desc: "close tab" }, { key: "y", desc: "copy URL" }, { key: "f", desc: "window", needs_item: false }]
+    actions: [{ key: "x", desc: "close tab" }, { key: "y", desc: "copy URL" }, { key: "f", desc: "window", needs_item: false }, { key: "s", desc: "sort", needs_item: false }]
     empty_text: root.host_state === "loading" ? "Loading tabs" : root.host_state === "unavailable" ? root.setup_hint : root.host_state === "error" ? "Firefox did not list its tabs: " + root.host_error : "No tabs open"
 
     // voxcmd's socket client: it checks the socket is the user's own before trusting it, and also switches tabs,
@@ -35,15 +38,16 @@ PickerProvider {
     // "loading", "ok", "unavailable" (no socket or no host answering) or "error".
     property string host_state: "loading"
     property string host_error: ""
-    // Every listed tab; `items` is the ones the window filter keeps.
+    // Every listed tab in tab-bar order; `items` is the ones the window filter keeps, in the sort's order.
     property var entries: []
     readonly property var windows: FirefoxTabs.windows_of(root.entries)
+    readonly property string sort: FirefoxTabs.sort_of(FirefoxTabsSettings.sort)
     // "all" or a window id; every open starts at "all".
     property var filter: "all"
     readonly property var shown_filter: root.windows.indexOf(root.filter) >= 0 ? root.filter : "all"
-    items: root.entries.filter(e => FirefoxTabs.kept_by_filter(e, root.shown_filter))
+    items: FirefoxTabs.arranged(root.entries, root.sort, root.shown_filter, root.windows)
     property bool copied: false
-    status_text: root.copied ? "URL COPIED" : root.entries.length > 0 ? FirefoxTabs.filter_label(root.shown_filter, root.windows) : ""
+    status_text: root.copied ? "URL COPIED" : root.entries.length > 0 ? FirefoxTabs.filter_label(root.shown_filter, root.windows) + " · " + FirefoxTabs.sort_labels[root.sort] : ""
     status_active: root.copied || root.shown_filter !== "all"
 
     // Tab id -> { thumbnail, thumbnail_at } from captures, newer than what the list named.
@@ -56,6 +60,14 @@ PickerProvider {
     function request_argv(request, timeout_s) {
         // Through sh so a missing firefox-tab is an empty answer, read as unreachable, rather than a process that never starts.
         return ["sh", "-c", "[ -z \"$2\" ] || export VOXCMD_FIREFOX_HOST_TIMEOUT=\"$2\"; exec \"$0\" request \"$1\"", root.firefox_tab, JSON.stringify(request), timeout_s || ""];
+    }
+
+    function group_of(item) {
+        return item.window_id;
+    }
+
+    function group_title(window_id, shown) {
+        return FirefoxTabs.group_title(window_id, shown.length, root.entries, root.windows);
     }
 
     function source_of(entry) {
@@ -82,7 +94,8 @@ PickerProvider {
         const kept = {};
         for (const id in root.thumbs) if (ids[id]) kept[id] = root.thumbs[id];
         root.thumbs = kept;
-        root.capture_queue = FirefoxTabs.capture_batches(root.entries, root.capture_batch_size);
+        // In the order the list shows them, so the top of it refreshes first.
+        root.capture_queue = FirefoxTabs.capture_batches(FirefoxTabs.arranged(root.entries, root.sort, "all", root.windows), root.capture_batch_size);
         root.capture_next();
     }
 
@@ -124,6 +137,8 @@ PickerProvider {
     function run_action(key, item) {
         if (key === "f") {
             root.filter = FirefoxTabs.cycled_filter(root.shown_filter, root.windows);
+        } else if (key === "s") {
+            FirefoxTabsSettings.set("sort", FirefoxTabs.cycled_sort(root.sort));
         } else if (key === "y") {
             Quickshell.execDetached(["wl-copy", "--", item.url]);
             root.copied = true;
@@ -290,6 +305,13 @@ PickerProvider {
                 source: root.source_of(card.entry)
             }
 
+            WindowBadge {
+                anchors.left: card_thumb.left
+                anchors.top: card_thumb.top
+                anchors.margins: Style.px(4)
+                number: card.entry.window_number || 0
+            }
+
             TabFavicon {
                 id: card_icon
                 anchors.verticalCenter: card_title.verticalCenter
@@ -345,9 +367,17 @@ PickerProvider {
                 source: root.source_of(line.entry)
             }
 
+            WindowBadge {
+                id: line_badge
+                anchors.left: line_thumb.right
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                number: line.entry.window_number || 0
+            }
+
             TabFavicon {
                 id: line_icon
-                anchors.left: line_thumb.right
+                anchors.left: line_badge.visible ? line_badge.right : line_thumb.right
                 anchors.leftMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 url: line.entry.fav_icon_url || ""
@@ -380,6 +410,30 @@ PickerProvider {
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-4)
             }
+        }
+    }
+
+    // "W2": the tab's window in the recent sort, which mixes windows; the tab-order sort heads each window instead.
+    component WindowBadge: Rectangle {
+        id: badge
+        property int number: 0
+
+        visible: root.sort === "recent" && badge.number > 0
+        width: badge_text.implicitWidth + 8
+        height: badge_text.implicitHeight + 2
+        radius: Style.radius(3)
+        color: Qt.alpha(Theme.bg_surface, 0.9)
+        border.width: 1
+        border.color: Qt.alpha(Theme.ui_border, 0.8)
+
+        Text {
+            id: badge_text
+            anchors.centerIn: parent
+            text: "W" + badge.number
+            color: Style.text_primary
+            font.family: Style.font_family
+            font.pixelSize: Style.fs(-5)
+            font.bold: true
         }
     }
 }

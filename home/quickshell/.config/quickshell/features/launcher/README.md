@@ -9,7 +9,7 @@ Top to bottom: the search bar, a preview of the selected item, and a grid of car
 - `hjkl`, `0`/`$` and `gg`/`G` move through the grid; a click activates a card like Enter (the picker closes; a clipboard entry replaces the clipboard).
 - `=` (or `+`) makes the preview bigger, `-` smaller, `p` hides it or restores its size. Sizes are off, small, medium, large and max; max hides the cards. Each open starts at large (agents) or medium (clipboard, Firefox tabs); the size is not remembered.
 - Agents: Tab (or Shift+Tab) swaps the preview between the selected session's pane and Claude usage, the bars the keeptabs popup's Usage tab shows (under each weekly bar, where the week's pace so far leads: the time you'd hit the limit, in the warning colour, or the percent you'd end the week on; hidden for the first 12 hours after a reset); the cards stay and `hjkl` still moves. With the preview off, Tab brings it back at its last size on usage. Every open starts on the pane. In the clipboard and Firefox tabs Tab does nothing; no browse picker steps rows with Tab.
-- `v` switches between the card grid and one-line rows (an agent row also shows its state badge). Every open starts on the grid.
+- `v` switches between the card grid and one-line rows (an agent row also shows its state badge). Agents and the clipboard open on the grid, Firefox tabs on the rows. The view is not remembered.
 - The first nine cards or rows fully on screen carry a corner number. A digit 1 to 9 selects that item and never opens it; Enter does. In INSERT the digits type into the search.
 - Clipboard: `f` cycles the type filter all, text, images (shown in the search bar corner). Binary entries show only under all. Each open starts at all.
 - When items continue past the visible area, the edge fades and a caret points on.
@@ -20,7 +20,13 @@ An agent card shows the session's title, agent, state badge, short directory and
 
 ## Firefox tabs
 
-Leader > Shift+T (`picker.firefox_tabs`) lists every Firefox tab, most recently used first, with a picture of each. Enter switches to the tab and focuses its window. In NORMAL mode `x` closes the tab, `y` copies its address (the search bar corner says `URL COPIED`), and `f` cycles all windows, then each Firefox window in turn (`WINDOW 1/2` in the corner, where window 1 is the one used last). The search matches titles and addresses.
+Leader > Shift+T (`picker.firefox_tabs`) lists every Firefox tab with a picture of each, as one-line rows (`v` for the grid). Enter switches to the tab and focuses its window. In NORMAL mode:
+
+- `s` switches the sort. Tab order, the default, groups the tabs by window, each window in its tab-bar order under a header such as `WINDOW 1 · 14 TABS · <title of its active tab>`. Recent is one list, most recently used first, with a `W1` or `W2` badge on each tab for its window. The search bar corner shows the sort (`TAB ORDER` or `RECENT`), and the picker keeps the last one across opens and bar restarts.
+- `f` cycles all windows, then each Firefox window in turn (`WINDOW 1/3` in the corner).
+- `x` closes the tab, and `y` copies its address (the corner says `URL COPIED`).
+
+Windows are numbered in the order Firefox opened them, the same in the headers, the badges and the filter. The search matches titles and addresses. In tab order it keeps the groups: a window's header shows only while one of its tabs matches, and counts the matching tabs. Headers are never selected: `hjkl`, `gg`/`G` and the digits skip them.
 
 The list shows at once with the pictures saved last time. Fresh ones then swap in a few tabs at a time, the selected tab first. An unloaded tab keeps its last picture, dimmed, and says `unloaded`. A tab never captured shows its icon and title. Only icons Firefox hands over inline are drawn, so the bar fetches nothing from the web. Other tabs get a globe.
 
@@ -34,8 +40,8 @@ The voice key answers an open choices picker however it opened: a number, a choi
 
 - `Picker.qml` is the search box and list; `Pickers.qml` registers the providers and `PickerIpc.qml` is the IPC handler. `PickerVoice.qml` publishes the open voice-answerable picker for voxcmd and checks each voice answer's token. A provider subclasses `PickerProvider.qml` (see "Extending" in the [Quickshell README](../../README.md)).
 - Providers: `AppsProvider`, `DirsProvider`, `EmojiProvider`, `ClipboardProvider`, `KeybindsProvider`, `ChoicesProvider`, `AgentsProvider`, `FirefoxTabsProvider`. Agent session parsing is `AgentSessions.js`; its card pieces are `AgentStateBadge.qml`, `AgentContextBar.qml` and `AnsiText.js`.
-- `FirefoxTabsProvider.qml` talks to the extension through `firefox-tab request` (voxcmd's socket client, in `home/voxcmd/.local/share/voxcmd/`); `FirefoxTabs.js` reads its replies, orders the tabs and cycles the window filter; `TabThumbnail.qml` and `TabFavicon.qml` draw a tab's picture and icon.
-- `BrowseLayout.js` holds the preview-size and grid maths for the browse layout.
+- `FirefoxTabsProvider.qml` talks to the extension through `firefox-tab request` (voxcmd's socket client, in `home/voxcmd/.local/share/voxcmd/`). `FirefoxTabs.js` reads its replies, sorts and numbers the tabs, titles the window headers and cycles the window filter. `FirefoxTabsSettings.qml` keeps the last sort in `firefox_tabs.json` under the Quickshell state dir. `TabThumbnail.qml` and `TabFavicon.qml` draw a tab's picture and icon.
+- `BrowseLayout.js` holds the preview-size and grid maths for the browse layout. It also lays out the browse view's lines: the headers of a grouped provider (`PickerProvider.grouped`), then the cards or rows.
 - `ClipboardFilter.js` holds the clipboard picker's type filter (`f`).
 - `StartMode.js` and `TypingSettings.qml` hold the per-picker start mode and its Settings > Input > Typing rows.
 - `HyprvimPrompt.qml` and `HyprvimPromptIpc.qml` are the `:` prompt; `hyprvim/` holds its pieces (`CompletionMenu.qml`, `OutputPane.qml`, `PromptSpec.js`, `VimMotions.js`).

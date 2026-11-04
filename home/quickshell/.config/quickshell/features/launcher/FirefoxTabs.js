@@ -1,7 +1,8 @@
 .pragma library
 
 // The Firefox tabs picker's reading of voxcmd's extension host (FirefoxTabsProvider.qml), kept here so node can test it:
-// replies from `firefox-tab request`, tab order, the window filter and thumbnail sources.
+// replies from `firefox-tab request`, tab order and the sort, window numbers and headers, the window filter and
+// thumbnail sources.
 
 // One reply line: { state: "ok" | "unavailable" | "error", result, error }. No output at all means firefox-tab is
 // missing or crashed, which is as unreachable as a missing socket.
@@ -61,7 +62,7 @@ function tab_item(tab) {
     };
 }
 
-// The shown tabs, most recently used first: the focused window's active tab is the newest, so it leads.
+// The shown tabs in the order the host lists them: Firefox's `tabs.query` gives each window's tabs in tab-bar order.
 function items_of(result) {
     if (!Array.isArray(result)) return [];
     var out = [];
@@ -69,16 +70,65 @@ function items_of(result) {
         var item = tab_item(result[i]);
         if (item) out.push(item);
     }
-    return out.sort(function (a, b) {
+    return out;
+}
+
+// Most recently used first: the focused window's active tab is the newest, so it leads.
+function recent_first(items) {
+    return items.slice().sort(function (a, b) {
         return b.last_accessed - a.last_accessed || (b.active ? 1 : 0) - (a.active ? 1 : 0) || a.tab_id - b.tab_id;
     });
 }
 
-// Window ids in the order their first tab appears, so the window in use is window 1.
+// Window ids ascending, which is the order Firefox made them in: window N is the Nth of them, in the filter, the
+// headers and the badges alike.
 function windows_of(items) {
     var out = [];
     for (var i = 0; i < items.length; i++) if (out.indexOf(items[i].window_id) < 0) out.push(items[i].window_id);
-    return out;
+    return out.sort(function (a, b) {
+        return a - b;
+    });
+}
+
+function window_number(window_id, windows) {
+    return windows.indexOf(window_id) + 1;
+}
+
+// `s` flips the order: "tabs" groups by window in tab-bar order, "recent" is one list, most recently used first.
+var sorts = ["tabs", "recent"];
+var sort_labels = { tabs: "TAB ORDER", recent: "RECENT" };
+
+function sort_of(name) {
+    return sorts.indexOf(name) >= 0 ? name : sorts[0];
+}
+
+function cycled_sort(sort) {
+    return sorts[(sorts.indexOf(sort_of(sort)) + 1) % sorts.length];
+}
+
+// The picker's items: the tabs the window filter keeps, each with its window's number, in the sort's order.
+function arranged(items, sort, filter, windows) {
+    var out = [];
+    for (var i = 0; i < items.length; i++) {
+        if (!kept_by_filter(items[i], filter)) continue;
+        var item = Object.assign({}, items[i]);
+        item.window_number = window_number(item.window_id, windows);
+        out.push(item);
+    }
+    return sort_of(sort) === "recent" ? recent_first(out) : out;
+}
+
+// A window's header over the tabs of it that show: "WINDOW 1 · 14 TABS · " and the title of its active tab, which is
+// found among all its tabs, so a search that hides the active one keeps the title.
+function group_title(window_id, shown_count, items, windows) {
+    var parts = ["WINDOW " + window_number(window_id, windows), shown_count + (shown_count === 1 ? " TAB" : " TABS")];
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].window_id === window_id && items[i].active) {
+            parts.push(items[i].label);
+            break;
+        }
+    }
+    return parts.join(" · ");
 }
 
 // `f`: all, then each window in turn, then all again. A window that has gone (its last tab closed) also goes back to all.
