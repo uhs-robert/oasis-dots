@@ -670,7 +670,8 @@ Item {
 
         Connections {
             target: root.animate && murk.visible && root.shown !== "saver" ? root.motion : null
-            function onTicked() { murk.t = root.motion.t; }
+            // Accumulated from the ticks rather than copied from the clock, which keeps running during the saver.
+            function onTicked(dt) { murk.t += dt; }
         }
         width: 1600
         height: 900
@@ -934,6 +935,9 @@ Item {
         id: stage
 
         Murk {
+            // The saver's drifters still redraw the window. Cached, the held ground costs one texture copy per frame
+            // instead of a shader pass.
+            layer.enabled: root.shown === "saver"
             scale: stage.fill
             opacity: root.shown === "load" ? 0.45 : 1
             visible: root.shown !== "unlock"
