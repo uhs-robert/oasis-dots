@@ -97,12 +97,14 @@ Popup {
     property string ranked_query: ""
     property var shown_results: []
 
-    // A new query starts over; new items under the same query keep the selected item, or its row once it is gone.
+    // A new query starts over, and so does a first list that arrives after the open (the provider's initial_index
+    // applies to it); new items under the same query keep the selected item, or its row once it is gone.
     onResultsChanged: {
         root.sync_slots();
         const old = root.shown_results[root.selected];
+        const was_empty = root.shown_results.length === 0;
         root.shown_results = root.results;
-        if (root.query !== root.ranked_query) {
+        if (root.query !== root.ranked_query || was_empty) {
             root.ranked_query = root.query;
             root.selected = root.first_index();
             root.scroll_to_start();
