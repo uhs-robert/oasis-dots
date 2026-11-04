@@ -32,7 +32,8 @@ pretty_name="$(
 )"
 
 term_name="${TERMINAL:-kitty}"
-others="$(tmux list-sessions -F '#S' 2>/dev/null | jq -R . | jq -sc .)"
+# No tmux server yet means no sessions, not a failure: the load below starts the first one.
+others="$({ tmux list-sessions -F '#S' 2>/dev/null || true; } | jq -R . | jq -sc .)"
 
 # tmux titles a layout's window "Tmux <session> <program>" and a plain session's "<session> <program>". A longer
 # session name that also fits the title owns the window ("Dev tools nvim" is not session "Dev"), as in voxcmd.
@@ -42,11 +43,12 @@ address="$(
       def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
       def fits($t; $s): ($t | ascii_downcase) as $l | ($s | ascii_downcase) as $n
         | $l == $n or ($l | startswith($n + " ")) or $l == "tmux " + $n or ($l | startswith("tmux " + $n + " "));
+      def owned($t): $others | map(select(length > ($session | length) and fits($t; .))) | length == 0;
       [.[] | select(.class | ascii_downcase | contains($term))] as $wins
       | ($wins | map(select((.title | norm) == ($title | norm))))
         + ($wins | map(select(.title | ascii_downcase | startswith(($title | ascii_downcase) + " "))))
-        + ($wins | map(select(.title as $t | fits($t; $session)
-          and ($others | map(select(length > ($session | length) and fits($t; .))) | length == 0))))
+        + ($wins | map(select(.title as $t | fits($t; $session))))
+      | map(select(.title as $t | owned($t)))
       | .[0].address // empty
     '
 )"
