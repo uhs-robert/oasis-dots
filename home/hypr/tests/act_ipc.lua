@@ -40,6 +40,7 @@ local CASES = {
 	{ "settings.toggle", {}, "settings toggle" },
 	{ "picker.open", { "emoji" }, "picker open emoji" },
 	{ "picker.toggle", { "dirs" }, "picker toggle dirs" },
+	{ "picker.open", { "firefox_tabs" }, "picker open firefox_tabs" },
 	{ "picker.close", {}, "picker close" },
 }
 
