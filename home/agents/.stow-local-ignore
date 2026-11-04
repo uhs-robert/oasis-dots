@@ -1,0 +1,4 @@
+# Stow-default ignores, which a local list replaces, plus the tests, which stay in the repo.
+\.gitignore
+^/README.*
+^/tests
