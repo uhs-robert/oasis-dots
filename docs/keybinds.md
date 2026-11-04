@@ -323,12 +323,12 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `ALT + TAB` | press | global | Workspace overview | `overview.open` |
 | `SUPER + TAB` | press | global | Workspace overview | `overview.open` |
 | `SUPER + SHIFT + TAB` | press | global | Move window in overview | `overview.move` |
-| `ALT + GRAVE` | press | global | Tmux overview | `tmux.overview` |
 | `SUPER + CTRL + V` | press | global | Clipboard History | `picker.clipboard` |
 | `SUPER + CTRL + SPACE` | press | global | Jump to Directory | `picker.directory` |
 | `SUPER + CTRL + E` | press | global | Emoji Picker | `picker.emoji` |
 | `SUPER + T` | press | global | Search Windows | `picker.windows` |
 | `SUPER + SHIFT + T` | press | global | Browser Tabs | `picker.firefox_tabs` |
+| `ALT + GRAVE` | press | global | Tmux Windows | `picker.tmux` |
 | `SUPER + SHIFT + SEMICOLON` | press | global | HyprVim Terminal | `hyprvim.terminal` |
 | `SUPER + APOSTROPHE` | press | global | Jump to Mark | `hyprvim.jump_mark` |
 | `SUPER + N` | press | global | Edit Selection in Vim | `hyprvim.edit_selection` |
@@ -549,7 +549,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + O` | press | Leader | Session Launcher |  |
 | `CTRL + V` | press | Leader | Clipboard | `picker.clipboard` |
 | `TAB` | press | Leader | Workspace Overview | `overview.open` |
-| `SHIFT + TAB` | press | Leader | Tmux Overview | `tmux.overview` |
+| `SHIFT + TAB` | press | Leader | Tmux Windows | `picker.tmux` |
 | `E` | press | Leader | Emoji | `picker.emoji` |
 | `PERIOD` | press | Leader | Speech to Text | `voice.dictate` |
 | `COMMA` | press | Leader | Voice Command | `voice.command` |

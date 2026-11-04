@@ -3,7 +3,7 @@
 # Redumped when the agents picker lost SUPER + A to the restored Applications submap.
 # Redumped for SUPER + SHIFT + T on the Firefox tabs picker and overview.move on SUPER + SHIFT + TAB.
 # Columns: config, submap, key, which-key label, flags, what the key does.
-default	-	ALT + GRAVE	Tmux overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open)
+default	-	ALT + GRAVE	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker tmux 'notify-send '\''Tmux Windows'\'' '\''The tmux picker needs the Quickshell bar.'\''')
 default	-	ALT + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
 default	-	CTRL + SHIFT + ESCAPE	Task Manager	-	exec_cmd(kitty --single-instance -e btop)
 default	-	Print	Screenshot	submap_universal=true	exec_cmd(~/.config/hypr/scripts/screenshot.sh)
@@ -34,7 +34,7 @@ default	-	SUPER + T	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker w
 default	-	SUPER + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
 default	-	SUPER + Y	Yazi	-	exec_cmd(kitty --single-instance -e yazi)
 default	-	SUPER + Z	Zoom	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call zoom toggle)
-no-leader	-	ALT + GRAVE	Tmux overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open)
+no-leader	-	ALT + GRAVE	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker tmux 'notify-send '\''Tmux Windows'\'' '\''The tmux picker needs the Quickshell bar.'\''')
 no-leader	-	ALT + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
 no-leader	-	APOSTROPHE	Jump to Mark	-	hyprvim.marks.enter_jump()
 no-leader	-	B	+Bar	keep=true	submap(Bar)

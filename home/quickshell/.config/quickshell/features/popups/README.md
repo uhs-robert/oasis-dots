@@ -60,7 +60,7 @@ The main binds that open things (the leader is `SUPER`):
 | `ALT + TAB`, `SUPER + TAB`            | Workspace overview (also the top-left hot corner)  |
 | `Print`, `SUPER + I`                  | Screenshot and recording tool                      |
 | `SUPER + [` / `]`                     | Previous / next notification toast, else take the keyboard back for the open popup, else floating window |
-| `ALT + GRAVE`                         | Tmux overview                                      |
+| `ALT + GRAVE`                         | Tmux windows picker                                |
 | `SUPER + Z`                           | Zoom                                               |
 | `SUPER + P`                           | Color picker                                       |
 | `SUPER + U`                           | Restore the last closed window                     |

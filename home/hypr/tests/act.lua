@@ -736,13 +736,14 @@ package.loaded["lua.plugins.hyprvim"] = {
 	},
 }
 assert(loadfile(hypr_dir .. "/keymaps/global/pickers.lua"))()
-check("pickers: no warnings, eight binds", #Act.warnings == 0 and #binds == 8)
+check("pickers: no warnings, nine binds", #Act.warnings == 0 and #binds == 9)
 local picker_keys = {
 	{ "picker.clipboard", "Clipboard History", "SUPER + CTRL + V", "clipboard" },
 	{ "picker.directory", "Jump to Directory", "SUPER + CTRL + SPACE", "zoxide" },
 	{ "picker.emoji", "Emoji Picker", "SUPER + CTRL + E", "emoji" },
 	{ "picker.windows", "Search Windows", "SUPER + T", "windows_picker" },
 	{ "picker.firefox_tabs", "Browser Tabs", "SUPER + SHIFT + T", "firefox_tabs_picker" },
+	{ "picker.tmux", "Tmux Windows", "ALT + GRAVE", "picker" },
 }
 for _, row in ipairs(picker_keys) do
 	local id, label, key, menu_name = row[1], row[2], row[3], row[4]
@@ -793,7 +794,7 @@ for _, handle in ipairs(Act.list()) do
 		check("pickers: " .. handle.id .. " has an intent", handle.intent ~= nil and handle.intent ~= "")
 	end
 end
-check("pickers: ten listed", picker_listed == 10)
+check("pickers: eleven listed", picker_listed == 11)
 package.loaded["lib.desktop.menu"] = nil
 package.loaded["lua.plugins.hyprvim"] = nil
 
