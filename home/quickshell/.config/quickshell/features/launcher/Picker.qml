@@ -61,7 +61,7 @@ Popup {
     // Tab swaps the provider's alt_preview in; every open starts on the selected item's preview.
     property bool alt_preview_shown: false
     readonly property bool showing_alt: root.has_alt_preview && root.alt_preview_shown
-    // "grid" of cards or one-line "list" rows; v flips it, and every open starts on the grid.
+    // "grid" of cards or one-line "list" rows; v flips it, and every open starts on the provider's default_browse_view.
     property string browse_view: "grid"
     readonly property bool browse_list: root.browse && root.browse_view === "list"
     // At the max preview size the cards or rows are hidden, so the scroll cue and the number hints go too.
@@ -73,8 +73,11 @@ Popup {
     readonly property real cue_fade: Style.px(20)
     readonly property real cue_gutter: Style.px(16)
     // The cards or rows wholly on screen, which the 1-9 hints number; they renumber as the view scrolls.
-    readonly property var shown_items: root.items_hidden ? { first: 0, end: 0 } : BrowseLayout.on_screen(grid.contentY, grid.height, grid.contentHeight, grid.cellHeight, grid.cellHeight - root.browse_gap, root.browse_split.overflows ? root.cue_fade : 0, root.columns, root.results.length)
-    readonly property var browse_split: BrowseLayout.fit(list_area.height, body.height, root.preview_size, root.browse_cell_height, root.card_gap, root.results.length, root.columns, root.cue_fade)
+    readonly property var shown_items: root.items_hidden ? { first: 0, end: 0 } : BrowseLayout.on_screen(root.browse_layout, browse_flick.contentY, browse_flick.height, root.browse_gap, root.browse_split.overflows ? root.cue_fade : 0)
+    readonly property var browse_split: BrowseLayout.fit(list_area.height, body.height, root.preview_size, root.browse_cell_height, root.card_gap, root.browse_layout.height, root.cue_fade)
+    readonly property real header_line_height: Style.px(28)
+    // The browse view's lines: the provider's group headers, then its cards or rows a line at a time.
+    readonly property var browse_layout: BrowseLayout.lines_of(root.browse ? root.group_runs(root.results) : [], root.columns, root.browse_cell_height, root.header_line_height)
 
     property string query: ""
     property int selected: 0
@@ -84,7 +87,7 @@ Popup {
 
     // Characters in the widest row number, so the labels of a list line up.
     readonly property int ordinal_chars: (root.provider ? root.provider.items : []).reduce((n, i) => Math.max(n, String(i.ordinal || "").length), 0)
-    readonly property var results: root.rank(root.provider ? root.provider.items : [], root.query)
+    readonly property var results: root.gathered(root.rank(root.provider ? root.provider.items : [], root.query))
     readonly property var selected_item: root.results.length > 0 ? root.results[Math.min(root.selected, root.results.length - 1)].item : null
 
     property string ranked_query: ""
@@ -98,7 +101,7 @@ Popup {
         if (root.query !== root.ranked_query) {
             root.ranked_query = root.query;
             root.selected = root.first_index();
-            grid.positionViewAtBeginning();
+            root.scroll_to_start();
             return;
         }
         const same = old ? root.results.findIndex(r => r.item.id === old.item.id) : -1;
@@ -116,7 +119,7 @@ Popup {
         const preview_size = BrowseLayout.size_of(root.provider ? root.provider.default_preview_size : "");
         root.preview_size = preview_size;
         root.last_preview_size = preview_size;
-        root.browse_view = "grid";
+        root.browse_view = root.provider && root.provider.default_browse_view === "list" ? "list" : "grid";
         root.alt_preview_shown = false;
         root.reset();
         query_input.text = recalled;
@@ -126,12 +129,20 @@ Popup {
         const mode_insert = opened_by_key ? TypingSettings.docked_starts_insert(root.provider) : TypingSettings.starts_insert;
         root.set_insert(mode_insert && (!root.provider || root.provider.starts_insert));
     }
-    Component.onCompleted: root.sync_slots()
+    Component.onCompleted: {
+        root.sync_slots();
+        root.sync_lines();
+    }
+    onBrowse_layoutChanged: {
+        root.sync_lines();
+        // A layout that shrank under the view (a closed tab, fewer columns) would leave it scrolled past its end.
+        Qt.callLater(root.reveal_selected);
+    }
 
     onCurrent_tabChanged: if (root.provider && root.provider.tab !== root.current_tab) {
         root.provider.select_tab(root.current_tab);
         root.selected = 0;
-        grid.positionViewAtBeginning();
+        root.scroll_to_start();
     }
 
     Connections {
@@ -158,7 +169,12 @@ Popup {
         root.expanded_from = [];
         query_input.text = "";
         root.selected = root.first_index();
+        root.scroll_to_start();
+    }
+
+    function scroll_to_start() {
         grid.positionViewAtBeginning();
+        browse_flick.contentY = 0;
     }
 
     function first_index() {
@@ -176,6 +192,48 @@ Popup {
             for (let i = slots.count; i < n; i++) add.push({ slot: i });
             slots.append(add);
         }
+    }
+
+    // The browse view's lines, kept the same way.
+    function sync_lines() {
+        const n = root.browse_layout.lines.length;
+        if (line_slots.count > n) {
+            line_slots.remove(n, line_slots.count - n);
+        } else if (line_slots.count < n) {
+            const add = [];
+            for (let i = line_slots.count; i < n; i++) add.push({ slot: i });
+            line_slots.append(add);
+        }
+    }
+
+    // [{ first, count, title }] over the results: one untitled group, or the provider's groups with their headers.
+    function group_runs(results) {
+        const p = root.provider;
+        if (!p || !p.grouped) return [{ first: 0, count: results.length, title: "" }];
+        return BrowseLayout.runs_of(results.map(r => p.group_of(r.item))).map(run => ({
+            first: run.first,
+            count: run.count,
+            title: p.group_title(run.key, results.slice(run.first, run.first + run.count).map(r => r.item))
+        }));
+    }
+
+    // A grouped provider's results gather by group, in the order the groups first appear in its items, so a search
+    // ranks inside each group instead of mixing them.
+    function gathered(results) {
+        const p = root.provider;
+        if (!p || !p.grouped || !root.browse) return results;
+        const order = {};
+        let groups = 0;
+        for (const item of p.items) {
+            const key = String(p.group_of(item));
+            if (!(key in order)) order[key] = groups++;
+        }
+        const buckets = [];
+        for (const r of results) {
+            const at = order[String(p.group_of(r.item))];
+            (buckets[at] = buckets[at] || []).push(r);
+        }
+        return [].concat(...buckets.filter(b => !!b));
     }
 
     function rank(items, query) {
@@ -243,7 +301,7 @@ Popup {
         root.expanded_from = root.expanded_from.concat([from]);
         query_input.text = "";
         root.selected = 0;
-        grid.positionViewAtBeginning();
+        root.scroll_to_start();
         ThemeAudio.play("confirm");
     }
 
@@ -261,6 +319,10 @@ Popup {
     function line_ends(to_end) {
         const n = root.results.length;
         if (n === 0) return;
+        if (root.browse) {
+            root.selected = BrowseLayout.line_end(root.browse_layout, root.selected, to_end);
+            return;
+        }
         const cols = root.columns;
         const start = cols === 1 ? 0 : root.selected - root.selected % cols;
         root.selected = to_end ? (cols === 1 ? n - 1 : Math.min(n - 1, start + cols - 1)) : start;
@@ -274,7 +336,9 @@ Popup {
         if (n === 0) return;
         const before = root.selected;
         const cols = root.columns;
-        if (cols === 1) {
+        if (root.browse) {
+            root.selected = BrowseLayout.line_moved(root.browse_layout, root.selected, delta);
+        } else if (cols === 1) {
             root.selected = root.wrap_index(root.selected, delta, 0, n);
         } else {
             const rows = Math.ceil(n / cols);
@@ -314,9 +378,11 @@ Popup {
             return;
         }
         if (root.items_hidden || root.results.length === 0) return;
-        const row_top = Math.floor(root.selected / root.columns) * grid.cellHeight;
+        const layout = root.browse_layout;
+        const line = layout.lines[layout.item_line[root.selected]];
+        if (!line) return;
         const fade = root.browse_split.overflows ? root.cue_fade : 0;
-        grid.contentY = Cue.reveal_target(row_top, grid.cellHeight - root.browse_gap, grid.contentY, grid.height, grid.contentHeight, 0, fade);
+        browse_flick.contentY = Cue.reveal_target(line.y, line.height - root.browse_gap, browse_flick.contentY, browse_flick.height, layout.height, BrowseLayout.lead_of(layout, root.selected), fade);
     }
 
     function step(delta) {
@@ -400,6 +466,10 @@ Popup {
 
     ListModel {
         id: slots
+    }
+
+    ListModel {
+        id: line_slots
     }
 
     FocusScope {
@@ -531,22 +601,41 @@ Popup {
             width: parent.width
             height: parent.height - y - (detail.visible ? detail.height + 6 : 0)
 
-            // Browse: the cards sit under the preview, centered, in whole rows; the list's rows span the width, short
-            // of the scroll cue's caret.
+            // The docked and island lists.
             GridView {
                 id: grid
-                x: root.browse && !root.browse_list ? Math.round((parent.width - root.columns * (root.card_width + root.card_gap) + root.card_gap) / 2) : 0
-                y: root.browse && root.browse_split.preview_height > 0 ? root.browse_split.preview_height + root.card_gap : 0
-                height: root.browse ? root.browse_split.view_height : parent.height
-                width: root.browse_list ? parent.width - root.cue_gutter : root.browse ? root.columns * (root.card_width + root.card_gap) : preview_loader.active ? parent.width * 0.62 : parent.width
-                visible: !root.items_hidden
+                height: parent.height
+                width: preview_loader.active ? parent.width * 0.62 : parent.width
+                visible: !root.browse
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                cellWidth: root.browse_list ? width : root.browse ? root.card_width + root.card_gap : Math.floor(width / root.columns)
-                cellHeight: root.browse ? root.browse_cell_height : root.cell_height
+                cellWidth: Math.floor(width / root.columns)
+                cellHeight: root.cell_height
                 model: slots
                 reuseItems: true
-                delegate: root.browse_list ? list_delegate : root.browse ? card_delegate : row_delegate
+                delegate: row_delegate
+            }
+
+            // Browse: the cards sit under the preview, centered, in whole rows; the list's rows span the width, short
+            // of the scroll cue's caret. A Flickable over lines laid out in BrowseLayout.lines_of rather than a
+            // GridView: a GridView cannot put a header across a row, and when `v` changed its cell height while
+            // scrolled it moved its originY off 0, so a contentY of 0 no longer showed the first row.
+            Flickable {
+                id: browse_flick
+                x: root.browse_list ? 0 : Math.round((parent.width - root.columns * (root.card_width + root.card_gap) + root.card_gap) / 2)
+                y: root.browse_split.preview_height > 0 ? root.browse_split.preview_height + root.card_gap : 0
+                height: root.browse_split.view_height
+                width: root.browse_list ? parent.width - root.cue_gutter : root.columns * (root.card_width + root.card_gap)
+                contentWidth: width
+                contentHeight: root.browse_layout.height
+                visible: root.browse && !root.items_hidden
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                Repeater {
+                    model: line_slots
+                    delegate: browse_line
+                }
             }
 
             // Only a browse view: the docked and island lists keep their plain look.
@@ -554,9 +643,75 @@ Popup {
                 active: root.browse && !root.items_hidden
                 sourceComponent: Component {
                     ScrollCue {
-                        target: grid
+                        target: browse_flick
                         fade_height: root.cue_fade
                         gutter: root.cue_gutter
+                    }
+                }
+            }
+
+            // One line of the browse view: a group header, or a line of cards (one row in the list view).
+            Component {
+                id: browse_line
+
+                Item {
+                    id: line_slot
+                    required property int index
+                    readonly property var spec: root.browse_layout.lines[line_slot.index] || ({ kind: "items", title: "", first: 0, count: 0, y: 0, height: 0 })
+                    // Only lines within a view's height of the view build their cards, so a long clipboard history
+                    // stays cheap to show.
+                    readonly property bool near: line_slot.y + line_slot.height > browse_flick.contentY - browse_flick.height && line_slot.y < browse_flick.contentY + 2 * browse_flick.height
+
+                    y: line_slot.spec.y
+                    width: browse_flick.width
+                    height: line_slot.spec.height
+
+                    Item {
+                        visible: line_slot.spec.kind === "header"
+                        anchors.fill: parent
+
+                        Text {
+                            id: header_text
+                            anchors.left: parent.left
+                            anchors.leftMargin: Style.px(2)
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: Style.px(8)
+                            width: Math.min(implicitWidth, parent.width - Style.px(40))
+                            elide: Text.ElideRight
+                            text: line_slot.spec.title
+                            textFormat: Text.PlainText
+                            color: root.st.text_primary
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-4)
+                            font.bold: true
+                        }
+
+                        Rectangle {
+                            anchors.left: header_text.right
+                            anchors.leftMargin: Style.px(10)
+                            anchors.right: parent.right
+                            anchors.verticalCenter: header_text.verticalCenter
+                            height: 1
+                            color: Qt.alpha(Theme.ui_border, 0.6)
+                        }
+                    }
+
+                    Repeater {
+                        model: line_slot.near && line_slot.spec.kind === "items" ? line_slot.spec.count : 0
+
+                        Loader {
+                            id: entry_slot
+                            required property int index
+                            x: entry_slot.index * (root.card_width + root.card_gap)
+                            sourceComponent: root.browse_list ? list_delegate : card_delegate
+
+                            Binding {
+                                target: entry_slot.item
+                                property: "index"
+                                value: line_slot.spec.first + entry_slot.index
+                                when: entry_slot.status === Loader.Ready
+                            }
+                        }
                     }
                 }
             }
@@ -567,7 +722,7 @@ Popup {
 
                 Item {
                     id: card
-                    required property int index
+                    property int index: -1
                     readonly property var result: root.results[card.index] || ({ item: {}, positions: [] })
                     readonly property bool is_selected: card.index === root.selected
 
@@ -614,11 +769,11 @@ Popup {
 
                 Item {
                     id: line
-                    required property int index
+                    property int index: -1
                     readonly property var result: root.results[line.index] || ({ item: {}, positions: [] })
                     readonly property bool is_selected: line.index === root.selected
 
-                    width: grid.cellWidth
+                    width: browse_flick.width
                     height: root.list_row_height
 
                     Rectangle {
@@ -878,7 +1033,7 @@ Popup {
 
             Text {
                 visible: root.results.length === 0 && !root.items_hidden
-                anchors.centerIn: grid
+                anchors.centerIn: root.browse ? browse_flick : grid
                 text: root.provider && root.provider.items.length > 0 ? "No matches" : root.provider ? root.provider.empty_text : "Nothing to pick"
                 color: root.st.text_muted
                 font.family: root.st.font_family
