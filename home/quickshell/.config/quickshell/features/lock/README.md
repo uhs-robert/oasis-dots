@@ -36,7 +36,7 @@ While the lock is up on AC, it checks the machine every 5 seconds. The main meas
 
 It moves again only when the CPU measure and PPT are both under their lower levels. The log line `Lock: load guard stilled the lock on <agents|load|power>` (and `resumed`) shows each change with the samples behind it. Set `QS_LOAD_GUARD_ROOT` to a folder holding fake `proc/loadavg`, `sys/devices/system/cpu/online`, `sys/class/hwmon/` and `sys/fs/cgroup/user.slice/user-<uid>.slice/user@<uid>.service/agents.slice/cpu.stat` files to try it without load.
 
-The lock also caps the CPU of agent sessions while it is up. When the `agents.slice` user unit exists and has an `X-LockedCPUQuota=` key (a percentage of all threads, e.g. `62%`), locking runs `systemctl --user set-property --runtime agents.slice CPUQuota=<share x threads>%` and unlocking clears it. A drop-in can change the share, or unset it with an empty `X-LockedCPUQuota=`. The cap is runtime-only, so a reboot drops it, and a bar that starts unlocked clears one left by a bar that died while locked.
+The lock also caps the CPU of agent sessions while it is up. When the `agents.slice` user unit exists and has an `X-LockedCPUQuota=` key (a percentage of all threads, e.g. `62%`), locking runs `systemctl --user set-property --runtime agents.slice CPUQuota=<share x threads>%` and unlocking puts back the `CPUQuota=` you configured for the slice yourself (none when you set none). A drop-in can change the share, or unset it with an empty `X-LockedCPUQuota=`, and then the lock leaves the slice alone. The cap is runtime-only, so a reboot drops it, and a bar that starts unlocked undoes one left by a bar that died while locked.
 
 ## Adding a lock skin
 

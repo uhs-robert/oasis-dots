@@ -65,10 +65,11 @@ Scope {
         printErrors: false
     }
 
-    // The amdgpu hwmon is not always the same hwmonN, so it is found by name.
+    // The amdgpu hwmon is not always the same hwmonN, so it is found by name: the first with a cap, since a machine
+    // with an APU and a discrete card has two and only one may report it.
     PolledCommand {
         id: power_probe
-        command: ["sh", "-c", "for d in \"$1\"/sys/class/hwmon/hwmon*; do if [ \"$(cat \"$d/name\" 2>/dev/null)\" = amdgpu ]; then echo \"$d\"; cat \"$d/power1_cap\" 2>/dev/null; exit 0; fi; done", "sh", root.sys_root]
+        command: ["sh", "-c", "for d in \"$1\"/sys/class/hwmon/hwmon*; do [ \"$(cat \"$d/name\" 2>/dev/null)\" = amdgpu ] || continue; cap=$(cat \"$d/power1_cap\" 2>/dev/null); if [ -n \"$cap\" ]; then echo \"$d\"; echo \"$cap\"; exit 0; fi; done", "sh", root.sys_root]
         onFinished: (code, out) => {
             const lines = out.split("\n");
             root.power_dir = (lines[0] || "").trim();
