@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import "../../core/WindowEntries.js" as WindowEntries
 
 // Hyprland windows in most-recently-focused order, with focus and move helpers.
 Singleton {
@@ -105,6 +106,28 @@ Singleton {
     function short_class(toplevel) {
         const cls = root.class_of(toplevel);
         return cls.indexOf(".") >= 0 ? cls.split(".").pop() : cls;
+    }
+
+    // Every window on a workspace as a search entry (WindowEntries.js), most recent first, each with its `toplevel`.
+    function entries() {
+        const out = [];
+        root.windows.forEach((t, recency) => {
+            if (!t.workspace) return;
+            const ipc = t.lastIpcObject || {};
+            const entry = WindowEntries.entry_of({
+                address: t.address,
+                title: t.title,
+                cls: root.class_of(t),
+                initial_class: ipc.initialClass || "",
+                short_class: root.short_class(t),
+                ws_name: t.workspace.name || "",
+                ws_id: t.workspace.id,
+                monitor: t.workspace.monitor ? t.workspace.monitor.name : ""
+            }, recency);
+            entry.toplevel = t;
+            out.push(entry);
+        });
+        return out;
     }
 
     function icon_for(toplevel) {

@@ -254,6 +254,7 @@ ShellRoot {
     }
     AgentsProvider {}
     FirefoxTabsProvider {}
+    WindowsProvider {}
     AppsProvider {}
     ClipboardProvider {}
     EmojiProvider {}

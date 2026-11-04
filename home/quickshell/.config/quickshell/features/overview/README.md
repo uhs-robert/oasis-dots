@@ -1,8 +1,8 @@
 # Workspace overview
 
-`overview/` holds the workspace overview (`Overview`, its frame, tiles, search list and aim overlays, `Voice.js` for the voice snapshot), the tmux overview (`TmuxOverview`, `TmuxTile`, `TmuxData.js`, `Ansi.js`), `WindowThumbnail` and the saved-session store (`Sessions`, `SessionJson.js`).
+`overview/` holds the workspace overview (`Overview`, its frame, tiles, search list and aim overlays, `Voice.js` for the voice snapshot), the tmux overview (`TmuxOverview`, `TmuxTile`, `TmuxData.js`, `Ansi.js`) and the saved-session store (`Sessions`, `SessionJson.js`).
 
-In the workspace overview, `[`/`]` cycle windows, `Tab`/`Shift + Tab` toggle the special workspaces, `s` picks a whole screen, `w` sends the selected workspace to a monitor (pick it like `s`, `Enter` confirms) and `W` swaps its windows with another workspace's (move to it, `Enter` confirms), and `f` toggles the view. Save mode (from Settings > Sessions) is the same overview with every window marked and no moving or closing. The share picker is the same overview with only shareable windows; there `r` opens the region selector, and Esc in it comes back.
+In the workspace overview, `[`/`]` cycle windows, `Tab`/`Shift + Tab` toggle the special workspaces, `s` picks a whole screen, `w` sends the selected workspace to a monitor (pick it like `s`, `Enter` confirms) and `W` swaps its windows with another workspace's (move to it, `Enter` confirms), `f` toggles the view and `/` searches windows by class, title or workspace. Leader+T opens the [windows picker](../launcher/README.md#windows), not this search; `overview.search` (`qs-ipc call overview search`) still opens the overview searching, on the window before the focused one. Save mode (from Settings > Sessions) is the same overview with every window marked and no moving or closing. The share picker is the same overview with only shareable windows; there `r` opens the region selector, and Esc in it comes back.
 
 ## Workspace overview and voice
 

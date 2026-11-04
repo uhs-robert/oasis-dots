@@ -11,6 +11,7 @@ import qs.features.settings
 import qs.features.screenshot
 import "Layout.js" as Layout
 import "Voice.js" as Voice
+import "../../core/WindowEntries.js" as WindowEntries
 import qs.features.voice
 import qs.features.audio
 import qs.features.windows
@@ -305,38 +306,9 @@ OverviewBase {
         return { groups: groups, tiles: tiles };
     }
 
-    function clean_title(title, short_class) {
-        let t = title || "";
-        if (short_class.toLowerCase() === "firefox") t = t.replace(/^XXX\s*/, "");
-        const m = /\s+[—-]\s+([^—-]+)$/.exec(t);
-        const app = short_class.toLowerCase();
-        return m && app !== "" && m[1].trim().toLowerCase().split(/\s+/).pop() === app ? t.slice(0, m.index) : t;
-    }
-
     // Every window, most recent first, minus the carried ones and, in share mode, the unshareable ones.
     function window_entries() {
-        const out = [];
-        WindowState.windows.forEach((t, recency) => {
-            if (!t.workspace || root.picked_set[t.address]) return;
-            if (root.share_mode && Screenshot.share_id_of(t.address) === "") return;
-            const ipc = t.lastIpcObject || {};
-            const short = WindowState.short_class(t);
-            const ws_name = t.workspace.name || "";
-            const title = root.clean_title(t.title, short);
-            out.push({
-                address: t.address,
-                toplevel: t,
-                recency: recency,
-                label: short || "window",
-                title: title,
-                ws_name: ws_name,
-                ws_id: t.workspace.id,
-                place: ws_name.replace(/^special:/, "special "),
-                description: ws_name + " · " + title,
-                keywords: [WindowState.class_of(t), ipc.initialClass || "", ws_name, t.title || ""]
-            });
-        });
-        return out;
+        return WindowState.entries().filter(e => !root.picked_set[e.address] && !(root.share_mode && Screenshot.share_id_of(e.address) === ""));
     }
 
     // Puts the tile selection on the window, switching between regular and special mode when it lives in the other one.
@@ -355,7 +327,7 @@ OverviewBase {
     reset_hit: function () {
         const list = root.ranked;
         let at = 0;
-        if (root.query === "") at = root.from_search ? (list.length >= 2 && list[0].address === WindowState.active_address ? 1 : 0) : Math.max(0, list.findIndex(e => e.address === root.current_address));
+        if (root.query === "") at = root.from_search ? WindowEntries.previous_index(list, WindowState.active_address) : Math.max(0, list.findIndex(e => e.address === root.current_address));
         root.set_hit(at);
     }
 

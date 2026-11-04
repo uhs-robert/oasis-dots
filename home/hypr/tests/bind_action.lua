@@ -75,7 +75,7 @@ local expected = {
 	{ "voice.rapid", "Rapid Mode", { "SUPER + CTRL + COMMA" }, voxcmd .. "session rapid" },
 	{ "voice.wake", "Wake Word", { "SUPER + CTRL + PERIOD" }, voxcmd .. "wake toggle" },
 	{ "picker.passwords", "Passwords", { "SUPER + CTRL + P" }, "rofi-rbw" },
-	{ "overview.search", "Search windows", { "SUPER + T" }, qs_ipc .. "overview search" },
+	{ "overview.search", "Search windows", {}, qs_ipc .. "overview search" },
 	{ "overview.move", "Move window in overview", { "SUPER + SHIFT + T" }, qs_ipc .. "overview move_follow" },
 	{ "overview.move_silent", "Silent move window in overview", {}, qs_ipc .. "overview move_silent" },
 	{ "overview.open", "Workspace overview", { "ALT + TAB", "SUPER + TAB" }, qs_ipc .. "overview open" },
