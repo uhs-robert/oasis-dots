@@ -7,6 +7,11 @@ const LAST_RETRY_MS = 30000;
 const PREFACE_LIFETIME_MS = 10000;
 // The nonce each window shows now, so a late clear from an older activation leaves a newer one alone.
 const current_prefaces = new Map();
+// A thumbnail fits in this box, big enough for a large preview on a 1440p screen. A JPEG this size stays a few hundred
+// kB as a data URL, well under what one native message can carry.
+const THUMBNAIL_MAX_WIDTH = 1280;
+const THUMBNAIL_MAX_HEIGHT = 960;
+const THUMBNAIL_JPEG_QUALITY = 80;
 
 function describe_tab(tab) {
   return {
@@ -20,6 +25,7 @@ function describe_tab(tab) {
     incognito: Boolean(tab.incognito),
     pinned: Boolean(tab.pinned),
     hidden: Boolean(tab.hidden),
+    fav_icon_url: tab.favIconUrl || "",
   };
 }
 
@@ -72,6 +78,32 @@ async function clear_preface(api, window_id, preface) {
   return { cleared: true };
 }
 
+// The host owns the thumbnail cache, so this only renders the tab and hands back the image with the URL it shows.
+// A discarded tab is refused rather than captured, since capturing it would load it.
+async function capture_tab(api, tab_id) {
+  if (!Number.isInteger(tab_id)) {
+    throw new Error("capture_tab needs an integer tab_id");
+  }
+  const tab = await api.tabs.get(tab_id);
+  if (tab.discarded) {
+    throw new Error("the tab is not loaded");
+  }
+  const options = { format: "jpeg", quality: THUMBNAIL_JPEG_QUALITY };
+  if (tab.width > 0 && tab.height > 0) {
+    options.scale = Math.min(1, THUMBNAIL_MAX_WIDTH / tab.width, THUMBNAIL_MAX_HEIGHT / tab.height);
+  }
+  const data_url = await api.tabs.captureTab(tab_id, options);
+  return { tab_id, url: tab.url || "", data_url };
+}
+
+async function close_tab(api, tab_id) {
+  if (!Number.isInteger(tab_id)) {
+    throw new Error("close needs an integer tab_id");
+  }
+  await api.tabs.remove(tab_id);
+  return { closed: true };
+}
+
 async function handle_request(api, request, schedule = setTimeout) {
   const { id, cmd } = request;
   try {
@@ -82,6 +114,10 @@ async function handle_request(api, request, schedule = setTimeout) {
       result = await activate_tab(api, request, schedule);
     } else if (cmd === "clear_preface") {
       result = await clear_preface(api, request.window_id, request.preface);
+    } else if (cmd === "capture_tab") {
+      result = await capture_tab(api, request.tab_id);
+    } else if (cmd === "close") {
+      result = await close_tab(api, request.tab_id);
     } else {
       throw new Error(`unknown command: ${cmd}`);
     }

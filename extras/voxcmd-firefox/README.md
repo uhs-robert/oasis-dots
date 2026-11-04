@@ -1,6 +1,20 @@
 # voxcmd Firefox extension
 
-Lets voxcmd list and switch Firefox tabs by the tab itself, instantly, unloaded tabs included. It holds one native-messaging port to `~/.local/share/voxcmd/firefox-host` and answers three requests: `tabs` (every tab of every window), `activate` (select a tab, focus its window and put the caller's nonce in front of that window's title with `titlePreface`, so the compositor can tell the window from others showing the same title) and `clear_preface` (take the nonce back; the extension also does it after 10 s if the caller never does). `titlePreface` is part of `windows.update` and needed no permission beyond `tabs` in the Firefox versions I know; if yours refuses it, `activate` still switches the tab and voxcmd falls back to whichever Firefox window has focus. It opens no URLs, runs no scripts in pages and asks only for the `tabs` and `nativeMessaging` permissions. Without it voxcmd keeps switching through the address bar.
+Lets voxcmd list and switch Firefox tabs by the tab itself, instantly, unloaded tabs included, and gives the bar's tab picker each tab's icon and a preview image. It holds one native-messaging port to `~/.local/share/voxcmd/firefox-host` and answers these requests:
+
+- `tabs`: every tab of every window, with its title, URL and icon URL.
+- `activate`: select a tab, focus its window and put the caller's nonce in front of that window's title with `titlePreface`, so the compositor can tell the window from others showing the same title.
+- `clear_preface`: take the nonce back. The extension also does it after 10 s if the caller never does.
+- `capture_tab`: a JPEG of one loaded tab, at most 1280x960. The host asks for it and keeps it in its cache; a tab that is not loaded is refused rather than loaded.
+- `close`: close a tab.
+
+It asks for three permissions:
+
+- `tabs` reads the tab list and switches and closes tabs.
+- `nativeMessaging` talks to the host.
+- `<all_urls>` ("Access your data for all websites") is what Firefox requires before an extension may take a picture of a page (`tabs.captureTab`). The extension uses it for nothing else: it reads no page content, runs no scripts in pages and opens no URLs. The images stay on your machine, in `~/.cache/voxcmd/firefox-thumbs/`.
+
+`titlePreface` is part of `windows.update` and needed no permission beyond `tabs` in the Firefox versions I know; if yours refuses it, `activate` still switches the tab and voxcmd falls back to whichever Firefox window has focus. Without the extension voxcmd keeps switching through the address bar.
 
 Private windows are invisible to it, as to any extension that is not allowed in them.
 

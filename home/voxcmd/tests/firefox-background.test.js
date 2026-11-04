@@ -6,9 +6,15 @@ const { handle_request, keep_connected } = require("../../../extras/voxcmd-firef
 function make_api() {
   const calls = [];
   const tabs = [
-    { id: 7, windowId: 2, title: "Docs", url: "https://example.com/", active: true, discarded: false, lastAccessed: 99, incognito: false, pinned: true, hidden: false },
+    { id: 7, windowId: 2, title: "Docs", url: "https://example.com/", active: true, discarded: false, lastAccessed: 99, incognito: false, pinned: true, hidden: false, width: 2560, height: 1300, favIconUrl: "https://example.com/favicon.ico" },
     { id: 8, windowId: 3, title: "Old", url: "https://example.org/", active: false, discarded: true, lastAccessed: 5, incognito: false, pinned: false, hidden: true },
+    { id: 9, windowId: 3, title: "Narrow", url: "https://example.net/", active: false, discarded: false, lastAccessed: 6, incognito: false, pinned: false, hidden: false, width: 800, height: 600 },
   ];
+  const find_tab = (id) => {
+    const tab = tabs.find((candidate) => candidate.id === id);
+    if (!tab) throw new Error(`Invalid tab ID: ${id}`);
+    return tab;
+  };
   const api = {
     calls,
     tabs: {
@@ -19,6 +25,9 @@ function make_api() {
         if (!tab) throw new Error(`No tab with id: ${id}`);
         return tab;
       },
+      get: async (id) => find_tab(id),
+      captureTab: async (id, options) => (calls.push(["captureTab", id, options]), `data:image/jpeg;base64,tab${id}`),
+      remove: async (id) => (calls.push(["tabs.remove", id]), find_tab(id), undefined),
     },
     windows: { update: async (id, props) => calls.push(["windows.update", id, props]) },
   };
@@ -29,8 +38,9 @@ function make_api() {
   let api = make_api();
   let reply = await handle_request(api, { id: 1, cmd: "tabs" });
   assert.deepStrictEqual(reply.result[1], {
-    tab_id: 8, window_id: 3, title: "Old", url: "https://example.org/", active: false, discarded: true, last_accessed: 5, incognito: false, pinned: false, hidden: true,
+    tab_id: 8, window_id: 3, title: "Old", url: "https://example.org/", active: false, discarded: true, last_accessed: 5, incognito: false, pinned: false, hidden: true, fav_icon_url: "",
   });
+  assert.strictEqual(reply.result[0].fav_icon_url, "https://example.com/favicon.ico");
   assert.strictEqual(reply.id, 1);
   assert.strictEqual(reply.ok, true);
 
@@ -83,6 +93,37 @@ function make_api() {
   assert.strictEqual(reply.ok, false);
   reply = await handle_request(make_api(), { id: 5, cmd: "open", url: "https://example.com" });
   assert.deepStrictEqual(reply, { id: 5, ok: false, error: "unknown command: open" });
+
+  // A capture is a scaled-down JPEG of the tab, fitted in 1280x960 and never scaled up; the URL comes with it.
+  api = make_api();
+  reply = await handle_request(api, { id: 20, cmd: "capture_tab", tab_id: 7 });
+  assert.deepStrictEqual(reply, { id: 20, ok: true, result: { tab_id: 7, url: "https://example.com/", data_url: "data:image/jpeg;base64,tab7" } });
+  assert.deepStrictEqual(api.calls, [["captureTab", 7, { format: "jpeg", quality: 80, scale: 0.5 }]]);
+  await handle_request(api, { id: 21, cmd: "capture_tab", tab_id: 9 });
+  assert.strictEqual(api.calls[1][2].scale, 1);
+  // A discarded tab is refused, not loaded to be captured.
+  api = make_api();
+  reply = await handle_request(api, { id: 22, cmd: "capture_tab", tab_id: 8 });
+  assert.deepStrictEqual(reply, { id: 22, ok: false, error: "the tab is not loaded" });
+  assert.deepStrictEqual(api.calls, []);
+  reply = await handle_request(api, { id: 23, cmd: "capture_tab", tab_id: 404 });
+  assert.deepStrictEqual(reply, { id: 23, ok: false, error: "Invalid tab ID: 404" });
+  reply = await handle_request(api, { id: 24, cmd: "capture_tab" });
+  assert.strictEqual(reply.ok, false);
+  api.tabs.captureTab = async () => {
+    throw new Error("capture refused");
+  };
+  reply = await handle_request(api, { id: 25, cmd: "capture_tab", tab_id: 7 });
+  assert.deepStrictEqual(reply, { id: 25, ok: false, error: "capture refused" });
+
+  api = make_api();
+  reply = await handle_request(api, { id: 26, cmd: "close", tab_id: 9 });
+  assert.deepStrictEqual(reply, { id: 26, ok: true, result: { closed: true } });
+  assert.deepStrictEqual(api.calls, [["tabs.remove", 9]]);
+  reply = await handle_request(api, { id: 27, cmd: "close", tab_id: 404 });
+  assert.deepStrictEqual(reply, { id: 27, ok: false, error: "Invalid tab ID: 404" });
+  reply = await handle_request(api, { id: 28, cmd: "close", tab_id: "9" });
+  assert.strictEqual(reply.ok, false);
 
   // Reconnect: each drop schedules a connect with a doubling pause, capped; a request resets it.
   const ports = [];
