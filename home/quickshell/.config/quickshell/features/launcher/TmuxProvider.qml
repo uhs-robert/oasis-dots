@@ -47,13 +47,14 @@ PickerProvider {
     property string filter: "all"
     readonly property string shown_filter: TmuxWindows.shown_filter(root.filter, root.sessions)
     items: root.windows.filter(w => TmuxWindows.kept_by_filter(w, root.shown_filter))
-    // window id -> true while its kill is queued or running, so a list read in the meantime does not bring it back.
+    // tmux window id -> true while its kill is queued or running, so a list read in the meantime does not bring it back.
+    // A kill removes the window from every session it is linked into, so every row of it goes.
     property var killing: ({})
     property var kill_queue: []
     status_text: root.tmux_state === "ok" ? TmuxWindows.filter_label(root.shown_filter, root.sessions) + " · " + TmuxWindows.sort_labels[root.sort] : ""
     status_active: root.shown_filter !== "all"
 
-    // window id -> the pane `[`/`]` chose; a window missing here shows its active pane. Every open starts empty.
+    // row id -> the pane `[`/`]` chose; a row missing here shows its active pane. Every open starts empty.
     property var chosen_panes: ({})
     // pane id -> its last lines with text, for the cards.
     property var tails: ({})
@@ -85,7 +86,7 @@ PickerProvider {
 
     function listed(text, sorted) {
         const model = TmuxWindows.parse_list(text, root.home);
-        const fresh = model.items.filter(w => !root.killing[w.id]);
+        const fresh = model.items.filter(w => !root.killing[w.window_id]);
         root.tmux_state = model.state;
         root.sessions = model.sessions;
         root.clients = model.clients;
@@ -96,7 +97,8 @@ PickerProvider {
         } else {
             root.windows = TmuxWindows.kept_order(root.windows, fresh, root.sort);
         }
-        if (root.shows_cards) root.capture_tails();
+        // On battery the tails are captured only when the cards appear, not on every reload.
+        if (root.shows_cards && PowerSource.on_ac) root.capture_tails();
     }
 
     onSortChanged: root.windows = TmuxWindows.arranged(root.windows, root.sort, "all")
@@ -125,13 +127,13 @@ PickerProvider {
             next[item.id] = TmuxWindows.cycled_pane(item, pane ? pane.pane_id : "", key === "]" ? 1 : -1);
             root.chosen_panes = next;
         } else if (key === "x") {
-            root.windows = root.windows.filter(w => w.id !== item.id);
+            root.windows = root.windows.filter(w => w.window_id !== item.window_id);
             // A session filter with no windows left would show "No tmux windows" until the list returns.
             if (!root.windows.some(w => TmuxWindows.kept_by_filter(w, root.shown_filter))) root.filter = "all";
             const killing = Object.assign({}, root.killing);
-            killing[item.id] = true;
+            killing[item.window_id] = true;
             root.killing = killing;
-            root.kill_queue = root.kill_queue.concat([item.id]);
+            root.kill_queue = root.kill_queue.concat([item.window_id]);
             root.kill_next();
         }
     }
@@ -172,6 +174,7 @@ PickerProvider {
     // else a new terminal attaches to the session.
     function activate(item) {
         const pane = root.shown_pane(item);
+        // The row id `$session:@window`, not the bare window id: a linked window is selected in this row's session.
         const select = ["select-window", "-t", item.id].concat(pane ? [";", "select-pane", "-t", pane.pane_id] : []);
         let address = TmuxWindows.client_of(root.clients, item.session_id) ? root.window_address(item.session_name) : "";
         if (address !== "") {

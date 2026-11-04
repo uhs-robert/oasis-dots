@@ -83,7 +83,8 @@ function parse_list(text, home) {
         var f = lines[i].split(sep);
         if (f[0] === "S" && f.length >= 4) sessions.push({ id: f[1], name: f[2], attached: int_of(f[3]) > 0 });
         else if (f[0] === "W" && f.length >= 7) windows.push({ session_id: f[1], id: f[2], index: int_of(f[3]), name: f[4], active: f[5] === "1", activity: int_of(f[6]) });
-        else if (f[0] === "P" && f.length >= 8) panes.push({ window_id: f[1], pane_id: f[2], left: int_of(f[3]), top: int_of(f[4]), active: f[5] === "1", cmd: f[6], path: f[7], short_path: short_path(f[7], home || "") });
+        // `list-panes -a` lists a linked window's panes once per session it is in.
+        else if (f[0] === "P" && f.length >= 8 && !panes.some(function (p) { return p.pane_id === f[2]; })) panes.push({ window_id: f[1], pane_id: f[2], left: int_of(f[3]), top: int_of(f[4]), active: f[5] === "1", cmd: f[6], path: f[7], short_path: short_path(f[7], home || "") });
         else if (f[0] === "C" && f.length >= 4) clients.push({ name: f[1], session_id: f[2], activity: int_of(f[3]) });
     }
     var items = [];
@@ -104,7 +105,10 @@ function window_item(win, session, panes) {
     var lead = panes.filter(function (p) { return p.active; })[0] || panes[0] || null;
     var name = win.name.trim();
     return {
-        id: win.id,
+        // A window linked into several sessions has one window id and a row in each, so the row's id names both. It
+        // is also a tmux target for that window in that session.
+        id: session.id + ":" + win.id,
+        window_id: win.id,
         label: name,
         // Searched along with the label; the row draws its own text.
         description: session.name,

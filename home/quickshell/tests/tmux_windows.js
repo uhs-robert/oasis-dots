@@ -31,7 +31,16 @@ const listed = [
 ].join("\n");
 const model = T.parse_list(listed, "/home/me");
 const items = model.items;
-const by_id = id => items.find(i => i.id === id);
+const by_id = id => items.find(i => i.window_id === id);
+// Window @7 linked into both sessions: `list-windows -a` and `list-panes -a` print it, and its pane, once per session.
+const linked = T.parse_list([
+  line("S", "$1", "work", "1"),
+  line("S", "$2", "notes", "0"),
+  line("W", "$1", "@7", "0", "shared", "1", "100"),
+  line("W", "$2", "@7", "3", "shared", "0", "100"),
+  line("P", "@7", "%9", "0", "0", "1", "vim", "/tmp"),
+  line("P", "@7", "%9", "0", "0", "1", "vim", "/tmp"),
+].join("\n"), "");
 
 const cases = [
   ["no tmux binary reads as missing", () => T.parse_list(T.missing_marker + "\n", "").state, "missing"],
@@ -39,20 +48,20 @@ const cases = [
   ["a list reads as ok", () => model.state, "ok"],
   ["the list goes through sh, so a missing tmux prints the marker", () => [T.list_argv()[0], T.list_argv().indexOf("list-sessions") > 0], ["sh", true]],
   ["sessions keep tmux's order and a session with no windows is dropped", () => model.sessions.map(s => s.name + s.number), ["work1", "notes2"]],
-  ["windows go by session, then by index", () => items.map(i => i.id), ["@1", "@2", "@5"]],
+  ["windows go by session, then by index", () => items.map(i => i.window_id), ["@1", "@2", "@5"]],
   ["a window name is trimmed into the label", () => by_id("@1").label, "edit"],
   ["panes are in reading order: top, then left", () => by_id("@1").panes.map(p => p.pane_id), ["%1", "%2", "%3"]],
   ["the active pane gives the command and short path", () => [by_id("@1").active_pane, by_id("@1").cmd, by_id("@1").short_path], ["%2", "nvim", "~/src"]],
   ["search covers the session, every command and every short path", () => [by_id("@1").description, by_id("@1").keywords], ["work", ["zsh", "nvim", "htop", "~", "~/src", "/tmp"]]],
   ["home shortens only at a path boundary", () => [T.short_path("/home/me", "/home/me"), T.short_path("/home/meg/x", "/home/me"), T.short_path("/x", "")], ["~", "/home/meg/x", "/x"]],
   ["s flips the sort, and an unknown sort is sessions", () => [T.cycled_sort("sessions"), T.cycled_sort("recent"), T.sort_of("bogus")], ["recent", "sessions", "sessions"]],
-  ["recent orders by window activity, newest first", () => T.arranged(items, "recent", "all").map(i => i.id), ["@2", "@5", "@1"]],
-  ["session order keeps the list", () => T.arranged(items, "sessions", "all").map(i => i.id), ["@1", "@2", "@5"]],
+  ["recent orders by window activity, newest first", () => T.arranged(items, "recent", "all").map(i => i.window_id), ["@2", "@5", "@1"]],
+  ["session order keeps the list", () => T.arranged(items, "sessions", "all").map(i => i.window_id), ["@1", "@2", "@5"]],
   ["the header counts the shown windows and says attached", () => [T.group_title("$1", 2, model.sessions), T.group_title("$2", 1, model.sessions)], ["SESSION 1 · work · 2 WINDOWS · ATTACHED", "SESSION 2 · notes · 1 WINDOW"]],
   ["a gone session has no header", () => T.group_title("$9", 1, model.sessions), ""],
   ["f cycles all, each session, then all", () => [T.cycled_filter("all", model.sessions), T.cycled_filter("$1", model.sessions), T.cycled_filter("$2", model.sessions)], ["$1", "$2", "all"]],
   ["a gone session cycles back to all, and with none all stays", () => [T.cycled_filter("$9", model.sessions), T.cycled_filter("all", [])], ["all", "all"]],
-  ["the filter keeps one session's windows in either sort", () => [T.arranged(items, "sessions", "$1").map(i => i.id), T.arranged(items, "recent", "$1").map(i => i.id)], [["@1", "@2"], ["@2", "@1"]]],
+  ["the filter keeps one session's windows in either sort", () => [T.arranged(items, "sessions", "$1").map(i => i.window_id), T.arranged(items, "recent", "$1").map(i => i.window_id)], [["@1", "@2"], ["@2", "@1"]]],
   ["a filter on a gone session shows all", () => [T.shown_filter("$9", model.sessions), T.shown_filter("$2", model.sessions)], ["all", "$2"]],
   ["the corner names the session's place", () => [T.filter_label("all", model.sessions), T.filter_label("$2", model.sessions), T.filter_label("$9", model.sessions)], ["ALL", "SESSION 2/2", "ALL"]],
   ["] steps from the active pane in reading order, and wraps", () => [T.cycled_pane(by_id("@1"), "", 1), T.cycled_pane(by_id("@1"), "%2", 1), T.cycled_pane(by_id("@1"), "%3", 1)], ["%2", "%3", "%1"]],
@@ -66,13 +75,18 @@ const cases = [
   ["no client opens on the first window", () => T.initial_index(items, []), 0],
   ["the capture prints the pane width first", () => T.capture_argv("%4"), ["tmux", "display-message", "-p", "-t", "%4", "#{pane_width}", ";", "capture-pane", "-p", "-e", "-t", "%4"]],
   ["the tails keep each pane's last lines with text", () => T.parse_tails(T.sep + "PANE" + T.sep + "%1\na\n\nb\nc\n\n" + T.sep + "PANE" + T.sep + "%2\n", 2), { "%1": "b\nc", "%2": "" }],
-  ["session order sorts by session then index, whatever order it gets", () => T.arranged(T.arranged(items, "recent", "all"), "sessions", "all").map(i => i.id), ["@1", "@2", "@5"]],
-  ["a reload keeps the shown order though activity changed", () => T.kept_order(T.arranged(items, "recent", "all"), items.map(i => Object.assign({}, i, { activity: i.id === "@1" ? 999 : i.activity })), "recent").map(i => i.id), ["@2", "@5", "@1"]],
+  ["session order sorts by session then index, whatever order it gets", () => T.arranged(T.arranged(items, "recent", "all"), "sessions", "all").map(i => i.window_id), ["@1", "@2", "@5"]],
+  ["a reload keeps the shown order though activity changed", () => T.kept_order(T.arranged(items, "recent", "all"), items.map(i => Object.assign({}, i, { activity: i.id === "@1" ? 999 : i.activity })), "recent").map(i => i.window_id), ["@2", "@5", "@1"]],
   ["a reload takes the fresh fields of a kept window", () => T.kept_order(items, items.map(i => Object.assign({}, i, { label: i.label + "!" })), "sessions").map(i => i.label), ["edit!", "logs!", "todo!"]],
-  ["a reload drops a gone window", () => T.kept_order(items, items.filter(i => i.id !== "@2"), "sessions").map(i => i.id), ["@1", "@5"]],
-  ["session sort: a new window goes after its session's last row", () => T.kept_order(items, items.concat([Object.assign({}, by_id("@1"), { id: "@9", index: 0 })]), "sessions").map(i => i.id), ["@1", "@2", "@9", "@5"]],
-  ["session sort: a new session's window goes at the end", () => T.kept_order(items, items.concat([Object.assign({}, by_id("@1"), { id: "@9", session_id: "$7", session_number: 0 })]), "sessions").map(i => i.id), ["@1", "@2", "@5", "@9"]],
-  ["recent sort: new windows go at the end, newest first", () => T.kept_order([by_id("@5")], items, "recent").map(i => i.id), ["@5", "@2", "@1"]],
+  ["a reload drops a gone window", () => T.kept_order(items, items.filter(i => i.window_id !== "@2"), "sessions").map(i => i.window_id), ["@1", "@5"]],
+  ["session sort: a new window goes after its session's last row", () => T.kept_order(items, items.concat([Object.assign({}, by_id("@1"), { id: "$1:@9", window_id: "@9", index: 0 })]), "sessions").map(i => i.window_id), ["@1", "@2", "@9", "@5"]],
+  ["session sort: a new session's window goes at the end", () => T.kept_order(items, items.concat([Object.assign({}, by_id("@1"), { id: "$7:@9", window_id: "@9", session_id: "$7", session_number: 0 })]), "sessions").map(i => i.window_id), ["@1", "@2", "@5", "@9"]],
+  ["recent sort: new windows go at the end, newest first", () => T.kept_order([by_id("@5")], items, "recent").map(i => i.window_id), ["@5", "@2", "@1"]],
+  ["a row's id names its session and window, and keeps the window id apart", () => [by_id("@1").id, by_id("@1").window_id], ["$1:@1", "@1"]],
+  ["a linked window gets one row per session, each with its own id", () => linked.items.map(i => [i.id, i.window_id, i.index]), [["$1:@7", "@7", 0], ["$2:@7", "@7", 3]]],
+  ["a linked window's pane is listed once, not once per session", () => linked.items.map(i => i.panes.map(p => p.pane_id)), [["%9"], ["%9"]]],
+  ["a reload keeps both rows of a linked window apart", () => T.kept_order(linked.items, linked.items.slice().reverse(), "sessions").map(i => i.id), ["$1:@7", "$2:@7"]],
+  ["the filter keeps only one session's row of a linked window", () => T.arranged(linked.items, "sessions", "$2").map(i => i.id), ["$2:@7"]],
   ["the tails pass pane ids as arguments, not in the script", () => T.tails_argv(["%1", "%2"]).slice(-2), ["%1", "%2"]],
 ];
 
