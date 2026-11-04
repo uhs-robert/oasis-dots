@@ -121,6 +121,44 @@ case_name='an unplugged monitor still gets its desc: rule, so a later plug-in is
 out=$(generate)
 grep -Fq 'output = "desc:HP Z22n"' <<<"$out" || fail 'rule for an absent monitor was dropped'
 
+cat >"$machines/dockhost.lua" <<'LUA'
+return {
+  monitors = {
+    { description = "Panel", mode = "2560x1600@240", position = "0x0", scale = 1.6 },
+    { description = "Dock A", mode = "1920x1080@60", position = "2560x0", start_delay_ms = 3000 },
+    { name = "DP-5", transform = 3, start_delay_ms = 1500 },
+    { description = "Dock C", mode = "1920x1080@60", position = "0x1600", start_delay_ms = 0 },
+  },
+}
+LUA
+case_name='a delayed entry starts disabled and a timer turns it on with its full rule'
+out=$(HOSTNAME=dockhost generate) || fail "generator failed: $(cat "$scratch/gen.err")"
+expect_eq "$(rules "$out")" 'hl.monitor({ output = "desc:Panel", mode = "2560x1600@240", position = "0x0", scale = 1.6 })
+hl.monitor({ output = "desc:Dock C", mode = "1920x1080@60", position = "0x1600", scale = 1 })
+hl.monitor({ output = "desc:Dock A", disabled = true })
+hl.monitor({ output = "DP-5", disabled = true })
+hl.timer(function() hl.monitor({ output = "desc:Dock A", mode = "1920x1080@60", position = "2560x0", scale = 1, disabled = false }) end, { timeout = 3000, type = "oneshot" })
+hl.timer(function() hl.monitor({ output = "DP-5", mode = "preferred", position = "auto", scale = 1, transform = 3, disabled = false }) end, { timeout = 1500, type = "oneshot" })'
+
+case_name='the timer release runs and re-enables the held monitor'
+printf '%s\n' "$out" >"$scratch/held.lua"
+cat >"$scratch/run_timers.lua" <<'LUA'
+local timers = {}
+hl = {
+  monitor = function(rule) print(rule.output .. " disabled=" .. tostring(rule.disabled)) end,
+  timer = function(fn) timers[#timers + 1] = fn end,
+}
+dofile(arg[1])
+for _, fn in ipairs(timers) do fn() end
+LUA
+expect_eq "$(lua "$scratch/run_timers.lua" "$scratch/held.lua" | tail -2)" 'desc:Dock A disabled=false
+DP-5 disabled=false'
+
+case_name='nothing is held when every entry is delayed, since the release lands only while a monitor draws'
+printf 'return { monitors = { { description = "Only Dock", mode = "1920x1080@60", position = "0x0", start_delay_ms = 3000 } } }\n' >"$machines/alldelayed.lua"
+out=$(HOSTNAME=alldelayed generate) || fail "generator failed: $(cat "$scratch/gen.err")"
+expect_eq "$(rules "$out")" 'hl.monitor({ output = "desc:Only Dock", mode = "1920x1080@60", position = "0x0", scale = 1 })'
+
 case_name='the installer writes the rules to the file it is given'
 write_greeter_monitors "$scratch/installed.lua" 2>/dev/null
 expect_eq "$(rules "$(cat "$scratch/installed.lua")" | wc -l)" 4

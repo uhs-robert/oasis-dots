@@ -24,10 +24,6 @@ local function mark()
   if file then file:close() end
 end
 
---- True once this Hyprland process ran its session hooks, so a later config load is an ordinary reload.
---- @return boolean
-function SessionStart.started() return marked() end
-
 --- Queues `fn` to run once per Hyprland process. Nothing runs unless `arm` is reached.
 --- @param fn fun()
 --- @return nil
