@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Widgets
 import qs.ui.menu
 import qs.theme
 import qs.features.popups
@@ -85,6 +84,8 @@ Popup {
     // { query, id } of each item Tab expanded, so going back restores the search and the row.
     property var expanded_from: []
 
+    // An item glyph's font when the item names none.
+    readonly property string glyph_font: root.provider && root.provider.glyph_font !== "" ? root.provider.glyph_font : root.st.font_family
     // Characters in the widest row number, so the labels of a list line up.
     readonly property int ordinal_chars: (root.provider ? root.provider.items : []).reduce((n, i) => Math.max(n, String(i.ordinal || "").length), 0)
     readonly property var results: root.gathered(root.rank(root.provider ? root.provider.items : [], root.query))
@@ -392,14 +393,6 @@ Popup {
         if (root.selected !== before) ThemeAudio.play("cursor");
     }
 
-    function icon_source(item) {
-        if (item.icon_path !== undefined) return item.icon_path;
-        const icon = item.icon;
-        if (!icon) return Quickshell.iconPath("application-x-executable", true);
-        if (icon.startsWith("/")) return "file://" + icon;
-        return Quickshell.iconPath(icon, "application-x-executable");
-    }
-
     function handle_key(event) {
         const before = root.cursor_key();
         const ctrl = event.modifiers & Qt.ControlModifier;
@@ -699,176 +692,58 @@ Popup {
                     Repeater {
                         model: line_slot.near && line_slot.spec.kind === "items" ? line_slot.spec.count : 0
 
-                        Loader {
-                            id: entry_slot
+                        // Framed like the workspace overview's tiles: a card in the grid, or the whole line in the list
+                        // view. The provider's card or row, or the generic one, draws inside.
+                        Item {
+                            id: tile
                             required property int index
-                            x: entry_slot.index * (root.card_width + root.card_gap)
-                            sourceComponent: root.browse_list ? list_delegate : card_delegate
+                            readonly property int entry_index: line_slot.spec.first + tile.index
+                            readonly property var result: root.results[tile.entry_index] || ({ item: {}, positions: [] })
+                            readonly property bool is_selected: tile.entry_index === root.selected
+                            readonly property bool as_row: root.browse_list
 
-                            Binding {
-                                target: entry_slot.item
-                                property: "index"
-                                value: line_slot.spec.first + entry_slot.index
-                                when: entry_slot.status === Loader.Ready
+                            x: tile.index * (root.card_width + root.card_gap)
+                            width: tile.as_row ? browse_flick.width : root.card_width
+                            height: tile.as_row ? root.list_row_height : root.card_height
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Style.radius(tile.as_row ? 4 : 6)
+                                color: tile.is_selected ? Qt.tint(Theme.bg_crust, Qt.alpha(root.st.caret_color, 0.08)) : Theme.bg_crust
+                                border.width: tile.is_selected ? 2 : 1
+                                border.color: tile.is_selected ? root.st.caret_color : tile.as_row ? Qt.alpha(Theme.ui_border, 0.5) : Theme.ui_border
+                            }
+
+                            EntryBody {
+                                anchors.fill: parent
+                                anchors.leftMargin: Style.px(8)
+                                anchors.rightMargin: tile.as_row ? Style.px(14) + tile_hint.width : Style.px(8)
+                                anchors.topMargin: Style.px(tile.as_row ? 3 : 8)
+                                anchors.bottomMargin: Style.px(tile.as_row ? 3 : 8)
+                                sourceComponent: tile.as_row ? (root.provider && root.provider.row ? root.provider.row : generic_row) : (root.provider && root.provider.card ? root.provider.card : generic_card)
+                                result: tile.result
+                                is_selected: tile.is_selected
+                            }
+
+                            // Placed by y, not anchors: `v` flips the view under a live tile, and anchors would have to
+                            // swap between bottom and center.
+                            QuickHint {
+                                id: tile_hint
+                                anchors.right: parent.right
+                                anchors.rightMargin: Style.px(tile.as_row ? 8 : 3)
+                                y: tile.as_row ? Math.round((parent.height - height) / 2) : parent.height - height - Style.px(3)
+                                index: tile.entry_index
+                                shown: root.shown_items
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    root.selected = tile.entry_index;
+                                    root.activate();
+                                }
                             }
                         }
-                    }
-                }
-            }
-
-            // Framed like the workspace overview's tiles; the provider's card, or generic_card, draws inside.
-            Component {
-                id: card_delegate
-
-                Item {
-                    id: card
-                    property int index: -1
-                    readonly property var result: root.results[card.index] || ({ item: {}, positions: [] })
-                    readonly property bool is_selected: card.index === root.selected
-
-                    width: root.card_width
-                    height: root.card_height
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Style.radius(6)
-                        color: card.is_selected ? Qt.tint(Theme.bg_crust, Qt.alpha(root.st.caret_color, 0.08)) : Theme.bg_crust
-                        border.width: card.is_selected ? 2 : 1
-                        border.color: card.is_selected ? root.st.caret_color : Theme.ui_border
-                    }
-
-                    EntryBody {
-                        anchors.fill: parent
-                        anchors.margins: Style.px(8)
-                        sourceComponent: root.provider && root.provider.card ? root.provider.card : generic_card
-                        result: card.result
-                        is_selected: card.is_selected
-                    }
-
-                    QuickHint {
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.margins: Style.px(3)
-                        index: card.index
-                        shown: root.shown_items
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            root.selected = card.index;
-                            root.activate();
-                        }
-                    }
-                }
-            }
-
-            // One line per item in the browse list view; the provider's row, or generic_row, draws inside.
-            Component {
-                id: list_delegate
-
-                Item {
-                    id: line
-                    property int index: -1
-                    readonly property var result: root.results[line.index] || ({ item: {}, positions: [] })
-                    readonly property bool is_selected: line.index === root.selected
-
-                    width: browse_flick.width
-                    height: root.list_row_height
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Style.radius(4)
-                        color: line.is_selected ? Qt.tint(Theme.bg_crust, Qt.alpha(root.st.caret_color, 0.08)) : Theme.bg_crust
-                        border.width: line.is_selected ? 2 : 1
-                        border.color: line.is_selected ? root.st.caret_color : Qt.alpha(Theme.ui_border, 0.5)
-                    }
-
-                    EntryBody {
-                        anchors.fill: parent
-                        anchors.leftMargin: Style.px(8)
-                        anchors.rightMargin: Style.px(14) + line_hint.width
-                        anchors.topMargin: Style.px(3)
-                        anchors.bottomMargin: Style.px(3)
-                        sourceComponent: root.provider && root.provider.row ? root.provider.row : generic_row
-                        result: line.result
-                        is_selected: line.is_selected
-                    }
-
-                    QuickHint {
-                        id: line_hint
-                        anchors.right: parent.right
-                        anchors.rightMargin: Style.px(8)
-                        anchors.verticalCenter: parent.verticalCenter
-                        index: line.index
-                        shown: root.shown_items
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            root.selected = line.index;
-                            root.activate();
-                        }
-                    }
-                }
-            }
-
-            Component {
-                id: generic_row
-
-                Item {
-                    id: generic_line
-                    property var entry: ({})
-                    property var positions: []
-                    property bool selected: false
-
-                    IconImage {
-                        id: generic_line_icon
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: !generic_line.entry.glyph
-                        implicitSize: Style.px(20)
-                        asynchronous: true
-                        source: generic_line.entry.glyph ? "" : root.icon_source(generic_line.entry)
-                    }
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: !!generic_line.entry.glyph
-                        width: Style.px(20)
-                        horizontalAlignment: Text.AlignHCenter
-                        text: generic_line.entry.glyph || ""
-                        textFormat: Text.PlainText
-                        color: root.st.text_fg
-                        font.family: generic_line.entry.glyph_font || (root.provider && root.provider.glyph_font !== "" ? root.provider.glyph_font : root.st.font_family)
-                        font.pixelSize: root.st.fs(1)
-                    }
-
-                    Text {
-                        id: generic_line_label
-                        anchors.left: generic_line_icon.right
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: Math.min(implicitWidth, parent.width * 0.6)
-                        elide: Text.ElideRight
-                        textFormat: Text.StyledText
-                        text: Fuzzy.highlight(generic_line.entry.label || "", generic_line.positions, String(root.st.text_accent))
-                        color: generic_line.entry.accent ? root.st.text_accent : root.st.text_fg
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-1)
-                    }
-
-                    Text {
-                        anchors.left: generic_line_label.right
-                        anchors.leftMargin: 12
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        elide: Text.ElideRight
-                        text: generic_line.entry.description || ""
-                        textFormat: Text.PlainText
-                        color: root.st.text_muted
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-3)
                     }
                 }
             }
@@ -876,59 +751,16 @@ Popup {
             Component {
                 id: generic_card
 
-                Item {
-                    id: generic
-                    property var entry: ({})
-                    property var positions: []
-                    property bool selected: false
+                GenericCard {
+                    glyph_font: root.glyph_font
+                }
+            }
 
-                    IconImage {
-                        id: generic_icon
-                        visible: !generic.entry.glyph
-                        implicitSize: Style.px(20)
-                        asynchronous: true
-                        source: generic.entry.glyph ? "" : root.icon_source(generic.entry)
-                    }
+            Component {
+                id: generic_row
 
-                    Text {
-                        visible: !!generic.entry.glyph
-                        width: Style.px(20)
-                        horizontalAlignment: Text.AlignHCenter
-                        text: generic.entry.glyph || ""
-                        textFormat: Text.PlainText
-                        color: root.st.text_fg
-                        font.family: generic.entry.glyph_font || (root.provider && root.provider.glyph_font !== "" ? root.provider.glyph_font : root.st.font_family)
-                        font.pixelSize: root.st.fs(2)
-                    }
-
-                    Text {
-                        id: generic_label
-                        anchors.left: generic_icon.right
-                        anchors.leftMargin: 8
-                        anchors.right: parent.right
-                        anchors.verticalCenter: generic_icon.verticalCenter
-                        elide: Text.ElideRight
-                        textFormat: Text.StyledText
-                        text: Fuzzy.highlight(generic.entry.label || "", generic.positions, String(root.st.text_accent))
-                        color: generic.entry.accent ? root.st.text_accent : root.st.text_fg
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-1)
-                    }
-
-                    Text {
-                        anchors.top: generic_icon.bottom
-                        anchors.topMargin: 6
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        wrapMode: Text.WordWrap
-                        elide: Text.ElideRight
-                        text: generic.entry.description || ""
-                        textFormat: Text.PlainText
-                        color: root.st.text_muted
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-3)
-                    }
+                GenericRow {
+                    glyph_font: root.glyph_font
                 }
             }
 
@@ -945,29 +777,13 @@ Popup {
                     base_radius: 6
                     selected: row.index === root.selected
 
-                    IconImage {
+                    EntryIcon {
                         id: row_icon
                         x: 8 + row.inset
                         anchors.verticalCenter: parent.verticalCenter
-                        implicitSize: Style.px(20)
-                        asynchronous: true
-                        source: row.result.item.glyph ? "" : root.icon_source(row.result.item)
-                        visible: !row.result.item.glyph
-                    }
-
-                    Text {
-                        id: row_glyph
-                        visible: !!row.result.item.glyph
-                        x: 8 + row.inset
-                        width: Style.px(20)
-                        anchors.verticalCenter: parent.verticalCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        text: row.result.item.glyph || ""
-                        textFormat: Text.PlainText
-                        color: row.fg(root.st.text_fg)
-                        font.family: row.result.item.glyph_font || (root.provider && root.provider.glyph_font !== "" ? root.provider.glyph_font : root.st.font_family)
-                        font.weight: row.result.item.glyph_weight || Font.Normal
-                        font.pixelSize: root.st.fs(2)
+                        entry: row.result.item
+                        glyph_font: root.glyph_font
+                        glyph_color: row.fg(root.st.text_fg)
                     }
 
                     Text {
@@ -1040,6 +856,16 @@ Popup {
                 font.pixelSize: root.st.fs(-2)
             }
 
+            // The browse preview's backdrop, behind the provider's preview and alt_preview alike; the docked and island
+            // previews sit on the popup itself. bg_core is kitty's background, which the agents' terminal preview also
+            // blends its dim text toward.
+            Rectangle {
+                visible: root.browse && preview_loader.active
+                anchors.fill: preview_loader
+                radius: Style.radius(4)
+                color: Theme.bg_core
+            }
+
             Loader {
                 id: preview_loader
                 x: root.browse ? 0 : parent.width - width
@@ -1070,58 +896,6 @@ Popup {
             color: root.st.text_muted
             font.family: root.st.font_family
             font.pixelSize: root.st.fs(-3)
-        }
-    }
-
-    // A card's or list row's body: the provider's component given the item, its query match and whether it is selected.
-    component EntryBody: Loader {
-        id: entry_body
-        property var result: ({ item: {}, positions: [] })
-        property bool is_selected: false
-
-        Binding {
-            target: entry_body.item
-            property: "entry"
-            value: entry_body.result.item
-            when: entry_body.status === Loader.Ready
-        }
-
-        Binding {
-            target: entry_body.item
-            property: "positions"
-            value: entry_body.result.positions
-            when: entry_body.status === Loader.Ready
-        }
-
-        Binding {
-            target: entry_body.item
-            property: "selected"
-            value: entry_body.is_selected
-            when: entry_body.status === Loader.Ready
-        }
-    }
-
-    // The digit that selects the item in NORMAL mode, on the first nine on screen; shown in INSERT too, so it can be read ahead.
-    component QuickHint: Rectangle {
-        id: hint
-        property int index: -1
-        property var shown: ({ first: 0, end: 0 })
-        readonly property string digit: BrowseLayout.hint_of(hint.index, hint.shown)
-
-        visible: hint.digit !== ""
-        width: Math.max(height, hint_text.implicitWidth + 6)
-        height: hint_text.implicitHeight + 2
-        radius: Style.radius(3)
-        color: Qt.alpha(Theme.bg_surface, 0.9)
-
-        Text {
-            id: hint_text
-            anchors.centerIn: parent
-            text: hint.digit
-            color: Style.text_muted
-            font.family: Style.font_family
-            font.pixelSize: Style.fs(-5)
-            font.bold: true
         }
     }
 }

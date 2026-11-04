@@ -211,12 +211,6 @@ PickerProvider {
 
             onEntryChanged: root.capture_first(pane.entry)
 
-            Rectangle {
-                anchors.fill: parent
-                radius: Style.radius(4)
-                color: Theme.bg_core
-            }
-
             TabThumbnail {
                 anchors.left: parent.left
                 anchors.right: parent.right

@@ -28,7 +28,8 @@ Scope {
     property string empty_text: "Nothing to pick"
     // Normal-mode keys run on the selected item: [{ key, desc }] handled by run_action. `needs_item: false` runs it with no row selected (item is null).
     property var actions: []
-    // Drawn beside the list (above the cards in the browse layout) with `entry` set to the selected item.
+    // Drawn beside the list (above the cards in the browse layout) with `entry` set to the selected item. In the browse
+    // layout the picker draws its backdrop, so the preview draws only its content.
     property Component preview: null
     // Browse only: plain Tab or Shift+Tab swaps `preview` for this and back; it gets no `entry`. Null leaves Tab unused.
     property Component alt_preview: null
