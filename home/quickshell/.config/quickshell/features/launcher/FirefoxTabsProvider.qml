@@ -50,6 +50,7 @@ PickerProvider {
     property var thumbs: ({})
     property var capture_queue: []
     property var close_queue: []
+    property bool close_failed: false
     readonly property bool is_shown: Pickers.is_open && Pickers.provider_name === root.name
 
     // `timeout_s` overrides firefox-tab's own when given.
@@ -136,18 +137,25 @@ PickerProvider {
     }
 
     function close_next() {
-        if (close_proc.running || root.close_queue.length === 0) return;
+        if (close_proc.running) return;
+        if (root.close_queue.length === 0) {
+            // A refused close puts the tab back by listing again, but only once every queued close has answered:
+            // an earlier list would still show a tab whose close was waiting, and nothing would remove it again.
+            if (root.close_failed) {
+                root.close_failed = false;
+                list_proc.running = false;
+                list_proc.command = root.request_argv({ cmd: "tabs" });
+                list_proc.running = true;
+            }
+            return;
+        }
         close_proc.command = root.request_argv({ cmd: "close", tab_id: root.close_queue[0] });
         root.close_queue = root.close_queue.slice(1);
         close_proc.running = true;
     }
 
-    // A close Firefox refused puts the tab back, by listing again.
     function closed(text) {
-        if (FirefoxTabs.parse_reply(text).state === "ok") return;
-        list_proc.running = false;
-        list_proc.command = root.request_argv({ cmd: "tabs" });
-        list_proc.running = true;
+        if (FirefoxTabs.parse_reply(text).state !== "ok") root.close_failed = true;
     }
 
     onIs_shownChanged: if (root.is_shown) root.capture_next()
