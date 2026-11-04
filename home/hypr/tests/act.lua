@@ -708,12 +708,14 @@ check("rebind: same action lists the key once", #keys_of("a.one") == 1)
 -- labels as the binds they replaced, and running one calls the Menu closure or the hyprvim module once.
 fresh()
 Bind = require("lib.key.bind")
-local menu_calls, hyprvim_calls = {}, {}
+local menu_calls, menu_args, hyprvim_calls = {}, {}, {}
 package.loaded["lib.desktop.menu"] = setmetatable({}, {
 	__index = function(_, name)
-		return function()
+		return function(...)
+			local args = { ... }
 			return function()
 				menu_calls[#menu_calls + 1] = name
+				menu_args[#menu_args + 1] = args
 			end
 		end
 	end,
@@ -754,6 +756,10 @@ for _, row in ipairs(picker_keys) do
 	check("pickers: " .. id .. " runs Menu." .. menu_name .. " once", #menu_calls == 1 and menu_calls[1] == menu_name)
 	check("pickers: " .. id .. " takes no args", has(raises(Act.run_cli, id, { "x" }), "takes at most 0"))
 end
+-- picker.tmux goes through the generic Menu.picker, so the provider it names is its first argument.
+menu_calls, menu_args = {}, {}
+Act.run_cli("picker.tmux", {})
+check("pickers: picker.tmux opens the tmux provider", #menu_args == 1 and menu_args[1][1] == "tmux")
 -- Keyless: only the clipboard picker's delete mode opens through it.
 menu_calls = {}
 Act.run_cli("picker.clipboard_delete", {})

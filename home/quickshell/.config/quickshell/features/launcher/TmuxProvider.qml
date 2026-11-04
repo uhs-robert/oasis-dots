@@ -13,7 +13,7 @@ import "../../core/Fuzzy.js" as Fuzzy
 
 // Every tmux window, under a header per session or most recently active first (`s`, remembered in TmuxSettings). The
 // preview shows the chosen pane live; `[` and `]` choose another pane of the window, and Enter lands on it. `f` narrows
-// the list to one session and `x` kills the window.
+// the list to one session and `x` kills the window. The list reloads every second while it shows (TmuxWindows.kept_order).
 PickerProvider {
     id: root
 
@@ -40,13 +40,16 @@ PickerProvider {
     property string tmux_state: "loading"
     property var sessions: []
     property var clients: []
-    // Every window in session order; `items` is the ones the session filter keeps, in the sort's order.
+    // Every window in the order the rows show; `items` is the ones the session filter keeps.
     property var windows: []
     readonly property string sort: TmuxWindows.sort_of(TmuxSettings.sort)
     // "all" or a session id; every open starts at "all".
     property string filter: "all"
     readonly property string shown_filter: TmuxWindows.shown_filter(root.filter, root.sessions)
-    items: TmuxWindows.arranged(root.windows, root.sort, root.shown_filter)
+    items: root.windows.filter(w => TmuxWindows.kept_by_filter(w, root.shown_filter))
+    // window id -> true while its kill is queued or running, so a list read in the meantime does not bring it back.
+    property var killing: ({})
+    property var kill_queue: []
     status_text: root.tmux_state === "ok" ? TmuxWindows.filter_label(root.shown_filter, root.sessions) + " · " + TmuxWindows.sort_labels[root.sort] : ""
     status_active: root.shown_filter !== "all"
 
@@ -63,25 +66,41 @@ PickerProvider {
         // Cleared so the list that arrives is the picker's first, which selects initial_index.
         root.windows = [];
         root.tmux_state = "loading";
-        root.list();
+        root.list(true);
     }
 
-    function list() {
+    // `sorted` puts the rows in the sort's order (on open and after a kill); otherwise they keep their places.
+    function list(sorted) {
         list_proc.running = false;
+        list_proc.sorted = sorted;
         list_proc.command = TmuxWindows.list_argv();
         list_proc.running = true;
     }
 
-    function listed(text) {
+    // The 1 s reload while the picker shows. It never cuts short a slow read, and waits out queued kills.
+    function reload() {
+        if (list_proc.running || root.kill_queue.length > 0 || kill_proc.running) return;
+        root.list(false);
+    }
+
+    function listed(text, sorted) {
         const model = TmuxWindows.parse_list(text, root.home);
+        const fresh = model.items.filter(w => !root.killing[w.id]);
         root.tmux_state = model.state;
         root.sessions = model.sessions;
         root.clients = model.clients;
-        // Set before the items, which the picker reads it for.
-        root.initial_index = TmuxWindows.initial_index(TmuxWindows.arranged(model.items, root.sort, root.shown_filter), model.clients);
-        root.windows = model.items;
-        root.capture_tails();
+        if (sorted) {
+            // Set before the items: the picker reads it when they arrive.
+            root.initial_index = TmuxWindows.initial_index(TmuxWindows.arranged(fresh, root.sort, root.shown_filter), model.clients);
+            root.windows = TmuxWindows.arranged(fresh, root.sort, "all");
+        } else {
+            root.windows = TmuxWindows.kept_order(root.windows, fresh, root.sort);
+        }
+        if (root.shows_cards) root.capture_tails();
     }
+
+    onSortChanged: root.windows = TmuxWindows.arranged(root.windows, root.sort, "all")
+    onShows_cardsChanged: if (root.shows_cards) root.capture_tails()
 
     function group_of(item) {
         return item.session_id;
@@ -107,9 +126,28 @@ PickerProvider {
             root.chosen_panes = next;
         } else if (key === "x") {
             root.windows = root.windows.filter(w => w.id !== item.id);
-            kill_proc.command = ["tmux", "kill-window", "-t", item.id];
-            kill_proc.running = true;
+            // A session filter with no windows left would show "No tmux windows" until the list returns.
+            if (!root.windows.some(w => TmuxWindows.kept_by_filter(w, root.shown_filter))) root.filter = "all";
+            const killing = Object.assign({}, root.killing);
+            killing[item.id] = true;
+            root.killing = killing;
+            root.kill_queue = root.kill_queue.concat([item.id]);
+            root.kill_next();
         }
+    }
+
+    // One kill at a time, then one sorted list once the queue is empty, so it shows what tmux did (a refused kill
+    // brings its window back).
+    function kill_next() {
+        if (kill_proc.running) return;
+        if (root.kill_queue.length === 0) {
+            root.killing = {};
+            root.list(true);
+            return;
+        }
+        kill_proc.command = ["tmux", "kill-window", "-t", root.kill_queue[0]];
+        root.kill_queue = root.kill_queue.slice(1);
+        kill_proc.running = true;
     }
 
     function capture_tails() {
@@ -177,18 +215,23 @@ PickerProvider {
         onTriggered: root.refocus()
     }
 
-    // Every card's tail in one plain capture; on battery only the capture each list read starts.
+    // The list, and every card's tail in one plain capture while the cards show. On battery the list is read on open and
+    // after a kill, and the tails each time the cards appear.
     Timer {
         interval: root.capture_interval_ms
         repeat: true
-        running: root.is_shown && root.windows.length > 0 && PowerSource.on_ac
-        onTriggered: root.capture_tails()
+        running: root.is_shown && root.tmux_state === "ok" && PowerSource.on_ac
+        onTriggered: {
+            root.reload();
+            if (root.shows_cards) root.capture_tails();
+        }
     }
 
     Process {
         id: list_proc
+        property bool sorted: true
         stdout: StdioCollector {
-            onStreamFinished: root.listed(text)
+            onStreamFinished: root.listed(text, list_proc.sorted)
         }
     }
 
@@ -199,10 +242,9 @@ PickerProvider {
         }
     }
 
-    // Listed again once tmux has answered, so the kill shows what tmux did (a refused kill brings the window back).
     Process {
         id: kill_proc
-        onExited: root.list()
+        onExited: Qt.callLater(root.kill_next)
     }
 
     // The chosen pane's text, live on AC, with its place and command in the corner.
@@ -343,7 +385,7 @@ PickerProvider {
                 width: parent.width
                 elide: Text.ElideRight
                 textFormat: Text.StyledText
-                text: (card.entry.index !== undefined ? card.entry.index + "  " : "") + Fuzzy.highlight(card.entry.label || "", card.positions, String(Style.text_accent))
+                text: (card.entry.index !== undefined ? card.entry.index + "&nbsp;&nbsp;" : "") + Fuzzy.highlight(card.entry.label || "", card.positions, String(Style.text_accent))
                 color: Style.text_fg
                 font.family: Style.font_family
                 font.pixelSize: Style.fs(-1)

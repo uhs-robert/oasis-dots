@@ -71,6 +71,8 @@ Scope {
     property var voice_question: null
     // True while the open picker shows this provider; gate a provider's live work (polls, captures) on it.
     readonly property bool is_shown: Pickers.is_open && Pickers.provider_name === root.name
+    // True while the shown browse picker draws cards rather than rows.
+    readonly property bool shows_cards: root.is_shown && root.layout === "browse" && Pickers.browse_view === "grid"
 
     // Called on every open with the opener's mode arg, so keep it cheap; an item's `icon_path` skips the picker's icon lookup.
     function refresh(arg) {}

@@ -13,6 +13,8 @@ Singleton {
     property string provider_arg: ""
     readonly property var provider: root.providers[root.provider_name] || null
     readonly property bool is_open: Popups.open_name === "picker"
+    // The open browse picker's view, "grid" or "list"; Picker sets it.
+    property string browse_view: "grid"
 
     // provider_key -> { count, last_ms }
     readonly property var usage: store.values
