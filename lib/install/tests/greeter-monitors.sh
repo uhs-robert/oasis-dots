@@ -131,45 +131,12 @@ return {
   },
 }
 LUA
-case_name='a delayed entry starts disabled and a timer turns it on with its full rule'
+case_name='a delayed entry goes into GREETER_HELD with its full rule instead of a monitor rule'
 out=$(HOSTNAME=dockhost generate) || fail "generator failed: $(cat "$scratch/gen.err")"
 expect_eq "$(rules "$out")" 'hl.monitor({ output = "desc:Panel", mode = "2560x1600@240", position = "0x0", scale = 1.6 })
-hl.monitor({ output = "desc:Dock C", mode = "1920x1080@60", position = "0x1600", scale = 1 })
-hl.monitor({ output = "desc:Dock A", disabled = true })
-hl.monitor({ output = "DP-5", disabled = true })
-hl.timer(function() hl.monitor({ output = "desc:Dock A", mode = "1920x1080@60", position = "2560x0", scale = 1, disabled = false }) end, { timeout = 3000, type = "oneshot" })
-hl.timer(function() hl.monitor({ output = "DP-5", mode = "preferred", position = "auto", scale = 1, transform = 3, disabled = false }) end, { timeout = 1500, type = "oneshot" })
-function GREETER_HANDOFF() hl.monitor({ output = "desc:Dock A", disabled = true }); hl.monitor({ output = "DP-5", disabled = true }) end'
-
-case_name='the timer release runs and re-enables the held monitor'
-printf '%s\n' "$out" >"$scratch/held.lua"
-cat >"$scratch/run_timers.lua" <<'LUA'
-local timers = {}
-hl = {
-  monitor = function(rule) print(rule.output .. " disabled=" .. tostring(rule.disabled)) end,
-  timer = function(fn) timers[#timers + 1] = fn end,
-}
-dofile(arg[1])
-for _, fn in ipairs(timers) do fn() end
-LUA
-expect_eq "$(lua "$scratch/run_timers.lua" "$scratch/held.lua" | tail -2)" 'desc:Dock A disabled=false
-DP-5 disabled=false'
-
-case_name='the handoff turns the held monitors off again'
-cat >"$scratch/run_handoff.lua" <<'LUA'
-hl = { monitor = function(rule) print(rule.output .. " disabled=" .. tostring(rule.disabled)) end, timer = function() end }
-dofile(arg[1])
-print("--")
-GREETER_HANDOFF()
-LUA
-expect_eq "$(lua "$scratch/run_handoff.lua" "$scratch/held.lua" | sed '1,/^--$/d')" 'desc:Dock A disabled=true
-DP-5 disabled=true'
-
-case_name='nothing is held when every entry is delayed, since the release lands only while a monitor draws'
-printf 'return { monitors = { { description = "Only Dock", mode = "1920x1080@60", position = "0x0", start_delay_ms = 3000 } } }\n' >"$machines/alldelayed.lua"
-out=$(HOSTNAME=alldelayed generate) || fail "generator failed: $(cat "$scratch/gen.err")"
-expect_eq "$(rules "$out")" 'hl.monitor({ output = "desc:Only Dock", mode = "1920x1080@60", position = "0x0", scale = 1 })'
-[[ $out != *GREETER_HANDOFF* ]] || fail 'a handoff was generated with nothing held'
+GREETER_HELD[#GREETER_HELD + 1] = { delay = 3000, rule = { output = "desc:Dock A", mode = "1920x1080@60", position = "2560x0", scale = 1 } }
+GREETER_HELD[#GREETER_HELD + 1] = { delay = 1500, rule = { output = "DP-5", mode = "preferred", position = "auto", scale = 1, transform = 3 } }
+hl.monitor({ output = "desc:Dock C", mode = "1920x1080@60", position = "0x1600", scale = 1 })'
 
 case_name='the installer writes the rules to the file it is given'
 write_greeter_monitors "$scratch/installed.lua" 2>/dev/null
@@ -226,6 +193,57 @@ case_name='the install commands put monitors.lua in /etc/greetd and keep it out 
 cmds=$(greeter_install_cmds /stage /repo)
 grep -Fq "sudo install -Dm644 '/stage/monitors.lua' '/etc/greetd/monitors.lua'" <<<"$cmds" || fail 'monitors.lua is not installed'
 grep -Fq -- '--exclude=/monitors.lua' <<<"$cmds" || fail 'monitors.lua would land in the Quickshell dir'
+
+# The greeter's late-monitor hold, under a fake hl that records rules and runs timers on demand.
+HOSTNAME=dockhost generate >"$greetd/monitors.lua"
+cat >"$scratch/late_monitors.lua" <<'LUA'
+local lit, timers, reloads = tonumber(arg[2]), {}, 0
+local proxy
+proxy = setmetatable({}, { __index = function() return proxy end, __call = function() return {} end })
+local function record(rule)
+  if rule.output ~= "" then print(rule.output .. " disabled=" .. tostring(rule.disabled) .. " mode=" .. tostring(rule.mode)) end
+end
+hl = setmetatable({
+  monitor = record,
+  timer = function(fn) timers[#timers + 1] = fn end,
+  get_monitors = function() local list = {} for i = 1, lit do list[i] = {} end return list end,
+  dispatch = function() reloads = reloads + 1 end,
+}, { __index = function() return function() end end })
+hl.dsp = proxy
+dofile(arg[1])
+print("-- " .. arg[3])
+if arg[3] == "handoff" then GREETER_HANDOFF() end
+for _, fn in ipairs(timers) do fn() end
+print("reloads=" .. reloads)
+LUA
+late() { HYPRLAND_INSTANCE_SIGNATURE=test XDG_RUNTIME_DIR=$scratch/run lua "$scratch/late_monitors.lua" "$scratch/hyprland.lua" "$@" 2>&1 </dev/null | grep -v '^desc:Panel\|^desc:Dock C'; }
+mkdir -p "$scratch/run/hypr/test"
+
+case_name='held monitors start disabled and the timers turn them on with their full rule'
+expect_eq "$(late 1 timers)" 'desc:Dock A disabled=true mode=nil
+DP-5 disabled=true mode=nil
+-- timers
+desc:Dock A disabled=false mode=1920x1080@60
+DP-5 disabled=false mode=preferred
+reloads=0'
+
+case_name='the handoff turns them off, and a timer still pending does not turn them back on'
+expect_eq "$(late 1 handoff)" 'desc:Dock A disabled=true mode=nil
+DP-5 disabled=true mode=nil
+-- handoff
+desc:Dock A disabled=true mode=nil
+DP-5 disabled=true mode=nil
+reloads=0'
+
+case_name='with no other monitor lit, the release reloads, and the reload applies the rules without a hold'
+result=$(late 0 timers)
+[[ $result == *"reloads=2"* ]] || fail "expected a reload per release: [$result]"
+[[ -e $scratch/run/hypr/test/greeter-monitors-released ]] || fail 'no marker for the reload'
+expect_eq "$(late 0 timers)" 'desc:Dock A disabled=nil mode=1920x1080@60
+DP-5 disabled=nil mode=preferred
+-- timers
+reloads=0'
+rm -f "$scratch/run/hypr/test/greeter-monitors-released"
 
 if ((failures)); then
   printf '%d failure(s)\n' "$failures" >&2

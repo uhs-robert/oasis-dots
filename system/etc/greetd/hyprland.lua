@@ -66,6 +66,7 @@ hl.bind("SUPER + T", hl.dsp.exec_cmd("mkdir -p " .. RUNTIME_DIR .. "/qs-greeter;
 -- monitors.lua is generated at install time from the owner's session config (lib/install/greeter-monitors.lua). A missing
 -- or broken file must leave login working, so a failure only costs the explicit layout; the catch-all below still lights
 -- every output.
+GREETER_HELD = {}
 local loaded, load_error = pcall(dofile, GREETD_DIRECTORY .. "/monitors.lua")
 if not loaded and not tostring(load_error):find("No such file", 1, true) then
 	io.stderr:write("greetd: monitors.lua failed: ", tostring(load_error), "\n")
@@ -73,6 +74,62 @@ end
 
 -- Outputs the generated rules do not name
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+
+---- [LATE MONITORS] ----
+-- Hyprland 0.57 aborts when a dock monitor comes up before the dock has settled (hyprwm/Hyprland#16727): building its
+-- framebuffer asserts on a zero size, and a disabled monitor is skipped there. So each GREETER_HELD monitor starts
+-- disabled and a timer turns it on. The rule must say `disabled = false`, because hl.monitor() keeps the fields a new
+-- rule leaves out, and it lands only on another monitor's next frame. With nothing else lit, the timer reloads the
+-- config instead, which applies rules directly; the marker makes that reload skip the hold.
+local released_marker = RUNTIME_DIR .. "/hypr/" .. (os.getenv("HYPRLAND_INSTANCE_SIGNATURE") or "") .. "/greeter-monitors-released"
+local handed_off = false
+
+local function released_before()
+	local file = io.open(released_marker, "r")
+	if file then
+		file:close()
+	end
+	return file ~= nil
+end
+
+local function release(rule)
+	if handed_off then
+		return
+	end
+	local enabled = { disabled = false }
+	for key, value in pairs(rule) do
+		enabled[key] = value
+	end
+	hl.monitor(enabled)
+	if #(hl.get_monitors() or {}) == 0 then
+		local file = io.open(released_marker, "w")
+		if file then
+			file:close()
+		end
+		hl.dispatch(hl.dsp.reload_config())
+	end
+end
+
+local holding = not released_before()
+for _, held in ipairs(GREETER_HELD) do
+	if holding then
+		hl.monitor({ output = held.rule.output, disabled = true })
+		hl.timer(function()
+			release(held.rule)
+		end, { timeout = held.delay, type = "oneshot" })
+	else
+		hl.monitor(held.rule)
+	end
+end
+
+-- Called right before the greeter exits. After a forced teardown of the dock on exit, amdgpu left those monitors on
+-- "No signal" in the session that starts next. The flag stops a timer still pending from turning them back on.
+function GREETER_HANDOFF()
+	handed_off = true
+	for _, held in ipairs(GREETER_HELD) do
+		hl.monitor({ output = held.rule.output, disabled = true })
+	end
+end
 
 ---- [ADMIN TERMINAL FULLSCREEN] ----
 hl.window_rule({
@@ -132,9 +189,7 @@ hl.on("hyprland.start", function()
 			.. "sleep 1.5; "
 			.. "hyprctl eval 'FULLSCREEN_TERMINAL()'; "
 			.. "wait $terminal_pid; fi; "
-			-- Turn the late dock monitors off before exiting. After a forced teardown of the dock on exit, amdgpu
-			-- left those monitors on "No signal" in the session that starts next.
-			.. (GREETER_HANDOFF and "hyprctl eval 'GREETER_HANDOFF()'; sleep 1; " or "")
+			.. (#GREETER_HELD > 0 and "hyprctl eval 'GREETER_HANDOFF()'; sleep 1; " or "")
 			.. "hyprctl dispatch 'hl.dsp.exit()'"
 	)
 end)
