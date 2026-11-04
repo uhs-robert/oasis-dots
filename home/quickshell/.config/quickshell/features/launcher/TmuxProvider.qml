@@ -90,7 +90,8 @@ PickerProvider {
         root.tmux_state = model.state;
         root.sessions = model.sessions;
         root.clients = model.clients;
-        if (sorted) {
+        // A first list after the no-server hint is sorted, as on open.
+        if (sorted || root.windows.length === 0) {
             // Set before the items: the picker reads it when they arrive.
             root.initial_index = TmuxWindows.initial_index(TmuxWindows.arranged(fresh, root.sort, root.shown_filter), model.clients);
             root.windows = TmuxWindows.arranged(fresh, root.sort, "all");
@@ -186,44 +187,55 @@ PickerProvider {
                 Quickshell.execDetached(["tmux", "switch-client", "-c", latest.name, "-t", item.session_id, ";"].concat(select));
             } else {
                 Quickshell.execDetached(["tmux"].concat(select));
-                Quickshell.execDetached(["sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e tmux attach-session -t \"$1\"", Paths.term_script, item.session_id]);
+                root.launch_argv = ["sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" -e tmux attach-session -t \"$1\"", Paths.term_script, item.session_id];
+                layer_fallback.restart();
+                return;
             }
         }
         if (address === "") return;
         WindowState.focus(address);
         root.focus_address = address;
-        focus_fallback.restart();
+        layer_fallback.restart();
     }
 
-    // Focused once now and again once the picker's layer has unmapped, as WindowsProvider does: while the popup holds
-    // the keyboard the focus does not stick.
-    function refocus() {
-        focus_fallback.stop();
+    // What waits for the picker's layer to unmap, as Popups.after_close waits for a popup's. Picker closes the popup
+    // before it calls activate, so after_close itself runs at once. A terminal launched or focused while the
+    // layer holds the keyboard is left unfocused; an existing one is also focused once at Enter, as WindowsProvider does.
+    property var launch_argv: null
+
+    function layer_closed() {
+        layer_fallback.stop();
+        const argv = root.launch_argv;
         const address = root.focus_address;
+        root.launch_argv = null;
         root.focus_address = "";
-        if (Popups.open_name === "") WindowState.focus(address);
+        // A popup opened since the picker closed keeps the keyboard.
+        if (Popups.open_name !== "") return;
+        if (argv) Quickshell.execDetached(argv);
+        if (address !== "") WindowState.focus(address);
     }
 
     Connections {
         target: Hyprland
-        enabled: root.focus_address !== ""
+        enabled: root.focus_address !== "" || root.launch_argv !== null
         function onRawEvent(event) {
-            if (event.name === "closelayer" && event.data === "quickshell-popup") root.refocus();
+            if (event.name === "closelayer" && event.data === "quickshell-popup") root.layer_closed();
         }
     }
 
+    // In case closelayer never arrives, as Popups.after_close does.
     Timer {
-        id: focus_fallback
+        id: layer_fallback
         interval: 1000
-        onTriggered: root.refocus()
+        onTriggered: root.layer_closed()
     }
 
     // The list reloads on battery too, only less often: a stale list sends Enter to windows that are gone, and one read
-    // is a single tmux call.
+    // is a single tmux call. It keeps reloading with no server, so a session started meanwhile replaces the hint.
     Timer {
         interval: PowerSource.on_ac ? root.capture_interval_ms : 3 * root.capture_interval_ms
         repeat: true
-        running: root.is_shown && root.tmux_state === "ok"
+        running: root.is_shown && (root.tmux_state === "ok" || root.tmux_state === "none")
         onTriggered: root.reload()
     }
 
