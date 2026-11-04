@@ -253,6 +253,7 @@ ShellRoot {
         prompt: hyprvim_prompt
     }
     AgentsProvider {}
+    FirefoxTabsProvider {}
     AppsProvider {}
     ClipboardProvider {}
     EmojiProvider {}

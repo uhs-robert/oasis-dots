@@ -143,6 +143,12 @@ end
 --- @return fun()
 function Menu.agents_picker() return Menu.picker("agents", "~/.local/bin/keeptabs-pick") end
 
+--- Return an action that opens the Quickshell Firefox tabs picker; without the bar it says so, as no menu lists tabs.
+--- @return fun()
+function Menu.firefox_tabs_picker()
+  return Menu.picker("firefox_tabs", "notify-send 'Browser Tabs' 'The tabs picker needs the Quickshell bar.'")
+end
+
 --- Return an action that picks a clipboard history entry and copies it back.
 --- @return fun()
 function Menu.clipboard()

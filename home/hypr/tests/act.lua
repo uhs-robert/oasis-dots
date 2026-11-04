@@ -762,6 +762,12 @@ check(
 menu_calls = {}
 Act.run_cli("picker.agents", {})
 check("pickers: picker.agents runs Menu.agents_picker", #menu_calls == 1 and menu_calls[1] == "agents_picker")
+menu_calls = {}
+Act.run_cli("picker.firefox_tabs", {})
+check(
+	"pickers: picker.firefox_tabs runs Menu.firefox_tabs_picker",
+	#menu_calls == 1 and menu_calls[1] == "firefox_tabs_picker"
+)
 check(
 	"hyprvim: terminal binds SHIFT + SEMICOLON",
 	find("SUPER + SHIFT + SEMICOLON") ~= nil and find("SUPER + SHIFT + SEMICOLON").opts.desc == "HyprVim Terminal"
@@ -791,7 +797,7 @@ for _, handle in ipairs(Act.list()) do
 		check("pickers: " .. handle.id .. " has an intent", handle.intent ~= nil and handle.intent ~= "")
 	end
 end
-check("pickers: eight listed", picker_listed == 8)
+check("pickers: nine listed", picker_listed == 9)
 package.loaded["lib.desktop.menu"] = nil
 package.loaded["lua.plugins.hyprvim"] = nil
 

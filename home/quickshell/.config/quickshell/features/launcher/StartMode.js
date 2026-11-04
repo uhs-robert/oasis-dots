@@ -8,7 +8,7 @@ var modes = ["insert", "normal"];
 var group_defaults = { browse: "normal", search: "insert" };
 var fallback_group = "search";
 // Every picker a keybind opens (docked at the bottom, or dropped from the center for a browse picker), in the order Settings lists them under their group.
-var bottom_pickers = ["clipboard", "agents", "apps", "dirs", "emoji", "keybinds", "choices"];
+var bottom_pickers = ["clipboard", "agents", "firefox_tabs", "apps", "dirs", "emoji", "keybinds", "choices"];
 
 function group_key(group) {
     return group + "_start_mode";
