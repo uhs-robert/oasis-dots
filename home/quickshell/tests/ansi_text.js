@@ -1,4 +1,4 @@
-// Runs AnsiText.js under node: the SGR to StyledText converter behind the agent sessions preview.
+// Runs AnsiText.js under node: the SGR to StyledText and RichText converters behind the agents and tmux previews.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -7,8 +7,8 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/launcher/AnsiText.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { to_styled, bottom_lines, hex_of, wrap_lines };", context);
-const { to_styled, bottom_lines, hex_of, wrap_lines } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { to_styled, to_rich, bottom_lines, hex_of, wrap_lines };", context);
+const { to_styled, to_rich, bottom_lines, hex_of, wrap_lines } = context.api;
 const styled = text => to_styled(text, "#cccccc");
 
 const cases = [
@@ -119,8 +119,30 @@ for (const [name, got, expected] of bottom) {
   }
 }
 
+const rich_of = text => to_rich(text, "#cccccc", oasis, "#0c0e13");
+const span = (css, text) => "<span style=\"" + css + "\">" + text + "</span>";
+const div = body => "<div style=\"white-space:pre\">" + body + "</div>";
+const rich = [
+  ["rich: plain text keeps its spaces", rich_of("a  <b>"), div(span("color:#cccccc", "a  &lt;b&gt;"))],
+  ["rich: background kept", rich_of("\x1b[31;44mx"), div(span("color:#ff7979;background-color:#81c0ff", "x"))],
+  ["rich: inverse swaps the colours", rich_of("\x1b[7mx"), div(span("color:#0c0e13;background-color:#cccccc", "x"))],
+  ["rich: inverse with a background", rich_of("\x1b[31;42;7mx"), div(span("color:#7fcf78;background-color:#ff7979", "x"))],
+  ["rich: bold italic underline", rich_of("\x1b[1;3;4mx"), div(span("color:#cccccc;font-weight:bold;font-style:italic;text-decoration:underline", "x"))],
+  ["rich: dim blends toward its own background", rich_of("\x1b[2;38;2;200;100;50;48;2;32;64;96mx"), div(span("color:#745249;background-color:#204060", "x"))],
+  ["rich: lines break and keep their colour", rich_of("\x1b[32mA\nB"), div(span("color:#7fcf78", "A") + "<br/>" + span("color:#7fcf78", "B"))],
+  ["rich: other escapes dropped", rich_of("a\x1b[2Kb\x1b]0;t\x07c"), div(["a", "b", "c"].map(t => span("color:#cccccc", t)).join(""))],
+];
+for (const [name, got, expected] of rich) {
+  try {
+    assert.strictEqual(got, expected);
+  } catch (e) {
+    failed++;
+    console.error("FAIL " + name + ": got " + JSON.stringify(got));
+  }
+}
+
 if (failed > 0) {
   console.error(failed + " failed");
   process.exit(1);
 }
-console.log("ansi_text: " + (cases.length + with_palette.length + bottom.length + wrapped.length) + " ok");
+console.log("ansi_text: " + (cases.length + with_palette.length + bottom.length + wrapped.length + rich.length) + " ok");

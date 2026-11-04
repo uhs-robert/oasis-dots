@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const file = path.join(__dirname, "../.config/quickshell/features/launcher/TmuxWindows.js");
 const ctx = vm.createContext({});
-const names = ["sep", "missing_marker", "list_argv", "capture_argv", "tails_argv", "parse_tails", "short_path", "parse_list", "sorts", "sort_labels", "sort_of", "cycled_sort", "arranged", "kept_order", "group_title", "cycled_filter", "kept_by_filter", "shown_filter", "filter_label", "cycled_pane", "pane_of", "pane_label", "client_of", "latest_client", "initial_index", "title_matches"];
+const names = ["sep", "missing_marker", "list_argv", "captures_argv", "split_captures", "parse_tails", "short_path", "parse_list", "sorts", "sort_labels", "sort_of", "cycled_sort", "arranged", "kept_order", "group_title", "cycled_filter", "kept_by_filter", "shown_filter", "filter_label", "cycled_pane", "pane_of", "pane_label", "client_of", "latest_client", "initial_index", "title_matches"];
 vm.runInContext(fs.readFileSync(file, "utf8").replace(/^\.pragma.*$/m, "") + "\nthis.api = { " + names.join(", ") + " };", ctx);
 const T = ctx.api;
 
@@ -18,14 +18,14 @@ const listed = [
   line("S", "$1", "work", "1"),
   line("S", "$2", "notes", "0"),
   line("S", "$3", "empty", "0"),
-  line("W", "$1", "@2", "2", "logs", "0", "300"),
-  line("W", "$1", "@1", "1", " edit ", "1", "100"),
-  line("W", "$2", "@5", "0", "todo", "1", "200"),
-  line("P", "@1", "%2", "80", "0", "1", "nvim", "/home/me/src"),
-  line("P", "@1", "%1", "0", "0", "0", "zsh", "/home/me"),
-  line("P", "@1", "%3", "0", "20", "0", "htop", "/tmp"),
-  line("P", "@2", "%4", "0", "0", "1", "tail", "/var/log"),
-  line("P", "@5", "%5", "0", "0", "1", "vim", "/home/me/notes"),
+  line("W", "$1", "@2", "2", "logs", "0", "300", "120", "30", "1"),
+  line("W", "$1", "@1", "1", " edit ", "1", "100", "160", "40", "0"),
+  line("W", "$2", "@5", "0", "todo", "1", "200", "80", "24", "0"),
+  line("P", "@1", "%2", "80", "0", "1", "nvim", "/home/me/src", "80", "40"),
+  line("P", "@1", "%1", "0", "0", "0", "zsh", "/home/me", "79", "19"),
+  line("P", "@1", "%3", "0", "20", "0", "htop", "/tmp", "79", "20"),
+  line("P", "@2", "%4", "0", "0", "1", "tail", "/var/log", "120", "30"),
+  line("P", "@5", "%5", "0", "0", "1", "vim", "/home/me/notes", "80", "24"),
   line("C", "/dev/pts/1", "$1", "50"),
   line("C", "/dev/pts/2", "$2", "90"),
 ].join("\n");
@@ -73,7 +73,6 @@ const cases = [
   ["client_of picks a session's own client, or none", () => [T.client_of(model.clients, "$1").name, T.client_of(model.clients, "$3")], ["/dev/pts/1", null]],
   ["the picker opens on the window the latest client shows", () => [T.initial_index(items, model.clients), T.initial_index(T.arranged(items, "recent", "all"), model.clients)], [2, 1]],
   ["no client opens on the first window", () => T.initial_index(items, []), 0],
-  ["the capture prints the pane width first", () => T.capture_argv("%4"), ["tmux", "display-message", "-p", "-t", "%4", "#{pane_width}", ";", "capture-pane", "-p", "-e", "-t", "%4"]],
   ["the tails keep each pane's last lines with text", () => T.parse_tails(T.sep + "PANE" + T.sep + "%1\na\n\nb\nc\n\n" + T.sep + "PANE" + T.sep + "%2\n", 2), { "%1": "b\nc", "%2": "" }],
   ["session order sorts by session then index, whatever order it gets", () => T.arranged(T.arranged(items, "recent", "all"), "sessions", "all").map(i => i.window_id), ["@1", "@2", "@5"]],
   ["a reload keeps the shown order though activity changed", () => T.kept_order(T.arranged(items, "recent", "all"), items.map(i => Object.assign({}, i, { activity: i.id === "@1" ? 999 : i.activity })), "recent").map(i => i.window_id), ["@2", "@5", "@1"]],
@@ -87,7 +86,11 @@ const cases = [
   ["a linked window's pane is listed once, not once per session", () => linked.items.map(i => i.panes.map(p => p.pane_id)), [["%9"], ["%9"]]],
   ["a reload keeps both rows of a linked window apart", () => T.kept_order(linked.items, linked.items.slice().reverse(), "sessions").map(i => i.id), ["$1:@7", "$2:@7"]],
   ["the filter keeps only one session's row of a linked window", () => T.arranged(linked.items, "sessions", "$2").map(i => i.id), ["$2:@7"]],
-  ["the tails pass pane ids as arguments, not in the script", () => T.tails_argv(["%1", "%2"]).slice(-2), ["%1", "%2"]],
+  ["the captures pass pane ids as arguments, not in the script", () => T.captures_argv(["%1", "%2"], true).slice(-2), ["%1", "%2"]],
+  ["only a styled capture keeps the colour codes", () => [T.captures_argv(["%1"], true)[2].indexOf("-e") >= 0, T.captures_argv(["%1"], false)[2].indexOf("-e") >= 0], [true, false]],
+  ["the captures split per pane, a gone pane missing", () => T.split_captures(T.sep + "PANE" + T.sep + "%1\na\n b\n" + T.sep + "PANE" + T.sep + "%3\n\n"), { "%1": ["a", " b"], "%3": ["", ""] }],
+  ["a window reads its size in cells and whether it is zoomed", () => [by_id("@1").width, by_id("@1").height, by_id("@1").zoomed, by_id("@2").zoomed], [160, 40, false, true]],
+  ["a pane reads its size in cells", () => by_id("@1").panes.map(p => [p.pane_id, p.width, p.height]), [["%1", 79, 19], ["%2", 80, 40], ["%3", 79, 20]]],
 ];
 
 const names_dev = ["Dev", "Dev tools", "nvim"];

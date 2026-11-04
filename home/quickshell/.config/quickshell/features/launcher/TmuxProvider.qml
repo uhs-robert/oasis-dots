@@ -8,12 +8,11 @@ import qs.features.popups
 import qs.features.settings
 import qs.features.windows
 import "TmuxWindows.js" as TmuxWindows
-import "AgentSessions.js" as AgentSessions
 import "../../core/Fuzzy.js" as Fuzzy
 
 // Every tmux window, under a header per session or most recently active first (`s`, remembered in TmuxSettings). The
-// preview shows the chosen pane live; `[` and `]` choose another pane of the window, and Enter lands on it. `f` narrows
-// the list to one session and `x` kills the window. The list reloads while it shows (TmuxWindows.kept_order).
+// preview draws the window live as its terminal shows it (TmuxWindowView); `[` and `]` choose another pane of the window,
+// and Enter lands on it. `f` narrows the list to one session and `x` kills the window. The list reloads while it shows (TmuxWindows.kept_order).
 PickerProvider {
     id: root
 
@@ -155,7 +154,7 @@ PickerProvider {
 
     function capture_tails() {
         if (tails_proc.running || root.windows.length === 0) return;
-        tails_proc.command = TmuxWindows.tails_argv(root.windows.map(w => w.active_pane).filter(id => id !== ""));
+        tails_proc.command = TmuxWindows.captures_argv(root.windows.map(w => w.active_pane).filter(id => id !== ""), false);
         tails_proc.running = true;
     }
 
@@ -267,91 +266,70 @@ PickerProvider {
         onExited: Qt.callLater(root.kill_next)
     }
 
-    // The chosen pane's text, live on AC, with its place and command in the corner.
+    // Every pane of the window as the terminal shows it, live on AC, with the chosen pane's place and command in the corner.
     preview: Component {
         Item {
-            id: pane
+            id: preview
             property var entry: null
-            readonly property var shown: root.shown_pane(pane.entry)
-            readonly property string pane_id: pane.shown ? pane.shown.pane_id : ""
-            // Pane the shown text was captured from, so a late capture never lands on another pane.
-            property string text_id: ""
-            property string pane_text: ""
-            property int pane_columns: 0
+            readonly property var shown: root.shown_pane(preview.entry)
+            readonly property string window_key: preview.entry ? preview.entry.id : ""
+            readonly property var pane_ids: preview.entry ? preview.entry.panes.map(p => p.pane_id) : []
+            // Window the shown captures came from, so a late capture never lands on another window.
+            property string captured_key: ""
+            property var captures: ({})
             property bool failed: false
 
             clip: true
 
-            // A new pane starts blank. A capture still running finishes, is dropped as another pane's, and `settle`
-            // starts the new one.
-            onPane_idChanged: {
-                pane.pane_text = "";
-                pane.text_id = "";
-                pane.failed = false;
-                Qt.callLater(pane.capture);
+            // A new window starts blank. A capture still running finishes, is dropped as another window's, and
+            // `settle` starts the new one.
+            onWindow_keyChanged: {
+                preview.captures = {};
+                preview.captured_key = "";
+                preview.failed = false;
+                Qt.callLater(preview.capture);
             }
 
             function capture() {
-                if (pane.pane_id === "" || capture_proc.running) return;
-                capture_proc.target_id = pane.pane_id;
-                capture_proc.pending_text = null;
-                capture_proc.pending_code = null;
-                capture_proc.command = TmuxWindows.capture_argv(pane.pane_id);
+                if (preview.pane_ids.length === 0 || capture_proc.running) return;
+                capture_proc.target_key = preview.window_key;
+                capture_proc.command = TmuxWindows.captures_argv(preview.pane_ids, true);
                 capture_proc.running = true;
             }
 
-            function captured(id, text, code) {
-                if (pane.pane_id !== id) return;
-                pane.failed = code !== 0;
-                if (code !== 0) return;
-                const capture = AgentSessions.split_capture(text);
-                pane.text_id = id;
-                pane.pane_columns = capture.width;
-                pane.pane_text = capture.text;
+            function captured(key, text) {
+                if (preview.window_key !== key) return;
+                const captures = TmuxWindows.split_captures(text);
+                // Every pane gone: the window closed since the list was read.
+                preview.failed = !preview.pane_ids.some(id => captures[id] !== undefined);
+                if (preview.failed) return;
+                preview.captured_key = key;
+                preview.captures = captures;
             }
 
             Timer {
                 interval: root.capture_interval_ms
                 repeat: true
-                running: pane.pane_id !== "" && root.is_shown && PowerSource.on_ac
-                onTriggered: pane.capture()
+                running: preview.pane_ids.length > 0 && root.is_shown && PowerSource.on_ac
+                onTriggered: preview.capture()
             }
 
             Process {
                 id: capture_proc
-                property string target_id: ""
-                property var pending_text: null
-                property var pending_code: null
-
-                // The collector can finish after the exit signal, so the capture counts once both are in (or the
-                // process failed, when there may be no output at all).
-                function settle() {
-                    if (capture_proc.pending_code === null) return;
-                    if (capture_proc.pending_text === null && capture_proc.pending_code === 0) return;
-                    const id = capture_proc.target_id;
-                    pane.captured(id, capture_proc.pending_text || "", capture_proc.pending_code);
-                    capture_proc.pending_text = null;
-                    capture_proc.pending_code = null;
-                    if (pane.pane_id !== "" && pane.pane_id !== id) Qt.callLater(pane.capture);
-                }
+                property string target_key: ""
 
                 stdout: StdioCollector {
-                    onStreamFinished: {
-                        capture_proc.pending_text = text;
-                        capture_proc.settle();
-                    }
+                    onStreamFinished: preview.captured(capture_proc.target_key, text)
                 }
-                onExited: code => {
-                    capture_proc.pending_code = code;
-                    capture_proc.settle();
-                }
+                // Here rather than when the output is in, which can come before the process stops running.
+                onExited: if (preview.window_key !== "" && preview.window_key !== capture_proc.target_key) Qt.callLater(preview.capture)
             }
 
             Text {
                 anchors.fill: parent
                 anchors.margins: 10
-                visible: !!pane.entry && pane.failed
-                text: "No preview: the pane is gone."
+                visible: !!preview.entry && preview.failed
+                text: "No preview: the window is gone."
                 textFormat: Text.PlainText
                 wrapMode: Text.WordWrap
                 color: Style.text_muted
@@ -359,11 +337,13 @@ PickerProvider {
                 font.pixelSize: Style.fs(-3)
             }
 
-            AnsiPane {
+            TmuxWindowView {
                 anchors.fill: parent
-                visible: !pane.failed && pane.text_id !== ""
-                pane_text: pane.pane_text
-                pane_columns: pane.pane_columns
+                anchors.margins: 6
+                visible: !preview.failed && preview.captured_key !== ""
+                entry: preview.entry
+                shown: preview.shown
+                captures: preview.captures
             }
 
             Rectangle {
@@ -381,7 +361,7 @@ PickerProvider {
                 Text {
                     id: corner_text
                     anchors.centerIn: parent
-                    text: TmuxWindows.pane_label(pane.entry, pane.shown)
+                    text: TmuxWindows.pane_label(preview.entry, preview.shown)
                     textFormat: Text.PlainText
                     color: Style.text_primary
                     font.family: Style.font_family

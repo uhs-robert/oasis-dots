@@ -1,9 +1,10 @@
 .pragma library
 
-// Turns terminal output with SGR colour codes (tmux capture-pane -e) into StyledText spans. Pane text is untrusted,
-// so every character is escaped and only <font>, <b>, <i>, <u> and line breaks are emitted; every other escape sequence is dropped.
-// StyledText has no dim, so dim blends the foreground halfway toward the background. The 16 ANSI colours come from the caller
-// (the terminal's palette) and fall back to xterm's; the 256 cube, greys and truecolor are fixed.
+// Turns terminal output with SGR colour codes (tmux capture-pane -e) into StyledText (to_styled) or RichText (to_rich).
+// Pane text is untrusted, so every character is escaped and only <font>, <span>, <b>, <i>, <u> and line breaks are
+// emitted; every other escape sequence is dropped. Neither format has dim, so dim blends the foreground halfway toward
+// the background. The 16 ANSI colours come from the caller (the terminal's palette) and fall back to xterm's; the 256
+// cube, greys and truecolor are fixed.
 
 var xterm_colors = [
     "#000000", "#cd0000", "#00cd00", "#cdcd00", "#0000ee", "#cd00cd", "#00cdcd", "#e5e5e5",
@@ -128,8 +129,38 @@ function wrap(text, state, default_fg, background) {
 // Colours are "#rrggbb" strings: default_fg for text with no colour set (dim needs it), palette the 16 ANSI colours in
 // color0-15 order (xterm's when omitted), background what dim blends toward (black when omitted).
 function to_styled(input, default_fg, palette, background) {
-    var base_colors = palette && palette.length === 16 ? palette : xterm_colors;
     var bg_hex = background || "#000000";
+    return markup(input, palette, function (text, state) {
+        return wrap(text, state, default_fg, bg_hex);
+    });
+}
+
+// RichText keeps what StyledText drops: background colours, and inverse as swapped colours. Spaces are kept as they
+// are, so a TUI's columns and coloured bars line up. Same colour arguments as to_styled.
+function to_rich(input, default_fg, palette, background) {
+    var bg_hex = background || "#000000";
+    var body = markup(input, palette, function (text, state) {
+        var fg = state.fg || default_fg;
+        var bg = state.bg;
+        if (state.inverse) {
+            var swapped = bg || bg_hex;
+            bg = fg;
+            fg = swapped;
+        }
+        if (state.dim) fg = mix_half(fg, bg || bg_hex);
+        var css = ["color:" + fg];
+        if (bg !== "") css.push("background-color:" + bg);
+        if (state.bold) css.push("font-weight:bold");
+        if (state.italic) css.push("font-style:italic");
+        if (state.underline) css.push("text-decoration:underline");
+        return "<span style=\"" + css.join(";") + "\">" + escape(text) + "</span>";
+    });
+    return "<div style=\"white-space:pre\">" + body + "</div>";
+}
+
+// Walks input's text runs and SGR codes; piece(text, state) marks up each run, and line breaks become <br/>.
+function markup(input, palette, piece) {
+    var base_colors = palette && palette.length === 16 ? palette : xterm_colors;
     var state = blank();
     var out = "";
     var last = 0;
@@ -141,7 +172,7 @@ function to_styled(input, default_fg, palette, background) {
         var lines = chunk.split("\n");
         for (var i = 0; i < lines.length; i++) {
             if (i > 0) out += "<br/>";
-            if (lines[i] !== "") out += wrap(lines[i], state, default_fg, bg_hex);
+            if (lines[i] !== "") out += piece(lines[i], state);
         }
     }
     while ((m = sequence_pattern.exec(input)) !== null) {
