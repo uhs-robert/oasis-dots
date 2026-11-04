@@ -18,7 +18,7 @@ Item {
 
     // A list reload brings fresh objects every second. The layout goes through a string, which only notifies when it
     // differs, so the pane views are rebuilt only when the layout changes.
-    readonly property string layout_json: JSON.stringify({ size: TmuxLayout.grid_size(root.entry), panes: TmuxLayout.drawn_panes(root.entry, root.shown) })
+    readonly property string layout_json: JSON.stringify({ size: TmuxLayout.grid_size(root.entry, root.shown), panes: TmuxLayout.drawn_panes(root.entry, root.shown) })
     readonly property var layout: JSON.parse(root.layout_json)
     readonly property var panes: root.layout.panes
     readonly property var grid_size: root.layout.size

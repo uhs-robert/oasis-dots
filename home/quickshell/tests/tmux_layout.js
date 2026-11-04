@@ -25,6 +25,7 @@ const cases = [
   ["the grid is the window's size", () => L.grid_size(split), { cols: 160, rows: 40 }],
   ["without a size the grid spans the panes", () => L.grid_size(Object.assign({}, split, { width: 0, height: 0 })), { cols: 160, rows: 40 }],
   ["no window has an empty grid", () => L.grid_size(null), { cols: 0, rows: 0 }],
+  ["a zoomed window's grid is the shown pane", () => L.grid_size(Object.assign({}, split, { zoomed: true }), { width: 80, height: 20 }), { cols: 80, rows: 20 }],
   ["the font fits the narrower side", () => [L.font_px_to_fit(160, 40, 800, 600, 0.6, 1.2), L.font_px_to_fit(80, 24, 2000, 300, 0.6, 1.2)], [8, 10]],
   ["the font is at least a pixel", () => L.font_px_to_fit(400, 100, 50, 50, 0.6, 1.2), 1],
   ["an empty grid or area gets no font", () => [L.font_px_to_fit(0, 40, 800, 600, 0.6, 1.2), L.font_px_to_fit(160, 40, 0, 600, 0.6, 1.2)], [0, 0]],
