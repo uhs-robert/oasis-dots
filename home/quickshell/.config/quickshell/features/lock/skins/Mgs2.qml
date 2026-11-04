@@ -664,8 +664,14 @@ Item {
     // The murky grey-green ground: drifting light and dark blobs, the dark jagged band on the left, and scrolling film grain.
     component Murk: Item {
         id: murk
-        // Seconds on the motion clock; it drives the drift and the grain.
-        readonly property real t: root.animate && murk.visible && root.motion ? root.motion.t : 0
+        // Seconds on the motion clock; it drives the drift and the grain. It holds still behind the screensaver's dark
+        // veil: redrawing the ground is about half the lock's GPU work, and the saver can run for hours.
+        property real t: 0
+
+        Connections {
+            target: root.animate && murk.visible && root.shown !== "saver" ? root.motion : null
+            function onTicked() { murk.t = root.motion.t; }
+        }
         width: 1600
         height: 900
 
