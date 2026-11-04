@@ -766,6 +766,8 @@ The host keeps one image per page in `${XDG_CACHE_HOME:-~/.cache}/voxcmd/firefox
 
 One-time setup: stow `voxcmd`, run `just firefox-host` (the installer does too), then load the extension (temporarily from `about:debugging`, or signed; see its README). `firefox-tab` uses the socket only when `XDG_RUNTIME_DIR` is set and the socket and its directory belong to you and the directory is private. Without the socket, or when the host cannot be reached or answers the tab list badly, everything above works as before through the session store and the address bar, and `voxcmd debug on` logs why. Once an `activate` has been sent, a failure is reported and the address bar is not tried, since the tab may already have switched. The window is found by the nonce the extension puts in front of its title (not by tab title), and a window that is not found is no failure. Private windows are invisible to the extension and are listed by window title as before.
 
+`firefox-tab request '<json>'` sends one request line through the same checks and prints the reply line. A host it cannot reach gets `{"ok": false, "unavailable": true, ...}`. The bar's [Firefox tabs picker](../../../quickshell/.config/quickshell/features/launcher/README.md#firefox-tabs) uses it.
+
 | Say | Does |
 | --- | --- |
 | "go to weekly notes", "find the weekly notes tab", "go to example.com" | Focuses the window and tab whose title or site matches; several matches ask with numbers. A domain with no tab open is opened in a new tab. "go to firefox" is still the window |
