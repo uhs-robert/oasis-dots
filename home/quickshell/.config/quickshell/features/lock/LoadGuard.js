@@ -5,7 +5,11 @@
 
 const sample_ms = 5000;
 const window_samples = 30000 / sample_ms;
-// Load1 per thread. The gap between enter and leave keeps the lock from flapping around one value.
+// CPU threads the agents.slice cgroup keeps busy, as a share of all threads. The gap between enter and leave keeps
+// the lock from flapping around one value.
+const enter_agents = 0.25;
+const leave_agents = 0.125;
+// Load1 per thread, used only where agents.slice has no cpu.stat (the agents package is not installed).
 const enter_load = 0.75;
 const leave_load = 0.5;
 // PPT as a share of power1_cap. The leave level sits well below enter because the lock's own motion is part of PPT:
@@ -44,8 +48,36 @@ function power_ratio(input_text, cap_text) {
     return input / cap;
 }
 
+// The real uid from /proc/self/status, or "".
+function status_uid(status_text) {
+    const m = /^Uid:\s+(\d+)/m.exec(status_text || "");
+    return m ? m[1] : "";
+}
+
+// The cgroup v2 cpu.stat of the user's agents.slice, under `sys_root` (the test seam, "" for the real one).
+function agents_cpu_stat_path(sys_root, uid) {
+    if (uid === "") return "";
+    return sys_root + "/sys/fs/cgroup/user.slice/user-" + uid + ".slice/user@" + uid + ".service/agents.slice/cpu.stat";
+}
+
+// cpu.stat's usage_usec, or NaN.
+function usage_usec(stat_text) {
+    const m = /^usage_usec\s+(\d+)\s*$/m.exec(stat_text || "");
+    return m ? parseInt(m[1]) : NaN;
+}
+
+// The threads' share agents.slice kept busy between two readings `{ usec, ms }` (usage_usec and wall time). NaN for a
+// first reading, a missing one, or a counter that went back (the slice was recreated), rather than a spike.
+function agents_ratio(prev, next, threads) {
+    if (!prev || !next || !isFinite(prev.usec) || !isFinite(next.usec) || !(threads > 0)) return NaN;
+    const used_ms = (next.usec - prev.usec) / 1000;
+    const wall_ms = next.ms - prev.ms;
+    if (used_ms < 0 || !(wall_ms > 0)) return NaN;
+    return used_ms / wall_ms / threads;
+}
+
 function initial() {
-    return { still: false, loads: [], powers: [] };
+    return { still: false, trigger: "", agents: [], loads: [], powers: [] };
 }
 
 function mean(values) {
@@ -54,22 +86,35 @@ function mean(values) {
     return known.reduce((a, b) => a + b, 0) / known.length;
 }
 
-// One sample `{ load, power }` (ratios, NaN when unknown) into a new state. The decision uses the mean of the last
-// window_samples, and only once the window is full, so the lock changes after about 30 s of a load, not one spike.
+// One sample `{ agents, load, power }` (ratios, NaN when unknown) into a new state. The decision uses the mean of the
+// last window_samples, and only once the window is full, so the lock changes after about 30 s of a load, not one
+// spike. Agent CPU decides when the window holds any of it; the load average stands in where agents.slice is absent.
+// `trigger` names what the last change went on: agents, load or power.
 function step(state, sample) {
     const keep = list => list.slice(-(window_samples - 1));
-    const loads = keep(state.loads).concat([sample.load]);
-    const powers = keep(state.powers).concat([sample.power]);
-    let still = state.still;
-    if (loads.length >= window_samples) {
-        const load = mean(loads);
-        const power = mean(powers);
-        const heavy = load >= enter_load || power >= enter_power;
-        const calm = !(load >= leave_load) && !(power >= leave_power);
-        if (!still && heavy) still = true;
-        else if (still && calm) still = false;
+    const next = {
+        still: state.still,
+        trigger: state.trigger,
+        agents: keep(state.agents).concat([sample.agents]),
+        loads: keep(state.loads).concat([sample.load]),
+        powers: keep(state.powers).concat([sample.power])
+    };
+    if (next.loads.length < window_samples) return next;
+    const agents = mean(next.agents);
+    const use_agents = isFinite(agents);
+    const cpu = use_agents ? agents : mean(next.loads);
+    const cpu_name = use_agents ? "agents" : "load";
+    const power = mean(next.powers);
+    const cpu_heavy = cpu >= (use_agents ? enter_agents : enter_load);
+    const calm = !(cpu >= (use_agents ? leave_agents : leave_load)) && !(power >= leave_power);
+    if (!next.still && (cpu_heavy || power >= enter_power)) {
+        next.still = true;
+        next.trigger = cpu_heavy ? cpu_name : "power";
+    } else if (next.still && calm) {
+        next.still = false;
+        next.trigger = cpu_name;
     }
-    return { still: still, loads: loads, powers: powers };
+    return next;
 }
 
 // The CPUQuota for agents.slice while locked, from `systemctl --user cat agents.slice`: X-LockedCPUQuota (percent of
