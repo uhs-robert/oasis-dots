@@ -57,7 +57,11 @@ if ! real="$(find_real)"; then
   exit 127
 fi
 
-if in_slice || ! can_scope; then
+# systemd-run exits 1 both when it cannot make the scope and when the agent itself exits 1, so a no-op scope first
+# tells them apart. When the user manager refuses it, the agent runs uncapped rather than not at all.
+scope_works() { systemd-run --user --scope --slice="$slice" --quiet --collect -- "$BASH" -c : >/dev/null 2>&1; }
+
+if in_slice || ! can_scope || ! scope_works; then
   exec "$real" "$@"
 fi
 

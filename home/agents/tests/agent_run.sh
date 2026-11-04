@@ -25,8 +25,10 @@ for tool in bash env id; do
 done
 
 # Records its arguments, then runs what follows `--` in this process, as `systemd-run --scope` does.
+# STUB_SCOPE_FAIL makes it refuse every scope, as a user manager that rejects the unit does.
 cat >"$work/stubs/systemd-run" <<'STUB'
 #!/usr/bin/env bash
+[[ -n ${STUB_SCOPE_FAIL:-} ]] && exit 1
 printf '%s\n' "$@" >"$SCOPE_LOG"
 while [[ $# -gt 0 && $1 != -- ]]; do shift; done
 shift
@@ -91,6 +93,10 @@ grep -qx -- '--slice=test.slice' "$work/scope.log" 2>/dev/null || fail "slice ov
 AGENT_EXIT=4 run "$work/inside" "$work/runtime" "$full_path" "$shims/claude" "a b" c
 [[ $status == 4 && $out == "$want_out" ]] || fail "in slice: exit $status, output '$out'"
 [[ ! -e "$work/scope.log" ]] || fail "in slice: systemd-run ran"
+
+# The user manager refuses the scope: the real program still runs, uncapped, with its own exit code.
+STUB_SCOPE_FAIL=1 AGENT_EXIT=1 run "$work/outside" "$work/runtime" "$full_path" "$shims/claude" "a b" c
+[[ $status == 1 && $out == "$want_out" ]] || fail "scope refused: exit $status, output '$out' ($err)"
 
 # No systemd-run on PATH, or no user manager: the real program runs uncapped.
 AGENT_EXIT=5 run "$work/outside" "$work/runtime" "$shims:$work/agents:$work/tools" "$shims/claude" "a b" c

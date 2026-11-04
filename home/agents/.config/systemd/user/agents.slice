@@ -6,10 +6,10 @@ Description=AI agent sessions (Claude Code, Codex, ...)
 
 [Slice]
 # Percent of RAM, so the defaults fit any machine. The kernel throttles at MemoryHigh and OOM-kills inside the
-# slice at MemoryMax, before the global OOM killer picks a desktop process.
+# slice at MemoryMax. This caps the agents only: it reserves nothing for the rest of the machine.
 MemoryHigh=75%
 MemoryMax=85%
-# Below the default of 100, so the desktop wins contended CPU.
+# Below the default of 100 of the other user-manager apps. Hyprland sits in the login session, outside this branch.
 CPUWeight=50
 # The CPU cap while the screen is locked, as a percent of the machine's threads (62% is 10 of 16). systemd ignores
 # X- keys; the lock screen reads this one and applies it as CPUQuota.
