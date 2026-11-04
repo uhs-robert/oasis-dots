@@ -54,14 +54,17 @@ Popup {
     body_height: root.browse ? (root.screen ? Math.round(root.screen_height * 0.8) - root.header_height - root.footer_height : 600) : root.dock_bottom ? Math.round(root.screen_height * 0.4) - root.header_height - root.footer_height - root.drop_room : root.anchored_height
 
     // Preview size in the browse layout (BrowseLayout.sizes), reset to the provider's default on every open.
-    property string preview_size: "m"
+    // This, last_preview_size and browse_view start on the provider's defaults, not only from the open handler:
+    // LazyPopup builds the picker before is_open turns true, so a "grid" start built a screen of cards (and decoded
+    // their thumbnails) on every open only to swap them for rows.
+    property string preview_size: BrowseLayout.size_of(root.provider ? root.provider.default_preview_size : "")
     // What p brings the preview back to.
-    property string last_preview_size: "m"
+    property string last_preview_size: BrowseLayout.size_of(root.provider ? root.provider.default_preview_size : "")
     // Tab swaps the provider's alt_preview in; every open starts on the selected item's preview.
     property bool alt_preview_shown: false
     readonly property bool showing_alt: root.has_alt_preview && root.alt_preview_shown
     // "grid" of cards or one-line "list" rows; v flips it, and every open starts on the provider's default_browse_view.
-    property string browse_view: "grid"
+    property string browse_view: root.provider && root.provider.default_browse_view === "list" ? "list" : "grid"
     readonly property bool browse_list: root.browse && root.browse_view === "list"
     // At the max preview size the cards or rows are hidden, so the scroll cue and the number hints go too.
     readonly property bool items_hidden: root.browse && root.preview_size === "max"
