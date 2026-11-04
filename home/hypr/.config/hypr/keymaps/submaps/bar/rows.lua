@@ -30,7 +30,7 @@ function BarRows.binds(overrides)
     BarRows.row("Q", "system", "System"),
     BarRows.row("S", "start", "Start Menu"),
     BarRows.row("SHIFT + S", "settings", "Settings"),
-    BarRows.row("T", "tray", "Tray"),
+    BarRows.row("T", "tray", "System Tray"),
     { "U", "system.update", "Updates" },
     BarRows.row("V", "volume", "Volume"),
     BarRows.row("W", "weather", "Weather"),
