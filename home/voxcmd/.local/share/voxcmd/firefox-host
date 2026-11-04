@@ -191,9 +191,17 @@ def capture(extension, request):
     if not listed.get("ok") or not isinstance(listed.get("result"), list):
         return listed if not listed.get("ok") else {"ok": False, "error": "the extension sent no tab list"}
     tabs = [tab for tab in listed["result"] if isinstance(tab, dict)]
+    # The cache outlives a private session and is keyed by URL, so a private tab's image would leak to a normal tab of
+    # the same page. Private tabs reach the extension only when the owner allows it in private windows.
+    private_ids = {tab.get("tab_id") for tab in tabs if tab.get("incognito")}
     if tab_ids is None:
         tab_ids = [tab["tab_id"] for tab in tabs if type(tab.get("tab_id")) is int and not tab.get("discarded")]
-    results = [capture_one(extension, tab_id) for tab_id in tab_ids]
+        tab_ids = [tab_id for tab_id in tab_ids if tab_id not in private_ids]
+    results = [
+        {"tab_id": tab_id, "ok": False, "thumbnail": "", "thumbnail_at": 0, "error": "private tabs are never captured"}
+        if tab_id in private_ids else capture_one(extension, tab_id)
+        for tab_id in tab_ids
+    ]
     prune_thumbnails(tab["url"] for tab in tabs if isinstance(tab.get("url"), str))
     return {"ok": True, "result": results}
 

@@ -216,6 +216,7 @@ TABS = [
     {"tab_id": 2, "url": "https://two.example/", "discarded": True},
     {"tab_id": 3, "url": "https://three.example/", "discarded": False},
     {"tab_id": 4, "url": "https://four.example/", "discarded": False},
+    {"tab_id": 5, "url": "https://private.example/", "discarded": False, "incognito": True},
 ]
 
 
@@ -288,6 +289,12 @@ class ThumbnailTest(HostCase):
         seen, reply = self.capture({"cmd": "capture", "tab_ids": [1]}, 2)
         self.assertEqual([request.get("tab_id") for request in seen], [None, 1])
         self.assertEqual([result["tab_id"] for result in reply["result"]], [1])
+
+    def test_private_tabs_are_never_captured_or_cached(self):
+        seen, reply = self.capture({"cmd": "capture", "tab_ids": [5]}, 1)
+        self.assertEqual([request["cmd"] for request in seen], ["tabs"])
+        self.assertEqual(reply["result"], [{"tab_id": 5, "ok": False, "thumbnail": "", "thumbnail_at": 0, "error": "private tabs are never captured"}])
+        self.assertFalse(os.path.exists(self.cached("https://private.example/")))
 
     def test_capture_refuses_bad_tab_ids_without_asking_the_extension(self):
         for tab_ids in ("1", [1, "2"], [True]):
