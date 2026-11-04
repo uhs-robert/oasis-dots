@@ -149,6 +149,10 @@ function Menu.firefox_tabs_picker()
   return Menu.picker("firefox_tabs", "notify-send 'Browser Tabs' 'The tabs picker needs the Quickshell bar.'")
 end
 
+--- Return an action that opens the Quickshell windows picker, falling back to rofi's window list.
+--- @return fun()
+function Menu.windows_picker() return Menu.picker("windows", show_cmd("window")) end
+
 --- Return an action that picks a clipboard history entry and copies it back.
 --- @return fun()
 function Menu.clipboard()
