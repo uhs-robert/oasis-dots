@@ -10,7 +10,10 @@ Item {
     property string source: ""
     property bool crop: true
     property bool titled: false
-    readonly property bool shown: image.status === Image.Ready
+    // A refresh keeps the tab's old image up until the new one is decoded, so a capture never blanks it to the
+    // favicon tile for a frame. Only the same tab's image: a row rebound to another tab shows its tile meanwhile.
+    readonly property bool shown: image.status === Image.Ready || (image.status === Image.Loading && root.ready_id !== "" && root.ready_id === String(root.entry.id || ""))
+    property string ready_id: ""
 
     clip: true
 
@@ -29,6 +32,12 @@ Item {
         // Off so a refreshed file is read from disk even if its URL repeats; the source's time query is the main guard.
         cache: false
         asynchronous: true
+        retainWhileLoading: true
+        visible: root.shown
+        onStatusChanged: {
+            if (image.status === Image.Ready) root.ready_id = String(root.entry.id || "");
+            else if (image.status !== Image.Loading) root.ready_id = "";
+        }
         opacity: root.entry.discarded ? 0.4 : 1
     }
 
