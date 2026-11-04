@@ -131,11 +131,15 @@ function locked_share(unit_text) {
 }
 
 // The CPUQuota for agents.slice while locked: the locked share times the thread count, e.g. "992%" for 62% of 16.
-// "" without a share or threads.
+// "" without a share or threads. set-property replaces a quota the user configured rather than adding a ceiling, so a
+// tighter configured quota wins: the lock must never give agents more CPU than they have unlocked.
 function locked_quota(unit_text, threads) {
     const percent = locked_share(unit_text);
     if (!isFinite(percent) || !(threads > 0)) return "";
-    return Math.max(1, Math.round(percent * threads)) + "%";
+    const locked = Math.max(1, Math.round(percent * threads));
+    const m = /^(\d+(?:\.\d+)?)%$/.exec(configured_quota(unit_text));
+    const configured = m ? parseFloat(m[1]) : NaN;
+    return (configured > 0 && configured < locked ? m[1] : String(locked)) + "%";
 }
 
 // The CPUQuota the user configured for agents.slice, for the unlock to put back: the last `CPUQuota=` in `systemctl
