@@ -736,12 +736,13 @@ package.loaded["lua.plugins.hyprvim"] = {
 	},
 }
 assert(loadfile(hypr_dir .. "/keymaps/global/pickers.lua"))()
-check("pickers: no warnings, seven binds", #Act.warnings == 0 and #binds == 7)
+check("pickers: no warnings, eight binds", #Act.warnings == 0 and #binds == 8)
 local picker_keys = {
 	{ "picker.clipboard", "Clipboard History", "SUPER + CTRL + V", "clipboard" },
 	{ "picker.directory", "Jump to Directory", "SUPER + CTRL + SPACE", "zoxide" },
 	{ "picker.emoji", "Emoji Picker", "SUPER + CTRL + E", "emoji" },
 	{ "picker.windows", "Search Windows", "SUPER + T", "windows_picker" },
+	{ "picker.firefox_tabs", "Browser Tabs", "SUPER + SHIFT + T", "firefox_tabs_picker" },
 }
 for _, row in ipairs(picker_keys) do
 	local id, label, key, menu_name = row[1], row[2], row[3], row[4]
@@ -763,13 +764,6 @@ check(
 menu_calls = {}
 Act.run_cli("picker.agents", {})
 check("pickers: picker.agents runs Menu.agents_picker", #menu_calls == 1 and menu_calls[1] == "agents_picker")
--- Keyless globally: the Leader row binds it.
-menu_calls = {}
-Act.run_cli("picker.firefox_tabs", {})
-check(
-	"pickers: picker.firefox_tabs runs Menu.firefox_tabs_picker",
-	#menu_calls == 1 and menu_calls[1] == "firefox_tabs_picker"
-)
 check(
 	"hyprvim: terminal binds SHIFT + SEMICOLON",
 	find("SUPER + SHIFT + SEMICOLON") ~= nil and find("SUPER + SHIFT + SEMICOLON").opts.desc == "HyprVim Terminal"

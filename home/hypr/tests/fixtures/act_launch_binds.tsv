@@ -1,6 +1,7 @@
 # Dumped by `SHELL=/bin/zsh lua act_launch.lua --dump` from keymaps/global/{shortcuts,tools}.lua before the launch keys were actions (origin/main 5f1d11782).
 # Since redumped only where keys were removed or moved (the Applications submap dropped, SUPER + A for the agents picker).
 # Redumped when the agents picker lost SUPER + A to the restored Applications submap.
+# Redumped for SUPER + SHIFT + T on the Firefox tabs picker and overview.move on SUPER + SHIFT + TAB.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	-	ALT + GRAVE	Tmux overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call tmux_overview open)
 default	-	ALT + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
@@ -27,7 +28,8 @@ default	-	SUPER + RETURN	Terminal	-	exec_cmd(kitty --single-instance)
 default	-	SUPER + SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop)
 default	-	SUPER + SHIFT + RETURN	Bottom Terminal	-	exec_cmd(kitty --single-instance --class bottom-half-screen)
 default	-	SUPER + SHIFT + SEMICOLON	HyprVim Terminal	-	hyprvim.command.prompt()
-default	-	SUPER + SHIFT + T	Move window in overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview move_follow)
+default	-	SUPER + SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''')
+default	-	SUPER + SHIFT + TAB	Move window in overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview move_follow)
 default	-	SUPER + T	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker windows 'rofi -i -show window')
 default	-	SUPER + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
 default	-	SUPER + Y	Yazi	-	exec_cmd(kitty --single-instance -e yazi)
@@ -57,7 +59,8 @@ no-leader	-	RETURN	Terminal	-	exec_cmd(kitty --single-instance)
 no-leader	-	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop)
 no-leader	-	SHIFT + RETURN	Bottom Terminal	-	exec_cmd(kitty --single-instance --class bottom-half-screen)
 no-leader	-	SHIFT + SEMICOLON	HyprVim Terminal	-	hyprvim.command.prompt()
-no-leader	-	SHIFT + T	Move window in overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview move_follow)
+no-leader	-	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''')
+no-leader	-	SHIFT + TAB	Move window in overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview move_follow)
 no-leader	-	T	Search Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker windows 'rofi -i -show window')
 no-leader	-	TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
 no-leader	-	Y	Yazi	-	exec_cmd(kitty --single-instance -e yazi)

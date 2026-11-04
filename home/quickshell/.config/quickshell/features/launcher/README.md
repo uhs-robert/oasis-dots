@@ -20,7 +20,7 @@ An agent card shows the session's title, agent, state badge, short directory and
 
 ## Firefox tabs
 
-Leader > T (`picker.firefox_tabs`) lists every Firefox tab with a picture of each, as one-line rows (`v` for the grid). Enter switches to the tab and focuses its window. In NORMAL mode:
+Leader+Shift+T or Leader > T (`picker.firefox_tabs`) lists every Firefox tab with a picture of each, as one-line rows (`v` for the grid). Enter switches to the tab and focuses its window. In NORMAL mode:
 
 - `s` switches the sort. Tab order, the default, groups the tabs by window, each window in its tab-bar order under a header such as `WINDOW 1 · 14 TABS · <title of its active tab>`. Recent is one list, most recently used first, with a `W1` or `W2` badge on each tab for its window. The search bar corner shows the sort (`TAB ORDER` or `RECENT`), and the picker keeps the last one across opens and bar restarts.
 - `f` cycles all windows, then each Firefox window in turn (`WINDOW 1/3` in the corner).
