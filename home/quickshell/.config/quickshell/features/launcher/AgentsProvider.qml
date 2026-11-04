@@ -33,6 +33,9 @@ PickerProvider {
     readonly property int capture_interval_ms: 1000
     // id -> the last line with words in that session's pane, for the cards.
     property var tails: ({})
+    // Set by a battery list read that lands while a capture runs: that capture's tails are for the old list, so a new one
+    // starts once it ends.
+    property bool tails_pending: false
 
     function refresh(arg) {
         list_proc.running = false;
@@ -41,6 +44,7 @@ PickerProvider {
 
     function capture_tails() {
         if (tails_proc.running || root.items.length === 0) return;
+        root.tails_pending = false;
         tails_proc.command = AgentSessions.tails_argv(root.items);
         tails_proc.running = true;
     }
@@ -55,12 +59,26 @@ PickerProvider {
         onTriggered: root.capture_tails()
     }
 
-    onItemsChanged: if (root.is_shown && !PowerSource.on_ac) root.capture_tails()
+    onItemsChanged: {
+        if (!root.is_shown || PowerSource.on_ac) return;
+        root.tails_pending = true;
+        root.capture_tails();
+    }
+
+    // Retried from both ends of a run, since the collector can finish before or after the exit; capture_tails starts it
+    // only once the process is no longer running.
+    function capture_pending_tails() {
+        if (root.tails_pending) Qt.callLater(root.capture_tails);
+    }
 
     Process {
         id: tails_proc
+        onRunningChanged: if (!tails_proc.running) root.capture_pending_tails()
         stdout: StdioCollector {
-            onStreamFinished: root.tails = AgentSessions.parse_tails(text)
+            onStreamFinished: {
+                root.tails = AgentSessions.parse_tails(text);
+                root.capture_pending_tails();
+            }
         }
     }
 
