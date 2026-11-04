@@ -1,4 +1,4 @@
-// Runs LoadGuard.js under node: reading the cpu list, loadavg and hwmon power, the still and resume decision over
+// Runs LoadGuard.js under node: reading the cpu list, loadavg, hwmon power and the agents.slice CPU rate, the still and resume decision over
 // sequences of samples, and the agents.slice quota read from `systemctl --user cat`.
 "use strict";
 const fs = require("fs");
@@ -8,15 +8,16 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/lock/LoadGuard.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples };", context);
-const { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio };", context);
+const { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio } = context.api;
 
-// The still flag after each sample of `samples` ([load, power] pairs), from a fresh state.
+// The still flag after each sample of `samples` ([load, power, agents] triples, agents NaN when left out), from a
+// fresh state.
 function run(samples, state) {
   let s = state || initial();
   const out = [];
-  for (const [load, power] of samples) {
-    s = step(s, { load: load, power: power });
+  for (const [load, power, agents] of samples) {
+    s = step(s, { agents: agents === undefined ? NaN : agents, load: load, power: power });
     out.push(s.still);
   }
   return { flags: out, state: s };
@@ -26,6 +27,11 @@ const repeat = (n, sample) => Array.from({ length: n }, () => sample);
 const busy = [0.9, NaN];
 const idle = [0.2, NaN];
 const stilled = run(repeat(window_samples, busy)).state;
+
+// Agent shares with the load average pinned high, so only the agent rate can decide.
+const agent = share => [0.9, NaN, share];
+const agents_stilled = run(repeat(window_samples, agent(0.3))).state;
+const stat = usec => "usage_usec " + usec + "\nuser_usec 1\nsystem_usec 1\n";
 
 const unit = ["# /usr/lib/systemd/user/agents.slice", "[Slice]", "X-LockedCPUQuota=62%", ""].join("\n");
 
@@ -51,6 +57,23 @@ const cases = [
   ["a calm machine never stills", () => run(repeat(window_samples * 3, [0.1, 0.3])).flags.some(f => f), false],
   ["no data at all never stills", () => run(repeat(window_samples * 2, [NaN, NaN])).state.still, false],
   ["the window keeps window_samples entries", () => run(repeat(20, busy)).state.loads.length, window_samples],
+  ["the uid comes from the real Uid column", () => status_uid("Name:\tqs\nUid:\t1000\t1000\t1000\t1000\n"), "1000"],
+  ["no Uid line is no uid", () => status_uid("Name:\tqs\n"), ""],
+  ["the agents cpu.stat path", () => agents_cpu_stat_path("/fix", "1000"), "/fix/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/agents.slice/cpu.stat"],
+  ["no uid is no path", () => agents_cpu_stat_path("", ""), ""],
+  ["usage_usec reads its own line only", () => [usage_usec(stat(5544922601)), isNaN(usage_usec("user_usec 5\n")), isNaN(usage_usec(""))], [5544922601, true, true]],
+  ["4 threads busy for 5 s is a quarter of 16", () => agents_ratio({ usec: 1000000, ms: 0 }, { usec: 21000000, ms: 5000 }, 16), 0.25],
+  ["the first reading has no rate", () => isNaN(agents_ratio(null, { usec: 5, ms: 5000 }, 16)), true],
+  ["a missing reading has no rate", () => [agents_ratio({ usec: 5, ms: 0 }, { usec: NaN, ms: 5000 }, 16), agents_ratio({ usec: NaN, ms: 0 }, { usec: 5, ms: 5000 }, 16)].map(isNaN), [true, true]],
+  ["a counter that went back has no rate, not a spike", () => isNaN(agents_ratio({ usec: 9e12, ms: 0 }, { usec: 1000, ms: 5000 }, 16)), true],
+  ["no time passed or no threads has no rate", () => [agents_ratio({ usec: 0, ms: 5 }, { usec: 9, ms: 5 }, 16), agents_ratio({ usec: 0, ms: 0 }, { usec: 9, ms: 5 }, 0)].map(isNaN), [true, true]],
+  ["agents over a quarter still the lock, on agents", () => [agents_stilled.still, agents_stilled.trigger], [true, "agents"]],
+  ["agents decide over a high load average", () => run(repeat(window_samples * 2, agent(0.2))).state.still, false],
+  ["a first sample with no rate does not block the decision", () => run([agent(NaN)].concat(repeat(window_samples - 1, agent(0.3)))).flags.slice(-1)[0], true],
+  ["between the agent levels a still lock stays still", () => run(repeat(window_samples * 2, agent(0.2)), agents_stilled).state.still, true],
+  ["agents under an eighth resume, on agents", () => { const s = run(repeat(window_samples, agent(0.1)), agents_stilled).state; return [s.still, s.trigger]; }, [false, "agents"]],
+  ["without agents.slice the load average decides", () => [stilled.still, stilled.trigger], [true, "load"]],
+  ["power names itself when it alone stills", () => run(repeat(window_samples, [0.1, 0.95, 0.01])).state.trigger, "power"],
   ["62% of 16 threads", () => locked_quota(unit, 16), "992%"],
   ["a drop-in's later line wins", () => locked_quota(unit + "\n# drop-in\n[Slice]\nX-LockedCPUQuota = 25\n", 16), "400%"],
   ["an empty later line unsets it", () => locked_quota(unit + "\n[Slice]\nX-LockedCPUQuota=\n", 16), ""],
