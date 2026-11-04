@@ -256,12 +256,6 @@ PickerProvider {
             onEntryChanged: root.request(pane.entry, true)
             clip: true
 
-            Rectangle {
-                anchors.fill: parent
-                radius: Style.radius(4)
-                color: Style.pal.bg_surface
-            }
-
             Text {
                 anchors.fill: parent
                 anchors.margins: 10

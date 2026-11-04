@@ -207,12 +207,6 @@ PickerProvider {
                 }
             }
 
-            Rectangle {
-                anchors.fill: parent
-                radius: Style.radius(4)
-                color: Theme.bg_core
-            }
-
             Text {
                 anchors.fill: parent
                 anchors.margins: 10
@@ -248,12 +242,6 @@ PickerProvider {
     alt_preview: Component {
         Item {
             Component.onCompleted: ClaudeUsageState.refresh(false)
-
-            Rectangle {
-                anchors.fill: parent
-                radius: Style.radius(4)
-                color: Theme.bg_core
-            }
 
             UsageView {
                 anchors.fill: parent
