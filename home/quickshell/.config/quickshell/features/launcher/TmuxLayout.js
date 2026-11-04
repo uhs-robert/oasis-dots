@@ -15,9 +15,11 @@ function drawn_panes(item, shown) {
     return item.panes.map(function (p) { return rect_of(p, p.left, p.top); });
 }
 
-// The window's size in cells; from its panes when tmux gave none.
-function grid_size(item) {
+// The window's size in cells; from its panes when tmux gave none. A zoomed window shows one pane, so its grid is
+// that pane's size, which for a pane behind the zoom is smaller than the window.
+function grid_size(item, shown) {
     if (!item) return { cols: 0, rows: 0 };
+    if (item.zoomed && shown) return { cols: shown.width || 0, rows: shown.height || 0 };
     var cols = item.width || 0;
     var rows = item.height || 0;
     item.panes.forEach(function (p) {
