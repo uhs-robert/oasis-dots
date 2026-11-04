@@ -9,6 +9,7 @@ import qs.features.weather
 import qs.features.notifications
 import qs.features.media
 import qs.features.audio
+import qs.features.lock.skins.ui
 import "Tints.js" as Tints
 
 // Everything a lock skin draws: live status plus the auth state, which the lock (or the preview) sets.
@@ -31,6 +32,12 @@ QtObject {
     property bool saver: false
     // Loops run only while this is true: on AC and not left alone for long.
     property bool animate: PowerSource.on_ac
+    // False while no skin draws from this ctx (the lock is open), so the motion clock rests.
+    property bool shown: true
+    // Skins drive their endless motion from this rather than from infinite Animations.
+    readonly property MotionClock motion: MotionClock {
+        running: root.animate && root.shown
+    }
     // The lock tint family (Style.lock_tint): a base and a bright shade that skins derive their colours from.
     property string tint: Style.lock_tint
     // The GoldenEye skin's Watch colours choice (Style option), Theme or Classic.

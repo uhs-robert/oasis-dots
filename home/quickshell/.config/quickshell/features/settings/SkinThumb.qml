@@ -42,6 +42,7 @@ Rectangle {
     LockCtx {
         id: fake
         typing: true
+        shown: root.active
         tint: root.tint
         login: root.login
         music: root.music

@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.theme
 import qs.styles.goldeneye as GE
+import qs.features.lock.skins.ui
 import "ui/Menu.js" as Menu
 import "../../../styles/goldeneye/Watch.js" as Watch
 
@@ -18,6 +19,7 @@ Item {
     readonly property int unlock_ms: 1600
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
+    readonly property var motion_clock: root.ctx && root.ctx.motion ? root.ctx.motion : null
     // The screensaver phase is treated as idle.
     readonly property string phase: root.ctx && root.ctx.phase !== "saver" ? root.ctx.phase : "idle"
     readonly property bool login: !!root.ctx && root.ctx.login === true
@@ -868,13 +870,14 @@ Item {
                             height: 3
                             y: 11
                             color: Qt.alpha(field.tone, 0.8)
-                            opacity: 1
+                            opacity: cursor_blink.value
 
-                            SequentialAnimation on opacity {
+                            Loop {
+                                id: cursor_blink
+                                clock: root.motion_clock
                                 running: root.animate && root.typed === 0 && root.intro_t >= 1
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 0.15; duration: 500 }
-                                NumberAnimation { to: 1; duration: 500 }
+                                first: 1
+                                keys: [[500, 0.15, "linear"], [500, 1, "linear"]]
                             }
                         }
                     }

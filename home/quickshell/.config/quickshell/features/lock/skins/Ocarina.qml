@@ -3,7 +3,9 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Shapes
 import Quickshell.Io
+import qs.features.lock.skins.ui
 import "ui/Menu.js" as Menu
+import "ui/Motion.js" as Motion
 
 // Ocarina of Time: the title over a clock-driven sky; PRESS START leads to file select, then name entry takes the password.
 Item {
@@ -13,6 +15,7 @@ Item {
     readonly property int unlock_ms: 1600
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
+    readonly property var motion: root.ctx && root.ctx.motion ? root.ctx.motion : null
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
 
     property FileView os_release: FileView {
@@ -162,24 +165,27 @@ Item {
         root.sync_cycle();
     }
 
-    // Catches the phase up with the wall clock, then lets the animation run on from there.
+    // Catches the phase up with the wall clock, then lets the motion clock run it on from there.
     function sync_cycle() {
         root.cycle_armed = false;
         if (!root.sky_live) return;
         root.sky_phase = root.cycle_start + (Date.now() - root.cycle_epoch) / root.cycle_ms;
-        sky_anim.from = root.sky_phase;
-        sky_anim.to = root.sky_phase + 1;
+        root.sky_from = root.sky_phase;
         root.cycle_armed = true;
     }
 
     onAnimateChanged: if (root.animate) root.start_cycle()
     onSky_liveChanged: root.sync_cycle()
 
-    NumberAnimation on sky_phase {
-        id: sky_anim
-        running: root.sky_live && root.cycle_armed
-        duration: root.cycle_ms
-        loops: Animation.Infinite
+    // Where the running cycle started; the phase wraps back to it each cycle_ms.
+    property real sky_from: 0
+
+    Connections {
+        target: root.motion
+        enabled: root.sky_live && root.cycle_armed
+        function onTicked(dt) {
+            root.sky_phase = root.sky_from + (root.sky_phase - root.sky_from + dt * 1000 / root.cycle_ms) % 1;
+        }
     }
 
     readonly property string ui_font: "Rounded Mplus 1c"
@@ -432,10 +438,20 @@ Item {
         }
     }
 
-    component Pulse: SequentialAnimation {
-        loops: Animation.Infinite
-        NumberAnimation { from: 0.6; to: 1; duration: 550; easing.type: Easing.InOutSine }
-        NumberAnimation { from: 1; to: 0.6; duration: 550; easing.type: Easing.InOutSine }
+    // A glow breathing between 0.6 and 1; bind the opacity to it while it runs.
+    component Pulse: Loop {
+        clock: root.motion
+        first: 0.6
+        keys: [[550, 1, "in_out_sine"], [550, 0.6, "in_out_sine"]]
+    }
+
+    // The fire's frame i on the flame clock: each frame fades in over 90 ms as it comes up and out as the next does.
+    function flame_alpha(i, s) {
+        const step = 500 / 4.99, u = ((s * 1000 - i * step) % 500 + 500) % 500;
+        if (u < 90) return u / 90;
+        if (u < step) return 1;
+        if (u < step + 90) return 1 - (u - step) / 90;
+        return 0;
     }
 
     // The cyan cursor orb.
@@ -576,7 +592,10 @@ Item {
                 border.color: "#9ffcff"
             }
 
-            Pulse on opacity {
+            opacity: pill_pulse.running ? pill_pulse.value : 1
+
+            Pulse {
+                id: pill_pulse
                 running: root.animate && pill.lit
             }
         }
@@ -966,7 +985,7 @@ Item {
                             id: drifting
                             required property var modelData
                             readonly property real lead: (modelData.lead % modelData.dur) / modelData.dur
-                            property real tx: -640 + drifting.lead * 2880
+                            readonly property real tx: -640 + Motion.cycle(cloud_clock.elapsed + drifting.lead * drifting.modelData.dur / 1000, drifting.modelData.dur / 1000) * 2880
                             cx: modelData.x + modelData.w / 2 + drifting.tx
                             cy: modelData.y + modelData.h / 2
                             rx: modelData.w / 2
@@ -975,10 +994,9 @@ Item {
                             middle: "#1fffffff"
                             mid: 0.6
 
-                            SequentialAnimation on tx {
+                            property Loop cloud_clock: Loop {
+                                clock: root.motion
                                 running: root.animate
-                                NumberAnimation { to: 2240; duration: drifting.modelData.dur * (1 - drifting.lead) }
-                                NumberAnimation { from: -640; to: 2240; duration: drifting.modelData.dur; loops: Animation.Infinite }
                             }
                         }
                     }
@@ -987,7 +1005,7 @@ Item {
                 // Frames are 1120x929 around the 960px wide logo, offset 80 left and 140 up.
                 Item {
                     id: fire
-                    property real phase: 0
+                    readonly property real phase: flame_clock.value
                     readonly property real k: logo.width / 960
                     x: logo.x - 80 * k
                     y: logo.y - 140 * k
@@ -1010,33 +1028,28 @@ Item {
                                 sourceSize.width: Math.round(fire.width * title_stage.k)
                                 // Uncached, so the frames leave with the lock instead of staying in Qt's image cache.
                                 cache: false
-                                opacity: index === Math.floor(fire.phase) ? 1 : 0
+                                opacity: flame_clock.running ? root.flame_alpha(index, flame_clock.elapsed) : index === Math.floor(fire.phase) ? 1 : 0
                                 asynchronous: true
                                 smooth: true
-
-                                Behavior on opacity {
-                                    enabled: root.animate
-                                    NumberAnimation { duration: 90 }
-                                }
                             }
                         }
 
-                        SequentialAnimation on scale {
-                            running: root.animate && root.lit
-                            loops: Animation.Infinite
-                            NumberAnimation { to: 1.02; duration: 300; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 0.99; duration: 260; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.015; duration: 340; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1; duration: 280; easing.type: Easing.InOutSine }
+                        scale: flicker.value
+
+                        Loop {
+                            id: flicker
+                            clock: root.motion
+                            running: flame_clock.running
+                            first: 1
+                            keys: [[300, 1.02, "in_out_sine"], [260, 0.99, "in_out_sine"], [340, 1.015, "in_out_sine"], [280, 1, "in_out_sine"]]
                         }
                     }
 
-                    NumberAnimation on phase {
+                    Loop {
+                        id: flame_clock
+                        clock: root.motion
                         running: root.animate && root.lit
-                        from: 0
-                        to: 4.99
-                        duration: 500
-                        loops: Animation.Infinite
+                        keys: [[0, 0, "linear"], [500, 4.99, "linear"]]
                     }
 
                     ParallelAnimation {
@@ -1081,12 +1094,13 @@ Item {
                         shadowScale: 1.015
                         blurMax: 24
 
-                        SequentialAnimation on shadowOpacity {
+                        shadowOpacity: glow.value
+
+                        property Loop glow: Loop {
+                            clock: root.motion
                             running: root.animate
-                            loops: Animation.Infinite
-                            NumberAnimation { from: 0.8; to: 1; duration: 180 }
-                            NumberAnimation { from: 1; to: 0.75; duration: 220 }
-                            NumberAnimation { from: 0.75; to: 0.8; duration: 160 }
+                            first: 0.8
+                            keys: [[180, 1, "linear"], [220, 0.75, "linear"], [160, 0.8, "linear"]]
                         }
                     }
                 }
@@ -1335,7 +1349,6 @@ Item {
 
                     Shape {
                         x: 1024
-                        y: 518
                         width: 16
                         height: 11
                         visible: note_box.note === "armed"
@@ -1347,11 +1360,14 @@ Item {
                             PathSvg { path: "M0 0 L16 0 L8 11 Z" }
                         }
 
-                        SequentialAnimation on y {
+                        y: bob_a.value
+
+                        Loop {
+                            id: bob_a
+                            clock: root.motion
                             running: root.animate
-                            loops: Animation.Infinite
-                            NumberAnimation { from: 518; to: 522; duration: 600; easing.type: Easing.InOutSine }
-                            NumberAnimation { from: 522; to: 518; duration: 600; easing.type: Easing.InOutSine }
+                            first: 518
+                            keys: [[600, 522, "in_out_sine"], [600, 518, "in_out_sine"]]
                         }
                     }
                 }
@@ -1457,8 +1473,10 @@ Item {
                     cx: 670 + root.marks * 31
                     cy: 160
                     rx: 26
+                    opacity: marks_pulse.running ? marks_pulse.value : 1
 
-                    Pulse on opacity {
+                    Pulse {
+                        id: marks_pulse
                         running: root.animate
                     }
                 }
@@ -1480,8 +1498,10 @@ Item {
                             cx: key.cx
                             cy: key.base_y - 14
                             rx: 30
+                            opacity: key_pulse.running ? key_pulse.value : 1
 
-                            Pulse on opacity {
+                            Pulse {
+                                id: key_pulse
                                 running: root.animate && key.picked
                             }
                         }
@@ -1548,8 +1568,10 @@ Item {
                         color: "transparent"
                         border.width: 5
                         border.color: "#9ffcff"
+                        opacity: open_pulse.running ? open_pulse.value : 1
 
-                        Pulse on opacity {
+                        Pulse {
+                            id: open_pulse
                             running: root.animate && name_screen.unlocking
                         }
                     }
@@ -1632,7 +1654,6 @@ Item {
                     Shape {
                         id: next_mark
                         x: 932
-                        y: 652
                         width: 18
                         height: 12
                         preferredRendererType: Shape.CurveRenderer
@@ -1643,11 +1664,14 @@ Item {
                             PathSvg { path: "M0 0 L18 0 L9 12 Z" }
                         }
 
-                        SequentialAnimation on y {
+                        y: bob_b.value
+
+                        Loop {
+                            id: bob_b
+                            clock: root.motion
                             running: root.animate
-                            loops: Animation.Infinite
-                            NumberAnimation { from: 652; to: 656; duration: 600; easing.type: Easing.InOutSine }
-                            NumberAnimation { from: 656; to: 652; duration: 600; easing.type: Easing.InOutSine }
+                            first: 652
+                            keys: [[600, 656, "in_out_sine"], [600, 652, "in_out_sine"]]
                         }
                     }
                 }

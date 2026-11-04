@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.theme
 import qs.features.lock.skins.screensavers
+import qs.features.lock.skins.ui
 
 // A TIE cockpit targeting console: a trench-scope reticle hunts, locks green or loses red with the password.
 Item {
@@ -15,6 +16,7 @@ Item {
     readonly property bool portrait: root.height > root.width
     readonly property real u: root.portrait ? Math.min(root.width / 58, root.height / 100) : Math.min(root.width, root.height * 16 / 9) / 100
     readonly property bool animate: !!root.ctx && root.ctx.animate
+    readonly property var motion: root.ctx && root.ctx.motion ? root.ctx.motion : null
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
 
     // Yellow vectors under classic, else the lock tint.
@@ -281,13 +283,11 @@ Item {
             }
 
             // Rungs collapse toward the vanishing point on a shared, phase-independent clock.
-            property real rung_t: 0
-            NumberAnimation on rung_t {
+            readonly property real rung_t: rung_loop.value
+            property Loop rung_loop: Loop {
+                clock: root.motion
                 running: root.animate
-                loops: Animation.Infinite
-                from: 0
-                to: 1
-                duration: 3000
+                keys: [[0, 0, "linear"], [3000, 1, "linear"]]
             }
 
             Repeater {
@@ -340,19 +340,20 @@ Item {
                 y: scope.vy - height / 2
                 width: root.u * 2
                 height: width
-                transform: Translate { id: target_t }
+                transform: Translate { x: target_x.value; y: target_y.value }
 
-                SequentialAnimation {
+                Loop {
+                    id: target_x
+                    clock: root.motion
                     running: root.animate
-                    loops: Animation.Infinite
-                    ParallelAnimation {
-                        NumberAnimation { target: target_t; property: "x"; to: root.u * 1; duration: 2500; easing.type: Easing.InOutSine }
-                        NumberAnimation { target: target_t; property: "y"; to: -root.u * 0.6; duration: 2500; easing.type: Easing.InOutSine }
-                    }
-                    ParallelAnimation {
-                        NumberAnimation { target: target_t; property: "x"; to: -root.u * 1; duration: 2500; easing.type: Easing.InOutSine }
-                        NumberAnimation { target: target_t; property: "y"; to: root.u * 0.6; duration: 2500; easing.type: Easing.InOutSine }
-                    }
+                    keys: [[2500, root.u * 1, "in_out_sine"], [2500, -root.u * 1, "in_out_sine"]]
+                }
+
+                Loop {
+                    id: target_y
+                    clock: root.motion
+                    running: root.animate
+                    keys: [[2500, -root.u * 0.6, "in_out_sine"], [2500, root.u * 0.6, "in_out_sine"]]
                 }
 
                 Shape {
@@ -379,52 +380,56 @@ Item {
                 y: scope.vy - height / 2
                 width: root.u * 9
                 height: width
+                readonly property real s: hunt_s.running ? hunt_s.value : snap_s.running ? snap_s.value : 1
                 transform: [
-                    Scale { id: brk_scale; origin.x: brk.width / 2; origin.y: brk.height / 2 },
-                    Translate { id: brk_t }
+                    Scale { origin.x: brk.width / 2; origin.y: brk.height / 2; xScale: brk.s; yScale: brk.s },
+                    Translate {
+                        x: hunt_x.running ? hunt_x.value : thrash_x.running ? thrash_x.value : 0
+                        y: hunt_y.running ? hunt_y.value : thrash_y.running ? thrash_y.value : 0
+                    }
                 ]
 
-                SequentialAnimation {
+                Loop {
+                    id: hunt_x
+                    clock: root.motion
                     running: root.animate && root.phase !== "wrong" && root.phase !== "unlock"
-                    loops: Animation.Infinite
-                    onStopped: { brk_t.x = 0; brk_t.y = 0; brk_scale.xScale = 1; brk_scale.yScale = 1; }
-                    ParallelAnimation {
-                        NumberAnimation { target: brk_t; property: "x"; to: root.u * 1.2; duration: 780; easing.type: Easing.InOutSine }
-                        NumberAnimation { target: brk_t; property: "y"; to: -root.u * 0.7; duration: 780; easing.type: Easing.InOutSine }
-                        NumberAnimation { target: brk_scale; property: "xScale"; to: 1.08; duration: 780; easing.type: Easing.InOutSine }
-                        NumberAnimation { target: brk_scale; property: "yScale"; to: 1.08; duration: 780; easing.type: Easing.InOutSine }
-                    }
-                    ParallelAnimation {
-                        NumberAnimation { target: brk_t; property: "x"; to: -root.u * 0.9; duration: 900; easing.type: Easing.InOutSine }
-                        NumberAnimation { target: brk_t; property: "y"; to: root.u * 0.5; duration: 900; easing.type: Easing.InOutSine }
-                        NumberAnimation { target: brk_scale; property: "xScale"; to: 0.95; duration: 900; easing.type: Easing.InOutSine }
-                        NumberAnimation { target: brk_scale; property: "yScale"; to: 0.95; duration: 900; easing.type: Easing.InOutSine }
-                    }
+                    keys: [[780, root.u * 1.2, "in_out_sine"], [900, -root.u * 0.9, "in_out_sine"]]
                 }
 
-                SequentialAnimation {
+                Loop {
+                    id: hunt_y
+                    clock: root.motion
+                    running: hunt_x.running
+                    keys: [[780, -root.u * 0.7, "in_out_sine"], [900, root.u * 0.5, "in_out_sine"]]
+                }
+
+                Loop {
+                    id: hunt_s
+                    clock: root.motion
+                    running: hunt_x.running
+                    first: 1
+                    keys: [[780, 1.08, "in_out_sine"], [900, 0.95, "in_out_sine"]]
+                }
+
+                Loop {
+                    id: snap_s
+                    clock: root.motion
                     running: root.animate && root.phase === "unlock"
-                    loops: Animation.Infinite
-                    PropertyAction { target: brk_scale; property: "xScale"; value: 1.5 }
-                    PropertyAction { target: brk_scale; property: "yScale"; value: 1.5 }
-                    ParallelAnimation {
-                        NumberAnimation { target: brk_scale; property: "xScale"; to: 0.72; duration: 500; easing.type: Easing.OutCubic }
-                        NumberAnimation { target: brk_scale; property: "yScale"; to: 0.72; duration: 500; easing.type: Easing.OutCubic }
-                    }
-                    PauseAnimation { duration: 900 }
+                    keys: [[0, 1.5, "linear"], [500, 0.72, "out_cubic"], [900, null, "linear"]]
                 }
 
-                SequentialAnimation {
+                Loop {
+                    id: thrash_x
+                    clock: root.motion
                     running: root.animate && root.phase === "wrong"
-                    loops: Animation.Infinite
-                    ParallelAnimation {
-                        NumberAnimation { target: brk_t; property: "x"; to: -root.u * 2.6; duration: 260; easing.type: Easing.InOutQuad }
-                        NumberAnimation { target: brk_t; property: "y"; to: root.u * 1.2; duration: 260; easing.type: Easing.InOutQuad }
-                    }
-                    ParallelAnimation {
-                        NumberAnimation { target: brk_t; property: "x"; to: root.u * 2.4; duration: 300; easing.type: Easing.InOutQuad }
-                        NumberAnimation { target: brk_t; property: "y"; to: -root.u * 1.4; duration: 300; easing.type: Easing.InOutQuad }
-                    }
+                    keys: [[260, -root.u * 2.6, "in_out_quad"], [300, root.u * 2.4, "in_out_quad"]]
+                }
+
+                Loop {
+                    id: thrash_y
+                    clock: root.motion
+                    running: thrash_x.running
+                    keys: [[260, root.u * 1.2, "in_out_quad"], [300, -root.u * 1.4, "in_out_quad"]]
                 }
 
                 Shape {
@@ -736,11 +741,13 @@ Item {
             GradientStop { position: 0.5; color: "transparent" }
         }
 
-        SequentialAnimation on opacity {
+        opacity: pulse.running ? pulse.value : 1
+
+        Loop {
+            id: pulse
+            clock: root.motion
             running: root.animate && root.phase === "unlock"
-            loops: Animation.Infinite
-            NumberAnimation { from: 0; to: 1; duration: 720; easing.type: Easing.OutQuad }
-            NumberAnimation { from: 1; to: 0; duration: 880; easing.type: Easing.InQuad }
+            keys: [[720, 1, "out_quad"], [880, 0, "in_quad"]]
         }
     }
 
@@ -758,6 +765,7 @@ Item {
 
             Starfield {
                 anchors.fill: parent
+                clock: root.motion
                 running: root.animate
                 color: root.hot
                 dim_color: root.vec_dim

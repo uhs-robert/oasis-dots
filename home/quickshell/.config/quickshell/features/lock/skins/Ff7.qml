@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
 import qs.theme
+import qs.features.lock.skins.ui
 
 // Final Fantasy VII: the Buster Sword title menu, a save file per user, the password as a name entry and a battle swirl to unlock.
 Item {
@@ -12,6 +13,7 @@ Item {
     readonly property int unlock_ms: 1600
 
     readonly property bool animate: !!root.ctx && root.ctx.animate
+    readonly property var motion: root.ctx && root.ctx.motion ? root.ctx.motion : null
     readonly property string phase: root.ctx ? root.ctx.phase : "idle"
     readonly property bool can_step: !!root.ctx && "scene" in root.ctx
     readonly property string scene: root.can_step ? root.ctx.scene : ""
@@ -579,18 +581,16 @@ Item {
                 scale: 637 / 1100
                 rotation: 47
                 visible: root.screen !== "files"
-                property real glint_y: -400
+                readonly property real glint_y: root.animate ? glint.value : -400
                 readonly property color steel_hi: Qt.tint(Theme.fg_dim, Qt.alpha(root.white, 0.7))
                 readonly property color steel: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.theme_primary_light, 0.35))
                 readonly property color steel_lo: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_dim, 0.45))
 
-                NumberAnimation on glint_y {
+                Loop {
+                    id: glint
+                    clock: root.motion
                     running: root.animate && root.screen !== "unlock"
-                    loops: Animation.Infinite
-                    from: -1200
-                    to: 1300
-                    duration: 6000
-                    easing.type: Easing.InOutSine
+                    keys: [[0, -1200, "linear"], [6000, 1300, "in_out_sine"]]
                 }
 
                 Shape {
@@ -1459,10 +1459,10 @@ Item {
         }
     }
 
-    FrameAnimation {
-        id: stream_clock
-        running: root.stream_on && root.animate
-        onTriggered: root.stream_t += Math.min(stream_clock.frameTime, 0.1)
+    Connections {
+        target: root.motion
+        enabled: root.stream_on && root.animate
+        function onTicked(dt) { root.stream_t += dt; }
     }
 
     property int saver_spot: 0
