@@ -501,7 +501,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `TAB` | press | Go | Last Workspace | `workspace.focus_last` |
 | `A` | press | Go | Agent Sessions Picker | `picker.agents` |
 | `B` | press | Go | Browser | `apps.focus` |
-| `SHIFT + B` | press | Go | Browser Tabs | `picker.firefox_tabs` |
 | `C` | press | Go | Tmuxifier Config | `apps.focus` |
 | `M` | press | Go | Mail | `apps.focus` |
 | `P` | press | Go | Project | `menu.tmux` |
@@ -551,6 +550,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `TAB` | press | Leader | Workspace Overview | `overview.open` |
 | `SHIFT + TAB` | press | Leader | Tmux Overview | `tmux.overview` |
 | `E` | press | Leader | Emoji | `picker.emoji` |
+| `SHIFT + T` | press | Leader | Browser Tabs | `picker.firefox_tabs` |
 | `PERIOD` | press | Leader | Speech to Text | `voice.dictate` |
 | `COMMA` | press | Leader | Voice Command | `voice.command` |
 | `SHIFT + COMMA` | press | Leader | Stop Voice | `voice.stop` |

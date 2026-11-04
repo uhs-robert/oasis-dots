@@ -29,7 +29,6 @@ Submap.define({
       { "TAB",       "workspace.focus_last" },
       { "A",         "picker.agents" },
       { "B",         focus_app("firefox"),                  "Browser" },
-      { "SHIFT + B", "picker.firefox_tabs" },
       { "C",         focus_app("tmux_config"),              "Tmuxifier Config" },
       { "M",         focus_app("betterbird"),               "Mail" }, { "P",         "menu.tmux",                           "Project" }, -- TODO: Convert to QS?
       { "Q",         focus_app("qutebrowser"),              "QuteBrowser" },
