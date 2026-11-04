@@ -31,6 +31,8 @@ Item {
     }
     Component.onCompleted: root.view_toplevel = root.toplevel
     property int retries: 0
+    // A thumbnail that spent its retries while shown gets a fresh budget each time it shows again.
+    onCapturingChanged: if (root.capturing) root.retries = 0
 
     // A capture started while another window is closing never delivers a frame (a picker card rebound after `x`),
     // so a view still empty after a moment is replaced by a fresh one, a few times at most.
