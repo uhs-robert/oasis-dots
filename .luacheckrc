@@ -5,7 +5,7 @@ unused_args = false
 ignore = { "211/[A-Z].*" }
 
 files["system/etc/greetd/hyprland.lua"] = {
-  globals = { "GREETD_DIRECTORY", "ADMIN", "RUNTIME_DIR", "TERMINAL", "FULLSCREEN_TERMINAL", "PRIMARY" },
+  globals = { "GREETD_DIRECTORY", "ADMIN", "RUNTIME_DIR", "TERMINAL", "FULLSCREEN_TERMINAL", "PRIMARY", "GREETER_HANDOFF" },
 }
 
 exclude_files = { "home/hypr/.config/hypr/lua/plugins/hyprvim/**" }
